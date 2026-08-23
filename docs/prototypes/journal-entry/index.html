@@ -1,0 +1,1085 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="نموذج أولي لشاشة القيد اليومي في نظام سلاسل بابل ERP">
+<title>قيد يومية جديد</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap">
+<style>
+/* ── design tokens ─────────────────────────────────────────── */
+:root{
+  --bg:#eef2f7; --surface:#fff; --surface-2:#f8fafc; --surface-3:#f1f5f9;
+  --border:#e2e8f0; --border-2:#cbd5e1;
+  --text:#0f172a; --text-2:#475569; --text-3:#94a3b8;
+  --brand:#2563eb; --brand-ink:#1d4ed8; --brand-soft:#eff6ff;
+  --debit:#0f9d8f; --debit-soft:#ecfdf7;
+  --credit:#3b82f6; --credit-soft:#eff6ff;
+  --good:#16a34a; --good-soft:#f0fdf4; --good-line:#bbf7d0;
+  --warn:#b45309; --warn-soft:#fffbeb; --warn-line:#fde68a;
+  --ai:#7c3aed; --ai-soft:#f5f3ff; --ai-line:#ddd6fe;
+  --req:#dc2626;
+  --shadow-1:0 1px 2px rgba(15,23,42,.05);
+  --shadow-2:0 1px 2px rgba(15,23,42,.04),0 10px 26px -14px rgba(15,23,42,.22);
+  --r:12px; --r-sm:8px;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0a1120; --surface:#111c2f; --surface-2:#0e1728; --surface-3:#16233a;
+    --border:#1e2c45; --border-2:#2b3d5c;
+    --text:#e6edf7; --text-2:#9db0ca; --text-3:#6b7f9c;
+    --brand:#60a5fa; --brand-ink:#93c5fd; --brand-soft:#16294d;
+    --debit:#2dd4bf; --debit-soft:#0b2f2c;
+    --credit:#60a5fa; --credit-soft:#16294d;
+    --good:#4ade80; --good-soft:#0a2c18; --good-line:#166534;
+    --warn:#fbbf24; --warn-soft:#31240a; --warn-line:#78500b;
+    --ai:#a78bfa; --ai-soft:#241a4d; --ai-line:#4c3a91;
+    --req:#f87171;
+    --shadow-1:0 1px 2px rgba(0,0,0,.4);
+    --shadow-2:0 1px 2px rgba(0,0,0,.3),0 12px 28px -16px rgba(0,0,0,.8);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0a1120; --surface:#111c2f; --surface-2:#0e1728; --surface-3:#16233a;
+  --border:#1e2c45; --border-2:#2b3d5c;
+  --text:#e6edf7; --text-2:#9db0ca; --text-3:#6b7f9c;
+  --brand:#60a5fa; --brand-ink:#93c5fd; --brand-soft:#16294d;
+  --debit:#2dd4bf; --debit-soft:#0b2f2c;
+  --credit:#60a5fa; --credit-soft:#16294d;
+  --good:#4ade80; --good-soft:#0a2c18; --good-line:#166534;
+  --warn:#fbbf24; --warn-soft:#31240a; --warn-line:#78500b;
+  --ai:#a78bfa; --ai-soft:#241a4d; --ai-line:#4c3a91;
+  --req:#f87171;
+  --shadow-1:0 1px 2px rgba(0,0,0,.4);
+  --shadow-2:0 1px 2px rgba(0,0,0,.3),0 12px 28px -16px rgba(0,0,0,.8);
+}
+
+/* ── base ──────────────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box}
+html{direction:rtl;-webkit-text-size-adjust:100%}
+body{
+  margin:0;background:var(--bg);color:var(--text);
+  font-family:'IBM Plex Sans Arabic','Segoe UI',Tahoma,system-ui,sans-serif;
+  font-size:14px;line-height:1.6;
+}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:4px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+.num{font-variant-numeric:tabular-nums;letter-spacing:.01em}
+
+/* ── top bar ───────────────────────────────────────────────── */
+.topbar{
+  position:sticky;top:0;z-index:60;display:flex;align-items:center;gap:16px;
+  height:56px;padding:0 16px;background:var(--surface);
+  border-bottom:1px solid var(--border);box-shadow:var(--shadow-1);
+}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;white-space:nowrap}
+.brand .mark{
+  width:30px;height:30px;border-radius:9px;display:grid;place-items:center;
+  background:linear-gradient(140deg,var(--brand),#7c3aed);color:#fff;flex:none;
+}
+.iconbtn{
+  width:34px;height:34px;border:0;border-radius:9px;background:transparent;
+  color:var(--text-2);display:grid;place-items:center;cursor:pointer;flex:none;
+  transition:background .15s,color .15s;
+}
+.iconbtn:hover{background:var(--surface-3);color:var(--text)}
+.orgpick{
+  margin-inline:auto;display:flex;align-items:center;gap:8px;padding:6px 12px;
+  border-radius:999px;color:var(--text-2);font-weight:500;
+  background:transparent;border:1px solid transparent;cursor:pointer;
+}
+.orgpick:hover{background:var(--surface-3);border-color:var(--border)}
+.topbar .tools{display:flex;align-items:center;gap:2px}
+.avatar{
+  width:32px;height:32px;border-radius:50%;display:grid;place-items:center;
+  background:var(--debit);color:#fff;font-size:12px;font-weight:700;flex:none;margin-inline-start:6px;
+}
+.bell{position:relative}
+.bell::after{
+  content:"";position:absolute;top:6px;inset-inline-start:8px;width:7px;height:7px;
+  border-radius:50%;background:var(--req);border:2px solid var(--surface);
+}
+
+/* ── shell ─────────────────────────────────────────────────── */
+.shell{display:flex;align-items:flex-start;min-height:calc(100dvh - 56px)}
+
+.sidenav{
+  position:sticky;top:56px;flex:none;width:216px;align-self:stretch;
+  height:calc(100dvh - 56px);overflow-y:auto;padding:14px 10px 24px;
+  background:var(--surface);border-inline-start:1px solid var(--border);
+}
+.navitem{
+  display:flex;align-items:center;gap:11px;width:100%;padding:9px 11px;margin-bottom:2px;
+  border:0;border-radius:9px;background:transparent;color:var(--text-2);
+  font-size:13.5px;font-weight:500;cursor:pointer;text-align:start;
+  transition:background .15s,color .15s;
+}
+.navitem:hover{background:var(--surface-3);color:var(--text)}
+.navitem[aria-current="true"]{background:var(--brand);color:#fff;font-weight:600}
+.navitem svg{flex:none;opacity:.9}
+.navitem .caret{margin-inline-start:auto;transition:transform .2s}
+.navitem[aria-expanded="true"] .caret{transform:rotate(180deg)}
+.subnav{display:flex;flex-direction:column;gap:1px;padding:4px 0 6px}
+.subitem{
+  display:flex;align-items:center;gap:9px;padding:7px 11px 7px 11px;
+  margin-inline-start:14px;border:0;border-radius:8px;background:transparent;
+  color:var(--text-2);font-size:13px;cursor:pointer;text-align:start;width:calc(100% - 14px);
+}
+.subitem::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--border-2);flex:none}
+.subitem:hover{background:var(--surface-3);color:var(--text)}
+.subitem[aria-current="true"]{background:var(--brand-soft);color:var(--brand-ink);font-weight:600}
+.subitem[aria-current="true"]::before{background:var(--brand)}
+
+.main{flex:1;min-width:0;padding:18px 20px 116px;display:flex;flex-direction:column;gap:16px}
+
+/* ── breadcrumb + page head ────────────────────────────────── */
+.crumbs{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text-3);flex-wrap:wrap}
+.crumbs a{color:var(--text-3);text-decoration:none}
+.crumbs a:hover{color:var(--brand)}
+.crumbs .sep{opacity:.5}
+.crumbs .now{color:var(--text-2);font-weight:600}
+
+.pagehead{display:flex;align-items:center;gap:12px}
+.pagehead .ico{
+  width:40px;height:40px;border-radius:11px;display:grid;place-items:center;
+  background:var(--brand-soft);color:var(--brand);flex:none;
+}
+.pagehead h1{margin:0;font-size:21px;font-weight:700;letter-spacing:-.01em}
+
+/* ── cards ─────────────────────────────────────────────────── */
+.card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r);box-shadow:var(--shadow-1);
+}
+.card-pad{padding:16px}
+
+/* ── form fields ───────────────────────────────────────────── */
+.grid{display:grid;gap:14px 16px}
+.fields-1{grid-template-columns:repeat(5,minmax(0,1fr))}
+.fields-2{grid-template-columns:minmax(0,3fr) minmax(0,1fr)}
+@media (max-width:1180px){.fields-1{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:760px){.fields-1{grid-template-columns:repeat(2,minmax(0,1fr))}.fields-2{grid-template-columns:1fr}}
+@media (max-width:520px){.fields-1{grid-template-columns:1fr}}
+
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.field > label{font-size:12.5px;font-weight:600;color:var(--text-2)}
+.req{color:var(--req);margin-inline-start:2px}
+.hint{font-size:11.5px;color:var(--text-3)}
+
+.ctl{
+  width:100%;min-height:38px;padding:8px 11px;border:1px solid var(--border-2);
+  border-radius:var(--r-sm);background:var(--surface);color:var(--text);
+  transition:border-color .15s,box-shadow .15s;
+}
+.ctl:hover:not(:disabled){border-color:var(--text-3)}
+.ctl:focus{outline:0;border-color:var(--brand);box-shadow:0 0 0 3px color-mix(in srgb,var(--brand) 18%,transparent)}
+.ctl:disabled{background:var(--surface-3);color:var(--text-2);cursor:not-allowed}
+select.ctl{appearance:none;padding-inline-end:32px;cursor:pointer}
+textarea.ctl{resize:vertical;min-height:76px;line-height:1.65}
+.ctl-wrap{position:relative;display:block}
+.ctl-wrap .adorn{
+  position:absolute;inset-block:0;inset-inline-end:10px;display:grid;place-items:center;
+  color:var(--text-3);pointer-events:none;
+}
+.ctl-wrap .adorn-start{inset-inline-end:auto;inset-inline-start:10px}
+.ctl.has-start{padding-inline-start:34px}
+
+/* ── tabs ──────────────────────────────────────────────────── */
+.tabs{display:flex;gap:4px;padding:4px 12px 0;border-bottom:1px solid var(--border);overflow-x:auto}
+.tab{
+  border:0;background:transparent;padding:11px 14px;border-bottom:2px solid transparent;
+  color:var(--text-2);font-size:13.5px;font-weight:600;cursor:pointer;white-space:nowrap;
+}
+.tab:hover{color:var(--text)}
+.tab[aria-selected="true"]{color:var(--brand);border-bottom-color:var(--brand)}
+.tabpanel{padding:14px 12px 16px}
+.tabpanel[hidden]{display:none}
+
+/* ── lines table ───────────────────────────────────────────── */
+.tablewrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--r-sm)}
+table.lines{width:100%;border-collapse:separate;border-spacing:0;min-width:1180px}
+table.lines th,table.lines td{
+  padding:0;border-bottom:1px solid var(--border);border-inline-start:1px solid var(--border);
+  vertical-align:middle;
+}
+table.lines th:last-child,table.lines td:last-child{border-inline-start:0}
+table.lines tbody tr:last-child td{border-bottom:0}
+table.lines thead th{
+  position:sticky;top:0;z-index:2;padding:11px 10px;background:var(--surface-3);
+  font-size:12px;font-weight:600;color:var(--text-2);white-space:nowrap;text-align:center;
+}
+table.lines thead th.h-debit{background:var(--debit);color:#fff}
+table.lines thead th.h-credit{background:var(--credit);color:#fff}
+table.lines tbody tr:hover td{background:var(--surface-2)}
+.cell{width:100%;min-height:42px;padding:5px 8px;border:0;background:transparent;color:inherit}
+.cell:focus{outline:0;background:var(--brand-soft);box-shadow:inset 0 0 0 2px var(--brand)}
+select.cell{appearance:none;cursor:pointer;padding-inline-end:22px}
+.cell.amount{text-align:start;font-variant-numeric:tabular-nums;font-weight:600}
+.cell.amount.debit:not(:placeholder-shown){color:var(--debit)}
+.cell.amount.credit:not(:placeholder-shown){color:var(--credit)}
+.cell::placeholder{color:var(--text-3);font-weight:400}
+.taxval{
+  display:block;padding:5px 10px;text-align:start;font-variant-numeric:tabular-nums;
+  color:var(--text-2);font-weight:500;
+}
+.taxval.zero{color:var(--text-3);text-align:center;font-weight:400}
+.col-act{width:52px}
+.rowmenu{position:relative;display:grid;place-items:center}
+.rowmenu > button{
+  width:30px;height:30px;border:0;border-radius:8px;background:transparent;
+  color:var(--text-3);cursor:pointer;display:grid;place-items:center;
+}
+.rowmenu > button:hover{background:var(--surface-3);color:var(--text)}
+.menu{
+  position:absolute;top:34px;inset-inline-end:0;z-index:20;min-width:150px;padding:5px;
+  background:var(--surface);border:1px solid var(--border);border-radius:10px;
+  box-shadow:var(--shadow-2);display:none;
+}
+.menu[data-open="true"]{display:block}
+.menu button{
+  display:flex;align-items:center;gap:9px;width:100%;padding:8px 10px;border:0;border-radius:7px;
+  background:transparent;color:var(--text-2);font-size:13px;cursor:pointer;text-align:start;
+}
+.menu button:hover{background:var(--surface-3);color:var(--text)}
+.menu button.danger:hover{background:color-mix(in srgb,var(--req) 12%,transparent);color:var(--req)}
+
+.addline{
+  display:inline-flex;align-items:center;gap:8px;margin-top:12px;padding:9px 16px;
+  border:1.5px dashed var(--border-2);border-radius:var(--r-sm);background:transparent;
+  color:var(--text-2);font-size:13.5px;font-weight:600;cursor:pointer;
+  transition:border-color .15s,color .15s,background .15s;
+}
+.addline:hover{border-color:var(--brand);color:var(--brand);background:var(--brand-soft)}
+
+/* ── assist row ────────────────────────────────────────────── */
+.assist{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+@media (max-width:980px){.assist{grid-template-columns:1fr}}
+.card-hd{display:flex;align-items:center;gap:9px;margin-bottom:12px;font-size:14.5px;font-weight:700}
+.card-hd .ico{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;flex:none}
+
+.ai-card{border-color:var(--ai-line);background:linear-gradient(180deg,var(--ai-soft),var(--surface) 62%)}
+.ai-card .card-hd{color:var(--ai)}
+.ai-card .card-hd .ico{background:color-mix(in srgb,var(--ai) 16%,transparent);color:var(--ai)}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{
+  padding:7px 13px;border:1px solid var(--ai-line);border-radius:999px;
+  background:var(--surface);color:var(--text-2);font-size:12.5px;font-weight:500;cursor:pointer;
+  transition:border-color .15s,color .15s,transform .12s;
+}
+.chip:hover{border-color:var(--ai);color:var(--ai);transform:translateY(-1px)}
+.chip[data-used="true"]{opacity:.5;cursor:default;transform:none}
+
+.note{
+  display:flex;align-items:flex-start;gap:9px;margin-top:14px;padding:10px 12px;
+  border-radius:var(--r-sm);font-size:12.5px;line-height:1.6;
+}
+.note svg{flex:none;margin-top:2px}
+.note-muted{background:var(--surface-3);color:var(--text-3)}
+.note-info{background:var(--brand-soft);color:var(--brand-ink)}
+
+.tax-card .card-hd .ico{background:var(--surface-3);color:var(--text-2)}
+.taxopts{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:18px}
+@media (max-width:620px){.taxopts{grid-template-columns:1fr}}
+.optgroup > .lbl{display:block;font-size:12px;font-weight:600;color:var(--text-3);margin-bottom:9px}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{
+  padding:8px 13px;border:1px solid var(--border-2);border-radius:999px;background:var(--surface);
+  color:var(--text-2);font-size:12.5px;font-weight:600;cursor:pointer;
+  transition:border-color .15s,background .15s,color .15s;
+}
+.seg button:hover{border-color:var(--brand)}
+.seg button[aria-pressed="true"]{background:var(--brand);border-color:var(--brand);color:#fff}
+.seg.plain button[aria-pressed="true"]{background:var(--brand-soft);border-color:var(--brand);color:var(--brand-ink)}
+.optgroup + .optgroup{border-inline-start:1px solid var(--border);padding-inline-start:18px}
+@media (max-width:620px){.optgroup + .optgroup{border-inline-start:0;padding-inline-start:0;border-top:1px solid var(--border);padding-top:16px}}
+
+/* ── summary ───────────────────────────────────────────────── */
+.summary{display:grid;grid-template-columns:1.35fr repeat(4,1fr);gap:12px}
+@media (max-width:1180px){.summary{grid-template-columns:repeat(3,1fr)}}
+@media (max-width:760px){.summary{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:440px){.summary{grid-template-columns:1fr}}
+.stat{padding:14px 16px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface);box-shadow:var(--shadow-1)}
+.stat .k{font-size:12px;font-weight:600;color:var(--text-3)}
+.stat .v{margin-top:5px;font-size:23px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.stat .s{margin-top:3px;font-size:11.5px;color:var(--text-3);line-height:1.5}
+.stat.v-debit .v{color:var(--debit)} .stat.v-credit .v{color:var(--credit)}
+.stat.v-tax .v{color:var(--text-2)}
+.stat .s.ok{color:var(--good);font-weight:600;display:inline-flex;align-items:center;gap:5px}
+.stat .s.bad{color:var(--warn);font-weight:600;display:inline-flex;align-items:center;gap:5px}
+.stat.v-diff.off .v{color:var(--warn)}
+
+.state{
+  display:flex;align-items:center;gap:14px;padding:14px 18px;border-radius:var(--r);
+  border:1px solid var(--good-line);background:var(--good-soft);
+}
+.state .ring{
+  width:44px;height:44px;border-radius:50%;display:grid;place-items:center;flex:none;
+  border:2px solid var(--good);color:var(--good);
+}
+.state .k{font-size:12px;font-weight:600;color:var(--good);opacity:.85}
+.state .v{font-size:19px;font-weight:700;color:var(--good);line-height:1.35}
+.state[data-ok="false"]{border-color:var(--warn-line);background:var(--warn-soft)}
+.state[data-ok="false"] .ring{border-color:var(--warn);color:var(--warn)}
+.state[data-ok="false"] .k,.state[data-ok="false"] .v{color:var(--warn)}
+
+/* ── action bar ────────────────────────────────────────────── */
+.actionbar{
+  position:fixed;inset-inline:0;bottom:0;z-index:50;display:flex;align-items:center;gap:10px;
+  padding:12px 20px;background:color-mix(in srgb,var(--surface) 92%,transparent);
+  backdrop-filter:blur(10px);border-top:1px solid var(--border);
+}
+@media (min-width:0px){.actionbar{padding-inline-end:calc(216px + 20px)}}
+@media (max-width:860px){.actionbar{padding-inline-end:20px}}
+.btn{
+  display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border-radius:var(--r-sm);
+  border:1px solid var(--border-2);background:var(--surface);color:var(--text-2);
+  font-size:13.5px;font-weight:600;cursor:pointer;white-space:nowrap;
+  transition:border-color .15s,background .15s,color .15s,box-shadow .15s;
+}
+.btn:hover{border-color:var(--text-3);color:var(--text)}
+.btn-primary{
+  background:var(--brand);border-color:var(--brand);color:#fff;padding-inline:22px;
+  box-shadow:0 6px 16px -8px color-mix(in srgb,var(--brand) 80%,transparent);
+}
+.btn-primary:hover{background:var(--brand-ink);border-color:var(--brand-ink);color:#fff}
+.btn-primary:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
+.btn-primary:disabled:hover{background:var(--brand);border-color:var(--brand)}
+.spacer{margin-inline-start:auto}
+
+/* ── modal ─────────────────────────────────────────────────── */
+.overlay{
+  position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;
+  padding:20px;background:rgba(8,15,30,.55);backdrop-filter:blur(3px);
+}
+.overlay[data-open="true"]{display:flex}
+.sheet{
+  width:min(760px,100%);max-height:88dvh;overflow:auto;background:var(--surface);
+  border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow-2);
+}
+.sheet-hd{
+  position:sticky;top:0;display:flex;align-items:center;gap:10px;padding:16px 20px;
+  background:var(--surface);border-bottom:1px solid var(--border);
+}
+.sheet-hd h2{margin:0;font-size:16px;font-weight:700}
+.sheet-bd{padding:20px}
+.kv{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px 16px;margin-bottom:18px}
+@media (max-width:600px){.kv{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.kv .k{font-size:11.5px;color:var(--text-3);font-weight:600}
+.kv .v{font-size:13.5px;font-weight:600;margin-top:2px}
+table.pv{width:100%;border-collapse:collapse;font-size:13px}
+table.pv th{
+  padding:9px 10px;background:var(--surface-3);color:var(--text-2);font-size:11.5px;
+  font-weight:600;text-align:start;border-bottom:1px solid var(--border);
+}
+table.pv th.n,table.pv td.n{text-align:start;font-variant-numeric:tabular-nums}
+table.pv td{padding:9px 10px;border-bottom:1px solid var(--border)}
+table.pv tfoot td{font-weight:700;background:var(--surface-2);border-bottom:0}
+table.pv .d{color:var(--debit)} table.pv .c{color:var(--credit)}
+
+.toast{
+  position:fixed;bottom:82px;inset-inline-start:50%;transform:translateX(50%) translateY(14px);
+  z-index:120;display:flex;align-items:center;gap:10px;padding:12px 18px;border-radius:999px;
+  background:var(--text);color:var(--bg);font-size:13.5px;font-weight:600;
+  box-shadow:var(--shadow-2);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;
+}
+.toast[data-show="true"]{opacity:1;transform:translateX(50%) translateY(0)}
+
+@media (max-width:860px){
+  .sidenav{display:none}
+  .main{padding:16px 14px 116px}
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <button class="iconbtn" aria-label="القائمة">
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+  </button>
+  <div class="brand">
+    <span class="mark" aria-hidden="true">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h9a4 4 0 0 1 0 8H8"/><path d="M20 17h-9a4 4 0 0 1 0-8h5"/></svg>
+    </span>
+    <span>نظام سلاسل بابل ERP الذكي</span>
+  </div>
+
+  <button class="orgpick">
+    شركة سلاسل بابل التجارية
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg>
+  </button>
+
+  <div class="tools">
+    <button class="iconbtn" id="themeBtn" aria-label="تبديل المظهر" title="تبديل المظهر">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
+    </button>
+    <button class="iconbtn" aria-label="المساعدة">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M9.2 9.2a2.8 2.8 0 0 1 5.5.7c0 1.9-2.7 2.4-2.7 4"/><path d="M12 17.5h.01"/></svg>
+    </button>
+    <button class="iconbtn" aria-label="الإعدادات">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2v.2a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-3-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.2-3l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 2.9-1.2V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 3 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0 1.2 2.9h.2a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.6 1Z"/></svg>
+    </button>
+    <button class="iconbtn bell" aria-label="التنبيهات">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 8-3 8h18s-3-1-3-8"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+    </button>
+    <span class="avatar">مظ</span>
+  </div>
+</header>
+
+<div class="shell">
+  <aside class="sidenav">
+    <button class="navitem"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m3 10 9-7 9 7v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/><path d="M9 22V12h6v10"/></svg>الرئيسية</button>
+    <button class="navitem"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M3 3v18h18"/><path d="M7 15v3M12 9v9M17 12v6"/></svg>لوحة المعلومات</button>
+    <button class="navitem"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2 3h3l2.6 12.4a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.6L21 7H6"/></svg>المبيعات</button>
+    <button class="navitem"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h16l-1.2 12a2 2 0 0 1-2 1.8H7.2a2 2 0 0 1-2-1.8Z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>المشتريات</button>
+    <button class="navitem"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2.6 8.5 4.6v9.6L12 21.4 3.5 16.8V7.2Z"/><path d="M3.5 7.2 12 11.9l8.5-4.7M12 21.4v-9.5"/></svg>المخزون</button>
+    <button class="navitem"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.4"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M17 11.2a3.2 3.2 0 0 0 0-6.2M18.5 20a6 6 0 0 0-3-5.2"/></svg>الموارد البشرية</button>
+    <button class="navitem"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="7" width="19" height="13" rx="2"/><path d="M8.5 7V5a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v2M2.5 12.5h19"/></svg>إدارة المشاريع</button>
+    <button class="navitem"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V8l7-5 7 5v13"/><path d="M9.5 21v-5h5v5"/></svg>الأصول الثابتة</button>
+
+    <button class="navitem" aria-current="true" aria-expanded="true">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5.5A2.5 2.5 0 0 1 5.5 3H11v18H5.5A2.5 2.5 0 0 1 3 18.5Z"/><path d="M21 5.5A2.5 2.5 0 0 0 18.5 3H13v18h5.5a2.5 2.5 0 0 0 2.5-2.5Z"/></svg>
+      الحسابات العامة
+      <svg class="caret" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg>
+    </button>
+    <div class="subnav">
+      <button class="subitem">دليل الحسابات</button>
+      <button class="subitem" aria-current="true">القيود اليومية</button>
+      <button class="subitem">دفتر الأستاذ</button>
+      <button class="subitem">التقارير المالية</button>
+      <button class="subitem">الموازنة</button>
+      <button class="subitem">الإعدادات</button>
+    </div>
+
+    <button class="navitem"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"/></svg>التقارير الذكية</button>
+    <button class="navitem"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2v.2a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-3-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.2-3l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 2.9-1.2V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 3 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0 1.2 2.9h.2a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.6 1Z"/></svg>الإعدادات</button>
+  </aside>
+
+  <main class="main">
+    <nav class="crumbs" aria-label="مسار التنقل">
+      <a href="#" aria-label="الرئيسية"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 10 9-7 9 7v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg></a>
+      <span class="sep">/</span><a href="#">الحسابات العامة</a>
+      <span class="sep">/</span><a href="#">القيود اليومية</a>
+      <span class="sep">/</span><span class="now">قيد جديد</span>
+    </nav>
+
+    <div class="pagehead">
+      <span class="ico" aria-hidden="true">
+        <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2.5H7a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7.5Z"/><path d="M14 2.5v5h5M9 12h6M9 16h6"/></svg>
+      </span>
+      <h1>قيد يومية جديد</h1>
+    </div>
+
+    <!-- header fields -->
+    <section class="card card-pad">
+      <div class="grid fields-1">
+        <div class="field">
+          <label for="f-no">رقم القيد</label>
+          <span class="ctl-wrap">
+            <input class="ctl num" id="f-no" value="JV-2026-00125" disabled>
+            <span class="adorn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10.5" width="16" height="10" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg></span>
+          </span>
+          <span class="hint">(رقم آلي)</span>
+        </div>
+        <div class="field">
+          <label for="f-date">تاريخ القيد<span class="req">*</span></label>
+          <span class="ctl-wrap">
+            <input class="ctl num has-start" id="f-date" value="2026/05/24">
+            <span class="adorn adorn-start"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg></span>
+          </span>
+        </div>
+        <div class="field">
+          <label for="f-type">نوع القيد<span class="req">*</span></label>
+          <span class="ctl-wrap">
+            <select class="ctl" id="f-type">
+              <option>قيد مصروفات</option><option>قيد افتتاحي</option><option>قيد تسوية</option>
+              <option>قيد إقفال</option><option>قيد استحقاق</option><option>قيد رواتب</option><option>قيد مخزون</option>
+            </select>
+            <span class="adorn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></span>
+          </span>
+        </div>
+        <div class="field">
+          <label for="f-ref">المرجع</label>
+          <input class="ctl" id="f-ref" value="فاتورة رقم 0587-2026">
+        </div>
+        <div class="field">
+          <label for="f-branch">الفرع<span class="req">*</span></label>
+          <span class="ctl-wrap">
+            <select class="ctl" id="f-branch">
+              <option>الفرع الرئيسي - الرياض</option><option>فرع جدة</option><option>فرع الدمام</option>
+            </select>
+            <span class="adorn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></span>
+          </span>
+        </div>
+      </div>
+
+      <div class="grid fields-2" style="margin-top:14px">
+        <div class="field">
+          <label for="f-memo">البيان العام<span class="req">*</span></label>
+          <textarea class="ctl" id="f-memo">مصروف خدمات تقنية عن الفترة 05/2026 شامل ضريبة القيمة المضافة 15%</textarea>
+        </div>
+        <div class="field">
+          <label for="f-cur">العملة<span class="req">*</span></label>
+          <input class="ctl" id="f-cur" value="ر.س">
+        </div>
+      </div>
+    </section>
+
+    <!-- lines -->
+    <section class="card">
+      <div class="tabs" role="tablist">
+        <button class="tab" role="tab" aria-selected="true" data-panel="p-lines">تفاصيل القيد</button>
+        <button class="tab" role="tab" aria-selected="false" data-panel="p-more">معلومات إضافية</button>
+        <button class="tab" role="tab" aria-selected="false" data-panel="p-notes">ملاحظات</button>
+      </div>
+
+      <div class="tabpanel" id="p-lines" role="tabpanel">
+        <div class="tablewrap">
+          <table class="lines">
+            <thead>
+              <tr>
+                <th style="min-width:230px">الحساب</th>
+                <th style="min-width:150px">البيان</th>
+                <th class="h-debit" style="min-width:118px">مدين (ر.س)</th>
+                <th class="h-credit" style="min-width:118px">دائن (ر.س)</th>
+                <th style="min-width:130px">نوع الضريبة</th>
+                <th style="min-width:92px">نسبة الضريبة</th>
+                <th style="min-width:118px">مبلغ الضريبة (ر.س)</th>
+                <th style="min-width:160px">مركز التكلفة</th>
+                <th style="min-width:150px">المشروع</th>
+                <th class="col-act">إجراء</th>
+              </tr>
+            </thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+        <button class="addline" id="addRow">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          إضافة سطر
+        </button>
+      </div>
+
+      <div class="tabpanel" id="p-more" role="tabpanel" hidden>
+        <div class="grid fields-1">
+          <div class="field"><label>مركز التكلفة الافتراضي</label>
+            <span class="ctl-wrap"><select class="ctl"><option>—</option><option>الإدارة العامة</option><option>إدارة مالية</option></select><span class="adorn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></span></span>
+          </div>
+          <div class="field"><label>المشروع الافتراضي</label>
+            <span class="ctl-wrap"><select class="ctl"><option>—</option><option>مشروع أبراج بابل</option></select><span class="adorn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></span></span>
+          </div>
+          <div class="field"><label>الفترة المالية</label><input class="ctl" value="05/2026 — مفتوحة" disabled></div>
+          <div class="field"><label>سعر الصرف</label><input class="ctl num" value="1.0000" disabled></div>
+          <div class="field"><label>منشئ القيد</label><input class="ctl" value="مظفر العمري" disabled></div>
+        </div>
+      </div>
+
+      <div class="tabpanel" id="p-notes" role="tabpanel" hidden>
+        <div class="field">
+          <label for="f-notes">ملاحظات داخلية</label>
+          <textarea class="ctl" id="f-notes" placeholder="ملاحظات لا تظهر في التقارير الخارجية…"></textarea>
+        </div>
+      </div>
+    </section>
+
+    <!-- assist -->
+    <div class="assist">
+      <section class="card card-pad ai-card">
+        <div class="card-hd">
+          <span class="ico"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 2.1 5.4L19.5 10l-5.4 1.6L12 17l-2.1-5.4L4.5 10l5.4-1.6Z"/><path d="M18.5 16.5 19 18l1.5.5-1.5.5-.5 1.5-.5-1.5L16 18l1.5-.5Z"/></svg></span>
+          اقتراح الحسابات بالذكاء الاصطناعي
+        </div>
+        <p style="margin:0;color:var(--text-2);font-size:13px">بناءً على البيان والمستند المرجعي، نقترح الحسابات التالية:</p>
+        <div class="chips" id="chips">
+          <button class="chip" data-acc="6120101">مصروف خدمات تقنية</button>
+          <button class="chip" data-acc="121201">ضريبة القيمة المضافة - مدخلات</button>
+          <button class="chip" data-acc="2010101">الدائنون / شركة التقنية</button>
+        </div>
+        <div class="note note-muted">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10.5" width="16" height="10" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg>
+          هذه اقتراحات فقط، يرجى مراجعتها قبل الترحيل.
+        </div>
+      </section>
+
+      <section class="card card-pad tax-card">
+        <div class="card-hd">
+          <span class="ico"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="3" width="15" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h3"/></svg></span>
+          خيارات الضريبة
+        </div>
+        <div class="taxopts">
+          <div class="optgroup">
+            <span class="lbl">طريقة احتساب الضريبة</span>
+            <div class="seg" id="segMethod">
+              <button aria-pressed="true"  data-m="ex">المبلغ غير شامل الضريبة</button>
+              <button aria-pressed="false" data-m="in">المبلغ شامل الضريبة</button>
+            </div>
+          </div>
+          <div class="optgroup">
+            <span class="lbl">نوع الضريبة الافتراضي للسطر</span>
+            <div class="seg plain" id="segRate">
+              <button aria-pressed="true"  data-r="15">15%</button>
+              <button aria-pressed="false" data-r="0">صفرية</button>
+              <button aria-pressed="false" data-r="ex">معفاة</button>
+              <button aria-pressed="false" data-r="out">خارج النطاق</button>
+            </div>
+          </div>
+        </div>
+        <div class="note note-info">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
+          سيقوم النظام بإنشاء سطر ضريبة القيمة المضافة تلقائيًا وفق إعدادات نوع الضريبة ونسبتها. يمكنك مراجعة وتعديل السطور قبل الترحيل.
+        </div>
+      </section>
+    </div>
+
+    <!-- summary -->
+    <div class="summary">
+      <div class="state" id="state" data-ok="true">
+        <span class="ring" id="stateRing">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 13 4.5 4.5L19 7.5"/></svg>
+        </span>
+        <span>
+          <span class="k">حالة القيد</span><br>
+          <span class="v" id="stateText">القيد متوازن</span>
+        </span>
+      </div>
+
+      <div class="stat v-debit">
+        <div class="k">إجمالي المدين (ر.س)</div>
+        <div class="v" id="sumDebit">0.00</div>
+        <div class="s" id="wordsDebit">—</div>
+      </div>
+      <div class="stat v-credit">
+        <div class="k">إجمالي الدائن (ر.س)</div>
+        <div class="v" id="sumCredit">0.00</div>
+        <div class="s" id="wordsCredit">—</div>
+      </div>
+      <div class="stat v-diff" id="diffCard">
+        <div class="k">الفرق (ر.س)</div>
+        <div class="v" id="sumDiff">0.00</div>
+        <div class="s ok" id="diffNote">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="m5 13 4.5 4.5L19 7.5"/></svg>متوازن
+        </div>
+      </div>
+      <div class="stat v-tax">
+        <div class="k">إجمالي الضريبة (ر.س)</div>
+        <div class="v" id="sumTax">0.00</div>
+        <div class="s" id="taxNote">—</div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<footer class="actionbar">
+  <button class="btn btn-primary" id="postBtn">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="10.5" width="16" height="10" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 7.5-2"/></svg>
+    ترحيل القيد
+  </button>
+  <button class="btn" id="previewBtn">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="2.8"/></svg>
+    معاينة القيد
+  </button>
+  <button class="btn" id="draftBtn">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+    حفظ كمسودة
+  </button>
+  <button class="btn" id="attachBtn">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M21 11.5 12.5 20a5 5 0 0 1-7-7l8.5-8.5a3.4 3.4 0 0 1 4.8 4.8l-8.5 8.5a1.8 1.8 0 0 1-2.5-2.5l7.8-7.8"/></svg>
+    إرفاق مستند
+  </button>
+</footer>
+
+<div class="overlay" id="overlay">
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="pvTitle">
+    <div class="sheet-hd">
+      <h2 id="pvTitle">معاينة القيد قبل الترحيل</h2>
+      <button class="iconbtn spacer" id="closePv" aria-label="إغلاق">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="sheet-bd" id="pvBody"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"><span id="toastMsg"></span></div>
+<script>
+(() => {
+  "use strict";
+
+  /* ── reference data ───────────────────────────────────────── */
+  const ACCOUNTS = [
+    ["",        "— اختر الحساب —"],
+    ["6120101", "6120101 - مصروف خدمات تقنية"],
+    ["6120102", "6120102 - مصروف اتصالات وإنترنت"],
+    ["6110101", "6110101 - رواتب وأجور"],
+    ["6130101", "6130101 - إيجارات"],
+    ["121201",  "121201 - ضريبة القيمة المضافة - مدخلات"],
+    ["221301",  "221301 - ضريبة القيمة المضافة - مخرجات"],
+    ["2010101", "2010101 - الدائنون / شركة التقنية"],
+    ["2010102", "2010102 - الدائنون / مؤسسة الإمداد"],
+    ["1010101", "1010101 - الصندوق الرئيسي"],
+    ["1020101", "1020101 - البنك الأهلي - الحساب الجاري"],
+    ["1301001", "1301001 - العملاء / شركة النور"],
+    ["1401001", "1401001 - مخزون البضاعة - المستودع الرئيسي"],
+    ["4101001", "4101001 - إيرادات المبيعات"],
+  ];
+  const COST_CENTERS = ["—","إدارة تقنية المعلومات","إدارة مالية","إدارة المشاريع","الإدارة العامة","إدارة المبيعات"];
+  const PROJECTS     = ["—","مشروع أبراج بابل","مشروع توسعة المستودع","صيانة المقر الرئيسي"];
+  const TAX_TYPES    = [["","—"],["in","ضريبة مدخلات"],["out","ضريبة مخرجات"]];
+  const RATES        = [["","—"],["15","15%"],["5","5%"],["0","0%"]];
+
+  const VAT_IN = "121201", VAT_OUT = "221301";
+  const isVat = c => c === VAT_IN || c === VAT_OUT;
+
+  /* ── formatting ───────────────────────────────────────────── */
+  const nf = new Intl.NumberFormat("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+  const fmt   = n => nf.format(Math.round((n + Number.EPSILON) * 100) / 100);
+  const parse = v => { const n = parseFloat(String(v ?? "").replace(/,/g,"").trim()); return Number.isFinite(n) ? n : 0; };
+
+  /* ── tafqeet: Arabic numerals → words ─────────────────────── */
+  const ONES  = ["","واحد","اثنان","ثلاثة","أربعة","خمسة","ستة","سبعة","ثمانية","تسعة"];
+  const TEENS = ["عشرة","أحد عشر","اثنا عشر","ثلاثة عشر","أربعة عشر","خمسة عشر","ستة عشر","سبعة عشر","ثمانية عشر","تسعة عشر"];
+  const TENS  = ["","","عشرون","ثلاثون","أربعون","خمسون","ستون","سبعون","ثمانون","تسعون"];
+  const HUNS  = ["","مائة","مائتان","ثلاثمائة","أربعمائة","خمسمائة","ستمائة","سبعمائة","ثمانمائة","تسعمائة"];
+
+  function under1000(n){
+    const out = [], h = Math.floor(n/100), r = n%100;
+    if (h) out.push(HUNS[h]);
+    if (r < 10 && r > 0) out.push(ONES[r]);
+    else if (r >= 10 && r < 20) out.push(TEENS[r-10]);
+    else if (r >= 20) {
+      const t = Math.floor(r/10), o = r%10;
+      out.push(o ? ONES[o] + " و" + TENS[t] : TENS[t]);
+    }
+    return out.join(" و");
+  }
+  // forms: [1, 2, 3–10, 11+]
+  function group(count, forms){
+    if (count === 1) return forms[0];
+    if (count === 2) return forms[1];
+    if (count <= 10) return under1000(count) + " " + forms[2];
+    return under1000(count) + " " + forms[3];
+  }
+  function tafqeet(amount){
+    let n = Math.floor(Math.abs(amount));
+    const halalas = Math.round((Math.abs(amount) - n) * 100);
+    if (n === 0 && halalas === 0) return "صفر ريال";
+    const parts = [];
+    const scales = [
+      [1e9, ["مليار","ملياران","مليارات","ملياراً"]],
+      [1e6, ["مليون","مليونان","ملايين","مليوناً"]],
+      [1e3, ["ألف","ألفان","آلاف","ألفاً"]],
+    ];
+    for (const [base, forms] of scales){
+      const c = Math.floor(n / base);
+      if (c) { parts.push(group(c, forms)); n -= c * base; }
+    }
+    if (n) parts.push(under1000(n));
+    let words = parts.join(" و") + " ريال";
+    if (halalas) words += " و" + under1000(halalas) + " هللة";
+    return words;
+  }
+
+  /* ── state ────────────────────────────────────────────────── */
+  let taxMethod = "ex";   // "ex" = amounts exclude VAT · "in" = amounts include VAT
+  let defaultRate = "15";
+
+  const $  = s => document.querySelector(s);
+  const $$ = s => Array.from(document.querySelectorAll(s));
+  const tbody = $("#rows");
+
+  const opts = (list, sel) => list
+    .map(o => { const [v,l] = Array.isArray(o) ? o : [o,o];
+                return '<option value="'+v+'"'+(v===sel?" selected":"")+">"+l+"</option>"; })
+    .join("");
+
+  const CARET = '<span class="adorn" style="inset-inline-end:6px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></span>';
+
+  function rowHTML(d = {}){
+    return ''
+    + '<td><span class="ctl-wrap"><select class="cell js-acc">'+opts(ACCOUNTS, d.acc||"")+'</select>'+CARET+'</span></td>'
+    + '<td><input class="cell js-memo" value="'+(d.memo||"")+'" placeholder="بيان السطر"></td>'
+    + '<td><input class="cell amount debit js-debit" inputmode="decimal" value="'+(d.debit||"")+'" placeholder="–"></td>'
+    + '<td><input class="cell amount credit js-credit" inputmode="decimal" value="'+(d.credit||"")+'" placeholder="–"></td>'
+    + '<td><span class="ctl-wrap"><select class="cell js-ttype">'+opts(TAX_TYPES, d.ttype||"")+'</select>'+CARET+'</span></td>'
+    + '<td><span class="ctl-wrap"><select class="cell js-rate">'+opts(RATES, d.rate||"")+'</select>'+CARET+'</span></td>'
+    + '<td><span class="taxval zero js-tax">–</span></td>'
+    + '<td><span class="ctl-wrap"><select class="cell js-cc">'+opts(COST_CENTERS, d.cc||"—")+'</select>'+CARET+'</span></td>'
+    + '<td><span class="ctl-wrap"><select class="cell js-prj">'+opts(PROJECTS, d.prj||"—")+'</select>'+CARET+'</span></td>'
+    + '<td class="col-act"><div class="rowmenu">'
+    +   '<button type="button" class="js-menu" aria-label="خيارات السطر" aria-haspopup="true" aria-expanded="false">'
+    +     '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="12" cy="19" r="1.7"/></svg>'
+    +   '</button>'
+    +   '<div class="menu">'
+    +     '<button type="button" class="js-dup"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>تكرار السطر</button>'
+    +     '<button type="button" class="js-del danger"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6.5 7l.8 12a2 2 0 0 0 2 1.9h5.4a2 2 0 0 0 2-1.9L17.5 7"/></svg>حذف السطر</button>'
+    +   '</div>'
+    + '</div></td>';
+  }
+
+  function addRow(d, focus){
+    const tr = document.createElement("tr");
+    tr.innerHTML = rowHTML(d);
+    tbody.appendChild(tr);
+    if (focus) tr.querySelector(".js-acc").focus();
+    recalc();
+    return tr;
+  }
+
+  /* ── per-row tax ──────────────────────────────────────────── */
+  function rowTax(tr){
+    const acc = tr.querySelector(".js-acc").value;
+    const amount = parse(tr.querySelector(".js-debit").value) || parse(tr.querySelector(".js-credit").value);
+    // a line posted to a VAT account *is* the tax
+    if (isVat(acc)) return amount;
+    const ttype = tr.querySelector(".js-ttype").value;
+    const rate  = parseFloat(tr.querySelector(".js-rate").value);
+    if (!ttype || !Number.isFinite(rate) || rate === 0 || !amount) return 0;
+    const r = rate / 100;
+    return taxMethod === "in" ? amount - amount / (1 + r) : amount * r;
+  }
+
+  /* ── recalc ───────────────────────────────────────────────── */
+  function recalc(){
+    let debit = 0, credit = 0, tax = 0;
+
+    $$("#rows tr").forEach(tr => {
+      const d = parse(tr.querySelector(".js-debit").value);
+      const c = parse(tr.querySelector(".js-credit").value);
+      debit += d; credit += c;
+
+      const t = rowTax(tr);
+      const cell = tr.querySelector(".js-tax");
+      if (t > 0){ cell.textContent = fmt(t); cell.classList.remove("zero"); }
+      else { cell.textContent = "–"; cell.classList.add("zero"); }
+
+      // total VAT is the amount actually posted to VAT accounts
+      if (isVat(tr.querySelector(".js-acc").value)) tax += d + c;
+    });
+
+    const diff = debit - credit;
+    const balanced = Math.abs(diff) < 0.005 && (debit > 0 || credit > 0);
+
+    $("#sumDebit").textContent  = fmt(debit);
+    $("#sumCredit").textContent = fmt(credit);
+    $("#sumDiff").textContent   = fmt(Math.abs(diff));
+    $("#sumTax").textContent    = fmt(tax);
+
+    $("#wordsDebit").textContent  = debit  ? tafqeet(debit)  : "—";
+    $("#wordsCredit").textContent = credit ? tafqeet(credit) : "—";
+    $("#taxNote").textContent     = tax ? "ضريبة مدخلات " + defaultRate + "%" : "لا توجد ضريبة على هذا القيد";
+
+    $("#diffCard").classList.toggle("off", !balanced);
+    const note = $("#diffNote");
+    note.className = "s " + (balanced ? "ok" : "bad");
+    note.innerHTML = balanced
+      ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="m5 13 4.5 4.5L19 7.5"/></svg>متوازن'
+      : '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 8v5M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg>غير متوازن';
+
+    const state = $("#state");
+    state.dataset.ok = balanced ? "true" : "false";
+    $("#stateText").textContent = balanced ? "القيد متوازن"
+      : (debit === 0 && credit === 0) ? "القيد فارغ" : "القيد غير متوازن";
+    $("#stateRing").innerHTML = balanced
+      ? '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 13 4.5 4.5L19 7.5"/></svg>'
+      : '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 7v6M12 17h.01"/></svg>';
+
+    $("#postBtn").disabled = !balanced;
+  }
+
+  /* ── VAT line sync ────────────────────────────────────────── */
+  function syncVatLine(){
+    let inTax = 0, outTax = 0;
+    $$("#rows tr").forEach(tr => {
+      if (isVat(tr.querySelector(".js-acc").value)) return;
+      const t = rowTax(tr);
+      if (!t) return;
+      if (tr.querySelector(".js-ttype").value === "in") inTax += t; else outTax += t;
+    });
+
+    const apply = (code, amount, side, memo) => {
+      let tr = $$("#rows tr").find(r => r.querySelector(".js-acc").value === code);
+      if (!amount){ if (tr) tr.remove(); return; }
+      if (!tr) tr = addRow({ acc: code, memo, cc: "إدارة مالية" });
+      tr.querySelector(".js-acc").value  = code;
+      tr.querySelector(".js-memo").value = memo;
+      tr.querySelector(".js-ttype").value = side;
+      tr.querySelector(".js-rate").value  = /^\d+$/.test(defaultRate) ? defaultRate : "";
+      tr.querySelector(".js-debit").value  = side === "in"  ? fmt(amount) : "";
+      tr.querySelector(".js-credit").value = side === "out" ? fmt(amount) : "";
+    };
+
+    apply(VAT_IN,  inTax,  "in",  "ضريبة القيمة المضافة");
+    apply(VAT_OUT, outTax, "out", "ضريبة القيمة المضافة");
+    recalc();
+    toast("تم تحديث سطر الضريبة");
+  }
+
+  /* ── toast ────────────────────────────────────────────────── */
+  let toastTimer;
+  function toast(msg){
+    $("#toastMsg").textContent = msg;
+    const t = $("#toast");
+    t.dataset.show = "true";
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { t.dataset.show = "false"; }, 2600);
+  }
+
+  /* ── events ───────────────────────────────────────────────── */
+  tbody.addEventListener("input", e => {
+    const tr = e.target.closest("tr"); if (!tr) return;
+    // debit and credit are mutually exclusive on one line
+    if (e.target.classList.contains("js-debit")  && e.target.value.trim()) tr.querySelector(".js-credit").value = "";
+    if (e.target.classList.contains("js-credit") && e.target.value.trim()) tr.querySelector(".js-debit").value  = "";
+    recalc();
+  });
+
+  tbody.addEventListener("change", e => {
+    const tr = e.target.closest("tr"); if (!tr) return;
+    if (e.target.classList.contains("js-acc")){
+      const memo = tr.querySelector(".js-memo");
+      const label = ACCOUNTS.find(a => a[0] === e.target.value);
+      if (label && !memo.value.trim()) memo.value = label[1].replace(/^\S+\s-\s/,"");
+      if (!isVat(e.target.value) && e.target.value && !tr.querySelector(".js-ttype").value && /^\d+$/.test(defaultRate)){
+        tr.querySelector(".js-ttype").value = "in";
+        tr.querySelector(".js-rate").value  = defaultRate;
+      }
+    }
+    recalc();
+  });
+
+  tbody.addEventListener("blur", e => {
+    if (e.target.classList && e.target.classList.contains("amount")){
+      const v = e.target.value.trim();
+      e.target.value = v ? fmt(parse(v)) : "";
+      recalc();
+    }
+  }, true);
+
+  tbody.addEventListener("click", e => {
+    const trigger = e.target.closest(".js-menu");
+    const tr = e.target.closest("tr");
+    if (trigger){
+      const menu = trigger.nextElementSibling, open = menu.dataset.open === "true";
+      $$("#rows .menu").forEach(m => m.dataset.open = "false");
+      $$("#rows .js-menu").forEach(b => b.setAttribute("aria-expanded","false"));
+      menu.dataset.open = open ? "false" : "true";
+      trigger.setAttribute("aria-expanded", open ? "false" : "true");
+      return;
+    }
+    if (e.target.closest(".js-dup")){
+      const s = k => tr.querySelector(k).value;
+      addRow({ acc:s(".js-acc"), memo:s(".js-memo"), debit:s(".js-debit"), credit:s(".js-credit"),
+               ttype:s(".js-ttype"), rate:s(".js-rate"), cc:s(".js-cc"), prj:s(".js-prj") });
+      toast("تم تكرار السطر");
+    }
+    if (e.target.closest(".js-del")){
+      if ($$("#rows tr").length <= 1){ toast("لا يمكن حذف آخر سطر"); return; }
+      tr.remove(); recalc(); toast("تم حذف السطر");
+    }
+    $$("#rows .menu").forEach(m => m.dataset.open = "false");
+  });
+
+  document.addEventListener("click", e => {
+    if (!e.target.closest(".rowmenu")) $$("#rows .menu").forEach(m => m.dataset.open = "false");
+  });
+
+  $("#addRow").addEventListener("click", () => addRow({}, true));
+
+  // tabs
+  $$(".tab").forEach(tab => tab.addEventListener("click", () => {
+    $$(".tab").forEach(t => t.setAttribute("aria-selected", String(t === tab)));
+    $$(".tabpanel").forEach(p => p.hidden = p.id !== tab.dataset.panel);
+  }));
+
+  // tax method / default rate
+  $("#segMethod").addEventListener("click", e => {
+    const b = e.target.closest("button[data-m]"); if (!b) return;
+    taxMethod = b.dataset.m;
+    $$("#segMethod button").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+    recalc();
+    toast(taxMethod === "in" ? "المبالغ تُعامل كشاملة للضريبة" : "المبالغ تُعامل كغير شاملة للضريبة");
+  });
+  $("#segRate").addEventListener("click", e => {
+    const b = e.target.closest("button[data-r]"); if (!b) return;
+    defaultRate = b.dataset.r;
+    $$("#segRate button").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+    recalc();
+  });
+
+  // AI suggestion chips fill the first empty line
+  $("#chips").addEventListener("click", e => {
+    const chip = e.target.closest(".chip"); if (!chip || chip.dataset.used === "true") return;
+    const code = chip.dataset.acc;
+    let tr = $$("#rows tr").find(r => !r.querySelector(".js-acc").value) || addRow({});
+    tr.querySelector(".js-acc").value = code;
+    tr.querySelector(".js-acc").dispatchEvent(new Event("change", { bubbles:true }));
+    chip.dataset.used = "true";
+    toast("تمت إضافة الحساب المقترح — راجعه قبل الترحيل");
+  });
+
+  // preview
+  function buildPreview(){
+    const rows = $$("#rows tr").map(tr => ({
+      acc:  (ACCOUNTS.find(a => a[0] === tr.querySelector(".js-acc").value) || ["","—"])[1],
+      memo: tr.querySelector(".js-memo").value || "—",
+      d:    parse(tr.querySelector(".js-debit").value),
+      c:    parse(tr.querySelector(".js-credit").value),
+      cc:   tr.querySelector(".js-cc").value,
+    })).filter(r => r.d || r.c);
+
+    const td = rows.reduce((s,r) => s + r.d, 0), tc = rows.reduce((s,r) => s + r.c, 0);
+
+    $("#pvBody").innerHTML =
+      '<div class="kv">'
+      + '<div><div class="k">رقم القيد</div><div class="v num">'+$("#f-no").value+'</div></div>'
+      + '<div><div class="k">التاريخ</div><div class="v num">'+$("#f-date").value+'</div></div>'
+      + '<div><div class="k">النوع</div><div class="v">'+$("#f-type").value+'</div></div>'
+      + '<div><div class="k">الفرع</div><div class="v">'+$("#f-branch").value+'</div></div>'
+      + '<div style="grid-column:1/-1"><div class="k">البيان العام</div><div class="v">'+($("#f-memo").value||"—")+'</div></div>'
+      + '</div>'
+      + '<table class="pv"><thead><tr><th>الحساب</th><th>البيان</th><th class="n">مدين</th><th class="n">دائن</th><th>مركز التكلفة</th></tr></thead><tbody>'
+      + rows.map(r => '<tr><td>'+r.acc+'</td><td>'+r.memo+'</td>'
+          + '<td class="n d">'+(r.d?fmt(r.d):"–")+'</td>'
+          + '<td class="n c">'+(r.c?fmt(r.c):"–")+'</td>'
+          + '<td>'+r.cc+'</td></tr>').join("")
+      + '</tbody><tfoot><tr><td colspan="2">الإجمالي</td>'
+      + '<td class="n d">'+fmt(td)+'</td><td class="n c">'+fmt(tc)+'</td><td></td></tr></tfoot></table>'
+      + '<p style="margin:16px 0 0;font-size:12.5px;color:var(--text-3);line-height:1.7">'
+      + 'المدين: '+tafqeet(td)+'<br>الدائن: '+tafqeet(tc)+'</p>';
+  }
+  $("#previewBtn").addEventListener("click", () => { buildPreview(); $("#overlay").dataset.open = "true"; });
+  $("#closePv").addEventListener("click", () => $("#overlay").dataset.open = "false");
+  $("#overlay").addEventListener("click", e => { if (e.target.id === "overlay") e.currentTarget.dataset.open = "false"; });
+  document.addEventListener("keydown", e => { if (e.key === "Escape") $("#overlay").dataset.open = "false"; });
+
+  $("#postBtn").addEventListener("click", () => toast("نموذج أولي — الترحيل غير مفعّل"));
+  $("#draftBtn").addEventListener("click", () => toast("تم حفظ المسودة (نموذج أولي)"));
+  $("#attachBtn").addEventListener("click", () => toast("إرفاق المستندات غير مفعّل في النموذج الأولي"));
+
+  // theme toggle
+  const root = document.documentElement;
+  $("#themeBtn").addEventListener("click", () => {
+    const current = root.getAttribute("data-theme")
+      || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    root.setAttribute("data-theme", current === "dark" ? "light" : "dark");
+  });
+
+  /* ── seed: the worked example from the reference screen ───── */
+  addRow({ acc:"6120101", memo:"مصروف خدمات تقنية",  debit:"10,000.00", ttype:"in", rate:"15", cc:"إدارة تقنية المعلومات" });
+  addRow({ acc:"121201",  memo:"ضريبة القيمة المضافة", debit:"1,500.00",  ttype:"in", rate:"15", cc:"إدارة مالية" });
+  addRow({ acc:"2010101", memo:"شركة التقنية",        credit:"11,500.00" });
+  recalc();
+
+  // let the tax card offer an explicit re-sync
+  const noteEl = document.querySelector(".tax-card .note-info");
+  const sync = document.createElement("button");
+  sync.className = "btn";
+  sync.style.cssText = "margin-top:12px;padding:8px 14px";
+  sync.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></svg>تحديث سطر الضريبة';
+  sync.addEventListener("click", syncVatLine);
+  noteEl.after(sync);
+})();
+</script>
+</body>
+</html>

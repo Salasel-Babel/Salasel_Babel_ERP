@@ -116,9 +116,24 @@ declare
     v_state       text;
     v_prev_entry  uuid;
 begin
+    -- ── 0-قبل) رمز الحدث جزء من الهوية، فلا يجوز أن يكون فارغاً ──────────
+    -- الفحص **هنا** لا في C# وحده: هذه الدالة هي البوابة الوحيدة إلى الدفتر،
+    -- وأي مستدعٍ آخر (سكربت، أداة، اختبار) يمرّ بها. ورمزٌ فارغ في مفتاح
+    -- الهوية يُعيد حدثين مختلفين حدثاً واحداً فيبتلع الثاني بصمت (D-3).
+    if p_event_code is null or length(btrim(p_event_code)) = 0 then
+        raise exception
+            'MISSING_EVENT_CODE doc=%/% trigger=% : رمز الحدث جزء من هوية الترحيل ولا يجوز أن يكون فارغاً / the event code is part of the posting identity and must not be empty',
+            p_source_doc_type, p_source_doc_id, p_trigger_code
+            using errcode = 'check_violation';
+    end if;
+
     -- ── 0) فحص الإحكام قبل أي قفل ─────────────────────────────────────────
     -- مفتاح لكل قيد ومستقلّ عن الترتيب. لا مقارنة > ولا < مع تسلسل مُطبَّق:
     -- ذلك الحارس قيس وهو يُسقط بصمت قيداً وصل بعد أحدث منه (فخ-13).
+    --
+    -- و**رمز الحدث في الشرط** (D-3): بدونه كان هذا الاستعلام نفسه — لا الفهرس
+    -- الفريد — هو ما يُسقط الحدث الثاني للمستند الواحد ويُرجع «مُرحَّل سلفاً».
+    -- الفهرس لم يكن يُنتهَك أصلاً لأن التنفيذ لم يكن يصل إليه.
     select je.entry_id, je.entry_no, cl.chain_seq, cl.entry_hash, cl.prev_hash, cl.canonical_bytes
       into v_entry_id, v_entry_no, v_chain_seq, v_hash, v_prev_hash, v_canon
       from ledger.journal_entry je
@@ -127,7 +142,8 @@ begin
        and je.source_doc_type      = p_source_doc_type
        and je.source_doc_id        = p_source_doc_id
        and je.posting_trigger_code = p_trigger_code
-       and je.posting_generation   = p_generation;
+       and je.posting_generation   = p_generation
+       and je.event_code           = p_event_code;
 
     if found then
         return query select v_entry_id, v_entry_no, v_chain_seq, v_hash, v_prev_hash, v_canon,
@@ -182,12 +198,15 @@ begin
     -- «ترحيل ← عكس ← تصحيح ← إعادة ترحيل» مسار مشروع؛ أما زيادة الجيل بلا عكس
     -- سابق فهي الالتفاف على مفتاح الإحكام نفسه، وتُنتج قيدين لنفس المستند.
     if p_generation > 1 then
+        -- والسلف يُطلب **لنفس الحدث**: جيل جديد لحدث الإيراد لا يُبرّره عكسٌ
+        -- وقع على حدث التكلفة، وهما قيدان مستقلان بهويتين مستقلتين (D-3).
         select je.entry_id into v_prev_entry
           from ledger.journal_entry je
          where je.company_id           = p_company_id
            and je.source_doc_type      = p_source_doc_type
            and je.source_doc_id        = p_source_doc_id
            and je.posting_trigger_code = p_trigger_code
+           and je.event_code           = p_event_code
            and je.posting_generation   = p_generation - 1;
 
         if not found then
@@ -234,7 +253,8 @@ begin
        and je.source_doc_type      = p_source_doc_type
        and je.source_doc_id        = p_source_doc_id
        and je.posting_trigger_code = p_trigger_code
-       and je.posting_generation   = p_generation;
+       and je.posting_generation   = p_generation
+       and je.event_code           = p_event_code;
 
     if found then
         return query select v_entry_id, v_entry_no, v_chain_seq, v_hash, v_prev_hash, v_canon,

@@ -47,6 +47,17 @@ internal static class PostingPlanner
             return Result<PostingPlan>.Failure(PostingErrors.MissingIdempotencyKey);
         }
 
+        // ── رمز الحدث جزء من هوية الترحيل ─────────────────────────────────
+        // ‏D-3 · ADR-0016.
+        // المستند الواحد يُنتج حدثين عند الإطلاق نفسه في حالات يومية، ورمزٌ
+        // فارغ يجعلهما هوية واحدة فيُبتلع الثاني بصمت. والرفض هنا هو الطبقة
+        // الثالثة؛ الأولى قيد التحقق ck_journal_entry_event_code في قاعدة
+        // البيانات، والثانية حارس داخل ledger.post_entry نفسها.
+        if (!request.Event.IsAssigned)
+        {
+            return Result<PostingPlan>.Failure(PostingErrors.MissingEventCode);
+        }
+
         Dictionary<string, string> facts = new(StringComparer.Ordinal);
         foreach (PostingFact fact in request.Facts)
         {
@@ -68,9 +79,12 @@ internal static class PostingPlanner
         string currency = request.Currency.IsAssigned ? request.Currency.Value : companyCurrency;
         decimal fxRate = request.ExchangeRate <= 0m ? 1m : request.ExchangeRate;
 
-        Result<List<DraftLine>> draft = request.Event.IsAssigned
-            ? FromEvent(request, matrix, facts, amounts, dimensions)
-            : FromExplicitLines(request, dimensions);
+        // ‏Event مضمون الآن غير فارغ بالفحص أعلاه، فالمسار الصريح لا يُختار إلا
+        // إذا حمل الطلب رمز حدث **وسطوراً صريحة** معاً: الرمز يعطي الهوية،
+        // والسطور تعطي المحتوى. وطلبٌ بسطور بلا رمز حدث مرفوض قبل هذا السطر.
+        Result<List<DraftLine>> draft = request.Lines.Count > 0
+            ? FromExplicitLines(request, dimensions)
+            : FromEvent(request, matrix, facts, amounts, dimensions);
 
         if (draft.IsFailure)
         {
@@ -251,7 +265,7 @@ internal static class PostingPlanner
             SourceDocId = request.Source.DocumentId,
             TriggerCode = request.Trigger.ToString(),
             Generation = request.Generation,
-            EventCode = request.Event.Value ?? string.Empty,
+            EventCode = request.Event.Value,
             IdempotencyKey = request.IdempotencyKey.Value,
             Currency = currency,
             ClosedPeriodPermission = request.ClosedPeriodAuthorisation?.PermissionCode,

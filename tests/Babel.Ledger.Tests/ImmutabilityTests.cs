@@ -276,6 +276,11 @@ public sealed class ImmutabilityTests : IAsyncLifetime
             SourceDocType = "EfProbe",
             SourceDocId = entryId.ToString("D", CultureInfo.InvariantCulture),
             PostingTriggerCode = "EF",
+
+            // رمز الحدث جزء من هوية الترحيل ولا افتراضي له (D-3): حتى مسار
+            // EF الخام في اختبار يسمّي حدثه، وإلا رفضه ck_journal_entry_event_code
+            // قبل أن يصل المشغّل المؤجَّل — فلا يبقى ما يُقاس هنا.
+            EventCode = "ledger.manual_voucher.posted",
             IdempotencyKey = entryId.ToString("D", CultureInfo.InvariantCulture),
             Currency = "SAR",
         });

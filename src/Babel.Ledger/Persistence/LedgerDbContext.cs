@@ -195,6 +195,11 @@ internal sealed class LedgerDbContext(DbContextOptions<LedgerDbContext> options)
             {
                 t.HasCheckConstraint("ck_journal_entry_status", "status in ('POSTED','REVERSAL')");
                 t.HasCheckConstraint("ck_journal_entry_generation", "posting_generation >= 1");
+
+                // رمز الحدث جزء من هوية الترحيل، ورمزٌ فارغ يُعيد حدثين حدثاً واحداً
+                // فيبتلع المفتاح الثاني منهما بصمت (D-3). العمود NOT NULL بحكم
+                // النوع، وهذا القيد يمنع الفراغ والمسافات وحدها.
+                t.HasCheckConstraint("ck_journal_entry_event_code", "length(btrim(event_code)) > 0");
                 t.HasCheckConstraint("ck_journal_entry_reversal_has_reason",
                     "status <> 'REVERSAL' or (reverses_entry_id is not null and reversal_reason_ar is not null)");
             });
@@ -218,7 +223,8 @@ internal sealed class LedgerDbContext(DbContextOptions<LedgerDbContext> options)
             entity.Property(row => row.SourceDocId).HasColumnName("source_doc_id");
             entity.Property(row => row.PostingTriggerCode).HasColumnName("posting_trigger_code");
             entity.Property(row => row.PostingGeneration).HasColumnName("posting_generation").HasDefaultValue(1);
-            entity.Property(row => row.EventCode).HasColumnName("event_code").HasDefaultValue(string.Empty);
+            // ولا قيمة افتراضية: الافتراضي الفارغ هو بالضبط ما يُسقط الحدث الثاني.
+            entity.Property(row => row.EventCode).HasColumnName("event_code");
             entity.Property(row => row.IdempotencyKey).HasColumnName("idempotency_key");
             entity.Property(row => row.Currency).HasColumnName("currency");
             entity.Property(row => row.ReversesEntryId).HasColumnName("reverses_entry_id");
@@ -238,9 +244,20 @@ internal sealed class LedgerDbContext(DbContextOptions<LedgerDbContext> options)
             // (WHERE applied_seq < @seq): قيس وهو يُسقط بصمت قيداً وصل بعد أحدث
             // منه فضاعت 500 من 1500 ريال — بخس 33٪ — ومزامنة نقاط البيع دون
             // اتصال تُسلّم خارج الترتيب بطبيعتها (فخ-13).
+            //
+            // ورمز الحدث **داخل** المفتاح (D-3): المستند الواحد يُنتج حدثين عند
+            // الإطلاق نفسه في حالات يومية لا استثنائية — فاتورة مبيعات تعترف
+            // بالإيراد وتُنزل المخزون بالتكلفة؛ وفاتورة مورد تُثبت الالتزام
+            // وتعترف بفرق سعر مقابل استلام سابق؛ ودفعةٌ تُسدّد التزاماً وتسجّل
+            // رسماً بنكياً؛ ومسيرُ رواتب يُثبت الأجر وحصة المنشأة في التأمينات.
+            // وبلا رمز الحدث في المفتاح كان الثاني منهما يُعدّ «مُرحَّلاً سلفاً»
+            // فلا يُكتب ولا يُبلَّغ عنه خطأ: الدفتر يبقى متوازناً، والسلسلة تبقى
+            // صحيحة، والعَرَض الوحيد دفتر مساعد لا يطابق حسابه الضابط.
+            // ‏D-3 · ADR-0016.
             entity.HasIndex(row => new
             {
                 row.CompanyId, row.SourceDocType, row.SourceDocId, row.PostingTriggerCode, row.PostingGeneration,
+                row.EventCode,
             }).IsUnique().HasDatabaseName("uq_posting_identity");
 
             entity.HasIndex(row => new { row.CompanyId, row.BookId, row.PeriodCode })

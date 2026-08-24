@@ -37,12 +37,38 @@ env:
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
   # يُفعّل البناء الحتمي وتطبيع مسارات المصدر (Directory.Build.props).
   CI: true
+  # لا كلمات مرور في المستودع: هذه بيانات خدمة CI مؤقتة تُنشأ وتُهدَم مع الوظيفة.
+  # التشغيل المحلي لا يستعمل أياً منها ويعمل بلا كلمة مرور إطلاقاً (pg_hba: trust).
+  BABEL_LEDGER_TEST_ADMIN_DB: "Host=127.0.0.1;Port=5432;Database=postgres;Username=postgres;Password=postgres"
+  BABEL_LEDGER_TEST_OWNER_DB: "Host=127.0.0.1;Port=5432;Database=babel_ledger_tests;Username=postgres;Password=postgres"
+  BABEL_LEDGER_TEST_APP_DB: "Host=127.0.0.1;Port=5432;Database=babel_ledger_tests;Username=babel_ledger_test_app;Password=ci-ephemeral;Include Error Detail=true;Maximum Pool Size=40"
+  BABEL_LEDGER_TEST_APP_PASSWORD: "ci-ephemeral"
+  BABEL_CANON_TEST_ADMIN_DB: "Host=127.0.0.1;Port=5432;Database=postgres;Username=postgres;Password=postgres"
+  BABEL_CANON_TEST_DB: "Host=127.0.0.1;Port=5432;Database=babel_canon_tests;Username=postgres;Password=postgres"
 
 jobs:
   build-and-enforce:
     name: بناء وإنفاذ الحدود
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
+
+    # اختبارات الدفتر تعمل على PostgreSQL **حقيقية**: أربع من المصائد المقيسة في
+    # هذا المشروع لا تظهر إلا بعد أن تمرّ القيمة على قاعدة البيانات وتعود —
+    # مقياس numeric(19,4)، ودقّة timestamptz، ورفض الصلاحيات 42501، والمشغّل
+    # المؤجَّل عند COMMIT. قاعدة بيانات في الذاكرة تجعل الأربعة تمرّ وهي مكسورة.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
 
     steps:
       - name: سحب المستودع

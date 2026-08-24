@@ -45,7 +45,7 @@ public sealed class PublishedContractTests
                 "العقد المُودَع في contracts/openapi/v1.json لا يطابق ما يولّده السطح الآن.\n"
                 + "أعِد توليده بالأمر التالي وأودِع الناتج في نفس طلب الدمج الذي غيّر السطح:\n"
                 + "  dotnet src/Babel.Api/bin/Release/net10.0/Babel.Api.dll --emit-openapi contracts/openapi/v1.json\n"
-                + "وإن كان التغيير يحذف حقلاً أو يعيد تسميته أو يضيّق نوعاً، فهو v2 لا v1 — راجع سياسة الإصدار في ADR-0016.\n"
+                + "وإن كان التغيير يحذف حقلاً أو يعيد تسميته أو يضيّق نوعاً، فهو v2 لا v1 — راجع سياسة الإصدار في ADR-0018.\n"
                 + FormattableString.Invariant($"بصمة المُولَّد: {Hash(generated)}\nبصمة المُودَع : {Hash(committed)}"));
         }
         finally

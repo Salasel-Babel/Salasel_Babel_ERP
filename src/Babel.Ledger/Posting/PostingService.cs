@@ -58,7 +58,8 @@ public sealed class PostingService : IPostingService, IApplicationService
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        Result gate = await GateAsync(request.Tenant, request.Source.Module, cancellationToken).ConfigureAwait(false);
+        Result gate = await GateAsync(request.Tenant, request.Actor, request.Source.Module, cancellationToken)
+            .ConfigureAwait(false);
         if (gate.IsFailure)
         {
             return Result<PostingReceipt>.Failure(gate.Errors);
@@ -113,12 +114,34 @@ public sealed class PostingService : IPostingService, IApplicationService
         return await ExecuteAsync(plan.Value, Instants.CaptureNow(), cancellationToken).ConfigureAwait(false);
     }
 
-    private async ValueTask<Result> GateAsync(TenantId tenant, BabelModule module, CancellationToken cancellationToken)
+    /// <summary>
+    /// بوابتا الاستحقاق قبل أي عمل — و<b>الفاعل الحقيقي</b> يعبر إلى كلتيهما.
+    /// <para>
+    /// المنفِّذ يُنفِذ ويقيس في نداء واحد، ومن قياسه محور «المستخدم الفاعل خلال الفترة»
+    /// — وهو محور تسعير اختاره المالك. فتمرير <see cref="UserId.SystemActor"/> هنا مكان
+    /// <c>request.Actor</c> كان يسجّل المعرّف الاصطناعي نفسه عن <b>كل</b> ترحيل في النظام،
+    /// فيقرأ تقرير «المستخدمون الفاعلون» مستخدماً واحداً مهما عمل من الناس. والعطل صامت:
+    /// الترحيل ينجح والقيد متوازن، ولا يظهر الخطأ إلا على فاتورة اشتراك.
+    /// و<c>ReverseAsync</c> كان يمرّر الفاعل صحيحاً على السطر المقابل — فالمساران كانا
+    /// يختلفان، وهو ما يجعله خطأً لا اختياراً.
+    /// </para>
+    /// <para>
+    /// وهذا يغيّر <b>من يُسجَّل</b> ولا يغيّر <b>ما يُسمح به</b>: قرار
+    /// <c>EntitlementEnforcer.EnsureAsync</c> يُبنى على حالة الاستحقاق ونوع الوصول وحدهما،
+    /// ولا يقرأ الفاعل أصلاً — وذلك مُثبَت في
+    /// <c>MeteringActorTests.تغيير_الفاعل_المقيس_لا_يغيّر_قرار_الاستحقاق_نفسه</c>.
+    /// </para>
+    /// </summary>
+    private async ValueTask<Result> GateAsync(
+        TenantId tenant,
+        UserId actor,
+        BabelModule module,
+        CancellationToken cancellationToken)
     {
         // بوابتان لا واحدة: استحقاق الدفتر (الكتابة فيه)، واستحقاق الوحدة المصدر.
         // وحدة انقضى اشتراكها تبقى مقروءة بالكامل، ولا تُنشئ قيداً جديداً.
         Result ledgerGate = await _enforcer
-            .EnsureAsync(tenant, UserId.SystemActor, BabelModule.Ledger, EntitlementAccess.Write, "Ledger.Post", cancellationToken)
+            .EnsureAsync(tenant, actor, BabelModule.Ledger, EntitlementAccess.Write, "Ledger.Post", cancellationToken)
             .ConfigureAwait(false);
 
         if (ledgerGate.IsFailure)
@@ -127,7 +150,7 @@ public sealed class PostingService : IPostingService, IApplicationService
         }
 
         return await _enforcer
-            .EnsureAsync(tenant, UserId.SystemActor, module, EntitlementAccess.Write, "Ledger.Post.Source", cancellationToken)
+            .EnsureAsync(tenant, actor, module, EntitlementAccess.Write, "Ledger.Post.Source", cancellationToken)
             .ConfigureAwait(false);
     }
 

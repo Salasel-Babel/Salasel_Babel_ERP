@@ -230,8 +230,11 @@ internal static class LedgerEndpoints
             return HttpProblemResults.Wire(context, wire);
         }
 
+        // الفاعل من الاعتماد يعبر إلى الدفتر: القراءة تُقاس على محور «المستخدم الفاعل»
+        // كما تُقاس الكتابة، ولا تُنسب إلى فاعل نظام.
         Result<IReadOnlyList<TrialBalanceRow>> result = await audit
-            .TrialBalanceFromLinesAsync(new TenantId(companyId), book, period, cancellationToken)
+            .TrialBalanceFromLinesAsync(
+                new TenantId(companyId), RequestPrincipal.Of(context).User, book, period, cancellationToken)
             .ConfigureAwait(false);
 
         return result.IsFailure
@@ -262,7 +265,8 @@ internal static class LedgerEndpoints
         }
 
         Result<LedgerChainReport> result = await audit
-            .VerifyChainAsync(new TenantId(companyId), book, fiscalYear, cancellationToken)
+            .VerifyChainAsync(
+                new TenantId(companyId), RequestPrincipal.Of(context).User, book, fiscalYear, cancellationToken)
             .ConfigureAwait(false);
 
         return result.IsFailure

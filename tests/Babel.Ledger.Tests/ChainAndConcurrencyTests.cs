@@ -121,7 +121,7 @@ public sealed class ChainAndConcurrencyTests : IAsyncLifetime
             + $"{firstSeq.ToString(CultureInfo.InvariantCulture)} إلى {lastSeq.ToString(CultureInfo.InvariantCulture)}");
 
         Result<LedgerChainReport> verification = await _harness.Auditing.VerifyChainAsync(
-            new TenantId(tenant), book, LedgerTestEnvironment.FiscalYear, token);
+            new TenantId(tenant), LedgerTestEnvironment.Auditor, book, LedgerTestEnvironment.FiscalYear, token);
 
         Proof.Require(verification.Value.Ok, "السلسلة الناتجة عن التزاحم تُعاد التحقق منها سليمة",
             verification.Value.ToString());
@@ -185,7 +185,7 @@ public sealed class ChainAndConcurrencyTests : IAsyncLifetime
         }
 
         Result<LedgerChainReport> before = await _harness.Auditing.VerifyChainAsync(
-            new TenantId(tenant), book, LedgerTestEnvironment.FiscalYear, token);
+            new TenantId(tenant), LedgerTestEnvironment.Auditor, book, LedgerTestEnvironment.FiscalYear, token);
         Proof.Require(before.Value.Ok && before.Value.Checked == 6, "السلسلة سليمة قبل العبث",
             before.Value.ToString());
 
@@ -226,7 +226,7 @@ public sealed class ChainAndConcurrencyTests : IAsyncLifetime
         }
 
         Result<LedgerChainReport> after = await _harness.Auditing.VerifyChainAsync(
-            new TenantId(tenant), book, LedgerTestEnvironment.FiscalYear, token);
+            new TenantId(tenant), LedgerTestEnvironment.Auditor, book, LedgerTestEnvironment.FiscalYear, token);
 
         Proof.Require(!after.Value.Ok && after.Value.FirstDivergentSequence == 4,
             "إعادة التحقق تسمّي أول تسلسل منحرف بالضبط",

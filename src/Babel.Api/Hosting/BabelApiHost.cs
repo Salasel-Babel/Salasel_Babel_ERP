@@ -64,7 +64,7 @@ internal static class BabelApiHost
         builder.Services.AddSingleton<IApiPrincipalResolver>(
             _ => new ConfiguredPrincipalResolver(ReadPrincipals(builder.Configuration)));
 
-        // منفذ قراءة القيد: العقد منشور، والتنفيذ ينتظر سطح قراءة في الدفتر (ADR-0016).
+        // منفذ قراءة القيد: العقد منشور، والتنفيذ ينتظر سطح قراءة في الدفتر (ADR-0018).
         builder.Services.AddSingleton<IJournalEntryReader, UnavailableJournalEntryReader>();
 
         WebApplication app = builder.Build();

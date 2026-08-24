@@ -391,7 +391,7 @@ public sealed class PostingEngineTests : IAsyncLifetime
         }
 
         Result<IReadOnlyList<TrialBalanceRow>> trial = await _harness.Auditing.TrialBalanceFromLinesAsync(
-            new TenantId(LedgerTestEnvironment.TenantA), LedgerTestEnvironment.Book, "2026-07", token);
+            new TenantId(LedgerTestEnvironment.TenantA), LedgerTestEnvironment.Auditor, LedgerTestEnvironment.Book, "2026-07", token);
 
         decimal debit = trial.Value.Sum(static row => row.Debit);
         decimal credit = trial.Value.Sum(static row => row.Credit);

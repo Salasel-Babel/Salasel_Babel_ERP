@@ -134,7 +134,7 @@ public sealed class CanonicalFormV2HoleTests : IAsyncLifetime
             await AssertStoredCanonVersionAsync(tenant, book, "v1", token);
 
             Result<LedgerChainReport> before = await _v1.Auditing.VerifyChainAsync(
-                new TenantId(tenant), book, LedgerTestEnvironment.FiscalYear, token);
+                new TenantId(tenant), LedgerTestEnvironment.Auditor, book, LedgerTestEnvironment.FiscalYear, token);
             Proof.Require(before.Value.Ok, $"[v1/{scenario.Name}] السلسلة سليمة قبل العبث", before.Value.ToString());
 
             int affected = await TamperAsync(scenario, tenant, book, token);
@@ -144,7 +144,7 @@ public sealed class CanonicalFormV2HoleTests : IAsyncLifetime
             await AssertStillBalancedAsync(tenant, book, scenario.Name, token);
 
             Result<LedgerChainReport> after = await _v1.Auditing.VerifyChainAsync(
-                new TenantId(tenant), book, LedgerTestEnvironment.FiscalYear, token);
+                new TenantId(tenant), LedgerTestEnvironment.Auditor, book, LedgerTestEnvironment.FiscalYear, token);
 
             Proof.Require(after.Value.Ok,
                 $"‼ [v1/{scenario.Name}] السلسلة ما زالت **خضراء** بعد العبث — هذه هي الثغرة",
@@ -170,7 +170,7 @@ public sealed class CanonicalFormV2HoleTests : IAsyncLifetime
             await AssertStoredCanonVersionAsync(tenant, book, "v2", token);
 
             Result<LedgerChainReport> before = await _v2.Auditing.VerifyChainAsync(
-                new TenantId(tenant), book, LedgerTestEnvironment.FiscalYear, token);
+                new TenantId(tenant), LedgerTestEnvironment.Auditor, book, LedgerTestEnvironment.FiscalYear, token);
             Proof.Require(before.Value.Ok && before.Value.Checked == 5,
                 $"[v2/{scenario.Name}] السلسلة سليمة قبل العبث", before.Value.ToString());
 
@@ -181,7 +181,7 @@ public sealed class CanonicalFormV2HoleTests : IAsyncLifetime
             await AssertStillBalancedAsync(tenant, book, scenario.Name, token);
 
             Result<LedgerChainReport> after = await _v2.Auditing.VerifyChainAsync(
-                new TenantId(tenant), book, LedgerTestEnvironment.FiscalYear, token);
+                new TenantId(tenant), LedgerTestEnvironment.Auditor, book, LedgerTestEnvironment.FiscalYear, token);
 
             Proof.Require(!after.Value.Ok,
                 $"✓ [v2/{scenario.Name}] العبث **مكشوف**", after.Value.ToString());
@@ -226,7 +226,7 @@ public sealed class CanonicalFormV2HoleTests : IAsyncLifetime
             string.Join(",", versions));
 
         Result<LedgerChainReport> verification = await _v2.Auditing.VerifyChainAsync(
-            new TenantId(tenant), book, LedgerTestEnvironment.FiscalYear, token);
+            new TenantId(tenant), LedgerTestEnvironment.Auditor, book, LedgerTestEnvironment.FiscalYear, token);
 
         Proof.Require(verification.Value.Ok && verification.Value.Checked == 6,
             "سلسلة واحدة فيها v1 و v2 تُعاد التحقق منها كاملة — التوزيع بالإصدار المخزَّن",
@@ -255,7 +255,7 @@ public sealed class CanonicalFormV2HoleTests : IAsyncLifetime
         // العبث بسجل v1 (التسلسل 2): البصمة لا تشمل العقار، فلا شيء يُكشف.
         int v1Rows = await TamperAsync(Scenarios[0] with { Sequence = 2 }, tenant, book, token);
         Result<LedgerChainReport> afterV1 = await _v2.Auditing.VerifyChainAsync(
-            new TenantId(tenant), book, LedgerTestEnvironment.FiscalYear, token);
+            new TenantId(tenant), LedgerTestEnvironment.Auditor, book, LedgerTestEnvironment.FiscalYear, token);
         Proof.Require(afterV1.Value.Ok,
             $"‼ العبث بسجل v1 ({v1Rows.ToString(CultureInfo.InvariantCulture)} صفاً) يبقى غير مكشوف — "
             + "سجل كُتب تحت v1 يُتحقَّق منه بقواعد v1، ولا يُعاد تجزئته بإصدار أحدث",
@@ -264,7 +264,7 @@ public sealed class CanonicalFormV2HoleTests : IAsyncLifetime
         // ونفس العبث بسجل v2 (التسلسل 5) يُكشف فوراً.
         int v2Rows = await TamperAsync(Scenarios[0] with { Sequence = 5 }, tenant, book, token);
         Result<LedgerChainReport> afterV2 = await _v2.Auditing.VerifyChainAsync(
-            new TenantId(tenant), book, LedgerTestEnvironment.FiscalYear, token);
+            new TenantId(tenant), LedgerTestEnvironment.Auditor, book, LedgerTestEnvironment.FiscalYear, token);
         Proof.Require(!afterV2.Value.Ok && afterV2.Value.FirstDivergentSequence == 5,
             $"✓ نفس العبث بسجل v2 ({v2Rows.ToString(CultureInfo.InvariantCulture)} صفاً) يُكشف ويُسمّى تسلسله",
             afterV2.Value.ToString());

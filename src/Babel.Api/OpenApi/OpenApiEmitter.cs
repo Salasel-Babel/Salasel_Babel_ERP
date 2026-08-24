@@ -532,17 +532,36 @@ internal static class OpenApiEmitter
             WriteCurrencyProperty(w);
             WriteDateProperty(w, "documentDate", "تاريخ المستند الميلادي. الفترة المالية تُشتق منه داخل الدفتر.", "The Gregorian document date; the ledger derives the fiscal period from it.");
             WriteArrayRefProperty(w, "dimensions", "NameValue", "الأبعاد التحليلية على مستوى الطلب.", "Analytical dimensions at request level.");
-            WriteStringProperty(w, "event", "رمز الحدث في مصفوفة الترحيل، إن كان الطلب على مسار القالب.", "The posting-matrix event code, when the request uses the template path.", 128);
+            WriteStringProperty(
+                w,
+                "event",
+                "رمز الحدث في مصفوفة الترحيل بصيغة <وحدة>.<كيان>.<فعل>. **إلزامي على المسارين معاً**: "
+                + "الرمز يعطي القيد هويّته، والسطور — إن وُجدت — تعطيه محتواه. ورمزٌ غائب أو فارغ يجعل حدثين "
+                + "مختلفين من المستند نفسه عند الإطلاق نفسه هويةً واحدة، فيُبتلع الثاني بصمت بلا خطأ ولا اختلال توازن. "
+                + "والقيد اليدوي ليس استثناءً: له حدثه المعرَّف في المصفوفة.",
+                "The posting-matrix event code, shaped <module>.<entity>.<action>. **Mandatory on both paths**: "
+                + "the code gives the entry its identity, and the lines — where present — give it its content. "
+                + "A missing or blank code collapses two different events of the same document at the same trigger into one "
+                + "identity, and the second is swallowed silently, with no error and no imbalance. "
+                + "A manual voucher is no exception: it has its own defined event in the matrix.",
+                128);
             WriteRefProperty(w, "exchangeRate", "ExchangeRate");
             WriteArrayRefProperty(w, "facts", "NameValue", "وقائع السياق التي تُقيَّم عليها الشروط وقواعد الحجب.", "Context facts against which conditions and guard rules are evaluated.");
             WriteIntegerProperty(w, "generation", 1, 1000, "جيل الترحيل. يبدأ من 1 ولا يزيد إلا بعد عكس مشروع.", "The posting generation. Starts at 1 and increases only after a legitimate reversal.");
             WriteStringProperty(w, "idempotencyKey", "مفتاح الحصانة ضد التكرار، محارف [0-9A-Za-z-_:.] فقط. مستقلّ عن الترتيب.", "The idempotency key, characters [0-9A-Za-z-_:.] only. Order-independent.", 128);
-            WriteArrayRefProperty(w, "lines", "PostingLine", "سطور الطلب للمسار الصريح. تكون فارغة حين يُضبط event.", "The request lines for the explicit path; empty when event is set.");
+            WriteArrayRefProperty(
+                w,
+                "lines",
+                "PostingLine",
+                "سطور الطلب — تُرسَل في المسار الصريح (قيد يدوي) وتُترك فارغة في مسار القالب. "
+                + "وهي وحدها ما يختار المسار؛ و‏event إلزامي في الحالتين.",
+                "The request lines: sent on the explicit path (a manual voucher) and left empty on the template path. "
+                + "They alone select the path; event is mandatory either way.");
             WriteRefProperty(w, "narration", "LocalizedText");
             WriteRefProperty(w, "source", "SourceDocument");
             WriteEnumProperty(w, "trigger", "الحدث الذي أطلق الترحيل.", "What triggered the posting.", Enum.GetNames<PostingTrigger>());
             w.WriteEndObject();
-            WriteRequired(w, "documentDate", "idempotencyKey", "narration", "source", "trigger");
+            WriteRequired(w, "documentDate", "event", "idempotencyKey", "narration", "source", "trigger");
             w.WriteBoolean("additionalProperties", false);
         });
 
@@ -874,7 +893,13 @@ internal static class OpenApiEmitter
         + "إضافة عضو إلى تعداد يُقرأ من الخادم إلى العميل · إضافة رمز خطأ جديد · توسيع مدى مسموح · تحسين نصّ وصف أو رسالة.\n"
         + "• يفرض v2: حذف حقل أو نقطة نهاية · إعادة تسمية أي منهما · تضييق نوع أو مدى أو نمط · جعل حقل اختياري إلزامياً · "
         + "تغيير معنى رمز خطأ قائم أو رمز الحالة الذي يصحبه · إزالة عضو من تعداد يُرسله العميل · تغيير الافتراض المعلن لحقل.\n"
-        + "• والقاعدة الحاكمة: تغييرٌ يجعل عميلاً مطابقاً للعقد القديم يعمل خطأً — لا يفشل، بل يعمل خطأً — هو v2 دائماً.\n\n"
+        + "• والقاعدة الحاكمة: تغييرٌ يجعل عميلاً مطابقاً للعقد القديم يعمل خطأً — لا يفشل، بل يعمل خطأً — هو v2 دائماً.\n"
+        + "• ونطاق هذه السياسة: **تلزم من أول نشر للعقد فصاعداً**. غرضها حماية عميل مطابق قائم، فحيث لا عميل "
+        + "لا شيء تحميه — ويبقى تعديل v1 في مكانه جائزاً ما دامت الوثيقة لم تُنشر لأي مستهلك، بشرط أن يُسجَّل "
+        + "التعديل بتاريخه وسببه في سجل القرارات لا أن يمرّ صامتاً.\n"
+        + "• تعديل مُسجَّل — 2026-08-24: صار الحقل event إلزامياً في PostJournalEntryRequest. وهو تضييق يفرض v2 "
+        + "بنصّ السياسة، ونُفِّذ في v1 في مكانه لأن العقد لم يُنشر بعد لأي مستهلك ولا يوجد عميل مطابق واحد. "
+        + "السبب: رمز الحدث جزء من هوية الترحيل، وغيابه يبتلع حدثاً محاسبياً بصمت (ADR-0016 · ADR-0018).\n\n"
         + "Total isolation between front end and back end: this document is everything a front-end team needs; it reads no back-end code.\n\n"
         + "Versioning policy — what stays in v1 and what forces v2:\n"
         + "• Stays in v1: adding an endpoint; adding an optional response field; adding an optional request field with a published default; "
@@ -882,7 +907,15 @@ internal static class OpenApiEmitter
         + "• Forces v2: removing a field or endpoint; renaming either; narrowing a type, range, or pattern; making an optional field required; "
         + "changing the meaning of an existing error code or the status that accompanies it; removing a member from a client-to-server enum; "
         + "changing a field's published default.\n"
-        + "• The governing rule: a change that makes a client conforming to the old contract behave wrongly — not fail, but behave wrongly — is always v2.";
+        + "• The governing rule: a change that makes a client conforming to the old contract behave wrongly — not fail, but behave wrongly — is always v2.\n"
+        + "• Scope of this policy: **it binds from the contract's first publication onward**. Its purpose is to protect an existing "
+        + "conforming client, so where there is no client there is nothing to protect — and amending v1 in place remains legitimate "
+        + "while the document has not been published to any consumer, provided the amendment is recorded with its date and reason in "
+        + "the decision record rather than passing silently.\n"
+        + "• Recorded amendment — 2026-08-24: the event field became required on PostJournalEntryRequest. That is a narrowing which the "
+        + "policy text forces to v2, and it was made in v1 in place because the contract has not yet been published to any consumer and "
+        + "no conforming client exists. Reason: the event code is part of the posting identity, and its absence swallows an accounting "
+        + "event silently (ADR-0016, ADR-0018).";
 
     private sealed record Operation(
         string Path,

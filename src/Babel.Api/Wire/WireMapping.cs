@@ -145,7 +145,7 @@ internal static class WireMapping
     /// <remarks>
     /// جمع عمود مالي حسابٌ على المال، والجذر التركيبي لا يحسب مالاً — والقاعدة 13 تفحص
     /// ذلك في IL لا في مراجعة. وسطح الدفتر لا يكشف المجموعين اليوم؛ موضعهما الصحيح
-    /// <c>sum()</c> على <c>numeric</c> داخل PostgreSQL، وهو تغيير مطلوب مسجَّل في ADR-0016.
+    /// <c>sum()</c> على <c>numeric</c> داخل PostgreSQL، وهو تغيير مطلوب مسجَّل في ADR-0018.
     /// </remarks>
     public static TrialBalanceDto ToDto(string book, string? periodCode, IReadOnlyList<TrialBalanceRow> rows)
     {

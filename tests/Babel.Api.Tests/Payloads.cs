@@ -13,6 +13,16 @@ namespace Babel.Api.Tests;
 /// </summary>
 internal static class Payloads
 {
+    /// <summary>
+    /// حدث القيد اليدوي في مصفوفة الترحيل.
+    /// <para>
+    /// ‏<c>event</c> حقل <b>إلزامي</b> في العقد المنشور، وعلى المسارين معاً: الرمز يعطي القيد
+    /// هويّته والسطور تعطيه محتواه (‏ADR-0016 · ADR-0018). وهذه الحمولات تسلك المسار الصريح —
+    /// سطور مذكورة — فحدثها هو الحدث المعرَّف للقيد اليدوي في <c>data/posting-matrix/events</c>.
+    /// </para>
+    /// </summary>
+    public const string ManualVoucherEvent = "ledger.manual_voucher.posted";
+
     /// <summary>الدور الذي يُحلّ إلى حساب بنكي — يحتاج طرفاً في الدفتر المساعد.</summary>
     public const string SettlementRole = "Settlement";
 
@@ -32,6 +42,7 @@ internal static class Payloads
     /// <param name="module">الوحدة المصدر.</param>
     /// <param name="creditRole">دور السطر الدائن.</param>
     /// <param name="extraField">حقل إضافي يُحقن في جذر الطلب — لاختبار رفض المجهول.</param>
+    /// <param name="event">رمز الحدث. ‏<c>null</c> يحذف الحقل كلّه — لاختبار رفض الطلب بلا هوية.</param>
     public static string BalancedEntry(
         string idempotencyKey,
         string amount = "1250.5000",
@@ -39,7 +50,8 @@ internal static class Payloads
         string? rawAmountToken = null,
         string module = "Ledger",
         string creditRole = RevenueRole,
-        string? extraField = null)
+        string? extraField = null,
+        string? @event = ManualVoucherEvent)
     {
         string debit = rawAmountToken ?? Quote(amount);
         string credit = rawAmountToken ?? Quote(amount);
@@ -47,6 +59,7 @@ internal static class Payloads
         return $$"""
         {
           {{(extraField is null ? string.Empty : extraField + ",")}}
+          {{(@event is null ? string.Empty : "\"event\": " + Quote(@event) + ",")}}
           "idempotencyKey": {{Quote(idempotencyKey)}},
           "source": { "module": {{Quote(module)}}, "documentType": "ManualJournal", "documentId": {{Quote(idempotencyKey)}} },
           "trigger": "OnApproval",
@@ -81,6 +94,7 @@ internal static class Payloads
     /// <param name="idempotencyKey">مفتاح الحصانة.</param>
     public static string UnbalancedEntry(string idempotencyKey) => $$"""
         {
+          "event": {{Quote(ManualVoucherEvent)}},
           "idempotencyKey": {{Quote(idempotencyKey)}},
           "source": { "module": "Ledger", "documentType": "ManualJournal", "documentId": {{Quote(idempotencyKey)}} },
           "trigger": "OnApproval",

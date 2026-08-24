@@ -12,7 +12,16 @@ namespace Babel.Contracts.Posting;
 /// <param name="Value">الرمز كما هو في ملفات المصفوفة.</param>
 public readonly record struct PostingEventCode(string Value)
 {
-    /// <summary>لا حدث — الطلب يحمل سطوره صراحةً.</summary>
+    /// <summary>
+    /// <b>القيمة غير المُسنَدة — لا «مسار بلا حدث».</b>
+    /// <para>
+    /// كانت تعني «الطلب يحمل سطوره صراحةً فلا حاجة لحدث»، وذلك هو المعنى الذي ابتلع حدثاً
+    /// محاسبياً بصمت: رمزٌ فارغ يجعل حدثين مختلفين من المستند نفسه عند الإطلاق نفسه هويةً
+    /// واحدة (‏ADR-0016). واليوم رمز الحدث <b>إلزامي على المسارين</b>، وهذه القيمة حالة
+    /// «لم يُسنَد بعد» يرفضها <c>PostingPlanner</c> وقيد التحقق في قاعدة البيانات
+    /// و<c>ledger.post_entry</c> نفسها.
+    /// </para>
+    /// </summary>
     public static PostingEventCode None => new(string.Empty);
 
     /// <summary>هل الطلب يشير إلى قالب في المصفوفة؟</summary>

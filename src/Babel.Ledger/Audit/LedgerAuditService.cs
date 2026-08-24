@@ -68,18 +68,20 @@ public sealed class LedgerAuditService : IApplicationService
     /// </para>
     /// </summary>
     /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل الحقيقي — من الاعتماد، لا فاعل نظام. محور «المستخدم الفاعل» يقرأه.</param>
     /// <param name="book">الدفتر.</param>
     /// <param name="fiscalYear">السنة المالية.</param>
     /// <param name="cancellationToken">رمز الإلغاء.</param>
     [RequiresEntitlement(BabelModule.Ledger, EntitlementAccess.Read)]
     public async ValueTask<Result<LedgerChainReport>> VerifyChainAsync(
         TenantId tenant,
+        UserId actor,
         string book,
         int fiscalYear,
         CancellationToken cancellationToken = default)
     {
         Result gate = await _enforcer
-            .EnsureAsync(tenant, UserId.SystemActor, BabelModule.Ledger, EntitlementAccess.Read, "Ledger.VerifyChain", cancellationToken)
+            .EnsureAsync(tenant, actor, BabelModule.Ledger, EntitlementAccess.Read, "Ledger.VerifyChain", cancellationToken)
             .ConfigureAwait(false);
 
         if (gate.IsFailure)
@@ -112,18 +114,20 @@ public sealed class LedgerAuditService : IApplicationService
     /// </para>
     /// </summary>
     /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل الحقيقي — من الاعتماد، لا فاعل نظام. محور «المستخدم الفاعل» يقرأه.</param>
     /// <param name="book">الدفتر.</param>
     /// <param name="periodCode">رمز الفترة، أو <c>null</c> لكل الفترات.</param>
     /// <param name="cancellationToken">رمز الإلغاء.</param>
     [RequiresEntitlement(BabelModule.Ledger, EntitlementAccess.Read)]
     public async ValueTask<Result<IReadOnlyList<TrialBalanceRow>>> TrialBalanceFromLinesAsync(
         TenantId tenant,
+        UserId actor,
         string book,
         string? periodCode,
         CancellationToken cancellationToken = default)
     {
         Result gate = await _enforcer
-            .EnsureAsync(tenant, UserId.SystemActor, BabelModule.Ledger, EntitlementAccess.Read, "Ledger.TrialBalance", cancellationToken)
+            .EnsureAsync(tenant, actor, BabelModule.Ledger, EntitlementAccess.Read, "Ledger.TrialBalance", cancellationToken)
             .ConfigureAwait(false);
 
         if (gate.IsFailure)

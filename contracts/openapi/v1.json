@@ -3,7 +3,7 @@
   "info": {
     "title": "سلاسل بابل — سطح دفتر الأستاذ / Salasel Babel — Ledger API",
     "summary": "العقد المنشور بين الواجهات والخلفية. لا يقرأ فريق الواجهة شيفرة خلفية ليبني عليه.",
-    "description": "العزل التام بين الواجهات والخلفية: هذه الوثيقة هي كل ما يحتاجه فريق الواجهة، ولا يقرأ شيفرة خلفية.\n\nسياسة الإصدار — ما يبقى في v1 وما يفرض v2:\n• يبقى في v1: إضافة نقطة نهاية · إضافة حقل اختياري في استجابة · إضافة حقل اختياري في طلب له افتراض معلن · إضافة عضو إلى تعداد يُقرأ من الخادم إلى العميل · إضافة رمز خطأ جديد · توسيع مدى مسموح · تحسين نصّ وصف أو رسالة.\n• يفرض v2: حذف حقل أو نقطة نهاية · إعادة تسمية أي منهما · تضييق نوع أو مدى أو نمط · جعل حقل اختياري إلزامياً · تغيير معنى رمز خطأ قائم أو رمز الحالة الذي يصحبه · إزالة عضو من تعداد يُرسله العميل · تغيير الافتراض المعلن لحقل.\n• والقاعدة الحاكمة: تغييرٌ يجعل عميلاً مطابقاً للعقد القديم يعمل خطأً — لا يفشل، بل يعمل خطأً — هو v2 دائماً.\n\nTotal isolation between front end and back end: this document is everything a front-end team needs; it reads no back-end code.\n\nVersioning policy — what stays in v1 and what forces v2:\n• Stays in v1: adding an endpoint; adding an optional response field; adding an optional request field with a published default; adding a member to a server-to-client enum; adding a new error code; widening an allowed range; improving a description or message.\n• Forces v2: removing a field or endpoint; renaming either; narrowing a type, range, or pattern; making an optional field required; changing the meaning of an existing error code or the status that accompanies it; removing a member from a client-to-server enum; changing a field's published default.\n• The governing rule: a change that makes a client conforming to the old contract behave wrongly — not fail, but behave wrongly — is always v2.",
+    "description": "العزل التام بين الواجهات والخلفية: هذه الوثيقة هي كل ما يحتاجه فريق الواجهة، ولا يقرأ شيفرة خلفية.\n\nسياسة الإصدار — ما يبقى في v1 وما يفرض v2:\n• يبقى في v1: إضافة نقطة نهاية · إضافة حقل اختياري في استجابة · إضافة حقل اختياري في طلب له افتراض معلن · إضافة عضو إلى تعداد يُقرأ من الخادم إلى العميل · إضافة رمز خطأ جديد · توسيع مدى مسموح · تحسين نصّ وصف أو رسالة.\n• يفرض v2: حذف حقل أو نقطة نهاية · إعادة تسمية أي منهما · تضييق نوع أو مدى أو نمط · جعل حقل اختياري إلزامياً · تغيير معنى رمز خطأ قائم أو رمز الحالة الذي يصحبه · إزالة عضو من تعداد يُرسله العميل · تغيير الافتراض المعلن لحقل.\n• والقاعدة الحاكمة: تغييرٌ يجعل عميلاً مطابقاً للعقد القديم يعمل خطأً — لا يفشل، بل يعمل خطأً — هو v2 دائماً.\n• ونطاق هذه السياسة: **تلزم من أول نشر للعقد فصاعداً**. غرضها حماية عميل مطابق قائم، فحيث لا عميل لا شيء تحميه — ويبقى تعديل v1 في مكانه جائزاً ما دامت الوثيقة لم تُنشر لأي مستهلك، بشرط أن يُسجَّل التعديل بتاريخه وسببه في سجل القرارات لا أن يمرّ صامتاً.\n• تعديل مُسجَّل — 2026-08-24: صار الحقل event إلزامياً في PostJournalEntryRequest. وهو تضييق يفرض v2 بنصّ السياسة، ونُفِّذ في v1 في مكانه لأن العقد لم يُنشر بعد لأي مستهلك ولا يوجد عميل مطابق واحد. السبب: رمز الحدث جزء من هوية الترحيل، وغيابه يبتلع حدثاً محاسبياً بصمت (ADR-0016 · ADR-0018).\n\nTotal isolation between front end and back end: this document is everything a front-end team needs; it reads no back-end code.\n\nVersioning policy — what stays in v1 and what forces v2:\n• Stays in v1: adding an endpoint; adding an optional response field; adding an optional request field with a published default; adding a member to a server-to-client enum; adding a new error code; widening an allowed range; improving a description or message.\n• Forces v2: removing a field or endpoint; renaming either; narrowing a type, range, or pattern; making an optional field required; changing the meaning of an existing error code or the status that accompanies it; removing a member from a client-to-server enum; changing a field's published default.\n• The governing rule: a change that makes a client conforming to the old contract behave wrongly — not fail, but behave wrongly — is always v2.\n• Scope of this policy: **it binds from the contract's first publication onward**. Its purpose is to protect an existing conforming client, so where there is no client there is nothing to protect — and amending v1 in place remains legitimate while the document has not been published to any consumer, provided the amendment is recorded with its date and reason in the decision record rather than passing silently.\n• Recorded amendment — 2026-08-24: the event field became required on PostJournalEntryRequest. That is a narrowing which the policy text forces to v2, and it was made in v1 in place because the contract has not yet been published to any consumer and no conforming client exists. Reason: the event code is part of the posting identity, and its absence swallows an accounting event silently (ADR-0016, ADR-0018).",
     "version": "v1"
   },
   "servers": [
@@ -931,7 +931,7 @@
           "event": {
             "type": "string",
             "maxLength": 128,
-            "description": "رمز الحدث في مصفوفة الترحيل، إن كان الطلب على مسار القالب. / The posting-matrix event code, when the request uses the template path."
+            "description": "رمز الحدث في مصفوفة الترحيل بصيغة <وحدة>.<كيان>.<فعل>. **إلزامي على المسارين معاً**: الرمز يعطي القيد هويّته، والسطور — إن وُجدت — تعطيه محتواه. ورمزٌ غائب أو فارغ يجعل حدثين مختلفين من المستند نفسه عند الإطلاق نفسه هويةً واحدة، فيُبتلع الثاني بصمت بلا خطأ ولا اختلال توازن. والقيد اليدوي ليس استثناءً: له حدثه المعرَّف في المصفوفة. / The posting-matrix event code, shaped <module>.<entity>.<action>. **Mandatory on both paths**: the code gives the entry its identity, and the lines — where present — give it its content. A missing or blank code collapses two different events of the same document at the same trigger into one identity, and the second is swallowed silently, with no error and no imbalance. A manual voucher is no exception: it has its own defined event in the matrix."
           },
           "exchangeRate": {
             "$ref": "#/components/schemas/ExchangeRate"
@@ -959,7 +959,7 @@
             "items": {
               "$ref": "#/components/schemas/PostingLine"
             },
-            "description": "سطور الطلب للمسار الصريح. تكون فارغة حين يُضبط event. / The request lines for the explicit path; empty when event is set."
+            "description": "سطور الطلب — تُرسَل في المسار الصريح (قيد يدوي) وتُترك فارغة في مسار القالب. وهي وحدها ما يختار المسار؛ و‏event إلزامي في الحالتين. / The request lines: sent on the explicit path (a manual voucher) and left empty on the template path. They alone select the path; event is mandatory either way."
           },
           "narration": {
             "$ref": "#/components/schemas/LocalizedText"
@@ -981,6 +981,7 @@
         },
         "required": [
           "documentDate",
+          "event",
           "idempotencyKey",
           "narration",
           "source",

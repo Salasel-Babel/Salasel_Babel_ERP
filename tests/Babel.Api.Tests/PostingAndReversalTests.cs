@@ -175,6 +175,53 @@ public sealed class PostingAndReversalTests
         Assert.Equal("ledger.posting.unbalanced", Http.CodeOf(problem));
     }
 
+    /// <summary>
+    /// <b>الطلب بلا رمز حدث مرفوض — والرفض يقول لماذا، لا «مرفوض» وحدها.</b>
+    /// <para>
+    /// ‏<c>event</c> صار حقلاً إلزامياً في العقد المنشور (تعديل v1 في مكانه قبل أول نشر —
+    /// ‏ADR-0018 §«تعديل مُسجَّل»)، لأن رمز الحدث جزء من هوية الترحيل: بدونه يصير حدثان
+    /// مختلفان من المستند نفسه عند الإطلاق نفسه هويةً واحدة فيُبتلع الثاني بصمت
+    /// (‏ADR-0016). ولذلك يُفحص هنا شيئان لا شيء واحد: أن الطلب يُرفض، وأن الرسالتين
+    /// تشرحان السبب — عميلٌ يقرأ «حقل مفقود» يضيف قيمة عشوائية، وعميلٌ يقرأ «الهوية
+    /// تُبتلع» يسمّي حدثه.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task الطلب_بلا_رمز_حدث_يُرفض_ويشرح_أن_الهوية_هي_السبب()
+    {
+        ApiProcess api = await ApiFixture.DefaultAsync();
+
+        using HttpResponseMessage response = await api.Call(Http.Request(
+            HttpMethod.Post, Http.PostEntry(ApiTestDatabase.CompanyA), ApiFixture.TokenA,
+            Payloads.BalancedEntry(Payloads.Key("no-event"), @event: null)));
+
+        (string text, JsonElement problem) = await Http.BodyAsync(response);
+        Console.WriteLine(text);
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        Assert.Equal("ledger.posting.missing_event_code", Http.CodeOf(problem));
+
+        // والمسار الصريح ليس استثناءً: الحمولة أعلاه تحمل سطوراً متوازنة، ورُفضت مع ذلك.
+        string arabic = problem.GetProperty("detailAr").GetString()!;
+        string english = problem.GetProperty("detail").GetString()!;
+
+        Assert.Contains("هوية الترحيل", arabic, StringComparison.Ordinal);
+        Assert.Contains("بصمت", arabic, StringComparison.Ordinal);
+        Assert.Contains("posting identity", english, StringComparison.Ordinal);
+        Assert.Contains("silently", english, StringComparison.Ordinal);
+
+        // ورمزٌ فارغ ليس أرحم من غيابه: الحقل الموجود بقيمة فارغة يُرفض بالرمز نفسه.
+        using HttpResponseMessage blank = await api.Call(Http.Request(
+            HttpMethod.Post, Http.PostEntry(ApiTestDatabase.CompanyA), ApiFixture.TokenA,
+            Payloads.BalancedEntry(Payloads.Key("blank-event"), @event: string.Empty)));
+
+        (string blankText, JsonElement blankProblem) = await Http.BodyAsync(blank);
+        Console.WriteLine(blankText);
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, blank.StatusCode);
+        Assert.Equal("ledger.posting.missing_event_code", Http.CodeOf(blankProblem));
+    }
+
     [Fact]
     public async Task إعادة_التحقق_من_السلسلة_تُعيد_حكماً_قابلاً_للقراءة_في_تدقيق()
     {

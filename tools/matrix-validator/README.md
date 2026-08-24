@@ -13,7 +13,7 @@
 dotnet run --project tools/matrix-validator -- --data data     # التحقق
 dotnet run --project tools/matrix-validator -- --data data --json
 dotnet run --project tools/matrix-validator -- --rules         # قائمة القواعد
-dotnet test tools/matrix-validator/tests                       # الاختبارات
+dotnet test --project tools/matrix-validator/tests/MatrixValidator.Tests.csproj   # الاختبارات (40)
 ```
 
 يخرج بـ `0` عند نجاح كل الفحوص، وبـ `1` عند أي خطأ. التحذيرات لا تُفشل البناء.

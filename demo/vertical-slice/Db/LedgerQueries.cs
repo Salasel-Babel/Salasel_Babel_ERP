@@ -5,34 +5,34 @@ using Npgsql;
 
 namespace BabelDemo.Db;
 
-public sealed record AccountDto(string Code, string? Parent, string NameAr, string NameEn,
+internal sealed record AccountDto(string Code, string? Parent, string NameAr, string NameEn,
                                 string Type, string TypeAr, string NormalSide, string NormalSideAr,
                                 bool Postable, int Level);
 
-public sealed record TrialBalanceRow(string Code, string NameAr, string NameEn, string Type,
+internal sealed record TrialBalanceRow(string Code, string NameAr, string NameEn, string Type,
                                      decimal Debit, decimal Credit, decimal Balance, string BalanceSide);
 
-public sealed record TrialBalance(string Period, string[] Periods, TrialBalanceRow[] Rows,
+internal sealed record TrialBalance(string Period, string[] Periods, TrialBalanceRow[] Rows,
                                   decimal TotalDebit, decimal TotalCredit, bool Balanced, int AccountCount);
 
-public sealed record EntryLineDto(int LineNo, string AccountCode, string NameAr, string NameEn,
+internal sealed record EntryLineDto(int LineNo, string AccountCode, string NameAr, string NameEn,
                                   string Description, decimal Debit, decimal Credit);
 
-public sealed record EntryDto(long EntryNo, long ChainSeq, string EntryId, string EntryDate,
+internal sealed record EntryDto(long EntryNo, long ChainSeq, string EntryId, string EntryDate,
                               string MemoAr, string Memo, string Actor, string PostedAt,
                               string EntryHash, string PrevHash, decimal Total, EntryLineDto[] Lines);
 
-public sealed record ChainRow(long ChainSeq, long EntryNo, string EntryDate, string MemoAr,
+internal sealed record ChainRow(long ChainSeq, long EntryNo, string EntryDate, string MemoAr,
                               decimal Total, string StoredHash, string RecomputedHash, string Status);
 
-public sealed record NaiveBalanceCheck(decimal TotalDebit, decimal TotalCredit, bool Balanced, string Verdict);
+internal sealed record NaiveBalanceCheck(decimal TotalDebit, decimal TotalCredit, bool Balanced, string Verdict);
 
-public sealed record VerifyResult(bool Ok, long? FirstDivergentSeq, string Reason, string ReasonEn,
+internal sealed record VerifyResult(bool Ok, long? FirstDivergentSeq, string Reason, string ReasonEn,
                                   int Checked, long ElapsedMs, string Connection,
                                   ChainRow[] Rows, NaiveBalanceCheck Naive);
 
 /// <summary>قراءات فقط. لا شيء هنا يكتب في الدفتر.</summary>
-public static class LedgerQueries
+internal static class LedgerQueries
 {
     public static string TypeAr(string t) => t switch
     {

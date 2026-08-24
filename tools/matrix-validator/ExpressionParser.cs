@@ -16,7 +16,7 @@ namespace SalaselBabel.MatrixValidator;
 /// the document.
 /// قواعد صغيرة عمداً: قاعدة مبلغ لا يستطيع المراجع قراءتها عيبٌ في ذاتها.
 /// </summary>
-public static class ExpressionParser
+internal static class ExpressionParser
 {
     public static LinearExpression Parse(string input)
     {
@@ -121,4 +121,4 @@ public static class ExpressionParser
     }
 }
 
-public sealed class ExpressionException(string message) : Exception(message);
+internal sealed class ExpressionException(string message) : Exception(message);

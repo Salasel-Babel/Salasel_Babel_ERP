@@ -7,7 +7,7 @@ namespace SalaselBabel.MatrixValidator.Model;
 /// Everything the validator needs, loaded from the seed files on disk.
 /// كل ما تحتاجه أداة التحقق، محمّلاً من ملفات البيانات التأسيسية.
 /// </summary>
-public sealed class Dataset
+internal sealed class Dataset
 {
     public const string DefaultTenant = "__default__";
 
@@ -169,8 +169,8 @@ public sealed class Dataset
 
     private static bool Bool(string s) => string.Equals(s, "true", StringComparison.OrdinalIgnoreCase);
 
-    private static IReadOnlyList<string> Split(string s) =>
+    private static string[] Split(string s) =>
         string.IsNullOrWhiteSpace(s)
-            ? Array.Empty<string>()
+            ? []
             : s.Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 }

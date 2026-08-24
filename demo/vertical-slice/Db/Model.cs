@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 namespace BabelDemo.Db;
 
 /// <summary>قيد يومية. حقول هذا الكيان بالضبط هي ما تدخل في بصمة SHA-256 (انظر Canonical).</summary>
-public class JournalEntry
+internal sealed class JournalEntry
 {
     public Guid EntryId { get; set; }
     public string BookId { get; set; } = "";
@@ -20,7 +20,7 @@ public class JournalEntry
     public List<JournalLine> Lines { get; set; } = [];
 }
 
-public class JournalLine
+internal sealed class JournalLine
 {
     public Guid LineId { get; set; }
     public Guid EntryId { get; set; }
@@ -32,7 +32,7 @@ public class JournalLine
 }
 
 /// <summary>حساب في دليل الحسابات. كل صف يحمل الاسم العربي والإنجليزي معاً.</summary>
-public class Account
+internal sealed class Account
 {
     public string AccountCode { get; set; } = "";
     public string? ParentCode { get; set; }
@@ -48,7 +48,7 @@ public class Account
 /// إسقاط الأرصدة: يُبنى داخل معاملة الترحيل نفسها، ويمكن إعادة بنائه بالكامل من الدفتر.
 /// الدفتر هو الحقيقة؛ هذا الجدول مجرد نتيجة مشتقة.
 /// </summary>
-public class AccountBalance
+internal sealed class AccountBalance
 {
     public string BookId { get; set; } = "";
     public string Period { get; set; } = "";        // YYYY-MM
@@ -58,14 +58,14 @@ public class AccountBalance
     public DateTime UpdatedAt { get; set; }
 }
 
-public class EntryCounter
+internal sealed class EntryCounter
 {
     public string BookId { get; set; } = "";
     public long NextNo { get; set; }
     public long NextSeq { get; set; }
 }
 
-public class LedgerDbContext(DbContextOptions<LedgerDbContext> options) : DbContext(options)
+internal sealed class LedgerDbContext(DbContextOptions<LedgerDbContext> options) : DbContext(options)
 {
     public DbSet<JournalEntry> JournalEntries => Set<JournalEntry>();
     public DbSet<JournalLine> JournalLines => Set<JournalLine>();
@@ -73,9 +73,9 @@ public class LedgerDbContext(DbContextOptions<LedgerDbContext> options) : DbCont
     public DbSet<AccountBalance> AccountBalances => Set<AccountBalance>();
     public DbSet<EntryCounter> EntryCounters => Set<EntryCounter>();
 
-    protected override void OnModelCreating(ModelBuilder b)
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        b.Entity<JournalEntry>(e =>
+        modelBuilder.Entity<JournalEntry>(e =>
         {
             e.ToTable("journal_entry", "ledger");
             e.HasKey(x => x.EntryId);
@@ -94,7 +94,7 @@ public class LedgerDbContext(DbContextOptions<LedgerDbContext> options) : DbCont
             e.HasMany(x => x.Lines).WithOne().HasForeignKey(x => x.EntryId);
         });
 
-        b.Entity<JournalLine>(e =>
+        modelBuilder.Entity<JournalLine>(e =>
         {
             e.ToTable("journal_line", "ledger");
             e.HasKey(x => x.LineId);
@@ -108,7 +108,7 @@ public class LedgerDbContext(DbContextOptions<LedgerDbContext> options) : DbCont
             e.Property(x => x.Credit).HasColumnName("credit").HasColumnType("numeric(19,4)");
         });
 
-        b.Entity<Account>(e =>
+        modelBuilder.Entity<Account>(e =>
         {
             e.ToTable("account", "ledger");
             e.HasKey(x => x.AccountCode);
@@ -122,7 +122,7 @@ public class LedgerDbContext(DbContextOptions<LedgerDbContext> options) : DbCont
             e.Property(x => x.SortOrder).HasColumnName("sort_order");
         });
 
-        b.Entity<AccountBalance>(e =>
+        modelBuilder.Entity<AccountBalance>(e =>
         {
             e.ToTable("account_balance", "ledger");
             e.HasKey(x => new { x.BookId, x.Period, x.AccountCode });
@@ -134,7 +134,7 @@ public class LedgerDbContext(DbContextOptions<LedgerDbContext> options) : DbCont
             e.Property(x => x.UpdatedAt).HasColumnName("updated_at");
         });
 
-        b.Entity<EntryCounter>(e =>
+        modelBuilder.Entity<EntryCounter>(e =>
         {
             e.ToTable("entry_counter", "ledger");
             e.HasKey(x => x.BookId);

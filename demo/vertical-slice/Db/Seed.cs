@@ -1,4 +1,3 @@
-using BabelDemo.Support;
 
 namespace BabelDemo.Db;
 
@@ -7,7 +6,7 @@ namespace BabelDemo.Db;
 /// لا يوجد مسار كتابة ثانٍ للبذر.
 /// The seed posts through the same PostingService: there is no second write path.
 /// </summary>
-public static class Seed
+internal static class Seed
 {
     public const string SeedActor = "نظام التهيئة";
 

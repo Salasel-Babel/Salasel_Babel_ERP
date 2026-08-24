@@ -1,8 +1,8 @@
 namespace SalaselBabel.MatrixValidator.Rules;
 
-public enum Severity { Error, Warning }
+internal enum Severity { Error, Warning }
 
-public sealed record Finding(
+internal sealed record Finding(
     string RuleId,
     Severity Severity,
     string Where,
@@ -15,4 +15,4 @@ public sealed record Finding(
       + $"        {MessageAr}";
 }
 
-public sealed record RuleDescription(string Id, string TitleAr, string TitleEn);
+internal sealed record RuleDescription(string Id, string TitleAr, string TitleEn);

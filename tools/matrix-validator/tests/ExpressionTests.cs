@@ -1,4 +1,3 @@
-using SalaselBabel.MatrixValidator;
 using Xunit;
 
 namespace SalaselBabel.MatrixValidator.Tests;

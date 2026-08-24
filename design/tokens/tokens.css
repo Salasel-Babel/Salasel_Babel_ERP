@@ -1,0 +1,376 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   سلاسل بابل ERP — رموز التصميم  ·  Salasel Babel ERP — Design Tokens
+   ───────────────────────────────────────────────────────────────────────────
+   المصدر الوحيد للحقيقة: docs/prototypes/journal-entry/index.html (معتمد).
+   Source of truth: the approved journal-entry prototype. Every value below was
+   read out of that file. Nothing here was invented; where the prototype used a
+   one-off value that duplicated a scale step, it was folded into the step and
+   the decision is recorded in design/README.md.
+
+   الطبقات · Layers
+   1. core      — القيم الخام المُسمّاة كما في النموذج المعتمد (--brand, --debit…)
+   2. semantic  — طبقة المعنى، وهي ما تستعمله المكوّنات (--color-debit, --color-posted…)
+   3. layout    — القياسات الثابتة للهيكل (--topbar-h, --sidenav-w…)
+
+   قاعدة السمات · Theming rule
+   - الفاتح كامل على :root المجرّد.
+   - الداكن يعيد تعريف المتغيّر عبر @media (prefers-color-scheme:dark) مع الحارس
+     :root:not([data-theme="light"]) ثم مرة أخرى على :root[data-theme="dark"].
+   - لا يُعرَّف أي لون لأول مرة داخل كتلة media أو attribute. أبداً.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ───────────────────────────────────────────────────────── 1 · CORE (light) */
+:root{
+  /* — أسطح · surfaces — */
+  --bg:#eef2f7;
+  --surface:#fff;
+  --surface-2:#f8fafc;
+  --surface-3:#f1f5f9;
+
+  /* — حدود · borders — */
+  --border:#e2e8f0;
+  --border-2:#cbd5e1;
+
+  /* — نص · text — */
+  --text:#0f172a;
+  --text-2:#475569;
+  --text-3:#94a3b8;
+
+  /* — العلامة · brand — */
+  --brand:#2563eb;
+  --brand-ink:#1d4ed8;
+  --brand-soft:#eff6ff;
+  /* لون التدرّج في شعار النظام. القيمة حرفية في النموذج المعتمد في السمتين. */
+  --brand-mark-accent:#7c3aed;
+
+  /* — المحاسبة · accounting — */
+  --debit:#0f9d8f;   --debit-soft:#ecfdf7;
+  --credit:#3b82f6;  --credit-soft:#eff6ff;
+
+  /* — الحالة · status — */
+  --good:#16a34a;  --good-soft:#f0fdf4;  --good-line:#bbf7d0;
+  --warn:#b45309;  --warn-soft:#fffbeb;  --warn-line:#fde68a;
+  --ai:#7c3aed;    --ai-soft:#f5f3ff;    --ai-line:#ddd6fe;
+  --req:#dc2626;
+
+  /* --req-soft / --req-line غير معرَّفين في النموذج. مشتقّان بنفس أسلوب النموذج
+     نفسه (color-mix على --req كما في .menu button.danger:hover). */
+  --req-soft:color-mix(in srgb,var(--req) 10%,var(--surface));
+  --req-line:color-mix(in srgb,var(--req) 34%,var(--surface));
+
+  /* — نص فوق الأسطح الملوّنة · text on filled surfaces —
+     القيمة #fff في **السمتين** لأن النموذج المعتمد يكتبها حرفياً في السمتين.
+     ⚠ قياس التباين في السمة الداكنة: أبيض على --debit 1.86:1، وعلى --brand 2.54:1،
+     وكلاهما دون عتبة AA. التوصية (بانتظار قرار المالك، ولم تُطبَّق):
+       الداكن → --on-brand:#0a1120 · --on-debit:#04231f · --on-credit:#0a1120
+                --on-danger:#2a0a0a · --on-success:#052e16 · --on-warning:#2a1a02
+     التغيير عندها سطرٌ واحد هنا، لا مئة موضع في المكوّنات. */
+  --on-brand:#fff;
+  --on-debit:#fff;
+  --on-credit:#fff;
+  --on-danger:#fff;
+  --on-success:#fff;
+  --on-warning:#fff;
+  /* أبيض ثابت لا يتبع السمة: زجاجة المفتاح، ورمز الشعار فوق التدرّج */
+  --on-accent-fixed:#fff;
+
+  /* — بدائيّتان للمزج فقط، لا تُستعملان لوناً مباشراً — */
+  --shade:#000;
+  --tint:#fff;
+
+  /* — طبقة التعتيم · scrim — */
+  --scrim:rgba(8,15,30,.55);
+
+  /* — ظلال · shadows — */
+  --shadow-1:0 1px 2px rgba(15,23,42,.05);
+  --shadow-2:0 1px 2px rgba(15,23,42,.04),0 10px 26px -14px rgba(15,23,42,.22);
+  --shadow-brand:0 6px 16px -8px color-mix(in srgb,var(--brand) 80%,transparent);
+  --shadow-lift:0 6px 20px rgba(15,23,42,.10);
+
+  /* — حلقة التركيز · focus ring — */
+  --ring:0 0 0 3px color-mix(in srgb,var(--brand) 18%,transparent);
+  --ring-inset:inset 0 0 0 2px var(--brand);
+}
+
+/* ─────────────────────────────────────────────── 1 · CORE (dark, system) */
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0a1120;
+    --surface:#111c2f;
+    --surface-2:#0e1728;
+    --surface-3:#16233a;
+
+    --border:#1e2c45;
+    --border-2:#2b3d5c;
+
+    --text:#e6edf7;
+    --text-2:#9db0ca;
+    --text-3:#6b7f9c;
+
+    --brand:#60a5fa;
+    --brand-ink:#93c5fd;
+    --brand-soft:#16294d;
+    --brand-mark-accent:#7c3aed;
+
+    --debit:#2dd4bf;   --debit-soft:#0b2f2c;
+    --credit:#60a5fa;  --credit-soft:#16294d;
+
+    --good:#4ade80;  --good-soft:#0a2c18;  --good-line:#166534;
+    --warn:#fbbf24;  --warn-soft:#31240a;  --warn-line:#78500b;
+    --ai:#a78bfa;    --ai-soft:#241a4d;    --ai-line:#4c3a91;
+    --req:#f87171;
+    --req-soft:color-mix(in srgb,var(--req) 14%,var(--surface));
+    --req-line:color-mix(in srgb,var(--req) 40%,var(--surface));
+
+    /* مطابق للنموذج المعتمد — انظر تحذير التباين في كتلة :root */
+    --on-brand:#fff;
+    --on-debit:#fff;
+    --on-credit:#fff;
+    --on-danger:#fff;
+    --on-success:#fff;
+    --on-warning:#fff;
+
+    --scrim:rgba(3,7,18,.66);
+
+    --shadow-1:0 1px 2px rgba(0,0,0,.4);
+    --shadow-2:0 1px 2px rgba(0,0,0,.3),0 12px 28px -16px rgba(0,0,0,.8);
+    --shadow-lift:0 8px 24px rgba(0,0,0,.45);
+  }
+}
+
+/* ────────────────────────────────────────────── 1 · CORE (dark, explicit) */
+:root[data-theme="dark"]{
+  --bg:#0a1120;
+  --surface:#111c2f;
+  --surface-2:#0e1728;
+  --surface-3:#16233a;
+
+  --border:#1e2c45;
+  --border-2:#2b3d5c;
+
+  --text:#e6edf7;
+  --text-2:#9db0ca;
+  --text-3:#6b7f9c;
+
+  --brand:#60a5fa;
+  --brand-ink:#93c5fd;
+  --brand-soft:#16294d;
+  --brand-mark-accent:#7c3aed;
+
+  --debit:#2dd4bf;   --debit-soft:#0b2f2c;
+  --credit:#60a5fa;  --credit-soft:#16294d;
+
+  --good:#4ade80;  --good-soft:#0a2c18;  --good-line:#166534;
+  --warn:#fbbf24;  --warn-soft:#31240a;  --warn-line:#78500b;
+  --ai:#a78bfa;    --ai-soft:#241a4d;    --ai-line:#4c3a91;
+  --req:#f87171;
+  --req-soft:color-mix(in srgb,var(--req) 14%,var(--surface));
+  --req-line:color-mix(in srgb,var(--req) 40%,var(--surface));
+
+  /* مطابق للنموذج المعتمد — انظر تحذير التباين في كتلة :root */
+  --on-brand:#fff;
+  --on-debit:#fff;
+  --on-credit:#fff;
+  --on-danger:#fff;
+  --on-success:#fff;
+  --on-warning:#fff;
+
+  --scrim:rgba(3,7,18,.66);
+
+  --shadow-1:0 1px 2px rgba(0,0,0,.4);
+  --shadow-2:0 1px 2px rgba(0,0,0,.3),0 12px 28px -16px rgba(0,0,0,.8);
+  --shadow-lift:0 8px 24px rgba(0,0,0,.45);
+}
+
+/* ═══════════════════════════════════════════════════════ 2 · SEMANTIC LAYER
+   هذه هي الطبقة التي **يجب** أن تستعملها المكوّنات والشاشات.
+   لا تكتب لوناً خاماً (#hex) في أي مكوّن. أبداً. ولا تستعمل --good مباشرةً
+   لحالة «مُرحَّل» — استعمل --color-posted، فإن تغيّر معنى الحالة لاحقاً تغيّر
+   في موضع واحد.
+   لأنها مراجع (var) لا قيم، فهي تتبع السمة تلقائياً وتُعرَّف مرة واحدة فقط.
+   ═════════════════════════════════════════════════════════════════════════ */
+:root{
+  /* — الخلفيات والنص — */
+  --color-bg:var(--bg);
+  --color-surface:var(--surface);
+  --color-surface-raised:var(--surface-2);
+  --color-surface-sunken:var(--surface-3);
+  --color-border:var(--border);
+  --color-border-strong:var(--border-2);
+  --color-text:var(--text);
+  --color-text-muted:var(--text-2);
+  --color-text-subtle:var(--text-3);
+
+  /* — التفاعل — */
+  --color-primary:var(--brand);
+  --color-primary-hover:var(--brand-ink);
+  --color-primary-soft:var(--brand-soft);
+  --color-focus:var(--brand);
+  --color-link:var(--brand);
+
+  /* — طرفا القيد · the two sides of an entry — */
+  --color-debit:var(--debit);
+  --color-debit-soft:var(--debit-soft);
+  --color-credit:var(--credit);
+  --color-credit-soft:var(--credit-soft);
+
+  /* — دلالات الرقم · number semantics — */
+  --color-amount:var(--text);
+  --color-amount-zero:var(--text-3);
+  --color-amount-negative:var(--req);
+
+  /* — حالات المستند · document states — */
+  --color-draft:var(--text-3);
+  --color-draft-soft:var(--surface-3);
+  --color-posted:var(--good);
+  --color-posted-soft:var(--good-soft);
+  --color-posted-line:var(--good-line);
+  --color-reversed:var(--ai);
+  --color-reversed-soft:var(--ai-soft);
+  --color-reversed-line:var(--ai-line);
+  --color-pending:var(--warn);
+  --color-pending-soft:var(--warn-soft);
+  --color-pending-line:var(--warn-line);
+  --color-rejected:var(--req);
+  --color-rejected-soft:var(--req-soft);
+  --color-rejected-line:var(--req-line);
+  --color-archived:var(--text-3);
+  --color-archived-soft:var(--surface-3);
+
+  /* — التحقق والتوازن · validation & balance — */
+  --color-success:var(--good);
+  --color-success-soft:var(--good-soft);
+  --color-success-line:var(--good-line);
+  --color-warning:var(--warn);
+  --color-warning-soft:var(--warn-soft);
+  --color-warning-line:var(--warn-line);
+  --color-danger:var(--req);
+  --color-danger-soft:var(--req-soft);
+  --color-danger-line:var(--req-line);
+  --color-info:var(--brand);
+  --color-info-soft:var(--brand-soft);
+  --color-required:var(--req);
+  --color-balanced:var(--good);
+  --color-unbalanced:var(--warn);
+
+  /* — الذكاء الاصطناعي · AI assist — */
+  --color-ai:var(--ai);
+  --color-ai-soft:var(--ai-soft);
+  --color-ai-line:var(--ai-line);
+}
+
+/* ══════════════════════════════════════════ 3 · TYPOGRAPHY · SPACE · SHAPE
+   لا تتغيّر بين السمتين. */
+:root{
+  /* — الخط · font — */
+  --font-sans:'IBM Plex Sans Arabic','Segoe UI',Tahoma,system-ui,sans-serif;
+  --font-mono:ui-monospace,SFMono-Regular,'Cascadia Mono','IBM Plex Sans Arabic',monospace;
+
+  --font-weight-regular:400;
+  --font-weight-medium:500;
+  --font-weight-semibold:600;
+  --font-weight-bold:700;
+
+  /* — سلّم الحجم · size ladder (كما هو مستخرَج من النموذج) — */
+  --font-size-3xs:11.5px;   /* تلميح، مفتاح في بطاقة، شرح إحصائية */
+  --font-size-2xs:12px;     /* عنوان عمود، مفتاح إحصائية */
+  --font-size-xs:12.5px;    /* تسمية حقل، فتات الخبز، رقاقة */
+  --font-size-sm:13px;      /* عنصر قائمة فرعية، خلية جدول عرض */
+  --font-size-md:13.5px;    /* زر، تبويب، عنصر تنقّل */
+  --font-size-base:14px;    /* نص الواجهة */
+  --font-size-lg:14.5px;    /* عنوان بطاقة */
+  --font-size-xl:15px;      /* نص صفحة الفهرس */
+  --font-size-2xl:16px;     /* عنوان نافذة */
+  --font-size-3xl:17px;     /* عنوان قسم */
+  --font-size-4xl:19px;     /* قيمة حالة كبيرة */
+  --font-size-5xl:21px;     /* عنوان صفحة h1 */
+  --font-size-6xl:23px;     /* قيمة إحصائية */
+  --font-size-display:clamp(24px,4vw,32px);
+
+  /* — أسماء بالدور (استعملها في المكوّنات) — */
+  --font-size-hint:var(--font-size-3xs);
+  --font-size-label:var(--font-size-xs);
+  --font-size-control:var(--font-size-md);
+  --font-size-body:var(--font-size-base);
+  --font-size-card-title:var(--font-size-lg);
+  --font-size-dialog-title:var(--font-size-2xl);
+  --font-size-h1:var(--font-size-5xl);
+  --font-size-stat:var(--font-size-6xl);
+
+  /* — ارتفاع السطر · line height — */
+  --line-tight:1.35;
+  --line-snug:1.5;
+  --line-base:1.6;
+  --line-relaxed:1.7;
+  --line-loose:1.75;
+
+  /* — التتبّع · letter spacing — */
+  --tracking-title:-.01em;
+  --tracking-stat:-.02em;
+  --tracking-num:.01em;
+
+  /* — المسافات · spacing (الاسم = القيمة بالبكسل) — */
+  --space-0:0;
+  --space-2:2px;
+  --space-4:4px;
+  --space-6:6px;
+  --space-8:8px;
+  --space-10:10px;
+  --space-12:12px;
+  --space-14:14px;
+  --space-16:16px;
+  --space-18:18px;
+  --space-20:20px;
+  --space-24:24px;
+  --space-32:32px;
+  --space-48:48px;
+  --space-64:64px;
+
+  /* — الاستدارة · radii — */
+  --radius-xs:4px;
+  --radius-sm:8px;
+  --radius-md:9px;
+  --radius-lg:12px;
+  --radius-xl:16px;
+  --radius-pill:999px;
+  --radius-circle:50%;
+  /* أسماء النموذج المعتمد، مُبقاة للتوافق */
+  --r:var(--radius-lg);
+  --r-sm:var(--radius-sm);
+
+  /* — سُمك الحدّ · border widths — */
+  --border-width:1px;
+  --border-width-strong:1.5px;
+  --border-width-accent:2px;
+
+  /* — الحركة · motion — */
+  --motion-fast:.12s;
+  --motion-base:.15s;
+  --motion-slow:.2s;
+  --ease:ease;
+
+  /* — الطبقات · z-index — */
+  --z-table-head:2;
+  --z-menu:20;
+  --z-actionbar:50;
+  --z-topbar:60;
+  --z-drawer:90;
+  --z-overlay:100;
+  --z-toast:120;
+
+  /* — قياسات الهيكل · layout metrics — */
+  --topbar-h:56px;
+  --sidenav-w:216px;
+  --control-h:38px;       /* ارتفاع حقل الإدخال */
+  --control-h-sm:34px;    /* زر أيقونة */
+  --cell-h:42px;          /* خلية جدول قابلة للتحرير */
+  --control-pad-x:11px;
+  --control-pad-y:8px;
+  --page-pad-x:20px;
+  --page-pad-x-sm:14px;
+}
+
+/* نقاط الانكسار المعتمدة (لا يمكن أن تكون متغيّرات داخل @media، فهي موثّقة هنا
+   وفي tokens.json ليستعملها الجميع بنفس القيم):
+   440px · 520px · 620px · 760px · 860px · 980px · 1180px
+   860px هو الانكسار الحاكم: عنده يختفي الشريط الجانبي ويتحوّل إلى درج. */

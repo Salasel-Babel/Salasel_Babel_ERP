@@ -1,0 +1,1318 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="معرض نظام التصميم لواجهات سلاسل بابل ERP — كل مكوّن في كل حالة، في السمتين">
+<title>معرض نظام التصميم — سلاسل بابل</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="tokens/tokens.css">
+<link rel="stylesheet" href="components/components.css">
+<link rel="stylesheet" href="components/print.css" media="print">
+<style>
+/* ── أنماط المعرض وحده — ليست جزءاً من نظام التصميم ─────────────────────── */
+.gal-hero{
+  display:flex;flex-direction:column;gap:var(--space-10);
+  padding:var(--space-24) var(--space-20);
+  border:var(--border-width) solid var(--color-border);
+  border-radius:var(--radius-xl);
+  background:
+    radial-gradient(120% 120% at 100% 0%, color-mix(in srgb,var(--color-primary) 10%,transparent) 0%, transparent 58%),
+    radial-gradient(120% 120% at 0% 100%, color-mix(in srgb,var(--color-debit) 10%,transparent) 0%, transparent 55%),
+    var(--color-surface);
+  box-shadow:var(--shadow-1);
+}
+.gal-hero h1{margin:0;font-size:var(--font-size-display);font-weight:700;letter-spacing:var(--tracking-title)}
+.gal-hero p{margin:0;max-width:70ch;color:var(--color-text-muted);font-size:var(--font-size-xl);line-height:var(--line-relaxed)}
+.gal-hero .meta{display:flex;gap:var(--space-8);flex-wrap:wrap;margin-top:var(--space-4)}
+
+.sec{scroll-margin-top:calc(var(--topbar-h) + 12px)}
+.sec > h2{
+  display:flex;align-items:center;gap:var(--space-10);flex-wrap:wrap;
+  margin:var(--space-32) 0 var(--space-4);
+  font-size:var(--font-size-3xl);font-weight:700;letter-spacing:var(--tracking-title);
+}
+.sec > h2 .idx{
+  display:grid;place-items:center;width:26px;height:26px;flex:none;
+  border-radius:var(--radius-sm);background:var(--color-primary-soft);color:var(--color-primary);
+  font-size:var(--font-size-2xs);font-weight:700;font-variant-numeric:tabular-nums;
+}
+.sec > .lede{margin:0 0 var(--space-12);color:var(--color-text-muted);font-size:var(--font-size-sm);max-width:78ch}
+.sec > h3{margin:var(--space-20) 0 var(--space-8);font-size:var(--font-size-lg);font-weight:700}
+
+.demo{
+  padding:var(--space-16);border:var(--border-width) solid var(--color-border);
+  border-radius:var(--radius-lg);background:var(--color-surface);
+}
+.demo + .demo{margin-top:var(--space-12)}
+.demo-hd{
+  display:flex;align-items:center;gap:var(--space-8);flex-wrap:wrap;
+  margin:0 0 var(--space-12);padding-bottom:var(--space-8);
+  border-bottom:var(--border-width) dashed var(--color-border);
+  font-size:var(--font-size-xs);font-weight:600;color:var(--color-text-subtle);
+}
+.demo-hd code{
+  direction:ltr;unicode-bidi:isolate;font-family:var(--font-mono);
+  font-size:var(--font-size-hint);padding:1px 5px;border-radius:var(--radius-xs);
+  background:var(--color-surface-sunken);color:var(--color-text-muted);
+}
+.demo-row{display:flex;gap:var(--space-12);flex-wrap:wrap;align-items:center}
+.demo-grid{display:grid;gap:var(--space-12);grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
+.demo-note{
+  margin:var(--space-10) 0 0;font-size:var(--font-size-hint);color:var(--color-text-subtle);
+  line-height:var(--line-relaxed);
+}
+.demo-note strong{color:var(--color-text-muted)}
+
+/* شبكة عيّنات الألوان */
+.swatches{display:grid;gap:var(--space-10);grid-template-columns:repeat(auto-fill,minmax(178px,1fr))}
+.sw{
+  border:var(--border-width) solid var(--color-border);border-radius:var(--radius-md);
+  overflow:hidden;background:var(--color-surface);
+}
+.sw .chip{height:52px;border:0;border-radius:0;display:block;width:100%;cursor:default}
+.sw .body{padding:var(--space-8) var(--space-10)}
+.sw .name{
+  display:block;font-family:var(--font-mono);font-size:var(--font-size-hint);
+  direction:ltr;unicode-bidi:isolate;color:var(--color-text);font-weight:600;
+  overflow:hidden;text-overflow:ellipsis;
+}
+.sw .role{display:block;font-size:var(--font-size-hint);color:var(--color-text-subtle);margin-top:2px}
+.sw .vals{
+  display:flex;gap:var(--space-6);margin-top:var(--space-6);
+  font-family:var(--font-mono);font-size:10px;direction:ltr;unicode-bidi:isolate;
+  color:var(--color-text-subtle);
+}
+.sw .vals b{font-weight:600;color:var(--color-text-muted)}
+
+/* سلّم الخط */
+.typerow{
+  display:flex;align-items:baseline;gap:var(--space-16);flex-wrap:wrap;
+  padding:var(--space-8) 0;border-bottom:var(--border-width) dashed var(--color-border);
+}
+.typerow:last-child{border-bottom:0}
+.typerow .tag{
+  flex:none;min-width:180px;font-family:var(--font-mono);font-size:var(--font-size-hint);
+  direction:ltr;unicode-bidi:isolate;color:var(--color-text-subtle);
+}
+
+/* سلّم المسافات */
+.spacerow{display:flex;align-items:center;gap:var(--space-12);padding:3px 0}
+.spacerow .tag{
+  flex:none;min-width:118px;font-family:var(--font-mono);font-size:var(--font-size-hint);
+  direction:ltr;unicode-bidi:isolate;color:var(--color-text-subtle);
+}
+.spacerow .bar{height:12px;border-radius:3px;background:var(--color-primary);opacity:.75}
+
+.shadowbox{
+  height:76px;border-radius:var(--radius-lg);background:var(--color-surface);
+  border:var(--border-width) solid var(--color-border);
+  display:grid;place-items:center;font-size:var(--font-size-hint);color:var(--color-text-subtle);
+}
+.radiusbox{
+  height:64px;background:var(--color-primary-soft);
+  border:var(--border-width) solid var(--color-primary);
+  display:grid;place-items:center;font-size:var(--font-size-hint);color:var(--brand-ink);font-weight:600;
+}
+
+.galnav .navitem{font-size:var(--font-size-sm)}
+.toc{display:flex;gap:var(--space-6);flex-wrap:wrap;margin-top:var(--space-4)}
+.toc a{
+  padding:4px var(--space-10);border-radius:var(--radius-pill);
+  border:var(--border-width) solid var(--color-border);
+  background:var(--color-surface);color:var(--color-text-muted);
+  font-size:var(--font-size-hint);text-decoration:none;font-weight:600;
+}
+.toc a:hover{border-color:var(--color-primary);color:var(--color-primary)}
+.sprite{position:absolute;width:0;height:0;overflow:hidden}
+</style>
+</head>
+<body>
+
+<svg class="sprite" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></symbol>
+  <symbol id="i-logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h9a4 4 0 0 1 0 8H8"/><path d="M20 17h-9a4 4 0 0 1 0-8h5"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 8-3 8h18s-3-1-3-8"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></symbol>
+  <symbol id="i-help" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M9.2 9.2a2.8 2.8 0 0 1 5.5.7c0 1.9-2.7 2.4-2.7 4"/><path d="M12 17.5h.01"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 13 4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-warn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5h.01"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6.5 7l.8 12a2 2 0 0 0 2 1.9h5.4a2 2 0 0 0 2-1.9L17.5 7"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></symbol>
+  <symbol id="i-dots" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="12" cy="19" r="1.7"/></symbol>
+  <symbol id="i-sort" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10.5" width="16" height="10" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></symbol>
+  <symbol id="i-print" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M6 14h12v7H6z"/></symbol>
+  <symbol id="i-inbox" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h5l2 3h4l2-3h5"/><path d="M4.5 6.5 3 12v6a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6l-1.5-5.5A2 2 0 0 0 17.6 5H6.4a2 2 0 0 0-1.9 1.5Z"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5.5A2.5 2.5 0 0 1 5.5 3H11v18H5.5A2.5 2.5 0 0 1 3 18.5Z"/><path d="M21 5.5A2.5 2.5 0 0 0 18.5 3H13v18h5.5a2.5 2.5 0 0 0 2.5-2.5Z"/></symbol>
+  <symbol id="i-sparkle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 2.1 5.4L19.5 10l-5.4 1.6L12 17l-2.1-5.4L4.5 10l5.4-1.6Z"/><path d="M18.5 16.5 19 18l1.5.5-1.5.5-.5 1.5-.5-1.5L16 18l1.5-.5Z"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/></symbol>
+  <symbol id="i-scale" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M7 21h10M4 8h16M7 8l-3 6a3 3 0 0 0 6 0Zm10 0-3 6a3 3 0 0 0 6 0Z"/></symbol>
+</svg>
+
+<a class="skiplink" href="#gal-main">تخطَّ إلى المحتوى</a>
+
+<header class="topbar">
+  <button class="iconbtn navtoggle" data-nav-toggle aria-label="فتح قائمة التنقّل" aria-expanded="false">
+    <svg width="19" height="19"><use href="#i-menu"/></svg>
+  </button>
+  <div class="brand">
+    <span class="mark" aria-hidden="true"><svg width="17" height="17"><use href="#i-logo"/></svg></span>
+    <span class="brand-text">نظام التصميم — سلاسل بابل</span>
+  </div>
+  <button class="orgpick">معرض المكوّنات · الإصدار ١٫٠
+    <svg width="15" height="15"><use href="#i-down"/></svg>
+  </button>
+  <div class="tools">
+    <button class="iconbtn" data-theme-toggle aria-label="تبديل المظهر" title="تبديل المظهر" aria-pressed="false">
+      <svg width="18" height="18"><use href="#i-moon"/></svg>
+    </button>
+    <button class="iconbtn" aria-label="المساعدة"><svg width="18" height="18"><use href="#i-help"/></svg></button>
+    <button class="iconbtn bell" data-unread="true" aria-label="التنبيهات"><svg width="18" height="18"><use href="#i-bell"/></svg></button>
+    <span class="avatar">مظ</span>
+  </div>
+</header>
+
+<div class="navscrim"></div>
+
+<div class="shell">
+  <aside class="sidenav galnav" aria-label="أقسام المعرض">
+    <span class="navgroup-label">الرموز</span>
+    <a class="navitem" href="#t-color"><svg width="16" height="16"><use href="#i-sparkle"/></svg>الألوان</a>
+    <a class="navitem" href="#t-type"><svg width="16" height="16"><use href="#i-book"/></svg>الخطوط</a>
+    <a class="navitem" href="#t-space"><svg width="16" height="16"><use href="#i-scale"/></svg>المسافات والاستدارة</a>
+    <span class="navgroup-label">المكوّنات</span>
+    <a class="navitem" href="#c-btn"><svg width="16" height="16"><use href="#i-plus"/></svg>الأزرار</a>
+    <a class="navitem" href="#c-form"><svg width="16" height="16"><use href="#i-search"/></svg>الحقول</a>
+    <a class="navitem" href="#c-amount"><svg width="16" height="16"><use href="#i-scale"/></svg>المبالغ</a>
+    <a class="navitem" href="#c-line"><svg width="16" height="16"><use href="#i-book"/></svg>محرّر سطر القيد</a>
+    <a class="navitem" href="#c-table"><svg width="16" height="16"><use href="#i-book"/></svg>الجداول</a>
+    <a class="navitem" href="#c-pill"><svg width="16" height="16"><use href="#i-check"/></svg>شارات الحالة</a>
+    <a class="navitem" href="#c-alert"><svg width="16" height="16"><use href="#i-warn"/></svg>التنبيهات والتحقق</a>
+    <a class="navitem" href="#c-overlay"><svg width="16" height="16"><use href="#i-copy"/></svg>النوافذ والأدراج</a>
+    <a class="navitem" href="#c-nav"><svg width="16" height="16"><use href="#i-menu"/></svg>التبويبات والترقيم</a>
+    <a class="navitem" href="#c-state"><svg width="16" height="16"><use href="#i-inbox"/></svg>فارغ · تحميل · خطأ</a>
+    <a class="navitem" href="#c-stat"><svg width="16" height="16"><use href="#i-scale"/></svg>الإحصائيات والتوازن</a>
+    <a class="navitem" href="#c-toast"><svg width="16" height="16"><use href="#i-bell"/></svg>الإشعارات</a>
+    <a class="navitem" href="#c-print"><svg width="16" height="16"><use href="#i-print"/></svg>الطباعة</a>
+  </aside>
+
+  <main class="main main--plain" id="gal-main">
+
+    <section class="gal-hero">
+      <h1>نظام تصميم سلاسل بابل</h1>
+      <p>
+        كل ما في هذه الصفحة مستخرَج من شاشة <strong>قيد اليومية المعتمدة</strong> ولا شيء فيه
+        أُعيد تصميمه. الغرض أن تُبنى كل شاشة قادمة — على يد أي شخص أو أي وكيل — فتبدو كأنها
+        خرجت من نفس اليد. بدّل المظهر من زر القمر أعلى الصفحة لترى النظام كاملاً في السمة الأخرى.
+      </p>
+      <div class="meta">
+        <span class="pill pill--posted">معتمد كمرجع بصري</span>
+        <span class="pill pill--info">عربي أصيل · RTL</span>
+        <span class="pill pill--draft">بلا إطار عمل · بلا خطوة بناء</span>
+      </div>
+      <div class="toc">
+        <a href="#t-color">الألوان</a><a href="#t-type">الخطوط</a><a href="#t-space">المسافات</a>
+        <a href="#c-btn">الأزرار</a><a href="#c-form">الحقول</a><a href="#c-amount">المبالغ</a>
+        <a href="#c-line">سطر القيد</a><a href="#c-table">الجداول</a><a href="#c-pill">الحالات</a>
+        <a href="#c-alert">التنبيهات</a><a href="#c-overlay">النوافذ</a><a href="#c-state">فارغ وتحميل</a>
+        <a href="#c-print">الطباعة</a>
+        <a href="screens/trial-balance.html">شاشة ميزان المراجعة ↗</a>
+        <a href="README.md">دليل القواعد ↗</a>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════ الرموز · الألوان ═══════════════════ -->
+    <section class="sec" id="t-color">
+      <h2><span class="idx">١</span>الألوان</h2>
+      <p class="lede">
+        كل قيمة أدناه تُقرأ حيّةً من <code class="ltr">design/tokens/tokens.css</code> عند فتح الصفحة —
+        فلا يمكن أن ينحرف المعرض عن الرموز. العمود «فاتح» و«داكن» يعرض قيمة كل رمز في السمتين معاً.
+      </p>
+
+      <h3>الطبقة الأساسية · core</h3>
+      <div class="demo"><div class="swatches" id="sw-core"></div></div>
+
+      <h3>الطبقة الدلالية · semantic — هذه هي التي تستعملها المكوّنات</h3>
+      <p class="lede">
+        لا تكتب <code class="ltr">#hex</code> في مكوّن، ولا تستعمل <code class="ltr">--good</code>
+        لحالة «مُرحَّل»: استعمل <code class="ltr">--color-posted</code>. إن تغيّر معنى الحالة لاحقاً
+        تغيّر في موضع واحد بدل مئة موضع.
+      </p>
+      <div class="demo"><div class="swatches" id="sw-sem"></div></div>
+    </section>
+
+    <!-- ═══════════════════════════════ الرموز · الخطوط ═══════════════════ -->
+    <section class="sec" id="t-type">
+      <h2><span class="idx">٢</span>الخطوط والسلّم الطباعي</h2>
+      <p class="lede">
+        الخط <strong>IBM Plex Sans Arabic</strong> بأوزان ٤٠٠ و٥٠٠ و٦٠٠ و٧٠٠، وسلسلة احتياطية حقيقية:
+        <code class="ltr">'Segoe UI', Tahoma, system-ui, sans-serif</code>.
+        كل رقم في الواجهة يحمل <code class="ltr">tabular-nums</code> بلا استثناء.
+      </p>
+      <div class="demo">
+        <div class="demo-hd">سلّم الحجم <code>--font-size-*</code></div>
+        <div id="typescale"></div>
+      </div>
+      <div class="demo">
+        <div class="demo-hd">الأوزان <code>--font-weight-*</code></div>
+        <div class="demo-row">
+          <span style="font-weight:400">عادي ٤٠٠ — قيد يومية</span>
+          <span style="font-weight:500">متوسط ٥٠٠ — قيد يومية</span>
+          <span style="font-weight:600">شبه عريض ٦٠٠ — قيد يومية</span>
+          <span style="font-weight:700">عريض ٧٠٠ — قيد يومية</span>
+        </div>
+        <p class="demo-note">
+          <strong>قاعدة:</strong> الوزن ٦٠٠ هو وزن العناصر التفاعلية (زر، تبويب، تسمية)، و٧٠٠ للعناوين
+          وقيم الإجماليات فقط. لا يُستعمل ٨٠٠ أو ٩٠٠ — ليسا محمّلين.
+        </p>
+      </div>
+      <div class="demo">
+        <div class="demo-hd">الأرقام <code>tabular-nums</code> + <code>dir="ltr"</code></div>
+        <table class="pv" style="max-width:520px">
+          <thead><tr><th>بلا عزل (خطأ)</th><th>مع العزل (صحيح)</th></tr></thead>
+          <tbody>
+            <tr><td>الرصيد -1,250.00 ريال</td><td>الرصيد <span class="amt amt--neg" dir="ltr">-1,250.00</span> ريال</td></tr>
+            <tr><td>الفاتورة INV-2026-0587 معلّقة</td><td>الفاتورة <span class="ltr">INV-2026-0587</span> معلّقة</td></tr>
+          </tbody>
+        </table>
+        <p class="demo-note">
+          <strong>لماذا يهمّ:</strong> الإشارة السالبة محرف محايد في خوارزمية الاتجاه، فتقفز إلى الطرف
+          الخطأ داخل فقرة عربية. الرقم يصبح <span dir="rtl">1,250.00-</span> ويُقرأ موجباً.
+          راجع <a href="README.md">دليل القواعد §٣</a>.
+        </p>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════ الرموز · المسافات والاستدارة ═══════════ -->
+    <section class="sec" id="t-space">
+      <h2><span class="idx">٣</span>المسافات والاستدارة والظلال والحركة</h2>
+      <div class="demo">
+        <div class="demo-hd">سلّم المسافات <code>--space-N</code> — الاسم هو القيمة بالبكسل</div>
+        <div id="spacescale"></div>
+      </div>
+      <div class="demo">
+        <div class="demo-hd">الاستدارة <code>--radius-*</code></div>
+        <div class="demo-grid">
+          <div class="radiusbox" style="border-radius:var(--radius-xs)">xs · 4px</div>
+          <div class="radiusbox" style="border-radius:var(--radius-sm)">sm · 8px — حقل، زر</div>
+          <div class="radiusbox" style="border-radius:var(--radius-md)">md · 9px — زر أيقونة</div>
+          <div class="radiusbox" style="border-radius:var(--radius-lg)">lg · 12px — بطاقة</div>
+          <div class="radiusbox" style="border-radius:var(--radius-xl)">xl · 16px — نافذة</div>
+          <div class="radiusbox" style="border-radius:var(--radius-pill)">pill · 999px</div>
+        </div>
+      </div>
+      <div class="demo">
+        <div class="demo-hd">الظلال <code>--shadow-*</code></div>
+        <div class="demo-grid">
+          <div class="shadowbox" style="box-shadow:var(--shadow-1)">shadow-1 — بطاقة</div>
+          <div class="shadowbox" style="box-shadow:var(--shadow-2)">shadow-2 — نافذة وقائمة</div>
+          <div class="shadowbox" style="box-shadow:var(--shadow-brand)">shadow-brand — زر رئيسي</div>
+          <div class="shadowbox" style="box-shadow:var(--ring)">ring — حلقة التركيز</div>
+        </div>
+      </div>
+      <div class="demo">
+        <div class="demo-hd">الحركة <code>--motion-*</code></div>
+        <p class="demo-note" style="margin-top:0">
+          <code class="ltr">--motion-fast .12s</code> للرفع الطفيف ·
+          <code class="ltr">--motion-base .15s</code> لتغيّر اللون والحدّ ·
+          <code class="ltr">--motion-slow .2s</code> للانزلاق والظهور.
+          <strong>كل حركة تُلغى</strong> تحت <code class="ltr">prefers-reduced-motion: reduce</code> — وهذا مطبَّق في
+          <code class="ltr">components.css</code> مرة واحدة للجميع.
+        </p>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════ الأزرار ══════════════════════ -->
+    <section class="sec" id="c-btn">
+      <h2><span class="idx">٤</span>الأزرار</h2>
+      <p class="lede">
+        الترتيب في شريط الإجراءات: الفعل الرئيسي أولاً (بداية السطر = اليمين)، ثم الأفعال الثانوية.
+        الفعل المدمّر لا يقف بجوار الفعل الرئيسي أبداً.
+      </p>
+      <div class="demo">
+        <div class="demo-hd">الأنواع <code>.btn</code></div>
+        <div class="demo-row">
+          <button class="btn btn-primary"><svg width="15" height="15"><use href="#i-lock"/></svg>ترحيل القيد</button>
+          <button class="btn">حفظ كمسودة</button>
+          <button class="btn btn-ghost">إلغاء</button>
+          <button class="btn btn-danger"><svg width="15" height="15"><use href="#i-trash"/></svg>حذف نهائي</button>
+          <button class="btn btn-danger-soft"><svg width="15" height="15"><use href="#i-refresh"/></svg>عكس القيد</button>
+          <button class="btn btn-sm">صغير</button>
+        </div>
+      </div>
+      <div class="demo">
+        <div class="demo-hd">الحالات — مرّر الفأرة وجرّب <kbd>Tab</kbd> لرؤية حلقة التركيز</div>
+        <div class="demo-row">
+          <button class="btn btn-primary">افتراضي</button>
+          <button class="btn btn-primary" style="background:var(--color-primary-hover);border-color:var(--color-primary-hover)">تمرير</button>
+          <button class="btn btn-primary" autofocus>تركيز — اضغط Tab</button>
+          <button class="btn btn-primary" disabled>معطّل (القيد غير متوازن)</button>
+          <button class="btn btn-primary" data-loading="true">جارٍ الترحيل</button>
+        </div>
+        <div class="demo-row" style="margin-top:var(--space-12)">
+          <button class="btn">افتراضي</button>
+          <button class="btn" disabled>معطّل</button>
+          <button class="btn" data-loading="true">تحميل</button>
+          <button class="btn btn-danger" disabled>حذف معطّل</button>
+          <button class="btn btn-block" style="max-width:240px">بعرض كامل</button>
+        </div>
+        <p class="demo-note">
+          <strong>حالة التحميل</strong> تُبقي عرض الزر ثابتاً (النص يصير شفافاً وتظهر الدوّارة فوقه)
+          حتى لا يقفز شريط الإجراءات تحت إصبع المستخدم.
+        </p>
+      </div>
+      <div class="demo">
+        <div class="demo-hd">أزرار الأيقونات ومقاطع الاختيار <code>.iconbtn</code> <code>.seg</code></div>
+        <div class="demo-row">
+          <button class="iconbtn"><svg width="18" height="18"><use href="#i-search"/></svg></button>
+          <button class="iconbtn" aria-pressed="true"><svg width="18" height="18"><use href="#i-moon"/></svg></button>
+          <button class="iconbtn" disabled><svg width="18" height="18"><use href="#i-trash"/></svg></button>
+          <div class="seg">
+            <button aria-pressed="true">المبلغ غير شامل الضريبة</button>
+            <button aria-pressed="false">المبلغ شامل الضريبة</button>
+          </div>
+          <div class="seg plain">
+            <button aria-pressed="true">15%</button>
+            <button aria-pressed="false">صفرية</button>
+            <button aria-pressed="false">معفاة</button>
+          </div>
+        </div>
+        <div class="demo-row" style="margin-top:var(--space-12)">
+          <button class="addline"><svg width="15" height="15"><use href="#i-plus"/></svg>إضافة سطر</button>
+          <div class="chips" style="margin:0">
+            <button class="chip">مصروف خدمات تقنية</button>
+            <button class="chip">ضريبة القيمة المضافة — مدخلات</button>
+            <button class="chip" data-used="true">الدائنون / شركة التقنية</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════ الحقول ══════════════════════ -->
+    <section class="sec" id="c-form">
+      <h2><span class="idx">٥</span>الحقول والنماذج</h2>
+      <p class="lede">
+        كل تسمية تحمل صيغة عربية وصيغة إنجليزية (<code class="ltr">name_ar</code> /
+        <code class="ltr">name_en</code>). الإنجليزية معزولة بـ <code class="ltr">.en</code> فلا تسحب
+        التسمية العربية معها.
+      </p>
+      <div class="demo">
+        <div class="demo-hd">الحالات الأساسية <code>.field</code> <code>.ctl</code></div>
+        <div class="grid fields-3">
+          <div class="field">
+            <label for="g-t1">المرجع <span class="en">Reference</span></label>
+            <input class="ctl" id="g-t1" value="فاتورة رقم 0587-2026">
+          </div>
+          <div class="field">
+            <label for="g-t2">البيان<span class="req" aria-hidden="true">*</span> <span class="en">Memo</span></label>
+            <input class="ctl" id="g-t2" placeholder="اكتب بيان السطر…">
+            <span class="hint">يظهر في دفتر الأستاذ وفي كشف الحساب.</span>
+          </div>
+          <div class="field">
+            <label for="g-t3">رقم القيد <span class="en">Entry no.</span></label>
+            <span class="ctl-wrap">
+              <input class="ctl num" id="g-t3" dir="ltr" value="JV-2026-00125" disabled>
+              <span class="adorn"><svg width="14" height="14"><use href="#i-lock"/></svg></span>
+            </span>
+            <span class="hint">(رقم آلي — عدّاد بلا فجوات)</span>
+          </div>
+          <div class="field">
+            <label for="g-t4">الفرع<span class="req" aria-hidden="true">*</span> <span class="en">Branch</span></label>
+            <span class="ctl-wrap">
+              <select class="ctl" id="g-t4">
+                <option>الفرع الرئيسي — الرياض</option><option>فرع جدة</option><option>فرع الدمام</option>
+              </select>
+              <span class="adorn"><svg width="15" height="15"><use href="#i-down"/></svg></span>
+            </span>
+          </div>
+          <div class="field">
+            <label for="g-t5">الفترة المالية <span class="en">Period</span></label>
+            <input class="ctl" id="g-t5" value="05/2026 — مفتوحة" readonly>
+          </div>
+          <div class="field">
+            <label for="g-t6">مركز التكلفة<span class="req" aria-hidden="true">*</span> <span class="en">Cost centre</span></label>
+            <select class="ctl" id="g-t6" aria-invalid="true" aria-describedby="g-t6-err">
+              <option>— اختر —</option><option>إدارة تقنية المعلومات</option>
+            </select>
+            <span class="field-error" id="g-t6-err">
+              <svg width="13" height="13"><use href="#i-warn"/></svg>
+              مركز التكلفة إلزامي لحسابات المصروفات.
+            </span>
+          </div>
+        </div>
+        <div class="grid fields-2" style="margin-top:var(--space-14)">
+          <div class="field">
+            <label for="g-ta">البيان العام<span class="req" aria-hidden="true">*</span> <span class="en">Description</span></label>
+            <textarea class="ctl" id="g-ta" data-guard-invisible="g-ta-bidi">مصروف خدمات تقنية عن الفترة 05/2026 شامل ضريبة القيمة المضافة 15%</textarea>
+            <span class="field-error" id="g-ta-bidi" hidden></span>
+            <span class="hint">جرّب لصق نصّ من متصفّح أو مستند مكتبي — سينبّهك الحقل إن حمل معه محارف تحكّم غير مرئية.</span>
+          </div>
+          <div class="field">
+            <label for="g-cur">العملة<span class="req" aria-hidden="true">*</span> <span class="en">Currency</span></label>
+            <input class="ctl" id="g-cur" value="ر.س">
+            <span class="field-ok"><svg width="13" height="13"><use href="#i-check"/></svg>عملة الدفاتر</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="demo">
+        <div class="demo-hd">التاريخ <code>.datefield</code> — يُخزَّن ميلادياً دائماً، ويُعرض بالتقويمين</div>
+        <div class="grid fields-3">
+          <div class="field datefield">
+            <label for="g-d1">تاريخ القيد<span class="req" aria-hidden="true">*</span> <span class="en">Entry date</span></label>
+            <span class="ctl-wrap">
+              <input class="ctl has-start" id="g-d1" value="2026/05/24" inputmode="numeric">
+              <span class="adorn adorn-start"><svg width="15" height="15"><use href="#i-cal"/></svg></span>
+            </span>
+            <span class="dateline">
+              <span class="greg"></span><span class="hijri" hidden></span>
+            </span>
+          </div>
+          <div class="field datefield">
+            <label for="g-d2">تاريخ الاستحقاق <span class="en">Due date</span></label>
+            <span class="ctl-wrap">
+              <input class="ctl has-start" id="g-d2" value="2026/06/23" inputmode="numeric">
+              <span class="adorn adorn-start"><svg width="15" height="15"><use href="#i-cal"/></svg></span>
+            </span>
+            <span class="dateline"><span class="greg"></span><span class="hijri" hidden></span></span>
+          </div>
+          <div class="field">
+            <label>تفضيل عرض التاريخ <span class="en">Calendar preference</span></label>
+            <div class="seg plain">
+              <button aria-pressed="true">ميلادي</button>
+              <button aria-pressed="false">هجري (أم القرى)</button>
+            </div>
+            <span class="hint">تفضيل عرض لكل مستخدم. لا يمسّ التخزين.</span>
+          </div>
+        </div>
+        <p class="demo-note">
+          <strong>القاعدة:</strong> التخزين ميلادي، دائماً، بلا استثناء. الهجري تحويل عرض يُحسب لحظة
+          الرسم ولا يعود إلى قاعدة البيانات أبداً. والأرقام تبقى لاتينية في الحالتين
+          (<code class="ltr">2026</code> لا <code>٢٠٢٦</code>) لأن الأرقام العربية-الهندية نقاط شفرة
+          مختلفة تماماً وتُنتج بصمة مختلفة — <a href="../docs/evidence/traps.md">فخ-٢٥</a>.
+        </p>
+      </div>
+
+      <div class="demo">
+        <div class="demo-hd">منتقي الحساب والقائمة القابلة للبحث <code>.picker</code></div>
+        <div class="grid fields-half">
+          <div class="field picker">
+            <label for="g-acc">الحساب<span class="req" aria-hidden="true">*</span> <span class="en">Account</span></label>
+            <span class="ctl-wrap">
+              <input class="ctl" id="g-acc" placeholder="ابحث برقم الحساب أو باسمه…" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="g-acc-list">
+              <span class="adorn"><svg width="15" height="15"><use href="#i-search"/></svg></span>
+            </span>
+            <div class="picker-list" id="g-acc-list" role="listbox">
+              <button class="picker-opt" role="option" aria-selected="false"><span class="code" dir="ltr">6120101</span><span class="label">مصروف خدمات تقنية</span><span class="side d">مدين</span></button>
+              <button class="picker-opt" role="option" aria-selected="false"><span class="code" dir="ltr">6110101</span><span class="label">رواتب وأجور</span><span class="side d">مدين</span></button>
+              <button class="picker-opt" role="option" aria-selected="true"><span class="code" dir="ltr">2010101</span><span class="label">الدائنون / شركة التقنية</span><span class="side c">دائن</span></button>
+              <button class="picker-opt" role="option" aria-selected="false"><span class="code" dir="ltr">1020101</span><span class="label">البنك الأهلي — الحساب الجاري</span><span class="side d">مدين</span></button>
+              <button class="picker-opt" role="option" aria-selected="false"><span class="code" dir="ltr">4101001</span><span class="label">إيرادات المبيعات</span><span class="side c">دائن</span></button>
+              <div class="picker-empty" hidden>لا حساب يطابق البحث.</div>
+            </div>
+            <span class="hint">الترحيل على الحساب التفصيلي فقط؛ الحسابات التجميعية لا تظهر هنا.</span>
+          </div>
+          <div class="field">
+            <label>خيارات أخرى</label>
+            <div class="stack" style="gap:var(--space-12)">
+              <label class="switch">
+                <input type="checkbox" checked><span class="track"></span>
+                <span>إنشاء سطر ضريبة القيمة المضافة تلقائياً</span>
+              </label>
+              <label class="check"><input type="checkbox" checked><span>عرض أرقام الحسابات بجانب الأسماء</span></label>
+              <label class="check"><input type="checkbox"><span>تذكّر مركز التكلفة لهذا النوع من القيود</span></label>
+              <label class="check"><input type="checkbox" disabled><span>الترحيل التلقائي (يتطلّب صلاحية «مدير الحسابات»)</span></label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════ المبالغ ══════════════════════ -->
+    <section class="sec" id="c-amount">
+      <h2><span class="idx">٦</span>المبالغ — خلية ومُدخَل وزوج مدين/دائن</h2>
+      <p class="lede">
+        هذا أهمّ مكوّن في المنتج كلّه. المبلغ <code class="ltr">decimal</code> لا
+        <code class="ltr">float</code>، يصل من الخادم <strong>نصّاً</strong> بمقياس ثابت، والواجهة
+        تضيف فواصل الآلاف فقط. لا <code class="ltr">Intl</code> يعتمد على لغة الجهاز، ولا
+        <code class="ltr">toLocaleString()</code>.
+      </p>
+      <div class="demo">
+        <div class="demo-hd">حالات خلية المبلغ <code>.amt</code></div>
+        <table class="pv">
+          <thead><tr><th>الحالة</th><th class="n">العرض</th><th>الرمز الدلالي</th><th>ملاحظة</th></tr></thead>
+          <tbody>
+            <tr><td>مبلغ مدين</td><td class="n"><span class="amt amt--debit" data-amount="10000">—</span></td><td><code class="ltr">--color-debit</code></td><td>الوزن ٦٠٠</td></tr>
+            <tr><td>مبلغ دائن</td><td class="n"><span class="amt amt--credit" data-amount="11500">—</span></td><td><code class="ltr">--color-credit</code></td><td>الوزن ٦٠٠</td></tr>
+            <tr><td>مبلغ محايد</td><td class="n"><span class="amt" data-amount="1500">—</span></td><td><code class="ltr">--color-amount</code></td><td>خارج طرفي القيد</td></tr>
+            <tr><td>مبلغ سالب</td><td class="n"><span class="amt" data-amount="-1250.5">—</span></td><td><code class="ltr">--color-amount-negative</code></td><td>الإشارة يسار الرقم — العزل إلزامي</td></tr>
+            <tr><td>صفر</td><td class="n"><span class="amt" data-amount="0">—</span></td><td><code class="ltr">--color-amount-zero</code></td><td>يُعرض شرطة، لا <span class="ltr">0.00</span></td></tr>
+            <tr><td>خافت (مرجعي)</td><td class="n"><span class="amt amt--muted" data-amount="240.75">—</span></td><td><code class="ltr">--color-text-muted</code></td><td>رصيد سابق</td></tr>
+            <tr><td>إجمالي</td><td class="n"><span class="amt amt--total" data-amount="11500">—</span></td><td>وزن ٧٠٠</td><td>صف الإجماليات</td></tr>
+            <tr><td>مع العملة</td><td class="n"><span class="amt" data-amount="11500">—</span><span class="cur">ر.س</span></td><td>—</td><td>رمز العملة لا ينفصل عن الرقم</td></tr>
+            <tr><td>كبير</td><td class="n"><span class="amt amt--lg amt--debit" data-amount="1234567.89">—</span></td><td>—</td><td>بطاقة إحصائية</td></tr>
+            <tr><td>رقم حساب</td><td class="n"><span class="acct-code">6120101</span></td><td>—</td><td>معزول ومتساوي العرض</td></tr>
+          </tbody>
+        </table>
+        <p class="demo-note">
+          <strong>المقياس ثابت:</strong> منزلتان في العرض دائماً، ولا تُحذف الأصفار الزائدة.
+          <span class="ltr">100</span> و<span class="ltr">100.0</span> و<span class="ltr">100.00</span>
+          كلها تُعرض <span class="ltr">100.00</span>. هذا ليس تجميلاً: الخلط بين تمثيلين لنفس المبلغ
+          هو <a href="../docs/evidence/traps.md">فخ-١٨</a> بعينه.
+        </p>
+      </div>
+
+      <div class="demo">
+        <div class="demo-hd">مُدخَل المبلغ وزوج مدين/دائن <code>.amt-input</code> <code>.dc-pair</code></div>
+        <div class="dc-pair" style="max-width:520px">
+          <div class="dc-side dc-side--debit">
+            <span class="dc-label" id="lbl-d">مدين (ر.س)</span>
+            <input class="ctl amt-input is-debit" aria-labelledby="lbl-d" inputmode="decimal" value="10,000.00">
+          </div>
+          <div class="dc-side dc-side--credit">
+            <span class="dc-label" id="lbl-c">دائن (ر.س)</span>
+            <input class="ctl amt-input is-credit" aria-labelledby="lbl-c" inputmode="decimal" placeholder="–">
+          </div>
+        </div>
+        <div class="dc-pair" style="max-width:520px;margin-top:var(--space-12)">
+          <div class="dc-side dc-side--debit">
+            <span class="dc-label" id="lbl-d2">مدين — قيمة سالبة</span>
+            <input class="ctl amt-input is-neg" aria-labelledby="lbl-d2" inputmode="decimal" value="-1,250.00">
+          </div>
+          <div class="dc-side dc-side--credit">
+            <span class="dc-label" id="lbl-c2">دائن — مرفوض</span>
+            <input class="ctl amt-input" aria-labelledby="lbl-c2" aria-invalid="true" inputmode="decimal" value="0.00">
+          </div>
+        </div>
+        <p class="demo-note">
+          <strong>لماذا <code class="ltr">direction:ltr</code> + <code class="ltr">text-align:right</code>؟</strong>
+          الحقل يبقى داخل نموذج عربي، لكن محتواه رقم لاتيني. هذا المزيج يضع الرقم عند بداية السطر
+          (اليمين) كما في الشاشة المعتمدة، ويُبقي الإشارة السالبة في مكانها الصحيح.
+          والمدين والدائن <strong>متنافيان على السطر الواحد</strong>: إدخال أحدهما يمسح الآخر.
+        </p>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════ محرّر سطر القيد ══════════════════════ -->
+    <section class="sec" id="c-line">
+      <h2><span class="idx">٧</span>محرّر سطر القيد</h2>
+      <p class="lede">
+        منقول كما هو من الشاشة المعتمدة: رأسا المدين والدائن ملوّنان، والخلية تُحرَّر في مكانها،
+        وقائمة السطر تحمل «تكرار» و«حذف» (المدمّر بلون الخطر عند التمرير فقط).
+      </p>
+      <div class="card">
+        <div class="tablewrap">
+          <table class="lines">
+            <thead>
+              <tr>
+                <th style="min-width:230px">الحساب</th>
+                <th style="min-width:150px">البيان</th>
+                <th class="h-debit" style="min-width:118px">مدين (ر.س)</th>
+                <th class="h-credit" style="min-width:118px">دائن (ر.س)</th>
+                <th style="min-width:130px">نوع الضريبة</th>
+                <th style="min-width:92px">نسبة الضريبة</th>
+                <th style="min-width:118px">مبلغ الضريبة (ر.س)</th>
+                <th style="min-width:160px">مركز التكلفة</th>
+                <th class="col-act">إجراء</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="ctl-wrap"><select class="cell"><option>6120101 - مصروف خدمات تقنية</option></select><span class="adorn" style="inset-inline-end:6px"><svg width="12" height="12"><use href="#i-down"/></svg></span></span></td>
+                <td><input class="cell" value="مصروف خدمات تقنية"></td>
+                <td><input class="cell amount debit" inputmode="decimal" value="10,000.00"></td>
+                <td><input class="cell amount credit" inputmode="decimal" placeholder="–"></td>
+                <td><span class="ctl-wrap"><select class="cell"><option>ضريبة مدخلات</option></select><span class="adorn" style="inset-inline-end:6px"><svg width="12" height="12"><use href="#i-down"/></svg></span></span></td>
+                <td><span class="ctl-wrap"><select class="cell"><option>15%</option></select><span class="adorn" style="inset-inline-end:6px"><svg width="12" height="12"><use href="#i-down"/></svg></span></span></td>
+                <td><span class="taxval">1,500.00</span></td>
+                <td><span class="ctl-wrap"><select class="cell"><option>إدارة تقنية المعلومات</option></select><span class="adorn" style="inset-inline-end:6px"><svg width="12" height="12"><use href="#i-down"/></svg></span></span></td>
+                <td class="col-act"><div class="rowmenu">
+                  <button type="button" data-menu-trigger="rm-1" aria-label="خيارات السطر" aria-haspopup="true" aria-expanded="false"><svg width="16" height="16"><use href="#i-dots"/></svg></button>
+                  <div class="menu" id="rm-1" data-menu>
+                    <button type="button"><svg width="14" height="14"><use href="#i-copy"/></svg>تكرار السطر</button>
+                    <button type="button" class="danger"><svg width="14" height="14"><use href="#i-trash"/></svg>حذف السطر</button>
+                  </div>
+                </div></td>
+              </tr>
+              <tr>
+                <td><span class="ctl-wrap"><select class="cell"><option>121201 - ضريبة القيمة المضافة - مدخلات</option></select><span class="adorn" style="inset-inline-end:6px"><svg width="12" height="12"><use href="#i-down"/></svg></span></span></td>
+                <td><input class="cell" value="ضريبة القيمة المضافة"></td>
+                <td><input class="cell amount debit" inputmode="decimal" value="1,500.00"></td>
+                <td><input class="cell amount credit" inputmode="decimal" placeholder="–"></td>
+                <td><span class="ctl-wrap"><select class="cell"><option>ضريبة مدخلات</option></select><span class="adorn" style="inset-inline-end:6px"><svg width="12" height="12"><use href="#i-down"/></svg></span></span></td>
+                <td><span class="ctl-wrap"><select class="cell"><option>15%</option></select><span class="adorn" style="inset-inline-end:6px"><svg width="12" height="12"><use href="#i-down"/></svg></span></span></td>
+                <td><span class="taxval zero">–</span></td>
+                <td><span class="ctl-wrap"><select class="cell"><option>إدارة مالية</option></select><span class="adorn" style="inset-inline-end:6px"><svg width="12" height="12"><use href="#i-down"/></svg></span></span></td>
+                <td class="col-act"><div class="rowmenu"><button type="button" data-menu-trigger="rm-2" aria-label="خيارات السطر" aria-expanded="false"><svg width="16" height="16"><use href="#i-dots"/></svg></button>
+                  <div class="menu" id="rm-2" data-menu>
+                    <button type="button"><svg width="14" height="14"><use href="#i-copy"/></svg>تكرار السطر</button>
+                    <button type="button" class="danger"><svg width="14" height="14"><use href="#i-trash"/></svg>حذف السطر</button>
+                  </div></div></td>
+              </tr>
+              <tr>
+                <td><span class="ctl-wrap"><select class="cell"><option>2010101 - الدائنون / شركة التقنية</option></select><span class="adorn" style="inset-inline-end:6px"><svg width="12" height="12"><use href="#i-down"/></svg></span></span></td>
+                <td><input class="cell" value="شركة التقنية"></td>
+                <td><input class="cell amount debit" inputmode="decimal" placeholder="–"></td>
+                <td><input class="cell amount credit" inputmode="decimal" value="11,500.00"></td>
+                <td><span class="ctl-wrap"><select class="cell"><option>—</option></select><span class="adorn" style="inset-inline-end:6px"><svg width="12" height="12"><use href="#i-down"/></svg></span></span></td>
+                <td><span class="ctl-wrap"><select class="cell"><option>—</option></select><span class="adorn" style="inset-inline-end:6px"><svg width="12" height="12"><use href="#i-down"/></svg></span></span></td>
+                <td><span class="taxval zero">–</span></td>
+                <td><span class="ctl-wrap"><select class="cell"><option>—</option></select><span class="adorn" style="inset-inline-end:6px"><svg width="12" height="12"><use href="#i-down"/></svg></span></span></td>
+                <td class="col-act"><div class="rowmenu"><button type="button" data-menu-trigger="rm-3" aria-label="خيارات السطر" aria-expanded="false"><svg width="16" height="16"><use href="#i-dots"/></svg></button>
+                  <div class="menu" id="rm-3" data-menu>
+                    <button type="button"><svg width="14" height="14"><use href="#i-copy"/></svg>تكرار السطر</button>
+                    <button type="button" class="danger"><svg width="14" height="14"><use href="#i-trash"/></svg>حذف السطر</button>
+                  </div></div></td>
+              </tr>
+              <tr>
+                <td><span class="ctl-wrap"><select class="cell"><option>— اختر الحساب —</option></select><span class="adorn" style="inset-inline-end:6px"><svg width="12" height="12"><use href="#i-down"/></svg></span></span></td>
+                <td><input class="cell" placeholder="بيان السطر"></td>
+                <td><input class="cell amount debit" inputmode="decimal" placeholder="–" aria-invalid="true"></td>
+                <td><input class="cell amount credit" inputmode="decimal" placeholder="–"></td>
+                <td><span class="ctl-wrap"><select class="cell"><option>—</option></select><span class="adorn" style="inset-inline-end:6px"><svg width="12" height="12"><use href="#i-down"/></svg></span></span></td>
+                <td><span class="ctl-wrap"><select class="cell"><option>—</option></select><span class="adorn" style="inset-inline-end:6px"><svg width="12" height="12"><use href="#i-down"/></svg></span></span></td>
+                <td><span class="taxval zero">–</span></td>
+                <td><span class="ctl-wrap"><select class="cell"><option>—</option></select><span class="adorn" style="inset-inline-end:6px"><svg width="12" height="12"><use href="#i-down"/></svg></span></span></td>
+                <td class="col-act"><div class="rowmenu"><button type="button" data-menu-trigger="rm-4" aria-label="خيارات السطر" aria-expanded="false"><svg width="16" height="16"><use href="#i-dots"/></svg></button>
+                  <div class="menu" id="rm-4" data-menu>
+                    <button type="button"><svg width="14" height="14"><use href="#i-copy"/></svg>تكرار السطر</button>
+                    <button type="button" class="danger"><svg width="14" height="14"><use href="#i-trash"/></svg>حذف السطر</button>
+                  </div></div></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="padding:0 var(--space-16) var(--space-16)">
+          <button class="addline"><svg width="15" height="15"><use href="#i-plus"/></svg>إضافة سطر</button>
+        </div>
+      </div>
+      <p class="demo-note">
+        السطر الرابع يعرض حالة الخلية المرفوضة (<code class="ltr">aria-invalid="true"</code>):
+        حسابٌ اختير بلا مبلغ. الجدول ينزلق أفقياً داخل حاويته — <strong>ولا ينزلق جسم الصفحة أبداً</strong>.
+      </p>
+    </section>
+
+    <!-- ═══════════════════════════════════ الجداول ══════════════════════ -->
+    <section class="sec" id="c-table">
+      <h2><span class="idx">٨</span>جدول البيانات — رأس لاصق، أعمدة تُفرز، صف إجماليات مصطفّ</h2>
+      <p class="lede">
+        صف الإجماليات داخل <code class="ltr">&lt;tfoot&gt;</code> من <strong>نفس الجدول</strong>، فيرث
+        عرض الأعمدة ولا ينحرف عنها مهما تغيّر المحتوى. أي محاولة لبناء صف إجماليات في عنصر منفصل
+        ستنكسر عند أول رقم طويل.
+      </p>
+      <div class="card">
+        <div class="toolbar">
+          <div class="field grow">
+            <label for="g-q" class="visually-hidden">بحث</label>
+            <span class="ctl-wrap">
+              <input class="ctl has-start" id="g-q" placeholder="ابحث برقم القيد أو بالبيان…">
+              <span class="adorn adorn-start"><svg width="15" height="15"><use href="#i-search"/></svg></span>
+            </span>
+          </div>
+          <div class="end">
+            <div class="seg plain">
+              <button aria-pressed="true">الكل</button>
+              <button aria-pressed="false">مسودة</button>
+              <button aria-pressed="false">مُرحَّل</button>
+            </div>
+            <button class="btn btn-sm"><svg width="14" height="14"><use href="#i-print"/></svg>طباعة</button>
+          </div>
+        </div>
+        <div class="tablewrap tablewrap--short">
+          <table class="data" data-sortable>
+            <thead>
+              <tr>
+                <th class="sortable start" aria-sort="none" style="min-width:130px"><button type="button">رقم القيد<svg class="arrow" width="12" height="12"><use href="#i-sort"/></svg></button></th>
+                <th class="sortable start" aria-sort="none" style="min-width:110px"><button type="button">التاريخ<svg class="arrow" width="12" height="12"><use href="#i-sort"/></svg></button></th>
+                <th class="start" style="min-width:220px">البيان</th>
+                <th class="sortable n h-debit" aria-sort="none" style="min-width:120px"><button type="button">مدين (ر.س)<svg class="arrow" width="12" height="12"><use href="#i-sort"/></svg></button></th>
+                <th class="sortable n h-credit" aria-sort="none" style="min-width:120px"><button type="button">دائن (ر.س)<svg class="arrow" width="12" height="12"><use href="#i-sort"/></svg></button></th>
+                <th style="min-width:110px">الحالة</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td class="start"><span class="acct-code">JV-2026-00125</span></td><td class="start"><span class="ltr">2026/05/24</span></td><td class="start">مصروف خدمات تقنية — الفترة 05/2026</td><td class="n"><span class="amt amt--debit" data-amount="11500">—</span></td><td class="n"><span class="amt" data-amount="0">—</span></td><td><span class="pill pill--posted">مُرحَّل</span></td></tr>
+              <tr><td class="start"><span class="acct-code">JV-2026-00124</span></td><td class="start"><span class="ltr">2026/05/23</span></td><td class="start">تحصيل من العميل شركة النور</td><td class="n"><span class="amt amt--debit" data-amount="48250">—</span></td><td class="n"><span class="amt" data-amount="0">—</span></td><td><span class="pill pill--posted">مُرحَّل</span></td></tr>
+              <tr><td class="start"><span class="acct-code">JV-2026-00123</span></td><td class="start"><span class="ltr">2026/05/22</span></td><td class="start">قيد تسوية مخزون — المستودع الرئيسي</td><td class="n"><span class="amt" data-amount="0">—</span></td><td class="n"><span class="amt amt--credit" data-amount="7300.4">—</span></td><td><span class="pill pill--pending">بانتظار الاعتماد</span></td></tr>
+              <tr><td class="start"><span class="acct-code">JV-2026-00122</span></td><td class="start"><span class="ltr">2026/05/21</span></td><td class="start">رواتب شهر 04/2026</td><td class="n"><span class="amt amt--debit" data-amount="286400">—</span></td><td class="n"><span class="amt" data-amount="0">—</span></td><td><span class="pill pill--draft">مسودة</span></td></tr>
+              <tr><td class="start"><span class="acct-code">JV-2026-00121</span></td><td class="start"><span class="ltr">2026/05/19</span></td><td class="start">عكس القيد JV-2026-00118</td><td class="n"><span class="amt" data-amount="0">—</span></td><td class="n"><span class="amt amt--credit" data-amount="-1250.5">—</span></td><td><span class="pill pill--reversed">معكوس</span></td></tr>
+              <tr><td class="start"><span class="acct-code">JV-2026-00120</span></td><td class="start"><span class="ltr">2026/05/18</span></td><td class="start">مشتريات مواد — مشروع أبراج بابل</td><td class="n"><span class="amt amt--debit" data-amount="93875.25">—</span></td><td class="n"><span class="amt" data-amount="0">—</span></td><td><span class="pill pill--rejected">مرفوض</span></td></tr>
+              <tr><td class="start"><span class="acct-code">JV-2025-00988</span></td><td class="start"><span class="ltr">2025/12/31</span></td><td class="start">قيد إقفال السنة المالية 2025</td><td class="n"><span class="amt amt--debit" data-amount="1204338.9">—</span></td><td class="n"><span class="amt" data-amount="0">—</span></td><td><span class="pill pill--archived">مؤرشف</span></td></tr>
+            </tbody>
+            <tfoot>
+              <tr data-fixed>
+                <td colspan="3">الإجمالي — ٧ قيود</td>
+                <td class="n d"><span class="amt amt--total" data-amount="1634364.15">—</span></td>
+                <td class="n c"><span class="amt amt--total" data-amount="6049.9">—</span></td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+        <div class="pager">
+          <span class="count">عرض <span class="n">1–7</span> من <span class="n">248</span> قيداً</span>
+          <span class="sizepick">
+            <label for="g-size">لكل صفحة</label>
+            <select id="g-size"><option>25</option><option>50</option><option>100</option></select>
+          </span>
+          <span class="pages">
+            <button class="pagebtn" disabled aria-label="الصفحة السابقة"><svg width="14" height="14" style="transform:rotate(-90deg)"><use href="#i-down"/></svg></button>
+            <button class="pagebtn" aria-current="page">1</button>
+            <button class="pagebtn">2</button>
+            <button class="pagebtn">3</button>
+            <span class="gap">…</span>
+            <button class="pagebtn">10</button>
+            <button class="pagebtn" aria-label="الصفحة التالية"><svg width="14" height="14" style="transform:rotate(90deg)"><use href="#i-down"/></svg></button>
+          </span>
+        </div>
+      </div>
+      <p class="demo-note">
+        <strong>الرأس اللاصق يحتاج ارتفاعاً محدوداً للحاوية</strong> — <code class="ltr">.tablewrap</code>
+        هي حاوية التمرير، فإن لم يكن لها <code class="ltr">max-height</code> فلن يلتصق شيء.
+        استعمل <code class="ltr">.tablewrap--tall</code> أو <code class="ltr">--short</code>.
+        وأسهم الفرز: اضغط على رأس عمود.
+      </p>
+    </section>
+
+    <!-- ═══════════════════════════════ شارات الحالة ═════════════════════ -->
+    <section class="sec" id="c-pill">
+      <h2><span class="idx">٩</span>شارات الحالة</h2>
+      <p class="lede">
+        الحالة تُقرأ بلونها <em>وبنصّها</em> معاً — لا لوناً وحده، لأن ٨٪ من الرجال لا يميّزون
+        الأحمر عن الأخضر، ولأن الطباعة أحادية اللون تُسقط اللون أصلاً.
+      </p>
+      <div class="demo">
+        <div class="demo-hd">حالات المستند المحاسبي</div>
+        <div class="demo-row">
+          <span class="pill pill--draft">مسودة</span>
+          <span class="pill pill--posted">مُرحَّل</span>
+          <span class="pill pill--reversed">معكوس</span>
+          <span class="pill pill--pending">بانتظار الاعتماد</span>
+          <span class="pill pill--rejected">مرفوض</span>
+          <span class="pill pill--archived">مؤرشف</span>
+        </div>
+        <div class="demo-row" style="margin-top:var(--space-12)">
+          <span class="pill pill-lg pill--draft">مسودة</span>
+          <span class="pill pill-lg pill--posted">مُرحَّل</span>
+          <span class="pill pill-lg pill--reversed">معكوس</span>
+          <span class="pill pill-lg pill--pending">بانتظار الاعتماد</span>
+          <span class="pill pill-lg pill--rejected">مرفوض</span>
+          <span class="pill pill-lg pill--archived">مؤرشف</span>
+        </div>
+        <div class="demo-row" style="margin-top:var(--space-12)">
+          <span class="pill pill--debit">طبيعته مدينة</span>
+          <span class="pill pill--credit">طبيعته دائنة</span>
+          <span class="pill pill--info">فترة مفتوحة</span>
+        </div>
+        <p class="demo-note">
+          <strong>لا لون جديد:</strong> كل شارة تشير إلى رمز دلالي موجود —
+          <code class="ltr">--color-posted</code> ← <code class="ltr">--good</code>،
+          <code class="ltr">--color-reversed</code> ← <code class="ltr">--ai</code>،
+          <code class="ltr">--color-pending</code> ← <code class="ltr">--warn</code>،
+          <code class="ltr">--color-rejected</code> ← <code class="ltr">--req</code>.
+          «مؤرشف» بحدّ متقطّع ليقرأه من لا يميّز الألوان.
+        </p>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════ التنبيهات والتحقق الحيّ ═══════════════════ -->
+    <section class="sec" id="c-alert">
+      <h2><span class="idx">١٠</span>التنبيهات والتحقق الحيّ</h2>
+      <div class="demo">
+        <div class="demo-hd">تنبيهات الصفحة <code>.alert</code></div>
+        <div class="stack" style="gap:var(--space-10)">
+          <div class="alert alert--info" role="status">
+            <svg width="18" height="18"><use href="#i-info"/></svg>
+            <div class="body"><span class="title">الفترة المالية 05/2026 مفتوحة</span>
+              <p>يمكن الترحيل حتى <span class="ltr">2026/06/10</span>. بعدها تُقفل الفترة ويصير التعديل بقيد عكسي فقط.</p></div>
+            <button class="iconbtn close" aria-label="إغلاق"><svg width="16" height="16"><use href="#i-x"/></svg></button>
+          </div>
+          <div class="alert alert--success" role="status">
+            <svg width="18" height="18"><use href="#i-check"/></svg>
+            <div class="body"><span class="title">تم ترحيل القيد <span class="ltr">JV-2026-00125</span></span>
+              <p>أُضيف إلى سلسلة التجزئة عند التسلسل <span class="ltr">chain_seq = 4,812</span>.</p></div>
+          </div>
+          <div class="alert alert--warning" role="alert">
+            <svg width="18" height="18"><use href="#i-warn"/></svg>
+            <div class="body"><span class="title">القيد غير متوازن</span>
+              <p>الفرق <span class="amt amt--total" dir="ltr">1,500.00</span> ر.س. لا يمكن الترحيل حتى يتساوى المدين والدائن.</p>
+              <div class="actions"><button class="btn btn-sm">أضف سطر تسوية</button><button class="btn btn-sm btn-ghost">تجاهل</button></div></div>
+          </div>
+          <div class="alert alert--ai">
+            <svg width="18" height="18"><use href="#i-sparkle"/></svg>
+            <div class="body"><span class="title">اقتراح من المساعد</span>
+              <p>هذا البيان يشبه ١٤ قيداً سابقاً رُحّلت على «مصروف خدمات تقنية». هذه اقتراحات فقط — راجعها قبل الترحيل.</p></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="demo">
+        <div class="demo-hd">رفض على مستوى قاعدة البيانات <code>.alert--db</code> — بعرض المحتوى كاملاً</div>
+        <div class="alert alert--danger alert--db" role="alert">
+          <svg width="18" height="18"><use href="#i-warn"/></svg>
+          <div class="body">
+            <span class="title">رفضت قاعدة البيانات ترحيل القيد — لم يُحفظ شيء</span>
+            <p>
+              فشل قيد التحقق <code class="ltr">ck_journal_entry_balanced</code>. المعاملة تراجعت كاملةً،
+              ولم يُستهلك رقم من العدّاد. أعد المحاولة بعد تصحيح السطور.
+            </p>
+            <code class="server-text">ERROR:  new row for relation "journal_entry" violates check constraint "ck_journal_entry_balanced"
+DETAIL:  Failing row contains (4812, 2026-05-24, 11500.0000, 10000.0000, ...).
+CONTEXT: SQL statement "INSERT INTO journal_entry ..."</code>
+            <div class="meta">
+              <span>وقت المحاولة: <span class="ltr">2026-05-24 14:03:11.482 +03</span></span>
+              <span>المعرّف المرجعي: <span class="ltr">req_01HXY7K3</span></span>
+              <span>المستخدم: مظفر العمري</span>
+            </div>
+            <div class="actions">
+              <button class="btn btn-sm">راجع السطور غير المتوازنة</button>
+              <button class="btn btn-sm btn-ghost">انسخ نصّ الخطأ</button>
+            </div>
+          </div>
+        </div>
+        <p class="demo-note">
+          <strong>ثلاث قواعد لرسالة الرفض:</strong> (١) تقول <em>ماذا حدث للبيانات</em> — «لم يُحفظ شيء»
+          هو أهم سطر فيها. (٢) تحمل نصّ الخادم كما ورد داخل
+          <code class="ltr">.server-text</code> معزولاً <code class="ltr">dir="ltr"</code> فلا يتبعثر SQL
+          داخل فقرة عربية. (٣) تحمل معرّفاً مرجعياً يربط ما رآه المستخدم بسجلّ الخادم.
+          <strong>ولا تُخفى ولا تُطوى</strong> — الرفض المحاسبي ليس إشعاراً عابراً.
+        </p>
+      </div>
+
+      <div class="demo">
+        <div class="demo-hd">ملخّص أخطاء أعلى النموذج <code>.errsummary</code> والتحقق داخل الحقل</div>
+        <div class="alert errsummary" role="alert" tabindex="-1">
+          <svg width="18" height="18"><use href="#i-warn"/></svg>
+          <div class="body">
+            <span class="title">تعذّر الحفظ — ٣ حقول تحتاج تصحيحاً</span>
+            <ol>
+              <li><a href="#g-t6">مركز التكلفة</a> — إلزامي لحسابات المصروفات.</li>
+              <li><a href="#g-ta">البيان العام</a> — يحتوي محارف تحكّم غير مرئية.</li>
+              <li>السطر ٤ — حساب مختار بلا مبلغ مدين أو دائن.</li>
+            </ol>
+          </div>
+        </div>
+        <div class="grid fields-3" style="margin-top:var(--space-14)">
+          <div class="field">
+            <label for="g-v1">مبلغ مدين</label>
+            <input class="ctl amt-input" id="g-v1" value="0.00" aria-invalid="true" aria-describedby="g-v1e">
+            <span class="field-error" id="g-v1e"><svg width="13" height="13"><use href="#i-warn"/></svg>المبلغ يجب أن يكون أكبر من صفر.</span>
+          </div>
+          <div class="field">
+            <label for="g-v2">رقم الحساب</label>
+            <input class="ctl" id="g-v2" dir="ltr" value="6120101" aria-describedby="g-v2e">
+            <span class="field-ok" id="g-v2e"><svg width="13" height="13"><use href="#i-check"/></svg>حساب تفصيلي قابل للترحيل.</span>
+          </div>
+          <div class="field">
+            <label for="g-v3">اسم المورّد</label>
+            <input class="ctl" id="g-v3" value="شركة التقنية" data-guard-invisible="g-v3e">
+            <span class="field-error" id="g-v3e" hidden></span>
+            <span class="hint">حارس المحارف غير المرئية يعمل على هذا الحقل — الصق فيه نصّاً من متصفّح لتجربته.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="demo">
+        <div class="demo-hd">الملاحظات داخل البطاقات <code>.note</code></div>
+        <div class="demo-grid">
+          <div class="note note-muted"><svg width="14" height="14"><use href="#i-lock"/></svg>هذه اقتراحات فقط، يرجى مراجعتها قبل الترحيل.</div>
+          <div class="note note-info"><svg width="14" height="14"><use href="#i-info"/></svg>سيقوم النظام بإنشاء سطر ضريبة القيمة المضافة تلقائياً وفق إعدادات نوع الضريبة ونسبتها.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════ النوافذ والأدراج والقوائم ═════════════════ -->
+    <section class="sec" id="c-overlay">
+      <h2><span class="idx">١١</span>النوافذ والأدراج والقوائم</h2>
+      <div class="demo">
+        <div class="demo-hd">افتح المكوّنات الطبقية</div>
+        <div class="demo-row">
+          <button class="btn btn-primary" data-open-dialog="g-modal">معاينة القيد (نافذة)</button>
+          <button class="btn" data-open-dialog="g-confirm">تأكيد حذف (نافذة صغيرة)</button>
+          <button class="btn" data-open-dialog="g-drawer">تفاصيل الحساب (درج)</button>
+          <span class="rowmenu" style="display:inline-grid">
+            <button class="btn" data-menu-trigger="g-menu" aria-haspopup="true" aria-expanded="false">قائمة إجراءات<svg width="14" height="14"><use href="#i-down"/></svg></button>
+            <div class="menu" id="g-menu" data-menu style="top:44px">
+              <button type="button"><svg width="14" height="14"><use href="#i-copy"/></svg>تكرار القيد</button>
+              <button type="button"><svg width="14" height="14"><use href="#i-print"/></svg>طباعة السند</button>
+              <hr>
+              <button type="button" class="danger"><svg width="14" height="14"><use href="#i-trash"/></svg>حذف المسودة</button>
+            </div>
+          </span>
+        </div>
+        <p class="demo-note">
+          كل نافذة تحبس التركيز داخلها، وتُغلق بـ <kbd>Esc</kbd> أو بالنقر على التعتيم، وتُعيد التركيز
+          إلى الزر الذي فتحها. الدرج ينزلق من <strong>اليمين</strong> — من بداية السطر، لا من نهايته.
+        </p>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════ التبويبات والترقيم وفتات الخبز ════════════ -->
+    <section class="sec" id="c-nav">
+      <h2><span class="idx">١٢</span>التبويبات وفتات الخبز</h2>
+      <div class="demo">
+        <div class="demo-hd">فتات الخبز <code>.crumbs</code> — الفاصل «/» يبقى بين العناصر في RTL</div>
+        <nav class="crumbs" aria-label="مسار التنقّل">
+          <a href="#">الرئيسية</a><span class="sep">/</span>
+          <a href="#">الحسابات العامة</a><span class="sep">/</span>
+          <a href="#">القيود اليومية</a><span class="sep">/</span>
+          <span class="now">قيد جديد</span>
+        </nav>
+      </div>
+      <div class="card">
+        <div class="tabs" role="tablist">
+          <button class="tab" role="tab" aria-selected="true" aria-controls="gp1" id="gt1">تفاصيل القيد<span class="count">4</span></button>
+          <button class="tab" role="tab" aria-selected="false" aria-controls="gp2" id="gt2" tabindex="-1">معلومات إضافية</button>
+          <button class="tab" role="tab" aria-selected="false" aria-controls="gp3" id="gt3" tabindex="-1">ملاحظات</button>
+          <button class="tab" role="tab" aria-selected="false" aria-controls="gp4" id="gt4" tabindex="-1">سجل التدقيق<span class="count">12</span></button>
+        </div>
+        <div class="tabpanel" id="gp1" role="tabpanel" aria-labelledby="gt1">
+          <p style="margin:0;color:var(--color-text-muted);font-size:var(--font-size-sm)">
+            المحتوى الأول. تنقّل بين التبويبات بالسهمين — <kbd>←</kbd> و<kbd>→</kbd> — واتجاههما مقلوب
+            ليطابق قراءة العربية.
+          </p>
+        </div>
+        <div class="tabpanel" id="gp2" role="tabpanel" aria-labelledby="gt2" hidden>
+          <div class="grid fields-3">
+            <div class="field"><label>سعر الصرف</label><input class="ctl num" dir="ltr" value="1.0000" disabled></div>
+            <div class="field"><label>منشئ القيد</label><input class="ctl" value="مظفر العمري" disabled></div>
+            <div class="field"><label>المشروع الافتراضي</label><input class="ctl" value="مشروع أبراج بابل" disabled></div>
+          </div>
+        </div>
+        <div class="tabpanel" id="gp3" role="tabpanel" aria-labelledby="gt3" hidden>
+          <div class="field"><label for="gnotes">ملاحظات داخلية</label>
+            <textarea class="ctl" id="gnotes" placeholder="ملاحظات لا تظهر في التقارير الخارجية…"></textarea></div>
+        </div>
+        <div class="tabpanel" id="gp4" role="tabpanel" aria-labelledby="gt4" hidden>
+          <div class="empty empty--sm">
+            <span class="ico"><svg width="20" height="20"><use href="#i-inbox"/></svg></span>
+            <h3>لا سجلّ بعد</h3>
+            <p>يظهر سجل التدقيق بعد أول ترحيل.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════ فارغ · تحميل · خطأ ═══════════════════════ -->
+    <section class="sec" id="c-state">
+      <h2><span class="idx">١٣</span>الحالات الفارغة والتحميل والخطأ</h2>
+      <div class="demo-grid" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr))">
+        <div class="card">
+          <div class="empty">
+            <span class="ico"><svg width="26" height="26"><use href="#i-inbox"/></svg></span>
+            <h3>لا قيود في هذه الفترة</h3>
+            <p>لم يُرحَّل أي قيد على الفترة 05/2026 حتى الآن. ابدأ بقيد جديد أو استورد من ملف.</p>
+            <div class="actions">
+              <button class="btn btn-primary btn-sm"><svg width="14" height="14"><use href="#i-plus"/></svg>قيد جديد</button>
+              <button class="btn btn-sm">استيراد</button>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="empty errstate">
+            <span class="ico"><svg width="26" height="26"><use href="#i-warn"/></svg></span>
+            <h3>تعذّر تحميل ميزان المراجعة</h3>
+            <p>لم يستجب الخادم خلال المهلة. لم يتغيّر شيء في البيانات.</p>
+            <div class="actions"><button class="btn btn-sm"><svg width="14" height="14"><use href="#i-refresh"/></svg>أعد المحاولة</button></div>
+            <span class="code">TIMEOUT · req_01HXY7K3 · 30s</span>
+          </div>
+        </div>
+        <div class="card card-pad">
+          <div class="skel skel-title"></div>
+          <div class="skel skel-text w-90"></div>
+          <div class="skel skel-text w-75"></div>
+          <div class="skel skel-text w-40"></div>
+          <div class="demo-row" style="margin-top:var(--space-14)">
+            <span class="skel skel-chip"></span><span class="skel skel-chip"></span>
+          </div>
+          <p class="demo-note">هيكل تحميل لبطاقة.</p>
+        </div>
+      </div>
+
+      <div class="demo" style="margin-top:var(--space-12)">
+        <div class="demo-hd">هيكل تحميل لجدول — نفس عدد الأعمدة ونفس المحاذاة، فلا تقفز الصفحة</div>
+        <div class="tablewrap">
+          <table class="data">
+            <thead><tr>
+              <th class="start" style="min-width:130px">رقم القيد</th><th class="start" style="min-width:110px">التاريخ</th>
+              <th class="start" style="min-width:220px">البيان</th><th class="n" style="min-width:120px">مدين</th>
+              <th class="n" style="min-width:120px">دائن</th><th style="min-width:110px">الحالة</th>
+            </tr></thead>
+            <tbody>
+              <tr class="skel-row"><td><span class="skel skel-text w-75"></span></td><td><span class="skel skel-text w-60"></span></td><td><span class="skel skel-text w-90"></span></td><td><span class="skel skel-num"></span></td><td><span class="skel skel-num"></span></td><td><span class="skel skel-chip" style="height:20px;width:72px"></span></td></tr>
+              <tr class="skel-row"><td><span class="skel skel-text w-60"></span></td><td><span class="skel skel-text w-60"></span></td><td><span class="skel skel-text w-75"></span></td><td><span class="skel skel-num"></span></td><td><span class="skel skel-num"></span></td><td><span class="skel skel-chip" style="height:20px;width:72px"></span></td></tr>
+              <tr class="skel-row"><td><span class="skel skel-text w-75"></span></td><td><span class="skel skel-text w-60"></span></td><td><span class="skel skel-text w-60"></span></td><td><span class="skel skel-num"></span></td><td><span class="skel skel-num"></span></td><td><span class="skel skel-chip" style="height:20px;width:72px"></span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════ الإحصائيات وحالة التوازن ═════════════════════ -->
+    <section class="sec" id="c-stat">
+      <h2><span class="idx">١٤</span>الإحصائيات وحالة التوازن</h2>
+      <div class="summary">
+        <div class="state" data-ok="true">
+          <span class="ring"><svg width="22" height="22"><use href="#i-check"/></svg></span>
+          <span><span class="k">حالة القيد</span><br><span class="v">القيد متوازن</span></span>
+        </div>
+        <div class="stat v-debit"><div class="k">إجمالي المدين (ر.س)</div><div class="v" data-amount="11500">—</div><div class="s">أحد عشر ألفاً وخمسمائة ريال</div></div>
+        <div class="stat v-credit"><div class="k">إجمالي الدائن (ر.س)</div><div class="v" data-amount="11500">—</div><div class="s">أحد عشر ألفاً وخمسمائة ريال</div></div>
+        <div class="stat v-diff"><div class="k">الفرق (ر.س)</div><div class="v" data-amount="0" data-dash="false">—</div>
+          <div class="s ok"><svg width="13" height="13"><use href="#i-check"/></svg>متوازن</div></div>
+        <div class="stat v-tax"><div class="k">إجمالي الضريبة (ر.س)</div><div class="v" data-amount="1500">—</div><div class="s">ضريبة مدخلات 15%</div></div>
+      </div>
+      <div class="summary" style="margin-top:var(--space-12)">
+        <div class="state" data-ok="false">
+          <span class="ring"><svg width="22" height="22"><use href="#i-warn"/></svg></span>
+          <span><span class="k">حالة القيد</span><br><span class="v">القيد غير متوازن</span></span>
+        </div>
+        <div class="stat v-debit"><div class="k">إجمالي المدين (ر.س)</div><div class="v" data-amount="11500">—</div><div class="s">أحد عشر ألفاً وخمسمائة ريال</div></div>
+        <div class="stat v-credit"><div class="k">إجمالي الدائن (ر.س)</div><div class="v" data-amount="10000">—</div><div class="s">عشرة آلاف ريال</div></div>
+        <div class="stat v-diff off"><div class="k">الفرق (ر.س)</div><div class="v" data-amount="1500" data-dash="false">—</div>
+          <div class="s bad"><svg width="13" height="13"><use href="#i-warn"/></svg>غير متوازن</div></div>
+        <div class="stat v-tax"><div class="k">إجمالي الضريبة (ر.س)</div><div class="v" data-amount="0" data-dash="false">—</div><div class="s">لا توجد ضريبة على هذا القيد</div></div>
+      </div>
+      <p class="demo-note">
+        <strong>عدم التوازن تحذيرٌ لا خطأ أحمر</strong> — هذا قرار الشاشة المعتمدة: القيد الجاري تحريره
+        غير متوازن بطبيعته أثناء الكتابة، والأحمر يُدّخر للرفض الفعلي. الأحمر
+        (<code class="ltr">--color-danger</code>) لرفض الخادم والحذف والحقل المرفوض.
+      </p>
+    </section>
+
+    <!-- ═══════════════════════════ الإشعارات ════════════════════════════ -->
+    <section class="sec" id="c-toast">
+      <h2><span class="idx">١٥</span>الإشعارات العابرة</h2>
+      <div class="demo">
+        <div class="demo-hd">الدالة <code>SB.toast(msg, variant)</code> — تُكدَّس ولا تتراكب</div>
+        <div class="demo-row">
+          <button class="btn" onclick="SB.toast('تم تكرار السطر')">محايد</button>
+          <button class="btn" onclick="SB.toast('تم حفظ المسودة','success')">نجاح</button>
+          <button class="btn" onclick="SB.toast('لا يمكن حذف آخر سطر','warning')">تحذير</button>
+          <button class="btn" onclick="SB.toast('رفض الخادم الطلب','danger')">خطر</button>
+        </div>
+        <p class="demo-note">
+          الإشعار العابر <strong>للأفعال القابلة للتراجع والمعلومات غير الحرجة فقط</strong>.
+          نتيجة ترحيل أو رفض من قاعدة البيانات لا تُبلَّغ بإشعار يختفي بعد ثانيتين — بل بـ
+          <code class="ltr">.alert</code> يبقى.
+        </p>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════ الطباعة ══════════════════════════════ -->
+    <section class="sec" id="c-print">
+      <h2><span class="idx">١٦</span>الطباعة العربية</h2>
+      <p class="lede">
+        الطباعة العربية تنكسر روتينياً: رأس الجدول لا يتكرّر، والخلفيات الملوّنة تُحذف فيضيع تمييز
+        المدين عن الدائن، والأرقام تتبعثر داخل الفقرة، وخط الويب لا يُحمَّل في المعاينة.
+        <code class="ltr">components/print.css</code> يعالج الأربعة.
+      </p>
+      <div class="demo">
+        <div class="demo-row">
+          <a class="btn btn-primary" href="components/voucher.html"><svg width="15" height="15"><use href="#i-print"/></svg>افتح سند القيد القابل للطباعة</a>
+          <a class="btn" href="screens/trial-balance.html">شاشة ميزان المراجعة</a>
+          <a class="btn" href="README.md">دليل القواعد العربية</a>
+        </div>
+        <p class="demo-note">
+          افتح السند ثم اطبعه (<kbd>Ctrl/Cmd</kbd>+<kbd>P</kbd>) لترى ورقة الطباعة تعمل:
+          الترويسة الرسمية، وتكرار رأس الجدول، والتفقيط، وخانات التوقيع، وبصمة القيد في التذييل،
+          وختم «مسودة» المائل حين تكون الحالة مسودة.
+        </p>
+      </div>
+    </section>
+
+    <p style="margin:var(--space-32) 0 0;padding-top:var(--space-18);border-top:1px solid var(--color-border);color:var(--color-text-subtle);font-size:var(--font-size-hint);line-height:var(--line-relaxed)">
+      نظام تصميم سلاسل بابل — مستخرَج من شاشة القيد اليومية المعتمدة.
+      الرموز في <code class="ltr">design/tokens/</code>، والمكوّنات في <code class="ltr">design/components/</code>،
+      والقواعد في <code class="ltr">design/README.md</code>.
+      الأرقام والحسابات في هذه الصفحة بيانات توضيحية.
+    </p>
+  </main>
+</div>
+
+<!-- ═══════════════════════ الطبقات: نوافذ وأدراج ═══════════════════════ -->
+<div class="overlay" id="g-modal">
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="g-modal-t">
+    <div class="sheet-hd">
+      <h2 id="g-modal-t">معاينة القيد قبل الترحيل</h2>
+      <button class="iconbtn spacer" data-close-dialog="g-modal" aria-label="إغلاق"><svg width="18" height="18"><use href="#i-x"/></svg></button>
+    </div>
+    <div class="sheet-bd">
+      <div class="kv">
+        <div><div class="k">رقم القيد</div><div class="v num" dir="ltr">JV-2026-00125</div></div>
+        <div><div class="k">التاريخ</div><div class="v num" dir="ltr">2026/05/24</div></div>
+        <div><div class="k">النوع</div><div class="v">قيد مصروفات</div></div>
+        <div><div class="k">الفرع</div><div class="v">الفرع الرئيسي — الرياض</div></div>
+        <div style="grid-column:1/-1"><div class="k">البيان العام</div><div class="v">مصروف خدمات تقنية عن الفترة 05/2026 شامل ضريبة القيمة المضافة 15%</div></div>
+      </div>
+      <table class="pv">
+        <thead><tr><th>الحساب</th><th>البيان</th><th class="n">مدين</th><th class="n">دائن</th><th>مركز التكلفة</th></tr></thead>
+        <tbody>
+          <tr><td>6120101 - مصروف خدمات تقنية</td><td>مصروف خدمات تقنية</td><td class="n d"><span class="amt" data-amount="10000">—</span></td><td class="n c"><span class="amt amt--zero">–</span></td><td>إدارة تقنية المعلومات</td></tr>
+          <tr><td>121201 - ضريبة القيمة المضافة - مدخلات</td><td>ضريبة القيمة المضافة</td><td class="n d"><span class="amt" data-amount="1500">—</span></td><td class="n c"><span class="amt amt--zero">–</span></td><td>إدارة مالية</td></tr>
+          <tr><td>2010101 - الدائنون / شركة التقنية</td><td>شركة التقنية</td><td class="n d"><span class="amt amt--zero">–</span></td><td class="n c"><span class="amt" data-amount="11500">—</span></td><td>—</td></tr>
+        </tbody>
+        <tfoot><tr><td colspan="2">الإجمالي</td><td class="n d"><span class="amt amt--total" data-amount="11500">—</span></td><td class="n c"><span class="amt amt--total" data-amount="11500">—</span></td><td></td></tr></tfoot>
+      </table>
+      <p style="margin:var(--space-16) 0 0;font-size:var(--font-size-xs);color:var(--color-text-subtle);line-height:var(--line-relaxed)">
+        المدين: أحد عشر ألفاً وخمسمائة ريال<br>الدائن: أحد عشر ألفاً وخمسمائة ريال
+      </p>
+    </div>
+    <div class="sheet-ft">
+      <button class="btn btn-primary"><svg width="15" height="15"><use href="#i-lock"/></svg>ترحيل القيد</button>
+      <button class="btn" data-close-dialog="g-modal">رجوع</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="g-confirm">
+  <div class="sheet sheet--sm" role="alertdialog" aria-modal="true" aria-labelledby="g-confirm-t" aria-describedby="g-confirm-d">
+    <div class="sheet-hd"><h2 id="g-confirm-t">حذف المسودة نهائياً؟</h2></div>
+    <div class="sheet-bd">
+      <p id="g-confirm-d" style="margin:0;color:var(--color-text-muted);font-size:var(--font-size-sm);line-height:var(--line-relaxed)">
+        ستُحذف المسودة <span class="ltr">JV-2026-00126</span> وسطورها الأربعة. هذا الإجراء لا يمكن التراجع عنه.
+        <strong>القيود المرحَّلة لا تُحذف أبداً</strong> — تُعكس بقيد مقابل.
+      </p>
+    </div>
+    <div class="sheet-ft">
+      <button class="btn btn-danger"><svg width="15" height="15"><use href="#i-trash"/></svg>نعم، احذف</button>
+      <button class="btn" data-close-dialog="g-confirm">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<div class="drawer" id="g-drawer" role="dialog" aria-modal="true" aria-labelledby="g-drawer-t">
+  <div class="drawer-hd">
+    <h2 id="g-drawer-t">6120101 — مصروف خدمات تقنية</h2>
+    <button class="iconbtn spacer" data-close-dialog="g-drawer" aria-label="إغلاق"><svg width="18" height="18"><use href="#i-x"/></svg></button>
+  </div>
+  <div class="drawer-bd">
+    <div class="demo-row"><span class="pill pill--debit">طبيعته مدينة</span><span class="pill pill--posted">نشط</span><span class="pill pill--info">قابل للترحيل</span></div>
+    <div class="kv" style="grid-template-columns:repeat(2,1fr);margin:0">
+      <div><div class="k">التصنيف</div><div class="v">مصروفات تشغيلية</div></div>
+      <div><div class="k">الحساب الأب</div><div class="v">61201 — مصروفات تقنية</div></div>
+      <div><div class="k">الرصيد الحالي</div><div class="v"><span class="amt amt--debit" data-amount="184300">—</span></div></div>
+      <div><div class="k">آخر حركة</div><div class="v num" dir="ltr">2026/05/24</div></div>
+    </div>
+    <div class="card card-pad">
+      <div class="card-hd"><span class="ico"><svg width="14" height="14"><use href="#i-book"/></svg></span>آخر ٣ حركات</div>
+      <table class="pv">
+        <thead><tr><th>التاريخ</th><th>القيد</th><th class="n">مدين</th><th class="n">دائن</th></tr></thead>
+        <tbody>
+          <tr><td><span class="ltr">2026/05/24</span></td><td><span class="ltr">JV-2026-00125</span></td><td class="n d"><span class="amt" data-amount="10000">—</span></td><td class="n"><span class="amt amt--zero">–</span></td></tr>
+          <tr><td><span class="ltr">2026/04/24</span></td><td><span class="ltr">JV-2026-00098</span></td><td class="n d"><span class="amt" data-amount="10000">—</span></td><td class="n"><span class="amt amt--zero">–</span></td></tr>
+          <tr><td><span class="ltr">2026/03/24</span></td><td><span class="ltr">JV-2026-00071</span></td><td class="n d"><span class="amt" data-amount="10000">—</span></td><td class="n"><span class="amt amt--zero">–</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="drawer-ft">
+    <button class="btn btn-primary">فتح دفتر الأستاذ</button>
+    <button class="btn" data-close-dialog="g-drawer">إغلاق</button>
+  </div>
+</div>
+
+<div class="toasts"></div>
+
+<script src="components/behaviors.js" defer></script>
+<script>
+/* ── توليد لوحات الرموز من قيم CSS الحيّة — بلا نسخ ولا انحراف ──────────── */
+document.addEventListener("DOMContentLoaded", function () {
+  var root = document.documentElement;
+
+  var CORE = [
+    ["--bg","خلفية الصفحة"],["--surface","سطح البطاقة"],["--surface-2","سطح مرتفع"],["--surface-3","سطح غائر / رأس جدول"],
+    ["--border","حدّ عادي"],["--border-2","حدّ حقل"],
+    ["--text","نص أساسي"],["--text-2","نص ثانوي"],["--text-3","نص خافت"],
+    ["--brand","العلامة"],["--brand-ink","العلامة عند التمرير"],["--brand-soft","خلفية العلامة"],
+    ["--debit","المدين"],["--debit-soft","خلفية المدين"],
+    ["--credit","الدائن"],["--credit-soft","خلفية الدائن"],
+    ["--good","نجاح"],["--good-soft","خلفية النجاح"],["--good-line","حدّ النجاح"],
+    ["--warn","تحذير"],["--warn-soft","خلفية التحذير"],["--warn-line","حدّ التحذير"],
+    ["--ai","المساعد الذكي"],["--ai-soft","خلفية المساعد"],["--ai-line","حدّ المساعد"],
+    ["--req","خطر / حقل إلزامي"]
+  ];
+  var SEM = [
+    ["--color-debit","المدين"],["--color-credit","الدائن"],
+    ["--color-danger","خطر ورفض"],["--color-success","نجاح"],["--color-warning","تحذير"],["--color-info","معلومة"],
+    ["--color-posted","مُرحَّل"],["--color-draft","مسودة"],["--color-reversed","معكوس"],
+    ["--color-pending","بانتظار الاعتماد"],["--color-rejected","مرفوض"],["--color-archived","مؤرشف"],
+    ["--color-balanced","متوازن"],["--color-unbalanced","غير متوازن"],
+    ["--color-amount","مبلغ عادي"],["--color-amount-zero","مبلغ صفري"],["--color-amount-negative","مبلغ سالب"],
+    ["--color-required","حقل إلزامي"],["--color-primary","الفعل الرئيسي"],["--color-focus","حلقة التركيز"]
+  ];
+
+  /* نقرأ قيم السمتين بضبط data-theme مؤقتاً قبل أي رسم — بلا وميض */
+  function readAll(names) {
+    var saved = root.getAttribute("data-theme");
+    var out = {};
+    ["light","dark"].forEach(function (mode) {
+      root.setAttribute("data-theme", mode);
+      var cs = getComputedStyle(root);
+      names.forEach(function (n) {
+        out[n] = out[n] || {};
+        out[n][mode] = cs.getPropertyValue(n[0]).trim();
+      });
+    });
+    if (saved) root.setAttribute("data-theme", saved); else root.removeAttribute("data-theme");
+    return out;
+  }
+
+  function paint(hostId, list) {
+    var host = document.getElementById(hostId);
+    if (!host) return;
+    var vals = readAll(list);
+    host.innerHTML = list.map(function (t) {
+      var v = vals[t] || {};
+      return '<div class="sw">'
+        + '<span class="chip" style="background:var(' + t[0] + ')"></span>'
+        + '<span class="body">'
+        + '<span class="name">' + t[0] + '</span>'
+        + '<span class="role">' + t[1] + '</span>'
+        + '<span class="vals"><b>فاتح</b> ' + (v.light || "—") + '</span>'
+        + '<span class="vals"><b>داكن</b> ' + (v.dark || "—") + '</span>'
+        + '</span></div>';
+    }).join("");
+  }
+  paint("sw-core", CORE);
+  paint("sw-sem", SEM);
+
+  /* سلّم الخط */
+  var TYPE = [
+    ["--font-size-3xs","11.5px · تلميح"],["--font-size-2xs","12px · عنوان عمود"],
+    ["--font-size-xs","12.5px · تسمية حقل"],["--font-size-sm","13px · خلية جدول"],
+    ["--font-size-md","13.5px · زر وتبويب"],["--font-size-base","14px · نص الواجهة"],
+    ["--font-size-lg","14.5px · عنوان بطاقة"],["--font-size-xl","15px · نص طويل"],
+    ["--font-size-2xl","16px · عنوان نافذة"],["--font-size-3xl","17px · عنوان قسم"],
+    ["--font-size-4xl","19px · قيمة حالة"],["--font-size-5xl","21px · عنوان صفحة"],
+    ["--font-size-6xl","23px · قيمة إحصائية"]
+  ];
+  var ts = document.getElementById("typescale");
+  if (ts) ts.innerHTML = TYPE.map(function (t) {
+    return '<div class="typerow"><span class="tag">' + t[0] + '</span>'
+      + '<span style="font-size:var(' + t[0] + ');font-weight:600">قيد يومية متوازن</span>'
+      + '<span style="font-size:var(' + t[0] + ');font-variant-numeric:tabular-nums;direction:ltr;unicode-bidi:isolate">1,234,567.89</span>'
+      + '<span class="tag" style="min-width:0">' + t[1] + '</span></div>';
+  }).join("");
+
+  /* سلّم المسافات */
+  var SPACE = [2,4,6,8,10,12,14,16,18,20,24,32,48,64];
+  var ss = document.getElementById("spacescale");
+  if (ss) ss.innerHTML = SPACE.map(function (n) {
+    return '<div class="spacerow"><span class="tag">--space-' + n + '</span>'
+      + '<span class="bar" style="width:' + n + 'px"></span>'
+      + '<span class="tag" style="min-width:0">' + n + 'px</span></div>';
+  }).join("");
+});
+</script>
+</body>
+</html>

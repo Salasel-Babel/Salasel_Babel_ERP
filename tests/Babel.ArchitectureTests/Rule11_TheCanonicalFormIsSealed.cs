@@ -1,5 +1,8 @@
 using System.Reflection;
+using System.Text;
 using Babel.ArchitectureTests.Support;
+using Babel.Canonicalization;
+using Babel.Canonicalization.Schemas;
 using NetArchTest.Rules;
 using ArchTestResult = NetArchTest.Rules.TestResult;
 using Xunit;
@@ -115,23 +118,219 @@ public sealed class Rule11_TheCanonicalFormIsSealed
             RepositoryLayout.Root, "src", ModuleMap.Canonicalization, "CanonicalRuntime.cs"));
         Assert.Contains("Normalize", source, StringComparison.Ordinal);
 
-        // والحارس مُستدعى فعلاً من المُوحِّد نفسه، لا معرَّفاً وغير مستعمل.
-        string canonicaliser = File.ReadAllText(Path.Combine(
-            RepositoryLayout.Root, "src", ModuleMap.Canonicalization, "Canonicalizer.cs"));
-        Assert.Contains("CanonicalRuntime.EnsureSupported()", canonicaliser, StringComparison.Ordinal);
+        // والحارس مُستدعى فعلاً من **كل** مُوحِّد، لا معرَّفاً وغير مستعمل، ولا
+        // مُستدعىً من الأول وحده: إصدار يفوته الحارس يُنتج بصمات خاطئة بصمت في
+        // وضع العولمة الثابتة، وهو ما تُنتجه صور Docker النحيفة افتراضياً.
+        List<string> unguarded = [.. CanonicaliserSources()
+            .Where(static entry => !entry.Source.Contains("CanonicalRuntime.EnsureSupported()", StringComparison.Ordinal))
+            .Select(static entry => entry.Version)];
+
+        Assert.True(unguarded.Count == 0,
+            "مُوحِّد بلا حارس العولمة الثابتة (SPEC §8.2): " + string.Join(", ", unguarded));
     }
 
-    [Fact]
-    public void TheChainLinkIsInsideTheHashedBytesAndCannotBeForgotten()
+    /// <summary>
+    /// ملفات مصدر كل تنفيذ لـ<see cref="ICanonicalizer"/> في المكتبة، مقرونة بإصداره.
+    /// الاكتشاف بالانعكاس لا بقائمة مكتوبة: قائمة مكتوبة تنسى الإصدار القادم.
+    /// </summary>
+    private static IEnumerable<(string Version, string Source)> CanonicaliserSources()
     {
-        // ADR-0007: chain_seq و prev_hash يُكتبان في ترويسة البايتات، لا في عمود مجاور.
-        // الإنفاذ بنيوي: مستند غير مرتبط بموقع في السلسلة لا يُنتج بايتات إطلاقاً.
-        string canonicaliser = File.ReadAllText(Path.Combine(
-            RepositoryLayout.Root, "src", ModuleMap.Canonicalization, "Canonicalizer.cs"));
+        List<Type> implementations = [.. BabelAssemblies.TypesOf(Library)
+            .Where(static type => typeof(ICanonicalizer).IsAssignableFrom(type))
+            .Where(static type => type is { IsInterface: false, IsAbstract: false })];
 
-        Assert.Contains("\"chain_seq\"", canonicaliser, StringComparison.Ordinal);
-        Assert.Contains("\"prev_hash\"", canonicaliser, StringComparison.Ordinal);
-        Assert.Contains("DocumentUnbound", canonicaliser, StringComparison.Ordinal);
+        Assert.NotEmpty(implementations);
+
+        foreach (Type type in implementations)
+        {
+            string path = Path.Combine(
+                RepositoryLayout.Root, "src", ModuleMap.Canonicalization, type.Name + ".cs");
+
+            // ‏CanonicalizerV1 يعيش داخل Canonicalizer.cs بحكم كونه الأصل المجمَّد.
+            if (!File.Exists(path) && type.Name == "CanonicalizerV1")
+            {
+                path = Path.Combine(RepositoryLayout.Root, "src", ModuleMap.Canonicalization, "Canonicalizer.cs");
+            }
+
+            Assert.True(File.Exists(path),
+                $"لا ملف مصدر باسم {type.Name} — كل مُوحِّد يعيش في ملفه كي يُفحص ويُجمَّد وحده.");
+
+            yield return (type.Name, File.ReadAllText(path));
+        }
+    }
+
+    /// <summary>أصغر مستند صالح لكل إصدار — لفحص الترويسة السلكية وحدها.</summary>
+    private static CanonicalDocument SmallestDocumentFor(string version)
+    {
+        CanonicalSchema schema = version == "v1" ? JournalEntrySchema.V1 : JournalEntrySchema.V2;
+        CanonicalDocumentBuilder builder = schema.NewDocument();
+
+        foreach (SchemaField field in schema.Fields)
+        {
+            if (field.IsGroup)
+            {
+                builder.SetGroup(field.Name, []);
+                continue;
+            }
+
+            builder.Set(field.Name, field.Kind switch
+            {
+                CanonicalKind.Text => CanonicalValue.Text("x"),
+                CanonicalKind.Integer => CanonicalValue.Integer(1),
+                CanonicalKind.Amount => CanonicalValue.Amount(0m),
+                CanonicalKind.Rate => CanonicalValue.Rate(1m),
+                CanonicalKind.Instant => CanonicalValue.Instant(
+                    new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)),
+                CanonicalKind.Date => CanonicalValue.Date(new DateOnly(2026, 1, 1)),
+                CanonicalKind.Uuid => CanonicalValue.Uuid(Guid.Empty),
+                CanonicalKind.Bool => CanonicalValue.Bool(false),
+                CanonicalKind.Bytes => CanonicalValue.Bytes([]),
+                CanonicalKind.Token => CanonicalValue.Token("X"),
+                _ => CanonicalValue.Null(),
+            });
+        }
+
+        return builder.Build();
+    }
+
+    /// <summary>
+    /// ADR-0007: <c>chain_seq</c> و<c>prev_hash</c> يُكتبان في ترويسة البايتات، لا في
+    /// عمود مجاور، ومستند غير مرتبط بموقع في السلسلة لا يُنتج بايتات إطلاقاً.
+    ///
+    /// <para>
+    /// <b>والفحص على كل مُوحِّد، لا على ملف بعينه.</b> النسخة الأولى كانت تقرأ
+    /// <c>Canonicalizer.cs</c> وحده؛ ولمّا وُلد <c>CanonicalizerV2</c> في ملفه لكان
+    /// إصداراً كاملاً يمرّ بلا فحص. الاكتشاف بالانعكاس على <see cref="ICanonicalizer"/>
+    /// يجعل كل إصدار قادم مشمولاً <b>بالبناء</b>: يكفي أن يوجد التنفيذ ليُفحص.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void EveryCanonicaliserPutsTheChainLinkInsideTheHashedBytes()
+    {
+        List<string> violations = [];
+
+        foreach ((string version, string source) in CanonicaliserSources())
+        {
+            if (!source.Contains("\"chain_seq\"", StringComparison.Ordinal))
+                violations.Add($"{version}: لا يكتب سطر chain_seq");
+            if (!source.Contains("\"prev_hash\"", StringComparison.Ordinal))
+                violations.Add($"{version}: لا يكتب سطر prev_hash");
+            if (!source.Contains("DocumentUnbound", StringComparison.Ordinal))
+                violations.Add($"{version}: لا يرفض المستند غير المرتبط بالسلسلة");
+        }
+
+        Assert.True(violations.Count == 0,
+            "مُوحِّد يُنتج بايتات بلا رابط سلسلة داخلها — السلسلة تصير زخرفية (ADR-0007 · فخ-22):\n"
+            + string.Join("\n", violations));
+    }
+
+    /// <summary>
+    /// <b>لكل إصدار ترويسته السلكية، ولا إصدارين يتقاسمان ترويسة.</b>
+    /// ترويسة مشتركة تعني أن بايتات إصدارين قد تتطابق حرفاً بحرف لمستند واحد،
+    /// فيصير عمود <c>canon_version</c> هو الفارق الوحيد — وهو عمود يُعاد كتابته.
+    /// </summary>
+    [Fact]
+    public void EveryRegisteredVersionHasItsOwnWireHeader()
+    {
+        List<string> headers = [];
+
+        foreach (string version in CanonRegistry.Versions)
+        {
+            ICanonicalizer canonicaliser = CanonRegistry.Resolve(version);
+            Assert.Equal(version, canonicaliser.Version);
+
+            CanonicalDocument document = SmallestDocumentFor(version).Bind(1, new byte[32]);
+            string first = Encoding.UTF8.GetString(canonicaliser.Canonicalize(document)).Split('\n')[0];
+
+            Assert.Equal("babel.canon/" + version, first);
+            headers.Add(first);
+        }
+
+        Assert.Equal(headers.Count, headers.Distinct(StringComparer.Ordinal).Count());
+    }
+
+    /// <summary>
+    /// <b>لا إصدار بلا مجموعة متجهات مُودَعة.</b> النسخة الأولى كانت تثبّت اسم ملف
+    /// v1 حرفياً؛ فحصٌ كهذا يبارك إصداراً ثانياً بلا متجهات إطلاقاً. هنا يُشتقّ
+    /// المطلوب من <b>سجلّ الإصدارات نفسه</b>: كل إصدار مسجَّل يلزمه ملفه، فإضافة v3
+    /// بلا متجهات تُسقط البناء يوم تُسجَّل، لا بعد مليون قيد.
+    /// </summary>
+    [Fact]
+    public void EveryRegisteredVersionHasItsOwnCommittedGoldenVectorFile()
+    {
+        List<string> missing = [];
+
+        foreach (string version in CanonRegistry.Versions)
+        {
+            string golden = Path.Combine(
+                RepositoryLayout.Root, "tests", "golden", $"golden-vectors.{version}.json");
+
+            if (!File.Exists(golden))
+            {
+                missing.Add($"{version}: {golden} غير موجود");
+                continue;
+            }
+
+            if (new FileInfo(golden).Length <= 4096)
+            {
+                missing.Add($"{version}: الملف أصغر من أن يكون تثبيتاً حقيقياً");
+                continue;
+            }
+
+            string content = File.ReadAllText(golden);
+            if (!content.Contains($"\"canon_version\": \"{version}\"", StringComparison.Ordinal))
+                missing.Add($"{version}: الملف لا يعلن إصداره");
+            if (!content.Contains($"\"wire_magic\": \"babel.canon/{version}\"", StringComparison.Ordinal))
+                missing.Add($"{version}: الملف لا يعلن ترويسته السلكية");
+            if (!content.Contains("\"manifest_sha256\"", StringComparison.Ordinal))
+                missing.Add($"{version}: الملف بلا بصمة بيان");
+        }
+
+        Assert.True(missing.Count == 0,
+            "إصدار مسجَّل بلا مجموعة متجهات ذهبية مُودَعة — الشكل القانوني غير مختوم:\n"
+            + string.Join("\n", missing));
+    }
+
+    /// <summary>
+    /// <b>‏v1 مجمَّد بقيمه الحرفية.</b> بصمة مخطّطه وبصمة بيان متجهاته وعددها مكتوبة
+    /// هنا نصّاً. أي تعديل على v1 — إضافة حقل، أو إخراج اسم من مجموعة الاستثناء، أو
+    /// إعادة توليد ملفه — يُسقط هذا الاختبار قبل أن يصل إلى مراجعة.
+    /// </summary>
+    [Fact]
+    public void TheV1CanonicalFormIsFrozenAtItsCommittedFingerprintAndManifest()
+    {
+        Assert.Equal(
+            "99d4deac27f0eed12e111c5718fda2286df165d2b2ec957f554aafc11b858310",
+            JournalEntrySchema.V1.Fingerprint);
+
+        string golden = File.ReadAllText(Path.Combine(
+            RepositoryLayout.Root, "tests", "golden", "golden-vectors.v1.json"));
+
+        Assert.Contains(
+            "\"manifest_sha256\": \"7bd2c8e8b2da05c3ad4f5a0375c8605177884e5b5a57cd5db1ca651d94bcf856\"",
+            golden, StringComparison.Ordinal);
+        Assert.Contains("\"vector_count\": 97", golden, StringComparison.Ordinal);
+        Assert.Contains(JournalEntrySchema.V1.Fingerprint, golden, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// كل مخطّط مُعلن يحمل <b>مجموعة استثناء معلَّلة</b>، وكل استثناء فيه سبب مكتوب.
+    /// مجموعات الاستثناء الضمنية هي بالضبط ما تسقط عنده تنفيذات XMLDSig.
+    /// </summary>
+    [Fact]
+    public void EverySchemaCarriesAnExplicitlyReasonedExclusionSet()
+    {
+        foreach (CanonicalSchema schema in new[] { JournalEntrySchema.V1, JournalEntrySchema.V2 })
+        {
+            Assert.NotEmpty(schema.Exclusions);
+            Assert.All(schema.Exclusions, e => Assert.False(string.IsNullOrWhiteSpace(e.RationaleAr)));
+
+            // والبصمة تشمل الاستثناءات: مخطّطان يختلفان في الاستثناء وحده لا يجوز
+            // أن يحملا البصمة نفسها.
+            Assert.Equal(64, schema.Fingerprint.Length);
+        }
+
+        Assert.NotEqual(JournalEntrySchema.V1.Fingerprint, JournalEntrySchema.V2.Fingerprint);
     }
 
     [Fact]
@@ -150,5 +349,11 @@ public sealed class Rule11_TheCanonicalFormIsSealed
         Assert.Contains(BabelAssemblies.Product, assembly => assembly.GetName().Name == ModuleMap.Canonicalization);
         Assert.Contains(RepositoryLayout.SourceProjects, project => project.Name == ModuleMap.Canonicalization);
         Assert.True(BabelAssemblies.TypesOf(Library).Count() >= 20);
+
+        // ولو كان سجلّ الإصدارات فارغاً لمرّت قواعد «لكل إصدار ملفه» و«لكل إصدار
+        // ترويسته» فراغاً. الإصداران القائمان مذكوران هنا بالاسم.
+        Assert.Contains("v1", CanonRegistry.Versions);
+        Assert.Contains("v2", CanonRegistry.Versions);
+        Assert.True(CanonRegistry.Versions.Count >= 2);
     }
 }

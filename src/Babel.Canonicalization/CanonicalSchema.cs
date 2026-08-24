@@ -19,7 +19,17 @@ public enum ExclusionReason
     /// <summary>قياس عن بُعد: عنوان IP، وكيل المستخدم، معرّف الجلسة.</summary>
     Telemetry,
     /// <summary>عرض فقط: تنسيق، ألوان، ترتيب العرض، صور مصغّرة.</summary>
-    Presentation
+    Presentation,
+    /// <summary>
+    /// مفتاح بديل (surrogate) لا يحمل معنى محاسبياً: هوية الصفّ في قاعدة البيانات.
+    /// هوية السطر المحاسبية هي (القيد × رقم السطر)، وكلاهما مُجزَّأ.
+    /// </summary>
+    SurrogateKey,
+    /// <summary>
+    /// عمود مُكرَّر من موضع آخر <b>مُجزَّأ أصلاً</b> (شركة السطر مكرّرة من الرأس مثلاً).
+    /// تجزئته تخلق مصدرين للحقيقة نفسها، وتُوهم بتغطية لا يضيفها.
+    /// </summary>
+    DenormalisedDuplicate
 }
 
 /// <summary>حقل مستثنى صراحةً من التوحيد القياسي، مع سببه.</summary>
@@ -61,6 +71,24 @@ public sealed class CanonicalSchema
     public IReadOnlyList<ExcludedField> Exclusions { get; }
 
     /// <summary>
+    /// هل يفرض هذا المخطّط <b>ضبط الحقول الاختيارية صراحةً</b>؟
+    ///
+    /// <para>
+    /// في v1 كان الحقل الاختياري غير المضبوط يُملأ ضمناً بـ<c>Null</c>. أي أن
+    /// «نسيتُ ضبط <c>property_id</c>» و«‏<c>property_id</c> غائب فعلاً» يعطيان
+    /// <b>البايتات نفسها</b> — وهو تصادم بين خطأ برمجي وحقيقة مجالية، وأخطر ما
+    /// فيه أنه صامت: إضافة بُعد جديد إلى المخطّط ونسيان ضبطه في أحد مسارَي
+    /// البناء (الترحيل / إعادة التحقق) يمرّ بلا أثر.
+    /// </para>
+    /// <para>
+    /// في v2 يُرفع العلم: الغياب <b>يُرفض</b> بـ<c>CANON-DOC-OPTIONAL-NOT-SET</c>،
+    /// والغياب الحقيقي يُكتب <c>CanonicalValue.Null()</c> صراحةً. «لا قيم افتراضية
+    /// ضمنية» صارت تسري على الاختياري كما تسري على المطلوب.
+    /// </para>
+    /// </summary>
+    public bool RequireExplicitOptionals { get; }
+
+    /// <summary>
     /// بصمة SHA-256 على إعلان المخطّط نفسه (الأسماء والأنواع والترتيب والاستثناءات).
     /// اختبار ذهبي يثبّت هذه القيمة، فأي تعديل على المخطّط يُسقط البناء فوراً بدلاً
     /// من أن يُكتشف بعد مليون قيد.
@@ -73,10 +101,12 @@ public sealed class CanonicalSchema
         string kind,
         string canonVersion,
         IReadOnlyList<SchemaField> fields,
-        IReadOnlyList<ExcludedField> exclusions)
+        IReadOnlyList<ExcludedField> exclusions,
+        bool requireExplicitOptionals = false)
     {
         Kind = RequireName(kind, allowDots: true);
         CanonVersion = canonVersion;
+        RequireExplicitOptionals = requireExplicitOptionals;
         Fields = new ReadOnlyCollection<SchemaField>([.. fields]);
         Exclusions = new ReadOnlyCollection<ExcludedField>([.. exclusions]);
 
@@ -145,6 +175,12 @@ public sealed class CanonicalSchema
         }
         foreach (var e in Exclusions)
             sb.Append("excluded=").Append(e.Name).Append('|').Append(e.Reason).Append('\n');
+
+        // السطر التالي يُكتب **فقط** حين يكون العلم مرفوعاً. بصمة v1 حُسبت قبل
+        // وجود العلم أصلاً، وكتابته دائماً كانت ستحرّك بصمة مخطّط مجمّد — أي
+        // تعديلاً في v1 من باب خلفي. الغياب هنا هو «v1 كما هو» حرفياً.
+        if (RequireExplicitOptionals) sb.Append("explicit_optionals=true\n");
+
         sb.Append("end\n");
         return Convert.ToHexString(
             SHA256.HashData(new UTF8Encoding(false).GetBytes(sb.ToString()))).ToLowerInvariant();

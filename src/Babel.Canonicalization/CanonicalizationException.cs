@@ -33,6 +33,11 @@ public static class CanonErrors
     public const string AmountOutOfRange = "CANON-AMT-OUT-OF-RANGE";
     public const string AmountBadLiteral = "CANON-AMT-BAD-LITERAL";
 
+    // ---- أسعار الصرف / rates (v2 فما فوق) ----
+    public const string RateScaleExceeded = "CANON-RATE-SCALE-EXCEEDED";
+    public const string RateOutOfRange = "CANON-RATE-OUT-OF-RANGE";
+    public const string RateBadLiteral = "CANON-RATE-BAD-LITERAL";
+
     // ---- أوقات / instants ----
     public const string InstantKindUnspecified = "CANON-TS-KIND-UNSPECIFIED";
     public const string InstantOutOfRange = "CANON-TS-OUT-OF-RANGE";
@@ -50,6 +55,13 @@ public static class CanonErrors
     public const string SchemaExcludedField = "CANON-DOC-EXCLUDED-FIELD";
     public const string SchemaNestedGroup = "CANON-DOC-NESTED-GROUP";
     public const string DocumentUnbound = "CANON-DOC-UNBOUND";
+
+    /// <summary>
+    /// حقل اختياري لم يُضبط في مخطّط يفرض الضبط الصريح (v2 فما فوق).
+    /// الغياب لا يُستنتج غياباً: <c>CanonicalValue.Null()</c> يُكتب صراحةً.
+    /// </summary>
+    public const string DocumentOptionalNotSet = "CANON-DOC-OPTIONAL-NOT-SET";
+
     public const string DocumentTooManyItems = "CANON-DOC-TOO-MANY-ITEMS";
 
     // ---- سلسلة / chain ----

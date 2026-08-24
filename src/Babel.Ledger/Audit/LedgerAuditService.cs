@@ -162,20 +162,57 @@ public sealed class LedgerAuditService : IApplicationService
         return Result<IReadOnlyList<TrialBalanceRow>>.Success(rows);
     }
 
+    /// <summary>سطر قيد مقروءاً من التخزين، بكل عموده — لا بستّة منها.</summary>
+    private sealed record StoredLine(
+        int LineNo,
+        string AccountCode,
+        string RoleCode,
+        string Qualifier,
+        decimal Debit,
+        decimal Credit,
+        string Currency,
+        decimal FxRate,
+        decimal DebitCompany,
+        decimal CreditCompany,
+        string? BranchId,
+        string? CostCenterId,
+        string? ProjectId,
+        string? PropertyId,
+        string? UnitId,
+        string? WarehouseId,
+        string? BoqItemId,
+        string SubledgerKind,
+        string? SubledgerPartyId,
+        string Description,
+        string DescriptionAr);
+
+    /// <summary>
+    /// يقرأ السلسلة كاملة ويعيد بناء كل مستند <b>بمخطّط إصداره المخزَّن</b>.
+    /// <para>
+    /// وهذا هو موضع «التوزيع بالإصدار» عملياً: سجل كُتب تحت v1 يُعاد بناؤه بحقول
+    /// v1 بالضبط، وسجل v2 بحقول v2. سلسلة واحدة قد تحمل الاثنين — أول ترقية في
+    /// دفتر قائم تنتج ذلك حتماً — وإعادة بناء الكل بمخطّط واحد تكسر نصف السلسلة
+    /// بلا أن يتغيّر حرف في البيانات.
+    /// </para>
+    /// </summary>
     private async Task<List<ChainRecord>> ReadChainAsync(
         Guid companyId,
         string book,
         int fiscalYear,
         CancellationToken cancellationToken)
     {
-        Dictionary<Guid, List<(int LineNo, string Account, decimal Debit, decimal Credit, string? CostCenter, string Description)>> lines = new();
+        Dictionary<Guid, List<StoredLine>> lines = new();
 
         await using NpgsqlConnection connection =
             await _runtime.DataSource.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
 
         await using (NpgsqlCommand command = new(
             """
-            select l.entry_id, l.line_no, l.account_code, l.debit, l.credit, l.cost_center_id, l.description
+            select l.entry_id, l.line_no, l.account_code, l.role_code, l.qualifier,
+                   l.debit, l.credit, l.currency, l.fx_rate, l.debit_company, l.credit_company,
+                   l.branch_id, l.cost_center_id, l.project_id, l.property_id, l.unit_id,
+                   l.warehouse_id, l.boq_item_id, l.subledger_kind, l.subledger_party_id,
+                   l.description, l.description_ar
               from ledger.journal_line l
               join ledger.chain_link c on c.entry_id = l.entry_id
              where c.company_id = $1 and c.book_id = $2 and c.fiscal_year = $3
@@ -189,14 +226,34 @@ public sealed class LedgerAuditService : IApplicationService
             while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
             {
                 Guid entryId = reader.GetGuid(0);
-                if (!lines.TryGetValue(entryId, out var list))
+                if (!lines.TryGetValue(entryId, out List<StoredLine>? list))
                 {
                     list = [];
                     lines[entryId] = list;
                 }
 
-                list.Add((reader.GetInt32(1), reader.GetString(2), reader.GetDecimal(3), reader.GetDecimal(4),
-                    reader.IsDBNull(5) ? null : reader.GetString(5), reader.GetString(6)));
+                list.Add(new StoredLine(
+                    reader.GetInt32(1),
+                    reader.GetString(2),
+                    reader.GetString(3),
+                    reader.GetString(4),
+                    reader.GetDecimal(5),
+                    reader.GetDecimal(6),
+                    reader.GetString(7),
+                    reader.GetDecimal(8),
+                    reader.GetDecimal(9),
+                    reader.GetDecimal(10),
+                    reader.IsDBNull(11) ? null : reader.GetString(11),
+                    reader.IsDBNull(12) ? null : reader.GetString(12),
+                    reader.IsDBNull(13) ? null : reader.GetString(13),
+                    reader.IsDBNull(14) ? null : reader.GetString(14),
+                    reader.IsDBNull(15) ? null : reader.GetString(15),
+                    reader.IsDBNull(16) ? null : reader.GetString(16),
+                    reader.IsDBNull(17) ? null : reader.GetString(17),
+                    reader.GetString(18),
+                    reader.IsDBNull(19) ? null : reader.GetString(19),
+                    reader.GetString(20),
+                    reader.GetString(21)));
             }
         }
 
@@ -206,7 +263,10 @@ public sealed class LedgerAuditService : IApplicationService
             """
             select c.chain_seq, c.canon_version, c.prev_hash, c.entry_hash,
                    e.entry_id, e.entry_no, e.entry_date, e.posted_at, e.status, e.actor,
-                   e.memo, e.memo_ar, e.source_doc_type, e.source_doc_id, e.idempotency_key, e.currency
+                   e.memo, e.memo_ar, e.source_doc_type, e.source_doc_id, e.idempotency_key, e.currency,
+                   e.period_code, e.source_module, e.posting_trigger_code, e.posting_generation,
+                   e.event_code, e.reverses_entry_id, e.reversal_reason_ar, e.reversal_reason_en,
+                   e.closed_period_permission, e.closed_period_authoriser
               from ledger.chain_link c
               join ledger.journal_entry e on e.entry_id = c.entry_id
              where c.company_id = $1 and c.book_id = $2 and c.fiscal_year = $3
@@ -220,42 +280,118 @@ public sealed class LedgerAuditService : IApplicationService
         while (await chainReader.ReadAsync(cancellationToken).ConfigureAwait(false))
         {
             Guid entryId = chainReader.GetGuid(4);
-            CanonicalDocumentBuilder builder = JournalEntrySchema.V1.NewDocument();
-            builder.Set("tenant_id", CanonicalValue.Text(companyId.ToString("D", CultureInfo.InvariantCulture)));
-            builder.Set("book_id", CanonicalValue.Text(book));
-            builder.Set("fiscal_year", CanonicalValue.Integer(fiscalYear));
-            builder.Set("entry_id", CanonicalValue.Uuid(entryId));
-            builder.Set("entry_no", CanonicalValue.Integer(chainReader.GetInt64(5)));
-            builder.Set("entry_date", CanonicalValue.Date(chainReader.GetFieldValue<DateOnly>(6)));
-            builder.Set("posted_at", CanonicalValue.Instant(chainReader.GetFieldValue<DateTime>(7)));
-            builder.Set("status", CanonicalValue.Token(chainReader.GetString(8)));
-            builder.Set("actor", CanonicalValue.Text(chainReader.GetString(9)));
-            builder.Set("memo", CanonicalValue.Text(chainReader.GetString(10)));
-            builder.Set("memo_ar", CanonicalValue.Text(chainReader.GetString(11)));
-            builder.Set("source_ref", CanonicalValue.Text(chainReader.GetString(12) + "/" + chainReader.GetString(13)));
-            builder.Set("idempotency_key", CanonicalValue.Text(chainReader.GetString(14)));
-            builder.Set("currency", CanonicalValue.Token(chainReader.GetString(15)));
+            string canonVersion = chainReader.GetString(1);
+            List<StoredLine> entryLines = lines.TryGetValue(entryId, out List<StoredLine>? found) ? found : [];
 
-            builder.SetGroup("lines", lines[entryId].Select(static line => new Action<CanonicalItemBuilder>(item =>
-            {
-                item.Set("line_no", CanonicalValue.Integer(line.LineNo));
-                item.Set("account_code", CanonicalValue.Text(line.Account));
-                item.Set("debit", CanonicalValue.Amount(line.Debit));
-                item.Set("credit", CanonicalValue.Amount(line.Credit));
-                item.Set("cost_center", CanonicalValue.TextOrNull(line.CostCenter));
-                item.Set("description", CanonicalValue.Text(line.Description));
-            })));
+            CanonicalDocument document = canonVersion == CanonicalV2.Version
+                ? RebuildV2(companyId, book, fiscalYear, chainReader, entryLines)
+                : RebuildV1(companyId, book, fiscalYear, chainReader, entryLines);
 
             records.Add(new ChainRecord
             {
                 Sequence = chainReader.GetInt64(0),
-                CanonVersion = chainReader.GetString(1),
-                Document = builder.Build(),
+                CanonVersion = canonVersion,
+                Document = document,
                 StoredPreviousHash = chainReader.GetFieldValue<byte[]>(2),
                 StoredHash = chainReader.GetFieldValue<byte[]>(3),
             });
         }
 
         return records;
+    }
+
+    /// <summary>إعادة بناء مستند v2 من الحقيقة المجالية المخزَّنة.</summary>
+    private static CanonicalDocument RebuildV2(
+        Guid companyId, string book, int fiscalYear, NpgsqlDataReader row, List<StoredLine> entryLines)
+    {
+        CanonicalDocumentBuilder builder = JournalEntrySchema.V2.NewDocument();
+        builder.Set("tenant_id", CanonicalValue.Text(companyId.ToString("D", CultureInfo.InvariantCulture)));
+        builder.Set("book_id", CanonicalValue.Text(book));
+        builder.Set("fiscal_year", CanonicalValue.Integer(fiscalYear));
+        builder.Set("entry_id", CanonicalValue.Uuid(row.GetGuid(4)));
+        builder.Set("entry_no", CanonicalValue.Integer(row.GetInt64(5)));
+        builder.Set("entry_date", CanonicalValue.Date(row.GetFieldValue<DateOnly>(6)));
+        builder.Set("period_code", CanonicalValue.Text(row.GetString(16)));
+        builder.Set("posted_at", CanonicalValue.Instant(row.GetFieldValue<DateTime>(7)));
+        builder.Set("status", CanonicalValue.Token(row.GetString(8)));
+        builder.Set("reverses_entry_id", row.IsDBNull(21)
+            ? CanonicalValue.Null()
+            : CanonicalValue.Uuid(row.GetGuid(21)));
+        builder.Set("reversal_reason_ar", CanonicalValue.TextOrNull(row.IsDBNull(22) ? null : row.GetString(22)));
+        builder.Set("reversal_reason_en", CanonicalValue.TextOrNull(row.IsDBNull(23) ? null : row.GetString(23)));
+        builder.Set("source_module", CanonicalValue.Text(row.GetString(17)));
+        builder.Set("source_doc_type", CanonicalValue.Text(row.GetString(12)));
+        builder.Set("source_doc_id", CanonicalValue.Text(row.GetString(13)));
+        builder.Set("posting_trigger_code", CanonicalValue.Text(row.GetString(18)));
+        builder.Set("posting_generation", CanonicalValue.Integer(row.GetInt32(19)));
+        builder.Set("event_code", CanonicalValue.Text(row.GetString(20)));
+        builder.Set("idempotency_key", CanonicalValue.Text(row.GetString(14)));
+        builder.Set("currency", CanonicalValue.Token(row.GetString(15)));
+        builder.Set("actor", CanonicalValue.Text(row.GetString(9)));
+        builder.Set("closed_period_permission", CanonicalValue.TextOrNull(row.IsDBNull(24) ? null : row.GetString(24)));
+        builder.Set("closed_period_authoriser", CanonicalValue.TextOrNull(row.IsDBNull(25) ? null : row.GetString(25)));
+        builder.Set("memo", CanonicalValue.Text(row.GetString(10)));
+        builder.Set("memo_ar", CanonicalValue.Text(row.GetString(11)));
+
+        builder.SetGroup("lines", entryLines.Select(static line => new Action<CanonicalItemBuilder>(item =>
+        {
+            item.Set("line_no", CanonicalValue.Integer(line.LineNo));
+            item.Set("account_code", CanonicalValue.Text(line.AccountCode));
+            item.Set("role_code", CanonicalValue.Text(line.RoleCode));
+            item.Set("qualifier", CanonicalValue.Text(line.Qualifier));
+            item.Set("debit", CanonicalValue.Amount(line.Debit));
+            item.Set("credit", CanonicalValue.Amount(line.Credit));
+            item.Set("currency", CanonicalValue.Token(line.Currency));
+            item.Set("fx_rate", CanonicalValue.Rate(line.FxRate));
+            item.Set("debit_company", CanonicalValue.Amount(line.DebitCompany));
+            item.Set("credit_company", CanonicalValue.Amount(line.CreditCompany));
+            item.Set("branch_id", CanonicalValue.TextOrNull(line.BranchId));
+            item.Set("cost_center_id", CanonicalValue.TextOrNull(line.CostCenterId));
+            item.Set("project_id", CanonicalValue.TextOrNull(line.ProjectId));
+            item.Set("property_id", CanonicalValue.TextOrNull(line.PropertyId));
+            item.Set("unit_id", CanonicalValue.TextOrNull(line.UnitId));
+            item.Set("warehouse_id", CanonicalValue.TextOrNull(line.WarehouseId));
+            item.Set("boq_item_id", CanonicalValue.TextOrNull(line.BoqItemId));
+            item.Set("tax_code", CanonicalValue.Null());
+            item.Set("subledger_kind", CanonicalValue.Text(line.SubledgerKind));
+            item.Set("subledger_party_id", CanonicalValue.TextOrNull(line.SubledgerPartyId));
+            item.Set("description", CanonicalValue.Text(line.Description));
+            item.Set("description_ar", CanonicalValue.Text(line.DescriptionAr));
+        })));
+
+        return builder.Build();
+    }
+
+    /// <summary>إعادة بناء مستند v1 — <b>مجمَّد</b>، بحقول v1 وحدها.</summary>
+    private static CanonicalDocument RebuildV1(
+        Guid companyId, string book, int fiscalYear, NpgsqlDataReader row, List<StoredLine> entryLines)
+    {
+        CanonicalDocumentBuilder builder = JournalEntrySchema.V1.NewDocument();
+        builder.Set("tenant_id", CanonicalValue.Text(companyId.ToString("D", CultureInfo.InvariantCulture)));
+        builder.Set("book_id", CanonicalValue.Text(book));
+        builder.Set("fiscal_year", CanonicalValue.Integer(fiscalYear));
+        builder.Set("entry_id", CanonicalValue.Uuid(row.GetGuid(4)));
+        builder.Set("entry_no", CanonicalValue.Integer(row.GetInt64(5)));
+        builder.Set("entry_date", CanonicalValue.Date(row.GetFieldValue<DateOnly>(6)));
+        builder.Set("posted_at", CanonicalValue.Instant(row.GetFieldValue<DateTime>(7)));
+        builder.Set("status", CanonicalValue.Token(row.GetString(8)));
+        builder.Set("actor", CanonicalValue.Text(row.GetString(9)));
+        builder.Set("memo", CanonicalValue.Text(row.GetString(10)));
+        builder.Set("memo_ar", CanonicalValue.Text(row.GetString(11)));
+        builder.Set("source_ref", CanonicalValue.Text(row.GetString(12) + "/" + row.GetString(13)));
+        builder.Set("idempotency_key", CanonicalValue.Text(row.GetString(14)));
+        builder.Set("currency", CanonicalValue.Token(row.GetString(15)));
+
+        builder.SetGroup("lines", entryLines.Select(static line => new Action<CanonicalItemBuilder>(item =>
+        {
+            item.Set("line_no", CanonicalValue.Integer(line.LineNo));
+            item.Set("account_code", CanonicalValue.Text(line.AccountCode));
+            item.Set("debit", CanonicalValue.Amount(line.Debit));
+            item.Set("credit", CanonicalValue.Amount(line.Credit));
+            item.Set("cost_center", CanonicalValue.TextOrNull(line.CostCenterId));
+            item.Set("description", CanonicalValue.Text(line.Description));
+        })));
+
+        return builder.Build();
     }
 }

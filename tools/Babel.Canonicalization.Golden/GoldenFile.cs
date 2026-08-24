@@ -14,6 +14,41 @@ namespace Babel.Canonicalization.Golden;
 /// المكتبة. الملف الذهبي <b>وثيقة توقّع</b>، لا مُدخل للتجزئة. لا يجوز أبداً أن
 /// يقترب مُسلسِل JSON من البايتات القانونية.
 /// </summary>
+/// <summary>
+/// هوية مجموعة متجهات: أي إصدار، وأي ترويسة سلكية، وأي بصمة مخطّط، وأي ملف.
+/// <para>
+/// وجودها نوعاً مستقلاً هو ما يمنع الخطأ الصامت الوحيد المهمّ هنا: <b>فحص مجموعة
+/// إصدار بترويسة إصدار آخر</b>. بلا ذلك يكفي سهو في نداء واحد ليقارن ملف v2
+/// ببصمة مخطّط v1 ويمرّ.
+/// </para>
+/// </summary>
+public sealed record GoldenSetIdentity(
+    string CanonVersion,
+    string WireMagic,
+    string SchemaFingerprint,
+    string FileName)
+{
+    /// <summary>هوية مجموعة v1 — <b>مجمّدة</b>.</summary>
+    public static GoldenSetIdentity V1 { get; } = new(
+        Canonicalizer.CurrentVersion,
+        Canonicalizer.Magic,
+        JournalEntrySchema.V1.Fingerprint,
+        "golden-vectors.v1.json");
+
+    /// <summary>هوية مجموعة v2.</summary>
+    public static GoldenSetIdentity V2 { get; } = new(
+        CanonicalV2.Version,
+        CanonicalV2.Magic,
+        JournalEntrySchema.V2.Fingerprint,
+        "golden-vectors.v2.json");
+
+    /// <summary>كل المجموعات، بترتيب الإصدارات.</summary>
+    public static IReadOnlyList<GoldenSetIdentity> All { get; } = [V1, V2];
+
+    /// <summary>المتجهات التي تخصّ هذه الهوية.</summary>
+    public IReadOnlyList<GoldenVector> Vectors => CanonVersion == "v1" ? GoldenVectorSet.All : GoldenVectorSetV2.All;
+}
+
 public static class GoldenFile
 {
     private static readonly UTF8Encoding Utf8 = new(false);
@@ -25,8 +60,9 @@ public static class GoldenFile
     };
 
     /// <summary>يُنفّذ كل المتجهات ويبني وثيقة JSON.</summary>
-    public static string Emit(IReadOnlyList<GoldenVector> vectors)
+    public static string Emit(GoldenSetIdentity identity, IReadOnlyList<GoldenVector> vectors)
     {
+        ArgumentNullException.ThrowIfNull(identity);
         var array = new JsonArray();
         foreach (var v in vectors)
         {
@@ -58,10 +94,10 @@ public static class GoldenFile
         var root = new JsonObject
         {
             ["_"] = "متجهات ذهبية — لا تُحرَّر يدوياً. تُولَّد بـ --emit وتُفحص بـ --verify.",
-            ["canon_version"] = Canonicalizer.CurrentVersion,
-            ["wire_magic"] = Canonicalizer.Magic,
+            ["canon_version"] = identity.CanonVersion,
+            ["wire_magic"] = identity.WireMagic,
             ["schema_kind"] = JournalEntrySchema.Kind,
-            ["schema_fingerprint"] = JournalEntrySchema.V1.Fingerprint,
+            ["schema_fingerprint"] = identity.SchemaFingerprint,
             ["hash_algorithm"] = "SHA-256",
             ["encoding"] = "UTF-8 without BOM",
             ["vector_count"] = vectors.Count,
@@ -76,8 +112,10 @@ public static class GoldenFile
     public sealed record Drift(string Id, string Field, string Expected, string Actual);
 
     /// <summary>يقارن المُخرَج الحالي بالملف المخزَّن ويعيد كل الانحرافات.</summary>
-    public static IReadOnlyList<Drift> Verify(string storedJson, IReadOnlyList<GoldenVector> vectors)
+    public static IReadOnlyList<Drift> Verify(
+        GoldenSetIdentity identity, string storedJson, IReadOnlyList<GoldenVector> vectors)
     {
+        ArgumentNullException.ThrowIfNull(identity);
         var drifts = new List<Drift>();
         var root = JsonNode.Parse(storedJson)!.AsObject();
 
@@ -87,13 +125,21 @@ public static class GoldenFile
                 drifts.Add(new Drift(id, field, expected ?? "(none)", actual ?? "(none)"));
         }
 
-        Cmp("_meta", "canon_version", root["canon_version"]?.GetValue<string>(), Canonicalizer.CurrentVersion);
-        Cmp("_meta", "wire_magic", root["wire_magic"]?.GetValue<string>(), Canonicalizer.Magic);
+        Cmp("_meta", "canon_version", root["canon_version"]?.GetValue<string>(), identity.CanonVersion);
+        Cmp("_meta", "wire_magic", root["wire_magic"]?.GetValue<string>(), identity.WireMagic);
         Cmp("_meta", "schema_fingerprint", root["schema_fingerprint"]?.GetValue<string>(),
-            JournalEntrySchema.V1.Fingerprint);
+            identity.SchemaFingerprint);
         Cmp("_meta", "vector_count",
             root["vector_count"]?.GetValue<int>().ToString(CultureInfo.InvariantCulture),
             vectors.Count.ToString(CultureInfo.InvariantCulture));
+
+        // البصمة المُودَعة على مصفوفة المتجهات تُعاد حسابها من **الملف نفسه**:
+        // تحرير يدوي يغيّر متجهاً ويترك manifest_sha256 كما هو يُكشف هنا، لا عند
+        // أول ترحيل. (وإعادة الترتيب وحدها تكفي لتغيير البصمة.)
+        var storedManifest = root["manifest_sha256"]?.GetValue<string>();
+        var recomputedManifest = Convert.ToHexString(
+            SHA256.HashData(Utf8.GetBytes(root["vectors"]!.ToJsonString(Options)))).ToLowerInvariant();
+        Cmp("_meta", "manifest_sha256", storedManifest, recomputedManifest);
 
         var stored = root["vectors"]!.AsArray();
         var byId = new Dictionary<string, JsonObject>(StringComparer.Ordinal);

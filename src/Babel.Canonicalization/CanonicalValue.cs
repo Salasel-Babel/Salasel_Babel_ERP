@@ -11,6 +11,12 @@ public enum CanonicalKind
     Null,
     /// <summary><c>D</c> — مبلغ بمقياس 4.</summary>
     Amount,
+    /// <summary>
+    /// <c>R</c> — سعر صرف بمقياس 8، مطابق لـ<c>numeric(19,8)</c>.
+    /// <b>أُضيف في v2</b>: مخطّط v1 لا يُعلن أي حقل من هذا النوع، فلا تتحرّك بايتة
+    /// واحدة من بايتات v1 بوجوده.
+    /// </summary>
+    Rate,
     /// <summary><c>I</c> — عدد صحيح 64 بت.</summary>
     Integer,
     /// <summary><c>S</c> — لحظة UTC بدقّة الميكروثانية.</summary>
@@ -47,6 +53,7 @@ public abstract record CanonicalValue
         CanonicalKind.Text => 'T',
         CanonicalKind.Null => 'N',
         CanonicalKind.Amount => 'D',
+        CanonicalKind.Rate => 'R',
         CanonicalKind.Integer => 'I',
         CanonicalKind.Instant => 'S',
         CanonicalKind.Date => 'A',
@@ -93,8 +100,22 @@ public abstract record CanonicalValue
     public static CanonicalValue Amount(decimal value, string? field = null)
         => new AmountValue(Amounts.Require(value, field));
 
+    /// <summary>
+    /// سعر صرف. مقياس 8، ثقافة ثابتة، بلا صفر سالب. <b>v2 فما فوق</b>.
+    /// </summary>
+    public static CanonicalValue Rate(decimal value, string? field = null)
+        => new RateValue(Rates.Require(value, field));
+
+    /// <summary>سعر صرف أو غياب.</summary>
+    public static CanonicalValue RateOrNull(decimal? value, string? field = null)
+        => value is null ? NullValue.Instance : Rate(value.Value, field);
+
     /// <summary>عدد صحيح.</summary>
     public static CanonicalValue Integer(long value) => new IntegerValue(value);
+
+    /// <summary>عدد صحيح أو غياب.</summary>
+    public static CanonicalValue IntegerOrNull(long? value)
+        => value is null ? NullValue.Instance : new IntegerValue(value.Value);
 
     /// <summary>لحظة UTC مقصوصة إلى الميكروثانية.</summary>
     public static CanonicalValue Instant(DateTime value, string? field = null)
@@ -105,6 +126,10 @@ public abstract record CanonicalValue
 
     /// <summary>معرّف UUID.</summary>
     public static CanonicalValue Uuid(Guid value) => new UuidValue(value);
+
+    /// <summary>معرّف UUID أو غياب — رابط العكس مثلاً.</summary>
+    public static CanonicalValue UuidOrNull(Guid? value)
+        => value is null ? NullValue.Instance : new UuidValue(value.Value);
 
     /// <summary>قيمة منطقية.</summary>
     public static CanonicalValue Bool(bool value) => new BoolValue(value);
@@ -150,6 +175,12 @@ public abstract record CanonicalValue
     {
         public override CanonicalKind Kind => CanonicalKind.Amount;
         public override string Payload => Amounts.Render(Value);
+    }
+
+    internal sealed record RateValue(decimal Value) : CanonicalValue
+    {
+        public override CanonicalKind Kind => CanonicalKind.Rate;
+        public override string Payload => Rates.Render(Value);
     }
 
     internal sealed record IntegerValue(long Value) : CanonicalValue

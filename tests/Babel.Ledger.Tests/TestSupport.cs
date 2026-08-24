@@ -171,6 +171,48 @@ internal sealed class LedgerHarness
         }
     }
 
+    private static LedgerHarness? _v1;
+
+    /// <summary>
+    /// وصلة ثانية تكتب القيود بـ<b>الشكل القانوني v1</b>.
+    /// <para>
+    /// وجودها ليس ترفاً: إثبات أن الثغرة كانت حقيقية يقتضي <b>كتابة سلسلة v1
+    /// فعلية</b> والعبث بها وإظهار أن التحقق يقول «سليمة». ادّعاء ثغرة بلا سلسلة
+    /// تُظهرها ادّعاء، لا دليل. ومجمّع اتصالاتها صغير عمداً: مجمّع لكل اختبار هو
+    /// ما يُسقط PostgreSQL برمز 53300.
+    /// </para>
+    /// </summary>
+    public static async Task<LedgerHarness> CreateV1Async(CancellationToken cancellationToken = default)
+    {
+        if (_v1 is not null)
+        {
+            return _v1;
+        }
+
+        await Gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (_v1 is null)
+            {
+                await LedgerTestEnvironment.EnsureAsync(cancellationToken).ConfigureAwait(false);
+                _v1 = new LedgerHarness(new LedgerRuntime(new LedgerOptions
+                {
+                    OwnerConnectionString = LedgerTestEnvironment.Options.OwnerConnectionString,
+                    AppConnectionString = LedgerTestEnvironment.Options.AppConnectionString + ";Maximum Pool Size=5",
+                    AppRole = LedgerTestEnvironment.Options.AppRole,
+                    CompanyCurrency = LedgerTestEnvironment.Options.CompanyCurrency,
+                    CanonVersion = "v1",
+                }));
+            }
+
+            return _v1;
+        }
+        finally
+        {
+            Gate.Release();
+        }
+    }
+
     public static NpgsqlConnection OpenOwner()
     {
         NpgsqlConnection connection = new(LedgerTestEnvironment.Options.OwnerConnectionString);

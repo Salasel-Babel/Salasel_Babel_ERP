@@ -166,4 +166,42 @@ public sealed class MoneyOnTheWireTests
 
         Console.WriteLine($"صفوف مفحوصة: {rows.Length}");
     }
+
+    [Fact]
+    public async Task مجموعا_ميزان_المراجعة_يعبران_نصّاً_ويساويان_جمع_الصفوف_بالضبط()
+    {
+        ApiProcess api = await ApiFixture.DefaultAsync();
+
+        using HttpResponseMessage balance = await api.Call(Http.Request(
+            HttpMethod.Get,
+            Http.TrialBalance(ApiTestDatabase.CompanyA, ApiTestDatabase.Book),
+            ApiFixture.TokenA));
+
+        (string text, JsonElement trial) = await Http.BodyAsync(balance);
+        Assert.Equal(HttpStatusCode.OK, balance.StatusCode);
+
+        // المجموعان نصّان لا رمزان رقميان: الفاصلة العائمة الثنائية عند العميل هي
+        // الفخّ نفسه الذي بُني له شكل السلك.
+        JsonElement totalDebit = trial.GetProperty("totalDebit");
+        JsonElement totalCredit = trial.GetProperty("totalCredit");
+        Assert.Equal(JsonValueKind.String, totalDebit.ValueKind);
+        Assert.Equal(JsonValueKind.String, totalCredit.ValueKind);
+
+        JsonElement[] rows = [.. trial.GetProperty("rows").EnumerateArray()];
+        Assert.NotEmpty(rows);
+
+        // الجمع في الاختبار يقع بـdecimal — وهو ما لا يجوز أن يقع في السطح ولا في المتصفّح.
+        decimal sumDebit = rows.Sum(row => decimal.Parse(row.GetProperty("debit").GetString()!, CultureInfo.InvariantCulture));
+        decimal sumCredit = rows.Sum(row => decimal.Parse(row.GetProperty("credit").GetString()!, CultureInfo.InvariantCulture));
+
+        Assert.Equal(sumDebit.ToString("0.0000", CultureInfo.InvariantCulture), totalDebit.GetString());
+        Assert.Equal(sumCredit.ToString("0.0000", CultureInfo.InvariantCulture), totalCredit.GetString());
+
+        // وحكم التوازن يصل محسوماً — لا يُقارَن مبلغان في JavaScript.
+        Assert.Equal(JsonValueKind.True, trial.GetProperty("balanced").ValueKind);
+        Assert.Equal(sumDebit, sumCredit);
+
+        Console.WriteLine($"مدين {totalDebit.GetString()} · دائن {totalCredit.GetString()} · صفوف {rows.Length}");
+        Console.WriteLine(text.Length > 400 ? text[..400] + "…" : text);
+    }
 }

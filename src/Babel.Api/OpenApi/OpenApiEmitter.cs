@@ -99,9 +99,9 @@ internal static class OpenApiEmitter
             new(ApiRoutes.TrialBalance, "get", "readTrialBalance",
                 "ميزان المراجعة", "Trial balance",
                 "ميزان المراجعة مبنيّاً من سطور القيود غير القابلة للتعديل — لا من جدول الأرصدة. "
-                + "ولا يحمل مجموعاً: جمع عمود مالي حساب على المال، ولا يقع في طبقة HTTP.",
+                + "ويحمل مجموعَي المدين والدائن محسوبَين بـ sum() على numeric في الاستعلام نفسه، ومعهما حكم التوازن.",
                 "The trial balance built from the immutable journal lines — not from the balance table. "
-                + "It carries no totals: summing a monetary column is money arithmetic and does not happen in the HTTP layer.",
+                + "It carries the debit and credit totals computed by sum() over numeric in the same query, plus the balanced verdict.",
                 Body: null, Response: "TrialBalance", Success: 200, Anonymous: false,
                 Query:
                 [
@@ -612,17 +612,24 @@ internal static class OpenApiEmitter
         {
             w.WriteString("type", "object");
             w.WriteString("description",
-                "ميزان المراجعة بلا مجموع: جمع عمود مالي حساب على المال ولا يقع في طبقة HTTP، وجمعُه في المتصفّح "
-                + "يعيد الفخّ نفسه إلى العميل لأن Number فاصلة عائمة ثنائية. الموضع الصحيح للمجموع sum() على numeric. / "
-                + "The trial balance without totals: summing a monetary column is money arithmetic and does not belong in the HTTP layer, "
-                + "and summing it in the browser reproduces the same trap because Number is a binary float. Totals belong in sum() over numeric.");
+                "ميزان المراجعة بمجموعيه. والمجموعان محسوبان بـ sum() على numeric داخل PostgreSQL في الاستعلام نفسه "
+                + "الذي أنتج الصفوف: الجمع هناك مضبوط بلا فاصلة عائمة في أي خطوة. ولا يُجمع العمود في طبقة HTTP "
+                + "(حسابٌ على المال)، ولا في المتصفّح (Number فاصلة عائمة ثنائية). و balanced يصل محسوماً كذلك، "
+                + "وميزانٌ غير متوازن يُرى ولا يُقرَّب. / "
+                + "The trial balance with its totals. Both are computed by sum() over numeric inside PostgreSQL in the same "
+                + "query that produced the rows, where summation is exact with no floating point at any step. The column is "
+                + "never summed in the HTTP layer (that is money arithmetic) nor in the browser (Number is a binary float). "
+                + "The balanced flag arrives decided too, and a trial balance that does not balance is visible, never rounded away.");
             w.WriteStartObject("properties");
+            WriteBooleanProperty(w, "balanced", "هل تساوى المجموعان؟ محسوم في الدفتر لا عند العميل.", "Do the two totals match? Decided in the ledger, not at the client.");
             WriteStringProperty(w, "book", "الدفتر.", "The book.", 32);
             WriteNullablePeriodProperty(w, "periodCode");
             WriteIntegerProperty(w, "rowCount", 0, 1000000, "عدد الصفوف.", "The number of rows.");
             WriteArrayRefProperty(w, "rows", "TrialBalanceRow", "الصفوف مرتَّبة برمز الحساب.", "The rows ordered by account code.");
+            WriteRefProperty(w, "totalCredit", "Money");
+            WriteRefProperty(w, "totalDebit", "Money");
             w.WriteEndObject();
-            WriteRequired(w, "book", "periodCode", "rowCount", "rows");
+            WriteRequired(w, "balanced", "book", "periodCode", "rowCount", "rows", "totalCredit", "totalDebit");
             w.WriteBoolean("additionalProperties", false);
         });
 

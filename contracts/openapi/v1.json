@@ -420,7 +420,7 @@
       "get": {
         "operationId": "readTrialBalance",
         "summary": "ميزان المراجعة / Trial balance",
-        "description": "ميزان المراجعة مبنيّاً من سطور القيود غير القابلة للتعديل — لا من جدول الأرصدة. ولا يحمل مجموعاً: جمع عمود مالي حساب على المال، ولا يقع في طبقة HTTP.\n\nThe trial balance built from the immutable journal lines — not from the balance table. It carries no totals: summing a monetary column is money arithmetic and does not happen in the HTTP layer.",
+        "description": "ميزان المراجعة مبنيّاً من سطور القيود غير القابلة للتعديل — لا من جدول الأرصدة. ويحمل مجموعَي المدين والدائن محسوبَين بـ sum() على numeric في الاستعلام نفسه، ومعهما حكم التوازن.\n\nThe trial balance built from the immutable journal lines — not from the balance table. It carries the debit and credit totals computed by sum() over numeric in the same query, plus the balanced verdict.",
         "parameters": [
           {
             "name": "book",
@@ -1297,8 +1297,12 @@
       },
       "TrialBalance": {
         "type": "object",
-        "description": "ميزان المراجعة بلا مجموع: جمع عمود مالي حساب على المال ولا يقع في طبقة HTTP، وجمعُه في المتصفّح يعيد الفخّ نفسه إلى العميل لأن Number فاصلة عائمة ثنائية. الموضع الصحيح للمجموع sum() على numeric. / The trial balance without totals: summing a monetary column is money arithmetic and does not belong in the HTTP layer, and summing it in the browser reproduces the same trap because Number is a binary float. Totals belong in sum() over numeric.",
+        "description": "ميزان المراجعة بمجموعيه. والمجموعان محسوبان بـ sum() على numeric داخل PostgreSQL في الاستعلام نفسه الذي أنتج الصفوف: الجمع هناك مضبوط بلا فاصلة عائمة في أي خطوة. ولا يُجمع العمود في طبقة HTTP (حسابٌ على المال)، ولا في المتصفّح (Number فاصلة عائمة ثنائية). و balanced يصل محسوماً كذلك، وميزانٌ غير متوازن يُرى ولا يُقرَّب. / The trial balance with its totals. Both are computed by sum() over numeric inside PostgreSQL in the same query that produced the rows, where summation is exact with no floating point at any step. The column is never summed in the HTTP layer (that is money arithmetic) nor in the browser (Number is a binary float). The balanced flag arrives decided too, and a trial balance that does not balance is visible, never rounded away.",
         "properties": {
+          "balanced": {
+            "type": "boolean",
+            "description": "هل تساوى المجموعان؟ محسوم في الدفتر لا عند العميل. / Do the two totals match? Decided in the ledger, not at the client."
+          },
           "book": {
             "type": "string",
             "maxLength": 32,
@@ -1324,13 +1328,22 @@
               "$ref": "#/components/schemas/TrialBalanceRow"
             },
             "description": "الصفوف مرتَّبة برمز الحساب. / The rows ordered by account code."
+          },
+          "totalCredit": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "totalDebit": {
+            "$ref": "#/components/schemas/Money"
           }
         },
         "required": [
+          "balanced",
           "book",
           "periodCode",
           "rowCount",
-          "rows"
+          "rows",
+          "totalCredit",
+          "totalDebit"
         ],
         "additionalProperties": false
       },

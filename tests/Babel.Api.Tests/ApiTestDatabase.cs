@@ -14,11 +14,11 @@ namespace Babel.Api.Tests;
 /// أربع من المصائد المقيسة لا تظهر إلا بعد أن تمرّ القيمة على PostgreSQL وتعود.
 /// </para>
 /// <para>
-/// <b>وملاحظة على الانعكاس أدناه:</b> <c>LedgerSchemaDeployer</c> نوع <c>internal</c> في
-/// <c>Babel.Ledger</c>، و<c>InternalsVisibleTo</c> فيه يسمّي <c>Babel.Ledger.Tests</c> وحدها.
-/// نشر المخطّط من هنا يحتاج إمّا سطراً في <c>Babel.Ledger.csproj</c> — وهو ملف لا يملكه هذا
-/// الفرع — وإمّا انعكاساً. اختير الانعكاس كي يبقى مسار النشر <b>هو نفسه</b> مسار الإنتاج،
-/// بدل نسخة ثانية من نصوص المخطّط تنحرف عنه بصمت. والطلب مسجَّل في التقرير.
+/// <b>ونشر المخطّط هنا نداءٌ معلَن لا انعكاس:</b> <c>Babel.Ledger.LedgerSchema.DeployAsync</c>.
+/// كان هذا الموضع — وموضعان آخران مستقلّان — يبلغ <c>LedgerSchemaDeployer</c>
+/// <c>internal</c> بالانعكاس، وثلاثةُ التفافات متطابقة كُتبت في فروع مختلفة دليلٌ على أن
+/// الحدّ كان خاطئاً. والمسار يبقى <b>هو نفسه</b> مسار الإنتاج — لا نسخة ثانية من نصوص
+/// المخطّط تنحرف عنه بصمت.
 /// </para>
 /// </summary>
 internal static class ApiTestDatabase
@@ -97,15 +97,8 @@ internal static class ApiTestDatabase
         }
     }
 
-    private static async Task DeploySchemaAsync(CancellationToken cancellationToken)
-    {
-        Type deployer = typeof(LedgerOptions).Assembly
-            .GetType("Babel.Ledger.Persistence.LedgerSchemaDeployer", throwOnError: true)!;
-
-        MethodInfo deploy = deployer.GetMethod("DeployAsync", BindingFlags.Public | BindingFlags.Static)!;
-
-        await ((Task)deploy.Invoke(null, [Options, cancellationToken])!).ConfigureAwait(false);
-    }
+    private static Task DeploySchemaAsync(CancellationToken cancellationToken)
+        => LedgerSchema.DeployAsync(Options, cancellationToken);
 
     private static async Task CreateDatabaseAndRoleAsync(CancellationToken cancellationToken)
     {

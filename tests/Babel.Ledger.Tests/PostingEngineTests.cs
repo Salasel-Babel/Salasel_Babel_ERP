@@ -390,17 +390,25 @@ public sealed class PostingEngineTests : IAsyncLifetime
                     1_000.0000m * i, 150.0000m * i, new DateOnly(2026, 7, 10)), token);
         }
 
-        Result<IReadOnlyList<TrialBalanceRow>> trial = await _harness.Auditing.TrialBalanceFromLinesAsync(
-            new TenantId(LedgerTestEnvironment.TenantA), LedgerTestEnvironment.Auditor, LedgerTestEnvironment.Book, "2026-07", token);
+        Result<(IReadOnlyList<TrialBalanceRow> Rows, decimal TotalDebit, decimal TotalCredit, bool Balanced)> trial =
+            await _harness.Auditing.TrialBalanceFromLinesAsync(
+                new TenantId(LedgerTestEnvironment.TenantA), LedgerTestEnvironment.Auditor,
+                LedgerTestEnvironment.Book, "2026-07", token);
 
-        decimal debit = trial.Value.Sum(static row => row.Debit);
-        decimal credit = trial.Value.Sum(static row => row.Credit);
+        decimal debit = trial.Value.Rows.Sum(static row => row.Debit);
+        decimal credit = trial.Value.Rows.Sum(static row => row.Credit);
 
         // خمس فواتير: الصافي 1000·i والضريبة 150·i لـ i من 1 إلى 5
         // ⇒ الصافي 15,000.0000 والضريبة 2,250.0000 والمدين 17,250.0000.
         Proof.Require(debit == credit && debit == 17_250.0000m,
             "ميزان المراجعة متوازن ومبنيّ من السطور لا من الإسقاط",
-            $"مدين {Proof.Money(debit)} = دائن {Proof.Money(credit)} على {trial.Value.Count.ToString(CultureInfo.InvariantCulture)} حسابات");
+            $"مدين {Proof.Money(debit)} = دائن {Proof.Money(credit)} على {trial.Value.Rows.Count.ToString(CultureInfo.InvariantCulture)} حسابات");
+
+        // والمجموعان من sum() على numeric — لا من جمع الصفوف في الكود.
+        Proof.Require(
+            trial.Value.TotalDebit == debit && trial.Value.TotalCredit == credit && trial.Value.Balanced,
+            "مجموعا الاستعلام يطابقان جمع الصفوف، وحكم التوازن صحيح",
+            $"مدين {Proof.Money(trial.Value.TotalDebit)} · دائن {Proof.Money(trial.Value.TotalCredit)} · متوازن {trial.Value.Balanced}");
 
         // والإسقاط يطابق الحقيقة صفّاً بصفّ: انحرافه هو «الرقم الخاطئ الصامت».
         await using NpgsqlConnection connection = LedgerHarness.OpenApp();

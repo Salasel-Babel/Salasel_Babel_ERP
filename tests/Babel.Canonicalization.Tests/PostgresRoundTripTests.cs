@@ -39,10 +39,10 @@ public sealed class PostgresRoundTripTests : IAsyncLifetime
                 await admin.OpenAsync();
                 await using var check = new NpgsqlCommand(
                     $"select 1 from pg_database where datname = '{Database}'", admin);
-                if (await check.ExecuteScalarAsync() is null)
+                if (await check.ExecuteScalarAsync(TestContext.Current.CancellationToken) is null)
                 {
                     await using var create = new NpgsqlCommand($"create database {Database}", admin);
-                    await create.ExecuteNonQueryAsync();
+                    await create.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
                 }
             }
 
@@ -108,7 +108,7 @@ public sealed class PostgresRoundTripTests : IAsyncLifetime
     private static async Task ExecAsync(NpgsqlConnection c, string sql)
     {
         await using var cmd = new NpgsqlCommand(sql, c);
-        await cmd.ExecuteNonQueryAsync();
+        await cmd.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
     }
 
     // =====================================================================
@@ -462,7 +462,7 @@ public sealed class PostgresRoundTripTests : IAsyncLifetime
             cmd.Parameters.AddWithValue("hash", link.Hash);
             cmd.Parameters.AddWithValue("bytes", link.CanonicalBytes);
             _ = tenant; _ = book;
-            await cmd.ExecuteNonQueryAsync();
+            await cmd.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
         }
 
         (int no, string acc, decimal d, decimal c, string desc)[] lines =
@@ -485,7 +485,7 @@ public sealed class PostgresRoundTripTests : IAsyncLifetime
             cmd.Parameters.AddWithValue("d", l.d);
             cmd.Parameters.AddWithValue("c", l.c);
             cmd.Parameters.AddWithValue("desc", l.desc);
-            await cmd.ExecuteNonQueryAsync();
+            await cmd.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
         }
     }
 
@@ -498,8 +498,8 @@ public sealed class PostgresRoundTripTests : IAsyncLifetime
             "from canon_line where chain_scope = @s order by chain_seq, line_no", conn))
         {
             lc.Parameters.AddWithValue("s", scope);
-            await using var r = await lc.ExecuteReaderAsync();
-            while (await r.ReadAsync())
+            await using var r = await lc.ExecuteReaderAsync(TestContext.Current.CancellationToken);
+            while (await r.ReadAsync(TestContext.Current.CancellationToken))
             {
                 var seq = r.GetInt64(0);
                 if (!lines.TryGetValue(seq, out var list)) lines[seq] = list = [];
@@ -516,8 +516,8 @@ public sealed class PostgresRoundTripTests : IAsyncLifetime
             """, conn);
         cc.Parameters.AddWithValue("s", scope);
 
-        await using var rd = await cc.ExecuteReaderAsync();
-        while (await rd.ReadAsync())
+        await using var rd = await cc.ExecuteReaderAsync(TestContext.Current.CancellationToken);
+        while (await rd.ReadAsync(TestContext.Current.CancellationToken))
         {
             var seq = rd.GetInt64(0);
             var version = rd.GetString(1);

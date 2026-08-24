@@ -23,6 +23,7 @@
   <ItemGroup>
     <ProjectReference Include="../../src/Babel.SharedKernel/Babel.SharedKernel.csproj" />
     <ProjectReference Include="../../src/Babel.Contracts/Babel.Contracts.csproj" />
+    <ProjectReference Include="../../src/Babel.Canonicalization/Babel.Canonicalization.csproj" />
     <ProjectReference Include="../../src/Babel.Core/Babel.Core.csproj" />
     <ProjectReference Include="../../src/Babel.Ledger/Babel.Ledger.csproj" />
     <ProjectReference Include="../../src/Babel.Sales/Babel.Sales.csproj" />

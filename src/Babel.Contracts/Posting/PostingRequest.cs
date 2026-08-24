@@ -35,6 +35,57 @@ public sealed record PostingRequest
     /// <summary>بيان القيد ثنائي اللغة.</summary>
     public required LocalizedName Narration { get; init; }
 
-    /// <summary>سطور الطلب بأدوارها ومبالغها.</summary>
+    /// <summary>
+    /// سطور الطلب بأدوارها ومبالغها — للمسار الصريح.
+    /// <para>
+    /// تكون <b>فارغة</b> حين يُضبط <see cref="Event"/>: عندئذ القالب في المصفوفة هو الذي
+    /// يولّد السطور، والوحدة تُسلّم <see cref="Amounts"/> و<see cref="Facts"/> فقط.
+    /// </para>
+    /// </summary>
     public required IReadOnlyList<PostingLine> Lines { get; init; }
+
+    /// <summary>
+    /// الحدث في مصفوفة الترحيل. حين يُضبط، يقرأ المحرك قالبه ويولّد السطور منه:
+    /// يحلّ كل دور عبر خريطة المستأجر (مع المؤهلات)، ويقيّم السطور المشروطة،
+    /// ويحسب المبالغ من التعابير الخطية، ويتحقق من الأبعاد الإلزامية.
+    /// </summary>
+    public PostingEventCode Event { get; init; } = PostingEventCode.None;
+
+    /// <summary>مفردات المبالغ التي يقرؤها قالب الحدث. لا معنى لها في المسار الصريح.</summary>
+    public IReadOnlyList<PostingAmount> Amounts { get; init; } = [];
+
+    /// <summary>وقائع السياق التي تُقيَّم عليها الشروط وقواعد الحجب.</summary>
+    public IReadOnlyList<PostingFact> Facts { get; init; } = [];
+
+    /// <summary>الأبعاد التحليلية على مستوى الطلب. السطر قد يضيف عليها.</summary>
+    public IReadOnlyList<PostingDimension> Dimensions { get; init; } = [];
+
+    /// <summary>الدفتر داخل الشركة. نطاق الترقيم ونطاق السلسلة معاً (‏ADR-0007 · ADR-0008).</summary>
+    public string Book { get; init; } = "MAIN";
+
+    /// <summary>عملة القيد. الافتراضي عملة الشركة.</summary>
+    public CurrencyCode Currency { get; init; }
+
+    /// <summary>
+    /// سعر صرف عملة القيد إلى عملة الشركة. <c>decimal</c> بمقياس 8 ولا شيء غيره
+    /// (Rule04 — الاسم نفسه يحمل الكلمة <c>Rate</c> فيلتقطه الفحص).
+    /// <para>
+    /// <b>والتوازن يُفحص بعملة الشركة لا بعملة الحركة:</b> قيدٌ متوازن بالدولار
+    /// وغير متوازن بالريال قيدٌ غير متوازن — والمشغّل المؤجَّل عند COMMIT يفحص
+    /// أعمدة الشركة تحديداً.
+    /// </para>
+    /// </summary>
+    public decimal ExchangeRate { get; init; } = 1m;
+
+    /// <summary>
+    /// جيل الترحيل. يبدأ من 1 ولا يزيد إلا بعد <b>عكس مشروع</b>، فيُتيح إعادة ترحيل
+    /// المستند نفسه مصحَّحاً بمفتاح إحكام مختلف. الزيادة بلا عكس سابق مرفوضة.
+    /// </summary>
+    public int Generation { get; init; } = 1;
+
+    /// <summary>الفاعل الذي طلب الترحيل. يدخل البايتات المُجزَّأة.</summary>
+    public UserId Actor { get; init; } = UserId.SystemActor;
+
+    /// <summary>إذن استثنائي بالترحيل في فترة مقفلة. <c>null</c> = لا استثناء، وهو الأصل.</summary>
+    public ClosedPeriodAuthorisation? ClosedPeriodAuthorisation { get; init; }
 }

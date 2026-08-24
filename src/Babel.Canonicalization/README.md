@@ -55,7 +55,7 @@ ChainVerification VerifyChain(records, genesisHash)   // -> أول رقم تسل
 
 ```bash
 # البناء والاختبارات (88 اختباراً، منها دورة حقيقية مع PostgreSQL محلية)
-dotnet test tests/Babel.Canonicalization.Tests
+dotnet test --project tests/Babel.Canonicalization.Tests/Babel.Canonicalization.Tests.csproj
 
 # المتجهات الذهبية — يخرج برمز غير صفري عند أي انحراف
 dotnet run --project tools/Babel.Canonicalization.Golden -- --verify

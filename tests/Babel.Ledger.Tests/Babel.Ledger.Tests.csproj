@@ -3,10 +3,21 @@
   <PropertyGroup>
     <RootNamespace>Babel.Ledger.Tests</RootNamespace>
     <AssemblyName>Babel.Ledger.Tests</AssemblyName>
+    <!-- العربية لغة أولى: بيانات المناطق مطلوبة، والتطبيع الصامت أخطر مصيدة نشر. -->
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <PredefinedCulturesOnly>false</PredefinedCulturesOnly>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="../../src/Babel.Ledger/Babel.Ledger.csproj" />
+    <ProjectReference Include="../../src/Babel.Core/Babel.Core.csproj" />
+    <ProjectReference Include="../../src/Babel.Canonicalization/Babel.Canonicalization.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Npgsql" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
   </ItemGroup>
 
 </Project>

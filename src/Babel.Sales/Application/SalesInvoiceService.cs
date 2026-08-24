@@ -32,12 +32,20 @@ public sealed class SalesInvoiceService : IApplicationService
     /// <summary>نوع مستند الفاتورة في هوية الإحكام لدى المحرك.</summary>
     internal const string InvoiceDocument = "SalesInvoice";
 
+    /// <summary>رمز حدث الاعتراف بالإيراد — أحد شقّي هوية إحكام الفاتورة.</summary>
+    internal const string InvoicePostedEvent = "sales.invoice.posted";
+
     /// <summary>
-    /// نوع مستند قيد التكلفة المصاحب — <b>مستقلّ عن نوع الفاتورة عمداً</b>.
-    /// هوية الإحكام لدى المحرك رباعية (نوع · معرّف · إطلاق · جيل)، فلو حمل القيدان
-    /// النوع نفسه لابتلع الأول الثاني بصمت وعاد «مُرحَّل من قبل».
+    /// رمز حدث قيد التكلفة المصاحب.
+    /// <para>
+    /// <b>ولاحظ ما لم يعد هنا:</b> كان لهذا القيد «نوع مستند» مُختلَق
+    /// (<c>SalesInvoiceCostOfSales</c>) اختُرع للهروب من تصادم هوية رباعية. وكانت
+    /// كلفته أن «كل قيود هذه الفاتورة» سؤال يستحيل طرحه: قيدا الفاتورة الواحدة
+    /// تحت نوعَي مستند مختلفين. وبعد أن صار رمز الحدث في الهوية، عاد القيدان إلى
+    /// نوعهما الصادق <c>SalesInvoice</c> ويفترقان برمز الحدث (ADR-0017).
+    /// </para>
     /// </summary>
-    internal const string CostOfSalesDocument = "SalesInvoiceCostOfSales";
+    internal const string CostOfSalesEvent = "sales.invoice.cost_of_sales";
 
     private readonly IEntitlementEnforcer _enforcer;
     private readonly SalesDbContext _database;
@@ -326,7 +334,7 @@ public sealed class SalesInvoiceService : IApplicationService
             DocumentType = InvoiceDocument,
             DocumentId = invoice.Id,
             Trigger = PostingTrigger.OnApproval,
-            Event = new PostingEventCode("sales.invoice.posted"),
+            Event = new PostingEventCode(InvoicePostedEvent),
             DocumentDate = invoice.IssuedOn,
             Narration = new LocalizedName("فاتورة مبيعات " + invoice.Number, "Sales invoice " + invoice.Number),
             Amounts =
@@ -405,10 +413,10 @@ public sealed class SalesInvoiceService : IApplicationService
         PostingIntent intent = new()
         {
             Tenant = tenant,
-            DocumentType = CostOfSalesDocument,
+            DocumentType = InvoiceDocument,
             DocumentId = invoice.Id,
             Trigger = PostingTrigger.OnApproval,
-            Event = new PostingEventCode("sales.invoice.cost_of_sales"),
+            Event = new PostingEventCode(CostOfSalesEvent),
             DocumentDate = invoice.IssuedOn,
             Narration = new LocalizedName("تكلفة مبيعات " + invoice.Number, "Cost of sales " + invoice.Number),
             Amounts = [new PostingAmount("cost", draft.Cost)],
@@ -493,8 +501,13 @@ public sealed class SalesInvoiceService : IApplicationService
         invoice.PostingGeneration++;
 
         DocumentPostingRow? attempt = await FindAttemptAsync(
-            tenant, InvoiceDocument, invoice.Id, PostingTrigger.OnApproval, invoice.PostingGeneration - 1, cancellationToken)
-            .ConfigureAwait(false);
+            tenant,
+            InvoiceDocument,
+            invoice.Id,
+            PostingTrigger.OnApproval,
+            invoice.PostingGeneration - 1,
+            InvoicePostedEvent,
+            cancellationToken).ConfigureAwait(false);
 
         if (attempt is not null)
         {
@@ -541,12 +554,22 @@ public sealed class SalesInvoiceService : IApplicationService
 
     internal readonly record struct Totals(decimal Net, decimal Tax, decimal Gross, bool HasTaxableLine);
 
+    /// <summary>
+    /// يقرأ صفّ محاولة بعينه <b>بهويته الخماسية كاملةً</b>.
+    /// <para>
+    /// رمز الحدث في الشرط ليس تجميلاً: المستند الواحد صار له صفّا محاولة عند
+    /// الإطلاق نفسه (الإيراد والتكلفة)، وقراءةٌ بأربعة حقول تُعيد <b>أيّهما اتّفق</b>.
+    /// ولو أُسقط رمز الحدث هنا لصار عكس الفاتورة يُصفّر أثر الصفّ الخطأ على نقطة
+    /// الضبط، فيبقى أثر الإيراد قائماً بعد عكسه — انحراف صامت في المطابقة.
+    /// </para>
+    /// </summary>
     internal async Task<DocumentPostingRow?> FindAttemptAsync(
         TenantId tenant,
         string documentType,
         Guid documentId,
         PostingTrigger trigger,
         int generation,
+        string eventCode,
         CancellationToken cancellationToken)
     {
         string id = documentId.ToString("D", CultureInfo.InvariantCulture);
@@ -557,7 +580,8 @@ public sealed class SalesInvoiceService : IApplicationService
                        && row.DocumentType == documentType
                        && row.DocumentId == id
                        && row.TriggerCode == code
-                       && row.Generation == generation,
+                       && row.Generation == generation
+                       && row.EventCode == eventCode,
                 cancellationToken)
             .ConfigureAwait(false);
     }

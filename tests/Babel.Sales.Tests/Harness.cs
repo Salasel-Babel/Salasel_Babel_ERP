@@ -36,6 +36,7 @@ internal sealed class Harness : IDisposable
         Receipts = new CustomerReceiptService(enforcer, runtime, Posting);
         Receivables = new ReceivablesService(
             enforcer, runtime, new LedgerControlPointReader(SalesTestEnvironment.Ledger.AppConnectionString));
+        Gateway = new SubledgerPostingGateway(runtime.Database, Posting);
     }
 
     public SalesRuntime Runtime { get; }
@@ -53,6 +54,13 @@ internal sealed class Harness : IDisposable
     public CustomerReceiptService Receipts { get; }
 
     public ReceivablesService Receivables { get; }
+
+    /// <summary>
+    /// بوابة الترحيل نفسها — الطريق الذي تسلكه كل خدمة في الوحدة.
+    /// إثبات هوية الإحكام يمرّ من هنا لا بإدراج خام: الإدراج الخام يصيب الفهرس
+    /// ويترك استعلام «هل رُحّل من قبل؟» بلا شاهد.
+    /// </summary>
+    public SubledgerPostingGateway Gateway { get; }
 
     public static UserId Actor { get; } = new(new Guid("00000000-0000-4000-8000-0000000000a1"));
 

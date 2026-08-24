@@ -181,33 +181,54 @@ public sealed class PayablesService : IApplicationService
         List<ReconciliationDivergence> divergences = [];
         HashSet<string> seen = new(StringComparer.Ordinal);
 
-        foreach (DocumentPostingRow posting in postings)
+        // ‏**التجميع بالمستند لا بالصفّ.** نقطة الضبط تُقرأ مجمّعةً بالمستند، وللمستند
+        // الواحد بعد توسيع الهوية أكثر من صفّ محاولة عند الإطلاق نفسه (فاتورة مورد
+        // بشقّ بضاعة وشقّ مصروف). فمقارنة صفّ واحد بحركة المستند كاملةً تُنتج
+        // «انحرافاً» لا وجود له. المقارنة الصحيحة: مجموع آثار صفوف المستند مقابل
+        // صافي حركته في الدفتر.
+        foreach (IGrouping<string, DocumentPostingRow> document in postings
+                     .GroupBy(row => Key(row.DocumentType, row.DocumentId), StringComparer.Ordinal))
         {
-            string key = Key(posting.DocumentType, posting.DocumentId);
-            seen.Add(key);
+            seen.Add(document.Key);
 
-            if (posting.State == PostingAttemptState.Attempting)
+            List<DocumentPostingRow> unresolved =
+                [.. document.Where(static row => row.State == PostingAttemptState.Attempting)];
+
+            if (unresolved.Count > 0)
             {
-                divergences.Add(Divergence(posting, 0m, DivergenceReason.PostingUnresolved));
+                // محاولة معلّقة تُسمّى بذاتها لا مجمّعة: الغرض تسمية ما لم يُحسم.
+                foreach (DocumentPostingRow pending in unresolved)
+                {
+                    divergences.Add(Divergence(pending, 0m, DivergenceReason.PostingUnresolved));
+                }
+
                 continue;
             }
 
-            if (posting.State != PostingAttemptState.Posted)
+            List<DocumentPostingRow> posted =
+                [.. document.Where(static row => row.State == PostingAttemptState.Posted)];
+
+            if (posted.Count == 0)
             {
                 continue;
             }
 
-            bool known = ledgerSide.TryGetValue(key, out decimal ledgerNet);
+            decimal effect = posted.Sum(static row => row.ControlEffect);
 
-            if (!known && posting.ControlEffect != 0m)
+            // الطرف المسؤول هو صاحب الأثر غير الصفري إن وُجد — لا أوّل صفّ اتّفق.
+            DocumentPostingRow witness = posted.Find(static row => row.ControlEffect != 0m) ?? posted[0];
+
+            bool known = ledgerSide.TryGetValue(document.Key, out decimal ledgerNet);
+
+            if (!known && effect != 0m)
             {
-                divergences.Add(Divergence(posting, 0m, DivergenceReason.MissingInControl));
+                divergences.Add(Divergence(witness, effect, 0m, DivergenceReason.MissingInControl));
                 continue;
             }
 
-            if (posting.ControlEffect != ledgerNet)
+            if (effect != ledgerNet)
             {
-                divergences.Add(Divergence(posting, ledgerNet, DivergenceReason.AmountMismatch));
+                divergences.Add(Divergence(witness, effect, ledgerNet, DivergenceReason.AmountMismatch));
             }
         }
 
@@ -241,16 +262,28 @@ public sealed class PayablesService : IApplicationService
                            .ThenBy(static d => d.DocumentId, StringComparer.Ordinal)]));
     }
 
-    private ReconciliationDivergence Divergence(DocumentPostingRow posting, decimal ledgerNet, string reason) => new(
-        posting.DocumentType,
-        posting.DocumentId,
-        posting.PartyId,
-        Money.Of(posting.ControlEffect, _currency),
+    private ReconciliationDivergence Divergence(DocumentPostingRow posting, decimal ledgerNet, string reason)
+        => Divergence(posting, posting.ControlEffect, ledgerNet, reason);
+
+    /// <summary>انحراف بأثر مجمّع للمستند، والصفّ الشاهد يُسمّي النوع والمعرّف والطرف.</summary>
+    private ReconciliationDivergence Divergence(
+        DocumentPostingRow witness, decimal effect, decimal ledgerNet, string reason) => new(
+        witness.DocumentType,
+        witness.DocumentId,
+        witness.PartyId,
+        Money.Of(effect, _currency),
         Money.Of(ledgerNet, _currency),
-        Money.Of(posting.ControlEffect - ledgerNet, _currency),
+        Money.Of(effect - ledgerNet, _currency),
         reason);
 
-    private static string Key(string documentType, string documentId) => documentType + "/" + documentId;
+    /// <summary>
+    /// مفتاح المستند. المكوّنان مسبوقان بطوليهما: مفتاحٌ مبني بالوصل على فاصل قد
+    /// يحتويه أحد المكوّنات هو عطب تصادم بذاته، ولُدغ المستودع به في <c>source_ref</c>
+    /// المدموج حيث أنتج <c>("A/B","C")</c> و<c>("A","B/C")</c> البايتات نفسها.
+    /// </summary>
+    private static string Key(string documentType, string documentId)
+        => documentType.Length.ToString(CultureInfo.InvariantCulture) + ":" + documentType
+           + documentId.Length.ToString(CultureInfo.InvariantCulture) + ":" + documentId;
 
     private async Task<AgingReport> BuildAgingAsync(TenantId tenant, DateOnly asOf, CancellationToken cancellationToken)
     {

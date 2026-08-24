@@ -181,7 +181,7 @@ internal sealed class SalesDbContext(DbContextOptions<SalesDbContext> options) :
             entity.Property(row => row.DocumentId).HasMaxLength(64).IsRequired();
             entity.Property(row => row.TriggerCode).HasMaxLength(32).IsRequired();
             entity.Property(row => row.IdempotencyKey).HasMaxLength(128).IsRequired();
-            entity.Property(row => row.EventCode).HasMaxLength(128);
+            entity.Property(row => row.EventCode).HasMaxLength(128).IsRequired();
             entity.Property(row => row.PartyId).HasMaxLength(64);
             entity.Property(row => row.State).HasMaxLength(16).IsRequired();
             entity.Property(row => row.FailureCode).HasMaxLength(128);
@@ -190,10 +190,20 @@ internal sealed class SalesDbContext(DbContextOptions<SalesDbContext> options) :
             entity.Property(row => row.ControlEffect).HasColumnType(Money);
             entity.HasIndex(row => new { row.TenantId, row.State }).HasDatabaseName("ix_sales_posting_state");
 
-            // هوية الإحكام كما يعرّفها المحرك بالضبط: أربعة حقول، بلا أي عدّاد تصاعدي.
-            // الحارس التصاعدي لكل طرف ممنوع — قيس وهو يُسقط 500 من 1500 ريال (فخ-13).
-            entity.HasIndex(row => new { row.TenantId, row.DocumentType, row.DocumentId, row.TriggerCode, row.Generation })
-                  .IsUnique().HasDatabaseName("uq_sales_posting_identity");
+            // هوية الإحكام كما يعرّفها المحرك بالضبط: خمسة حقول **ومنها رمز الحدث**،
+            // بلا أي عدّاد تصاعدي. الحارس التصاعدي لكل طرف ممنوع — قيس وهو يُسقط 500
+            // من 1500 ريال (فخ-13). ورمز الحدث هنا لأن المستند الواحد يُنتج حدثين
+            // مختلفين عند الإطلاق نفسه، وبدونه يُبتلع الثاني بصمت (ADR-0017).
+            entity.HasIndex(row => new
+            {
+                row.TenantId, row.DocumentType, row.DocumentId, row.TriggerCode, row.Generation, row.EventCode,
+            }).IsUnique().HasDatabaseName("uq_sales_posting_identity");
+
+            // ورمزٌ فارغ يُعيد تركيب العطب داخل مفتاح موسَّع: القيمة الفارغة تجعل
+            // كل حدث بلا رمز مساوياً لكل حدث آخر بلا رمز. الفراغ ممنوع في القاعدة
+            // نفسها لا في الشيفرة وحدها.
+            entity.ToTable(table => table.HasCheckConstraint(
+                "ck_sales_document_posting_event_code", """length(btrim("EventCode")) > 0"""));
         });
     }
 }

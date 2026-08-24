@@ -25,4 +25,19 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- نصوص الترقية مضمَّنة: النشر لا يفترض وجود شجرة المستودع على الخادم. -->
+    <EmbeddedResource Include="Persistence/Migrations/*.sql" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      الاختبار يبلغ البوابة نفسها.
+      البوابة ‏<c>internal</c> عمداً (القاعدة 5)، وإثبات هوية الإحكام يجب أن يمرّ
+      **من حيث يمرّ الإنتاج** — لا بإدراج خام يصيب الفهرس ويترك استعلام
+      «هل رُحّل من قبل؟» بلا شاهد. وهو الشكل نفسه المعتمد في Babel.Ledger.
+    -->
+    <InternalsVisibleTo Include="Babel.Sales.Tests" />
+  </ItemGroup>
+
 </Project>

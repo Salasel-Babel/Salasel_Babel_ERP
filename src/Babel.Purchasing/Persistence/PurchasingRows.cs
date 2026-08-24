@@ -378,7 +378,12 @@ internal sealed class PayableAllocationRow
     public DateOnly AllocatedOn { get; set; }
 }
 
-/// <summary>محاولة ترحيل مستند — سجلّ الوحدة عن نيّتها ومصيرها.</summary>
+/// <summary>
+/// محاولة ترحيل مستند — سجلّ الوحدة عن نيّتها ومصيرها.
+/// <para>
+/// هوية الإحكام خماسية: (نوع المستند · معرّفه · رمز الإطلاق · الجيل · <b>رمز الحدث</b>).
+/// </para>
+/// </summary>
 internal sealed class DocumentPostingRow
 {
     public Guid Id { get; set; }
@@ -395,6 +400,11 @@ internal sealed class DocumentPostingRow
 
     public string IdempotencyKey { get; set; } = string.Empty;
 
+    /// <summary>
+    /// رمز الحدث — <b>حقل في هوية الإحكام</b>، إلزامي وغير فارغ (قيد تحقّق في القاعدة).
+    /// كان يُكتب ولا يُقرأ ضمن الهوية، وهذا بالضبط ما جعل الحدث الثاني للمستند الواحد
+    /// يُبتلع بصمت (ADR-0017).
+    /// </summary>
     public string EventCode { get; set; } = string.Empty;
 
     public string PartyId { get; set; } = string.Empty;

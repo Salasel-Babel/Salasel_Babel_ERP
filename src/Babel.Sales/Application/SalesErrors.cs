@@ -56,6 +56,21 @@ internal static class SalesErrors
         "مبلغ سالب على مستند. الاتجاه يُعبَّر عنه بنوع المستند لا بإشارة المبلغ.",
         "A negative amount on a document; direction is expressed by the document type, not by the sign.");
 
+    /// <summary>
+    /// نية ترحيل بلا رمز حدث. رمز الحدث حقل في هوية الإحكام، ورمزٌ فارغ يجعل حدثين
+    /// مختلفين من المستند نفسه وعند الإطلاق نفسه هويةً واحدة — فيُبتلع الثاني بصمت
+    /// (ADR-0016 · ADR-0017). والمحرك يرفضه بـ<c>ledger.posting.missing_event_code</c>،
+    /// والبوابة ترفضه هنا قبل أن تكتب صفّ محاولة بهوية ناقصة.
+    /// </summary>
+    public static Error MissingEventCode(string documentType, Guid documentId) => new(
+        "sales.posting.missing_event_code",
+        "نية ترحيل بلا رمز حدث للمستند " + documentType + "/" + documentId.ToString("D", CultureInfo.InvariantCulture)
+        + ". رمز الحدث جزء من هوية الإحكام، ورمزٌ فارغ يجعل حدثين مختلفين هويةً واحدة فيُبتلع الثاني بصمت.",
+        "A posting intent without an event code for document " + documentType + "/"
+        + documentId.ToString("D", CultureInfo.InvariantCulture)
+        + ". The event code is part of the posting identity; an empty code collapses two different events "
+        + "into one identity and the second is swallowed silently.");
+
     public static Error PostingRefused(IReadOnlyList<Error> errors) => new(
         "sales.posting_refused",
         "رفض محرك الترحيل الطلب: " + string.Join(" | ", errors.Select(static e => e.MessageAr)),

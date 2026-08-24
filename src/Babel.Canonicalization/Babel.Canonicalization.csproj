@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    مكتبة التوحيد القياسي (canonicalisation).
+
+    قاعدة ملزمة: هذا المشروع لا يعتمد على أي حزمة خارجية إطلاقاً.
+    لا EF Core، ولا Npgsql، ولا System.Text.Json، ولا أي وحدة من وحدات النظام.
+    السبب: البايتات المُجزَّأة يجب ألا تتغيّر أبداً بسبب ترقية حزمة.
+
+    HARD RULE: zero external package references. Ever.
+    The hashed bytes must never move because a dependency was upgraded.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>Babel.Canonicalization</RootNamespace>
+    <AssemblyName>Babel.Canonicalization</AssemblyName>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
+    <!-- الرموز الثابتة موثّقة في SPEC.md؛ لا حاجة لتعليق XML على كل ثابت. -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+
+    <!--
+      لا يجوز أبداً تشغيل هذه المكتبة في وضع InvariantGlobalization:
+      String.Normalize يصبح عندها عملية لا شيء (no-op) بصمت، فتتغيّر كل بصمة نص عربي.
+      المكتبة تتحقّق من ذلك عند التحميل وترمي استثناءً (انظر CanonicalRuntime).
+    -->
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <PredefinedCulturesOnly>false</PredefinedCulturesOnly>
+  </PropertyGroup>
+
+</Project>

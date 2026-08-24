@@ -1,0 +1,243 @@
+{
+  "schema_version": "1.0.0",
+  "module": "tax",
+  "source_refs": [
+    "docs/reference/posting-matrix.md §9.2",
+    "docs/analysis/03-accounting-core.md §5",
+    "docs/analysis/07-real-estate.md §10.4"
+  ],
+  "events": [
+    {
+      "event_code": "tax.vat_return.settlement",
+      "name_ar": "تسوية ضريبة القيمة المضافة عند إعداد الإقرار",
+      "name_en": "VAT settlement on preparing the return",
+      "module": "tax",
+      "status": "drafted",
+      "source_ref": "posting-matrix.md §9.2",
+      "trigger": {
+        "name_ar": "عند إعداد الإقرار الضريبي للفترة وقبل تقديمه",
+        "name_en": "On preparing the VAT return for the period and before submitting it"
+      },
+      "posts_entry": true,
+      "precondition": {
+        "name_ar": "رصيد حساب ضريبة المخرجات يطابق مجموع ضريبة الفواتير المقبولة لدى ZATCA للفترة — أي فرق يوقف الإقرار",
+        "name_en": "The output VAT account balance reconciles to the VAT of invoices accepted by ZATCA for the period — any difference halts the return"
+      },
+      "reversal": {
+        "name_ar": "قيد عكسي مستقل عند تعديل الإقرار",
+        "name_en": "A separate reversing entry if the return is amended"
+      },
+      "caveats": [
+        {
+          "ref": "07-real-estate.md §10.4",
+          "text_ar": "⚠️ حساب الضريبة المحصَّلة نيابة عن الملاك 2193 لا يدخل هذه التسوية — يحتاج تأكيد المستشار الضريبي",
+          "text_en": "⚠️ The VAT collected on behalf of owners account 2193 does not enter this settlement — needs tax adviser confirmation"
+        }
+      ],
+      "amounts": {
+        "output_balance": {
+          "name_ar": "رصيد ضريبة المخرجات للفترة",
+          "name_en": "Output VAT balance for the period",
+          "derivation_ar": "حركة حساب ضريبة المخرجات للفترة — ولا يشمل الضريبة المحصَّلة نيابة عن الملاك",
+          "derivation_en": "The output VAT account movement for the period — excluding VAT collected on behalf of property owners"
+        },
+        "input_balance": {
+          "name_ar": "رصيد ضريبة المدخلات للفترة",
+          "name_en": "Input VAT balance for the period",
+          "derivation_ar": "حركة حساب ضريبة المدخلات القابلة للخصم للفترة",
+          "derivation_en": "The recoverable input VAT account movement for the period"
+        }
+      },
+      "conditions": {
+        "net_payable": {
+          "name_ar": "صافي الضريبة مستحق للهيئة",
+          "name_en": "Net VAT is payable to the authority",
+          "expression": "output_balance > input_balance"
+        },
+        "net_refundable": {
+          "name_ar": "صافي الضريبة مسترد من الهيئة",
+          "name_en": "Net VAT is recoverable from the authority",
+          "expression": "input_balance > output_balance"
+        }
+      },
+      "scenarios": [
+        {
+          "code": "payable",
+          "name_ar": "إقرار بمستحق للهيئة",
+          "name_en": "Return with an amount payable",
+          "true_conditions": [
+            "net_payable"
+          ]
+        },
+        {
+          "code": "refundable",
+          "name_ar": "إقرار بمسترد من الهيئة",
+          "name_en": "Return with an amount recoverable",
+          "true_conditions": [
+            "net_refundable"
+          ]
+        }
+      ],
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "vat_output",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "output_balance",
+          "dimensions": [],
+          "subledger": null,
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "vat_input",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "input_balance",
+          "dimensions": [],
+          "subledger": null,
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 3,
+          "line_kind": "role",
+          "role": "vat_payable_authority",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "output_balance - input_balance",
+          "dimensions": [],
+          "subledger": null,
+          "when": "net_payable",
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 4,
+          "line_kind": "role",
+          "role": "vat_receivable_authority",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "input_balance - output_balance",
+          "dimensions": [],
+          "subledger": null,
+          "when": "net_refundable",
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "tax.vat.paid_to_authority",
+      "name_ar": "سداد الضريبة المستحقة للهيئة",
+      "name_en": "Payment of VAT due to the authority",
+      "module": "tax",
+      "status": "drafted",
+      "source_ref": "posting-matrix.md §9.2",
+      "trigger": {
+        "name_ar": "عند سداد الإقرار",
+        "name_en": "On settling the return"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "قيد عكسي مستقل",
+        "name_en": "A separate reversing entry"
+      },
+      "amounts": {
+        "amount": {
+          "name_ar": "المبلغ المسدَّد",
+          "name_en": "Amount settled",
+          "derivation_ar": "رصيد الضريبة المستحقة للفترة المسدَّدة",
+          "derivation_en": "The VAT payable balance for the settled period"
+        }
+      },
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "vat_payable_authority",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "amount",
+          "dimensions": [],
+          "subledger": null,
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "settlement_account",
+          "qualifier_source": "constant:bank",
+          "side": "credit",
+          "amount": "amount",
+          "dimensions": [],
+          "subledger": "bank_account",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "tax.vat.refund_received",
+      "name_ar": "استلام مبلغ ضريبي مسترد من الهيئة",
+      "name_en": "Receipt of a VAT refund from the authority",
+      "module": "tax",
+      "status": "drafted",
+      "source_ref": "posting-matrix.md §9.2",
+      "trigger": {
+        "name_ar": "عند ورود المبلغ فعلياً في الحساب البنكي",
+        "name_en": "When the amount actually arrives in the bank account"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "قيد عكسي مستقل",
+        "name_en": "A separate reversing entry"
+      },
+      "amounts": {
+        "amount": {
+          "name_ar": "المبلغ المسترد",
+          "name_en": "Amount refunded",
+          "derivation_ar": "من إشعار البنك لا من قرار الهيئة وحده",
+          "derivation_en": "From the bank advice not from the authority decision alone"
+        }
+      },
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "settlement_account",
+          "qualifier_source": "constant:bank",
+          "side": "debit",
+          "amount": "amount",
+          "dimensions": [],
+          "subledger": "bank_account",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "vat_receivable_authority",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "amount",
+          "dimensions": [],
+          "subledger": null,
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    }
+  ]
+}

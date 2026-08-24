@@ -1,0 +1,528 @@
+{
+  "schema_version": "1.0.0",
+  "module": "ledger",
+  "source_refs": [
+    "docs/reference/posting-matrix.md §9",
+    "docs/analysis/03-accounting-core.md §2 §6 §7",
+    "docs/analysis/02-architecture.md §3"
+  ],
+  "events": [
+    {
+      "event_code": "ledger.opening_balance.posted",
+      "name_ar": "قيد الأرصدة الافتتاحية عند بدء التشغيل",
+      "name_en": "Opening balances entry at go-live",
+      "module": "ledger",
+      "status": "drafted",
+      "source_ref": "03-accounting-core.md §7 · chart-of-accounts.md §3.6",
+      "trigger": {
+        "name_ar": "مرة واحدة عند بدء التشغيل بعد استيراد الأرصدة والتحقق من سلامة الشجرة",
+        "name_en": "Once at go-live after importing the balances and validating the tree"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "قيد عكسي مستقل — ثم إعادة الاستيراد بنسل جديد",
+        "name_en": "A separate reversing entry then a re-import with a new generation"
+      },
+      "caveats": [
+        {
+          "ref": "proposed:matrix-seed",
+          "text_ar": "حساب تسوية الأرصدة الافتتاحية 3901 مقترح — يجب أن يصبح رصيده صفراً قبل إقفال أول فترة وإلا فالاستيراد غير متوازن",
+          "text_en": "Opening balance suspense 3901 is proposed — its balance must reach zero before the first period is closed otherwise the import is unbalanced"
+        }
+      ],
+      "amounts": {
+        "opening_debits": {
+          "name_ar": "مجموع الأرصدة المدينة المستوردة",
+          "name_en": "Total imported debit balances",
+          "derivation_ar": "من ملف الاستيراد بعد التحقق من أن كل حساب قابل للترحيل",
+          "derivation_en": "From the import file after verifying every account is postable"
+        },
+        "opening_credits": {
+          "name_ar": "مجموع الأرصدة الدائنة المستوردة",
+          "name_en": "Total imported credit balances",
+          "derivation_ar": "من ملف الاستيراد",
+          "derivation_en": "From the import file"
+        }
+      },
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "import",
+          "role": null,
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "opening_debits",
+          "dimensions": [],
+          "subledger": null,
+          "when": null,
+          "note_ar": "",
+          "note_en": "",
+          "sweep": {
+            "selector": "imported_opening_lines",
+            "postable_only": true,
+            "name_ar": "سطر لكل حساب قابل للترحيل برصيد مدين في ملف الاستيراد",
+            "name_en": "One line per postable account carrying a debit balance in the import file"
+          }
+        },
+        {
+          "line_no": 2,
+          "line_kind": "import",
+          "role": null,
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "opening_credits",
+          "dimensions": [],
+          "subledger": null,
+          "when": null,
+          "note_ar": "",
+          "note_en": "",
+          "sweep": {
+            "selector": "imported_opening_lines",
+            "postable_only": true,
+            "name_ar": "سطر لكل حساب قابل للترحيل برصيد دائن في ملف الاستيراد",
+            "name_en": "One line per postable account carrying a credit balance in the import file"
+          }
+        },
+        {
+          "line_no": 3,
+          "line_kind": "role",
+          "role": "opening_balance_suspense",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "opening_debits - opening_credits",
+          "dimensions": [],
+          "subledger": null,
+          "when": null,
+          "note_ar": "سطر التسوية يساوي صفراً حين يكون الاستيراد متوازناً — أي رصيد باقٍ فيه خلل استيراد يجب حلّه",
+          "note_en": "The suspense line equals zero when the import is balanced — any residual balance is an import defect that must be resolved"
+        }
+      ]
+    },
+    {
+      "event_code": "ledger.manual_voucher.posted",
+      "name_ar": "قيد يومية يدوي",
+      "name_en": "Manual journal voucher",
+      "module": "ledger",
+      "status": "drafted",
+      "source_ref": "03-accounting-core.md §2",
+      "trigger": {
+        "name_ar": "عند اعتماد القيد من صاحب الصلاحية بعد المراجعة",
+        "name_en": "On approval of the voucher by the authorised approver after review"
+      },
+      "posts_entry": true,
+      "precondition": {
+        "name_ar": "محرك الترحيل يرفض القيد إن لم يتساوَ مجموع المدين والدائن بعملة الشركة، وإن قلّ عدد السطور عن اثنين",
+        "name_en": "The posting engine rejects the voucher unless total debit equals total credit in company currency and there are at least two lines"
+      },
+      "reversal": {
+        "name_ar": "قيد عكسي مستقل — لا تعديل ولا حذف بعد الترحيل",
+        "name_en": "A separate reversing entry — no edit and no delete after posting"
+      },
+      "caveats": [
+        {
+          "ref": "03-accounting-core.md §3",
+          "text_ar": "الترحيل اليدوي على حساب له دفتر مساعد يجب أن يحمل مرجع الدفتر المساعد وإلا انكسرت المطابقة اليومية",
+          "text_en": "A manual line on an account with a subledger must carry the subledger reference or the daily reconciliation breaks"
+        }
+      ],
+      "amounts": {
+        "total": {
+          "name_ar": "مجموع الطرفين",
+          "name_en": "Total of both sides",
+          "derivation_ar": "المجموع المُدخَل من المستخدم — يفرض المحرك تساوي الطرفين قبل الترحيل",
+          "derivation_en": "The total entered by the operator — the engine enforces equality of both sides before posting"
+        }
+      },
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "manual",
+          "role": null,
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "total",
+          "dimensions": [],
+          "subledger": null,
+          "when": null,
+          "note_ar": "",
+          "note_en": "",
+          "sweep": {
+            "selector": "operator_entered_lines",
+            "postable_only": true,
+            "name_ar": "سطور المدين التي أدخلها المستخدم — كل سطر على حساب قابل للترحيل بأبعاده الإلزامية",
+            "name_en": "The debit lines entered by the operator — each on a postable account with its mandatory dimensions"
+          }
+        },
+        {
+          "line_no": 2,
+          "line_kind": "manual",
+          "role": null,
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "total",
+          "dimensions": [],
+          "subledger": null,
+          "when": null,
+          "note_ar": "",
+          "note_en": "",
+          "sweep": {
+            "selector": "operator_entered_lines",
+            "postable_only": true,
+            "name_ar": "سطور الدائن التي أدخلها المستخدم",
+            "name_en": "The credit lines entered by the operator"
+          }
+        }
+      ]
+    },
+    {
+      "event_code": "ledger.period_close.year_end",
+      "name_ar": "الإقفال السنوي — ترحيل النتيجة إلى الأرباح المبقاة",
+      "name_en": "Year-end close — transfer of the result to retained earnings",
+      "module": "ledger",
+      "status": "drafted",
+      "source_ref": "posting-matrix.md §9.3 · 03-accounting-core.md §7",
+      "trigger": {
+        "name_ar": "عند إقفال السنة المالية — وقابل للإعادة طالما لم تُقفل السنة الجديدة نهائياً",
+        "name_en": "On closing the fiscal year — repeatable as long as the new year is not permanently closed"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "عكس قيد الإقفال بقيد مضاد ثم إعادة تشغيله بعد تسويات المدقق",
+        "name_en": "Reverse the closing entry with a counter entry then re-run it after the auditor adjustments"
+      },
+      "amounts": {
+        "revenue_balances": {
+          "name_ar": "مجموع أرصدة حسابات الإيرادات",
+          "name_en": "Total revenue account balances",
+          "derivation_ar": "أرصدة كل حسابات التصنيف 4 القابلة للترحيل بعد كل تسويات الفترة",
+          "derivation_en": "The balances of every postable class 4 account after all period adjustments"
+        },
+        "expense_balances": {
+          "name_ar": "مجموع أرصدة حسابات المصروفات",
+          "name_en": "Total expense account balances",
+          "derivation_ar": "أرصدة كل حسابات التصنيف 5 القابلة للترحيل",
+          "derivation_en": "The balances of every postable class 5 account"
+        }
+      },
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "sweep",
+          "role": null,
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "revenue_balances",
+          "dimensions": [],
+          "subledger": null,
+          "when": null,
+          "note_ar": "",
+          "note_en": "",
+          "sweep": {
+            "selector": "account_class",
+            "classes": [
+              "4"
+            ],
+            "postable_only": true,
+            "name_ar": "سطر لكل حساب إيراد قابل للترحيل برصيد غير صفري — بطبيعته المعاكسة لإقفاله",
+            "name_en": "One line per postable revenue account with a non-zero balance — on the side that closes it"
+          }
+        },
+        {
+          "line_no": 2,
+          "line_kind": "sweep",
+          "role": null,
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "expense_balances",
+          "dimensions": [],
+          "subledger": null,
+          "when": null,
+          "note_ar": "",
+          "note_en": "",
+          "sweep": {
+            "selector": "account_class",
+            "classes": [
+              "5"
+            ],
+            "postable_only": true,
+            "name_ar": "سطر لكل حساب مصروف قابل للترحيل برصيد غير صفري",
+            "name_en": "One line per postable expense account with a non-zero balance"
+          }
+        },
+        {
+          "line_no": 3,
+          "line_kind": "role",
+          "role": "retained_earnings",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "revenue_balances - expense_balances",
+          "dimensions": [],
+          "subledger": null,
+          "when": null,
+          "note_ar": "الفرق موجب ربحاً ودائناً وسالب خسارةً ومديناً — والمحرك يقلب الطرف تلقائياً حين يكون الناتج سالباً",
+          "note_en": "A positive difference is a profit and a credit and a negative one a loss and a debit — the engine flips the side automatically when the result is negative"
+        }
+      ]
+    },
+    {
+      "event_code": "ledger.opening_entry.new_year",
+      "name_ar": "القيد الافتتاحي للسنة الجديدة",
+      "name_en": "Opening entry for the new fiscal year",
+      "module": "ledger",
+      "status": "drafted",
+      "source_ref": "posting-matrix.md §9.3",
+      "trigger": {
+        "name_ar": "بعد قيد الإقفال السنوي مباشرة",
+        "name_en": "Immediately after the year-end closing entry"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "يُعاد توليده كاملاً عند إعادة الإقفال — لا يُعدَّل يدوياً",
+        "name_en": "Fully regenerated when the close is re-run — never edited by hand"
+      },
+      "amounts": {
+        "asset_balances": {
+          "name_ar": "مجموع أرصدة الأصول المرحَّلة",
+          "name_en": "Total carried-forward asset balances",
+          "derivation_ar": "أرصدة كل حسابات التصنيف 1 القابلة للترحيل بعد الإقفال",
+          "derivation_en": "The balances of every postable class 1 account after the close"
+        },
+        "liability_and_equity_balances": {
+          "name_ar": "مجموع أرصدة الخصوم وحقوق الملكية المرحَّلة",
+          "name_en": "Total carried-forward liability and equity balances",
+          "derivation_ar": "أرصدة التصنيفين 2 و3 بعد ترحيل النتيجة إلى الأرباح المبقاة",
+          "derivation_en": "The balances of classes 2 and 3 after the result has been transferred to retained earnings"
+        }
+      },
+      "identities": {
+        "liability_and_equity_balances": "asset_balances"
+      },
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "sweep",
+          "role": null,
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "asset_balances",
+          "dimensions": [],
+          "subledger": null,
+          "when": null,
+          "note_ar": "",
+          "note_en": "",
+          "sweep": {
+            "selector": "account_class",
+            "classes": [
+              "1"
+            ],
+            "postable_only": true,
+            "name_ar": "سطر لكل حساب أصول قابل للترحيل برصيد غير صفري — والحسابات المقابلة على طرفها الطبيعي",
+            "name_en": "One line per postable asset account with a non-zero balance — contra accounts on their own natural side"
+          }
+        },
+        {
+          "line_no": 2,
+          "line_kind": "sweep",
+          "role": null,
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "liability_and_equity_balances",
+          "dimensions": [],
+          "subledger": null,
+          "when": null,
+          "note_ar": "",
+          "note_en": "",
+          "sweep": {
+            "selector": "account_class",
+            "classes": [
+              "2",
+              "3"
+            ],
+            "postable_only": true,
+            "name_ar": "سطر لكل حساب خصوم أو حقوق ملكية قابل للترحيل برصيد غير صفري",
+            "name_en": "One line per postable liability or equity account with a non-zero balance"
+          }
+        }
+      ]
+    },
+    {
+      "event_code": "ledger.fx_revaluation.period_end",
+      "name_ar": "إعادة تقييم أرصدة العملات الأجنبية في نهاية الفترة",
+      "name_en": "Period-end revaluation of foreign currency balances",
+      "module": "ledger",
+      "status": "drafted",
+      "source_ref": "posting-matrix.md §9.1 · 03-accounting-core.md §6",
+      "trigger": {
+        "name_ar": "في نهاية كل فترة بسعر الإقفال من جدول أسعار الصرف التاريخي مع توثيق مصدر السعر",
+        "name_en": "At each period end at the closing rate from the historical exchange rate table with the rate source documented"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "يُعكس في بداية الفترة التالية أو يُبقى حسب السياسة المعتمدة",
+        "name_en": "Reversed at the start of the next period or retained per the approved policy"
+      },
+      "amounts": {
+        "revaluation_gain": {
+          "name_ar": "فرق التقييم الموجب",
+          "name_en": "Positive revaluation difference",
+          "derivation_ar": "الرصيد بعملة الحركة مضروباً في فرق سعر الصرف حين يكون في صالح المنشأة",
+          "derivation_en": "The balance in transaction currency times the rate difference when in the entity's favour"
+        },
+        "revaluation_loss": {
+          "name_ar": "فرق التقييم السالب",
+          "name_en": "Negative revaluation difference",
+          "derivation_ar": "الرصيد بعملة الحركة مضروباً في فرق سعر الصرف حين يكون ضد المنشأة",
+          "derivation_en": "The balance in transaction currency times the rate difference when against the entity"
+        }
+      },
+      "conditions": {
+        "net_gain": {
+          "name_ar": "صافي إعادة التقييم ربح",
+          "name_en": "Net revaluation is a gain",
+          "expression": "revaluation_result > 0"
+        },
+        "net_loss": {
+          "name_ar": "صافي إعادة التقييم خسارة",
+          "name_en": "Net revaluation is a loss",
+          "expression": "revaluation_result < 0"
+        }
+      },
+      "scenarios": [
+        {
+          "code": "gain",
+          "name_ar": "إعادة تقييم بربح",
+          "name_en": "Revaluation at a gain",
+          "true_conditions": [
+            "net_gain"
+          ],
+          "zero_amounts": [
+            "revaluation_loss"
+          ]
+        },
+        {
+          "code": "loss",
+          "name_ar": "إعادة تقييم بخسارة",
+          "name_en": "Revaluation at a loss",
+          "true_conditions": [
+            "net_loss"
+          ],
+          "zero_amounts": [
+            "revaluation_gain"
+          ]
+        }
+      ],
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "sweep",
+          "role": null,
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "revaluation_gain",
+          "dimensions": [],
+          "subledger": null,
+          "when": "net_gain",
+          "note_ar": "",
+          "note_en": "",
+          "sweep": {
+            "selector": "foreign_currency_balances",
+            "postable_only": true,
+            "name_ar": "سطر لكل حساب قابل للترحيل يحمل رصيداً بعملة غير عملة الشركة",
+            "name_en": "One line per postable account carrying a balance in a currency other than the company currency"
+          }
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "fx_gain",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "revaluation_gain",
+          "dimensions": [],
+          "subledger": null,
+          "when": "net_gain",
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 3,
+          "line_kind": "role",
+          "role": "fx_loss",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "revaluation_loss",
+          "dimensions": [],
+          "subledger": null,
+          "when": "net_loss",
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 4,
+          "line_kind": "sweep",
+          "role": null,
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "revaluation_loss",
+          "dimensions": [],
+          "subledger": null,
+          "when": "net_loss",
+          "note_ar": "",
+          "note_en": "",
+          "sweep": {
+            "selector": "foreign_currency_balances",
+            "postable_only": true,
+            "name_ar": "سطر لكل حساب قابل للترحيل يحمل رصيداً بعملة غير عملة الشركة",
+            "name_en": "One line per postable account carrying a balance in a currency other than the company currency"
+          }
+        }
+      ]
+    },
+    {
+      "event_code": "ledger.entry.reversal",
+      "name_ar": "عكس قيد مرحَّل",
+      "name_en": "Reversal of a posted entry",
+      "module": "ledger",
+      "status": "drafted",
+      "source_ref": "03-accounting-core.md §2 · 02-architecture.md §3.2",
+      "trigger": {
+        "name_ar": "عند اعتماد طلب العكس بصلاحية موثّقة — والقيد الأصلي يبقى ظاهراً في الدفتر",
+        "name_en": "On approval of a reversal request under a documented authority — the original entry remains visible in the ledger"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "لا يُعكس قيد عكسي — يُعاد الترحيل بنسل posting_generation أعلى",
+        "name_en": "A reversing entry is not itself reversed — the document is re-posted with a higher posting_generation"
+      },
+      "amounts": {
+        "source_amounts": {
+          "name_ar": "مبالغ سطور القيد الأصلي",
+          "name_en": "Amounts of the source entry lines",
+          "derivation_ar": "تُنسخ كما هي من القيد المصدر بلا إعادة احتساب",
+          "derivation_en": "Copied verbatim from the source entry with no recomputation"
+        }
+      },
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "mirror",
+          "role": null,
+          "qualifier_source": null,
+          "side": "mirror",
+          "amount": "source_amounts",
+          "dimensions": [],
+          "subledger": null,
+          "when": null,
+          "note_ar": "التوازن مضمون بالبناء لأن القيد المصدر متوازن وكل سطر يُقلب طرفه",
+          "note_en": "Balance is guaranteed by construction because the source entry balances and every line has its side flipped",
+          "sweep": {
+            "selector": "source_entry_lines",
+            "postable_only": true,
+            "name_ar": "سطر مقابل لكل سطر في القيد المصدر بنفس الحساب والأبعاد والدفتر المساعد وبالطرف المعاكس",
+            "name_en": "One counter line for each line of the source entry with the same account dimensions and subledger and the opposite side"
+          }
+        }
+      ]
+    }
+  ]
+}

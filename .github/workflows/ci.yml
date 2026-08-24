@@ -28,6 +28,8 @@ on:
       - develop
       - main
       - production
+  # التشغيل اليدوي: انتقل مع بوابة الشكل القانوني من canonicalization.yml المحذوف.
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -50,8 +52,12 @@ jobs:
     timeout-minutes: 25
 
     # قاعدة بيانات حقيقية: اختبارات الدورة الكاملة (التوحيد القياسي) وعدّاد الالتزام
-    # المقفول بالصف لا تُثبت شيئاً على بديل في الذاكرة. المصادقة trust بلا كلمة مرور:
-    # لا اعتماد في هذا المستودع، ولا في هذا الملف (CONTRIBUTING §3 بند 7).
+    # المقفول بالصف لا تُثبت شيئاً على بديل في الذاكرة. واختبارات الدفتر مثلها:
+    # أربع من المصائد المقيسة لا تظهر إلا بعد أن تمرّ القيمة على قاعدة البيانات
+    # وتعود — مقياس numeric(19,4)، ودقّة timestamptz، ورفض الصلاحيات 42501،
+    # والمشغّل المؤجَّل عند COMMIT. بديلٌ في الذاكرة يجعل الأربعة تمرّ وهي مكسورة.
+    # المصادقة trust بلا كلمة مرور: لا اعتماد في هذا المستودع، ولا في هذا الملف
+    # (CONTRIBUTING §3 بند 7).
     services:
       postgres:
         image: postgres:16
@@ -66,10 +72,15 @@ jobs:
           --health-timeout 5s
           --health-retries 10
 
+    # لا كلمة مرور واحدة هنا: خدمة PostgreSQL أعلاه تعمل بـtrust، فتُستعمل نفس
+    # الافتراضيات التي يعمل بها المطوّر محلياً — ولا سرّ يُودَع في المستودع.
     env:
       BABEL_CANON_TEST_ADMIN_DB: "Host=127.0.0.1;Port=5432;Database=postgres;Username=postgres;Include Error Detail=true"
       BABEL_CANON_TEST_DB: "Host=127.0.0.1;Port=5432;Database=babel_canon_tests;Username=postgres;Include Error Detail=true"
       BABEL_COMPLIANCE_TEST_DB: "Host=127.0.0.1;Port=5432;Database=postgres;Username=postgres"
+      BABEL_LEDGER_TEST_ADMIN_DB: "Host=127.0.0.1;Port=5432;Database=postgres;Username=postgres;Include Error Detail=true"
+      BABEL_LEDGER_TEST_OWNER_DB: "Host=127.0.0.1;Port=5432;Database=babel_ledger_tests;Username=postgres;Include Error Detail=true"
+      BABEL_LEDGER_TEST_APP_DB: "Host=127.0.0.1;Port=5432;Database=babel_ledger_tests;Username=babel_ledger_test_app;Include Error Detail=true;Maximum Pool Size=40"
 
     steps:
       - name: سحب المستودع

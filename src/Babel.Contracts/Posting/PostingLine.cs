@@ -28,4 +28,13 @@ public sealed record PostingLine
 
     /// <summary>بيان السطر ثنائي اللغة، إن وُجد.</summary>
     public LocalizedName? Narration { get; init; }
+
+    /// <summary>
+    /// مؤهّل الدور حين يُحلّ الدور الواحد إلى حسابات متعددة حسب سياق المستند
+    /// (‏<c>cash</c> · <c>bank</c> · <c>card_clearing</c> …). فارغ = المؤهّل الافتراضي <c>*</c>.
+    /// </summary>
+    public string Qualifier { get; init; } = string.Empty;
+
+    /// <summary>الأبعاد التحليلية الخاصة بهذا السطر، فوق أبعاد الطلب.</summary>
+    public IReadOnlyList<PostingDimension> Dimensions { get; init; } = [];
 }

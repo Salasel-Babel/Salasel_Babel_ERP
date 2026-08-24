@@ -52,7 +52,7 @@ public sealed class Rule03_DependencyDirectionIsAlwaysDownward
     {
         string[] above = [.. ModuleMap.Horizontal, ModuleMap.Api];
 
-        foreach (string lower in new[] { ModuleMap.SharedKernel, ModuleMap.Contracts, ModuleMap.Core, ModuleMap.Ledger })
+        foreach (string lower in new[] { ModuleMap.SharedKernel, ModuleMap.Contracts, ModuleMap.Canonicalization, ModuleMap.Core, ModuleMap.Ledger })
         {
             Assembly assembly = BabelAssemblies.Named(lower);
             string[] forbidden = [.. above.Where(name => name != lower)];

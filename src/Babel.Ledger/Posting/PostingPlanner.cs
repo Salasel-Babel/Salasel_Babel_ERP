@@ -83,7 +83,7 @@ internal static class PostingPlanner
         // إذا حمل الطلب رمز حدث **وسطوراً صريحة** معاً: الرمز يعطي الهوية،
         // والسطور تعطي المحتوى. وطلبٌ بسطور بلا رمز حدث مرفوض قبل هذا السطر.
         Result<List<DraftLine>> draft = request.Lines.Count > 0
-            ? FromExplicitLines(request, dimensions)
+            ? FromExplicitLines(request, matrix, dimensions)
             : FromEvent(request, matrix, facts, amounts, dimensions);
 
         if (draft.IsFailure)
@@ -448,13 +448,46 @@ internal static class PostingPlanner
         return Result<string>.Failure(PostingErrors.MissingQualifier(line.Role, source));
     }
 
+    /// <summary>
+    /// المسار الصريح — الوحدة تُسلّم سطورها بأدوارها (القيد اليدوي وما شابهه).
+    /// <para>
+    /// <b>والمصفوفة تُستشار هنا أيضاً، وإن لم يُقرأ منها قالب.</b> السطور تعطي القيد
+    /// <b>محتواه</b>، ورمز الحدث يعطيه <b>هويّته</b> — وهو عمود في
+    /// <c>uq_posting_identity</c>. فالرمز الذي لا تعرفه المصفوفة رمزٌ مُختلَق، وخطأ
+    /// مطبعي واحد فيه يجعل الحقيقة المحاسبية الواحدة هويتين فتُرحَّل مرّتين: قيدان
+    /// متوازنان، وسلسلة بصمات سليمة، وترقيم بلا فجوات — وانحرافٌ لا يُرى إلا في مطابقة
+    /// دفتر مساعد. وهذا هو المقابل المرآتي للرمز الفارغ الذي أُغلق في ADR-0016، وأثره
+    /// معاكس تماماً: ذاك يبتلع حقيقة، وهذا يخلق واحدة زائدة.
+    /// </para>
+    /// <para>
+    /// ولا يُقرأ من الحدث هنا شيء غير <b>وجوده</b>: لا سطوره ولا شروطه ولا مبالغه.
+    /// وأنواع سطور أحداث الدفتر (<c>manual</c> · <c>import</c> · <c>sweep</c> ·
+    /// <c>mirror</c>) لا تُولَّد من الطلب أصلاً، ولذلك يوجد هذا المسار.
+    /// </para>
+    /// </summary>
     private static Result<List<DraftLine>> FromExplicitLines(
         PostingRequest request,
+        MatrixCatalog matrix,
         Dictionary<string, string> dimensions)
     {
         if (request.Lines.Count == 0)
         {
             return Result<List<DraftLine>>.Failure(PostingErrors.NoLines);
+        }
+
+        string code = request.Event.Value;
+        MatrixEvent? definition = matrix.Find(code);
+        if (definition is null)
+        {
+            return Result<List<DraftLine>>.Failure(PostingErrors.EventCodeNotInMatrix(code));
+        }
+
+        // ‏posts_entry = false بيان سياسة محاسبية صريح، وهو صحيح على المسارين: القالب
+        // لا يُولّد منه قيداً، والسطور الصريحة لا تلتفّ حوله. والالتفاف هنا أخطر — لأنه
+        // يُنتج قيداً كاملاً تحت رمز أُعلن أنه لا يُنتج قيداً.
+        if (!definition.PostsEntry)
+        {
+            return Result<List<DraftLine>>.Failure(PostingErrors.EventPostsNoEntry(code));
         }
 
         List<DraftLine> lines = [];

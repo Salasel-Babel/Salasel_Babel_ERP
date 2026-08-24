@@ -48,6 +48,26 @@ internal static class PostingErrors
         $"الحدث «{code}» ليس في مصفوفة الترحيل. الوحدة تسمّي حدثاً معرَّفاً، ولا تخترع رمزاً.",
         $"Event '{code}' is not in the posting matrix. A module names a defined event; it does not invent a code.");
 
+    /// <summary>
+    /// رمز حدث ليس في مصفوفة الترحيل، وصل على <b>المسار الصريح</b> (سطور مذكورة).
+    /// <para>
+    /// وهذا ليس تكراراً لـ<see cref="UnknownEvent"/>: ذاك يقول «لا قالب لهذا الحدث»
+    /// وهو رفضٌ عن عجز عن التوليد؛ وهذا يقول «رمزٌ مُختلَق دخل مفتاح الهوية» وهو رفضٌ
+    /// عن <b>ازدواج</b>. ورمزان متمايزان لأن العلاجين متمايزان: الأول يُصلَح بإضافة
+    /// قالب إلى المصفوفة، والثاني بتصحيح خطأ مطبعي في المُستدعي.
+    /// </para>
+    /// </summary>
+    public static Error EventCodeNotInMatrix(string code) => Invalid(
+        "event_code_not_in_matrix",
+        $"الحدث «{code}» ليس في مصفوفة الترحيل. رمز الحدث مكوّن من مكوّنات هوية الترحيل، "
+        + "ومكوّنات الهوية تُؤخذ من المصفوفة ولا تُخترع: رمزٌ مُختلَق — خطأ مطبعي واحد يكفي — "
+        + "يجعل الحقيقة المحاسبية الواحدة هويتين، فيُرحَّل أثرها مرّتين بقيدين متوازنين وسلسلة "
+        + "سليمة، ولا يظهر ذلك إلا حين ينحرف دفتر مساعد عن حسابه الضابط.",
+        $"Event '{code}' is not in the posting matrix. The event code is a component of the posting identity, "
+        + "and identity components are drawn from the matrix, never invented: an invented code — a single typo is "
+        + "enough — gives one accounting fact two identities, so the same effect posts twice with two balanced "
+        + "entries and an intact chain, and nothing shows until a subledger drifts from its control account.");
+
     public static Error EventPostsNoEntry(string code) => Invalid(
         "event_posts_no_entry",
         $"الحدث «{code}» مُعلَن بـ posts_entry = false: هذا بيان سياسة محاسبية لا إغفال، ولا يُولَّد منه قيد.",
@@ -163,8 +183,27 @@ internal static class PostingErrors
         $"القيد {entryId} قيد عكس، ولا يُعكس قيد العكس.",
         $"Entry {entryId} is itself a reversal; a reversal is not reversed.");
 
-    public static Error Database(string sqlState, string message) => Invalid(
+    /// <summary>
+    /// رفضٌ من طبقة التخزين. <b>التصنيف يعبر، والنصّ لا يعبر.</b>
+    /// <para>
+    /// <c>PostgresException.MessageText</c> يحمل اسم القيد واسم الجدول وأحياناً قيمة
+    /// الصفّ المخالف؛ وهذا خطأ <b>مجالي</b> يُعاد إلى كل مستدعٍ لا إلى سطح HTTP وحده،
+    /// فحمله للنصّ الخام يسلّم بنية المخطّط إلى من أرسل حمولة سيئة. والنصّ لا يُحذف:
+    /// يذهب كاملاً إلى سجلّ مبنيِ الحقول تحت <paramref name="diagnosticId"/>
+    /// (<see cref="PostingDiagnostics"/>)، ويبقى المشغّل قادراً على التشخيص.
+    /// </para>
+    /// <para>
+    /// و<c>SQLSTATE</c> يبقى في الرمز <b>وفي الرسالة</b>: هو تصنيف معياري مُعلَن في
+    /// وثيقة PostgreSQL، لا معلومةَ مخطّطٍ خاصّة بهذا النظام — وعليه يبني حدّ HTTP
+    /// تصنيفه إلى 409 أو 500.
+    /// </para>
+    /// </summary>
+    /// <param name="sqlState">رمز الحالة المعياري من PostgreSQL.</param>
+    /// <param name="diagnosticId">معرّف التشخيص الذي يربط الرسالة بسطر السجلّ.</param>
+    public static Error Database(string sqlState, string diagnosticId) => Invalid(
         "database." + sqlState,
-        $"رفضت قاعدة البيانات الترحيل (SQLSTATE {sqlState}): {message}",
-        $"The database refused the posting (SQLSTATE {sqlState}): {message}");
+        $"رفضت قاعدة البيانات الترحيل (SQLSTATE {sqlState}). التفصيل الفنّي — واسم القيد والجدول — "
+        + $"في سجلّ الخادم تحت معرّف التشخيص {diagnosticId}، ولا يعبر نصّ قاعدة البيانات إلى المُستدعي.",
+        $"The database refused the posting (SQLSTATE {sqlState}). The technical detail is in the server log "
+        + $"under diagnostic id {diagnosticId}; database text never crosses to the caller.");
 }

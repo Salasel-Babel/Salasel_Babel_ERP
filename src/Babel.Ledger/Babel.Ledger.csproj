@@ -28,6 +28,7 @@
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
     <PackageReference Include="Npgsql" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -55,8 +56,17 @@
     </EmbeddedResource>
   </ItemGroup>
 
+  <!--
+    مشاريع الاختبار وحدها ترى داخل الدفتر. و«الاختبار داخل حدّ الثقة» ليس تساهلاً:
+    البديل هو أن يبقى PostingService نوعاً عاماً كي تراه وصلة اختبار — فيراه معه
+    كل مستهلك في الشجرة، ويصير حلّ النوع الملموس بدل IPostingService ممكناً.
+    والسطران الثاني والثالث يزولان متى انتقلت وصلتا Sales و Purchasing إلى مصنع
+    معلَن (انظر LedgerSchema ونظيره المقترح للمحرّك في تقرير التسليم).
+  -->
   <ItemGroup>
     <InternalsVisibleTo Include="Babel.Ledger.Tests" />
+    <InternalsVisibleTo Include="Babel.Sales.Tests" />
+    <InternalsVisibleTo Include="Babel.Purchasing.Tests" />
   </ItemGroup>
 
 </Project>

@@ -6,6 +6,8 @@ using Babel.Core.Application;
 using Babel.Core.Entitlement;
 using Babel.Ledger.PostingMatrix;
 using Babel.SharedKernel;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Npgsql;
 using NpgsqlTypes;
 
@@ -30,18 +32,44 @@ namespace Babel.Ledger.Posting;
 /// </list>
 /// </para>
 /// </summary>
-public sealed class PostingService : IPostingService, IApplicationService
+/// <remarks>
+/// <b>والنوع <c>internal</c> عمداً:</b> التسجيل يمرّ بـ<see cref="IPostingService"/>،
+/// ونوعٌ عام يجعل «حلّ النوع الملموس مباشرةً» ممكناً — وقد وقع فعلاً في الجذر التركيبي
+/// وأمسكته طفرة. والمقياس بسيط: من يستطيع أن يسمّي المحرّك يستطيع أن يلتفّ على عقده.
+/// ومشاريع الاختبار وحدها تراه، عبر <c>InternalsVisibleTo</c> في
+/// <c>Babel.Ledger.csproj</c> — وهي داخل حدّ الثقة بحكم كونها اختباراً.
+/// </remarks>
+internal sealed class PostingService : IPostingService, IApplicationService
 {
     private readonly IEntitlementEnforcer _enforcer;
     private readonly LedgerRuntime _runtime;
+    private readonly ILogger _logger;
 
-    /// <summary>ينشئ محرك الترحيل.</summary>
+    /// <summary>ينشئ محرك الترحيل بلا سجلّ — والتشخيص عندئذ يُهمَل عمداً لا سهواً.</summary>
     public PostingService(IEntitlementEnforcer enforcer, LedgerRuntime runtime)
+        : this(enforcer, runtime, NullLogger<PostingService>.Instance)
+    {
+    }
+
+    /// <summary>
+    /// ينشئ محرك الترحيل ومعه سجلّ الخادم.
+    /// <para>
+    /// السجلّ ليس زينة: نصّ رفض قاعدة البيانات لا يعبر في الخطأ المجالي (تسريب مخطّط)،
+    /// فلولا مسار تشخيصي مقصود لضاع ما يحتاجه المشغّل. والحاوية تختار هذا المُنشئ لأنه
+    /// الأوسع القابل للحلّ.
+    /// </para>
+    /// </summary>
+    /// <param name="enforcer">منفِّذ الاستحقاق.</param>
+    /// <param name="runtime">موارد الدفتر.</param>
+    /// <param name="logger">سجلّ الخادم — إليه يذهب نصّ رفض قاعدة البيانات كاملاً.</param>
+    public PostingService(IEntitlementEnforcer enforcer, LedgerRuntime runtime, ILogger<PostingService> logger)
     {
         ArgumentNullException.ThrowIfNull(enforcer);
         ArgumentNullException.ThrowIfNull(runtime);
+        ArgumentNullException.ThrowIfNull(logger);
         _enforcer = enforcer;
         _runtime = runtime;
+        _logger = logger;
     }
 
     private NpgsqlDataSource _dataSource => _runtime.DataSource;
@@ -206,8 +234,16 @@ public sealed class PostingService : IPostingService, IApplicationService
         {
             // الرفض من قاعدة البيانات ليس عطلاً بل هو الطبقتان الأولى والثانية
             // وهما تعملان: 42501 صلاحيات · check_violation مشغّل مؤجَّل أو حجب.
+            //
+            // والنصّ الخام ينفصل هنا عن الرسالة المعروضة: يذهب كاملاً إلى سجلّ مبنيِ
+            // الحقول تحت معرّف تشخيص، ولا يعبر منه إلى المُستدعي إلا المعرّف والـSQLSTATE.
+            // ‏MessageText يحمل اسم القيد والجدول وأحياناً قيمة الصفّ، وهذا خطأ **مجالي**
+            // يصل إلى كل مستدعٍ لا إلى سطح HTTP وحده.
+            string diagnosticId = PostingDiagnostics.NewId();
+            PostingDiagnostics.DatabaseRefused(_logger, diagnosticId, plan, exception);
+
             return Result<PostingReceipt>.Failure(
-                PostingErrors.Database(exception.SqlState, exception.MessageText));
+                PostingErrors.Database(exception.SqlState, diagnosticId));
         }
     }
 

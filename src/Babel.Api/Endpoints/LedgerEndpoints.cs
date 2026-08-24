@@ -232,7 +232,7 @@ internal static class LedgerEndpoints
 
         // الفاعل من الاعتماد يعبر إلى الدفتر: القراءة تُقاس على محور «المستخدم الفاعل»
         // كما تُقاس الكتابة، ولا تُنسب إلى فاعل نظام.
-        Result<IReadOnlyList<TrialBalanceRow>> result = await audit
+        Result<(IReadOnlyList<TrialBalanceRow> Rows, decimal TotalDebit, decimal TotalCredit, bool Balanced)> result = await audit
             .TrialBalanceFromLinesAsync(
                 new TenantId(companyId), RequestPrincipal.Of(context).User, book, period, cancellationToken)
             .ConfigureAwait(false);

@@ -137,30 +137,36 @@ internal static class WireMapping
     }
 
     /// <summary>
-    /// يحوّل صفوف ميزان المراجعة إلى شكلها على السلك — <b>بلا مجموع</b>.
+    /// يحوّل ميزان المراجعة إلى شكله على السلك — <b>بمجموعيه كما وصلا من الدفتر</b>.
     /// </summary>
     /// <param name="book">الدفتر.</param>
     /// <param name="periodCode">الفترة، أو <c>null</c>.</param>
-    /// <param name="rows">الصفوف كما جاءت من الدفتر.</param>
+    /// <param name="report">الميزان كما جاء من الدفتر: صفوفه ومجموعاه وحكم توازنه.</param>
     /// <remarks>
-    /// جمع عمود مالي حسابٌ على المال، والجذر التركيبي لا يحسب مالاً — والقاعدة 13 تفحص
-    /// ذلك في IL لا في مراجعة. وسطح الدفتر لا يكشف المجموعين اليوم؛ موضعهما الصحيح
-    /// <c>sum()</c> على <c>numeric</c> داخل PostgreSQL، وهو تغيير مطلوب مسجَّل في ADR-0018.
+    /// <b>ولا حساب واحد هنا:</b> المجموعان محسوبان بـ<c>sum()</c> على <c>numeric</c> داخل
+    /// PostgreSQL، وحكم التوازن محسوم في الدفتر. وهذا السطر <b>ينسّق</b> عشرياً إلى نصّ
+    /// ولا يجمع ولا يقارن — والقاعدة 13 تفحص ذلك في IL لا في مراجعة.
     /// </remarks>
-    public static TrialBalanceDto ToDto(string book, string? periodCode, IReadOnlyList<TrialBalanceRow> rows)
+    public static TrialBalanceDto ToDto(
+        string book,
+        string? periodCode,
+        (IReadOnlyList<TrialBalanceRow> Rows, decimal TotalDebit, decimal TotalCredit, bool Balanced) report)
     {
-        ArgumentNullException.ThrowIfNull(rows);
+        ArgumentNullException.ThrowIfNull(report.Rows);
 
         return new TrialBalanceDto(
+            report.Balanced,
             book,
             periodCode,
-            rows.Count,
-            [.. rows.Select(static row => new TrialBalanceRowDto(
+            report.Rows.Count,
+            [.. report.Rows.Select(static row => new TrialBalanceRowDto(
                 row.AccountCode,
                 row.NameAr,
                 row.NameEn,
                 new WireDecimal(WireNumbers.FormatMoney(row.Debit)),
-                new WireDecimal(WireNumbers.FormatMoney(row.Credit))))]);
+                new WireDecimal(WireNumbers.FormatMoney(row.Credit))))],
+            new WireDecimal(WireNumbers.FormatMoney(report.TotalCredit)),
+            new WireDecimal(WireNumbers.FormatMoney(report.TotalDebit)));
     }
 
     private static PostingLine ToPostingLine(PostingLineDto dto, CurrencyCode currency, int index)

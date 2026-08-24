@@ -38,6 +38,36 @@ public sealed record LedgerChainReport(
 public sealed record TrialBalanceRow(string AccountCode, string NameAr, string NameEn, decimal Debit, decimal Credit);
 
 /// <summary>
+/// ميزان المراجعة كاملاً: صفوفه، ومجموعاه، وحكم توازنه.
+/// <para>
+/// <b>ولماذا المجموعان هنا لا في طبقة أعلى:</b> جمع عمود مالي حسابٌ على المال. في طبقة
+/// HTTP يمنعه البند (أ) من القاعدة 13 — ومنعه صحيح؛ وفي المتصفّح يُنتج الفخّ نفسه الذي
+/// بُني له شكل السلك، لأن <c>Number</c> في JavaScript فاصلة عائمة ثنائية. والموضع
+/// الصحيح <c>sum()</c> على <c>numeric</c> داخل PostgreSQL: جمعٌ مضبوط بلا فاصلة عائمة
+/// في أي خطوة، ومن <b>الاستعلام نفسه</b> الذي أنتج الصفوف — لا من استعلام ثانٍ قد يقرأ
+/// لقطة أخرى.
+/// </para>
+/// <para>
+/// <b>ولماذا صفٌّ مجهول الاسم (‏tuple) لا سجلٌّ مسمّى:</b> هذا النوع يعبر إلى الجذر
+/// التركيبي، والبند (ب) من القاعدة 13 يحصر ما يجوز أن يسمّيه السطح من كل وحدة في قائمة
+/// <c>PublishedModuleSurface</c> داخل
+/// <c>tests/Babel.ArchitectureTests/Rule13_NoBusinessLogicInTheApi.cs</c>. وقد <b>قيس</b>
+/// ذلك: سجلّ باسم <c>Babel.Ledger.Audit.TrialBalanceReport</c> أسقط
+/// <c>TheApiNamesOnlyThePublishedSurfaceOfEachModule</c> برسالتها الصريحة. وإضافة اسم
+/// إلى تلك القائمة <b>قرار معماري</b> يملكه صاحب ذلك الملف — لا هذا الفرع — ورسالة
+/// القاعدة نفسها تقول ذلك. والصفّ المجهول يحمل المعنى نفسه بأعضاء مسمّاة ولا يُدخل اسماً
+/// جديداً إلى سطح أي وحدة؛ ويُستبدل بالسجلّ المسمّى متى قُبل السطر المقترح.
+/// </para>
+/// <list type="bullet">
+///   <item><c>Rows</c> — الصفوف مرتّبة برمز الحساب.</item>
+///   <item><c>TotalDebit</c> — مجموع المدين بعملة الشركة، من <c>sum()</c> لا من جمع الصفوف.</item>
+///   <item><c>TotalCredit</c> — مجموع الدائن بعملة الشركة.</item>
+///   <item><c>Balanced</c> — هل تساوى المجموعان؟ يُحسم هنا كي لا يُقارَن مبلغان في
+///         JavaScript. وميزانٌ غير متوازن <b>يُرى</b>: لا يُقرَّب ولا يُخفى.</item>
+/// </list>
+/// </summary>
+
+/// <summary>
 /// قراءات التدقيق على الدفتر: إعادة التحقق من السلسلة، وميزان المراجعة.
 /// <para>
 /// كلاهما <b>قراءة محضة</b> ويعملان بدور التطبيق نفسه — الذي لا يملك
@@ -119,7 +149,7 @@ public sealed class LedgerAuditService : IApplicationService
     /// <param name="periodCode">رمز الفترة، أو <c>null</c> لكل الفترات.</param>
     /// <param name="cancellationToken">رمز الإلغاء.</param>
     [RequiresEntitlement(BabelModule.Ledger, EntitlementAccess.Read)]
-    public async ValueTask<Result<IReadOnlyList<TrialBalanceRow>>> TrialBalanceFromLinesAsync(
+    public async ValueTask<Result<(IReadOnlyList<TrialBalanceRow> Rows, decimal TotalDebit, decimal TotalCredit, bool Balanced)>> TrialBalanceFromLinesAsync(
         TenantId tenant,
         UserId actor,
         string book,
@@ -132,24 +162,32 @@ public sealed class LedgerAuditService : IApplicationService
 
         if (gate.IsFailure)
         {
-            return Result<IReadOnlyList<TrialBalanceRow>>.Failure(gate.Errors);
+            return Result<(IReadOnlyList<TrialBalanceRow> Rows, decimal TotalDebit, decimal TotalCredit, bool Balanced)>.Failure(gate.Errors);
         }
 
         List<TrialBalanceRow> rows = [];
+        decimal totalDebit = 0m;
+        decimal totalCredit = 0m;
 
         await using NpgsqlConnection connection =
             await _runtime.DataSource.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
 
+        // ── المجموعان من الاستعلام نفسه، بـ grouping sets ────────────────────
+        // مجموعة تجميع للتفصيل وأخرى فارغة للإجمالي: رحلة واحدة، ولقطة واحدة من
+        // البيانات (استعلامان يفصل بينهما ترحيل يُنتجان صفوفاً ومجموعاً لا يتطابقان).
+        // و‏coalesce لأن مجموعة التجميع الفارغة تُنتج صفّاً ولو كان الدخل صفراً.
         await using NpgsqlCommand command = new(
             """
             select l.account_code, a.name_ar, a.name_en,
-                   sum(l.debit_company) as debit, sum(l.credit_company) as credit
+                   coalesce(sum(l.debit_company), 0) as debit,
+                   coalesce(sum(l.credit_company), 0) as credit,
+                   grouping(l.account_code) as is_total
               from ledger.journal_line l
               join ledger.journal_entry e on e.entry_id = l.entry_id
               join ledger.account a on a.company_id = l.company_id and a.account_code = l.account_code
              where l.company_id = $1 and e.book_id = $2 and ($3::text is null or e.period_code = $3)
-             group by l.account_code, a.name_ar, a.name_en
-             order by l.account_code
+             group by grouping sets ((l.account_code, a.name_ar, a.name_en), ())
+             order by grouping(l.account_code), l.account_code
             """, connection);
         command.Parameters.AddWithValue(tenant.Value);
         command.Parameters.AddWithValue(book);
@@ -158,12 +196,21 @@ public sealed class LedgerAuditService : IApplicationService
         await using NpgsqlDataReader reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
         while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
         {
+            if (reader.GetInt32(5) == 1)
+            {
+                totalDebit = reader.GetDecimal(3);
+                totalCredit = reader.GetDecimal(4);
+                continue;
+            }
+
             rows.Add(new TrialBalanceRow(
                 reader.GetString(0), reader.GetString(1), reader.GetString(2),
                 reader.GetDecimal(3), reader.GetDecimal(4)));
         }
 
-        return Result<IReadOnlyList<TrialBalanceRow>>.Success(rows);
+        // ‏المساواة تُحسم هنا لا عند العميل: مقارنتها في JavaScript تعيد الفخّ نفسه
+        // الذي بُني له شكل السلك — ‏Number فاصلة عائمة ثنائية.
+        return Result<(IReadOnlyList<TrialBalanceRow> Rows, decimal TotalDebit, decimal TotalCredit, bool Balanced)>.Success((rows, totalDebit, totalCredit, totalDebit == totalCredit));
     }
 
     /// <summary>سطر قيد مقروءاً من التخزين، بكل عموده — لا بستّة منها.</summary>

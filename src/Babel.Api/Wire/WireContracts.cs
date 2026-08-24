@@ -178,27 +178,35 @@ internal sealed record TrialBalanceRowDto(
     WireDecimal Credit);
 
 /// <summary>
-/// ميزان المراجعة كاملاً.
+/// ميزان المراجعة كاملاً — <b>ومعه مجموعاه</b>.
 /// <para>
-/// <b>ولاحظ ما ليس هنا: المجموعان.</b> جمع عمود مالي حسابٌ على المال، والجذر التركيبي
-/// لا يحسب مالاً (القاعدة 13، البند «أ» — مفروض على IL لا على المراجعة). ومكان المجموع
-/// الصحيح هو <c>sum()</c> على <c>numeric</c> داخل PostgreSQL حيث الجمع مضبوط بلا فاصلة
-/// عائمة أصلاً؛ وسطح الدفتر لا يكشفه اليوم، وهو تغيير مطلوب مسجَّل في ADR-0018.
+/// والمجموعان يصلان محسوبَين من الدفتر: <c>sum()</c> على <c>numeric</c> داخل PostgreSQL
+/// في الاستعلام نفسه الذي أنتج الصفوف. الجذر التركيبي <b>ينقلهما نصّاً ولا يحسبهما</b>
+/// (القاعدة 13، البند «أ» — مفروض على IL لا على المراجعة)، ولا يُترك جمعهما لواجهة
+/// المتصفّح لأن <c>Number</c> في JavaScript فاصلة عائمة ثنائية وجمع عمود مالي فيها هو
+/// الفخّ نفسه منقولاً إلى العميل.
 /// </para>
 /// <para>
-/// ولا يُترك الجمع لواجهة المتصفّح: <c>Number</c> في JavaScript فاصلة عائمة ثنائية،
-/// وجمع عمود مالي فيها هو الفخّ نفسه منقولاً إلى العميل.
+/// و<see cref="Balanced"/> يصل محسوماً كذلك: المقارنة بين مبلغين قرارٌ عشري، ومقارنتها
+/// عند العميل تُعيد الفخّ من بابه الثاني. وميزانٌ غير متوازن <b>يُرى</b> — المجموعان
+/// يختلفان و<see cref="Balanced"/> يقول <c>false</c> — ولا يُقرَّب ولا يُخفى.
 /// </para>
 /// </summary>
+/// <param name="Balanced">هل تساوى المجموعان؟ محسوم في الدفتر لا عند العميل.</param>
 /// <param name="Book">الدفتر.</param>
 /// <param name="PeriodCode">الفترة، أو غيابها فكل الفترات.</param>
 /// <param name="RowCount">عدد الصفوف.</param>
 /// <param name="Rows">الصفوف.</param>
+/// <param name="TotalCredit">مجموع الدائن بعملة الشركة، نصّاً.</param>
+/// <param name="TotalDebit">مجموع المدين بعملة الشركة، نصّاً.</param>
 internal sealed record TrialBalanceDto(
+    bool Balanced,
     string Book,
     string? PeriodCode,
     int RowCount,
-    IReadOnlyList<TrialBalanceRowDto> Rows);
+    IReadOnlyList<TrialBalanceRowDto> Rows,
+    WireDecimal TotalCredit,
+    WireDecimal TotalDebit);
 
 /// <summary>حكم إعادة التحقق من سلسلة نطاق واحد.</summary>
 /// <param name="Ok">هل النطاق سليم كاملاً؟</param>

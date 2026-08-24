@@ -10,7 +10,7 @@
     <AssemblyName>Babel.Canonicalization.Golden</AssemblyName>
     <InvariantGlobalization>false</InvariantGlobalization>
     <PredefinedCulturesOnly>false</PredefinedCulturesOnly>
-    <!-- أداة توليد متجهات ذهبية، لا مكتبة منشورة: الاستثناء نفسه الممنوح لـsrc/Babel.Canonicalization. -->
+    <!-- أداة تشغيل لا مكتبة عامة؛ الشرح في README ولا حاجة لتعليق XML على كل عضو. -->
     <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 

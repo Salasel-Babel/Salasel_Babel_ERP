@@ -111,9 +111,9 @@ public sealed class GoldenVectorTests
         {
             CultureInfo.CurrentCulture = new CultureInfo("ar-SA");
 
-            // التنسيق بلا ثقافة هنا **هو موضوع الاختبار** لا سهو فيه: الاختبار يُثبت
-            // أن الصياغة الساذجة تنكسر تحت ar-SA، فلا يجوز إصلاحها بثقافة ثابتة.
-#pragma warning disable CA1305 // متعمَّد: هذا هو السلوك المعيب المُختبَر
+            // التحويل «الساذج» بلا IFormatProvider هو موضوع الاختبار نفسه، لا سهو فيه:
+            // الغرض إثبات أن الثقافة المحيطة تُفسده — ولو أُصلح لما بقي شيء يُثبَت.
+#pragma warning disable CA1305 // Specify IFormatProvider
             var naive = 100.5m.ToString("0.0000");
             var naiveDate = new DateTime(2026, 1, 2, 0, 0, 0, DateTimeKind.Utc).ToString("d");
 #pragma warning restore CA1305

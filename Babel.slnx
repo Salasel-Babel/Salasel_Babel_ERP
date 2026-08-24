@@ -5,6 +5,9 @@
     <Project Path="src/Babel.Assets/Babel.Assets.csproj" />
     <Project Path="src/Babel.Canonicalization/Babel.Canonicalization.csproj" />
     <Project Path="src/Babel.Compliance/Babel.Compliance.csproj" />
+    <Project Path="src/Babel.Compliance.Abstractions/Babel.Compliance.Abstractions.csproj" />
+    <Project Path="src/Babel.Compliance.FakeProvider/Babel.Compliance.FakeProvider.csproj" />
+    <Project Path="src/Babel.Compliance.Wolverine/Babel.Compliance.Wolverine.csproj" />
     <Project Path="src/Babel.Contracts/Babel.Contracts.csproj" />
     <Project Path="src/Babel.ControlPlane/Babel.ControlPlane.csproj" />
     <Project Path="src/Babel.Core/Babel.Core.csproj" />
@@ -39,5 +42,8 @@
     <Project Path="tests/Babel.RealEstate.Tests/Babel.RealEstate.Tests.csproj" />
     <Project Path="tests/Babel.Sales.Tests/Babel.Sales.Tests.csproj" />
     <Project Path="tests/Babel.SharedKernel.Tests/Babel.SharedKernel.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/Babel.Canonicalization.Golden/Babel.Canonicalization.Golden.csproj" />
   </Folder>
 </Solution>

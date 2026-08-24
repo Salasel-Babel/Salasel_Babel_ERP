@@ -575,4 +575,4 @@ public sealed class PostgresRoundTripTests : IAsyncLifetime
 
 /// <summary>اختبارات PostgreSQL تُشغَّل تتابعياً: تتشارك الجداول نفسها.</summary>
 [CollectionDefinition("postgres", DisableParallelization = true)]
-public sealed class PostgresCollection;
+public sealed class PostgresCollectionDefinition;

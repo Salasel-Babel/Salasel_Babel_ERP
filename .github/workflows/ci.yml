@@ -4,6 +4,11 @@
 # TreatWarningsAsErrors مفعّل في Directory.Build.props، واختبارات المعمارية جزء من مجموعة
 # الاختبارات — فمخالفة أي قاعدة من قواعد src/README.md توقف الدمج.
 #
+# حلٌّ واحد وسير عمل واحد: Babel.slnx يحمل كل مشاريع src/ وtests/ وأداة المتجهات الذهبية،
+# فلا تُبنى شجرة مرتين ولا تُشغَّل مجموعة اختبارات في ملفَّي سير عمل. ما كان في
+# canonicalization.yml من قيمة لا يغطّيها البناء العام — المتجهات الذهبية تحت ثقافات
+# مختلفة، وحارس وضع العولمة الثابتة — انتقل إلى هنا كخطوات ووظيفة مستقلة.
+#
 # مصدر الـSDK هنا هو مصنوعات Microsoft الرسمية، لا أرشيف توزيعة — شرط تطابق الإصدار
 # وسلسلة التوريد (docs/analysis/02-architecture.md §2.2 ملاحظة 2).
 
@@ -42,7 +47,29 @@ jobs:
   build-and-enforce:
     name: بناء وإنفاذ الحدود
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
+
+    # قاعدة بيانات حقيقية: اختبارات الدورة الكاملة (التوحيد القياسي) وعدّاد الالتزام
+    # المقفول بالصف لا تُثبت شيئاً على بديل في الذاكرة. المصادقة trust بلا كلمة مرور:
+    # لا اعتماد في هذا المستودع، ولا في هذا الملف (CONTRIBUTING §3 بند 7).
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      BABEL_CANON_TEST_ADMIN_DB: "Host=127.0.0.1;Port=5432;Database=postgres;Username=postgres;Include Error Detail=true"
+      BABEL_CANON_TEST_DB: "Host=127.0.0.1;Port=5432;Database=babel_canon_tests;Username=postgres;Include Error Detail=true"
+      BABEL_COMPLIANCE_TEST_DB: "Host=127.0.0.1;Port=5432;Database=postgres;Username=postgres"
 
     steps:
       - name: سحب المستودع
@@ -52,6 +79,14 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
+
+      # ICU مطلوب: بدونه يصير String.Normalize عملية لا شيء بصمت، فتتغيّر كل بصمة نص عربي
+      # (src/Babel.Canonicalization/SPEC.md §8.2). الحارس الموجب في الوظيفة الثانية أدناه.
+      - name: التأكّد من وجود ICU
+        run: |
+          set -eux
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libicu-dev
 
       - name: ذاكرة NuGet المؤقتة
         uses: actions/cache@v4
@@ -80,12 +115,37 @@ jobs:
           if-no-files-found: ignore
 
       # اختبارات المعمارية تُشغَّل أولاً ومنفصلة: إن انكسر حدّ، تُقرأ الرسالة فوراً
-      # بدل البحث عنها بين ثمانين اختباراً.
+      # بدل البحث عنها بين مئتي اختبار.
       - name: إنفاذ الحدود المعمارية
         run: dotnet test --project tests/Babel.ArchitectureTests/Babel.ArchitectureTests.csproj --configuration Release --no-build
 
       - name: كل الاختبارات
         run: dotnet test --solution Babel.slnx --configuration Release --no-build
+
+      # بوابة الشكل القانوني: البايتات المُجزَّأة لا تتحرّك بسبب ثقافة المضيف.
+      # إن سقطت هذه الخطوات فالسبب في 99٪ من الحالات تعديل الشكل القانوني بحسن نيّة
+      # (src/Babel.Canonicalization/SPEC.md §12 — إجراء إدخال v2).
+      - name: المتجهات الذهبية (ثقافة ar-SA)
+        run: dotnet run -c Release --no-build --project tools/Babel.Canonicalization.Golden -- --verify
+
+      - name: المتجهات الذهبية تحت ثقافة de-DE
+        env:
+          BABEL_GOLDEN_CULTURE: de-DE
+        run: dotnet run -c Release --no-build --project tools/Babel.Canonicalization.Golden -- --verify
+
+      - name: المتجهات الذهبية تحت ثقافة tr-TR
+        env:
+          BABEL_GOLDEN_CULTURE: tr-TR
+        run: dotnet run -c Release --no-build --project tools/Babel.Canonicalization.Golden -- --verify
+
+      - name: التأكّد أن الملف الذهبي لم يُعدَّل يدوياً
+        run: |
+          set -eux
+          dotnet run -c Release --no-build --project tools/Babel.Canonicalization.Golden -- --emit
+          if ! git diff --exit-code -- tests/golden/; then
+            echo '::error::الملف الذهبي لا يطابق ما تنتجه الشيفرة. راجع SPEC.md §12.'
+            exit 1
+          fi
 
       - name: التحقق من عدم وجود أسرار في التغييرات
         run: |
@@ -95,3 +155,35 @@ jobs:
             echo "::error::يبدو أن هناك سرّاً في المستودع. CONTRIBUTING §3 بند 7."
             exit 1
           fi
+
+  invariant-globalization-guard:
+    name: الحارس ينفجر في وضع العولمة الثابتة
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: سحب المستودع
+        uses: actions/checkout@v4
+
+      - name: تهيئة .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: البناء
+        run: dotnet build Babel.slnx -c Release
+
+      # إثبات موجب: البيئة المعطوبة يجب أن تُرفَض، لا أن تنتج بصمات صامتة خاطئة.
+      # مقيس على هذا المستودع: تحت DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 يصير التطبيع
+      # عملية لا شيء، ويُبلّغ IsNormalized(FormC) بالصواب عن نصّ غير مطبَّع، فتتغيّر
+      # بصمة كل نص يحمل أ/إ/آ بلا استثناء واحد.
+      - name: يجب أن يفشل تحت DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
+        env:
+          DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: '1'
+        run: |
+          set -eu
+          if dotnet run -c Release --no-build --project tools/Babel.Canonicalization.Golden -- --verify; then
+            echo '::error::المكتبة أنتجت بصمات في وضع العولمة الثابتة. الحارس معطّل — هذه أخطر حالة ممكنة.'
+            exit 1
+          fi
+          echo 'الحارس رفض البيئة المعطوبة كما يجب.'

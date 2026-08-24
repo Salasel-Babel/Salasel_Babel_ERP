@@ -1,0 +1,634 @@
+{
+  "schema_version": "1.0.0",
+  "module": "purchasing",
+  "source_refs": [
+    "docs/reference/posting-matrix.md §2",
+    "docs/analysis/07-real-estate.md §10.3"
+  ],
+  "events": [
+    {
+      "event_code": "purchasing.goods_receipt.posted",
+      "name_ar": "استلام بضاعة بأمر شراء قبل ورود الفاتورة",
+      "name_en": "Goods receipt against a purchase order before the invoice arrives",
+      "module": "purchasing",
+      "status": "drafted",
+      "source_ref": "posting-matrix.md §2.1",
+      "trigger": {
+        "name_ar": "عند إثبات الاستلام في المستودع",
+        "name_en": "On confirming receipt in the warehouse"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "مرتجع استلام بقيد عكسي مستقل",
+        "name_en": "A receipt return by a separate reversing entry"
+      },
+      "amounts": {
+        "receipt_cost": {
+          "name_ar": "تكلفة الاستلام",
+          "name_en": "Receipt cost",
+          "derivation_ar": "بسعر أمر الشراء للكميات المستلمة فعلاً",
+          "derivation_en": "At the purchase order price for the quantities actually received"
+        }
+      },
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "inventory_control",
+          "qualifier_source": "line.item_group",
+          "side": "debit",
+          "amount": "receipt_cost",
+          "dimensions": [
+            "warehouse"
+          ],
+          "subledger": "item",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "goods_received_not_invoiced",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "receipt_cost",
+          "dimensions": [],
+          "subledger": "supplier",
+          "when": null,
+          "note_ar": "التزام مؤقت يُستنفَد عند ورود فاتورة المورد",
+          "note_en": "A temporary liability consumed when the supplier invoice arrives"
+        }
+      ]
+    },
+    {
+      "event_code": "purchasing.invoice.stock.posted",
+      "name_ar": "فاتورة مشتريات مخزنية",
+      "name_en": "Stock purchase invoice",
+      "module": "purchasing",
+      "status": "drafted",
+      "source_ref": "posting-matrix.md §2.2",
+      "trigger": {
+        "name_ar": "عند اعتماد فاتورة المورد ومطابقتها بالاستلام",
+        "name_en": "On approving the supplier invoice and matching it to the receipt"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "إشعار مدين على المورد — لا تعديل للفاتورة",
+        "name_en": "A debit note on the supplier — the invoice is never edited"
+      },
+      "amounts": {
+        "receipt_value": {
+          "name_ar": "قيمة الاستلام المفوترة",
+          "name_en": "Invoiced receipt value",
+          "derivation_ar": "الرصيد المفتوح على حساب البضاعة المستلمة غير المفوترة للاستلام المطابق",
+          "derivation_en": "The open GRNI balance for the matched receipt"
+        },
+        "price_variance": {
+          "name_ar": "فرق السعر",
+          "name_en": "Price variance",
+          "derivation_ar": "فاتورة المورد ناقص قيمة الاستلام — قد يكون سالباً",
+          "derivation_en": "Supplier invoice less receipt value — may be negative"
+        },
+        "tax": {
+          "name_ar": "ضريبة المدخلات",
+          "name_en": "Input VAT",
+          "derivation_ar": "حسب التصنيف الضريبي لسطور الفاتورة",
+          "derivation_en": "Per the tax classification of the invoice lines"
+        }
+      },
+      "conditions": {
+        "has_price_variance": {
+          "name_ar": "يوجد فرق سعر بين الاستلام والفاتورة",
+          "name_en": "A price variance exists between receipt and invoice",
+          "expression": "abs(invoice.net - receipt.value) > 0"
+        },
+        "is_taxable_purchase": {
+          "name_ar": "مشتريات خاضعة للضريبة",
+          "name_en": "Taxable purchase",
+          "expression": "document.has_any_line_with(tax_classification == 'standard')"
+        }
+      },
+      "scenarios": [
+        {
+          "code": "variance_taxable",
+          "name_ar": "فرق سعر ومشتريات خاضعة",
+          "name_en": "Price variance and taxable purchase",
+          "true_conditions": [
+            "has_price_variance",
+            "is_taxable_purchase"
+          ]
+        },
+        {
+          "code": "no_variance_taxable",
+          "name_ar": "بلا فرق سعر ومشتريات خاضعة",
+          "name_en": "No variance and taxable purchase",
+          "true_conditions": [
+            "is_taxable_purchase"
+          ],
+          "zero_amounts": [
+            "price_variance"
+          ]
+        },
+        {
+          "code": "no_variance_exempt",
+          "name_ar": "بلا فرق سعر ومشتريات غير خاضعة",
+          "name_en": "No variance and non-taxable purchase",
+          "true_conditions": [],
+          "zero_amounts": [
+            "price_variance",
+            "tax"
+          ]
+        }
+      ],
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "goods_received_not_invoiced",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "receipt_value",
+          "dimensions": [],
+          "subledger": "supplier",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "inventory_control",
+          "qualifier_source": "line.item_group",
+          "side": "debit",
+          "amount": "price_variance",
+          "dimensions": [
+            "warehouse"
+          ],
+          "subledger": "item",
+          "when": "has_price_variance",
+          "note_ar": "فرق السعر يُرسمَل على المخزون لا يُصرَّف",
+          "note_en": "The price variance is capitalised into inventory not expensed"
+        },
+        {
+          "line_no": 3,
+          "line_kind": "role",
+          "role": "vat_input",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "tax",
+          "dimensions": [],
+          "subledger": null,
+          "when": "is_taxable_purchase",
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 4,
+          "line_kind": "role",
+          "role": "ap_supplier_control",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "receipt_value + price_variance + tax",
+          "dimensions": [],
+          "subledger": "supplier",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "purchasing.invoice.expense.posted",
+      "name_ar": "فاتورة مصروف مباشر بلا مخزون",
+      "name_en": "Direct expense invoice without inventory",
+      "module": "purchasing",
+      "status": "drafted",
+      "source_ref": "posting-matrix.md §2.2",
+      "trigger": {
+        "name_ar": "عند اعتماد فاتورة المورد",
+        "name_en": "On approving the supplier invoice"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "إشعار مدين على المورد",
+        "name_en": "A debit note on the supplier"
+      },
+      "caveats": [
+        {
+          "ref": "07-real-estate.md §10.3",
+          "text_ar": "⚠️ طريقة احتساب الخصم التناسبي وتسويته السنوية غير محسومة — لا يُبنى سيناريو النشاط المختلط في الكود قبل تأكيد المستشار الضريبي",
+          "text_en": "⚠️ The pro-rata computation method and its annual adjustment are unresolved — the mixed activity scenario is not built in code before tax adviser confirmation"
+        }
+      ],
+      "amounts": {
+        "net": {
+          "name_ar": "صافي المصروف",
+          "name_en": "Expense net",
+          "derivation_ar": "مجموع سطور الفاتورة قبل الضريبة",
+          "derivation_en": "Sum of invoice lines before VAT"
+        },
+        "recoverable_tax": {
+          "name_ar": "ضريبة المدخلات القابلة للخصم",
+          "name_en": "Recoverable input VAT",
+          "derivation_ar": "الجزء المنسوب لنشاط خاضع حسب وسم vat_recovery_attribution على السطر",
+          "derivation_en": "The portion attributed to taxable activity per the vat_recovery_attribution tag on the line"
+        },
+        "non_recoverable_tax": {
+          "name_ar": "ضريبة المدخلات غير القابلة للخصم",
+          "name_en": "Non-recoverable input VAT",
+          "derivation_ar": "الجزء المنسوب لنشاط معفى — يُحمَّل على حساب المصروف",
+          "derivation_en": "The portion attributed to exempt activity — charged to the expense account"
+        }
+      },
+      "conditions": {
+        "vat_fully_recoverable": {
+          "name_ar": "ضريبة المدخلات قابلة للخصم كاملة",
+          "name_en": "Input VAT fully recoverable",
+          "expression": "line.vat_recovery_attribution == 'taxable'"
+        },
+        "vat_not_recoverable": {
+          "name_ar": "ضريبة المدخلات غير قابلة للخصم",
+          "name_en": "Input VAT not recoverable",
+          "expression": "line.vat_recovery_attribution == 'exempt'"
+        },
+        "vat_partially_recoverable": {
+          "name_ar": "خصم تناسبي لنشاط مختلط",
+          "name_en": "Pro-rata deduction for mixed activity",
+          "expression": "line.vat_recovery_attribution == 'mixed'"
+        }
+      },
+      "scenarios": [
+        {
+          "code": "fully_recoverable",
+          "name_ar": "نشاط خاضع بالكامل",
+          "name_en": "Fully taxable activity",
+          "true_conditions": [
+            "vat_fully_recoverable"
+          ],
+          "zero_amounts": [
+            "non_recoverable_tax"
+          ]
+        },
+        {
+          "code": "not_recoverable",
+          "name_ar": "نشاط معفى بالكامل",
+          "name_en": "Fully exempt activity",
+          "true_conditions": [
+            "vat_not_recoverable"
+          ],
+          "zero_amounts": [
+            "recoverable_tax"
+          ]
+        },
+        {
+          "code": "pro_rata",
+          "name_ar": "نشاط مختلط بخصم تناسبي",
+          "name_en": "Mixed activity with pro-rata deduction",
+          "true_conditions": [
+            "vat_partially_recoverable"
+          ]
+        }
+      ],
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "operating_expense",
+          "qualifier_source": "line.expense_category",
+          "side": "debit",
+          "amount": "net + non_recoverable_tax",
+          "dimensions": [
+            "cost_center"
+          ],
+          "subledger": null,
+          "when": null,
+          "note_ar": "الضريبة غير القابلة للخصم تصبح جزءاً من تكلفة المصروف",
+          "note_en": "Non-deductible VAT becomes part of the expense cost"
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "vat_input",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "recoverable_tax",
+          "dimensions": [],
+          "subledger": null,
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 3,
+          "line_kind": "role",
+          "role": "ap_supplier_control",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "net + recoverable_tax + non_recoverable_tax",
+          "dimensions": [],
+          "subledger": "supplier",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "purchasing.payment.posted",
+      "name_ar": "سند صرف لمورد",
+      "name_en": "Supplier payment voucher",
+      "module": "purchasing",
+      "status": "drafted",
+      "source_ref": "posting-matrix.md §2.3",
+      "trigger": {
+        "name_ar": "عند الصرف الفعلي وإصدار سند صرف مرقَّم",
+        "name_en": "On actual payment and issue of a numbered payment voucher"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "قيد عكسي مستقل",
+        "name_en": "A separate reversing entry"
+      },
+      "amounts": {
+        "paid": {
+          "name_ar": "المبلغ المدفوع للمورد",
+          "name_en": "Amount paid to the supplier",
+          "derivation_ar": "من جدول السداد أو المبلغ المعتمد على السند",
+          "derivation_en": "From the payment schedule or the approved voucher amount"
+        },
+        "fee": {
+          "name_ar": "رسوم تحويل بنكية على الشركة",
+          "name_en": "Bank transfer fee borne by the company",
+          "derivation_ar": "من إشعار البنك لا بتقدير",
+          "derivation_en": "From the bank advice not by estimate"
+        }
+      },
+      "conditions": {
+        "has_bank_fee": {
+          "name_ar": "توجد رسوم تحويل على الشركة",
+          "name_en": "A transfer fee is borne by the company",
+          "expression": "document.bank_fee > 0"
+        }
+      },
+      "scenarios": [
+        {
+          "code": "with_fee",
+          "name_ar": "صرف برسوم تحويل",
+          "name_en": "Payment with a transfer fee",
+          "true_conditions": [
+            "has_bank_fee"
+          ]
+        },
+        {
+          "code": "without_fee",
+          "name_ar": "صرف بلا رسوم",
+          "name_en": "Payment without a fee",
+          "true_conditions": [],
+          "zero_amounts": [
+            "fee"
+          ]
+        }
+      ],
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "ap_supplier_control",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "paid",
+          "dimensions": [],
+          "subledger": "supplier",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "bank_charges",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "fee",
+          "dimensions": [],
+          "subledger": null,
+          "when": "has_bank_fee",
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 3,
+          "line_kind": "role",
+          "role": "settlement_account",
+          "qualifier_source": "document.settlement_method",
+          "side": "credit",
+          "amount": "paid + fee",
+          "dimensions": [],
+          "subledger": "resolved",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "purchasing.landed_cost.allocated",
+      "name_ar": "توزيع مصاريف إضافية على المشتريات",
+      "name_en": "Allocate landed costs to purchases",
+      "module": "purchasing",
+      "status": "drafted",
+      "source_ref": "posting-matrix.md §2.4",
+      "trigger": {
+        "name_ar": "عند اعتماد مستند المصاريف الإضافية وتحديد قاعدة التوزيع",
+        "name_en": "On approving the landed cost document and selecting the allocation basis"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "قيد عكسي مستقل يعيد التكلفة إلى ما كانت عليه",
+        "name_en": "A separate reversing entry restoring the previous cost"
+      },
+      "amounts": {
+        "landed_cost": {
+          "name_ar": "المصاريف الموزَّعة على الأصناف",
+          "name_en": "Landed costs allocated to items",
+          "derivation_ar": "بقاعدة توزيع معتمدة: بالقيمة أو بالوزن أو بالكمية — إعداد لا كود",
+          "derivation_en": "By an approved allocation basis: by value weight or quantity — a setting not code"
+        }
+      },
+      "conditions": {
+        "billed_by_supplier": {
+          "name_ar": "المصاريف بفاتورة مورد خدمة",
+          "name_en": "The costs come on a service supplier invoice",
+          "expression": "document.landed_cost_source == 'supplier_invoice'"
+        },
+        "paid_directly": {
+          "name_ar": "المصاريف مدفوعة نقداً مباشرة",
+          "name_en": "The costs are paid directly in cash",
+          "expression": "document.landed_cost_source == 'direct_payment'"
+        }
+      },
+      "scenarios": [
+        {
+          "code": "on_supplier_account",
+          "name_ar": "على حساب مورد الخدمة",
+          "name_en": "On the service supplier account",
+          "true_conditions": [
+            "billed_by_supplier"
+          ]
+        },
+        {
+          "code": "paid_cash",
+          "name_ar": "مدفوعة مباشرة",
+          "name_en": "Paid directly",
+          "true_conditions": [
+            "paid_directly"
+          ]
+        }
+      ],
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "inventory_control",
+          "qualifier_source": "line.item_group",
+          "side": "debit",
+          "amount": "landed_cost",
+          "dimensions": [
+            "warehouse"
+          ],
+          "subledger": "item",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "ap_supplier_control",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "landed_cost",
+          "dimensions": [],
+          "subledger": "supplier",
+          "when": "billed_by_supplier",
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 3,
+          "line_kind": "role",
+          "role": "settlement_account",
+          "qualifier_source": "document.settlement_method",
+          "side": "credit",
+          "amount": "landed_cost",
+          "dimensions": [],
+          "subledger": "resolved",
+          "when": "paid_directly",
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "purchasing.debit_note.posted",
+      "name_ar": "إشعار مدين على مورد — مرتجع مشتريات",
+      "name_en": "Supplier debit note — purchase return",
+      "module": "purchasing",
+      "status": "drafted",
+      "source_ref": "posting-matrix.md §2.2",
+      "trigger": {
+        "name_ar": "عند اعتماد المرتجع وإخراج البضاعة من المستودع",
+        "name_en": "On approving the return and issuing the goods out of the warehouse"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "قيد عكسي مستقل",
+        "name_en": "A separate reversing entry"
+      },
+      "amounts": {
+        "net": {
+          "name_ar": "صافي المرتجع",
+          "name_en": "Return net",
+          "derivation_ar": "بتكلفة الاستلام الأصلي لا بتكلفة اليوم",
+          "derivation_en": "At the original receipt cost not today's cost"
+        },
+        "tax": {
+          "name_ar": "ضريبة المرتجع",
+          "name_en": "VAT on the return",
+          "derivation_ar": "بنفس التصنيف الضريبي للفاتورة الأصلية",
+          "derivation_en": "At the same tax classification as the original invoice"
+        }
+      },
+      "conditions": {
+        "original_was_taxable": {
+          "name_ar": "الفاتورة الأصلية خاضعة",
+          "name_en": "The original invoice was taxable",
+          "expression": "source_invoice.line.tax_classification == 'standard'"
+        }
+      },
+      "scenarios": [
+        {
+          "code": "taxable",
+          "name_ar": "مرتجع خاضع",
+          "name_en": "Taxable return",
+          "true_conditions": [
+            "original_was_taxable"
+          ]
+        },
+        {
+          "code": "exempt",
+          "name_ar": "مرتجع غير خاضع",
+          "name_en": "Non-taxable return",
+          "true_conditions": [],
+          "zero_amounts": [
+            "tax"
+          ]
+        }
+      ],
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "ap_supplier_control",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "net + tax",
+          "dimensions": [],
+          "subledger": "supplier",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "inventory_control",
+          "qualifier_source": "line.item_group",
+          "side": "credit",
+          "amount": "net",
+          "dimensions": [
+            "warehouse"
+          ],
+          "subledger": "item",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 3,
+          "line_kind": "role",
+          "role": "vat_input",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "tax",
+          "dimensions": [],
+          "subledger": null,
+          "when": "original_was_taxable",
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    }
+  ]
+}

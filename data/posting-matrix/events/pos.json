@@ -1,0 +1,287 @@
+{
+  "schema_version": "1.0.0",
+  "module": "pos",
+  "source_refs": [
+    "docs/reference/posting-matrix.md §4"
+  ],
+  "events": [
+    {
+      "event_code": "pos.shift.close",
+      "name_ar": "إغلاق وردية نقطة بيع",
+      "name_en": "Close a point-of-sale shift",
+      "module": "pos",
+      "status": "drafted",
+      "source_ref": "posting-matrix.md §4.1",
+      "trigger": {
+        "name_ar": "عند إغلاق الوردية بعد إدخال التسوية النقدية من أمين الصندوق — قيد واحد مجمّع لكل وردية لا قيد لكل فاتورة",
+        "name_en": "On closing the shift after the cashier enters the cash reconciliation — one aggregated entry per shift not one per invoice"
+      },
+      "posts_entry": true,
+      "precondition": {
+        "name_ar": "لا تُقفل وردية دون تسوية نقدية مُدخلة من أمين الصندوق وأي فرق موثَّق بسببه",
+        "name_en": "A shift is not closed without a cash reconciliation entered by the cashier and every difference documented with its reason"
+      },
+      "reversal": {
+        "name_ar": "لا تُفتح وردية مقفلة — التصحيح بقيد تسوية مستقل مرجعه رقم الوردية",
+        "name_en": "A closed shift is never reopened — correction is by a separate adjustment entry referencing the shift number"
+      },
+      "amounts": {
+        "net_revenue": {
+          "name_ar": "صافي مبيعات الوردية",
+          "name_en": "Shift net sales",
+          "derivation_ar": "مجموع صافي سطور فواتير الوردية",
+          "derivation_en": "Sum of the net of the shift invoice lines"
+        },
+        "tax_total": {
+          "name_ar": "إجمالي ضريبة الوردية",
+          "name_en": "Shift total VAT",
+          "derivation_ar": "مجموع ضريبة سطور فواتير الوردية",
+          "derivation_en": "Sum of the per-line VAT of the shift invoices"
+        },
+        "card_sales": {
+          "name_ar": "مبيعات البطاقات",
+          "name_en": "Card sales",
+          "derivation_ar": "مجموع متحصلات مدى والشبكة من ملخص الجهاز الطرفي",
+          "derivation_en": "Total card receipts from the terminal summary"
+        },
+        "credit_sales": {
+          "name_ar": "المبيعات الآجلة",
+          "name_en": "Credit sales",
+          "derivation_ar": "مجموع فواتير الوردية على حسابات عملاء",
+          "derivation_en": "Total shift invoices charged to customer accounts"
+        },
+        "cash_counted": {
+          "name_ar": "النقد المعدود فعلياً",
+          "name_en": "Cash actually counted",
+          "derivation_ar": "من محضر الجرد النقدي الموقّع من أمين الصندوق",
+          "derivation_en": "From the cash count sheet signed by the cashier"
+        },
+        "shortage": {
+          "name_ar": "عجز الصندوق",
+          "name_en": "Cash shortage",
+          "derivation_ar": "الفرق حين يقل المعدود عن المتوقع",
+          "derivation_en": "The difference when the count is below expectation"
+        },
+        "surplus": {
+          "name_ar": "زيادة الصندوق",
+          "name_en": "Cash surplus",
+          "derivation_ar": "الفرق حين يزيد المعدود عن المتوقع",
+          "derivation_en": "The difference when the count exceeds expectation"
+        }
+      },
+      "identities": {
+        "cash_counted": "net_revenue + tax_total - card_sales - credit_sales - shortage + surplus"
+      },
+      "conditions": {
+        "has_shortage": {
+          "name_ar": "الوردية بها عجز نقدي",
+          "name_en": "The shift has a cash shortage",
+          "expression": "cash_counted < expected_cash"
+        },
+        "has_surplus": {
+          "name_ar": "الوردية بها زيادة نقدية",
+          "name_en": "The shift has a cash surplus",
+          "expression": "cash_counted > expected_cash"
+        }
+      },
+      "scenarios": [
+        {
+          "code": "balanced",
+          "name_ar": "وردية متطابقة",
+          "name_en": "Reconciled shift",
+          "true_conditions": [],
+          "zero_amounts": [
+            "shortage",
+            "surplus"
+          ]
+        },
+        {
+          "code": "shortage",
+          "name_ar": "وردية بعجز",
+          "name_en": "Shift with a shortage",
+          "true_conditions": [
+            "has_shortage"
+          ],
+          "zero_amounts": [
+            "surplus"
+          ]
+        },
+        {
+          "code": "surplus",
+          "name_ar": "وردية بزيادة",
+          "name_en": "Shift with a surplus",
+          "true_conditions": [
+            "has_surplus"
+          ],
+          "zero_amounts": [
+            "shortage"
+          ]
+        }
+      ],
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "settlement_account",
+          "qualifier_source": "constant:cash",
+          "side": "debit",
+          "amount": "cash_counted",
+          "dimensions": [
+            "branch"
+          ],
+          "subledger": "cash_box",
+          "when": null,
+          "note_ar": "النقد المعدود فعلياً لا النقد المتوقع",
+          "note_en": "The cash actually counted not the expected cash"
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "settlement_account",
+          "qualifier_source": "constant:card_clearing",
+          "side": "debit",
+          "amount": "card_sales",
+          "dimensions": [
+            "branch"
+          ],
+          "subledger": "bank_account",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 3,
+          "line_kind": "role",
+          "role": "ar_customer_control",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "credit_sales",
+          "dimensions": [],
+          "subledger": "customer",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 4,
+          "line_kind": "role",
+          "role": "cash_over_short",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "shortage",
+          "dimensions": [
+            "branch"
+          ],
+          "subledger": null,
+          "when": "has_shortage",
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 5,
+          "line_kind": "role",
+          "role": "sales_revenue",
+          "qualifier_source": "line.item_group",
+          "side": "credit",
+          "amount": "net_revenue",
+          "dimensions": [
+            "branch"
+          ],
+          "subledger": null,
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 6,
+          "line_kind": "role",
+          "role": "vat_output",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "tax_total",
+          "dimensions": [],
+          "subledger": null,
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 7,
+          "line_kind": "role",
+          "role": "cash_over_short",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "surplus",
+          "dimensions": [
+            "branch"
+          ],
+          "subledger": null,
+          "when": "has_surplus",
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "pos.shift.cost_of_sales",
+      "name_ar": "قيد تكلفة مبيعات الوردية",
+      "name_en": "Shift cost of sales entry",
+      "module": "pos",
+      "status": "drafted",
+      "source_ref": "posting-matrix.md §4.1",
+      "trigger": {
+        "name_ar": "مع قيد إغلاق الوردية",
+        "name_en": "Together with the shift close entry"
+      },
+      "posts_entry": true,
+      "precondition": {
+        "name_ar": "نظام الجرد المستمر",
+        "name_en": "Perpetual inventory"
+      },
+      "reversal": {
+        "name_ar": "قيد عكسي مستقل",
+        "name_en": "A separate reversing entry"
+      },
+      "amounts": {
+        "cost": {
+          "name_ar": "إجمالي تكلفة أصناف الوردية",
+          "name_en": "Total cost of the shift items",
+          "derivation_ar": "بطريقة التكلفة المعتمدة لحظة كل بيع مجموعةً على الوردية",
+          "derivation_en": "By the approved costing method at each sale aggregated over the shift"
+        }
+      },
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "cogs",
+          "qualifier_source": "line.item_group",
+          "side": "debit",
+          "amount": "cost",
+          "dimensions": [
+            "branch"
+          ],
+          "subledger": null,
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "inventory_control",
+          "qualifier_source": "line.item_group",
+          "side": "credit",
+          "amount": "cost",
+          "dimensions": [
+            "warehouse"
+          ],
+          "subledger": "item",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    }
+  ]
+}

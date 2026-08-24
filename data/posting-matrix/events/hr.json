@@ -1,0 +1,481 @@
+{
+  "schema_version": "1.0.0",
+  "module": "hr",
+  "source_refs": [
+    "docs/reference/posting-matrix.md §7"
+  ],
+  "events": [
+    {
+      "event_code": "hr.payroll.accrual",
+      "name_ar": "استحقاق الرواتب",
+      "name_en": "Payroll accrual",
+      "module": "hr",
+      "status": "drafted",
+      "source_ref": "posting-matrix.md §7.1",
+      "trigger": {
+        "name_ar": "عند اعتماد مسيّر الرواتب للفترة",
+        "name_en": "On approval of the payroll run for the period"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "قيد عكسي مستقل — لا يُعدَّل مسيّر مرحّل",
+        "name_en": "A separate reversing entry — a posted payroll run is never edited"
+      },
+      "caveats": [
+        {
+          "ref": "posting-matrix.md بند مفتوح 4",
+          "text_ar": "⚠️ قاعدة توزيع تكلفة الموظف على المشاريع (بساعات العمل أم بنسبة تخصيص ثابتة أم بأيام الحضور) غير محسومة — وهي الرابط بين وحدتي الموارد البشرية والمقاولات",
+          "text_en": "⚠️ The rule for allocating employee cost to projects (by logged hours a fixed allocation ratio or attendance days) is unresolved — it is the real link between HR and contracting"
+        },
+        {
+          "ref": "CONTRIBUTING §3.6",
+          "text_ar": "نسب التأمينات لا تُخترع في هذا التسليم ولا تُثبَّت في الكود — تُقرأ من جدول إعدادات يعتمده المحاسب",
+          "text_en": "Social insurance rates are not invented in this deliverable and never hard-coded — they are read from a settings table approved by the accountant"
+        }
+      ],
+      "amounts": {
+        "gross_entitlements": {
+          "name_ar": "إجمالي مستحقات الموظفين",
+          "name_en": "Total employee entitlements",
+          "derivation_ar": "الرواتب الأساسية والبدلات والإضافي من مسيّر الرواتب",
+          "derivation_en": "Basic salaries allowances and overtime from the payroll run"
+        },
+        "employer_social_insurance": {
+          "name_ar": "حصة المنشأة في التأمينات",
+          "name_en": "Employer social insurance share",
+          "derivation_ar": "بالنسب المخزّنة في جدول إعدادات التأمينات — لا نسبة في الكود ولا نسبة مخترعة هنا",
+          "derivation_en": "At the rates stored in the social insurance settings table — no rate in code and no rate invented here"
+        },
+        "employee_social_insurance": {
+          "name_ar": "حصة الموظف في التأمينات",
+          "name_en": "Employee social insurance share",
+          "derivation_ar": "بالنسب المخزّنة في جدول الإعدادات",
+          "derivation_en": "At the rates stored in the settings table"
+        },
+        "advance_installment": {
+          "name_ar": "قسط سلفة الموظف المستقطع",
+          "name_en": "Employee advance instalment deducted",
+          "derivation_ar": "من جدول سداد السلفة",
+          "derivation_en": "From the advance repayment schedule"
+        },
+        "deductions": {
+          "name_ar": "الخصومات والجزاءات",
+          "name_en": "Deductions and penalties",
+          "derivation_ar": "من سجل الجزاءات المعتمد",
+          "derivation_en": "From the approved penalties register"
+        },
+        "net_payable": {
+          "name_ar": "صافي المستحق للموظفين",
+          "name_en": "Net payable to employees",
+          "derivation_ar": "الإجمالي ناقص حصة الموظف والقسط والخصومات",
+          "derivation_en": "Gross less the employee share the instalment and the deductions"
+        }
+      },
+      "identities": {
+        "net_payable": "gross_entitlements - employee_social_insurance - advance_installment - deductions"
+      },
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "salaries_expense",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "gross_entitlements",
+          "dimensions": [
+            "cost_center"
+          ],
+          "subledger": null,
+          "when": null,
+          "note_ar": "يُوزَّع على المشاريع ومراكز التكلفة بقاعدة التوزيع المعتمدة",
+          "note_en": "Allocated across projects and cost centres by the approved allocation rule"
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "employer_social_insurance_expense",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "employer_social_insurance",
+          "dimensions": [
+            "cost_center"
+          ],
+          "subledger": null,
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 3,
+          "line_kind": "role",
+          "role": "salaries_payable",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "net_payable",
+          "dimensions": [],
+          "subledger": "employee",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 4,
+          "line_kind": "role",
+          "role": "social_insurance_payable",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "employee_social_insurance + employer_social_insurance",
+          "dimensions": [],
+          "subledger": null,
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 5,
+          "line_kind": "role",
+          "role": "employee_advance",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "advance_installment",
+          "dimensions": [],
+          "subledger": "employee",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 6,
+          "line_kind": "role",
+          "role": "payroll_deductions_payable",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "deductions",
+          "dimensions": [],
+          "subledger": "employee",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "hr.payroll.payment",
+      "name_ar": "صرف الرواتب",
+      "name_en": "Payroll payment",
+      "module": "hr",
+      "status": "drafted",
+      "source_ref": "posting-matrix.md §7.2",
+      "trigger": {
+        "name_ar": "عند تنفيذ ملف حماية الأجور أو التحويل البنكي",
+        "name_en": "On execution of the wage protection file or the bank transfer"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "قيد عكسي مستقل عند ارتداد التحويل",
+        "name_en": "A separate reversing entry if the transfer bounces"
+      },
+      "amounts": {
+        "net_payable": {
+          "name_ar": "صافي المستحق المصروف",
+          "name_en": "Net amount paid",
+          "derivation_ar": "رصيد الرواتب المستحقة للفترة المصروفة",
+          "derivation_en": "The salaries payable balance for the period being paid"
+        }
+      },
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "salaries_payable",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "net_payable",
+          "dimensions": [],
+          "subledger": "employee",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "settlement_account",
+          "qualifier_source": "document.settlement_method",
+          "side": "credit",
+          "amount": "net_payable",
+          "dimensions": [],
+          "subledger": "resolved",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "hr.social_insurance.payment",
+      "name_ar": "سداد التأمينات الاجتماعية",
+      "name_en": "Social insurance payment",
+      "module": "hr",
+      "status": "drafted",
+      "source_ref": "posting-matrix.md §7.1",
+      "trigger": {
+        "name_ar": "عند سداد فاتورة التأمينات للفترة",
+        "name_en": "On settling the social insurance invoice for the period"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "قيد عكسي مستقل",
+        "name_en": "A separate reversing entry"
+      },
+      "amounts": {
+        "amount": {
+          "name_ar": "المبلغ المسدَّد",
+          "name_en": "Amount settled",
+          "derivation_ar": "رصيد التأمينات المستحقة للفترة",
+          "derivation_en": "The social insurance payable balance for the period"
+        }
+      },
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "social_insurance_payable",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "amount",
+          "dimensions": [],
+          "subledger": null,
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "settlement_account",
+          "qualifier_source": "document.settlement_method",
+          "side": "credit",
+          "amount": "amount",
+          "dimensions": [],
+          "subledger": "resolved",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "hr.end_of_service.accrual",
+      "name_ar": "استحقاق مخصص مكافأة نهاية الخدمة",
+      "name_en": "End-of-service benefits provision accrual",
+      "module": "hr",
+      "status": "drafted",
+      "source_ref": "posting-matrix.md §7.3",
+      "trigger": {
+        "name_ar": "دورياً في نهاية كل فترة",
+        "name_en": "Periodically at each period end"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "تعديل التقدير بقيد مستقل لا بتعديل القيد السابق",
+        "name_en": "An estimate change is a separate entry never an edit of the previous one"
+      },
+      "caveats": [
+        {
+          "ref": "chart-of-accounts.md",
+          "text_ar": "⚠️ طريقة قياس مخصص نهاية الخدمة ومدخلاتها تحتاج اعتماد المحاسب القانوني",
+          "text_en": "⚠️ The measurement method of the end-of-service provision and its inputs need chartered accountant approval"
+        }
+      ],
+      "amounts": {
+        "period_share": {
+          "name_ar": "حصة الفترة من المخصص",
+          "name_en": "The period share of the provision",
+          "derivation_ar": "بطريقة القياس المعتمدة — لا تُخترع في هذا التسليم",
+          "derivation_en": "By the approved measurement method — not invented in this deliverable"
+        }
+      },
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "eos_expense",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "period_share",
+          "dimensions": [
+            "cost_center"
+          ],
+          "subledger": null,
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "eos_provision",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "period_share",
+          "dimensions": [],
+          "subledger": "employee",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "hr.end_of_service.settlement",
+      "name_ar": "صرف مكافأة نهاية الخدمة",
+      "name_en": "End-of-service benefit settlement",
+      "module": "hr",
+      "status": "drafted",
+      "source_ref": "posting-matrix.md §7.3",
+      "trigger": {
+        "name_ar": "عند انتهاء خدمة الموظف واعتماد المخالصة",
+        "name_en": "On termination of service and approval of the final settlement"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "قيد عكسي مستقل",
+        "name_en": "A separate reversing entry"
+      },
+      "amounts": {
+        "amount_paid": {
+          "name_ar": "المبلغ المصروف للموظف",
+          "name_en": "Amount paid to the employee",
+          "derivation_ar": "من حساب المخالصة المعتمد",
+          "derivation_en": "From the approved final settlement calculation"
+        },
+        "provision_utilised": {
+          "name_ar": "المخصص المستنفَد",
+          "name_en": "Provision utilised",
+          "derivation_ar": "رصيد المخصص المكوَّن لهذا الموظف",
+          "derivation_en": "The provision balance built up for this employee"
+        },
+        "shortfall": {
+          "name_ar": "العجز في المخصص",
+          "name_en": "Provision shortfall",
+          "derivation_ar": "حين يقل المخصص عن المستحق — يُحمَّل على مصروف الفترة",
+          "derivation_en": "When the provision falls short of the amount due — charged to the period expense"
+        },
+        "excess": {
+          "name_ar": "الزيادة في المخصص",
+          "name_en": "Provision excess",
+          "derivation_ar": "حين يزيد المخصص عن المستحق — يُرد إلى مصروف الفترة",
+          "derivation_en": "When the provision exceeds the amount due — released back to the period expense"
+        }
+      },
+      "identities": {
+        "provision_utilised": "amount_paid - shortfall + excess"
+      },
+      "conditions": {
+        "provision_short": {
+          "name_ar": "المخصص أقل من المستحق",
+          "name_en": "The provision is below the amount due",
+          "expression": "provision_balance < settlement_due"
+        },
+        "provision_excess": {
+          "name_ar": "المخصص أكبر من المستحق",
+          "name_en": "The provision exceeds the amount due",
+          "expression": "provision_balance > settlement_due"
+        }
+      },
+      "scenarios": [
+        {
+          "code": "exact",
+          "name_ar": "المخصص مطابق",
+          "name_en": "Provision matches",
+          "true_conditions": [],
+          "zero_amounts": [
+            "shortfall",
+            "excess"
+          ]
+        },
+        {
+          "code": "short",
+          "name_ar": "المخصص ناقص",
+          "name_en": "Provision short",
+          "true_conditions": [
+            "provision_short"
+          ],
+          "zero_amounts": [
+            "excess"
+          ]
+        },
+        {
+          "code": "excess",
+          "name_ar": "المخصص زائد",
+          "name_en": "Provision in excess",
+          "true_conditions": [
+            "provision_excess"
+          ],
+          "zero_amounts": [
+            "shortfall"
+          ]
+        }
+      ],
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "eos_provision",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "provision_utilised",
+          "dimensions": [],
+          "subledger": "employee",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "eos_expense",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "shortfall",
+          "dimensions": [
+            "cost_center"
+          ],
+          "subledger": null,
+          "when": "provision_short",
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 3,
+          "line_kind": "role",
+          "role": "eos_expense",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "excess",
+          "dimensions": [
+            "cost_center"
+          ],
+          "subledger": null,
+          "when": "provision_excess",
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 4,
+          "line_kind": "role",
+          "role": "settlement_account",
+          "qualifier_source": "document.settlement_method",
+          "side": "credit",
+          "amount": "amount_paid",
+          "dimensions": [],
+          "subledger": "resolved",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,609 @@
+{
+  "schema_version": "1.0.0",
+  "module": "sales",
+  "source_refs": [
+    "docs/reference/posting-matrix.md §1",
+    "docs/analysis/03-accounting-core.md §5"
+  ],
+  "events": [
+    {
+      "event_code": "sales.invoice.posted",
+      "name_ar": "ترحيل فاتورة مبيعات",
+      "name_en": "Post sales invoice",
+      "module": "sales",
+      "status": "drafted",
+      "source_ref": "posting-matrix.md §1.1",
+      "trigger": {
+        "name_ar": "عند اعتماد الفاتورة وبعد المقاصة من ZATCA للفاتورة الضريبية العادية",
+        "name_en": "On invoice approval and after ZATCA clearance for the standard tax invoice"
+      },
+      "reversal": {
+        "name_ar": "إشعار دائن مستقل — لا يُعدَّل القيد الأصلي إطلاقاً",
+        "name_en": "A separate credit note — the original entry is never edited"
+      },
+      "posts_entry": true,
+      "amounts": {
+        "net": {
+          "name_ar": "صافي الفاتورة قبل الضريبة",
+          "name_en": "Invoice net before VAT",
+          "derivation_ar": "مجموع سطور الفاتورة بعد الخصومات، مقرَّباً على مستوى السطر ثم مجموعاً",
+          "derivation_en": "Sum of invoice lines after discounts, rounded per line then summed"
+        },
+        "tax": {
+          "name_ar": "مبلغ ضريبة القيمة المضافة",
+          "name_en": "VAT amount",
+          "derivation_ar": "مجموع ضريبة السطور حسب التصنيف الضريبي لكل سطر — لا نسبة ثابتة في الكود",
+          "derivation_en": "Sum of per-line VAT by the line tax classification — never a rate hard-coded in code"
+        }
+      },
+      "conditions": {
+        "is_taxable_supply": {
+          "name_ar": "توريد خاضع للضريبة",
+          "name_en": "Taxable supply",
+          "expression": "document.has_any_line_with(tax_classification == 'standard')"
+        }
+      },
+      "scenarios": [
+        {
+          "code": "taxable",
+          "name_ar": "فاتورة خاضعة",
+          "name_en": "Taxable invoice",
+          "true_conditions": [
+            "is_taxable_supply"
+          ]
+        },
+        {
+          "code": "exempt_or_zero",
+          "name_ar": "فاتورة معفاة أو صفرية",
+          "name_en": "Exempt or zero-rated invoice",
+          "true_conditions": [],
+          "zero_amounts": [
+            "tax"
+          ]
+        }
+      ],
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "ar_customer_control",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "net + tax",
+          "dimensions": [],
+          "subledger": "customer",
+          "when": null,
+          "note_ar": "الإجمالي شامل الضريبة على ذمة العميل",
+          "note_en": "Gross including VAT charged to the customer"
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "sales_revenue",
+          "qualifier_source": "line.item_group",
+          "side": "credit",
+          "amount": "net",
+          "dimensions": [
+            "branch"
+          ],
+          "subledger": null,
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 3,
+          "line_kind": "role",
+          "role": "vat_output",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "tax",
+          "dimensions": [],
+          "subledger": null,
+          "when": "is_taxable_supply",
+          "note_ar": "رصيد هذا الحساب يجب أن يطابق مجموع الضريبة المقبولة لدى ZATCA للفترة",
+          "note_en": "This account balance must reconcile to the VAT accepted by ZATCA for the period"
+        }
+      ]
+    },
+    {
+      "event_code": "sales.invoice.cost_of_sales",
+      "name_ar": "قيد تكلفة المبيعات المصاحب",
+      "name_en": "Accompanying cost of sales entry",
+      "module": "sales",
+      "status": "drafted",
+      "source_ref": "posting-matrix.md §1.1",
+      "trigger": {
+        "name_ar": "مع ترحيل فاتورة المبيعات",
+        "name_en": "Together with the sales invoice posting"
+      },
+      "precondition": {
+        "name_ar": "نظام الجرد المستمر وأصناف مخزنية على الفاتورة",
+        "name_en": "Perpetual inventory and stock items on the invoice"
+      },
+      "reversal": {
+        "name_ar": "قيد تكلفة عكسي مع إشعار المرتجع",
+        "name_en": "A reversing cost entry with the return credit note"
+      },
+      "posts_entry": true,
+      "amounts": {
+        "cost": {
+          "name_ar": "تكلفة الأصناف المباعة",
+          "name_en": "Cost of items sold",
+          "derivation_ar": "بطريقة التكلفة المعتمدة (متوسط مرجح أو FIFO) لحظة البيع — لا بسعر الشراء الأخير",
+          "derivation_en": "By the approved costing method (weighted average or FIFO) at the moment of sale — never the last purchase price"
+        }
+      },
+      "caveats": [
+        {
+          "ref": "posting-matrix.md بند مفتوح 3",
+          "text_ar": "⚠️ طريقة تكلفة المخزون (متوسط مرجح أم FIFO) غير محسومة وقد تختلف بين مجموعات الأصناف",
+          "text_en": "⚠️ The inventory costing method (weighted average vs FIFO) is unresolved and may differ by item group"
+        }
+      ],
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "cogs",
+          "qualifier_source": "line.item_group",
+          "side": "debit",
+          "amount": "cost",
+          "dimensions": [
+            "branch"
+          ],
+          "subledger": null,
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "inventory_control",
+          "qualifier_source": "line.item_group",
+          "side": "credit",
+          "amount": "cost",
+          "dimensions": [
+            "warehouse"
+          ],
+          "subledger": "item",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "sales.credit_note.posted",
+      "name_ar": "ترحيل إشعار دائن",
+      "name_en": "Post credit note",
+      "module": "sales",
+      "status": "drafted",
+      "source_ref": "posting-matrix.md §1.2",
+      "trigger": {
+        "name_ar": "عند اعتماد الإشعار الدائن وبعد المقاصة من ZATCA",
+        "name_en": "On credit note approval and after ZATCA clearance"
+      },
+      "reversal": {
+        "name_ar": "لا يُعكس إشعار دائن بإشعار — يُصحَّح بإشعار مدين",
+        "name_en": "A credit note is not reversed by another credit note — it is corrected by a debit note"
+      },
+      "posts_entry": true,
+      "amounts": {
+        "net": {
+          "name_ar": "صافي المرتجع أو التخفيض",
+          "name_en": "Net of the return or allowance",
+          "derivation_ar": "بنسبة المرتجع من الفاتورة الأصلية المشار إليها",
+          "derivation_en": "By the returned proportion of the referenced original invoice"
+        },
+        "tax": {
+          "name_ar": "ضريبة المرتجع",
+          "name_en": "VAT on the return",
+          "derivation_ar": "بنفس التصنيف الضريبي للسطر الأصلي",
+          "derivation_en": "At the same tax classification as the original line"
+        }
+      },
+      "conditions": {
+        "original_was_taxable": {
+          "name_ar": "الفاتورة الأصلية خاضعة",
+          "name_en": "The original invoice was taxable",
+          "expression": "source_invoice.line.tax_classification == 'standard'"
+        }
+      },
+      "scenarios": [
+        {
+          "code": "taxable",
+          "name_ar": "مرتجع خاضع",
+          "name_en": "Taxable return",
+          "true_conditions": [
+            "original_was_taxable"
+          ]
+        },
+        {
+          "code": "exempt_or_zero",
+          "name_ar": "مرتجع معفى أو صفري",
+          "name_en": "Exempt or zero-rated return",
+          "true_conditions": [],
+          "zero_amounts": [
+            "tax"
+          ]
+        }
+      ],
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "sales_returns",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "net",
+          "dimensions": [
+            "branch"
+          ],
+          "subledger": null,
+          "when": null,
+          "note_ar": "حساب مقابل للإيراد — لا يُخصم من 4101 مباشرة",
+          "note_en": "A contra revenue account — never netted against 4101 directly"
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "vat_output",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "tax",
+          "dimensions": [],
+          "subledger": null,
+          "when": "original_was_taxable",
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 3,
+          "line_kind": "role",
+          "role": "ar_customer_control",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "net + tax",
+          "dimensions": [],
+          "subledger": "customer",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "sales.credit_note.cost_of_sales",
+      "name_ar": "قيد تكلفة عكسي لمرتجع البضاعة",
+      "name_en": "Reversing cost entry for returned goods",
+      "module": "sales",
+      "status": "drafted",
+      "source_ref": "posting-matrix.md §1.2",
+      "trigger": {
+        "name_ar": "عند استلام البضاعة المرتجعة فعلياً في المستودع",
+        "name_en": "On physical receipt of the returned goods in the warehouse"
+      },
+      "precondition": {
+        "name_ar": "المرتجع بضاعة لا تخفيض قيمة",
+        "name_en": "The credit note is a goods return not a value allowance"
+      },
+      "reversal": {
+        "name_ar": "بقيد عكسي مستقل",
+        "name_en": "By a separate reversing entry"
+      },
+      "posts_entry": true,
+      "amounts": {
+        "cost": {
+          "name_ar": "تكلفة البضاعة المرتجعة",
+          "name_en": "Cost of returned goods",
+          "derivation_ar": "بنفس تكلفة قيد البيع الأصلي لا بتكلفة اليوم",
+          "derivation_en": "At the cost of the original sale entry not at today's cost"
+        }
+      },
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "inventory_control",
+          "qualifier_source": "line.item_group",
+          "side": "debit",
+          "amount": "cost",
+          "dimensions": [
+            "warehouse"
+          ],
+          "subledger": "item",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "cogs",
+          "qualifier_source": "line.item_group",
+          "side": "credit",
+          "amount": "cost",
+          "dimensions": [
+            "branch"
+          ],
+          "subledger": null,
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "sales.receipt.posted",
+      "name_ar": "سند قبض من عميل",
+      "name_en": "Customer receipt voucher",
+      "module": "sales",
+      "status": "drafted",
+      "source_ref": "posting-matrix.md §1.3",
+      "trigger": {
+        "name_ar": "عند القبض الفعلي وإصدار سند قبض مرقَّم",
+        "name_en": "On actual collection and issue of a numbered receipt voucher"
+      },
+      "reversal": {
+        "name_ar": "قيد عكسي مستقل — لا حذف للسند",
+        "name_en": "A separate reversing entry — the voucher is never deleted"
+      },
+      "posts_entry": true,
+      "amounts": {
+        "received": {
+          "name_ar": "المبلغ المحصَّل",
+          "name_en": "Amount collected",
+          "derivation_ar": "المبلغ الوارد فعلياً في الصندوق أو الحساب البنكي",
+          "derivation_en": "The amount actually received in the cash box or bank account"
+        },
+        "discount": {
+          "name_ar": "خصم تعجيل السداد الممنوح",
+          "name_en": "Early settlement discount granted",
+          "derivation_ar": "من شروط السداد على العقد أو الفاتورة — لا نسبة في الكود",
+          "derivation_en": "From the payment terms on the contract or invoice — never a rate in code"
+        }
+      },
+      "conditions": {
+        "has_settlement_discount": {
+          "name_ar": "يوجد خصم تعجيل سداد",
+          "name_en": "An early settlement discount applies",
+          "expression": "document.settlement_discount > 0"
+        }
+      },
+      "scenarios": [
+        {
+          "code": "with_discount",
+          "name_ar": "قبض بخصم تعجيل",
+          "name_en": "Collection with early settlement discount",
+          "true_conditions": [
+            "has_settlement_discount"
+          ]
+        },
+        {
+          "code": "without_discount",
+          "name_ar": "قبض بلا خصم",
+          "name_en": "Collection without discount",
+          "true_conditions": [],
+          "zero_amounts": [
+            "discount"
+          ]
+        }
+      ],
+      "caveats": [
+        {
+          "ref": "proposed:matrix-seed",
+          "text_ar": "⚠️ حساب خصم تعجيل السداد 5902 مقترح ومعالجته الضريبية (هل يستوجب إشعاراً دائناً؟) تحتاج تأكيد المستشار الضريبي",
+          "text_en": "⚠️ Account 5902 for settlement discount is proposed and its VAT treatment (does it require a credit note?) needs tax adviser confirmation"
+        }
+      ],
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "settlement_account",
+          "qualifier_source": "document.settlement_method",
+          "side": "debit",
+          "amount": "received",
+          "dimensions": [],
+          "subledger": "resolved",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "operating_expense",
+          "qualifier_source": "constant:settlement_discount",
+          "side": "debit",
+          "amount": "discount",
+          "dimensions": [],
+          "subledger": null,
+          "when": "has_settlement_discount",
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 3,
+          "line_kind": "role",
+          "role": "ar_customer_control",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "received + discount",
+          "dimensions": [],
+          "subledger": "customer",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "sales.advance.received",
+      "name_ar": "دفعة مقدمة من عميل",
+      "name_en": "Customer advance received",
+      "module": "sales",
+      "status": "drafted",
+      "source_ref": "posting-matrix.md §1.4",
+      "trigger": {
+        "name_ar": "عند قبض الدفعة المقدمة",
+        "name_en": "On collection of the advance"
+      },
+      "reversal": {
+        "name_ar": "قيد عكسي عند رد الدفعة",
+        "name_en": "A reversing entry on refund of the advance"
+      },
+      "posts_entry": true,
+      "amounts": {
+        "net": {
+          "name_ar": "صافي الدفعة",
+          "name_en": "Advance net",
+          "derivation_ar": "المبلغ المقبوض مستخلَصاً منه مبلغ الضريبة إن استحقت",
+          "derivation_en": "The amount received with the VAT extracted if VAT is due"
+        },
+        "tax": {
+          "name_ar": "ضريبة الدفعة المقدمة",
+          "name_en": "VAT on the advance",
+          "derivation_ar": "بالاستخلاص من المبلغ المقبوض حسب التصنيف الضريبي للعقد",
+          "derivation_en": "Extracted from the amount received per the contract tax classification"
+        }
+      },
+      "conditions": {
+        "vat_due_on_advance": {
+          "name_ar": "الضريبة مستحقة عند قبض الدفعة",
+          "name_en": "VAT is due on collection of the advance",
+          "expression": "tax_policy.vat_due_on_advance == true"
+        }
+      },
+      "scenarios": [
+        {
+          "code": "vat_due",
+          "name_ar": "الضريبة مستحقة",
+          "name_en": "VAT due",
+          "true_conditions": [
+            "vat_due_on_advance"
+          ]
+        },
+        {
+          "code": "vat_not_due",
+          "name_ar": "الضريبة غير مستحقة",
+          "name_en": "VAT not due",
+          "true_conditions": [],
+          "zero_amounts": [
+            "tax"
+          ]
+        }
+      ],
+      "caveats": [
+        {
+          "ref": "posting-matrix.md بند مفتوح 1",
+          "text_ar": "⚠️ استحقاق ضريبة القيمة المضافة على الدفعة المقدمة عند القبض غير محسوم — يُراجع مع المستشار الضريبي قبل تفعيل السطر",
+          "text_en": "⚠️ Whether VAT becomes due on an advance at collection is unresolved — review with the tax adviser before enabling the line"
+        }
+      ],
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "settlement_account",
+          "qualifier_source": "document.settlement_method",
+          "side": "debit",
+          "amount": "net + tax",
+          "dimensions": [],
+          "subledger": "resolved",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "customer_advance",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "net",
+          "dimensions": [],
+          "subledger": "customer",
+          "when": null,
+          "note_ar": "التزام لا إيراد",
+          "note_en": "A liability not revenue"
+        },
+        {
+          "line_no": 3,
+          "line_kind": "role",
+          "role": "vat_output",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "tax",
+          "dimensions": [],
+          "subledger": null,
+          "when": "vat_due_on_advance",
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "sales.advance.applied",
+      "name_ar": "استنفاد دفعة مقدمة مقابل فاتورة",
+      "name_en": "Apply customer advance against an invoice",
+      "module": "sales",
+      "status": "drafted",
+      "source_ref": "posting-matrix.md §1.4",
+      "trigger": {
+        "name_ar": "عند إصدار الفاتورة التي تستنفد الدفعة",
+        "name_en": "On issuing the invoice that consumes the advance"
+      },
+      "reversal": {
+        "name_ar": "قيد عكسي مستقل",
+        "name_en": "A separate reversing entry"
+      },
+      "posts_entry": true,
+      "amounts": {
+        "applied": {
+          "name_ar": "المبلغ المستنفَد",
+          "name_en": "Amount applied",
+          "derivation_ar": "أقل من رصيد الدفعة وقيمة الفاتورة — من جدول الاستنفاد على العقد",
+          "derivation_en": "The lesser of the advance balance and the invoice value — from the recovery schedule on the contract"
+        }
+      },
+      "caveats": [
+        {
+          "ref": "posting-matrix.md بند مفتوح 1",
+          "text_ar": "⚠️ إن أُثبتت ضريبة عند القبض فإن استنفادها هنا يحتاج معالجة إضافية غير محسومة",
+          "text_en": "⚠️ If VAT was recognised at collection its unwind here needs an additional treatment that is unresolved"
+        }
+      ],
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "customer_advance",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "applied",
+          "dimensions": [],
+          "subledger": "customer",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "ar_customer_control",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "applied",
+          "dimensions": [],
+          "subledger": "customer",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    }
+  ]
+}

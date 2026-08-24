@@ -1,0 +1,140 @@
+{
+  "schema_version": "1.0.0",
+  "source_refs": ["docs/analysis/07-real-estate.md §1.3 §14.0", "docs/analysis/02-architecture.md §3.2"],
+  "note_ar": "قواعد الحجب تُقيَّم قبل كتابة أي سطر في دفتر الأستاذ. الشدة block تعني رفض القيد كاملاً بخطأ مفهوم — لا تحذيراً يمكن تجاوزه ولا انضباطاً من المستخدم.",
+  "note_en": "Guard rules are evaluated before any ledger line is written. Severity block means the whole entry is refused with a comprehensible error — not a dismissible warning and not user discipline.",
+  "rules": [
+    {
+      "rule_id": "GR-RE-001",
+      "name_ar": "منع ترحيل إيراد إيجار في نموذج إدارة أملاك الغير",
+      "name_en": "Block rental revenue posting under the managed-for-others model",
+      "severity": "block",
+      "status": "drafted",
+      "source_ref": "07-real-estate.md §1.3 و§14.0",
+      "applies_to": { "kind": "account_role", "role": "rental_revenue" },
+      "condition": "context.property.ownership_model == 'managed_for_others'",
+      "message_ar": "يُمنع الترحيل إلى حساب إيرادات الإيجار لأن نموذج ملكية العقار «مُدار لصالح الغير». في هذا النموذج الأجرة المحصَّلة التزام تجاه المالك وليست إيراداً للشركة، وإيراد الشركة هو العمولة وحدها. راجع الحدث realestate.rent_invoice.managed_property.",
+      "message_en": "Posting to the rental revenue account is refused because the property ownership model is managed_for_others. In that model collected rent is a liability to the owner and not company revenue; the company revenue is the commission alone. See event realestate.rent_invoice.managed_property.",
+      "rationale_ar": "الخطأ الذي تمنعه هذه القاعدة يضخّم إيراد قائمة الدخل إلى واحد وعشرين ضعفاً في المثال الوارد في §1.3، ويُنتج إقراراً ضريبياً معيباً ووعاءً زكوياً مضخَّماً وقوائم لن تطابق سجل ZATCA أبداً.",
+      "rationale_en": "The error this rule prevents inflates income statement revenue twenty-one-fold in the worked example in §1.3 and produces a defective VAT return an inflated zakat base and statements that will never reconcile to the ZATCA record.",
+      "enforcement": {
+        "layer_1_ar": "قالب الترحيل: الأحداث ذات النموذج المُدار لا تحتوي على سطر إلى دور rental_revenue أصلاً — لا يوجد مسار بيانات يصل إليه.",
+        "layer_1_en": "The posting template: managed-model events contain no line to the rental_revenue role at all — there is no data path that reaches it.",
+        "layer_2_ar": "محرك الترحيل: قبل كتابة أي سطر يُقيَّم الشرط على السياق، وعند تحققه يُرفض القيد كاملاً بالرسالة أعلاه ويُسجَّل الرفض في سجل الأحداث.",
+        "layer_2_en": "The posting engine: before writing any line the condition is evaluated against the context and when it holds the whole entry is refused with the message above and the refusal is recorded in the process event log.",
+        "layer_3_ar": "قاعدة البيانات: قيد تحقق على سطر القيد يمنع اجتماع حساب دوره rental_revenue مع بُعد عقار نموذج ملكيته مُدار لصالح الغير — وهي الطبقة التي لا يستطيع خطأ برمجي تجاوزها.",
+        "layer_3_en": "The database: a check constraint on the journal line forbids the combination of an account carrying the rental_revenue role with a property dimension whose ownership model is managed_for_others — the layer no programming error can bypass."
+      }
+    },
+    {
+      "rule_id": "GR-RE-002",
+      "name_ar": "منع ترحيل إهلاك عقار غير مملوك",
+      "name_en": "Block depreciation of a property the company does not own",
+      "severity": "block",
+      "status": "drafted",
+      "source_ref": "07-real-estate.md §14.18",
+      "applies_to": { "kind": "account_role", "role": "investment_property_depreciation_expense" },
+      "condition": "context.property.ownership_model == 'managed_for_others'",
+      "message_ar": "يُمنع إهلاك عقار مُدار لصالح الغير — العقار ليس أصلاً للشركة ولا يظهر في ميزانيتها.",
+      "message_en": "Depreciating a property managed for others is refused — the property is not a company asset and does not appear on its balance sheet.",
+      "rationale_ar": "إثبات إهلاك أصل لا تملكه المنشأة يُحمّل قائمة الدخل مصروفاً وهمياً ويُثبت أصلاً وهمياً في الميزانية.",
+      "rationale_en": "Depreciating an asset the entity does not own loads the income statement with a fictitious expense and puts a fictitious asset on the balance sheet.",
+      "enforcement": {
+        "layer_1_ar": "قالب الترحيل: الحدث realestate.investment_property.depreciation مشروط بنموذج الملكية الذاتية في حقل precondition.",
+        "layer_1_en": "The posting template: event realestate.investment_property.depreciation is gated on the own-property model in its precondition field.",
+        "layer_2_ar": "محرك الترحيل: رفض القيد كاملاً عند تحقق الشرط.",
+        "layer_2_en": "The posting engine: the whole entry is refused when the condition holds.",
+        "layer_3_ar": "قاعدة البيانات: قيد تحقق يمنع اجتماع حسابي العقارات الاستثمارية مع عقار مُدار لصالح الغير.",
+        "layer_3_en": "The database: a check constraint forbids the investment property accounts together with a property managed for others."
+      }
+    },
+    {
+      "rule_id": "GR-RE-003",
+      "name_ar": "منع تحميل مصروف صيانة المالك على قائمة دخل الشركة في أسلوب الصرف نيابة",
+      "name_en": "Block charging owner maintenance to the company income statement under the disbursement method",
+      "severity": "block",
+      "status": "drafted",
+      "source_ref": "07-real-estate.md §14.12 (ج)",
+      "applies_to": { "kind": "account_role", "role": "property_operating_cost" },
+      "condition": "context.work_order.billing_mode == 'disbursement'",
+      "message_ar": "يُمنع تحميل حساب تكلفة تشغيل العقارات حين يكون أسلوب الفوترة «صرف نيابة» — المصروف ليس مصروف الشركة وفاتورة المورّد باسم المالك. راجع الحدث realestate.maintenance.owner_disbursement.",
+      "message_en": "Charging the property operating cost account is refused when the billing mode is disbursement — the expense is not the company's and the supplier invoice is in the owner's name. See event realestate.maintenance.owner_disbursement.",
+      "rationale_ar": "الخلط بين الصرف نيابة والمصروف على حساب الشركة يُحمّل قائمة دخل الشركة مصروفات ليست لها ويخصم ضريبة مدخلات لا تخصها.",
+      "rationale_en": "Confusing a disbursement with a company expense loads the company income statement with costs that are not its own and deducts input VAT that does not belong to it.",
+      "enforcement": {
+        "layer_1_ar": "قالب الترحيل: حدث الصرف نيابة لا يحتوي سطر مصروف ولا سطر ضريبة مدخلات.",
+        "layer_1_en": "The posting template: the disbursement event contains no expense line and no input VAT line.",
+        "layer_2_ar": "محرك الترحيل: رفض القيد كاملاً عند تحقق الشرط.",
+        "layer_2_en": "The posting engine: the whole entry is refused when the condition holds.",
+        "layer_3_ar": "قاعدة البيانات: قيد تحقق على مستوى سطر القيد بمرجع أمر الصيانة.",
+        "layer_3_en": "The database: a check constraint at journal line level keyed on the work order reference."
+      }
+    },
+    {
+      "rule_id": "GR-VAT-001",
+      "name_ar": "منع دخول الضريبة المحصَّلة نيابة عن الملاك في إقرار الشركة",
+      "name_en": "Block VAT collected on behalf of owners from entering the company return",
+      "severity": "block",
+      "status": "drafted",
+      "source_ref": "07-real-estate.md §10.4 و§14.0",
+      "applies_to": { "kind": "account_role", "role": "vat_collected_for_owner" },
+      "condition": "context.document_type == 'vat_return_settlement'",
+      "message_ar": "يُمنع إدراج حساب الضريبة المحصَّلة نيابة عن الملاك في قيد تسوية الإقرار الضريبي — هذه الضريبة التزام المالك وهو من يقرّ بها.",
+      "message_en": "Including the VAT-collected-for-owners account in the VAT return settlement entry is refused — that VAT is the owner's obligation and the owner declares it.",
+      "rationale_ar": "⚠️ هذا الفهم يحتاج تأكيد المستشار الضريبي؛ فإن ثبت خلافه فالقاعدة تُلغى بقرار موثّق لا بتجاوز صامت.",
+      "rationale_en": "⚠️ This understanding needs tax adviser confirmation; if it is found otherwise the rule is removed by a documented decision not by a silent bypass.",
+      "enforcement": {
+        "layer_1_ar": "قالب الترحيل: حدث tax.vat_return.settlement لا يحتوي سطراً إلى هذا الدور.",
+        "layer_1_en": "The posting template: event tax.vat_return.settlement contains no line to this role.",
+        "layer_2_ar": "محرك الترحيل: رفض القيد كاملاً عند تحقق الشرط.",
+        "layer_2_en": "The posting engine: the whole entry is refused when the condition holds.",
+        "layer_3_ar": "التقارير: تقرير الإقرار الضريبي يُبنى من حركات حسابي المدخلات والمخرجات حصراً ولا يقرأ هذا الحساب.",
+        "layer_3_en": "Reporting: the VAT return report is built solely from the input and output VAT account movements and never reads this account."
+      }
+    },
+    {
+      "rule_id": "GR-COA-001",
+      "name_ar": "منع الترحيل إلى حساب تجميعي",
+      "name_en": "Block posting to a rollup account",
+      "severity": "block",
+      "status": "drafted",
+      "source_ref": "chart-of-accounts.md §1 و03-accounting-core.md §3",
+      "applies_to": { "kind": "account_property", "property": "is_postable", "equals": false },
+      "condition": "always",
+      "message_ar": "يُمنع الترحيل على حساب تجميعي — الترحيل على الحساب التفصيلي فقط.",
+      "message_en": "Posting to a rollup account is refused — posting is only ever on a detail account.",
+      "rationale_ar": "الترحيل على حساب أب يكسر تجميع الشجرة ويجعل رصيد الأب غير مساوٍ لمجموع أبنائه.",
+      "rationale_en": "Posting to a parent breaks tree aggregation and makes the parent balance differ from the sum of its children.",
+      "enforcement": {
+        "layer_1_ar": "بيانات المصفوفة: أداة التحقق ترفض أي سطر مصفوفة يُحلّ إلى حساب تجميعي قبل الدمج.",
+        "layer_1_en": "The matrix data: the validator refuses any matrix line resolving to a rollup account before merge.",
+        "layer_2_ar": "محرك الترحيل: رفض السطر بخطأ مفهوم.",
+        "layer_2_en": "The posting engine: the line is refused with a comprehensible error.",
+        "layer_3_ar": "قاعدة البيانات: قيد تحقق على سطر القيد يشترط is_postable على الحساب.",
+        "layer_3_en": "The database: a check constraint on the journal line requiring is_postable on the account."
+      }
+    },
+    {
+      "rule_id": "GR-COA-002",
+      "name_ar": "منع الترحيل بلا بُعد إلزامي",
+      "name_en": "Block posting without a mandatory dimension",
+      "severity": "block",
+      "status": "drafted",
+      "source_ref": "chart-of-accounts.md §3 و07-real-estate.md §14.0",
+      "applies_to": { "kind": "account_property", "property": "required_dimensions", "non_empty": true },
+      "condition": "line.dimensions does not cover account.required_dimensions",
+      "message_ar": "يُمنع الترحيل على هذا الحساب دون تحديد كل أبعاده الإلزامية — لا ترحيل تكلفة مشروع بلا مشروع ولا إيراد إيجار بلا عقار.",
+      "message_en": "Posting to this account without every one of its mandatory dimensions is refused — no project cost without a project and no rental revenue without a property.",
+      "rationale_ar": "بُعد ناقص على السطر يعني تقرير ربحية ناقصاً لا يمكن إصلاحه لاحقاً دون عكس القيد.",
+      "rationale_en": "A missing dimension on the line means an incomplete profitability report that cannot be fixed later without reversing the entry.",
+      "enforcement": {
+        "layer_1_ar": "بيانات المصفوفة: أداة التحقق ترفض أي سطر لا يعلن الأبعاد الإلزامية لحسابه.",
+        "layer_1_en": "The matrix data: the validator refuses any line that does not declare its account's mandatory dimensions.",
+        "layer_2_ar": "محرك الترحيل: رفض السطر بخطأ مفهوم يسمّي البُعد الناقص.",
+        "layer_2_en": "The posting engine: the line is refused with a comprehensible error naming the missing dimension.",
+        "layer_3_ar": "قاعدة البيانات: قيد تحقق على سطر القيد.",
+        "layer_3_en": "The database: a check constraint on the journal line."
+      }
+    }
+  ]
+}

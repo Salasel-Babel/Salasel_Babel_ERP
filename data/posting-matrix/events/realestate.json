@@ -1,0 +1,3752 @@
+{
+  "schema_version": "1.0.0",
+  "module": "realestate",
+  "source_refs": [
+    "docs/analysis/07-real-estate.md §14"
+  ],
+  "events": [
+    {
+      "event_code": "realestate.lease.signed",
+      "name_ar": "توقيع عقد إيجار",
+      "name_en": "Lease contract signature",
+      "module": "realestate",
+      "status": "drafted",
+      "source_ref": "07-real-estate.md §14.1",
+      "trigger": {
+        "name_ar": "لا قيد عند التوقيع في أي من نموذجي الملكية — العقد التزام متبادل مستقبلي لم ينفّذه أي طرف بعد",
+        "name_en": "No entry on signature in either ownership model — the contract is a future mutual obligation neither party has performed"
+      },
+      "posts_entry": false,
+      "reversal": {
+        "name_ar": "لا شيء يُعكس — لا قيد أصلاً",
+        "name_en": "Nothing to reverse — there is no entry"
+      },
+      "caveats": [
+        {
+          "ref": "07-real-estate.md §14.1",
+          "text_ar": "ما يُولَّد بدل القيد: جدول الدفعات وسجل الوديعة المطلوبة وقائمة الشيكات المتوقعة ومحضر التسليم وتحديث حالة الوحدة — سجلات تشغيلية لا محاسبية",
+          "text_en": "What is generated instead: the payment schedule the required deposit record the expected cheque list the handover record and the unit status update — operational not accounting records"
+        }
+      ],
+      "lines": []
+    },
+    {
+      "event_code": "realestate.lease.brokerage_commission.paid",
+      "name_ar": "عمولة تسويق أو سعي مدفوعة لطرف خارجي عند التعاقد",
+      "name_en": "Brokerage or marketing commission paid to a third party on signing",
+      "module": "realestate",
+      "status": "drafted",
+      "source_ref": "07-real-estate.md §14.1",
+      "trigger": {
+        "name_ar": "عند استلام فاتورة الوسيط — نموذج الملكية الذاتية أو حين تكون العمولة على حساب الشركة",
+        "name_en": "On receiving the broker invoice — own-property model or whenever the commission is borne by the company"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "إشعار مدين على الوسيط",
+        "name_en": "A debit note on the broker"
+      },
+      "caveats": [
+        {
+          "ref": "07-real-estate.md ق-ع-13",
+          "text_ar": "⚠️ هل تُحمَّل هذه العمولة مصروفاً فورياً أم تُرسمَل وتُستهلك على مدة العقد؟ قرار مفتوح يظهر أثره في ربحية الوحدة في السنة الأولى",
+          "text_en": "⚠️ Is this commission an immediate expense or capitalised and amortised over the lease term? An open decision whose effect shows in first-year unit profitability"
+        },
+        {
+          "ref": "07-real-estate.md §14.1",
+          "text_ar": "في نموذج إدارة أملاك الغير وإن كانت العمولة على حساب المالك فالقيد هو realestate.maintenance.owner_disbursement لا هذا القيد",
+          "text_en": "In the managed-for-others model when the commission is for the owner's account the entry is realestate.maintenance.owner_disbursement not this one"
+        }
+      ],
+      "amounts": {
+        "net": {
+          "name_ar": "صافي العمولة",
+          "name_en": "Commission net",
+          "derivation_ar": "بنسبة أو مبلغ من اتفاق الوساطة — إعداد لا كود",
+          "derivation_en": "By a rate or amount from the brokerage agreement — a setting not code"
+        },
+        "tax": {
+          "name_ar": "ضريبة مدخلات العمولة",
+          "name_en": "Input VAT on the commission",
+          "derivation_ar": "حسب التصنيف الضريبي لفاتورة الوسيط",
+          "derivation_en": "Per the tax classification of the broker invoice"
+        }
+      },
+      "conditions": {
+        "broker_is_vat_registered": {
+          "name_ar": "الوسيط مسجَّل ضريبياً والخدمة خاضعة",
+          "name_en": "The broker is VAT registered and the service is taxable",
+          "expression": "supplier.vat_registered == true and line.tax_classification == 'standard'"
+        }
+      },
+      "scenarios": [
+        {
+          "code": "taxable",
+          "name_ar": "فاتورة وسيط خاضعة",
+          "name_en": "Taxable broker invoice",
+          "true_conditions": [
+            "broker_is_vat_registered"
+          ]
+        },
+        {
+          "code": "not_taxable",
+          "name_ar": "فاتورة وسيط غير خاضعة",
+          "name_en": "Non-taxable broker invoice",
+          "true_conditions": [],
+          "zero_amounts": [
+            "tax"
+          ]
+        }
+      ],
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "leasing_commission_expense",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "net",
+          "dimensions": [
+            "property"
+          ],
+          "subledger": null,
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "vat_input",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "tax",
+          "dimensions": [],
+          "subledger": null,
+          "when": "broker_is_vat_registered",
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 3,
+          "line_kind": "role",
+          "role": "ap_supplier_control",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "net + tax",
+          "dimensions": [],
+          "subledger": "supplier",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "realestate.rent_invoice.own_property",
+      "name_ar": "فاتورة إيجار دورية — الملكية الذاتية",
+      "name_en": "Periodic rent invoice — own property",
+      "module": "realestate",
+      "status": "drafted",
+      "source_ref": "07-real-estate.md §14.2 (أ) و(ب)",
+      "trigger": {
+        "name_ar": "عند اعتماد الفاتورة الدورية وبعد المقاصة من ZATCA للفاتورة الضريبية العادية",
+        "name_en": "On approval of the periodic invoice and after ZATCA clearance for the standard tax invoice"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "إشعار دائن إلكتروني مرتبط بالفاتورة الأصلية — لا يُعدَّل القيد الأصلي ولا الفاتورة الأصلية إطلاقاً",
+        "name_en": "An electronic credit note linked to the original invoice — neither the original entry nor the original invoice is ever edited"
+      },
+      "caveats": [
+        {
+          "ref": "07-real-estate.md §10.8",
+          "text_ar": "⚠️ رمز سبب الإعفاء على سطر الوحدة السكنية يُؤخذ من قائمة الرموز الرسمية السارية ولا يُخترع هنا",
+          "text_en": "⚠️ The exemption reason code on the residential unit line comes from the official code list in force and is not invented here"
+        }
+      ],
+      "amounts": {
+        "net": {
+          "name_ar": "صافي الأجرة عن الفترة المفوترة",
+          "name_en": "Net rent for the invoiced period",
+          "derivation_ar": "من جدول الدفعات على العقد بخوارزمية توزيع تضمن أن مجموع الأقساط يساوي قيمة العقد بالضبط دون هللات ضائعة",
+          "derivation_en": "From the payment schedule on the contract with an allocation algorithm guaranteeing the instalments sum exactly to the contract value with no lost halalas"
+        },
+        "tax": {
+          "name_ar": "ضريبة مخرجات الإيجار",
+          "name_en": "Output VAT on the rent",
+          "derivation_ar": "حسب التصنيف الضريبي للوحدة على سطر الفاتورة",
+          "derivation_en": "Per the unit tax classification on the invoice line"
+        }
+      },
+      "conditions": {
+        "unit_is_vat_taxable": {
+          "name_ar": "الوحدة تجارية والتأجير خاضع للضريبة",
+          "name_en": "The unit is commercial and the letting is taxable",
+          "expression": "unit.vat_treatment == 'standard'"
+        }
+      },
+      "scenarios": [
+        {
+          "code": "commercial_taxable",
+          "name_ar": "وحدة تجارية خاضعة",
+          "name_en": "Commercial taxable unit",
+          "true_conditions": [
+            "unit_is_vat_taxable"
+          ]
+        },
+        {
+          "code": "residential_exempt",
+          "name_ar": "وحدة سكنية معفاة",
+          "name_en": "Residential exempt unit",
+          "true_conditions": [],
+          "zero_amounts": [
+            "tax"
+          ]
+        }
+      ],
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "ar_tenant_control",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "net + tax",
+          "dimensions": [],
+          "subledger": "tenant",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "deferred_rental_income",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "net",
+          "dimensions": [
+            "property"
+          ],
+          "subledger": "lease_contract",
+          "when": null,
+          "note_ar": "الالتزام ينشأ عند الفوترة لا عند القبض — ويُستنفَد بالاستحقاق الشهري",
+          "note_en": "The obligation arises on invoicing not on collection — and is released by the monthly accrual"
+        },
+        {
+          "line_no": 3,
+          "line_kind": "role",
+          "role": "vat_output",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "tax",
+          "dimensions": [],
+          "subledger": null,
+          "when": "unit_is_vat_taxable",
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "realestate.rent_invoice.managed_property",
+      "name_ar": "فاتورة إيجار دورية — إدارة أملاك الغير",
+      "name_en": "Periodic rent invoice — property managed for others",
+      "module": "realestate",
+      "status": "drafted",
+      "source_ref": "07-real-estate.md §14.2 (ج)",
+      "trigger": {
+        "name_ar": "عند اعتماد الفاتورة الصادرة باسم المالك",
+        "name_en": "On approval of the invoice issued in the owner's name"
+      },
+      "posts_entry": true,
+      "precondition": {
+        "name_ar": "نموذج ملكية العقار = مُدار لصالح الغير — والمورّد للمستأجر هو المالك والشركة وكيل",
+        "name_en": "Property ownership model is managed_for_others — the supplier to the tenant is the owner and the company is an agent"
+      },
+      "reversal": {
+        "name_ar": "إشعار دائن إلكتروني مرتبط بالفاتورة الأصلية",
+        "name_en": "An electronic credit note linked to the original invoice"
+      },
+      "caveats": [
+        {
+          "ref": "07-real-estate.md §1.3",
+          "text_ar": "لا سطر على حساب إيرادات الإيجار ولا على ضريبة مخرجات الشركة إطلاقاً — إيراد الشركة من هذه العملية هو العمولة فقط. قاعدة الحجب GR-RE-001 تمنع الخطأ هيكلياً",
+          "text_en": "No line on the rental revenue account and none on the company output VAT — the company's revenue from this transaction is the commission alone. Block rule GR-RE-001 prevents the error structurally"
+        },
+        {
+          "ref": "07-real-estate.md ق-ع-3",
+          "text_ar": "⚠️ سياسة بديلة: عدم إثبات قيد عند الفوترة والاكتفاء بالقيد عند التحصيل — أبسط لكنه يُفقد الشركة تقرير أعمار متأخرات المستأجرين ومطابقته بالدفتر. التوصية إثبات القيد عند الفوترة",
+          "text_en": "⚠️ Alternative policy: no entry at invoicing and only an entry at collection — simpler but it costs the company the tenant arrears ageing report and its reconciliation to the ledger. The recommendation is to post at invoicing"
+        }
+      ],
+      "amounts": {
+        "net": {
+          "name_ar": "صافي الأجرة المستحقة للمالك",
+          "name_en": "Net rent due to the owner",
+          "derivation_ar": "من جدول الدفعات على العقد",
+          "derivation_en": "From the payment schedule on the contract"
+        },
+        "tax": {
+          "name_ar": "ضريبة مخرجات محصَّلة نيابة عن المالك",
+          "name_en": "Output VAT collected on behalf of the owner",
+          "derivation_ar": "على المالك لا على الشركة — ولا تدخل إقرار الشركة",
+          "derivation_en": "Owed by the owner not the company — and does not enter the company return"
+        }
+      },
+      "conditions": {
+        "owner_vat_registered_and_unit_taxable": {
+          "name_ar": "المالك مسجَّل ضريبياً والوحدة خاضعة",
+          "name_en": "The owner is VAT registered and the unit is taxable",
+          "expression": "owner.vat_registered == true and unit.vat_treatment == 'standard'"
+        }
+      },
+      "scenarios": [
+        {
+          "code": "owner_taxable",
+          "name_ar": "مالك مسجَّل ووحدة خاضعة",
+          "name_en": "Registered owner and taxable unit",
+          "true_conditions": [
+            "owner_vat_registered_and_unit_taxable"
+          ]
+        },
+        {
+          "code": "owner_not_taxable",
+          "name_ar": "مالك غير مسجَّل أو وحدة سكنية",
+          "name_en": "Unregistered owner or residential unit",
+          "true_conditions": [],
+          "zero_amounts": [
+            "tax"
+          ]
+        }
+      ],
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "ar_tenant_control",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "net + tax",
+          "dimensions": [],
+          "subledger": "tenant",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "owner_trust_payable",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "net",
+          "dimensions": [
+            "property"
+          ],
+          "subledger": "property_owner",
+          "when": null,
+          "note_ar": "التزام تجاه المالك — ليس إيراداً للشركة بأي حال",
+          "note_en": "A liability to the owner — never revenue of the company"
+        },
+        {
+          "line_no": 3,
+          "line_kind": "role",
+          "role": "vat_collected_for_owner",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "tax",
+          "dimensions": [],
+          "subledger": "property_owner",
+          "when": "owner_vat_registered_and_unit_taxable",
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "realestate.rent.accrual.own_property",
+      "name_ar": "الاستحقاق الشهري — استنفاد الإيراد المؤجل",
+      "name_en": "Monthly accrual — release of deferred rental income",
+      "module": "realestate",
+      "status": "drafted",
+      "source_ref": "07-real-estate.md §14.3 (أ)",
+      "trigger": {
+        "name_ar": "نهاية كل شهر آلياً لكل عقد ساري — بلا تكرار وقابلاً لإعادة التشغيل ومحترماً للفترة المقفلة",
+        "name_en": "Automatically at each month end for every active contract — without duplication re-runnable and respecting closed periods"
+      },
+      "posts_entry": true,
+      "precondition": {
+        "name_ar": "نموذج ملكية العقار = ملكية ذاتية · ويوجد رصيد إيراد مؤجل على العقد",
+        "name_en": "Property ownership model is own_property and the contract carries a deferred rental income balance"
+      },
+      "reversal": {
+        "name_ar": "عكس آلي عند فسخ العقد بأثر رجعي بقيد مستقل",
+        "name_en": "An automatic reversal on retroactive contract termination by a separate entry"
+      },
+      "caveats": [
+        {
+          "ref": "07-real-estate.md ق-ع-4",
+          "text_ar": "⚠️ أساس الاعتراف (خطي على مدة العقد أم حسب جدول الدفعات) قرار مفتوح يغيّر مبلغ هذا القيد كل شهر",
+          "text_en": "⚠️ The recognition basis (straight line over the term or per the payment schedule) is an open decision that changes this entry's amount every month"
+        }
+      ],
+      "amounts": {
+        "period_share": {
+          "name_ar": "حصة الفترة من الأجرة",
+          "name_en": "The period share of the rent",
+          "derivation_ar": "بأساس الاعتراف المعتمد على العقد وبخوارزمية توزيع لا تُضيّع هللة",
+          "derivation_en": "By the recognition basis on the contract and an allocation algorithm that loses no halala"
+        }
+      },
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "deferred_rental_income",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "period_share",
+          "dimensions": [
+            "property"
+          ],
+          "subledger": "lease_contract",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "rental_revenue",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "period_share",
+          "dimensions": [
+            "property",
+            "unit"
+          ],
+          "subledger": null,
+          "when": null,
+          "note_ar": "محكوم بقاعدة الحجب GR-RE-001",
+          "note_en": "Governed by block rule GR-RE-001"
+        }
+      ]
+    },
+    {
+      "event_code": "realestate.rent.accrual_before_invoice.own_property",
+      "name_ar": "الاستحقاق يسبق الفوترة — إيراد مستحق غير مفوتر",
+      "name_en": "Recognition precedes invoicing — accrued unbilled rent",
+      "module": "realestate",
+      "status": "drafted",
+      "source_ref": "07-real-estate.md §14.3 (أ)",
+      "trigger": {
+        "name_ar": "نهاية الشهر حين يسبق الاعتراف الفوترة — فوترة سنوية مؤخَّرة أو اعتراف خطي مع شهر مجاني",
+        "name_en": "At month end when recognition precedes invoicing — a deferred annual invoice or straight-line recognition with a rent-free month"
+      },
+      "posts_entry": true,
+      "precondition": {
+        "name_ar": "نموذج ملكية العقار = ملكية ذاتية",
+        "name_en": "Property ownership model is own_property"
+      },
+      "reversal": {
+        "name_ar": "يُستنفَد بقيد الفوترة اللاحقة لا بعكس هذا القيد",
+        "name_en": "Consumed by the later invoicing entry not by reversing this one"
+      },
+      "amounts": {
+        "period_share": {
+          "name_ar": "حصة الفترة من الأجرة",
+          "name_en": "The period share of the rent",
+          "derivation_ar": "بأساس الاعتراف المعتمد على العقد",
+          "derivation_en": "By the recognition basis on the contract"
+        }
+      },
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "accrued_unbilled_rental_income",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "period_share",
+          "dimensions": [
+            "property"
+          ],
+          "subledger": "lease_contract",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "rental_revenue",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "period_share",
+          "dimensions": [
+            "property",
+            "unit"
+          ],
+          "subledger": null,
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "realestate.rent_invoice.against_accrued.own_property",
+      "name_ar": "فاتورة إيجار تستنفد إيراداً مستحقاً غير مفوتر",
+      "name_en": "Rent invoice consuming accrued unbilled rent",
+      "module": "realestate",
+      "status": "drafted",
+      "source_ref": "07-real-estate.md §14.3 (أ)",
+      "trigger": {
+        "name_ar": "عند إصدار الفاتورة لاحقاً عن فترة سبق الاعتراف بإيرادها",
+        "name_en": "On issuing the invoice later for a period whose revenue was already recognised"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "إشعار دائن مرتبط بالفاتورة الأصلية",
+        "name_en": "A credit note linked to the original invoice"
+      },
+      "amounts": {
+        "net": {
+          "name_ar": "صافي المفوتر",
+          "name_en": "Invoiced net",
+          "derivation_ar": "الرصيد المتراكم في حساب الإيراد المستحق غير المفوتر عن الفترة",
+          "derivation_en": "The accumulated accrued unbilled balance for the period"
+        },
+        "tax": {
+          "name_ar": "ضريبة المخرجات",
+          "name_en": "Output VAT",
+          "derivation_ar": "حسب التصنيف الضريبي للوحدة",
+          "derivation_en": "Per the unit tax classification"
+        }
+      },
+      "conditions": {
+        "unit_is_vat_taxable": {
+          "name_ar": "الوحدة خاضعة للضريبة",
+          "name_en": "The unit is taxable",
+          "expression": "unit.vat_treatment == 'standard'"
+        }
+      },
+      "scenarios": [
+        {
+          "code": "taxable",
+          "name_ar": "وحدة خاضعة",
+          "name_en": "Taxable unit",
+          "true_conditions": [
+            "unit_is_vat_taxable"
+          ]
+        },
+        {
+          "code": "exempt",
+          "name_ar": "وحدة معفاة",
+          "name_en": "Exempt unit",
+          "true_conditions": [],
+          "zero_amounts": [
+            "tax"
+          ]
+        }
+      ],
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "ar_tenant_control",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "net + tax",
+          "dimensions": [],
+          "subledger": "tenant",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "accrued_unbilled_rental_income",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "net",
+          "dimensions": [
+            "property"
+          ],
+          "subledger": "lease_contract",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 3,
+          "line_kind": "role",
+          "role": "vat_output",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "tax",
+          "dimensions": [],
+          "subledger": null,
+          "when": "unit_is_vat_taxable",
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "realestate.rent.accrual.managed_property",
+      "name_ar": "الاستحقاق الشهري — إدارة أملاك الغير",
+      "name_en": "Monthly accrual — property managed for others",
+      "module": "realestate",
+      "status": "drafted",
+      "source_ref": "07-real-estate.md §14.3 (ب)",
+      "trigger": {
+        "name_ar": "لا قيد استحقاق إطلاقاً — لا يوجد إيراد إيجار تعترف به الشركة فلا شيء يُستنفَد، والالتزام تجاه المالك ثابت من لحظة الفوترة حتى التوريد",
+        "name_en": "No accrual entry at all — the company recognises no rental revenue so there is nothing to release, and the obligation to the owner is fixed from invoicing until payout"
+      },
+      "posts_entry": false,
+      "reversal": {
+        "name_ar": "لا شيء يُعكس — لا قيد أصلاً",
+        "name_en": "Nothing to reverse — there is no entry"
+      },
+      "caveats": [
+        {
+          "ref": "07-real-estate.md §1.3",
+          "text_ar": "هذا السطر هو الفرق الجوهري بين النموذجين: غياب قيد الاستحقاق هو ما يمنع تضخيم الإيراد ٢١ ضعفاً",
+          "text_en": "This line is the substantive difference between the two models: the absence of the accrual entry is what prevents the twenty-one-fold revenue inflation"
+        }
+      ],
+      "lines": []
+    },
+    {
+      "event_code": "realestate.deposit.received.own_property",
+      "name_ar": "استلام وديعة تأمين — الملكية الذاتية",
+      "name_en": "Security deposit received — own property",
+      "module": "realestate",
+      "status": "drafted",
+      "source_ref": "07-real-estate.md §14.4 (أ)",
+      "trigger": {
+        "name_ar": "عند القبض الفعلي — والوديعة المستلمة بشيك لا يُثبت التزامها نقداً قبل تحصيل الشيك",
+        "name_en": "On actual collection — a deposit received by cheque does not create the cash-backed liability before the cheque clears"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "قيد الرد أو المصادرة، لا عكس",
+        "name_en": "The refund or forfeiture entry, not a reversal"
+      },
+      "caveats": [
+        {
+          "ref": "07-real-estate.md §14.4",
+          "text_ar": "⚠️ عدم إثبات ضريبة عند الاستلام يحتاج تأكيد المستشار الضريبي خاصة إن نصّ العقد على إمكان استخدام الوديعة في سداد الإيجار",
+          "text_en": "⚠️ Recognising no VAT on receipt needs tax adviser confirmation especially if the contract allows applying the deposit against rent"
+        }
+      ],
+      "amounts": {
+        "deposit": {
+          "name_ar": "مبلغ الوديعة",
+          "name_en": "Deposit amount",
+          "derivation_ar": "من نص العقد لا من قيمة ثابتة في الكود",
+          "derivation_en": "From the contract text not a constant in code"
+        }
+      },
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "settlement_account",
+          "qualifier_source": "document.settlement_method",
+          "side": "debit",
+          "amount": "deposit",
+          "dimensions": [],
+          "subledger": "resolved",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "tenant_deposit_refundable",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "deposit",
+          "dimensions": [],
+          "subledger": "lease_contract",
+          "when": null,
+          "note_ar": "الوديعة التزام في النموذجين وليست إيراداً بأي حال",
+          "note_en": "The deposit is a liability in both models and is never revenue"
+        }
+      ]
+    },
+    {
+      "event_code": "realestate.deposit.received.managed_property",
+      "name_ar": "استلام وديعة تأمين — إدارة أملاك الغير",
+      "name_en": "Security deposit received — property managed for others",
+      "module": "realestate",
+      "status": "drafted",
+      "source_ref": "07-real-estate.md §14.4 (ب)",
+      "trigger": {
+        "name_ar": "عند القبض الفعلي في حساب الأمانات",
+        "name_en": "On actual collection into the trust account"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "قيد الرد أو المصادرة، لا عكس",
+        "name_en": "The refund or forfeiture entry, not a reversal"
+      },
+      "caveats": [
+        {
+          "ref": "07-real-estate.md ق-ع-9",
+          "text_ar": "⚠️ هل تُحفظ أمانات الملاك والتأمينات في حساب بنكي منفصل؟ قرار مفتوح يحدد الحساب المستخدم في هذا السطر",
+          "text_en": "⚠️ Are owner trust funds and deposits held in a separate bank account? An open decision that determines the account used in this line"
+        }
+      ],
+      "amounts": {
+        "deposit": {
+          "name_ar": "مبلغ الوديعة",
+          "name_en": "Deposit amount",
+          "derivation_ar": "من نص العقد",
+          "derivation_en": "From the contract text"
+        }
+      },
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "settlement_account",
+          "qualifier_source": "constant:trust_bank",
+          "side": "debit",
+          "amount": "deposit",
+          "dimensions": [],
+          "subledger": "bank_account",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "tenant_deposit_held_for_owner",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "deposit",
+          "dimensions": [],
+          "subledger": "lease_contract",
+          "when": null,
+          "note_ar": "أمانة محتفَظ بها لصالح المالك — لا التزام على الشركة لحسابها",
+          "note_en": "Funds held in trust for the owner — not a liability of the company for its own account"
+        }
+      ]
+    },
+    {
+      "event_code": "realestate.collection.received",
+      "name_ar": "تحصيل نقدي أو تحويل بنكي من مستأجر",
+      "name_en": "Cash or bank collection from a tenant",
+      "module": "realestate",
+      "status": "drafted",
+      "source_ref": "07-real-estate.md §14.5 (أ) و(ب)",
+      "trigger": {
+        "name_ar": "عند القبض الفعلي وسند القبض المرقَّم",
+        "name_en": "On actual collection and the numbered receipt voucher"
+      },
+      "posts_entry": true,
+      "precondition": {
+        "name_ar": "القيد نفسه تماماً في نموذجي الملكية — الالتزام تجاه المالك أُثبت عند الفوترة والتحصيل يحوّل الذمة إلى نقد فقط",
+        "name_en": "Exactly the same entry in both ownership models — the obligation to the owner was recognised at invoicing and collection merely converts the receivable into cash"
+      },
+      "reversal": {
+        "name_ar": "قيد عكسي مستقل عند ارتداد التحويل",
+        "name_en": "A separate reversing entry if the transfer bounces"
+      },
+      "amounts": {
+        "collected": {
+          "name_ar": "المبلغ المحصَّل",
+          "name_en": "Amount collected",
+          "derivation_ar": "الوارد فعلاً في الصندوق أو الحساب البنكي",
+          "derivation_en": "What actually arrived in the cash box or bank account"
+        }
+      },
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "settlement_account",
+          "qualifier_source": "document.settlement_method",
+          "side": "debit",
+          "amount": "collected",
+          "dimensions": [],
+          "subledger": "resolved",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "ar_tenant_control",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "collected",
+          "dimensions": [],
+          "subledger": "tenant",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "realestate.collection.received.managed_on_collection_policy",
+      "name_ar": "تحصيل بسياسة القيد عند التحصيل — إدارة أملاك الغير",
+      "name_en": "Collection under the post-on-collection policy — managed for others",
+      "module": "realestate",
+      "status": "proposed",
+      "source_ref": "07-real-estate.md §14.5 (ج)",
+      "trigger": {
+        "name_ar": "عند القبض الفعلي حين تُعتمد السياسة البديلة التي لا تُثبت قيداً عند الفوترة",
+        "name_en": "On actual collection when the alternative policy that posts no entry at invoicing is adopted"
+      },
+      "posts_entry": true,
+      "precondition": {
+        "name_ar": "ق-ع-3 حُسم لصالح السياسة البديلة — وهي ليست التوصية",
+        "name_en": "Q-RE-3 resolved in favour of the alternative policy — which is not the recommendation"
+      },
+      "reversal": {
+        "name_ar": "قيد عكسي مستقل",
+        "name_en": "A separate reversing entry"
+      },
+      "caveats": [
+        {
+          "ref": "07-real-estate.md ق-ع-3",
+          "text_ar": "⚠️ هذه السياسة تُفقد الشركة تقرير أعمار متأخرات المستأجرين ومطابقته بالدفتر — لا تُفعَّل إلا بقرار موثّق من المالك",
+          "text_en": "⚠️ This policy costs the company the tenant arrears ageing report and its ledger reconciliation — enable it only by a documented owner decision"
+        }
+      ],
+      "amounts": {
+        "net": {
+          "name_ar": "صافي الأجرة المستحقة للمالك",
+          "name_en": "Net rent due to the owner",
+          "derivation_ar": "من جدول الدفعات",
+          "derivation_en": "From the payment schedule"
+        },
+        "tax": {
+          "name_ar": "ضريبة محصَّلة نيابة عن المالك",
+          "name_en": "VAT collected on behalf of the owner",
+          "derivation_ar": "حسب تسجيل المالك والتصنيف الضريبي للوحدة",
+          "derivation_en": "Per the owner registration and unit tax classification"
+        }
+      },
+      "conditions": {
+        "owner_vat_registered_and_unit_taxable": {
+          "name_ar": "المالك مسجَّل ضريبياً والوحدة خاضعة",
+          "name_en": "The owner is VAT registered and the unit is taxable",
+          "expression": "owner.vat_registered == true and unit.vat_treatment == 'standard'"
+        }
+      },
+      "scenarios": [
+        {
+          "code": "owner_taxable",
+          "name_ar": "مالك مسجَّل ووحدة خاضعة",
+          "name_en": "Registered owner and taxable unit",
+          "true_conditions": [
+            "owner_vat_registered_and_unit_taxable"
+          ]
+        },
+        {
+          "code": "owner_not_taxable",
+          "name_ar": "مالك غير مسجَّل أو وحدة سكنية",
+          "name_en": "Unregistered owner or residential unit",
+          "true_conditions": [],
+          "zero_amounts": [
+            "tax"
+          ]
+        }
+      ],
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "settlement_account",
+          "qualifier_source": "constant:trust_bank",
+          "side": "debit",
+          "amount": "net + tax",
+          "dimensions": [],
+          "subledger": "bank_account",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "owner_trust_payable",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "net",
+          "dimensions": [
+            "property"
+          ],
+          "subledger": "property_owner",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 3,
+          "line_kind": "role",
+          "role": "vat_collected_for_owner",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "tax",
+          "dimensions": [],
+          "subledger": "property_owner",
+          "when": "owner_vat_registered_and_unit_taxable",
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "realestate.collection.unallocated",
+      "name_ar": "تحصيل غير مطابق لدفعة بعينها",
+      "name_en": "Collection not matched to a specific instalment",
+      "module": "realestate",
+      "status": "drafted",
+      "source_ref": "07-real-estate.md §14.5",
+      "trigger": {
+        "name_ar": "عند ورود مبلغ في الحساب البنكي دون مرجع يربطه بمستأجر أو دفعة",
+        "name_en": "When an amount arrives in the bank account with no reference linking it to a tenant or instalment"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "قيد التخصيص اللاحق، لا عكس",
+        "name_en": "The later allocation entry, not a reversal"
+      },
+      "caveats": [
+        {
+          "ref": "07-real-estate.md §14.5",
+          "text_ar": "رصيد حساب التحصيلات غير المخصصة مؤشر جودة تشغيل — تقادمه فوق مدة معينة يستوجب تنبيهاً",
+          "text_en": "The unallocated collections balance is an operational quality indicator — ageing beyond a threshold must raise an alert"
+        }
+      ],
+      "amounts": {
+        "amount": {
+          "name_ar": "المبلغ الوارد",
+          "name_en": "Amount received",
+          "derivation_ar": "من كشف حساب البنك",
+          "derivation_en": "From the bank statement"
+        }
+      },
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "settlement_account",
+          "qualifier_source": "constant:bank",
+          "side": "debit",
+          "amount": "amount",
+          "dimensions": [],
+          "subledger": "bank_account",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "unallocated_tenant_collections",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "amount",
+          "dimensions": [],
+          "subledger": null,
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "realestate.collection.allocated",
+      "name_ar": "تخصيص تحصيل سابق لمستأجر",
+      "name_en": "Allocate a previously unallocated collection to a tenant",
+      "module": "realestate",
+      "status": "drafted",
+      "source_ref": "07-real-estate.md §14.5",
+      "trigger": {
+        "name_ar": "عند تحديد المستأجر والدفعة المقابلة للمبلغ الوارد",
+        "name_en": "On identifying the tenant and the instalment matching the received amount"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "قيد عكسي مستقل عند خطأ التخصيص",
+        "name_en": "A separate reversing entry if the allocation was wrong"
+      },
+      "amounts": {
+        "amount": {
+          "name_ar": "المبلغ المخصَّص",
+          "name_en": "Amount allocated",
+          "derivation_ar": "الجزء المطابق من الرصيد غير المخصص",
+          "derivation_en": "The matched portion of the unallocated balance"
+        }
+      },
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "unallocated_tenant_collections",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "amount",
+          "dimensions": [],
+          "subledger": null,
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "ar_tenant_control",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "amount",
+          "dimensions": [],
+          "subledger": "tenant",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "realestate.cheque.received",
+      "name_ar": "استلام شيك آجل من مستأجر",
+      "name_en": "Post-dated cheque received from a tenant",
+      "module": "realestate",
+      "status": "drafted",
+      "source_ref": "07-real-estate.md §14.6",
+      "trigger": {
+        "name_ar": "عند تسلّم الشيك فعلياً وتسجيله في السجل مع مكان الحفظ",
+        "name_en": "On physically receiving the cheque and recording it in the register with its storage location"
+      },
+      "posts_entry": true,
+      "precondition": {
+        "name_ar": "القيد نفسه في النموذجين — الشيك أداة تحصيل ولا يغيّر ملكية الإيراد",
+        "name_en": "The same entry in both models — a cheque is a collection instrument and does not change who owns the revenue"
+      },
+      "reversal": {
+        "name_ar": "قيد الارتجاع أو التحصيل، لا عكس",
+        "name_en": "The bounce or collection entry, not a reversal"
+      },
+      "caveats": [
+        {
+          "ref": "07-real-estate.md ق-ع-5",
+          "text_ar": "⚠️ سياسة بديلة: عدم إثبات الشيك حتى الإيداع. أبسط دفترياً لكنه يُخفي أصلاً حقيقياً في عهدة الشركة ويُضعف الرقابة على أوراق قابلة للتداول. التوصية الإثبات عند الاستلام مع جرد دوري موقّع",
+          "text_en": "⚠️ Alternative policy: do not record the cheque until deposit. Simpler in the books but it hides a real asset in the company's custody and weakens control over negotiable instruments. The recommendation is to record on receipt with a periodic signed count"
+        }
+      ],
+      "amounts": {
+        "amount": {
+          "name_ar": "قيمة الشيك",
+          "name_en": "Cheque value",
+          "derivation_ar": "القيمة المحررة على الشيك — شيك يغطي عدة دفعات يُقيَّد قيداً واحداً بقيمته ويُربط بالسطور المغطاة في السجل التشغيلي",
+          "derivation_en": "The value written on the cheque — a cheque covering several instalments is posted as one entry at its value and linked to the covered schedule lines in the operational register"
+        }
+      },
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "notes_receivable_on_hand",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "amount",
+          "dimensions": [],
+          "subledger": "cheque",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "ar_tenant_control",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "amount",
+          "dimensions": [],
+          "subledger": "tenant",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "realestate.cheque.deposited",
+      "name_ar": "إيداع شيك لدى البنك للتحصيل",
+      "name_en": "Cheque deposited with the bank for collection",
+      "module": "realestate",
+      "status": "drafted",
+      "source_ref": "07-real-estate.md §14.7",
+      "trigger": {
+        "name_ar": "عند تسليم الشيك للبنك",
+        "name_en": "On handing the cheque to the bank"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "قيد الارتجاع، لا عكس",
+        "name_en": "The bounce entry, not a reversal"
+      },
+      "amounts": {
+        "amount": {
+          "name_ar": "قيمة الشيك",
+          "name_en": "Cheque value",
+          "derivation_ar": "كما هي",
+          "derivation_en": "As is"
+        }
+      },
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "notes_receivable_under_collection",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "amount",
+          "dimensions": [],
+          "subledger": "cheque",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "notes_receivable_on_hand",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "amount",
+          "dimensions": [],
+          "subledger": "cheque",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "realestate.cheque.collected",
+      "name_ar": "تحصيل شيك فعلياً بإشعار البنك",
+      "name_en": "Cheque actually collected per the bank advice",
+      "module": "realestate",
+      "status": "drafted",
+      "source_ref": "07-real-estate.md §14.7",
+      "trigger": {
+        "name_ar": "عند إشعار البنك أو كشف الحساب — لا بناءً على تاريخ استحقاق الشيك",
+        "name_en": "On the bank advice or statement — never on the cheque due date"
+      },
+      "posts_entry": true,
+      "precondition": {
+        "name_ar": "النظام الذي يفترض التحصيل بحلول التاريخ يُظهر نقداً غير موجود",
+        "name_en": "A system that assumes collection on the due date shows cash that does not exist"
+      },
+      "reversal": {
+        "name_ar": "قيد الارتجاع، لا عكس",
+        "name_en": "The bounce entry, not a reversal"
+      },
+      "amounts": {
+        "amount": {
+          "name_ar": "قيمة الشيك المحصَّل",
+          "name_en": "Collected cheque value",
+          "derivation_ar": "من إشعار البنك",
+          "derivation_en": "From the bank advice"
+        }
+      },
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "settlement_account",
+          "qualifier_source": "constant:bank",
+          "side": "debit",
+          "amount": "amount",
+          "dimensions": [],
+          "subledger": "bank_account",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "notes_receivable_under_collection",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "amount",
+          "dimensions": [],
+          "subledger": "cheque",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "realestate.cheque.bounced",
+      "name_ar": "ارتجاع شيك",
+      "name_en": "Cheque bounced",
+      "module": "realestate",
+      "status": "drafted",
+      "source_ref": "07-real-estate.md §14.8",
+      "trigger": {
+        "name_ar": "عند إشعار البنك بالارتجاع",
+        "name_en": "On the bank bounce advice"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "لا يُحذف الشيك المرتجع ولا قيده — الشيك البديل يُسجَّل بقيد استلام مستقل ويُربط بالمرتجع",
+        "name_en": "Neither the bounced cheque nor its entry is deleted — a replacement cheque is recorded by a separate receipt entry linked to the bounced one"
+      },
+      "amounts": {
+        "amount": {
+          "name_ar": "قيمة الشيك المرتجع",
+          "name_en": "Bounced cheque value",
+          "derivation_ar": "كما هي",
+          "derivation_en": "As is"
+        }
+      },
+      "conditions": {
+        "was_already_collected": {
+          "name_ar": "الشيك كان قد حُصِّل",
+          "name_en": "The cheque had already been collected",
+          "expression": "cheque.status == 'collected'"
+        },
+        "still_under_collection": {
+          "name_ar": "الشيك ما زال تحت التحصيل",
+          "name_en": "The cheque is still under collection",
+          "expression": "cheque.status == 'under_collection'"
+        }
+      },
+      "scenarios": [
+        {
+          "code": "after_collection",
+          "name_ar": "ارتجاع بعد التحصيل",
+          "name_en": "Bounce after collection",
+          "true_conditions": [
+            "was_already_collected"
+          ]
+        },
+        {
+          "code": "before_collection",
+          "name_ar": "ارتجاع قبل التحصيل",
+          "name_en": "Bounce before collection",
+          "true_conditions": [
+            "still_under_collection"
+          ]
+        }
+      ],
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "ar_tenant_control",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "amount",
+          "dimensions": [],
+          "subledger": "tenant",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "settlement_account",
+          "qualifier_source": "constant:bank",
+          "side": "credit",
+          "amount": "amount",
+          "dimensions": [],
+          "subledger": "bank_account",
+          "when": "was_already_collected",
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 3,
+          "line_kind": "role",
+          "role": "notes_receivable_under_collection",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "amount",
+          "dimensions": [],
+          "subledger": "cheque",
+          "when": "still_under_collection",
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "realestate.cheque.bounce_fee.recharged_to_tenant",
+      "name_ar": "إعادة تحميل رسوم الارتجاع على المستأجر",
+      "name_en": "Recharge the bounce fee to the tenant",
+      "module": "realestate",
+      "status": "proposed",
+      "source_ref": "07-real-estate.md §14.8",
+      "trigger": {
+        "name_ar": "عند نص العقد على تحميل المستأجر رسوم ارتجاع الشيك",
+        "name_en": "When the contract provides for charging the tenant with the cheque bounce fee"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "إشعار دائن مرتبط",
+        "name_en": "A linked credit note"
+      },
+      "caveats": [
+        {
+          "ref": "07-real-estate.md §10.1",
+          "text_ar": "⚠️ معالجة الضريبة على إعادة تحميل الرسوم والغرامات غير محسومة — لا يُبنى سطر الضريبة في الكود قبل تأكيد المستشار الضريبي",
+          "text_en": "⚠️ The VAT treatment of fee and penalty recharges is unresolved — the VAT line is not built in code before tax adviser confirmation"
+        },
+        {
+          "ref": "07-real-estate.md ق-ع-7",
+          "text_ar": "في نموذج إدارة أملاك الغير يعود المحصَّل للجهة التي تحمّلت الرسوم — إن تحمّلتها الشركة فهو إيرادها وإن حُمِّلت على المالك فدائنه حساب أمانات الملاك",
+          "text_en": "In the managed-for-others model the recovery belongs to whoever bore the fee — if the company bore it the recovery is its revenue and if it was charged to the owner the credit is the owner trust account"
+        }
+      ],
+      "amounts": {
+        "net": {
+          "name_ar": "صافي الرسوم المعاد تحميلها",
+          "name_en": "Net recharged fee",
+          "derivation_ar": "الرسوم التي تحمّلتها الشركة من البنك",
+          "derivation_en": "The fee the company bore from the bank"
+        },
+        "tax": {
+          "name_ar": "ضريبة إعادة التحميل",
+          "name_en": "VAT on the recharge",
+          "derivation_ar": "⚠️ إن خضعت — غير محسوم",
+          "derivation_en": "⚠️ If subject to VAT — unresolved"
+        }
+      },
+      "conditions": {
+        "recharge_is_vat_taxable": {
+          "name_ar": "إعادة تحميل الرسوم خاضعة للضريبة",
+          "name_en": "The fee recharge is subject to VAT",
+          "expression": "tax_policy.penalty_recharge_vat == 'standard'"
+        }
+      },
+      "scenarios": [
+        {
+          "code": "taxable",
+          "name_ar": "إعادة تحميل خاضعة",
+          "name_en": "Taxable recharge",
+          "true_conditions": [
+            "recharge_is_vat_taxable"
+          ]
+        },
+        {
+          "code": "not_taxable",
+          "name_ar": "إعادة تحميل غير خاضعة",
+          "name_en": "Non-taxable recharge",
+          "true_conditions": [],
+          "zero_amounts": [
+            "tax"
+          ]
+        }
+      ],
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "ar_tenant_control",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "net + tax",
+          "dimensions": [],
+          "subledger": "tenant",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "late_payment_penalty_revenue",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "net",
+          "dimensions": [
+            "property"
+          ],
+          "subledger": null,
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 3,
+          "line_kind": "role",
+          "role": "vat_output",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "tax",
+          "dimensions": [],
+          "subledger": null,
+          "when": "recharge_is_vat_taxable",
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "realestate.late_fee.own_property",
+      "name_ar": "غرامة تأخير سداد — الملكية الذاتية",
+      "name_en": "Late payment penalty — own property",
+      "module": "realestate",
+      "status": "drafted",
+      "source_ref": "07-real-estate.md §14.9 (أ)",
+      "trigger": {
+        "name_ar": "عند اعتماد الغرامة بشرياً بعد انقضاء فترة السماح — لا آلياً بلا مراجعة",
+        "name_en": "On human approval of the penalty after the grace period expires — never automatically without review"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "الإعفاء من الغرامة بعد إثباتها يكون بإشعار دائن لا بحذف القيد",
+        "name_en": "Waiving a recognised penalty is by credit note not by deleting the entry"
+      },
+      "caveats": [
+        {
+          "ref": "07-real-estate.md §10.1",
+          "text_ar": "⚠️ المعالجة الضريبية للغرامات غير محسومة — لا يُبنى سطر الضريبة في الكود قبل تأكيد المستشار الضريبي",
+          "text_en": "⚠️ The VAT treatment of penalties is unresolved — the VAT line is not built in code before tax adviser confirmation"
+        }
+      ],
+      "amounts": {
+        "net": {
+          "name_ar": "صافي الغرامة",
+          "name_en": "Penalty net",
+          "derivation_ar": "بنسبة الغرامة ومدة السماح من إعدادات العقد — صف في جدول لا ثابت في الكود",
+          "derivation_en": "By the penalty rate and grace period from the contract settings — a table row not a constant in code"
+        },
+        "tax": {
+          "name_ar": "ضريبة الغرامة",
+          "name_en": "VAT on the penalty",
+          "derivation_ar": "⚠️ إن خضعت — غير محسوم",
+          "derivation_en": "⚠️ If subject to VAT — unresolved"
+        }
+      },
+      "conditions": {
+        "penalty_is_vat_taxable": {
+          "name_ar": "الغرامة خاضعة للضريبة",
+          "name_en": "The penalty is subject to VAT",
+          "expression": "tax_policy.late_fee_vat == 'standard'"
+        }
+      },
+      "scenarios": [
+        {
+          "code": "taxable",
+          "name_ar": "غرامة خاضعة",
+          "name_en": "Taxable penalty",
+          "true_conditions": [
+            "penalty_is_vat_taxable"
+          ]
+        },
+        {
+          "code": "not_taxable",
+          "name_ar": "غرامة غير خاضعة",
+          "name_en": "Non-taxable penalty",
+          "true_conditions": [],
+          "zero_amounts": [
+            "tax"
+          ]
+        }
+      ],
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "ar_tenant_control",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "net + tax",
+          "dimensions": [],
+          "subledger": "tenant",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "late_payment_penalty_revenue",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "net",
+          "dimensions": [
+            "property",
+            "unit"
+          ],
+          "subledger": null,
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 3,
+          "line_kind": "role",
+          "role": "vat_output",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "tax",
+          "dimensions": [],
+          "subledger": null,
+          "when": "penalty_is_vat_taxable",
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "realestate.late_fee.managed_property.to_owner",
+      "name_ar": "غرامة تأخير لصالح المالك — إدارة أملاك الغير",
+      "name_en": "Late payment penalty for the owner — managed for others",
+      "module": "realestate",
+      "status": "drafted",
+      "source_ref": "07-real-estate.md §14.9 (ب)",
+      "trigger": {
+        "name_ar": "عند اعتماد الغرامة بشرياً حين ينص عقد الإدارة على أن المستفيد هو المالك",
+        "name_en": "On human approval of the penalty when the management contract names the owner as beneficiary"
+      },
+      "posts_entry": true,
+      "precondition": {
+        "name_ar": "الحقل late_fee_beneficiary على العقد = المالك — القالب يُحلّ من بيانات العقد لا بشرط if في الكود",
+        "name_en": "The late_fee_beneficiary field on the contract equals owner — the template is resolved from contract data not by an if in code"
+      },
+      "reversal": {
+        "name_ar": "إشعار دائن لا حذف",
+        "name_en": "A credit note not a deletion"
+      },
+      "caveats": [
+        {
+          "ref": "07-real-estate.md ق-ع-7",
+          "text_ar": "⚠️ لمن تعود الغرامات والمصادرات في نموذج الإدارة؟ قرار تعاقدي مفتوح — لا يُترك للتفسير عند وقوع الحدث",
+          "text_en": "⚠️ Who owns penalties and forfeitures in the management model? An open contractual decision — never left to interpretation when the event occurs"
+        }
+      ],
+      "amounts": {
+        "amount": {
+          "name_ar": "مبلغ الغرامة",
+          "name_en": "Penalty amount",
+          "derivation_ar": "من إعدادات العقد",
+          "derivation_en": "From the contract settings"
+        }
+      },
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "ar_tenant_control",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "amount",
+          "dimensions": [],
+          "subledger": "tenant",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "owner_trust_payable",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "amount",
+          "dimensions": [
+            "property"
+          ],
+          "subledger": "property_owner",
+          "when": null,
+          "note_ar": "لا يمرّ أي جزء منها على إيرادات الشركة",
+          "note_en": "No part of it passes through the company revenue"
+        }
+      ]
+    },
+    {
+      "event_code": "realestate.late_fee.managed_property.to_manager",
+      "name_ar": "غرامة تأخير لصالح المدير — إدارة أملاك الغير",
+      "name_en": "Late payment penalty for the manager — managed for others",
+      "module": "realestate",
+      "status": "drafted",
+      "source_ref": "07-real-estate.md §14.9 (ج)",
+      "trigger": {
+        "name_ar": "عند اعتماد الغرامة بشرياً حين ينص عقد الإدارة على أن المستفيد هو شركة الإدارة",
+        "name_en": "On human approval of the penalty when the management contract names the managing company as beneficiary"
+      },
+      "posts_entry": true,
+      "precondition": {
+        "name_ar": "الحقل late_fee_beneficiary على العقد = المدير — وهي حينها إيراد حقيقي للشركة مقابل جهد المتابعة والتحصيل",
+        "name_en": "The late_fee_beneficiary field equals manager — it is then genuine company revenue for the follow-up and collection effort"
+      },
+      "reversal": {
+        "name_ar": "إشعار دائن لا حذف",
+        "name_en": "A credit note not a deletion"
+      },
+      "caveats": [
+        {
+          "ref": "07-real-estate.md §10.1",
+          "text_ar": "⚠️ المعالجة الضريبية للغرامات غير محسومة",
+          "text_en": "⚠️ The VAT treatment of penalties is unresolved"
+        }
+      ],
+      "amounts": {
+        "net": {
+          "name_ar": "صافي الغرامة",
+          "name_en": "Penalty net",
+          "derivation_ar": "من إعدادات عقد الإدارة",
+          "derivation_en": "From the management contract settings"
+        },
+        "tax": {
+          "name_ar": "ضريبة الغرامة",
+          "name_en": "VAT on the penalty",
+          "derivation_ar": "⚠️ إن خضعت — غير محسوم",
+          "derivation_en": "⚠️ If subject to VAT — unresolved"
+        }
+      },
+      "conditions": {
+        "penalty_is_vat_taxable": {
+          "name_ar": "الغرامة خاضعة للضريبة",
+          "name_en": "The penalty is subject to VAT",
+          "expression": "tax_policy.late_fee_vat == 'standard'"
+        }
+      },
+      "scenarios": [
+        {
+          "code": "taxable",
+          "name_ar": "غرامة خاضعة",
+          "name_en": "Taxable penalty",
+          "true_conditions": [
+            "penalty_is_vat_taxable"
+          ]
+        },
+        {
+          "code": "not_taxable",
+          "name_ar": "غرامة غير خاضعة",
+          "name_en": "Non-taxable penalty",
+          "true_conditions": [],
+          "zero_amounts": [
+            "tax"
+          ]
+        }
+      ],
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "ar_tenant_control",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "net + tax",
+          "dimensions": [],
+          "subledger": "tenant",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "late_payment_penalty_revenue",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "net",
+          "dimensions": [
+            "property",
+            "unit"
+          ],
+          "subledger": null,
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 3,
+          "line_kind": "role",
+          "role": "vat_output",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "tax",
+          "dimensions": [],
+          "subledger": null,
+          "when": "penalty_is_vat_taxable",
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "realestate.management_commission.invoiced",
+      "name_ar": "عمولة إدارة الأملاك",
+      "name_en": "Property management commission",
+      "module": "realestate",
+      "status": "drafted",
+      "source_ref": "07-real-estate.md §14.10",
+      "trigger": {
+        "name_ar": "عند احتساب العمولة عن الفترة وإصدار فاتورة ضريبية من الشركة على المالك",
+        "name_en": "On computing the commission for the period and issuing a tax invoice from the company to the owner"
+      },
+      "posts_entry": true,
+      "precondition": {
+        "name_ar": "نموذج إدارة أملاك الغير فقط — لا معنى للعمولة في نموذج الملكية الذاتية",
+        "name_en": "Managed-for-others model only — the commission has no meaning in the own-property model"
+      },
+      "reversal": {
+        "name_ar": "إشعار دائن على المالك",
+        "name_en": "A credit note on the owner"
+      },
+      "caveats": [
+        {
+          "ref": "07-real-estate.md §8.1",
+          "text_ar": "⚠️ العمولة خاضعة للنسبة الأساسية حتى لو كان الإيجار المُدار سكنياً معفى — الخدمة إدارة لا تأجير سكني. خطأ شائع يجب أن يمنعه النظام هيكلياً، ويحتاج تأكيد المستشار الضريبي",
+          "text_en": "⚠️ The commission is subject to the standard rate even when the managed rent is exempt residential — the service is management not residential letting. A common error the system must prevent structurally, and it needs tax adviser confirmation"
+        },
+        {
+          "ref": "07-real-estate.md ق-ع-6",
+          "text_ar": "⚠️ أساس احتساب العمولة وتوقيت الاعتراف بها قرار مفتوح",
+          "text_en": "⚠️ The commission computation basis and recognition timing are an open decision"
+        }
+      ],
+      "amounts": {
+        "net": {
+          "name_ar": "صافي العمولة",
+          "name_en": "Commission net",
+          "derivation_ar": "بأساس الاحتساب من قاعدة العمولة على العقد: من المحصَّل أو من المستحق أو ثابت أو شرائح — بيانات لا كود",
+          "derivation_en": "By the computation basis in the commission rule on the contract: on collections on billings a fixed amount or tiers — data not code"
+        },
+        "tax": {
+          "name_ar": "ضريبة العمولة",
+          "name_en": "VAT on the commission",
+          "derivation_ar": "بالنسبة الأساسية — وتدخل حساب ضريبة مخرجات الشركة وإقرارها بخلاف ضريبة الإيجار",
+          "derivation_en": "At the standard rate — and it enters the company output VAT account and return unlike the rent VAT"
+        }
+      },
+      "conditions": {
+        "owner_balance_sufficient": {
+          "name_ar": "رصيد أمانات المالك يكفي لخصم العمولة",
+          "name_en": "The owner trust balance covers the commission",
+          "expression": "owner_trust_balance >= net + tax"
+        },
+        "owner_balance_insufficient": {
+          "name_ar": "رصيد أمانات المالك لا يكفي",
+          "name_en": "The owner trust balance is insufficient",
+          "expression": "owner_trust_balance < net + tax"
+        }
+      },
+      "scenarios": [
+        {
+          "code": "deducted_from_owner_balance",
+          "name_ar": "خصم من مستحقات المالك",
+          "name_en": "Deducted from the owner balance",
+          "true_conditions": [
+            "owner_balance_sufficient"
+          ]
+        },
+        {
+          "code": "charged_to_owner_receivable",
+          "name_ar": "تحميل على ذمة المالك المدينة",
+          "name_en": "Charged to the owner receivable",
+          "true_conditions": [
+            "owner_balance_insufficient"
+          ]
+        }
+      ],
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "owner_trust_payable",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "net + tax",
+          "dimensions": [
+            "property"
+          ],
+          "subledger": "property_owner",
+          "when": "owner_balance_sufficient",
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "ar_owner_control",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "net + tax",
+          "dimensions": [],
+          "subledger": "property_owner",
+          "when": "owner_balance_insufficient",
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 3,
+          "line_kind": "role",
+          "role": "property_management_commission_revenue",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "net",
+          "dimensions": [],
+          "subledger": "property_owner",
+          "when": null,
+          "note_ar": "الإيراد الوحيد للشركة من دورة الإدارة",
+          "note_en": "The company's only revenue from the management cycle"
+        },
+        {
+          "line_no": 4,
+          "line_kind": "role",
+          "role": "vat_output",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "tax",
+          "dimensions": [],
+          "subledger": null,
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "realestate.leasing_commission.invoiced",
+      "name_ar": "عمولة تسويق وتأجير على المالك عند عقد جديد",
+      "name_en": "Leasing and marketing commission billed to the owner on a new contract",
+      "module": "realestate",
+      "status": "drafted",
+      "source_ref": "07-real-estate.md §14.10",
+      "trigger": {
+        "name_ar": "عند إبرام عقد إيجار جديد وإصدار فاتورة ضريبية مستقلة على المالك",
+        "name_en": "On concluding a new lease and issuing a separate tax invoice to the owner"
+      },
+      "posts_entry": true,
+      "precondition": {
+        "name_ar": "نموذج إدارة أملاك الغير — وتُفصل عن عمولة الإدارة بحساب مستقل ولها فاتورتها",
+        "name_en": "Managed-for-others model — separated from the management commission in its own account with its own invoice"
+      },
+      "reversal": {
+        "name_ar": "إشعار دائن على المالك",
+        "name_en": "A credit note on the owner"
+      },
+      "amounts": {
+        "net": {
+          "name_ar": "صافي عمولة السعي",
+          "name_en": "Leasing commission net",
+          "derivation_ar": "من عقد الإدارة — بيانات لا كود",
+          "derivation_en": "From the management contract — data not code"
+        },
+        "tax": {
+          "name_ar": "ضريبة العمولة",
+          "name_en": "VAT on the commission",
+          "derivation_ar": "بالنسبة الأساسية",
+          "derivation_en": "At the standard rate"
+        }
+      },
+      "conditions": {
+        "owner_balance_sufficient": {
+          "name_ar": "رصيد أمانات المالك يكفي",
+          "name_en": "The owner trust balance is sufficient",
+          "expression": "owner_trust_balance >= net + tax"
+        },
+        "owner_balance_insufficient": {
+          "name_ar": "رصيد أمانات المالك لا يكفي",
+          "name_en": "The owner trust balance is insufficient",
+          "expression": "owner_trust_balance < net + tax"
+        }
+      },
+      "scenarios": [
+        {
+          "code": "deducted_from_owner_balance",
+          "name_ar": "خصم من مستحقات المالك",
+          "name_en": "Deducted from the owner balance",
+          "true_conditions": [
+            "owner_balance_sufficient"
+          ]
+        },
+        {
+          "code": "charged_to_owner_receivable",
+          "name_ar": "تحميل على ذمة المالك المدينة",
+          "name_en": "Charged to the owner receivable",
+          "true_conditions": [
+            "owner_balance_insufficient"
+          ]
+        }
+      ],
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "owner_trust_payable",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "net + tax",
+          "dimensions": [
+            "property"
+          ],
+          "subledger": "property_owner",
+          "when": "owner_balance_sufficient",
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "ar_owner_control",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "net + tax",
+          "dimensions": [],
+          "subledger": "property_owner",
+          "when": "owner_balance_insufficient",
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 3,
+          "line_kind": "role",
+          "role": "leasing_commission_revenue",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "net",
+          "dimensions": [],
+          "subledger": "property_owner",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 4,
+          "line_kind": "role",
+          "role": "vat_output",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "tax",
+          "dimensions": [],
+          "subledger": null,
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "realestate.owner_payout.posted",
+      "name_ar": "توريد صافي الإيراد للمالك",
+      "name_en": "Payout of net proceeds to the owner",
+      "module": "realestate",
+      "status": "drafted",
+      "source_ref": "07-real-estate.md §14.11",
+      "trigger": {
+        "name_ar": "بعد اعتماد كشف حساب المالك وسند الصرف",
+        "name_en": "After approval of the owner statement and the payment voucher"
+      },
+      "posts_entry": true,
+      "precondition": {
+        "name_ar": "نموذج إدارة أملاك الغير فقط · ولا يُصرف إلا المحصَّل فعلاً — التوريد من رصيد أمانات المالك الفعلي لا من المفوتر",
+        "name_en": "Managed-for-others model only — and only what was actually collected is paid out, from the real owner trust balance not from what was billed"
+      },
+      "reversal": {
+        "name_ar": "قيد عكسي مستقل عند ارتداد التحويل",
+        "name_en": "A separate reversing entry if the transfer bounces"
+      },
+      "caveats": [
+        {
+          "ref": "07-real-estate.md §14.11",
+          "text_ar": "⚠️ توريد ضريبة الإيجار للمالك مع أصل المبلغ يتغير إن ثبت أن ترتيباً وكالياً مختلفاً ينطبق — يحتاج تأكيد المستشار الضريبي",
+          "text_en": "⚠️ Paying the rent VAT out to the owner with the principal changes if a different agency arrangement is found to apply — needs tax adviser confirmation"
+        },
+        {
+          "ref": "07-real-estate.md §10.6",
+          "text_ar": "⚠️ الاستقطاع الضريبي لمالك غير مقيم: إن ثبت وجوبه يُقتطع من التوريد ويُثبت التزاماً مستقلاً تجاه الهيئة — النسبة والآلية تحتاجان تأكيداً، وحتى ذلك الحين لا يُبنى السطر في الكود",
+          "text_en": "⚠️ Withholding tax for a non-resident owner: if it is confirmed to apply it is deducted from the payout and recognised as a separate liability to the authority — the rate and mechanism need confirmation and until then the line is not built in code"
+        },
+        {
+          "ref": "07-real-estate.md §14.11",
+          "text_ar": "احتياطي الصيانة المحتجز إن اتُّفق يبقى في حساب أمانات الملاك كرصيد محجوز موسوم ولا يُنقل إلى حساب آخر — هو مال المالك في كل الأحوال",
+          "text_en": "A retained maintenance reserve if agreed stays in the owner trust account as a tagged restricted balance and is never moved to another account — it is the owner's money in all cases"
+        }
+      ],
+      "amounts": {
+        "owner_net": {
+          "name_ar": "صافي المستحق للمالك من أصل الأجرة",
+          "name_en": "The owner net entitlement from the rent principal",
+          "derivation_ar": "المحصَّل ناقص العمولة والمصروفات المخصومة من رصيده",
+          "derivation_en": "Collections less the commission and expenses charged to the balance"
+        },
+        "owner_vat": {
+          "name_ar": "الضريبة المحصَّلة نيابة عن المالك",
+          "name_en": "VAT collected on behalf of the owner",
+          "derivation_ar": "تُورَّد للمالك مع أصل المبلغ — هي التزامه الضريبي وهو من يقرّ بها",
+          "derivation_en": "Paid out to the owner with the principal — it is the owner's tax obligation and the owner declares it"
+        }
+      },
+      "conditions": {
+        "paid_by_transfer": {
+          "name_ar": "التوريد بتحويل بنكي",
+          "name_en": "Payout by bank transfer",
+          "expression": "document.settlement_method == 'bank'"
+        },
+        "paid_by_cheque": {
+          "name_ar": "التوريد بشيك صادر",
+          "name_en": "Payout by issued cheque",
+          "expression": "document.settlement_method == 'cheque'"
+        }
+      },
+      "scenarios": [
+        {
+          "code": "by_transfer",
+          "name_ar": "توريد بتحويل",
+          "name_en": "Payout by transfer",
+          "true_conditions": [
+            "paid_by_transfer"
+          ]
+        },
+        {
+          "code": "by_cheque",
+          "name_ar": "توريد بشيك",
+          "name_en": "Payout by cheque",
+          "true_conditions": [
+            "paid_by_cheque"
+          ]
+        }
+      ],
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "owner_trust_payable",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "owner_net",
+          "dimensions": [
+            "property"
+          ],
+          "subledger": "property_owner",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "vat_collected_for_owner",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "owner_vat",
+          "dimensions": [],
+          "subledger": "property_owner",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 3,
+          "line_kind": "role",
+          "role": "settlement_account",
+          "qualifier_source": "constant:trust_bank",
+          "side": "credit",
+          "amount": "owner_net + owner_vat",
+          "dimensions": [],
+          "subledger": "bank_account",
+          "when": "paid_by_transfer",
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 4,
+          "line_kind": "role",
+          "role": "notes_payable",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "owner_net + owner_vat",
+          "dimensions": [],
+          "subledger": "cheque",
+          "when": "paid_by_cheque",
+          "note_ar": "ثم عند صرف الشيك من البنك يُرحَّل الحدث treasury.cheque_cleared.posted",
+          "note_en": "Then when the cheque clears the bank the treasury.cheque_cleared.posted event is posted"
+        }
+      ]
+    },
+    {
+      "event_code": "realestate.maintenance.company_expense",
+      "name_ar": "مصروف صيانة على حساب الشركة",
+      "name_en": "Maintenance expense borne by the company",
+      "module": "realestate",
+      "status": "drafted",
+      "source_ref": "07-real-estate.md §14.12 (أ) و(ب)",
+      "trigger": {
+        "name_ar": "عند استلام فاتورة المورّد أو الصرف المباشر",
+        "name_en": "On receiving the supplier invoice or on direct payment"
+      },
+      "posts_entry": true,
+      "precondition": {
+        "name_ar": "نموذج الملكية الذاتية أو نموذج الإيجار المضمون — المصروف مصروف الشركة فعلاً",
+        "name_en": "Own-property or guaranteed-rent model — the expense genuinely belongs to the company"
+      },
+      "reversal": {
+        "name_ar": "إشعار مدين على المورد",
+        "name_en": "A debit note on the supplier"
+      },
+      "caveats": [
+        {
+          "ref": "07-real-estate.md §10.3",
+          "text_ar": "⚠️ ضريبة المدخلات على النشاط المعفى غير قابلة للخصم وتصبح جزءاً من تكلفة المصروف، وفي النشاط المختلط يُخصم جزء بنسبة الخصم التناسبي — طريقة الاحتساب والتسوية تحتاجان تأكيد المستشار الضريبي",
+          "text_en": "⚠️ Input VAT on exempt activity is non-deductible and becomes part of the expense cost, and in mixed activity a portion is deducted pro rata — the computation and adjustment method need tax adviser confirmation"
+        }
+      ],
+      "amounts": {
+        "net": {
+          "name_ar": "صافي فاتورة الصيانة",
+          "name_en": "Maintenance invoice net",
+          "derivation_ar": "من فاتورة المورّد",
+          "derivation_en": "From the supplier invoice"
+        },
+        "recoverable_tax": {
+          "name_ar": "ضريبة مدخلات قابلة للخصم",
+          "name_en": "Recoverable input VAT",
+          "derivation_ar": "الجزء المنسوب لنشاط خاضع بحسب وسم vat_recovery_attribution على السطر",
+          "derivation_en": "The portion attributed to taxable activity per the vat_recovery_attribution tag on the line"
+        },
+        "non_recoverable_tax": {
+          "name_ar": "ضريبة مدخلات غير قابلة للخصم",
+          "name_en": "Non-recoverable input VAT",
+          "derivation_ar": "الجزء المنسوب لنشاط معفى — يصبح جزءاً من تكلفة المصروف",
+          "derivation_en": "The portion attributed to exempt activity — becomes part of the expense cost"
+        }
+      },
+      "conditions": {
+        "unit_activity_taxable": {
+          "name_ar": "نشاط الوحدة خاضع (وحدة تجارية)",
+          "name_en": "The unit activity is taxable (commercial unit)",
+          "expression": "line.vat_recovery_attribution == 'taxable'"
+        },
+        "unit_activity_exempt": {
+          "name_ar": "نشاط الوحدة معفى (وحدة سكنية)",
+          "name_en": "The unit activity is exempt (residential unit)",
+          "expression": "line.vat_recovery_attribution == 'exempt'"
+        },
+        "unit_activity_mixed": {
+          "name_ar": "نشاط مختلط بخصم تناسبي",
+          "name_en": "Mixed activity with pro-rata deduction",
+          "expression": "line.vat_recovery_attribution == 'mixed'"
+        }
+      },
+      "scenarios": [
+        {
+          "code": "commercial",
+          "name_ar": "وحدة تجارية — خصم كامل",
+          "name_en": "Commercial unit — full deduction",
+          "true_conditions": [
+            "unit_activity_taxable"
+          ],
+          "zero_amounts": [
+            "non_recoverable_tax"
+          ]
+        },
+        {
+          "code": "residential",
+          "name_ar": "وحدة سكنية — لا خصم",
+          "name_en": "Residential unit — no deduction",
+          "true_conditions": [
+            "unit_activity_exempt"
+          ],
+          "zero_amounts": [
+            "recoverable_tax"
+          ]
+        },
+        {
+          "code": "mixed",
+          "name_ar": "نشاط مختلط — خصم تناسبي",
+          "name_en": "Mixed activity — pro-rata deduction",
+          "true_conditions": [
+            "unit_activity_mixed"
+          ]
+        }
+      ],
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "property_operating_cost",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "net + non_recoverable_tax",
+          "dimensions": [
+            "property",
+            "unit"
+          ],
+          "subledger": null,
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "vat_input",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "recoverable_tax",
+          "dimensions": [],
+          "subledger": null,
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 3,
+          "line_kind": "role",
+          "role": "ap_supplier_control",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "net + recoverable_tax + non_recoverable_tax",
+          "dimensions": [],
+          "subledger": "supplier",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "realestate.maintenance.owner_disbursement",
+      "name_ar": "مصروف صيانة على حساب المالك — صرف نيابة",
+      "name_en": "Maintenance expense for the owner's account — disbursement",
+      "module": "realestate",
+      "status": "drafted",
+      "source_ref": "07-real-estate.md §14.12 (ج)",
+      "trigger": {
+        "name_ar": "عند استلام فاتورة المورّد الصادرة باسم المالك",
+        "name_en": "On receiving the supplier invoice issued in the owner's name"
+      },
+      "posts_entry": true,
+      "precondition": {
+        "name_ar": "نموذج إدارة أملاك الغير · وحقل billing_mode على أمر الصيانة = صرف نيابة · والفاتورة باسم المالك",
+        "name_en": "Managed-for-others model, the billing_mode field on the work order equals disbursement and the invoice is in the owner's name"
+      },
+      "reversal": {
+        "name_ar": "إشعار مدين على المورد وتعديل رصيد المالك بقيد مستقل",
+        "name_en": "A debit note on the supplier and an owner balance adjustment by a separate entry"
+      },
+      "caveats": [
+        {
+          "ref": "07-real-estate.md §14.12",
+          "text_ar": "لا حساب مصروف ولا ضريبة مدخلات في هذا القيد. المصروف ليس مصروف الشركة وضريبة المدخلات حق المالك لا الشركة. الخلط بين هذه الحالة وحالة المصروف على حساب الشركة يُحمّل قائمة دخل الشركة مصروفات ليست لها ويخصم ضريبة مدخلات لا تخصها",
+          "text_en": "No expense account and no input VAT in this entry. The expense is not the company's and the input VAT is the owner's right not the company's. Confusing this with the company-expense case loads the company income statement with costs that are not its own and deducts input VAT that does not belong to it"
+        },
+        {
+          "ref": "07-real-estate.md ق-ع-8",
+          "text_ar": "⚠️ أي الأسلوبين يُعتمد — صرف نيابة أم إعادة فوترة — قرار يحتاج تأكيد المستشار الضريبي، وقد يختلف بحسب طبيعة المصروف",
+          "text_en": "⚠️ Which method is adopted — disbursement or recharge — is a decision needing tax adviser confirmation and may differ by expense nature"
+        }
+      ],
+      "amounts": {
+        "gross": {
+          "name_ar": "إجمالي فاتورة المورّد شاملاً الضريبة",
+          "name_en": "Supplier invoice total including VAT",
+          "derivation_ar": "كما وردت من المورّد — لا تُفصل الضريبة لأنها ليست حق الشركة",
+          "derivation_en": "As received from the supplier — the VAT is not split out because it is not the company's right"
+        }
+      },
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "owner_trust_payable",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "gross",
+          "dimensions": [
+            "property",
+            "unit"
+          ],
+          "subledger": "property_owner",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "ap_supplier_control",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "gross",
+          "dimensions": [],
+          "subledger": "supplier",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "realestate.maintenance.owner_recharge.purchase",
+      "name_ar": "شراء صيانة بغرض إعادة فوترتها على المالك",
+      "name_en": "Maintenance purchased for recharge to the owner",
+      "module": "realestate",
+      "status": "drafted",
+      "source_ref": "07-real-estate.md §14.12 (د)",
+      "trigger": {
+        "name_ar": "عند استلام فاتورة المورّد الصادرة باسم الشركة",
+        "name_en": "On receiving the supplier invoice issued in the company's name"
+      },
+      "posts_entry": true,
+      "precondition": {
+        "name_ar": "حقل billing_mode على أمر الصيانة = إعادة فوترة · والفاتورة باسم الشركة",
+        "name_en": "The billing_mode field on the work order equals recharge and the invoice is in the company's name"
+      },
+      "reversal": {
+        "name_ar": "إشعار مدين على المورد",
+        "name_en": "A debit note on the supplier"
+      },
+      "caveats": [
+        {
+          "ref": "07-real-estate.md ق-ع-8",
+          "text_ar": "⚠️ اعتماد أسلوب إعادة الفوترة يحتاج تأكيد المستشار الضريبي",
+          "text_en": "⚠️ Adopting the recharge method needs tax adviser confirmation"
+        }
+      ],
+      "amounts": {
+        "net": {
+          "name_ar": "صافي فاتورة المورّد",
+          "name_en": "Supplier invoice net",
+          "derivation_ar": "من فاتورة المورّد",
+          "derivation_en": "From the supplier invoice"
+        },
+        "tax": {
+          "name_ar": "ضريبة المدخلات",
+          "name_en": "Input VAT",
+          "derivation_ar": "تُخصم لأن الشركة هي المتلقي للتوريد ثم تعيد توريده",
+          "derivation_en": "Deducted because the company is the recipient of the supply and then re-supplies it"
+        }
+      },
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "property_operating_cost",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "net",
+          "dimensions": [
+            "property",
+            "unit"
+          ],
+          "subledger": null,
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "vat_input",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "tax",
+          "dimensions": [],
+          "subledger": null,
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 3,
+          "line_kind": "role",
+          "role": "ap_supplier_control",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "net + tax",
+          "dimensions": [],
+          "subledger": "supplier",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "realestate.maintenance.owner_recharge.rebill",
+      "name_ar": "إعادة فوترة الصيانة على المالك",
+      "name_en": "Rebilling the maintenance to the owner",
+      "module": "realestate",
+      "status": "drafted",
+      "source_ref": "07-real-estate.md §14.12 (د)",
+      "trigger": {
+        "name_ar": "عند إصدار الفاتورة الضريبية على المالك",
+        "name_en": "On issuing the tax invoice to the owner"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "إشعار دائن على المالك",
+        "name_en": "A credit note on the owner"
+      },
+      "caveats": [
+        {
+          "ref": "07-real-estate.md ق-ع-8",
+          "text_ar": "⚠️ يحتاج تأكيد المستشار الضريبي",
+          "text_en": "⚠️ Needs tax adviser confirmation"
+        }
+      ],
+      "amounts": {
+        "net": {
+          "name_ar": "صافي التكلفة المعاد فوترتها",
+          "name_en": "Net cost rebilled",
+          "derivation_ar": "استرداد التكلفة — يُخفَّض به حساب المصروف لا يُسجَّل إيراداً",
+          "derivation_en": "A cost recovery — it reduces the expense account and is not recorded as revenue"
+        },
+        "tax": {
+          "name_ar": "ضريبة المخرجات على إعادة الفوترة",
+          "name_en": "Output VAT on the rebill",
+          "derivation_ar": "بالنسبة الأساسية",
+          "derivation_en": "At the standard rate"
+        }
+      },
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "owner_trust_payable",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "net + tax",
+          "dimensions": [
+            "property"
+          ],
+          "subledger": "property_owner",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "property_operating_cost",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "net",
+          "dimensions": [
+            "property",
+            "unit"
+          ],
+          "subledger": null,
+          "when": null,
+          "note_ar": "استرداد تكلفة يخفّض المصروف — لا إيراد جديد",
+          "note_en": "A cost recovery reducing the expense — not new revenue"
+        },
+        {
+          "line_no": 3,
+          "line_kind": "role",
+          "role": "vat_output",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "tax",
+          "dimensions": [],
+          "subledger": null,
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "realestate.maintenance.tenant_recharge",
+      "name_ar": "تحميل تكلفة إصلاح على المستأجر بسبب سوء الاستخدام",
+      "name_en": "Charging a repair cost to the tenant for misuse",
+      "module": "realestate",
+      "status": "proposed",
+      "source_ref": "07-real-estate.md §14.12 (هـ)",
+      "trigger": {
+        "name_ar": "بعد إثبات سوء الاستخدام مستندياً وإصلاح العطل على حساب الشركة أولاً",
+        "name_en": "After documenting the misuse and repairing the damage at the company's cost first"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "إشعار دائن مرتبط",
+        "name_en": "A linked credit note"
+      },
+      "caveats": [
+        {
+          "ref": "07-real-estate.md §14.12 (هـ)",
+          "text_ar": "⚠️ هل يُخفَّض حساب تكلفة التشغيل باعتباره استرداد تكلفة أم يُسجَّل إيراد إعادة تحميل مع ضريبة مخرجات؟ يحتاج تأكيداً ولم يُبنَ أحدهما افتراضاً",
+          "text_en": "⚠️ Is the operating cost account reduced as a cost recovery or is recharge revenue recognised with output VAT? Needs confirmation and neither is built as a default"
+        }
+      ],
+      "amounts": {
+        "cost_recovered": {
+          "name_ar": "التكلفة المستردة من المستأجر",
+          "name_en": "Cost recovered from the tenant",
+          "derivation_ar": "تكلفة الإصلاح الفعلية الموثّقة",
+          "derivation_en": "The documented actual repair cost"
+        },
+        "tax": {
+          "name_ar": "ضريبة المخرجات",
+          "name_en": "Output VAT",
+          "derivation_ar": "⚠️ إن عومل التحميل توريداً مستقلاً — غير محسوم",
+          "derivation_en": "⚠️ If the charge is treated as a separate supply — unresolved"
+        }
+      },
+      "conditions": {
+        "treated_as_separate_supply": {
+          "name_ar": "يُعامَل التحميل توريداً مستقلاً خاضعاً",
+          "name_en": "The charge is treated as a separate taxable supply",
+          "expression": "tax_policy.tenant_recharge == 'separate_supply'"
+        },
+        "treated_as_cost_recovery": {
+          "name_ar": "يُعامَل استرداد تكلفة",
+          "name_en": "The charge is treated as a cost recovery",
+          "expression": "tax_policy.tenant_recharge == 'cost_recovery'"
+        }
+      },
+      "scenarios": [
+        {
+          "code": "cost_recovery",
+          "name_ar": "استرداد تكلفة يخفّض المصروف",
+          "name_en": "Cost recovery reducing the expense",
+          "true_conditions": [
+            "treated_as_cost_recovery"
+          ],
+          "zero_amounts": [
+            "tax"
+          ]
+        },
+        {
+          "code": "separate_supply",
+          "name_ar": "توريد مستقل خاضع",
+          "name_en": "A separate taxable supply",
+          "true_conditions": [
+            "treated_as_separate_supply"
+          ]
+        }
+      ],
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "ar_tenant_control",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "cost_recovered + tax",
+          "dimensions": [],
+          "subledger": "tenant",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "property_operating_cost",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "cost_recovered",
+          "dimensions": [
+            "property",
+            "unit"
+          ],
+          "subledger": null,
+          "when": "treated_as_cost_recovery",
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 3,
+          "line_kind": "role",
+          "role": "utilities_recharge_revenue",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "cost_recovered",
+          "dimensions": [
+            "property"
+          ],
+          "subledger": null,
+          "when": "treated_as_separate_supply",
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 4,
+          "line_kind": "role",
+          "role": "vat_output",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "tax",
+          "dimensions": [],
+          "subledger": null,
+          "when": "treated_as_separate_supply",
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "realestate.capital_improvement.posted",
+      "name_ar": "تحسين رأسمالي على عقار استثماري",
+      "name_en": "Capital improvement on an investment property",
+      "module": "realestate",
+      "status": "drafted",
+      "source_ref": "07-real-estate.md §14.12 (و)",
+      "trigger": {
+        "name_ar": "عند استلام فاتورة المقاول أو المورّد للأعمال الرأسمالية",
+        "name_en": "On receiving the contractor or supplier invoice for the capital works"
+      },
+      "posts_entry": true,
+      "precondition": {
+        "name_ar": "نموذج الملكية الذاتية · والعمل يستوفي شروط الرسملة لا الصيانة الدورية — ويُهلك على العمر المتبقي",
+        "name_en": "Own-property model and the work meets capitalisation criteria rather than routine maintenance — and is depreciated over the remaining life"
+      },
+      "reversal": {
+        "name_ar": "إشعار مدين على المورد",
+        "name_en": "A debit note on the supplier"
+      },
+      "amounts": {
+        "net": {
+          "name_ar": "صافي تكلفة التحسين",
+          "name_en": "Improvement cost net",
+          "derivation_ar": "من فاتورة المقاول",
+          "derivation_en": "From the contractor invoice"
+        },
+        "recoverable_tax": {
+          "name_ar": "ضريبة مدخلات قابلة للخصم",
+          "name_en": "Recoverable input VAT",
+          "derivation_ar": "بحسب وسم النشاط على العقار",
+          "derivation_en": "Per the activity tag on the property"
+        },
+        "non_recoverable_tax": {
+          "name_ar": "ضريبة مدخلات غير قابلة للخصم",
+          "name_en": "Non-recoverable input VAT",
+          "derivation_ar": "تُرسمَل ضمن تكلفة العقار",
+          "derivation_en": "Capitalised into the property cost"
+        }
+      },
+      "conditions": {
+        "activity_taxable": {
+          "name_ar": "نشاط العقار خاضع",
+          "name_en": "The property activity is taxable",
+          "expression": "property.vat_recovery_attribution == 'taxable'"
+        },
+        "activity_exempt": {
+          "name_ar": "نشاط العقار معفى",
+          "name_en": "The property activity is exempt",
+          "expression": "property.vat_recovery_attribution == 'exempt'"
+        }
+      },
+      "scenarios": [
+        {
+          "code": "taxable",
+          "name_ar": "نشاط خاضع",
+          "name_en": "Taxable activity",
+          "true_conditions": [
+            "activity_taxable"
+          ],
+          "zero_amounts": [
+            "non_recoverable_tax"
+          ]
+        },
+        {
+          "code": "exempt",
+          "name_ar": "نشاط معفى",
+          "name_en": "Exempt activity",
+          "true_conditions": [
+            "activity_exempt"
+          ],
+          "zero_amounts": [
+            "recoverable_tax"
+          ]
+        }
+      ],
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "investment_property_cost",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "net + non_recoverable_tax",
+          "dimensions": [
+            "property"
+          ],
+          "subledger": "property",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "vat_input",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "recoverable_tax",
+          "dimensions": [],
+          "subledger": null,
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 3,
+          "line_kind": "role",
+          "role": "ap_supplier_control",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "net + recoverable_tax + non_recoverable_tax",
+          "dimensions": [],
+          "subledger": "supplier",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "realestate.owner_balance.reclassified_to_receivable",
+      "name_ar": "إعادة تصنيف رصيد المالك المدين إلى ذمة مدينة",
+      "name_en": "Reclassify a debit owner balance to a receivable",
+      "module": "realestate",
+      "status": "drafted",
+      "source_ref": "07-real-estate.md §14.12",
+      "trigger": {
+        "name_ar": "عند نفاد رصيد أمانات المالك وظهور رصيد مدين عليه — بقيد مستقل موثّق",
+        "name_en": "When the owner trust balance is exhausted and turns into a debit balance — by a separate documented entry"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "قيد عكسي مستقل عند تحصيل المستحق أو تجدد الرصيد الدائن",
+        "name_en": "A separate reversing entry when the amount is collected or a credit balance returns"
+      },
+      "amounts": {
+        "amount": {
+          "name_ar": "الرصيد المدين المعاد تصنيفه",
+          "name_en": "The debit balance reclassified",
+          "derivation_ar": "الرصيد المدين الظاهر على حساب أمانات المالك لهذا المالك",
+          "derivation_en": "The debit balance appearing on the owner trust account for this owner"
+        }
+      },
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "ar_owner_control",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "amount",
+          "dimensions": [],
+          "subledger": "property_owner",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "owner_trust_payable",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "amount",
+          "dimensions": [
+            "property"
+          ],
+          "subledger": "property_owner",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "realestate.deposit.refunded.own_property",
+      "name_ar": "رد الوديعة عند الإخلاء — الملكية الذاتية",
+      "name_en": "Deposit refund on vacating — own property",
+      "module": "realestate",
+      "status": "drafted",
+      "source_ref": "07-real-estate.md §14.13 (أ) و(ب)",
+      "trigger": {
+        "name_ar": "بعد محضر الإخلاء وحصر الاستقطاعات المستندية",
+        "name_en": "After the vacating record and the documented schedule of deductions"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "قيد عكسي مستقل",
+        "name_en": "A separate reversing entry"
+      },
+      "caveats": [
+        {
+          "ref": "07-real-estate.md §14.13",
+          "text_ar": "⚠️ هل يُعالَج استقطاع الأضرار استرداداً لتكلفة الإصلاح (تخفيض حساب التشغيل) أم إيراد مصادرة؟ الأول أدق اقتصادياً حين تتحمل الشركة إصلاحاً فعلياً والثاني حين لا إصلاح مقابل — وله أثر ضريبي مختلف يحتاج تأكيداً",
+          "text_en": "⚠️ Is the damage deduction treated as a repair cost recovery (reducing the operating account) or as forfeiture revenue? The former is economically more accurate when the company bears an actual repair and the latter when there is none — and it has a different VAT effect that needs confirmation"
+        }
+      ],
+      "amounts": {
+        "deposit": {
+          "name_ar": "مبلغ الوديعة المحتفظ به",
+          "name_en": "Deposit balance held",
+          "derivation_ar": "رصيد حساب التأمينات لهذا العقد",
+          "derivation_en": "The deposit account balance for this contract"
+        },
+        "arrears_settled": {
+          "name_ar": "متأخرات إيجار مسوّاة من الوديعة",
+          "name_en": "Rent arrears settled from the deposit",
+          "derivation_ar": "رصيد ذمة المستأجر المتفق على تسويته",
+          "derivation_en": "The tenant receivable balance agreed to be settled"
+        },
+        "repair_recovery": {
+          "name_ar": "استرداد تكلفة إصلاح الأضرار",
+          "name_en": "Recovery of damage repair cost",
+          "derivation_ar": "التكلفة الفعلية الموثّقة للإصلاح",
+          "derivation_en": "The documented actual repair cost"
+        },
+        "refunded": {
+          "name_ar": "المبلغ المردود للمستأجر",
+          "name_en": "Amount refunded to the tenant",
+          "derivation_ar": "الوديعة ناقص الاستقطاعات",
+          "derivation_en": "The deposit less the deductions"
+        }
+      },
+      "identities": {
+        "refunded": "deposit - arrears_settled - repair_recovery"
+      },
+      "conditions": {
+        "has_deductions": {
+          "name_ar": "توجد استقطاعات من الوديعة",
+          "name_en": "There are deductions from the deposit",
+          "expression": "deductions_total > 0"
+        }
+      },
+      "scenarios": [
+        {
+          "code": "full_refund",
+          "name_ar": "رد كامل",
+          "name_en": "Full refund",
+          "true_conditions": [],
+          "zero_amounts": [
+            "arrears_settled",
+            "repair_recovery"
+          ]
+        },
+        {
+          "code": "partial_refund",
+          "name_ar": "رد جزئي مع استقطاعات",
+          "name_en": "Partial refund with deductions",
+          "true_conditions": [
+            "has_deductions"
+          ]
+        }
+      ],
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "tenant_deposit_refundable",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "deposit",
+          "dimensions": [],
+          "subledger": "lease_contract",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "ar_tenant_control",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "arrears_settled",
+          "dimensions": [],
+          "subledger": "tenant",
+          "when": "has_deductions",
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 3,
+          "line_kind": "role",
+          "role": "property_operating_cost",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "repair_recovery",
+          "dimensions": [
+            "property",
+            "unit"
+          ],
+          "subledger": null,
+          "when": "has_deductions",
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 4,
+          "line_kind": "role",
+          "role": "settlement_account",
+          "qualifier_source": "document.settlement_method",
+          "side": "credit",
+          "amount": "refunded",
+          "dimensions": [],
+          "subledger": "resolved",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "realestate.deposit.refunded.managed_property",
+      "name_ar": "رد الوديعة عند الإخلاء — إدارة أملاك الغير",
+      "name_en": "Deposit refund on vacating — property managed for others",
+      "module": "realestate",
+      "status": "drafted",
+      "source_ref": "07-real-estate.md §14.13 (ج) و(د)",
+      "trigger": {
+        "name_ar": "بعد محضر الإخلاء وحصر الاستقطاعات المستندية",
+        "name_en": "After the vacating record and the documented schedule of deductions"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "قيد عكسي مستقل",
+        "name_en": "A separate reversing entry"
+      },
+      "caveats": [
+        {
+          "ref": "07-real-estate.md §14.13",
+          "text_ar": "لا يمرّ أي جزء من الاستقطاع على إيرادات الشركة في هذا النموذج",
+          "text_en": "No part of the deduction passes through the company revenue in this model"
+        }
+      ],
+      "amounts": {
+        "deposit": {
+          "name_ar": "مبلغ الوديعة المحتفظ بها لصالح المالك",
+          "name_en": "Deposit held on behalf of the owner",
+          "derivation_ar": "رصيد حساب التأمينات المحتفظ بها لهذا العقد",
+          "derivation_en": "The held-for-owner deposit balance for this contract"
+        },
+        "arrears_settled": {
+          "name_ar": "متأخرات إيجار مسوّاة من الوديعة",
+          "name_en": "Rent arrears settled from the deposit",
+          "derivation_ar": "رصيد ذمة المستأجر المتفق على تسويته",
+          "derivation_en": "The tenant receivable balance agreed to be settled"
+        },
+        "owner_share": {
+          "name_ar": "حصة المالك من الاستقطاع",
+          "name_en": "The owner share of the deduction",
+          "derivation_ar": "ما يخص المالك من الاستقطاعات — يُضاف إلى رصيده",
+          "derivation_en": "What belongs to the owner from the deductions — added to the owner balance"
+        },
+        "refunded": {
+          "name_ar": "المبلغ المردود للمستأجر",
+          "name_en": "Amount refunded to the tenant",
+          "derivation_ar": "الوديعة ناقص الاستقطاعات",
+          "derivation_en": "The deposit less the deductions"
+        }
+      },
+      "identities": {
+        "refunded": "deposit - arrears_settled - owner_share"
+      },
+      "conditions": {
+        "has_deductions": {
+          "name_ar": "توجد استقطاعات من الوديعة",
+          "name_en": "There are deductions from the deposit",
+          "expression": "deductions_total > 0"
+        }
+      },
+      "scenarios": [
+        {
+          "code": "full_refund",
+          "name_ar": "رد كامل",
+          "name_en": "Full refund",
+          "true_conditions": [],
+          "zero_amounts": [
+            "arrears_settled",
+            "owner_share"
+          ]
+        },
+        {
+          "code": "partial_refund",
+          "name_ar": "رد جزئي مع استقطاعات",
+          "name_en": "Partial refund with deductions",
+          "true_conditions": [
+            "has_deductions"
+          ]
+        }
+      ],
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "tenant_deposit_held_for_owner",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "deposit",
+          "dimensions": [],
+          "subledger": "lease_contract",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "ar_tenant_control",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "arrears_settled",
+          "dimensions": [],
+          "subledger": "tenant",
+          "when": "has_deductions",
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 3,
+          "line_kind": "role",
+          "role": "owner_trust_payable",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "owner_share",
+          "dimensions": [
+            "property"
+          ],
+          "subledger": "property_owner",
+          "when": "has_deductions",
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 4,
+          "line_kind": "role",
+          "role": "settlement_account",
+          "qualifier_source": "constant:trust_bank",
+          "side": "credit",
+          "amount": "refunded",
+          "dimensions": [],
+          "subledger": "bank_account",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "realestate.deposit.forfeited.own_property",
+      "name_ar": "مصادرة الوديعة — الملكية الذاتية",
+      "name_en": "Deposit forfeiture — own property",
+      "module": "realestate",
+      "status": "proposed",
+      "source_ref": "07-real-estate.md §14.14 (أ)",
+      "trigger": {
+        "name_ar": "بعد قرار مصادرة موثَّق مستنداً إلى نص العقد ومحضر الإخلاء",
+        "name_en": "After a documented forfeiture decision grounded in the contract text and the vacating record"
+      },
+      "posts_entry": true,
+      "precondition": {
+        "name_ar": "نموذج الملكية الذاتية فقط",
+        "name_en": "Own-property model only"
+      },
+      "reversal": {
+        "name_ar": "إشعار دائن إن أُلغيت المصادرة — لا حذف",
+        "name_en": "A credit note if the forfeiture is cancelled — never a deletion"
+      },
+      "caveats": [
+        {
+          "ref": "07-real-estate.md §14.14",
+          "text_ar": "⚠️ بند يحتاج تأكيداً صريحاً: هل المبلغ المصادَر تعويض خارج نطاق ضريبة القيمة المضافة فيكون كامله إيراداً بلا ضريبة، أم مقابل توريد فيُستخلَص منه مبلغ الضريبة؟ لا يُبنى هذا القيد في الكود قبل حسم السؤال",
+          "text_en": "⚠️ An item needing explicit confirmation: is the forfeited amount out-of-scope compensation making the whole of it revenue with no VAT, or consideration for a supply from which VAT is extracted? This entry is not built in code before the question is settled"
+        }
+      ],
+      "amounts": {
+        "deposit": {
+          "name_ar": "مبلغ الوديعة المصادَر",
+          "name_en": "Deposit amount forfeited",
+          "derivation_ar": "رصيد التأمين على العقد",
+          "derivation_en": "The deposit balance on the contract"
+        },
+        "net": {
+          "name_ar": "صافي الإيراد المعترف به",
+          "name_en": "Net revenue recognised",
+          "derivation_ar": "الوديعة مستخلصاً منها مبلغ الضريبة إن عوملت مقابل توريد",
+          "derivation_en": "The deposit with the VAT extracted if it is treated as consideration for a supply"
+        },
+        "tax": {
+          "name_ar": "ضريبة المصادرة",
+          "name_en": "VAT on the forfeiture",
+          "derivation_ar": "⚠️ بالاستخلاص إن عوملت مقابل توريد — غير محسوم",
+          "derivation_en": "⚠️ Extracted if treated as consideration for a supply — unresolved"
+        }
+      },
+      "identities": {
+        "deposit": "net + tax"
+      },
+      "conditions": {
+        "forfeiture_is_taxable_supply": {
+          "name_ar": "المصادرة مقابل توريد خاضع",
+          "name_en": "The forfeiture is consideration for a taxable supply",
+          "expression": "tax_policy.deposit_forfeiture == 'taxable_supply'"
+        },
+        "forfeiture_is_out_of_scope": {
+          "name_ar": "المصادرة تعويض خارج نطاق الضريبة",
+          "name_en": "The forfeiture is out-of-scope compensation",
+          "expression": "tax_policy.deposit_forfeiture == 'out_of_scope'"
+        }
+      },
+      "scenarios": [
+        {
+          "code": "taxable_supply",
+          "name_ar": "مقابل توريد خاضع",
+          "name_en": "Consideration for a taxable supply",
+          "true_conditions": [
+            "forfeiture_is_taxable_supply"
+          ]
+        },
+        {
+          "code": "out_of_scope",
+          "name_ar": "تعويض خارج النطاق",
+          "name_en": "Out-of-scope compensation",
+          "true_conditions": [
+            "forfeiture_is_out_of_scope"
+          ],
+          "zero_amounts": [
+            "tax"
+          ]
+        }
+      ],
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "tenant_deposit_refundable",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "deposit",
+          "dimensions": [],
+          "subledger": "lease_contract",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "deposit_forfeiture_revenue",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "net",
+          "dimensions": [
+            "property"
+          ],
+          "subledger": null,
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 3,
+          "line_kind": "role",
+          "role": "vat_output",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "tax",
+          "dimensions": [],
+          "subledger": null,
+          "when": "forfeiture_is_taxable_supply",
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "realestate.deposit.forfeited.managed_property",
+      "name_ar": "مصادرة الوديعة لصالح المالك — إدارة أملاك الغير",
+      "name_en": "Deposit forfeiture for the owner — property managed for others",
+      "module": "realestate",
+      "status": "drafted",
+      "source_ref": "07-real-estate.md §14.14 (ب)",
+      "trigger": {
+        "name_ar": "بعد قرار مصادرة موثَّق",
+        "name_en": "After a documented forfeiture decision"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "قيد عكسي مستقل",
+        "name_en": "A separate reversing entry"
+      },
+      "caveats": [
+        {
+          "ref": "07-real-estate.md §14.14",
+          "text_ar": "لا يُقيَّد أي جزء من الوديعة المصادَرة إيراداً للشركة في هذا النموذج. وإن استحقت الشركة نصيباً بموجب عقد الإدارة يُفوتر بفاتورة ضريبية مستقلة على المالك كإيراد عمولة أو رسوم إدارية ولا يُقتطع صامتاً من الوديعة",
+          "text_en": "No part of the forfeited deposit is recorded as company revenue in this model. If the company is entitled to a share under the management contract it is billed by a separate tax invoice to the owner as commission or administrative fee revenue and is never silently deducted from the deposit"
+        }
+      ],
+      "amounts": {
+        "deposit": {
+          "name_ar": "مبلغ الوديعة المصادَر",
+          "name_en": "Deposit amount forfeited",
+          "derivation_ar": "رصيد التأمين المحتفظ به لهذا العقد",
+          "derivation_en": "The held deposit balance for this contract"
+        }
+      },
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "tenant_deposit_held_for_owner",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "deposit",
+          "dimensions": [],
+          "subledger": "lease_contract",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "owner_trust_payable",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "deposit",
+          "dimensions": [
+            "property"
+          ],
+          "subledger": "property_owner",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "realestate.doubtful_debt.provision.own_property",
+      "name_ar": "تكوين مخصص الديون المشكوك في تحصيلها — الملكية الذاتية",
+      "name_en": "Doubtful debt provision — own property",
+      "module": "realestate",
+      "status": "drafted",
+      "source_ref": "07-real-estate.md §14.15 (أ)",
+      "trigger": {
+        "name_ar": "دورياً شهرياً أو ربعياً بعد اعتماد المدير المالي لقائمة مقترحة",
+        "name_en": "Periodically monthly or quarterly after the finance manager approves a proposed list"
+      },
+      "posts_entry": true,
+      "precondition": {
+        "name_ar": "نموذج الملكية الذاتية — أو نموذج الإدارة حين ضمنت الشركة التحصيل تعاقدياً",
+        "name_en": "Own-property model — or the management model where the company has contractually guaranteed collection"
+      },
+      "reversal": {
+        "name_ar": "رد المخصص عند تحسّن التحصيل بعكس قيد التكوين بمقدار الرد بقيد مستقل مؤرّخ",
+        "name_en": "Release of the provision on improved collection by reversing the recognition entry for the released amount in a separate dated entry"
+      },
+      "caveats": [
+        {
+          "ref": "07-real-estate.md ق-ع-10",
+          "text_ar": "⚠️ سياسة المخصص ومن يتحملها قرار مفتوح — والاستثناء حين تضمن الشركة التحصيل تعاقدياً يجب حسمه قبل وقوع الحدث لا عنده",
+          "text_en": "⚠️ The provision policy and who bears it are an open decision — and the exception where the company contractually guarantees collection must be settled before the event occurs not at it"
+        }
+      ],
+      "amounts": {
+        "provision": {
+          "name_ar": "حصة الفترة من المخصص",
+          "name_en": "The period share of the provision",
+          "derivation_ar": "من سياسة المخصص المعتمدة — قاعدة في جدول إعدادات لا ثابت في الكود",
+          "derivation_en": "From the approved provision policy — a rule in a settings table not a constant in code"
+        }
+      },
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "doubtful_debt_expense",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "provision",
+          "dimensions": [
+            "property"
+          ],
+          "subledger": null,
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "doubtful_debt_allowance_tenants",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "provision",
+          "dimensions": [],
+          "subledger": "tenant",
+          "when": null,
+          "note_ar": "حساب مقابل — لا يُخفَّض رصيد ذمم المستأجرين مباشرة",
+          "note_en": "A contra account — the tenant receivable balance is never reduced directly"
+        }
+      ]
+    },
+    {
+      "event_code": "realestate.doubtful_debt.written_off.own_property",
+      "name_ar": "الشطب النهائي لدين مستأجر",
+      "name_en": "Final write-off of a tenant debt",
+      "module": "realestate",
+      "status": "drafted",
+      "source_ref": "07-real-estate.md §14.15 (أ)",
+      "trigger": {
+        "name_ar": "بصلاحية استثنائية موثّقة بعد استنفاد إجراءات التحصيل",
+        "name_en": "Under a documented exceptional authority after collection procedures are exhausted"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "التحصيل بعد الشطب يُعكس به قيد الشطب بالكامل ثم يُحصَّل بالقيد العادي — ولا يُسجَّل التحصيل إيراداً متنوعاً لأن ذلك يفقد أثر الذمة في الدفتر المساعد",
+        "name_en": "Collection after write-off reverses the write-off entry in full and is then collected by the ordinary entry — the collection is never recorded as sundry income because that loses the receivable trail in the subledger"
+      },
+      "amounts": {
+        "written_off": {
+          "name_ar": "المبلغ المشطوب",
+          "name_en": "Amount written off",
+          "derivation_ar": "الرصيد المعتمد شطبه على المستأجر",
+          "derivation_en": "The approved write-off balance on the tenant"
+        }
+      },
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "doubtful_debt_allowance_tenants",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "written_off",
+          "dimensions": [],
+          "subledger": "tenant",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "ar_tenant_control",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "written_off",
+          "dimensions": [],
+          "subledger": "tenant",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "realestate.doubtful_debt.managed_property",
+      "name_ar": "خسارة تحصيل على المالك — إدارة أملاك الغير",
+      "name_en": "Collection loss borne by the owner — property managed for others",
+      "module": "realestate",
+      "status": "drafted",
+      "source_ref": "07-real-estate.md §14.15 (ب)",
+      "trigger": {
+        "name_ar": "بعد اعتماد المدير المالي وإخطار المالك",
+        "name_en": "After finance manager approval and notification of the owner"
+      },
+      "posts_entry": true,
+      "precondition": {
+        "name_ar": "الشركة لم تخسر شيئاً — لم يكن الإيجار إيرادها أصلاً، وما خسره المالك يظهر في كشف حسابه",
+        "name_en": "The company lost nothing — the rent was never its revenue, and what the owner lost appears in the owner statement"
+      },
+      "reversal": {
+        "name_ar": "قيد عكسي مستقل عند التحصيل لاحقاً",
+        "name_en": "A separate reversing entry if collected later"
+      },
+      "caveats": [
+        {
+          "ref": "07-real-estate.md ق-ع-10",
+          "text_ar": "⚠️ الاستثناء: إن ضمنت الشركة تحصيل الإيجار تعاقدياً فالخسارة خسارتها وتُعالَج بقيد التكوين في نموذج الملكية الذاتية — قرار تعاقدي لا يُترك للتفسير",
+          "text_en": "⚠️ The exception: if the company contractually guaranteed collection the loss is its own and is treated by the own-property provision entry — a contractual decision never left to interpretation"
+        }
+      ],
+      "amounts": {
+        "amount": {
+          "name_ar": "المبلغ غير المحصَّل",
+          "name_en": "Uncollected amount",
+          "derivation_ar": "الرصيد المعتمد تحميله على المالك",
+          "derivation_en": "The balance approved to be charged to the owner"
+        }
+      },
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "owner_trust_payable",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "amount",
+          "dimensions": [
+            "property"
+          ],
+          "subledger": "property_owner",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "ar_tenant_control",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "amount",
+          "dimensions": [],
+          "subledger": "tenant",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "realestate.investment_property.depreciation",
+      "name_ar": "إهلاك العقار الاستثماري",
+      "name_en": "Investment property depreciation",
+      "module": "realestate",
+      "status": "drafted",
+      "source_ref": "07-real-estate.md §14.16",
+      "trigger": {
+        "name_ar": "قيد آلي دوري في نهاية كل فترة",
+        "name_en": "An automatic periodic entry at each period end"
+      },
+      "posts_entry": true,
+      "precondition": {
+        "name_ar": "نموذج الملكية الذاتية فقط · والأرض لا تُهلك — يجب فصل قيمة الأرض عن قيمة المبنى عند الاقتناء وإلا كان الإهلاك خاطئاً من اليوم الأول",
+        "name_en": "Own-property model only — land is not depreciated and its value must be separated from the building value at acquisition or the depreciation is wrong from day one"
+      },
+      "reversal": {
+        "name_ar": "تصحيح التقدير بقيد مستقل مؤرّخ",
+        "name_en": "An estimate correction by a separate dated entry"
+      },
+      "caveats": [
+        {
+          "ref": "07-real-estate.md ق-ع-11",
+          "text_ar": "⚠️ إن اعتُمد نموذج القيمة العادلة للعقارات الاستثمارية بدل نموذج التكلفة فلا إهلاك إطلاقاً ويُستبدل بقيد إعادة تقييم دوري إلى قائمة الدخل — تصميم مختلف كلياً يجب حسمه قبل البناء",
+          "text_en": "⚠️ If the fair value model is adopted for investment property instead of the cost model there is no depreciation at all and it is replaced by a periodic revaluation entry to profit or loss — an entirely different design that must be settled before building"
+        }
+      ],
+      "amounts": {
+        "period_charge": {
+          "name_ar": "قسط إهلاك الفترة",
+          "name_en": "Period depreciation charge",
+          "derivation_ar": "بطريقة الإهلاك والعمر المسجَّلين على مستوى العقار — إعدادات لا كود",
+          "derivation_en": "By the depreciation method and life recorded at property level — settings not code"
+        }
+      },
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "investment_property_depreciation_expense",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "period_charge",
+          "dimensions": [
+            "property"
+          ],
+          "subledger": null,
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "investment_property_accumulated_depreciation",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "period_charge",
+          "dimensions": [
+            "property"
+          ],
+          "subledger": "property",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "realestate.property.sold",
+      "name_ar": "بيع عقار استثماري",
+      "name_en": "Sale of an investment property",
+      "module": "realestate",
+      "status": "drafted",
+      "source_ref": "07-real-estate.md §14.17",
+      "trigger": {
+        "name_ar": "عند إتمام التصرف وتوثيقه",
+        "name_en": "On completion and documentation of the disposal"
+      },
+      "posts_entry": true,
+      "precondition": {
+        "name_ar": "نموذج الملكية الذاتية · وبعد إثبات إهلاك الفترة حتى تاريخ البيع",
+        "name_en": "Own-property model and after recognising depreciation up to the sale date"
+      },
+      "reversal": {
+        "name_ar": "قيد عكسي مستقل — لا تُحذف بطاقة العقار",
+        "name_en": "A separate reversing entry — the property card is never deleted"
+      },
+      "caveats": [
+        {
+          "ref": "07-real-estate.md §14.17",
+          "text_ar": "⚠️ العلاقة بضريبة القيمة المضافة: فهمنا أن التصرف الخاضع لضريبة التصرفات العقارية لا يخضع لضريبة القيمة المضافة — بند حرج يحتاج تأكيداً لأنه يحدد شكل الفاتورة الإلكترونية للبيع، ولذلك لا يوجد سطر ضريبة مخرجات في هذا القيد",
+          "text_en": "⚠️ Relationship to VAT: our understanding is that a disposal subject to the real estate transaction tax is not subject to VAT — a critical item needing confirmation because it determines the shape of the e-invoice for the sale, which is why this entry carries no output VAT line"
+        }
+      ],
+      "amounts": {
+        "cost": {
+          "name_ar": "تكلفة العقار",
+          "name_en": "Property cost",
+          "derivation_ar": "رصيد حساب تكلفة العقارات الاستثمارية لهذا العقار",
+          "derivation_en": "The investment property cost balance for this property"
+        },
+        "accumulated_depreciation": {
+          "name_ar": "مجمع الإهلاك حتى تاريخه",
+          "name_en": "Accumulated depreciation to date",
+          "derivation_ar": "رصيد مجمع الإهلاك بعد قسط شهر البيع",
+          "derivation_en": "The accumulated depreciation balance after the sale month charge"
+        },
+        "proceeds": {
+          "name_ar": "ثمن البيع المقبوض",
+          "name_en": "Sale proceeds received",
+          "derivation_ar": "المبلغ الوارد فعلياً",
+          "derivation_en": "The amount actually received"
+        },
+        "gain": {
+          "name_ar": "ربح الاستبعاد",
+          "name_en": "Gain on disposal",
+          "derivation_ar": "الثمن ناقص صافي القيمة الدفترية حين يكون موجباً",
+          "derivation_en": "Proceeds less net book value when positive"
+        },
+        "loss": {
+          "name_ar": "خسارة الاستبعاد",
+          "name_en": "Loss on disposal",
+          "derivation_ar": "صافي القيمة الدفترية ناقص الثمن حين تكون موجبة",
+          "derivation_en": "Net book value less proceeds when positive"
+        }
+      },
+      "conditions": {
+        "sale_at_gain": {
+          "name_ar": "البيع بربح",
+          "name_en": "Sale at a gain",
+          "expression": "proceeds > cost - accumulated_depreciation"
+        },
+        "sale_at_loss": {
+          "name_ar": "البيع بخسارة",
+          "name_en": "Sale at a loss",
+          "expression": "proceeds < cost - accumulated_depreciation"
+        }
+      },
+      "scenarios": [
+        {
+          "code": "gain",
+          "name_ar": "بيع بربح",
+          "name_en": "Sale at a gain",
+          "true_conditions": [
+            "sale_at_gain"
+          ],
+          "zero_amounts": [
+            "loss"
+          ],
+          "identities": {
+            "gain": "proceeds + accumulated_depreciation - cost"
+          }
+        },
+        {
+          "code": "loss",
+          "name_ar": "بيع بخسارة",
+          "name_en": "Sale at a loss",
+          "true_conditions": [
+            "sale_at_loss"
+          ],
+          "zero_amounts": [
+            "gain"
+          ],
+          "identities": {
+            "loss": "cost - accumulated_depreciation - proceeds"
+          }
+        },
+        {
+          "code": "break_even",
+          "name_ar": "بيع بالقيمة الدفترية",
+          "name_en": "Sale at book value",
+          "true_conditions": [],
+          "zero_amounts": [
+            "gain",
+            "loss"
+          ],
+          "identities": {
+            "proceeds": "cost - accumulated_depreciation"
+          }
+        }
+      ],
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "settlement_account",
+          "qualifier_source": "constant:bank",
+          "side": "debit",
+          "amount": "proceeds",
+          "dimensions": [],
+          "subledger": "bank_account",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "investment_property_accumulated_depreciation",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "accumulated_depreciation",
+          "dimensions": [
+            "property"
+          ],
+          "subledger": "property",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 3,
+          "line_kind": "role",
+          "role": "asset_disposal_loss",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "loss",
+          "dimensions": [],
+          "subledger": null,
+          "when": "sale_at_loss",
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 4,
+          "line_kind": "role",
+          "role": "investment_property_cost",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "cost",
+          "dimensions": [
+            "property"
+          ],
+          "subledger": "property",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 5,
+          "line_kind": "role",
+          "role": "asset_disposal_gain",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "gain",
+          "dimensions": [],
+          "subledger": null,
+          "when": "sale_at_gain",
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "realestate.property.transaction_tax.paid",
+      "name_ar": "سداد ضريبة التصرفات العقارية",
+      "name_en": "Payment of the real estate transaction tax",
+      "module": "realestate",
+      "status": "proposed",
+      "source_ref": "07-real-estate.md §14.17",
+      "trigger": {
+        "name_ar": "عند توثيق التصرف وسداد الضريبة — ⚠️ لا يُفعَّل هذا القالب في الكود قبل رفع التحفظات أدناه كتابةً",
+        "name_en": "On documenting the disposal and paying the tax — ⚠️ this template is not enabled in code before the caveats below are lifted in writing"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "قيد عكسي مستقل عند الاسترداد",
+        "name_en": "A separate reversing entry on refund"
+      },
+      "caveats": [
+        {
+          "ref": "07-real-estate.md §14.17 (1)",
+          "text_ar": "⚠️ النسبة والوعاء وتعريف «التصرف» يجب التحقق منها في النظام واللائحة الساريين",
+          "text_en": "⚠️ The rate the base and the definition of a disposal must be verified against the law and regulation in force"
+        },
+        {
+          "ref": "07-real-estate.md §14.17 (2)",
+          "text_ar": "⚠️ جهة التحمّل (المتصرِّف أو البائع حسب فهمنا الأولي) قابلة للاتفاق على خلافها — وحينها يتغير القيد",
+          "text_en": "⚠️ Who bears the tax (the disposer or seller per our preliminary understanding) can be agreed otherwise — and then the entry changes"
+        },
+        {
+          "ref": "07-real-estate.md §14.17 (3)",
+          "text_ar": "⚠️ المعالجة المحاسبية: مصروف في حساب الرسوم العقارية كما هنا، أم تكلفة تصرّف تُخفّض الربح المحقق؟ يُحسم مع المحاسب القانوني",
+          "text_en": "⚠️ Accounting treatment: an expense in the real estate fees account as here, or a cost of disposal reducing the recognised gain? To be settled with the chartered accountant"
+        },
+        {
+          "ref": "07-real-estate.md §14.17 (5)",
+          "text_ar": "⚠️ الاستثناءات (إرث وهبة لأقارب ومساهمات عينية وغيرها) لا تُبنى كقواعد آلية — تُدخل يدوياً بمستند مبرِّر مرفق",
+          "text_en": "⚠️ Exemptions (inheritance gifts to relatives in-kind contributions and others) are never built as automatic rules — they are entered manually with an attached justifying document"
+        }
+      ],
+      "amounts": {
+        "tax_amount": {
+          "name_ar": "مبلغ ضريبة التصرفات العقارية",
+          "name_en": "Real estate transaction tax amount",
+          "derivation_ar": "⚠️ يُحتسب بالنسبة والوعاء المنصوص عليهما في النظام واللائحة الساريين — النسبة إعداد في جدول لا ثابت في الكود ولا تُخترع هنا",
+          "derivation_en": "⚠️ Computed at the rate and base stated in the law and regulation in force — the rate is a setting in a table never a constant in code and is not invented here"
+        }
+      },
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "property_fees_and_licences",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "tax_amount",
+          "dimensions": [
+            "property"
+          ],
+          "subledger": null,
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "settlement_account",
+          "qualifier_source": "constant:bank",
+          "side": "credit",
+          "amount": "tax_amount",
+          "dimensions": [],
+          "subledger": "bank_account",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    }
+  ]
+}

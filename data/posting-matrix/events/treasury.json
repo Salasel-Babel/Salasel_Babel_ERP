@@ -1,0 +1,335 @@
+{
+  "schema_version": "1.0.0",
+  "module": "treasury",
+  "source_refs": [
+    "docs/reference/posting-matrix.md §1.3 §2.3",
+    "docs/analysis/07-real-estate.md §14.7"
+  ],
+  "events": [
+    {
+      "event_code": "treasury.transfer.same_day",
+      "name_ar": "تحويل نقدي بين حسابين في اليوم نفسه",
+      "name_en": "Same-day transfer between two cash or bank accounts",
+      "module": "treasury",
+      "status": "drafted",
+      "source_ref": "chart-of-accounts.md §2 · 03-accounting-core.md §1",
+      "trigger": {
+        "name_ar": "عند تنفيذ التحويل وتأكيده في الحسابين",
+        "name_en": "On execution of the transfer and its confirmation on both accounts"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "قيد عكسي مستقل",
+        "name_en": "A separate reversing entry"
+      },
+      "amounts": {
+        "amount": {
+          "name_ar": "المبلغ المحوَّل",
+          "name_en": "Amount transferred",
+          "derivation_ar": "من إشعار البنك أو سند التحويل الداخلي",
+          "derivation_en": "From the bank advice or the internal transfer voucher"
+        }
+      },
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "settlement_account",
+          "qualifier_source": "document.destination_account_kind",
+          "side": "debit",
+          "amount": "amount",
+          "dimensions": [],
+          "subledger": "resolved",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "settlement_account",
+          "qualifier_source": "document.source_account_kind",
+          "side": "credit",
+          "amount": "amount",
+          "dimensions": [],
+          "subledger": "resolved",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "treasury.transfer.sent_in_transit",
+      "name_ar": "إرسال تحويل لم يصل بعد",
+      "name_en": "Transfer sent and not yet received",
+      "module": "treasury",
+      "status": "proposed",
+      "source_ref": "proposed:matrix-seed",
+      "trigger": {
+        "name_ar": "عند خروج المبلغ من الحساب المصدر دون تأكيد وصوله",
+        "name_en": "On the amount leaving the source account without confirmation of arrival"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "قيد عكسي مستقل عند ارتداد التحويل",
+        "name_en": "A separate reversing entry if the transfer bounces"
+      },
+      "caveats": [
+        {
+          "ref": "proposed:matrix-seed",
+          "text_ar": "حساب النقدية بالطريق 1204 مقترح ويحتاج مراجعة محاسب — رصيده يجب أن يتصفَّر خلال أيام معدودة وتقادمه مؤشر خلل",
+          "text_en": "Cash in transit account 1204 is proposed and needs accountant review — its balance must clear within a few days and its ageing is a defect indicator"
+        }
+      ],
+      "amounts": {
+        "amount": {
+          "name_ar": "المبلغ المحوَّل",
+          "name_en": "Amount transferred",
+          "derivation_ar": "من إشعار الخصم في الحساب المصدر",
+          "derivation_en": "From the debit advice on the source account"
+        }
+      },
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "settlement_account",
+          "qualifier_source": "constant:in_transit",
+          "side": "debit",
+          "amount": "amount",
+          "dimensions": [],
+          "subledger": null,
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "settlement_account",
+          "qualifier_source": "document.source_account_kind",
+          "side": "credit",
+          "amount": "amount",
+          "dimensions": [],
+          "subledger": "resolved",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "treasury.transfer.received_from_transit",
+      "name_ar": "وصول تحويل كان بالطريق",
+      "name_en": "Receipt of a transfer that was in transit",
+      "module": "treasury",
+      "status": "proposed",
+      "source_ref": "proposed:matrix-seed",
+      "trigger": {
+        "name_ar": "عند تأكيد الإيداع في الحساب الوجهة من كشف الحساب",
+        "name_en": "On confirming the deposit in the destination account from the bank statement"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "قيد عكسي مستقل",
+        "name_en": "A separate reversing entry"
+      },
+      "amounts": {
+        "amount": {
+          "name_ar": "المبلغ الواصل",
+          "name_en": "Amount received",
+          "derivation_ar": "من كشف حساب البنك لا من التاريخ المتوقع",
+          "derivation_en": "From the bank statement not from an expected date"
+        }
+      },
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "settlement_account",
+          "qualifier_source": "document.destination_account_kind",
+          "side": "debit",
+          "amount": "amount",
+          "dimensions": [],
+          "subledger": "resolved",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "settlement_account",
+          "qualifier_source": "constant:in_transit",
+          "side": "credit",
+          "amount": "amount",
+          "dimensions": [],
+          "subledger": null,
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "treasury.bank_charge.posted",
+      "name_ar": "رسوم ومصروفات بنكية",
+      "name_en": "Bank charges",
+      "module": "treasury",
+      "status": "drafted",
+      "source_ref": "posting-matrix.md §1.3 · 07-real-estate.md §14.7",
+      "trigger": {
+        "name_ar": "عند ظهور الرسوم في كشف الحساب أو إشعار البنك",
+        "name_en": "When the charge appears on the bank statement or advice"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "قيد عكسي مستقل عند رد البنك للرسوم",
+        "name_en": "A separate reversing entry if the bank refunds the charge"
+      },
+      "amounts": {
+        "fee": {
+          "name_ar": "قيمة الرسوم",
+          "name_en": "Charge amount",
+          "derivation_ar": "من إشعار البنك لا بتقدير",
+          "derivation_en": "From the bank advice not by estimate"
+        }
+      },
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "bank_charges",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "fee",
+          "dimensions": [],
+          "subledger": null,
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "settlement_account",
+          "qualifier_source": "constant:bank",
+          "side": "credit",
+          "amount": "fee",
+          "dimensions": [],
+          "subledger": "bank_account",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "treasury.cheque_issued.posted",
+      "name_ar": "إصدار شيك لمورد أو مقاول",
+      "name_en": "Issue a cheque to a supplier or contractor",
+      "module": "treasury",
+      "status": "drafted",
+      "source_ref": "chart-of-accounts.md §2",
+      "trigger": {
+        "name_ar": "عند تحرير الشيك وتسليمه وتسجيله في سجل أوراق الدفع",
+        "name_en": "On writing the cheque handing it over and recording it in the notes payable register"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "قيد عكسي مستقل عند إلغاء الشيك — لا يُحذف السجل",
+        "name_en": "A separate reversing entry if the cheque is cancelled — the record is never deleted"
+      },
+      "amounts": {
+        "amount": {
+          "name_ar": "قيمة الشيك",
+          "name_en": "Cheque amount",
+          "derivation_ar": "القيمة المحررة على الشيك",
+          "derivation_en": "The value written on the cheque"
+        }
+      },
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "ap_supplier_control",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "amount",
+          "dimensions": [],
+          "subledger": "supplier",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "notes_payable",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "amount",
+          "dimensions": [],
+          "subledger": "cheque",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "treasury.cheque_cleared.posted",
+      "name_ar": "صرف شيك صادر من الحساب البنكي",
+      "name_en": "An issued cheque clears the bank account",
+      "module": "treasury",
+      "status": "drafted",
+      "source_ref": "chart-of-accounts.md §2",
+      "trigger": {
+        "name_ar": "عند ظهور الشيك مصروفاً في كشف الحساب — لا بحلول تاريخ استحقاقه",
+        "name_en": "When the cheque appears as paid on the bank statement — never merely on its due date"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "قيد عكسي مستقل",
+        "name_en": "A separate reversing entry"
+      },
+      "amounts": {
+        "amount": {
+          "name_ar": "قيمة الشيك المصروف",
+          "name_en": "Amount of the cleared cheque",
+          "derivation_ar": "من كشف حساب البنك",
+          "derivation_en": "From the bank statement"
+        }
+      },
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "notes_payable",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "amount",
+          "dimensions": [],
+          "subledger": "cheque",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "settlement_account",
+          "qualifier_source": "constant:bank",
+          "side": "credit",
+          "amount": "amount",
+          "dimensions": [],
+          "subledger": "bank_account",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,263 @@
+using System.Globalization;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+using Xunit;
+
+namespace Babel.Api.Tests;
+
+/// <summary>
+/// الخوادم المشتركة بين الاختبارات، واعتماداتها، وإعدادها.
+/// <para>
+/// خادم واحد يخدم أغلب المجموعة، وخوادم إضافية تُقلع عند الحاجة إلى ثقافة أخرى أو إلى
+/// إعداد معطوب عمداً. وكلها تُقلع من الثنائي المبنيّ نفسه.
+/// </para>
+/// </summary>
+internal static class ApiFixture
+{
+    /// <summary>اعتماد مستأجر «أ» — يبلغ الشركة «أ» وحدها.</summary>
+    public static TestCredential TokenA { get; } = TestCredential.Create(
+        ApiTestDatabase.CompanyA, new Guid("11111111-1111-4111-8111-111111111111"), ApiTestDatabase.CompanyA);
+
+    /// <summary>اعتماد مستأجر «ب» — يبلغ الشركة «ب» وحدها.</summary>
+    public static TestCredential TokenB { get; } = TestCredential.Create(
+        ApiTestDatabase.CompanyB, new Guid("22222222-2222-4222-8222-222222222222"), ApiTestDatabase.CompanyB);
+
+    /// <summary>اعتماد مستأجر «ج» — المبيعات عنده «للقراءة فقط».</summary>
+    public static TestCredential TokenC { get; } = TestCredential.Create(
+        ApiTestDatabase.CompanyC, new Guid("33333333-3333-4333-8333-333333333333"), ApiTestDatabase.CompanyC);
+
+    private static readonly SemaphoreSlim Gate = new(1, 1);
+    private static readonly Dictionary<string, ApiProcess> ByCulture = new(StringComparer.Ordinal);
+    private static ApiProcess? _default;
+
+    static ApiFixture() =>
+        AppDomain.CurrentDomain.ProcessExit += static (_, _) =>
+        {
+            foreach (ApiProcess process in ByCulture.Values)
+            {
+                process.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            }
+
+            _default?.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        };
+
+    /// <summary>رمز إلغاء الاختبار الجاري — تمريره في كل نداء شرطُ استجابة الإلغاء.</summary>
+    public static CancellationToken Token => TestContext.Current.CancellationToken;
+
+    /// <summary>الخادم المشترك: ثقافة <c>en-US</c> وقاعدة بيانات سليمة.</summary>
+    public static async Task<ApiProcess> DefaultAsync()
+    {
+        CancellationToken cancellationToken = Token;
+
+        if (_default is not null)
+        {
+            return _default;
+        }
+
+        await Gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (_default is null)
+            {
+                await ApiTestDatabase.EnsureAsync(cancellationToken).ConfigureAwait(false);
+                _default = await ApiProcess
+                    .StartAsync(Environment(ApiTestDatabase.Options.AppConnectionString), "en_US.UTF-8", cancellationToken)
+                    .ConfigureAwait(false);
+            }
+
+            return _default;
+        }
+        finally
+        {
+            Gate.Release();
+        }
+    }
+
+    /// <summary>
+    /// خادم بثقافة نظام محدّدة، <b>مُعاد استعماله</b> لكل حالات الثقافة نفسها.
+    /// <para>
+    /// إقلاع عملية لكل حالة نظرية كان يعني أربعة عشر خادماً في مجموعة واحدة، وأربعة عشر
+    /// مجمّع اتصالات — وهو حِمل يكشف هشاشة تهيئة مجموعات أخرى تعمل بالتوازي. الخوادم هنا
+    /// خمسة لا أكثر، وتُقتل عند خروج العملية.
+    /// </para>
+    /// </summary>
+    /// <param name="culture">اسم الموضع النظامي.</param>
+    public static async Task<ApiProcess> WithCultureAsync(string culture)
+    {
+        if (ByCulture.TryGetValue(culture, out ApiProcess? existing))
+        {
+            return existing;
+        }
+
+        CancellationToken cancellationToken = Token;
+        await Gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (ByCulture.TryGetValue(culture, out ApiProcess? found))
+            {
+                return found;
+            }
+
+            await ApiTestDatabase.EnsureAsync(cancellationToken).ConfigureAwait(false);
+
+            ApiProcess started = await ApiProcess
+                .StartAsync(Environment(ApiTestDatabase.Options.AppConnectionString), culture, cancellationToken)
+                .ConfigureAwait(false);
+
+            ByCulture[culture] = started;
+            return started;
+        }
+        finally
+        {
+            Gate.Release();
+        }
+    }
+
+    /// <summary>
+    /// خادم موجَّه إلى قاعدة بيانات غير موجودة — لإثبات أن العطل التشغيلي لا يتسرّب.
+    /// </summary>
+    public static Task<ApiProcess> WithUnreachableDatabaseAsync() =>
+        ApiProcess.StartAsync(
+            Environment("Host=127.0.0.1;Port=5432;Database=babel_api_tests_no_such_database;Username="
+                + ApiTestDatabase.AppRole + ";Include Error Detail=true"),
+            "en_US.UTF-8",
+            Token);
+
+    /// <summary>إعداد الخادم كاملاً بمتغيّرات البيئة — لا ملف إعداد ولا سرّ في المستودع.</summary>
+    /// <param name="ledgerConnection">اتصال دور التطبيق.</param>
+    public static Dictionary<string, string> Environment(string ledgerConnection)
+    {
+        Dictionary<string, string> environment = new(StringComparer.Ordinal)
+        {
+            ["Babel__Ledger__AppConnectionString"] = ledgerConnection,
+            ["Babel__Ledger__OwnerConnectionString"] = ApiTestDatabase.Options.OwnerConnectionString,
+            ["Babel__Ledger__CompanyCurrency"] = "SAR",
+        };
+
+        int index = 0;
+        foreach (TestCredential credential in new[] { TokenA, TokenB, TokenC })
+        {
+            string prefix = string.Create(CultureInfo.InvariantCulture, $"Babel__Api__Tokens__{index}__");
+            environment[prefix + "Sha256"] = credential.Digest;
+            environment[prefix + "Tenant"] = credential.Tenant.ToString("D", CultureInfo.InvariantCulture);
+            environment[prefix + "User"] = credential.User.ToString("D", CultureInfo.InvariantCulture);
+
+            for (int c = 0; c < credential.Companies.Count; c++)
+            {
+                environment[string.Create(CultureInfo.InvariantCulture, $"{prefix}Companies__{c}")] =
+                    credential.Companies[c].ToString("D", CultureInfo.InvariantCulture);
+            }
+
+            index++;
+        }
+
+        // مستأجر «ج»: العقارات «للقراءة فقط» — أي اشتُريت ثم انقضى الاشتراك، فتبقى القراءة
+        // كاملة ويُغلق الترحيل؛ والأصول لم تُشترَ قط.
+        //
+        // ⚠️ ولماذا العقارات لا المبيعات: خمس وحدات **إلزامية** في ModuleDependencyGraph
+        // (النواة والدفتر والمبيعات والمشتريات والالتزام)، والإلزامية لا تقبل حالة غير
+        // Entitled إطلاقاً. أي أن «عميل توقّف عن الدفع» حالة **غير قابلة للتمثيل** على
+        // أهمّ وحدات المنتج — وهو قيد مسجَّل في التقرير سؤالاً على المالك، لا عيب اختبار.
+        environment[Entitlement(ApiTestDatabase.CompanyC, "RealEstate")] = "ReadOnly";
+
+        return environment;
+    }
+
+    private static string Entitlement(Guid tenant, string module) =>
+        "Babel__Entitlements__" + tenant.ToString("D", CultureInfo.InvariantCulture) + "__" + module;
+}
+
+/// <summary>أدوات مخاطبة السطح: بناء الطلب، وقراءة الجسم، وقراءة رمز الخطأ الثابت.</summary>
+internal static class Http
+{
+    /// <summary>يبني طلباً باعتماد وجسم نصّي خام — الخام مقصود: بعض الاختبارات تُرسل ما لا يُنتجه مُسلسِل.</summary>
+    /// <param name="method">الفعل.</param>
+    /// <param name="path">المسار.</param>
+    /// <param name="credential">الاعتماد، أو <c>null</c> لطلب بلا اعتماد.</param>
+    /// <param name="json">الجسم كنصّ JSON خام.</param>
+    public static HttpRequestMessage Request(
+        HttpMethod method,
+        string path,
+        TestCredential? credential,
+        string? json = null)
+    {
+        HttpRequestMessage request = new(method, new Uri(path, UriKind.Relative));
+
+        if (credential is not null)
+        {
+            request.Headers.TryAddWithoutValidation("Authorization", credential.Header);
+        }
+
+        if (json is not null)
+        {
+            request.Content = new StringContent(json, new UTF8Encoding(false), "application/json");
+            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json") { CharSet = "utf-8" };
+        }
+
+        return request;
+    }
+
+    /// <summary>مسار ترحيل قيد لشركة.</summary>
+    /// <param name="company">الشركة.</param>
+    public static string PostEntry(Guid company) =>
+        string.Create(CultureInfo.InvariantCulture, $"/api/v1/companies/{company:D}/journal-entries");
+
+    /// <summary>مسار قراءة قيد.</summary>
+    /// <param name="company">الشركة.</param>
+    /// <param name="entry">القيد.</param>
+    public static string ReadEntry(Guid company, Guid entry) =>
+        string.Create(CultureInfo.InvariantCulture, $"/api/v1/companies/{company:D}/journal-entries/{entry:D}");
+
+    /// <summary>مسار عكس قيد.</summary>
+    /// <param name="company">الشركة.</param>
+    /// <param name="entry">القيد.</param>
+    public static string Reverse(Guid company, Guid entry) =>
+        string.Create(CultureInfo.InvariantCulture, $"/api/v1/companies/{company:D}/journal-entries/{entry:D}/reversal");
+
+    /// <summary>مسار ميزان المراجعة.</summary>
+    /// <param name="company">الشركة.</param>
+    /// <param name="book">الدفتر.</param>
+    /// <param name="period">الفترة، أو <c>null</c>.</param>
+    public static string TrialBalance(Guid company, string book, string? period = null) =>
+        string.Create(CultureInfo.InvariantCulture, $"/api/v1/companies/{company:D}/trial-balance?book={book}")
+        + (period is null ? string.Empty : "&period=" + period);
+
+    /// <summary>مسار إعادة التحقق من السلسلة.</summary>
+    /// <param name="company">الشركة.</param>
+    /// <param name="book">الدفتر.</param>
+    /// <param name="fiscalYear">السنة المالية.</param>
+    public static string ChainVerification(Guid company, string book, int fiscalYear) =>
+        string.Create(CultureInfo.InvariantCulture, $"/api/v1/companies/{company:D}/ledger-chain/verification?book={book}&fiscalYear={fiscalYear}");
+
+    /// <summary>ينادي الخادم بالطلب المعطى، برمز إلغاء الاختبار الجاري.</summary>
+    /// <param name="api">الخادم.</param>
+    /// <param name="request">الطلب.</param>
+    public static Task<HttpResponseMessage> Call(this ApiProcess api, HttpRequestMessage request)
+    {
+        ArgumentNullException.ThrowIfNull(api);
+        return api.Client.SendAsync(request, ApiFixture.Token);
+    }
+
+    /// <summary>يقرأ ملفاً نصّياً برمز إلغاء الاختبار الجاري.</summary>
+    /// <param name="path">المسار.</param>
+    public static Task<string> ReadTextAsync(string path) => File.ReadAllTextAsync(path, ApiFixture.Token);
+
+    /// <summary>يقرأ ملفاً بايتات برمز إلغاء الاختبار الجاري.</summary>
+    /// <param name="path">المسار.</param>
+    public static Task<byte[]> ReadBytesAsync(string path) => File.ReadAllBytesAsync(path, ApiFixture.Token);
+
+    /// <summary>يقرأ الجسم نصّاً ثم يحلّله مستنداً.</summary>
+    /// <param name="response">الاستجابة.</param>
+    public static async Task<(string Text, JsonElement Json)> BodyAsync(HttpResponseMessage response)
+    {
+        ArgumentNullException.ThrowIfNull(response);
+        string text = await response.Content.ReadAsStringAsync(ApiFixture.Token).ConfigureAwait(false);
+        using JsonDocument document = JsonDocument.Parse(text);
+        return (text, document.RootElement.Clone());
+    }
+
+    /// <summary>الرمز الثابت في تفاصيل المشكلة.</summary>
+    /// <param name="problem">جسم المشكلة.</param>
+    public static string CodeOf(JsonElement problem) => problem.GetProperty("code").GetString()!;
+}

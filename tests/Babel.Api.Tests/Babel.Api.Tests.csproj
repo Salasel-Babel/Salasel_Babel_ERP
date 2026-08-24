@@ -1,0 +1,48 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Babel.Api.Tests — اختبارات عند حدّ HTTP، **من خارج العملية**.
+
+    ولا مرجع مشروع واحد إلى Babel.Api هنا، ولا يجوز أن يوجد. سببان:
+
+    1. القاعدة 3 «لا شيء يعتمد على الجذر التركيبي» تشمل مشاريع الاختبار. مرجعٌ من هنا
+       إلى Babel.Api يُفشل Rule03_DependencyDirectionIsAlwaysDownward مباشرةً.
+
+    2. وهو الأهمّ: **هذا بالضبط ما طلبه المالك.** «العزل التام بين فرونت اند وباك اند»
+       لا يُثبته اختبار يستضيف الخادم داخل عمليته ويصل إلى أنواعه الداخلية؛ يُثبته عميل
+       لا يملك إلا العنوان والعقد — كما ستكون الواجهة تماماً. فالاختبارات هنا تُقلع
+       الثنائي المبنيّ عمليةً مستقلّة، وتخاطبه عبر HTTP، ولا ترى منه سطراً واحداً.
+
+    والمرجع إلى Babel.Ledger لتهيئة قاعدة بيانات الاختبار وحدها (المخطّط والبذر)، وهو
+    ما تفعله tests/Babel.Ledger.Tests بالنمط نفسه.
+  -->
+
+  <PropertyGroup>
+    <RootNamespace>Babel.Api.Tests</RootNamespace>
+    <AssemblyName>Babel.Api.Tests</AssemblyName>
+    <!-- العربية لغة أولى: بيانات المناطق مطلوبة، والتطبيع الصامت أخطر مصيدة نشر. -->
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <PredefinedCulturesOnly>false</PredefinedCulturesOnly>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/Babel.Ledger/Babel.Ledger.csproj" />
+    <ProjectReference Include="../../src/Babel.Canonicalization/Babel.Canonicalization.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Npgsql" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+  </ItemGroup>
+
+  <!--
+    جذر المستودع وتهيئة البناء يُحقنان في التجميعة: الاختبار يجد ثنائي الخادم بمساره،
+    لا بمرجع مشروع.
+  -->
+  <ItemGroup>
+    <AssemblyMetadata Include="BabelRepositoryRoot" Value="$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../'))" />
+    <AssemblyMetadata Include="BabelConfiguration" Value="$(Configuration)" />
+  </ItemGroup>
+
+</Project>

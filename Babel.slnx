@@ -24,6 +24,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Babel.Ai.Tests/Babel.Ai.Tests.csproj" />
+    <Project Path="tests/Babel.Api.Tests/Babel.Api.Tests.csproj" />
     <Project Path="tests/Babel.ArchitectureTests/Babel.ArchitectureTests.csproj" />
     <Project Path="tests/Babel.Assets.Tests/Babel.Assets.Tests.csproj" />
     <Project Path="tests/Babel.Canonicalization.Tests/Babel.Canonicalization.Tests.csproj" />

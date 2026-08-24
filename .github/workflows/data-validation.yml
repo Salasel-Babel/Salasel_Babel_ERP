@@ -32,8 +32,10 @@ jobs:
       - name: التحقق من البيانات التأسيسية / validate the seed data
         run: dotnet run --project tools/matrix-validator -- --data data
 
+      # ‏dotnet test لا يقبل مجلداً: يجب --project أو --solution. كان السطر السابق يفشل
+      # فوراً، ولم يُلاحَظ لأن الخطوة التي قبله كانت حمراء أصلاً (المشروع لا يُبنى).
       - name: اختبارات أداة التحقق / validator tests
-        run: dotnet test tools/matrix-validator/tests --nologo
+        run: dotnet test --project tools/matrix-validator/tests/MatrixValidator.Tests.csproj --nologo
 
       - name: تقرير JSON للمرفقات / JSON report artefact
         if: always()

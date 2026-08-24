@@ -1,9 +1,10 @@
+using System.Globalization;
 using Npgsql;
 
 namespace BabelDemo.Support;
 
 /// <summary>مساعدات ADO صغيرة كي تبقى الشيفرة مقروءة.</summary>
-public static class Sql
+internal static class Sql
 {
     public static async Task<NpgsqlConnection> OpenAsync(string cs, CancellationToken ct = default)
     {
@@ -35,7 +36,10 @@ public static class Sql
     {
         await using var cmd = new NpgsqlCommand(sql, c);
         var v = await cmd.ExecuteScalarAsync(ct);
-        return v is null or DBNull ? default : (T)Convert.ChangeType(v, typeof(T))!;
+        // CA1305: Convert.ChangeType بلا مزوّد يقرأ ثقافة العملية عند تحويل نصّ إلى رقم.
+        // عمود نصّي يحمل رقماً (‏to_char أو numeric مُصاغ) يُقرأ عندها بفاصل عشري محلّي —
+        // وهذا مسار مال. الثقافة الثابتة هي الطرف المقابل لما تكتبه قاعدة البيانات.
+        return v is null or DBNull ? default : (T)Convert.ChangeType(v, typeof(T), CultureInfo.InvariantCulture)!;
     }
 
     /// <summary>اسم حالة SQL بالعربية والإنجليزية، لعرضه للمستخدم كما هو.</summary>

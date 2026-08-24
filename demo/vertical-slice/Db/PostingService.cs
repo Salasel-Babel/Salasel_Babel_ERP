@@ -7,23 +7,23 @@ using Npgsql;
 
 namespace BabelDemo.Db;
 
-public sealed record LineInput(string AccountCode, string Description, decimal Debit, decimal Credit);
+internal sealed record LineInput(string AccountCode, string Description, decimal Debit, decimal Credit);
 
-public sealed record PostRequest(DateOnly EntryDate, string MemoAr, string Memo, string Actor,
+internal sealed record PostRequest(DateOnly EntryDate, string MemoAr, string Memo, string Actor,
                                  IReadOnlyList<LineInput> Lines);
 
-public sealed record PostedEntry(
+internal sealed record PostedEntry(
     long EntryNo, long ChainSeq, Guid EntryId, string EntryHash, string PrevHash,
     string Canonical, DateTime PostedAt, string Period,
     decimal TotalDebit, decimal TotalCredit,
     int BalanceRowsExpected, int BalanceRowsAffected, string BalanceSql,
     string[] TouchedAccounts);
 
-public sealed record PostError(
+internal sealed record PostError(
     string Stage, string SqlState, string SqlStateName, string Message,
     string? Detail, string? Where, string? ConstraintName, string Connection, string Explanation);
 
-public sealed record PostOutcome(bool Ok, PostedEntry? Entry, PostError? Error)
+internal sealed record PostOutcome(bool Ok, PostedEntry? Entry, PostError? Error)
 {
     public static PostOutcome Good(PostedEntry e) => new(true, e, null);
     public static PostOutcome Bad(PostError e) => new(false, null, e);
@@ -45,7 +45,7 @@ public sealed record PostOutcome(bool Ok, PostedEntry? Entry, PostError? Error)
 /// The single write path. One server-side call, one transaction; no client
 /// round trip is held open inside it.
 /// </summary>
-public static class PostingService
+internal static class PostingService
 {
     public static LedgerDbContext CreateContext(string? cs = null)
         => new(new DbContextOptionsBuilder<LedgerDbContext>().UseNpgsql(cs ?? Config.App).Options);

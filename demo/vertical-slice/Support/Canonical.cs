@@ -27,7 +27,7 @@ namespace BabelDemo.Support;
 ///
 /// التوحيد القياسي: أرقام بفواصل ثابتة، أوقات UTC، ترتيب حقول ثابت، ونص NFC.
 /// </summary>
-public static class Canonical
+internal static class Canonical
 {
     /// <summary>Invisible bidi / formatting controls that are a real trap in Arabic data entry.</summary>
     public static readonly char[] BidiControls =

@@ -269,9 +269,18 @@ failed Rule08_NoRuntimeCompilationInProduction.TheCentralPackageFileDoesNotPinIt
 `Rule09_TheSolutionMatchesTheModuleMap.cs`
 
 كل عضو في `BabelModule` له مشروع `src/` ومشروع `tests/` وبطاقة `<Module>ModuleInfo`؛
-وكل مشروع على القرص موجود في `Babel.slnx` — وإلا لم يبنه التكامل المستمر ولم تفحصه أي قاعدة.
+و**كل** `*.csproj` على القرص — أياً كان مجلده — موجود في `Babel.slnx`، وإلا لم يبنه التكامل
+المستمر ولم تفحصه أي قاعدة. المُعفى الوحيد `spikes/`، مكتوباً بالاسم في القاعدة مع سببه:
+تجارب لا منتج، وإحداها تستعمل `WolverineFx.RuntimeCompilation` التي تمنعها القاعدة 8.
 
-**إثبات الالتقاط** — أُنشئ `src/Babel.Warehousing` ولم يُضف إلى الحل:
+> **تصحيح تاريخي.** كانت هذه الفقرة تَعِد بهذا وتفعل أقلّ منه: القاعدة كانت تقرأ
+> `RepositoryLayout.Projects`، ونطاقه قائمة مجلدات ثابتة `{src, tests}`. فمشروع تحت
+> `tools/` أو `demo/` لم يكن «على القرص» بنظرها، ومرّت خضراء على ثلاثة مشاريع لا يبنيها
+> شيء لشهور. الاكتشاف الآن **بالبحث في شجرة الملفات لا بقائمة مجلدات**، ومعه اختبار
+> يُثبت أن الإعفاء ما زال واحداً. القصة كاملةً في
+> [`docs/evidence/traps.md` فخ-41](../docs/evidence/traps.md).
+
+**إثبات الالتقاط ١** — أُنشئ `src/Babel.Warehousing` ولم يُضف إلى الحل:
 
 ```
 failed Rule09_TheSolutionMatchesTheModuleMap.EveryProjectOnDiskIsInTheSolution
@@ -279,6 +288,21 @@ failed Rule09_TheSolutionMatchesTheModuleMap.EveryProjectOnDiskIsInTheSolution
   src/Babel.Warehousing/Babel.Warehousing.csproj
 failed Rule03_DependencyDirectionIsAlwaysDownward.EveryProjectReferenceIsDeclaredAllowed
   src/Babel.Warehousing/Babel.Warehousing.csproj: مشروع غير مذكور في ModuleMap
+```
+
+**إثبات الالتقاط ٢ — خارج `src/`، وهو ما كان يفوت** — وُضع `apps/rot-canary/RotCanary.csproj`
+وشُغِّلت اختبارات المعمارية. بنسخة `develop` من القاعدة مرّت **47/47 خضراء**؛ وبالنسخة
+الحالية:
+
+```
+failed Rule09_TheSolutionMatchesTheModuleMap.EveryProjectOnDiskIsInTheSolution
+  مشاريع على القرص وخارج Babel.slnx — لا يبنيها شيء، فمحلّلاتها واختباراتها وأخطاء
+  ترجمتها غير مرئية والتكامل المستمر أخضر (traps.md — فخ-41):
+  apps/rot-canary/RotCanary.csproj
+failed Rule09_TheSolutionMatchesTheModuleMap.TheOnlyFolderOutsideTheSolutionIsSpikes
+  مجلدات خارج الحل غير المُعفى الوحيد (spikes/):
+  apps/
+  spikes/
 ```
 
 ### حارس إضافي: كل قاعدة تُثبت أنها ليست فارغة

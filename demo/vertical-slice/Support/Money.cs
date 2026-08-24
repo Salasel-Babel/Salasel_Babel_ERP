@@ -13,9 +13,9 @@ namespace BabelDemo.Support;
 /// float in ANY layer — JSON included. A JSON number would be parsed by the browser
 /// as an IEEE-754 double, so money crosses the wire as a fixed-scale STRING.
 /// </summary>
-public sealed class MoneyJsonConverter : JsonConverter<decimal>
+internal sealed class MoneyJsonConverter : JsonConverter<decimal>
 {
-    public override decimal Read(ref Utf8JsonReader reader, Type type, JsonSerializerOptions options)
+    public override decimal Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         => reader.TokenType switch
         {
             JsonTokenType.String => Money.Parse(reader.GetString()),
@@ -28,7 +28,7 @@ public sealed class MoneyJsonConverter : JsonConverter<decimal>
         => writer.WriteStringValue(Money.Render(value));
 }
 
-public static class Money
+internal static class Money
 {
     public static string Render(decimal d) => d.ToString("0.0000", CultureInfo.InvariantCulture);
 

@@ -8,7 +8,7 @@ namespace BabelDemo.Db;
 /// كل صف يحمل الاسم العربي والاسم الإنجليزي — لا استثناء.
 /// Every seeded row carries both name_ar and name_en.
 /// </summary>
-public static class ChartOfAccounts
+internal static class ChartOfAccounts
 {
     public sealed record Row(string Code, string? Parent, string NameAr, string NameEn,
                              string Type, string NormalSide, bool Postable);

@@ -2,7 +2,7 @@ using SalaselBabel.MatrixValidator.Model;
 
 namespace SalaselBabel.MatrixValidator.Rules;
 
-public sealed partial class Validator
+internal sealed partial class Validator
 {
     private static readonly string[] EventStatuses = ["drafted", "proposed"];
     private static readonly string[] SweepSelectors =
@@ -379,7 +379,7 @@ public sealed partial class Validator
     /// </summary>
     private static LinearExpression Reduce(
         LinearExpression e,
-        IReadOnlyDictionary<string, string> identities,
+        Dictionary<string, string> identities,
         IReadOnlyCollection<string> zeroed,
         string where)
     {

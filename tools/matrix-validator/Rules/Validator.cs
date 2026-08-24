@@ -8,7 +8,7 @@ namespace SalaselBabel.MatrixValidator.Rules;
 /// that would only surface as a wrong number in a customer's financial statements.
 /// كل قاعدة أدناه تقابل طريقة يمكن أن تفسد بها البيانات ولا تظهر إلا كرقم خاطئ في قوائم عميل.
 /// </summary>
-public sealed partial class Validator
+internal sealed partial class Validator
 {
     public static readonly IReadOnlyList<RuleDescription> Rules = new[]
     {

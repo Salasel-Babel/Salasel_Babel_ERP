@@ -1,6 +1,6 @@
 using System.Globalization;
-using System.Text.Json;
 using System.Text.Json.Serialization;
+using BabelDemo;
 using BabelDemo.Db;
 using BabelDemo.Support;
 
@@ -127,8 +127,16 @@ app.Run();
 return 0;
 
 // ── عقود الطلب ───────────────────────────────────────────────────────────
-public sealed record PostLineRequest(string? AccountCode, string? Description, decimal Debit, decimal Credit);
-public sealed record PostEntryRequest(string EntryDate, string? MemoAr, string? Memo, string? Actor,
-                                      List<PostLineRequest>? Lines);
-public sealed record DangerRequest(long EntryNo, decimal NewAmount);
-public sealed record TamperRequest(long EntryNo, decimal Delta);
+// داخل فضاء اسم صراحةً (CA1050): العبارات العليا تولّد نوعها في الفضاء العام،
+// وأي نوع يُكتب بعدها بلا فضاء اسم يسقط هناك معه.
+namespace BabelDemo
+{
+    internal sealed record PostLineRequest(string? AccountCode, string? Description, decimal Debit, decimal Credit);
+
+    internal sealed record PostEntryRequest(string EntryDate, string? MemoAr, string? Memo, string? Actor,
+                                            List<PostLineRequest>? Lines);
+
+    internal sealed record DangerRequest(long EntryNo, decimal NewAmount);
+
+    internal sealed record TamperRequest(long EntryNo, decimal Delta);
+}

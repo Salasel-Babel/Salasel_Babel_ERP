@@ -15,15 +15,34 @@ internal static class RepositoryLayout
 {
     private static readonly Lazy<string> RootPath = new(FindRoot);
     private static readonly Lazy<IReadOnlyList<ProjectFile>> ProjectsValue = new(LoadProjects);
+    private static readonly Lazy<IReadOnlyList<string>> AllProjectsValue = new(LoadAllProjectFiles);
+
+    /// <summary>مجلدات المنتج التي تُقرأ مشاريعها. ‏<c>spikes/</c> ليست منها عمداً.</summary>
+    private static readonly string[] ProductFolders = ["src", "tests", "tools", "demo"];
 
     /// <summary>جذر المستودع.</summary>
     public static string Root => RootPath.Value;
 
-    /// <summary>كل مشاريع <c>src/</c> و<c>tests/</c>. مجلد <c>spikes/</c> خارج النطاق عمداً — تجارب لا منتج.</summary>
+    /// <summary>
+    /// كل مشاريع المنتج المقروءة: <c>src/</c> و<c>tests/</c> و<c>tools/</c> و<c>demo/</c> — وهي
+    /// نفس المجلدات التي يمسحها <see cref="CultureScan"/> مضافاً إليها <c>tests/</c>.
+    /// مجلد <c>spikes/</c> خارج النطاق عمداً — تجارب لا منتج، كما في القاعدة 8.
+    /// </summary>
     public static IReadOnlyList<ProjectFile> Projects => ProjectsValue.Value;
 
     /// <summary>مشاريع <c>src/</c> فقط.</summary>
     public static IEnumerable<ProjectFile> SourceProjects => Projects.Where(static p => p.IsSource);
+
+    /// <summary>
+    /// <b>كل</b> ملف مشروع في المستودع كائناً ما كان مجلده — بلا قائمة مجلدات مسبقة.
+    /// <para>
+    /// هذا هو الفرق الذي سمح بالتعفّن: قائمة المجلدات الثابتة كانت <c>{src, tests}</c>، فمشروع
+    /// تحت <c>tools/</c> أو <c>demo/</c> لم يكن «موجوداً على القرص» بنظر القاعدة 9 أصلاً، وكانت
+    /// تمرّ عليه صامتة وهي تُسمّي نفسها «كل مشروع على القرص في ملف الحل».
+    /// الاكتشاف هنا بالبحث لا بالقائمة: مجلد جديد يدخل النطاق من تلقاء نفسه.
+    /// </para>
+    /// </summary>
+    public static IReadOnlyList<string> AllProjectFilesOnDisk => AllProjectsValue.Value;
 
     private static string FindRoot()
     {
@@ -50,7 +69,7 @@ internal static class RepositoryLayout
     {
         List<ProjectFile> projects = [];
 
-        foreach (string folder in new[] { "src", "tests" })
+        foreach (string folder in ProductFolders)
         {
             string absolute = Path.Combine(Root, folder);
             if (!Directory.Exists(absolute))
@@ -70,6 +89,24 @@ internal static class RepositoryLayout
         }
 
         return projects;
+    }
+
+    private static List<string> LoadAllProjectFiles()
+    {
+        List<string> paths = [.. Directory
+            .EnumerateFiles(Root, "*.csproj", SearchOption.AllDirectories)
+            .Select(static path => System.IO.Path.GetRelativePath(Root, path).Replace('\\', '/'))
+            .Where(static relative => !relative.Contains("/bin/", StringComparison.Ordinal)
+                                   && !relative.Contains("/obj/", StringComparison.Ordinal)
+                                   && !relative.StartsWith(".git/", StringComparison.Ordinal))
+            .Order(StringComparer.Ordinal)];
+
+        if (paths.Count == 0)
+        {
+            throw new InvalidOperationException("لم يُعثر على أي ملف مشروع على القرص. / No project files were found on disk.");
+        }
+
+        return paths;
     }
 }
 

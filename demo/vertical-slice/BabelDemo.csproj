@@ -10,11 +10,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Persistence only: EF Core 10 + Npgsql. No Marten. -->
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.11" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.11" />
-    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
-    <PackageReference Include="Npgsql" Version="10.0.3" />
+    <!-- Persistence only: EF Core 10 + Npgsql. No Marten.
+         الإصدارات من Directory.Packages.props وحدها — إدارة مركزية، لا Version= هنا. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Npgsql" />
   </ItemGroup>
 
 </Project>

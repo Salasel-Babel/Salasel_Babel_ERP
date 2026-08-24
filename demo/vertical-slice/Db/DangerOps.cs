@@ -5,29 +5,29 @@ using Npgsql;
 
 namespace BabelDemo.Db;
 
-public sealed record SqlAttempt(bool Succeeded, string Sql, string Connection, string Role,
+internal sealed record SqlAttempt(bool Succeeded, string Sql, string Connection, string Role,
                                 int RowsAffected, string SqlState, string SqlStateName,
                                 string Message, string? Detail, string? Hint, string Explanation);
 
-public sealed record LineSnapshot(int LineNo, string AccountCode, string NameAr, decimal Debit, decimal Credit);
+internal sealed record LineSnapshot(int LineNo, string AccountCode, string NameAr, decimal Debit, decimal Credit);
 
-public sealed record TamperResult(bool Ok, string Message, long EntryNo, long ChainSeq, decimal Delta,
+internal sealed record TamperResult(bool Ok, string Message, long EntryNo, long ChainSeq, decimal Delta,
                                   string Connection, string Role, string Script,
                                   int StatementsRun, int RowsAffected,
                                   LineSnapshot[] Before, LineSnapshot[] After,
                                   string StoredHashBefore, string StoredHashAfter, string Note);
 
-public sealed record BidiResult(string Plain, string WithMark, int PlainLength, int MarkLength,
+internal sealed record BidiResult(string Plain, string WithMark, int PlainLength, int MarkLength,
                                 string PlainBytes, string MarkBytes, string PlainHash, string MarkHash,
                                 bool Equal, string Note);
 
-public sealed record GrantRow(string Table, string Privileges);
+internal sealed record GrantRow(string Table, string Privileges);
 
 /// <summary>
 /// إجراءات العرض «الخطرة». كل واحدة تُظهر ردّ PostgreSQL الخام كما هو.
 /// The demo's danger actions. Each one surfaces PostgreSQL's raw answer verbatim.
 /// </summary>
-public static class DangerOps
+internal static class DangerOps
 {
     private static async Task<(Guid EntryId, Guid LineId, decimal Debit)> LocateAsync(long entryNo, CancellationToken ct)
     {
@@ -119,7 +119,7 @@ public static class DangerOps
     {
         await using var c = await Sql.OpenAsync(Config.Owner, ct);
 
-        var pending = await Sql.ScalarAsync<long>(c, "select count(*) from demo.tamper_log where not undone");
+        var pending = await Sql.ScalarAsync<long>(c, "select count(*) from demo.tamper_log where not undone", ct);
         if (pending > 0)
             return new TamperResult(false, "هناك عبث مطبَّق بالفعل ولم يُستعد بعد. اضغط «استعادة» أولاً.",
                 entryNo, 0, delta, Config.Describe(Config.Owner), "postgres", "", 0, 0, [], [], "", "", "");
@@ -215,7 +215,7 @@ public static class DangerOps
 
         var after = await LinesAsync(c, entryId, ct);
         var hashAfter = await Sql.ScalarAsync<string>(c,
-            $"select encode(entry_hash,'hex') from ledger.journal_entry where entry_id = '{entryId}'") ?? "";
+            $"select encode(entry_hash,'hex') from ledger.journal_entry where entry_id = '{entryId}'", ct) ?? "";
 
         return new TamperResult(true,
             $"نُفِّذت أربع عبارات UPDATE بحساب المالك على القيد رقم {entryNo} (تسلسل {chainSeq}).",
@@ -240,8 +240,8 @@ public static class DangerOps
             id = r.GetInt64(0); entryNo = r.GetInt64(1); restoreSql = r.GetString(2);
         }
 
-        await Sql.ExecAsync(c, restoreSql);
-        await Sql.ExecAsync(c, $"update demo.tamper_log set undone = true where tamper_id = {id}");
+        await Sql.ExecAsync(c, restoreSql, ct: ct);
+        await Sql.ExecAsync(c, $"update demo.tamper_log set undone = true where tamper_id = {id}", ct: ct);
 
         return new TamperResult(true, $"استُعيدت القيم الأصلية للقيد رقم {entryNo}.", entryNo, 0, 0m,
             Config.Describe(Config.Owner), "postgres", restoreSql, 4, 0, [], [], "", "",

@@ -9,7 +9,7 @@ namespace BabelDemo.Support;
 /// Connection settings. NO credentials live in this repository: everything is read
 /// from the environment and falls back to a password-less local dev connection.
 /// </summary>
-public static class Config
+internal static class Config
 {
     public const string Database = "babel_demo";
     public const string AppRole = "babel_demo_app";

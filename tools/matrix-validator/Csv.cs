@@ -8,7 +8,7 @@ namespace SalaselBabel.MatrixValidator;
 /// and a UTF-8 BOM. No dependencies — the seed data must be loadable anywhere.
 /// قارئ CSV بسيط يدعم الحقول المقتبسة وعلامة ترتيب البايت.
 /// </summary>
-public static class Csv
+internal static class Csv
 {
     public static List<Dictionary<string, string>> Read(string path)
     {

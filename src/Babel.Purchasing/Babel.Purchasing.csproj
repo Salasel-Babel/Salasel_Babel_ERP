@@ -1,9 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    Babel.Purchasing — وحدة أفقية.
+    Babel.Purchasing — وحدة أفقية، ودفتر مساعد للذمم الدائنة.
     لا تعتمد على Babel.Ledger ولا على أي وحدة أفقية أخرى — مفروض ببناء في Rule01 و Rule03.
     الترحيل عبر Babel.Contracts.Posting.IPostingService، والتخاطب عبر عقود الأحداث.
+    ولا رمز حساب واحد في هذا المشروع كله: الوحدة تصف حدثاً، والمصفوفة تقرّر الحساب (Rule02).
   -->
 
   <PropertyGroup>
@@ -18,6 +19,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
   </ItemGroup>
 

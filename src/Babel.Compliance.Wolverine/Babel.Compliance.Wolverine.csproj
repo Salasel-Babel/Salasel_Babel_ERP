@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    محوّل الصندوق الصادر الدائم. معزول في مشروع مستقل كي لا تدخل Wolverine
+    في رسم اعتماديات التنسيق نفسه: يمكن تشغيل الالتزام كاملاً بدونها.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Babel.Compliance.Wolverine</RootNamespace>
+    <AssemblyName>Babel.Compliance.Wolverine</AssemblyName>
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Babel.Compliance/Babel.Compliance.csproj" />
+    <ProjectReference Include="../Babel.Compliance.Abstractions/Babel.Compliance.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- بلا Marten — كما أثبتت spikes/relational-stack -->
+    <PackageReference Include="WolverineFx" Version="6.29.2" />
+    <PackageReference Include="WolverineFx.Postgresql" Version="6.29.2" />
+    <PackageReference Include="WolverineFx.EntityFrameworkCore" Version="6.29.2" />
+  </ItemGroup>
+
+</Project>

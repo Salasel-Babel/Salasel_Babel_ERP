@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    التنسيق المستقل عن المزوّد: البناء، والعدّاد، والسلسلة، والتوحيد القياسي،
+    والصندوق الصادر، وإعادة المحاولة، وانتقالات الحالة، والمطابقة.
+    لا شيء هنا يعرف اسم مزوّد واحد.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Babel.Compliance</RootNamespace>
+    <AssemblyName>Babel.Compliance</AssemblyName>
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Babel.Compliance.Abstractions/Babel.Compliance.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- التخزين العلائقي — نفس مقاس تجربة spikes/relational-stack -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.11" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.11" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
+    <PackageReference Include="Npgsql" Version="10.0.3" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.11" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="DESIGN.md" />
+  </ItemGroup>
+
+</Project>

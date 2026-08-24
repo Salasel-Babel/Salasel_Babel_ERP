@@ -111,8 +111,12 @@ public sealed class GoldenVectorTests
         {
             CultureInfo.CurrentCulture = new CultureInfo("ar-SA");
 
+            // التحويل «الساذج» بلا IFormatProvider هو موضوع الاختبار نفسه، لا سهو فيه:
+            // الغرض إثبات أن الثقافة المحيطة تُفسده — ولو أُصلح لما بقي شيء يُثبَت.
+#pragma warning disable CA1305 // Specify IFormatProvider
             var naive = 100.5m.ToString("0.0000");
             var naiveDate = new DateTime(2026, 1, 2, 0, 0, 0, DateTimeKind.Utc).ToString("d");
+#pragma warning restore CA1305
 
             Assert.DoesNotContain('.', naive);                 // \u200E100٫5000\u200E بفاصلة U+066B
             Assert.Contains('\u200F', naiveDate);              // التاريخ الهجري يحمل RLM داخله

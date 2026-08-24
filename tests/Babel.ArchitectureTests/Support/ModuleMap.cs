@@ -19,13 +19,32 @@ internal static class ModuleMap
     public const string Core = "Babel.Core";
     public const string Ledger = "Babel.Ledger";
     public const string Api = "Babel.Api";
+    public const string Compliance = "Babel.Compliance";
+
+    /// <summary>
+    /// مكتبة التوحيد القياسي: أساس تحت الجميع، بلا حزمة خارجية واحدة وبلا معرفة بأي وحدة.
+    /// بايتاتها المُجزَّأة لا يجوز أن تتحرّك بسبب ترقية اعتمادية، ولذلك لا اعتمادية لها أصلاً.
+    /// </summary>
+    public const string Canonicalization = "Babel.Canonicalization";
+
+    /// <summary>
+    /// عقد حدّ الالتزام: أنواع فقط، بلا EF ولا Wolverine ولا Npgsql ولا HTTP.
+    /// خاصية «بلا اعتمادية خارج مكتبة الأساس» مفروضة أيضاً باختبار في مجموعة اختبارات الالتزام.
+    /// </summary>
+    public const string ComplianceAbstractions = "Babel.Compliance.Abstractions";
+
+    /// <summary>مزوّد وهمي كامل التنفيذ للاختبار: يعتمد على العقد وحده، ولا يعرف التنسيق.</summary>
+    public const string ComplianceFakeProvider = "Babel.Compliance.FakeProvider";
+
+    /// <summary>محوّل الصندوق الصادر: يعزل Wolverine كي يبقى تشغيل الالتزام ممكناً بدونها.</summary>
+    public const string ComplianceWolverine = "Babel.Compliance.Wolverine";
 
     /// <summary>الوحدات الأفقية: لا تستدعي بعضها مباشرة، بل عبر Contracts أو الأحداث.</summary>
     public static IReadOnlyList<string> Horizontal { get; } =
     [
         "Babel.Sales",
         "Babel.Purchasing",
-        "Babel.Compliance",
+        Compliance,
         "Babel.Inventory",
         "Babel.Pos",
         "Babel.Hr",
@@ -36,9 +55,22 @@ internal static class ModuleMap
         "Babel.Ai",
     ];
 
+    /// <summary>
+    /// مشاريع مساندة: أساس تحت الجميع، أو عقد وحدة، أو محوّل مورّد. ليست وحدات منتج،
+    /// فلا بطاقة وحدة لها ولا استحقاق ولا مدخل في <c>BabelModule</c> — ولا تدخل قائمة
+    /// الوحدات الأفقية، لأن الوحدة الأفقية تُمنع من الاعتماد على أخواتها، وهذه يُعتمد عليها.
+    /// </summary>
+    public static IReadOnlyList<string> Supporting { get; } =
+    [
+        Canonicalization,
+        ComplianceAbstractions,
+        ComplianceFakeProvider,
+        ComplianceWolverine,
+    ];
+
     /// <summary>كل مشاريع المنتج.</summary>
     public static IReadOnlyList<string> AllProjects { get; } =
-        [SharedKernel, Contracts, Core, Ledger, .. Horizontal, Api];
+        [SharedKernel, Contracts, Core, Ledger, .. Horizontal, .. Supporting, Api];
 
     /// <summary>اسم مشروع الوحدة.</summary>
     public static string ProjectOf(BabelModule module) => "Babel." + module;
@@ -55,6 +87,12 @@ internal static class ModuleMap
             [Core] = new HashSet<string>([SharedKernel, Contracts], StringComparer.Ordinal),
             [Ledger] = new HashSet<string>([SharedKernel, Contracts, Core], StringComparer.Ordinal),
 
+            // الأساس والعقود والمحوّلات: الاتجاه هنا أيضاً إلى الأسفل حصراً.
+            [Canonicalization] = new HashSet<string>(StringComparer.Ordinal),
+            [ComplianceAbstractions] = new HashSet<string>(StringComparer.Ordinal),
+            [ComplianceFakeProvider] = new HashSet<string>([ComplianceAbstractions], StringComparer.Ordinal),
+            [ComplianceWolverine] = new HashSet<string>([Compliance, ComplianceAbstractions], StringComparer.Ordinal),
+
             // الجذر التركيبي وحده يعرف الجميع.
             [Api] = new HashSet<string>(AllProjects.Where(static p => p != Api), StringComparer.Ordinal),
         };
@@ -62,7 +100,17 @@ internal static class ModuleMap
         foreach (string horizontal in Horizontal)
         {
             // لا Ledger — الترحيل عبر العقد. ولا وحدة أفقية أخرى — التخاطب بالأحداث.
-            allowed[horizontal] = new HashSet<string>([SharedKernel, Contracts, Core], StringComparer.Ordinal);
+            HashSet<string> references = new([SharedKernel, Contracts, Core], StringComparer.Ordinal);
+
+            // استثناء واحد معلن: وحدة الالتزام تعتمد على عقد حدّ الالتزام — وهو أنواع
+            // بلا مورّد ولا استمرارية، لا وحدة أفقية. الغرض منه أن يبقى اسم المزوّد
+            // خارج الوحدة نفسها؛ حذفه يعني عودة اسم المزوّد إلى قلب التنسيق.
+            if (horizontal == Compliance)
+            {
+                references.Add(ComplianceAbstractions);
+            }
+
+            allowed[horizontal] = references;
         }
 
         return allowed;

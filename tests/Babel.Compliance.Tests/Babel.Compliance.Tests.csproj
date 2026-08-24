@@ -1,12 +1,22 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!--
+    اختبارات حدّ الالتزام. لا قاعدة بيانات ولا شبكة ولا مفاتيح على القرص افتراضياً؛
+    اختبارات PostgreSQL تُتخطّى ما لم تُضبط BABEL_COMPLIANCE_TEST_DB.
+
+    OutputType وIsTestProject ومشغّل Microsoft.Testing.Platform وحزمة xunit.v3
+    كلها في Directory.Build.props — لا تُكرَّر هنا، ولا يُكتب إصدار حزمة هنا (Rule08).
+  -->
+
   <PropertyGroup>
     <RootNamespace>Babel.Compliance.Tests</RootNamespace>
     <AssemblyName>Babel.Compliance.Tests</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="../../src/Babel.Compliance.Abstractions/Babel.Compliance.Abstractions.csproj" />
     <ProjectReference Include="../../src/Babel.Compliance/Babel.Compliance.csproj" />
+    <ProjectReference Include="../../src/Babel.Compliance.FakeProvider/Babel.Compliance.FakeProvider.csproj" />
   </ItemGroup>
 
 </Project>

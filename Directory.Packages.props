@@ -20,6 +20,8 @@
   <ItemGroup Label="الاستضافة وحقن الاعتماديات">
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.11" />
     <PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.11" />
+    <!-- تجريد التسجيل وحده: الوحدات تسجّل ولا تختار مزوّد تسجيل. -->
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
   </ItemGroup>
 
   <!--

@@ -154,3 +154,16 @@ dotnet_diagnostic.CA1000.severity = none
 [tests/**/*.cs]
 dotnet_diagnostic.CA1707.severity = none
 dotnet_diagnostic.IDE0058.severity = none
+
+# ── استثناء واحد معلن ونطاقه مكتبة التوحيد القياسي وحدها ────────────────────
+# هذه المكتبة دخلت الحل بشكلها المُتفق عليه في SPEC.md، وقاعدتان من المحلّلات
+# تصطدمان بالمواصفة نفسها لا بجودة الشيفرة. الاستثناء هنا لا في المشروع، ومحصور
+# بمساره، وكل بند يحمل سببه — لا إسكات عابر.
+[src/Babel.Canonicalization/**.cs]
+# CA1305: المواضع الستة كلها بناء نصّ تشخيصي في مسار الانفجار EnsureSupported()،
+# وقيمه bool وstring — لا تتأثر بالثقافة. أما البايتات المُجزَّأة فتُنسَّق بثقافة
+# ثابتة صراحةً في Amounts/Instants، وهذا مفروض بمتجهات ذهبية تحت de-DE وtr-TR.
+dotnet_diagnostic.CA1305.severity = none
+# CA1720: «Integer» ليست تسمية عابرة بل رمز المواصفة (SPEC.md: I = عدد صحيح 64 بت).
+# تغيير الاسم تغييرٌ في الشكل القانوني نفسه، لا في الأسلوب.
+dotnet_diagnostic.CA1720.severity = none

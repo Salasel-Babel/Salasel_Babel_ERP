@@ -10,6 +10,8 @@
     <AssemblyName>Babel.Canonicalization.Golden</AssemblyName>
     <InvariantGlobalization>false</InvariantGlobalization>
     <PredefinedCulturesOnly>false</PredefinedCulturesOnly>
+    <!-- أداة تشغيل لا مكتبة عامة؛ الشرح في README ولا حاجة لتعليق XML على كل عضو. -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

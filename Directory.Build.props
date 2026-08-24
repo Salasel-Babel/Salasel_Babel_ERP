@@ -31,7 +31,17 @@
     <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
     <PathMap Condition="'$(ContinuousIntegrationBuild)' == 'true'">$(MSBuildThisFileDirectory)=/_/</PathMap>
 
-    <!-- العربية لغة أولى: لا تُعطَّل بيانات المناطق. §16 من وثيقة المعمارية. -->
+    <!--
+      العربية لغة أولى: لا تُعطَّل بيانات المناطق. §16 من وثيقة المعمارية.
+
+      وهذا ليس اختياراً أسلوبياً ولا موضعه مشروع واحد. مقيس على هذا الجهاز:
+      تحت DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 يصير String.Normalize عملية لا شيء
+      **بصمت**، ويُرجع IsNormalized(FormC) القيمة true لنصّ غير مطبَّع، فتُجزَّأ كل سلسلة
+      عربية تحمل أ/إ/آ تجزئةً مختلفة **بلا استثناء واحد ولا سطر سجل**.
+      لذلك يعيش الإعداد هنا لا في csproj منفرد: مشروع واحد يفوته يكفي لكسر السلسلة.
+      حارس موجب في التكامل المستمر: وظيفة invariant-globalization-guard في ci.yml،
+      وحارس وقت التحميل في src/Babel.Canonicalization/CanonicalRuntime.cs.
+    -->
     <InvariantGlobalization>false</InvariantGlobalization>
 
     <!-- إدارة إصدارات الحزم مركزياً: Directory.Packages.props هو المصدر الوحيد. -->

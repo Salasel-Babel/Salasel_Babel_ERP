@@ -1,0 +1,123 @@
+name: canonicalization
+
+# بوابة الشكل القانوني.
+#
+# هذه الوظيفة هي الشيء الوحيد الذي يكشف أن ترقية مكتبة، أو تغيير لغة النظام، أو
+# متغيّر بيئة في صورة الحاوية، غيّر البايتات المُجزَّأة — **قبل** أن يدخل الإنتاج.
+# إن سقطت، فالسبب في 99٪ من الحالات أن أحدهم عدّل الشكل القانوني بحسن نيّة.
+# راجع src/Babel.Canonicalization/SPEC.md §12 (إجراء إدخال v2).
+
+on:
+  push:
+    paths:
+      - 'src/Babel.Canonicalization/**'
+      - 'tests/Babel.Canonicalization.Tests/**'
+      - 'tools/Babel.Canonicalization.Golden/**'
+      - 'tests/golden/**'
+      - '.github/workflows/canonicalization.yml'
+  pull_request:
+    paths:
+      - 'src/Babel.Canonicalization/**'
+      - 'tests/Babel.Canonicalization.Tests/**'
+      - 'tools/Babel.Canonicalization.Golden/**'
+      - 'tests/golden/**'
+      - '.github/workflows/canonicalization.yml'
+  workflow_dispatch:
+
+jobs:
+  golden-vectors:
+    name: المتجهات الذهبية + دورة PostgreSQL
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      # لا كلمات مرور في المستودع: هذه بيانات خدمة CI مؤقتة فقط.
+      BABEL_CANON_TEST_ADMIN_DB: "Host=127.0.0.1;Port=5432;Database=postgres;Username=postgres;Password=postgres"
+      BABEL_CANON_TEST_DB: "Host=127.0.0.1;Port=5432;Database=babel_canon_tests;Username=postgres;Password=postgres"
+      DOTNET_NOLOGO: 'true'
+      DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      # ICU مطلوب: بدونه يصير String.Normalize عملية لا شيء بصمت (انظر SPEC §8.2).
+      - name: التأكّد من وجود ICU
+        run: |
+          set -eux
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libicu-dev
+          echo "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT" ; env | grep -i invariant || true
+
+      - name: البناء
+        run: dotnet build Babel.Canonicalization.slnx -c Release
+
+      - name: حارس بيئة التشغيل + المتجهات الذهبية (ثقافة ar-SA)
+        run: dotnet run -c Release --no-build --project tools/Babel.Canonicalization.Golden -- --verify
+
+      - name: المتجهات الذهبية تحت ثقافة de-DE
+        env:
+          BABEL_GOLDEN_CULTURE: de-DE
+        run: dotnet run -c Release --no-build --project tools/Babel.Canonicalization.Golden -- --verify
+
+      - name: المتجهات الذهبية تحت ثقافة tr-TR
+        env:
+          BABEL_GOLDEN_CULTURE: tr-TR
+        run: dotnet run -c Release --no-build --project tools/Babel.Canonicalization.Golden -- --verify
+
+      - name: الاختبارات (بما فيها دورة PostgreSQL الحقيقية)
+        run: dotnet test tests/Babel.Canonicalization.Tests -c Release --no-build --logger "console;verbosity=normal"
+
+      - name: التأكّد أن الملف الذهبي لم يُعدَّل يدوياً
+        run: |
+          set -eux
+          dotnet run -c Release --no-build --project tools/Babel.Canonicalization.Golden -- --emit
+          if ! git diff --exit-code -- tests/golden/; then
+            echo '::error::الملف الذهبي لا يطابق ما تنتجه الشيفرة. راجع SPEC.md §12.'
+            exit 1
+          fi
+
+  invariant-globalization-guard:
+    name: الحارس ينفجر في وضع العولمة الثابتة
+    runs-on: ubuntu-latest
+    env:
+      DOTNET_NOLOGO: 'true'
+      DOTNET_CLI_TELEMETRY_OPTOUT: 'true'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: البناء
+        run: dotnet build Babel.Canonicalization.slnx -c Release
+
+      # إثبات موجب: البيئة المعطوبة يجب أن تُرفَض، لا أن تنتج بصمات صامتة خاطئة.
+      - name: يجب أن يفشل تحت DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
+        env:
+          DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: '1'
+        run: |
+          set -eu
+          if dotnet run -c Release --no-build --project tools/Babel.Canonicalization.Golden -- --verify; then
+            echo '::error::المكتبة أنتجت بصمات في وضع العولمة الثابتة. الحارس معطّل — هذه أخطر حالة ممكنة.'
+            exit 1
+          fi
+          echo 'الحارس رفض البيئة المعطوبة كما يجب.'

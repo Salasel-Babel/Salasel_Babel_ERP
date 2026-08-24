@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Babel.Ledger — دفتر الأستاذ. إلزامي دائماً ولا يكون اختيارياً أبداً.
+    الجهة الوحيدة في النظام كله التي تكتب قيداً، والجهة الوحيدة التي تعرف رقم حساب.
+    Ledger لا تعتمد على أي وحدة أعلى منها — أبداً (Rule03).
+    ولا وحدة أفقية تعتمد على Ledger — لا مرجع مشروع أصلاً (Rule01).
+  -->
+
+  <PropertyGroup>
+    <RootNamespace>Babel.Ledger</RootNamespace>
+    <AssemblyName>Babel.Ledger</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Babel.SharedKernel/Babel.SharedKernel.csproj" />
+    <ProjectReference Include="../Babel.Contracts/Babel.Contracts.csproj" />
+    <ProjectReference Include="../Babel.Core/Babel.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+  </ItemGroup>
+
+</Project>

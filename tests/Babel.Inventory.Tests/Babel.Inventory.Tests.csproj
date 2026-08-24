@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Babel.Inventory.Tests</RootNamespace>
+    <AssemblyName>Babel.Inventory.Tests</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/Babel.Inventory/Babel.Inventory.csproj" />
+  </ItemGroup>
+
+</Project>

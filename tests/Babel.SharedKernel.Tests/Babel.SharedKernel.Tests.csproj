@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Babel.SharedKernel.Tests</RootNamespace>
+    <AssemblyName>Babel.SharedKernel.Tests</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/Babel.SharedKernel/Babel.SharedKernel.csproj" />
+  </ItemGroup>
+
+</Project>

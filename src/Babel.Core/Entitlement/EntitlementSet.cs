@@ -1,0 +1,150 @@
+using System.Collections.ObjectModel;
+using Babel.SharedKernel;
+
+namespace Babel.Core.Entitlement;
+
+/// <summary>
+/// مجموعة استحقاق مستأجر: حالة لكل وحدة. غير قابلة للتغيير بعد الإنشاء،
+/// وكل مجموعة تُنشأ عبر <see cref="Create"/> الذي يرفض ما هو غير متسق.
+/// </summary>
+public sealed class EntitlementSet
+{
+    private readonly ReadOnlyDictionary<BabelModule, EntitlementState> _states;
+
+    private EntitlementSet(TenantId tenant, ReadOnlyDictionary<BabelModule, EntitlementState> states)
+    {
+        Tenant = tenant;
+        _states = states;
+    }
+
+    /// <summary>المستأجر.</summary>
+    public TenantId Tenant { get; }
+
+    /// <summary>حالة كل وحدة.</summary>
+    public IReadOnlyDictionary<BabelModule, EntitlementState> States => _states;
+
+    /// <summary>حالة وحدة بعينها.</summary>
+    public EntitlementState StateOf(BabelModule module) =>
+        _states.TryGetValue(module, out EntitlementState state) ? state : EntitlementState.NotEntitled;
+
+    /// <summary>هل يسمح الاستحقاق بهذا الوصول على هذه الوحدة؟</summary>
+    public bool Allows(BabelModule module, EntitlementAccess access) => StateOf(module) switch
+    {
+        EntitlementState.Entitled => true,
+        EntitlementState.ReadOnly => access == EntitlementAccess.Read,
+        _ => false,
+    };
+
+    /// <summary>مجموعة الحد الأدنى: الوحدات الإلزامية فاعلة وما عداها غير مشترى.</summary>
+    public static EntitlementSet Baseline(TenantId tenant)
+    {
+        Dictionary<BabelModule, EntitlementState> states = [];
+        foreach (BabelModule module in ModuleDependencyGraph.All)
+        {
+            states[module] = ModuleDependencyGraph.IsMandatory(module) ? EntitlementState.Entitled : EntitlementState.NotEntitled;
+        }
+
+        return new EntitlementSet(tenant, new ReadOnlyDictionary<BabelModule, EntitlementState>(states));
+    }
+
+    /// <summary>
+    /// ينشئ مجموعة بعد التحقق من اتساقها. المجموعة غير المتسقة تُرفض ولا تُصحَّح ضمنياً:
+    /// التصحيح الضمني يعني أن العميل يظن أنه اشترى ما لم يشتره.
+    /// </summary>
+    public static Result<EntitlementSet> Create(TenantId tenant, IReadOnlyDictionary<BabelModule, EntitlementState> desired)
+    {
+        ArgumentNullException.ThrowIfNull(desired);
+
+        List<Error> errors = [];
+        Dictionary<BabelModule, EntitlementState> states = [];
+
+        foreach (BabelModule module in ModuleDependencyGraph.All)
+        {
+            if (!desired.TryGetValue(module, out EntitlementState state))
+            {
+                errors.Add(EntitlementErrors.IncompleteSet(module));
+                continue;
+            }
+
+            states[module] = state;
+        }
+
+        if (errors.Count > 0)
+        {
+            return Result<EntitlementSet>.Failure(errors);
+        }
+
+        errors.AddRange(Validate(states));
+
+        return errors.Count > 0
+            ? Result<EntitlementSet>.Failure(errors)
+            : Result<EntitlementSet>.Success(new EntitlementSet(tenant, new ReadOnlyDictionary<BabelModule, EntitlementState>(states)));
+    }
+
+    /// <summary>نسخة معدّلة، بعد التحقق من اتساق الناتج.</summary>
+    public Result<EntitlementSet> With(IReadOnlyDictionary<BabelModule, EntitlementState> changes)
+    {
+        ArgumentNullException.ThrowIfNull(changes);
+
+        Dictionary<BabelModule, EntitlementState> next = new(_states);
+        foreach ((BabelModule module, EntitlementState state) in changes)
+        {
+            next[module] = state;
+        }
+
+        return Create(Tenant, next);
+    }
+
+    /// <summary>الوحدات التي اختلفت حالتها بين هذه المجموعة والأخرى.</summary>
+    public IReadOnlyList<(BabelModule Module, EntitlementState From, EntitlementState To)> DiffTo(EntitlementSet other)
+    {
+        ArgumentNullException.ThrowIfNull(other);
+
+        List<(BabelModule, EntitlementState, EntitlementState)> changes = [];
+        foreach (BabelModule module in ModuleDependencyGraph.All)
+        {
+            EntitlementState from = StateOf(module);
+            EntitlementState to = other.StateOf(module);
+            if (from != to)
+            {
+                changes.Add((module, from, to));
+            }
+        }
+
+        return changes;
+    }
+
+    private static List<Error> Validate(Dictionary<BabelModule, EntitlementState> states)
+    {
+        List<Error> errors = [];
+
+        foreach ((BabelModule module, EntitlementState state) in states)
+        {
+            if (ModuleDependencyGraph.IsMandatory(module) && state != EntitlementState.Entitled)
+            {
+                errors.Add(EntitlementErrors.MandatoryModuleDisabled(module));
+            }
+
+            if (state == EntitlementState.NotEntitled)
+            {
+                continue;
+            }
+
+            // قدرة الوحدة لا تتجاوز قدرة ما تعتمد عليه: نقاط بيع فاعلة فوق مخزون للقراءة فقط
+            // تعني بيعاً بلا حركة مخزون — وهي مجموعة غير متسقة تُرفض، لا تُصحَّح.
+            foreach (BabelModule requirement in ModuleDependencyGraph.RequirementsOf(module))
+            {
+                EntitlementState requirementState = states.TryGetValue(requirement, out EntitlementState found)
+                    ? found
+                    : EntitlementState.NotEntitled;
+
+                if (requirementState < state)
+                {
+                    errors.Add(EntitlementErrors.UnsatisfiedRequirement(module, state, requirement, requirementState));
+                }
+            }
+        }
+
+        return errors;
+    }
+}

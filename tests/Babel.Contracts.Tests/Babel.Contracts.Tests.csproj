@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Babel.Contracts.Tests</RootNamespace>
+    <AssemblyName>Babel.Contracts.Tests</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/Babel.Contracts/Babel.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

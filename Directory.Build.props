@@ -1,0 +1,58 @@
+<Project>
+
+  <!--
+    الإعدادات الملزمة لكل مشاريع «سلاسل بابل».
+    Baseline settings enforced across every Babel project.
+    قاعدة: لا يُعطَّل أي بند هنا داخل مشروع منفرد. التعطيل يكون هنا وبتوثيق.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <!-- تحذير واحد = بناء فاشل. لا استثناء. -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningsNotAsErrors></WarningsNotAsErrors>
+    <MSBuildTreatWarningsAsErrors>true</MSBuildTreatWarningsAsErrors>
+
+    <!-- المحلّلات مفعّلة، وقواعد الأسلوب تُفحص أثناء البناء لا في المحرّر وحده. -->
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <AnalysisMode>Recommended</AnalysisMode>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <!-- ملف التوثيق مطلوب لتشغيل IDE0005 (using غير مستعمل) أثناء البناء. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+    <!-- بناء حتمي: الناتج نفسه من المصدر نفسه، مستقلاً عن المسار والجهاز. -->
+    <Deterministic>true</Deterministic>
+    <DeterministicSourcePaths Condition="'$(ContinuousIntegrationBuild)' == 'true'">true</DeterministicSourcePaths>
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+    <PathMap Condition="'$(ContinuousIntegrationBuild)' == 'true'">$(MSBuildThisFileDirectory)=/_/</PathMap>
+
+    <!-- العربية لغة أولى: لا تُعطَّل بيانات المناطق. §16 من وثيقة المعمارية. -->
+    <InvariantGlobalization>false</InvariantGlobalization>
+
+    <!-- إدارة إصدارات الحزم مركزياً: Directory.Packages.props هو المصدر الوحيد. -->
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+
+    <IsPackable>false</IsPackable>
+    <NoWarn>$(NoWarn);CA1848</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="$(MSBuildProjectName.EndsWith('Tests'))">
+    <OutputType>Exe</OutputType>
+    <IsTestProject>true</IsTestProject>
+    <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
+    <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
+    <!-- اختبارات المعمارية تفحص الأنواع بالانعكاس؛ CA1707 وأمثاله لا يخدمان أسماء الاختبارات. -->
+    <NoWarn>$(NoWarn);CA1707;CA1861;CA5394;CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup Condition="$(MSBuildProjectName.EndsWith('Tests'))">
+    <PackageReference Include="xunit.v3" />
+  </ItemGroup>
+
+</Project>

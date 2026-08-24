@@ -51,9 +51,33 @@ internal static class Proof
 /// </summary>
 internal static class PurchasingTestEnvironment
 {
-    public const string LedgerDatabase = "babel_arap_purchasing_ledger";
-    public const string ModuleDatabase = "babel_arap_purchasing";
+    /// <summary>الجذع الثابت لاسم قاعدة الدفتر — تُلحق به لاحقة هذه العملية.</summary>
+    public const string LedgerDatabaseStem = "babel_arap_purchasing_ledger";
+
+    /// <summary>الجذع الثابت لاسم قاعدة الوحدة — تُلحق به لاحقة هذه العملية.</summary>
+    public const string ModuleDatabaseStem = "babel_arap_purchasing";
+
+    /// <summary>
+    /// قاعدة الدفتر <b>لهذه العملية وحدها</b>.
+    /// <para>
+    /// الاسم كان ثابتاً، وكانت التهيئة تبدأ بـ<c>drop database … with (force)</c>.
+    /// فعمليتان متزامنتان تُسقط كلٌّ منهما قاعدة الأخرى في منتصف تشغيلها. مقيس على
+    /// هذا الجهاز على الشيفرة قبل هذا الإصلاح: تشغيلان متوازيان لهذه المجموعة
+    /// أسقطا 15 و23 اختباراً من 24 بـ<c>57P01</c> و<c>42P04</c> و<c>23505</c>.
+    /// </para>
+    /// </summary>
+    public static string LedgerDatabase { get; } = TestRunScope.Name(LedgerDatabaseStem);
+
+    /// <summary>قاعدة وحدة المشتريات <b>لهذه العملية وحدها</b>.</summary>
+    public static string ModuleDatabase { get; } = TestRunScope.Name(ModuleDatabaseStem);
+
+    /// <summary>
+    /// دور التطبيق — اسمه <b>مشترك عمداً</b>: الأدوار عامّة على مستوى العنقود، ولا
+    /// يحذفها أحد ولا يملك أي منها كائناً، فلا شيء فيها يُدمَّر. الشيء الوحيد الذي
+    /// كان يتسابق عليه هو <b>إنشاؤه</b>، وقد صار الإنشاء محصَّناً في <c>CreateAsync</c>.
+    /// </summary>
     public const string AppRole = "babel_arap_purchasing_app";
+
     public const int FiscalYear = 2026;
 
     /// <summary>المستأجر المستعمل في كل هذه الاختبارات.</summary>
@@ -75,8 +99,13 @@ internal static class PurchasingTestEnvironment
     /// </summary>
     public static TenantId GatewayTenant { get; } = new(new Guid("40c4a51e-0000-4000-8000-000000000003"));
 
+    /// <summary>عدد محاولات الحذف قبل اللجوء إلى الإنهاء القسري.</summary>
+    private const int DropAttempts = 40;
+
     private static readonly SemaphoreSlim Gate = new(1, 1);
     private static bool _ready;
+    private static Exception? _failure;
+    private static int _cleanupRegistered;
 
     public static string Maintenance =>
         Environment.GetEnvironmentVariable("BABEL_ARAP_PURCHASING_TEST_ADMIN_DB")
@@ -114,11 +143,35 @@ internal static class PurchasingTestEnvironment
                 return;
             }
 
-            await CreateAsync(cancellationToken).ConfigureAwait(false);
-            await DeployLedgerAsync(cancellationToken).ConfigureAwait(false);
-            await SeedAsync(cancellationToken).ConfigureAwait(false);
-            await PurchasingSchemaDeployer.DeployAsync(Purchasing, cancellationToken).ConfigureAwait(false);
-            _ready = true;
+            // فشلٌ جزئي واحد يكفي: لا تُعاد التهيئة أبداً. إعادتها تعني إعادة الإنشاء
+            // على قاعدة نصف مبنيّة، وذلك طريق تعافٍ **مُدمِّر**. الفشل يبقى مرفوعاً
+            // بصوته الأصلي في كل نداء تالٍ، ولا يُترجَم إلى إسقاط أي شيء.
+            if (_failure is not null)
+            {
+                throw new InvalidOperationException(
+                    "فشلت تهيئة بيئة الاختبار مرّة واحدة في هذه العملية، ولن يُعاد بناؤها: "
+                    + "إعادة البناء تبدأ بإسقاط قواعد قد تكون نصف مبنيّة أو قيد الاستعمال. "
+                    + "السبب الأصلي مرفق.",
+                    _failure);
+            }
+
+            try
+            {
+                // يُسجَّل الحذف **قبل** الإنشاء: تشغيل ينهار في منتصف التهيئة يترك
+                // قاعدة نصف مبنيّة، وهذه القاعدة تُحذف أيضاً عند خروج العملية.
+                RegisterCleanup();
+
+                await CreateAsync(cancellationToken).ConfigureAwait(false);
+                await DeployLedgerAsync(cancellationToken).ConfigureAwait(false);
+                await SeedAsync(cancellationToken).ConfigureAwait(false);
+                await PurchasingSchemaDeployer.DeployAsync(Purchasing, cancellationToken).ConfigureAwait(false);
+                _ready = true;
+            }
+            catch (Exception failure)
+            {
+                _failure = failure;
+                throw;
+            }
         }
         finally
         {
@@ -131,21 +184,167 @@ internal static class PurchasingTestEnvironment
         await using NpgsqlConnection admin = new(Maintenance);
         await admin.OpenAsync(cancellationToken).ConfigureAwait(false);
 
-        await ExecAsync(admin, $"drop database if exists {ModuleDatabase} with (force)", cancellationToken).ConfigureAwait(false);
-        await ExecAsync(admin, $"drop database if exists {LedgerDatabase} with (force)", cancellationToken).ConfigureAwait(false);
+        // كنس المتروك من تشغيلات **ماتت**: لا إسقاط عند البدء لقاعدة أحدٌ فيها.
+        await SweepAbandonedAsync(admin, cancellationToken).ConfigureAwait(false);
+
+        // ولا إسقاط هنا إطلاقاً: الاسم خاصّ بهذه العملية ولم يوجد قبلها. فإن وُجد
+        // فذلك خلل حقيقي يُرفع بصوته (‏42P04)، لا يُبتلع بإسقاط قاعدة غريبة.
         await ExecAsync(admin, $"create database {ModuleDatabase}", cancellationToken).ConfigureAwait(false);
         await ExecAsync(admin, $"create database {LedgerDatabase}", cancellationToken).ConfigureAwait(false);
 
         // الدور التطبيقي: يدخل، ولا يملك شيئاً، وليس superuser — الطبقة الأولى (فخ-30).
-        long roles = await ScalarAsync(admin, $"select count(*) from pg_roles where rolname = '{AppRole}'", cancellationToken)
-            .ConfigureAwait(false);
-
+        //
+        // والاسم مشترك بين العمليات، فـ«اقرأ ثم أنشئ» يتسابق: عمليتان تريان العدّ
+        // صفراً فتُنشئان معاً، وتفشل إحداهما بـ42710. الإنشاء هنا داخل كتلة واحدة
+        // تبتلع «موجود سلفاً» وحده — وهو خبر سارّ لا عطل.
         await ExecAsync(
             admin,
-            (roles == 0 ? "create role " : "alter role ") + AppRole + " login nosuperuser nocreatedb nocreaterole noinherit",
+            $"""
+            do $$
+            begin
+                begin
+                    create role {AppRole} login nosuperuser nocreatedb nocreaterole noinherit;
+                exception when duplicate_object then
+                    alter role {AppRole} login nosuperuser nocreatedb nocreaterole noinherit;
+                end;
+            end
+            $$;
+            """,
             cancellationToken).ConfigureAwait(false);
 
         await ExecAsync(admin, $"grant connect on database {LedgerDatabase} to {AppRole}", cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// يُسجّل حذف قواعد هذه العملية عند خروجها — لا عند بدئها.
+    /// <para>
+    /// <b>الحذف عند البدء هو العطل نفسه:</b> هو افتراضٌ صامت بأن لا أحد غيرك يعمل
+    /// الآن. أمّا الحذف عند الخروج فيُصفّي ما تملكه أنت وحدك.
+    /// </para>
+    /// <para>
+    /// <b>وماذا لو قُتل التشغيل؟</b> ‏<c>ProcessExit</c> يعمل عند الخروج الطبيعي
+    /// وعند الفشل وعند <c>SIGTERM</c>. أمّا <c>SIGKILL</c> فلا يترك للعملية أي
+    /// فرصة، ولذلك يُكنس المتروك في بداية التشغيل التالي — بشرط أن تكون العملية
+    /// المالكة قد <b>ماتت</b>، وبإسقاط غير قسري.
+    /// </para>
+    /// </summary>
+    private static void RegisterCleanup()
+    {
+        if (Interlocked.Exchange(ref _cleanupRegistered, 1) == 1)
+        {
+            return;
+        }
+
+        AppDomain.CurrentDomain.ProcessExit += static (_, _) => DropOwnDatabases();
+    }
+
+    private static void DropOwnDatabases()
+    {
+        try
+        {
+            NpgsqlConnection.ClearAllPools();
+
+            using NpgsqlConnection admin = new(Maintenance);
+            admin.Open();
+            DropOne(admin, ModuleDatabase);
+            DropOne(admin, LedgerDatabase);
+        }
+        catch (NpgsqlException exception)
+        {
+            // الخروج لا يُفشَل بسببه، لكنه لا يمرّ صامتاً: قاعدة متروكة خبرٌ يُقال.
+            Console.WriteLine("        تعذّر حذف قواعد هذا التشغيل: " + exception.Message);
+        }
+    }
+
+    private static void DropOne(NpgsqlConnection admin, string database)
+    {
+        // تُقطع اتصالات هذه العملية **قبل** أول محاولة، لا بعد فشلها: ‏PostgreSQL
+        // ينتظر خمس ثوانٍ كاملة قبل أن يعلن «القاعدة مستعملة» — مقيس على هذا الجهاز
+        // 5061 مِلّي ثانية — فالمحاولة الفاشلة وحدها تكلّف خمس ثوانٍ في كل تشغيل.
+        //
+        // والقطع هنا لا يمسّ أحداً: الاسم خاصّ بهذه العملية، والجلسات عليه جلساتها.
+        // وهذا هو الفرق كلّه عن `with (force)` على اسم ثابت، الذي كان يقطع جلسات
+        // عملية أخرى تعمل.
+        TerminateOwnSessions(admin, database);
+
+        for (int attempt = 1; ; attempt++)
+        {
+            try
+            {
+                using NpgsqlCommand command = new($"drop database if exists {database}", admin);
+                command.ExecuteNonQuery();
+                return;
+            }
+            catch (PostgresException exception)
+                when (exception.SqlState == PostgresErrorCodes.ObjectInUse && attempt < DropAttempts)
+            {
+                // جلسة تأخّرت في الموت: تُعاد المحاولة قصيراً بدل الانتظار الطويل.
+                TerminateOwnSessions(admin, database);
+                Thread.Sleep(25);
+            }
+            catch (PostgresException exception) when (exception.SqlState == PostgresErrorCodes.ObjectInUse)
+            {
+                using NpgsqlCommand forced = new($"drop database if exists {database} with (force)", admin);
+                forced.ExecuteNonQuery();
+                return;
+            }
+        }
+    }
+
+    private static void TerminateOwnSessions(NpgsqlConnection admin, string database)
+    {
+        using NpgsqlCommand command = new(
+            "select pg_terminate_backend(pid) from pg_stat_activity where datname = $1 and pid <> pg_backend_pid()",
+            admin);
+        command.Parameters.AddWithValue(database);
+        command.ExecuteNonQuery();
+    }
+
+    /// <summary>
+    /// يحذف قواعد تشغيلات سابقة قُتلت قبل أن تُصفّي نفسها — ولا يمسّ قاعدة عمليةٍ
+    /// حيّة أبداً. وعند الشكّ في حياة المالك، القاعدة <b>تُترك</b>: تسريب قاعدة
+    /// خبرٌ سيّئ، وحذف قاعدة تحت اختبارٍ جارٍ عطلٌ يوم كامل.
+    /// </summary>
+    private static async Task SweepAbandonedAsync(NpgsqlConnection admin, CancellationToken cancellationToken)
+    {
+        foreach (string stem in new[] { ModuleDatabaseStem, LedgerDatabaseStem })
+        {
+            List<string> candidates = [];
+
+            await using (NpgsqlCommand query = new(
+                "select datname from pg_database where datname like $1", admin))
+            {
+                query.Parameters.AddWithValue(stem + "_p%");
+                await using NpgsqlDataReader reader = await query.ExecuteReaderAsync(cancellationToken)
+                    .ConfigureAwait(false);
+                while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+                {
+                    candidates.Add(reader.GetString(0));
+                }
+            }
+
+            foreach (string database in candidates)
+            {
+                int? owner = TestRunScope.OwnerProcessId(database, stem);
+                if (owner is null || TestRunScope.OwnerIsAlive(owner.Value))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    // بلا (force): إن كان عليها اتصال حيّ فالمالك لم يمت حقاً، فتُترك.
+                    await ExecAsync(admin, $"drop database if exists {database}", cancellationToken)
+                        .ConfigureAwait(false);
+                    Console.WriteLine("        كُنست قاعدة متروكة من تشغيل ميت: " + database);
+                }
+                catch (PostgresException exception)
+                {
+                    Console.WriteLine(
+                        "        تُركت قاعدة متروكة كما هي (" + exception.SqlState + "): " + database);
+                }
+            }
+        }
     }
 
     /// <summary>

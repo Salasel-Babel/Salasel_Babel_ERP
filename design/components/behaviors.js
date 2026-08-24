@@ -8,12 +8,27 @@
 (function (global) {
   "use strict";
 
-  var SB = {};
+  /* ⚠ الفضاء مشترك مع design/i18n/i18n.js. كتابة `var SB = {}` هنا كانت تمسح
+     كل ما عرّفته طبقة التدويل (‏I18N و t و fmt و dom) لأن هذا الملف يُحمَّل
+     بعدها — فتفشل الصفحة كاملةً بلا لغة. الفضاء يُشارَك، لا يُستبدَل. */
+  var SB = global.SB || (global.SB = {});
 
   /* ───────────────────────────────────────────────────── 1 · أدوات صغيرة */
   function $(sel, root) { return (root || document).querySelector(sel); }
   function $$(sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); }
   SB.$ = $; SB.$$ = $$;
+
+  /* ⚠ لا نصّ مرئي مكتوب في هذا الملف — بأي لغة. كل ما يظهر للمستخدم يمرّ من
+     هنا إلى ملفّ اللغة. وإن لم تُحمَّل طبقة التدويل أصلاً يظهر اسم المفتاح:
+     مخرَجٌ قبيح لكنه **مرئي** ويلتقطه الفحص، وهو أفضل من نصّ عربي مطبوع في
+     الشيفرة لا يمكن ترجمته، ومن سلسلة فارغة لا يلاحظها أحد. */
+  function T(key, params) {
+    return (global.SB && global.SB.t) ? global.SB.t(key, params) : key;
+  }
+  function Tp(key, count, params) {
+    return (global.SB && global.SB.t && global.SB.t.plural)
+      ? global.SB.t.plural(key, count, params) : key;
+  }
 
   /* ══════════════════════════════════════════════════════ 2 · المبالغ
      المبلغ في هذا النظام decimal لا float. الخادم يرسله **نصّاً** بمقياس ثابت
@@ -74,10 +89,19 @@
   /* تحويل الأرقام العربية-الهندية والشرقية إلى لاتينية — عند الحدّ فقط.
      العرض بالأرقام العربية مسؤولية طبقة العرض ولا يعود إلى التخزين أبداً.
      راجع docs/evidence/traps.md فخ-25. */
+  /* ⚠ كان يغطّي العربية-الهندية (٠-٩ ‏U+0660) والفارسية (۰-۹ ‏U+06F0) فقط.
+     أرقام الديفاناغري (‏U+0966) تدخل من لوحة مفاتيح هندية عند اللصق فتمرّ
+     كما هي: التطبيع يفشل صامتاً، فيُرفَض المبلغ أو — أسوأ — يُقرأ خطأً.
+     عطلٌ لا يمكن أن يظهر في منتج عربي/إنجليزي. */
+  var DIGIT_BASES = [0x0660, 0x06F0, 0x0966];
   SB.toLatinDigits = function (s) {
-    return String(s).replace(/[٠-٩۰-۹]/g, function (d) {
+    return String(s).replace(/[\u0660-\u0669\u06F0-\u06F9\u0966-\u096F]/g, function (d) {
       var c = d.charCodeAt(0);
-      return String(c >= 0x06F0 ? c - 0x06F0 : c - 0x0660);
+      for (var i = 0; i < DIGIT_BASES.length; i++) {
+        var b = DIGIT_BASES[i];
+        if (c >= b && c <= b + 9) return String(c - b);
+      }
+      return d;
     });
   };
 
@@ -88,23 +112,34 @@
     return isFinite(n) ? n : Number.NEGATIVE_INFINITY;
   };
 
-  /* يملأ كل عنصر يحمل data-amount بالقيمة منسّقة، ويضبط حالته */
+  /* يملأ كل عنصر يحمل data-amount بالقيمة معروضةً بلغة الواجهة.
+     ⚠ كان يكتب مخرَج SB.money() مباشرةً، وهو تجميع بفاصلة إنجليزية ثابتة:
+     المبلغ لم يكن يتبع اللغة إطلاقاً — لا فواصلَ ولا شكلَ أرقام ولا تجميعاً
+     هندياً (‏3,2 لللكه). ويمرّ الآن عبر SB.fmt.amount الذي يعيد Display،
+     فالمخرَج الوحيد .into(el) والقيمة القابلة للإرسال .machine وهي ASCII. */
   SB.renderAmounts = function (root) {
     $$("[data-amount]", root).forEach(function (el) {
       var raw = el.getAttribute("data-amount");
       var scale = Number(el.getAttribute("data-scale") || 2);
       var dash = el.getAttribute("data-dash") !== "false";
-      var out = SB.money(raw, scale);
-      var zero = out === null || out === "" || /^0(\.0+)?$/.test(out.replace(/,/g, ""));
+      var canonical = SB.money(raw, scale);
+      var zero = canonical === null || canonical === "" ||
+                 /^0(\.0+)?$/.test(String(canonical).replace(/,/g, ""));
       if (zero && dash) {
-        el.textContent = "–";
+        el.textContent = ((SB.I18N && SB.I18N.meta() && SB.I18N.meta().dates) || {}).emptyDash || "–";
         el.classList.add("amt--zero");
-      } else {
-        el.textContent = out === null ? "؟" : out;
-        el.classList.toggle("amt--neg", /^-/.test(out || ""));
-        el.classList.remove("amt--zero");
+        if (!el.hasAttribute("dir")) el.setAttribute("dir", "ltr");
+        return;
       }
-      if (!el.hasAttribute("dir")) el.setAttribute("dir", "ltr");
+      if (canonical === null) { el.textContent = T("common.label.badNumber"); el.classList.remove("amt--zero"); return; }
+      if (SB.fmt && SB.fmt.amount) {
+        SB.fmt.amount(raw, { scale: scale }).into(el);       /* ← المصرف الوحيد */
+      } else {
+        el.textContent = canonical;
+        if (!el.hasAttribute("dir")) el.setAttribute("dir", "ltr");
+      }
+      el.classList.toggle("amt--neg", /^-/.test(canonical));
+      el.classList.remove("amt--zero");
     });
   };
 
@@ -115,14 +150,8 @@
      التنظيف الفعلي مسؤولية حدّ التطبيق، لا المتصفّح.                       */
   /* مكتوبة بالهروب الصريح عمداً: لا يجوز أن يحمل هذا الملف نفسه محرفاً غير مرئي. */
   var INVISIBLE = /[\u200B-\u200F\u061C\u202A-\u202E\u2066-\u2069\uFEFF]/g;
-  var INVISIBLE_NAMES = {
-    "200B": "مسافة صفرية العرض", "200C": "فاصل عديم العرض", "200D": "واصل عديم العرض",
-    "200E": "علامة اليسار إلى اليمين", "200F": "علامة اليمين إلى اليسار",
-    "061C": "علامة الحرف العربي", "202A": "تضمين LTR", "202B": "تضمين RTL",
-    "202C": "إنهاء التضمين", "202D": "إلغاء LTR", "202E": "إلغاء RTL",
-    "2066": "عزل LTR", "2067": "عزل RTL", "2068": "عزل تلقائي", "2069": "إنهاء العزل",
-    "FEFF": "علامة ترتيب البايت"
-  };
+  /* ⚠ أسماء المحارف كانت مكتوبة عربيةً هنا. صارت مفاتيح common.charName.*
+     فيقرأ محاسبٌ هنديّ اسم المحرف الذي منع حفظ قيده بلغته هو. */
 
   SB.scanInvisible = function (text) {
     var found = [], m;
@@ -132,7 +161,11 @@
       while (hex.length < 4) hex = "0" + hex;
       if (found.indexOf(hex) === -1) found.push(hex);
     }
-    return found.map(function (h) { return { code: "U+" + h, name: INVISIBLE_NAMES[h] || "محرف تحكّم" }; });
+    return found.map(function (h) {
+      var key = "common.charName." + h;
+      var name = (SB.t && SB.t.has && SB.t.has(key)) ? T(key) : T("common.guard.unknownChar");
+      return { code: "U+" + h, name: name };
+    });
   };
 
   SB.guardInvisible = function (root) {
@@ -146,9 +179,9 @@
           el.setAttribute("aria-invalid", "true");
           if (box) {
             box.hidden = false;
-            box.textContent = "النصّ يحتوي محارف تحكّم غير مرئية (" +
-              hits.map(function (h) { return h.code + " " + h.name; }).join("، ") +
-              ") — سيرفضها الخادم لأنها تغيّر بصمة القيد. احذفها وأعد الكتابة يدوياً.";
+            box.textContent = T("common.guard.invisible", {
+              list: hits.map(function (h) { return h.code + " " + h.name; }).join(" · ")
+            });
           }
         } else {
           el.removeAttribute("aria-invalid");
@@ -162,14 +195,10 @@
   };
 
   /* ═══════════════════════════════════════════════════════ 4 · التواريخ
-     التخزين ميلادي دائماً. الهجري عرض فقط ولا يعود إلى التخزين. */
-  var MONTHS_AR = ["يناير","فبراير","مارس","أبريل","مايو","يونيو",
-                   "يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
-  var MONTHS_HIJRI = ["محرم","صفر","ربيع الأول","ربيع الآخر","جمادى الأولى","جمادى الآخرة",
-                      "رجب","شعبان","رمضان","شوال","ذو القعدة","ذو الحجة"];
-  var WEEKDAYS_AR = ["الأحد","الإثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"];
-  SB.MONTHS_AR = MONTHS_AR; SB.MONTHS_HIJRI = MONTHS_HIJRI;
-
+     التخزين ميلادي ISO دائماً. العرض من ملفّ اللغة (أسماء الشهور والأيام
+     والنمط)، لا من ثوابت عربية ولا من Intl.
+     ⚠ كانت MONTHS_AR/WEEKDAYS_AR مكتوبة هنا وتُستعمل في كل لغة، فكان التاريخ
+     يظهر عربياً تحت الإنجليزية والهندية. */
   SB.parseDate = function (text) {
     var s = SB.toLatinDigits(String(text || "")).trim().replace(/[-.]/g, "/");
     var m = /^(\d{4})\/(\d{1,2})\/(\d{1,2})$/.exec(s);
@@ -178,48 +207,37 @@
     return isNaN(d.getTime()) ? null : d;
   };
 
-  /* "٢٤ مايو ٢٠٢٦" ممنوع — الأرقام تبقى لاتينية دائماً */
-  SB.gregorianAr = function (date) {
-    if (!date) return "—";
-    return WEEKDAYS_AR[date.getUTCDay()] + "، " + date.getUTCDate() + " " +
-           MONTHS_AR[date.getUTCMonth()] + " " + date.getUTCFullYear() + " م";
-  };
-
-  SB.hijriAr = function (date) {
-    if (!date) return null;
-    try {
-      var f = new Intl.DateTimeFormat("en-u-ca-islamic-umalqura-nu-latn",
-        { day: "numeric", month: "numeric", year: "numeric", timeZone: "UTC" });
-      var parts = {}, list = f.formatToParts(date);
-      for (var i = 0; i < list.length; i++) parts[list[i].type] = list[i].value;
-      if (!parts.year || !parts.month || !parts.day) return null;
-      var mi = parseInt(parts.month, 10) - 1;
-      if (!(mi >= 0 && mi < 12)) return null;
-      return parts.day + " " + MONTHS_HIJRI[mi] + " " + parts.year + " هـ";
-    } catch (e) { return null; }
-  };
-
   SB.bindDateFields = function (root) {
     $$(".datefield", root || document).forEach(function (f) {
       var input = $("input", f), greg = $(".greg", f), hijri = $(".hijri", f);
       if (!input) return;
       var render = function () {
         var d = SB.parseDate(input.value);
-        if (greg) greg.textContent = SB.gregorianAr(d);
+        /* ⚠ الحقل نفسه لا يُلمَس: ما يُكتب فيه ASCII ويبقى ASCII.
+           السطر التوضيحي تحته عرضٌ محض ويمرّ بـDisplay.into(). */
+        if (greg && SB.fmt) SB.fmt.date(d, "long").into(greg);
         if (hijri) {
-          var h = SB.hijriAr(d);
+          var h = SB.fmt && SB.fmt.hijri ? SB.fmt.hijri(d) : null;
           hijri.hidden = !h;
-          if (h) hijri.textContent = h;
+          if (h) h.into(hijri);
         }
       };
-      input.addEventListener("input", render);
-      input.addEventListener("change", render);
+      if (!input.__sbDateBound) {
+        input.__sbDateBound = true;
+        input.addEventListener("input", render);
+        input.addEventListener("change", render);
+      }
       render();
     });
   };
 
   /* ═════════════════════════════════════════════════════ 5 · التفقيط
-     منقول كما هو من النموذج المعتمد — لا يُعاد تصميمه. */
+     منقول كما هو من النموذج المعتمد — لا يُعاد تصميمه.
+     ⚠ هذا مولّد **عربي** ولا يدّعي غير ذلك. الشاشات لا تسأل «هل اللغة عربية؟»
+     بل تسأل ملفّ اللغة: meta.amountInWords. لغة أخرى تريد التفقيط تُعلنه وتأتي
+     بمولّدها وتسجّله في SB.amountInWords. والسند المطبوع حالةٌ خاصة موثّقة:
+     التفقيط فيه مطلبٌ نظامي سعودي بالعربية أياً كانت لغة الواجهة، ولذلك
+     يحمل عنصره lang="ar" dir="rtl" صراحةً. */
   var ONES  = ["","واحد","اثنان","ثلاثة","أربعة","خمسة","ستة","سبعة","ثمانية","تسعة"];
   var TEENS = ["عشرة","أحد عشر","اثنا عشر","ثلاثة عشر","أربعة عشر","خمسة عشر","ستة عشر","سبعة عشر","ثمانية عشر","تسعة عشر"];
   var TENS  = ["","","عشرون","ثلاثون","أربعون","خمسون","ستون","سبعون","ثمانون","تسعون"];
@@ -262,6 +280,9 @@
     return (amount < 0 ? "سالب " : "") + words;
   };
 
+  /* سجلّ مولّدات التفقيط: الكود → دالّة. اللغة تُعلن القدرة، والسجلّ يوفّرها. */
+  SB.amountInWords = { ar: function (n) { return SB.tafqeet(n); } };
+
   /* ═══════════════════════════════════════════════════════ 6 · السمة */
   var STORE_KEY = "sb-theme";
   SB.getTheme = function () {
@@ -275,7 +296,7 @@
     $$("[data-theme-toggle]").forEach(function (b) {
       b.setAttribute("aria-pressed", String(t === "dark"));
       var lbl = b.querySelector("[data-theme-label]");
-      if (lbl) lbl.textContent = t === "dark" ? "المظهر الداكن" : "المظهر الفاتح";
+      if (lbl) lbl.textContent = T(t === "dark" ? "app.theme.dark" : "app.theme.light");
     });
   };
   SB.toggleTheme = function () { SB.setTheme(SB.getTheme() === "dark" ? "light" : "dark"); };
@@ -451,7 +472,12 @@
             seg.sort(function (a, b) {
               var av = a.cells[col] ? a.cells[col].textContent.trim() : "";
               var bv = b.cells[col] ? b.cells[col].textContent.trim() : "";
-              var r = numeric ? SB.sortValue(av) - SB.sortValue(bv) : av.localeCompare(bv, "ar");
+              /* ⚠ كان localeCompare(bv, "ar") — مقارِن عربي مثبّت يرتّب
+                 الإنجليزية والهندية بترتيب خاطئ. المقارِن الآن مقارِن اللغة
+                 النشطة، ويأتي من طبقة التدويل. */
+              var coll = (SB.I18N && SB.I18N.collator) ? SB.I18N.collator() : null;
+              var r = numeric ? SB.sortValue(av) - SB.sortValue(bv)
+                              : (coll ? coll.compare(av, bv) : (av < bv ? -1 : av > bv ? 1 : 0));
               return dir === "ascending" ? r : -r;
             });
             order = order.concat(seg); seg = [];
@@ -462,7 +488,7 @@
           });
           flush();
           order.forEach(function (r) { tbody.appendChild(r); });
-          SB.toast("رُتّب حسب: " + (btn.textContent || "").trim(), null, 1600);
+          SB.toast(T("common.toast.sortedBy", { column: (btn.textContent || "").trim() }), null, 1600);
         });
       });
     });
@@ -524,6 +550,14 @@
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", function () { SB.init(); });
   } else { SB.init(); }
+
+  /* تبديل اللغة يُعيد رسم كل ما لا يمرّ بـdata-i18n: المبالغ والتواريخ
+     وتسمية المظهر. الروابط نفسها لا تُعاد (كلها محروسة بـ__sb*). */
+  document.addEventListener("sb:localechange", function () {
+    SB.setTheme(SB.getTheme());
+    SB.renderAmounts(document);
+    SB.bindDateFields(document);
+  });
 
   global.SB = SB;
 })(window);

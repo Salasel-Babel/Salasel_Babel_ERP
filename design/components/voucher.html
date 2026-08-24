@@ -1,16 +1,23 @@
 <!doctype html>
-<html lang="ar" dir="rtl">
+<html lang="ar" dir="rtl" data-i18n-pending>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="سند قيد يومية قابل للطباعة — نموذج مستند عربي في نظام سلاسل بابل">
-<title>سند قيد يومية — طباعة</title>
+<meta name="description" content="سند قيد يومية قابل للطباعة" data-i18n-attr="content:screen.voucher.description">
+<title data-i18n="screen.voucher.docTitle">سند قيد يومية — طباعة</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="../tokens/tokens.css">
 <link rel="stylesheet" href="components.css">
 <link rel="stylesheet" href="print.css">
+<script src="../i18n/i18n.js" defer></script>
+<script src="../i18n/locales/manifest.js" defer></script>
+<script src="../i18n/locales/ar.js" defer></script>
+<script src="../i18n/locales/en.js" defer></script>
+<script src="../i18n/locales/ur.js" defer></script>
+<script src="../i18n/locales/hi.js" defer></script>
+<noscript><style>:root[data-i18n-pending] body{visibility:visible}</style></noscript>
 <style>
 /* ── عرض المستند على الشاشة (الطباعة تتكفّل بها print.css) ─────────────── */
 .paper-wrap{padding:var(--space-24) var(--space-16) var(--space-48);display:flex;justify-content:center}
@@ -28,7 +35,8 @@
 }
 .doc-head .org{flex:1;min-width:0}
 .doc-head .org h1{margin:0 0 var(--space-4);font-size:var(--font-size-5xl);font-weight:700;letter-spacing:var(--tracking-title)}
-.doc-head .org .en-name{margin:0 0 var(--space-6);font-size:var(--font-size-xs);color:var(--color-text-muted);direction:ltr;unicode-bidi:isolate}
+/* ⚠ لا direction:ltr هنا: الاسم الثانوي قد يكون بأي لغة. العزل يكفي. */
+.doc-head .org .en-name{margin:0 0 var(--space-6);font-size:var(--font-size-xs);color:var(--color-text-muted);unicode-bidi:isolate}
 .doc-head .org .meta{margin:0;font-size:var(--font-size-hint);color:var(--color-text-muted);line-height:var(--line-relaxed)}
 .doc-head .stamp{flex:none;text-align:center;font-size:var(--font-size-hint);color:var(--color-text-subtle)}
 .doc-head .stamp .qr{
@@ -38,7 +46,7 @@
 }
 .doc-title{display:flex;align-items:baseline;justify-content:space-between;gap:var(--space-16);flex-wrap:wrap;margin-bottom:var(--space-16)}
 .doc-title h2{margin:0;font-size:var(--font-size-3xl);font-weight:700}
-.doc-title .en{font-size:var(--font-size-xs);color:var(--color-text-subtle);direction:ltr;unicode-bidi:isolate}
+.doc-title .en{font-size:var(--font-size-xs);color:var(--color-text-subtle);unicode-bidi:isolate}
 .doc-kv{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--space-10) var(--space-16);margin-bottom:var(--space-18)}
 @media (max-width:620px){.doc-kv{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .doc-kv .k{font-size:var(--font-size-hint);color:var(--color-text-subtle);font-weight:600}
@@ -52,7 +60,8 @@ table.doc-table th{
 table.doc-table th.h-debit{background:var(--color-debit-soft);border-bottom-width:2px;border-bottom-color:var(--color-debit)}
 table.doc-table th.h-credit{background:var(--color-credit-soft);border-bottom-width:2px;border-bottom-color:var(--color-credit)}
 table.doc-table td{padding:var(--space-8) var(--space-10);border:var(--border-width) solid var(--color-border);vertical-align:top}
-table.doc-table td.n{text-align:start;font-variant-numeric:tabular-nums;white-space:nowrap}
+/* خانة رقمية: صندوق ltr و end بداخله = اليمين في كل اللغات (كما في .n) */
+table.doc-table td.n{direction:ltr;unicode-bidi:isolate;text-align:end;font-variant-numeric:tabular-nums;white-space:nowrap}
 table.doc-table td.d{color:var(--color-debit);font-weight:600}
 table.doc-table td.c{color:var(--color-credit);font-weight:600}
 table.doc-table tfoot td{background:var(--color-surface-sunken);font-weight:700;border-top:2px solid var(--color-text)}
@@ -74,9 +83,10 @@ table.doc-table tfoot td{background:var(--color-surface-sunken);font-weight:700;
 }
 .doc-foot .hash{direction:ltr;unicode-bidi:isolate;font-family:var(--font-mono);word-break:break-all;max-width:70%}
 .doc[data-status="draft"]::before{
-  content:"مسودة — غير مرحَّل";
-  position:absolute;top:42%;inset-inline-start:50%;
-  transform:translateX(50%) rotate(-24deg);
+  /* النصّ من ملفّ اللغة (‏content: لا تقرأ سمة)، والتوسيط بلا transform اتجاهي. */
+  content:var(--i18n-draftStamp,"DRAFT");
+  position:absolute;top:42%;inset-inline:0;margin-inline:auto;width:max-content;
+  transform:rotate(calc(-24deg * var(--flip-x,1)));
   font-size:56px;font-weight:700;color:color-mix(in srgb,var(--color-text) 8%,transparent);
   white-space:nowrap;pointer-events:none;
 }
@@ -98,14 +108,14 @@ table.doc-table tfoot td{background:var(--color-surface-sunken);font-weight:700;
 </svg>
 
 <div class="printbar no-print">
-  <a class="btn" href="../gallery.html"><svg width="15" height="15"><use href="#i-back"/></svg>رجوع إلى المعرض</a>
-  <button class="btn btn-primary" onclick="window.print()"><svg width="15" height="15"><use href="#i-print"/></svg>اطبع السند</button>
+  <a class="btn" href="../gallery.html"><svg width="15" height="15"><use href="#i-back"/></svg><span data-i18n="screen.voucher.backToGallery">رجوع إلى المعرض</span></a>
+  <button class="btn btn-primary" onclick="window.print()"><svg width="15" height="15"><use href="#i-print"/></svg><span data-i18n="screen.voucher.printIt">اطبع السند</span></button>
   <div class="seg plain" id="statusSeg">
-    <button aria-pressed="true" data-s="posted">مُرحَّل</button>
-    <button aria-pressed="false" data-s="draft">مسودة (يظهر الختم)</button>
+    <button data-i18n="acct.status.posted" aria-pressed="true" data-s="posted">مُرحَّل</button>
+    <button data-i18n="screen.voucher.draftWithStamp" aria-pressed="false" data-s="draft">مسودة (يظهر الختم)</button>
   </div>
-  <button class="iconbtn" data-theme-toggle aria-label="تبديل المظهر"><svg width="18" height="18"><use href="#i-moon"/></svg></button>
-  <span class="hint">اطبع إلى PDF لمعاينة ورقة الطباعة: تكرار رأس الجدول، والتفقيط، وخانات التوقيع، والبصمة.</span>
+  <button data-i18n-attr="aria-label:app.theme.toggle" class="iconbtn" data-theme-toggle aria-label="تبديل المظهر"><svg width="18" height="18"><use href="#i-moon"/></svg></button>
+  <span data-i18n="screen.voucher.printHint" class="hint">اطبع إلى PDF لمعاينة ورقة الطباعة: تكرار رأس الجدول، والتفقيط، وخانات التوقيع، والبصمة.</span>
 </div>
 
 <div class="paper-wrap">
@@ -113,77 +123,77 @@ table.doc-table tfoot td{background:var(--color-surface-sunken);font-weight:700;
 
   <header class="doc-head">
     <div class="org">
-      <h1>شركة سلاسل بابل التجارية</h1>
-      <p class="en-name">Salasel Babel Trading Co.</p>
+      <h1 data-i18n="app.org">شركة سلاسل بابل التجارية</h1>
+      <p data-i18n="app.orgEn" class="en-name">Salasel Babel Trading Co.</p>
       <p class="meta">
-        الرياض — طريق الملك فهد، مبنى ١٢٤٠<br>
-        السجل التجاري: <span class="ltr">1010XXXXXX</span> ·
-        الرقم الضريبي: <span class="ltr">300000000000003</span><br>
-        هاتف: <span class="ltr">+966 11 000 0000</span> ·
-        البريد: <span class="ltr">finance@example.sa</span>
+        <span data-i18n="screen.voucher.address"></span><br>
+        <span data-i18n="screen.voucher.cr"></span> <span class="ltr">1010XXXXXX</span> ·
+        <span data-i18n="screen.voucher.vatNo"></span> <span class="ltr">300000000000003</span><br>
+        <span data-i18n="screen.voucher.phone"></span> <span class="ltr">+966 11 000 0000</span> ·
+        <span data-i18n="screen.voucher.email"></span> <span class="ltr">finance@example.sa</span>
       </p>
     </div>
     <div class="stamp">
-      <div class="qr" aria-label="مكان رمز الاستجابة السريعة">
+      <div data-i18n-attr="aria-label:screen.voucher.qrAria" class="qr" aria-label="مكان رمز الاستجابة السريعة">
         <svg width="60" height="60" viewBox="0 0 60 60" fill="none" stroke="currentColor" stroke-width="3" opacity=".45" aria-hidden="true">
           <rect x="4" y="4" width="16" height="16"/><rect x="40" y="4" width="16" height="16"/><rect x="4" y="40" width="16" height="16"/>
           <path d="M28 8v8M28 24h8M40 28h8M28 40v8M40 40v16M48 48h8"/>
         </svg>
       </div>
-      رمز الاستجابة السريعة<br>يُولَّد عند الاعتماد
+      <span data-i18n="screen.voucher.qrCaption">رمز الاستجابة السريعة</span><br><span data-i18n="screen.voucher.qrCaption2">يُولَّد عند الاعتماد</span>
     </div>
   </header>
 
   <div class="doc-title">
-    <h2>سند قيد يومية</h2>
-    <span class="en">Journal Voucher · JV-2026-00125</span>
+    <h2 data-i18n="acct.entryVoucher">سند قيد يومية</h2>
+    <span class="en" data-i18n="acct.journalVoucher" lang="en" dir="ltr"></span>
   </div>
 
   <div class="doc-kv">
-    <div><div class="k">رقم القيد</div><div class="v num" dir="ltr">JV-2026-00125</div></div>
-    <div><div class="k">التاريخ</div><div class="v num" dir="ltr">2026/05/24</div></div>
-    <div><div class="k">التاريخ الهجري</div><div class="v">7 ذو الحجة 1447 هـ</div></div>
-    <div><div class="k">نوع القيد</div><div class="v">قيد مصروفات</div></div>
-    <div><div class="k">الفرع</div><div class="v">الفرع الرئيسي — الرياض</div></div>
-    <div><div class="k">الفترة المالية</div><div class="v num" dir="ltr">05/2026</div></div>
-    <div><div class="k">العملة</div><div class="v">ريال سعودي (ر.س)</div></div>
-    <div><div class="k">المرجع</div><div class="v num" dir="ltr">INV-0587-2026</div></div>
-    <div style="grid-column:1/-1"><div class="k">البيان العام</div>
-      <div class="v">مصروف خدمات تقنية عن الفترة 05/2026 شامل ضريبة القيمة المضافة 15%</div></div>
+    <div><div data-i18n="acct.columns.entryNo" class="k">رقم القيد</div><div class="v num" dir="ltr">JV-2026-00125</div></div>
+    <div><div data-i18n="acct.columns.date" class="k">التاريخ</div><div class="v num" dir="ltr" data-date-short="2026-05-24"></div></div>
+    <div><div data-i18n="screen.voucher.hijriDate" class="k">التاريخ الهجري</div><div class="v" id="v-hijri" data-date-hijri="2026-05-24"></div></div>
+    <div><div class="k" data-i18n="common.label.type"></div><div data-i18n="screen.journal.entryType" class="v">قيد مصروفات</div></div>
+    <div><div data-i18n="field.branch.label" class="k">الفرع</div><div data-i18n="field.branch.main" class="v">الفرع الرئيسي — الرياض</div></div>
+    <div><div data-i18n="field.period.label" class="k">الفترة المالية</div><div class="v num" dir="ltr">05/2026</div></div>
+    <div><div data-i18n="field.currency.label" class="k">العملة</div><div data-i18n="field.currency.sar" class="v">ريال سعودي (ر.س)</div></div>
+    <div><div data-i18n="field.reference.label" class="k">المرجع</div><div class="v num" dir="ltr">INV-0587-2026</div></div>
+    <div style="grid-column:1/-1"><div data-i18n="field.description.label" class="k">البيان العام</div>
+      <div data-i18n="field.description.value" class="v">مصروف خدمات تقنية عن الفترة 05/2026 شامل ضريبة القيمة المضافة 15%</div></div>
   </div>
 
   <table class="doc-table">
     <thead>
       <tr>
         <th style="width:34px">م</th>
-        <th>الحساب</th>
-        <th>البيان</th>
-        <th>مركز التكلفة</th>
-        <th class="h-debit" style="width:110px">مدين (ر.س)</th>
-        <th class="h-credit" style="width:110px">دائن (ر.س)</th>
+        <th data-i18n="acct.columns.account">الحساب</th>
+        <th data-i18n="acct.columns.memo">البيان</th>
+        <th data-i18n="acct.columns.costCentre">مركز التكلفة</th>
+        <th class="h-debit" style="width:110px" data-i18n="acct.debitCur"></th>
+        <th class="h-credit" style="width:110px" data-i18n="acct.creditCur"></th>
       </tr>
     </thead>
     <tbody>
       <tr>
         <td class="n">1</td>
-        <td><span class="acct-code">6120101</span> مصروف خدمات تقنية</td>
-        <td>مصروف خدمات تقنية</td>
-        <td>إدارة تقنية المعلومات</td>
+        <td><span class="acct-code">6120101</span> <span data-i18n="screen.journal.accounts.a6120101">مصروف خدمات تقنية</span></td>
+        <td data-i18n="screen.journal.accounts.a6120101">مصروف خدمات تقنية</td>
+        <td data-i18n="field.costCentre.it">إدارة تقنية المعلومات</td>
         <td class="n d"><span class="amt" data-amount="10000">—</span></td>
         <td class="n"><span class="amt amt--zero">–</span></td>
       </tr>
       <tr>
         <td class="n">2</td>
-        <td><span class="acct-code">121201</span> ضريبة القيمة المضافة — مدخلات</td>
-        <td>ضريبة القيمة المضافة 15%</td>
-        <td>إدارة مالية</td>
+        <td><span class="acct-code">121201</span> <span data-i18n="screen.journal.accounts.a121201">ضريبة القيمة المضافة — مدخلات</span></td>
+        <td data-i18n="screen.journal.memoVat"></td>
+        <td data-i18n="field.costCentre.finance">إدارة مالية</td>
         <td class="n d"><span class="amt" data-amount="1500">—</span></td>
         <td class="n"><span class="amt amt--zero">–</span></td>
       </tr>
       <tr>
         <td class="n">3</td>
-        <td><span class="acct-code">2010101</span> الدائنون / شركة التقنية</td>
-        <td>شركة التقنية — فاتورة 0587</td>
+        <td><span class="acct-code">2010101</span> <span data-i18n="screen.journal.accounts.a2010101">الدائنون / شركة التقنية</span></td>
+        <td data-i18n="screen.journal.vendorInvoice">شركة التقنية — فاتورة 0587</td>
         <td>—</td>
         <td class="n"><span class="amt amt--zero">–</span></td>
         <td class="n c"><span class="amt" data-amount="11500">—</span></td>
@@ -191,7 +201,7 @@ table.doc-table tfoot td{background:var(--color-surface-sunken);font-weight:700;
     </tbody>
     <tfoot>
       <tr>
-        <td colspan="4">الإجمالي</td>
+        <td data-i18n="acct.total" colspan="4">الإجمالي</td>
         <td class="n d"><span class="amt amt--total" data-amount="11500">—</span></td>
         <td class="n c"><span class="amt amt--total" data-amount="11500">—</span></td>
       </tr>
@@ -199,18 +209,19 @@ table.doc-table tfoot td{background:var(--color-surface-sunken);font-weight:700;
   </table>
 
   <div class="doc-words">
-    <span class="lbl">المبلغ كتابةً:</span>
-    <span id="words">أحد عشر ألفاً وخمسمائة ريال لا غير</span>
+    <span data-i18n="acct.amountInWords" class="lbl">المبلغ كتابةً:</span>
+    <!-- ⚠ التفقيط مطلبٌ نظامي سعودي بالعربية أياً كانت لغة الواجهة. -->
+    <span id="words" data-i18n-managed data-words="11500"></span>
   </div>
 
   <div class="doc-sign">
-    <div class="slot"><div class="line">أعدّه — مظفر العمري</div></div>
-    <div class="slot"><div class="line">راجعه — المحاسب المسؤول</div></div>
-    <div class="slot"><div class="line">اعتمده — المدير المالي</div></div>
+    <div class="slot"><div class="line" data-i18n="screen.voucher.preparedBy" data-i18n-params='{"name":"@app.userName"}'></div></div>
+    <div class="slot"><div data-i18n="screen.voucher.reviewedBy" class="line">راجعه — المحاسب المسؤول</div></div>
+    <div class="slot"><div data-i18n="screen.voucher.approvedBy" class="line">اعتمده — المدير المالي</div></div>
   </div>
 
   <footer class="doc-foot">
-    <span>طُبع في: <span class="ltr">2026-05-24 14:12 +03</span> · صفحة 1 من 1</span>
+    <span data-i18n="screen.voucher.printedAt" data-i18n-params='{"stamp":"2026-05-24 14:12 +03"}'></span>
     <span class="hash">entry_hash: 9f2c41d8ab77e0c3b5164a9e0d2f88aa31c7be5904d6f21e8b3a0c7d5e14f6b2</span>
   </footer>
 
@@ -219,18 +230,41 @@ table.doc-table tfoot td{background:var(--color-surface-sunken);font-weight:700;
 
 <script src="behaviors.js" defer></script>
 <script>
-document.addEventListener("DOMContentLoaded", function () {
-  var seg = document.getElementById("statusSeg"), doc = document.getElementById("doc");
-  seg.addEventListener("click", function (e) {
-    var b = e.target.closest("button[data-s]"); if (!b) return;
-    Array.prototype.forEach.call(seg.querySelectorAll("button"), function (x) {
-      x.setAttribute("aria-pressed", String(x === b));
+(function () {
+  "use strict";
+  function boot() {
+    SB.I18N.boot();
+    var seg = document.getElementById("statusSeg"), doc = document.getElementById("doc");
+    seg.addEventListener("click", function (e) {
+      var b = e.target.closest("button[data-s]"); if (!b) return;
+      SB.$$("button", seg).forEach(function (x) { x.setAttribute("aria-pressed", String(x === b)); });
+      doc.setAttribute("data-status", b.dataset.s);   /* هوية، لا نصّ مترجَم */
     });
-    doc.setAttribute("data-status", b.dataset.s);
-  });
-  /* التفقيط يُحسب من نفس القيمة المعروضة، لا من رقم مكتوب يدوياً */
-  if (window.SB) document.getElementById("words").textContent = SB.tafqeet(11500) + " لا غير";
-});
+
+    function render() {
+      SB.$$("[data-date-short]").forEach(function (n) { SB.fmt.date(n.getAttribute("data-date-short")).into(n); });
+      SB.$$("[data-date-hijri]").forEach(function (n) {
+        var h = SB.fmt.hijri(n.getAttribute("data-date-hijri"));
+        if (h) h.into(n); else SB.fmt.date(n.getAttribute("data-date-hijri"), "long").into(n);
+      });
+      /* التفقيط: قدرةٌ تعلنها اللغة. حين لا تعلنها يُقال ذلك صراحةً، بدل طبع
+         نصّ عربي في مستند إنجليزي أو هندي. */
+      var w = document.getElementById("words"); if (!w) return;
+      var amount = Number(w.getAttribute("data-words"));
+      if ((SB.I18N.meta() || {}).amountInWords && SB.tafqeet) {
+        w.textContent = SB.tafqeet(amount) + SB.t("screen.voucher.wordsSuffix");
+        w.setAttribute("lang", SB.I18N.active());
+      } else {
+        w.textContent = SB.t("screen.voucher.noWords");
+        w.removeAttribute("lang");
+      }
+    }
+    render();
+    SB.I18N.onChange(render);
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
+  else boot();
+})();
 </script>
 </body>
 </html>

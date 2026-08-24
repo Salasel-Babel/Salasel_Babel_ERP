@@ -1,0 +1,1372 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "سلاسل بابل — سطح دفتر الأستاذ / Salasel Babel — Ledger API",
+    "summary": "العقد المنشور بين الواجهات والخلفية. لا يقرأ فريق الواجهة شيفرة خلفية ليبني عليه.",
+    "description": "العزل التام بين الواجهات والخلفية: هذه الوثيقة هي كل ما يحتاجه فريق الواجهة، ولا يقرأ شيفرة خلفية.\n\nسياسة الإصدار — ما يبقى في v1 وما يفرض v2:\n• يبقى في v1: إضافة نقطة نهاية · إضافة حقل اختياري في استجابة · إضافة حقل اختياري في طلب له افتراض معلن · إضافة عضو إلى تعداد يُقرأ من الخادم إلى العميل · إضافة رمز خطأ جديد · توسيع مدى مسموح · تحسين نصّ وصف أو رسالة.\n• يفرض v2: حذف حقل أو نقطة نهاية · إعادة تسمية أي منهما · تضييق نوع أو مدى أو نمط · جعل حقل اختياري إلزامياً · تغيير معنى رمز خطأ قائم أو رمز الحالة الذي يصحبه · إزالة عضو من تعداد يُرسله العميل · تغيير الافتراض المعلن لحقل.\n• والقاعدة الحاكمة: تغييرٌ يجعل عميلاً مطابقاً للعقد القديم يعمل خطأً — لا يفشل، بل يعمل خطأً — هو v2 دائماً.\n\nTotal isolation between front end and back end: this document is everything a front-end team needs; it reads no back-end code.\n\nVersioning policy — what stays in v1 and what forces v2:\n• Stays in v1: adding an endpoint; adding an optional response field; adding an optional request field with a published default; adding a member to a server-to-client enum; adding a new error code; widening an allowed range; improving a description or message.\n• Forces v2: removing a field or endpoint; renaming either; narrowing a type, range, or pattern; making an optional field required; changing the meaning of an existing error code or the status that accompanies it; removing a member from a client-to-server enum; changing a field's published default.\n• The governing rule: a change that makes a client conforming to the old contract behave wrongly — not fail, but behave wrongly — is always v2.",
+    "version": "v1"
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "الخادم نفسه الذي تُقرأ منه هذه الوثيقة. / The same server this document is read from."
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/api/v1/companies/{companyId}/journal-entries": {
+      "parameters": [
+        {
+          "name": "companyId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "postJournalEntry",
+        "summary": "ترحيل قيد / Post a journal entry",
+        "description": "يرحّل قيداً عبر محرّك الترحيل. حصين ضد التكرار بمفتاح idempotencyKey: الوصول الثاني بالمفتاح نفسه يُرجع الإيصال ذاته و‏alreadyPosted = true ورمز 200 بدل 201، ولا يُنشئ قيداً ثانياً — مهما كان ترتيب الوصول.\n\nPosts an entry through the posting engine. Idempotent by idempotencyKey: a second arrival with the same key returns the same receipt with alreadyPosted = true and status 200 instead of 201, and never creates a second entry — whatever the arrival order.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PostJournalEntryRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostingReceipt"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "المفتاح نفسه رُحِّل من قبل: الإيصال ذاته و‏alreadyPosted = true. لا قيد ثانٍ. / The same key was already posted: the same receipt with alreadyPosted = true. No second entry.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostingReceipt"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "الجسم لا يطابق العقد: حقل غير معروف، أو مبلغ وصل رمزاً رقمياً، أو صيغة مرفوضة. / The body does not match the contract: an unknown field, an amount that arrived as a number token, or a refused spelling.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "تعارض مع حالة قائمة: فترة مقفلة، أو قيد معكوس من قبل. / Conflict with existing state: a closed period, or an already-reversed entry.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "الطلب مفهوم ومرفوض محاسبياً: قيد غير متوازن، أو دور لا يُحلّ إلى حساب. / Understood and refused on accounting grounds: an unbalanced entry, or a role that resolves to no account.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/companies/{companyId}/journal-entries/{entryId}": {
+      "parameters": [
+        {
+          "name": "companyId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "entryId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف القيد. / The entry identifier.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "readJournalEntry",
+        "summary": "قراءة قيد بسطوره / Read one entry with its lines",
+        "description": "يقرأ قيداً واحداً بسطوره داخل نطاق الشركة.\n\nReads a single entry with its lines within the company scope.",
+        "responses": {
+          "200": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JournalEntry"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "سطح قراءة القيد المفرد لم يهبط بعد في دفتر الأستاذ. الرمز الثابت: ledger.read.entry_surface_unavailable. / The single-entry read surface has not landed in the ledger yet. Stable code: ledger.read.entry_surface_unavailable.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/companies/{companyId}/journal-entries/{entryId}/reversal": {
+      "parameters": [
+        {
+          "name": "companyId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "entryId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف القيد. / The entry identifier.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "reverseJournalEntry",
+        "summary": "عكس قيد / Reverse an entry",
+        "description": "ينشئ قيد عكس مرتبطاً بالقيد الأصلي. القيد الأصلي لا يُمسّ ولا يُحذف ولا يُعدَّل — ولا يوجد على هذا السطح فعل حذف أصلاً.\n\nCreates a reversing entry linked to the original. The original is never touched, deleted, or amended — and no delete verb exists on this surface at all.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReverseJournalEntryRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostingReceipt"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "الجسم لا يطابق العقد: حقل غير معروف، أو مبلغ وصل رمزاً رقمياً، أو صيغة مرفوضة. / The body does not match the contract: an unknown field, an amount that arrived as a number token, or a refused spelling.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "تعارض مع حالة قائمة: فترة مقفلة، أو قيد معكوس من قبل. / Conflict with existing state: a closed period, or an already-reversed entry.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "الطلب مفهوم ومرفوض محاسبياً: قيد غير متوازن، أو دور لا يُحلّ إلى حساب. / Understood and refused on accounting grounds: an unbalanced entry, or a role that resolves to no account.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/companies/{companyId}/ledger-chain/verification": {
+      "parameters": [
+        {
+          "name": "companyId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "verifyLedgerChain",
+        "summary": "إعادة التحقق من سلسلة البصمات / Verify the hash chain",
+        "description": "يعيد بناء كل مستند من الحقيقة المجالية المخزَّنة ويقارن بصمته، ويسمّي أول تسلسل منحرف إن وُجد.\n\nRebuilds every document from the stored domain truth, compares its hash, and names the first divergent sequence if any.",
+        "parameters": [
+          {
+            "name": "book",
+            "in": "query",
+            "required": true,
+            "description": "الدفتر داخل الشركة. / The book within the company.",
+            "schema": {
+              "type": "string",
+              "maxLength": 32
+            }
+          },
+          {
+            "name": "fiscalYear",
+            "in": "query",
+            "required": true,
+            "description": "السنة المالية الميلادية بأربعة أرقام لاتينية. / The Gregorian fiscal year, four Latin digits.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]{4}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChainVerification"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/companies/{companyId}/trial-balance": {
+      "parameters": [
+        {
+          "name": "companyId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "readTrialBalance",
+        "summary": "ميزان المراجعة / Trial balance",
+        "description": "ميزان المراجعة مبنيّاً من سطور القيود غير القابلة للتعديل — لا من جدول الأرصدة. ولا يحمل مجموعاً: جمع عمود مالي حساب على المال، ولا يقع في طبقة HTTP.\n\nThe trial balance built from the immutable journal lines — not from the balance table. It carries no totals: summing a monetary column is money arithmetic and does not happen in the HTTP layer.",
+        "parameters": [
+          {
+            "name": "book",
+            "in": "query",
+            "required": true,
+            "description": "الدفتر داخل الشركة. / The book within the company.",
+            "schema": {
+              "type": "string",
+              "maxLength": 32
+            }
+          },
+          {
+            "name": "period",
+            "in": "query",
+            "required": false,
+            "description": "رمز الفترة yyyy-MM ميلادياً، أو غيابه فكل الفترات. / Gregorian period code yyyy-MM, or omit for all periods.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrialBalance"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "health",
+        "summary": "حالة الخدمة وثقافتها / Service health and culture",
+        "description": "تُرجع حالة الخدمة، وثقافة العملية وتقويمها الافتراضي. خارج المصادقة وخارج نطاق الشركة.\n\nReturns service status plus the process culture and its default calendar. Unauthenticated and outside company scope.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "الهوية — المستأجر والمستخدم والشركات المسموح بلوغها — تُشتق من الاعتماد وحده. لا ترويسة مستأجر يكتبها العميل، ولا حقل مستأجر في أي جسم. / Identity — tenant, user, and reachable companies — is derived from the credential alone. No client-written tenant header, and no tenant field in any body."
+      }
+    },
+    "schemas": {
+      "ApiError": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 128,
+            "description": "الرمز الثابت — نقطة الاعتماد البرمجية الوحيدة. لا يُقرأ نصّ رسالة لاتخاذ قرار أبداً. / The stable code — the only thing to program against. Message text is never parsed to make a decision."
+          },
+          "field": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 128,
+            "description": "الحقل المعنيّ على السلك. / The wire field concerned."
+          },
+          "messageAr": {
+            "type": "string",
+            "maxLength": 2048,
+            "description": "الرسالة العربية. / The Arabic message."
+          },
+          "messageEn": {
+            "type": "string",
+            "maxLength": 2048,
+            "description": "الرسالة الإنجليزية. / The English message."
+          }
+        },
+        "required": [
+          "code",
+          "field",
+          "messageAr",
+          "messageEn"
+        ],
+        "additionalProperties": false
+      },
+      "ChainVerification": {
+        "type": "object",
+        "description": "حكم إعادة التحقق. ولماذا «أول تسلسل منحرف» لا «هل السلسلة سليمة»: المدقّق يسأل أين ومتى وما الذي بعده يجب أن يُراجَع؛ وإجابة منطقية واحدة لا تصلح تقريراً. / The re-verification verdict. Why the first divergent sequence rather than a boolean: an auditor asks where, when, and what after it must be reviewed — a single boolean is not a report.",
+        "properties": {
+          "checked": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100000000,
+            "description": "عدد السجلات المفحوصة، بما فيها السجل المنحرف. / The number of records checked, including the divergent one."
+          },
+          "detail": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 4096,
+            "description": "تفاصيل فنّية: البصمات المتوقّعة والمخزَّنة. / Technical detail: the expected and stored hashes."
+          },
+          "firstDivergentSequence": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Int64String"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "أول رقم تسلسل منحرف، أو null. / The first divergent sequence number, or null."
+          },
+          "ok": {
+            "type": "boolean",
+            "description": "هل النطاق سليم كاملاً؟ / Is the whole scope intact?"
+          },
+          "reasonAr": {
+            "type": "string",
+            "maxLength": 2048,
+            "description": "شرح عربي صالح للعرض في تقرير تدقيق. / An Arabic explanation fit for an audit report."
+          },
+          "verdict": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "رمز الحكم الثابت. / The stable verdict code."
+          }
+        },
+        "required": [
+          "checked",
+          "detail",
+          "firstDivergentSequence",
+          "ok",
+          "reasonAr",
+          "verdict"
+        ],
+        "additionalProperties": false
+      },
+      "ClosedPeriodAuthorisation": {
+        "type": "object",
+        "description": "إذن استثنائي بالترحيل في فترة مقفلة. ليس علماً منطقياً بل إذن موثَّق: من أذن وبأي صلاحية ولأي سبب. والفترة المقفلة نهائياً لا يفتحها هذا الإذن ولا غيره. / A documented exceptional permission to post into a closed period — who authorised it, under which permission, and why. A permanently closed period is opened by no permission.",
+        "properties": {
+          "authorisedBy": {
+            "type": "string",
+            "maxLength": 36,
+            "description": "معرّف المُصرِّح — مستخدم حقيقي، لا فاعل نظام. / The authoriser — a real user, never a system actor."
+          },
+          "permissionCode": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "رمز الصلاحية الاستثنائية. / The exceptional permission code."
+          },
+          "reason": {
+            "$ref": "#/components/schemas/LocalizedText"
+          }
+        },
+        "required": [
+          "authorisedBy",
+          "permissionCode",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "ExchangeRate": {
+        "type": "string",
+        "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,8})?$",
+        "description": "سعر صرف نصّاً بمقياس لا يتجاوز ثمانياً، بالقواعد نفسها التي تحكم المبالغ. / An exchange rate as a string with at most eight decimal places, under the same rules as amounts."
+      },
+      "HealthResponse": {
+        "type": "object",
+        "properties": {
+          "apiVersion": {
+            "type": "string",
+            "maxLength": 8,
+            "description": "إصدار السطح. / The surface version."
+          },
+          "calendar": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "التقويم الافتراضي لتلك الثقافة. GregorianCalendar هو المتوقّع؛ UmAlQuraCalendar يعني أن أي تنسيق تاريخ ضمني على هذا الخادم يكتب هجرياً. / The default calendar of that culture. GregorianCalendar is expected; UmAlQuraCalendar means any implicit date formatting on this server writes Hijri."
+          },
+          "culture": {
+            "type": "string",
+            "maxLength": 32,
+            "description": "ثقافة العملية الفعلية. / The actual process culture."
+          },
+          "status": {
+            "type": "string",
+            "maxLength": 16,
+            "description": "الحالة. / The status."
+          }
+        },
+        "required": [
+          "apiVersion",
+          "calendar",
+          "culture",
+          "status"
+        ],
+        "additionalProperties": false
+      },
+      "Int64String": {
+        "type": "string",
+        "pattern": "^-?(0|[1-9][0-9]*)$",
+        "description": "عدد صحيح 64 بت نصّاً: Number في JavaScript يفقد الدقّة فوق 2^53، ورقم القيد معرّف لا كمّية. / A 64-bit integer as a string: JavaScript Number loses precision above 2^53, and an entry number is an identifier, not a quantity."
+      },
+      "JournalEntry": {
+        "type": "object",
+        "properties": {
+          "book": {
+            "type": "string",
+            "maxLength": 32,
+            "description": "الدفتر. / The book."
+          },
+          "chainSequence": {
+            "$ref": "#/components/schemas/Int64String"
+          },
+          "currency": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$",
+            "description": "رمز عملة ISO 4217 بثلاثة محارف لاتينية كبيرة. واللاتينية هنا شرط سلامة سلسلة التجزئة لا تفضيل عرض. / An ISO 4217 currency code, three upper-case ASCII letters. ASCII here is a hash-chain safety requirement, not a display preference."
+          },
+          "entryDate": {
+            "type": "string",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+            "description": "تاريخ القيد الميلادي. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The Gregorian entry date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period."
+          },
+          "entryHash": {
+            "type": "string",
+            "maxLength": 128,
+            "description": "بصمة القيد. / The entry hash."
+          },
+          "entryId": {
+            "type": "string",
+            "maxLength": 36,
+            "description": "معرّف القيد. / The entry identifier."
+          },
+          "entryNumber": {
+            "$ref": "#/components/schemas/Int64String"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/JournalLine"
+            },
+            "description": "سطور القيد. / The entry's lines."
+          },
+          "memoAr": {
+            "type": "string",
+            "maxLength": 512,
+            "description": "البيان بالعربية. / The memo in Arabic."
+          },
+          "memoEn": {
+            "type": "string",
+            "maxLength": 512,
+            "description": "البيان بالإنجليزية. / The memo in English."
+          },
+          "periodCode": {
+            "type": "string",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$",
+            "description": "رمز الفترة المالية yyyy-MM ميلادياً دائماً — لا يتغيّر بثقافة الخادم ولا بثقافة العميل. / The fiscal period code yyyy-MM, always Gregorian — unaffected by server or client culture."
+          },
+          "reversesEntryId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 36,
+            "description": "القيد الذي يعكسه هذا القيد، إن كان قيد عكس. / The entry this one reverses, when it is a reversal."
+          },
+          "status": {
+            "type": "string",
+            "maxLength": 32,
+            "description": "حالة القيد. / The entry status."
+          }
+        },
+        "required": [
+          "book",
+          "chainSequence",
+          "currency",
+          "entryDate",
+          "entryHash",
+          "entryId",
+          "entryNumber",
+          "lines",
+          "memoAr",
+          "memoEn",
+          "periodCode",
+          "reversesEntryId",
+          "status"
+        ],
+        "additionalProperties": false
+      },
+      "JournalLine": {
+        "type": "object",
+        "properties": {
+          "credit": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "currency": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$",
+            "description": "رمز عملة ISO 4217 بثلاثة محارف لاتينية كبيرة. واللاتينية هنا شرط سلامة سلسلة التجزئة لا تفضيل عرض. / An ISO 4217 currency code, three upper-case ASCII letters. ASCII here is a hash-chain safety requirement, not a display preference."
+          },
+          "debit": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "descriptionAr": {
+            "type": "string",
+            "maxLength": 512,
+            "description": "بيان السطر بالعربية. / The line narration in Arabic."
+          },
+          "descriptionEn": {
+            "type": "string",
+            "maxLength": 512,
+            "description": "بيان السطر بالإنجليزية. / The line narration in English."
+          },
+          "lineNo": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000,
+            "description": "رقم السطر. / The line number."
+          },
+          "qualifier": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "مؤهّل الدور. / The role qualifier."
+          },
+          "role": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "رمز الدور كما خُزِّن. / The role code as stored."
+          }
+        },
+        "required": [
+          "credit",
+          "currency",
+          "debit",
+          "descriptionAr",
+          "descriptionEn",
+          "lineNo",
+          "qualifier",
+          "role"
+        ],
+        "additionalProperties": false
+      },
+      "LocalizedText": {
+        "type": "object",
+        "description": "نصّ ثنائي اللغة. الطرفان إلزاميان — العربية أساسية لا ترجمة ثانية. / Bilingual text; both sides are mandatory.",
+        "properties": {
+          "ar": {
+            "type": "string",
+            "maxLength": 512,
+            "description": "النصّ العربي. / The Arabic text."
+          },
+          "en": {
+            "type": "string",
+            "maxLength": 512,
+            "description": "النصّ الإنجليزي. / The English text."
+          }
+        },
+        "required": [
+          "ar",
+          "en"
+        ],
+        "additionalProperties": false
+      },
+      "Money": {
+        "type": "string",
+        "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$",
+        "description": "مبلغ نصّاً، بمقياس لا يتجاوز أربع خانات عشرية. النحو المقبول كاملاً: -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — فتُرفض الصيغة الأسّية، والصفر البادئ، والإشارة الموجبة الصريحة، والفراغ، والأرقام العربية-الهندية والديفاناغارية، وكل ما زاد على أربع خانات. ورمزٌ رقمي في هذا الحقل يُرفض الطلب بسببه: JSON لا يملك نوعاً عشرياً، وأغلب العملاء يمرّرون الرمز الرقمي على فاصلة عائمة ثنائية فيقع فقدان الدقّة قبل أن يصل الطلب. / An amount as a string with at most four decimal places. The full accepted grammar is -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — exponent notation, leading zeros, an explicit plus sign, whitespace, Arabic-Indic and Devanagari digits, and any fifth decimal are all refused. A JSON number token in this field fails the request: JSON has no decimal type, and most clients route a number token through a binary double, so precision is lost before the request arrives.",
+        "examples": [
+          "0.4013",
+          "-1250.0000",
+          "100"
+        ]
+      },
+      "NameValue": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 128,
+            "description": "الاسم. / The name."
+          },
+          "value": {
+            "type": "string",
+            "maxLength": 256,
+            "description": "القيمة. / The value."
+          }
+        },
+        "required": [
+          "name",
+          "value"
+        ],
+        "additionalProperties": false
+      },
+      "NamedAmount": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "اسم المبلغ كما تعرّفه مصفوفة الترحيل. / The amount name as the posting matrix defines it."
+          },
+          "value": {
+            "$ref": "#/components/schemas/Money"
+          }
+        },
+        "required": [
+          "name",
+          "value"
+        ],
+        "additionalProperties": false
+      },
+      "PostJournalEntryRequest": {
+        "type": "object",
+        "description": "طلب ترحيل. ولاحظ ما ليس فيه: لا حقل مستأجر ولا حقل شركة — النطاق من الاعتماد ومن المسار. وأي حقل غير معروف يُرفض الطلب كلّه بسببه. / A posting request. Note what is absent: no tenant field and no company field — scope comes from the credential and the path. Any unknown field fails the whole request.",
+        "properties": {
+          "amounts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NamedAmount"
+            },
+            "description": "مفردات المبالغ التي يقرؤها قالب الحدث. / The amount vocabulary the event template reads."
+          },
+          "book": {
+            "type": "string",
+            "maxLength": 32,
+            "description": "الدفتر داخل الشركة. الافتراضي MAIN. / The book within the company. Default MAIN."
+          },
+          "closedPeriodAuthorisation": {
+            "$ref": "#/components/schemas/ClosedPeriodAuthorisation"
+          },
+          "currency": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$",
+            "description": "رمز عملة ISO 4217 بثلاثة محارف لاتينية كبيرة. واللاتينية هنا شرط سلامة سلسلة التجزئة لا تفضيل عرض. / An ISO 4217 currency code, three upper-case ASCII letters. ASCII here is a hash-chain safety requirement, not a display preference."
+          },
+          "documentDate": {
+            "type": "string",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+            "description": "تاريخ المستند الميلادي. الفترة المالية تُشتق منه داخل الدفتر. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The Gregorian document date; the ledger derives the fiscal period from it. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period."
+          },
+          "dimensions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NameValue"
+            },
+            "description": "الأبعاد التحليلية على مستوى الطلب. / Analytical dimensions at request level."
+          },
+          "event": {
+            "type": "string",
+            "maxLength": 128,
+            "description": "رمز الحدث في مصفوفة الترحيل، إن كان الطلب على مسار القالب. / The posting-matrix event code, when the request uses the template path."
+          },
+          "exchangeRate": {
+            "$ref": "#/components/schemas/ExchangeRate"
+          },
+          "facts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NameValue"
+            },
+            "description": "وقائع السياق التي تُقيَّم عليها الشروط وقواعد الحجب. / Context facts against which conditions and guard rules are evaluated."
+          },
+          "generation": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000,
+            "description": "جيل الترحيل. يبدأ من 1 ولا يزيد إلا بعد عكس مشروع. / The posting generation. Starts at 1 and increases only after a legitimate reversal."
+          },
+          "idempotencyKey": {
+            "type": "string",
+            "maxLength": 128,
+            "description": "مفتاح الحصانة ضد التكرار، محارف [0-9A-Za-z-_:.] فقط. مستقلّ عن الترتيب. / The idempotency key, characters [0-9A-Za-z-_:.] only. Order-independent."
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PostingLine"
+            },
+            "description": "سطور الطلب للمسار الصريح. تكون فارغة حين يُضبط event. / The request lines for the explicit path; empty when event is set."
+          },
+          "narration": {
+            "$ref": "#/components/schemas/LocalizedText"
+          },
+          "source": {
+            "$ref": "#/components/schemas/SourceDocument"
+          },
+          "trigger": {
+            "type": "string",
+            "enum": [
+              "OnApproval",
+              "OnReceipt",
+              "OnSettlement",
+              "Periodic",
+              "Reversal"
+            ],
+            "description": "الحدث الذي أطلق الترحيل. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / What triggered the posting. Matched literally and case-sensitively; a number is never accepted in place of a name."
+          }
+        },
+        "required": [
+          "documentDate",
+          "idempotencyKey",
+          "narration",
+          "source",
+          "trigger"
+        ],
+        "additionalProperties": false
+      },
+      "PostingLine": {
+        "type": "object",
+        "description": "سطر ترحيل. ولاحظ ما ليس فيه: لا حساب ولا رقم حساب. السطر يحمل دوراً، والدور يُحلّ إلى حساب داخل الدفتر عبر خريطة هذه الشركة — فتعديل دليل الحسابات صفٌّ في جدول، لا نشرُ إصدار. / A posting line. Note what is absent: no account, no account code. A line carries a role; the ledger resolves the role to an account through this company's map, so changing the chart of accounts is a table row, not a release.",
+        "properties": {
+          "amount": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "dimensions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NameValue"
+            },
+            "description": "أبعاد هذا السطر فوق أبعاد الطلب. / Dimensions for this line on top of the request dimensions."
+          },
+          "narration": {
+            "$ref": "#/components/schemas/LocalizedText"
+          },
+          "qualifier": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "مؤهّل الدور حين يُحلّ الدور الواحد إلى حسابات متعددة. / The role qualifier when one role resolves to several accounts."
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "NetAmount",
+              "OutputTax",
+              "InputTax",
+              "GrossAmount",
+              "Discount",
+              "Retention",
+              "AdvanceSettlement",
+              "CostOfGoodsSold",
+              "InventoryMovement",
+              "Settlement",
+              "RoundingDifference",
+              "ExchangeDifference",
+              "Accrual",
+              "Depreciation"
+            ],
+            "description": "دور السطر في الحدث التجاري — لا حساباً. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The line's role in the business event — never an account. Matched literally and case-sensitively; a number is never accepted in place of a name."
+          },
+          "scope": {
+            "$ref": "#/components/schemas/Scope"
+          },
+          "side": {
+            "type": "string",
+            "enum": [
+              "Debit",
+              "Credit"
+            ],
+            "description": "الجانب. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The side. Matched literally and case-sensitively; a number is never accepted in place of a name."
+          },
+          "subledger": {
+            "$ref": "#/components/schemas/Subledger"
+          }
+        },
+        "required": [
+          "amount",
+          "role",
+          "side"
+        ],
+        "additionalProperties": false
+      },
+      "PostingReceipt": {
+        "type": "object",
+        "properties": {
+          "alreadyPosted": {
+            "type": "boolean",
+            "description": "هل كان مفتاح الحصانة مُرحَّلاً من قبل؟ الوصول الثاني لا يفعل شيئاً ولا يُعدّ خطأ. / Was the idempotency key already posted? A second arrival does nothing and is not an error."
+          },
+          "chainSequence": {
+            "$ref": "#/components/schemas/Int64String"
+          },
+          "entryHash": {
+            "type": "string",
+            "maxLength": 128,
+            "description": "بصمة القيد في السلسلة، hex صغير. / The entry hash in the chain, lower-case hex."
+          },
+          "entryId": {
+            "type": "string",
+            "maxLength": 36,
+            "description": "معرّف القيد. / The entry identifier."
+          },
+          "entryNumber": {
+            "$ref": "#/components/schemas/Int64String"
+          },
+          "generation": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000,
+            "description": "جيل الترحيل. / The posting generation."
+          },
+          "lineCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000,
+            "description": "عدد السطور الناتجة بعد تقييم الشروط. / The number of resulting lines after conditions were evaluated."
+          },
+          "periodCode": {
+            "type": "string",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$",
+            "description": "رمز الفترة المالية yyyy-MM ميلادياً دائماً — لا يتغيّر بثقافة الخادم ولا بثقافة العميل. / The fiscal period code yyyy-MM, always Gregorian — unaffected by server or client culture."
+          }
+        },
+        "required": [
+          "alreadyPosted",
+          "chainSequence",
+          "entryHash",
+          "entryId",
+          "entryNumber",
+          "generation",
+          "lineCount",
+          "periodCode"
+        ],
+        "additionalProperties": false
+      },
+      "Problem": {
+        "type": "object",
+        "description": "تفاصيل المشكلة بصيغة RFC 9457 بامتدادين: رمز ثابت، ورسالة عربية إلى جانب الإنجليزية. ولا يعبر منها أبداً: نصّ خطأ قاعدة بيانات، أو أثر مكدّس، أو شذرة SQL. / RFC 9457 problem details with two extensions: a stable code and an Arabic message alongside the English one. Never crossing: database error text, a stack trace, or a SQL fragment.",
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 128,
+            "description": "رمز أول خطأ — نقطة الاعتماد البرمجية. / The first error's code — the programmatic contract."
+          },
+          "detail": {
+            "type": "string",
+            "maxLength": 2048,
+            "description": "شرح بالإنجليزية. / The English explanation."
+          },
+          "detailAr": {
+            "type": "string",
+            "maxLength": 2048,
+            "description": "شرح بالعربية. / The Arabic explanation."
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiError"
+            },
+            "description": "كل الأخطاء لا أوّلها فقط: قيد يخالف ثلاث قواعد يُرجعها الثلاث في نداء واحد. / Every error, not just the first: an entry that breaks three rules returns all three in one call."
+          },
+          "instance": {
+            "type": "string",
+            "maxLength": 512,
+            "description": "مسار الطلب. / The request path."
+          },
+          "status": {
+            "type": "integer",
+            "minimum": 100,
+            "maximum": 599,
+            "description": "رمز حالة HTTP. / The HTTP status code."
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 256,
+            "description": "عنوان قصير بالإنجليزية. / A short English title."
+          },
+          "titleAr": {
+            "type": "string",
+            "maxLength": 256,
+            "description": "عنوان قصير بالعربية. / A short Arabic title."
+          },
+          "traceId": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "معرّف التتبّع — الرابط الوحيد مع سجلّ الخادم. / The trace id — the only link to the server log."
+          },
+          "type": {
+            "type": "string",
+            "maxLength": 512,
+            "description": "المرجع الذي يُعرّف نوع المشكلة. / The reference that identifies the problem type."
+          }
+        },
+        "required": [
+          "code",
+          "detail",
+          "detailAr",
+          "errors",
+          "instance",
+          "status",
+          "title",
+          "titleAr",
+          "traceId",
+          "type"
+        ],
+        "additionalProperties": false
+      },
+      "ReverseJournalEntryRequest": {
+        "type": "object",
+        "properties": {
+          "closedPeriodAuthorisation": {
+            "$ref": "#/components/schemas/ClosedPeriodAuthorisation"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/LocalizedText"
+          },
+          "reversalDate": {
+            "type": "string",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+            "description": "تاريخ قيد العكس، أو غيابه فيُتخذ تاريخ القيد الأصلي. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The reversing entry's date; omit to take the original entry's date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period."
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "Scope": {
+        "type": "object",
+        "properties": {
+          "branchId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 64,
+            "description": "الفرع. / The branch."
+          },
+          "costCenterId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 64,
+            "description": "مركز التكلفة. / The cost centre."
+          },
+          "projectId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 64,
+            "description": "المشروع. / The project."
+          }
+        },
+        "additionalProperties": false
+      },
+      "SourceDocument": {
+        "type": "object",
+        "properties": {
+          "module": {
+            "type": "string",
+            "enum": [
+              "Core",
+              "Ledger",
+              "Sales",
+              "Purchasing",
+              "Compliance",
+              "Inventory",
+              "Pos",
+              "Hr",
+              "Projects",
+              "RealEstate",
+              "Assets",
+              "Portals",
+              "Ai"
+            ],
+            "description": "الوحدة المالكة للمستند. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The module that owns the document. Matched literally and case-sensitively; a number is never accepted in place of a name."
+          },
+          "documentType": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "نوع المستند داخل تلك الوحدة. / The document type within that module."
+          },
+          "documentId": {
+            "type": "string",
+            "maxLength": 128,
+            "description": "معرّف المستند داخل تلك الوحدة. / The document identifier within that module."
+          }
+        },
+        "required": [
+          "documentId",
+          "documentType",
+          "module"
+        ],
+        "additionalProperties": false
+      },
+      "Subledger": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "None",
+              "Customer",
+              "Supplier",
+              "Employee",
+              "Asset",
+              "Treasury"
+            ],
+            "description": "نوع الدفتر المساعد. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The subledger kind. Matched literally and case-sensitively; a number is never accepted in place of a name."
+          },
+          "partyId": {
+            "type": "string",
+            "maxLength": 128,
+            "description": "معرّف الطرف داخل الوحدة المالكة له. / The party identifier within its owning module."
+          }
+        },
+        "required": [
+          "kind",
+          "partyId"
+        ],
+        "additionalProperties": false
+      },
+      "TrialBalance": {
+        "type": "object",
+        "description": "ميزان المراجعة بلا مجموع: جمع عمود مالي حساب على المال ولا يقع في طبقة HTTP، وجمعُه في المتصفّح يعيد الفخّ نفسه إلى العميل لأن Number فاصلة عائمة ثنائية. الموضع الصحيح للمجموع sum() على numeric. / The trial balance without totals: summing a monetary column is money arithmetic and does not belong in the HTTP layer, and summing it in the browser reproduces the same trap because Number is a binary float. Totals belong in sum() over numeric.",
+        "properties": {
+          "book": {
+            "type": "string",
+            "maxLength": 32,
+            "description": "الدفتر. / The book."
+          },
+          "periodCode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$",
+            "description": "رمز الفترة المالية yyyy-MM ميلادياً، أو null حين يشمل الطلب كل الفترات. / The fiscal period code yyyy-MM, or null when the request spans all periods."
+          },
+          "rowCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000000,
+            "description": "عدد الصفوف. / The number of rows."
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TrialBalanceRow"
+            },
+            "description": "الصفوف مرتَّبة برمز الحساب. / The rows ordered by account code."
+          }
+        },
+        "required": [
+          "book",
+          "periodCode",
+          "rowCount",
+          "rows"
+        ],
+        "additionalProperties": false
+      },
+      "TrialBalanceRow": {
+        "type": "object",
+        "properties": {
+          "accountCode": {
+            "type": "string",
+            "maxLength": 32,
+            "description": "رمز الحساب كما هو في دليل حسابات هذه الشركة. / The account code as it stands in this company's chart of accounts."
+          },
+          "credit": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "debit": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "nameAr": {
+            "type": "string",
+            "maxLength": 256,
+            "description": "الاسم العربي. / The Arabic name."
+          },
+          "nameEn": {
+            "type": "string",
+            "maxLength": 256,
+            "description": "الاسم الإنجليزي. / The English name."
+          }
+        },
+        "required": [
+          "accountCode",
+          "credit",
+          "debit",
+          "nameAr",
+          "nameEn"
+        ],
+        "additionalProperties": false
+      }
+    }
+  }
+}

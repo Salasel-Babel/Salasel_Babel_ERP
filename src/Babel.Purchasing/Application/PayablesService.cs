@@ -312,6 +312,31 @@ public sealed class PayablesService : IApplicationService
     {
         List<OpenItem> items = [];
 
+        List<SupplierBillRow> bills = await _database.Bills
+            .AsNoTracking()
+            .Where(row => row.TenantId == tenant.Value
+                          && row.State == PurchasingDocumentState.Posted
+                          && row.IssuedOn <= asOf)
+            .OrderBy(row => row.IssuedOn).ThenBy(row => row.Number)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        // ── إعفاء «بضاعة مستلمة لم تُفوتر» بالمُرحَّل وحده ────────────────────
+        // حقل GoodsReceiptRow.BilledValue يزيد عند إنشاء مسوّدة الفاتورة، لأنه
+        // حجز للمطابقة الثلاثية يمنع تفويتر الاستلام نفسه مرّتين. أمّا الحساب
+        // الضابط فلا يُعفى إلا عند الترحيل. فلو أعفى الدفتر المساعد البند المفتوح
+        // بالمسوّدة، لنقص عن حسابه الضابط بقيمة كل فاتورة مخزنية لم تُرحَّل بعد —
+        // انحرافاً صامتاً لا يُسمّي مستنداً واحداً مسؤولاً عنه. الإعفاء هنا من
+        // الفواتير المُرحَّلة وحدها.
+        Dictionary<Guid, decimal> relieved = [];
+        foreach (SupplierBillRow bill in bills)
+        {
+            if (bill.ReceiptId is { } receiptId)
+            {
+                relieved[receiptId] = relieved.GetValueOrDefault(receiptId) + bill.ReceiptValue;
+            }
+        }
+
         List<GoodsReceiptRow> receipts = await _database.Receipts
             .AsNoTracking()
             .Where(row => row.TenantId == tenant.Value
@@ -330,18 +355,9 @@ public sealed class PayablesService : IApplicationService
                 receipt.ReceivedOn,
                 null,
                 receipt.ReceiptCost,
-                receipt.ReceiptCost - receipt.BilledValue,
+                receipt.ReceiptCost - relieved.GetValueOrDefault(receipt.Id),
                 new LocalizedName("بضاعة مستلمة لم تُفوتر " + receipt.Number, "Goods received not invoiced " + receipt.Number)));
         }
-
-        List<SupplierBillRow> bills = await _database.Bills
-            .AsNoTracking()
-            .Where(row => row.TenantId == tenant.Value
-                          && row.State == PurchasingDocumentState.Posted
-                          && row.IssuedOn <= asOf)
-            .OrderBy(row => row.IssuedOn).ThenBy(row => row.Number)
-            .ToListAsync(cancellationToken)
-            .ConfigureAwait(false);
 
         foreach (SupplierBillRow bill in bills)
         {

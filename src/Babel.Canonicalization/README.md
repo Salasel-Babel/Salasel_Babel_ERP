@@ -2,8 +2,12 @@
 
 مكتبة التوحيد القياسي — **الطريق الوحيد إلى دالة التجزئة** في هذا النظام.
 
-> 📕 **المواصفة الملزمة: [SPEC.md](SPEC.md).** اقرأها قبل أي تعديل.
-> وفيها التحذير الذي يعلو على كل شيء: **لا تغيّر الشكل القانوني بعد أول توقيع.**
+> 📕 **المواصفتان الملزمتان:**
+> [SPEC.md](SPEC.md) — الشكل القانوني **v1**، وهو الملزم لكل سجل كُتب تحته، إلى الأبد.
+> [SPEC.v2.md](SPEC.v2.md) — الشكل القانوني **v2**، وهو الذي تُكتب به السجلات الجديدة.
+>
+> اقرأهما قبل أي تعديل. وفيهما التحذير الذي يعلو على كل شيء:
+> **لا تغيّر شكلاً قانونياً بعد أول توقيع — يُضاف إصدار بجواره، ولا يُعدَّل القائم.**
 
 ---
 
@@ -38,16 +42,19 @@ ChainVerification VerifyChain(records, genesisHash)   // -> أول رقم تسل
 
 | المسار | الدور |
 |---|---|
-| `Canonicalizer.cs` | المُوحِّد، السجلّ، `ChainLink` — **الطريق الوحيد** |
+| `Canonicalizer.cs` | الطريق الوحيد + سجلّ الإصدارات + `CanonicalizerV1` **المجمَّد** |
+| `CanonicalizerV2.cs` | تنفيذ v2 — **مستقلّ عن v1 عمداً**: لا مسار بايتات مشترك بين إصدارين |
 | `CanonicalRuntime.cs` | حارس بيئة التشغيل: يكشف وضع العولمة الثابتة **سلوكياً** |
 | `TextRules.cs` | الحدّ يُحوِّل (`CleanForInput`)، والمُجزِّئ يتحقّق (`RequireCanonical`) |
 | `ArabicSearch.cs` | تطبيع البحث — **ناتجه لا يُجزَّأ أبداً**، ونوعه `SearchKey` لا `string` |
-| `Amounts.cs` | مقياس 4، ثقافة ثابتة، **رفض لا تقريب** |
+| `Amounts.cs` | مقياس 4 (`numeric(19,4)`)، ثقافة ثابتة، **رفض لا تقريب** |
+| `Rates.cs` | مقياس 8 (`numeric(19,8)`) لسعر الصرف — النوع `R`، **v2 فما فوق** |
 | `Instants.cs` | UTC بالميكروثانية، رفض `Unspecified`، التقاط مرّة واحدة |
 | `CanonicalSchema.cs` | ترتيب الحقول + **مجموعة الاستثناء** المُعلنة والمُبصَّمة |
 | `CanonicalDocument.cs` | بانٍ مقيَّد بمخطّط، يكتب بترتيب المخطّط لا بترتيب الاستدعاء |
 | `ChainVerifier.cs` | إعادة التحقق، وإرجاع **أول** تسلسل منحرف |
-| `Schemas/JournalEntrySchema.cs` | المخطّط المرجعي `babel.journal.entry` |
+| `Schemas/JournalEntrySchema.cs` | مخطّط `babel.journal.entry` **v1** — مجمَّد |
+| `Schemas/JournalEntrySchema.V2.cs` | مخطّط **v2**: كل عمود يغيّر المعنى المحاسبي داخل البايتات |
 
 ---
 
@@ -57,12 +64,19 @@ ChainVerification VerifyChain(records, genesisHash)   // -> أول رقم تسل
 # البناء والاختبارات (88 اختباراً، منها دورة حقيقية مع PostgreSQL محلية)
 dotnet test --project tests/Babel.Canonicalization.Tests/Babel.Canonicalization.Tests.csproj
 
-# المتجهات الذهبية — يخرج برمز غير صفري عند أي انحراف
+# المتجهات الذهبية — المجموعتان معاً، ويخرج برمز غير صفري عند أي انحراف
 dotnet run --project tools/Babel.Canonicalization.Golden -- --verify
 
+# مجموعة بعينها، وتحت ثقافة بعينها (والوسيط يعمل فعلاً — انظر أدناه)
+dotnet run --project tools/Babel.Canonicalization.Golden -- --verify --set v2 --culture de-DE
+
 # المخطّط ومجموعة الاستثناء
-dotnet run --project tools/Babel.Canonicalization.Golden -- --schema
+dotnet run --project tools/Babel.Canonicalization.Golden -- --schema --set v2
 ```
+
+الأداة تطبع **الثقافة الفعلية** ومعها قيمة مُنسَّقة تنسيقاً واعياً بالثقافة، بوصفها
+دليلاً منظوراً على أن الثقافة سارية في هذه العملية بالذات. ووسيط غير معروف يُسقط
+الأداة برمز 64 بدل أن يُتجاهل: **تحقّقٌ لا يتحقّق ممّا يظنّه المشغّل أسوأ من لا تحقّق.**
 
 اختبارات PostgreSQL تقرأ الاتصال من `BABEL_CANON_TEST_DB` وتسقط إلى اتصال محلي بلا
 كلمة مرور. **لا كلمات مرور في المستودع.**
@@ -81,5 +95,8 @@ dotnet run --project tools/Babel.Canonicalization.Golden -- --schema
    ولذلك: رفض، لا تقريب.
 5. **تطبيع البحث العربي مطلوب فعلاً في هذا المشروع** — وتشغيله على عمود موقَّع يكسر
    كل سلسلة. العمودان منفصلان، والنوع `SearchKey` يمنع الخلط عند الترجمة.
+6. **حقل خارج البايتات هو حقل مباح لمالك قاعدة البيانات.** هذه هي الثغرة التي وُلد
+   منها v2: مخطّط v1 كان يغطّي ستّة أعمدة من خمسة وعشرين في `journal_line`، فكانت
+   إعادة كتابة `property_id` تُبقي السلسلة خضراء. راجع [SPEC.v2.md](SPEC.v2.md) §0.
 
-التفاصيل والقياسات كاملة في [SPEC.md](SPEC.md).
+التفاصيل والقياسات كاملة في [SPEC.md](SPEC.md) و[SPEC.v2.md](SPEC.v2.md).

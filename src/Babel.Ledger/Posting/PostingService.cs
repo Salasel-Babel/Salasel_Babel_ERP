@@ -140,7 +140,7 @@ public sealed class PostingService : IPostingService, IApplicationService
         DateTime postedAt,
         CancellationToken cancellationToken)
     {
-        CanonicalDocument document = BuildDocument(plan, postedAt);
+        CanonicalDocument document = BuildDocument(plan, postedAt, _options.CanonVersion);
         CanonicalSplit split = CanonicalSplit.Of(document);
         byte[] genesis = JournalEntrySchema.Genesis(
             plan.CompanyId.ToString("D", CultureInfo.InvariantCulture), plan.BookId, plan.FiscalYear);
@@ -149,7 +149,7 @@ public sealed class PostingService : IPostingService, IApplicationService
             await _dataSource.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
 
         await using NpgsqlCommand command = new(string.Empty, connection);
-        Bind(command, plan, postedAt, split, genesis);
+        Bind(command, plan, postedAt, split, genesis, document.CanonVersion);
         command.CommandText = PostEntrySql(command.Parameters.Count);
 
         try
@@ -191,14 +191,36 @@ public sealed class PostingService : IPostingService, IApplicationService
     /// <summary>
     /// المستند المرجعي <c>babel.journal.entry</c> كما تعرّفه المكتبة المختومة.
     /// <para>
+    /// <b>الافتراضي v2</b>، و<c>v1</c> يبقى قابلاً للكتابة عبر
+    /// <see cref="LedgerOptions.CanonVersion"/> — لا للإنتاج بل لاختبارٍ يُثبت
+    /// الثغرة التي أُغلقت: تحت v1 لم تكن الأبعاد ولا رمز الدور ولا المبالغ بعملة
+    /// الشركة داخل البايتات المُجزَّأة إطلاقاً، فكان مالك قاعدة البيانات يعيد كتابة
+    /// <c>property_id</c> والسلسلة تبقى خضراء.
+    /// </para>
+    /// <para>
     /// ولاحظ <b>ما ليس فيه</b>: لا <c>*_search</c>، ولا مجاميع، ولا رصيد متحرّك.
     /// مجموعة الاستثناء معلَنة ومُبصَّمة في المخطّط نفسه (SPEC §4)، وأي محاولة
     /// لإدراج اسم منها ترفعها المكتبة بـ<c>CANON-DOC-EXCLUDED-FIELD</c>.
     /// </para>
     /// </summary>
-    private static CanonicalDocument BuildDocument(PostingPlan plan, DateTime postedAt)
+    private static CanonicalDocument BuildDocument(PostingPlan plan, DateTime postedAt, string canonVersion)
+        => canonVersion == CanonicalV2.Version
+            ? BuildDocumentV2(plan, postedAt)
+            : BuildDocumentV1(plan, postedAt);
+
+    /// <summary>
+    /// مستند v2 — <b>كل حقل يغيّر المعنى المحاسبي داخل البايتات</b>.
+    /// <para>
+    /// و<c>entry_no</c> وحده هو الحقل المتأخّر الربط هنا: يُركَّب في الخادم تحت قفل
+    /// العدّاد مع <c>chain_seq</c> و<c>prev_hash</c>. وكل ما أُضيف في v2 — الفترة،
+    /// والمصدر، والأبعاد، والأدوار، ومبالغ عملة الشركة — معروف <b>قبل</b> القفل،
+    /// فعدد مواضع القطع بقي ثلاثة كما كان، ولم يقترب أي مُنسِّق واعٍ باللغة من
+    /// البايتات في أي طرف.
+    /// </para>
+    /// </summary>
+    private static CanonicalDocument BuildDocumentV2(PostingPlan plan, DateTime postedAt)
     {
-        CanonicalDocumentBuilder builder = JournalEntrySchema.V1.NewDocument();
+        CanonicalDocumentBuilder builder = JournalEntrySchema.V2.NewDocument();
 
         builder.Set("tenant_id", CanonicalValue.Text(plan.CompanyId.ToString("D", CultureInfo.InvariantCulture)));
         builder.Set("book_id", CanonicalValue.Text(plan.BookId));
@@ -209,6 +231,74 @@ public sealed class PostingService : IPostingService, IApplicationService
         // CanonicalSplit يضمن أن موضعه في البايتات هو موضعه هنا بالضبط.
         builder.Set("entry_no", CanonicalValue.Integer(0));
 
+        builder.Set("entry_date", CanonicalValue.Date(plan.EntryDate));
+        builder.Set("period_code", CanonicalValue.Text(plan.PeriodCode));
+        builder.Set("posted_at", CanonicalValue.Instant(postedAt));
+        builder.Set("status", CanonicalValue.Token(plan.Status));
+        builder.Set("reverses_entry_id", CanonicalValue.UuidOrNull(plan.ReversesEntryId));
+        builder.Set("reversal_reason_ar", CanonicalValue.TextOrNull(plan.ReversalReasonAr));
+        builder.Set("reversal_reason_en", CanonicalValue.TextOrNull(plan.ReversalReasonEn));
+        builder.Set("source_module", CanonicalValue.Text(plan.SourceModule));
+        builder.Set("source_doc_type", CanonicalValue.Text(plan.SourceDocType));
+        builder.Set("source_doc_id", CanonicalValue.Text(plan.SourceDocId));
+        builder.Set("posting_trigger_code", CanonicalValue.Text(plan.TriggerCode));
+        builder.Set("posting_generation", CanonicalValue.Integer(plan.Generation));
+        builder.Set("event_code", CanonicalValue.Text(plan.EventCode));
+        builder.Set("idempotency_key", CanonicalValue.Text(plan.IdempotencyKey));
+        builder.Set("currency", CanonicalValue.Token(plan.Currency));
+        builder.Set("actor", CanonicalValue.Text(plan.Actor));
+        builder.Set("closed_period_permission", CanonicalValue.TextOrNull(plan.ClosedPeriodPermission));
+        builder.Set("closed_period_authoriser", CanonicalValue.TextOrNull(plan.ClosedPeriodAuthoriser));
+        builder.Set("memo", CanonicalValue.Text(plan.Memo));
+        builder.Set("memo_ar", CanonicalValue.Text(plan.MemoAr));
+
+        string currency = plan.Currency;
+        builder.SetGroup("lines", plan.Lines.Select(line => new Action<CanonicalItemBuilder>(item =>
+        {
+            item.Set("line_no", CanonicalValue.Integer(line.LineNo));
+            item.Set("account_code", CanonicalValue.Text(line.AccountCode));
+            item.Set("role_code", CanonicalValue.Text(line.RoleCode));
+            item.Set("qualifier", CanonicalValue.Text(line.Qualifier));
+            item.Set("debit", CanonicalValue.Amount(line.Debit));
+            item.Set("credit", CanonicalValue.Amount(line.Credit));
+            item.Set("currency", CanonicalValue.Token(currency));
+            item.Set("fx_rate", CanonicalValue.Rate(line.FxRate));
+            item.Set("debit_company", CanonicalValue.Amount(line.DebitCompany));
+            item.Set("credit_company", CanonicalValue.Amount(line.CreditCompany));
+            item.Set("branch_id", CanonicalValue.TextOrNull(line.BranchId));
+            item.Set("cost_center_id", CanonicalValue.TextOrNull(line.CostCenterId));
+            item.Set("project_id", CanonicalValue.TextOrNull(line.ProjectId));
+            item.Set("property_id", CanonicalValue.TextOrNull(line.PropertyId));
+            item.Set("unit_id", CanonicalValue.TextOrNull(line.UnitId));
+            item.Set("warehouse_id", CanonicalValue.TextOrNull(line.WarehouseId));
+            item.Set("boq_item_id", CanonicalValue.TextOrNull(line.BoqItemId));
+
+            // لا عمود tax_code في ledger.journal_line اليوم. الفتحة مُجزَّأة من
+            // اليوم الأول كي يدخل الرمز البايتات المُوقَّعة يوم يُضاف العمود، بلا v3.
+            item.Set("tax_code", CanonicalValue.Null());
+
+            item.Set("subledger_kind", CanonicalValue.Text(line.SubledgerKind));
+            item.Set("subledger_party_id", CanonicalValue.TextOrNull(line.SubledgerPartyId));
+            item.Set("description", CanonicalValue.Text(line.Description));
+            item.Set("description_ar", CanonicalValue.Text(line.DescriptionAr));
+        })));
+
+        return builder.Build();
+    }
+
+    /// <summary>
+    /// مستند v1 — <b>مجمَّد</b>. يبقى لأن سجلات v1 يجب أن تُكتب في اختبار الثغرة
+    /// وتُقرأ إلى الأبد، ولا يُعدَّل بحرف.
+    /// </summary>
+    private static CanonicalDocument BuildDocumentV1(PostingPlan plan, DateTime postedAt)
+    {
+        CanonicalDocumentBuilder builder = JournalEntrySchema.V1.NewDocument();
+
+        builder.Set("tenant_id", CanonicalValue.Text(plan.CompanyId.ToString("D", CultureInfo.InvariantCulture)));
+        builder.Set("book_id", CanonicalValue.Text(plan.BookId));
+        builder.Set("fiscal_year", CanonicalValue.Integer(plan.FiscalYear));
+        builder.Set("entry_id", CanonicalValue.Uuid(plan.EntryId));
+        builder.Set("entry_no", CanonicalValue.Integer(0));
         builder.Set("entry_date", CanonicalValue.Date(plan.EntryDate));
         builder.Set("posted_at", CanonicalValue.Instant(postedAt));
         builder.Set("status", CanonicalValue.Token(plan.Status));
@@ -237,7 +327,8 @@ public sealed class PostingService : IPostingService, IApplicationService
         PostingPlan plan,
         DateTime postedAt,
         CanonicalSplit split,
-        byte[] genesis)
+        byte[] genesis,
+        string canonVersion)
     {
         void Add<T>(T value, NpgsqlDbType type) =>
             command.Parameters.Add(new NpgsqlParameter<T> { TypedValue = value, NpgsqlDbType = type });
@@ -274,7 +365,11 @@ public sealed class PostingService : IPostingService, IApplicationService
         AddText(plan.ReversalReasonEn);
         AddText(plan.ClosedPeriodPermission);
         AddText(plan.ClosedPeriodAuthoriser);
-        AddText(Canonicalizer.CurrentVersion);
+        // ‏canon_version يأتي من **مخطّط المستند الذي أنتج هذه البايتات بالذات**،
+        // لا من ثابت عام. ثابتٌ عام يعني أن ترقية الافتراضي قد تكتب «v2» بجوار
+        // بايتات v1 (أو العكس) فتصير كل السلسلة غير قابلة للتحقق بلا أي تغيير في
+        // البيانات — وهو عطب لا يظهر إلا عند المدقّق.
+        AddText(canonVersion);
         Add(genesis, NpgsqlDbType.Bytea);
         Add(split.Prefix, NpgsqlDbType.Bytea);
         Add(split.Head, NpgsqlDbType.Bytea);

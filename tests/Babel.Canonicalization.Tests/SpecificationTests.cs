@@ -137,12 +137,48 @@ public sealed class SpecificationTests
         Assert.All(JournalEntrySchema.V1.Exclusions, e => Assert.False(string.IsNullOrWhiteSpace(e.RationaleAr)));
     }
 
+    /// <summary>
+    /// <b>لا فئة استثناء معلنة بلا استعمال.</b> الادّعاء لم يتغيّر: كل قيمة في
+    /// <see cref="ExclusionReason"/> يجب أن يبرّرها استثناء حقيقي في مخطّط حقيقي —
+    /// وإلّا كانت الفئة زينة في تعداد.
+    ///
+    /// <para>
+    /// وما تغيّر هو <b>مدى</b> البحث: فئتان أُضيفتا لـv2 (‏<c>SurrogateKey</c> و
+    /// <c>DenormalisedDuplicate</c>) ولا يستعملهما v1 — ولا يجوز أن يستعملهما،
+    /// لأن مجموعة استثناء v1 مجمَّدة. حصر الفحص في v1 كان سيجعل الفئتين ممنوعتين
+    /// إلى الأبد؛ وحذفهما من الفحص كان سيسمح بفئات ميتة. فالفحص على <b>اتحاد</b>
+    /// المخطّطات كلها: كل فئة مستعملة في مكان ما، وv1 يبقى على فئاته الست بالضبط.
+    /// </para>
+    /// </summary>
     [Fact]
     public void ExclusionSetCoversEveryDocumentedReasonCategory()
     {
-        var reasons = JournalEntrySchema.V1.Exclusions.Select(e => e.Reason).Distinct().ToHashSet();
+        var acrossAllSchemas = JournalEntrySchema.V1.Exclusions
+            .Concat(JournalEntrySchema.V2.Exclusions)
+            .Select(e => e.Reason)
+            .Distinct()
+            .ToHashSet();
+
         foreach (var r in Enum.GetValues<ExclusionReason>())
-            Assert.Contains(r, reasons);
+            Assert.Contains(r, acrossAllSchemas);
+    }
+
+    /// <summary>مجموعة استثناء v1 مجمَّدة على فئاتها الست — لا تُضاف فئة ولا تُحذف.</summary>
+    [Fact]
+    public void TheV1ExclusionCategoriesAreFrozenAtTheOriginalSix()
+    {
+        var v1 = JournalEntrySchema.V1.Exclusions.Select(e => e.Reason).Distinct().ToHashSet();
+        Assert.Equal(
+            new HashSet<ExclusionReason>
+            {
+                ExclusionReason.SelfHash,
+                ExclusionReason.SearchNormalised,
+                ExclusionReason.ProjectionDerived,
+                ExclusionReason.OperationalMetadata,
+                ExclusionReason.Telemetry,
+                ExclusionReason.Presentation,
+            },
+            v1);
     }
 
     [Fact]

@@ -57,7 +57,15 @@ public static class CanonRegistry
 {
     private static readonly Dictionary<string, ICanonicalizer> Map = new(StringComparer.Ordinal)
     {
-        ["v1"] = CanonicalizerV1.Instance
+        // v1 **يبقى مسجَّلاً إلى الأبد**: كل سجل كُتب تحته يُعاد التحقق منه به،
+        // ولا يُعاد تجزئة سجل قديم بإصدار أحدث أبداً (SPEC §12 بند 6).
+        ["v1"] = CanonicalizerV1.Instance,
+
+        // v2 **بجواره لا بدلاً منه**. التسجيل هنا لا في مُنشئ ساكن كسول: مُوحِّد
+        // لا يُسجَّل إلا عند أول لمسة لنوعه يعني أن التحقق من سجل v2 قد يفشل
+        // بـCHAIN-VERSION-UNKNOWN تبعاً لترتيب تحميل الأنواع — وهو أسوأ أنواع
+        // العطب: غير حتمي، ويظهر عند المدقّق لا عند المطوّر.
+        ["v2"] = CanonicalizerV2.Instance
     };
 
     /// <summary>يسجّل مُوحِّداً جديداً. لا يجوز استبدال إصدار قائم.</summary>
@@ -126,10 +134,19 @@ public static class CanonRegistry
 /// </summary>
 public static class Canonicalizer
 {
-    /// <summary>الإصدار الحالي للشكل القانوني.</summary>
+    /// <summary>
+    /// إصدار الشكل القانوني الذي يطبّقه <c>CanonicalizerV1</c>.
+    /// <b>مجمَّد على <c>v1</c> إلى الأبد</b> ولا يتبع «الأحدث»: ملف المتجهات الذهبية
+    /// <c>golden-vectors.v1.json</c> يثبّت هذه القيمة نفسها، وتحريكها يُبطل ملفاً
+    /// مُودَعاً بوصفه دليلاً. الإصدار الذي يُكتب به سجلٌّ جديد يأتي من
+    /// <see cref="CanonicalDocument.CanonVersion"/> — أي من مخطّط المستند نفسه —
+    /// فلا يمكن أن يختلف العمود المخزَّن عن البايتات التي أنتجته.
+    /// </summary>
     public const string CurrentVersion = "v1";
 
-    /// <summary>ترويسة الشكل السلكي.</summary>
+    /// <summary>
+    /// ترويسة الشكل السلكي لـv1. لكل إصدار ترويسته: <see cref="CanonicalV2.Magic"/>.
+    /// </summary>
     public const string Magic = "babel.canon/v1";
 
     static Canonicalizer() => CanonicalRuntime.EnsureSupported();
@@ -169,6 +186,13 @@ public static class Canonicalizer
     /// بصمة التكوين لنطاق سلسلة. تُستخدم كـ<c>prev_hash</c> للسجل رقم 1.
     /// النطاق = نطاق الترقيم نفسه: (مستأجر × دفتر × سنة مالية).
     /// </summary>
+    /// <remarks>
+    /// <b>بصمة التكوين مستقلّة عن إصدار الشكل القانوني عمداً.</b> النطاق
+    /// (مستأجر × دفتر × سنة مالية) واحد، والسلسلة فيه واحدة، وقد تحمل سجلات v1
+    /// ثم سجلات v2 بعدها. لو تغيّرت بصمة التكوين مع الإصدار لانكسر <c>prev_hash</c>
+    /// للسجل رقم 1 في اللحظة التي يُرقَّى فيها الثنائي — بلا أن يتغيّر شيء في
+    /// البيانات. ولذلك تبقى ترويسة <c>v1</c> هنا بوصفها <b>ثابت نطاق</b> لا إصداراً.
+    /// </remarks>
     public static byte[] Genesis(string scope)
     {
         CanonicalRuntime.EnsureSupported();

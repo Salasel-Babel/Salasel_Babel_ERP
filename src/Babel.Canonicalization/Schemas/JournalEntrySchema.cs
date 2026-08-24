@@ -11,7 +11,7 @@ namespace Babel.Canonicalization.Schemas;
 /// (<see cref="CanonicalSchema.Fingerprint"/>) تشمل الاستثناءات، واختبار ذهبي يثبّتها،
 /// فإضافة حقل أو إخراجه من الاستثناء تُسقط البناء فوراً.
 /// </summary>
-public static class JournalEntrySchema
+public static partial class JournalEntrySchema
 {
     /// <summary>نوع المستند.</summary>
     public const string Kind = "babel.journal.entry";

@@ -126,7 +126,7 @@ public sealed class CanonicalDocumentBuilder
         var list = new List<CanonicalItem>();
         foreach (var configure in items)
         {
-            var ib = new CanonicalItemBuilder(field, name);
+            var ib = new CanonicalItemBuilder(field, name, _schema.RequireExplicitOptionals);
             configure(ib);
             list.Add(ib.Build());
             if (list.Count > MaxGroupItems)
@@ -157,6 +157,12 @@ public sealed class CanonicalDocumentBuilder
                         $"المجموعة المطلوبة «{f.Name}» غير مضبوطة. " +
                         "مجموعة فارغة تُضبط صراحةً بقائمة فارغة — الغياب لا يُستنتج.", -1, f.Name);
                 }
+                else if (_schema.RequireExplicitOptionals)
+                {
+                    throw new CanonicalizationException(CanonErrors.DocumentOptionalNotSet,
+                        $"المجموعة الاختيارية «{f.Name}» لم تُضبط. هذا المخطّط يفرض الضبط الصريح: " +
+                        "اضبطها بقائمة فارغة إن كانت فارغة فعلاً.", -1, f.Name);
+                }
                 else
                 {
                     entries.Add(new CanonicalEntry(f.Name, null, ReadOnlyCollection<CanonicalItem>.Empty));
@@ -172,6 +178,14 @@ public sealed class CanonicalDocumentBuilder
             {
                 throw new CanonicalizationException(CanonErrors.SchemaMissingField,
                     $"الحقل المطلوب «{f.Name}» غير مضبوط. لا قيم افتراضية ضمنية في الشكل القانوني.",
+                    -1, f.Name);
+            }
+            else if (_schema.RequireExplicitOptionals)
+            {
+                throw new CanonicalizationException(CanonErrors.DocumentOptionalNotSet,
+                    $"الحقل الاختياري «{f.Name}» لم يُضبط. هذا المخطّط يفرض الضبط الصريح: " +
+                    "الغياب يُكتب CanonicalValue.Null() صراحةً. " +
+                    "بغير ذلك لا يُفرَّق «نُسِي الحقل» عن «الحقل غائب فعلاً»، وكلاهما يعطي البايتات نفسها.",
                     -1, f.Name);
             }
             else
@@ -227,12 +241,14 @@ public sealed class CanonicalItemBuilder
 {
     private readonly SchemaField _group;
     private readonly string _groupName;
+    private readonly bool _requireExplicitOptionals;
     private readonly Dictionary<string, CanonicalValue> _values = new(StringComparer.Ordinal);
 
-    internal CanonicalItemBuilder(SchemaField group, string groupName)
+    internal CanonicalItemBuilder(SchemaField group, string groupName, bool requireExplicitOptionals = false)
     {
         _group = group;
         _groupName = groupName;
+        _requireExplicitOptionals = requireExplicitOptionals;
     }
 
     /// <summary>يضبط قيمة حقل داخل العنصر.</summary>
@@ -258,6 +274,12 @@ public sealed class CanonicalItemBuilder
             else if (f.Required)
                 throw new CanonicalizationException(CanonErrors.SchemaMissingField,
                     $"الحقل المطلوب «{f.Name}» غير مضبوط داخل «{_groupName}».", -1, f.Name);
+            else if (_requireExplicitOptionals)
+                throw new CanonicalizationException(CanonErrors.DocumentOptionalNotSet,
+                    $"الحقل الاختياري «{f.Name}» لم يُضبط داخل «{_groupName}». " +
+                    "هذا المخطّط يفرض الضبط الصريح: الغياب يُكتب CanonicalValue.Null(). " +
+                    "بُعدٌ منسيّ وبُعدٌ غائب فعلاً لا يجوز أن يعطيا البايتات نفسها.",
+                    -1, f.Name);
             else list.Add(new(f.Name, CanonicalValue.Null()));
         }
         return new CanonicalItem(new ReadOnlyCollection<KeyValuePair<string, CanonicalValue>>(list));

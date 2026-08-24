@@ -53,6 +53,142 @@ public sealed class CanonicalFormTests
         Assert.Contains("entry_no\tI\t1\t5\n", text, StringComparison.Ordinal);
     }
 
+    // ═══════════════════════════════════════════════════════════════════════
+    //  v2 — القطع نفسه، مُشتقّاً من ناتج **مُوحِّد v2** لا من إزاحات مكتوبة بيد
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// نفس البرهان على v2. ولا سطر واحد في <c>CanonicalSplit</c> ولا في
+    /// <c>ledger.post_entry</c> تغيّر: القطع يمشي على الشكل السلكي <b>بسابقات
+    /// الأطوال</b> ويبحث عن السطور بأسمائها، فبقي صحيحاً رغم أن عدد الحقول تضاعف
+    /// وأن نوعاً جديداً (<c>R</c>) دخل الشكل. ولو كانت الإزاحات مكتوبة بأرقام
+    /// لانهار كل شيء عند أول حقل مضاف.
+    /// </summary>
+    [Theory]
+    [InlineData(1, 1, 0)]
+    [InlineData(2, 7, 1)]
+    [InlineData(9, 9, 2)]
+    [InlineData(10, 42, 3)]
+    [InlineData(99, 100, 5)]
+    [InlineData(1_000, 999, 12)]
+    [InlineData(123_456_789, 987_654_321, 40)]
+    [InlineData(9_007_199_254_740_993, 1_000_000, 7)]
+    public void The_v2_split_reassembles_byte_for_byte_to_what_the_library_produces(
+        long sequence, long entryNo, int lineCount)
+    {
+        byte[] previous = new byte[32];
+        System.Security.Cryptography.RandomNumberGenerator.Fill(previous);
+
+        CanonicalDocument document = BuildV2(entryNo, Math.Max(2, lineCount));
+        CanonicalSplit split = CanonicalSplit.Of(document);
+
+        byte[] reassembled = split.Reassemble(sequence, previous, entryNo);
+        byte[] authoritative = Canonicalizer.Compute(
+            BuildV2(entryNo, Math.Max(2, lineCount)), sequence, previous).CanonicalBytes;
+
+        Assert.Equal(Convert.ToHexString(authoritative), Convert.ToHexString(reassembled));
+    }
+
+    [Fact]
+    public void The_v2_chain_link_is_inside_the_hashed_bytes_not_beside_them()
+    {
+        CanonicalDocument document = BuildV2(5, 2);
+        byte[] bytes = Canonicalizer.Compute(document, 17, new byte[32]).CanonicalBytes;
+        string text = System.Text.Encoding.UTF8.GetString(bytes);
+
+        Assert.StartsWith("babel.canon/v2\n", text, StringComparison.Ordinal);
+        Assert.Contains("chain_seq\tI\t2\t17\n", text, StringComparison.Ordinal);
+        Assert.Contains("prev_hash\tB\t64\t" + new string('0', 64) + "\n", text, StringComparison.Ordinal);
+        Assert.Contains("entry_no\tI\t1\t5\n", text, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// <b>ثلاثة مواضع قطع، لا أربعة.</b> كل ما أُضيف في v2 معروف قبل أخذ قفل
+    /// العدّاد، فبقي المتأخّر ربطُه هو الثلاثة نفسها. وهذا يُثبَت بايتياً: القطع
+    /// الثلاث مجموعة تساوي البايتات كاملة ناقص السطور الثلاثة بالضبط.
+    /// </summary>
+    [Fact]
+    public void Only_three_lines_are_bound_late_in_v2()
+    {
+        CanonicalDocument document = BuildV2(7, 3);
+        CanonicalSplit split = CanonicalSplit.Of(document);
+        byte[] full = Canonicalizer.Compute(BuildV2(7, 3), 7, new byte[32]).CanonicalBytes;
+
+        int injected = full.Length - (split.Prefix.Length + split.Head.Length + split.Tail.Length);
+        int expected = System.Text.Encoding.UTF8.GetByteCount(
+            "chain_seq\tI\t1\t7\n"
+            + "prev_hash\tB\t64\t" + new string('0', 64) + "\n"
+            + "entry_no\tI\t1\t7\n");
+
+        Assert.Equal(expected, injected);
+    }
+
+    /// <summary>البايتات المُعاد تركيبها في v2 تحمل ترويسة v2 لا v1.</summary>
+    [Fact]
+    public void The_v2_prefix_carries_the_v2_wire_header()
+        => Assert.StartsWith(
+            "babel.canon/v2\n",
+            System.Text.Encoding.UTF8.GetString(CanonicalSplit.Of(BuildV2(1, 2)).Prefix),
+            StringComparison.Ordinal);
+
+    private static CanonicalDocument BuildV2(long entryNo, int lines)
+    {
+        CanonicalDocumentBuilder builder = JournalEntrySchema.V2.NewDocument();
+        builder.Set("tenant_id", CanonicalValue.Text("aaaaaaaa-0000-4000-8000-000000000001"));
+        builder.Set("book_id", CanonicalValue.Text("MAIN"));
+        builder.Set("fiscal_year", CanonicalValue.Integer(2026));
+        builder.Set("entry_id", CanonicalValue.Uuid(new Guid("01234567-89ab-4cde-8f01-23456789abcd")));
+        builder.Set("entry_no", CanonicalValue.Integer(entryNo));
+        builder.Set("entry_date", CanonicalValue.Date(new DateOnly(2026, 3, 15)));
+        builder.Set("period_code", CanonicalValue.Text("2026-03"));
+        builder.Set("posted_at", CanonicalValue.Instant(new DateTime(2026, 3, 15, 9, 30, 15, DateTimeKind.Utc)));
+        builder.Set("status", CanonicalValue.Token("POSTED"));
+        builder.Set("reverses_entry_id", CanonicalValue.Null());
+        builder.Set("reversal_reason_ar", CanonicalValue.Null());
+        builder.Set("reversal_reason_en", CanonicalValue.Null());
+        builder.Set("source_module", CanonicalValue.Text("RealEstate"));
+        builder.Set("source_doc_type", CanonicalValue.Text("RentInvoice"));
+        builder.Set("source_doc_id", CanonicalValue.Text("INV-1"));
+        builder.Set("posting_trigger_code", CanonicalValue.Text("on_approval"));
+        builder.Set("posting_generation", CanonicalValue.Integer(1));
+        builder.Set("event_code", CanonicalValue.Text("realestate.rent_invoice.own_property"));
+        builder.Set("idempotency_key", CanonicalValue.Text("rent-invoice:INV-1"));
+        builder.Set("currency", CanonicalValue.Token("SAR"));
+        builder.Set("actor", CanonicalValue.Text("محمد العبدالله"));
+        builder.Set("closed_period_permission", CanonicalValue.Null());
+        builder.Set("closed_period_authoriser", CanonicalValue.Null());
+        builder.Set("memo", CanonicalValue.Text("Rent invoice"));
+        builder.Set("memo_ar", CanonicalValue.Text("فاتورة إيجار\nسطر ثانٍ في البيان"));
+
+        builder.SetGroup("lines", Enumerable.Range(1, lines).Select(index => new Action<CanonicalItemBuilder>(item =>
+        {
+            item.Set("line_no", CanonicalValue.Integer(index));
+            item.Set("account_code", CanonicalValue.Text((1300 + index).ToString(CultureInfo.InvariantCulture)));
+            item.Set("role_code", CanonicalValue.Text("rental_revenue"));
+            item.Set("qualifier", CanonicalValue.Text("*"));
+            item.Set("debit", CanonicalValue.Amount(index % 2 == 1 ? 1_234.5678m : 0m));
+            item.Set("credit", CanonicalValue.Amount(index % 2 == 1 ? 0m : 1_234.5678m));
+            item.Set("currency", CanonicalValue.Token("SAR"));
+            item.Set("fx_rate", CanonicalValue.Rate(index % 4 == 0 ? 3.75123456m : 1m));
+            item.Set("debit_company", CanonicalValue.Amount(index % 2 == 1 ? 1_234.5678m : 0m));
+            item.Set("credit_company", CanonicalValue.Amount(index % 2 == 1 ? 0m : 1_234.5678m));
+            item.Set("branch_id", CanonicalValue.Null());
+            item.Set("cost_center_id", index % 3 == 0 ? CanonicalValue.Null() : CanonicalValue.Text("CC-01"));
+            item.Set("project_id", CanonicalValue.Null());
+            item.Set("property_id", CanonicalValue.Text("P-OWN-001"));
+            item.Set("unit_id", CanonicalValue.Text("U-01"));
+            item.Set("warehouse_id", CanonicalValue.Null());
+            item.Set("boq_item_id", CanonicalValue.Null());
+            item.Set("tax_code", CanonicalValue.Null());
+            item.Set("subledger_kind", CanonicalValue.Text("none"));
+            item.Set("subledger_party_id", CanonicalValue.Null());
+            item.Set("description", CanonicalValue.Text("line " + index.ToString(CultureInfo.InvariantCulture)));
+            item.Set("description_ar", CanonicalValue.Text("سطر رقم " + index.ToString(CultureInfo.InvariantCulture)));
+        })));
+
+        return builder.Build();
+    }
+
     private static CanonicalDocument Build(long entryNo, int lines)
     {
         CanonicalDocumentBuilder builder = JournalEntrySchema.V1.NewDocument();

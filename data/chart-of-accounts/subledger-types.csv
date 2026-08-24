@@ -1,0 +1,15 @@
+subledger_code,name_ar,name_en,control_accounts,reconciliation_report_ar,reconciliation_report_en,status
+none,لا يوجد,None,,,,drafted
+customer,العميل,Customer,1301|1309|2141,أعمار الديون = رصيد الحساب,Ageing report equals the account balance,drafted
+supplier,المورد,Supplier,2101|2151,أعمار الديون الدائنة = رصيد الحساب,Payables ageing equals the account balance,drafted
+employee,الموظف,Employee,1304|2201|2203|2204,كشف ذمم الموظفين = رصيد الحساب,Employee balances statement equals the account balance,drafted
+subcontractor,المقاول من الباطن,Subcontractor,1303|2102|2161,كشف المقاولين = رصيد الحساب,Subcontractor statement equals the account balance,drafted
+tenant,المستأجر,Tenant,1310|1311,أعمار متأخرات المستأجرين = رصيد الحساب,Tenant arrears ageing equals the account balance,drafted
+property_owner,مالك العقار,Property Owner,1312|2191|2193|4302|4306,كشف حساب المالك = رصيد الحساب,Owner statement equals the account balance,drafted
+lease_contract,عقد الإيجار,Lease Contract,1314|2171|2181|2182,سجل العقود السارية = رصيد الحساب,The register of active contracts equals the account balance,drafted
+cheque,الشيك,Cheque,1307|1308|2205,جرد الشيكات الموقّع = رصيد الحساب,The signed cheque count equals the account balance,drafted
+bank_account,الحساب البنكي,Bank Account,1201|1202|1203,المطابقة البنكية = رصيد الحساب,Bank reconciliation equals the account balance,drafted
+cash_box,الصندوق,Cash Box,1101,الجرد النقدي = رصيد الحساب,Cash count equals the account balance,drafted
+item,الصنف,Inventory Item,1401|1402|1405,تقييم المخزون = رصيد الحساب,Inventory valuation equals the account balance,drafted
+fixed_asset,الأصل الثابت,Fixed Asset,1501|1502|1503|1504|1507,سجل الأصول = رصيد الحسابات,The asset register equals the account balances,drafted
+property,العقار,Property,1404|1505|1506,سجل العقارات = رصيد الحسابات,The property register equals the account balances,drafted

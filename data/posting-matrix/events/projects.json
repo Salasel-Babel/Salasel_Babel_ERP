@@ -1,0 +1,514 @@
+{
+  "schema_version": "1.0.0",
+  "module": "projects",
+  "source_refs": [
+    "docs/reference/posting-matrix.md §5"
+  ],
+  "events": [
+    {
+      "event_code": "projects.client_certificate.posted",
+      "name_ar": "مستخلص عميل — إثبات الإيراد",
+      "name_en": "Client interim payment certificate — revenue recognition",
+      "module": "projects",
+      "status": "drafted",
+      "source_ref": "posting-matrix.md §5.1",
+      "trigger": {
+        "name_ar": "عند اعتماد المستخلص من العميل وإصدار الفاتورة الضريبية",
+        "name_en": "On the client approving the certificate and issuing the tax invoice"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "إشعار دائن مرتبط بالمستخلص الأصلي",
+        "name_en": "A credit note linked to the original certificate"
+      },
+      "caveats": [
+        {
+          "ref": "posting-matrix.md بند مفتوح 5",
+          "text_ar": "⚠️ أساس الاعتراف بالإيراد في المقاولات (نسبة الإنجاز أم عند التسليم) غير محسوم ويؤثر جوهرياً على توقيت هذا القيد",
+          "text_en": "⚠️ The contracting revenue recognition basis (percentage of completion vs on delivery) is unresolved and materially affects the timing of this entry"
+        },
+        {
+          "ref": "posting-matrix.md بند مفتوح 6",
+          "text_ar": "⚠️ تصنيف المحتجزات أصلاً متداولاً أم غير متداول غير محسوم",
+          "text_en": "⚠️ Classifying retention as a current or non-current asset is unresolved"
+        }
+      ],
+      "amounts": {
+        "work_value": {
+          "name_ar": "قيمة الأعمال المنفذة في الفترة",
+          "name_en": "Value of works executed in the period",
+          "derivation_ar": "من بنود جدول الكميات المعتمدة في المستخلص",
+          "derivation_en": "From the approved BOQ lines in the certificate"
+        },
+        "tax": {
+          "name_ar": "ضريبة المخرجات",
+          "name_en": "Output VAT",
+          "derivation_ar": "حسب التصنيف الضريبي لبنود العقد",
+          "derivation_en": "Per the tax classification of the contract lines"
+        },
+        "retention": {
+          "name_ar": "المحتجز",
+          "name_en": "Retention",
+          "derivation_ar": "بنسبة المحتجز المنصوص عليها في العقد — لا نسبة في الكود",
+          "derivation_en": "At the retention percentage stated in the contract — never a rate in code"
+        },
+        "advance_recovery": {
+          "name_ar": "استرداد الدفعة المقدمة",
+          "name_en": "Advance recovery",
+          "derivation_ar": "بقاعدة الاسترداد في العقد",
+          "derivation_en": "By the recovery rule in the contract"
+        }
+      },
+      "conditions": {
+        "has_retention": {
+          "name_ar": "العقد ينص على محتجز",
+          "name_en": "The contract provides for retention",
+          "expression": "contract.retention_rate > 0"
+        },
+        "has_advance_recovery": {
+          "name_ar": "توجد دفعة مقدمة تُسترد",
+          "name_en": "An advance is being recovered",
+          "expression": "contract.advance_balance > 0"
+        }
+      },
+      "scenarios": [
+        {
+          "code": "full",
+          "name_ar": "محتجز واسترداد دفعة",
+          "name_en": "Retention and advance recovery",
+          "true_conditions": [
+            "has_retention",
+            "has_advance_recovery"
+          ]
+        },
+        {
+          "code": "no_retention",
+          "name_ar": "بلا محتجز",
+          "name_en": "No retention",
+          "true_conditions": [
+            "has_advance_recovery"
+          ],
+          "zero_amounts": [
+            "retention"
+          ]
+        },
+        {
+          "code": "no_advance",
+          "name_ar": "بلا استرداد دفعة",
+          "name_en": "No advance recovery",
+          "true_conditions": [
+            "has_retention"
+          ],
+          "zero_amounts": [
+            "advance_recovery"
+          ]
+        }
+      ],
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "ar_customer_control",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "work_value + tax - retention - advance_recovery",
+          "dimensions": [],
+          "subledger": "customer",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "retention_receivable",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "retention",
+          "dimensions": [
+            "project"
+          ],
+          "subledger": "customer",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 3,
+          "line_kind": "role",
+          "role": "customer_advance",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "advance_recovery",
+          "dimensions": [],
+          "subledger": "customer",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 4,
+          "line_kind": "role",
+          "role": "contract_revenue",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "work_value",
+          "dimensions": [
+            "project"
+          ],
+          "subledger": null,
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 5,
+          "line_kind": "role",
+          "role": "vat_output",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "tax",
+          "dimensions": [],
+          "subledger": null,
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "projects.subcontractor_certificate.posted",
+      "name_ar": "مستخلص مقاول من الباطن — إثبات التكلفة",
+      "name_en": "Subcontractor interim certificate — cost recognition",
+      "module": "projects",
+      "status": "drafted",
+      "source_ref": "posting-matrix.md §5.2",
+      "trigger": {
+        "name_ar": "عند اعتماد المستخلص واستلام فاتورة المقاول",
+        "name_en": "On approving the certificate and receiving the subcontractor invoice"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "إشعار مدين على المقاول",
+        "name_en": "A debit note on the subcontractor"
+      },
+      "caveats": [
+        {
+          "ref": "posting-matrix.md §5.2",
+          "text_ar": "الغرامات والخصومات تُسجَّل كسطور مستقلة تخفّض المستحق ولا تُخصم من قيمة الأعمال",
+          "text_en": "Penalties and deductions are recorded as separate lines reducing the amount due and are never netted against the works value"
+        }
+      ],
+      "amounts": {
+        "work_value": {
+          "name_ar": "قيمة أعمال المقاول",
+          "name_en": "Subcontractor works value",
+          "derivation_ar": "من بنود المستخلص المعتمدة",
+          "derivation_en": "From the approved certificate lines"
+        },
+        "tax": {
+          "name_ar": "ضريبة المدخلات",
+          "name_en": "Input VAT",
+          "derivation_ar": "حسب التصنيف الضريبي لبنود عقد الباطن",
+          "derivation_en": "Per the tax classification of the subcontract lines"
+        },
+        "retention": {
+          "name_ar": "المحتجز الدائن — ضمان حسن التنفيذ",
+          "name_en": "Retention payable — performance guarantee",
+          "derivation_ar": "بنسبة المحتجز في عقد الباطن",
+          "derivation_en": "At the retention percentage in the subcontract"
+        },
+        "advance_recovery": {
+          "name_ar": "استرداد الدفعة المقدمة للمقاول",
+          "name_en": "Recovery of the subcontractor advance",
+          "derivation_ar": "بقاعدة الاسترداد في عقد الباطن",
+          "derivation_en": "By the recovery rule in the subcontract"
+        }
+      },
+      "conditions": {
+        "has_retention": {
+          "name_ar": "عقد الباطن ينص على محتجز",
+          "name_en": "The subcontract provides for retention",
+          "expression": "subcontract.retention_rate > 0"
+        },
+        "has_advance_recovery": {
+          "name_ar": "توجد دفعة مقدمة للمقاول تُسترد",
+          "name_en": "A subcontractor advance is being recovered",
+          "expression": "subcontract.advance_balance > 0"
+        }
+      },
+      "scenarios": [
+        {
+          "code": "full",
+          "name_ar": "محتجز واسترداد دفعة",
+          "name_en": "Retention and advance recovery",
+          "true_conditions": [
+            "has_retention",
+            "has_advance_recovery"
+          ]
+        },
+        {
+          "code": "no_retention",
+          "name_ar": "بلا محتجز",
+          "name_en": "No retention",
+          "true_conditions": [
+            "has_advance_recovery"
+          ],
+          "zero_amounts": [
+            "retention"
+          ]
+        },
+        {
+          "code": "no_advance",
+          "name_ar": "بلا استرداد دفعة",
+          "name_en": "No advance recovery",
+          "true_conditions": [
+            "has_retention"
+          ],
+          "zero_amounts": [
+            "advance_recovery"
+          ]
+        }
+      ],
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "subcontractor_cost",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "work_value",
+          "dimensions": [
+            "project",
+            "boq_item"
+          ],
+          "subledger": null,
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "vat_input",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "tax",
+          "dimensions": [],
+          "subledger": null,
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 3,
+          "line_kind": "role",
+          "role": "ap_subcontractor_control",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "work_value + tax - retention - advance_recovery",
+          "dimensions": [],
+          "subledger": "subcontractor",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 4,
+          "line_kind": "role",
+          "role": "retention_payable",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "retention",
+          "dimensions": [
+            "project"
+          ],
+          "subledger": "subcontractor",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 5,
+          "line_kind": "role",
+          "role": "subcontractor_advance",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "advance_recovery",
+          "dimensions": [
+            "project"
+          ],
+          "subledger": "subcontractor",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "projects.subcontractor_advance.paid",
+      "name_ar": "دفعة مقدمة لمقاول من الباطن",
+      "name_en": "Advance paid to a subcontractor",
+      "module": "projects",
+      "status": "drafted",
+      "source_ref": "posting-matrix.md §5.3",
+      "trigger": {
+        "name_ar": "عند صرف الدفعة المقدمة بموجب العقد والضمان المطلوب",
+        "name_en": "On paying the advance under the contract and the required guarantee"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "قيد عكسي مستقل عند رد الدفعة",
+        "name_en": "A separate reversing entry if the advance is returned"
+      },
+      "amounts": {
+        "amount": {
+          "name_ar": "مبلغ الدفعة المقدمة",
+          "name_en": "Advance amount",
+          "derivation_ar": "من نص العقد لا من قيمة ثابتة في الكود",
+          "derivation_en": "From the contract text not a constant in code"
+        }
+      },
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "subcontractor_advance",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "amount",
+          "dimensions": [
+            "project"
+          ],
+          "subledger": "subcontractor",
+          "when": null,
+          "note_ar": "أصل لا مصروف — يُستنفَد باستقطاعات المستخلصات",
+          "note_en": "An asset not an expense — consumed by certificate recoveries"
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "settlement_account",
+          "qualifier_source": "document.settlement_method",
+          "side": "credit",
+          "amount": "amount",
+          "dimensions": [],
+          "subledger": "resolved",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "projects.retention.released",
+      "name_ar": "الإفراج عن المحتجز الدائن بانتهاء فترة الضمان",
+      "name_en": "Release of retention payable at the end of the guarantee period",
+      "module": "projects",
+      "status": "drafted",
+      "source_ref": "posting-matrix.md §5.2",
+      "trigger": {
+        "name_ar": "عند انقضاء فترة الضمان واعتماد الإفراج",
+        "name_en": "On expiry of the guarantee period and approval of the release"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "قيد عكسي مستقل",
+        "name_en": "A separate reversing entry"
+      },
+      "amounts": {
+        "amount": {
+          "name_ar": "المحتجز المفرَج عنه",
+          "name_en": "Retention released",
+          "derivation_ar": "الرصيد المستحق الإفراج بحسب تاريخ انتهاء الضمان",
+          "derivation_en": "The balance due for release per the guarantee expiry date"
+        }
+      },
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "retention_payable",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "amount",
+          "dimensions": [
+            "project"
+          ],
+          "subledger": "subcontractor",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "ap_subcontractor_control",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "amount",
+          "dimensions": [],
+          "subledger": "subcontractor",
+          "when": null,
+          "note_ar": "قيد مستقل لا تعديل لقيد المستخلص",
+          "note_en": "A separate entry never an edit of the certificate entry"
+        }
+      ]
+    },
+    {
+      "event_code": "projects.client_retention.collected",
+      "name_ar": "تحصيل المحتجز من العميل",
+      "name_en": "Collect retention from the client",
+      "module": "projects",
+      "status": "drafted",
+      "source_ref": "posting-matrix.md §5.1",
+      "trigger": {
+        "name_ar": "عند تحصيل المحتجز بعد انقضاء فترة الضمان",
+        "name_en": "On collecting the retention after the guarantee period expires"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "قيد عكسي مستقل",
+        "name_en": "A separate reversing entry"
+      },
+      "amounts": {
+        "amount": {
+          "name_ar": "المحتجز المحصَّل",
+          "name_en": "Retention collected",
+          "derivation_ar": "الرصيد المحصَّل فعلاً",
+          "derivation_en": "The amount actually collected"
+        }
+      },
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "settlement_account",
+          "qualifier_source": "document.settlement_method",
+          "side": "debit",
+          "amount": "amount",
+          "dimensions": [],
+          "subledger": "resolved",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "retention_receivable",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "amount",
+          "dimensions": [
+            "project"
+          ],
+          "subledger": "customer",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    }
+  ]
+}

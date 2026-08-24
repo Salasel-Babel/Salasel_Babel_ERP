@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="سند قيد يومية قابل للطباعة — نموذج مستند عربي في نظام سلاسل بابل">
+<title>سند قيد يومية — طباعة</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="../tokens/tokens.css">
+<link rel="stylesheet" href="components.css">
+<link rel="stylesheet" href="print.css">
+<style>
+/* ── عرض المستند على الشاشة (الطباعة تتكفّل بها print.css) ─────────────── */
+.paper-wrap{padding:var(--space-24) var(--space-16) var(--space-48);display:flex;justify-content:center}
+.doc{
+  width:min(210mm,100%);padding:var(--space-32) var(--space-24);
+  background:var(--color-surface);color:var(--color-text);
+  border:var(--border-width) solid var(--color-border);
+  border-radius:var(--radius-lg);box-shadow:var(--shadow-2);
+  position:relative;overflow:hidden;
+}
+.doc-head{
+  display:flex;align-items:flex-start;gap:var(--space-20);
+  padding-bottom:var(--space-14);margin-bottom:var(--space-18);
+  border-bottom:var(--border-width-accent) solid var(--color-text);
+}
+.doc-head .org{flex:1;min-width:0}
+.doc-head .org h1{margin:0 0 var(--space-4);font-size:var(--font-size-5xl);font-weight:700;letter-spacing:var(--tracking-title)}
+.doc-head .org .en-name{margin:0 0 var(--space-6);font-size:var(--font-size-xs);color:var(--color-text-muted);direction:ltr;unicode-bidi:isolate}
+.doc-head .org .meta{margin:0;font-size:var(--font-size-hint);color:var(--color-text-muted);line-height:var(--line-relaxed)}
+.doc-head .stamp{flex:none;text-align:center;font-size:var(--font-size-hint);color:var(--color-text-subtle)}
+.doc-head .stamp .qr{
+  width:88px;height:88px;border:var(--border-width) solid var(--color-border-strong);
+  border-radius:var(--radius-xs);display:grid;place-items:center;margin-bottom:var(--space-4);
+  background:var(--color-surface-raised);
+}
+.doc-title{display:flex;align-items:baseline;justify-content:space-between;gap:var(--space-16);flex-wrap:wrap;margin-bottom:var(--space-16)}
+.doc-title h2{margin:0;font-size:var(--font-size-3xl);font-weight:700}
+.doc-title .en{font-size:var(--font-size-xs);color:var(--color-text-subtle);direction:ltr;unicode-bidi:isolate}
+.doc-kv{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--space-10) var(--space-16);margin-bottom:var(--space-18)}
+@media (max-width:620px){.doc-kv{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.doc-kv .k{font-size:var(--font-size-hint);color:var(--color-text-subtle);font-weight:600}
+.doc-kv .v{font-size:var(--font-size-sm);font-weight:600;margin-top:2px}
+table.doc-table{width:100%;border-collapse:collapse;font-size:var(--font-size-sm)}
+table.doc-table th{
+  padding:var(--space-8) var(--space-10);background:var(--color-surface-sunken);
+  border:var(--border-width) solid var(--color-border-strong);
+  font-size:var(--font-size-2xs);font-weight:700;text-align:center;
+}
+table.doc-table th.h-debit{background:var(--color-debit-soft);border-bottom-width:2px;border-bottom-color:var(--color-debit)}
+table.doc-table th.h-credit{background:var(--color-credit-soft);border-bottom-width:2px;border-bottom-color:var(--color-credit)}
+table.doc-table td{padding:var(--space-8) var(--space-10);border:var(--border-width) solid var(--color-border);vertical-align:top}
+table.doc-table td.n{text-align:start;font-variant-numeric:tabular-nums;white-space:nowrap}
+table.doc-table td.d{color:var(--color-debit);font-weight:600}
+table.doc-table td.c{color:var(--color-credit);font-weight:600}
+table.doc-table tfoot td{background:var(--color-surface-sunken);font-weight:700;border-top:2px solid var(--color-text)}
+.doc-words{
+  margin:var(--space-16) 0 0;padding:var(--space-10) var(--space-12);
+  border:var(--border-width) solid var(--color-border-strong);border-radius:var(--radius-sm);
+  font-size:var(--font-size-sm);font-weight:600;line-height:var(--line-relaxed);
+}
+.doc-words .lbl{font-weight:700;margin-inline-end:var(--space-8);color:var(--color-text-muted)}
+.doc-sign{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-24);margin-top:var(--space-48)}
+@media (max-width:620px){.doc-sign{grid-template-columns:1fr}}
+.doc-sign .slot{text-align:center;font-size:var(--font-size-xs);color:var(--color-text-muted)}
+.doc-sign .slot .line{margin-top:var(--space-48);border-top:var(--border-width) solid var(--color-text-subtle);padding-top:var(--space-6)}
+.doc-foot{
+  margin-top:var(--space-24);padding-top:var(--space-10);
+  border-top:var(--border-width) solid var(--color-border);
+  display:flex;justify-content:space-between;gap:var(--space-16);flex-wrap:wrap;
+  font-size:var(--font-size-hint);color:var(--color-text-subtle);
+}
+.doc-foot .hash{direction:ltr;unicode-bidi:isolate;font-family:var(--font-mono);word-break:break-all;max-width:70%}
+.doc[data-status="draft"]::before{
+  content:"مسودة — غير مرحَّل";
+  position:absolute;top:42%;inset-inline-start:50%;
+  transform:translateX(50%) rotate(-24deg);
+  font-size:56px;font-weight:700;color:color-mix(in srgb,var(--color-text) 8%,transparent);
+  white-space:nowrap;pointer-events:none;
+}
+.printbar{
+  position:sticky;top:0;z-index:var(--z-topbar);display:flex;align-items:center;gap:var(--space-10);
+  flex-wrap:wrap;padding:var(--space-12) var(--space-16);
+  background:var(--color-surface);border-bottom:var(--border-width) solid var(--color-border);
+  box-shadow:var(--shadow-1);
+}
+.printbar .hint{margin-inline-start:auto}
+</style>
+</head>
+<body>
+
+<svg style="position:absolute;width:0;height:0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="i-print" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M6 14h12v7H6z"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></symbol>
+</svg>
+
+<div class="printbar no-print">
+  <a class="btn" href="../gallery.html"><svg width="15" height="15"><use href="#i-back"/></svg>رجوع إلى المعرض</a>
+  <button class="btn btn-primary" onclick="window.print()"><svg width="15" height="15"><use href="#i-print"/></svg>اطبع السند</button>
+  <div class="seg plain" id="statusSeg">
+    <button aria-pressed="true" data-s="posted">مُرحَّل</button>
+    <button aria-pressed="false" data-s="draft">مسودة (يظهر الختم)</button>
+  </div>
+  <button class="iconbtn" data-theme-toggle aria-label="تبديل المظهر"><svg width="18" height="18"><use href="#i-moon"/></svg></button>
+  <span class="hint">اطبع إلى PDF لمعاينة ورقة الطباعة: تكرار رأس الجدول، والتفقيط، وخانات التوقيع، والبصمة.</span>
+</div>
+
+<div class="paper-wrap">
+<article class="doc" id="doc" data-status="posted">
+
+  <header class="doc-head">
+    <div class="org">
+      <h1>شركة سلاسل بابل التجارية</h1>
+      <p class="en-name">Salasel Babel Trading Co.</p>
+      <p class="meta">
+        الرياض — طريق الملك فهد، مبنى ١٢٤٠<br>
+        السجل التجاري: <span class="ltr">1010XXXXXX</span> ·
+        الرقم الضريبي: <span class="ltr">300000000000003</span><br>
+        هاتف: <span class="ltr">+966 11 000 0000</span> ·
+        البريد: <span class="ltr">finance@example.sa</span>
+      </p>
+    </div>
+    <div class="stamp">
+      <div class="qr" aria-label="مكان رمز الاستجابة السريعة">
+        <svg width="60" height="60" viewBox="0 0 60 60" fill="none" stroke="currentColor" stroke-width="3" opacity=".45" aria-hidden="true">
+          <rect x="4" y="4" width="16" height="16"/><rect x="40" y="4" width="16" height="16"/><rect x="4" y="40" width="16" height="16"/>
+          <path d="M28 8v8M28 24h8M40 28h8M28 40v8M40 40v16M48 48h8"/>
+        </svg>
+      </div>
+      رمز الاستجابة السريعة<br>يُولَّد عند الاعتماد
+    </div>
+  </header>
+
+  <div class="doc-title">
+    <h2>سند قيد يومية</h2>
+    <span class="en">Journal Voucher · JV-2026-00125</span>
+  </div>
+
+  <div class="doc-kv">
+    <div><div class="k">رقم القيد</div><div class="v num" dir="ltr">JV-2026-00125</div></div>
+    <div><div class="k">التاريخ</div><div class="v num" dir="ltr">2026/05/24</div></div>
+    <div><div class="k">التاريخ الهجري</div><div class="v">7 ذو الحجة 1447 هـ</div></div>
+    <div><div class="k">نوع القيد</div><div class="v">قيد مصروفات</div></div>
+    <div><div class="k">الفرع</div><div class="v">الفرع الرئيسي — الرياض</div></div>
+    <div><div class="k">الفترة المالية</div><div class="v num" dir="ltr">05/2026</div></div>
+    <div><div class="k">العملة</div><div class="v">ريال سعودي (ر.س)</div></div>
+    <div><div class="k">المرجع</div><div class="v num" dir="ltr">INV-0587-2026</div></div>
+    <div style="grid-column:1/-1"><div class="k">البيان العام</div>
+      <div class="v">مصروف خدمات تقنية عن الفترة 05/2026 شامل ضريبة القيمة المضافة 15%</div></div>
+  </div>
+
+  <table class="doc-table">
+    <thead>
+      <tr>
+        <th style="width:34px">م</th>
+        <th>الحساب</th>
+        <th>البيان</th>
+        <th>مركز التكلفة</th>
+        <th class="h-debit" style="width:110px">مدين (ر.س)</th>
+        <th class="h-credit" style="width:110px">دائن (ر.س)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="n">1</td>
+        <td><span class="acct-code">6120101</span> مصروف خدمات تقنية</td>
+        <td>مصروف خدمات تقنية</td>
+        <td>إدارة تقنية المعلومات</td>
+        <td class="n d"><span class="amt" data-amount="10000">—</span></td>
+        <td class="n"><span class="amt amt--zero">–</span></td>
+      </tr>
+      <tr>
+        <td class="n">2</td>
+        <td><span class="acct-code">121201</span> ضريبة القيمة المضافة — مدخلات</td>
+        <td>ضريبة القيمة المضافة 15%</td>
+        <td>إدارة مالية</td>
+        <td class="n d"><span class="amt" data-amount="1500">—</span></td>
+        <td class="n"><span class="amt amt--zero">–</span></td>
+      </tr>
+      <tr>
+        <td class="n">3</td>
+        <td><span class="acct-code">2010101</span> الدائنون / شركة التقنية</td>
+        <td>شركة التقنية — فاتورة 0587</td>
+        <td>—</td>
+        <td class="n"><span class="amt amt--zero">–</span></td>
+        <td class="n c"><span class="amt" data-amount="11500">—</span></td>
+      </tr>
+    </tbody>
+    <tfoot>
+      <tr>
+        <td colspan="4">الإجمالي</td>
+        <td class="n d"><span class="amt amt--total" data-amount="11500">—</span></td>
+        <td class="n c"><span class="amt amt--total" data-amount="11500">—</span></td>
+      </tr>
+    </tfoot>
+  </table>
+
+  <div class="doc-words">
+    <span class="lbl">المبلغ كتابةً:</span>
+    <span id="words">أحد عشر ألفاً وخمسمائة ريال لا غير</span>
+  </div>
+
+  <div class="doc-sign">
+    <div class="slot"><div class="line">أعدّه — مظفر العمري</div></div>
+    <div class="slot"><div class="line">راجعه — المحاسب المسؤول</div></div>
+    <div class="slot"><div class="line">اعتمده — المدير المالي</div></div>
+  </div>
+
+  <footer class="doc-foot">
+    <span>طُبع في: <span class="ltr">2026-05-24 14:12 +03</span> · صفحة 1 من 1</span>
+    <span class="hash">entry_hash: 9f2c41d8ab77e0c3b5164a9e0d2f88aa31c7be5904d6f21e8b3a0c7d5e14f6b2</span>
+  </footer>
+
+</article>
+</div>
+
+<script src="behaviors.js" defer></script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  var seg = document.getElementById("statusSeg"), doc = document.getElementById("doc");
+  seg.addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-s]"); if (!b) return;
+    Array.prototype.forEach.call(seg.querySelectorAll("button"), function (x) {
+      x.setAttribute("aria-pressed", String(x === b));
+    });
+    doc.setAttribute("data-status", b.dataset.s);
+  });
+  /* التفقيط يُحسب من نفس القيمة المعروضة، لا من رقم مكتوب يدوياً */
+  if (window.SB) document.getElementById("words").textContent = SB.tafqeet(11500) + " لا غير";
+});
+</script>
+</body>
+</html>

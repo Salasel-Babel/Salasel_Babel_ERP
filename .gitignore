@@ -11,6 +11,11 @@ secrets/
 # البناء
 bin/
 obj/
+[Bb]in/
+[Oo]bj/
+TestResults/
+*.binlog
+artifacts/
 dist/
 build/
 out/

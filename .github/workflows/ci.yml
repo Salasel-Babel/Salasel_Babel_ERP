@@ -1,0 +1,97 @@
+# التكامل المستمر لـ«سلاسل بابل»
+#
+# قاعدة هذا الملف: البناء يفشل عند أول مخالفة حدّ، لا يُنبَّه عليها.
+# TreatWarningsAsErrors مفعّل في Directory.Build.props، واختبارات المعمارية جزء من مجموعة
+# الاختبارات — فمخالفة أي قاعدة من قواعد src/README.md توقف الدمج.
+#
+# مصدر الـSDK هنا هو مصنوعات Microsoft الرسمية، لا أرشيف توزيعة — شرط تطابق الإصدار
+# وسلسلة التوريد (docs/analysis/02-architecture.md §2.2 ملاحظة 2).
+
+name: CI
+
+on:
+  push:
+    branches:
+      - develop
+      - main
+      - production
+      - 'feature/**'
+      - 'claude/**'
+      - 'fix/**'
+  pull_request:
+    branches:
+      - develop
+      - main
+      - production
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  # يُفعّل البناء الحتمي وتطبيع مسارات المصدر (Directory.Build.props).
+  CI: true
+
+jobs:
+  build-and-enforce:
+    name: بناء وإنفاذ الحدود
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: سحب المستودع
+        uses: actions/checkout@v4
+
+      - name: تهيئة .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: ذاكرة NuGet المؤقتة
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', '**/*.csproj') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: استرجاع الحزم
+        run: dotnet restore Babel.slnx
+
+      - name: البناء — التحذير خطأ
+        run: dotnet build Babel.slnx --configuration Release --no-restore
+
+      # جدول الحزم المحلولة يُسجَّل مع كل بناء: «الرقم الملزم هو ما يحلّه dotnet restore
+      # وقت التنفيذ، لا ما في وثيقة» (docs/analysis/02-architecture.md §2.1).
+      - name: تسجيل شجرة الحزم المحلولة
+        run: dotnet list Babel.slnx package --include-transitive > resolved-packages.txt || true
+
+      - name: رفع شجرة الحزم
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: resolved-packages
+          path: resolved-packages.txt
+          if-no-files-found: ignore
+
+      # اختبارات المعمارية تُشغَّل أولاً ومنفصلة: إن انكسر حدّ، تُقرأ الرسالة فوراً
+      # بدل البحث عنها بين ثمانين اختباراً.
+      - name: إنفاذ الحدود المعمارية
+        run: dotnet test --project tests/Babel.ArchitectureTests/Babel.ArchitectureTests.csproj --configuration Release --no-build
+
+      - name: كل الاختبارات
+        run: dotnet test --solution Babel.slnx --configuration Release --no-build
+
+      - name: التحقق من عدم وجود أسرار في التغييرات
+        run: |
+          set -euo pipefail
+          if git grep -nIE '(BEGIN (RSA|EC|OPENSSH|PRIVATE) KEY|password[[:space:]]*=[[:space:]]*["'"'"'][^"'"'"']+)' \
+               -- ':!**/ci.yml' ':!docs/**' ':!spikes/**'; then
+            echo "::error::يبدو أن هناك سرّاً في المستودع. CONTRIBUTING §3 بند 7."
+            exit 1
+          fi

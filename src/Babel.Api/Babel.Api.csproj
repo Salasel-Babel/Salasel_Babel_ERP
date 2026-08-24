@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!--
+    Babel.Api — الجذر التركيبي وسطح HTTP. المشروع الوحيد الذي يعرف كل الوحدات.
+    ولا يعرف رغم ذلك أنواعها الداخلية: كل تسجيل يمرّ بدالة Add<Module> المعلنة.
+    Rule03: لا مشروع يعتمد على Babel.Api — أبداً.
+  -->
+
+  <PropertyGroup>
+    <RootNamespace>Babel.Api</RootNamespace>
+    <AssemblyName>Babel.Api</AssemblyName>
+    <UserSecretsId>babel-api-skeleton</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Babel.SharedKernel/Babel.SharedKernel.csproj" />
+    <ProjectReference Include="../Babel.Contracts/Babel.Contracts.csproj" />
+    <ProjectReference Include="../Babel.Core/Babel.Core.csproj" />
+    <ProjectReference Include="../Babel.Ledger/Babel.Ledger.csproj" />
+    <ProjectReference Include="../Babel.Sales/Babel.Sales.csproj" />
+    <ProjectReference Include="../Babel.Purchasing/Babel.Purchasing.csproj" />
+    <ProjectReference Include="../Babel.Compliance/Babel.Compliance.csproj" />
+    <ProjectReference Include="../Babel.Inventory/Babel.Inventory.csproj" />
+    <ProjectReference Include="../Babel.Pos/Babel.Pos.csproj" />
+    <ProjectReference Include="../Babel.Hr/Babel.Hr.csproj" />
+    <ProjectReference Include="../Babel.Projects/Babel.Projects.csproj" />
+    <ProjectReference Include="../Babel.RealEstate/Babel.RealEstate.csproj" />
+    <ProjectReference Include="../Babel.Assets/Babel.Assets.csproj" />
+    <ProjectReference Include="../Babel.Portals/Babel.Portals.csproj" />
+    <ProjectReference Include="../Babel.Ai/Babel.Ai.csproj" />
+  </ItemGroup>
+
+</Project>

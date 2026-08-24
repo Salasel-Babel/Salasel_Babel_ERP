@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Babel.Ledger.Tests</RootNamespace>
+    <AssemblyName>Babel.Ledger.Tests</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/Babel.Ledger/Babel.Ledger.csproj" />
+  </ItemGroup>
+
+</Project>

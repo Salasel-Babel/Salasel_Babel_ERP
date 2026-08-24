@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Babel.ArchitectureTests — إنفاذ الحدود.
+    هذا المشروع هو أهم ما في الهيكل: القواعد هنا تُفشل البناء، لا تُذكِّر به.
+    كل قاعدة تحمل تعليقاً يشرح ما الذي تجعله مستحيلاً، ولماذا كان ممكناً بدونها.
+  -->
+
+  <PropertyGroup>
+    <RootNamespace>Babel.ArchitectureTests</RootNamespace>
+    <AssemblyName>Babel.ArchitectureTests</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NetArchTest.Rules" />
+  </ItemGroup>
+
+  <!-- Babel.Api مشروع ويب: الإشارة إليه تتطلب إطار ASP.NET Core هنا أيضاً. -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/Babel.SharedKernel/Babel.SharedKernel.csproj" />
+    <ProjectReference Include="../../src/Babel.Contracts/Babel.Contracts.csproj" />
+    <ProjectReference Include="../../src/Babel.Core/Babel.Core.csproj" />
+    <ProjectReference Include="../../src/Babel.Ledger/Babel.Ledger.csproj" />
+    <ProjectReference Include="../../src/Babel.Sales/Babel.Sales.csproj" />
+    <ProjectReference Include="../../src/Babel.Purchasing/Babel.Purchasing.csproj" />
+    <ProjectReference Include="../../src/Babel.Compliance/Babel.Compliance.csproj" />
+    <ProjectReference Include="../../src/Babel.Inventory/Babel.Inventory.csproj" />
+    <ProjectReference Include="../../src/Babel.Pos/Babel.Pos.csproj" />
+    <ProjectReference Include="../../src/Babel.Hr/Babel.Hr.csproj" />
+    <ProjectReference Include="../../src/Babel.Projects/Babel.Projects.csproj" />
+    <ProjectReference Include="../../src/Babel.RealEstate/Babel.RealEstate.csproj" />
+    <ProjectReference Include="../../src/Babel.Assets/Babel.Assets.csproj" />
+    <ProjectReference Include="../../src/Babel.Portals/Babel.Portals.csproj" />
+    <ProjectReference Include="../../src/Babel.Ai/Babel.Ai.csproj" />
+    <ProjectReference Include="../../src/Babel.Api/Babel.Api.csproj" />
+  </ItemGroup>
+
+  <!-- جذر المستودع يُحقن في التجميعة: قواعد المراجع تفحص ملفات المشاريع نفسها، لا IL فقط. -->
+  <ItemGroup>
+    <AssemblyMetadata Include="BabelRepositoryRoot" Value="$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../'))" />
+  </ItemGroup>
+
+</Project>

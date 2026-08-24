@@ -1,0 +1,181 @@
+code,name_ar,name_en,parent_code,level,account_type,natural_side,is_postable,is_contra,statement_section,subledger_type,required_dimensions,currency_mode,currency_code,is_protected,status,source_ref,caveat_ar,caveat_en
+1,الأصول,Assets,,1,asset,debit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+11,النقدية بالصناديق,Cash on Hand,1,2,asset,debit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+110,صناديق النقدية,Cash Boxes,11,3,asset,debit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+1101,النقد بالصندوق,Cash in Hand,110,4,asset,debit,true,false,current_asset,cash_box,,any,,true,drafted,chart-of-accounts.md §2,,
+12,النقد لدى البنوك وما في حكمه,Cash at Banks and Equivalents,1,2,asset,debit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+120,الحسابات البنكية,Bank Accounts,12,3,asset,debit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+1201,النقد لدى البنوك,Cash at Banks,120,4,asset,debit,true,false,current_asset,bank_account,,any,,true,drafted,chart-of-accounts.md §2,,
+1202,متحصلات بطاقات تحت التحصيل,Card Receipts in Clearing,120,4,asset,debit,true,false,current_asset,bank_account,,any,,true,drafted,chart-of-accounts.md §2,إلزام بُعد الفرع أُسقط لعدم وجود سند له في الوثائق — يبقى اختيارياً على السطر,The branch requirement was dropped for lack of support in the documents — it stays optional on the line
+1203,النقد لدى البنوك — حساب أمانات الملاك والتأمينات,Cash at Banks — Owner and Deposit Trust Account,120,4,asset,debit,true,false,current_asset,bank_account,,any,,true,proposed,proposed:matrix-seed,⚠️ قرار ق-ع-9 لم يُحسم: هل يُفصل حساب أمانات الملاك كحساب أستاذ مستقل أم كحساب بنكي مستقل تحت 1201؟,⚠️ Decision Q-RE-9 open: separate GL account or merely a separate bank account under 1201?
+1204,نقدية بالطريق — تحويلات بين الحسابات,Cash in Transit — Inter-Account Transfers,120,4,asset,debit,true,false,current_asset,none,,any,,true,proposed,proposed:matrix-seed,حساب وسيط للتحويلات التي لا تُقيَّد في اليوم نفسه — يحتاج مراجعة محاسب,Clearing account for transfers not settled same day — needs accountant review
+13,الذمم المدينة والأرصدة المدينة الأخرى,Receivables and Other Debit Balances,1,2,asset,debit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+130,الذمم المدينة التجارية والأرصدة المرتبطة,Trade Receivables and Related Balances,13,3,asset,debit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+1301,العملاء — ذمم مدينة,Customers — Trade Receivables,130,4,asset,debit,true,false,current_asset,customer,,any,,true,drafted,chart-of-accounts.md §2,,
+1302,محتجزات لدى العملاء,Retentions Held by Customers,130,4,asset,debit,true,false,current_asset,customer,project,any,,true,drafted,chart-of-accounts.md §2,⚠️ تصنيفها متداولة أم غير متداولة بند مفتوح رقم 6 في مصفوفة الترحيل,⚠️ Current vs non-current classification is open item 6 in the posting matrix
+1303,دفعات مقدمة لمقاولين من الباطن,Advances to Subcontractors,130,4,asset,debit,true,false,current_asset,subcontractor,project,any,,true,drafted,chart-of-accounts.md §2,,
+1304,سلف وعهد الموظفين,Employee Advances and Imprests,130,4,asset,debit,true,false,current_asset,employee,,any,,true,drafted,chart-of-accounts.md §2,,
+1305,ضريبة القيمة المضافة المستردة,VAT Recoverable from Authority,130,4,asset,debit,true,false,current_asset,none,,company_only,SAR,true,drafted,chart-of-accounts.md §2,,
+1306,مصروفات مدفوعة مقدماً,Prepaid Expenses,130,4,asset,debit,true,false,current_asset,none,,any,,false,drafted,chart-of-accounts.md §2,,
+1307,أوراق قبض — شيكات بالمحفظة,Notes Receivable — Cheques on Hand,130,4,asset,debit,true,false,current_asset,cheque,,any,,true,renamed,07-real-estate.md §14.0,أُعيدت تسميته من «أوراق قبض (شيكات تحت التحصيل)» للفصل بين ما في خزنة الشركة وما لدى البنك,Renamed from Notes Receivable (cheques under collection) to separate cheques held by the company from cheques at the bank
+1308,أوراق قبض — شيكات تحت التحصيل لدى البنك,Notes Receivable — Cheques Under Collection at Bank,130,4,asset,debit,true,false,current_asset,cheque,,any,,true,drafted,07-real-estate.md §14.0,,
+1309,مخصص الديون المشكوك في تحصيلها — عملاء,Allowance for Doubtful Debts — Customers,130,4,asset,credit,true,true,current_asset,customer,,any,,true,proposed,proposed:matrix-seed,الدليل الأساسي يحمل مصروف المخصص 5603 بلا حساب مقابل للعملاء — أُضيف قياساً على 1311,The base chart carries provision expense 5603 with no customer-side contra account; added by analogy with 1311
+131,ذمم المستأجرين والملاك,Tenant and Owner Receivables,13,3,asset,debit,false,false,,none,,any,,true,drafted,07-real-estate.md §14.0,,
+1310,المستأجرون — ذمم مدينة,Tenants — Trade Receivables,131,4,asset,debit,true,false,current_asset,tenant,,any,,true,drafted,07-real-estate.md §14.0,,
+1311,مخصص الديون المشكوك في تحصيلها — مستأجرون,Allowance for Doubtful Debts — Tenants,131,4,asset,credit,true,true,current_asset,tenant,,any,,true,drafted,07-real-estate.md §14.0,,
+1312,ذمم مدينة — ملاك,Receivables — Property Owners,131,4,asset,debit,true,false,current_asset,property_owner,,any,,true,drafted,07-real-estate.md §14.0,,
+1314,إيرادات إيجار مستحقة غير مفوترة,Accrued Unbilled Rental Income,131,4,asset,debit,true,false,current_asset,lease_contract,property,any,,true,drafted,07-real-estate.md §14.0,,
+14,المخزون,Inventories,1,2,asset,debit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+140,المخزون,Inventories,14,3,asset,debit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+1401,مخزون البضاعة,Merchandise Inventory,140,4,asset,debit,true,false,current_asset,item,warehouse,any,,true,drafted,chart-of-accounts.md §2,,
+1402,مخزون بالطريق,Goods in Transit,140,4,asset,debit,true,false,current_asset,item,,any,,true,drafted,chart-of-accounts.md §2,,
+1403,أعمال تحت التنفيذ,Work in Progress,140,4,asset,debit,true,false,current_asset,none,project,any,,true,drafted,chart-of-accounts.md §2,⚠️ يتوقف على قرار الاعتراف بالإيراد في المقاولات — بند مفتوح رقم 5,⚠️ Depends on the contracting revenue recognition decision — open item 5
+1404,عقارات بغرض البيع — مخزون عقاري,Property Held for Sale — Real Estate Inventory,140,4,asset,debit,true,false,current_asset,property,property,any,,true,drafted,07-real-estate.md §14.0,,
+1405,مخزون قطع الغيار والمستلزمات,Spare Parts and Consumables Inventory,140,4,asset,debit,true,false,current_asset,item,warehouse,any,,true,proposed,proposed:matrix-seed,وحدة المخزون بلا وثيقة تحليل — الحساب مقترح,The inventory module has no analysis document — account is proposed
+1406,مخصص تقادم وبطء حركة المخزون,Allowance for Slow-Moving and Obsolete Inventory,140,4,asset,credit,true,true,current_asset,none,,any,,true,proposed,proposed:matrix-seed,وحدة المخزون بلا وثيقة تحليل — الحساب مقترح وسياسة المخصص تحتاج قراراً,The inventory module has no analysis document — account and provision policy are proposed
+15,الأصول غير المتداولة,Non-Current Assets,1,2,asset,debit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+150,الأصول الثابتة والعقارات الاستثمارية,Fixed Assets and Investment Property,15,3,asset,debit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+1501,الأصول الثابتة — التكلفة,Fixed Assets — Cost,150,4,asset,debit,true,false,non_current_asset,fixed_asset,,any,,true,drafted,chart-of-accounts.md §2,,
+1502,مجمع إهلاك الأصول الثابتة,Accumulated Depreciation — Fixed Assets,150,4,asset,credit,true,true,non_current_asset,fixed_asset,,any,,true,drafted,chart-of-accounts.md §2,,
+1503,أعمال رأسمالية تحت التنفيذ,Capital Work in Progress,150,4,asset,debit,true,false,non_current_asset,fixed_asset,,any,,false,drafted,chart-of-accounts.md §2,,
+1504,الأصول غير الملموسة,Intangible Assets,150,4,asset,debit,true,false,non_current_asset,fixed_asset,,any,,true,drafted,chart-of-accounts.md §2,,
+1505,عقارات استثمارية — التكلفة,Investment Property — Cost,150,4,asset,debit,true,false,non_current_asset,property,property,any,,true,drafted,07-real-estate.md §14.0,⚠️ إن اعتُمد نموذج القيمة العادلة (ق-ع-11) يتغير قياس هذا الحساب ويسقط الإهلاك كلياً,⚠️ If the fair value model is adopted (Q-RE-11) the measurement changes and depreciation disappears entirely
+1506,مجمع إهلاك العقارات الاستثمارية,Accumulated Depreciation — Investment Property,150,4,asset,credit,true,true,non_current_asset,property,property,any,,true,drafted,07-real-estate.md §14.0,⚠️ يسقط هذا الحساب إن اعتُمد نموذج القيمة العادلة (ق-ع-11),⚠️ This account disappears if the fair value model is adopted (Q-RE-11)
+1507,مجمع إطفاء الأصول غير الملموسة,Accumulated Amortisation — Intangible Assets,150,4,asset,credit,true,true,non_current_asset,fixed_asset,,any,,true,proposed,proposed:matrix-seed,الدليل الأساسي يحمل 1504 بلا مجمع إطفاء مقابل,The base chart carries 1504 with no matching accumulated amortisation account
+2,الخصوم,Liabilities,,1,liability,credit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+21,الذمم الدائنة والأرصدة الدائنة التشغيلية,Trade and Operating Payables,2,2,liability,credit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+210,الموردون والمقاولون,Suppliers and Contractors,21,3,liability,credit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+2101,الموردون — ذمم دائنة,Suppliers — Trade Payables,210,4,liability,credit,true,false,current_liability,supplier,,any,,true,drafted,chart-of-accounts.md §2,,
+2102,المقاولون من الباطن,Subcontractors Payable,210,4,liability,credit,true,false,current_liability,subcontractor,,any,,true,drafted,chart-of-accounts.md §2,,
+212,ضريبة القيمة المضافة — المدخلات,VAT — Input,21,3,liability,credit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+2121,ضريبة القيمة المضافة — مدخلات,VAT — Input Tax,212,4,liability,debit,true,true,current_liability,none,,company_only,SAR,true,drafted,chart-of-accounts.md §2,⚠️ الخصم التناسبي في النشاط المختلط غير محسوم (07-real-estate.md §10.3) — الجزء غير القابل للخصم يُحمَّل على حساب المصروف,⚠️ Proportional deduction for mixed activity is unresolved (07-real-estate.md §10.3); the non-deductible portion is charged to the expense account
+213,ضريبة القيمة المضافة — المخرجات والمستحق,VAT — Output and Amounts Due,21,3,liability,credit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+2131,ضريبة القيمة المضافة — مخرجات,VAT — Output Tax,213,4,liability,credit,true,false,current_liability,none,,company_only,SAR,true,drafted,chart-of-accounts.md §2,رصيده يجب أن يطابق مجموع ضريبة الفواتير المقبولة لدى ZATCA للفترة,Its balance must reconcile to the total VAT of invoices accepted by ZATCA for the period
+2132,ضريبة القيمة المضافة المستحقة للهيئة,VAT Payable to Authority,213,4,liability,credit,true,false,current_liability,none,,company_only,SAR,true,drafted,chart-of-accounts.md §2,,
+214,الدفعات المقدمة من العملاء,Customer Advances,21,3,liability,credit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+2141,دفعات مقدمة من عملاء,Customer Advances Received,214,4,liability,credit,true,false,current_liability,customer,,any,,true,drafted,chart-of-accounts.md §2,⚠️ استحقاق ضريبة القيمة المضافة على الدفعة المقدمة عند القبض غير محسوم — بند مفتوح رقم 1,⚠️ Whether VAT is due on advances at collection is unresolved — open item 1
+215,بضاعة مستلمة لم تُفوتر,Goods Received Not Invoiced,21,3,liability,credit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+2151,بضاعة مستلمة لم تُفوتر,Goods Received Not Invoiced (GRNI),215,4,liability,credit,true,false,current_liability,supplier,,any,,true,drafted,chart-of-accounts.md §2,,
+216,المحتجزات الدائنة,Retentions Payable,21,3,liability,credit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+2161,محتجزات دائنة — ضمان حسن التنفيذ,Retentions Payable — Performance Guarantee,216,4,liability,credit,true,false,current_liability,subcontractor,project,any,,true,drafted,chart-of-accounts.md §2,⚠️ تصنيفها متداولة أم غير متداولة بند مفتوح رقم 6,⚠️ Current vs non-current classification is open item 6
+217,الإيرادات المؤجلة,Deferred Income,21,3,liability,credit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+2171,إيرادات إيجار مؤجلة — مقبوضة أو مفوترة مقدماً,Deferred Rental Income — Received or Invoiced in Advance,217,4,liability,credit,true,false,current_liability,lease_contract,property,any,,true,renamed,07-real-estate.md §14.0,أُعيدت تسميته من «إيرادات إيجار مقبوضة مقدماً» لأن الالتزام ينشأ عند الفوترة لا عند القبض فقط,Renamed from Rental Income Received in Advance because the obligation arises on invoicing not only on collection
+218,تأمينات المستأجرين,Tenant Security Deposits,21,3,liability,credit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+2181,تأمينات مستأجرين مستردة,Refundable Tenant Security Deposits,218,4,liability,credit,true,false,current_liability,lease_contract,,any,,true,drafted,chart-of-accounts.md §2,⚠️ عدم إثبات ضريبة عند الاستلام يحتاج تأكيد المستشار الضريبي خاصة إن جاز استخدام الوديعة في سداد الإيجار,⚠️ Not recognising VAT on receipt needs tax adviser confirmation especially if the deposit may be applied against rent
+2182,تأمينات مستأجرين محتفَظ بها لصالح الملاك,Tenant Security Deposits Held on Behalf of Owners,218,4,liability,credit,true,false,current_liability,lease_contract,,any,,true,drafted,07-real-estate.md §14.0,,
+219,أرصدة الملاك والتحصيلات غير المخصصة,Owner Balances and Unallocated Collections,21,3,liability,credit,false,false,,none,,any,,true,drafted,07-real-estate.md §14.0,,
+2191,أمانات ملاك,Property Owner Trust Payable,219,4,liability,credit,true,false,current_liability,property_owner,,any,,true,drafted,chart-of-accounts.md §2,,
+2192,تحصيلات مستأجرين غير مخصصة,Unallocated Tenant Collections,219,4,liability,credit,true,false,current_liability,none,,any,,true,drafted,07-real-estate.md §14.0,رصيده مؤشر جودة تشغيل — تقادمه فوق مدة معينة يستوجب تنبيهاً,Its balance is an operational quality indicator; ageing beyond a threshold must raise an alert
+2193,ضريبة قيمة مضافة محصَّلة نيابة عن الملاك,VAT Collected on Behalf of Property Owners,219,4,liability,credit,true,false,current_liability,property_owner,,company_only,SAR,true,drafted,07-real-estate.md §14.0,⚠️ لا يدخل هذا الحساب في الإقرار الضريبي للشركة — يحتاج تأكيد المستشار الضريبي (§10.4),⚠️ This account does not enter the company VAT return — needs tax adviser confirmation (§10.4)
+22,المستحقات والأرصدة الدائنة الأخرى,Accruals and Other Payables,2,2,liability,credit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+220,مستحقات الموظفين والمستحقات الأخرى,Employee and Other Accruals,22,3,liability,credit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+2201,رواتب مستحقة الدفع,Salaries Payable,220,4,liability,credit,true,false,current_liability,employee,,any,,true,drafted,chart-of-accounts.md §2,,
+2202,التأمينات الاجتماعية مستحقة,Social Insurance Payable,220,4,liability,credit,true,false,current_liability,none,,company_only,SAR,true,drafted,chart-of-accounts.md §2,⚠️ نسب الاشتراك لا تُبنى في الكود — جدول إعدادات ونسب لا تُخترع هنا,⚠️ Contribution rates are never coded; they live in a settings table and are not invented here
+2203,خصومات وجزاءات,Payroll Deductions and Penalties,220,4,liability,credit,true,false,current_liability,employee,,any,,true,drafted,chart-of-accounts.md §2,,
+2204,مخصص مكافأة نهاية الخدمة,End-of-Service Benefits Provision,220,4,liability,credit,true,false,non_current_liability,employee,,any,,true,drafted,chart-of-accounts.md §2,رقمه يضعه في المجموعة 22 بينما تعرضه الوثيقة الأصلية تحت العنوان «25 الخصوم غير المتداولة» — حُسم بأن الشجرة من الرمز والعرض من statement_section,Its code places it in group 22 while the source document lists it under the heading 25 Non-Current Liabilities; resolved by deriving the tree from the code and the presentation from statement_section
+2205,أوراق دفع — شيكات صادرة,Notes Payable — Cheques Issued,220,4,liability,credit,true,false,current_liability,cheque,,any,,true,drafted,chart-of-accounts.md §2,,
+2206,مصروفات مستحقة,Accrued Expenses,220,4,liability,credit,true,false,current_liability,none,,any,,false,drafted,chart-of-accounts.md §2,,
+225,القروض,Borrowings,22,3,liability,credit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+2251,قروض طويلة الأجل,Long-Term Loans,225,4,liability,credit,true,false,non_current_liability,none,,any,,false,drafted,chart-of-accounts.md §2,رقمه يضعه في المجموعة 22 بينما تعرضه الوثيقة الأصلية تحت العنوان «25»,Its code places it in group 22 while the source document lists it under heading 25
+3,حقوق الملكية,Equity,,1,equity,credit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+31,رأس المال والاحتياطيات,Capital and Reserves,3,2,equity,credit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+310,رأس المال,Share Capital,31,3,equity,credit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+3101,رأس المال,Share Capital,310,4,equity,credit,true,false,equity,none,,company_only,SAR,true,drafted,chart-of-accounts.md §2,,
+3102,علاوة إصدار,Share Premium,310,4,equity,credit,true,false,equity,none,,company_only,SAR,false,drafted,chart-of-accounts.md §2,,
+315,الاحتياطيات,Reserves,31,3,equity,credit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+3151,الاحتياطي النظامي,Statutory Reserve,315,4,equity,credit,true,false,equity,none,,company_only,SAR,false,drafted,chart-of-accounts.md §2,⚠️ نسبة التجنيب النظامية وحدها الأقصى لا تُخترع هنا — تُؤخذ من نظام الشركات الساري,⚠️ The statutory transfer percentage and its cap are not invented here; they come from the companies law in force
+3152,احتياطيات أخرى,Other Reserves,315,4,equity,credit,true,false,equity,none,,company_only,SAR,false,proposed,proposed:matrix-seed,,
+32,الأرباح المبقاة ونتيجة الفترة,Retained Earnings and Period Result,3,2,equity,credit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+320,الأرباح المبقاة,Retained Earnings,32,3,equity,credit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+3201,الأرباح المبقاة,Retained Earnings,320,4,equity,credit,true,false,equity,none,,company_only,SAR,true,drafted,chart-of-accounts.md §2,,
+3202,أرباح (خسائر) الفترة الجارية,Current Period Profit (Loss),320,4,equity,credit,true,false,equity,none,,company_only,SAR,true,drafted,chart-of-accounts.md §2,,
+33,التوزيعات,Distributions,3,2,equity,debit,false,true,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+330,التوزيعات,Distributions,33,3,equity,debit,false,true,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+3301,التوزيعات,Dividends and Distributions,330,4,equity,debit,true,true,equity,none,,company_only,SAR,false,drafted,chart-of-accounts.md §2,,
+39,حسابات تسوية حقوق الملكية,Equity Adjustment Accounts,3,2,equity,credit,false,false,,none,,any,,true,proposed,proposed:matrix-seed,,
+390,تسويات الأرصدة الافتتاحية,Opening Balance Adjustments,39,3,equity,credit,false,false,,none,,any,,true,proposed,proposed:matrix-seed,,
+3901,حساب تسوية الأرصدة الافتتاحية,Opening Balance Suspense,390,4,equity,credit,true,false,equity,none,,company_only,SAR,true,proposed,proposed:matrix-seed,حساب معلّق يستوعب فرق استيراد الأرصدة الافتتاحية — يجب أن يكون رصيده صفراً قبل إقفال أول فترة,Suspense account absorbing the opening balance import difference; must be zero before the first period is closed
+4,الإيرادات,Revenue,,1,revenue,credit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+41,إيرادات المبيعات,Sales Revenue,4,2,revenue,credit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+410,المبيعات,Sales,41,3,revenue,credit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+4101,إيرادات المبيعات,Sales Revenue,410,4,revenue,credit,true,false,revenue,none,branch,any,,true,drafted,chart-of-accounts.md §2,,
+4102,مردودات ومسموحات المبيعات,Sales Returns and Allowances,410,4,revenue,debit,true,true,revenue,none,branch,any,,true,drafted,chart-of-accounts.md §2,,
+42,إيرادات المقاولات,Contracting Revenue,4,2,revenue,credit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+420,عقود المقاولات,Construction Contracts,42,3,revenue,credit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+4201,إيرادات عقود المقاولات,Construction Contract Revenue,420,4,revenue,credit,true,false,revenue,none,project,any,,true,drafted,chart-of-accounts.md §2,⚠️ أساس الاعتراف (نسبة الإنجاز أم عند التسليم) بند مفتوح رقم 5 ويؤثر على هذا الحساب جوهرياً,⚠️ The recognition basis (percentage of completion vs on delivery) is open item 5 and materially affects this account
+43,الإيرادات العقارية,Real Estate Revenue,4,2,revenue,credit,false,false,,none,,any,,true,drafted,07-real-estate.md §14.0,,
+430,الإيرادات العقارية,Real Estate Revenue,43,3,revenue,credit,false,false,,none,,any,,true,drafted,07-real-estate.md §14.0,,
+4301,إيرادات الإيجار,Rental Revenue,430,4,revenue,credit,true,false,revenue,none,property,any,,true,drafted,chart-of-accounts.md §2,محكوم بقاعدة الحجب GR-RE-001 — يُمنع الترحيل إليه إذا كان نموذج ملكية العقار «مُدار لصالح الغير»,Governed by block rule GR-RE-001; posting is refused when the property ownership model is managed_for_others
+4302,إيرادات عمولة إدارة الأملاك,Property Management Commission Revenue,430,4,revenue,credit,true,false,revenue,property_owner,,any,,true,drafted,chart-of-accounts.md §2,⚠️ العمولة خاضعة للنسبة الأساسية حتى لو كان الإيجار المُدار سكنياً معفى — يحتاج تأكيد المستشار الضريبي (§8.1),⚠️ The commission is subject to the standard rate even when the managed rent is exempt residential; needs tax adviser confirmation (§8.1)
+4303,إيرادات غرامات تأخير السداد,Late Payment Penalty Revenue,430,4,revenue,credit,true,false,revenue,none,property,any,,true,drafted,07-real-estate.md §14.0,⚠️ المعالجة الضريبية للغرامات وإعادة تحميل الرسوم غير محسومة (§10.1) — لا يُبنى سطر الضريبة قبل التأكيد,⚠️ VAT treatment of penalties and fee recharges is unresolved (§10.1); the tax line is not built before confirmation
+4304,إيرادات مصادرة تأمينات مستأجرين,Forfeited Tenant Deposits Revenue,430,4,revenue,credit,true,false,revenue,none,,any,,true,drafted,07-real-estate.md §14.0,⚠️ نموذج الملكية الذاتية فقط · وهل المصادرة تعويض خارج النطاق أم مقابل توريد خاضع؟ غير محسوم (§14.14),⚠️ Own-property model only; whether forfeiture is out-of-scope compensation or a taxable supply is unresolved (§14.14)
+4305,إيرادات إعادة تحميل مرافق وخدمات,Utilities and Services Recharge Revenue,430,4,revenue,credit,true,false,revenue,none,property,any,,true,drafted,07-real-estate.md §14.0,⚠️ التصنيف الضريبي لإعادة التحميل يحتاج تأكيداً,⚠️ The VAT classification of recharges needs confirmation
+4306,إيرادات عمولة تسويق وتأجير,Leasing and Marketing Commission Revenue,430,4,revenue,credit,true,false,revenue,property_owner,,any,,true,drafted,07-real-estate.md §14.0,,
+44,أرباح استبعاد الأصول,Gains on Asset Disposal,4,2,revenue,credit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+440,استبعاد الأصول,Asset Disposal,44,3,revenue,credit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+4401,أرباح استبعاد أصول,Gain on Disposal of Assets,440,4,revenue,credit,true,false,other_income,none,,any,,true,drafted,chart-of-accounts.md §2,,
+45,أرباح فروق العملة,Foreign Exchange Gains,4,2,revenue,credit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+450,فروق العملة,Exchange Differences,45,3,revenue,credit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+4501,أرباح فروق العملة,Foreign Exchange Gains,450,4,revenue,credit,true,false,other_income,none,,company_only,SAR,true,drafted,chart-of-accounts.md §2,,
+49,الإيرادات الأخرى,Other Income,4,2,revenue,credit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+490,إيرادات أخرى,Other Income,49,3,revenue,credit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+4901,إيرادات أخرى,Other Income,490,4,revenue,credit,true,false,other_income,none,,any,,true,drafted,chart-of-accounts.md §2,,
+5,المصروفات,Expenses,,1,expense,debit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+51,تكلفة المبيعات,Cost of Sales,5,2,expense,debit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+510,تكلفة البضاعة المباعة,Cost of Goods Sold,51,3,expense,debit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+5101,تكلفة البضاعة المباعة,Cost of Goods Sold,510,4,expense,debit,true,false,cost_of_revenue,none,branch,any,,true,drafted,chart-of-accounts.md §2,إلزام بُعد الفرع مقترح من هذا التسليم ليقابل إلزامه على 4101 — بدونه تنكسر ربحية الفرع,Requiring the branch dimension is proposed by this deliverable to mirror 4101; without it branch profitability breaks
+52,تكلفة المشاريع والعقارات,Project and Property Costs,5,2,expense,debit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+520,تكلفة المشاريع,Project Costs,52,3,expense,debit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+5201,تكلفة مواد المشاريع,Project Materials Cost,520,4,expense,debit,true,false,cost_of_revenue,none,project,any,,true,drafted,chart-of-accounts.md §2,,
+5202,تكلفة أعمال المقاولين من الباطن,Subcontractor Works Cost,520,4,expense,debit,true,false,cost_of_revenue,none,project,any,,true,drafted,chart-of-accounts.md §2,,
+5203,تكلفة عمالة المشاريع,Project Labour Cost,520,4,expense,debit,true,false,cost_of_revenue,none,project,any,,true,drafted,chart-of-accounts.md §2,⚠️ قاعدة توزيع تكلفة الموظف على المشاريع بند مفتوح رقم 4,⚠️ The rule for allocating employee cost to projects is open item 4
+5204,تكلفة المعدات على المشاريع,Project Equipment Cost,520,4,expense,debit,true,false,cost_of_revenue,none,project,any,,true,drafted,chart-of-accounts.md §2,,
+5205,مصروفات مشاريع غير مباشرة,Indirect Project Overheads,520,4,expense,debit,true,false,cost_of_revenue,none,project,any,,true,drafted,chart-of-accounts.md §2,,
+521,تكلفة تشغيل العقارات,Property Operating Costs,52,3,expense,debit,false,false,,none,,any,,true,drafted,07-real-estate.md §14.0,,
+5210,تكلفة صيانة وتشغيل العقارات,Property Maintenance and Operating Cost,521,4,expense,debit,true,false,cost_of_revenue,none,property,any,,true,drafted,07-real-estate.md §14.0,⚠️ في النشاط المعفى تُحمَّل ضريبة المدخلات غير القابلة للخصم على هذا الحساب — طريقة الاحتساب تحتاج تأكيداً,⚠️ For exempt activity the non-deductible input VAT is charged here; the computation method needs confirmation
+5211,مرافق العقارات — الشواغر والمساحات المشتركة,Property Utilities — Vacancies and Common Areas,521,4,expense,debit,true,false,cost_of_revenue,none,property,any,,true,drafted,07-real-estate.md §14.0,⚠️ قاعدة توزيع مصروفات المساحات المشتركة قرار مفتوح ق-ع-14,⚠️ The common area cost allocation rule is open decision Q-RE-14
+5212,رسوم وتراخيص عقارية,Real Estate Fees and Licences,521,4,expense,debit,true,false,cost_of_revenue,none,property,any,,true,drafted,07-real-estate.md §14.0,⚠️ ضريبة التصرفات العقارية: النسبة والوعاء وجهة التحمل والمعالجة كلها غير مؤكدة (§14.17) — لا يُبنى القيد قبل رفع التحفظ,⚠️ Real estate transaction tax: rate base incidence and treatment are all unverified (§14.17); the entry is not built before the caveat is lifted
+5213,عمولات تسويق وتأجير مدفوعة,Leasing and Marketing Commissions Paid,521,4,expense,debit,true,false,cost_of_revenue,none,property,any,,true,drafted,07-real-estate.md §14.0,⚠️ مصروف فوري أم يُرسمَل ويُستهلك على مدة العقد؟ قرار مفتوح ق-ع-13,⚠️ Immediate expense or capitalised and amortised over the lease term? Open decision Q-RE-13
+5214,إهلاك العقارات الاستثمارية,Depreciation — Investment Property,521,4,expense,debit,true,false,cost_of_revenue,none,property,any,,true,drafted,07-real-estate.md §14.0,⚠️ يسقط هذا الحساب كلياً إن اعتُمد نموذج القيمة العادلة (ق-ع-11) · والأرض لا تُهلك ويجب فصل قيمتها,⚠️ This account disappears entirely if the fair value model is adopted (Q-RE-11); land is not depreciated and its value must be separated
+53,فروقات المخزون,Inventory Differences,5,2,expense,debit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+530,فروقات المخزون,Inventory Differences,53,3,expense,debit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+5301,عجز وتلف المخزون,Inventory Shortage and Damage,530,4,expense,debit,true,false,other_expense,none,warehouse,any,,true,drafted,chart-of-accounts.md §2,⚠️ رد ضريبة المدخلات على البضاعة التالفة بند مفتوح رقم 2,⚠️ Whether input VAT must be repaid on damaged goods is open item 2
+5302,مصروف مخصص تقادم المخزون,Inventory Obsolescence Provision Expense,530,4,expense,debit,true,false,other_expense,none,,any,,true,proposed,proposed:matrix-seed,وحدة المخزون بلا وثيقة تحليل — الحساب وسياسة المخصص مقترحان,The inventory module has no analysis document; account and provision policy are proposed
+54,فروقات الصندوق,Cash Differences,5,2,expense,debit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+540,فروقات الصندوق,Cash Differences,54,3,expense,debit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+5401,عجز وزيادة الصندوق,Cash Over and Short,540,4,expense,debit,true,false,other_expense,none,branch,any,,true,drafted,chart-of-accounts.md §2,يقبل الطرفين — الزيادة تُرحَّل دائنة على الحساب نفسه,Accepts both sides; a cash surplus is posted as a credit to the same account
+55,المصروفات التشغيلية والإدارية,Operating and Administrative Expenses,5,2,expense,debit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+550,تكاليف الموظفين,Employee Costs,55,3,expense,debit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+5501,رواتب وأجور,Salaries and Wages,550,4,expense,debit,true,false,operating_expense,none,cost_center,any,,true,drafted,chart-of-accounts.md §2,⚠️ قاعدة توزيع تكلفة الموظف على المشاريع بند مفتوح رقم 4,⚠️ The rule for allocating employee cost to projects is open item 4
+5502,حصة المنشأة في التأمينات,Employer Social Insurance Contribution,550,4,expense,debit,true,false,operating_expense,none,cost_center,any,,true,drafted,chart-of-accounts.md §2,,
+5503,مصروف مكافأة نهاية الخدمة,End-of-Service Benefits Expense,550,4,expense,debit,true,false,operating_expense,none,cost_center,any,,true,drafted,chart-of-accounts.md §2,⚠️ طريقة قياس المخصص لا تُخترع هنا,⚠️ The provision measurement method is not invented here
+5504,بدلات ومزايا الموظفين,Employee Allowances and Benefits,550,4,expense,debit,true,false,operating_expense,none,cost_center,any,,true,drafted,chart-of-accounts.md §2,,
+551,المصروفات العمومية,General Expenses,55,3,expense,debit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+5510,إيجارات,Rent Expense,551,4,expense,debit,true,false,operating_expense,none,cost_center,any,,true,drafted,chart-of-accounts.md §2,في نموذج الإيجار المضمون (النموذج ج) المبلغ المدفوع للمالك مصروف هنا لا أمانة,In the guaranteed rent model (model C) the amount paid to the owner is an expense here not a trust liability
+5511,مرافق — كهرباء ومياه واتصالات,Utilities — Electricity Water and Telecom,551,4,expense,debit,true,false,operating_expense,none,cost_center,any,,true,drafted,chart-of-accounts.md §2,,
+5512,صيانة وإصلاح,Repairs and Maintenance,551,4,expense,debit,true,false,operating_expense,none,cost_center,any,,true,drafted,chart-of-accounts.md §2,,
+5513,وقود ومحروقات,Fuel,551,4,expense,debit,true,false,operating_expense,none,cost_center,any,,true,drafted,chart-of-accounts.md §2,,
+5514,تأمينات,Insurance,551,4,expense,debit,true,false,operating_expense,none,cost_center,any,,true,drafted,chart-of-accounts.md §2,,
+5515,رسوم حكومية واشتراكات,Government Fees and Subscriptions,551,4,expense,debit,true,false,operating_expense,none,cost_center,any,,true,drafted,chart-of-accounts.md §2,,
+5516,أتعاب مهنية واستشارية,Professional and Consulting Fees,551,4,expense,debit,true,false,operating_expense,none,cost_center,any,,true,drafted,chart-of-accounts.md §2,,
+5517,تسويق ودعاية,Marketing and Advertising,551,4,expense,debit,true,false,operating_expense,none,cost_center,any,,true,drafted,chart-of-accounts.md §2,,
+5518,سفر وانتقالات,Travel and Transportation,551,4,expense,debit,true,false,operating_expense,none,cost_center,any,,true,drafted,chart-of-accounts.md §2,,
+5519,قرطاسية ومصروفات مكتبية,Stationery and Office Expenses,551,4,expense,debit,true,false,operating_expense,none,cost_center,any,,true,drafted,chart-of-accounts.md §2,,
+552,تقنية المعلومات والاتصالات,Information Technology and Communications,55,3,expense,debit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+5520,تقنية معلومات واشتراكات برمجية,IT and Software Subscriptions,552,4,expense,debit,true,false,operating_expense,none,cost_center,any,,true,drafted,chart-of-accounts.md §2,,
+56,الإهلاك والمخصصات,Depreciation and Provisions,5,2,expense,debit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+560,الإهلاك والمخصصات,Depreciation and Provisions,56,3,expense,debit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+5601,مصروف الإهلاك,Depreciation Expense,560,4,expense,debit,true,false,operating_expense,none,,any,,true,drafted,chart-of-accounts.md §2,⚠️ طرق الإهلاك المدعومة بند مفتوح رقم 8,⚠️ Supported depreciation methods are open item 8
+5602,خسائر استبعاد أصول,Loss on Disposal of Assets,560,4,expense,debit,true,false,other_expense,none,,any,,true,drafted,chart-of-accounts.md §2,,
+5603,مخصص ديون مشكوك فيها,Doubtful Debts Provision Expense,560,4,expense,debit,true,false,operating_expense,none,,any,,true,drafted,chart-of-accounts.md §2,⚠️ في نموذج إدارة أملاك الغير الخسارة على المالك لا على الشركة إلا بضمان تعاقدي — ق-ع-10,⚠️ In the managed-for-others model the loss falls on the owner not the company unless contractually guaranteed — Q-RE-10
+5604,مصروف إطفاء الأصول غير الملموسة,Amortisation of Intangible Assets,560,4,expense,debit,true,false,operating_expense,none,,any,,true,proposed,proposed:matrix-seed,الدليل الأساسي يحمل 1504 بلا مصروف إطفاء مقابل,The base chart carries 1504 with no matching amortisation expense
+57,خسائر فروق العملة,Foreign Exchange Losses,5,2,expense,debit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+570,فروق العملة,Exchange Differences,57,3,expense,debit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+5701,خسائر فروق العملة,Foreign Exchange Losses,570,4,expense,debit,true,false,other_expense,none,,company_only,SAR,true,drafted,chart-of-accounts.md §2,,
+58,المصروفات البنكية والتمويلية,Bank and Finance Charges,5,2,expense,debit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+580,مصروفات بنكية,Bank Charges,58,3,expense,debit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+5801,مصروفات بنكية وفوائد,Bank Charges and Interest,580,4,expense,debit,true,false,other_expense,none,,any,,true,drafted,chart-of-accounts.md §2,,
+59,المصروفات الأخرى,Other Expenses,5,2,expense,debit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+590,مصروفات أخرى,Other Expenses,59,3,expense,debit,false,false,,none,,any,,true,drafted,chart-of-accounts.md §2,,
+5901,مصروفات أخرى,Other Expenses,590,4,expense,debit,true,false,other_expense,none,,any,,true,drafted,chart-of-accounts.md §2,,
+5902,خصم تعجيل سداد ممنوح,Early Settlement Discount Granted,590,4,expense,debit,true,false,other_expense,none,,any,,true,proposed,proposed:matrix-seed,مصفوفة الترحيل §1.3 تذكر «سطر مصروف مقابل» دون تسمية حساب — أُضيف هنا · ⚠️ أثره الضريبي يحتاج تأكيداً,Posting matrix §1.3 mentions an offsetting expense line without naming an account; added here. ⚠️ Its VAT effect needs confirmation

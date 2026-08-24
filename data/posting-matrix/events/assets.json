@@ -1,0 +1,354 @@
+{
+  "schema_version": "1.0.0",
+  "module": "assets",
+  "source_refs": [
+    "docs/reference/posting-matrix.md §8"
+  ],
+  "events": [
+    {
+      "event_code": "assets.purchase.posted",
+      "name_ar": "شراء أصل ثابت",
+      "name_en": "Fixed asset purchase",
+      "module": "assets",
+      "status": "drafted",
+      "source_ref": "posting-matrix.md §8.1",
+      "trigger": {
+        "name_ar": "عند استلام الأصل وفاتورة المورد وتسجيله في سجل الأصول",
+        "name_en": "On receiving the asset and the supplier invoice and registering it in the asset register"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "إشعار مدين على المورد وتعطيل بطاقة الأصل — لا حذف",
+        "name_en": "A debit note on the supplier and deactivation of the asset card — never deletion"
+      },
+      "amounts": {
+        "net": {
+          "name_ar": "تكلفة الأصل قبل الضريبة",
+          "name_en": "Asset cost before VAT",
+          "derivation_ar": "ثمن الشراء مضافاً إليه كل ما يلزم لجعل الأصل جاهزاً للاستخدام",
+          "derivation_en": "Purchase price plus everything needed to bring the asset into use"
+        },
+        "recoverable_tax": {
+          "name_ar": "ضريبة المدخلات القابلة للخصم",
+          "name_en": "Recoverable input VAT",
+          "derivation_ar": "الجزء المنسوب لنشاط خاضع",
+          "derivation_en": "The portion attributed to taxable activity"
+        },
+        "non_recoverable_tax": {
+          "name_ar": "ضريبة المدخلات غير القابلة للخصم",
+          "name_en": "Non-recoverable input VAT",
+          "derivation_ar": "الجزء المنسوب لنشاط معفى — يُرسمَل ضمن تكلفة الأصل",
+          "derivation_en": "The portion attributed to exempt activity — capitalised into the asset cost"
+        }
+      },
+      "conditions": {
+        "vat_recoverable": {
+          "name_ar": "ضريبة المدخلات قابلة للخصم",
+          "name_en": "Input VAT is recoverable",
+          "expression": "asset.vat_recovery_attribution == 'taxable'"
+        },
+        "vat_not_recoverable": {
+          "name_ar": "ضريبة المدخلات غير قابلة للخصم",
+          "name_en": "Input VAT is not recoverable",
+          "expression": "asset.vat_recovery_attribution == 'exempt'"
+        }
+      },
+      "scenarios": [
+        {
+          "code": "recoverable",
+          "name_ar": "نشاط خاضع",
+          "name_en": "Taxable activity",
+          "true_conditions": [
+            "vat_recoverable"
+          ],
+          "zero_amounts": [
+            "non_recoverable_tax"
+          ]
+        },
+        {
+          "code": "not_recoverable",
+          "name_ar": "نشاط معفى",
+          "name_en": "Exempt activity",
+          "true_conditions": [
+            "vat_not_recoverable"
+          ],
+          "zero_amounts": [
+            "recoverable_tax"
+          ]
+        }
+      ],
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "fixed_asset_cost",
+          "qualifier_source": "asset.asset_group",
+          "side": "debit",
+          "amount": "net + non_recoverable_tax",
+          "dimensions": [],
+          "subledger": "fixed_asset",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "vat_input",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "recoverable_tax",
+          "dimensions": [],
+          "subledger": null,
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 3,
+          "line_kind": "role",
+          "role": "ap_supplier_control",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "net + recoverable_tax + non_recoverable_tax",
+          "dimensions": [],
+          "subledger": "supplier",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "assets.depreciation.periodic",
+      "name_ar": "إهلاك دوري للأصول الثابتة",
+      "name_en": "Periodic fixed asset depreciation",
+      "module": "assets",
+      "status": "drafted",
+      "source_ref": "posting-matrix.md §8.2",
+      "trigger": {
+        "name_ar": "قيد آلي دوري في نهاية كل فترة — قابل لإعادة التشغيل بلا تكرار ويحترم الفترة المقفلة",
+        "name_en": "An automatic periodic entry at each period end — re-runnable without duplication and respecting closed periods"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "تصحيح تقدير الإهلاك بقيد مستقل مؤرّخ",
+        "name_en": "A depreciation estimate correction is a separate dated entry"
+      },
+      "caveats": [
+        {
+          "ref": "posting-matrix.md بند مفتوح 8",
+          "text_ar": "⚠️ طرق الإهلاك المدعومة (قسط ثابت فقط أم متناقص أيضاً) غير محسومة",
+          "text_en": "⚠️ The supported depreciation methods (straight line only or also reducing balance) are unresolved"
+        }
+      ],
+      "amounts": {
+        "period_charge": {
+          "name_ar": "قسط إهلاك الفترة",
+          "name_en": "Period depreciation charge",
+          "derivation_ar": "بطريقة الإهلاك والعمر الإنتاجي المسجَّلين على بطاقة الأصل — إعداد لا كود",
+          "derivation_en": "By the depreciation method and useful life recorded on the asset card — a setting not code"
+        }
+      },
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "depreciation_expense",
+          "qualifier_source": "asset.asset_group",
+          "side": "debit",
+          "amount": "period_charge",
+          "dimensions": [],
+          "subledger": null,
+          "when": null,
+          "note_ar": "يُوزَّع على مركز التكلفة أو المشروع الحامل للأصل",
+          "note_en": "Allocated to the cost centre or project carrying the asset"
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "accumulated_depreciation",
+          "qualifier_source": "asset.asset_group",
+          "side": "credit",
+          "amount": "period_charge",
+          "dimensions": [],
+          "subledger": "fixed_asset",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "assets.disposal.posted",
+      "name_ar": "استبعاد أصل ثابت",
+      "name_en": "Fixed asset disposal",
+      "module": "assets",
+      "status": "drafted",
+      "source_ref": "posting-matrix.md §8.3",
+      "trigger": {
+        "name_ar": "عند إتمام البيع أو الإخراج من الخدمة واعتماد محضر الاستبعاد",
+        "name_en": "On completing the sale or retirement and approving the disposal record"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "قيد عكسي مستقل — لا تُحذف بطاقة الأصل",
+        "name_en": "A separate reversing entry — the asset card is never deleted"
+      },
+      "amounts": {
+        "cost": {
+          "name_ar": "التكلفة الأصلية للأصل",
+          "name_en": "Original asset cost",
+          "derivation_ar": "رصيد حساب التكلفة لهذا الأصل في سجل الأصول",
+          "derivation_en": "The cost account balance for this asset in the asset register"
+        },
+        "accumulated_depreciation": {
+          "name_ar": "مجمع الإهلاك حتى تاريخه",
+          "name_en": "Accumulated depreciation to date",
+          "derivation_ar": "رصيد مجمع الإهلاك بعد إثبات إهلاك شهر الاستبعاد",
+          "derivation_en": "The accumulated depreciation balance after recognising the disposal month charge"
+        },
+        "proceeds": {
+          "name_ar": "متحصلات البيع",
+          "name_en": "Sale proceeds",
+          "derivation_ar": "المبلغ المقبوض فعلاً — صفر عند الإخراج من الخدمة بلا بيع",
+          "derivation_en": "The amount actually received — zero on retirement without sale"
+        },
+        "gain": {
+          "name_ar": "ربح الاستبعاد",
+          "name_en": "Gain on disposal",
+          "derivation_ar": "المتحصلات ناقص صافي القيمة الدفترية حين تكون موجبة",
+          "derivation_en": "Proceeds less net book value when positive"
+        },
+        "loss": {
+          "name_ar": "خسارة الاستبعاد",
+          "name_en": "Loss on disposal",
+          "derivation_ar": "صافي القيمة الدفترية ناقص المتحصلات حين تكون موجبة",
+          "derivation_en": "Net book value less proceeds when positive"
+        }
+      },
+      "conditions": {
+        "disposal_at_gain": {
+          "name_ar": "الاستبعاد بربح",
+          "name_en": "Disposal at a gain",
+          "expression": "proceeds > cost - accumulated_depreciation"
+        },
+        "disposal_at_loss": {
+          "name_ar": "الاستبعاد بخسارة",
+          "name_en": "Disposal at a loss",
+          "expression": "proceeds < cost - accumulated_depreciation"
+        }
+      },
+      "scenarios": [
+        {
+          "code": "gain",
+          "name_ar": "استبعاد بربح",
+          "name_en": "Disposal at a gain",
+          "true_conditions": [
+            "disposal_at_gain"
+          ],
+          "zero_amounts": [
+            "loss"
+          ],
+          "identities": {
+            "gain": "proceeds + accumulated_depreciation - cost"
+          }
+        },
+        {
+          "code": "loss",
+          "name_ar": "استبعاد بخسارة",
+          "name_en": "Disposal at a loss",
+          "true_conditions": [
+            "disposal_at_loss"
+          ],
+          "zero_amounts": [
+            "gain"
+          ],
+          "identities": {
+            "loss": "cost - accumulated_depreciation - proceeds"
+          }
+        },
+        {
+          "code": "break_even",
+          "name_ar": "استبعاد بلا ربح أو خسارة",
+          "name_en": "Disposal at book value",
+          "true_conditions": [],
+          "zero_amounts": [
+            "gain",
+            "loss"
+          ],
+          "identities": {
+            "proceeds": "cost - accumulated_depreciation"
+          }
+        }
+      ],
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "accumulated_depreciation",
+          "qualifier_source": "asset.asset_group",
+          "side": "debit",
+          "amount": "accumulated_depreciation",
+          "dimensions": [],
+          "subledger": "fixed_asset",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "settlement_account",
+          "qualifier_source": "document.settlement_method",
+          "side": "debit",
+          "amount": "proceeds",
+          "dimensions": [],
+          "subledger": "resolved",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 3,
+          "line_kind": "role",
+          "role": "asset_disposal_loss",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "loss",
+          "dimensions": [],
+          "subledger": null,
+          "when": "disposal_at_loss",
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 4,
+          "line_kind": "role",
+          "role": "fixed_asset_cost",
+          "qualifier_source": "asset.asset_group",
+          "side": "credit",
+          "amount": "cost",
+          "dimensions": [],
+          "subledger": "fixed_asset",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 5,
+          "line_kind": "role",
+          "role": "asset_disposal_gain",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "gain",
+          "dimensions": [],
+          "subledger": null,
+          "when": "disposal_at_gain",
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Babel.Core — النواة. إلزامية دائماً ولا تكون اختيارية أبداً.
+    تملك: الهوية · الصلاحيات · الشجرة التنظيمية · المستندات · سير العمل · التدقيق ·
+          الإشعارات · تعدد المستأجرين · الاستحقاق · قياس الاستخدام.
+    Core لا تعتمد على أي وحدة أعلى منها — أبداً (Rule03).
+  -->
+
+  <PropertyGroup>
+    <RootNamespace>Babel.Core</RootNamespace>
+    <AssemblyName>Babel.Core</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Babel.SharedKernel/Babel.SharedKernel.csproj" />
+    <ProjectReference Include="../Babel.Contracts/Babel.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+  </ItemGroup>
+
+</Project>

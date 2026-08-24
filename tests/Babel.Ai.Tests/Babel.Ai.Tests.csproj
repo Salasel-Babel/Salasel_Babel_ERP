@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Babel.Ai.Tests</RootNamespace>
+    <AssemblyName>Babel.Ai.Tests</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/Babel.Ai/Babel.Ai.csproj" />
+  </ItemGroup>
+
+</Project>

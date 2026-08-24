@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Babel.SharedKernel — أنواع قيمة فقط. صفر منطق أعمال، صفر وصول لبيانات.
+    القاعدة 7 مفروضة ببناء: tests/Babel.ArchitectureTests/Rule07_SharedKernelAndContractsArePure.cs
+    لا يُضاف هنا أي PackageReference. غياب قائمة الحزم مقصود.
+  -->
+
+  <PropertyGroup>
+    <RootNamespace>Babel.SharedKernel</RootNamespace>
+    <AssemblyName>Babel.SharedKernel</AssemblyName>
+  </PropertyGroup>
+
+</Project>

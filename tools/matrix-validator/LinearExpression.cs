@@ -12,7 +12,7 @@ namespace SalaselBabel.MatrixValidator;
 /// مجموع المدين ناقص مجموع الدائن يجب أن يؤول إلى الصفر في كل سيناريو معلن.
 /// No float, no double — decimal only, per CONTRIBUTING §3.2.
 /// </summary>
-public sealed class LinearExpression
+internal sealed class LinearExpression
 {
     private readonly SortedDictionary<string, decimal> _terms = new(StringComparer.Ordinal);
     public decimal Constant { get; private set; }

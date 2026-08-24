@@ -1,6 +1,5 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using SalaselBabel.MatrixValidator;
 using SalaselBabel.MatrixValidator.Rules;
 using Xunit;
 

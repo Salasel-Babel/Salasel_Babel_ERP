@@ -6,7 +6,7 @@ namespace SalaselBabel.MatrixValidator.Model;
 // Chart of accounts (CSV)
 // ---------------------------------------------------------------------------
 
-public sealed class Account
+internal sealed class Account
 {
     public required string Code { get; init; }
     public required string NameAr { get; init; }
@@ -30,7 +30,7 @@ public sealed class Account
     public int SourceLine { get; init; }
 }
 
-public sealed class Dimension
+internal sealed class Dimension
 {
     public required string Code { get; init; }
     public required string NameAr { get; init; }
@@ -38,7 +38,7 @@ public sealed class Dimension
     public int SourceLine { get; init; }
 }
 
-public sealed class SubledgerType
+internal sealed class SubledgerType
 {
     public required string Code { get; init; }
     public required string NameAr { get; init; }
@@ -46,7 +46,7 @@ public sealed class SubledgerType
     public int SourceLine { get; init; }
 }
 
-public sealed class AccountRole
+internal sealed class AccountRole
 {
     public required string Code { get; init; }
     public required string NameAr { get; init; }
@@ -57,7 +57,7 @@ public sealed class AccountRole
     public int SourceLine { get; init; }
 }
 
-public sealed class RoleMapping
+internal sealed class RoleMapping
 {
     public required string TenantId { get; init; }
     public required string RoleCode { get; init; }
@@ -71,7 +71,7 @@ public sealed class RoleMapping
 // Posting matrix (JSON)
 // ---------------------------------------------------------------------------
 
-public sealed class EventFile
+internal sealed class EventFile
 {
     [JsonPropertyName("schema_version")] public string SchemaVersion { get; set; } = "";
     [JsonPropertyName("module")] public string Module { get; set; } = "";
@@ -79,20 +79,20 @@ public sealed class EventFile
     [JsonPropertyName("events")] public List<PostingEvent> Events { get; set; } = new();
 }
 
-public sealed class Bilingual
+internal sealed class Bilingual
 {
     [JsonPropertyName("name_ar")] public string NameAr { get; set; } = "";
     [JsonPropertyName("name_en")] public string NameEn { get; set; } = "";
 }
 
-public sealed class Caveat
+internal sealed class Caveat
 {
     [JsonPropertyName("ref")] public string Ref { get; set; } = "";
     [JsonPropertyName("text_ar")] public string TextAr { get; set; } = "";
     [JsonPropertyName("text_en")] public string TextEn { get; set; } = "";
 }
 
-public sealed class AmountVariable
+internal sealed class AmountVariable
 {
     [JsonPropertyName("name_ar")] public string NameAr { get; set; } = "";
     [JsonPropertyName("name_en")] public string NameEn { get; set; } = "";
@@ -100,14 +100,14 @@ public sealed class AmountVariable
     [JsonPropertyName("derivation_en")] public string DerivationEn { get; set; } = "";
 }
 
-public sealed class ConditionDef
+internal sealed class ConditionDef
 {
     [JsonPropertyName("name_ar")] public string NameAr { get; set; } = "";
     [JsonPropertyName("name_en")] public string NameEn { get; set; } = "";
     [JsonPropertyName("expression")] public string Expression { get; set; } = "";
 }
 
-public sealed class Scenario
+internal sealed class Scenario
 {
     [JsonPropertyName("code")] public string Code { get; set; } = "";
     [JsonPropertyName("name_ar")] public string NameAr { get; set; } = "";
@@ -117,7 +117,7 @@ public sealed class Scenario
     [JsonPropertyName("identities")] public Dictionary<string, string> Identities { get; set; } = new();
 }
 
-public sealed class SweepSpec
+internal sealed class SweepSpec
 {
     [JsonPropertyName("selector")] public string Selector { get; set; } = "";
     [JsonPropertyName("classes")] public List<string> Classes { get; set; } = new();
@@ -126,7 +126,7 @@ public sealed class SweepSpec
     [JsonPropertyName("name_en")] public string NameEn { get; set; } = "";
 }
 
-public sealed class PostingLine
+internal sealed class PostingLine
 {
     [JsonPropertyName("line_no")] public int LineNo { get; set; }
     [JsonPropertyName("line_kind")] public string LineKind { get; set; } = "role";
@@ -153,7 +153,7 @@ public sealed class PostingLine
     }
 }
 
-public sealed class PostingEvent
+internal sealed class PostingEvent
 {
     [JsonPropertyName("event_code")] public string EventCode { get; set; } = "";
     [JsonPropertyName("name_ar")] public string NameAr { get; set; } = "";
@@ -179,20 +179,20 @@ public sealed class PostingEvent
 // Guard rules (JSON)
 // ---------------------------------------------------------------------------
 
-public sealed class GuardRuleFile
+internal sealed class GuardRuleFile
 {
     [JsonPropertyName("schema_version")] public string SchemaVersion { get; set; } = "";
     [JsonPropertyName("rules")] public List<GuardRule> Rules { get; set; } = new();
 }
 
-public sealed class GuardRuleTarget
+internal sealed class GuardRuleTarget
 {
     [JsonPropertyName("kind")] public string Kind { get; set; } = "";
     [JsonPropertyName("role")] public string? Role { get; set; }
     [JsonPropertyName("property")] public string? Property { get; set; }
 }
 
-public sealed class GuardRule
+internal sealed class GuardRule
 {
     [JsonPropertyName("rule_id")] public string RuleId { get; set; } = "";
     [JsonPropertyName("name_ar")] public string NameAr { get; set; } = "";

@@ -1,5 +1,4 @@
 using System.Globalization;
-using SalaselBabel.MatrixValidator;
 
 namespace SalaselBabel.MatrixValidator.Tests;
 

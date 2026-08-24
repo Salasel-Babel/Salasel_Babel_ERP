@@ -5,8 +5,16 @@ using SalaselBabel.MatrixValidator.Rules;
 
 namespace SalaselBabel.MatrixValidator;
 
-public static class Program
+internal static class Program
 {
+    // CA1869: خيارات التسلسل تُبنى مرة واحدة وتُعاد. UnsafeRelaxedJsonEscaping مقصود:
+    // التقرير يحمل نصّاً عربياً ويُقرأ بشراً، ولا يُحقن في HTML.
+    private static readonly JsonSerializerOptions ReportOptions = new()
+    {
+        WriteIndented = true,
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+    };
+
     public static int Main(string[] args)
     {
         Console.OutputEncoding = Encoding.UTF8;
@@ -51,7 +59,7 @@ public static class Program
                     rule = f.RuleId, severity = f.Severity.ToString().ToLowerInvariant(),
                     where = f.Where, message_ar = f.MessageAr, message_en = f.MessageEn
                 })
-            }, new JsonSerializerOptions { WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping }));
+            }, ReportOptions));
             return errors == 0 ? 0 : 1;
         }
 

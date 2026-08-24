@@ -1,5 +1,3 @@
-using SalaselBabel.MatrixValidator;
-using SalaselBabel.MatrixValidator.Model;
 using SalaselBabel.MatrixValidator.Rules;
 using Xunit;
 

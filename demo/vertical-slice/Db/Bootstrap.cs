@@ -10,7 +10,7 @@ namespace BabelDemo.Db;
 /// All DDL runs as the OWNER. The application role never gets DDL, and is stripped
 /// of UPDATE/DELETE on every append-only ledger table.
 /// </summary>
-public static class Bootstrap
+internal static class Bootstrap
 {
     public static async Task EnsureDatabaseAndRoleAsync()
     {

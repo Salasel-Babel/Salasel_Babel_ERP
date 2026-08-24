@@ -15,6 +15,8 @@
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.11" />
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
     <PackageVersion Include="Npgsql" Version="10.0.3" />
+    <!-- أدوات وقت التصميم للهجرات فقط: PrivateAssets=all فلا تصل إلى أي ناتج نشر. -->
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.2" />
   </ItemGroup>
 
   <ItemGroup Label="الاستضافة وحقن الاعتماديات">

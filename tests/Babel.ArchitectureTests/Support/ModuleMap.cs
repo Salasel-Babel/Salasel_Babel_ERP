@@ -22,8 +22,11 @@ internal static class ModuleMap
     public const string Compliance = "Babel.Compliance";
 
     /// <summary>
-    /// مكتبة التوحيد القياسي: أساس تحت الجميع، بلا حزمة خارجية واحدة وبلا معرفة بأي وحدة.
-    /// بايتاتها المُجزَّأة لا يجوز أن تتحرّك بسبب ترقية اعتمادية، ولذلك لا اعتمادية لها أصلاً.
+    /// مكتبة التوحيد القياسي — <b>ليست وحدة منتج</b> بل أساس تحت الجميع، بلا حزمة خارجية
+    /// واحدة وبلا معرفة بأي وحدة، وهي الطريق الوحيد إلى دالة التجزئة. بايتاتها المُجزَّأة
+    /// لا يجوز أن تتحرّك بسبب ترقية اعتمادية، ولذلك لا اعتمادية لها أصلاً. ولا تدخل
+    /// <see cref="BabelModule"/> ولا الاستحقاق ولا القياس: لا يشتريها عميل ولا تُطفأ.
+    /// حدودها مفروضة في القاعدة 11.
     /// </summary>
     public const string Canonicalization = "Babel.Canonicalization";
 
@@ -93,9 +96,12 @@ internal static class ModuleMap
             [SharedKernel] = new HashSet<string>(StringComparer.Ordinal),
             [Contracts] = new HashSet<string>([SharedKernel], StringComparer.Ordinal),
             [Core] = new HashSet<string>([SharedKernel, Contracts], StringComparer.Ordinal),
-            [Ledger] = new HashSet<string>([SharedKernel, Contracts, Core], StringComparer.Ordinal),
+
+            // الدفتر وحده يجوز أن يعتمد على المُوحِّد: هو الجهة الوحيدة التي تُجزّئ قيداً.
+            [Ledger] = new HashSet<string>([SharedKernel, Contracts, Core, Canonicalization], StringComparer.Ordinal),
 
             // الأساس والعقود والمحوّلات: الاتجاه هنا أيضاً إلى الأسفل حصراً.
+            // والمكتبة لا تعتمد على شيء إطلاقاً — ولا حتى على النواة المشتركة.
             [Canonicalization] = new HashSet<string>(StringComparer.Ordinal),
             [ControlPlane] = new HashSet<string>(StringComparer.Ordinal),
             [ComplianceAbstractions] = new HashSet<string>(StringComparer.Ordinal),

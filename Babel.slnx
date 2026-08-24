@@ -9,6 +9,7 @@
     <Project Path="src/Babel.Compliance.FakeProvider/Babel.Compliance.FakeProvider.csproj" />
     <Project Path="src/Babel.Compliance.Wolverine/Babel.Compliance.Wolverine.csproj" />
     <Project Path="src/Babel.Contracts/Babel.Contracts.csproj" />
+    <Project Path="src/Babel.ControlPlane/Babel.ControlPlane.csproj" />
     <Project Path="src/Babel.Core/Babel.Core.csproj" />
     <Project Path="src/Babel.Hr/Babel.Hr.csproj" />
     <Project Path="src/Babel.Inventory/Babel.Inventory.csproj" />
@@ -28,6 +29,8 @@
     <Project Path="tests/Babel.Canonicalization.Tests/Babel.Canonicalization.Tests.csproj" />
     <Project Path="tests/Babel.Compliance.Tests/Babel.Compliance.Tests.csproj" />
     <Project Path="tests/Babel.Contracts.Tests/Babel.Contracts.Tests.csproj" />
+    <Project Path="tests/Babel.ControlPlane.Proofs/Babel.ControlPlane.Proofs.csproj" />
+    <Project Path="tests/Babel.ControlPlane.Tests/Babel.ControlPlane.Tests.csproj" />
     <Project Path="tests/Babel.Core.Tests/Babel.Core.Tests.csproj" />
     <Project Path="tests/Babel.Hr.Tests/Babel.Hr.Tests.csproj" />
     <Project Path="tests/Babel.Inventory.Tests/Babel.Inventory.Tests.csproj" />

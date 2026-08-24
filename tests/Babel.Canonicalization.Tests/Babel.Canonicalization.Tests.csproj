@@ -17,6 +17,8 @@
       بصمت، فتتغيّر كل بصمة نص عربي. الأساس في Directory.Build.props، وهذا مكمّله.
     -->
     <PredefinedCulturesOnly>false</PredefinedCulturesOnly>
+    <!-- CA1711: اسم صنف تجميع xunit **يجب** أن ينتهي بـCollection — اصطلاح الإطار لا خيار. -->
+    <NoWarn>$(NoWarn);CA1711</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

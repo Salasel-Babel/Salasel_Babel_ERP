@@ -28,6 +28,13 @@ internal static class ModuleMap
     public const string Canonicalization = "Babel.Canonicalization";
 
     /// <summary>
+    /// مستوى التحكّم: سجل المستأجرين والتزويد وترحيل الأسطول والاتصالات والاستحقاق والقياس.
+    /// يعمل <b>فوق</b> الأسطول لا داخل مستأجر، فلا مكان له في خريطة الوحدات ولا استحقاق له.
+    /// ولا يعتمد على أي مشروع بابل — مجموعة مراجعه المسموحة فارغة أدناه.
+    /// </summary>
+    public const string ControlPlane = "Babel.ControlPlane";
+
+    /// <summary>
     /// عقد حدّ الالتزام: أنواع فقط، بلا EF ولا Wolverine ولا Npgsql ولا HTTP.
     /// خاصية «بلا اعتمادية خارج مكتبة الأساس» مفروضة أيضاً باختبار في مجموعة اختبارات الالتزام.
     /// </summary>
@@ -63,6 +70,7 @@ internal static class ModuleMap
     public static IReadOnlyList<string> Supporting { get; } =
     [
         Canonicalization,
+        ControlPlane,
         ComplianceAbstractions,
         ComplianceFakeProvider,
         ComplianceWolverine,
@@ -89,6 +97,7 @@ internal static class ModuleMap
 
             // الأساس والعقود والمحوّلات: الاتجاه هنا أيضاً إلى الأسفل حصراً.
             [Canonicalization] = new HashSet<string>(StringComparer.Ordinal),
+            [ControlPlane] = new HashSet<string>(StringComparer.Ordinal),
             [ComplianceAbstractions] = new HashSet<string>(StringComparer.Ordinal),
             [ComplianceFakeProvider] = new HashSet<string>([ComplianceAbstractions], StringComparer.Ordinal),
             [ComplianceWolverine] = new HashSet<string>([Compliance, ComplianceAbstractions], StringComparer.Ordinal),

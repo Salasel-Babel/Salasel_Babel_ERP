@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    مستوى التحكّم: سجل المستأجرين والتزويد وترحيل الأسطول والاتصالات والاستحقاق والقياس.
+    ليس وحدة منتَج مُرخَّصة — لا يظهر في BabelModule ولا يحمل بطاقة ModuleInfo — بل بنية
+    تحتية تعمل **فوق** الأسطول لا داخل مستأجر. ولذلك يُعلَن في ModuleMap صراحةً بمراجع
+    مسموحة فارغة: لا يعتمد على أي مشروع بابل، ولا يعتمد عليه أي مشروع بابل.
+
+    كل الإعدادات الملزمة (‏net10.0، تحذير = خطأ، المحلّلات، الإدارة المركزية للحزم)
+    تأتي من Directory.Build.props ولا تُعطَّل هنا.
+  -->
+  <PropertyGroup>
+    <RootNamespace>Babel.ControlPlane</RootNamespace>
+    <AssemblyName>Babel.ControlPlane</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Npgsql" />
+  </ItemGroup>
+
+</Project>

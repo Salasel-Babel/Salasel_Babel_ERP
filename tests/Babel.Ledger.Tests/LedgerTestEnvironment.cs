@@ -1,5 +1,6 @@
 using System.Globalization;
 using Babel.Ledger.Persistence;
+using Babel.SharedKernel;
 using Npgsql;
 
 namespace Babel.Ledger.Tests;
@@ -31,6 +32,12 @@ internal static class LedgerTestEnvironment
 
     /// <summary>المستأجر الثاني — خريطة مختلفة في دور واحد، بلا سطر كود واحد.</summary>
     public static Guid TenantB { get; } = new("bbbbbbbb-0000-4000-8000-000000000002");
+
+    /// <summary>
+    /// المدقّق الذي يقرأ — <b>إنسان</b> لا فاعل نظام. قراءات الدفتر تُقاس على محور
+    /// «المستخدم الفاعل» كما تُقاس الكتابة، فالفاعل يُمرَّر إليها صراحةً.
+    /// </summary>
+    public static UserId Auditor { get; } = new(new Guid("4d4d4d4d-0000-4000-8000-00000000000a"));
 
     /// <summary>عقار مملوك للشركة.</summary>
     public const string OwnProperty = "P-OWN-001";

@@ -1,47 +1,81 @@
-using Babel.Compliance;
-using Babel.Core;
-using Babel.Inventory;
-using Babel.Ledger;
-using Babel.Purchasing;
-using Babel.Sales;
+using System.Globalization;
+using Babel.Api.Hosting;
+using Babel.Api.OpenApi;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// الجذر التركيبي لـ«سلاسل بابل».
+// نقطة الدخول.
 //
-// موجة الهيكل: لا منطق أعمال، ولا نقاط نهاية للأعمال، ولا هجرات.
-// ما يوجد هنا هو ترتيب التركيب نفسه، وهو ما يصعب تغييره لاحقاً.
+// وضعان لا ثالث لهما:
 //
-// ملاحظتان تشغيليتان مثبَّتتان الآن ليُبنى عليهما في موجة الرسائل
-// (وثيقة المعمارية §2.2 · spikes/relational-stack/VERDICT.md §5):
+//   1. `dotnet Babel.Api.dll` — يشغّل الخادم.
+//   2. `dotnet Babel.Api.dll --emit-openapi <مسار>` — يولّد العقد المنشور ويخرج.
 //
-//   1. Wolverine يُهيَّأ بالتوليد الساكن للشيفرة:
-//        opts.CodeGeneration.TypeLoadMode = TypeLoadMode.Static;
-//      مع تشغيل `dotnet run -- codegen write` في خطوة بناء.
+// والوضع الثاني ليس أداة جانبية: هو الطريق **الوحيد** الذي يُنتَج به
+// contracts/openapi/v1.json، وحارس الانحراف في مجموعة الاختبارات يعيد تشغيله
+// ويقارن البايتات. عقدٌ يُحرَّر بيد ينفصل عن الشيفرة في أول أسبوع.
 //
-//   2. WolverineFx.RuntimeCompilation ممنوعة في الإنتاج — تجرّ Roslyn إلى العملية.
-//      المنع مفروض ببناء: tests/Babel.ArchitectureTests/Rule08_NoRuntimeCompilationInProduction.cs
-//      يفحص كل csproj وكل Directory.Packages.props ويُفشل البناء على أي ذكر لها.
+// وملاحظتان تشغيليتان مثبَّتتان من موجة الهيكل:
+//   • Wolverine يُهيَّأ بالتوليد الساكن (TypeLoadMode.Static) مع خطوة `codegen write`.
+//   • WolverineFx.RuntimeCompilation ممنوعة في الإنتاج — تجرّ Roslyn إلى العملية،
+//     والمنع مفروض ببناء في Rule08.
 // ─────────────────────────────────────────────────────────────────────────────
 
-WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+const string EmitSwitch = "--emit-openapi";
 
-// النواة أولاً: الاستحقاق وقياس الاستخدام والتدقيق. إلزامية دائماً.
-builder.Services.AddBabelCore();
+int emitIndex = Array.IndexOf(args, EmitSwitch);
 
-// الدفتر: يسجّل IPostingService. أنواعه الداخلية (LedgerDbContext, AccountCode) لا تُرى هنا.
-builder.Services.AddBabelLedger();
+if (emitIndex >= 0)
+{
+    if (emitIndex + 1 >= args.Length)
+    {
+        await Console.Error
+            .WriteLineAsync($"الاستعمال: {EmitSwitch} <مسار الملف> / usage: {EmitSwitch} <file path>")
+            .ConfigureAwait(false);
+        return 2;
+    }
 
-// الوحدات الأفقية: خدمات تطبيق فقط. لا وصول إلى جداول بعضها ولا إلى جداول الدفتر.
-builder.Services.AddBabelSales();
-builder.Services.AddBabelPurchasing();
-builder.Services.AddBabelCompliance();
-builder.Services.AddBabelInventory();
+    string target = args[emitIndex + 1];
 
-WebApplication app = builder.Build();
+    WebApplication generator = BabelApiHost.Build([]);
 
-app.MapGet("/health", static () => Results.Ok(new { status = "ok" }));
+    // ما سجّله التطبيق فعلاً — لا ما نظنّ أننا سجّلناه. المولّد يقارن الاثنين ويتوقّف
+    // على أي اختلاف، فلا يُودَع عقد يصف باباً غير موجود ولا يُترك باب بلا وصف.
+    List<(string Path, string Method)> registered = [];
 
+    foreach (Endpoint endpoint in ((IEndpointRouteBuilder)generator).DataSources.SelectMany(static d => d.Endpoints))
+    {
+        if (endpoint is not RouteEndpoint route)
+        {
+            continue;
+        }
+
+        string pattern = "/" + route.RoutePattern.RawText?.TrimStart('/');
+        IReadOnlyList<string> methods = route.Metadata.GetMetadata<HttpMethodMetadata>()?.HttpMethods ?? [];
+
+        foreach (string method in methods)
+        {
+            registered.Add((pattern, method.ToLowerInvariant()));
+        }
+    }
+
+    byte[] document = OpenApiEmitter.Emit(registered);
+
+    string? directory = Path.GetDirectoryName(Path.GetFullPath(target));
+    if (!string.IsNullOrEmpty(directory))
+    {
+        Directory.CreateDirectory(directory);
+    }
+
+    await File.WriteAllBytesAsync(target, document).ConfigureAwait(false);
+
+    Console.WriteLine(string.Create(
+        CultureInfo.InvariantCulture,
+        $"openapi {OpenApiEmitter.SpecVersion} -> {target} ({document.Length} bytes, {registered.Count} operations)"));
+
+    return 0;
+}
+
+WebApplication app = BabelApiHost.Build(args);
+await BabelApiHost.SeedEntitlementsAsync(app).ConfigureAwait(false);
 await app.RunAsync().ConfigureAwait(false);
-
-/// <summary>نقطة الدخول. مُعلنة ليتمكّن اختبار التكامل من الإشارة إليها لاحقاً.</summary>
-public partial class Program;
+return 0;

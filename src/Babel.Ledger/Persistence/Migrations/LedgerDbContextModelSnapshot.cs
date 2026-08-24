@@ -11,7 +11,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Babel.Ledger.Persistence.Migrations
 {
     [DbContext(typeof(LedgerDbContext))]
-    internal partial class LedgerDbContextModelSnapshot : ModelSnapshot
+    partial class LedgerDbContextModelSnapshot : ModelSnapshot
     {
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
@@ -393,9 +393,7 @@ namespace Babel.Ledger.Persistence.Migrations
 
                     b.Property<string>("EventCode")
                         .IsRequired()
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("text")
-                        .HasDefaultValue("")
                         .HasColumnName("event_code");
 
                     b.Property<int>("FiscalYear")
@@ -495,12 +493,14 @@ namespace Babel.Ledger.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("uq_journal_entry_no");
 
-                    b.HasIndex("CompanyId", "SourceDocType", "SourceDocId", "PostingTriggerCode", "PostingGeneration")
+                    b.HasIndex("CompanyId", "SourceDocType", "SourceDocId", "PostingTriggerCode", "PostingGeneration", "EventCode")
                         .IsUnique()
                         .HasDatabaseName("uq_posting_identity");
 
                     b.ToTable("journal_entry", "ledger", t =>
                         {
+                            t.HasCheckConstraint("ck_journal_entry_event_code", "length(btrim(event_code)) > 0");
+
                             t.HasCheckConstraint("ck_journal_entry_generation", "posting_generation >= 1");
 
                             t.HasCheckConstraint("ck_journal_entry_reversal_has_reason", "status <> 'REVERSAL' or (reverses_entry_id is not null and reversal_reason_ar is not null)");

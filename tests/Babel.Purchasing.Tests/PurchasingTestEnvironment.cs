@@ -65,6 +65,16 @@ internal static class PurchasingTestEnvironment
     /// </summary>
     public static TenantId InjectedTenant { get; } = new(new Guid("40c4a51e-0000-4000-8000-000000000002"));
 
+    /// <summary>
+    /// مستأجر ثالث معزول تُختبر فيه هوية الإحكام على مستوى البوابة مباشرةً.
+    /// <para>
+    /// عزله ليس ترفاً: إثبات الهوية يُرحّل أحداثاً <b>بلا مستند مقابل في الدفتر
+    /// المساعد</b>، وذلك بالضبط ما تسمّيه المطابقة انحرافاً. خلطه بمستأجر
+    /// المطابقة يجعل كل إثبات يُفسد الآخر.
+    /// </para>
+    /// </summary>
+    public static TenantId GatewayTenant { get; } = new(new Guid("40c4a51e-0000-4000-8000-000000000003"));
+
     private static readonly SemaphoreSlim Gate = new(1, 1);
     private static bool _ready;
 
@@ -185,7 +195,7 @@ internal static class PurchasingTestEnvironment
         List<Dictionary<string, string>> accounts =
             [.. Csv(Path.Combine(RepositoryRoot, "data", "chart-of-accounts", "accounts.csv"))];
 
-        foreach (TenantId company in new[] { Tenant, InjectedTenant })
+        foreach (TenantId company in new[] { Tenant, InjectedTenant, GatewayTenant })
         {
             foreach (Dictionary<string, string> row in accounts
                          .OrderBy(static a => a["code"].Length).ThenBy(static a => a["code"], StringComparer.Ordinal))

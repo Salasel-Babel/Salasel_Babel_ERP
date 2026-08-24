@@ -391,7 +391,7 @@ public sealed class PostingEngineTests : IAsyncLifetime
         }
 
         Result<IReadOnlyList<TrialBalanceRow>> trial = await _harness.Auditing.TrialBalanceFromLinesAsync(
-            new TenantId(LedgerTestEnvironment.TenantA), LedgerTestEnvironment.Book, "2026-07", token);
+            new TenantId(LedgerTestEnvironment.TenantA), LedgerTestEnvironment.Auditor, LedgerTestEnvironment.Book, "2026-07", token);
 
         decimal debit = trial.Value.Sum(static row => row.Debit);
         decimal credit = trial.Value.Sum(static row => row.Credit);
@@ -435,16 +435,19 @@ public sealed class PostingEngineTests : IAsyncLifetime
         Guid entryId,
         long entryNo,
         CancellationToken token,
-        string periodCode = "2026-03")
+        string periodCode = "2026-03",
+        string eventCode = "ledger.manual_voucher.posted")
     {
+        // ‏event_code عمود بلا قيمة افتراضية منذ أن صار جزءاً من هوية الترحيل
+        // (D-3): كل كاتب — ولو كان SQL خاماً في اختبار — يسمّي حدثه.
         await using NpgsqlCommand command = new(
             """
             insert into ledger.journal_entry
                 (entry_id, company_id, book_id, fiscal_year, entry_no, entry_date, period_code, posted_at,
                  status, actor, source_module, source_doc_type, source_doc_id, posting_trigger_code,
-                 idempotency_key, currency)
+                 event_code, idempotency_key, currency)
             values ($1,$2,$3,2026,$4,'2026-03-15',$5, now(), 'POSTED', 'raw-sql',
-                    'Ledger', 'RawProbe', $6, 'RAW', $6, 'SAR')
+                    'Ledger', 'RawProbe', $6, 'RAW', $7, $6, 'SAR')
             """, connection, transaction);
         command.Parameters.AddWithValue(entryId);
         command.Parameters.AddWithValue(company);
@@ -452,6 +455,7 @@ public sealed class PostingEngineTests : IAsyncLifetime
         command.Parameters.AddWithValue(entryNo);
         command.Parameters.AddWithValue(periodCode);
         command.Parameters.AddWithValue(entryId.ToString("D", CultureInfo.InvariantCulture));
+        command.Parameters.AddWithValue(eventCode);
         await command.ExecuteNonQueryAsync(token);
     }
 

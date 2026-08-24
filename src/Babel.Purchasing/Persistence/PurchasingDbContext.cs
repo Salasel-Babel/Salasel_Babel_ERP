@@ -201,7 +201,7 @@ internal sealed class PurchasingDbContext(DbContextOptions<PurchasingDbContext> 
             entity.Property(row => row.DocumentId).HasMaxLength(64).IsRequired();
             entity.Property(row => row.TriggerCode).HasMaxLength(32).IsRequired();
             entity.Property(row => row.IdempotencyKey).HasMaxLength(128).IsRequired();
-            entity.Property(row => row.EventCode).HasMaxLength(128);
+            entity.Property(row => row.EventCode).HasMaxLength(128).IsRequired();
             entity.Property(row => row.PartyId).HasMaxLength(64);
             entity.Property(row => row.State).HasMaxLength(16).IsRequired();
             entity.Property(row => row.FailureCode).HasMaxLength(128);
@@ -209,10 +209,21 @@ internal sealed class PurchasingDbContext(DbContextOptions<PurchasingDbContext> 
             entity.Property(row => row.FailureMessageEn).HasMaxLength(1000);
             entity.Property(row => row.ControlEffect).HasColumnType(Money);
 
-            // هوية الإحكام كما يعرّفها المحرك: أربعة حقول، ولا حارس تصاعدي (فخ-13).
-            entity.HasIndex(row => new { row.TenantId, row.DocumentType, row.DocumentId, row.TriggerCode, row.Generation })
-                  .IsUnique().HasDatabaseName("uq_purchasing_posting_identity");
+            // هوية الإحكام كما يعرّفها المحرك: خمسة حقول **ومنها رمز الحدث**، ولا حارس
+            // تصاعدي (فخ-13). ورمز الحدث هنا لأن المستند الواحد يُنتج حدثين مختلفين
+            // عند الإطلاق نفسه — فاتورة مورد بشقّ بضاعة وشقّ مصروف — وبدونه يُبتلع
+            // الثاني بصمت (ADR-0017).
+            entity.HasIndex(row => new
+            {
+                row.TenantId, row.DocumentType, row.DocumentId, row.TriggerCode, row.Generation, row.EventCode,
+            }).IsUnique().HasDatabaseName("uq_purchasing_posting_identity");
             entity.HasIndex(row => new { row.TenantId, row.State }).HasDatabaseName("ix_purchasing_posting_state");
+
+            // ورمزٌ فارغ يُعيد تركيب العطب داخل مفتاح موسَّع: القيمة الفارغة تجعل
+            // كل حدث بلا رمز مساوياً لكل حدث آخر بلا رمز. الفراغ ممنوع في القاعدة
+            // نفسها لا في الشيفرة وحدها.
+            entity.ToTable(table => table.HasCheckConstraint(
+                "ck_purchasing_document_posting_event_code", """length(btrim("EventCode")) > 0"""));
         });
     }
 }

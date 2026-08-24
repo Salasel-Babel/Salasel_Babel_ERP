@@ -25,6 +25,19 @@ internal static class PostingErrors
         "طلب الترحيل بلا مستأجر.",
         "The posting request carries no tenant.");
 
+    /// <summary>
+    /// رمز الحدث جزء من هوية الترحيل. رمزٌ فارغ يجعل حدثين مختلفين من المستند
+    /// نفسه عند الإطلاق نفسه هويةً واحدة، فيُبتلع الثاني بصمت
+    /// (‏D-3 · ADR-0016).
+    /// </summary>
+    public static Error MissingEventCode => Invalid(
+        "missing_event_code",
+        "طلب الترحيل بلا رمز حدث. رمز الحدث جزء من هوية الترحيل، ورمزٌ فارغ يجعل حدثين مختلفين "
+        + "من المستند نفسه وعند الإطلاق نفسه هويةً واحدة — فيُبتلع الثاني بصمت ولا يبقى منه أثر.",
+        "The posting request carries no event code. The event code is part of the posting identity; an empty code "
+        + "collapses two different events of the same document at the same trigger into one identity, "
+        + "and the second is swallowed silently.");
+
     public static Error NoLines => Invalid(
         "no_lines",
         "طلب الترحيل بلا سطور وبلا حدث في المصفوفة — لا مصدر للقيد.",

@@ -1,3 +1,4 @@
+using System.Globalization;
 using Babel.Compliance.Abstractions;
 using Babel.Compliance.Canonical;
 using Babel.Compliance.Model;
@@ -182,8 +183,10 @@ public sealed class Reconciler(
                 case ComplianceStatus.Queued or ComplianceStatus.Submitting
                     when r.QueuedAt is { } q && now - q > settings.QueueAgeAlarm:
                     yield return Stuck(tenant, r, now, FindingKind.QueuedTooLong, FindingSeverity.Warning,
-                        $"في الطابور منذ {(now - q).TotalHours:0.0} ساعة — يتجاوز عتبة التنبيه المضبوطة للمستأجر.",
-                        $"queued for {(now - q).TotalHours:0.0} hours — beyond the tenant's configured alarm threshold.",
+                        string.Create(CultureInfo.InvariantCulture,
+                            $"في الطابور منذ {(now - q).TotalHours:0.0} ساعة — يتجاوز عتبة التنبيه المضبوطة للمستأجر."),
+                        string.Create(CultureInfo.InvariantCulture,
+                            $"queued for {(now - q).TotalHours:0.0} hours — beyond the tenant's configured alarm threshold."),
                         "يُفحص الاتصال بالجهة وعمق الطابور. هذا هو المؤشر الذي يجب أن يراه المدير المالي قبل انقضاء النافذة النظامية.",
                         "check connectivity and queue depth. This is the indicator the finance manager must see before the statutory window closes.");
                     break;

@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Globalization;
 using System.Formats.Asn1;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
@@ -29,7 +30,8 @@ public sealed class EphemeralKeyVault : IDisposable
 
     public CredentialRef Create(TenantId tenant, IssuingUnitId unit, ComplianceEnvironment environment)
     {
-        var handle = $"vault://{environment}/{tenant.Value}/{unit.Value}/{Guid.CreateVersion7():N}";
+        var handle = string.Create(CultureInfo.InvariantCulture,
+            $"vault://{environment}/{tenant.Value}/{unit.Value}/{Guid.CreateVersion7():N}");
         _entries[handle] = new Entry(ECDsa.Create(Curve), null);
         return new CredentialRef(handle);
     }

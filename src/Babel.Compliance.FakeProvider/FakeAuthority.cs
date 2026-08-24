@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Globalization;
 using System.Security.Cryptography;
 using Babel.Compliance.Abstractions;
 
@@ -90,7 +91,8 @@ public sealed class FakeAuthority
                 if (prior is not null) return (prior.Reference, true);
             }
 
-            var reference = $"FAKE-{unit}-{counter}-{_accepted.Count + 1:D4}";
+            var reference = string.Create(CultureInfo.InvariantCulture,
+                $"FAKE-{unit}-{counter}-{_accepted.Count + 1:D4}");
             _accepted.Add(new AuthorityLedgerEntry(
                 documentUuid, unit, counter, fingerprint, submissionFingerprint, reference, warnings, at));
             return (reference, false);

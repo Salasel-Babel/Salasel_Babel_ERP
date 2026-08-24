@@ -10,6 +10,7 @@ namespace Babel.ControlPlane.Connections;
 /// <param name="cap">السقف العام.</param>
 /// <param name="waited">المدّة المنتظَرة قبل الرفض.</param>
 public sealed class ConnectionCapExceededException(int cap, TimeSpan waited)
+    // ثقافة-عرض: نصّ استثناء يقرؤه مشغّل بشري ولا يُحفظ ولا يُجزَّأ ولا يُقارَن؛ الفاصلة العشرية المحلية هي الصواب هنا.
     : Exception($"تعذّر حجز اتصال خلال {waited.TotalSeconds:F1} ثانية — السقف العام {cap} مستهلَك بالكامل. "
                 + "الرفض السريع مقصود: الانتظار غير المحدود يحوّل ضغطاً على مستأجر إلى تعطّل منصّة.");
 

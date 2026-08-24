@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 
 namespace SalaselBabel.MatrixValidator.Model;
@@ -88,7 +89,7 @@ public sealed class Dataset
             {
                 Code = r["code"], NameAr = r["name_ar"], NameEn = r["name_en"],
                 ParentCode = r["parent_code"],
-                Level = int.TryParse(r["level"], out var lv) ? lv : 0,
+                Level = int.TryParse(r["level"], NumberStyles.Integer, CultureInfo.InvariantCulture, out var lv) ? lv : 0,
                 AccountType = r["account_type"], NaturalSide = r["natural_side"],
                 IsPostable = Bool(r["is_postable"]), IsContra = Bool(r["is_contra"]),
                 StatementSection = r["statement_section"], SubledgerType = r["subledger_type"],
@@ -96,21 +97,21 @@ public sealed class Dataset
                 CurrencyMode = r["currency_mode"], CurrencyCode = r["currency_code"],
                 IsProtected = Bool(r["is_protected"]), Status = r["status"],
                 SourceRef = r["source_ref"], CaveatAr = r["caveat_ar"], CaveatEn = r["caveat_en"],
-                SourceLine = int.Parse(r["__line__"])
+                SourceLine = int.Parse(r["__line__"], CultureInfo.InvariantCulture)
             });
 
         foreach (var r in Csv.Read(Path.Combine(coa, "dimensions.csv")))
             ds.Dimensions.Add(new Dimension
             {
                 Code = r["dimension_code"], NameAr = r["name_ar"], NameEn = r["name_en"],
-                SourceLine = int.Parse(r["__line__"])
+                SourceLine = int.Parse(r["__line__"], CultureInfo.InvariantCulture)
             });
 
         foreach (var r in Csv.Read(Path.Combine(coa, "subledger-types.csv")))
             ds.SubledgerTypes.Add(new SubledgerType
             {
                 Code = r["subledger_code"], NameAr = r["name_ar"], NameEn = r["name_en"],
-                SourceLine = int.Parse(r["__line__"])
+                SourceLine = int.Parse(r["__line__"], CultureInfo.InvariantCulture)
             });
 
         foreach (var r in Csv.Read(Path.Combine(mtx, "account-roles.csv")))
@@ -118,7 +119,7 @@ public sealed class Dataset
             {
                 Code = r["role_code"], NameAr = r["name_ar"], NameEn = r["name_en"],
                 ExpectedAccountType = r["expected_account_type"], ExpectedSide = r["expected_side"],
-                Status = r["status"], SourceLine = int.Parse(r["__line__"])
+                Status = r["status"], SourceLine = int.Parse(r["__line__"], CultureInfo.InvariantCulture)
             });
 
         foreach (var r in Csv.Read(Path.Combine(mtx, "role-map.default.csv")))
@@ -126,7 +127,7 @@ public sealed class Dataset
             {
                 TenantId = r["tenant_id"], RoleCode = r["role_code"], Qualifier = r["qualifier"],
                 AccountCode = r["account_code"], Status = r["status"],
-                SourceLine = int.Parse(r["__line__"])
+                SourceLine = int.Parse(r["__line__"], CultureInfo.InvariantCulture)
             });
 
         var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = false };

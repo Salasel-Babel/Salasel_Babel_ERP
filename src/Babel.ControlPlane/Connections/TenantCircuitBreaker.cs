@@ -18,6 +18,7 @@ public enum CircuitState
 /// <param name="remaining">ما تبقّى من مدّة الفتح.</param>
 public sealed class CircuitOpenException(string tenantCode, TimeSpan remaining)
     : Exception($"قاعدة المستأجر «{tenantCode}» غير قابلة للوصول — القاطع مفتوح "
+                // ثقافة-عرض: نصّ استثناء يقرؤه مشغّل بشري ولا يُحفظ ولا يُجزَّأ ولا يُقارَن — الفاصلة المحلية هي الصواب.
                 + $"لمدة {remaining.TotalSeconds:F1} ثانية بعد. الرفض فوري بلا استهلاك اتصال.")
 {
     /// <summary>رمز المستأجر الذي رُفض الطلب إليه.</summary>

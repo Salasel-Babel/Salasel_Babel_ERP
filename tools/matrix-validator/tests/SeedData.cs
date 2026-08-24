@@ -1,3 +1,4 @@
+using System.Globalization;
 using SalaselBabel.MatrixValidator;
 
 namespace SalaselBabel.MatrixValidator.Tests;
@@ -22,7 +23,7 @@ public static class SeedData
     /// <summary>Copies the real seed into a scratch directory so a test can corrupt one file.</summary>
     public static string CopyToTemp()
     {
-        var target = Path.Combine(Path.GetTempPath(), "coa-fixture-" + Guid.NewGuid().ToString("N"));
+        var target = Path.Combine(Path.GetTempPath(), "coa-fixture-" + Guid.NewGuid().ToString("N", CultureInfo.InvariantCulture));
         CopyDirectory(Root, target);
         return target;
     }

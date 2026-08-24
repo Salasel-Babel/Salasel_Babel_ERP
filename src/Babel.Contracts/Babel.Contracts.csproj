@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Babel.Contracts — عقد الترحيل وعقود أحداث الأعمال. لا منطق محاسبي، ولا وصول لبيانات.
+    ممنوع هنا: EF Core · Npgsql · Wolverine · حقن الاعتماديات.
+    مفروض ببناء: tests/Babel.ArchitectureTests/Rule07_SharedKernelAndContractsArePure.cs
+  -->
+
+  <PropertyGroup>
+    <RootNamespace>Babel.Contracts</RootNamespace>
+    <AssemblyName>Babel.Contracts</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Babel.SharedKernel/Babel.SharedKernel.csproj" />
+  </ItemGroup>
+
+</Project>

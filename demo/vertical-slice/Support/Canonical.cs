@@ -102,7 +102,7 @@ public static class Canonical
         sb.Append("prev_hash=").Append(Hex(e.PrevHash)).Append('\n');
         sb.Append("book_id=").Append(Text(e.BookId, policy)).Append('\n');
         sb.Append("tenant_id=").Append(Text(e.TenantId, policy)).Append('\n');
-        sb.Append("entry_id=").Append(e.EntryId.ToString("D")).Append('\n');
+        sb.Append("entry_id=").Append(e.EntryId.ToString("D", CultureInfo.InvariantCulture)).Append('\n');
         sb.Append("entry_no=").Append(e.EntryNo.ToString(CultureInfo.InvariantCulture)).Append('\n');
         sb.Append("entry_date=").Append(Date(e.EntryDate)).Append('\n');
         sb.Append("posted_at=").Append(Utc(e.PostedAt)).Append('\n');

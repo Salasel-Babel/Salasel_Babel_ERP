@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 
 namespace SalaselBabel.MatrixValidator;
@@ -24,7 +25,7 @@ public static class Csv
             var d = new Dictionary<string, string>(StringComparer.Ordinal);
             for (var c = 0; c < header.Count; c++)
                 d[header[c]] = c < row.Count ? row[c] : string.Empty;
-            d["__line__"] = (r + 1).ToString();
+            d["__line__"] = (r + 1).ToString(CultureInfo.InvariantCulture);
             result.Add(d);
         }
         return result;

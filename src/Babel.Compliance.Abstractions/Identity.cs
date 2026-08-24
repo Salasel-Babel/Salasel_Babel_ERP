@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace Babel.Compliance.Abstractions;
 
 /// <summary>المستأجر. مفتاح العزل الأول في كل شيء هنا.</summary>
@@ -26,14 +28,14 @@ public readonly record struct IssuingUnitId(string Value)
 public readonly record struct ComplianceDocumentId(Guid Value)
 {
     public static ComplianceDocumentId New() => new(Guid.CreateVersion7());
-    public override string ToString() => Value.ToString("D");
+    public override string ToString() => Value.ToString("D", CultureInfo.InvariantCulture);
 }
 
 /// <summary>محاولة إرسال واحدة. تُنشأ وتُحفظ <b>قبل</b> النداء الشبكي، لا بعده.</summary>
 public readonly record struct AttemptId(Guid Value)
 {
     public static AttemptId New() => new(Guid.CreateVersion7());
-    public override string ToString() => Value.ToString("D");
+    public override string ToString() => Value.ToString("D", CultureInfo.InvariantCulture);
 }
 
 /// <summary>
@@ -42,7 +44,7 @@ public readonly record struct AttemptId(Guid Value)
 /// </summary>
 public readonly record struct JournalEntryRef(Guid Value)
 {
-    public override string ToString() => Value.ToString("D");
+    public override string ToString() => Value.ToString("D", CultureInfo.InvariantCulture);
 }
 
 /// <summary>

@@ -76,15 +76,15 @@ public static class ComplianceCanonical
 
         sb.Append("tenant=").Append(T(d.Tenant.Value)).Append('\n');
         sb.Append("issuing_unit=").Append(T(d.IssuingUnit.Value)).Append('\n');
-        sb.Append("document_id=").Append(d.DocumentId.Value.ToString("D")).Append('\n');
-        sb.Append("document_uuid=").Append(d.DocumentUuid.ToString("D")).Append('\n');
+        sb.Append("document_id=").Append(d.DocumentId.Value.ToString("D", CultureInfo.InvariantCulture)).Append('\n');
+        sb.Append("document_uuid=").Append(d.DocumentUuid.ToString("D", CultureInfo.InvariantCulture)).Append('\n');
         sb.Append("kind=").Append(d.Kind.ToString()).Append('\n');
         sb.Append("flow=").Append(d.Flow.ToString()).Append('\n');
         sb.Append("document_number=").Append(T(d.DocumentNumber)).Append('\n');
         sb.Append("issued_at=").Append(Instant(d.IssuedAt)).Append('\n');
         sb.Append("currency=").Append(T(d.CurrencyCode)).Append('\n');
-        sb.Append("journal_entry=").Append(d.JournalEntry.Value.ToString("D")).Append('\n');
-        sb.Append("original_document=").Append(d.OriginalDocument?.Value.ToString("D") ?? "-").Append('\n');
+        sb.Append("journal_entry=").Append(d.JournalEntry.Value.ToString("D", CultureInfo.InvariantCulture)).Append('\n');
+        sb.Append("original_document=").Append(d.OriginalDocument?.Value.ToString("D", CultureInfo.InvariantCulture) ?? "-").Append('\n');
         sb.Append("correction_reason_ar=").Append(T(d.CorrectionReasonAr ?? "")).Append('\n');
         sb.Append("correction_reason_en=").Append(T(d.CorrectionReasonEn ?? "")).Append('\n');
 

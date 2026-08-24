@@ -1,3 +1,4 @@
+using System.Globalization;
 using Babel.ControlPlane.Support;
 using Npgsql;
 using NpgsqlTypes;
@@ -168,7 +169,7 @@ public static class SeedData
         CancellationToken ct = default)
     {
         var rows = Enumerable.Range(1, 12)
-            .Select(m => (Code: $"{year:D4}-{m:D2}",
+            .Select(m => (Code: string.Create(CultureInfo.InvariantCulture, $"{year:D4}-{m:D2}"),
                           Start: new DateOnly(year, m, 1),
                           End: new DateOnly(year, m, DateTime.DaysInMonth(year, m))))
             .OrderBy(x => x.Code, StringComparer.Ordinal).ToList();

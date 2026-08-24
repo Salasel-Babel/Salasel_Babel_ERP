@@ -62,7 +62,7 @@ public sealed class ProvisionalDocumentRenderer(
         var root = new XElement("Invoice",
             new XElement("ProfileID", ProvisionalProfileId),
             new XElement("ID", d.DocumentNumber),
-            new XElement("UUID", d.DocumentUuid.ToString("D")),
+            new XElement("UUID", d.DocumentUuid.ToString("D", CultureInfo.InvariantCulture)),
             new XElement("IssueDate", d.IssuedAt.UtcDateTime.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)),
             new XElement("IssueTime", d.IssuedAt.UtcDateTime.ToString("HH:mm:ss", CultureInfo.InvariantCulture)),
             new XElement("InvoiceTypeCode", d.Kind.ToString()),
@@ -95,7 +95,7 @@ public sealed class ProvisionalDocumentRenderer(
         if (d.OriginalDocument is { } original)
             root.Add(new XElement("BillingReference",
                 new XElement("InvoiceDocumentReference",
-                    new XElement("ID", original.Value.ToString("D")),
+                    new XElement("ID", original.Value.ToString("D", CultureInfo.InvariantCulture)),
                     new XElement("DocumentDescription", d.CorrectionReasonAr ?? ""))));
 
         foreach (var l in d.Lines.OrderBy(x => x.LineNo))

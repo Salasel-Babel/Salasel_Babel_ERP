@@ -240,3 +240,71 @@ public class BillableUserTests
     public void تعريف_غير_معروف_يرمي() =>
         Assert.Throws<ArgumentException>(() => BillableUserStrategies.ByCode("Whatever"));
 }
+
+/// <summary>
+/// انحدار مباشر على عطل اكتُشف أثناء إنهاء هذا المكوّن: رمز فترة الفوترة كان
+/// يُبنى بتنسيق <b>واعٍ بالثقافة والتقويم</b>، فينقلب إلى هجري تحت ar-SA.
+/// </summary>
+public class PeriodCodeCultureTests
+{
+    /// <summary>
+    /// الثقافات التي تُغيّر <b>التقويم</b> لا الأرقام وحدها. القيم المتوقَّعة
+    /// مقيسة على .NET 10 قبل الإصلاح: ar-SA ⇒ 1448-03، fa-IR ⇒ 1405-06،
+    /// th-TH ⇒ 2569-08 — وكلها تُسجّل الاستعمال تحت فترة لا يستعلم عنها أحد.
+    /// </summary>
+    [Theory]
+    [InlineData("en-US")]
+    [InlineData("ar-SA")]   // أم القرى الهجري — الثقافة الأولى للمنتج
+    [InlineData("ar-EG")]
+    [InlineData("fa-IR")]   // الجلالي
+    [InlineData("th-TH")]   // البوذي
+    [InlineData("")]        // الثقافة الثابتة
+    public void رمز_فترة_الفوترة_ميلادي_مهما_كانت_ثقافة_العملية(string culture)
+    {
+        var previous = System.Globalization.CultureInfo.CurrentCulture;
+        try
+        {
+            System.Globalization.CultureInfo.CurrentCulture =
+                new System.Globalization.CultureInfo(culture);
+
+            var at = new DateTimeOffset(2026, 8, 24, 12, 0, 0, TimeSpan.Zero);
+
+            // لو انقلب التقويم لصار «1448-03» أو «2569-08»، وتُكتب أحداث
+            // القياس تحت فترة لا يستعلم عنها أحد ⇒ فاتورة الشهر خالية،
+            // بلا استثناء وبلا سطر سجل.
+            Assert.Equal("2026-08", UsageEvent.PeriodOf(at));
+        }
+        finally
+        {
+            System.Globalization.CultureInfo.CurrentCulture = previous;
+        }
+    }
+
+    /// <summary>
+    /// الحارس على الحارس: يُثبت أن الاختبار أعلاه <b>ليس فارغاً</b> — أي أن
+    /// الصياغة الساذجة تنكسر فعلاً تحت ar-SA على هذا الوقت التشغيلي.
+    /// لولا هذا لمرّ الاختبار على بيئة لا تحمل بيانات ICU وهو لا يثبت شيئاً.
+    /// </summary>
+    [Fact]
+    public void الصياغة_الساذجة_تنكسر_فعلاً_تحت_ar_SA()
+    {
+        var previous = System.Globalization.CultureInfo.CurrentCulture;
+        try
+        {
+            System.Globalization.CultureInfo.CurrentCulture =
+                new System.Globalization.CultureInfo("ar-SA");
+            var at = new DateTimeOffset(2026, 8, 24, 12, 0, 0, TimeSpan.Zero);
+
+#pragma warning disable CA1305 // متعمَّد: هذا هو السلوك المعيب المُختبَر
+            var naive = $"{at.UtcDateTime:yyyy-MM}";
+#pragma warning restore CA1305
+
+            Assert.NotEqual("2026-08", naive);
+            Assert.Equal("2026-08", UsageEvent.PeriodOf(at));
+        }
+        finally
+        {
+            System.Globalization.CultureInfo.CurrentCulture = previous;
+        }
+    }
+}

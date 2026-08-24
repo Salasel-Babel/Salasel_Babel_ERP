@@ -4,6 +4,19 @@ using Npgsql;
 
 namespace Babel.ControlPlane.Provisioning;
 
+/// <summary>
+/// حصيلة أرشفة مستأجر — وهي <b>الدليل</b> على أن البيانات باقية بعد قطع الوصول:
+/// الأعداد تُقرأ من قاعدة المستأجر <b>بعد</b> الأرشفة.
+/// </summary>
+/// <param name="TenantCode">رمز المستأجر.</param>
+/// <param name="DatabaseName">اسم قاعدته — ما تزال قائمة، ولم تُحذف.</param>
+/// <param name="JournalEntries">عدد قيود اليومية الباقية بعد الأرشفة.</param>
+/// <param name="JournalLines">عدد سطور القيود الباقية.</param>
+/// <param name="Accounts">عدد الحسابات الباقية.</param>
+/// <param name="AppConnectionError">
+/// خطأ محاولة اتصال دور التطبيق بعد الأرشفة — يجب أن يكون <c>42501</c>،
+/// وهو الإثبات المباشر أن الوصول التطبيقي مقطوع.
+/// </param>
 public sealed record ArchiveOutcome(
     string TenantCode, string DatabaseName, long JournalEntries, long JournalLines,
     long Accounts, string AppConnectionError);
@@ -24,13 +37,23 @@ public sealed record ArchiveOutcome(
 /// <c>PUBLIC</c>، وإنهاء الجلسات القائمة. مالك القاعدة يبقى قادراً على النسخ
 /// والتصدير — وهذا هو الفرق بين «غير قابل للوصول من التطبيق» و«محذوف».</para>
 /// </summary>
-public sealed class TenantArchivist(ControlPlaneOptions options, TenantRegistry registry)
+/// <param name="options">إعدادات مستوى التحكّم.</param>
+public sealed class TenantArchivist(ControlPlaneOptions options)
 {
+    /// <summary>
+    /// يُؤرشف مستأجراً: يقطع وصول التطبيق ويُبقي البيانات كاملةً. <b>لا حذف.</b>
+    /// مُحكَم: أرشفة مستأجر مؤرشف تُرجِع الحصيلة نفسها بلا أثر إضافي.
+    /// </summary>
+    /// <param name="tenantCode">رمز المستأجر.</param>
+    /// <param name="actor">من نفّذ الأرشفة — لا أرشفة بلا فاعل مُسمّى.</param>
+    /// <param name="reasonAr">سبب الأرشفة بالعربية — لا أرشفة بلا سبب مُسجَّل.</param>
+    /// <param name="ct">رمز الإلغاء.</param>
+    /// <returns>حصيلة الأرشفة وما بقي من بيانات بعدها.</returns>
     public async Task<ArchiveOutcome> ArchiveAsync(string tenantCode, string actor,
         string reasonAr, CancellationToken ct = default)
     {
         await using var control = await Db.OpenAsync(options.ControlConnectionString, ct);
-        var tenant = await registry.RequireByCodeAsync(control, tenantCode, null, ct);
+        var tenant = await TenantRegistry.RequireByCodeAsync(control, tenantCode, null, ct);
 
         if (tenant.Status == TenantStatus.Archived)
             return await SnapshotAsync(tenant, ct);
@@ -50,7 +73,7 @@ public sealed class TenantArchivist(ControlPlaneOptions options, TenantRegistry 
                 """.Replace("@d", $"'{tenant.DatabaseName}'"), null, ct);
         }
 
-        await registry.MarkArchivedAsync(control, tenant.TenantId, actor, reasonAr, null, ct);
+        await TenantRegistry.MarkArchivedAsync(control, tenant.TenantId, actor, reasonAr, null, ct);
         await OperationLog.WriteAsync(control, tenant.TenantId, actor, "tenant.archive",
             OperationOutcome.Recorded,
             $"أُرشِف المستأجر «{tenantCode}»: الوصول التطبيقي مقطوع والبيانات محفوظة. السبب: {reasonAr}",
@@ -67,14 +90,14 @@ public sealed class TenantArchivist(ControlPlaneOptions options, TenantRegistry 
         CancellationToken ct = default)
     {
         await using var control = await Db.OpenAsync(options.ControlConnectionString, ct);
-        var tenant = await registry.RequireByCodeAsync(control, tenantCode, null, ct);
+        var tenant = await TenantRegistry.RequireByCodeAsync(control, tenantCode, null, ct);
         var db = Db.Ident(tenant.DatabaseName);
         var role = Db.Ident(options.AppRole);
 
         await using (var maint = await Db.OpenAsync(options.MaintenanceConnectionString, ct))
             await Db.ExecAsync(maint, $"grant connect on database {db} to {role}", null, ct);
 
-        await registry.SetStatusAsync(control, tenant.TenantId, TenantStatus.Suspended, null, null, ct);
+        await TenantRegistry.SetStatusAsync(control, tenant.TenantId, TenantStatus.Suspended, null, null, ct);
         await OperationLog.WriteAsync(control, tenant.TenantId, actor, "tenant.restore",
             OperationOutcome.Recorded, $"أُعيد وصول المستأجر «{tenantCode}»: {reasonAr}", null, null, ct);
     }

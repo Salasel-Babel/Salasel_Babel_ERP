@@ -6,6 +6,9 @@ using Npgsql;
 
 namespace Babel.ControlPlane.Connections;
 
+/// <summary>يُرفع حين يستهلك السقف العام بالكامل ولا تتحرّر فتحة خلال المهلة.</summary>
+/// <param name="cap">السقف العام.</param>
+/// <param name="waited">المدّة المنتظَرة قبل الرفض.</param>
 public sealed class ConnectionCapExceededException(int cap, TimeSpan waited)
     : Exception($"تعذّر حجز اتصال خلال {waited.TotalSeconds:F1} ثانية — السقف العام {cap} مستهلَك بالكامل. "
                 + "الرفض السريع مقصود: الانتظار غير المحدود يحوّل ضغطاً على مستأجر إلى تعطّل منصّة.");
@@ -23,9 +26,14 @@ public sealed class TenantLease : IAsyncDisposable
         _release = release;
     }
 
+    /// <summary>الاتصال المحجوز. صالح حتى التخلّص من الحجز.</summary>
     public NpgsqlConnection Connection { get; }
+
+    /// <summary>رمز المستأجر صاحب هذا الحجز.</summary>
     public string TenantCode { get; }
 
+    /// <summary>يُعيد الاتصال إلى تجميعة المستأجر ويُحرّر الحجز من السقف العام.</summary>
+    /// <returns>مهمّة التخلّص.</returns>
     public async ValueTask DisposeAsync()
     {
         if (_disposed) return;
@@ -35,6 +43,17 @@ public sealed class TenantLease : IAsyncDisposable
     }
 }
 
+/// <summary>لقطة عدّادات مدير الاتصالات — وهي المقاييس التي بُنيت عليها أرقام التقرير.</summary>
+/// <param name="LiveDataSources">عدد تجميعات المستأجرين الحيّة الآن.</param>
+/// <param name="LeasesInFlight">عدد الحجوزات القائمة الآن.</param>
+/// <param name="GlobalCap">السقف الصلب العام على الاتصالات المستعمَلة.</param>
+/// <param name="MaxLivePools">أقصى عدد تجميعات حيّة تسمح به الثابتة (‏السقف ÷ سقف المستأجر).</param>
+/// <param name="Leased">مجموع الحجوزات الممنوحة منذ البدء.</param>
+/// <param name="FastRejectedByCircuit">مرفوضة فوراً بقاطع الدارة — بلا اتصال وبلا انتظار.</param>
+/// <param name="RejectedByCap">مرفوضة لاستهلاك السقف العام.</param>
+/// <param name="Evicted">عدد التجميعات المُخلاة بالخمول أو بالأقدمية.</param>
+/// <param name="OverflowUnpooled">طلبات خُدمت باتصال غير مُجمَّع — مؤشّر الحاجة إلى مُجمِّع خارجي.</param>
+/// <param name="OpenCircuits">عدد قواطع الدارة المفتوحة الآن.</param>
 public sealed record ConnectionManagerStats(
     int LiveDataSources, int LeasesInFlight, int GlobalCap, int MaxLivePools,
     long Leased, long FastRejectedByCircuit, long RejectedByCap, long Evicted,
@@ -84,6 +103,9 @@ public sealed class TenantConnectionManager : IAsyncDisposable
     private long _overflow;
     private int _inFlight;
 
+    /// <summary>يبني المدير ويثبّت السقف الصلب العام.</summary>
+    /// <param name="options">إعدادات مستوى التحكّم.</param>
+    /// <param name="registry">سجل المستأجرين — مصدر التوجيه.</param>
     public TenantConnectionManager(ControlPlaneOptions options, TenantRegistry registry)
     {
         _options = options;
@@ -91,6 +113,7 @@ public sealed class TenantConnectionManager : IAsyncDisposable
         _globalCap = new SemaphoreSlim(options.GlobalConnectionCap, options.GlobalConnectionCap);
     }
 
+    /// <summary>السقف الصلب العام على الاتصالات المستعمَلة في آن واحد.</summary>
     public int GlobalCap => _options.GlobalConnectionCap;
 
     /// <summary>
@@ -123,6 +146,9 @@ public sealed class TenantConnectionManager : IAsyncDisposable
     /// </summary>
     public TimeSpan RouteCacheTtl { get; init; } = TimeSpan.FromSeconds(15);
 
+    /// <summary>قاطع الدارة الخاص بمستأجر، يُنشأ عند أول طلب.</summary>
+    /// <param name="tenantCode">رمز المستأجر.</param>
+    /// <returns>قاطع هذا المستأجر.</returns>
     public TenantCircuitBreaker Breaker(string tenantCode) =>
         _breakers.GetOrAdd(tenantCode, _ =>
             new TenantCircuitBreaker(_options.CircuitFailureThreshold, _options.CircuitOpenDuration));
@@ -132,6 +158,12 @@ public sealed class TenantConnectionManager : IAsyncDisposable
     /// ما لم يُبنَ بعد صراحةً بدل أن يفترض. تحويل المشروع إلى قاعدة مشتركة
     /// يبدأ من هنا، لا من كل مسار استعلام.
     /// </summary>
+    /// <param name="tenantCode">رمز المستأجر.</param>
+    /// <param name="ct">رمز الإلغاء.</param>
+    /// <returns>صفّ المستأجر الصالح للتوجيه.</returns>
+    /// <exception cref="TenantNotFoundException">لا مستأجر بهذا الرمز.</exception>
+    /// <exception cref="TenantArchivedException">المستأجر مؤرشف — الوصول مقطوع والبيانات باقية.</exception>
+    /// <exception cref="NotSupportedException">المستأجر على نموذج «مخطط مشترك» ولم يُبنَ بعد.</exception>
     public async Task<TenantRecord> ResolveAsync(string tenantCode, CancellationToken ct = default)
     {
         if (_routes.TryGetValue(tenantCode, out var cached)
@@ -159,10 +191,21 @@ public sealed class TenantConnectionManager : IAsyncDisposable
         return t;
     }
 
+    /// <summary>يُبطل ذاكرة التوجيه لمستأجر فوراً، بلا انتظار انتهاء مهلتها.</summary>
+    /// <param name="tenantCode">رمز المستأجر.</param>
     public void InvalidateRoute(string tenantCode) => _routes.TryRemove(tenantCode, out _);
 
     // =======================================================================
 
+    /// <summary>
+    /// يحجز اتصالاً بقاعدة مستأجر عبر الآليات الثلاث بالترتيب: قاطع الدارة أولاً
+    /// (‏رفض بصفر كلفة)، ثم السقف الصلب العام، ثم تجميعة المستأجر أو مسار الفيض.
+    /// </summary>
+    /// <param name="tenantCode">رمز المستأجر.</param>
+    /// <param name="ct">رمز الإلغاء.</param>
+    /// <returns>حجز يجب التخلّص منه لإعادة الاتصال وتحرير الفتحة.</returns>
+    /// <exception cref="CircuitOpenException">قاطع دارة المستأجر مفتوح.</exception>
+    /// <exception cref="ConnectionCapExceededException">استُهلك السقف العام خلال المهلة.</exception>
     public async Task<TenantLease> LeaseAsync(string tenantCode, CancellationToken ct = default)
     {
         var breaker = Breaker(tenantCode);
@@ -256,6 +299,8 @@ public sealed class TenantConnectionManager : IAsyncDisposable
     /// إخلاء بالخمول ثم بالأقدمية. لا يُخلى مصدر عليه حجز قائم — التخلّص من
     /// <c>NpgsqlDataSource</c> وعليه اتصالات مستعمَلة يقطعها في منتصف عملها.
     /// </summary>
+    /// <param name="now">اللحظة المرجعية — للاختبار؛ الافتراضي الآن.</param>
+    /// <returns>عدد التجميعات المُخلاة.</returns>
     public int EvictIdle(DateTimeOffset? now = null)
     {
         var cutoff = (now ?? DateTimeOffset.UtcNow) - _options.IdleEviction;
@@ -292,6 +337,8 @@ public sealed class TenantConnectionManager : IAsyncDisposable
         if (_sources.TryRemove(tenantCode, out var e)) await e.DataSource.DisposeAsync();
     }
 
+    /// <summary>لقطة العدّادات الآن.</summary>
+    /// <returns>الإحصاء.</returns>
     public ConnectionManagerStats Stats() => new(
         _sources.Count, Volatile.Read(ref _inFlight), _options.GlobalConnectionCap,
         EffectiveMaxLivePools,
@@ -302,6 +349,8 @@ public sealed class TenantConnectionManager : IAsyncDisposable
         Interlocked.Read(ref _overflow),
         _breakers.Values.Count(b => b.State == CircuitState.Open));
 
+    /// <summary>يتخلّص من كل تجميعات المستأجرين الحيّة.</summary>
+    /// <returns>مهمّة التخلّص.</returns>
     public async ValueTask DisposeAsync()
     {
         foreach (var (_, e) in _sources.ToArray()) await e.DataSource.DisposeAsync();

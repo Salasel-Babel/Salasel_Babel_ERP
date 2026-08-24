@@ -16,7 +16,7 @@ public static class ProofC_ExpandContract
 {
     public static async Task RunAsync(ControlPlaneOptions o, Recorder rec)
     {
-        rec.Section("(ج) التوسيع/الانكماش — إصداران من الشيفرة × ثلاثة من المخطط");
+        Recorder.Section("(ج) التوسيع/الانكماش — إصداران من الشيفرة × ثلاثة من المخطط");
 
         var registry = new TenantRegistry(o);
 

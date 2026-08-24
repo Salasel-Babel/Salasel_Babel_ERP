@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Diagnostics;
 using Babel.ControlPlane.Migration;
 using Babel.ControlPlane.Registry;
@@ -20,7 +21,7 @@ public static class ProofB_FleetMigration
 
     public static async Task RunAsync(ControlPlaneOptions o, Recorder rec)
     {
-        rec.Section($"(ب) ترحيل الأسطول عبر {FleetSize} قاعدة مستأجر");
+        Recorder.Section($"(ب) ترحيل الأسطول عبر {FleetSize} قاعدة مستأجر");
 
         var registry = new TenantRegistry(o);
 
@@ -202,10 +203,10 @@ public static class ProofB_FleetMigration
         psi.ArgumentList.Add($"--worker={workerId}");
         psi.Environment["BABEL_CP_CONTROL_DB_NAME"] = o.ControlDatabase;
         psi.Environment["BABEL_CP_APP_ROLE"] = o.AppRole;
-        psi.Environment["BABEL_CP_FLEET_BATCH"] = o.FleetBatchSize.ToString();
+        psi.Environment["BABEL_CP_FLEET_BATCH"] = o.FleetBatchSize.ToString(CultureInfo.InvariantCulture);
         psi.Environment["BABEL_CP_FLEET_LEASE_SECONDS"] =
-            ((int)o.FleetLeaseDuration.TotalSeconds).ToString();
-        psi.Environment["BABEL_CP_PROOF_DELAY_MS"] = delayMs.ToString();
+            ((int)o.FleetLeaseDuration.TotalSeconds).ToString(CultureInfo.InvariantCulture);
+        psi.Environment["BABEL_CP_PROOF_DELAY_MS"] = delayMs.ToString(CultureInfo.InvariantCulture);
 
         using var proc = Process.Start(psi)!;
         _ = proc.StandardOutput.ReadToEndAsync();

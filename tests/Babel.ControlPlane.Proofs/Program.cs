@@ -5,8 +5,8 @@ using Babel.ControlPlane.Support;
 
 Console.OutputEncoding = System.Text.Encoding.UTF8;
 
-var only = args.FirstOrDefault(a => a.StartsWith("--only="))?["--only=".Length..];
-var role = args.FirstOrDefault(a => a.StartsWith("--role="))?["--role=".Length..];
+var only = args.FirstOrDefault(a => a.StartsWith("--only=", StringComparison.Ordinal))?["--only=".Length..];
+var role = args.FirstOrDefault(a => a.StartsWith("--role=", StringComparison.Ordinal))?["--role=".Length..];
 var keep = args.Contains("--keep");
 
 // ---------------------------------------------------------------------------
@@ -15,8 +15,8 @@ var keep = args.Contains("--keep");
 if (role == "fleet-worker")
 {
     var wo = Harness.Options();
-    var wid = args.FirstOrDefault(a => a.StartsWith("--worker="))?["--worker=".Length..] ?? "worker";
-    var mid = Guid.Parse(args.First(a => a.StartsWith("--migration="))["--migration=".Length..]);
+    var wid = args.FirstOrDefault(a => a.StartsWith("--worker=", StringComparison.Ordinal))?["--worker=".Length..] ?? "worker";
+    var mid = Guid.Parse(args.First(a => a.StartsWith("--migration=", StringComparison.Ordinal))["--migration=".Length..]);
     var delay = int.TryParse(Environment.GetEnvironmentVariable("BABEL_CP_PROOF_DELAY_MS"), out var d)
         ? d : 0;
 

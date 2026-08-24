@@ -20,14 +20,27 @@ namespace Babel.ControlPlane.Metering;
 /// </summary>
 public sealed class UsageRecorder(ControlPlaneOptions options, UsageSpool spool)
 {
+    /// <summary>المخزن الاحتياطي المحلّي الذي تُثبَّت فيه الأحداث حين تتعذّر قاعدة التحكّم.</summary>
     public UsageSpool Spool { get; } = spool;
 
     /// <summary>حجم الدفعة الواحدة. عبارة واحدة لكل دفعة — لا صفّاً صفّاً (فخ-14).</summary>
     public int BatchSize { get; init; } = 500;
 
+    /// <summary>يسجّل حدث قياس واحداً.</summary>
+    /// <param name="e">الحدث.</param>
+    /// <param name="ct">رمز الإلغاء.</param>
+    /// <returns>حصيلة التسجيل.</returns>
     public Task<RecordOutcome> RecordAsync(UsageEvent e, CancellationToken ct = default) =>
         RecordAsync([e], ct);
 
+    /// <summary>
+    /// يسجّل دفعة أحداث. <b>لا عدّ مزدوج تحت إعادة المحاولة:</b> مفتاح الإحكام
+    /// الذي يورّده المنتِج مع <c>ON CONFLICT DO NOTHING</c> يجعل إعادة الدفعة
+    /// نفسها بأي ترتيب تُرجِع مكرَّرات لا إدراجات.
+    /// </summary>
+    /// <param name="events">الأحداث.</param>
+    /// <param name="ct">رمز الإلغاء.</param>
+    /// <returns>حصيلة التسجيل: المقبول والمكرَّر والمُثبَّت على القرص.</returns>
     public async Task<RecordOutcome> RecordAsync(IReadOnlyList<UsageEvent> events,
         CancellationToken ct = default)
     {
@@ -55,7 +68,7 @@ public sealed class UsageRecorder(ControlPlaneOptions options, UsageSpool spool)
     }
 
     private static async Task<int> InsertBatchAsync(NpgsqlConnection c,
-        IReadOnlyList<UsageEvent> batch, CancellationToken ct)
+        List<UsageEvent> batch, CancellationToken ct)
     {
         var values = string.Join(", ", batch.Select((_, i) =>
             $"(@t{i}, @k{i}, @p{i}, @m{i}, @u{i}, @e{i}, @q{i}, @o{i}, @r{i}, @s{i})"));

@@ -15,6 +15,8 @@ public static class Canon
     /// PostgreSQL دقّته ميكروثانية، ونبضة .NET أدقّ منها — فالقيمة المُعادة
     /// من القاعدة <b>لا تساوي</b> المكتوبة ما لم تُقصّ (فخ-16).
     /// </summary>
+    /// <param name="t">اللحظة.</param>
+    /// <returns>اللحظة مقصوصةً إلى الميكروثانية بتوقيت UTC.</returns>
     public static DateTimeOffset Instant(DateTimeOffset t)
     {
         var utc = t.ToUniversalTime();
@@ -22,12 +24,16 @@ public static class Canon
         return new DateTimeOffset(ticks, TimeSpan.Zero);
     }
 
+    /// <summary>اللحظة الآن، مقصوصةً إلى الميكروثانية.</summary>
+    /// <returns>اللحظة الحالية بدقّة القاعدة.</returns>
     public static DateTimeOffset Now() => Instant(DateTimeOffset.UtcNow);
 
     /// <summary>
     /// تمثيل نصّي وحيد للمبالغ: مقياس 4 وثقافة ثابتة. أي <c>ToString()</c>
     /// واعٍ باللغة قرب رقم مالي = خطأ فوترة صامت (فخ-17، فخ-18).
     /// </summary>
+    /// <param name="value">المبلغ.</param>
+    /// <returns>نصّ بمقياس 4 وثقافة ثابتة.</returns>
     public static string Amount(decimal value) =>
         decimal.Round(value, 4, MidpointRounding.ToEven)
                .ToString("F4", CultureInfo.InvariantCulture);
@@ -37,6 +43,10 @@ public static class Canon
     /// غير المرئية (فخ-23، فخ-24). مستوى التحكّم يستقبل أسماء مستأجرين ووحدات
     /// بالعربية، وهي تدخل تقارير الفوترة.
     /// </summary>
+    /// <param name="raw">النصّ الخام.</param>
+    /// <param name="field">اسم الحقل — يظهر في رسالة الرفض.</param>
+    /// <returns>النصّ بعد NFC والتشذيب.</returns>
+    /// <exception cref="ArgumentException">النصّ يحوي محرف تحكّم اتجاهي غير مرئي.</exception>
     public static string Text(string raw, string field)
     {
         foreach (var ch in raw)
@@ -55,6 +65,11 @@ public static class Canon
 /// </summary>
 public readonly record struct BilingualName(string Ar, string En)
 {
+    /// <summary>يبني اسماً ثنائي اللغة بعد التطبيع، ويرفض الفارغ من أي من اللغتين.</summary>
+    /// <param name="ar">الاسم العربي.</param>
+    /// <param name="en">الاسم الإنجليزي.</param>
+    /// <returns>الاسم بعد التطبيع.</returns>
+    /// <exception cref="ArgumentException">أحد الاسمين فارغ أو يحمل محرف تحكّم اتجاهي.</exception>
     public static BilingualName Of(string ar, string en)
     {
         var a = Canon.Text(ar, "name_ar");
@@ -64,5 +79,7 @@ public readonly record struct BilingualName(string Ar, string En)
         return new BilingualName(a, e);
     }
 
+    /// <summary>تمثيل نصّي للعرض والتشخيص.</summary>
+    /// <returns>«العربي / الإنجليزي».</returns>
     public override string ToString() => $"{Ar} / {En}";
 }

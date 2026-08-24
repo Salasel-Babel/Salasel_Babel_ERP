@@ -11,8 +11,13 @@ namespace Babel.ControlPlane.Entitlement;
 /// إلزامي وغير قابل للفراغ في قاعدة البيانات نفسها — لأن الاستحقاق يحكم
 /// <b>أي بيانات مالية يجوز إنشاؤها</b>، فتغييره حدث تدقيقي لا إعداد واجهة.
 /// </summary>
+/// <param name="Actor">من طلب التغيير.</param>
+/// <param name="Authority">السند: رقم عقد، أو حدث سداد، أو تذكرة، أو قرار مُوثَّق.</param>
+/// <param name="ReasonAr">السبب بالعربية.</param>
 public sealed record ChangeAuthority(string Actor, string Authority, string ReasonAr)
 {
+    /// <summary>يتحقّق من اكتمال السند. <b>لا تغيير استحقاق بلا فاعل وسند وسبب.</b></summary>
+    /// <exception cref="ArgumentException">أحد الحقول الثلاثة فارغ.</exception>
     public void Validate()
     {
         if (string.IsNullOrWhiteSpace(Actor)) throw new ArgumentException("الفاعل مطلوب");
@@ -24,6 +29,12 @@ public sealed record ChangeAuthority(string Actor, string Authority, string Reas
     }
 }
 
+/// <summary>
+/// خدمة الاستحقاق: تقرأ مجموعة الاستحقاق لمستأجر وتُغيّرها. كل تغيير يمرّ
+/// بالمُتحقِّق ويُكتب في سجل التدقيق بمن وبمتى وبأي سند.
+/// </summary>
+/// <param name="options">إعدادات مستوى التحكّم.</param>
+/// <param name="registry">سجل المستأجرين.</param>
 public sealed class EntitlementService(ControlPlaneOptions options, TenantRegistry registry)
 {
     private readonly OperationLog _log = new(options.ControlConnectionString);
@@ -33,14 +44,25 @@ public sealed class EntitlementService(ControlPlaneOptions options, TenantRegist
     /// <summary>مهلة الذاكرة المؤقتة قصيرة عمداً: خفض الاستحقاق يجب أن يسري بسرعة.</summary>
     public TimeSpan CacheTtl { get; init; } = TimeSpan.FromSeconds(5);
 
+    /// <summary>إعدادات مستوى التحكّم.</summary>
     public ControlPlaneOptions Options { get; } = options;
+
+    /// <summary>سجل المستأجرين.</summary>
     public TenantRegistry Registry { get; } = registry;
 
+    /// <summary>يُبطل ذاكرة استحقاق مستأجر فوراً.</summary>
+    /// <param name="tenantId">معرّف المستأجر.</param>
     public void InvalidateCache(Guid tenantId) => _cache.TryRemove(tenantId, out _);
+
+    /// <summary>يُبطل ذاكرة الاستحقاق لكل المستأجرين.</summary>
     public void InvalidateAll() => _cache.Clear();
 
     // -----------------------------------------------------------------------
 
+    /// <summary>مجموعة استحقاق المستأجر، عبر ذاكرة قصيرة الأجل.</summary>
+    /// <param name="tenantId">معرّف المستأجر.</param>
+    /// <param name="ct">رمز الإلغاء.</param>
+    /// <returns>الحالة لكل وحدة.</returns>
     public async Task<IReadOnlyDictionary<string, EntitlementState>> GetSetAsync(
         Guid tenantId, CancellationToken ct = default)
     {
@@ -203,6 +225,10 @@ public sealed class EntitlementService(ControlPlaneOptions options, TenantRegist
             authority, ct);
     }
 
+    /// <summary>يقرأ سجل تدقيق الاستحقاق لمستأجر: كل تغيير بمن ومتى وبأي سند.</summary>
+    /// <param name="tenantId">معرّف المستأجر.</param>
+    /// <param name="ct">رمز الإلغاء.</param>
+    /// <returns>أسطر التدقيق مرتّبةً.</returns>
     public async Task<List<(string Module, string Old, string New, string Actor, string Authority,
         DateTimeOffset At)>> ReadAuditAsync(Guid tenantId, CancellationToken ct = default)
     {

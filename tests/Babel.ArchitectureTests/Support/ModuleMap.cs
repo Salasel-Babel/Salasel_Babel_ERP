@@ -36,9 +36,30 @@ internal static class ModuleMap
         "Babel.Ai",
     ];
 
+    /// <summary>
+    /// مشاريع <b>بنية تحتية</b>: ليست وحدات منتَج مُرخَّصة — لا تظهر في
+    /// <see cref="BabelModule"/>، ولا تحمل بطاقة <c>ModuleInfo</c>، ولا تُباع على حدة.
+    /// <para>
+    /// وقاعدتها الملزمة: <b>لا تعتمد على أي مشروع بابل، ولا يعتمد عليها أي مشروع
+    /// إلا الجذر التركيبي.</b> ولذلك مجموعة مراجعها المسموحة فارغة أدناه.
+    /// </para>
+    /// <list type="bullet">
+    /// <item><c>Babel.Canonicalization</c> — مكتبة التوحيد القياسي؛ صفر اعتماديات
+    /// شرطٌ فيها حتى لا تتحرّك البايتات المُجزَّأة بترقية حزمة.</item>
+    /// <item><c>Babel.ControlPlane</c> — مستوى التحكّم؛ يعمل <b>فوق</b> الأسطول
+    /// (‏سجل المستأجرين والتزويد وترحيل الأسطول والاتصالات والاستحقاق والقياس)
+    /// لا داخل مستأجر، فلا مكان له في خريطة الوحدات.</item>
+    /// </list>
+    /// </summary>
+    public static IReadOnlyList<string> Infrastructure { get; } =
+    [
+        "Babel.Canonicalization",
+        "Babel.ControlPlane",
+    ];
+
     /// <summary>كل مشاريع المنتج.</summary>
     public static IReadOnlyList<string> AllProjects { get; } =
-        [SharedKernel, Contracts, Core, Ledger, .. Horizontal, Api];
+        [SharedKernel, Contracts, Core, Ledger, .. Horizontal, .. Infrastructure, Api];
 
     /// <summary>اسم مشروع الوحدة.</summary>
     public static string ProjectOf(BabelModule module) => "Babel." + module;
@@ -58,6 +79,12 @@ internal static class ModuleMap
             // الجذر التركيبي وحده يعرف الجميع.
             [Api] = new HashSet<string>(AllProjects.Where(static p => p != Api), StringComparer.Ordinal),
         };
+
+        // بنية تحتية: لا مرجع إلى أي مشروع بابل — والقائمة الفارغة هي الإنفاذ.
+        foreach (string infrastructure in Infrastructure)
+        {
+            allowed[infrastructure] = new HashSet<string>(StringComparer.Ordinal);
+        }
 
         foreach (string horizontal in Horizontal)
         {

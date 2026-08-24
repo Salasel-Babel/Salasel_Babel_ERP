@@ -1,14 +1,23 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!--
+    الإثباتات: برنامج تنفيذي يحتاج PostgreSQL حقيقية، ويُشغَّل بـ./run.sh لا بـdotnet test.
+    اسمه لا ينتهي بـTests عمداً حتى لا يلتقطه مُشغّل الاختبارات في التكامل المستمر
+    فيفشل على غياب قاعدة بيانات.
+  -->
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net10.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>Babel.ControlPlane.Proofs</RootNamespace>
     <AssemblyName>Babel.ControlPlane.Proofs</AssemblyName>
-    <InvariantGlobalization>false</InvariantGlobalization>
     <ServerGarbageCollection>false</ServerGarbageCollection>
+    <!--
+      مشروع إثباتات لا مكتبة منشورة: لا واجهة برمجية يستهلكها أحد، فلا يُشترط
+      تعليق XML على كل عضو — وهو الاستثناء نفسه الذي يمنحه Directory.Build.props
+      لمشاريع *.Tests، ويُكرَّر هنا لأن الاسم لا ينتهي بـTests عمداً (حتى لا
+      يلتقطه مُشغّل الاختبارات فيفشل على غياب قاعدة بيانات).
+      وقواعد الثقافة (‏CA1305/CA1310) **تبقى مفعّلة**: الإثباتات تطبع أرقام قياس.
+    -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -16,7 +25,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Npgsql" Version="10.0.3" />
+    <PackageReference Include="Npgsql" />
   </ItemGroup>
 
 </Project>

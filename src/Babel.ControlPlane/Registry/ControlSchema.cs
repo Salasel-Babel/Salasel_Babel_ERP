@@ -16,6 +16,7 @@ public static class ControlSchema
     /// <summary>إصدار مخطط قاعدة التحكّم نفسه — منفصل عن إصدار مخطط المستأجر.</summary>
     public const int Version = 1;
 
+    /// <summary>تعريف مخطط قاعدة التحكّم كاملاً. مصدر واحد، يُطبَّق مُحكَماً.</summary>
     public const string Ddl = """
     create schema if not exists control;
 

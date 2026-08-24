@@ -101,8 +101,8 @@ public class MigrationCatalogTests
         foreach (var table in new[] { "control.module", "control.plan", "control.tenant" })
             Assert.Contains(table, ddl, StringComparison.Ordinal);
 
-        var arCount = System.Text.RegularExpressions.Regex.Matches(ddl, @"name_ar\s+text\s+not null").Count;
-        var enCount = System.Text.RegularExpressions.Regex.Matches(ddl, @"name_en\s+text\s+not null").Count;
+        var arCount = System.Text.RegularExpressions.Regex.Count(ddl, @"name_ar\s+text\s+not null");
+        var enCount = System.Text.RegularExpressions.Regex.Count(ddl, @"name_en\s+text\s+not null");
         Assert.Equal(arCount, enCount);
         Assert.True(arCount >= 6, $"عدد أزواج الاسمين في مخطط التحكّم = {arCount}");
     }

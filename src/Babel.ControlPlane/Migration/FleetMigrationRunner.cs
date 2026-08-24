@@ -6,19 +6,43 @@ using NpgsqlTypes;
 
 namespace Babel.ControlPlane.Migration;
 
+/// <summary>قاعدة مستأجر واحدة داخل خطة ترحيل، كما التقطها العامل من طابور الأهداف.</summary>
+/// <param name="TenantId">معرّف المستأجر.</param>
+/// <param name="TenantCode">رمز المستأجر — وهو مفتاح الترتيب الكلّي الذي يمنع تعارض الأقفال.</param>
+/// <param name="DatabaseName">اسم قاعدة البيانات المراد ترحيلها.</param>
+/// <param name="Attempts">عدد المحاولات على هذا الهدف حتى الآن — يكشف إعادة العمل بعد قتل العملية.</param>
 public sealed record FleetTarget(Guid TenantId, string TenantCode, string DatabaseName, int Attempts);
 
+/// <summary>حالة خطة ترحيل مقروءة من قاعدة التحكّم لا من ذاكرة العملية — فتنجو من قتلها.</summary>
+/// <param name="Total">عدد قواعد الأسطول في الخطة.</param>
+/// <param name="Pending">لم تبدأ بعد.</param>
+/// <param name="Leased">محجوزة لدى عامل الآن (‏أو لدى عامل ميّت حتى تنتهي مهلة الحجز).</param>
+/// <param name="Done">اكتملت.</param>
+/// <param name="Failed">فشلت وستُلتقط ثانية.</param>
+/// <param name="Skipped">استُثنيت من الخطة عمداً.</param>
+/// <param name="MaxAttempts">أكبر عدد محاولات على قاعدة واحدة — مؤشّر إعادة العمل.</param>
+/// <param name="TotalDurationMs">مجموع زمن الترحيل داخل القواعد وحده، بلا زمن الحجز والاتصال.</param>
 public sealed record FleetStats(
     int Total, int Pending, int Leased, int Done, int Failed, int Skipped,
     int MaxAttempts, long TotalDurationMs)
 {
+    /// <summary>اكتملت الخطة: كل قاعدة إمّا انتهت أو استُثنيت عمداً.</summary>
     public bool Complete => Done + Skipped == Total;
 }
 
+/// <summary>حصيلة تشغيلة عامل واحد على خطة ترحيل.</summary>
+/// <param name="MigrationId">معرّف الخطة.</param>
+/// <param name="WorkerId">معرّف العامل.</param>
+/// <param name="Processed">عدد القواعد التي عالجها هذا العامل.</param>
+/// <param name="AlreadyDone">قواعد وُجدت على الإصدار المستهدف أصلاً — لم يُنفَّذ عليها شيء.</param>
+/// <param name="Failed">قواعد فشلت في هذه التشغيلة.</param>
+/// <param name="Elapsed">زمن التشغيلة.</param>
+/// <param name="Stats">حالة الخطة كاملةً بعد التشغيلة.</param>
 public sealed record FleetRunReport(
     Guid MigrationId, string WorkerId, int Processed, int AlreadyDone, int Failed,
     TimeSpan Elapsed, FleetStats Stats)
 {
+    /// <summary>إنتاجية هذا العامل بالقواعد في الثانية — أساس تقدير زمن الإصدار.</summary>
     public double DatabasesPerSecond =>
         Elapsed.TotalSeconds <= 0 ? 0 : Processed / Elapsed.TotalSeconds;
 }
@@ -40,14 +64,27 @@ public sealed record FleetRunReport(
 /// <c>tenant_code</c> تصاعدياً: عدّة عمّال على نفس الخطة لا يتصارعون، وترتيب
 /// الأقفال كلّي وثابت (فخ-10، فخ-11).</para>
 /// </summary>
+/// <param name="options">إعدادات مستوى التحكّم (‏حجم الدفعة ومهلة الحجز وسلاسل الاتصال).</param>
+/// <param name="registry">سجل المستأجرين — يُقرأ منه الأسطول ويُحدَّث فيه إصدار المخطط.</param>
 public sealed class FleetMigrationRunner(ControlPlaneOptions options, TenantRegistry registry)
 {
+    /// <summary>
+    /// خطّاف يُنفَّذ بعد كل قاعدة تنتهي. موجود <b>للإثباتات وحدها</b>: به تُبطَّأ
+    /// التشغيلة أو تُقتل العملية في منتصفها لإثبات الاستئناف.
+    /// </summary>
     public Func<FleetTarget, Task>? AfterEach { get; set; }
 
     /// <summary>
     /// يبني خطة ترحيل أو يستأنف الخطة نفسها بنفس <c>planKey</c>.
     /// صفوف الأهداف تُدرَج في <b>عبارة واحدة مرتّبة</b> بـ<c>tenant_code</c>.
     /// </summary>
+    /// <param name="planKey">مفتاح الخطة الطبيعي — إعادة النداء به تستأنف الخطة نفسها ولا تُنشئ ثانية.</param>
+    /// <param name="targetVersion">إصدار المخطط المستهدف.</param>
+    /// <param name="name">اسم الخطة بالعربية والإنجليزية.</param>
+    /// <param name="createdBy">من أنشأ الخطة.</param>
+    /// <param name="tenants">أسطول صريح؛ إن أُهمل قُرئ المستأجرون النشِطون من السجل.</param>
+    /// <param name="ct">رمز الإلغاء.</param>
+    /// <returns>معرّف الخطة — الجديدة أو القائمة.</returns>
     public async Task<Guid> PlanAsync(string planKey, int targetVersion, BilingualName name,
         string createdBy, IReadOnlyList<TenantRecord>? tenants = null, CancellationToken ct = default)
     {
@@ -114,6 +151,10 @@ public sealed class FleetMigrationRunner(ControlPlaneOptions options, TenantRegi
     /// يشتغل حتى لا يبقى هدف قابل للالتقاط. آمن للتشغيل من عدّة عمليات معاً،
     /// وآمن للقتل في أي لحظة.
     /// </summary>
+    /// <param name="migrationId">معرّف الخطة.</param>
+    /// <param name="workerId">معرّف هذا العامل — يُكتب في الحجز ليُعرَف صاحبه.</param>
+    /// <param name="ct">رمز الإلغاء.</param>
+    /// <returns>حصيلة التشغيلة وحالة الخطة بعدها.</returns>
     public async Task<FleetRunReport> RunAsync(Guid migrationId, string workerId,
         CancellationToken ct = default)
     {
@@ -152,7 +193,7 @@ public sealed class FleetMigrationRunner(ControlPlaneOptions options, TenantRegi
                         (int)itemSw.ElapsedMilliseconds, null, ct);
 
                     await using (var rc = await Db.OpenAsync(options.ControlConnectionString, ct))
-                        await registry.SetSchemaVersionAsync(rc, t.TenantId, targetVersion, null, ct);
+                        await TenantRegistry.SetSchemaVersionAsync(rc, t.TenantId, targetVersion, null, ct);
 
                     processed++;
                     if (AfterEach is not null) await AfterEach(t);
@@ -254,6 +295,10 @@ public sealed class FleetMigrationRunner(ControlPlaneOptions options, TenantRegi
     /// استرجاع صريح لحجوزات عامل يعلم المشغّل أنه مات. البديل هو انتظار
     /// انتهاء المهلة — وكلاهما مدعوم، والتلقائي هو الافتراضي.
     /// </summary>
+    /// <param name="migrationId">معرّف الخطة.</param>
+    /// <param name="deadWorkerId">العامل الميّت؛ إن كان <c>null</c> استُرجِعت كل الحجوزات.</param>
+    /// <param name="ct">رمز الإلغاء.</param>
+    /// <returns>عدد الحجوزات المُسترجَعة.</returns>
     public async Task<int> ReclaimAsync(Guid migrationId, string? deadWorkerId = null,
         CancellationToken ct = default)
     {
@@ -269,6 +314,10 @@ public sealed class FleetMigrationRunner(ControlPlaneOptions options, TenantRegi
         return await cmd.ExecuteNonQueryAsync(ct);
     }
 
+    /// <summary>حالة الخطة مقروءة من قاعدة التحكّم.</summary>
+    /// <param name="migrationId">معرّف الخطة.</param>
+    /// <param name="ct">رمز الإلغاء.</param>
+    /// <returns>الإحصاء المُجمَّع لكل الحالات.</returns>
     public async Task<FleetStats> StatsAsync(Guid migrationId, CancellationToken ct = default)
     {
         await using var c = await Db.OpenAsync(options.ControlConnectionString, ct);
@@ -288,6 +337,10 @@ public sealed class FleetMigrationRunner(ControlPlaneOptions options, TenantRegi
             rows.Count == 0 ? 0 : rows.Max(x => x.MaxAtt), rows.Sum(x => x.Dur));
     }
 
+    /// <summary>كل أهداف الخطة مفصّلةً، مرتّبةً برمز المستأجر.</summary>
+    /// <param name="migrationId">معرّف الخطة.</param>
+    /// <param name="ct">رمز الإلغاء.</param>
+    /// <returns>قائمة (‏الرمز، الحالة، المحاولات، المدّة بالمللي‌ثانية).</returns>
     public async Task<List<(string Code, string State, int Attempts, int? DurationMs)>>
         TargetsAsync(Guid migrationId, CancellationToken ct = default)
     {
@@ -305,4 +358,5 @@ public sealed class FleetMigrationRunner(ControlPlaneOptions options, TenantRegi
 }
 
 /// <summary>قتل مُحاكى داخل العملية — للإثباتات.</summary>
+/// <param name="message">وصف نقطة القتل المُحاكاة.</param>
 public sealed class SimulatedKillException(string message) : Exception(message);

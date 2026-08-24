@@ -1,4 +1,3 @@
-using System.Data;
 using Npgsql;
 using NpgsqlTypes;
 
@@ -12,7 +11,10 @@ namespace Babel.ControlPlane.Support;
 public sealed class UnexpectedRowCountException(string sql, int expected, int actual)
     : Exception($"عدد الصفوف المتأثرة {actual} والمتوقَّع {expected} — العبارة: {Trim(sql)}")
 {
+    /// <summary>عدد الصفوف المتوقَّع.</summary>
     public int Expected { get; } = expected;
+
+    /// <summary>عدد الصفوف الذي أصابته العبارة فعلاً.</summary>
     public int Actual { get; } = actual;
 
     private static string Trim(string s) =>
@@ -25,6 +27,10 @@ public sealed class UnexpectedRowCountException(string sql, int expected, int ac
 /// </summary>
 public static class Db
 {
+    /// <summary>يفتح اتصالاً.</summary>
+    /// <param name="cs">سلسلة الاتصال.</param>
+    /// <param name="ct">رمز الإلغاء.</param>
+    /// <returns>اتصال مفتوح.</returns>
     public static async Task<NpgsqlConnection> OpenAsync(string cs, CancellationToken ct = default)
     {
         var c = new NpgsqlConnection(cs);
@@ -32,6 +38,11 @@ public static class Db
         return c;
     }
 
+    /// <summary>يبني أمراً على اتصال ومعاملة.</summary>
+    /// <param name="c">الاتصال.</param>
+    /// <param name="sql">العبارة.</param>
+    /// <param name="tx">المعاملة إن وُجدت.</param>
+    /// <returns>الأمر.</returns>
     public static NpgsqlCommand Cmd(NpgsqlConnection c, string sql, NpgsqlTransaction? tx = null)
     {
         var cmd = new NpgsqlCommand(sql, c, tx);
@@ -46,6 +57,10 @@ public static class Db
         await cmd.ExecuteNonQueryAsync(ct);
     }
 
+    /// <summary>ينفّذ عبارة على اتصال جديد.</summary>
+    /// <param name="cs">سلسلة الاتصال.</param>
+    /// <param name="sql">العبارة.</param>
+    /// <param name="ct">رمز الإلغاء.</param>
     public static async Task ExecAsync(string cs, string sql, CancellationToken ct = default)
     {
         await using var c = await OpenAsync(cs, ct);
@@ -98,6 +113,14 @@ public static class Db
         return n;
     }
 
+    /// <summary>يقرأ قيمة مفردة.</summary>
+    /// <typeparam name="T">نوع القيمة.</typeparam>
+    /// <param name="c">الاتصال.</param>
+    /// <param name="sql">العبارة.</param>
+    /// <param name="bind">ربط المعاملات.</param>
+    /// <param name="tx">المعاملة إن وُجدت.</param>
+    /// <param name="ct">رمز الإلغاء.</param>
+    /// <returns>القيمة، أو الافتراضي عند <c>NULL</c>.</returns>
     public static async Task<T?> ScalarAsync<T>(NpgsqlConnection c, string sql,
         Action<NpgsqlParameterCollection>? bind = null,
         NpgsqlTransaction? tx = null, CancellationToken ct = default)
@@ -110,6 +133,13 @@ public static class Db
         return (T)Convert.ChangeType(v, typeof(T), System.Globalization.CultureInfo.InvariantCulture);
     }
 
+    /// <summary>يقرأ قيمة مفردة على اتصال جديد.</summary>
+    /// <typeparam name="T">نوع القيمة.</typeparam>
+    /// <param name="cs">سلسلة الاتصال.</param>
+    /// <param name="sql">العبارة.</param>
+    /// <param name="bind">ربط المعاملات.</param>
+    /// <param name="ct">رمز الإلغاء.</param>
+    /// <returns>القيمة، أو الافتراضي عند <c>NULL</c>.</returns>
     public static async Task<T?> ScalarAsync<T>(string cs, string sql,
         Action<NpgsqlParameterCollection>? bind = null, CancellationToken ct = default)
     {
@@ -117,6 +147,15 @@ public static class Db
         return await ScalarAsync<T>(c, sql, bind, null, ct);
     }
 
+    /// <summary>يقرأ صفوفاً ويُسقطها بدالّة.</summary>
+    /// <typeparam name="T">نوع الصفّ المُسقَط.</typeparam>
+    /// <param name="c">الاتصال.</param>
+    /// <param name="sql">العبارة.</param>
+    /// <param name="map">دالّة الإسقاط.</param>
+    /// <param name="bind">ربط المعاملات.</param>
+    /// <param name="tx">المعاملة إن وُجدت.</param>
+    /// <param name="ct">رمز الإلغاء.</param>
+    /// <returns>الصفوف.</returns>
     public static async Task<List<T>> QueryAsync<T>(NpgsqlConnection c, string sql,
         Func<NpgsqlDataReader, T> map, Action<NpgsqlParameterCollection>? bind = null,
         NpgsqlTransaction? tx = null, CancellationToken ct = default)
@@ -129,6 +168,14 @@ public static class Db
         return list;
     }
 
+    /// <summary>يقرأ صفوفاً على اتصال جديد.</summary>
+    /// <typeparam name="T">نوع الصفّ المُسقَط.</typeparam>
+    /// <param name="cs">سلسلة الاتصال.</param>
+    /// <param name="sql">العبارة.</param>
+    /// <param name="map">دالّة الإسقاط.</param>
+    /// <param name="bind">ربط المعاملات.</param>
+    /// <param name="ct">رمز الإلغاء.</param>
+    /// <returns>الصفوف.</returns>
     public static async Task<List<T>> QueryAsync<T>(string cs, string sql,
         Func<NpgsqlDataReader, T> map, Action<NpgsqlParameterCollection>? bind = null,
         CancellationToken ct = default)
@@ -151,6 +198,11 @@ public static class Db
         return raw;
     }
 
+    /// <summary>معامل مرتبط، مع تحويل <c>null</c> إلى <c>DBNull</c>.</summary>
+    /// <param name="name">اسم المعامل.</param>
+    /// <param name="value">القيمة.</param>
+    /// <param name="type">النوع الصريح عند اللزوم.</param>
+    /// <returns>المعامل.</returns>
     public static NpgsqlParameter P(string name, object? value, NpgsqlDbType? type = null)
     {
         var p = new NpgsqlParameter(name, value ?? DBNull.Value);

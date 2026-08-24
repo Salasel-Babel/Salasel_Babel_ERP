@@ -33,7 +33,7 @@ public static class ProofD_Connections
 
     public static async Task RunAsync(ControlPlaneOptions o, Recorder rec)
     {
-        rec.Section("(د) إدارة الاتصالات عند 10 و50 و200 مستأجر");
+        Recorder.Section("(د) إدارة الاتصالات عند 10 و50 و200 مستأجر");
 
         var maxConn = await Harness.MaxConnectionsAsync(o);
         rec.Note($"‏max_connections على هذا الخادم = {maxConn}؛ "
@@ -303,9 +303,9 @@ public static class ProofD_Connections
 
     /// <summary>يزيد التزامن على أسطول ثابت حتى يظهر <c>53300</c>، فيُسمّى العدد.</summary>
     private static async Task BreakPointSearchAsync(ControlPlaneOptions o,
-        IReadOnlyList<TenantRecord> fleet, Recorder rec, int maxConn)
+        List<TenantRecord> fleet, Recorder rec, int maxConn)
     {
-        rec.Section("(د) أين تنكسر الإعدادات الافتراضية بالضبط");
+        Recorder.Section("(د) أين تنكسر الإعدادات الافتراضية بالضبط");
 
         // ---- المسح (1): **عامل واحد فقط**، يلمس مستأجراً بعد مستأجر ----------
         //  هذا هو القياس الحاسم: التجميعة الافتراضية في Npgsql تُبقي الاتصال
@@ -353,7 +353,7 @@ public static class ProofD_Connections
     /// عن أول مستأجر يظهر عنده <c>53300</c>.
     /// </summary>
     private static async Task<SweepResult> SequentialSweepAsync(ControlPlaneOptions o,
-        IReadOnlyList<TenantRecord> fleet, int maxConn)
+        List<TenantRecord> fleet, int maxConn)
     {
         var sources = new List<NpgsqlDataSource>();
         try
@@ -398,9 +398,9 @@ public static class ProofD_Connections
     // =======================================================================
 
     private static async Task CircuitProofAsync(ControlPlaneOptions o, TenantRegistry registry,
-        IReadOnlyList<TenantRecord> fleet, Recorder rec)
+        List<TenantRecord> fleet, Recorder rec)
     {
-        rec.Section("(د) قاطع الدارة — مستأجر واحد ميّت لا يُسقِط المنصّة");
+        Recorder.Section("(د) قاطع الدارة — مستأجر واحد ميّت لا يُسقِط المنصّة");
 
         // مستأجر مُسجَّل تشير سطوره إلى قاعدة غير موجودة.
         const string dead = "deadtenant";
@@ -409,7 +409,7 @@ public static class ProofD_Connections
             var id = Provisioning.TenantProvisioner.DeterministicTenantId(dead);
             await registry.RegisterAsync(c, id, dead,
                 BilingualName.Of("مستأجر غير قابل للوصول", "unreachable tenant"));
-            await registry.SetStatusAsync(c, id, TenantStatus.Active, Canon.Now());
+            await TenantRegistry.SetStatusAsync(c, id, TenantStatus.Active, Canon.Now());
         }
 
         var healthy = fleet.Take(20).Select(t => t.TenantCode).ToList();
@@ -447,7 +447,7 @@ public static class ProofD_Connections
     private sealed record MixResult(double P95, double HealthyP95, long DeadAttempts, long FastRejected);
 
     private static async Task<MixResult> MeasureAsync(TenantConnectionManager mgr,
-        IReadOnlyList<string> codes, TimeSpan duration, int workers)
+        List<string> codes, TimeSpan duration, int workers)
     {
         var healthyLatencies = new ConcurrentBag<double>();
         long deadAttempts = 0, fastRejected = 0;
@@ -485,9 +485,9 @@ public static class ProofD_Connections
     // =======================================================================
 
     private static async Task EvictionProofAsync(ControlPlaneOptions o, TenantRegistry registry,
-        IReadOnlyList<TenantRecord> fleet, Recorder rec)
+        List<TenantRecord> fleet, Recorder rec)
     {
-        rec.Section("(د) الإخلاء بالخمول وبالأقدمية");
+        Recorder.Section("(د) الإخلاء بالخمول وبالأقدمية");
 
         var tight = new ControlPlaneOptions
         {

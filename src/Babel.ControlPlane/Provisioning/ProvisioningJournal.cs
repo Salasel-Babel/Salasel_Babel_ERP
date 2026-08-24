@@ -13,13 +13,26 @@ public enum InterruptPhase
     AfterCommit
 }
 
+/// <summary>مقاطعة مُحاكاة تُحقن في التزويد لإثبات الإحكام. لا وجود لها في الإنتاج.</summary>
+/// <param name="step">اسم الخطوة التي قوطعت.</param>
+/// <param name="phase">لحظة المقاطعة داخل الخطوة.</param>
 public sealed class SimulatedCrashException(string step, InterruptPhase phase)
     : Exception($"مقاطعة مُحاكاة عند الخطوة «{step}» ({phase})")
 {
+    /// <summary>اسم الخطوة التي قوطعت.</summary>
     public string Step { get; } = step;
+
+    /// <summary>لحظة المقاطعة داخل الخطوة.</summary>
     public InterruptPhase Phase { get; } = phase;
 }
 
+/// <summary>حالة خطوة تزويد واحدة كما هي مُسجَّلة في الدفتر.</summary>
+/// <param name="Name">اسم الخطوة.</param>
+/// <param name="Ordinal">رقمها في الترتيب.</param>
+/// <param name="State">حالتها (‏جارية أو مكتملة).</param>
+/// <param name="Attempts">عدد المحاولات — أكبر من واحد يعني أنها قوطعت وأُعيدت.</param>
+/// <param name="StartedAt">لحظة أول محاولة.</param>
+/// <param name="FinishedAt">لحظة الاكتمال؛ <c>null</c> ما دامت جارية.</param>
 public sealed record ProvisioningStepState(
     string Name, int Ordinal, string State, int Attempts,
     DateTimeOffset StartedAt, DateTimeOffset? FinishedAt);
@@ -30,12 +43,19 @@ public sealed record ProvisioningStepState(
 /// حارس تصاعدي يُسقِط بصمت ما يصل خارج الترتيب، وقد ضاعت به 500 ريال من
 /// 1,500 في القياس المُسجَّل.
 /// </summary>
+/// <param name="control">اتصال مفتوح بقاعدة التحكّم.</param>
 public sealed class ProvisioningJournal(NpgsqlConnection control)
 {
     /// <summary>
     /// يفتح تشغيلة تزويد أو يستعيد القائمة بنفس مفتاح الإحكام.
     /// المفتاح <b>يورّده النداء</b> — لا يُولَّد داخلياً، وإلا لم يكن مفتاح إحكام.
     /// </summary>
+    /// <param name="idempotencyKey">مفتاح الإحكام الذي يورّده النداء.</param>
+    /// <param name="tenantId">معرّف المستأجر.</param>
+    /// <param name="tenantCode">رمز المستأجر.</param>
+    /// <param name="requestedBy">من طلب التزويد.</param>
+    /// <param name="ct">رمز الإلغاء.</param>
+    /// <returns>معرّف التشغيلة، وهل استُؤنفت تشغيلة قائمة.</returns>
     public async Task<(Guid RunId, bool Resumed)> OpenRunAsync(string idempotencyKey,
         Guid tenantId, string tenantCode, string requestedBy, CancellationToken ct = default)
     {
@@ -74,6 +94,15 @@ public sealed class ProvisioningJournal(NpgsqlConnection control)
     /// يحجز خطوة. يُرجِع <c>false</c> إن كانت <b>مكتملة سلفاً</b> فتُتخطّى؛
     /// و<c>true</c> إن كانت جديدة أو مُتوقّفة في منتصفها فتُعاد.
     /// </summary>
+    /// <summary>
+    /// يحجز خطوة للتنفيذ. الحجز <b>لكل خطوة على حدة</b> ومستقلّ عن الترتيب:
+    /// حارس تصاعدي من نوع «آخر خطوة مُطبَّقة» يُسقِط بصمت ما يصل خارج الترتيب.
+    /// </summary>
+    /// <param name="runId">معرّف التشغيلة.</param>
+    /// <param name="ordinal">رقم الخطوة.</param>
+    /// <param name="step">اسم الخطوة.</param>
+    /// <param name="ct">رمز الإلغاء.</param>
+    /// <returns><c>true</c> إن وجب تنفيذها، و<c>false</c> إن كانت مُسجَّلة مكتملة فتُتخطّى.</returns>
     public async Task<bool> ClaimStepAsync(Guid runId, int ordinal, string step,
         CancellationToken ct = default)
     {
@@ -96,6 +125,11 @@ public sealed class ProvisioningJournal(NpgsqlConnection control)
         return n == 1;
     }
 
+    /// <summary>يُسجّل اكتمال خطوة. ما بعد هذا السطر لا يُعاد عند الاستئناف.</summary>
+    /// <param name="runId">معرّف التشغيلة.</param>
+    /// <param name="step">اسم الخطوة.</param>
+    /// <param name="detailJson">تفصيل بنيوي يُحفَظ مع الخطوة.</param>
+    /// <param name="ct">رمز الإلغاء.</param>
     public async Task CompleteStepAsync(Guid runId, string step, string detailJson = "{}",
         CancellationToken ct = default)
     {
@@ -112,6 +146,9 @@ public sealed class ProvisioningJournal(NpgsqlConnection control)
             }, null, ct);
     }
 
+    /// <summary>يُسجّل اكتمال التشغيلة كاملةً.</summary>
+    /// <param name="runId">معرّف التشغيلة.</param>
+    /// <param name="ct">رمز الإلغاء.</param>
     public async Task CompleteRunAsync(Guid runId, CancellationToken ct = default)
     {
         await Db.WriteAsync(control, """
@@ -125,6 +162,10 @@ public sealed class ProvisioningJournal(NpgsqlConnection control)
             }, null, ct);
     }
 
+    /// <summary>يقرأ حالة كل خطوات التشغيلة، مرتّبةً برقمها.</summary>
+    /// <param name="runId">معرّف التشغيلة.</param>
+    /// <param name="ct">رمز الإلغاء.</param>
+    /// <returns>حالة كل خطوة.</returns>
     public async Task<List<ProvisioningStepState>> ReadStepsAsync(Guid runId,
         CancellationToken ct = default) =>
         await Db.QueryAsync(control, """

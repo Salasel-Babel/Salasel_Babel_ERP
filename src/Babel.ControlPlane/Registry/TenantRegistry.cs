@@ -11,6 +11,7 @@ namespace Babel.ControlPlane.Registry;
 /// </summary>
 public sealed class TenantRegistry(ControlPlaneOptions options)
 {
+    /// <summary>إعدادات مستوى التحكّم.</summary>
     public ControlPlaneOptions Options { get; } = options;
 
     private const string Columns = """
@@ -70,7 +71,13 @@ public sealed class TenantRegistry(ControlPlaneOptions options)
         return await RequireByCodeAsync(c, tenantCode, tx, ct);
     }
 
-    public async Task<TenantRecord?> FindByCodeAsync(NpgsqlConnection c, string tenantCode,
+    /// <summary>يبحث عن مستأجر برمزه على اتصال قائم.</summary>
+    /// <param name="c">اتصال بقاعدة التحكّم.</param>
+    /// <param name="tenantCode">رمز المستأجر.</param>
+    /// <param name="tx">المعاملة إن وُجدت.</param>
+    /// <param name="ct">رمز الإلغاء.</param>
+    /// <returns>الصفّ، أو <c>null</c> إن لم يوجد.</returns>
+    public static async Task<TenantRecord?> FindByCodeAsync(NpgsqlConnection c, string tenantCode,
         NpgsqlTransaction? tx = null, CancellationToken ct = default)
     {
         var rows = await Db.QueryAsync(c,
@@ -79,10 +86,21 @@ public sealed class TenantRegistry(ControlPlaneOptions options)
         return rows.Count == 0 ? null : rows[0];
     }
 
-    public async Task<TenantRecord> RequireByCodeAsync(NpgsqlConnection c, string tenantCode,
+    /// <summary>مثل <c>FindByCodeAsync</c> لكنه يرمي بدل أن يُرجِع <c>null</c>.</summary>
+    /// <param name="c">اتصال بقاعدة التحكّم.</param>
+    /// <param name="tenantCode">رمز المستأجر.</param>
+    /// <param name="tx">المعاملة إن وُجدت.</param>
+    /// <param name="ct">رمز الإلغاء.</param>
+    /// <returns>الصفّ.</returns>
+    /// <exception cref="TenantNotFoundException">لا مستأجر بهذا الرمز.</exception>
+    public static async Task<TenantRecord> RequireByCodeAsync(NpgsqlConnection c, string tenantCode,
         NpgsqlTransaction? tx = null, CancellationToken ct = default) =>
         await FindByCodeAsync(c, tenantCode, tx, ct) ?? throw new TenantNotFoundException(tenantCode);
 
+    /// <summary>يبحث عن مستأجر برمزه على اتصال جديد من إعدادات هذا السجل.</summary>
+    /// <param name="tenantCode">رمز المستأجر.</param>
+    /// <param name="ct">رمز الإلغاء.</param>
+    /// <returns>الصفّ، أو <c>null</c> إن لم يوجد.</returns>
     public async Task<TenantRecord?> FindByCodeAsync(string tenantCode, CancellationToken ct = default)
     {
         await using var c = await Db.OpenAsync(Options.ControlConnectionString, ct);
@@ -109,7 +127,7 @@ public sealed class TenantRegistry(ControlPlaneOptions options)
     /// نؤكّد صفّاً واحداً بالضبط، فالمستأجر المحذوف أو المُعاد ترميزه
     /// يجب أن يُفشِل النقلة لا أن يمرّ بصمت.
     /// </summary>
-    public async Task SetStatusAsync(NpgsqlConnection c, Guid tenantId, TenantStatus status,
+    public static async Task SetStatusAsync(NpgsqlConnection c, Guid tenantId, TenantStatus status,
         DateTimeOffset? activatedAt = null, NpgsqlTransaction? tx = null,
         CancellationToken ct = default)
     {
@@ -126,7 +144,13 @@ public sealed class TenantRegistry(ControlPlaneOptions options)
             }, tx, ct);
     }
 
-    public async Task SetSchemaVersionAsync(NpgsqlConnection c, Guid tenantId, int version,
+    /// <summary>يُحدّث إصدار المخطط المُسجَّل، ويؤكّد صفّاً واحداً بالضبط.</summary>
+    /// <param name="c">اتصال بقاعدة التحكّم.</param>
+    /// <param name="tenantId">معرّف المستأجر.</param>
+    /// <param name="version">الإصدار الجديد.</param>
+    /// <param name="tx">المعاملة إن وُجدت.</param>
+    /// <param name="ct">رمز الإلغاء.</param>
+    public static async Task SetSchemaVersionAsync(NpgsqlConnection c, Guid tenantId, int version,
         NpgsqlTransaction? tx = null, CancellationToken ct = default)
     {
         await Db.WriteAsync(c,
@@ -135,7 +159,14 @@ public sealed class TenantRegistry(ControlPlaneOptions options)
             tx, ct);
     }
 
-    public async Task MarkArchivedAsync(NpgsqlConnection c, Guid tenantId, string actor,
+    /// <summary>يُعلّم المستأجر مؤرشفاً بسببه وفاعله. <b>لا حذف صفّ.</b></summary>
+    /// <param name="c">اتصال بقاعدة التحكّم.</param>
+    /// <param name="tenantId">معرّف المستأجر.</param>
+    /// <param name="actor">من نفّذ الأرشفة.</param>
+    /// <param name="reasonAr">السبب بالعربية.</param>
+    /// <param name="tx">المعاملة إن وُجدت.</param>
+    /// <param name="ct">رمز الإلغاء.</param>
+    public static async Task MarkArchivedAsync(NpgsqlConnection c, Guid tenantId, string actor,
         string reasonAr, NpgsqlTransaction? tx = null, CancellationToken ct = default)
     {
         await Db.WriteAsync(c, """

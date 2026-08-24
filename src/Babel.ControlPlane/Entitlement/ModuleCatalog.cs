@@ -19,8 +19,10 @@ public sealed record ModuleDefinition(
 /// </summary>
 public static class ModuleCatalog
 {
+    /// <summary>رمز وحدة الأستاذ العام — جذر رسم الاعتماديات.</summary>
     public const string Core = "CORE";
 
+    /// <summary>كل الوحدات القابلة للبيع، مرتّبةً ترتيباً كلّياً ثابتاً برمزها.</summary>
     public static readonly IReadOnlyList<ModuleDefinition> All =
     [
         new("AP",  "المشتريات والذمم الدائنة", "Purchasing & payables", true, 30, [Core]),
@@ -35,11 +37,17 @@ public static class ModuleCatalog
         new("REP", "التقارير التحليلية",        "Analytical reporting",  false, 90, [Core]),
     ];
 
+    /// <summary>يُرجِع وحدة برمزها، ويرمي على رمز غير معروف.</summary>
+    /// <param name="code">رمز الوحدة.</param>
+    /// <returns>تعريف الوحدة.</returns>
+    /// <exception cref="ArgumentException">الرمز غير معروف.</exception>
     public static ModuleDefinition Require(string code) =>
         All.FirstOrDefault(m => m.Code == code)
         ?? throw new ArgumentException($"وحدة غير معروفة: «{code}»", nameof(code));
 
     /// <summary>الإغلاق المتعدّي للاعتماديات (‏POS ⇒ INV ⇒ AP ⇒ CORE).</summary>
+    /// <param name="code">رمز الوحدة.</param>
+    /// <returns>كل ما تعتمد عليه مباشرةً وبالوساطة، مرتّباً.</returns>
     public static IReadOnlyList<string> TransitiveDependencies(string code)
     {
         var seen = new SortedSet<string>(StringComparer.Ordinal);
@@ -54,6 +62,8 @@ public static class ModuleCatalog
     }
 
     /// <summary>من يعتمد على هذه الوحدة مباشرةً — يقرؤه فحص الأرشفة والخفض.</summary>
+    /// <param name="code">رمز الوحدة.</param>
+    /// <returns>الوحدات المعتمِدة عليها مباشرةً، مرتّبةً.</returns>
     public static IReadOnlyList<string> Dependents(string code) =>
         [.. All.Where(m => m.DependsOn.Contains(code)).Select(m => m.Code)
                .OrderBy(x => x, StringComparer.Ordinal)];
@@ -62,6 +72,7 @@ public static class ModuleCatalog
     /// يكشف الحلقات في الرسم. رسم اعتماديات به حلقة يجعل كل تحقّق بعده بلا
     /// معنى، ويجب أن يُكتشف عند الإقلاع لا عند أول عميل.
     /// </summary>
+    /// <returns>وصف كل حلقة مكتشَفة؛ قائمة فارغة تعني رساً سليماً.</returns>
     public static IReadOnlyList<string> DetectCycles()
     {
         var state = new Dictionary<string, int>(StringComparer.Ordinal);

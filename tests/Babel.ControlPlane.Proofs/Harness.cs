@@ -1,3 +1,4 @@
+using System.Globalization;
 using Babel.ControlPlane.Entitlement;
 using Babel.ControlPlane.Migration;
 using Babel.ControlPlane.Registry;
@@ -125,8 +126,8 @@ public static class Harness
             await registry.RegisterAsync(cc, id, code,
                 BilingualName.Of($"مستأجر تجريبي {code}", $"simulated tenant {code}"),
                 ct: ct);
-            await registry.SetSchemaVersionAsync(cc, id, schemaVersion, null, ct);
-            await registry.SetStatusAsync(cc, id, TenantStatus.Active, Canon.Now(), null, ct);
+            await TenantRegistry.SetSchemaVersionAsync(cc, id, schemaVersion, null, ct);
+            await TenantRegistry.SetStatusAsync(cc, id, TenantStatus.Active, Canon.Now(), null, ct);
         });
 
         var all = await registry.ListAsync(TenantStatus.Active);
@@ -151,13 +152,13 @@ public static class Harness
     public static async Task<int> MaxConnectionsAsync(ControlPlaneOptions o)
     {
         await using var c = await Db.OpenAsync(o.MaintenanceConnectionString);
-        return int.Parse((await Db.ScalarAsync<string>(c, "show max_connections"))!);
+        return int.Parse((await Db.ScalarAsync<string>(c, "show max_connections"))!, CultureInfo.InvariantCulture);
     }
 
     public static string Pct(IReadOnlyList<double> sorted, double p)
     {
         if (sorted.Count == 0) return "n/a";
         var idx = (int)Math.Ceiling(p / 100.0 * sorted.Count) - 1;
-        return sorted[Math.Clamp(idx, 0, sorted.Count - 1)].ToString("F2");
+        return sorted[Math.Clamp(idx, 0, sorted.Count - 1)].ToString("F2", CultureInfo.InvariantCulture);
     }
 }

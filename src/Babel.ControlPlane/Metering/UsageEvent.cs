@@ -1,3 +1,4 @@
+using System.Globalization;
 using Babel.ControlPlane.Support;
 
 namespace Babel.ControlPlane.Metering;
@@ -23,8 +24,29 @@ public sealed record UsageEvent(
     DateTimeOffset OccurredAt,
     string Source)
 {
-    public static string PeriodOf(DateTimeOffset at) => $"{at.UtcDateTime:yyyy-MM}";
+    /// <summary>
+    /// رمز فترة الفوترة (‏<c>YYYY-MM</c>) الميلادي من لحظة.
+    ///
+    /// <para><b>التقويم والثقافة مثبَّتان صراحةً، وهذا ليس تجميلاً.</b> التنسيق
+    /// بلا ثقافة يقرأ ثقافة العملية <b>وتقويمها</b>. والمنتج عربي يعمل بثقافة
+    /// <c>ar-SA</c> وبـ<c>InvariantGlobalization=false</c> إلزاماً، والتقويم
+    /// الافتراضي لتلك الثقافة في .NET هو <b>أم القرى الهجري</b> — فيصير رمز
+    /// الفترة <c>1448-03</c> بدل <c>2026-08</c> (‏مقيس). وقياساً عليه
+    /// <c>fa-IR</c> ⇒ <c>1405-06</c> و<c>th-TH</c> ⇒ <c>2569-08</c>.
+    /// </para>
+    ///
+    /// <para><b>العطل صامت وكامل:</b> لا استثناء ولا سطر سجل. الأحداث تُكتب تحت
+    /// رمز فترة هجري، واستعلام الفوترة عن <c>2026-08</c> يُرجِع صفراً، فتُصدَر
+    /// فاتورة الشهر <b>خالية من كل الاستعمال</b> — أي خسارة إيراد لا يكشفها إلا
+    /// تدقيق يدوي. وهو يقع على خادم الإنتاج العربي ولا يقع على جهاز المطوّر.</para>
+    /// </summary>
+    /// <param name="at">اللحظة.</param>
+    /// <returns>رمز الفترة الميلادي بصيغة <c>YYYY-MM</c>.</returns>
+    public static string PeriodOf(DateTimeOffset at) =>
+        at.UtcDateTime.ToString("yyyy-MM", CultureInfo.InvariantCulture);
 
+    /// <summary>نسخة مُوحَّدة قياسياً: اللحظة مقصوصة إلى الميكروثانية والكمّية بمقياس 4.</summary>
+    /// <returns>الحدث بعد التوحيد.</returns>
     public UsageEvent Normalised() => this with
     {
         OccurredAt = Canon.Instant(OccurredAt),
@@ -32,7 +54,12 @@ public sealed record UsageEvent(
     };
 }
 
+/// <summary>حصيلة تسجيل دفعة أحداث قياس.</summary>
+/// <param name="Accepted">أُدرِجت جديدةً.</param>
+/// <param name="Duplicates">مكرَّرة صدّها مفتاح الإحكام — وهي دليل عدم الازدواج تحت إعادة المحاولة.</param>
+/// <param name="Spooled">تعذّر الوصول إلى قاعدة التحكّم فثُبِّتت على القرص، ولم تُسقَط.</param>
 public sealed record RecordOutcome(int Accepted, int Duplicates, int Spooled)
 {
+    /// <summary>مجموع ما استُقبل — لا يضيع حدث بين الحالات الثلاث.</summary>
     public int Total => Accepted + Duplicates + Spooled;
 }

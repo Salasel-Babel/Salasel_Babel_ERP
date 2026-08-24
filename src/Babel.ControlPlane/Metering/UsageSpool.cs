@@ -14,6 +14,7 @@ namespace Babel.ControlPlane.Metering;
 /// <para>إعادة التصريف مُحكَمة: نفس مفتاح الإحكام + <c>ON CONFLICT DO NOTHING</c>،
 /// فتصريف ملف صُرِّف نصفه لا يُضاعف شيئاً.</para>
 /// </summary>
+/// <param name="path">مسار ملف المخزن الاحتياطي.</param>
 public sealed class UsageSpool(string path)
 {
     private readonly Lock _gate = new();
@@ -22,8 +23,15 @@ public sealed class UsageSpool(string path)
         Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
     };
 
+    /// <summary>مسار ملف المخزن.</summary>
     public string Path { get; } = path;
 
+    /// <summary>
+    /// يُلحِق أحداثاً بالملف و<c>fsync</c> قبل الإرجاع. بلا المزامنة على القرص
+    /// يكون وعد المتانة كذباً: انقطاع الكهرباء يمحو ما «قُبل».
+    /// </summary>
+    /// <param name="events">الأحداث.</param>
+    /// <returns>عدد الأسطر المكتوبة.</returns>
     public int Append(IEnumerable<UsageEvent> events)
     {
         var lines = events.Select(e => JsonSerializer.Serialize(e, Json)).ToList();
@@ -42,6 +50,8 @@ public sealed class UsageSpool(string path)
         return lines.Count;
     }
 
+    /// <summary>يقرأ كل الأحداث المُثبَّتة.</summary>
+    /// <returns>الأحداث المقروءة من الملف.</returns>
     public List<UsageEvent> ReadAll()
     {
         lock (_gate)
@@ -58,8 +68,10 @@ public sealed class UsageSpool(string path)
         }
     }
 
+    /// <summary>عدد الأحداث المنتظرة في المخزن.</summary>
     public int Count => ReadAll().Count;
 
+    /// <summary>يمسح المخزن. لا يُنادى إلا بعد تصريف ناجح مؤكَّد.</summary>
     public void Clear()
     {
         lock (_gate) { if (File.Exists(Path)) File.Delete(Path); }

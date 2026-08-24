@@ -111,8 +111,12 @@ public sealed class GoldenVectorTests
         {
             CultureInfo.CurrentCulture = new CultureInfo("ar-SA");
 
+            // التنسيق بلا ثقافة هنا **هو موضوع الاختبار** لا سهو فيه: الاختبار يُثبت
+            // أن الصياغة الساذجة تنكسر تحت ar-SA، فلا يجوز إصلاحها بثقافة ثابتة.
+#pragma warning disable CA1305 // متعمَّد: هذا هو السلوك المعيب المُختبَر
             var naive = 100.5m.ToString("0.0000");
             var naiveDate = new DateTime(2026, 1, 2, 0, 0, 0, DateTimeKind.Utc).ToString("d");
+#pragma warning restore CA1305
 
             Assert.DoesNotContain('.', naive);                 // \u200E100٫5000\u200E بفاصلة U+066B
             Assert.Contains('\u200F', naiveDate);              // التاريخ الهجري يحمل RLM داخله

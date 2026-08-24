@@ -4,6 +4,14 @@ using NpgsqlTypes;
 
 namespace Babel.ControlPlane.Entitlement;
 
+/// <summary>تعريف خطة اشتراك على المحورين. كل مبلغ <c>decimal</c> ⇄ <c>numeric(19,4)</c>.</summary>
+/// <param name="Code">رمز الخطة.</param>
+/// <param name="NameAr">اسم الخطة بالعربية — إلزامي.</param>
+/// <param name="NameEn">اسم الخطة بالإنجليزية — إلزامي.</param>
+/// <param name="MonthlyPrice">السعر الشهري للحزمة — محور الوحدة. <b>قيمة بنيوية للاختبار لا قائمة أسعار.</b></param>
+/// <param name="PerUserPrice">سعر المستخدم الواحد بعد المُضمَّن — محور المستخدم.</param>
+/// <param name="IncludedUsers">عدد المستخدمين المُضمَّنين في السعر الشهري.</param>
+/// <param name="Modules">الوحدات التي تمنحها الخطة — تُقاس على رسم الاعتماديات قبل التطبيق.</param>
 public sealed record PlanDefinition(
     string Code, string NameAr, string NameEn,
     decimal MonthlyPrice, decimal PerUserPrice, int IncludedUsers,
@@ -22,6 +30,7 @@ public sealed record PlanDefinition(
 /// </summary>
 public static class PlanCatalog
 {
+    /// <summary>كل الخطط المعرَّفة.</summary>
     public static readonly IReadOnlyList<PlanDefinition> All =
     [
         new("ESSENTIAL", "الأساسية", "Essential", 900.0000m, 60.0000m, 3,
@@ -34,10 +43,17 @@ public static class PlanCatalog
             ["CORE", "AR", "AP", "INV", "POS", "PRJ", "PAY", "FA", "REP"]),
     ];
 
+    /// <summary>يُرجِع خطة برمزها، ويرمي على رمز غير معروف بدل أن يُرجِع افتراضاً صامتاً.</summary>
+    /// <param name="code">رمز الخطة.</param>
+    /// <returns>تعريف الخطة.</returns>
+    /// <exception cref="ArgumentException">الرمز غير معروف.</exception>
     public static PlanDefinition Require(string code) =>
         All.FirstOrDefault(p => p.Code == code)
         ?? throw new ArgumentException($"خطة غير معروفة: «{code}»", nameof(code));
 
+    /// <summary>يبذر الخطط في قاعدة التحكّم. مُحكَم وقابل لإعادة التشغيل.</summary>
+    /// <param name="c">اتصال مفتوح بقاعدة التحكّم.</param>
+    /// <param name="ct">رمز الإلغاء.</param>
     public static async Task SeedAsync(NpgsqlConnection c, CancellationToken ct = default)
     {
         var plans = All.OrderBy(p => p.Code, StringComparer.Ordinal).ToList();
@@ -86,6 +102,13 @@ public static class PlanCatalog
     }
 
     /// <summary>يفتح اشتراكاً فعّالاً للمستأجر. مُحكَم: نفس المستأجر والخطة والتاريخ = صفّ واحد.</summary>
+    /// <summary>يُنشئ اشتراكاً فعّالاً لمستأجر على خطة.</summary>
+    /// <param name="c">اتصال مفتوح بقاعدة التحكّم.</param>
+    /// <param name="tenantId">معرّف المستأجر.</param>
+    /// <param name="planCode">رمز الخطة.</param>
+    /// <param name="startedOn">تاريخ بدء الاشتراك.</param>
+    /// <param name="ct">رمز الإلغاء.</param>
+    /// <returns>معرّف الاشتراك.</returns>
     public static async Task<Guid> SubscribeAsync(NpgsqlConnection c, Guid tenantId, string planCode,
         DateOnly startedOn, CancellationToken ct = default)
     {

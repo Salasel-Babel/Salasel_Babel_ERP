@@ -19,6 +19,7 @@ public sealed record TenantMigration(
 /// </summary>
 public static class TenantSchema
 {
+    /// <summary>إصدار الأساس الذي تبدأ منه كل قاعدة مستأجر جديدة.</summary>
     public const int BaselineVersion = 1;
 
     /// <summary>الإصدار الذي يجري عليه قياس الأسطول (‏v1 ⇒ v2).</summary>
@@ -30,6 +31,7 @@ public static class TenantSchema
     /// <summary>مرحلة <b>الانكماش</b>: العمود القديم يُحذف — بعد ترقية كل النُسخ.</summary>
     public const int ContractVersion = 4;
 
+    /// <summary>أحدث إصدار مخطط مُعتمَد — وهو هدف التزويد الافتراضي.</summary>
     public const int LatestVersion = ContractVersion;
 
     /// <summary>
@@ -39,8 +41,10 @@ public static class TenantSchema
     /// عمود + ملء رجعي + فهرس + <c>VACUUM ANALYZE</c>.
     /// </summary>
     public const int BenchVersionA = 5;
+    /// <summary>إصدار قياس أداء ثانٍ — لقياس الإنتاجية لا للإنتاج.</summary>
     public const int BenchVersionB = 6;
 
+    /// <summary>كل الترحيلات مرتّبةً بإصدارها. الترتيب جزء من العقد.</summary>
     public static readonly IReadOnlyList<TenantMigration> All =
     [
         new(1, "المخطط الأساس", "baseline schema", V1, VacuumAfter: true),
@@ -271,6 +275,13 @@ public static class TenantSchema
 
     // =====================================================================
 
+    /// <summary>
+    /// إصدار المخطط المُطبَّق فعلاً على هذه القاعدة، مقروءاً من القاعدة نفسها
+    /// لا من سجل التحكّم — التحقّق المباشر هو ما يكشف انحراف السجل عن الواقع.
+    /// </summary>
+    /// <param name="c">اتصال بقاعدة المستأجر.</param>
+    /// <param name="ct">رمز الإلغاء.</param>
+    /// <returns>رقم الإصدار.</returns>
     public static async Task<int> CurrentVersionAsync(NpgsqlConnection c, CancellationToken ct = default)
     {
         var present = await Db.ScalarAsync<bool>(c,

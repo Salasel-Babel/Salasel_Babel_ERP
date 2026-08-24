@@ -21,7 +21,13 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
     <!-- الرموز الثابتة موثّقة في SPEC.md؛ لا حاجة لتعليق XML على كل ثابت. -->
-    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <!--
+      CA1720 («المعرّف يحتوي اسم نوع») على CanonicalKind.Integer وCanonicalValue.Integer:
+      مفردات الشكل القانوني **مجمّدة في v1** وموثّقة في SPEC.md، ورمز السلك هو المحرف 'I'
+      لا اسم العضو — فإعادة التسمية تغيّر واجهة عامة مجمّدة بلا أي أثر سلوكي.
+      الاستثناء هنا مقصور على هذا المشروع ولا يمسّ أي قاعدة من قواعد المعمارية التسع.
+    -->
+    <NoWarn>$(NoWarn);CS1591;CA1720</NoWarn>
 
     <!--
       لا يجوز أبداً تشغيل هذه المكتبة في وضع InvariantGlobalization:

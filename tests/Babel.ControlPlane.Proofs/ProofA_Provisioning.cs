@@ -28,7 +28,7 @@ public static class ProofA_Provisioning
 
     public static async Task RunAsync(ControlPlaneOptions o, Recorder rec)
     {
-        rec.Section("(أ) تزويد المستأجر — الإحكام تحت المقاطعة");
+        Recorder.Section("(أ) تزويد المستأجر — الإحكام تحت المقاطعة");
 
         var registry = new TenantRegistry(o);
         var entitlements = new EntitlementService(o, registry);
@@ -163,7 +163,7 @@ public static class ProofA_Provisioning
     private static async Task ArchiveProofAsync(ControlPlaneOptions o, TenantRegistry registry,
         EntitlementService entitlements, Recorder rec, string code)
     {
-        rec.Section("(أ) إنهاء الخدمة = أرشفة، لا حذف");
+        Recorder.Section("(أ) إنهاء الخدمة = أرشفة، لا حذف");
 
         var t = (await registry.FindByCodeAsync(code))!;
 
@@ -173,7 +173,7 @@ public static class ProofA_Provisioning
                 "فاتورة مبيعات", [("1200", 1150.0000m, 0m), ("4100", 0m, 1000.0000m),
                                   ("2300", 0m, 150.0000m)]);
 
-        var archivist = new TenantArchivist(o, registry);
+        var archivist = new TenantArchivist(o);
         var before = await archivist.SnapshotAsync(t);
 
         var outcome = await archivist.ArchiveAsync(code, "ops.lifecycle",

@@ -30,7 +30,7 @@ public sealed class PostgresRoundTripTests : IAsyncLifetime
 
     private bool _available;
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         try
         {
@@ -96,7 +96,7 @@ public sealed class PostgresRoundTripTests : IAsyncLifetime
         }
     }
 
-    public Task DisposeAsync() => Task.CompletedTask;
+    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
     private static async Task<NpgsqlConnection> OpenAsync()
     {
@@ -188,12 +188,12 @@ public sealed class PostgresRoundTripTests : IAsyncLifetime
             ins.Parameters.AddWithValue("m", money);
             ins.Parameters.AddWithValue("ts", written);
             ins.Parameters.AddWithValue("t", text);
-            await ins.ExecuteNonQueryAsync();
+            await ins.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
         }
 
         await using var read = await new NpgsqlCommand("select m, ts, t from canon_probe where id = 1", conn)
-            .ExecuteReaderAsync();
-        Assert.True(await read.ReadAsync());
+            .ExecuteReaderAsync(TestContext.Current.CancellationToken);
+        Assert.True(await read.ReadAsync(TestContext.Current.CancellationToken));
 
         var backMoney = read.GetDecimal(0);
         var backTs = read.GetFieldValue<DateTime>(1);
@@ -245,7 +245,7 @@ public sealed class PostgresRoundTripTests : IAsyncLifetime
             $"select coalesce(sum(debit),0) = coalesce(sum(credit),0) from canon_line " +
             $"where chain_scope = '{scope}' and chain_seq = {target}", conn))
         {
-            Assert.True((bool)(await bal.ExecuteScalarAsync())!,
+            Assert.True((bool)(await bal.ExecuteScalarAsync(TestContext.Current.CancellationToken))!,
                 "العبث يجب أن يُبقي القيد متوازناً، وإلا لم يُثبت شيئاً.");
         }
 
@@ -266,7 +266,7 @@ public sealed class PostgresRoundTripTests : IAsyncLifetime
             upd.Parameters.AddWithValue("h", repaired.Hash);
             upd.Parameters.AddWithValue("s", scope);
             upd.Parameters.AddWithValue("q", target);
-            await upd.ExecuteNonQueryAsync();
+            await upd.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
         }
 
         var stillDetected = ChainVerifier.VerifyChain(await ReadAsync(conn, scope), genesis);
@@ -325,7 +325,7 @@ public sealed class PostgresRoundTripTests : IAsyncLifetime
             ok.Parameters.AddWithValue("v", ArabicSearch.Normalize(memo).Value);
             ok.Parameters.AddWithValue("s", scope);
             ok.Parameters.AddWithValue("q", r.Sequence);
-            await ok.ExecuteNonQueryAsync();
+            await ok.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
         }
         Assert.True(ChainVerifier.VerifyChain(await ReadAsync(conn, scope), genesis).Ok,
             "ملء عمود البحث المشتقّ لا يجوز أن يمسّ السلسلة.");
@@ -337,7 +337,7 @@ public sealed class PostgresRoundTripTests : IAsyncLifetime
         {
             bad.Parameters.AddWithValue("v", ArabicSearch.Normalize(MemoArOf(victim)).Value);
             bad.Parameters.AddWithValue("s", scope);
-            await bad.ExecuteNonQueryAsync();
+            await bad.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
         }
 
         var broken = ChainVerifier.VerifyChain(await ReadAsync(conn, scope), genesis);

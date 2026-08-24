@@ -7,6 +7,22 @@ using NpgsqlTypes;
 
 namespace Babel.ControlPlane.Provisioning;
 
+/// <summary>طلب تزويد مستأجر واحد. كل ما يلزم لبناء المستأجر من الصفر، في كائن واحد.</summary>
+/// <param name="IdempotencyKey">
+/// مفتاح الإحكام. إعادة الطلب بنفس المفتاح <b>تستأنف</b> التشغيلة نفسها ولا تبني مستأجراً ثانياً.
+/// </param>
+/// <param name="TenantCode">رمز المستأجر <c>[a-z0-9_]</c>؛ يدخل في اسم قاعدة البيانات.</param>
+/// <param name="Name">اسم المستأجر بالعربية والإنجليزية.</param>
+/// <param name="PlanCode">رمز الخطة التي تُشتقّ منها الاستحقاقات الأولى.</param>
+/// <param name="AdminUserRef">مرجع أول مستخدم إداري.</param>
+/// <param name="AdminName">اسم المدير بالعربية والإنجليزية.</param>
+/// <param name="AdminEmail">بريد المدير.</param>
+/// <param name="RequestedBy">من طلب التزويد — يُكتب في دفتر التشغيلة.</param>
+/// <param name="FiscalYear">السنة المالية التي تُبذَر فتراتها الاثنتا عشرة.</param>
+/// <param name="TenantId">معرّف صريح؛ إن أُهمل اشتُقّ حتمياً من الرمز.</param>
+/// <param name="Isolation">نموذج العزل لهذا المستأجر.</param>
+/// <param name="Residency">موقع البيانات.</param>
+/// <param name="TargetSchemaVersion">إصدار المخطط المطلوب عند التزويد.</param>
 public sealed record ProvisioningRequest(
     string IdempotencyKey,
     string TenantCode,
@@ -22,6 +38,13 @@ public sealed record ProvisioningRequest(
     Residency Residency = Residency.Provider,
     int TargetSchemaVersion = TenantSchema.LatestVersion);
 
+/// <summary>حصيلة تشغيلة تزويد — وهي أيضاً <b>دليل الإحكام</b>: إعادةٌ ناجحة تنفّذ صفر خطوات.</summary>
+/// <param name="RunId">معرّف التشغيلة.</param>
+/// <param name="TenantId">معرّف المستأجر المُزوَّد.</param>
+/// <param name="Resumed">هل استُؤنفت تشغيلة قائمة بدل بدء واحدة جديدة؟</param>
+/// <param name="StepsExecuted">عدد الخطوات التي نُفِّذت فعلاً في هذه التشغيلة.</param>
+/// <param name="StepsSkipped">عدد الخطوات المُسجَّلة مكتملة سابقاً فتُخطّيت.</param>
+/// <param name="Steps">حالة كل خطوة على حدة.</param>
 public sealed record ProvisioningResult(
     Guid RunId, Guid TenantId, bool Resumed, int StepsExecuted, int StepsSkipped,
     IReadOnlyList<ProvisioningStepState> Steps);
@@ -36,12 +59,18 @@ public sealed record ProvisioningResult(
 /// <para>هذا هو الفرق بين «مُحكَم» و«يبدو مُحكَماً»: لا نراهن على أن الانهيار
 /// يقع بين الخطوات.</para>
 /// </summary>
+/// <param name="options">إعدادات مستوى التحكّم.</param>
+/// <param name="registry">سجل المستأجرين.</param>
+/// <param name="entitlements">خدمة الاستحقاق — تُطبَّق منها استحقاقات الخطة.</param>
 public sealed class TenantProvisioner(
     ControlPlaneOptions options, TenantRegistry registry, EntitlementService entitlements)
 {
     /// <summary>خطّاف المقاطعة — للإثباتات فقط؛ <c>null</c> في الإنتاج.</summary>
     public Func<string, InterruptPhase, Task>? Interrupt { get; set; }
 
+    /// <summary>
+    /// خطوات التزويد بترتيبها. الترتيب جزء من العقد: رقم الخطوة في الدفتر مشتقّ منه.
+    /// </summary>
     public static readonly IReadOnlyList<string> Steps =
     [
         "register_tenant",
@@ -56,6 +85,12 @@ public sealed class TenantProvisioner(
         "activate"
     ];
 
+    /// <summary>
+    /// يُزوِّد مستأجراً، أو يستأنف تزويداً سابقاً بنفس <c>IdempotencyKey</c> من حيث توقّف.
+    /// </summary>
+    /// <param name="req">طلب التزويد.</param>
+    /// <param name="ct">رمز الإلغاء.</param>
+    /// <returns>حصيلة التشغيلة: ما نُفِّذ وما تُخطّي.</returns>
     public async Task<ProvisioningResult> ProvisionAsync(ProvisioningRequest req,
         CancellationToken ct = default)
     {
@@ -172,8 +207,8 @@ public sealed class TenantProvisioner(
         // 10 ------------------------------------------------------------------
         await Step("activate", async () =>
         {
-            await registry.SetSchemaVersionAsync(control, tenantId, req.TargetSchemaVersion, null, ct);
-            await registry.SetStatusAsync(control, tenantId, TenantStatus.Active, Canon.Now(), null, ct);
+            await TenantRegistry.SetSchemaVersionAsync(control, tenantId, req.TargetSchemaVersion, null, ct);
+            await TenantRegistry.SetStatusAsync(control, tenantId, TenantStatus.Active, Canon.Now(), null, ct);
             await journal.CompleteRunAsync(runId, ct);
             await OperationLog.WriteAsync(control, tenantId, req.RequestedBy, "tenant.provision",
                 OperationOutcome.Allowed, $"اكتمل تزويد المستأجر «{req.TenantCode}»",
@@ -190,6 +225,12 @@ public sealed class TenantProvisioner(
     /// معرّف مستأجر مشتقّ من رمزه اشتقاقاً حتمياً. الغرض: إعادة تشغيل التزويد
     /// بلا تمرير المعرّف تصل إلى نفس المستأجر لا إلى مستأجر ثانٍ.
     /// </summary>
+    /// <summary>
+    /// معرّف مستأجر مشتقّ حتمياً من رمزه: تشغيلتان متوازيتان بنفس الرمز تصلان
+    /// إلى المعرّف نفسه، فلا يُبنى مستأجران بمعرّفين مختلفين لنفس الرمز.
+    /// </summary>
+    /// <param name="tenantCode">رمز المستأجر.</param>
+    /// <returns>المعرّف الحتمي.</returns>
     public static Guid DeterministicTenantId(string tenantCode)
     {
         var bytes = System.Security.Cryptography.SHA256.HashData(

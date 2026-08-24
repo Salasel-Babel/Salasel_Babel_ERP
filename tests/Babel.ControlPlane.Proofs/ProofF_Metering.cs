@@ -16,7 +16,7 @@ public static class ProofF_Metering
 
     public static async Task RunAsync(ControlPlaneOptions o, Recorder rec)
     {
-        rec.Section("(و) القياس على المحورين، والإحكام تحت إعادة المحاولة");
+        Recorder.Section("(و) القياس على المحورين، والإحكام تحت إعادة المحاولة");
 
         var registry = new TenantRegistry(o);
         var entitlements = new EntitlementService(o, registry);

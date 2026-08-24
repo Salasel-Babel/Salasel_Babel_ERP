@@ -1,19 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!--
+    اختبارات وحدة نقيّة: لا تلمس قاعدة بيانات. ما يحتاج PostgreSQL حقيقية هو
+    مشروع الإثباتات tests/Babel.ControlPlane.Proofs.
+    منصّة الاختبار (‏xunit.v3 + Microsoft.Testing.Platform) تأتي من Directory.Build.props.
+  -->
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <IsPackable>false</IsPackable>
     <RootNamespace>Babel.ControlPlane.Tests</RootNamespace>
-    <InvariantGlobalization>false</InvariantGlobalization>
   </PropertyGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
-    <PackageReference Include="xunit" Version="2.9.3" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
-  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="../../src/Babel.ControlPlane/Babel.ControlPlane.csproj" />

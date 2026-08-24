@@ -13,7 +13,7 @@ public static class ProofE_Entitlement
 {
     public static async Task RunAsync(ControlPlaneOptions o, Recorder rec)
     {
-        rec.Section("(هـ) الاستحقاق — ثلاث حالات ورسم اعتماديات");
+        Recorder.Section("(هـ) الاستحقاق — ثلاث حالات ورسم اعتماديات");
 
         var registry = new TenantRegistry(o);
         var entitlements = new EntitlementService(o, registry);
@@ -130,7 +130,7 @@ public static class ProofE_Entitlement
     private static async Task ArchiveRefusalAsync(ControlPlaneOptions o, TenantRegistry registry,
         EntitlementService entitlements, Recorder rec)
     {
-        rec.Section("(هـ) أرشفة الوحدة — الفحص يرفض، ولا يُحذّر");
+        Recorder.Section("(هـ) أرشفة الوحدة — الفحص يرفض، ولا يُحذّر");
 
         var t = (await Harness.SimulateFleetAsync(o, registry, "arc", 1, 1))[0];
         var archiveSvc = new ModuleArchiveService(o, entitlements);

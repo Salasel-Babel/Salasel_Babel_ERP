@@ -82,6 +82,14 @@ public static class ExpandContract
             }, null, ct);
     }
 
+    /// <summary>
+    /// قراءة بشيفرة <b>الإصدار السابق</b> — تُحاكي مثيل تطبيق لم يُحدَّث بعد
+    /// وهو يقرأ قاعدة رُحِّلت. هذا هو نصف إثبات التوسيع/الانكماش.
+    /// </summary>
+    /// <param name="c">اتصال بقاعدة المستأجر.</param>
+    /// <param name="entryId">معرّف القيد.</param>
+    /// <param name="ct">رمز الإلغاء.</param>
+    /// <returns>القيمة كما يراها الإصدار السابق.</returns>
     public static async Task<string?> ReadWithOldCodeAsync(NpgsqlConnection c, Guid entryId,
         CancellationToken ct = default)
     {
@@ -105,6 +113,11 @@ public static class ExpandContract
             entryId, bookCode, entryNo, periodCode, date, moduleCode, textAr, ct);
     }
 
+    /// <summary>قراءة بشيفرة <b>الإصدار الجديد</b> — النصف الآخر من الإثبات.</summary>
+    /// <param name="c">اتصال بقاعدة المستأجر.</param>
+    /// <param name="entryId">معرّف القيد.</param>
+    /// <param name="ct">رمز الإلغاء.</param>
+    /// <returns>القيمة كما يراها الإصدار الجديد.</returns>
     public static async Task<string?> ReadWithNewCodeAsync(NpgsqlConnection c, Guid entryId,
         CancellationToken ct = default)
     {

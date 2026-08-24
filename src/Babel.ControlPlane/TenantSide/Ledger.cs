@@ -26,8 +26,22 @@ namespace Babel.ControlPlane.TenantSide;
 /// </summary>
 public static class Ledger
 {
+    /// <summary>قيد مُرحَّل.</summary>
+    /// <param name="EntryId">معرّف القيد.</param>
+    /// <param name="EntryNo">رقمه المتسلسل داخل الدفتر.</param>
     public sealed record PostedEntry(Guid EntryId, long EntryNo);
 
+    /// <summary>يُرحّل قيداً متوازناً داخل معاملة واحدة.</summary>
+    /// <param name="c">اتصال بقاعدة المستأجر.</param>
+    /// <param name="bookCode">رمز الدفتر.</param>
+    /// <param name="fiscalYearIgnored">غير مستعمَل — الفترة تحمل السنة.</param>
+    /// <param name="periodCode">رمز الفترة المالية.</param>
+    /// <param name="entryDate">تاريخ القيد.</param>
+    /// <param name="moduleCode">الوحدة المُرحِّلة — بها يُربط الأستاذ المساعد بفحص الأرشفة.</param>
+    /// <param name="descriptionAr">وصف القيد بالعربية.</param>
+    /// <param name="lines">السطور: حساب ومدين ودائن، كلها <c>decimal</c>.</param>
+    /// <param name="ct">رمز الإلغاء.</param>
+    /// <returns>القيد المُرحَّل.</returns>
     public static async Task<PostedEntry> PostAsync(NpgsqlConnection c, string bookCode,
         int fiscalYearIgnored, string periodCode, DateOnly entryDate, string moduleCode,
         string descriptionAr, IReadOnlyList<(string Account, decimal Debit, decimal Credit)> lines,
@@ -129,6 +143,11 @@ public static class Ledger
         return new PostedEntry(entryId, entryNo);
     }
 
+    /// <summary>يفتح مستنداً — يُستعمل لإثبات أن مستنداً مفتوحاً يمنع أرشفة الوحدة.</summary>
+    /// <param name="c">اتصال بقاعدة المستأجر.</param>
+    /// <param name="moduleCode">رمز الوحدة.</param>
+    /// <param name="docNo">رقم المستند.</param>
+    /// <param name="ct">رمز الإلغاء.</param>
     public static async Task OpenDocumentAsync(NpgsqlConnection c, string moduleCode, string docNo,
         CancellationToken ct = default) =>
         await Db.WriteAsync(c, """
@@ -141,12 +160,21 @@ public static class Ledger
             p.AddWithValue("t", Canon.Now());
         }, null, ct);
 
+    /// <summary>يُقفل فترة مالية — شرط من شروط أرشفة الوحدة.</summary>
+    /// <param name="c">اتصال بقاعدة المستأجر.</param>
+    /// <param name="periodCode">رمز الفترة.</param>
+    /// <param name="ct">رمز الإلغاء.</param>
     public static async Task ClosePeriodAsync(NpgsqlConnection c, string periodCode,
         CancellationToken ct = default) =>
         await Db.WriteAsync(c,
             "update ledger.period set state = 'Closed', closed_at = @t where period_code = @p", 1,
             p => { p.AddWithValue("t", Canon.Now()); p.AddWithValue("p", periodCode); }, null, ct);
 
+    /// <summary>صافي رصيد حسابات الأستاذ المساعد لوحدة. <c>decimal</c> دائماً.</summary>
+    /// <param name="c">اتصال بقاعدة المستأجر.</param>
+    /// <param name="moduleCode">رمز الوحدة.</param>
+    /// <param name="ct">رمز الإلغاء.</param>
+    /// <returns>الصافي؛ وغير الصفري يمنع الأرشفة.</returns>
     public static async Task<decimal> NetBalanceAsync(NpgsqlConnection c, string moduleCode,
         CancellationToken ct = default) =>
         await Db.ScalarAsync<decimal>(c, """

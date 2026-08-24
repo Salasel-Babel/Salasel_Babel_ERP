@@ -6,15 +6,34 @@ using NpgsqlTypes;
 
 namespace Babel.ControlPlane.Entitlement;
 
+/// <summary>نتيجة فحص واحد من فحوص ما قبل أرشفة وحدة.</summary>
+/// <param name="Code">رمز الفحص.</param>
+/// <param name="NameAr">اسم الفحص بالعربية.</param>
+/// <param name="NameEn">اسم الفحص بالإنجليزية.</param>
+/// <param name="Passed">هل اجتاز؟ الفحص الراسب <b>يمنع</b> الأرشفة ولا يُحوَّل إلى تحذير.</param>
+/// <param name="DetailAr">تفصيل مقروء بالعربية يشرح سبب النتيجة.</param>
+/// <param name="Detail">التفصيل البنيوي كما يُحفَظ في سجل القرار.</param>
 public sealed record ArchiveCheck(
     string Code, string NameAr, string NameEn, bool Passed, string DetailAr, object Detail);
 
+/// <summary>قرار طلب أرشفة وحدة، بفحوصه كاملةً. القرار يُسجَّل <b>مقبولاً كان أو مرفوضاً</b>.</summary>
+/// <param name="RequestId">معرّف الطلب المُسجَّل.</param>
+/// <param name="Approved">هل قُبلت الأرشفة؟</param>
+/// <param name="Checks">كل الفحوص بنتائجها.</param>
+/// <param name="SummaryAr">خلاصة القرار بالعربية.</param>
 public sealed record ArchiveDecision(
     Guid RequestId, bool Approved, IReadOnlyList<ArchiveCheck> Checks, string SummaryAr)
 {
+    /// <summary>الفحوص الراسبة وحدها — وهي أسباب الرفض.</summary>
     public IReadOnlyList<ArchiveCheck> Failed => [.. Checks.Where(c => !c.Passed)];
 }
 
+/// <summary>
+/// اعتماد بشري مُسمّى. اجتياز الفحوص الآلية <b>لا يكفي</b>: الأرشفة قرار تجاري
+/// يتحمّله شخص، ويُسجَّل باسمه ومرجعه.
+/// </summary>
+/// <param name="ApprovedBy">اسم المُعتمِد.</param>
+/// <param name="ApprovalRef">مرجع الاعتماد (‏تذكرة، محضر، قرار).</param>
 public sealed record ArchiveApproval(string ApprovedBy, string ApprovalRef);
 
 /// <summary>
@@ -27,6 +46,8 @@ public sealed record ArchiveApproval(string ApprovedBy, string ApprovalRef);
 ///
 /// <para>الأرشفة مشروطة بفحص آلي سابق. <b>الفحص يرفض، ولا يُحذّر.</b></para>
 /// </summary>
+/// <param name="options">إعدادات مستوى التحكّم.</param>
+/// <param name="entitlements">خدمة الاستحقاق — الأرشفة تُنقل الوحدة إلى <c>ReadOnly</c> عبرها.</param>
 public sealed class ModuleArchiveService(
     ControlPlaneOptions options, EntitlementService entitlements)
 {
@@ -39,6 +60,12 @@ public sealed class ModuleArchiveService(
     /// يُجري الفحص السابق للأرشفة ويسجّل قراره — <b>مقبولاً كان أو مرفوضاً</b>.
     /// الرفض المُسجَّل هو نصف قيمة هذه الآلية (فخ-08).
     /// </summary>
+    /// <param name="tenant">المستأجر صاحب الوحدة.</param>
+    /// <param name="moduleCode">رمز الوحدة المطلوب أرشفتها.</param>
+    /// <param name="requestedBy">من طلب الأرشفة.</param>
+    /// <param name="approval">الاعتماد البشري المُسمّى؛ غيابه وحده يكفي للرفض.</param>
+    /// <param name="ct">رمز الإلغاء.</param>
+    /// <returns>القرار بفحوصه — والوحدة تصير <c>ReadOnly</c> عند القبول، ولا تُحذف أبداً.</returns>
     public async Task<ArchiveDecision> RequestArchiveAsync(TenantRecord tenant, string moduleCode,
         string requestedBy, ArchiveApproval? approval, CancellationToken ct = default)
     {

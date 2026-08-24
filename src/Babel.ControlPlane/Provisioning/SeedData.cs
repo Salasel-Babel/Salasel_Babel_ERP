@@ -4,9 +4,22 @@ using NpgsqlTypes;
 
 namespace Babel.ControlPlane.Provisioning;
 
+/// <summary>حساب في دليل الحسابات الابتدائي المبذور لكل مستأجر جديد.</summary>
+/// <param name="Code">رقم الحساب.</param>
+/// <param name="NameAr">اسم الحساب بالعربية — إلزامي.</param>
+/// <param name="NameEn">اسم الحساب بالإنجليزية — إلزامي.</param>
+/// <param name="Type">نوع الحساب (‏أصل، التزام، حقوق ملكية، إيراد، مصروف).</param>
+/// <param name="Subledger">الوحدة صاحبة الأستاذ المساعد؛ <c>null</c> لحساب تجميعي لا يخصّ وحدة.</param>
+/// <param name="Postable">هل يُرحَّل عليه مباشرةً؟ حسابات العناوين لا تقبل الترحيل.</param>
 public sealed record SeedAccount(
     string Code, string NameAr, string NameEn, string Type, string? Subledger, bool Postable = true);
 
+/// <summary>دور افتراضي يُبذَر مع المستأجر الجديد.</summary>
+/// <param name="Code">رمز الدور.</param>
+/// <param name="NameAr">اسم الدور بالعربية — إلزامي.</param>
+/// <param name="NameEn">اسم الدور بالإنجليزية — إلزامي.</param>
+/// <param name="IsAdmin">هل هو دور المدير الذي يُسنَد إلى أول مستخدم؟</param>
+/// <param name="Sort">ترتيب العرض — وهو أيضاً ترتيب الإدراج الكلّي الثابت.</param>
 public sealed record SeedRole(string Code, string NameAr, string NameEn, bool IsAdmin, int Sort);
 
 /// <summary>
@@ -23,6 +36,7 @@ public sealed record SeedRole(string Code, string NameAr, string NameEn, bool Is
 /// </summary>
 public static class SeedData
 {
+    /// <summary>دليل الحسابات الابتدائي، مرتّباً ترتيباً كلّياً ثابتاً برقم الحساب.</summary>
     public static readonly IReadOnlyList<SeedAccount> ChartOfAccounts =
     [
         new("1000", "الأصول", "Assets", "Asset", null, Postable: false),
@@ -52,6 +66,7 @@ public static class SeedData
         new("5900", "مصروفات عمومية وإدارية", "General and administrative", "Expense", "CORE"),
     ];
 
+    /// <summary>الأدوار الافتراضية، مرتّبةً ترتيباً كلّياً ثابتاً.</summary>
     public static readonly IReadOnlyList<SeedRole> Roles =
     [
         new("ACCOUNTANT", "محاسب", "Accountant", false, 20),
@@ -65,6 +80,14 @@ public static class SeedData
     /// يزرع دليل الحسابات في <b>عبارة واحدة</b> بصفوف مرتّبة بـ<c>account_code</c>
     /// تصاعدياً. مُحكَم: <c>ON CONFLICT DO UPDATE</c> بقيم متطابقة.
     /// </summary>
+    /// <summary>
+    /// يبذر دليل الحسابات. مُحكَم بـ<c>ON CONFLICT DO UPDATE</c> بقيم متطابقة لا
+    /// <c>DO NOTHING</c>: الثاني يجعل إعادة التزويد تُصيب صفر صفوف فيرمي تأكيد
+    /// عدد الصفوف — أي يُفشِل بالضبط المسار الذي وُجد الإحكام من أجله.
+    /// </summary>
+    /// <param name="c">اتصال مفتوح بقاعدة المستأجر.</param>
+    /// <param name="ct">رمز الإلغاء.</param>
+    /// <returns>عدد الصفوف المتأثرة.</returns>
     public static async Task<int> SeedChartOfAccountsAsync(NpgsqlConnection c,
         CancellationToken ct = default)
     {
@@ -96,6 +119,10 @@ public static class SeedData
             }, null, ct);
     }
 
+    /// <summary>يبذر الأدوار الافتراضية. مُحكَم وقابل لإعادة التشغيل بلا أثر إضافي.</summary>
+    /// <param name="c">اتصال مفتوح بقاعدة المستأجر.</param>
+    /// <param name="ct">رمز الإلغاء.</param>
+    /// <returns>عدد الصفوف المتأثرة.</returns>
     public static async Task<int> SeedRolesAsync(NpgsqlConnection c, CancellationToken ct = default)
     {
         var rows = Roles.OrderBy(r => r.Code, StringComparer.Ordinal).ToList();
@@ -128,6 +155,15 @@ public static class SeedData
     /// تُكتب بـ<c>ON CONFLICT</c>، لكن القيد نفسه يُحيل إلى الفترة بمفتاح أجنبي
     /// — والفترة الغائبة يجب أن تُفشِل الترحيل بصوت عالٍ لا أن تُبتلع (فخ-09).
     /// </summary>
+    /// <summary>
+    /// يبذر فترات السنة المالية الاثنتي عشرة. <b>لا تُدهَس حالة الفترة ولا تاريخ
+    /// إقفالها عند إعادة التزويد</b> — إعادة فتح فترة مُقفلة بإعادة تشغيل بذرة
+    /// عطل مالي صامت.
+    /// </summary>
+    /// <param name="c">اتصال مفتوح بقاعدة المستأجر.</param>
+    /// <param name="year">السنة المالية.</param>
+    /// <param name="ct">رمز الإلغاء.</param>
+    /// <returns>عدد الصفوف المتأثرة.</returns>
     public static async Task<int> SeedPeriodsAsync(NpgsqlConnection c, int year,
         CancellationToken ct = default)
     {

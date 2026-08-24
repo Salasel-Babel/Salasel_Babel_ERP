@@ -14,6 +14,11 @@ namespace Babel.ControlPlane.Entitlement;
 /// </summary>
 public static class EntitlementValidator
 {
+    /// <summary>
+    /// يفحص تماسك مجموعة استحقاق كاملةً ويُرجِع <b>كل</b> المخالفات لا أوّلها.
+    /// </summary>
+    /// <param name="set">المجموعة المطلوبة: الحالة لكل وحدة.</param>
+    /// <returns>المخالفات؛ قائمة فارغة تعني مجموعة متماسكة.</returns>
     public static IReadOnlyList<EntitlementViolation> Validate(
         IReadOnlyDictionary<string, EntitlementState> set)
     {
@@ -55,6 +60,12 @@ public static class EntitlementValidator
         return violations;
     }
 
+    /// <summary>
+    /// يرفض المجموعة غير المتماسكة <b>كاملةً</b>. لا إصلاح صامت: مجموعة تُصلَح
+    /// تلقائياً تُنتج اشتراكاً لم يطلبه أحد ولم يوافق عليه أحد.
+    /// </summary>
+    /// <param name="set">المجموعة المطلوبة.</param>
+    /// <exception cref="IncoherentEntitlementSetException">المجموعة غير متماسكة.</exception>
     public static void Require(IReadOnlyDictionary<string, EntitlementState> set)
     {
         var v = Validate(set);
@@ -93,6 +104,9 @@ public static class EntitlementValidator
                        .Select(kv => new EntitlementChange(kv.Key, kv.Value))];
     }
 
+    /// <summary>اسم الحالة بالعربية للعرض والرسائل.</summary>
+    /// <param name="s">الحالة.</param>
+    /// <returns>الاسم العربي.</returns>
     public static string Ar(EntitlementState s) => s switch
     {
         EntitlementState.Entitled => "مستحقّة",

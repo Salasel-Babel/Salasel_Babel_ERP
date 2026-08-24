@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 
 namespace Babel.ControlPlane.Proofs;
@@ -48,9 +49,9 @@ public sealed class Recorder
         Console.WriteLine($"  [meas] {line}");
     }
 
-    public void Evidence(string text) => Emit(text);
+    public static void Evidence(string text) => Emit(text);
 
-    public void Section(string title)
+    public static void Section(string title)
     {
         Console.WriteLine();
         Console.WriteLine($"--- {title} " + new string('-', Math.Max(0, 74 - title.Length)));
@@ -70,22 +71,22 @@ public sealed class Recorder
         sb.AppendLine("=========================================================================");
         sb.AppendLine("  PASS/FAIL SUMMARY  -  ملخص إثباتات مستوى التحكّم");
         sb.AppendLine("=========================================================================");
-        sb.AppendLine($"  {"ID",-8} {"RESULT",-7} PROOF");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"  {"ID",-8} {"RESULT",-7} PROOF");
         sb.AppendLine("  " + new string('-', 69));
         foreach (var g in _results.GroupBy(r => r.Id[..1]).OrderBy(g => g.Key))
         {
             foreach (var r in g)
-                sb.AppendLine($"  {r.Id,-8} {(r.Verdict == Verdict.Pass ? "PASS" : "FAIL"),-7} {r.Name}");
+                sb.AppendLine(CultureInfo.InvariantCulture, $"  {r.Id,-8} {(r.Verdict == Verdict.Pass ? "PASS" : "FAIL"),-7} {r.Name}");
             sb.AppendLine("  " + new string('-', 69));
         }
 
         var passed = _results.Count(r => r.Verdict == Verdict.Pass);
-        sb.AppendLine($"  {passed}/{_results.Count} proofs passed");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"  {passed}/{_results.Count} proofs passed");
         foreach (var s in new[] { "A", "B", "C", "D", "E", "F" })
         {
-            var items = _results.Where(r => r.Id.StartsWith(s)).ToList();
+            var items = _results.Where(r => r.Id.StartsWith(s, StringComparison.Ordinal)).ToList();
             if (items.Count == 0) continue;
-            sb.AppendLine($"  ({s})  {(items.All(r => r.Verdict == Verdict.Pass) ? "PASS" : "FAIL")}"
+            sb.AppendLine(CultureInfo.InvariantCulture, $"  ({s})  {(items.All(r => r.Verdict == Verdict.Pass) ? "PASS" : "FAIL")}"
                 + $"   {items.Count(r => r.Verdict == Verdict.Pass)}/{items.Count}   {Title(s)}");
         }
         sb.AppendLine("=========================================================================");
@@ -93,13 +94,13 @@ public sealed class Recorder
         if (_measurements.Count > 0)
         {
             sb.AppendLine("  MEASUREMENTS / القياسات");
-            foreach (var m in _measurements) sb.AppendLine($"   * {m}");
+            foreach (var m in _measurements) sb.AppendLine(CultureInfo.InvariantCulture, $"   * {m}");
             sb.AppendLine("=========================================================================");
         }
         if (_notes.Count > 0)
         {
             sb.AppendLine("  NOTES / ملاحظات");
-            foreach (var n in _notes) sb.AppendLine($"   * {n}");
+            foreach (var n in _notes) sb.AppendLine(CultureInfo.InvariantCulture, $"   * {n}");
             sb.AppendLine("=========================================================================");
         }
         Console.Write(sb.ToString());

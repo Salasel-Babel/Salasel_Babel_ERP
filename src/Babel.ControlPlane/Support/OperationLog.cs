@@ -4,7 +4,21 @@ using NpgsqlTypes;
 
 namespace Babel.ControlPlane.Support;
 
-public enum OperationOutcome { Allowed, Refused, Failed, Recorded }
+/// <summary>نتيجة العملية كما تُكتب في سِرد العمليات.</summary>
+public enum OperationOutcome
+{
+    /// <summary>سُمح بها ونُفِّذت.</summary>
+    Allowed,
+
+    /// <summary>رُفضت بقرار حارس — <b>وهذا هو السطر الذي لا يكتبه مخزن الأحداث</b>.</summary>
+    Refused,
+
+    /// <summary>أُخفقت لعطل لا لقرار.</summary>
+    Failed,
+
+    /// <summary>واقعة مُسجَّلة للأثر لا قرار وصول.</summary>
+    Recorded
+}
 
 /// <summary>
 /// سِرد العمليات — الجواب المباشر على فخ-08: مخزن الأحداث يسجّل ما <b>نجح</b>
@@ -14,6 +28,7 @@ public enum OperationOutcome { Allowed, Refused, Failed, Recorded }
 /// <para>القاعدة القابلة للفحص في هذا المشروع الفرعي: لا <c>throw</c> من
 /// حارس استحقاق أو فحص أرشفة أو قاطع دارة قبل سطر هنا.</para>
 /// </summary>
+/// <param name="controlConnectionString">سلسلة الاتصال بقاعدة التحكّم.</param>
 public sealed class OperationLog(string controlConnectionString)
 {
     private static readonly JsonSerializerOptions Json = new()
@@ -22,6 +37,14 @@ public sealed class OperationLog(string controlConnectionString)
         Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
     };
 
+    /// <summary>يكتب سطر سِرد باتصال خاص به.</summary>
+    /// <param name="tenantId">المستأجر المعني، أو <c>null</c> لعملية على مستوى المنصّة.</param>
+    /// <param name="actor">من نفّذ العملية.</param>
+    /// <param name="operation">اسم العملية.</param>
+    /// <param name="outcome">نتيجتها.</param>
+    /// <param name="reasonAr">السبب بالعربية.</param>
+    /// <param name="payload">حمولة بنيوية تُحفَظ كـ<c>jsonb</c>.</param>
+    /// <param name="ct">رمز الإلغاء.</param>
     public async Task WriteAsync(Guid? tenantId, string actor, string operation,
         OperationOutcome outcome, string reasonAr, object? payload = null,
         CancellationToken ct = default)
@@ -30,6 +53,19 @@ public sealed class OperationLog(string controlConnectionString)
         await WriteAsync(c, tenantId, actor, operation, outcome, reasonAr, payload, null, ct);
     }
 
+    /// <summary>
+    /// يكتب سطر سِرد على اتصال قائم، فيدخل معاملة النداء. يُستعمل حين يجب أن
+    /// يُودَع سطر الرفض مع أثره أو لا يُودَع أيّهما.
+    /// </summary>
+    /// <param name="c">اتصال مفتوح بقاعدة التحكّم.</param>
+    /// <param name="tenantId">المستأجر المعني، أو <c>null</c>.</param>
+    /// <param name="actor">من نفّذ العملية.</param>
+    /// <param name="operation">اسم العملية.</param>
+    /// <param name="outcome">نتيجتها.</param>
+    /// <param name="reasonAr">السبب بالعربية.</param>
+    /// <param name="payload">حمولة بنيوية.</param>
+    /// <param name="tx">معاملة النداء إن وُجدت.</param>
+    /// <param name="ct">رمز الإلغاء.</param>
     public static async Task WriteAsync(NpgsqlConnection c, Guid? tenantId, string actor,
         string operation, OperationOutcome outcome, string reasonAr, object? payload = null,
         NpgsqlTransaction? tx = null, CancellationToken ct = default)
@@ -53,6 +89,11 @@ public sealed class OperationLog(string controlConnectionString)
             }, tx, ct);
     }
 
+    /// <summary>يعدّ أسطر السِرد لعملية بنتيجة بعينها — به تُثبَت أن الرفض كُتب فعلاً.</summary>
+    /// <param name="operation">اسم العملية.</param>
+    /// <param name="outcome">النتيجة المطلوب عدّها.</param>
+    /// <param name="ct">رمز الإلغاء.</param>
+    /// <returns>عدد الأسطر.</returns>
     public async Task<int> CountAsync(string operation, OperationOutcome outcome,
         CancellationToken ct = default) =>
         (int)(await Db.ScalarAsync<long>(controlConnectionString,

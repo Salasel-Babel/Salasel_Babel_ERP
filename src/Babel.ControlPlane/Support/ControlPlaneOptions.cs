@@ -1,3 +1,4 @@
+using System.Globalization;
 using Npgsql;
 
 namespace Babel.ControlPlane.Support;
@@ -25,7 +26,9 @@ public sealed class ControlPlaneOptions
 
     /// <summary>مضيف الخادم ومنفذه ومستخدم الإدارة — تُقرأ من البيئة.</summary>
     public string AdminHost { get; init; } = Env("BABEL_CP_HOST", "127.0.0.1");
-    public int AdminPort { get; init; } = int.Parse(Env("BABEL_CP_PORT", "5432"));
+    /// <summary>منفذ الخادم.</summary>
+    public int AdminPort { get; init; } = EnvInt("BABEL_CP_PORT", 5432);
+    /// <summary>مستخدم الإدارة — يُستعمل لإنشاء القواعد وتطبيق الـDDL فقط.</summary>
     public string AdminUser { get; init; } = Env("BABEL_CP_ADMIN_USER", "postgres");
 
     /// <summary>
@@ -40,42 +43,46 @@ public sealed class ControlPlaneOptions
 
     /// <summary>السقف الصلب لعدد الاتصالات الفعلية عبر <b>كل</b> المستأجرين مجتمعين.</summary>
     public int GlobalConnectionCap { get; init; } =
-        int.Parse(Env("BABEL_CP_GLOBAL_CONN_CAP", "48"));
+        EnvInt("BABEL_CP_GLOBAL_CONN_CAP", 48);
 
     /// <summary>أقصى عدد اتصالات لمستأجر واحد — يمنع مستأجراً واحداً من ابتلاع السقف.</summary>
     public int MaxConnectionsPerTenant { get; init; } =
-        int.Parse(Env("BABEL_CP_TENANT_CONN_CAP", "4"));
+        EnvInt("BABEL_CP_TENANT_CONN_CAP", 4);
 
     /// <summary>أقصى عدد مصادر بيانات (‏pools) حيّة في الذاكرة قبل الإخلاء بالأقدمية.</summary>
     public int MaxLiveDataSources { get; init; } =
-        int.Parse(Env("BABEL_CP_MAX_LIVE_POOLS", "64"));
+        EnvInt("BABEL_CP_MAX_LIVE_POOLS", 64);
 
     /// <summary>مهلة الخمول قبل إخلاء مصدر بيانات مستأجر لم يُستعمل.</summary>
     public TimeSpan IdleEviction { get; init; } =
-        TimeSpan.FromSeconds(int.Parse(Env("BABEL_CP_IDLE_EVICT_SECONDS", "60")));
+        TimeSpan.FromSeconds(EnvInt("BABEL_CP_IDLE_EVICT_SECONDS", 60));
 
     /// <summary>مهلة انتظار حجز اتصال من السقف العام قبل الرفض السريع.</summary>
     public TimeSpan LeaseTimeout { get; init; } =
-        TimeSpan.FromSeconds(int.Parse(Env("BABEL_CP_LEASE_TIMEOUT_SECONDS", "5")));
+        TimeSpan.FromSeconds(EnvInt("BABEL_CP_LEASE_TIMEOUT_SECONDS", 5));
 
     // ---- قاطع الدارة ---------------------------------------------------------
 
+    /// <summary>عدد الإخفاقات المتتالية التي تفتح قاطع دارة المستأجر.</summary>
     public int CircuitFailureThreshold { get; init; } =
-        int.Parse(Env("BABEL_CP_CB_FAILURES", "3"));
+        EnvInt("BABEL_CP_CB_FAILURES", 3);
 
+    /// <summary>مدّة بقاء القاطع مفتوحاً قبل السماح بمحاولة استطلاع.</summary>
     public TimeSpan CircuitOpenDuration { get; init; } =
-        TimeSpan.FromSeconds(int.Parse(Env("BABEL_CP_CB_OPEN_SECONDS", "10")));
+        TimeSpan.FromSeconds(EnvInt("BABEL_CP_CB_OPEN_SECONDS", 10));
 
     /// <summary>مهلة فتح الاتصال — قصيرة عمداً: مستأجر غير قابل للوصول يجب أن يفشل بسرعة.</summary>
     public int ConnectTimeoutSeconds { get; init; } =
-        int.Parse(Env("BABEL_CP_CONNECT_TIMEOUT", "3"));
+        EnvInt("BABEL_CP_CONNECT_TIMEOUT", 3);
 
     // ---- الترحيل الأسطولي ----------------------------------------------------
 
-    public int FleetBatchSize { get; init; } = int.Parse(Env("BABEL_CP_FLEET_BATCH", "8"));
+    /// <summary>عدد القواعد التي يحجزها عامل الترحيل في الدفعة الواحدة.</summary>
+    public int FleetBatchSize { get; init; } = EnvInt("BABEL_CP_FLEET_BATCH", 8);
 
+    /// <summary>مهلة حجز هدف الترحيل: بانتهائها يُلتقط الهدف من عامل ميّت تلقائياً.</summary>
     public TimeSpan FleetLeaseDuration { get; init; } =
-        TimeSpan.FromSeconds(int.Parse(Env("BABEL_CP_FLEET_LEASE_SECONDS", "60")));
+        TimeSpan.FromSeconds(EnvInt("BABEL_CP_FLEET_LEASE_SECONDS", 60));
 
     // ---- بناء سلاسل الاتصال --------------------------------------------------
 
@@ -100,8 +107,9 @@ public sealed class ControlPlaneOptions
     /// اتصالات مستوى التحكّم تُحسب هي أيضاً من ميزانية <c>max_connections</c>
     /// نفسها — وتجاهلها هو أحد أسباب تجاوز السقف بلا تفسير.
     /// </summary>
-    public int ControlPoolSize { get; init; } = int.Parse(Env("BABEL_CP_CONTROL_POOL", "8"));
+    public int ControlPoolSize { get; init; } = EnvInt("BABEL_CP_CONTROL_POOL", 8);
 
+    /// <summary>سلسلة الاتصال بقاعدة التحكّم، مُجمَّعة بسقف صغير مُعلَن.</summary>
     public string ControlConnectionString
     {
         get
@@ -154,8 +162,27 @@ public sealed class ControlPlaneOptions
         return b.ConnectionString;
     }
 
+    /// <summary>اسم قاعدة بيانات مستأجر من رمزه.</summary>
+    /// <param name="tenantCode">رمز المستأجر.</param>
+    /// <returns>اسم القاعدة.</returns>
     public string TenantDatabaseName(string tenantCode) => TenantDatabasePrefix + tenantCode;
 
     private static string Env(string key, string fallback) =>
         Environment.GetEnvironmentVariable(key) is { Length: > 0 } v ? v : fallback;
+
+    /// <summary>
+    /// إعداد عددي من البيئة. <b>الثقافة الثابتة صريحة وإلزامية:</b> متغيّر البيئة
+    /// إعداد آلي لا نصّ معروض، و<c>int.Parse</c> بلا ثقافة يقرأ ثقافة العملية —
+    /// فتحت لغة عربية بأرقام هندية يفشل التحليل أو ينحرف، والنتيجة سقف اتصالات
+    /// خاطئ يظهر كعطل عشوائي في الإنتاج لا كخطأ إعداد.
+    /// ورقم غير صالح <b>يرمي</b> ولا يسقط بصمت إلى الافتراضي: إعداد مكتوب خطأً
+    /// يجب أن يوقف الإقلاع، لا أن يعمل بقيمة لم يخترها أحد.
+    /// </summary>
+    private static int EnvInt(string key, int fallback)
+    {
+        if (Environment.GetEnvironmentVariable(key) is not { Length: > 0 } raw) return fallback;
+        if (int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var v)) return v;
+        throw new InvalidOperationException(
+            $"قيمة متغيّر البيئة «{key}» = «{raw}» ليست عدداً صحيحاً — يُرفض الإقلاع بدل العمل بقيمة افتراضية لم يخترها أحد.");
+    }
 }

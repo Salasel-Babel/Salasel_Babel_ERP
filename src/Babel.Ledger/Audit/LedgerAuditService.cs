@@ -48,24 +48,27 @@ public sealed record TrialBalanceRow(string AccountCode, string NameAr, string N
 /// لقطة أخرى.
 /// </para>
 /// <para>
-/// <b>ولماذا صفٌّ مجهول الاسم (‏tuple) لا سجلٌّ مسمّى:</b> هذا النوع يعبر إلى الجذر
-/// التركيبي، والبند (ب) من القاعدة 13 يحصر ما يجوز أن يسمّيه السطح من كل وحدة في قائمة
-/// <c>PublishedModuleSurface</c> داخل
-/// <c>tests/Babel.ArchitectureTests/Rule13_NoBusinessLogicInTheApi.cs</c>. وقد <b>قيس</b>
-/// ذلك: سجلّ باسم <c>Babel.Ledger.Audit.TrialBalanceReport</c> أسقط
-/// <c>TheApiNamesOnlyThePublishedSurfaceOfEachModule</c> برسالتها الصريحة. وإضافة اسم
-/// إلى تلك القائمة <b>قرار معماري</b> يملكه صاحب ذلك الملف — لا هذا الفرع — ورسالة
-/// القاعدة نفسها تقول ذلك. والصفّ المجهول يحمل المعنى نفسه بأعضاء مسمّاة ولا يُدخل اسماً
-/// جديداً إلى سطح أي وحدة؛ ويُستبدل بالسجلّ المسمّى متى قُبل السطر المقترح.
+/// <b>ولماذا سجلٌّ مسمّى لا صفٌّ مجهول الاسم (‏tuple):</b> كان هذا النوع صفّاً مجهولاً
+/// فترةً، لا لسبب في المجال بل لأن قائمة <c>PublishedModuleSurface</c> في القاعدة 13 كانت
+/// في ملف خارج ملكية الفرع الذي كتب النوع، فصار الالتفاف أرخص من تسجيل القرار. وقد
+/// أُنزل القرار: الاسم مُضاف إلى القائمة بسببه المكتوب بجانبه. والصفّ المجهول كان أسوأ
+/// للحارس نفسه لا أفضل: <c>System.ValueTuple</c> ليس نوعاً في تجميعة وحدة، فلا يراه
+/// الحارس أصلاً — أي أن مفردةً من مفردات الدفتر كانت تعبر إلى طبقة HTTP <b>خارج</b>
+/// إحصاء السطح المنشور بدل أن تكون فيه.
 /// </para>
-/// <list type="bullet">
-///   <item><c>Rows</c> — الصفوف مرتّبة برمز الحساب.</item>
-///   <item><c>TotalDebit</c> — مجموع المدين بعملة الشركة، من <c>sum()</c> لا من جمع الصفوف.</item>
-///   <item><c>TotalCredit</c> — مجموع الدائن بعملة الشركة.</item>
-///   <item><c>Balanced</c> — هل تساوى المجموعان؟ يُحسم هنا كي لا يُقارَن مبلغان في
-///         JavaScript. وميزانٌ غير متوازن <b>يُرى</b>: لا يُقرَّب ولا يُخفى.</item>
-/// </list>
 /// </summary>
+/// <param name="Rows">الصفوف مرتّبة برمز الحساب.</param>
+/// <param name="TotalDebit">مجموع المدين بعملة الشركة، من <c>sum()</c> لا من جمع الصفوف.</param>
+/// <param name="TotalCredit">مجموع الدائن بعملة الشركة، من <c>sum()</c> كذلك.</param>
+/// <param name="Balanced">
+/// هل تساوى المجموعان؟ يُحسم هنا كي لا يُقارَن مبلغان في JavaScript. وميزانٌ غير متوازن
+/// <b>يُرى</b>: لا يُقرَّب ولا يُخفى.
+/// </param>
+public sealed record TrialBalanceReport(
+    IReadOnlyList<TrialBalanceRow> Rows,
+    decimal TotalDebit,
+    decimal TotalCredit,
+    bool Balanced);
 
 /// <summary>
 /// قراءات التدقيق على الدفتر: إعادة التحقق من السلسلة، وميزان المراجعة.
@@ -149,7 +152,7 @@ public sealed class LedgerAuditService : IApplicationService
     /// <param name="periodCode">رمز الفترة، أو <c>null</c> لكل الفترات.</param>
     /// <param name="cancellationToken">رمز الإلغاء.</param>
     [RequiresEntitlement(BabelModule.Ledger, EntitlementAccess.Read)]
-    public async ValueTask<Result<(IReadOnlyList<TrialBalanceRow> Rows, decimal TotalDebit, decimal TotalCredit, bool Balanced)>> TrialBalanceFromLinesAsync(
+    public async ValueTask<Result<TrialBalanceReport>> TrialBalanceFromLinesAsync(
         TenantId tenant,
         UserId actor,
         string book,
@@ -162,7 +165,7 @@ public sealed class LedgerAuditService : IApplicationService
 
         if (gate.IsFailure)
         {
-            return Result<(IReadOnlyList<TrialBalanceRow> Rows, decimal TotalDebit, decimal TotalCredit, bool Balanced)>.Failure(gate.Errors);
+            return Result<TrialBalanceReport>.Failure(gate.Errors);
         }
 
         List<TrialBalanceRow> rows = [];
@@ -210,7 +213,8 @@ public sealed class LedgerAuditService : IApplicationService
 
         // ‏المساواة تُحسم هنا لا عند العميل: مقارنتها في JavaScript تعيد الفخّ نفسه
         // الذي بُني له شكل السلك — ‏Number فاصلة عائمة ثنائية.
-        return Result<(IReadOnlyList<TrialBalanceRow> Rows, decimal TotalDebit, decimal TotalCredit, bool Balanced)>.Success((rows, totalDebit, totalCredit, totalDebit == totalCredit));
+        return Result<TrialBalanceReport>.Success(
+            new TrialBalanceReport(rows, totalDebit, totalCredit, totalDebit == totalCredit));
     }
 
     /// <summary>سطر قيد مقروءاً من التخزين، بكل عموده — لا بستّة منها.</summary>

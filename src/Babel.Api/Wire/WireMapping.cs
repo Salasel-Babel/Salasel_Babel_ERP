@@ -150,7 +150,7 @@ internal static class WireMapping
     public static TrialBalanceDto ToDto(
         string book,
         string? periodCode,
-        (IReadOnlyList<TrialBalanceRow> Rows, decimal TotalDebit, decimal TotalCredit, bool Balanced) report)
+        TrialBalanceReport report)
     {
         ArgumentNullException.ThrowIfNull(report.Rows);
 

@@ -298,16 +298,22 @@ public sealed class PostingIdentityIncludesEventCodeTests : IAsyncLifetime
     public async Task The_deployer_upgrades_an_existing_populated_database_without_losing_a_row()
     {
         CancellationToken token = TestContext.Current.CancellationToken;
-        const string Probe = "babel_arap_purchasing_upgrade_probe";
+        // اسم القاعدة **خاصّ بهذه العملية**: كان جذعاً ثابتاً وكانت التهيئة تبدأ
+        // بـ‏<c>drop database … with (force)</c>، فعمليتان متزامنتان تُسقط كلٌّ منهما
+        // قاعدة الأخرى في منتصف تشغيلها. مقيس على هذا الجهاز قبل هذا الإصلاح: ثلاث
+        // عمليات متزامنة على هذا البند وحده أسقطت اثنتين من ثلاث في المبيعات
+        // (‏23505 على pg_database_datname_index و57P01) وثلاثاً من ثلاث في المشتريات
+        // (‏57P01 وXX000). ولا إسقاط في البداية: القاعدة ملك هذه العملية وحدها،
+        // فـ‏42P04 على هذا الاسم عطلٌ حقيقي يجب أن يُسمَع لا أن يُبتلع بتبنّي قاعدة غريب.
+        string probeDatabase = TestRunScope.Name(PurchasingTestEnvironment.UpgradeProbeDatabaseStem);
 
         string admin = PurchasingTestEnvironment.Maintenance;
-        string probeConnection = $"Host=127.0.0.1;Port=5432;Database={Probe};Username=postgres;Include Error Detail=true";
+        string probeConnection = $"Host=127.0.0.1;Port=5432;Database={probeDatabase};Username=postgres;Include Error Detail=true";
 
         await using (NpgsqlConnection maintenance = new(admin))
         {
             await maintenance.OpenAsync(token);
-            await ExecuteAsync(maintenance, $"drop database if exists {Probe} with (force)", token);
-            await ExecuteAsync(maintenance, $"create database {Probe}", token);
+            await ExecuteAsync(maintenance, $"create database {probeDatabase}", token);
         }
 
         try
@@ -379,7 +385,7 @@ public sealed class PostingIdentityIncludesEventCodeTests : IAsyncLifetime
         {
             await using NpgsqlConnection maintenance = new(admin);
             await maintenance.OpenAsync(token);
-            await ExecuteAsync(maintenance, $"drop database if exists {Probe} with (force)", token);
+            await ExecuteAsync(maintenance, $"drop database if exists {probeDatabase} with (force)", token);
         }
     }
 

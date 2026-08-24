@@ -390,7 +390,7 @@ public sealed class PostingEngineTests : IAsyncLifetime
                     1_000.0000m * i, 150.0000m * i, new DateOnly(2026, 7, 10)), token);
         }
 
-        Result<(IReadOnlyList<TrialBalanceRow> Rows, decimal TotalDebit, decimal TotalCredit, bool Balanced)> trial =
+        Result<TrialBalanceReport> trial =
             await _harness.Auditing.TrialBalanceFromLinesAsync(
                 new TenantId(LedgerTestEnvironment.TenantA), LedgerTestEnvironment.Auditor,
                 LedgerTestEnvironment.Book, "2026-07", token);

@@ -161,17 +161,22 @@ internal static class ApiTestDatabase
 
         // ‏nosuperuser ليست تفصيلاً: بدونها تسقط كل طبقات الحصانة معاً (فخ-30 · ADR-0003).
         //
-        // واسم الدور مشترك بين العمليات، فـ«اقرأ ثم أنشئ» يتسابق: عمليتان تريان العدّ
-        // صفراً فتُنشئان معاً، وتفشل إحداهما بـ42710. الإنشاء هنا داخل كتلة واحدة
-        // تبتلع «موجود سلفاً» وحده.
+        // والاسم مشترك بين العمليات، فإنشاؤه يتسابق. وقُيس على هذا الجهاز أن الكتلة
+        // بلا قفل لا تكفي: ثماني عمليات متزامنة تُنشئ الدور نفسه أخفقت واحدةً في كل
+        // جولة من ثلاث جولات، مرّة بـ‏23505 على pg_authid_rolname_index (لا 42710،
+        // فلا يلتقطها duplicate_object) ومرّة بـ‏XX000 «tuple concurrently updated»
+        // من alter role في مسار الاستثناء. فالقفل الاستشاري على اسم الدور يُسلسل
+        // الإنشاء عبر العمليات — والكتلة $$ معاملة واحدة، فالقفل يُفكّ بإيداعها.
+        // وبعد القفل: ثلاث جولات × ثماني عمليات = 24 عملية، صفر إخفاق.
         await ExecAsync(
             admin,
             $"""
             do $$
             begin
+                perform pg_advisory_xact_lock(hashtextextended('{AppRole}', 0));
                 begin
                     create role {AppRole} login nosuperuser nocreatedb nocreaterole noinherit;
-                exception when duplicate_object then
+                exception when duplicate_object or unique_violation then
                     alter role {AppRole} login nosuperuser nocreatedb nocreaterole noinherit;
                 end;
             end

@@ -54,7 +54,7 @@ public sealed class TrialBalanceTotalsTests : IAsyncLifetime
                                  : string.Join(" | ", posted.Errors.Select(static e => e.Code)));
         }
 
-        (IReadOnlyList<TrialBalanceRow> Rows, decimal TotalDebit, decimal TotalCredit, bool Balanced) trial =
+        TrialBalanceReport trial =
             await ReadAsync("TOTALS", "2026-06", token);
 
         decimal sumDebit = trial.Rows.Sum(static row => row.Debit);
@@ -96,7 +96,7 @@ public sealed class TrialBalanceTotalsTests : IAsyncLifetime
 
         await InjectUnbalancedAsync(token);
 
-        (IReadOnlyList<TrialBalanceRow> Rows, decimal TotalDebit, decimal TotalCredit, bool Balanced) trial =
+        TrialBalanceReport trial =
             await ReadAsync(Book, Period, token);
 
         Proof.Require(
@@ -125,10 +125,10 @@ public sealed class TrialBalanceTotalsTests : IAsyncLifetime
 
     // ═══════════════════════════════════════════════════════════════════════
 
-    private async Task<(IReadOnlyList<TrialBalanceRow> Rows, decimal TotalDebit, decimal TotalCredit, bool Balanced)>
+    private async Task<TrialBalanceReport>
         ReadAsync(string book, string period, CancellationToken token)
     {
-        Result<(IReadOnlyList<TrialBalanceRow> Rows, decimal TotalDebit, decimal TotalCredit, bool Balanced)> result =
+        Result<TrialBalanceReport> result =
             await _harness.Auditing.TrialBalanceFromLinesAsync(
                 new TenantId(LedgerTestEnvironment.TenantA), LedgerTestEnvironment.Auditor, book, period, token);
 

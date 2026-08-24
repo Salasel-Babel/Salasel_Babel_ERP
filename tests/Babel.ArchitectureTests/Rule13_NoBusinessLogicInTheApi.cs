@@ -179,6 +179,15 @@ public sealed class Rule13_NoBusinessLogicInTheApi
         "Babel.Ledger.Audit.LedgerChainReport",
         "Babel.Ledger.Audit.TrialBalanceRow",
 
+        // ‏TrialBalanceReport — نموذج قراءة يُرحّله السطح ولا يحسبه، وقرارُ نشره مكتوب هنا
+        // لا في تقرير: هو نوع الإرجاع لدالّة على `LedgerAuditService` (منشورة أعلاه)،
+        // مركَّب من `TrialBalanceRow` (منشور أعلاه)، في فضاء `Audit` الذي ليس من فضاءات
+        // الداخل المُعلَنة أدناه. أي أن كل مفرداته منشورة سلفاً وهذا اسمُ اجتماعها.
+        // وكان صفّاً مجهول الاسم قبل هذا السطر — وذلك أضعفُ لا أقوى: `System.ValueTuple`
+        // ليس نوعاً في تجميعة وحدة فلا يُحصى هنا أصلاً، فكان السطح يسمّي مفردة من الدفتر
+        // خارج هذا الإحصاء. وتسميته تُعيدها إلى داخله.
+        "Babel.Ledger.Audit.TrialBalanceReport",
+
         // نقاط تركيب الوحدات الأفقية — دالة واحدة لكل وحدة، ولا شيء غيرها.
         "Babel.Sales.SalesModuleRegistration",
         "Babel.Purchasing.PurchasingModuleRegistration",

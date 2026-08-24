@@ -20,7 +20,7 @@
 |---|---|
 | [00-preliminary-vision.md](docs/analysis/00-preliminary-vision.md) | الرؤية الأولية: كيف نبدأ التحليل، وما هي النواة |
 | [01-scope-and-gaps.md](docs/analysis/01-scope-and-gaps.md) | خريطة النطاق والفجوات بين الوثيقة المستلمة والطلب |
-| [02-architecture.md](docs/analysis/02-architecture.md) | المعمارية المقترحة والقرارات التقنية المبكرة |
+| [02-architecture.md](docs/analysis/02-architecture.md) | **المعمارية — الخيارات والقياسات.** كل رقم فيها موسوم: **مقيس** / **مُتحقَّق منه من مصدر** / **غير مُتحقَّق منه** |
 | [03-accounting-core.md](docs/analysis/03-accounting-core.md) | النواة المحاسبية ومصفوفة الترحيل |
 | [04-zatca-integration.md](docs/analysis/04-zatca-integration.md) | الفوترة الإلكترونية والالتزام الضريبي |
 | [05-roadmap.md](docs/analysis/05-roadmap.md) | خارطة الطريق والمراحل و MVP |
@@ -45,6 +45,25 @@ feature/<مهمة>  ──PR──▶  develop  ──PR──▶  main  ──�
 ```
 
 انظر [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## الحزمة التقنية
+
+**قيست فعلياً** على .NET SDK 10.0.111 (زمن التشغيل 10.0.11) و PostgreSQL 16.13 — إصدارات مستقرة تشحن
+تجميعات `net10.0` أصلية:
+
+| الطبقة | المكوّن |
+|---|---|
+| قاعدة البيانات | PostgreSQL 16.13 — `NUMERIC(19,4)` للمال، RLS، JSONB، بحث عربي |
+| الخلفية | .NET 10 / C# — EF Core 10 يملك المخطط ومسار الكتابة إلى الدفتر |
+| الرسائل والصندوق الصادر | WolverineFx 6.29.2 (`Postgresql` + `EntityFrameworkCore`) — بلا Marten |
+| دفتر الأستاذ | جداول علائقية **تُضاف إليها فقط**، محميّة بالصلاحيات ومشغّل قيد مؤجّل |
+| الواجهة | React + TypeScript بدعم RTL أصلي — **لم يُقَس بعد** |
+
+التفاصيل والقياسات والحجج المضادة (بما فيها **لماذا لا يُوصى بـMarten** رغم أنه عمل فعلياً) في
+[02-architecture.md](docs/analysis/02-architecture.md).
+
+> **تحفّظ:** لم يكن أي مصدر رسمي لهيئة الزكاة والضريبة والدخل قابلاً للوصول أثناء إعداد التحليل التقني —
+> كل ما يخص النظام السعودي **غير مُتحقَّق منه** ويجب تأكيده رسمياً قبل أي بناء أو عقد.
 
 ## المرحلة الحالية
 

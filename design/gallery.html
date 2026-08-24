@@ -1,16 +1,28 @@
 <!doctype html>
-<html lang="ar" dir="rtl">
+<html lang="ar" dir="rtl" data-i18n-pending>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="معرض نظام التصميم لواجهات سلاسل بابل ERP — كل مكوّن في كل حالة، في السمتين">
-<title>معرض نظام التصميم — سلاسل بابل</title>
+<meta name="description" content="معرض نظام التصميم لواجهات سلاسل بابل ERP" data-i18n-attr="content:gallery.description">
+<title data-i18n="gallery.docTitle">معرض نظام التصميم — سلاسل بابل</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="tokens/tokens.css">
+<!-- لوحة الألوان البديلة: تُربَط معطّلةً ويشغّلها مبدّل اللوحة في الشريط العلوي.
+     ‏disabled على <link> هي الطريقة الوحيدة لتبديل ملفّ سمة كاملاً بلا خطوة بناء
+     وبلا شبكة، ولترتيب المصدر: هذا الملف بعد tokens.css فيفوز عليه حين يُفعَّل. -->
+<link rel="stylesheet" href="theme/theme-accessible.css" id="palette-accessible" disabled>
 <link rel="stylesheet" href="components/components.css">
 <link rel="stylesheet" href="components/print.css" media="print">
+<!-- طبقة التدويل — قبل behaviors.js دائماً. لغة خامسة = ملفٌّ واحد + سطر في manifest.js -->
+<script src="i18n/i18n.js" defer></script>
+<script src="i18n/locales/manifest.js" defer></script>
+<script src="i18n/locales/ar.js" defer></script>
+<script src="i18n/locales/en.js" defer></script>
+<script src="i18n/locales/ur.js" defer></script>
+<script src="i18n/locales/hi.js" defer></script>
+<noscript><style>:root[data-i18n-pending] body{visibility:visible}</style></noscript>
 <style>
 /* ── أنماط المعرض وحده — ليست جزءاً من نظام التصميم ─────────────────────── */
 .gal-hero{
@@ -126,6 +138,14 @@
   font-size:var(--font-size-hint);text-decoration:none;font-weight:600;
 }
 .toc a:hover{border-color:var(--color-primary);color:var(--color-primary)}
+.gal-footer{
+  margin:var(--space-32) 0 0;padding-top:var(--space-18);
+  border-top:var(--border-width) solid var(--color-border);
+  color:var(--color-text-subtle);font-size:var(--font-size-hint);
+  line-height:var(--line-relaxed);max-width:78ch;
+}
+.sw .vals span{direction:ltr;unicode-bidi:isolate}
+.demo-hd .localepick label{font-weight:400;color:var(--color-text-subtle)}
 .sprite{position:absolute;width:0;height:0;overflow:hidden}
 </style>
 </head>
@@ -158,240 +178,213 @@
   <symbol id="i-scale" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M7 21h10M4 8h16M7 8l-3 6a3 3 0 0 0 6 0Zm10 0-3 6a3 3 0 0 0 6 0Z"/></symbol>
 </svg>
 
-<a class="skiplink" href="#gal-main">تخطَّ إلى المحتوى</a>
+<a data-i18n="app.skipToContent" class="skiplink" href="#gal-main">تخطَّ إلى المحتوى</a>
+<noscript><p class="note note-warn" data-i18n-exempt style="margin:var(--space-10)">هذه الصفحة تُحمِّل نصوصها من ملفّ لغة عبر JavaScript. فعّله لعرضها. · This page loads its text from a locale file via JavaScript.</p></noscript>
 
 <header class="topbar">
-  <button class="iconbtn navtoggle" data-nav-toggle aria-label="فتح قائمة التنقّل" aria-expanded="false">
+  <button data-i18n-attr="aria-label:app.a11y.openNav" class="iconbtn navtoggle" data-nav-toggle aria-label="فتح قائمة التنقّل" aria-expanded="false">
     <svg width="19" height="19"><use href="#i-menu"/></svg>
   </button>
   <div class="brand">
     <span class="mark" aria-hidden="true"><svg width="17" height="17"><use href="#i-logo"/></svg></span>
-    <span class="brand-text">نظام التصميم — سلاسل بابل</span>
+    <span data-i18n="app.designSystem" class="brand-text">نظام التصميم — سلاسل بابل</span>
   </div>
-  <button class="orgpick">معرض المكوّنات · الإصدار ١٫٠
+  <button class="orgpick"><span data-i18n="app.galleryVersion">معرض المكوّنات · الإصدار ١٫٠</span>
     <svg width="15" height="15"><use href="#i-down"/></svg>
   </button>
   <div class="tools">
-    <button class="iconbtn" data-theme-toggle aria-label="تبديل المظهر" title="تبديل المظهر" aria-pressed="false">
+    <span class="localepick">
+      <label class="visually-hidden" for="gal-locale" data-i18n="app.locale.aria">اختيار لغة الواجهة</label>
+      <select class="ctl ctl-sm" id="gal-locale" data-locale-select></select>
+    </span>
+    <span class="localepick">
+      <label class="visually-hidden" for="gal-palette" data-i18n="app.theme.palette">لوحة الألوان</label>
+      <select class="ctl ctl-sm" id="gal-palette">
+        <option value="default" data-i18n="app.theme.paletteDefault">المعتمدة</option>
+        <option value="accessible" data-i18n="app.theme.paletteAccessible">المقترحة (وصولية)</option>
+      </select>
+    </span>
+    <button data-i18n-attr="aria-label:app.theme.toggle;title:app.theme.toggle" class="iconbtn" data-theme-toggle aria-label="تبديل المظهر" title="تبديل المظهر" aria-pressed="false">
       <svg width="18" height="18"><use href="#i-moon"/></svg>
     </button>
-    <button class="iconbtn" aria-label="المساعدة"><svg width="18" height="18"><use href="#i-help"/></svg></button>
-    <button class="iconbtn bell" data-unread="true" aria-label="التنبيهات"><svg width="18" height="18"><use href="#i-bell"/></svg></button>
-    <span class="avatar">مظ</span>
+    <button data-i18n-attr="aria-label:app.a11y.help" class="iconbtn" aria-label="المساعدة"><svg width="18" height="18"><use href="#i-help"/></svg></button>
+    <button data-i18n-attr="aria-label:gallery.toc.alerts" class="iconbtn bell" data-unread="true" aria-label="التنبيهات"><svg width="18" height="18"><use href="#i-bell"/></svg></button>
+    <span data-i18n="app.userInitials" data-i18n-attr="title:app.userName" class="avatar">مظ</span>
   </div>
 </header>
 
 <div class="navscrim"></div>
 
 <div class="shell">
-  <aside class="sidenav galnav" aria-label="أقسام المعرض">
-    <span class="navgroup-label">الرموز</span>
-    <a class="navitem" href="#t-color"><svg width="16" height="16"><use href="#i-sparkle"/></svg>الألوان</a>
-    <a class="navitem" href="#t-type"><svg width="16" height="16"><use href="#i-book"/></svg>الخطوط</a>
-    <a class="navitem" href="#t-space"><svg width="16" height="16"><use href="#i-scale"/></svg>المسافات والاستدارة</a>
-    <span class="navgroup-label">المكوّنات</span>
-    <a class="navitem" href="#c-btn"><svg width="16" height="16"><use href="#i-plus"/></svg>الأزرار</a>
-    <a class="navitem" href="#c-form"><svg width="16" height="16"><use href="#i-search"/></svg>الحقول</a>
-    <a class="navitem" href="#c-amount"><svg width="16" height="16"><use href="#i-scale"/></svg>المبالغ</a>
-    <a class="navitem" href="#c-line"><svg width="16" height="16"><use href="#i-book"/></svg>محرّر سطر القيد</a>
-    <a class="navitem" href="#c-table"><svg width="16" height="16"><use href="#i-book"/></svg>الجداول</a>
-    <a class="navitem" href="#c-pill"><svg width="16" height="16"><use href="#i-check"/></svg>شارات الحالة</a>
-    <a class="navitem" href="#c-alert"><svg width="16" height="16"><use href="#i-warn"/></svg>التنبيهات والتحقق</a>
-    <a class="navitem" href="#c-overlay"><svg width="16" height="16"><use href="#i-copy"/></svg>النوافذ والأدراج</a>
-    <a class="navitem" href="#c-nav"><svg width="16" height="16"><use href="#i-menu"/></svg>التبويبات والترقيم</a>
-    <a class="navitem" href="#c-state"><svg width="16" height="16"><use href="#i-inbox"/></svg>فارغ · تحميل · خطأ</a>
-    <a class="navitem" href="#c-stat"><svg width="16" height="16"><use href="#i-scale"/></svg>الإحصائيات والتوازن</a>
-    <a class="navitem" href="#c-toast"><svg width="16" height="16"><use href="#i-bell"/></svg>الإشعارات</a>
-    <a class="navitem" href="#c-print"><svg width="16" height="16"><use href="#i-print"/></svg>الطباعة</a>
+  <aside data-i18n-attr="aria-label:app.a11y.gallerySections" class="sidenav galnav" aria-label="أقسام المعرض">
+    <span class="navgroup-label" data-i18n="gallery.nav.tokens">الرموز</span>
+    <a class="navitem" href="#t-color"><svg width="16" height="16"><use href="#i-sparkle"/></svg><span data-i18n="gallery.toc.colors">الألوان</span></a>
+    <a class="navitem" href="#t-type"><svg width="16" height="16"><use href="#i-book"/></svg><span data-i18n="gallery.toc.type">الخطوط</span></a>
+    <a class="navitem" href="#t-space"><svg width="16" height="16"><use href="#i-scale"/></svg><span data-i18n="gallery.toc.space">المسافات والاستدارة</span></a>
+    <span class="navgroup-label" data-i18n="gallery.nav.components">المكوّنات</span>
+    <a class="navitem" href="#c-btn"><svg width="16" height="16"><use href="#i-plus"/></svg><span data-i18n="gallery.toc.buttons">الأزرار</span></a>
+    <a class="navitem" href="#c-form"><svg width="16" height="16"><use href="#i-search"/></svg><span data-i18n="gallery.toc.fields">الحقول</span></a>
+    <a class="navitem" href="#c-amount"><svg width="16" height="16"><use href="#i-scale"/></svg><span data-i18n="gallery.toc.amounts">المبالغ</span></a>
+    <a class="navitem" href="#c-line"><svg width="16" height="16"><use href="#i-book"/></svg><span data-i18n="gallery.sec.line">محرّر سطر القيد</span></a>
+    <a class="navitem" href="#c-table"><svg width="16" height="16"><use href="#i-book"/></svg><span data-i18n="gallery.toc.tables">الجداول</span></a>
+    <a class="navitem" href="#c-pill"><svg width="16" height="16"><use href="#i-check"/></svg><span data-i18n="gallery.sec.pills">شارات الحالة</span></a>
+    <a class="navitem" href="#c-alert"><svg width="16" height="16"><use href="#i-warn"/></svg><span data-i18n="gallery.toc.alerts">التنبيهات والتحقق</span></a>
+    <a class="navitem" href="#c-overlay"><svg width="16" height="16"><use href="#i-copy"/></svg><span data-i18n="gallery.toc.overlays">النوافذ والأدراج</span></a>
+    <a class="navitem" href="#c-nav"><svg width="16" height="16"><use href="#i-menu"/></svg><span data-i18n="gallery.sec.nav">التبويبات والترقيم</span></a>
+    <a class="navitem" href="#c-state"><svg width="16" height="16"><use href="#i-inbox"/></svg><span data-i18n="gallery.toc.empty">فارغ · تحميل · خطأ</span></a>
+    <a class="navitem" href="#c-stat"><svg width="16" height="16"><use href="#i-scale"/></svg><span data-i18n="gallery.sec.stats">الإحصائيات والتوازن</span></a>
+    <a class="navitem" href="#c-toast"><svg width="16" height="16"><use href="#i-bell"/></svg><span data-i18n="gallery.sec.toasts">الإشعارات</span></a>
+    <a class="navitem" href="#c-print"><svg width="16" height="16"><use href="#i-print"/></svg><span data-i18n="gallery.toc.print">الطباعة</span></a>
+    <a class="navitem" href="#c-i18n"><svg width="16" height="16"><use href="#i-book"/></svg><span data-i18n="gallery.toc.i18n">التدويل</span></a>
+    <a class="navitem" href="#c-audit"><svg width="16" height="16"><use href="#i-check"/></svg><span data-i18n="gallery.toc.audit">الفحص</span></a>
   </aside>
 
   <main class="main main--plain" id="gal-main">
 
     <section class="gal-hero">
-      <h1>نظام تصميم سلاسل بابل</h1>
-      <p>
-        كل ما في هذه الصفحة مستخرَج من شاشة <strong>قيد اليومية المعتمدة</strong> ولا شيء فيه
-        أُعيد تصميمه. الغرض أن تُبنى كل شاشة قادمة — على يد أي شخص أو أي وكيل — فتبدو كأنها
-        خرجت من نفس اليد. بدّل المظهر من زر القمر أعلى الصفحة لترى النظام كاملاً في السمة الأخرى.
-      </p>
+      <h1 data-i18n="gallery.heroTitle">نظام تصميم سلاسل بابل</h1>
+      <p data-i18n-html="gallery.heroBody"></p>
       <div class="meta">
-        <span class="pill pill--posted">معتمد كمرجع بصري</span>
-        <span class="pill pill--info">عربي أصيل · RTL</span>
-        <span class="pill pill--draft">بلا إطار عمل · بلا خطوة بناء</span>
+        <span data-i18n="gallery.badge.approved" class="pill pill--posted">معتمد كمرجع بصري</span>
+        <span data-i18n="gallery.badge.rtl" class="pill pill--info">عربي أصيل · RTL</span>
+        <span data-i18n="gallery.badge.i18n" class="pill pill--info">أربع لغات · مفاتيح لا نصوص</span>
+        <span data-i18n="gallery.badge.noframework" class="pill pill--draft">بلا إطار عمل · بلا خطوة بناء</span>
       </div>
       <div class="toc">
-        <a href="#t-color">الألوان</a><a href="#t-type">الخطوط</a><a href="#t-space">المسافات</a>
-        <a href="#c-btn">الأزرار</a><a href="#c-form">الحقول</a><a href="#c-amount">المبالغ</a>
-        <a href="#c-line">سطر القيد</a><a href="#c-table">الجداول</a><a href="#c-pill">الحالات</a>
-        <a href="#c-alert">التنبيهات</a><a href="#c-overlay">النوافذ</a><a href="#c-state">فارغ وتحميل</a>
-        <a href="#c-print">الطباعة</a>
-        <a href="screens/trial-balance.html">شاشة ميزان المراجعة ↗</a>
-        <a href="README.md">دليل القواعد ↗</a>
+        <a data-i18n="gallery.toc.colors" href="#t-color">الألوان</a><a data-i18n="gallery.toc.type" href="#t-type">الخطوط</a><a data-i18n="gallery.toc.space" href="#t-space">المسافات</a>
+        <a data-i18n="gallery.toc.buttons" href="#c-btn">الأزرار</a><a data-i18n="gallery.toc.fields" href="#c-form">الحقول</a><a data-i18n="gallery.toc.amounts" href="#c-amount">المبالغ</a>
+        <a data-i18n="gallery.toc.line" href="#c-line">سطر القيد</a><a data-i18n="gallery.toc.tables" href="#c-table">الجداول</a><a data-i18n="gallery.toc.states" href="#c-pill">الحالات</a>
+        <a data-i18n="gallery.toc.alerts" href="#c-alert">التنبيهات</a><a data-i18n="gallery.toc.overlays" href="#c-overlay">النوافذ</a><a data-i18n="gallery.toc.empty" href="#c-state">فارغ وتحميل</a>
+        <a data-i18n="gallery.toc.print" href="#c-print">الطباعة</a>
+        <a data-i18n="gallery.toc.i18n" href="#c-i18n">التدويل</a>
+        <a data-i18n="gallery.toc.audit" href="#c-audit">الفحص</a>
+        <a data-i18n="gallery.toc.trialBalance" href="screens/trial-balance.html">شاشة ميزان المراجعة ↗</a>
+        <a data-i18n="gallery.toc.rules" href="README.md">دليل القواعد ↗</a>
       </div>
     </section>
 
     <!-- ═══════════════════════════════ الرموز · الألوان ═══════════════════ -->
     <section class="sec" id="t-color">
-      <h2><span class="idx">١</span>الألوان</h2>
-      <p class="lede">
-        كل قيمة أدناه تُقرأ حيّةً من <code class="ltr">design/tokens/tokens.css</code> عند فتح الصفحة —
-        فلا يمكن أن ينحرف المعرض عن الرموز. العمود «فاتح» و«داكن» يعرض قيمة كل رمز في السمتين معاً.
-      </p>
+      <h2><span class="idx" data-idx="1"></span><span data-i18n="gallery.toc.colors">الألوان</span></h2>
+      <p class="lede"><span data-i18n="gallery.lede.color"></span></p>
 
-      <h3>الطبقة الأساسية · core</h3>
-      <div class="demo"><div class="swatches" id="sw-core"></div></div>
+      <h3 data-i18n="gallery.demo.coreLayer">الطبقة الأساسية · core</h3>
+      <div class="demo"><div class="swatches" id="sw-core" data-i18n-managed></div></div>
 
-      <h3>الطبقة الدلالية · semantic — هذه هي التي تستعملها المكوّنات</h3>
-      <p class="lede">
-        لا تكتب <code class="ltr">#hex</code> في مكوّن، ولا تستعمل <code class="ltr">--good</code>
-        لحالة «مُرحَّل»: استعمل <code class="ltr">--color-posted</code>. إن تغيّر معنى الحالة لاحقاً
-        تغيّر في موضع واحد بدل مئة موضع.
-      </p>
-      <div class="demo"><div class="swatches" id="sw-sem"></div></div>
+      <h3 data-i18n="gallery.demo.semLayer">الطبقة الدلالية · semantic — هذه هي التي تستعملها المكوّنات</h3>
+      <p class="lede"><span data-i18n="gallery.lede.colorSem"></span></p>
+      <div class="demo"><div class="swatches" id="sw-sem" data-i18n-managed></div></div>
     </section>
 
     <!-- ═══════════════════════════════ الرموز · الخطوط ═══════════════════ -->
     <section class="sec" id="t-type">
-      <h2><span class="idx">٢</span>الخطوط والسلّم الطباعي</h2>
-      <p class="lede">
-        الخط <strong>IBM Plex Sans Arabic</strong> بأوزان ٤٠٠ و٥٠٠ و٦٠٠ و٧٠٠، وسلسلة احتياطية حقيقية:
-        <code class="ltr">'Segoe UI', Tahoma, system-ui, sans-serif</code>.
-        كل رقم في الواجهة يحمل <code class="ltr">tabular-nums</code> بلا استثناء.
-      </p>
+      <h2><span class="idx" data-idx="2"></span><span data-i18n="gallery.sec.type">الخطوط والسلّم الطباعي</span></h2>
+      <p class="lede"><span data-i18n="gallery.lede.type"></span></p>
       <div class="demo">
-        <div class="demo-hd">سلّم الحجم <code>--font-size-*</code></div>
-        <div id="typescale"></div>
+        <div class="demo-hd"><span data-i18n="gallery.demo.sizeLadder"></span><code>--font-size-*</code></div>
+        <div id="typescale" data-i18n-managed></div>
       </div>
       <div class="demo">
-        <div class="demo-hd">الأوزان <code>--font-weight-*</code></div>
+        <div class="demo-hd"><span data-i18n="gallery.demo.weights"></span><code>--font-weight-*</code></div>
         <div class="demo-row">
-          <span style="font-weight:400">عادي ٤٠٠ — قيد يومية</span>
-          <span style="font-weight:500">متوسط ٥٠٠ — قيد يومية</span>
-          <span style="font-weight:600">شبه عريض ٦٠٠ — قيد يومية</span>
-          <span style="font-weight:700">عريض ٧٠٠ — قيد يومية</span>
+          <span style="font-weight:400"><span data-i18n="gallery.demo.wRegular"></span> — <span data-i18n="gallery.demo.sampleLine"></span></span>
+          <span style="font-weight:500"><span data-i18n="gallery.demo.wMedium"></span> — <span data-i18n="gallery.demo.sampleLine"></span></span>
+          <span style="font-weight:600"><span data-i18n="gallery.demo.wSemibold"></span> — <span data-i18n="gallery.demo.sampleLine"></span></span>
+          <span style="font-weight:700"><span data-i18n="gallery.demo.wBold"></span> — <span data-i18n="gallery.demo.sampleLine"></span></span>
         </div>
-        <p class="demo-note">
-          <strong>قاعدة:</strong> الوزن ٦٠٠ هو وزن العناصر التفاعلية (زر، تبويب، تسمية)، و٧٠٠ للعناوين
-          وقيم الإجماليات فقط. لا يُستعمل ٨٠٠ أو ٩٠٠ — ليسا محمّلين.
-        </p>
+        <p class="demo-note"><span data-i18n="gallery.demo.weightsNote"></span></p>
       </div>
       <div class="demo">
-        <div class="demo-hd">الأرقام <code>tabular-nums</code> + <code>dir="ltr"</code></div>
+        <div class="demo-hd"><span data-i18n="gallery.demo.isolation"></span><code>tabular-nums</code></div>
+        <div class="tablewrap">
         <table class="pv" style="max-width:520px">
-          <thead><tr><th>بلا عزل (خطأ)</th><th>مع العزل (صحيح)</th></tr></thead>
+          <thead><tr><th data-i18n="gallery.demo.isolationBad">بلا عزل (خطأ)</th><th data-i18n="gallery.demo.isolationGood">مع العزل (صحيح)</th></tr></thead>
           <tbody>
-            <tr><td>الرصيد -1,250.00 ريال</td><td>الرصيد <span class="amt amt--neg" dir="ltr">-1,250.00</span> ريال</td></tr>
-            <tr><td>الفاتورة INV-2026-0587 معلّقة</td><td>الفاتورة <span class="ltr">INV-2026-0587</span> معلّقة</td></tr>
+            <tr><td data-i18n="gallery.demo.isolationRow1">الرصيد -1,250.00 ريال</td><td data-i18n-html="gallery.demo.isolationRow1Good"></td></tr>
+            <tr><td data-i18n="gallery.demo.isolationRow2">الفاتورة INV-2026-0587 معلّقة</td><td data-i18n-html="gallery.demo.isolationRow2Good"></td></tr>
           </tbody>
         </table>
-        <p class="demo-note">
-          <strong>لماذا يهمّ:</strong> الإشارة السالبة محرف محايد في خوارزمية الاتجاه، فتقفز إلى الطرف
-          الخطأ داخل فقرة عربية. الرقم يصبح <span dir="rtl">1,250.00-</span> ويُقرأ موجباً.
-          راجع <a href="README.md">دليل القواعد §٣</a>.
-        </p>
+        </div>
+        <p class="demo-note"><span data-i18n="gallery.demo.isolationNote"></span></p>
       </div>
     </section>
 
     <!-- ═══════════════════════════ الرموز · المسافات والاستدارة ═══════════ -->
     <section class="sec" id="t-space">
-      <h2><span class="idx">٣</span>المسافات والاستدارة والظلال والحركة</h2>
+      <h2><span class="idx" data-idx="3"></span><span data-i18n="gallery.sec.space">المسافات والاستدارة والظلال والحركة</span></h2>
       <div class="demo">
-        <div class="demo-hd">سلّم المسافات <code>--space-N</code> — الاسم هو القيمة بالبكسل</div>
-        <div id="spacescale"></div>
+        <div class="demo-hd"><span data-i18n="gallery.demo.spaceLadder"></span><code>--space-N</code></div>
+        <div id="spacescale" data-i18n-managed></div>
       </div>
       <div class="demo">
-        <div class="demo-hd">الاستدارة <code>--radius-*</code></div>
-        <div class="demo-grid">
-          <div class="radiusbox" style="border-radius:var(--radius-xs)">xs · 4px</div>
-          <div class="radiusbox" style="border-radius:var(--radius-sm)">sm · 8px — حقل، زر</div>
-          <div class="radiusbox" style="border-radius:var(--radius-md)">md · 9px — زر أيقونة</div>
-          <div class="radiusbox" style="border-radius:var(--radius-lg)">lg · 12px — بطاقة</div>
-          <div class="radiusbox" style="border-radius:var(--radius-xl)">xl · 16px — نافذة</div>
-          <div class="radiusbox" style="border-radius:var(--radius-pill)">pill · 999px</div>
-        </div>
+        <div class="demo-hd"><span data-i18n="gallery.demo.radii"></span><code>--radius-*</code></div>
+        <div class="demo-grid" id="radiusgrid" data-i18n-managed></div>
       </div>
       <div class="demo">
-        <div class="demo-hd">الظلال <code>--shadow-*</code></div>
-        <div class="demo-grid">
-          <div class="shadowbox" style="box-shadow:var(--shadow-1)">shadow-1 — بطاقة</div>
-          <div class="shadowbox" style="box-shadow:var(--shadow-2)">shadow-2 — نافذة وقائمة</div>
-          <div class="shadowbox" style="box-shadow:var(--shadow-brand)">shadow-brand — زر رئيسي</div>
-          <div class="shadowbox" style="box-shadow:var(--ring)">ring — حلقة التركيز</div>
-        </div>
+        <div class="demo-hd"><span data-i18n="gallery.demo.shadows"></span><code>--shadow-*</code></div>
+        <div class="demo-grid" id="shadowgrid" data-i18n-managed></div>
       </div>
       <div class="demo">
-        <div class="demo-hd">الحركة <code>--motion-*</code></div>
-        <p class="demo-note" style="margin-top:0">
-          <code class="ltr">--motion-fast .12s</code> للرفع الطفيف ·
-          <code class="ltr">--motion-base .15s</code> لتغيّر اللون والحدّ ·
-          <code class="ltr">--motion-slow .2s</code> للانزلاق والظهور.
-          <strong>كل حركة تُلغى</strong> تحت <code class="ltr">prefers-reduced-motion: reduce</code> — وهذا مطبَّق في
-          <code class="ltr">components.css</code> مرة واحدة للجميع.
-        </p>
+        <div class="demo-hd"><span data-i18n="gallery.demo.motion"></span><code>--motion-*</code></div>
+        <p class="demo-note" style="margin-top:0"><span data-i18n="gallery.demo.motionNote"></span></p>
       </div>
     </section>
 
     <!-- ═══════════════════════════════════ الأزرار ══════════════════════ -->
     <section class="sec" id="c-btn">
-      <h2><span class="idx">٤</span>الأزرار</h2>
-      <p class="lede">
-        الترتيب في شريط الإجراءات: الفعل الرئيسي أولاً (بداية السطر = اليمين)، ثم الأفعال الثانوية.
-        الفعل المدمّر لا يقف بجوار الفعل الرئيسي أبداً.
-      </p>
+      <h2><span class="idx" data-idx="4"></span><span data-i18n="gallery.toc.buttons">الأزرار</span></h2>
+      <p class="lede"><span data-i18n="gallery.lede.buttons"></span></p>
       <div class="demo">
-        <div class="demo-hd">الأنواع <code>.btn</code></div>
+        <div class="demo-hd"><span data-i18n="gallery.demo.btnTypes"></span><code>.btn</code></div>
         <div class="demo-row">
-          <button class="btn btn-primary"><svg width="15" height="15"><use href="#i-lock"/></svg>ترحيل القيد</button>
-          <button class="btn">حفظ كمسودة</button>
-          <button class="btn btn-ghost">إلغاء</button>
-          <button class="btn btn-danger"><svg width="15" height="15"><use href="#i-trash"/></svg>حذف نهائي</button>
-          <button class="btn btn-danger-soft"><svg width="15" height="15"><use href="#i-refresh"/></svg>عكس القيد</button>
-          <button class="btn btn-sm">صغير</button>
+          <button class="btn btn-primary"><svg width="15" height="15"><use href="#i-lock"/></svg><span data-i18n="common.action.post">ترحيل القيد</span></button>
+          <button data-i18n="common.action.saveDraft" class="btn">حفظ كمسودة</button>
+          <button data-i18n="common.action.cancel" class="btn btn-ghost">إلغاء</button>
+          <button class="btn btn-danger"><svg width="15" height="15"><use href="#i-trash"/></svg><span data-i18n="common.action.deleteFinal">حذف نهائي</span></button>
+          <button class="btn btn-danger-soft"><svg width="15" height="15"><use href="#i-refresh"/></svg><span data-i18n="common.action.reverse">عكس القيد</span></button>
+          <button data-i18n="gallery.demo.btnSmall" class="btn btn-sm">صغير</button>
         </div>
       </div>
       <div class="demo">
-        <div class="demo-hd">الحالات — مرّر الفأرة وجرّب <kbd>Tab</kbd> لرؤية حلقة التركيز</div>
+        <div class="demo-hd"><span data-i18n="gallery.demo.btnStates"></span></div>
         <div class="demo-row">
-          <button class="btn btn-primary">افتراضي</button>
-          <button class="btn btn-primary" style="background:var(--color-primary-hover);border-color:var(--color-primary-hover)">تمرير</button>
-          <button class="btn btn-primary" autofocus>تركيز — اضغط Tab</button>
-          <button class="btn btn-primary" disabled>معطّل (القيد غير متوازن)</button>
-          <button class="btn btn-primary" data-loading="true">جارٍ الترحيل</button>
+          <button data-i18n="gallery.demo.btnDefault" class="btn btn-primary">افتراضي</button>
+          <button data-i18n="gallery.demo.btnHover" class="btn btn-primary" style="background:var(--color-primary-hover);border-color:var(--color-primary-hover)">تمرير</button>
+          <button data-i18n="gallery.demo.btnFocus" class="btn btn-primary" autofocus>تركيز — اضغط Tab</button>
+          <button data-i18n="gallery.demo.btnDisabled" class="btn btn-primary" disabled>معطّل (القيد غير متوازن)</button>
+          <button data-i18n="gallery.demo.btnLoading" class="btn btn-primary" data-loading="true">جارٍ الترحيل</button>
         </div>
         <div class="demo-row" style="margin-top:var(--space-12)">
-          <button class="btn">افتراضي</button>
-          <button class="btn" disabled>معطّل</button>
-          <button class="btn" data-loading="true">تحميل</button>
-          <button class="btn btn-danger" disabled>حذف معطّل</button>
-          <button class="btn btn-block" style="max-width:240px">بعرض كامل</button>
+          <button data-i18n="gallery.demo.btnDefault" class="btn">افتراضي</button>
+          <button data-i18n="gallery.demo.btnDisabledShort" class="btn" disabled>معطّل</button>
+          <button data-i18n="gallery.demo.btnLoadingShort" class="btn" data-loading="true">تحميل</button>
+          <button data-i18n="gallery.demo.btnDeleteDisabled" class="btn btn-danger" disabled>حذف معطّل</button>
+          <button data-i18n="gallery.demo.btnBlock" class="btn btn-block" style="max-width:240px">بعرض كامل</button>
         </div>
-        <p class="demo-note">
-          <strong>حالة التحميل</strong> تُبقي عرض الزر ثابتاً (النص يصير شفافاً وتظهر الدوّارة فوقه)
-          حتى لا يقفز شريط الإجراءات تحت إصبع المستخدم.
-        </p>
+        <p class="demo-note"><span data-i18n="gallery.demo.btnLoadingNote"></span></p>
       </div>
       <div class="demo">
-        <div class="demo-hd">أزرار الأيقونات ومقاطع الاختيار <code>.iconbtn</code> <code>.seg</code></div>
+        <div class="demo-hd"><span data-i18n="gallery.demo.iconAndSeg"></span><code>.iconbtn</code></div>
         <div class="demo-row">
           <button class="iconbtn"><svg width="18" height="18"><use href="#i-search"/></svg></button>
           <button class="iconbtn" aria-pressed="true"><svg width="18" height="18"><use href="#i-moon"/></svg></button>
           <button class="iconbtn" disabled><svg width="18" height="18"><use href="#i-trash"/></svg></button>
           <div class="seg">
-            <button aria-pressed="true">المبلغ غير شامل الضريبة</button>
-            <button aria-pressed="false">المبلغ شامل الضريبة</button>
+            <button data-i18n="acct.tax.exclusive" aria-pressed="true">المبلغ غير شامل الضريبة</button>
+            <button data-i18n="acct.tax.inclusive" aria-pressed="false">المبلغ شامل الضريبة</button>
           </div>
           <div class="seg plain">
             <button aria-pressed="true">15%</button>
-            <button aria-pressed="false">صفرية</button>
-            <button aria-pressed="false">معفاة</button>
+            <button data-i18n="acct.tax.zero" aria-pressed="false">صفرية</button>
+            <button data-i18n="acct.tax.exempt" aria-pressed="false">معفاة</button>
           </div>
         </div>
         <div class="demo-row" style="margin-top:var(--space-12)">
-          <button class="addline"><svg width="15" height="15"><use href="#i-plus"/></svg>إضافة سطر</button>
+          <button class="addline"><svg width="15" height="15"><use href="#i-plus"/></svg><span data-i18n="common.action.addLine">إضافة سطر</span></button>
           <div class="chips" style="margin:0">
-            <button class="chip">مصروف خدمات تقنية</button>
-            <button class="chip">ضريبة القيمة المضافة — مدخلات</button>
-            <button class="chip" data-used="true">الدائنون / شركة التقنية</button>
+            <button data-i18n="screen.journal.accounts.a6120101" class="chip">مصروف خدمات تقنية</button>
+            <button data-i18n="screen.journal.accounts.a121201" class="chip">ضريبة القيمة المضافة — مدخلات</button>
+            <button data-i18n="screen.journal.accounts.a2010101" class="chip" data-used="true">الدائنون / شركة التقنية</button>
           </div>
         </div>
       </div>
@@ -399,76 +392,77 @@
 
     <!-- ═══════════════════════════════════ الحقول ══════════════════════ -->
     <section class="sec" id="c-form">
-      <h2><span class="idx">٥</span>الحقول والنماذج</h2>
-      <p class="lede">
-        كل تسمية تحمل صيغة عربية وصيغة إنجليزية (<code class="ltr">name_ar</code> /
-        <code class="ltr">name_en</code>). الإنجليزية معزولة بـ <code class="ltr">.en</code> فلا تسحب
-        التسمية العربية معها.
-      </p>
+      <h2><span class="idx" data-idx="5"></span><span data-i18n="gallery.sec.fields">الحقول والنماذج</span></h2>
+      <p class="lede"><span data-i18n="gallery.lede.fields"></span></p>
       <div class="demo">
-        <div class="demo-hd">الحالات الأساسية <code>.field</code> <code>.ctl</code></div>
+        <div class="demo-hd"><span data-i18n="gallery.demo.fieldBasics"></span><code>.field</code>
+          <span class="localepick spacer">
+            <label for="gal-alt-locale" data-i18n="screen.trialBalance.altLocale"></label>
+            <select class="ctl ctl-sm" id="gal-alt-locale"></select>
+          </span>
+        </div>
         <div class="grid fields-3">
           <div class="field">
-            <label for="g-t1">المرجع <span class="en">Reference</span></label>
+            <label for="g-t1"><span data-i18n="field.reference.label">المرجع</span> <span class="alt" data-alt-sib></span></label>
             <input class="ctl" id="g-t1" value="فاتورة رقم 0587-2026">
           </div>
           <div class="field">
-            <label for="g-t2">البيان<span class="req" aria-hidden="true">*</span> <span class="en">Memo</span></label>
-            <input class="ctl" id="g-t2" placeholder="اكتب بيان السطر…">
-            <span class="hint">يظهر في دفتر الأستاذ وفي كشف الحساب.</span>
+            <label for="g-t2"><span data-i18n="acct.columns.memo">البيان</span><span class="req" aria-hidden="true">*</span> <span class="alt" data-alt-sib></span></label>
+            <input data-i18n-attr="placeholder:field.memo.ph" class="ctl" id="g-t2" placeholder="اكتب بيان السطر…">
+            <span data-i18n="field.memo.hint" class="hint">يظهر في دفتر الأستاذ وفي كشف الحساب.</span>
           </div>
           <div class="field">
-            <label for="g-t3">رقم القيد <span class="en">Entry no.</span></label>
+            <label for="g-t3"><span data-i18n="acct.columns.entryNo">رقم القيد</span> <span class="alt" data-alt-sib></span></label>
             <span class="ctl-wrap">
               <input class="ctl num" id="g-t3" dir="ltr" value="JV-2026-00125" disabled>
               <span class="adorn"><svg width="14" height="14"><use href="#i-lock"/></svg></span>
             </span>
-            <span class="hint">(رقم آلي — عدّاد بلا فجوات)</span>
+            <span data-i18n="field.entryNo.hint" class="hint">(رقم آلي — عدّاد بلا فجوات)</span>
           </div>
           <div class="field">
-            <label for="g-t4">الفرع<span class="req" aria-hidden="true">*</span> <span class="en">Branch</span></label>
+            <label for="g-t4"><span data-i18n="field.branch.label">الفرع</span><span class="req" aria-hidden="true">*</span> <span class="alt" data-alt-sib></span></label>
             <span class="ctl-wrap">
               <select class="ctl" id="g-t4">
-                <option>الفرع الرئيسي — الرياض</option><option>فرع جدة</option><option>فرع الدمام</option>
+                <option data-i18n="field.branch.main">الفرع الرئيسي — الرياض</option><option data-i18n="field.branch.jeddah">فرع جدة</option><option data-i18n="field.branch.dammam">فرع الدمام</option>
               </select>
               <span class="adorn"><svg width="15" height="15"><use href="#i-down"/></svg></span>
             </span>
           </div>
           <div class="field">
-            <label for="g-t5">الفترة المالية <span class="en">Period</span></label>
+            <label for="g-t5"><span data-i18n="field.period.label">الفترة المالية</span> <span class="alt" data-alt-sib></span></label>
             <input class="ctl" id="g-t5" value="05/2026 — مفتوحة" readonly>
           </div>
           <div class="field">
-            <label for="g-t6">مركز التكلفة<span class="req" aria-hidden="true">*</span> <span class="en">Cost centre</span></label>
+            <label for="g-t6"><span data-i18n="acct.columns.costCentre">مركز التكلفة</span><span class="req" aria-hidden="true">*</span> <span class="alt" data-alt-sib></span></label>
             <select class="ctl" id="g-t6" aria-invalid="true" aria-describedby="g-t6-err">
-              <option>— اختر —</option><option>إدارة تقنية المعلومات</option>
+              <option data-i18n="common.label.select">— اختر —</option><option data-i18n="field.costCentre.it">إدارة تقنية المعلومات</option>
             </select>
             <span class="field-error" id="g-t6-err">
               <svg width="13" height="13"><use href="#i-warn"/></svg>
-              مركز التكلفة إلزامي لحسابات المصروفات.
+              <span data-i18n="field.costCentre.error">مركز التكلفة إلزامي لحسابات المصروفات.</span>
             </span>
           </div>
         </div>
         <div class="grid fields-2" style="margin-top:var(--space-14)">
           <div class="field">
-            <label for="g-ta">البيان العام<span class="req" aria-hidden="true">*</span> <span class="en">Description</span></label>
-            <textarea class="ctl" id="g-ta" data-guard-invisible="g-ta-bidi">مصروف خدمات تقنية عن الفترة 05/2026 شامل ضريبة القيمة المضافة 15%</textarea>
+            <label for="g-ta"><span data-i18n="field.description.label">البيان العام</span><span class="req" aria-hidden="true">*</span> <span class="alt" data-alt-sib></span></label>
+            <textarea data-i18n="field.description.value" class="ctl" id="g-ta" data-guard-invisible="g-ta-bidi">مصروف خدمات تقنية عن الفترة 05/2026 شامل ضريبة القيمة المضافة 15%</textarea>
             <span class="field-error" id="g-ta-bidi" hidden></span>
-            <span class="hint">جرّب لصق نصّ من متصفّح أو مستند مكتبي — سينبّهك الحقل إن حمل معه محارف تحكّم غير مرئية.</span>
+            <span data-i18n="field.description.hint" class="hint">جرّب لصق نصّ من متصفّح أو مستند مكتبي — سينبّهك الحقل إن حمل معه محارف تحكّم غير مرئية.</span>
           </div>
           <div class="field">
-            <label for="g-cur">العملة<span class="req" aria-hidden="true">*</span> <span class="en">Currency</span></label>
+            <label for="g-cur"><span data-i18n="field.currency.label">العملة</span><span class="req" aria-hidden="true">*</span> <span class="alt" data-alt-sib></span></label>
             <input class="ctl" id="g-cur" value="ر.س">
-            <span class="field-ok"><svg width="13" height="13"><use href="#i-check"/></svg>عملة الدفاتر</span>
+            <span class="field-ok"><svg width="13" height="13"><use href="#i-check"/></svg><span data-i18n="field.currency.ok">عملة الدفاتر</span></span>
           </div>
         </div>
       </div>
 
       <div class="demo">
-        <div class="demo-hd">التاريخ <code>.datefield</code> — يُخزَّن ميلادياً دائماً، ويُعرض بالتقويمين</div>
+        <div class="demo-hd"><span data-i18n="gallery.demo.dateField"></span><code>.datefield</code></div>
         <div class="grid fields-3">
           <div class="field datefield">
-            <label for="g-d1">تاريخ القيد<span class="req" aria-hidden="true">*</span> <span class="en">Entry date</span></label>
+            <label for="g-d1"><span data-i18n="field.entryDate.label">تاريخ القيد</span><span class="req" aria-hidden="true">*</span> <span class="alt" data-alt-sib></span></label>
             <span class="ctl-wrap">
               <input class="ctl has-start" id="g-d1" value="2026/05/24" inputmode="numeric">
               <span class="adorn adorn-start"><svg width="15" height="15"><use href="#i-cal"/></svg></span>
@@ -478,7 +472,7 @@
             </span>
           </div>
           <div class="field datefield">
-            <label for="g-d2">تاريخ الاستحقاق <span class="en">Due date</span></label>
+            <label for="g-d2"><span data-i18n="field.dueDate.label">تاريخ الاستحقاق</span> <span class="alt" data-alt-sib></span></label>
             <span class="ctl-wrap">
               <input class="ctl has-start" id="g-d2" value="2026/06/23" inputmode="numeric">
               <span class="adorn adorn-start"><svg width="15" height="15"><use href="#i-cal"/></svg></span>
@@ -486,51 +480,46 @@
             <span class="dateline"><span class="greg"></span><span class="hijri" hidden></span></span>
           </div>
           <div class="field">
-            <label>تفضيل عرض التاريخ <span class="en">Calendar preference</span></label>
+            <label><span data-i18n="field.calendarPref.label">تفضيل عرض التاريخ</span> <span class="alt" data-alt-sib></span></label>
             <div class="seg plain">
-              <button aria-pressed="true">ميلادي</button>
-              <button aria-pressed="false">هجري (أم القرى)</button>
+              <button data-i18n="acct.calendar.gregorian" aria-pressed="true">ميلادي</button>
+              <button data-i18n="acct.calendar.hijri" aria-pressed="false">هجري (أم القرى)</button>
             </div>
-            <span class="hint">تفضيل عرض لكل مستخدم. لا يمسّ التخزين.</span>
+            <span data-i18n="field.calendarPref.hint" class="hint">تفضيل عرض لكل مستخدم. لا يمسّ التخزين.</span>
           </div>
         </div>
-        <p class="demo-note">
-          <strong>القاعدة:</strong> التخزين ميلادي، دائماً، بلا استثناء. الهجري تحويل عرض يُحسب لحظة
-          الرسم ولا يعود إلى قاعدة البيانات أبداً. والأرقام تبقى لاتينية في الحالتين
-          (<code class="ltr">2026</code> لا <code>٢٠٢٦</code>) لأن الأرقام العربية-الهندية نقاط شفرة
-          مختلفة تماماً وتُنتج بصمة مختلفة — <a href="../docs/evidence/traps.md">فخ-٢٥</a>.
-        </p>
+        <p class="demo-note"><span data-i18n="gallery.demo.dateNote"></span></p>
       </div>
 
       <div class="demo">
-        <div class="demo-hd">منتقي الحساب والقائمة القابلة للبحث <code>.picker</code></div>
+        <div class="demo-hd"><span data-i18n="gallery.demo.picker"></span><code>.picker</code></div>
         <div class="grid fields-half">
           <div class="field picker">
-            <label for="g-acc">الحساب<span class="req" aria-hidden="true">*</span> <span class="en">Account</span></label>
+            <label for="g-acc"><span data-i18n="acct.columns.account">الحساب</span><span class="req" aria-hidden="true">*</span> <span class="alt" data-alt-sib></span></label>
             <span class="ctl-wrap">
-              <input class="ctl" id="g-acc" placeholder="ابحث برقم الحساب أو باسمه…" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="g-acc-list">
+              <input data-i18n-attr="placeholder:field.account.ph" class="ctl" id="g-acc" placeholder="ابحث برقم الحساب أو باسمه…" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="g-acc-list">
               <span class="adorn"><svg width="15" height="15"><use href="#i-search"/></svg></span>
             </span>
             <div class="picker-list" id="g-acc-list" role="listbox">
-              <button class="picker-opt" role="option" aria-selected="false"><span class="code" dir="ltr">6120101</span><span class="label">مصروف خدمات تقنية</span><span class="side d">مدين</span></button>
-              <button class="picker-opt" role="option" aria-selected="false"><span class="code" dir="ltr">6110101</span><span class="label">رواتب وأجور</span><span class="side d">مدين</span></button>
-              <button class="picker-opt" role="option" aria-selected="true"><span class="code" dir="ltr">2010101</span><span class="label">الدائنون / شركة التقنية</span><span class="side c">دائن</span></button>
-              <button class="picker-opt" role="option" aria-selected="false"><span class="code" dir="ltr">1020101</span><span class="label">البنك الأهلي — الحساب الجاري</span><span class="side d">مدين</span></button>
-              <button class="picker-opt" role="option" aria-selected="false"><span class="code" dir="ltr">4101001</span><span class="label">إيرادات المبيعات</span><span class="side c">دائن</span></button>
-              <div class="picker-empty" hidden>لا حساب يطابق البحث.</div>
+              <button class="picker-opt" role="option" aria-selected="false"><span class="code" dir="ltr">6120101</span><span data-i18n="screen.journal.accounts.a6120101" class="label">مصروف خدمات تقنية</span><span data-i18n="acct.debit" class="side d">مدين</span></button>
+              <button class="picker-opt" role="option" aria-selected="false"><span class="code" dir="ltr">6110101</span><span data-i18n="screen.journal.accounts.a6110101" class="label">رواتب وأجور</span><span data-i18n="acct.debit" class="side d">مدين</span></button>
+              <button class="picker-opt" role="option" aria-selected="true"><span class="code" dir="ltr">2010101</span><span data-i18n="screen.journal.accounts.a2010101" class="label">الدائنون / شركة التقنية</span><span data-i18n="acct.credit" class="side c">دائن</span></button>
+              <button class="picker-opt" role="option" aria-selected="false"><span class="code" dir="ltr">1020101</span><span data-i18n="screen.journal.accounts.a1020101" class="label">البنك الأهلي — الحساب الجاري</span><span data-i18n="acct.debit" class="side d">مدين</span></button>
+              <button class="picker-opt" role="option" aria-selected="false"><span class="code" dir="ltr">4101001</span><span data-i18n="screen.journal.accounts.a4101001" class="label">إيرادات المبيعات</span><span data-i18n="acct.credit" class="side c">دائن</span></button>
+              <div data-i18n="common.state.pickerEmpty" class="picker-empty" hidden>لا حساب يطابق البحث.</div>
             </div>
-            <span class="hint">الترحيل على الحساب التفصيلي فقط؛ الحسابات التجميعية لا تظهر هنا.</span>
+            <span data-i18n="field.account.hint" class="hint">الترحيل على الحساب التفصيلي فقط؛ الحسابات التجميعية لا تظهر هنا.</span>
           </div>
           <div class="field">
-            <label>خيارات أخرى</label>
+            <label data-i18n="field.options.label">خيارات أخرى</label>
             <div class="stack" style="gap:var(--space-12)">
               <label class="switch">
                 <input type="checkbox" checked><span class="track"></span>
-                <span>إنشاء سطر ضريبة القيمة المضافة تلقائياً</span>
+                <span data-i18n="field.options.autoVat">إنشاء سطر ضريبة القيمة المضافة تلقائياً</span>
               </label>
-              <label class="check"><input type="checkbox" checked><span>عرض أرقام الحسابات بجانب الأسماء</span></label>
-              <label class="check"><input type="checkbox"><span>تذكّر مركز التكلفة لهذا النوع من القيود</span></label>
-              <label class="check"><input type="checkbox" disabled><span>الترحيل التلقائي (يتطلّب صلاحية «مدير الحسابات»)</span></label>
+              <label class="check"><input type="checkbox" checked><span data-i18n="field.options.showAccountNos">عرض أرقام الحسابات بجانب الأسماء</span></label>
+              <label class="check"><input type="checkbox"><span data-i18n="field.options.rememberCostCentre">تذكّر مركز التكلفة لهذا النوع من القيود</span></label>
+              <label class="check"><input type="checkbox" disabled><span data-i18n="field.options.autoPost">الترحيل التلقائي (يتطلّب صلاحية «مدير الحسابات»)</span></label>
             </div>
           </div>
         </div>
@@ -539,127 +528,111 @@
 
     <!-- ═══════════════════════════════════ المبالغ ══════════════════════ -->
     <section class="sec" id="c-amount">
-      <h2><span class="idx">٦</span>المبالغ — خلية ومُدخَل وزوج مدين/دائن</h2>
-      <p class="lede">
-        هذا أهمّ مكوّن في المنتج كلّه. المبلغ <code class="ltr">decimal</code> لا
-        <code class="ltr">float</code>، يصل من الخادم <strong>نصّاً</strong> بمقياس ثابت، والواجهة
-        تضيف فواصل الآلاف فقط. لا <code class="ltr">Intl</code> يعتمد على لغة الجهاز، ولا
-        <code class="ltr">toLocaleString()</code>.
-      </p>
+      <h2><span class="idx" data-idx="6"></span><span data-i18n="gallery.sec.amounts">المبالغ — خلية ومُدخَل وزوج مدين/دائن</span></h2>
+      <p class="lede"><span data-i18n="gallery.lede.amounts"></span></p>
       <div class="demo">
-        <div class="demo-hd">حالات خلية المبلغ <code>.amt</code></div>
+        <div class="demo-hd"><span data-i18n="gallery.demo.amtStates"></span><code>.amt</code></div>
+        <div class="tablewrap">
         <table class="pv">
-          <thead><tr><th>الحالة</th><th class="n">العرض</th><th>الرمز الدلالي</th><th>ملاحظة</th></tr></thead>
+          <thead><tr><th data-i18n="gallery.demo.amtCase">الحالة</th><th data-i18n="gallery.demo.amtShown" class="n">العرض</th><th data-i18n="gallery.demo.amtToken">الرمز الدلالي</th><th data-i18n="gallery.demo.amtNote">ملاحظة</th></tr></thead>
           <tbody>
-            <tr><td>مبلغ مدين</td><td class="n"><span class="amt amt--debit" data-amount="10000">—</span></td><td><code class="ltr">--color-debit</code></td><td>الوزن ٦٠٠</td></tr>
-            <tr><td>مبلغ دائن</td><td class="n"><span class="amt amt--credit" data-amount="11500">—</span></td><td><code class="ltr">--color-credit</code></td><td>الوزن ٦٠٠</td></tr>
-            <tr><td>مبلغ محايد</td><td class="n"><span class="amt" data-amount="1500">—</span></td><td><code class="ltr">--color-amount</code></td><td>خارج طرفي القيد</td></tr>
-            <tr><td>مبلغ سالب</td><td class="n"><span class="amt" data-amount="-1250.5">—</span></td><td><code class="ltr">--color-amount-negative</code></td><td>الإشارة يسار الرقم — العزل إلزامي</td></tr>
-            <tr><td>صفر</td><td class="n"><span class="amt" data-amount="0">—</span></td><td><code class="ltr">--color-amount-zero</code></td><td>يُعرض شرطة، لا <span class="ltr">0.00</span></td></tr>
-            <tr><td>خافت (مرجعي)</td><td class="n"><span class="amt amt--muted" data-amount="240.75">—</span></td><td><code class="ltr">--color-text-muted</code></td><td>رصيد سابق</td></tr>
-            <tr><td>إجمالي</td><td class="n"><span class="amt amt--total" data-amount="11500">—</span></td><td>وزن ٧٠٠</td><td>صف الإجماليات</td></tr>
-            <tr><td>مع العملة</td><td class="n"><span class="amt" data-amount="11500">—</span><span class="cur">ر.س</span></td><td>—</td><td>رمز العملة لا ينفصل عن الرقم</td></tr>
-            <tr><td>كبير</td><td class="n"><span class="amt amt--lg amt--debit" data-amount="1234567.89">—</span></td><td>—</td><td>بطاقة إحصائية</td></tr>
-            <tr><td>رقم حساب</td><td class="n"><span class="acct-code">6120101</span></td><td>—</td><td>معزول ومتساوي العرض</td></tr>
+            <tr><td data-i18n="gallery.demo.amtDebit">مبلغ مدين</td><td class="n"><span class="amt amt--debit" data-amount="10000">—</span></td><td><code class="ltr">--color-debit</code></td><td data-i18n="gallery.demo.amtNoteW600">الوزن ٦٠٠</td></tr>
+            <tr><td data-i18n="gallery.demo.amtCredit">مبلغ دائن</td><td class="n"><span class="amt amt--credit" data-amount="11500">—</span></td><td><code class="ltr">--color-credit</code></td><td data-i18n="gallery.demo.amtNoteW600">الوزن ٦٠٠</td></tr>
+            <tr><td data-i18n="gallery.demo.amtNeutral">مبلغ محايد</td><td class="n"><span class="amt" data-amount="1500">—</span></td><td><code class="ltr">--color-amount</code></td><td data-i18n="gallery.demo.amtNoteOutside">خارج طرفي القيد</td></tr>
+            <tr><td data-i18n="gallery.demo.amtNegative">مبلغ سالب</td><td class="n"><span class="amt" data-amount="-1250.5">—</span></td><td><code class="ltr">--color-amount-negative</code></td><td data-i18n="gallery.demo.amtNoteSign">الإشارة يسار الرقم — العزل إلزامي</td></tr>
+            <tr><td data-i18n="gallery.demo.amtZero">صفر</td><td class="n"><span class="amt" data-amount="0">—</span></td><td><code class="ltr">--color-amount-zero</code></td><td data-i18n="gallery.demo.amtNoteDash"></td></tr>
+            <tr><td data-i18n="gallery.demo.amtMuted">خافت (مرجعي)</td><td class="n"><span class="amt amt--muted" data-amount="240.75">—</span></td><td><code class="ltr">--color-text-muted</code></td><td data-i18n="gallery.demo.amtNotePrev">رصيد سابق</td></tr>
+            <tr><td data-i18n="gallery.demo.amtTotal">إجمالي</td><td class="n"><span class="amt amt--total" data-amount="11500">—</span></td><td data-i18n="gallery.demo.amtNoteW700">وزن ٧٠٠</td><td data-i18n="gallery.demo.amtNoteTotalRow">صف الإجماليات</td></tr>
+            <tr><td data-i18n="gallery.demo.amtWithCur">مع العملة</td><td class="n"><span class="amt" data-amount="11500">—</span><span class="cur">ر.س</span></td><td>—</td><td data-i18n="gallery.demo.amtNoteCur">رمز العملة لا ينفصل عن الرقم</td></tr>
+            <tr><td data-i18n="gallery.demo.amtLarge">كبير</td><td class="n"><span class="amt amt--lg amt--debit" data-amount="1234567.89">—</span></td><td>—</td><td data-i18n="gallery.demo.amtNoteStat">بطاقة إحصائية</td></tr>
+            <tr><td data-i18n="gallery.demo.amtAcctCode">رقم حساب</td><td class="n"><span class="acct-code">6120101</span></td><td>—</td><td data-i18n="gallery.demo.amtNoteIso">معزول ومتساوي العرض</td></tr>
           </tbody>
         </table>
-        <p class="demo-note">
-          <strong>المقياس ثابت:</strong> منزلتان في العرض دائماً، ولا تُحذف الأصفار الزائدة.
-          <span class="ltr">100</span> و<span class="ltr">100.0</span> و<span class="ltr">100.00</span>
-          كلها تُعرض <span class="ltr">100.00</span>. هذا ليس تجميلاً: الخلط بين تمثيلين لنفس المبلغ
-          هو <a href="../docs/evidence/traps.md">فخ-١٨</a> بعينه.
-        </p>
+        </div>
+        <p class="demo-note"><span data-i18n="gallery.demo.scaleNote"></span></p>
       </div>
 
       <div class="demo">
-        <div class="demo-hd">مُدخَل المبلغ وزوج مدين/دائن <code>.amt-input</code> <code>.dc-pair</code></div>
+        <div class="demo-hd"><span data-i18n="gallery.demo.dcPair"></span><code>.amt-input</code></div>
         <div class="dc-pair" style="max-width:520px">
           <div class="dc-side dc-side--debit">
-            <span class="dc-label" id="lbl-d">مدين (ر.س)</span>
+            <span class="dc-label" id="lbl-d"><span data-i18n="acct.debitCur">مدين (ر.س)</span></span>
             <input class="ctl amt-input is-debit" aria-labelledby="lbl-d" inputmode="decimal" value="10,000.00">
           </div>
           <div class="dc-side dc-side--credit">
-            <span class="dc-label" id="lbl-c">دائن (ر.س)</span>
+            <span class="dc-label" id="lbl-c"><span data-i18n="acct.creditCur">دائن (ر.س)</span></span>
             <input class="ctl amt-input is-credit" aria-labelledby="lbl-c" inputmode="decimal" placeholder="–">
           </div>
         </div>
         <div class="dc-pair" style="max-width:520px;margin-top:var(--space-12)">
           <div class="dc-side dc-side--debit">
-            <span class="dc-label" id="lbl-d2">مدين — قيمة سالبة</span>
+            <span data-i18n="field.negativeDebit.label" class="dc-label" id="lbl-d2">مدين — قيمة سالبة</span>
             <input class="ctl amt-input is-neg" aria-labelledby="lbl-d2" inputmode="decimal" value="-1,250.00">
           </div>
           <div class="dc-side dc-side--credit">
-            <span class="dc-label" id="lbl-c2">دائن — مرفوض</span>
+            <span data-i18n="field.rejectedCredit.label" class="dc-label" id="lbl-c2">دائن — مرفوض</span>
             <input class="ctl amt-input" aria-labelledby="lbl-c2" aria-invalid="true" inputmode="decimal" value="0.00">
           </div>
         </div>
-        <p class="demo-note">
-          <strong>لماذا <code class="ltr">direction:ltr</code> + <code class="ltr">text-align:right</code>؟</strong>
-          الحقل يبقى داخل نموذج عربي، لكن محتواه رقم لاتيني. هذا المزيج يضع الرقم عند بداية السطر
-          (اليمين) كما في الشاشة المعتمدة، ويُبقي الإشارة السالبة في مكانها الصحيح.
-          والمدين والدائن <strong>متنافيان على السطر الواحد</strong>: إدخال أحدهما يمسح الآخر.
-        </p>
+        <p class="demo-note"><span data-i18n="gallery.demo.dcNote"></span></p>
       </div>
     </section>
 
     <!-- ═══════════════════════════ محرّر سطر القيد ══════════════════════ -->
     <section class="sec" id="c-line">
-      <h2><span class="idx">٧</span>محرّر سطر القيد</h2>
-      <p class="lede">
-        منقول كما هو من الشاشة المعتمدة: رأسا المدين والدائن ملوّنان، والخلية تُحرَّر في مكانها،
-        وقائمة السطر تحمل «تكرار» و«حذف» (المدمّر بلون الخطر عند التمرير فقط).
-      </p>
+      <h2><span class="idx" data-idx="7"></span><span data-i18n="gallery.sec.line">محرّر سطر القيد</span></h2>
+      <p class="lede"><span data-i18n="gallery.lede.line"></span></p>
       <div class="card">
         <div class="tablewrap">
           <table class="lines">
             <thead>
               <tr>
-                <th style="min-width:230px">الحساب</th>
-                <th style="min-width:150px">البيان</th>
-                <th class="h-debit" style="min-width:118px">مدين (ر.س)</th>
-                <th class="h-credit" style="min-width:118px">دائن (ر.س)</th>
-                <th style="min-width:130px">نوع الضريبة</th>
-                <th style="min-width:92px">نسبة الضريبة</th>
-                <th style="min-width:118px">مبلغ الضريبة (ر.س)</th>
-                <th style="min-width:160px">مركز التكلفة</th>
-                <th class="col-act">إجراء</th>
+                <th data-i18n="acct.columns.account" style="min-width:230px">الحساب</th>
+                <th data-i18n="acct.columns.memo" style="min-width:150px">البيان</th>
+                <th class="h-debit" style="min-width:118px"><span data-i18n="acct.debitCur">مدين (ر.س)</span></th>
+                <th class="h-credit" style="min-width:118px"><span data-i18n="acct.creditCur">دائن (ر.س)</span></th>
+                <th data-i18n="acct.tax.type" style="min-width:130px">نوع الضريبة</th>
+                <th data-i18n="acct.tax.rate" style="min-width:92px">نسبة الضريبة</th>
+                <th style="min-width:118px"><span data-i18n="acct.tax.amount">مبلغ الضريبة (ر.س)</span></th>
+                <th data-i18n="acct.columns.costCentre" style="min-width:160px">مركز التكلفة</th>
+                <th data-i18n="acct.columns.action" class="col-act">إجراء</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td><span class="ctl-wrap"><select class="cell"><option>6120101 - مصروف خدمات تقنية</option></select><span class="adorn" style="inset-inline-end:6px"><svg width="12" height="12"><use href="#i-down"/></svg></span></span></td>
+                <td><span class="ctl-wrap"><select class="cell"><option data-i18n="common.label.codeName" data-i18n-params='{"code":"6120101","name":"@screen.journal.accounts.a6120101"}'></option></select><span class="adorn" style="inset-inline-end:6px"><svg width="12" height="12"><use href="#i-down"/></svg></span></span></td>
                 <td><input class="cell" value="مصروف خدمات تقنية"></td>
                 <td><input class="cell amount debit" inputmode="decimal" value="10,000.00"></td>
                 <td><input class="cell amount credit" inputmode="decimal" placeholder="–"></td>
-                <td><span class="ctl-wrap"><select class="cell"><option>ضريبة مدخلات</option></select><span class="adorn" style="inset-inline-end:6px"><svg width="12" height="12"><use href="#i-down"/></svg></span></span></td>
+                <td><span class="ctl-wrap"><select class="cell"><option data-i18n="acct.tax.input">ضريبة مدخلات</option></select><span class="adorn" style="inset-inline-end:6px"><svg width="12" height="12"><use href="#i-down"/></svg></span></span></td>
                 <td><span class="ctl-wrap"><select class="cell"><option>15%</option></select><span class="adorn" style="inset-inline-end:6px"><svg width="12" height="12"><use href="#i-down"/></svg></span></span></td>
                 <td><span class="taxval">1,500.00</span></td>
-                <td><span class="ctl-wrap"><select class="cell"><option>إدارة تقنية المعلومات</option></select><span class="adorn" style="inset-inline-end:6px"><svg width="12" height="12"><use href="#i-down"/></svg></span></span></td>
+                <td><span class="ctl-wrap"><select class="cell"><option data-i18n="field.costCentre.it">إدارة تقنية المعلومات</option></select><span class="adorn" style="inset-inline-end:6px"><svg width="12" height="12"><use href="#i-down"/></svg></span></span></td>
                 <td class="col-act"><div class="rowmenu">
-                  <button type="button" data-menu-trigger="rm-1" aria-label="خيارات السطر" aria-haspopup="true" aria-expanded="false"><svg width="16" height="16"><use href="#i-dots"/></svg></button>
+                  <button data-i18n-attr="aria-label:app.a11y.rowOptions" type="button" data-menu-trigger="rm-1" aria-label="خيارات السطر" aria-haspopup="true" aria-expanded="false"><svg width="16" height="16"><use href="#i-dots"/></svg></button>
                   <div class="menu" id="rm-1" data-menu>
-                    <button type="button"><svg width="14" height="14"><use href="#i-copy"/></svg>تكرار السطر</button>
-                    <button type="button" class="danger"><svg width="14" height="14"><use href="#i-trash"/></svg>حذف السطر</button>
+                    <button type="button"><svg width="14" height="14"><use href="#i-copy"/></svg><span data-i18n="common.action.duplicate">تكرار السطر</span></button>
+                    <button type="button" class="danger"><svg width="14" height="14"><use href="#i-trash"/></svg><span data-i18n="common.action.deleteLine">حذف السطر</span></button>
                   </div>
                 </div></td>
               </tr>
               <tr>
-                <td><span class="ctl-wrap"><select class="cell"><option>121201 - ضريبة القيمة المضافة - مدخلات</option></select><span class="adorn" style="inset-inline-end:6px"><svg width="12" height="12"><use href="#i-down"/></svg></span></span></td>
+                <td><span class="ctl-wrap"><select class="cell"><option data-i18n="common.label.codeName" data-i18n-params='{"code":"121201","name":"@screen.journal.accounts.a121201"}'></option></select><span class="adorn" style="inset-inline-end:6px"><svg width="12" height="12"><use href="#i-down"/></svg></span></span></td>
                 <td><input class="cell" value="ضريبة القيمة المضافة"></td>
                 <td><input class="cell amount debit" inputmode="decimal" value="1,500.00"></td>
                 <td><input class="cell amount credit" inputmode="decimal" placeholder="–"></td>
-                <td><span class="ctl-wrap"><select class="cell"><option>ضريبة مدخلات</option></select><span class="adorn" style="inset-inline-end:6px"><svg width="12" height="12"><use href="#i-down"/></svg></span></span></td>
+                <td><span class="ctl-wrap"><select class="cell"><option data-i18n="acct.tax.input">ضريبة مدخلات</option></select><span class="adorn" style="inset-inline-end:6px"><svg width="12" height="12"><use href="#i-down"/></svg></span></span></td>
                 <td><span class="ctl-wrap"><select class="cell"><option>15%</option></select><span class="adorn" style="inset-inline-end:6px"><svg width="12" height="12"><use href="#i-down"/></svg></span></span></td>
                 <td><span class="taxval zero">–</span></td>
-                <td><span class="ctl-wrap"><select class="cell"><option>إدارة مالية</option></select><span class="adorn" style="inset-inline-end:6px"><svg width="12" height="12"><use href="#i-down"/></svg></span></span></td>
-                <td class="col-act"><div class="rowmenu"><button type="button" data-menu-trigger="rm-2" aria-label="خيارات السطر" aria-expanded="false"><svg width="16" height="16"><use href="#i-dots"/></svg></button>
+                <td><span class="ctl-wrap"><select class="cell"><option data-i18n="field.costCentre.finance">إدارة مالية</option></select><span class="adorn" style="inset-inline-end:6px"><svg width="12" height="12"><use href="#i-down"/></svg></span></span></td>
+                <td class="col-act"><div class="rowmenu"><button data-i18n-attr="aria-label:app.a11y.rowOptions" type="button" data-menu-trigger="rm-2" aria-label="خيارات السطر" aria-expanded="false"><svg width="16" height="16"><use href="#i-dots"/></svg></button>
                   <div class="menu" id="rm-2" data-menu>
-                    <button type="button"><svg width="14" height="14"><use href="#i-copy"/></svg>تكرار السطر</button>
-                    <button type="button" class="danger"><svg width="14" height="14"><use href="#i-trash"/></svg>حذف السطر</button>
+                    <button type="button"><svg width="14" height="14"><use href="#i-copy"/></svg><span data-i18n="common.action.duplicate">تكرار السطر</span></button>
+                    <button type="button" class="danger"><svg width="14" height="14"><use href="#i-trash"/></svg><span data-i18n="common.action.deleteLine">حذف السطر</span></button>
                   </div></div></td>
               </tr>
               <tr>
-                <td><span class="ctl-wrap"><select class="cell"><option>2010101 - الدائنون / شركة التقنية</option></select><span class="adorn" style="inset-inline-end:6px"><svg width="12" height="12"><use href="#i-down"/></svg></span></span></td>
+                <td><span class="ctl-wrap"><select class="cell"><option data-i18n="common.label.codeName" data-i18n-params='{"code":"2010101","name":"@screen.journal.accounts.a2010101"}'></option></select><span class="adorn" style="inset-inline-end:6px"><svg width="12" height="12"><use href="#i-down"/></svg></span></span></td>
                 <td><input class="cell" value="شركة التقنية"></td>
                 <td><input class="cell amount debit" inputmode="decimal" placeholder="–"></td>
                 <td><input class="cell amount credit" inputmode="decimal" value="11,500.00"></td>
@@ -667,90 +640,83 @@
                 <td><span class="ctl-wrap"><select class="cell"><option>—</option></select><span class="adorn" style="inset-inline-end:6px"><svg width="12" height="12"><use href="#i-down"/></svg></span></span></td>
                 <td><span class="taxval zero">–</span></td>
                 <td><span class="ctl-wrap"><select class="cell"><option>—</option></select><span class="adorn" style="inset-inline-end:6px"><svg width="12" height="12"><use href="#i-down"/></svg></span></span></td>
-                <td class="col-act"><div class="rowmenu"><button type="button" data-menu-trigger="rm-3" aria-label="خيارات السطر" aria-expanded="false"><svg width="16" height="16"><use href="#i-dots"/></svg></button>
+                <td class="col-act"><div class="rowmenu"><button data-i18n-attr="aria-label:app.a11y.rowOptions" type="button" data-menu-trigger="rm-3" aria-label="خيارات السطر" aria-expanded="false"><svg width="16" height="16"><use href="#i-dots"/></svg></button>
                   <div class="menu" id="rm-3" data-menu>
-                    <button type="button"><svg width="14" height="14"><use href="#i-copy"/></svg>تكرار السطر</button>
-                    <button type="button" class="danger"><svg width="14" height="14"><use href="#i-trash"/></svg>حذف السطر</button>
+                    <button type="button"><svg width="14" height="14"><use href="#i-copy"/></svg><span data-i18n="common.action.duplicate">تكرار السطر</span></button>
+                    <button type="button" class="danger"><svg width="14" height="14"><use href="#i-trash"/></svg><span data-i18n="common.action.deleteLine">حذف السطر</span></button>
                   </div></div></td>
               </tr>
               <tr>
-                <td><span class="ctl-wrap"><select class="cell"><option>— اختر الحساب —</option></select><span class="adorn" style="inset-inline-end:6px"><svg width="12" height="12"><use href="#i-down"/></svg></span></span></td>
-                <td><input class="cell" placeholder="بيان السطر"></td>
+                <td><span class="ctl-wrap"><select class="cell"><option data-i18n="common.label.selectAccount">— اختر الحساب —</option></select><span class="adorn" style="inset-inline-end:6px"><svg width="12" height="12"><use href="#i-down"/></svg></span></span></td>
+                <td><input data-i18n-attr="placeholder:field.memo.linePh" class="cell" placeholder="بيان السطر"></td>
                 <td><input class="cell amount debit" inputmode="decimal" placeholder="–" aria-invalid="true"></td>
                 <td><input class="cell amount credit" inputmode="decimal" placeholder="–"></td>
                 <td><span class="ctl-wrap"><select class="cell"><option>—</option></select><span class="adorn" style="inset-inline-end:6px"><svg width="12" height="12"><use href="#i-down"/></svg></span></span></td>
                 <td><span class="ctl-wrap"><select class="cell"><option>—</option></select><span class="adorn" style="inset-inline-end:6px"><svg width="12" height="12"><use href="#i-down"/></svg></span></span></td>
                 <td><span class="taxval zero">–</span></td>
                 <td><span class="ctl-wrap"><select class="cell"><option>—</option></select><span class="adorn" style="inset-inline-end:6px"><svg width="12" height="12"><use href="#i-down"/></svg></span></span></td>
-                <td class="col-act"><div class="rowmenu"><button type="button" data-menu-trigger="rm-4" aria-label="خيارات السطر" aria-expanded="false"><svg width="16" height="16"><use href="#i-dots"/></svg></button>
+                <td class="col-act"><div class="rowmenu"><button data-i18n-attr="aria-label:app.a11y.rowOptions" type="button" data-menu-trigger="rm-4" aria-label="خيارات السطر" aria-expanded="false"><svg width="16" height="16"><use href="#i-dots"/></svg></button>
                   <div class="menu" id="rm-4" data-menu>
-                    <button type="button"><svg width="14" height="14"><use href="#i-copy"/></svg>تكرار السطر</button>
-                    <button type="button" class="danger"><svg width="14" height="14"><use href="#i-trash"/></svg>حذف السطر</button>
+                    <button type="button"><svg width="14" height="14"><use href="#i-copy"/></svg><span data-i18n="common.action.duplicate">تكرار السطر</span></button>
+                    <button type="button" class="danger"><svg width="14" height="14"><use href="#i-trash"/></svg><span data-i18n="common.action.deleteLine">حذف السطر</span></button>
                   </div></div></td>
               </tr>
             </tbody>
           </table>
         </div>
         <div style="padding:0 var(--space-16) var(--space-16)">
-          <button class="addline"><svg width="15" height="15"><use href="#i-plus"/></svg>إضافة سطر</button>
+          <button class="addline"><svg width="15" height="15"><use href="#i-plus"/></svg><span data-i18n="common.action.addLine">إضافة سطر</span></button>
         </div>
       </div>
-      <p class="demo-note">
-        السطر الرابع يعرض حالة الخلية المرفوضة (<code class="ltr">aria-invalid="true"</code>):
-        حسابٌ اختير بلا مبلغ. الجدول ينزلق أفقياً داخل حاويته — <strong>ولا ينزلق جسم الصفحة أبداً</strong>.
-      </p>
+      <p class="demo-note"><span data-i18n="gallery.demo.lineNote"></span></p>
     </section>
 
     <!-- ═══════════════════════════════════ الجداول ══════════════════════ -->
     <section class="sec" id="c-table">
-      <h2><span class="idx">٨</span>جدول البيانات — رأس لاصق، أعمدة تُفرز، صف إجماليات مصطفّ</h2>
-      <p class="lede">
-        صف الإجماليات داخل <code class="ltr">&lt;tfoot&gt;</code> من <strong>نفس الجدول</strong>، فيرث
-        عرض الأعمدة ولا ينحرف عنها مهما تغيّر المحتوى. أي محاولة لبناء صف إجماليات في عنصر منفصل
-        ستنكسر عند أول رقم طويل.
-      </p>
+      <h2><span class="idx" data-idx="8"></span><span data-i18n="gallery.sec.table">جدول البيانات — رأس لاصق، أعمدة تُفرز، صف إجماليات مصطفّ</span></h2>
+      <p class="lede"><span data-i18n="gallery.lede.table"></span></p>
       <div class="card">
         <div class="toolbar">
           <div class="field grow">
-            <label for="g-q" class="visually-hidden">بحث</label>
+            <label data-i18n="common.action.search" for="g-q" class="visually-hidden">بحث</label>
             <span class="ctl-wrap">
-              <input class="ctl has-start" id="g-q" placeholder="ابحث برقم القيد أو بالبيان…">
+              <input data-i18n-attr="placeholder:field.searchEntries.ph" class="ctl has-start" id="g-q" placeholder="ابحث برقم القيد أو بالبيان…">
               <span class="adorn adorn-start"><svg width="15" height="15"><use href="#i-search"/></svg></span>
             </span>
           </div>
           <div class="end">
             <div class="seg plain">
-              <button aria-pressed="true">الكل</button>
-              <button aria-pressed="false">مسودة</button>
-              <button aria-pressed="false">مُرحَّل</button>
+              <button data-i18n="common.label.all" aria-pressed="true">الكل</button>
+              <button data-i18n="acct.status.draft" aria-pressed="false">مسودة</button>
+              <button data-i18n="acct.status.posted" aria-pressed="false">مُرحَّل</button>
             </div>
-            <button class="btn btn-sm"><svg width="14" height="14"><use href="#i-print"/></svg>طباعة</button>
+            <button class="btn btn-sm"><svg width="14" height="14"><use href="#i-print"/></svg><span data-i18n="common.action.print">طباعة</span></button>
           </div>
         </div>
         <div class="tablewrap tablewrap--short">
           <table class="data" data-sortable>
             <thead>
               <tr>
-                <th class="sortable start" aria-sort="none" style="min-width:130px"><button type="button">رقم القيد<svg class="arrow" width="12" height="12"><use href="#i-sort"/></svg></button></th>
-                <th class="sortable start" aria-sort="none" style="min-width:110px"><button type="button">التاريخ<svg class="arrow" width="12" height="12"><use href="#i-sort"/></svg></button></th>
-                <th class="start" style="min-width:220px">البيان</th>
-                <th class="sortable n h-debit" aria-sort="none" style="min-width:120px"><button type="button">مدين (ر.س)<svg class="arrow" width="12" height="12"><use href="#i-sort"/></svg></button></th>
-                <th class="sortable n h-credit" aria-sort="none" style="min-width:120px"><button type="button">دائن (ر.س)<svg class="arrow" width="12" height="12"><use href="#i-sort"/></svg></button></th>
-                <th style="min-width:110px">الحالة</th>
+                <th class="sortable start" aria-sort="none" style="min-width:130px"><button type="button"><span data-i18n="acct.columns.entryNo">رقم القيد</span><svg class="arrow" width="12" height="12"><use href="#i-sort"/></svg></button></th>
+                <th class="sortable start" aria-sort="none" style="min-width:110px"><button type="button"><span data-i18n="common.label.date">التاريخ</span><svg class="arrow" width="12" height="12"><use href="#i-sort"/></svg></button></th>
+                <th data-i18n="acct.columns.memo" class="start" style="min-width:220px">البيان</th>
+                <th class="sortable n h-debit" aria-sort="none" style="min-width:120px"><button type="button"><span data-i18n="acct.debitCur">مدين (ر.س)</span><svg class="arrow" width="12" height="12"><use href="#i-sort"/></svg></button></th>
+                <th class="sortable n h-credit" aria-sort="none" style="min-width:120px"><button type="button"><span data-i18n="acct.creditCur">دائن (ر.س)</span><svg class="arrow" width="12" height="12"><use href="#i-sort"/></svg></button></th>
+                <th data-i18n="gallery.demo.amtCase" style="min-width:110px">الحالة</th>
               </tr>
             </thead>
             <tbody>
-              <tr><td class="start"><span class="acct-code">JV-2026-00125</span></td><td class="start"><span class="ltr">2026/05/24</span></td><td class="start">مصروف خدمات تقنية — الفترة 05/2026</td><td class="n"><span class="amt amt--debit" data-amount="11500">—</span></td><td class="n"><span class="amt" data-amount="0">—</span></td><td><span class="pill pill--posted">مُرحَّل</span></td></tr>
-              <tr><td class="start"><span class="acct-code">JV-2026-00124</span></td><td class="start"><span class="ltr">2026/05/23</span></td><td class="start">تحصيل من العميل شركة النور</td><td class="n"><span class="amt amt--debit" data-amount="48250">—</span></td><td class="n"><span class="amt" data-amount="0">—</span></td><td><span class="pill pill--posted">مُرحَّل</span></td></tr>
-              <tr><td class="start"><span class="acct-code">JV-2026-00123</span></td><td class="start"><span class="ltr">2026/05/22</span></td><td class="start">قيد تسوية مخزون — المستودع الرئيسي</td><td class="n"><span class="amt" data-amount="0">—</span></td><td class="n"><span class="amt amt--credit" data-amount="7300.4">—</span></td><td><span class="pill pill--pending">بانتظار الاعتماد</span></td></tr>
-              <tr><td class="start"><span class="acct-code">JV-2026-00122</span></td><td class="start"><span class="ltr">2026/05/21</span></td><td class="start">رواتب شهر 04/2026</td><td class="n"><span class="amt amt--debit" data-amount="286400">—</span></td><td class="n"><span class="amt" data-amount="0">—</span></td><td><span class="pill pill--draft">مسودة</span></td></tr>
-              <tr><td class="start"><span class="acct-code">JV-2026-00121</span></td><td class="start"><span class="ltr">2026/05/19</span></td><td class="start">عكس القيد JV-2026-00118</td><td class="n"><span class="amt" data-amount="0">—</span></td><td class="n"><span class="amt amt--credit" data-amount="-1250.5">—</span></td><td><span class="pill pill--reversed">معكوس</span></td></tr>
-              <tr><td class="start"><span class="acct-code">JV-2026-00120</span></td><td class="start"><span class="ltr">2026/05/18</span></td><td class="start">مشتريات مواد — مشروع أبراج بابل</td><td class="n"><span class="amt amt--debit" data-amount="93875.25">—</span></td><td class="n"><span class="amt" data-amount="0">—</span></td><td><span class="pill pill--rejected">مرفوض</span></td></tr>
-              <tr><td class="start"><span class="acct-code">JV-2025-00988</span></td><td class="start"><span class="ltr">2025/12/31</span></td><td class="start">قيد إقفال السنة المالية 2025</td><td class="n"><span class="amt amt--debit" data-amount="1204338.9">—</span></td><td class="n"><span class="amt" data-amount="0">—</span></td><td><span class="pill pill--archived">مؤرشف</span></td></tr>
+              <tr><td class="start"><span class="acct-code">JV-2026-00125</span></td><td class="start"><span class="ltr">2026/05/24</span></td><td data-i18n="screen.journal.rows.r1.memo" class="start">مصروف خدمات تقنية — الفترة 05/2026</td><td class="n"><span class="amt amt--debit" data-amount="11500">—</span></td><td class="n"><span class="amt" data-amount="0">—</span></td><td><span data-i18n="acct.status.posted" class="pill pill--posted">مُرحَّل</span></td></tr>
+              <tr><td class="start"><span class="acct-code">JV-2026-00124</span></td><td class="start"><span class="ltr">2026/05/23</span></td><td data-i18n="screen.journal.rows.r2.memo" class="start">تحصيل من العميل شركة النور</td><td class="n"><span class="amt amt--debit" data-amount="48250">—</span></td><td class="n"><span class="amt" data-amount="0">—</span></td><td><span data-i18n="acct.status.posted" class="pill pill--posted">مُرحَّل</span></td></tr>
+              <tr><td class="start"><span class="acct-code">JV-2026-00123</span></td><td class="start"><span class="ltr">2026/05/22</span></td><td data-i18n="screen.journal.rows.r3.memo" class="start">قيد تسوية مخزون — المستودع الرئيسي</td><td class="n"><span class="amt" data-amount="0">—</span></td><td class="n"><span class="amt amt--credit" data-amount="7300.4">—</span></td><td><span data-i18n="acct.status.pending" class="pill pill--pending">بانتظار الاعتماد</span></td></tr>
+              <tr><td class="start"><span class="acct-code">JV-2026-00122</span></td><td class="start"><span class="ltr">2026/05/21</span></td><td data-i18n="screen.journal.rows.r4.memo" class="start">رواتب شهر 04/2026</td><td class="n"><span class="amt amt--debit" data-amount="286400">—</span></td><td class="n"><span class="amt" data-amount="0">—</span></td><td><span data-i18n="acct.status.draft" class="pill pill--draft">مسودة</span></td></tr>
+              <tr><td class="start"><span class="acct-code">JV-2026-00121</span></td><td class="start"><span class="ltr">2026/05/19</span></td><td data-i18n="screen.journal.rows.r5.memo" class="start">عكس القيد JV-2026-00118</td><td class="n"><span class="amt" data-amount="0">—</span></td><td class="n"><span class="amt amt--credit" data-amount="-1250.5">—</span></td><td><span data-i18n="acct.status.reversed" class="pill pill--reversed">معكوس</span></td></tr>
+              <tr><td class="start"><span class="acct-code">JV-2026-00120</span></td><td class="start"><span class="ltr">2026/05/18</span></td><td data-i18n="screen.journal.rows.r6.memo" class="start">مشتريات مواد — مشروع أبراج بابل</td><td class="n"><span class="amt amt--debit" data-amount="93875.25">—</span></td><td class="n"><span class="amt" data-amount="0">—</span></td><td><span data-i18n="acct.status.rejected" class="pill pill--rejected">مرفوض</span></td></tr>
+              <tr><td class="start"><span class="acct-code">JV-2025-00988</span></td><td class="start"><span class="ltr">2025/12/31</span></td><td data-i18n="screen.journal.rows.r7.memo" class="start">قيد إقفال السنة المالية 2025</td><td class="n"><span class="amt amt--debit" data-amount="1204338.9">—</span></td><td class="n"><span class="amt" data-amount="0">—</span></td><td><span data-i18n="acct.status.archived" class="pill pill--archived">مؤرشف</span></td></tr>
             </tbody>
             <tfoot>
               <tr data-fixed>
-                <td colspan="3">الإجمالي — ٧ قيود</td>
+                <td colspan="3"><span data-i18n="acct.total"></span> — <span data-i18n="common.count.entries" data-i18n-count="7"></span></td>
                 <td class="n d"><span class="amt amt--total" data-amount="1634364.15">—</span></td>
                 <td class="n c"><span class="amt amt--total" data-amount="6049.9">—</span></td>
                 <td></td>
@@ -759,244 +725,215 @@
           </table>
         </div>
         <div class="pager">
-          <span class="count">عرض <span class="n">1–7</span> من <span class="n">248</span> قيداً</span>
+          <span class="count" data-i18n="common.pager.showingEntries" data-i18n-count="248" data-i18n-params='{"range":"1\u20137"}'></span>
           <span class="sizepick">
-            <label for="g-size">لكل صفحة</label>
+            <label data-i18n="common.label.perPage" for="g-size">لكل صفحة</label>
             <select id="g-size"><option>25</option><option>50</option><option>100</option></select>
           </span>
           <span class="pages">
-            <button class="pagebtn" disabled aria-label="الصفحة السابقة"><svg width="14" height="14" style="transform:rotate(-90deg)"><use href="#i-down"/></svg></button>
+            <button data-i18n-attr="aria-label:common.pager.prev" class="pagebtn" data-page-nav="prev" disabled aria-label="الصفحة السابقة"><svg width="14" height="14"><use href="#i-down"/></svg></button>
             <button class="pagebtn" aria-current="page">1</button>
             <button class="pagebtn">2</button>
             <button class="pagebtn">3</button>
             <span class="gap">…</span>
             <button class="pagebtn">10</button>
-            <button class="pagebtn" aria-label="الصفحة التالية"><svg width="14" height="14" style="transform:rotate(90deg)"><use href="#i-down"/></svg></button>
+            <button data-i18n-attr="aria-label:common.pager.next" class="pagebtn" data-page-nav="next" aria-label="الصفحة التالية"><svg width="14" height="14"><use href="#i-down"/></svg></button>
           </span>
         </div>
       </div>
-      <p class="demo-note">
-        <strong>الرأس اللاصق يحتاج ارتفاعاً محدوداً للحاوية</strong> — <code class="ltr">.tablewrap</code>
-        هي حاوية التمرير، فإن لم يكن لها <code class="ltr">max-height</code> فلن يلتصق شيء.
-        استعمل <code class="ltr">.tablewrap--tall</code> أو <code class="ltr">--short</code>.
-        وأسهم الفرز: اضغط على رأس عمود.
-      </p>
+      <p class="demo-note"><span data-i18n="gallery.demo.stickyNote"></span></p>
     </section>
 
     <!-- ═══════════════════════════════ شارات الحالة ═════════════════════ -->
     <section class="sec" id="c-pill">
-      <h2><span class="idx">٩</span>شارات الحالة</h2>
-      <p class="lede">
-        الحالة تُقرأ بلونها <em>وبنصّها</em> معاً — لا لوناً وحده، لأن ٨٪ من الرجال لا يميّزون
-        الأحمر عن الأخضر، ولأن الطباعة أحادية اللون تُسقط اللون أصلاً.
-      </p>
+      <h2><span class="idx" data-idx="9"></span><span data-i18n="gallery.sec.pills">شارات الحالة</span></h2>
+      <p class="lede"><span data-i18n="gallery.lede.pills"></span></p>
       <div class="demo">
-        <div class="demo-hd">حالات المستند المحاسبي</div>
+        <div data-i18n="gallery.demo.docStates" class="demo-hd">حالات المستند المحاسبي</div>
         <div class="demo-row">
-          <span class="pill pill--draft">مسودة</span>
-          <span class="pill pill--posted">مُرحَّل</span>
-          <span class="pill pill--reversed">معكوس</span>
-          <span class="pill pill--pending">بانتظار الاعتماد</span>
-          <span class="pill pill--rejected">مرفوض</span>
-          <span class="pill pill--archived">مؤرشف</span>
+          <span data-i18n="acct.status.draft" class="pill pill--draft">مسودة</span>
+          <span data-i18n="acct.status.posted" class="pill pill--posted">مُرحَّل</span>
+          <span data-i18n="acct.status.reversed" class="pill pill--reversed">معكوس</span>
+          <span data-i18n="acct.status.pending" class="pill pill--pending">بانتظار الاعتماد</span>
+          <span data-i18n="acct.status.rejected" class="pill pill--rejected">مرفوض</span>
+          <span data-i18n="acct.status.archived" class="pill pill--archived">مؤرشف</span>
         </div>
         <div class="demo-row" style="margin-top:var(--space-12)">
-          <span class="pill pill-lg pill--draft">مسودة</span>
-          <span class="pill pill-lg pill--posted">مُرحَّل</span>
-          <span class="pill pill-lg pill--reversed">معكوس</span>
-          <span class="pill pill-lg pill--pending">بانتظار الاعتماد</span>
-          <span class="pill pill-lg pill--rejected">مرفوض</span>
-          <span class="pill pill-lg pill--archived">مؤرشف</span>
+          <span data-i18n="acct.status.draft" class="pill pill-lg pill--draft">مسودة</span>
+          <span data-i18n="acct.status.posted" class="pill pill-lg pill--posted">مُرحَّل</span>
+          <span data-i18n="acct.status.reversed" class="pill pill-lg pill--reversed">معكوس</span>
+          <span data-i18n="acct.status.pending" class="pill pill-lg pill--pending">بانتظار الاعتماد</span>
+          <span data-i18n="acct.status.rejected" class="pill pill-lg pill--rejected">مرفوض</span>
+          <span data-i18n="acct.status.archived" class="pill pill-lg pill--archived">مؤرشف</span>
         </div>
         <div class="demo-row" style="margin-top:var(--space-12)">
-          <span class="pill pill--debit">طبيعته مدينة</span>
-          <span class="pill pill--credit">طبيعته دائنة</span>
-          <span class="pill pill--info">فترة مفتوحة</span>
+          <span data-i18n="acct.natureDebit" class="pill pill--debit">طبيعته مدينة</span>
+          <span data-i18n="acct.natureCredit" class="pill pill--credit">طبيعته دائنة</span>
+          <span data-i18n="acct.status.openPeriod" class="pill pill--info">فترة مفتوحة</span>
         </div>
-        <p class="demo-note">
-          <strong>لا لون جديد:</strong> كل شارة تشير إلى رمز دلالي موجود —
-          <code class="ltr">--color-posted</code> ← <code class="ltr">--good</code>،
-          <code class="ltr">--color-reversed</code> ← <code class="ltr">--ai</code>،
-          <code class="ltr">--color-pending</code> ← <code class="ltr">--warn</code>،
-          <code class="ltr">--color-rejected</code> ← <code class="ltr">--req</code>.
-          «مؤرشف» بحدّ متقطّع ليقرأه من لا يميّز الألوان.
-        </p>
+        <p class="demo-note"><span data-i18n="gallery.demo.pillNote"></span></p>
       </div>
     </section>
 
     <!-- ═══════════════════════ التنبيهات والتحقق الحيّ ═══════════════════ -->
     <section class="sec" id="c-alert">
-      <h2><span class="idx">١٠</span>التنبيهات والتحقق الحيّ</h2>
+      <h2><span class="idx" data-idx="10"></span><span data-i18n="gallery.sec.alerts">التنبيهات والتحقق الحيّ</span></h2>
       <div class="demo">
-        <div class="demo-hd">تنبيهات الصفحة <code>.alert</code></div>
+        <div class="demo-hd"><span data-i18n="gallery.demo.pageAlerts"></span><code>.alert</code></div>
         <div class="stack" style="gap:var(--space-10)">
           <div class="alert alert--info" role="status">
             <svg width="18" height="18"><use href="#i-info"/></svg>
-            <div class="body"><span class="title">الفترة المالية 05/2026 مفتوحة</span>
-              <p>يمكن الترحيل حتى <span class="ltr">2026/06/10</span>. بعدها تُقفل الفترة ويصير التعديل بقيد عكسي فقط.</p></div>
-            <button class="iconbtn close" aria-label="إغلاق"><svg width="16" height="16"><use href="#i-x"/></svg></button>
+            <div class="body"><span data-i18n="screen.journal.alert.periodOpenTitle" class="title">الفترة المالية 05/2026 مفتوحة</span>
+              <p data-i18n="screen.journal.alert.periodOpenBody" data-i18n-params='{"date":"2026/06/10"}'></p></div>
+            <button data-i18n-attr="aria-label:app.a11y.close" class="iconbtn close" aria-label="إغلاق"><svg width="16" height="16"><use href="#i-x"/></svg></button>
           </div>
           <div class="alert alert--success" role="status">
             <svg width="18" height="18"><use href="#i-check"/></svg>
-            <div class="body"><span class="title">تم ترحيل القيد <span class="ltr">JV-2026-00125</span></span>
-              <p>أُضيف إلى سلسلة التجزئة عند التسلسل <span class="ltr">chain_seq = 4,812</span>.</p></div>
+            <div class="body"><span class="title" data-i18n="screen.journal.alert.postedTitle" data-i18n-params='{"code":"JV-2026-00125"}'></span>
+              <p data-i18n="screen.journal.alert.postedBody" data-i18n-params='{"seq":"chain_seq = 4,812"}'></p></div>
           </div>
           <div class="alert alert--warning" role="alert">
             <svg width="18" height="18"><use href="#i-warn"/></svg>
-            <div class="body"><span class="title">القيد غير متوازن</span>
-              <p>الفرق <span class="amt amt--total" dir="ltr">1,500.00</span> ر.س. لا يمكن الترحيل حتى يتساوى المدين والدائن.</p>
-              <div class="actions"><button class="btn btn-sm">أضف سطر تسوية</button><button class="btn btn-sm btn-ghost">تجاهل</button></div></div>
+            <div class="body"><span data-i18n="acct.entryUnbalanced" class="title">القيد غير متوازن</span>
+              <p data-i18n="screen.journal.alert.unbalancedBody" data-i18n-params='{"amount":"1,500.00"}'></p>
+              <div class="actions"><button data-i18n="common.action.addAdjusting" class="btn btn-sm">أضف سطر تسوية</button><button data-i18n="common.action.ignore" class="btn btn-sm btn-ghost">تجاهل</button></div></div>
           </div>
           <div class="alert alert--ai">
             <svg width="18" height="18"><use href="#i-sparkle"/></svg>
-            <div class="body"><span class="title">اقتراح من المساعد</span>
-              <p>هذا البيان يشبه ١٤ قيداً سابقاً رُحّلت على «مصروف خدمات تقنية». هذه اقتراحات فقط — راجعها قبل الترحيل.</p></div>
+            <div class="body"><span data-i18n="screen.journal.alert.aiTitle" class="title">اقتراح من المساعد</span>
+              <p data-i18n="common.count.similarEntries" data-i18n-count="14"></p>
+              <p data-i18n="screen.journal.alert.aiNote"></p></div>
           </div>
         </div>
       </div>
 
       <div class="demo">
-        <div class="demo-hd">رفض على مستوى قاعدة البيانات <code>.alert--db</code> — بعرض المحتوى كاملاً</div>
+        <div class="demo-hd"><span data-i18n="gallery.demo.dbReject"></span><code>.alert--db</code></div>
         <div class="alert alert--danger alert--db" role="alert">
           <svg width="18" height="18"><use href="#i-warn"/></svg>
           <div class="body">
-            <span class="title">رفضت قاعدة البيانات ترحيل القيد — لم يُحفظ شيء</span>
-            <p>
-              فشل قيد التحقق <code class="ltr">ck_journal_entry_balanced</code>. المعاملة تراجعت كاملةً،
-              ولم يُستهلك رقم من العدّاد. أعد المحاولة بعد تصحيح السطور.
-            </p>
+            <span data-i18n="screen.journal.alert.dbTitle" class="title">رفضت قاعدة البيانات ترحيل القيد — لم يُحفظ شيء</span>
+            <p data-i18n="screen.journal.alert.dbBody" data-i18n-params='{"constraint":"ck_journal_entry_balanced"}'></p>
             <code class="server-text">ERROR:  new row for relation "journal_entry" violates check constraint "ck_journal_entry_balanced"
 DETAIL:  Failing row contains (4812, 2026-05-24, 11500.0000, 10000.0000, ...).
 CONTEXT: SQL statement "INSERT INTO journal_entry ..."</code>
             <div class="meta">
-              <span>وقت المحاولة: <span class="ltr">2026-05-24 14:03:11.482 +03</span></span>
-              <span>المعرّف المرجعي: <span class="ltr">req_01HXY7K3</span></span>
-              <span>المستخدم: مظفر العمري</span>
+              <span><span data-i18n="screen.journal.alert.dbAttempt">وقت المحاولة:</span> <span class="ltr">2026-05-24 14:03:11.482 +03</span></span>
+              <span><span data-i18n="screen.journal.alert.dbRef">المعرّف المرجعي:</span> <span class="ltr">req_01HXY7K3</span></span>
+              <span><span data-i18n="screen.journal.alert.dbUser"></span> <span data-i18n="app.userName"></span></span>
             </div>
             <div class="actions">
-              <button class="btn btn-sm">راجع السطور غير المتوازنة</button>
-              <button class="btn btn-sm btn-ghost">انسخ نصّ الخطأ</button>
+              <button data-i18n="common.action.reviewUnbalanced" class="btn btn-sm">راجع السطور غير المتوازنة</button>
+              <button data-i18n="common.action.copyError" class="btn btn-sm btn-ghost">انسخ نصّ الخطأ</button>
             </div>
           </div>
         </div>
-        <p class="demo-note">
-          <strong>ثلاث قواعد لرسالة الرفض:</strong> (١) تقول <em>ماذا حدث للبيانات</em> — «لم يُحفظ شيء»
-          هو أهم سطر فيها. (٢) تحمل نصّ الخادم كما ورد داخل
-          <code class="ltr">.server-text</code> معزولاً <code class="ltr">dir="ltr"</code> فلا يتبعثر SQL
-          داخل فقرة عربية. (٣) تحمل معرّفاً مرجعياً يربط ما رآه المستخدم بسجلّ الخادم.
-          <strong>ولا تُخفى ولا تُطوى</strong> — الرفض المحاسبي ليس إشعاراً عابراً.
-        </p>
+        <p class="demo-note"><span data-i18n="gallery.demo.dbNote"></span></p>
       </div>
 
       <div class="demo">
-        <div class="demo-hd">ملخّص أخطاء أعلى النموذج <code>.errsummary</code> والتحقق داخل الحقل</div>
+        <div class="demo-hd"><span data-i18n="gallery.demo.errSummary"></span><code>.errsummary</code></div>
         <div class="alert errsummary" role="alert" tabindex="-1">
           <svg width="18" height="18"><use href="#i-warn"/></svg>
           <div class="body">
-            <span class="title">تعذّر الحفظ — ٣ حقول تحتاج تصحيحاً</span>
+            <span class="title" data-i18n="common.count.validationErrors" data-i18n-count="3"></span>
             <ol>
-              <li><a href="#g-t6">مركز التكلفة</a> — إلزامي لحسابات المصروفات.</li>
-              <li><a href="#g-ta">البيان العام</a> — يحتوي محارف تحكّم غير مرئية.</li>
-              <li>السطر ٤ — حساب مختار بلا مبلغ مدين أو دائن.</li>
+              <li><a data-i18n="acct.columns.costCentre" href="#g-t6">مركز التكلفة</a><span data-i18n="screen.journal.alert.errList1Tail"></span></li>
+              <li><a data-i18n="field.description.label" href="#g-ta">البيان العام</a><span data-i18n="screen.journal.alert.errList2Tail"></span></li>
+              <li data-i18n="screen.journal.alert.errList3">السطر ٤ — حساب مختار بلا مبلغ مدين أو دائن.</li>
             </ol>
           </div>
         </div>
         <div class="grid fields-3" style="margin-top:var(--space-14)">
           <div class="field">
-            <label for="g-v1">مبلغ مدين</label>
+            <label data-i18n="gallery.demo.amtDebit" for="g-v1">مبلغ مدين</label>
             <input class="ctl amt-input" id="g-v1" value="0.00" aria-invalid="true" aria-describedby="g-v1e">
-            <span class="field-error" id="g-v1e"><svg width="13" height="13"><use href="#i-warn"/></svg>المبلغ يجب أن يكون أكبر من صفر.</span>
+            <span class="field-error" id="g-v1e"><svg width="13" height="13"><use href="#i-warn"/></svg><span data-i18n="field.debitAmount.error">المبلغ يجب أن يكون أكبر من صفر.</span></span>
           </div>
           <div class="field">
-            <label for="g-v2">رقم الحساب</label>
+            <label data-i18n="field.accountNo.label" for="g-v2">رقم الحساب</label>
             <input class="ctl" id="g-v2" dir="ltr" value="6120101" aria-describedby="g-v2e">
-            <span class="field-ok" id="g-v2e"><svg width="13" height="13"><use href="#i-check"/></svg>حساب تفصيلي قابل للترحيل.</span>
+            <span class="field-ok" id="g-v2e"><svg width="13" height="13"><use href="#i-check"/></svg><span data-i18n="field.accountNo.ok">حساب تفصيلي قابل للترحيل.</span></span>
           </div>
           <div class="field">
-            <label for="g-v3">اسم المورّد</label>
+            <label data-i18n="field.vendorName.label" for="g-v3">اسم المورّد</label>
             <input class="ctl" id="g-v3" value="شركة التقنية" data-guard-invisible="g-v3e">
             <span class="field-error" id="g-v3e" hidden></span>
-            <span class="hint">حارس المحارف غير المرئية يعمل على هذا الحقل — الصق فيه نصّاً من متصفّح لتجربته.</span>
+            <span data-i18n="field.vendorName.hint" class="hint">حارس المحارف غير المرئية يعمل على هذا الحقل — الصق فيه نصّاً من متصفّح لتجربته.</span>
           </div>
         </div>
       </div>
 
       <div class="demo">
-        <div class="demo-hd">الملاحظات داخل البطاقات <code>.note</code></div>
+        <div class="demo-hd"><span data-i18n="gallery.demo.notes"></span><code>.note</code></div>
         <div class="demo-grid">
-          <div class="note note-muted"><svg width="14" height="14"><use href="#i-lock"/></svg>هذه اقتراحات فقط، يرجى مراجعتها قبل الترحيل.</div>
-          <div class="note note-info"><svg width="14" height="14"><use href="#i-info"/></svg>سيقوم النظام بإنشاء سطر ضريبة القيمة المضافة تلقائياً وفق إعدادات نوع الضريبة ونسبتها.</div>
+          <div class="note note-muted"><svg width="14" height="14"><use href="#i-lock"/></svg><span data-i18n="screen.journal.alert.aiNote">هذه اقتراحات فقط، يرجى مراجعتها قبل الترحيل.</span></div>
+          <div class="note note-info"><svg width="14" height="14"><use href="#i-info"/></svg><span data-i18n="screen.journal.alert.vatNote">سيقوم النظام بإنشاء سطر ضريبة القيمة المضافة تلقائياً وفق إعدادات نوع الضريبة ونسبتها.</span></div>
         </div>
       </div>
     </section>
 
     <!-- ═══════════════════════ النوافذ والأدراج والقوائم ═════════════════ -->
     <section class="sec" id="c-overlay">
-      <h2><span class="idx">١١</span>النوافذ والأدراج والقوائم</h2>
+      <h2><span class="idx" data-idx="11"></span><span data-i18n="gallery.sec.overlays">النوافذ والأدراج والقوائم</span></h2>
       <div class="demo">
-        <div class="demo-hd">افتح المكوّنات الطبقية</div>
+        <div data-i18n="gallery.demo.openLayers" class="demo-hd">افتح المكوّنات الطبقية</div>
         <div class="demo-row">
-          <button class="btn btn-primary" data-open-dialog="g-modal">معاينة القيد (نافذة)</button>
-          <button class="btn" data-open-dialog="g-confirm">تأكيد حذف (نافذة صغيرة)</button>
-          <button class="btn" data-open-dialog="g-drawer">تفاصيل الحساب (درج)</button>
+          <button data-i18n="common.action.previewEntry" class="btn btn-primary" data-open-dialog="g-modal">معاينة القيد (نافذة)</button>
+          <button data-i18n="common.action.confirmDialog" class="btn" data-open-dialog="g-confirm">تأكيد حذف (نافذة صغيرة)</button>
+          <button data-i18n="common.action.accountDrawer" class="btn" data-open-dialog="g-drawer">تفاصيل الحساب (درج)</button>
           <span class="rowmenu" style="display:inline-grid">
-            <button class="btn" data-menu-trigger="g-menu" aria-haspopup="true" aria-expanded="false">قائمة إجراءات<svg width="14" height="14"><use href="#i-down"/></svg></button>
+            <button class="btn" data-menu-trigger="g-menu" aria-haspopup="true" aria-expanded="false"><span data-i18n="common.action.actionsMenu">قائمة إجراءات</span><svg width="14" height="14"><use href="#i-down"/></svg></button>
             <div class="menu" id="g-menu" data-menu style="top:44px">
-              <button type="button"><svg width="14" height="14"><use href="#i-copy"/></svg>تكرار القيد</button>
-              <button type="button"><svg width="14" height="14"><use href="#i-print"/></svg>طباعة السند</button>
+              <button type="button"><svg width="14" height="14"><use href="#i-copy"/></svg><span data-i18n="common.action.duplicateEntry">تكرار القيد</span></button>
+              <button type="button"><svg width="14" height="14"><use href="#i-print"/></svg><span data-i18n="common.action.printVoucher">طباعة السند</span></button>
               <hr>
-              <button type="button" class="danger"><svg width="14" height="14"><use href="#i-trash"/></svg>حذف المسودة</button>
+              <button type="button" class="danger"><svg width="14" height="14"><use href="#i-trash"/></svg><span data-i18n="common.action.deleteDraft">حذف المسودة</span></button>
             </div>
           </span>
         </div>
-        <p class="demo-note">
-          كل نافذة تحبس التركيز داخلها، وتُغلق بـ <kbd>Esc</kbd> أو بالنقر على التعتيم، وتُعيد التركيز
-          إلى الزر الذي فتحها. الدرج ينزلق من <strong>اليمين</strong> — من بداية السطر، لا من نهايته.
-        </p>
+        <p class="demo-note"><span data-i18n="gallery.demo.layersNote"></span></p>
       </div>
     </section>
 
     <!-- ═══════════════════════ التبويبات والترقيم وفتات الخبز ════════════ -->
     <section class="sec" id="c-nav">
-      <h2><span class="idx">١٢</span>التبويبات وفتات الخبز</h2>
+      <h2><span class="idx" data-idx="12"></span><span data-i18n="gallery.sec.nav">التبويبات وفتات الخبز</span></h2>
       <div class="demo">
-        <div class="demo-hd">فتات الخبز <code>.crumbs</code> — الفاصل «/» يبقى بين العناصر في RTL</div>
-        <nav class="crumbs" aria-label="مسار التنقّل">
-          <a href="#">الرئيسية</a><span class="sep">/</span>
-          <a href="#">الحسابات العامة</a><span class="sep">/</span>
-          <a href="#">القيود اليومية</a><span class="sep">/</span>
-          <span class="now">قيد جديد</span>
+        <div class="demo-hd"><span data-i18n="gallery.demo.crumbs"></span><code>.crumbs</code></div>
+        <nav data-i18n-attr="aria-label:app.a11y.crumbs" class="crumbs" aria-label="مسار التنقّل">
+          <a data-i18n="app.nav.home" href="#">الرئيسية</a><span class="sep">/</span>
+          <a data-i18n="app.nav.gl" href="#">الحسابات العامة</a><span class="sep">/</span>
+          <a data-i18n="app.nav.journals" href="#">القيود اليومية</a><span class="sep">/</span>
+          <span data-i18n="common.action.newEntry" class="now">قيد جديد</span>
         </nav>
       </div>
       <div class="card">
         <div class="tabs" role="tablist">
-          <button class="tab" role="tab" aria-selected="true" aria-controls="gp1" id="gt1">تفاصيل القيد<span class="count">4</span></button>
-          <button class="tab" role="tab" aria-selected="false" aria-controls="gp2" id="gt2" tabindex="-1">معلومات إضافية</button>
-          <button class="tab" role="tab" aria-selected="false" aria-controls="gp3" id="gt3" tabindex="-1">ملاحظات</button>
-          <button class="tab" role="tab" aria-selected="false" aria-controls="gp4" id="gt4" tabindex="-1">سجل التدقيق<span class="count">12</span></button>
+          <button class="tab" role="tab" aria-selected="true" aria-controls="gp1" id="gt1"><span data-i18n="screen.journal.tabs.details">تفاصيل القيد</span><span class="count">4</span></button>
+          <button data-i18n="screen.journal.tabs.extra" class="tab" role="tab" aria-selected="false" aria-controls="gp2" id="gt2" tabindex="-1">معلومات إضافية</button>
+          <button data-i18n="screen.journal.tabs.notes" class="tab" role="tab" aria-selected="false" aria-controls="gp3" id="gt3" tabindex="-1">ملاحظات</button>
+          <button class="tab" role="tab" aria-selected="false" aria-controls="gp4" id="gt4" tabindex="-1"><span data-i18n="screen.journal.tabs.audit">سجل التدقيق</span><span class="count">12</span></button>
         </div>
         <div class="tabpanel" id="gp1" role="tabpanel" aria-labelledby="gt1">
-          <p style="margin:0;color:var(--color-text-muted);font-size:var(--font-size-sm)">
-            المحتوى الأول. تنقّل بين التبويبات بالسهمين — <kbd>←</kbd> و<kbd>→</kbd> — واتجاههما مقلوب
-            ليطابق قراءة العربية.
-          </p>
+          <p data-i18n="screen.journal.tabs.detailsBody" style="margin:0;color:var(--color-text-muted);font-size:var(--font-size-sm)"></p>
         </div>
         <div class="tabpanel" id="gp2" role="tabpanel" aria-labelledby="gt2" hidden>
           <div class="grid fields-3">
-            <div class="field"><label>سعر الصرف</label><input class="ctl num" dir="ltr" value="1.0000" disabled></div>
-            <div class="field"><label>منشئ القيد</label><input class="ctl" value="مظفر العمري" disabled></div>
-            <div class="field"><label>المشروع الافتراضي</label><input class="ctl" value="مشروع أبراج بابل" disabled></div>
+            <div class="field"><label data-i18n="field.exchangeRate.label">سعر الصرف</label><input class="ctl num" dir="ltr" value="1.0000" disabled></div>
+            <div class="field"><label data-i18n="field.createdBy.label">منشئ القيد</label><input class="ctl" value="مظفر العمري" disabled></div>
+            <div class="field"><label data-i18n="field.defaultProject.label">المشروع الافتراضي</label><input class="ctl" value="مشروع أبراج بابل" disabled></div>
           </div>
         </div>
         <div class="tabpanel" id="gp3" role="tabpanel" aria-labelledby="gt3" hidden>
-          <div class="field"><label for="gnotes">ملاحظات داخلية</label>
-            <textarea class="ctl" id="gnotes" placeholder="ملاحظات لا تظهر في التقارير الخارجية…"></textarea></div>
+          <div class="field"><label data-i18n="field.notes.label" for="gnotes">ملاحظات داخلية</label>
+            <textarea data-i18n-attr="placeholder:field.notes.ph" class="ctl" id="gnotes" placeholder="ملاحظات لا تظهر في التقارير الخارجية…"></textarea></div>
         </div>
         <div class="tabpanel" id="gp4" role="tabpanel" aria-labelledby="gt4" hidden>
           <div class="empty empty--sm">
             <span class="ico"><svg width="20" height="20"><use href="#i-inbox"/></svg></span>
-            <h3>لا سجلّ بعد</h3>
-            <p>يظهر سجل التدقيق بعد أول ترحيل.</p>
+            <h3 data-i18n="common.state.noAuditLog">لا سجلّ بعد</h3>
+            <p data-i18n="common.state.noAuditLogBody">يظهر سجل التدقيق بعد أول ترحيل.</p>
           </div>
         </div>
       </div>
@@ -1004,25 +941,25 @@ CONTEXT: SQL statement "INSERT INTO journal_entry ..."</code>
 
     <!-- ═══════════════════════ فارغ · تحميل · خطأ ═══════════════════════ -->
     <section class="sec" id="c-state">
-      <h2><span class="idx">١٣</span>الحالات الفارغة والتحميل والخطأ</h2>
+      <h2><span class="idx" data-idx="13"></span><span data-i18n="gallery.sec.states">الحالات الفارغة والتحميل والخطأ</span></h2>
       <div class="demo-grid" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr))">
         <div class="card">
           <div class="empty">
             <span class="ico"><svg width="26" height="26"><use href="#i-inbox"/></svg></span>
-            <h3>لا قيود في هذه الفترة</h3>
-            <p>لم يُرحَّل أي قيد على الفترة 05/2026 حتى الآن. ابدأ بقيد جديد أو استورد من ملف.</p>
+            <h3 data-i18n="common.state.emptyTitle">لا قيود في هذه الفترة</h3>
+            <p data-i18n="common.state.emptyBody">لم يُرحَّل أي قيد على الفترة 05/2026 حتى الآن. ابدأ بقيد جديد أو استورد من ملف.</p>
             <div class="actions">
-              <button class="btn btn-primary btn-sm"><svg width="14" height="14"><use href="#i-plus"/></svg>قيد جديد</button>
-              <button class="btn btn-sm">استيراد</button>
+              <button class="btn btn-primary btn-sm"><svg width="14" height="14"><use href="#i-plus"/></svg><span data-i18n="common.action.newEntry">قيد جديد</span></button>
+              <button data-i18n="common.action.import" class="btn btn-sm">استيراد</button>
             </div>
           </div>
         </div>
         <div class="card">
           <div class="empty errstate">
             <span class="ico"><svg width="26" height="26"><use href="#i-warn"/></svg></span>
-            <h3>تعذّر تحميل ميزان المراجعة</h3>
-            <p>لم يستجب الخادم خلال المهلة. لم يتغيّر شيء في البيانات.</p>
-            <div class="actions"><button class="btn btn-sm"><svg width="14" height="14"><use href="#i-refresh"/></svg>أعد المحاولة</button></div>
+            <h3 data-i18n="common.state.errorTitle">تعذّر تحميل ميزان المراجعة</h3>
+            <p data-i18n="common.state.errorBody">لم يستجب الخادم خلال المهلة. لم يتغيّر شيء في البيانات.</p>
+            <div class="actions"><button class="btn btn-sm"><svg width="14" height="14"><use href="#i-refresh"/></svg><span data-i18n="common.action.retry">أعد المحاولة</span></button></div>
             <span class="code">TIMEOUT · req_01HXY7K3 · 30s</span>
           </div>
         </div>
@@ -1034,18 +971,18 @@ CONTEXT: SQL statement "INSERT INTO journal_entry ..."</code>
           <div class="demo-row" style="margin-top:var(--space-14)">
             <span class="skel skel-chip"></span><span class="skel skel-chip"></span>
           </div>
-          <p class="demo-note">هيكل تحميل لبطاقة.</p>
+          <p data-i18n="gallery.demo.cardSkeleton" class="demo-note">هيكل تحميل لبطاقة.</p>
         </div>
       </div>
 
       <div class="demo" style="margin-top:var(--space-12)">
-        <div class="demo-hd">هيكل تحميل لجدول — نفس عدد الأعمدة ونفس المحاذاة، فلا تقفز الصفحة</div>
+        <div data-i18n="gallery.demo.tableSkeleton" class="demo-hd">هيكل تحميل لجدول — نفس عدد الأعمدة ونفس المحاذاة، فلا تقفز الصفحة</div>
         <div class="tablewrap">
           <table class="data">
             <thead><tr>
-              <th class="start" style="min-width:130px">رقم القيد</th><th class="start" style="min-width:110px">التاريخ</th>
-              <th class="start" style="min-width:220px">البيان</th><th class="n" style="min-width:120px">مدين</th>
-              <th class="n" style="min-width:120px">دائن</th><th style="min-width:110px">الحالة</th>
+              <th data-i18n="acct.columns.entryNo" class="start" style="min-width:130px">رقم القيد</th><th data-i18n="common.label.date" class="start" style="min-width:110px">التاريخ</th>
+              <th data-i18n="acct.columns.memo" class="start" style="min-width:220px">البيان</th><th data-i18n="acct.debit" class="n" style="min-width:120px">مدين</th>
+              <th data-i18n="acct.credit" class="n" style="min-width:120px">دائن</th><th data-i18n="gallery.demo.amtCase" style="min-width:110px">الحالة</th>
             </tr></thead>
             <tbody>
               <tr class="skel-row"><td><span class="skel skel-text w-75"></span></td><td><span class="skel skel-text w-60"></span></td><td><span class="skel skel-text w-90"></span></td><td><span class="skel skel-num"></span></td><td><span class="skel skel-num"></span></td><td><span class="skel skel-chip" style="height:20px;width:72px"></span></td></tr>
@@ -1059,83 +996,177 @@ CONTEXT: SQL statement "INSERT INTO journal_entry ..."</code>
 
     <!-- ═══════════════════ الإحصائيات وحالة التوازن ═════════════════════ -->
     <section class="sec" id="c-stat">
-      <h2><span class="idx">١٤</span>الإحصائيات وحالة التوازن</h2>
+      <h2><span class="idx" data-idx="14"></span><span data-i18n="gallery.sec.stats">الإحصائيات وحالة التوازن</span></h2>
       <div class="summary">
         <div class="state" data-ok="true">
           <span class="ring"><svg width="22" height="22"><use href="#i-check"/></svg></span>
-          <span><span class="k">حالة القيد</span><br><span class="v">القيد متوازن</span></span>
+          <span><span data-i18n="acct.entryState" class="k">حالة القيد</span><br><span data-i18n="acct.entryBalanced" class="v">القيد متوازن</span></span>
         </div>
-        <div class="stat v-debit"><div class="k">إجمالي المدين (ر.س)</div><div class="v" data-amount="11500">—</div><div class="s">أحد عشر ألفاً وخمسمائة ريال</div></div>
-        <div class="stat v-credit"><div class="k">إجمالي الدائن (ر.س)</div><div class="v" data-amount="11500">—</div><div class="s">أحد عشر ألفاً وخمسمائة ريال</div></div>
-        <div class="stat v-diff"><div class="k">الفرق (ر.س)</div><div class="v" data-amount="0" data-dash="false">—</div>
-          <div class="s ok"><svg width="13" height="13"><use href="#i-check"/></svg>متوازن</div></div>
-        <div class="stat v-tax"><div class="k">إجمالي الضريبة (ر.س)</div><div class="v" data-amount="1500">—</div><div class="s">ضريبة مدخلات 15%</div></div>
+        <div class="stat v-debit"><div class="k"><span data-i18n="acct.debitTotal">إجمالي المدين (ر.س)</span></div><div class="v" data-amount="11500">—</div><div class="s" data-words="11500"></div></div>
+        <div class="stat v-credit"><div class="k"><span data-i18n="acct.creditTotal">إجمالي الدائن (ر.س)</span></div><div class="v" data-amount="11500">—</div><div class="s" data-words="11500"></div></div>
+        <div class="stat v-diff"><div class="k"><span data-i18n="acct.difference">الفرق (ر.س)</span></div><div class="v" data-amount="0" data-dash="false">—</div>
+          <div class="s ok"><svg width="13" height="13"><use href="#i-check"/></svg><span data-i18n="acct.balanced">متوازن</span></div></div>
+        <div class="stat v-tax"><div class="k"><span data-i18n="acct.taxTotal">إجمالي الضريبة (ر.س)</span></div><div class="v" data-amount="1500">—</div><div data-i18n="acct.tax.inputAt" class="s">ضريبة مدخلات 15%</div></div>
       </div>
       <div class="summary" style="margin-top:var(--space-12)">
         <div class="state" data-ok="false">
           <span class="ring"><svg width="22" height="22"><use href="#i-warn"/></svg></span>
-          <span><span class="k">حالة القيد</span><br><span class="v">القيد غير متوازن</span></span>
+          <span><span data-i18n="acct.entryState" class="k">حالة القيد</span><br><span data-i18n="acct.entryUnbalanced" class="v">القيد غير متوازن</span></span>
         </div>
-        <div class="stat v-debit"><div class="k">إجمالي المدين (ر.س)</div><div class="v" data-amount="11500">—</div><div class="s">أحد عشر ألفاً وخمسمائة ريال</div></div>
-        <div class="stat v-credit"><div class="k">إجمالي الدائن (ر.س)</div><div class="v" data-amount="10000">—</div><div class="s">عشرة آلاف ريال</div></div>
-        <div class="stat v-diff off"><div class="k">الفرق (ر.س)</div><div class="v" data-amount="1500" data-dash="false">—</div>
-          <div class="s bad"><svg width="13" height="13"><use href="#i-warn"/></svg>غير متوازن</div></div>
-        <div class="stat v-tax"><div class="k">إجمالي الضريبة (ر.س)</div><div class="v" data-amount="0" data-dash="false">—</div><div class="s">لا توجد ضريبة على هذا القيد</div></div>
+        <div class="stat v-debit"><div class="k"><span data-i18n="acct.debitTotal">إجمالي المدين (ر.س)</span></div><div class="v" data-amount="11500">—</div><div class="s" data-words="11500"></div></div>
+        <div class="stat v-credit"><div class="k"><span data-i18n="acct.creditTotal">إجمالي الدائن (ر.س)</span></div><div class="v" data-amount="10000">—</div><div class="s" data-words="10000"></div></div>
+        <div class="stat v-diff off"><div class="k"><span data-i18n="acct.difference">الفرق (ر.س)</span></div><div class="v" data-amount="1500" data-dash="false">—</div>
+          <div class="s bad"><svg width="13" height="13"><use href="#i-warn"/></svg><span data-i18n="acct.unbalanced">غير متوازن</span></div></div>
+        <div class="stat v-tax"><div class="k"><span data-i18n="acct.taxTotal">إجمالي الضريبة (ر.س)</span></div><div class="v" data-amount="0" data-dash="false">—</div><div data-i18n="acct.tax.none" class="s">لا توجد ضريبة على هذا القيد</div></div>
       </div>
-      <p class="demo-note">
-        <strong>عدم التوازن تحذيرٌ لا خطأ أحمر</strong> — هذا قرار الشاشة المعتمدة: القيد الجاري تحريره
-        غير متوازن بطبيعته أثناء الكتابة، والأحمر يُدّخر للرفض الفعلي. الأحمر
-        (<code class="ltr">--color-danger</code>) لرفض الخادم والحذف والحقل المرفوض.
-      </p>
+      <p class="demo-note"><span data-i18n="gallery.demo.statNote"></span></p>
     </section>
 
     <!-- ═══════════════════════════ الإشعارات ════════════════════════════ -->
     <section class="sec" id="c-toast">
-      <h2><span class="idx">١٥</span>الإشعارات العابرة</h2>
+      <h2><span class="idx" data-idx="15"></span><span data-i18n="gallery.sec.toasts">الإشعارات العابرة</span></h2>
       <div class="demo">
-        <div class="demo-hd">الدالة <code>SB.toast(msg, variant)</code> — تُكدَّس ولا تتراكب</div>
+        <div class="demo-hd"><span data-i18n="gallery.demo.toastFn"></span><code>SB.toast(msg, variant)</code></div>
         <div class="demo-row">
-          <button class="btn" onclick="SB.toast('تم تكرار السطر')">محايد</button>
-          <button class="btn" onclick="SB.toast('تم حفظ المسودة','success')">نجاح</button>
-          <button class="btn" onclick="SB.toast('لا يمكن حذف آخر سطر','warning')">تحذير</button>
-          <button class="btn" onclick="SB.toast('رفض الخادم الطلب','danger')">خطر</button>
+          <button data-i18n="gallery.demo.toastNeutral" class="btn" onclick="SB.toast('تم تكرار السطر')">محايد</button>
+          <button data-i18n="gallery.demo.toastSuccess" class="btn" onclick="SB.toast('تم حفظ المسودة','success')">نجاح</button>
+          <button data-i18n="gallery.demo.toastWarning" class="btn" onclick="SB.toast('لا يمكن حذف آخر سطر','warning')">تحذير</button>
+          <button data-i18n="gallery.demo.toastDanger" class="btn" onclick="SB.toast('رفض الخادم الطلب','danger')">خطر</button>
         </div>
-        <p class="demo-note">
-          الإشعار العابر <strong>للأفعال القابلة للتراجع والمعلومات غير الحرجة فقط</strong>.
-          نتيجة ترحيل أو رفض من قاعدة البيانات لا تُبلَّغ بإشعار يختفي بعد ثانيتين — بل بـ
-          <code class="ltr">.alert</code> يبقى.
-        </p>
+        <p class="demo-note"><span data-i18n="gallery.demo.toastNote"></span></p>
       </div>
     </section>
 
     <!-- ═══════════════════════════ الطباعة ══════════════════════════════ -->
     <section class="sec" id="c-print">
-      <h2><span class="idx">١٦</span>الطباعة العربية</h2>
-      <p class="lede">
-        الطباعة العربية تنكسر روتينياً: رأس الجدول لا يتكرّر، والخلفيات الملوّنة تُحذف فيضيع تمييز
-        المدين عن الدائن، والأرقام تتبعثر داخل الفقرة، وخط الويب لا يُحمَّل في المعاينة.
-        <code class="ltr">components/print.css</code> يعالج الأربعة.
-      </p>
+      <h2><span class="idx" data-idx="16"></span><span data-i18n="gallery.sec.print">الطباعة العربية</span></h2>
+      <p class="lede"><span data-i18n="gallery.lede.print"></span></p>
       <div class="demo">
         <div class="demo-row">
-          <a class="btn btn-primary" href="components/voucher.html"><svg width="15" height="15"><use href="#i-print"/></svg>افتح سند القيد القابل للطباعة</a>
-          <a class="btn" href="screens/trial-balance.html">شاشة ميزان المراجعة</a>
-          <a class="btn" href="README.md">دليل القواعد العربية</a>
+          <a class="btn btn-primary" href="components/voucher.html"><svg width="15" height="15"><use href="#i-print"/></svg><span data-i18n="gallery.demo.openVoucher">افتح سند القيد القابل للطباعة</span></a>
+          <a data-i18n="gallery.demo.openTrialBalance" class="btn" href="screens/trial-balance.html">شاشة ميزان المراجعة</a>
+          <a data-i18n="gallery.demo.openRules" class="btn" href="README.md">دليل القواعد العربية</a>
         </div>
-        <p class="demo-note">
-          افتح السند ثم اطبعه (<kbd>Ctrl/Cmd</kbd>+<kbd>P</kbd>) لترى ورقة الطباعة تعمل:
-          الترويسة الرسمية، وتكرار رأس الجدول، والتفقيط، وخانات التوقيع، وبصمة القيد في التذييل،
-          وختم «مسودة» المائل حين تكون الحالة مسودة.
-        </p>
+        <p class="demo-note"><span data-i18n="gallery.demo.printNote"></span></p>
       </div>
     </section>
 
-    <p style="margin:var(--space-32) 0 0;padding-top:var(--space-18);border-top:1px solid var(--color-border);color:var(--color-text-subtle);font-size:var(--font-size-hint);line-height:var(--line-relaxed)">
-      نظام تصميم سلاسل بابل — مستخرَج من شاشة القيد اليومية المعتمدة.
-      الرموز في <code class="ltr">design/tokens/</code>، والمكوّنات في <code class="ltr">design/components/</code>،
-      والقواعد في <code class="ltr">design/README.md</code>.
-      الأرقام والحسابات في هذه الصفحة بيانات توضيحية.
-    </p>
+
+    <!-- ═══════════════════════════ التدويل ═══════════════════════════════ -->
+    <section class="sec" id="c-i18n">
+      <h2><span class="idx" data-idx="17"></span><span data-i18n="gallery.sec.i18n"></span></h2>
+      <p class="lede"><span data-i18n="gallery.lede.i18n"></span></p>
+
+      <div class="demo">
+        <div class="demo-hd"><span data-i18n="gallery.i18n.dirTitle"></span><code>dir · logical properties</code></div>
+        <p class="demo-note"><span data-i18n="gallery.i18n.dirBody"></span></p>
+      </div>
+
+      <div class="demo">
+        <div class="demo-hd"><span data-i18n="gallery.i18n.pluralTitle"></span><code>Intl.PluralRules</code></div>
+        <p class="demo-note"><span data-i18n="gallery.i18n.pluralBody"></span></p>
+        <div class="demo-row">
+          <span class="field field--inline">
+            <label for="pl-n" data-i18n="gallery.i18n.pluralCount"></label>
+            <input class="ctl ctl-sm num" id="pl-n" type="number" min="0" max="999" value="3" dir="ltr">
+          </span>
+          <span class="seg plain" id="pl-quick" data-i18n-managed>
+            <button type="button" data-n="0">0</button><button type="button" data-n="1">1</button>
+            <button type="button" data-n="2">2</button><button type="button" data-n="3">3</button>
+            <button type="button" data-n="11">11</button><button type="button" data-n="24">24</button>
+            <button type="button" data-n="100">100</button>
+          </span>
+        </div>
+        <div class="tablewrap">
+          <table class="pv" id="pl-table" data-i18n-managed>
+            <thead><tr>
+              <th data-i18n="app.locale.label"></th>
+              <th data-i18n="gallery.i18n.pluralCategory"></th>
+              <!-- رؤوس الأعمدة هي **مسارات المفاتيح** نفسها: هذا عرضٌ للآلية،
+                   وأنفع للمراجع من عرض الصيغة other مقتطعةً من سياقها. -->
+              <th><code class="ltr">common.count.lines</code></th>
+              <th><code class="ltr">common.count.selected</code></th>
+              <th><code class="ltr">common.count.validationErrors</code></th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="demo">
+        <div class="demo-hd"><span data-i18n="gallery.i18n.fmtTitle"></span><code>SB.fmt.amount() → Display</code></div>
+        <p class="demo-note"><span data-i18n="gallery.i18n.fmtBody"></span></p>
+        <div class="demo-row">
+          <span class="field field--inline">
+            <label for="fmt-in" data-i18n="gallery.demo.amtNeutral"></label>
+            <input class="ctl ctl-sm amt-input" id="fmt-in" value="-1234567.5" dir="ltr">
+          </span>
+          <span class="seg plain" id="fmt-try">
+            <button type="button" data-try="display" data-i18n="gallery.i18n.fmtDisplay"></button>
+            <button type="button" data-try="machine" data-i18n="gallery.i18n.fmtMachine"></button>
+            <button type="button" data-try="coerce" data-i18n="gallery.i18n.fmtCoerce"></button>
+          </span>
+        </div>
+        <div class="stack" style="gap:var(--space-6);margin-top:var(--space-10)">
+          <div class="kv" style="grid-template-columns:repeat(2,1fr);margin:0">
+            <div><div class="k" data-i18n="gallery.i18n.fmtDisplay"></div><div class="v amt" id="fmt-display" dir="ltr"></div></div>
+            <div><div class="k" data-i18n="gallery.i18n.fmtMachine"></div><div class="v num" id="fmt-machine" dir="ltr"></div></div>
+          </div>
+          <code class="server-text" id="fmt-out" dir="ltr"></code>
+        </div>
+      </div>
+
+      <div class="demo">
+        <div class="demo-hd"><span data-i18n="gallery.i18n.digitTitle"></span><code>numbers.digits</code></div>
+        <p class="demo-note"><span data-i18n="gallery.i18n.digitBody"></span></p>
+        <div class="demo-row">
+          <span class="field field--inline">
+            <label for="digit-shape" data-i18n="app.locale.digitShape"></label>
+            <select class="ctl ctl-sm" id="digit-shape">
+              <option value="latn">0123456789</option>
+              <option value="arab" data-i18n-exempt>٠١٢٣٤٥٦٧٨٩</option>
+              <option value="arabext" data-i18n-exempt>۰۱۲۳۴۵۶۷۸۹</option>
+              <option value="deva" data-i18n-exempt>०१२३४५६७८९</option>
+            </select>
+          </span>
+        </div>
+      </div>
+
+      <div class="demo">
+        <div class="demo-hd"><span data-i18n="gallery.i18n.hazardTitle"></span><code>Intl.NumberFormat · Intl.DateTimeFormat</code></div>
+        <p class="demo-note"><span data-i18n="gallery.i18n.hazardBody"></span></p>
+        <div class="tablewrap">
+          <table class="pv" id="hazard-table" data-i18n-managed>
+            <thead><tr>
+              <th data-i18n="gallery.i18n.hazardLocale"></th>
+              <th data-i18n="gallery.i18n.hazardNumber"></th>
+              <th data-i18n="gallery.i18n.hazardDate"></th>
+              <th data-i18n="gallery.i18n.hazardMarks"></th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════ الفحص ═════════════════════════════════ -->
+    <section class="sec" id="c-audit">
+      <h2><span class="idx" data-idx="18"></span><span data-i18n="gallery.sec.audit"></span></h2>
+      <p class="lede"><span data-i18n="gallery.lede.audit"></span></p>
+      <div class="demo">
+        <div class="demo-row">
+          <button class="btn btn-primary btn-sm" id="audit-run" data-i18n="gallery.audit.run"></button>
+          <a class="btn btn-sm" href="audit.html" data-i18n="gallery.toc.audit"></a>
+        </div>
+        <div class="note note-info" role="note" style="margin-top:var(--space-10)">
+          <svg width="14" height="14"><use href="#i-info"/></svg>
+          <span data-i18n="gallery.audit.cliNote"></span>
+        </div>
+        <div id="audit-out" data-i18n-managed style="margin-top:var(--space-12)"></div>
+      </div>
+    </section>
+
+    <p class="gal-footer" data-i18n="gallery.footer"></p>
   </main>
 </div>
 
@@ -1143,81 +1174,83 @@ CONTEXT: SQL statement "INSERT INTO journal_entry ..."</code>
 <div class="overlay" id="g-modal">
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="g-modal-t">
     <div class="sheet-hd">
-      <h2 id="g-modal-t">معاينة القيد قبل الترحيل</h2>
-      <button class="iconbtn spacer" data-close-dialog="g-modal" aria-label="إغلاق"><svg width="18" height="18"><use href="#i-x"/></svg></button>
+      <h2 data-i18n="screen.journal.preview.title" id="g-modal-t">معاينة القيد قبل الترحيل</h2>
+      <button data-i18n-attr="aria-label:app.a11y.close" class="iconbtn spacer" data-close-dialog="g-modal" aria-label="إغلاق"><svg width="18" height="18"><use href="#i-x"/></svg></button>
     </div>
     <div class="sheet-bd">
       <div class="kv">
-        <div><div class="k">رقم القيد</div><div class="v num" dir="ltr">JV-2026-00125</div></div>
-        <div><div class="k">التاريخ</div><div class="v num" dir="ltr">2026/05/24</div></div>
-        <div><div class="k">النوع</div><div class="v">قيد مصروفات</div></div>
-        <div><div class="k">الفرع</div><div class="v">الفرع الرئيسي — الرياض</div></div>
-        <div style="grid-column:1/-1"><div class="k">البيان العام</div><div class="v">مصروف خدمات تقنية عن الفترة 05/2026 شامل ضريبة القيمة المضافة 15%</div></div>
+        <div><div data-i18n="acct.columns.entryNo" class="k">رقم القيد</div><div class="v num" dir="ltr">JV-2026-00125</div></div>
+        <div><div data-i18n="common.label.date" class="k">التاريخ</div><div class="v num" dir="ltr">2026/05/24</div></div>
+        <div><div data-i18n="common.label.type" class="k">النوع</div><div data-i18n="screen.journal.entryType" class="v">قيد مصروفات</div></div>
+        <div><div data-i18n="field.branch.label" class="k">الفرع</div><div data-i18n="field.branch.main" class="v">الفرع الرئيسي — الرياض</div></div>
+        <div style="grid-column:1/-1"><div data-i18n="field.description.label" class="k">البيان العام</div><div data-i18n="field.description.value" class="v">مصروف خدمات تقنية عن الفترة 05/2026 شامل ضريبة القيمة المضافة 15%</div></div>
       </div>
+      <div class="tablewrap">
       <table class="pv">
-        <thead><tr><th>الحساب</th><th>البيان</th><th class="n">مدين</th><th class="n">دائن</th><th>مركز التكلفة</th></tr></thead>
+        <thead><tr><th data-i18n="acct.columns.account">الحساب</th><th data-i18n="acct.columns.memo">البيان</th><th data-i18n="acct.debit" class="n">مدين</th><th data-i18n="acct.credit" class="n">دائن</th><th data-i18n="acct.columns.costCentre">مركز التكلفة</th></tr></thead>
         <tbody>
-          <tr><td>6120101 - مصروف خدمات تقنية</td><td>مصروف خدمات تقنية</td><td class="n d"><span class="amt" data-amount="10000">—</span></td><td class="n c"><span class="amt amt--zero">–</span></td><td>إدارة تقنية المعلومات</td></tr>
-          <tr><td>121201 - ضريبة القيمة المضافة - مدخلات</td><td>ضريبة القيمة المضافة</td><td class="n d"><span class="amt" data-amount="1500">—</span></td><td class="n c"><span class="amt amt--zero">–</span></td><td>إدارة مالية</td></tr>
-          <tr><td>2010101 - الدائنون / شركة التقنية</td><td>شركة التقنية</td><td class="n d"><span class="amt amt--zero">–</span></td><td class="n c"><span class="amt" data-amount="11500">—</span></td><td>—</td></tr>
+          <tr><td data-i18n="common.label.codeName" data-i18n-params='{"code":"6120101","name":"@screen.journal.accounts.a6120101"}'></td><td data-i18n="screen.journal.accounts.a6120101">مصروف خدمات تقنية</td><td class="n d"><span class="amt" data-amount="10000">—</span></td><td class="n c"><span class="amt amt--zero">–</span></td><td data-i18n="field.costCentre.it">إدارة تقنية المعلومات</td></tr>
+          <tr><td data-i18n="common.label.codeName" data-i18n-params='{"code":"121201","name":"@screen.journal.accounts.a121201"}'></td><td data-i18n="screen.journal.memoVat">ضريبة القيمة المضافة</td><td class="n d"><span class="amt" data-amount="1500">—</span></td><td class="n c"><span class="amt amt--zero">–</span></td><td data-i18n="field.costCentre.finance">إدارة مالية</td></tr>
+          <tr><td data-i18n="common.label.codeName" data-i18n-params='{"code":"2010101","name":"@screen.journal.accounts.a2010101"}'></td><td data-i18n="field.vendorName.value">شركة التقنية</td><td class="n d"><span class="amt amt--zero">–</span></td><td class="n c"><span class="amt" data-amount="11500">—</span></td><td>—</td></tr>
         </tbody>
-        <tfoot><tr><td colspan="2">الإجمالي</td><td class="n d"><span class="amt amt--total" data-amount="11500">—</span></td><td class="n c"><span class="amt amt--total" data-amount="11500">—</span></td><td></td></tr></tfoot>
+        <tfoot><tr><td data-i18n="acct.total" colspan="2">الإجمالي</td><td class="n d"><span class="amt amt--total" data-amount="11500">—</span></td><td class="n c"><span class="amt amt--total" data-amount="11500">—</span></td><td></td></tr></tfoot>
       </table>
+      </div>
       <p style="margin:var(--space-16) 0 0;font-size:var(--font-size-xs);color:var(--color-text-subtle);line-height:var(--line-relaxed)">
-        المدين: أحد عشر ألفاً وخمسمائة ريال<br>الدائن: أحد عشر ألفاً وخمسمائة ريال
+        <span data-i18n="acct.debit"></span>: <span data-words="11500"></span><br>
+        <span data-i18n="acct.credit"></span>: <span data-words="11500"></span>
       </p>
     </div>
     <div class="sheet-ft">
-      <button class="btn btn-primary"><svg width="15" height="15"><use href="#i-lock"/></svg>ترحيل القيد</button>
-      <button class="btn" data-close-dialog="g-modal">رجوع</button>
+      <button class="btn btn-primary"><svg width="15" height="15"><use href="#i-lock"/></svg><span data-i18n="common.action.post">ترحيل القيد</span></button>
+      <button data-i18n="common.action.back" class="btn" data-close-dialog="g-modal">رجوع</button>
     </div>
   </div>
 </div>
 
 <div class="overlay" id="g-confirm">
   <div class="sheet sheet--sm" role="alertdialog" aria-modal="true" aria-labelledby="g-confirm-t" aria-describedby="g-confirm-d">
-    <div class="sheet-hd"><h2 id="g-confirm-t">حذف المسودة نهائياً؟</h2></div>
+    <div class="sheet-hd"><h2 data-i18n="screen.journal.confirm.title" id="g-confirm-t">حذف المسودة نهائياً؟</h2></div>
     <div class="sheet-bd">
-      <p id="g-confirm-d" style="margin:0;color:var(--color-text-muted);font-size:var(--font-size-sm);line-height:var(--line-relaxed)">
-        ستُحذف المسودة <span class="ltr">JV-2026-00126</span> وسطورها الأربعة. هذا الإجراء لا يمكن التراجع عنه.
-        <strong>القيود المرحَّلة لا تُحذف أبداً</strong> — تُعكس بقيد مقابل.
-      </p>
+      <p id="g-confirm-d" data-i18n-html="screen.journal.confirm.body" data-i18n-params='{"code":"JV-2026-00126"}' style="margin:0;color:var(--color-text-muted);font-size:var(--font-size-sm);line-height:var(--line-relaxed)"></p>
     </div>
     <div class="sheet-ft">
-      <button class="btn btn-danger"><svg width="15" height="15"><use href="#i-trash"/></svg>نعم، احذف</button>
-      <button class="btn" data-close-dialog="g-confirm">إلغاء</button>
+      <button class="btn btn-danger"><svg width="15" height="15"><use href="#i-trash"/></svg><span data-i18n="common.action.confirmDelete">نعم، احذف</span></button>
+      <button data-i18n="common.action.cancel" class="btn" data-close-dialog="g-confirm">إلغاء</button>
     </div>
   </div>
 </div>
 
 <div class="drawer" id="g-drawer" role="dialog" aria-modal="true" aria-labelledby="g-drawer-t">
   <div class="drawer-hd">
-    <h2 id="g-drawer-t">6120101 — مصروف خدمات تقنية</h2>
-    <button class="iconbtn spacer" data-close-dialog="g-drawer" aria-label="إغلاق"><svg width="18" height="18"><use href="#i-x"/></svg></button>
+    <h2 data-i18n="screen.journal.drawer.title" id="g-drawer-t">6120101 — مصروف خدمات تقنية</h2>
+    <button data-i18n-attr="aria-label:app.a11y.close" class="iconbtn spacer" data-close-dialog="g-drawer" aria-label="إغلاق"><svg width="18" height="18"><use href="#i-x"/></svg></button>
   </div>
   <div class="drawer-bd">
-    <div class="demo-row"><span class="pill pill--debit">طبيعته مدينة</span><span class="pill pill--posted">نشط</span><span class="pill pill--info">قابل للترحيل</span></div>
+    <div class="demo-row"><span data-i18n="acct.natureDebit" class="pill pill--debit">طبيعته مدينة</span><span data-i18n="acct.status.active" class="pill pill--posted">نشط</span><span data-i18n="acct.status.postable" class="pill pill--info">قابل للترحيل</span></div>
     <div class="kv" style="grid-template-columns:repeat(2,1fr);margin:0">
-      <div><div class="k">التصنيف</div><div class="v">مصروفات تشغيلية</div></div>
-      <div><div class="k">الحساب الأب</div><div class="v">61201 — مصروفات تقنية</div></div>
-      <div><div class="k">الرصيد الحالي</div><div class="v"><span class="amt amt--debit" data-amount="184300">—</span></div></div>
-      <div><div class="k">آخر حركة</div><div class="v num" dir="ltr">2026/05/24</div></div>
+      <div><div data-i18n="common.label.classification" class="k">التصنيف</div><div data-i18n="screen.journal.drawer.classification" class="v">مصروفات تشغيلية</div></div>
+      <div><div data-i18n="common.label.parentAccount" class="k">الحساب الأب</div><div data-i18n="screen.journal.drawer.parent" class="v">61201 — مصروفات تقنية</div></div>
+      <div><div data-i18n="common.label.currentBalance" class="k">الرصيد الحالي</div><div class="v"><span class="amt amt--debit" data-amount="184300">—</span></div></div>
+      <div><div data-i18n="common.label.lastMovement" class="k">آخر حركة</div><div class="v num" dir="ltr">2026/05/24</div></div>
     </div>
     <div class="card card-pad">
-      <div class="card-hd"><span class="ico"><svg width="14" height="14"><use href="#i-book"/></svg></span>آخر ٣ حركات</div>
+      <div class="card-hd"><span class="ico"><svg width="14" height="14"><use href="#i-book"/></svg></span><span data-i18n="screen.journal.drawer.recent">آخر ٣ حركات</span></div>
+      <div class="tablewrap">
       <table class="pv">
-        <thead><tr><th>التاريخ</th><th>القيد</th><th class="n">مدين</th><th class="n">دائن</th></tr></thead>
+        <thead><tr><th data-i18n="common.label.date">التاريخ</th><th data-i18n="acct.columns.entryNo"></th><th data-i18n="acct.debit" class="n">مدين</th><th data-i18n="acct.credit" class="n">دائن</th></tr></thead>
         <tbody>
           <tr><td><span class="ltr">2026/05/24</span></td><td><span class="ltr">JV-2026-00125</span></td><td class="n d"><span class="amt" data-amount="10000">—</span></td><td class="n"><span class="amt amt--zero">–</span></td></tr>
           <tr><td><span class="ltr">2026/04/24</span></td><td><span class="ltr">JV-2026-00098</span></td><td class="n d"><span class="amt" data-amount="10000">—</span></td><td class="n"><span class="amt amt--zero">–</span></td></tr>
           <tr><td><span class="ltr">2026/03/24</span></td><td><span class="ltr">JV-2026-00071</span></td><td class="n d"><span class="amt" data-amount="10000">—</span></td><td class="n"><span class="amt amt--zero">–</span></td></tr>
         </tbody>
       </table>
+      </div>
     </div>
   </div>
   <div class="drawer-ft">
-    <button class="btn btn-primary">فتح دفتر الأستاذ</button>
-    <button class="btn" data-close-dialog="g-drawer">إغلاق</button>
+    <button data-i18n="common.action.openLedger" class="btn btn-primary">فتح دفتر الأستاذ</button>
+    <button data-i18n="app.a11y.close" class="btn" data-close-dialog="g-drawer">إغلاق</button>
   </div>
 </div>
 
@@ -1225,94 +1258,335 @@ CONTEXT: SQL statement "INSERT INTO journal_entry ..."</code>
 
 <script src="components/behaviors.js" defer></script>
 <script>
-/* ── توليد لوحات الرموز من قيم CSS الحيّة — بلا نسخ ولا انحراف ──────────── */
-document.addEventListener("DOMContentLoaded", function () {
+/* ═══════════════════════════════════════════════════════════════════════════
+   المعرض — التشغيل
+   ───────────────────────────────────────────────────────────────────────────
+   لا نصّ مرئي واحد في هذا الملف. كل ما يظهر يأتي من ملفّ اللغة عبر مفتاح،
+   وكل رقم يمرّ بـSB.I18N.shapeDigits أو بـSB.fmt، وكل تنسيق كائن Display.
+   ═══════════════════════════════════════════════════════════════════════════ */
+(function () {
+  "use strict";
   var root = document.documentElement;
+  function $(s, r) { return (r || document).querySelector(s); }
+  function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
+  function T(k, p) { return SB.t(k, p); }
+  function esc(x) { return String(x).replace(/[&<>"]/g, function (c) {
+    return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]; }); }
 
+  /* ── لوحات الرموز: الاسم رمزٌ، والدور مفتاحُ لغة ────────────────────── */
   var CORE = [
-    ["--bg","خلفية الصفحة"],["--surface","سطح البطاقة"],["--surface-2","سطح مرتفع"],["--surface-3","سطح غائر / رأس جدول"],
-    ["--border","حدّ عادي"],["--border-2","حدّ حقل"],
-    ["--text","نص أساسي"],["--text-2","نص ثانوي"],["--text-3","نص خافت"],
-    ["--brand","العلامة"],["--brand-ink","العلامة عند التمرير"],["--brand-soft","خلفية العلامة"],
-    ["--debit","المدين"],["--debit-soft","خلفية المدين"],
-    ["--credit","الدائن"],["--credit-soft","خلفية الدائن"],
-    ["--good","نجاح"],["--good-soft","خلفية النجاح"],["--good-line","حدّ النجاح"],
-    ["--warn","تحذير"],["--warn-soft","خلفية التحذير"],["--warn-line","حدّ التحذير"],
-    ["--ai","المساعد الذكي"],["--ai-soft","خلفية المساعد"],["--ai-line","حدّ المساعد"],
-    ["--req","خطر / حقل إلزامي"]
+    ["--bg","gallery.role.pageBg"],["--surface","gallery.role.surface"],
+    ["--surface-2","gallery.role.surfaceRaised"],["--surface-3","gallery.role.surfaceSunken"],
+    ["--border","gallery.role.border"],["--border-2","gallery.role.borderStrong"],
+    ["--text","gallery.role.text"],["--text-2","gallery.role.textMuted"],["--text-3","gallery.role.textSubtle"],
+    ["--brand","gallery.role.brand"],["--brand-ink","gallery.role.brandHover"],["--brand-soft","gallery.role.brandSoft"],
+    ["--debit","acct.debit"],["--debit-soft","gallery.role.debitSoft"],
+    ["--credit","acct.credit"],["--credit-soft","gallery.role.creditSoft"],
+    ["--good","gallery.role.success"],["--good-soft","gallery.role.successSoft"],["--good-line","gallery.role.successLine"],
+    ["--warn","gallery.role.warning"],["--warn-soft","gallery.role.warningSoft"],["--warn-line","gallery.role.warningLine"],
+    ["--ai","gallery.role.ai"],["--ai-soft","gallery.role.aiSoft"],["--ai-line","gallery.role.aiLine"],
+    ["--req","gallery.role.danger"]
   ];
   var SEM = [
-    ["--color-debit","المدين"],["--color-credit","الدائن"],
-    ["--color-danger","خطر ورفض"],["--color-success","نجاح"],["--color-warning","تحذير"],["--color-info","معلومة"],
-    ["--color-posted","مُرحَّل"],["--color-draft","مسودة"],["--color-reversed","معكوس"],
-    ["--color-pending","بانتظار الاعتماد"],["--color-rejected","مرفوض"],["--color-archived","مؤرشف"],
-    ["--color-balanced","متوازن"],["--color-unbalanced","غير متوازن"],
-    ["--color-amount","مبلغ عادي"],["--color-amount-zero","مبلغ صفري"],["--color-amount-negative","مبلغ سالب"],
-    ["--color-required","حقل إلزامي"],["--color-primary","الفعل الرئيسي"],["--color-focus","حلقة التركيز"]
+    ["--color-debit","acct.debit"],["--color-credit","acct.credit"],
+    ["--color-danger","gallery.role.danger"],["--color-success","gallery.role.success"],
+    ["--color-warning","gallery.role.warning"],["--color-info","gallery.role.info"],
+    ["--color-posted","acct.status.posted"],["--color-draft","acct.status.draft"],
+    ["--color-reversed","acct.status.reversed"],["--color-pending","acct.status.pending"],
+    ["--color-rejected","acct.status.rejected"],["--color-archived","acct.status.archived"],
+    ["--color-balanced","acct.balanced"],["--color-unbalanced","acct.unbalanced"],
+    ["--color-amount","gallery.role.amount"],["--color-amount-zero","gallery.role.amountZero"],
+    ["--color-amount-negative","gallery.role.amountNegative"],
+    ["--color-required","gallery.role.required"],["--color-primary","gallery.role.primaryAction"],
+    ["--color-focus","gallery.role.focusRing"]
   ];
+  var TYPE = [
+    ["--font-size-3xs","gallery.role.hint"],["--font-size-2xs","gallery.role.colHead"],
+    ["--font-size-xs","gallery.role.fieldLabel"],["--font-size-sm","gallery.role.tableCell"],
+    ["--font-size-md","gallery.role.buttonTab"],["--font-size-base","gallery.role.uiText"],
+    ["--font-size-lg","gallery.role.cardTitle"],["--font-size-xl","gallery.role.longText"],
+    ["--font-size-2xl","gallery.role.dialogTitle"],["--font-size-3xl","gallery.role.sectionTitle"],
+    ["--font-size-4xl","gallery.role.stateValue"],["--font-size-5xl","gallery.role.pageTitle"],
+    ["--font-size-6xl","gallery.role.statValue"]
+  ];
+  var RADII = [["--radius-xs",""],["--radius-sm","gallery.role.field"],["--radius-md","gallery.role.iconButton"],
+               ["--radius-lg","gallery.role.card"],["--radius-xl","gallery.role.dialog"],["--radius-pill","gallery.role.pill"]];
+  var SHADOWS = [["--shadow-1","gallery.role.card"],["--shadow-2","gallery.role.dialog"],
+                 ["--shadow-brand","gallery.role.primaryAction"],["--ring","gallery.role.focusRing"]];
+  var SPACE = [2,4,6,8,10,12,14,16,18,20,24,32,48,64];
 
-  /* نقرأ قيم السمتين بضبط data-theme مؤقتاً قبل أي رسم — بلا وميض */
-  function readAll(names) {
-    var saved = root.getAttribute("data-theme");
-    var out = {};
-    ["light","dark"].forEach(function (mode) {
+  function readBothThemes(list) {
+    var saved = root.getAttribute("data-theme"), out = {};
+    ["light", "dark"].forEach(function (mode) {
       root.setAttribute("data-theme", mode);
       var cs = getComputedStyle(root);
-      names.forEach(function (n) {
-        out[n] = out[n] || {};
-        out[n][mode] = cs.getPropertyValue(n[0]).trim();
-      });
+      list.forEach(function (t) { (out[t[0]] = out[t[0]] || {})[mode] = cs.getPropertyValue(t[0]).trim(); });
     });
     if (saved) root.setAttribute("data-theme", saved); else root.removeAttribute("data-theme");
     return out;
   }
 
-  function paint(hostId, list) {
-    var host = document.getElementById(hostId);
-    if (!host) return;
-    var vals = readAll(list);
+  function paintSwatches(hostId, list) {
+    var host = document.getElementById(hostId); if (!host) return;
+    var vals = readBothThemes(list);
+    var L = T("gallery.swatch.light"), D = T("gallery.swatch.dark");
     host.innerHTML = list.map(function (t) {
-      var v = vals[t] || {};
-      return '<div class="sw">'
-        + '<span class="chip" style="background:var(' + t[0] + ')"></span>'
-        + '<span class="body">'
-        + '<span class="name">' + t[0] + '</span>'
-        + '<span class="role">' + t[1] + '</span>'
-        + '<span class="vals"><b>فاتح</b> ' + (v.light || "—") + '</span>'
-        + '<span class="vals"><b>داكن</b> ' + (v.dark || "—") + '</span>'
+      var v = vals[t[0]] || {};
+      return '<div class="sw"><span class="chip" style="background:var(' + t[0] + ')"></span>'
+        + '<span class="body"><span class="name" dir="ltr">' + esc(t[0]) + '</span>'
+        + '<span class="role">' + esc(T(t[1])) + '</span>'
+        + '<span class="vals"><b>' + esc(L) + '</b> <span dir="ltr">' + esc(v.light || "—") + '</span></span>'
+        + '<span class="vals"><b>' + esc(D) + '</b> <span dir="ltr">' + esc(v.dark || "—") + '</span></span>'
         + '</span></div>';
     }).join("");
   }
-  paint("sw-core", CORE);
-  paint("sw-sem", SEM);
 
-  /* سلّم الخط */
-  var TYPE = [
-    ["--font-size-3xs","11.5px · تلميح"],["--font-size-2xs","12px · عنوان عمود"],
-    ["--font-size-xs","12.5px · تسمية حقل"],["--font-size-sm","13px · خلية جدول"],
-    ["--font-size-md","13.5px · زر وتبويب"],["--font-size-base","14px · نص الواجهة"],
-    ["--font-size-lg","14.5px · عنوان بطاقة"],["--font-size-xl","15px · نص طويل"],
-    ["--font-size-2xl","16px · عنوان نافذة"],["--font-size-3xl","17px · عنوان قسم"],
-    ["--font-size-4xl","19px · قيمة حالة"],["--font-size-5xl","21px · عنوان صفحة"],
-    ["--font-size-6xl","23px · قيمة إحصائية"]
-  ];
-  var ts = document.getElementById("typescale");
-  if (ts) ts.innerHTML = TYPE.map(function (t) {
-    return '<div class="typerow"><span class="tag">' + t[0] + '</span>'
-      + '<span style="font-size:var(' + t[0] + ');font-weight:600">قيد يومية متوازن</span>'
-      + '<span style="font-size:var(' + t[0] + ');font-variant-numeric:tabular-nums;direction:ltr;unicode-bidi:isolate">1,234,567.89</span>'
-      + '<span class="tag" style="min-width:0">' + t[1] + '</span></div>';
-  }).join("");
+  function px(n) { return SB.I18N.shapeDigits(String(n)) + "px"; }
 
-  /* سلّم المسافات */
-  var SPACE = [2,4,6,8,10,12,14,16,18,20,24,32,48,64];
-  var ss = document.getElementById("spacescale");
-  if (ss) ss.innerHTML = SPACE.map(function (n) {
-    return '<div class="spacerow"><span class="tag">--space-' + n + '</span>'
-      + '<span class="bar" style="width:' + n + 'px"></span>'
-      + '<span class="tag" style="min-width:0">' + n + 'px</span></div>';
-  }).join("");
-});
+  function paintScales() {
+    var cs = getComputedStyle(root);
+    var ts = document.getElementById("typescale");
+    if (ts) ts.innerHTML = TYPE.map(function (t) {
+      return '<div class="typerow"><span class="tag" dir="ltr">' + esc(t[0]) + '</span>'
+        + '<span style="font-size:var(' + t[0] + ');font-weight:600">' + esc(T("gallery.demo.sampleLine")) + '</span>'
+        + '<span class="num" dir="ltr" style="font-size:var(' + t[0] + ')">1,234,567.89</span>'
+        + '<span class="tag" style="min-width:0">' + esc(cs.getPropertyValue(t[0]).trim()) + ' · ' + esc(T(t[1])) + '</span></div>';
+    }).join("");
+
+    var ss = document.getElementById("spacescale");
+    if (ss) ss.innerHTML = SPACE.map(function (n) {
+      return '<div class="spacerow"><span class="tag" dir="ltr">--space-' + n + '</span>'
+        + '<span class="bar" style="width:' + n + 'px"></span>'
+        + '<span class="tag" style="min-width:0">' + esc(px(n)) + '</span></div>';
+    }).join("");
+
+    var rg = document.getElementById("radiusgrid");
+    if (rg) rg.innerHTML = RADII.map(function (t) {
+      var v = cs.getPropertyValue(t[0]).trim();
+      return '<div class="radiusbox" style="border-radius:var(' + t[0] + ')">'
+        + '<span dir="ltr">' + esc(t[0].replace("--radius-", "")) + ' · ' + esc(v) + '</span>'
+        + (t[1] ? ' <span>— ' + esc(T(t[1])) + '</span>' : '') + '</div>';
+    }).join("");
+
+    var sg = document.getElementById("shadowgrid");
+    if (sg) sg.innerHTML = SHADOWS.map(function (t) {
+      return '<div class="shadowbox" style="box-shadow:var(' + t[0] + ')">'
+        + '<span dir="ltr">' + esc(t[0].replace(/^--/, "")) + '</span> — ' + esc(T(t[1])) + '</div>';
+    }).join("");
+  }
+
+  /* ── أرقام الأقسام: تُشكَّل بأرقام اللغة، ولا تُكتب في HTML ─────────── */
+  function paintIndices() {
+    $$("[data-idx]").forEach(function (n) { n.textContent = SB.I18N.shapeDigits(n.getAttribute("data-idx")); });
+  }
+
+  /* ── التفقيط: قدرةٌ تعلنها اللغة ───────────────────────────────────── */
+  function paintWords() {
+    var can = !!(SB.I18N.meta() || {}).amountInWords && !!SB.tafqeet;
+    $$("[data-words]").forEach(function (n) {
+      n.textContent = can ? SB.tafqeet(Number(n.getAttribute("data-words"))) : "";
+      n.hidden = !can;
+    });
+  }
+
+  /* ── التسمية المرافقة بلغة ثانية ───────────────────────────────────── */
+  function paintAlt() {
+    var sel = document.getElementById("gal-alt-locale");
+    var code = sel ? sel.value : "";
+    var meta = code ? SB.I18N.meta(code) : null;
+    $$("[data-alt-sib]").forEach(function (n) {
+      var lbl = n.parentNode, sib = lbl.querySelector("[data-i18n]");
+      var key = sib ? sib.getAttribute("data-i18n") : lbl.getAttribute("data-i18n");
+      if (!code || !key) { n.textContent = ""; return; }
+      n.textContent = SB.t.in(code, key);
+      n.setAttribute("lang", code);
+      n.setAttribute("dir", (meta && meta.dir) || "auto");   /* ليست ltr دائماً */
+    });
+  }
+  function fillAltSelect() {
+    var sel = document.getElementById("gal-alt-locale"); if (!sel) return;
+    var keep = sel.value, active = SB.I18N.active();
+    sel.innerHTML = '<option value="" data-none></option>';
+    sel.firstChild.textContent = T("common.label.none");
+    SB.I18N.catalog.forEach(function (e) {
+      if (e.code === active || !SB.I18N.has(e.code)) return;
+      var o = document.createElement("option");
+      o.value = e.code; o.textContent = e.native;
+      o.setAttribute("lang", e.code); o.setAttribute("dir", e.dir);
+      sel.appendChild(o);
+    });
+    if (keep && sel.querySelector('option[value="' + keep + '"]')) sel.value = keep;
+  }
+
+  /* ── الجمع: جدول حيّ عبر أربع لغات ─────────────────────────────────── */
+  var PLURAL_KEYS = ["common.count.lines", "common.count.selected", "common.count.validationErrors"];
+  function paintPlural() {
+    var body = $("#pl-table tbody"); if (!body) return;
+    var n = Number(($("#pl-n") || {}).value || 0);
+    if (!isFinite(n)) n = 0;
+    body.innerHTML = SB.I18N.catalog.filter(function (e) { return SB.I18N.has(e.code); }).map(function (e) {
+      var cat = SB.I18N.pluralCategory(n, e.code);
+      var cells = PLURAL_KEYS.map(function (k) {
+        return '<td lang="' + e.code + '" dir="' + e.dir + '">' + esc(SB.t.plural(k, n, null, e.code)) + '</td>';
+      }).join("");
+      return '<tr><td lang="' + e.code + '" dir="' + e.dir + '">' + esc(e.native) + '</td>'
+        + '<td><code class="ltr">' + esc(cat) + '</code> <span class="hint" dir="ltr">('
+        + SB.I18N.pluralCategories(e.code).length + ')</span></td>' + cells + '</tr>';
+    }).join("");
+  }
+
+  /* ── حدّ العرض: يُبرهَن بالتجربة لا بالتعليق ───────────────────────── */
+  function paintFmt(mode) {
+    var raw = ($("#fmt-in") || {}).value || "0";
+    var d = SB.fmt.amount(raw);
+    d.into($("#fmt-display"));
+    $("#fmt-machine").textContent = d.machine;
+    var out = $("#fmt-out");
+    if (!mode) { out.textContent = ""; return; }
+    if (mode === "display") { out.textContent = "d.into(el)  ✓"; return; }
+    if (mode === "machine") { out.textContent = "d.machine = " + d.machine + "  ✓  (ASCII)"; return; }
+    try {
+      /* هذا السطر هو بيت القصيد: التحويل الضمني يرمي، فلا تصل قيمة معروضة
+         محلّياً إلى حقل ولا إلى سلسلة التجزئة بالخطأ. */
+      var leaked = "" + d;
+      out.textContent = "⚠ " + leaked;
+    } catch (err) {
+      out.textContent = "✓ TypeError: " + err.message;
+    }
+  }
+
+  /* ── مخاطر Intl: قياس حيّ في متصفّح القارئ ─────────────────────────── */
+  function paintHazards() {
+    var body = $("#hazard-table tbody"); if (!body) return;
+    body.innerHTML = SB.audit.intlHazards().map(function (r) {
+      return '<tr><td><code class="ltr">' + esc(r.locale) + '</code></td>'
+        + '<td dir="ltr">' + esc(r.number) + '</td><td dir="ltr">' + esc(r.date) + '</td>'
+        + '<td dir="ltr">' + (r.marks.length
+            ? '<b style="color:var(--color-danger)">' + esc(r.marks.join(" ")) + '</b>'
+            : esc(T("gallery.i18n.hazardNone"))) + '</td></tr>';
+    }).join("");
+  }
+
+  /* ── الفحص داخل الصفحة ─────────────────────────────────────────────── */
+  function runAudit() {
+    var host = document.getElementById("audit-out"); if (!host) return;
+    var k = SB.audit.keys(), conv = SB.audit.convention(), hard = SB.audit.hardcodedStrings(document.body);
+    function block(titleKey, items, render) {
+      var ok = !items.length;
+      return '<div class="note ' + (ok ? "note-ok" : "note-warn") + '"><b>' + esc(T(titleKey)) + '</b> '
+        + '<span dir="ltr">(' + items.length + ')</span>'
+        + (ok ? " — " + esc(T("gallery.audit.clean"))
+              : '<ul style="margin:6px 0 0;padding-inline-start:18px">'
+                + items.slice(0, 25).map(render).join("") + '</ul>') + '</div>';
+    }
+    var miss = [], orph = [], plu = [], par = [];
+    SB.I18N.loaded().forEach(function (c) {
+      k.missing[c].forEach(function (x) { miss.push(c + " · " + x); });
+      k.orphans[c].forEach(function (x) { orph.push(c + " · " + x); });
+      k.plural[c].forEach(function (x) { plu.push(c + " · " + x); });
+      k.params[c].forEach(function (x) { par.push(c + " · " + x); });
+    });
+    var li = function (x) { return '<li><code class="ltr">' + esc(x) + '</code></li>'; };
+    host.innerHTML =
+      '<div class="stack" style="gap:var(--space-8)">'
+      + '<div class="note note-info"><b>' + esc(T("gallery.audit.keyCount")) + '</b> '
+      + SB.I18N.loaded().map(function (c) {
+          return '<code class="ltr">' + esc(c) + " = " + k.locales[c].count
+               + " · " + k.locales[c].categories.join("/") + '</code>'; }).join(" · ")
+      + '</div>'
+      + block("gallery.audit.missingKeys", miss, li)
+      + block("gallery.audit.orphanKeys", orph, li)
+      + block("gallery.audit.pluralGaps", plu, li)
+      + block("gallery.audit.paramGaps", par, li)
+      + block("gallery.audit.convention", conv.map(function (b) { return b.key + " — " + b.why; }), li)
+      + block("gallery.audit.hardcoded", hard.map(function (h) { return h.text + "   @ " + h.path; }), li)
+      + '</div>';
+  }
+
+  /* ── مبدّل اللغة ومبدّل لوحة الألوان ───────────────────────────────── */
+  function buildLocaleSwitch() {
+    $$("[data-locale-select]").forEach(function (sel) {
+      sel.innerHTML = "";
+      SB.I18N.catalog.forEach(function (e) {
+        if (!SB.I18N.has(e.code)) return;
+        var o = document.createElement("option");
+        o.value = e.code; o.textContent = e.native;
+        o.setAttribute("lang", e.code); o.setAttribute("dir", e.dir);
+        sel.appendChild(o);
+      });
+      sel.value = SB.I18N.active();
+      sel.addEventListener("change", function () { SB.I18N.use(sel.value); });
+    });
+  }
+
+  var PALETTE_KEY = "sb-palette";
+  function applyPalette(name) {
+    var link = document.getElementById("palette-accessible");
+    if (link) link.disabled = (name !== "accessible");
+    try { localStorage.setItem(PALETTE_KEY, name); } catch (e) {}
+    var sel = document.getElementById("gal-palette");
+    if (sel) sel.value = name;
+    /* اللوحة تغيّر قيم الرموز، فتُعاد قراءة العيّنات من CSS الحيّ. */
+    paintSwatches("sw-core", CORE); paintSwatches("sw-sem", SEM);
+  }
+  function bindPalette() {
+    var sel = document.getElementById("gal-palette"); if (!sel) return;
+    var saved = null;
+    try { saved = localStorage.getItem(PALETTE_KEY); } catch (e) {}
+    applyPalette(saved === "accessible" ? "accessible" : "default");
+    sel.addEventListener("change", function () { applyPalette(sel.value); });
+  }
+
+  /* ── إعادة الرسم عند تبديل اللغة ───────────────────────────────────── */
+  function renderAll() {
+    paintIndices();
+    paintSwatches("sw-core", CORE); paintSwatches("sw-sem", SEM);
+    paintScales(); paintWords(); fillAltSelect(); paintAlt();
+    paintPlural(); paintFmt(null); paintHazards();
+    if ($("#audit-out") && $("#audit-out").innerHTML) runAudit();
+  }
+
+  function boot() {
+    SB.I18N.boot();
+    buildLocaleSwitch();
+    bindPalette();
+
+    var pn = $("#pl-n"); if (pn) pn.addEventListener("input", paintPlural);
+    var pq = $("#pl-quick");
+    if (pq) pq.addEventListener("click", function (e) {
+      var b = e.target.closest("button"); if (!b) return;
+      $$("button", pq).forEach(function (x) { x.setAttribute("aria-pressed", String(x === b)); });
+      $("#pl-n").value = b.getAttribute("data-n"); paintPlural();
+    });
+    var fi = $("#fmt-in"); if (fi) fi.addEventListener("input", function () { paintFmt(null); });
+    var ft = $("#fmt-try");
+    if (ft) ft.addEventListener("click", function (e) {
+      var b = e.target.closest("button"); if (!b) return;
+      paintFmt(b.getAttribute("data-try"));
+    });
+    var ds = $("#digit-shape");
+    if (ds) {
+      ds.addEventListener("change", function () {
+        /* شكل الرقم تفضيل عرض: يغيّر المعروض ولا يمسّ .machine إطلاقاً. */
+        var m = SB.I18N.meta(); if (m && m.numbers) m.numbers.digits = ds.value;
+        SB.I18N.apply(document); renderAll();
+      });
+    }
+    var ar = $("#audit-run"); if (ar) ar.addEventListener("click", runAudit);
+    var al = $("#gal-alt-locale"); if (al) al.addEventListener("change", paintAlt);
+
+    renderAll();
+    SB.I18N.onChange(function () {
+      $$("[data-locale-select]").forEach(function (s) { s.value = SB.I18N.active(); });
+      var m = SB.I18N.meta(), d = $("#digit-shape");
+      if (d && m && m.numbers) d.value = m.numbers.digits || "latn";
+      renderAll();
+    });
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
+  else boot();
+})();
 </script>
 </body>
 </html>

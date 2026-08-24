@@ -32,8 +32,14 @@
 /* ─────────────────────────────────────────────────── 0 · الأساس والمرافق */
 *,*::before,*::after{box-sizing:border-box}
 
+/* ⚠ direction لا تُكتب هنا مطلقاً على html المجرّد: هي خاصية **اللغة** وتصل من
+   سمة dir التي تكتبها طبقة التدويل. `html{direction:rtl}` تفوز على [dir="ltr"]
+   في ترتيب الأسلوب فتُبقي الصفحة الإنجليزية والهندية معكوسة رغم صحّة السمة —
+   وهو عطل لا يظهر إطلاقاً ما دامت اللغتان عربيتين. الاحتياط أدناه يعمل حين
+   لا توجد سمة dir أصلاً (صفحة بلا JavaScript ولا سمة)، ولا يفوز عليها أبداً. */
+html:not([dir]){direction:rtl}
+
 html{
-  direction:rtl;
   -webkit-text-size-adjust:100%;
   /* الجسم لا ينزلق أفقياً أبداً؛ الجداول العريضة تنزلق داخل حاويتها (.tablewrap).
      ⚠ clip لا hidden: قيمة hidden تُنشئ حاوية تمرير فتُعطّل position:sticky
@@ -53,6 +59,16 @@ body{
 }
 
 button,input,select,textarea{font:inherit;color:inherit}
+
+/* العناوين الكبيرة تستعمل **وجه العرض** الخاص باللغة، والباقي وجه الواجهة.
+   في العربية والإنجليزية الوجهان واحد فلا يتغيّر شيء عن الشاشة المعتمدة؛
+   وفي الأردية يصير العنوان نستعليقاً والنصّ نسخاً — لأن النستعليق يمتدّ
+   قطرياً فيتراكب على السطر الذي فوقه، فلا يصلح لجدول كثيف ولا لسطر قصير.
+   ارتفاع السطر يأتي من ملفّ اللغة للسبب نفسه. */
+h1,h2,.gal-hero h1,.page-title h1,.drawer-hd h2,.empty h3{
+  font-family:var(--font-display,var(--font-sans));
+  line-height:var(--line-display,var(--line-tight));
+}
 
 :focus-visible{
   outline:var(--border-width-accent) solid var(--color-focus);
@@ -117,6 +133,10 @@ button,input,select,textarea{font:inherit;color:inherit}
   color:var(--on-accent-fixed);flex:none;
 }
 .brand-text{overflow:hidden;text-overflow:ellipsis}
+/* عند الشاشات الضيّقة يُسمح لنصّ الزر بالالتفاف بدل أن يخرج من الإطار */
+@media (max-width:620px){
+  .btn{white-space:normal;text-align:center}
+}
 @media (max-width:620px){.brand-text{display:none}}
 
 .iconbtn{
@@ -231,7 +251,8 @@ button,input,select,textarea{font:inherit;color:inherit}
     width:min(280px,86vw);z-index:var(--z-drawer);
     border-inline-start:0;border-inline-end:var(--border-width) solid var(--color-border);
     box-shadow:var(--shadow-2);
-    transform:translateX(100%);
+    /* ‏--flip-x: +1 في RTL (سلوك النموذج المعتمد) و−1 في LTR. transform لا ينقلب وحده. */
+    transform:translateX(calc(100% * var(--flip-x)));
     transition:transform var(--motion-slow) var(--ease);
     padding-top:var(--space-16);
   }
@@ -322,11 +343,16 @@ button,input,select,textarea{font:inherit;color:inherit}
   font-size:var(--font-size-label);font-weight:var(--font-weight-semibold);
   color:var(--color-text-muted);
 }
-/* التسمية الإنجليزية المرافقة — كل تسمية تحمل name_ar و name_en */
-.field > label .en{
+/* التسمية المرافقة بلغة ثانية.
+   ⚠ كانت ‏.en (‏«الإنجليزية») و‏direction:ltr مكتوبة فيها. وهذا افتراض ثنائي
+   اللغة: اللغة الثانية ليست الإنجليزية بالضرورة. حين تكون الأردية — وهي RTL —
+   تُعرَض بترتيب معكوس وتلتصق بما قبلها. الاتجاه الآن يأتي من سمة dir التي
+   يكتبها الرسم من ملفّ اللغة الثانية، والعزل وحده ثابتٌ هنا.
+   ‏.en و.en-lbl مُبقاتان اسمين قديمين حتى لا تنكسر شيفرة معتمدة. */
+.field > label .alt,.field > label .en{
   display:inline-block;margin-inline-start:var(--space-6);
   font-size:var(--font-size-3xs);font-weight:var(--font-weight-regular);
-  color:var(--color-text-subtle);direction:ltr;unicode-bidi:isolate;
+  color:var(--color-text-subtle);unicode-bidi:isolate;
 }
 .req{color:var(--color-required);margin-inline-start:2px}
 .hint{font-size:var(--font-size-hint);color:var(--color-text-subtle)}
@@ -345,6 +371,33 @@ button,input,select,textarea{font:inherit;color:inherit}
 .ctl[readonly]{cursor:default}
 select.ctl{appearance:none;padding-inline-end:32px;cursor:pointer}
 textarea.ctl{resize:vertical;min-height:76px;line-height:1.65}
+
+/* حقل مصغّر داخل شريط أو سطر أدوات */
+.ctl-sm{
+  min-height:30px;width:auto;
+  padding:2px var(--space-8);
+  font-size:var(--font-size-sm);
+}
+select.ctl-sm{padding-inline-end:var(--space-8)}
+
+/* — مبدّل اللغة —
+   كل خيار يحمل lang وdir الخاصّين به فيُرسَم اسم اللغة بخطّها وباتجاهها،
+   لا باتجاه الصفحة الحالية: «العربية» و«اردو» و«हिन्दी» في قائمة واحدة. */
+.localepick{display:inline-flex;align-items:center;gap:var(--space-6);min-width:0}
+.localepick select{font-variant-numeric:normal;max-width:12ch;text-overflow:ellipsis}
+
+/* ⚠ الشريط العلوي عند 360px: مبدّلا اللغة واللوحة يضيفان عرضاً حقيقياً،
+   ولا مجال لإخفائهما — تبديل اللغة هو الميزة. فيُطوى ما هو أقلّ أهمية:
+   اسم المنشأة (معروض في الصفحة أصلاً)، ثم زرّا المساعدة والتنبيهات.
+   ولا يُخفى مبدّل اللغة ولا زرّ السمة ولا الصورة الرمزية في أي عرض. */
+@media (max-width:760px){
+  .topbar .orgpick{display:none}
+  .topbar{padding-inline:var(--space-10);gap:var(--space-6)}
+}
+@media (max-width:520px){
+  .topbar .tools > .iconbtn:not([data-theme-toggle]):not(.navtoggle){display:none}
+  .localepick select{max-width:9ch;padding-inline:var(--space-4)}
+}
 
 /* حالة الخطأ على مستوى الحقل */
 .ctl[aria-invalid="true"]{
@@ -443,7 +496,7 @@ textarea.ctl{resize:vertical;min-height:76px;line-height:1.65}
   transition:transform var(--motion-base);
 }
 .switch input:checked + .track{background:var(--color-primary)}
-.switch input:checked + .track::after{transform:translateX(-16px)}
+.switch input:checked + .track::after{transform:translateX(calc(-16px * var(--flip-x)))}
 .switch input:focus-visible + .track{box-shadow:var(--ring)}
 
 /* — خانة اختيار — */
@@ -464,8 +517,7 @@ textarea.ctl{resize:vertical;min-height:76px;line-height:1.65}
 */
 
 .amt{
-  direction:ltr;
-  unicode-bidi:isolate;
+  direction:ltr;unicode-bidi:isolate;
   display:inline-block;
   font-variant-numeric:tabular-nums;
   letter-spacing:var(--tracking-num);
@@ -489,12 +541,21 @@ textarea.ctl{resize:vertical;min-height:76px;line-height:1.65}
 .amt--dash{color:var(--color-amount-zero);font-weight:var(--font-weight-regular)}
 
 /* خانة جدول تحمل مبلغاً */
-.n{text-align:start;font-variant-numeric:tabular-nums;white-space:nowrap}
+/* ⚠ ‏text-align:start على خانة رقمية = يمين في RTL ويسار في LTR، فينهار عمود
+   المبالغ في الإنجليزية والهندية: تختلّ محاذاة الفاصلة العشرية، ولا يقع صفّ
+   الإجماليات تحت أرقامه. الخانة الرقمية صندوق ltr معزول و end بداخله = اليمين
+   في كل اللغات، وهو نفس المظهر المعتمد بالضبط في العربية. */
+.n{
+  direction:ltr;unicode-bidi:isolate;text-align:end;
+  font-variant-numeric:tabular-nums;white-space:nowrap;
+}
 
 /* مُدخَل مبلغ — نفس مظهر .ctl مع تصحيح الاتجاه */
 .amt-input{
-  direction:ltr;
-  text-align:right;              /* الرقم يبدأ من يمين الحقل = بداية السطر في RTL */
+  direction:ltr;unicode-bidi:isolate;
+  /* end داخل صندوق ltr = اليمين في كل اللغات. القيمة الفيزيائية right كانت
+     تعطي النتيجة نفسها هنا، لكنها تُغري بنسخها إلى صندوق غير ltr. */
+  text-align:end;
   font-variant-numeric:tabular-nums;
   font-weight:var(--font-weight-semibold);
 }
@@ -530,6 +591,10 @@ textarea.ctl{resize:vertical;min-height:76px;line-height:1.65}
   background:var(--color-surface);color:var(--color-text-muted);
   font-size:var(--font-size-control);font-weight:var(--font-weight-semibold);
   cursor:pointer;white-space:nowrap;text-decoration:none;
+  /* ⚠ ‏max-width إلزامية: نصّ الزر يطول عند الترجمة (الإنجليزية والهندية أطول
+     من العربية بنحو ٣٠٪ في هذه الواجهة)، و white-space:nowrap وحدها تدفع الزرّ
+     خارج الشاشة عند 360px فينزلق جسم الصفحة أفقياً. */
+  max-width:100%;
   transition:border-color var(--motion-base),background var(--motion-base),
              color var(--motion-base),box-shadow var(--motion-base);
 }
@@ -682,7 +747,9 @@ table.lines thead th.h-credit,table.data thead th.h-credit{background:var(--colo
 table.lines tbody tr:hover td,table.data tbody tr:hover td{background:var(--color-surface-raised)}
 table.data tbody td{padding:var(--space-8) var(--space-10);font-size:var(--font-size-sm)}
 table.data thead th.start,table.data tbody td.start{text-align:start}
-table.data tbody td.n,table.data thead th.n{text-align:start;font-variant-numeric:tabular-nums}
+table.data tbody td.n,table.data thead th.n{
+  direction:ltr;unicode-bidi:isolate;text-align:end;font-variant-numeric:tabular-nums;
+}
 table.data tbody tr[aria-selected="true"] td{background:var(--color-primary-soft)}
 
 /* — عمود قابل للفرز — */
@@ -709,7 +776,9 @@ table.data tfoot td,table.lines tfoot td{
   border-bottom:0;
   font-weight:var(--font-weight-bold);font-size:var(--font-size-sm);
 }
-table.data tfoot td.n,table.lines tfoot td.n{font-variant-numeric:tabular-nums;text-align:start}
+table.data tfoot td.n,table.lines tfoot td.n{
+  direction:ltr;unicode-bidi:isolate;text-align:end;font-variant-numeric:tabular-nums;
+}
 table.data tfoot tr.grand td{background:var(--color-surface-sunken);font-size:var(--font-size-base)}
 table.data tfoot td.d{color:var(--color-debit)}
 table.data tfoot td.c{color:var(--color-credit)}
@@ -743,7 +812,7 @@ tr.is-group .acct-code{color:var(--color-text-muted)}
 .cell:focus{outline:0;background:var(--color-primary-soft);box-shadow:var(--ring-inset)}
 select.cell{appearance:none;cursor:pointer;padding-inline-end:22px}
 .cell.amount{
-  direction:ltr;text-align:right;
+  direction:ltr;unicode-bidi:isolate;text-align:end;
   font-variant-numeric:tabular-nums;font-weight:var(--font-weight-semibold);
 }
 .cell.amount.debit:not(:placeholder-shown){color:var(--color-debit)}
@@ -812,6 +881,21 @@ select.cell{appearance:none;cursor:pointer;padding-inline-end:22px}
 .note svg{flex:none;margin-top:2px}
 .note-muted{background:var(--color-surface-sunken);color:var(--color-text-subtle)}
 .note-info{background:var(--color-info-soft);color:var(--brand-ink)}
+.note-ok{background:var(--color-success-soft);color:var(--color-success)}
+.note-warn{background:var(--color-warning-soft);color:var(--color-warning)}
+.note code{font-family:var(--font-mono);font-size:.94em;direction:ltr;unicode-bidi:isolate}
+
+/* نصّ آلي (خطأ خادم، مفتاح، قيمة رمز) — لا يُترجَم ولا يُقلَب */
+.server-text{
+  display:block;padding:var(--space-8) var(--space-10);
+  background:var(--color-surface-sunken);border-radius:var(--radius-sm);
+  font-family:var(--font-mono);font-size:var(--font-size-hint);
+  direction:ltr;unicode-bidi:isolate;white-space:pre-wrap;overflow-x:auto;
+}
+
+/* حقل على سطر واحد داخل شريط أدوات أو صف تجربة */
+.field--inline{display:inline-flex;align-items:center;gap:var(--space-6);flex-direction:row}
+.field--inline > label{white-space:nowrap}
 
 /* .alert — التنبيه على مستوى الصفحة */
 .alert{
@@ -898,7 +982,7 @@ select.cell{appearance:none;cursor:pointer;padding-inline-end:22px}
   background:var(--color-surface);
   border-inline-end:var(--border-width) solid var(--color-border);
   box-shadow:var(--shadow-2);
-  transform:translateX(100%);visibility:hidden;
+  transform:translateX(calc(100% * var(--flip-x)));visibility:hidden;
   transition:transform var(--motion-slow) var(--ease),visibility var(--motion-slow);
 }
 .drawer[data-open="true"]{transform:translateX(0);visibility:visible}
@@ -947,7 +1031,9 @@ table.pv th{
   font-weight:var(--font-weight-semibold);text-align:start;
   border-bottom:var(--border-width) solid var(--color-border);
 }
-table.pv th.n,table.pv td.n{text-align:start;font-variant-numeric:tabular-nums}
+table.pv th.n,table.pv td.n{
+  direction:ltr;unicode-bidi:isolate;text-align:end;font-variant-numeric:tabular-nums;
+}
 table.pv td{padding:var(--space-8) var(--space-10);border-bottom:var(--border-width) solid var(--color-border)}
 table.pv tfoot td{font-weight:var(--font-weight-bold);background:var(--color-surface-raised);border-bottom:0}
 table.pv .d{color:var(--color-debit)}
@@ -982,8 +1068,11 @@ table.pv .c{color:var(--color-credit)}
   background:var(--color-surface);color:var(--color-text-muted);
   font-size:var(--font-size-hint);cursor:pointer;
 }
-/* الأسهم تنقلب مع الاتجاه: «التالي» في العربية يشير إلى اليسار */
-.pager .pagebtn svg{transform:scaleX(1)}
+/* أسهم الترقيم: «السابق» و«التالي» يشيران حسب اتجاه اللغة النشطة.
+   كانت الزاوية مكتوبة في HTML بـ style="transform:rotate(±90deg)" — وهي قيمة
+   فيزيائية تنعكس خطأً في LTR. صارت هنا، مضروبةً في إشارة الاتجاه. */
+.pager .pagebtn[data-page-nav] svg{transform:rotate(calc(90deg * var(--flip-x)))}
+.pager .pagebtn[data-page-nav="prev"] svg{transform:rotate(calc(-90deg * var(--flip-x)))}
 
 /* ═════════════════════════════════ 12 · فارغ · تحميل · خطأ */
 
@@ -1101,8 +1190,11 @@ table.data .skel-row td{padding:var(--space-10)}
 .toolbar .end{margin-inline-start:auto;display:flex;gap:var(--space-8);flex-wrap:wrap;align-items:center}
 
 /* ═══════════════════════════════════════ 14 · الإشعارات العابرة */
+/* التوسيط بلا transform: inset-inline:0 + margin-inline:auto يعمل في الاتجاهين.
+   الصيغة السابقة (inset-inline-start:50% + translateX(50%)) كانت صحيحة في RTL
+   وحدها، وتخرج الإشعار خارج الشاشة في LTR. */
 .toasts{
-  position:fixed;bottom:82px;inset-inline-start:50%;transform:translateX(50%);
+  position:fixed;bottom:82px;inset-inline:0;margin-inline:auto;
   z-index:var(--z-toast);display:flex;flex-direction:column-reverse;
   gap:var(--space-8);align-items:center;pointer-events:none;
   width:max-content;max-width:min(92vw,520px);
@@ -1123,10 +1215,10 @@ table.data .skel-row td{padding:var(--space-10)}
 .toast--warning{background:var(--color-warning);color:var(--on-warning)}
 /* توست منفرد خارج المكدّس (سلوك النموذج المعتمد) */
 .toast.standalone{
-  position:fixed;bottom:82px;inset-inline-start:50%;z-index:var(--z-toast);
-  transform:translateX(50%) translateY(14px);
+  position:fixed;bottom:82px;inset-inline:0;margin-inline:auto;width:max-content;
+  z-index:var(--z-toast);transform:translateY(14px);
 }
-.toast.standalone[data-show="true"]{transform:translateX(50%) translateY(0)}
+.toast.standalone[data-show="true"]{transform:translateY(0)}
 
 /* ═══════════════════════════ مرافق استجابة أخيرة */
 @media (max-width:620px){
@@ -1137,15 +1229,18 @@ table.data .skel-row td{padding:var(--space-10)}
 }
 @media (min-width:621px){.only-sm{display:none!important}}
 
-/* ═══════════════════════ التسميات ثنائية اللغة (name_ar / name_en) ═══════
-   كل تسمية في هذا النظام تحمل صيغة عربية وصيغة إنجليزية. الإنجليزية مخفية
-   افتراضياً في الجداول الكثيفة، وتظهر بإضافة .show-en على أي حاوية أعلى. */
-.en-lbl{
+/* ═════════════════ التسمية المرافقة بلغة ثانية (كانت: name_ar / name_en) ═══
+   ⚠ هذا المكوّن كان يسمّى «التسمية الإنجليزية» ويحمل direction:ltr مثبّتة.
+   في منتج بأربع لغات لا معنى لـ«الإنجليزية»: اللغة الثانية اختيارُ مستخدم من
+   بين اللغات المحمَّلة، وقد تكون RTL. لا اتجاه هنا — يكتبه الرسم على كل عنصر
+   من ملفّ اللغة الثانية — والعزل هو الثابت الوحيد.
+   ‏.en-lbl و.show-en اسمان قديمان مُبقيان عمداً. */
+.alt-lbl,.en-lbl{
   display:none;margin-inline-start:var(--space-8);
   font-size:var(--font-size-hint);font-weight:var(--font-weight-regular);
-  color:var(--color-text-subtle);direction:ltr;unicode-bidi:isolate;
+  color:var(--color-text-subtle);unicode-bidi:isolate;
 }
-.show-en .en-lbl{display:inline-block}
+.show-alt .alt-lbl,.show-alt .en-lbl,.show-en .en-lbl,.show-en .alt-lbl{display:inline-block}
 
 /* رأس جدول بصفّين لاصقين (ميزان المراجعة) — الصف الثاني يلتصق تحت الأول */
 table.grouped-head thead tr:first-child th{padding-block:7px;line-height:18px;height:32px;top:0}

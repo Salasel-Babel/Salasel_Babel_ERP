@@ -23,16 +23,22 @@
   margin:14mm 12mm 16mm 12mm;
 }
 
+/* ⚠ لا قيمة لون حرفية في هذا الملف. لوحة الطباعة رموزٌ في
+   design/theme/theme-default.css (‏--print-*)، فتتبع الورقةُ سمةَ العميل.
+   وهي لا تنقلب في الوضع الداكن: الورق أبيض دائماً — انظر التعليق هناك. */
 @media print{
 
   /* ── الأساس ───────────────────────────────────────────────────────── */
+  /* ⚠ لا direction هنا: الاتجاه يصل من سمة dir على html. كتابته rtl كانت تطبع
+     السند الإنجليزي والهندي معكوساً رغم صحّة السمة على الشاشة.
+     ⚠ ولا اسم خطّ حرفي: ‏--font-sans تكتبه طبقة التدويل من ملفّ اللغة، فتُطبع
+     الأردية بنسخ والهندية بديفاناغري بدل خطّ عربي لا يحمل محارفهما. */
   html,body{
-    background:#fff!important;
-    color:#000!important;
-    font-family:'IBM Plex Sans Arabic','Segoe UI',Tahoma,'Traditional Arabic',serif;
+    background:var(--print-paper)!important;
+    color:var(--print-ink)!important;
+    font-family:var(--font-sans,'IBM Plex Sans Arabic','Segoe UI',Tahoma,serif);
     font-size:10.5pt;
     line-height:1.55;
-    direction:rtl;
   }
   body{margin:0;padding:0;overflow:visible!important}
   *{
@@ -52,17 +58,17 @@
   .main{padding:0!important;gap:0!important;display:block!important}
   .shell{display:block!important;min-height:0!important}
   .card{
-    border:0!important;border-radius:0!important;background:#fff!important;
+    border:0!important;border-radius:0!important;background:var(--print-paper)!important;
     box-shadow:none!important;
   }
   .card-pad{padding:0!important}
 
   /* ── المستند ─────────────────────────────────────────────────────── */
   .doc{
-    max-width:none;margin:0;padding:0;background:#fff;color:#000;
+    max-width:none;margin:0;padding:0;background:var(--print-paper);color:var(--print-ink);
     display:block;
   }
-  .doc a{color:#000;text-decoration:none}
+  .doc a{color:var(--print-ink);text-decoration:none}
   /* عناوين URL لا تُطبع خلف الروابط — المستند الرسمي لا يحتمل ضجيجاً */
   .doc a[href]::after{content:none!important}
 
@@ -70,15 +76,15 @@
   .doc-head{
     display:flex;align-items:flex-start;gap:8mm;
     padding-bottom:4mm;margin-bottom:5mm;
-    border-bottom:1.2pt solid #000;
+    border-bottom:1.2pt solid var(--print-ink);
     break-inside:avoid;
   }
   .doc-head .org{flex:1;min-width:0}
   .doc-head .org h1{margin:0 0 1mm;font-size:15pt;font-weight:700;letter-spacing:0}
-  .doc-head .org .meta{margin:0;font-size:9pt;line-height:1.5;color:#333}
+  .doc-head .org .meta{margin:0;font-size:9pt;line-height:1.5;color:var(--print-ink-2)}
   .doc-head .org .meta .ltr{direction:ltr;unicode-bidi:isolate;display:inline-block}
   .doc-head .stamp{
-    flex:none;text-align:center;font-size:8.5pt;color:#333;
+    flex:none;text-align:center;font-size:8.5pt;color:var(--print-ink-2);
   }
   .doc-head .stamp img,.doc-head .stamp svg{width:24mm;height:24mm}
 
@@ -87,14 +93,14 @@
     margin:0 0 4mm;break-after:avoid;
   }
   .doc-title h2{margin:0;font-size:13pt;font-weight:700}
-  .doc-title .en{font-size:9pt;color:#444;direction:ltr;unicode-bidi:isolate}
+  .doc-title .en{font-size:9pt;color:var(--print-ink-3);direction:ltr;unicode-bidi:isolate}
 
   /* شبكة بيانات المستند */
   .doc-kv{
     display:grid;grid-template-columns:repeat(4,1fr);gap:2mm 5mm;
     margin-bottom:5mm;break-inside:avoid;
   }
-  .doc-kv .k{font-size:8pt;color:#555;font-weight:600}
+  .doc-kv .k{font-size:8pt;color:var(--print-ink-4);font-weight:600}
   .doc-kv .v{font-size:10pt;font-weight:600;margin-top:.5mm}
   .doc-kv .v.num{direction:ltr;unicode-bidi:isolate;display:inline-block;font-variant-numeric:tabular-nums}
 
@@ -117,31 +123,31 @@
   table.lines th,table.data th,table.pv th,table.doc-table th{
     position:static!important;
     padding:2mm 2.5mm!important;
-    background:#f0f0f0!important;
-    color:#000!important;
-    border:.6pt solid #000!important;
+    background:var(--print-fill)!important;
+    color:var(--print-ink)!important;
+    border:.6pt solid var(--print-ink)!important;
     font-size:8.5pt;font-weight:700;
     text-align:center;
     -webkit-print-color-adjust:exact;print-color-adjust:exact;
   }
   table.lines td,table.data td,table.pv td,table.doc-table td{
     padding:1.8mm 2.5mm!important;
-    border:.5pt solid #666!important;
+    border:.5pt solid var(--print-rule-2)!important;
     background:transparent!important;
     vertical-align:top;
   }
   /* لا يبقى للمدين/الدائن لون فقط: الحدّ السميك والوزن يحملان المعنى
      على طابعة أحادية اللون. اللون يبقى للنسخ الملوّنة. */
   th.h-debit{
-    background:#e6f6f3!important;color:#000!important;
-    border-bottom:1.4pt solid #0f9d8f!important;
+    background:var(--print-debit-bg)!important;color:var(--print-ink)!important;
+    border-bottom:1.4pt solid var(--print-debit-rule)!important;
   }
   th.h-credit{
-    background:#e8f0fe!important;color:#000!important;
-    border-bottom:1.4pt solid #3b82f6!important;
+    background:var(--print-credit-bg)!important;color:var(--print-ink)!important;
+    border-bottom:1.4pt solid var(--print-credit-rule)!important;
   }
-  td.d,.amt--debit{color:#0b6f65!important;font-weight:700}
-  td.c,.amt--credit{color:#1d4ed8!important;font-weight:700}
+  td.d,.amt--debit{color:var(--print-debit-ink)!important;font-weight:700}
+  td.c,.amt--credit{color:var(--print-credit-ink)!important;font-weight:700}
 
   /* الأرقام: معزولة، متساوية العرض، محاذاة ثابتة */
   .n,.num,.amt,.taxval,td.n,th.n{
@@ -156,8 +162,8 @@
   /* صف الإجماليات */
   table.data tfoot td,table.lines tfoot td,table.pv tfoot td,table.doc-table tfoot td{
     position:static!important;
-    background:#f0f0f0!important;
-    border-top:1.2pt solid #000!important;
+    background:var(--print-fill)!important;
+    border-top:1.2pt solid var(--print-ink)!important;
     font-weight:700;
     -webkit-print-color-adjust:exact;print-color-adjust:exact;
   }
@@ -165,7 +171,7 @@
   /* ── التفقيط والتذييل ────────────────────────────────────────────── */
   .doc-words{
     margin:4mm 0 0;padding:2.5mm 3mm;
-    border:.6pt solid #666;border-radius:0;
+    border:.6pt solid var(--print-rule-2);border-radius:0;
     font-size:9.5pt;font-weight:600;line-height:1.7;
     break-inside:avoid;
   }
@@ -177,13 +183,13 @@
   }
   .doc-sign .slot{text-align:center;font-size:9pt}
   .doc-sign .slot .line{
-    margin-top:14mm;border-top:.6pt solid #000;padding-top:1.5mm;color:#333;
+    margin-top:14mm;border-top:.6pt solid var(--print-ink);padding-top:1.5mm;color:var(--print-ink-2);
   }
 
   .doc-foot{
-    margin-top:6mm;padding-top:2.5mm;border-top:.6pt solid #999;
+    margin-top:6mm;padding-top:2.5mm;border-top:.6pt solid var(--print-rule-3);
     display:flex;justify-content:space-between;gap:4mm;flex-wrap:wrap;
-    font-size:8pt;color:#444;break-inside:avoid;
+    font-size:8pt;color:var(--print-ink-3);break-inside:avoid;
   }
   .doc-foot .hash{
     direction:ltr;unicode-bidi:isolate;
@@ -193,18 +199,25 @@
 
   /* شارات الحالة تُطبع كنصّ محاط بإطار، لا كخلفية ملوّنة قد تُحذف */
   .pill{
-    border:.6pt solid #000!important;background:transparent!important;
-    color:#000!important;padding:.4mm 2mm!important;font-size:8pt!important;
+    border:.6pt solid var(--print-ink)!important;background:transparent!important;
+    color:var(--print-ink)!important;padding:.4mm 2mm!important;font-size:8pt!important;
   }
   .pill::before{display:none}
-  .pill--draft::after{content:" (مسودة)";font-size:0}
+  /* نصّ من ملفّ اللغة: ‏content: لا تقرأ سمة، فتصل السلسلة عبر خاصية مخصّصة
+     يكتبها i18n.js على :root من المفتاح css.draftSuffix. */
+  .pill--draft::after{content:var(--i18n-draftSuffix," (draft)");font-size:0}
 
   /* ختم «مسودة» المائل عبر الصفحة */
+  /* ختم «مسودة»: التوسيط بـinset-inline:0 + margin-inline:auto يعمل في
+     الاتجاهين. الصيغة السابقة (‏inset-inline-start:50% + translateX(50%))
+     كانت صحيحة في RTL وحدها وتدفع الختم خارج الورقة في LTR.
+     وزاوية الميل تتبع اتجاه القراءة عبر --flip-x. */
   .doc[data-status="draft"]::before{
-    content:"مسودة — غير مرحَّل";
-    position:fixed;top:45%;inset-inline-start:50%;
-    transform:translateX(50%) rotate(-24deg);
-    font-size:44pt;font-weight:700;color:rgba(0,0,0,.10);
+    content:var(--i18n-draftStamp,"DRAFT — NOT POSTED");
+    position:fixed;top:45%;inset-inline:0;margin-inline:auto;
+    width:max-content;
+    transform:rotate(calc(-24deg * var(--flip-x,1)));
+    font-size:44pt;font-weight:700;color:var(--print-watermark);
     letter-spacing:.05em;pointer-events:none;z-index:0;
     -webkit-print-color-adjust:exact;print-color-adjust:exact;
   }

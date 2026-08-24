@@ -1,16 +1,24 @@
 <!doctype html>
-<html lang="ar" dir="rtl">
+<html lang="ar" dir="rtl" data-i18n-pending>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="ميزان المراجعة — نظام سلاسل بابل ERP">
-<title>ميزان المراجعة — سلاسل بابل</title>
+<meta name="description" content="ميزان المراجعة — نظام سلاسل بابل ERP" data-i18n-attr="content:screen.trialBalance.description">
+<title data-i18n="screen.trialBalance.docTitle">ميزان المراجعة — سلاسل بابل</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="../tokens/tokens.css">
 <link rel="stylesheet" href="../components/components.css">
 <link rel="stylesheet" href="../components/print.css" media="print">
+<!-- طبقة التدويل — قبل behaviors.js دائماً. لغة خامسة = ملفٌّ واحد + سطر في manifest.js -->
+<script src="../i18n/i18n.js" defer></script>
+<script src="../i18n/locales/manifest.js" defer></script>
+<script src="../i18n/locales/ar.js" defer></script>
+<script src="../i18n/locales/en.js" defer></script>
+<script src="../i18n/locales/ur.js" defer></script>
+<script src="../i18n/locales/hi.js" defer></script>
+<noscript><style>:root[data-i18n-pending] body{visibility:visible}</style></noscript>
 </head>
 <body>
 
@@ -41,78 +49,82 @@
   <symbol id="i-gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2v.2a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-3-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.2-3l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 2.9-1.2V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 3 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0 1.2 2.9h.2a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.6 1Z"/></symbol>
 </svg>
 
-<a class="skiplink" href="#tb-main">تخطَّ إلى المحتوى</a>
+<a data-i18n="app.skipToContent" class="skiplink" href="#tb-main">تخطَّ إلى المحتوى</a>
+<noscript><p class="note note-warn" data-i18n-exempt style="margin:var(--space-10)">هذه الصفحة تُحمِّل نصوصها من ملفّ لغة عبر JavaScript. فعّله لعرضها. · This page loads its text from a locale file via JavaScript.</p></noscript>
 
 <header class="topbar">
-  <button class="iconbtn navtoggle" data-nav-toggle aria-label="فتح قائمة التنقّل" aria-expanded="false">
+  <button data-i18n-attr="aria-label:app.a11y.openNav" class="iconbtn navtoggle" data-nav-toggle aria-label="فتح قائمة التنقّل" aria-expanded="false">
     <svg width="19" height="19"><use href="#i-menu"/></svg>
   </button>
   <div class="brand">
     <span class="mark" aria-hidden="true"><svg width="17" height="17"><use href="#i-logo"/></svg></span>
-    <span class="brand-text">نظام سلاسل بابل ERP الذكي</span>
+    <span data-i18n="app.fullName" class="brand-text">نظام سلاسل بابل ERP الذكي</span>
   </div>
-  <button class="orgpick">شركة سلاسل بابل التجارية <svg width="15" height="15"><use href="#i-down"/></svg></button>
+  <button class="orgpick"><span data-i18n="app.org">شركة سلاسل بابل التجارية</span> <svg width="15" height="15"><use href="#i-down"/></svg></button>
   <div class="tools">
-    <button class="iconbtn" data-theme-toggle aria-label="تبديل المظهر" title="تبديل المظهر"><svg width="18" height="18"><use href="#i-moon"/></svg></button>
-    <button class="iconbtn" aria-label="المساعدة"><svg width="18" height="18"><use href="#i-help"/></svg></button>
-    <button class="iconbtn bell" data-unread="true" aria-label="التنبيهات"><svg width="18" height="18"><use href="#i-bell"/></svg></button>
-    <span class="avatar">مظ</span>
+    <span class="localepick">
+      <label class="visually-hidden" for="tb-locale" data-i18n="app.locale.aria">اختيار لغة الواجهة</label>
+      <select class="ctl ctl-sm" id="tb-locale" data-locale-select></select>
+    </span>
+    <button data-i18n-attr="aria-label:app.theme.toggle;title:app.theme.toggle" class="iconbtn" data-theme-toggle aria-label="تبديل المظهر" title="تبديل المظهر"><svg width="18" height="18"><use href="#i-moon"/></svg></button>
+    <button data-i18n-attr="aria-label:app.a11y.help" class="iconbtn" aria-label="المساعدة"><svg width="18" height="18"><use href="#i-help"/></svg></button>
+    <button data-i18n-attr="aria-label:app.a11y.notifications" class="iconbtn bell" data-unread="true" aria-label="التنبيهات"><svg width="18" height="18"><use href="#i-bell"/></svg></button>
+    <span data-i18n="app.userInitials" data-i18n-attr="title:app.userName" class="avatar">مظ</span>
   </div>
 </header>
 
 <div class="navscrim"></div>
 
 <div class="shell">
-  <aside class="sidenav" aria-label="التنقّل الرئيسي">
-    <a class="navitem" href="#"><svg width="17" height="17"><use href="#i-home"/></svg>الرئيسية</a>
-    <a class="navitem" href="#"><svg width="17" height="17"><use href="#i-chart"/></svg>لوحة المعلومات</a>
-    <a class="navitem" href="#"><svg width="17" height="17"><use href="#i-cart"/></svg>المبيعات</a>
-    <a class="navitem" href="#"><svg width="17" height="17"><use href="#i-box"/></svg>المخزون</a>
-    <a class="navitem" href="#"><svg width="17" height="17"><use href="#i-users"/></svg>الموارد البشرية</a>
+  <aside data-i18n-attr="aria-label:app.a11y.mainNav" class="sidenav" aria-label="التنقّل الرئيسي">
+    <a class="navitem" href="#"><svg width="17" height="17"><use href="#i-home"/></svg><span data-i18n="app.nav.home">الرئيسية</span></a>
+    <a class="navitem" href="#"><svg width="17" height="17"><use href="#i-chart"/></svg><span data-i18n="app.nav.dashboard">لوحة المعلومات</span></a>
+    <a class="navitem" href="#"><svg width="17" height="17"><use href="#i-cart"/></svg><span data-i18n="app.nav.sales">المبيعات</span></a>
+    <a class="navitem" href="#"><svg width="17" height="17"><use href="#i-box"/></svg><span data-i18n="app.nav.inventory">المخزون</span></a>
+    <a class="navitem" href="#"><svg width="17" height="17"><use href="#i-users"/></svg><span data-i18n="app.nav.hr">الموارد البشرية</span></a>
     <button class="navitem" aria-current="true" aria-expanded="true" data-subnav="sub-gl">
-      <svg width="17" height="17"><use href="#i-book"/></svg>الحسابات العامة
+      <svg width="17" height="17"><use href="#i-book"/></svg><span data-i18n="app.nav.gl">الحسابات العامة</span>
       <svg class="caret" width="14" height="14"><use href="#i-down"/></svg>
     </button>
     <div class="subnav" id="sub-gl">
-      <a class="subitem" href="#">دليل الحسابات</a>
-      <a class="subitem" href="../../docs/prototypes/journal-entry/">القيود اليومية</a>
-      <a class="subitem" href="#">دفتر الأستاذ</a>
-      <a class="subitem" href="#" aria-current="page">ميزان المراجعة</a>
-      <a class="subitem" href="#">التقارير المالية</a>
-      <a class="subitem" href="#">الموازنة</a>
+      <a data-i18n="app.nav.chart" class="subitem" href="#">دليل الحسابات</a>
+      <a data-i18n="app.nav.journals" class="subitem" href="../../docs/prototypes/journal-entry/">القيود اليومية</a>
+      <a data-i18n="app.nav.ledger" class="subitem" href="#">دفتر الأستاذ</a>
+      <a data-i18n="app.nav.trialBalance" class="subitem" href="#" aria-current="page">ميزان المراجعة</a>
+      <a data-i18n="app.nav.reports" class="subitem" href="#">التقارير المالية</a>
+      <a data-i18n="app.nav.budget" class="subitem" href="#">الموازنة</a>
     </div>
-    <a class="navitem" href="../gallery.html"><svg width="17" height="17"><use href="#i-scale"/></svg>معرض نظام التصميم</a>
-    <a class="navitem" href="#"><svg width="17" height="17"><use href="#i-gear"/></svg>الإعدادات</a>
+    <a class="navitem" href="../gallery.html"><svg width="17" height="17"><use href="#i-scale"/></svg><span data-i18n="app.nav.designGallery">معرض نظام التصميم</span></a>
+    <a class="navitem" href="#"><svg width="17" height="17"><use href="#i-gear"/></svg><span data-i18n="app.nav.settings">الإعدادات</span></a>
   </aside>
 
   <main class="main" id="tb-main">
-    <nav class="crumbs" aria-label="مسار التنقّل">
-      <a href="#" aria-label="الرئيسية"><svg width="14" height="14"><use href="#i-home"/></svg></a>
-      <span class="sep">/</span><a href="#">الحسابات العامة</a>
-      <span class="sep">/</span><a href="#">التقارير المالية</a>
-      <span class="sep">/</span><span class="now">ميزان المراجعة</span>
+    <nav data-i18n-attr="aria-label:app.a11y.crumbs" class="crumbs" aria-label="مسار التنقّل">
+      <a data-i18n-attr="aria-label:app.nav.home" href="#" aria-label="الرئيسية"><svg width="14" height="14"><use href="#i-home"/></svg></a>
+      <span class="sep">/</span><a data-i18n="app.nav.gl" href="#">الحسابات العامة</a>
+      <span class="sep">/</span><a data-i18n="app.nav.reports" href="#">التقارير المالية</a>
+      <span class="sep">/</span><span data-i18n="app.nav.trialBalance" class="now">ميزان المراجعة</span>
     </nav>
 
     <div class="pagehead">
       <span class="ico" aria-hidden="true"><svg width="21" height="21"><use href="#i-scale"/></svg></span>
-      <h1>ميزان المراجعة</h1>
-      <span class="pill pill--posted">القيود المرحَّلة فقط</span>
+      <h1 data-i18n="screen.trialBalance.title">ميزان المراجعة</h1>
+      <span data-i18n="acct.status.postedOnly" class="pill pill--posted">القيود المرحَّلة فقط</span>
       <div class="actions">
-        <button class="btn btn-sm" onclick="window.print()"><svg width="14" height="14"><use href="#i-print"/></svg>طباعة</button>
-        <button class="btn btn-sm" data-open-dialog="tb-export"><svg width="14" height="14"><use href="#i-export"/></svg>تصدير</button>
+        <button class="btn btn-sm" onclick="window.print()"><svg width="14" height="14"><use href="#i-print"/></svg><span data-i18n="common.action.print">طباعة</span></button>
+        <button class="btn btn-sm" data-open-dialog="tb-export"><svg width="14" height="14"><use href="#i-export"/></svg><span data-i18n="common.action.export">تصدير</span></button>
       </div>
-      <p class="sub">
-        الفترة من <span class="ltr">2026/01/01</span> إلى <span class="ltr">2026/05/24</span> ·
-        الفرع: الفرع الرئيسي — الرياض · العملة: ريال سعودي (ر.س) ·
-        آخر تحديث <span class="ltr">14:12</span>
-      </p>
+      <!-- مفتاح واحد بمعاملات، لا خمس قطع نصّية: ترتيب المقاطع يختلف بين
+           اللغات، وتقطيعُه في HTML يجبر كل لغة على ترتيب العربية.
+           التاريخ والوقت يصلان من SB.fmt عبر السكربت أسفل الصفحة. -->
+      <p class="sub" id="tb-sub" data-i18n-managed></p>
     </div>
 
     <!-- ── المرشّحات ─────────────────────────────────────────────────── -->
-    <section class="card card-pad" aria-label="مرشّحات التقرير">
+    <section data-i18n-attr="aria-label:screen.trialBalance.filters" class="card card-pad" aria-label="مرشّحات التقرير">
       <div class="grid fields-1">
         <div class="field datefield">
-          <label for="f-from">من تاريخ<span class="req" aria-hidden="true">*</span> <span class="en">From</span></label>
+          <label for="f-from"><span data-i18n="common.label.from">من تاريخ</span><span class="req" aria-hidden="true">*</span> <span class="alt" data-alt-for="f-from"></span></label>
           <span class="ctl-wrap">
             <input class="ctl has-start" id="f-from" value="2026/01/01" inputmode="numeric">
             <span class="adorn adorn-start"><svg width="15" height="15"><use href="#i-cal"/></svg></span>
@@ -120,7 +132,7 @@
           <span class="dateline"><span class="greg"></span><span class="hijri" hidden></span></span>
         </div>
         <div class="field datefield">
-          <label for="f-to">إلى تاريخ<span class="req" aria-hidden="true">*</span> <span class="en">To</span></label>
+          <label for="f-to"><span data-i18n="common.label.to">إلى تاريخ</span><span class="req" aria-hidden="true">*</span> <span class="alt" data-alt-for="f-to"></span></label>
           <span class="ctl-wrap">
             <input class="ctl has-start" id="f-to" value="2026/05/24" inputmode="numeric">
             <span class="adorn adorn-start"><svg width="15" height="15"><use href="#i-cal"/></svg></span>
@@ -128,38 +140,45 @@
           <span class="dateline"><span class="greg"></span><span class="hijri" hidden></span></span>
         </div>
         <div class="field">
-          <label for="f-branch">الفرع <span class="en">Branch</span></label>
+          <label for="f-branch"><span data-i18n="field.branch.label">الفرع</span> <span class="alt" data-alt-for="f-branch"></span></label>
           <span class="ctl-wrap">
             <select class="ctl" id="f-branch">
-              <option>الفرع الرئيسي — الرياض</option><option>فرع جدة</option><option>فرع الدمام</option><option>كل الفروع</option>
+              <option data-i18n="field.branch.main">الفرع الرئيسي — الرياض</option><option data-i18n="field.branch.jeddah">فرع جدة</option><option data-i18n="field.branch.dammam">فرع الدمام</option><option data-i18n="field.branch.all">كل الفروع</option>
             </select>
             <span class="adorn"><svg width="15" height="15"><use href="#i-down"/></svg></span>
           </span>
         </div>
         <div class="field">
-          <label for="f-cc">مركز التكلفة <span class="en">Cost centre</span></label>
+          <label for="f-cc"><span data-i18n="acct.columns.costCentre">مركز التكلفة</span> <span class="alt" data-alt-for="f-cc"></span></label>
           <span class="ctl-wrap">
             <select class="ctl" id="f-cc">
-              <option>الكل</option><option>إدارة تقنية المعلومات</option><option>إدارة مالية</option><option>إدارة المشاريع</option>
+              <option data-i18n="common.label.all">الكل</option><option data-i18n="field.costCentre.it">إدارة تقنية المعلومات</option><option data-i18n="field.costCentre.finance">إدارة مالية</option><option data-i18n="field.costCentre.projects">إدارة المشاريع</option>
             </select>
             <span class="adorn"><svg width="15" height="15"><use href="#i-down"/></svg></span>
           </span>
         </div>
         <div class="field">
-          <label for="f-level">مستوى التفصيل <span class="en">Level</span></label>
+          <label for="f-level"><span data-i18n="common.label.level">مستوى التفصيل</span> <span class="alt" data-alt-for="f-level"></span></label>
           <span class="ctl-wrap">
             <select class="ctl" id="f-level">
-              <option>الحسابات التفصيلية</option><option>المجموعات</option><option>التصنيفات الرئيسية</option>
+              <option data-i18n="field.detailLevel.detail">الحسابات التفصيلية</option><option data-i18n="field.detailLevel.groups">المجموعات</option><option data-i18n="field.detailLevel.classes">التصنيفات الرئيسية</option>
             </select>
             <span class="adorn"><svg width="15" height="15"><use href="#i-down"/></svg></span>
           </span>
         </div>
       </div>
       <div class="row" style="margin-top:var(--space-14);gap:var(--space-16)">
-        <label class="check"><input type="checkbox" id="opt-zero"><span>إظهار الحسابات ذات الرصيد صفر</span></label>
-        <label class="check"><input type="checkbox" id="opt-en"><span>إظهار الأسماء الإنجليزية</span></label>
-        <label class="check"><input type="checkbox" checked><span>إظهار المجاميع الفرعية لكل تصنيف</span></label>
-        <button class="btn btn-primary btn-sm spacer"><svg width="14" height="14"><use href="#i-refresh"/></svg>تحديث التقرير</button>
+        <label class="check"><input type="checkbox" id="opt-zero"><span data-i18n="screen.trialBalance.showZero">إظهار الحسابات ذات الرصيد صفر</span></label>
+        <!-- ⚠ كان: «إظهار الأسماء الإنجليزية». في منتج بأربع لغات لا وجود لعمود
+             «إنجليزي»: اللغة الثانية اختيارُ مستخدم من بين اللغات المحمَّلة،
+             وقد تكون RTL (الأردية) فتحتاج dir خاصاً بها على كل عنصر. -->
+        <label class="check"><input type="checkbox" id="opt-alt"><span data-i18n="screen.trialBalance.showAlt">إظهار الأسماء بلغة أخرى</span></label>
+        <span class="localepick">
+          <label class="visually-hidden" for="opt-alt-locale" data-i18n="screen.trialBalance.altLocale">لغة العمود الثاني</label>
+          <select class="ctl ctl-sm" id="opt-alt-locale" disabled></select>
+        </span>
+        <label class="check"><input type="checkbox" checked><span data-i18n="screen.trialBalance.showSubtotals">إظهار المجاميع الفرعية لكل تصنيف</span></label>
+        <button class="btn btn-primary btn-sm spacer"><svg width="14" height="14"><use href="#i-refresh"/></svg><span data-i18n="common.action.refresh">تحديث التقرير</span></button>
       </div>
     </section>
 
@@ -167,87 +186,84 @@
     <div class="summary">
       <div class="state" data-ok="true">
         <span class="ring"><svg width="22" height="22"><use href="#i-check"/></svg></span>
-        <span><span class="k">حالة الميزان</span><br><span class="v">الميزان متوازن</span></span>
+        <span><span data-i18n="acct.tbState" class="k">حالة الميزان</span><br><span data-i18n="acct.tbBalanced" class="v">الميزان متوازن</span></span>
       </div>
       <div class="stat v-debit">
-        <div class="k">إجمالي الأرصدة المدينة (ر.س)</div>
+        <div class="k" data-i18n="acct.debitBalances">إجمالي الأرصدة المدينة (ر.س)</div>
         <div class="v" data-amount="8740370.00">—</div>
-        <div class="s" id="w-debit">—</div>
+        <div class="s" id="w-debit" data-i18n-managed>—</div>
       </div>
       <div class="stat v-credit">
-        <div class="k">إجمالي الأرصدة الدائنة (ر.س)</div>
+        <div class="k" data-i18n="acct.creditBalances">إجمالي الأرصدة الدائنة (ر.س)</div>
         <div class="v" data-amount="8740370.00">—</div>
-        <div class="s" id="w-credit">—</div>
+        <div class="s" id="w-credit" data-i18n-managed>—</div>
       </div>
       <div class="stat v-diff">
-        <div class="k">الفرق (ر.س)</div>
+        <div class="k" data-i18n="acct.difference">الفرق (ر.س)</div>
         <div class="v" data-amount="0" data-dash="false">—</div>
-        <div class="s ok"><svg width="13" height="13"><use href="#i-check"/></svg>متوازن</div>
+        <div class="s ok"><svg width="13" height="13"><use href="#i-check"/></svg><span data-i18n="acct.balanced">متوازن</span></div>
       </div>
       <div class="stat">
-        <div class="k">عدد الحسابات</div>
+        <div data-i18n="acct.accountCount" class="k">عدد الحسابات</div>
         <div class="v" data-amount="24" data-scale="0" data-dash="false">—</div>
-        <div class="s">من ٥ تصنيفات · حساب واحد بلا حركة</div>
+        <div class="s" id="tb-acct-sum" data-i18n-managed></div>
       </div>
     </div>
 
     <div class="alert alert--info" role="status">
       <svg width="18" height="18"><use href="#i-info"/></svg>
       <div class="body">
-        <span class="title">هذا الميزان مبني على القيود المرحَّلة فقط</span>
-        <p>
-          المسودات وقيود «بانتظار الاعتماد» غير مشمولة. التوازن هنا خاصية بنيوية لا نتيجة حساب:
-          قيد غير متوازن لا يمكن ترحيله أصلاً.
-        </p>
+        <span data-i18n="screen.trialBalance.note" class="title">هذا الميزان مبني على القيود المرحَّلة فقط</span>
+        <p data-i18n="screen.trialBalance.noteBody"></p>
       </div>
     </div>
 
     <!-- ── الجدول ────────────────────────────────────────────────────── -->
-    <section class="card" aria-label="ميزان المراجعة">
+    <section data-i18n-attr="aria-label:screen.trialBalance.title" class="card" aria-label="ميزان المراجعة">
       <div class="toolbar">
         <div class="field grow">
-          <label for="tb-q" class="visually-hidden">بحث في الحسابات</label>
+          <label data-i18n="field.searchAccounts.label" for="tb-q" class="visually-hidden">بحث في الحسابات</label>
           <span class="ctl-wrap">
-            <input class="ctl has-start" id="tb-q" placeholder="ابحث برقم الحساب أو باسمه…" autocomplete="off">
+            <input data-i18n-attr="placeholder:field.account.ph" class="ctl has-start" id="tb-q" placeholder="ابحث برقم الحساب أو باسمه…" autocomplete="off">
             <span class="adorn adorn-start"><svg width="15" height="15"><use href="#i-search"/></svg></span>
           </span>
         </div>
         <div class="end">
           <div class="seg plain" id="tb-view">
-            <button aria-pressed="true">الكل</button>
-            <button aria-pressed="false">مدينة فقط</button>
-            <button aria-pressed="false">دائنة فقط</button>
+            <button data-view="all" data-i18n="screen.trialBalance.viewAll" aria-pressed="true">الكل</button>
+            <button data-view="debit" data-i18n="screen.trialBalance.viewDebit" aria-pressed="false">مدينة فقط</button>
+            <button data-view="credit" data-i18n="screen.trialBalance.viewCredit" aria-pressed="false">دائنة فقط</button>
           </div>
         </div>
       </div>
 
       <div class="tablewrap tablewrap--tall">
         <table class="data grouped-head" data-sortable id="tb-table">
-          <caption class="visually-hidden">ميزان المراجعة للفترة من 2026/01/01 إلى 2026/05/24</caption>
+          <caption class="visually-hidden" id="tb-caption" data-i18n-managed></caption>
           <thead>
             <tr>
               <th class="sortable start" data-col="0" aria-sort="none" rowspan="2" style="min-width:300px">
-                <button type="button">الحساب<svg class="arrow" width="12" height="12"><use href="#i-sort"/></svg></button>
+                <button type="button"><span data-i18n="acct.columns.account">الحساب</span><svg class="arrow" width="12" height="12"><use href="#i-sort"/></svg></button>
               </th>
-              <th colspan="2">الرصيد الافتتاحي</th>
-              <th colspan="2">حركة الفترة</th>
-              <th colspan="2">الرصيد الختامي</th>
+              <th data-i18n="acct.openingBalance" colspan="2">الرصيد الافتتاحي</th>
+              <th data-i18n="acct.periodMovement" colspan="2">حركة الفترة</th>
+              <th data-i18n="acct.closingBalance" colspan="2">الرصيد الختامي</th>
             </tr>
             <tr>
-              <th class="sortable n h-debit"  data-col="1" aria-sort="none" style="min-width:132px"><button type="button">مدين<svg class="arrow" width="12" height="12"><use href="#i-sort"/></svg></button></th>
-              <th class="sortable n h-credit" data-col="2" aria-sort="none" style="min-width:132px"><button type="button">دائن<svg class="arrow" width="12" height="12"><use href="#i-sort"/></svg></button></th>
-              <th class="sortable n h-debit"  data-col="3" aria-sort="none" style="min-width:132px"><button type="button">مدين<svg class="arrow" width="12" height="12"><use href="#i-sort"/></svg></button></th>
-              <th class="sortable n h-credit" data-col="4" aria-sort="none" style="min-width:132px"><button type="button">دائن<svg class="arrow" width="12" height="12"><use href="#i-sort"/></svg></button></th>
-              <th class="sortable n h-debit"  data-col="5" aria-sort="none" style="min-width:132px"><button type="button">مدين<svg class="arrow" width="12" height="12"><use href="#i-sort"/></svg></button></th>
-              <th class="sortable n h-credit" data-col="6" aria-sort="none" style="min-width:132px"><button type="button">دائن<svg class="arrow" width="12" height="12"><use href="#i-sort"/></svg></button></th>
+              <th class="sortable n h-debit"  data-col="1" aria-sort="none" style="min-width:132px"><button type="button"><span data-i18n="acct.debit">مدين</span><svg class="arrow" width="12" height="12"><use href="#i-sort"/></svg></button></th>
+              <th class="sortable n h-credit" data-col="2" aria-sort="none" style="min-width:132px"><button type="button"><span data-i18n="acct.credit">دائن</span><svg class="arrow" width="12" height="12"><use href="#i-sort"/></svg></button></th>
+              <th class="sortable n h-debit"  data-col="3" aria-sort="none" style="min-width:132px"><button type="button"><span data-i18n="acct.debit">مدين</span><svg class="arrow" width="12" height="12"><use href="#i-sort"/></svg></button></th>
+              <th class="sortable n h-credit" data-col="4" aria-sort="none" style="min-width:132px"><button type="button"><span data-i18n="acct.credit">دائن</span><svg class="arrow" width="12" height="12"><use href="#i-sort"/></svg></button></th>
+              <th class="sortable n h-debit"  data-col="5" aria-sort="none" style="min-width:132px"><button type="button"><span data-i18n="acct.debit">مدين</span><svg class="arrow" width="12" height="12"><use href="#i-sort"/></svg></button></th>
+              <th class="sortable n h-credit" data-col="6" aria-sort="none" style="min-width:132px"><button type="button"><span data-i18n="acct.credit">دائن</span><svg class="arrow" width="12" height="12"><use href="#i-sort"/></svg></button></th>
             </tr>
           </thead>
           <tbody id="tb-body">
               <tr class="is-group level-1" data-level="1" data-fixed>
-                <td class="tree" colspan="7"><span class="acct-code">1</span>الأصول <span class="en-lbl">Assets</span></td>
+                <td class="tree" colspan="7"><span class="acct-code">1</span><span data-i18n="acct.class.assets">الأصول</span><span class="alt-lbl" data-alt="acct.class.assets"></span></td>
               </tr>
               <tr data-level="2">
-                <td class="tree"><span class="indent"></span><span class="acct-code">1010101</span>الصندوق الرئيسي<span class="en-lbl">Main cash</span></td>
+                <td class="tree"><span class="indent"></span><span class="acct-code">1010101</span><span data-i18n="screen.trialBalance.accounts.1010101">الصندوق الرئيسي</span><span class="alt-lbl" data-alt="screen.trialBalance.accounts.1010101"></span></td>
                 <td class="n"><span class="amt amt--debit" data-amount="185400.00">—</span></td>
                 <td class="n"><span class="amt amt--zero">–</span></td>
                 <td class="n"><span class="amt amt--debit" data-amount="642800.00">—</span></td>
@@ -256,7 +272,7 @@
                 <td class="n"><span class="amt amt--zero">–</span></td>
               </tr>
               <tr data-level="2">
-                <td class="tree"><span class="indent"></span><span class="acct-code">1010102</span>صندوق فرع جدة<span class="en-lbl">Jeddah branch cash</span></td>
+                <td class="tree"><span class="indent"></span><span class="acct-code">1010102</span><span data-i18n="screen.trialBalance.accounts.1010102">صندوق فرع جدة</span><span class="alt-lbl" data-alt="screen.trialBalance.accounts.1010102"></span></td>
                 <td class="n"><span class="amt amt--zero">–</span></td>
                 <td class="n"><span class="amt amt--zero">–</span></td>
                 <td class="n"><span class="amt amt--zero">–</span></td>
@@ -265,7 +281,7 @@
                 <td class="n"><span class="amt amt--zero">–</span></td>
               </tr>
               <tr data-level="2">
-                <td class="tree"><span class="indent"></span><span class="acct-code">1020101</span>البنك الأهلي — الحساب الجاري<span class="en-lbl">Bank current</span></td>
+                <td class="tree"><span class="indent"></span><span class="acct-code">1020101</span><span data-i18n="screen.trialBalance.accounts.1020101">البنك الأهلي — الحساب الجاري</span><span class="alt-lbl" data-alt="screen.trialBalance.accounts.1020101"></span></td>
                 <td class="n"><span class="amt amt--debit" data-amount="1284600.00">—</span></td>
                 <td class="n"><span class="amt amt--zero">–</span></td>
                 <td class="n"><span class="amt amt--debit" data-amount="2140500.00">—</span></td>
@@ -274,7 +290,7 @@
                 <td class="n"><span class="amt amt--zero">–</span></td>
               </tr>
               <tr data-level="2">
-                <td class="tree"><span class="indent"></span><span class="acct-code">1301001</span>العملاء / شركة النور<span class="en-lbl">Customer — Al Nour</span></td>
+                <td class="tree"><span class="indent"></span><span class="acct-code">1301001</span><span data-i18n="screen.trialBalance.accounts.1301001">العملاء / شركة النور</span><span class="alt-lbl" data-alt="screen.trialBalance.accounts.1301001"></span></td>
                 <td class="n"><span class="amt amt--debit" data-amount="412750.00">—</span></td>
                 <td class="n"><span class="amt amt--zero">–</span></td>
                 <td class="n"><span class="amt amt--debit" data-amount="968400.00">—</span></td>
@@ -283,7 +299,7 @@
                 <td class="n"><span class="amt amt--zero">–</span></td>
               </tr>
               <tr data-level="2">
-                <td class="tree"><span class="indent"></span><span class="acct-code">1301002</span>العملاء / مؤسسة الرواد<span class="en-lbl">Customer — Al Rowad</span></td>
+                <td class="tree"><span class="indent"></span><span class="acct-code">1301002</span><span data-i18n="screen.trialBalance.accounts.1301002">العملاء / مؤسسة الرواد</span><span class="alt-lbl" data-alt="screen.trialBalance.accounts.1301002"></span></td>
                 <td class="n"><span class="amt amt--debit" data-amount="96300.00">—</span></td>
                 <td class="n"><span class="amt amt--zero">–</span></td>
                 <td class="n"><span class="amt amt--debit" data-amount="318250.00">—</span></td>
@@ -292,7 +308,7 @@
                 <td class="n"><span class="amt amt--zero">–</span></td>
               </tr>
               <tr data-level="2">
-                <td class="tree"><span class="indent"></span><span class="acct-code">121201</span>ضريبة القيمة المضافة — مدخلات<span class="en-lbl">Input VAT</span></td>
+                <td class="tree"><span class="indent"></span><span class="acct-code">121201</span><span data-i18n="screen.trialBalance.accounts.121201">ضريبة القيمة المضافة — مدخلات</span><span class="alt-lbl" data-alt="screen.trialBalance.accounts.121201"></span></td>
                 <td class="n"><span class="amt amt--debit" data-amount="48920.00">—</span></td>
                 <td class="n"><span class="amt amt--zero">–</span></td>
                 <td class="n"><span class="amt amt--debit" data-amount="212640.00">—</span></td>
@@ -301,7 +317,7 @@
                 <td class="n"><span class="amt amt--zero">–</span></td>
               </tr>
               <tr data-level="2">
-                <td class="tree"><span class="indent"></span><span class="acct-code">1401001</span>مخزون البضاعة — المستودع الرئيسي<span class="en-lbl">Inventory</span></td>
+                <td class="tree"><span class="indent"></span><span class="acct-code">1401001</span><span data-i18n="screen.trialBalance.accounts.1401001">مخزون البضاعة — المستودع الرئيسي</span><span class="alt-lbl" data-alt="screen.trialBalance.accounts.1401001"></span></td>
                 <td class="n"><span class="amt amt--debit" data-amount="864200.00">—</span></td>
                 <td class="n"><span class="amt amt--zero">–</span></td>
                 <td class="n"><span class="amt amt--debit" data-amount="1102400.00">—</span></td>
@@ -310,7 +326,7 @@
                 <td class="n"><span class="amt amt--zero">–</span></td>
               </tr>
               <tr data-level="2">
-                <td class="tree"><span class="indent"></span><span class="acct-code">1501001</span>الأصول الثابتة — التكلفة<span class="en-lbl">Fixed assets — cost</span></td>
+                <td class="tree"><span class="indent"></span><span class="acct-code">1501001</span><span data-i18n="screen.trialBalance.accounts.1501001">الأصول الثابتة — التكلفة</span><span class="alt-lbl" data-alt="screen.trialBalance.accounts.1501001"></span></td>
                 <td class="n"><span class="amt amt--debit" data-amount="2450000.00">—</span></td>
                 <td class="n"><span class="amt amt--zero">–</span></td>
                 <td class="n"><span class="amt amt--debit" data-amount="180000.00">—</span></td>
@@ -319,7 +335,7 @@
                 <td class="n"><span class="amt amt--zero">–</span></td>
               </tr>
               <tr data-level="2">
-                <td class="tree"><span class="indent"></span><span class="acct-code">1502001</span>مجمع إهلاك الأصول الثابتة<span class="en-lbl">Accumulated depreciation</span></td>
+                <td class="tree"><span class="indent"></span><span class="acct-code">1502001</span><span data-i18n="screen.trialBalance.accounts.1502001">مجمع إهلاك الأصول الثابتة</span><span class="alt-lbl" data-alt="screen.trialBalance.accounts.1502001"></span></td>
                 <td class="n"><span class="amt amt--zero">–</span></td>
                 <td class="n"><span class="amt amt--credit" data-amount="612500.00">—</span></td>
                 <td class="n"><span class="amt amt--zero">–</span></td>
@@ -328,7 +344,7 @@
                 <td class="n"><span class="amt amt--credit" data-amount="735000.00">—</span></td>
               </tr>
               <tr class="is-subtotal" data-fixed>
-                <td class="tree">إجمالي الأصول</td>
+                <td class="tree" data-i18n="acct.totalOf" data-i18n-params='{"class":"@acct.class.assets"}'></td>
                 <td class="n"><span class="amt amt--debit amt--total" data-amount="5342170.00">—</span></td>
                 <td class="n"><span class="amt amt--credit amt--total" data-amount="612500.00">—</span></td>
                 <td class="n"><span class="amt amt--debit amt--total" data-amount="5564990.00">—</span></td>
@@ -337,10 +353,10 @@
                 <td class="n"><span class="amt amt--credit amt--total" data-amount="735000.00">—</span></td>
               </tr>
               <tr class="is-group level-1" data-level="1" data-fixed>
-                <td class="tree" colspan="7"><span class="acct-code">2</span>الخصوم <span class="en-lbl">Liabilities</span></td>
+                <td class="tree" colspan="7"><span class="acct-code">2</span><span data-i18n="acct.class.liabilities">الخصوم</span><span class="alt-lbl" data-alt="acct.class.liabilities"></span></td>
               </tr>
               <tr data-level="2">
-                <td class="tree"><span class="indent"></span><span class="acct-code">2010101</span>الدائنون / شركة التقنية<span class="en-lbl">Vendor — Tech Co</span></td>
+                <td class="tree"><span class="indent"></span><span class="acct-code">2010101</span><span data-i18n="screen.trialBalance.accounts.2010101">الدائنون / شركة التقنية</span><span class="alt-lbl" data-alt="screen.trialBalance.accounts.2010101"></span></td>
                 <td class="n"><span class="amt amt--zero">–</span></td>
                 <td class="n"><span class="amt amt--credit" data-amount="284300.00">—</span></td>
                 <td class="n"><span class="amt amt--debit" data-amount="642100.00">—</span></td>
@@ -349,7 +365,7 @@
                 <td class="n"><span class="amt amt--credit" data-amount="355700.00">—</span></td>
               </tr>
               <tr data-level="2">
-                <td class="tree"><span class="indent"></span><span class="acct-code">2010102</span>الدائنون / مؤسسة الإمداد<span class="en-lbl">Vendor — Imdad</span></td>
+                <td class="tree"><span class="indent"></span><span class="acct-code">2010102</span><span data-i18n="screen.trialBalance.accounts.2010102">الدائنون / مؤسسة الإمداد</span><span class="alt-lbl" data-alt="screen.trialBalance.accounts.2010102"></span></td>
                 <td class="n"><span class="amt amt--zero">–</span></td>
                 <td class="n"><span class="amt amt--credit" data-amount="158900.00">—</span></td>
                 <td class="n"><span class="amt amt--debit" data-amount="298400.00">—</span></td>
@@ -358,7 +374,7 @@
                 <td class="n"><span class="amt amt--credit" data-amount="201700.00">—</span></td>
               </tr>
               <tr data-level="2">
-                <td class="tree"><span class="indent"></span><span class="acct-code">221301</span>ضريبة القيمة المضافة — مخرجات<span class="en-lbl">Output VAT</span></td>
+                <td class="tree"><span class="indent"></span><span class="acct-code">221301</span><span data-i18n="screen.trialBalance.accounts.221301">ضريبة القيمة المضافة — مخرجات</span><span class="alt-lbl" data-alt="screen.trialBalance.accounts.221301"></span></td>
                 <td class="n"><span class="amt amt--zero">–</span></td>
                 <td class="n"><span class="amt amt--credit" data-amount="92460.00">—</span></td>
                 <td class="n"><span class="amt amt--debit" data-amount="184200.00">—</span></td>
@@ -367,7 +383,7 @@
                 <td class="n"><span class="amt amt--credit" data-amount="184560.00">—</span></td>
               </tr>
               <tr data-level="2">
-                <td class="tree"><span class="indent"></span><span class="acct-code">2201001</span>رواتب مستحقة الدفع<span class="en-lbl">Accrued payroll</span></td>
+                <td class="tree"><span class="indent"></span><span class="acct-code">2201001</span><span data-i18n="screen.trialBalance.accounts.2201001">رواتب مستحقة الدفع</span><span class="alt-lbl" data-alt="screen.trialBalance.accounts.2201001"></span></td>
                 <td class="n"><span class="amt amt--zero">–</span></td>
                 <td class="n"><span class="amt amt--credit" data-amount="142000.00">—</span></td>
                 <td class="n"><span class="amt amt--debit" data-amount="864000.00">—</span></td>
@@ -376,7 +392,7 @@
                 <td class="n"><span class="amt amt--credit" data-amount="164000.00">—</span></td>
               </tr>
               <tr data-level="2">
-                <td class="tree"><span class="indent"></span><span class="acct-code">2204001</span>مخصص مكافأة نهاية الخدمة<span class="en-lbl">End-of-service provision</span></td>
+                <td class="tree"><span class="indent"></span><span class="acct-code">2204001</span><span data-i18n="screen.trialBalance.accounts.2204001">مخصص مكافأة نهاية الخدمة</span><span class="alt-lbl" data-alt="screen.trialBalance.accounts.2204001"></span></td>
                 <td class="n"><span class="amt amt--zero">–</span></td>
                 <td class="n"><span class="amt amt--credit" data-amount="386000.00">—</span></td>
                 <td class="n"><span class="amt amt--zero">–</span></td>
@@ -385,7 +401,7 @@
                 <td class="n"><span class="amt amt--credit" data-amount="460500.00">—</span></td>
               </tr>
               <tr class="is-subtotal" data-fixed>
-                <td class="tree">إجمالي الخصوم</td>
+                <td class="tree" data-i18n="acct.totalOf" data-i18n-params='{"class":"@acct.class.liabilities"}'></td>
                 <td class="n"><span class="amt amt--zero">–</span></td>
                 <td class="n"><span class="amt amt--credit amt--total" data-amount="1063660.00">—</span></td>
                 <td class="n"><span class="amt amt--debit amt--total" data-amount="1988700.00">—</span></td>
@@ -394,10 +410,10 @@
                 <td class="n"><span class="amt amt--credit amt--total" data-amount="1366460.00">—</span></td>
               </tr>
               <tr class="is-group level-1" data-level="1" data-fixed>
-                <td class="tree" colspan="7"><span class="acct-code">3</span>حقوق الملكية <span class="en-lbl">Equity</span></td>
+                <td class="tree" colspan="7"><span class="acct-code">3</span><span data-i18n="acct.class.equity">حقوق الملكية</span><span class="alt-lbl" data-alt="acct.class.equity"></span></td>
               </tr>
               <tr data-level="2">
-                <td class="tree"><span class="indent"></span><span class="acct-code">3010101</span>رأس المال<span class="en-lbl">Share capital</span></td>
+                <td class="tree"><span class="indent"></span><span class="acct-code">3010101</span><span data-i18n="screen.trialBalance.accounts.3010101">رأس المال</span><span class="alt-lbl" data-alt="screen.trialBalance.accounts.3010101"></span></td>
                 <td class="n"><span class="amt amt--zero">–</span></td>
                 <td class="n"><span class="amt amt--credit" data-amount="3000000.00">—</span></td>
                 <td class="n"><span class="amt amt--zero">–</span></td>
@@ -406,7 +422,7 @@
                 <td class="n"><span class="amt amt--credit" data-amount="3000000.00">—</span></td>
               </tr>
               <tr data-level="2">
-                <td class="tree"><span class="indent"></span><span class="acct-code">3020101</span>أرباح مبقاة<span class="en-lbl">Retained earnings</span></td>
+                <td class="tree"><span class="indent"></span><span class="acct-code">3020101</span><span data-i18n="screen.trialBalance.accounts.3020101">أرباح مبقاة</span><span class="alt-lbl" data-alt="screen.trialBalance.accounts.3020101"></span></td>
                 <td class="n"><span class="amt amt--zero">–</span></td>
                 <td class="n"><span class="amt amt--credit" data-amount="666010.00">—</span></td>
                 <td class="n"><span class="amt amt--zero">–</span></td>
@@ -415,7 +431,7 @@
                 <td class="n"><span class="amt amt--credit" data-amount="666010.00">—</span></td>
               </tr>
               <tr class="is-subtotal" data-fixed>
-                <td class="tree">إجمالي حقوق الملكية</td>
+                <td class="tree" data-i18n="acct.totalOf" data-i18n-params='{"class":"@acct.class.equity"}'></td>
                 <td class="n"><span class="amt amt--zero">–</span></td>
                 <td class="n"><span class="amt amt--credit amt--total" data-amount="3666010.00">—</span></td>
                 <td class="n"><span class="amt amt--zero">–</span></td>
@@ -424,10 +440,10 @@
                 <td class="n"><span class="amt amt--credit amt--total" data-amount="3666010.00">—</span></td>
               </tr>
               <tr class="is-group level-1" data-level="1" data-fixed>
-                <td class="tree" colspan="7"><span class="acct-code">4</span>الإيرادات <span class="en-lbl">Revenue</span></td>
+                <td class="tree" colspan="7"><span class="acct-code">4</span><span data-i18n="acct.class.revenue">الإيرادات</span><span class="alt-lbl" data-alt="acct.class.revenue"></span></td>
               </tr>
               <tr data-level="2">
-                <td class="tree"><span class="indent"></span><span class="acct-code">4101001</span>إيرادات المبيعات<span class="en-lbl">Sales revenue</span></td>
+                <td class="tree"><span class="indent"></span><span class="acct-code">4101001</span><span data-i18n="screen.trialBalance.accounts.4101001">إيرادات المبيعات</span><span class="alt-lbl" data-alt="screen.trialBalance.accounts.4101001"></span></td>
                 <td class="n"><span class="amt amt--zero">–</span></td>
                 <td class="n"><span class="amt amt--zero">–</span></td>
                 <td class="n"><span class="amt amt--zero">–</span></td>
@@ -436,7 +452,7 @@
                 <td class="n"><span class="amt amt--credit" data-amount="2648900.00">—</span></td>
               </tr>
               <tr data-level="2">
-                <td class="tree"><span class="indent"></span><span class="acct-code">4201001</span>إيرادات إيجار<span class="en-lbl">Rental income</span></td>
+                <td class="tree"><span class="indent"></span><span class="acct-code">4201001</span><span data-i18n="screen.trialBalance.accounts.4201001">إيرادات إيجار</span><span class="alt-lbl" data-alt="screen.trialBalance.accounts.4201001"></span></td>
                 <td class="n"><span class="amt amt--zero">–</span></td>
                 <td class="n"><span class="amt amt--zero">–</span></td>
                 <td class="n"><span class="amt amt--zero">–</span></td>
@@ -445,7 +461,7 @@
                 <td class="n"><span class="amt amt--credit" data-amount="324000.00">—</span></td>
               </tr>
               <tr class="is-subtotal" data-fixed>
-                <td class="tree">إجمالي الإيرادات</td>
+                <td class="tree" data-i18n="acct.totalOf" data-i18n-params='{"class":"@acct.class.revenue"}'></td>
                 <td class="n"><span class="amt amt--zero">–</span></td>
                 <td class="n"><span class="amt amt--zero">–</span></td>
                 <td class="n"><span class="amt amt--zero">–</span></td>
@@ -454,10 +470,10 @@
                 <td class="n"><span class="amt amt--credit amt--total" data-amount="2972900.00">—</span></td>
               </tr>
               <tr class="is-group level-1" data-level="1" data-fixed>
-                <td class="tree" colspan="7"><span class="acct-code">6</span>المصروفات <span class="en-lbl">Expenses</span></td>
+                <td class="tree" colspan="7"><span class="acct-code">6</span><span data-i18n="acct.class.expenses">المصروفات</span><span class="alt-lbl" data-alt="acct.class.expenses"></span></td>
               </tr>
               <tr data-level="2">
-                <td class="tree"><span class="indent"></span><span class="acct-code">6110101</span>رواتب وأجور<span class="en-lbl">Salaries and wages</span></td>
+                <td class="tree"><span class="indent"></span><span class="acct-code">6110101</span><span data-i18n="screen.trialBalance.accounts.6110101">رواتب وأجور</span><span class="alt-lbl" data-alt="screen.trialBalance.accounts.6110101"></span></td>
                 <td class="n"><span class="amt amt--zero">–</span></td>
                 <td class="n"><span class="amt amt--zero">–</span></td>
                 <td class="n"><span class="amt amt--debit" data-amount="1728000.00">—</span></td>
@@ -466,7 +482,7 @@
                 <td class="n"><span class="amt amt--zero">–</span></td>
               </tr>
               <tr data-level="2">
-                <td class="tree"><span class="indent"></span><span class="acct-code">6120101</span>مصروف خدمات تقنية<span class="en-lbl">IT services expense</span></td>
+                <td class="tree"><span class="indent"></span><span class="acct-code">6120101</span><span data-i18n="screen.trialBalance.accounts.6120101">مصروف خدمات تقنية</span><span class="alt-lbl" data-alt="screen.trialBalance.accounts.6120101"></span></td>
                 <td class="n"><span class="amt amt--zero">–</span></td>
                 <td class="n"><span class="amt amt--zero">–</span></td>
                 <td class="n"><span class="amt amt--debit" data-amount="64000.00">—</span></td>
@@ -475,7 +491,7 @@
                 <td class="n"><span class="amt amt--zero">–</span></td>
               </tr>
               <tr data-level="2">
-                <td class="tree"><span class="indent"></span><span class="acct-code">6120102</span>مصروف اتصالات وإنترنت<span class="en-lbl">Telecom and internet</span></td>
+                <td class="tree"><span class="indent"></span><span class="acct-code">6120102</span><span data-i18n="screen.trialBalance.accounts.6120102">مصروف اتصالات وإنترنت</span><span class="alt-lbl" data-alt="screen.trialBalance.accounts.6120102"></span></td>
                 <td class="n"><span class="amt amt--zero">–</span></td>
                 <td class="n"><span class="amt amt--zero">–</span></td>
                 <td class="n"><span class="amt amt--debit" data-amount="28400.00">—</span></td>
@@ -484,7 +500,7 @@
                 <td class="n"><span class="amt amt--zero">–</span></td>
               </tr>
               <tr data-level="2">
-                <td class="tree"><span class="indent"></span><span class="acct-code">6130101</span>إيجارات<span class="en-lbl">Rent expense</span></td>
+                <td class="tree"><span class="indent"></span><span class="acct-code">6130101</span><span data-i18n="screen.trialBalance.accounts.6130101">إيجارات</span><span class="alt-lbl" data-alt="screen.trialBalance.accounts.6130101"></span></td>
                 <td class="n"><span class="amt amt--zero">–</span></td>
                 <td class="n"><span class="amt amt--zero">–</span></td>
                 <td class="n"><span class="amt amt--debit" data-amount="396000.00">—</span></td>
@@ -493,7 +509,7 @@
                 <td class="n"><span class="amt amt--zero">–</span></td>
               </tr>
               <tr data-level="2">
-                <td class="tree"><span class="indent"></span><span class="acct-code">6140101</span>مصروف إهلاك<span class="en-lbl">Depreciation expense</span></td>
+                <td class="tree"><span class="indent"></span><span class="acct-code">6140101</span><span data-i18n="screen.trialBalance.accounts.6140101">مصروف إهلاك</span><span class="alt-lbl" data-alt="screen.trialBalance.accounts.6140101"></span></td>
                 <td class="n"><span class="amt amt--zero">–</span></td>
                 <td class="n"><span class="amt amt--zero">–</span></td>
                 <td class="n"><span class="amt amt--debit" data-amount="122500.00">—</span></td>
@@ -502,7 +518,7 @@
                 <td class="n"><span class="amt amt--zero">–</span></td>
               </tr>
               <tr data-level="2">
-                <td class="tree"><span class="indent"></span><span class="acct-code">6150101</span>مصروف صيانة<span class="en-lbl">Maintenance expense</span></td>
+                <td class="tree"><span class="indent"></span><span class="acct-code">6150101</span><span data-i18n="screen.trialBalance.accounts.6150101">مصروف صيانة</span><span class="alt-lbl" data-alt="screen.trialBalance.accounts.6150101"></span></td>
                 <td class="n"><span class="amt amt--zero">–</span></td>
                 <td class="n"><span class="amt amt--zero">–</span></td>
                 <td class="n"><span class="amt amt--debit" data-amount="151400.00">—</span></td>
@@ -511,7 +527,7 @@
                 <td class="n"><span class="amt amt--zero">–</span></td>
               </tr>
               <tr class="is-subtotal" data-fixed>
-                <td class="tree">إجمالي المصروفات</td>
+                <td class="tree" data-i18n="acct.totalOf" data-i18n-params='{"class":"@acct.class.expenses"}'></td>
                 <td class="n"><span class="amt amt--zero">–</span></td>
                 <td class="n"><span class="amt amt--zero">–</span></td>
                 <td class="n"><span class="amt amt--debit amt--total" data-amount="2490300.00">—</span></td>
@@ -522,7 +538,7 @@
           </tbody>
           <tfoot>
             <tr class="grand" data-fixed>
-              <td>الإجمالي العام — ٢٤ حساباً</td>
+              <td data-i18n="screen.trialBalance.grandTotalOf" data-i18n-count="24"></td>
               <td class="n d"><span class="amt amt--total" data-amount="5342170.00">—</span></td>
               <td class="n c"><span class="amt amt--total" data-amount="5342170.00">—</span></td>
               <td class="n d"><span class="amt amt--total" data-amount="10043990.00">—</span></td>
@@ -535,69 +551,67 @@
       </div>
 
       <div class="pager">
-        <span class="count">عرض <span class="n">1–24</span> من <span class="n">24</span> حساباً</span>
+        <!-- الترقيم يمرّ بـIntl.PluralRules: «٢٤ حساباً» في العربية فئة many،
+             و«24 accounts» في الإنجليزية فئة other، والصفر في الهندية فئة one
+             — ولا واحدة منها تُنتَج بشرط على الواحد. -->
+        <span class="count" id="tb-count" data-i18n-managed></span>
         <span class="sizepick">
-          <label for="tb-size">لكل صفحة</label>
-          <select id="tb-size"><option>50</option><option>100</option><option>الكل</option></select>
+          <label data-i18n="common.label.perPage" for="tb-size">لكل صفحة</label>
+          <select id="tb-size"><option>50</option><option>100</option><option data-i18n="common.label.all">الكل</option></select>
         </span>
         <span class="pages">
-          <button class="pagebtn" disabled aria-label="الصفحة السابقة"><svg width="14" height="14" style="transform:rotate(-90deg)"><use href="#i-down"/></svg></button>
+          <button data-i18n-attr="aria-label:common.pager.prev" class="pagebtn" data-page-nav="prev" disabled aria-label="الصفحة السابقة"><svg width="14" height="14"><use href="#i-down"/></svg></button>
           <button class="pagebtn" aria-current="page">1</button>
-          <button class="pagebtn" disabled aria-label="الصفحة التالية"><svg width="14" height="14" style="transform:rotate(90deg)"><use href="#i-down"/></svg></button>
+          <button data-i18n-attr="aria-label:common.pager.next" class="pagebtn" data-page-nav="next" disabled aria-label="الصفحة التالية"><svg width="14" height="14"><use href="#i-down"/></svg></button>
         </span>
       </div>
 
       <div class="empty empty--sm" id="tb-empty" hidden>
         <span class="ico"><svg width="20" height="20"><use href="#i-search"/></svg></span>
-        <h3>لا حساب يطابق البحث</h3>
-        <p>جرّب رقم الحساب كاملاً، أو امسح مرشّح البحث.</p>
-        <div class="actions"><button class="btn btn-sm" id="tb-clear">مسح البحث</button></div>
+        <h3 data-i18n="common.state.noAccountMatch">لا حساب يطابق البحث</h3>
+        <p data-i18n="common.state.noAccountMatchBody">جرّب رقم الحساب كاملاً، أو امسح مرشّح البحث.</p>
+        <div class="actions"><button data-i18n="common.action.clearSearch" class="btn btn-sm" id="tb-clear">مسح البحث</button></div>
       </div>
     </section>
 
-    <p class="hint" style="margin:0">
-      المبالغ بالريال السعودي ومعروضة بمنزلتين عشريتين. الأرصدة المقابلة (مثل مجمع الإهلاك) تظهر
-      في العمود الموافق لطبيعتها. الحسابات بلا حركة وبلا رصيد مخفية ما لم تُطلب صراحةً.
-    </p>
+    <p class="hint" data-i18n="screen.trialBalance.footnote" style="margin:0"></p>
   </main>
 </div>
 
 <footer class="actionbar">
-  <button class="btn btn-primary" onclick="window.print()"><svg width="15" height="15"><use href="#i-print"/></svg>طباعة الميزان</button>
-  <button class="btn" data-open-dialog="tb-export"><svg width="15" height="15"><use href="#i-export"/></svg>تصدير</button>
-  <button class="btn" onclick="SB.toast('نموذج أولي — إعادة الاحتساب غير مفعّلة')"><svg width="15" height="15"><use href="#i-refresh"/></svg>إعادة الاحتساب</button>
-  <span class="hint spacer">آخر ترحيل: <span class="ltr">JV-2026-00125</span> · <span class="ltr">2026/05/24 14:03</span></span>
+  <button class="btn btn-primary" onclick="window.print()"><svg width="15" height="15"><use href="#i-print"/></svg><span data-i18n="common.action.printTrialBalance">طباعة الميزان</span></button>
+  <button class="btn" data-open-dialog="tb-export"><svg width="15" height="15"><use href="#i-export"/></svg><span data-i18n="common.action.export">تصدير</span></button>
+  <button class="btn" onclick="SB.toast(SB.t('common.toast.prototypeRecalc'))"><svg width="15" height="15"><use href="#i-refresh"/></svg><span data-i18n="common.action.recalculate">إعادة الاحتساب</span></button>
+  <span class="hint spacer" id="tb-lastposted" data-i18n-managed></span>
 </footer>
 
 <div class="overlay" id="tb-export">
   <div class="sheet sheet--sm" role="dialog" aria-modal="true" aria-labelledby="tb-export-t">
     <div class="sheet-hd">
-      <h2 id="tb-export-t">تصدير ميزان المراجعة</h2>
-      <button class="iconbtn spacer" data-close-dialog="tb-export" aria-label="إغلاق"><svg width="18" height="18"><use href="#i-x"/></svg></button>
+      <h2 data-i18n="screen.trialBalance.export.title" id="tb-export-t">تصدير ميزان المراجعة</h2>
+      <button data-i18n-attr="aria-label:app.a11y.close" class="iconbtn spacer" data-close-dialog="tb-export" aria-label="إغلاق"><svg width="18" height="18"><use href="#i-x"/></svg></button>
     </div>
     <div class="sheet-bd">
       <div class="field">
-        <label for="ex-fmt">الصيغة <span class="en">Format</span></label>
+        <label for="ex-fmt"><span data-i18n="common.label.format">الصيغة</span> <span class="alt" data-alt-for="ex-fmt"></span></label>
         <span class="ctl-wrap">
-          <select class="ctl" id="ex-fmt"><option>ملف إكسل بصيغة xlsx</option><option>ملف PDF</option><option>ملف CSV بترميز UTF-8 مع علامة ترتيب البايت</option></select>
+          <select class="ctl" id="ex-fmt"><option data-i18n="screen.trialBalance.export.xlsx">ملف إكسل بصيغة xlsx</option><option data-i18n="screen.trialBalance.export.pdf">ملف PDF</option><option data-i18n="screen.trialBalance.export.csv">ملف CSV بترميز UTF-8 مع علامة ترتيب البايت</option></select>
           <span class="adorn"><svg width="15" height="15"><use href="#i-down"/></svg></span>
         </span>
       </div>
       <div class="stack" style="gap:var(--space-10);margin-top:var(--space-14)">
-        <label class="check"><input type="checkbox" checked><span>تضمين المجاميع الفرعية</span></label>
-        <label class="check"><input type="checkbox"><span>تضمين الحسابات ذات الرصيد صفر</span></label>
-        <label class="check"><input type="checkbox" checked><span>تضمين الأسماء الإنجليزية</span></label>
+        <label class="check"><input type="checkbox" checked><span data-i18n="screen.trialBalance.export.incSubtotals">تضمين المجاميع الفرعية</span></label>
+        <label class="check"><input type="checkbox"><span data-i18n="screen.trialBalance.export.incZero">تضمين الحسابات ذات الرصيد صفر</span></label>
+        <label class="check"><input type="checkbox" checked><span data-i18n="screen.trialBalance.export.incAlt">تضمين الأسماء بلغة ثانية</span></label>
       </div>
       <div class="note note-info" role="note">
         <svg width="14" height="14"><use href="#i-info"/></svg>
-        ملفات CSV تُصدَّر بترميز <span class="ltr">UTF-8</span> مع علامة ترتيب البايت، وإلا فتحها
-        Excel العربي بمحارف مشوّهة. والأرقام تُصدَّر بفاصلة عشرية نقطية وبلا فواصل آلاف، حتى لا
-        يعيد Excel تفسيرها حسب لغة الجهاز.
+        <span data-i18n="screen.trialBalance.export.note"></span>
       </div>
     </div>
     <div class="sheet-ft">
-      <button class="btn btn-primary" onclick="SB.toast('نموذج أولي — التصدير غير مفعّل','warning')">تصدير</button>
-      <button class="btn" data-close-dialog="tb-export">إلغاء</button>
+      <button data-i18n="common.action.export" class="btn btn-primary" onclick="SB.toast(SB.t('common.toast.prototypeExport'),'warning')">تصدير</button>
+      <button data-i18n="common.action.cancel" class="btn" data-close-dialog="tb-export">إلغاء</button>
     </div>
   </div>
 </div>
@@ -606,64 +620,189 @@
 
 <script src="../components/behaviors.js" defer></script>
 <script>
-document.addEventListener("DOMContentLoaded", function () {
-  /* التفقيط للإجماليات — يُقرأ من نفس القيم المعروضة */
-  if (window.SB) {
-    document.getElementById("w-debit").textContent  = SB.tafqeet(8740370);
-    document.getElementById("w-credit").textContent = SB.tafqeet(8740370);
+/* ═══════════════════════════════════════════════════════════════════════════
+   شاشة ميزان المراجعة — الربط باللغة
+   ───────────────────────────────────────────────────────────────────────────
+   ⚠ القاعدة الأولى في هذا الملف: **لا مقارنة بنصّ مترجَم، ولا شرط على لغة.**
+   كانت مرشّحات العرض تقارن btn.textContent بـ«الكل» و«مدينة فقط» حرفياً، فتتعطّل
+   بصمت في أي لغة أخرى — يُضغَط الزرّ فلا يحدث شيء ولا يظهر خطأ. الهوية الآن في
+   data-view، والنصّ عرضٌ محض.
+   ⚠ والقاعدة الثانية: كل قيمة منسّقة محلّياً كائن Display ومخرجها .into(el).
+   القيم الآلية في DATA أدناه ASCII صرف، وهي وحدها ما يُرسَل ويُجزَّأ.
+   ═══════════════════════════════════════════════════════════════════════════ */
+(function () {
+  "use strict";
+
+  var DATA = {
+    from: "2026-01-01", to: "2026-05-24", refreshedAt: "14:12",
+    branchKey: "field.branch.main",
+    accounts: 24, classes: 5, idle: 1, rangeFrom: 1, rangeTo: 24,
+    debitWords: 8740370, creditWords: 8740370,
+    lastPostedCode: "JV-2026-00125", lastPostedAt: "2026-05-24", lastPostedTime: "14:03"
+  };
+
+  function el(id) { return document.getElementById(id); }
+
+  /* ⚠ .unsafeTextForAudit() مسمّاة هكذا عمداً: هي **النافذة الوحيدة** التي
+     تُخرِج نصّ Display خارج .into()، ومسموحة هنا لأن الناتج يذهب فوراً إلى
+     textContent عبر مفتاح ترجمة. لا تُنسخ هذه السطور إلى قيمة حقل أبداً. */
+  function shown(d) { return d.unsafeTextForAudit(); }
+
+  function renderHeadings() {
+    var params = {
+      from: shown(SB.fmt.date(DATA.from)),
+      to: shown(SB.fmt.date(DATA.to)),
+      branch: "@" + DATA.branchKey,
+      time: SB.I18N.shapeDigits(DATA.refreshedAt)
+    };
+    var sub = el("tb-sub");
+    if (sub) sub.textContent = SB.t("screen.trialBalance.sub", params);
+    var cap = el("tb-caption");
+    if (cap) cap.textContent = SB.t("screen.trialBalance.caption", params);
+    var last = el("tb-lastposted");
+    if (last) last.textContent = SB.t("screen.trialBalance.lastPosted", {
+      code: DATA.lastPostedCode,
+      stamp: shown(SB.fmt.date(DATA.lastPostedAt)) + " " + SB.I18N.shapeDigits(DATA.lastPostedTime)
+    });
   }
 
-  /* إظهار الأسماء الإنجليزية */
-  var optEn = document.getElementById("opt-en"), table = document.getElementById("tb-table");
-  optEn.addEventListener("change", function () { table.classList.toggle("show-en", optEn.checked); });
-
-  /* بحث حيّ داخل الجدول — يخفي الصف ويُبقي عناوين المجموعات */
-  var q = document.getElementById("tb-q"), body = document.getElementById("tb-body"),
-      empty = document.getElementById("tb-empty");
-  function filter() {
-    var term = SB.toLatinDigits(q.value.trim().toLowerCase());
-    var rows = Array.prototype.slice.call(body.rows), shown = 0;
-    rows.forEach(function (r) {
-      if (r.hasAttribute("data-fixed")) { r.hidden = !!term; return; }
-      var hay = SB.toLatinDigits(r.cells[0].textContent.toLowerCase());
-      var hit = !term || hay.indexOf(term) !== -1;
-      r.hidden = !hit;
-      if (hit) shown++;
+  /* الأعداد كلها عبر Intl.PluralRules — ولا واحدة منها بشرط على الواحد. */
+  function renderCounts() {
+    var count = el("tb-count");
+    if (count) count.textContent = SB.t.plural("common.pager.showingAccounts", DATA.accounts, {
+      range: SB.I18N.shapeDigits(DATA.rangeFrom + "–" + DATA.rangeTo)
     });
-    empty.hidden = shown > 0;
+    var sum = el("tb-acct-sum");
+    if (sum) sum.textContent = SB.t("screen.trialBalance.accountsSummary", {
+      classes: SB.t.plural("screen.trialBalance.classCount", DATA.classes),
+      idle: SB.t.plural("screen.trialBalance.idleAccounts", DATA.idle)
+    });
   }
-  q.addEventListener("input", filter);
-  document.getElementById("tb-clear").addEventListener("click", function () { q.value = ""; filter(); q.focus(); });
 
-  /* مرشّح مدينة/دائنة على الرصيد الختامي */
-  document.getElementById("tb-view").addEventListener("click", function (e) {
-    var b = e.target.closest("button"); if (!b) return;
-    Array.prototype.forEach.call(this.querySelectorAll("button"), function (x) {
-      x.setAttribute("aria-pressed", String(x === b));
+  /* التفقيط قدرةٌ **تُعلنها اللغة في ملفّها** (amountInWords)، لا شرطٌ على
+     «هل هي العربية؟». لغة تريد تفقيطاً تُعلنه وتأتي بمولّدها. */
+  function renderWords() {
+    var can = !!(SB.I18N.meta() || {}).amountInWords && !!SB.tafqeet;
+    [["w-debit", DATA.debitWords], ["w-credit", DATA.creditWords]].forEach(function (pair) {
+      var node = el(pair[0]);
+      if (!node) return;
+      node.textContent = can ? SB.tafqeet(pair[1]) : "";
+      node.hidden = !can;
     });
-    var mode = b.textContent.trim();
-    Array.prototype.slice.call(body.rows).forEach(function (r) {
-      if (r.hasAttribute("data-fixed")) return;
-      if (mode === "الكل") { r.hidden = false; return; }
-      var d = SB.sortValue(r.cells[5].textContent), c = SB.sortValue(r.cells[6].textContent);
-      r.hidden = (mode === "مدينة فقط") ? !(d > 0) : !(c > 0);
-    });
-  });
+  }
 
-  /* الحسابات ذات الرصيد صفر */
-  document.getElementById("opt-zero").addEventListener("change", function () {
-    var show = this.checked;
-    Array.prototype.slice.call(body.rows).forEach(function (r) {
-      if (r.hasAttribute("data-fixed")) return;
-      var d = SB.sortValue(r.cells[5].textContent), c = SB.sortValue(r.cells[6].textContent);
-      var md = SB.sortValue(r.cells[3].textContent), mc = SB.sortValue(r.cells[4].textContent);
-      var idle = !(d > 0) && !(c > 0) && !(md > 0) && !(mc > 0);
-      if (idle) r.hidden = !show;
+  function altOptions() {
+    var sel = el("opt-alt-locale");
+    if (!sel) return;
+    var active = SB.I18N.active(), keep = sel.value;
+    sel.innerHTML = "";
+    SB.I18N.catalog.forEach(function (e) {
+      if (e.code === active || !SB.I18N.has(e.code)) return;
+      var o = document.createElement("option");
+      o.value = e.code; o.textContent = e.native;
+      o.setAttribute("lang", e.code); o.setAttribute("dir", e.dir);
+      sel.appendChild(o);
     });
-    SB.toast(show ? "أُظهرت الحسابات ذات الرصيد صفر" : "أُخفيت الحسابات ذات الرصيد صفر", null, 1800);
-  });
-  document.getElementById("opt-zero").dispatchEvent(new Event("change"));
-});
+    if (keep && sel.querySelector('option[value="' + keep + '"]')) sel.value = keep;
+  }
+
+  function renderAlt() {
+    var box = el("opt-alt"), sel = el("opt-alt-locale"), table = el("tb-table");
+    if (!box || !sel || !table) return;
+    var on = box.checked && !!sel.value, code = sel.value;
+    var meta = code ? SB.I18N.meta(code) : null;
+    sel.disabled = !box.checked;
+    table.classList.toggle("show-alt", on);
+    document.body.classList.toggle("show-alt", on);
+    function fill(n, key) {
+      if (!on || !key) { n.textContent = ""; return; }
+      n.textContent = SB.t.in(code, key);
+      n.setAttribute("lang", code);
+      /* الاتجاه من ملفّ اللغة الثانية، لا مثبّتاً على ltr — الأردية RTL. */
+      n.setAttribute("dir", (meta && meta.dir) || "auto");
+    }
+    SB.$$("[data-alt]").forEach(function (n) { fill(n, n.getAttribute("data-alt")); });
+    SB.$$("[data-alt-for]").forEach(function (n) {
+      var sib = n.parentNode.querySelector("[data-i18n]");
+      fill(n, sib && sib.getAttribute("data-i18n"));
+    });
+  }
+
+  function buildLocaleSwitch() {
+    SB.$$("[data-locale-select]").forEach(function (sel) {
+      sel.innerHTML = "";
+      SB.I18N.catalog.forEach(function (e) {
+        if (!SB.I18N.has(e.code)) return;
+        var o = document.createElement("option");
+        o.value = e.code; o.textContent = e.native;
+        o.setAttribute("lang", e.code); o.setAttribute("dir", e.dir);
+        sel.appendChild(o);
+      });
+      sel.value = SB.I18N.active();
+      sel.addEventListener("change", function () { SB.I18N.use(sel.value); });
+    });
+  }
+
+  function bindFilters() {
+    var body = el("tb-body"), empty = el("tb-empty"), q = el("tb-q");
+    function rows() { return Array.prototype.slice.call(body.rows); }
+    function num(r, i) { return SB.sortValue(r.cells[i].textContent); }
+
+    el("tb-view").addEventListener("click", function (e) {
+      var b = e.target.closest("button"); if (!b) return;
+      SB.$$("button", this).forEach(function (x) { x.setAttribute("aria-pressed", String(x === b)); });
+      var mode = b.getAttribute("data-view");          /* ← هوية، لا نصّ مترجَم */
+      rows().forEach(function (r) {
+        if (r.hasAttribute("data-fixed")) return;
+        if (mode === "all") { r.hidden = false; return; }
+        r.hidden = (mode === "debit") ? !(num(r, 5) > 0) : !(num(r, 6) > 0);
+      });
+    });
+
+    function filter() {
+      var term = SB.toLatinDigits(q.value.trim().toLowerCase()), shownRows = 0;
+      rows().forEach(function (r) {
+        if (r.hasAttribute("data-fixed")) { r.hidden = !!term; return; }
+        var hay = SB.toLatinDigits(r.cells[0].textContent.toLowerCase());
+        var hit = !term || hay.indexOf(term) !== -1;
+        r.hidden = !hit;
+        if (hit) shownRows++;
+      });
+      empty.hidden = shownRows > 0;
+    }
+    q.addEventListener("input", filter);
+    el("tb-clear").addEventListener("click", function () { q.value = ""; filter(); q.focus(); });
+
+    el("opt-zero").addEventListener("change", function () {
+      var show = this.checked;
+      rows().forEach(function (r) {
+        if (r.hasAttribute("data-fixed")) return;
+        var idle = !(num(r, 5) > 0) && !(num(r, 6) > 0) && !(num(r, 3) > 0) && !(num(r, 4) > 0);
+        if (idle) r.hidden = !show;
+      });
+      SB.toast(SB.t(show ? "common.toast.zeroShown" : "common.toast.zeroHidden"), null, 1800);
+    });
+    el("opt-zero").dispatchEvent(new Event("change"));
+    el("opt-alt").addEventListener("change", renderAlt);
+    el("opt-alt-locale").addEventListener("change", renderAlt);
+  }
+
+  function renderAll() { renderHeadings(); renderCounts(); renderWords(); altOptions(); renderAlt(); }
+
+  function boot() {
+    SB.I18N.boot();                 /* التخزين ثم ?lang= ثم لغة المتصفّح ثم ar */
+    buildLocaleSwitch();
+    bindFilters();
+    renderAll();
+    SB.I18N.onChange(function () {
+      SB.$$("[data-locale-select]").forEach(function (s) { s.value = SB.I18N.active(); });
+      renderAll();
+    });
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
+  else boot();
+})();
 </script>
 </body>
 </html>

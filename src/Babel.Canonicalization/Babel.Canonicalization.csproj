@@ -21,7 +21,14 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
     <!-- الرموز الثابتة موثّقة في SPEC.md؛ لا حاجة لتعليق XML على كل ثابت. -->
-    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <!--
+      CA1720: الاسم Integer جزء من مفردات الشكل السلكي المجمَّدة (SPEC.md §2: المحرف I).
+      إعادة تسميته تغيير في المواصفة الموقَّعة لا تحسين تسمية، ولذلك يُسكَت هنا صراحةً
+      وبتعليل — لا برفع مستوى التحليل عن المستودع كله.
+      CA1720: 'Integer' is frozen wire-format vocabulary (SPEC.md §2, type character I).
+      Renaming it edits a signed specification; suppressed here explicitly, not globally.
+    -->
+    <NoWarn>$(NoWarn);CS1591;CA1720</NoWarn>
 
     <!--
       لا يجوز أبداً تشغيل هذه المكتبة في وضع InvariantGlobalization:

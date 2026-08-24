@@ -17,6 +17,14 @@ internal static class ModuleMap
     public const string SharedKernel = "Babel.SharedKernel";
     public const string Contracts = "Babel.Contracts";
     public const string Core = "Babel.Core";
+
+    /// <summary>
+    /// مكتبة التوحيد القياسي — <b>ليست وحدة منتج</b> بل مكتبة بلا اعتماديات إطلاقاً،
+    /// وهي الطريق الوحيد إلى دالة التجزئة. لا تدخل <see cref="BabelModule"/> ولا
+    /// الاستحقاق ولا القياس: لا يشتريها عميل ولا تُطفأ. حدودها مفروضة في Rule10.
+    /// </summary>
+    public const string Canonicalization = "Babel.Canonicalization";
+
     public const string Ledger = "Babel.Ledger";
     public const string Api = "Babel.Api";
 
@@ -38,7 +46,7 @@ internal static class ModuleMap
 
     /// <summary>كل مشاريع المنتج.</summary>
     public static IReadOnlyList<string> AllProjects { get; } =
-        [SharedKernel, Contracts, Core, Ledger, .. Horizontal, Api];
+        [SharedKernel, Contracts, Canonicalization, Core, Ledger, .. Horizontal, Api];
 
     /// <summary>اسم مشروع الوحدة.</summary>
     public static string ProjectOf(BabelModule module) => "Babel." + module;
@@ -53,7 +61,13 @@ internal static class ModuleMap
             [SharedKernel] = new HashSet<string>(StringComparer.Ordinal),
             [Contracts] = new HashSet<string>([SharedKernel], StringComparer.Ordinal),
             [Core] = new HashSet<string>([SharedKernel, Contracts], StringComparer.Ordinal),
-            [Ledger] = new HashSet<string>([SharedKernel, Contracts, Core], StringComparer.Ordinal),
+
+            // المكتبة لا تعتمد على شيء إطلاقاً — ولا حتى على النواة المشتركة.
+            // البايتات المُجزَّأة يجب ألا تتحرّك أبداً بسبب ترقية اعتمادية.
+            [Canonicalization] = new HashSet<string>(StringComparer.Ordinal),
+
+            // الدفتر وحده يجوز أن يعتمد على المُوحِّد: هو الجهة الوحيدة التي تُجزّئ قيداً.
+            [Ledger] = new HashSet<string>([SharedKernel, Contracts, Core, Canonicalization], StringComparer.Ordinal),
 
             // الجذر التركيبي وحده يعرف الجميع.
             [Api] = new HashSet<string>(AllProjects.Where(static p => p != Api), StringComparer.Ordinal),

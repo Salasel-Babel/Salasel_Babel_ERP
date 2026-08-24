@@ -1,4 +1,5 @@
 using Babel.Canonicalization.Schemas;
+using Xunit;
 
 namespace Babel.Canonicalization.Tests;
 

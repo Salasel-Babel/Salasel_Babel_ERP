@@ -1,26 +1,18 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!--
+    اختبارات مكتبة التوحيد القياسي — داخل Babel.slnx مثل بقية المشاريع.
+    الإصدارات كلها من Directory.Packages.props: مصدر حقيقة واحد (Rule08).
+    Npgsql هنا فقط: اختبار الدورة الحقيقية مع PostgreSQL. المكتبة نفسها بلا اعتماديات.
+  -->
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-    <IsPackable>false</IsPackable>
     <RootNamespace>Babel.Canonicalization.Tests</RootNamespace>
     <InvariantGlobalization>false</InvariantGlobalization>
     <PredefinedCulturesOnly>false</PredefinedCulturesOnly>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="coverlet.collector" Version="6.0.4" />
-    <!-- Npgsql هنا فقط: اختبار الدورة الحقيقية مع PostgreSQL. المكتبة نفسها بلا اعتماديات. -->
-    <PackageReference Include="Npgsql" Version="10.0.3" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
-    <PackageReference Include="xunit" Version="2.9.3" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Using Include="Xunit" />
+    <PackageReference Include="Npgsql" />
   </ItemGroup>
 
   <ItemGroup>

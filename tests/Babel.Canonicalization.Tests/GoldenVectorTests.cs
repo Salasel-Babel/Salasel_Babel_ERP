@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text;
 using Babel.Canonicalization.Golden;
 using Babel.Canonicalization.Schemas;
+using Xunit;
 
 namespace Babel.Canonicalization.Tests;
 
@@ -111,8 +112,13 @@ public sealed class GoldenVectorTests
         {
             CultureInfo.CurrentCulture = new CultureInfo("ar-SA");
 
+            // CA1305 مقصود هنا: الاستدعاء الواعي بالثقافة هو **موضوع الاختبار نفسه**،
+            // وهو ما يجب ألا يقترب من البايتات المُجزَّأة (فخ-18). إسكات موضعي مُعلَّل.
+            // CA1305 is deliberate: the culture-aware call IS what this test proves is unsafe.
+#pragma warning disable CA1305
             var naive = 100.5m.ToString("0.0000");
             var naiveDate = new DateTime(2026, 1, 2, 0, 0, 0, DateTimeKind.Utc).ToString("d");
+#pragma warning restore CA1305
 
             Assert.DoesNotContain('.', naive);                 // \u200E100٫5000\u200E بفاصلة U+066B
             Assert.Contains('\u200F', naiveDate);              // التاريخ الهجري يحمل RLM داخله

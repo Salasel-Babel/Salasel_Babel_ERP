@@ -1,6 +1,7 @@
 using System.Globalization;
 using Babel.Canonicalization.Schemas;
 using Npgsql;
+using Xunit;
 
 namespace Babel.Canonicalization.Tests;
 
@@ -30,7 +31,7 @@ public sealed class PostgresRoundTripTests : IAsyncLifetime
 
     private bool _available;
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         try
         {
@@ -39,10 +40,10 @@ public sealed class PostgresRoundTripTests : IAsyncLifetime
                 await admin.OpenAsync();
                 await using var check = new NpgsqlCommand(
                     $"select 1 from pg_database where datname = '{Database}'", admin);
-                if (await check.ExecuteScalarAsync() is null)
+                if (await check.ExecuteScalarAsync(TestContext.Current.CancellationToken) is null)
                 {
                     await using var create = new NpgsqlCommand($"create database {Database}", admin);
-                    await create.ExecuteNonQueryAsync();
+                    await create.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
                 }
             }
 
@@ -96,7 +97,7 @@ public sealed class PostgresRoundTripTests : IAsyncLifetime
         }
     }
 
-    public Task DisposeAsync() => Task.CompletedTask;
+    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
     private static async Task<NpgsqlConnection> OpenAsync()
     {
@@ -108,7 +109,7 @@ public sealed class PostgresRoundTripTests : IAsyncLifetime
     private static async Task ExecAsync(NpgsqlConnection c, string sql)
     {
         await using var cmd = new NpgsqlCommand(sql, c);
-        await cmd.ExecuteNonQueryAsync();
+        await cmd.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
     }
 
     // =====================================================================
@@ -188,12 +189,12 @@ public sealed class PostgresRoundTripTests : IAsyncLifetime
             ins.Parameters.AddWithValue("m", money);
             ins.Parameters.AddWithValue("ts", written);
             ins.Parameters.AddWithValue("t", text);
-            await ins.ExecuteNonQueryAsync();
+            await ins.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
         }
 
         await using var read = await new NpgsqlCommand("select m, ts, t from canon_probe where id = 1", conn)
-            .ExecuteReaderAsync();
-        Assert.True(await read.ReadAsync());
+            .ExecuteReaderAsync(TestContext.Current.CancellationToken);
+        Assert.True(await read.ReadAsync(TestContext.Current.CancellationToken));
 
         var backMoney = read.GetDecimal(0);
         var backTs = read.GetFieldValue<DateTime>(1);
@@ -245,7 +246,7 @@ public sealed class PostgresRoundTripTests : IAsyncLifetime
             $"select coalesce(sum(debit),0) = coalesce(sum(credit),0) from canon_line " +
             $"where chain_scope = '{scope}' and chain_seq = {target}", conn))
         {
-            Assert.True((bool)(await bal.ExecuteScalarAsync())!,
+            Assert.True((bool)(await bal.ExecuteScalarAsync(TestContext.Current.CancellationToken))!,
                 "العبث يجب أن يُبقي القيد متوازناً، وإلا لم يُثبت شيئاً.");
         }
 
@@ -266,7 +267,7 @@ public sealed class PostgresRoundTripTests : IAsyncLifetime
             upd.Parameters.AddWithValue("h", repaired.Hash);
             upd.Parameters.AddWithValue("s", scope);
             upd.Parameters.AddWithValue("q", target);
-            await upd.ExecuteNonQueryAsync();
+            await upd.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
         }
 
         var stillDetected = ChainVerifier.VerifyChain(await ReadAsync(conn, scope), genesis);
@@ -325,7 +326,7 @@ public sealed class PostgresRoundTripTests : IAsyncLifetime
             ok.Parameters.AddWithValue("v", ArabicSearch.Normalize(memo).Value);
             ok.Parameters.AddWithValue("s", scope);
             ok.Parameters.AddWithValue("q", r.Sequence);
-            await ok.ExecuteNonQueryAsync();
+            await ok.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
         }
         Assert.True(ChainVerifier.VerifyChain(await ReadAsync(conn, scope), genesis).Ok,
             "ملء عمود البحث المشتقّ لا يجوز أن يمسّ السلسلة.");
@@ -337,7 +338,7 @@ public sealed class PostgresRoundTripTests : IAsyncLifetime
         {
             bad.Parameters.AddWithValue("v", ArabicSearch.Normalize(MemoArOf(victim)).Value);
             bad.Parameters.AddWithValue("s", scope);
-            await bad.ExecuteNonQueryAsync();
+            await bad.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
         }
 
         var broken = ChainVerifier.VerifyChain(await ReadAsync(conn, scope), genesis);
@@ -462,7 +463,7 @@ public sealed class PostgresRoundTripTests : IAsyncLifetime
             cmd.Parameters.AddWithValue("hash", link.Hash);
             cmd.Parameters.AddWithValue("bytes", link.CanonicalBytes);
             _ = tenant; _ = book;
-            await cmd.ExecuteNonQueryAsync();
+            await cmd.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
         }
 
         (int no, string acc, decimal d, decimal c, string desc)[] lines =
@@ -485,7 +486,7 @@ public sealed class PostgresRoundTripTests : IAsyncLifetime
             cmd.Parameters.AddWithValue("d", l.d);
             cmd.Parameters.AddWithValue("c", l.c);
             cmd.Parameters.AddWithValue("desc", l.desc);
-            await cmd.ExecuteNonQueryAsync();
+            await cmd.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
         }
     }
 
@@ -498,8 +499,8 @@ public sealed class PostgresRoundTripTests : IAsyncLifetime
             "from canon_line where chain_scope = @s order by chain_seq, line_no", conn))
         {
             lc.Parameters.AddWithValue("s", scope);
-            await using var r = await lc.ExecuteReaderAsync();
-            while (await r.ReadAsync())
+            await using var r = await lc.ExecuteReaderAsync(TestContext.Current.CancellationToken);
+            while (await r.ReadAsync(TestContext.Current.CancellationToken))
             {
                 var seq = r.GetInt64(0);
                 if (!lines.TryGetValue(seq, out var list)) lines[seq] = list = [];
@@ -516,8 +517,8 @@ public sealed class PostgresRoundTripTests : IAsyncLifetime
             """, conn);
         cc.Parameters.AddWithValue("s", scope);
 
-        await using var rd = await cc.ExecuteReaderAsync();
-        while (await rd.ReadAsync())
+        await using var rd = await cc.ExecuteReaderAsync(TestContext.Current.CancellationToken);
+        while (await rd.ReadAsync(TestContext.Current.CancellationToken))
         {
             var seq = rd.GetInt64(0);
             var version = rd.GetString(1);
@@ -575,4 +576,4 @@ public sealed class PostgresRoundTripTests : IAsyncLifetime
 
 /// <summary>اختبارات PostgreSQL تُشغَّل تتابعياً: تتشارك الجداول نفسها.</summary>
 [CollectionDefinition("postgres", DisableParallelization = true)]
-public sealed class PostgresCollection;
+public sealed class PostgresSuiteDefinition;

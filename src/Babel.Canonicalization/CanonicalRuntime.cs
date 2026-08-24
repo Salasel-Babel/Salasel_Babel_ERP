@@ -110,12 +110,12 @@ public static class CanonicalRuntime
         var sb = new StringBuilder();
         sb.Append("بيئة التشغيل لا تصلح للتوحيد القياسي — لا يجوز حساب أي بصمة عليها. ");
         sb.Append("This runtime cannot produce canonical bytes. ");
-        sb.Append($"framework={r.FrameworkDescription}; ");
-        sb.Append($"nfc_composes_arabic={r.NfcComposesArabic}; ");
-        sb.Append($"is_normalized_detects_decomposed={r.IsNormalizedDetectsDecomposed}; ");
-        sb.Append($"invariant_switch_claimed={r.InvariantSwitchClaimed}; ");
-        sb.Append($"arabic_culture_available={r.ArabicCultureAvailable}; ");
-        sb.Append($"invariant_decimal_format_stable={r.InvariantDecimalFormatStable}. ");
+        sb.Append(CultureInfo.InvariantCulture, $"framework={r.FrameworkDescription}; ");
+        sb.Append(CultureInfo.InvariantCulture, $"nfc_composes_arabic={r.NfcComposesArabic}; ");
+        sb.Append(CultureInfo.InvariantCulture, $"is_normalized_detects_decomposed={r.IsNormalizedDetectsDecomposed}; ");
+        sb.Append(CultureInfo.InvariantCulture, $"invariant_switch_claimed={r.InvariantSwitchClaimed}; ");
+        sb.Append(CultureInfo.InvariantCulture, $"arabic_culture_available={r.ArabicCultureAvailable}; ");
+        sb.Append(CultureInfo.InvariantCulture, $"invariant_decimal_format_stable={r.InvariantDecimalFormatStable}. ");
 
         if (!r.NfcComposesArabic || !r.IsNormalizedDetectsDecomposed)
         {

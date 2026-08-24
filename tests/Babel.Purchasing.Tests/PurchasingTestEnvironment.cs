@@ -68,6 +68,17 @@ internal static class PurchasingTestEnvironment
     /// </summary>
     public static string LedgerDatabase { get; } = TestRunScope.Name(LedgerDatabaseStem);
 
+    /// <summary>
+    /// الجذع الثابت لقاعدة مسبار الترقية في
+    /// <c>PostingIdentityIncludesEventCodeTests</c> — تُلحق به لاحقة هذه العملية كذلك.
+    /// <para>
+    /// وهو معلن هنا لا هناك لسبب واحد: الكنس أدناه يجب أن يعرفه. فبعد أن صار
+    /// الاسم خاصّاً بالعملية، لم يعد تشغيلٌ لاحق يستعيد قاعدة تشغيلٍ قُتل قبل
+    /// أن ينفّذ <c>finally</c> — فيكنسها هذا الكنس بشرطه: مالكٌ ثبت موته.
+    /// </para>
+    /// </summary>
+    public const string UpgradeProbeDatabaseStem = "babel_arap_purchasing_upgrade_probe";
+
     /// <summary>قاعدة وحدة المشتريات <b>لهذه العملية وحدها</b>.</summary>
     public static string ModuleDatabase { get; } = TestRunScope.Name(ModuleDatabaseStem);
 
@@ -194,17 +205,22 @@ internal static class PurchasingTestEnvironment
 
         // الدور التطبيقي: يدخل، ولا يملك شيئاً، وليس superuser — الطبقة الأولى (فخ-30).
         //
-        // والاسم مشترك بين العمليات، فـ«اقرأ ثم أنشئ» يتسابق: عمليتان تريان العدّ
-        // صفراً فتُنشئان معاً، وتفشل إحداهما بـ42710. الإنشاء هنا داخل كتلة واحدة
-        // تبتلع «موجود سلفاً» وحده — وهو خبر سارّ لا عطل.
+        // والاسم مشترك بين العمليات، فإنشاؤه يتسابق. وقُيس على هذا الجهاز أن الكتلة
+        // بلا قفل لا تكفي: ثماني عمليات متزامنة تُنشئ الدور نفسه أخفقت واحدةً في كل
+        // جولة من ثلاث جولات، مرّة بـ‏23505 على pg_authid_rolname_index (لا 42710،
+        // فلا يلتقطها duplicate_object) ومرّة بـ‏XX000 «tuple concurrently updated»
+        // من alter role في مسار الاستثناء. فالقفل الاستشاري على اسم الدور يُسلسل
+        // الإنشاء عبر العمليات — والكتلة $$ معاملة واحدة، فالقفل يُفكّ بإيداعها.
+        // وبعد القفل: ثلاث جولات × ثماني عمليات = 24 عملية، صفر إخفاق.
         await ExecAsync(
             admin,
             $"""
             do $$
             begin
+                perform pg_advisory_xact_lock(hashtextextended('{AppRole}', 0));
                 begin
                     create role {AppRole} login nosuperuser nocreatedb nocreaterole noinherit;
-                exception when duplicate_object then
+                exception when duplicate_object or unique_violation then
                     alter role {AppRole} login nosuperuser nocreatedb nocreaterole noinherit;
                 end;
             end
@@ -307,7 +323,7 @@ internal static class PurchasingTestEnvironment
     /// </summary>
     private static async Task SweepAbandonedAsync(NpgsqlConnection admin, CancellationToken cancellationToken)
     {
-        foreach (string stem in new[] { ModuleDatabaseStem, LedgerDatabaseStem })
+        foreach (string stem in new[] { ModuleDatabaseStem, LedgerDatabaseStem, UpgradeProbeDatabaseStem })
         {
             List<string> candidates = [];
 

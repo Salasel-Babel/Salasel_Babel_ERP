@@ -691,6 +691,55 @@ public sealed class PayablesIntegrationTests : IAsyncLifetime
             + "وكاتب واحد متسلسل، ورقم يشمل كتابة الوحدة وقراءتها بـEF Core لا الترحيل وحده.");
     }
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // 16 · مسوّدة فاتورة مخزنية تحجز ولا تُعفي رصيد البضاعة المستلمة غير المفوترة
+    // ═══════════════════════════════════════════════════════════════════════
+    [Fact]
+    public async Task A_draft_stock_bill_reserves_the_receipt_without_relieving_the_open_item()
+    {
+        CancellationToken token = TestContext.Current.CancellationToken;
+        TenantId tenant = PurchasingTestEnvironment.Tenant;
+
+        decimal start = await LedgerProbe.ControlNetAsync(Ledger, tenant, "supplier", token);
+
+        Cycle cycle = await OrderAndReceiptAsync(4m, 125m, token);
+
+        Result<PurchasingDocumentView> draft = await _harness.Bills.CreateStockBillAsync(
+            tenant,
+            Harness.Actor,
+            new StockBillDraft(
+                Next("BILL"), cycle.ReceiptId, March,
+                [new SupplierBillLineDraft(cycle.ReceiptLineId, 4m, Harness.Sar(125m), "standard", 0.15m)]),
+            token);
+        Assert.True(draft.IsSuccess, Describe(draft.Errors));
+
+        // ضلع المطابقة الثلاثية ما زال محجوزاً: لا فاتورة ثانية على الاستلام نفسه.
+        Result<PurchasingDocumentView> again = await _harness.Bills.CreateStockBillAsync(
+            tenant,
+            Harness.Actor,
+            new StockBillDraft(
+                Next("BILL"), cycle.ReceiptId, March,
+                [new SupplierBillLineDraft(cycle.ReceiptLineId, 4m, Harness.Sar(125m), "standard", 0.15m)]),
+            token);
+
+        decimal control = start - await LedgerProbe.ControlNetAsync(Ledger, tenant, "supplier", token);
+
+        Result<AgingReport> aging = await _harness.Payables.AgingAsync(tenant, Harness.Actor, March, token);
+        PartyAging party = Assert.Single(aging.Value.Parties, p => p.PartyId == cycle.SupplierId);
+
+        Proof.Require(
+            draft.Value.State == "DRAFT"
+            && again.IsFailure && again.Errors[0].Code == "purchasing.bill_exceeds_receipt"
+            && control == 500.0000m
+            && party.Buckets.Total.Amount == 500.0000m,
+            "مسوّدة فاتورة مخزنية تحجز الكمية في المطابقة ولا تُعفي البند المفتوح، "
+            + "فيبقى الدفتر المساعد على نقطة ضبطه حتى الترحيل",
+            "حالة المسوّدة=" + draft.Value.State
+            + " · الفاتورة الثانية=" + again.Errors[0].Code
+            + " · حركة نقطة الضبط=" + Proof.Money(control)
+            + " · رصيد المورد في أعمار الذمم=" + Proof.Money(party.Buckets.Total.Amount));
+    }
+
     private sealed record Cycle(Guid OrderId, Guid ReceiptId, Guid ReceiptLineId, Guid SupplierId);
 
     private async Task<Cycle> OrderAndReceiptAsync(

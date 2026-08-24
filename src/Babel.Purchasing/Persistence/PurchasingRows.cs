@@ -121,7 +121,11 @@ internal sealed class GoodsReceiptRow
     /// <summary>قيمة المستلَم بتكلفة الاستلام — هي ما يُقيَّد بضاعةً مستلمة لم تُفوتر.</summary>
     public decimal ReceiptCost { get; set; }
 
-    /// <summary>ما استُهلك منها بفواتير الموردين.</summary>
+    /// <summary>
+    /// ما حُجز منها بفواتير الموردين — <b>بما فيها المسوّدات</b>: هذا حجز للمطابقة
+    /// الثلاثية يمنع تفويتر الاستلام نفسه مرّتين، لا إعفاءً محاسبياً. البند المفتوح
+    /// في الدفتر المساعد لا يُعفى إلا بالفواتير المُرحَّلة، وإلا انحرف عن حسابه الضابط.
+    /// </summary>
     public decimal BilledValue { get; set; }
 
     public Guid? PostedEntryId { get; set; }

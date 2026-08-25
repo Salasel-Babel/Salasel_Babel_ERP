@@ -73,6 +73,7 @@ internal static class BabelApiHost
         app.UseBabelAuthentication();
         app.MapLedgerApi();
         app.MapCapabilityProfileApi();
+        app.MapCompanySetupApi();
 
         return app;
     }

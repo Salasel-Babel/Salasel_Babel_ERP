@@ -3,6 +3,7 @@ using System.Text.Json;
 using Babel.Api.Endpoints;
 using Babel.Contracts.Posting;
 using Babel.Core.CapabilityProfile;
+using Babel.Core.CompanySetup;
 using Babel.SharedKernel;
 
 namespace Babel.Api.OpenApi;
@@ -151,6 +152,63 @@ internal static class OpenApiEmitter
                 "One document type's shape derived from the profile. Derived, never authored: no layout, no visual order, no condition, no expression.",
                 Body: null, Response: "DocumentShape", Success: 200, Anonymous: false, Query: []),
 
+            new(ApiRoutes.CompanySetup, "get", "readCompanySetup",
+                "تأسيس المنشأة", "The company setup",
+                "يقرأ تأسيس المنشأة: اسمها، و**عدد الخانات العشرية المعروضة**، و**مراكز تكلفتها كلّها** — العاملة والموقوفة معاً. "
+                + "والموقوف يبقى في القائمة عمداً: تقاريرُ الفترات السابقة تُبوَّب عليه، والدفتر إضافي لا يُحذف منه شيء.",
+                "Reads the company setup: its name, the **number of displayed decimal places**, and **all of its cost centres** — "
+                + "active and suspended alike. A suspended centre stays in the list on purpose: earlier periods are still grouped by it, "
+                + "and the ledger is append-only.",
+                Body: null, Response: "CompanySetup", Success: 200, Anonymous: false, Query: []),
+
+            new(ApiRoutes.CompanySetup, "put", "initialiseCompanySetup",
+                "تأسيس المنشأة مرّة واحدة", "Set the company up, once",
+                "يؤسّس المنشأة. **يُقبل مرّة واحدة فقط**: الوصول الثاني يُرفض بـ409 و‏company_setup.already_initialised مهما تغيّرت "
+                + "حمولته — وبالأخصّ decimalPlaces، فعدد الخانات يُسنَد عند أول تأسيس ولا يُعدَّل بعده، وتوحيده داخل دفاتر المنشأة "
+                + "الواحدة أهمّ من أي قيمة بعينها.\n\n"
+                + "وسؤال مراكز التكلفة يُطرح هنا وحده: costCenters = One يجعل **اسم المنشأة نفسه** هو المركز الافتراضي فلا يرى "
+                + "صاحبُ هذا الجواب المفهوم أبداً؛ وcostCenters = Multiple يجعل firstCostCenterNameAr **إلزامياً** — من أعلن أن "
+                + "لديه أكثر من واحد لا يُخترَع له اسم نيابةً عنه. وفي الحالتين تخرج المنشأة من هنا وبها مركز تكلفة واحد على الأقل.\n\n"
+                + "وdecimalPlaces يحكم **العرض والإدخال البشري وحدهما**: التخزين يبقى بأربع خانات، والمبالغ المحسوبة "
+                + "(ضريبة 15٪ على صافٍ فردي مثلاً) لا يقيّدها هذا العدد ولا تُقرَّب عنده — وإلا لصارت الفاتورة العادية مستحيلة.",
+                "Sets the company up. **Accepted exactly once**: a second arrival is refused with 409 and company_setup.already_initialised "
+                + "whatever its payload — decimalPlaces above all, since the number of places is assigned at first setup and is never editable "
+                + "afterwards; its consistency inside one entity's books matters more than any particular value.\n\n"
+                + "The cost-centre question is asked here and only here: costCenters = One makes **the company's own name** the default centre, "
+                + "so whoever answers that never sees the concept again; costCenters = Multiple makes firstCostCenterNameAr **mandatory** — no name "
+                + "is invented on behalf of someone who declared they have more than one. Either way the company leaves this call with at least one cost centre.\n\n"
+                + "decimalPlaces governs **display and human input only**: storage stays at four places, and computed amounts (15% VAT on an odd net, "
+                + "say) are neither constrained nor rounded by it — otherwise an ordinary invoice would be impossible.",
+                Body: "InitialiseCompanySetupRequest", Response: "CompanySetup", Success: 201, Anonymous: false, Query: []),
+
+            new(ApiRoutes.CostCenters, "post", "addCostCenter",
+                "إضافة مركز تكلفة", "Add a cost centre",
+                "يضيف مركز تكلفة عاملاً ويُعيد التأسيس كاملاً. الرمز يُسكّه الخادم ولا يُرسله العميل: الرمز هوية تحملها سطور القيود، "
+                + "والاسم عرضٌ يتغيّر.",
+                "Adds an active cost centre and returns the whole setup. The server mints the code; the client never sends one: the code is the "
+                + "identity that journal lines carry, and the name is display that changes.",
+                Body: "CostCenterNameRequest", Response: "CompanySetup", Success: 201, Anonymous: false, Query: []),
+
+            new(ApiRoutes.CostCenter, "put", "renameCostCenter",
+                "إعادة تسمية مركز تكلفة", "Rename a cost centre",
+                "يعيد تسمية مركز تكلفة. **الرمز لا يتغيّر**، فسطور القيود المُرحَّلة عليه تبقى مربوطة به وتُعرض بالاسم الجاري — "
+                + "وهو سلوك الحساب المعطَّل نفسه لا نمطٌ ثانٍ (ADR-0006).",
+                "Renames a cost centre. **The code does not change**, so journal lines already posted against it stay tied to it and display under "
+                + "the current name — the same behaviour as a locked account, not a second pattern (ADR-0006).",
+                Body: "CostCenterNameRequest", Response: "CompanySetup", Success: 200, Anonymous: false, Query: []),
+
+            new(ApiRoutes.CostCenterSuspension, "post", "suspendCostCenter",
+                "إيقاف مركز تكلفة عن الترحيل", "Suspend a cost centre from posting",
+                "يوقف مركز تكلفة عن الاستعمال على مستند جديد، **بسبب مكتوب** يُسجَّل في سجلّ التدقيق مع من فعله ومتى. "
+                + "ولا يُحذف شيء: المركز يبقى مقروءاً ومُبوَّباً في تقارير الفترات السابقة إلى الأبد.\n\n"
+                + "و**المركز الافتراضي لا يُوقَف**: يُرفض بـ409 وcost_center.default_cannot_be_suspended، لأن المنشأة لا تخلو من "
+                + "مركز تكلفة أبداً. ومن أراد إيقافه ينقل الافتراضي إلى مركز عامل آخر أولاً.",
+                "Suspends a cost centre from use on new documents, **with a written reason** recorded in the audit log along with who did it and when. "
+                + "Nothing is deleted: the centre stays readable and stays a grouping key in earlier periods forever.\n\n"
+                + "**The default centre is never suspended**: it is refused with 409 and cost_center.default_cannot_be_suspended, because a company is "
+                + "never without a cost centre. To suspend it, move the default to another active centre first.",
+                Body: "SuspendCostCenterRequest", Response: "CompanySetup", Success: 201, Anonymous: false, Query: []),
+
             new(ApiRoutes.DocumentAdmission, "post", "admitDocument",
                 "عرض مستند على الملفّ", "Present a document against the profile",
                 "يعرض **أسماء حقول** مستند على ملفّ الشركة فيقبله أو يرفضه. لا قيم ولا مبالغ ولا أثر: هذا حكمٌ لا كتابة. "
@@ -238,6 +296,11 @@ internal static class OpenApiEmitter
                     WriteDocumentTypeParameter(w);
                 }
 
+                if (byPath.Key.Contains("{costCenterCode}", StringComparison.Ordinal))
+                {
+                    WriteCostCenterCodeParameter(w);
+                }
+
                 w.WriteEndArray();
             }
 
@@ -300,6 +363,28 @@ internal static class OpenApiEmitter
         }
 
         w.WriteEndArray();
+        w.WriteEndObject();
+        w.WriteEndObject();
+    }
+
+    /// <summary>أعضاء تعداد جواب مراكز التكلفة، مقروءةً من التعداد نفسه لا من قائمة مكتوبة هنا.</summary>
+    private static IReadOnlyList<string> CostCenterPlans { get; } = Enum.GetNames<CostCenterPlan>();
+
+    /// <summary>أعضاء تعداد حالة مركز التكلفة، مقروءةً من التعداد نفسه.</summary>
+    private static IReadOnlyList<string> CostCenterStates { get; } = Enum.GetNames<CostCenterState>();
+
+    private static void WriteCostCenterCodeParameter(Utf8JsonWriter w)
+    {
+        w.WriteStartObject();
+        w.WriteString("name", "costCenterCode");
+        w.WriteString("in", "path");
+        w.WriteBoolean("required", true);
+        w.WriteString("description",
+            "رمز مركز التكلفة كما سكّه الخادم. معرّف لا نصّ معروض: لا يُترجَم ولا يتغيّر بإعادة التسمية. / "
+            + "The cost centre code as the server minted it. An identifier, not displayed text: never translated, and unchanged by renaming.");
+        w.WriteStartObject("schema");
+        w.WriteString("type", "string");
+        w.WriteString("pattern", "^[a-z0-9._]{1,32}$");
         w.WriteEndObject();
         w.WriteEndObject();
     }
@@ -641,6 +726,113 @@ internal static class OpenApiEmitter
             WriteStringArrayProperty(w, "fields", "الحقول المقبولة مرتَّبة.", "The admitted fields, ordinally sorted.", 64);
             w.WriteEndObject();
             WriteRequired(w, "admitted", "documentType", "fields");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("InitialiseCompanySetupRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "تأسيس المنشأة كما يصل من العميل. **يُقبل مرّة واحدة**، والثانية 409. / "
+                + "The company setup as the client sends it. **Accepted once**; a second attempt is 409.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "companyNameAr",
+                "اسم المنشأة بالعربية. **إلزامي وهو السجلّ** لا ترجمةً أولى (ADR-0021) — ومع الجواب One يصير هو اسم مركز التكلفة الافتراضي بعينه.",
+                "The company's Arabic name. **Mandatory, and it is the record** rather than a first translation (ADR-0021) — with the One answer it becomes the default cost centre's own name.",
+                CompanySetupLimits.MaximumNameLength);
+            WriteArrayRefProperty(w, "companyNameTranslations", "NameValue",
+                "ترجمات اسم المنشأة، مفاتيحها أوسمة BCP-47. صفوف لا أعمدة: إضافة لغة إدخالُ مدخل لا هجرةُ مخطّط.",
+                "The company name's translations, keyed by BCP-47 tags. Rows, not columns: adding a language is an entry, not a schema migration.");
+            WriteEnumProperty(w, "costCenters",
+                "الجواب عن سؤال مراكز التكلفة: One = مركز واحد يحمل اسم المنشأة · Multiple = عدّة، واسم الأول إلزامي.",
+                "The answer to the cost-centre question: One = a single centre carrying the company name; Multiple = several, and the first one's name is mandatory.",
+                CostCenterPlans);
+            WriteIntegerProperty(w, "decimalPlaces", DisplayScale.Minimum, DisplayScale.Maximum,
+                "عدد الخانات العشرية المعروضة. يُسنَد هنا ولا يُعدَّل بعدها. ويحكم العرض والإدخال البشري وحدهما — لا التخزين ولا الحساب.",
+                "The number of displayed decimal places. Assigned here and never editable afterwards. It governs display and human input only — never storage and never arithmetic.");
+            WriteNullableStringProperty(w, "firstCostCenterNameAr",
+                "اسم أول مركز تكلفة بالعربية. إلزامي مع Multiple، ومرفوض مع One لأن اسمه هناك اسم المنشأة بعينه.",
+                "The first cost centre's Arabic name. Required with Multiple, refused with One because its name there is the company's own.",
+                CompanySetupLimits.MaximumNameLength);
+            WriteArrayRefProperty(w, "firstCostCenterTranslations", "NameValue",
+                "ترجمات اسم أول مركز.", "The first centre name's translations.");
+            w.WriteEndObject();
+            WriteRequired(w, "companyNameAr", "costCenters", "decimalPlaces");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("CostCenterNameRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "اسم مركز تكلفة — للإضافة أو لإعادة التسمية. ولا رمز فيه: الرمز يسكّه الخادم ولا يتغيّر. / "
+                + "A cost centre's name — to add one or to rename one. It carries no code: the server mints the code and the code never changes.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "nameAr",
+                "الاسم بالعربية. **إلزامي وهو الارتداد المضمون** حين لا تتوفّر ترجمة.",
+                "The Arabic name. **Mandatory, and the guaranteed fallback** when no translation is available.",
+                CompanySetupLimits.MaximumNameLength);
+            WriteArrayRefProperty(w, "nameTranslations", "NameValue",
+                "الترجمات، مفاتيحها أوسمة BCP-47.", "The translations, keyed by BCP-47 tags.");
+            w.WriteEndObject();
+            WriteRequired(w, "nameAr");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("SuspendCostCenterRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "reason",
+                "السبب المكتوب للإيقاف — ثمانية محارف على الأقل. «لا سبب» ليس سبباً، والإيقاف حالة عملٍ يضبطها إنسان ويُسجَّل بمن فعلها.",
+                "The written reason for the suspension — at least eight characters. 'No reason' is not a reason; suspension is a business state a person sets and it is recorded with its actor.",
+                CompanySetupLimits.MaximumReasonLength);
+            w.WriteEndObject();
+            WriteRequired(w, "reason");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("CostCenter", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "code",
+                "الرمز — الهوية الثابتة التي تحملها سطور القيود. لا يتغيّر بإعادة التسمية ولا يُترجَم.",
+                "The code — the stable identity that journal lines carry. Unchanged by renaming and never translated.",
+                CostCenterCode.MaximumLength);
+            WriteBooleanProperty(w, "isDefault",
+                "هل هو المركز الافتراضي؟ واحد فقط يحمل true، وواحد دائماً — ولا يُوقَف ما دام كذلك.",
+                "Is this the default centre? Exactly one carries true, and always one — and it is never suspended while it is.");
+            WriteStringProperty(w, "nameAr", "الاسم بالعربية — الارتداد المضمون.", "The Arabic name — the guaranteed fallback.", CompanySetupLimits.MaximumNameLength);
+            WriteArrayRefProperty(w, "nameTranslations", "NameValue", "الترجمات مرتَّبة بالوسم.", "The translations ordered by tag.");
+            WriteEnumProperty(w, "state",
+                "الحالة: Active يُختار على مستند جديد · Suspended لا يُختار ويبقى مقروءاً ومُبوَّباً في التقارير السابقة.",
+                "The state: Active is selectable on a new document; Suspended is not, and stays readable and a grouping key in earlier reports.",
+                CostCenterStates);
+            WriteStringProperty(w, "suspensionReason", "سبب الإيقاف مكتوباً، أو نصّ فارغ.", "The written suspension reason, or an empty string.", CompanySetupLimits.MaximumReasonLength);
+            w.WriteEndObject();
+            WriteRequired(w, "code", "isDefault", "nameAr", "nameTranslations", "state", "suspensionReason");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("CompanySetup", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "تأسيس المنشأة كما يُقرأ. **defaultCostCenter غير فارغ أبداً** وcostCenters لا تكون فارغة أبداً — الثابتة مفروضة "
+                + "في النواة بغياب عملية حذف، لا بفحص عند مستدعٍ. / "
+                + "The company setup as read. **defaultCostCenter is never empty** and costCenters is never empty — the invariant is enforced in the "
+                + "core by the absence of any delete operation, not by a caller-side check.");
+            w.WriteStartObject("properties");
+            WriteArrayRefProperty(w, "costCenters", "CostCenter", "مراكز التكلفة كلّها — العاملة والموقوفة — مرتَّبة برمزها.", "All cost centres — active and suspended — ordered by code.");
+            WriteIntegerProperty(w, "decimalPlaces", DisplayScale.Minimum, DisplayScale.Maximum,
+                "عدد الخانات العشرية المعروضة. عرضٌ وإدخالٌ بشري فقط: المبالغ على السلك تبقى بمقياس Money، والتخزين بأربع خانات.",
+                "The number of displayed decimal places. Display and human input only: amounts on the wire keep the Money scale, and storage stays at four places.");
+            WriteStringProperty(w, "defaultCostCenter", "رمز المركز الافتراضي.", "The default centre's code.", CostCenterCode.MaximumLength);
+            WriteStringProperty(w, "nameAr", "اسم المنشأة بالعربية.", "The company's Arabic name.", CompanySetupLimits.MaximumNameLength);
+            WriteArrayRefProperty(w, "nameTranslations", "NameValue", "ترجمات اسم المنشأة.", "The company name's translations.");
+            w.WriteEndObject();
+            WriteRequired(w, "costCenters", "decimalPlaces", "defaultCostCenter", "nameAr", "nameTranslations");
             w.WriteBoolean("additionalProperties", false);
         });
 

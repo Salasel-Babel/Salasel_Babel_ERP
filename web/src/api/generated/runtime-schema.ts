@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     e2ba8112a2421c49813d9475f8849856d96e8af4f94d9cc0d071498442a6e2ca
+     4f6c55ebd5476a0e3fa97d4f70deedf4dd95532b39fa7a1bbe8e8f560b928565
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -30,9 +30,15 @@ export interface SchemaShape {
 }
 
 export const SCHEMAS: Readonly<Record<string, SchemaShape>> = {
+  AdmitDocumentRequest: { required: ["fields"], fields: {"fields":{"i":{"k":"plain"},"k":"array"}} },
   ApiError: { required: ["code","field","messageAr","messageEn"], fields: {"code":{"k":"plain"},"field":{"k":"plain","n":true},"messageAr":{"k":"plain"},"messageEn":{"k":"plain"}} },
+  CapabilityProfile: { required: ["documents"], fields: {"documents":{"i":{"k":"ref","r":"DocumentShape"},"k":"array"}} },
+  CapabilitySwitch: { required: ["capability","enabled"], fields: {"capability":{"k":"plain"},"enabled":{"k":"plain"}} },
   ChainVerification: { required: ["checked","detail","firstDivergentSequence","ok","reasonAr","verdict"], fields: {"checked":{"k":"plain"},"detail":{"k":"plain","n":true},"firstDivergentSequence":{"b":"Int64String","k":"brand","n":true},"ok":{"k":"plain"},"reasonAr":{"k":"plain"},"verdict":{"k":"plain"}} },
   ClosedPeriodAuthorisation: { required: ["authorisedBy","permissionCode","reason"], fields: {"authorisedBy":{"k":"plain"},"permissionCode":{"k":"plain"},"reason":{"k":"ref","r":"LocalizedText"}} },
+  DocumentAdmission: { required: ["admitted","documentType","fields"], fields: {"admitted":{"k":"plain"},"documentType":{"k":"plain"},"fields":{"i":{"k":"plain"},"k":"array"}} },
+  DocumentProfile: { required: ["capabilities","documentType"], fields: {"capabilities":{"i":{"k":"ref","r":"CapabilitySwitch"},"k":"array"},"defaults":{"i":{"k":"ref","r":"NameValue"},"k":"array"},"documentType":{"k":"plain"}} },
+  DocumentShape: { required: ["availableCapabilities","defaults","documentType","enabledCapabilities","fields","module","nameAr","nameKey"], fields: {"availableCapabilities":{"i":{"k":"plain"},"k":"array"},"defaults":{"i":{"k":"ref","r":"NameValue"},"k":"array"},"documentType":{"k":"plain"},"enabledCapabilities":{"i":{"k":"plain"},"k":"array"},"fields":{"i":{"k":"plain"},"k":"array"},"module":{"k":"plain"},"nameAr":{"k":"plain"},"nameKey":{"k":"plain"}} },
   HealthResponse: { required: ["apiVersion","calendar","culture","status"], fields: {"apiVersion":{"k":"plain"},"calendar":{"k":"plain"},"culture":{"k":"plain"},"status":{"k":"plain"}} },
   JournalEntry: { required: ["book","chainSequence","currency","entryDate","entryHash","entryId","entryNumber","lines","memoAr","memoEn","periodCode","reversesEntryId","status"], fields: {"book":{"k":"plain"},"chainSequence":{"b":"Int64String","k":"brand"},"currency":{"k":"plain"},"entryDate":{"k":"plain"},"entryHash":{"k":"plain"},"entryId":{"k":"plain"},"entryNumber":{"b":"Int64String","k":"brand"},"lines":{"i":{"k":"ref","r":"JournalLine"},"k":"array"},"memoAr":{"k":"plain"},"memoEn":{"k":"plain"},"periodCode":{"k":"plain"},"reversesEntryId":{"k":"plain","n":true},"status":{"k":"plain"}} },
   JournalLine: { required: ["credit","currency","debit","descriptionAr","descriptionEn","lineNo","qualifier","role"], fields: {"credit":{"k":"money"},"currency":{"k":"plain"},"debit":{"k":"money"},"descriptionAr":{"k":"plain"},"descriptionEn":{"k":"plain"},"lineNo":{"k":"plain"},"qualifier":{"k":"plain"},"role":{"k":"plain"}} },
@@ -43,6 +49,7 @@ export const SCHEMAS: Readonly<Record<string, SchemaShape>> = {
   PostingLine: { required: ["amount","role","side"], fields: {"amount":{"k":"money"},"dimensions":{"i":{"k":"ref","r":"NameValue"},"k":"array"},"narration":{"k":"ref","r":"LocalizedText"},"qualifier":{"k":"plain"},"role":{"k":"plain"},"scope":{"k":"ref","r":"Scope"},"side":{"k":"plain"},"subledger":{"k":"ref","r":"Subledger"}} },
   PostingReceipt: { required: ["alreadyPosted","chainSequence","entryHash","entryId","entryNumber","generation","lineCount","periodCode"], fields: {"alreadyPosted":{"k":"plain"},"chainSequence":{"b":"Int64String","k":"brand"},"entryHash":{"k":"plain"},"entryId":{"k":"plain"},"entryNumber":{"b":"Int64String","k":"brand"},"generation":{"k":"plain"},"lineCount":{"k":"plain"},"periodCode":{"k":"plain"}} },
   Problem: { required: ["code","detail","detailAr","errors","instance","status","title","titleAr","traceId","type"], fields: {"code":{"k":"plain"},"detail":{"k":"plain"},"detailAr":{"k":"plain"},"errors":{"i":{"k":"ref","r":"ApiError"},"k":"array"},"instance":{"k":"plain"},"status":{"k":"plain"},"title":{"k":"plain"},"titleAr":{"k":"plain"},"traceId":{"k":"plain"},"type":{"k":"plain"}} },
+  PutCapabilityProfileRequest: { required: ["documents"], fields: {"documents":{"i":{"k":"ref","r":"DocumentProfile"},"k":"array"},"withdrawalReason":{"k":"plain","n":true}} },
   ReverseJournalEntryRequest: { required: ["reason"], fields: {"closedPeriodAuthorisation":{"k":"ref","r":"ClosedPeriodAuthorisation"},"reason":{"k":"ref","r":"LocalizedText"},"reversalDate":{"k":"plain"}} },
   Scope: { required: [], fields: {"branchId":{"k":"plain","n":true},"costCenterId":{"k":"plain","n":true},"projectId":{"k":"plain","n":true}} },
   SourceDocument: { required: ["documentId","documentType","module"], fields: {"documentId":{"k":"plain"},"documentType":{"k":"plain"},"module":{"k":"plain"}} },
@@ -52,4 +59,4 @@ export const SCHEMAS: Readonly<Record<string, SchemaShape>> = {
 };
 
 /** أسماء المخطّطات كما وردت في العقد. / Schema names as published. */
-export const SCHEMA_NAMES = ["ApiError","ChainVerification","ClosedPeriodAuthorisation","ExchangeRate","HealthResponse","Int64String","JournalEntry","JournalLine","LocalizedText","Money","NameValue","NamedAmount","PostJournalEntryRequest","PostingLine","PostingReceipt","Problem","ReverseJournalEntryRequest","Scope","SourceDocument","Subledger","TrialBalance","TrialBalanceRow"] as const;
+export const SCHEMA_NAMES = ["AdmitDocumentRequest","ApiError","CapabilityProfile","CapabilitySwitch","ChainVerification","ClosedPeriodAuthorisation","DocumentAdmission","DocumentProfile","DocumentShape","ExchangeRate","HealthResponse","Int64String","JournalEntry","JournalLine","LocalizedText","Money","NameValue","NamedAmount","PostJournalEntryRequest","PostingLine","PostingReceipt","Problem","PutCapabilityProfileRequest","ReverseJournalEntryRequest","Scope","SourceDocument","Subledger","TrialBalance","TrialBalanceRow"] as const;

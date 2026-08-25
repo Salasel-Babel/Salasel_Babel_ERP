@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     e2ba8112a2421c49813d9475f8849856d96e8af4f94d9cc0d071498442a6e2ca
+     4f6c55ebd5476a0e3fa97d4f70deedf4dd95532b39fa7a1bbe8e8f560b928565
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -22,6 +22,12 @@ import type { ExchangeRate, Int64String } from "./brands";
    Money is an object whose implicit coercions throw; the other published string
    formats are branded types. No monetary field is ever typed `number`. */
 
+/** أسماء حقول المستند لا قيمها: القبول حكمٌ على الشكل، ولا يعبر منه مبلغ. / The document's field names, not its values: admission is a verdict on shape and no amount crosses it. */
+export interface AdmitDocumentRequest {
+  /** أسماء الحقول الموجودة على المستند. / The names of the fields present on the document. */
+  fields: string[];
+}
+
 export interface ApiError {
   /** الرمز الثابت — نقطة الاعتماد البرمجية الوحيدة. لا يُقرأ نصّ رسالة لاتخاذ قرار أبداً. / The stable code — the only thing to program against. Message text is never parsed to make a decision. */
   code: string;
@@ -31,6 +37,19 @@ export interface ApiError {
   messageAr: string;
   /** الرسالة الإنجليزية. / The English message. */
   messageEn: string;
+}
+
+export interface CapabilityProfile {
+  /** الأشكال مرتَّبة بنوع المستند. / The shapes ordered by document type. */
+  documents: DocumentShape[];
+}
+
+/** مفتاح قدرة واحد. / One capability switch. */
+export interface CapabilitySwitch {
+  /** رمز القدرة من المجموعة المغلقة. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The capability code from the closed set. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  capability: "advance" | "cost_of_sales" | "retention";
+  /** مُشغَّلة أم لا. / Enabled or not. */
+  enabled: boolean;
 }
 
 /** حكم إعادة التحقق. ولماذا «أول تسلسل منحرف» لا «هل السلسلة سليمة»: المدقّق يسأل أين ومتى وما الذي بعده يجب أن يُراجَع؛ وإجابة منطقية واحدة لا تصلح تقريراً. / The re-verification verdict. Why the first divergent sequence rather than a boolean: an auditor asks where, when, and what after it must be reviewed — a single boolean is not a report. */
@@ -56,6 +75,45 @@ export interface ClosedPeriodAuthorisation {
   /** رمز الصلاحية الاستثنائية. / The exceptional permission code. */
   permissionCode: string;
   reason: LocalizedText;
+}
+
+export interface DocumentAdmission {
+  /** مقبول. والرفض يخرج مشكلةً بالرمز 422 لا حكماً في هذا الحقل. / Admitted. A refusal leaves as a 422 problem, never as a verdict in this field. */
+  admitted: boolean;
+  /** رمز نوع المستند. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The document type code. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  documentType: "projects.client_certificate" | "sales.invoice";
+  /** الحقول المقبولة مرتَّبة. / The admitted fields, ordinally sorted. */
+  fields: string[];
+}
+
+/** ملفّ نوع مستند واحد كما يُرسله العميل. **قائمة مفاتيح لا خريطة حرّة**: المفتاح من تعداد معلن، فلا يمرّ اسم لم يقصده أحد ولا يُقرأ مفتاحان بالاسم نفسه. / One document type's profile as the client sends it. **A list of switches, not a free-form map**: the key comes from a declared enumeration, so no unintended name passes and no two keys share a name. */
+export interface DocumentProfile {
+  /** مفاتيح القدرات. / The capability switches. */
+  capabilities: CapabilitySwitch[];
+  /** القيم الافتراضية، ومفاتيحها حقول من شكل المستند حصراً. / The defaults; their keys are fields of the document shape only. */
+  defaults?: NameValue[];
+  /** رمز نوع المستند. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The document type code. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  documentType: "projects.client_certificate" | "sales.invoice";
+}
+
+/** شكل مستند **مُشتقّاً** من (هذه الوثيقة × الملفّ). ولاحظ ما ليس فيه: لا تخطيط، ولا ترتيب بصري، ولا شرط، ولا تعبير — تلك أبواب «المنصّة داخل المنصّة» التي رُفضت. / A document's shape **derived** from (this document x the profile). Note what is absent: no layout, no visual order, no condition, no expression — those are the inner-platform doors that were rejected. */
+export interface DocumentShape {
+  /** كل قدرات هذا النوع في الكتالوج المغلق. / Every capability of this type in the closed catalogue. */
+  availableCapabilities: ("advance" | "cost_of_sales" | "retention")[];
+  /** القيم الافتراضية. / The defaults. */
+  defaults: NameValue[];
+  /** رمز نوع المستند. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The document type code. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  documentType: "projects.client_certificate" | "sales.invoice";
+  /** المُشغَّل منها لهذه الشركة. / Those enabled for this company. */
+  enabledCapabilities: ("advance" | "cost_of_sales" | "retention")[];
+  /** حقول المستند بهذا الملفّ — الأساسية وحقول القدرات المُشغَّلة، مرتَّبة حرفياً. / The document's fields under this profile — the base fields plus the fields of enabled capabilities, ordinally sorted. */
+  fields: string[];
+  /** الوحدة المالكة. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The owning module. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  module: "Core" | "Ledger" | "Sales" | "Purchasing" | "Compliance" | "Inventory" | "Pos" | "Hr" | "Projects" | "RealEstate" | "Assets" | "Portals" | "Ai";
+  /** الاسم بالعربية. **إلزامي وهو الارتداد المضمون**: العربية شكل السجلّ لا تفضيل عرض، والنظام السعودي يوجب مسك الدفاتر بها. وحين لا تتوفّر ترجمة يُعرض هذا النصّ — لا المفتاح ولا الفراغ. / The Arabic name. **Mandatory, and the guaranteed fallback**: Arabic is the form of the record, not a display preference, and Saudi law requires the books to be kept in it. When no translation is available this text is displayed — never the key and never a blank. */
+  nameAr: string;
+  /** مفتاح الترجمة. تعدّد اللغات هنا يعني الترجمة إلى **أيّ عدد** من اللغات، لا ثنائية عربي/إنجليزي — فلا حقل لغة ثانية في هذا المخطّط. / The translation key. Multilingualism here means translation into **any number** of languages, not an Arabic/English pair — so this schema carries no second-language field. */
+  nameKey: string;
 }
 
 /** سعر صرف نصّاً بمقياس لا يتجاوز ثمانياً، بالقواعد نفسها التي تحكم المبالغ. / An exchange rate as a string with at most eight decimal places, under the same rules as amounts. */
@@ -228,6 +286,13 @@ export interface Problem {
   traceId: string;
   /** المرجع الذي يُعرّف نوع المشكلة. / The reference that identifies the problem type. */
   type: string;
+}
+
+export interface PutCapabilityProfileRequest {
+  /** أنواع المستندات. / The document types. */
+  documents: DocumentProfile[];
+  /** سبب سحب قدرة. إلزامي متى أطفأ الطلب قدرةً كانت مُشغَّلة، ومهمَل فيما عدا ذلك؛ وثمانية محارف على الأقل — «لا سبب» ليس سبباً. / The reason for withdrawing a capability. Required whenever the request disables a previously enabled capability, ignored otherwise; at least eight characters — 'no reason' is not a reason. */
+  withdrawalReason?: string | null;
 }
 
 export interface ReverseJournalEntryRequest {

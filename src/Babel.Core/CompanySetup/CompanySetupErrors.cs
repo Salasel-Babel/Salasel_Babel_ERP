@@ -101,6 +101,15 @@ public static class CompanySetupErrors
         $"وسم اللغة «{tag}» ليس وسم BCP-47 سليم الشكل. والوسم معرّف لا نصّ معروض، فيُكتب لاتينياً.",
         $"The language tag '{tag}' is not a well-formed BCP-47 tag. A tag is an identifier, not displayed text, so it is written in ASCII.");
 
+    /// <summary>وسم لغة عربي أُرسل في خريطة الترجمات.</summary>
+    /// <param name="tag">الوسم المعنيّ.</param>
+    public static Error ArabicIsNotATranslation(string tag) => new(
+        "company_setup.arabic_is_not_a_translation",
+        $"الوسم «{tag}» عربي، والعربية هي السجلّ لا ترجمةً له. الاسم العربي يُرسل في حقله الخاصّ، "
+        + "وقبولُه هنا أيضاً يُنتج اسمين عربيين لكيان واحد لا شيء يجعلهما يتطابقان.",
+        $"The tag '{tag}' is Arabic, and Arabic is the record rather than a translation of it. The Arabic name is "
+        + "sent in its own field; accepting it here as well would give one entity two Arabic names that nothing keeps in step.");
+
     /// <summary>ترجمة بلا نصّ.</summary>
     /// <param name="tag">الوسم المعنيّ.</param>
     public static Error TranslationEmpty(string tag) => new(

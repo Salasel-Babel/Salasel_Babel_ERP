@@ -106,7 +106,9 @@ public sealed class CostCenterRegister
 
         CostCenterCode code = Mint(1);
         return Result<CostCenterRegister>.Success(
-            new CostCenterRegister([new CostCenter(code, trimmed, names, CostCenterState.Active, string.Empty)], code));
+            new CostCenterRegister(
+                [new CostCenter(code, new TranslatedName(trimmed, names), CostCenterState.Active, string.Empty)],
+                code));
     }
 
     /// <summary>المركز صاحب هذا الرمز، أو <c>null</c>.</summary>
@@ -137,7 +139,8 @@ public sealed class CostCenterRegister
             return Result<CostCenterRegister>.Failure(errors);
         }
 
-        CostCenter added = new(Mint(_centers.Length + 1), trimmed, names, CostCenterState.Active, string.Empty);
+        CostCenter added = new(
+            Mint(_centers.Length + 1), new TranslatedName(trimmed, names), CostCenterState.Active, string.Empty);
         return Result<CostCenterRegister>.Success(new CostCenterRegister(Order(_centers.Add(added)), _default));
     }
 
@@ -175,7 +178,8 @@ public sealed class CostCenterRegister
         }
 
         return Result<CostCenterRegister>.Success(
-            Replace(new CostCenter(code, trimmed, names, existing!.State, existing.SuspensionReason)));
+            Replace(new CostCenter(
+                code, new TranslatedName(trimmed, names), existing!.State, existing.SuspensionReason)));
     }
 
     /// <summary>
@@ -216,7 +220,7 @@ public sealed class CostCenterRegister
         return errors.Count > 0
             ? Result<CostCenterRegister>.Failure(errors)
             : Result<CostCenterRegister>.Success(
-                Replace(new CostCenter(code, existing.NameAr, existing.Translations, CostCenterState.Suspended, written)));
+                Replace(new CostCenter(code, existing.Name, CostCenterState.Suspended, written)));
     }
 
     /// <summary>يعيد مركزاً موقوفاً إلى العمل.</summary>
@@ -233,7 +237,7 @@ public sealed class CostCenterRegister
         return existing.IsActive
             ? Result<CostCenterRegister>.Failure(CompanySetupErrors.CostCenterAlreadyActive(code.Value ?? string.Empty))
             : Result<CostCenterRegister>.Success(
-                Replace(new CostCenter(code, existing.NameAr, existing.Translations, CostCenterState.Active, string.Empty)));
+                Replace(new CostCenter(code, existing.Name, CostCenterState.Active, string.Empty)));
     }
 
     /// <summary>
@@ -338,6 +342,14 @@ public sealed class CostCenterRegister
                 continue;
             }
 
+            // العربية سجلٌّ لا ترجمة (ADR-0021 بند 1). ومدخلٌ باسم «ar» يُنتج اسمين
+            // عربيين لكيان واحد ولا يوجد ما يجعلهما يتطابقان — فيُرفض بصوته لا يُطرَح صامتاً.
+            if (IsRecordLanguage(tag))
+            {
+                errors.Add(CompanySetupErrors.ArabicIsNotATranslation(tag));
+                continue;
+            }
+
             string value = translations[tag]?.Trim() ?? string.Empty;
 
             if (value.Length == 0)
@@ -359,8 +371,10 @@ public sealed class CostCenterRegister
     }
 
     private static bool IsWellFormedTag(string? tag)
-        => tag is { Length: > 0 and <= CompanySetupLimits.MaximumLanguageTagLength }
-            && char.IsAsciiLetter(tag[0])
-            && tag[^1] != '-'
-            && tag.All(static c => char.IsAsciiLetterOrDigit(c) || c == '-');
+        => tag is { Length: <= CompanySetupLimits.MaximumLanguageTagLength }
+            && TranslatedName.IsWellFormedLanguageTag(tag);
+
+    private static bool IsRecordLanguage(string tag)
+        => string.Equals(tag, TranslatedName.RecordLanguageTag, StringComparison.OrdinalIgnoreCase)
+            || tag.StartsWith(TranslatedName.RecordLanguageTag + "-", StringComparison.OrdinalIgnoreCase);
 }

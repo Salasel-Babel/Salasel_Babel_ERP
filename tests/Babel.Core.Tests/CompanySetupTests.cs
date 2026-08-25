@@ -154,6 +154,70 @@ public sealed class CompanySetupTests
     }
 
     [Fact]
+    public void العربية_سجلّ_لا_ترجمة_فلا_تُقبل_في_خريطة_الترجمات()
+    {
+        // ADR-0021 بند 1: العربية شكل السجلّ لا لغةٌ مفضَّلة. ومدخلٌ باسم «ar» في
+        // الخريطة يُنتج اسمين عربيين لكيان واحد لا شيء يجعلهما يتطابقان — فيُرفض.
+        CostCenterRegister register = Register("الإدارة العامة");
+
+        foreach (string tag in new[] { "ar", "AR", "ar-SA" })
+        {
+            Result<CostCenterRegister> refused = register.Add(
+                "الإدارة المالية",
+                new Dictionary<string, string>(StringComparer.Ordinal) { [tag] = "اسم عربي ثانٍ" });
+
+            Assert.True(refused.IsFailure, "قُبل الوسم العربي «" + tag + "» ترجمةً.");
+            Assert.Contains(refused.Errors, error => error.Code == "company_setup.arabic_is_not_a_translation");
+        }
+    }
+
+    [Fact]
+    public void لغةٌ_خامسة_مدخلٌ_في_الخريطة_لا_عمودٌ_في_المخطّط()
+    {
+        // القرار مكتوباً بشيفرة: أربع ترجمات فوق السجلّ العربي، بلا نوع جديد
+        // ولا حقل جديد ولا فرع في الشيفرة — والخامسة كالرابعة بالضبط.
+        CostCenterRegister register = CostCenterRegister.Open(
+            "الإدارة العامة",
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["en"] = "General administration",
+                ["ur"] = "جنرل ایڈمنسٹریشن",
+                ["hi"] = "सामान्य प्रशासन",
+                ["am"] = "አጠቃላይ አስተዳደር",
+                ["tl"] = "Pangkalahatang pangasiwaan",
+            }).Value;
+
+        CostCenter centre = register.DefaultCenter;
+
+        Assert.Equal(5, centre.Name.TranslationCount);
+        Assert.Equal("सामान्य प्रशासन", centre.NameIn("hi-IN"));
+        Assert.Equal("Pangkalahatang pangasiwaan", centre.NameIn("tl"));
+        Assert.Equal("الإدارة العامة", centre.NameAr);
+    }
+
+    [Fact]
+    public void الارتداد_إلى_السجلّ_يُعلَن_ولا_يقع_صامتاً()
+    {
+        // ADR-0021: «والارتداد يُعلَن أربع مرّات لأن الارتداد الصامت خطر بذاته».
+        // والاسم نفسه يقول إن جوابه ارتداد، فلا تُعيد كل شاشة استنتاج ذلك بيدها.
+        CostCenterRegister register = CostCenterRegister.Open(
+            "الإدارة العامة",
+            new Dictionary<string, string>(StringComparer.Ordinal) { ["en"] = "General administration" }).Value;
+
+        CostCenter centre = register.DefaultCenter;
+
+        NameResolution present = centre.ResolveName("en");
+        NameResolution absent = centre.ResolveName("ur-PK");
+
+        Assert.False(present.IsFallback);
+        Assert.Equal("en", present.LanguageTag);
+
+        Assert.True(absent.IsFallback);
+        Assert.Equal("ar", absent.LanguageTag);
+        Assert.Equal("الإدارة العامة", absent.Text);
+    }
+
+    [Fact]
     public void الحلّ_لا_يُرجع_مركزاً_فارغاً_أبداً()
     {
         CostCenterRegister register = Register("الإدارة العامة");
@@ -535,13 +599,12 @@ public sealed class CompanySetupTests
     {
         ConstructorInfo constructor = Assert.Single(
             typeof(CostCenter).GetConstructors(BindingFlags.NonPublic | BindingFlags.Instance),
-            static candidate => candidate.GetParameters().Length == 5);
+            static candidate => candidate.GetParameters().Length == 4);
 
         return (CostCenter)constructor.Invoke(
         [
             new CostCenterCode(code),
-            nameAr,
-            ImmutableSortedDictionary.Create<string, string>(StringComparer.Ordinal),
+            new TranslatedName(nameAr),
             state,
             state == CostCenterState.Suspended ? "سبب مكتوب كافٍ" : string.Empty,
         ]);

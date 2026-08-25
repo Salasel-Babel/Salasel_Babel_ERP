@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     441b7394f6f083778c30895d44cae3b74a36bda25aadc43e7ce4a9d28fb44ecd
+     061d8c7eef2ad0d8d3d64989d475d7563625751a75a540d8076fc23228720e7c
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -60,7 +60,7 @@ export const SCHEMAS: Readonly<Record<string, SchemaShape>> = {
   Subledger: { required: ["kind","partyId"], fields: {"kind":{"k":"plain"},"partyId":{"k":"plain"}} },
   SuspendCostCenterRequest: { required: ["reason"], fields: {"reason":{"k":"plain"}} },
   TrialBalance: { required: ["balanced","book","periodCode","rowCount","rows","totalCredit","totalDebit"], fields: {"balanced":{"k":"plain"},"book":{"k":"plain"},"periodCode":{"k":"plain","n":true},"rowCount":{"k":"plain"},"rows":{"i":{"k":"ref","r":"TrialBalanceRow"},"k":"array"},"totalCredit":{"k":"money"},"totalDebit":{"k":"money"}} },
-  TrialBalanceRow: { required: ["accountCode","credit","debit","nameAr","nameEn"], fields: {"accountCode":{"k":"plain"},"credit":{"k":"money"},"debit":{"k":"money"},"nameAr":{"k":"plain"},"nameEn":{"k":"plain"}} },
+  TrialBalanceRow: { required: ["accountCode","credit","debit","nameAr","nameEn","nameTranslations"], fields: {"accountCode":{"k":"plain"},"credit":{"k":"money"},"debit":{"k":"money"},"nameAr":{"k":"plain"},"nameEn":{"k":"plain"},"nameTranslations":{"i":{"k":"ref","r":"NameValue"},"k":"array"}} },
 };
 
 /** أسماء المخطّطات كما وردت في العقد. / Schema names as published. */

@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using Babel.SharedKernel;
 
 namespace Babel.Core.CompanySetup;
 
@@ -63,14 +64,14 @@ public sealed record CostCenter
 {
     internal CostCenter(
         CostCenterCode code,
-        string nameAr,
-        ImmutableSortedDictionary<string, string> translations,
+        TranslatedName name,
         CostCenterState state,
         string suspensionReason)
     {
+        ArgumentNullException.ThrowIfNull(name);
+
         Code = code;
-        NameAr = nameAr;
-        Translations = translations;
+        Name = name;
         State = state;
         SuspensionReason = suspensionReason;
     }
@@ -78,11 +79,17 @@ public sealed record CostCenter
     /// <summary>الرمز — الهوية الثابتة التي تحملها سطور القيود.</summary>
     public CostCenterCode Code { get; }
 
+    /// <summary>
+    /// الاسم: سجلٌّ عربي إلزامي وترجماتٌ صفوف. النوع نفسه هو ما يجعل إضافة لغة خامسة
+    /// إدخالَ مدخل لا هجرةَ مخطّط، وهو مشترك مع كل كيان مُسمّى (ADR-0021).
+    /// </summary>
+    public TranslatedName Name { get; }
+
     /// <summary>الاسم العربي — إلزامي، وهو الارتداد المضمون عند غياب ترجمة.</summary>
-    public string NameAr { get; }
+    public string NameAr => Name.Arabic;
 
     /// <summary>الترجمات بوسم اللغة BCP-47، مرتَّبة ترتيباً حرفياً ثابتاً.</summary>
-    public ImmutableSortedDictionary<string, string> Translations { get; }
+    public ImmutableSortedDictionary<string, string> Translations => Name.Translations;
 
     /// <summary>الحالة.</summary>
     public CostCenterState State { get; }
@@ -99,21 +106,12 @@ public sealed record CostCenter
     /// العطل أبداً.
     /// </summary>
     /// <param name="languageTag">وسم اللغة المطلوب، مثل <c>ur-PK</c>.</param>
-    public string NameIn(string? languageTag)
-    {
-        if (string.IsNullOrWhiteSpace(languageTag))
-        {
-            return NameAr;
-        }
+    public string NameIn(string? languageTag) => Name.In(languageTag);
 
-        if (Translations.TryGetValue(languageTag, out string? exact))
-        {
-            return exact;
-        }
-
-        int separator = languageTag.IndexOf('-', StringComparison.Ordinal);
-        string primary = separator > 0 ? languageTag[..separator] : languageTag;
-
-        return Translations.TryGetValue(primary, out string? fallback) ? fallback : NameAr;
-    }
+    /// <summary>
+    /// الاسم بلغة العرض <b>مع إعلان الارتداد</b>. من يعرض الاسم في شاشة يحتاج أن يعرف
+    /// أنه ارتدّ ليقول ذلك للقارئ — والارتداد الصامت هو العطل الذي لا يُبلَّغ عنه.
+    /// </summary>
+    /// <param name="languageTag">وسم اللغة المطلوب.</param>
+    public NameResolution ResolveName(string? languageTag) => Name.Resolve(languageTag);
 }

@@ -53,19 +53,60 @@ const VIEW_ORDER: readonly ViewFilter[] = ["all", "debit", "credit"];
    من N. والشرط الوحيد هو «هل لغة الواجهة هي لغة السجلّ؟» — ويقرأ اسمها من
    الطبقة (SOURCE) لا من قائمة مكتوبة.
 
-   ⚠ وهنا يظهر حدّ العقد: TrialBalanceRow يحمل حقلين ثابتين nameAr و nameEn
-   ولا يستطيع التعبير عن لغة ثالثة. فالمحاسب الأردي أو الهندي يرى السجلّ
-   ومعه ترجمة إنجليزية لا ترجمةً بلغته — وهو بالضبط ما يعالجه ADR-0021 §4
-   (نقل العمودين إلى جدول ترجمات). مرفوع في التقرير. */
+   ✔ والحدّ الذي كان مرفوعاً هنا سقط: كان العقد يحمل حقلين ثابتين nameAr و
+   nameEn فيرى المحاسب الأردي أو الهندي ترجمةً **إنجليزية** لا ترجمةً بلغته.
+   وصار يحمل nameTranslations بمفتاح وسم اللغة، فالمعروض تحت السجلّ هو
+   ترجمة **لغة الواجهة نفسها** أيّاً كانت. واللغة الخامسة صفٌّ في قاعدة
+   البيانات: لا حقل في العقد، ولا سطر هنا. */
 
-/** اسم الحساب كما هو في السجلّ — عربيّ دائماً. */
+/** اسم الحساب كما هو في السجلّ — عربيّ دائماً، وغير فارغ بحكم قيدٍ في قاعدة البيانات. */
 function recordName(row: TrialBalanceRow): string {
   return row.nameAr;
 }
 
-/** الترجمة المتاحة في العقد اليوم، وهي واحدة. */
-function translatedName(row: TrialBalanceRow): string {
-  return row.nameEn;
+/** ما حُلّ إليه الاسم في لغةٍ بعينها، ومن أي وسم جاء. */
+interface ResolvedName {
+  /** النصّ المعروض. */
+  text: string;
+  /** الوسم الذي أعطاه فعلاً — "ar" عند الارتداد إلى السجلّ. */
+  tag: string;
+  /** هل ارتدّ إلى السجلّ لغياب ترجمة مطابقة؟ */
+  fallback: boolean;
+}
+
+/**
+ * يحلّ اسم الحساب إلى لغة العرض: مطابقة تامّة، ثم الوسم الأوّلي (ur-PK ⇒ ur)،
+ * ثم **ارتداداً إلى السجلّ العربي — لا إلى الفراغ ولا إلى المفتاح**.
+ *
+ * والنسخة نفسها من القاعدة تعيش في TranslatedName على الخادم. وتكرارها هنا مقصود:
+ * الواجهة لا تستطيع أن تسأل الخادم عن اسمٍ لم يصل، وارتدادٌ يقع في مكانين بقاعدتين
+ * مختلفتين أسوأ من تكرار قاعدة واحدة مكتوبة مرّتين ومختبَرة في الموضعين.
+ * @param row صفّ الميزان.
+ * @param locale وسم لغة الواجهة.
+ * @returns النصّ ووسمه وهل كان ارتداداً.
+ */
+function resolveName(row: TrialBalanceRow, locale: string): ResolvedName {
+  const record: ResolvedName = { text: row.nameAr, tag: SOURCE, fallback: false };
+  if (!locale || locale === SOURCE || locale.startsWith(SOURCE + "-")) return record;
+
+  const exact = row.nameTranslations.find((entry) => entry.name === locale);
+  if (exact) return { text: exact.value, tag: exact.name, fallback: false };
+
+  const dash = locale.indexOf("-");
+  if (dash > 0) {
+    const primary = locale.slice(0, dash);
+    const broader = row.nameTranslations.find((entry) => entry.name === primary);
+    if (broader) return { text: broader.value, tag: broader.name, fallback: false };
+  }
+
+  return { ...record, fallback: true };
+}
+
+/** كل ما يُبحَث فيه من أسماء الصفّ: السجلّ وكل ترجمة، لا الإنجليزية وحدها. */
+function searchableNames(row: TrialBalanceRow): string {
+  return (
+    row.nameAr + " " + row.nameTranslations.map((entry) => entry.value).join(" ")
+  ).toLowerCase();
 }
 
 /**
@@ -94,19 +135,19 @@ export function TrialBalanceTable(props: {
       if (props.view === "debit" && row.debit.isZero) return false;
       if (props.view === "credit" && row.credit.isZero) return false;
       if (!needle) return true;
-      const haystack =
-        toLatinDigits(row.accountCode.toLowerCase()) +
-        " " +
-        recordName(row).toLowerCase() +
-        " " +
-        translatedName(row).toLowerCase();
+      const haystack = toLatinDigits(row.accountCode.toLowerCase()) + " " + searchableNames(row);
       return haystack.includes(needle);
     });
   }, [props.data.rows, props.query, props.view]);
 
   const collator = i18n.collator(locale);
-  /* لغة الواجهة تختلف عن لغة السجلّ ⇒ تُعرَض الترجمة المتاحة إلى جانبه. */
+  /* لغة الواجهة تختلف عن لغة السجلّ ⇒ تُعرَض ترجمتها إلى جانبه، إن وُجدت. */
   const showTranslation = locale !== SOURCE;
+
+  /* اتجاه الترجمة من فهرس اللغات نفسه، لا من قائمة مكتوبة هنا: لغة خامسة
+     تُضاف إلى الفهرس فتأخذ اتجاهها منه بلا سطر واحد في هذه الشاشة. */
+  const translationDir =
+    i18n.catalogue.find((entry) => entry.code === locale)?.dir ?? "ltr";
 
   /* المقارنات مملوكة هنا لا مستعارة: كل واحدة تقول صراحةً بأي شيء تقارن.
      ولا واحدة منها تمرّ بـNumber على مبلغ. */
@@ -329,9 +370,18 @@ export function TrialBalanceTable(props: {
                   <span lang="ar" dir="rtl">
                     {recordName(row.original)}
                   </span>
-                  {showTranslation ? (
-                    <span className="alt" lang="en" dir="ltr">
-                      {translatedName(row.original)}
+                  {/* الترجمة تُعرَض حين توجد فعلاً. والارتداد **لا يُعرَض مرّتين**:
+                      صفٌّ بلا ترجمة بلغة الواجهة يُظهر سجلّه وحده، لا سجلّه مكرَّراً
+                      تحت نفسه موهماً بترجمة. و lang و dir من اللغة التي جاء منها
+                      النصّ لا من "en" مثبّتة — وهو ما يجعل الأردية تُعرَض rtl
+                      والهندية ltr بلا سطر شرطٍ لكل لغة. */}
+                  {showTranslation && !resolveName(row.original, locale).fallback ? (
+                    <span
+                      className="alt"
+                      lang={resolveName(row.original, locale).tag}
+                      dir={translationDir}
+                    >
+                      {resolveName(row.original, locale).text}
                     </span>
                   ) : null}
                 </td>

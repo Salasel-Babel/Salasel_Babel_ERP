@@ -40,9 +40,16 @@ begin
 
     -- ── البيانات المرجعية: قراءة فقط. البذر بدور المالك. ─────────────────
     execute format('grant select on ledger.account, ledger.posting_role, ledger.role_account_map,
-                                     ledger.fiscal_period, ledger.property_dimension to %I', v_role);
+                                     ledger.fiscal_period, ledger.property_dimension,
+                                     ledger.name_translation to %I', v_role);
     execute format('revoke insert, update, delete, truncate on ledger.account, ledger.posting_role,
                                      ledger.role_account_map, ledger.property_dimension from %I', v_role);
+
+    -- ── الترجمات: قراءة فقط كسائر المرجعي ────────────────────────────────
+    -- وإضافة لغة **ليست فعلاً تطبيقياً** بل إدخال بيانات مرجعية بدور المالك،
+    -- كتسمية حساب جديد بالضبط. ولو ملك التطبيق الكتابة هنا لصار بوسعه أن يغيّر
+    -- ما يقرؤه المدقّق في تقرير دون أثر في أي سجلّ رقابة.
+    execute format('revoke insert, update, delete, truncate on ledger.name_translation from %I', v_role);
 
     -- ── العدّاد والأرصدة قابلان للتحديث عمداً ────────────────────────────
     -- ليسا دفتراً: العدّاد يجب أن يتقدّم، والأرصدة يمكن إعادة اشتقاقها من

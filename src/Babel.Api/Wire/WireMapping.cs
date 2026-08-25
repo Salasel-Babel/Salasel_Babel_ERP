@@ -161,8 +161,11 @@ internal static class WireMapping
             report.Rows.Count,
             [.. report.Rows.Select(static row => new TrialBalanceRowDto(
                 row.AccountCode,
-                row.NameAr,
-                row.NameEn,
+                row.Name.Arabic,
+                // الحقل المهجور يُشتقّ من صفّ الترجمة، ويرتدّ إلى السجلّ العربي حين لا
+                // ترجمة إنجليزية — لا إلى الفراغ، فعمودٌ بلا عنوان عطلٌ لا يُبلَّغ عنه.
+                row.Name.In("en"),
+                [.. row.Name.Translations.Select(static entry => new NameValueDto(entry.Key, entry.Value))],
                 new WireDecimal(WireNumbers.FormatMoney(row.Debit)),
                 new WireDecimal(WireNumbers.FormatMoney(row.Credit))))],
             new WireDecimal(WireNumbers.FormatMoney(report.TotalCredit)),

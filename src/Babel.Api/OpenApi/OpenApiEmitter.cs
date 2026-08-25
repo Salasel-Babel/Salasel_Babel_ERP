@@ -1015,10 +1015,24 @@ internal static class OpenApiEmitter
             WriteStringProperty(w, "accountCode", "رمز الحساب كما هو في دليل حسابات هذه الشركة.", "The account code as it stands in this company's chart of accounts.", 32);
             WriteRefProperty(w, "credit", "Money");
             WriteRefProperty(w, "debit", "Money");
-            WriteStringProperty(w, "nameAr", "الاسم العربي.", "The Arabic name.", 256);
-            WriteStringProperty(w, "nameEn", "الاسم الإنجليزي.", "The English name.", 256);
+            WriteStringProperty(w, "nameAr",
+                "الاسم العربي — وهو السجلّ لا ترجمةً أولى، وغير فارغ أبداً (ADR-0021).",
+                "The Arabic name; it is the record rather than a first translation, and is never blank (ADR-0021).", 256);
+            WriteStringProperty(w, "nameEn",
+                "الاسم الإنجليزي. **مهجور**: مشتقّ من الترجمة ذات الوسم en في nameTranslations، ولا عمود له في "
+                + "قاعدة البيانات، ويرتدّ إلى الاسم العربي حين لا ترجمة إنجليزية. الإنجليزية واحدة من N لا نصف "
+                + "الاثنين، فاقرأ nameTranslations.",
+                "The English name. **Deprecated**: derived from the 'en' entry of nameTranslations, backed by no "
+                + "database column, and falling back to the Arabic name when there is no English translation. English "
+                + "is one of N rather than half of two, so read nameTranslations instead.", 256);
+            WriteArrayRefProperty(w, "nameTranslations", "NameValue",
+                "ترجمات اسم الحساب: الاسم وسم لغة BCP-47 والقيمة النصّ المترجَم، مرتَّبةً بالوسم ترتيباً حرفياً "
+                + "ثابتاً. وقد تكون فارغة — والعرض يرتدّ حينها إلى الاسم العربي، وهو ارتداد **يُعلَن** لا يقع صامتاً.",
+                "The account name's translations: the name is a BCP-47 language tag and the value is the translated "
+                + "text, ordered by tag with a stable ordinal sort. It may be empty, in which case display falls back "
+                + "to the Arabic name — a fallback that is declared, never silent.");
             w.WriteEndObject();
-            WriteRequired(w, "accountCode", "credit", "debit", "nameAr", "nameEn");
+            WriteRequired(w, "accountCode", "credit", "debit", "nameAr", "nameEn", "nameTranslations");
             w.WriteBoolean("additionalProperties", false);
         });
 

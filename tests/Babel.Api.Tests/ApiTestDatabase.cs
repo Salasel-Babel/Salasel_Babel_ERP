@@ -306,6 +306,38 @@ internal static class ApiTestDatabase
     }
 
     /// <summary>البذر بدور المالك: دور التطبيق لا يملك <c>INSERT</c> على أي جدول مرجعي.</summary>
+    /// <summary>
+    /// يكتب ترجمة اسم صفّاً في <c>ledger.name_translation</c> (ADR-0021): مصدر التأليف
+    /// ما زال ملف CSV بعموده الإنجليزي، والمخطّط لم يعد يعرف عموداً — والتحويل هنا.
+    /// والنصّ الفارغ لا يُكتب: غياب الترجمة صفٌّ غائب يرتدّ العرض عنده إلى العربية.
+    /// </summary>
+    private static async Task TranslateAsync(
+        NpgsqlConnection owner,
+        Guid company,
+        string kind,
+        string key,
+        string languageTag,
+        string? name,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return;
+        }
+
+        await using NpgsqlCommand command = new(
+            """
+            insert into ledger.name_translation (company_id, entity_kind, entity_key, language_tag, name)
+            values ($1,$2,$3,$4,$5) on conflict do nothing
+            """, owner);
+        command.Parameters.AddWithValue(company);
+        command.Parameters.AddWithValue(kind);
+        command.Parameters.AddWithValue(key);
+        command.Parameters.AddWithValue(languageTag);
+        command.Parameters.AddWithValue(name.Trim());
+        await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+    }
+
     private static async Task SeedAsync(CancellationToken cancellationToken)
     {
         await using NpgsqlConnection owner = new(Options.OwnerConnectionString);
@@ -316,18 +348,21 @@ internal static class ApiTestDatabase
             await using NpgsqlCommand command = new(
                 """
                 insert into ledger.posting_role
-                    (role_code, name_ar, name_en, expected_account_type, expected_side, status, note_ar, note_en)
-                values ($1,$2,$3,$4,$5,$6,$7,$8) on conflict do nothing
+                    (role_code, name_ar, expected_account_type, expected_side, status, note_ar, note_en)
+                values ($1,$2,$3,$4,$5,$6,$7) on conflict do nothing
                 """, owner);
             command.Parameters.AddWithValue(row["role_code"]);
             command.Parameters.AddWithValue(row["name_ar"]);
-            command.Parameters.AddWithValue(row["name_en"]);
             command.Parameters.AddWithValue(Null(row["expected_account_type"]));
             command.Parameters.AddWithValue(Null(row["expected_side"]));
             command.Parameters.AddWithValue(row["status"]);
             command.Parameters.AddWithValue(Null(row["note_ar"]));
             command.Parameters.AddWithValue(Null(row["note_en"]));
             await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+
+            await TranslateAsync(
+                owner, Guid.Empty, "posting_role", row["role_code"], "en", row["name_en"], cancellationToken)
+                .ConfigureAwait(false);
         }
 
         List<Dictionary<string, string>> accounts =
@@ -343,16 +378,15 @@ internal static class ApiTestDatabase
                 await using NpgsqlCommand command = new(
                     """
                     insert into ledger.account
-                        (company_id, account_code, name_ar, name_en, name_ar_search, parent_code, account_level,
+                        (company_id, account_code, name_ar, name_ar_search, parent_code, account_level,
                          account_type, natural_side, is_postable, is_contra, statement_section, subledger_type,
                          required_dimensions, currency_mode, currency_code, is_protected, is_active, status,
                          source_ref, caveat_ar, caveat_en)
-                    values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,true,$18,$19,$20,$21)
+                    values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,true,$17,$18,$19,$20)
                     """, owner);
                 command.Parameters.AddWithValue(company);
                 command.Parameters.AddWithValue(row["code"]);
                 command.Parameters.AddWithValue(row["name_ar"]);
-                command.Parameters.AddWithValue(row["name_en"]);
                 command.Parameters.AddWithValue(Babel.Canonicalization.ArabicSearch.Normalize(row["name_ar"]).Value);
                 command.Parameters.AddWithValue(Null(row["parent_code"]));
                 command.Parameters.AddWithValue(int.Parse(row["level"], CultureInfo.InvariantCulture));
@@ -373,6 +407,9 @@ internal static class ApiTestDatabase
                 command.Parameters.AddWithValue(Null(row["caveat_ar"]));
                 command.Parameters.AddWithValue(Null(row["caveat_en"]));
                 await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+
+                await TranslateAsync(
+                    owner, company, "account", row["code"], "en", row["name_en"], cancellationToken).ConfigureAwait(false);
             }
 
             foreach (Dictionary<string, string> row in roleMap)
@@ -405,8 +442,8 @@ internal static class ApiTestDatabase
                 await using NpgsqlCommand command = new(
                     """
                     insert into ledger.fiscal_period
-                        (company_id, fiscal_year, period_no, period_code, starts_on, ends_on, state, name_ar, name_en)
-                    values ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+                        (company_id, fiscal_year, period_no, period_code, starts_on, ends_on, state, name_ar)
+                    values ($1,$2,$3,$4,$5,$6,$7,$8)
                     """, owner);
                 command.Parameters.AddWithValue(company);
                 command.Parameters.AddWithValue(FiscalYear);
@@ -416,8 +453,10 @@ internal static class ApiTestDatabase
                 command.Parameters.AddWithValue(end);
                 command.Parameters.AddWithValue(state);
                 command.Parameters.AddWithValue("الفترة " + code);
-                command.Parameters.AddWithValue("Period " + code);
                 await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+
+                await TranslateAsync(
+                    owner, company, "fiscal_period", code, "en", "Period " + code, cancellationToken).ConfigureAwait(false);
             }
 
             await using (NpgsqlCommand command = new(

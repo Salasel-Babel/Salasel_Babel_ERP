@@ -62,14 +62,12 @@ public sealed class FoundedCompany
 {
     private FoundedCompany(
         TenantId company,
-        string nameAr,
-        ImmutableSortedDictionary<string, string> translations,
+        TranslatedName name,
         DisplayScale displayScale,
         CostCenterRegister costCenters)
     {
         Company = company;
-        NameAr = nameAr;
-        Translations = translations;
+        Name = name;
         DisplayScale = displayScale;
         CostCenters = costCenters;
     }
@@ -77,11 +75,17 @@ public sealed class FoundedCompany
     /// <summary>المنشأة.</summary>
     public TenantId Company { get; }
 
+    /// <summary>
+    /// اسم المنشأة: سجلٌّ عربي إلزامي وترجماتٌ صفوف — النوع نفسه المشترك مع كل كيان
+    /// مُسمّى، فلا تُعاد كتابة قاعدة الارتداد في كل موضع (ADR-0021).
+    /// </summary>
+    public TranslatedName Name { get; }
+
     /// <summary>اسم المنشأة بالعربية — إلزامي، وهو الارتداد المضمون.</summary>
-    public string NameAr { get; }
+    public string NameAr => Name.Arabic;
 
     /// <summary>ترجمات الاسم بوسم اللغة، مرتَّبة ترتيباً حرفياً ثابتاً.</summary>
-    public ImmutableSortedDictionary<string, string> Translations { get; }
+    public ImmutableSortedDictionary<string, string> Translations => Name.Translations;
 
     /// <summary>مقياس العرض. مُسنَد عند التأسيس، ولا يتغيّر بعده.</summary>
     public DisplayScale DisplayScale { get; }
@@ -161,7 +165,7 @@ public sealed class FoundedCompany
         return errors.Count > 0
             ? Result<FoundedCompany>.Failure(errors)
             : Result<FoundedCompany>.Success(
-                new FoundedCompany(company, nameAr, translations, scale.Value, register.Value));
+                new FoundedCompany(company, new TranslatedName(nameAr, translations), scale.Value, register.Value));
     }
 
     /// <summary>
@@ -172,26 +176,14 @@ public sealed class FoundedCompany
     public FoundedCompany WithCostCenters(CostCenterRegister costCenters)
     {
         ArgumentNullException.ThrowIfNull(costCenters);
-        return new FoundedCompany(Company, NameAr, Translations, DisplayScale, costCenters);
+        return new FoundedCompany(Company, Name, DisplayScale, costCenters);
     }
 
     /// <summary>اسم المنشأة بلغة العرض، مرتدّاً إلى العربية (ADR-0021).</summary>
     /// <param name="languageTag">وسم اللغة المطلوب.</param>
-    public string NameIn(string? languageTag)
-    {
-        if (string.IsNullOrWhiteSpace(languageTag))
-        {
-            return NameAr;
-        }
+    public string NameIn(string? languageTag) => Name.In(languageTag);
 
-        if (Translations.TryGetValue(languageTag, out string? exact))
-        {
-            return exact;
-        }
-
-        int separator = languageTag.IndexOf('-', StringComparison.Ordinal);
-        string primary = separator > 0 ? languageTag[..separator] : languageTag;
-
-        return Translations.TryGetValue(primary, out string? fallback) ? fallback : NameAr;
-    }
+    /// <summary>اسم المنشأة بلغة العرض <b>مع إعلان الارتداد</b>.</summary>
+    /// <param name="languageTag">وسم اللغة المطلوب.</param>
+    public NameResolution ResolveName(string? languageTag) => Name.Resolve(languageTag);
 }

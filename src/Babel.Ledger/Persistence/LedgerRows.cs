@@ -13,7 +13,6 @@ internal sealed class AccountRow
     public Guid CompanyId { get; set; }
     public string Code { get; set; } = string.Empty;
     public string NameAr { get; set; } = string.Empty;
-    public string NameEn { get; set; } = string.Empty;
     public string NameArSearch { get; set; } = string.Empty;
     public string? ParentCode { get; set; }
     public int Level { get; set; }
@@ -39,7 +38,6 @@ internal sealed class PostingRoleRow
 {
     public string RoleCode { get; set; } = string.Empty;
     public string NameAr { get; set; } = string.Empty;
-    public string NameEn { get; set; } = string.Empty;
     public string? ExpectedAccountType { get; set; }
     public string? ExpectedSide { get; set; }
     public string Status { get; set; } = "drafted";
@@ -72,7 +70,6 @@ internal sealed class PropertyDimensionRow
     public string PropertyId { get; set; } = string.Empty;
     public string OwnershipModel { get; set; } = "own_property";
     public string NameAr { get; set; } = string.Empty;
-    public string NameEn { get; set; } = string.Empty;
 }
 
 /// <summary>الفترة المالية. الترحيل في فترة مقفلة مرفوض افتراضاً.</summary>
@@ -86,7 +83,6 @@ internal sealed class FiscalPeriodRow
     public DateOnly EndsOn { get; set; }
     public string State { get; set; } = "open";
     public string NameAr { get; set; } = string.Empty;
-    public string NameEn { get; set; } = string.Empty;
     public DateTimeOffset? ClosedAt { get; set; }
     public string? ClosedBy { get; set; }
 }
@@ -147,4 +143,61 @@ internal sealed class ProcessEventRow
     public string? MessageAr { get; set; }
     public string? MessageEn { get; set; }
     public string? Detail { get; set; }
+}
+
+/// <summary>
+/// <b>ترجمة اسم كيان مرجعي — صفٌّ لا عمود.</b>
+/// <para>
+/// هذا الجدول هو ADR-0021 بند 2 مُنفَّذاً: العربي عمودٌ إلزامي على الكيان نفسه لأنه
+/// <b>السجلّ</b>، وكل ما سواه صفٌّ هنا بمفتاح (كيان × لغة). فإضافة الأردية أو الهندية
+/// أو الأمهرية <b>إدخالُ صفوف لا هجرةُ مخطّط ولا إصدار برمجي</b> — وهو الفرق العملي
+/// الوحيد بين «متعدّد اللغات» و«ثنائي اللغة».
+/// </para>
+/// <para>
+/// <b>ولا يدخل هذا الجدول بصمةً ولا دفتراً ولا شكلاً قانونياً</b> (بند 3): لا يُقرأ في
+/// مسار الترحيل أصلاً، ولا يظهر اسمٌ منه في <c>Babel.Canonicalization</c>. وذلك هو ما
+/// يجعل إضافة لغة عمليةً لا تمسّ سلسلة البصمات بحرف.
+/// </para>
+/// </summary>
+internal sealed class NameTranslationRow
+{
+    /// <summary>
+    /// الشركة، أو <see cref="NameTranslationScope.Global"/> للكيانات العامّة على مستوى
+    /// المنتج — والأدوار المحاسبية وحدها كذلك، ويفرض ذلك قيدٌ في المخطّط لا اتفاق.
+    /// </summary>
+    public Guid CompanyId { get; set; }
+
+    /// <summary>نوع الكيان — مجموعة مغلقة يفرضها قيد في قاعدة البيانات.</summary>
+    public string EntityKind { get; set; } = string.Empty;
+
+    /// <summary>المفتاح الطبيعي للكيان: رمز الحساب، أو رمز الدور، أو معرّف العقار، أو رمز الفترة.</summary>
+    public string EntityKey { get; set; } = string.Empty;
+
+    /// <summary>وسم اللغة BCP-47. والعربية مرفوضة هنا: هي السجلّ لا ترجمةً له.</summary>
+    public string LanguageTag { get; set; } = string.Empty;
+
+    /// <summary>النصّ المترجَم. غير فارغ — والغياب يُعبَّر عنه بغياب الصفّ.</summary>
+    public string Name { get; set; } = string.Empty;
+}
+
+/// <summary>أنواع الكيانات التي تُترجَم أسماؤها، ونطاقها. مجموعة مغلقة يقابلها قيد في المخطّط.</summary>
+internal static class NameTranslationScope
+{
+    /// <summary>نطاق الكيانات العامّة — الأدوار المحاسبية وحدها اليوم.</summary>
+    public static readonly Guid Global = Guid.Empty;
+
+    /// <summary>حساب في دليل الحسابات. المفتاح رمز الحساب.</summary>
+    public const string Account = "account";
+
+    /// <summary>دور محاسبي. المفتاح رمز الدور، والنطاق عامّ.</summary>
+    public const string PostingRole = "posting_role";
+
+    /// <summary>بُعد عقار. المفتاح معرّف العقار.</summary>
+    public const string Property = "property";
+
+    /// <summary>فترة مالية. المفتاح رمز الفترة.</summary>
+    public const string FiscalPeriod = "fiscal_period";
+
+    /// <summary>الأنواع كلّها، بالترتيب الذي يظهر به القيد في المخطّط.</summary>
+    public static readonly string[] All = [Account, FiscalPeriod, PostingRole, Property];
 }

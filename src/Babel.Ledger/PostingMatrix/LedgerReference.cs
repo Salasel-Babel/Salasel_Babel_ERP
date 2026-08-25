@@ -7,7 +7,6 @@ namespace Babel.Ledger.PostingMatrix;
 internal sealed record AccountFacts(
     string Code,
     string NameAr,
-    string NameEn,
     string AccountType,
     string NaturalSide,
     bool IsPostable,
@@ -118,7 +117,7 @@ internal sealed class CompanyReference
 
         await using (NpgsqlCommand command = new(
             """
-            select account_code, name_ar, name_en, account_type, natural_side, is_postable,
+            select account_code, name_ar, account_type, natural_side, is_postable,
                    required_dimensions, subledger_type, currency_mode, currency_code, is_active
               from ledger.account where company_id = $1
             """, connection))
@@ -128,10 +127,10 @@ internal sealed class CompanyReference
             while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
             {
                 accounts[reader.GetString(0)] = new AccountFacts(
-                    reader.GetString(0), reader.GetString(1), reader.GetString(2), reader.GetString(3),
-                    reader.GetString(4), reader.GetBoolean(5), reader.GetFieldValue<string[]>(6),
-                    reader.GetString(7), reader.GetString(8),
-                    reader.IsDBNull(9) ? null : reader.GetString(9), reader.GetBoolean(10));
+                    reader.GetString(0), reader.GetString(1), reader.GetString(2),
+                    reader.GetString(3), reader.GetBoolean(4), reader.GetFieldValue<string[]>(5),
+                    reader.GetString(6), reader.GetString(7),
+                    reader.IsDBNull(8) ? null : reader.GetString(8), reader.GetBoolean(9));
             }
         }
 

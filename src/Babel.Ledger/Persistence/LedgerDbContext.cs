@@ -43,6 +43,8 @@ internal sealed class LedgerDbContext(DbContextOptions<LedgerDbContext> options)
 
     public DbSet<ProcessEventRow> ProcessEvents => Set<ProcessEventRow>();
 
+    public DbSet<NameTranslationRow> NameTranslations => Set<NameTranslationRow>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);
@@ -71,13 +73,15 @@ internal sealed class LedgerDbContext(DbContextOptions<LedgerDbContext> options)
                 t.HasCheckConstraint("ck_account_currency_mode", "currency_mode in ('any','company_only','fixed')");
                 t.HasCheckConstraint("ck_account_fixed_currency",
                     "currency_mode <> 'fixed' or currency_code is not null");
+                // الاسم العربي هو **السجلّ** ومرجع الارتداد (ADR-0021): فارغاً يترك
+                // رقم حساب بلا معنى في تقرير مدقّق، ولا يوجد ما يرتدّ إليه العرض.
+                t.HasCheckConstraint("ck_account_name_ar_not_blank", "length(btrim(name_ar)) > 0");
             });
 
             entity.HasKey(row => new { row.CompanyId, row.Code }).HasName("pk_account");
             entity.Property(row => row.CompanyId).HasColumnName("company_id");
             entity.Property(row => row.Code).HasColumnName("account_code");
             entity.Property(row => row.NameAr).HasColumnName("name_ar");
-            entity.Property(row => row.NameEn).HasColumnName("name_en");
             entity.Property(row => row.NameArSearch).HasColumnName("name_ar_search").HasDefaultValue(string.Empty);
             entity.Property(row => row.ParentCode).HasColumnName("parent_code");
             entity.Property(row => row.Level).HasColumnName("account_level");
@@ -106,12 +110,15 @@ internal sealed class LedgerDbContext(DbContextOptions<LedgerDbContext> options)
         // يُنتجان حسابين مختلفين من الحدث نفسه دون سطر كود واحد.
         modelBuilder.Entity<PostingRoleRow>(entity =>
         {
-            entity.ToTable("posting_role", t => t.HasCheckConstraint(
-                "ck_posting_role_side", "expected_side is null or expected_side in ('debit','credit')"));
+            entity.ToTable("posting_role", t =>
+            {
+                t.HasCheckConstraint(
+                    "ck_posting_role_side", "expected_side is null or expected_side in ('debit','credit')");
+                t.HasCheckConstraint("ck_posting_role_name_ar_not_blank", "length(btrim(name_ar)) > 0");
+            });
             entity.HasKey(row => row.RoleCode).HasName("pk_posting_role");
             entity.Property(row => row.RoleCode).HasColumnName("role_code");
             entity.Property(row => row.NameAr).HasColumnName("name_ar");
-            entity.Property(row => row.NameEn).HasColumnName("name_en");
             entity.Property(row => row.ExpectedAccountType).HasColumnName("expected_account_type");
             entity.Property(row => row.ExpectedSide).HasColumnName("expected_side");
             entity.Property(row => row.Status).HasColumnName("status").HasDefaultValue("drafted");
@@ -140,14 +147,17 @@ internal sealed class LedgerDbContext(DbContextOptions<LedgerDbContext> options)
         // ── سجلّ أبعاد العقار — الطبقة الثالثة لقاعدة الحجب GR-RE-001 ──────
         modelBuilder.Entity<PropertyDimensionRow>(entity =>
         {
-            entity.ToTable("property_dimension", t => t.HasCheckConstraint(
-                "ck_property_ownership_model", "ownership_model in ('own_property','managed_for_others')"));
+            entity.ToTable("property_dimension", t =>
+            {
+                t.HasCheckConstraint(
+                    "ck_property_ownership_model", "ownership_model in ('own_property','managed_for_others')");
+                t.HasCheckConstraint("ck_property_name_ar_not_blank", "length(btrim(name_ar)) > 0");
+            });
             entity.HasKey(row => new { row.CompanyId, row.PropertyId }).HasName("pk_property_dimension");
             entity.Property(row => row.CompanyId).HasColumnName("company_id");
             entity.Property(row => row.PropertyId).HasColumnName("property_id");
             entity.Property(row => row.OwnershipModel).HasColumnName("ownership_model");
             entity.Property(row => row.NameAr).HasColumnName("name_ar");
-            entity.Property(row => row.NameEn).HasColumnName("name_en");
         });
 
         // ── الفترات المالية ───────────────────────────────────────────────
@@ -157,6 +167,7 @@ internal sealed class LedgerDbContext(DbContextOptions<LedgerDbContext> options)
             {
                 t.HasCheckConstraint("ck_fiscal_period_state", "state in ('open','closed','permanently_closed')");
                 t.HasCheckConstraint("ck_fiscal_period_range", "ends_on >= starts_on");
+                t.HasCheckConstraint("ck_fiscal_period_name_ar_not_blank", "length(btrim(name_ar)) > 0");
             });
             entity.HasKey(row => new { row.CompanyId, row.FiscalYear, row.PeriodNo }).HasName("pk_fiscal_period");
             entity.Property(row => row.CompanyId).HasColumnName("company_id");
@@ -167,10 +178,57 @@ internal sealed class LedgerDbContext(DbContextOptions<LedgerDbContext> options)
             entity.Property(row => row.EndsOn).HasColumnName("ends_on");
             entity.Property(row => row.State).HasColumnName("state").HasDefaultValue("open");
             entity.Property(row => row.NameAr).HasColumnName("name_ar");
-            entity.Property(row => row.NameEn).HasColumnName("name_en");
             entity.Property(row => row.ClosedAt).HasColumnName("closed_at");
             entity.Property(row => row.ClosedBy).HasColumnName("closed_by");
             entity.HasIndex(row => new { row.CompanyId, row.PeriodCode }).IsUnique().HasDatabaseName("uq_fiscal_period_code");
+        });
+
+        // ── الترجمات: صفوف لا أعمدة (ADR-0021 بند 2) ──────────────────────
+        // العربي عمودٌ على الكيان لأنه السجلّ؛ وكل لغة أخرى صفٌّ هنا. واللغة الخامسة
+        // إدخالُ صفوف لا هجرةُ مخطّط — وهو الفرق العملي بين «متعدّد» و«ثنائي».
+        modelBuilder.Entity<NameTranslationRow>(entity =>
+        {
+            entity.ToTable("name_translation", t =>
+            {
+                t.HasCheckConstraint(
+                    "ck_name_translation_kind",
+                    "entity_kind in ('account','fiscal_period','posting_role','property')");
+
+                // النطاق مكتوبٌ في المخطّط لا في اتفاق: الأدوار عامّة على مستوى المنتج
+                // ولا شركة لها، وما سواها مملوك لشركة بعينها. والقيد ثنائي الاتجاه
+                // فيمنع الخلط في الجهتين معاً.
+                t.HasCheckConstraint(
+                    "ck_name_translation_scope",
+                    "(entity_kind = 'posting_role') = (company_id = '00000000-0000-0000-0000-000000000000'::uuid)");
+
+                // العربية سجلٌّ لا ترجمة: صفٌّ بوسم عربي يُنتج اسمين عربيين لكيان واحد
+                // لا شيء يجعلهما يتطابقان — والحارس هنا لا في الشيفرة وحدها.
+                t.HasCheckConstraint(
+                    "ck_name_translation_not_arabic",
+                    "lower(language_tag) <> 'ar' and lower(language_tag) not like 'ar-%'");
+
+                // الوسم معرّف BCP-47 لاتيني: يعبر مسار HTTP ومفاتيح الجداول.
+                t.HasCheckConstraint(
+                    "ck_name_translation_tag_shape",
+                    "language_tag ~ '^[A-Za-z][A-Za-z0-9]*(-[A-Za-z0-9]+)*$' and length(language_tag) <= 35");
+
+                // ترجمة فارغة أسوأ من غيابها: الغياب يرتدّ إلى العربية، والفراغ يُعرض فراغاً.
+                t.HasCheckConstraint("ck_name_translation_name_not_blank", "length(btrim(name)) > 0");
+                t.HasCheckConstraint("ck_name_translation_key_not_blank", "length(btrim(entity_key)) > 0");
+            });
+
+            entity.HasKey(row => new { row.CompanyId, row.EntityKind, row.EntityKey, row.LanguageTag })
+                  .HasName("pk_name_translation");
+            entity.Property(row => row.CompanyId).HasColumnName("company_id");
+            entity.Property(row => row.EntityKind).HasColumnName("entity_kind");
+            entity.Property(row => row.EntityKey).HasColumnName("entity_key");
+            entity.Property(row => row.LanguageTag).HasColumnName("language_tag");
+            entity.Property(row => row.Name).HasColumnName("name");
+
+            // قراءة الشاشة تسأل «كل ترجمات كيانات هذا النوع لهذه الشركة» — وهو ما يخدمه
+            // المفتاح الأساسي نفسه ببادئته، فلا فهرس ثانٍ يُصان بلا داعٍ.
+            entity.HasIndex(row => new { row.CompanyId, row.EntityKind, row.LanguageTag })
+                  .HasDatabaseName("ix_name_translation_lookup");
         });
 
         // ── العدّاد بلا فجوات — صفّ لكل (شركة × دفتر × سنة مالية) ──────────

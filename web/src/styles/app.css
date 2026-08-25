@@ -1,0 +1,402 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   طبقة الشاشة — ما يضيفه التطبيق فوق نظام التصميم المنقول من design/
+   ───────────────────────────────────────────────────────────────────────────
+   القواعد نفسها بلا استثناء:
+     · خصائص منطقية فقط (inline-start لا left).
+     · لا direction في CSS إلا على خانة رقمية أو نصّ آلي معزول.
+     · لا لون خام: رموز دلالية فقط.
+     · كل خانة رقمية: direction:ltr + unicode-bidi:isolate + text-align:end
+       + tabular-nums — فتقع الفاصلة العشرية تحت أختها في اللغات الأربع.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ⚠ لا overflow-x:clip على الجسم هنا — وهو أول ما يُكتب في مثل هذه الحال.
+   وسببه أنه **يُخفي** الانزلاق ولا يمنعه: مع clip يتساوى scrollWidth مع
+   clientWidth دائماً، فيمرّ كل اختبار انزلاق أفقي وهو لا يفحص شيئاً. قيس
+   هذا في هذا المستودع: مع clip نجح اختبار الانزلاق **بعد زرع عطل انزلاق
+   حقيقي فيه**. الاحتواء يقع حيث يجب أن يقع — داخل حاوية الجدول. */
+html,
+body {
+  max-width: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
+  line-height: var(--line-base);
+  -webkit-text-size-adjust: 100%;
+}
+
+/* ── هيكل التطبيق ─────────────────────────────────────────────────────── */
+.app-shell {
+  display: grid;
+  grid-template-columns: var(--sidenav-w) minmax(0, 1fr);
+  min-height: 100dvh;
+}
+@media (max-width: 860px) {
+  .app-shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.app-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-topbar {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-topbar);
+  display: flex;
+  align-items: center;
+  gap: var(--space-10);
+  flex-wrap: wrap;
+  min-height: var(--topbar-h);
+  padding: var(--space-8) var(--page-pad-x);
+  background: var(--color-surface);
+  border-bottom: var(--border-width) solid var(--color-border);
+}
+@media (max-width: 620px) {
+  .app-topbar {
+    padding-inline: var(--page-pad-x-sm);
+  }
+}
+.app-topbar .spacer {
+  flex: 1 1 auto;
+  min-width: var(--space-8);
+}
+
+.app-side {
+  border-inline-end: var(--border-width) solid var(--color-border);
+  background: var(--color-surface);
+  padding: var(--space-16) var(--space-12);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+@media (max-width: 860px) {
+  .app-side {
+    border-inline-end: 0;
+    border-bottom: var(--border-width) solid var(--color-border);
+    flex-direction: row;
+    flex-wrap: wrap;
+    padding: var(--space-8) var(--page-pad-x-sm);
+  }
+}
+.app-side .brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  margin-bottom: var(--space-12);
+  font-family: var(--font-display);
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-3xl);
+  line-height: var(--line-display);
+}
+@media (max-width: 860px) {
+  .app-side .brand {
+    margin-bottom: 0;
+    margin-inline-end: auto;
+  }
+}
+.app-side .brand .mark {
+  inline-size: 30px;
+  block-size: 30px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(140deg, var(--color-primary), var(--brand-mark-accent));
+  flex: none;
+}
+
+.app-page {
+  padding: var(--space-16) var(--page-pad-x) var(--space-48);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-14);
+  min-width: 0;
+}
+@media (max-width: 620px) {
+  .app-page {
+    padding-inline: var(--page-pad-x-sm);
+  }
+}
+
+/* ── شريط المرشّحات ───────────────────────────────────────────────────── */
+.filterbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-10);
+}
+.filterbar .field {
+  flex: 0 1 190px;
+  min-width: 130px;
+}
+.filterbar .field.wide {
+  flex: 1 1 260px;
+}
+.filterbar .grow {
+  flex: 1 1 auto;
+}
+
+/* ── الجدول: الكثافة والانتقال بلوحة المفاتيح ───────────────────────── */
+.tb-wrap {
+  /* الرأس واللاصق يحتاجان حاوية تمرير ذات ارتفاع محدود. */
+  max-height: clamp(320px, 64dvh, 820px);
+  /* لا انزلاق للصفحة: العرض الزائد يُمرَّر هنا وحده. */
+  overflow: auto;
+  overscroll-behavior: contain;
+  scroll-padding-block-start: 42px;
+  scroll-padding-block-end: 46px;
+}
+table.tb {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+table.tb th,
+table.tb td {
+  padding: var(--space-6) var(--space-10);
+  border-bottom: var(--border-width) solid var(--color-border);
+  /* الفاصل الداخلي على بداية كل خلية عدا الأولى — لا الأخيرة.
+     ⚠ النموذج المنقول كان يُصفّر الأخيرة، فيتضاعف حدّ الحاوية عند البداية
+     ويسقط فاصل قبل العمود الأخير. القياس في web/README.md §الاتجاه. */
+  border-inline-start: var(--border-width) solid var(--color-border);
+}
+table.tb th:first-child,
+table.tb td:first-child {
+  border-inline-start: 0;
+}
+table.tb thead th {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-table-head);
+  background: var(--color-surface-sunken);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+  text-align: center;
+  padding: 0;
+}
+table.tb thead th button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  inline-size: 100%;
+  padding: var(--space-8) var(--space-10);
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+table.tb thead th.start button {
+  justify-content: flex-start;
+}
+table.tb thead th.n button {
+  justify-content: flex-end;
+}
+table.tb thead th button:hover {
+  color: var(--color-primary);
+}
+table.tb th[aria-sort]:not([aria-sort="none"]) button {
+  color: var(--color-primary);
+}
+table.tb thead th.h-debit {
+  background: var(--color-debit);
+  color: var(--on-debit);
+}
+table.tb thead th.h-credit {
+  background: var(--color-credit);
+  color: var(--on-credit);
+}
+
+/* الخانة الرقمية: القاعدة الحاكمة لكل عمود مال. */
+table.tb td.n,
+table.tb th.n,
+table.tb tfoot td.n {
+  direction: ltr;
+  unicode-bidi: isolate;
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+table.tb td.start,
+table.tb th.start {
+  text-align: start;
+}
+table.tb td.name {
+  max-width: 0;
+  width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+table.tb tbody tr:nth-child(even) td {
+  background: color-mix(in srgb, var(--color-surface-sunken) 45%, var(--color-surface));
+}
+table.tb tbody tr:hover td {
+  background: var(--color-surface-raised);
+}
+table.tb tbody tr[data-active="true"] td {
+  background: var(--color-primary-soft);
+}
+/* المؤشّر على بداية السطر. box-shadow فيزيائية ولا تنقلب وحدها، و--flip-x
+   هو الإذن الوحيد بكتابة قيمة اتجاهية (design/tokens/tokens.css §4). */
+table.tb tbody tr[data-active="true"] td:first-child {
+  box-shadow: inset calc(3px * var(--flip-x)) 0 0 0 var(--color-primary);
+}
+table.tb tbody tr:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: -2px;
+}
+table.tb tfoot td {
+  position: sticky;
+  bottom: 0;
+  z-index: var(--z-table-head);
+  background: var(--color-surface-sunken);
+  border-top: var(--border-width-accent) solid var(--color-border-strong);
+  border-bottom: 0;
+  font-weight: var(--font-weight-bold);
+}
+table.tb tfoot td.d {
+  color: var(--color-debit);
+}
+table.tb tfoot td.c {
+  color: var(--color-credit);
+}
+
+.amt-zero {
+  color: var(--color-amount-zero);
+  font-weight: var(--font-weight-regular);
+}
+.amt-neg {
+  color: var(--color-amount-negative);
+}
+
+/* ── لوحة المشكلة (RFC 9457) ─────────────────────────────────────────── */
+.problem {
+  border: var(--border-width) solid var(--color-danger-line);
+  border-radius: var(--radius-md);
+  background: var(--color-danger-soft);
+  padding: var(--space-12) var(--space-14);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+.problem h2 {
+  margin: 0;
+  font-size: var(--font-size-card-title);
+  color: var(--color-danger);
+}
+.problem .en {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+.problem dl {
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-4) var(--space-10);
+  font-size: var(--font-size-xs);
+}
+.problem dt {
+  color: var(--color-text-muted);
+}
+.problem dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.problem ul {
+  margin: 0;
+  padding-inline-start: var(--space-18);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  font-size: var(--font-size-sm);
+}
+
+/* ── نصّ آلي معزول: رمز، بصمة، معرّف تتبّع ─────────────────────────── */
+.mono {
+  font-family: var(--font-mono);
+  direction: ltr;
+  unicode-bidi: isolate;
+  font-size: .94em;
+  overflow-wrap: anywhere;
+}
+
+/* ── مفاتيح الاختصار ─────────────────────────────────────────────────── */
+kbd {
+  display: inline-block;
+  direction: ltr;
+  unicode-bidi: isolate;
+  min-inline-size: 1.6em;
+  padding: 1px var(--space-6);
+  border: var(--border-width) solid var(--color-border-strong);
+  border-radius: var(--radius-xs);
+  background: var(--color-surface-sunken);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-3xs);
+  text-align: center;
+}
+.keys-grid {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-6) var(--space-12);
+  align-items: center;
+  font-size: var(--font-size-sm);
+}
+
+/* ── شارات ومجموعات صغيرة ────────────────────────────────────────────── */
+.inline-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  flex-wrap: wrap;
+}
+.muted {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+.statline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-6) var(--space-14);
+}
+
+/* الحركة ثانوية، ولا تؤخّر إدخالاً أبداً: لا انتقال على أي شيء يُكتب فيه. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+  }
+}
+
+/* ── الاسم المرافق داخل الجدول ────────────────────────────────────────────
+   ADR-0021: العربية سجلٌّ والترجمة عرض. فالاسم العربي هو النصّ الأساسي في
+   الخلية، والترجمة المتاحة تحته أصغر وأخفت — ومعزولة، لأن اتجاهها قد يخالف
+   اتجاه الصفحة. ولا يُفترض أنها إنجليزية: العزل يعمل مهما كانت. */
+table.tb td.name .alt {
+  display: block;
+  unicode-bidi: isolate;
+  font-size: var(--font-size-3xs);
+  color: var(--color-text-subtle);
+  line-height: 1.4;
+}
+table.tb td.name {
+  white-space: normal;
+  overflow: hidden;
+}

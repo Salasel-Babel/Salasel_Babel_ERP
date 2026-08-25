@@ -1,0 +1,107 @@
+/* Web-app keys — Urdu (RTL).
+   ⚠ TRANSLATION QUALITY: MACHINE-GRADE PLACEHOLDER, same standard as ur.base.ts.
+   The STRUCTURE is real — every key present, plural categories from
+   Intl.PluralRules("ur") — but the WORDING awaits review by a native
+   Urdu-speaking accountant before any customer sees it. */
+import type { MessageTree } from "../types";
+
+export const messages: MessageTree = {
+  app: {
+    web: {
+      docTitle: "سلاسل بابل — ٹرائل بیلنس",
+      tagline: "عربی بنیاد پر محاسبہ · شائع شدہ معاہدے سے الگ تھلگ فرنٹ اینڈ",
+      skipToTable: "جدول تک جائیں",
+    },
+    health: {
+      label: "سروس کی حالت",
+      ok: "منسلک",
+      down: "کوئی جواب نہیں",
+      checking: "جانچ جاری ہے",
+      culture: "سرور کی ثقافت",
+      calendar: "سرور کا کیلنڈر",
+      apiVersion: "سطح کا ورژن",
+      hijriWarning: "سرور ام القریٰ کیلنڈر پر چل رہا ہے — وہاں کوئی بھی ضمنی تاریخ ہجری لکھی جائے گی۔",
+    },
+    nav: { contract: "شائع شدہ معاہدہ" },
+  },
+  common: {
+    state: {
+      loading: "لوڈ ہو رہا ہے",
+      loadingBody: "ٹرائل بیلنس سرور سے پڑھا جا رہا ہے۔ ڈیٹا میں کچھ تبدیل نہیں ہوتا۔",
+    },
+    action: {
+      clearFilters: "فلٹر صاف کریں",
+      keyboardHelp: "کی بورڈ شارٹ کٹ",
+    },
+    problem: {
+      title: "درخواست مکمل نہیں ہوئی",
+      code: "کوڈ",
+      trace: "ٹریس شناخت",
+      field: "خانہ",
+      status: "حالت کا کوڈ",
+      noContract: "سرور نے شائع شدہ مسئلہ صیغے میں جواب نہیں دیا — نہ کوڈ نہ عربی پیغام۔",
+      network: "سرور تک رسائی نہ ہو سکی۔ ڈیٹا میں کچھ تبدیل نہیں ہوا۔",
+      count: {
+        "=0": "کوئی خرابی نہیں",
+        one: "ایک خرابی",
+        other: "{count} خرابیاں",
+      },
+    },
+    keys: {
+      title: "کی بورڈ شارٹ کٹ",
+      hint: "شارٹ کٹ کے لیے ؟ دبائیں",
+      search: "تلاش پر جائیں",
+      rowNext: "اگلی سطر",
+      rowPrev: "پچھلی سطر",
+      rowFirst: "پہلی سطر",
+      rowLast: "آخری سطر",
+      pageNext: "دس سطریں آگے",
+      pagePrev: "دس سطریں پیچھے",
+      viewCycle: "منظر بدلیں: سب · مدین · دائن",
+      reload: "ٹرائل بیلنس دوبارہ پڑھیں",
+      help: "یہ فہرست دکھائیں",
+      dismiss: "بند کریں یا تلاش صاف کریں",
+    },
+  },
+  field: {
+    book: { label: "کھاتہ بہی", hint: "کمپنی کے اندر بہی، مثلاً MAIN" },
+    company: { label: "کمپنی", hint: "کمپنی کی شناخت — دائرہ اعتماد سے ملایا جاتا ہے" },
+    periodCode: {
+      label: "مدت کا کوڈ",
+      hint: "عیسوی yyyy-MM، یا تمام مدتوں کے لیے خالی چھوڑیں",
+      bad: "مدت کا کوڈ شائع شدہ صیغے yyyy-MM سے میل نہیں کھاتا",
+      all: "تمام مدتیں",
+    },
+    token: { label: "اعتماد", hint: "شناخت صرف اعتماد سے آتی ہے — کوئی ٹیننٹ ہیڈر نہیں" },
+  },
+  screen: {
+    trialBalance: {
+      sourceNote: "سطریں ناقابلِ تبدیل اندراجات سے آتی ہیں، کسی بیلنس جدول سے نہیں۔",
+      totalsNote: "دونوں میزان اسی استفسار میں numeric پر sum() سے نکالے جاتے ہیں — براؤزر میں کبھی نہیں۔",
+      sortedBy: "{column} کے مطابق ترتیب",
+      matching: {
+        "=0": "کوئی مماثل کھاتہ نہیں",
+        one: "ایک مماثل کھاتہ",
+        other: "{count} مماثل کھاتے",
+      },
+    },
+    contract: {
+      title: "شائع شدہ معاہدہ",
+      sub: "فرنٹ اینڈ کو جو کچھ درکار ہے۔ یہ کوئی بیک اینڈ کوڈ نہیں پڑھتا۔",
+      version: "معاہدے کا ورژن",
+      digest: "معاہدے کا نقش",
+      note: "اقسام اور کلائنٹ اسی فائل سے پیدا ہوتے ہیں۔ اس کی تبدیلی تعمیر کو بلند آواز سے توڑتی ہے، خاموشی سے نہیں۔",
+      moneyNote: "رقم تار پر متن ہے، اور یہاں اس کی قسم ایک شے ہے جو عدد میں تبدیلی پر خطا اٹھاتی ہے۔",
+      operations: {
+        "=0": "کوئی عمل نہیں",
+        one: "ایک عمل",
+        other: "{count} اعمال",
+      },
+      schemas: {
+        "=0": "کوئی خاکہ نہیں",
+        one: "ایک خاکہ",
+        other: "{count} خاکے",
+      },
+    },
+  },
+};

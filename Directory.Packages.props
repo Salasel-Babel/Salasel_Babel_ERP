@@ -38,6 +38,18 @@
     <PackageVersion Include="WolverineFx.EntityFrameworkCore" Version="6.29.2" />
   </ItemGroup>
 
+  <!--
+    التوحيد القياسي لـXML (‏C14N) لمسار الفوترة الإلكترونية — «اشترِ ولا تكتب».
+    الإصدار 10.0.11 مُختار **بالقياس لا بالعادة**: فهرس ثغرات NuGet يسجّل على هذه الحزمة
+    ثمانية تنبيهات مميّزة على 10.0.0 وخمسة ما زالت سارية على 10.0.9، فكل إصدار حتى 10.0.9 يُسقط البناء
+    (‏TreatWarningsAsErrors مع NU1903). أول إصدار خارج كل النطاقات هو 10.0.10، واخترنا
+    10.0.11 لأنه يطابق إصدار بقية حزم المنصّة هنا. القياس في
+    docs/evidence/measurements.md. **لا يُخفَّض هذا الرقم بلا إعادة القياس.**
+  -->
+  <ItemGroup Label="التوحيد القياسي لـXML — مسار الفوترة الإلكترونية">
+    <PackageVersion Include="System.Security.Cryptography.Xml" Version="10.0.11" />
+  </ItemGroup>
+
   <ItemGroup Label="الاختبارات وإنفاذ الحدود">
     <PackageVersion Include="xunit.v3" Version="4.0.0" />
     <PackageVersion Include="NetArchTest.Rules" Version="1.3.2" />

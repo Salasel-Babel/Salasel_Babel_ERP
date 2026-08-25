@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    المزوّد الحقيقي لهيئة الزكاة والضريبة والجمارك: المرحلة الأولى (التوليد)
+    والمرحلة الثانية (التكامل)، خلف عقد Babel.Compliance.Abstractions وحده.
+
+    ما يعتمد عليه هذا المشروع، ولماذا كلٌّ منها:
+      • Babel.Compliance.Abstractions — العقد. لا شيء غيره من بابل.
+      • System.Security.Cryptography.Xml — التوحيد القياسي C14N. «اشترِ ولا تكتب»
+        (02-architecture §12): كتابة C14N يدوياً بند «يبدو أسبوعاً ويصير ستة أشهر».
+        الإصدار 10.0.11 مختار **لأنه أول إصدار خارج كل نطاقات التنبيهات الأمنية**
+        المسجَّلة على هذه الحزمة (آخرها ينتهي عند 10.0.9) — القياس في
+        docs/evidence/measurements.md. ولا يُخفَّض هذا الرقم بلا إعادة القياس.
+
+    ما **لا** يعتمد عليه، وهو الأهم:
+      • لا Babel.Ledger ولا Babel.Contracts ولا أي وحدة محاسبية. هذا الحدّ **يُبلّغ**
+        عمّا سجّله الدفتر ولا يكتب محاسبة أبداً (ADR-0011 وADR-0012).
+        القاعدة مفروضة باختبار: LedgerBoundaryTests في tests/Babel.Compliance.Tests.
+  -->
+
+  <PropertyGroup>
+    <RootNamespace>Babel.Compliance.Zatca</RootNamespace>
+    <AssemblyName>Babel.Compliance.Zatca</AssemblyName>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Babel.Compliance.Abstractions/Babel.Compliance.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Security.Cryptography.Xml" />
+  </ItemGroup>
+
+</Project>

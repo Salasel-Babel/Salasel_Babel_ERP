@@ -120,6 +120,10 @@ public sealed class VaultKeyCustodian(EphemeralKeyVault vault) : ILocalKeyCustod
             DateTimeOffset.UtcNow));
     }
 
+    /// <summary>قراءة الشهادة العامة — انظر تعليق العقد: التوقيع يحتاجها قبل أن يوقّع.</summary>
+    public ValueTask<ReadOnlyMemory<byte>> ReadCertificateAsync(CredentialRef credential, CancellationToken ct) =>
+        ValueTask.FromResult<ReadOnlyMemory<byte>>(vault.Certificate(credential)?.RawData ?? ReadOnlyMemory<byte>.Empty);
+
     public ValueTask AttachCertificateAsync(CredentialRef credential, ReadOnlyMemory<byte> certificateDer, CancellationToken ct)
     {
         if (!certificateDer.IsEmpty)

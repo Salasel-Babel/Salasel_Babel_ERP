@@ -186,6 +186,20 @@ jobs:
             exit 1
           fi
 
+      # ونظيرتها لسجل القرارات: المؤلف يكتب «ADR-جديد» بمفتاح نصّي، ومن يُنزل الدمج
+      # يخصّص الرقم (docs/decisions/README.md §0.0). AdrRegisterIsSelfConsistent يفرض
+      # الاتساق على كل فرع؛ وهذه البوابة الأخيرة وحدها تمنع وصول نائبٍ بلا رقم.
+      - name: لا معرّف قرار بلا رقم على فرع رئيس
+        if: github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/production'
+        run: |
+          set -euo pipefail
+          if ls docs/decisions/ADR-جديد-*.md >/dev/null 2>&1 \
+             || grep -nE '^# ADR-جديد:' docs/decisions/*.md \
+             || grep -nE '^\| \[جديد\]\(ADR-جديد-' docs/decisions/README.md; then
+            echo "::error::قرار بلا رقم وصل إلى فرع رئيس. خصّص له الرقم التالي — docs/decisions/README.md §0.0."
+            exit 1
+          fi
+
       - name: التحقق من عدم وجود أسرار في التغييرات
         run: |
           set -euo pipefail

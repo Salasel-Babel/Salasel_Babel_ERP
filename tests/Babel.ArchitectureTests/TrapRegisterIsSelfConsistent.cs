@@ -34,7 +34,7 @@ public sealed partial class TrapRegisterIsSelfConsistent
     private const string RegisterPath = "docs/evidence/traps.md";
 
     /// <summary>الحدّ الأدنى للعدّ — حارس ضدّ مُحلِّل يقرأ صفراً فيمرّ فارغاً (فخ-43).</summary>
-    private const int MinimumTrapCount = 64;
+    private const int MinimumTrapCount = 66;
 
     private static readonly Lazy<Register> Parsed = new(Register.Load);
 

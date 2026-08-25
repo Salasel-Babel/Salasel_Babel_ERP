@@ -83,7 +83,6 @@ jobs:
     # الافتراضيات التي يعمل بها المطوّر محلياً — ولا سرّ يُودَع في المستودع.
     env:
       BABEL_CANON_TEST_ADMIN_DB: "Host=127.0.0.1;Port=5432;Database=postgres;Username=postgres;Include Error Detail=true"
-      BABEL_CANON_TEST_DB: "Host=127.0.0.1;Port=5432;Database=babel_canon_tests;Username=postgres;Include Error Detail=true"
       BABEL_COMPLIANCE_TEST_DB: "Host=127.0.0.1;Port=5432;Database=postgres;Username=postgres"
       BABEL_LEDGER_TEST_ADMIN_DB: "Host=127.0.0.1;Port=5432;Database=postgres;Username=postgres;Include Error Detail=true"
       # ولا BABEL_LEDGER_TEST_OWNER_DB ولا BABEL_LEDGER_TEST_APP_DB هنا (ولا نظيراهما
@@ -230,7 +229,6 @@ jobs:
 
     env:
       BABEL_CANON_TEST_ADMIN_DB: "Host=127.0.0.1;Port=5432;Database=postgres;Username=postgres;Include Error Detail=true"
-      BABEL_CANON_TEST_DB: "Host=127.0.0.1;Port=5432;Database=babel_canon_tests;Username=postgres;Include Error Detail=true"
       BABEL_COMPLIANCE_TEST_DB: "Host=127.0.0.1;Port=5432;Database=postgres;Username=postgres"
       BABEL_LEDGER_TEST_ADMIN_DB: "Host=127.0.0.1;Port=5432;Database=postgres;Username=postgres;Include Error Detail=true"
 
@@ -263,14 +261,15 @@ jobs:
       # ضامر** أيضاً — عدد ما نُفِّذ يجب أن يساوي عدد ما اكتُشف، وقائمة التجميعات تُقرأ
       # من Babel.slnx لا من نمط مسارات (فخ-43).
       #
-      # ‏**تسلسلياً عمداً.** ‏`--jobs 4` يختصر الزمن من 17 دقيقة إلى 5، لكنه أنتج فشلاً
-      # كاذباً مقيساً: `Babel.Canonicalization.Tests` تعمل على قاعدة باسم ثابت وتُسقط
-      # جداولها عند تهيئة كل حالة، و`Babel.Compliance.Tests` تُنفّذ
-      # `drop database … with (force)` على اسمين ثابتين — فعمليتان متزامنتان من أيّهما
-      # تُدمّر إحداهما الأخرى. وهو فخ-51 غير مُغلَق في المجموعتين، لا عطلٌ في المسح.
-      # وحتى يُغلق، لا توازي هنا ولا تقسيم للمجموعة على عدّة عاملين.
+      # ‏**بأربع عمليات متوازية.** كان التوازي ممنوعاً هنا بسبب مقيس: `--jobs 4` كان
+      # يُنتج فشلاً كاذباً لأن `Babel.Canonicalization.Tests` و`Babel.Compliance.Tests`
+      # كانتا تعملان على قواعد بأسماء ثابتة تُسقطانها عند التهيئة. وقد أُغلق فخ-51
+      # فيهما معاً، والقياس على جهاز التطوير بعد الإغلاق: **5 د 18 ث · 543 وحدة ·
+      # 687 اختباراً · صفر فشل** مقابل **16 د 52 ث** تسلسلياً — أي 3.18×، والسقف
+      # الباقي عتادي لا برمجي.
+      # (‏docs/evidence/traps.md#fakh-test-databases-share-a-fixed-name-across-processes)
       - name: كل دالّة اختبار وحدها في عمليتها
-        run: tools/test-isolation/run.sh --grain method --configuration Release
+        run: tools/test-isolation/run.sh --grain method --configuration Release --jobs 4
 
       - name: رفع سجلّات المسح
         uses: actions/upload-artifact@v4

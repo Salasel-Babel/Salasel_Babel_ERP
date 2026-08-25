@@ -3,7 +3,7 @@ using Xunit;
 
 namespace Babel.Ai.Tests;
 
-/// <summary>مشروع اختبار الوحدة: موصول وجاهز. الاختبارات الفعلية تأتي مع منطق الوحدة.</summary>
+/// <summary>بطاقة الوحدة: هويتها واسمها ثنائي اللغة موجودان — وهو ما تفحصه القاعدة 9.</summary>
 public sealed class AiModuleSmokeTests
 {
     [Fact]

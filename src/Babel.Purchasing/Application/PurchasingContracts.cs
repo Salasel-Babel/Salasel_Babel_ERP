@@ -7,7 +7,17 @@ namespace Babel.Purchasing.Application;
 /// <param name="Name">الاسم ثنائي اللغة.</param>
 /// <param name="CreditLimit">سقف الالتزام معه.</param>
 /// <param name="PaymentTermsDays">مهلة السداد بالأيام.</param>
-public sealed record SupplierDraft(string Code, LocalizedName Name, Money CreditLimit, int PaymentTermsDays);
+/// <param name="VatNumber">
+/// رقم التسجيل الضريبي، أو فراغ إن لم يُسجَّل. <b>اختياري لأن غيابه واقع لا نقص</b>:
+/// المورد دون حدّ التسجيل، والمورد غير المقيم، والمورد المُنشأ قبل هذا الحقل — ثلاثتهم
+/// بلا رقم. وحين يُرسل يُتحقّق من شكله كاملاً ولا يُقبل «تقريباً صحيح».
+/// </param>
+public sealed record SupplierDraft(
+    string Code,
+    LocalizedName Name,
+    Money CreditLimit,
+    int PaymentTermsDays,
+    string VatNumber = "");
 
 /// <summary>المورد كما يراه المستدعي.</summary>
 /// <param name="Id">المعرّف.</param>
@@ -15,7 +25,14 @@ public sealed record SupplierDraft(string Code, LocalizedName Name, Money Credit
 /// <param name="Name">الاسم.</param>
 /// <param name="CreditLimit">السقف.</param>
 /// <param name="PaymentTermsDays">مهلة السداد.</param>
-public sealed record SupplierView(Guid Id, string Code, LocalizedName Name, Money CreditLimit, int PaymentTermsDays);
+/// <param name="VatNumber">رقم التسجيل الضريبي، أو فراغ إن لم يُسجَّل.</param>
+public sealed record SupplierView(
+    Guid Id,
+    string Code,
+    LocalizedName Name,
+    Money CreditLimit,
+    int PaymentTermsDays,
+    string VatNumber = "");
 
 /// <summary>سطر مستند مشتريات.</summary>
 /// <param name="ItemId">الصنف في دفتره المساعد.</param>

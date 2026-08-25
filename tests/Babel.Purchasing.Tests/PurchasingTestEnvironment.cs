@@ -79,6 +79,17 @@ internal static class PurchasingTestEnvironment
     /// </summary>
     public const string UpgradeProbeDatabaseStem = "babel_arap_purchasing_upgrade_probe";
 
+    /// <summary>
+    /// الجذع الثابت لقاعدة مسبار ترقية رقم التسجيل الضريبي في
+    /// <c>SupplierVatNumberTests</c> — جذعٌ مستقلّ لا مشترك.
+    /// <para>
+    /// ولماذا لا يُعاد استعمال جذع المسبار الآخر: البندان يبنيان شكلين مختلفين
+    /// لما قبل الترقية، واسمٌ واحد يجعل أحدهما يتبنّى قاعدة الآخر لو تسابقا يوماً.
+    /// والكنس أدناه يعرفه كما يعرف أخاه.
+    /// </para>
+    /// </summary>
+    public const string VatProbeDatabaseStem = "babel_arap_purchasing_vat_probe";
+
     /// <summary>قاعدة وحدة المشتريات <b>لهذه العملية وحدها</b>.</summary>
     public static string ModuleDatabase { get; } = TestRunScope.Name(ModuleDatabaseStem);
 
@@ -323,7 +334,7 @@ internal static class PurchasingTestEnvironment
     /// </summary>
     private static async Task SweepAbandonedAsync(NpgsqlConnection admin, CancellationToken cancellationToken)
     {
-        foreach (string stem in new[] { ModuleDatabaseStem, LedgerDatabaseStem, UpgradeProbeDatabaseStem })
+        foreach (string stem in new[] { ModuleDatabaseStem, LedgerDatabaseStem, UpgradeProbeDatabaseStem, VatProbeDatabaseStem })
         {
             List<string> candidates = [];
 

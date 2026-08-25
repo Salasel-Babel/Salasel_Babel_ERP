@@ -109,5 +109,106 @@ internal static class PurchasingErrors
         "The control point could not be read, and a reconciliation without one is not a reconciliation: "
         + string.Join(" | ", errors.Select(static e => e.MessageEn)));
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // رقم التسجيل الضريبي — شكلٌ يُفرض، ومطابقةٌ لا تُخمّن
+    // ═══════════════════════════════════════════════════════════════════════
+
+    public static readonly Error VatNumberEmpty = new(
+        "purchasing.supplier.vat_number_empty",
+        "رقم التسجيل الضريبي فارغ. المورد بلا رقم يُسجَّل بترك الحقل غير مُسنَد، لا بإرسال فراغ.",
+        "The VAT registration number is empty. A supplier without one is recorded by leaving the field unset, not by sending a blank.");
+
+    /// <summary>
+    /// محرف غير مرئي داخل الرقم. يُسمّى وحده لأن الطول يبدو صحيحاً والرقم يبدو سليماً،
+    /// ورسالة «الطول خطأ» أو «ليست أرقاماً» تُرسل المحاسب إلى الاتجاه الخاطئ.
+    /// </summary>
+    public static Error VatNumberCarriesInvisibleControl(int length) => new(
+        "purchasing.supplier.vat_number_invisible_control",
+        "رقم التسجيل الضريبي يحمل محرفاً غير مرئي (تحكّم اتجاهي أو عرض صفر) وطوله "
+        + length.ToString(CultureInfo.InvariantCulture) + " محرفاً. المحرف لا يُرى ويُفسد المطابقة، "
+        + "ولا يُحذف بصمت: يُعاد إدخال الرقم بخمس عشرة خانة لاتينية.",
+        "The VAT registration number carries an invisible character (a bidirectional or zero-width control) and is "
+        + length.ToString(CultureInfo.InvariantCulture) + " characters long. It cannot be seen and it breaks matching; "
+        + "it is not stripped silently — retype the number as fifteen Latin digits.");
+
+    /// <summary>
+    /// رقم يونيكودي ليس ASCII — عربي-هندي أو شرقي أو ديفاناغاري. <b>يُرفض ولا يُحوَّل</b>:
+    /// الطرف الآخر من المطابقة رقمٌ مُصدَّق بمحارف لاتينية، وتحويلٌ صامت يجعل المخزَّن
+    /// غير ما كتبه الإنسان وغير ما في الرمز معاً.
+    /// </summary>
+    public static Error VatNumberHasNonAsciiDigits(char offending) => new(
+        "purchasing.supplier.vat_number_non_ascii_digits",
+        "رقم التسجيل الضريبي يحمل رقماً غير لاتيني: «" + offending + "» (" + CodePoint(offending) + "). "
+        + "الأرقام العربية-الهندية والشرقية والديفاناغارية تُرفض ولا تُحوَّل — الرقم المُصدَّق في رمز الفاتورة "
+        + "لاتيني، وتحويلٌ صامت يجعل المخزَّن غير المكتوب وغير المُصدَّق معاً. يُعاد الإدخال بأرقام 0–9.",
+        "The VAT registration number carries a non-Latin digit: '" + offending + "' (" + CodePoint(offending) + "). "
+        + "Arabic-Indic, Eastern Arabic-Indic and Devanagari digits are refused, never converted — the attested number in "
+        + "the invoice QR code is Latin, and a silent conversion would make the stored value match neither what was typed "
+        + "nor what was attested. Retype it with 0-9.");
+
+    public static Error VatNumberHasNonDigits(char offending) => new(
+        "purchasing.supplier.vat_number_not_digits",
+        "رقم التسجيل الضريبي يحمل محرفاً ليس رقماً: «" + offending + "» (" + CodePoint(offending) + "). "
+        + "الرقم خمس عشرة خانة من 0 إلى 9، بلا فراغ ولا شَرطة ولا بادئة.",
+        "The VAT registration number carries a non-digit character: '" + offending + "' (" + CodePoint(offending) + "). "
+        + "It is fifteen digits 0-9, with no spaces, dashes or prefix.");
+
+    public static Error VatNumberLength(int length) => new(
+        "purchasing.supplier.vat_number_length",
+        "رقم التسجيل الضريبي طوله " + length.ToString(CultureInfo.InvariantCulture)
+        + " خانة والمطلوب " + SaudiVatNumber.Length.ToString(CultureInfo.InvariantCulture) + " خانة.",
+        "The VAT registration number is " + length.ToString(CultureInfo.InvariantCulture)
+        + " digits long while " + SaudiVatNumber.Length.ToString(CultureInfo.InvariantCulture) + " are required.");
+
+    public static Error VatNumberPrefix(char first) => new(
+        "purchasing.supplier.vat_number_prefix",
+        "رقم التسجيل الضريبي يبدأ بـ«" + first + "» والمطلوب أن يبدأ بـ«" + SaudiVatNumber.CountryDigit
+        + "» — رمز المملكة في ترقيم دول المجلس.",
+        "The VAT registration number starts with '" + first + "' while '" + SaudiVatNumber.CountryDigit
+        + "' is required — the Kingdom's country digit in the GCC numbering.");
+
+    public static Error VatNumberSuffix(char last) => new(
+        "purchasing.supplier.vat_number_suffix",
+        "رقم التسجيل الضريبي ينتهي بـ«" + last + "» والمطلوب أن ينتهي بـ«" + SaudiVatNumber.TaxTypeDigit
+        + "» — رمز ضريبة القيمة المضافة.",
+        "The VAT registration number ends with '" + last + "' while '" + SaudiVatNumber.TaxTypeDigit
+        + "' is required — the value added tax type digit.");
+
+    public static Error SupplierVatNumberNotFound(string vatNumber) => new(
+        "purchasing.supplier.vat_number_not_found",
+        "لا مورد في هذا المستأجر يحمل رقم التسجيل الضريبي " + vatNumber + ".",
+        "No supplier in this tenant carries the VAT registration number " + vatNumber + ".");
+
+    /// <summary>
+    /// الرقم موجود لكن على موردين موقوفين وحدهم. <b>لا يُقال «غير موجود»</b>: ذلك يدفع
+    /// المحاسب إلى إنشاء مورد ثالث بالرقم نفسه، فيتضاعف الغموض الذي نحرسه.
+    /// </summary>
+    public static Error SupplierVatNumberOnlyInactive(string vatNumber, IReadOnlyList<string> codes) => new(
+        "purchasing.supplier.vat_number_only_inactive",
+        "رقم التسجيل الضريبي " + vatNumber + " يحمله موردون موقوفون وحدهم (" + string.Join("، ", codes)
+        + "). الإسناد التلقائي مرفوض: إمّا يُعاد تفعيل المورد الصحيح، وإمّا يُسند المستند يدوياً.",
+        "The VAT registration number " + vatNumber + " is carried only by deactivated suppliers ("
+        + string.Join(", ", codes) + "). Automatic attachment is refused: either reactivate the right supplier "
+        + "or attach the document by hand.");
+
+    /// <summary>
+    /// أكثر من مورد فعّال بالرقم نفسه — <b>وهذا واقع لا خطأ بيانات</b>: مجموعة ضريبية
+    /// واحدة تضمّ منشآت عدّة برقم تسجيل واحد. والحارس هنا لا في فهرس فريد: الفهرس الفريد
+    /// يمنع تسجيل الواقع، وهذا يمنع الإسناد الخاطئ ويُبقي الواقع مُسجَّلاً.
+    /// </summary>
+    public static Error SupplierVatNumberAmbiguous(string vatNumber, IReadOnlyList<string> codes) => new(
+        "purchasing.supplier.vat_number_ambiguous",
+        "رقم التسجيل الضريبي " + vatNumber + " يحمله " + codes.Count.ToString(CultureInfo.InvariantCulture)
+        + " موردين فعّالين (" + string.Join("، ", codes) + "). الإسناد التلقائي مرفوض، واختيار أحدهم "
+        + "قرار إنسان لا قرار نظام: فاتورة مُصدَّقة تُسند إلى المورد الخطأ أسوأ من فاتورة بلا إسناد.",
+        "The VAT registration number " + vatNumber + " is carried by "
+        + codes.Count.ToString(CultureInfo.InvariantCulture) + " active suppliers (" + string.Join(", ", codes)
+        + "). Automatic attachment is refused; choosing one is a human decision, not a system decision: an attested "
+        + "invoice attached to the wrong supplier is worse than an invoice attached to none.");
+
+    /// <summary>يعرض نقطة الشفرة — المحرف وحده لا يُميّز «٥» عن «5» في سجلّ نصّي.</summary>
+    private static string CodePoint(char value)
+        => "U+" + ((int)value).ToString("X4", CultureInfo.InvariantCulture);
+
     private static string Format(decimal value) => value.ToString("0.0000", CultureInfo.InvariantCulture);
 }

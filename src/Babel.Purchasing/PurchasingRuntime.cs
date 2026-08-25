@@ -48,7 +48,11 @@ public sealed class PurchasingRuntime : IDisposable
 public static class PurchasingSchemaDeployer
 {
     /// <summary>نصوص الترقية بترتيب تطبيقها.</summary>
-    private static readonly string[] Migrations = ["001_PostingIdentityIncludesEventCode.sql"];
+    private static readonly string[] Migrations =
+    [
+        "001_PostingIdentityIncludesEventCode.sql",
+        "002_SupplierCarriesVatNumber.sql",
+    ];
 
     /// <summary>ينشئ مخطّط <c>purchasing</c> وجداوله إن لم توجد، ثم يُطبّق نصوص الترقية.</summary>
     /// <param name="options">إعدادات الوحدة.</param>

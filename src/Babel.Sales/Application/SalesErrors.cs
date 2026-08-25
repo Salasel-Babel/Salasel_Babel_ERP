@@ -83,5 +83,33 @@ internal static class SalesErrors
         "The control point could not be read, and a reconciliation without one is not a reconciliation: "
         + string.Join(" | ", errors.Select(static e => e.MessageEn)));
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // القبول مقابل ملفّ قدرات المستأجر
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// مستأجر بلا ملفّ قدرات. <b>رفض لا فتح</b>: غياب الملفّ يعني «لم يُقرَّر بعد ما
+    /// اشتراه»، والفتح عنده يجعل تعطيل أي قدرة قابلاً للالتفاف بألّا يُحفظ ملفّ أصلاً.
+    /// </summary>
+    public static Error CapabilityProfileMissing(TenantId tenant) => new(
+        "sales.capability_profile_missing",
+        "لا ملفّ قدرات لهذا المستأجر (" + tenant.Value.ToString("D", CultureInfo.InvariantCulture)
+        + ")، والمستند لا يُقبل بلا ملفّ. غياب الملفّ ليس «بلا قيود» بل «لم يُقرَّر بعد ما اشتراه»، "
+        + "والفتح عنده يجعل إطفاء أي قدرة قابلاً للالتفاف بترك الملفّ غير محفوظ.",
+        "This tenant (" + tenant.Value.ToString("D", CultureInfo.InvariantCulture)
+        + ") has no capability profile, and no document is admitted without one. A missing profile does not mean "
+        + "'unrestricted'; it means 'what this tenant bought has not been decided yet', and opening the gate there "
+        + "would let any disabled capability be bypassed simply by never saving a profile.");
+
+    /// <summary>
+    /// قبولٌ لا يغطّي الحقل الذي يمارسه هذا المسار — تذكرة مستند آخر أُعيد استعمالها.
+    /// </summary>
+    public static Error AdmissionDoesNotCoverField(string documentType, string field) => new(
+        "sales.admission_does_not_cover_field",
+        "المستند المقبول («" + documentType + "») لا يحمل الحقل «" + field + "» الذي يمارسه هذا المسار. "
+        + "قبولٌ نُشئ لمستند آخر ليس قبولاً لهذا المستند.",
+        "The admitted document ('" + documentType + "') does not carry the field '" + field
+        + "' that this path exercises. An admission issued for another document is not an admission for this one.");
+
     private static string Format(decimal value) => value.ToString("0.0000", CultureInfo.InvariantCulture);
 }

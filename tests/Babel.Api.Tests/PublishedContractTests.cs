@@ -109,7 +109,7 @@ public sealed class PublishedContractTests
         Assert.Contains("Forces v2", description, StringComparison.Ordinal);
 
         JsonElement paths = root.GetProperty("paths");
-        Assert.Equal(6, paths.EnumerateObject().SelectMany(static p => p.Value.EnumerateObject())
+        Assert.Equal(10, paths.EnumerateObject().SelectMany(static p => p.Value.EnumerateObject())
             .Count(static o => o.Name is "get" or "post" or "put" or "patch" or "delete"));
 
         // النطاق في كل مسار مُصدَّر، ولا مسار أعمال خارج شركة.

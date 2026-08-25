@@ -1,5 +1,6 @@
 using Babel.Core.Application;
 using Babel.Core.Audit;
+using Babel.Core.CapabilityProfile;
 using Babel.Core.Entitlement;
 using Babel.Core.Metering;
 using Microsoft.Extensions.DependencyInjection;
@@ -25,6 +26,11 @@ public static class CoreModuleRegistration
         services.AddSingleton<IEntitlementService, InMemoryEntitlementService>();
         services.AddSingleton<IEntitlementEnforcer, EntitlementEnforcer>();
         services.AddScoped<EntitlementAdministrationService>();
+
+        // ملفّ القدرات: الفهرس يُقرأ مرّة لكل عملية، والمخزن حالة المستأجر، والخدمة نطاق طلب.
+        services.AddSingleton<IPostingEventDirectory>(_ => EmbeddedPostingEventDirectory.Default);
+        services.AddSingleton<ICapabilityProfileStore, InMemoryCapabilityProfileStore>();
+        services.AddScoped<CapabilityProfileService>();
 
         return services;
     }

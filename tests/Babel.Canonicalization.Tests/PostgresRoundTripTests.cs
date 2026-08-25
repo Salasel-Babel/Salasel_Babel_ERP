@@ -12,21 +12,38 @@ namespace Babel.Canonicalization.Tests;
 /// (<c>timestamptz</c>, <c>numeric(19,4)</c>, <c>text</c>, <c>bytea</c>)، ثم تُقرأ،
 /// ثم يُعاد بناء المستند من الصفوف المقروءة، ثم يُعاد التحقق من السلسلة كاملة.
 ///
-/// لا كلمات مرور في المستودع: الاتصال يُقرأ من BABEL_CANON_TEST_DB ويسقط إلى
+/// لا كلمات مرور في المستودع: الاتصال يُقرأ من BABEL_CANON_TEST_ADMIN_DB ويسقط إلى
 /// اتصال محلي بلا كلمة مرور (pg_hba: trust على 127.0.0.1).
+///
+/// <b>والقاعدة خاصّة بهذه العملية.</b> كانت باسم ثابت `babel_canon_tests` مع
+/// `drop table … ; create table …` عند تهيئة كل حالة، فعمليتان متزامنتان تُفرِّغ كلٌّ
+/// منهما جداول الأخرى. الاسم يُشتقّ الآن في <see cref="TestDatabases"/> بلاحقةٍ لكل
+/// عملية، ويُحذف عند خروجها لا عند بدئها
+/// (‏docs/evidence/traps.md#fakh-test-databases-share-a-fixed-name-across-processes).
 /// </summary>
 [Collection("postgres")]
 public sealed class PostgresRoundTripTests : IAsyncLifetime
 {
-    private const string Database = "babel_canon_tests";
-
     private static string Maintenance =>
         Environment.GetEnvironmentVariable("BABEL_CANON_TEST_ADMIN_DB")
         ?? "Host=127.0.0.1;Port=5432;Database=postgres;Username=postgres;Include Error Detail=true";
 
+    /// <summary>
+    /// اتصال الهدف: <b>قالبٌ</b> منه المضيف والمنفذ والمستخدم، واسم القاعدة يُفرَض من
+    /// <see cref="TestDatabases.Canon"/> دائماً.
+    /// <para>
+    /// <b>ولا يُقرأ اسم قاعدة من متغيّر بيئة.</b> ‏<c>BABEL_CANON_TEST_DB</c> كان يحمل
+    /// الاسم الثابت، ومتغيّرٌ كهذا يُبطل لاحقة العملية <b>بصمت</b> فيعود العطل كاملاً
+    /// بينما الشيفرة تبدو مُصلَحة. فهو يُقرأ الآن قالباً لا اسماً، ويبقى ما فيه من
+    /// <c>Database=</c> مُهمَلاً عمداً.
+    /// </para>
+    /// </summary>
     private static string Target =>
-        Environment.GetEnvironmentVariable("BABEL_CANON_TEST_DB")
-        ?? $"Host=127.0.0.1;Port=5432;Database={Database};Username=postgres;Include Error Detail=true";
+        new NpgsqlConnectionStringBuilder(
+            Environment.GetEnvironmentVariable("BABEL_CANON_TEST_DB") ?? Maintenance)
+        {
+            Database = TestDatabases.Canon,
+        }.ConnectionString;
 
     private bool _available;
 
@@ -34,19 +51,14 @@ public sealed class PostgresRoundTripTests : IAsyncLifetime
     {
         try
         {
-            await using (var admin = new NpgsqlConnection(Maintenance))
-            {
-                await admin.OpenAsync();
-                await using var check = new NpgsqlCommand(
-                    $"select 1 from pg_database where datname = '{Database}'", admin);
-                if (await check.ExecuteScalarAsync(TestContext.Current.CancellationToken) is null)
-                {
-                    await using var create = new NpgsqlCommand($"create database {Database}", admin);
-                    await create.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
-                }
-            }
+            await TestDatabases.EnsureAsync(Maintenance, TestContext.Current.CancellationToken);
 
             await using var conn = await OpenAsync();
+
+            // إسقاط الجداول وإعادة بنائها لكل حالة يبقى سليماً هنا، وهذا ليس صدفة:
+            // القاعدة صارت مملوكةً لهذه العملية وحدها، والتجميع `postgres` مُعلن
+            // ‏DisableParallelization فلا حالتان منه تعملان معاً داخل العملية. أي أن
+            // لا أحد غير الحالة الجارية يملك أن يرى هذه الجداول.
             await ExecAsync(conn, """
                 drop table if exists canon_chain;
                 create table canon_chain (
@@ -85,6 +97,13 @@ public sealed class PostgresRoundTripTests : IAsyncLifetime
                 );
                 """);
             _available = true;
+        }
+        catch (PostgresException)
+        {
+            // خطأ من الخادم نفسه ليس «PostgreSQL غير متاح»: ‏42P04 أو 23505 على إنشاء
+            // القاعدة خبرٌ حقيقي، وترجمته إلى «غير متاح» تُخفي بالضبط العطل الذي
+            // يُصلحه هذا الملف. يُرفع بصوته.
+            throw;
         }
         catch (NpgsqlException)
         {

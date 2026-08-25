@@ -1,0 +1,104 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# التكامل المستمر للواجهة — منفصل عن ci.yml بالكامل
+#
+# ولماذا ملفّ مستقلّ لا وظيفة داخل ci.yml: العزل بين الواجهة والخلفية قرارُ
+# منتج لا ترتيبُ مجلدات. سير عمل مستقلّ يعني أن الواجهة تُبنى وتُختبر بلا
+# ‏.NET SDK ولا PostgreSQL ولا سطر واحد من شيفرة الخلفية — وهو ما يجب أن
+# يكون صحيحاً فعلاً لا أن يُقال.
+#
+# والبوّابة الحاكمة هنا هي الأولى: **إعادة توليد العميل من العقد لا تُنتج
+# أي اختلاف**. تغيّر العقد بلا إعادة توليد يوقف الدمج بصوت عالٍ بدل أن
+# تنحرف الواجهة عن الخلفية شهراً بلا أن يلاحظ أحد.
+# ═══════════════════════════════════════════════════════════════════════════
+
+name: الواجهة
+
+on:
+  push:
+    branches:
+      - develop
+      - main
+      - production
+      - 'feature/**'
+      - 'claude/**'
+      - 'fix/**'
+    paths:
+      - 'web/**'
+      - 'contracts/openapi/**'
+      - '.github/workflows/web.yml'
+  pull_request:
+    branches:
+      - develop
+      - main
+      - production
+    paths:
+      - 'web/**'
+      - 'contracts/openapi/**'
+      - '.github/workflows/web.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: web
+
+jobs:
+  build-and-prove:
+    name: بناء الواجهة وإثباتها
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: جلب المستودع
+        uses: actions/checkout@v4
+
+      - name: تهيئة Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: تثبيت الاعتماديات
+        run: npm ci
+
+      # ── البوّابة الحاكمة ───────────────────────────────────────────────
+      - name: العقد — إعادة التوليد لا تُنتج أي اختلاف
+        run: npm run gen:check
+
+      - name: فحص التدويل والاتجاه
+        run: npm run audit:i18n
+
+      - name: التحقق من الأنواع والبناء
+        run: npm run build
+
+      - name: قواعد الحدّ (ESLint)
+        run: npm run lint
+
+      - name: اختبارات الوحدة
+        run: npm test
+
+      - name: تثبيت متصفّح Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: مصفوفة العرض — ٤ لغات × ٢ مظهر × ٣ عروض، والسلوك، والقياس
+        run: npx playwright test
+        env:
+          PLAYWRIGHT_CHROMIUM: ''
+
+      - name: رفع لقطات المصفوفة والقياس
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-matrix
+          path: |
+            web/test-results/matrix/**
+            web/test-results/perf-500.json
+          if-no-files-found: warn
+          retention-days: 14

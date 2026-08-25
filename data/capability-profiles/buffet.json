@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0.0",
+  "profile_code": "buffet",
+  "name_ar": "بوفيه صغير",
+  "name_en": "Small buffet",
+  "note_ar": "الشاشة ثلاثة أشياء: العميل، الأصناف، طريقة الدفع. ولا قدرة واحدة مُشغَّلة — والجرد ليس مستمراً، فلا قيد تكلفة مصاحب.",
+  "note_en": "Three things on the screen: customer, items, payment method. Not one capability is on, and inventory is not perpetual, so no accompanying cost entry.",
+  "documents": {
+    "sales.invoice": {
+      "capabilities": {
+        "advance": false,
+        "cost_of_sales": false
+      },
+      "defaults": {
+        "paymentMethod": "cash"
+      }
+    }
+  }
+}

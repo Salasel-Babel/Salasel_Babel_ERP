@@ -83,7 +83,6 @@ jobs:
     # الافتراضيات التي يعمل بها المطوّر محلياً — ولا سرّ يُودَع في المستودع.
     env:
       BABEL_CANON_TEST_ADMIN_DB: "Host=127.0.0.1;Port=5432;Database=postgres;Username=postgres;Include Error Detail=true"
-      BABEL_CANON_TEST_DB: "Host=127.0.0.1;Port=5432;Database=babel_canon_tests;Username=postgres;Include Error Detail=true"
       BABEL_COMPLIANCE_TEST_DB: "Host=127.0.0.1;Port=5432;Database=postgres;Username=postgres"
       BABEL_LEDGER_TEST_ADMIN_DB: "Host=127.0.0.1;Port=5432;Database=postgres;Username=postgres;Include Error Detail=true"
       # ولا BABEL_LEDGER_TEST_OWNER_DB ولا BABEL_LEDGER_TEST_APP_DB هنا (ولا نظيراهما
@@ -195,6 +194,90 @@ jobs:
             echo "::error::يبدو أن هناك سرّاً في المستودع. CONTRIBUTING §3 بند 7."
             exit 1
           fi
+
+  test-isolation:
+    name: عزل الاختبارات — كل دالّة وحدها
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    # لماذا وظيفة مستقلّة لا خطوة في الوظيفة الأولى: هي أطول من كل ما قبلها مجتمعاً
+    # (‏687 عملية مقابل تشغيل واحد)، وإلحاقها بالوظيفة الأولى يؤخّر كل بلاغ فيها. وهي
+    # تعمل بالتوازي معها، فزمن الدفعة هو زمن الأطول لا مجموعهما.
+    #
+    # ولماذا تعمل على **كل** دفعة لا ليلاً: العطل الذي تمنعه يدخل مع الاختبار الجديد
+    # نفسه، ومسحٌ ليلي يعني أن مؤلّف الاختبار يقرأ البلاغ بعد أن انتقل إلى عمل آخر —
+    # وأن البلاغ يصل بلا صاحب. الكلفة المقيسة على جهاز التطوير: **3 دقائق و28 ثانية**
+    # بحبيبة الصنف و**17 دقيقة و21 ثانية** بحبيبة الدالّة، مقابل **29 ثانية** للتشغيل
+    # الكامل (docs/evidence/measurements.md §3.6-ي). وحبيبة الدالّة هي المختارة لأن حبيبة
+    # الصنف **لم تلتقط أحد العطلين المقيسين**: الاختبار الثاني كان يبذره جاره داخل الصنف
+    # نفسه، فلو أُصلح الأوّل وحده لعاد الصنف كلّه أخضر والعطل قائم.
+    # (‏docs/evidence/traps.md#fakh-green-by-ordering-not-by-construction)
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      BABEL_CANON_TEST_ADMIN_DB: "Host=127.0.0.1;Port=5432;Database=postgres;Username=postgres;Include Error Detail=true"
+      BABEL_COMPLIANCE_TEST_DB: "Host=127.0.0.1;Port=5432;Database=postgres;Username=postgres"
+      BABEL_LEDGER_TEST_ADMIN_DB: "Host=127.0.0.1;Port=5432;Database=postgres;Username=postgres;Include Error Detail=true"
+
+    steps:
+      - name: سحب المستودع
+        uses: actions/checkout@v4
+
+      - name: تهيئة .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: التأكّد من وجود ICU
+        run: |
+          set -eux
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libicu-dev
+
+      - name: ذاكرة NuGet المؤقتة
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', '**/*.csproj') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: البناء
+        run: dotnet build Babel.slnx --configuration Release
+
+      # الحكم في الشيفرة لا هنا: السكربت يفشل على أي دالّة تسقط منفردة، وعلى **مسحٍ
+      # ضامر** أيضاً — عدد ما نُفِّذ يجب أن يساوي عدد ما اكتُشف، وقائمة التجميعات تُقرأ
+      # من Babel.slnx لا من نمط مسارات (فخ-43).
+      #
+      # ‏**بأربع عمليات متوازية.** كان التوازي ممنوعاً هنا بسبب مقيس: `--jobs 4` كان
+      # يُنتج فشلاً كاذباً لأن `Babel.Canonicalization.Tests` و`Babel.Compliance.Tests`
+      # كانتا تعملان على قواعد بأسماء ثابتة تُسقطانها عند التهيئة. وقد أُغلق فخ-51
+      # فيهما معاً، والقياس على جهاز التطوير بعد الإغلاق: **5 د 18 ث · 543 وحدة ·
+      # 687 اختباراً · صفر فشل** مقابل **16 د 52 ث** تسلسلياً — أي 3.18×، والسقف
+      # الباقي عتادي لا برمجي.
+      # (‏docs/evidence/traps.md#fakh-test-databases-share-a-fixed-name-across-processes)
+      - name: كل دالّة اختبار وحدها في عمليتها
+        run: tools/test-isolation/run.sh --grain method --configuration Release --jobs 4
+
+      - name: رفع سجلّات المسح
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: test-isolation-logs
+          path: artifacts/test-isolation
+          if-no-files-found: ignore
 
   invariant-globalization-guard:
     name: الحارس ينفجر في وضع العولمة الثابتة

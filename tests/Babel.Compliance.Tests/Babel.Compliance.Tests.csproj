@@ -17,6 +17,7 @@
     <ProjectReference Include="../../src/Babel.Compliance.Abstractions/Babel.Compliance.Abstractions.csproj" />
     <ProjectReference Include="../../src/Babel.Compliance/Babel.Compliance.csproj" />
     <ProjectReference Include="../../src/Babel.Compliance.FakeProvider/Babel.Compliance.FakeProvider.csproj" />
+    <ProjectReference Include="../../src/Babel.Compliance.Zatca/Babel.Compliance.Zatca.csproj" />
   </ItemGroup>
 
 </Project>

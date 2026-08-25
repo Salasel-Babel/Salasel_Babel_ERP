@@ -1,0 +1,97 @@
+{
+  "_": "متجهات ذهبية لفاكّ رمز الاستجابة السريعة. المقبولة مولَّدة بالمُرمِّز القائم ويجب أن تعود منه حرفياً؛ والمرفوضة حمولات معطوبة مبنيّة بيدٍ، وكلٌّ منها يسمّي العطل الذي يجب أن يُصرخ به.",
+  "_تحذير": "هذه المتجهات تُثبت أن الفكّ عكس الترميز بالضبط وأنه يرفض ما يجب رفضه. لا تُثبت قبول الهيئة: بيئة البناء محجوبة عنها.",
+  "format_version": "ai.qr-decoder.v1",
+  "accepted": [
+    {
+      "id": "phase1.roundtrip",
+      "ar": "المرحلة الأولى: خمسة وسوم — وهو نفسه المتجه qr.phase1.tlv في tests/golden/zatca-vectors.v1.json",
+      "payload": "AS/YtNix2YPYqSDYs9mE2KfYs9mEINio2KfYqNmEINmE2YTZhdmC2KfZiNmE2KfYqgIPMzAwMDAwMDAwMDAwMDAzAxQyMDI2LTA4LTI1VDEwOjMwOjAwWgQHMTM1MC4wMAUGMTUwLjAw",
+      "phase": "Phase1",
+      "seller_name": "شركة سلاسل بابل للمقاولات",
+      "seller_vat_number": "300000000000003",
+      "issued_at": "2026-08-25T10:30:00Z",
+      "gross_total": "1350.00",
+      "tax_total": "150.00",
+      "tag_lengths": "1:47,2:15,3:20,4:7,5:6",
+      "seller_name_characters": 25,
+      "seller_name_bytes": 47
+    },
+    {
+      "id": "phase2.standard",
+      "ar": "المرحلة الثانية لفاتورة قياسية: ثمانية وسوم — بصمة وتوقيع نصّاً مُرمَّزاً، ومفتاح عام بايتات خام",
+      "payload": "AS/YtNix2YPYqSDYs9mE2KfYs9mEINio2KfYqNmEINmE2YTZhdmC2KfZiNmE2KfYqgIPMzAwMDAwMDAwMDAwMDAzAxQyMDI2LTA4LTI1VDEwOjMwOjAwWgQHMTM1MC4wMAUGMTUwLjAwBiwzUGJUSFZtVmFPS1FkOUdzTkNiVFpMUEhWR1Q1eE42SHZmeEs5d0hEbnZFPQcITUVVQ0lRRDAICTAqMAUGAytlcA==",
+      "phase": "Phase2Standard",
+      "seller_name": "شركة سلاسل بابل للمقاولات",
+      "seller_vat_number": "300000000000003",
+      "issued_at": "2026-08-25T10:30:00Z",
+      "gross_total": "1350.00",
+      "tax_total": "150.00",
+      "invoice_hash_base64": "3PbTHVmVaOKQd9GsNCbTZLPHVGT5xN6HvfxK9wHDnvE=",
+      "signature_base64": "MEUCIQD0",
+      "public_key_hex": "302a300506032b6570",
+      "certificate_signature_hex": "",
+      "tag_lengths": "1:47,2:15,3:20,4:7,5:6,6:44,7:8,8:9"
+    },
+    {
+      "id": "phase2.simplified",
+      "ar": "المرحلة الثانية لفاتورة مبسّطة: تسعة وسوم — الوسم التاسع للمبسّطة وحدها",
+      "payload": "AS/YtNix2YPYqSDYs9mE2KfYs9mEINio2KfYqNmEINmE2YTZhdmC2KfZiNmE2KfYqgIPMzAwMDAwMDAwMDAwMDAzAxQyMDI2LTA4LTI1VDEwOjMwOjAwWgQHMTM1MC4wMAUGMTUwLjAwBiwzUGJUSFZtVmFPS1FkOUdzTkNiVFpMUEhWR1Q1eE42SHZmeEs5d0hEbnZFPQcITUVVQ0lRRDAICTAqMAUGAytlcAkEAQIDBA==",
+      "phase": "Phase2Simplified",
+      "seller_name": "شركة سلاسل بابل للمقاولات",
+      "seller_vat_number": "300000000000003",
+      "issued_at": "2026-08-25T10:30:00Z",
+      "gross_total": "1350.00",
+      "tax_total": "150.00",
+      "invoice_hash_base64": "3PbTHVmVaOKQd9GsNCbTZLPHVGT5xN6HvfxK9wHDnvE=",
+      "signature_base64": "MEUCIQD0",
+      "public_key_hex": "302a300506032b6570",
+      "certificate_signature_hex": "01020304",
+      "tag_lengths": "1:47,2:15,3:20,4:7,5:6,6:44,7:8,8:9,9:4"
+    }
+  ],
+  "refused": [
+    {
+      "id": "reject.truncated_arabic_utf8",
+      "ar": "اسم عربي قُصّ عند البايت 46 فوقع داخل محرف — الفكّ المتساهل يُعيد محرف استبدال ويمرّ",
+      "payload": "AS7YtNix2YPYqSDYs9mE2KfYs9mEINio2KfYqNmEINmE2YTZhdmC2KfZiNmE2KfYAg8zMDAwMDAwMDAwMDAwMDMDFDIwMjYtMDgtMjVUMTA6MzA6MDBaBAcxMzUwLjAwBQYxNTAuMDA=",
+      "must_say": "ليست UTF-8 صالحة"
+    },
+    {
+      "id": "reject.tags_out_of_order",
+      "ar": "الوسمان الأول والثاني مقلوبان — القارئ يقرأ بالترتيب فيضع الرقم الضريبي مكان الاسم",
+      "payload": "Ag8zMDAwMDAwMDAwMDAwMDMBL9i02LHZg9ipINiz2YTYp9iz2YQg2KjYp9io2YQg2YTZhNmF2YLYp9mI2YTYp9iqAxQyMDI2LTA4LTI1VDEwOjMwOjAwWgQHMTM1MC4wMAUGMTUwLjAw",
+      "must_say": "المتوقّع"
+    },
+    {
+      "id": "reject.six_tags_is_not_a_known_shape",
+      "ar": "ستة وسوم: لا مرحلة أولى ولا ثانية — رمز يُقرأ بنجاح وينقصه ما يرفضه المتحقّق",
+      "payload": "AS/YtNix2YPYqSDYs9mE2KfYs9mEINio2KfYqNmEINmE2YTZhdmC2KfZiNmE2KfYqgIPMzAwMDAwMDAwMDAwMDAzAxQyMDI2LTA4LTI1VDEwOjMwOjAwWgQHMTM1MC4wMAUGMTUwLjAwBiwzUGJUSFZtVmFPS1FkOUdzTkNiVFpMUEhWR1Q1eE42SHZmeEs5d0hEbnZFPQ==",
+      "must_say": "الأشكال المعروفة ثلاثة"
+    },
+    {
+      "id": "reject.arabic_decimal_separator",
+      "ar": "الإجمالي بفاصلة عربية U+066B — يُقرأ على الشاشة صحيحاً ولا يساوي 1350.00",
+      "payload": "AS/YtNix2YPYqSDYs9mE2KfYs9mEINio2KfYqNmEINmE2YTZhdmC2KfZiNmE2KfYqgIPMzAwMDAwMDAwMDAwMDAzAxQyMDI2LTA4LTI1VDEwOjMwOjAwWgQIMTM1MNmrMDAFBjE1MC4wMA==",
+      "must_say": "ليس عدداً عشرياً بثقافة ثابتة"
+    },
+    {
+      "id": "reject.timestamp_wrong_shape",
+      "ar": "طابع زمني بمسافة بدل T وبلا Z — قراءة بثقافة الجهاز قد تقبله وتُعيد لحظة أخرى",
+      "payload": "AS/YtNix2YPYqSDYs9mE2KfYs9mEINio2KfYqNmEINmE2YTZhdmC2KfZiNmE2KfYqgIPMzAwMDAwMDAwMDAwMDAzAxMyMDI2LTA4LTI1IDEwOjMwOjAwBAcxMzUwLjAwBQYxNTAuMDA=",
+      "must_say": "yyyy-MM-ddTHH:mm:ssZ"
+    },
+    {
+      "id": "reject.truncated_tlv",
+      "ar": "آخر وسم يعلن طولاً يتجاوز نهاية البيانات — القارئ الساذج يقرأ ما بعد النهاية أو يقصّ بصمت",
+      "payload": "AS/YtNix2YPYqSDYs9mE2KfYs9mEINio2KfYqNmEINmE2YTZhdmC2KfZiNmE2KfYqgIPMzAwMDAwMDAwMDAwMDAzAxQyMDI2LTA4LTI1VDEwOjMwOjAwWgQHMTM1MC4wMAUGMTUw",
+      "must_say": "يتجاوز نهاية البيانات"
+    },
+    {
+      "id": "reject.not_base64",
+      "ar": "حمولة ليست base64 أصلاً — القارئ المتساهل يصنع من الضجيج حقولاً معقولة",
+      "payload": "هذا ليس رمزاً",
+      "must_say": "ليس base64 صالحاً"
+    }
+  ]
+}

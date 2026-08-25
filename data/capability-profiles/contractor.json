@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0.0",
+  "profile_code": "contractor",
+  "name_ar": "شركة مقاولات",
+  "name_en": "Contracting company",
+  "note_ar": "المستخلص هو المستند الأساسي: قيمة عمل ومحتجز ودفعة مقدمة تُستنفد. والفاتورة المخزنية معه بجرد مستمر.",
+  "note_en": "The certificate is the primary document: work value, retention, and an advance being recovered. The stock invoice sits beside it under perpetual inventory.",
+  "documents": {
+    "projects.client_certificate": {
+      "capabilities": {
+        "advance": true,
+        "retention": true
+      },
+      "defaults": {}
+    },
+    "sales.invoice": {
+      "capabilities": {
+        "advance": true,
+        "cost_of_sales": true
+      },
+      "defaults": {
+        "paymentMethod": "bank",
+        "warehouse": "W1"
+      }
+    }
+  }
+}

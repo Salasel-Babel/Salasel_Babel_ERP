@@ -128,8 +128,11 @@ public sealed class Rule06_NothingBypassesEntitlement
             .Distinct()
             .Order(StringComparer.Ordinal)];
 
+        // القائمة **جرد صريح لا حدّ أعلى**: وحدة جديدة تحمل خدمة تطبيق تُضاف هنا بقرار
+        // واعٍ — وهذا هو ما يمنع ظهور خدمة تطبيق سابعة دون أن يراها أحد. (نفس شكل
+        // القائمة في القاعدة 5 وللسبب نفسه.)
         Assert.Equal(
-            ["Babel.Compliance", ModuleMap.Core, "Babel.Inventory", ModuleMap.Ledger, "Babel.Purchasing", "Babel.Sales"],
+            ["Babel.Ai", "Babel.Compliance", ModuleMap.Core, "Babel.Inventory", ModuleMap.Ledger, "Babel.Purchasing", "Babel.Sales"],
             modulesWithServices);
     }
 }

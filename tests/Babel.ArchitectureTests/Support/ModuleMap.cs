@@ -49,6 +49,12 @@ internal static class ModuleMap
     /// <summary>محوّل الصندوق الصادر: يعزل Wolverine كي يبقى تشغيل الالتزام ممكناً بدونها.</summary>
     public const string ComplianceWolverine = "Babel.Compliance.Wolverine";
 
+    /// <summary>
+    /// المزوّد الحقيقي للفوترة الإلكترونية: توليد UBL، وتوحيد قياسي، وتوقيع، ورمز QR،
+    /// وتسجيل، وإرسال. يعتمد على العقد وحده ولا يعرف المُنسِّق — ولا يعرف الدفتر بحال.
+    /// </summary>
+    public const string ComplianceZatca = "Babel.Compliance.Zatca";
+
     /// <summary>الوحدات الأفقية: لا تستدعي بعضها مباشرة، بل عبر Contracts أو الأحداث.</summary>
     public static IReadOnlyList<string> Horizontal { get; } =
     [
@@ -77,6 +83,7 @@ internal static class ModuleMap
         ComplianceAbstractions,
         ComplianceFakeProvider,
         ComplianceWolverine,
+        ComplianceZatca,
     ];
 
     /// <summary>كل مشاريع المنتج.</summary>
@@ -107,6 +114,10 @@ internal static class ModuleMap
             [ComplianceAbstractions] = new HashSet<string>(StringComparer.Ordinal),
             [ComplianceFakeProvider] = new HashSet<string>([ComplianceAbstractions], StringComparer.Ordinal),
             [ComplianceWolverine] = new HashSet<string>([Compliance, ComplianceAbstractions], StringComparer.Ordinal),
+
+            // المزوّد يعرف العقد وحده. **لا Ledger ولا Contracts ولا Compliance** —
+            // فالمزوّد يُبلّغ عمّا سجّله الدفتر ولا يكتب محاسبة (ADR-0011 وADR-0012).
+            [ComplianceZatca] = new HashSet<string>([ComplianceAbstractions], StringComparer.Ordinal),
 
             // الجذر التركيبي وحده يعرف الجميع.
             [Api] = new HashSet<string>(AllProjects.Where(static p => p != Api), StringComparer.Ordinal),

@@ -14,6 +14,22 @@ namespace Babel.Api.Tests;
 /// </summary>
 public sealed class MoneyOnTheWireTests
 {
+    /// <summary>
+    /// الفترة المحجوزة لاختبار المقياس — <b>لا يُرحَّل إليها من مكان آخر</b>.
+    /// <para>
+    /// السنة المالية المبذورة تحمل اثنتي عشرة فترة، وكل اختبار يحتاج قيمةً معلومة يأخذ
+    /// فترةً لنفسه. والحجز ليس اصطلاحاً مكتوباً فقط: كل اختبار هنا يفحص عدد صفوف فترته،
+    /// فترحيلٌ غريب إليها يُسقطه <b>بصوت عالٍ</b> بدل أن يميّع القيمة المتوقّعة تحته.
+    /// </para>
+    /// </summary>
+    private const string ScalePeriod = "2026-03";
+
+    /// <summary>الفترة المحجوزة لاختبار المجموعين — بالشرط نفسه.</summary>
+    private const string TotalsPeriod = "2026-10";
+
+    /// <summary>مبلغ مكتوب على السلك بمقياس <b>واحد</b> — مادّة إثبات أن المخرج يُطبَّع إلى أربعة.</summary>
+    private const string ShortScaleAmount = "7.5";
+
     [Fact]
     public void التلف_واقع_فعلاً_قبل_أي_حديث_عن_منعه()
     {
@@ -140,31 +156,61 @@ public sealed class MoneyOnTheWireTests
     {
         ApiProcess api = await ApiFixture.DefaultAsync();
 
+        // ‏**الحالة يبنيها الاختبار، لا جاره.** كان هذا الاختبار يقرأ ميزاناً بذره اختبار
+        // آخر في صنف آخر، فيمرّ مع الجماعة ويسقط وحده على `Assert.NotEmpty` — أخضرُ
+        // بترتيب التشغيل لا ببنائه. (‏docs/evidence/traps.md#fakh-green-by-ordering-not-by-construction)
+        //
+        // والمبلغ مكتوب على السلك **بمقياس أقصر من أربعة** عن قصد: «7.5» يدخل بمقياس
+        // واحد، والخاصية المفحوصة هي أنه يخرج «7.5000» **دائماً**. مبلغٌ مكتوب أصلاً
+        // بأربع خانات كان سيجعل الفحص يمرّ ولو لم يُطبَّع شيء.
+        using HttpResponseMessage posted = await api.Call(Http.Request(
+            HttpMethod.Post,
+            Http.PostEntry(ApiTestDatabase.CompanyA),
+            ApiFixture.TokenA,
+            Payloads.BalancedEntry(Payloads.Key("scale"), amount: ShortScaleAmount, documentDate: ScalePeriod + "-11")));
+
+        (string postedText, _) = await Http.BodyAsync(posted);
+        Console.WriteLine(postedText);
+        Assert.Equal(HttpStatusCode.Created, posted.StatusCode);
+
+        // ‏(أ) فترة هذا الاختبار وحده: صفّان معلومان، فالفحص يجري على قيمة **معروفة**.
+        using HttpResponseMessage mine = await api.Call(Http.Request(
+            HttpMethod.Get,
+            Http.TrialBalance(ApiTestDatabase.CompanyA, ApiTestDatabase.Book, ScalePeriod),
+            ApiFixture.TokenA));
+
+        (string mineText, JsonElement mineTrial) = await Http.BodyAsync(mine);
+        Console.WriteLine(mineText);
+        Assert.Equal(HttpStatusCode.OK, mine.StatusCode);
+
+        JsonElement[] mineRows = [.. mineTrial.GetProperty("rows").EnumerateArray()];
+
+        // صفّان لا غير: الفترة محجوزة لهذا الاختبار، وأي ترحيل آخر إليها يُسقطه بصوت
+        // عالٍ بدل أن يميّع القيمة المتوقّعة تحته.
+        Assert.Equal(2, mineRows.Length);
+        Assert.Equal(4, AssertEveryCellIsTextAtScaleFour(mineRows));
+
+        // «7.5» دخل بمقياس واحد وخرج بمقياس أربعة — والهجاء الأصلي لا أثر له على السلك.
+        Assert.Contains("\"7.5000\"", mineText, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"7.5\"", mineText, StringComparison.Ordinal);
+        Assert.Equal("7.5000", mineTrial.GetProperty("totalDebit").GetString());
+        Assert.Equal("7.5000", mineTrial.GetProperty("totalCredit").GetString());
+
+        // ‏(ب) والدفتر كلّه: **كل** خانة مال فيه — لا خانات هذا الاختبار وحدها.
         using HttpResponseMessage balance = await api.Call(Http.Request(
             HttpMethod.Get,
             Http.TrialBalance(ApiTestDatabase.CompanyA, ApiTestDatabase.Book),
             ApiFixture.TokenA));
 
-        (string text, JsonElement trial) = await Http.BodyAsync(balance);
+        (_, JsonElement trial) = await Http.BodyAsync(balance);
         Assert.Equal(HttpStatusCode.OK, balance.StatusCode);
 
         JsonElement[] rows = [.. trial.GetProperty("rows").EnumerateArray()];
         Assert.NotEmpty(rows);
 
-        foreach (JsonElement row in rows)
-        {
-            foreach (string column in new[] { "debit", "credit" })
-            {
-                JsonElement cell = row.GetProperty(column);
-                Assert.Equal(JsonValueKind.String, cell.ValueKind);
+        int cells = AssertEveryCellIsTextAtScaleFour(rows);
 
-                string value = cell.GetString()!;
-                int dot = value.IndexOf('.', StringComparison.Ordinal);
-                Assert.True(dot >= 0 && value.Length - dot - 1 == 4, $"مقياس غير قانوني على السلك: «{value}»");
-            }
-        }
-
-        Console.WriteLine($"صفوف مفحوصة: {rows.Length}");
+        Console.WriteLine($"صفوف مفحوصة: {rows.Length} · خانات: {cells}");
     }
 
     [Fact]
@@ -172,6 +218,51 @@ public sealed class MoneyOnTheWireTests
     {
         ApiProcess api = await ApiFixture.DefaultAsync();
 
+        // ‏**الحالة يبنيها الاختبار، لا جاره** — للسبب نفسه المشروح فوق
+        // (‏docs/evidence/traps.md#fakh-green-by-ordering-not-by-construction). والمبلغ
+        // المزروع هو القيمة التي يُتلفها double بعينها: مجموعٌ يُحسب أو يُنسَّق في فاصلة
+        // عائمة ثنائية لا يستطيع أن يُخرجها سليمة، فالفحص أدناه ليس فحص شكل بل فحص قيمة.
+        using HttpResponseMessage posted = await api.Call(Http.Request(
+            HttpMethod.Post,
+            Http.PostEntry(ApiTestDatabase.CompanyA),
+            ApiFixture.TokenA,
+            Payloads.BalancedEntry(
+                Payloads.Key("totals"),
+                amount: Payloads.LossyUnderDouble,
+                documentDate: TotalsPeriod + "-14")));
+
+        (string postedText, _) = await Http.BodyAsync(posted);
+        Console.WriteLine(postedText);
+        Assert.Equal(HttpStatusCode.Created, posted.StatusCode);
+
+        // ‏(أ) فترة هذا الاختبار وحده: المجموعان **معلومان بالضبط**، فلا يكفي أن
+        // يتّسقا مع الصفوف — يجب أن يكونا القيمة التي دخلت، خانةً بخانة.
+        using HttpResponseMessage mine = await api.Call(Http.Request(
+            HttpMethod.Get,
+            Http.TrialBalance(ApiTestDatabase.CompanyA, ApiTestDatabase.Book, TotalsPeriod),
+            ApiFixture.TokenA));
+
+        (string mineText, JsonElement mineTrial) = await Http.BodyAsync(mine);
+        Console.WriteLine(mineText);
+        Assert.Equal(HttpStatusCode.OK, mine.StatusCode);
+
+        // صفّان لا غير: الفترة محجوزة لهذا الاختبار، وأي ترحيل آخر إليها يُسقطه بصوت عالٍ.
+        Assert.Equal(2, mineTrial.GetProperty("rows").EnumerateArray().Count());
+
+        // نوع الرمز أولاً ثم القيمة: مجموعٌ خرج رمزاً رقمياً يجب أن يُسمّى بما هو،
+        // لا أن يظهر استثناء قراءة نصّ من رقم في منتصف مقارنة.
+        JsonElement minedDebit = mineTrial.GetProperty("totalDebit");
+        JsonElement minedCredit = mineTrial.GetProperty("totalCredit");
+        Assert.Equal(JsonValueKind.String, minedDebit.ValueKind);
+        Assert.Equal(JsonValueKind.String, minedCredit.ValueKind);
+        Assert.Equal(Payloads.LossyUnderDouble, minedDebit.GetString());
+        Assert.Equal(Payloads.LossyUnderDouble, minedCredit.GetString());
+
+        // ‏1000000000000.4012 هو ما يُنتجه أي مسار يمرّ بـdouble. غيابه من الجسم كلّه
+        // هو الشهادة، لا مساواةٌ على حقل واحد.
+        Assert.DoesNotContain("1000000000000.4012", mineText, StringComparison.Ordinal);
+
+        // ‏(ب) والدفتر كلّه: المجموعان يساويان جمع كل الصفوف بالضبط.
         using HttpResponseMessage balance = await api.Call(Http.Request(
             HttpMethod.Get,
             Http.TrialBalance(ApiTestDatabase.CompanyA, ApiTestDatabase.Book),
@@ -203,5 +294,34 @@ public sealed class MoneyOnTheWireTests
 
         Console.WriteLine($"مدين {totalDebit.GetString()} · دائن {totalCredit.GetString()} · صفوف {rows.Length}");
         Console.WriteLine(text.Length > 400 ? text[..400] + "…" : text);
+    }
+
+    /// <summary>
+    /// يفحص أن كل خانة مال في الصفوف <b>نصّ</b> بمقياس أربعة، ويعيد عدد الخانات المفحوصة.
+    /// <para>
+    /// والعدد يُعاد لا زينةً: فحصٌ يدور على مجموعة فارغة يمرّ دائماً، والعدد هو ما يجعل
+    /// المُنادي قادراً على إثبات أن الدوران وقع فعلاً.
+    /// </para>
+    /// </summary>
+    /// <param name="rows">صفوف الميزان.</param>
+    private static int AssertEveryCellIsTextAtScaleFour(JsonElement[] rows)
+    {
+        int cells = 0;
+
+        foreach (JsonElement row in rows)
+        {
+            foreach (string column in new[] { "debit", "credit" })
+            {
+                JsonElement cell = row.GetProperty(column);
+                Assert.Equal(JsonValueKind.String, cell.ValueKind);
+
+                string value = cell.GetString()!;
+                int dot = value.IndexOf('.', StringComparison.Ordinal);
+                Assert.True(dot >= 0 && value.Length - dot - 1 == 4, $"مقياس غير قانوني على السلك: «{value}»");
+                cells++;
+            }
+        }
+
+        return cells;
     }
 }

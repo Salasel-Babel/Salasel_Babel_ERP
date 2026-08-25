@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     441b7394f6f083778c30895d44cae3b74a36bda25aadc43e7ce4a9d28fb44ecd
+     061d8c7eef2ad0d8d3d64989d475d7563625751a75a540d8076fc23228720e7c
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -406,8 +406,10 @@ export interface TrialBalanceRow {
   accountCode: string;
   credit: Money;
   debit: Money;
-  /** الاسم العربي. / The Arabic name. */
+  /** الاسم العربي — وهو السجلّ لا ترجمةً أولى، وغير فارغ أبداً (ADR-0021). / The Arabic name; it is the record rather than a first translation, and is never blank (ADR-0021). */
   nameAr: string;
-  /** الاسم الإنجليزي. / The English name. */
+  /** الاسم الإنجليزي. **مهجور**: مشتقّ من الترجمة ذات الوسم en في nameTranslations، ولا عمود له في قاعدة البيانات، ويرتدّ إلى الاسم العربي حين لا ترجمة إنجليزية. الإنجليزية واحدة من N لا نصف الاثنين، فاقرأ nameTranslations. / The English name. **Deprecated**: derived from the 'en' entry of nameTranslations, backed by no database column, and falling back to the Arabic name when there is no English translation. English is one of N rather than half of two, so read nameTranslations instead. */
   nameEn: string;
+  /** ترجمات اسم الحساب: الاسم وسم لغة BCP-47 والقيمة النصّ المترجَم، مرتَّبةً بالوسم ترتيباً حرفياً ثابتاً. وقد تكون فارغة — والعرض يرتدّ حينها إلى الاسم العربي، وهو ارتداد **يُعلَن** لا يقع صامتاً. / The account name's translations: the name is a BCP-47 language tag and the value is the translated text, ordered by tag with a stable ordinal sort. It may be empty, in which case display falls back to the Arabic name — a fallback that is declared, never silent. */
+  nameTranslations: NameValue[];
 }

@@ -25,19 +25,25 @@ const PORT = portArg >= 0 ? Number(process.argv[portArg + 1]) : 5099;
 /** شركة تُرجع مشكلة دائماً — لاختبار سطح الخطأ. */
 export const PROBLEM_COMPANY = "00000000-0000-4000-8000-0000000000ff";
 
+/* الاسم سجلٌّ عربي وترجماتٌ بوسم اللغة (ADR-0021) — لا زوجاً ثابتاً ar/en.
+   والوهمي يحمل أربع لغات لا اثنتين عمداً: شاشةٌ تُختبَر على زوج واحد تمرّ وهي
+   عاجزة عن الثالثة، وذلك بالضبط العطل الذي جاء القرار ليزيله.
+
+   والصفّ الأخير **بلا ترجمات إطلاقاً**: الارتداد إلى السجلّ حالةٌ مشروعة يجب
+   أن تُرى في الوهمي، لا حالةٌ لا يبلغها اختبار. */
 const NAMES = [
-  ["الصندوق الرئيسي", "Main cash box"],
-  ["البنك الأهلي — الحساب الجاري", "National Bank — current account"],
-  ["العملاء / شركة النور", "Receivables / Al-Noor Co."],
-  ["مخزون البضاعة — المستودع الرئيسي", "Inventory — main warehouse"],
-  ["الأصول الثابتة — التكلفة", "Fixed assets — cost"],
-  ["مجمع إهلاك الأصول الثابتة", "Accumulated depreciation"],
-  ["الدائنون / مؤسسة الإمداد", "Payables / Imdad Est."],
-  ["رواتب مستحقة الدفع", "Accrued payroll"],
-  ["رأس المال", "Share capital"],
-  ["إيرادات المبيعات", "Sales revenue"],
-  ["مصروف خدمات تقنية", "IT services expense"],
-  ["ضريبة القيمة المضافة — مخرجات", "VAT — output"],
+  ["الصندوق الرئيسي", { en: "Main cash box", ur: "مرکزی نقدی صندوق", hi: "मुख्य नकद पेटी" }],
+  ["البنك الأهلي — الحساب الجاري", { en: "National Bank — current account", ur: "نیشنل بینک — کرنٹ اکاؤنٹ" }],
+  ["العملاء / شركة النور", { en: "Receivables / Al-Noor Co.", hi: "प्राप्य / अल-नूर कं." }],
+  ["مخزون البضاعة — المستودع الرئيسي", { en: "Inventory — main warehouse", ur: "انوینٹری — مرکزی گودام", hi: "इन्वेंटरी — मुख्य गोदाम" }],
+  ["الأصول الثابتة — التكلفة", { en: "Fixed assets — cost" }],
+  ["مجمع إهلاك الأصول الثابتة", { en: "Accumulated depreciation", hi: "संचित मूल्यह्रास" }],
+  ["الدائنون / مؤسسة الإمداد", { en: "Payables / Imdad Est.", ur: "واجب الادا / امداد ادارہ" }],
+  ["رواتب مستحقة الدفع", { en: "Accrued payroll" }],
+  ["رأس المال", { en: "Share capital", ur: "سرمایہ", hi: "शेयर पूंजी" }],
+  ["إيرادات المبيعات", { en: "Sales revenue", ur: "فروخت کی آمدنی" }],
+  ["مصروف خدمات تقنية", { en: "IT services expense", hi: "आईटी सेवा व्यय" }],
+  ["ضريبة القيمة المضافة — مخرجات", {}],
 ];
 
 /* جمع نصّي بلا فاصلة عائمة: المجموعان هنا يُبنيان كما يبنيهما الخادم — بحساب
@@ -80,10 +86,16 @@ export function buildTrialBalance(rowCount, book, period) {
     const credit = debitOn ? "0.0000" : magnitude;
     totalDebit = addDecimal(totalDebit, debit);
     totalCredit = addDecimal(totalCredit, credit);
+    const suffix = " " + (i + 1);
     rows.push({
       accountCode: code,
-      nameAr: name[0] + " " + (i + 1),
-      nameEn: name[1] + " " + (i + 1),
+      nameAr: name[0] + suffix,
+      /* الحقل المهجور: مشتقّ من الترجمة en ومرتدٌّ إلى السجلّ حين لا توجد —
+         كما يفعل الخادم بالضبط، فالوهمي لا يكذب في السلوك الذي يُختبَر. */
+      nameEn: (name[1].en ?? name[0]) + suffix,
+      nameTranslations: Object.keys(name[1])
+        .sort()
+        .map((tag) => ({ name: tag, value: name[1][tag] + suffix })),
       debit,
       credit,
     });

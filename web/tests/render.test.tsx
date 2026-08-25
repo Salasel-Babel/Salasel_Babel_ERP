@@ -1,14 +1,19 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    الرسم: القيمة المنسّقة تصل إلى الشاشة بالمصرف الوحيد، ولا تصير نصّاً في JSX
    ═══════════════════════════════════════════════════════════════════════════ */
+import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { TrialBalanceTable } from "../src/screens/trial-balance/TrialBalanceTable";
+import { decodeSchema } from "../src/api/transport";
+import { SCHEMAS } from "../src/api/generated/runtime-schema";
+import type { TrialBalance } from "../src/api/generated/types";
 import { Amount, LocaleProvider, Num, useT } from "../src/i18n/react";
 import { createI18n } from "../src/i18n/setup";
 import { Money } from "../src/api/money";
 import { ProblemPanel } from "../src/app/shell/ProblemPanel";
 import { ProblemError } from "../src/api/transport";
-import { problem } from "../scripts/mock-api.mjs";
+import { buildTrialBalance, problem } from "../scripts/mock-api.mjs";
 
 function Wrap(props: { children: React.ReactNode; locale?: string }) {
   return (
@@ -134,5 +139,110 @@ describe("عدد الترجمات المتاحة", () => {
     const text = screen.getByTestId("probe").textContent ?? "";
     expect(text.length).toBeGreaterThan(0);
     expect(text).not.toBe("screen.trialBalance.title");
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   الاسم في ميزان المراجعة: سجلٌّ عربي، وترجمة **لغة الواجهة** لا الإنجليزية
+   ───────────────────────────────────────────────────────────────────────────
+   ADR-0021 بند 2: «قابلية الترجمة إلى أيّ عدد من اللغات». وكان العقد يحمل
+   nameAr و nameEn فحسب، فالمحاسب الأردي يرى ترجمةً إنجليزية لا ترجمةً بلغته.
+   ═══════════════════════════════════════════════════════════════════════════ */
+describe("<TrialBalanceTable> — الاسم والترجمة", () => {
+  const decode = (rowCount: number) =>
+    decodeSchema(SCHEMAS, "TrialBalance", buildTrialBalance(rowCount, "MAIN", "2026-05")) as TrialBalance;
+
+  function Table(props: { locale: string; rowCount?: number }) {
+    const ref = createRef<HTMLInputElement>();
+    return (
+      <Wrap locale={props.locale}>
+        <TrialBalanceTable
+          data={decode(props.rowCount ?? 12)}
+          query=""
+          view="all"
+          onView={() => {}}
+          searchRef={ref}
+        />
+      </Wrap>
+    );
+  }
+
+  it("السجلّ العربي يُعرَض في كل لغة — فهو السجلّ لا اللغة المفضَّلة", () => {
+    for (const locale of ["ar", "en", "ur", "hi"]) {
+      const { container, unmount } = render(<Table locale={locale} />);
+      const record = container.querySelector('td span[lang="ar"][dir="rtl"]');
+      expect(record?.textContent, "لغة الواجهة " + locale).toBe("الصندوق الرئيسي 1");
+      unmount();
+    }
+  });
+
+  it("الترجمة المعروضة هي ترجمة لغة الواجهة نفسها، لا الإنجليزية دائماً", () => {
+    const expected: Record<string, string> = {
+      en: "Main cash box 1",
+      ur: "مرکزی نقدی صندوق 1",
+      hi: "मुख्य नकद पेटी 1",
+    };
+
+    for (const [locale, text] of Object.entries(expected)) {
+      const { container, unmount } = render(<Table locale={locale} />);
+      const alt = container.querySelector("td span.alt");
+      expect(alt?.getAttribute("lang"), "لغة الواجهة " + locale).toBe(locale);
+      expect(alt?.textContent).toBe(text);
+      unmount();
+    }
+  });
+
+  it("اتجاه الترجمة من فهرس اللغات: الأردية rtl والهندية ltr بلا سطر لكل لغة", () => {
+    const ur = render(<Table locale="ur" />);
+    expect(ur.container.querySelector("td span.alt")?.getAttribute("dir")).toBe("rtl");
+    ur.unmount();
+
+    const hi = render(<Table locale="hi" />);
+    expect(hi.container.querySelector("td span.alt")?.getAttribute("dir")).toBe("ltr");
+    hi.unmount();
+  });
+
+  it("صفٌّ بلا ترجمة بلغة الواجهة يُظهر سجلّه وحده، لا سجلّه مكرَّراً تحت نفسه", () => {
+    /* الصفّ ٥ («الأصول الثابتة — التكلفة») له en وحدها، فتحت ur لا ترجمة له.
+       والارتداد الصامت المكرَّر هو العطل: عنوانٌ يبدو ترجمةً وهو السجلّ نفسه. */
+    const { container } = render(<Table locale="ur" />);
+    const cells = [...container.querySelectorAll("tbody tr")];
+    const fixedAssets = cells.find((row) =>
+      row.querySelector('span[lang="ar"]')?.textContent?.startsWith("الأصول الثابتة")
+    );
+
+    expect(fixedAssets, "صفّ الأصول الثابتة موجود").toBeDefined();
+    expect(fixedAssets?.querySelector("span.alt")).toBeNull();
+  });
+
+  it("الصفّ الذي لا ترجمة له إطلاقاً يبقى مقروءاً — الارتداد إلى السجلّ لا إلى الفراغ", () => {
+    const { container } = render(<Table locale="hi" />);
+    const rows = [...container.querySelectorAll("tbody tr")];
+    const vat = rows.find((row) =>
+      row.querySelector('span[lang="ar"]')?.textContent?.startsWith("ضريبة القيمة المضافة")
+    );
+
+    expect(vat, "صفّ الضريبة موجود").toBeDefined();
+    expect(vat?.querySelector('span[lang="ar"]')?.textContent).toContain("ضريبة القيمة المضافة");
+    expect(vat?.querySelector("span.alt")).toBeNull();
+  });
+
+  it("البحث يجد الاسم بأي لغة من لغاته، لا بالعربية والإنجليزية وحدهما", () => {
+    const ref = createRef<HTMLInputElement>();
+    const { container } = render(
+      <Wrap locale="ar">
+        <TrialBalanceTable
+          data={decode(12)}
+          query="مرکزی نقدی"
+          view="all"
+          onView={() => {}}
+          searchRef={ref}
+        />
+      </Wrap>
+    );
+
+    const rows = container.querySelectorAll("tbody tr");
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.querySelector('span[lang="ar"]')?.textContent).toBe("الصندوق الرئيسي 1");
   });
 });

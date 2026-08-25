@@ -200,6 +200,33 @@ jobs:
             exit 1
           fi
 
+      # سقف دَين الاسم الإنجليزي (ADR-0021 §6.3 بند 2) لا يرتفع. والحارس داخل المستودع
+      # يمنع **الانحدار الصامت**؛ وهذه البوّابة تمنع **رفع السقف نفسه**، وهي خارج الملفّ
+      # الذي يملكه المؤلف — فالمقارنة بـdevelop لا بقيمةٍ مكتوبة هنا.
+      # وخفضُ السقف مسموح دائماً وهو المطلوب عند كل مرحلة هجرة.
+      - name: سقف دَين الاسم الإنجليزي لا يرتفع
+        if: github.event_name == 'pull_request' || github.ref != 'refs/heads/develop'
+        run: |
+          set -euo pipefail
+          FILE=tests/Babel.ArchitectureTests/Rule14_TranslationsAreRowsNotColumns.cs
+          read_ceiling() {
+            sed -nE 's/.*MaximumEnglishNameSites = ([0-9]+);.*/\1/p' "$1" | head -1
+          }
+          git fetch --no-tags --depth=1 origin develop
+          BASE=$(git show origin/develop:$FILE 2>/dev/null | read_ceiling /dev/stdin || true)
+          HEAD_VALUE=$(read_ceiling "$FILE")
+          if [ -z "${BASE:-}" ]; then
+            echo "لا سقف على develop بعد — أول إنزال لهذا الحارس. السقف الحالي: ${HEAD_VALUE}"
+            exit 0
+          fi
+          echo "سقف develop = ${BASE} · سقف هذا الفرع = ${HEAD_VALUE}"
+          if [ "${HEAD_VALUE}" -gt "${BASE}" ]; then
+            echo "::error::سقف دَين الاسم الإنجليزي ارتفع من ${BASE} إلى ${HEAD_VALUE}."
+            echo "::error::ADR-0021 §6.3 بند 2: لا يُضاف زوج ar/en جديد في حقل عرض. صنّف نصّك بـ§6.2،"
+            echo "::error::ثم انقله إلى جدول ترجمات، أو أضِف موضعه إلى قائمة الإقصاء بسببه المكتوب."
+            exit 1
+          fi
+
       - name: التحقق من عدم وجود أسرار في التغييرات
         run: |
           set -euo pipefail

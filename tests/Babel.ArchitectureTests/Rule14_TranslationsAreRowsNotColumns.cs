@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using System.Globalization;
+using System.Text;
 using System.Text.RegularExpressions;
 using Babel.ArchitectureTests.Support;
 using Xunit;
@@ -48,7 +50,7 @@ public sealed class Rule14_TranslationsAreRowsNotColumns
     /// <b>وعند الشكّ: نصّ عرض</b> — فالتضييق يُثبَت ولا يُدَّعى (ADR-0021 §6.2).
     /// </para>
     /// </summary>
-    public const int MaximumEnglishNameSites = 881;
+    public const int MaximumEnglishNameSites = 868;
 
     /// <summary>
     /// ما يُقصى من العدّ، ولكلٍّ سببٌ يُقرأ لا سببٌ يُفترض:
@@ -60,6 +62,11 @@ public sealed class Rule14_TranslationsAreRowsNotColumns
     ///         <c>journal_line.description</c>، وهو <b>حقل مُجزَّأ</b> في الشكل القانوني
     ///         v2. نقلُه يغيّر البايتات المُوقَّعة — فهو v3 لا هجرةُ عرض. مثبَّت في
     ///         <c>DisplayTextInsideTheHashedBytesTests</c>.</item>
+    ///   <item><b>هذا الملفّ نفسه</b> — الحارس يكتب الشكل الممنوع بالضرورة: في تعبيره
+    ///         النمطي، وفي شواهده الموجبة التي تُطعمه مخالفاتٍ حقيقية. وعدُّه يجعل
+    ///         <b>تقويةَ الحارس ترفع الدين الذي يقيسه</b> — وهو نفس العطب الذي حلّته
+    ///         القاعدة 12 بتجريد التعليقات، إلا أنّ ما هنا شيفرةٌ لا تعليق. مقيس:
+    ///         <b>16 موضعاً</b> يساهم بها هذا الملفّ.</item>
     /// </list>
     /// </summary>
     private static readonly string[] Exempt =
@@ -67,6 +74,7 @@ public sealed class Rule14_TranslationsAreRowsNotColumns
         Path.Combine("src", "Babel.Ledger", "Persistence", "Migrations"),
         Path.Combine("src", "Babel.Ledger", "PostingMatrix"),
         Path.Combine("src", "Babel.Ledger", "Posting", "PostingPlanner.cs"),
+        Path.Combine("tests", "Babel.ArchitectureTests", "Rule14_TranslationsAreRowsNotColumns.cs"),
     ];
 
     private static List<(string Path, string Code)> Sources { get; } = Load();
@@ -170,6 +178,75 @@ public sealed class Rule14_TranslationsAreRowsNotColumns
         Assert.True(Sources.Count > 200, "المجموعة المفحوصة أصغر من أن تكون المستودع: " + Sources.Count);
     }
 
+    /// <summary>
+    /// <b>ناتج البناء غير المتعقَّب لا يدخل العدّ — مُثبَتاً بزرع ملفّ، لا بالثقة.</b>
+    /// <para>
+    /// هذا هو الحارس على الحارس. العطل الذي يمنعه <b>وقع فعلاً</b>: كان المسح يقرأ القرص،
+    /// فيبتلع <c>web/dist/</c>. وشجرتان محتواهما متطابق بايتاً بايت أعطتا <b>881 و882</b>،
+    /// لأن حزمة المصغِّر في إحداهما وضعت الرمز بعد <c>//</c> فجُرِّد، وفي الأخرى لم تفعل.
+    /// </para>
+    /// <para>
+    /// والزرع هنا في مجلّد <b>مُهمَل في <c>.gitignore</c></b>، وهو ما يجعل الشاهد صادقاً:
+    /// لو عاد المسح إلى القرص لالتقطه فوراً.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void GeneratedBuildOutputOnDiskNeverEntersTheCount()
+    {
+        int before = Load().Sum(file => EnglishHalf.Count(file.Code));
+
+        string planted = Path.Combine(RepositoryLayout.Root, "web", "dist", "__rule14_witness.js");
+        Directory.CreateDirectory(Path.GetDirectoryName(planted)!);
+
+        try
+        {
+            // ثلاثة مواضع في سطور مستقلّة، فلا يبتلعها تجريد التعليقات بحال.
+            File.WriteAllText(planted, "export const nameEn = 1;\nconst name_en = 2;\nlet NameEn = 3;\n");
+
+            Assert.True(
+                File.Exists(planted),
+                "لم يُزرع ملف الشاهد أصلاً، فالاختبار لا يفحص شيئاً.");
+
+            int after = Load().Sum(file => EnglishHalf.Count(file.Code));
+
+            Assert.True(
+                after == before,
+                FormattableString.Invariant(
+                    $"ناتج بناء غير متعقَّب غيّر عدّ الحارس: {before} ⇒ {after}. ")
+                + "المجموعة المفحوصة يجب أن تكون ما يتعقّبه git وحده، وإلا صار حكم الحارس "
+                + "تابعاً للحظة آخر بناء ولتخطيط ناتج المصغِّر.");
+
+            Assert.DoesNotContain(
+                Sources,
+                file => file.Path.Contains("__rule14_witness", StringComparison.Ordinal));
+        }
+        finally
+        {
+            File.Delete(planted);
+        }
+    }
+
+    /// <summary>
+    /// وأن المجموعة المفحوصة ليست فارغة ولا ضامرة: مسحٌ لا يقرأ شيئاً يمرّ دائماً.
+    /// </summary>
+    [Fact]
+    public void TheTrackedScanReadsARealRepository()
+    {
+        Assert.True(Sources.Count > 400, "الملفّات المتعقَّبة الممسوحة: " + Sources.Count);
+
+        Assert.Contains(
+            Sources,
+            static file => file.Path.StartsWith("data/posting-matrix/events/", StringComparison.Ordinal));
+
+        // ولا ملفّ من مجلّدات النواتج يعبر إليها بحال.
+        foreach (string generated in new[] { "web/dist/", "web/node_modules/", "/bin/", "/obj/" })
+        {
+            Assert.DoesNotContain(
+                Sources,
+                file => file.Path.Contains(generated, StringComparison.Ordinal));
+        }
+    }
+
     // ═══════════════════════════════════════════════════════════════════════
     // ٢ · سقفٌ لا يرتفع — البند §6.3-2 مفروضاً
     // ═══════════════════════════════════════════════════════════════════════
@@ -202,46 +279,106 @@ public sealed class Rule14_TranslationsAreRowsNotColumns
 
     // ═══════════════════════════════════════════════════════════════════════
 
+    /// <summary>
+    /// <b>المجموعة المفحوصة هي ما يتعقّبه git، لا ما يقع على القرص.</b>
+    /// <para>
+    /// <b>ولماذا هذا التمييز حاسم:</b> المسح على القرص كان يبتلع <c>web/dist/</c> — ناتج
+    /// بناء مُهمَل في <c>.gitignore</c> — فيصير حكم الحارس تابعاً <b>لتخطيط ناتج المصغِّر
+    /// وللحظة آخر بناء</b>. وقد وقع ذلك فعلاً ومُقيس: البنية نفسها أنتجت حزمة يمرّ فيها
+    /// الرمز فيُقرأ موضعاً، وحزمةً أخرى يقع فيها بعد <c>//</c> فيُجرَّد ولا يُقرأ. فالعدد
+    /// اختلف بين شجرتين محتواهما <b>متطابق بايتاً بايت</b> (881 مقابل 882)، وأحمرَّ الحارس
+    /// على شجرة سليمة.
+    /// </para>
+    /// <para>
+    /// وحارسٌ يحمرّ لسبب لا علاقة له بما يحرسه يُدرَّب الناس على تجاهله — وذلك أسوأ من
+    /// غيابه ([`traps.md` فخ-65](../../docs/evidence/traps.md)). وgit هو المرجع الوحيد
+    /// لسؤال «ما محتوى هذا المستودع؟»، فلا حاجة بعده إلى إقصاء <c>bin</c> و<c>obj</c>
+    /// و<c>node_modules</c> بقائمة تُصان بيد: غير المتعقَّب غير ممسوح بالبناء.
+    /// </para>
+    /// </summary>
     private static List<(string Path, string Code)> Load()
     {
         List<(string Path, string Code)> files = [];
 
-        foreach (string root in Roots)
+        foreach (string relative in TrackedPaths())
         {
-            string absolute = Path.Combine(RepositoryLayout.Root, root);
-
-            if (!Directory.Exists(absolute))
+            if (!Extensions.Contains(Path.GetExtension(relative), StringComparer.OrdinalIgnoreCase))
             {
                 continue;
             }
 
-            foreach (string path in Directory.EnumerateFiles(absolute, "*", SearchOption.AllDirectories))
+            if (Exempt.Any(prefix => relative.StartsWith(prefix, StringComparison.Ordinal)))
             {
-                string relative = Path.GetRelativePath(RepositoryLayout.Root, path);
-                string slashes = relative.Replace('\\', '/');
+                continue;
+            }
 
-                if (slashes.Contains("/bin/", StringComparison.Ordinal)
-                    || slashes.Contains("/obj/", StringComparison.Ordinal)
-                    || slashes.Contains("/node_modules/", StringComparison.Ordinal))
-                {
-                    continue;
-                }
+            // ‏45 ملفّ ناتج بناء **مُودَعة في المستودع** تحت مسار مقطعه `bin\Debug` —
+            // بشرطة **خلفية** داخل اسم المجلّد لا فاصلَ مسار. ولذلك لا يستبعدها
+            // `.gitignore` ولا أي نمط `/bin/` في هذا المستودع، ومنها منهجُ القياس في
+            // ADR-0021 §4 نفسه. (مساهمتها في المقياس **صفر** — مقيس — لكنها تلوّث
+            // أي مسح.) والتطبيع قبل الفحص هو ما يجعل النمط يراها.
+            string normalised = relative.Replace('\\', '/');
 
-                if (!Extensions.Contains(Path.GetExtension(path), StringComparer.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
+            if (normalised.Contains("/bin/", StringComparison.Ordinal)
+                || normalised.Contains("/obj/", StringComparison.Ordinal)
+                || normalised.Contains("/node_modules/", StringComparison.Ordinal))
+            {
+                continue;
+            }
 
-                if (Exempt.Any(prefix => relative.StartsWith(prefix, StringComparison.Ordinal)))
-                {
-                    continue;
-                }
+            string absolute = Path.Combine(RepositoryLayout.Root, relative);
 
-                files.Add((slashes, StripComments(File.ReadAllText(path))));
+            if (File.Exists(absolute))
+            {
+                files.Add((normalised, StripComments(File.ReadAllText(absolute))));
             }
         }
 
         return files;
+    }
+
+    /// <summary>
+    /// مسارات الملفّات المتعقَّبة تحت <see cref="Roots"/>، بفواصل صفرية حتى لا يكسر اسمٌ
+    /// فيه سطرٌ جديد القراءة.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">إن تعذّر سؤال git — والصمت هنا أسوأ من الرمي.</exception>
+    private static string[] TrackedPaths()
+    {
+        ProcessStartInfo start = new("git")
+        {
+            WorkingDirectory = RepositoryLayout.Root,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            StandardOutputEncoding = Encoding.UTF8,
+            UseShellExecute = false,
+        };
+
+        start.ArgumentList.Add("-C");
+        start.ArgumentList.Add(RepositoryLayout.Root);
+        start.ArgumentList.Add("ls-files");
+        start.ArgumentList.Add("-z");
+        start.ArgumentList.Add("--");
+
+        foreach (string root in Roots)
+        {
+            start.ArgumentList.Add(root);
+        }
+
+        using Process? git = Process.Start(start)
+            ?? throw new InvalidOperationException("تعذّر تشغيل git. / Could not start git.");
+
+        string output = git.StandardOutput.ReadToEnd();
+        string error = git.StandardError.ReadToEnd();
+        git.WaitForExit();
+
+        if (git.ExitCode != 0)
+        {
+            throw new InvalidOperationException(
+                "‏git ls-files أخفق، فلا سبيل إلى معرفة محتوى المستودع — والحارس يرمي ولا "
+                + "يخمّن على ما يقع على القرص. / git ls-files failed: " + error);
+        }
+
+        return output.Split('\0', StringSplitOptions.RemoveEmptyEntries);
     }
 
     /// <summary>

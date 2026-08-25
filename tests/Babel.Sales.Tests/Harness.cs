@@ -1,4 +1,6 @@
+using System.Collections.Immutable;
 using Babel.Contracts.Posting;
+using Babel.Core.CapabilityProfile;
 using Babel.Ledger;
 using Babel.Ledger.Posting;
 using Babel.Sales.Application;
@@ -30,14 +32,21 @@ internal sealed class Harness : IDisposable
         LedgerRuntime = ledger;
         AlwaysEntitled enforcer = new();
         Posting = new PostingService(enforcer, ledger);
+        Profiles = new InMemoryCapabilityProfileStore();
         Customers = new CustomerService(enforcer, runtime);
-        Invoices = new SalesInvoiceService(enforcer, runtime, Posting);
+        Invoices = new SalesInvoiceService(enforcer, runtime, Posting, Profiles);
         CreditNotes = new CreditNoteService(enforcer, runtime, Posting);
-        Receipts = new CustomerReceiptService(enforcer, runtime, Posting);
+        Receipts = new CustomerReceiptService(enforcer, runtime, Posting, Profiles);
         Receivables = new ReceivablesService(
             enforcer, runtime, new LedgerControlPointReader(SalesTestEnvironment.Ledger.AppConnectionString));
         Gateway = new SubledgerPostingGateway(runtime.Database, Posting);
     }
+
+    /// <summary>
+    /// مخزن ملفّات القدرات — <b>لهذه التجهيزة وحدها</b>، فكل بند يملك ملفّاته ولا يقرأ
+    /// ما كتبه غيره.
+    /// </summary>
+    public InMemoryCapabilityProfileStore Profiles { get; }
 
     public SalesRuntime Runtime { get; }
 
@@ -64,7 +73,17 @@ internal sealed class Harness : IDisposable
 
     public static UserId Actor { get; } = new(new Guid("00000000-0000-4000-8000-0000000000a1"));
 
-    public static async Task<Harness> CreateAsync(CancellationToken cancellationToken = default)
+    /// <summary>
+    /// تجهيزة <b>بلا ملفّ قدرات محفوظ لأي مستأجر</b> — لإثبات أن غياب الملفّ رفضٌ لا فتح.
+    /// </summary>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    public static Task<Harness> CreateWithoutProfilesAsync(CancellationToken cancellationToken = default)
+        => BuildAsync(seedProfiles: false, cancellationToken);
+
+    public static Task<Harness> CreateAsync(CancellationToken cancellationToken = default)
+        => BuildAsync(seedProfiles: true, cancellationToken);
+
+    private static async Task<Harness> BuildAsync(bool seedProfiles, CancellationToken cancellationToken)
     {
         await SalesTestEnvironment.EnsureAsync(cancellationToken).ConfigureAwait(false);
 
@@ -73,7 +92,63 @@ internal sealed class Harness : IDisposable
             _ledger ??= new LedgerRuntime(SalesTestEnvironment.Ledger);
         }
 
-        return new Harness(new SalesRuntime(SalesTestEnvironment.Sales), _ledger);
+        Harness harness = new(new SalesRuntime(SalesTestEnvironment.Sales), _ledger);
+
+        // المستأجرون الثلاثة القدماء بكل القدرات مُشغَّلة: هذه التجهيزة تُعيد إنتاج
+        // ما كان قائماً قبل ربط البوابة، فلا يتحوّل ربطُ حارسٍ إلى تغييرٍ في معنى
+        // الاختبارات القائمة. والبند الذي يُثبت الحارس يكتب ملفّيه بنفسه.
+        foreach (TenantId tenant in seedProfiles
+                     ? new[]
+                     {
+                         SalesTestEnvironment.Tenant,
+                         SalesTestEnvironment.InjectedTenant,
+                         SalesTestEnvironment.GatewayTenant,
+                     }
+                     : [])
+        {
+            await harness.SaveProfileAsync(tenant, advance: true, costOfSales: true, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        return harness;
+    }
+
+    /// <summary>
+    /// يكتب ملفّ قدرات المستأجر لنوع <c>sales.invoice</c> — قدرتان تُشغَّلان أو تُطفآن.
+    /// <para>
+    /// ويمرّ بـ<see cref="ValidatedCapabilityProfile.Create"/> نفسها التي يمرّ بها
+    /// الإنتاج: ملفٌّ لم يُطابَق بالمصفوفة لا يدخل المخزن أصلاً، فلا يُثبت الاختبار
+    /// شيئاً على ملفّ لا يمكن أن يوجد.
+    /// </para>
+    /// </summary>
+    public async Task SaveProfileAsync(
+        TenantId tenant,
+        bool advance,
+        bool costOfSales,
+        CancellationToken cancellationToken = default)
+    {
+        CapabilityProfileDraft draft = new(
+            new Dictionary<string, DocumentProfileDraft>(StringComparer.Ordinal)
+            {
+                ["sales.invoice"] = new DocumentProfileDraft(
+                    new Dictionary<string, bool>(StringComparer.Ordinal)
+                    {
+                        ["advance"] = advance,
+                        ["cost_of_sales"] = costOfSales,
+                    },
+                    ImmutableSortedDictionary<string, string>.Empty),
+            });
+
+        Result<ValidatedCapabilityProfile> profile =
+            ValidatedCapabilityProfile.Create(draft, EmbeddedPostingEventDirectory.Default);
+
+        if (profile.IsFailure)
+        {
+            throw new InvalidOperationException(
+                "تعذّر بناء ملفّ قدرات صالح: " + string.Join(" | ", profile.Errors.Select(static e => e.ToString())));
+        }
+
+        await Profiles.SaveAsync(tenant, profile.Value, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<Guid> CustomerAsync(string code, decimal creditLimit = 0m, int termsDays = 30)

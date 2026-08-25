@@ -41,6 +41,17 @@ internal sealed class SupplierRow
 
     public string NameEn { get; set; } = string.Empty;
 
+    /// <summary>
+    /// رقم التسجيل الضريبي للمورد — <b>معرّف مطابقة لا حقل عرض</b>.
+    /// <para>
+    /// الفراغ يعني «لم يُسجَّل»، <b>ولا قيمة معدومة في هذا العمود إطلاقاً</b>: العمود
+    /// <c>not null default ''</c>. والسبب ليس ذوقاً — الفهرس الجزئي مشروط بـ
+    /// <c>&lt;&gt; ''</c>، وقيمةٌ معدومة لا تساوي الفراغ ولا تُقارَن به، فاصطلاحان
+    /// للخواء يعنيان صفوفاً تظنّ أنها في الفهرس وليست فيه.
+    /// </para>
+    /// </summary>
+    public string VatNumber { get; set; } = string.Empty;
+
     /// <summary>سقف الالتزام مع المورد. <c>decimal</c> لا <c>double</c> (Rule04).</summary>
     public decimal CreditLimit { get; set; }
 

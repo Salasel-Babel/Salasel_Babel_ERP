@@ -110,6 +110,20 @@ internal static class SalesTestEnvironment
     /// </summary>
     public static TenantId GatewayTenant { get; } = new(new Guid("5a1e5a1e-0000-4000-8000-000000000003"));
 
+    /// <summary>
+    /// مستأجر رابع <b>يُشغّل قدرة الدفعة المقدمة</b> في ملفّ قدراته.
+    /// <para>
+    /// وهو نصف إثبات القبول: هو وأخوه أدناه لهما دفتر أستاذ مبذور بالكامل وشيفرة
+    /// واحدة ومصفوفة واحدة، ولا يفترقان إلا في <b>صفّ ملفّ القدرات</b>. ولو كان
+    /// الرفض عند المُطفأ ناتجاً عن نقص في الحساب أو في المصفوفة لسقط عند المُشغَّل
+    /// أيضاً — فوجود الاثنين هو ما يجعل الإثبات إثباتاً.
+    /// </para>
+    /// </summary>
+    public static TenantId AdvanceEnabledTenant { get; } = new(new Guid("5a1e5a1e-0000-4000-8000-000000000004"));
+
+    /// <summary>مستأجر خامس <b>يُطفئ قدرة الدفعة المقدمة</b>، وكل شيء آخر فيه مطابق لأخيه.</summary>
+    public static TenantId AdvanceDisabledTenant { get; } = new(new Guid("5a1e5a1e-0000-4000-8000-000000000005"));
+
     /// <summary>عدد محاولات الحذف قبل اللجوء إلى الإنهاء القسري.</summary>
     private const int DropAttempts = 40;
 
@@ -410,7 +424,7 @@ internal static class SalesTestEnvironment
         List<Dictionary<string, string>> accounts =
             [.. Csv(Path.Combine(RepositoryRoot, "data", "chart-of-accounts", "accounts.csv"))];
 
-        foreach (TenantId company in new[] { Tenant, InjectedTenant, GatewayTenant })
+        foreach (TenantId company in new[] { Tenant, InjectedTenant, GatewayTenant, AdvanceEnabledTenant, AdvanceDisabledTenant })
         {
             foreach (Dictionary<string, string> row in accounts
                          .OrderBy(static a => a["code"].Length).ThenBy(static a => a["code"], StringComparer.Ordinal))

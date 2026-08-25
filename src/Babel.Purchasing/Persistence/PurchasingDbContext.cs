@@ -46,7 +46,33 @@ internal sealed class PurchasingDbContext(DbContextOptions<PurchasingDbContext> 
             entity.Property(row => row.NameAr).HasMaxLength(200).IsRequired();
             entity.Property(row => row.NameEn).HasMaxLength(200).IsRequired();
             entity.Property(row => row.CreditLimit).HasColumnType(Money);
+            entity.Property(row => row.VatNumber).HasMaxLength(15).IsRequired().HasDefaultValue(string.Empty);
             entity.HasIndex(row => new { row.TenantId, row.Code }).IsUnique().HasDatabaseName("uq_purchasing_supplier_code");
+
+            // ‏**فهرس بحث لا قيد تفرّد.** التفرّد المفترض — «المستأجر لا يسجّل مورداً
+            // مرّتين بالرقم نفسه» — غير صحيح في السعودية: المجموعة الضريبية الواحدة
+            // (‏tax group) تحمل رقم تسجيل واحداً لعدّة منشآت، فشراءٌ من منشأتين في
+            // المجموعة نفسها يُنتج مورّدين مشروعين برقم واحد. وفهرسٌ فريد هنا يمنع
+            // **تسجيل الواقع**، والمحاسب يلتفّ عليه بتشويه الرقم — فيُفقَد المعرّف
+            // الذي بُني هذا كله لأجله.
+            //
+            // والحارس ينتقل إلى حيث يُطرح السؤال: البحث برقم ضريبي يُرجع مورداً واحداً
+            // أو يرفض بالغموض ويُسمّي المرشّحين، ولا يختار أبداً.
+            //
+            // والفهرس جزئيّ بشرط <> '' لأن الغالبية العظمى من الموردين بلا رقم مسجَّل،
+            // ولا يُبحث عن الفراغ أصلاً. والشرط يطابق اصطلاح الخواء في العمود بالضبط:
+            // نصّ فارغ، لا قيمة معدومة.
+            entity.HasIndex(row => new { row.TenantId, row.VatNumber })
+                  .HasDatabaseName("ix_purchasing_supplier_vat_number")
+                  .HasFilter("\"VatNumber\" <> ''");
+
+            // والشكل مفروض في القاعدة لا في الشيفرة وحدها: خمس عشرة خانة تبدأ بـ3
+            // وتنتهي بـ3، أو فراغ. والصنف [0-9] مقصود ولا يصير \d أبداً: الأخير
+            // ‏[[:digit:]] وقد يقبل الأرقام العربية-الهندية والديفاناغارية حسب
+            // الإعدادات المحلية — وهو باب الدخول الصامت الذي يُغلقه هذا العمود.
+            entity.ToTable(table => table.HasCheckConstraint(
+                "ck_purchasing_supplier_vat_number",
+                """ "VatNumber" = '' or "VatNumber" ~ '^3[0-9]{13}3$' """));
         });
 
         modelBuilder.Entity<PurchaseRequestRow>(entity =>

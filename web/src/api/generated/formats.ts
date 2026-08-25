@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     4f6c55ebd5476a0e3fa97d4f70deedf4dd95532b39fa7a1bbe8e8f560b928565
+     441b7394f6f083778c30895d44cae3b74a36bda25aadc43e7ce4a9d28fb44ecd
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -13,6 +13,10 @@
    الأنماط المنشورة، منقولةً حرفياً من العقد. المدقّقات تستعملها ولا تُعيد كتابتها.
    ═══════════════════════════════════════════════════════════════════════ */
 
+export const PARAM_API_V1_COMPANIES_COMPANYID_COST_CENTERS_COSTCENTERCODE_SUSPENSION_costCenterCode = "^[a-z0-9._]{1,32}$";
+export const PARAM_API_V1_COMPANIES_COMPANYID_COST_CENTERS_COSTCENTERCODE_SUSPENSION_costCenterCode_RE = new RegExp("^[a-z0-9._]{1,32}$");
+export const PARAM_API_V1_COMPANIES_COMPANYID_COST_CENTERS_COSTCENTERCODE_costCenterCode = "^[a-z0-9._]{1,32}$";
+export const PARAM_API_V1_COMPANIES_COMPANYID_COST_CENTERS_COSTCENTERCODE_costCenterCode_RE = new RegExp("^[a-z0-9._]{1,32}$");
 export const PARAM_readTrialBalance_period = "^[0-9]{4}-(0[1-9]|1[0-2])$";
 export const PARAM_readTrialBalance_period_RE = new RegExp("^[0-9]{4}-(0[1-9]|1[0-2])$");
 export const PARAM_verifyLedgerChain_fiscalYear = "^[0-9]{4}$";

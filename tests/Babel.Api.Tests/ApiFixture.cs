@@ -27,6 +27,24 @@ internal static class ApiFixture
     public static TestCredential TokenC { get; } = TestCredential.Create(
         ApiTestDatabase.CompanyC, new Guid("33333333-3333-4333-8333-333333333333"), ApiTestDatabase.CompanyC);
 
+    /// <summary>
+    /// شركات مخصّصة لاختبارات التأسيس — <b>واحدة لكل اختبار</b>.
+    /// <para>
+    /// التأسيس يُقبل مرّة واحدة لكل منشأة بحكم القرار نفسه، فمنشأةٌ مشتركة بين اختبارين
+    /// تجعل الثاني يمرّ أو يسقط بحسب من سبقه — وهو بالضبط العطل الذي وُجد مسح العزل
+    /// لأجله. ولذلك لكل اختبار منشأته، ولا اختبار يقرأ حالةً كتبها غيره.
+    /// </para>
+    /// </summary>
+    public static IReadOnlyList<Guid> SetupCompanies { get; } =
+    [
+        .. Enumerable.Range(1, 16).Select(static index =>
+            new Guid(string.Create(CultureInfo.InvariantCulture, $"5e700000-0000-4000-8000-{index:D12}"))),
+    ];
+
+    /// <summary>اعتماد اختبارات التأسيس — يبلغ منشآته وحدها.</summary>
+    public static TestCredential TokenS { get; } = TestCredential.Create(
+        SetupCompanies[0], new Guid("55555555-5555-4555-8555-555555555555"), [.. SetupCompanies]);
+
     private static readonly SemaphoreSlim Gate = new(1, 1);
     private static readonly Dictionary<string, ApiProcess> ByCulture = new(StringComparer.Ordinal);
     private static ApiProcess? _default;
@@ -136,7 +154,7 @@ internal static class ApiFixture
         };
 
         int index = 0;
-        foreach (TestCredential credential in new[] { TokenA, TokenB, TokenC })
+        foreach (TestCredential credential in new[] { TokenA, TokenB, TokenC, TokenS })
         {
             string prefix = string.Create(CultureInfo.InvariantCulture, $"Babel__Api__Tokens__{index}__");
             environment[prefix + "Sha256"] = credential.Digest;

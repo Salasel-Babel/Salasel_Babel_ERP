@@ -149,7 +149,15 @@ public sealed class PostingAndReversalTests
             }
         }
 
-        Assert.Equal(["put /api/v1/companies/{companyId}/capability-profile"], mutable);
+        // والقائمة **محصورة في موارد إعداد المستأجر**: ملفّ القدرات، وتأسيس المنشأة،
+        // واسم مركز التكلفة. ولا واحد منها مورد دفتر.
+        Assert.Equal(
+            [
+                "put /api/v1/companies/{companyId}/capability-profile",
+                "put /api/v1/companies/{companyId}/cost-centers/{costCenterCode}",
+                "put /api/v1/companies/{companyId}/setup",
+            ],
+            mutable);
 
         foreach (string ledgerPath in new[] { "journal-entries", "trial-balance", "ledger-chain" })
         {

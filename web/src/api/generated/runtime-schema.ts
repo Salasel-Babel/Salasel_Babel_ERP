@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     4f6c55ebd5476a0e3fa97d4f70deedf4dd95532b39fa7a1bbe8e8f560b928565
+     441b7394f6f083778c30895d44cae3b74a36bda25aadc43e7ce4a9d28fb44ecd
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -36,10 +36,14 @@ export const SCHEMAS: Readonly<Record<string, SchemaShape>> = {
   CapabilitySwitch: { required: ["capability","enabled"], fields: {"capability":{"k":"plain"},"enabled":{"k":"plain"}} },
   ChainVerification: { required: ["checked","detail","firstDivergentSequence","ok","reasonAr","verdict"], fields: {"checked":{"k":"plain"},"detail":{"k":"plain","n":true},"firstDivergentSequence":{"b":"Int64String","k":"brand","n":true},"ok":{"k":"plain"},"reasonAr":{"k":"plain"},"verdict":{"k":"plain"}} },
   ClosedPeriodAuthorisation: { required: ["authorisedBy","permissionCode","reason"], fields: {"authorisedBy":{"k":"plain"},"permissionCode":{"k":"plain"},"reason":{"k":"ref","r":"LocalizedText"}} },
+  CompanySetup: { required: ["costCenters","decimalPlaces","defaultCostCenter","nameAr","nameTranslations"], fields: {"costCenters":{"i":{"k":"ref","r":"CostCenter"},"k":"array"},"decimalPlaces":{"k":"plain"},"defaultCostCenter":{"k":"plain"},"nameAr":{"k":"plain"},"nameTranslations":{"i":{"k":"ref","r":"NameValue"},"k":"array"}} },
+  CostCenter: { required: ["code","isDefault","nameAr","nameTranslations","state","suspensionReason"], fields: {"code":{"k":"plain"},"isDefault":{"k":"plain"},"nameAr":{"k":"plain"},"nameTranslations":{"i":{"k":"ref","r":"NameValue"},"k":"array"},"state":{"k":"plain"},"suspensionReason":{"k":"plain"}} },
+  CostCenterNameRequest: { required: ["nameAr"], fields: {"nameAr":{"k":"plain"},"nameTranslations":{"i":{"k":"ref","r":"NameValue"},"k":"array"}} },
   DocumentAdmission: { required: ["admitted","documentType","fields"], fields: {"admitted":{"k":"plain"},"documentType":{"k":"plain"},"fields":{"i":{"k":"plain"},"k":"array"}} },
   DocumentProfile: { required: ["capabilities","documentType"], fields: {"capabilities":{"i":{"k":"ref","r":"CapabilitySwitch"},"k":"array"},"defaults":{"i":{"k":"ref","r":"NameValue"},"k":"array"},"documentType":{"k":"plain"}} },
   DocumentShape: { required: ["availableCapabilities","defaults","documentType","enabledCapabilities","fields","module","nameAr","nameKey"], fields: {"availableCapabilities":{"i":{"k":"plain"},"k":"array"},"defaults":{"i":{"k":"ref","r":"NameValue"},"k":"array"},"documentType":{"k":"plain"},"enabledCapabilities":{"i":{"k":"plain"},"k":"array"},"fields":{"i":{"k":"plain"},"k":"array"},"module":{"k":"plain"},"nameAr":{"k":"plain"},"nameKey":{"k":"plain"}} },
   HealthResponse: { required: ["apiVersion","calendar","culture","status"], fields: {"apiVersion":{"k":"plain"},"calendar":{"k":"plain"},"culture":{"k":"plain"},"status":{"k":"plain"}} },
+  InitialiseCompanySetupRequest: { required: ["companyNameAr","costCenters","decimalPlaces"], fields: {"companyNameAr":{"k":"plain"},"companyNameTranslations":{"i":{"k":"ref","r":"NameValue"},"k":"array"},"costCenters":{"k":"plain"},"decimalPlaces":{"k":"plain"},"firstCostCenterNameAr":{"k":"plain","n":true},"firstCostCenterTranslations":{"i":{"k":"ref","r":"NameValue"},"k":"array"}} },
   JournalEntry: { required: ["book","chainSequence","currency","entryDate","entryHash","entryId","entryNumber","lines","memoAr","memoEn","periodCode","reversesEntryId","status"], fields: {"book":{"k":"plain"},"chainSequence":{"b":"Int64String","k":"brand"},"currency":{"k":"plain"},"entryDate":{"k":"plain"},"entryHash":{"k":"plain"},"entryId":{"k":"plain"},"entryNumber":{"b":"Int64String","k":"brand"},"lines":{"i":{"k":"ref","r":"JournalLine"},"k":"array"},"memoAr":{"k":"plain"},"memoEn":{"k":"plain"},"periodCode":{"k":"plain"},"reversesEntryId":{"k":"plain","n":true},"status":{"k":"plain"}} },
   JournalLine: { required: ["credit","currency","debit","descriptionAr","descriptionEn","lineNo","qualifier","role"], fields: {"credit":{"k":"money"},"currency":{"k":"plain"},"debit":{"k":"money"},"descriptionAr":{"k":"plain"},"descriptionEn":{"k":"plain"},"lineNo":{"k":"plain"},"qualifier":{"k":"plain"},"role":{"k":"plain"}} },
   LocalizedText: { required: ["ar","en"], fields: {"ar":{"k":"plain"},"en":{"k":"plain"}} },
@@ -54,9 +58,10 @@ export const SCHEMAS: Readonly<Record<string, SchemaShape>> = {
   Scope: { required: [], fields: {"branchId":{"k":"plain","n":true},"costCenterId":{"k":"plain","n":true},"projectId":{"k":"plain","n":true}} },
   SourceDocument: { required: ["documentId","documentType","module"], fields: {"documentId":{"k":"plain"},"documentType":{"k":"plain"},"module":{"k":"plain"}} },
   Subledger: { required: ["kind","partyId"], fields: {"kind":{"k":"plain"},"partyId":{"k":"plain"}} },
+  SuspendCostCenterRequest: { required: ["reason"], fields: {"reason":{"k":"plain"}} },
   TrialBalance: { required: ["balanced","book","periodCode","rowCount","rows","totalCredit","totalDebit"], fields: {"balanced":{"k":"plain"},"book":{"k":"plain"},"periodCode":{"k":"plain","n":true},"rowCount":{"k":"plain"},"rows":{"i":{"k":"ref","r":"TrialBalanceRow"},"k":"array"},"totalCredit":{"k":"money"},"totalDebit":{"k":"money"}} },
   TrialBalanceRow: { required: ["accountCode","credit","debit","nameAr","nameEn"], fields: {"accountCode":{"k":"plain"},"credit":{"k":"money"},"debit":{"k":"money"},"nameAr":{"k":"plain"},"nameEn":{"k":"plain"}} },
 };
 
 /** أسماء المخطّطات كما وردت في العقد. / Schema names as published. */
-export const SCHEMA_NAMES = ["AdmitDocumentRequest","ApiError","CapabilityProfile","CapabilitySwitch","ChainVerification","ClosedPeriodAuthorisation","DocumentAdmission","DocumentProfile","DocumentShape","ExchangeRate","HealthResponse","Int64String","JournalEntry","JournalLine","LocalizedText","Money","NameValue","NamedAmount","PostJournalEntryRequest","PostingLine","PostingReceipt","Problem","PutCapabilityProfileRequest","ReverseJournalEntryRequest","Scope","SourceDocument","Subledger","TrialBalance","TrialBalanceRow"] as const;
+export const SCHEMA_NAMES = ["AdmitDocumentRequest","ApiError","CapabilityProfile","CapabilitySwitch","ChainVerification","ClosedPeriodAuthorisation","CompanySetup","CostCenter","CostCenterNameRequest","DocumentAdmission","DocumentProfile","DocumentShape","ExchangeRate","HealthResponse","InitialiseCompanySetupRequest","Int64String","JournalEntry","JournalLine","LocalizedText","Money","NameValue","NamedAmount","PostJournalEntryRequest","PostingLine","PostingReceipt","Problem","PutCapabilityProfileRequest","ReverseJournalEntryRequest","Scope","SourceDocument","Subledger","SuspendCostCenterRequest","TrialBalance","TrialBalanceRow"] as const;

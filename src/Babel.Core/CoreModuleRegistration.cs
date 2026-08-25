@@ -1,6 +1,7 @@
 using Babel.Core.Application;
 using Babel.Core.Audit;
 using Babel.Core.CapabilityProfile;
+using Babel.Core.CompanySetup;
 using Babel.Core.Entitlement;
 using Babel.Core.Metering;
 using Microsoft.Extensions.DependencyInjection;
@@ -31,6 +32,10 @@ public static class CoreModuleRegistration
         services.AddSingleton<IPostingEventDirectory>(_ => EmbeddedPostingEventDirectory.Default);
         services.AddSingleton<ICapabilityProfileStore, InMemoryCapabilityProfileStore>();
         services.AddScoped<CapabilityProfileService>();
+
+        // تأسيس المنشأة: المخزن حالة المستأجر، والخدمة نطاق طلب — كملفّ القدرات تماماً.
+        services.AddSingleton<ICompanySetupStore, InMemoryCompanySetupStore>();
+        services.AddScoped<CompanySetupService>();
 
         return services;
     }

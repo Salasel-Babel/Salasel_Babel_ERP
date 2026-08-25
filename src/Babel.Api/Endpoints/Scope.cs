@@ -1,6 +1,7 @@
 using Babel.Api.Errors;
 using Babel.Api.Security;
 using Babel.Api.Wire;
+using Babel.Core.CompanySetup;
 
 namespace Babel.Api.Endpoints;
 
@@ -100,6 +101,42 @@ internal static class Scope
                 "The document type in the path is written with lower-case Latin letters, digits, dots, and "
                 + "underscores, between one and 64 characters long.",
                 "documentType",
+                StatusCodes.Status400BadRequest);
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// يقرأ رمز مركز التكلفة من المسار بفحص شكلي وحده.
+    /// <para>
+    /// وأي رمز غير موجود يمرّ من هنا ليُرفض في النواة بـ<c>cost_center.not_found</c> —
+    /// لا هنا برسالة «مسار غير صالح»: السطح لا يملك سجلّ المنشأة ولا يجوز أن يملكه.
+    /// </para>
+    /// </summary>
+    /// <param name="context">سياق الطلب.</param>
+    /// <param name="code">الرمز عند النجاح.</param>
+    /// <param name="malformed">استجابة الرفض عند الفشل.</param>
+    public static bool TryCostCenterCode(HttpContext context, out string code, out IResult? malformed)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+
+        malformed = null;
+        code = context.Request.RouteValues.TryGetValue("costCenterCode", out object? value)
+            ? value?.ToString() ?? string.Empty
+            : string.Empty;
+
+        if (!CostCenterCode.IsWellFormed(code))
+        {
+            malformed = HttpProblemResults.Code(
+                context,
+                "wire.path.malformed",
+                "رمز مركز التكلفة في المسار يُكتب بأحرف لاتينية صغيرة وأرقام ونقطة وشرطة سفلية، "
+                + "وطوله بين محرف و32 محرفاً.",
+                "The cost centre code in the path is written with lower-case Latin letters, digits, dots, and "
+                + "underscores, between one and 32 characters long.",
+                "costCenterCode",
                 StatusCodes.Status400BadRequest);
             return false;
         }

@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     4f6c55ebd5476a0e3fa97d4f70deedf4dd95532b39fa7a1bbe8e8f560b928565
+     441b7394f6f083778c30895d44cae3b74a36bda25aadc43e7ce4a9d28fb44ecd
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -19,6 +19,29 @@ import { SCHEMAS } from "./runtime-schema";
 import { decodeSchema, encodeSchema, type Transport, ProblemError } from "../transport";
 
 export type { Transport } from "../transport";
+
+export interface AddCostCenterArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.CostCenterNameRequest;
+}
+
+/**
+ * إضافة مركز تكلفة / Add a cost centre
+ * 
+ * يضيف مركز تكلفة عاملاً ويُعيد التأسيس كاملاً. الرمز يُسكّه الخادم ولا يُرسله العميل: الرمز هوية تحملها سطور القيود، والاسم عرضٌ يتغيّر.
+ * 
+ * Adds an active cost centre and returns the whole setup. The server mints the code; the client never sends one: the code is the identity that journal lines carry, and the name is display that changes.
+ */
+export async function addCostCenter(transport: Transport, args: AddCostCenterArgs, signal?: AbortSignal): Promise<T.CompanySetup> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/cost-centers";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "CostCenterNameRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "CompanySetup", response.json) as T.CompanySetup;
+}
 
 export interface AdmitDocumentArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
@@ -58,6 +81,37 @@ export async function health(transport: Transport, signal?: AbortSignal): Promis
   const response = await transport({ method: "GET", url, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "HealthResponse", response.json) as T.HealthResponse;
+}
+
+export interface InitialiseCompanySetupArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.InitialiseCompanySetupRequest;
+}
+
+/**
+ * تأسيس المنشأة مرّة واحدة / Set the company up, once
+ * 
+ * يؤسّس المنشأة. **يُقبل مرّة واحدة فقط**: الوصول الثاني يُرفض بـ409 وcompany_setup.already_initialised مهما تغيّرت حمولته — وبالأخصّ decimalPlaces، فعدد الخانات يُسنَد عند أول تأسيس ولا يُعدَّل بعده، وتوحيده داخل دفاتر المنشأة الواحدة أهمّ من أي قيمة بعينها.
+ * 
+ * وسؤال مراكز التكلفة يُطرح هنا وحده: costCenters = One يجعل **اسم المنشأة نفسه** هو المركز الافتراضي فلا يرى صاحبُ هذا الجواب المفهوم أبداً؛ وcostCenters = Multiple يجعل firstCostCenterNameAr **إلزامياً** — من أعلن أن لديه أكثر من واحد لا يُخترَع له اسم نيابةً عنه. وفي الحالتين تخرج المنشأة من هنا وبها مركز تكلفة واحد على الأقل.
+ * 
+ * وdecimalPlaces يحكم **العرض والإدخال البشري وحدهما**: التخزين يبقى بأربع خانات، والمبالغ المحسوبة (ضريبة 15٪ على صافٍ فردي مثلاً) لا يقيّدها هذا العدد ولا تُقرَّب عنده — وإلا لصارت الفاتورة العادية مستحيلة.
+ * 
+ * Sets the company up. **Accepted exactly once**: a second arrival is refused with 409 and company_setup.already_initialised whatever its payload — decimalPlaces above all, since the number of places is assigned at first setup and is never editable afterwards; its consistency inside one entity's books matters more than any particular value.
+ * 
+ * The cost-centre question is asked here and only here: costCenters = One makes **the company's own name** the default centre, so whoever answers that never sees the concept again; costCenters = Multiple makes firstCostCenterNameAr **mandatory** — no name is invented on behalf of someone who declared they have more than one. Either way the company leaves this call with at least one cost centre.
+ * 
+ * decimalPlaces governs **display and human input only**: storage stays at four places, and computed amounts (15% VAT on an odd net, say) are neither constrained nor rounded by it — otherwise an ordinary invoice would be impossible.
+ */
+export async function initialiseCompanySetup(transport: Transport, args: InitialiseCompanySetupArgs, signal?: AbortSignal): Promise<T.CompanySetup> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/setup";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "InitialiseCompanySetupRequest", args.body as unknown);
+  const response = await transport({ method: "PUT", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "CompanySetup", response.json) as T.CompanySetup;
 }
 
 export interface PostJournalEntryArgs {
@@ -101,6 +155,26 @@ export async function readCapabilityProfile(transport: Transport, args: ReadCapa
   const response = await transport({ method: "GET", url, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "CapabilityProfile", response.json) as T.CapabilityProfile;
+}
+
+export interface ReadCompanySetupArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+}
+
+/**
+ * تأسيس المنشأة / The company setup
+ * 
+ * يقرأ تأسيس المنشأة: اسمها، و**عدد الخانات العشرية المعروضة**، و**مراكز تكلفتها كلّها** — العاملة والموقوفة معاً. والموقوف يبقى في القائمة عمداً: تقاريرُ الفترات السابقة تُبوَّب عليه، والدفتر إضافي لا يُحذف منه شيء.
+ * 
+ * Reads the company setup: its name, the **number of displayed decimal places**, and **all of its cost centres** — active and suspended alike. A suspended centre stays in the list on purpose: earlier periods are still grouped by it, and the ledger is append-only.
+ */
+export async function readCompanySetup(transport: Transport, args: ReadCompanySetupArgs, signal?: AbortSignal): Promise<T.CompanySetup> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/setup";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "CompanySetup", response.json) as T.CompanySetup;
 }
 
 export interface ReadDocumentShapeArgs {
@@ -174,6 +248,31 @@ export async function readTrialBalance(transport: Transport, args: ReadTrialBala
   return decodeSchema(SCHEMAS, "TrialBalance", response.json) as T.TrialBalance;
 }
 
+export interface RenameCostCenterArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** رمز مركز التكلفة كما سكّه الخادم. معرّف لا نصّ معروض: لا يُترجَم ولا يتغيّر بإعادة التسمية. / The cost centre code as the server minted it. An identifier, not displayed text: never translated, and unchanged by renaming. */
+  costCenterCode: string;
+  /** جسم الطلب. / The request body. */
+  body: T.CostCenterNameRequest;
+}
+
+/**
+ * إعادة تسمية مركز تكلفة / Rename a cost centre
+ * 
+ * يعيد تسمية مركز تكلفة. **الرمز لا يتغيّر**، فسطور القيود المُرحَّلة عليه تبقى مربوطة به وتُعرض بالاسم الجاري — وهو سلوك الحساب المعطَّل نفسه لا نمطٌ ثانٍ (ADR-0006).
+ * 
+ * Renames a cost centre. **The code does not change**, so journal lines already posted against it stay tied to it and display under the current name — the same behaviour as a locked account, not a second pattern (ADR-0006).
+ */
+export async function renameCostCenter(transport: Transport, args: RenameCostCenterArgs, signal?: AbortSignal): Promise<T.CompanySetup> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/cost-centers/" + encodeURIComponent(args.costCenterCode) + "";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "CostCenterNameRequest", args.body as unknown);
+  const response = await transport({ method: "PUT", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "CompanySetup", response.json) as T.CompanySetup;
+}
+
 export interface ReverseJournalEntryArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
@@ -197,6 +296,35 @@ export async function reverseJournalEntry(transport: Transport, args: ReverseJou
   const response = await transport({ method: "POST", url, body, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "PostingReceipt", response.json) as T.PostingReceipt;
+}
+
+export interface SuspendCostCenterArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** رمز مركز التكلفة كما سكّه الخادم. معرّف لا نصّ معروض: لا يُترجَم ولا يتغيّر بإعادة التسمية. / The cost centre code as the server minted it. An identifier, not displayed text: never translated, and unchanged by renaming. */
+  costCenterCode: string;
+  /** جسم الطلب. / The request body. */
+  body: T.SuspendCostCenterRequest;
+}
+
+/**
+ * إيقاف مركز تكلفة عن الترحيل / Suspend a cost centre from posting
+ * 
+ * يوقف مركز تكلفة عن الاستعمال على مستند جديد، **بسبب مكتوب** يُسجَّل في سجلّ التدقيق مع من فعله ومتى. ولا يُحذف شيء: المركز يبقى مقروءاً ومُبوَّباً في تقارير الفترات السابقة إلى الأبد.
+ * 
+ * و**المركز الافتراضي لا يُوقَف**: يُرفض بـ409 وcost_center.default_cannot_be_suspended، لأن المنشأة لا تخلو من مركز تكلفة أبداً. ومن أراد إيقافه ينقل الافتراضي إلى مركز عامل آخر أولاً.
+ * 
+ * Suspends a cost centre from use on new documents, **with a written reason** recorded in the audit log along with who did it and when. Nothing is deleted: the centre stays readable and stays a grouping key in earlier periods forever.
+ * 
+ * **The default centre is never suspended**: it is refused with 409 and cost_center.default_cannot_be_suspended, because a company is never without a cost centre. To suspend it, move the default to another active centre first.
+ */
+export async function suspendCostCenter(transport: Transport, args: SuspendCostCenterArgs, signal?: AbortSignal): Promise<T.CompanySetup> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/cost-centers/" + encodeURIComponent(args.costCenterCode) + "/suspension";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "SuspendCostCenterRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "CompanySetup", response.json) as T.CompanySetup;
 }
 
 export interface VerifyLedgerChainArgs {

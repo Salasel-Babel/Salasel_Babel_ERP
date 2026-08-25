@@ -60,6 +60,12 @@ internal static class ApiProblems
 
             "ledger.posting.missing_tenant" or "ledger.posting.missing_idempotency_key" => 400,
 
+            "capability_profile.not_found" => 404,
+            "capability_profile.capability_withdrawal_requires_acknowledgement" => 409,
+
+            _ when code.StartsWith("capability_profile.", StringComparison.Ordinal) => 422,
+            _ when code.StartsWith("document_admission.", StringComparison.Ordinal) => 422,
+
             _ when code.StartsWith("wire.", StringComparison.Ordinal) => 400,
             _ when code.StartsWith("auth.", StringComparison.Ordinal) => 401,
             _ when code.StartsWith("tenancy.", StringComparison.Ordinal) => 403,

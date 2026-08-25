@@ -2,6 +2,7 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using Babel.Api.Endpoints;
 using Babel.Contracts.Posting;
+using Babel.Core.CapabilityProfile;
 using Babel.SharedKernel;
 
 namespace Babel.Api.OpenApi;
@@ -119,6 +120,45 @@ internal static class OpenApiEmitter
                     new QueryParameter("book", true, "الدفتر داخل الشركة.", "The book within the company.", "string"),
                     new QueryParameter("fiscalYear", true, "السنة المالية الميلادية بأربعة أرقام لاتينية.", "The Gregorian fiscal year, four Latin digits.", "year"),
                 ]),
+
+            new(ApiRoutes.CapabilityProfile, "get", "readCapabilityProfile",
+                "ملفّ القدرات وأشكال مستنداته", "The capability profile and its document shapes",
+                "يقرأ ملفّ قدرات الشركة، ومعه **شكل كل مستند مُشتقّاً**: الحقول القائمة، والقدرات المتاحة والمُشغَّلة، والقيم الافتراضية. "
+                + "وهذا ما تُبنى عليه الشاشة: الشاشة دالّة في (هذه الوثيقة × الملفّ)، ولا تُؤلَّف بـJSON حرّ عند العميل — "
+                + "شاشةٌ مؤلَّفة باستقلال عن العقد تُرسل حقلاً يرفضه الخادم أو تُسقط حقلاً يطلبه.",
+                "Reads the company's capability profile together with **each document's derived shape**: the fields that exist, the "
+                + "available and enabled capabilities, and the defaults. This is what a screen is built from: the screen is a function "
+                + "of (this document x the profile) and is never authored as free-form JSON on the client — a screen authored "
+                + "independently of the contract sends a field the server refuses or omits one it requires.",
+                Body: null, Response: "CapabilityProfile", Success: 200, Anonymous: false, Query: []),
+
+            new(ApiRoutes.CapabilityProfile, "put", "writeCapabilityProfile",
+                "حفظ ملفّ القدرات", "Save the capability profile",
+                "يستبدل الملفّ كلّه بعد **مطابقة كل قدرة مُشغَّلة بمصفوفة الترحيل**: قدرةٌ لا يقابلها حدث تُرفض هنا برمز "
+                + "capability_profile.capability_not_served_by_matrix وباسمها وبالأحداث الناقصة — لا تُكتشف بعد شهر دفترَ أستاذ مساعد لا يُطابَق. "
+                + "والاتجاه الخطر هو الإطفاء لا التشغيل: إطفاء قدرة كانت مُشغَّلة يجعل مستنداً مفتوحاً يحملها غير مقبول، ويجعل حدث المتابعة "
+                + "الذي يُخلي رصيد الدفتر المساعد غير قابل للوقوع — فيُرفض بلا withdrawalReason مكتوب، ويُسجَّل السبب في سجل التدقيق حين يُكتب.",
+                "Replaces the whole profile after **matching every enabled capability against the posting matrix**: a capability with no "
+                + "event is refused here with capability_profile.capability_not_served_by_matrix, named, with its missing events — not "
+                + "discovered a month later as a subledger that will not tie. The dangerous direction is off, not on: disabling a capability "
+                + "that was enabled makes an open document carrying it inadmissible and makes the follow-on event that relieves the subledger "
+                + "balance unreachable, so it is refused without a written withdrawalReason, and the reason is recorded in the audit log.",
+                Body: "PutCapabilityProfileRequest", Response: "CapabilityProfile", Success: 200, Anonymous: false, Query: []),
+
+            new(ApiRoutes.DocumentShape, "get", "readDocumentShape",
+                "شكل مستند واحد", "One document shape",
+                "شكل نوع مستند واحد مُشتقّاً من الملفّ. مُشتقّ لا مؤلَّف: لا تخطيط، ولا ترتيب بصري، ولا شرط، ولا تعبير.",
+                "One document type's shape derived from the profile. Derived, never authored: no layout, no visual order, no condition, no expression.",
+                Body: null, Response: "DocumentShape", Success: 200, Anonymous: false, Query: []),
+
+            new(ApiRoutes.DocumentAdmission, "post", "admitDocument",
+                "عرض مستند على الملفّ", "Present a document against the profile",
+                "يعرض **أسماء حقول** مستند على ملفّ الشركة فيقبله أو يرفضه. لا قيم ولا مبالغ ولا أثر: هذا حكمٌ لا كتابة. "
+                + "وحقلٌ ترخّصه قدرة مُطفأة يُرفض به المستند كلّه — لأن قدرةً يمكن ممارستها بإرسال الحقل رغم إطفائها ليست قدرة بل زينة.",
+                "Presents a document's **field names** against the company profile and admits or refuses it. No values, no amounts, no "
+                + "effect: this is a verdict, not a write. A field licensed by a disabled capability fails the whole document — a capability "
+                + "that can still be exercised by sending the field anyway is decoration, not a capability.",
+                Body: "AdmitDocumentRequest", Response: "DocumentAdmission", Success: 200, Anonymous: false, Query: []),
         }.OrderBy(static o => o.Path, StringComparer.Ordinal).ThenBy(static o => o.Method, StringComparer.Ordinal),
     ];
 
@@ -193,6 +233,11 @@ internal static class OpenApiEmitter
                     WritePathParameter(w, "entryId", "معرّف القيد.", "The entry identifier.", "uuid");
                 }
 
+                if (byPath.Key.Contains("{documentType}", StringComparison.Ordinal))
+                {
+                    WriteDocumentTypeParameter(w);
+                }
+
                 w.WriteEndArray();
             }
 
@@ -218,6 +263,74 @@ internal static class OpenApiEmitter
         w.WriteString("type", "string");
         w.WriteString("format", format);
         w.WriteEndObject();
+        w.WriteEndObject();
+    }
+
+    /// <summary>
+    /// رموز أنواع المستندات، مقروءةً من الكتالوج المغلق نفسه لا من قائمة مكتوبة هنا.
+    /// قائمةٌ ثانية مكتوبة بيد تنحرف عن الكتالوج عند أول إضافة، فيصف العقد مستنداً لا وجود له.
+    /// </summary>
+    private static IReadOnlyList<string> DocumentTypeCodes { get; } =
+        [.. CapabilityCatalogue.DocumentTypes
+            .Select(static definition => definition.Code.Value)
+            .Order(StringComparer.Ordinal)];
+
+    /// <summary>رموز القدرات في الكتالوج كلّه، بلا تكرار ومرتَّبة.</summary>
+    private static IReadOnlyList<string> CapabilityCodes { get; } =
+        [.. CapabilityCatalogue.DocumentTypes
+            .SelectMany(static definition => definition.Capabilities)
+            .Select(static capability => capability.Code.Value)
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)];
+
+    private static void WriteDocumentTypeParameter(Utf8JsonWriter w)
+    {
+        w.WriteStartObject();
+        w.WriteString("name", "documentType");
+        w.WriteString("in", "path");
+        w.WriteBoolean("required", true);
+        w.WriteString("description",
+            "رمز نوع المستند من المجموعة المغلقة. / The document type code from the closed set.");
+        w.WriteStartObject("schema");
+        w.WriteString("type", "string");
+        w.WriteStartArray("enum");
+        foreach (string code in DocumentTypeCodes)
+        {
+            w.WriteStringValue(code);
+        }
+
+        w.WriteEndArray();
+        w.WriteEndObject();
+        w.WriteEndObject();
+    }
+
+    private static void WriteStringArrayProperty(Utf8JsonWriter w, string name, string ar, string en, int maxLength)
+    {
+        w.WriteStartObject(name);
+        w.WriteString("type", "array");
+        w.WriteStartObject("items");
+        w.WriteString("type", "string");
+        w.WriteNumber("maxLength", maxLength);
+        w.WriteEndObject();
+        w.WriteString("description", ar + " / " + en);
+        w.WriteEndObject();
+    }
+
+    private static void WriteEnumArrayProperty(Utf8JsonWriter w, string name, string ar, string en, IReadOnlyList<string> members)
+    {
+        w.WriteStartObject(name);
+        w.WriteString("type", "array");
+        w.WriteStartObject("items");
+        w.WriteString("type", "string");
+        w.WriteStartArray("enum");
+        foreach (string member in members)
+        {
+            w.WriteStringValue(member);
+        }
+
+        w.WriteEndArray();
+        w.WriteEndObject();
+        w.WriteString("description", ar + " / " + en);
         w.WriteEndObject();
     }
 
@@ -419,6 +532,115 @@ internal static class OpenApiEmitter
             WriteStringProperty(w, "en", "النصّ الإنجليزي.", "The English text.", 512);
             w.WriteEndObject();
             WriteRequired(w, "ar", "en");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("CapabilitySwitch", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "مفتاح قدرة واحد. / One capability switch.");
+            w.WriteStartObject("properties");
+            WriteEnumProperty(w, "capability", "رمز القدرة من المجموعة المغلقة.", "The capability code from the closed set.", CapabilityCodes);
+            WriteBooleanProperty(w, "enabled", "مُشغَّلة أم لا.", "Enabled or not.");
+            w.WriteEndObject();
+            WriteRequired(w, "capability", "enabled");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("DocumentProfile", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "ملفّ نوع مستند واحد كما يُرسله العميل. **قائمة مفاتيح لا خريطة حرّة**: المفتاح من تعداد معلن، "
+                + "فلا يمرّ اسم لم يقصده أحد ولا يُقرأ مفتاحان بالاسم نفسه. / "
+                + "One document type's profile as the client sends it. **A list of switches, not a free-form map**: the key comes "
+                + "from a declared enumeration, so no unintended name passes and no two keys share a name.");
+            w.WriteStartObject("properties");
+            WriteEnumProperty(w, "documentType", "رمز نوع المستند.", "The document type code.", DocumentTypeCodes);
+            WriteArrayRefProperty(w, "capabilities", "CapabilitySwitch", "مفاتيح القدرات.", "The capability switches.");
+            WriteArrayRefProperty(w, "defaults", "NameValue", "القيم الافتراضية، ومفاتيحها حقول من شكل المستند حصراً.", "The defaults; their keys are fields of the document shape only.");
+            w.WriteEndObject();
+            WriteRequired(w, "capabilities", "documentType");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("PutCapabilityProfileRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteStartObject("properties");
+            WriteArrayRefProperty(w, "documents", "DocumentProfile", "أنواع المستندات.", "The document types.");
+            WriteNullableStringProperty(w, "withdrawalReason",
+                "سبب سحب قدرة. إلزامي متى أطفأ الطلب قدرةً كانت مُشغَّلة، ومهمَل فيما عدا ذلك؛ وثمانية محارف على الأقل — «لا سبب» ليس سبباً.",
+                "The reason for withdrawing a capability. Required whenever the request disables a previously enabled capability, ignored otherwise; at least eight characters — 'no reason' is not a reason.",
+                ProfileLimits.MaximumReasonLength);
+            w.WriteEndObject();
+            WriteRequired(w, "documents");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("DocumentShape", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "شكل مستند **مُشتقّاً** من (هذه الوثيقة × الملفّ). ولاحظ ما ليس فيه: لا تخطيط، ولا ترتيب بصري، ولا شرط، ولا تعبير — "
+                + "تلك أبواب «المنصّة داخل المنصّة» التي رُفضت. / "
+                + "A document's shape **derived** from (this document x the profile). Note what is absent: no layout, no visual order, "
+                + "no condition, no expression — those are the inner-platform doors that were rejected.");
+            w.WriteStartObject("properties");
+            WriteEnumProperty(w, "documentType", "رمز نوع المستند.", "The document type code.", DocumentTypeCodes);
+            WriteStringProperty(w, "nameAr",
+                "الاسم بالعربية. **إلزامي وهو الارتداد المضمون**: العربية شكل السجلّ لا تفضيل عرض، والنظام السعودي يوجب مسك الدفاتر بها. "
+                + "وحين لا تتوفّر ترجمة يُعرض هذا النصّ — لا المفتاح ولا الفراغ.",
+                "The Arabic name. **Mandatory, and the guaranteed fallback**: Arabic is the form of the record, not a display preference, "
+                + "and Saudi law requires the books to be kept in it. When no translation is available this text is displayed — never the key and never a blank.",
+                200);
+            WriteStringProperty(w, "nameKey",
+                "مفتاح الترجمة. تعدّد اللغات هنا يعني الترجمة إلى **أيّ عدد** من اللغات، لا ثنائية عربي/إنجليزي — فلا حقل لغة ثانية في هذا المخطّط.",
+                "The translation key. Multilingualism here means translation into **any number** of languages, not an Arabic/English pair — so this schema carries no second-language field.",
+                128);
+            WriteEnumProperty(w, "module", "الوحدة المالكة.", "The owning module.", Enum.GetNames<BabelModule>());
+            WriteEnumArrayProperty(w, "availableCapabilities", "كل قدرات هذا النوع في الكتالوج المغلق.", "Every capability of this type in the closed catalogue.", CapabilityCodes);
+            WriteEnumArrayProperty(w, "enabledCapabilities", "المُشغَّل منها لهذه الشركة.", "Those enabled for this company.", CapabilityCodes);
+            WriteStringArrayProperty(w, "fields", "حقول المستند بهذا الملفّ — الأساسية وحقول القدرات المُشغَّلة، مرتَّبة حرفياً.", "The document's fields under this profile — the base fields plus the fields of enabled capabilities, ordinally sorted.", 64);
+            WriteArrayRefProperty(w, "defaults", "NameValue", "القيم الافتراضية.", "The defaults.");
+            w.WriteEndObject();
+            WriteRequired(w, "availableCapabilities", "defaults", "documentType", "enabledCapabilities", "fields", "module", "nameAr", "nameKey");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("CapabilityProfile", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteStartObject("properties");
+            WriteArrayRefProperty(w, "documents", "DocumentShape", "الأشكال مرتَّبة بنوع المستند.", "The shapes ordered by document type.");
+            w.WriteEndObject();
+            WriteRequired(w, "documents");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("AdmitDocumentRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "أسماء حقول المستند لا قيمها: القبول حكمٌ على الشكل، ولا يعبر منه مبلغ. / "
+                + "The document's field names, not its values: admission is a verdict on shape and no amount crosses it.");
+            w.WriteStartObject("properties");
+            WriteStringArrayProperty(w, "fields", "أسماء الحقول الموجودة على المستند.", "The names of the fields present on the document.", 64);
+            w.WriteEndObject();
+            WriteRequired(w, "fields");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("DocumentAdmission", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteStartObject("properties");
+            WriteEnumProperty(w, "documentType", "رمز نوع المستند.", "The document type code.", DocumentTypeCodes);
+            WriteBooleanProperty(w, "admitted", "مقبول. والرفض يخرج مشكلةً بالرمز 422 لا حكماً في هذا الحقل.", "Admitted. A refusal leaves as a 422 problem, never as a verdict in this field.");
+            WriteStringArrayProperty(w, "fields", "الحقول المقبولة مرتَّبة.", "The admitted fields, ordinally sorted.", 64);
+            w.WriteEndObject();
+            WriteRequired(w, "admitted", "documentType", "fields");
             w.WriteBoolean("additionalProperties", false);
         });
 

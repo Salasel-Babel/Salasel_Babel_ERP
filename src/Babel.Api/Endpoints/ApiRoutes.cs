@@ -39,6 +39,25 @@ internal static class ApiRoutes
     /// <summary>إعادة التحقق من سلسلة البصمات.</summary>
     public const string ChainVerification = Company + "/ledger-chain/verification";
 
+    /// <summary>
+    /// ملفّ قدرات المستأجر: القراءة والحفظ.
+    /// <para>
+    /// مورد واحد لا موردان: الملفّ كلٌّ واحد يُقرأ ويُستبدل. وتعديل نوع مستند بمفرده
+    /// كان سيجعل «ما الحالة الآن؟» سؤالاً يُجاب بتجميع طلبات، وهو ما يجعل تعارض
+    /// التحديثات صامتاً.
+    /// </para>
+    /// </summary>
+    public const string CapabilityProfile = Company + "/capability-profile";
+
+    /// <summary>شكل مستند مُشتقّاً من (العقد المنشور × ملفّ القدرات) — مقروء لا مؤلَّف.</summary>
+    public const string DocumentShape = Company + "/document-shapes/{documentType}";
+
+    /// <summary>
+    /// عرضُ مستند على الملفّ ليُقبل أو يُرفض. مورد فرعي مستقل: القبول حكمٌ يُطلب،
+    /// لا حقلٌ يُقرأ من الشكل.
+    /// </summary>
+    public const string DocumentAdmission = DocumentShape + "/admissions";
+
     /// <summary>حالة الخدمة — خارج النطاق وخارج المصادقة عمداً.</summary>
     public const string Health = "/health";
 }

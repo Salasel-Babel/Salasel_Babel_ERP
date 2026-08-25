@@ -23,4 +23,16 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
   </ItemGroup>
 
+  <!--
+    مصفوفة الترحيل مضمَّنة هنا **للوجود لا للقالب**: النواة تحكم على ملفّ قدرات المستأجر
+    فتسأل «هل هذا الحدث معرَّف أصلاً؟»، ولا تقرأ سطراً ولا دوراً ولا حساباً. والمصدر واحد
+    (data/posting-matrix/events) ويقرؤه الدفتر أيضاً — ولا تستطيع النواة أن تسأل الدفتر
+    لأن اتجاه الاعتماد إلى الأسفل (Rule03).
+  -->
+  <ItemGroup>
+    <EmbeddedResource Include="../../data/posting-matrix/events/*.json">
+      <LogicalName>Babel.Core.Matrix.Events.%(Filename).json</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
 </Project>

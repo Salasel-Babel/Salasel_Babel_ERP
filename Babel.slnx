@@ -8,6 +8,7 @@
     <Project Path="src/Babel.Compliance.Abstractions/Babel.Compliance.Abstractions.csproj" />
     <Project Path="src/Babel.Compliance.FakeProvider/Babel.Compliance.FakeProvider.csproj" />
     <Project Path="src/Babel.Compliance.Wolverine/Babel.Compliance.Wolverine.csproj" />
+    <Project Path="src/Babel.Compliance.Zatca/Babel.Compliance.Zatca.csproj" />
     <Project Path="src/Babel.Contracts/Babel.Contracts.csproj" />
     <Project Path="src/Babel.ControlPlane/Babel.ControlPlane.csproj" />
     <Project Path="src/Babel.Core/Babel.Core.csproj" />

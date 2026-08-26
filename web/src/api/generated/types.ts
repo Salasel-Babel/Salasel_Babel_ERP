@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     061d8c7eef2ad0d8d3d64989d475d7563625751a75a540d8076fc23228720e7c
+     90d076ad3cc6c558ce905171467482b90038f42e9a77b8c4fe5a9aa8eaa99366
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -355,11 +355,12 @@ export interface ReverseJournalEntryRequest {
   reversalDate?: string;
 }
 
+/** النطاق التحليلي للسطر. و costCenterId **اختياري وغير قابل لأن يكون null**: حذف الحقل يعني «المركز الافتراضي لهذه المنشأة»، وهو افتراض معلن لا صمت. أما القيمة null فلا معنى لها — لكل منشأة مركز تكلفة واحد على الأقل، ولا سطر بلا مركز، ورمزٌ يُرسَل null كان يقول «بلا مركز» وهي حالة لا وجود لها في النظام. / The line's analytical scope. costCenterId is **optional but never null**: omitting the field means 'this company's default centre', a published default rather than silence. The value null has no meaning — every company has at least one cost centre and no line is without one, so a null said 'no centre', a state that does not exist in the system. */
 export interface Scope {
   /** الفرع. / The branch. */
   branchId?: string | null;
-  /** مركز التكلفة. / The cost centre. */
-  costCenterId?: string | null;
+  /** مركز التكلفة. اتركه محذوفاً ليُرحَّل السطر على المركز الافتراضي للمنشأة، أو سمِّ مركزاً عاملاً. والمركز المُسمّى غير الموجود يُرفض بـcost_center.not_found، والموقوف بـcost_center.already_suspended — ولا يرتدّ أيّهما إلى الافتراضي بصمت. / The cost centre. Omit it to post the line on the company's default centre, or name an active centre. A named centre that does not exist is refused with cost_center.not_found and a suspended one with cost_center.already_suspended — neither falls back to the default silently. */
+  costCenterId?: string;
   /** المشروع. / The project. */
   projectId?: string | null;
 }
@@ -408,8 +409,6 @@ export interface TrialBalanceRow {
   debit: Money;
   /** الاسم العربي — وهو السجلّ لا ترجمةً أولى، وغير فارغ أبداً (ADR-0021). / The Arabic name; it is the record rather than a first translation, and is never blank (ADR-0021). */
   nameAr: string;
-  /** الاسم الإنجليزي. **مهجور**: مشتقّ من الترجمة ذات الوسم en في nameTranslations، ولا عمود له في قاعدة البيانات، ويرتدّ إلى الاسم العربي حين لا ترجمة إنجليزية. الإنجليزية واحدة من N لا نصف الاثنين، فاقرأ nameTranslations. / The English name. **Deprecated**: derived from the 'en' entry of nameTranslations, backed by no database column, and falling back to the Arabic name when there is no English translation. English is one of N rather than half of two, so read nameTranslations instead. */
-  nameEn: string;
-  /** ترجمات اسم الحساب: الاسم وسم لغة BCP-47 والقيمة النصّ المترجَم، مرتَّبةً بالوسم ترتيباً حرفياً ثابتاً. وقد تكون فارغة — والعرض يرتدّ حينها إلى الاسم العربي، وهو ارتداد **يُعلَن** لا يقع صامتاً. / The account name's translations: the name is a BCP-47 language tag and the value is the translated text, ordered by tag with a stable ordinal sort. It may be empty, in which case display falls back to the Arabic name — a fallback that is declared, never silent. */
+  /** ترجمات اسم الحساب: الاسم وسم لغة BCP-47 والقيمة النصّ المترجَم، مرتَّبةً بالوسم ترتيباً حرفياً ثابتاً. وقد تكون فارغة — والعرض يرتدّ حينها إلى الاسم العربي، وهو ارتداد **يُعلَن** لا يقع صامتاً. و**الإنجليزية واحدة من هذه الترجمات لا حقلاً مستقلاً**: من أرادها قرأ المدخل ذا الوسم en، وغيابه غيابُ ترجمة إنجليزية لا غيابُ اسم. / The account name's translations: the name is a BCP-47 language tag and the value is the translated text, ordered by tag with a stable ordinal sort. It may be empty, in which case display falls back to the Arabic name — a fallback that is declared, never silent. **English is one of these translations rather than a field of its own**: read the entry tagged 'en', whose absence means there is no English translation, not that there is no name. */
   nameTranslations: NameValue[];
 }

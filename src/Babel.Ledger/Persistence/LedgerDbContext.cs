@@ -333,6 +333,15 @@ internal sealed class LedgerDbContext(DbContextOptions<LedgerDbContext> options)
                 t.HasCheckConstraint("ck_journal_line_one_side", "debit = 0 or credit = 0");
                 t.HasCheckConstraint("ck_journal_line_company_side", "debit_company = 0 or credit_company = 0");
                 t.HasCheckConstraint("ck_journal_line_fx_positive", "fx_rate > 0");
+
+                // ‏**ADR-0026 مفروضاً على المخطّط لا على المستدعي.** لكل منشأة مركز
+                // تكلفة واحد على الأقل، ولا سطر بلا مركز. والقيد هنا — لا في C# وحدها —
+                // لأن الثابتة يجب أن تصمد أمام **أي** كاتب: نصّ SQL يدوي، أو أداة
+                // استيراد، أو هجرة مستقبلية سهت. والخواء يُمنع مع الفراغ: نصٌّ من
+                // مسافات هو غياب في ثوب حضور.
+                t.HasCheckConstraint(
+                    "ck_journal_line_cost_center_present",
+                    "cost_center_id is not null and length(btrim(cost_center_id)) > 0");
             });
             entity.HasKey(row => row.LineId).HasName("pk_journal_line");
             entity.Property(row => row.LineId).HasColumnName("line_id");
@@ -351,6 +360,9 @@ internal sealed class LedgerDbContext(DbContextOptions<LedgerDbContext> options)
             entity.Property(row => row.DebitCompany).HasColumnName("debit_company").HasColumnType("numeric(19,4)").HasDefaultValue(0m);
             entity.Property(row => row.CreditCompany).HasColumnName("credit_company").HasColumnType("numeric(19,4)").HasDefaultValue(0m);
             entity.Property(row => row.BranchId).HasColumnName("branch_id");
+            // العمود يبقى `null`-able في SQL: `set not null` يتطلّب فحص الجدول كلّه،
+            // وهو يسقط على دفتر عامر سبق الثابتة — وذاك دفترٌ نرفض إعادة كتابته.
+            // والقيد أعلاه يحمل الضمان نفسه لكل كتابة جديدة.
             entity.Property(row => row.CostCenterId).HasColumnName("cost_center_id");
             entity.Property(row => row.ProjectId).HasColumnName("project_id");
             entity.Property(row => row.PropertyId).HasColumnName("property_id");

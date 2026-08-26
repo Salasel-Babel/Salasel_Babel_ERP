@@ -5,6 +5,7 @@ using Babel.Api.Ports;
 using Babel.Api.Security;
 using Babel.Api.Wire;
 using Babel.Contracts.Posting;
+using Babel.Core.CompanySetup;
 using Babel.Ledger.Audit;
 using Babel.SharedKernel;
 
@@ -61,6 +62,7 @@ internal static class LedgerEndpoints
     private static async Task<IResult> PostJournalEntryAsync(
         HttpContext context,
         IPostingService posting,
+        ICostCenterResolver costCenters,
         CancellationToken cancellationToken)
     {
         if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
@@ -88,10 +90,41 @@ internal static class LedgerEndpoints
                 context, "wire.body.missing", "جسم الطلب مفقود.", "The request body is missing.");
         }
 
+        // ── مركز التكلفة يُحلّ **قبل** بناء الطلب ─────────────────────────────
+        // ‏ADR-0026: المذكور إن كان عاملاً، والافتراضي إن لم يُذكر شيء. والحلّ سؤالٌ عن
+        // سجلّ المنشأة — وهو في النواة — فالسطح يسأل ولا يقرّر، ثم يُسلّم الجواب إلى
+        // النقل. وبهذا **لا يستطيع أحد أن يبني PostingScope بلا مركز**: النوع نفسه
+        // يرفض ذلك، والقيمة الوحيدة التي تبلغه جاءت من هنا.
+        List<string?> candidates;
+        try
+        {
+            candidates = WireMapping.CostCenterCandidates(dto);
+        }
+        catch (WireFormatException wire)
+        {
+            return HttpProblemResults.Wire(context, wire);
+        }
+
+        Dictionary<string, string> resolvedCostCenters = new(StringComparer.Ordinal);
+
+        foreach (string? candidate in candidates)
+        {
+            Result<string> resolution = await costCenters
+                .ResolveAsync(new TenantId(companyId), candidate, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (resolution.IsFailure)
+            {
+                return HttpProblemResults.Domain(context, resolution.Errors);
+            }
+
+            resolvedCostCenters[candidate ?? string.Empty] = resolution.Value;
+        }
+
         PostingRequest request;
         try
         {
-            request = WireMapping.ToPostingRequest(dto, companyId, principal.User);
+            request = WireMapping.ToPostingRequest(dto, companyId, principal.User, resolvedCostCenters);
         }
         catch (WireFormatException wire)
         {

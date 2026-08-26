@@ -851,9 +851,23 @@ internal static class OpenApiEmitter
         yield return ("Scope", static w =>
         {
             w.WriteString("type", "object");
+            w.WriteString("description",
+                "النطاق التحليلي للسطر. و costCenterId **اختياري وغير قابل لأن يكون null**: حذف الحقل يعني «المركز "
+                + "الافتراضي لهذه المنشأة»، وهو افتراض معلن لا صمت. أما القيمة null فلا معنى لها — لكل منشأة مركز "
+                + "تكلفة واحد على الأقل، ولا سطر بلا مركز، ورمزٌ يُرسَل null كان يقول «بلا مركز» وهي حالة لا وجود "
+                + "لها في النظام. / The line's analytical scope. costCenterId is **optional but never null**: omitting "
+                + "the field means 'this company's default centre', a published default rather than silence. The value "
+                + "null has no meaning — every company has at least one cost centre and no line is without one, so a "
+                + "null said 'no centre', a state that does not exist in the system.");
             w.WriteStartObject("properties");
             WriteNullableStringProperty(w, "branchId", "الفرع.", "The branch.", 64);
-            WriteNullableStringProperty(w, "costCenterId", "مركز التكلفة.", "The cost centre.", 64);
+            WriteStringProperty(w, "costCenterId",
+                "مركز التكلفة. اتركه محذوفاً ليُرحَّل السطر على المركز الافتراضي للمنشأة، أو سمِّ مركزاً عاملاً. "
+                + "والمركز المُسمّى غير الموجود يُرفض بـcost_center.not_found، والموقوف بـ"
+                + "cost_center.already_suspended — ولا يرتدّ أيّهما إلى الافتراضي بصمت.",
+                "The cost centre. Omit it to post the line on the company's default centre, or name an active centre. "
+                + "A named centre that does not exist is refused with cost_center.not_found and a suspended one with "
+                + "cost_center.already_suspended — neither falls back to the default silently.", 64);
             WriteNullableStringProperty(w, "projectId", "المشروع.", "The project.", 64);
             w.WriteEndObject();
             w.WriteBoolean("additionalProperties", false);
@@ -1018,21 +1032,18 @@ internal static class OpenApiEmitter
             WriteStringProperty(w, "nameAr",
                 "الاسم العربي — وهو السجلّ لا ترجمةً أولى، وغير فارغ أبداً (ADR-0021).",
                 "The Arabic name; it is the record rather than a first translation, and is never blank (ADR-0021).", 256);
-            WriteStringProperty(w, "nameEn",
-                "الاسم الإنجليزي. **مهجور**: مشتقّ من الترجمة ذات الوسم en في nameTranslations، ولا عمود له في "
-                + "قاعدة البيانات، ويرتدّ إلى الاسم العربي حين لا ترجمة إنجليزية. الإنجليزية واحدة من N لا نصف "
-                + "الاثنين، فاقرأ nameTranslations.",
-                "The English name. **Deprecated**: derived from the 'en' entry of nameTranslations, backed by no "
-                + "database column, and falling back to the Arabic name when there is no English translation. English "
-                + "is one of N rather than half of two, so read nameTranslations instead.", 256);
             WriteArrayRefProperty(w, "nameTranslations", "NameValue",
                 "ترجمات اسم الحساب: الاسم وسم لغة BCP-47 والقيمة النصّ المترجَم، مرتَّبةً بالوسم ترتيباً حرفياً "
-                + "ثابتاً. وقد تكون فارغة — والعرض يرتدّ حينها إلى الاسم العربي، وهو ارتداد **يُعلَن** لا يقع صامتاً.",
+                + "ثابتاً. وقد تكون فارغة — والعرض يرتدّ حينها إلى الاسم العربي، وهو ارتداد **يُعلَن** لا يقع صامتاً. "
+                + "و**الإنجليزية واحدة من هذه الترجمات لا حقلاً مستقلاً**: من أرادها قرأ المدخل ذا الوسم en، "
+                + "وغيابه غيابُ ترجمة إنجليزية لا غيابُ اسم.",
                 "The account name's translations: the name is a BCP-47 language tag and the value is the translated "
                 + "text, ordered by tag with a stable ordinal sort. It may be empty, in which case display falls back "
-                + "to the Arabic name — a fallback that is declared, never silent.");
+                + "to the Arabic name — a fallback that is declared, never silent. **English is one of these "
+                + "translations rather than a field of its own**: read the entry tagged 'en', whose absence means "
+                + "there is no English translation, not that there is no name.");
             w.WriteEndObject();
-            WriteRequired(w, "accountCode", "credit", "debit", "nameAr", "nameEn", "nameTranslations");
+            WriteRequired(w, "accountCode", "credit", "debit", "nameAr", "nameTranslations");
             w.WriteBoolean("additionalProperties", false);
         });
 
@@ -1334,7 +1345,17 @@ internal static class OpenApiEmitter
         + "التعديل بتاريخه وسببه في سجل القرارات لا أن يمرّ صامتاً.\n"
         + "• تعديل مُسجَّل — 2026-08-24: صار الحقل event إلزامياً في PostJournalEntryRequest. وهو تضييق يفرض v2 "
         + "بنصّ السياسة، ونُفِّذ في v1 في مكانه لأن العقد لم يُنشر بعد لأي مستهلك ولا يوجد عميل مطابق واحد. "
-        + "السبب: رمز الحدث جزء من هوية الترحيل، وغيابه يبتلع حدثاً محاسبياً بصمت (ADR-0016 · ADR-0018).\n\n"
+        + "السبب: رمز الحدث جزء من هوية الترحيل، وغيابه يبتلع حدثاً محاسبياً بصمت (ADR-0016 · ADR-0018).\n"
+        + "• تعديل مُسجَّل — 2026-08-26: حُذف الحقل nameEn من TrialBalanceRow. وهو حذف حقل يفرض v2 بنصّ السياسة، "
+        + "ونُفِّذ في v1 في مكانه للسبب نفسه: لا مستهلك ولا عميل مطابق. السبب: تعدّد اللغات قابلية الترجمة إلى "
+        + "أيّ عدد من اللغات، والإنجليزية واحدة من N لا نصف الاثنين — وحقلٌ ثابت لها على السلك يمنحها امتيازاً "
+        + "بنيوياً ينفيه القرار، ويجعل المحاسب الأردي أو الهندي يقرأ إنجليزيةً بدل لغته. وnameTranslations "
+        + "يحمل كل لغة بما فيها الإنجليزية (ADR-0021 بند 2 · ADR-0018).\n"
+        + "• تعديل مُسجَّل — 2026-08-26: ضاق نوع Scope.costCenterId من [string, null] إلى string. وهو تضييق نوع "
+        + "يفرض v2 بنصّ السياسة، ونُفِّذ في v1 في مكانه للسبب نفسه: لا مستهلك ولا عميل مطابق. الحقل يبقى "
+        + "**اختيارياً** — حذفه يعني المركز الافتراضي للمنشأة — لكن القيمة null لا معنى لها: لكل منشأة مركز "
+        + "تكلفة واحد على الأقل ولا سطر بلا مركز، فـnull كان يقول «بلا مركز» وهي حالة لا وجود لها. "
+        + "والقيد ck_journal_line_cost_center_present يفرض ذلك في قاعدة البيانات نفسها (ADR-0026 · ADR-0018).\n\n"
         + "Total isolation between front end and back end: this document is everything a front-end team needs; it reads no back-end code.\n\n"
         + "Versioning policy — what stays in v1 and what forces v2:\n"
         + "• Stays in v1: adding an endpoint; adding an optional response field; adding an optional request field with a published default; "
@@ -1350,7 +1371,17 @@ internal static class OpenApiEmitter
         + "• Recorded amendment — 2026-08-24: the event field became required on PostJournalEntryRequest. That is a narrowing which the "
         + "policy text forces to v2, and it was made in v1 in place because the contract has not yet been published to any consumer and "
         + "no conforming client exists. Reason: the event code is part of the posting identity, and its absence swallows an accounting "
-        + "event silently (ADR-0016, ADR-0018).";
+        + "event silently (ADR-0016, ADR-0018).\n"
+        + "• Recorded amendment — 2026-08-26: the nameEn field was removed from TrialBalanceRow. Removing a field is a change the policy "
+        + "text forces to v2, and it was made in v1 in place for the same reason: no consumer and no conforming client. Reason: "
+        + "multilingualism means translatability into any number of languages, and English is one of N rather than half of two — a fixed "
+        + "field for it on the wire grants it a structural privilege the decision denies, and leaves an Urdu or Hindi accountant reading "
+        + "English instead of their own language. nameTranslations carries every language, English included (ADR-0021 clause 2, ADR-0018).\n"
+        + "• Recorded amendment — 2026-08-26: the type of Scope.costCenterId narrowed from [string, null] to string. Narrowing a type is a "
+        + "change the policy text forces to v2, and it was made in v1 in place for the same reason: no consumer and no conforming client. "
+        + "The field stays **optional** — omitting it means the company's default centre — but the value null has no meaning: every company "
+        + "has at least one cost centre and no line is without one, so null said 'no centre', a state that does not exist. The constraint "
+        + "ck_journal_line_cost_center_present enforces this in the database itself (ADR-0026, ADR-0018).";
 
     private sealed record Operation(
         string Path,

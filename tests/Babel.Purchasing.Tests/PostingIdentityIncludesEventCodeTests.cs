@@ -507,7 +507,7 @@ public sealed class PostingIdentityIncludesEventCodeTests : IAsyncLifetime
             new PostingFact("subledger.supplier", supplier),
             new PostingFact("line.expense_category", "rent"),
         ],
-        Dimensions = [new PostingDimension("cost_center", "CC-01")],
+        Dimensions = [new PostingDimension("cost_center", FoundedTenants.DefaultCode)],
         PartyId = supplier,
         ControlEffect = 2300m,
         Currency = CurrencyCode.Sar,

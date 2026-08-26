@@ -191,8 +191,8 @@ public sealed class TrialBalanceTotalsTests : IAsyncLifetime
             """
             insert into ledger.journal_line
                 (line_id, entry_id, line_no, company_id, account_code, role_code, qualifier,
-                 debit, credit, currency, fx_rate, debit_company, credit_company)
-            values ($1, $2, $3, $4, '1310', '', '*', $5, $6, 'SAR', 1, $5, $6)
+                 debit, credit, currency, fx_rate, debit_company, credit_company, cost_center_id)
+            values ($1, $2, $3, $4, '1310', '', '*', $5, $6, 'SAR', 1, $5, $6, 'cc.001')
             on conflict do nothing
             """, owner);
         line.Parameters.AddWithValue(Guid.CreateVersion7());
@@ -228,14 +228,14 @@ public sealed class TrialBalanceTotalsTests : IAsyncLifetime
                 Role = PostingRole.RoundingDifference,
                 Side = PostingSide.Debit,
                 Amount = SharedKernel.Money.Of(amount, CurrencyCode.Sar),
-                Scope = new PostingScope("BR-01", null, null),
+                Scope = new PostingScope("cc.001", "BR-01"),
             },
             new PostingLine
             {
                 Role = PostingRole.RoundingDifference,
                 Side = PostingSide.Credit,
                 Amount = SharedKernel.Money.Of(amount, CurrencyCode.Sar),
-                Scope = new PostingScope("BR-01", null, null),
+                Scope = new PostingScope("cc.001", "BR-01"),
             },
         ],
         Actor = new UserId(new Guid("11111111-1111-4111-8111-111111111111")),

@@ -20,8 +20,15 @@ public sealed record PostingLine
     /// <summary>المبلغ بعملة الحركة. <see cref="Money"/> يفرض decimal ومقياس 4.</summary>
     public required Money Amount { get; init; }
 
-    /// <summary>النطاق التحليلي: فرع ومركز تكلفة ومشروع.</summary>
-    public PostingScope Scope { get; init; }
+    /// <summary>
+    /// النطاق التحليلي: مركز تكلفة إلزامي، وفرعٌ ومشروعٌ اختياريان.
+    /// <para>
+    /// <b>و<c>required</c> ليست زينة:</b> مركز التكلفة لا يكون فارغاً (ADR-0026)، وسطرٌ
+    /// يُبنى بلا نطاق كان يأخذ <c>default</c> فيصير مركزه <c>null</c> بصمت. فالبناء هو
+    /// ما يمنع ذلك الآن، لا مراجعةٌ ولا اتفاق.
+    /// </para>
+    /// </summary>
+    public required PostingScope Scope { get; init; }
 
     /// <summary>الطرف في الدفتر المساعد، إن وُجد.</summary>
     public SubledgerReference Subledger { get; init; } = SubledgerReference.None;

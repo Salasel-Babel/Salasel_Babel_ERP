@@ -427,6 +427,12 @@ internal sealed class MigrationSandbox : IAsyncDisposable
         await migrator.MigrateAsync(migration).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// اتصال هذه القاعدة — لمن يحتاج <b>معاملة صريحة</b>: مشغّل التوازن مؤجَّل إلى
+    /// <c>COMMIT</c>، فقيدٌ يُبنى بعبارتين مستقلّتين يُرفض بين العبارتين.
+    /// </summary>
+    public string ConnectionString => _connectionString;
+
     public async Task ExecuteAsync(string sql, params object[] parameters)
     {
         await using NpgsqlConnection connection = new(_connectionString);

@@ -49,8 +49,17 @@ public sealed class Rule14_TranslationsAreRowsNotColumns
     /// <para>
     /// <b>وعند الشكّ: نصّ عرض</b> — فالتضييق يُثبَت ولا يُدَّعى (ADR-0021 §6.2).
     /// </para>
+    /// <para>
+    /// <b>خُفِض من 868 إلى 864</b> حين حُذف <c>nameEn</c> من العقد المنشور (‏ADR-جديد
+    /// «نافذة العقد تُغلق قبل النشر»). والفرق أربعة لا أكثر <b>مقيسٌ ومُفسَّر</b>: الحقل
+    /// كان يشغل سبعة مواضع معدودة (الشكل على السلك، والباعث، والعميل المُولَّد، والخادم
+    /// الوهمي)، وسجَّل التعديلُ نفسَه أربعة مواضع جديدة — سطرا التعديل المُسجَّل في وصف
+    /// العقد، عربياً وإنجليزياً، في الباعث وفي الملفّ المُولَّد منه. و<b>تسمية المحذوف
+    /// في وثيقة الحذف ليست ديناً يُخفى</b>: هي ما يجعل من يقرأ العقد بعد سنتين يعرف أن
+    /// الحقل حُذف عمداً ولم يسقط سهواً.
+    /// </para>
     /// </summary>
-    public const int MaximumEnglishNameSites = 868;
+    public const int MaximumEnglishNameSites = 864;
 
     /// <summary>
     /// ما يُقصى من العدّ، ولكلٍّ سببٌ يُقرأ لا سببٌ يُفترض:
@@ -62,6 +71,11 @@ public sealed class Rule14_TranslationsAreRowsNotColumns
     ///         <c>journal_line.description</c>، وهو <b>حقل مُجزَّأ</b> في الشكل القانوني
     ///         v2. نقلُه يغيّر البايتات المُوقَّعة — فهو v3 لا هجرةُ عرض. مثبَّت في
     ///         <c>DisplayTextInsideTheHashedBytesTests</c>.</item>
+    ///   <item><b>حارس السلك النظير</b> — <c>tests/Babel.Api.Tests/EnglishIsOneOfNOnTheWireTests.cs</c>:
+    ///         مجموعته المفحوصة هي <b>العقد المنشور</b> لا هذه الشجرة، وهو يكتب الشكل الممنوع
+    ///         في شواهده الموجبة بالضرورة — كما يفعل هذا الملف تماماً وللسبب نفسه. وعدُّه
+    ///         يجعل <b>حذف الحقل من العقد يرفع الدين الذي يقيسه الحارس</b>، وهو انعكاس تامّ
+    ///         لما يُفترض أن يقيسه.</item>
     ///   <item><b>هذا الملفّ نفسه</b> — الحارس يكتب الشكل الممنوع بالضرورة: في تعبيره
     ///         النمطي، وفي شواهده الموجبة التي تُطعمه مخالفاتٍ حقيقية. وعدُّه يجعل
     ///         <b>تقويةَ الحارس ترفع الدين الذي يقيسه</b> — وهو نفس العطب الذي حلّته
@@ -75,6 +89,7 @@ public sealed class Rule14_TranslationsAreRowsNotColumns
         Path.Combine("src", "Babel.Ledger", "PostingMatrix"),
         Path.Combine("src", "Babel.Ledger", "Posting", "PostingPlanner.cs"),
         Path.Combine("tests", "Babel.ArchitectureTests", "Rule14_TranslationsAreRowsNotColumns.cs"),
+        Path.Combine("tests", "Babel.Api.Tests", "EnglishIsOneOfNOnTheWireTests.cs"),
     ];
 
     private static List<(string Path, string Code)> Sources { get; } = Load();

@@ -34,7 +34,7 @@ internal sealed class Harness : IDisposable
         Payments = new SupplierPaymentService(enforcer, runtime, Posting);
         Payables = new PayablesService(
             enforcer, runtime, new LedgerControlPointReader(PurchasingTestEnvironment.Ledger.AppConnectionString));
-        Gateway = new SubledgerPostingGateway(runtime.Database, Posting);
+        Gateway = new SubledgerPostingGateway(runtime.Database, Posting, runtime.CostCenters);
     }
 
     public PurchasingRuntime Runtime { get; }
@@ -73,7 +73,13 @@ internal sealed class Harness : IDisposable
             _ledger ??= new LedgerRuntime(PurchasingTestEnvironment.Ledger);
         }
 
-        return new Harness(new PurchasingRuntime(PurchasingTestEnvironment.Purchasing), _ledger);
+        // المنشآت مؤسَّسة قبل أول ترحيل: البوّابة تسأل النواة عن مركز التكلفة، ومنشأةٌ
+        // لم تُؤسَّس لا مركز لها أصلاً (ADR-0026).
+        return new Harness(
+            new PurchasingRuntime(
+                PurchasingTestEnvironment.Purchasing,
+                FoundedTenants.ResolverFor(PurchasingTestEnvironment.AllTenants)),
+            _ledger);
     }
 
     public async Task<Guid> SupplierAsync(string code, int termsDays = 30)

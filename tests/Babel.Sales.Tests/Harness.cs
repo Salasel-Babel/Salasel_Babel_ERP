@@ -39,7 +39,7 @@ internal sealed class Harness : IDisposable
         Receipts = new CustomerReceiptService(enforcer, runtime, Posting, Profiles);
         Receivables = new ReceivablesService(
             enforcer, runtime, new LedgerControlPointReader(SalesTestEnvironment.Ledger.AppConnectionString));
-        Gateway = new SubledgerPostingGateway(runtime.Database, Posting);
+        Gateway = new SubledgerPostingGateway(runtime.Database, Posting, runtime.CostCenters);
     }
 
     /// <summary>
@@ -92,7 +92,11 @@ internal sealed class Harness : IDisposable
             _ledger ??= new LedgerRuntime(SalesTestEnvironment.Ledger);
         }
 
-        Harness harness = new(new SalesRuntime(SalesTestEnvironment.Sales), _ledger);
+        // المنشآت مؤسَّسة قبل أول ترحيل: البوّابة تسأل النواة عن مركز التكلفة، ومنشأةٌ
+        // لم تُؤسَّس لا مركز لها أصلاً (ADR-0026).
+        Harness harness = new(
+            new SalesRuntime(SalesTestEnvironment.Sales, FoundedTenants.ResolverFor(SalesTestEnvironment.AllTenants)),
+            _ledger);
 
         // المستأجرون الثلاثة القدماء بكل القدرات مُشغَّلة: هذه التجهيزة تُعيد إنتاج
         // ما كان قائماً قبل ربط البوابة، فلا يتحوّل ربطُ حارسٍ إلى تغييرٍ في معنى

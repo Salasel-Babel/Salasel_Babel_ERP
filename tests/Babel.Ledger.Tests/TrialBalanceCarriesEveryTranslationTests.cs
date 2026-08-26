@@ -268,14 +268,14 @@ public sealed class TrialBalanceCarriesEveryTranslationTests : IAsyncLifetime
                         Role = PostingRole.RoundingDifference,
                         Side = PostingSide.Debit,
                         Amount = SharedKernel.Money.Of(250.0000m, CurrencyCode.Sar),
-                        Scope = new PostingScope("BR-01", null, null),
+                        Scope = new PostingScope("cc.001", "BR-01"),
                     },
                     new PostingLine
                     {
                         Role = PostingRole.RoundingDifference,
                         Side = PostingSide.Credit,
                         Amount = SharedKernel.Money.Of(250.0000m, CurrencyCode.Sar),
-                        Scope = new PostingScope("BR-01", null, null),
+                        Scope = new PostingScope("cc.001", "BR-01"),
                     },
                 ],
             },

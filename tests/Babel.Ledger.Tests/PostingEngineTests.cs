@@ -483,8 +483,9 @@ public sealed class PostingEngineTests : IAsyncLifetime
             """
             insert into ledger.journal_line
                 (line_id, entry_id, line_no, company_id, account_code, role_code, qualifier,
-                 debit, credit, currency, fx_rate, debit_company, credit_company, property_id)
-            select $1, $2, $3, e.company_id, $4, $5, '*', $6, $7, 'SAR', 1, $6, $7, $8
+                 debit, credit, currency, fx_rate, debit_company, credit_company, property_id,
+                 cost_center_id)
+            select $1, $2, $3, e.company_id, $4, $5, '*', $6, $7, 'SAR', 1, $6, $7, $8, 'cc.001'
               from ledger.journal_entry e where e.entry_id = $2
             """,
             connection, transaction);

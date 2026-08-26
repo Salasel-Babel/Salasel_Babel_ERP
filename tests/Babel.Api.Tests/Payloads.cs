@@ -43,6 +43,11 @@ internal static class Payloads
     /// <param name="creditRole">دور السطر الدائن.</param>
     /// <param name="extraField">حقل إضافي يُحقن في جذر الطلب — لاختبار رفض المجهول.</param>
     /// <param name="event">رمز الحدث. ‏<c>null</c> يحذف الحقل كلّه — لاختبار رفض الطلب بلا هوية.</param>
+    /// <param name="costCenterId">
+    /// مركز التكلفة على السطر الدائن. <c>null</c> يحذف الحقل — وهو <b>الحالة الغالبة</b>
+    /// في الحمولات هنا عمداً: حذفُه يعني «المركز الافتراضي لهذه المنشأة»، وهو افتراض
+    /// معلن في العقد لا صمت (‏ADR-0026).
+    /// </param>
     public static string BalancedEntry(
         string idempotencyKey,
         string amount = "1250.5000",
@@ -51,7 +56,8 @@ internal static class Payloads
         string module = "Ledger",
         string creditRole = RevenueRole,
         string? extraField = null,
-        string? @event = ManualVoucherEvent)
+        string? @event = ManualVoucherEvent,
+        string? costCenterId = null)
     {
         string debit = rawAmountToken ?? Quote(amount);
         string credit = rawAmountToken ?? Quote(amount);
@@ -82,7 +88,7 @@ internal static class Payloads
               "role": {{Quote(creditRole)}},
               "side": "Credit",
               "amount": {{credit}},
-              "scope": { "branchId": "BR-01" },
+              "scope": { "branchId": "BR-01"{{(costCenterId is null ? string.Empty : ", \"costCenterId\": " + Quote(costCenterId))}} },
               "narration": { "ar": "إيراد", "en": "Revenue" }
             }
           ]

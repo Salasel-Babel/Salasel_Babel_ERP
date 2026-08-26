@@ -74,7 +74,7 @@ public sealed class SalesInvoiceService : IApplicationService
         _database = runtime.Database;
         _posting = posting;
         _currency = CurrencyCode.FromString(runtime.Options.CompanyCurrency);
-        _gateway = new SubledgerPostingGateway(_database, posting);
+        _gateway = new SubledgerPostingGateway(_database, posting, runtime.CostCenters);
         _admission = new SalesAdmission(profiles);
     }
 

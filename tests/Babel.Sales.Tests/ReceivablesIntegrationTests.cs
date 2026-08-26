@@ -426,13 +426,14 @@ public sealed class ReceivablesIntegrationTests : IAsyncLifetime
                         Side = PostingSide.Debit,
                         Amount = Harness.Sar(777m),
                         Subledger = new SubledgerReference(SubledgerKind.Customer, "GHOST"),
+                        Scope = PostingScope.On("cc.001"),
                     },
                     new PostingLine
                     {
                         Role = PostingRole.NetAmount,
                         Side = PostingSide.Credit,
                         Amount = Harness.Sar(777m),
-                        Scope = new PostingScope("BR-01", null, null),
+                        Scope = new PostingScope("cc.001", "BR-01"),
                     },
                 ],
             },

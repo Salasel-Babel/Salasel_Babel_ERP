@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     061d8c7eef2ad0d8d3d64989d475d7563625751a75a540d8076fc23228720e7c
+     90d076ad3cc6c558ce905171467482b90038f42e9a77b8c4fe5a9aa8eaa99366
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -55,12 +55,12 @@ export const SCHEMAS: Readonly<Record<string, SchemaShape>> = {
   Problem: { required: ["code","detail","detailAr","errors","instance","status","title","titleAr","traceId","type"], fields: {"code":{"k":"plain"},"detail":{"k":"plain"},"detailAr":{"k":"plain"},"errors":{"i":{"k":"ref","r":"ApiError"},"k":"array"},"instance":{"k":"plain"},"status":{"k":"plain"},"title":{"k":"plain"},"titleAr":{"k":"plain"},"traceId":{"k":"plain"},"type":{"k":"plain"}} },
   PutCapabilityProfileRequest: { required: ["documents"], fields: {"documents":{"i":{"k":"ref","r":"DocumentProfile"},"k":"array"},"withdrawalReason":{"k":"plain","n":true}} },
   ReverseJournalEntryRequest: { required: ["reason"], fields: {"closedPeriodAuthorisation":{"k":"ref","r":"ClosedPeriodAuthorisation"},"reason":{"k":"ref","r":"LocalizedText"},"reversalDate":{"k":"plain"}} },
-  Scope: { required: [], fields: {"branchId":{"k":"plain","n":true},"costCenterId":{"k":"plain","n":true},"projectId":{"k":"plain","n":true}} },
+  Scope: { required: [], fields: {"branchId":{"k":"plain","n":true},"costCenterId":{"k":"plain"},"projectId":{"k":"plain","n":true}} },
   SourceDocument: { required: ["documentId","documentType","module"], fields: {"documentId":{"k":"plain"},"documentType":{"k":"plain"},"module":{"k":"plain"}} },
   Subledger: { required: ["kind","partyId"], fields: {"kind":{"k":"plain"},"partyId":{"k":"plain"}} },
   SuspendCostCenterRequest: { required: ["reason"], fields: {"reason":{"k":"plain"}} },
   TrialBalance: { required: ["balanced","book","periodCode","rowCount","rows","totalCredit","totalDebit"], fields: {"balanced":{"k":"plain"},"book":{"k":"plain"},"periodCode":{"k":"plain","n":true},"rowCount":{"k":"plain"},"rows":{"i":{"k":"ref","r":"TrialBalanceRow"},"k":"array"},"totalCredit":{"k":"money"},"totalDebit":{"k":"money"}} },
-  TrialBalanceRow: { required: ["accountCode","credit","debit","nameAr","nameEn","nameTranslations"], fields: {"accountCode":{"k":"plain"},"credit":{"k":"money"},"debit":{"k":"money"},"nameAr":{"k":"plain"},"nameEn":{"k":"plain"},"nameTranslations":{"i":{"k":"ref","r":"NameValue"},"k":"array"}} },
+  TrialBalanceRow: { required: ["accountCode","credit","debit","nameAr","nameTranslations"], fields: {"accountCode":{"k":"plain"},"credit":{"k":"money"},"debit":{"k":"money"},"nameAr":{"k":"plain"},"nameTranslations":{"i":{"k":"ref","r":"NameValue"},"k":"array"}} },
 };
 
 /** أسماء المخطّطات كما وردت في العقد. / Schema names as published. */

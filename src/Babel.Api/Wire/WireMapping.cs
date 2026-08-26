@@ -26,13 +26,98 @@ internal static class WireMapping
     /// <summary>أقصى عدد سطور في طلب واحد — حدٌّ معلن يمنع طلباً يُرهق المحرّك قبل أن يُرفض.</summary>
     public const int MaxLines = 500;
 
-    /// <summary>يحوّل طلب الترحيل الوارد إلى عقد الترحيل.</summary>
+    /// <summary>اسم بُعد مركز التكلفة كما تعرفه المصفوفة والمخطّط.</summary>
+    public const string CostCenterDimension = "cost_center";
+
+    /// <summary>
+    /// مركز التكلفة <b>المذكور</b> على الطلب أو السطر، بترتيب أولويّته المعلن.
+    /// <para>
+    /// والترتيب هو نفسه الذي كان في <c>PostingPlanner</c> قبل هذا التغيير — نُقل إلى الحدّ
+    /// ولم يُبدَّل: نطاق السطر، ثم بُعد السطر، ثم بُعد الطلب، ثم لا شيء (فالافتراضي).
+    /// <b>ونقلُه بلا تبديل شرطٌ لا تفصيل</b>: عميلٌ يضع <c>cost_center</c> في أبعاد سطره
+    /// كان يُحترَم، وتركُ الأولوية خلفَنا كان سيجعله يُرحَّل على المركز الافتراضي بصمت.
+    /// </para>
+    /// </summary>
+    /// <param name="dto">الطلب كما وصل.</param>
+    /// <param name="line">السطر، أو <c>null</c> لمركز الطلب وحده.</param>
+    public static string? RequestedCostCenter(PostJournalEntryRequestDto dto, PostingLineDto? line)
+    {
+        ArgumentNullException.ThrowIfNull(dto);
+
+        if (line?.Scope?.CostCenterId is { Length: > 0 } named)
+        {
+            return named;
+        }
+
+        string? onLine = Named(line?.Dimensions);
+        return onLine is { Length: > 0 } ? onLine : Named(dto.Dimensions);
+
+        static string? Named(IReadOnlyList<NameValueDto>? dimensions)
+            => dimensions?.FirstOrDefault(static d => string.Equals(d.Name, CostCenterDimension, StringComparison.Ordinal))?.Value;
+    }
+
+    /// <summary>
+    /// كل رمز مركز تكلفة <b>مذكور</b> في الطلب، ومعه <c>null</c> دائماً — و<c>null</c> هو
+    /// «لم يُذكر شيء»، وهو موجود دائماً لأن أي سطر قد يقع عليه.
+    /// <para>
+    /// والفحص الشكلي يقع هنا لا في النواة: طولٌ يتجاوز الحدّ المعلن رفضٌ <b>شكلي</b>
+    /// بـ<c>400</c>، لا «مركز غير موجود» بـ<c>404</c> — والرمز الذي يصف السبب أصدق من
+    /// الرمز الذي يصف العَرَض.
+    /// </para>
+    /// </summary>
+    /// <param name="dto">الطلب كما وصل.</param>
+    /// <exception cref="WireFormatException">إن كان رمزٌ مذكور مخالفاً لشكل السلك.</exception>
+    public static List<string?> CostCenterCandidates(PostJournalEntryRequestDto dto)
+    {
+        ArgumentNullException.ThrowIfNull(dto);
+
+        List<string?> candidates = [null];
+
+        Add(RequestedCostCenter(dto, line: null), "dimensions.cost_center");
+
+        for (int i = 0; i < dto.Lines.Count; i++)
+        {
+            Add(
+                RequestedCostCenter(dto, dto.Lines[i]),
+                FormattableString.Invariant($"lines[{i}].scope.costCenterId"));
+        }
+
+        return candidates;
+
+        void Add(string? raw, string field)
+        {
+            string? code = ReadOptional(raw, field, 64);
+
+            if (code is not null && !candidates.Contains(code, StringComparer.Ordinal))
+            {
+                candidates.Add(code);
+            }
+        }
+    }
+
+    /// <summary>
+    /// يحوّل طلب الترحيل الوارد إلى عقد الترحيل.
+    /// <para>
+    /// <b>ومركز التكلفة يصل إلى هنا مُحلّاً</b> (‏<paramref name="costCenter"/>): الحلّ
+    /// سؤالٌ عن سجلّ المنشأة، وسجلُّ المنشأة في النواة لا في طبقة HTTP. ولذلك النقطة
+    /// الطرفية تسأل النواة أولاً، ثم تُسلّم الجواب إلى هذا النقل — فلا يبني هذا الملفّ
+    /// <see cref="PostingScope"/> بلا مركز، ولا يعرف قاعدة الافتراضي أصلاً.
+    /// </para>
+    /// </summary>
     /// <param name="dto">الطلب كما وصل.</param>
     /// <param name="companyId">الشركة من المسار — بعد التحقق من أن الاعتماد يبلغها.</param>
     /// <param name="actor">الفاعل من الاعتماد، لا من الجسم.</param>
-    public static PostingRequest ToPostingRequest(PostJournalEntryRequestDto dto, Guid companyId, UserId actor)
+    /// <param name="costCenter">
+    /// الرمز المذكور ⇒ الرمز المُحلّ. مفتاح <c>null</c> هو «لم يُذكر شيء» ⇒ المركز الافتراضي.
+    /// </param>
+    public static PostingRequest ToPostingRequest(
+        PostJournalEntryRequestDto dto,
+        Guid companyId,
+        UserId actor,
+        IReadOnlyDictionary<string, string> costCenter)
     {
         ArgumentNullException.ThrowIfNull(dto);
+        ArgumentNullException.ThrowIfNull(costCenter);
 
         if (dto.Lines.Count > MaxLines)
         {
@@ -56,7 +141,8 @@ internal static class WireMapping
             Trigger = ReadEnum<PostingTrigger>(dto.Trigger, "trigger"),
             DocumentDate = ReadDate(dto.DocumentDate, "documentDate"),
             Narration = ReadLocalized(dto.Narration, "narration"),
-            Lines = [.. dto.Lines.Select((line, i) => ToPostingLine(line, currency, i))],
+            Lines = [.. dto.Lines.Select((line, i) => ToPostingLine(
+                line, currency, i, Resolved(costCenter, RequestedCostCenter(dto, line))))],
             Event = string.IsNullOrEmpty(dto.Event)
                 ? PostingEventCode.None
                 : new PostingEventCode(ReadRequiredText(dto.Event, "event", 128)),
@@ -68,9 +154,10 @@ internal static class WireMapping
             Facts = [.. dto.Facts.Select((f, i) => new PostingFact(
                 ReadRequiredText(f.Name, FormattableString.Invariant($"facts[{i}].name"), 128),
                 ReadText(f.Value, FormattableString.Invariant($"facts[{i}].value"), 256)))],
-            Dimensions = [.. dto.Dimensions.Select((d, i) => new PostingDimension(
-                ReadRequiredText(d.Name, FormattableString.Invariant($"dimensions[{i}].name"), 64),
-                ReadText(d.Value, FormattableString.Invariant($"dimensions[{i}].value"), 128)))],
+            // بُعد مركز التكلفة على مستوى الطلب يُستبدَل بالمُحلّ، ويُضاف إن غاب: مسار
+            // القالب يقرأ سطوره من هذا البُعد وحده، فتركُه على حاله يترك السطر المولَّد
+            // بلا مركز — وهو ما يرفضه المخطّط الآن، وكان يمرّ فارغاً قبله.
+            Dimensions = WithResolvedCostCenter(dto, costCenter),
             Book = ReadRequiredText(dto.Book, "book", 32),
             Currency = currency,
             ExchangeRate = WireNumbers.ParseStrict(dto.ExchangeRate.Raw, WireNumbers.RateScale, "exchangeRate"),
@@ -162,9 +249,9 @@ internal static class WireMapping
             [.. report.Rows.Select(static row => new TrialBalanceRowDto(
                 row.AccountCode,
                 row.Name.Arabic,
-                // الحقل المهجور يُشتقّ من صفّ الترجمة، ويرتدّ إلى السجلّ العربي حين لا
-                // ترجمة إنجليزية — لا إلى الفراغ، فعمودٌ بلا عنوان عطلٌ لا يُبلَّغ عنه.
-                row.Name.In("en"),
+                // ولا حقل إنجليزي مشتقّ هنا: الإنجليزية صفٌّ في الترجمات كغيرها، ومن
+                // أرادها قرأها منها. حقلٌ ثابت لها يجعل الارتداد يقع **مرّتين** بقاعدتين
+                // مختلفتين — هنا وفي الواجهة — وذلك أسوأ من قاعدة واحدة مكتوبة مرّة.
                 [.. row.Name.Translations.Select(static entry => new NameValueDto(entry.Key, entry.Value))],
                 new WireDecimal(WireNumbers.FormatMoney(row.Debit)),
                 new WireDecimal(WireNumbers.FormatMoney(row.Credit))))],
@@ -172,7 +259,63 @@ internal static class WireMapping
             new WireDecimal(WireNumbers.FormatMoney(report.TotalDebit)));
     }
 
-    private static PostingLine ToPostingLine(PostingLineDto dto, CurrencyCode currency, int index)
+    /// <summary>
+    /// أبعاد الطلب ومعها بُعد مركز التكلفة <b>مُحلّاً</b> — مستبدَلاً إن ذُكر، ومُضافاً إن غاب.
+    /// </summary>
+    private static List<PostingDimension> WithResolvedCostCenter(
+        PostJournalEntryRequestDto dto,
+        IReadOnlyDictionary<string, string> costCenter)
+    {
+        string centre = Resolved(costCenter, RequestedCostCenter(dto, line: null));
+
+        List<PostingDimension> dimensions = [];
+        bool replaced = false;
+
+        for (int i = 0; i < dto.Dimensions.Count; i++)
+        {
+            NameValueDto d = dto.Dimensions[i];
+            string name = ReadRequiredText(d.Name, FormattableString.Invariant($"dimensions[{i}].name"), 64);
+            string value = ReadText(d.Value, FormattableString.Invariant($"dimensions[{i}].value"), 128);
+
+            if (string.Equals(name, CostCenterDimension, StringComparison.Ordinal))
+            {
+                value = centre;
+                replaced = true;
+            }
+
+            dimensions.Add(new PostingDimension(name, value));
+        }
+
+        if (!replaced)
+        {
+            dimensions.Add(new PostingDimension(CostCenterDimension, centre));
+        }
+
+        return dimensions;
+    }
+
+    /// <summary>
+    /// جواب الحلّ لرمزٍ مذكور أو لغيابه. و<b>الغياب من الخريطة خللٌ برمجي لا مدخل عميل</b>:
+    /// النقطة الطرفية تسأل عن كل رمز يظهر في الطلب قبل أن تنادي هذا النقل.
+    /// </summary>
+    private static string Resolved(IReadOnlyDictionary<string, string> costCenter, string? requested)
+    {
+        string key = requested ?? string.Empty;
+
+        if (costCenter.TryGetValue(key, out string? resolved))
+        {
+            return resolved;
+        }
+
+        throw new InvalidOperationException(
+            $"مركز التكلفة «{key}» لم يُحلّ قبل بناء الطلب. / The cost centre '{key}' was not resolved before the request was built.");
+    }
+
+    private static PostingLine ToPostingLine(
+        PostingLineDto dto,
+        CurrencyCode currency,
+        int index,
+        string costCenterId)
     {
         string prefix = FormattableString.Invariant($"lines[{index}]");
 
@@ -183,12 +326,12 @@ internal static class WireMapping
             Amount = Money.Of(
                 WireNumbers.ParseStrict(dto.Amount.Raw, WireNumbers.MoneyScale, prefix + ".amount"),
                 currency),
-            Scope = dto.Scope is null
-                ? PostingScope.None
-                : new PostingScope(
-                    ReadOptional(dto.Scope.BranchId, prefix + ".scope.branchId", 64),
-                    ReadOptional(dto.Scope.CostCenterId, prefix + ".scope.costCenterId", 64),
-                    ReadOptional(dto.Scope.ProjectId, prefix + ".scope.projectId", 64)),
+            // مركز التكلفة وصل مُحلّاً، والفرع والمشروع اختياريان فعلاً. ولا فرع بين
+            // «‏scope غائب» و«‏scope بلا مركز» بعد اليوم: كلاهما يعني المركز الافتراضي.
+            Scope = new PostingScope(
+                costCenterId,
+                ReadOptional(dto.Scope?.BranchId, prefix + ".scope.branchId", 64),
+                ReadOptional(dto.Scope?.ProjectId, prefix + ".scope.projectId", 64)),
             Subledger = dto.Subledger is null
                 ? SubledgerReference.None
                 : new SubledgerReference(

@@ -1,3 +1,4 @@
+using System.Globalization;
 using Babel.SharedKernel;
 
 namespace Babel.Ledger.Posting;
@@ -37,6 +38,26 @@ internal static class PostingErrors
         "The posting request carries no event code. The event code is part of the posting identity; an empty code "
         + "collapses two different events of the same document at the same trigger into one identity, "
         + "and the second is swallowed silently.");
+
+    /// <summary>
+    /// سطرٌ خُطِّط بلا مركز تكلفة. <b>مرآة القيد في قاعدة البيانات</b>
+    /// (<c>ck_journal_line_cost_center_present</c>)، ووجودها هنا يجعل الرفض يحمل سببه
+    /// بالعربية بدل رسالة <c>23514</c> خام لا تسمّي السطر (ADR-0026).
+    /// </summary>
+    /// <param name="lineNo">رقم السطر داخل القيد.</param>
+    /// <param name="roleCode">رمز الدور — كي يُعرف أي سطر يُصلَح.</param>
+    public static Error MissingCostCenter(int lineNo, string roleCode) => Invalid(
+        "missing_cost_center",
+        string.Create(
+            CultureInfo.InvariantCulture,
+            $"السطر {lineNo} (الدور «{roleCode}») بلا مركز تكلفة. ولكل منشأة مركز تكلفة واحد على الأقل، "
+            + $"والمركز يُحلّ قبل بناء الطلب — المذكور إن كان عاملاً، والافتراضي إن لم يُذكر شيء. "
+            + $"وبلوغُ الدفتر بسطر بلا مركز يعني أن بوّابةً بنت طلباً بلا حلّه."),
+        string.Create(
+            CultureInfo.InvariantCulture,
+            $"Line {lineNo} (role '{roleCode}') carries no cost centre. Every company has at least one cost centre, "
+            + $"and the centre is resolved before the request is built — the named one when it is active, otherwise "
+            + $"the default. Reaching the ledger without one means a gateway built a request without resolving it."));
 
     public static Error NoLines => Invalid(
         "no_lines",

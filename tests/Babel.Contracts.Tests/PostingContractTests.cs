@@ -16,6 +16,9 @@ public sealed class PostingContractTests
             Role = PostingRole.OutputTax,
             Side = PostingSide.Credit,
             Amount = Money.Of(150m, CurrencyCode.Sar),
+            // النطاق إلزامي، ومركز التكلفة فيه غير فارغ: «سطرٌ بلا مركز» لم يعد شكلاً
+            // قابلاً للبناء أصلاً (ADR-0026). والاختبار أدناه يُثبت أنه كذلك.
+            Scope = PostingScope.On("cc.001"),
             Subledger = new SubledgerReference(SubledgerKind.Customer, "CUST-001"),
         };
 

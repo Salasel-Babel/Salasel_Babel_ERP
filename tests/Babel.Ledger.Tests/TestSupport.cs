@@ -56,6 +56,9 @@ internal static class Proof
 /// <summary>بناء طلبات الترحيل للاختبارات — بمفردات الحدث لا بأرقام حسابات.</summary>
 internal static class Requests
 {
+    /// <summary>المركز الافتراضي لأول مركز تكلفة في أي منشأة — <c>cc.001</c>.</summary>
+    public const string DefaultCostCenter = "cc.001";
+
     public static PostingRequest RentInvoice(
         Guid tenant,
         string documentId,
@@ -87,6 +90,11 @@ internal static class Requests
             ],
             Dimensions =
             [
+                // ‏**مركز التكلفة مُحلّ قبل بناء الطلب** (ADR-0026). وهذه الاختبارات تفحص
+                // الدفتر لا البوّابة، فهي تُسلّم ما تُسلّمه البوّابة: رمزاً مُحلّاً. ومن
+                // يبني طلباً بلا مركز يُرفض بـledger.posting.missing_cost_center، وذاك
+                // مُثبَت في CostCenterIsNeverAbsentTests.
+                new PostingDimension("cost_center", DefaultCostCenter),
                 new PostingDimension("property", property),
                 new PostingDimension("unit", "U-01"),
             ],
@@ -115,6 +123,11 @@ internal static class Requests
             Facts = [new PostingFact("subledger.lease_contract", "LC-" + documentId)],
             Dimensions =
             [
+                // ‏**مركز التكلفة مُحلّ قبل بناء الطلب** (ADR-0026). وهذه الاختبارات تفحص
+                // الدفتر لا البوّابة، فهي تُسلّم ما تُسلّمه البوّابة: رمزاً مُحلّاً. ومن
+                // يبني طلباً بلا مركز يُرفض بـledger.posting.missing_cost_center، وذاك
+                // مُثبَت في CostCenterIsNeverAbsentTests.
+                new PostingDimension("cost_center", DefaultCostCenter),
                 new PostingDimension("property", property),
                 new PostingDimension("unit", "U-01"),
             ],

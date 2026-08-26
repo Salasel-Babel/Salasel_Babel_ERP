@@ -191,6 +191,14 @@ jobs:
             exit 1
           fi
 
+          # وضع `auto` بنطاق حقيقي يتّصل بسلطة شهادات، وهي تطلب بريداً. وبريدٌ ناقص
+          # هنا يظهر لاحقاً بصفحةٍ لا تُفتح أمام الضيف — فيُرفض النشر الآن.
+          if [ "$BABEL_TLS_MODE" = "auto" ] && [ "${BABEL_SITE#:}" = "$BABEL_SITE" ] && [ -z "${BABEL_TLS_EMAIL:-}" ]; then
+            echo "::error::‏BABEL_TLS_MODE=auto بنطاق «$BABEL_SITE» يتطلّب BABEL_TLS_EMAIL."
+            echo "::error::إمّا أن تضبطه، أو تنتقل إلى BABEL_TLS_MODE=internal — راجع deploy/README.md §3."
+            exit 1
+          fi
+
           if ! printf '%s' "$BABEL_DEMO_TOKEN_SHA256" | grep -qE '^[0-9a-f]{64}$'; then
             echo "::error::‏BABEL_DEMO_TOKEN_SHA256 ليس بصمة SHA-256 سداسية صغيرة بأربعة وستين محرفاً."
             echo "::error::احسبها هكذا: printf '%s' \"<الرمز>\" | sha256sum"

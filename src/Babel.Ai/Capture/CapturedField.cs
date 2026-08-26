@@ -65,6 +65,16 @@ public sealed record CapturedField<T>
     public static CapturedField<T> Defaulted(T value, string originKey = CaptureOriginKeys.TenantSetting) =>
         new() { Value = value, Provenance = FieldProvenance.Defaulted, OriginKey = originKey };
 
+    /// <summary>
+    /// حقل مصدره كلامٌ فُرِّغ نصّاً في جهاز المستخدم. <b>يُراجَع كالمقروء</b>، ولا يُرحَّل
+    /// شيء بناءً عليه قبل تأكيد إنسان (‏ADR-0024).
+    /// </summary>
+    /// <param name="value">القيمة.</param>
+    /// <param name="confidence">درجة الثقة بين صفر وواحد.</param>
+    /// <param name="originKey">مفتاح المنشأ.</param>
+    public static CapturedField<T> Spoken(T value, decimal confidence, string originKey = CaptureOriginKeys.SpokenOnDevice) =>
+        new() { Value = value, Provenance = FieldProvenance.Spoken, OriginKey = originKey, Confidence = confidence };
+
     /// <summary>حقل أدخله إنسان — يملكه ولا يُراجَع.</summary>
     /// <param name="value">القيمة.</param>
     /// <param name="originKey">مفتاح المنشأ.</param>

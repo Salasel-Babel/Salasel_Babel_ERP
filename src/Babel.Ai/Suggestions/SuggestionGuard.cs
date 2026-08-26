@@ -35,6 +35,17 @@ public static partial class SuggestionGuard
     private static partial Regex NumericSegment();
 
     /// <summary>
+    /// هل يحمل هذا الرمز مقطعاً رقمياً صرفاً — أوضح شكل يتسلّل به رمز حساب؟
+    /// <para>
+    /// مُعلَنة كي يستعملها <b>حارس الخارج</b> أيضاً: نفس السؤال يُطرح على ما يُرسَل
+    /// إلى النموذج وعلى ما يعود منه، وجوابٌ واحد في موضع واحد لا ينحرف نصفه.
+    /// </para>
+    /// </summary>
+    /// <param name="code">الرمز.</param>
+    public static bool CarriesNumericSegment(string code) =>
+        code is not null && NumericSegment().IsMatch(code);
+
+    /// <summary>
     /// يتحقق من الاقتراح. يعيد كل الأخطاء لا أوّلها: مُخرَجٌ مشوَّه يُصحَّح مرّة واحدة.
     /// </summary>
     /// <param name="suggestion">الاقتراح.</param>

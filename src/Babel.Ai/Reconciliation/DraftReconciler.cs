@@ -32,11 +32,16 @@ public static class DraftReconciler
     /// <param name="provenance">المصدر.</param>
     public static int TrustRank(FieldProvenance provenance) => provenance switch
     {
-        FieldProvenance.Attested => 5,
-        FieldProvenance.Typed => 4,
-        FieldProvenance.Defaulted => 3,
-        FieldProvenance.Read => 2,
-        FieldProvenance.Inferred => 1,
+        // ⚠ الأرقام <b>متباعدة عمداً</b>: الترتيب وحده هو المعنى، ولا يقارَن أيٌّ منها
+        // بثابت. وحين أُضيف المصدر السادس (المنطوق) لم يكن بين «مقروء» و«مُستنتَج»
+        // عددٌ صحيح شاغر في السلّم القديم 1..5، فكان لا بدّ من إعادة ترقيم كامل —
+        // وهو ما يُغني عنه التباعد إلى الأبد.
+        FieldProvenance.Attested => 50,
+        FieldProvenance.Typed => 40,
+        FieldProvenance.Defaulted => 30,
+        FieldProvenance.Read => 20,
+        FieldProvenance.Spoken => 15,
+        FieldProvenance.Inferred => 10,
         _ => throw new ArgumentOutOfRangeException(nameof(provenance), provenance, "مصدر حقل غير معروف / unknown field provenance"),
     };
 

@@ -1,0 +1,7 @@
+{
+  "id": "chatcmpl-0003",
+  "object": "chat.completion",
+  "choices": [
+    { "index": 0, "finish_reason": "length", "message": { "role": "assistant", "content": "{\"schema_version\":\"ai.capture.extraction.v1\",\"document\":{\"seller_name\":{\"value\":\"مؤسسة" } }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "id": "chatcmpl-0000",
+  "object": "chat.completion",
+  "model": "MODEL_ID_PLACEHOLDER",
+  "choices": [
+    { "index": 0, "finish_reason": "stop", "message": { "role": "assistant", "content": "__CONTENT__" } }
+  ],
+  "usage": { "prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0 }
+}

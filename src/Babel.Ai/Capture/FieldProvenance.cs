@@ -25,6 +25,22 @@ public enum FieldProvenance
 
     /// <summary>أدخله إنسان — الإنسان <b>يملكه</b>.</summary>
     Typed = 5,
+
+    /// <summary>
+    /// نُطق فقيل، ثم فُرِّغ نصّاً — الإنسان <b>يراجع</b>.
+    /// <para>
+    /// <b>ولماذا مصدر سادس لا «مقروء» بمنشأ آخر:</b> القراءة الضوئية تُخطئ في المحرف،
+    /// والتفريغ الصوتي يُخطئ في <b>الرقم كلّه</b> — «خمسة عشر» و«خمسين» تفريغان
+    /// متجاوران صوتياً وفرقهما 35، ولا تُنتج بينهما درجةُ ثقة واحدة تمييزاً. ومصدرٌ
+    /// مستقلّ يجعل هذا الفرق <b>ظاهراً على الشاشة</b> بدل أن يُدفن تحت وسم «مقروء».
+    /// </para>
+    /// <para>
+    /// <b>وما لا يعنيه هذا المصدر البتّة:</b> أن المنطوق صار حقيقة محاسبية. لا يصير.
+    /// يملأ مسوّدة يُرقّيها إنسان (‏ADR-0024)، وواجبه <see cref="ProvenanceDuty.Review"/>
+    /// كالمقروء تماماً — بل هو أولى به.
+    /// </para>
+    /// </summary>
+    Spoken = 6,
 }
 
 /// <summary>ما يفعله الإنسان أمام حقل من كل مصدر. جدول واحد معلن بدل قرار مبعثر في كل شاشة.</summary>
@@ -66,6 +82,7 @@ public static class FieldProvenanceInfo
         FieldProvenance.Attested => ProvenanceDuty.Glance,
         FieldProvenance.Defaulted => ProvenanceDuty.Glance,
         FieldProvenance.Read => ProvenanceDuty.Review,
+        FieldProvenance.Spoken => ProvenanceDuty.Review,
         FieldProvenance.Inferred => ProvenanceDuty.Decide,
         FieldProvenance.Typed => ProvenanceDuty.Own,
         _ => throw new ArgumentOutOfRangeException(nameof(provenance), provenance, "مصدر حقل غير معروف / unknown field provenance"),
@@ -80,6 +97,7 @@ public static class FieldProvenanceInfo
         FieldProvenance.Inferred => "ai.capture.provenance.inferred",
         FieldProvenance.Defaulted => "ai.capture.provenance.defaulted",
         FieldProvenance.Typed => "ai.capture.provenance.typed",
+        FieldProvenance.Spoken => "ai.capture.provenance.spoken",
         _ => throw new ArgumentOutOfRangeException(nameof(provenance), provenance, "مصدر حقل غير معروف / unknown field provenance"),
     };
 
@@ -95,12 +113,12 @@ public static class FieldProvenanceInfo
     };
 
     /// <summary>
-    /// هل يحمل هذا المصدر درجة ثقة أصلاً؟ <b>نعم للمقروء والمُستنتَج وحدهما</b>.
+    /// هل يحمل هذا المصدر درجة ثقة أصلاً؟ <b>نعم للمقروء والمُستنتَج والمنطوق</b>.
     /// درجة ثقة على حقل مُصدَّق ادّعاءٌ كاذب: مصدره لا يقيس ثقة، ووجود الرقم يوحي بأنه يقيس.
     /// </summary>
     /// <param name="provenance">المصدر.</param>
     public static bool CarriesConfidence(FieldProvenance provenance) =>
-        provenance is FieldProvenance.Read or FieldProvenance.Inferred;
+        provenance is FieldProvenance.Read or FieldProvenance.Inferred or FieldProvenance.Spoken;
 }
 
 /// <summary>
@@ -126,4 +144,7 @@ public static class CaptureOriginKeys
 
     /// <summary>أدخله إنسان.</summary>
     public const string Human = "ai.capture.origin.human";
+
+    /// <summary>من تفريغ صوتي في متصفّح المستخدم — لم تغادر البايتات الصوتية جهازه.</summary>
+    public const string SpokenOnDevice = "ai.capture.origin.spoken_on_device";
 }

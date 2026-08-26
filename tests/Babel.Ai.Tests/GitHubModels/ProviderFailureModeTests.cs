@@ -30,7 +30,9 @@ public sealed class ProviderFailureModeTests
     private static void HasCode(Result<ExtractionOutput> result, string code)
     {
         Assert.True(result.IsFailure, "نجح نداء كان يجب أن يفشل.");
-        Assert.Contains(result.Errors, error => error.Code == code);
+        Assert.True(
+            result.Errors.Any(error => error.Code == code),
+            "المتوقّع «" + code + "» والوارد: " + string.Join(" · ", result.Errors.Select(e => e.Code + "=" + e.MessageAr)));
     }
 
     // ── 1 · لا رمز ────────────────────────────────────────────────────────

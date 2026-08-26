@@ -115,10 +115,12 @@ describe("<VoiceCapture>", () => {
   });
 
   it("النموذج — إن رُكِّب — يُسأل بعد الامتلاء لا قبله", async () => {
-    const resolve = vi.fn(async (): Promise<SpokenIntent> => ({
-      values: [{ field: "gross_total", text: "1725", provenance: "inferred", confidence: 0.6 }],
-      faults: [],
-    }));
+    const resolve = vi.fn((): Promise<SpokenIntent> =>
+      Promise.resolve({
+        values: [{ field: "gross_total", text: "1725", provenance: "inferred", confidence: 0.6 }],
+        faults: [],
+      })
+    );
 
     render(
       <Wrap>
@@ -136,6 +138,23 @@ describe("<VoiceCapture>", () => {
       expect(screen.getByTestId("voice-value-gross_total").textContent).toBe("1725")
     );
     expect(resolve).toHaveBeenCalledWith(UTTERANCE);
+  });
+
+  it("فشلُ النموذج لا يُفرغ الشاشة: قراءة القارئ الحتمي تبقى", async () => {
+    const resolve = vi.fn((): Promise<SpokenIntent> => Promise.reject(new Error("رفض الوسيط")));
+
+    render(
+      <Wrap>
+        <VoiceCapture simulatedTranscript={UTTERANCE} today="2026-08-26" resolveIntent={resolve} />
+      </Wrap>
+    );
+
+    const button = screen.getByTestId("voice-hold");
+    fireEvent.pointerDown(button);
+    fireEvent.pointerUp(button);
+
+    await vi.waitFor(() => expect(resolve).toHaveBeenCalled());
+    expect(screen.getByTestId("voice-value-gross_total").textContent).toBe("1500");
   });
 
   it("لا شيء هنا حقيقة محاسبية — والنصّ يقول ذلك على الشاشة", () => {

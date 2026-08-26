@@ -69,7 +69,7 @@ public static class ExtractionPrompt
         text.AppendLine(string.Join('\n', vocabulary.RoleCodes));
 
         string prompt = text.ToString();
-        Result guard = RefuseLedgerCodes(prompt);
+        Result guard = RefuseLedgerCodes(prompt, vocabulary);
 
         return guard.IsFailure ? Result<string>.Failure(guard.Errors) : Result<string>.Success(prompt);
     }
@@ -143,27 +143,26 @@ public static class ExtractionPrompt
     /// <list type="number">
     ///   <item><b>رمز حقل يسمّي حساباً</b> — بنفس مجموعة الأسماء التي يرفضها مخطط
     ///         الاستخراج على المُخرَج. مجموعةٌ واحدة تحرس الاتجاهين.</item>
-    ///   <item><b>سلسلة أرقام بطول رمز حساب</b> — أربع خانات فأكثر. ودليلُ الحسابات إن
-    ///         تسرّب يتسرّب أرقاماً لا أسماءً.</item>
+    ///   <item><b>رمزٌ في المفردات مقطعُه رقم</b> — بنفس فحص <see cref="SuggestionGuard"/>
+    ///         على ما يعود من النموذج. وهو <b>الجزء المتغيّر وحده</b> من التوجيه.</item>
     /// </list>
     /// <para>
-    /// <b>والمطابقة على الرمز كاملاً لا على جزء منه</b>، وذلك درسٌ ظهر أول تشغيل:
-    /// المصفوفة نفسها تحمل دوراً اسمه <c>settlement_account</c>، ومطابقةٌ على جزء الكلمة
-    /// كانت ترفض <b>كل</b> توجيه صحيح — أي حارس أحمر دائماً، وهو أسوأ من غياب الحارس.
+    /// <b>ودرسان مدفوعان ظهرا أول تشغيل، وكلاهما «حارس أحمر على نصّ سليم»:</b>
+    /// المطابقة على <b>الرمز كاملاً</b> لا على جزء منه — فالمصفوفة نفسها تحمل دوراً
+    /// اسمه <c>settlement_account</c>، ومطابقةُ الجزء كانت ترفض كل توجيه صحيح.
+    /// و<b>لا يُمسَح نصّ التوجيه الثابت بحثاً عن سلاسل أرقام</b> — فقاعدةٌ فيه تضرب
+    /// المثال <c>"1500.00"</c> لصيغة المبلغ، ومثالُ مبلغ ليس رمز حساب. والفحص يقع
+    /// حيث يمكن أن يتسرّب شيء فعلاً: <b>القائمة المحقونة</b>.
     /// </para>
     /// </summary>
     /// <param name="prompt">النصّ.</param>
-    public static Result RefuseLedgerCodes(string prompt)
+    /// <param name="vocabulary">المفردات المحقونة فيه.</param>
+    public static Result RefuseLedgerCodes(string prompt, IPostingVocabulary vocabulary)
     {
         ArgumentNullException.ThrowIfNull(prompt);
+        ArgumentNullException.ThrowIfNull(vocabulary);
 
-        HashSet<string> tokens = new(StringComparer.OrdinalIgnoreCase);
-        int run = 0;
-
-        foreach (string token in Tokenise(prompt))
-        {
-            tokens.Add(token);
-        }
+        HashSet<string> tokens = new(Tokenise(prompt), StringComparer.OrdinalIgnoreCase);
 
         foreach (string name in SuggestionGuard.LedgerCodeFieldNames.Order(StringComparer.Ordinal))
         {
@@ -173,25 +172,16 @@ public static class ExtractionPrompt
             }
         }
 
-        foreach (char character in prompt)
+        foreach (string code in vocabulary.EventCodes.Concat(vocabulary.RoleCodes))
         {
-            run = ArabicNumeralsLike(character) ? run + 1 : 0;
-
-            if (run >= LedgerCodeDigits)
+            if (SuggestionGuard.CarriesNumericSegment(code))
             {
-                return Result.Failure(GitHubModelsErrors.PromptNamesLedgerCode(
-                    "سلسلة من " + LedgerCodeDigits + " أرقام فأكثر"));
+                return Result.Failure(GitHubModelsErrors.PromptNamesLedgerCode(code));
             }
         }
 
         return Result.Success();
     }
-
-    /// <summary>طول سلسلة الأرقام التي تُعامَل رمزَ حساب. رموز المصفوفة لا تحمل أرقاماً أصلاً.</summary>
-    public const int LedgerCodeDigits = 4;
-
-    private static bool ArabicNumeralsLike(char character) =>
-        character is >= '0' and <= '9' or >= '\u0660' and <= '\u0669' or >= '\u06F0' and <= '\u06F9';
 
     private static IEnumerable<string> Tokenise(string text)
     {

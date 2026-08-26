@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net.Http.Headers;
 using System.Net.Sockets;
 using System.Text;
@@ -83,8 +84,10 @@ public sealed class HttpModelWire(HttpClient client) : IModelWire
             return (int)Math.Ceiling(delta.TotalSeconds);
         }
 
+        // ثقافة ثابتة صراحةً: ترويسةٌ من خدمة ليست نصّ عرض، وقارئٌ يقرأ ثقافة العملية
+        // يقرأ «١٢٠» أو «120» بحسب مَن شغّل الخادم — وهو فرقٌ لا يظهر إلا في الإنتاج.
         return response.Headers.TryGetValues("x-ratelimit-timeremaining", out IEnumerable<string>? values)
-            && int.TryParse(values.FirstOrDefault(), out int seconds)
+            && int.TryParse(values.FirstOrDefault(), NumberStyles.None, CultureInfo.InvariantCulture, out int seconds)
             ? seconds
             : null;
     }

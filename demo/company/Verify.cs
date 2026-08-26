@@ -1,5 +1,6 @@
 using System.Globalization;
 using Babel.Core.Audit;
+using Babel.Core.CompanySetup;
 using Babel.Core.Entitlement;
 using Babel.Core.Metering;
 using Babel.Ledger;
@@ -36,10 +37,26 @@ internal static class Verify
         InMemoryUsageStore usage = new();
         InMemoryAuditLog audit = new();
         InMemoryEntitlementService entitlements = new(audit, TimeProvider.System);
+        InMemoryCompanySetupStore setupStore = new();
         EntitlementEnforcer enforcer = new(entitlements, usage, TimeProvider.System);
         LedgerAuditService auditor = new(enforcer, ledger);
 
         TenantId tenant = new(settings.Company);
+
+        // ── التأسيس أولاً — لأن الإثبات يبني الوحدتين، والوحدتان تحملان الحالّ ──────
+        // مخزن التأسيس في هذه الموجة عمرُه عمرُ العملية (InMemoryCompanySetupStore)، وخطوة
+        // «الإثبات» تُستدعى وحدها بـ`verify` كما تُستدعى ضمن `all` — فتؤسّس في مخزنها كما
+        // يؤسّس البذر في مخزنه، **من الإعلان نفسه**. ولا حالّ صوري هنا: هذا
+        // CostCenterResolver الإنتاجي فوق سجلٍّ فيه المنشأة فعلاً، فلو رحّل أحدٌ يوماً من
+        // هذا المسار لأجابه بالمركز الصحيح بدل أن يمرّ بكذبةٍ مكتوبة «لا تُستدعى هنا».
+        CompanySetupService setup = new(setupStore, enforcer, audit, TimeProvider.System);
+        FoundedCompany founded = await Founding
+            .EnsureAsync(setup, tenant, Seed.Actor, cancellationToken)
+            .ConfigureAwait(false);
+
+        Say.Detail(
+            "تأسيس المنشأة مقروءاً: «" + founded.NameAr + "» · المركز الافتراضي "
+            + founded.CostCenters.Default);
 
         // ── ١ · ميزان المراجعة يتوازن ──────────────────────────────────────
         // من **السطور غير القابلة للتعديل** لا من جدول الأرصدة: جدول الأرصدة إسقاط،
@@ -93,8 +110,12 @@ internal static class Verify
             Say.Count(chain.Value.Checked) + " قيداً في السلسلة");
 
         // ── ٣ · أعمار الذمم: مدينة ودائنة ───────────────────────────────────
-        using SalesRuntime sales = new(settings.SalesOwner);
-        using PurchasingRuntime purchasing = new(settings.PurchasingOwner);
+        // الحالّ نفسه للوحدتين: قاعدة الحلّ واحدة في النواة، ونسخةٌ ثانية منها هي
+        // الشيء الذي وُجدت ICostCenterResolver لمنعه (ADR-0026).
+        CostCenterResolver costCentres = new(setupStore);
+
+        using SalesRuntime sales = new(settings.SalesOwner, costCentres);
+        using PurchasingRuntime purchasing = new(settings.PurchasingOwner, costCentres);
 
         DateOnly asOf = new(settings.FiscalYear, 8, 31);
 

@@ -2,6 +2,7 @@ using System.Collections.Immutable;
 using System.Globalization;
 using Babel.Core;
 using Babel.Core.CapabilityProfile;
+using Babel.Core.CompanySetup;
 using Babel.Ledger;
 using Babel.Purchasing;
 using Babel.Purchasing.Application;
@@ -40,6 +41,7 @@ internal sealed class Seed : IDisposable
     private readonly SupplierService _suppliers;
     private readonly SupplierBillService _bills;
     private readonly SupplierPaymentService _payments;
+    private readonly CompanySetupService _setup;
 
     private readonly Dictionary<string, Guid> _customerIds = new(StringComparer.Ordinal);
     private readonly Dictionary<string, Guid> _supplierIds = new(StringComparer.Ordinal);
@@ -48,6 +50,12 @@ internal sealed class Seed : IDisposable
 
     private int _postedEntries;
     private int _sequence;
+
+    /// <summary>
+    /// رمز مركز التكلفة المُرحَّل به — <b>يُقرأ من سجلّ المنشأة المؤسَّسة لا يُخمَّن</b>.
+    /// يُسنَد في <see cref="FoundAsync"/> قبل أول مستند، ولا يُقرأ قبلها.
+    /// </summary>
+    private string _costCentre = string.Empty;
 
     private Seed(Settings settings)
     {
@@ -88,6 +96,7 @@ internal sealed class Seed : IDisposable
         _suppliers = scoped.GetRequiredService<SupplierService>();
         _bills = scoped.GetRequiredService<SupplierBillService>();
         _payments = scoped.GetRequiredService<SupplierPaymentService>();
+        _setup = scoped.GetRequiredService<CompanySetupService>();
         Profiles = scoped.GetRequiredService<ICapabilityProfileStore>();
     }
 
@@ -116,6 +125,7 @@ internal sealed class Seed : IDisposable
         }
 
         using Seed seed = new(settings);
+        await seed.FoundAsync(cancellationToken).ConfigureAwait(false);
         await seed.SaveProfileAsync(cancellationToken).ConfigureAwait(false);
         await seed.MasterDataAsync(cancellationToken).ConfigureAwait(false);
         await seed.MonthsAsync(cancellationToken).ConfigureAwait(false);
@@ -141,6 +151,24 @@ internal sealed class Seed : IDisposable
         return Convert.ToInt64(
             await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false),
             CultureInfo.InvariantCulture) > 0;
+    }
+
+    /// <summary>
+    /// يؤسّس المنشأة <b>قبل</b> أي مستند — لأن بوّابة الترحيل تسأل عن مركز التكلفة قبل
+    /// أن تبني طلباً، ومنشأةٌ غير مؤسَّسة ترتدّ بـ<c>company_setup.not_found</c> (ADR-0026).
+    /// </summary>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    private async Task FoundAsync(CancellationToken cancellationToken)
+    {
+        FoundedCompany founded = await Founding
+            .EnsureAsync(_setup, Tenant, Actor, cancellationToken)
+            .ConfigureAwait(false);
+
+        _costCentre = founded.CostCenters.Default.Value!;
+
+        Say.Detail(
+            "تأسيس المنشأة: «" + founded.NameAr + "» · مقياس العرض " + founded.DisplayScale
+            + " · المركز الافتراضي " + _costCentre + " («" + founded.CostCenters.DefaultCenter.NameAr + "»)");
     }
 
     private async Task SaveProfileAsync(CancellationToken cancellationToken)
@@ -396,7 +424,7 @@ internal sealed class Seed : IDisposable
                         _supplierIds[supplier.Code],
                         issued,
                         supplier.ExpenseCategory,
-                        Company.CostCentre,
+                        _costCentre,
                         [
                             new PurchaseLineDraft(
                                 "SRV-" + supplier.Code,

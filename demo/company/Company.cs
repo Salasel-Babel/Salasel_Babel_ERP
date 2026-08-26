@@ -1,3 +1,5 @@
+using Babel.Core.CompanySetup;
+
 namespace BabelDemoCompany;
 
 /// <summary>عميل في البيانات التجريبية.</summary>
@@ -39,8 +41,24 @@ internal static class Company
     /// <summary>الفرع المستعمل بُعداً تحليلياً على الإيراد.</summary>
     public const string Branch = "BR-01";
 
-    /// <summary>مركز التكلفة الافتراضي — لا يكون فارغاً أبداً (ADR-0026).</summary>
-    public const string CostCentre = "CC-01";
+    /// <summary>
+    /// مسوّدة تأسيس المنشأة التجريبية — <b>الإعلان الوحيد لها في الشجرة</b>.
+    /// <para>
+    /// ‏<see cref="CostCenterPlan.One"/>: منشأةٌ بمركز تكلفة واحد اسمه اسمها، وهو ما يصف
+    /// هذه المنشأة فعلاً. و<b>رمز المركز لا يُكتب هنا</b>: السجلّ يسكّه عند التأسيس
+    /// (<c>cc.001</c>)، وثابتةٌ مكتوبة بيد تُوافقه اليوم هي ثابتةٌ تخالفه يوم يتغيّر
+    /// السكّ — وقد كان في هذا الملف <c>CC-01</c> لا يوافق أي رمز يسكّه السجلّ.
+    /// فمن يحتاج الرمز يقرؤه من <see cref="FoundedCompany.CostCenters"/>.
+    /// </para>
+    /// <para>خانتان عشريتان: الريال السعودي، ولا يتغيّر المقياس بعد التأسيس.</para>
+    /// </summary>
+    public static CompanySetupDraft SetupDraft { get; } = new(
+        CompanyNameAr: NameArabic,
+        CompanyNameTranslations: null,
+        CostCenters: CostCenterPlan.One,
+        FirstCostCenterNameAr: null,
+        FirstCostCenterTranslations: null,
+        DecimalPlaces: 2);
 
     /// <summary>حساب البنك في دفتر الخزينة المساعد.</summary>
     public const string Bank = "BANK-01";

@@ -26,11 +26,18 @@ public sealed class MatrixPostingVocabulary : IPostingVocabulary
 
     private readonly FrozenSet<string> _events;
     private readonly FrozenSet<string> _roles;
+    private readonly string[] _eventOrder;
+    private readonly string[] _roleOrder;
 
     private MatrixPostingVocabulary(FrozenSet<string> events, FrozenSet<string> roles)
     {
         _events = events;
         _roles = roles;
+
+        // مرتَّبة ترتيباً ثابتاً: نصّ التوجيه المُرسَل إلى النموذج يجب أن يكون هو نفسه
+        // في كل تشغيلة، وإلا صار «نفس المدخل يعطي نفس المُخرَج» غير قابل للفحص أصلاً.
+        _eventOrder = [.. events.Order(StringComparer.Ordinal)];
+        _roleOrder = [.. roles.Order(StringComparer.Ordinal)];
     }
 
     /// <summary>المفردات المشتركة — تُقرأ مرّة واحدة لكل عملية.</summary>
@@ -41,6 +48,12 @@ public sealed class MatrixPostingVocabulary : IPostingVocabulary
 
     /// <inheritdoc />
     public int RoleCount => _roles.Count;
+
+    /// <inheritdoc />
+    public IReadOnlyList<string> EventCodes => _eventOrder;
+
+    /// <inheritdoc />
+    public IReadOnlyList<string> RoleCodes => _roleOrder;
 
     /// <inheritdoc />
     public bool KnowsEvent(string eventCode) => eventCode is not null && _events.Contains(eventCode);

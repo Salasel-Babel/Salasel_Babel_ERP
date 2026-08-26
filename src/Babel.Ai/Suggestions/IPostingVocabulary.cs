@@ -23,4 +23,13 @@ public interface IPostingVocabulary
 
     /// <summary>عدد رموز الأدوار.</summary>
     int RoleCount { get; }
+
+    /// <summary>
+    /// رموز الأحداث كلها مرتَّبة. <b>وهذه هي وحدها ما يُعرَض على النموذج</b>: قائمةٌ
+    /// مغلقة يختار منها، لا دليل حسابات يخترع منه.
+    /// </summary>
+    IReadOnlyList<string> EventCodes { get; }
+
+    /// <summary>رموز الأدوار كلها مرتَّبة.</summary>
+    IReadOnlyList<string> RoleCodes { get; }
 }

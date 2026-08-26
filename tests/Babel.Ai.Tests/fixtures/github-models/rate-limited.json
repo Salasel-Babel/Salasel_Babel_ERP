@@ -1,0 +1,1 @@
+{ "error": { "code": "RateLimitReached", "message": "Rate limit of 50 per 86400s exceeded for the free catalogue." } }

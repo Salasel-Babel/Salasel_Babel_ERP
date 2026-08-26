@@ -17,7 +17,12 @@ FROM mcr.microsoft.com/dotnet/sdk:${DOTNET_VERSION} AS build
 WORKDIR /source
 
 # الاستعادة أولاً وبطبقة مستقلّة: تغييرُ سطرِ شيفرة لا يُعيد تنزيل الحزم.
-COPY Directory.Build.props Directory.Packages.props global.json Babel.slnx ./
+# ‏**‏`.editorconfig` ليس تفضيل محرّر هنا بل جزء من البناء**: فيه شدّةُ كل قاعدة
+# محلّل مُسكَّنة بسببها المكتوب. وإسقاطه من سياق الصورة يجعل القواعد ترتدّ إلى
+# افتراضها، ومع `TreatWarningsAsErrors` يفشل البناء داخل الحاوية وهو أخضر على
+# جهاز المطوّر. وقد وقع فعلاً: `CA1716` على `Error` و`CA1000` على `Result<T>` —
+# كلاهما مُسكَّن في الملف، وكلاهما أوقف بناء الصورة.
+COPY Directory.Build.props Directory.Packages.props global.json .editorconfig ./
 COPY src/ src/
 COPY data/ data/
 RUN dotnet restore src/Babel.Api/Babel.Api.csproj

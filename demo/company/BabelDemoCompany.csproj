@@ -1,0 +1,54 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    مُنشئ الشركة التجريبية — أداة تشغيل، لا وحدة منتج.
+
+    قاعدتها الحاكمة سطر واحد: **كل قيد في الدفتر يُولَد من محرّك الترحيل**. لا سطر
+    ‏INSERT واحد على ledger.journal_entry ولا على ledger.journal_line في هذا المشروع،
+    ولا يستطيع أن يوجد: دور التطبيق الذي تعمل به خطوة البذر لا يملك إلا INSERT
+    عبر ledger.post_entry، والصلاحيات تمنع ما سواه بالرمز 42501 (ADR-0003).
+
+    والمشروع خارج src/: ليس وحدة منتج، ولا بطاقة وحدة له، ولا استحقاق. وهو في
+    Babel.slnx لأن كل مشروع على القرص فيه (القاعدة 9 — فخ-43)، فيبنيه التكامل
+    المستمر بنفس TreatWarningsAsErrors ونفس المحلّلات.
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>BabelDemoCompany</RootNamespace>
+    <AssemblyName>BabelDemoCompany</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- لا مرجع إلى Babel.Api: الجذر التركيبي لا يعتمد عليه شيء (القاعدة 3). -->
+    <ProjectReference Include="../../src/Babel.SharedKernel/Babel.SharedKernel.csproj" />
+    <ProjectReference Include="../../src/Babel.Contracts/Babel.Contracts.csproj" />
+    <ProjectReference Include="../../src/Babel.Core/Babel.Core.csproj" />
+    <ProjectReference Include="../../src/Babel.Canonicalization/Babel.Canonicalization.csproj" />
+    <ProjectReference Include="../../src/Babel.Ledger/Babel.Ledger.csproj" />
+    <ProjectReference Include="../../src/Babel.Sales/Babel.Sales.csproj" />
+    <ProjectReference Include="../../src/Babel.Purchasing/Babel.Purchasing.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Npgsql" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      البيانات المرجعية مضمَّنة في التجميعة لا مقروءة من شجرة المستودع: صورة الحاوية
+      تحمل الثنائي وحده، ولا تفترض وجود data/ على القرص بجانبها.
+    -->
+    <EmbeddedResource Include="../../data/chart-of-accounts/accounts.csv">
+      <LogicalName>BabelDemoCompany.accounts.csv</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="../../data/posting-matrix/account-roles.csv">
+      <LogicalName>BabelDemoCompany.account-roles.csv</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="../../data/posting-matrix/role-map.default.csv">
+      <LogicalName>BabelDemoCompany.role-map.default.csv</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
+</Project>

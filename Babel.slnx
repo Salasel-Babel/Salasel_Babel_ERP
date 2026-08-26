@@ -51,6 +51,7 @@
     <Project Path="tools/matrix-validator/tests/MatrixValidator.Tests.csproj" />
   </Folder>
   <Folder Name="/demo/">
+    <Project Path="demo/company/BabelDemoCompany.csproj" />
     <Project Path="demo/vertical-slice/BabelDemo.csproj" />
   </Folder>
 </Solution>

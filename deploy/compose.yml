@@ -1,0 +1,111 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# حزمة العرض — خمس خدمات، وترتيبها هو نصف القرار.
+#
+#   db        PostgreSQL 16 على حجم مسمّى. لا منفذ منشور.
+#   migrator  يعمل **مرّة** ثم يخرج: تهيئة ← هجرات ← بذر ← إثبات.
+#             وهو وحده يحمل اتصال المالك واتصال الصيانة.
+#   api       يقلع **بعد** خروج migrator بنجاح، وبدور التطبيق وحده.
+#   web       ملفّات ثابتة + وسيط على الأصل نفسه.
+#   edge      Caddy: هو الوحيد الذي ينشر منفذاً، وهو مصدر الشهادة.
+#
+# **ولا قيمة بيئة واحدة مكتوبة في هذا الملف.** كلّها ‎${…}‎ تُقرأ من ملف .env
+# يُكتب على الخادم لحظة النشر من مخزن أسرار، وهو في .gitignore بحكم `.env`.
+# جدول ما يجب أن يحتويه في deploy/README.md.
+# ═══════════════════════════════════════════════════════════════════════════
+name: babel-demo
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?كلمة مرور المستخدم الخارق لـPostgreSQL}
+      POSTGRES_DB: postgres
+      # ترتيب مستقلّ عن لغة المضيف: الفرز الثقافي يختلف بين ثقافتين على الحروف
+      # نفسها، والمخطّط لا يجوز أن يعتمد على لغة الخادم (القاعدة 10).
+      POSTGRES_INITDB_ARGS: "--locale=C --encoding=UTF8"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  migrator:
+    image: ${BABEL_REGISTRY:?سجلّ الصور}/babel-migrator:${BABEL_IMAGE_TAG:?وسم الصورة — لا افتراضي عمداً}
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # الصيانة والمالك — **هنا وحدها**.
+      BABEL_ADMIN_DB: "Host=db;Port=5432;Database=postgres;Username=postgres;Password=${POSTGRES_PASSWORD}"
+      BABEL_LEDGER_OWNER_DB: "Host=db;Port=5432;Database=babel_ledger;Username=postgres;Password=${POSTGRES_PASSWORD}"
+      BABEL_SALES_OWNER_DB: "Host=db;Port=5432;Database=babel_sales;Username=postgres;Password=${POSTGRES_PASSWORD}"
+      BABEL_PURCHASING_OWNER_DB: "Host=db;Port=5432;Database=babel_purchasing;Username=postgres;Password=${POSTGRES_PASSWORD}"
+      # واتصال التطبيق: يُستعمل في خطوتَي البذر والإثبات — وهو ما يجعل البذر
+      # عاجزاً بنيوياً عن الكتابة خارج ledger.post_entry.
+      BABEL_LEDGER_APP_DB: "Host=db;Port=5432;Database=babel_ledger;Username=${BABEL_LEDGER_APP_ROLE:-babel_ledger_app};Password=${BABEL_LEDGER_APP_PASSWORD}"
+      BABEL_LEDGER_APP_ROLE: ${BABEL_LEDGER_APP_ROLE:-babel_ledger_app}
+      BABEL_LEDGER_APP_PASSWORD: ${BABEL_LEDGER_APP_PASSWORD:?كلمة مرور دور التطبيق}
+      BABEL_DEMO_COMPANY_ID: ${BABEL_DEMO_COMPANY_ID:-d3305e1e-0000-4000-8000-000000000001}
+      BABEL_DEMO_FISCAL_YEAR: ${BABEL_DEMO_FISCAL_YEAR:-2026}
+    command: ["all"]
+
+  api:
+    image: ${BABEL_REGISTRY}/babel-api:${BABEL_IMAGE_TAG}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+    environment:
+      ASPNETCORE_URLS: http://0.0.0.0:8080
+      # ‏**اتصال دور التطبيق وحده.** لا BABEL_LEDGER_OWNER_DB هنا، ولا يجوز أن
+      # يوجد: خادمٌ يحمل اتصال المالك يستطيع إسقاط المشغّل المؤجَّل ثم الكتابة
+      # فوق قيد مُرحَّل، فتسقط طبقتا الحصانة معاً (ADR-0003).
+      BABEL_LEDGER_APP_DB: "Host=db;Port=5432;Database=babel_ledger;Username=${BABEL_LEDGER_APP_ROLE:-babel_ledger_app};Password=${BABEL_LEDGER_APP_PASSWORD};Maximum Pool Size=20"
+      BABEL_LEDGER_APP_ROLE: ${BABEL_LEDGER_APP_ROLE:-babel_ledger_app}
+      # دليل الاعتمادات: **بصمة** لا اعتماد. الخادم لا يعرف الرمز الأصلي أبداً.
+      Babel__Api__Tokens__0__Sha256: ${BABEL_DEMO_TOKEN_SHA256:?بصمة SHA-256 لرمز العرض}
+      Babel__Api__Tokens__0__Tenant: ${BABEL_DEMO_COMPANY_ID:-d3305e1e-0000-4000-8000-000000000001}
+      Babel__Api__Tokens__0__User: ${BABEL_DEMO_USER_ID:-d3305e1e-0000-4000-8000-0000000000a1}
+      Babel__Api__Tokens__0__Companies__0: ${BABEL_DEMO_COMPANY_ID:-d3305e1e-0000-4000-8000-000000000001}
+      Logging__LogLevel__Default: ${BABEL_LOG_LEVEL:-Information}
+
+  web:
+    image: ${BABEL_REGISTRY}/babel-web:${BABEL_IMAGE_TAG}
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+
+  edge:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      web:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      # اسم النطاق يحكم شكل الشهادة كلّه. القيمة الفارغة تعني «بلا نطاق»،
+      # وحينها Caddy يُصدر شهادة من سلطته الداخلية — انظر Caddyfile وREADME §3.
+      BABEL_SITE: ${BABEL_SITE:-:80}
+      BABEL_TLS_MODE: ${BABEL_TLS_MODE:-auto}
+      # ‏`:-` لا `:?`: يُبدَّل عند الغياب **وعند الفراغ** معاً — والفراغ هو الحالة
+      # التي كسرت الحافة (انظر Caddyfile).
+      BABEL_TLS_EMAIL: ${BABEL_TLS_EMAIL:-tls-email-not-set@invalid}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  db-data:
+  caddy-data:
+  caddy-config:

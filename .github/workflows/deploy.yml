@@ -1,0 +1,250 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# النشر إلى خادم العرض.
+#
+# **هذا الملف لا يعرف الخادم.** لا عنوان، ولا اسم نطاق، ولا مستخدم، ولا منفذ،
+# ولا كلمة مرور واحدة. كلّها أسرار مستودع، وجدولها الكامل في deploy/README.md —
+# وهو الشيء الوحيد الذي على المالك أن يفعله ليصير هذا الملف قابلاً للتشغيل.
+#
+# ولماذا يدوي لا على كل دفعة: النشر إلى خادم يراه صاحب قرار حدثٌ يُقرَّر، لا
+# أثرٌ جانبي لدمج. والوسم هو بصمة الالتزام، فكل نشرة تُنسب إلى شيفرة بعينها
+# ويبقى الرجوع إلى سابقتها ممكناً بأمر واحد.
+#
+# وترتيب الأمان مقصود: البناء يسبق أي لمس للخادم، فخادمُ العرض لا يُمَسّ إلا
+# بصور بُنيت واختُبرت بالفعل.
+# ═══════════════════════════════════════════════════════════════════════════
+
+name: النشر
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'الإجراء: نشر أو رجوع إلى النشرة السابقة'
+        type: choice
+        options: [deploy, rollback]
+        default: deploy
+      ref:
+        description: 'المرجع المراد نشره (فرع أو وسم أو بصمة). الافتراضي: ما شُغّل عليه.'
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  # خادمٌ واحد: نشرتان متزامنتان تتركانه بمزيج من وسمين.
+  group: deploy-demo
+  cancel-in-progress: false
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  # ── ١ · البناء والدفع ────────────────────────────────────────────────────
+  images:
+    name: بناء الصور ودفعها
+    if: inputs.action == 'deploy'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    outputs:
+      tag: ${{ steps.tag.outputs.value }}
+      registry: ${{ steps.tag.outputs.registry }}
+
+    steps:
+      - name: سحب المستودع
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+
+      - name: الوسم والسجلّ
+        id: tag
+        run: |
+          set -euo pipefail
+          echo "value=sha-$(git rev-parse --short=12 HEAD)" >> "$GITHUB_OUTPUT"
+          # اسم المالك يُخفَّض: أسماء الصور في OCI لا تقبل حرفاً كبيراً.
+          echo "registry=ghcr.io/$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
+      - name: تهيئة Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: الدخول إلى سجلّ الصور
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # ثلاث صور لا واحدة، وهو الفصل نفسه الذي يفرضه ADR-0003 مطبَّقاً على
+      # النشر: صورة الترحيل وحدها تحمل اتصال المالك، وصورة الخادم لا تحمله.
+      - name: صورة الخادم
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/Dockerfile.api
+          push: true
+          tags: |
+            ${{ steps.tag.outputs.registry }}/babel-api:${{ steps.tag.outputs.value }}
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
+
+      - name: صورة الترحيل والبذر
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/Dockerfile.migrator
+          push: true
+          tags: |
+            ${{ steps.tag.outputs.registry }}/babel-migrator:${{ steps.tag.outputs.value }}
+          cache-from: type=gha,scope=migrator
+          cache-to: type=gha,mode=max,scope=migrator
+
+      - name: صورة الواجهة
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/Dockerfile.web
+          push: true
+          tags: |
+            ${{ steps.tag.outputs.registry }}/babel-web:${{ steps.tag.outputs.value }}
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+
+  # ── ٢ · النشر ────────────────────────────────────────────────────────────
+  deploy:
+    name: النشر إلى الخادم
+    needs: [images]
+    if: always() && (inputs.action == 'rollback' || needs.images.result == 'success')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: demo
+
+    steps:
+      - name: سحب المستودع
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+
+      # مفتاح SSH وبصمة المضيف كلاهما سرّ. **وبصمة المضيف ليست تفصيلاً**:
+      # بدونها لا يبقى إلا StrictHostKeyChecking=no، وهو قبولٌ لأي خادم يجيب
+      # على العنوان — أي إلغاء المصادقة على الطرف الآخر بالكامل.
+      - name: تهيئة SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_SSH_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          if [ -z "${DEPLOY_SSH_KEY:-}" ] || [ -z "${DEPLOY_SSH_KNOWN_HOSTS:-}" ]; then
+            echo "::error::‏DEPLOY_SSH_KEY أو DEPLOY_SSH_KNOWN_HOSTS غير مضبوط. جدول الأسرار في deploy/README.md."
+            exit 1
+          fi
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          printf '%s\n' "$DEPLOY_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: نقل ملفّات الحزمة
+        env:
+          HOST: ${{ secrets.DEPLOY_SSH_HOST }}
+          USER_NAME: ${{ secrets.DEPLOY_SSH_USER }}
+          PORT: ${{ secrets.DEPLOY_SSH_PORT || '22' }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH || '/opt/babel-demo' }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_deploy -p "$PORT" "$USER_NAME@$HOST" "mkdir -p '$DEPLOY_PATH'"
+          scp -i ~/.ssh/id_deploy -P "$PORT" \
+              deploy/compose.yml deploy/Caddyfile deploy/remote.sh \
+              "$USER_NAME@$HOST:$DEPLOY_PATH/"
+          ssh -i ~/.ssh/id_deploy -p "$PORT" "$USER_NAME@$HOST" "chmod +x '$DEPLOY_PATH/remote.sh'"
+
+      # ملف البيئة يُكتب عبر **المدخل القياسي**، فلا تظهر قيمة واحدة في سطر أمر
+      # ولا في `ps` على الخادم ولا في سجلّ سير العمل. وصلاحيته 600 قبل أن يُكتب
+      # فيه أول حرف.
+      - name: كتابة ملف البيئة على الخادم
+        if: inputs.action == 'deploy'
+        env:
+          HOST: ${{ secrets.DEPLOY_SSH_HOST }}
+          USER_NAME: ${{ secrets.DEPLOY_SSH_USER }}
+          PORT: ${{ secrets.DEPLOY_SSH_PORT || '22' }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH || '/opt/babel-demo' }}
+          REGISTRY: ${{ needs.images.outputs.registry }}
+          TAG: ${{ needs.images.outputs.tag }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          BABEL_LEDGER_APP_PASSWORD: ${{ secrets.BABEL_LEDGER_APP_PASSWORD }}
+          BABEL_DEMO_TOKEN_SHA256: ${{ secrets.BABEL_DEMO_TOKEN_SHA256 }}
+          BABEL_SITE: ${{ secrets.BABEL_SITE }}
+          BABEL_TLS_MODE: ${{ vars.BABEL_TLS_MODE || 'auto' }}
+          BABEL_TLS_EMAIL: ${{ secrets.BABEL_TLS_EMAIL }}
+          BABEL_DEMO_COMPANY_ID: ${{ vars.BABEL_DEMO_COMPANY_ID || 'd3305e1e-0000-4000-8000-000000000001' }}
+          BABEL_DEMO_USER_ID: ${{ vars.BABEL_DEMO_USER_ID || 'd3305e1e-0000-4000-8000-0000000000a1' }}
+        run: |
+          set -euo pipefail
+
+          missing=""
+          for name in POSTGRES_PASSWORD BABEL_LEDGER_APP_PASSWORD BABEL_DEMO_TOKEN_SHA256 BABEL_SITE; do
+            if [ -z "${!name:-}" ]; then missing="$missing $name"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::أسرار ناقصة:$missing — الجدول في deploy/README.md"
+            exit 1
+          fi
+
+          if ! printf '%s' "$BABEL_DEMO_TOKEN_SHA256" | grep -qE '^[0-9a-f]{64}$'; then
+            echo "::error::‏BABEL_DEMO_TOKEN_SHA256 ليس بصمة SHA-256 سداسية صغيرة بأربعة وستين محرفاً."
+            echo "::error::احسبها هكذا: printf '%s' \"<الرمز>\" | sha256sum"
+            exit 1
+          fi
+
+          {
+            echo "BABEL_REGISTRY=$REGISTRY"
+            echo "BABEL_IMAGE_TAG=$TAG"
+            echo "POSTGRES_PASSWORD=$POSTGRES_PASSWORD"
+            echo "BABEL_LEDGER_APP_PASSWORD=$BABEL_LEDGER_APP_PASSWORD"
+            echo "BABEL_LEDGER_APP_ROLE=babel_ledger_app"
+            echo "BABEL_DEMO_TOKEN_SHA256=$BABEL_DEMO_TOKEN_SHA256"
+            echo "BABEL_SITE=$BABEL_SITE"
+            echo "BABEL_TLS_MODE=$BABEL_TLS_MODE"
+            echo "BABEL_TLS_EMAIL=$BABEL_TLS_EMAIL"
+            echo "BABEL_DEMO_COMPANY_ID=$BABEL_DEMO_COMPANY_ID"
+            echo "BABEL_DEMO_USER_ID=$BABEL_DEMO_USER_ID"
+          } | ssh -i ~/.ssh/id_deploy -p "$PORT" "$USER_NAME@$HOST" \
+                "umask 077 && cat > '$DEPLOY_PATH/.env.new' && mv '$DEPLOY_PATH/.env.new' '$DEPLOY_PATH/.env'"
+
+      # الاعتماد إلى سجلّ الصور يمرّ بالمدخل القياسي أيضاً، ويُمحى فور السحب:
+      # خادم عرض لا يحتاج أن يبقى قادراً على سحب صور خاصة بعد انتهاء النشر.
+      - name: النشر أو الرجوع
+        env:
+          HOST: ${{ secrets.DEPLOY_SSH_HOST }}
+          USER_NAME: ${{ secrets.DEPLOY_SSH_USER }}
+          PORT: ${{ secrets.DEPLOY_SSH_PORT || '22' }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH || '/opt/babel-demo' }}
+          TAG: ${{ needs.images.outputs.tag }}
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ACTOR: ${{ github.actor }}
+          ACTION: ${{ inputs.action }}
+        run: |
+          set -euo pipefail
+
+          printf '%s' "$REGISTRY_TOKEN" | ssh -i ~/.ssh/id_deploy -p "$PORT" "$USER_NAME@$HOST" \
+            "docker login ghcr.io --username '$ACTOR' --password-stdin"
+
+          set +e
+          ssh -i ~/.ssh/id_deploy -p "$PORT" "$USER_NAME@$HOST" \
+            "cd '$DEPLOY_PATH' && ./remote.sh ${ACTION} ${TAG}"
+          status=$?
+          set -e
+
+          ssh -i ~/.ssh/id_deploy -p "$PORT" "$USER_NAME@$HOST" "docker logout ghcr.io" || true
+          exit "$status"
+
+      - name: البصمة المنشورة
+        if: success()
+        env:
+          TAG: ${{ needs.images.outputs.tag }}
+        run: echo "::notice::النشرة الحيّة الآن بالوسم ${TAG:-<رجوع>}"
+
+      - name: محو المفتاح
+        if: always()
+        run: rm -f ~/.ssh/id_deploy

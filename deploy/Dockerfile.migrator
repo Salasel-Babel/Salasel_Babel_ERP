@@ -1,0 +1,44 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# صورة الترحيل والبذر — تعمل مرّة عند كل نشر ثم **تخرج**.
+#
+# وهي الصورة الوحيدة التي تحمل اتصال المالك واتصال الصيانة. الخادم لا يحملهما،
+# ولا يستطيع أن يحملهما: ملف compose يمرّرهما إلى هذه الخدمة وحدها.
+#
+# وترتيب ما تفعله معلن في Program.cs: bootstrap ← migrate ← seed ← verify،
+# والفشل في أي خطوة يخرج برمز غير صفري فيتوقّف النشر قبل أن يقلع الخادم على
+# مخطّط نصف منشور.
+# ═══════════════════════════════════════════════════════════════════════════
+ARG DOTNET_VERSION=10.0
+
+FROM mcr.microsoft.com/dotnet/sdk:${DOTNET_VERSION} AS build
+WORKDIR /source
+
+COPY Directory.Build.props Directory.Packages.props global.json Babel.slnx ./
+COPY src/ src/
+COPY data/ data/
+COPY demo/company/ demo/company/
+RUN dotnet restore demo/company/BabelDemoCompany.csproj
+
+RUN dotnet publish demo/company/BabelDemoCompany.csproj \
+        --configuration Release \
+        --no-restore \
+        --output /app
+
+FROM mcr.microsoft.com/dotnet/runtime:${DOTNET_VERSION} AS runtime
+WORKDIR /app
+
+ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=0 \
+    DOTNET_NOLOGO=1 \
+    DOTNET_CLI_TELEMETRY_OPTOUT=1
+
+COPY --from=build /app ./
+
+RUN set -eu; \
+    ls /usr/lib/x86_64-linux-gnu/libicuuc.so.* >/dev/null 2>&1 \
+      || ls /usr/lib/aarch64-linux-gnu/libicuuc.so.* >/dev/null 2>&1 \
+      || { echo 'ICU غير موجودة في صورة الترحيل — أسماء الحسابات العربية ستُطبَّع خطأً.' >&2; exit 1; }
+
+USER $APP_UID
+
+ENTRYPOINT ["dotnet", "BabelDemoCompany.dll"]
+CMD ["all"]

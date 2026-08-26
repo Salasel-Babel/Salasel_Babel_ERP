@@ -33,6 +33,9 @@ node_modules/
 
 # السجلات والمؤقتات
 *.log
+# معرّفات عمليات التشغيل المحلي (deploy/up.sh) — حالةُ جهازٍ لا شيفرة
+deploy/.*.pid
+deploy/previous.tag
 logs/
 tmp/
 .cache/

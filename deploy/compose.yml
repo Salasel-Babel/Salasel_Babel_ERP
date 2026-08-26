@@ -97,7 +97,9 @@ services:
       # وحينها Caddy يُصدر شهادة من سلطته الداخلية — انظر Caddyfile وREADME §3.
       BABEL_SITE: ${BABEL_SITE:-:80}
       BABEL_TLS_MODE: ${BABEL_TLS_MODE:-auto}
-      BABEL_TLS_EMAIL: ${BABEL_TLS_EMAIL:-}
+      # ‏`:-` لا `:?`: يُبدَّل عند الغياب **وعند الفراغ** معاً — والفراغ هو الحالة
+      # التي كسرت الحافة (انظر Caddyfile).
+      BABEL_TLS_EMAIL: ${BABEL_TLS_EMAIL:-tls-email-not-set@invalid}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data

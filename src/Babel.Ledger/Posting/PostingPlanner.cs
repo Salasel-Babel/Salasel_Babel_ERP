@@ -185,6 +185,16 @@ internal static class PostingPlanner
                 continue;
             }
 
+            // ── مركز التكلفة موجود، وإلا رُفض السطر باسمه ─────────────────
+            // ‏ADR-0026: لا سطر بلا مركز تكلفة. والقيد في قاعدة البيانات يفرض ذلك على
+            // **أي** كاتب؛ وهذا الفحص هنا كي يقرأ من يُصلح سبباً بالعربية يسمّي السطر
+            // والدور، لا خطأ 23514 خامّاً يسمّي قيداً.
+            if (string.IsNullOrWhiteSpace(line.CostCenterId))
+            {
+                errors.Add(PostingErrors.MissingCostCenter(lines.Count + 1, line.RoleCode));
+                continue;
+            }
+
             decimal debit = line.Side == PostingSide.Debit ? line.Amount : 0m;
             decimal credit = line.Side == PostingSide.Credit ? line.Amount : 0m;
 
@@ -200,7 +210,7 @@ internal static class PostingPlanner
                 CreditCompany = Amounts.Normalize(credit * fxRate),
                 FxRate = fxRate,
                 BranchId = line.BranchId,
-                CostCenterId = line.CostCenterId,
+                CostCenterId = line.CostCenterId,   // غير فارغ — فُحص قبل قليل بسطره ودوره
                 ProjectId = line.ProjectId,
                 PropertyId = line.PropertyId,
                 UnitId = line.UnitId,
@@ -507,7 +517,10 @@ internal static class PostingPlanner
                 Side = line.Side,
                 Amount = Amounts.Normalize(line.Amount.Amount),
                 BranchId = line.Scope.BranchId ?? Value(merged, "branch"),
-                CostCenterId = line.Scope.CostCenterId ?? Value(merged, "cost_center"),
+                // ‏**مُحلٌّ قبل الوصول**: النوع لا يمثّل نطاقاً بلا مركز، فلا ارتداد إلى
+                // بُعدٍ هنا. وترتيب الأولوية القديم (نطاق ⇒ بُعد سطر ⇒ بُعد طلب) لم يسقط
+                // — انتقل إلى الحدّ الذي يحلّ، وهو الموضع الذي يملك سجلّ المنشأة.
+                CostCenterId = line.Scope.CostCenterId,
                 ProjectId = line.Scope.ProjectId ?? Value(merged, "project"),
                 PropertyId = Value(merged, "property"),
                 UnitId = Value(merged, "unit"),

@@ -40,7 +40,7 @@ public sealed class SupplierBillService : IApplicationService
         _enforcer = enforcer;
         _database = runtime.Database;
         _currency = CurrencyCode.FromString(runtime.Options.CompanyCurrency);
-        _gateway = new SubledgerPostingGateway(_database, posting);
+        _gateway = new SubledgerPostingGateway(_database, posting, runtime.CostCenters);
     }
 
     /// <summary>

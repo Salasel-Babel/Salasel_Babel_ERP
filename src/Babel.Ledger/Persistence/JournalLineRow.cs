@@ -36,6 +36,20 @@ internal sealed class JournalLineRow
     public decimal CreditCompany { get; set; }
 
     public string? BranchId { get; set; }
+
+    /// <summary>
+    /// مركز التكلفة. <b>لا يُكتب سطرٌ جديد بلا مركز</b> — يفرض ذلك القيد
+    /// <c>ck_journal_line_cost_center_present</c> على <b>أي</b> كاتب: نصّ SQL يدوي، أو
+    /// أداة استيراد، أو هجرة سهت — لا على من يمرّ بـ C# فحسب (‏ADR-0026).
+    /// <para>
+    /// <b>والنوع يبقى <c>string?</c> عمداً، وهذا ليس تراخياً:</b> العمود <b>لا يصير</b>
+    /// <c>not null</c> على دفتر عامر سبق هذه الثابتة. فسطر القيد <b>واقعة مُجزَّأة</b> —
+    /// إعادة التحقق من السلسلة تُعيد بناء بايتاته من هذا الصفّ نفسه (‏ADR-0007)، وكتابةُ
+    /// قيمة فيه تجعل الدفتر السليم يُبلّغ عن عبث. ولا قيمة تُخترَع له: «مركزٌ لم يكن»
+    /// إفادةٌ محاسبية كاذبة. فالتاريخ يبقى كما هو ويُعلَن، والثابتة تلزم من الهجرة فصاعداً
+    /// — و<c>pg_constraint.convalidated</c> هو الموضع الذي تقوله فيه قاعدة البيانات نفسها.
+    /// </para>
+    /// </summary>
     public string? CostCenterId { get; set; }
     public string? ProjectId { get; set; }
     public string? PropertyId { get; set; }

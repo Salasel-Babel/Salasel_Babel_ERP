@@ -289,13 +289,13 @@ public sealed class ImmutabilityTests : IAsyncLifetime
         {
             LineId = Guid.CreateVersion7(), EntryId = entryId, LineNo = 1,
             CompanyId = LedgerTestEnvironment.TenantA, Code = "1310", Currency = "SAR",
-            Debit = debit, DebitCompany = debit,
+            Debit = debit, DebitCompany = debit, CostCenterId = Requests.DefaultCostCenter,
         });
         context.JournalLines.Add(new JournalLineRow
         {
             LineId = Guid.CreateVersion7(), EntryId = entryId, LineNo = 2,
             CompanyId = LedgerTestEnvironment.TenantA, Code = "2131", Currency = "SAR",
-            Credit = credit, CreditCompany = credit,
+            Credit = credit, CreditCompany = credit, CostCenterId = Requests.DefaultCostCenter,
         });
 
         try

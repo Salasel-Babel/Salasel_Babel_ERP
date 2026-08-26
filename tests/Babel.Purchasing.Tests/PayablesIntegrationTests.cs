@@ -121,7 +121,7 @@ public sealed class PayablesIntegrationTests : IAsyncLifetime
             tenant,
             Harness.Actor,
             new PurchaseOrderDraft(
-                Next("PO"), supplier, March, "WH-01", "CC-01", [Harness.Line("ITEM-A", 5m, 20m)]),
+                Next("PO"), supplier, March, "WH-01", FoundedTenants.DefaultCode, [Harness.Line("ITEM-A", 5m, 20m)]),
             null,
             token);
         Assert.True(order.IsSuccess, Describe(order.Errors));
@@ -352,7 +352,7 @@ public sealed class PayablesIntegrationTests : IAsyncLifetime
             tenant,
             Harness.Actor,
             new ExpenseBillDraft(
-                Next("EXP"), supplier, March, "office", "CC-01",
+                Next("EXP"), supplier, March, "office", FoundedTenants.DefaultCode,
                 [
                     Harness.Line("SRV-1", 1m, 1_000m),
                     Harness.Line("SRV-2", 1m, 500m, recoverable: false),
@@ -498,7 +498,13 @@ public sealed class PayablesIntegrationTests : IAsyncLifetime
                     new PostingFact("subledger.item", "ITEM-GHOST"),
                     new PostingFact("line.item_group", "*"),
                 ],
-                Dimensions = [new PostingDimension("warehouse", "WH-01")],
+                // القيد يُحقَن عبر المحرّك مباشرة لا عبر البوّابة، فمركز التكلفة يُكتب
+                // هنا مُحلّاً كما كانت البوّابة ستفعل (ADR-0026).
+                Dimensions =
+                [
+                    new PostingDimension("cost_center", FoundedTenants.DefaultCode),
+                    new PostingDimension("warehouse", "WH-01"),
+                ],
                 Lines = [],
             },
             token);
@@ -617,7 +623,7 @@ public sealed class PayablesIntegrationTests : IAsyncLifetime
         Result<PurchasingDocumentView> bill = await _harness.Bills.CreateExpenseBillAsync(
             tenant,
             Harness.Actor,
-            new ExpenseBillDraft(Next("EXP"), supplier, closed, "office", "CC-01", [Harness.Line("SRV-9", 1m, 100m)]),
+            new ExpenseBillDraft(Next("EXP"), supplier, closed, "office", FoundedTenants.DefaultCode, [Harness.Line("SRV-9", 1m, 100m)]),
             token);
         Assert.True(bill.IsSuccess, Describe(bill.Errors));
 
@@ -754,7 +760,7 @@ public sealed class PayablesIntegrationTests : IAsyncLifetime
         Result<PurchasingDocumentView> request = await _harness.Orders.CreateRequestAsync(
             tenant,
             Harness.Actor,
-            new PurchaseRequestDraft(Next("PR"), March, "CC-01", [Harness.Line("ITEM-A", orderedQuantity ?? quantity, unitPrice)]),
+            new PurchaseRequestDraft(Next("PR"), March, FoundedTenants.DefaultCode, [Harness.Line("ITEM-A", orderedQuantity ?? quantity, unitPrice)]),
             token);
         Assert.True(request.IsSuccess, Describe(request.Errors));
 
@@ -766,7 +772,7 @@ public sealed class PayablesIntegrationTests : IAsyncLifetime
             tenant,
             Harness.Actor,
             new PurchaseOrderDraft(
-                Next("PO"), supplier, March, "WH-01", "CC-01",
+                Next("PO"), supplier, March, "WH-01", FoundedTenants.DefaultCode,
                 [Harness.Line("ITEM-A", orderedQuantity ?? quantity, unitPrice)]),
             request.Value.Id,
             token);
@@ -798,7 +804,7 @@ public sealed class PayablesIntegrationTests : IAsyncLifetime
             PurchasingTestEnvironment.Tenant,
             Harness.Actor,
             new ExpenseBillDraft(
-                Next("EXP"), supplier, March, "office", "CC-01", [Harness.Line("SRV-1", quantity, unitPrice)]),
+                Next("EXP"), supplier, March, "office", FoundedTenants.DefaultCode, [Harness.Line("SRV-1", quantity, unitPrice)]),
             token);
 
         Assert.True(bill.IsSuccess, Describe(bill.Errors));

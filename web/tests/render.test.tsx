@@ -215,6 +215,24 @@ describe("<TrialBalanceTable> — الاسم والترجمة", () => {
     expect(fixedAssets?.querySelector("span.alt")).toBeNull();
   });
 
+  it("المحاسب الهندي على صفٍّ ترجمتُه الوحيدة إنجليزية يرى العربية — لا الإنجليزية", () => {
+    /* هذا هو الشرط الذي حُذف nameEn لأجله. الصفّ ٥ («الأصول الثابتة — التكلفة»)
+       يحمل en وحدها ولا يحمل hi. والارتداد الصحيح هو **السجلّ العربي**، لا
+       «اللغة الأخرى» — فالإنجليزية واحدة من N لا افتراضٌ عند غياب الهندية.
+       والفحص على نصّ الخليّة كلّه: لو تسرّبت الإنجليزية من أي طريق لظهرت هنا. */
+    const { container } = render(<Table locale="hi" />);
+    const row = [...container.querySelectorAll("tbody tr")].find((r) =>
+      r.querySelector('span[lang="ar"]')?.textContent?.startsWith("الأصول الثابتة")
+    );
+
+    expect(row, "صفّ الأصول الثابتة موجود").toBeDefined();
+    const cell = row?.querySelector("td.name");
+    expect(cell?.querySelector("span.alt")).toBeNull();
+    expect(cell?.textContent).toContain("الأصول الثابتة");
+    expect(cell?.textContent).not.toContain("Fixed assets");
+    expect(cell?.textContent?.toLowerCase()).not.toMatch(/[a-z]/);
+  });
+
   it("الصفّ الذي لا ترجمة له إطلاقاً يبقى مقروءاً — الارتداد إلى السجلّ لا إلى الفراغ", () => {
     const { container } = render(<Table locale="hi" />);
     const rows = [...container.querySelectorAll("tbody tr")];

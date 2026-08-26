@@ -121,6 +121,9 @@ internal static class PurchasingTestEnvironment
     /// </summary>
     public static TenantId GatewayTenant { get; } = new(new Guid("40c4a51e-0000-4000-8000-000000000003"));
 
+    /// <summary>كل منشآت هذه المجموعة — مُعلنةً مرّة، فلا تُنسى واحدة عند التأسيس.</summary>
+    public static TenantId[] AllTenants { get; } = [Tenant, InjectedTenant, GatewayTenant];
+
     /// <summary>عدد محاولات الحذف قبل اللجوء إلى الإنهاء القسري.</summary>
     private const int DropAttempts = 40;
 

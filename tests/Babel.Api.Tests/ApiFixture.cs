@@ -1,3 +1,4 @@
+using System.Net;
 using System.Globalization;
 using System.Net.Http.Headers;
 using System.Text;
@@ -79,8 +80,8 @@ internal static class ApiFixture
             if (_default is null)
             {
                 await ApiTestDatabase.EnsureAsync(cancellationToken).ConfigureAwait(false);
-                _default = await ApiProcess
-                    .StartAsync(Environment(ApiTestDatabase.Options.AppConnectionString), "en_US.UTF-8", cancellationToken)
+                _default = await StartAndFoundAsync(
+                    ApiTestDatabase.Options.AppConnectionString, "en_US.UTF-8", cancellationToken)
                     .ConfigureAwait(false);
             }
 
@@ -119,8 +120,8 @@ internal static class ApiFixture
 
             await ApiTestDatabase.EnsureAsync(cancellationToken).ConfigureAwait(false);
 
-            ApiProcess started = await ApiProcess
-                .StartAsync(Environment(ApiTestDatabase.Options.AppConnectionString), culture, cancellationToken)
+            ApiProcess started = await StartAndFoundAsync(
+                ApiTestDatabase.Options.AppConnectionString, culture, cancellationToken)
                 .ConfigureAwait(false);
 
             ByCulture[culture] = started;
@@ -136,11 +137,62 @@ internal static class ApiFixture
     /// خادم موجَّه إلى قاعدة بيانات غير موجودة — لإثبات أن العطل التشغيلي لا يتسرّب.
     /// </summary>
     public static Task<ApiProcess> WithUnreachableDatabaseAsync() =>
-        ApiProcess.StartAsync(
-            Environment("Host=127.0.0.1;Port=5432;Database=babel_api_tests_no_such_database;Username="
-                + ApiTestDatabase.AppRole + ";Include Error Detail=true"),
+        StartAndFoundAsync(
+            "Host=127.0.0.1;Port=5432;Database=babel_api_tests_no_such_database;Username="
+                + ApiTestDatabase.AppRole + ";Include Error Detail=true",
             "en_US.UTF-8",
             Token);
+
+    /// <summary>
+    /// <b>يُقلع خادماً ثم يؤسّس منشآته — بهذا الترتيب، ولا خادم بلا تأسيس.</b>
+    /// <para>
+    /// ‏ADR-0026: مركز التكلفة يُنشأ عند التأسيس، والترحيل يسأل عنه قبل أن يبني طلباً.
+    /// فمنشأةٌ غير مؤسَّسة تُرفض بـ<c>company_setup.not_found</c> — <b>وذلك هو السلوك
+    /// الصحيح</b>: دفترٌ لمنشأة بلا مقياس عرض ولا مركز تكلفة ليس دفتراً.
+    /// </para>
+    /// <para>
+    /// <b>ولماذا هنا لا في كل اختبار:</b> مخزن التأسيس <b>في ذاكرة العملية</b>، فكل خادم
+    /// يُقلَع يبدأ بلا منشأة واحدة. والتأسيس هنا يجعل الشرط <b>خاصية الخادم</b> لا شيئاً
+    /// يتذكّره كل اختبار — واختبارات التأسيس نفسها تملك منشآتها المستقلّة
+    /// (<see cref="SetupCompanies"/>) فلا تتصادم مع هذا.
+    /// </para>
+    /// </summary>
+    private static async Task<ApiProcess> StartAndFoundAsync(
+        string ledgerConnection,
+        string culture,
+        CancellationToken cancellationToken)
+    {
+        ApiProcess started = await ApiProcess
+            .StartAsync(Environment(ledgerConnection), culture, cancellationToken)
+            .ConfigureAwait(false);
+
+        foreach ((Guid company, TestCredential credential) in new[]
+                 {
+                     (ApiTestDatabase.CompanyA, TokenA),
+                     (ApiTestDatabase.CompanyB, TokenB),
+                     (ApiTestDatabase.CompanyC, TokenC),
+                 })
+        {
+            using HttpResponseMessage founded = await started.Call(Http.Request(
+                HttpMethod.Put,
+                string.Create(CultureInfo.InvariantCulture, $"/api/v1/companies/{company:D}/setup"),
+                credential,
+                """{"companyNameAr":"منشأة اختبار سطح HTTP","costCenters":"One","decimalPlaces":2}"""))
+                .ConfigureAwait(false);
+
+            // ‏201 أول مرّة، و409 إن كان خادمٌ آخر أسّسها في القاعدة نفسها. وما عداهما
+            // خللٌ يُرمى الآن بنصّه، لا يُترك ليظهر بعد عشرين اختباراً بـ«404 غير مفهوم».
+            if (founded.StatusCode is not (HttpStatusCode.Created or HttpStatusCode.Conflict))
+            {
+                string body = await founded.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                throw new InvalidOperationException(
+                    FormattableString.Invariant(
+                        $"تعذّر تأسيس منشأة الاختبار {company:D}: {(int)founded.StatusCode} — {body}"));
+            }
+        }
+
+        return started;
+    }
 
     /// <summary>إعداد الخادم كاملاً بمتغيّرات البيئة — لا ملف إعداد ولا سرّ في المستودع.</summary>
     /// <param name="ledgerConnection">اتصال دور التطبيق.</param>

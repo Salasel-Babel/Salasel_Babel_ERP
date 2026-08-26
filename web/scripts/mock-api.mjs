@@ -90,9 +90,8 @@ export function buildTrialBalance(rowCount, book, period) {
     rows.push({
       accountCode: code,
       nameAr: name[0] + suffix,
-      /* الحقل المهجور: مشتقّ من الترجمة en ومرتدٌّ إلى السجلّ حين لا توجد —
-         كما يفعل الخادم بالضبط، فالوهمي لا يكذب في السلوك الذي يُختبَر. */
-      nameEn: (name[1].en ?? name[0]) + suffix,
+      /* ولا حقل nameEn: الإنجليزية مدخلٌ في الترجمات كغيرها، وحقلٌ ثابت لها هنا
+         يجعل الوهمي يكذب في الشيء نفسه الذي حُذف من العقد. */
       nameTranslations: Object.keys(name[1])
         .sort()
         .map((tag) => ({ name: tag, value: name[1][tag] + suffix })),

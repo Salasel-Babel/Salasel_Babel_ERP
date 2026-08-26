@@ -1,4 +1,5 @@
 using System.Reflection;
+using Babel.Core.CompanySetup;
 using Babel.Sales.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -19,14 +20,24 @@ public sealed class SalesRuntime : IDisposable
 
     /// <summary>ينشئ الموارد من الإعدادات.</summary>
     /// <param name="options">إعدادات الوحدة.</param>
-    public SalesRuntime(SalesOptions options)
+    /// <param name="costCenters">
+    /// حالُّ مركز التكلفة من النواة. <b>بوّابة الترحيل تسأله قبل أن تبني طلباً</b>
+    /// (‏ADR-0026): الوحدة لا تعرف شجرة المراكز ولا المركز الافتراضي، وسؤالُها عنه
+    /// كان سيضع نسخةً ثانية من قاعدة الحلّ في كل وحدة.
+    /// </param>
+    public SalesRuntime(SalesOptions options, ICostCenterResolver costCenters)
     {
         ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(costCenters);
         Options = options;
+        CostCenters = costCenters;
         _database = Build(options);
     }
 
     internal SalesOptions Options { get; }
+
+    /// <summary>حالُّ مركز التكلفة — يُمرَّر إلى بوّابة الترحيل ولا يُقرأ في مكان آخر.</summary>
+    internal ICostCenterResolver CostCenters { get; }
 
     internal SalesDbContext Database => _database;
 

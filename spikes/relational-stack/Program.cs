@@ -2,7 +2,6 @@ using BabelRelationalSpike.Db;
 using BabelRelationalSpike.Proofs;
 using BabelRelationalSpike.Support;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Wolverine;
@@ -15,7 +14,7 @@ using Wolverine.Postgresql;
 //  اختبار استكشافي: هل يمكن الاستغناء عن Marten؟
 // ---------------------------------------------------------------------------
 
-var only = args.FirstOrDefault(a => a.StartsWith("--only="))?["--only=".Length..];
+var only = args.FirstOrDefault(a => a.StartsWith("--only=", StringComparison.Ordinal))?["--only=".Length..];
 var skipBench = args.Contains("--no-bench");
 
 Console.OutputEncoding = System.Text.Encoding.UTF8;

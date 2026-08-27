@@ -1,5 +1,4 @@
 using BabelRelationalSpike.Support;
-using Npgsql;
 
 namespace BabelRelationalSpike.Db;
 

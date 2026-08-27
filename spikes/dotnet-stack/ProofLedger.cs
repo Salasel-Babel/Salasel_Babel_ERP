@@ -1,7 +1,6 @@
 using JasperFx;
 using System.Globalization;
 using Marten;
-using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using Wolverine.Marten;
 

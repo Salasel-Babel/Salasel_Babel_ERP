@@ -54,7 +54,7 @@ public static class Versions
             sb.AppendLine("  " + string.Join("  ", r.Select((v, i) => v.PadRight(widths[i]))));
         sb.AppendLine("=========================================================================");
         sb.AppendLine("  Marten assemblies loaded: " +
-            (AppDomain.CurrentDomain.GetAssemblies().Any(a => a.GetName().Name?.StartsWith("Marten") == true)
+            (AppDomain.CurrentDomain.GetAssemblies().Any(a => a.GetName().Name?.StartsWith("Marten", StringComparison.Ordinal) == true)
                 ? "YES" : "NONE"));
         sb.AppendLine("=========================================================================");
         return sb.ToString();

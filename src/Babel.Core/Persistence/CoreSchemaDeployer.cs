@@ -15,7 +15,7 @@ internal sealed class CoreDbContextFactory : IDesignTimeDbContextFactory<CoreDbC
     {
         CoreOptions options = new();
         DbContextOptionsBuilder<CoreDbContext> builder = new();
-        builder.UseNpgsql(options.OwnerConnectionString, CoreSchema.MigrationHistory);
+        builder.UseNpgsql(options.OwnerConnectionString, CoreSchemaDeployer.MigrationHistory);
         return new CoreDbContext(builder.Options);
     }
 }
@@ -33,12 +33,12 @@ internal sealed class CoreDbContextFactory : IDesignTimeDbContextFactory<CoreDbC
 /// </list>
 /// </para>
 /// <para>
-/// وهذا النوع <b>عام</b> — خلافاً لنظيره في الدفتر — لأن مُنشئ الشركة التجريبية يستدعيه
-/// من خارج التجميعة، تماماً كما يستدعي <c>SalesSchemaDeployer</c>. وما بقي داخلياً هو
-/// السياق والصفوف: النشر فعلٌ معلن، والجداول ليست كذلك.
+/// وهو <c>internal</c> كنظيره في الدفتر (القاعدة 5: لا نوع في <c>*.Persistence</c>
+/// يُرى خارج وحدته). والباب المعلَن لمن ينشر — أداة الترحيل وبيئات الاختبار — هو
+/// <see cref="CoreSchema"/>، على نمط <c>LedgerSchema</c> حرفياً.
 /// </para>
 /// </summary>
-public static class CoreSchema
+internal static class CoreSchemaDeployer
 {
     /// <summary>ينشر المخطّط كاملاً ويمنح الصلاحيات لدور التطبيق.</summary>
     /// <param name="options">إعدادات النواة — اتصال المالك واسم دور التطبيق.</param>
@@ -87,7 +87,7 @@ public static class CoreSchema
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
 
-        Assembly assembly = typeof(CoreSchema).Assembly;
+        Assembly assembly = typeof(CoreSchemaDeployer).Assembly;
         string resource = assembly.GetManifestResourceNames()
             .Single(candidate => candidate.EndsWith(name, StringComparison.Ordinal));
 

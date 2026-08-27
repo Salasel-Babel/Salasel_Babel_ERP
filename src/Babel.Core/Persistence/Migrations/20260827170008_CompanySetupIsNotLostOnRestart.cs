@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Babel.Core.Persistence.Migrations
 {
     /// <inheritdoc />
-    public partial class CompanySetupIsNotLostOnRestart : Migration
+    internal partial class CompanySetupIsNotLostOnRestart : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -120,7 +120,7 @@ namespace Babel.Core.Persistence.Migrations
             // ما لا يعبّر عنه نموذج EF: ثباتُ مقياس العرض بمشغّل، ورابطُ المركز
             // بمنشأته. وداخل الهجرة لا بجوارها — كي ينتج `dotnet ef database update`
             // وحده مخطّطاً صحيحاً كاملاً، لا مخطّطاً ينتظر خطوةً يتذكّرها إنسان.
-            migrationBuilder.Sql(CoreSchema.Script("CoreTriggers.sql"));
+            migrationBuilder.Sql(CoreSchemaDeployer.Script("CoreTriggers.sql"));
         }
 
         /// <inheritdoc />

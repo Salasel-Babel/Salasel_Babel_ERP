@@ -1,6 +1,6 @@
 using System.Globalization;
 using Babel.Canonicalization;
-using Babel.Core.Persistence;
+using Babel.Core;
 using Babel.Ledger;
 using Babel.Purchasing;
 using Babel.Sales;

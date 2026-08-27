@@ -1,7 +1,6 @@
 using System.Globalization;
 using System.Reflection;
 using Babel.Core;
-using Babel.Core.Persistence;
 using Babel.Ledger;
 using Npgsql;
 

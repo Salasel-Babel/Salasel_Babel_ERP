@@ -103,7 +103,7 @@ public sealed class CapabilityAdmissionTests : IAsyncLifetime
             SalesTestEnvironment.AdvanceEnabledTenant,
             Harness.Actor,
             Guid.CreateVersion7(),
-            new CostOfSalesDraft("ITEM-X", "WH-01", "*", Harness.Sar(10m)),
+            new CostOfSalesDraft("ITEM-X", "WH-01", "*", 10m),
             token);
 
         ValidatedCapabilityProfile? stored = await bare.Profiles
@@ -230,7 +230,7 @@ public sealed class CapabilityAdmissionTests : IAsyncLifetime
             tenant,
             Harness.Actor,
             invoiceId,
-            new CostOfSalesDraft(Next("ITEM"), "WH-01", "*", Harness.Sar(120m)),
+            new CostOfSalesDraft(Next("ITEM"), "WH-01", "*", 120m),
             token).AsTask();
 
     private static string Describe<T>(Result<T> result)

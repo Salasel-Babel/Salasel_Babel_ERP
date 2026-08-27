@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     e678dc2c0394be5606c978fa44478590c8aa4853b303a75a859bbc0dbe97264e
+     8a33528a07e07e6b03c5ee5d6412ccbe27809ed11ed5c811be93ba3132068135
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -47,7 +47,7 @@ export interface CapabilityProfile {
 /** مفتاح قدرة واحد. / One capability switch. */
 export interface CapabilitySwitch {
   /** رمز القدرة من المجموعة المغلقة. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The capability code from the closed set. Matched literally and case-sensitively; a number is never accepted in place of a name. */
-  capability: "advance" | "cost_of_sales" | "retention";
+  capability: "advance" | "cost_of_sales" | "landed_cost" | "retention" | "three_way_match";
   /** مُشغَّلة أم لا. / Enabled or not. */
   enabled: boolean;
 }
@@ -118,7 +118,7 @@ export interface DocumentAdmission {
   /** مقبول. والرفض يخرج مشكلةً بالرمز 422 لا حكماً في هذا الحقل. / Admitted. A refusal leaves as a 422 problem, never as a verdict in this field. */
   admitted: boolean;
   /** رمز نوع المستند. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The document type code. Matched literally and case-sensitively; a number is never accepted in place of a name. */
-  documentType: "projects.client_certificate" | "sales.invoice";
+  documentType: "projects.client_certificate" | "purchasing.supplier_bill" | "sales.invoice";
   /** الحقول المقبولة مرتَّبة. / The admitted fields, ordinally sorted. */
   fields: string[];
 }
@@ -130,19 +130,19 @@ export interface DocumentProfile {
   /** القيم الافتراضية، ومفاتيحها حقول من شكل المستند حصراً. / The defaults; their keys are fields of the document shape only. */
   defaults?: NameValue[];
   /** رمز نوع المستند. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The document type code. Matched literally and case-sensitively; a number is never accepted in place of a name. */
-  documentType: "projects.client_certificate" | "sales.invoice";
+  documentType: "projects.client_certificate" | "purchasing.supplier_bill" | "sales.invoice";
 }
 
 /** شكل مستند **مُشتقّاً** من (هذه الوثيقة × الملفّ). ولاحظ ما ليس فيه: لا تخطيط، ولا ترتيب بصري، ولا شرط، ولا تعبير — تلك أبواب «المنصّة داخل المنصّة» التي رُفضت. / A document's shape **derived** from (this document x the profile). Note what is absent: no layout, no visual order, no condition, no expression — those are the inner-platform doors that were rejected. */
 export interface DocumentShape {
   /** كل قدرات هذا النوع في الكتالوج المغلق. / Every capability of this type in the closed catalogue. */
-  availableCapabilities: ("advance" | "cost_of_sales" | "retention")[];
+  availableCapabilities: ("advance" | "cost_of_sales" | "landed_cost" | "retention" | "three_way_match")[];
   /** القيم الافتراضية. / The defaults. */
   defaults: NameValue[];
   /** رمز نوع المستند. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The document type code. Matched literally and case-sensitively; a number is never accepted in place of a name. */
-  documentType: "projects.client_certificate" | "sales.invoice";
+  documentType: "projects.client_certificate" | "purchasing.supplier_bill" | "sales.invoice";
   /** المُشغَّل منها لهذه الشركة. / Those enabled for this company. */
-  enabledCapabilities: ("advance" | "cost_of_sales" | "retention")[];
+  enabledCapabilities: ("advance" | "cost_of_sales" | "landed_cost" | "retention" | "three_way_match")[];
   /** حقول المستند بهذا الملفّ — الأساسية وحقول القدرات المُشغَّلة، مرتَّبة حرفياً. / The document's fields under this profile — the base fields plus the fields of enabled capabilities, ordinally sorted. */
   fields: string[];
   /** الوحدة المالكة. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The owning module. Matched literally and case-sensitively; a number is never accepted in place of a name. */

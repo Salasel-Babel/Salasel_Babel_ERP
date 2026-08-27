@@ -510,6 +510,7 @@
             "type": "string",
             "enum": [
               "projects.client_certificate",
+              "purchasing.supplier_bill",
               "sales.invoice"
             ]
           }
@@ -584,6 +585,7 @@
             "type": "string",
             "enum": [
               "projects.client_certificate",
+              "purchasing.supplier_bill",
               "sales.invoice"
             ]
           }
@@ -1412,7 +1414,9 @@
             "enum": [
               "advance",
               "cost_of_sales",
-              "retention"
+              "landed_cost",
+              "retention",
+              "three_way_match"
             ],
             "description": "رمز القدرة من المجموعة المغلقة. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The capability code from the closed set. Matched literally and case-sensitively; a number is never accepted in place of a name."
           },
@@ -1627,6 +1631,7 @@
             "type": "string",
             "enum": [
               "projects.client_certificate",
+              "purchasing.supplier_bill",
               "sales.invoice"
             ],
             "description": "رمز نوع المستند. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The document type code. Matched literally and case-sensitively; a number is never accepted in place of a name."
@@ -1659,6 +1664,7 @@
             "type": "string",
             "enum": [
               "projects.client_certificate",
+              "purchasing.supplier_bill",
               "sales.invoice"
             ],
             "description": "رمز نوع المستند. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The document type code. Matched literally and case-sensitively; a number is never accepted in place of a name."
@@ -1692,6 +1698,7 @@
             "type": "string",
             "enum": [
               "projects.client_certificate",
+              "purchasing.supplier_bill",
               "sales.invoice"
             ],
             "description": "رمز نوع المستند. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The document type code. Matched literally and case-sensitively; a number is never accepted in place of a name."
@@ -1732,7 +1739,9 @@
               "enum": [
                 "advance",
                 "cost_of_sales",
-                "retention"
+                "landed_cost",
+                "retention",
+                "three_way_match"
               ]
             },
             "description": "كل قدرات هذا النوع في الكتالوج المغلق. / Every capability of this type in the closed catalogue."
@@ -1744,7 +1753,9 @@
               "enum": [
                 "advance",
                 "cost_of_sales",
-                "retention"
+                "landed_cost",
+                "retention",
+                "three_way_match"
               ]
             },
             "description": "المُشغَّل منها لهذه الشركة. / Those enabled for this company."

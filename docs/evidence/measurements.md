@@ -950,7 +950,7 @@ Release، قاعدة اختبار حقيقية بدور تطبيق **غير ما
 
 ---
 
-### ط) جدول الترجمات — ADR-جديد (`the-translation-table-is-rows-and-the-record-is-a-column`)
+### ط) جدول الترجمات — ADR-0027 (`the-translation-table-is-rows-and-the-record-is-a-column`)
 
 **العتاد والبيئة كما في §1.** كل رقم أدناه يُعاد إنتاجه بتشغيل الاختبار المذكور بجانبه.
 
@@ -1026,7 +1026,7 @@ Release، قاعدة اختبار حقيقية بدور تطبيق **غير ما
 
 ### 3.‏N · إغلاق نافذة العقد قبل أول نشر — 2026-08-26
 
-> القرار: [ADR-جديد: نافذة تعديل العقد تُغلق عند أول نشر](../decisions/ADR-جديد-the-contract-window-closes-before-first-publication.md).
+> القرار: [ADR-0029: نافذة تعديل العقد تُغلق عند أول نشر](../decisions/ADR-0029-the-contract-window-closes-before-first-publication.md).
 > بيئة القياس هي المُعلنة في §1، وقاعدة PostgreSQL 16.13 محلية.
 
 | ما قيس | الرقم | الشروط | الوسم |

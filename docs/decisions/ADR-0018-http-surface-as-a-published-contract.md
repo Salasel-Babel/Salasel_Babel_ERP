@@ -151,11 +151,11 @@
 | **السبب المحاسبي** | ‏ADR-0026: لكل منشأة مركز تكلفة واحد على الأقل، ولا سطر بلا مركز. فـ`null` كانت تقول «بلا مركز» — وهي **حالة لا وجود لها في النظام**. أما **غياب الحقل** فحالة يومية مشروعة، ومعناها منشور: المركز الافتراضي لهذه المنشأة |
 | **ما كان العقد يقوله وهو غير صحيح** | أن للسطر أن يكون بلا مركز تكلفة. وقد كان العمود يقبل ذلك فعلاً — والقيد `ck_journal_line_cost_center_present` يمنعه الآن على **أي** كاتب |
 | **أثره على العميل** | حقلٌ محذوف يُرحَّل على الافتراضي كما كان؛ ورمزٌ مُسمّى غير موجود يُرفض بـ`404 cost_center.not_found` وموقوفٌ بـ`409 cost_center.already_suspended`، **ولا يرتدّ أيّهما إلى الافتراضي بصمت** |
-| **حدٌّ مُسجَّل** | قيمة `null` **صريحة** ما زالت تُقرأ «لم يُذكر شيء» ولا تُرفض بـ400 — تساهلٌ اتّجاهه آمن ومُسجَّل بسببه في [ADR-جديد §«ما لم يُنفَّذ»](ADR-جديد-the-contract-window-closes-before-first-publication.md) |
+| **حدٌّ مُسجَّل** | قيمة `null` **صريحة** ما زالت تُقرأ «لم يُذكر شيء» ولا تُرفض بـ400 — تساهلٌ اتّجاهه آمن ومُسجَّل بسببه في [ADR-0029 §«ما لم يُنفَّذ»](ADR-0029-the-contract-window-closes-before-first-publication.md) |
 | **الاختبار** | `tests/Babel.Api.Tests/CostCenterIsResolvedBeforeTheRequestIsBuiltTests.cs` · `tests/Babel.Contracts.Tests/CostCenterIsNotRepresentableAsAbsentTests.cs` |
 
 > **والقرار الحاكم للتعديلين معاً — ومعه حجّة «لماذا الآن» —** في
-> [ADR-جديد: نافذة تعديل العقد تُغلق عند أول نشر](ADR-جديد-the-contract-window-closes-before-first-publication.md).
+> [ADR-0029: نافذة تعديل العقد تُغلق عند أول نشر](ADR-0029-the-contract-window-closes-before-first-publication.md).
 
 **والمسار الصريح ليس استثناءً**، وهذا هو موضع اللبس الحقيقي: `PostingPlanner` يختار المسار
 بـ`request.Lines.Count > 0` وحدها. فالطلب الذي يحمل سطوراً صريحة (قيد يومية يدوي) يسلك المسار

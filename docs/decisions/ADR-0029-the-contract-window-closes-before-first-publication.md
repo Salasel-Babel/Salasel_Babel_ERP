@@ -35,7 +35,7 @@
 
 ### ما كان، ولماذا لم يكن كافياً
 
-هجرة الترجمات ([ADR-جديد: جدول الترجمات صفوف، والسجلّ عمود](ADR-جديد-the-translation-table-is-rows-and-the-record-is-a-column.md))
+هجرة الترجمات ([ADR-0027: جدول الترجمات صفوف، والسجلّ عمود](ADR-0027-the-translation-table-is-rows-and-the-record-is-a-column.md))
 أنزلت `name_en` من مخطّط الدفتر وجعلته صفّاً في `ledger.name_translation`. وبقي `nameEn`
 **في العقد** حقلاً **مشتقّاً** من الترجمة ذات الوسم `en`، مرتدّاً إلى العربية عند غيابها،
 وموسوماً **«مهجور»** في وصفه.

@@ -75,7 +75,7 @@ fix(compliance): تصحيح ترتيب عناصر UBL في فاتورة الإش
    والشكل المُتبنّى **اسمٌ عربي عمودٌ `not null` + ترجماتٌ صفوف** بمفتاح (كيان × لغة)، وهو
    منفَّذ في مخطّط الدفتر (`ledger.name_translation`) وفي نوع `TranslatedName`
    ([ADR-0021](docs/decisions/ADR-0021-arabic-is-the-record-translation-is-presentation.md)
-   وقرار التنفيذ [ADR-جديد](docs/decisions/ADR-جديد-the-translation-table-is-rows-and-the-record-is-a-column.md)).
+   وقرار التنفيذ [ADR-0027](docs/decisions/ADR-0027-the-translation-table-is-rows-and-the-record-is-a-column.md)).
    والزوج الثابت `name_ar`/`name_en` باقٍ خارج الدفتر — في `data/` وفي `Babel.ControlPlane` —
    وهو **الحالة القائمة لا المقصودة**، ونقلُه مراحل تالية.
    **ولا يُضاف زوج `ar`/`en` جديد في أي حقل عرض**، ويفرض ذلك

@@ -66,7 +66,16 @@ internal sealed class Seed : IDisposable
         // إلا عبر IPostingService الذي تسجّله الوحدة. أي أن هذه الأداة لا تملك طريقاً
         // إلى الدفتر لا يملكه الخادم نفسه.
         ServiceCollection services = new();
-        services.AddBabelCore();
+
+        // ‏**بالتحميل الزائد الذي يأخذ إعدادات**: المخزنان فوق PostgreSQL كما في الخادم
+        // بالضبط. ولو بذرنا في مخزن ذاكرة لكان البذر يؤسّس منشأةً تختفي بانتهاء العملية،
+        // ثم يقلع الخادم فلا يجدها — وهو العطل الذي يعالجه هذا التسليم.
+        services.AddBabelCore(options =>
+        {
+            options.AppConnectionString = settings.Core.AppConnectionString;
+            options.OwnerConnectionString = settings.Core.OwnerConnectionString;
+            options.AppRole = settings.Core.AppRole;
+        });
         services.AddBabelLedger(options =>
         {
             options.AppConnectionString = settings.Ledger.AppConnectionString;

@@ -1,5 +1,6 @@
 using System.Globalization;
 using Babel.Canonicalization;
+using Babel.Core.Persistence;
 using Babel.Ledger;
 using Babel.Purchasing;
 using Babel.Sales;
@@ -33,6 +34,11 @@ internal static class Schema
         ArgumentNullException.ThrowIfNull(settings);
 
         Say.Step("نشر المخطّطات بدور المالك / deploying schemas as the owner role");
+
+        // النواة أولاً: تأسيس المنشأة ومراكز تكلفتها هو ما يفترضه كل ما بعده — بوّابة
+        // الترحيل تسأل عن مركز التكلفة **قبل** أن تبني طلباً (ADR-0026 · ADR-0029).
+        await CoreSchema.DeployAsync(settings.Core, cancellationToken).ConfigureAwait(false);
+        Say.Detail("النواة: هجرات + مشغّل ثبات المقياس + الصلاحيات → " + settings.CoreDatabase);
 
         await LedgerSchema.DeployAsync(settings.Ledger, cancellationToken).ConfigureAwait(false);
         Say.Detail("الدفتر: هجرات + مشغّلات + دالّة الترحيل + الصلاحيات → " + settings.LedgerDatabase);

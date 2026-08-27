@@ -1,4 +1,5 @@
 using System.Globalization;
+using Babel.Core;
 using Babel.Ledger;
 using Babel.Purchasing;
 using Babel.Sales;
@@ -23,6 +24,7 @@ internal sealed class Settings
     private Settings(
         string maintenance,
         LedgerOptions ledger,
+        CoreOptions core,
         SalesOptions salesOwner,
         PurchasingOptions purchasingOwner,
         Guid company,
@@ -30,6 +32,7 @@ internal sealed class Settings
     {
         Maintenance = maintenance;
         Ledger = ledger;
+        Core = core;
         SalesOwner = salesOwner;
         PurchasingOwner = purchasingOwner;
         Company = company;
@@ -41,6 +44,16 @@ internal sealed class Settings
 
     /// <summary>إعدادات الدفتر — اتصال المالك واتصال التطبيق واسم الدور.</summary>
     public LedgerOptions Ledger { get; }
+
+    /// <summary>
+    /// إعدادات النواة — اتصال المالك واتصال التطبيق واسم الدور.
+    /// <para>
+    /// ودورُ التطبيق <b>هو دور الدفتر نفسه</b>: منشأةٌ واحدة، وخادمٌ واحد، ودورٌ واحد
+    /// أقلّ امتيازاً يعبر المخطّطات كلّها. والفصل الذي يهمّ هو مالك/تطبيق لا
+    /// دورٌ لكل مخطّط.
+    /// </para>
+    /// </summary>
+    public CoreOptions Core { get; }
 
     /// <summary>اتصال <b>مالك</b> مخطّط المبيعات — للنشر وحده.</summary>
     public SalesOptions SalesOwner { get; }
@@ -63,6 +76,9 @@ internal sealed class Settings
     /// <summary>اسم قاعدة المشتريات.</summary>
     public string PurchasingDatabase => DatabaseOf(PurchasingOwner.ConnectionString);
 
+    /// <summary>اسم قاعدة النواة.</summary>
+    public string CoreDatabase => DatabaseOf(Core.OwnerConnectionString);
+
     /// <summary>يقرأ الإعدادات من البيئة.</summary>
     public static Settings FromEnvironment()
     {
@@ -76,10 +92,23 @@ internal sealed class Settings
             ?? Env("BABEL_PURCHASING_DB")
             ?? "Host=127.0.0.1;Port=5432;Database=babel_purchasing;Username=postgres;Include Error Detail=true";
 
+        string coreOwner = Env("BABEL_CORE_OWNER_DB")
+            ?? $"Host=127.0.0.1;Port=5432;Database={CoreOptions.DefaultDatabase};Username=postgres;Include Error Detail=true";
+
+        string coreApp = Env("BABEL_CORE_APP_DB")
+            ?? FormattableString.Invariant(
+                $"Host=127.0.0.1;Port=5432;Database={CoreOptions.DefaultDatabase};Username={ledger.AppRole};Include Error Detail=true");
+
         return new Settings(
             Env("BABEL_ADMIN_DB")
                 ?? "Host=127.0.0.1;Port=5432;Database=postgres;Username=postgres;Include Error Detail=true",
             ledger,
+            new CoreOptions
+            {
+                OwnerConnectionString = coreOwner,
+                AppConnectionString = coreApp,
+                AppRole = Env("BABEL_CORE_APP_ROLE") ?? ledger.AppRole,
+            },
             new SalesOptions { ConnectionString = salesOwner, CompanyCurrency = ledger.CompanyCurrency },
             new PurchasingOptions { ConnectionString = purchasingOwner, CompanyCurrency = ledger.CompanyCurrency },
             Guid.TryParseExact(Env("BABEL_DEMO_COMPANY_ID"), "D", out Guid company)

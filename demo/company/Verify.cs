@@ -1,4 +1,5 @@
 using System.Globalization;
+using Babel.Core;
 using Babel.Core.Audit;
 using Babel.Core.CompanySetup;
 using Babel.Core.Entitlement;
@@ -11,6 +12,7 @@ using Babel.Sales.Application;
 using PayablesService = Babel.Purchasing.Application.PayablesService;
 using PurchasingAging = Babel.Purchasing.Application.AgingReport;
 using Babel.SharedKernel;
+using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 
 namespace BabelDemoCompany;
@@ -37,7 +39,19 @@ internal static class Verify
         InMemoryUsageStore usage = new();
         InMemoryAuditLog audit = new();
         InMemoryEntitlementService entitlements = new(audit, TimeProvider.System);
-        InMemoryCompanySetupStore setupStore = new();
+        // مخزن التأسيس **هو مخزن الخادم نفسه**: PostgreSQL، بالطريق المعلَن
+        // AddBabelCore(options) لا بنوع داخلي. ولذلك تقرأ خطوة الإثبات ما بذرته خطوة
+        // البذر في **عملية أخرى** — وهو بعينه ما يفعله الخادم بعد إعادة الإقلاع.
+        ServiceCollection coreServices = new();
+        coreServices.AddBabelCore(options =>
+        {
+            options.AppConnectionString = settings.Core.AppConnectionString;
+            options.OwnerConnectionString = settings.Core.OwnerConnectionString;
+            options.AppRole = settings.Core.AppRole;
+        });
+
+        using ServiceProvider coreProvider = coreServices.BuildServiceProvider();
+        ICompanySetupStore setupStore = coreProvider.GetRequiredService<ICompanySetupStore>();
         EntitlementEnforcer enforcer = new(entitlements, usage, TimeProvider.System);
         LedgerAuditService auditor = new(enforcer, ledger);
 

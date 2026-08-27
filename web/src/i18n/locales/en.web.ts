@@ -136,6 +136,7 @@ export const messages: MessageTree = {
       alreadyPostedBody: "The same key arrived again, so the same receipt came back and no second entry was created. The entry number and hash below are the very ones you saw the first time.",
       chainSequence: "Position in the chain",
       lineCount: "Lines",
+      lineCountUnknown: "The receipt replayed for the same key does not carry the line count — the zero in it means 'not stated', not 'an entry with no lines'. The entry itself keeps the lines it was posted with.",
       seeInTrialBalance: "See it in the trial balance",
       submitAgain: "Send the same key again",
       newVoucher: "New voucher",

@@ -646,9 +646,21 @@ function ReceiptPanel(props: {
         </div>
         <div>
           <div className="k">{t("screen.voucher.lineCount")}</div>
-          <div className="v" data-testid="receipt-lines">
-            <Num value={receipt.lineCount} />
-          </div>
+          {/*
+            ⚠ إيصال الوصول الثاني يصل بـlineCount = 0 بينما الأول قال 2 — **لنفس القيد،
+            بنفس الرقم وبنفس البصمة**. مقيس على الخادم الحقيقي. والصفر هنا لا يعني «قيد بلا
+            سطور» بل «الإيصال المُعاد لا يحمل العدد»، فعرضُه رقماً يجعل المستخدم يقرأ حقيقة
+            محاسبية خاطئة عن قيدٍ سليم. فيُعرض شَرطة، ويُقال السبب.
+          */}
+          {again && receipt.lineCount === 0 ? (
+            <div className="v muted" data-testid="receipt-lines" title={t("screen.voucher.lineCountUnknown")}>
+              {t("common.label.dash")}
+            </div>
+          ) : (
+            <div className="v" data-testid="receipt-lines">
+              <Num value={receipt.lineCount} />
+            </div>
+          )}
         </div>
       </div>
 

@@ -329,7 +329,10 @@ function respondToPosting(res, path, raw, body) {
   const key = String(body.idempotencyKey ?? "");
   const seen = posted.get(key);
   if (seen) {
-    send(res, 200, { ...seen, alreadyPosted: true }, "application/json");
+    /* ⚠ الخادم الحقيقي يُعيد lineCount = 0 في إيصال الوصول الثاني بينما قال 2 في
+       الأول — لنفس القيد وبنفس البصمة. مقيس، ومُحاكى هنا كي تُختبَر الشاشة على
+       ما يقع لا على ما نتمنّاه. */
+    send(res, 200, { ...seen, alreadyPosted: true, lineCount: 0 }, "application/json");
     return;
   }
 

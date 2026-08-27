@@ -228,6 +228,11 @@ test.describe("القيد اليدوي — أول شاشة تكتب", () => {
     /* الإيصال **ذاته**: رقم القيد وبصمته لم يتغيّرا. */
     await expect(page.getByTestId("receipt-number")).toHaveText(firstNumber);
     await expect(page.getByTestId("receipt-hash")).toHaveText(firstHash);
+
+    /* وعدد السطور يصل صفراً في الإيصال المُعاد — مقيس على الخادم الحقيقي —
+       فلا يُعرَض رقماً يُقرأ «قيد بلا سطور» عن قيدٍ سليم بسطرين. */
+    await expect(page.getByTestId("receipt-lines")).not.toHaveText("0");
+    await expect(page.getByTestId("receipt-lines")).toHaveAttribute("title", /.+/);
   });
 
   test("القيد غير المتوازن يُرفض برمزه، وتتصرّف الشاشة على الرمز", async ({ page }) => {

@@ -351,14 +351,30 @@ public sealed class Rule06_NothingBypassesEntitlement
             declared.Select(static d => d.Project).Order(StringComparer.Ordinal),
             seams.Select(static seam => seam.Project).Order(StringComparer.Ordinal));
 
+        List<string> violations = [];
+
         foreach ((string project, string[] members) in declared)
         {
             EntitlementDecisionScan.EntitlementSeam seam = seams.Single(s => string.Equals(s.Project, project, StringComparison.Ordinal));
+            HashSet<string> declaredMembers = new(members, StringComparer.Ordinal);
 
-            Assert.Equal(
-                members.Order(StringComparer.Ordinal),
-                seam.Pairings.Select(static m => m.Name).Order(StringComparer.Ordinal));
+            violations.AddRange(seam.Pairings
+                .Where(m => !declaredMembers.Contains(m.Name))
+                .Select(static m => $"{m.Display} — يقرن حالةً بنيّة وصول وليس في الجرد")
+                .Order(StringComparer.Ordinal));
+
+            violations.AddRange(members
+                .Where(m => !seam.Pairings.Any(p => string.Equals(p.Name, m, StringComparison.Ordinal)))
+                .Select(m => $"{project}::{m} — في الجرد ولم يعد موجوداً: يُحذف من الجرد لا يُترك")
+                .Order(StringComparer.Ordinal));
         }
+
+        Assert.True(
+            violations.Count == 0,
+            "الجرد الصريح لا يطابق ما على القرص. عضوٌ جديد يقرن حالةً بنيّة وصول إمّا **يقرّر** — "
+            + "فليُحذف ويُنادِ EntitlementRules.Allows — وإمّا **يُسمّي الرفض** بعد وقوعه، "
+            + "فليُضَف إلى الجرد أعلاه بحجّته:\n"
+            + string.Join('\n', violations));
     }
 
     /// <summary>
@@ -384,7 +400,8 @@ public sealed class Rule06_NothingBypassesEntitlement
         AssertTheScannerIsNotVacuous(seams);
 
         (string Project, string Normalised)[] tables = [.. seams
-            .Select(static seam => (seam.Project, EntitlementDecisionScan.Normalise(seam.Decisions.Single())))
+            // أوّل قرار لا وحيده: عددُ المواضع شأنُ الفحص الأول، وهذا يقارن القاعدة.
+            .Select(static seam => (seam.Project, EntitlementDecisionScan.Normalise(seam.Decisions[0])))
             .OrderBy(static t => t.Project, StringComparer.Ordinal)];
 
         // غير خاوٍ من طرف الشكل: نصٌّ مُوحَّد فقد ذراع «للقراءة فقط» أو ذكر نيّة الوصول

@@ -123,6 +123,17 @@
   ونقاط الدخول المفحوصة **25**، والمحروسة ثلاث. ثم أُزيلت الطفرة فعاد أخضر.
 - **مقيس** — الفجوة قبل هذا القرار: صفر تنفيذ لـ`ICapturedInvoiceReceiver` في `src/` كلّه،
   و`ModuleMap` لا يسمح لـ`Babel.Purchasing` بالمرجع الذي يجعله ممكناً.
+- **مقيس · طفرتان تُعيدان إنتاج الفجوة، ثم أُزيلتا** — وهما الإثبات أن النقل **حامل** لا
+  ترتيب:
+  **(أ)** أُعيد ملفّ المنفذ إلى `src/Babel.Ai/Promotion/` بفضاء اسمه القديم، فسقط بناء
+  `Babel.Purchasing` بـ`CS0246` على `ICapturedInvoiceReceiver` و`PromotionOrder`
+  و`PromotionLine` — أي أن المستقبِل **لا يُترجَم** والمنفذ حيث كان.
+  **(ب)** أُضيف حينئذٍ `<ProjectReference Include="../Babel.Ai/…" />` إلى
+  `Babel.Purchasing.csproj` — وهو المخرج الوحيد الظاهر — فسقط
+  `Rule03_DependencyDirectionIsAlwaysDownward.EveryProjectReferenceIsDeclaredAllowed`:
+  «`src/Babel.Purchasing/Babel.Purchasing.csproj → Babel.Ai (غير مسموح)`».
+  فالطريقان مسدودان، والعقد هو الموضع الوحيد الباقي. ثم أُزيلت الطفرتان وعاد البناء
+  **0 تحذيراً · 0 خطأ** واختبارات المعمارية **116/116**.
 - **مُتحقَّق من مصدر** — الأحداث الأربعة التي يذكرها الكتالوج موجودة في
   `data/posting-matrix/events/purchasing.json`، والمؤهّل العام `*` لدور `operating_expense`
   صفٌّ قائم في `data/posting-matrix/role-map.default.csv`.

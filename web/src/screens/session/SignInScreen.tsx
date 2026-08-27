@@ -77,12 +77,27 @@ export function SignInScreen(): ReactNode {
   const error: unknown = query.isError ? query.error : null;
   const busy = query.isFetching;
 
+  /*
+   * ⚠ `refetch()` **لا يُنادى مع تغيير المُقدَّم**. وقد نُودي هنا أولاً فأنتج طلباً
+   * إضافياً بالإغلاق **القديم** — أي بـbaseUrl الفارغ — فذهب نداء نسبيّ إلى
+   * /api/v1/session ووقع على وسيط التطوير بـECONNREFUSED، بينما النداء الصحيح
+   * ينطلق بعده بمفتاح جديد وينجح. فكان الطلب الفاشل **غير مرئي في الشاشة** وظاهراً
+   * في سجلّ الوسيط وحده: طلبٌ يغادر المتصفّح إلى عنوان لم يطلبه أحد.
+   * والصواب: تغيير المفتاح هو ما يُطلق النداء، وrefetch لإعادة المحاولة بالقيم نفسها.
+   */
   const signIn = useCallback(
     (presentedToken: string, presentedBase: string) => {
+      const unchanged =
+        presented !== null && presented.token === presentedToken && presented.baseUrl === presentedBase;
+
+      if (unchanged) {
+        void query.refetch();
+        return;
+      }
+
       setPresented({ token: presentedToken, baseUrl: presentedBase });
-      void query.refetch();
     },
-    [query]
+    [presented, query]
   );
 
   const choose = useCallback(

@@ -46,6 +46,7 @@ export const messages: MessageTree = {
       status: "Status",
       noContract: "The server did not answer in the published problem format — no code and no Arabic message.",
       network: "The server could not be reached. Nothing in the data changed.",
+      decode: "The server answered, and the client refused the response body because it breaks the published contract. **What you asked for may well have happened** — do not retry before checking. The technical detail is below; this is a contract or server fault, not a connection fault.",
       count: {
         "=0": "No errors",
         one: "One error",

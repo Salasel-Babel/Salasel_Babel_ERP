@@ -179,10 +179,15 @@ const SETUP = {
 const posted = new Map();
 let entrySequence = 0;
 
-/** رقم قيد بلا فجوات، نصّاً. */
+/**
+ * رقم قيد بلا فجوات، نصّاً.
+ * و**بلا بادئة حرفية**: العقد يُعرّف entryNumber بأنه Int64String بالنمط
+ * ^-?(0|[1-9][0-9]*)$ — فرقمٌ مثل «JV-000001» يرفضه الفاكّ المُولَّد عند العميل
+ * قبل أن يُعرَض. وقد كتبه هذا الوهمي كذلك أولاً فسقطت شاشة القيد بـTypeError.
+ */
 function nextEntryNumber() {
   entrySequence += 1;
-  return "JV-" + String(entrySequence).padStart(6, "0");
+  return String(1000 + entrySequence);
 }
 
 /** بصمة عرضية ثابتة الطول — لا تجزئة حقيقية، وهي ليست دعوى في الوهمي. */

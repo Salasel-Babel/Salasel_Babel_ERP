@@ -56,27 +56,44 @@ fail() { printf '\n✗ سقطت البوّابة عند: %s\n' "$1" >&2; exit 1;
 step "١ · بناء الحلّ كلّه — $configuration · التحذير خطأ"
 dotnet build Babel.slnx -c "$configuration" --nologo || fail "dotnet build Babel.slnx -c $configuration"
 
-# ── ٢ · الحدود المعمارية منفصلةً ──────────────────────────────────────────────
+# ── ٢ · المسابر — تُبنى وحدها لأنها خارج ملف الحلّ عمداً ──────────────────────
+# ‏spikes/ ليست في `Babel.slnx` بقرارٍ مقصود (القاعدة 9 تُعفيها بالاسم، والقاعدة 8
+# تُخرجها من نطاقها لأن إحداها تستعمل WolverineFx.RuntimeCompilation فعلاً). وثمنُ
+# ذلك أنّ **لا شيء كان يبنيها**: قِيس على develop أنّ ثلاثة من أربعة لا تستعيد أصلاً
+# (‏NU1008)، وخلف جدار الاستعادة 353 تشخيصاً لم يرها أحد لأن المصرّف لم يبلغها قط.
+# المسبار دليل، والدليل الذي لا يُبنى توقّف عن كونه دليلاً وهو ما يزال يبدو دليلاً.
+# الحارس على وجود هذه الخطوة نفسها: القاعدة 16.
+step "٢ · المسابر — كلٌّ وحده · التحذير خطأ"
+for spike in \
+    spikes/culture-calendar/CultureCalendarSpike.csproj \
+    spikes/dotnet-stack/BabelSpike.csproj \
+    spikes/pos-offline/PosOfflineSpike.csproj \
+    spikes/relational-stack/RelationalSpike.csproj
+do
+    dotnet build "$spike" -c "$configuration" --nologo || fail "بناء المسبار $spike"
+done
+
+# ── ٣ · الحدود المعمارية منفصلةً ──────────────────────────────────────────────
 # أولاً ووحدها كما في ci.yml: إن انكسر حدّ، تُقرأ رسالته فوراً لا بين مئات الأسطر.
-step "٢ · الحدود المعمارية"
+step "٣ · الحدود المعمارية"
 dotnet test --project tests/Babel.ArchitectureTests/Babel.ArchitectureTests.csproj \
     -c "$configuration" --no-build || fail "اختبارات المعمارية"
 
-# ── ٣ · كل الاختبارات ─────────────────────────────────────────────────────────
+# ── ٤ · كل الاختبارات ─────────────────────────────────────────────────────────
 # ‏`--no-build` ليس تسريعاً فحسب: الخطوة ١ هي التي بنت، وبدونها كانت هذه الخطوة
 # ستمرّ على مشاريع لا تشير إليها الاختبارات **دون أن تبنيها** — وهو العطل نفسه.
-step "٣ · كل الاختبارات"
+step "٤ · كل الاختبارات"
 dotnet test --solution Babel.slnx -c "$configuration" --no-build || fail "مجموعة الاختبارات"
 
-# ── ٤ · مسح العزل ─────────────────────────────────────────────────────────────
+# ── ٥ · مسح العزل ─────────────────────────────────────────────────────────────
 if [ "$isolation" = "yes" ]; then
-    step "٤ · مسح العزل — كل دالّة وحدها"
+    step "٥ · مسح العزل — كل دالّة وحدها"
     tools/test-isolation/run.sh --grain method --configuration "$configuration" --jobs 4 \
         || fail "مسح العزل"
 else
     printf '\n── مسح العزل مُتخطّى بـ--no-isolation. لا يُتخطّى قبل الدمج.\n'
 fi
 
-printf '\n✔ البوّابة المحلية خضراء: بناء الحلّ كلّه + الحدود + الاختبارات'
+printf '\n✔ البوّابة المحلية خضراء: بناء الحلّ كلّه + المسابر + الحدود + الاختبارات'
 [ "$isolation" = "yes" ] && printf ' + العزل'
 printf '\n'

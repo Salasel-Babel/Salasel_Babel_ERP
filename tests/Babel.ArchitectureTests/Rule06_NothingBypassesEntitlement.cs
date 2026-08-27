@@ -1,7 +1,9 @@
 using System.Reflection;
+using System.Text.RegularExpressions;
 using Babel.ArchitectureTests.Support;
 using Babel.Core.Application;
 using Babel.Core.Entitlement;
+using Babel.SharedKernel;
 using Xunit;
 
 namespace Babel.ArchitectureTests;
@@ -20,6 +22,15 @@ namespace Babel.ArchitectureTests;
 /// <para>
 /// ولماذا الآن لا لاحقاً: <c>ReadOnly</c> يمسّ كل مسار كتابة وكل تقرير في كل وحدة؛
 /// إضافته بعد أول عميل يدفع تعني إعادة فتح كل ملف (وثيقة المعمارية §17 م-7).
+/// </para>
+/// <para>
+/// <b>والأرضية جزءٌ من هذه القاعدة لا قاعدةٌ ثانية.</b> «لا شيء يتجاوز الاستحقاق»
+/// كانت تعني «لا كتابة بلا فحص»؛ وهي تعني الآن أيضاً <b>«لا قراءة تُقطَع بلا حقّ»</b>.
+/// فحصان يحرسان ذلك: أن كل وحدة تكتب في الدفتر تُعلن أرضيتها <c>ReadOnly</c>
+/// (فلا سجلّ محاسبي يُنزَع)، وأن <b>جدول القرار موضعٌ واحد</b> — إذ إن الطريقة
+/// الوحيدة الباقية لتجاوز الأرضية هي أن يكتب مؤلّف وحدةٍ نسخةً ثانية من الجدول في
+/// خدمته، فيُسقط <c>ReadOnly</c> من القراءة وهو يظنّ أنه يُنفِذ الاستحقاق.
+/// (‏<c>docs/evidence/traps.md#fakh-mandatory-module-cannot-be-read-only</c>)
 /// </para>
 /// </summary>
 public sealed class Rule06_NothingBypassesEntitlement
@@ -118,6 +129,158 @@ public sealed class Rule06_NothingBypassesEntitlement
         Assert.True(
             violations.Count == 0,
             "تجميعات فيها خدمات تطبيق لا تحقن IEntitlementEnforcer إطلاقاً:\n" + string.Join('\n', violations));
+    }
+
+    /// <summary>
+    /// <b>كل وحدة يبلغ عملُها الدفترَ تحمل أرضية «للقراءة فقط».</b>
+    /// <para>
+    /// المعيار <b>مشتقّ من رسم الاعتماديات لا مكتوب مرّتين</b>: وحدةٌ اعتمادياتها
+    /// المتعدّية تبلغ <see cref="BabelModule.Ledger"/> — أو هي الدفتر أو النواة
+    /// التي يقوم عليها — هي وحدةٌ يصير عملُها <b>قيداً في دفتر</b>. والقيد يبقى
+    /// للعميل بعد انقطاع اشتراكه: يُقرأ، ويُصدَّر، ويُقدَّم به إقرار. فوحدتها
+    /// <b>تُخفَّض ولا تُنزَع</b>.
+    /// </para>
+    /// <para>
+    /// والاستثناء الوحيد مشتقّ بالمعيار نفسه لا ممنوح بالاسم:
+    /// <see cref="BabelModule.Ai"/> لا يعتمد على الدفتر — التقاطه <b>مسوّدات ما
+    /// قبل القيد</b> (‏ADR-0024) لا وقائع محاسبية — فيُنزَع فعلاً. وهو نظير
+    /// <c>REP</c> في كتالوج مستوى التحكّم، وللسبب نفسه.
+    /// </para>
+    /// <para>
+    /// ولذلك يفشل البناء على وحدةٍ جديدة تبلغ الدفتر ونُسيت أرضيتها: القائمتان
+    /// (‏رسم الاعتماديات، وجرد الأرضيات) تُقرآن من موضعين مستقلّين، فاختلافهما
+    /// خطأ لا رأي.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void EveryModuleWhoseWorkReachesTheLedgerDeclaresAReadOnlyFloor()
+    {
+        static bool ReachesTheLedger(BabelModule module) =>
+            module is BabelModule.Ledger or BabelModule.Core
+            || ModuleDependencyGraph.TransitiveRequirementsOf(module).Contains(BabelModule.Ledger);
+
+        string[] withoutFloor = [.. ModuleDependencyGraph.All
+            .Where(ReachesTheLedger)
+            .Where(static module => ModuleDependencyGraph.FloorOf(module) != EntitlementState.ReadOnly)
+            .Select(static module => module.ToString())
+            .Order(StringComparer.Ordinal)];
+
+        Assert.True(
+            withoutFloor.Length == 0,
+            "وحدات يبلغ عملُها الدفتر ولا تُعلن أرضية «للقراءة فقط» — أي يمكن نزع "
+            + "سجلاتها عن صاحبها:\n" + string.Join('\n', withoutFloor));
+
+        // والعكس: وحدةٌ لا تبلغ الدفتر لا تُمنَح أرضية لم تستحقّها، وإلا صار الجرد
+        // «كل شيء» فبطل معناه.
+        string[] floorWithoutLedger = [.. ModuleDependencyGraph.All
+            .Where(static module => !ReachesTheLedger(module))
+            .Where(static module => ModuleDependencyGraph.FloorOf(module) == EntitlementState.ReadOnly)
+            .Select(static module => module.ToString())
+            .Order(StringComparer.Ordinal)];
+
+        Assert.True(
+            floorWithoutLedger.Length == 0,
+            "وحدات لا تبلغ الدفتر ومع ذلك تُعلن أرضية «للقراءة فقط»:\n"
+            + string.Join('\n', floorWithoutLedger));
+
+        // غير خاوٍ من الطرفين: لو صار كل شيء على جانب واحد لمرّ الفحص بلا معنى.
+        Assert.Contains(ModuleDependencyGraph.All, ReachesTheLedger);
+        Assert.Contains(ModuleDependencyGraph.All, static m => !ReachesTheLedger(m));
+    }
+
+    /// <summary>
+    /// <b>وكل وحدة لها مسار كتابة وتبلغ الدفتر مشمولةٌ فعلاً.</b> الفحص السابق
+    /// يقيس الرسم؛ وهذا يربطه بسطح الإنفاذ الحقيقي — نقاط الدخول المُعلِنة
+    /// <see cref="EntitlementAccess.Write"/> — فلا يمرّ الرسم صحيحاً وسطحُ
+    /// الخدمات على شيء آخر.
+    /// </summary>
+    [Fact]
+    public void EveryWritingModuleOnTheLedgerIsCoveredByTheFloor()
+    {
+        BabelModule[] modulesThatWrite = [.. ApplicationServices()
+            .SelectMany(EntryPoints)
+            .Select(static method => method.GetCustomAttribute<RequiresEntitlementAttribute>(inherit: true)
+                ?? method.DeclaringType!.GetCustomAttribute<RequiresEntitlementAttribute>(inherit: true))
+            .Where(static attribute => attribute is { Access: EntitlementAccess.Write })
+            .Select(static attribute => attribute!.Module)
+            .Distinct()
+            .Order()];
+
+        Assert.NotEmpty(modulesThatWrite);
+
+        string[] uncovered = [.. modulesThatWrite
+            .Where(static module => module is not BabelModule.Ai)
+            .Where(static module => ModuleDependencyGraph.FloorOf(module) != EntitlementState.ReadOnly)
+            .Select(static module => module.ToString())
+            .Order(StringComparer.Ordinal)];
+
+        Assert.True(
+            uncovered.Length == 0,
+            "وحدات لها نقطة دخول كتابة ولا أرضية لها:\n" + string.Join('\n', uncovered));
+    }
+
+    /// <summary>
+    /// <b>جدول القرار موضعٌ واحد — وهذا هو ما يمنع التجاوز فعلاً.</b>
+    /// <para>
+    /// السمة تُعلن، والمنفِّذ يُنفِذ؛ والثغرة الباقية أن يكتب مؤلّف وحدةٍ
+    /// <c>if (state == EntitlementState.Entitled)</c> في خدمته. يبدو صحيحاً، ويكون
+    /// قد <b>أسقط <c>ReadOnly</c> من القراءة صامتاً</b> — أي قطع عن عميلٍ انقطع
+    /// سداده سجلَّه المحاسبي وهو يظنّ أنه يُنفِذ الاستحقاق.
+    /// </para>
+    /// <para>
+    /// فالفحص يمسح شيفرة الإنتاج كلّها — <b>بلا تعليقات</b>، لأن التعليقات تشرح
+    /// الشكل الممنوع عمداً وقاعدةٌ تخلط الاثنين تُجبر المهندس على حذف الشرح
+    /// (نفس علّة القاعدة 12) — ويرفض أي ذكر لقيمة من <c>EntitlementState</c> خارج
+    /// حدّ الاستحقاق نفسه.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void NothingOutsideTheEntitlementSeamBranchesOnAnEntitlementState()
+    {
+        string sourceRoot = Path.Combine(RepositoryLayout.Root, "src");
+
+        List<string> violations = [];
+        int scanned = 0;
+
+        foreach (string file in Directory.EnumerateFiles(sourceRoot, "*.cs", SearchOption.AllDirectories))
+        {
+            string relative = Path.GetRelativePath(RepositoryLayout.Root, file).Replace('\\', '/');
+
+            if (relative.Contains("/obj/", StringComparison.Ordinal)
+                || relative.Contains("/bin/", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            // حدّ الاستحقاق نفسه: هو الموضع الذي **يجب** أن يقرّر فيه.
+            if (relative.Contains("/Entitlement/", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            scanned++;
+            string code = StripComments(File.ReadAllText(file));
+
+            if (code.Contains("EntitlementState.", StringComparison.Ordinal))
+            {
+                violations.Add(relative);
+            }
+        }
+
+        Assert.True(scanned > 100, $"المسح ضامر: {scanned} ملفاً فقط.");
+        Assert.True(
+            violations.Count == 0,
+            "شيفرة إنتاج خارج حدّ الاستحقاق تفرّع على EntitlementState — أي نسخة ثانية "
+            + "من جدول القرار، وهي الطريقة الوحيدة الباقية لإسقاط ReadOnly من القراءة "
+            + "صامتاً:\n" + string.Join('\n', violations.Order(StringComparer.Ordinal)));
+    }
+
+    /// <summary>الشيفرة بلا تعليقات — القاعدة تفحص ما يُنفَّذ لا ما يُشرح (نفس القاعدة 12).</summary>
+    private static string StripComments(string text)
+    {
+        text = Regex.Replace(text, @"/\*.*?\*/", " ", RegexOptions.Singleline, TimeSpan.FromSeconds(5));
+        text = Regex.Replace(text, @"//.*$", " ", RegexOptions.Multiline, TimeSpan.FromSeconds(5));
+        return text;
     }
 
     [Fact]

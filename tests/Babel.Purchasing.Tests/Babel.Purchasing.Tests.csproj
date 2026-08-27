@@ -16,6 +16,16 @@
       قائمة على الشكل نفسه.
     -->
     <ProjectReference Include="../../src/Babel.Purchasing/Babel.Purchasing.csproj" />
+    <!--
+      وحدة الالتقاط ومزوّد الهيئة — للإثبات من طرف إلى طرف: رمز فاتورة مورد **حقيقي**
+      مولَّد بالمُرمِّز القائم، يُفكّ ثم يصير مسوّدة ثم يصير فاتورة مورد مُرحَّلة في دفتر
+      أستاذ حقيقي. ولا سبيل إلى ذلك بمحاكاة: المطلوب إثباته هو أن السلسلة **موصولة**.
+
+      و**لا مشروع منتج يفعل هذا**: القاعدتان 1 و3 تفحصان src/ وحدها، وBabel.Ai.Tests
+      سابقة قائمة على الشكل نفسه (تشير إلى مزوّد الهيئة).
+    -->
+    <ProjectReference Include="../../src/Babel.Ai/Babel.Ai.csproj" />
+    <ProjectReference Include="../../src/Babel.Compliance.Zatca/Babel.Compliance.Zatca.csproj" />
     <ProjectReference Include="../../src/Babel.Ledger/Babel.Ledger.csproj" />
     <ProjectReference Include="../../src/Babel.Core/Babel.Core.csproj" />
     <ProjectReference Include="../../src/Babel.Canonicalization/Babel.Canonicalization.csproj" />

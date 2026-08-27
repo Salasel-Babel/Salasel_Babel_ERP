@@ -38,6 +38,7 @@ import type { TrialBalance, TrialBalanceRow } from "../../api/generated/types";
 import { Amount, useLocale, useT } from "../../i18n/react";
 import { toLatinDigits } from "../../i18n/decimal-text";
 import { SOURCE } from "../../i18n/engine";
+import { resolveTranslatedName, type ResolvedName } from "../../app/translated-name";
 
 /** أي الصفوف تُعرض. هوية ثابتة لا تتغيّر بتغيّر اللغة. */
 export type ViewFilter = "all" | "debit" | "credit";
@@ -69,42 +70,19 @@ function recordName(row: TrialBalanceRow): string {
   return row.nameAr;
 }
 
-/** ما حُلّ إليه الاسم في لغةٍ بعينها، ومن أي وسم جاء. */
-interface ResolvedName {
-  /** النصّ المعروض. */
-  text: string;
-  /** الوسم الذي أعطاه فعلاً — "ar" عند الارتداد إلى السجلّ. */
-  tag: string;
-  /** هل ارتدّ إلى السجلّ لغياب ترجمة مطابقة؟ */
-  fallback: boolean;
-}
-
 /**
- * يحلّ اسم الحساب إلى لغة العرض: مطابقة تامّة، ثم الوسم الأوّلي (ur-PK ⇒ ur)،
- * ثم **ارتداداً إلى السجلّ العربي — لا إلى الفراغ ولا إلى المفتاح**.
+ * يحلّ اسم الحساب إلى لغة العرض بالقاعدة المشتركة.
  *
- * والنسخة نفسها من القاعدة تعيش في TranslatedName على الخادم. وتكرارها هنا مقصود:
- * الواجهة لا تستطيع أن تسأل الخادم عن اسمٍ لم يصل، وارتدادٌ يقع في مكانين بقاعدتين
- * مختلفتين أسوأ من تكرار قاعدة واحدة مكتوبة مرّتين ومختبَرة في الموضعين.
+ * وكانت القاعدة مكتوبة هنا وحدها. ولمّا صار اسم **المنشأة** يُعرض في شاشة الدخول
+ * بالقاعدة نفسها، رُفعت إلى {@link resolveTranslatedName} وتقرأ منها الشاشتان:
+ * نسختان تنحرفان عند أول تعديل، فيرى المحاسب الهندي اسم حسابه بلغته واسم منشأته
+ * بالعربية.
  * @param row صفّ الميزان.
  * @param locale وسم لغة الواجهة.
  * @returns النصّ ووسمه وهل كان ارتداداً.
  */
 function resolveName(row: TrialBalanceRow, locale: string): ResolvedName {
-  const record: ResolvedName = { text: row.nameAr, tag: SOURCE, fallback: false };
-  if (!locale || locale === SOURCE || locale.startsWith(SOURCE + "-")) return record;
-
-  const exact = row.nameTranslations.find((entry) => entry.name === locale);
-  if (exact) return { text: exact.value, tag: exact.name, fallback: false };
-
-  const dash = locale.indexOf("-");
-  if (dash > 0) {
-    const primary = locale.slice(0, dash);
-    const broader = row.nameTranslations.find((entry) => entry.name === primary);
-    if (broader) return { text: broader.value, tag: broader.name, fallback: false };
-  }
-
-  return { ...record, fallback: true };
+  return resolveTranslatedName(row.nameAr, row.nameTranslations, locale);
 }
 
 /** كل ما يُبحَث فيه من أسماء الصفّ: السجلّ وكل ترجمة، لا الإنجليزية وحدها. */

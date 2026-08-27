@@ -45,10 +45,13 @@ services:
       BABEL_LEDGER_OWNER_DB: "Host=db;Port=5432;Database=babel_ledger;Username=postgres;Password=${POSTGRES_PASSWORD}"
       BABEL_SALES_OWNER_DB: "Host=db;Port=5432;Database=babel_sales;Username=postgres;Password=${POSTGRES_PASSWORD}"
       BABEL_PURCHASING_OWNER_DB: "Host=db;Port=5432;Database=babel_purchasing;Username=postgres;Password=${POSTGRES_PASSWORD}"
+      BABEL_CORE_OWNER_DB: "Host=db;Port=5432;Database=babel_core;Username=postgres;Password=${POSTGRES_PASSWORD}"
       # واتصال التطبيق: يُستعمل في خطوتَي البذر والإثبات — وهو ما يجعل البذر
       # عاجزاً بنيوياً عن الكتابة خارج ledger.post_entry.
       BABEL_LEDGER_APP_DB: "Host=db;Port=5432;Database=babel_ledger;Username=${BABEL_LEDGER_APP_ROLE:-babel_ledger_app};Password=${BABEL_LEDGER_APP_PASSWORD}"
       BABEL_LEDGER_APP_ROLE: ${BABEL_LEDGER_APP_ROLE:-babel_ledger_app}
+      BABEL_CORE_APP_DB: "Host=db;Port=5432;Database=babel_core;Username=${BABEL_LEDGER_APP_ROLE:-babel_ledger_app};Password=${BABEL_LEDGER_APP_PASSWORD}"
+      BABEL_CORE_APP_ROLE: ${BABEL_LEDGER_APP_ROLE:-babel_ledger_app}
       BABEL_LEDGER_APP_PASSWORD: ${BABEL_LEDGER_APP_PASSWORD:?كلمة مرور دور التطبيق}
       BABEL_DEMO_COMPANY_ID: ${BABEL_DEMO_COMPANY_ID:-d3305e1e-0000-4000-8000-000000000001}
       BABEL_DEMO_FISCAL_YEAR: ${BABEL_DEMO_FISCAL_YEAR:-2026}
@@ -69,6 +72,11 @@ services:
       # فوق قيد مُرحَّل، فتسقط طبقتا الحصانة معاً (ADR-0003).
       BABEL_LEDGER_APP_DB: "Host=db;Port=5432;Database=babel_ledger;Username=${BABEL_LEDGER_APP_ROLE:-babel_ledger_app};Password=${BABEL_LEDGER_APP_PASSWORD};Maximum Pool Size=20"
       BABEL_LEDGER_APP_ROLE: ${BABEL_LEDGER_APP_ROLE:-babel_ledger_app}
+      # النواة: تأسيس المنشأة ومراكز تكلفتها وملفّ قدراتها. **اتصال دور التطبيق
+      # وحده** كذلك — ولا BABEL_CORE_OWNER_DB هنا: خادمٌ يحمله يستطيع إسقاط مشغّل
+      # ثبات مقياس العرض ثم كتابة مقياس آخر على منشأة قائمة.
+      BABEL_CORE_APP_DB: "Host=db;Port=5432;Database=babel_core;Username=${BABEL_LEDGER_APP_ROLE:-babel_ledger_app};Password=${BABEL_LEDGER_APP_PASSWORD};Maximum Pool Size=10"
+      BABEL_CORE_APP_ROLE: ${BABEL_LEDGER_APP_ROLE:-babel_ledger_app}
       # دليل الاعتمادات: **بصمة** لا اعتماد. الخادم لا يعرف الرمز الأصلي أبداً.
       Babel__Api__Tokens__0__Sha256: ${BABEL_DEMO_TOKEN_SHA256:?بصمة SHA-256 لرمز العرض}
       Babel__Api__Tokens__0__Tenant: ${BABEL_DEMO_COMPANY_ID:-d3305e1e-0000-4000-8000-000000000001}

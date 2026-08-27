@@ -31,10 +31,51 @@ const QUIET = process.argv.includes("--quiet");
 
 let fatal = 0;
 let warn = 0;
+let debt = 0;
 const out = [];
+
+/* ═════════════════════════ الدين المعلَن · declared debt ══════════════════
+   ‏**ليس إعفاءً، وليس تخطّياً لمسار.** المخالفة تُكتشَف وتُعدّ وتُطبَع كما هي؛
+   وكل ما يفعله هذا الإعلان أنه يمنعها من إحمار البوّابة **ما دام عددها لم
+   يتغيّر**. والفرق بين الاثنين هو الفرق بين دينٍ مقروء وبين عمى:
+
+     · إعفاءُ مسار يجعل المخالفة **غير مرئية**، فيصير المسار المُعفى المكان
+       الوحيد الذي يستطيع العطل أن يعيش فيه (فخ-43، وADR-0032 §المسابر).
+     · والدين المعلَن يُبقيها **مرئية ومعدودة**، ويجعل أي زيادة حمراء فوراً.
+
+   ‏**والسقف ينزل ولا يصعد** — ومثل القاعدة 14، إن نزل العدد فالبوّابة تحمرّ
+   حتى يُنزَّل السقف معه. وهذا هو الحارس ضدّ فخ-43 بعينه: كاشفٌ عمي، أو مجلّدٌ
+   حُذف، يُظهر نفسه بانخفاضٍ عن السقف بدل أن يمرّ صامتاً.
+
+   ‏**ونطاقه ضيّق مرّتين**: مسارٌ واحد مسمّى، وفحصٌ واحد من ثمانية. وما عداه —
+   بما فيه فحوص الاتجاه ومحارف التحكّم داخل المسار نفسه — يبقى حاكماً بصفر.
+
+   ‏Declared debt — not an exemption and not a path skip. The violations are
+   still detected, counted and printed; the ceiling only stops them reddening
+   the gate while their number is unchanged. It may fall, never rise.
+   ════════════════════════════════════════════════════════════════════════ */
+const DECLARED_DEBT = {
+  check: "٦ · نصّ مرئي مكتوب في الشيفرة",
+  scope: "src/demo/",
+  ceiling: 147,
+  /* لماذا دينٌ لا إصلاح: طبقة العرض نصُّها **سردُ فيلم** لا واجهة منتج —
+     ‏146 نصّاً فريداً، 82 منها شظايا جملةٍ مقطوعةٍ حول وسمٍ داخلي لا تصلح
+     مفاتيح. ونقلُها إلى ملفّات اللغة يوجب — بحكم الفحص ١ نفسه — اختلاق نحو
+     400 ترجمة أردية وهندية وإنجليزية لسردٍ لن يُقرأ إلا بالعربية، فيدخل
+     السجلَّ نصٌّ مُختلَق لا يُميَّز عن الترجمة الحقيقية. ADR-جديد
+     «طبقة العرض دينٌ معلَن لا مسارٌ مُعفى». */
+};
+const debtScopeFiles = [];
 const head = (t) => out.push("", "─".repeat(74), t, "─".repeat(74));
 const ok = (t) => out.push("  ✓ " + t);
 const info = (t) => out.push("  · " + t);
+/** يطبع ديناً معلَناً: مرئيٌّ ومعدود، ولا يُحمِّر ما دام عند سقفه. */
+function declared(title, list) {
+  debt += list.length;
+  out.push("  ⓘ دين معلَن · declared debt: " + title + " (" + list.length + ")");
+  for (const x of list.slice(0, 40)) out.push("      " + x);
+  if (list.length > 40) out.push("      … +" + (list.length - 40));
+}
 function bad(title, list, isFatal) {
   if (isFatal) fatal += list.length;
   else warn += list.length;
@@ -306,13 +347,20 @@ function jsxTextNodes(source) {
   return found;
 }
 const hardcoded = [];
+const declaredHits = [];
 let jsxTextScanned = 0;
 for (const f of tsFiles.filter((x) => x.endsWith(".tsx"))) {
+  const where = rel(f);
+  const inDebtScope = where.startsWith(DECLARED_DEBT.scope);
+  if (inDebtScope) debtScopeFiles.push(where);
   const nodes = jsxTextNodes(stripComments(fs.readFileSync(f, "utf8")));
   jsxTextScanned += nodes.length;
   for (const value of nodes) {
     if (!LETTERS.test(value)) continue;
-    hardcoded.push(rel(f) + ": «" + value.slice(0, 60) + "»");
+    const entry = where + ": «" + value.slice(0, 60) + "»";
+    /* داخل النطاق المُعلَن: دينٌ مرئي. وخارجه: حاكمٌ بصفر كما كان. */
+    if (inDebtScope) declaredHits.push(entry);
+    else hardcoded.push(entry);
   }
 }
 selfTest(
@@ -325,7 +373,39 @@ selfTest(
 );
 info("عُقد نصّ في JSX مفحوصة · JSX text nodes inspected: " + jsxTextScanned);
 if (hardcoded.length) bad("نصّ مرئي غير مترجَم", hardcoded, true);
-else ok("لا نصّ مرئي مكتوب في الوسم");
+else ok("لا نصّ مرئي مكتوب في الوسم خارج النطاق المُعلَن");
+
+/* ── السقف: ينزل ولا يصعد، ويحمرّ في الاتجاهين ─────────────────────────── */
+info(
+  "نطاق الدين · debt scope: " + DECLARED_DEBT.scope +
+    " (" + debtScopeFiles.length + " ملفّ · files)"
+);
+if (declaredHits.length) declared(DECLARED_DEBT.scope + " — " + DECLARED_DEBT.check, declaredHits);
+if (declaredHits.length > DECLARED_DEBT.ceiling) {
+  fatal += declaredHits.length - DECLARED_DEBT.ceiling;
+  out.push(
+    "  ✗ الدين المعلَن ارتفع · declared debt rose: " + declaredHits.length +
+      " > السقف · ceiling " + DECLARED_DEBT.ceiling +
+      " — السقف لا يُرفع؛ النصّ الجديد يمرّ بطبقة اللغة." +
+      " The ceiling is never raised; new text goes through the i18n layer."
+  );
+} else if (declaredHits.length < DECLARED_DEBT.ceiling) {
+  /* ‏فخ-43 بعينه: كاشفٌ عمي أو مجلّدٌ حُذف يظهر هنا لا يمرّ صامتاً. */
+  fatal++;
+  out.push(
+    "  ✗ الدين نزل ولم ينزل السقف · debt fell but the ceiling did not: " +
+      declaredHits.length + " < " + DECLARED_DEBT.ceiling +
+      " — أنزِل ceiling في scripts/audit.mjs إلى " + declaredHits.length + "." +
+      " Lower the ceiling in scripts/audit.mjs to " + declaredHits.length + "."
+  );
+} else if (declaredHits.length) {
+  ok(
+    "الدين المعلَن عند سقفه بالضبط · declared debt exactly at its ceiling (" +
+      DECLARED_DEBT.ceiling + ")"
+  );
+}
+/* حارس اللافراغ على النطاق نفسه: سقفٌ غير صفري على مجلّد فارغ عمى لا دين. */
+if (DECLARED_DEBT.ceiling > 0) mustScan("ملفات في نطاق الدين · files in debt scope", debtScopeFiles.length, 1);
 
 /* ═════════════ ٧ · الاتجاه في CSS ═══════════════════════════════════════ */
 head("٧ · الاتجاه في CSS · direction in CSS");
@@ -413,6 +493,7 @@ else ok("لا محرف تحكّم غير مرئي في أي ملف مصدر");
 /* ═════════════════════════════ الخلاصة ═════════════════════════════════ */
 head("الخلاصة · summary");
 out.push("  مخالفات حاكمة · fatal:   " + fatal);
+out.push("  دين معلَن · declared debt: " + debt + " (السقف · ceiling " + DECLARED_DEBT.ceiling + ")");
 out.push("  ملاحظات · warnings:      " + warn);
 out.push("");
 if (!QUIET || fatal) console.log(out.join("\n"));

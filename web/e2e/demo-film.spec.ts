@@ -29,6 +29,23 @@ const APP_ROLE = process.env.BABEL_LEDGER_APP_ROLE ?? "babel_ledger_app";
 /* المعدّل الزمني: 1 هو الإيقاع المقصود. يُخفَّض للتجربة السريعة. */
 const PACE = Number(process.env.BABEL_DEMO_PACE ?? "1");
 
+/* ── ليس حارس بوّابة ─────────────────────────────────────────────────────
+   هذا الملفّ **أداة تصوير** لا فحصاً: يحتاج خادماً حيّاً على 5080، وقاعدة
+   `babel_demo_ledger` مبذورة، واعتماداً — ويُنفّذ `psql` يعدّل الدفتر عمداً
+   (مشهد كشف العبث). ويُشغَّل بـ`demo/showcase/record.sh` وحده، وهو الذي
+   يُصدِّر `BABEL_DEMO_TOKEN`.
+
+   ‏**ولماذا تخطٍّ مُعلَن لا `testIgnore` صامت:** فخ-80 عطلُه أن ما لم يُنفَّذ
+   لم يقل أحدٌ إنه لم يُنفَّذ. والتخطّي هنا **يُطبع بسببه** في تقرير التشغيل،
+   فيراه من يقرأ. وإخفاؤه من الإعداد كان سيعيد العطل نفسه بصيغة أهدأ.
+
+   A recording tool, not a gate check — skipped with a printed reason. */
+test.skip(
+  !process.env.BABEL_DEMO_TOKEN,
+  "أداة تصوير لا فحص: تحتاج BABEL_DEMO_TOKEN وخادماً وقاعدةً مبذورة — تُشغَّل بـdemo/showcase/record.sh · " +
+    "recording tool, not a gate check: needs BABEL_DEMO_TOKEN, a live API and a seeded database; run via demo/showcase/record.sh"
+);
+
 type Kind = "cmd" | "sql" | "out" | "err" | "ok" | "note";
 interface TermLine { kind: Kind; text: string }
 

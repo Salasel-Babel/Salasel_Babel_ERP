@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   مِنصّة العرض — طبقة عرض محضة، تُرمى بعد العرض (‏ADR-0028 §2)
+   مِنصّة العرض — طبقة عرض محضة، تُرمى بعد العرض (انظر ADR-0028 §2)
    ───────────────────────────────────────────────────────────────────────────
    لا رمز لون خام هنا يخصّ المنتج: الطبقة الدلالية في styles/tokens.css هي
    العقد، وما دونها ألوان مِنصّة سينمائية داكنة تخصّ التسجيل وحده.
@@ -117,7 +117,8 @@
 
 /* ── الطرفية ──────────────────────────────────────────────────────────── */
 .demo-term{
-  direction:ltr; text-align:left;
+  /* الطرفية إطارٌ لاتيني داخل صفحة عربية: العزل يمنع تسرّب اتجاه ما حوله إليه. */
+  direction:ltr; unicode-bidi:isolate; text-align:left;
   font-family:var(--stage-mono); font-size:16.5px; line-height:1.65;
   background:#070d18; border:1px solid var(--stage-line); border-radius:14px;
   padding:16px 18px; height:100%; overflow:hidden;
@@ -133,9 +134,10 @@
 .demo-term__line[data-kind="err"]{ color:#ff8f9f; font-weight:600; }
 .demo-term__line[data-kind="ok"]{ color:#5eead4; }
 /* سطور الشرح عربية داخل طرفية اتجاهها ltr — فتُعطى اتجاهها الصحيح، وإلّا
-   تناثرت المقاطع وصار «‏.الجملة» في أوّلها. */
+   تناثرت المقاطع وصار «الجملة.» في أوّلها. */
 .demo-term__line[data-kind="note"]{
-  color:#8ba3c7; direction:rtl; text-align:right; font-style:normal;
+  /* سطر شرحٍ عربي داخل الطرفية اللاتينية — يُعزل عمّا قبله وما بعده. */
+  color:#8ba3c7; direction:rtl; unicode-bidi:isolate; text-align:right; font-style:normal;
   border-inline-start:3px solid #2f4a75; padding-inline-start:10px;
   margin:6px 0; line-height:1.75;
 }
@@ -151,7 +153,8 @@
 .demo-verdict[data-tone="good"]{ background:var(--stage-good-bg); border-color:rgba(52,211,153,.45); }
 .demo-verdict[data-tone="bad"]{ background:var(--stage-bad-bg); border-color:rgba(251,113,133,.5); }
 .demo-verdict[data-tone="warn"]{ background:var(--stage-warn-bg); border-color:rgba(251,191,36,.45); }
-.demo-verdict__code{ font-family:var(--stage-mono); font-size:29px; font-weight:700; letter-spacing:.02em; direction:ltr; text-align:start; }
+/* رمز الحكم لاتيني دائماً (CHAIN-OK وأمثاله) — معزول عن اتجاه ما يجاوره. */
+.demo-verdict__code{ font-family:var(--stage-mono); font-size:29px; font-weight:700; letter-spacing:.02em; direction:ltr; unicode-bidi:isolate; text-align:start; }
 .demo-verdict[data-tone="good"] .demo-verdict__code{ color:var(--stage-good); }
 .demo-verdict[data-tone="bad"] .demo-verdict__code{ color:var(--stage-bad); }
 .demo-verdict[data-tone="warn"] .demo-verdict__code{ color:var(--stage-warn); }

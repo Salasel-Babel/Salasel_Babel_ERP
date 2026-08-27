@@ -193,8 +193,10 @@ jobs:
       # (docs/evidence/traps.md §0.0). الاتساق كله يفرضه TrapRegisterIsSelfConsistent على كل
       # فرع؛ وهذه الخطوة هي البوابة الأخيرة وحدها: لا يصل فخّ بلا رقم إلى فرع رئيس.
       # النمط يشترط مفتاحاً لاتينياً، فلا يلتقط المثال التوضيحي في §0.0 (مفتاحه عربي).
+      # ‏`always()` عمداً — فخ-80: هذا الحارس نصّي بحت (grep/git) ولا يمسّ البناء،
+      # فلا يجوز أن يُسكته سقوطُ بناءٍ أو اختبارٍ قبله ويُعلَّم `skipped` بلا أن يقرأه أحد.
       - name: لا معرّف فخّ بلا رقم على فرع رئيس
-        if: github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/production'
+        if: always() && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/production')
         run: |
           set -euo pipefail
           if grep -nE '^(### فخ-جديد — .* · `[a-z]|\| \[فخ-جديد\]\(#fakh-[a-z])' docs/evidence/traps.md; then
@@ -205,8 +207,10 @@ jobs:
       # ونظيرتها لسجل القرارات: المؤلف يكتب «ADR-جديد» بمفتاح نصّي، ومن يُنزل الدمج
       # يخصّص الرقم (docs/decisions/README.md §0.0). AdrRegisterIsSelfConsistent يفرض
       # الاتساق على كل فرع؛ وهذه البوابة الأخيرة وحدها تمنع وصول نائبٍ بلا رقم.
+      # ‏`always()` عمداً — فخ-80: هذا الحارس نصّي بحت (grep/git) ولا يمسّ البناء،
+      # فلا يجوز أن يُسكته سقوطُ بناءٍ أو اختبارٍ قبله ويُعلَّم `skipped` بلا أن يقرأه أحد.
       - name: لا معرّف قرار بلا رقم على فرع رئيس
-        if: github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/production'
+        if: always() && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/production')
         run: |
           set -euo pipefail
           if ls docs/decisions/ADR-جديد-*.md >/dev/null 2>&1 \
@@ -220,8 +224,10 @@ jobs:
       # يمنع **الانحدار الصامت**؛ وهذه البوّابة تمنع **رفع السقف نفسه**، وهي خارج الملفّ
       # الذي يملكه المؤلف — فالمقارنة بـdevelop لا بقيمةٍ مكتوبة هنا.
       # وخفضُ السقف مسموح دائماً وهو المطلوب عند كل مرحلة هجرة.
+      # ‏`always()` عمداً — فخ-80: هذا الحارس نصّي بحت (grep/git) ولا يمسّ البناء،
+      # فلا يجوز أن يُسكته سقوطُ بناءٍ أو اختبارٍ قبله ويُعلَّم `skipped` بلا أن يقرأه أحد.
       - name: سقف دَين الاسم الإنجليزي لا يرتفع
-        if: github.event_name == 'pull_request' || github.ref != 'refs/heads/develop'
+        if: always() && (github.event_name == 'pull_request' || github.ref != 'refs/heads/develop')
         run: |
           set -euo pipefail
           FILE=tests/Babel.ArchitectureTests/Rule14_TranslationsAreRowsNotColumns.cs
@@ -243,7 +249,10 @@ jobs:
             exit 1
           fi
 
+      # ‏`always()` عمداً — فخ-80: هذا الحارس نصّي بحت (grep/git) ولا يمسّ البناء،
+      # فلا يجوز أن يُسكته سقوطُ بناءٍ أو اختبارٍ قبله ويُعلَّم `skipped` بلا أن يقرأه أحد.
       - name: التحقق من عدم وجود أسرار في التغييرات
+        if: always()
         run: |
           set -euo pipefail
           if git grep -nIE '(BEGIN (RSA|EC|OPENSSH|PRIVATE) KEY|password[[:space:]]*=[[:space:]]*["'"'"'][^"'"'"']+)' \

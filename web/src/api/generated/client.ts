@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     e678dc2c0394be5606c978fa44478590c8aa4853b303a75a859bbc0dbe97264e
+     8a33528a07e07e6b03c5ee5d6412ccbe27809ed11ed5c811be93ba3132068135
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -47,7 +47,7 @@ export interface AdmitDocumentArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
   /** رمز نوع المستند من المجموعة المغلقة. / The document type code from the closed set. */
-  documentType: "projects.client_certificate" | "sales.invoice";
+  documentType: "projects.client_certificate" | "purchasing.supplier_bill" | "sales.invoice";
   /** جسم الطلب. / The request body. */
   body: T.AdmitDocumentRequest;
 }
@@ -181,7 +181,7 @@ export interface ReadDocumentShapeArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
   /** رمز نوع المستند من المجموعة المغلقة. / The document type code from the closed set. */
-  documentType: "projects.client_certificate" | "sales.invoice";
+  documentType: "projects.client_certificate" | "purchasing.supplier_bill" | "sales.invoice";
 }
 
 /**

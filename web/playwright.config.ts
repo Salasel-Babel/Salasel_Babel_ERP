@@ -35,7 +35,19 @@ export default defineConfig({
       stdout: "ignore",
     },
     {
-      command: `npx vite preview --port ${WEB_PORT} --strictPort`,
+      /* ‏`--host 127.0.0.1` ليس زينة: بلا مضيف صريح يربط vite على `localhost`،
+         وهو اسمٌ يُحلّ على `::1` قبل `127.0.0.1` على مُشغّلات التكامل المستمر
+         (‏/etc/hosts فيها السطران، وNode يُرجعهما بترتيب DNS الحرفي). فيربط
+         الخادم على IPv6 وحدها، ويجتاز فحصُ الجاهزية عبرها، ثم **يُرفض كل طلب**
+         من الاختبارات لأن `baseURL` عنوانٌ رابع الإصدار — وهو ما وقع فعلاً:
+         103 اختباراً بـERR_CONNECTION_REFUSED على 127.0.0.1:5174 في أول تشغيل
+         حقيقي للمصفوفة. والخادم الوهمي يربط 127.0.0.1 صراحةً منذ البداية،
+         فهذا يُطابقه.
+
+         Without an explicit host, vite binds `localhost`, which resolves to
+         `::1` before `127.0.0.1` on CI runners: the readiness probe passes
+         over IPv6 while every test is refused on IPv4. */
+      command: `npx vite preview --host 127.0.0.1 --port ${WEB_PORT} --strictPort`,
       port: WEB_PORT,
       reuseExistingServer: !process.env.CI,
       stdout: "ignore",

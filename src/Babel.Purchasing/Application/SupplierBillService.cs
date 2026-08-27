@@ -1,5 +1,6 @@
 using Babel.Contracts.Posting;
 using Babel.Core.Application;
+using Babel.Core.CapabilityProfile;
 using Babel.Core.Entitlement;
 using Babel.Purchasing.Persistence;
 using Babel.SharedKernel;
@@ -26,21 +27,29 @@ public sealed class SupplierBillService : IApplicationService
     private readonly IEntitlementEnforcer _enforcer;
     private readonly PurchasingDbContext _database;
     private readonly SubledgerPostingGateway _gateway;
+    private readonly PurchasingAdmission _admission;
     private readonly CurrencyCode _currency;
 
     /// <summary>ينشئ الخدمة.</summary>
     /// <param name="enforcer">منفِّذ الاستحقاق.</param>
     /// <param name="runtime">موارد الوحدة.</param>
     /// <param name="posting">محرك الترحيل.</param>
-    public SupplierBillService(IEntitlementEnforcer enforcer, PurchasingRuntime runtime, IPostingService posting)
+    /// <param name="profiles">مخزن ملفّات القدرات — بوابة القبول (‏ADR-0023).</param>
+    public SupplierBillService(
+        IEntitlementEnforcer enforcer,
+        PurchasingRuntime runtime,
+        IPostingService posting,
+        ICapabilityProfileStore profiles)
     {
         ArgumentNullException.ThrowIfNull(enforcer);
         ArgumentNullException.ThrowIfNull(runtime);
         ArgumentNullException.ThrowIfNull(posting);
+        ArgumentNullException.ThrowIfNull(profiles);
         _enforcer = enforcer;
         _database = runtime.Database;
         _currency = CurrencyCode.FromString(runtime.Options.CompanyCurrency);
         _gateway = new SubledgerPostingGateway(_database, posting, runtime.CostCenters);
+        _admission = new PurchasingAdmission(profiles);
     }
 
     /// <summary>
@@ -72,6 +81,43 @@ public sealed class SupplierBillService : IApplicationService
         if (draft.Lines.Count == 0)
         {
             return Result<PurchasingDocumentView>.Failure(PurchasingErrors.NoLines);
+        }
+
+        // الفاتورة المخزنية تحمل حقل «الاستلام» — وهو حقل قدرة «المطابقة الثلاثية».
+        // ومستأجرٌ بلا هذه القدرة لا استلام عنده أصلاً، فالمسار مرفوض من بابه.
+        Result<AdmittedDocument> admitted = await _admission
+            .AdmitBillAsync(
+                tenant,
+                [PurchasingAdmission.SupplierField, PurchasingAdmission.LinesField, PurchasingAdmission.ReceiptField],
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        if (admitted.IsFailure)
+        {
+            return Result<PurchasingDocumentView>.Failure(admitted.Errors);
+        }
+
+        return await CreateAdmittedStockBillAsync(tenant, admitted.Value, draft, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// <b>الكاتب الوحيد للفاتورة المخزنية — ويطلب <see cref="AdmittedDocument"/> في توقيعه.</b>
+    /// <para>
+    /// النوع لا يُبنى إلا بالمرور من قبول ملفّ المستأجر، فمن أراد فاتورة مخزنية وجب عليه
+    /// أن <b>يحمل</b> قبولاً — لا أن يتذكّر أن يستدعي فحصاً في أعلى الدالّة.
+    /// </para>
+    /// </summary>
+    private async ValueTask<Result<PurchasingDocumentView>> CreateAdmittedStockBillAsync(
+        TenantId tenant,
+        AdmittedDocument admitted,
+        StockBillDraft draft,
+        CancellationToken cancellationToken)
+    {
+        Result covers = PurchasingAdmission.EnsureCovers(admitted, PurchasingAdmission.ReceiptField);
+        if (covers.IsFailure)
+        {
+            return Result<PurchasingDocumentView>.Failure(covers.Errors);
         }
 
         GoodsReceiptRow? receipt = await _database.Receipts
@@ -367,9 +413,39 @@ public sealed class SupplierBillService : IApplicationService
             .FirstAsync(row => row.TenantId == tenant.Value && row.Id == bill.SupplierId, cancellationToken)
             .ConfigureAwait(false);
 
-        PostingIntent intent = bill.BillKind == "STOCK"
-            ? await StockIntentAsync(tenant, actor, bill, supplier, cancellationToken).ConfigureAwait(false)
-            : ExpenseIntent(tenant, actor, bill, supplier);
+        // ── الحدث المخزني تفتحه قدرة، والمصروفي هو الحدث الأساسي ──────────────
+        // فالترحيل المخزني يمرّ بالقبول ويحمل تذكرته إلى كاتبه؛ والمصروفي لا يمارس
+        // قدرة فلا تذكرة له. وهذا هو الفارق الذي يعبّر عنه الكتالوج بالضبط.
+        PostingIntent intent;
+
+        if (string.Equals(bill.BillKind, "STOCK", StringComparison.Ordinal))
+        {
+            Result<AdmittedDocument> admitted = await _admission
+                .AdmitBillAsync(
+                    tenant,
+                    [PurchasingAdmission.SupplierField, PurchasingAdmission.LinesField, PurchasingAdmission.ReceiptField],
+                    cancellationToken)
+                .ConfigureAwait(false);
+
+            if (admitted.IsFailure)
+            {
+                return Result<PurchasingDocumentView>.Failure(admitted.Errors);
+            }
+
+            Result<PostingIntent> stock = await AdmittedStockIntentAsync(
+                tenant, actor, admitted.Value, bill, supplier, cancellationToken).ConfigureAwait(false);
+
+            if (stock.IsFailure)
+            {
+                return Result<PurchasingDocumentView>.Failure(stock.Errors);
+            }
+
+            intent = stock.Value;
+        }
+        else
+        {
+            intent = ExpenseIntent(tenant, actor, bill, supplier);
+        }
 
         Result<PostingReceipt> posted = await _gateway.PostAsync(intent, cancellationToken).ConfigureAwait(false);
         if (posted.IsFailure)
@@ -584,13 +660,27 @@ public sealed class SupplierBillService : IApplicationService
         decimal Net,
         decimal Tax);
 
-    private async Task<PostingIntent> StockIntentAsync(
+    /// <summary>
+    /// <b>الكاتب الوحيد لقيد الفاتورة المخزنية — ويطلب <see cref="AdmittedDocument"/> في توقيعه.</b>
+    /// <para>
+    /// وهو الموضع الذي يُذكر فيه <c>purchasing.invoice.stock.posted</c> نصّاً. فالحارس
+    /// الذي يقرأ اللغة الوسيطة يرى أن كل نقطة دخول تبلغ هذا النصّ تبلغ القبول أيضاً.
+    /// </para>
+    /// </summary>
+    private async Task<Result<PostingIntent>> AdmittedStockIntentAsync(
         TenantId tenant,
         UserId actor,
+        AdmittedDocument admitted,
         SupplierBillRow bill,
         SupplierRow supplier,
         CancellationToken cancellationToken)
     {
+        Result covers = PurchasingAdmission.EnsureCovers(admitted, PurchasingAdmission.ReceiptField);
+        if (covers.IsFailure)
+        {
+            return Result<PostingIntent>.Failure(covers.Errors);
+        }
+
         PurchaseLineRow first = await _database.Lines
             .AsNoTracking()
             .Where(row => row.OwnerType == LineOwner.Bill && row.OwnerId == bill.Id)
@@ -598,7 +688,7 @@ public sealed class SupplierBillService : IApplicationService
             .FirstAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        return new PostingIntent
+        return Result<PostingIntent>.Success(new PostingIntent
         {
             Tenant = tenant,
             DocumentType = BillDocument,
@@ -632,7 +722,7 @@ public sealed class SupplierBillService : IApplicationService
             Currency = _currency,
             Actor = actor,
             Generation = bill.PostingGeneration,
-        };
+        });
     }
 
     private PostingIntent ExpenseIntent(TenantId tenant, UserId actor, SupplierBillRow bill, SupplierRow supplier) => new()

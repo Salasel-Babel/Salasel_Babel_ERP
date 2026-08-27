@@ -67,8 +67,8 @@ function readQr(payload: string): Record<string, string | boolean | { tag: numbe
     const cells = line.split("\t");
     if (cells.length < 2) continue;
     if (cells[0] === "tag") tags.push({ tag: Number(cells[1]), bytes: Number(cells[2]) });
-    else if (cells[0] === "refused" || cells[0] === "attested") out[cells[0]!] = cells[1] === "1";
-    else out[cells[0]!] = cells[1]!;
+    else if (cells[0] === "refused" || cells[0] === "attested") out[cells[0]] = cells[1] === "1";
+    else out[cells[0]] = cells[1]!;
   }
   out["tags"] = tags;
   return out;
@@ -135,7 +135,29 @@ test.use({
 });
 
 test("فيلم العرض — سبعة مشاهد", async ({ page }) => {
-  test.setTimeout(20 * 60_000);
+  test.setTimeout(30 * 60_000);
+
+  /* قراءات الرمز تُنفَّذ **قبل** فتح الصفحة: `dotnet run` يبني في أول نداء،
+     وثوانٍ من الجمود في منتصف الفيلم أسوأ من ثوانٍ قبل بدايته. */
+  const vectors = JSON.parse(readFileSync(path.join(ROOT, "tests/golden/zatca-vectors.v1.json"), "utf8")) as {
+    vectors: { id: string; text?: string }[];
+  };
+  const goldenQr = vectors.vectors.find((v) => v.id === "qr.phase1.tlv")!.text!;
+
+  const bytes = Buffer.from(goldenQr, "base64");
+  const lying = Buffer.from(bytes);
+  lying[1] = 46;
+  const shuffled: Buffer[] = [];
+  for (let i = 0; i < bytes.length; ) {
+    const length = bytes[i + 1];
+    shuffled.push(bytes.subarray(i, i + 2 + length));
+    i += 2 + length;
+  }
+  const outOfOrder = Buffer.concat([shuffled[0], shuffled[1], shuffled[3], shuffled[2], shuffled[4]]);
+
+  const qrGood = readQr(goldenQr);
+  const qrLying = readQr(lying.toString("base64"));
+  const qrOrder = readQr(outOfOrder.toString("base64"));
 
   const url = `${WEB}/demo?lang=ar&token=${encodeURIComponent(TOKEN)}&companyId=${COMPANY}&book=MAIN`;
   await page.goto(url);
@@ -306,12 +328,12 @@ test("فيلم العرض — سبعة مشاهد", async ({ page }) => {
     scene: "explain",
     truth: "real",
     caption: "٣ · «فسِّر هذا الرقم» — تفكيكٌ لا تفسير",
-    captionSub: explainCaptions[0]!,
+    captionSub: explainCaptions[0],
     bag: { explainStep: 0, focusEntry: 1 },
   });
   await beat(page, 8000);
   for (let step = 1; step <= 4; step += 1) {
-    await set(page, { bag: { explainStep: step }, captionSub: explainCaptions[step]! });
+    await set(page, { bag: { explainStep: step }, captionSub: explainCaptions[step] });
     await beat(page, step === 4 ? 9500 : 8500);
   }
 
@@ -340,26 +362,6 @@ test("فيلم العرض — سبعة مشاهد", async ({ page }) => {
   }
 
   /* ═══ 5 · رمز الفاتورة ════════════════════════════════════════════ */
-  const vectors = JSON.parse(readFileSync(path.join(ROOT, "tests/golden/zatca-vectors.v1.json"), "utf8")) as {
-    vectors: { id: string; text?: string }[];
-  };
-  const goldenQr = vectors.vectors.find((v) => v.id === "qr.phase1.tlv")!.text!;
-
-  const bytes = Buffer.from(goldenQr, "base64");
-  const lying = Buffer.from(bytes);
-  lying[1] = 46;
-  const shuffled: Buffer[] = [];
-  for (let i = 0; i < bytes.length; ) {
-    const length = bytes[i + 1]!;
-    shuffled.push(bytes.subarray(i, i + 2 + length));
-    i += 2 + length;
-  }
-  const outOfOrder = Buffer.concat([shuffled[0]!, shuffled[1]!, shuffled[3]!, shuffled[2]!, shuffled[4]!]);
-
-  const qrGood = readQr(goldenQr);
-  const qrLying = readQr(lying.toString("base64"));
-  const qrOrder = readQr(outOfOrder.toString("base64"));
-
   await set(page, {
     scene: "qr",
     truth: "real",

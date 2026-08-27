@@ -64,7 +64,7 @@ export interface DemoBridge {
 }
 
 declare global {
-  // eslint-disable-next-line no-var
+   
   var __demo: DemoBridge | undefined;
 }
 

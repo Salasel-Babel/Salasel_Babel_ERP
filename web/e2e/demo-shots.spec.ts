@@ -87,7 +87,7 @@ test("لقطات المشاهد", async ({ page }) => {
     if (c.length < 2) continue;
     if (c[0] === "tag") tags.push({ tag: Number(c[1]), bytes: Number(c[2]) });
     else if (c[0] === "refused" || c[0] === "attested") parsed[c[0]] = c[1] === "1";
-    else parsed[c[0]!] = c[1];
+    else parsed[c[0]] = c[1];
   }
   parsed["tags"] = tags;
   await set(page, { scene: "qr", truth: "real", caption: "٥ · رمز الفاتورة الإلكترونية", captionSub: "متّجه ذهبي مُودَع، قرأه القارئ المشحون.", bag: { qrPayload: golden, qrLabel: "متّجه ذهبي · qr.phase1.tlv", qrResult: parsed } });

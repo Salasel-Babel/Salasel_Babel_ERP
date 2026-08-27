@@ -21,6 +21,16 @@ internal static class ApiRoutes
     /// <summary>جذر السطح المُصدَّر.</summary>
     public const string Base = "/api/" + Version;
 
+    /// <summary>
+    /// الجلسة: من يقف خلف الاعتماد، وأي الشركات يبلغ.
+    /// <para>
+    /// <b>المسار الوحيد خارج نطاق الشركة بعد نقطة الصحّة، وغيابُ النطاق منه بنيوي:</b>
+    /// من لا يعرف معرّف شركته لا يستطيع أن يضعه في المسار ليسأل عن شركاته. ولا يعني ذلك
+    /// انفتاحاً — المصادقة إلزامية عليه كأي مسار آخر، والقائمة هي مجموعة الاعتماد نفسها.
+    /// </para>
+    /// </summary>
+    public const string Session = Base + "/session";
+
     /// <summary>نطاق الشركة. كل قراءة وكل كتابة تمرّ به — لا مسار خارج نطاق.</summary>
     public const string Company = Base + "/companies/{companyId}";
 

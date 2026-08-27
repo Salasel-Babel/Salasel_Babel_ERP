@@ -109,7 +109,7 @@ public sealed class PublishedContractTests
         Assert.Contains("Forces v2", description, StringComparison.Ordinal);
 
         JsonElement paths = root.GetProperty("paths");
-        Assert.Equal(15, paths.EnumerateObject().SelectMany(static p => p.Value.EnumerateObject())
+        Assert.Equal(16, paths.EnumerateObject().SelectMany(static p => p.Value.EnumerateObject())
             .Count(static o => o.Name is "get" or "post" or "put" or "patch" or "delete"));
 
         // ولا فعل حذف على السطح كلّه — لا على قيد، ولا على مركز تكلفة، ولا على منشأة.
@@ -117,12 +117,41 @@ public sealed class PublishedContractTests
             paths.EnumerateObject().SelectMany(static p => p.Value.EnumerateObject()),
             static o => o.Name is "delete");
 
-        // النطاق في كل مسار مُصدَّر، ولا مسار أعمال خارج شركة.
+        // النطاق في كل مسار أعمال مُصدَّر، ولا مسار **بيانات** خارج شركة.
+        //
+        // والاستثناءان مُسمَّيان هنا حرفياً لا بنمط: نمطٌ فضفاض («ما لا يحمل companyId
+        // مسموح») كان سيقبل أي مسار جديد بلا نطاق دون أن ينتبه أحد، وهو بالضبط ما يجعل
+        // حارساً كهذا يمرّ على العطل الذي وُجد لأجله.
+        //   • ‏/health           — خارج المصادقة، ولا يقرأ بيانات مستأجر ولا يكتبها.
+        //   • ‏/api/v1/session   — داخل المصادقة، وخارج النطاق بحكم وظيفته: من لا يعرف
+        //     معرّف شركته لا يستطيع أن يضعه في المسار ليسأل عن شركاته. وما يخرج منه هو
+        //     مجموعة الاعتماد نفسها، لا استعلام على جدول شركات.
+        string[] scopeless = ["/health", "/api/v1/session"];
+
         foreach (JsonProperty path in paths.EnumerateObject())
         {
             Assert.True(
-                path.Name == "/health" || path.Name.StartsWith("/api/v1/companies/{companyId}", StringComparison.Ordinal),
+                scopeless.Contains(path.Name, StringComparer.Ordinal)
+                || path.Name.StartsWith("/api/v1/companies/{companyId}", StringComparison.Ordinal),
                 $"مسار خارج نطاق الشركة: {path.Name}");
+        }
+
+        // وكل مسار بلا نطاق **مصادَق عليه** إلا نقطة الصحّة وحدها: مسارٌ بلا نطاق وبلا
+        // مصادقة هو باب مفتوح، والفرق بينه وبين الباب المقصود سطرٌ واحد في هذا الملف.
+        foreach (JsonProperty path in paths.EnumerateObject())
+        {
+            if (path.Name == "/health" || !scopeless.Contains(path.Name, StringComparer.Ordinal))
+            {
+                continue;
+            }
+
+            foreach (JsonProperty operation in path.Value.EnumerateObject())
+            {
+                Assert.False(
+                    operation.Value.TryGetProperty("security", out JsonElement security)
+                    && security.GetArrayLength() == 0,
+                    $"مسار بلا نطاق وبلا مصادقة: {operation.Name} {path.Name}");
+            }
         }
 
         // نمط المال معلن في العقد: من يقرأ الوثيقة يعرف النحو بلا سؤال.

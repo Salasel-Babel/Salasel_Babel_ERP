@@ -46,6 +46,26 @@ internal static class ApiFixture
     public static TestCredential TokenS { get; } = TestCredential.Create(
         SetupCompanies[0], new Guid("55555555-5555-4555-8555-555555555555"), [.. SetupCompanies]);
 
+    /// <summary>
+    /// اعتماد صحيح <b>لا يبلغ شركةً واحدة</b> — حالة «اشتُرك ولم يُربط بمنشأة».
+    /// <para>
+    /// وهي ليست حالة نظرية: هي أول حالة يقع فيها كل عميل جديد بين لحظة إنشاء اعتماده
+    /// ولحظة ربطه بمنشأته. وما يراه اليوم يقرّر إن كان سيفتح تذكرة دعم أم لا.
+    /// </para>
+    /// </summary>
+    public static TestCredential TokenNoCompany { get; } = TestCredential.Create(
+        new Guid("99999999-9999-4999-8999-999999999999"),
+        new Guid("99999999-9999-4999-8999-99999999990a"));
+
+    /// <summary>
+    /// اعتماد <b>منقضٍ</b> — لحظة انقضائه في الماضي البعيد فلا تعتمد على ساعة تشغيل الاختبار.
+    /// </summary>
+    public static TestCredential TokenExpired { get; } = TestCredential.Create(
+        ApiTestDatabase.CompanyA, new Guid("44444444-4444-4444-8444-444444444444"), ApiTestDatabase.CompanyA);
+
+    /// <summary>لحظة انقضاء الاعتماد المنقضي، بصيغة ISO 8601 الدوّارة كما يقرؤها الخادم.</summary>
+    public const string ExpiredAt = "2020-01-01T00:00:00.0000000+00:00";
+
     private static readonly SemaphoreSlim Gate = new(1, 1);
     private static readonly Dictionary<string, ApiProcess> ByCulture = new(StringComparer.Ordinal);
     private static ApiProcess? _default;
@@ -216,7 +236,7 @@ internal static class ApiFixture
         };
 
         int index = 0;
-        foreach (TestCredential credential in new[] { TokenA, TokenB, TokenC, TokenS })
+        foreach (TestCredential credential in new[] { TokenA, TokenB, TokenC, TokenS, TokenNoCompany, TokenExpired })
         {
             string prefix = string.Create(CultureInfo.InvariantCulture, $"Babel__Api__Tokens__{index}__");
             environment[prefix + "Sha256"] = credential.Digest;
@@ -227,6 +247,11 @@ internal static class ApiFixture
             {
                 environment[string.Create(CultureInfo.InvariantCulture, $"{prefix}Companies__{c}")] =
                     credential.Companies[c].ToString("D", CultureInfo.InvariantCulture);
+            }
+
+            if (credential == TokenExpired)
+            {
+                environment[prefix + "NotAfter"] = ExpiredAt;
             }
 
             index++;
@@ -277,6 +302,9 @@ internal static class Http
 
         return request;
     }
+
+    /// <summary>مسار الجلسة — خارج نطاق الشركة، وداخل المصادقة.</summary>
+    public const string Session = "/api/v1/session";
 
     /// <summary>مسار ترحيل قيد لشركة.</summary>
     /// <param name="company">الشركة.</param>

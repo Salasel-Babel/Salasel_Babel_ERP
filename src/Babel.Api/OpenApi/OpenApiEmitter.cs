@@ -78,6 +78,34 @@ internal static class OpenApiEmitter
                 "Returns service status plus the process culture and its default calendar. Unauthenticated and outside company scope.",
                 Body: null, Response: "HealthResponse", Success: 200, Anonymous: true, Query: []),
 
+            new(ApiRoutes.Session, "get", "readSession",
+                "الجلسة: الهوية والشركات المبلوغة", "The session: identity and reachable companies",
+                "يُرجع من يقف خلف الاعتماد — المستأجر والمستخدم — و**الشركات التي يبلغها هذا الاعتماد بأسمائها**. "
+                + "وهذه أول نقطة يناديها عميل: معرّف الشركة إلزامي في كل مسار آخر وهو معرّف بصيغة 8-4-4-4-12، "
+                + "ولا يستطيع إنسان أن يكتبه — فيُختار من هنا ولا يُكتب.\n\n"
+                + "والاسم العربي هو السجلّ وnameTranslations ترجماته أيّاً كان عددها (ADR-0021)؛ ولا حقل nameEn هنا "
+                + "كما لا حقل له في صفّ ميزان المراجعة.\n\n"
+                + "**والفشل مغلق:** اعتماد لا يبلغ أي شركة يُرفض بـ403 وsession.no_reachable_company ولا يُسلَّم قائمة "
+                + "فارغة — القائمة الفارغة تُقرأ «لا بيانات بعد» فينتظر المستخدم شيئاً لن يأتي، والناقص ربطُ الاعتماد "
+                + "بمنشأة. ومنشأةٌ لم تُؤسَّس بعد **تظهر** في القائمة بـstate = NotSetUp ولا تُخفى: إخفاؤها يجعل "
+                + "صاحب الاعتماد الوحيد يرى قائمة فارغة ويقرؤها «اعتمادي لا يصلح».\n\n"
+                + "وهذا المسار خارج نطاق الشركة عمداً — وهو الوحيد كذلك بعد نقطة الصحّة — ومع ذلك لا يخرج منه شيء عن "
+                + "مستأجر آخر: القائمة هي مجموعة الاعتماد نفسها، لا استعلام على جدول شركات بمرشِّح.",
+                "Returns who stands behind the credential — tenant and user — and **the companies this credential "
+                + "reaches, by name**. This is the first call any client makes: the company identifier is mandatory on "
+                + "every other path and is an 8-4-4-4-12 identifier no human can type — so it is chosen here, never typed.\n\n"
+                + "The Arabic name is the record and nameTranslations are its translations, however many (ADR-0021); "
+                + "there is no nameEn field here, just as there is none on a trial-balance row.\n\n"
+                + "**Fail closed:** a credential that reaches no company is refused with 403 and "
+                + "session.no_reachable_company rather than handed an empty list — an empty list reads as 'no data yet' "
+                + "and leaves the user waiting for something that will never arrive, when what is missing is the "
+                + "credential's link to a company. A company not yet set up **appears** in the list with state = NotSetUp "
+                + "and is not hidden: hiding it makes the holder of a single-company credential see an empty list and "
+                + "read it as 'my credential is broken'.\n\n"
+                + "This path is outside company scope deliberately — the only one after health — and still nothing about "
+                + "another tenant crosses it: the list is the credential's own set, not a filtered query over a companies table.",
+                Body: null, Response: "Session", Success: 200, Anonymous: false, Query: []),
+
             new(ApiRoutes.PostJournalEntry, "post", "postJournalEntry",
                 "ترحيل قيد", "Post a journal entry",
                 "يرحّل قيداً عبر محرّك الترحيل. حصين ضد التكرار بمفتاح idempotencyKey: الوصول الثاني بالمفتاح نفسه "
@@ -836,6 +864,60 @@ internal static class OpenApiEmitter
             w.WriteBoolean("additionalProperties", false);
         });
 
+        yield return ("SessionCompany", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "شركة يبلغها الاعتماد. والاسم العربي هو السجلّ، وnameTranslations ترجماته بوسم اللغة — ولا حقل "
+                + "nameEn: الإنجليزية واحدة من N (ADR-0021). والحقول المشتقّة من التأسيس تصل null حين state = NotSetUp، "
+                + "لأنها تُسنَد عند التأسيس ولا يُخترَع لها قيمة قبله. / "
+                + "A company the credential reaches. The Arabic name is the record and nameTranslations are its "
+                + "translations by language tag — there is no nameEn field: English is one of N (ADR-0021). The "
+                + "setup-derived fields arrive null when state = NotSetUp, because they are assigned at setup and no "
+                + "value is invented before it.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "companyId", "معرّف الشركة كما يُكتب في المسار.", "The company identifier as written in the path.", 36);
+            WriteNullableStringProperty(w, "defaultCostCenter", "رمز مركز التكلفة الافتراضي.", "The default cost centre code.", 32);
+            WriteNullableIntegerProperty(w, "decimalPlaces", DisplayScale.Minimum, DisplayScale.Maximum,
+                "عدد الخانات العشرية المعروضة لهذه المنشأة.", "This company's displayed decimal places.");
+            WriteNullableStringProperty(w, "nameAr",
+                "الاسم العربي — السجلّ، لا ترجمةً أولى.",
+                "The Arabic name — the record, not a first translation.",
+                CompanySetupLimits.MaximumNameLength);
+            WriteArrayRefProperty(w, "nameTranslations", "NameValue",
+                "ترجمات الاسم بوسم اللغة BCP-47، مرتَّبة ترتيباً حرفياً ثابتاً.",
+                "The name's translations by BCP-47 language tag, in a stable ordinal order.");
+            WriteEnumProperty(w, "state",
+                "‏Ready لمنشأة مؤسَّسة، وNotSetUp لمنشأة يبلغها الاعتماد ولم تُؤسَّس بعد.",
+                "Ready for a company that is set up, NotSetUp for one the credential reaches that has not been set up yet.",
+                ["NotSetUp", "Ready"]);
+            w.WriteEndObject();
+            WriteRequired(w, "companyId", "decimalPlaces", "defaultCostCenter", "nameAr", "nameTranslations", "state");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("Session", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "الهوية خلف الاعتماد والشركات التي يبلغها. ولا شيء منها من جسم الطلب ولا من ترويسة يكتبها العميل. "
+                + "وcompanyCount لا يكون صفراً أبداً: الصفر رفضٌ بـsession.no_reachable_company لا قائمة فارغة. / "
+                + "The identity behind the credential and the companies it reaches. None of it comes from a request "
+                + "body or a client-written header. companyCount is never zero: zero is a refusal with "
+                + "session.no_reachable_company, not an empty list.");
+            w.WriteStartObject("properties");
+            WriteArrayRefProperty(w, "companies", "SessionCompany",
+                "الشركات مرتَّبة بمعرّفها ترتيباً حرفياً ثابتاً.",
+                "The companies, ordered by identifier in a stable ordinal order.");
+            WriteIntegerProperty(w, "companyCount", 1, int.MaxValue,
+                "عدد الشركات المبلوغة. لا يكون صفراً أبداً.", "The number of reachable companies. Never zero.");
+            WriteStringProperty(w, "tenantId", "المستأجر خلف الاعتماد.", "The tenant behind the credential.", 36);
+            WriteStringProperty(w, "userId", "المستخدم خلف الاعتماد.", "The user behind the credential.", 36);
+            w.WriteEndObject();
+            WriteRequired(w, "companies", "companyCount", "tenantId", "userId");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
         yield return ("SourceDocument", static w =>
         {
             w.WriteString("type", "object");
@@ -1225,6 +1307,19 @@ internal static class OpenApiEmitter
     {
         w.WriteStartObject(name);
         w.WriteString("type", "integer");
+        w.WriteNumber("minimum", minimum);
+        w.WriteNumber("maximum", maximum);
+        w.WriteString("description", ar + " / " + en);
+        w.WriteEndObject();
+    }
+
+    private static void WriteNullableIntegerProperty(Utf8JsonWriter w, string name, int minimum, int maximum, string ar, string en)
+    {
+        w.WriteStartObject(name);
+        w.WriteStartArray("type");
+        w.WriteStringValue("integer");
+        w.WriteStringValue("null");
+        w.WriteEndArray();
         w.WriteNumber("minimum", minimum);
         w.WriteNumber("maximum", maximum);
         w.WriteString("description", ar + " / " + en);

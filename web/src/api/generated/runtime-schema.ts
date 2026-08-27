@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     90d076ad3cc6c558ce905171467482b90038f42e9a77b8c4fe5a9aa8eaa99366
+     4f9d68d52b5ede1a81c998dcee64c6cd0109fc5ded2da4f2c2c93bc9a86e7b3b
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -56,6 +56,8 @@ export const SCHEMAS: Readonly<Record<string, SchemaShape>> = {
   PutCapabilityProfileRequest: { required: ["documents"], fields: {"documents":{"i":{"k":"ref","r":"DocumentProfile"},"k":"array"},"withdrawalReason":{"k":"plain","n":true}} },
   ReverseJournalEntryRequest: { required: ["reason"], fields: {"closedPeriodAuthorisation":{"k":"ref","r":"ClosedPeriodAuthorisation"},"reason":{"k":"ref","r":"LocalizedText"},"reversalDate":{"k":"plain"}} },
   Scope: { required: [], fields: {"branchId":{"k":"plain","n":true},"costCenterId":{"k":"plain"},"projectId":{"k":"plain","n":true}} },
+  Session: { required: ["companies","companyCount","tenantId","userId"], fields: {"companies":{"i":{"k":"ref","r":"SessionCompany"},"k":"array"},"companyCount":{"k":"plain"},"tenantId":{"k":"plain"},"userId":{"k":"plain"}} },
+  SessionCompany: { required: ["companyId","decimalPlaces","defaultCostCenter","nameAr","nameTranslations","state"], fields: {"companyId":{"k":"plain"},"decimalPlaces":{"k":"plain","n":true},"defaultCostCenter":{"k":"plain","n":true},"nameAr":{"k":"plain","n":true},"nameTranslations":{"i":{"k":"ref","r":"NameValue"},"k":"array"},"state":{"k":"plain"}} },
   SourceDocument: { required: ["documentId","documentType","module"], fields: {"documentId":{"k":"plain"},"documentType":{"k":"plain"},"module":{"k":"plain"}} },
   Subledger: { required: ["kind","partyId"], fields: {"kind":{"k":"plain"},"partyId":{"k":"plain"}} },
   SuspendCostCenterRequest: { required: ["reason"], fields: {"reason":{"k":"plain"}} },
@@ -64,4 +66,4 @@ export const SCHEMAS: Readonly<Record<string, SchemaShape>> = {
 };
 
 /** أسماء المخطّطات كما وردت في العقد. / Schema names as published. */
-export const SCHEMA_NAMES = ["AdmitDocumentRequest","ApiError","CapabilityProfile","CapabilitySwitch","ChainVerification","ClosedPeriodAuthorisation","CompanySetup","CostCenter","CostCenterNameRequest","DocumentAdmission","DocumentProfile","DocumentShape","ExchangeRate","HealthResponse","InitialiseCompanySetupRequest","Int64String","JournalEntry","JournalLine","LocalizedText","Money","NameValue","NamedAmount","PostJournalEntryRequest","PostingLine","PostingReceipt","Problem","PutCapabilityProfileRequest","ReverseJournalEntryRequest","Scope","SourceDocument","Subledger","SuspendCostCenterRequest","TrialBalance","TrialBalanceRow"] as const;
+export const SCHEMA_NAMES = ["AdmitDocumentRequest","ApiError","CapabilityProfile","CapabilitySwitch","ChainVerification","ClosedPeriodAuthorisation","CompanySetup","CostCenter","CostCenterNameRequest","DocumentAdmission","DocumentProfile","DocumentShape","ExchangeRate","HealthResponse","InitialiseCompanySetupRequest","Int64String","JournalEntry","JournalLine","LocalizedText","Money","NameValue","NamedAmount","PostJournalEntryRequest","PostingLine","PostingReceipt","Problem","PutCapabilityProfileRequest","ReverseJournalEntryRequest","Scope","Session","SessionCompany","SourceDocument","Subledger","SuspendCostCenterRequest","TrialBalance","TrialBalanceRow"] as const;

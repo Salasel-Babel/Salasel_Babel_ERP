@@ -81,6 +81,24 @@ internal static class RequestPrincipal
                 return;
             }
 
+            // ── الانقضاء يقع **بعد** التحقّق من الاعتماد وقبل أي عمل ────────────────
+            // ورمزه مستقلّ عمداً: من انقضت جلسته يحتاج أن يعرف أنه يدخل من جديد، لا أن
+            // يظنّ أن اعتماده سُحب. والوقت يأتي من TimeProvider المحقون لا من
+            // DateTimeOffset.UtcNow — ساعةٌ مقروءة من ثابتة ساكنة لا يمكن تحريكها في
+            // اختبار، فتبقى هذه الحافة غير مبرهنة إلى أن يقع العطل عند عميل.
+            DateTimeOffset now = context.RequestServices.GetRequiredService<TimeProvider>().GetUtcNow();
+
+            if (principal.HasExpiredAt(now))
+            {
+                await DenyAsync(
+                    context,
+                    "auth.credential_expired",
+                    "انقضى هذا الاعتماد. ادخل من جديد — ولم يُسحب منك شيء ولم يتغيّر شيء في البيانات.",
+                    "This credential has expired. Sign in again — nothing was revoked and nothing in the data changed.")
+                    .ConfigureAwait(false);
+                return;
+            }
+
             context.Items["babel.principal"] = principal;
             context.RequestServices.GetRequiredService<RequestTenantContext>().Bind(principal);
 

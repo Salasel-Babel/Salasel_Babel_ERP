@@ -331,6 +331,13 @@ public sealed partial class AdrRegisterIsSelfConsistent
 
         foreach (string path in TextFiles())
         {
+            // شجرةُ عملٍ حيّة: ملفٌّ قد يختفي بين تعداده وقراءته. تخطٍّ صامتٌ هنا
+            // آمنٌ لأن حارس اللافراغ أدناه يمنع أن يصير التخطّي هو القاعدة.
+            if (!File.Exists(path))
+            {
+                continue;
+            }
+
             filesScanned++;
             string text = File.ReadAllText(path);
             string relative = Path.GetRelativePath(RepositoryLayout.Root, path).Replace('\\', '/');
@@ -458,9 +465,14 @@ public sealed partial class AdrRegisterIsSelfConsistent
             .Where(path =>
             {
                 string relative = Path.GetRelativePath(RepositoryLayout.Root, path).Replace('\\', '/');
+                // مخرَج البناء ليس محتوى المستودع. واستثناؤه ليس تجميلاً: قاعدةُ مسحٍ
+                // هي القرص لا المستودع **تقيس البيئة لا الشيفرة** — وقد كلّف ذلك دورة
+                // تنقيح كاملة من قبل. و«dist» تحديداً يزرع فيها حارسٌ آخر شاهداً موجباً
+                // ثم يحذفه، فيتسابق المسحان على ملفّ يختفي بينهما.
                 if (relative.StartsWith(".git/", StringComparison.Ordinal)
                     || relative.Contains("/bin/", StringComparison.Ordinal)
                     || relative.Contains("/obj/", StringComparison.Ordinal)
+                    || relative.Contains("/dist/", StringComparison.Ordinal)
                     || relative.Contains("/node_modules/", StringComparison.Ordinal))
                 {
                     return false;

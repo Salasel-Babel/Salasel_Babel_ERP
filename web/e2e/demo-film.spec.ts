@@ -128,6 +128,14 @@ class Terminal {
 
 /* ── الفيلم ──────────────────────────────────────────────────────────── */
 
+/* حارسٌ لا يُستغنى عنه: لو سقط التصوير بين العبث وإرجاعه، بقيت القاعدة معطوبة
+   وبقيت التشغيلة التالية تُصوِّر دفتراً منحرفاً وهي تظنّه سليماً. */
+test.afterAll(() => {
+  psql("update ledger.journal_line l set cost_center_id = 'cc.001' from ledger.journal_entry e where e.entry_id = l.entry_id and e.entry_no = 1;");
+  psql("update ledger.journal_line l set debit_company = 10350, debit = 10350 from ledger.journal_entry e where e.entry_id = l.entry_id and e.entry_no = 1 and l.line_no = 1;");
+  psql("update ledger.journal_line l set credit_company = 9000, credit = 9000 from ledger.journal_entry e where e.entry_id = l.entry_id and e.entry_no = 1 and l.line_no = 2;");
+});
+
 test.use({
   viewport: { width: 1920, height: 1080 },
   video: { mode: "on", size: { width: 1920, height: 1080 } },
@@ -308,7 +316,7 @@ test("فيلم العرض — سبعة مشاهد", async ({ page }) => {
   });
   for (let i = 0; i <= 230; i += 1) {
     await set(page, { bag: { dayIndex: i } });
-    await page.waitForTimeout(Math.round(150 * PACE));
+    await page.waitForTimeout(Math.round(120 * PACE));
     if (i === 60) await set(page, { captionSub: "الأرصدة تتحرّك يوماً بيوم — وكلّها مشتقّة من سطورٍ لا تُعدَّل." });
     if (i === 150) await set(page, { captionSub: "ونظامٌ دفترُه قابل للتعديل لا يستطيع هذا بصدق: لا يعرف ما كان الرقم عليه في ذلك اليوم." });
   }

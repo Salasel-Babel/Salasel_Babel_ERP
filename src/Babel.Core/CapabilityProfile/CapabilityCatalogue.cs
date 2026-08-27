@@ -112,6 +112,55 @@ public static class CapabilityCatalogue
                     ["warehouse"]),
             ]),
 
+        // ═══════════════════════════════════════════════════════════════════
+        // فاتورة المورد — والسؤال الوحيد المفتوح فيها: ما حدثها الأساسي؟
+        // ═══════════════════════════════════════════════════════════════════
+        //
+        // ‏**الحدث الأساسي هو ما يقع بلا أي قدرة**، أي ما تستطيع منشأةٌ لم تشترِ شيئاً
+        // إضافياً أن تفعله. وفاتورة المورد شكلان في هذه الوحدة: مصروفية ومخزنية.
+        //
+        // والمخزنية **غير قابلة للتعبير** بلا قدرة: ‏<c>CreateStockBillAsync</c> يطلب
+        // معرّف استلام في توقيعه، والاستلام يطلب أمر شراء، ولا يقع أيٌّ منهما بلا
+        // <c>three_way_match</c>. فحدثٌ أساسي مخزني كان سيسمّي واقعةً **لا يستطيع أن
+        // يبلغها مستأجرٌ بلا قدرة أبداً** — أي حدثاً أساسياً لا أساس له.
+        //
+        // والأخطر أنه كان سيُفرغ القدرة من معناها: ‏<c>purchasing.invoice.stock.posted</c>
+        // مفتوحاً بالأساس يعني أن <c>three_way_match</c> تفتح حدثاً **مفتوحاً أصلاً**،
+        // وتلك «قدرة يمكن ممارستها رغم إطفائها» — أي زينة لا قدرة (‏ADR-0023).
+        //
+        // ومحاسبياً: القالب المخزني **يُدين** «بضاعة مستلمة غير مفوترة» ليستنفد رصيداً
+        // أنشأه حدث الاستلام. فبلا استلام يُدان حسابٌ لم يُدَن قطّ — رصيد دفتر مساعد
+        // سالب لا يُطابَق، وهو صنف الانحراف الصامت الذي دفع هذا المستودع ثمنه.
+        //
+        // فالحدث الأساسي **مصروفي**: ‏<c>CreateExpenseBillAsync</c> يطلب مورداً وسطوراً
+        // ولا شيء غيرهما، وهو الشكل الوحيد التامّ بذاته — وهو أيضاً شكل الفاتورة
+        // الملتقَطة من رمز مورد بلا أمر شراء ولا استلام (‏ADR-0024).
+        new DocumentTypeDefinition(
+            new DocumentTypeCode("purchasing.supplier_bill"),
+            "فاتورة مورد",
+            "document_type.purchasing.supplier_bill",
+            BabelModule.Purchasing,
+            new PostingEventCode("purchasing.invoice.expense.posted"),
+            ["supplier", "lines", "costCenter", "expenseCategory"],
+            [
+                new CapabilityDefinition(
+                    new CapabilityCode("three_way_match"),
+                    "المطابقة الثلاثية",
+                    "capability.three_way_match",
+                    [
+                        new PostingEventCode("purchasing.goods_receipt.posted"),
+                        new PostingEventCode("purchasing.invoice.stock.posted"),
+                    ],
+                    ["receipt"]),
+
+                new CapabilityDefinition(
+                    new CapabilityCode("landed_cost"),
+                    "تكاليف الاستيراد المحمَّلة",
+                    "capability.landed_cost",
+                    [new PostingEventCode("purchasing.landed_cost.allocated")],
+                    ["landedCost"]),
+            ]),
+
         new DocumentTypeDefinition(
             new DocumentTypeCode("projects.client_certificate"),
             "مستخلص عميل",

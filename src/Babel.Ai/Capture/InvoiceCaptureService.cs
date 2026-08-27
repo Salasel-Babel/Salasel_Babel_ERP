@@ -4,6 +4,7 @@ using Babel.Ai.Extraction;
 using Babel.Ai.Promotion;
 using Babel.Ai.Reconciliation;
 using Babel.Ai.Suggestions;
+using Babel.Contracts.Capture;
 using Babel.Core.Application;
 using Babel.Core.Entitlement;
 using Babel.SharedKernel;
@@ -367,9 +368,13 @@ public sealed class InvoiceCaptureService : IApplicationService
             GrossTotal = draft.GrossTotal.Value,
             EventCode = draft.Suggestion.EventCode,
             RoleCode = draft.Suggestion.RoleCode,
+
+            // تصنيف المصروف يعبر **كما كتبه الإنسان** عند التأكيد، ولا يُشتقّ من اقتراح
+            // ولا من سطر. والمستقبِل يقرأ مصدره من الخريطة أدناه ويرفض ما ليس مكتوباً بيد.
+            ExpenseCategory = confirmation.ExpenseCategory,
             Lines = [.. draft.Lines.Select(static line => new PromotionLine(
                 line.LineNo, line.Description.Value, line.Quantity.Value, line.UnitPrice.Value, line.LineNet.Value))],
-            Provenance = ProvenanceOf(draft),
+            Provenance = ProvenanceOf(draft, confirmation),
         };
 
         Result<PromotedDocumentReference> received = await _receiver.ReceiveAsync(order, cancellationToken).ConfigureAwait(false);
@@ -465,8 +470,20 @@ public sealed class InvoiceCaptureService : IApplicationService
         };
     }
 
-    private static Dictionary<string, FieldProvenance> ProvenanceOf(CapturedInvoiceDraft draft) =>
-        new Dictionary<string, FieldProvenance>(StringComparer.Ordinal)
+    /// <summary>
+    /// خريطة المصادر التي تعبر مع الأمر.
+    /// <para>
+    /// وتصنيف المصروف يدخلها <b>حين يُكتب فقط</b>، ومصدره <c>Typed</c> بحكم موضعه: هو
+    /// قادم من نوع التأكيد البشري، ولا يوجد في هذه الوحدة مسارٌ آخر يضعه. فالوحدة
+    /// المالكة تستطيع أن ترفض أي تصنيف لم يكتبه إنسان، وذلك الرفضُ <b>ممكنٌ لأن المصدر
+    /// عبر معه</b>.
+    /// </para>
+    /// </summary>
+    private static Dictionary<string, FieldProvenance> ProvenanceOf(
+        CapturedInvoiceDraft draft,
+        PromotionConfirmation confirmation)
+    {
+        Dictionary<string, FieldProvenance> map = new(StringComparer.Ordinal)
         {
             [CapturedInvoiceDraft.SellerNameField] = draft.SellerName.Provenance,
             [CapturedInvoiceDraft.SellerVatNumberField] = draft.SellerVatNumber.Provenance,
@@ -477,6 +494,14 @@ public sealed class InvoiceCaptureService : IApplicationService
             [CapturedInvoiceDraft.TaxTotalField] = draft.TaxTotal.Provenance,
             [CapturedInvoiceDraft.GrossTotalField] = draft.GrossTotal.Provenance,
         };
+
+        if (!string.IsNullOrWhiteSpace(confirmation.ExpenseCategory))
+        {
+            map[PromotionFields.ExpenseCategory] = FieldProvenance.Typed;
+        }
+
+        return map;
+    }
 
     private static CapturedInvoiceDraft Apply(CapturedInvoiceDraft draft, FieldCorrection correction, List<Error> errors)
     {

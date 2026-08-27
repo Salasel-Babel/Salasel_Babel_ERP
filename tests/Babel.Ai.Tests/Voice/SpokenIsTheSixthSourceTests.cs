@@ -2,6 +2,7 @@ using Babel.Ai.Capture;
 using Babel.Ai.Promotion;
 using Babel.Ai.Reconciliation;
 using Babel.Ai.Tests.Support;
+using Babel.Contracts.Capture;
 using Babel.SharedKernel;
 using Xunit;
 

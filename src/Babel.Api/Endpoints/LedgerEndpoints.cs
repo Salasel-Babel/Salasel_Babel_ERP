@@ -5,6 +5,7 @@ using Babel.Api.Ports;
 using Babel.Api.Security;
 using Babel.Api.Wire;
 using Babel.Contracts.Posting;
+using Babel.Core.CompanySetup;
 using Babel.Ledger.Audit;
 using Babel.SharedKernel;
 
@@ -61,9 +62,10 @@ internal static class LedgerEndpoints
     private static async Task<IResult> PostJournalEntryAsync(
         HttpContext context,
         IPostingService posting,
+        ICostCenterResolver costCenters,
         CancellationToken cancellationToken)
     {
-        if (!TryScope(context, out Guid companyId, out IResult? denied))
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
         {
             return denied!;
         }
@@ -79,7 +81,7 @@ internal static class LedgerEndpoints
         }
         catch (System.Text.Json.JsonException exception)
         {
-            return BadJson(context, exception);
+            return Scope.BadJson(context, exception);
         }
 
         if (dto is null)
@@ -88,10 +90,41 @@ internal static class LedgerEndpoints
                 context, "wire.body.missing", "جسم الطلب مفقود.", "The request body is missing.");
         }
 
+        // ── مركز التكلفة يُحلّ **قبل** بناء الطلب ─────────────────────────────
+        // ‏ADR-0026: المذكور إن كان عاملاً، والافتراضي إن لم يُذكر شيء. والحلّ سؤالٌ عن
+        // سجلّ المنشأة — وهو في النواة — فالسطح يسأل ولا يقرّر، ثم يُسلّم الجواب إلى
+        // النقل. وبهذا **لا يستطيع أحد أن يبني PostingScope بلا مركز**: النوع نفسه
+        // يرفض ذلك، والقيمة الوحيدة التي تبلغه جاءت من هنا.
+        List<string?> candidates;
+        try
+        {
+            candidates = WireMapping.CostCenterCandidates(dto);
+        }
+        catch (WireFormatException wire)
+        {
+            return HttpProblemResults.Wire(context, wire);
+        }
+
+        Dictionary<string, string> resolvedCostCenters = new(StringComparer.Ordinal);
+
+        foreach (string? candidate in candidates)
+        {
+            Result<string> resolution = await costCenters
+                .ResolveAsync(new TenantId(companyId), candidate, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (resolution.IsFailure)
+            {
+                return HttpProblemResults.Domain(context, resolution.Errors);
+            }
+
+            resolvedCostCenters[candidate ?? string.Empty] = resolution.Value;
+        }
+
         PostingRequest request;
         try
         {
-            request = WireMapping.ToPostingRequest(dto, companyId, principal.User);
+            request = WireMapping.ToPostingRequest(dto, companyId, principal.User, resolvedCostCenters);
         }
         catch (WireFormatException wire)
         {
@@ -138,7 +171,7 @@ internal static class LedgerEndpoints
         IPostingService posting,
         CancellationToken cancellationToken)
     {
-        if (!TryScope(context, out Guid companyId, out IResult? denied))
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
         {
             return denied!;
         }
@@ -159,7 +192,7 @@ internal static class LedgerEndpoints
         }
         catch (System.Text.Json.JsonException exception)
         {
-            return BadJson(context, exception);
+            return Scope.BadJson(context, exception);
         }
 
         if (dto is null)
@@ -190,7 +223,7 @@ internal static class LedgerEndpoints
         IJournalEntryReader reader,
         CancellationToken cancellationToken)
     {
-        if (!TryScope(context, out Guid companyId, out IResult? denied))
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
         {
             return denied!;
         }
@@ -213,7 +246,7 @@ internal static class LedgerEndpoints
         LedgerAuditService audit,
         CancellationToken cancellationToken)
     {
-        if (!TryScope(context, out Guid companyId, out IResult? denied))
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
         {
             return denied!;
         }
@@ -247,7 +280,7 @@ internal static class LedgerEndpoints
         LedgerAuditService audit,
         CancellationToken cancellationToken)
     {
-        if (!TryScope(context, out Guid companyId, out IResult? denied))
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
         {
             return denied!;
         }
@@ -272,53 +305,6 @@ internal static class LedgerEndpoints
         return result.IsFailure
             ? HttpProblemResults.Domain(context, result.Errors)
             : Results.Json(WireMapping.ToDto(result.Value), ApiJson.Options);
-    }
-
-    /// <summary>
-    /// يقرأ نطاق الشركة من المسار ويتحقق أن الاعتماد يبلغه — <b>قبل أي عمل</b>.
-    /// <para>
-    /// الترتيب هنا هو المهمّ: الرفض يقع قبل قراءة الجسم وقبل أي اتصال بقاعدة بيانات، فلا
-    /// يوجد مسار يلمس فيه طلبُ مستأجرٍ بياناتِ مستأجر آخر ولو للحظة، ولا يوجد فرق زمني
-    /// يُقاس بين «شركة غير موجودة» و«شركة موجودة لا تبلغها».
-    /// </para>
-    /// </summary>
-    private static bool TryScope(HttpContext context, out Guid companyId, out IResult? denied)
-    {
-        companyId = Guid.Empty;
-        denied = null;
-
-        string raw = context.Request.RouteValues.TryGetValue("companyId", out object? value)
-            ? value?.ToString() ?? string.Empty
-            : string.Empty;
-
-        if (!Guid.TryParseExact(raw, "D", out companyId) || companyId == Guid.Empty)
-        {
-            denied = HttpProblemResults.Code(
-                context,
-                "tenancy.company_id_malformed",
-                "معرّف الشركة في المسار ليس معرّفاً صالحاً بصيغة 8-4-4-4-12.",
-                "The company identifier in the path is not a valid 8-4-4-4-12 identifier.",
-                "companyId",
-                StatusCodes.Status400BadRequest);
-            return false;
-        }
-
-        ApiPrincipal principal = RequestPrincipal.Of(context);
-
-        if (!principal.Reaches(companyId))
-        {
-            // رسالة واحدة لحالتين — «غير موجودة» و«لا تبلغها» — عمداً: التمييز بينهما
-            // يجعل السطح عدّاد وجود لشركات مستأجرين آخرين.
-            denied = HttpProblemResults.Code(
-                context,
-                "tenancy.company_out_of_scope",
-                "هذا الاعتماد لا يبلغ الشركة المطلوبة.",
-                "This credential does not reach the requested company.",
-                "companyId");
-            return false;
-        }
-
-        return true;
     }
 
     private static bool TryEntryId(HttpContext context, out Guid entryId, out IResult? malformed)
@@ -407,27 +393,4 @@ internal static class LedgerEndpoints
         return year;
     }
 
-    /// <summary>
-    /// يترجم فشل التسلسل إلى رفض بحقله ورمزه، ولا يسرّب شيئاً عن الخادم.
-    /// </summary>
-    private static IResult BadJson(HttpContext context, System.Text.Json.JsonException exception)
-    {
-        WireFormatException? wire = WireFormatException.Unwrap(exception);
-        if (wire is not null)
-        {
-            return HttpProblemResults.Wire(context, wire);
-        }
-
-        // رسالة System.Text.Json تسمّي المسار داخل الحمولة (‏$.lines[0].amount) وهي معلومة
-        // العميل نفسه، لا معلومة خادم. أما ما عداها فلا يعبر: نص الاستثناء نفسه لا يُرسَل.
-        string path = exception.Path ?? "$";
-        return HttpProblemResults.Code(
-            context,
-            "wire.body.malformed",
-            $"جسم الطلب لا يطابق العقد عند «{path}». والحقل غير المعروف يُرفض الطلب بسببه: "
-            + "التجاهل الصامت يجعل العميل يظنّ أنه أرسل ما لم يصل.",
-            $"The request body does not match the contract at '{path}'. An unknown field fails the whole request: "
-            + "silently ignoring it makes the client believe it sent something that never arrived.",
-            path);
-    }
 }

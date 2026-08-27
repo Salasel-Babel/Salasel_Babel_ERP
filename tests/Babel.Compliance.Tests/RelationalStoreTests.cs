@@ -18,24 +18,30 @@ namespace Babel.Compliance.Tests;
 /// <code>
 /// export BABEL_COMPLIANCE_TEST_DB="Host=127.0.0.1;Port=5432;Database=postgres;Username=postgres"
 /// </code>
+/// <para>
+/// <b>والمتغيّر اتصال صيانة لا اسم قاعدة اختبار.</b> أسماء قواعد الاختبار تُشتقّ في
+/// <see cref="TestDatabases"/> بلاحقةٍ خاصّة بكل عملية، فلا يثبّتها إعدادٌ منشور —
+/// متغيّرٌ يحمل اسماً ثابتاً يُبطل اللاحقة بصمت ويعيد العطل كاملاً بينما الشيفرة
+/// تبدو مُصلَحة (‏<c>docs/evidence/traps.md#fakh-test-databases-share-a-fixed-name-across-processes</c>).
+/// </para>
 /// </summary>
 public class RelationalStoreTests
 {
     private static string? Admin => Environment.GetEnvironmentVariable("BABEL_COMPLIANCE_TEST_DB");
 
+    /// <summary>
+    /// ينشئ قاعدةً <b>باسم خاصّ بهذه العملية</b>، وينشر مخطّط الالتزام فيها، ويُرجع مخزناً عليها.
+    /// <para>
+    /// <b>ما كان هنا قبلاً:</b> <c>drop database if exists {db} with (force)</c> على اسم
+    /// <b>ثابت</b>. و<c>with (force)</c> يقطع جلسات <b>عمليات أخرى</b>، فعمليتان
+    /// متزامنتان تُدمّر كلٌّ منهما تشغيل الأخرى. الاسم صار خاصّاً بالعملية في
+    /// <see cref="TestDatabases"/>، و<b>لا إسقاط عند البدء</b> إطلاقاً.
+    /// </para>
+    /// </summary>
     private static async Task<EfComplianceStore> FreshStoreAsync(string db, TimeProvider clock, CancellationToken ct)
     {
         var admin = Admin!;
-        await using (var maintenance = new NpgsqlConnection(admin))
-        {
-            await maintenance.OpenAsync(ct);
-            await using var drop = new NpgsqlCommand($"drop database if exists {db} with (force)", maintenance);
-            await drop.ExecuteNonQueryAsync(ct);
-            await using var create = new NpgsqlCommand($"create database {db}", maintenance);
-            await create.ExecuteNonQueryAsync(ct);
-        }
-
-        var target = new NpgsqlConnectionStringBuilder(admin) { Database = db }.ConnectionString;
+        var target = await TestDatabases.CreateAsync(admin, db, ct);
         await using (var conn = new NpgsqlConnection(target))
         {
             await conn.OpenAsync(ct);
@@ -60,7 +66,7 @@ public class RelationalStoreTests
         var ct = TestContext.Current.CancellationToken;
 
         var clock = new ManualClock(new DateTimeOffset(2026, 3, 1, 9, 0, 0, TimeSpan.Zero));
-        const string db = "babel_compliance_test_pipeline";
+        var db = TestDatabases.Pipeline;
         var store = await FreshStoreAsync(db, clock, ct);
 
         var authority = new FakeAuthority();
@@ -149,7 +155,7 @@ public class RelationalStoreTests
         var ct = TestContext.Current.CancellationToken;
 
         var clock = new ManualClock(DateTimeOffset.UtcNow);
-        const string db = "babel_compliance_test_counter";
+        var db = TestDatabases.Counter;
         var store = await FreshStoreAsync(db, clock, ct);
         var target = new NpgsqlConnectionStringBuilder(Admin!) { Database = db }.ConnectionString;
 

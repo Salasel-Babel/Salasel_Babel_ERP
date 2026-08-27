@@ -1,0 +1,68 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# صورة الخادم — السطح HTTP وحده.
+#
+# **ولا DDL فيها ولا اتصال مالك**: الخادم يعمل بدور التطبيق الذي لا يملك
+# UPDATE ولا DELETE على الدفتر. الهجرات في صورة أخرى تعمل مرّة وتخرج
+# (Dockerfile.migrator) — والفصل هو ADR-0003 مطبَّقاً على النشر لا على الشيفرة
+# وحدها: لو حمل الخادم اتصال المالك لسقط الفصل مهما قالت الشيفرة.
+#
+# ولا صورة chiseled ولا alpine هنا عمداً: العربية لغة أولى، وبيانات ICU شرطُ
+# صحّة كل بصمة نصّ (Directory.Build.props · SPEC.md §8.2). صورة بلا ICU تجعل
+# String.Normalize عملية لا شيء **بصمت**، فتتغيّر كل بصمة تحمل أ/إ/آ.
+# والحارس الموجب أدناه: البناء يفشل إن غابت.
+# ═══════════════════════════════════════════════════════════════════════════
+ARG DOTNET_VERSION=10.0
+
+FROM mcr.microsoft.com/dotnet/sdk:${DOTNET_VERSION} AS build
+WORKDIR /source
+
+# الاستعادة أولاً وبطبقة مستقلّة: تغييرُ سطرِ شيفرة لا يُعيد تنزيل الحزم.
+# ‏**‏`.editorconfig` ليس تفضيل محرّر هنا بل جزء من البناء**: فيه شدّةُ كل قاعدة
+# محلّل مُسكَّنة بسببها المكتوب. وإسقاطه من سياق الصورة يجعل القواعد ترتدّ إلى
+# افتراضها، ومع `TreatWarningsAsErrors` يفشل البناء داخل الحاوية وهو أخضر على
+# جهاز المطوّر. وقد وقع فعلاً: `CA1716` على `Error` و`CA1000` على `Result<T>` —
+# كلاهما مُسكَّن في الملف، وكلاهما أوقف بناء الصورة.
+COPY Directory.Build.props Directory.Packages.props global.json .editorconfig ./
+COPY src/ src/
+COPY data/ data/
+RUN dotnet restore src/Babel.Api/Babel.Api.csproj
+
+RUN dotnet publish src/Babel.Api/Babel.Api.csproj \
+        --configuration Release \
+        --no-restore \
+        --output /app
+
+FROM mcr.microsoft.com/dotnet/aspnet:${DOTNET_VERSION} AS runtime
+WORKDIR /app
+
+ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=0 \
+    DOTNET_NOLOGO=1 \
+    DOTNET_CLI_TELEMETRY_OPTOUT=1 \
+    ASPNETCORE_URLS=http://0.0.0.0:8080
+
+COPY --from=build /app ./
+
+# حارس موجب وقت البناء: صورةٌ بلا ICU تُرفض هنا لا تُكتشف بعد شهر في بصمة منحرفة.
+RUN set -eu; \
+    ls /usr/lib/x86_64-linux-gnu/libicuuc.so.* >/dev/null 2>&1 \
+      || ls /usr/lib/aarch64-linux-gnu/libicuuc.so.* >/dev/null 2>&1 \
+      || { echo 'ICU غير موجودة في صورة التشغيل — كل بصمة نصّ عربي ستنحرف بصمت.' >&2; exit 1; }
+
+# ‏curl لأجل فحص الحياة وحده. وفحصٌ يقول «العملية تعمل» بدل «الخدمة تُجيب» هو
+# أسوأ من غيابه: حاويةٌ أقلعت وقاعدتها مقطوعة تبقى «سليمة» فيمرّ النشر عليها.
+RUN set -eu; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends curl; \
+    rm -rf /var/lib/apt/lists/*
+
+# مستخدم غير جذر: الحاوية لا تحتاج جذراً، والحاجة التي لا تُطلب لا تُمنح.
+USER $APP_UID
+
+EXPOSE 8080
+
+# نقطة /health خارج المصادقة وخارج نطاق الشركة عمداً (ApiRoutes.Health)، فلا
+# يحتاج الفحص اعتماداً — ولا يجوز أن يحمل واحداً.
+HEALTHCHECK --interval=10s --timeout=3s --start-period=40s --retries=12 \
+    CMD curl --fail --silent --show-error http://127.0.0.1:8080/health || exit 1
+
+ENTRYPOINT ["dotnet", "Babel.Api.dll"]

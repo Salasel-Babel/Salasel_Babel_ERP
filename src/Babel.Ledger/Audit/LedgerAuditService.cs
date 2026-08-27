@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json;
 using Babel.Canonicalization;
 using Babel.Canonicalization.Schemas;
 using Babel.Core.Application;
@@ -29,13 +30,20 @@ public sealed record LedgerChainReport(
     string ReasonAr,
     string? Detail);
 
-/// <summary>صفّ في ميزان المراجعة.</summary>
-/// <param name="AccountCode">رمز الحساب.</param>
-/// <param name="NameAr">الاسم العربي.</param>
-/// <param name="NameEn">الاسم الإنجليزي.</param>
+/// <summary>
+/// صفّ في ميزان المراجعة.
+/// <para>
+/// <b>الاسم <see cref="TranslatedName"/> لا زوجاً ثابتاً</b> (ADR-0021): كان الصفّ يحمل
+/// <c>NameAr</c> و<c>NameEn</c>، وهما <b>عاجزان بنيوياً</b> عن لغة ثالثة — فالمحاسب
+/// الأردي في ميزان مراجعة كان يرى السجلّ العربي ومعه ترجمة إنجليزية لا ترجمةً بلغته.
+/// والآن يحمل الصفّ السجلّ العربي وكل ترجمة موجودة، ولغةٌ خامسة صفوفُ إدخال.
+/// </para>
+/// </summary>
+/// <param name="AccountCode">رمز الحساب — <b>معرّف لا نصّ</b>، فلا يُترجَم أبداً.</param>
+/// <param name="Name">اسم الحساب: سجلٌّ عربي إلزامي وترجماته.</param>
 /// <param name="Debit">مجموع المدين بعملة الشركة.</param>
 /// <param name="Credit">مجموع الدائن بعملة الشركة.</param>
-public sealed record TrialBalanceRow(string AccountCode, string NameAr, string NameEn, decimal Debit, decimal Credit);
+public sealed record TrialBalanceRow(string AccountCode, TranslatedName Name, decimal Debit, decimal Credit);
 
 /// <summary>
 /// ميزان المراجعة كاملاً: صفوفه، ومجموعاه، وحكم توازنه.
@@ -181,15 +189,22 @@ public sealed class LedgerAuditService : IApplicationService
         // و‏coalesce لأن مجموعة التجميع الفارغة تُنتج صفّاً ولو كان الدخل صفراً.
         await using NpgsqlCommand command = new(
             """
-            select l.account_code, a.name_ar, a.name_en,
+            select l.account_code, a.name_ar,
                    coalesce(sum(l.debit_company), 0) as debit,
                    coalesce(sum(l.credit_company), 0) as credit,
-                   grouping(l.account_code) as is_total
+                   grouping(l.account_code) as is_total,
+                   -- الترجمات في **الرحلة نفسها**: استعلام فرعي قياسي على المفتاح
+                   -- الأساسي لجدول الترجمات، لا انضمام يضاعف الصفوف فيفسد sum().
+                   -- ويعود null لصفّ الإجمالي، وهو صفّ بلا حساب فلا اسم له أصلاً.
+                   (select jsonb_object_agg(t.language_tag, t.name)
+                      from ledger.name_translation t
+                     where t.company_id = $1 and t.entity_kind = 'account'
+                       and t.entity_key = l.account_code) as translations
               from ledger.journal_line l
               join ledger.journal_entry e on e.entry_id = l.entry_id
               join ledger.account a on a.company_id = l.company_id and a.account_code = l.account_code
              where l.company_id = $1 and e.book_id = $2 and ($3::text is null or e.period_code = $3)
-             group by grouping sets ((l.account_code, a.name_ar, a.name_en), ())
+             group by grouping sets ((l.account_code, a.name_ar), ())
              order by grouping(l.account_code), l.account_code
             """, connection);
         command.Parameters.AddWithValue(tenant.Value);
@@ -199,22 +214,52 @@ public sealed class LedgerAuditService : IApplicationService
         await using NpgsqlDataReader reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
         while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
         {
-            if (reader.GetInt32(5) == 1)
+            if (reader.GetInt32(4) == 1)
             {
-                totalDebit = reader.GetDecimal(3);
-                totalCredit = reader.GetDecimal(4);
+                totalDebit = reader.GetDecimal(2);
+                totalCredit = reader.GetDecimal(3);
                 continue;
             }
 
             rows.Add(new TrialBalanceRow(
-                reader.GetString(0), reader.GetString(1), reader.GetString(2),
-                reader.GetDecimal(3), reader.GetDecimal(4)));
+                reader.GetString(0),
+                new TranslatedName(reader.GetString(1), Translations(reader, 5)),
+                reader.GetDecimal(2),
+                reader.GetDecimal(3)));
         }
 
         // ‏المساواة تُحسم هنا لا عند العميل: مقارنتها في JavaScript تعيد الفخّ نفسه
         // الذي بُني له شكل السلك — ‏Number فاصلة عائمة ثنائية.
         return Result<TrialBalanceReport>.Success(
             new TrialBalanceReport(rows, totalDebit, totalCredit, totalDebit == totalCredit));
+    }
+
+    /// <summary>
+    /// يقرأ خريطة الترجمات من عمود <c>jsonb</c>. والغياب خريطة فارغة لا استثناء:
+    /// حسابٌ بلا ترجمة حالةٌ مشروعة تماماً، ويرتدّ عرضه إلى السجلّ العربي.
+    /// </summary>
+    private static Dictionary<string, string> Translations(NpgsqlDataReader reader, int ordinal)
+    {
+        if (reader.IsDBNull(ordinal))
+        {
+            return [];
+        }
+
+        Dictionary<string, string> map = new(StringComparer.Ordinal);
+
+        using JsonDocument document = JsonDocument.Parse(reader.GetFieldValue<string>(ordinal));
+
+        foreach (JsonProperty property in document.RootElement.EnumerateObject())
+        {
+            string? value = property.Value.GetString();
+
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                map[property.Name] = value;
+            }
+        }
+
+        return map;
     }
 
     /// <summary>سطر قيد مقروءاً من التخزين، بكل عموده — لا بستّة منها.</summary>

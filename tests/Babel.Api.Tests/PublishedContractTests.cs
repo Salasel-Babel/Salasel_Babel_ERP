@@ -109,8 +109,13 @@ public sealed class PublishedContractTests
         Assert.Contains("Forces v2", description, StringComparison.Ordinal);
 
         JsonElement paths = root.GetProperty("paths");
-        Assert.Equal(6, paths.EnumerateObject().SelectMany(static p => p.Value.EnumerateObject())
+        Assert.Equal(15, paths.EnumerateObject().SelectMany(static p => p.Value.EnumerateObject())
             .Count(static o => o.Name is "get" or "post" or "put" or "patch" or "delete"));
+
+        // ولا فعل حذف على السطح كلّه — لا على قيد، ولا على مركز تكلفة، ولا على منشأة.
+        Assert.DoesNotContain(
+            paths.EnumerateObject().SelectMany(static p => p.Value.EnumerateObject()),
+            static o => o.Name is "delete");
 
         // النطاق في كل مسار مُصدَّر، ولا مسار أعمال خارج شركة.
         foreach (JsonProperty path in paths.EnumerateObject())

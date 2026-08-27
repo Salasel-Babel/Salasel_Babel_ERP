@@ -34,7 +34,7 @@ public sealed partial class TrapRegisterIsSelfConsistent
     private const string RegisterPath = "docs/evidence/traps.md";
 
     /// <summary>الحدّ الأدنى للعدّ — حارس ضدّ مُحلِّل يقرأ صفراً فيمرّ فارغاً (فخ-43).</summary>
-    private const int MinimumTrapCount = 60;
+    private const int MinimumTrapCount = 72;
 
     private static readonly Lazy<Register> Parsed = new(Register.Load);
 
@@ -403,9 +403,19 @@ public sealed partial class TrapRegisterIsSelfConsistent
             .Where(path =>
             {
                 string relative = Path.GetRelativePath(RepositoryLayout.Root, path).Replace('\\', '/');
+                // مخرَج البناء ليس محتوى المستودع. واستثناؤه ليس تجميلاً: قاعدةُ مسحٍ
+                // هي القرص لا المستودع **تقيس البيئة لا الشيفرة**. و«dist» تحديداً يزرع
+                // فيها Rule14 شاهداً موجباً ثم يحذفه، فيتسابق المسحان على ملفّ يختفي
+                // بينهما — ويسقط هذا الحارس بـFileNotFoundException لسبب لا علاقة له بما
+                // يحرسه، وذلك أسوأ من غيابه (فخ-65).
+                //
+                // والسطر نفسه موجود في AdrRegisterIsSelfConsistent منذ 4969303: حارسان
+                // بالشكل نفسه، أُصلح أحدهما وبقي الآخر — وقد ظهر هنا حين أزاح تسليمٌ
+                // آخر توقيتَ التشغيل بضعة ملّي ثانية.
                 if (relative.StartsWith(".git/", StringComparison.Ordinal)
                     || relative.Contains("/bin/", StringComparison.Ordinal)
                     || relative.Contains("/obj/", StringComparison.Ordinal)
+                    || relative.Contains("/dist/", StringComparison.Ordinal)
                     || relative.Contains("/node_modules/", StringComparison.Ordinal))
                 {
                     return false;

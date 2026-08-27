@@ -3,10 +3,32 @@
   <PropertyGroup>
     <RootNamespace>Babel.Ai.Tests</RootNamespace>
     <AssemblyName>Babel.Ai.Tests</AssemblyName>
+    <!-- العربية لغة أولى: بيانات المناطق مطلوبة، والتطبيع الصامت أخطر مصيدة نشر. -->
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <PredefinedCulturesOnly>false</PredefinedCulturesOnly>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="../../src/Babel.Ai/Babel.Ai.csproj" />
+    <!--
+      مشروع الاختبار — لا مشروع منتج — يشير إلى مزوّد الهيئة: المطلوب إثباته هو أن
+      الفاكّ **عكس المُرمِّز القائم بالضبط**، ولا سبيل إلى ذلك إلا بالمُرمِّز نفسه.
+      والقاعدتان 1 و3 تفحصان مشاريع src/ وحدها، وBabel.Purchasing.Tests سابقة قائمة
+      على الشكل نفسه (تشير إلى الدفتر).
+
+      ووحدة Babel.Ai نفسها **لا** تشير إليه ولا تستطيع: القاعدة 3 تمنع ذلك، والوصلة
+      تُركَّب في الجذر التركيبي. ونسخة الوصلة الجاهزة للنقل في Support/ZatcaQrAttestationReader.cs.
+    -->
+    <ProjectReference Include="../../src/Babel.Compliance.Zatca/Babel.Compliance.Zatca.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NetArchTest.Rules" />
+  </ItemGroup>
+
+  <!-- جذر المستودع يُحقن في التجميعة: الحارس المعماري يقرأ ملفات المشاريع نفسها لا IL فقط. -->
+  <ItemGroup>
+    <AssemblyMetadata Include="BabelRepositoryRoot" Value="$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../'))" />
   </ItemGroup>
 
 </Project>

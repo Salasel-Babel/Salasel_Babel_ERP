@@ -2,6 +2,8 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using Babel.Api.Endpoints;
 using Babel.Contracts.Posting;
+using Babel.Core.CapabilityProfile;
+using Babel.Core.CompanySetup;
 using Babel.SharedKernel;
 
 namespace Babel.Api.OpenApi;
@@ -119,6 +121,102 @@ internal static class OpenApiEmitter
                     new QueryParameter("book", true, "الدفتر داخل الشركة.", "The book within the company.", "string"),
                     new QueryParameter("fiscalYear", true, "السنة المالية الميلادية بأربعة أرقام لاتينية.", "The Gregorian fiscal year, four Latin digits.", "year"),
                 ]),
+
+            new(ApiRoutes.CapabilityProfile, "get", "readCapabilityProfile",
+                "ملفّ القدرات وأشكال مستنداته", "The capability profile and its document shapes",
+                "يقرأ ملفّ قدرات الشركة، ومعه **شكل كل مستند مُشتقّاً**: الحقول القائمة، والقدرات المتاحة والمُشغَّلة، والقيم الافتراضية. "
+                + "وهذا ما تُبنى عليه الشاشة: الشاشة دالّة في (هذه الوثيقة × الملفّ)، ولا تُؤلَّف بـJSON حرّ عند العميل — "
+                + "شاشةٌ مؤلَّفة باستقلال عن العقد تُرسل حقلاً يرفضه الخادم أو تُسقط حقلاً يطلبه.",
+                "Reads the company's capability profile together with **each document's derived shape**: the fields that exist, the "
+                + "available and enabled capabilities, and the defaults. This is what a screen is built from: the screen is a function "
+                + "of (this document x the profile) and is never authored as free-form JSON on the client — a screen authored "
+                + "independently of the contract sends a field the server refuses or omits one it requires.",
+                Body: null, Response: "CapabilityProfile", Success: 200, Anonymous: false, Query: []),
+
+            new(ApiRoutes.CapabilityProfile, "put", "writeCapabilityProfile",
+                "حفظ ملفّ القدرات", "Save the capability profile",
+                "يستبدل الملفّ كلّه بعد **مطابقة كل قدرة مُشغَّلة بمصفوفة الترحيل**: قدرةٌ لا يقابلها حدث تُرفض هنا برمز "
+                + "capability_profile.capability_not_served_by_matrix وباسمها وبالأحداث الناقصة — لا تُكتشف بعد شهر دفترَ أستاذ مساعد لا يُطابَق. "
+                + "والاتجاه الخطر هو الإطفاء لا التشغيل: إطفاء قدرة كانت مُشغَّلة يجعل مستنداً مفتوحاً يحملها غير مقبول، ويجعل حدث المتابعة "
+                + "الذي يُخلي رصيد الدفتر المساعد غير قابل للوقوع — فيُرفض بلا withdrawalReason مكتوب، ويُسجَّل السبب في سجل التدقيق حين يُكتب.",
+                "Replaces the whole profile after **matching every enabled capability against the posting matrix**: a capability with no "
+                + "event is refused here with capability_profile.capability_not_served_by_matrix, named, with its missing events — not "
+                + "discovered a month later as a subledger that will not tie. The dangerous direction is off, not on: disabling a capability "
+                + "that was enabled makes an open document carrying it inadmissible and makes the follow-on event that relieves the subledger "
+                + "balance unreachable, so it is refused without a written withdrawalReason, and the reason is recorded in the audit log.",
+                Body: "PutCapabilityProfileRequest", Response: "CapabilityProfile", Success: 200, Anonymous: false, Query: []),
+
+            new(ApiRoutes.DocumentShape, "get", "readDocumentShape",
+                "شكل مستند واحد", "One document shape",
+                "شكل نوع مستند واحد مُشتقّاً من الملفّ. مُشتقّ لا مؤلَّف: لا تخطيط، ولا ترتيب بصري، ولا شرط، ولا تعبير.",
+                "One document type's shape derived from the profile. Derived, never authored: no layout, no visual order, no condition, no expression.",
+                Body: null, Response: "DocumentShape", Success: 200, Anonymous: false, Query: []),
+
+            new(ApiRoutes.CompanySetup, "get", "readCompanySetup",
+                "تأسيس المنشأة", "The company setup",
+                "يقرأ تأسيس المنشأة: اسمها، و**عدد الخانات العشرية المعروضة**، و**مراكز تكلفتها كلّها** — العاملة والموقوفة معاً. "
+                + "والموقوف يبقى في القائمة عمداً: تقاريرُ الفترات السابقة تُبوَّب عليه، والدفتر إضافي لا يُحذف منه شيء.",
+                "Reads the company setup: its name, the **number of displayed decimal places**, and **all of its cost centres** — "
+                + "active and suspended alike. A suspended centre stays in the list on purpose: earlier periods are still grouped by it, "
+                + "and the ledger is append-only.",
+                Body: null, Response: "CompanySetup", Success: 200, Anonymous: false, Query: []),
+
+            new(ApiRoutes.CompanySetup, "put", "initialiseCompanySetup",
+                "تأسيس المنشأة مرّة واحدة", "Set the company up, once",
+                "يؤسّس المنشأة. **يُقبل مرّة واحدة فقط**: الوصول الثاني يُرفض بـ409 و‏company_setup.already_initialised مهما تغيّرت "
+                + "حمولته — وبالأخصّ decimalPlaces، فعدد الخانات يُسنَد عند أول تأسيس ولا يُعدَّل بعده، وتوحيده داخل دفاتر المنشأة "
+                + "الواحدة أهمّ من أي قيمة بعينها.\n\n"
+                + "وسؤال مراكز التكلفة يُطرح هنا وحده: costCenters = One يجعل **اسم المنشأة نفسه** هو المركز الافتراضي فلا يرى "
+                + "صاحبُ هذا الجواب المفهوم أبداً؛ وcostCenters = Multiple يجعل firstCostCenterNameAr **إلزامياً** — من أعلن أن "
+                + "لديه أكثر من واحد لا يُخترَع له اسم نيابةً عنه. وفي الحالتين تخرج المنشأة من هنا وبها مركز تكلفة واحد على الأقل.\n\n"
+                + "وdecimalPlaces يحكم **العرض والإدخال البشري وحدهما**: التخزين يبقى بأربع خانات، والمبالغ المحسوبة "
+                + "(ضريبة 15٪ على صافٍ فردي مثلاً) لا يقيّدها هذا العدد ولا تُقرَّب عنده — وإلا لصارت الفاتورة العادية مستحيلة.",
+                "Sets the company up. **Accepted exactly once**: a second arrival is refused with 409 and company_setup.already_initialised "
+                + "whatever its payload — decimalPlaces above all, since the number of places is assigned at first setup and is never editable "
+                + "afterwards; its consistency inside one entity's books matters more than any particular value.\n\n"
+                + "The cost-centre question is asked here and only here: costCenters = One makes **the company's own name** the default centre, "
+                + "so whoever answers that never sees the concept again; costCenters = Multiple makes firstCostCenterNameAr **mandatory** — no name "
+                + "is invented on behalf of someone who declared they have more than one. Either way the company leaves this call with at least one cost centre.\n\n"
+                + "decimalPlaces governs **display and human input only**: storage stays at four places, and computed amounts (15% VAT on an odd net, "
+                + "say) are neither constrained nor rounded by it — otherwise an ordinary invoice would be impossible.",
+                Body: "InitialiseCompanySetupRequest", Response: "CompanySetup", Success: 201, Anonymous: false, Query: []),
+
+            new(ApiRoutes.CostCenters, "post", "addCostCenter",
+                "إضافة مركز تكلفة", "Add a cost centre",
+                "يضيف مركز تكلفة عاملاً ويُعيد التأسيس كاملاً. الرمز يُسكّه الخادم ولا يُرسله العميل: الرمز هوية تحملها سطور القيود، "
+                + "والاسم عرضٌ يتغيّر.",
+                "Adds an active cost centre and returns the whole setup. The server mints the code; the client never sends one: the code is the "
+                + "identity that journal lines carry, and the name is display that changes.",
+                Body: "CostCenterNameRequest", Response: "CompanySetup", Success: 201, Anonymous: false, Query: []),
+
+            new(ApiRoutes.CostCenter, "put", "renameCostCenter",
+                "إعادة تسمية مركز تكلفة", "Rename a cost centre",
+                "يعيد تسمية مركز تكلفة. **الرمز لا يتغيّر**، فسطور القيود المُرحَّلة عليه تبقى مربوطة به وتُعرض بالاسم الجاري — "
+                + "وهو سلوك الحساب المعطَّل نفسه لا نمطٌ ثانٍ (ADR-0006).",
+                "Renames a cost centre. **The code does not change**, so journal lines already posted against it stay tied to it and display under "
+                + "the current name — the same behaviour as a locked account, not a second pattern (ADR-0006).",
+                Body: "CostCenterNameRequest", Response: "CompanySetup", Success: 200, Anonymous: false, Query: []),
+
+            new(ApiRoutes.CostCenterSuspension, "post", "suspendCostCenter",
+                "إيقاف مركز تكلفة عن الترحيل", "Suspend a cost centre from posting",
+                "يوقف مركز تكلفة عن الاستعمال على مستند جديد، **بسبب مكتوب** يُسجَّل في سجلّ التدقيق مع من فعله ومتى. "
+                + "ولا يُحذف شيء: المركز يبقى مقروءاً ومُبوَّباً في تقارير الفترات السابقة إلى الأبد.\n\n"
+                + "و**المركز الافتراضي لا يُوقَف**: يُرفض بـ409 وcost_center.default_cannot_be_suspended، لأن المنشأة لا تخلو من "
+                + "مركز تكلفة أبداً. ومن أراد إيقافه ينقل الافتراضي إلى مركز عامل آخر أولاً.",
+                "Suspends a cost centre from use on new documents, **with a written reason** recorded in the audit log along with who did it and when. "
+                + "Nothing is deleted: the centre stays readable and stays a grouping key in earlier periods forever.\n\n"
+                + "**The default centre is never suspended**: it is refused with 409 and cost_center.default_cannot_be_suspended, because a company is "
+                + "never without a cost centre. To suspend it, move the default to another active centre first.",
+                Body: "SuspendCostCenterRequest", Response: "CompanySetup", Success: 201, Anonymous: false, Query: []),
+
+            new(ApiRoutes.DocumentAdmission, "post", "admitDocument",
+                "عرض مستند على الملفّ", "Present a document against the profile",
+                "يعرض **أسماء حقول** مستند على ملفّ الشركة فيقبله أو يرفضه. لا قيم ولا مبالغ ولا أثر: هذا حكمٌ لا كتابة. "
+                + "وحقلٌ ترخّصه قدرة مُطفأة يُرفض به المستند كلّه — لأن قدرةً يمكن ممارستها بإرسال الحقل رغم إطفائها ليست قدرة بل زينة.",
+                "Presents a document's **field names** against the company profile and admits or refuses it. No values, no amounts, no "
+                + "effect: this is a verdict, not a write. A field licensed by a disabled capability fails the whole document — a capability "
+                + "that can still be exercised by sending the field anyway is decoration, not a capability.",
+                Body: "AdmitDocumentRequest", Response: "DocumentAdmission", Success: 200, Anonymous: false, Query: []),
         }.OrderBy(static o => o.Path, StringComparer.Ordinal).ThenBy(static o => o.Method, StringComparer.Ordinal),
     ];
 
@@ -193,6 +291,16 @@ internal static class OpenApiEmitter
                     WritePathParameter(w, "entryId", "معرّف القيد.", "The entry identifier.", "uuid");
                 }
 
+                if (byPath.Key.Contains("{documentType}", StringComparison.Ordinal))
+                {
+                    WriteDocumentTypeParameter(w);
+                }
+
+                if (byPath.Key.Contains("{costCenterCode}", StringComparison.Ordinal))
+                {
+                    WriteCostCenterCodeParameter(w);
+                }
+
                 w.WriteEndArray();
             }
 
@@ -218,6 +326,96 @@ internal static class OpenApiEmitter
         w.WriteString("type", "string");
         w.WriteString("format", format);
         w.WriteEndObject();
+        w.WriteEndObject();
+    }
+
+    /// <summary>
+    /// رموز أنواع المستندات، مقروءةً من الكتالوج المغلق نفسه لا من قائمة مكتوبة هنا.
+    /// قائمةٌ ثانية مكتوبة بيد تنحرف عن الكتالوج عند أول إضافة، فيصف العقد مستنداً لا وجود له.
+    /// </summary>
+    private static IReadOnlyList<string> DocumentTypeCodes { get; } =
+        [.. CapabilityCatalogue.DocumentTypes
+            .Select(static definition => definition.Code.Value)
+            .Order(StringComparer.Ordinal)];
+
+    /// <summary>رموز القدرات في الكتالوج كلّه، بلا تكرار ومرتَّبة.</summary>
+    private static IReadOnlyList<string> CapabilityCodes { get; } =
+        [.. CapabilityCatalogue.DocumentTypes
+            .SelectMany(static definition => definition.Capabilities)
+            .Select(static capability => capability.Code.Value)
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)];
+
+    private static void WriteDocumentTypeParameter(Utf8JsonWriter w)
+    {
+        w.WriteStartObject();
+        w.WriteString("name", "documentType");
+        w.WriteString("in", "path");
+        w.WriteBoolean("required", true);
+        w.WriteString("description",
+            "رمز نوع المستند من المجموعة المغلقة. / The document type code from the closed set.");
+        w.WriteStartObject("schema");
+        w.WriteString("type", "string");
+        w.WriteStartArray("enum");
+        foreach (string code in DocumentTypeCodes)
+        {
+            w.WriteStringValue(code);
+        }
+
+        w.WriteEndArray();
+        w.WriteEndObject();
+        w.WriteEndObject();
+    }
+
+    /// <summary>أعضاء تعداد جواب مراكز التكلفة، مقروءةً من التعداد نفسه لا من قائمة مكتوبة هنا.</summary>
+    private static IReadOnlyList<string> CostCenterPlans { get; } = Enum.GetNames<CostCenterPlan>();
+
+    /// <summary>أعضاء تعداد حالة مركز التكلفة، مقروءةً من التعداد نفسه.</summary>
+    private static IReadOnlyList<string> CostCenterStates { get; } = Enum.GetNames<CostCenterState>();
+
+    private static void WriteCostCenterCodeParameter(Utf8JsonWriter w)
+    {
+        w.WriteStartObject();
+        w.WriteString("name", "costCenterCode");
+        w.WriteString("in", "path");
+        w.WriteBoolean("required", true);
+        w.WriteString("description",
+            "رمز مركز التكلفة كما سكّه الخادم. معرّف لا نصّ معروض: لا يُترجَم ولا يتغيّر بإعادة التسمية. / "
+            + "The cost centre code as the server minted it. An identifier, not displayed text: never translated, and unchanged by renaming.");
+        w.WriteStartObject("schema");
+        w.WriteString("type", "string");
+        w.WriteString("pattern", "^[a-z0-9._]{1,32}$");
+        w.WriteEndObject();
+        w.WriteEndObject();
+    }
+
+    private static void WriteStringArrayProperty(Utf8JsonWriter w, string name, string ar, string en, int maxLength)
+    {
+        w.WriteStartObject(name);
+        w.WriteString("type", "array");
+        w.WriteStartObject("items");
+        w.WriteString("type", "string");
+        w.WriteNumber("maxLength", maxLength);
+        w.WriteEndObject();
+        w.WriteString("description", ar + " / " + en);
+        w.WriteEndObject();
+    }
+
+    private static void WriteEnumArrayProperty(Utf8JsonWriter w, string name, string ar, string en, IReadOnlyList<string> members)
+    {
+        w.WriteStartObject(name);
+        w.WriteString("type", "array");
+        w.WriteStartObject("items");
+        w.WriteString("type", "string");
+        w.WriteStartArray("enum");
+        foreach (string member in members)
+        {
+            w.WriteStringValue(member);
+        }
+
+        w.WriteEndArray();
+        w.WriteEndObject();
+        w.WriteString("description", ar + " / " + en);
         w.WriteEndObject();
     }
 
@@ -422,6 +620,222 @@ internal static class OpenApiEmitter
             w.WriteBoolean("additionalProperties", false);
         });
 
+        yield return ("CapabilitySwitch", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "مفتاح قدرة واحد. / One capability switch.");
+            w.WriteStartObject("properties");
+            WriteEnumProperty(w, "capability", "رمز القدرة من المجموعة المغلقة.", "The capability code from the closed set.", CapabilityCodes);
+            WriteBooleanProperty(w, "enabled", "مُشغَّلة أم لا.", "Enabled or not.");
+            w.WriteEndObject();
+            WriteRequired(w, "capability", "enabled");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("DocumentProfile", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "ملفّ نوع مستند واحد كما يُرسله العميل. **قائمة مفاتيح لا خريطة حرّة**: المفتاح من تعداد معلن، "
+                + "فلا يمرّ اسم لم يقصده أحد ولا يُقرأ مفتاحان بالاسم نفسه. / "
+                + "One document type's profile as the client sends it. **A list of switches, not a free-form map**: the key comes "
+                + "from a declared enumeration, so no unintended name passes and no two keys share a name.");
+            w.WriteStartObject("properties");
+            WriteEnumProperty(w, "documentType", "رمز نوع المستند.", "The document type code.", DocumentTypeCodes);
+            WriteArrayRefProperty(w, "capabilities", "CapabilitySwitch", "مفاتيح القدرات.", "The capability switches.");
+            WriteArrayRefProperty(w, "defaults", "NameValue", "القيم الافتراضية، ومفاتيحها حقول من شكل المستند حصراً.", "The defaults; their keys are fields of the document shape only.");
+            w.WriteEndObject();
+            WriteRequired(w, "capabilities", "documentType");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("PutCapabilityProfileRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteStartObject("properties");
+            WriteArrayRefProperty(w, "documents", "DocumentProfile", "أنواع المستندات.", "The document types.");
+            WriteNullableStringProperty(w, "withdrawalReason",
+                "سبب سحب قدرة. إلزامي متى أطفأ الطلب قدرةً كانت مُشغَّلة، ومهمَل فيما عدا ذلك؛ وثمانية محارف على الأقل — «لا سبب» ليس سبباً.",
+                "The reason for withdrawing a capability. Required whenever the request disables a previously enabled capability, ignored otherwise; at least eight characters — 'no reason' is not a reason.",
+                ProfileLimits.MaximumReasonLength);
+            w.WriteEndObject();
+            WriteRequired(w, "documents");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("DocumentShape", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "شكل مستند **مُشتقّاً** من (هذه الوثيقة × الملفّ). ولاحظ ما ليس فيه: لا تخطيط، ولا ترتيب بصري، ولا شرط، ولا تعبير — "
+                + "تلك أبواب «المنصّة داخل المنصّة» التي رُفضت. / "
+                + "A document's shape **derived** from (this document x the profile). Note what is absent: no layout, no visual order, "
+                + "no condition, no expression — those are the inner-platform doors that were rejected.");
+            w.WriteStartObject("properties");
+            WriteEnumProperty(w, "documentType", "رمز نوع المستند.", "The document type code.", DocumentTypeCodes);
+            WriteStringProperty(w, "nameAr",
+                "الاسم بالعربية. **إلزامي وهو الارتداد المضمون**: العربية شكل السجلّ لا تفضيل عرض، والنظام السعودي يوجب مسك الدفاتر بها. "
+                + "وحين لا تتوفّر ترجمة يُعرض هذا النصّ — لا المفتاح ولا الفراغ.",
+                "The Arabic name. **Mandatory, and the guaranteed fallback**: Arabic is the form of the record, not a display preference, "
+                + "and Saudi law requires the books to be kept in it. When no translation is available this text is displayed — never the key and never a blank.",
+                200);
+            WriteStringProperty(w, "nameKey",
+                "مفتاح الترجمة. تعدّد اللغات هنا يعني الترجمة إلى **أيّ عدد** من اللغات، لا ثنائية عربي/إنجليزي — فلا حقل لغة ثانية في هذا المخطّط.",
+                "The translation key. Multilingualism here means translation into **any number** of languages, not an Arabic/English pair — so this schema carries no second-language field.",
+                128);
+            WriteEnumProperty(w, "module", "الوحدة المالكة.", "The owning module.", Enum.GetNames<BabelModule>());
+            WriteEnumArrayProperty(w, "availableCapabilities", "كل قدرات هذا النوع في الكتالوج المغلق.", "Every capability of this type in the closed catalogue.", CapabilityCodes);
+            WriteEnumArrayProperty(w, "enabledCapabilities", "المُشغَّل منها لهذه الشركة.", "Those enabled for this company.", CapabilityCodes);
+            WriteStringArrayProperty(w, "fields", "حقول المستند بهذا الملفّ — الأساسية وحقول القدرات المُشغَّلة، مرتَّبة حرفياً.", "The document's fields under this profile — the base fields plus the fields of enabled capabilities, ordinally sorted.", 64);
+            WriteArrayRefProperty(w, "defaults", "NameValue", "القيم الافتراضية.", "The defaults.");
+            w.WriteEndObject();
+            WriteRequired(w, "availableCapabilities", "defaults", "documentType", "enabledCapabilities", "fields", "module", "nameAr", "nameKey");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("CapabilityProfile", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteStartObject("properties");
+            WriteArrayRefProperty(w, "documents", "DocumentShape", "الأشكال مرتَّبة بنوع المستند.", "The shapes ordered by document type.");
+            w.WriteEndObject();
+            WriteRequired(w, "documents");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("AdmitDocumentRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "أسماء حقول المستند لا قيمها: القبول حكمٌ على الشكل، ولا يعبر منه مبلغ. / "
+                + "The document's field names, not its values: admission is a verdict on shape and no amount crosses it.");
+            w.WriteStartObject("properties");
+            WriteStringArrayProperty(w, "fields", "أسماء الحقول الموجودة على المستند.", "The names of the fields present on the document.", 64);
+            w.WriteEndObject();
+            WriteRequired(w, "fields");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("DocumentAdmission", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteStartObject("properties");
+            WriteEnumProperty(w, "documentType", "رمز نوع المستند.", "The document type code.", DocumentTypeCodes);
+            WriteBooleanProperty(w, "admitted", "مقبول. والرفض يخرج مشكلةً بالرمز 422 لا حكماً في هذا الحقل.", "Admitted. A refusal leaves as a 422 problem, never as a verdict in this field.");
+            WriteStringArrayProperty(w, "fields", "الحقول المقبولة مرتَّبة.", "The admitted fields, ordinally sorted.", 64);
+            w.WriteEndObject();
+            WriteRequired(w, "admitted", "documentType", "fields");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("InitialiseCompanySetupRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "تأسيس المنشأة كما يصل من العميل. **يُقبل مرّة واحدة**، والثانية 409. / "
+                + "The company setup as the client sends it. **Accepted once**; a second attempt is 409.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "companyNameAr",
+                "اسم المنشأة بالعربية. **إلزامي وهو السجلّ** لا ترجمةً أولى (ADR-0021) — ومع الجواب One يصير هو اسم مركز التكلفة الافتراضي بعينه.",
+                "The company's Arabic name. **Mandatory, and it is the record** rather than a first translation (ADR-0021) — with the One answer it becomes the default cost centre's own name.",
+                CompanySetupLimits.MaximumNameLength);
+            WriteArrayRefProperty(w, "companyNameTranslations", "NameValue",
+                "ترجمات اسم المنشأة، مفاتيحها أوسمة BCP-47. صفوف لا أعمدة: إضافة لغة إدخالُ مدخل لا هجرةُ مخطّط.",
+                "The company name's translations, keyed by BCP-47 tags. Rows, not columns: adding a language is an entry, not a schema migration.");
+            WriteEnumProperty(w, "costCenters",
+                "الجواب عن سؤال مراكز التكلفة: One = مركز واحد يحمل اسم المنشأة · Multiple = عدّة، واسم الأول إلزامي.",
+                "The answer to the cost-centre question: One = a single centre carrying the company name; Multiple = several, and the first one's name is mandatory.",
+                CostCenterPlans);
+            WriteIntegerProperty(w, "decimalPlaces", DisplayScale.Minimum, DisplayScale.Maximum,
+                "عدد الخانات العشرية المعروضة. يُسنَد هنا ولا يُعدَّل بعدها. ويحكم العرض والإدخال البشري وحدهما — لا التخزين ولا الحساب.",
+                "The number of displayed decimal places. Assigned here and never editable afterwards. It governs display and human input only — never storage and never arithmetic.");
+            WriteNullableStringProperty(w, "firstCostCenterNameAr",
+                "اسم أول مركز تكلفة بالعربية. إلزامي مع Multiple، ومرفوض مع One لأن اسمه هناك اسم المنشأة بعينه.",
+                "The first cost centre's Arabic name. Required with Multiple, refused with One because its name there is the company's own.",
+                CompanySetupLimits.MaximumNameLength);
+            WriteArrayRefProperty(w, "firstCostCenterTranslations", "NameValue",
+                "ترجمات اسم أول مركز.", "The first centre name's translations.");
+            w.WriteEndObject();
+            WriteRequired(w, "companyNameAr", "costCenters", "decimalPlaces");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("CostCenterNameRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "اسم مركز تكلفة — للإضافة أو لإعادة التسمية. ولا رمز فيه: الرمز يسكّه الخادم ولا يتغيّر. / "
+                + "A cost centre's name — to add one or to rename one. It carries no code: the server mints the code and the code never changes.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "nameAr",
+                "الاسم بالعربية. **إلزامي وهو الارتداد المضمون** حين لا تتوفّر ترجمة.",
+                "The Arabic name. **Mandatory, and the guaranteed fallback** when no translation is available.",
+                CompanySetupLimits.MaximumNameLength);
+            WriteArrayRefProperty(w, "nameTranslations", "NameValue",
+                "الترجمات، مفاتيحها أوسمة BCP-47.", "The translations, keyed by BCP-47 tags.");
+            w.WriteEndObject();
+            WriteRequired(w, "nameAr");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("SuspendCostCenterRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "reason",
+                "السبب المكتوب للإيقاف — ثمانية محارف على الأقل. «لا سبب» ليس سبباً، والإيقاف حالة عملٍ يضبطها إنسان ويُسجَّل بمن فعلها.",
+                "The written reason for the suspension — at least eight characters. 'No reason' is not a reason; suspension is a business state a person sets and it is recorded with its actor.",
+                CompanySetupLimits.MaximumReasonLength);
+            w.WriteEndObject();
+            WriteRequired(w, "reason");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("CostCenter", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "code",
+                "الرمز — الهوية الثابتة التي تحملها سطور القيود. لا يتغيّر بإعادة التسمية ولا يُترجَم.",
+                "The code — the stable identity that journal lines carry. Unchanged by renaming and never translated.",
+                CostCenterCode.MaximumLength);
+            WriteBooleanProperty(w, "isDefault",
+                "هل هو المركز الافتراضي؟ واحد فقط يحمل true، وواحد دائماً — ولا يُوقَف ما دام كذلك.",
+                "Is this the default centre? Exactly one carries true, and always one — and it is never suspended while it is.");
+            WriteStringProperty(w, "nameAr", "الاسم بالعربية — الارتداد المضمون.", "The Arabic name — the guaranteed fallback.", CompanySetupLimits.MaximumNameLength);
+            WriteArrayRefProperty(w, "nameTranslations", "NameValue", "الترجمات مرتَّبة بالوسم.", "The translations ordered by tag.");
+            WriteEnumProperty(w, "state",
+                "الحالة: Active يُختار على مستند جديد · Suspended لا يُختار ويبقى مقروءاً ومُبوَّباً في التقارير السابقة.",
+                "The state: Active is selectable on a new document; Suspended is not, and stays readable and a grouping key in earlier reports.",
+                CostCenterStates);
+            WriteStringProperty(w, "suspensionReason", "سبب الإيقاف مكتوباً، أو نصّ فارغ.", "The written suspension reason, or an empty string.", CompanySetupLimits.MaximumReasonLength);
+            w.WriteEndObject();
+            WriteRequired(w, "code", "isDefault", "nameAr", "nameTranslations", "state", "suspensionReason");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("CompanySetup", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "تأسيس المنشأة كما يُقرأ. **defaultCostCenter غير فارغ أبداً** وcostCenters لا تكون فارغة أبداً — الثابتة مفروضة "
+                + "في النواة بغياب عملية حذف، لا بفحص عند مستدعٍ. / "
+                + "The company setup as read. **defaultCostCenter is never empty** and costCenters is never empty — the invariant is enforced in the "
+                + "core by the absence of any delete operation, not by a caller-side check.");
+            w.WriteStartObject("properties");
+            WriteArrayRefProperty(w, "costCenters", "CostCenter", "مراكز التكلفة كلّها — العاملة والموقوفة — مرتَّبة برمزها.", "All cost centres — active and suspended — ordered by code.");
+            WriteIntegerProperty(w, "decimalPlaces", DisplayScale.Minimum, DisplayScale.Maximum,
+                "عدد الخانات العشرية المعروضة. عرضٌ وإدخالٌ بشري فقط: المبالغ على السلك تبقى بمقياس Money، والتخزين بأربع خانات.",
+                "The number of displayed decimal places. Display and human input only: amounts on the wire keep the Money scale, and storage stays at four places.");
+            WriteStringProperty(w, "defaultCostCenter", "رمز المركز الافتراضي.", "The default centre's code.", CostCenterCode.MaximumLength);
+            WriteStringProperty(w, "nameAr", "اسم المنشأة بالعربية.", "The company's Arabic name.", CompanySetupLimits.MaximumNameLength);
+            WriteArrayRefProperty(w, "nameTranslations", "NameValue", "ترجمات اسم المنشأة.", "The company name's translations.");
+            w.WriteEndObject();
+            WriteRequired(w, "costCenters", "decimalPlaces", "defaultCostCenter", "nameAr", "nameTranslations");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
         yield return ("SourceDocument", static w =>
         {
             w.WriteString("type", "object");
@@ -437,9 +851,23 @@ internal static class OpenApiEmitter
         yield return ("Scope", static w =>
         {
             w.WriteString("type", "object");
+            w.WriteString("description",
+                "النطاق التحليلي للسطر. و costCenterId **اختياري وغير قابل لأن يكون null**: حذف الحقل يعني «المركز "
+                + "الافتراضي لهذه المنشأة»، وهو افتراض معلن لا صمت. أما القيمة null فلا معنى لها — لكل منشأة مركز "
+                + "تكلفة واحد على الأقل، ولا سطر بلا مركز، ورمزٌ يُرسَل null كان يقول «بلا مركز» وهي حالة لا وجود "
+                + "لها في النظام. / The line's analytical scope. costCenterId is **optional but never null**: omitting "
+                + "the field means 'this company's default centre', a published default rather than silence. The value "
+                + "null has no meaning — every company has at least one cost centre and no line is without one, so a "
+                + "null said 'no centre', a state that does not exist in the system.");
             w.WriteStartObject("properties");
             WriteNullableStringProperty(w, "branchId", "الفرع.", "The branch.", 64);
-            WriteNullableStringProperty(w, "costCenterId", "مركز التكلفة.", "The cost centre.", 64);
+            WriteStringProperty(w, "costCenterId",
+                "مركز التكلفة. اتركه محذوفاً ليُرحَّل السطر على المركز الافتراضي للمنشأة، أو سمِّ مركزاً عاملاً. "
+                + "والمركز المُسمّى غير الموجود يُرفض بـcost_center.not_found، والموقوف بـ"
+                + "cost_center.already_suspended — ولا يرتدّ أيّهما إلى الافتراضي بصمت.",
+                "The cost centre. Omit it to post the line on the company's default centre, or name an active centre. "
+                + "A named centre that does not exist is refused with cost_center.not_found and a suspended one with "
+                + "cost_center.already_suspended — neither falls back to the default silently.", 64);
             WriteNullableStringProperty(w, "projectId", "المشروع.", "The project.", 64);
             w.WriteEndObject();
             w.WriteBoolean("additionalProperties", false);
@@ -601,10 +1029,21 @@ internal static class OpenApiEmitter
             WriteStringProperty(w, "accountCode", "رمز الحساب كما هو في دليل حسابات هذه الشركة.", "The account code as it stands in this company's chart of accounts.", 32);
             WriteRefProperty(w, "credit", "Money");
             WriteRefProperty(w, "debit", "Money");
-            WriteStringProperty(w, "nameAr", "الاسم العربي.", "The Arabic name.", 256);
-            WriteStringProperty(w, "nameEn", "الاسم الإنجليزي.", "The English name.", 256);
+            WriteStringProperty(w, "nameAr",
+                "الاسم العربي — وهو السجلّ لا ترجمةً أولى، وغير فارغ أبداً (ADR-0021).",
+                "The Arabic name; it is the record rather than a first translation, and is never blank (ADR-0021).", 256);
+            WriteArrayRefProperty(w, "nameTranslations", "NameValue",
+                "ترجمات اسم الحساب: الاسم وسم لغة BCP-47 والقيمة النصّ المترجَم، مرتَّبةً بالوسم ترتيباً حرفياً "
+                + "ثابتاً. وقد تكون فارغة — والعرض يرتدّ حينها إلى الاسم العربي، وهو ارتداد **يُعلَن** لا يقع صامتاً. "
+                + "و**الإنجليزية واحدة من هذه الترجمات لا حقلاً مستقلاً**: من أرادها قرأ المدخل ذا الوسم en، "
+                + "وغيابه غيابُ ترجمة إنجليزية لا غيابُ اسم.",
+                "The account name's translations: the name is a BCP-47 language tag and the value is the translated "
+                + "text, ordered by tag with a stable ordinal sort. It may be empty, in which case display falls back "
+                + "to the Arabic name — a fallback that is declared, never silent. **English is one of these "
+                + "translations rather than a field of its own**: read the entry tagged 'en', whose absence means "
+                + "there is no English translation, not that there is no name.");
             w.WriteEndObject();
-            WriteRequired(w, "accountCode", "credit", "debit", "nameAr", "nameEn");
+            WriteRequired(w, "accountCode", "credit", "debit", "nameAr", "nameTranslations");
             w.WriteBoolean("additionalProperties", false);
         });
 
@@ -906,7 +1345,17 @@ internal static class OpenApiEmitter
         + "التعديل بتاريخه وسببه في سجل القرارات لا أن يمرّ صامتاً.\n"
         + "• تعديل مُسجَّل — 2026-08-24: صار الحقل event إلزامياً في PostJournalEntryRequest. وهو تضييق يفرض v2 "
         + "بنصّ السياسة، ونُفِّذ في v1 في مكانه لأن العقد لم يُنشر بعد لأي مستهلك ولا يوجد عميل مطابق واحد. "
-        + "السبب: رمز الحدث جزء من هوية الترحيل، وغيابه يبتلع حدثاً محاسبياً بصمت (ADR-0016 · ADR-0018).\n\n"
+        + "السبب: رمز الحدث جزء من هوية الترحيل، وغيابه يبتلع حدثاً محاسبياً بصمت (ADR-0016 · ADR-0018).\n"
+        + "• تعديل مُسجَّل — 2026-08-26: حُذف الحقل nameEn من TrialBalanceRow. وهو حذف حقل يفرض v2 بنصّ السياسة، "
+        + "ونُفِّذ في v1 في مكانه للسبب نفسه: لا مستهلك ولا عميل مطابق. السبب: تعدّد اللغات قابلية الترجمة إلى "
+        + "أيّ عدد من اللغات، والإنجليزية واحدة من N لا نصف الاثنين — وحقلٌ ثابت لها على السلك يمنحها امتيازاً "
+        + "بنيوياً ينفيه القرار، ويجعل المحاسب الأردي أو الهندي يقرأ إنجليزيةً بدل لغته. وnameTranslations "
+        + "يحمل كل لغة بما فيها الإنجليزية (ADR-0021 بند 2 · ADR-0018).\n"
+        + "• تعديل مُسجَّل — 2026-08-26: ضاق نوع Scope.costCenterId من [string, null] إلى string. وهو تضييق نوع "
+        + "يفرض v2 بنصّ السياسة، ونُفِّذ في v1 في مكانه للسبب نفسه: لا مستهلك ولا عميل مطابق. الحقل يبقى "
+        + "**اختيارياً** — حذفه يعني المركز الافتراضي للمنشأة — لكن القيمة null لا معنى لها: لكل منشأة مركز "
+        + "تكلفة واحد على الأقل ولا سطر بلا مركز، فـnull كان يقول «بلا مركز» وهي حالة لا وجود لها. "
+        + "والقيد ck_journal_line_cost_center_present يفرض ذلك في قاعدة البيانات نفسها (ADR-0026 · ADR-0018).\n\n"
         + "Total isolation between front end and back end: this document is everything a front-end team needs; it reads no back-end code.\n\n"
         + "Versioning policy — what stays in v1 and what forces v2:\n"
         + "• Stays in v1: adding an endpoint; adding an optional response field; adding an optional request field with a published default; "
@@ -922,7 +1371,17 @@ internal static class OpenApiEmitter
         + "• Recorded amendment — 2026-08-24: the event field became required on PostJournalEntryRequest. That is a narrowing which the "
         + "policy text forces to v2, and it was made in v1 in place because the contract has not yet been published to any consumer and "
         + "no conforming client exists. Reason: the event code is part of the posting identity, and its absence swallows an accounting "
-        + "event silently (ADR-0016, ADR-0018).";
+        + "event silently (ADR-0016, ADR-0018).\n"
+        + "• Recorded amendment — 2026-08-26: the nameEn field was removed from TrialBalanceRow. Removing a field is a change the policy "
+        + "text forces to v2, and it was made in v1 in place for the same reason: no consumer and no conforming client. Reason: "
+        + "multilingualism means translatability into any number of languages, and English is one of N rather than half of two — a fixed "
+        + "field for it on the wire grants it a structural privilege the decision denies, and leaves an Urdu or Hindi accountant reading "
+        + "English instead of their own language. nameTranslations carries every language, English included (ADR-0021 clause 2, ADR-0018).\n"
+        + "• Recorded amendment — 2026-08-26: the type of Scope.costCenterId narrowed from [string, null] to string. Narrowing a type is a "
+        + "change the policy text forces to v2, and it was made in v1 in place for the same reason: no consumer and no conforming client. "
+        + "The field stays **optional** — omitting it means the company's default centre — but the value null has no meaning: every company "
+        + "has at least one cost centre and no line is without one, so null said 'no centre', a state that does not exist. The constraint "
+        + "ck_journal_line_cost_center_present enforces this in the database itself (ADR-0026, ADR-0018).";
 
     private sealed record Operation(
         string Path,

@@ -9,4 +9,15 @@
     <ProjectReference Include="../../src/Babel.Core/Babel.Core.csproj" />
   </ItemGroup>
 
+  <!--
+    قاعدة PostgreSQL حقيقية: رفضُ الصلاحيات 42501، ومشغّل ثبات المقياس، وقيود
+    التحقق، وذرّية التأسيس بمفتاح أوّلي — لا شيء منها يظهر بمخزن في الذاكرة.
+  -->
+  <ItemGroup>
+    <PackageReference Include="Npgsql" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+  </ItemGroup>
+
 </Project>

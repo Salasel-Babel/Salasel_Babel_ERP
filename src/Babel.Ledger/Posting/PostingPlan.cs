@@ -28,7 +28,12 @@ internal sealed record PlannedLine
 
     public string? BranchId { get; init; }
 
-    public string? CostCenterId { get; init; }
+    /// <summary>
+    /// مركز التكلفة — <b>إلزامي وغير فارغ</b> (ADR-0026). و<c>required</c> هنا تجعل
+    /// السطر المخطَّط بلا مركز <b>غير قابل للبناء</b>، فلا يبلغ القيد في قاعدة البيانات
+    /// سطرٌ يخالفه إلا من كاتب خارج هذه الشيفرة — وذاك ما يفرضه القيد نفسه.
+    /// </summary>
+    public required string CostCenterId { get; init; }
 
     public string? ProjectId { get; init; }
 

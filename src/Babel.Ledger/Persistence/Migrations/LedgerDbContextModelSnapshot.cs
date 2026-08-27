@@ -146,11 +146,6 @@ namespace Babel.Ledger.Persistence.Migrations
                         .HasDefaultValue("")
                         .HasColumnName("name_ar_search");
 
-                    b.Property<string>("NameEn")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("name_en");
-
                     b.Property<string>("NaturalSide")
                         .IsRequired()
                         .HasColumnType("text")
@@ -207,6 +202,8 @@ namespace Babel.Ledger.Persistence.Migrations
                             t.HasCheckConstraint("ck_account_level", "account_level between 1 and 4");
 
                             t.HasCheckConstraint("ck_account_level_matches_code", "(account_level = 1 and length(account_code) = 1) or (account_level = 2 and length(account_code) = 2) or (account_level = 3 and length(account_code) = 3) or (account_level = 4 and length(account_code) >= 4)");
+
+                            t.HasCheckConstraint("ck_account_name_ar_not_blank", "length(btrim(name_ar)) > 0");
 
                             t.HasCheckConstraint("ck_account_natural_side", "natural_side in ('debit','credit')");
 
@@ -306,11 +303,6 @@ namespace Babel.Ledger.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("name_ar");
 
-                    b.Property<string>("NameEn")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("name_en");
-
                     b.Property<string>("PeriodCode")
                         .IsRequired()
                         .HasColumnType("text")
@@ -336,6 +328,8 @@ namespace Babel.Ledger.Persistence.Migrations
 
                     b.ToTable("fiscal_period", "ledger", t =>
                         {
+                            t.HasCheckConstraint("ck_fiscal_period_name_ar_not_blank", "length(btrim(name_ar)) > 0");
+
                             t.HasCheckConstraint("ck_fiscal_period_range", "ends_on >= starts_on");
 
                             t.HasCheckConstraint("ck_fiscal_period_state", "state in ('open','closed','permanently_closed')");
@@ -659,11 +653,58 @@ namespace Babel.Ledger.Persistence.Migrations
                         {
                             t.HasCheckConstraint("ck_journal_line_company_side", "debit_company = 0 or credit_company = 0");
 
+                            t.HasCheckConstraint("ck_journal_line_cost_center_present", "cost_center_id is not null and length(btrim(cost_center_id)) > 0");
+
                             t.HasCheckConstraint("ck_journal_line_fx_positive", "fx_rate > 0");
 
                             t.HasCheckConstraint("ck_journal_line_one_side", "debit = 0 or credit = 0");
 
                             t.HasCheckConstraint("ck_journal_line_sign", "debit >= 0 and credit >= 0 and debit_company >= 0 and credit_company >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("Babel.Ledger.Persistence.NameTranslationRow", b =>
+                {
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("company_id");
+
+                    b.Property<string>("EntityKind")
+                        .HasColumnType("text")
+                        .HasColumnName("entity_kind");
+
+                    b.Property<string>("EntityKey")
+                        .HasColumnType("text")
+                        .HasColumnName("entity_key");
+
+                    b.Property<string>("LanguageTag")
+                        .HasColumnType("text")
+                        .HasColumnName("language_tag");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("name");
+
+                    b.HasKey("CompanyId", "EntityKind", "EntityKey", "LanguageTag")
+                        .HasName("pk_name_translation");
+
+                    b.HasIndex("CompanyId", "EntityKind", "LanguageTag")
+                        .HasDatabaseName("ix_name_translation_lookup");
+
+                    b.ToTable("name_translation", "ledger", t =>
+                        {
+                            t.HasCheckConstraint("ck_name_translation_key_not_blank", "length(btrim(entity_key)) > 0");
+
+                            t.HasCheckConstraint("ck_name_translation_kind", "entity_kind in ('account','fiscal_period','posting_role','property')");
+
+                            t.HasCheckConstraint("ck_name_translation_name_not_blank", "length(btrim(name)) > 0");
+
+                            t.HasCheckConstraint("ck_name_translation_not_arabic", "lower(language_tag) <> 'ar' and lower(language_tag) not like 'ar-%'");
+
+                            t.HasCheckConstraint("ck_name_translation_scope", "(entity_kind = 'posting_role') = (company_id = '00000000-0000-0000-0000-000000000000'::uuid)");
+
+                            t.HasCheckConstraint("ck_name_translation_tag_shape", "language_tag ~ '^[A-Za-z][A-Za-z0-9]*(-[A-Za-z0-9]+)*$' and length(language_tag) <= 35");
                         });
                 });
 
@@ -721,11 +762,6 @@ namespace Babel.Ledger.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("name_ar");
 
-                    b.Property<string>("NameEn")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("name_en");
-
                     b.Property<string>("NoteAr")
                         .HasColumnType("text")
                         .HasColumnName("note_ar");
@@ -746,6 +782,8 @@ namespace Babel.Ledger.Persistence.Migrations
 
                     b.ToTable("posting_role", "ledger", t =>
                         {
+                            t.HasCheckConstraint("ck_posting_role_name_ar_not_blank", "length(btrim(name_ar)) > 0");
+
                             t.HasCheckConstraint("ck_posting_role_side", "expected_side is null or expected_side in ('debit','credit')");
                         });
                 });
@@ -836,11 +874,6 @@ namespace Babel.Ledger.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("name_ar");
 
-                    b.Property<string>("NameEn")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("name_en");
-
                     b.Property<string>("OwnershipModel")
                         .IsRequired()
                         .HasColumnType("text")
@@ -851,6 +884,8 @@ namespace Babel.Ledger.Persistence.Migrations
 
                     b.ToTable("property_dimension", "ledger", t =>
                         {
+                            t.HasCheckConstraint("ck_property_name_ar_not_blank", "length(btrim(name_ar)) > 0");
+
                             t.HasCheckConstraint("ck_property_ownership_model", "ownership_model in ('own_property','managed_for_others')");
                         });
                 });

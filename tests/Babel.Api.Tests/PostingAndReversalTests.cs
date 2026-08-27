@@ -124,13 +124,45 @@ public sealed class PostingAndReversalTests
             Assert.Equal(HttpStatusCode.MethodNotAllowed, deleted.StatusCode);
         }
 
-        // ولا يوجد في العقد المنشور فعل حذف واحد.
+        // ولا يوجد في العقد المنشور فعل حذف واحد — على أي مسار كان.
         string contract = await Http.ReadTextAsync(
             Path.Combine(RepositoryPaths.Root, "contracts", "openapi", "v1.json"));
 
         Assert.DoesNotContain("\"delete\"", contract, StringComparison.Ordinal);
-        Assert.DoesNotContain("\"put\"", contract, StringComparison.Ordinal);
         Assert.DoesNotContain("\"patch\"", contract, StringComparison.Ordinal);
+
+        // وأفعال الاستبدال تُفحص **بالمسار** لا بالنصّ كلّه: القاعدة هي أن مورد الدفتر
+        // لا يُستبدل ولا يُعدَّل — لا أن الفعل PUT ممنوع في المنتج. وإعداد المستأجر مورد
+        // قابل للاستبدال بطبيعته، ومنعُ الفعل عليه كان سيدفع الاستبدال إلى POST فيضيع
+        // التمييز الذي تقوم عليه هذه القاعدة نفسها.
+        using JsonDocument document = JsonDocument.Parse(contract);
+        List<string> mutable = [];
+
+        foreach (JsonProperty path in document.RootElement.GetProperty("paths").EnumerateObject())
+        {
+            foreach (JsonProperty operation in path.Value.EnumerateObject())
+            {
+                if (operation.Name is "put" or "patch" or "delete")
+                {
+                    mutable.Add(operation.Name + " " + path.Name);
+                }
+            }
+        }
+
+        // والقائمة **محصورة في موارد إعداد المستأجر**: ملفّ القدرات، وتأسيس المنشأة،
+        // واسم مركز التكلفة. ولا واحد منها مورد دفتر.
+        Assert.Equal(
+            [
+                "put /api/v1/companies/{companyId}/capability-profile",
+                "put /api/v1/companies/{companyId}/cost-centers/{costCenterCode}",
+                "put /api/v1/companies/{companyId}/setup",
+            ],
+            mutable);
+
+        foreach (string ledgerPath in new[] { "journal-entries", "trial-balance", "ledger-chain" })
+        {
+            Assert.DoesNotContain(mutable, entry => entry.Contains(ledgerPath, StringComparison.Ordinal));
+        }
     }
 
     [Fact]

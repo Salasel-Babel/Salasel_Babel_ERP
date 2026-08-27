@@ -571,7 +571,10 @@ internal sealed class PostingService : IPostingService, IApplicationService
                     CreditCompany = reader.GetDecimal(6),
                     FxRate = reader.GetDecimal(8),
                     BranchId = reader.IsDBNull(9) ? null : reader.GetString(9),
-                    CostCenterId = reader.IsDBNull(10) ? null : reader.GetString(10),
+                    // سطرٌ قديم سبق الثابتة قد يحمل فراغاً. والعكس حينها **يُرفض باسمه**
+                    // في تخطيط العكس أدناه، لا يُخترَع له مركز ولا يُترك ليُرفض برمز
+                    // 23514 خامّ: عكسُ سطرٍ بلا مركز يحتاج قراراً بشرياً لا افتراضاً.
+                    CostCenterId = reader.IsDBNull(10) ? string.Empty : reader.GetString(10),
                     ProjectId = reader.IsDBNull(11) ? null : reader.GetString(11),
                     PropertyId = reader.IsDBNull(12) ? null : reader.GetString(12),
                     UnitId = reader.IsDBNull(13) ? null : reader.GetString(13),
@@ -584,6 +587,18 @@ internal sealed class PostingService : IPostingService, IApplicationService
                     DescriptionArSearch = ArabicSearch.Normalize(reader.GetString(19)).Value,
                 });
             }
+        }
+
+        // ── سطرٌ سبق الثابتة يُرفض عكسُه باسمه، ولا يُخترَع له مركز ──────────
+        // العكس نسخةٌ من الأصل بجانبين مقلوبين، فسطرٌ أصلي بلا مركز يُنتج سطر عكسٍ
+        // بلا مركز — ترفضه قاعدة البيانات برمز 23514 لا يسمّي شيئاً. والرفض هنا يسمّي
+        // السطر ودوره، ويترك القرار لإنسان: أي مركز يحمل هذا التصحيح؟ (ADR-0026)
+        PlannedLine? unscoped = lines.Find(static line => string.IsNullOrWhiteSpace(line.CostCenterId));
+
+        if (unscoped is not null)
+        {
+            return Result<PostingPlan>.Failure(
+                PostingErrors.MissingCostCenter(unscoped.LineNo, unscoped.RoleCode));
         }
 
         DateOnly reversalDate = request.ReversalDate ?? entryDate;

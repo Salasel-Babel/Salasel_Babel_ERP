@@ -1,5 +1,6 @@
 using Babel.Contracts.Posting;
 using Babel.Core.Application;
+using Babel.Core.CapabilityProfile;
 using Babel.Core.Entitlement;
 using Babel.Sales.Persistence;
 using Babel.SharedKernel;
@@ -29,21 +30,29 @@ public sealed class CustomerReceiptService : IApplicationService
     private readonly IEntitlementEnforcer _enforcer;
     private readonly SalesDbContext _database;
     private readonly SubledgerPostingGateway _gateway;
+    private readonly SalesAdmission _admission;
     private readonly CurrencyCode _currency;
 
     /// <summary>ينشئ الخدمة.</summary>
     /// <param name="enforcer">منفِّذ الاستحقاق.</param>
     /// <param name="runtime">موارد الوحدة.</param>
     /// <param name="posting">محرك الترحيل.</param>
-    public CustomerReceiptService(IEntitlementEnforcer enforcer, SalesRuntime runtime, IPostingService posting)
+    /// <param name="profiles">مخزن ملفّات القدرات — بوابة القبول (ADR-0023).</param>
+    public CustomerReceiptService(
+        IEntitlementEnforcer enforcer,
+        SalesRuntime runtime,
+        IPostingService posting,
+        ICapabilityProfileStore profiles)
     {
         ArgumentNullException.ThrowIfNull(enforcer);
         ArgumentNullException.ThrowIfNull(runtime);
         ArgumentNullException.ThrowIfNull(posting);
+        ArgumentNullException.ThrowIfNull(profiles);
         _enforcer = enforcer;
         _database = runtime.Database;
         _currency = CurrencyCode.FromString(runtime.Options.CompanyCurrency);
-        _gateway = new SubledgerPostingGateway(_database, posting);
+        _gateway = new SubledgerPostingGateway(_database, posting, runtime.CostCenters);
+        _admission = new SalesAdmission(profiles);
     }
 
     /// <summary>يسجّل سند قبض بتخصيصاته. الترحيل خطوة مستقلة.</summary>
@@ -288,6 +297,14 @@ public sealed class CustomerReceiptService : IApplicationService
             return Result<SalesDocumentView>.Failure(gate.Errors);
         }
 
+        // القدرة وحدة واحدة: القبض والاستنفاد حدثان تفتحهما القدرة نفسها. ومسوّدةُ
+        // دفعةٍ لمستأجرٍ أطفأ القدرة رصيدٌ لا سبيل إلى تخليصه — ترفض من أوّلها.
+        Result<AdmittedDocument> admitted = await AdmitAdvanceAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (admitted.IsFailure)
+        {
+            return Result<SalesDocumentView>.Failure(admitted.Errors);
+        }
+
         if (draft.Net.Amount < 0m || draft.Tax.Amount < 0m)
         {
             return Result<SalesDocumentView>.Failure(SalesErrors.NegativeAmount);
@@ -338,9 +355,22 @@ public sealed class CustomerReceiptService : IApplicationService
             .EnsureAsync(tenant, actor, BabelModule.Sales, EntitlementAccess.Write, "Sales.Advance.Post", cancellationToken)
             .ConfigureAwait(false);
 
+        Result<AdmittedDocument> admittedAdvance = await AdmitAdvanceAsync(tenant, cancellationToken).ConfigureAwait(false);
+
         if (gate.IsFailure)
         {
             return Result<SalesDocumentView>.Failure(gate.Errors);
+        }
+
+        if (admittedAdvance.IsFailure)
+        {
+            return Result<SalesDocumentView>.Failure(admittedAdvance.Errors);
+        }
+
+        Result covers = SalesAdmission.EnsureCovers(admittedAdvance.Value, SalesAdmission.AdvanceAppliedField);
+        if (covers.IsFailure)
+        {
+            return Result<SalesDocumentView>.Failure(covers.Errors);
         }
 
         CustomerAdvanceRow? advance = await _database.Advances
@@ -428,6 +458,43 @@ public sealed class CustomerReceiptService : IApplicationService
         if (gate.IsFailure)
         {
             return Result<PostingReceipt>.Failure(gate.Errors);
+        }
+
+        // القبول قبل أي قراءة أو كتابة: استنفاد دفعة مقدمة يجعل الفاتورة تحمل الحقل
+        // ‏advanceApplied، وهو حقل قدرة «دفعة مقدمة من العميل». ومستأجرٌ أطفأها لا
+        // يمارسها بإرسال الحقل — وإلا فهي زينة لا قدرة.
+        Result<AdmittedDocument> admitted = await AdmitAdvanceAsync(tenant, cancellationToken).ConfigureAwait(false);
+
+        if (admitted.IsFailure)
+        {
+            return Result<PostingReceipt>.Failure(admitted.Errors);
+        }
+
+        return await ApplyAdmittedAdvanceAsync(
+            tenant, actor, admitted.Value, advanceId, invoiceId, amount, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// <b>الكاتب الوحيد لاستنفاد الدفعة المقدمة — ويطلب <see cref="AdmittedDocument"/> في توقيعه.</b>
+    /// <para>
+    /// وهذا هو موضع الإنفاذ: النوع لا يُبنى إلا بالمرور من قبول ملفّ المستأجر، فمن أراد
+    /// أن يستنفد دفعة مقدمة وجب عليه أن يحمل قبولاً — لا أن يتذكّر أن يستدعي فحصاً.
+    /// </para>
+    /// </summary>
+    private async ValueTask<Result<PostingReceipt>> ApplyAdmittedAdvanceAsync(
+        TenantId tenant,
+        UserId actor,
+        AdmittedDocument admitted,
+        Guid advanceId,
+        Guid invoiceId,
+        Money amount,
+        CancellationToken cancellationToken)
+    {
+        // وتذكرة مستند آخر ليست تذكرة هذا المستند.
+        Result covers = SalesAdmission.EnsureCovers(admitted, SalesAdmission.AdvanceAppliedField);
+        if (covers.IsFailure)
+        {
+            return Result<PostingReceipt>.Failure(covers.Errors);
         }
 
         CustomerAdvanceRow? advance = await _database.Advances
@@ -522,6 +589,16 @@ public sealed class CustomerReceiptService : IApplicationService
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return posted;
     }
+
+    /// <summary>
+    /// يعرض «فاتورة تحمل استنفاد دفعة مقدمة» على ملفّ المستأجر. مسار واحد لكل أفعال
+    /// القدرة الثلاثة — القبض والترحيل والاستنفاد — لأن القدرة واحدة والأحداث اثنان.
+    /// </summary>
+    private ValueTask<Result<AdmittedDocument>> AdmitAdvanceAsync(TenantId tenant, CancellationToken cancellationToken)
+        => _admission.AdmitInvoiceAsync(
+            tenant,
+            [SalesAdmission.CustomerField, SalesAdmission.LinesField, SalesAdmission.AdvanceAppliedField],
+            cancellationToken);
 
     private SalesDocumentView ViewOfReceipt(CustomerReceiptRow receipt) => new(
         receipt.Id,

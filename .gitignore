@@ -11,6 +11,15 @@ secrets/
 # البناء
 bin/
 obj/
+
+# وناتج البناء نفسه مكتوباً بفاصل مسار **ويندوزي**: مضيف بناء MSBuild يكتب أحياناً
+# `bin\\Debug` مقطعاً واحداً فيه شرطة خلفية، فلا يطابقه النمط `bin/` أعلاه ولا أي
+# نمط يبحث عن `/bin/`. وقد أُودعت 45 قطعة بهذا الطريق مرّةً (‏839 ميغابايت)، وكانت
+# **تُفشل بناء نسخة جديدة** بـMSB3552. والحارس الحقيقي اختبارٌ لا هذا السطر:
+# tests/Babel.ArchitectureTests/RepositoryContainsNoBuildOutput.cs
+*\\Debug/
+*\\Release/
+**/BuildHost-net*/
 [Bb]in/
 [Oo]bj/
 TestResults/
@@ -24,6 +33,9 @@ node_modules/
 
 # السجلات والمؤقتات
 *.log
+# معرّفات عمليات التشغيل المحلي (deploy/up.sh) — حالةُ جهازٍ لا شيفرة
+deploy/.*.pid
+deploy/previous.tag
 logs/
 tmp/
 .cache/

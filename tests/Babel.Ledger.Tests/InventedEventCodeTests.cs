@@ -184,14 +184,14 @@ public sealed class InventedEventCodeTests : IAsyncLifetime
                 Role = PostingRole.RoundingDifference,
                 Side = PostingSide.Debit,
                 Amount = SharedKernel.Money.Of(100.0000m, CurrencyCode.Sar),
-                Scope = new PostingScope("BR-01", null, null),
+                Scope = new PostingScope("cc.001", "BR-01"),
             },
             new PostingLine
             {
                 Role = PostingRole.RoundingDifference,
                 Side = PostingSide.Credit,
                 Amount = SharedKernel.Money.Of(100.0000m, CurrencyCode.Sar),
-                Scope = new PostingScope("BR-01", null, null),
+                Scope = new PostingScope("cc.001", "BR-01"),
             },
         ],
         Actor = new UserId(new Guid("11111111-1111-4111-8111-111111111111")),

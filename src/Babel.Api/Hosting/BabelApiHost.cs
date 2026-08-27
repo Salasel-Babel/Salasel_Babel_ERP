@@ -45,7 +45,12 @@ internal static class BabelApiHost
         });
 
         // النواة أولاً: الاستحقاق وقياس الاستخدام والتدقيق. إلزامية دائماً.
-        builder.Services.AddBabelCore();
+        //
+        // ‏**بالتحميل الزائد الذي يأخذ إعدادات — أي بمخزنَين فوق PostgreSQL.** والنسخة
+        // بلا وسيط تسجّل مخزنين في الذاكرة عمرهما عمر العملية، وهي حالة كانت تعني أن
+        // خادماً أُعيد إقلاعه يردّ **كل** ترحيل بـ`company_setup.not_found` بينما تعمل
+        // شاشات القراءة كلّها — فتُقرأ الميزانية ولا تُكتب فاتورة (ADR-0026 · ADR-0029).
+        builder.Services.AddBabelCore(options => ApplyCoreConfiguration(builder.Configuration, options));
 
         // الدفتر: يسجّل IPostingService و LedgerAuditService. أنواعه الداخلية
         // (‏LedgerDbContext, AccountCode) لا تُرى هنا ولا يمكن أن تُرى.
@@ -72,6 +77,8 @@ internal static class BabelApiHost
         app.UseUnhandledFailureGuard();
         app.UseBabelAuthentication();
         app.MapLedgerApi();
+        app.MapCapabilityProfileApi();
+        app.MapCompanySetupApi();
 
         return app;
     }
@@ -134,6 +141,25 @@ internal static class BabelApiHost
                 throw new InvalidOperationException(
                     "رُفض استحقاق الإقلاع: " + string.Join(" · ", applied.Errors.Select(static e => e.ToString())));
             }
+        }
+    }
+
+    /// <summary>
+    /// يقرأ إعداد النواة. <b>ولا يقرأ اتصال المالك ولا يوجد له مفتاح</b>: خادمٌ يحمل
+    /// اتصال المالك يستطيع أن يُسقط مشغّل ثبات المقياس ثم يكتب ما شاء (ADR-0003).
+    /// </summary>
+    private static void ApplyCoreConfiguration(ConfigurationManager configuration, CoreOptions options)
+    {
+        string? app = configuration["Babel:Core:AppConnectionString"];
+        if (!string.IsNullOrWhiteSpace(app))
+        {
+            options.AppConnectionString = app;
+        }
+
+        string? role = configuration["Babel:Core:AppRole"];
+        if (!string.IsNullOrWhiteSpace(role))
+        {
+            options.AppRole = role;
         }
     }
 

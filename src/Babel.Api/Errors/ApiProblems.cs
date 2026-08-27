@@ -60,6 +60,22 @@ internal static class ApiProblems
 
             "ledger.posting.missing_tenant" or "ledger.posting.missing_idempotency_key" => 400,
 
+            "company_setup.not_found" => 404,
+            "company_setup.already_initialised" => 409,
+
+            "cost_center.not_found" => 404,
+            "cost_center.default_cannot_be_suspended" => 409,
+            "cost_center.already_suspended" or "cost_center.already_active" => 409,
+
+            "capability_profile.not_found" => 404,
+            "capability_profile.capability_withdrawal_requires_acknowledgement" => 409,
+
+            _ when code.StartsWith("company_setup.", StringComparison.Ordinal) => 422,
+            _ when code.StartsWith("cost_center.", StringComparison.Ordinal) => 422,
+
+            _ when code.StartsWith("capability_profile.", StringComparison.Ordinal) => 422,
+            _ when code.StartsWith("document_admission.", StringComparison.Ordinal) => 422,
+
             _ when code.StartsWith("wire.", StringComparison.Ordinal) => 400,
             _ when code.StartsWith("auth.", StringComparison.Ordinal) => 401,
             _ when code.StartsWith("tenancy.", StringComparison.Ordinal) => 403,

@@ -21,6 +21,9 @@
 
   <ItemGroup Label="الاستضافة وحقن الاعتماديات">
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.11" />
+    <!-- الحاوية نفسها (لا عقدها وحده): يحتاجها مُنشئ الشركة التجريبية تحت demo/ كي
+         يركّب الوحدات بالطريق المعلَن AddBabel<Module> بدل بلوغ أنواعها الداخلية. -->
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.11" />
     <PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.11" />
     <!-- تجريد التسجيل وحده: الوحدات تسجّل ولا تختار مزوّد تسجيل. -->
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
@@ -36,6 +39,18 @@
     <PackageVersion Include="WolverineFx" Version="6.29.2" />
     <PackageVersion Include="WolverineFx.Postgresql" Version="6.29.2" />
     <PackageVersion Include="WolverineFx.EntityFrameworkCore" Version="6.29.2" />
+  </ItemGroup>
+
+  <!--
+    التوحيد القياسي لـXML (‏C14N) لمسار الفوترة الإلكترونية — «اشترِ ولا تكتب».
+    الإصدار 10.0.11 مُختار **بالقياس لا بالعادة**: فهرس ثغرات NuGet يسجّل على هذه الحزمة
+    ثمانية تنبيهات مميّزة على 10.0.0 وخمسة ما زالت سارية على 10.0.9، فكل إصدار حتى 10.0.9 يُسقط البناء
+    (‏TreatWarningsAsErrors مع NU1903). أول إصدار خارج كل النطاقات هو 10.0.10، واخترنا
+    10.0.11 لأنه يطابق إصدار بقية حزم المنصّة هنا. القياس في
+    docs/evidence/measurements.md. **لا يُخفَّض هذا الرقم بلا إعادة القياس.**
+  -->
+  <ItemGroup Label="التوحيد القياسي لـXML — مسار الفوترة الإلكترونية">
+    <PackageVersion Include="System.Security.Cryptography.Xml" Version="10.0.11" />
   </ItemGroup>
 
   <ItemGroup Label="الاختبارات وإنفاذ الحدود">

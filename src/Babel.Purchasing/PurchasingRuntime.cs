@@ -1,4 +1,5 @@
 using System.Reflection;
+using Babel.Core.CompanySetup;
 using Babel.Purchasing.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -18,14 +19,24 @@ public sealed class PurchasingRuntime : IDisposable
 
     /// <summary>ينشئ الموارد من الإعدادات.</summary>
     /// <param name="options">إعدادات الوحدة.</param>
-    public PurchasingRuntime(PurchasingOptions options)
+    /// <param name="costCenters">
+    /// حالُّ مركز التكلفة من النواة. <b>بوّابة الترحيل تسأله قبل أن تبني طلباً</b>
+    /// (‏ADR-0026): الوحدة لا تعرف شجرة المراكز ولا المركز الافتراضي، وسؤالُها عنه
+    /// كان سيضع نسخةً ثانية من قاعدة الحلّ في كل وحدة.
+    /// </param>
+    public PurchasingRuntime(PurchasingOptions options, ICostCenterResolver costCenters)
     {
         ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(costCenters);
         Options = options;
+        CostCenters = costCenters;
         _database = Build(options);
     }
 
     internal PurchasingOptions Options { get; }
+
+    /// <summary>حالُّ مركز التكلفة — يُمرَّر إلى بوّابة الترحيل ولا يُقرأ في مكان آخر.</summary>
+    internal ICostCenterResolver CostCenters { get; }
 
     internal PurchasingDbContext Database => _database;
 
@@ -48,7 +59,11 @@ public sealed class PurchasingRuntime : IDisposable
 public static class PurchasingSchemaDeployer
 {
     /// <summary>نصوص الترقية بترتيب تطبيقها.</summary>
-    private static readonly string[] Migrations = ["001_PostingIdentityIncludesEventCode.sql"];
+    private static readonly string[] Migrations =
+    [
+        "001_PostingIdentityIncludesEventCode.sql",
+        "002_SupplierCarriesVatNumber.sql",
+    ];
 
     /// <summary>ينشئ مخطّط <c>purchasing</c> وجداوله إن لم توجد، ثم يُطبّق نصوص الترقية.</summary>
     /// <param name="options">إعدادات الوحدة.</param>

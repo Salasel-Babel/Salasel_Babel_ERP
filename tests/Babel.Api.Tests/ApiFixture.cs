@@ -1,3 +1,4 @@
+using System.Net;
 using System.Globalization;
 using System.Net.Http.Headers;
 using System.Text;
@@ -26,6 +27,24 @@ internal static class ApiFixture
     /// <summary>اعتماد مستأجر «ج» — المبيعات عنده «للقراءة فقط».</summary>
     public static TestCredential TokenC { get; } = TestCredential.Create(
         ApiTestDatabase.CompanyC, new Guid("33333333-3333-4333-8333-333333333333"), ApiTestDatabase.CompanyC);
+
+    /// <summary>
+    /// شركات مخصّصة لاختبارات التأسيس — <b>واحدة لكل اختبار</b>.
+    /// <para>
+    /// التأسيس يُقبل مرّة واحدة لكل منشأة بحكم القرار نفسه، فمنشأةٌ مشتركة بين اختبارين
+    /// تجعل الثاني يمرّ أو يسقط بحسب من سبقه — وهو بالضبط العطل الذي وُجد مسح العزل
+    /// لأجله. ولذلك لكل اختبار منشأته، ولا اختبار يقرأ حالةً كتبها غيره.
+    /// </para>
+    /// </summary>
+    public static IReadOnlyList<Guid> SetupCompanies { get; } =
+    [
+        .. Enumerable.Range(1, 16).Select(static index =>
+            new Guid(string.Create(CultureInfo.InvariantCulture, $"5e700000-0000-4000-8000-{index:D12}"))),
+    ];
+
+    /// <summary>اعتماد اختبارات التأسيس — يبلغ منشآته وحدها.</summary>
+    public static TestCredential TokenS { get; } = TestCredential.Create(
+        SetupCompanies[0], new Guid("55555555-5555-4555-8555-555555555555"), [.. SetupCompanies]);
 
     private static readonly SemaphoreSlim Gate = new(1, 1);
     private static readonly Dictionary<string, ApiProcess> ByCulture = new(StringComparer.Ordinal);
@@ -61,8 +80,8 @@ internal static class ApiFixture
             if (_default is null)
             {
                 await ApiTestDatabase.EnsureAsync(cancellationToken).ConfigureAwait(false);
-                _default = await ApiProcess
-                    .StartAsync(Environment(ApiTestDatabase.Options.AppConnectionString), "en_US.UTF-8", cancellationToken)
+                _default = await StartAndFoundAsync(
+                    ApiTestDatabase.Options.AppConnectionString, "en_US.UTF-8", cancellationToken)
                     .ConfigureAwait(false);
             }
 
@@ -101,8 +120,8 @@ internal static class ApiFixture
 
             await ApiTestDatabase.EnsureAsync(cancellationToken).ConfigureAwait(false);
 
-            ApiProcess started = await ApiProcess
-                .StartAsync(Environment(ApiTestDatabase.Options.AppConnectionString), culture, cancellationToken)
+            ApiProcess started = await StartAndFoundAsync(
+                ApiTestDatabase.Options.AppConnectionString, culture, cancellationToken)
                 .ConfigureAwait(false);
 
             ByCulture[culture] = started;
@@ -118,11 +137,67 @@ internal static class ApiFixture
     /// خادم موجَّه إلى قاعدة بيانات غير موجودة — لإثبات أن العطل التشغيلي لا يتسرّب.
     /// </summary>
     public static Task<ApiProcess> WithUnreachableDatabaseAsync() =>
-        ApiProcess.StartAsync(
-            Environment("Host=127.0.0.1;Port=5432;Database=babel_api_tests_no_such_database;Username="
-                + ApiTestDatabase.AppRole + ";Include Error Detail=true"),
+        StartAndFoundAsync(
+            "Host=127.0.0.1;Port=5432;Database=babel_api_tests_no_such_database;Username="
+                + ApiTestDatabase.AppRole + ";Include Error Detail=true",
             "en_US.UTF-8",
             Token);
+
+    /// <summary>
+    /// <b>يُقلع خادماً ثم يؤسّس منشآته — بهذا الترتيب، ولا خادم بلا تأسيس.</b>
+    /// <para>
+    /// ‏ADR-0026: مركز التكلفة يُنشأ عند التأسيس، والترحيل يسأل عنه قبل أن يبني طلباً.
+    /// فمنشأةٌ غير مؤسَّسة تُرفض بـ<c>company_setup.not_found</c> — <b>وذلك هو السلوك
+    /// الصحيح</b>: دفترٌ لمنشأة بلا مقياس عرض ولا مركز تكلفة ليس دفتراً.
+    /// </para>
+    /// <para>
+    /// <b>ولماذا هنا لا في كل اختبار:</b> ليجعل الشرط <b>خاصية الخادم</b> لا شيئاً
+    /// يتذكّره كل اختبار — واختبارات التأسيس نفسها تملك منشآتها المستقلّة
+    /// (<see cref="SetupCompanies"/>) فلا تتصادم مع هذا.
+    /// </para>
+    /// <para>
+    /// وقد كان مخزن التأسيس <b>في ذاكرة العملية</b>، فكان كل خادم يُقلَع يبدأ بلا منشأة
+    /// واحدة، وكان هذا التأسيس هو ما يخفي ذلك. وصار المخزن على PostgreSQL: فالخادم
+    /// الثاني على القاعدة نفسها يجد المنشأة مؤسَّسة ويردّ <c>409</c> — وهو الجواب
+    /// المقبول أدناه، وهو <b>نفسه</b> الدليل على أن التأسيس لم يعد يموت مع العملية.
+    /// </para>
+    /// </summary>
+    private static async Task<ApiProcess> StartAndFoundAsync(
+        string ledgerConnection,
+        string culture,
+        CancellationToken cancellationToken)
+    {
+        ApiProcess started = await ApiProcess
+            .StartAsync(Environment(ledgerConnection), culture, cancellationToken)
+            .ConfigureAwait(false);
+
+        foreach ((Guid company, TestCredential credential) in new[]
+                 {
+                     (ApiTestDatabase.CompanyA, TokenA),
+                     (ApiTestDatabase.CompanyB, TokenB),
+                     (ApiTestDatabase.CompanyC, TokenC),
+                 })
+        {
+            using HttpResponseMessage founded = await started.Call(Http.Request(
+                HttpMethod.Put,
+                string.Create(CultureInfo.InvariantCulture, $"/api/v1/companies/{company:D}/setup"),
+                credential,
+                """{"companyNameAr":"منشأة اختبار سطح HTTP","costCenters":"One","decimalPlaces":2}"""))
+                .ConfigureAwait(false);
+
+            // ‏201 أول مرّة، و409 إن كان خادمٌ آخر أسّسها في القاعدة نفسها. وما عداهما
+            // خللٌ يُرمى الآن بنصّه، لا يُترك ليظهر بعد عشرين اختباراً بـ«404 غير مفهوم».
+            if (founded.StatusCode is not (HttpStatusCode.Created or HttpStatusCode.Conflict))
+            {
+                string body = await founded.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                throw new InvalidOperationException(
+                    FormattableString.Invariant(
+                        $"تعذّر تأسيس منشأة الاختبار {company:D}: {(int)founded.StatusCode} — {body}"));
+            }
+        }
+
+        return started;
+    }
 
     /// <summary>إعداد الخادم كاملاً بمتغيّرات البيئة — لا ملف إعداد ولا سرّ في المستودع.</summary>
     /// <param name="ledgerConnection">اتصال دور التطبيق.</param>
@@ -133,10 +208,15 @@ internal static class ApiFixture
             ["Babel__Ledger__AppConnectionString"] = ledgerConnection,
             ["Babel__Ledger__OwnerConnectionString"] = ApiTestDatabase.Options.OwnerConnectionString,
             ["Babel__Ledger__CompanyCurrency"] = "SAR",
+
+            // النواة: **اتصال دور التطبيق وحده**. ولا مفتاح لاتصال المالك هنا ولا في
+            // الخادم أصلاً — خادمٌ يحمله يستطيع إسقاط مشغّل ثبات المقياس (ADR-0003).
+            ["Babel__Core__AppConnectionString"] = ApiTestDatabase.Core.AppConnectionString,
+            ["Babel__Core__AppRole"] = ApiTestDatabase.Core.AppRole,
         };
 
         int index = 0;
-        foreach (TestCredential credential in new[] { TokenA, TokenB, TokenC })
+        foreach (TestCredential credential in new[] { TokenA, TokenB, TokenC, TokenS })
         {
             string prefix = string.Create(CultureInfo.InvariantCulture, $"Babel__Api__Tokens__{index}__");
             environment[prefix + "Sha256"] = credential.Digest;

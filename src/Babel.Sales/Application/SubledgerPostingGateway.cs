@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using Babel.Contracts.Posting;
+using Babel.Core.CompanySetup;
 using Babel.Sales.Persistence;
 using Babel.SharedKernel;
 using Microsoft.EntityFrameworkCore;
@@ -70,13 +71,20 @@ internal sealed record PostingIntent
 /// على حاله ومعه سبب مكتوب — حالة متّسقة تُعاد المحاولة منها، لا نصف كتابة.
 /// </para>
 /// </summary>
-internal sealed class SubledgerPostingGateway(SalesDbContext database, IPostingService posting)
+internal sealed class SubledgerPostingGateway(
+    SalesDbContext database,
+    IPostingService posting,
+    ICostCenterResolver costCenters)
 {
+    /// <summary>اسم بُعد مركز التكلفة كما تعرفه المصفوفة والمخطّط.</summary>
+    private const string CostCenterDimension = "cost_center";
+
     /// <summary>بادئة المفتاح وإصدار ترميزه — الإصدار في المفتاح كي يُقرأ شكله من قيمته.</summary>
     private const string KeyPrefix = "sales:v2:";
 
     private readonly SalesDbContext _database = database;
     private readonly IPostingService _posting = posting;
+    private readonly ICostCenterResolver _costCenters = costCenters;
 
     /// <summary>
     /// مفتاح الحصانة المشتقّ من هوية الإحكام الخماسية <b>كاملةً</b>.
@@ -130,6 +138,19 @@ internal sealed class SubledgerPostingGateway(SalesDbContext database, IPostingS
         if (!intent.Event.IsAssigned)
         {
             return Result<PostingReceipt>.Failure(SalesErrors.MissingEventCode(intent.DocumentType, intent.DocumentId));
+        }
+
+        // ── مركز التكلفة يُحلّ **قبل** أن يُكتب صفّ محاولة أو يُبنى طلب ────────
+        // ‏ADR-0026: المذكور على المستند إن كان عاملاً، والافتراضي إن لم يُذكر شيء. والحلّ
+        // هنا لا في الدفتر: البوّابة هي الموضع الذي يعرف المنشأة ويستطيع أن يسأل النواة،
+        // والدفتر يكتب ما وصله. وموضعه قبل صفّ المحاولة كي لا يُكتب أثرٌ لطلبٍ لن يُبنى.
+        Result<string> centre = await _costCenters
+            .ResolveAsync(intent.Tenant, Requested(intent.Dimensions), cancellationToken)
+            .ConfigureAwait(false);
+
+        if (centre.IsFailure)
+        {
+            return Result<PostingReceipt>.Failure(centre.Errors);
         }
 
         string documentId = intent.DocumentId.ToString("D", CultureInfo.InvariantCulture);
@@ -196,7 +217,7 @@ internal sealed class SubledgerPostingGateway(SalesDbContext database, IPostingS
             Event = intent.Event,
             Amounts = intent.Amounts,
             Facts = intent.Facts,
-            Dimensions = intent.Dimensions,
+            Dimensions = WithResolvedCostCenter(intent.Dimensions, centre.Value),
             Currency = intent.Currency,
             Generation = intent.Generation,
             Actor = intent.Actor,
@@ -224,6 +245,53 @@ internal sealed class SubledgerPostingGateway(SalesDbContext database, IPostingS
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         return result;
+    }
+
+    /// <summary>مركز التكلفة المذكور على المستند، أو <c>null</c> فالافتراضي.</summary>
+    /// <param name="dimensions">أبعاد المستند.</param>
+    private static string? Requested(IReadOnlyList<PostingDimension> dimensions)
+    {
+        string? value = dimensions
+            .FirstOrDefault(static d => string.Equals(d.Name, CostCenterDimension, StringComparison.Ordinal))?.Value;
+
+        return string.IsNullOrWhiteSpace(value) ? null : value;
+    }
+
+    /// <summary>
+    /// الأبعاد ومعها مركز التكلفة <b>مُحلّاً</b> — مستبدَلاً إن ذُكر، ومُضافاً إن غاب.
+    /// <para>
+    /// والإضافة عند الغياب هي الفارق كلّه: مسار القالب يقرأ مركز سطوره من هذا البُعد
+    /// وحده، فبُعدٌ غائب كان يُنتج سطراً بلا مركز — يمرّ صامتاً قبل هذا التغيير، ويرفضه
+    /// المخطّط بعده.
+    /// </para>
+    /// </summary>
+    /// <param name="dimensions">أبعاد المستند كما وصفتها الوحدة.</param>
+    /// <param name="centre">المركز المُحلّ.</param>
+    private static List<PostingDimension> WithResolvedCostCenter(
+        IReadOnlyList<PostingDimension> dimensions,
+        string centre)
+    {
+        List<PostingDimension> resolved = [];
+        bool replaced = false;
+
+        foreach (PostingDimension dimension in dimensions)
+        {
+            if (string.Equals(dimension.Name, CostCenterDimension, StringComparison.Ordinal))
+            {
+                resolved.Add(new PostingDimension(CostCenterDimension, centre));
+                replaced = true;
+                continue;
+            }
+
+            resolved.Add(dimension);
+        }
+
+        if (!replaced)
+        {
+            resolved.Add(new PostingDimension(CostCenterDimension, centre));
+        }
+
+        return resolved;
     }
 
     /// <summary>

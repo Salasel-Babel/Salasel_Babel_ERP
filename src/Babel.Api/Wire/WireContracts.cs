@@ -164,16 +164,26 @@ internal sealed record PostingReceiptDto(
     int Generation,
     int LineCount);
 
-/// <summary>صفّ في ميزان المراجعة.</summary>
+/// <summary>
+/// صفّ في ميزان المراجعة.
+/// <para>
+/// <b>الاسم العربي هو السجلّ، و<see cref="NameTranslations"/> ترجماته — أيّاً كان عددها</b>
+/// (ADR-0021). و<b>لا حقل <c>nameEn</c> هنا</b>: الإنجليزية واحدة من N لا نصف الاثنين،
+/// وحقلٌ ثابت لها على السلك يمنحها <b>امتيازاً بنيوياً</b> ينفيه البند 2 من ذلك القرار.
+/// وقد كان الحقل باقياً <b>مشتقّاً</b> من الترجمة ذات الوسم <c>en</c> ومهجوراً في وصفه،
+/// وحذفُه <b>يفرض v2</b> بنصّ سياسة الإصدار في ADR-0018 («حذف حقل») — <b>بعد أول نشر</b>؛
+/// وقبله يجوز تعديل v1 في مكانه بتسجيلٍ مُعلَن، وهو ما وقع (ADR-0018، تعديل 2026-08-26).
+/// </para>
+/// </summary>
 /// <param name="AccountCode">رمز الحساب.</param>
-/// <param name="NameAr">الاسم العربي.</param>
-/// <param name="NameEn">الاسم الإنجليزي.</param>
+/// <param name="NameAr">الاسم العربي — السجلّ، وغير فارغ دائماً.</param>
+/// <param name="NameTranslations">ترجمات الاسم بوسم اللغة BCP-47، مرتَّبة ترتيباً حرفياً ثابتاً.</param>
 /// <param name="Debit">مجموع المدين بعملة الشركة، نصّاً.</param>
 /// <param name="Credit">مجموع الدائن بعملة الشركة، نصّاً.</param>
 internal sealed record TrialBalanceRowDto(
     string AccountCode,
     string NameAr,
-    string NameEn,
+    IReadOnlyList<NameValueDto> NameTranslations,
     WireDecimal Debit,
     WireDecimal Credit);
 

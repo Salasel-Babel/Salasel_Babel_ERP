@@ -1,6 +1,7 @@
 using System.Globalization;
 using Babel.Contracts.Posting;
 using Babel.Core.Application;
+using Babel.Core.CapabilityProfile;
 using Babel.Core.Entitlement;
 using Babel.Sales.Persistence;
 using Babel.SharedKernel;
@@ -51,22 +52,30 @@ public sealed class SalesInvoiceService : IApplicationService
     private readonly SalesDbContext _database;
     private readonly IPostingService _posting;
     private readonly SubledgerPostingGateway _gateway;
+    private readonly SalesAdmission _admission;
     private readonly CurrencyCode _currency;
 
     /// <summary>ينشئ الخدمة.</summary>
     /// <param name="enforcer">منفِّذ الاستحقاق.</param>
     /// <param name="runtime">موارد الوحدة.</param>
     /// <param name="posting">محرك الترحيل — الطريق الوحيد إلى دفتر الأستاذ.</param>
-    public SalesInvoiceService(IEntitlementEnforcer enforcer, SalesRuntime runtime, IPostingService posting)
+    /// <param name="profiles">مخزن ملفّات القدرات — بوابة القبول (ADR-0023).</param>
+    public SalesInvoiceService(
+        IEntitlementEnforcer enforcer,
+        SalesRuntime runtime,
+        IPostingService posting,
+        ICapabilityProfileStore profiles)
     {
         ArgumentNullException.ThrowIfNull(enforcer);
         ArgumentNullException.ThrowIfNull(runtime);
         ArgumentNullException.ThrowIfNull(posting);
+        ArgumentNullException.ThrowIfNull(profiles);
         _enforcer = enforcer;
         _database = runtime.Database;
         _posting = posting;
         _currency = CurrencyCode.FromString(runtime.Options.CompanyCurrency);
-        _gateway = new SubledgerPostingGateway(_database, posting);
+        _gateway = new SubledgerPostingGateway(_database, posting, runtime.CostCenters);
+        _admission = new SalesAdmission(profiles);
     }
 
     /// <summary>يُنشئ عرض سعر.</summary>
@@ -393,6 +402,46 @@ public sealed class SalesInvoiceService : IApplicationService
         if (gate.IsFailure)
         {
             return Result<PostingReceipt>.Failure(gate.Errors);
+        }
+
+        // قيد تكلفة المبيعات يجعل الفاتورة تحمل بُعد المستودع، وهو حقل قدرة «تكلفة
+        // المبيعات بالجرد المستمر». ومستأجرٌ على الجرد الدوري لا قيد تكلفة عنده لحظة
+        // البيع أصلاً — فالحقل مُطفأ والمسار مرفوض.
+        Result<AdmittedDocument> admitted = await _admission
+            .AdmitInvoiceAsync(
+                tenant,
+                [SalesAdmission.CustomerField, SalesAdmission.LinesField, SalesAdmission.WarehouseField],
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        if (admitted.IsFailure)
+        {
+            return Result<PostingReceipt>.Failure(admitted.Errors);
+        }
+
+        return await PostAdmittedCostOfSalesAsync(tenant, actor, admitted.Value, invoiceId, draft, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// <b>الكاتب الوحيد لقيد تكلفة المبيعات — ويطلب <see cref="AdmittedDocument"/> في توقيعه.</b>
+    /// <para>
+    /// النوع لا يُبنى إلا بالمرور من قبول ملفّ المستأجر، فمن أراد ترحيل قيد تكلفة وجب
+    /// عليه أن يحمل قبولاً — لا أن يتذكّر أن يستدعي فحصاً.
+    /// </para>
+    /// </summary>
+    private async ValueTask<Result<PostingReceipt>> PostAdmittedCostOfSalesAsync(
+        TenantId tenant,
+        UserId actor,
+        AdmittedDocument admitted,
+        Guid invoiceId,
+        CostOfSalesDraft draft,
+        CancellationToken cancellationToken)
+    {
+        Result covers = SalesAdmission.EnsureCovers(admitted, SalesAdmission.WarehouseField);
+        if (covers.IsFailure)
+        {
+            return Result<PostingReceipt>.Failure(covers.Errors);
         }
 
         SalesInvoiceRow? invoice = await _database.Invoices

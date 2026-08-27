@@ -203,14 +203,14 @@ public sealed class PostingIdentityTests : IAsyncLifetime
                     Role = PostingRole.RoundingDifference,
                     Side = PostingSide.Debit,
                     Amount = SharedKernel.Money.Of(100.0000m, CurrencyCode.Sar),
-                    Scope = new PostingScope("BR-01", null, null),
+                    Scope = new PostingScope("cc.001", "BR-01"),
                 },
                 new PostingLine
                 {
                     Role = PostingRole.RoundingDifference,
                     Side = PostingSide.Credit,
                     Amount = SharedKernel.Money.Of(100.0000m, CurrencyCode.Sar),
-                    Scope = new PostingScope("BR-01", null, null),
+                    Scope = new PostingScope("cc.001", "BR-01"),
                 },
             ],
             Actor = new UserId(new Guid("11111111-1111-4111-8111-111111111111")),
@@ -471,7 +471,12 @@ public sealed class PostingIdentityTests : IAsyncLifetime
             new PostingFact("subledger.customer", "CUST-D3"),
             new PostingFact("line.item_group", "*"),
         ],
-        Dimensions = [new PostingDimension("branch", "BR-01")],
+        // مركز التكلفة مُحلٌّ قبل بناء الطلب — هذا ما تُسلّمه البوّابة (ADR-0026).
+        Dimensions =
+        [
+            new PostingDimension("branch", "BR-01"),
+            new PostingDimension("cost_center", Requests.DefaultCostCenter),
+        ],
         Currency = CurrencyCode.Sar,
         Actor = new UserId(new Guid("11111111-1111-4111-8111-111111111111")),
     };
@@ -497,6 +502,7 @@ public sealed class PostingIdentityTests : IAsyncLifetime
         Dimensions =
         [
             new PostingDimension("branch", "BR-01"),
+            new PostingDimension("cost_center", Requests.DefaultCostCenter),
             new PostingDimension("warehouse", "WH-01"),
         ],
         Currency = CurrencyCode.Sar,

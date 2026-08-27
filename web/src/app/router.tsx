@@ -3,6 +3,8 @@ import { createRootRoute, createRoute, createRouter, createMemoryHistory } from 
 import { AppShell } from "./App";
 import { TrialBalanceScreen } from "../screens/trial-balance/TrialBalanceScreen";
 import { ContractScreen } from "../screens/contract/ContractScreen";
+/* مسار العرض — طبقة عرض تُرمى بعد التسجيل (ADR-0028). ثلاثة أسطر لا أكثر. */
+import { DemoStage } from "../demo/DemoStage";
 
 const rootRoute = createRootRoute({ component: AppShell });
 
@@ -18,7 +20,13 @@ const contractRoute = createRoute({
   component: ContractScreen,
 });
 
-const routeTree = rootRoute.addChildren([trialBalanceRoute, contractRoute]);
+const demoRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/demo",
+  component: DemoStage,
+});
+
+const routeTree = rootRoute.addChildren([trialBalanceRoute, contractRoute, demoRoute]);
 
 /** ينشئ موجّهاً. الاختبارات تمرّر تاريخاً في الذاكرة فلا تحتاج متصفّحاً. */
 export function createAppRouter(options?: { initialPath?: string; memory?: boolean }) {

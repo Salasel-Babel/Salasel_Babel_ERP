@@ -46,6 +46,26 @@ internal static class ApiFixture
     public static TestCredential TokenS { get; } = TestCredential.Create(
         SetupCompanies[0], new Guid("55555555-5555-4555-8555-555555555555"), [.. SetupCompanies]);
 
+    /// <summary>
+    /// اعتماد صحيح <b>لا يبلغ شركةً واحدة</b> — حالة «اشتُرك ولم يُربط بمنشأة».
+    /// <para>
+    /// وهي ليست حالة نظرية: هي أول حالة يقع فيها كل عميل جديد بين لحظة إنشاء اعتماده
+    /// ولحظة ربطه بمنشأته. وما يراه اليوم يقرّر إن كان سيفتح تذكرة دعم أم لا.
+    /// </para>
+    /// </summary>
+    public static TestCredential TokenNoCompany { get; } = TestCredential.Create(
+        new Guid("99999999-9999-4999-8999-999999999999"),
+        new Guid("99999999-9999-4999-8999-99999999990a"));
+
+    /// <summary>
+    /// اعتماد <b>منقضٍ</b> — لحظة انقضائه في الماضي البعيد فلا تعتمد على ساعة تشغيل الاختبار.
+    /// </summary>
+    public static TestCredential TokenExpired { get; } = TestCredential.Create(
+        ApiTestDatabase.CompanyA, new Guid("44444444-4444-4444-8444-444444444444"), ApiTestDatabase.CompanyA);
+
+    /// <summary>لحظة انقضاء الاعتماد المنقضي، بصيغة ISO 8601 الدوّارة كما يقرؤها الخادم.</summary>
+    public const string ExpiredAt = "2020-01-01T00:00:00.0000000+00:00";
+
     private static readonly SemaphoreSlim Gate = new(1, 1);
     private static readonly Dictionary<string, ApiProcess> ByCulture = new(StringComparer.Ordinal);
     private static ApiProcess? _default;
@@ -134,29 +154,32 @@ internal static class ApiFixture
     }
 
     /// <summary>
-    /// خادم موجَّه إلى قاعدة بيانات غير موجودة — لإثبات أن العطل التشغيلي لا يتسرّب.
+    /// خادم موجَّه إلى قاعدة <b>دفتر</b> غير موجودة — لإثبات أن العطل التشغيلي لا يتسرّب.
     /// <para>
-    /// <b>ولا يُؤسَّس عليه شيء، ولا يمكن أن يُؤسَّس.</b> التأسيس يُنشئ مركز التكلفة
-    /// الافتراضي في الدفتر (‏ADR-0026)، والدفتر هنا <b>هو</b> القاعدة غير الموجودة. فطلبُ
-    /// التأسيس على هذا الخادم يعطي 500 حتماً، ويرمي <c>StartAndFoundAsync</c> قبل أن يبلغ
-    /// الاختبارُ ما جاء ليفحصه.
+    /// <b>⚠ و<c>EnsureAsync</c> هنا ليست زيادة:</b> هذا الخادم يحمل اتصال دفتر معطوباً
+    /// <b>عمداً</b> واتصال نواة <b>سليماً</b> — وتأسيس المنشآت في
+    /// <see cref="StartAndFoundAsync"/> يمرّ بالنواة. فبلا تهيئة القواعد أولاً لا تكون
+    /// قاعدة النواة موجودة أصلاً، فيردّ التأسيس <c>500</c> ويسقط الاختبار عند التهيئة
+    /// لا عند ما يفحصه.
     /// </para>
     /// <para>
-    /// <b>وقد كان يمرّ، بأثرٍ جانبي:</b> مخزن التأسيس على قاعدة <b>أخرى</b> سليمة، فإن كان
-    /// اختبارٌ شقيق أسّس المنشآت قبله ردّ التأسيسُ <c>409</c> بلا أن يمسّ الدفتر — فيمرّ.
-    /// وحده، بترتيب آخر، أو أوّلَ اختبارٍ يُشغَّل: <c>201</c> مطلوب ⇒ الدفتر ⇒ 500 ⇒ سقوط.
-    /// <b>مقيس:</b> يسقط 2/2 منفرداً ويمرّ 5/5 مع صفّه، على <c>develop</c> نظيفة.
-    /// وهذا هو الصنف الذي وُجد مسحُ العزل ليكشفه: اختبارٌ يمرّ لأن غيره سبقه.
-    /// (‏<c>docs/evidence/traps.md#fakh-a-fixture-that-founds-on-a-server-built-to-be-unreachable</c>)
+    /// وكان ذلك يمرّ لأن <see cref="DefaultAsync"/> يسبقه في التشغيل الكامل فيهيّئ القواعد
+    /// نيابةً عنه — أي أن الاختبار كان <b>يعتمد على ترتيب التنفيذ</b>: يمرّ في المجموعة
+    /// كاملةً، ويسقط وحده. ومسح العزل هو ما كشفه.
     /// </para>
     /// </summary>
-    public static Task<ApiProcess> WithUnreachableDatabaseAsync() =>
-        ApiProcess.StartAsync(
-            Environment(
-                "Host=127.0.0.1;Port=5432;Database=babel_api_tests_no_such_database;Username="
-                    + ApiTestDatabase.AppRole + ";Include Error Detail=true"),
+    public static async Task<ApiProcess> WithUnreachableDatabaseAsync()
+    {
+        CancellationToken cancellationToken = Token;
+        await ApiTestDatabase.EnsureAsync(cancellationToken).ConfigureAwait(false);
+
+        return await StartAndFoundAsync(
+            "Host=127.0.0.1;Port=5432;Database=babel_api_tests_no_such_database;Username="
+                + ApiTestDatabase.AppRole + ";Include Error Detail=true",
             "en_US.UTF-8",
-            Token);
+            cancellationToken)
+            .ConfigureAwait(false);
+    }
 
     /// <summary>
     /// <b>يُقلع خادماً ثم يؤسّس منشآته — بهذا الترتيب، ولا خادم بلا تأسيس.</b>
@@ -231,7 +254,7 @@ internal static class ApiFixture
         };
 
         int index = 0;
-        foreach (TestCredential credential in new[] { TokenA, TokenB, TokenC, TokenS })
+        foreach (TestCredential credential in new[] { TokenA, TokenB, TokenC, TokenS, TokenNoCompany, TokenExpired })
         {
             string prefix = string.Create(CultureInfo.InvariantCulture, $"Babel__Api__Tokens__{index}__");
             environment[prefix + "Sha256"] = credential.Digest;
@@ -242,6 +265,11 @@ internal static class ApiFixture
             {
                 environment[string.Create(CultureInfo.InvariantCulture, $"{prefix}Companies__{c}")] =
                     credential.Companies[c].ToString("D", CultureInfo.InvariantCulture);
+            }
+
+            if (credential == TokenExpired)
+            {
+                environment[prefix + "NotAfter"] = ExpiredAt;
             }
 
             index++;
@@ -292,6 +320,9 @@ internal static class Http
 
         return request;
     }
+
+    /// <summary>مسار الجلسة — خارج نطاق الشركة، وداخل المصادقة.</summary>
+    public const string Session = "/api/v1/session";
 
     /// <summary>مسار ترحيل قيد لشركة.</summary>
     /// <param name="company">الشركة.</param>

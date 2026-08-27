@@ -1,5 +1,6 @@
 using Babel.Ai.Reconciliation;
 using Babel.Ai.Suggestions;
+using Babel.Contracts.Capture;
 using Babel.SharedKernel;
 
 namespace Babel.Ai.Capture;
@@ -75,7 +76,7 @@ public sealed record CapturedInvoiceLine
 /// <c>tests/Babel.Ai.Tests</c> على غرار القاعدة 12، لا بمراجعة ولا بتعليق.
 /// </para>
 /// <para>
-/// والترقية تمرّ <b>بخدمات الوحدة المالكة للمستند</b> عبر <see cref="Promotion.ICapturedInvoiceReceiver"/>،
+/// والترقية تمرّ <b>بخدمات الوحدة المالكة للمستند</b> عبر <see cref="ICapturedInvoiceReceiver"/>،
 /// لا بكتابة صفوف مباشرة: مسوّدة تُرقّي نفسها بالكتابة تُعيد إنتاج صنف العطل الذي أنفق
 /// هذا المستودع شهراً في إزالته — <b>مسار ثانٍ يجيب عن سؤال أُصلح المسار الأول ليجيب عنه</b>.
 /// </para>
@@ -83,34 +84,34 @@ public sealed record CapturedInvoiceLine
 public sealed record CapturedInvoiceDraft
 {
     /// <summary>مفتاح حقل اسم البائع في مجموعة التأكيدات.</summary>
-    public const string SellerNameField = "seller_name";
+    public const string SellerNameField = PromotionFields.SellerName;
 
     /// <summary>مفتاح حقل الرقم الضريبي للبائع.</summary>
-    public const string SellerVatNumberField = "seller_vat_number";
+    public const string SellerVatNumberField = PromotionFields.SellerVatNumber;
 
     /// <summary>مفتاح حقل رقم الفاتورة.</summary>
-    public const string InvoiceNumberField = "invoice_number";
+    public const string InvoiceNumberField = PromotionFields.InvoiceNumber;
 
     /// <summary>مفتاح حقل تاريخ الإصدار.</summary>
-    public const string IssuedOnField = "issued_on";
+    public const string IssuedOnField = PromotionFields.IssuedOn;
 
     /// <summary>مفتاح حقل العملة.</summary>
-    public const string CurrencyField = "currency";
+    public const string CurrencyField = PromotionFields.Currency;
 
     /// <summary>مفتاح حقل الصافي قبل الضريبة.</summary>
-    public const string NetField = "net";
+    public const string NetField = PromotionFields.Net;
 
     /// <summary>مفتاح حقل نسبة الضريبة.</summary>
-    public const string TaxRateField = "tax_rate";
+    public const string TaxRateField = PromotionFields.TaxRate;
 
     /// <summary>مفتاح حقل مبلغ الضريبة.</summary>
-    public const string TaxTotalField = "tax_total";
+    public const string TaxTotalField = PromotionFields.TaxTotal;
 
     /// <summary>مفتاح حقل الإجمالي شامل الضريبة.</summary>
-    public const string GrossTotalField = "gross_total";
+    public const string GrossTotalField = PromotionFields.GrossTotal;
 
     /// <summary>مفتاح حقل الحدث المقترح.</summary>
-    public const string SuggestedEventField = "suggested_event";
+    public const string SuggestedEventField = PromotionFields.SuggestedEvent;
 
     /// <summary>معرّف المسوّدة. معرّف مسوّدة لا معرّف مستند.</summary>
     public required Guid DraftId { get; init; }

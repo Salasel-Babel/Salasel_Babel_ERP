@@ -20,7 +20,29 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Npgsql" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <!--
+    المخطّط الحيّ: الهجرة تنفّذ هذه النصوص حرفياً، والصلاحيات تُنفَّذ بعدها بدور
+    المالك. مضمَّنة في التجميعة كي لا يعتمد النشر على وجود شجرة المستودع على القرص.
+  -->
+  <ItemGroup>
+    <EmbeddedResource Include="Persistence/Migrations/*.sql" />
+  </ItemGroup>
+
+  <!--
+    مشاريع الاختبار وحدها ترى داخل النواة: صفوف الاستمرارية internal بحكم القاعدة 5،
+    وإثباتُ أن صفّاً مخالفاً **لا يُنتج كائناً** يحتاج أن يبلغ الصفّ نفسه.
+  -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="Babel.Core.Tests" />
   </ItemGroup>
 
   <!--

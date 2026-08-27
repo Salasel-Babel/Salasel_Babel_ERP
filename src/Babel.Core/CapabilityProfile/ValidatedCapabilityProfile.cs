@@ -86,6 +86,36 @@ public sealed class ValidatedCapabilityProfile
             : Result<ValidatedCapabilityProfile>.Success(new ValidatedCapabilityProfile(shapes.ToImmutable()));
     }
 
+    /// <summary>
+    /// <b>يُعيد المسودّة التي يُنتج منها هذا الملفّ نفسه.</b>
+    /// <para>
+    /// وهي ما يُخزَّن في القاعدة — لا الشكل المشتقّ. والسبب أن الشكل <b>دالّة في العقد
+    /// المنشور</b>: حقول القدرة تتغيّر بتغيّر الكتالوج، فشكلٌ مخزَّن يصير بعد إصدارين
+    /// وصفاً لشاشةٍ لم تعد موجودة، ويُقرأ بلا أن يمرّ على المصفوفة مرّة أخرى. أمّا
+    /// المسودّة فقرارُ المستأجر نفسه — «هذه القدرة مُشغَّلة» — وهو ما يبقى صحيحاً.
+    /// وإعادةُ بنائه تمرّ من <see cref="Create"/> فتُطابَق بالمصفوفة من جديد عند كل
+    /// قراءة: قدرةٌ كفّت المصفوفة عن خدمتها تُرفض عند التحميل ولا تُرحَّل بها.
+    /// </para>
+    /// </summary>
+    internal CapabilityProfileDraft ToDraft()
+    {
+        Dictionary<string, DocumentProfileDraft> documents = new(StringComparer.Ordinal);
+
+        foreach (DocumentShape shape in _shapes.Values)
+        {
+            Dictionary<string, bool> capabilities = new(StringComparer.Ordinal);
+
+            foreach (CapabilityCode capability in shape.AvailableCapabilities)
+            {
+                capabilities[capability.Value] = shape.EnabledCapabilities.Contains(capability);
+            }
+
+            documents[shape.DocumentType.Value] = new DocumentProfileDraft(capabilities, shape.Defaults);
+        }
+
+        return new CapabilityProfileDraft(documents);
+    }
+
     /// <summary>الشكل المشتقّ لنوع مستند، أو <c>null</c> إن لم يكن في هذا الملفّ.</summary>
     /// <param name="documentType">نوع المستند.</param>
     public DocumentShape? ShapeOf(DocumentTypeCode documentType)

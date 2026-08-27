@@ -169,6 +169,43 @@ public sealed class FoundedCompany
     }
 
     /// <summary>
+    /// <b>يعيد بناء منشأة مؤسَّسة من صفوفها المخزَّنة</b> — بالمُنشئ الخاصّ نفسه الذي
+    /// يسلكه <see cref="Found"/>، لا بجواره.
+    /// <para>
+    /// وكل ثابتة تُحمَل هنا بنوعها لا بفحصٍ يُعاد كتابته: الاسم
+    /// <see cref="TranslatedName"/> فيرفض العربيَّ الفارغ ووسمَ لغةٍ مشوَّهاً ومدخلَ
+    /// «ar»؛ والمقياس يمرّ من <see cref="DisplayScale.Of(int)"/> فيرفض عدداً خارج المدى؛
+    /// والسجلّ من <see cref="CostCenterRegister.Rehydrate"/> فيرفض الفراغ والافتراضيَّ
+    /// الغائب أو الموقوف. <b>فصفٌّ مخالف لا يُنتج كائناً مخالفاً، بل لا يُنتج كائناً.</b>
+    /// </para>
+    /// </summary>
+    /// <param name="company">المنشأة.</param>
+    /// <param name="name">الاسم كما قُرئ.</param>
+    /// <param name="decimalPlaces">عدد الخانات كما قُرئ — يُصدَّق هنا لا يُصدَّق عند الكاتب.</param>
+    /// <param name="costCenters">سجلّ المراكز المُعاد بناؤه.</param>
+    /// <exception cref="InvalidOperationException">مقياس عرض مخزَّن خارج المدى المقبول.</exception>
+    internal static FoundedCompany Rehydrate(
+        TenantId company,
+        TranslatedName name,
+        int decimalPlaces,
+        CostCenterRegister costCenters)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+        ArgumentNullException.ThrowIfNull(costCenters);
+
+        Result<DisplayScale> scale = DisplayScale.Of(decimalPlaces);
+
+        if (scale.IsFailure)
+        {
+            throw new InvalidOperationException(
+                "مقياس عرض مخزَّن خارج المدى: "
+                + string.Join(" | ", scale.Errors.Select(static error => error.ToString())));
+        }
+
+        return new FoundedCompany(company, name, scale.Value, costCenters);
+    }
+
+    /// <summary>
     /// يشتقّ منشأة بسجلّ مراكز تكلفة جديد. <b>المقياس يُنسَخ ولا يُقبل</b> — وذلك هو
     /// إنفاذ ثباته، لا التوثيق.
     /// </summary>

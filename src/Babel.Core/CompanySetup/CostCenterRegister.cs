@@ -111,6 +111,44 @@ public sealed class CostCenterRegister
                 code));
     }
 
+    /// <summary>
+    /// <b>يعيد بناء سجلٍّ من صفوفٍ مخزَّنة — بالمُنشئ الخاصّ نفسه لا بجواره.</b>
+    /// <para>
+    /// وهذا هو بيت القصيد في تثبيت التأسيس: طبقةُ استمرارية تستطيع أن تُرجع كائناً
+    /// مخالفاً للثابتة تكون قد <b>أزالت الثابتة صامتةً</b> — يبقى النوع يَعِد بما لا
+    /// يفي به، ويصير «صالحٌ بحكم وجوده» جملةً في تعليق. فلا يوجد هنا مسارٌ ثانٍ: هذه
+    /// الدالّة تنادي <see cref="CostCenterRegister(ImmutableArray{CostCenter}, CostCenterCode)"/>
+    /// حرفياً، فيرمي على السجلّ الفارغ، وعلى الرمز المكرَّر، وعلى افتراضيٍّ غائب، وعلى
+    /// افتراضيٍّ موقوف — صفٌّ في القاعدة أو كائنٌ في الذاكرة، الحكم واحد.
+    /// </para>
+    /// <para>
+    /// وتزيد عليه شرطاً واحداً لا يعرفه المُنشئ لأنه لا يبلغه من داخل الشجرة: <b>شكل
+    /// الرمز</b>. فالسكّ في <see cref="Mint"/> يُنتج <c>cc.NNN</c> دائماً، أمّا الصفّ
+    /// فيأتي من قاعدة بيانات قد تُحرَّر بيد — والقبول هنا يجب ألّا يكون أوسع من السكّ.
+    /// </para>
+    /// </summary>
+    /// <param name="centers">المراكز كما قُرئت.</param>
+    /// <param name="defaultCode">رمز المركز الافتراضي كما قُرئ.</param>
+    /// <exception cref="InvalidOperationException">صفوفٌ لا تُنتج سجلّاً صالحاً.</exception>
+    internal static CostCenterRegister Rehydrate(IEnumerable<CostCenter> centers, CostCenterCode defaultCode)
+    {
+        ArgumentNullException.ThrowIfNull(centers);
+
+        ImmutableArray<CostCenter> read = [.. centers];
+
+        foreach (CostCenter center in read)
+        {
+            if (!CostCenterCode.IsWellFormed(center.Code.Value))
+            {
+                throw new InvalidOperationException(
+                    $"رمز مركز تكلفة مُشوَّه في المخزن: «{center.Code}». / "
+                    + $"A malformed cost-centre code in the store: '{center.Code}'.");
+            }
+        }
+
+        return new CostCenterRegister(Order(read), defaultCode);
+    }
+
     /// <summary>المركز صاحب هذا الرمز، أو <c>null</c>.</summary>
     /// <param name="code">الرمز.</param>
     public CostCenter? Find(CostCenterCode code) => _centers.FirstOrDefault(center => center.Code == code);

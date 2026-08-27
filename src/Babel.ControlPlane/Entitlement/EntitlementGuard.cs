@@ -82,14 +82,17 @@ public sealed class EntitlementGuard(EntitlementService entitlements)
         // القرار من موضعه الوحيد — لا نسخة ثانية منه هنا ولا في أي وحدة.
         if (EntitlementRules.Allows(state, intent)) return state;
 
+        // ونصّ السطر هو نصّ الرفض نفسه، لا صياغة رابعة له: الاستثناء يُبنى **قبل**
+        // الكتابة كي يُقرأ في السِرد ما يُقرأ عند العميل حرفاً بحرف، ولا يقرن هذا
+        // الموضع حالةً بنيّة من جديد.
+        EntitlementDeniedException denied = new(tenant.TenantCode, moduleCode, state, intent);
+
         // السطر يُكتب قبل الرمي، لا بعده، ولا في معالِج الاستثناء.
         await _log.WriteAsync(tenant.TenantId, actor, operation, OperationOutcome.Refused,
-            intent == AccessIntent.Write && state == EntitlementState.ReadOnly
-                ? $"الوحدة «{moduleCode}» بحالة قراءة فقط: الإدخال والترحيل موقوفان، والقراءة والتصدير متاحان"
-                : $"الوحدة «{moduleCode}» بحالة {EntitlementValidator.Ar(state)} — العملية مرفوضة",
+            denied.MessageAr,
             new { module = moduleCode, state = state.ToString(), intent = intent.ToString() }, ct);
 
-        throw new EntitlementDeniedException(tenant.TenantCode, moduleCode, state, intent);
+        throw denied;
     }
 
     /// <summary>

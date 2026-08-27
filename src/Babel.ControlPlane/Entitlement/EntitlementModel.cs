@@ -45,6 +45,13 @@ public enum AccessIntent
 ///
 /// <para>فالقرار هنا وحده، وحارس معماري (القاعدة 6) يمنع أي شيفرة إنتاج خارج
 /// حدّ الاستحقاق من أن تفرّع على <see cref="EntitlementState"/> أصلاً.</para>
+///
+/// <para><b>وهو نفس الجدول الذي في <c>Babel.Core.Entitlement.EntitlementRules</c>،
+/// حرفاً بحرف بعد التوحيد.</b> التجميعتان لا تتراجعان — هذه بلا مرجعية إلى أي
+/// مشروع بابل وبلا مرجعية إليها — فلا نوع مشترك يحملهما، والرابط بينهما مسحُ
+/// مصدر: <c>Rule06_NothingBypassesEntitlement</c> يقرأ الجدولين من القرص ويُفشل
+/// البناء إن اختلفا. <b>فلا تُحرَّر هذه الدالّة وحدها.</b>
+/// (‏<c>docs/evidence/traps.md#fakh-the-decision-table-is-duplicated-inside-its-own-seam</c>)</para>
 /// </summary>
 public static class EntitlementRules
 {
@@ -52,13 +59,11 @@ public static class EntitlementRules
     /// <param name="state">حالة الاستحقاق.</param>
     /// <param name="intent">نيّة الوصول.</param>
     /// <returns><c>true</c> إن كان الوصول مسموحاً.</returns>
-    public static bool Allows(EntitlementState state, AccessIntent intent) => intent switch
+    public static bool Allows(EntitlementState state, AccessIntent intent) => state switch
     {
-        // القراءة تعمل في المستحقّة وفي قراءة-فقط معاً: سجلّ العميل سجلّه.
-        AccessIntent.Read => state is EntitlementState.Entitled or EntitlementState.ReadOnly,
-        // الكتابة في المستحقّة وحدها.
-        AccessIntent.Write => state is EntitlementState.Entitled,
-        _ => false
+        EntitlementState.Entitled => true,
+        EntitlementState.ReadOnly => intent == AccessIntent.Read,
+        _ => false,
     };
 }
 
@@ -98,49 +103,59 @@ public sealed class EntitlementDeniedException(
     public AccessIntent Intent { get; } = intent;
 
     /// <summary>رمز الرفض الثابت — نقطة الاعتماد البرمجية، لا النصّ.</summary>
-    public string Code { get; } = CodeOf(state, intent);
+    public string Code => _refusal.Code;
 
     /// <summary>سبب الرفض بالعربية، مصوغاً للمحاسب لا للمبرمج.</summary>
-    public string MessageAr { get; } = Ar(tenantCode, moduleCode, state, intent);
+    public string MessageAr => _refusal.Ar;
 
     /// <summary>سبب الرفض بالإنجليزية — نفس السبب، لا ترجمة أفقر.</summary>
-    public string MessageEn { get; } = En(tenantCode, moduleCode, state, intent);
+    public string MessageEn => _refusal.En;
 
-    private static string CodeOf(EntitlementState s, AccessIntent i) =>
-        (s, i) switch
-        {
-            (EntitlementState.ReadOnly, AccessIntent.Write) => "entitlement.read_only",
-            (EntitlementState.NotEntitled, _) => "entitlement.not_entitled",
-            _ => "entitlement.denied"
-        };
+    private readonly (string Code, string Ar, string En) _refusal =
+        Refusal(tenantCode, moduleCode, state, intent);
 
-    private static string Ar(string t, string m, EntitlementState s, AccessIntent i) =>
+    /// <summary>
+    /// <b>تسمية الرفض في موضع واحد: الرمز والرسالتان معاً.</b>
+    /// <para>وهي <b>لا تقرّر</b> شيئاً — القرار وقع في
+    /// <see cref="EntitlementRules.Allows"/> قبل الوصول إلى هنا. غير أنها تقرن
+    /// حالةً بنيّة، فلو كُتبت ثلاث مرّات (رمزاً ثم عربية ثم إنجليزية) لصار
+    /// «‏<c>(ReadOnly, Write)</c> هو حالة الانقطاع» مكتوباً ثلاثاً، ولانحرفت
+    /// إحداها عند إضافة حالة رابعة. مرّةً واحدة، وثلاثة مخرجات.</para>
+    /// </summary>
+    private static (string Code, string Ar, string En) Refusal(
+        string t, string m, EntitlementState s, AccessIntent i) =>
         (s, i) switch
         {
             (EntitlementState.ReadOnly, AccessIntent.Write) =>
+            (
+                "entitlement.read_only",
                 $"الوحدة «{m}» عند المستأجر «{t}» في حالة قراءة فقط لانقطاع الاشتراك: "
                 + "القراءة والتقارير وتصدير بياناتك متاحة كاملةً، "
                 + "وإنشاء المستندات والترحيل والعكس موقوفة حتى يُستأنف الاشتراك.",
-            (EntitlementState.NotEntitled, _) =>
-                $"الوحدة «{m}» غير مشمولة باشتراك المستأجر «{t}» — لم تُشترَ.",
-            _ => $"وصول مرفوض للوحدة «{m}» عند المستأجر «{t}»."
-        };
-
-    private static string En(string t, string m, EntitlementState s, AccessIntent i) =>
-        (s, i) switch
-        {
-            (EntitlementState.ReadOnly, AccessIntent.Write) =>
                 $"Module '{m}' is read-only for tenant '{t}' because the subscription has lapsed: "
                 + "reading, reports and export of your own data remain fully available; "
-                + "creating documents, posting and reversing are suspended until the subscription resumes.",
+                + "creating documents, posting and reversing are suspended until the subscription resumes."
+            ),
             (EntitlementState.NotEntitled, _) =>
-                $"Module '{m}' is not part of the subscription for tenant '{t}' - it was never purchased.",
-            _ => $"Access denied to module '{m}' for tenant '{t}'."
+            (
+                "entitlement.not_entitled",
+                $"الوحدة «{m}» غير مشمولة باشتراك المستأجر «{t}» — لم تُشترَ.",
+                $"Module '{m}' is not part of the subscription for tenant '{t}' - it was never purchased."
+            ),
+            _ =>
+            (
+                "entitlement.denied",
+                $"وصول مرفوض للوحدة «{m}» عند المستأجر «{t}».",
+                $"Access denied to module '{m}' for tenant '{t}'."
+            )
         };
 
     // نفس شكل Babel.SharedKernel.Error.ToString: رمزٌ ثم الرسالتان.
-    private static string Describe(string t, string m, EntitlementState s, AccessIntent i) =>
-        $"{CodeOf(s, i)}: {Ar(t, m, s, i)} / {En(t, m, s, i)}";
+    private static string Describe(string t, string m, EntitlementState s, AccessIntent i)
+    {
+        (string code, string ar, string en) = Refusal(t, m, s, i);
+        return $"{code}: {ar} / {en}";
+    }
 }
 
 /// <summary>

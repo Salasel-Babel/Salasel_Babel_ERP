@@ -20,6 +20,17 @@ public static class EntitlementErrors
         string.Create(CultureInfo.InvariantCulture,
             $"Module '{module}' is read-only: data and reports remain available, but no new documents or postings."));
 
+    /// <summary>
+    /// <b>تسمية الرفض</b> — لا تقريره. القرار وقع في
+    /// <see cref="EntitlementRules.Allows"/>، وهذه تقول <b>لماذا</b> رُفض:
+    /// «انقطع الاشتراك» شيء و«لم تُشترَ قط» شيء آخر، والعميل يقرأ الفرق.
+    /// </summary>
+    /// <param name="state">الحالة التي وقع الرفض عندها.</param>
+    /// <param name="module">الوحدة المرفوضة.</param>
+    /// <returns>الخطأ برمزه ورسالتيه.</returns>
+    public static Error Refusal(EntitlementState state, BabelModule module) =>
+        state == EntitlementState.ReadOnly ? ReadOnly(module) : NotEntitled(module);
+
     /// <summary>وحدة إلزامية أُطفئت.</summary>
     public static Error MandatoryModuleDisabled(BabelModule module) => new(
         "entitlement.mandatory_disabled",

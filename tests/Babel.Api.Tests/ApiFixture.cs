@@ -154,14 +154,32 @@ internal static class ApiFixture
     }
 
     /// <summary>
-    /// خادم موجَّه إلى قاعدة بيانات غير موجودة — لإثبات أن العطل التشغيلي لا يتسرّب.
+    /// خادم موجَّه إلى قاعدة <b>دفتر</b> غير موجودة — لإثبات أن العطل التشغيلي لا يتسرّب.
+    /// <para>
+    /// <b>⚠ و<c>EnsureAsync</c> هنا ليست زيادة:</b> هذا الخادم يحمل اتصال دفتر معطوباً
+    /// <b>عمداً</b> واتصال نواة <b>سليماً</b> — وتأسيس المنشآت في
+    /// <see cref="StartAndFoundAsync"/> يمرّ بالنواة. فبلا تهيئة القواعد أولاً لا تكون
+    /// قاعدة النواة موجودة أصلاً، فيردّ التأسيس <c>500</c> ويسقط الاختبار عند التهيئة
+    /// لا عند ما يفحصه.
+    /// </para>
+    /// <para>
+    /// وكان ذلك يمرّ لأن <see cref="DefaultAsync"/> يسبقه في التشغيل الكامل فيهيّئ القواعد
+    /// نيابةً عنه — أي أن الاختبار كان <b>يعتمد على ترتيب التنفيذ</b>: يمرّ في المجموعة
+    /// كاملةً، ويسقط وحده. ومسح العزل هو ما كشفه.
+    /// </para>
     /// </summary>
-    public static Task<ApiProcess> WithUnreachableDatabaseAsync() =>
-        StartAndFoundAsync(
+    public static async Task<ApiProcess> WithUnreachableDatabaseAsync()
+    {
+        CancellationToken cancellationToken = Token;
+        await ApiTestDatabase.EnsureAsync(cancellationToken).ConfigureAwait(false);
+
+        return await StartAndFoundAsync(
             "Host=127.0.0.1;Port=5432;Database=babel_api_tests_no_such_database;Username="
                 + ApiTestDatabase.AppRole + ";Include Error Detail=true",
             "en_US.UTF-8",
-            Token);
+            cancellationToken)
+            .ConfigureAwait(false);
+    }
 
     /// <summary>
     /// <b>يُقلع خادماً ثم يؤسّس منشآته — بهذا الترتيب، ولا خادم بلا تأسيس.</b>

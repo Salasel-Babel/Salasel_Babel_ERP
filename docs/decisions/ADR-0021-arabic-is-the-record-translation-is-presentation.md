@@ -78,7 +78,7 @@
 > **البديل المُلزِم من الآن: النصف الإنجليزي وحده** (`name_en|nameEn|NameEn`)، وله سقفٌ
 > محروس **لا يرتفع** في `Rule14_TranslationsAreRowsNotColumns` وبوّابة في `ci.yml`.
 > التفصيل والجداول الكاملة في
-> [ADR-جديد §4](ADR-جديد-the-translation-table-is-rows-and-the-record-is-a-column.md)
+> [ADR-0027 §4](ADR-0027-the-translation-table-is-rows-and-the-record-is-a-column.md)
 > و[`measurements.md` §3-ط](../evidence/measurements.md).
 >
 > ⚠️ **وثغرة ثالثة في المنهج نفسه:** إقصاؤه `grep -vE '/(bin|obj|node_modules)/'` **لا
@@ -159,7 +159,7 @@ grep -rhE '^\s+message_(ar|en)\s+text[^,]*not null' --include=*.sql data src | w
 
 **والمقياس البديل المُتبنّى: النصف الإنجليزي وحده** (`name_en|nameEn|NameEn`) — 941 موضعاً
 على `develop`، وله سقفٌ محروس في `Rule14_TranslationsAreRowsNotColumns`. التفصيل في
-[ADR-جديد §4](ADR-جديد-the-translation-table-is-rows-and-the-record-is-a-column.md).
+[ADR-0027 §4](ADR-0027-the-translation-table-is-rows-and-the-record-is-a-column.md).
 
 ### ⚠️ ثغرة في قاعدة §6.2 اكتُشفت عند التنفيذ
 
@@ -167,7 +167,7 @@ grep -rhE '^\s+message_(ar|en)\s+text[^,]*not null' --include=*.sql data src | w
 المُجزَّأة** اليوم: ينساب إلى `ledger.journal_line.description` وهو حقل مُجزَّأ في المخطّط
 القانوني v2 (مقيس في `DisplayTextInsideTheHashedBytesTests`). فالقاعدة تُعطي جواباً صحيحاً
 يقود إلى فعلٍ خاطئ، ولا صنف فيها لنصّ عرضٍ **صار واقعةً مُوقَّعة**. **مرفوعة ولم يُخترَع لها
-صنف ثالث** — التفصيل في [ADR-جديد §2](ADR-جديد-the-translation-table-is-rows-and-the-record-is-a-column.md).
+صنف ثالث** — التفصيل في [ADR-0027 §2](ADR-0027-the-translation-table-is-rows-and-the-record-is-a-column.md).
 
 ## §5 · عطل العملية الذي كشفه هذا القرار
 

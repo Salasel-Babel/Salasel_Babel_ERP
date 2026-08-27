@@ -1,4 +1,6 @@
+using System.Globalization;
 using Babel.Core.Entitlement;
+using Babel.Core.Metering;
 using Babel.SharedKernel;
 using Xunit;
 
@@ -173,6 +175,53 @@ public sealed class EntitlementFloorTests
         }
 
         Assert.Equal([BabelModule.Ai], revocable);
+    }
+
+    // ── ٤ · محور الفوترة: يُلتقَط ولا يُحتسَب ────────────────────────────────
+
+    /// <summary>
+    /// <b>حالة الاستحقاق تُلتقَط على محور المستخدم — والعدّ الافتراضي لم يتغيّر.</b>
+    ///
+    /// <para>مستخدمان: أحدهما على وحدة مستحقّة والآخر على وحدة للقراءة فقط.
+    /// الحدث المكتوب يحمل حالة كلٍّ منهما، فيصير «هل يُعدّ من يقرأ فقط؟» سؤالاً
+    /// <b>قابلاً للحساب بأثر رجعي</b>. وحتى يُحسم، <c>GetActiveUsersAsync</c>
+    /// يُعيد <b>الاثنين</b> كما كان — لم يتحرّك رقمٌ تجاري.</para>
+    /// </summary>
+    [Fact]
+    public async Task حالة_الاستحقاق_تُلتقَط_على_محور_المستخدم_ولا_تُغيّر_العدّ()
+    {
+        UserId reader = new(Guid.Parse("44444444-4444-4444-4444-444444444444"));
+        UserId writer = new(Guid.Parse("55555555-5555-5555-5555-555555555555"));
+
+        InMemoryUsageStore store = new();
+        DateTimeOffset now = DateTimeOffset.Parse("2026-08-27T10:00:00Z", CultureInfo.InvariantCulture);
+
+        await store.RecordUserActivityAsync(new UserActivityEvent(
+            Tenant, writer, BabelModule.Ledger, "Ledger.Post", now, EntitlementState.Entitled), TestContext.Current.CancellationToken);
+        await store.RecordUserActivityAsync(new UserActivityEvent(
+            Tenant, reader, BabelModule.Ledger, "Ledger.TrialBalance", now, EntitlementState.ReadOnly), TestContext.Current.CancellationToken);
+
+        IReadOnlyCollection<UserId> active =
+            await store.GetActiveUsersAsync(Tenant, BillingPeriod.FromInstant(now), TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, active.Count);
+        Assert.Contains(reader, active);
+        Assert.Contains(writer, active);
+    }
+
+    /// <summary>
+    /// وحالة الاستحقاق حقلٌ <b>إلزامي</b> على الحدث، فلا تُنسى ولا تُملأ بافتراض
+    /// صامت: مؤلّف مسار قياسٍ جديد <b>مضطرّ</b> إلى أن يقرّر.
+    /// </summary>
+    [Fact]
+    public void حالة_الاستحقاق_حقل_إلزامي_لا_افتراض_صامت()
+    {
+        System.Reflection.ParameterInfo state = typeof(UserActivityEvent)
+            .GetConstructors()[0].GetParameters()
+            .Single(p => p.Name == "State");
+
+        Assert.False(state.HasDefaultValue);
+        Assert.Equal(typeof(EntitlementState), state.ParameterType);
     }
 
     /// <summary>

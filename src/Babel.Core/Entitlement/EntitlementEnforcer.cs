@@ -50,7 +50,7 @@ public sealed class EntitlementEnforcer : IEntitlementEnforcer
 
         DateTimeOffset now = _timeProvider.GetUtcNow();
         await _usageMeter.RecordModuleUsageAsync(new ModuleUsageEvent(tenant, module, operation, actor, now, 1), cancellationToken).ConfigureAwait(false);
-        await _usageMeter.RecordUserActivityAsync(new UserActivityEvent(tenant, actor, module, operation, now), cancellationToken).ConfigureAwait(false);
+        await _usageMeter.RecordUserActivityAsync(new UserActivityEvent(tenant, actor, module, operation, now, state), cancellationToken).ConfigureAwait(false);
 
         return Result.Success();
     }

@@ -275,6 +275,43 @@ public sealed class Rule06_NothingBypassesEntitlement
             + "صامتاً:\n" + string.Join('\n', violations.Order(StringComparer.Ordinal)));
     }
 
+    /// <summary>
+    /// <b>ما هو قائم اليوم، مقيساً قبل أي تغيير.</b>
+    /// <para>
+    /// المسح أعلاه يستثني <c>/Entitlement/</c> — وهو الصواب: هناك <b>يجب</b> أن يُقرَّر.
+    /// لكنّه لذلك لا يرى شيئاً ممّا يقع <b>داخل</b> الحدّ، والنسخة الثانية من جدول القرار
+    /// تقع هناك بالضبط. وهذا الفحص يُثبّت الحالة القائمة قبل توحيدها كي يُقرأ الفرق
+    /// في السلوك لا في الدعوى: <c>Babel.Core</c> يكتب القاعدة <b>مرّتين</b> —
+    /// <c>EntitlementEnforcer.Allows</c> و<c>EntitlementSet.Allows</c>، ولكلٍّ نسخته
+    /// من «‏<c>ReadOnly</c> تعني القراءة وحدها» — و<c>Babel.ControlPlane</c> يكتبها مرّة.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void جدول_القرار_مكتوبٌ_مرّتين_في_النواة_اليوم()
+    {
+        IReadOnlyList<EntitlementDecisionScan.EntitlementSeam> seams = EntitlementDecisionScan.Seams;
+
+        Assert.Equal(
+            ["Babel.ControlPlane", "Babel.Core"],
+            seams.Select(static seam => seam.Project).Order(StringComparer.Ordinal));
+
+        // غير خاوٍ: ماسحٌ لا يقرأ عضواً واحداً يمرّ أخضر إلى الأبد (فخ-68).
+        foreach (EntitlementDecisionScan.EntitlementSeam seam in seams)
+        {
+            Assert.Empty(seam.BlockScopedNamespaceFiles);
+            Assert.True(seam.Files.Count >= 5, $"{seam.Project}: {seam.Files.Count} ملفاً فقط في الحدّ.");
+            Assert.True(seam.Members.Count >= 20, $"{seam.Project}: {seam.Members.Count} عضواً فقط — الماسح ضامر.");
+        }
+
+        Assert.Equal(
+            ["src/Babel.Core/Entitlement/EntitlementEnforcer.cs::Allows", "src/Babel.Core/Entitlement/EntitlementSet.cs::Allows"],
+            seams.Single(static s => s.Project == "Babel.Core").Decisions.Select(static m => m.Display).Order(StringComparer.Ordinal));
+
+        Assert.Equal(
+            ["src/Babel.ControlPlane/Entitlement/EntitlementModel.cs::Allows"],
+            seams.Single(static s => s.Project == "Babel.ControlPlane").Decisions.Select(static m => m.Display).Order(StringComparer.Ordinal));
+    }
+
     /// <summary>الشيفرة بلا تعليقات — القاعدة تفحص ما يُنفَّذ لا ما يُشرح (نفس القاعدة 12).</summary>
     private static string StripComments(string text)
     {

@@ -56,6 +56,7 @@ export function CompanyBadge(): ReactNode {
       <span data-testid="company-badge-name">
         {resolved ? resolved.text : t("app.company.unknown")}
       </span>
+      <span aria-hidden="true" className="muted">·</span>
       <span className="muted mono" dir="ltr" data-testid="company-badge-id">
         {config.companyId.slice(0, 8)}
       </span>

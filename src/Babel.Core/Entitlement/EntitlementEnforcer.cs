@@ -41,11 +41,10 @@ public sealed class EntitlementEnforcer : IEntitlementEnforcer
 
         EntitlementState state = await _entitlements.GetStateAsync(tenant, module, cancellationToken).ConfigureAwait(false);
 
-        if (!Allows(state, access))
+        // القرار من موضعه الوحيد — لا نسخة ثانية منه هنا ولا في المجموعة.
+        if (!EntitlementRules.Allows(state, access))
         {
-            return Result.Failure(state == EntitlementState.ReadOnly
-                ? EntitlementErrors.ReadOnly(module)
-                : EntitlementErrors.NotEntitled(module));
+            return Result.Failure(EntitlementErrors.Refusal(state, module));
         }
 
         DateTimeOffset now = _timeProvider.GetUtcNow();
@@ -54,11 +53,4 @@ public sealed class EntitlementEnforcer : IEntitlementEnforcer
 
         return Result.Success();
     }
-
-    private static bool Allows(EntitlementState state, EntitlementAccess access) => state switch
-    {
-        EntitlementState.Entitled => true,
-        EntitlementState.ReadOnly => access == EntitlementAccess.Read,
-        _ => false,
-    };
 }

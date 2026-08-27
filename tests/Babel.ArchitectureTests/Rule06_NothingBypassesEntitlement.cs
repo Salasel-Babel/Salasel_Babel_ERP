@@ -275,6 +275,174 @@ public sealed class Rule06_NothingBypassesEntitlement
             + "صامتاً:\n" + string.Join('\n', violations.Order(StringComparer.Ordinal)));
     }
 
+    /// <summary>
+    /// <b>جدول القرار مرّةً واحدة في كل تجميعة — والمسح داخل الحدّ، لا خارجه.</b>
+    /// <para>
+    /// الفحص السابق يستثني <c>/Entitlement/</c>، وهو الصواب: هناك <b>يجب</b> أن يُقرَّر.
+    /// وثمنُ ذلك أنه <b>لا يرى شيئاً ممّا يقع داخل الحدّ</b> — والنسخة الثانية تقع هناك
+    /// بالضبط. وقد كانت: <c>Babel.Core</c> كتب القاعدة <b>مرّتين</b>، في
+    /// <c>EntitlementEnforcer.Allows</c> وفي <c>EntitlementSet.Allows</c>، ولكلٍّ نسخته
+    /// من «‏<c>ReadOnly</c> تعني القراءة وحدها»؛ فتعديل إحداهما وسهو الأخرى يمنح مستأجراً
+    /// منقطع الاشتراك <b>كتابةً</b> من الطريق الذي لم يُحدَّث — وهو بعينه العطل الذي وُجد
+    /// ADR-0034 لمنعه، مُعاداً مجلداً واحداً إلى الداخل.
+    /// (‏<c>docs/evidence/traps.md#fakh-the-decision-table-is-duplicated-inside-its-own-seam</c>)
+    /// </para>
+    /// <para>
+    /// <b>و«يقرّر» معرَّفة بنيوياً لا بالاسم:</b> عضوٌ يُعيد <c>bool</c> مجرّداً ويقرن
+    /// <c>EntitlementState.ReadOnly</c> بقيمة من نوع نيّة الوصول. فحارسٌ يبحث عن اسم
+    /// <c>Allows</c> يُلتَفّ عليه بإعادة تسمية؛ وهذا يقرأ <b>الشكل</b>.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void جدول_القرار_موضعٌ_واحد_في_كل_تجميعة()
+    {
+        IReadOnlyList<EntitlementDecisionScan.EntitlementSeam> seams = EntitlementDecisionScan.Seams;
+
+        AssertTheScannerIsNotVacuous(seams);
+
+        List<string> violations = [];
+
+        foreach (EntitlementDecisionScan.EntitlementSeam seam in seams)
+        {
+            if (seam.Decisions.Count != 1)
+            {
+                violations.Add(FormattableString.Invariant(
+                    $"{seam.Project}: {seam.Decisions.Count} موضع قرار والمطلوب واحد — ")
+                    + string.Join(" · ", seam.Decisions.Select(static m => m.Display).Order(StringComparer.Ordinal)));
+            }
+        }
+
+        Assert.True(
+            violations.Count == 0,
+            "جدول القرار مكتوب أكثر من مرّة داخل حدّ الاستحقاق. النسخة الثانية هي الطريق "
+            + "الذي يُمنح منه مستأجرٌ منقطع الاشتراك كتابةً حين يُحدَّث أحدهما ويُنسى الآخر:\n"
+            + string.Join('\n', violations));
+    }
+
+    /// <summary>
+    /// <b>ولا موضع ثانٍ يقرن حالةً بنيّة وصول</b> — ولو لم يُعِد <c>bool</c>.
+    /// <para>
+    /// الفحص السابق يقرأ «من يقرّر»؛ وهذا يقرأ «من يعرف الشكل أصلاً». والفرق مهمّ:
+    /// نسخةٌ ثانية تُكتب <c>void</c> أو <c>Task</c> أو ترمي استثناءً بدل أن تُعيد
+    /// <c>bool</c> تمرّ من الأول وتُمسَك هنا.
+    /// </para>
+    /// <para>
+    /// والجرد أدناه <b>ليس حدّاً أعلى بل قائمة واعية</b>: كل عضو فيه يقرن الحالة بالنيّة
+    /// و<b>لا يقرّر</b> — <c>Refusal</c> تُسمّي الرفض بعد وقوعه (‏«انقطع الاشتراك» شيء
+    /// و«لم تُشترَ قط» شيء آخر). فمن يضيف عضواً جديداً يقرن الاثنين مضطرٌّ إلى أن يقرّر:
+    /// إن كان يقرّر فليُحذف ويُنادَ <c>EntitlementRules.Allows</c>، وإن كان يُسمّي فليُضَف
+    /// هنا بحجّته. (نفس شكل الجرد في القاعدة 5 وللسبب نفسه.)
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void لا_موضع_ثانٍ_يقرن_حالة_استحقاق_بنيّة_وصول()
+    {
+        (string Project, string[] Members)[] declared =
+        [
+            ("Babel.ControlPlane", ["Allows", "Refusal"]),
+            (ModuleMap.Core, ["Allows"]),
+        ];
+
+        IReadOnlyList<EntitlementDecisionScan.EntitlementSeam> seams = EntitlementDecisionScan.Seams;
+
+        AssertTheScannerIsNotVacuous(seams);
+
+        Assert.Equal(
+            declared.Select(static d => d.Project).Order(StringComparer.Ordinal),
+            seams.Select(static seam => seam.Project).Order(StringComparer.Ordinal));
+
+        List<string> violations = [];
+
+        foreach ((string project, string[] members) in declared)
+        {
+            EntitlementDecisionScan.EntitlementSeam seam = seams.Single(s => string.Equals(s.Project, project, StringComparison.Ordinal));
+            HashSet<string> declaredMembers = new(members, StringComparer.Ordinal);
+
+            violations.AddRange(seam.Pairings
+                .Where(m => !declaredMembers.Contains(m.Name))
+                .Select(static m => $"{m.Display} — يقرن حالةً بنيّة وصول وليس في الجرد")
+                .Order(StringComparer.Ordinal));
+
+            violations.AddRange(members
+                .Where(m => !seam.Pairings.Any(p => string.Equals(p.Name, m, StringComparison.Ordinal)))
+                .Select(m => $"{project}::{m} — في الجرد ولم يعد موجوداً: يُحذف من الجرد لا يُترك")
+                .Order(StringComparer.Ordinal));
+        }
+
+        Assert.True(
+            violations.Count == 0,
+            "الجرد الصريح لا يطابق ما على القرص. عضوٌ جديد يقرن حالةً بنيّة وصول إمّا **يقرّر** — "
+            + "فليُحذف ويُنادِ EntitlementRules.Allows — وإمّا **يُسمّي الرفض** بعد وقوعه، "
+            + "فليُضَف إلى الجرد أعلاه بحجّته:\n"
+            + string.Join('\n', violations));
+    }
+
+    /// <summary>
+    /// <b>وجدولا التجميعتين قاعدةٌ واحدة، لا قاعدتان متشابهتان.</b>
+    /// <para>
+    /// <c>Babel.ControlPlane</c> بلا مرجعية إلى أي مشروع بابل وبلا مرجعية إليه
+    /// (‏<see cref="ModuleMap"/>: مجموعة مراجعه المسموحة <b>فارغة</b>)، فلا نوع مشترك
+    /// يستطيع أن يحمل الجدول للاثنين، ولا انعكاسٌ من هنا يبلغه. والرابط الوحيد الممكن
+    /// بلا كسر ذلك الحدّ هو <b>المصدر على القرص</b>: يُقرأ الجدولان ويُوحَّدان — بلا
+    /// فراغات، وباسمَي نوعَي نيّة الوصول وأسماء الوسائط موحَّدة — ثم يُقارَنان.
+    /// </para>
+    /// <para>
+    /// وهذا يُغلق <b>شطر القاعدة</b> من الدَّين المُعلَن في ADR-0034 («النموذجان ما زالا
+    /// اثنين»). ويبقى <b>شطر الكتالوج</b> مفتوحاً: وحدةٌ تُضاف إلى أحد جردَي الوحدات ولا
+    /// تُضاف إلى الآخر لا يمسكها شيء — وهو دَينٌ آخر، مذكور بحدوده في ADR-جديد.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void جدولا_التجميعتين_قاعدةٌ_واحدة()
+    {
+        IReadOnlyList<EntitlementDecisionScan.EntitlementSeam> seams = EntitlementDecisionScan.Seams;
+
+        AssertTheScannerIsNotVacuous(seams);
+
+        (string Project, string Normalised)[] tables = [.. seams
+            // أوّل قرار لا وحيده: عددُ المواضع شأنُ الفحص الأول، وهذا يقارن القاعدة.
+            .Select(static seam => (seam.Project, EntitlementDecisionScan.Normalise(seam.Decisions[0])))
+            .OrderBy(static t => t.Project, StringComparer.Ordinal)];
+
+        // غير خاوٍ من طرف الشكل: نصٌّ مُوحَّد فقد ذراع «للقراءة فقط» أو ذكر نيّة الوصول
+        // لم يعد جدول قرار، ومقارنة فارغتين تمرّ دائماً.
+        foreach ((string project, string normalised) in tables)
+        {
+            Assert.Contains("EntitlementState.ReadOnly", normalised, StringComparison.Ordinal);
+            Assert.Contains("ACCESS.Read", normalised, StringComparison.Ordinal);
+            Assert.True(normalised.Length > 80, $"{project}: النصّ المُوحَّد {normalised.Length} محرفاً فقط.");
+        }
+
+        Assert.True(
+            tables.Select(static t => t.Normalised).Distinct(StringComparer.Ordinal).Count() == 1,
+            "جدولا القرار في التجميعتين ليسا القاعدة نفسها — والتجميعتان لا تتراجعان، "
+            + "فلا شيء غير هذا الفحص يربطهما:\n"
+            + string.Join('\n', tables.Select(static t => $"{t.Project}: {t.Normalised}")));
+    }
+
+    /// <summary>
+    /// <b>الماسح غير خاوٍ من طرفه هو.</b> حارسٌ مجموعتُه فارغة يمرّ أخضر إلى الأبد،
+    /// وقد وقع ذلك في هذا المستودع (‏<c>traps.md#fakh-a-guard-whose-corpus-is-the-disk-not-the-repository</c>).
+    /// فيُثبَت هنا أن الحدّين وُجدا، وأن الملفات قُرئت، وأن الأعضاء فُصلت فعلاً، وأن
+    /// كل حدٍّ يحمل قراراً واحداً على الأقل — فتوقّفُ المُحلِّل يُقرأ أحمر لا أخضر.
+    /// </summary>
+    private static void AssertTheScannerIsNotVacuous(IReadOnlyList<EntitlementDecisionScan.EntitlementSeam> seams)
+    {
+        Assert.Equal(2, seams.Count);
+
+        foreach (EntitlementDecisionScan.EntitlementSeam seam in seams)
+        {
+            Assert.True(
+                seam.BlockScopedNamespaceFiles.Count == 0,
+                $"{seam.Project}: فضاء اسم بقوسين يُزيح عمق الأعضاء فيمرّ المسح فارغاً:\n"
+                + string.Join('\n', seam.BlockScopedNamespaceFiles));
+
+            Assert.True(seam.Files.Count >= 5, FormattableString.Invariant($"{seam.Project}: {seam.Files.Count} ملفاً فقط في الحدّ — النطاق ضامر."));
+            Assert.True(seam.Members.Count >= 20, FormattableString.Invariant($"{seam.Project}: {seam.Members.Count} عضواً فقط — الماسح لم يعد يفصل الأعضاء."));
+            Assert.True(seam.Decisions.Count >= 1, $"{seam.Project}: لا موضع قرار إطلاقاً — الماسح توقّف عن المطابقة.");
+        }
+    }
+
     /// <summary>الشيفرة بلا تعليقات — القاعدة تفحص ما يُنفَّذ لا ما يُشرح (نفس القاعدة 12).</summary>
     private static string StripComments(string text)
     {

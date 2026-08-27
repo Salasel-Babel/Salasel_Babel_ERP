@@ -324,7 +324,7 @@ export function JournalVoucherScreen(): ReactNode {
       ) : null}
 
       <div className="card card-pad">
-        <div className="fields-3">
+        <div className="grid fields-3">
           <div className="field">
             <label htmlFor="jv-date">{t("field.entryDate.label")}</label>
             <input
@@ -350,7 +350,7 @@ export function JournalVoucherScreen(): ReactNode {
           </div>
         </div>
 
-        <div className="fields-half" style={{ marginTop: "var(--space-12)" }}>
+        <div className="grid fields-half" style={{ marginTop: "var(--space-12)" }}>
           <div className="field">
             <label htmlFor="jv-memo-ar">{t("screen.voucher.narrationAr")}</label>
             <input
@@ -386,7 +386,7 @@ export function JournalVoucherScreen(): ReactNode {
             <legend className="k">
               <Num value={index + 1} />
             </legend>
-            <div className="fields-4">
+            <div className="grid fields-4">
               <div className="field">
                 <label htmlFor={"jv-role-" + line.key}>{t("screen.voucher.role")}</label>
                 <select
@@ -468,7 +468,7 @@ export function JournalVoucherScreen(): ReactNode {
               </div>
             </div>
 
-            <div className="fields-4" style={{ marginTop: "var(--space-10)" }}>
+            <div className="grid fields-4" style={{ marginTop: "var(--space-10)" }}>
               <div className="field">
                 <label htmlFor={"jv-branch-" + line.key}>{t("field.branch.label")}</label>
                 <input

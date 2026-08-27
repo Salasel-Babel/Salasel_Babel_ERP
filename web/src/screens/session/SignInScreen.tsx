@@ -143,7 +143,7 @@ export function SignInScreen(): ReactNode {
           signIn(token, baseUrl);
         }}
       >
-        <div className="fields-half">
+        <div className="grid fields-half">
           <div className="field">
             <label htmlFor="si-token">{t("field.token.label")}</label>
             <input

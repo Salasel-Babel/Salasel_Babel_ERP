@@ -86,6 +86,30 @@ public class EntitlementFloorTests
     }
 
     /// <summary>
+    /// <b>والأرضية المُعلَنة تطابق «هل تُرحّل قيوداً؟».</b> الأرضية مكتوبة صفّاً
+    /// صفّاً في الكتالوج عمداً — لا مشتقّة ضمناً — كي يكون سهو المؤلّف القادم
+    /// <b>مرئياً</b>. وهذا الفحص هو الذي يجعله مرئياً.
+    /// </summary>
+    [Fact]
+    public void الأرضية_المُعلَنة_تطابق_هل_تُرحّل_قيوداً()
+    {
+        var mismatched = ModuleCatalog.All
+            .Where(m => m.Floor != (m.PostsJournal
+                ? EntitlementState.ReadOnly
+                : EntitlementState.NotEntitled))
+            .Select(m => $"{m.Code}: PostsJournal={m.PostsJournal} وأرضيتها {m.Floor}")
+            .OrderBy(x => x, StringComparer.Ordinal)
+            .ToList();
+
+        Assert.True(mismatched.Count == 0,
+            "أرضيات مُعلَنة تخالف «هل تُرحّل قيوداً؟»:\n" + string.Join("\n", mismatched));
+
+        // غير خاوٍ من الطرفين: كتالوجٌ كل وحداته من صنف واحد يجعل الفحص بلا معنى.
+        Assert.Contains(ModuleCatalog.All, m => m.Floor == EntitlementState.ReadOnly);
+        Assert.Contains(ModuleCatalog.All, m => m.Floor == EntitlementState.NotEntitled);
+    }
+
+    /// <summary>
     /// وأرضية الوحدة لا تتجاوز أرضية اعتمادياتها — وإلا وُجدت مجموعةٌ لا يبلغها
     /// أي خفض مشروع.
     /// </summary>

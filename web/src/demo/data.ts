@@ -82,7 +82,8 @@ export interface SnapDoc {
 export interface SnapAccount {
   readonly accountCode: string;
   readonly nameAr: string;
-  readonly nameEn: string | null;
+  /** كل ترجمة موجودة، صفوفاً لا عمودَي ar/en (ADR-0021). */
+  readonly translations: Readonly<Record<string, string>> | null;
   readonly nature: string;
   readonly accountType: string;
   readonly statementSection: string;

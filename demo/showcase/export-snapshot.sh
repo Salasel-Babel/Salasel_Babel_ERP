@@ -66,9 +66,10 @@ accounts_json=$(q babel_demo_ledger "
 select coalesce(jsonb_agg(jsonb_build_object(
          'accountCode', a.account_code,
          'nameAr', a.name_ar,
-         'nameEn', (select t.name from ledger.name_translation t
-                     where t.company_id = a.company_id and t.entity_kind = 'account'
-                       and t.entity_key = a.account_code and t.language_tag = 'en'),
+         'translations', (select jsonb_object_agg(t.language_tag, t.name)
+                            from ledger.name_translation t
+                           where t.company_id = a.company_id and t.entity_kind = 'account'
+                             and t.entity_key = a.account_code),
          'nature', a.natural_side,
          'accountType', a.account_type,
          'statementSection', a.statement_section

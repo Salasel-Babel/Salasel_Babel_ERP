@@ -179,22 +179,22 @@ test("فيلم العرض — سبعة مشاهد", async ({ page }) => {
   await set(page, {
     scene: "tamper",
     truth: "real",
-    caption: "١ · العبث يُكشَف — ولو كان بنيّة حسنة",
+    caption: "المشهد الأول · العبث يُكشَف — ولو كان بنيّة حسنة",
     captionSub: "قيدٌ مُرحَّل منذ يناير. سنغيّر رقمه في قاعدة البيانات مباشرةً، ثم نسأل النظام.",
     bag: { entryNo: 1, term: [], alteredLines: [], lineOverrides: {}, balanceVerdict: null, chainVerdict: null },
   });
   await beat(page, 4500);
 
-  await term.push("note", "-- الدفتر سليم الآن. لنجرّب أولاً بدور التطبيق نفسه.", 1400);
+  await term.push("note", "الدفتر سليم الآن. لنجرّب أولاً بدور التطبيق نفسه.", 1400);
 
   const appUpdate =
     `psql "host=${PGHOST} dbname=${LEDGER_DB} user=${APP_ROLE}" -c "update ledger.journal_line set debit_company = debit_company + 5000 where line_no = 1"`;
   await term.type("cmd", appUpdate);
   const denied = psql("update ledger.journal_line set debit_company = debit_company + 5000 where line_no = 1", APP_ROLE);
   await term.output("err", denied, 1600);
-  await term.push("note", "-- الرفض من PostgreSQL نفسه: الدور لا يملك UPDATE. لا منطق تطبيقٍ شارك في هذا.", 2600);
+  await term.push("note", "الرفض من PostgreSQL نفسه: الدور لا يملك UPDATE. لا منطق تطبيقٍ شارك في هذا.", 2600);
 
-  await term.push("note", "-- فلنصر إذن **مالك قاعدة البيانات**. أقصى ما يستطيعه مديرُ نظام.", 1800);
+  await term.push("note", "فلنصر إذن مالكَ قاعدة البيانات نفسه — أقصى ما يستطيعه مديرُ نظام.", 1800);
 
   const sqlA1 =
     "update ledger.journal_line l set debit_company = debit_company + 5000, debit = debit + 5000 from ledger.journal_entry e where e.entry_id = l.entry_id and e.entry_no = 1 and l.line_no = 1;";
@@ -211,9 +211,9 @@ test("فيلم العرض — سبعة مشاهد", async ({ page }) => {
       lineOverrides: { d1: "15350.0000", c2: "14000.0000" },
     },
   });
-  await term.push("note", "-- الطرفان تغيّرا معاً بنفس المبلغ، فالقيد ما زال متوازناً تماماً.", 2600);
+  await term.push("note", "الطرفان تغيّرا معاً بنفس المبلغ، فالقيد ما زال متوازناً تماماً.", 2600);
 
-  await term.type("cmd", `curl -H "Authorization: Bearer ‹الرمز مخفي›" ${API}/api/v1/companies/…/trial-balance?book=MAIN`);
+  await term.type("cmd", `curl -H "Authorization: Bearer ***" ${API}/api/v1/companies/…/trial-balance?book=MAIN`);
   const tb1 = JSON.parse(curlApi(`/api/v1/companies/${COMPANY}/trial-balance?book=MAIN`)) as {
     balanced: boolean; totalDebit: string; totalCredit: string;
   };
@@ -222,7 +222,7 @@ test("فيلم العرض — سبعة مشاهد", async ({ page }) => {
   await set(page, { captionSub: "الفحص المحاسبي التقليدي — ميزان المراجعة — يمرّ. وهذا بالضبط ما يعتمد عليه المُلتفّ." });
   await beat(page, 5200);
 
-  await term.type("cmd", `curl -H "Authorization: Bearer ‹الرمز مخفي›" ${API}/api/v1/companies/…/ledger-chain/verification?book=MAIN&fiscalYear=2026`);
+  await term.type("cmd", `curl -H "Authorization: Bearer ***" ${API}/api/v1/companies/…/ledger-chain/verification?book=MAIN&fiscalYear=2026`);
   const chain1 = JSON.parse(curlApi(`/api/v1/companies/${COMPANY}/ledger-chain/verification?book=MAIN&fiscalYear=2026`)) as {
     ok: boolean; verdict: string; checked: number; firstDivergentSequence: string | null; reasonAr: string;
   };
@@ -240,7 +240,7 @@ test("فيلم العرض — سبعة مشاهد", async ({ page }) => {
   psql(undoA2);
 
   await set(page, {
-    caption: "١ب · والآن الأخطر: إصلاحٌ حسن النيّة",
+    caption: "وأخطر منه — إصلاحٌ حسن النيّة",
     captionSub: "لا سرقة ولا تلاعب بمبلغ — مجرّد ترحيلة بيانات تُصلح مركز تكلفة على سطرٍ مُرحَّل.",
     bag: {
       alteredLines: [],
@@ -255,7 +255,7 @@ test("فيلم العرض — سبعة مشاهد", async ({ page }) => {
 
   const sqlB =
     "update ledger.journal_line l set cost_center_id = 'cc.002' from ledger.journal_entry e where e.entry_id = l.entry_id and e.entry_no = 1 and l.line_no = 2;";
-  await term.push("note", "-- «مركز التكلفة على سطر الإيراد خطأ. صحّحه.» طلبٌ يُقال كل يوم.", 2200);
+  await term.push("note", "«مركز التكلفة على سطر الإيراد خطأ. صحّحه.» طلبٌ يُقال كل يوم.", 2200);
   await term.type("sql", sqlB);
   await term.output("ok", psql(sqlB), 800);
   await set(page, { bag: { alteredLines: [2], lineOverrides: { cc2: "cc.002" } } });
@@ -264,7 +264,7 @@ test("فيلم العرض — سبعة مشاهد", async ({ page }) => {
   const tb2 = JSON.parse(curlApi(`/api/v1/companies/${COMPANY}/trial-balance?book=MAIN`)) as {
     balanced: boolean; totalDebit: string; totalCredit: string;
   };
-  await term.push("note", "-- لا مبلغ تغيّر. الميزان لم يتحرّك ولا هللة.", 1200);
+  await term.push("note", "لا مبلغ تغيّر. الميزان لم يتحرّك ولا هللة.", 1200);
   await set(page, { bag: { balanceVerdict: tb2 } });
   await beat(page, 3200);
 
@@ -281,7 +281,7 @@ test("فيلم العرض — سبعة مشاهد", async ({ page }) => {
   /* ── الإرجاع: الطريق الوحيد إلى سلسلة سليمة هو إعادة ما كان ─────── */
   const undoB =
     "update ledger.journal_line l set cost_center_id = 'cc.001' from ledger.journal_entry e where e.entry_id = l.entry_id and e.entry_no = 1 and l.line_no = 2;";
-  await term.push("note", "-- والطريق الوحيد إلى سلسلة سليمة: إعادةُ ما كان، بايتاً ببايت.", 1500);
+  await term.push("note", "والطريق الوحيد إلى سلسلة سليمة: إعادةُ ما كان، بايتاً ببايت.", 1500);
   await term.type("sql", undoB);
   await term.output("ok", psql(undoB), 700);
   const chain3 = JSON.parse(curlApi(`/api/v1/companies/${COMPANY}/ledger-chain/verification?book=MAIN&fiscalYear=2026`)) as {
@@ -289,14 +289,14 @@ test("فيلم العرض — سبعة مشاهد", async ({ page }) => {
   };
   await set(page, { bag: { chainVerdict: chain3, alteredLines: [], lineOverrides: {} } });
   await term.output("ok", `{"ok": ${chain3.ok}, "verdict": "${chain3.verdict}", "checked": ${chain3.checked}}`, 900);
-  await set(page, { caption: "١ج · الدفتر عاد سليماً", captionSub: "وفي نظامٍ حقيقي كان التصحيح سيصير قيداً جديداً — لا محواً لقديم." });
+  await set(page, { caption: "والدفتر عاد سليماً", captionSub: "وفي نظامٍ حقيقي كان التصحيح سيصير قيداً جديداً — لا محواً لقديم." });
   await beat(page, 6500);
 
   /* ═══ 2 · رحلة عبر الزمن ══════════════════════════════════════════ */
   await set(page, {
     scene: "time",
     truth: "real",
-    caption: "٢ · الدفتر كما كان في أي يوم مضى",
+    caption: "المشهد الثاني · الدفتر كما كان في أي يوم مضى",
     captionSub: "لا نسخة احتياطية تُستعاد: دفترٌ يُضاف إليه فقط **هو** سلسلة زمنية بحكم بنيته.",
     bag: { dayIndex: 0 },
   });
@@ -327,7 +327,7 @@ test("فيلم العرض — سبعة مشاهد", async ({ page }) => {
   await set(page, {
     scene: "explain",
     truth: "real",
-    caption: "٣ · «فسِّر هذا الرقم» — تفكيكٌ لا تفسير",
+    caption: "المشهد الثالث · «فسِّر هذا الرقم» — تفكيكٌ لا تفسير",
     captionSub: explainCaptions[0],
     bag: { explainStep: 0, focusEntry: 1 },
   });
@@ -341,7 +341,7 @@ test("فيلم العرض — سبعة مشاهد", async ({ page }) => {
   await set(page, {
     scene: "language",
     truth: "real",
-    caption: "٤ · اللغة تنقلب في منتصف العمل",
+    caption: "المشهد الرابع · اللغة تنقلب في منتصف العمل",
     captionSub: "الشاشة أدناه هي شاشة المنتج نفسها، تقرأ من الخادم الحقيقي الآن.",
     bag: {},
   });
@@ -365,21 +365,21 @@ test("فيلم العرض — سبعة مشاهد", async ({ page }) => {
   await set(page, {
     scene: "qr",
     truth: "real",
-    caption: "٥ · رمز الفاتورة الإلكترونية — حقيقةٌ لا صورة",
+    caption: "المشهد الخامس · رمز الفاتورة الإلكترونية — حقيقةٌ لا صورة",
     captionSub: "الحمولة متّجهٌ ذهبي مُودَع في المستودع، والذي قرأها هو القارئ المشحون نفسه.",
     bag: { qrPayload: goldenQr, qrLabel: "متّجه ذهبي · qr.phase1.tlv", qrResult: qrGood },
   });
   await beat(page, 11000);
 
   await set(page, {
-    caption: "٥ب · حمولةٌ تكذب في طولها",
+    caption: "حمولةٌ تكذب في طولها",
     captionSub: "بايتٌ واحد غُيّر: خانة الطول تقول ٤٦ بدل ٤٧ — قطعٌ داخل حرف عربي.",
     bag: { qrPayload: lying.toString("base64"), qrLabel: "طول مُعلَن كاذب", qrResult: qrLying },
   });
   await beat(page, 9500);
 
   await set(page, {
-    caption: "٥ج · وسومٌ بترتيبٍ مبعثر",
+    caption: "وسومٌ بترتيبٍ مبعثر",
     captionSub: "قارئٌ متساهل كان سيضع مبلغ الضريبة موضع الإجمالي — ولا يشتكي.",
     bag: { qrPayload: outOfOrder.toString("base64"), qrLabel: "ترتيب مخالف", qrResult: qrOrder },
   });
@@ -398,7 +398,7 @@ test("فيلم العرض — سبعة مشاهد", async ({ page }) => {
   await set(page, {
     scene: "voice",
     truth: "mixed",
-    caption: "٦ · الإدخال المنطوق",
+    caption: "المشهد السادس · الإدخال المنطوق",
     captionSub: "التفريغ محقون لا مسموع — والمكوّن يرسم وسم المحاكاة بنفسه، ولم يُخفَ.",
     bag: {
       transcript: "فاتورة مصروف من مؤسسة البيان للدعاية والإعلان رقم 9345 بمبلغ ألف وخمسمئة ريال وضريبة خمسة عشر بالمئة اليوم",
@@ -422,7 +422,7 @@ test("فيلم العرض — سبعة مشاهد", async ({ page }) => {
   await beat(page, 4500);
 
   await set(page, {
-    caption: "٦ب · وحين لا يفهم — يرفض بدل أن يخمّن",
+    caption: "وحين لا يفهم — يرفض بدل أن يخمّن",
     captionSub: "«تلاتميه» عامّية غير مُعرَّفة. النظام يسمّيها ويرفضها بدل أن يكتب ٣٠٠ ويمضي.",
     bag: {
       transcript: "فاتورة مصروف من مؤسسة الرياض للتوريدات بمبلغ تلاتميه ريال اليوم",
@@ -439,7 +439,7 @@ test("فيلم العرض — سبعة مشاهد", async ({ page }) => {
   await set(page, {
     scene: "opinion",
     truth: "sim",
-    caption: "٧ · رأيٌ ثانٍ — بعد الترحيل، وبلا حجب",
+    caption: "المشهد السابع · رأيٌ ثانٍ — بعد الترحيل، وبلا حجب",
     captionSub: "هذا المشهد محاكاة كاملة: نصّ الاقتراح مكتوب في شيفرة العرض، ولا مُقترِح في المنتج اليوم.",
     bag: { suggestions: 0, decision: null },
   });

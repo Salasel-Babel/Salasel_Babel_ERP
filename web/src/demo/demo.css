@@ -132,7 +132,13 @@
 .demo-term__line[data-kind="out"]{ color:#c7d5ea; }
 .demo-term__line[data-kind="err"]{ color:#ff8f9f; font-weight:600; }
 .demo-term__line[data-kind="ok"]{ color:#5eead4; }
-.demo-term__line[data-kind="note"]{ color:#6b81a6; font-style:italic; }
+/* سطور الشرح عربية داخل طرفية اتجاهها ltr — فتُعطى اتجاهها الصحيح، وإلّا
+   تناثرت المقاطع وصار «‏.الجملة» في أوّلها. */
+.demo-term__line[data-kind="note"]{
+  color:#8ba3c7; direction:rtl; text-align:right; font-style:normal;
+  border-inline-start:3px solid #2f4a75; padding-inline-start:10px;
+  margin:6px 0; line-height:1.75;
+}
 .demo-term__caret{ display:inline-block; width:9px; height:19px; background:#8fd3ff; vertical-align:-3px; animation:demo-blink 1s steps(1) infinite; }
 @keyframes demo-blink{ 50%{opacity:0} }
 

@@ -32,16 +32,16 @@ export BABEL_WEB_URL BABEL_API_URL
 curl --fail --silent -o /dev/null "$BABEL_WEB_URL/" || { echo "✗ الواجهة لا تُجيب على $BABEL_WEB_URL" >&2; exit 1; }
 curl --fail --silent -o /dev/null "$BABEL_API_URL/health" || { echo "✗ الخادم لا يُجيب" >&2; exit 1; }
 
-rm -rf "$here/.film"
 mkdir -p "$here/out"
 
 echo "── تسخين قارئ الرمز (بناء أوّل يستغرق دقيقة)"
 dotnet run demo/showcase/read-qr.cs -- "AS8=" >/dev/null 2>&1 || true
 
 echo "── التصوير"
-(cd web && npx playwright test --config="$here/film.config.ts")
+rm -rf web/test-results
+(cd web && npx playwright test demo-film.spec.ts)
 
-raw="$(find "$here/.film" -name "*.webm" | head -1)"
+raw="$(find web/test-results -name "*.webm" | head -1)"
 [ -n "$raw" ] || { echo "✗ لم يُنتَج ملفّ فيديو." >&2; exit 1; }
 
 webm="$here/out/salasel-babel-demo.webm"

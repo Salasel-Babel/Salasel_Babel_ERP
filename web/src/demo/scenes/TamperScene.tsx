@@ -101,6 +101,28 @@ export function TamperScene(): ReactNode {
             </div>
           ) : null}
 
+          <div className="demo-layers">
+            <div className="demo-layer">
+              <span className="demo-layer__n">١</span>
+              <span>
+                <b>الصلاحيات</b> — دور التطبيق بلا <span className="demo-code">UPDATE</span> ولا{" "}
+                <span className="demo-code">DELETE</span>. الرفض من PostgreSQL بالرمز 42501 قبل أي منطق.
+              </span>
+            </div>
+            <div className="demo-layer">
+              <span className="demo-layer__n">٢</span>
+              <span>
+                <b>مشغّل مؤجَّل عند التثبيت</b> — لا قيد غير متوازن يعبر، مهما كان مسار الكتابة.
+              </span>
+            </div>
+            <div className="demo-layer">
+              <span className="demo-layer__n">٣</span>
+              <span>
+                <b>سلسلة بصمات</b> — وهي الطبقة التي تتكلّم الآن: تُثبت أن الماضي لم يُمسّ، وتسمّي موضع المسّ.
+              </span>
+            </div>
+          </div>
+
           {chain ? (
             <div className="demo-verdict" data-tone={chain.ok ? "good" : "bad"}>
               <div className="demo-verdict__code">

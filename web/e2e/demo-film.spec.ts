@@ -14,9 +14,10 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { test, type Page } from "@playwright/test";
 
-const ROOT = path.resolve(__dirname, "../..");
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const WEB = process.env.BABEL_WEB_URL ?? "http://127.0.0.1:5173";
 const API = process.env.BABEL_API_URL ?? "http://127.0.0.1:5080";
 const TOKEN = process.env.BABEL_DEMO_TOKEN ?? "";
@@ -136,7 +137,7 @@ test.use({
 test("فيلم العرض — سبعة مشاهد", async ({ page }) => {
   test.setTimeout(20 * 60_000);
 
-  const url = `${WEB}/demo?token=${encodeURIComponent(TOKEN)}&companyId=${COMPANY}&book=MAIN`;
+  const url = `${WEB}/demo?lang=ar&token=${encodeURIComponent(TOKEN)}&companyId=${COMPANY}&book=MAIN`;
   await page.goto(url);
   await page.waitForSelector('[data-testid="demo-stage"]');
   await page.evaluate(() => document.fonts.ready);

@@ -228,3 +228,38 @@
 .demo-note{ font-size:17px; color:var(--stage-text-3); line-height:1.55; margin-top:10px; }
 .demo-list{ margin:0; padding-inline-start:22px; font-size:19px; line-height:1.75; color:var(--stage-text-2); }
 .demo-list strong{ color:var(--stage-text); }
+
+/* ── ضبط الارتفاع لكل مشهد ────────────────────────────────────────────
+   مشاهد محتواها أقصر من الشاشة تُتوسَّط رأسياً بدل أن تُمطّ ألواحها؛
+   ومشهدا المؤشّر الزمني واللغة يملآن الارتفاع لأن جدوليهما طويلان. */
+.demo-body[data-scene="tamper"] .demo-grid,
+.demo-body[data-scene="explain"] .demo-grid,
+.demo-body[data-scene="qr"] .demo-grid,
+.demo-body[data-scene="voice"] .demo-grid,
+.demo-body[data-scene="opinion"] .demo-grid{ align-items:center; }
+.demo-body[data-scene="tamper"] .demo-panel,
+.demo-body[data-scene="explain"] .demo-panel,
+.demo-body[data-scene="qr"] .demo-panel,
+.demo-body[data-scene="voice"] .demo-panel,
+.demo-body[data-scene="opinion"] .demo-panel{ max-height:100%; }
+
+/* الطرفية تبقى ممتدّة: سطورها تتراكم وارتفاعٌ قافز يشتّت العين. */
+.demo-body[data-scene="tamper"] .demo-panel--flush{ height:100%; align-self:stretch; }
+
+/* ── جدول كثيف: أربعة عشر حساباً يجب أن تُرى كلّها في إطار واحد ─────── */
+.demo-table--dense{ font-size:16.5px; }
+.demo-table--dense td{ padding:6px 10px; white-space:nowrap; }
+.demo-table--dense th{ padding:6px 10px; font-size:14px; }
+
+/* ── بطاقة الطبقات الثلاث ─────────────────────────────────────────────*/
+.demo-layers{ display:flex; flex-direction:column; gap:8px; margin-top:16px; }
+.demo-layer{
+  display:flex; align-items:center; gap:12px; font-size:17px;
+  padding:10px 14px; border-radius:11px; border:1px solid var(--stage-line);
+  background:rgba(29,45,77,.55); color:var(--stage-text-2);
+}
+.demo-layer b{ color:var(--stage-text); font-weight:600; }
+.demo-layer__n{
+  flex:0 0 auto; width:26px; height:26px; border-radius:8px; display:grid; place-items:center;
+  background:rgba(91,157,255,.2); color:var(--stage-brand); font-weight:700; font-size:15px;
+}

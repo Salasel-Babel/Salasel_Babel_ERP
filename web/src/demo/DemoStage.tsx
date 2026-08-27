@@ -66,7 +66,7 @@ export function DemoStage(): ReactNode {
         </span>
       </header>
 
-      <main className="demo-body">
+      <main className="demo-body" data-scene={state.scene}>
         {state.scene === "title" ? <TitleScene /> : null}
         {state.scene === "tamper" ? <TamperScene /> : null}
         {state.scene === "time" ? <TimeTravelScene /> : null}

@@ -47,7 +47,7 @@ export function TimeTravelScene(): ReactNode {
           </span>
         </h3>
         <div className="demo-panel__body">
-          <table className="demo-table">
+          <table className="demo-table demo-table--dense">
             <thead>
               <tr>
                 <th>الحساب</th>

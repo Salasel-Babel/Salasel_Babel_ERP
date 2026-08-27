@@ -9,16 +9,6 @@
     <AssemblyName>BabelPosOffline</AssemblyName>
     <InvariantGlobalization>false</InvariantGlobalization>
     <ServerGarbageCollection>false</ServerGarbageCollection>
-    <!--
-      المسبار يثبّت إصداراته بنفسه: الرقم المقيس هو جزء من الدليل لا تفصيل بناء.
-      الإدارة المركزية (Directory.Packages.props) تخدم المنتج، ولو أخضعنا المسبار لها
-      لتغيّر ما قاسه كلّما رُقّي المنتج، فيصير دليلاً على شيء آخر. NU1008 كان يمنع
-      الاستعادة أصلاً. السابقة نفسها في spikes/culture-calendar.
-      A spike pins its own versions: the measured number is part of the evidence,
-      not a build detail. Central management serves the product; subjecting the probe
-      to it would silently change what it measured. NU1008 blocked restore entirely.
-    -->
-    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
   </PropertyGroup>
 
   <ItemGroup>

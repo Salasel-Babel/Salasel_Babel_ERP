@@ -6,7 +6,7 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 import type { ReactNode } from "react";
 import { Amount, Num } from "../../i18n/react";
-import { snapshot, wire } from "../data";
+import { money, snapshot, toScaled, wire } from "../data";
 import { bagOf, useDemo } from "../useDemo";
 
 /** المشهد. */
@@ -14,7 +14,12 @@ export function SecondOpinionScene(): ReactNode {
   const state = useDemo();
   const shown = bagOf<number>(state, "suggestions") ?? 0;
   const decided = bagOf<string>(state, "decision");
-  const bill = snapshot.supplierBills.find((b) => b.expenseCategory === "maintenance") ?? snapshot.supplierBills[0]!;
+  /* أكبر فاتورة «إصلاحات» من المورّد نفسه — مقروءة من اللقطة لا مُختارة بيد. */
+  const repairs = snapshot.supplierBills
+    .filter((b) => b.expenseCategory === "repairs")
+    .sort((a, b) => (toScaled(b.grossTotal) > toScaled(a.grossTotal) ? 1 : -1));
+  const bill = repairs[0] ?? snapshot.supplierBills[0]!;
+  const repairsTotal = repairs.reduce((sum, b) => sum + toScaled(b.grossTotal), 0n);
 
   return (
     <div className="demo-grid demo-grid--wide">
@@ -33,9 +38,9 @@ export function SecondOpinionScene(): ReactNode {
                   </span>
                 </div>
                 <div className="demo-sugg__body">
-                  هذا يبدو <strong>مصروفاً رأسمالياً</strong> لا مصروف صيانة: المبلغ{" "}
+                  هذا يبدو <strong>مصروفاً رأسمالياً</strong> لا مصروف إصلاحات: المبلغ{" "}
                   <Amount value={wire(bill.grossTotal)} /> ريالاً على مورّد{" "}
-                  {bill.partyNameAr}، والوصف يشير إلى استبدال أصل لا إصلاحه.
+                  {bill.partyNameAr} — وهو مورّد <strong>مواد بناء</strong>، لا مقاول صيانة.
                   <br />
                   <span style={{ color: "var(--stage-text-2)", fontSize: 18 }}>
                     الأثر إن صحّ: مصروف السنة أقلّ، وأصلٌ يُستهلك على عمره.
@@ -57,12 +62,12 @@ export function SecondOpinionScene(): ReactNode {
                 <div className="demo-sugg__head">
                   <span>◆ اقتراح مراجعة</span>
                   <span className="demo-code" style={{ color: "var(--stage-text-3)" }}>
-                    نمطٌ متكرّر · 3 قيود
+                    نمطٌ متكرّر · {repairs.length} فواتير
                   </span>
                 </div>
                 <div className="demo-sugg__body">
-                  ثلاث فواتير من المورّد نفسه في الشهر نفسه بنفس المبلغ — يستحقّ النظر قبل
-                  السداد.
+                  {repairs.length} فواتير «إصلاحات» من المورّد نفسه خلال السنة بمجموع{" "}
+                  <Amount value={money(repairsTotal)} /> ريالاً — نمطٌ يستحقّ النظر قبل أن يُقفل العام.
                 </div>
                 <div className="demo-sugg__acts">
                   <button type="button" className="demo-btn" data-kind="primary">

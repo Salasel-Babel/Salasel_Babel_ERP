@@ -263,3 +263,13 @@
   flex:0 0 auto; width:26px; height:26px; border-radius:8px; display:grid; place-items:center;
   background:rgba(91,157,255,.2); color:var(--stage-brand); font-weight:700; font-size:15px;
 }
+
+/* ── المبالغ داخل المِنصّة ─────────────────────────────────────────────
+   المكوّن <Amount> يحمل الصنف .amt، ولونه في الطبقة الدلالية هو لون النصّ
+   **في السمة الفاتحة** — أي كحليٌّ داكن على مِنصّة داكنة. فيُورَّث اللون هنا،
+   ويُعاد الأصل داخل الشاشات المُركَّبة وداخل المستند الأبيض. */
+.demo-stage .amt{ color:inherit; }
+.demo-stage .amt-zero{ color:var(--stage-text-3); }
+.demo-embed .amt{ color:var(--color-amount); }
+.demo-embed .amt-zero{ color:var(--color-amount-zero); }
+.demo-doc .amt{ color:#0f172a; }

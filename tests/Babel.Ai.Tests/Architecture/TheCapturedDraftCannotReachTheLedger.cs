@@ -2,8 +2,8 @@ using System.Globalization;
 using System.Reflection;
 using System.Xml.Linq;
 using Babel.Ai.Capture;
-using Babel.Ai.Promotion;
 using Babel.Ai.Tests.Support;
+using Babel.Contracts.Capture;
 using NetArchTest.Rules;
 using Xunit;
 using ArchTestResult = NetArchTest.Rules.TestResult;
@@ -194,6 +194,19 @@ public sealed class TheCapturedDraftCannotReachTheLedger(ITestOutputHelper outpu
 
         // والمنفذ موجود فعلاً وواجهة: لو حُذف لمرّ الفحص أعلاه فارغاً.
         Assert.True(typeof(ICapturedInvoiceReceiver).IsInterface);
+
+        // ── والمنفذ **يسكن العقود لا هذه الوحدة** ───────────────────────────
+        // بقاؤه هنا كان يعني أن الوحدة المالكة للمستند لا تستطيع تنفيذه إلا بأن تعتمد
+        // على وحدة أفقية أخرى — وهو ما يمنعه البناء (القاعدة 3). فالسلسلة كانت مقطوعة
+        // عند طرفها الأخير: منفذٌ معلن لا ينفّذه أحد ولا يستطيع أحد.
+        Assert.Equal("Babel.Contracts", typeof(ICapturedInvoiceReceiver).Assembly.GetName().Name);
+        Assert.Equal("Babel.Contracts.Capture", typeof(ICapturedInvoiceReceiver).Namespace);
+        Assert.Equal("Babel.Contracts", typeof(PromotionOrder).Assembly.GetName().Name);
+        Assert.Equal("Babel.Contracts", typeof(FieldProvenance).Assembly.GetName().Name);
+
+        Assert.DoesNotContain(
+            CaptureTypes,
+            static type => type.Name is nameof(PromotionOrder) or nameof(PromotedDocumentReference) or nameof(PromotionLine));
     }
 
     /// <summary>

@@ -3,6 +3,7 @@ using Babel.Ai.Extraction;
 using Babel.Ai.Promotion;
 using Babel.Ai.Suggestions;
 using Babel.Compliance.Zatca.Qr;
+using Babel.Contracts.Capture;
 using Babel.Core.Entitlement;
 using Babel.SharedKernel;
 

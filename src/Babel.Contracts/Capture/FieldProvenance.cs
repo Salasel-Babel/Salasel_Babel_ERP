@@ -1,4 +1,4 @@
-namespace Babel.Ai.Capture;
+namespace Babel.Contracts.Capture;
 
 /// <summary>
 /// <b>من أين جاء هذا الحقل بعينه.</b> لكل حقل مصدره، لا للمستند كله.
@@ -7,6 +7,12 @@ namespace Babel.Ai.Capture;
 /// على الضغط دون قراءة</b>، فتُبطل الضمانة التي وُجدت من أجلها. وإجماليٌّ مُصدَّق برمز
 /// موقَّع وإجماليٌّ مقروء ضوئياً بثقة 0.94 <b>ليسا حقيقتين من صنف واحد</b>، ولا يوجد
 /// رقم واحد يعبّر عن الفرق بينهما — ولذلك حلّ هذا التعداد محلّ «عتبة ثقة واحدة للمستند».
+/// </para>
+/// <para>
+/// <b>ولماذا يسكن العقود لا وحدة الالتقاط:</b> المصدر يعبر الحدّ مع أمر الترقية. والوحدة
+/// المستقبِلة تقرّر على أساسه — تقبل الرقم الضريبي <b>المُصدَّق</b> مطابِقاً وترفض المقروء —
+/// فلو بقي التعداد داخل <c>Babel.Ai</c> لوجب على المستقبِل أن يعتمد على وحدة أفقية أخرى،
+/// وذلك ما تمنعه القاعدة 3. والعقود هي الموضع الذي تلتقي فيه وحدتان بلا أن تعرف إحداهما الأخرى.
 /// </para>
 /// </summary>
 public enum FieldProvenance
@@ -64,8 +70,8 @@ public enum ProvenanceDuty
 /// <para>
 /// <b>مفتاح لا سلسلتان (‏ADR-0021):</b> تسمية المصدر <b>عرضٌ</b>، وتعدّد اللغات يعني
 /// قابلية الترجمة إلى أيّ عدد من اللغات لا ثنائية عربي/إنجليزي. فحقلان ثابتان في الوحدة
-/// <b>لا يستطيعان</b> التعبير عن لغة ثالثة، والوحدة لا تحمل نصّ عرضٍ أصلاً: تحمل مفتاحاً
-/// تحلّه الواجهة. وما يدخل السجلّ من هذه الوحدة هو <b>القيمة الملتقطة كما كتبها المُصدِر</b>،
+/// <b>لا يستطيعان</b> التعبير عن لغة ثالثة، والعقد لا يحمل نصّ عرضٍ أصلاً: يحمل مفتاحاً
+/// تحلّه الواجهة. وما يدخل السجلّ من وحدة الالتقاط هو <b>القيمة الملتقطة كما كتبها المُصدِر</b>،
 /// لا تسمية مصدرها.
 /// </para>
 /// <para>
@@ -119,32 +125,4 @@ public static class FieldProvenanceInfo
     /// <param name="provenance">المصدر.</param>
     public static bool CarriesConfidence(FieldProvenance provenance) =>
         provenance is FieldProvenance.Read or FieldProvenance.Inferred or FieldProvenance.Spoken;
-}
-
-/// <summary>
-/// مفاتيح الموارد لمنشأ القيمة — <b>من أي مصدر مادّي</b> جاءت، لا من أي صنف.
-/// تُحلّ في الواجهة كبقية مفاتيح العرض (‏ADR-0021).
-/// </summary>
-public static class CaptureOriginKeys
-{
-    /// <summary>من رمز استجابة سريعة موقَّع على الفاتورة.</summary>
-    public const string SignedQr = "ai.capture.origin.signed_qr";
-
-    /// <summary>من رمز استجابة سريعة بلا توقيع (المرحلة الأولى).</summary>
-    public const string UnsignedQr = "ai.capture.origin.unsigned_qr";
-
-    /// <summary>من قراءة ضوئية للمستند.</summary>
-    public const string Optical = "ai.capture.origin.optical";
-
-    /// <summary>من نموذج مُقترِح.</summary>
-    public const string Model = "ai.capture.origin.model";
-
-    /// <summary>من إعدادات المستأجر.</summary>
-    public const string TenantSetting = "ai.capture.origin.tenant_setting";
-
-    /// <summary>أدخله إنسان.</summary>
-    public const string Human = "ai.capture.origin.human";
-
-    /// <summary>من تفريغ صوتي في متصفّح المستخدم — لم تغادر البايتات الصوتية جهازه.</summary>
-    public const string SpokenOnDevice = "ai.capture.origin.spoken_on_device";
 }

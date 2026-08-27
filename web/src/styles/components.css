@@ -671,6 +671,9 @@ select.ctl-sm{padding-inline-end:var(--space-8)}
 /* رقاقة اقتراح · chip */
 .chips{display:flex;flex-wrap:wrap;gap:var(--space-8);margin-top:var(--space-10)}
 .chip{
+  /* الشارة تحمل أكثر من عنصر (اسم المنشأة ومقدّمة معرّفها)، فبلا فجوة يلتصق
+     الاسم بالمعرّف ويُقرآن كلمة واحدة: «مؤسسة بابل للتجارة11111111». */
+  display:inline-flex;align-items:center;gap:var(--space-6);
   padding:7px var(--space-12);border-radius:var(--radius-pill);
   border:var(--border-width) solid var(--color-ai-line);
   background:var(--color-surface);color:var(--color-text-muted);

@@ -8,6 +8,7 @@ import { health } from "../api/generated/client";
 import { useApi } from "./api-context";
 import { useT } from "../i18n/react";
 import { HealthBadge, LocaleSwitcher, ThemeSwitcher } from "./shell/Switchers";
+import { CompanyBadge } from "./shell/CompanyBadge";
 import { KeyboardHelp } from "./shell/KeyboardHelp";
 import accessiblePaletteHref from "../styles/theme/theme-accessible.css?url";
 
@@ -55,8 +56,14 @@ export function AppShell(): ReactNode {
           <span className="mark" aria-hidden="true" />
           <span>{t("app.name")}</span>
         </div>
+        <Link to="/sign-in" className="navitem" data-testid="nav-sign-in">
+          {t("app.nav.signIn")}
+        </Link>
         <Link to="/" className="navitem" data-testid="nav-trial-balance">
           {t("app.nav.trialBalance")}
+        </Link>
+        <Link to="/voucher" className="navitem" data-testid="nav-voucher">
+          {t("app.nav.voucher")}
         </Link>
         <Link to="/contract" className="navitem" data-testid="nav-contract">
           {t("app.nav.contract")}
@@ -65,6 +72,7 @@ export function AppShell(): ReactNode {
 
       <div className="app-main">
         <header className="app-topbar">
+          <CompanyBadge />
           <LocaleSwitcher />
           <ThemeSwitcher accessiblePaletteHref={accessiblePaletteHref} />
           <span className="spacer" />

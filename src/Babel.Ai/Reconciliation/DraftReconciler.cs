@@ -1,5 +1,6 @@
 using System.Globalization;
 using Babel.Ai.Capture;
+using Babel.Contracts.Capture;
 using Babel.SharedKernel;
 
 namespace Babel.Ai.Reconciliation;

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using BabelPosOffline.Support;
 using Npgsql;
@@ -138,7 +139,12 @@ public sealed class SyncServer(string connectionString, int maxConcurrent = 16)
         cmd.Parameters.AddWithValue("doctype", e.DocType);
         cmd.Parameters.AddWithValue("invno", e.InvoiceNo);
         cmd.Parameters.AddWithValue("seq", e.DeviceSeq);
-        cmd.Parameters.AddWithValue("bdate", DateOnly.Parse(e.BusinessDate));
+        // تاريخ العمل قيمة سلك كتبها الجهاز بـCanonical.Date («yyyy-MM-dd» ثابتة) ثم تُخزَّن
+        // في الدفتر. قراءتها بثقافة الخادم كارثة مقيسة: تحت ar-SA تُلقي FormatException،
+        // وتحت fa-IR تعود 2647-11-15 وتحت th-TH تعود 1483-08-24 — **بصمت** وتُكتب كما هي.
+        // Wire value written invariantly by the device; parsing it in the server culture
+        // silently yields a date centuries off (fa-IR, th-TH) or throws (ar-SA).
+        cmd.Parameters.AddWithValue("bdate", DateOnly.ParseExact(e.BusinessDate, "yyyy-MM-dd", CultureInfo.InvariantCulture));
         cmd.Parameters.AddWithValue("dclock", e.DeviceClockAt);
         cmd.Parameters.AddWithValue("shift", e.ShiftId);
         cmd.Parameters.AddWithValue("orig", (object?)e.OriginalIdemKey ?? DBNull.Value);

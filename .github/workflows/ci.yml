@@ -121,6 +121,22 @@ jobs:
       - name: البناء — التحذير خطأ
         run: dotnet build Babel.slnx --configuration Release --no-restore
 
+      # المسابر خارج Babel.slnx بقرار (ADR-0032-spikes-are-built-beside-the-solution-not-inside-it،
+      # والقاعدة 9 تُعفيها بالاسم). وثمنُ الإعفاء أنّ لا شيء كان يبنيها: ثلاثة من أربعة
+      # لم تكن تستعيد أصلاً، وخلف الجدار 353 تشخيصاً لم يرها أحد.
+      # (docs/evidence/traps.md#fakh-an-exemption-from-the-solution-guard-rots-unbuilt)
+      # الحارس على وجود هذه الخطوة: tests/Babel.ArchitectureTests/Rule16_*.cs
+      - name: بناء المسابر — كلٌّ وحده
+        run: |
+          for spike in \
+            spikes/culture-calendar/CultureCalendarSpike.csproj \
+            spikes/dotnet-stack/BabelSpike.csproj \
+            spikes/pos-offline/PosOfflineSpike.csproj \
+            spikes/relational-stack/RelationalSpike.csproj
+          do
+            dotnet build "$spike" --configuration Release --nologo
+          done
+
       # جدول الحزم المحلولة يُسجَّل مع كل بناء: «الرقم الملزم هو ما يحلّه dotnet restore
       # وقت التنفيذ، لا ما في وثيقة» (docs/analysis/02-architecture.md §2.1).
       - name: تسجيل شجرة الحزم المحلولة

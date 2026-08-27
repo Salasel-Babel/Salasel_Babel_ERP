@@ -1,3 +1,5 @@
+using Babel.Contracts.Capture;
+
 namespace Babel.Ai.Capture;
 
 /// <summary>

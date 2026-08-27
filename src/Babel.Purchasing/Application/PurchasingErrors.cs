@@ -206,6 +206,117 @@ internal static class PurchasingErrors
         + "). Automatic attachment is refused; choosing one is a human decision, not a system decision: an attested "
         + "invoice attached to the wrong supplier is worse than an invoice attached to none.");
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // القبول مقابل ملفّ قدرات المستأجر (‏ADR-0023 · ADR-0025)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// مستأجر بلا ملفّ قدرات. <b>رفض لا فتح</b>: غياب الملفّ يعني «لم يُقرَّر بعد ما
+    /// اشتراه»، والفتح عنده يجعل تعطيل أي قدرة قابلاً للالتفاف بألّا يُحفظ ملفّ أصلاً.
+    /// </summary>
+    /// <param name="tenant">المستأجر.</param>
+    public static Error CapabilityProfileMissing(TenantId tenant) => new(
+        "purchasing.capability_profile_missing",
+        "لا ملفّ قدرات لهذا المستأجر (" + tenant.Value.ToString("D", CultureInfo.InvariantCulture)
+        + ")، والمستند لا يُقبل بلا ملفّ. غياب الملفّ ليس «بلا قيود» بل «لم يُقرَّر بعد ما اشتراه»، "
+        + "والفتح عنده يجعل إطفاء أي قدرة قابلاً للالتفاف بترك الملفّ غير محفوظ.",
+        "This tenant (" + tenant.Value.ToString("D", CultureInfo.InvariantCulture)
+        + ") has no capability profile, and no document is admitted without one. A missing profile does not mean "
+        + "'unrestricted'; it means 'what this tenant bought has not been decided yet', and opening the gate there "
+        + "would let any disabled capability be bypassed simply by never saving a profile.");
+
+    /// <summary>
+    /// قبولٌ لا يغطّي الحقل الذي يمارسه هذا المسار — تذكرة مستند آخر أُعيد استعمالها.
+    /// </summary>
+    /// <param name="documentType">نوع المستند المقبول.</param>
+    /// <param name="field">الحقل الذي يمارسه المسار.</param>
+    public static Error AdmissionDoesNotCoverField(string documentType, string field) => new(
+        "purchasing.admission_does_not_cover_field",
+        "المستند المقبول («" + documentType + "») لا يحمل الحقل «" + field + "» الذي يمارسه هذا المسار. "
+        + "قبولٌ نُشئ لمستند آخر ليس قبولاً لهذا المستند.",
+        "The admitted document ('" + documentType + "') does not carry the field '" + field
+        + "' that this path exercises. An admission issued for another document is not an admission for this one.");
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ترقية الفاتورة الملتقَطة (‏ADR-0024 · ADR-0025)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// وصل أمر ترقية برقم ضريبي <b>غير مُصدَّق</b>.
+    /// <para>
+    /// والرفض هنا لا عند البحث: رقمٌ مقروء ضوئياً بثقة 0.94 يُطابق مورداً بعينه فيُنشئ
+    /// إسناداً يحمل <b>مظهر التحقّق</b> بلا التحقّق. والمطابقة الآلية امتيازٌ للمُصدَّق
+    /// وحده؛ وما عداه يُسند بيد إنسان يقرأ.
+    /// </para>
+    /// </summary>
+    /// <param name="provenance">مصدر الحقل كما وصل، أو «(غائب)».</param>
+    public static Error PromotionVatNumberNotAttested(string provenance) => new(
+        "purchasing.promotion.vat_number_not_attested",
+        "رقم التسجيل الضريبي في أمر الترقية مصدره «" + provenance + "» لا «مُصدَّق». والمطابقة الآلية "
+        + "بالمورد لا تجري إلا على رقم كتبه المُصدِر في رمز الفاتورة: رقمٌ مقروء ضوئياً يُطابق مورداً "
+        + "فيُنشئ إسناداً يحمل مظهر التحقّق بلا التحقّق. يُسند المستند بيد إنسان.",
+        "The VAT registration number in the promotion order has provenance '" + provenance
+        + "', not 'attested'. Automatic supplier matching runs only on a number written by the issuer inside the "
+        + "invoice code: an optically read number would produce an attachment that carries the appearance of "
+        + "verification without the verification. Attach the document by hand.");
+
+    /// <summary>
+    /// وصل تصنيف مصروف لم يكتبه إنسان. التصنيف مؤهّل دور يختار حساباً، ولا يقترحه نموذج.
+    /// </summary>
+    /// <param name="provenance">مصدر الحقل كما وصل.</param>
+    public static Error PromotionExpenseCategoryNotTyped(string provenance) => new(
+        "purchasing.promotion.expense_category_not_typed",
+        "تصنيف المصروف في أمر الترقية مصدره «" + provenance + "» لا «مكتوب بيد إنسان». والتصنيف مؤهّل "
+        + "دور يختار حساب المصروف، وليس في مفردات النموذج المغلقة مؤهّلات أصلاً — فتصنيفٌ «مقترَح» سلسلة "
+        + "حرّة تبلغ خريطة الأدوار بلا فحص. يُترك فارغاً فيُرحَّل بالمؤهّل العام، أو يكتبه إنسان.",
+        "The expense category in the promotion order has provenance '" + provenance + "', not human-typed. The "
+        + "category is a role qualifier that selects the expense account, and the model's closed vocabulary holds "
+        + "no qualifiers at all — so a 'suggested' category is a free string reaching the role map unchecked. "
+        + "Leave it empty to post under the wildcard qualifier, or have a human type it.");
+
+    /// <summary>
+    /// ما تحسبه الوحدة من السطور يخالف الأرقام التي حملها أمر الترقية.
+    /// <para>
+    /// <b>ولا يُكتب المحسوب فوق المُصدَّق:</b> الرمز يحمل إجمالياً كتبه المُصدِر، والوحدة
+    /// تحسب من السطور بتقريب على مستوى السطر. واختلافٌ بهللة واحدة يُنتج فاتورة تخالف ما
+    /// وقّعه المورد، ولا يظهر ذلك إلا عند مطابقة كشف حسابه بعد أشهر.
+    /// </para>
+    /// </summary>
+    /// <param name="computedNet">الصافي المحسوب.</param>
+    /// <param name="attestedNet">الصافي في الأمر.</param>
+    /// <param name="computedTax">الضريبة المحسوبة.</param>
+    /// <param name="attestedTax">الضريبة في الأمر.</param>
+    /// <param name="computedGross">الإجمالي المحسوب.</param>
+    /// <param name="attestedGross">الإجمالي في الأمر.</param>
+    public static Error PromotionTotalsDisagreeWithAttested(
+        decimal computedNet,
+        decimal attestedNet,
+        decimal computedTax,
+        decimal attestedTax,
+        decimal computedGross,
+        decimal attestedGross) => new(
+        "purchasing.promotion.totals_disagree_with_attested",
+        "ما تحسبه وحدة المشتريات من سطور الأمر يخالف أرقامه: الصافي " + Format(computedNet) + " مقابل "
+        + Format(attestedNet) + "، والضريبة " + Format(computedTax) + " مقابل " + Format(attestedTax)
+        + "، والإجمالي " + Format(computedGross) + " مقابل " + Format(attestedGross)
+        + ". ولا يُكتب رقم محسوب فوق رقم مُصدَّق: تُصحَّح السطور أو يُسجَّل المستند يدوياً.",
+        "What purchasing computes from the order's lines disagrees with its figures: net " + Format(computedNet)
+        + " against " + Format(attestedNet) + ", VAT " + Format(computedTax) + " against " + Format(attestedTax)
+        + ", gross " + Format(computedGross) + " against " + Format(attestedGross)
+        + ". A computed figure is never written over an attested one: correct the lines or enter the document by hand.");
+
+    /// <summary>الحدث الذي اقترحه النموذج ليس حدث فاتورة مورد — الترقية لا تخترع مساراً.</summary>
+    /// <param name="eventCode">الرمز كما وصل.</param>
+    /// <param name="expected">الرمز المتوقَّع.</param>
+    public static Error PromotionEventNotASupplierBill(string eventCode, string expected) => new(
+        "purchasing.promotion.event_is_not_a_supplier_bill",
+        "أمر الترقية يحمل الحدث «" + eventCode + "» ووحدة المشتريات لا تُنشئ من الترقية إلا فاتورة "
+        + "مورد مصروفية بالحدث «" + expected + "». والفاتورة المخزنية تحتاج استلاماً وأمر شراء، "
+        + "ولا تُخترع لها أضلاع من صورة فاتورة.",
+        "The promotion order carries the event '" + eventCode + "', while promotion into purchasing creates only "
+        + "an expense supplier bill on '" + expected + "'. A stock bill needs a goods receipt and a purchase "
+        + "order, and those sides are never invented from a photograph of an invoice.");
+
     /// <summary>يعرض نقطة الشفرة — المحرف وحده لا يُميّز «٥» عن «5» في سجلّ نصّي.</summary>
     private static string CodePoint(char value)
         => "U+" + ((int)value).ToString("X4", CultureInfo.InvariantCulture);

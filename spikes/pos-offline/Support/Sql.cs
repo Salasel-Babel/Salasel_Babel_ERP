@@ -1,3 +1,4 @@
+using System.Globalization;
 using Npgsql;
 
 namespace BabelPosOffline.Support;
@@ -34,7 +35,9 @@ public static class Sql
     {
         await using var cmd = new NpgsqlCommand(sql, c, tx);
         var v = await cmd.ExecuteScalarAsync();
-        return v is null or DBNull ? default : (T)Convert.ChangeType(v, typeof(T))!;
+        // قيمة قادمة من القاعدة تُحوَّل إلى نوع الشيفرة: تحويل آلي لا عرض ⇒ ثقافة ثابتة.
+        // A value coming out of the database is machine data, not display text.
+        return v is null or DBNull ? default : (T)Convert.ChangeType(v, typeof(T), CultureInfo.InvariantCulture)!;
     }
 
     public static async Task<PostgresException?> ExpectFailureAsync(string cs, string sql)
@@ -73,8 +76,8 @@ public static class Sql
     private static string Fmt(object v) => v switch
     {
         byte[] b => Convert.ToHexString(b).ToLowerInvariant(),
-        DateTime d => d.ToString("O"),
-        decimal d => d.ToString(System.Globalization.CultureInfo.InvariantCulture),
+        DateTime d => d.ToString("O", CultureInfo.InvariantCulture),
+        IFormattable f => f.ToString(null, CultureInfo.InvariantCulture),
         _ => v.ToString() ?? ""
     };
 }

@@ -1,5 +1,6 @@
 using Babel.Contracts.Posting;
 using Babel.Core.Application;
+using Babel.Core.CapabilityProfile;
 using Babel.Core.Entitlement;
 using Babel.Purchasing.Persistence;
 using Babel.SharedKernel;
@@ -28,21 +29,29 @@ public sealed class GoodsReceiptService : IApplicationService
     private readonly IEntitlementEnforcer _enforcer;
     private readonly PurchasingDbContext _database;
     private readonly SubledgerPostingGateway _gateway;
+    private readonly PurchasingAdmission _admission;
     private readonly CurrencyCode _currency;
 
     /// <summary>ينشئ الخدمة.</summary>
     /// <param name="enforcer">منفِّذ الاستحقاق.</param>
     /// <param name="runtime">موارد الوحدة.</param>
     /// <param name="posting">محرك الترحيل.</param>
-    public GoodsReceiptService(IEntitlementEnforcer enforcer, PurchasingRuntime runtime, IPostingService posting)
+    /// <param name="profiles">مخزن ملفّات القدرات — بوابة القبول (‏ADR-0023).</param>
+    public GoodsReceiptService(
+        IEntitlementEnforcer enforcer,
+        PurchasingRuntime runtime,
+        IPostingService posting,
+        ICapabilityProfileStore profiles)
     {
         ArgumentNullException.ThrowIfNull(enforcer);
         ArgumentNullException.ThrowIfNull(runtime);
         ArgumentNullException.ThrowIfNull(posting);
+        ArgumentNullException.ThrowIfNull(profiles);
         _enforcer = enforcer;
         _database = runtime.Database;
         _currency = CurrencyCode.FromString(runtime.Options.CompanyCurrency);
         _gateway = new SubledgerPostingGateway(_database, posting, runtime.CostCenters);
+        _admission = new PurchasingAdmission(profiles);
     }
 
     /// <summary>
@@ -199,6 +208,39 @@ public sealed class GoodsReceiptService : IApplicationService
         if (gate.IsFailure)
         {
             return Result<PurchasingDocumentView>.Failure(gate.Errors);
+        }
+
+        // الاستلام ضلعٌ من المطابقة الثلاثية، وحدثه تفتحه تلك القدرة وحدها.
+        Result<AdmittedDocument> admitted = await _admission
+            .AdmitBillAsync(
+                tenant,
+                [PurchasingAdmission.SupplierField, PurchasingAdmission.LinesField, PurchasingAdmission.ReceiptField],
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        if (admitted.IsFailure)
+        {
+            return Result<PurchasingDocumentView>.Failure(admitted.Errors);
+        }
+
+        return await PostAdmittedAsync(tenant, actor, admitted.Value, receiptId, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// <b>الكاتب الوحيد لقيد الاستلام — ويطلب <see cref="AdmittedDocument"/> في توقيعه.</b>
+    /// </summary>
+    private async ValueTask<Result<PurchasingDocumentView>> PostAdmittedAsync(
+        TenantId tenant,
+        UserId actor,
+        AdmittedDocument admitted,
+        Guid receiptId,
+        CancellationToken cancellationToken)
+    {
+        Result covers = PurchasingAdmission.EnsureCovers(admitted, PurchasingAdmission.ReceiptField);
+        if (covers.IsFailure)
+        {
+            return Result<PurchasingDocumentView>.Failure(covers.Errors);
         }
 
         GoodsReceiptRow? receipt = await _database.Receipts

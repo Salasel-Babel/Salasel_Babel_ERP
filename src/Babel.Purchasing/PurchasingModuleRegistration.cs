@@ -1,3 +1,4 @@
+using Babel.Contracts.Capture;
 using Babel.Purchasing.Application;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -32,6 +33,15 @@ public static class PurchasingModuleRegistration
         services.AddScoped<SupplierBillService>();
         services.AddScoped<SupplierPaymentService>();
         services.AddScoped<PayablesService>();
+
+        // ── منفذ الترقية: الوحدة **المالكة للمستند** تسجّل تنفيذها له ────────────
+        // والمنفذ يعيش في Babel.Contracts، فلا تكتسب أي وحدة بتسجيله معرفةً بجارتها:
+        // وحدة الالتقاط ترى الواجهة وحدها، والحاوية توصلها بهذا التنفيذ. وهو الطرف
+        // الذي كان مفقوداً — منفذٌ معلن لا ينفّذه أحد.
+        services.AddScoped<PurchasingCapturedInvoiceReceiver>();
+        services.AddScoped<ICapturedInvoiceReceiver>(
+            static provider => provider.GetRequiredService<PurchasingCapturedInvoiceReceiver>());
+
         return services;
     }
 }

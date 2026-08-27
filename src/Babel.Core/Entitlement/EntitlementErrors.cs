@@ -26,6 +26,14 @@ public static class EntitlementErrors
         string.Create(CultureInfo.InvariantCulture, $"الوحدة «{module}» إلزامية ولا يمكن إطفاؤها."),
         string.Create(CultureInfo.InvariantCulture, $"Module '{module}' is mandatory and cannot be disabled."));
 
+    /// <summary>وحدة يقوم عليها سجلّ محاسبي، طُلب نزعها بعد شرائها.</summary>
+    public static Error RecordBearingModuleRevoked(BabelModule module, EntitlementState from) => new(
+        "entitlement.record_bearing_revoked",
+        string.Create(CultureInfo.InvariantCulture,
+            $"الوحدة «{module}» بحالة «{from}» ويقوم عليها سجلّ محاسبي، فلا تُنزَع بل تُخفَّض إلى «للقراءة فقط»: القراءة والتقارير والتصدير تبقى، والإدخال والترحيل وحدهما يتوقفان."),
+        string.Create(CultureInfo.InvariantCulture,
+            $"Module '{module}' is at '{from}' and carries accounting records; it may not be revoked, only degraded to read-only: reading, reports and export remain, only entry and posting stop."));
+
     /// <summary>وحدة مفعّلة أقوى من وحدة تعتمد عليها.</summary>
     public static Error UnsatisfiedRequirement(BabelModule module, EntitlementState state, BabelModule requirement, EntitlementState requirementState) => new(
         "entitlement.unsatisfied_requirement",

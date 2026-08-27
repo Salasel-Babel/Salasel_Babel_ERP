@@ -98,7 +98,7 @@ public static class ProofB_Ledger
             $"update ledger.journal_line set debit = 1 where line_id = '{lineId}'");
 
         rec.Check("B2", "UPDATE of a posted line is REJECTED by PostgreSQL itself",
-            efUpdateError.StartsWith("SQLSTATE 42501") && rawUpdate?.SqlState == "42501",
+            efUpdateError.StartsWith("SQLSTATE 42501", StringComparison.Ordinal) && rawUpdate?.SqlState == "42501",
             $"through EF Core 10 SaveChangesAsync : {efUpdateError}\n" +
             $"through raw SQL on the same role    : {(rawUpdate is null ? "SUCCEEDED - FAIL" : Sql.Describe(rawUpdate))}");
 
@@ -123,7 +123,7 @@ public static class ProofB_Ledger
         var rawTruncate = await Sql.ExpectFailureAsync(Config.App, "truncate ledger.journal_line");
 
         rec.Check("B3", "DELETE (and TRUNCATE) of a posted entry is REJECTED by PostgreSQL itself",
-            efDeleteError.StartsWith("SQLSTATE 42501") && rawDeleteLine?.SqlState == "42501" &&
+            efDeleteError.StartsWith("SQLSTATE 42501", StringComparison.Ordinal) && rawDeleteLine?.SqlState == "42501" &&
             rawDeleteEntry?.SqlState == "42501" && rawTruncate?.SqlState == "42501",
             $"EF Core delete of a line   : {efDeleteError}\n" +
             $"raw delete of the lines    : {Describe(rawDeleteLine)}\n" +
@@ -181,7 +181,7 @@ public static class ProofB_Ledger
             """);
 
         rec.Check("B4", "DEFERRABLE INITIALLY DEFERRED trigger rejects a 0.0001 imbalance at COMMIT",
-            efImbalance.StartsWith("SQLSTATE 23514") && rawImbalance?.SqlState == "23514" &&
+            efImbalance.StartsWith("SQLSTATE 23514", StringComparison.Ordinal) && rawImbalance?.SqlState == "23514" &&
             singleLine?.SqlState == "23514" && firedAtCommit,
             $"the INSERTs themselves succeeded, the COMMIT did not: {firedAtCommit}\n" +
             $"through EF Core 10 : {efImbalance}\n" +

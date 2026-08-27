@@ -209,6 +209,14 @@ function fieldDescriptor(schema) {
     const inner = fieldDescriptor(schema.items);
     return nullable ? { k: "array", i: inner, n: true } : { k: "array", i: inner };
   }
+  /* المجموعة المغلقة تعبر إلى وقت التشغيل: شاشةٌ تعرض قائمة أدوار مكتوبة بيد
+     تنحرف عن العقد عند أول إضافة، فتُرسل دوراً لا يعرفه الخادم أو تُسقط دوراً
+     يعرفه. والأعضاء هنا **تُعرَض ولا تُفرَض**: فاكّ الترميز لا يرفض عضواً لا
+     يعرفه، لأن إضافة عضو من الخادم إلى العميل تبقى في v1 بنصّ سياسة الإصدار —
+     وعميلٌ يرفضها ينكسر على تغيير مسموح. */
+  if (t[0] === "string" && Array.isArray(schema.enum)) {
+    return nullable ? { k: "plain", e: schema.enum, n: true } : { k: "plain", e: schema.enum };
+  }
   return nullable ? { k: "plain", n: true } : { k: "plain" };
 }
 function stable(value) {
@@ -239,6 +247,7 @@ function emitRuntimeSchema() {
   out.push("  /** اسم المخطّط عند k===\"ref\" · referenced schema */ r?: string;");
   out.push("  /** اسم الصيغة المحتجزة عند k===\"brand\" · branded format */ b?: string;");
   out.push("  /** شكل العنصر عند k===\"array\" · item shape */ i?: FieldShape;");
+  out.push("  /** أعضاء المجموعة المغلقة حين يكون الحقل تعداداً · closed-set members */ e?: readonly string[];");
   out.push("  /** يقبل null · nullable */ n?: boolean;");
   out.push("}");
   out.push("");

@@ -1,4 +1,4 @@
-using BabelPosOffline.Support;
+using System.Globalization;
 using Microsoft.Data.Sqlite;
 
 namespace BabelPosOffline.Device;
@@ -58,7 +58,9 @@ public sealed class LocalStore : IDisposable
         var v2 = c.ExecuteScalar();
         if (v2 is null or DBNull) return default;
         var target = Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T);
-        return (T)Convert.ChangeType(v2, target);
+        // قيمة قادمة من SQLite (تسلسل، رقم فاتورة، بصمة): بيانات آلة ⇒ ثقافة ثابتة.
+        // Values read back out of SQLite are machine data: convert invariantly.
+        return (T)Convert.ChangeType(v2, target, CultureInfo.InvariantCulture);
     }
 
     public List<T> Query<T>(string sql, Func<SqliteDataReader, T> map, params (string, object?)[] ps)

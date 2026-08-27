@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 
 namespace BabelRelationalSpike.Support;
@@ -60,29 +61,29 @@ public sealed class ProofRecorder
         sb.AppendLine("=========================================================================");
         sb.AppendLine("  PASS/FAIL SUMMARY  -  ملخص الإثباتات (بدون Marten)");
         sb.AppendLine("=========================================================================");
-        sb.AppendLine($"  {"ID",-7} {"RESULT",-7} PROOF");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"  {"ID",-7} {"RESULT",-7} PROOF");
         sb.AppendLine("  " + new string('-', 69));
         foreach (var g in groups)
         {
             foreach (var r in g)
-                sb.AppendLine($"  {r.Id,-7} {(r.Verdict == Verdict.Pass ? "PASS" : "FAIL"),-7} {r.Name}");
+                sb.AppendLine(CultureInfo.InvariantCulture, $"  {r.Id,-7} {(r.Verdict == Verdict.Pass ? "PASS" : "FAIL"),-7} {r.Name}");
             sb.AppendLine("  " + new string('-', 69));
         }
         var passed = _results.Count(r => r.Verdict == Verdict.Pass);
-        sb.AppendLine($"  {passed}/{_results.Count} proofs passed");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"  {passed}/{_results.Count} proofs passed");
 
         foreach (var section in new[] { "A", "B", "C", "D", "E" })
         {
-            var items = _results.Where(r => r.Id.StartsWith(section)).ToList();
+            var items = _results.Where(r => r.Id.StartsWith(section, StringComparison.Ordinal)).ToList();
             if (items.Count == 0) continue;
             var ok = items.All(r => r.Verdict == Verdict.Pass);
-            sb.AppendLine($"  ({section})  {(ok ? "PASS" : "FAIL")}   {items.Count(r => r.Verdict == Verdict.Pass)}/{items.Count}   {SectionTitle(section)}");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"  ({section})  {(ok ? "PASS" : "FAIL")}   {items.Count(r => r.Verdict == Verdict.Pass)}/{items.Count}   {SectionTitle(section)}");
         }
         sb.AppendLine("=========================================================================");
         if (_notes.Count > 0)
         {
             sb.AppendLine("  NOTES / ملاحظات");
-            foreach (var n in _notes) sb.AppendLine($"   * {n}");
+            foreach (var n in _notes) sb.AppendLine(CultureInfo.InvariantCulture, $"   * {n}");
             sb.AppendLine("=========================================================================");
         }
         Console.Write(sb.ToString());

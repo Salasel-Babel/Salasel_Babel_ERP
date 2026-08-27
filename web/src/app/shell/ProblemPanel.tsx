@@ -18,7 +18,28 @@ export function ProblemPanel(props: { error: unknown; onRetry?: () => void }): R
   const { t, tp } = useT();
   const error = props.error;
   const problem = error instanceof ProblemError ? error.problem : null;
-  const code = error instanceof ProblemError ? error.code : "client.exception";
+
+  /* ── ثلاث حالات لا حالتان ────────────────────────────────────────────────
+     كانت الشاشة تعرف اثنتين: «مشكلة منشورة» و«ما عداها = تعذّر الوصول إلى
+     الخادم». والثالثة وقعت فعلاً أول ما كتبت شاشةٌ إلى الدفتر: **الخادم أجاب
+     بنجاح 201، ورفض الفاكّ المُولَّد جسمه** لأن حقلاً خالف نحوه المنشور
+     (entryNumber Int64String وصل «JV-000001»). فقرأ المستخدم «تعذّر الوصول إلى
+     الخادم. لم يتغيّر شيء في البيانات» — والجملتان **كاذبتان معاً**: الخادم
+     أجاب، والقيد **رُحِّل**. وهذا أسوأ من رسالة غامضة: رسالة دقيقة الصياغة عن
+     شيء لم يحدث تُوقف التشخيص في الاتجاه الخطأ.
+     والتمييز هنا على **صنف الخطأ** لا على نصّه: الفاكّ المُولَّد يرمي TypeError
+     حصراً، وانقطاع الشبكة يرمي TypeError كذلك في fetch — فالفارق أن الأول يقع
+     بعد استجابة ناجحة. ولذلك يُميَّز بالرسالة التي يبنيها الفاكّ نفسه ووسمها. */
+  const decodeFailure =
+    !(error instanceof ProblemError) &&
+    error instanceof TypeError &&
+    /decodeSchema|decodeField|Money\.wire|as[A-Z][A-Za-z0-9]*:/.test(error.message);
+
+  const code = error instanceof ProblemError
+    ? error.code
+    : decodeFailure
+      ? "client.contract_violation"
+      : "client.exception";
   const message = error instanceof Error ? error.message : String(error);
 
   return (
@@ -26,7 +47,7 @@ export function ProblemPanel(props: { error: unknown; onRetry?: () => void }): R
       <h2>{problem ? problem.titleAr : t("common.problem.title")}</h2>
       {problem ? <p className="en" dir="ltr" lang="en">{problem.title}</p> : null}
 
-      <p>{problem ? problem.detailAr : t("common.problem.network")}</p>
+      <p>{problem ? problem.detailAr : t(decodeFailure ? "common.problem.decode" : "common.problem.network")}</p>
       {problem ? (
         <p className="en" dir="ltr" lang="en">
           {problem.detail}

@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     90d076ad3cc6c558ce905171467482b90038f42e9a77b8c4fe5a9aa8eaa99366
+     e678dc2c0394be5606c978fa44478590c8aa4853b303a75a859bbc0dbe97264e
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -363,6 +363,34 @@ export interface Scope {
   costCenterId?: string;
   /** المشروع. / The project. */
   projectId?: string | null;
+}
+
+/** الهوية خلف الاعتماد والشركات التي يبلغها. ولا شيء منها من جسم الطلب ولا من ترويسة يكتبها العميل. وcompanyCount لا يكون صفراً أبداً: الصفر رفضٌ بـsession.no_reachable_company لا قائمة فارغة. / The identity behind the credential and the companies it reaches. None of it comes from a request body or a client-written header. companyCount is never zero: zero is a refusal with session.no_reachable_company, not an empty list. */
+export interface Session {
+  /** الشركات مرتَّبة بمعرّفها ترتيباً حرفياً ثابتاً. / The companies, ordered by identifier in a stable ordinal order. */
+  companies: SessionCompany[];
+  /** عدد الشركات المبلوغة. لا يكون صفراً أبداً. / The number of reachable companies. Never zero. */
+  companyCount: number;
+  /** المستأجر خلف الاعتماد. / The tenant behind the credential. */
+  tenantId: string;
+  /** المستخدم خلف الاعتماد. / The user behind the credential. */
+  userId: string;
+}
+
+/** شركة يبلغها الاعتماد. والاسم العربي هو السجلّ، وnameTranslations ترجماته بوسم اللغة — ولا حقل ثابت للإنجليزية: هي واحدة من N (ADR-0021). والحقول المشتقّة من التأسيس تصل null حين state = NotSetUp، لأنها تُسنَد عند التأسيس ولا يُخترَع لها قيمة قبله. / A company the credential reaches. The Arabic name is the record and nameTranslations are its translations by language tag — there is no fixed English field: English is one of N (ADR-0021). The setup-derived fields arrive null when state = NotSetUp, because they are assigned at setup and no value is invented before it. */
+export interface SessionCompany {
+  /** معرّف الشركة كما يُكتب في المسار. / The company identifier as written in the path. */
+  companyId: string;
+  /** عدد الخانات العشرية المعروضة لهذه المنشأة. / This company's displayed decimal places. */
+  decimalPlaces: number | null;
+  /** رمز مركز التكلفة الافتراضي. / The default cost centre code. */
+  defaultCostCenter: string | null;
+  /** الاسم العربي — السجلّ، لا ترجمةً أولى. / The Arabic name — the record, not a first translation. */
+  nameAr: string | null;
+  /** ترجمات الاسم بوسم اللغة BCP-47، مرتَّبة ترتيباً حرفياً ثابتاً. / The name's translations by BCP-47 language tag, in a stable ordinal order. */
+  nameTranslations: NameValue[];
+  /** Ready لمنشأة مؤسَّسة، وNotSetUp لمنشأة يبلغها الاعتماد ولم تُؤسَّس بعد. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / Ready for a company that is set up, NotSetUp for one the credential reaches that has not been set up yet. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  state: "NotSetUp" | "Ready";
 }
 
 export interface SourceDocument {

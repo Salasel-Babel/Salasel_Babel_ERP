@@ -79,14 +79,8 @@ public sealed class EntitlementGuard(EntitlementService entitlements)
 
         var state = await StateAsync(tenant.TenantId, moduleCode, ct);
 
-        var allowed = intent switch
-        {
-            AccessIntent.Read => state is EntitlementState.Entitled or EntitlementState.ReadOnly,
-            AccessIntent.Write => state is EntitlementState.Entitled,
-            _ => false
-        };
-
-        if (allowed) return state;
+        // القرار من موضعه الوحيد — لا نسخة ثانية منه هنا ولا في أي وحدة.
+        if (EntitlementRules.Allows(state, intent)) return state;
 
         // السطر يُكتب قبل الرمي، لا بعده، ولا في معالِج الاستثناء.
         await _log.WriteAsync(tenant.TenantId, actor, operation, OperationOutcome.Refused,

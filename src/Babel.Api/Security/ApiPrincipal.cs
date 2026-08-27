@@ -16,11 +16,28 @@ namespace Babel.Api.Security;
 /// <param name="Tenant">المستأجر.</param>
 /// <param name="User">المستخدم.</param>
 /// <param name="Companies">الشركات التي يبلغها هذا الاعتماد. الفراغ يعني لا شيء — والفشل مغلق.</param>
-internal sealed record ApiPrincipal(TenantId Tenant, UserId User, IReadOnlySet<Guid> Companies)
+/// <param name="NotAfter">
+/// اللحظة التي ينقضي عندها الاعتماد، أو <c>null</c> لاعتماد بلا انقضاء معلن.
+/// <para>
+/// <b>ولماذا يُفصَل الانقضاء عن الرفض:</b> اعتمادٌ منقضٍ اعتمادٌ <b>يملكه صاحبه</b>، فإخباره
+/// أنه انقضى لا يكشف له شيئاً لا يعرفه؛ أما اعتماد مختلَق فإخبار مقدّمه بأي شيء عن سبب
+/// الرفض يجعل السطح عدّاد وجود. ولذلك رمزان مختلفان لحالتين مختلفتين، وليس رمزاً واحداً
+/// يجعل من انقضت جلسته يظنّ أن اعتماده سُحب منه فيفتح تذكرة دعم بدل أن يدخل من جديد.
+/// </para>
+/// </param>
+internal sealed record ApiPrincipal(
+    TenantId Tenant,
+    UserId User,
+    IReadOnlySet<Guid> Companies,
+    DateTimeOffset? NotAfter = null)
 {
     /// <summary>هل يبلغ هذا الاعتماد الشركة المطلوبة؟</summary>
     /// <param name="companyId">معرّف الشركة من المسار.</param>
     public bool Reaches(Guid companyId) => Companies.Contains(companyId);
+
+    /// <summary>هل انقضى هذا الاعتماد عند اللحظة المعطاة؟</summary>
+    /// <param name="now">اللحظة الجارية كما يقرؤها مصدر الوقت المحقون.</param>
+    public bool HasExpiredAt(DateTimeOffset now) => NotAfter is { } limit && now >= limit;
 }
 
 /// <summary>يحلّ اعتماد الطلب إلى هوية، أو لا يحلّه فيُغلق الباب.</summary>

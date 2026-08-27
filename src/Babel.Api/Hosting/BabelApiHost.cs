@@ -76,6 +76,7 @@ internal static class BabelApiHost
 
         app.UseUnhandledFailureGuard();
         app.UseBabelAuthentication();
+        app.MapSessionApi();
         app.MapLedgerApi();
         app.MapCapabilityProfileApi();
         app.MapCompanySetupApi();
@@ -223,7 +224,33 @@ internal static class BabelApiHost
                 companies.Add(companyId);
             }
 
-            byDigest[digest] = new ApiPrincipal(new TenantId(tenant), new UserId(user), companies);
+            // ── الانقضاء: اختياري، وحين يُذكر يُقرأ بصيغة واحدة لا ثقافة لها ────────
+            // ‏"o" (‏ISO 8601 الدوّار) وبثقافة ثابتة: قيمةٌ تُقرأ بثقافة الخادم كانت
+            // ستعني لحظتين مختلفتين على خادمين بثقافتين مختلفتين — وهو فخّ-38 نفسه
+            // منقولاً من رمز الفترة إلى صلاحية الاعتماد.
+            DateTimeOffset? notAfter = null;
+            string? notAfterText = entry["NotAfter"];
+
+            if (!string.IsNullOrWhiteSpace(notAfterText))
+            {
+                if (!DateTimeOffset.TryParseExact(
+                        notAfterText,
+                        "o",
+                        CultureInfo.InvariantCulture,
+                        DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+                        out DateTimeOffset parsed))
+                {
+                    throw new InvalidOperationException(
+                        $"لحظة انقضاء غير صالحة عند Babel:Api:Tokens:{entry.Key}:NotAfter — «{notAfterText}». "
+                        + "الصيغة المقبولة ISO 8601 الدوّارة، مثل 2026-08-27T00:00:00.0000000+00:00. / "
+                        + $"Invalid expiry at Babel:Api:Tokens:{entry.Key}:NotAfter — '{notAfterText}'. "
+                        + "The accepted format is round-trip ISO 8601.");
+                }
+
+                notAfter = parsed;
+            }
+
+            byDigest[digest] = new ApiPrincipal(new TenantId(tenant), new UserId(user), companies, notAfter);
         }
 
         return byDigest;

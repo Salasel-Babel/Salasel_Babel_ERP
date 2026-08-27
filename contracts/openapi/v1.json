@@ -510,6 +510,7 @@
             "type": "string",
             "enum": [
               "projects.client_certificate",
+              "purchasing.supplier_bill",
               "sales.invoice"
             ]
           }
@@ -584,6 +585,7 @@
             "type": "string",
             "enum": [
               "projects.client_certificate",
+              "purchasing.supplier_bill",
               "sales.invoice"
             ]
           }
@@ -1294,6 +1296,55 @@
         }
       }
     },
+    "/api/v1/session": {
+      "get": {
+        "operationId": "readSession",
+        "summary": "الجلسة: الهوية والشركات المبلوغة / The session: identity and reachable companies",
+        "description": "يُرجع من يقف خلف الاعتماد — المستأجر والمستخدم — و**الشركات التي يبلغها هذا الاعتماد بأسمائها**. وهذه أول نقطة يناديها عميل: معرّف الشركة إلزامي في كل مسار آخر وهو معرّف بصيغة 8-4-4-4-12، ولا يستطيع إنسان أن يكتبه — فيُختار من هنا ولا يُكتب.\n\nوالاسم العربي هو السجلّ وnameTranslations ترجماته أيّاً كان عددها (ADR-0021)؛ ولا حقل ثابت للإنجليزية هنا كما لا حقل لها في صفّ ميزان المراجعة.\n\n**والفشل مغلق:** اعتماد لا يبلغ أي شركة يُرفض بـ403 وsession.no_reachable_company ولا يُسلَّم قائمة فارغة — القائمة الفارغة تُقرأ «لا بيانات بعد» فينتظر المستخدم شيئاً لن يأتي، والناقص ربطُ الاعتماد بمنشأة. ومنشأةٌ لم تُؤسَّس بعد **تظهر** في القائمة بـstate = NotSetUp ولا تُخفى: إخفاؤها يجعل صاحب الاعتماد الوحيد يرى قائمة فارغة ويقرؤها «اعتمادي لا يصلح».\n\nوهذا المسار خارج نطاق الشركة عمداً — وهو الوحيد كذلك بعد نقطة الصحّة — ومع ذلك لا يخرج منه شيء عن مستأجر آخر: القائمة هي مجموعة الاعتماد نفسها، لا استعلام على جدول شركات بمرشِّح.\n\nReturns who stands behind the credential — tenant and user — and **the companies this credential reaches, by name**. This is the first call any client makes: the company identifier is mandatory on every other path and is an 8-4-4-4-12 identifier no human can type — so it is chosen here, never typed.\n\nThe Arabic name is the record and nameTranslations are its translations, however many (ADR-0021); there is no fixed English field here, just as there is none on a trial-balance row.\n\n**Fail closed:** a credential that reaches no company is refused with 403 and session.no_reachable_company rather than handed an empty list — an empty list reads as 'no data yet' and leaves the user waiting for something that will never arrive, when what is missing is the credential's link to a company. A company not yet set up **appears** in the list with state = NotSetUp and is not hidden: hiding it makes the holder of a single-company credential see an empty list and read it as 'my credential is broken'.\n\nThis path is outside company scope deliberately — the only one after health — and still nothing about another tenant crosses it: the list is the credential's own set, not a filtered query over a companies table.",
+        "responses": {
+          "200": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "operationId": "health",
@@ -1412,7 +1463,9 @@
             "enum": [
               "advance",
               "cost_of_sales",
-              "retention"
+              "landed_cost",
+              "retention",
+              "three_way_match"
             ],
             "description": "رمز القدرة من المجموعة المغلقة. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The capability code from the closed set. Matched literally and case-sensitively; a number is never accepted in place of a name."
           },
@@ -1627,6 +1680,7 @@
             "type": "string",
             "enum": [
               "projects.client_certificate",
+              "purchasing.supplier_bill",
               "sales.invoice"
             ],
             "description": "رمز نوع المستند. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The document type code. Matched literally and case-sensitively; a number is never accepted in place of a name."
@@ -1659,6 +1713,7 @@
             "type": "string",
             "enum": [
               "projects.client_certificate",
+              "purchasing.supplier_bill",
               "sales.invoice"
             ],
             "description": "رمز نوع المستند. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The document type code. Matched literally and case-sensitively; a number is never accepted in place of a name."
@@ -1692,6 +1747,7 @@
             "type": "string",
             "enum": [
               "projects.client_certificate",
+              "purchasing.supplier_bill",
               "sales.invoice"
             ],
             "description": "رمز نوع المستند. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The document type code. Matched literally and case-sensitively; a number is never accepted in place of a name."
@@ -1732,7 +1788,9 @@
               "enum": [
                 "advance",
                 "cost_of_sales",
-                "retention"
+                "landed_cost",
+                "retention",
+                "three_way_match"
               ]
             },
             "description": "كل قدرات هذا النوع في الكتالوج المغلق. / Every capability of this type in the closed catalogue."
@@ -1744,7 +1802,9 @@
               "enum": [
                 "advance",
                 "cost_of_sales",
-                "retention"
+                "landed_cost",
+                "retention",
+                "three_way_match"
               ]
             },
             "description": "المُشغَّل منها لهذه الشركة. / Those enabled for this company."
@@ -2437,6 +2497,102 @@
             "description": "المشروع. / The project."
           }
         },
+        "additionalProperties": false
+      },
+      "Session": {
+        "type": "object",
+        "description": "الهوية خلف الاعتماد والشركات التي يبلغها. ولا شيء منها من جسم الطلب ولا من ترويسة يكتبها العميل. وcompanyCount لا يكون صفراً أبداً: الصفر رفضٌ بـsession.no_reachable_company لا قائمة فارغة. / The identity behind the credential and the companies it reaches. None of it comes from a request body or a client-written header. companyCount is never zero: zero is a refusal with session.no_reachable_company, not an empty list.",
+        "properties": {
+          "companies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SessionCompany"
+            },
+            "description": "الشركات مرتَّبة بمعرّفها ترتيباً حرفياً ثابتاً. / The companies, ordered by identifier in a stable ordinal order."
+          },
+          "companyCount": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647,
+            "description": "عدد الشركات المبلوغة. لا يكون صفراً أبداً. / The number of reachable companies. Never zero."
+          },
+          "tenantId": {
+            "type": "string",
+            "maxLength": 36,
+            "description": "المستأجر خلف الاعتماد. / The tenant behind the credential."
+          },
+          "userId": {
+            "type": "string",
+            "maxLength": 36,
+            "description": "المستخدم خلف الاعتماد. / The user behind the credential."
+          }
+        },
+        "required": [
+          "companies",
+          "companyCount",
+          "tenantId",
+          "userId"
+        ],
+        "additionalProperties": false
+      },
+      "SessionCompany": {
+        "type": "object",
+        "description": "شركة يبلغها الاعتماد. والاسم العربي هو السجلّ، وnameTranslations ترجماته بوسم اللغة — ولا حقل ثابت للإنجليزية: هي واحدة من N (ADR-0021). والحقول المشتقّة من التأسيس تصل null حين state = NotSetUp، لأنها تُسنَد عند التأسيس ولا يُخترَع لها قيمة قبله. / A company the credential reaches. The Arabic name is the record and nameTranslations are its translations by language tag — there is no fixed English field: English is one of N (ADR-0021). The setup-derived fields arrive null when state = NotSetUp, because they are assigned at setup and no value is invented before it.",
+        "properties": {
+          "companyId": {
+            "type": "string",
+            "maxLength": 36,
+            "description": "معرّف الشركة كما يُكتب في المسار. / The company identifier as written in the path."
+          },
+          "defaultCostCenter": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 32,
+            "description": "رمز مركز التكلفة الافتراضي. / The default cost centre code."
+          },
+          "decimalPlaces": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 4,
+            "description": "عدد الخانات العشرية المعروضة لهذه المنشأة. / This company's displayed decimal places."
+          },
+          "nameAr": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 200,
+            "description": "الاسم العربي — السجلّ، لا ترجمةً أولى. / The Arabic name — the record, not a first translation."
+          },
+          "nameTranslations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NameValue"
+            },
+            "description": "ترجمات الاسم بوسم اللغة BCP-47، مرتَّبة ترتيباً حرفياً ثابتاً. / The name's translations by BCP-47 language tag, in a stable ordinal order."
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "NotSetUp",
+              "Ready"
+            ],
+            "description": "‏Ready لمنشأة مؤسَّسة، وNotSetUp لمنشأة يبلغها الاعتماد ولم تُؤسَّس بعد. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / Ready for a company that is set up, NotSetUp for one the credential reaches that has not been set up yet. Matched literally and case-sensitively; a number is never accepted in place of a name."
+          }
+        },
+        "required": [
+          "companyId",
+          "decimalPlaces",
+          "defaultCostCenter",
+          "nameAr",
+          "nameTranslations",
+          "state"
+        ],
         "additionalProperties": false
       },
       "SourceDocument": {

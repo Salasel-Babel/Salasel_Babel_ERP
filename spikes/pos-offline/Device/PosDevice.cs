@@ -1,4 +1,3 @@
-using System.Globalization;
 using BabelPosOffline.Support;
 using Microsoft.Data.Sqlite;
 

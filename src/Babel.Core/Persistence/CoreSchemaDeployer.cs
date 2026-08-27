@@ -15,7 +15,7 @@ internal sealed class CoreDbContextFactory : IDesignTimeDbContextFactory<CoreDbC
     {
         CoreOptions options = new();
         DbContextOptionsBuilder<CoreDbContext> builder = new();
-        builder.UseNpgsql(options.OwnerConnectionString);
+        builder.UseNpgsql(options.OwnerConnectionString, CoreSchema.MigrationHistory);
         return new CoreDbContext(builder.Options);
     }
 }
@@ -48,7 +48,7 @@ public static class CoreSchema
         ArgumentNullException.ThrowIfNull(options);
 
         DbContextOptionsBuilder<CoreDbContext> builder = new();
-        builder.UseNpgsql(options.OwnerConnectionString);
+        builder.UseNpgsql(options.OwnerConnectionString, MigrationHistory);
 
         await using (CoreDbContext context = new(builder.Options))
         {
@@ -68,6 +68,18 @@ public static class CoreSchema
         await using NpgsqlCommand grants = new(Script("CoreGrants.sql"), connection);
         await grants.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
     }
+
+    /// <summary>
+    /// جدول تاريخ الهجرات في مخطّط <c>core</c> لا في <c>public</c>.
+    /// <para>
+    /// وهذا ليس ترتيباً: مخطّطٌ يترك سجلّ هجراته في <c>public</c> يجعل قاعدةً تحمل
+    /// وحدتين تخلط تاريخيهما في جدول واحد، ثم يصير حذف مخطّط أو نقله عمليةً تلمس
+    /// تاريخ غيره. ويجعل منح «قراءة تاريخ الهجرات» لدور التطبيق منحاً على
+    /// <c>public</c> — وهو ما لا يُقصد.
+    /// </para>
+    /// </summary>
+    internal static void MigrationHistory(Npgsql.EntityFrameworkCore.PostgreSQL.Infrastructure.NpgsqlDbContextOptionsBuilder npgsql)
+        => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "core");
 
     /// <summary>نصّ مضمَّن في التجميعة — النشر لا يفترض وجود شجرة المستودع.</summary>
     /// <param name="name">اسم الملفّ.</param>

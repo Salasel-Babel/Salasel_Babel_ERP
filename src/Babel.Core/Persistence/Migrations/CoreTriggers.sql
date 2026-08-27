@@ -30,7 +30,8 @@ begin
 
     if new.founded_at is distinct from old.founded_at then
         raise exception
-            'FOUNDING_INSTANT_IMMUTABLE company=% : لحظة التأسيس وقعت مرّة / the founding instant happened once';
+            'FOUNDING_INSTANT_IMMUTABLE company=% : لحظة التأسيس وقعت مرّة / the founding instant happened once',
+            old.company_id;
     end if;
 
     return new;

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Diagnostics;
 using BabelPosOffline.Device;
 using BabelPosOffline.Support;
@@ -223,7 +224,7 @@ public static class P1_LocalStore
             {
                 var parts = line.Split(' ');
                 if (parts.Length < 3) continue;
-                if (dir.StartsWith(parts[1]) && parts[1].Length > bestLen) { bestLen = parts[1].Length; best = $"{parts[2]} at {parts[1]}"; }
+                if (dir.StartsWith(parts[1], StringComparison.Ordinal) && parts[1].Length > bestLen) { bestLen = parts[1].Length; best = $"{parts[2]} at {parts[1]}"; }
             }
             return best;
         }
@@ -242,7 +243,7 @@ public static class P1_LocalStore
             string? l;
             while ((l = await proc.StandardOutput.ReadLineAsync()) is not null)
             {
-                if (l.StartsWith("WROTE ")) { lines++; last = int.Parse(l[6..]); }
+                if (l.StartsWith("WROTE ", StringComparison.Ordinal)) { lines++; last = int.Parse(l[6..], CultureInfo.InvariantCulture); }
                 if (lines >= killAfterLines) { try { proc.Kill(entireProcessTree: true); } catch { } break; }
             }
         });

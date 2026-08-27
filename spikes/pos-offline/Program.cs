@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using BabelPosOffline.Device;
 using BabelPosOffline.Proofs;
 using BabelPosOffline.Server;
@@ -6,8 +7,7 @@ using BabelPosOffline.Support;
 
 var argv = args.ToList();
 string Arg(string name, string dflt = "") =>
-    argv.FirstOrDefault(a => a.StartsWith($"--{name}="))?.Split('=', 2)[1] ?? dflt;
-bool Flag(string name) => argv.Any(a => a == $"--{name}" || a.StartsWith($"--{name}="));
+    argv.FirstOrDefault(a => a.StartsWith($"--{name}=", StringComparison.Ordinal))?.Split('=', 2)[1] ?? dflt;
 
 Directory.CreateDirectory(Config.DeviceDir);
 
@@ -71,9 +71,12 @@ async Task<int> RunChildAsync(string mode)
 {
     var db = Arg("db");
     var deviceId = Arg("device");
-    var count = int.Parse(Arg("count", "100"));
-    var rangeStart = long.Parse(Arg("rangestart", "1"));
-    var rangeSize = long.Parse(Arg("rangesize", "20000"));
+    // وسائط سطر الأوامر بروتوكول بين عمليتين لا نصّ عرض: تُقرأ بالثقافة الثابتة
+    // كي تُطابق ما كتبته العملية الأمّ مهما كانت ثقافة الجهاز.
+    // CLI arguments are an inter-process protocol, not display text: parsed invariantly.
+    var count = int.Parse(Arg("count", "100"), CultureInfo.InvariantCulture);
+    var rangeStart = long.Parse(Arg("rangestart", "1"), CultureInfo.InvariantCulture);
+    var rangeSize = long.Parse(Arg("rangesize", "20000"), CultureInfo.InvariantCulture);
 
     using var device = PosDevice.Open(db, deviceId, Config.Tenant);
     device.InstallRange($"R-{deviceId}", rangeStart, rangeStart + rangeSize - 1);
@@ -86,7 +89,7 @@ async Task<int> RunChildAsync(string mode)
             for (int i = 0; i < count; i++)
             {
                 var s = device.RecordSale(basket);
-                Console.WriteLine($"WROTE {s.InvoiceNo}");
+                Console.WriteLine(FormattableString.Invariant($"WROTE {s.InvoiceNo}"));
                 Console.Out.Flush();
             }
             return 0;
@@ -110,7 +113,7 @@ async Task<int> RunChildAsync(string mode)
                         Guid.CreateVersion7().ToString("N"), device.Clock.WallUtcNow, batch));
                     foreach (var a in resp.Acks)
                         device.Store.Exec("update sale set sync_state='acked' where idem_key=$k", ("$k", a.IdemKey));
-                    Console.WriteLine($"SYNCED {batch.Count}");
+                    Console.WriteLine(FormattableString.Invariant($"SYNCED {batch.Count}"));
                     Console.Out.Flush();
                 }
                 return 0;

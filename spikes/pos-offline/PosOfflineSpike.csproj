@@ -19,6 +19,18 @@
       to it would silently change what it measured. NU1008 blocked restore entirely.
     -->
     <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+    <!--
+      ضجيج المحلّلات الذي لا يخصّ المسبار. الاستثناء مقصور على ما لا يمسّ الدليل:
+        CS1591 — توثيق XML لكل عضو عامّ: انضباط واجهة منتج، والمسبار ليس مكتبة.
+        CA1707 — الشُّرَط السفلية في الأسماء: «P1_LocalStore» و«ProofA_Outbox» هي
+                 تسمية الأدلّة نفسها، وتغييرها يقطع الإحالة من docs/evidence.
+        CA1861 — المصفوفات الثابتة كوسائط: ملحوظة أداء في شيفرة تُنفَّذ مرّة واحدة.
+      نفس السابقة ونفس المبرّر في Directory.Build.props لمشاريع الاختبارات.
+      **ولا يُضاف هنا CA1305 ولا CA1310** — قاعدتا الثقافة هما ما يُصاد لا ما يُكتم.
+      Analyzer noise that is not the probe's business. Deliberately NOT suppressed:
+      CA1305 / CA1310 — the culture rules are the quarry here, never silenced.
+    -->
+    <NoWarn>$(NoWarn);CS1591;CA1707;CA1861</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

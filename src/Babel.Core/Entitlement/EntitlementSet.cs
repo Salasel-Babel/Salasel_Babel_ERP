@@ -27,13 +27,16 @@ public sealed class EntitlementSet
     public EntitlementState StateOf(BabelModule module) =>
         _states.TryGetValue(module, out EntitlementState state) ? state : EntitlementState.NotEntitled;
 
-    /// <summary>هل يسمح الاستحقاق بهذا الوصول على هذه الوحدة؟</summary>
-    public bool Allows(BabelModule module, EntitlementAccess access) => StateOf(module) switch
-    {
-        EntitlementState.Entitled => true,
-        EntitlementState.ReadOnly => access == EntitlementAccess.Read,
-        _ => false,
-    };
+    /// <summary>
+    /// هل يسمح الاستحقاق بهذا الوصول على هذه الوحدة؟
+    /// <para>القرار من <see cref="EntitlementRules.Allows"/> وحده: هذه الدالّة
+    /// <b>تجد الحالة</b> ولا تقرّر ما تسمح به.</para>
+    /// </summary>
+    /// <param name="module">الوحدة.</param>
+    /// <param name="access">الوصول المطلوب.</param>
+    /// <returns><c>true</c> إن كان الوصول مسموحاً.</returns>
+    public bool Allows(BabelModule module, EntitlementAccess access) =>
+        EntitlementRules.Allows(StateOf(module), access);
 
     /// <summary>مجموعة الحد الأدنى: الوحدات الإلزامية فاعلة وما عداها غير مشترى.</summary>
     public static EntitlementSet Baseline(TenantId tenant)

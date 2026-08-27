@@ -1,3 +1,4 @@
+using System.Globalization;
 using Npgsql;
 
 namespace BabelRelationalSpike.Support;
@@ -35,7 +36,7 @@ public static class Sql
     {
         await using var cmd = new NpgsqlCommand(sql, c, tx);
         var v = await cmd.ExecuteScalarAsync();
-        return v is null or DBNull ? default : (T)Convert.ChangeType(v, typeof(T))!;
+        return v is null or DBNull ? default : (T)Convert.ChangeType(v, typeof(T), CultureInfo.InvariantCulture)!;
     }
 
     /// <summary>Runs a statement and returns the PostgreSQL error, or null when it unexpectedly succeeded.</summary>

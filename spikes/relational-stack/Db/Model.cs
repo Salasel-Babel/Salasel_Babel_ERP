@@ -72,9 +72,9 @@ public class LedgerDbContext(DbContextOptions<LedgerDbContext> options) : DbCont
     public DbSet<EntryCounter> EntryCounters => Set<EntryCounter>();
     public DbSet<TenantSettings> TenantSettings => Set<TenantSettings>();
 
-    protected override void OnModelCreating(ModelBuilder b)
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        b.Entity<JournalEntry>(e =>
+        modelBuilder.Entity<JournalEntry>(e =>
         {
             e.ToTable("journal_entry", "ledger");
             e.HasKey(x => x.EntryId);
@@ -93,7 +93,7 @@ public class LedgerDbContext(DbContextOptions<LedgerDbContext> options) : DbCont
             e.HasMany(x => x.Lines).WithOne().HasForeignKey(x => x.EntryId);
         });
 
-        b.Entity<JournalLine>(e =>
+        modelBuilder.Entity<JournalLine>(e =>
         {
             e.ToTable("journal_line", "ledger");
             e.HasKey(x => x.LineId);
@@ -107,7 +107,7 @@ public class LedgerDbContext(DbContextOptions<LedgerDbContext> options) : DbCont
             e.Property(x => x.Credit).HasColumnName("credit").HasColumnType("numeric(19,4)");
         });
 
-        b.Entity<ProcessEvent>(e =>
+        modelBuilder.Entity<ProcessEvent>(e =>
         {
             e.ToTable("process_event", "ledger");
             e.HasKey(x => x.EventId);
@@ -124,7 +124,7 @@ public class LedgerDbContext(DbContextOptions<LedgerDbContext> options) : DbCont
             e.Property(x => x.Payload).HasColumnName("payload").HasColumnType("jsonb");
         });
 
-        b.Entity<TenantDocument>(e =>
+        modelBuilder.Entity<TenantDocument>(e =>
         {
             e.ToTable("tenant_document", "app");
             e.HasKey(x => new { x.TenantId, x.DocType, x.DocKey });
@@ -135,7 +135,7 @@ public class LedgerDbContext(DbContextOptions<LedgerDbContext> options) : DbCont
             e.Property(x => x.UpdatedAt).HasColumnName("updated_at");
         });
 
-        b.Entity<TenantSettings>(e =>
+        modelBuilder.Entity<TenantSettings>(e =>
         {
             e.ToTable("tenant_settings", "app");
             e.HasKey(x => x.TenantId);
@@ -151,7 +151,7 @@ public class LedgerDbContext(DbContextOptions<LedgerDbContext> options) : DbCont
             });
         });
 
-        b.Entity<EntryCounter>(e =>
+        modelBuilder.Entity<EntryCounter>(e =>
         {
             e.ToTable("entry_counter", "ledger");
             e.HasKey(x => x.BookId);

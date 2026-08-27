@@ -26,8 +26,15 @@ public class LedgerLine
 // ---------------------------------------------------------------------------
 public record JournalLine(string Account, decimal Debit, decimal Credit);
 
+// نصّ الاستثناء يدخل سطر الدليل في ProofLedger.cs، وسطر الدليل يُقارَن بين أجهزة:
+// لولا الثقافة الثابتة لصار الفرق «0٫0001» تحت ar-SA و«0,0001» تحت de-DE.
+// المحلّلات لا تلتقط هذا الموضع لأن الاستكمال يمرّ إلى مُنشئ Exception مباشرة.
+// The message lands in the spike's recorded evidence, which is compared across
+// machines; analyzers cannot see this site because the interpolation is passed
+// straight to the base Exception(string) constructor.
 public class UnbalancedJournalEntryException(decimal debit, decimal credit)
-    : Exception($"Journal entry is unbalanced: debit={debit} credit={credit} difference={debit - credit}")
+    : Exception(FormattableString.Invariant(
+        $"Journal entry is unbalanced: debit={debit} credit={credit} difference={debit - credit}"))
 {
     public decimal Debit { get; } = debit;
     public decimal Credit { get; } = credit;

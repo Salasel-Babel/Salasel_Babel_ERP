@@ -3,7 +3,6 @@ using BabelRelationalSpike.Support;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
-using Wolverine;
 using Wolverine.EntityFrameworkCore;
 using Wolverine.RDBMS;
 using Wolverine.Runtime;
@@ -48,7 +47,7 @@ public static class ProofA_Outbox
             core == 3 && store is not null,
             $"message store implementation: {runtime.Storage.GetType().FullName}\n" +
             $"(from WolverineFx.Postgresql -> Wolverine.RDBMS; Marten assemblies loaded: " +
-            $"{(AppDomain.CurrentDomain.GetAssemblies().Any(a => a.GetName().Name?.StartsWith("Marten") == true) ? "YES" : "NONE")})\n" +
+            $"{(AppDomain.CurrentDomain.GetAssemblies().Any(a => a.GetName().Name?.StartsWith("Marten", StringComparison.Ordinal) == true) ? "YES" : "NONE")})\n" +
             tables);
 
         if (store is null)
@@ -220,7 +219,7 @@ public static class ProofA_Outbox
             $"select count(*) from ledger.journal_entry where entry_id = '{doomedId}'");
         var doomedEnvelopes = await Sql.ScalarAsync<long>(Config.Admin, $"select count(*) from {Outgoing}");
         rec.Check("A6", "transaction rejected AT COMMIT: business rows and message both vanish",
-            doomedAbsent && doomedRows == 0 && doomedEnvelopes == 0 && !commitError.StartsWith("(no"),
+            doomedAbsent && doomedRows == 0 && doomedEnvelopes == 0 && !commitError.StartsWith("(no", StringComparison.Ordinal),
             $"PostgreSQL refused the COMMIT: {commitError}\n" +
             $"waited 16s; handler never invoked for {doomedId}\n" +
             $"ledger.journal_entry rows : {doomedRows}\n" +

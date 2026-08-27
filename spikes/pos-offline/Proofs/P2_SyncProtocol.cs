@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Diagnostics;
 using BabelPosOffline.Device;
 using BabelPosOffline.Server;
@@ -48,7 +49,7 @@ public static class P2_SyncProtocol
             var p = Db(dev); LocalStore.Delete(p);
 
             var synced = await KillChildAsync(exePath,
-                $"--child=syncrun --db={p} --device={dev} --count=300 --rangestart={g.Start} --rangesize=20000",
+                FormattableString.Invariant($"--child=syncrun --db={p} --device={dev} --count=300 --rangestart={g.Start} --rangesize=20000"),
                 killAfterSyncedLines: 6);
 
             var afterKill = await Sql.ScalarAsync<long>(Config.Admin,
@@ -197,7 +198,7 @@ public static class P2_SyncProtocol
         string? l;
         while ((l = await proc.StandardOutput.ReadLineAsync()) is not null)
         {
-            if (l.StartsWith("SYNCED ")) { lines++; total += int.Parse(l[7..]); }
+            if (l.StartsWith("SYNCED ", StringComparison.Ordinal)) { lines++; total += int.Parse(l[7..], CultureInfo.InvariantCulture); }
             if (lines >= killAfterSyncedLines) { try { proc.Kill(entireProcessTree: true); } catch { } break; }
         }
         await proc.WaitForExitAsync();

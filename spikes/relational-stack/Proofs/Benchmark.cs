@@ -1,8 +1,8 @@
+using System.Globalization;
 using System.Diagnostics;
 using System.Text;
 using BabelRelationalSpike.Db;
 using BabelRelationalSpike.Support;
-using Npgsql;
 
 namespace BabelRelationalSpike.Proofs;
 
@@ -43,11 +43,12 @@ public static class Benchmark
         };
 
         var sb = new StringBuilder();
-        sb.AppendLine($"{"CONFIGURATION",-28} {"WRITERS",7} {"ENTRIES",8} {"SECONDS",8} {"ENTRIES/S",10} {"p50 ms",8} {"p95 ms",8} {"max ms",8}");
+        sb.AppendLine(CultureInfo.InvariantCulture, $"{"CONFIGURATION",-28} {"WRITERS",7} {"ENTRIES",8} {"SECONDS",8} {"ENTRIES/S",10} {"p50 ms",8} {"p95 ms",8} {"max ms",8}");
         sb.AppendLine(new string('-', 92));
         foreach (var r in runs)
-            sb.AppendLine($"{r.Name,-28} {r.Writers,7} {r.Entries,8} {r.Seconds,8:F2} " +
-                          $"{r.Entries / r.Seconds,10:F1} {r.P50Ms,8:F2} {r.P95Ms,8:F2} {r.MaxMs,8:F2}");
+            sb.AppendLine(CultureInfo.InvariantCulture,
+                $"{r.Name,-28} {r.Writers,7} {r.Entries,8} {r.Seconds,8:F2} " +
+                $"{r.Entries / r.Seconds,10:F1} {r.P50Ms,8:F2} {r.P95Ms,8:F2} {r.MaxMs,8:F2}");
         rec.Evidence(sb.ToString().TrimEnd());
 
         var shared8 = runs.First(r => r is { Writers: 8, Name: "chain + shared counter" });

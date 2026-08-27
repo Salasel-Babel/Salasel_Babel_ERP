@@ -159,7 +159,7 @@ public static class ProofC_EventLog
         catch (Exception ex) when (Find<PostgresException>(ex) is { } pg) { efUpd = Sql.Describe(pg); }
 
         rec.Check("C3", "the event log is append-only: UPDATE and DELETE are revoked too",
-            upd?.SqlState == "42501" && del?.SqlState == "42501" && efUpd.StartsWith("SQLSTATE 42501"),
+            upd?.SqlState == "42501" && del?.SqlState == "42501" && efUpd.StartsWith("SQLSTATE 42501", StringComparison.Ordinal),
             $"raw UPDATE   : {(upd is null ? "SUCCEEDED - FAIL" : Sql.Describe(upd))}\n" +
             $"raw DELETE   : {(del is null ? "SUCCEEDED - FAIL" : Sql.Describe(del))}\n" +
             $"EF Core UPDATE: {efUpd}\n" +

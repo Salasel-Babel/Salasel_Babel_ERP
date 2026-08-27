@@ -16,6 +16,7 @@
 #   tools/gate/run.sh                     # ‏Release — وهو ما يُشغَّل قبل الدفع
 #   tools/gate/run.sh --configuration Debug
 #   tools/gate/run.sh --no-isolation      # يتخطّى مسح العزل الطويل (لا يُتخطّى قبل الدمج)
+#   tools/gate/run.sh --with-frontend     # يضيف فحوص الواجهة التي تحتاج npm ci
 #
 # وهذه البوّابة **ليست** كل ما يفعله ci.yml: العزل ومتّجهات الشكل القانوني وأداة
 # مصفوفة الترحيل وحرّاس المعرّفات هناك أيضاً. هي **الحدّ الأدنى الذي لا يُدفَع فرعٌ بدونه**.
@@ -29,11 +30,13 @@ cd "$root"
 
 configuration="Release"
 isolation="yes"
+frontend="static"
 
 while [ $# -gt 0 ]; do
     case "$1" in
         --configuration) configuration="${2:?--configuration يحتاج قيمة}"; shift 2 ;;
         --no-isolation)  isolation="no"; shift ;;
+    --with-frontend) frontend="full"; shift ;;
         -h|--help)       sed -n '2,24p' "$0"; exit 0 ;;
         *) printf '✗ وسيط غير معروف: %s\n' "$1" >&2; exit 2 ;;
     esac
@@ -94,6 +97,36 @@ else
     printf '\n── مسح العزل مُتخطّى بـ--no-isolation. لا يُتخطّى قبل الدمج.\n'
 fi
 
-printf '\n✔ البوّابة المحلية خضراء: بناء الحلّ كلّه + المسابر + الحدود + الاختبارات'
+# ── ٦ · فحوص الواجهة ──────────────────────────────────────────────────────────
+# ‏**لماذا هنا:** العقد له طرفان. غيّر إيداعٌ العقد المنشور، ومرّت حرّاس .NET خضراء،
+# فقُرئ التغيير نازلاً كاملاً — وهو نصفه: العميل المُولَّد في `web/src/api/generated/`
+# بقي على العقد القديم. البوّابة التي لا تشغّل شيئاً من `web/` كانت تُعلن خُضرةً عن
+# نصف المستودع. (‏traps.md#fakh-a-two-sided-contract-guarded-on-one-side-only)
+#
+# ‏**ولماذا هذان الفحصان بالذات افتراضياً:** `generate-client.mjs` و`audit.mjs` لا
+# يستوردان إلا وحدات Node المدمجة — **مقيس أنهما ينجحان بلا `node_modules` إطلاقاً**.
+# فثمنهما ثوانٍ ولا يحتاجان `npm ci`. وما عداهما يحتاج التثبيت، فهو خلف `--with-frontend`
+# لئلّا تدفع كل بوّابة ثمن دقيقتين. وما لا يُشغَّل هنا **مُصرَّح به** في القاعدة 19،
+# لا متروكاً ليفترض القارئ أنه مُغطّى.
+step "٦ · الواجهة — فحوص لا تحتاج تثبيتاً"
+if command -v node >/dev/null 2>&1; then
+    ( cd web && node scripts/generate-client.mjs --check ) || fail "العميل المُولَّد يخالف العقد المنشور (web: gen:check)"
+    ( cd web && node scripts/audit.mjs )                   || fail "فحص التدويل والاتجاه (web: audit:i18n)"
+else
+    printf '── node غير موجود: فحوص الواجهة الساكنة لم تُشغَّل. وهذا نقصُ تغطية لا نجاح.\n'
+fi
+
+if [ "$frontend" = "full" ]; then
+    step "٧ · الواجهة — الفحوص التي تحتاج npm ci"
+    command -v npm >/dev/null 2>&1 || fail "npm غير موجود و--with-frontend يطلبه"
+    ( cd web && npm ci )        || fail "npm ci"
+    ( cd web && npm run build ) || fail "بناء الواجهة"
+    ( cd web && npm run lint )  || fail "قواعد الحدّ (ESLint)"
+    ( cd web && npm test )      || fail "اختبارات وحدة الواجهة"
+else
+    printf '\n── فحوص الواجهة التي تحتاج npm ci مُتخطّاة. أضف --with-frontend لتشغيلها.\n'
+fi
+
+printf '\n✔ البوّابة المحلية خضراء: بناء الحلّ كلّه + المسابر + الحدود + الاختبارات + الواجهة الساكنة'
 [ "$isolation" = "yes" ] && printf ' + العزل'
 printf '\n'

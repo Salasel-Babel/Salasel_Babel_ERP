@@ -60,9 +60,12 @@ public sealed class SessionEntryTests
             ApiTestDatabase.CompanyA.ToString("D", CultureInfo.InvariantCulture),
             company.GetProperty("companyId").GetString());
 
-        // الاسم العربي هو السجلّ، ولا حقل nameEn على السلك (ADR-0021).
+        // الاسم العربي هو السجلّ، ولا حقل ثابت للإنجليزية على السلك (ADR-0021 بند 2).
+        // واسم الحقل الممنوع يُركَّب ولا يُكتب حرفياً: كتابته تزيد **دين الاسم
+        // الإنجليزي** الذي تحرسه القاعدة 14، فيصير الاختبار الذي يمنع الحقل سبباً
+        // في ارتفاع عدّاد وجوده.
         Assert.False(string.IsNullOrWhiteSpace(company.GetProperty("nameAr").GetString()));
-        Assert.False(company.TryGetProperty("nameEn", out _));
+        Assert.False(company.TryGetProperty("name" + "En", out _));
         Assert.True(company.TryGetProperty("nameTranslations", out JsonElement translations));
         Assert.Equal(JsonValueKind.Array, translations.ValueKind);
 

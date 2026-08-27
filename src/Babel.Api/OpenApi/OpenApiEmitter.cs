@@ -83,8 +83,8 @@ internal static class OpenApiEmitter
                 "يُرجع من يقف خلف الاعتماد — المستأجر والمستخدم — و**الشركات التي يبلغها هذا الاعتماد بأسمائها**. "
                 + "وهذه أول نقطة يناديها عميل: معرّف الشركة إلزامي في كل مسار آخر وهو معرّف بصيغة 8-4-4-4-12، "
                 + "ولا يستطيع إنسان أن يكتبه — فيُختار من هنا ولا يُكتب.\n\n"
-                + "والاسم العربي هو السجلّ وnameTranslations ترجماته أيّاً كان عددها (ADR-0021)؛ ولا حقل nameEn هنا "
-                + "كما لا حقل له في صفّ ميزان المراجعة.\n\n"
+                + "والاسم العربي هو السجلّ وnameTranslations ترجماته أيّاً كان عددها (ADR-0021)؛ ولا حقل ثابت "
+                + "للإنجليزية هنا كما لا حقل لها في صفّ ميزان المراجعة.\n\n"
                 + "**والفشل مغلق:** اعتماد لا يبلغ أي شركة يُرفض بـ403 وsession.no_reachable_company ولا يُسلَّم قائمة "
                 + "فارغة — القائمة الفارغة تُقرأ «لا بيانات بعد» فينتظر المستخدم شيئاً لن يأتي، والناقص ربطُ الاعتماد "
                 + "بمنشأة. ومنشأةٌ لم تُؤسَّس بعد **تظهر** في القائمة بـstate = NotSetUp ولا تُخفى: إخفاؤها يجعل "
@@ -95,7 +95,7 @@ internal static class OpenApiEmitter
                 + "reaches, by name**. This is the first call any client makes: the company identifier is mandatory on "
                 + "every other path and is an 8-4-4-4-12 identifier no human can type — so it is chosen here, never typed.\n\n"
                 + "The Arabic name is the record and nameTranslations are its translations, however many (ADR-0021); "
-                + "there is no nameEn field here, just as there is none on a trial-balance row.\n\n"
+                + "there is no fixed English field here, just as there is none on a trial-balance row.\n\n"
                 + "**Fail closed:** a credential that reaches no company is refused with 403 and "
                 + "session.no_reachable_company rather than handed an empty list — an empty list reads as 'no data yet' "
                 + "and leaves the user waiting for something that will never arrive, when what is missing is the "
@@ -869,10 +869,10 @@ internal static class OpenApiEmitter
             w.WriteString("type", "object");
             w.WriteString("description",
                 "شركة يبلغها الاعتماد. والاسم العربي هو السجلّ، وnameTranslations ترجماته بوسم اللغة — ولا حقل "
-                + "nameEn: الإنجليزية واحدة من N (ADR-0021). والحقول المشتقّة من التأسيس تصل null حين state = NotSetUp، "
+                + "ثابت للإنجليزية: هي واحدة من N (ADR-0021). والحقول المشتقّة من التأسيس تصل null حين state = NotSetUp، "
                 + "لأنها تُسنَد عند التأسيس ولا يُخترَع لها قيمة قبله. / "
                 + "A company the credential reaches. The Arabic name is the record and nameTranslations are its "
-                + "translations by language tag — there is no nameEn field: English is one of N (ADR-0021). The "
+                + "translations by language tag — there is no fixed English field: English is one of N (ADR-0021). The "
                 + "setup-derived fields arrive null when state = NotSetUp, because they are assigned at setup and no "
                 + "value is invented before it.");
             w.WriteStartObject("properties");

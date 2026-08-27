@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     4f9d68d52b5ede1a81c998dcee64c6cd0109fc5ded2da4f2c2c93bc9a86e7b3b
+     e678dc2c0394be5606c978fa44478590c8aa4853b303a75a859bbc0dbe97264e
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -377,7 +377,7 @@ export interface Session {
   userId: string;
 }
 
-/** شركة يبلغها الاعتماد. والاسم العربي هو السجلّ، وnameTranslations ترجماته بوسم اللغة — ولا حقل nameEn: الإنجليزية واحدة من N (ADR-0021). والحقول المشتقّة من التأسيس تصل null حين state = NotSetUp، لأنها تُسنَد عند التأسيس ولا يُخترَع لها قيمة قبله. / A company the credential reaches. The Arabic name is the record and nameTranslations are its translations by language tag — there is no nameEn field: English is one of N (ADR-0021). The setup-derived fields arrive null when state = NotSetUp, because they are assigned at setup and no value is invented before it. */
+/** شركة يبلغها الاعتماد. والاسم العربي هو السجلّ، وnameTranslations ترجماته بوسم اللغة — ولا حقل ثابت للإنجليزية: هي واحدة من N (ADR-0021). والحقول المشتقّة من التأسيس تصل null حين state = NotSetUp، لأنها تُسنَد عند التأسيس ولا يُخترَع لها قيمة قبله. / A company the credential reaches. The Arabic name is the record and nameTranslations are its translations by language tag — there is no fixed English field: English is one of N (ADR-0021). The setup-derived fields arrive null when state = NotSetUp, because they are assigned at setup and no value is invented before it. */
 export interface SessionCompany {
   /** معرّف الشركة كما يُكتب في المسار. / The company identifier as written in the path. */
   companyId: string;

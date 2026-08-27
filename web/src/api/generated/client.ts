@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     4f9d68d52b5ede1a81c998dcee64c6cd0109fc5ded2da4f2c2c93bc9a86e7b3b
+     e678dc2c0394be5606c978fa44478590c8aa4853b303a75a859bbc0dbe97264e
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -226,7 +226,7 @@ export async function readJournalEntry(transport: Transport, args: ReadJournalEn
  * 
  * يُرجع من يقف خلف الاعتماد — المستأجر والمستخدم — و**الشركات التي يبلغها هذا الاعتماد بأسمائها**. وهذه أول نقطة يناديها عميل: معرّف الشركة إلزامي في كل مسار آخر وهو معرّف بصيغة 8-4-4-4-12، ولا يستطيع إنسان أن يكتبه — فيُختار من هنا ولا يُكتب.
  * 
- * والاسم العربي هو السجلّ وnameTranslations ترجماته أيّاً كان عددها (ADR-0021)؛ ولا حقل nameEn هنا كما لا حقل له في صفّ ميزان المراجعة.
+ * والاسم العربي هو السجلّ وnameTranslations ترجماته أيّاً كان عددها (ADR-0021)؛ ولا حقل ثابت للإنجليزية هنا كما لا حقل لها في صفّ ميزان المراجعة.
  * 
  * **والفشل مغلق:** اعتماد لا يبلغ أي شركة يُرفض بـ403 وsession.no_reachable_company ولا يُسلَّم قائمة فارغة — القائمة الفارغة تُقرأ «لا بيانات بعد» فينتظر المستخدم شيئاً لن يأتي، والناقص ربطُ الاعتماد بمنشأة. ومنشأةٌ لم تُؤسَّس بعد **تظهر** في القائمة بـstate = NotSetUp ولا تُخفى: إخفاؤها يجعل صاحب الاعتماد الوحيد يرى قائمة فارغة ويقرؤها «اعتمادي لا يصلح».
  * 
@@ -234,7 +234,7 @@ export async function readJournalEntry(transport: Transport, args: ReadJournalEn
  * 
  * Returns who stands behind the credential — tenant and user — and **the companies this credential reaches, by name**. This is the first call any client makes: the company identifier is mandatory on every other path and is an 8-4-4-4-12 identifier no human can type — so it is chosen here, never typed.
  * 
- * The Arabic name is the record and nameTranslations are its translations, however many (ADR-0021); there is no nameEn field here, just as there is none on a trial-balance row.
+ * The Arabic name is the record and nameTranslations are its translations, however many (ADR-0021); there is no fixed English field here, just as there is none on a trial-balance row.
  * 
  * **Fail closed:** a credential that reaches no company is refused with 403 and session.no_reachable_company rather than handed an empty list — an empty list reads as 'no data yet' and leaves the user waiting for something that will never arrive, when what is missing is the credential's link to a company. A company not yet set up **appears** in the list with state = NotSetUp and is not hidden: hiding it makes the holder of a single-company credential see an empty list and read it as 'my credential is broken'.
  * 

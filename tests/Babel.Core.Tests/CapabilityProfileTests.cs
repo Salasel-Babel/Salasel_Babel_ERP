@@ -310,12 +310,23 @@ public sealed class CapabilityProfileTests
                 "CapabilityProfileService.SaveAsync",
                 "ICapabilityProfileStore.FindAsync",
                 "InMemoryCapabilityProfileStore.FindAsync",
+
+                // المخزن فوق PostgreSQL منتِجٌ رابع — و**يمرّ بالمصنع حتماً**: يقرأ
+                // المسودّة المخزَّنة ثم ينادي Create فيُطابقها بمصفوفة الترحيل من جديد،
+                // ويرمي إن رُفضت. أي أنه لا يُنتج ملفّاً لم يُطابَق، وذلك شرط دخوله هذه
+                // القائمة لا استثناءً منها.
+                "PostgresCapabilityProfileStore.FindAsync",
                 "ValidatedCapabilityProfile.Create",
             ],
             producers);
 
         // ٣ — والمخزن لا يقبل مسودّة: التوقيع نفسه يمنع حفظ ما لم يُطابَق.
-        foreach (Type type in new[] { typeof(ICapabilityProfileStore), typeof(InMemoryCapabilityProfileStore) })
+        foreach (Type type in new[]
+                 {
+                     typeof(ICapabilityProfileStore),
+                     typeof(InMemoryCapabilityProfileStore),
+                     core.GetType("Babel.Core.Persistence.PostgresCapabilityProfileStore", throwOnError: true)!,
+                 })
         {
             MethodInfo save = type.GetMethod("SaveAsync")!;
             Assert.Contains(save.GetParameters(), parameter => parameter.ParameterType == typeof(ValidatedCapabilityProfile));

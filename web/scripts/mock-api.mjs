@@ -306,7 +306,26 @@ function respondToPosting(res, path, raw, body) {
     return;
   }
 
-  /* ٤ · حصانة التكرار: المفتاح نفسه يُعيد الإيصال ذاته و200 بدل 201. */
+  /* ٤ · ما لا يعرفه العقد ويعرفه الدفتر — **منقولٌ من قياس على الخادم الحقيقي**.
+     ‏ADR: القاعدة 2 تمنع السطح من رؤية الحساب، فالسطر يحمل دوراً والدفتر يحلّه.
+     وثمرةُ ذلك أن حقلَي subledger و scope اختياريان في العقد **بلا ما يقول متى
+     يلزمان**. والمقيس على مؤسسة العرض:
+       role=Settlement → الحساب 1201 ضابطٌ لدفتر bank_account ⇒ يحتاج طرفاً
+       role=NetAmount  → الحساب 4101 له بُعد إلزامي branch      ⇒ يحتاج فرعاً
+     ويحاكيهما الوهمي بالرمزين نفسيهما كي تُختبَر الشاشة على المسار الذي يقع
+     فعلاً، لا على مسارٍ سهل لا وجود له. */
+  for (const line of body.lines ?? []) {
+    if (line.role === "Settlement" && !line.subledger) {
+      send(res, 422, problem(422, "ledger.posting.missing_subledger", path), "application/problem+json");
+      return;
+    }
+    if (line.role === "NetAmount" && !line.scope?.branchId) {
+      send(res, 422, problem(422, "ledger.posting.guard.GR-COA-002", path), "application/problem+json");
+      return;
+    }
+  }
+
+  /* ٥ · حصانة التكرار: المفتاح نفسه يُعيد الإيصال ذاته و200 بدل 201. */
   const key = String(body.idempotencyKey ?? "");
   const seen = posted.get(key);
   if (seen) {
@@ -314,7 +333,7 @@ function respondToPosting(res, path, raw, body) {
     return;
   }
 
-  /* ٥ · التوازن: جمعٌ عشري نصّي بلا فاصلة عائمة — كما يفعل الخادم في SQL. */
+  /* ٦ · التوازن: جمعٌ عشري نصّي بلا فاصلة عائمة — كما يفعل الخادم في SQL. */
   let debit = "0.0000";
   let credit = "0.0000";
   for (const line of body.lines ?? []) {

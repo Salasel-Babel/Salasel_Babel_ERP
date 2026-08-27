@@ -62,6 +62,10 @@ function members(schema: string, field: string): readonly string[] {
 
 const ROLES = members("PostingLine", "role");
 const SIDES = members("PostingLine", "side");
+const SUBLEDGER_KINDS = members("Subledger", "kind");
+
+/** «لا دفتر مساعد» — العضو الذي يعني الغياب، فيُحذف الحقل كلّه بدله. */
+const NO_SUBLEDGER = "None";
 
 /**
  * تسمية كل جانب. والحارس تحتها ليس زينة: عضوٌ جديد في المجموعة المغلقة يكسر
@@ -117,6 +121,10 @@ interface DraftLine {
   side: string;
   amount: string;
   costCenter: string;
+  branchId: string;
+  qualifier: string;
+  subledgerKind: string;
+  subledgerParty: string;
   narrationAr: string;
   narrationEn: string;
 }
@@ -130,6 +138,10 @@ function newLine(side: string, role: string): DraftLine {
     side,
     amount: "",
     costCenter: DEFAULT_CENTER,
+    branchId: "",
+    qualifier: "",
+    subledgerKind: NO_SUBLEDGER,
+    subledgerParty: "",
     narrationAr: "",
     narrationEn: "",
   };
@@ -204,17 +216,31 @@ export function JournalVoucherScreen(): ReactNode {
     try {
       /* الترميز: كل مبلغ يصير Money هنا — والمُرمِّز المُولَّد يرفض أي شيء
          آخر في حقل مالي، فلا يوجد طريق يمرّ منه رقم إلى السلك. */
-      const wireLines: PostingLine[] = lines.map((line) => ({
-        role: line.role as PostingLine["role"],
-        side: line.side as PostingLine["side"],
-        amount: Money.wire(line.amount),
-        ...(line.costCenter === DEFAULT_CENTER
-          ? {}
-          : { scope: { costCenterId: line.costCenter } }),
-        ...(line.narrationAr && line.narrationEn
-          ? { narration: { ar: line.narrationAr, en: line.narrationEn } }
-          : {}),
-      }));
+      const wireLines: PostingLine[] = lines.map((line) => {
+        /* النطاق يُبنى بالحقول المذكورة وحدها: حقلٌ فارغ يُحذف ولا يُرسَل نصّاً
+           فارغاً — والعقد يقول إن حذف costCenterId يعني «الافتراضي»، أما ""
+           فقيمة يرفضها الخادم. */
+        const scope: { branchId?: string; costCenterId?: string } = {};
+        if (line.branchId !== "") scope.branchId = line.branchId;
+        if (line.costCenter !== DEFAULT_CENTER) scope.costCenterId = line.costCenter;
+
+        /* التحويل الوحيد هنا وعند الحدّ: القيم تأتي من قوائم **مقروءة من العقد
+           نفسه** وقت التشغيل، فهي أعضاء المجموعة المغلقة بحكم مصدرها — لكن
+           TypeScript لا يعرف ذلك عن نصٍّ قرأه من runtime-schema. */
+        return {
+          role: line.role,
+          side: line.side,
+          amount: Money.wire(line.amount),
+          ...(Object.keys(scope).length > 0 ? { scope } : {}),
+          ...(line.qualifier === "" ? {} : { qualifier: line.qualifier }),
+          ...(line.subledgerKind === NO_SUBLEDGER || line.subledgerParty === ""
+            ? {}
+            : { subledger: { kind: line.subledgerKind, partyId: line.subledgerParty } }),
+          ...(line.narrationAr && line.narrationEn
+            ? { narration: { ar: line.narrationAr, en: line.narrationEn } }
+            : {}),
+        } as PostingLine;
+      });
 
       const posted = await postJournalEntry(transport, {
         companyId: config.companyId,
@@ -256,7 +282,19 @@ export function JournalVoucherScreen(): ReactNode {
     [config, navigate, setConfig]
   );
 
-  const unbalanced = error instanceof ProblemError && error.code === "ledger.posting.unbalanced";
+  /*
+   * ── ما لا يعرفه العقد، وتعلّمته الشاشة من الرفض ────────────────────────
+   * القاعدة 2 تمنع السطح من رؤية الحساب: السطر يحمل **دوراً**، والدفتر يحلّه.
+   * وثمرة ذلك أن الشاشة **لا تستطيع أن تعرف مسبقاً** أن الدور الذي اختاره
+   * المستخدم سيُحلّ إلى حساب ضابط يحتاج طرفاً، أو إلى حساب ببُعد إلزامي:
+   * subledger و scope حقلان **اختياريان** في العقد بلا ما يقول متى يلزمان.
+   * فالطريق الوحيد هو أن تُرسِل، وتقرأ الرمز، وتتصرّف عليه — والرسائل الواصلة
+   * **تسمّي الحساب والدفتر المساعد والبُعد الناقص**، فهي صالحة للتصرّف فعلاً.
+   */
+  const problemCode = error instanceof ProblemError ? error.code : null;
+  const unbalanced = problemCode === "ledger.posting.unbalanced";
+  const needsParty = problemCode === "ledger.posting.missing_subledger";
+  const needsDimension = problemCode?.startsWith("ledger.posting.guard.") ?? false;
 
   if (config.companyId === "") {
     return <ChooseCompanyFirst />;
@@ -430,6 +468,71 @@ export function JournalVoucherScreen(): ReactNode {
               </div>
             </div>
 
+            <div className="fields-4" style={{ marginTop: "var(--space-10)" }}>
+              <div className="field">
+                <label htmlFor={"jv-branch-" + line.key}>{t("field.branch.label")}</label>
+                <input
+                  id={"jv-branch-" + line.key}
+                  className="ctl mono"
+                  dir="ltr"
+                  autoComplete="off"
+                  data-testid="voucher-branch"
+                  value={line.branchId}
+                  onChange={(e) => update(line.key, { branchId: e.target.value })}
+                  placeholder="BR-01"
+                />
+                <span className="hint">{t("screen.voucher.branchHint")}</span>
+              </div>
+
+              <div className="field">
+                <label htmlFor={"jv-qual-" + line.key}>{t("screen.voucher.qualifier")}</label>
+                <input
+                  id={"jv-qual-" + line.key}
+                  className="ctl mono"
+                  dir="ltr"
+                  autoComplete="off"
+                  data-testid="voucher-qualifier"
+                  value={line.qualifier}
+                  onChange={(e) => update(line.key, { qualifier: e.target.value })}
+                />
+                <span className="hint">{t("screen.voucher.qualifierHint")}</span>
+              </div>
+
+              <div className="field">
+                <label htmlFor={"jv-sub-" + line.key}>{t("screen.voucher.subledger")}</label>
+                <select
+                  id={"jv-sub-" + line.key}
+                  className="ctl"
+                  data-testid="voucher-subledger-kind"
+                  value={line.subledgerKind}
+                  onChange={(e) => update(line.key, { subledgerKind: e.target.value })}
+                >
+                  {SUBLEDGER_KINDS.map((kind) => (
+                    <option key={kind} value={kind}>
+                      {kind}
+                    </option>
+                  ))}
+                </select>
+                <span className="hint">{t("screen.voucher.subledgerHint")}</span>
+              </div>
+
+              <div className="field">
+                <label htmlFor={"jv-party-" + line.key}>{t("screen.voucher.party")}</label>
+                <input
+                  id={"jv-party-" + line.key}
+                  className="ctl mono"
+                  dir="ltr"
+                  autoComplete="off"
+                  data-testid="voucher-party"
+                  disabled={line.subledgerKind === NO_SUBLEDGER}
+                  value={line.subledgerParty}
+                  onChange={(e) => update(line.key, { subledgerParty: e.target.value })}
+                  placeholder="BANK-0001"
+                />
+                <span className="hint">{t("screen.voucher.partyHint")}</span>
+              </div>
+            </div>
+
             <div className="inline-group" style={{ marginTop: "var(--space-10)" }}>
               <button
                 type="button"
@@ -480,6 +583,16 @@ export function JournalVoucherScreen(): ReactNode {
           {unbalanced ? (
             <p className="alert alert--warning" role="status" data-testid="voucher-unbalanced">
               {t("screen.voucher.unbalancedNext")}
+            </p>
+          ) : null}
+          {needsParty ? (
+            <p className="alert alert--warning" role="status" data-testid="voucher-needs-party">
+              {t("screen.voucher.needsPartyNext")}
+            </p>
+          ) : null}
+          {needsDimension ? (
+            <p className="alert alert--warning" role="status" data-testid="voucher-needs-dimension">
+              {t("screen.voucher.needsDimensionNext")}
             </p>
           ) : null}
         </>

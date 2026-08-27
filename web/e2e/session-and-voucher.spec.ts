@@ -76,6 +76,19 @@ async function horizontalOverflow(page: Page): Promise<number> {
   });
 }
 
+
+/**
+ * يملأ ما **لا يقوله العقد وتعلّمته الشاشة من الرفض**: الحساب الضابط يحتاج
+ * طرفاً، والحساب ذو البُعد الإلزامي يحتاج فرعاً. مقيس على الخادم الحقيقي.
+ * @param page الصفحة.
+ */
+async function fillWhatTheLedgerDemands(page: Page): Promise<void> {
+  await page.getByTestId("voucher-qualifier").nth(0).fill("bank");
+  await page.getByTestId("voucher-subledger-kind").nth(0).selectOption("Treasury");
+  await page.getByTestId("voucher-party").nth(0).fill("BANK-0001");
+  await page.getByTestId("voucher-branch").nth(1).fill("BR-01");
+}
+
 /* ═══════════════════════════ ١ · الدخول ═══════════════════════════════ */
 
 test.describe("الدخول واختيار المنشأة", () => {
@@ -164,6 +177,7 @@ test.describe("القيد اليدوي — أول شاشة تكتب", () => {
     await page.getByTestId("voucher-date").fill("2026-08-15");
     await page.getByTestId("voucher-memo-ar").fill("قيد يدوي من الشاشة");
     await page.getByTestId("voucher-memo-en").fill("Manual voucher from the screen");
+    await fillWhatTheLedgerDemands(page);
 
     const amounts = page.getByTestId("voucher-amount");
     expect(await amounts.count(), "عدد حقول المبالغ").toBe(2);
@@ -196,6 +210,7 @@ test.describe("القيد اليدوي — أول شاشة تكتب", () => {
     await page.getByTestId("voucher-date").fill("2026-08-16");
     await page.getByTestId("voucher-memo-ar").fill("حصانة التكرار");
     await page.getByTestId("voucher-memo-en").fill("Idempotency");
+    await fillWhatTheLedgerDemands(page);
     const amounts = page.getByTestId("voucher-amount");
     await amounts.nth(0).fill("250.7500");
     await amounts.nth(1).fill("250.7500");
@@ -220,6 +235,7 @@ test.describe("القيد اليدوي — أول شاشة تكتب", () => {
     await page.getByTestId("voucher-date").fill("2026-08-17");
     await page.getByTestId("voucher-memo-ar").fill("غير متوازن");
     await page.getByTestId("voucher-memo-en").fill("Unbalanced");
+    await fillWhatTheLedgerDemands(page);
     const amounts = page.getByTestId("voucher-amount");
     await amounts.nth(0).fill("100.0000");
     await amounts.nth(1).fill("90.0000");
@@ -252,6 +268,40 @@ test.describe("القيد اليدوي — أول شاشة تكتب", () => {
     }
 
     expect(attempts, "طلبات غادرت المتصفّح بمبلغ مخالف").toBe(0);
+  });
+
+  test("ما لا يقوله العقد يصل رمزاً قابلاً للتصرّف: طرفٌ ناقص وبُعدٌ ناقص", async ({ page }) => {
+    await page.goto(voucherUrl());
+    await page.getByTestId("voucher-date").fill("2026-08-18");
+    await page.getByTestId("voucher-memo-ar").fill("بلا طرف ولا فرع");
+    await page.getByTestId("voucher-memo-en").fill("No party, no branch");
+    const amounts = page.getByTestId("voucher-amount");
+    await amounts.nth(0).fill("500.0000");
+    await amounts.nth(1).fill("500.0000");
+
+    /* ١ · بلا طرف: الحساب الضابط يرفض، والشاشة تقول الخطوة التالية. */
+    await page.getByTestId("voucher-post").click();
+    await expect(page.getByTestId("problem-panel")).toHaveAttribute(
+      "data-code",
+      "ledger.posting.missing_subledger"
+    );
+    await expect(page.getByTestId("voucher-needs-party")).toBeVisible();
+
+    /* ٢ · بعد إضافة الطرف: يبقى البُعد الإلزامي ناقصاً، وبرمز آخر. */
+    await page.getByTestId("voucher-subledger-kind").nth(0).selectOption("Treasury");
+    await page.getByTestId("voucher-party").nth(0).fill("BANK-0001");
+    await page.getByTestId("voucher-post").click();
+    await expect(page.getByTestId("problem-panel")).toHaveAttribute(
+      "data-code",
+      "ledger.posting.guard.GR-COA-002"
+    );
+    await expect(page.getByTestId("voucher-needs-dimension")).toBeVisible();
+
+    /* ٣ · وبعد الفرع: يُقبل — والمفتاح نفسه لم يتغيّر ولم يُرحَّل شيء قبل ذلك. */
+    await page.getByTestId("voucher-branch").nth(1).fill("BR-01");
+    await page.getByTestId("voucher-post").click();
+    await page.waitForSelector('[data-testid="voucher-receipt"]');
+    await expect(page.getByTestId("voucher-receipt")).toHaveAttribute("data-already-posted", "false");
   });
 
   test("شاشة الكتابة بلا منشأة تدلّ على الاختيار ولا تطلب معرّفاً", async ({ page }) => {

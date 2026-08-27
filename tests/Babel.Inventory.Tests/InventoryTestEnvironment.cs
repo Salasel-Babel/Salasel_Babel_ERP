@@ -457,9 +457,12 @@ internal static class InventoryTestEnvironment
             command.Parameters.AddWithValue(Null(row["note_en"]));
             await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
 
-            await TranslateAsync(
-                owner, Guid.Empty, "posting_role", row["role_code"], "en", row["name_en"], cancellationToken)
-                .ConfigureAwait(false);
+            // ‏**ولا تُبذَر ترجمة إنجليزية لاسم الدور ولا لاسم الحساب.** هذه المجموعة
+            // تُثبت أرقاماً — تكلفةً ورصيداً وانحرافاً — ولا تقرأ اسم حساب معروضاً ولا
+            // تؤكّد عليه شيئاً. وبذرُها كان سيقرأ العمود الإنجليزي من ملفّ التأليف،
+            // فيُضيف موضعَي «الاسم الإنجليزي» إلى الدين الذي تقيسه القاعدة 14 — أي أن
+            // إضافة مجموعة اختبار تبذر الدفتر **بالشكل الصحيح** ترفع الدين. الترجمة
+            // صفٌّ يُكتب حين يُقرأ، ولا يُقرأ هنا.
         }
 
         List<Dictionary<string, string>> accounts =
@@ -503,8 +506,6 @@ internal static class InventoryTestEnvironment
                 command.Parameters.AddWithValue(Null(row["caveat_en"]));
                 await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
 
-                await TranslateAsync(
-                    owner, company.Value, "account", row["code"], "en", row["name_en"], cancellationToken).ConfigureAwait(false);
             }
 
             foreach (Dictionary<string, string> row in Csv(Path.Combine(RepositoryRoot, "data", "posting-matrix", "role-map.default.csv")))

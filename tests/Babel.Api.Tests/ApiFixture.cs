@@ -151,10 +151,15 @@ internal static class ApiFixture
     /// الصحيح</b>: دفترٌ لمنشأة بلا مقياس عرض ولا مركز تكلفة ليس دفتراً.
     /// </para>
     /// <para>
-    /// <b>ولماذا هنا لا في كل اختبار:</b> مخزن التأسيس <b>في ذاكرة العملية</b>، فكل خادم
-    /// يُقلَع يبدأ بلا منشأة واحدة. والتأسيس هنا يجعل الشرط <b>خاصية الخادم</b> لا شيئاً
+    /// <b>ولماذا هنا لا في كل اختبار:</b> ليجعل الشرط <b>خاصية الخادم</b> لا شيئاً
     /// يتذكّره كل اختبار — واختبارات التأسيس نفسها تملك منشآتها المستقلّة
     /// (<see cref="SetupCompanies"/>) فلا تتصادم مع هذا.
+    /// </para>
+    /// <para>
+    /// وقد كان مخزن التأسيس <b>في ذاكرة العملية</b>، فكان كل خادم يُقلَع يبدأ بلا منشأة
+    /// واحدة، وكان هذا التأسيس هو ما يخفي ذلك. وصار المخزن على PostgreSQL: فالخادم
+    /// الثاني على القاعدة نفسها يجد المنشأة مؤسَّسة ويردّ <c>409</c> — وهو الجواب
+    /// المقبول أدناه، وهو <b>نفسه</b> الدليل على أن التأسيس لم يعد يموت مع العملية.
     /// </para>
     /// </summary>
     private static async Task<ApiProcess> StartAndFoundAsync(
@@ -203,6 +208,11 @@ internal static class ApiFixture
             ["Babel__Ledger__AppConnectionString"] = ledgerConnection,
             ["Babel__Ledger__OwnerConnectionString"] = ApiTestDatabase.Options.OwnerConnectionString,
             ["Babel__Ledger__CompanyCurrency"] = "SAR",
+
+            // النواة: **اتصال دور التطبيق وحده**. ولا مفتاح لاتصال المالك هنا ولا في
+            // الخادم أصلاً — خادمٌ يحمله يستطيع إسقاط مشغّل ثبات المقياس (ADR-0003).
+            ["Babel__Core__AppConnectionString"] = ApiTestDatabase.Core.AppConnectionString,
+            ["Babel__Core__AppRole"] = ApiTestDatabase.Core.AppRole,
         };
 
         int index = 0;

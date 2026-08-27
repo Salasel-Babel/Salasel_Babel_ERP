@@ -1,5 +1,7 @@
 using System.Globalization;
 using System.Reflection;
+using Babel.Core;
+using Babel.Core.Persistence;
 using Babel.Ledger;
 using Npgsql;
 
@@ -85,6 +87,24 @@ internal static class ApiTestDatabase
         CompanyCurrency = "SAR",
     };
 
+    /// <summary>
+    /// إعدادات النواة لهذه المجموعة — <b>القاعدة نفسها، ومخطّط <c>core</c> بجوار
+    /// <c>ledger</c></b>، والدور نفسه.
+    /// <para>
+    /// وقاعدةٌ واحدة هنا لا اثنتان: ما يُختبَر هو المخطّط والصلاحيات والمشغّل، وكلّها
+    /// لا تتغيّر بتغيّر القاعدة التي تسكنها. أمّا النشر فيفصلها كما يفصل المبيعات
+    /// والمشتريات — واسم القاعدة إعدادُ نشرٍ لا خاصيّةَ وحدة.
+    /// </para>
+    /// </summary>
+    public static CoreOptions Core { get; } = new()
+    {
+        OwnerConnectionString =
+            $"Host=127.0.0.1;Port=5432;Database={Database};Username=postgres;Include Error Detail=true",
+        AppConnectionString =
+            $"Host=127.0.0.1;Port=5432;Database={Database};Username={AppRole};Include Error Detail=true;Maximum Pool Size=5;Minimum Pool Size=0",
+        AppRole = AppRole,
+    };
+
     /// <summary>جذر المستودع.</summary>
     public static string RepositoryRoot { get; } = RepositoryPaths.Root;
 
@@ -144,8 +164,12 @@ internal static class ApiTestDatabase
         }
     }
 
-    private static Task DeploySchemaAsync(CancellationToken cancellationToken)
-        => LedgerSchema.DeployAsync(Options, cancellationToken);
+    private static async Task DeploySchemaAsync(CancellationToken cancellationToken)
+    {
+        // النواة أولاً: تأسيس المنشأة هو ما تفترضه بوّابة الترحيل قبل أن تبني طلباً.
+        await CoreSchema.DeployAsync(Core, cancellationToken).ConfigureAwait(false);
+        await LedgerSchema.DeployAsync(Options, cancellationToken).ConfigureAwait(false);
+    }
 
     private static async Task CreateDatabaseAndRoleAsync(CancellationToken cancellationToken)
     {

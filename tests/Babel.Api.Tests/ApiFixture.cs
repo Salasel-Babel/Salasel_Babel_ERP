@@ -135,11 +135,26 @@ internal static class ApiFixture
 
     /// <summary>
     /// خادم موجَّه إلى قاعدة بيانات غير موجودة — لإثبات أن العطل التشغيلي لا يتسرّب.
+    /// <para>
+    /// <b>ولا يُؤسَّس عليه شيء، ولا يمكن أن يُؤسَّس.</b> التأسيس يُنشئ مركز التكلفة
+    /// الافتراضي في الدفتر (‏ADR-0026)، والدفتر هنا <b>هو</b> القاعدة غير الموجودة. فطلبُ
+    /// التأسيس على هذا الخادم يعطي 500 حتماً، ويرمي <c>StartAndFoundAsync</c> قبل أن يبلغ
+    /// الاختبارُ ما جاء ليفحصه.
+    /// </para>
+    /// <para>
+    /// <b>وقد كان يمرّ، بأثرٍ جانبي:</b> مخزن التأسيس على قاعدة <b>أخرى</b> سليمة، فإن كان
+    /// اختبارٌ شقيق أسّس المنشآت قبله ردّ التأسيسُ <c>409</c> بلا أن يمسّ الدفتر — فيمرّ.
+    /// وحده، بترتيب آخر، أو أوّلَ اختبارٍ يُشغَّل: <c>201</c> مطلوب ⇒ الدفتر ⇒ 500 ⇒ سقوط.
+    /// <b>مقيس:</b> يسقط 2/2 منفرداً ويمرّ 5/5 مع صفّه، على <c>develop</c> نظيفة.
+    /// وهذا هو الصنف الذي وُجد مسحُ العزل ليكشفه: اختبارٌ يمرّ لأن غيره سبقه.
+    /// (‏<c>docs/evidence/traps.md#fakh-a-fixture-that-founds-on-a-server-built-to-be-unreachable</c>)
+    /// </para>
     /// </summary>
     public static Task<ApiProcess> WithUnreachableDatabaseAsync() =>
-        StartAndFoundAsync(
-            "Host=127.0.0.1;Port=5432;Database=babel_api_tests_no_such_database;Username="
-                + ApiTestDatabase.AppRole + ";Include Error Detail=true",
+        ApiProcess.StartAsync(
+            Environment(
+                "Host=127.0.0.1;Port=5432;Database=babel_api_tests_no_such_database;Username="
+                    + ApiTestDatabase.AppRole + ";Include Error Detail=true"),
             "en_US.UTF-8",
             Token);
 

@@ -8,9 +8,22 @@ namespace Babel.ControlPlane.Entitlement;
 /// <para><c>PostsJournal</c> هو التمييز الذي يجعل ADR-0014 قابلاً للتطبيق:
 /// وحدة <b>لا تُرحّل قيوداً</b> (أداة تقارير) يمكن إلغاء تركيبها فعلاً بلا
 /// ضرر — وهو الاستثناء الوحيد المذكور في «ولا ينقضه» هناك.</para>
+///
+/// <para><c>Floor</c> هو <b>أدنى حالة تبلغها الوحدة نزولاً بعد أن تكون قد
+/// اشتُريت</b>. وهو <b>مُعلَن صفّاً صفّاً لا مُشتقّ ضمناً</b> كي يكون خطأ
+/// المؤلّف القادم <b>مرئياً</b>: الحارس المعماري يقارن الإعلان بـ
+/// <c>PostsJournal</c> ويُفشل البناء عند اختلافهما (القاعدة 6).</para>
 /// </summary>
+/// <param name="Code">رمز الوحدة.</param>
+/// <param name="NameAr">اسمها بالعربية.</param>
+/// <param name="NameEn">اسمها بالإنجليزية.</param>
+/// <param name="PostsJournal">هل تُرحّل قيوداً إلى الأستاذ العام؟</param>
+/// <param name="Floor">أدنى حالة تبلغها نزولاً بعد الشراء.</param>
+/// <param name="SortOrder">ترتيب العرض.</param>
+/// <param name="DependsOn">اعتمادياتها المباشرة.</param>
 public sealed record ModuleDefinition(
-    string Code, string NameAr, string NameEn, bool PostsJournal, int SortOrder,
+    string Code, string NameAr, string NameEn, bool PostsJournal,
+    EntitlementState Floor, int SortOrder,
     IReadOnlyList<string> DependsOn);
 
 /// <summary>
@@ -22,20 +35,54 @@ public static class ModuleCatalog
     /// <summary>رمز وحدة الأستاذ العام — جذر رسم الاعتماديات.</summary>
     public const string Core = "CORE";
 
-    /// <summary>كل الوحدات القابلة للبيع، مرتّبةً ترتيباً كلّياً ثابتاً برمزها.</summary>
+    /// <summary>
+    /// كل الوحدات القابلة للبيع، مرتّبةً ترتيباً كلّياً ثابتاً برمزها.
+    ///
+    /// <para><b>العمود الخامس هو الأرضية.</b> ثماني وحدات تُرحّل قيوداً، فأرضيتها
+    /// <c>ReadOnly</c>: تُخفَّض ولا تُنتزَع مهما كانت الخطة ومهما انقطع السداد.
+    /// وواحدة لا تُرحّل قيوداً (‏<c>REP</c>) أرضيتها <c>NotEntitled</c>: تُنتزَع
+    /// فعلاً، وهي الاستثناء المذكور في ADR-0014.</para>
+    /// </summary>
     public static readonly IReadOnlyList<ModuleDefinition> All =
     [
-        new("AP",  "المشتريات والذمم الدائنة", "Purchasing & payables", true, 30, [Core]),
-        new("AR",  "المبيعات والذمم المدينة",  "Sales & receivables",   true, 20, [Core]),
-        new("CORE","الأستاذ العام",            "General ledger",        true, 10, []),
-        new("FA",  "الأصول الثابتة",           "Fixed assets",          true, 70, [Core, "AP"]),
-        new("INV", "المخزون",                  "Inventory",             true, 40, [Core, "AP"]),
-        new("PAY", "الرواتب",                  "Payroll",               true, 80, [Core]),
-        new("POS", "نقاط البيع",               "Point of sale",         true, 50, ["INV", "AR"]),
-        new("PRJ", "المشاريع",                 "Projects",              true, 60, ["INV", "AR"]),
+        new("AP",  "المشتريات والذمم الدائنة", "Purchasing & payables", true,  EntitlementState.ReadOnly, 30, [Core]),
+        new("AR",  "المبيعات والذمم المدينة",  "Sales & receivables",   true,  EntitlementState.ReadOnly, 20, [Core]),
+        new("CORE","الأستاذ العام",            "General ledger",        true,  EntitlementState.ReadOnly, 10, []),
+        new("FA",  "الأصول الثابتة",           "Fixed assets",          true,  EntitlementState.ReadOnly, 70, [Core, "AP"]),
+        new("INV", "المخزون",                  "Inventory",             true,  EntitlementState.ReadOnly, 40, [Core, "AP"]),
+        new("PAY", "الرواتب",                  "Payroll",               true,  EntitlementState.ReadOnly, 80, [Core]),
+        new("POS", "نقاط البيع",               "Point of sale",         true,  EntitlementState.ReadOnly, 50, ["INV", "AR"]),
+        new("PRJ", "المشاريع",                 "Projects",              true,  EntitlementState.ReadOnly, 60, ["INV", "AR"]),
         // الاستثناء المذكور في ADR-0014: لا تُرحّل قيوداً ⇒ تُلغى تركيباً فعلاً.
-        new("REP", "التقارير التحليلية",        "Analytical reporting",  false, 90, [Core]),
+        new("REP", "التقارير التحليلية",        "Analytical reporting",  false, EntitlementState.NotEntitled, 90, [Core]),
     ];
+
+    /// <summary>
+    /// أدنى حالة تبلغها الوحدة <b>نزولاً بعد أن تكون قد اشتُريت</b>.
+    /// <para>وهي لا تقيّد الصعود ولا الحالة الابتدائية: وحدةٌ لم تُشترَ قط تبقى
+    /// <c>NotEntitled</c> ومخفيّة، والأرضية تلزم <b>الخفض</b> وحده.</para>
+    /// </summary>
+    /// <param name="code">رمز الوحدة.</param>
+    /// <returns>أدنى حالة مسموحة نزولاً.</returns>
+    public static EntitlementState FloorOf(string code) => Require(code).Floor;
+
+    /// <summary>هل هذه وحدة تُخفَّض ولا تُنتزَع؟</summary>
+    /// <param name="code">رمز الوحدة.</param>
+    /// <returns><c>true</c> إن كانت أرضيتها فوق <c>NotEntitled</c>.</returns>
+    public static bool MayOnlyBeDegraded(string code) =>
+        FloorOf(code) > EntitlementState.NotEntitled;
+
+    /// <summary>
+    /// أدنى حالة مسموحة نزولاً <b>من حالة قائمة بعينها</b>: الأرضية تلزم متى
+    /// كانت الوحدة فوق <c>NotEntitled</c> فعلاً، ولا تلزم قبل الشراء الأول.
+    /// </summary>
+    /// <param name="code">رمز الوحدة.</param>
+    /// <param name="current">حالتها القائمة.</param>
+    /// <returns>الحدّ الأدنى الملزِم للحالة التالية.</returns>
+    public static EntitlementState LowestReachableFrom(string code, EntitlementState current) =>
+        current <= EntitlementState.NotEntitled
+            ? EntitlementState.NotEntitled
+            : (EntitlementState)Math.Min((int)current, (int)FloorOf(code));
 
     /// <summary>يُرجِع وحدة برمزها، ويرمي على رمز غير معروف.</summary>
     /// <param name="code">رمز الوحدة.</param>

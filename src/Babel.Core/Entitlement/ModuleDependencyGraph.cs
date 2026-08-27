@@ -33,6 +33,19 @@ public static class ModuleDependencyGraph
     private static readonly ReadOnlyCollection<BabelModule> MandatoryModules =
         new([BabelModule.Core, BabelModule.Ledger, BabelModule.Sales, BabelModule.Purchasing, BabelModule.Compliance]);
 
+    /// <summary>
+    /// الوحدات التي <b>تُخفَّض ولا تُنتزَع</b>: كل وحدة تُرحّل قيوداً إلى الدفتر،
+    /// أو يُبنى عليها سجلّ محاسبي واجب الحفظ والإبراز.
+    /// <para>‏<c>Ai</c> وحدها خارجها: أداة التقاط لا تُرحّل قيوداً، فإلغاء
+    /// تركيبها ممكن فعلاً — وهو نفس الاستثناء المذكور في ADR-0014.</para>
+    /// </summary>
+    private static readonly ReadOnlyCollection<BabelModule> DegradableOnlyModules =
+        new([
+            BabelModule.Core, BabelModule.Ledger, BabelModule.Sales, BabelModule.Purchasing,
+            BabelModule.Compliance, BabelModule.Inventory, BabelModule.Pos, BabelModule.Hr,
+            BabelModule.Projects, BabelModule.RealEstate, BabelModule.Assets, BabelModule.Portals,
+        ]);
+
     /// <summary>كل الوحدات.</summary>
     public static IReadOnlyList<BabelModule> All { get; } = new ReadOnlyCollection<BabelModule>(Enum.GetValues<BabelModule>());
 
@@ -41,6 +54,22 @@ public static class ModuleDependencyGraph
 
     /// <summary>هل الوحدة إلزامية؟</summary>
     public static bool IsMandatory(BabelModule module) => MandatoryModules.Contains(module);
+
+    /// <summary>الوحدات التي تُخفَّض ولا تُنتزَع.</summary>
+    public static IReadOnlyList<BabelModule> DegradableOnly => DegradableOnlyModules;
+
+    /// <summary>
+    /// أدنى حالة تبلغها الوحدة <b>نزولاً بعد أن تكون قد اشتُريت</b>.
+    /// <para>‏<c>ReadOnly</c> لوحدةٍ يقوم عليها سجلّ محاسبي، و<c>NotEntitled</c>
+    /// لغيرها. والأرضية <b>لا تقيّد الحالة الابتدائية</b>: وحدةٌ لم تُشترَ قط
+    /// تبقى <c>NotEntitled</c> ومخفيّة.</para>
+    /// </summary>
+    /// <param name="module">الوحدة.</param>
+    /// <returns>أدنى حالة مسموحة نزولاً.</returns>
+    public static EntitlementState FloorOf(BabelModule module) =>
+        DegradableOnlyModules.Contains(module)
+            ? EntitlementState.ReadOnly
+            : EntitlementState.NotEntitled;
 
     /// <summary>الوحدات التي تعتمد عليها الوحدة المعطاة اعتماداً مباشراً.</summary>
     public static IReadOnlyList<BabelModule> RequirementsOf(BabelModule module) =>

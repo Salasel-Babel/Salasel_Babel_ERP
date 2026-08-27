@@ -92,7 +92,39 @@ public sealed class EntitlementSet
             next[module] = state;
         }
 
-        return Create(Tenant, next);
+        // الأرضية تُقاس على **الانتقال** لا على المجموعة: «‏Assets = NotEntitled»
+        // جملةٌ مشروعة عن مستأجر لم يشترِها قط، وقطعٌ لسجلّ أصولٍ عن مستأجر اشتراها.
+        // والفرق ليس في المطلوب بل فيما سبقه.
+        List<Error> floorErrors = [];
+        foreach (BabelModule module in ModuleDependencyGraph.All)
+        {
+            EntitlementState was = StateOf(module);
+            if (was == EntitlementState.NotEntitled)
+            {
+                continue;
+            }
+
+            EntitlementState to = next.TryGetValue(module, out EntitlementState found)
+                ? found
+                : EntitlementState.NotEntitled;
+
+            EntitlementState floor = (EntitlementState)Math.Min(
+                (int)was, (int)ModuleDependencyGraph.FloorOf(module));
+
+            if (to < floor)
+            {
+                floorErrors.Add(EntitlementErrors.RecordBearingModuleRevoked(module, was));
+            }
+        }
+
+        Result<EntitlementSet> created = Create(Tenant, next);
+        if (floorErrors.Count == 0)
+        {
+            return created;
+        }
+
+        return Result<EntitlementSet>.Failure(
+            created.IsFailure ? [.. created.Errors, .. floorErrors] : floorErrors);
     }
 
     /// <summary>الوحدات التي اختلفت حالتها بين هذه المجموعة والأخرى.</summary>
@@ -120,7 +152,12 @@ public sealed class EntitlementSet
 
         foreach ((BabelModule module, EntitlementState state) in states)
         {
-            if (ModuleDependencyGraph.IsMandatory(module) && state != EntitlementState.Entitled)
+            // «إلزامية» تعني **لا تُطفأ**، لا «يجب أن تبقى قابلة للكتابة». الفرق هو
+            // كل الفرق: عميلٌ انقطع سداده يبقى قادراً على قراءة دفتره وطباعة تقاريره
+            // وتقديم إقراره — والحالة التي تصف ذلك هي ReadOnly. منعُها كان يجعل
+            // الاشتراك المنقطع غير قابل للتمثيل على أهمّ الوحدات
+            // (docs/evidence/traps.md#fakh-mandatory-module-cannot-be-read-only).
+            if (ModuleDependencyGraph.IsMandatory(module) && state == EntitlementState.NotEntitled)
             {
                 errors.Add(EntitlementErrors.MandatoryModuleDisabled(module));
             }

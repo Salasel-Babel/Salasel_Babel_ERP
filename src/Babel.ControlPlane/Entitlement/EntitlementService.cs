@@ -136,7 +136,9 @@ public sealed class EntitlementService(ControlPlaneOptions options, TenantRegist
             next[ch.ModuleCode] = ch.NewState;
         }
 
-        var violations = EntitlementValidator.Validate(next);
+        // الانتقال لا المجموعة: «‏CORE = NotEntitled» مشروعة عن مستأجر جديد
+        // وكارثية عن مستأجر رحّل قيوداً، والفرق في الحالة السابقة وحدها.
+        var violations = EntitlementValidator.ValidateTransition(current, next);
         if (violations.Count > 0)
         {
             await OperationLog.WriteAsync(c, tenantId, authority.Actor, "entitlement.apply",
@@ -223,6 +225,62 @@ public sealed class EntitlementService(ControlPlaneOptions options, TenantRegist
         await ApplyAsync(tenantId,
             [.. full.Select(m => new EntitlementChange(m, EntitlementState.Entitled))],
             authority, ct);
+    }
+
+    /// <summary>
+    /// <b>انقطاع السداد.</b> ينزل بكل وحدة إلى <b>أرضيتها</b> لا إلى العدم:
+    /// الوحدات التي رحّلت قيوداً تصير <c>ReadOnly</c> — قراءةً وتقارير وتصديراً
+    /// كاملة، بلا مستند جديد وبلا ترحيل — والوحدة التي لا تُرحّل قيوداً تُنزَع.
+    ///
+    /// <para><b>ولا يُترَك هذا لاجتهاد المشغّل.</b> «اقطع الاشتراك» أمرٌ يُنفَّذ
+    /// كثيراً وتحت ضغط تجاري، ولو كان تنفيذه مجموعةَ تغييرات يكتبها إنسان
+    /// لكتب أحدهم يوماً <c>NotEntitled</c> على الدفتر. الأرضية تمنعه، وهذه
+    /// الدالّة تجعل الطريق الصحيح هو الطريق القصير.</para>
+    /// </summary>
+    /// <param name="tenantId">معرّف المستأجر.</param>
+    /// <param name="authority">السند: من، وبأي صلاحية، ولماذا.</param>
+    /// <param name="ct">رمز الإلغاء.</param>
+    /// <returns>المجموعة بعد الخفض.</returns>
+    public Task<IReadOnlyDictionary<string, EntitlementState>> LapseAsync(
+        Guid tenantId, ChangeAuthority authority, CancellationToken ct = default) =>
+        DegradeToAsync(tenantId, new HashSet<string>(StringComparer.Ordinal), authority, ct);
+
+    /// <summary>
+    /// <b>خفض الحزمة.</b> ما تغطّيه الحزمة الجديدة (بإغلاقها المتعدّي) يصير
+    /// <c>Entitled</c>، وما خرج منها يهبط إلى <b>أرضيته</b> لا إلى العدم.
+    /// </summary>
+    /// <param name="tenantId">معرّف المستأجر.</param>
+    /// <param name="planCode">رمز الحزمة الجديدة.</param>
+    /// <param name="authority">السند.</param>
+    /// <param name="ct">رمز الإلغاء.</param>
+    /// <returns>المجموعة بعد الخفض.</returns>
+    public async Task<IReadOnlyDictionary<string, EntitlementState>> DowngradeToPlanAsync(
+        Guid tenantId, string planCode, ChangeAuthority authority, CancellationToken ct = default)
+    {
+        var plan = PlanCatalog.Require(planCode);
+        var covered = new HashSet<string>(plan.Modules, StringComparer.Ordinal);
+        foreach (var m in plan.Modules)
+            foreach (var d in ModuleCatalog.TransitiveDependencies(m)) covered.Add(d);
+
+        return await DegradeToAsync(tenantId, covered, authority, ct, covered);
+    }
+
+    private async Task<IReadOnlyDictionary<string, EntitlementState>> DegradeToAsync(
+        Guid tenantId, IReadOnlySet<string> covered, ChangeAuthority authority,
+        CancellationToken ct, IReadOnlySet<string>? raiseTo = null)
+    {
+        var current = await GetSetAsync(tenantId, ct);
+        var next = new Dictionary<string, EntitlementState>(
+            EntitlementValidator.Degrade(current, covered), StringComparer.Ordinal);
+
+        if (raiseTo is not null)
+            foreach (var code in raiseTo) next[code] = EntitlementState.Entitled;
+
+        var changes = next.Where(kv => current[kv.Key] != kv.Value)
+            .Select(kv => new EntitlementChange(kv.Key, kv.Value))
+            .ToList();
+
+        return await ApplyAsync(tenantId, changes, authority, ct);
     }
 
     /// <summary>يقرأ سجل تدقيق الاستحقاق لمستأجر: كل تغيير بمن ومتى وبأي سند.</summary>

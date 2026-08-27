@@ -1,3 +1,4 @@
+using Babel.Contracts.Inventory;
 using Babel.Inventory.Application;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -8,11 +9,34 @@ namespace Babel.Inventory;
 /// </summary>
 public static class InventoryModuleRegistration
 {
-    /// <summary>يسجّل الوحدة.</summary>
+    /// <summary>يسجّل الوحدة بإعداداتها الافتراضية.</summary>
+    /// <param name="services">حاوية الخدمات.</param>
     public static IServiceCollection AddBabelInventory(this IServiceCollection services)
+        => services.AddBabelInventory(static _ => { });
+
+    /// <summary>يسجّل الوحدة بإعدادات صريحة.</summary>
+    /// <param name="services">حاوية الخدمات.</param>
+    /// <param name="configure">ضابط الإعدادات.</param>
+    public static IServiceCollection AddBabelInventory(this IServiceCollection services, Action<InventoryOptions> configure)
     {
         ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(configure);
+
+        InventoryOptions options = new();
+        configure(options);
+
+        services.AddSingleton(options);
+        services.AddScoped<InventoryRuntime>();
         services.AddScoped<StockMovementService>();
+        services.AddScoped<InventoryValuationService>();
+
+        // ── منفذ التقييم: الوحدة **المالكة للمخزون** تسجّل تنفيذها له ─────────────
+        // والمنفذ يعيش في Babel.Contracts، فلا تكتسب وحدة المبيعات بتسجيله معرفةً
+        // بجارتها: ترى الواجهة وحدها، والحاوية توصلها بهذا التنفيذ. وهو الشكل نفسه
+        // المعتمد في ICapturedInvoiceReceiver.
+        services.AddScoped<IInventoryValuation>(
+            static provider => provider.GetRequiredService<StockMovementService>());
+
         return services;
     }
 }

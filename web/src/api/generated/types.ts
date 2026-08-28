@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     03c76b7b232225176cd92cbef06411102197f3e1b1a90db2001eea51dd36d74b
+     63c3b477e2e6dbcf9ca20df58b2cb06a6f649c6754d096b4a261c9544948c1f6
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -14,10 +14,10 @@
    ═══════════════════════════════════════════════════════════════════════ */
 
 import type { Money } from "../money";
-import type { ExchangeRate, Int64String } from "./brands";
+import type { ExchangeRate, Int64String, Quantity, TaxRate } from "./brands";
 
 /* المال يصل هنا **مغلّفاً**: Money كائن يرمي عند أي تحويل ضمني إلى نصّ أو رقم.
-   وبقيّة الصيغ النصّية المنشورة أنواع محتجزة (ExchangeRate · Int64String).
+   وبقيّة الصيغ النصّية المنشورة أنواع محتجزة (ExchangeRate · Int64String · Quantity · TaxRate).
    ولا حقل مالي واحد نوعه number — لا هنا ولا في أي ملف مكتوب بيد.
    Money is an object whose implicit coercions throw; the other published string
    formats are branded types. No monetary field is ever typed `number`. */
@@ -26,6 +26,35 @@ import type { ExchangeRate, Int64String } from "./brands";
 export interface AdmitDocumentRequest {
   /** أسماء الحقول الموجودة على المستند. / The names of the fields present on the document. */
   fields: string[];
+}
+
+/** شرائح أعمار الديون. وtotal مجموع الشرائح بالضبط — يُرسَل محسوباً ولا يُترك لكل عميل أن يجمعه فيختلف تقريران عن الرقم نفسه. / Debt aging bands. total is exactly the sum of the bands — sent computed rather than left for each client to add up, which is how two reports come to disagree about one number. */
+export interface AgingBands {
+  days1To30: Money;
+  days31To60: Money;
+  days61To90: Money;
+  notDue: Money;
+  over90: Money;
+  total: Money;
+}
+
+/** أعمار ديون طرف واحد. / One party's aged debt. */
+export interface AgingParty {
+  bands: AgingBands;
+  /** رمز الطرف. / The party code. */
+  code: string;
+  name: LocalizedText;
+  /** معرّف الطرف. / The party identifier. */
+  partyId: string;
+}
+
+/** تقرير أعمار ديون — **بالشكل نفسه للمدينة والدائنة**. شكلان مختلفان كانا سيجعلان مقارنة الذمم بالذمم عملاً يدوياً عند كل عميل. / A debt aging report — **the same shape for receivables and payables**. Two different shapes would make comparing one against the other manual work in every client. */
+export interface AgingReport {
+  /** تاريخ التقرير. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The report date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  asOf: string;
+  /** الأطراف. / The parties. */
+  parties: AgingParty[];
+  totals: AgingBands;
 }
 
 export interface ApiError {
@@ -77,6 +106,23 @@ export interface ClosedPeriodAuthorisation {
   reason: LocalizedText;
 }
 
+/** مستند تجاري كما يخرج على السلك — فاتورة مبيعات، أو إشعار دائن، أو فاتورة مورد. / A commercial document as it leaves on the wire — a sales invoice, a credit note, or a supplier bill. */
+export interface CommercialDocument {
+  /** هل كانت هذه الهوية مُرحَّلة **قبل** هذا الطلب؟ ولا تُشتقّ من state: المستند بعد أي ترحيل ناجح حالته POSTED — الأول والثاني سواء. ورمز الحالة وحده لا يكفي: 200 يضيع خلف أي وسيط يعيد التوجيه. / Was this identity already posted **before** this request? It is not derivable from state: after any successful post the document is POSTED, first arrival and second alike. And the status code alone is not enough: a 200 is lost behind any proxy that redirects. */
+  alreadyPosted: boolean;
+  /** معرّف القيد إن رُحّل المستند، وnull إن كان مسوّدة. / The journal entry identifier if the document is posted, and null while it is a draft. */
+  entryId: string | null;
+  gross: Money;
+  /** معرّف المستند. / The document identifier. */
+  id: string;
+  net: Money;
+  /** رقم المستند. / The document number. */
+  number: string;
+  /** الحالة: DRAFT · APPROVED · POSTED · REVERSED · CANCELLED. / The state: DRAFT, APPROVED, POSTED, REVERSED, CANCELLED. */
+  state: string;
+  tax: Money;
+}
+
 /** تأسيس المنشأة كما يُقرأ. **defaultCostCenter غير فارغ أبداً** وcostCenters لا تكون فارغة أبداً — الثابتة مفروضة في النواة بغياب عملية حذف، لا بفحص عند مستدعٍ. / The company setup as read. **defaultCostCenter is never empty** and costCenters is never empty — the invariant is enforced in the core by the absence of any delete operation, not by a caller-side check. */
 export interface CompanySetup {
   /** مراكز التكلفة كلّها — العاملة والموقوفة — مرتَّبة برمزها. / All cost centres — active and suspended — ordered by code. */
@@ -112,6 +158,28 @@ export interface CostCenterNameRequest {
   nameAr: string;
   /** الترجمات، مفاتيحها أوسمة BCP-47. / The translations, keyed by BCP-47 tags. */
   nameTranslations?: NameValue[];
+}
+
+/** طلب إنشاء إشعار دائن مسوّدة. **ولا عميل فيه**: عميله عميل الفاتورة الأصلية، وإعادةُ ذكره تفتح باباً لإشعارٍ على عميل غير عميل فاتورته. / A request to draft a credit note. **It carries no customer**: the customer is the original invoice's customer, and repeating it would open a door to a note against a customer other than its invoice's. */
+export interface CreditNoteRequest {
+  /** الفاتورة الأصلية — الإشعار لا يوجد بلا أصل، والأصل يجب أن يكون مُرحَّلاً. / The original invoice — a note does not exist without one, and the original must be posted. */
+  invoiceId: string;
+  /** تاريخ الإصدار. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The issue date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  issuedOn: string;
+  /** سطور المرتجع أو التخفيض. / The return or reduction lines. */
+  lines: SalesLine[];
+  /** رقم الإشعار — فريد داخل المستأجر. / The note number — unique within the tenant. */
+  number: string;
+}
+
+/** طلب تسجيل عميل. ولا حقل مستأجر ولا حقل شركة فيه — النطاق من الاعتماد ومن المسار. **ولا vatNumber**: حقل مورد لا حقل عميل، وإرساله يُفشل الطلب كلّه. / A customer registration request. No tenant field and no company field — scope comes from the credential and the path. **And no vatNumber**: that is a supplier field, not a customer field, and sending it fails the whole request. */
+export interface CustomerRequest {
+  /** رمز العميل داخل المستأجر — هوية تحملها مستنداته، لا نصّاً معروضاً. / The customer code within the tenant — an identity its documents carry, not displayed text. */
+  code: string;
+  creditLimit: Money;
+  name: LocalizedText;
+  /** مهلة السداد بالأيام — منها يُشتقّ تاريخ الاستحقاق. / The payment terms in days; the due date is derived from them. */
+  paymentTermsDays: number;
 }
 
 export interface DocumentAdmission {
@@ -155,6 +223,22 @@ export interface DocumentShape {
 
 /** سعر صرف نصّاً بمقياس لا يتجاوز ثمانياً، بالقواعد نفسها التي تحكم المبالغ. / An exchange rate as a string with at most eight decimal places, under the same rules as amounts. */
 /* ExchangeRate مُعرَّف في ../money كنوع محتجز وقت التشغيل. */
+
+/** طلب إنشاء فاتورة مصروف مسوّدة — بلا مخزون ولا مطابقة ثلاثية. / A request to draft an expense bill — no stock, no three-way match. */
+export interface ExpenseBillRequest {
+  /** مركز التكلفة — بُعد إلزامي على المصروف: مصروفٌ بلا مركز رقمٌ لا يُبوَّب. / The cost centre — mandatory on an expense: an expense without one is a number that cannot be grouped. */
+  costCenterId: string;
+  /** تصنيف المصروف — مؤهّل الدور. / The expense category — the role qualifier. */
+  expenseCategory: string;
+  /** تاريخ الفاتورة. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The bill date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  issuedOn: string;
+  /** السطور. / The lines. */
+  lines: PurchaseLine[];
+  /** رقم الفاتورة — فريد داخل المستأجر. / The bill number — unique within the tenant. */
+  number: string;
+  /** معرّف المورد. / The supplier identifier. */
+  supplierId: string;
+}
 
 export interface HealthResponse {
   /** إصدار السطح. / The surface version. */
@@ -252,6 +336,20 @@ export interface NamedAmount {
   /** اسم المبلغ كما تعرّفه مصفوفة الترحيل. / The amount name as the posting matrix defines it. */
   name: string;
   value: Money;
+}
+
+/** طرف كما يخرج على السلك — عميل أو مورد. / A party as it leaves on the wire — a customer or a supplier. */
+export interface Party {
+  /** الرمز. / The code. */
+  code: string;
+  creditLimit: Money;
+  /** المعرّف الذي تُبنى عليه المستندات. / The identifier documents are built on. */
+  id: string;
+  name: LocalizedText;
+  /** مهلة السداد بالأيام. / The payment terms in days. */
+  paymentTermsDays: number;
+  /** رقم التسجيل الضريبي على المورد؛ وفراغٌ على مورد بلا رقم؛ وnull على العميل — فالحقل لا يوجد عليه أصلاً. والحالات الثلاث مختلفة ولا تُجمع في تمثيل واحد. / The VAT number on a supplier; empty on a supplier without one; and null on a customer, where the field does not exist at all. The three states differ and are not collapsed into one spelling. */
+  vatNumber: string | null;
 }
 
 /** طلب ترحيل. ولاحظ ما ليس فيه: لا حقل مستأجر ولا حقل شركة — النطاق من الاعتماد ومن المسار. وأي حقل غير معروف يُرفض الطلب كلّه بسببه. / A posting request. Note what is absent: no tenant field and no company field — scope comes from the credential and the path. Any unknown field fails the whole request. */
@@ -383,6 +481,22 @@ export interface Problem {
   type: string;
 }
 
+/** سطر فاتورة مصروف. ولا حساب فيه ولا رمز حساب، كسطر المبيعات وللسبب نفسه. / An expense bill line. No account and no account code, as on a sales line and for the same reason. */
+export interface PurchaseLine {
+  description: LocalizedText;
+  /** مجموعة الصنف — مؤهّل الدور. / The item group — the role qualifier. */
+  itemGroup: string;
+  /** الصنف أو البند في دفتره المساعد. / The item or line in its subledger. */
+  itemId: string;
+  quantity: Quantity;
+  /** التصنيف الضريبي. المستعمَل اليوم: standard · zero · exempt. / The tax classification. In use today: standard, zero, exempt. */
+  taxClassification: string;
+  taxRate: TaxRate;
+  /** هل ضريبة هذا السطر قابلة للاسترداد؟ وهي واقعة ضريبية عن السطر لا تُشتقّ من التصنيف. / Is this line's tax recoverable? A tax fact about the line, not derived from its classification. */
+  taxRecoverable: boolean;
+  unitPrice: Money;
+}
+
 export interface PutCapabilityProfileRequest {
   /** أنواع المستندات. / The document types. */
   documents: DocumentProfile[];
@@ -390,11 +504,43 @@ export interface PutCapabilityProfileRequest {
   withdrawalReason?: string | null;
 }
 
+/** كمّية نصّاً بمقياس لا يتجاوز أربعاً، بالنحو الذي تخضع له المبالغ. وهي ليست مبلغاً — ولذلك لها مخطّطها — لكنها تُضرب في مبلغ، فأي فقدان دقّة فيها يصل إلى المال. / A quantity as a string with at most four decimal places, under the grammar that governs amounts. It is not an amount — hence its own schema — but it is multiplied by one, so any precision lost in it reaches the money. */
+/* Quantity مُعرَّف في ../money كنوع محتجز وقت التشغيل. */
+
 export interface ReverseJournalEntryRequest {
   closedPeriodAuthorisation?: ClosedPeriodAuthorisation;
   reason: LocalizedText;
   /** تاريخ قيد العكس، أو غيابه فيُتخذ تاريخ القيد الأصلي. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The reversing entry's date; omit to take the original entry's date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
   reversalDate?: string;
+}
+
+/** طلب إنشاء فاتورة مبيعات مسوّدة. ولا مجاميع فيه: المجاميع تُحسب في الوحدة على السطر ثم تُجمع، ومجموعٌ يرسله العميل كان سيصير مصدر حقيقة ثانياً يستطيع أن ينحرف. / A request to draft a sales invoice. It carries no totals: totals are computed in the module per line and then summed, and a total sent by the client would be a second source of truth able to diverge. */
+export interface SalesInvoiceRequest {
+  /** الفرع — بُعد تحليلي إلزامي على الإيراد. / The branch — a mandatory analytical dimension on revenue. */
+  branchId: string;
+  /** معرّف العميل. / The customer identifier. */
+  customerId: string;
+  /** تاريخ الإصدار. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The issue date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  issuedOn: string;
+  /** السطور. فاتورة بلا سطر تُرفض في الوحدة برمزها. / The lines. An invoice with no line is refused in the module under its own code. */
+  lines: SalesLine[];
+  /** رقم الفاتورة — فريد داخل المستأجر. / The invoice number — unique within the tenant. */
+  number: string;
+}
+
+/** سطر مستند مبيعات. **ولا حساب فيه ولا رمز حساب**: يحمل itemGroup — مؤهّل دور — والمصفوفة وحدها تُحوّله إلى حساب (القاعدة 2 ممتدّةً إلى السلك). / A sales document line. **No account and no account code**: it carries an itemGroup — a role qualifier — and the matrix alone turns it into an account (Rule 2 extended to the wire). */
+export interface SalesLine {
+  description: LocalizedText;
+  discount: Money;
+  /** مجموعة الصنف — مؤهّل الدور. / The item group — the role qualifier. */
+  itemGroup: string;
+  /** على سطر الإشعار الدائن وحده: سطر الفاتورة الذي تُردّ بضاعته. وnull تعني **تخفيض قيمة لا ردّ بضاعة** — إشعارٌ لا يُحرّك مخزوناً ولا يُرحّل قيد تكلفة. والفرق قرار تجاري لا يُخمَّن. / On a credit note line only: the invoice line whose goods are returned. null means a **value reduction, not a goods return** — a note that moves no stock and posts no cost entry. The difference is a commercial decision, never guessed. */
+  originalInvoiceLineId?: string | null;
+  quantity: Quantity;
+  /** التصنيف الضريبي. المستعمَل اليوم: standard · zero · exempt — ويُنشر نصّاً لا مجموعةً مغلقة، فلا قيد تحقّق واحد يُغلقه، وتضييقُه بعد نشره يفرض v2. / The tax classification. In use today: standard, zero, exempt — published as text rather than a closed set, since no check constraint closes it, and narrowing it after publication would force v2. */
+  taxClassification: string;
+  taxRate: TaxRate;
+  unitPrice: Money;
 }
 
 /** النطاق التحليلي للسطر. و costCenterId **اختياري وغير قابل لأن يكون null**: حذف الحقل يعني «المركز الافتراضي لهذه المنشأة»، وهو افتراض معلن لا صمت. أما القيمة null فلا معنى لها — لكل منشأة مركز تكلفة واحد على الأقل، ولا سطر بلا مركز، ورمزٌ يُرسَل null كان يقول «بلا مركز» وهي حالة لا وجود لها في النظام. / The line's analytical scope. costCenterId is **optional but never null**: omitting the field means 'this company's default centre', a published default rather than silence. The value null has no meaning — every company has at least one cost centre and no line is without one, so a null said 'no centre', a state that does not exist in the system. */
@@ -451,10 +597,25 @@ export interface Subledger {
   partyId: string;
 }
 
+/** طلب تسجيل مورد — كطلب العميل ومعه رقم التسجيل الضريبي اختياراً. / A supplier registration request — the customer request plus an optional VAT registration number. */
+export interface SupplierRequest {
+  /** رمز المورد داخل المستأجر. / The supplier code within the tenant. */
+  code: string;
+  creditLimit: Money;
+  name: LocalizedText;
+  /** مهلة السداد بالأيام. / The payment terms in days. */
+  paymentTermsDays: number;
+  /** رقم التسجيل الضريبي، أو غيابه فالمورد غير مسجَّل — وغيابه واقع لا نقص. وحين يُرسل يُتحقّق من شكله كاملاً. / The VAT registration number, or omit it for an unregistered supplier — its absence is a fact, not a gap. When sent, its full shape is verified. */
+  vatNumber?: string;
+}
+
 export interface SuspendCostCenterRequest {
   /** السبب المكتوب للإيقاف — ثمانية محارف على الأقل. «لا سبب» ليس سبباً، والإيقاف حالة عملٍ يضبطها إنسان ويُسجَّل بمن فعلها. / The written reason for the suspension — at least eight characters. 'No reason' is not a reason; suspension is a business state a person sets and it is recorded with its actor. */
   reason: string;
 }
+
+/** نسبة الضريبة **كسراً عشرياً لا نسبة مئوية**: خمسة عشر بالمئة تُكتب 0.15 لا 15. والمقياس ثمانٍ لا أربع: النسبة ليست مبلغاً ولا تُقرَّب إلى الهللة. / The tax rate as a **decimal fraction, not a percentage**: fifteen percent is written 0.15, never 15. The scale is eight, not four: a rate is not an amount and is not rounded to the halala. */
+/* TaxRate مُعرَّف في ../money كنوع محتجز وقت التشغيل. */
 
 /** ميزان المراجعة بمجموعيه. والمجموعان محسوبان بـ sum() على numeric داخل PostgreSQL في الاستعلام نفسه الذي أنتج الصفوف: الجمع هناك مضبوط بلا فاصلة عائمة في أي خطوة. ولا يُجمع العمود في طبقة HTTP (حسابٌ على المال)، ولا في المتصفّح (Number فاصلة عائمة ثنائية). و balanced يصل محسوماً كذلك، وميزانٌ غير متوازن يُرى ولا يُقرَّب. / The trial balance with its totals. Both are computed by sum() over numeric inside PostgreSQL in the same query that produced the rows, where summation is exact with no floating point at any step. The column is never summed in the HTTP layer (that is money arithmetic) nor in the browser (Number is a binary float). The balanced flag arrives decided too, and a trial balance that does not balance is visible, never rounded away. */
 export interface TrialBalance {

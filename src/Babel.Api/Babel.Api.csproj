@@ -48,6 +48,9 @@
     <ProjectReference Include="../Babel.Assets/Babel.Assets.csproj" />
     <ProjectReference Include="../Babel.Portals/Babel.Portals.csproj" />
     <ProjectReference Include="../Babel.Ai/Babel.Ai.csproj" />
+
+    <!-- محوّل المرفقات: مشروع مساند لا وحدة. الجذر التركيبي وحده يركّبه (ADR-0046). -->
+    <ProjectReference Include="../Babel.Storage/Babel.Storage.csproj" />
   </ItemGroup>
 
 </Project>

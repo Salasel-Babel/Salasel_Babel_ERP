@@ -175,6 +175,48 @@ internal static class ApiRoutes
     /// <summary>أعمار الذمم الدائنة في تاريخ معلوم.</summary>
     public const string PayablesAging = Company + "/payables-aging";
 
+    // ── المرفقات ─────────────────────────────────────────────────────────────
+    // والشكل هو شكل ADR-0044 حرفياً: **مورد رئيسي وموارد فرعية**، ولا PUT ولا PATCH
+    // ولا DELETE على مرفقٍ واحد. والسبب هو السبب نفسه: المرفق **سندُ إثبات** لقيد،
+    // فيأخذ انضباط الدفتر — التصحيح إصدارٌ يشير إلى سلفه، والإزالة علامة سحب
+    // (ADR-0046). وثلاث طبقات في القاعدة تقول ذلك أيضاً: لا صلاحية UPDATE لدور
+    // التطبيق، ومشغّل رفض على كل دور، وجدول سحبٍ ثانٍ لا عمودٌ يُعدَّل.
+
+    /// <summary>المرفقات: الإيداع، والجرد بترشيح على المستند المصدر.</summary>
+    public const string Attachments = Company + "/attachments";
+
+    /// <summary>
+    /// مرفق واحد: قراءة <b>الوصف بلا بايتة</b> — البصمة والحجم والنوع والمُودِع والزمن
+    /// وسلسلة الإصدارات وعلامة السحب. والبايتات باب آخر بتذكرة.
+    /// </summary>
+    public const string Attachment = Attachments + "/{attachmentId}";
+
+    /// <summary>
+    /// إصدار جديد على مرفق. مورد فرعي مستقلّ لا <c>PUT</c>: التصحيح <b>صفٌّ يُضاف</b>
+    /// يشير إلى سلفه، لا حقلٌ يُعدَّل. وفهرس فريد جزئي في القاعدة يجعل السلسلة خطّية،
+    /// فتصحيحان متزامنان للسلف نفسه يُنتجان فائزاً واحداً وخاسراً بـ409.
+    /// </summary>
+    public const string AttachmentRevisions = Attachment + "/revisions";
+
+    /// <summary>
+    /// سحب مرفق. مورد فرعي مستقلّ لا <c>DELETE</c>: السحب <b>صفٌّ في جدول ثانٍ</b>،
+    /// والبايتات تبقى والبصمة تبقى — الاحتفاظ بسند القيد واجب نظامي.
+    /// </summary>
+    public const string AttachmentWithdrawal = Attachment + "/withdrawal";
+
+    /// <summary>
+    /// سكّ تذكرة تنزيل موقّعة وقصيرة الأجل. مورد فرعي لأن التذكرة <b>واقعة تُصدَر</b>
+    /// لا حقلٌ يُقرأ على المرفق.
+    /// </summary>
+    public const string AttachmentDownloadTickets = Attachment + "/download-tickets";
+
+    /// <summary>
+    /// بايتات المرفق، <b>بتذكرة موقّعة</b>. والبصمة تُفحص قبل التسليم لا بعده،
+    /// و<c>Content-Type</c> من النوع <b>المشموم</b> وحده، و<c>Content-Disposition</c>
+    /// بـ<c>attachment</c> لا <c>inline</c>.
+    /// </summary>
+    public const string AttachmentContent = Attachment + "/content";
+
     /// <summary>
     /// العقد المنشور نفسه، بايتاته كما أُودعت في <c>contracts/openapi/v1.json</c>.
     /// <para>

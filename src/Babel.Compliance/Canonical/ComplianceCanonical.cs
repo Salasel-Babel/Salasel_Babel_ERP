@@ -58,6 +58,44 @@ public static class ComplianceCanonical
 
     public static string Hex(ReadOnlySpan<byte> bytes) => Convert.ToHexString(bytes).ToLowerInvariant();
 
+    /// <summary>معرّف صيغة اشتقاق الهوية من مستند المصدر. تغييره يعني هويات جديدة لكل شيء.</summary>
+    public const string DerivedIdFormatId = "babel.compliance.derived-id.v1";
+
+    /// <summary>
+    /// <b>هوية مشتقّة من مستند المصدر لا مولَّدة عشوائياً.</b> وهذا هو ما يجعل استقبال
+    /// الحقيقة نفسها مرّتين حصيناً بلا جدول حصانة إضافي: النداء الثاني يشتقّ المعرّف
+    /// نفسه، فيجد السجل قائماً بدل أن يبني ثانياً.
+    /// <para/>
+    /// لو كان المعرّف <c>Guid.CreateVersion7()</c> لأنتج كل نداء مستنداً جديداً بعدّاد
+    /// جديد في السلسلة — أي مستندَين نظاميَّين لبيعة واحدة، وهو أسوأ ما يمكن أن يقع
+    /// في هذا المسار.
+    /// <para/>
+    /// A UUID derived from the source document identity rather than generated. This is
+    /// what makes receiving the same fact twice idempotent without a second table.
+    /// </summary>
+    /// <param name="purpose">غرض الاشتقاق — يفصل فضاءات المعرّفات فلا يتصادم غرضان.</param>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="sourceDocumentType">نوع مستند المصدر كما تسمّيه وحدته.</param>
+    /// <param name="sourceDocumentId">معرّف مستند المصدر داخل وحدته.</param>
+    public static Guid DerivedId(string purpose, TenantId tenant, string sourceDocumentType, string sourceDocumentId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(purpose);
+        ArgumentException.ThrowIfNullOrWhiteSpace(sourceDocumentType);
+        ArgumentException.ThrowIfNullOrWhiteSpace(sourceDocumentId);
+
+        var digest = SHA256.HashData(Utf8(
+            $"{DerivedIdFormatId}|{purpose}|{T(tenant.Value)}|{T(sourceDocumentType)}|{T(sourceDocumentId)}"));
+
+        Span<byte> bytes = stackalloc byte[16];
+        digest.AsSpan(0, 16).CopyTo(bytes);
+
+        // شكل UUID سليم: الإصدار 8 (مشتقّ من تجزئة مخصّصة، RFC 9562) والمتغيّر RFC 4122.
+        bytes[6] = (byte)((bytes[6] & 0x0F) | 0x80);
+        bytes[8] = (byte)((bytes[8] & 0x3F) | 0x80);
+
+        return new Guid(bytes, bigEndian: true);
+    }
+
     /// <summary>بداية سلسلة وحدة إصدار. لكل وحدة سلسلتها المستقلة — لا سلسلة عالمية واحدة.</summary>
     public static byte[] Genesis(TenantId tenant, IssuingUnitId unit) =>
         SHA256.HashData(Utf8($"babel.compliance.genesis.v1|{tenant.Value}|{unit.Value}"));

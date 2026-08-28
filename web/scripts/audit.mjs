@@ -26,6 +26,7 @@ import { fileURLToPath } from "node:url";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const WEB = path.resolve(HERE, "..");
+const REPO = path.resolve(WEB, "..");
 const SRC = path.join(WEB, "src");
 const QUIET = process.argv.includes("--quiet");
 
@@ -489,6 +490,57 @@ for (const f of scanned) {
 mustScan("محارف ممسوحة · characters scanned", bytesScanned, 200000);
 if (invisible.length) bad("محرف تحكّم غير مرئي في المصدر", invisible, true);
 else ok("لا محرف تحكّم غير مرئي في أي ملف مصدر");
+
+/* ═════════════ ٩ · صفحة العقد قائمة بذاتها وتُحلَّل ═══════════════════════
+   ولماذا هنا: صفحة /docs تُخدَم من `src/Babel.Api/OpenApi/docs.html`، وعطبان
+   فيها **صامتان تماماً**: خطأ نحوي في نصّها البرمجي يجعل المتصفّح يعرض قشرةً
+   فارغة بـ200 OK، وأصلٌ خارجي يجعلها تُخفق خلف خروج مقيَّد (فخ-83). والحارس
+   المكافئ في .NET يمسح النصّ ولا يستطيع أن **يحلّل** JavaScript؛ وهذا الملفّ
+   يعمل بـnode بلا تثبيت، فهو الموضع الذي يستطيع.
+   ═══════════════════════════════════════════════════════════════════════ */
+head("٩ · صفحة العقد · the contract page");
+
+const DOCS_PAGE = path.join(REPO, "src", "Babel.Api", "OpenApi", "docs.html");
+
+if (!fs.existsSync(DOCS_PAGE)) {
+  bad("صفحة العقد غير موجودة · the contract page is missing", [rel(DOCS_PAGE)], true);
+} else {
+  const page = fs.readFileSync(DOCS_PAGE, "utf8");
+  mustScan("محارف الصفحة · page characters", page.length, 2000);
+
+  const externals = [];
+  for (const needle of ["http://", "https://", "//cdn", "//unpkg", "//jsdelivr", "integrity=", "crossorigin"]) {
+    if (page.toLowerCase().includes(needle)) externals.push(needle);
+  }
+  if (externals.length) bad("الصفحة تجلب أصلاً خارجياً · the page fetches an external asset", externals, true);
+  else ok("لا أصل خارجي في صفحة العقد · no external asset in the contract page");
+
+  /* النصّ البرمجي يُحلَّل فعلاً — لا يُفحَص بالنظر. */
+  const scripts = [...page.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
+  if (scripts.length === 0) {
+    bad("لا نصّ برمجي في صفحة العقد · the contract page carries no script", [rel(DOCS_PAGE)], true);
+  } else {
+    let broken = null;
+    for (const source of scripts) {
+      try {
+        new Function(source);
+      } catch (e) {
+        broken = e.message;
+        break;
+      }
+    }
+    if (broken) {
+      bad(
+        "خطأ نحوي في نصّ الصفحة — المتصفّح يعرض قشرةً فارغة بـ200 OK · " +
+          "a syntax error in the page script: the browser renders an empty shell with 200 OK",
+        [broken],
+        true
+      );
+    } else {
+      ok("نصّ صفحة العقد يُحلَّل بلا خطأ · the contract page script parses cleanly");
+    }
+  }
+}
 
 /* ═════════════════════════════ الخلاصة ═════════════════════════════════ */
 head("الخلاصة · summary");

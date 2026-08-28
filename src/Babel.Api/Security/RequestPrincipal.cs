@@ -106,8 +106,32 @@ internal static class RequestPrincipal
         });
     }
 
+    /// <summary>
+    /// الأبواب الثلاثة التي تُفتح بلا اعتماد — <b>مسمّاةً واحداً واحداً، لا بنمط</b>.
+    /// <para>
+    /// نمطٌ فضفاض («ما تحت <c>/docs</c>» أو «ما ليس تحت <c>/api/</c>») كان سيقبل أي
+    /// مسارٍ جديد يقع خارج <c>/api/</c> دون أن ينتبه أحد — وهو بالضبط ما يجعل حارساً
+    /// كهذا يمرّ على العطل الذي وُجد لأجله.
+    /// </para>
+    /// <list type="bullet">
+    ///   <item><c>/health</c> — لا يقرأ بيانات مستأجر ولا يكتبها.</item>
+    ///   <item><c>/openapi/v1.json</c> — بايتات ملفٍّ مُودَع في المستودع. لا سرّ فيه،
+    ///         ولا بيانات مستأجر واحد.</item>
+    ///   <item><c>/docs</c> — صفحةٌ ساكنة تقرأ ذلك الملفّ. <b>والمتصفّح لا يستطيع أن
+    ///         يضع ترويسة <c>Authorization</c> على تنقّلٍ عُلوي</b>، فصفحةُ توثيق محميّة
+    ///         بـ<c>Bearer</c> غير قابلة للفتح أصلاً؛ وعلاجُها الوحيد ملفّ ارتباط أو
+    ///         جلسة — أي آلية تصريح ثانية، وهي أخطر من غيابها.</item>
+    /// </list>
+    /// <para>
+    /// <b>وما لا يُفتح بفتحها:</b> الثلاثة تكتب بايتات ثابتة أو حالةَ عملية. ولا واحد
+    /// منها يلمس مستأجراً، ولا يعكس مدخلاً من العميل، ولا يمنح الصفحة امتيازاً: زرّ
+    /// «جرّب» فيها عميلٌ يمرّ بهذا الوسيط نفسه سطراً بسطر.
+    /// </para>
+    /// </summary>
     private static bool IsAnonymous(PathString path) =>
-        path.Equals(Endpoints.ApiRoutes.Health, StringComparison.Ordinal);
+        path.Equals(Endpoints.ApiRoutes.Health, StringComparison.Ordinal)
+        || path.Equals(Endpoints.ApiRoutes.OpenApiDocument, StringComparison.Ordinal)
+        || path.Equals(Endpoints.ApiRoutes.Docs, StringComparison.Ordinal);
 
     private static async Task DenyAsync(HttpContext context, string code, string ar, string en)
     {

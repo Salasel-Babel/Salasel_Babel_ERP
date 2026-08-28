@@ -110,12 +110,13 @@ public sealed class PublishedContractTests
 
         JsonElement paths = root.GetProperty("paths");
 
-        // ‏**17 عمليةً — والعدد مكتوب بيد عمداً.** عدٌّ مشتقٌّ من الوثيقة نفسها يقارنها
+        // ‏**19 عمليةً — والعدد مكتوب بيد عمداً.** عدٌّ مشتقٌّ من الوثيقة نفسها يقارنها
         // بذاتها فيمرّ على أي إضافة وأي حذف؛ والرقم هنا يُجبر من يوسّع السطح على أن
-        // **يمرّ بهذا الملف** فيقرأ سياسة الإصدار قبل أن يوسّعه. وآخر رفعٍ له: من 16 إلى
-        // 17 بإضافة GET /companies/{companyId}/chart-of-accounts — إضافةٌ محضة تُبقي v1
-        // (مسار جديد ومخطّطان جديدان، ولا حقل حُذف ولا نوع ضُيّق).
-        Assert.Equal(17, paths.EnumerateObject().SelectMany(static p => p.Value.EnumerateObject())
+        // **يمرّ بهذا الملف** فيقرأ سياسة الإصدار قبل أن يوسّعه. ورفعتاه الأخيرتان:
+        // من 16 إلى 17 بإضافة GET /companies/{companyId}/chart-of-accounts، ثم من 17
+        // إلى 19 ببابَي التوثيق — GET /openapi/v1.json و GET /docs. وكلّها إضافات محضة
+        // تُبقي v1: لا حقل حُذف ولا نوع ضُيّق.
+        Assert.Equal(19, paths.EnumerateObject().SelectMany(static p => p.Value.EnumerateObject())
             .Count(static o => o.Name is "get" or "post" or "put" or "patch" or "delete"));
 
         // ولا فعل حذف على السطح كلّه — لا على قيد، ولا على مركز تكلفة، ولا على منشأة.
@@ -132,7 +133,11 @@ public sealed class PublishedContractTests
         //   • ‏/api/v1/session   — داخل المصادقة، وخارج النطاق بحكم وظيفته: من لا يعرف
         //     معرّف شركته لا يستطيع أن يضعه في المسار ليسأل عن شركاته. وما يخرج منه هو
         //     مجموعة الاعتماد نفسها، لا استعلام على جدول شركات.
-        string[] scopeless = ["/health", "/api/v1/session"];
+        //   • ‏/openapi/v1.json  — بايتات ملفٍّ مُودَع في المستودع. لا مستأجر له أصلاً،
+        //     فالنطاق لا معنى له عليه، والمصادقة عليه تمنع المتصفّح من فتحه (انظر أدناه).
+        //   • ‏/docs             — صفحة ساكنة تقرأ ذلك الملفّ. لا تحمل رمزاً ولا تمنح
+        //     امتيازاً: زرّ «جرّب» فيها عميلٌ يمرّ بالمصادقة والنطاق والاستحقاق كأي عميل.
+        string[] scopeless = ["/health", "/api/v1/session", "/openapi/v1.json", "/docs"];
 
         foreach (JsonProperty path in paths.EnumerateObject())
         {
@@ -142,11 +147,20 @@ public sealed class PublishedContractTests
                 $"مسار خارج نطاق الشركة: {path.Name}");
         }
 
-        // وكل مسار بلا نطاق **مصادَق عليه** إلا نقطة الصحّة وحدها: مسارٌ بلا نطاق وبلا
-        // مصادقة هو باب مفتوح، والفرق بينه وبين الباب المقصود سطرٌ واحد في هذا الملف.
+        // وكل مسار بلا نطاق **مصادَق عليه** إلا ثلاثةً مسمّاةً هنا حرفياً: مسارٌ بلا نطاق
+        // وبلا مصادقة هو باب مفتوح، والفرق بينه وبين الباب المقصود سطرٌ واحد في هذا الملف.
+        //
+        // والثلاثة تكتب بايتات ثابتة أو حالةَ عملية، ولا واحد منها يلمس مستأجراً. وأمّا
+        // بابا التوثيق فمجهولان **لسبب تقنيّ قبل أن يكون سياسة**: المتصفّح لا يستطيع أن
+        // يضع ترويسة Authorization على تنقّلٍ عُلوي، فصفحةُ توثيق محميّة بـBearer غير
+        // قابلة للفتح من شريط العنوان أصلاً — وعلاجها الوحيد ملفّ ارتباط أو جلسة، أي
+        // آلية تصريح ثانية بجانب القائمة، وهي أخطر من غيابها (ADR-0036 · فخ-81).
+        string[] anonymous = ["/health", "/openapi/v1.json", "/docs"];
+
         foreach (JsonProperty path in paths.EnumerateObject())
         {
-            if (path.Name == "/health" || !scopeless.Contains(path.Name, StringComparer.Ordinal))
+            if (anonymous.Contains(path.Name, StringComparer.Ordinal)
+                || !scopeless.Contains(path.Name, StringComparer.Ordinal))
             {
                 continue;
             }

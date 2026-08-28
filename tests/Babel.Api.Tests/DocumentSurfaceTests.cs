@@ -13,23 +13,29 @@ namespace Babel.Api.Tests;
 /// مشروع وبلا معرفة بأي نوع داخلي. وذلك هو الفرق كلّه بين منتج يعمل من اختباراته
 /// ومنتج يعمل من واجهته.
 /// </para>
+/// <para>
+/// <b>ولماذا الشركة «ب» لا «أ»:</b> هذه المجموعة <b>تُرحّل</b>، والترحيل يكتب في الدفتر.
+/// وميزان الشركة «أ» مقسومٌ بين اختبارات تحجز فتراتٍ بعينها وتؤكّد عدد صفوفها بالضبط
+/// (‏<c>MoneyOnTheWireTests</c> على 2026-03، و<c>CultureTests</c> على 2026-04 إلى
+/// 2026-07). فترحيلٌ من هنا إلى إحداها يُسقط اختباراً لا علاقة له بما نفحص — وهو
+/// «أخضر بترتيب التشغيل لا ببنائه» مقلوباً. والشركة «ب» لا يُؤكَّد على ميزانها إلا
+/// أنّه <b>خالٍ في 2026-12</b>، وهذه المجموعة لا تقترب منها.
+/// </para>
 /// </summary>
 public sealed class DocumentSurfaceTests
 {
-    private const string March = "2026-03-10";
-
     [Fact]
     public async Task دورة_الفاتورة_كاملةً_من_الشبكة_تنتهي_بقيدٍ_في_الدفتر()
     {
         ApiProcess api = await ApiFixture.DefaultAsync();
-        Guid company = ApiTestDatabase.CompanyA;
+        Guid company = ApiTestDatabase.CompanyB;
 
         // ── ١ · عميل ────────────────────────────────────────────────────────
-        string customerId = await Documents.AddCustomerAsync(api, company, ApiFixture.TokenA);
+        string customerId = await Documents.AddCustomerAsync(api, company, ApiFixture.TokenB);
 
         // ── ٢ · فاتورة مسوّدة: لا قيد ولا أثر ───────────────────────────────
         using HttpResponseMessage drafted = await api.Call(Http.Request(
-            HttpMethod.Post, Documents.SalesInvoices(company), ApiFixture.TokenA,
+            HttpMethod.Post, Documents.SalesInvoices(company), ApiFixture.TokenB,
             Documents.Invoice(Documents.Number("INV"), customerId)));
 
         (string draftText, JsonElement draft) = await Http.BodyAsync(drafted);
@@ -52,7 +58,7 @@ public sealed class DocumentSurfaceTests
 
         // ── ٣ · القراءة تُعيد المسوّدة نفسها ────────────────────────────────
         using HttpResponseMessage read = await api.Call(Http.Request(
-            HttpMethod.Get, Documents.SalesInvoice(company, invoiceId), ApiFixture.TokenA));
+            HttpMethod.Get, Documents.SalesInvoice(company, invoiceId), ApiFixture.TokenB));
 
         (_, JsonElement readBody) = await Http.BodyAsync(read);
         Assert.Equal(HttpStatusCode.OK, read.StatusCode);
@@ -60,7 +66,7 @@ public sealed class DocumentSurfaceTests
 
         // ── ٤ · الترحيل: 201 وقيدٌ في الدفتر ────────────────────────────────
         using HttpResponseMessage posted = await api.Call(Http.Request(
-            HttpMethod.Post, Documents.SalesInvoicePosting(company, invoiceId), ApiFixture.TokenA));
+            HttpMethod.Post, Documents.SalesInvoicePosting(company, invoiceId), ApiFixture.TokenB));
 
         (string postedText, JsonElement postedBody) = await Http.BodyAsync(posted);
         Console.WriteLine("الترحيل: " + postedText);
@@ -74,7 +80,7 @@ public sealed class DocumentSurfaceTests
 
         // ── ٥ · إشعار دائن على فاتورة مُرحَّلة ──────────────────────────────
         using HttpResponseMessage note = await api.Call(Http.Request(
-            HttpMethod.Post, Documents.CreditNotes(company), ApiFixture.TokenA,
+            HttpMethod.Post, Documents.CreditNotes(company), ApiFixture.TokenB,
             Documents.CreditNote(Documents.Number("CN"), invoiceId)));
 
         (string noteText, JsonElement noteBody) = await Http.BodyAsync(note);
@@ -87,7 +93,7 @@ public sealed class DocumentSurfaceTests
         using HttpResponseMessage notePosted = await api.Call(Http.Request(
             HttpMethod.Post,
             Documents.CreditNotePosting(company, noteBody.GetProperty("id").GetString()!),
-            ApiFixture.TokenA));
+            ApiFixture.TokenB));
 
         (string notePostedText, JsonElement notePostedBody) = await Http.BodyAsync(notePosted);
         Console.WriteLine("ترحيل الإشعار: " + notePostedText);
@@ -101,17 +107,17 @@ public sealed class DocumentSurfaceTests
     public async Task ترحيل_الفاتورة_مرّتين_يُعيد_القيد_ذاته_ويُعلن_أنه_مُرحَّل_من_قبل()
     {
         ApiProcess api = await ApiFixture.DefaultAsync();
-        Guid company = ApiTestDatabase.CompanyA;
+        Guid company = ApiTestDatabase.CompanyB;
 
-        string customerId = await Documents.AddCustomerAsync(api, company, ApiFixture.TokenA);
-        string invoiceId = await Documents.DraftInvoiceAsync(api, company, ApiFixture.TokenA, customerId);
+        string customerId = await Documents.AddCustomerAsync(api, company, ApiFixture.TokenB);
+        string invoiceId = await Documents.DraftInvoiceAsync(api, company, ApiFixture.TokenB, customerId);
 
         using HttpResponseMessage first = await api.Call(Http.Request(
-            HttpMethod.Post, Documents.SalesInvoicePosting(company, invoiceId), ApiFixture.TokenA));
+            HttpMethod.Post, Documents.SalesInvoicePosting(company, invoiceId), ApiFixture.TokenB));
         (string firstText, JsonElement firstBody) = await Http.BodyAsync(first);
 
         using HttpResponseMessage second = await api.Call(Http.Request(
-            HttpMethod.Post, Documents.SalesInvoicePosting(company, invoiceId), ApiFixture.TokenA));
+            HttpMethod.Post, Documents.SalesInvoicePosting(company, invoiceId), ApiFixture.TokenB));
         (string secondText, JsonElement secondBody) = await Http.BodyAsync(second);
 
         Console.WriteLine("الأول : " + firstText);
@@ -133,13 +139,13 @@ public sealed class DocumentSurfaceTests
     public async Task دورة_فاتورة_المورد_من_الشبكة_وحصانتها_بالشكل_نفسه()
     {
         ApiProcess api = await ApiFixture.DefaultAsync();
-        Guid company = ApiTestDatabase.CompanyA;
+        Guid company = ApiTestDatabase.CompanyB;
 
-        string supplierId = await Documents.AddSupplierAsync(api, company, ApiFixture.TokenA);
-        string costCenter = await Documents.DefaultCostCenterAsync(api, company, ApiFixture.TokenA);
+        string supplierId = await Documents.AddSupplierAsync(api, company, ApiFixture.TokenB);
+        string costCenter = await Documents.DefaultCostCenterAsync(api, company, ApiFixture.TokenB);
 
         using HttpResponseMessage drafted = await api.Call(Http.Request(
-            HttpMethod.Post, Documents.SupplierBills(company), ApiFixture.TokenA,
+            HttpMethod.Post, Documents.SupplierBills(company), ApiFixture.TokenB,
             Documents.ExpenseBill(Documents.Number("EXP"), supplierId, costCenter)));
 
         (string draftText, JsonElement draft) = await Http.BodyAsync(drafted);
@@ -152,13 +158,13 @@ public sealed class DocumentSurfaceTests
         string billId = draft.GetProperty("id").GetString()!;
 
         using HttpResponseMessage read = await api.Call(Http.Request(
-            HttpMethod.Get, Documents.SupplierBill(company, billId), ApiFixture.TokenA));
+            HttpMethod.Get, Documents.SupplierBill(company, billId), ApiFixture.TokenB));
         (_, JsonElement readBody) = await Http.BodyAsync(read);
         Assert.Equal(HttpStatusCode.OK, read.StatusCode);
         Assert.Equal("DRAFT", readBody.GetProperty("state").GetString());
 
         using HttpResponseMessage first = await api.Call(Http.Request(
-            HttpMethod.Post, Documents.SupplierBillPosting(company, billId), ApiFixture.TokenA));
+            HttpMethod.Post, Documents.SupplierBillPosting(company, billId), ApiFixture.TokenB));
         (string firstText, JsonElement firstBody) = await Http.BodyAsync(first);
         Console.WriteLine("ترحيل المورد: " + firstText);
 
@@ -167,7 +173,7 @@ public sealed class DocumentSurfaceTests
         Assert.False(firstBody.GetProperty("alreadyPosted").GetBoolean());
 
         using HttpResponseMessage second = await api.Call(Http.Request(
-            HttpMethod.Post, Documents.SupplierBillPosting(company, billId), ApiFixture.TokenA));
+            HttpMethod.Post, Documents.SupplierBillPosting(company, billId), ApiFixture.TokenB));
         (_, JsonElement secondBody) = await Http.BodyAsync(second);
 
         Assert.Equal(HttpStatusCode.OK, second.StatusCode);
@@ -179,7 +185,7 @@ public sealed class DocumentSurfaceTests
     public async Task أعمار_الذمم_تُقرأ_من_الطرفين_بالشكل_نفسه_والمجموع_مجموع_شرائحه()
     {
         ApiProcess api = await ApiFixture.DefaultAsync();
-        Guid company = ApiTestDatabase.CompanyA;
+        Guid company = ApiTestDatabase.CompanyB;
 
         foreach (string path in new[]
                  {
@@ -187,7 +193,7 @@ public sealed class DocumentSurfaceTests
                      Documents.PayablesAging(company, "2026-03-31"),
                  })
         {
-            using HttpResponseMessage response = await api.Call(Http.Request(HttpMethod.Get, path, ApiFixture.TokenA));
+            using HttpResponseMessage response = await api.Call(Http.Request(HttpMethod.Get, path, ApiFixture.TokenB));
             (string text, JsonElement report) = await Http.BodyAsync(response);
             Console.WriteLine(path + " → " + text[..Math.Min(240, text.Length)]);
 
@@ -208,12 +214,12 @@ public sealed class DocumentSurfaceTests
     public async Task وسيط_التاريخ_مفقوداً_أو_بأرقام_غير_لاتينية_يُرفض_عند_الحدّ()
     {
         ApiProcess api = await ApiFixture.DefaultAsync();
-        Guid company = ApiTestDatabase.CompanyA;
+        Guid company = ApiTestDatabase.CompanyB;
 
         using HttpResponseMessage missing = await api.Call(Http.Request(
             HttpMethod.Get,
             string.Create(CultureInfo.InvariantCulture, $"/api/v1/companies/{company:D}/receivables-aging"),
-            ApiFixture.TokenA));
+            ApiFixture.TokenB));
         (_, JsonElement missingProblem) = await Http.BodyAsync(missing);
 
         Assert.Equal(HttpStatusCode.BadRequest, missing.StatusCode);
@@ -222,7 +228,7 @@ public sealed class DocumentSurfaceTests
         // ‏«٢٠٢٦-٠٣-٣١» بأرقام عربية-هندية: تُرفض ولا تُطبَّع صامتاً — التطبيع يجعل
         // العميل يظنّ أنه أرسل ما لم يصل (فخ-25).
         using HttpResponseMessage arabic = await api.Call(Http.Request(
-            HttpMethod.Get, Documents.ReceivablesAging(company, "٢٠٢٦-٠٣-٣١"), ApiFixture.TokenA));
+            HttpMethod.Get, Documents.ReceivablesAging(company, "٢٠٢٦-٠٣-٣١"), ApiFixture.TokenB));
         (_, JsonElement arabicProblem) = await Http.BodyAsync(arabic);
 
         Assert.Equal(HttpStatusCode.BadRequest, arabic.StatusCode);
@@ -233,15 +239,15 @@ public sealed class DocumentSurfaceTests
     public async Task المبلغ_رمزاً_رقمياً_في_سطر_فاتورة_يُرفض_به_الطلب_كلّه()
     {
         ApiProcess api = await ApiFixture.DefaultAsync();
-        Guid company = ApiTestDatabase.CompanyA;
-        string customerId = await Documents.AddCustomerAsync(api, company, ApiFixture.TokenA);
+        Guid company = ApiTestDatabase.CompanyB;
+        string customerId = await Documents.AddCustomerAsync(api, company, ApiFixture.TokenB);
 
         // ‏unitPrice بلا اقتباس: رمز رقمي في حقل مالي — القناة نفسها تُرفض.
         string body = Documents.Invoice(Documents.Number("INV"), customerId).Replace(
             "\"unitPrice\":\"100.0000\"", "\"unitPrice\":100.0000", StringComparison.Ordinal);
 
         using HttpResponseMessage response = await api.Call(Http.Request(
-            HttpMethod.Post, Documents.SalesInvoices(company), ApiFixture.TokenA, body));
+            HttpMethod.Post, Documents.SalesInvoices(company), ApiFixture.TokenB, body));
 
         (string text, JsonElement problem) = await Http.BodyAsync(response);
         Console.WriteLine(text);
@@ -254,14 +260,14 @@ public sealed class DocumentSurfaceTests
     public async Task خانة_عشرية_خامسة_في_سعر_الوحدة_تُرفض_ولا_تُقرَّب()
     {
         ApiProcess api = await ApiFixture.DefaultAsync();
-        Guid company = ApiTestDatabase.CompanyA;
-        string customerId = await Documents.AddCustomerAsync(api, company, ApiFixture.TokenA);
+        Guid company = ApiTestDatabase.CompanyB;
+        string customerId = await Documents.AddCustomerAsync(api, company, ApiFixture.TokenB);
 
         string body = Documents.Invoice(Documents.Number("INV"), customerId).Replace(
             "\"unitPrice\":\"100.0000\"", "\"unitPrice\":\"100.00001\"", StringComparison.Ordinal);
 
         using HttpResponseMessage response = await api.Call(Http.Request(
-            HttpMethod.Post, Documents.SalesInvoices(company), ApiFixture.TokenA, body));
+            HttpMethod.Post, Documents.SalesInvoices(company), ApiFixture.TokenB, body));
 
         (_, JsonElement problem) = await Http.BodyAsync(response);
 
@@ -273,14 +279,14 @@ public sealed class DocumentSurfaceTests
     public async Task حقل_غير_معروف_في_جسم_المستند_يُفشل_الطلب_ولا_يُتجاهل_صامتاً()
     {
         ApiProcess api = await ApiFixture.DefaultAsync();
-        Guid company = ApiTestDatabase.CompanyA;
-        string customerId = await Documents.AddCustomerAsync(api, company, ApiFixture.TokenA);
+        Guid company = ApiTestDatabase.CompanyB;
+        string customerId = await Documents.AddCustomerAsync(api, company, ApiFixture.TokenB);
 
         string body = Documents.Invoice(Documents.Number("INV"), customerId)
             .Replace("{\"number\"", "{\"tenantId\":\"11111111-1111-4111-8111-111111111111\",\"number\"", StringComparison.Ordinal);
 
         using HttpResponseMessage response = await api.Call(Http.Request(
-            HttpMethod.Post, Documents.SalesInvoices(company), ApiFixture.TokenA, body));
+            HttpMethod.Post, Documents.SalesInvoices(company), ApiFixture.TokenB, body));
 
         (string text, JsonElement problem) = await Http.BodyAsync(response);
         Console.WriteLine(text);
@@ -293,7 +299,7 @@ public sealed class DocumentSurfaceTests
     public async Task رقم_التسجيل_الضريبي_على_العميل_يُرفض_ولا_يُبتلع()
     {
         ApiProcess api = await ApiFixture.DefaultAsync();
-        Guid company = ApiTestDatabase.CompanyA;
+        Guid company = ApiTestDatabase.CompanyB;
 
         string body = """
             {"code":"CUST-VAT","name":{"ar":"عميل","en":"Customer"},
@@ -301,7 +307,7 @@ public sealed class DocumentSurfaceTests
             """;
 
         using HttpResponseMessage response = await api.Call(Http.Request(
-            HttpMethod.Post, Documents.Customers(company), ApiFixture.TokenA, body));
+            HttpMethod.Post, Documents.Customers(company), ApiFixture.TokenB, body));
 
         (string text, JsonElement problem) = await Http.BodyAsync(response);
         Console.WriteLine(text);
@@ -316,11 +322,11 @@ public sealed class DocumentSurfaceTests
     public async Task مستند_لا_وجود_له_يُرفض_بـ404_داخل_النطاق_نفسه()
     {
         ApiProcess api = await ApiFixture.DefaultAsync();
-        Guid company = ApiTestDatabase.CompanyA;
+        Guid company = ApiTestDatabase.CompanyB;
         string stranger = Guid.CreateVersion7().ToString("D", CultureInfo.InvariantCulture);
 
         using HttpResponseMessage response = await api.Call(Http.Request(
-            HttpMethod.Get, Documents.SalesInvoice(company, stranger), ApiFixture.TokenA));
+            HttpMethod.Get, Documents.SalesInvoice(company, stranger), ApiFixture.TokenB));
 
         (_, JsonElement problem) = await Http.BodyAsync(response);
 
@@ -332,16 +338,16 @@ public sealed class DocumentSurfaceTests
     public async Task لا_فعل_تعديل_ولا_حذف_على_مستند_واحد_من_هذا_السطح()
     {
         ApiProcess api = await ApiFixture.DefaultAsync();
-        Guid company = ApiTestDatabase.CompanyA;
-        string customerId = await Documents.AddCustomerAsync(api, company, ApiFixture.TokenA);
-        string invoiceId = await Documents.DraftInvoiceAsync(api, company, ApiFixture.TokenA, customerId);
+        Guid company = ApiTestDatabase.CompanyB;
+        string customerId = await Documents.AddCustomerAsync(api, company, ApiFixture.TokenB);
+        string invoiceId = await Documents.DraftInvoiceAsync(api, company, ApiFixture.TokenB, customerId);
 
         // والمستند **مسوّدة** هنا لا واقعة مُرحَّلة: أي أن الغياب ليس «لأنه مُرحَّل»،
         // بل لأن السطح لا يحمل هذه الأفعال أصلاً.
         foreach (HttpMethod method in new[] { HttpMethod.Put, HttpMethod.Patch, HttpMethod.Delete })
         {
             using HttpResponseMessage response = await api.Call(Http.Request(
-                method, Documents.SalesInvoice(company, invoiceId), ApiFixture.TokenA, "{}"));
+                method, Documents.SalesInvoice(company, invoiceId), ApiFixture.TokenB, "{}"));
 
             Console.WriteLine($"{method}: {(int)response.StatusCode}");
             Assert.Equal(HttpStatusCode.MethodNotAllowed, response.StatusCode);

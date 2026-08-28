@@ -24,8 +24,8 @@
       "caveats": [
         {
           "ref": "posting-matrix.md بند مفتوح 3",
-          "text_ar": "⚠️ طريقة تكلفة المخزون غير محسومة وقد تختلف بين مجموعات الأصناف",
-          "text_en": "⚠️ The inventory costing method is unresolved and may differ by item group"
+          "text_ar": "طريقة التكلفة محسومة: المتوسط المرجّح المتحرّك لكل (شركة × صنف × مستودع) — ADR-0039. ⚠️ وما يبقى مفتوحاً هو اختلافها بين مجموعات الأصناف: الطريقة عمودٌ على كل حركة لا ثابتٌ في الشيفرة",
+          "text_en": "The costing method is settled: moving weighted average per (company x item x warehouse) — ADR-0039. WARNING: what remains open is whether it may differ by item group; the method is a column on every movement, not a constant in code"
         }
       ],
       "amounts": {

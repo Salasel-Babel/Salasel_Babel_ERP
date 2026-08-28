@@ -245,7 +245,8 @@ public sealed class CreditNoteService : IApplicationService
 
         if (note.State == SalesDocumentState.Posted)
         {
-            return Result<SalesDocumentView>.Success(ViewOf(note));
+            // كالفاتورة: الوصول الثاني لا يفعل شيئاً، ويقول ذلك بدل أن يُترك ليُخمَّن.
+            return Result<SalesDocumentView>.Success(ViewOf(note) with { AlreadyPosted = true });
         }
 
         if (note.State != SalesDocumentState.Draft)
@@ -333,7 +334,9 @@ public sealed class CreditNoteService : IApplicationService
         });
 
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        return Result<SalesDocumentView>.Success(ViewOf(note));
+
+        // حكم البوّابة لا حكمنا — كما في الفاتورة، وللسبب نفسه.
+        return Result<SalesDocumentView>.Success(ViewOf(note) with { AlreadyPosted = posted.Value.WasAlreadyPosted });
     }
 
 

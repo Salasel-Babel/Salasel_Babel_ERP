@@ -206,7 +206,7 @@ public sealed class SalesInvoiceService : IApplicationService
         };
 
         _database.Quotations.Add(row);
-        AddLines(tenant, LineOwner.Quotation, row.Id, draft.Lines);
+        AddLines(_database, tenant, LineOwner.Quotation, row.Id, draft.Lines);
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         return Result<SalesDocumentView>.Success(View(row.Id, row.Number, row.State, totals.Value, null));
@@ -273,7 +273,7 @@ public sealed class SalesInvoiceService : IApplicationService
         };
 
         _database.Orders.Add(row);
-        AddLines(tenant, LineOwner.Order, row.Id, draft.Lines);
+        AddLines(_database, tenant, LineOwner.Order, row.Id, draft.Lines);
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         return Result<SalesDocumentView>.Success(View(row.Id, row.Number, row.State, totals.Value, null));
@@ -343,7 +343,7 @@ public sealed class SalesInvoiceService : IApplicationService
         };
 
         _database.Invoices.Add(row);
-        AddLines(tenant, LineOwner.Invoice, row.Id, draft.Lines);
+        AddLines(_database, tenant, LineOwner.Invoice, row.Id, draft.Lines);
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         return Result<SalesDocumentView>.Success(View(row.Id, row.Number, row.State, totals.Value, null));
@@ -861,7 +861,18 @@ public sealed class SalesInvoiceService : IApplicationService
         return Result<Totals>.Success(new Totals(net, tax, net + tax, taxable));
     }
 
-    internal void AddLines(TenantId tenant, string ownerType, Guid ownerId, IReadOnlyList<SalesLineDraft> lines)
+    /// <summary>
+    /// يكتب سطور مستند. <b>ساكنة وتأخذ المخزن</b> لأن الإشعار الدائن يكتب سطوره
+    /// كذلك: صار لسطره معرّف يُبنى عليه قيد تكلفة المرتجع، فلم يعد سطراً يُحسب
+    /// مجموعه ثم يُرمى.
+    /// </summary>
+    /// <param name="database">مخزن الوحدة.</param>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="ownerType">نوع المستند المالك.</param>
+    /// <param name="ownerId">معرّفه.</param>
+    /// <param name="lines">السطور.</param>
+    internal static void AddLines(
+        SalesDbContext database, TenantId tenant, string ownerType, Guid ownerId, IReadOnlyList<SalesLineDraft> lines)
     {
         for (int index = 0; index < lines.Count; index++)
         {
@@ -869,7 +880,7 @@ public sealed class SalesInvoiceService : IApplicationService
             (decimal lineNet, decimal lineTax) = LineMath.Line(
                 line.Quantity, line.UnitPrice.Amount, line.Discount.Amount, line.TaxRate, line.TaxClassification);
 
-            _database.Lines.Add(new SalesLineRow
+            database.Lines.Add(new SalesLineRow
             {
                 Id = Guid.CreateVersion7(),
                 TenantId = tenant.Value,

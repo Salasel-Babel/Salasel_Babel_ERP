@@ -58,7 +58,7 @@ internal sealed class Harness : IDisposable
 
         Suppliers = new SupplierService(enforcer, purchasing);
         Orders = new PurchaseOrderService(enforcer, purchasing);
-        Receipts = new GoodsReceiptService(enforcer, purchasing, Posting, Profiles);
+        Receipts = new GoodsReceiptService(enforcer, purchasing, Posting, Profiles, Stock);
 
         Customers = new CustomerService(enforcer, sales);
 

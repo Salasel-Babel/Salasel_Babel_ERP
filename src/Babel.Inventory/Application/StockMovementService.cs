@@ -272,6 +272,7 @@ public sealed class StockMovementService : IApplicationService, IInventoryValuat
             return Result<InventoryMovementCost>.Success(new InventoryMovementCost(
                 Money.Of(recorded.ValueAmount, _currency),
                 recorded.Method,
+                new InventoryItemLocation(recorded.ItemId, recorded.WarehouseId, recorded.ItemGroup),
                 recorded.QuantityAfter,
                 Money.Of(recorded.ValueAfter, _currency),
                 recorded.DrewOnNegativeStock,
@@ -374,6 +375,7 @@ public sealed class StockMovementService : IApplicationService, IInventoryValuat
         return Result<InventoryMovementCost>.Success(new InventoryMovementCost(
             Money.Of(effect.Value, _currency),
             WeightedAverageCost.MethodCode,
+            location,
             effect.After.Quantity,
             Money.Of(effect.After.Value, _currency),
             effect.DrewOnNegativeStock,

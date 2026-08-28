@@ -637,7 +637,7 @@ public sealed class ReceivablesIntegrationTests : IAsyncLifetime
             tenant,
             Harness.Actor,
             invoice,
-            new CostOfSalesDraft("ITEM-1", "WH-01", "*", 500m),
+            new CostOfSalesDraft(await FirstLineIdAsync(invoice, token), "ITEM-1", "WH-01", "*", 500m),
             token);
 
         Assert.True(cost.IsSuccess, Describe(cost.Errors));
@@ -696,7 +696,7 @@ public sealed class ReceivablesIntegrationTests : IAsyncLifetime
             tenant,
             Harness.Actor,
             invoice,
-            new CostOfSalesDraft("ITEM-2", "WH-01", "*", 700m),
+            new CostOfSalesDraft(await FirstLineIdAsync(invoice, token), "ITEM-2", "WH-01", "*", 700m),
             token);
 
         Assert.True(cost.IsSuccess, Describe(cost.Errors));
@@ -822,6 +822,19 @@ public sealed class ReceivablesIntegrationTests : IAsyncLifetime
         Proof.Note(
             "التحفّظ: حاوية مشتركة بأربع أنوية افتراضية، وPostgreSQL على المضيف نفسه (RTT شبه صفري)، "
             + "وكاتب واحد متسلسل، ورقم يشمل كتابة الوحدة وقراءتها بـEF Core لا الترحيل وحده.");
+    }
+
+    /// <summary>
+    /// معرّف أول سطر في فاتورة — <b>وهو معرّف مستند قيد تكلفتها</b> بعد أن صار القيد
+    /// بحبيبيّة السطر.
+    /// </summary>
+    private async Task<Guid> FirstLineIdAsync(Guid invoice, CancellationToken token)
+    {
+        Result<IReadOnlyList<SalesLineView>> lines = await _harness.Invoices
+            .GetInvoiceLinesAsync(SalesTestEnvironment.Tenant, Harness.Actor, invoice, token);
+
+        Assert.True(lines.IsSuccess, Describe(lines.Errors));
+        return lines.Value[0].Id;
     }
 
     private async Task<Guid> PostedInvoiceAsync(Guid customer, decimal unitPrice, CancellationToken token)

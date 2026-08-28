@@ -38,6 +38,27 @@ internal static class SalesErrors
         + ". The line identifier is the document identifier in the cost entry's posting identity, "
         + "so an identifier with no matching line is refused.");
 
+    /// <summary>
+    /// سطر إشعار دائن يردّ بضاعة على سطر فاتورة <b>لم يُرحَّل له قيد تكلفة قط</b>.
+    /// <para>
+    /// المصفوفة تقول عن تكلفة المرتجع: «بنفس تكلفة قيد البيع الأصلي لا بتكلفة اليوم».
+    /// فبلا صرفٍ أصلي لا توجد تكلفةٌ تُقال — ولا يُخترع لها رقم. والمخرج المشروع:
+    /// إمّا أن يُرحَّل قيد تكلفة الفاتورة أولاً، وإمّا أن يكون هذا الإشعار
+    /// <b>تخفيض قيمة</b> فيُترك سطره بلا سطر أصلي.
+    /// </para>
+    /// </summary>
+    /// <param name="invoiceLineId">سطر الفاتورة المشار إليه.</param>
+    public static Error OriginalCostEntryNotFound(Guid invoiceLineId) => new(
+        "sales.original_cost_entry_not_found",
+        "سطر الفاتورة " + invoiceLineId.ToString("D", CultureInfo.InvariantCulture)
+        + " لا قيد تكلفة مُرحَّلاً له، فلا تكلفة صرفٍ أصلي يُقيَّم بها المرتجع. "
+        + "والمرتجع يُقيَّم بتكلفة صرفه الأصلي لا بمتوسط اليوم، ولا يُخترع له رقم — "
+        + "فإمّا أن يُرحَّل قيد تكلفة الفاتورة أولاً، وإمّا أن يكون هذا الإشعار تخفيض قيمة لا ردّ بضاعة.",
+        "Invoice line " + invoiceLineId.ToString("D", CultureInfo.InvariantCulture)
+        + " has no posted cost of sales entry, so there is no original issue cost to value the return at. "
+        + "A return is valued at the cost of its original issue, never at today's average, and no number is invented — "
+        + "either post the invoice's cost entry first, or this credit note is a value allowance and not a goods return.");
+
     public static Error DuplicateNumber(string number) => new(
         "sales.duplicate_number",
         "رقم مستند مستعمل من قبل: " + number,

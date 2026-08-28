@@ -45,6 +45,7 @@
       tests/Babel.ArchitectureTests/ControlPointPortIsDeclaredOnce.cs
     -->
     <Compile Include="../shared/LedgerControlPointReader.cs" Link="LedgerControlPointReader.cs" />
+    <Compile Include="../shared/UnitCostOfOne.cs" Link="UnitCostOfOne.cs" />
   </ItemGroup>
 
 </Project>

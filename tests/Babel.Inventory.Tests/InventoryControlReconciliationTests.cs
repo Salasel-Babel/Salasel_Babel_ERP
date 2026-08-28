@@ -82,7 +82,7 @@ public sealed class InventoryControlReconciliationTests : IAsyncLifetime
             tenant,
             Harness.Actor,
             invoice,
-            new Babel.Sales.Application.CostOfSalesDraft(item, Warehouse, "*", 30m),
+            new Babel.Sales.Application.CostOfSalesDraft(await FirstLineIdAsync(tenant, invoice, token), item, Warehouse, "*", 30m),
             token);
 
         Assert.True(cost.IsSuccess, Describe(cost));
@@ -146,7 +146,7 @@ public sealed class InventoryControlReconciliationTests : IAsyncLifetime
             tenant,
             Harness.Actor,
             invoice,
-            new Babel.Sales.Application.CostOfSalesDraft(item, Warehouse, "*", 10m),
+            new Babel.Sales.Application.CostOfSalesDraft(await FirstLineIdAsync(tenant, invoice, token), item, Warehouse, "*", 10m),
             token);
 
         Assert.True(cost.IsFailure, "قيد التكلفة نجح على صنف بلا أساس تكلفة.");
@@ -200,7 +200,7 @@ public sealed class InventoryControlReconciliationTests : IAsyncLifetime
             tenant,
             Harness.Actor,
             invoice,
-            new Babel.Sales.Application.CostOfSalesDraft(item, Warehouse, "*", 15m),
+            new Babel.Sales.Application.CostOfSalesDraft(await FirstLineIdAsync(tenant, invoice, token), item, Warehouse, "*", 15m),
             token);
 
         Assert.True(cost.IsSuccess, Describe(cost));
@@ -405,6 +405,20 @@ public sealed class InventoryControlReconciliationTests : IAsyncLifetime
     }
 
     // ────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// معرّف أول سطر في فاتورة — <b>معرّف مستند قيد تكلفتها</b> بعد أن صار القيد
+    /// بحبيبيّة السطر (‏<c>SalesInvoiceLine</c>).
+    /// </summary>
+    private async Task<Guid> FirstLineIdAsync(TenantId tenant, Guid invoice, CancellationToken token)
+    {
+        Result<IReadOnlyList<Babel.Sales.Application.SalesLineView>> lines = await _harness.Invoices
+            .GetInvoiceLinesAsync(tenant, Harness.Actor, invoice, token);
+
+        Assert.True(lines.IsSuccess, Describe(lines));
+        return lines.Value[0].Id;
+    }
+
     private async Task SeedAsync(TenantId tenant, string item, decimal quantity, decimal cost, CancellationToken token)
     {
         Result<InventoryMovementCost> seeded = await _harness.Stock.ReceiveAsync(

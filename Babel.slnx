@@ -22,6 +22,7 @@
     <Project Path="src/Babel.RealEstate/Babel.RealEstate.csproj" />
     <Project Path="src/Babel.Sales/Babel.Sales.csproj" />
     <Project Path="src/Babel.SharedKernel/Babel.SharedKernel.csproj" />
+    <Project Path="src/Babel.Storage/Babel.Storage.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Babel.Ai.Tests/Babel.Ai.Tests.csproj" />
@@ -44,6 +45,7 @@
     <Project Path="tests/Babel.RealEstate.Tests/Babel.RealEstate.Tests.csproj" />
     <Project Path="tests/Babel.Sales.Tests/Babel.Sales.Tests.csproj" />
     <Project Path="tests/Babel.SharedKernel.Tests/Babel.SharedKernel.Tests.csproj" />
+    <Project Path="tests/Babel.Storage.Tests/Babel.Storage.Tests.csproj" />
   </Folder>
   <Folder Name="/tools/">
     <Project Path="tools/Babel.Canonicalization.Golden/Babel.Canonicalization.Golden.csproj" />

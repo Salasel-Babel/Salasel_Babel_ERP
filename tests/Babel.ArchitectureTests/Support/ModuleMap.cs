@@ -43,6 +43,18 @@ internal static class ModuleMap
     /// </summary>
     public const string ComplianceAbstractions = "Babel.Compliance.Abstractions";
 
+    /// <summary>
+    /// <b>محوّل مخزن المرفقات</b>: نظام ملفّات على خادم واحد، ووصفٌ في PostgreSQL.
+    /// <para>
+    /// المنفذ نفسه — <c>Babel.Contracts.Storage.IAttachmentStore</c> — يعيش في العقد لا
+    /// هنا، وذلك بالضبط سبب كون هذا المشروع <b>مساندًا لا يعرفه أحد</b>: لو كان المنفذ
+    /// فيه لاحتاجت كل وحدة تريد إيداع مرفق سطراً جديداً في هذه الخريطة، وهو فتحُ
+    /// الخريطة المرفوض في ADR-0042. فمجموعة مراجعه أدناه لا تضمّه إلى أحد، ولا أحد
+    /// يضمّه — والجذر التركيبي وحده يركّبه.
+    /// </para>
+    /// </summary>
+    public const string Storage = "Babel.Storage";
+
     /// <summary>مزوّد وهمي كامل التنفيذ للاختبار: يعتمد على العقد وحده، ولا يعرف التنسيق.</summary>
     public const string ComplianceFakeProvider = "Babel.Compliance.FakeProvider";
 
@@ -84,6 +96,7 @@ internal static class ModuleMap
         ComplianceFakeProvider,
         ComplianceWolverine,
         ComplianceZatca,
+        Storage,
     ];
 
     /// <summary>كل مشاريع المنتج.</summary>
@@ -118,6 +131,11 @@ internal static class ModuleMap
             // المزوّد يعرف العقد وحده. **لا Ledger ولا Contracts ولا Compliance** —
             // فالمزوّد يُبلّغ عمّا سجّله الدفتر ولا يكتب محاسبة (ADR-0011 وADR-0012).
             [ComplianceZatca] = new HashSet<string>([ComplianceAbstractions], StringComparer.Ordinal),
+
+            // محوّل المرفقات يعرف العقد الذي ينفّذه، ولا يعرف وحدةً واحدة — ولا النواة:
+            // لا استحقاق ولا مستأجر ولا إعداد شركة يمرّ من هنا. المستأجر يصل معامِلاً
+            // في كل نداء، والاستحقاق يُفرض عند خدمة التطبيق التي تنادي المخزن.
+            [Storage] = new HashSet<string>([SharedKernel, Contracts], StringComparer.Ordinal),
 
             // الجذر التركيبي وحده يعرف الجميع.
             [Api] = new HashSet<string>(AllProjects.Where(static p => p != Api), StringComparer.Ordinal),

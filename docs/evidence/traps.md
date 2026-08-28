@@ -3532,6 +3532,18 @@ builder.Services.AddBabelCompliance();   // src/Babel.Api/Hosting/BabelApiHost.c
 دالّتَي امتداد على `IServiceCollection` بالاسم نفسه في فضاء الاسم نفسه وكلتاهما تُستدعى
 بلا وسيط هي هذا الفخّ، وحده الحظّ يقرّر أيّهما تُصيب.
 
+> **⚠️ الفخّ داخل الفخّ — وقع في علاج هذا الفخّ نفسه، ومُقيس.** العلاج أضاف نوّاباً
+> يرمون بنصّ مسمّى لكل ما لا تملكه الوحدة (المزوّد، والمخزن، وسياسة المسار)، وسجّلهم
+> بـ`TryAddSingleton`. وكان `AddInMemoryComplianceStore` **هو أيضاً** `TryAddSingleton` —
+> فصار النائب هو الأسبق، وصار **النداء الصريح لا-عملية صامتة**: يكتب المركِّب
+> `AddInMemoryComplianceStore()` ويقرأه في المراجعة، ولا يفعل شيئاً. أي أن العلاج أعاد
+> إنتاج شكل العطل الذي عالجه: **سطرُ تركيب صحيحُ الظاهر لا أثر له.**
+> <br/>
+> **والقاعدة المستخلَصة:** حيث يوجد نائبٌ مسجَّل بـ`TryAdd`، تكون **كل** دالّة تركيب
+> صريحة `AddSingleton` لا `TryAdd` — فآخر تسجيل هو ما يحلّه `GetRequiredService`،
+> فيغلب الصريحُ النائبَ مهما كان ترتيب النداءين. **وما أمسكه هو اختبار تركيب** يحلّ
+> الأنواع فعلاً من حاوية مبنيّة (`CompositionTests`)، لا قراءةُ الشيفرة ولا المراجعة.
+
 **اختبار يجب أن يوجد** — وهو مُودَع:
 `tests/Babel.ArchitectureTests/TheModuleCompositionSeamIsUnambiguous.cs` ·
 `NoTwoRegistrationEntryPointsShareANameInTheSameNamespace`. يمسح تجميعات المنتج كلّها

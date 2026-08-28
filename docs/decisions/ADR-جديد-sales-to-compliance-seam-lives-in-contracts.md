@@ -171,6 +171,7 @@
 | 14 | **طفرة ٣ — عودة الرمز الميّت**: `new Error("compliance.not_implemented", …)` في `src/` ⇒ **أحمر** مسمّياً `src/Babel.Compliance/MutationProbe.cs`؛ ثم أخضر | **مقيس** — طفرة | `NoProductionEntryPointDeclaresAPermanentNotImplementedRefusal` |
 | 15 | **طفرة ٤ — كفّ النمط عن المطابقة**: تغيير اللاحقة في التعبير النمطي ⇒ الشاهد الموجب **أحمر** بـ«‏Expected: ["src/Control/Dead.cs"] · Actual: []» | **مقيس** — طفرة | `TheDeadEntryPointGuardBitesOnItsOwnControl` |
 | 16 | **البايتات المُجزَّأة لم تتحرّك**: `git hash-object tests/golden/golden-vectors.v1.json` ⇒ `9e4913b5186e26cfa24e72de419237364071621e`، و`git status` على `tests/golden/` **فارغ** | **مقيس** | الأمران نفسهما |
+| 18 | **والنائب الذي يرمي ابتلع نداء تركيب المخزن**: `TryAdd` فوق `TryAdd` ⇒ `AddInMemoryComplianceStore()` لا-عملية صامتة، وثلاثة فحوص تركيب **حمراء** بنصّ «مخزن الالتزام غير مركَّب»؛ ثم خضراء بعد تحويل التسجيل الصريح إلى `AddSingleton` | **مقيس** — عطلٌ وقع فعلاً وأمسكه اختبار، لا فرضية | `tests/Babel.Compliance.Tests/CompositionTests.cs` |
 | 17 | **ولا شيء ممّا سبق مُتحقَّق أمام الهيئة**: المزوّد وهمي، والجهة وهمية، ولم تُعرض بايتة واحدة من هذا المسار على بيئة اختبار للهيئة، ولا يُبنى على شيء هنا وعدٌ لعميل | **غير مُتحقَّق منه** | يُسجَّل في [`../evidence/verification-debt.md`](../evidence/verification-debt.md) عند الإنزال |
 
 ---
@@ -186,6 +187,13 @@
 عربي وإنجليزي يسمّي `AddComplianceFlowPolicy<T>()` إن لم يُركَّب شيء — وكذلك المزوّد
 والمخزن. **ولا نسخة افتراضية من معيار «مبسّطة أم قياسية» في `Babel.Compliance`**، لأن
 كتابتها تُنشئ مصدر حقيقة ثانياً للمسار إلى جانب `ZatcaFlowPolicy`.
+
+**وثمنُ هذا النائب دفعناه فوراً:** النائب مسجَّل بـ`TryAdd`، فصار
+`AddInMemoryComplianceStore` — وكان `TryAdd` أيضاً — **لا-عملية صامتة**، أي سطرَ تركيب
+صحيحَ الظاهر بلا أثر: شكلُ العطل الذي فُتح هذا الفرع لإغلاقه، واقعاً داخل علاجه.
+فصارت **كل** دالّة تركيب صريحة `AddSingleton` لا `TryAdd`، لأن آخر تسجيل هو ما يحلّه
+`GetRequiredService` فيغلب الصريحُ النائبَ مهما كان الترتيب. **وأمسكه اختبارُ تركيب
+يحلّ الأنواع من حاوية مبنيّة، لا قراءةُ الشيفرة** — وهو الدليل 18.
 
 **٣ · `ComplianceOutboxPublisher` ما زال بلا مستدعٍ.** مسار الإبلاغ اليوم يُستنزف بنداء
 `DrainReportingQueueAsync`؛ وربطُه بالصندوق الصادر الدائم عملٌ تركيبي في الجذر لم يُفعل.

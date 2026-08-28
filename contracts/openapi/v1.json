@@ -1857,6 +1857,228 @@
         }
       }
     },
+    "/api/v1/companies/{companyId}/memberships/{membershipId}/revocation": {
+      "parameters": [
+        {
+          "name": "companyId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "membershipId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف العضوية — **وهو معرّف عضوها**: هوية العضوية (المنشأة، العضو)، والمنشأة في المسار سلفاً. / The membership identifier — **which is its member's identifier**: a membership's identity is (company, member), and the company is already in the path.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "revokeMembership",
+        "summary": "سحب عضوية / Revoke a membership",
+        "description": "يسحب عضوية عضوٍ من المنشأة. مورد فرعي مستقلّ لا DELETE على العضوية: السحب **فعلٌ له فاعل ولحظة ويُكتب في سجلّ التدقيق**، وDELETE كان سيقوله «أزل صفّاً».\n\n**ومعرّف العضوية هو معرّف عضوها**: هوية العضوية (المنشأة، العضو) والمنشأة في المسار سلفاً، فلم يبقَ منها ما يُعنون غير العضو. واختراعُ مفتاحٍ بديل كان سيُنتج هويتين لصفٍّ واحد.\n\n**والأثر فوري**: ما تبلغه الجلسة يُقرأ من العضويات في كل طلب، فالصفّ المسحوب يختفي من مجموعة الاعتماد عند الطلب التالي بلا انتظار انقضاء.\n\n**ولا يُسحب آخر مالك** (409 وmembership.last_owner): منشأةٌ بلا مالك لا يستطيع أحد أن يدعو إليها ولا أن يُصلح أدوارها — أي بيانات محبوسة عن أصحابها بفعلٍ يبدو إدارياً.\n\n**وهو فعل مالك** في المنشأة: من يستطيع أن يسحب عضويةً يستطيع أن يُخلي المنشأة لنفسه.\n\nRevokes a member's membership in the company. A subresource, not a DELETE on the membership: revocation is **an act with an actor and an instant, written to the audit log**; DELETE would have called it 'remove a row'.\n\n**A membership's identifier is its member's identifier**: its identity is (company, member) and the company is already in the path, so nothing but the member is left to address. Inventing a surrogate key would give one row two identities.\n\n**The effect is immediate**: what a session reaches is read from memberships on every request, so the revoked row leaves the credential's set on the next request without waiting for an expiry.\n\n**The last owner is not revoked** (409, membership.last_owner): a company without an owner is one nobody can invite into or repair roles in — data locked away from its owners by an act that looks administrative.\n\n**It is an owner's act** in the company: whoever can revoke a membership can empty the company for themselves.",
+        "responses": {
+          "201": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MembershipRevocation"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "معرّف المنشأة أو معرّف العضوية في المسار ليس معرّفاً صالحاً. / The company or membership identifier in the path is not valid.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "لا عضوية بهذا المعرّف في هذه المنشأة. الرمز الثابت: membership.not_found. / No membership with this identifier exists in this company. Stable code: membership.not_found.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "هذه آخر عضوية مالكة في المنشأة. الرمز الثابت: membership.last_owner. / This is the company's last owner membership. Stable code: membership.last_owner.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/companies/{companyId}/memberships/{membershipId}/role-changes": {
+      "parameters": [
+        {
+          "name": "companyId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "membershipId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف العضوية — **وهو معرّف عضوها**: هوية العضوية (المنشأة، العضو)، والمنشأة في المسار سلفاً. / The membership identifier — **which is its member's identifier**: a membership's identity is (company, member), and the company is already in the path.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "changeMembershipRole",
+        "summary": "تغيير دور عضوية / Change a membership's role",
+        "description": "يغيّر دور عضوٍ في المنشأة. مورد فرعي مستقلّ على نمط plan-changes: الدور **صلاحيةُ وصول**، وتغييرُه حدثٌ يُكتب في سجلّ التدقيق لا حقلٌ يُعدَّل بتحديث جزئي.\n\nوالدور يُطابَق حرفياً من مجموعة مغلقة، ودورٌ لا أثر له زينة: Reader يقرأ ولا يكتب — وكل فعل غير آمن في منشأةٍ دورُه فيها Reader يُردّ بـ403 وmembership.read_only — وOwner يدعو ويسحب ويغيّر الأدوار.\n\n**ورمز الدور يفترق عن رمز الاستحقاق عمداً**: ذاك يقول «جدّد اشتراكك» وهذا يقول «اطلب صلاحية»، وخلطهما يجعل قارئاً يتّصل بالمحاسبة بلا سبب.\n\n**ولا يُخفَض آخر مالك** (409 وmembership.last_owner)، و**الدور الذي هو الدور القائم يُرفض** (409 وmembership.role_unchanged): ردُّ «تمّ» على فعلٍ لم يقع أسوأ من الرفض.\n\nChanges a member's role in the company. A subresource in the plan-changes shape: a role is **an access grant**, and changing it is an event written to the audit log, not a field patched in place.\n\nThe role is matched literally against a closed set, and a role with no effect is decoration: Reader reads and writes nothing — every unsafe method in a company where the role is Reader is refused with 403 and membership.read_only — and Owner invites, revokes, and changes roles.\n\n**The role code differs from the entitlement code deliberately**: that one says 'renew your subscription', this one says 'ask for a permission'; conflating them sends a reader to call accounting for no reason.\n\n**The last owner is not demoted** (409, membership.last_owner), and **a role equal to the current role is refused** (409, membership.role_unchanged): answering 'done' to an act that did not happen is worse than refusing.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeMembershipRoleRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MembershipRoleChange"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "الجسم لا يطابق العقد، أو معرّف المنشأة أو العضوية في المسار غير صالح. / The body does not match the contract, or the company or membership identifier in the path is not valid.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "لا عضوية بهذا المعرّف في هذه المنشأة. الرمز الثابت: membership.not_found. / No membership with this identifier exists in this company. Stable code: membership.not_found.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "آخر مالك لا يُخفَض، أو الدور المطلوب هو الدور القائم. الرموز: membership.last_owner · membership.role_unchanged. / The last owner is not demoted, or the requested role is the current role. Codes: membership.last_owner, membership.role_unchanged.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "دور غير معروف. الرمز الثابت: membership.role_unknown. / An unknown role. Stable code: membership.role_unknown.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/companies/{companyId}/payables-aging": {
       "parameters": [
         {
@@ -3071,6 +3293,520 @@
         }
       }
     },
+    "/api/v1/tenants": {
+      "post": {
+        "operationId": "registerTenant",
+        "summary": "التسجيل الأول: مستأجر جديد وأول مالك / First registration: a new tenant and its first owner",
+        "description": "ينشئ مستأجراً، ويفتح اشتراكه على **خطّة الدخول**، وينشئ أول منشأة له وأول عضوية مالكة فيها، ويردّ **اعتماد انتساب** يُفتح به أول جلسة على POST /api/v1/access/sessions.\n\n**وهذا الباب بلا اعتماد، وذلك بنيوي:** من ليس عنده حساب هو بالضبط من يستعمله. وما لا يُفتح بفتحه: لا يقرأ بيانات مستأجرٍ قائم، ولا يكشف وجود مستأجر آخر — لا برسالة ولا بفارق زمن — ولا يقبل اسم مستأجر مكرَّراً أو فريداً لأن الأسماء ليست هوية أصلاً.\n\n**والخطّة لا تُختار من هنا.** الاشتراك يُفتح على خطّة الدخول وحدها: حقلُ خطّة في جسم طلبٍ بلا اعتماد يمنح الحزمة الشاملة لمن كتب اسمها. وتغييرُ الخطّة فعلٌ آخر باعتماد.\n\n**وحصينٌ ضد التكرار بمفتاح الطلب:** كل معرّفاته — المستأجر ورمزه والمنشأة والمالك — مشتقّة حتمياً من requestKey، فإعادةُ الإرسال به تردّ **المستأجر نفسه** بـ200 وalreadyRegistered = true ولا تُنشئ ثانياً. و**اعتماد الانتساب لا يُعاد في الإعادة**: السرّ يُسكّ مرّة ويُسلَّم مرّة (المُودَع بصمته)، وسكُّ سرٍّ ثانٍ عند كل إعادة إرسال يجعل الباب المفتوح مصنعَ اعتمادات. فمن فقد الاستجابة الأولى يطلب من مالك المنشأة دعوةً جديدة.\n\n**وعليه حدّ معدّل** لكل عنوان ولكل مفتاح طلب: التجاوز يردّ 429 ومعه ترويسة Retry-After.\n\nCreates a tenant, opens its subscription on the **entry plan**, creates its first company and the first owner membership in it, and returns an **enrolment credential** that opens the first session at POST /api/v1/access/sessions.\n\n**This door is unauthenticated, and structurally so:** whoever has no account is exactly who uses it. What it does not open: it reads no existing tenant's data and reveals no other tenant's existence — neither by message nor by measurable timing — and it neither requires nor rejects a duplicate name, because names are not identity here.\n\n**The plan is not chosen here.** The subscription opens on the entry plan alone: a plan field in an unauthenticated body hands the full package to whoever types its name. Changing the plan is a different act, with a credential.\n\n**Idempotent by request key:** every identifier — tenant, tenant code, company, owner — is derived deterministically from requestKey, so resending it returns **the same tenant** with 200 and alreadyRegistered = true and creates no second one. **The enrolment credential is not re-issued on a repeat**: the secret is minted once and handed over once (only its digest is stored), and minting a second secret on every resend turns an open door into a credential factory. Whoever lost the first response asks the company's owner for a fresh invitation.\n\n**It carries a rate limit** per address and per request key: exceeding it returns 429 with a Retry-After header.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterTenantRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisteredTenant"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "المفتاح نفسه سُجِّل من قبل: المستأجر ذاته وalreadyRegistered = true، وenrolmentCredential معدوم. / The same key was already registered: the same tenant with alreadyRegistered = true and a null enrolmentCredential.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisteredTenant"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "الجسم لا يطابق العقد، أو مفتاح الطلب أقصر من الحدّ أو أطول منه. / The body does not match the contract, or the request key is shorter or longer than the bounds.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "اسم المنشأة بالعربية أو بالإنجليزية أو اسم المالك مفقود. / The company's Arabic or English name, or the owner's name, is missing.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "طلبات أكثر ممّا يقبله هذا الباب في الدقيقة. الرمز الثابت: rate.too_many_requests، ومعه ترويسة Retry-After. / More requests than this door accepts per minute. Stable code: rate.too_many_requests, with a Retry-After header.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "مستوى التحكّم غير مُهيَّأ لهذا الخادم. الرمز الثابت: fleet.unavailable. / The control plane is not configured for this server. Stable code: fleet.unavailable.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tenants/{tenantId}/subscription": {
+      "parameters": [
+        {
+          "name": "tenantId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف المستأجر. يُطابَق بمستأجر الاعتماد ويُرفض إن اختلف؛ ولا يُفرَّق في الرفض بين «لا وجود له» و«ليس مستأجرك». / The tenant identifier. It is matched against the credential's tenant and refused when it differs; the refusal does not distinguish 'does not exist' from 'not yours'.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "readSubscription",
+        "summary": "اشتراك المستأجر: الخطّة والحالة والوحدات وتاريخ التجديد / The tenant's subscription: plan, state, modules, and renewal date",
+        "description": "يُرجع الاشتراك الجاري كاملاً في طلب واحد: الخطّة وسعرها نصّاً، وحالة الاشتراك، و**حالة كل وحدة**، وتاريخ التجديد التالي.\n\nوحالةُ الوحدة ثلاث لا أكثر: Entitled تقرأ وتكتب، وReadOnly تقرأ كاملاً ولا تكتب — وهي حالة **الاشتراك المنقطع** — وNotEntitled لم تُشترَ قط. وpostsJournal على كل وحدة يقول إن عملها يبلغ الدفتر، وهو ما يجعل أرضيتها قراءةً لا نزعاً: منشأةٌ رحّلت قيداً واحداً لها دفتر، ولا يُنتزع منها بسبب سداد.\n\nوrenewsOn معدومٌ حين لا يكون الاشتراك فعّالاً: تاريخٌ يُعرض على اشتراك منقطع يُقرأ وعداً بأن الخدمة ستعود من تلقاء نفسها، وهي لا تعود.\n\n**والقراءة حقُّ صاحب الاشتراك**: يبلغها اعتماد المستأجر نفسه بلا شرط دور.\n\nReturns the whole current subscription in one request: the plan and its price as text, the subscription state, **each module's state**, and the next renewal date.\n\nA module's state is one of three: Entitled reads and writes; ReadOnly reads fully and writes nothing — this is the **lapsed subscription** state; NotEntitled was never purchased. postsJournal on each module says its work reaches the ledger, which is what makes its floor read-only rather than removal: a company that posted a single entry has a ledger, and it is not taken away over payment.\n\nrenewsOn is null when the subscription is not active: a date shown on a lapsed subscription reads as a promise that service will return by itself, and it does not.\n\n**Reading is the subscriber's own right**: the tenant's own credential reaches it with no role condition.",
+        "responses": {
+          "200": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Subscription"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "معرّف المستأجر في المسار ليس معرّفاً صالحاً. / The tenant identifier in the path is not valid.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "لا اشتراك لهذا المستأجر في سجل الأسطول. الرمز الثابت: subscription.not_found. / No subscription exists for this tenant in the fleet registry. Stable code: subscription.not_found.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "مستوى التحكّم غير مُهيَّأ لهذا الخادم. الرمز الثابت: fleet.unavailable. / The control plane is not configured for this server. Stable code: fleet.unavailable.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tenants/{tenantId}/subscription/lapse": {
+      "parameters": [
+        {
+          "name": "tenantId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف المستأجر. يُطابَق بمستأجر الاعتماد ويُرفض إن اختلف؛ ولا يُفرَّق في الرفض بين «لا وجود له» و«ليس مستأجرك». / The tenant identifier. It is matched against the credential's tenant and refused when it differs; the refusal does not distinguish 'does not exist' from 'not yours'.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "lapseSubscription",
+        "summary": "انقطاع الاشتراك / Lapse the subscription",
+        "description": "يُنهي الاشتراك ويهبط بكل وحدة إلى **أرضيتها**. ولا يحجب قراءةً ولا يُنتزع سجلّاً: من انقطع اشتراكه **يدخل ويقرأ** — يفتح جلسته، ويقرأ ميزان المراجعة والتقارير، ويصدّر بياناته كاملةً — و**يُردّ عند أول كتابة** بـ403 وentitlement.read_only ورسالةٍ تُسمّي السبب بالعربية والإنجليزية.\n\n**والحجّة ليست تجارية أولاً:** حفظ السجلات المحاسبية وإبرازها التزامٌ على المنشأة، ونزاعٌ تجاري بيننا وبين عميل لا يجوز أن يضعه في مخالفة نظامية.\n\n**وهو فعل مشغِّل** يُطلب باعتماد التزويد وحده، وسندُه إلزامي.\n\nEnds the subscription and drops every module to its **floor**. It blocks no reading and takes no record away: a lapsed tenant **signs in and reads** — opens a session, reads the trial balance and reports, and exports its own data in full — and is **refused at the first write** with 403, entitlement.read_only, and a message naming the cause in Arabic and English.\n\n**The argument is not commercial first:** keeping and producing accounting records is an obligation on the company, and a commercial dispute between us and a customer must not put them in breach.\n\n**It is an operator act** requested with the provisioning credential alone, and its authority is mandatory.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubscriptionTransitionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Subscription"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "الجسم لا يطابق العقد، أو معرّف المستأجر في المسار غير صالح. / The body does not match the contract, or the tenant identifier in the path is not valid.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "لا اشتراك لهذا المستأجر. الرمز الثابت: subscription.not_found. / No subscription exists for this tenant. Stable code: subscription.not_found.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "سند أو سبب مفقود. الرمز الثابت: subscription.authority_missing. / A missing authority or reason. Stable code: subscription.authority_missing.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "مستوى التحكّم غير مُهيَّأ. الرمز الثابت: fleet.unavailable. / The control plane is not configured. Stable code: fleet.unavailable.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tenants/{tenantId}/subscription/plan-changes": {
+      "parameters": [
+        {
+          "name": "tenantId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف المستأجر. يُطابَق بمستأجر الاعتماد ويُرفض إن اختلف؛ ولا يُفرَّق في الرفض بين «لا وجود له» و«ليس مستأجرك». / The tenant identifier. It is matched against the credential's tenant and refused when it differs; the refusal does not distinguish 'does not exist' from 'not yours'.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "changeSubscriptionPlan",
+        "summary": "تغيير الخطّة / Change the plan",
+        "description": "مورد فرعي مستقلّ لا PUT على الاشتراك: تغيير الخطّة **حدثٌ** له سندٌ وفاعلٌ ولحظة، ويُغلق صفّ اشتراك ويفتح آخر — فيبقى تاريخ الاشتراك مقروءاً.\n\nوما تغطّيه الخطّة الجديدة يصير مستحقّاً، و**ما خرج منها يهبط إلى أرضيته لا إلى العدم**: وحدةٌ بلغ عملُها الدفتر تبقى مقروءةً كاملةً بعد خروجها من الحزمة.\n\n**والسند إلزامي** — رقم عقد، أو حدث سداد، أو تذكرة، أو قرار مُوثَّق — لأن الاستحقاق يحكم أي بيانات مالية يجوز إنشاؤها، فتغييره حدث تدقيقي لا إعداد واجهة.\n\n**وهو فعل مشغِّل** يُطلب باعتماد التزويد وحده: لا قناة سداد في هذا المنتَج بعد، فبابٌ يرفع به صاحبُ الاشتراك خطّته هو ترقيةٌ بلا ثمن. الرمز الثابت عند الرفض: subscription.operator_credential_required.\n\nA subresource, not a PUT on the subscription: a plan change is an **event** with authority, an actor, and an instant; it closes one subscription row and opens another, so the subscription's history stays readable.\n\nWhat the new plan covers becomes entitled, and **what falls outside it drops to its floor, not to nothing**: a module whose work reached the ledger stays fully readable after leaving the package.\n\n**Authority is mandatory** — a contract number, a payment event, a ticket, or a documented decision — because entitlement governs which financial data may be created, so changing it is an audit event, not a UI setting.\n\n**It is an operator act** requested with the provisioning credential alone: this product has no payment channel yet, so a door letting a subscriber raise their own plan is a free upgrade. Stable refusal code: subscription.operator_credential_required.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePlanRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Subscription"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "الجسم لا يطابق العقد، أو معرّف المستأجر في المسار غير صالح. / The body does not match the contract, or the tenant identifier in the path is not valid.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "لا اشتراك لهذا المستأجر. الرمز الثابت: subscription.not_found. / No subscription exists for this tenant. Stable code: subscription.not_found.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "خطّة غير معروفة، أو سند أو سبب مفقود. الرموز: subscription.plan_unknown · subscription.authority_missing. / An unknown plan, or a missing authority or reason. Codes: subscription.plan_unknown, subscription.authority_missing.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "مستوى التحكّم غير مُهيَّأ. الرمز الثابت: fleet.unavailable. / The control plane is not configured. Stable code: fleet.unavailable.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tenants/{tenantId}/subscription/resumption": {
+      "parameters": [
+        {
+          "name": "tenantId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف المستأجر. يُطابَق بمستأجر الاعتماد ويُرفض إن اختلف؛ ولا يُفرَّق في الرفض بين «لا وجود له» و«ليس مستأجرك». / The tenant identifier. It is matched against the credential's tenant and refused when it differs; the refusal does not distinguish 'does not exist' from 'not yours'.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "resumeSubscription",
+        "summary": "استئناف الاشتراك / Resume the subscription",
+        "description": "يفتح صفّ اشتراك فعّالاً جديداً على الخطّة نفسها، ويُعيد وحداتها إلى الاستحقاق — فتعود الكتابة كما كانت، ولم تُفقد بيانةٌ واحدة أثناء الانقطاع.\n\n**وهو فعل مشغِّل** يُطلب باعتماد التزويد وحده: بابٌ يستأنف به صاحبُ الاشتراك اشتراكه المنقطع هو إلغاءٌ للانقطاع نفسه.\n\nOpens a new active subscription row on the same plan and returns its modules to entitlement — writing resumes exactly as before, and not one datum was lost during the lapse.\n\n**It is an operator act** requested with the provisioning credential alone: a door letting a subscriber resume their own lapsed subscription undoes the lapse itself.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubscriptionTransitionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Subscription"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "الجسم لا يطابق العقد، أو معرّف المستأجر في المسار غير صالح. / The body does not match the contract, or the tenant identifier in the path is not valid.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "لا اشتراك لهذا المستأجر. الرمز الثابت: subscription.not_found. / No subscription exists for this tenant. Stable code: subscription.not_found.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "سند أو سبب مفقود. الرمز الثابت: subscription.authority_missing. / A missing authority or reason. Stable code: subscription.authority_missing.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "مستوى التحكّم غير مُهيَّأ. الرمز الثابت: fleet.unavailable. / The control plane is not configured. Stable code: fleet.unavailable.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/docs": {
       "get": {
         "operationId": "readDocsPage",
@@ -3504,6 +4240,53 @@
           "ok",
           "reasonAr",
           "verdict"
+        ],
+        "additionalProperties": false
+      },
+      "ChangeMembershipRoleRequest": {
+        "type": "object",
+        "description": "طلب تغيير دور عضوية. ودورٌ لا أثر له زينة: Reader يقرأ ولا يكتب، وOwner يدعو ويسحب ويغيّر الأدوار. / A membership role-change request. A role with no effect is decoration: Reader reads and writes nothing, and Owner invites, revokes, and changes roles.",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "Reader",
+              "Contributor",
+              "Owner"
+            ],
+            "description": "الدور المطلوب. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The requested role. Matched literally and case-sensitively; a number is never accepted in place of a name."
+          }
+        },
+        "required": [
+          "role"
+        ],
+        "additionalProperties": false
+      },
+      "ChangePlanRequest": {
+        "type": "object",
+        "description": "طلب تغيير الخطّة. والسند إلزامي: الاستحقاق يحكم أي بيانات مالية يجوز إنشاؤها، فتغييره حدث تدقيقي لا إعداد واجهة. / A plan-change request. Authority is mandatory: entitlement governs which financial data may be created, so changing it is an audit event, not a UI setting.",
+        "properties": {
+          "authority": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "السند: رقم عقد، أو حدث سداد، أو تذكرة دعم، أو قرار مُوثَّق. **ولا تغيير استحقاق بلا سند**: الاستحقاق يحكم أي بيانات مالية يجوز إنشاؤها، فتغييره حدث تدقيقي. / The authority: a contract number, a payment event, a support ticket, or a documented decision. **No entitlement change without authority**: entitlement governs which financial data may be created, so changing it is an audit event."
+          },
+          "planCode": {
+            "type": "string",
+            "maxLength": 32,
+            "description": "رمز الخطّة الجديدة من مجموعة الخطط المعروفة؛ ورمزٌ غير معروف يُرفض بـsubscription.plan_unknown ورسالةٍ تُسمّي المعروف. / The new plan's code from the known set; an unknown code is refused with subscription.plan_unknown and a message naming what is known."
+          },
+          "reasonAr": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "سبب التغيير بالعربية — يُكتب في سجلّ تدقيق الاستحقاق. / The change's reason in Arabic — written to the entitlement audit log."
+          }
+        },
+        "required": [
+          "authority",
+          "planCode",
+          "reasonAr"
         ],
         "additionalProperties": false
       },
@@ -4355,6 +5138,66 @@
         ],
         "additionalProperties": false
       },
+      "MembershipRevocation": {
+        "type": "object",
+        "description": "عضويةٌ سُحبت: من كان، وبأي دور، ومتى. والصفّ لا يبقى «موقوفاً»: العضوية صلاحيةُ وصولٍ جارية لا سجلّ محاسبي، وأثرُها التاريخي في سجلّ التدقيق — وصلاحيةٌ موقوفة تبقى في جدول وصول هي الشكل الذي يُنسى فيه أحدهم مُفعَّلاً. / A revoked membership: who it was, in which role, and when. The row is not left 'suspended': a membership is a live access grant rather than an accounting record, and its history lives in the audit log — a suspended grant left in an access table is exactly how somebody stays enabled by being forgotten.",
+        "properties": {
+          "companyId": {
+            "type": "string",
+            "maxLength": 36,
+            "description": "المنشأة. / The company."
+          },
+          "member": {
+            "$ref": "#/components/schemas/Membership"
+          },
+          "revokedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "لحظة السحب. بصيغة ISO 8601 الدوّارة بتوقيت UTC وبأرقام لاتينية — الصيغة نفسها التي يقرأ بها الخادم صلاحية اعتماده من إعداده، فلا وقتٌ يُكتب بشكل ويُقرأ بآخر. / The instant of revocation. In round-trip ISO 8601, UTC, Latin digits — the same spelling the server reads a credential expiry with from its own configuration, so no instant is written one way and read another."
+          }
+        },
+        "required": [
+          "companyId",
+          "member",
+          "revokedAt"
+        ],
+        "additionalProperties": false
+      },
+      "MembershipRoleChange": {
+        "type": "object",
+        "description": "دورٌ تغيّر: العضوية بدورها الجديد، والدور السابق، ولحظة التغيير. وpreviousRole يجعل العميل يعرف اتجاه التغيير بلا طلبٍ ثانٍ. / A changed role: the membership in its new role, the previous role, and the instant of the change. previousRole lets a client see the direction of the change without a second request.",
+        "properties": {
+          "changedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "لحظة التغيير. بصيغة ISO 8601 الدوّارة بتوقيت UTC وبأرقام لاتينية — الصيغة نفسها التي يقرأ بها الخادم صلاحية اعتماده من إعداده، فلا وقتٌ يُكتب بشكل ويُقرأ بآخر. / The instant of the change. In round-trip ISO 8601, UTC, Latin digits — the same spelling the server reads a credential expiry with from its own configuration, so no instant is written one way and read another."
+          },
+          "companyId": {
+            "type": "string",
+            "maxLength": 36,
+            "description": "المنشأة. / The company."
+          },
+          "member": {
+            "$ref": "#/components/schemas/Membership"
+          },
+          "previousRole": {
+            "type": "string",
+            "enum": [
+              "Reader",
+              "Contributor",
+              "Owner"
+            ],
+            "description": "الدور السابق. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The previous role. Matched literally and case-sensitively; a number is never accepted in place of a name."
+          }
+        },
+        "required": [
+          "changedAt",
+          "companyId",
+          "member",
+          "previousRole"
+        ],
+        "additionalProperties": false
+      },
       "Money": {
         "type": "string",
         "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$",
@@ -4973,6 +5816,99 @@
         "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$",
         "description": "كمّية نصّاً بمقياس لا يتجاوز أربعاً، بالنحو الذي تخضع له المبالغ. وهي ليست مبلغاً — ولذلك لها مخطّطها — لكنها تُضرب في مبلغ، فأي فقدان دقّة فيها يصل إلى المال. / A quantity as a string with at most four decimal places, under the grammar that governs amounts. It is not an amount — hence its own schema — but it is multiplied by one, so any precision lost in it reaches the money."
       },
+      "RegisterTenantRequest": {
+        "type": "object",
+        "description": "طلب التسجيل الأول. **ولا حقل خطّة فيه**: هذا بابٌ يُخدَم بلا اعتماد، وحقلٌ يختار منه الطالب حزمته يمنح الحزمة الشاملة لمن كتب اسمها. **ولا حقل مستأجر ولا معرّف منشأة**: كلاهما مشتقٌّ حتمياً من requestKey، وهو ما يجعل إعادة الإرسال تصل إلى المستأجر نفسه لا إلى ثانٍ. / The first-registration request. **It carries no plan field**: this door is served without a credential, and a field letting the caller pick their package hands the full one to whoever types its name. **It carries no tenant and no company identifier**: both are derived deterministically from requestKey, which is what makes a resend reach the same tenant rather than a second one.",
+        "properties": {
+          "requestKey": {
+            "type": "string",
+            "minLength": 16,
+            "maxLength": 128,
+            "description": "مفتاح الطلب: قيمة **عشوائية** يولّدها العميل ويحتفظ بها، ومنها تُشتقّ كل معرّفات التسجيل اشتقاقاً حتمياً. فإعادةُ الإرسال به تردّ المستأجر نفسه ولا تُنشئ ثانياً — ومفتاحٌ قصير يصير تخمينُه ممكناً. / The request key: a **random** value the client generates and keeps, from which every registration identifier is derived deterministically. Resending it returns the same tenant rather than creating a second one — and a short key becomes guessable."
+          },
+          "companyNameAr": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "اسم المنشأة بالعربية — وهو السجلّ لا ترجمته. / The company's Arabic name — the record itself, not a translation of it."
+          },
+          "nameTranslations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NameValue"
+            },
+            "description": "ترجمات اسم المنشأة، مفاتيحها أوسمة BCP-47. ولا حقل إنجليزي ثابت: الإنجليزية واحدة من N. وسجل الأسطول يقرأ منها الوسم en لتقاريره، ويرتدّ إلى العربية إن غاب. / The company name's translations, keyed by BCP-47 tags. There is no fixed English field: English is one of N. The fleet registry reads the en tag from here for its reporting and falls back to Arabic when absent."
+          },
+          "ownerNameAr": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "اسم أول مالك بالعربية — يظهر في قائمة الأعضاء وفي سجلّ التدقيق. / The first owner's Arabic name — it appears in the member list and the audit log."
+          }
+        },
+        "required": [
+          "companyNameAr",
+          "ownerNameAr",
+          "requestKey"
+        ],
+        "additionalProperties": false
+      },
+      "RegisteredTenant": {
+        "type": "object",
+        "description": "مستأجرٌ سُجِّل، ومعه ما يفتح به مالكُه جلسته. وenrolmentCredential يخرج **مرّة واحدة** — المُودَع بصمته — وهو معدومٌ عند إعادة الإرسال بالمفتاح نفسه: النتيجة هي هي، والسرّ لا يُسكّ مرّتين. / A registered tenant with what opens its owner's session. enrolmentCredential leaves the server **once** — only its digest is stored — and it is null on a resend with the same key: the result is the same, and the secret is not minted twice.",
+        "properties": {
+          "alreadyRegistered": {
+            "type": "boolean",
+            "description": "‏true حين ردّ هذا الطلبُ تسجيلاً سابقاً بالمفتاح نفسه، ومعه رمز 200 بدل 201. / true when this request returned an earlier registration with the same key, alongside 200 instead of 201."
+          },
+          "companyId": {
+            "type": "string",
+            "maxLength": 36,
+            "description": "أول منشأة للمستأجر — وهي التي تُؤسَّس ويُرحَّل فيها. / The tenant's first company — the one that is set up and posted into."
+          },
+          "enrolmentCredential": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 512,
+            "description": "اعتماد الانتساب، أو null عند إعادة الإرسال. / The enrolment credential, or null on a resend."
+          },
+          "enrolmentExpiresAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 64,
+            "description": "لحظة انقضاء الدعوة بصيغة ISO 8601 الدوّارة، أو null عند إعادة الإرسال. / The invitation's expiry in round-trip ISO 8601, or null on a resend."
+          },
+          "owner": {
+            "$ref": "#/components/schemas/Membership"
+          },
+          "subscription": {
+            "$ref": "#/components/schemas/Subscription"
+          },
+          "tenantCode": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "رمز المستأجر القصير في سجل الأسطول — مشتقٌّ من معرّفه ولا يختاره العميل. / The tenant's short code in the fleet registry — derived from its identifier, never chosen by the client."
+          },
+          "tenantId": {
+            "type": "string",
+            "maxLength": 36,
+            "description": "المستأجر المُنشأ. / The created tenant."
+          }
+        },
+        "required": [
+          "alreadyRegistered",
+          "companyId",
+          "enrolmentCredential",
+          "enrolmentExpiresAt",
+          "owner",
+          "subscription",
+          "tenantCode",
+          "tenantId"
+        ],
+        "additionalProperties": false
+      },
       "RenewSessionRequest": {
         "type": "object",
         "description": "طلب تجديد جلسة. واعتماد التجديد يُستهلك بهذا النداء ولا يُقبل ثانيةً — وتقديمه مرّتين يُسقط العائلة كلّها. / A request to renew a session. The refresh credential is consumed by this call and never accepted again — presenting it twice drops the whole family.",
@@ -5317,6 +6253,207 @@
         "required": [
           "kind",
           "partyId"
+        ],
+        "additionalProperties": false
+      },
+      "Subscription": {
+        "type": "object",
+        "description": "الاشتراك الجاري كاملاً: الخطّة وسعرها نصّاً، والحالة، وحالة كل وحدة، وتاريخ التجديد. **وكل مبلغ نصّ** بأربع خانات — لا رمز رقمي في JSON. / The whole current subscription: the plan and its price as text, the state, each module's state, and the renewal date. **Every amount is a string** with four decimals — never a JSON number token.",
+        "properties": {
+          "currency": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$",
+            "description": "رمز عملة ISO 4217 بثلاثة محارف لاتينية كبيرة. واللاتينية هنا شرط سلامة سلسلة التجزئة لا تفضيل عرض. / An ISO 4217 currency code, three upper-case ASCII letters. ASCII here is a hash-chain safety requirement, not a display preference."
+          },
+          "endsOn": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 10,
+            "description": "تاريخ انتهاء الاشتراك بصيغة yyyy-MM-dd، أو null لاشتراك جارٍ بلا نهاية معلومة. / The subscription's end date as yyyy-MM-dd, or null for a running subscription with no known end."
+          },
+          "includedUsers": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100000,
+            "description": "عدد المستخدمين المُضمَّنين في السعر الشهري. / The number of users included in the monthly price."
+          },
+          "monthlyPrice": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "modules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SubscriptionModule"
+            },
+            "description": "الوحدات وحالاتها، مرتَّبةً برمزها ترتيباً حرفياً ثابتاً. / The modules and their states, ordered by code in a fixed ordinal order."
+          },
+          "nameAr": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "اسم المستأجر بالعربية — السجلّ. / The tenant's Arabic name — the record."
+          },
+          "nameTranslations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NameValue"
+            },
+            "description": "ترجمات اسم المستأجر. / The tenant name's translations."
+          },
+          "perUserPrice": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "planCode": {
+            "type": "string",
+            "maxLength": 32,
+            "description": "رمز الخطّة. / The plan code."
+          },
+          "planNameAr": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "اسم الخطّة بالعربية. / The plan's Arabic name."
+          },
+          "planNameTranslations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NameValue"
+            },
+            "description": "ترجمات اسم الخطّة. / The plan name's translations."
+          },
+          "renewsOn": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 10,
+            "description": "تاريخ التجديد التالي بصيغة yyyy-MM-dd، أو null لاشتراك ليس فعّالاً — وتاريخٌ يُعرض على اشتراك منقطع يُقرأ وعداً بعودةٍ لا تقع. / The next renewal date as yyyy-MM-dd, or null when the subscription is not active — a date shown on a lapsed subscription reads as a promise of a return that does not happen."
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "Active",
+              "Lapsed",
+              "Cancelled"
+            ],
+            "description": "حالة الاشتراك. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The subscription's state. Matched literally and case-sensitively; a number is never accepted in place of a name."
+          },
+          "startedOn": {
+            "type": "string",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+            "description": "تاريخ بدء الاشتراك الجاري. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The current subscription's start date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period."
+          },
+          "subscriptionId": {
+            "type": "string",
+            "maxLength": 36,
+            "description": "معرّف الاشتراك الجاري. / The current subscription's identifier."
+          },
+          "tenantCode": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "رمز المستأجر القصير. / The tenant's short code."
+          },
+          "tenantId": {
+            "type": "string",
+            "maxLength": 36,
+            "description": "المستأجر. / The tenant."
+          },
+          "tenantStatus": {
+            "type": "string",
+            "enum": [
+              "Provisioning",
+              "Active",
+              "Suspended",
+              "Archived"
+            ],
+            "description": "حالة المستأجر في سجل الأسطول. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The tenant's status in the fleet registry. Matched literally and case-sensitively; a number is never accepted in place of a name."
+          }
+        },
+        "required": [
+          "currency",
+          "endsOn",
+          "includedUsers",
+          "modules",
+          "monthlyPrice",
+          "nameAr",
+          "nameTranslations",
+          "perUserPrice",
+          "planCode",
+          "planNameAr",
+          "planNameTranslations",
+          "renewsOn",
+          "startedOn",
+          "state",
+          "subscriptionId",
+          "tenantCode",
+          "tenantId",
+          "tenantStatus"
+        ],
+        "additionalProperties": false
+      },
+      "SubscriptionModule": {
+        "type": "object",
+        "description": "وحدةٌ في الاشتراك وحالتها. وpostsJournal يقول إن عملها يبلغ الدفتر، وهو ما يجعل أرضيتها قراءةً لا نزعاً عند الانقطاع. / A module in the subscription and its state. postsJournal says its work reaches the ledger, which is what makes its floor read-only rather than removal when the subscription lapses.",
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 16,
+            "description": "رمز الوحدة في كتالوج مستوى التحكّم. / The module code in the control-plane catalogue."
+          },
+          "nameAr": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "اسمها بالعربية — السجلّ. / Its Arabic name — the record."
+          },
+          "nameTranslations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NameValue"
+            },
+            "description": "ترجمات اسمها، مفاتيحها أوسمة BCP-47. / Its name's translations, keyed by BCP-47 tags."
+          },
+          "postsJournal": {
+            "type": "boolean",
+            "description": "هل يبلغ عملُها الدفتر؟ ووحدةٌ تُرحّل قيوداً لا تُنتزَع بسبب سداد. / Does its work reach the ledger? A module that posts entries is not taken away over payment."
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "NotEntitled",
+              "ReadOnly",
+              "Entitled"
+            ],
+            "description": "حالة الوحدة. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The module's state. Matched literally and case-sensitively; a number is never accepted in place of a name."
+          }
+        },
+        "required": [
+          "code",
+          "nameAr",
+          "nameTranslations",
+          "postsJournal",
+          "state"
+        ],
+        "additionalProperties": false
+      },
+      "SubscriptionTransitionRequest": {
+        "type": "object",
+        "description": "طلب انقطاع أو استئناف — بالسند نفسه وللسبب نفسه. / A lapse or resumption request — with the same authority and for the same reason.",
+        "properties": {
+          "authority": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "السند: رقم عقد، أو حدث سداد، أو تذكرة دعم، أو قرار مُوثَّق. **ولا تغيير استحقاق بلا سند**: الاستحقاق يحكم أي بيانات مالية يجوز إنشاؤها، فتغييره حدث تدقيقي. / The authority: a contract number, a payment event, a support ticket, or a documented decision. **No entitlement change without authority**: entitlement governs which financial data may be created, so changing it is an audit event."
+          },
+          "reasonAr": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "السبب بالعربية — يُكتب في سجلّ تدقيق الاستحقاق. / The reason in Arabic — written to the entitlement audit log."
+          }
+        },
+        "required": [
+          "authority",
+          "reasonAr"
         ],
         "additionalProperties": false
       },

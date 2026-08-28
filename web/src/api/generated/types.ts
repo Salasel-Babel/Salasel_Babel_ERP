@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     2eb37c204d1d48eba87addf22298f81af646a2e1f5e5546fa8b2ea4b1357bcfa
+     26b1680653da1e20905a1f589663c0fb61493232d71e322610b7703fbc5a4587
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -127,6 +127,22 @@ export interface ChainVerification {
   reasonAr: string;
   /** رمز الحكم الثابت. / The stable verdict code. */
   verdict: string;
+}
+
+/** طلب تغيير دور عضوية. ودورٌ لا أثر له زينة: Reader يقرأ ولا يكتب، وOwner يدعو ويسحب ويغيّر الأدوار. / A membership role-change request. A role with no effect is decoration: Reader reads and writes nothing, and Owner invites, revokes, and changes roles. */
+export interface ChangeMembershipRoleRequest {
+  /** الدور المطلوب. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The requested role. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  role: "Reader" | "Contributor" | "Owner";
+}
+
+/** طلب تغيير الخطّة. والسند إلزامي: الاستحقاق يحكم أي بيانات مالية يجوز إنشاؤها، فتغييره حدث تدقيقي لا إعداد واجهة. / A plan-change request. Authority is mandatory: entitlement governs which financial data may be created, so changing it is an audit event, not a UI setting. */
+export interface ChangePlanRequest {
+  /** السند: رقم عقد، أو حدث سداد، أو تذكرة دعم، أو قرار مُوثَّق. **ولا تغيير استحقاق بلا سند**: الاستحقاق يحكم أي بيانات مالية يجوز إنشاؤها، فتغييره حدث تدقيقي. / The authority: a contract number, a payment event, a support ticket, or a documented decision. **No entitlement change without authority**: entitlement governs which financial data may be created, so changing it is an audit event. */
+  authority: string;
+  /** رمز الخطّة الجديدة من مجموعة الخطط المعروفة؛ ورمزٌ غير معروف يُرفض بـsubscription.plan_unknown ورسالةٍ تُسمّي المعروف. / The new plan's code from the known set; an unknown code is refused with subscription.plan_unknown and a message naming what is known. */
+  planCode: string;
+  /** سبب التغيير بالعربية — يُكتب في سجلّ تدقيق الاستحقاق. / The change's reason in Arabic — written to the entitlement audit log. */
+  reasonAr: string;
 }
 
 /** إذن استثنائي بالترحيل في فترة مقفلة. ليس علماً منطقياً بل إذن موثَّق: من أذن وبأي صلاحية ولأي سبب. والفترة المقفلة نهائياً لا يفتحها هذا الإذن ولا غيره. / A documented exceptional permission to post into a closed period — who authorised it, under which permission, and why. A permanently closed period is opened by no permission. */
@@ -395,6 +411,26 @@ export interface MembershipList {
   members: Membership[];
 }
 
+/** عضويةٌ سُحبت: من كان، وبأي دور، ومتى. والصفّ لا يبقى «موقوفاً»: العضوية صلاحيةُ وصولٍ جارية لا سجلّ محاسبي، وأثرُها التاريخي في سجلّ التدقيق — وصلاحيةٌ موقوفة تبقى في جدول وصول هي الشكل الذي يُنسى فيه أحدهم مُفعَّلاً. / A revoked membership: who it was, in which role, and when. The row is not left 'suspended': a membership is a live access grant rather than an accounting record, and its history lives in the audit log — a suspended grant left in an access table is exactly how somebody stays enabled by being forgotten. */
+export interface MembershipRevocation {
+  /** المنشأة. / The company. */
+  companyId: string;
+  member: Membership;
+  /** لحظة السحب. بصيغة ISO 8601 الدوّارة بتوقيت UTC وبأرقام لاتينية — الصيغة نفسها التي يقرأ بها الخادم صلاحية اعتماده من إعداده، فلا وقتٌ يُكتب بشكل ويُقرأ بآخر. / The instant of revocation. In round-trip ISO 8601, UTC, Latin digits — the same spelling the server reads a credential expiry with from its own configuration, so no instant is written one way and read another. */
+  revokedAt: string;
+}
+
+/** دورٌ تغيّر: العضوية بدورها الجديد، والدور السابق، ولحظة التغيير. وpreviousRole يجعل العميل يعرف اتجاه التغيير بلا طلبٍ ثانٍ. / A changed role: the membership in its new role, the previous role, and the instant of the change. previousRole lets a client see the direction of the change without a second request. */
+export interface MembershipRoleChange {
+  /** لحظة التغيير. بصيغة ISO 8601 الدوّارة بتوقيت UTC وبأرقام لاتينية — الصيغة نفسها التي يقرأ بها الخادم صلاحية اعتماده من إعداده، فلا وقتٌ يُكتب بشكل ويُقرأ بآخر. / The instant of the change. In round-trip ISO 8601, UTC, Latin digits — the same spelling the server reads a credential expiry with from its own configuration, so no instant is written one way and read another. */
+  changedAt: string;
+  /** المنشأة. / The company. */
+  companyId: string;
+  member: Membership;
+  /** الدور السابق. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The previous role. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  previousRole: "Reader" | "Contributor" | "Owner";
+}
+
 /** مبلغ نصّاً، بمقياس لا يتجاوز أربع خانات عشرية. النحو المقبول كاملاً: -?(0|[1-9][0-9]*)(\.[0-9]{1,4})? — فتُرفض الصيغة الأسّية، والصفر البادئ، والإشارة الموجبة الصريحة، والفراغ، والأرقام العربية-الهندية والديفاناغارية، وكل ما زاد على أربع خانات. ورمزٌ رقمي في هذا الحقل يُرفض الطلب بسببه: JSON لا يملك نوعاً عشرياً، وأغلب العملاء يمرّرون الرمز الرقمي على فاصلة عائمة ثنائية فيقع فقدان الدقّة قبل أن يصل الطلب. / An amount as a string with at most four decimal places. The full accepted grammar is -?(0|[1-9][0-9]*)(\.[0-9]{1,4})? — exponent notation, leading zeros, an explicit plus sign, whitespace, Arabic-Indic and Devanagari digits, and any fifth decimal are all refused. A JSON number token in this field fails the request: JSON has no decimal type, and most clients route a number token through a binary double, so precision is lost before the request arrives. */
 /* Money مُعرَّف في ../money كنوع محتجز وقت التشغيل. */
 
@@ -586,6 +622,36 @@ export interface PutCapabilityProfileRequest {
 /** كمّية نصّاً بمقياس لا يتجاوز أربعاً، بالنحو الذي تخضع له المبالغ. وهي ليست مبلغاً — ولذلك لها مخطّطها — لكنها تُضرب في مبلغ، فأي فقدان دقّة فيها يصل إلى المال. / A quantity as a string with at most four decimal places, under the grammar that governs amounts. It is not an amount — hence its own schema — but it is multiplied by one, so any precision lost in it reaches the money. */
 /* Quantity مُعرَّف في ../money كنوع محتجز وقت التشغيل. */
 
+/** طلب التسجيل الأول. **ولا حقل خطّة فيه**: هذا بابٌ يُخدَم بلا اعتماد، وحقلٌ يختار منه الطالب حزمته يمنح الحزمة الشاملة لمن كتب اسمها. **ولا حقل مستأجر ولا معرّف منشأة**: كلاهما مشتقٌّ حتمياً من requestKey، وهو ما يجعل إعادة الإرسال تصل إلى المستأجر نفسه لا إلى ثانٍ. / The first-registration request. **It carries no plan field**: this door is served without a credential, and a field letting the caller pick their package hands the full one to whoever types its name. **It carries no tenant and no company identifier**: both are derived deterministically from requestKey, which is what makes a resend reach the same tenant rather than a second one. */
+export interface RegisterTenantRequest {
+  /** اسم المنشأة بالعربية — وهو السجلّ لا ترجمته. / The company's Arabic name — the record itself, not a translation of it. */
+  companyNameAr: string;
+  /** ترجمات اسم المنشأة، مفاتيحها أوسمة BCP-47. ولا حقل إنجليزي ثابت: الإنجليزية واحدة من N. وسجل الأسطول يقرأ منها الوسم en لتقاريره، ويرتدّ إلى العربية إن غاب. / The company name's translations, keyed by BCP-47 tags. There is no fixed English field: English is one of N. The fleet registry reads the en tag from here for its reporting and falls back to Arabic when absent. */
+  nameTranslations?: NameValue[];
+  /** اسم أول مالك بالعربية — يظهر في قائمة الأعضاء وفي سجلّ التدقيق. / The first owner's Arabic name — it appears in the member list and the audit log. */
+  ownerNameAr: string;
+  /** مفتاح الطلب: قيمة **عشوائية** يولّدها العميل ويحتفظ بها، ومنها تُشتقّ كل معرّفات التسجيل اشتقاقاً حتمياً. فإعادةُ الإرسال به تردّ المستأجر نفسه ولا تُنشئ ثانياً — ومفتاحٌ قصير يصير تخمينُه ممكناً. / The request key: a **random** value the client generates and keeps, from which every registration identifier is derived deterministically. Resending it returns the same tenant rather than creating a second one — and a short key becomes guessable. */
+  requestKey: string;
+}
+
+/** مستأجرٌ سُجِّل، ومعه ما يفتح به مالكُه جلسته. وenrolmentCredential يخرج **مرّة واحدة** — المُودَع بصمته — وهو معدومٌ عند إعادة الإرسال بالمفتاح نفسه: النتيجة هي هي، والسرّ لا يُسكّ مرّتين. / A registered tenant with what opens its owner's session. enrolmentCredential leaves the server **once** — only its digest is stored — and it is null on a resend with the same key: the result is the same, and the secret is not minted twice. */
+export interface RegisteredTenant {
+  /** true حين ردّ هذا الطلبُ تسجيلاً سابقاً بالمفتاح نفسه، ومعه رمز 200 بدل 201. / true when this request returned an earlier registration with the same key, alongside 200 instead of 201. */
+  alreadyRegistered: boolean;
+  /** أول منشأة للمستأجر — وهي التي تُؤسَّس ويُرحَّل فيها. / The tenant's first company — the one that is set up and posted into. */
+  companyId: string;
+  /** اعتماد الانتساب، أو null عند إعادة الإرسال. / The enrolment credential, or null on a resend. */
+  enrolmentCredential: string | null;
+  /** لحظة انقضاء الدعوة بصيغة ISO 8601 الدوّارة، أو null عند إعادة الإرسال. / The invitation's expiry in round-trip ISO 8601, or null on a resend. */
+  enrolmentExpiresAt: string | null;
+  owner: Membership;
+  subscription: Subscription;
+  /** رمز المستأجر القصير في سجل الأسطول — مشتقٌّ من معرّفه ولا يختاره العميل. / The tenant's short code in the fleet registry — derived from its identifier, never chosen by the client. */
+  tenantCode: string;
+  /** المستأجر المُنشأ. / The created tenant. */
+  tenantId: string;
+}
+
 /** طلب تجديد جلسة. واعتماد التجديد يُستهلك بهذا النداء ولا يُقبل ثانيةً — وتقديمه مرّتين يُسقط العائلة كلّها. / A request to renew a session. The refresh credential is consumed by this call and never accepted again — presenting it twice drops the whole family. */
 export interface RenewSessionRequest {
   /** اعتماد التجديد الجاري. نصٌّ مبهم لا بنية فيه: لا يُحلَّل ولا يُشتقّ منه شيء، ويُقدَّم كما وصل. / The current refresh credential. An opaque string with no structure: never parsed, nothing derived from it, presented exactly as received. */
@@ -690,6 +756,66 @@ export interface Subledger {
   kind: "None" | "Customer" | "Supplier" | "Employee" | "Asset" | "Treasury";
   /** معرّف الطرف داخل الوحدة المالكة له. / The party identifier within its owning module. */
   partyId: string;
+}
+
+/** الاشتراك الجاري كاملاً: الخطّة وسعرها نصّاً، والحالة، وحالة كل وحدة، وتاريخ التجديد. **وكل مبلغ نصّ** بأربع خانات — لا رمز رقمي في JSON. / The whole current subscription: the plan and its price as text, the state, each module's state, and the renewal date. **Every amount is a string** with four decimals — never a JSON number token. */
+export interface Subscription {
+  /** رمز عملة ISO 4217 بثلاثة محارف لاتينية كبيرة. واللاتينية هنا شرط سلامة سلسلة التجزئة لا تفضيل عرض. / An ISO 4217 currency code, three upper-case ASCII letters. ASCII here is a hash-chain safety requirement, not a display preference. */
+  currency: string;
+  /** تاريخ انتهاء الاشتراك بصيغة yyyy-MM-dd، أو null لاشتراك جارٍ بلا نهاية معلومة. / The subscription's end date as yyyy-MM-dd, or null for a running subscription with no known end. */
+  endsOn: string | null;
+  /** عدد المستخدمين المُضمَّنين في السعر الشهري. / The number of users included in the monthly price. */
+  includedUsers: number;
+  /** الوحدات وحالاتها، مرتَّبةً برمزها ترتيباً حرفياً ثابتاً. / The modules and their states, ordered by code in a fixed ordinal order. */
+  modules: SubscriptionModule[];
+  monthlyPrice: Money;
+  /** اسم المستأجر بالعربية — السجلّ. / The tenant's Arabic name — the record. */
+  nameAr: string;
+  /** ترجمات اسم المستأجر. / The tenant name's translations. */
+  nameTranslations: NameValue[];
+  perUserPrice: Money;
+  /** رمز الخطّة. / The plan code. */
+  planCode: string;
+  /** اسم الخطّة بالعربية. / The plan's Arabic name. */
+  planNameAr: string;
+  /** ترجمات اسم الخطّة. / The plan name's translations. */
+  planNameTranslations: NameValue[];
+  /** تاريخ التجديد التالي بصيغة yyyy-MM-dd، أو null لاشتراك ليس فعّالاً — وتاريخٌ يُعرض على اشتراك منقطع يُقرأ وعداً بعودةٍ لا تقع. / The next renewal date as yyyy-MM-dd, or null when the subscription is not active — a date shown on a lapsed subscription reads as a promise of a return that does not happen. */
+  renewsOn: string | null;
+  /** تاريخ بدء الاشتراك الجاري. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The current subscription's start date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  startedOn: string;
+  /** حالة الاشتراك. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The subscription's state. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  state: "Active" | "Lapsed" | "Cancelled";
+  /** معرّف الاشتراك الجاري. / The current subscription's identifier. */
+  subscriptionId: string;
+  /** رمز المستأجر القصير. / The tenant's short code. */
+  tenantCode: string;
+  /** المستأجر. / The tenant. */
+  tenantId: string;
+  /** حالة المستأجر في سجل الأسطول. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The tenant's status in the fleet registry. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  tenantStatus: "Provisioning" | "Active" | "Suspended" | "Archived";
+}
+
+/** وحدةٌ في الاشتراك وحالتها. وpostsJournal يقول إن عملها يبلغ الدفتر، وهو ما يجعل أرضيتها قراءةً لا نزعاً عند الانقطاع. / A module in the subscription and its state. postsJournal says its work reaches the ledger, which is what makes its floor read-only rather than removal when the subscription lapses. */
+export interface SubscriptionModule {
+  /** رمز الوحدة في كتالوج مستوى التحكّم. / The module code in the control-plane catalogue. */
+  code: string;
+  /** اسمها بالعربية — السجلّ. / Its Arabic name — the record. */
+  nameAr: string;
+  /** ترجمات اسمها، مفاتيحها أوسمة BCP-47. / Its name's translations, keyed by BCP-47 tags. */
+  nameTranslations: NameValue[];
+  /** هل يبلغ عملُها الدفتر؟ ووحدةٌ تُرحّل قيوداً لا تُنتزَع بسبب سداد. / Does its work reach the ledger? A module that posts entries is not taken away over payment. */
+  postsJournal: boolean;
+  /** حالة الوحدة. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The module's state. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  state: "NotEntitled" | "ReadOnly" | "Entitled";
+}
+
+/** طلب انقطاع أو استئناف — بالسند نفسه وللسبب نفسه. / A lapse or resumption request — with the same authority and for the same reason. */
+export interface SubscriptionTransitionRequest {
+  /** السند: رقم عقد، أو حدث سداد، أو تذكرة دعم، أو قرار مُوثَّق. **ولا تغيير استحقاق بلا سند**: الاستحقاق يحكم أي بيانات مالية يجوز إنشاؤها، فتغييره حدث تدقيقي. / The authority: a contract number, a payment event, a support ticket, or a documented decision. **No entitlement change without authority**: entitlement governs which financial data may be created, so changing it is an audit event. */
+  authority: string;
+  /** السبب بالعربية — يُكتب في سجلّ تدقيق الاستحقاق. / The reason in Arabic — written to the entitlement audit log. */
+  reasonAr: string;
 }
 
 /** طلب تسجيل مورد — كطلب العميل ومعه رقم التسجيل الضريبي اختياراً. / A supplier registration request — the customer request plus an optional VAT registration number. */

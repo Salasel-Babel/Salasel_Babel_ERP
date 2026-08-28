@@ -36,11 +36,33 @@ public sealed class Rule02_ModulesCannotNameAnAccount
             "AccountCode مكشوف خارج الدفتر: القاعدة 2 تنهار عند هذه النقطة بالضبط.");
     }
 
+    /// <summary>
+    /// <b>ما تستثنيه القاعدة 2 — مُعلَناً لا مُصادفةً.</b>
+    /// <para>
+    /// كان نطاق هذا الفحص <b>ما يقع في مجلد المُخرَج</b>: تجميعاتٌ تُحمَّل لأن مشروعاً
+    /// ما يشير إليها. و<c>Babel.ControlPlane</c> لم يكن يشير إليه أحد، فلم يُمسح قط —
+    /// ثم أشار إليه الجذر التركيبي فظهر فيه <c>SeedAccount</c> «مخالفةً جديدة» وهي
+    /// قائمةٌ منذ الموجة الأولى. <b>ونطاقٌ يتغيّر بمرجعٍ جديد ليس نطاقاً</b>، فصار
+    /// مكتوباً هنا
+    /// (‏<c>traps.md#fakh-a-rule-scoped-by-what-happens-to-be-copied-to-the-output</c>).
+    /// </para>
+    /// <para>
+    /// <b>ولماذا مستوى التحكّم مستثنى:</b> القاعدة 2 تمنع <b>وحدةً</b> من أن
+    /// <b>تختار</b> حساباً عند وصف حدث، كي يبقى تعديل دليل الحسابات لدى العميل صفّاً
+    /// في جدول لا نشرَ إصدار. ومستوى التحكّم ليس وحدة منتَج ولا يصف حدثاً ولا يُرحّل
+    /// قيداً: هو يبذر <b>دليل الحسابات الابتدائي</b> عند تزويد مستأجر جديد — أي أنه
+    /// يكتب <b>صفوف ذلك الجدول</b> نفسه. ومنعُه من تسمية حساب يعني ألّا يوجد دليل
+    /// ابتدائي أصلاً. وهو محكومٌ بحدٍّ آخر أقوى: مجموعة مراجعه في <c>ModuleMap</c>
+    /// <b>فارغة</b>، فلا يستطيع أن يبلغ الدفتر ولا أن يُرحّل.
+    /// </para>
+    /// </summary>
+    private static readonly string[] OutsideTheRule = [ModuleMap.Ledger, ModuleMap.ControlPlane];
+
     [Fact]
     public void NoAssemblyOutsideTheLedgerDeclaresAnAccountIdentifierType()
     {
         List<string> violations = [.. BabelAssemblies.Product
-            .Where(static assembly => assembly.GetName().Name != ModuleMap.Ledger)
+            .Where(static assembly => !OutsideTheRule.Contains(assembly.GetName().Name, StringComparer.Ordinal))
             .SelectMany(BabelAssemblies.TypesOf)
             .Where(static type => !TypeShapes.IsCompilerGenerated(type))
             .Where(static type => Identifiers.ContainsWord(type.Name, AccountWords))

@@ -12,12 +12,27 @@ namespace Babel.Core.Access;
 /// <param name="Inviter">الداعي — ويجب أن يكون مالكاً فيها.</param>
 /// <param name="DisplayNameAr">اسم المدعوّ بالعربية — السجلّ.</param>
 /// <param name="Role">دوره.</param>
+/// <param name="Member">
+/// معرّف المدعوّ إن كان <b>مشتقّاً</b> لا مسكوكاً — و<c>null</c> في الحالة العامة.
+/// <para>
+/// <b>ولماذا وُجد هذا الحقل، ولمن:</b> التسجيل الأول باب مفتوح <b>حصينٌ ضد التكرار</b>،
+/// وحصانتُه تقوم على أن كل معرّفاته مشتقّة حتمياً من مفتاح الطلب — فإعادةُ الإرسال تصطدم
+/// بالمفتاح الفريد <c>(المنشأة، المستخدم)</c> فتُقرأ «سُجِّل من قبل». ومعرّفٌ يُسكّ
+/// عشوائياً في كل محاولة كان سيجعل كل إعادة إرسال <b>عضويةً ثانية لمالكٍ ثانٍ</b>.
+/// </para>
+/// <para>
+/// <b>ولا يصل هذا الحقل من السلك أبداً:</b> جسم <c>POST …/memberships</c> لا يحمله ولا
+/// يستطيع أن يحمله (‏<c>UnmappedMemberHandling = Disallow</c>)، والجذر التركيبي وحده
+/// يملؤه بقيمةٍ يشتقّها هو. ومعرّفٌ يختاره العميل هو انتحالٌ بحقل.
+/// </para>
+/// </param>
 public sealed record MembershipGrantRequest(
     TenantId Tenant,
     Guid Company,
     UserId Inviter,
     string DisplayNameAr,
-    MembershipRole Role);
+    MembershipRole Role,
+    UserId? Member = null);
 
 /// <summary>
 /// دورة حياة الجلسة والعضوية: <b>تُصدَر، وتدور، وتُبطَل</b>.
@@ -288,7 +303,8 @@ public sealed class AccessService : IApplicationService
         }
 
         DateTimeOffset now = _clock.GetUtcNow();
-        Membership membership = new(request.Company, new UserId(Guid.CreateVersion7()), request.Role, name, now);
+        Membership membership = new(
+            request.Company, request.Member ?? new UserId(Guid.CreateVersion7()), request.Role, name, now);
         Minted enrolment = Mint(now, AccessLimits.EnrolmentLifetime);
 
         bool granted = await _directory
@@ -307,6 +323,153 @@ public sealed class AccessService : IApplicationService
 
         return Result<GrantedMembership>.Success(
             new GrantedMembership(membership, new IssuedCredential(enrolment.Value, enrolment.ExpiresAt)));
+    }
+
+    /// <summary>
+    /// <b>يسحب عضوية</b> من منشأة. فعلُ مالكٍ فيها، ولا يُترك آخرَ مالكٍ يُسحب.
+    /// <para>
+    /// <b>والنيّة «كتابة»</b>: سحبُ عضوٍ تغييرٌ في حالة المنشأة لا إبرازٌ لسجلّ، فيُغلق
+    /// مع الوحدة المنقطعة كما تُغلق الدعوة. وهذا يفترق عن إبطال الجلسة عمداً: ذاك
+    /// يسحبه صاحبُه من نفسه ويجب أن يعمل في أسوأ يوم لا في أحسنه (ADR-0045 §٤).
+    /// </para>
+    /// <para>
+    /// <b>وأثرُه فوري بحكم البناء لا بحكم مهمّة تنظيف:</b> ما تبلغه الجلسة يُقرأ من
+    /// العضويات في كل طلب، فالصفّ المسحوب يختفي من المجموعة عند الطلب التالي.
+    /// </para>
+    /// </summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل — ويجب أن يكون مالكاً في المنشأة.</param>
+    /// <param name="company">المنشأة.</param>
+    /// <param name="member">العضو المطلوب سحبه.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    [RequiresEntitlement(BabelModule.Core, EntitlementAccess.Write)]
+    public async ValueTask<Result<MembershipRevocation>> RevokeMembershipAsync(
+        TenantId tenant,
+        UserId actor,
+        Guid company,
+        UserId member,
+        CancellationToken cancellationToken = default)
+    {
+        Result gate = await _enforcer
+            .EnsureAsync(tenant, actor, BabelModule.Core, EntitlementAccess.Write, "Core.Access.RevokeMembership", cancellationToken)
+            .ConfigureAwait(false);
+
+        if (gate.IsFailure)
+        {
+            return Result<MembershipRevocation>.Failure(gate.Errors);
+        }
+
+        Error? denied = await RefuseNonOwnerAsync(company, actor, cancellationToken).ConfigureAwait(false);
+        if (denied is not null)
+        {
+            return Result<MembershipRevocation>.Failure(denied);
+        }
+
+        MembershipRevocation revocation = await _directory
+            .RevokeMembershipAsync(company, member, _clock.GetUtcNow(), cancellationToken)
+            .ConfigureAwait(false);
+
+        Error? refusal = revocation.Outcome switch
+        {
+            MembershipMutation.NotFound => AccessErrors.MembershipNotFound,
+            MembershipMutation.LastOwner => AccessErrors.LastOwnerCannotBeRemoved,
+            _ => null,
+        };
+
+        if (refusal is not null)
+        {
+            return Result<MembershipRevocation>.Failure(refusal);
+        }
+
+        await RecordAsync(
+                tenant, actor, "access.membership_revoked", company,
+                member.Value.ToString("D", CultureInfo.InvariantCulture) + " · " + revocation.Membership!.Role,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        return Result<MembershipRevocation>.Success(revocation);
+    }
+
+    /// <summary>
+    /// <b>يغيّر دور عضوية</b>. فعلُ مالكٍ في المنشأة، ولا يُخفَض به آخر مالك.
+    /// <para>
+    /// <b>ومورد فرعي مستقلّ عند الحدّ لا حقلٌ يُعدَّل:</b> الدور صلاحيةُ وصول، وتغييرُه
+    /// حدثٌ تدقيقي بمن ومتى — لا خاصيةٌ تُكتب في تحديثٍ جزئي على العضو.
+    /// </para>
+    /// </summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل — ويجب أن يكون مالكاً في المنشأة.</param>
+    /// <param name="company">المنشأة.</param>
+    /// <param name="member">العضو.</param>
+    /// <param name="role">الدور المطلوب.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    [RequiresEntitlement(BabelModule.Core, EntitlementAccess.Write)]
+    public async ValueTask<Result<MembershipRoleChange>> ChangeMembershipRoleAsync(
+        TenantId tenant,
+        UserId actor,
+        Guid company,
+        UserId member,
+        MembershipRole role,
+        CancellationToken cancellationToken = default)
+    {
+        Result gate = await _enforcer
+            .EnsureAsync(tenant, actor, BabelModule.Core, EntitlementAccess.Write, "Core.Access.ChangeMembershipRole", cancellationToken)
+            .ConfigureAwait(false);
+
+        if (gate.IsFailure)
+        {
+            return Result<MembershipRoleChange>.Failure(gate.Errors);
+        }
+
+        Error? denied = await RefuseNonOwnerAsync(company, actor, cancellationToken).ConfigureAwait(false);
+        if (denied is not null)
+        {
+            return Result<MembershipRoleChange>.Failure(denied);
+        }
+
+        MembershipRoleChange change = await _directory
+            .ChangeRoleAsync(company, member, role, _clock.GetUtcNow(), cancellationToken)
+            .ConfigureAwait(false);
+
+        Error? refusal = change.Outcome switch
+        {
+            MembershipMutation.NotFound => AccessErrors.MembershipNotFound,
+            MembershipMutation.LastOwner => AccessErrors.LastOwnerCannotBeRemoved,
+            MembershipMutation.Unchanged => AccessErrors.RoleUnchanged,
+            _ => null,
+        };
+
+        if (refusal is not null)
+        {
+            return Result<MembershipRoleChange>.Failure(refusal);
+        }
+
+        await RecordAsync(
+                tenant, actor, "access.membership_role_changed", company,
+                member.Value.ToString("D", CultureInfo.InvariantCulture)
+                    + " · " + change.PreviousRole + " ⇐ " + change.Membership!.Role,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        return Result<MembershipRoleChange>.Success(change);
+    }
+
+    /// <summary>
+    /// يرفض فاعلاً ليس مالكاً في المنشأة — <b>موضعٌ واحد للفعلين</b>.
+    /// <para>
+    /// والاعتماد المُهيَّأ من الإعداد لا عضوية له، فيمرّ مالكاً بحكم كونه اعتماد
+    /// التزويد نفسه — وهو باب الإقلاع المُعلَن في ADR-0045 §٣٫٣، لا استثناءً مُخفى.
+    /// </para>
+    /// </summary>
+    private async ValueTask<Error?> RefuseNonOwnerAsync(Guid company, UserId actor, CancellationToken cancellationToken)
+    {
+        Membership? membership = await _directory
+            .FindMembershipAsync(company, actor, cancellationToken)
+            .ConfigureAwait(false);
+
+        return membership is not null && membership.Role != MembershipRole.Owner
+            ? AccessErrors.ActorIsNotAnOwner
+            : null;
     }
 
     /// <summary>يقرأ أعضاء منشأة. ولا اعتماد واحد يخرج من هنا — القائمة أسماء وأدوار.</summary>
@@ -335,6 +498,38 @@ public sealed class AccessService : IApplicationService
             .ConfigureAwait(false);
 
         return Result<IReadOnlyList<Membership>>.Success(members);
+    }
+
+    /// <summary>
+    /// منشآت المستأجر — <b>كل منشأة له فيها عضوية</b>.
+    /// <para>
+    /// ولا اعتماد يخرج من هنا ولا اسم عضو: معرّفات منشآت، وهي بيانات المستأجر نفسه.
+    /// والنيّة «قراءة» عمداً: من انقطع اشتراكه يقرأ ما يملكه.
+    /// </para>
+    /// </summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">القارئ.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    [RequiresEntitlement(BabelModule.Core, EntitlementAccess.Read)]
+    public async ValueTask<Result<IReadOnlyList<Guid>>> CompaniesOfAsync(
+        TenantId tenant,
+        UserId actor,
+        CancellationToken cancellationToken = default)
+    {
+        Result gate = await _enforcer
+            .EnsureAsync(tenant, actor, BabelModule.Core, EntitlementAccess.Read, "Core.Access.CompaniesOf", cancellationToken)
+            .ConfigureAwait(false);
+
+        if (gate.IsFailure)
+        {
+            return Result<IReadOnlyList<Guid>>.Failure(gate.Errors);
+        }
+
+        IReadOnlyList<Guid> companies = await _directory
+            .CompaniesOfAsync(tenant, cancellationToken)
+            .ConfigureAwait(false);
+
+        return Result<IReadOnlyList<Guid>>.Success(companies);
     }
 
     private static bool Refused(string presented, out Error? error)

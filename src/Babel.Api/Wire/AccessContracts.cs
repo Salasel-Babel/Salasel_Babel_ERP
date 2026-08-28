@@ -95,3 +95,26 @@ internal sealed record GrantedMembershipDto(
     MembershipDto Member,
     string EnrolmentCredential,
     string EnrolmentExpiresAt);
+
+/// <summary>طلب تغيير دور عضوية.</summary>
+/// <param name="Role">الدور المطلوب من المجموعة المغلقة: <c>Reader</c> · <c>Contributor</c> · <c>Owner</c>.</param>
+internal sealed record ChangeMembershipRoleRequestDto(string Role);
+
+/// <summary>
+/// عضويةٌ سُحبت: من كان، وبأي دور، ومتى سُحب.
+/// <para>والصفّ لا يبقى «موقوفاً»: العضوية صلاحيةُ وصولٍ جارية لا سجلّ محاسبي، وأثرُها
+/// التاريخي في سجلّ التدقيق. وصلاحيةٌ موقوفة تبقى في جدول وصول هي الشكل الذي يُنسى فيه
+/// أحدهم مُفعَّلاً.</para>
+/// </summary>
+/// <param name="CompanyId">المنشأة.</param>
+/// <param name="Member">العضوية كما كانت قبل السحب.</param>
+/// <param name="RevokedAt">لحظة السحب.</param>
+internal sealed record MembershipRevocationDto(string CompanyId, MembershipDto Member, string RevokedAt);
+
+/// <summary>دورٌ تغيّر: العضوية بعده، والدور قبله، ولحظة التغيير.</summary>
+/// <param name="CompanyId">المنشأة.</param>
+/// <param name="Member">العضوية بدورها الجديد.</param>
+/// <param name="PreviousRole">الدور السابق — يقرؤه العميل فيعرف اتجاه التغيير بلا طلبٍ ثانٍ.</param>
+/// <param name="ChangedAt">لحظة التغيير.</param>
+internal sealed record MembershipRoleChangeDto(
+    string CompanyId, MembershipDto Member, string PreviousRole, string ChangedAt);

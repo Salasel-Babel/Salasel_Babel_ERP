@@ -77,7 +77,7 @@ internal static class OpenApiEmitter
                 "حالة الخدمة وثقافتها", "Service health and culture",
                 "تُرجع حالة الخدمة، وثقافة العملية وتقويمها الافتراضي. خارج المصادقة وخارج نطاق الشركة.",
                 "Returns service status plus the process culture and its default calendar. Unauthenticated and outside company scope.",
-                Body: null, Response: "HealthResponse", Success: 200, Anonymous: true, Query: []),
+                Body: null, Response: "HealthResponse", Success: 200, Query: []),
 
             new(ApiRoutes.OpenApiDocument, "get", "readPublishedContract",
                 "العقد المنشور نفسه", "The published contract itself",
@@ -92,7 +92,7 @@ internal static class OpenApiEmitter
                 + "per request puts a side outside both guards, and a docs page showing a contract nobody generated looks authoritative and "
                 + "is wrong — فخ-84 by its third door. This path is anonymous: its content is a file committed in the repository, and it "
                 + "carries no tenant data whatsoever.",
-                Body: null, Response: string.Empty, Success: 200, Anonymous: true, Query: [],
+                Body: null, Response: string.Empty, Success: 200, Query: [],
                 ResponseMediaType: "application/json", ResponseInlineType: "object"),
 
             new(ApiRoutes.Docs, "get", "readDocsPage",
@@ -108,7 +108,7 @@ internal static class OpenApiEmitter
                 + "**no token is baked into it**: the same bytes are served to every caller. The request it issues passes through authentication, "
                 + "scope, and entitlement like any client, so a company outside the credential's scope is refused with "
                 + "403 tenancy.company_out_of_scope from the page exactly as it is from curl.",
-                Body: null, Response: string.Empty, Success: 200, Anonymous: true, Query: [],
+                Body: null, Response: string.Empty, Success: 200, Query: [],
                 ResponseMediaType: "text/html", ResponseInlineType: "string"),
 
             new(ApiRoutes.Session, "get", "readSession",
@@ -137,7 +137,7 @@ internal static class OpenApiEmitter
                 + "read it as 'my credential is broken'.\n\n"
                 + "This path is outside company scope deliberately — the only one after health — and still nothing about "
                 + "another tenant crosses it: the list is the credential's own set, not a filtered query over a companies table.",
-                Body: null, Response: "Session", Success: 200, Anonymous: false, Query: []),
+                Body: null, Response: "Session", Success: 200, Query: []),
 
             new(AccessRoutes.Sessions, "post", "openSession",
                 "فتح جلسة باعتماد انتساب", "Open a session with an enrolment credential",
@@ -166,7 +166,7 @@ internal static class OpenApiEmitter
                 + "**No usable credential is ever stored:** what is persisted is a SHA-256 digest; both texts leave the server in this "
                 + "response alone and are never re-issued. **And entitlement never blocks sign-in:** a lapsed subscription degrades to "
                 + "read-only and never strips the record (ADR-0034), and whoever cannot sign in cannot read.",
-                Body: "OpenSessionRequest", Response: "AccessSession", Success: 201, Anonymous: true, Query: [],
+                Body: "OpenSessionRequest", Response: "AccessSession", Success: 201, Query: [],
                 Refusals:
                 [
                     new Refusal(400, "الجسم لا يطابق العقد: حقل غير معروف، أو حقل مفقود.", "The body does not match the contract: an unknown field, or a missing one."),
@@ -203,7 +203,7 @@ internal static class OpenApiEmitter
                 + "the one request while the session stays alive.\n\n"
                 + "An access credential presented where a refresh credential belongs is indistinguishable from a forged one: distinguishing "
                 + "it would have the surface tell a prober 'this credential exists but is of the wrong kind'.",
-                Body: "RenewSessionRequest", Response: "AccessSession", Success: 201, Anonymous: true, Query: [],
+                Body: "RenewSessionRequest", Response: "AccessSession", Success: 201, Query: [],
                 Refusals:
                 [
                     new Refusal(400, "الجسم لا يطابق العقد: حقل غير معروف، أو حقل مفقود.", "The body does not match the contract: an unknown field, or a missing one."),
@@ -234,7 +234,7 @@ internal static class OpenApiEmitter
                 + "the boundary with auth.credential_revoked.\n\n"
                 + "**The configured provisioning credential has no family**, so it is refused here with 409 and "
                 + "access.session_not_issued_here: saying so by its code is more honest than answering 'done' to an act that did not happen.",
-                Body: null, Response: "SessionRevocation", Success: 201, Anonymous: false, Query: [],
+                Body: null, Response: "SessionRevocation", Success: 201, Query: [],
                 Refusals:
                 [
                     new Refusal(409,
@@ -253,7 +253,7 @@ internal static class OpenApiEmitter
                 + "grant instants; an enrolment credential leaves once, in the invitation response, and is never re-issued.\n\n"
                 + "It sits inside company scope like every other path: a credential that does not reach the company is refused with 403 "
                 + "and tenancy.company_out_of_scope, and nothing about that company crosses the refusal — not its member count, not its existence.",
-                Body: null, Response: "MembershipList", Success: 200, Anonymous: false, Query: []),
+                Body: null, Response: "MembershipList", Success: 200, Query: []),
 
             new(AccessRoutes.Memberships, "post", "grantMembership",
                 "دعوة عضو إلى المنشأة", "Invite a member into the company",
@@ -278,7 +278,7 @@ internal static class OpenApiEmitter
                 + "A second invitation for an existing member is refused with 409 and membership.already_granted: changing a role is a "
                 + "different act asked for by its own name, not an invitation minting a fresh enrolment credential for someone who already "
                 + "holds a session.",
-                Body: "GrantMembershipRequest", Response: "GrantedMembership", Success: 201, Anonymous: false, Query: [],
+                Body: "GrantMembershipRequest", Response: "GrantedMembership", Success: 201, Query: [],
                 Refusals:
                 [
                     new Refusal(400, "الجسم لا يطابق العقد: حقل غير معروف، أو حقل مفقود.", "The body does not match the contract: an unknown field, or a missing one."),
@@ -292,19 +292,19 @@ internal static class OpenApiEmitter
                 + "يُرجع الإيصال ذاته و‏alreadyPosted = true ورمز 200 بدل 201، ولا يُنشئ قيداً ثانياً — مهما كان ترتيب الوصول.",
                 "Posts an entry through the posting engine. Idempotent by idempotencyKey: a second arrival with the same key "
                 + "returns the same receipt with alreadyPosted = true and status 200 instead of 201, and never creates a second entry — whatever the arrival order.",
-                Body: "PostJournalEntryRequest", Response: "PostingReceipt", Success: 201, Anonymous: false, Query: []),
+                Body: "PostJournalEntryRequest", Response: "PostingReceipt", Success: 201, Query: []),
 
             new(ApiRoutes.ReadJournalEntry, "get", "readJournalEntry",
                 "قراءة قيد بسطوره", "Read one entry with its lines",
                 "يقرأ قيداً واحداً بسطوره داخل نطاق الشركة.",
                 "Reads a single entry with its lines within the company scope.",
-                Body: null, Response: "JournalEntry", Success: 200, Anonymous: false, Query: []),
+                Body: null, Response: "JournalEntry", Success: 200, Query: []),
 
             new(ApiRoutes.ReverseJournalEntry, "post", "reverseJournalEntry",
                 "عكس قيد", "Reverse an entry",
                 "ينشئ قيد عكس مرتبطاً بالقيد الأصلي. القيد الأصلي لا يُمسّ ولا يُحذف ولا يُعدَّل — ولا يوجد على هذا السطح فعل حذف أصلاً.",
                 "Creates a reversing entry linked to the original. The original is never touched, deleted, or amended — and no delete verb exists on this surface at all.",
-                Body: "ReverseJournalEntryRequest", Response: "PostingReceipt", Success: 201, Anonymous: false, Query: []),
+                Body: "ReverseJournalEntryRequest", Response: "PostingReceipt", Success: 201, Query: []),
 
             new(ApiRoutes.TrialBalance, "get", "readTrialBalance",
                 "ميزان المراجعة", "Trial balance",
@@ -312,7 +312,7 @@ internal static class OpenApiEmitter
                 + "ويحمل مجموعَي المدين والدائن محسوبَين بـ sum() على numeric في الاستعلام نفسه، ومعهما حكم التوازن.",
                 "The trial balance built from the immutable journal lines — not from the balance table. "
                 + "It carries the debit and credit totals computed by sum() over numeric in the same query, plus the balanced verdict.",
-                Body: null, Response: "TrialBalance", Success: 200, Anonymous: false,
+                Body: null, Response: "TrialBalance", Success: 200,
                 Query:
                 [
                     new QueryParameter("book", true, "الدفتر داخل الشركة.", "The book within the company.", "string"),
@@ -334,13 +334,13 @@ internal static class OpenApiEmitter
                 + "yet a client could reach those requirements only **by posting and being refused**. "
                 + "A manual voucher screen built from this path stops an incomplete entry before it is sent rather than showing a refusal after. "
                 + "The whole chart is returned — its non-postable parents included — and every entry carries postable, so the client filters with no second request.",
-                Body: null, Response: "PostingChart", Success: 200, Anonymous: false, Query: []),
+                Body: null, Response: "PostingChart", Success: 200, Query: []),
 
             new(ApiRoutes.ChainVerification, "get", "verifyLedgerChain",
                 "إعادة التحقق من سلسلة البصمات", "Verify the hash chain",
                 "يعيد بناء كل مستند من الحقيقة المجالية المخزَّنة ويقارن بصمته، ويسمّي أول تسلسل منحرف إن وُجد.",
                 "Rebuilds every document from the stored domain truth, compares its hash, and names the first divergent sequence if any.",
-                Body: null, Response: "ChainVerification", Success: 200, Anonymous: false,
+                Body: null, Response: "ChainVerification", Success: 200,
                 Query:
                 [
                     new QueryParameter("book", true, "الدفتر داخل الشركة.", "The book within the company.", "string"),
@@ -356,7 +356,7 @@ internal static class OpenApiEmitter
                 + "available and enabled capabilities, and the defaults. This is what a screen is built from: the screen is a function "
                 + "of (this document x the profile) and is never authored as free-form JSON on the client — a screen authored "
                 + "independently of the contract sends a field the server refuses or omits one it requires.",
-                Body: null, Response: "CapabilityProfile", Success: 200, Anonymous: false, Query: []),
+                Body: null, Response: "CapabilityProfile", Success: 200, Query: []),
 
             new(ApiRoutes.CapabilityProfile, "put", "writeCapabilityProfile",
                 "حفظ ملفّ القدرات", "Save the capability profile",
@@ -369,13 +369,13 @@ internal static class OpenApiEmitter
                 + "discovered a month later as a subledger that will not tie. The dangerous direction is off, not on: disabling a capability "
                 + "that was enabled makes an open document carrying it inadmissible and makes the follow-on event that relieves the subledger "
                 + "balance unreachable, so it is refused without a written withdrawalReason, and the reason is recorded in the audit log.",
-                Body: "PutCapabilityProfileRequest", Response: "CapabilityProfile", Success: 200, Anonymous: false, Query: []),
+                Body: "PutCapabilityProfileRequest", Response: "CapabilityProfile", Success: 200, Query: []),
 
             new(ApiRoutes.DocumentShape, "get", "readDocumentShape",
                 "شكل مستند واحد", "One document shape",
                 "شكل نوع مستند واحد مُشتقّاً من الملفّ. مُشتقّ لا مؤلَّف: لا تخطيط، ولا ترتيب بصري، ولا شرط، ولا تعبير.",
                 "One document type's shape derived from the profile. Derived, never authored: no layout, no visual order, no condition, no expression.",
-                Body: null, Response: "DocumentShape", Success: 200, Anonymous: false, Query: []),
+                Body: null, Response: "DocumentShape", Success: 200, Query: []),
 
             new(ApiRoutes.CompanySetup, "get", "readCompanySetup",
                 "تأسيس المنشأة", "The company setup",
@@ -384,7 +384,7 @@ internal static class OpenApiEmitter
                 "Reads the company setup: its name, the **number of displayed decimal places**, and **all of its cost centres** — "
                 + "active and suspended alike. A suspended centre stays in the list on purpose: earlier periods are still grouped by it, "
                 + "and the ledger is append-only.",
-                Body: null, Response: "CompanySetup", Success: 200, Anonymous: false, Query: []),
+                Body: null, Response: "CompanySetup", Success: 200, Query: []),
 
             new(ApiRoutes.CompanySetup, "put", "initialiseCompanySetup",
                 "تأسيس المنشأة مرّة واحدة", "Set the company up, once",
@@ -404,7 +404,7 @@ internal static class OpenApiEmitter
                 + "is invented on behalf of someone who declared they have more than one. Either way the company leaves this call with at least one cost centre.\n\n"
                 + "decimalPlaces governs **display and human input only**: storage stays at four places, and computed amounts (15% VAT on an odd net, "
                 + "say) are neither constrained nor rounded by it — otherwise an ordinary invoice would be impossible.",
-                Body: "InitialiseCompanySetupRequest", Response: "CompanySetup", Success: 201, Anonymous: false, Query: []),
+                Body: "InitialiseCompanySetupRequest", Response: "CompanySetup", Success: 201, Query: []),
 
             new(ApiRoutes.CostCenters, "post", "addCostCenter",
                 "إضافة مركز تكلفة", "Add a cost centre",
@@ -412,7 +412,7 @@ internal static class OpenApiEmitter
                 + "والاسم عرضٌ يتغيّر.",
                 "Adds an active cost centre and returns the whole setup. The server mints the code; the client never sends one: the code is the "
                 + "identity that journal lines carry, and the name is display that changes.",
-                Body: "CostCenterNameRequest", Response: "CompanySetup", Success: 201, Anonymous: false, Query: []),
+                Body: "CostCenterNameRequest", Response: "CompanySetup", Success: 201, Query: []),
 
             new(ApiRoutes.CostCenter, "put", "renameCostCenter",
                 "إعادة تسمية مركز تكلفة", "Rename a cost centre",
@@ -420,7 +420,7 @@ internal static class OpenApiEmitter
                 + "وهو سلوك الحساب المعطَّل نفسه لا نمطٌ ثانٍ (ADR-0006).",
                 "Renames a cost centre. **The code does not change**, so journal lines already posted against it stay tied to it and display under "
                 + "the current name — the same behaviour as a locked account, not a second pattern (ADR-0006).",
-                Body: "CostCenterNameRequest", Response: "CompanySetup", Success: 200, Anonymous: false, Query: []),
+                Body: "CostCenterNameRequest", Response: "CompanySetup", Success: 200, Query: []),
 
             new(ApiRoutes.CostCenterSuspension, "post", "suspendCostCenter",
                 "إيقاف مركز تكلفة عن الترحيل", "Suspend a cost centre from posting",
@@ -432,7 +432,7 @@ internal static class OpenApiEmitter
                 + "Nothing is deleted: the centre stays readable and stays a grouping key in earlier periods forever.\n\n"
                 + "**The default centre is never suspended**: it is refused with 409 and cost_center.default_cannot_be_suspended, because a company is "
                 + "never without a cost centre. To suspend it, move the default to another active centre first.",
-                Body: "SuspendCostCenterRequest", Response: "CompanySetup", Success: 201, Anonymous: false, Query: []),
+                Body: "SuspendCostCenterRequest", Response: "CompanySetup", Success: 201, Query: []),
 
             // ── سطح المستندات: المبيعات والمشتريات ───────────────────────────
             // ولاحظ الشكل الواحد الذي تسلكه الأربعة عشر: **إنشاء مسوّدة · قراءة ·
@@ -451,7 +451,7 @@ internal static class OpenApiEmitter
                 + "**There is no vatNumber here**: the VAT registration number is a supplier field, not a customer field on "
                 + "this surface, and sending it fails the whole request — silently ignoring it would make the sender believe "
                 + "a number was recorded that never arrived.",
-                Body: "CustomerRequest", Response: "Party", Success: 201, Anonymous: false, Query: []),
+                Body: "CustomerRequest", Response: "Party", Success: 201, Query: []),
 
             new(ApiRoutes.Customer, "get", "readCustomer",
                 "قراءة عميل", "Read one customer",
@@ -468,7 +468,7 @@ internal static class OpenApiEmitter
                 + "prohibition**: the sales module has no suspension today — the is_active column is written once at creation and read "
                 + "by no posting path — and a door labelled 'suspend' that stops not one invoice is worse than no door: it looks like a "
                 + "control and is not one.",
-                Body: null, Response: "Party", Success: 200, Anonymous: false, Query: [], ProblemStatuses: [404]),
+                Body: null, Response: "Party", Success: 200, Query: [], ProblemStatuses: [404]),
 
             new(ApiRoutes.SalesInvoices, "post", "draftSalesInvoice",
                 "إنشاء فاتورة مبيعات مسوّدة", "Draft a sales invoice",
@@ -482,7 +482,7 @@ internal static class OpenApiEmitter
                 + "rounded lines — all of it computed in the module, none of it on this surface.\n\n"
                 + "**No account code and no event code appear in the payload**: a line carries an itemGroup — a role qualifier — and "
                 + "the posting matrix alone turns it into an account (Rule 2).",
-                Body: "SalesInvoiceRequest", Response: "CommercialDocument", Success: 201, Anonymous: false, Query: [],
+                Body: "SalesInvoiceRequest", Response: "CommercialDocument", Success: 201, Query: [],
                 ProblemStatuses: [404]),
 
             new(ApiRoutes.SalesInvoice, "get", "readSalesInvoice",
@@ -490,7 +490,7 @@ internal static class OpenApiEmitter
                 "يقرأ فاتورة بحالتها ومجاميعها ومعرّف قيدها إن رُحّلت. ونقطة قراءة: تعمل والاشتراك للقراءة فقط.",
                 "Reads an invoice with its state, its totals, and its entry identifier if posted. A read point: it works while the "
                 + "subscription is read-only.",
-                Body: null, Response: "CommercialDocument", Success: 200, Anonymous: false, Query: [], ProblemStatuses: [404]),
+                Body: null, Response: "CommercialDocument", Success: 200, Query: [], ProblemStatuses: [404]),
 
             new(ApiRoutes.SalesInvoicePosting, "post", "postSalesInvoice",
                 "ترحيل فاتورة مبيعات", "Post a sales invoice",
@@ -511,7 +511,7 @@ internal static class OpenApiEmitter
                 + "check, meet at the one identity, and one writes while the other returns marked.\n\n"
                 + "This request has no body: everything posting needs is on the document, and the idempotency key is derived by the "
                 + "module from that identity rather than sent by the client — so two clients cannot choose two keys for one fact.",
-                Body: null, Response: "CommercialDocument", Success: 201, Anonymous: false, Query: [],
+                Body: null, Response: "CommercialDocument", Success: 201, Query: [],
                 ProblemStatuses: [404, 409, 422]),
 
             new(ApiRoutes.CreditNotes, "post", "draftCreditNote",
@@ -526,7 +526,7 @@ internal static class OpenApiEmitter
                 + "The module refuses a note against an invoice that is not POSTED, and refuses an amount beyond what is outstanding.\n\n"
                 + "A line carrying originalInvoiceLineId is a **goods return**, valued at the cost of its original issue; a line without "
                 + "that field is a **value reduction** that moves no stock. The difference is a commercial decision, never guessed.",
-                Body: "CreditNoteRequest", Response: "CommercialDocument", Success: 201, Anonymous: false, Query: [],
+                Body: "CreditNoteRequest", Response: "CommercialDocument", Success: 201, Query: [],
                 ProblemStatuses: [404]),
 
             new(ApiRoutes.CreditNotePosting, "post", "postCreditNote",
@@ -535,7 +535,7 @@ internal static class OpenApiEmitter
                 + "ترحيل الفاتورة: الوصول الثاني يُرجع المستند ذاته و‏alreadyPosted = true ورمز 200.",
                 "Posts a draft credit note and allocates it against its original invoice. Idempotent in exactly the same shape as "
                 + "posting an invoice: a second arrival returns the same document with alreadyPosted = true and status 200.",
-                Body: null, Response: "CommercialDocument", Success: 201, Anonymous: false, Query: [],
+                Body: null, Response: "CommercialDocument", Success: 201, Query: [],
                 ProblemStatuses: [404, 409, 422]),
 
             new(ApiRoutes.ReceivablesAging, "get", "readReceivablesAging",
@@ -544,7 +544,7 @@ internal static class OpenApiEmitter
                 + "مجموع الشرائح بالضبط. نقطة قراءة: تعمل والاشتراك للقراءة فقط.",
                 "Customer receivables aged at a given date, in bands: not due, 1-30, 31-60, 61-90, over 90, with a total that is "
                 + "exactly the sum of the bands. A read point: it works while the subscription is read-only.",
-                Body: null, Response: "AgingReport", Success: 200, Anonymous: false,
+                Body: null, Response: "AgingReport", Success: 200,
                 Query:
                 [
                     new QueryParameter("asOf", true, "تاريخ التقرير الميلادي.", "The Gregorian report date.", "date"),
@@ -558,14 +558,14 @@ internal static class OpenApiEmitter
                 "Registers a supplier. vatNumber is **optional because its absence is a fact, not a gap**: the supplier below the "
                 + "registration threshold, the non-resident supplier, and the supplier created before this field all have none. When "
                 + "it is sent, its full shape is verified and 'nearly right' is not accepted.",
-                Body: "SupplierRequest", Response: "Party", Success: 201, Anonymous: false, Query: []),
+                Body: "SupplierRequest", Response: "Party", Success: 201, Query: []),
 
             new(ApiRoutes.Supplier, "get", "readSupplier",
                 "قراءة مورد", "Read one supplier",
                 "يقرأ مورداً واحداً. وما غاب عن مورد العميل غائب هنا وللسبب نفسه: لا حذف بنيوياً، ولا إيقاف بعد.",
                 "Reads a single supplier. What is absent from the customer resource is absent here for the same reasons: no delete, "
                 + "structurally, and no suspension yet.",
-                Body: null, Response: "Party", Success: 200, Anonymous: false, Query: [], ProblemStatuses: [404]),
+                Body: null, Response: "Party", Success: 200, Query: [], ProblemStatuses: [404]),
 
             new(ApiRoutes.SupplierBills, "post", "draftExpenseBill",
                 "إنشاء فاتورة مصروف مسوّدة", "Draft an expense bill",
@@ -579,7 +579,7 @@ internal static class OpenApiEmitter
                 + "**Note what this resource does not carry: no stock bill.** A stock bill is three-way matched (purchase order, goods "
                 + "receipt, bill), and a goods receipt posts only through the inventory valuation port — publishing it drags the whole "
                 + "inventory module onto this surface. This is a **declared gap**: see the document-surface ADR.",
-                Body: "ExpenseBillRequest", Response: "CommercialDocument", Success: 201, Anonymous: false, Query: [],
+                Body: "ExpenseBillRequest", Response: "CommercialDocument", Success: 201, Query: [],
                 ProblemStatuses: [404]),
 
             new(ApiRoutes.SupplierBill, "get", "readSupplierBill",
@@ -591,7 +591,7 @@ internal static class OpenApiEmitter
                 + "This read **did not exist in the module at all**: a bill could be created and posted, and there was no sentence for "
                 + "'what state is it in now?'. Whoever created a draft and then lost their connection had no option but to **post again "
                 + "in order to find out**.",
-                Body: null, Response: "CommercialDocument", Success: 200, Anonymous: false, Query: [], ProblemStatuses: [404]),
+                Body: null, Response: "CommercialDocument", Success: 200, Query: [], ProblemStatuses: [404]),
 
             new(ApiRoutes.SupplierBillPosting, "post", "postSupplierBill",
                 "ترحيل فاتورة مورد", "Post a supplier bill",
@@ -599,7 +599,7 @@ internal static class OpenApiEmitter
                 + "الوصول الثاني يُرجع المستند ذاته و‏alreadyPosted = true ورمز 200 بدل 201، بلا قيد ثانٍ.",
                 "Posts a draft supplier bill. A separate sub-resource, idempotent by the same posting identity with the same behaviour: "
                 + "a second arrival returns the same document with alreadyPosted = true and status 200 instead of 201, with no second entry.",
-                Body: null, Response: "CommercialDocument", Success: 201, Anonymous: false, Query: [],
+                Body: null, Response: "CommercialDocument", Success: 201, Query: [],
                 ProblemStatuses: [404, 409, 422]),
 
             new(ApiRoutes.PayablesAging, "get", "readPayablesAging",
@@ -608,7 +608,7 @@ internal static class OpenApiEmitter
                 + "شكلٌ واحد لا شكلان: تقريران بشرائح مختلفة يجعلان المقارنة بينهما عملاً يدوياً.",
                 "Supplier payables aged at a given date, in the same bands and the same shape as receivables — one shape, not two: two "
                 + "reports with different bands make comparing them manual work.",
-                Body: null, Response: "AgingReport", Success: 200, Anonymous: false,
+                Body: null, Response: "AgingReport", Success: 200,
                 Query:
                 [
                     new QueryParameter("asOf", true, "تاريخ التقرير الميلادي.", "The Gregorian report date.", "date"),
@@ -621,7 +621,239 @@ internal static class OpenApiEmitter
                 "Presents a document's **field names** against the company profile and admits or refuses it. No values, no amounts, no "
                 + "effect: this is a verdict, not a write. A field licensed by a disabled capability fails the whole document — a capability "
                 + "that can still be exercised by sending the field anyway is decoration, not a capability.",
-                Body: "AdmitDocumentRequest", Response: "DocumentAdmission", Success: 200, Anonymous: false, Query: []),
+                Body: "AdmitDocumentRequest", Response: "DocumentAdmission", Success: 200, Query: []),
+            // ── التسجيل والاشتراك ────────────────────────────────────────────
+            new(TenantRoutes.Tenants, "post", "registerTenant",
+                "التسجيل الأول: مستأجر جديد وأول مالك", "First registration: a new tenant and its first owner",
+                "ينشئ مستأجراً، ويفتح اشتراكه على **خطّة الدخول**، وينشئ أول منشأة له وأول عضوية مالكة فيها، "
+                + "ويردّ **اعتماد انتساب** يُفتح به أول جلسة على POST /api/v1/access/sessions.\n\n"
+                + "**وهذا الباب بلا اعتماد، وذلك بنيوي:** من ليس عنده حساب هو بالضبط من يستعمله. وما لا يُفتح "
+                + "بفتحه: لا يقرأ بيانات مستأجرٍ قائم، ولا يكشف وجود مستأجر آخر — لا برسالة ولا بفارق زمن — "
+                + "ولا يقبل اسم مستأجر مكرَّراً أو فريداً لأن الأسماء ليست هوية أصلاً.\n\n"
+                + "**والخطّة لا تُختار من هنا.** الاشتراك يُفتح على خطّة الدخول وحدها: حقلُ خطّة في جسم طلبٍ "
+                + "بلا اعتماد يمنح الحزمة الشاملة لمن كتب اسمها. وتغييرُ الخطّة فعلٌ آخر باعتماد.\n\n"
+                + "**وحصينٌ ضد التكرار بمفتاح الطلب:** كل معرّفاته — المستأجر ورمزه والمنشأة والمالك — مشتقّة "
+                + "حتمياً من requestKey، فإعادةُ الإرسال به تردّ **المستأجر نفسه** بـ200 وalreadyRegistered = true "
+                + "ولا تُنشئ ثانياً. و**اعتماد الانتساب لا يُعاد في الإعادة**: السرّ يُسكّ مرّة ويُسلَّم مرّة "
+                + "(المُودَع بصمته)، وسكُّ سرٍّ ثانٍ عند كل إعادة إرسال يجعل الباب المفتوح مصنعَ اعتمادات. "
+                + "فمن فقد الاستجابة الأولى يطلب من مالك المنشأة دعوةً جديدة.\n\n"
+                + "**وعليه حدّ معدّل** لكل عنوان ولكل مفتاح طلب: التجاوز يردّ 429 ومعه ترويسة Retry-After.",
+                "Creates a tenant, opens its subscription on the **entry plan**, creates its first company and the first "
+                + "owner membership in it, and returns an **enrolment credential** that opens the first session at "
+                + "POST /api/v1/access/sessions.\n\n"
+                + "**This door is unauthenticated, and structurally so:** whoever has no account is exactly who uses it. "
+                + "What it does not open: it reads no existing tenant's data and reveals no other tenant's existence — "
+                + "neither by message nor by measurable timing — and it neither requires nor rejects a duplicate name, "
+                + "because names are not identity here.\n\n"
+                + "**The plan is not chosen here.** The subscription opens on the entry plan alone: a plan field in an "
+                + "unauthenticated body hands the full package to whoever types its name. Changing the plan is a "
+                + "different act, with a credential.\n\n"
+                + "**Idempotent by request key:** every identifier — tenant, tenant code, company, owner — is derived "
+                + "deterministically from requestKey, so resending it returns **the same tenant** with 200 and "
+                + "alreadyRegistered = true and creates no second one. **The enrolment credential is not re-issued on a "
+                + "repeat**: the secret is minted once and handed over once (only its digest is stored), and minting a "
+                + "second secret on every resend turns an open door into a credential factory. Whoever lost the first "
+                + "response asks the company's owner for a fresh invitation.\n\n"
+                + "**It carries a rate limit** per address and per request key: exceeding it returns 429 with a Retry-After header.",
+                Body: "RegisterTenantRequest", Response: "RegisteredTenant", Success: 201, Query: [],
+                Repeats:
+                [
+                    new(200,
+                        "المفتاح نفسه سُجِّل من قبل: المستأجر ذاته وalreadyRegistered = true، وenrolmentCredential معدوم.",
+                        "The same key was already registered: the same tenant with alreadyRegistered = true and a null enrolmentCredential."),
+                ],
+                Refusals:
+                [
+                    new(400, "الجسم لا يطابق العقد، أو مفتاح الطلب أقصر من الحدّ أو أطول منه.",
+                        "The body does not match the contract, or the request key is shorter or longer than the bounds."),
+                    new(422, "اسم المنشأة بالعربية أو بالإنجليزية أو اسم المالك مفقود.",
+                        "The company's Arabic or English name, or the owner's name, is missing."),
+                    new(429, "طلبات أكثر ممّا يقبله هذا الباب في الدقيقة. الرمز الثابت: rate.too_many_requests، ومعه ترويسة Retry-After.",
+                        "More requests than this door accepts per minute. Stable code: rate.too_many_requests, with a Retry-After header."),
+                    new(503, "مستوى التحكّم غير مُهيَّأ لهذا الخادم. الرمز الثابت: fleet.unavailable.",
+                        "The control plane is not configured for this server. Stable code: fleet.unavailable."),
+                ]),
+
+            new(TenantRoutes.Subscription, "get", "readSubscription",
+                "اشتراك المستأجر: الخطّة والحالة والوحدات وتاريخ التجديد",
+                "The tenant's subscription: plan, state, modules, and renewal date",
+                "يُرجع الاشتراك الجاري كاملاً في طلب واحد: الخطّة وسعرها نصّاً، وحالة الاشتراك، و**حالة كل وحدة**، "
+                + "وتاريخ التجديد التالي.\n\n"
+                + "وحالةُ الوحدة ثلاث لا أكثر: Entitled تقرأ وتكتب، وReadOnly تقرأ كاملاً ولا تكتب — وهي حالة "
+                + "**الاشتراك المنقطع** — وNotEntitled لم تُشترَ قط. وpostsJournal على كل وحدة يقول إن عملها يبلغ "
+                + "الدفتر، وهو ما يجعل أرضيتها قراءةً لا نزعاً: منشأةٌ رحّلت قيداً واحداً لها دفتر، ولا يُنتزع منها "
+                + "بسبب سداد.\n\n"
+                + "وrenewsOn معدومٌ حين لا يكون الاشتراك فعّالاً: تاريخٌ يُعرض على اشتراك منقطع يُقرأ وعداً بأن "
+                + "الخدمة ستعود من تلقاء نفسها، وهي لا تعود.\n\n"
+                + "**والقراءة حقُّ صاحب الاشتراك**: يبلغها اعتماد المستأجر نفسه بلا شرط دور.",
+                "Returns the whole current subscription in one request: the plan and its price as text, the subscription "
+                + "state, **each module's state**, and the next renewal date.\n\n"
+                + "A module's state is one of three: Entitled reads and writes; ReadOnly reads fully and writes nothing — "
+                + "this is the **lapsed subscription** state; NotEntitled was never purchased. postsJournal on each module "
+                + "says its work reaches the ledger, which is what makes its floor read-only rather than removal: a company "
+                + "that posted a single entry has a ledger, and it is not taken away over payment.\n\n"
+                + "renewsOn is null when the subscription is not active: a date shown on a lapsed subscription reads as a "
+                + "promise that service will return by itself, and it does not.\n\n"
+                + "**Reading is the subscriber's own right**: the tenant's own credential reaches it with no role condition.",
+                Body: null, Response: "Subscription", Success: 200, Query: [],
+                Refusals:
+                [
+                    new(400, "معرّف المستأجر في المسار ليس معرّفاً صالحاً.", "The tenant identifier in the path is not valid."),
+                    new(404, "لا اشتراك لهذا المستأجر في سجل الأسطول. الرمز الثابت: subscription.not_found.",
+                        "No subscription exists for this tenant in the fleet registry. Stable code: subscription.not_found."),
+                    new(503, "مستوى التحكّم غير مُهيَّأ لهذا الخادم. الرمز الثابت: fleet.unavailable.",
+                        "The control plane is not configured for this server. Stable code: fleet.unavailable."),
+                ]),
+
+            new(TenantRoutes.SubscriptionPlanChanges, "post", "changeSubscriptionPlan",
+                "تغيير الخطّة", "Change the plan",
+                "مورد فرعي مستقلّ لا PUT على الاشتراك: تغيير الخطّة **حدثٌ** له سندٌ وفاعلٌ ولحظة، ويُغلق صفّ "
+                + "اشتراك ويفتح آخر — فيبقى تاريخ الاشتراك مقروءاً.\n\n"
+                + "وما تغطّيه الخطّة الجديدة يصير مستحقّاً، و**ما خرج منها يهبط إلى أرضيته لا إلى العدم**: وحدةٌ "
+                + "بلغ عملُها الدفتر تبقى مقروءةً كاملةً بعد خروجها من الحزمة.\n\n"
+                + "**والسند إلزامي** — رقم عقد، أو حدث سداد، أو تذكرة، أو قرار مُوثَّق — لأن الاستحقاق يحكم أي "
+                + "بيانات مالية يجوز إنشاؤها، فتغييره حدث تدقيقي لا إعداد واجهة.\n\n"
+                + "**وهو فعل مشغِّل** يُطلب باعتماد التزويد وحده: لا قناة سداد في هذا المنتَج بعد، فبابٌ يرفع به "
+                + "صاحبُ الاشتراك خطّته هو ترقيةٌ بلا ثمن. الرمز الثابت عند الرفض: subscription.operator_credential_required.",
+                "A subresource, not a PUT on the subscription: a plan change is an **event** with authority, an actor, and "
+                + "an instant; it closes one subscription row and opens another, so the subscription's history stays readable.\n\n"
+                + "What the new plan covers becomes entitled, and **what falls outside it drops to its floor, not to nothing**: "
+                + "a module whose work reached the ledger stays fully readable after leaving the package.\n\n"
+                + "**Authority is mandatory** — a contract number, a payment event, a ticket, or a documented decision — "
+                + "because entitlement governs which financial data may be created, so changing it is an audit event, not a UI setting.\n\n"
+                + "**It is an operator act** requested with the provisioning credential alone: this product has no payment "
+                + "channel yet, so a door letting a subscriber raise their own plan is a free upgrade. Stable refusal code: "
+                + "subscription.operator_credential_required.",
+                Body: "ChangePlanRequest", Response: "Subscription", Success: 201, Query: [],
+                Refusals:
+                [
+                    new(400, "الجسم لا يطابق العقد، أو معرّف المستأجر في المسار غير صالح.",
+                        "The body does not match the contract, or the tenant identifier in the path is not valid."),
+                    new(404, "لا اشتراك لهذا المستأجر. الرمز الثابت: subscription.not_found.",
+                        "No subscription exists for this tenant. Stable code: subscription.not_found."),
+                    new(422, "خطّة غير معروفة، أو سند أو سبب مفقود. الرموز: subscription.plan_unknown · subscription.authority_missing.",
+                        "An unknown plan, or a missing authority or reason. Codes: subscription.plan_unknown, subscription.authority_missing."),
+                    new(503, "مستوى التحكّم غير مُهيَّأ. الرمز الثابت: fleet.unavailable.",
+                        "The control plane is not configured. Stable code: fleet.unavailable."),
+                ]),
+
+            new(TenantRoutes.SubscriptionLapse, "post", "lapseSubscription",
+                "انقطاع الاشتراك", "Lapse the subscription",
+                "يُنهي الاشتراك ويهبط بكل وحدة إلى **أرضيتها**. ولا يحجب قراءةً ولا يُنتزع سجلّاً: من انقطع "
+                + "اشتراكه **يدخل ويقرأ** — يفتح جلسته، ويقرأ ميزان المراجعة والتقارير، ويصدّر بياناته كاملةً — "
+                + "و**يُردّ عند أول كتابة** بـ403 وentitlement.read_only ورسالةٍ تُسمّي السبب بالعربية والإنجليزية.\n\n"
+                + "**والحجّة ليست تجارية أولاً:** حفظ السجلات المحاسبية وإبرازها التزامٌ على المنشأة، ونزاعٌ "
+                + "تجاري بيننا وبين عميل لا يجوز أن يضعه في مخالفة نظامية.\n\n"
+                + "**وهو فعل مشغِّل** يُطلب باعتماد التزويد وحده، وسندُه إلزامي.",
+                "Ends the subscription and drops every module to its **floor**. It blocks no reading and takes no record "
+                + "away: a lapsed tenant **signs in and reads** — opens a session, reads the trial balance and reports, and "
+                + "exports its own data in full — and is **refused at the first write** with 403, entitlement.read_only, and "
+                + "a message naming the cause in Arabic and English.\n\n"
+                + "**The argument is not commercial first:** keeping and producing accounting records is an obligation on "
+                + "the company, and a commercial dispute between us and a customer must not put them in breach.\n\n"
+                + "**It is an operator act** requested with the provisioning credential alone, and its authority is mandatory.",
+                Body: "SubscriptionTransitionRequest", Response: "Subscription", Success: 201, Query: [],
+                Refusals:
+                [
+                    new(400, "الجسم لا يطابق العقد، أو معرّف المستأجر في المسار غير صالح.",
+                        "The body does not match the contract, or the tenant identifier in the path is not valid."),
+                    new(404, "لا اشتراك لهذا المستأجر. الرمز الثابت: subscription.not_found.",
+                        "No subscription exists for this tenant. Stable code: subscription.not_found."),
+                    new(422, "سند أو سبب مفقود. الرمز الثابت: subscription.authority_missing.",
+                        "A missing authority or reason. Stable code: subscription.authority_missing."),
+                    new(503, "مستوى التحكّم غير مُهيَّأ. الرمز الثابت: fleet.unavailable.",
+                        "The control plane is not configured. Stable code: fleet.unavailable."),
+                ]),
+
+            new(TenantRoutes.SubscriptionResumption, "post", "resumeSubscription",
+                "استئناف الاشتراك", "Resume the subscription",
+                "يفتح صفّ اشتراك فعّالاً جديداً على الخطّة نفسها، ويُعيد وحداتها إلى الاستحقاق — فتعود الكتابة "
+                + "كما كانت، ولم تُفقد بيانةٌ واحدة أثناء الانقطاع.\n\n"
+                + "**وهو فعل مشغِّل** يُطلب باعتماد التزويد وحده: بابٌ يستأنف به صاحبُ الاشتراك اشتراكه المنقطع "
+                + "هو إلغاءٌ للانقطاع نفسه.",
+                "Opens a new active subscription row on the same plan and returns its modules to entitlement — writing "
+                + "resumes exactly as before, and not one datum was lost during the lapse.\n\n"
+                + "**It is an operator act** requested with the provisioning credential alone: a door letting a subscriber "
+                + "resume their own lapsed subscription undoes the lapse itself.",
+                Body: "SubscriptionTransitionRequest", Response: "Subscription", Success: 201, Query: [],
+                Refusals:
+                [
+                    new(400, "الجسم لا يطابق العقد، أو معرّف المستأجر في المسار غير صالح.",
+                        "The body does not match the contract, or the tenant identifier in the path is not valid."),
+                    new(404, "لا اشتراك لهذا المستأجر. الرمز الثابت: subscription.not_found.",
+                        "No subscription exists for this tenant. Stable code: subscription.not_found."),
+                    new(422, "سند أو سبب مفقود. الرمز الثابت: subscription.authority_missing.",
+                        "A missing authority or reason. Stable code: subscription.authority_missing."),
+                    new(503, "مستوى التحكّم غير مُهيَّأ. الرمز الثابت: fleet.unavailable.",
+                        "The control plane is not configured. Stable code: fleet.unavailable."),
+                ]),
+
+            // ── دورة حياة العضوية ────────────────────────────────────────────
+            new(AccessRoutes.MembershipRevocation, "post", "revokeMembership",
+                "سحب عضوية", "Revoke a membership",
+                "يسحب عضوية عضوٍ من المنشأة. مورد فرعي مستقلّ لا DELETE على العضوية: السحب **فعلٌ له فاعل ولحظة "
+                + "ويُكتب في سجلّ التدقيق**، وDELETE كان سيقوله «أزل صفّاً».\n\n"
+                + "**ومعرّف العضوية هو معرّف عضوها**: هوية العضوية (المنشأة، العضو) والمنشأة في المسار سلفاً، "
+                + "فلم يبقَ منها ما يُعنون غير العضو. واختراعُ مفتاحٍ بديل كان سيُنتج هويتين لصفٍّ واحد.\n\n"
+                + "**والأثر فوري**: ما تبلغه الجلسة يُقرأ من العضويات في كل طلب، فالصفّ المسحوب يختفي من مجموعة "
+                + "الاعتماد عند الطلب التالي بلا انتظار انقضاء.\n\n"
+                + "**ولا يُسحب آخر مالك** (409 وmembership.last_owner): منشأةٌ بلا مالك لا يستطيع أحد أن يدعو "
+                + "إليها ولا أن يُصلح أدوارها — أي بيانات محبوسة عن أصحابها بفعلٍ يبدو إدارياً.\n\n"
+                + "**وهو فعل مالك** في المنشأة: من يستطيع أن يسحب عضويةً يستطيع أن يُخلي المنشأة لنفسه.",
+                "Revokes a member's membership in the company. A subresource, not a DELETE on the membership: revocation is "
+                + "**an act with an actor and an instant, written to the audit log**; DELETE would have called it 'remove a row'.\n\n"
+                + "**A membership's identifier is its member's identifier**: its identity is (company, member) and the company "
+                + "is already in the path, so nothing but the member is left to address. Inventing a surrogate key would give "
+                + "one row two identities.\n\n"
+                + "**The effect is immediate**: what a session reaches is read from memberships on every request, so the "
+                + "revoked row leaves the credential's set on the next request without waiting for an expiry.\n\n"
+                + "**The last owner is not revoked** (409, membership.last_owner): a company without an owner is one nobody "
+                + "can invite into or repair roles in — data locked away from its owners by an act that looks administrative.\n\n"
+                + "**It is an owner's act** in the company: whoever can revoke a membership can empty the company for themselves.",
+                Body: null, Response: "MembershipRevocation", Success: 201, Query: [],
+                Refusals:
+                [
+                    new(400, "معرّف المنشأة أو معرّف العضوية في المسار ليس معرّفاً صالحاً.",
+                        "The company or membership identifier in the path is not valid."),
+                    new(404, "لا عضوية بهذا المعرّف في هذه المنشأة. الرمز الثابت: membership.not_found.",
+                        "No membership with this identifier exists in this company. Stable code: membership.not_found."),
+                    new(409, "هذه آخر عضوية مالكة في المنشأة. الرمز الثابت: membership.last_owner.",
+                        "This is the company's last owner membership. Stable code: membership.last_owner."),
+                ]),
+
+            new(AccessRoutes.MembershipRoleChanges, "post", "changeMembershipRole",
+                "تغيير دور عضوية", "Change a membership's role",
+                "يغيّر دور عضوٍ في المنشأة. مورد فرعي مستقلّ على نمط plan-changes: الدور **صلاحيةُ وصول**، "
+                + "وتغييرُه حدثٌ يُكتب في سجلّ التدقيق لا حقلٌ يُعدَّل بتحديث جزئي.\n\n"
+                + "والدور يُطابَق حرفياً من مجموعة مغلقة، ودورٌ لا أثر له زينة: Reader يقرأ ولا يكتب — وكل فعل "
+                + "غير آمن في منشأةٍ دورُه فيها Reader يُردّ بـ403 وmembership.read_only — وOwner يدعو ويسحب "
+                + "ويغيّر الأدوار.\n\n"
+                + "**ورمز الدور يفترق عن رمز الاستحقاق عمداً**: ذاك يقول «جدّد اشتراكك» وهذا يقول «اطلب صلاحية»، "
+                + "وخلطهما يجعل قارئاً يتّصل بالمحاسبة بلا سبب.\n\n"
+                + "**ولا يُخفَض آخر مالك** (409 وmembership.last_owner)، و**الدور الذي هو الدور القائم يُرفض** "
+                + "(409 وmembership.role_unchanged): ردُّ «تمّ» على فعلٍ لم يقع أسوأ من الرفض.",
+                "Changes a member's role in the company. A subresource in the plan-changes shape: a role is **an access "
+                + "grant**, and changing it is an event written to the audit log, not a field patched in place.\n\n"
+                + "The role is matched literally against a closed set, and a role with no effect is decoration: Reader reads "
+                + "and writes nothing — every unsafe method in a company where the role is Reader is refused with 403 and "
+                + "membership.read_only — and Owner invites, revokes, and changes roles.\n\n"
+                + "**The role code differs from the entitlement code deliberately**: that one says 'renew your subscription', "
+                + "this one says 'ask for a permission'; conflating them sends a reader to call accounting for no reason.\n\n"
+                + "**The last owner is not demoted** (409, membership.last_owner), and **a role equal to the current role is "
+                + "refused** (409, membership.role_unchanged): answering 'done' to an act that did not happen is worse than refusing.",
+                Body: "ChangeMembershipRoleRequest", Response: "MembershipRoleChange", Success: 201, Query: [],
+                Refusals:
+                [
+                    new(400, "الجسم لا يطابق العقد، أو معرّف المنشأة أو العضوية في المسار غير صالح.",
+                        "The body does not match the contract, or the company or membership identifier in the path is not valid."),
+                    new(404, "لا عضوية بهذا المعرّف في هذه المنشأة. الرمز الثابت: membership.not_found.",
+                        "No membership with this identifier exists in this company. Stable code: membership.not_found."),
+                    new(409, "آخر مالك لا يُخفَض، أو الدور المطلوب هو الدور القائم. الرموز: membership.last_owner · membership.role_unchanged.",
+                        "The last owner is not demoted, or the requested role is the current role. Codes: membership.last_owner, membership.role_unchanged."),
+                    new(422, "دور غير معروف. الرمز الثابت: membership.role_unknown.",
+                        "An unknown role. Stable code: membership.role_unknown."),
+                ]),
+
         }.OrderBy(static o => o.Path, StringComparer.Ordinal).ThenBy(static o => o.Method, StringComparer.Ordinal),
     ];
 
@@ -686,6 +918,17 @@ internal static class OpenApiEmitter
         {
             w.WriteStartObject(byPath.Key);
 
+            // نطاق المستأجر — خارج نطاق المنشأة، وهو الفرع الوحيد الذي لا يحمل companyId.
+            if (byPath.Key.Contains("{tenantId}", StringComparison.Ordinal))
+            {
+                w.WriteStartArray("parameters");
+                WritePathParameter(w, "tenantId",
+                    "معرّف المستأجر. يُطابَق بمستأجر الاعتماد ويُرفض إن اختلف؛ ولا يُفرَّق في الرفض بين «لا وجود له» و«ليس مستأجرك».",
+                    "The tenant identifier. It is matched against the credential's tenant and refused when it differs; the refusal does not distinguish 'does not exist' from 'not yours'.",
+                    "uuid");
+                w.WriteEndArray();
+            }
+
             if (byPath.Key.Contains("{companyId}", StringComparison.Ordinal))
             {
                 w.WriteStartArray("parameters");
@@ -694,6 +937,14 @@ internal static class OpenApiEmitter
                 if (byPath.Key.Contains("{entryId}", StringComparison.Ordinal))
                 {
                     WritePathParameter(w, "entryId", "معرّف القيد.", "The entry identifier.", "uuid");
+                }
+
+                if (byPath.Key.Contains("{membershipId}", StringComparison.Ordinal))
+                {
+                    WritePathParameter(w, "membershipId",
+                        "معرّف العضوية — **وهو معرّف عضوها**: هوية العضوية (المنشأة، العضو)، والمنشأة في المسار سلفاً.",
+                        "The membership identifier — **which is its member's identifier**: a membership's identity is (company, member), and the company is already in the path.",
+                        "uuid");
                 }
 
                 // معرّفات موارد المستندات — بترتيب معلن، ولا مسار يحمل أكثر من واحد منها.
@@ -935,6 +1186,11 @@ internal static class OpenApiEmitter
         WriteResponse(w, operation.Success, "استجابة ناجحة.", "Successful response.", operation.Response,
             operation.ResponseMediaType, operation.ResponseInlineType);
 
+        foreach (Refusal repeat in operation.Repeats ?? [])
+        {
+            WriteResponse(w, repeat.Status, repeat.Ar, repeat.En, operation.Response);
+        }
+
         if (IdempotentPostings.Contains(operation.OperationId, StringComparer.Ordinal))
         {
             WriteResponse(w, 200,
@@ -1089,6 +1345,223 @@ internal static class OpenApiEmitter
 
     private static IEnumerable<(string Name, Action<Utf8JsonWriter> Write)> Schemas()
     {
+        yield return ("RegisterTenantRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب التسجيل الأول. **ولا حقل خطّة فيه**: هذا بابٌ يُخدَم بلا اعتماد، وحقلٌ يختار منه الطالب "
+                + "حزمته يمنح الحزمة الشاملة لمن كتب اسمها. **ولا حقل مستأجر ولا معرّف منشأة**: كلاهما مشتقٌّ "
+                + "حتمياً من requestKey، وهو ما يجعل إعادة الإرسال تصل إلى المستأجر نفسه لا إلى ثانٍ. / "
+                + "The first-registration request. **It carries no plan field**: this door is served without a credential, "
+                + "and a field letting the caller pick their package hands the full one to whoever types its name. **It "
+                + "carries no tenant and no company identifier**: both are derived deterministically from requestKey, which "
+                + "is what makes a resend reach the same tenant rather than a second one.");
+            w.WriteStartObject("properties");
+            WriteSignupKeyProperty(w);
+            WriteStringProperty(w, "companyNameAr",
+                "اسم المنشأة بالعربية — وهو السجلّ لا ترجمته.",
+                "The company's Arabic name — the record itself, not a translation of it.", 200);
+            WriteArrayRefProperty(w, "nameTranslations", "NameValue",
+                "ترجمات اسم المنشأة، مفاتيحها أوسمة BCP-47. ولا حقل إنجليزي ثابت: الإنجليزية واحدة من N. "
+                + "وسجل الأسطول يقرأ منها الوسم en لتقاريره، ويرتدّ إلى العربية إن غاب.",
+                "The company name's translations, keyed by BCP-47 tags. There is no fixed English field: English is one "
+                + "of N. The fleet registry reads the en tag from here for its reporting and falls back to Arabic when absent.");
+            WriteStringProperty(w, "ownerNameAr",
+                "اسم أول مالك بالعربية — يظهر في قائمة الأعضاء وفي سجلّ التدقيق.",
+                "The first owner's Arabic name — it appears in the member list and the audit log.", 200);
+            w.WriteEndObject();
+            WriteRequired(w, "companyNameAr", "ownerNameAr", "requestKey");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("RegisteredTenant", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "مستأجرٌ سُجِّل، ومعه ما يفتح به مالكُه جلسته. وenrolmentCredential يخرج **مرّة واحدة** — المُودَع "
+                + "بصمته — وهو معدومٌ عند إعادة الإرسال بالمفتاح نفسه: النتيجة هي هي، والسرّ لا يُسكّ مرّتين. / "
+                + "A registered tenant with what opens its owner's session. enrolmentCredential leaves the server **once** — "
+                + "only its digest is stored — and it is null on a resend with the same key: the result is the same, and the "
+                + "secret is not minted twice.");
+            w.WriteStartObject("properties");
+            WriteBooleanProperty(w, "alreadyRegistered",
+                "‏true حين ردّ هذا الطلبُ تسجيلاً سابقاً بالمفتاح نفسه، ومعه رمز 200 بدل 201.",
+                "true when this request returned an earlier registration with the same key, alongside 200 instead of 201.");
+            WriteStringProperty(w, "companyId",
+                "أول منشأة للمستأجر — وهي التي تُؤسَّس ويُرحَّل فيها.",
+                "The tenant's first company — the one that is set up and posted into.", 36);
+            WriteNullableStringProperty(w, "enrolmentCredential",
+                "اعتماد الانتساب، أو null عند إعادة الإرسال.",
+                "The enrolment credential, or null on a resend.", AccessLimits.MaximumPresentedLength);
+            WriteNullableStringProperty(w, "enrolmentExpiresAt",
+                "لحظة انقضاء الدعوة بصيغة ISO 8601 الدوّارة، أو null عند إعادة الإرسال.",
+                "The invitation's expiry in round-trip ISO 8601, or null on a resend.", 64);
+            WriteRefProperty(w, "owner", "Membership");
+            WriteRefProperty(w, "subscription", "Subscription");
+            WriteStringProperty(w, "tenantCode",
+                "رمز المستأجر القصير في سجل الأسطول — مشتقٌّ من معرّفه ولا يختاره العميل.",
+                "The tenant's short code in the fleet registry — derived from its identifier, never chosen by the client.", 64);
+            WriteStringProperty(w, "tenantId", "المستأجر المُنشأ.", "The created tenant.", 36);
+            w.WriteEndObject();
+            WriteRequired(w, "alreadyRegistered", "companyId", "enrolmentCredential", "enrolmentExpiresAt",
+                "owner", "subscription", "tenantCode", "tenantId");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("SubscriptionModule", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "وحدةٌ في الاشتراك وحالتها. وpostsJournal يقول إن عملها يبلغ الدفتر، وهو ما يجعل أرضيتها قراءةً "
+                + "لا نزعاً عند الانقطاع. / "
+                + "A module in the subscription and its state. postsJournal says its work reaches the ledger, which is what "
+                + "makes its floor read-only rather than removal when the subscription lapses.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "code", "رمز الوحدة في كتالوج مستوى التحكّم.", "The module code in the control-plane catalogue.", 16);
+            WriteStringProperty(w, "nameAr", "اسمها بالعربية — السجلّ.", "Its Arabic name — the record.", 200);
+            WriteArrayRefProperty(w, "nameTranslations", "NameValue",
+                "ترجمات اسمها، مفاتيحها أوسمة BCP-47.", "Its name's translations, keyed by BCP-47 tags.");
+            WriteBooleanProperty(w, "postsJournal",
+                "هل يبلغ عملُها الدفتر؟ ووحدةٌ تُرحّل قيوداً لا تُنتزَع بسبب سداد.",
+                "Does its work reach the ledger? A module that posts entries is not taken away over payment.");
+            WriteEnumProperty(w, "state",
+                "حالة الوحدة.", "The module's state.", EntitlementStateNames);
+            w.WriteEndObject();
+            WriteRequired(w, "code", "nameAr", "nameTranslations", "postsJournal", "state");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("Subscription", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "الاشتراك الجاري كاملاً: الخطّة وسعرها نصّاً، والحالة، وحالة كل وحدة، وتاريخ التجديد. "
+                + "**وكل مبلغ نصّ** بأربع خانات — لا رمز رقمي في JSON. / "
+                + "The whole current subscription: the plan and its price as text, the state, each module's state, and the "
+                + "renewal date. **Every amount is a string** with four decimals — never a JSON number token.");
+            w.WriteStartObject("properties");
+            WriteCurrencyProperty(w);
+            WriteNullableStringProperty(w, "endsOn",
+                "تاريخ انتهاء الاشتراك بصيغة yyyy-MM-dd، أو null لاشتراك جارٍ بلا نهاية معلومة.",
+                "The subscription's end date as yyyy-MM-dd, or null for a running subscription with no known end.", 10);
+            WriteIntegerProperty(w, "includedUsers", 0, 100000,
+                "عدد المستخدمين المُضمَّنين في السعر الشهري.", "The number of users included in the monthly price.");
+            WriteRefProperty(w, "monthlyPrice", "Money");
+            WriteArrayRefProperty(w, "modules", "SubscriptionModule",
+                "الوحدات وحالاتها، مرتَّبةً برمزها ترتيباً حرفياً ثابتاً.",
+                "The modules and their states, ordered by code in a fixed ordinal order.");
+            WriteStringProperty(w, "nameAr", "اسم المستأجر بالعربية — السجلّ.", "The tenant's Arabic name — the record.", 200);
+            WriteArrayRefProperty(w, "nameTranslations", "NameValue",
+                "ترجمات اسم المستأجر.", "The tenant name's translations.");
+            WriteRefProperty(w, "perUserPrice", "Money");
+            WriteStringProperty(w, "planCode", "رمز الخطّة.", "The plan code.", 32);
+            WriteStringProperty(w, "planNameAr", "اسم الخطّة بالعربية.", "The plan's Arabic name.", 200);
+            WriteArrayRefProperty(w, "planNameTranslations", "NameValue",
+                "ترجمات اسم الخطّة.", "The plan name's translations.");
+            WriteNullableStringProperty(w, "renewsOn",
+                "تاريخ التجديد التالي بصيغة yyyy-MM-dd، أو null لاشتراك ليس فعّالاً — وتاريخٌ يُعرض على اشتراك منقطع يُقرأ وعداً بعودةٍ لا تقع.",
+                "The next renewal date as yyyy-MM-dd, or null when the subscription is not active — a date shown on a lapsed subscription reads as a promise of a return that does not happen.", 10);
+            WriteEnumProperty(w, "state", "حالة الاشتراك.", "The subscription's state.", SubscriptionStateNames);
+            WriteDateProperty(w, "startedOn", "تاريخ بدء الاشتراك الجاري.", "The current subscription's start date.");
+            WriteStringProperty(w, "subscriptionId", "معرّف الاشتراك الجاري.", "The current subscription's identifier.", 36);
+            WriteStringProperty(w, "tenantCode", "رمز المستأجر القصير.", "The tenant's short code.", 64);
+            WriteStringProperty(w, "tenantId", "المستأجر.", "The tenant.", 36);
+            WriteEnumProperty(w, "tenantStatus", "حالة المستأجر في سجل الأسطول.", "The tenant's status in the fleet registry.", TenantStatusNames);
+            w.WriteEndObject();
+            WriteRequired(w, "currency", "endsOn", "includedUsers", "modules", "monthlyPrice", "nameAr",
+                "nameTranslations", "perUserPrice", "planCode", "planNameAr", "planNameTranslations", "renewsOn",
+                "startedOn", "state", "subscriptionId", "tenantCode", "tenantId", "tenantStatus");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("ChangePlanRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب تغيير الخطّة. والسند إلزامي: الاستحقاق يحكم أي بيانات مالية يجوز إنشاؤها، فتغييره حدث "
+                + "تدقيقي لا إعداد واجهة. / "
+                + "A plan-change request. Authority is mandatory: entitlement governs which financial data may be created, "
+                + "so changing it is an audit event, not a UI setting.");
+            w.WriteStartObject("properties");
+            WriteAuthorityProperty(w);
+            WriteStringProperty(w, "planCode",
+                "رمز الخطّة الجديدة من مجموعة الخطط المعروفة؛ ورمزٌ غير معروف يُرفض بـsubscription.plan_unknown ورسالةٍ تُسمّي المعروف.",
+                "The new plan's code from the known set; an unknown code is refused with subscription.plan_unknown and a message naming what is known.", 32);
+            WriteStringProperty(w, "reasonAr",
+                "سبب التغيير بالعربية — يُكتب في سجلّ تدقيق الاستحقاق.",
+                "The change's reason in Arabic — written to the entitlement audit log.", 500);
+            w.WriteEndObject();
+            WriteRequired(w, "authority", "planCode", "reasonAr");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("SubscriptionTransitionRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب انقطاع أو استئناف — بالسند نفسه وللسبب نفسه. / "
+                + "A lapse or resumption request — with the same authority and for the same reason.");
+            w.WriteStartObject("properties");
+            WriteAuthorityProperty(w);
+            WriteStringProperty(w, "reasonAr",
+                "السبب بالعربية — يُكتب في سجلّ تدقيق الاستحقاق.",
+                "The reason in Arabic — written to the entitlement audit log.", 500);
+            w.WriteEndObject();
+            WriteRequired(w, "authority", "reasonAr");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("ChangeMembershipRoleRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب تغيير دور عضوية. ودورٌ لا أثر له زينة: Reader يقرأ ولا يكتب، وOwner يدعو ويسحب ويغيّر الأدوار. / "
+                + "A membership role-change request. A role with no effect is decoration: Reader reads and writes nothing, "
+                + "and Owner invites, revokes, and changes roles.");
+            w.WriteStartObject("properties");
+            WriteEnumProperty(w, "role", "الدور المطلوب.", "The requested role.", MembershipRoles.All);
+            w.WriteEndObject();
+            WriteRequired(w, "role");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("MembershipRevocation", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "عضويةٌ سُحبت: من كان، وبأي دور، ومتى. والصفّ لا يبقى «موقوفاً»: العضوية صلاحيةُ وصولٍ جارية لا "
+                + "سجلّ محاسبي، وأثرُها التاريخي في سجلّ التدقيق — وصلاحيةٌ موقوفة تبقى في جدول وصول هي الشكل "
+                + "الذي يُنسى فيه أحدهم مُفعَّلاً. / "
+                + "A revoked membership: who it was, in which role, and when. The row is not left 'suspended': a membership "
+                + "is a live access grant rather than an accounting record, and its history lives in the audit log — a "
+                + "suspended grant left in an access table is exactly how somebody stays enabled by being forgotten.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "companyId", "المنشأة.", "The company.", 36);
+            WriteRefProperty(w, "member", "Membership");
+            WriteInstantProperty(w, "revokedAt", "لحظة السحب.", "The instant of revocation.");
+            w.WriteEndObject();
+            WriteRequired(w, "companyId", "member", "revokedAt");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("MembershipRoleChange", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "دورٌ تغيّر: العضوية بدورها الجديد، والدور السابق، ولحظة التغيير. وpreviousRole يجعل العميل يعرف "
+                + "اتجاه التغيير بلا طلبٍ ثانٍ. / "
+                + "A changed role: the membership in its new role, the previous role, and the instant of the change. "
+                + "previousRole lets a client see the direction of the change without a second request.");
+            w.WriteStartObject("properties");
+            WriteInstantProperty(w, "changedAt", "لحظة التغيير.", "The instant of the change.");
+            WriteStringProperty(w, "companyId", "المنشأة.", "The company.", 36);
+            WriteRefProperty(w, "member", "Membership");
+            WriteEnumProperty(w, "previousRole", "الدور السابق.", "The previous role.", MembershipRoles.All);
+            w.WriteEndObject();
+            WriteRequired(w, "changedAt", "companyId", "member", "previousRole");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
         yield return ("OpenSessionRequest", static w =>
         {
             w.WriteString("type", "object");
@@ -2306,6 +2779,52 @@ internal static class OpenApiEmitter
         });
     }
 
+    /// <summary>
+    /// أسماء حالات الاستحقاق كما تُقرأ على السلك — <b>من التعداد نفسه لا مكتوبةً بيد</b>.
+    /// <para>ولا يُكتب هنا اسمٌ منها حرفياً: قائمةٌ مكتوبة بيد تنحرف عن التعداد عند أول
+    /// حالة رابعة، فيصف العقدُ مجموعةً مغلقة ليست مغلقة.</para>
+    /// </summary>
+    private static readonly string[] EntitlementStateNames = Enum.GetNames<Babel.Core.Entitlement.EntitlementState>();
+
+    /// <summary>حالات الاشتراك كما يقيّدها <c>ck_sub_state</c> في مخطّط مستوى التحكّم.</summary>
+    private static readonly string[] SubscriptionStateNames = ["Active", "Lapsed", "Cancelled"];
+
+    /// <summary>حالات المستأجر في سجل الأسطول — من التعداد نفسه.</summary>
+    private static readonly string[] TenantStatusNames =
+        Enum.GetNames<Babel.ControlPlane.Registry.TenantStatus>();
+
+    /// <summary>مفتاح الطلب على السلك: قيمة عشوائية يولّدها العميل ويحتفظ بها.</summary>
+    private static void WriteSignupKeyProperty(Utf8JsonWriter w)
+    {
+        w.WriteStartObject("requestKey");
+        w.WriteString("type", "string");
+        w.WriteNumber("minLength", Fleet.SignupIdentity.MinimumKeyLength);
+        w.WriteNumber("maxLength", Fleet.SignupIdentity.MaximumKeyLength);
+        w.WriteString("description",
+            "مفتاح الطلب: قيمة **عشوائية** يولّدها العميل ويحتفظ بها، ومنها تُشتقّ كل معرّفات التسجيل اشتقاقاً "
+            + "حتمياً. فإعادةُ الإرسال به تردّ المستأجر نفسه ولا تُنشئ ثانياً — ومفتاحٌ قصير يصير تخمينُه ممكناً. / "
+            + "The request key: a **random** value the client generates and keeps, from which every registration "
+            + "identifier is derived deterministically. Resending it returns the same tenant rather than creating a "
+            + "second one — and a short key becomes guessable.");
+        w.WriteEndObject();
+    }
+
+    /// <summary>السند على السلك — إلزامي على كل تغيير اشتراك.</summary>
+    private static void WriteAuthorityProperty(Utf8JsonWriter w)
+    {
+        w.WriteStartObject("authority");
+        w.WriteString("type", "string");
+        w.WriteNumber("minLength", 1);
+        w.WriteNumber("maxLength", 200);
+        w.WriteString("description",
+            "السند: رقم عقد، أو حدث سداد، أو تذكرة دعم، أو قرار مُوثَّق. **ولا تغيير استحقاق بلا سند**: "
+            + "الاستحقاق يحكم أي بيانات مالية يجوز إنشاؤها، فتغييره حدث تدقيقي. / "
+            + "The authority: a contract number, a payment event, a support ticket, or a documented decision. **No "
+            + "entitlement change without authority**: entitlement governs which financial data may be created, so "
+            + "changing it is an audit event.");
+        w.WriteEndObject();
+    }
+
     private static void WriteStringProperty(Utf8JsonWriter w, string name, string ar, string en, int maxLength)
     {
         w.WriteStartObject(name);
@@ -2556,7 +3075,6 @@ internal static class OpenApiEmitter
         string? Body,
         string Response,
         int Success,
-        bool Anonymous,
         IReadOnlyList<QueryParameter> Query,
 
         // نوع محتوى الاستجابة الناجحة. الافتراضي application/json بمرجع $ref إلى مخطّط
@@ -2584,7 +3102,25 @@ internal static class OpenApiEmitter
         // ويُرجعان 401 وهما **بلا مصادقة** (الاعتماد في الجسم لا في الترويسة). فالطقم
         // الافتراضي كان سيصف بابين بما لا يفعلانه ويسكت عمّا يفعلانه — وعقدٌ يصف رفضاً
         // لا يقع أسوأ من عقدٍ ساكت: يُبنى عليه فرعٌ لا يُنفَّذ أبداً.
-        IReadOnlyList<Refusal>? Refusals = null);
+        IReadOnlyList<Refusal>? Refusals = null,
+
+        // ‏**استجاباتُ نجاحٍ إضافية على العملية نفسها** — بمخطّطها هي، لا بمخطّط مشكلة.
+        // ولماذا وُجدت: عمليةٌ **حصينة ضد التكرار** تُرجع 200 بدل 201 عند الإعادة، وذلك
+        // نجاحٌ لا رفض. وكان ذلك مكتوباً بقائمة أسماء عمليات ونصٍّ واحد يصف الترحيل؛
+        // ونصُّ الترحيل لا يصف تسجيلاً، فلو أُعيد استعماله لوصف العقدُ باباً بما لا يفعله.
+        IReadOnlyList<Refusal>? Repeats = null)
+    {
+    /// <summary>
+    /// هل هذه العملية بابٌ مفتوح؟ — <b>مقروءةً من القائمة الواحدة، لا مكتوبةً هنا</b>.
+    /// <para>
+    /// وكانت وسيطاً يُكتب على كل عملية، فكانت «أي المسارات تُفتح بلا اعتماد؟» مُعلَنةً
+    /// في موضعين: هنا وفي وسيط المصادقة. وقد رُبطا بحارسٍ يطرق كل باب في العقد ويقارن
+    /// جواب الخادم بما وعد به، والحارس باقٍ — لكنه يمسك الانحراف <b>بعد وقوعه</b>.
+    /// والقائمة الآن واحدة في <see cref="OpenDoors"/>، ويقرؤها الطرفان.
+    /// </para>
+    /// </summary>
+    public bool Anonymous => OpenDoors.IsOpen(Path);
+}
 
     /// <summary>رفضٌ مُعلَن على عملية بعينها: رمزه ووصفه بلغتيه.</summary>
     private sealed record Refusal(int Status, string Ar, string En);

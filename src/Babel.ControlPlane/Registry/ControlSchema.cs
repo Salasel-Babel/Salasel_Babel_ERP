@@ -320,15 +320,17 @@ public static class ControlSchema
                 catch (PostgresException ex) when (ex.SqlState == "42P04") { /* سبقنا إليها نداء متزامن */ }
             }
 
-            var roleExists = await Db.ScalarAsync<long>(maint,
-                "select count(*) from pg_roles where rolname = @r",
-                p => p.AddWithValue("r", o.AppRole), null, ct);
-            if (roleExists == 0)
+            foreach (var name in new[] { o.AppRole, o.SurfaceRole })
             {
+                var roleExists = await Db.ScalarAsync<long>(maint,
+                    "select count(*) from pg_roles where rolname = @r",
+                    p => p.AddWithValue("r", name), null, ct);
+                if (roleExists != 0) continue;
+
                 try
                 {
                     await Db.ExecAsync(maint,
-                        $"create role {role} login nosuperuser nocreatedb nocreaterole noinherit",
+                        $"create role {Db.Ident(name)} login nosuperuser nocreatedb nocreaterole noinherit",
                         null, ct);
                 }
                 catch (PostgresException ex) when (ex.SqlState == "42710") { }
@@ -349,5 +351,46 @@ public static class ControlSchema
         // دور التطبيق لا يرى قاعدة التحكّم إطلاقاً: مستوى التحكّم عملياتي، لا
         // يُقرأ من مسار طلب المستأجر (فخ-30 — لا نعتمد على شرط WHERE للفصل).
         await Db.ExecAsync(c, $"revoke all on schema control from {role}", null, ct);
+
+        await GrantSurfaceAsync(c, o, ct);
+    }
+
+    /// <summary>
+    /// صلاحيات <b>سطح الاشتراك</b> — الدور الثالث، وهو الوحيد الذي يقرأ مستوى التحكّم
+    /// من مسار طلب.
+    /// <para>
+    /// <b>ولماذا دورٌ ثالث لا أحد الدورين القائمين:</b> دور التطبيق مسحوبةٌ منه صلاحية
+    /// هذا المخطّط كلّها بالسطر الذي فوق مباشرةً، ومستخدم الإدارة يملك <c>DROP</c> على
+    /// ما يقرؤه. وخادمٌ يخدم الإنترنت بأحدهما إمّا لا يستطيع أن يقرأ اشتراكاً، أو يستطيع
+    /// أن يُسقط سجلّ الأسطول. فالثالث يقرأ الأسطول، ويكتب الاشتراك والاستحقاق وسطورهما،
+    /// <b>ولا <c>delete</c> ولا <c>truncate</c> على جدول واحد</b>.
+    /// </para>
+    /// <para>
+    /// <b>والقراءة أوسع من الكتابة عمداً:</b> <c>select</c> على المخطّط كلّه — فقراءةُ
+    /// جدولٍ عملياتي لا تُغيّر شيئاً، وتضييقُها جدولاً جدولاً كان سيُنتج قائمةً تنحرف عن
+    /// المخطّط عند أول جدول جديد فيسقط استعلامٌ في الإنتاج. والكتابة <b>مسمّاةٌ جدولاً
+    /// جدولاً</b> للسبب المعاكس بعينه: جدولٌ جديد يجب ألّا يصير قابلاً للكتابة بالسهو.
+    /// </para>
+    /// </summary>
+    /// <param name="c">اتصال مفتوح بقاعدة التحكّم بمستخدم يملك المنح.</param>
+    /// <param name="o">إعدادات مستوى التحكّم.</param>
+    /// <param name="ct">رمز الإلغاء.</param>
+    public static async Task GrantSurfaceAsync(NpgsqlConnection c, ControlPlaneOptions o,
+        CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(o);
+        var surface = Db.Ident(o.SurfaceRole);
+
+        await Db.ExecAsync(c, $"grant usage on schema control to {surface}", null, ct);
+        await Db.ExecAsync(c, $"grant select on all tables in schema control to {surface}", null, ct);
+        await Db.ExecAsync(c,
+            $"grant insert, update on control.tenant, control.subscription, "
+            + $"control.tenant_module_entitlement to {surface}", null, ct);
+        await Db.ExecAsync(c,
+            $"grant insert on control.entitlement_audit, control.operation_log to {surface}", null, ct);
+        await Db.ExecAsync(c,
+            $"grant usage, select on all sequences in schema control to {surface}", null, ct);
+        await Db.ExecAsync(c,
+            $"revoke delete, truncate on all tables in schema control from {surface}", null, ct);
     }
 }

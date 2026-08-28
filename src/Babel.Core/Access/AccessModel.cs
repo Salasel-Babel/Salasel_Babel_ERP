@@ -166,3 +166,44 @@ public static class MembershipRoles
                     CultureInfo.InvariantCulture,
                     $"دورُ عضويةٍ غير معروف في المخطّط: «{column}». / Unknown membership role in the schema: '{column}'."));
 }
+
+/// <summary>
+/// حكمُ تغييرٍ على عضوية قائمة — <b>مجموعة مغلقة</b> يترجمها الحدّ إلى رمز رفض واحد.
+/// <para>
+/// وهو نوعٌ واحد للفعلين — السحب وتغيير الدور — لأن الحكم واحد: العضوية موجودة أم لا،
+/// وهل يترك الفعلُ المنشأةَ بلا مالك. وحكمان متوازيان بمعنى واحد ينحرفان عند أول
+/// تعديل، فيصير «آخر مالك» مرفوضاً في مسار ومقبولاً في الآخر.
+/// </para>
+/// </summary>
+public enum MembershipMutation
+{
+    /// <summary>لا عضوية بهذا المعرّف في هذه المنشأة.</summary>
+    NotFound = 0,
+
+    /// <summary>
+    /// الفعل يترك المنشأة <b>بلا مالك واحد</b> — ويُرفض.
+    /// <para>منشأةٌ بلا مالك منشأةٌ لا يستطيع أحد أن يدعو إليها عضواً ولا أن يُصلح
+    /// أدوارها، أي بياناتٌ محبوسة عن أصحابها بفعلٍ يبدو إدارياً.</para>
+    /// </summary>
+    LastOwner = 1,
+
+    /// <summary>العضوية على ما طُلب أصلاً؛ لم يتغيّر شيء ولم يقع خطأ.</summary>
+    Unchanged = 2,
+
+    /// <summary>وقع الفعل.</summary>
+    Applied = 3,
+}
+
+/// <summary>نتيجة سحب عضوية: الحكم، والعضوية كما كانت قبل السحب.</summary>
+/// <param name="Outcome">الحكم.</param>
+/// <param name="Membership">العضوية المسحوبة — ذات معنى عند <see cref="MembershipMutation.Applied"/> وحدها.</param>
+/// <param name="RevokedAt">لحظة السحب.</param>
+public sealed record MembershipRevocation(MembershipMutation Outcome, Membership? Membership, DateTimeOffset RevokedAt);
+
+/// <summary>نتيجة تغيير دور: الحكم، والدور قبله وبعده.</summary>
+/// <param name="Outcome">الحكم.</param>
+/// <param name="Membership">العضوية بعد التغيير — ذات معنى عند <see cref="MembershipMutation.Applied"/> وحدها.</param>
+/// <param name="PreviousRole">الدور السابق.</param>
+/// <param name="ChangedAt">لحظة التغيير.</param>
+public sealed record MembershipRoleChange(
+    MembershipMutation Outcome, Membership? Membership, MembershipRole PreviousRole, DateTimeOffset ChangedAt);

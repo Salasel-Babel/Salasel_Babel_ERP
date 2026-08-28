@@ -1,5 +1,8 @@
 using System.Globalization;
 using System.Reflection;
+using Babel.ControlPlane.Entitlement;
+using Babel.ControlPlane.Registry;
+using Babel.ControlPlane.Support;
 using Babel.Core;
 using Babel.Ledger;
 using Babel.Purchasing;
@@ -44,6 +47,26 @@ internal static class ApiTestDatabase
 
     /// <summary>الجذع الثابت لاسم قاعدة المشتريات.</summary>
     public const string PurchasingStem = "babel_api_tests_purchasing";
+
+    /// <summary>
+    /// الجذع الثابت لاسم <b>قاعدة مستوى التحكّم</b> لهذه العملية.
+    /// <para>
+    /// وهي قاعدة رابعة مستقلّة لأن مستوى التحكّم مستقلٌّ فعلاً: مخطّطه <c>control</c>،
+    /// وأدواره غير أدوار المستأجر، وهو يعمل <b>فوق</b> الأسطول لا داخل مستأجر. وسطح
+    /// الاشتراك لا يُختبَر بلا قاعدةٍ له — والاختبار بمحوّل وهمي كان سيُثبت أن الوهمي
+    /// يعمل.
+    /// </para>
+    /// </summary>
+    public const string ControlStem = "babel_api_tests_control";
+
+    /// <summary>قاعدة مستوى التحكّم لهذه العملية.</summary>
+    public static string ControlDatabase { get; } = TestRunScope.Name(ControlStem);
+
+    /// <summary>دور سطح الاشتراك لهذه المجموعة — غير دور التطبيق وغير مستخدم الإدارة.</summary>
+    public const string SurfaceRole = "babel_api_test_surface";
+
+    /// <summary>دور تطبيق مستوى التحكّم لهذه المجموعة — يُنشأ ولا يُستعمل من السطح.</summary>
+    public const string ControlAppRole = "babel_api_test_cp_app";
 
     /// <summary>قاعدة المبيعات لهذه العملية وحدها.</summary>
     public static string SalesDatabase { get; } = TestRunScope.Name(SalesStem);
@@ -141,6 +164,21 @@ internal static class ApiTestDatabase
         CompanyCurrency = "SAR",
     };
 
+    /// <summary>
+    /// إعدادات مستوى التحكّم لهذه المجموعة.
+    /// <para>
+    /// <b>وبمستخدم الإدارة هنا لأن هذا هو مسار النشر لا مسار الطلب:</b> إنشاء القاعدة
+    /// وتطبيق الـDDL وبذر الكتالوج أفعالُ مالك. والخادم الذي تُقلعه هذه المجموعة يقرأ
+    /// بدور <c>SurfaceRole</c> وحده — وهو ما يُثبته الاختبار لا ما يفترضه.
+    /// </para>
+    /// </summary>
+    public static ControlPlaneOptions Control { get; } = new()
+    {
+        ControlDatabase = ControlDatabase,
+        AppRole = ControlAppRole,
+        SurfaceRole = SurfaceRole,
+    };
+
     /// <summary>إعدادات المشتريات لهذه المجموعة — قاعدة مستقلّة، وللأسباب نفسها.</summary>
     public static PurchasingOptions Purchasing { get; } = new()
     {
@@ -217,6 +255,22 @@ internal static class ApiTestDatabase
         // والإنتاج، لا بنسخة ثانية من نصوص المخطّط تنحرف عنه بصمت.
         await SalesSchemaDeployer.DeployAsync(Sales, cancellationToken).ConfigureAwait(false);
         await PurchasingSchemaDeployer.DeployAsync(Purchasing, cancellationToken).ConfigureAwait(false);
+
+        // ── مستوى التحكّم: قاعدته ومخطّطه وكتالوجه ─────────────────────────────
+        // بالناشر نفسه الذي يستعمله الأسطول (‏ControlSchema.EnsureAsync)، لا بنسخة
+        // ثانية من نصوص المخطّط. والكتالوج والخطط مبذوران لأن سطح الاشتراك يقرؤهما:
+        // قاعدةٌ بلا صفّ خطّة تجعل كل تسجيل يسقط بمفتاح أجنبي، وهو عطلٌ في التهيئة
+        // يُقرأ عطلاً في السطح.
+        await ControlSchema.EnsureAsync(Control, cancellationToken).ConfigureAwait(false);
+
+        await using NpgsqlConnection control =
+            await Db.OpenAsync(Control.ControlConnectionString, cancellationToken).ConfigureAwait(false);
+        await ModuleCatalog.SeedAsync(control, cancellationToken).ConfigureAwait(false);
+        await PlanCatalog.SeedAsync(control, cancellationToken).ConfigureAwait(false);
+
+        // والمنح يُعاد بعد البذر: الجداول التي بُذرت للتوّ موجودة سلفاً، لكن إعادة
+        // المنح تجعل الخطوة **مُحكَمة** على قاعدة أُنشئت في تشغيل سابق للعملية نفسها.
+        await ControlSchema.GrantSurfaceAsync(control, Control, cancellationToken).ConfigureAwait(false);
     }
 
     private static async Task CreateDatabaseAndRoleAsync(CancellationToken cancellationToken)
@@ -259,6 +313,30 @@ internal static class ApiTestDatabase
             cancellationToken).ConfigureAwait(false);
 
         await ExecAsync(admin, $"grant connect on database {Database} to {AppRole}", cancellationToken).ConfigureAwait(false);
+
+        // ── دورا مستوى التحكّم — بالقفل الاستشاري نفسه وللسبب نفسه ────────────
+        // ‏ControlSchema.EnsureAsync يُنشئ الدور إن غاب، ويلتقط 42710 وحدها — ولا
+        // يلتقط 23505 على pg_authid_rolname_index، وهي التي قِيست فعلاً على هذا
+        // الجهاز عند إنشاء الدور نفسه من ثماني عمليات متزامنة. فيُنشآن هنا مقفولَين،
+        // ثم يجدهما الناشر موجودَين فلا يتسابق عليهما أصلاً.
+        foreach (string role in new[] { ControlAppRole, SurfaceRole })
+        {
+            await ExecAsync(
+                admin,
+                $"""
+                do $$
+                begin
+                    perform pg_advisory_xact_lock(hashtextextended('{role}', 0));
+                    begin
+                        create role {role} login nosuperuser nocreatedb nocreaterole noinherit;
+                    exception when duplicate_object or unique_violation then
+                        alter role {role} login nosuperuser nocreatedb nocreaterole noinherit;
+                    end;
+                end
+                $$;
+                """,
+                cancellationToken).ConfigureAwait(false);
+        }
     }
 
     /// <summary>
@@ -291,6 +369,7 @@ internal static class ApiTestDatabase
             DropOne(admin, Database);
             DropOne(admin, SalesDatabase);
             DropOne(admin, PurchasingDatabase);
+            DropOne(admin, ControlDatabase);
         }
         catch (NpgsqlException exception)
         {
@@ -365,7 +444,7 @@ internal static class ApiTestDatabase
         foreach (string database in candidates)
         {
             int? owner = null;
-            foreach (string stem in new[] { DatabaseStem, SalesStem, PurchasingStem })
+            foreach (string stem in new[] { DatabaseStem, SalesStem, PurchasingStem, ControlStem })
             {
                 owner = TestRunScope.OwnerProcessId(database, stem);
                 if (owner is not null)

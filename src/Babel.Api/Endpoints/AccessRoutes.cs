@@ -50,4 +50,32 @@ internal static class AccessRoutes
     /// </para>
     /// </summary>
     public const string Memberships = ApiRoutes.Company + "/memberships";
+
+    /// <summary>
+    /// عضوية واحدة داخل المنشأة.
+    /// <para>
+    /// <b>ومعرّف العضوية هو معرّف عضوها</b>، ويُقال ذلك صراحةً بدل أن يُترك يُفهَم:
+    /// هوية العضوية هي <c>(المنشأة، العضو)</c> — وهو مفتاحها الأوّلي في قاعدة البيانات
+    /// حرفياً — والمنشأة في المسار سلفاً، فلم يبقَ منها ما يُعنون غير العضو. واختراعُ
+    /// مفتاحٍ بديل كان سيُنتج <b>هويتين لصفٍّ واحد</b>: العميل يقرأ العضو من قائمة
+    /// الأعضاء ثم يحتاج معرّفاً ثانياً لا يعرف من أين يأتي.
+    /// </para>
+    /// </summary>
+    public const string Membership = Memberships + "/{membershipId}";
+
+    /// <summary>
+    /// سحب عضوية. مورد فرعي مستقلّ لا <c>DELETE</c> على العضوية: السحب <b>فعلٌ له فاعل
+    /// ولحظة ويُكتب في سجلّ التدقيق</b>، و<c>DELETE</c> كان سيقوله «أزل صفّاً».
+    /// <para>
+    /// <b>ولا يُسحب آخر مالك:</b> منشأةٌ بلا مالك لا يستطيع أحد أن يدعو إليها ولا أن
+    /// يُصلح أدوارها — أي بيانات محبوسة عن أصحابها بفعلٍ يبدو إدارياً.
+    /// </para>
+    /// </summary>
+    public const string MembershipRevocation = Membership + "/revocation";
+
+    /// <summary>
+    /// تغيير دور عضوية. مورد فرعي مستقلّ على نمط <c>plan-changes</c>: الدور صلاحيةُ
+    /// وصول، وتغييرُه حدثٌ لا حقلٌ يُعدَّل بتحديث جزئي.
+    /// </summary>
+    public const string MembershipRoleChanges = Membership + "/role-changes";
 }

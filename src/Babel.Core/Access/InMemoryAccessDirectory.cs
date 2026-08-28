@@ -48,6 +48,70 @@ public sealed class InMemoryAccessDirectory : IAccessDirectory
     }
 
     /// <inheritdoc />
+    public Task<MembershipRevocation> RevokeMembershipAsync(
+        Guid company, UserId member, DateTimeOffset now, CancellationToken cancellationToken = default)
+    {
+        lock (_gate)
+        {
+            int index = _memberships.FindIndex(entry =>
+                entry.Membership.Company == company && entry.Membership.User == member);
+
+            if (index < 0)
+            {
+                return Task.FromResult(new MembershipRevocation(MembershipMutation.NotFound, null, now));
+            }
+
+            Membership existing = _memberships[index].Membership;
+
+            if (existing.Role == MembershipRole.Owner && OwnerCount(company) <= 1)
+            {
+                return Task.FromResult(new MembershipRevocation(MembershipMutation.LastOwner, null, now));
+            }
+
+            _memberships.RemoveAt(index);
+            return Task.FromResult(new MembershipRevocation(MembershipMutation.Applied, existing, now));
+        }
+    }
+
+    /// <inheritdoc />
+    public Task<MembershipRoleChange> ChangeRoleAsync(
+        Guid company, UserId member, MembershipRole role, DateTimeOffset now,
+        CancellationToken cancellationToken = default)
+    {
+        lock (_gate)
+        {
+            int index = _memberships.FindIndex(entry =>
+                entry.Membership.Company == company && entry.Membership.User == member);
+
+            if (index < 0)
+            {
+                return Task.FromResult(new MembershipRoleChange(MembershipMutation.NotFound, null, role, now));
+            }
+
+            MembershipEntry entry = _memberships[index];
+            MembershipRole previous = entry.Membership.Role;
+
+            if (previous == role)
+            {
+                return Task.FromResult(new MembershipRoleChange(MembershipMutation.Unchanged, null, previous, now));
+            }
+
+            if (previous == MembershipRole.Owner && OwnerCount(company) <= 1)
+            {
+                return Task.FromResult(new MembershipRoleChange(MembershipMutation.LastOwner, null, previous, now));
+            }
+
+            Membership changed = entry.Membership with { Role = role };
+            _memberships[index] = entry with { Membership = changed };
+            return Task.FromResult(new MembershipRoleChange(MembershipMutation.Applied, changed, previous, now));
+        }
+    }
+
+    /// <summary>عدد المالكين في منشأة. يُقرأ تحت القفل نفسه الذي يقع تحته الفعل.</summary>
+    private int OwnerCount(Guid company) => _memberships.Count(entry =>
+        entry.Membership.Company == company && entry.Membership.Role == MembershipRole.Owner);
+
+    /// <inheritdoc />
     public Task<Membership?> FindMembershipAsync(Guid company, UserId user, CancellationToken cancellationToken = default)
     {
         lock (_gate)
@@ -69,6 +133,20 @@ public sealed class InMemoryAccessDirectory : IAccessDirectory
                     .Where(entry => entry.Membership.Company == company)
                     .Select(static entry => entry.Membership)
                     .OrderBy(static membership => membership.User.ToString(), StringComparer.Ordinal)]);
+        }
+    }
+
+    /// <inheritdoc />
+    public Task<IReadOnlyList<Guid>> CompaniesOfAsync(TenantId tenant, CancellationToken cancellationToken = default)
+    {
+        lock (_gate)
+        {
+            return Task.FromResult<IReadOnlyList<Guid>>(
+                [.. _memberships
+                    .Where(entry => entry.Tenant == tenant)
+                    .Select(static entry => entry.Membership.Company)
+                    .Distinct()
+                    .OrderBy(static company => company.ToString(), StringComparer.Ordinal)]);
         }
     }
 

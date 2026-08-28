@@ -35,6 +35,13 @@
     -->
     <ProjectReference Include="../../src/Babel.Sales/Babel.Sales.csproj" />
     <ProjectReference Include="../../src/Babel.Purchasing/Babel.Purchasing.csproj" />
+    <!--
+      ومرجعٌ إلى مستوى التحكّم لتهيئة قاعدة الأسطول لهذه العملية وحدها: قاعدتها،
+      ومخطّط control، وكتالوج الوحدات والخطط، وصلاحيات دور سطح الاشتراك — بالناشر
+      نفسه الذي يستعمله الأسطول. ولا يُقرأ منه نوعٌ آخر: كل ما تعرفه هذه المجموعة عن
+      سطح الاشتراك يمرّ عبر HTTP والعقد المنشور، كما في المبيعات والمشتريات بالضبط.
+    -->
+    <ProjectReference Include="../../src/Babel.ControlPlane/Babel.ControlPlane.csproj" />
   </ItemGroup>
 
   <ItemGroup>

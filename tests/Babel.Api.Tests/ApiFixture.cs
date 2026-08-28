@@ -68,12 +68,13 @@ internal static class ApiFixture
 
     private static readonly SemaphoreSlim Gate = new(1, 1);
     private static readonly Dictionary<string, ApiProcess> ByCulture = new(StringComparer.Ordinal);
+    private static readonly Dictionary<string, ApiProcess> ByRateLimit = new(StringComparer.Ordinal);
     private static ApiProcess? _default;
 
     static ApiFixture() =>
         AppDomain.CurrentDomain.ProcessExit += static (_, _) =>
         {
-            foreach (ApiProcess process in ByCulture.Values)
+            foreach (ApiProcess process in ByCulture.Values.Concat(ByRateLimit.Values))
             {
                 process.DisposeAsync().AsTask().GetAwaiter().GetResult();
             }
@@ -145,6 +146,55 @@ internal static class ApiFixture
                 .ConfigureAwait(false);
 
             ByCulture[culture] = started;
+            return started;
+        }
+        finally
+        {
+            Gate.Release();
+        }
+    }
+
+    /// <summary>
+    /// خادمٌ بحدّ معدّل ضيّق على الأبواب المفتوحة — <b>وحده، ولا يتقاسمه أحد</b>.
+    /// <para>
+    /// والحدّ عدّادٌ في ذاكرة العملية، فخادمٌ مشترك بين اختبارات كثيرة يجعل رقم العدّاد
+    /// يعتمد على من سبق — وهو بعينه العطل الذي وُجد مسح العزل لأجله. فهذه المجموعة
+    /// تملك خادمها، وتُقلعه بحدّ صغير كي يُبلَغ في طلبات معدودة بدل ثلاثمئة.
+    /// </para>
+    /// </summary>
+    /// <param name="perMinute">الحدّ لكل مفتاح في الدقيقة.</param>
+    public static async Task<ApiProcess> WithRateLimitAsync(int perMinute)
+    {
+        string key = perMinute.ToString(CultureInfo.InvariantCulture);
+
+        if (ByRateLimit.TryGetValue(key, out ApiProcess? existing))
+        {
+            return existing;
+        }
+
+        CancellationToken cancellationToken = Token;
+        await Gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (ByRateLimit.TryGetValue(key, out ApiProcess? found))
+            {
+                return found;
+            }
+
+            await ApiTestDatabase.EnsureAsync(cancellationToken).ConfigureAwait(false);
+
+            Dictionary<string, string> environment = Environment(ApiTestDatabase.Options.AppConnectionString);
+            environment["Babel__RateLimit__PerMinute"] = key;
+
+            // ‏**ولا يُتخلَّص منه في نهاية الاختبار**: التخلّص وسط تشغيلٍ يقتل عملية
+            // خادم بينما خيط تجميع مُخرَجها ما يزال حيّاً، فتخرج المجموعة بـ«خيوط
+            // أمامية بقيت تعمل» — عطلٌ يُقرأ في السطح وهو في التصريف. والخوادم كلّها
+            // تُقتل عند خروج العملية، وهو الموضع الوحيد الذي لا يتقاطع مع اختبار جارٍ.
+            ApiProcess started = await ApiProcess
+                .StartAsync(environment, "en_US.UTF-8", cancellationToken)
+                .ConfigureAwait(false);
+
+            ByRateLimit[key] = started;
             return started;
         }
         finally
@@ -258,6 +308,17 @@ internal static class ApiFixture
             // وكان ذلك غير مرئي ما دام لا باب HTTP يبلغ الوحدتين.
             ["Babel__Sales__ConnectionString"] = ApiTestDatabase.Sales.ConnectionString,
             ["Babel__Purchasing__ConnectionString"] = ApiTestDatabase.Purchasing.ConnectionString,
+
+            // ── سطح الاشتراك: مُهيَّأ صراحةً، وبدور سطحٍ لا بمستخدم إدارة ────────
+            // والتهيئة مفتاحٌ صريح لا استنتاج من وجود قاعدة: خادمٌ على آلة فيها قاعدة
+            // تحكّم لغرضٍ آخر لا يفتح سطح الاشتراك عليها إلا بقرار.
+            //
+            // وكل قيمة من البيئة ولا سرّ في المستودع: الاتصال محلّي بلا كلمة مرور،
+            // وكلمة المرور — حين تلزم — تُقرأ من BABEL_CP_SURFACE_PASSWORD وحدها.
+            ["Babel__Fleet__Enabled"] = "true",
+            ["BABEL_CP_CONTROL_DB_NAME"] = ApiTestDatabase.ControlDatabase,
+            ["BABEL_CP_APP_ROLE"] = ApiTestDatabase.ControlAppRole,
+            ["BABEL_CP_SURFACE_ROLE"] = ApiTestDatabase.SurfaceRole,
         };
 
         int index = 0;

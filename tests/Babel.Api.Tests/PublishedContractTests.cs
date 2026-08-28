@@ -117,13 +117,15 @@ public sealed class PublishedContractTests
         // التوثيق — GET /openapi/v1.json و GET /docs — ثم من 19 إلى 33 بأربعة عشر
         // باباً لسطح المبيعات والمشتريات: العملاء والموردون، وفواتير المبيعات وفواتير
         // المصروف بمسوّداتها وقراءتها وترحيلها، والإشعارات الدائنة، وأعمار الذمم من
-        // الطرفين. ثم من 33 إلى **38** بخمسة أبواب للمصادقة والعضوية: فتح الجلسة
-        // وتجديدها وإبطالها، ودعوة عضو وقراءة الأعضاء.
+        // الطرفين. ثم من 33 إلى 38 بخمسة أبواب للمصادقة والعضوية: فتح الجلسة
+        // وتجديدها وإبطالها، ودعوة عضو وقراءة الأعضاء. ثم من 38 إلى **45** بسبعة
+        // أبواب للتسجيل والاشتراك ودورة حياة العضوية: إنشاء مستأجر، وقراءة الاشتراك،
+        // وتغيير الخطّة، والانقطاع، والاستئناف، وسحب عضوية، وتغيير دورها.
         //
         // وكلّها إضافات محضة تُبقي v1: **لا مسار حُذف، ولا مخطّط حُذف، ولا حقل ضُيّق،
         // ولا اختياري صار إلزامياً** — وذلك مُثبَت بفرق بين العقد المُودَع على
         // ‏origin/develop والعقد هنا، لا بادّعاء.
-        Assert.Equal(38, paths.EnumerateObject().SelectMany(static p => p.Value.EnumerateObject())
+        Assert.Equal(45, paths.EnumerateObject().SelectMany(static p => p.Value.EnumerateObject())
             .Count(static o => o.Name is "get" or "post" or "put" or "patch" or "delete"));
 
         // ولا فعل حذف على السطح كلّه — لا على قيد، ولا على مركز تكلفة، ولا على منشأة.
@@ -160,12 +162,21 @@ public sealed class PublishedContractTests
             "/api/v1/access/sessions/revocation",
         ];
 
+        // ‏**ونطاقٌ ثانٍ: المستأجر.** وهو ليس ثقباً في «لا مسار خارج نطاق» بل نطاقٌ
+        // آخر — المستأجر **فوق** المنشأة لا داخلها، ومن يشترك لأول مرّة لا يملك منشأةً
+        // يضع معرّفها في المسار. والمطابقة مفروضة عليه كما تُفرض على نطاق المنشأة:
+        // اعتمادٌ لا يبلغ المستأجر يُرفض بـtenancy.tenant_out_of_scope، ولا يُفرَّق في
+        // الرفض بين «لا وجود له» و«ليس مستأجرك».
+        //
+        // **ولا يخرج منه بيانُ مستأجرٍ آخر**: ما تحته اشتراك صاحبه وحده.
         foreach (JsonProperty path in paths.EnumerateObject())
         {
             Assert.True(
                 scopeless.Contains(path.Name, StringComparer.Ordinal)
-                || path.Name.StartsWith("/api/v1/companies/{companyId}", StringComparison.Ordinal),
-                $"مسار خارج نطاق الشركة: {path.Name}");
+                || path.Name.StartsWith("/api/v1/companies/{companyId}", StringComparison.Ordinal)
+                || path.Name == "/api/v1/tenants"
+                || path.Name.StartsWith("/api/v1/tenants/{tenantId}", StringComparison.Ordinal),
+                $"مسار خارج نطاق الشركة ونطاق المستأجر: {path.Name}");
         }
 
         // وكل مسار بلا نطاق **مصادَق عليه** إلا ثلاثةً مسمّاةً هنا حرفياً: مسارٌ بلا نطاق
@@ -183,6 +194,11 @@ public sealed class PublishedContractTests
         // **منقولاً من الترويسة إلى الجسم**: يُبصَم ويُطابَق بالبصمة كأي اعتماد، والرفض
         // 401 لا 403. أمّا الإبطال فمصادَقٌ عليه: الاعتماد المُقدَّم هو الذي يسمّي ما
         // يُبطَل، وبابُ إبطالٍ بلا مصادقة بابٌ يُسقط به أي أحد جلسة أي أحد.
+        //
+        // **وبابٌ سادس: التسجيل الأول.** ومن ليس عنده حساب هو بالضبط من يستعمله، فاشتراط
+        // اعتماد عليه يجعل المنتَج غير قابل للشراء. وما لا يُفتح بفتحه: لا يقرأ بيانات
+        // مستأجرٍ قائم ولا يكشف وجوده، والخطّة لا تُختار من جسمه بل هي خطّة الدخول وحدها،
+        // وعليه حدّ معدّل لكل عنوان ولكل مفتاح طلب.
         string[] anonymous =
         [
             "/health",
@@ -190,18 +206,28 @@ public sealed class PublishedContractTests
             "/docs",
             "/api/v1/access/sessions",
             "/api/v1/access/sessions/renewal",
+            "/api/v1/tenants",
         ];
 
         foreach (JsonProperty path in paths.EnumerateObject())
         {
             if (anonymous.Contains(path.Name, StringComparer.Ordinal)
-                || !scopeless.Contains(path.Name, StringComparer.Ordinal))
+                || !(scopeless.Contains(path.Name, StringComparer.Ordinal)
+                    || path.Name.StartsWith("/api/v1/tenants", StringComparison.Ordinal)))
             {
                 continue;
             }
 
             foreach (JsonProperty operation in path.Value.EnumerateObject())
             {
+                // ‏`parameters` على المسار مصفوفةٌ لا عملية — ووسائط المسار تُكتب عليه
+                // حيث يشترك فيها كل أفعاله. وقراءتُها عمليةً ترمي «المطلوب كائن ووُجدت
+                // مصفوفة»، وهو عطلٌ في الفحص يُقرأ عطلاً في العقد.
+                if (operation.Value.ValueKind != JsonValueKind.Object)
+                {
+                    continue;
+                }
+
                 Assert.False(
                     operation.Value.TryGetProperty("security", out JsonElement security)
                     && security.GetArrayLength() == 0,

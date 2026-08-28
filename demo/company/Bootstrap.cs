@@ -55,7 +55,7 @@ internal static class Bootstrap
         foreach (string database in new[]
                  {
                      settings.LedgerDatabase, settings.SalesDatabase, settings.PurchasingDatabase,
-                     settings.CoreDatabase,
+                     settings.InventoryDatabase, settings.CoreDatabase,
                  })
         {
             await EnsureDatabaseAsync(admin, database, cancellationToken).ConfigureAwait(false);

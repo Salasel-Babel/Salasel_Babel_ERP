@@ -2,6 +2,7 @@ using System.Globalization;
 using Babel.Canonicalization;
 using Babel.Core;
 using Babel.Ledger;
+using Babel.Inventory;
 using Babel.Purchasing;
 using Babel.Sales;
 using Npgsql;
@@ -49,10 +50,16 @@ internal static class Schema
         await PurchasingSchemaDeployer.DeployAsync(settings.PurchasingOwner, cancellationToken).ConfigureAwait(false);
         Say.Detail("المشتريات → " + settings.PurchasingDatabase);
 
+        await InventorySchemaDeployer.DeployAsync(settings.InventoryOwner, cancellationToken).ConfigureAwait(false);
+        Say.Detail("المخزون → " + settings.InventoryDatabase);
+
         await GrantSubledgerAsync(settings.SalesOwner.ConnectionString, "sales", settings.Ledger.AppRole, cancellationToken)
             .ConfigureAwait(false);
         await GrantSubledgerAsync(
                 settings.PurchasingOwner.ConnectionString, "purchasing", settings.Ledger.AppRole, cancellationToken)
+            .ConfigureAwait(false);
+        await GrantSubledgerAsync(
+                settings.InventoryOwner.ConnectionString, "inventory", settings.Ledger.AppRole, cancellationToken)
             .ConfigureAwait(false);
 
         await SeedReferenceAsync(settings, cancellationToken).ConfigureAwait(false);

@@ -39,6 +39,7 @@ internal static class LedgerEndpoints
         app.MapPost(ApiRoutes.ReverseJournalEntry, ReverseJournalEntryAsync);
         app.MapGet(ApiRoutes.ReadJournalEntry, ReadJournalEntryAsync);
         app.MapGet(ApiRoutes.TrialBalance, TrialBalanceAsync);
+        app.MapGet(ApiRoutes.ChartOfAccounts, ChartOfAccountsAsync);
         app.MapGet(ApiRoutes.ChainVerification, VerifyChainAsync);
     }
 
@@ -273,6 +274,31 @@ internal static class LedgerEndpoints
         return result.IsFailure
             ? HttpProblemResults.Domain(context, result.Errors)
             : Results.Json(WireMapping.ToDto(book, period, result.Value), ApiJson.Options);
+    }
+
+    /// <summary>
+    /// دليل الحسابات بشروط الترحيل. <b>لا وسيط استعلام واحد</b>: الدليل يُقرأ كلّه أو
+    /// لا يُقرأ، والترشيح على <c>postable</c> يقع عند العميل بلا طلبٍ ثانٍ.
+    /// </summary>
+    private static async Task<IResult> ChartOfAccountsAsync(
+        HttpContext context,
+        LedgerAuditService audit,
+        CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        // الفاعل من الاعتماد يعبر إلى الدفتر: القراءة تُقاس على محور «المستخدم الفاعل»
+        // كما تُقاس الكتابة، ولا تُنسب إلى فاعل نظام (فخ-58).
+        Result<ChartOfAccountsReport> result = await audit
+            .ChartOfAccountsAsync(new TenantId(companyId), RequestPrincipal.Of(context).User, cancellationToken)
+            .ConfigureAwait(false);
+
+        return result.IsFailure
+            ? HttpProblemResults.Domain(context, result.Errors)
+            : Results.Json(WireMapping.ToDto(result.Value), ApiJson.Options);
     }
 
     private static async Task<IResult> VerifyChainAsync(

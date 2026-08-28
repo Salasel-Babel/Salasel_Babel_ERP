@@ -233,6 +233,71 @@ internal sealed record ChainVerificationDto(
     string ReasonAr,
     string? Detail);
 
+/// <summary>
+/// مدخل واحد في دليل الحسابات على السلك — <b>بشروط الترحيل عليه</b>.
+/// <para>
+/// <b>ولماذا اسم النوع لا يحمل كلمة «حساب»:</b> القاعدة 2 تمنع أي تجميعة خارج الدفتر من
+/// أن <b>تُعلن نوعاً</b> يسمّي حساباً، وحارسها
+/// (<c>Rule02_ModulesCannotNameAnAccount.NoAssemblyOutsideTheLedgerDeclaresAnAccountIdentifierType</c>)
+/// يمسح أسماء الأنواع بتقطيعها إلى كلمات. والمنع في محلّه ولا يُضعَّف من أجل تسمية أجمل:
+/// النوع المُعلَن هنا شكلُ نقلٍ لا مفردةُ دفتر، والدفتر وحده يُعلن
+/// <c>Babel.Ledger.Audit.ChartAccount</c>. أمّا اسم المخطّط في العقد المنشور وحقولُه
+/// فنصوصٌ لا أنواع، ولذلك يقول العقد <c>accountCode</c> صراحةً كما يقول في
+/// <c>TrialBalanceRow</c> سواءً بسواء.
+/// </para>
+/// <para>
+/// <b>ولا حقل مالي واحد هنا</b>، فلا يُطرح سؤال فخ-53 أصلاً. والعدد الوحيد
+/// <see cref="Level"/> رقمٌ صحيح محدود بين 1 و4 يفرضه قيد تحقّق في المخطّط — لا مبلغاً
+/// ولا صحيحاً 64 بت — فيعبر رمزاً رقمياً كما يعبر <c>rowCount</c> و<c>lineCount</c>.
+/// </para>
+/// </summary>
+/// <param name="AccountCode">رمز الحساب — معرّف لا نصّ، فلا يُترجَم.</param>
+/// <param name="AccountType">‏asset · liability · equity · revenue · expense.</param>
+/// <param name="Active">هل الحساب مستعمَل؟ المعطَّل لا يُعرَض للاختيار.</param>
+/// <param name="Contra">هل هو حساب مقابل يقف على غير جانبه الطبيعي؟</param>
+/// <param name="CurrencyCode">العملة المثبَّتة حين يكون النمط fixed، وإلا غيابها.</param>
+/// <param name="CurrencyMode">‏any · company_only · fixed.</param>
+/// <param name="Level">مستوى الحساب في الشجرة، من 1 إلى 4.</param>
+/// <param name="NameAr">الاسم العربي — السجلّ، وغير فارغ أبداً.</param>
+/// <param name="NameTranslations">ترجمات الاسم بوسم BCP-47، مرتَّبة ترتيباً حرفياً ثابتاً.</param>
+/// <param name="NaturalSide">‏debit أو credit.</param>
+/// <param name="ParentCode">رمز الأب، أو غيابه لجذر.</param>
+/// <param name="Postable">هل يقبل سطراً مباشرةً؟</param>
+/// <param name="RequiredDimensions">الأبعاد الإلزامية على كل سطر عليه، وقد تكون فارغة.</param>
+/// <param name="SubledgerType">نوع طرف الأستاذ المساعد المطلوب، و<c>none</c> إن لم يُطلَب.</param>
+internal sealed record PostingChartEntryDto(
+    string AccountCode,
+    string AccountType,
+    bool Active,
+    bool Contra,
+    string? CurrencyCode,
+    string CurrencyMode,
+    int Level,
+    string NameAr,
+    IReadOnlyList<NameValueDto> NameTranslations,
+    string NaturalSide,
+    string? ParentCode,
+    bool Postable,
+    IReadOnlyList<string> RequiredDimensions,
+    string SubledgerType);
+
+/// <summary>
+/// دليل الحسابات كاملاً، ومعه عدّاداه.
+/// <para>
+/// <b>ولماذا الدليل كلّه لا القابل للترحيل وحده:</b> الشجرة تُعرَض بآبائها، وقائمةُ
+/// الأوراق وحدها تدفع العميل إلى اختراع تجميعٍ من بادئات الرموز — اشتقاقٌ يصحّ على هذا
+/// الدليل ويكذب على أول دليل عميل لا تُطابق فيه البادئةُ الأبَ. و<c>postable</c> على كل
+/// مدخل يجعل الترشيح مجّانياً وبلا طلبٍ ثانٍ.
+/// </para>
+/// </summary>
+/// <param name="AccountCount">عدد الحسابات كلّها — يُقارَن بطول القائمة فيُرى النقص.</param>
+/// <param name="Accounts">الحسابات مرتّبة برمزها ترتيباً حرفياً ثابتاً.</param>
+/// <param name="PostableCount">عدد ما يقبل الترحيل منها.</param>
+internal sealed record PostingChartDto(
+    int AccountCount,
+    IReadOnlyList<PostingChartEntryDto> Accounts,
+    int PostableCount);
+
 /// <summary>سطر قيد كما يُقرأ.</summary>
 /// <param name="LineNo">رقم السطر.</param>
 /// <param name="Role">رمز الدور.</param>

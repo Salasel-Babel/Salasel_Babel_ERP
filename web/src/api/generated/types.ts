@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     8a33528a07e07e6b03c5ee5d6412ccbe27809ed11ed5c811be93ba3132068135
+     bcd3d62ac30871329286007435f873c35108a6a9be4a114fa18280708835e2a1
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -282,6 +282,48 @@ export interface PostJournalEntryRequest {
   source: SourceDocument;
   /** الحدث الذي أطلق الترحيل. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / What triggered the posting. Matched literally and case-sensitively; a number is never accepted in place of a name. */
   trigger: "OnApproval" | "OnReceipt" | "OnSettlement" | "Periodic" | "Reversal";
+}
+
+/** دليل الحسابات كاملاً بشروط الترحيل على كل حساب. ويُرجَع كاملاً لا مقتصراً على ما يقبل الترحيل: الشجرة تُعرَض بآبائها، وقائمةُ الأوراق وحدها تدفع العميل إلى اختراع تجميعٍ من بادئات الرموز. والعدّادان يصلان محسوبَين كي يُرى النقص: عميلٌ يعدّ بنفسه لا يملك ما يقارن به حين تصل الاستجابة ناقصة. / The whole chart of accounts with each account's posting requirements. It is returned in full rather than restricted to postable accounts: the tree is displayed with its parents, and a list of leaves alone pushes the client into inventing a grouping from code prefixes. The two counts arrive computed so that a shortfall is visible: a client that counts for itself has nothing to compare against when a response arrives incomplete. */
+export interface PostingChart {
+  /** عدد الحسابات كلّها — يُقارَن بطول accounts فيُرى النقص. / The total number of accounts; compare it with the length of accounts to see a shortfall. */
+  accountCount: number;
+  /** الحسابات مرتّبة برمزها ترتيباً حرفياً ثابتاً. / The accounts ordered by code with a stable ordinal sort. */
+  accounts: PostingChartEntry[];
+  /** عدد ما يقبل الترحيل منها — وهو ما تعرضه شاشة القيد اليدوي. / How many of them are postable — which is what a manual voucher screen offers. */
+  postableCount: number;
+}
+
+/** مدخل واحد في دليل الحسابات، ومعه شروط الترحيل عليه. ولا حقل مالي فيه إطلاقاً، فلا يُطرح سؤال شكل المال على السلك أصلاً؛ والعدد الوحيد level صحيحٌ محدود بين 1 و4 يفرضه قيد تحقّق في المخطّط، لا مبلغاً ولا صحيحاً 64 بت، فيعبر رمزاً رقمياً كما يعبر rowCount. / One entry in the chart of accounts together with what posting to it requires. It carries no monetary field at all, so the money-on-the-wire question does not arise; its only number, level, is a bounded integer between 1 and 4 enforced by a schema check constraint — not an amount and not a 64-bit integer — so it crosses as a JSON number, as rowCount does. */
+export interface PostingChartEntry {
+  /** رمز الحساب كما هو في دليل حسابات هذه الشركة — معرّف لا نصّ، فلا يُترجَم. / The account code as it stands in this company's chart of accounts; an identifier rather than text, so it is never translated. */
+  accountCode: string;
+  /** نوع الحساب. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The account type. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  accountType: "asset" | "liability" | "equity" | "revenue" | "expense";
+  /** هل الحساب مستعمَل؟ المعطَّل لا يُعرَض للاختيار، ولو كان قابلاً للترحيل شكلاً. / Is the account in use? A deactivated account is not offered for selection even when it is structurally postable. */
+  active: boolean;
+  /** هل هو حساب مقابل يقف على غير جانبه الطبيعي؟ / Is it a contra account, standing on the side opposite its natural one? */
+  contra: boolean;
+  /** العملة المثبَّتة حين يكون currencyMode = fixed، و null فيما عدا ذلك. / The pinned currency when currencyMode is fixed, and null otherwise. */
+  currencyCode: string | null;
+  /** نمط العملة: any يقبل أي عملة، و company_only يقبل عملة الشركة وحدها، و fixed يقبل currencyCode وحده. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The currency mode: any accepts any currency, company_only accepts the company currency alone, and fixed accepts only currencyCode. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  currencyMode: "any" | "company_only" | "fixed";
+  /** مستوى الحساب في الشجرة. والقابل للترحيل في المستوى الرابع دائماً (GR-COA-001). / The account's level in the tree. A postable account is always at level four (GR-COA-001). */
+  level: number;
+  /** الاسم العربي — وهو السجلّ لا ترجمةً أولى، وغير فارغ أبداً (ADR-0021). / The Arabic name; it is the record rather than a first translation, and is never blank (ADR-0021). */
+  nameAr: string;
+  /** ترجمات اسم الحساب: الاسم وسم لغة BCP-47 والقيمة النصّ المترجَم، مرتَّبةً بالوسم ترتيباً حرفياً ثابتاً. وقد تكون فارغة — والعرض يرتدّ حينها إلى الاسم العربي، وهو ارتداد **يُعلَن** لا يقع صامتاً. و**الإنجليزية واحدة من هذه الترجمات لا حقلاً مستقلاً** (ADR-0021 بند 2). / The account name's translations: the name is a BCP-47 language tag and the value is the translated text, ordered by tag with a stable ordinal sort. It may be empty, in which case display falls back to the Arabic name — a fallback that is declared, never silent. **English is one of these translations rather than a field of its own** (ADR-0021 clause 2). */
+  nameTranslations: NameValue[];
+  /** الجانب الطبيعي للحساب. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The account's natural side. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  naturalSide: "debit" | "credit";
+  /** رمز الحساب الأب، و null للجذر. الشجرة تُبنى من هذا الحقل لا من بادئة الرمز: البادئة تصدق على هذا الدليل وتكذب على أول دليل عميل يخالفها. / The parent account's code, or null at a root. Build the tree from this field rather than from the code prefix: the prefix holds for this chart and fails on the first customer chart that departs from it. */
+  parentCode: string | null;
+  /** هل يقبل هذا الحساب سطراً مباشرةً؟ الحساب التجميعي لا يقبل، ويُرفض الترحيل عليه بـ GR-COA-001. / Does this account accept a line directly? A summary account does not, and posting to it is refused with GR-COA-001. */
+  postable: boolean;
+  /** الأبعاد الإلزامية على كل سطر يقع على هذا الحساب، وقد تكون فارغة. وغيابُ أحدها يُرفَض بـ guard.GR-COA-002 برسالة تسمّي الحساب والبُعد. والقيم المستعملة في الدليل المرفق: branch و cost_center و project و property و warehouse — و**هي نصوص لا قائمة مغلقة عمداً**: دليلُ عميلٍ يُدخل بُعداً سادساً لا يجوز أن يجعل الخادم يخالف عقده المنشور. / The dimensions mandatory on every line posted to this account; it may be empty. A missing one is refused with guard.GR-COA-002 in a message naming the account and the dimension. The values used in the shipped chart are branch, cost_center, project, property, and warehouse — and they are **deliberately strings rather than a closed list**: a customer chart that introduces a sixth dimension must not put the server in breach of its own published contract. */
+  requiredDimensions: string[];
+  /** نوع طرف الأستاذ المساعد الذي يطلبه الحساب، و none إن لم يطلب شيئاً. وغيابُ الطرف على حساب يطلبه يُرفَض بـ ledger.posting.missing_subledger برسالة تسمّي الحساب والنوع المطلوب. والقيم في الدليل المرفق أربع عشرة، منها bank_account و customer و employee و item و property و supplier و tenant — و**هي نصّ لا قائمة مغلقة للسبب نفسه**: الدليل بيانات المستأجر، ونوعٌ جديد فيه لا يجوز أن يكسر العقد. / The subledger party type the account requires, or none when it requires nothing. A missing party on an account that requires one is refused with ledger.posting.missing_subledger in a message naming the account and the required type. The shipped chart uses fourteen values, among them bank_account, customer, employee, item, property, supplier, and tenant — and this is **a string rather than a closed list for the same reason**: the chart is tenant data, and a new type in it must not break the contract. */
+  subledgerType: string;
 }
 
 /** سطر ترحيل. ولاحظ ما ليس فيه: لا حساب ولا رقم حساب. السطر يحمل دوراً، والدور يُحلّ إلى حساب داخل الدفتر عبر خريطة هذه الشركة — فتعديل دليل الحسابات صفٌّ في جدول، لا نشرُ إصدار. / A posting line. Note what is absent: no account, no account code. A line carries a role; the ledger resolves the role to an account through this company's map, so changing the chart of accounts is a table row, not a release. */

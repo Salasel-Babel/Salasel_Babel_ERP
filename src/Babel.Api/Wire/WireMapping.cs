@@ -260,6 +260,38 @@ internal static class WireMapping
     }
 
     /// <summary>
+    /// ينقل دليل الحسابات إلى شكل السلك. <b>نقلٌ لا حساب</b> (القاعدة 13، البند «أ»):
+    /// العدّادان يصلان محسوبَين من الدفتر، ولا يُعاد عدّهما هنا.
+    /// </summary>
+    /// <param name="report">الدليل كما قرأه الدفتر.</param>
+    public static PostingChartDto ToDto(ChartOfAccountsReport report)
+    {
+        ArgumentNullException.ThrowIfNull(report);
+        ArgumentNullException.ThrowIfNull(report.Accounts);
+
+        return new PostingChartDto(
+            report.AccountCount,
+            [.. report.Accounts.Select(static account => new PostingChartEntryDto(
+                account.Code,
+                account.AccountType,
+                account.IsActive,
+                account.IsContra,
+                account.CurrencyCode,
+                account.CurrencyMode,
+                account.Level,
+                account.Name.Arabic,
+                // والإنجليزية مدخلٌ في الترجمات لا حقلاً ثابتاً — كما في صفّ الميزان
+                // وللسبب نفسه (ADR-0021 بند 2).
+                [.. account.Name.Translations.Select(static entry => new NameValueDto(entry.Key, entry.Value))],
+                account.NaturalSide,
+                account.ParentCode,
+                account.IsPostable,
+                account.RequiredDimensions,
+                account.SubledgerType))],
+            report.PostableCount);
+    }
+
+    /// <summary>
     /// أبعاد الطلب ومعها بُعد مركز التكلفة <b>مُحلّاً</b> — مستبدَلاً إن ذُكر، ومُضافاً إن غاب.
     /// </summary>
     private static List<PostingDimension> WithResolvedCostCenter(

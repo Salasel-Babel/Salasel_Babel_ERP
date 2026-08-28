@@ -36,18 +36,12 @@ internal sealed record RegisterTenantRequestDto(
 /// <summary>حالة وحدة في الاشتراك، برمز كتالوج مستوى التحكّم.</summary>
 /// <param name="Code">رمز الوحدة.</param>
 /// <param name="NameAr">اسمها بالعربية — السجلّ.</param>
-/// <param name="NameTranslations">ترجمات اسمها، مفاتيحها أوسمة BCP-47.</param>
 /// <param name="State">‏<c>Entitled</c> أو <c>ReadOnly</c> أو <c>NotEntitled</c>.</param>
 /// <param name="PostsJournal">
 /// هل يبلغ عملُ هذه الوحدة الدفتر؟ وهو ما يجعل أرضيتها <b>قراءةً</b> لا نزعاً عند
 /// الانقطاع: منشأةٌ رحّلت قيداً واحداً لها دفتر، ولا يُنتزع منها (ADR-0034).
 /// </param>
-internal sealed record SubscriptionModuleDto(
-    string Code,
-    string NameAr,
-    IReadOnlyList<NameValueDto> NameTranslations,
-    string State,
-    bool PostsJournal);
+internal sealed record SubscriptionModuleDto(string Code, string NameAr, string State, bool PostsJournal);
 
 /// <summary>
 /// اشتراك المستأجر: الخطّة، والحالة، والوحدات، وتاريخ التجديد.
@@ -56,12 +50,10 @@ internal sealed record SubscriptionModuleDto(
 /// <param name="TenantId">المستأجر.</param>
 /// <param name="TenantCode">رمزه القصير في سجل الأسطول.</param>
 /// <param name="NameAr">اسمه بالعربية — السجلّ.</param>
-/// <param name="NameTranslations">ترجمات اسمه.</param>
 /// <param name="TenantStatus">حالته: <c>Provisioning</c> أو <c>Active</c> أو <c>Suspended</c> أو <c>Archived</c>.</param>
 /// <param name="SubscriptionId">معرّف الاشتراك الجاري.</param>
 /// <param name="PlanCode">رمز الخطّة.</param>
 /// <param name="PlanNameAr">اسمها بالعربية.</param>
-/// <param name="PlanNameTranslations">ترجمات اسم الخطّة.</param>
 /// <param name="MonthlyPrice">السعر الشهري نصّاً.</param>
 /// <param name="PerUserPrice">سعر المستخدم الواحد بعد المُضمَّن، نصّاً.</param>
 /// <param name="IncludedUsers">عدد المستخدمين المُضمَّنين في السعر الشهري.</param>
@@ -78,12 +70,10 @@ internal sealed record SubscriptionDto(
     string TenantId,
     string TenantCode,
     string NameAr,
-    IReadOnlyList<NameValueDto> NameTranslations,
     string TenantStatus,
     string SubscriptionId,
     string PlanCode,
     string PlanNameAr,
-    IReadOnlyList<NameValueDto> PlanNameTranslations,
     string MonthlyPrice,
     string PerUserPrice,
     int IncludedUsers,

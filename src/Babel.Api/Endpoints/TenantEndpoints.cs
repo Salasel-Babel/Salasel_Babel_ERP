@@ -111,14 +111,14 @@ internal static class TenantEndpoints
                 "companyNameAr");
         }
 
-        // الاسم اللاتيني لتقارير الأسطول: من الوسم «en» إن وُجد، وإلا ارتدّ إلى العربية.
-        // ولا حقل إنجليزي ثابت على السلك — الإنجليزية واحدة من N (ADR-0021 بند ٢).
-        string nameEn = LatinNameOf(dto.NameTranslations, nameAr);
+        // وترجمات الاسم تعبر **صفوفاً** كما وصلت، ولا يُشتقّ منها نصفٌ ثابت هنا: من
+        // يحتاج اسماً لاتينياً هو سجلّ الأسطول وحده، ويقرؤه محوّله عند حدّه (ADR-0021 بند ٢).
+        IReadOnlyList<FleetNameTranslation> translations = Rows(dto.NameTranslations);
 
         SignupIdentity identity = SignupIdentity.Of(key);
 
         FleetSubscription subscription = await fleet
-            .OpenAsync(identity.TenantId, identity.TenantCode, nameAr, nameEn, cancellationToken)
+            .OpenAsync(identity.TenantId, identity.TenantCode, nameAr, translations, cancellationToken)
             .ConfigureAwait(false);
 
         // الاستحقاق في المنتَج **قبل** فتح العضوية: منح العضوية نداءٌ محروسٌ باستحقاق
@@ -527,32 +527,11 @@ internal static class TenantEndpoints
                 "authority")
             : null;
 
-    /// <summary>
-    /// الاسم اللاتيني كما يحتاجه سجل الأسطول: ترجمة الوسم <c>en</c> إن وُجدت، وإلا
-    /// <b>الاسم العربي نفسه</b>.
-    /// <para>
-    /// والارتداد مُعلَن لا صامت: مستوى التحكّم يلزمه عمودان بحكم مخطّطه، والسطح لا يمنح
-    /// الإنجليزية حقلاً ثابتاً بحكم ADR-0021. فاسمٌ عربي في عمود لاتيني أصدق من عمودٍ
-    /// يخترع نصّاً لا يقوله أحد.
-    /// </para>
-    /// </summary>
-    private static string LatinNameOf(IReadOnlyList<NameValueDto>? translations, string fallback)
-    {
-        foreach (NameValueDto entry in translations ?? [])
-        {
-            if (entry.Name.StartsWith("en", StringComparison.OrdinalIgnoreCase)
-                && !string.IsNullOrWhiteSpace(entry.Value))
-            {
-                return entry.Value.Trim();
-            }
-        }
+    /// <summary>يقرأ صفوف الترجمة الواصلة على السلك إلى مفردات المنفذ — صفّاً بصفّ.</summary>
+    /// <param name="entries">الصفوف كما وصلت، وقد تغيب.</param>
+    private static IReadOnlyList<FleetNameTranslation> Rows(IReadOnlyList<NameValueDto>? entries) =>
+        [.. (entries ?? []).Select(static entry => new FleetNameTranslation(entry.Name, entry.Value))];
 
-        return fallback;
-    }
-
-    /// <summary>ترجمةٌ واحدة بوسم <c>en</c> — وهي كل ما يحمله سجل الأسطول من ترجمات.</summary>
-    private static IReadOnlyList<NameValueDto> TranslationsOf(string nameEn, string nameAr) =>
-        string.Equals(nameEn, nameAr, StringComparison.Ordinal) ? [] : [new NameValueDto("en", nameEn)];
 
     private static string ActorOf(HttpContext context) =>
         Identifier(RequestPrincipal.Of(context).User.Value);
@@ -566,12 +545,10 @@ internal static class TenantEndpoints
         Identifier(subscription.TenantId),
         subscription.TenantCode,
         subscription.NameAr,
-        TranslationsOf(subscription.NameEn, subscription.NameAr),
         subscription.TenantStatus,
         subscription.SubscriptionId,
         subscription.PlanCode,
         subscription.PlanNameAr,
-        TranslationsOf(subscription.PlanNameEn, subscription.PlanNameAr),
         subscription.MonthlyPrice,
         subscription.PerUserPrice,
         subscription.IncludedUsers,
@@ -580,12 +557,8 @@ internal static class TenantEndpoints
         subscription.EndsOn,
         subscription.State,
         subscription.RenewsOn,
-        [.. subscription.Modules.Select(static module => new SubscriptionModuleDto(
-            module.Code,
-            module.NameAr,
-            TranslationsOf(module.NameEn, module.NameAr),
-            module.State,
-            module.PostsJournal))]);
+        [.. subscription.Modules.Select(static module =>
+            new SubscriptionModuleDto(module.Code, module.NameAr, module.State, module.PostsJournal))]);
 
     private static MembershipDto ToDto(Membership membership) => new(
         Identifier(membership.User.Value),

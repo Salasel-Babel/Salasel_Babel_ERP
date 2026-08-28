@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     26b1680653da1e20905a1f589663c0fb61493232d71e322610b7703fbc5a4587
+     9e75328bcb342f06d7a6154672d675066f8901747e3ff989a0a327b1884accf1
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -89,8 +89,8 @@ export const SCHEMAS: Readonly<Record<string, SchemaShape>> = {
   SessionRevocation: { required: ["reason","revokedAt","sessionId"], fields: {"reason":{"e":["refresh_replayed","signed_out"],"k":"plain"},"revokedAt":{"k":"plain"},"sessionId":{"k":"plain"}} },
   SourceDocument: { required: ["documentId","documentType","module"], fields: {"documentId":{"k":"plain"},"documentType":{"k":"plain"},"module":{"e":["Core","Ledger","Sales","Purchasing","Compliance","Inventory","Pos","Hr","Projects","RealEstate","Assets","Portals","Ai"],"k":"plain"}} },
   Subledger: { required: ["kind","partyId"], fields: {"kind":{"e":["None","Customer","Supplier","Employee","Asset","Treasury"],"k":"plain"},"partyId":{"k":"plain"}} },
-  Subscription: { required: ["currency","endsOn","includedUsers","modules","monthlyPrice","nameAr","nameTranslations","perUserPrice","planCode","planNameAr","planNameTranslations","renewsOn","startedOn","state","subscriptionId","tenantCode","tenantId","tenantStatus"], fields: {"currency":{"k":"plain"},"endsOn":{"k":"plain","n":true},"includedUsers":{"k":"plain"},"modules":{"i":{"k":"ref","r":"SubscriptionModule"},"k":"array"},"monthlyPrice":{"k":"money"},"nameAr":{"k":"plain"},"nameTranslations":{"i":{"k":"ref","r":"NameValue"},"k":"array"},"perUserPrice":{"k":"money"},"planCode":{"k":"plain"},"planNameAr":{"k":"plain"},"planNameTranslations":{"i":{"k":"ref","r":"NameValue"},"k":"array"},"renewsOn":{"k":"plain","n":true},"startedOn":{"k":"plain"},"state":{"e":["Active","Lapsed","Cancelled"],"k":"plain"},"subscriptionId":{"k":"plain"},"tenantCode":{"k":"plain"},"tenantId":{"k":"plain"},"tenantStatus":{"e":["Provisioning","Active","Suspended","Archived"],"k":"plain"}} },
-  SubscriptionModule: { required: ["code","nameAr","nameTranslations","postsJournal","state"], fields: {"code":{"k":"plain"},"nameAr":{"k":"plain"},"nameTranslations":{"i":{"k":"ref","r":"NameValue"},"k":"array"},"postsJournal":{"k":"plain"},"state":{"e":["NotEntitled","ReadOnly","Entitled"],"k":"plain"}} },
+  Subscription: { required: ["currency","endsOn","includedUsers","modules","monthlyPrice","nameAr","perUserPrice","planCode","planNameAr","renewsOn","startedOn","state","subscriptionId","tenantCode","tenantId","tenantStatus"], fields: {"currency":{"k":"plain"},"endsOn":{"k":"plain","n":true},"includedUsers":{"k":"plain"},"modules":{"i":{"k":"ref","r":"SubscriptionModule"},"k":"array"},"monthlyPrice":{"k":"money"},"nameAr":{"k":"plain"},"perUserPrice":{"k":"money"},"planCode":{"k":"plain"},"planNameAr":{"k":"plain"},"renewsOn":{"k":"plain","n":true},"startedOn":{"k":"plain"},"state":{"e":["Active","Lapsed","Cancelled"],"k":"plain"},"subscriptionId":{"k":"plain"},"tenantCode":{"k":"plain"},"tenantId":{"k":"plain"},"tenantStatus":{"e":["Provisioning","Active","Suspended","Archived"],"k":"plain"}} },
+  SubscriptionModule: { required: ["code","nameAr","postsJournal","state"], fields: {"code":{"k":"plain"},"nameAr":{"k":"plain"},"postsJournal":{"k":"plain"},"state":{"e":["NotEntitled","ReadOnly","Entitled"],"k":"plain"}} },
   SubscriptionTransitionRequest: { required: ["authority","reasonAr"], fields: {"authority":{"k":"plain"},"reasonAr":{"k":"plain"}} },
   SupplierRequest: { required: ["code","creditLimit","name","paymentTermsDays"], fields: {"code":{"k":"plain"},"creditLimit":{"k":"money"},"name":{"k":"ref","r":"LocalizedText"},"paymentTermsDays":{"k":"plain"},"vatNumber":{"k":"plain"}} },
   SuspendCostCenterRequest: { required: ["reason"], fields: {"reason":{"k":"plain"}} },

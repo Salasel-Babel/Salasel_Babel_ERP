@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     26b1680653da1e20905a1f589663c0fb61493232d71e322610b7703fbc5a4587
+     9e75328bcb342f06d7a6154672d675066f8901747e3ff989a0a327b1884accf1
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -758,7 +758,11 @@ export interface Subledger {
   partyId: string;
 }
 
-/** الاشتراك الجاري كاملاً: الخطّة وسعرها نصّاً، والحالة، وحالة كل وحدة، وتاريخ التجديد. **وكل مبلغ نصّ** بأربع خانات — لا رمز رقمي في JSON. / The whole current subscription: the plan and its price as text, the state, each module's state, and the renewal date. **Every amount is a string** with four decimals — never a JSON number token. */
+/**
+ * الاشتراك الجاري كاملاً: الخطّة وسعرها نصّاً، والحالة، وحالة كل وحدة، وتاريخ التجديد. **وكل مبلغ نصّ** بأربع خانات — لا رمز رقمي في JSON.
+ * 
+ * **والأسماء عربيةٌ وحدها هنا، ولا ترجمات معها بعد.** والسبب مُعلَن: سجلّ الأسطول يحمل عمودين منذ الموجة الأولى ولا يحمل **جدول ترجمات**، وصفٌّ واحد يُصطنع من عمودٍ لاتيني ليس ترجمةً صفّاً بل النصفَ الإنجليزي الثابت في ثوب قائمة — وهو ما يمنعه ADR-0021 بند 2. فحين يصير لمستوى التحكّم جدولُ ترجماته تُضاف nameTranslations إضافةً تبقى v1. / The whole current subscription: the plan and its price as text, the state, each module's state, and the renewal date. **Every amount is a string** with four decimals — never a JSON number token.
+ */
 export interface Subscription {
   /** رمز عملة ISO 4217 بثلاثة محارف لاتينية كبيرة. واللاتينية هنا شرط سلامة سلسلة التجزئة لا تفضيل عرض. / An ISO 4217 currency code, three upper-case ASCII letters. ASCII here is a hash-chain safety requirement, not a display preference. */
   currency: string;
@@ -771,15 +775,11 @@ export interface Subscription {
   monthlyPrice: Money;
   /** اسم المستأجر بالعربية — السجلّ. / The tenant's Arabic name — the record. */
   nameAr: string;
-  /** ترجمات اسم المستأجر. / The tenant name's translations. */
-  nameTranslations: NameValue[];
   perUserPrice: Money;
   /** رمز الخطّة. / The plan code. */
   planCode: string;
   /** اسم الخطّة بالعربية. / The plan's Arabic name. */
   planNameAr: string;
-  /** ترجمات اسم الخطّة. / The plan name's translations. */
-  planNameTranslations: NameValue[];
   /** تاريخ التجديد التالي بصيغة yyyy-MM-dd، أو null لاشتراك ليس فعّالاً — وتاريخٌ يُعرض على اشتراك منقطع يُقرأ وعداً بعودةٍ لا تقع. / The next renewal date as yyyy-MM-dd, or null when the subscription is not active — a date shown on a lapsed subscription reads as a promise of a return that does not happen. */
   renewsOn: string | null;
   /** تاريخ بدء الاشتراك الجاري. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The current subscription's start date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
@@ -802,8 +802,6 @@ export interface SubscriptionModule {
   code: string;
   /** اسمها بالعربية — السجلّ. / Its Arabic name — the record. */
   nameAr: string;
-  /** ترجمات اسمها، مفاتيحها أوسمة BCP-47. / Its name's translations, keyed by BCP-47 tags. */
-  nameTranslations: NameValue[];
   /** هل يبلغ عملُها الدفتر؟ ووحدةٌ تُرحّل قيوداً لا تُنتزَع بسبب سداد. / Does its work reach the ledger? A module that posts entries is not taken away over payment. */
   postsJournal: boolean;
   /** حالة الوحدة. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The module's state. Matched literally and case-sensitively; a number is never accepted in place of a name. */

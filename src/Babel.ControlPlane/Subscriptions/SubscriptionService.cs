@@ -15,11 +15,10 @@ namespace Babel.ControlPlane.Subscriptions;
 /// </para>
 /// </summary>
 /// <param name="Code">رمز الوحدة في كتالوج مستوى التحكّم.</param>
-/// <param name="NameAr">اسمها بالعربية.</param>
-/// <param name="NameEn">اسمها بالإنجليزية.</param>
+/// <param name="NameAr">اسمها بالعربية — <b>وهو السجلّ، ولا نصف ثانياً معه</b>.</param>
 /// <param name="State">اسم حالتها كما هو في التعداد حرفاً بحرف.</param>
 /// <param name="PostsJournal">هل يبلغ عملُها الدفتر؟ — وهو ما يجعل أرضيتها قراءةً لا نزعاً.</param>
-public sealed record SubscriptionModule(string Code, string NameAr, string NameEn, string State, bool PostsJournal);
+public sealed record SubscriptionModule(string Code, string NameAr, string State, bool PostsJournal);
 
 /// <summary>
 /// اشتراك مستأجر كما يُقرأ من مستوى التحكّم: الخطّة، والحالة، والوحدات، وتاريخ التجديد.
@@ -30,13 +29,11 @@ public sealed record SubscriptionModule(string Code, string NameAr, string NameE
 /// </summary>
 /// <param name="TenantId">معرّف المستأجر.</param>
 /// <param name="TenantCode">رمزه القصير.</param>
-/// <param name="NameAr">اسمه بالعربية.</param>
-/// <param name="NameEn">اسمه بالإنجليزية.</param>
+/// <param name="NameAr">اسمه بالعربية — وهو السجلّ.</param>
 /// <param name="TenantStatus">حالته في سجل الأسطول، باسمها نصّاً.</param>
 /// <param name="SubscriptionId">معرّف الاشتراك الجاري.</param>
 /// <param name="PlanCode">رمز الخطّة.</param>
 /// <param name="PlanNameAr">اسم الخطّة بالعربية.</param>
-/// <param name="PlanNameEn">اسم الخطّة بالإنجليزية.</param>
 /// <param name="MonthlyPrice">السعر الشهري نصّاً بأربع خانات.</param>
 /// <param name="PerUserPrice">سعر المستخدم الواحد بعد المُضمَّن، نصّاً.</param>
 /// <param name="IncludedUsers">عدد المستخدمين المُضمَّنين.</param>
@@ -50,12 +47,10 @@ public sealed record SubscriptionRecord(
     Guid TenantId,
     string TenantCode,
     string NameAr,
-    string NameEn,
     string TenantStatus,
     Guid SubscriptionId,
     string PlanCode,
     string PlanNameAr,
-    string PlanNameEn,
     string MonthlyPrice,
     string PerUserPrice,
     int IncludedUsers,
@@ -283,7 +278,7 @@ public sealed class SubscriptionService(
         // يتغيّر الجواب بين تشغيلين على صفّين بدآ في اليوم نفسه.
         var rows = await Db.QueryAsync(c, """
             select s.subscription_id, s.plan_code, s.started_on, s.ends_on, s.state,
-                   t.tenant_code, t.name_ar, t.name_en, t.status
+                   t.tenant_code, t.name_ar, t.status
               from control.subscription s
               join control.tenant t on t.tenant_id = s.tenant_id
              where s.tenant_id = @t
@@ -298,8 +293,7 @@ public sealed class SubscriptionService(
                 State: r.GetString(4),
                 Code: r.GetString(5),
                 Ar: r.GetString(6),
-                En: r.GetString(7),
-                Status: r.GetString(8)),
+                Status: r.GetString(7)),
             p => p.Add(Db.P("t", tenantId, NpgsqlDbType.Uuid)), null, ct);
 
         if (rows.Count == 0)
@@ -318,14 +312,14 @@ public sealed class SubscriptionService(
         var modules = ModuleCatalog.All
             .OrderBy(m => m.Code, StringComparer.Ordinal)
             .Select(m => new SubscriptionModule(
-                m.Code, m.NameAr, m.NameEn,
+                m.Code, m.NameAr,
                 set.TryGetValue(m.Code, out var state) ? state.ToString() : NeverPurchased,
                 m.PostsJournal))
             .ToList();
 
         return new SubscriptionRecord(
-            tenantId, row.Code, row.Ar, row.En, row.Status,
-            row.Id, plan.Code, plan.NameAr, plan.NameEn,
+            tenantId, row.Code, row.Ar, row.Status,
+            row.Id, plan.Code, plan.NameAr,
             Canon.Amount(plan.MonthlyPrice), Canon.Amount(plan.PerUserPrice), plan.IncludedUsers, currency,
             row.Started, row.Ends, row.State,
             RenewalOf(row.State, row.Started),
@@ -377,16 +371,17 @@ public sealed class SubscriptionService(
     /// </summary>
     private const int MaximumRenewalSearchMonths = 1200;
 
-    /// <summary>الخطط المعروضة، مرتّبةً برمزها — يقرؤها السطح فلا يكتب قائمةً ثانية.</summary>
-    /// <returns>كل خطّة برمزها واسمَيها وسعرها نصّاً ووحداتها.</returns>
-    public static IReadOnlyList<(string Code, string NameAr, string NameEn, string MonthlyPrice,
-        string PerUserPrice, int IncludedUsers, IReadOnlyList<string> Modules)> Plans() =>
-        [.. PlanCatalog.All
-            .OrderBy(p => p.Code, StringComparer.Ordinal)
-            .Select(p => (
-                p.Code, p.NameAr, p.NameEn,
-                Canon.Amount(p.MonthlyPrice), Canon.Amount(p.PerUserPrice), p.IncludedUsers,
-                (IReadOnlyList<string>)[.. p.Modules.OrderBy(m => m, StringComparer.Ordinal)]))];
+    /// <summary>
+    /// رموز الخطط المعروضة مرتّبةً — يقرؤها السطح فلا يكتب قائمةً ثانية.
+    /// <para>
+    /// <b>ولا أسماء هنا ولا أسعار:</b> المُنادي الوحيد يسأل «أي الرموز معروفة؟» ليردّ بها
+    /// على رمزٍ مجهول. وحملُ الأسماء معها كان يُدخل نصفاً لاتينياً ثابتاً في نوع إرجاع
+    /// <b>لا يقرؤه أحد</b> — وهو أسوأ صور الدين: يُدفع ثمنه ولا يُنتفع به.
+    /// </para>
+    /// </summary>
+    /// <returns>رموز الخطط مرتّبةً ترتيباً حرفياً ثابتاً.</returns>
+    public static IReadOnlyList<string> PlanCodes() =>
+        [.. PlanCatalog.All.Select(p => p.Code).OrderBy(c => c, StringComparer.Ordinal)];
 
     /// <summary>رموز الخطط المعروفة مفصولةً — تُقرأ من الكتالوج فلا تُكتب قائمةً ثانية.</summary>
     /// <returns>الرموز مرتّبةً ومفصولةً بنقطة وسطى.</returns>

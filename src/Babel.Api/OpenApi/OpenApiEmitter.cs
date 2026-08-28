@@ -1419,15 +1419,13 @@ internal static class OpenApiEmitter
             w.WriteStartObject("properties");
             WriteStringProperty(w, "code", "رمز الوحدة في كتالوج مستوى التحكّم.", "The module code in the control-plane catalogue.", 16);
             WriteStringProperty(w, "nameAr", "اسمها بالعربية — السجلّ.", "Its Arabic name — the record.", 200);
-            WriteArrayRefProperty(w, "nameTranslations", "NameValue",
-                "ترجمات اسمها، مفاتيحها أوسمة BCP-47.", "Its name's translations, keyed by BCP-47 tags.");
             WriteBooleanProperty(w, "postsJournal",
                 "هل يبلغ عملُها الدفتر؟ ووحدةٌ تُرحّل قيوداً لا تُنتزَع بسبب سداد.",
                 "Does its work reach the ledger? A module that posts entries is not taken away over payment.");
             WriteEnumProperty(w, "state",
                 "حالة الوحدة.", "The module's state.", EntitlementStateNames);
             w.WriteEndObject();
-            WriteRequired(w, "code", "nameAr", "nameTranslations", "postsJournal", "state");
+            WriteRequired(w, "code", "nameAr", "postsJournal", "state");
             w.WriteBoolean("additionalProperties", false);
         });
 
@@ -1436,7 +1434,11 @@ internal static class OpenApiEmitter
             w.WriteString("type", "object");
             w.WriteString("description",
                 "الاشتراك الجاري كاملاً: الخطّة وسعرها نصّاً، والحالة، وحالة كل وحدة، وتاريخ التجديد. "
-                + "**وكل مبلغ نصّ** بأربع خانات — لا رمز رقمي في JSON. / "
+                + "**وكل مبلغ نصّ** بأربع خانات — لا رمز رقمي في JSON.\n\n"
+                + "**والأسماء عربيةٌ وحدها هنا، ولا ترجمات معها بعد.** والسبب مُعلَن: سجلّ الأسطول يحمل عمودين "
+                + "منذ الموجة الأولى ولا يحمل **جدول ترجمات**، وصفٌّ واحد يُصطنع من عمودٍ لاتيني ليس ترجمةً صفّاً "
+                + "بل النصفَ الإنجليزي الثابت في ثوب قائمة — وهو ما يمنعه ADR-0021 بند 2. فحين يصير لمستوى التحكّم "
+                + "جدولُ ترجماته تُضاف nameTranslations إضافةً تبقى v1. / "
                 + "The whole current subscription: the plan and its price as text, the state, each module's state, and the "
                 + "renewal date. **Every amount is a string** with four decimals — never a JSON number token.");
             w.WriteStartObject("properties");
@@ -1451,13 +1453,9 @@ internal static class OpenApiEmitter
                 "الوحدات وحالاتها، مرتَّبةً برمزها ترتيباً حرفياً ثابتاً.",
                 "The modules and their states, ordered by code in a fixed ordinal order.");
             WriteStringProperty(w, "nameAr", "اسم المستأجر بالعربية — السجلّ.", "The tenant's Arabic name — the record.", 200);
-            WriteArrayRefProperty(w, "nameTranslations", "NameValue",
-                "ترجمات اسم المستأجر.", "The tenant name's translations.");
             WriteRefProperty(w, "perUserPrice", "Money");
             WriteStringProperty(w, "planCode", "رمز الخطّة.", "The plan code.", 32);
             WriteStringProperty(w, "planNameAr", "اسم الخطّة بالعربية.", "The plan's Arabic name.", 200);
-            WriteArrayRefProperty(w, "planNameTranslations", "NameValue",
-                "ترجمات اسم الخطّة.", "The plan name's translations.");
             WriteNullableStringProperty(w, "renewsOn",
                 "تاريخ التجديد التالي بصيغة yyyy-MM-dd، أو null لاشتراك ليس فعّالاً — وتاريخٌ يُعرض على اشتراك منقطع يُقرأ وعداً بعودةٍ لا تقع.",
                 "The next renewal date as yyyy-MM-dd, or null when the subscription is not active — a date shown on a lapsed subscription reads as a promise of a return that does not happen.", 10);
@@ -1469,8 +1467,8 @@ internal static class OpenApiEmitter
             WriteEnumProperty(w, "tenantStatus", "حالة المستأجر في سجل الأسطول.", "The tenant's status in the fleet registry.", TenantStatusNames);
             w.WriteEndObject();
             WriteRequired(w, "currency", "endsOn", "includedUsers", "modules", "monthlyPrice", "nameAr",
-                "nameTranslations", "perUserPrice", "planCode", "planNameAr", "planNameTranslations", "renewsOn",
-                "startedOn", "state", "subscriptionId", "tenantCode", "tenantId", "tenantStatus");
+                "perUserPrice", "planCode", "planNameAr", "renewsOn", "startedOn", "state", "subscriptionId",
+                "tenantCode", "tenantId", "tenantStatus");
             w.WriteBoolean("additionalProperties", false);
         });
 

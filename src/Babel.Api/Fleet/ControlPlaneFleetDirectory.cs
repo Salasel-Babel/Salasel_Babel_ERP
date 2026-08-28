@@ -46,8 +46,7 @@ internal sealed class ControlPlaneFleetDirectory : IFleetDirectory
     public bool IsAvailable => true;
 
     /// <inheritdoc />
-    public IReadOnlyList<string> KnownPlans { get; } =
-        [.. SubscriptionService.Plans().Select(static plan => plan.Code)];
+    public IReadOnlyList<string> KnownPlans { get; } = SubscriptionService.PlanCodes();
 
     /// <inheritdoc />
     public async Task<FleetSubscription?> FindAsync(Guid tenantId, CancellationToken cancellationToken = default)
@@ -58,9 +57,13 @@ internal sealed class ControlPlaneFleetDirectory : IFleetDirectory
 
     /// <inheritdoc />
     public async Task<FleetSubscription> OpenAsync(
-        Guid tenantId, string tenantCode, string nameAr, string nameEn, CancellationToken cancellationToken = default) =>
+        Guid tenantId,
+        string tenantCode,
+        string nameAr,
+        IReadOnlyList<FleetNameTranslation> translations,
+        CancellationToken cancellationToken = default) =>
         Project(await _subscriptions
-            .OpenAsync(tenantId, tenantCode, BilingualName.Of(nameAr, nameEn), SignupActor, cancellationToken)
+            .OpenAsync(tenantId, tenantCode, BilingualName.Of(nameAr, Latin(translations, nameAr)), SignupActor, cancellationToken)
             .ConfigureAwait(false));
 
     /// <inheritdoc />
@@ -99,12 +102,10 @@ internal sealed class ControlPlaneFleetDirectory : IFleetDirectory
         record.TenantId,
         record.TenantCode,
         record.NameAr,
-        record.NameEn,
         record.TenantStatus,
         record.SubscriptionId.ToString("D", CultureInfo.InvariantCulture),
         record.PlanCode,
         record.PlanNameAr,
-        record.PlanNameEn,
         record.MonthlyPrice,
         record.PerUserPrice,
         record.IncludedUsers,
@@ -114,7 +115,35 @@ internal sealed class ControlPlaneFleetDirectory : IFleetDirectory
         record.State,
         record.RenewsOn is { } renews ? Date(renews) : null,
         [.. record.Modules.Select(static module =>
-            new FleetModule(module.Code, module.NameAr, module.NameEn, module.State, module.PostsJournal))]);
+            new FleetModule(module.Code, module.NameAr, module.State, module.PostsJournal))]);
+
+    /// <summary>
+    /// الاسم اللاتيني الذي يلزم <b>سجلّ الأسطول وحده</b>: ترجمة الوسم <c>en</c> إن وُجدت،
+    /// وإلا الاسم العربي نفسه.
+    /// <para>
+    /// <b>والارتداد مُعلَن لا صامت:</b> مخطّط مستوى التحكّم يلزمه عمودان بحكم بنيته،
+    /// والسطح لا يمنح لغةً حقلاً ثابتاً بحكم ADR-0021. فاسمٌ عربي في عمود لاتيني أصدق
+    /// من عمودٍ يخترع نصّاً لا يقوله أحد.
+    /// </para>
+    /// </summary>
+    /// <param name="rows">صفوف الترجمة كما وصلت من السطح.</param>
+    /// <param name="fallback">الاسم العربي — وهو الارتداد.</param>
+    private static string Latin(IReadOnlyList<FleetNameTranslation> rows, string fallback)
+    {
+        foreach (FleetNameTranslation row in rows ?? [])
+        {
+            if (row.Tag.StartsWith(LatinTag, StringComparison.OrdinalIgnoreCase)
+                && !string.IsNullOrWhiteSpace(row.Name))
+            {
+                return row.Name.Trim();
+            }
+        }
+
+        return fallback;
+    }
+
+    /// <summary>وسم اللغة اللاتينية — واحدٌ لا يُكتب في موضعين.</summary>
+    private const string LatinTag = "en";
 
     /// <summary>
     /// تاريخٌ على السلك: <c>yyyy-MM-dd</c> بثقافة ثابتة.
@@ -146,7 +175,11 @@ internal sealed class UnavailableFleetDirectory : IFleetDirectory
 
     /// <inheritdoc />
     public Task<FleetSubscription> OpenAsync(
-        Guid tenantId, string tenantCode, string nameAr, string nameEn, CancellationToken cancellationToken = default) =>
+        Guid tenantId,
+        string tenantCode,
+        string nameAr,
+        IReadOnlyList<FleetNameTranslation> translations,
+        CancellationToken cancellationToken = default) =>
         throw Unavailable();
 
     /// <inheritdoc />

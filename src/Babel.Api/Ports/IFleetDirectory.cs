@@ -1,12 +1,23 @@
 namespace Babel.Api.Ports;
 
+/// <summary>
+/// ترجمةُ اسمٍ واحدة على حدّ المنفذ: وسمُ لغتها واسمُها.
+/// <para>
+/// <b>ولا نصفَ إنجليزي ثابت يعبر هذا الحدّ:</b> العربية هي السجلّ، وكل لغة سواها
+/// <b>صفّ</b> — والإنجليزية واحدةٌ من N لا نصف الاثنين (ADR-0021 بند 2). ومستوى التحكّم
+/// يحوّل عموده اللاتيني إلى صفوف عند حدّه هو، فلا يصل إلى هنا عمود.
+/// </para>
+/// </summary>
+/// <param name="Tag">وسم اللغة بصيغة BCP-47.</param>
+/// <param name="Name">الاسم بتلك اللغة.</param>
+internal sealed record FleetNameTranslation(string Tag, string Name);
+
 /// <summary>وحدةٌ في اشتراك، <b>باسم حالتها نصّاً</b>. المفردات مفردات مستوى التحكّم.</summary>
 /// <param name="Code">رمز الوحدة في كتالوج مستوى التحكّم — <c>CORE</c> و<c>AR</c> وأخواتها.</param>
-/// <param name="NameAr">اسمها بالعربية.</param>
-/// <param name="NameEn">اسمها بالإنجليزية.</param>
+/// <param name="NameAr">اسمها بالعربية — السجلّ، ولا نصف ثانياً معه.</param>
 /// <param name="State">اسم حالتها حرفاً بحرف.</param>
 /// <param name="PostsJournal">هل يبلغ عملُها الدفتر؟</param>
-internal sealed record FleetModule(string Code, string NameAr, string NameEn, string State, bool PostsJournal);
+internal sealed record FleetModule(string Code, string NameAr, string State, bool PostsJournal);
 
 /// <summary>
 /// اشتراك مستأجر كما يعبر من مستوى التحكّم إلى السطح — <b>وكل مبلغ فيه نصّ وكل تاريخ نصّ</b>.
@@ -17,13 +28,11 @@ internal sealed record FleetModule(string Code, string NameAr, string NameEn, st
 /// </summary>
 /// <param name="TenantId">معرّف المستأجر.</param>
 /// <param name="TenantCode">رمزه القصير في سجل الأسطول.</param>
-/// <param name="NameAr">اسمه بالعربية.</param>
-/// <param name="NameEn">اسمه بالإنجليزية.</param>
+/// <param name="NameAr">اسمه بالعربية — السجلّ.</param>
 /// <param name="TenantStatus">حالته في سجل الأسطول.</param>
 /// <param name="SubscriptionId">معرّف الاشتراك الجاري.</param>
 /// <param name="PlanCode">رمز الخطّة.</param>
 /// <param name="PlanNameAr">اسم الخطّة بالعربية.</param>
-/// <param name="PlanNameEn">اسم الخطّة بالإنجليزية.</param>
 /// <param name="MonthlyPrice">السعر الشهري نصّاً.</param>
 /// <param name="PerUserPrice">سعر المستخدم الواحد بعد المُضمَّن، نصّاً.</param>
 /// <param name="IncludedUsers">عدد المستخدمين المُضمَّنين.</param>
@@ -37,12 +46,10 @@ internal sealed record FleetSubscription(
     Guid TenantId,
     string TenantCode,
     string NameAr,
-    string NameEn,
     string TenantStatus,
     string SubscriptionId,
     string PlanCode,
     string PlanNameAr,
-    string PlanNameEn,
     string MonthlyPrice,
     string PerUserPrice,
     int IncludedUsers,
@@ -93,10 +100,17 @@ internal interface IFleetDirectory
     /// <param name="tenantId">معرّف المستأجر المشتقّ من مفتاح الطلب.</param>
     /// <param name="tenantCode">رمزه القصير المشتقّ من المفتاح نفسه.</param>
     /// <param name="nameAr">اسم المنشأة بالعربية — السجلّ.</param>
-    /// <param name="nameEn">اسمها بالإنجليزية.</param>
+    /// <param name="translations">
+    /// ترجمات الاسم صفوفاً. ومستوى التحكّم يلزمه اسمٌ لاتيني لتقاريره الأسطولية، فيُقرأ
+    /// من الوسم <c>en</c> إن وُجد و<b>يرتدّ إلى العربية</b> إن لم يوجد — والارتداد مُعلَن.
+    /// </param>
     /// <param name="cancellationToken">رمز الإلغاء.</param>
     Task<FleetSubscription> OpenAsync(
-        Guid tenantId, string tenantCode, string nameAr, string nameEn, CancellationToken cancellationToken = default);
+        Guid tenantId,
+        string tenantCode,
+        string nameAr,
+        IReadOnlyList<FleetNameTranslation> translations,
+        CancellationToken cancellationToken = default);
 
     /// <summary>يغيّر خطّة المستأجر بسندٍ مكتوب.</summary>
     /// <param name="tenantId">معرّف المستأجر.</param>

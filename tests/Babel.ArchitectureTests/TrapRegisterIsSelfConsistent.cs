@@ -40,13 +40,13 @@ public sealed partial class TrapRegisterIsSelfConsistent
 
     // ── الشكل ───────────────────────────────────────────────────────────────
 
-    [GeneratedRegex(@"^### فخ-(?<id>[0-9]{2}|جديد) — (?<title>.+?) · `(?<slug>[a-z][a-z0-9-]*)`\s*$", RegexOptions.CultureInvariant)]
+    [GeneratedRegex(@"^### فخ-(?<id>[0-9]{2,3}|جديد) — (?<title>.+?) · `(?<slug>[a-z][a-z0-9-]*)`\s*$", RegexOptions.CultureInvariant)]
     private static partial Regex HeadingPattern();
 
     [GeneratedRegex(@"^<a id=""fakh-(?<token>[a-z0-9][a-z0-9-]*)""></a>\s*$", RegexOptions.CultureInvariant)]
     private static partial Regex AnchorPattern();
 
-    [GeneratedRegex(@"^\| \[فخ-(?<id>[0-9]{2}|جديد)\]\(#fakh-(?<target>[a-z0-9][a-z0-9-]*)\)", RegexOptions.CultureInvariant)]
+    [GeneratedRegex(@"^\| \[فخ-(?<id>[0-9]{2,3}|جديد)\]\(#fakh-(?<target>[a-z0-9][a-z0-9-]*)\)", RegexOptions.CultureInvariant)]
     private static partial Regex IndexRowPattern();
 
     [GeneratedRegex(@"\*\*الحصيلة: (?<silent>[0-9]+) من (?<total>[0-9]+) فخّاً تفشل بصمت\*\* \(منها (?<delayed>\S+) بصمت مؤجّل.*?و\*\*(?<loud>[0-9]+) فقط\*\* تفشل بصوت عالٍ صريح، و\*\*(?<disguised>[0-9]+) تتنكّر\*\*", RegexOptions.CultureInvariant)]

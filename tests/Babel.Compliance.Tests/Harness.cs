@@ -107,12 +107,14 @@ public sealed class Harness : IDisposable
     public Reconciler Reconciler { get; }
 
     /// <summary>يمرّ بدورة التسجيل كاملة حتى تصير الوحدة قادرة على الإصدار.</summary>
-    public async Task<IssuingUnitRegistration> OnboardAsync(IssuingUnitId? unit = null, CancellationToken ct = default)
+    public async Task<IssuingUnitRegistration> OnboardAsync(
+        IssuingUnitId? unit = null, TenantId? tenant = null, CancellationToken ct = default)
     {
         var u = unit ?? Unit;
+        var t = tenant ?? Tenant;
         var csr = await Provider.Onboarding.CreateSigningRequestAsync(
-            new CsrRequest(Tenant, u, ComplianceEnvironment.Simulation, new CsrSubject(
-                CommonName: $"{Tenant.Value}-{u.Value}",
+            new CsrRequest(t, u, ComplianceEnvironment.Simulation, new CsrSubject(
+                CommonName: $"{t.Value}-{u.Value}",
                 OrganisationName: "سلاسل بابل",
                 OrganisationalUnitName: "المبيعات",
                 CountryCode: "SA",
@@ -137,7 +139,7 @@ public sealed class Harness : IDisposable
 
         var registration = new IssuingUnitRegistration
         {
-            Tenant = Tenant,
+            Tenant = t,
             IssuingUnit = u,
             Environment = ComplianceEnvironment.Simulation,
             DisplayNameAr = "نقطة بيع ١",

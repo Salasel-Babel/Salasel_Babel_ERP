@@ -1,3 +1,4 @@
+using Babel.Tests.Shared;
 using System.Collections.Immutable;
 using Babel.Contracts.Posting;
 using Babel.Core.CapabilityProfile;
@@ -57,13 +58,14 @@ internal sealed class Harness : IDisposable
 
         Suppliers = new SupplierService(enforcer, purchasing);
         Orders = new PurchaseOrderService(enforcer, purchasing);
-        Receipts = new GoodsReceiptService(enforcer, purchasing, Posting, Profiles);
+        Receipts = new GoodsReceiptService(enforcer, purchasing, Posting, Profiles, Stock);
 
         Customers = new CustomerService(enforcer, sales);
 
         // ‏**هنا يقع الربط كلّه**: خدمة الفواتير تأخذ منفذ التقييم، وتنفيذه هو خدمة
         // المخزون نفسها. لا بديل، ولا رقم يُملى من مستدعٍ.
         Invoices = new SalesInvoiceService(enforcer, sales, Posting, Profiles, Stock);
+        CreditNotes = new CreditNoteService(enforcer, sales, Posting, Profiles, Stock);
     }
 
     public InventoryRuntime InventoryRuntime { get; }
@@ -92,6 +94,8 @@ internal sealed class Harness : IDisposable
     public CustomerService Customers { get; }
 
     public SalesInvoiceService Invoices { get; }
+
+    public CreditNoteService CreditNotes { get; }
 
     public static UserId Actor { get; } = new(new Guid("00000000-0000-4000-8000-0000000000c1"));
 
@@ -253,15 +257,37 @@ internal sealed class Harness : IDisposable
         return new ReceiptFacts(receipt.Value.Id, receiptLines.Value[0].Id, Money.Of(quantity * unitPrice, CurrencyCode.Sar));
     }
 
-    /// <summary>ينشئ فاتورة مبيعات ويرحّلها — الإيراد وحده، بلا قيد تكلفة.</summary>
+    /// <summary>ينشئ فاتورة مبيعات بسطر واحد ويرحّلها — الإيراد وحده، بلا قيد تكلفة.</summary>
     /// <param name="tenant">المستأجر.</param>
     /// <param name="customerId">العميل.</param>
     /// <param name="unitPrice">سعر البيع.</param>
     /// <param name="issuedOn">تاريخ الفاتورة.</param>
     /// <param name="token">رمز الإلغاء.</param>
-    public async Task<Guid> PostedInvoiceAsync(
+    public Task<Guid> PostedInvoiceAsync(
         TenantId tenant, Guid customerId, decimal unitPrice, DateOnly issuedOn, CancellationToken token)
+        => PostedInvoiceAsync(tenant, customerId, [unitPrice], issuedOn, token);
+
+    /// <summary>
+    /// ينشئ فاتورة مبيعات <b>بعدد السطور المطلوب</b> ويرحّلها.
+    /// <para>
+    /// وسطران يعنيان صنفين: وهو المشهد الذي كان يُرفض قبل أن يصير قيد التكلفة
+    /// بحبيبيّة السطر.
+    /// </para>
+    /// </summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="customerId">العميل.</param>
+    /// <param name="unitPrices">سعر بيع كل سطر.</param>
+    /// <param name="issuedOn">تاريخ الفاتورة.</param>
+    /// <param name="token">رمز الإلغاء.</param>
+    public async Task<Guid> PostedInvoiceAsync(
+        TenantId tenant,
+        Guid customerId,
+        IReadOnlyList<decimal> unitPrices,
+        DateOnly issuedOn,
+        CancellationToken token)
     {
+        ArgumentNullException.ThrowIfNull(unitPrices);
+
         Result<SalesDocumentView> created = await Invoices.CreateInvoiceAsync(
             tenant,
             Actor,
@@ -270,16 +296,14 @@ internal sealed class Harness : IDisposable
                 customerId,
                 issuedOn,
                 "BR-01",
-                [
-                    new SalesLineDraft(
-                        "*",
-                        new LocalizedName("صنف اختبار", "Test item"),
-                        1m,
-                        Money.Of(unitPrice, CurrencyCode.Sar),
-                        Money.Of(0m, CurrencyCode.Sar),
-                        "standard",
-                        0.15m),
-                ]),
+                [.. unitPrices.Select(static price => new SalesLineDraft(
+                    "*",
+                    new LocalizedName("صنف اختبار", "Test item"),
+                    1m,
+                    Money.Of(price, CurrencyCode.Sar),
+                    Money.Of(0m, CurrencyCode.Sar),
+                    "standard",
+                    0.15m))]),
             null,
             token);
 
@@ -289,6 +313,20 @@ internal sealed class Harness : IDisposable
         Require(posted);
 
         return created.Value.Id;
+    }
+
+    /// <summary>معرّفات سطور فاتورة بترتيبها — ومعرّف السطر معرّف مستند قيد تكلفته.</summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="invoiceId">الفاتورة.</param>
+    /// <param name="token">رمز الإلغاء.</param>
+    public async Task<IReadOnlyList<Guid>> InvoiceLineIdsAsync(
+        TenantId tenant, Guid invoiceId, CancellationToken token)
+    {
+        Result<IReadOnlyList<SalesLineView>> lines =
+            await Invoices.GetInvoiceLinesAsync(tenant, Actor, invoiceId, token);
+
+        Require(lines);
+        return [.. lines.Value.Select(static line => line.Id)];
     }
 
     /// <summary>ينشئ عميلاً.</summary>

@@ -37,4 +37,15 @@
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!--
+      ملفّ واحد لقارئ نقطة الضبط تتشاركه مشاريع الاختبار الثلاثة بالربط لا بالنسخ.
+      كان مكتوباً ثلاث مرّات متطابقةً، وهو شكل فخ-81 بعينه: قاعدة واحدة في مواضع
+      بلا حارس يربطها. والحارس على ذلك في
+      tests/Babel.ArchitectureTests/ControlPointPortIsDeclaredOnce.cs
+    -->
+    <Compile Include="../shared/LedgerControlPointReader.cs" Link="LedgerControlPointReader.cs" />
+    <Compile Include="../shared/UnitCostOfOne.cs" Link="UnitCostOfOne.cs" />
+  </ItemGroup>
+
 </Project>

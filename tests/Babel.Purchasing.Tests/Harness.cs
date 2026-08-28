@@ -1,3 +1,4 @@
+using Babel.Tests.Shared;
 using System.Collections.Immutable;
 using Babel.Contracts.Capture;
 using Babel.Contracts.Posting;
@@ -30,10 +31,11 @@ internal sealed class Harness : IDisposable
         LedgerRuntime = ledger;
         AlwaysEntitled enforcer = new();
         Profiles = new InMemoryCapabilityProfileStore();
+        Valuation = new UnitCostOfOne();
         Posting = new PostingService(enforcer, ledger);
         Suppliers = new SupplierService(enforcer, runtime);
         Orders = new PurchaseOrderService(enforcer, runtime);
-        Receipts = new GoodsReceiptService(enforcer, runtime, Posting, Profiles);
+        Receipts = new GoodsReceiptService(enforcer, runtime, Posting, Profiles, Valuation);
         Bills = new SupplierBillService(enforcer, runtime, Posting, Profiles);
         Payments = new SupplierPaymentService(enforcer, runtime, Posting, Profiles);
         Promotion = new PurchasingCapturedInvoiceReceiver(Suppliers, Bills);
@@ -45,6 +47,16 @@ internal sealed class Harness : IDisposable
     public PurchasingRuntime Runtime { get; }
 
     /// <summary>مخزن ملفّات القدرات — بوابة القبول تقرأ منه (‏ADR-0023).</summary>
+    /// <summary>
+    /// حدّ التقييم البديل لهذه التجهيزة — انظر <see cref="UnitCostOfOne"/>.
+    /// <para>
+    /// المطابقة الحقيقية بين الاستلام ودفتر المخزون المساعد مُثبَتة على مخزون حقيقي
+    /// في <c>Babel.Inventory.Tests</c>؛ وهنا يُقاس ما تقيسه المشتريات: الذمّة الدائنة
+    /// وهوية الترحيل والمطابقة الثلاثية.
+    /// </para>
+    /// </summary>
+    public UnitCostOfOne Valuation { get; }
+
     public InMemoryCapabilityProfileStore Profiles { get; }
 
     /// <summary>

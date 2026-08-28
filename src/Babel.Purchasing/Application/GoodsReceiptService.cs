@@ -1,3 +1,5 @@
+using System.Globalization;
+using Babel.Contracts.Inventory;
 using Babel.Contracts.Posting;
 using Babel.Core.Application;
 using Babel.Core.CapabilityProfile;
@@ -20,16 +22,34 @@ namespace Babel.Purchasing.Application;
 /// ومستودعاً واحداً على مستوى الطلب، فقيدٌ واحد لاستلام متعدد الأصناف كان سيحمل
 /// مرجع صنف واحد لأصناف عدة — وهو ما يفسد الدفتر المساعد للأصناف بصمت.
 /// </para>
+/// <para>
+/// <b>والسطر نفسه يبلغ دفتر المخزون المساعد قبل أن يبلغ الدفتر.</b> كان الاستلام
+/// يُدين حساب مراقبة المخزون ثم <b>يُنتظر من الجذر التركيبي</b> أن يسجّل الحركة
+/// بنداءٍ منفصل — وهو نداء لم يكن مكتوباً إلا في تجهيزة الاختبار. فكان الاستلام في
+/// أي نشرٍ حقيقي يُحرّك الحساب الضابط ولا يُحرّك الدفتر المساعد: بضاعةٌ في الميزانية
+/// بلا رصيد صنف يقابلها، وبيعُها بعدها يُرفض بـ<c>inventory.no_cost_basis</c>.
+/// </para>
+/// <para>
+/// <b>وترتيب النداءين ليس تفصيلاً:</b> الحركة تُسجَّل أولاً، فإن رُفضت لم يُكتب في
+/// الدفتر شيء ولم ينحرف طرفٌ عن طرف. وإن نجحت ثم سقط الترحيل، بقي انحراف
+/// <c>missing_in_control</c> <b>تُظهره المطابقة باسم المستند</b>، وإعادةُ المحاولة
+/// تتقارب: هوية الحركة هي هوية الترحيل، والوصول الثاني بها لا يصرف كميةً ثانية
+/// (<c>WasAlreadyRecorded</c>).
+/// </para>
 /// </summary>
 public sealed class GoodsReceiptService : IApplicationService
 {
     /// <summary>نوع مستند سطر الاستلام في هوية الإحكام.</summary>
     internal const string ReceiptLineDocument = "GoodsReceiptLine";
 
+    /// <summary>رمز حدث الاستلام — ثالث حقول الهوية التي يتشاركها الدفتران.</summary>
+    internal const string ReceiptPostedEvent = "purchasing.goods_receipt.posted";
+
     private readonly IEntitlementEnforcer _enforcer;
     private readonly PurchasingDbContext _database;
     private readonly SubledgerPostingGateway _gateway;
     private readonly PurchasingAdmission _admission;
+    private readonly IInventoryValuation _valuation;
     private readonly CurrencyCode _currency;
 
     /// <summary>ينشئ الخدمة.</summary>
@@ -37,16 +57,30 @@ public sealed class GoodsReceiptService : IApplicationService
     /// <param name="runtime">موارد الوحدة.</param>
     /// <param name="posting">محرك الترحيل.</param>
     /// <param name="profiles">مخزن ملفّات القدرات — بوابة القبول (‏ADR-0023).</param>
+    /// <param name="valuation">
+    /// حدّ تقييم المخزون — الوارد يُسجَّل فيه بتكلفته الفعلية فيصير أساس تكلفة الصنف.
+    /// <para>
+    /// وهو منفذ في <c>Babel.Contracts</c> لا مرجعٌ إلى وحدة المخزون: الوحدات الأفقية
+    /// لا يعتمد بعضها على بعض (القاعدة 3)، والجذر التركيبي وحده يعرف الطرفين.
+    /// </para>
+    /// <para>
+    /// <b>وهو إلزامي لا اختياري.</b> منفذٌ يُقبَل غيابه يعني استلاماً يُدين الحساب
+    /// الضابط ولا يبلغ الدفتر المساعد — وهو الحال الذي أُغلق هنا بالضبط.
+    /// </para>
+    /// </param>
     public GoodsReceiptService(
         IEntitlementEnforcer enforcer,
         PurchasingRuntime runtime,
         IPostingService posting,
-        ICapabilityProfileStore profiles)
+        ICapabilityProfileStore profiles,
+        IInventoryValuation valuation)
     {
         ArgumentNullException.ThrowIfNull(enforcer);
         ArgumentNullException.ThrowIfNull(runtime);
         ArgumentNullException.ThrowIfNull(posting);
         ArgumentNullException.ThrowIfNull(profiles);
+        ArgumentNullException.ThrowIfNull(valuation);
+        _valuation = valuation;
         _enforcer = enforcer;
         _database = runtime.Database;
         _currency = CurrencyCode.FromString(runtime.Options.CompanyCurrency);
@@ -271,13 +305,47 @@ public sealed class GoodsReceiptService : IApplicationService
 
         foreach (PurchaseLineRow line in lines)
         {
+            // ── ١ · الدفتر المساعد أولاً ───────────────────────────────────────
+            // بهوية الترحيل نفسها حرفاً بحرف: نوع المستند ومعرّفه ورمز الإطلاق
+            // والجيل ورمز الحدث. فحركة المخزون وقيد الاستلام واقعةٌ واحدة تُروى
+            // مرّتين بمفتاح واحد — لا دفتران يعدّان بحبيبيّتين مختلفتين، ولا
+            // انحراف بلا مستند مسؤول (فخ-44 · فخ-48).
+            Result<InventoryMovementCost> received = await _valuation.ReceiveAsync(
+                new InventoryReceipt
+                {
+                    Tenant = tenant,
+                    Actor = actor,
+                    Source = new InventoryMovementSource(
+                        BabelModule.Purchasing,
+                        ReceiptLineDocument,
+                        line.Id.ToString("D", CultureInfo.InvariantCulture),
+                        PostingTrigger.OnReceipt.ToString(),
+                        receipt.PostingGeneration,
+                        ReceiptPostedEvent),
+                    Location = new InventoryItemLocation(line.ItemId, receipt.WarehouseId, line.ItemGroup),
+                    Quantity = line.Quantity,
+
+                    // تكلفة الوارد هي صافي السطر بالضبط — وهو المبلغ نفسه الذي
+                    // يُدين حساب مراقبة المخزون في القيد أدناه. رقمان مختلفان
+                    // هنا يعنيان دفترين لا يلتقيان أبداً.
+                    Cost = Money.Of(line.LineNet, _currency),
+                    OccurredOn = receipt.ReceivedOn,
+                },
+                cancellationToken).ConfigureAwait(false);
+
+            if (received.IsFailure)
+            {
+                return Result<PurchasingDocumentView>.Failure(received.Errors);
+            }
+
+            // ── ٢ · ثم الحساب الضابط ───────────────────────────────────────────
             PostingIntent intent = new()
             {
                 Tenant = tenant,
                 DocumentType = ReceiptLineDocument,
                 DocumentId = line.Id,
                 Trigger = PostingTrigger.OnReceipt,
-                Event = new PostingEventCode("purchasing.goods_receipt.posted"),
+                Event = new PostingEventCode(ReceiptPostedEvent),
                 DocumentDate = receipt.ReceivedOn,
                 Narration = new LocalizedName(
                     "استلام بضاعة " + receipt.Number, "Goods receipt " + receipt.Number),

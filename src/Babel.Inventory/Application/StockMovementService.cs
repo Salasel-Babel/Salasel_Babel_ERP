@@ -162,20 +162,37 @@ public sealed class StockMovementService : IApplicationService, IInventoryValuat
         }
 
         RecordedMovement issue = original.Value;
-        decimal returned = await ReturnedAgainstAsync(movement.Tenant, movement.OriginalIssue, cancellationToken)
-            .ConfigureAwait(false);
 
-        if (returned + movement.Quantity > issue.Quantity)
+        // ── «هل هذا المرتجع مُسجَّل سلفاً؟» يُسأل **قبل** «هل الردّ زائد؟» ────────
+        // لأن صفّ هذا المرتجع نفسه داخل مجموع ما رُدّ على الصرف. فلو سُئل الثاني
+        // أوّلاً لأعلنت **الإعادةُ بالهوية نفسها** ردّاً زائداً: ردٌّ كامل لعشر وحدات
+        // يُعاد فيُقرأ 10 + 10 > 10 ⇒ `inventory.return_exceeds_issue` — رفضٌ لواقعة
+        // وقعت مرّة واحدة، ويكسر القاعدة المعمارية 4 (الإحكام مستقلّ عن الترتيب).
+        // وليس هذا احتمالاً نظرياً: مسار الإشعار الدائن يُعيد المحاولة كلّما سقط
+        // ترحيلٌ بعد كتابة الحركة، وهو المسار الذي يُبنى عليه الآن.
+        decimal cost = 0m;
+
+        if ((await ReadMovementAsync(movement.Tenant, movement.Source, null, cancellationToken)
+                .ConfigureAwait(false)).IsFailure)
         {
-            return Result<InventoryMovementCost>.Failure(
-                InventoryErrors.ReturnExceedsIssue(issue.Quantity, returned, movement.Quantity));
+            decimal returned = await ReturnedAgainstAsync(movement.Tenant, movement.OriginalIssue, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (returned + movement.Quantity > issue.Quantity)
+            {
+                return Result<InventoryMovementCost>.Failure(
+                    InventoryErrors.ReturnExceedsIssue(issue.Quantity, returned, movement.Quantity));
+            }
+
+            // ردٌّ كامل للصرف الواحد يستعيد **قيمته بالضبط**، لا حاصل ضرب يعيد بناءها
+            // بتقريبٍ ثانٍ. وردٌّ جزئي يُقيَّم بتكلفة وحدة ذلك الصرف نفسه.
+            cost = returned == 0m && movement.Quantity == issue.Quantity
+                ? issue.ValueAmount
+                : decimal.Round(issue.UnitCost * movement.Quantity, WeightedAverageCost.ValueScale, MidpointRounding.ToEven);
         }
 
-        // ردٌّ كامل للصرف الواحد يستعيد **قيمته بالضبط**، لا حاصل ضرب يعيد بناءها
-        // بتقريبٍ ثانٍ. وردٌّ جزئي يُقيَّم بتكلفة وحدة ذلك الصرف نفسه.
-        decimal cost = returned == 0m && movement.Quantity == issue.Quantity
-            ? issue.ValueAmount
-            : decimal.Round(issue.UnitCost * movement.Quantity, WeightedAverageCost.ValueScale, MidpointRounding.ToEven);
+        // وعلى مسار الإعادة تبقى `cost` صفراً ولا تُستعمل: `WriteAsync` يقرأ الحركة
+        // المُسجَّلة ويعود بها قبل أن يبلغ دالّة الأثر أصلاً.
 
         return await WriteAsync(
             movement.Tenant,
@@ -272,6 +289,7 @@ public sealed class StockMovementService : IApplicationService, IInventoryValuat
             return Result<InventoryMovementCost>.Success(new InventoryMovementCost(
                 Money.Of(recorded.ValueAmount, _currency),
                 recorded.Method,
+                new InventoryItemLocation(recorded.ItemId, recorded.WarehouseId, recorded.ItemGroup),
                 recorded.QuantityAfter,
                 Money.Of(recorded.ValueAfter, _currency),
                 recorded.DrewOnNegativeStock,
@@ -374,6 +392,7 @@ public sealed class StockMovementService : IApplicationService, IInventoryValuat
         return Result<InventoryMovementCost>.Success(new InventoryMovementCost(
             Money.Of(effect.Value, _currency),
             WeightedAverageCost.MethodCode,
+            location,
             effect.After.Quantity,
             Money.Of(effect.After.Value, _currency),
             effect.DrewOnNegativeStock,

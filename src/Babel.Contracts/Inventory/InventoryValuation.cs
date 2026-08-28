@@ -121,6 +121,16 @@ public sealed record InventoryReturn
 /// </summary>
 /// <param name="Cost">تكلفة الحركة بعملة الشركة.</param>
 /// <param name="Method">رمز طريقة التقييم التي أنتجت الرقم.</param>
+/// <param name="Location">
+/// الصنف ومستودعه ومجموعته <b>كما استقرّت في الحركة المُسجَّلة</b>.
+/// <para>
+/// وهي معلومة على الوارد والصادر لأن المستدعي سلّمها؛ أمّا على <b>المرتجع</b> فلا
+/// يعرفها إلا المخزون: المستدعي يُسلّم هوية الصرف الأصلي وحدها، والصنف والمستودع
+/// يُقرآن من تلك الحركة. وبدون إعادتها هنا كان على وحدة المبيعات أن تُسمّي الصنف
+/// في وقائع القيد <b>من عندها</b> — فتُنتج قيداً يقول «الصنف س» ودفتراً مساعداً
+/// حرّك «الصنف ص»، وهو انحراف لا يُظهره توازنٌ ولا سلسلة.
+/// </para>
+/// </param>
 /// <param name="QuantityAfter">رصيد الكمية بعد الحركة.</param>
 /// <param name="ValueAfter">رصيد القيمة بعد الحركة.</param>
 /// <param name="DrewOnNegativeStock">هل صُرفت الكمية من رصيد لا يغطيها؟</param>
@@ -128,6 +138,7 @@ public sealed record InventoryReturn
 public sealed record InventoryMovementCost(
     Money Cost,
     string Method,
+    InventoryItemLocation Location,
     decimal QuantityAfter,
     Money ValueAfter,
     bool DrewOnNegativeStock,

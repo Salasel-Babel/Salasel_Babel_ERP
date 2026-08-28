@@ -31,6 +31,19 @@ public sealed record CustomerView(Guid Id, string Code, LocalizedName Name, Mone
 /// <param name="Discount">خصم السطر.</param>
 /// <param name="TaxClassification">التصنيف الضريبي: <c>standard</c> · <c>zero</c> · <c>exempt</c>.</param>
 /// <param name="TaxRate">نسبة الضريبة كسراً عشرياً.</param>
+/// <param name="OriginalInvoiceLineId">
+/// <b>على سطر الإشعار الدائن وحده</b>: سطر الفاتورة الذي تُردّ بضاعته.
+/// <para>
+/// وهو <b>هوية الصرف الأصلي</b> التي يحتاجها المخزون كي يُقيّم المرتجع بتكلفة صرفه
+/// لا بمتوسط اليوم، كما تقول المصفوفة نصّاً على
+/// <c>sales.credit_note.cost_of_sales</c>: «بنفس تكلفة قيد البيع الأصلي لا بتكلفة
+/// اليوم». وبحثٌ بالصنف وحده كان سيختار «آخر صرف» — اختيارٌ لا يقرّره أحد.
+/// </para>
+/// <para>
+/// و<c>null</c> تعني <b>تخفيض قيمة لا ردّ بضاعة</b>: إشعارٌ لا يُحرّك مخزوناً ولا
+/// يُرحّل قيد تكلفة. والفرق بينهما قرارٌ تجاري لا يُخمَّن.
+/// </para>
+/// </param>
 public sealed record SalesLineDraft(
     string ItemGroup,
     LocalizedName Description,
@@ -38,7 +51,27 @@ public sealed record SalesLineDraft(
     Money UnitPrice,
     Money Discount,
     string TaxClassification,
-    decimal TaxRate);
+    decimal TaxRate,
+    Guid? OriginalInvoiceLineId = null);
+
+/// <summary>
+/// سطر مستند مبيعات كما يراه المستدعي — <b>ومعرّفه هو ما يُبنى عليه قيد التكلفة</b>.
+/// <para>
+/// قيد <c>sales.invoice.cost_of_sales</c> يُرحَّل بنوع مستند <c>SalesInvoiceLine</c>
+/// ومعرّفه معرّف هذا السطر. فمن أراد ترحيل تكلفة سطر قرأ سطوره أولاً — كما تفعل
+/// المشتريات في <c>GoodsReceiptService.GetLinesAsync</c> بالضبط.
+/// </para>
+/// </summary>
+/// <param name="Id">معرّف السطر — معرّف المستند في هوية ترحيل قيد التكلفة.</param>
+/// <param name="LineNo">رقم السطر داخل مستنده.</param>
+/// <param name="ItemGroup">مجموعة الصنف.</param>
+/// <param name="Quantity">الكمية.</param>
+/// <param name="UnitPrice">سعر الوحدة.</param>
+/// <param name="OriginalInvoiceLineId">
+/// سطر الفاتورة الأصلي إن كان هذا سطر إشعار دائن يردّ بضاعة، وإلا <c>null</c>.
+/// </param>
+public sealed record SalesLineView(
+    Guid Id, int LineNo, string ItemGroup, decimal Quantity, Money UnitPrice, Guid? OriginalInvoiceLineId);
 
 /// <summary>مسوّدة مستند مبيعات بسطوره.</summary>
 /// <param name="Number">رقم المستند.</param>

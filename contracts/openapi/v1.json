@@ -1078,7 +1078,7 @@
           "name": "receiptId",
           "in": "path",
           "required": true,
-          "description": "معرّف استلام البضاعة. / The goods receipt identifier.",
+          "description": "معرّف سند القبض. / The customer receipt identifier.",
           "schema": {
             "type": "string",
             "format": "uuid"
@@ -1159,7 +1159,7 @@
           "name": "receiptId",
           "in": "path",
           "required": true,
-          "description": "معرّف استلام البضاعة. / The goods receipt identifier.",
+          "description": "معرّف سند القبض. / The customer receipt identifier.",
           "schema": {
             "type": "string",
             "format": "uuid"
@@ -4784,6 +4784,16 @@
             "type": "string",
             "format": "uuid"
           }
+        },
+        {
+          "name": "paymentId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف سند الصرف. / The supplier payment identifier.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
         }
       ],
       "get": {
@@ -4851,6 +4861,16 @@
           "in": "path",
           "required": true,
           "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "paymentId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف سند الصرف. / The supplier payment identifier.",
           "schema": {
             "type": "string",
             "format": "uuid"

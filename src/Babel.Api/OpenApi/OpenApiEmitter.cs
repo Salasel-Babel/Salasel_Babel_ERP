@@ -1155,9 +1155,9 @@ internal static class OpenApiEmitter
                 }
 
                 // معرّفات موارد المستندات — بترتيب معلن، ولا مسار يحمل أكثر من واحد منها.
-                foreach ((string token, string ar, string en) in DocumentPathParameters)
+                foreach ((string resource, string token, string ar, string en) in DocumentPathParameters)
                 {
-                    if (byPath.Key.Contains("{" + token + "}", StringComparison.Ordinal))
+                    if (byPath.Key.Contains("/" + resource + "/{" + token + "}", StringComparison.Ordinal))
                     {
                         WritePathParameter(w, token, ar, en, "uuid");
                     }
@@ -1202,22 +1202,31 @@ internal static class OpenApiEmitter
     }
 
     /// <summary>
-    /// معرّفات موارد سطح المستندات — الاسم في المسار ووصفه. <b>قائمة واحدة مرتَّبة</b>:
-    /// شرطٌ مكتوب بيد لكل معرّف كان يطول بطول السطح ويُنسى أحدهم عند الإضافة، فيخرج
-    /// مسارٌ بلا وصف وسيطه.
+    /// معرّفات موارد سطح المستندات — <b>المورد ثم الاسم في المسار</b> ثم وصفه.
+    /// <para>
+    /// <b>ولماذا المورد جزءٌ من المفتاح:</b> كانت هذه القائمة مفتاحها الاسمُ وحده، وذلك
+    /// يفترض أن الاسم فريد عبر الموارد — <b>وليس كذلك</b>. فـ<c>receiptId</c> اسمٌ يخدم
+    /// موردين اثنين: <c>goods-receipts</c> و<c>customer-receipts</c>؛ فوصفُ أحدهما كُتب
+    /// على الآخر، ونُشر في العقد أنّ وسيط سند القبض هو «معرّف استلام البضاعة».
+    /// و<c>paymentId</c> غاب عن القائمة أصلاً فخرج مساران <b>بلا وصف وسيطهما</b> — وهو
+    /// بعينه ما ادّعى تعليقُ هذه القائمة أنه يمنعه. مقيس على العقد المنشور:
+    /// عمليتان موصوفتان خطأً وعمليتان بلا وسيط مُعلَن.
+    /// </para>
     /// </summary>
-    private static IReadOnlyList<(string Token, string Ar, string En)> DocumentPathParameters { get; } =
+    private static IReadOnlyList<(string Resource, string Token, string Ar, string En)> DocumentPathParameters { get; } =
     [
-        ("billId", "معرّف فاتورة المورد.", "The supplier bill identifier."),
-        ("creditNoteId", "معرّف الإشعار الدائن.", "The credit note identifier."),
-        ("customerId", "معرّف العميل.", "The customer identifier."),
-        ("invoiceId", "معرّف فاتورة المبيعات.", "The sales invoice identifier."),
-        ("itemId", "معرّف الصنف.", "The item identifier."),
-        ("movementId", "معرّف مستند حركة المخزون.", "The stock movement document identifier."),
-        ("orderId", "معرّف أمر الشراء.", "The purchase order identifier."),
-        ("receiptId", "معرّف استلام البضاعة.", "The goods receipt identifier."),
-        ("returnId", "معرّف مرتجع المشتريات.", "The purchase return identifier."),
-        ("supplierId", "معرّف المورد.", "The supplier identifier."),
+        ("credit-notes", "creditNoteId", "معرّف الإشعار الدائن.", "The credit note identifier."),
+        ("customer-receipts", "receiptId", "معرّف سند القبض.", "The customer receipt identifier."),
+        ("customers", "customerId", "معرّف العميل.", "The customer identifier."),
+        ("goods-receipts", "receiptId", "معرّف استلام البضاعة.", "The goods receipt identifier."),
+        ("items", "itemId", "معرّف الصنف.", "The item identifier."),
+        ("purchase-orders", "orderId", "معرّف أمر الشراء.", "The purchase order identifier."),
+        ("purchase-returns", "returnId", "معرّف مرتجع المشتريات.", "The purchase return identifier."),
+        ("sales-invoices", "invoiceId", "معرّف فاتورة المبيعات.", "The sales invoice identifier."),
+        ("stock-movements", "movementId", "معرّف مستند حركة المخزون.", "The stock movement document identifier."),
+        ("supplier-bills", "billId", "معرّف فاتورة المورد.", "The supplier bill identifier."),
+        ("supplier-payments", "paymentId", "معرّف سند الصرف.", "The supplier payment identifier."),
+        ("suppliers", "supplierId", "معرّف المورد.", "The supplier identifier."),
     ];
 
     /// <summary>

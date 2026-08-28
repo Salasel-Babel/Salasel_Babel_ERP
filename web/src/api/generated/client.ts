@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     9b4b67ebfa420bef3bce6afd7e80cf12fa6181923c47e4af8c8f6d1a33b23adc
+     fafa4da875789323f241b9351d8445a06149c326ef03d96599dd40577fc1e917
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -642,7 +642,7 @@ export async function postCreditNote(transport: Transport, args: PostCreditNoteA
 export interface PostCustomerReceiptArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
-  /** معرّف استلام البضاعة. / The goods receipt identifier. */
+  /** معرّف سند القبض. / The customer receipt identifier. */
   receiptId: string;
 }
 
@@ -845,6 +845,8 @@ export async function postSupplierBill(transport: Transport, args: PostSupplierB
 export interface PostSupplierPaymentArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
+  /** معرّف سند الصرف. / The supplier payment identifier. */
+  paymentId: string;
 }
 
 /**
@@ -859,7 +861,7 @@ export interface PostSupplierPaymentArgs {
  * Idempotent by the same posting identity with the same behaviour: a second arrival returns the same payment with alreadyPosted = true, status 200, and the same entry identifier, with no second entry **and no second allocation**.
  */
 export async function postSupplierPayment(transport: Transport, args: PostSupplierPaymentArgs, signal?: AbortSignal): Promise<T.CommercialDocument> {
-  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/supplier-payments/{paymentId}/posting";
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/supplier-payments/" + encodeURIComponent(args.paymentId) + "/posting";
   const url = path;
   const response = await transport({ method: "POST", url, signal });
   if (!response.ok) throw ProblemError.from(response);
@@ -955,7 +957,7 @@ export async function readCustomer(transport: Transport, args: ReadCustomerArgs,
 export interface ReadCustomerReceiptArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
-  /** معرّف استلام البضاعة. / The goods receipt identifier. */
+  /** معرّف سند القبض. / The customer receipt identifier. */
   receiptId: string;
 }
 
@@ -1405,6 +1407,8 @@ export async function readSupplierBill(transport: Transport, args: ReadSupplierB
 export interface ReadSupplierPaymentArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
+  /** معرّف سند الصرف. / The supplier payment identifier. */
+  paymentId: string;
 }
 
 /**
@@ -1415,7 +1419,7 @@ export interface ReadSupplierPaymentArgs {
  * Reads a supplier payment with its state, its totals, and its entry identifier if posted. Here **net** is the amount paid, **tax** is the transfer fee, and **gross** is their sum — what left the treasury. Note that what came off the supplier's balance is **net alone**, not gross.
  */
 export async function readSupplierPayment(transport: Transport, args: ReadSupplierPaymentArgs, signal?: AbortSignal): Promise<T.CommercialDocument> {
-  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/supplier-payments/{paymentId}";
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/supplier-payments/" + encodeURIComponent(args.paymentId) + "";
   const url = path;
   const response = await transport({ method: "GET", url, signal });
   if (!response.ok) throw ProblemError.from(response);

@@ -25,6 +25,11 @@ WORKDIR /source
 COPY Directory.Build.props Directory.Packages.props global.json .editorconfig ./
 COPY src/ src/
 COPY data/ data/
+# العقد المنشور مُضمَّن في التجميعة (‏Babel.Api.csproj · EmbeddedResource) ليُقدَّم
+# على /openapi/v1.json بالبايتات المُودَعة نفسها، ولتقرأه صفحة /docs. وغيابه من
+# سياق البناء يجعل الصورة **لا تُترجَم** — وهو ما وقع فعلاً، ولم يكشفه شيء لأن
+# لا بوّابة تبني الصور. ‏(ADR-0043)
+COPY contracts/ contracts/
 RUN dotnet restore src/Babel.Api/Babel.Api.csproj
 
 RUN dotnet publish src/Babel.Api/Babel.Api.csproj \

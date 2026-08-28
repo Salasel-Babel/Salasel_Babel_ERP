@@ -208,7 +208,20 @@ public sealed record DocumentTotals(Money Net, Money Tax, Money Gross);
 /// <param name="State">الحالة.</param>
 /// <param name="Totals">المجاميع.</param>
 /// <param name="EntryId">معرّف القيد إن رُحّل.</param>
-public sealed record PurchasingDocumentView(Guid Id, string Number, string State, DocumentTotals Totals, Guid? EntryId);
+/// <param name="AlreadyPosted">
+/// هل كانت هوية الترحيل مُرحَّلة <b>قبل</b> هذا النداء؟ ولا تُشتقّ من
+/// <paramref name="State"/>: المستند بعد أي نداء ترحيل ناجح حالته <c>POSTED</c> —
+/// الأول والثاني سواء. والفارق معلومةٌ يملكها الدفتر
+/// (<c>PostingReceipt.WasAlreadyPosted</c>) وكانت تُهدَر عند هذا الحدّ.
+/// والقيمة الافتراضية <c>false</c> تجعل الإضافة إضافةً محضة.
+/// </param>
+public sealed record PurchasingDocumentView(
+    Guid Id,
+    string Number,
+    string State,
+    DocumentTotals Totals,
+    Guid? EntryId,
+    bool AlreadyPosted = false);
 
 /// <summary>سطر مستند كما يراه المستدعي — معرّف السطر لازم للمطابقة الثلاثية.</summary>
 /// <param name="Id">معرّف السطر.</param>

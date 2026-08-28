@@ -1,3 +1,4 @@
+using Babel.Tests.Shared;
 using System.Collections.Immutable;
 using Babel.Contracts.Posting;
 using Babel.Core.CapabilityProfile;

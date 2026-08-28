@@ -2,47 +2,6 @@ using Babel.SharedKernel;
 
 namespace Babel.Sales.Subledger;
 
-/// <summary>
-/// حدّ قراءة <b>نقطة الضبط</b> في دفتر الأستاذ.
-/// <para>
-/// الوحدة لا تسمّي حساباً ولا تقرأ جداول الدفتر (القاعدتان 1 و2)، لكن الدفتر المساعد
-/// بلا مطابقة مع نقطة ضبطه دفترٌ يجرف بصمت. ولذلك تُعلن الوحدة <b>منفذاً</b> يتكلّم
-/// بمفردات الدفاتر المساعدة (‏<c>customer</c>) لا بمفردات الحسابات، ويصله الجذر
-/// التركيبي بالدفتر.
-/// </para>
-/// <para>
-/// ⚠️ مكان هذا العقد الطبيعي <c>Babel.Contracts</c> كي لا يُكرَّر في كل دفتر مساعد —
-/// وهو بند في تقرير هذا التسليم، لا تعديل يُتخذ ضمناً.
-/// </para>
-/// </summary>
-public interface IControlPointReader
-{
-    /// <summary>
-    /// يقرأ صافي حركة نقطة الضبط لنوع دفتر مساعد حتى تاريخ، مفصّلة بالمستند.
-    /// </summary>
-    /// <param name="tenant">المستأجر.</param>
-    /// <param name="subledgerKind">نوع الدفتر المساعد كما تعرّفه بيانات الدفتر (<c>customer</c>).</param>
-    /// <param name="asOf">التاريخ الذي تُقرأ الحركة حتى نهايته.</param>
-    /// <param name="cancellationToken">رمز الإلغاء.</param>
-    ValueTask<Result<ControlPointSnapshot>> ReadAsync(
-        TenantId tenant,
-        string subledgerKind,
-        DateOnly asOf,
-        CancellationToken cancellationToken = default);
-}
-
-/// <summary>لقطة نقطة الضبط: الصافي وتفصيله بالمستند.</summary>
-/// <param name="Net">صافي الحركة بمنطق «مدين ناقص دائن» بعملة الشركة.</param>
-/// <param name="Movements">حركة كل مستند على حدة.</param>
-public sealed record ControlPointSnapshot(decimal Net, IReadOnlyList<ControlPointMovement> Movements);
-
-/// <summary>حركة مستند واحد على نقطة الضبط.</summary>
-/// <param name="DocumentType">نوع المستند كما أرسلته الوحدة.</param>
-/// <param name="DocumentId">معرّف المستند.</param>
-/// <param name="PartyId">الطرف في الدفتر المساعد.</param>
-/// <param name="Net">صافي «مدين ناقص دائن» لسطور هذا المستند على نقطة الضبط.</param>
-public sealed record ControlPointMovement(string DocumentType, string DocumentId, string PartyId, decimal Net);
-
 /// <summary>سبب انحراف مستند بين الدفتر المساعد ونقطة الضبط.</summary>
 public static class DivergenceReason
 {

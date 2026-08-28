@@ -79,6 +79,77 @@ public sealed record TrialBalanceReport(
     bool Balanced);
 
 /// <summary>
+/// حسابٌ واحد كما يراه من يريد أن يُرحّل عليه — <b>بشروطه لا باسمه وحده</b>.
+/// <para>
+/// <b>ولماذا الشروط على الحساب لا في وثيقة:</b> الدفتر يرفض السطر بـ
+/// <c>ledger.posting.missing_subledger</c> حين يغيب طرفُ الأستاذ المساعد، وبـ
+/// <c>guard.GR-COA-002</c> حين يغيب بُعدٌ إلزامي. والرسالتان ممتازتان — تُسمّيان الحساب
+/// والطرف والبُعد — لكنّ العميل كان <b>لا يبلغهما إلا بأن يُرحِّل فيُرفَض</b>: لا سطح
+/// منشور يقول له، قبل الترحيل، إنّ هذا الحساب يطلب عميلاً أو مركز تكلفة. أي أنّ الشرط
+/// كان معلوماً للخادم ومجهولاً للعميل، والفارق بينهما يُدفَع ثمنُه قيداً مرفوضاً.
+/// </para>
+/// <para>
+/// <b>وهذا نموذج قراءة لا مفتاح ترحيل:</b> لا شيء هنا يُنشئ سطراً، ولا يختار دوراً، ولا
+/// يستبدل مصفوفة الترحيل. القاعدة 2 قائمة كما هي — الوحدة تصف حدثاً والمصفوفة تختار
+/// الحساب — وما يُنشَر هنا هو <b>ما على الشاشة اليدوية أن تعرفه</b> قبل أن تسأل الدفتر.
+/// </para>
+/// </summary>
+/// <param name="Code">رمز الحساب — معرّف لا نصّ، فلا يُترجَم أبداً.</param>
+/// <param name="Name">اسم الحساب: سجلٌّ عربي إلزامي وترجماته (ADR-0021).</param>
+/// <param name="ParentCode">رمز الأب، أو <c>null</c> لجذر. الشجرة تُبنى منه.</param>
+/// <param name="Level">مستوى الحساب في الشجرة، من 1 إلى 4.</param>
+/// <param name="AccountType">‏asset · liability · equity · revenue · expense.</param>
+/// <param name="NaturalSide">‏debit أو credit — الجانب الطبيعي.</param>
+/// <param name="IsPostable">هل يقبل سطراً مباشرةً؟ التجميعي لا يقبل (‏GR-COA-001).</param>
+/// <param name="IsContra">هل هو حساب مقابل يقف على غير جانبه الطبيعي؟</param>
+/// <param name="SubledgerType">
+/// نوع طرف الأستاذ المساعد الذي يطلبه الحساب، و<c>none</c> إن لم يطلب شيئاً. وغيابُ
+/// الطرف على حساب يطلبه هو <c>ledger.posting.missing_subledger</c> بعينه.
+/// </param>
+/// <param name="RequiredDimensions">
+/// الأبعاد الإلزامية على كل سطر يقع على هذا الحساب، وقد تكون فارغة. وغيابُ أحدها هو
+/// <c>guard.GR-COA-002</c> بعينه.
+/// </param>
+/// <param name="CurrencyMode">‏any أو company_only أو fixed.</param>
+/// <param name="CurrencyCode">العملة المثبَّتة حين يكون النمط <c>fixed</c>، وإلا <c>null</c>.</param>
+/// <param name="IsActive">هل الحساب مستعمَل؟ المعطَّل لا يُعرَض للاختيار.</param>
+public sealed record ChartAccount(
+    string Code,
+    TranslatedName Name,
+    string? ParentCode,
+    int Level,
+    string AccountType,
+    string NaturalSide,
+    bool IsPostable,
+    bool IsContra,
+    string SubledgerType,
+    IReadOnlyList<string> RequiredDimensions,
+    string CurrencyMode,
+    string? CurrencyCode,
+    bool IsActive);
+
+/// <summary>
+/// دليل حسابات شركة واحدة كاملاً، ومعه عدّاداه.
+/// <para>
+/// <b>ولماذا الدليل كلّه لا القابل للترحيل وحده:</b> الشجرة تُعرَض بآبائها. قائمةٌ من
+/// الأوراق وحدها تجعل العميل يخترع تجميعاً من بادئات الرموز — وهو اشتقاقٌ يصحّ اليوم
+/// ويكذب عند أول دليل عميل لا تُطابق فيه البادئةُ الأبَ. و<see cref="ChartAccount.IsPostable"/>
+/// على كل مدخل يجعل الترشيح عند العميل مجّانياً وبلا طلبٍ ثانٍ.
+/// </para>
+/// <para>
+/// <b>والعدّادان يصلان محسوبَين</b> لا لأن جمعهما صعب، بل لأن عميلاً يعدّ بنفسه لا يملك
+/// ما يقارن به حين تصل الصفحة ناقصة: العدّاد المُعلَن هو ما يجعل النقص <b>يُرى</b>.
+/// </para>
+/// </summary>
+/// <param name="Accounts">الحسابات مرتّبة برمزها ترتيباً حرفياً ثابتاً.</param>
+/// <param name="AccountCount">عدد الحسابات كلّها.</param>
+/// <param name="PostableCount">عدد ما يقبل الترحيل منها.</param>
+public sealed record ChartOfAccountsReport(
+    IReadOnlyList<ChartAccount> Accounts,
+    int AccountCount,
+    int PostableCount);
+
+/// <summary>
 /// قراءات التدقيق على الدفتر: إعادة التحقق من السلسلة، وميزان المراجعة.
 /// <para>
 /// كلاهما <b>قراءة محضة</b> ويعملان بدور التطبيق نفسه — الذي لا يملك
@@ -232,6 +303,98 @@ public sealed class LedgerAuditService : IApplicationService
         // الذي بُني له شكل السلك — ‏Number فاصلة عائمة ثنائية.
         return Result<TrialBalanceReport>.Success(
             new TrialBalanceReport(rows, totalDebit, totalCredit, totalDebit == totalCredit));
+    }
+
+    /// <summary>
+    /// دليل حسابات الشركة <b>بشروط الترحيل على كل حساب</b> — قراءةٌ محضة.
+    /// <para>
+    /// <b>ولماذا وُجدت هذه الدالّة:</b> قِيس على <c>data/chart-of-accounts/accounts.csv</c>
+    /// أنّ 180 حساباً، منها 109 يقبل الترحيل، منها <b>42 يطلب طرف أستاذ مساعد</b> و<b>45
+    /// يطلب بُعداً إلزامياً</b>. ولم يكن أيٌّ من ذلك منشوراً على أي سطح: شاشةُ قيدٍ يدوية
+    /// بُنيت من العقد المنشور وحده <b>لم تستطع تكوين قيد صالح من أول محاولة</b>، وأول
+    /// ترحيل حقيقي لها رُفض بـ<c>ledger.posting.missing_subledger</c> و<c>guard.GR-COA-002</c>.
+    /// أي أنّ الشرط كان يُكتشَف <b>بالرفض</b> وحده.
+    /// </para>
+    /// <para>
+    /// <b>ولا استحقاق ثانٍ:</b> البوّابة هنا هي <c>IEntitlementEnforcer</c> نفسها التي
+    /// يمرّ بها ميزان المراجعة وإعادة التحقق، بحقّ <see cref="EntitlementAccess.Read"/>.
+    /// ومستأجرٌ انقطع اشتراكه ينحدر إلى <b>القراءة فقط لا إلى المنع</b> (ADR-0034) —
+    /// فهذه الدالّة تخدمه، وهو ما يُشهَد عليه من فوق HTTP لا من داخل العملية.
+    /// </para>
+    /// </summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل الحقيقي — من الاعتماد، لا فاعل نظام (فخ-58).</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    [RequiresEntitlement(BabelModule.Ledger, EntitlementAccess.Read)]
+    public async ValueTask<Result<ChartOfAccountsReport>> ChartOfAccountsAsync(
+        TenantId tenant,
+        UserId actor,
+        CancellationToken cancellationToken = default)
+    {
+        Result gate = await _enforcer
+            .EnsureAsync(tenant, actor, BabelModule.Ledger, EntitlementAccess.Read, "Ledger.ChartOfAccounts", cancellationToken)
+            .ConfigureAwait(false);
+
+        if (gate.IsFailure)
+        {
+            return Result<ChartOfAccountsReport>.Failure(gate.Errors);
+        }
+
+        List<ChartAccount> accounts = [];
+        int postable = 0;
+
+        await using NpgsqlConnection connection =
+            await _runtime.DataSource.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
+
+        // ‏الترتيب في الاستعلام لا عند العميل: مخرَجٌ مرتَّب ترتيباً كلّياً ثابتاً هو
+        // الفارق بين مقارنةِ استجابتين ومقارنةِ مجموعتين (فخ-10). والترتيب حرفي على
+        // الرمز — `C` — لا ترتيب مُقابَلة يتبع ثقافة الخادم (فخ-38).
+        //
+        // والترجمات في **الرحلة نفسها**: استعلام فرعي قياسي على المفتاح الأساسي لجدول
+        // الترجمات، لا انضمام يضاعف الصفوف.
+        await using NpgsqlCommand command = new(
+            """
+            select a.account_code, a.name_ar, a.parent_code, a.account_level,
+                   a.account_type, a.natural_side, a.is_postable, a.is_contra,
+                   a.subledger_type, a.required_dimensions, a.currency_mode,
+                   a.currency_code, a.is_active,
+                   (select jsonb_object_agg(t.language_tag, t.name)
+                      from ledger.name_translation t
+                     where t.company_id = a.company_id and t.entity_kind = 'account'
+                       and t.entity_key = a.account_code) as translations
+              from ledger.account a
+             where a.company_id = $1
+             order by a.account_code collate "C"
+            """, connection);
+        command.Parameters.AddWithValue(tenant.Value);
+
+        await using NpgsqlDataReader reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+        while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+        {
+            bool isPostable = reader.GetBoolean(6);
+            if (isPostable)
+            {
+                postable++;
+            }
+
+            accounts.Add(new ChartAccount(
+                reader.GetString(0),
+                new TranslatedName(reader.GetString(1), Translations(reader, 13)),
+                reader.IsDBNull(2) ? null : reader.GetString(2),
+                reader.GetInt32(3),
+                reader.GetString(4),
+                reader.GetString(5),
+                isPostable,
+                reader.GetBoolean(7),
+                reader.GetString(8),
+                reader.GetFieldValue<string[]>(9),
+                reader.GetString(10),
+                reader.IsDBNull(11) ? null : reader.GetString(11),
+                reader.GetBoolean(12)));
+        }
+
+        return Result<ChartOfAccountsReport>.Success(
+            new ChartOfAccountsReport(accounts, accounts.Count, postable));
     }
 
     /// <summary>

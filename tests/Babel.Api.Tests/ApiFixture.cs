@@ -349,6 +349,11 @@ internal static class Http
         string.Create(CultureInfo.InvariantCulture, $"/api/v1/companies/{company:D}/trial-balance?book={book}")
         + (period is null ? string.Empty : "&period=" + period);
 
+    /// <summary>مسار دليل الحسابات بشروط الترحيل.</summary>
+    /// <param name="company">الشركة.</param>
+    public static string ChartOfAccounts(Guid company) =>
+        string.Create(CultureInfo.InvariantCulture, $"/api/v1/companies/{company:D}/chart-of-accounts");
+
     /// <summary>مسار إعادة التحقق من السلسلة.</summary>
     /// <param name="company">الشركة.</param>
     /// <param name="book">الدفتر.</param>

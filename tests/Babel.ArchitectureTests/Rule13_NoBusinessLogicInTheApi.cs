@@ -188,6 +188,27 @@ public sealed class Rule13_NoBusinessLogicInTheApi
         // خارج هذا الإحصاء. وتسميته تُعيدها إلى داخله.
         "Babel.Ledger.Audit.TrialBalanceReport",
 
+        // ‏ChartAccount و ChartOfAccountsReport — نموذج قراءة لدليل الحسابات بشروط
+        // الترحيل، ونوعا الإرجاع لـ`LedgerAuditService.ChartOfAccountsAsync` (منشورة
+        // أعلاه) في فضاء `Audit` الذي ليس من فضاءات الداخل المُعلَنة أدناه.
+        //
+        // **ولماذا نشرُ اسمٍ يسمّي حساباً قرارٌ لا سهو:** القاعدة 2 تمنع الوحدة من أن
+        // **تختار** حساباً — والوحدة تصف حدثاً والمصفوفة تختار. وهذان النوعان لا
+        // يختاران شيئاً: هما دليل المستأجر نفسه مقروءاً، بشروطٍ كان الدفتر يرفض بها
+        // (`ledger.posting.missing_subledger` و `guard.GR-COA-002`) ولا يستطيع العميل
+        // بلوغها إلا **بأن يُرحِّل فيُرفَض**. أي أن نشرهما يُضيّق فجوةً بين ما يعرفه
+        // الخادم وما يعرفه العميل، ولا يفتح للوحدات باباً إلى تسمية حساب: `AccountCode`
+        // ما زال `internal` في الدفتر، و`Babel.Contracts` ما زال لا يكشف عضواً يسمّي
+        // حساباً، وحارسا القاعدة 2 على ذلك خضراوان.
+        //
+        // **ولاحظ أين وقع الحدّ فعلاً:** أسماء أنواع النقل في `Babel.Api` — `PostingChartDto`
+        // و `PostingChartEntryDto` — **لا تحمل كلمة «حساب»**، لأن الحارس
+        // `NoAssemblyOutsideTheLedgerDeclaresAnAccountIdentifierType` يمنع أي تجميعة خارج
+        // الدفتر من إعلان نوعٍ يسمّيه. والمنع في محلّه ولم يُضعَّف من أجل تسمية أجمل؛
+        // والدفتر وحده يُعلن الاسم، والسطح ينقله.
+        "Babel.Ledger.Audit.ChartAccount",
+        "Babel.Ledger.Audit.ChartOfAccountsReport",
+
         // نقاط تركيب الوحدات الأفقية — دالة واحدة لكل وحدة، ولا شيء غيرها.
         "Babel.Sales.SalesModuleRegistration",
         "Babel.Purchasing.PurchasingModuleRegistration",

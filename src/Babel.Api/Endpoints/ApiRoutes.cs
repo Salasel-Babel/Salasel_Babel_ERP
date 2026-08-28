@@ -46,6 +46,17 @@ internal static class ApiRoutes
     /// <summary>ميزان المراجعة.</summary>
     public const string TrialBalance = Company + "/trial-balance";
 
+    /// <summary>
+    /// دليل الحسابات بشروط الترحيل على كل حساب.
+    /// <para>
+    /// <b>مورد واحد لا موردان، ولا مسار «للقابل للترحيل» بمفرده:</b> الشجرة تُعرَض
+    /// بآبائها، والمدخل يحمل <c>postable</c> فيرشّح العميل بلا طلبٍ ثانٍ. ومسارٌ ثانٍ
+    /// كان سيجعل «هل هذا الحساب موجود؟» و«هل يقبل الترحيل؟» سؤالين يُجابان بطلبين
+    /// يفترقان عند أول تعديل دليل.
+    /// </para>
+    /// </summary>
+    public const string ChartOfAccounts = Company + "/chart-of-accounts";
+
     /// <summary>إعادة التحقق من سلسلة البصمات.</summary>
     public const string ChainVerification = Company + "/ledger-chain/verification";
 

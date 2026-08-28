@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     8a33528a07e07e6b03c5ee5d6412ccbe27809ed11ed5c811be93ba3132068135
+     bcd3d62ac30871329286007435f873c35108a6a9be4a114fa18280708835e2a1
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -155,6 +155,26 @@ export async function readCapabilityProfile(transport: Transport, args: ReadCapa
   const response = await transport({ method: "GET", url, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "CapabilityProfile", response.json) as T.CapabilityProfile;
+}
+
+export interface ReadChartOfAccountsArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+}
+
+/**
+ * دليل الحسابات بشروط الترحيل / The chart of accounts with its posting requirements
+ * 
+ * يقرأ دليل حسابات الشركة، وكل مدخل يحمل **ما يطلبه الحساب قبل أن يقبل سطراً**: نوع طرف الأستاذ المساعد، والأبعاد الإلزامية، ونمط العملة، وهل يقبل الترحيل أصلاً. وهذه هي المعلومة التي كانت **معلومة للخادم ومجهولة للعميل**: الدفتر يرفض بـ ledger.posting.missing_subledger و guard.GR-COA-002 برسالتين تسمّيان الحساب والطرف والبُعد، لكنّ العميل كان لا يبلغهما إلا **بأن يُرحِّل فيُرفَض**. فشاشةُ قيدٍ يدوية تُبنى من هذا المسار تمنع القيد الناقص قبل إرساله بدل أن تعرض رفضاً بعده. والدليل يُرجَع كاملاً — بآبائه التجميعية — وكل مدخل يحمل postable فيرشّح العميل بلا طلبٍ ثانٍ.
+ * 
+ * Reads the company's chart of accounts, each entry carrying **what the account requires before it will accept a line**: the subledger party type, the mandatory dimensions, the currency mode, and whether it is postable at all. This is the fact that was known to the server and unknown to the client: the ledger refuses with ledger.posting.missing_subledger and guard.GR-COA-002 in messages that name the account, the party, and the dimension, yet a client could reach those requirements only **by posting and being refused**. A manual voucher screen built from this path stops an incomplete entry before it is sent rather than showing a refusal after. The whole chart is returned — its non-postable parents included — and every entry carries postable, so the client filters with no second request.
+ */
+export async function readChartOfAccounts(transport: Transport, args: ReadChartOfAccountsArgs, signal?: AbortSignal): Promise<T.PostingChart> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/chart-of-accounts";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "PostingChart", response.json) as T.PostingChart;
 }
 
 export interface ReadCompanySetupArgs {

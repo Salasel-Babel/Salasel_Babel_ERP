@@ -139,6 +139,23 @@ internal static class OpenApiEmitter
                     new QueryParameter("period", false, "رمز الفترة yyyy-MM ميلادياً، أو غيابه فكل الفترات.", "Gregorian period code yyyy-MM, or omit for all periods.", "period"),
                 ]),
 
+            new(ApiRoutes.ChartOfAccounts, "get", "readChartOfAccounts",
+                "دليل الحسابات بشروط الترحيل", "The chart of accounts with its posting requirements",
+                "يقرأ دليل حسابات الشركة، وكل مدخل يحمل **ما يطلبه الحساب قبل أن يقبل سطراً**: نوع طرف الأستاذ المساعد، "
+                + "والأبعاد الإلزامية، ونمط العملة، وهل يقبل الترحيل أصلاً. "
+                + "وهذه هي المعلومة التي كانت **معلومة للخادم ومجهولة للعميل**: الدفتر يرفض بـ ledger.posting.missing_subledger "
+                + "و guard.GR-COA-002 برسالتين تسمّيان الحساب والطرف والبُعد، لكنّ العميل كان لا يبلغهما إلا **بأن يُرحِّل فيُرفَض**. "
+                + "فشاشةُ قيدٍ يدوية تُبنى من هذا المسار تمنع القيد الناقص قبل إرساله بدل أن تعرض رفضاً بعده. "
+                + "والدليل يُرجَع كاملاً — بآبائه التجميعية — وكل مدخل يحمل postable فيرشّح العميل بلا طلبٍ ثانٍ.",
+                "Reads the company's chart of accounts, each entry carrying **what the account requires before it will accept a line**: "
+                + "the subledger party type, the mandatory dimensions, the currency mode, and whether it is postable at all. "
+                + "This is the fact that was known to the server and unknown to the client: the ledger refuses with "
+                + "ledger.posting.missing_subledger and guard.GR-COA-002 in messages that name the account, the party, and the dimension, "
+                + "yet a client could reach those requirements only **by posting and being refused**. "
+                + "A manual voucher screen built from this path stops an incomplete entry before it is sent rather than showing a refusal after. "
+                + "The whole chart is returned — its non-postable parents included — and every entry carries postable, so the client filters with no second request.",
+                Body: null, Response: "PostingChart", Success: 200, Anonymous: false, Query: []),
+
             new(ApiRoutes.ChainVerification, "get", "verifyLedgerChain",
                 "إعادة التحقق من سلسلة البصمات", "Verify the hash chain",
                 "يعيد بناء كل مستند من الحقيقة المجالية المخزَّنة ويقارن بصمته، ويسمّي أول تسلسل منحرف إن وُجد.",
@@ -396,6 +413,26 @@ internal static class OpenApiEmitter
     }
 
     /// <summary>أعضاء تعداد جواب مراكز التكلفة، مقروءةً من التعداد نفسه لا من قائمة مكتوبة هنا.</summary>
+    /// <summary>
+    /// أنواع الحسابات وجوانبها وأنماط عملاتها — <b>قوائم مغلقة فعلاً</b>، وإغلاقها مفروض
+    /// في المخطّط بقيود تحقّق (<c>ck_account_type</c> و<c>ck_account_natural_side</c>
+    /// و<c>ck_account_currency_mode</c>) لا باتفاق. ولذلك تُنشر <c>enum</c>.
+    /// <para>
+    /// <b>وما ليس مغلقاً لا يُنشر مغلقاً:</b> <c>subledgerType</c> و<c>requiredDimensions</c>
+    /// لا يحدّهما قيد تحقّق واحد، وهما بيانات المستأجر في دليله. نشرُهما <c>enum</c> كان
+    /// سيجعل أول دليل عميل يُدخل نوعاً سادساً <b>يضع الخادم في مخالفة عقده المنشور</b> —
+    /// وهو تضييقٌ يفرض v2 لإصلاحه. فيُنشران نصّاً، ويُسمّى المستعمَل اليوم في الوصف.
+    /// </para>
+    /// </summary>
+    private static IReadOnlyList<string> AccountTypes { get; } =
+        ["asset", "liability", "equity", "revenue", "expense"];
+
+    /// <summary>الجانب الطبيعي — مغلق بـ<c>ck_account_natural_side</c>.</summary>
+    private static IReadOnlyList<string> NaturalSides { get; } = ["debit", "credit"];
+
+    /// <summary>نمط العملة — مغلق بـ<c>ck_account_currency_mode</c>.</summary>
+    private static IReadOnlyList<string> CurrencyModes { get; } = ["any", "company_only", "fixed"];
+
     private static IReadOnlyList<string> CostCenterPlans { get; } = Enum.GetNames<CostCenterPlan>();
 
     /// <summary>أعضاء تعداد حالة مركز التكلفة، مقروءةً من التعداد نفسه.</summary>
@@ -1151,6 +1188,95 @@ internal static class OpenApiEmitter
             WriteRefProperty(w, "totalDebit", "Money");
             w.WriteEndObject();
             WriteRequired(w, "balanced", "book", "periodCode", "rowCount", "rows", "totalCredit", "totalDebit");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("PostingChartEntry", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "مدخل واحد في دليل الحسابات، ومعه شروط الترحيل عليه. ولا حقل مالي فيه إطلاقاً، فلا يُطرح سؤال "
+                + "شكل المال على السلك أصلاً؛ والعدد الوحيد level صحيحٌ محدود بين 1 و4 يفرضه قيد تحقّق في المخطّط، "
+                + "لا مبلغاً ولا صحيحاً 64 بت، فيعبر رمزاً رقمياً كما يعبر rowCount. / "
+                + "One entry in the chart of accounts together with what posting to it requires. It carries no monetary field at all, "
+                + "so the money-on-the-wire question does not arise; its only number, level, is a bounded integer between 1 and 4 enforced "
+                + "by a schema check constraint — not an amount and not a 64-bit integer — so it crosses as a JSON number, as rowCount does.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "accountCode", "رمز الحساب كما هو في دليل حسابات هذه الشركة — معرّف لا نصّ، فلا يُترجَم.", "The account code as it stands in this company's chart of accounts; an identifier rather than text, so it is never translated.", 32);
+            WriteEnumProperty(w, "accountType", "نوع الحساب.", "The account type.", AccountTypes);
+            WriteBooleanProperty(w, "active", "هل الحساب مستعمَل؟ المعطَّل لا يُعرَض للاختيار، ولو كان قابلاً للترحيل شكلاً.", "Is the account in use? A deactivated account is not offered for selection even when it is structurally postable.");
+            WriteBooleanProperty(w, "contra", "هل هو حساب مقابل يقف على غير جانبه الطبيعي؟", "Is it a contra account, standing on the side opposite its natural one?");
+            w.WriteStartObject("currencyCode");
+            w.WriteStartArray("type");
+            w.WriteStringValue("string");
+            w.WriteStringValue("null");
+            w.WriteEndArray();
+            w.WriteString("pattern", "^[A-Z]{3}$");
+            w.WriteString("description",
+                "العملة المثبَّتة حين يكون currencyMode = fixed، و null فيما عدا ذلك. / "
+                + "The pinned currency when currencyMode is fixed, and null otherwise.");
+            w.WriteEndObject();
+            WriteEnumProperty(w, "currencyMode",
+                "نمط العملة: any يقبل أي عملة، و company_only يقبل عملة الشركة وحدها، و fixed يقبل currencyCode وحده.",
+                "The currency mode: any accepts any currency, company_only accepts the company currency alone, and fixed accepts only currencyCode.",
+                CurrencyModes);
+            WriteIntegerProperty(w, "level", 1, 4, "مستوى الحساب في الشجرة. والقابل للترحيل في المستوى الرابع دائماً (‏GR-COA-001).", "The account's level in the tree. A postable account is always at level four (GR-COA-001).");
+            WriteStringProperty(w, "nameAr",
+                "الاسم العربي — وهو السجلّ لا ترجمةً أولى، وغير فارغ أبداً (ADR-0021).",
+                "The Arabic name; it is the record rather than a first translation, and is never blank (ADR-0021).", 256);
+            WriteArrayRefProperty(w, "nameTranslations", "NameValue",
+                "ترجمات اسم الحساب: الاسم وسم لغة BCP-47 والقيمة النصّ المترجَم، مرتَّبةً بالوسم ترتيباً حرفياً "
+                + "ثابتاً. وقد تكون فارغة — والعرض يرتدّ حينها إلى الاسم العربي، وهو ارتداد **يُعلَن** لا يقع صامتاً. "
+                + "و**الإنجليزية واحدة من هذه الترجمات لا حقلاً مستقلاً** (ADR-0021 بند 2).",
+                "The account name's translations: the name is a BCP-47 language tag and the value is the translated text, ordered by tag "
+                + "with a stable ordinal sort. It may be empty, in which case display falls back to the Arabic name — a fallback that is "
+                + "declared, never silent. **English is one of these translations rather than a field of its own** (ADR-0021 clause 2).");
+            WriteEnumProperty(w, "naturalSide", "الجانب الطبيعي للحساب.", "The account's natural side.", NaturalSides);
+            WriteNullableStringProperty(w, "parentCode",
+                "رمز الحساب الأب، و null للجذر. الشجرة تُبنى من هذا الحقل لا من بادئة الرمز: البادئة تصدق على هذا الدليل وتكذب على أول دليل عميل يخالفها.",
+                "The parent account's code, or null at a root. Build the tree from this field rather than from the code prefix: the prefix holds for this chart and fails on the first customer chart that departs from it.", 32);
+            WriteBooleanProperty(w, "postable",
+                "هل يقبل هذا الحساب سطراً مباشرةً؟ الحساب التجميعي لا يقبل، ويُرفض الترحيل عليه بـ GR-COA-001.",
+                "Does this account accept a line directly? A summary account does not, and posting to it is refused with GR-COA-001.");
+            WriteStringArrayProperty(w, "requiredDimensions",
+                "الأبعاد الإلزامية على كل سطر يقع على هذا الحساب، وقد تكون فارغة. وغيابُ أحدها يُرفَض بـ guard.GR-COA-002 "
+                + "برسالة تسمّي الحساب والبُعد. والقيم المستعملة في الدليل المرفق: branch و cost_center و project و property و warehouse — "
+                + "و**هي نصوص لا قائمة مغلقة عمداً**: دليلُ عميلٍ يُدخل بُعداً سادساً لا يجوز أن يجعل الخادم يخالف عقده المنشور.",
+                "The dimensions mandatory on every line posted to this account; it may be empty. A missing one is refused with guard.GR-COA-002 "
+                + "in a message naming the account and the dimension. The values used in the shipped chart are branch, cost_center, project, "
+                + "property, and warehouse — and they are **deliberately strings rather than a closed list**: a customer chart that introduces "
+                + "a sixth dimension must not put the server in breach of its own published contract.", 64);
+            WriteStringProperty(w, "subledgerType",
+                "نوع طرف الأستاذ المساعد الذي يطلبه الحساب، و none إن لم يطلب شيئاً. وغيابُ الطرف على حساب يطلبه يُرفَض "
+                + "بـ ledger.posting.missing_subledger برسالة تسمّي الحساب والنوع المطلوب. والقيم في الدليل المرفق أربع عشرة، "
+                + "منها bank_account و customer و employee و item و property و supplier و tenant — و**هي نصّ لا قائمة مغلقة "
+                + "للسبب نفسه**: الدليل بيانات المستأجر، ونوعٌ جديد فيه لا يجوز أن يكسر العقد.",
+                "The subledger party type the account requires, or none when it requires nothing. A missing party on an account that requires "
+                + "one is refused with ledger.posting.missing_subledger in a message naming the account and the required type. The shipped chart "
+                + "uses fourteen values, among them bank_account, customer, employee, item, property, supplier, and tenant — and this is **a string "
+                + "rather than a closed list for the same reason**: the chart is tenant data, and a new type in it must not break the contract.", 64);
+            w.WriteEndObject();
+            WriteRequired(w, "accountCode", "accountType", "active", "contra", "currencyCode", "currencyMode", "level", "nameAr", "nameTranslations", "naturalSide", "parentCode", "postable", "requiredDimensions", "subledgerType");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("PostingChart", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "دليل الحسابات كاملاً بشروط الترحيل على كل حساب. ويُرجَع كاملاً لا مقتصراً على ما يقبل الترحيل: الشجرة "
+                + "تُعرَض بآبائها، وقائمةُ الأوراق وحدها تدفع العميل إلى اختراع تجميعٍ من بادئات الرموز. والعدّادان يصلان "
+                + "محسوبَين كي يُرى النقص: عميلٌ يعدّ بنفسه لا يملك ما يقارن به حين تصل الاستجابة ناقصة. / "
+                + "The whole chart of accounts with each account's posting requirements. It is returned in full rather than restricted to "
+                + "postable accounts: the tree is displayed with its parents, and a list of leaves alone pushes the client into inventing a "
+                + "grouping from code prefixes. The two counts arrive computed so that a shortfall is visible: a client that counts for itself "
+                + "has nothing to compare against when a response arrives incomplete.");
+            w.WriteStartObject("properties");
+            WriteIntegerProperty(w, "accountCount", 0, 1000000, "عدد الحسابات كلّها — يُقارَن بطول accounts فيُرى النقص.", "The total number of accounts; compare it with the length of accounts to see a shortfall.");
+            WriteArrayRefProperty(w, "accounts", "PostingChartEntry", "الحسابات مرتّبة برمزها ترتيباً حرفياً ثابتاً.", "The accounts ordered by code with a stable ordinal sort.");
+            WriteIntegerProperty(w, "postableCount", 0, 1000000, "عدد ما يقبل الترحيل منها — وهو ما تعرضه شاشة القيد اليدوي.", "How many of them are postable — which is what a manual voucher screen offers.");
+            w.WriteEndObject();
+            WriteRequired(w, "accountCount", "accounts", "postableCount");
             w.WriteBoolean("additionalProperties", false);
         });
 

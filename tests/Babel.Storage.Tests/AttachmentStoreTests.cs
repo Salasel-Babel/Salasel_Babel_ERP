@@ -408,6 +408,58 @@ public sealed class AttachmentStoreTests
         Assert.Equal("storage.attachment_withdrawn", correct.Errors[0].Code);
     }
 
+    /// <summary>
+    /// <b>والسباق تحسمه القاعدة، ويصل رفضاً لا استثناءً.</b>
+    /// <para>
+    /// الفحص «هل صُحِّح السلف من قبل؟» يقرأ ثم يكتب، وبينهما نافذة. فطلبان متزامنان
+    /// يمرّان كلاهما من الفحص، ويرفض الفهرس الفريد الجزئي الثاني — <b>والمطلوب أن يصل
+    /// ذلك الرفض بالرمز نفسه</b>، لا بـ<c>DbUpdateException</c> يصعد إلى نقطة النهاية
+    /// فيصير 500 على واقعةٍ مفهومة تماماً (فخ-41).
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Two_simultaneous_corrections_leave_exactly_one_successor_and_the_loser_gets_a_code()
+    {
+        if (await StoreAsync() is not var (store, _))
+        {
+            return;
+        }
+
+        TenantId tenant = new(Guid.CreateVersion7());
+        StoredAttachment original = (await store.PutAsync(
+            new AttachmentSubmission { Tenant = tenant, Actor = Actor, Content = Jpeg("أصل متنازع عليه") },
+            TestContext.Current.CancellationToken)).Value;
+
+        AttachmentSubmission Correction(string marker) => new()
+        {
+            Tenant = tenant,
+            Actor = Actor,
+            Content = Jpeg(marker),
+            Supersedes = original.Id,
+        };
+
+        Task<Result<StoredAttachment>> first = Task.Run(
+            async () => await store.PutAsync(Correction("متسابق ١"), TestContext.Current.CancellationToken),
+            TestContext.Current.CancellationToken);
+
+        Task<Result<StoredAttachment>> second = Task.Run(
+            async () => await store.PutAsync(Correction("متسابق ٢"), TestContext.Current.CancellationToken),
+            TestContext.Current.CancellationToken);
+
+        Result<StoredAttachment>[] outcomes = await Task.WhenAll(first, second);
+
+        // واحدٌ يفوز وواحدٌ يُرفض — ولا استثناء يتسرّب من أيّهما.
+        Assert.Equal(1, outcomes.Count(outcome => outcome.IsSuccess));
+        Assert.Equal(1, outcomes.Count(outcome => outcome.IsFailure));
+
+        Result<StoredAttachment> loser = outcomes.Single(outcome => outcome.IsFailure);
+        Assert.Equal("storage.attachment_already_superseded", loser.Errors[0].Code);
+
+        // والسلف له خلفٌ **واحد**، وهو الفائز بعينه.
+        StoredAttachment reread = (await store.DescribeAsync(tenant, original.Id, TestContext.Current.CancellationToken)).Value;
+        Assert.Equal(outcomes.Single(outcome => outcome.IsSuccess).Value.Id, reread.SupersededBy);
+    }
+
     private static int CountFiles(string root) =>
         Directory.Exists(root) ? Directory.GetFiles(root, "*", SearchOption.AllDirectories).Length : 0;
 }

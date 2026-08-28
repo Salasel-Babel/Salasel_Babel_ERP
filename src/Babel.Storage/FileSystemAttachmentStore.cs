@@ -5,6 +5,7 @@ using Babel.Contracts.Storage;
 using Babel.SharedKernel;
 using Babel.Storage.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace Babel.Storage;
 
@@ -134,7 +135,27 @@ public sealed class FileSystemAttachmentStore : IAttachmentStore
         };
 
         database.Attachments.Add(row);
-        await database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        // ── ٦ · والسباق تحسمه القاعدة، لا الفحص أعلاه ────────────────────────
+        // الفحص في الخطوة ٤ يقرأ ثم يكتب، وبينهما نافذة: طلبان يصحّحان السلف نفسه
+        // يمرّان كلاهما من الفحص. والفهرس الفريد الجزئي على SupersedesId يرفض الثاني —
+        // **لكن الرفض يصل استثناءً لا قيمة**، وهو ما يحوّله هذا المسك إلى رفضٍ
+        // بالرمز نفسه الذي كان الفحص سيعيده. و`PostgresException` تُمسَك **إلى جانب**
+        // `DbUpdateException` لأن المشغّل المؤجَّل يرفض عند COMMIT لا عند العبارة
+        // (‏docs/evidence/traps.md فخ-41).
+        try
+        {
+            await database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (DbUpdateException exception) when (submission.Supersedes.IsAssigned && IsUniqueViolation(exception))
+        {
+            return await RefuseForkAsync(database, submission, cancellationToken).ConfigureAwait(false);
+        }
+        catch (PostgresException exception)
+            when (submission.Supersedes.IsAssigned && exception.SqlState == PostgresErrorCodes.UniqueViolation)
+        {
+            return await RefuseForkAsync(database, submission, cancellationToken).ConfigureAwait(false);
+        }
 
         return Result<StoredAttachment>.Success(Describe(row, successor: null, withdrawal: null));
     }
@@ -276,7 +297,21 @@ public sealed class FileSystemAttachmentStore : IAttachmentStore
         };
 
         database.Withdrawals.Add(marker);
-        await database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        // نفس السباق، ونفس العلاج: مفتاح جدول السحب هو المرفق، فالسحب المتزامن
+        // الثاني يصطدم بالمفتاح الأوّلي ويعود بالرمز الذي كان الفحص سيعيده.
+        try
+        {
+            await database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (DbUpdateException exception) when (IsUniqueViolation(exception))
+        {
+            return Result<StoredAttachment>.Failure(AttachmentErrors.AlreadyWithdrawn(id));
+        }
+        catch (PostgresException exception) when (exception.SqlState == PostgresErrorCodes.UniqueViolation)
+        {
+            return Result<StoredAttachment>.Failure(AttachmentErrors.AlreadyWithdrawn(id));
+        }
 
         return await FindAsync(database, tenant, id, cancellationToken).ConfigureAwait(false);
     }
@@ -430,6 +465,41 @@ public sealed class FileSystemAttachmentStore : IAttachmentStore
         }
 
         return absolute;
+    }
+
+    /// <summary>
+    /// هل هذا الفشل تصادمَ تفرّد؟ ‏<c>DbUpdateException</c> غلافٌ، والرمز في جوفه.
+    /// </summary>
+    private static bool IsUniqueViolation(DbUpdateException exception) =>
+        exception.InnerException is PostgresException inner
+        && inner.SqlState == PostgresErrorCodes.UniqueViolation;
+
+    /// <summary>
+    /// يبني رفض التفرّع بعد أن حسمته القاعدة، ويسمّي <b>الخلف الذي فاز</b> — يُقرأ
+    /// من جديد لأن الفائز غير معروف للخاسر.
+    /// <para>
+    /// <b>ولا يُمسك تصادمٌ آخر بهذا الرمز:</b> الفهرس الفريد الوحيد الذي يستطيع طلبان
+    /// متزامنان أن يصطدما عليه هو فهرس <c>SupersedesId</c>. أمّا <c>ObjectKey</c> فمن
+    /// 256 بتّاً معمّى، وتصادمه ليس سباقاً بل عطلٌ في مولّد العشوائية — <b>ويُترك
+    /// يرمي</b>، لأن ابتلاعه برمز مجالي يُخفي عطلاً في أساس المخزن كلّه.
+    /// </para>
+    /// </summary>
+    private static async ValueTask<Result<StoredAttachment>> RefuseForkAsync(
+        StorageDbContext database,
+        AttachmentSubmission submission,
+        CancellationToken cancellationToken)
+    {
+        Guid? winner = await database.Attachments
+            .AsNoTracking()
+            .Where(candidate => candidate.SupersedesId == submission.Supersedes.Value
+                && candidate.TenantId == submission.Tenant.Value)
+            .Select(static candidate => (Guid?)candidate.Id)
+            .SingleOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        return Result<StoredAttachment>.Failure(AttachmentErrors.AlreadySuperseded(
+            submission.Supersedes,
+            winner is { } id ? new AttachmentId(id) : AttachmentId.None));
     }
 
     private static string Digest(ReadOnlySpan<byte> content)

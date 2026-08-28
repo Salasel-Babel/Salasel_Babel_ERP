@@ -316,6 +316,52 @@ public sealed class InventoryControlReconciliationTests : IAsyncLifetime
             "وقيد sales.credit_note.cost_of_sales رُحّل بالمبلغ نفسه تحت سطر الإشعار",
             "أثر SalesCreditNoteLine على نقطة الضبط=" + Proof.Money(control));
 
+        // ── والإعادة بالهوية نفسها لا تفعل شيئاً ولا تُعدّ خطأ ────────────────
+        // ردٌّ **كامل** يُعاد: صفّه نفسه داخل مجموع ما رُدّ على الصرف، فلو سُئل
+        // «هل الردّ زائد؟» قبل «هل هو مُسجَّل؟» لعاد 10 + 10 > 10 ورُفض بـ
+        // inventory.return_exceeds_issue — رفضٌ لواقعة وقعت مرّة واحدة. وهذا
+        // المسار حقيقي: PostAsync يُعاد كلّما سقط ترحيلٌ بعد كتابة الحركة.
+        Result<InventoryMovementCost> replay = await _harness.Stock.ReturnAsync(
+            new InventoryReturn
+            {
+                Tenant = tenant,
+                Actor = Harness.Actor,
+                Source = new InventoryMovementSource(
+                    BabelModule.Sales,
+                    "SalesCreditNoteLine",
+                    creditLine.ToString("D", CultureInfo.InvariantCulture),
+                    PostingTrigger.OnApproval.ToString(),
+                    1,
+                    "sales.credit_note.cost_of_sales"),
+                OriginalIssue = new InventoryMovementSource(
+                    BabelModule.Sales,
+                    "SalesInvoiceLine",
+                    invoiceLine.ToString("D", CultureInfo.InvariantCulture),
+                    PostingTrigger.OnApproval.ToString(),
+                    1,
+                    "sales.invoice.cost_of_sales"),
+                Quantity = 10m,
+                OccurredOn = March,
+            },
+            token);
+
+        Assert.True(replay.IsSuccess, Describe(replay));
+
+        Result<StockBalanceView> afterReplay = await _harness.Stock
+            .ReadStockAsync(tenant, Harness.Actor, item, Warehouse, token);
+
+        Assert.True(afterReplay.IsSuccess, Describe(afterReplay));
+
+        Proof.Require(
+            replay.Value.WasAlreadyRecorded
+            && replay.Value.Cost.Amount == 40.0000m
+            && afterReplay.Value.Value.Amount == afterReturn.Value.Value.Amount
+            && afterReplay.Value.Quantity == afterReturn.Value.Quantity,
+            "وإعادة الردّ بالهوية نفسها تُعيد الرقم ولا تردّ مرّة ثانية — ولا تُرفض ردّاً زائداً",
+            "الإعادة=" + Proof.Money(replay.Value.Cost.Amount)
+            + " · مُسجَّلة سلفاً=" + replay.Value.WasAlreadyRecorded.ToString(CultureInfo.InvariantCulture)
+            + " · الرصيد بعدها=" + Proof.Money(afterReplay.Value.Value.Amount));
+
         Result<ControlReconciliationReport> report = await _harness.Valuation
             .ReconcileAsync(tenant, Harness.Actor, AsOf, token);
 
@@ -326,7 +372,7 @@ public sealed class InventoryControlReconciliationTests : IAsyncLifetime
             && report.Value.Divergences.Count == 0
             && report.Value.SubledgerTotal.Amount == report.Value.ControlTotal.Amount
             && report.Value.BalanceTotal.Amount == report.Value.ControlTotal.Amount,
-            "والمستأجر كلّه ما يزال مطابقاً بثلاثة طرق بعد المرتجع",
+            "والمستأجر كلّه ما يزال مطابقاً بثلاثة طرق بعد المرتجع وبعد إعادته",
             "الحركات=" + Proof.Money(report.Value.SubledgerTotal.Amount)
             + " · الأرصدة=" + Proof.Money(report.Value.BalanceTotal.Amount)
             + " · نقطة الضبط=" + Proof.Money(report.Value.ControlTotal.Amount)

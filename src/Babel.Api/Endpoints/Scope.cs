@@ -53,7 +53,9 @@ internal static class Scope
             return false;
         }
 
-        if (!RequestPrincipal.Of(context).Reaches(companyId))
+        Security.ApiPrincipal principal = RequestPrincipal.Of(context);
+
+        if (!principal.Reaches(companyId))
         {
             // رسالة واحدة لحالتين — «غير موجودة» و«لا تبلغها» — عمداً: التمييز بينهما
             // يجعل السطح عدّاد وجود لشركات مستأجرين آخرين.
@@ -66,8 +68,39 @@ internal static class Scope
             return false;
         }
 
+        // ── دورُ العضوية: «قارئ» يقرأ ولا يكتب — وهنا لا في كل معالج ────────────────
+        //
+        // والموضع هو الموضع نفسه الذي يُقرأ فيه النطاق عمداً: «أي منشأة؟» و«من أنا فيها؟»
+        // سؤالان يُجابان معاً أو ينحرفان. وفحصٌ منسوخ في كل معالج يُنسى في المعالج التالي،
+        // وهو صنف العطل الذي وُجد هذا الملفّ لأجله.
+        //
+        // ‏**والفعل هو المعيار لا اسم المسار:** كل قراءة على هذا السطح GET وكل كتابة
+        // ليست كذلك — والمعيار مأخوذ من دلالة HTTP نفسها (‏RFC 9110 §9.2.1: الأفعال
+        // الآمنة للقراءة وحدها)، لا من جدولٍ ثانٍ يُكتب بيد وينحرف عند أول مسار جديد.
+        //
+        // ‏**وهذا ليس نسخةً ثانية من جدول الاستحقاق** (ADR-0036): ذاك يسأل «أدُفع ثمن هذه
+        // الوحدة؟» ويجيب عن المستأجر كلّه، وهذا يسأل «من هذا الإنسان في هذه المنشأة؟».
+        // والرمزان يفترقان كي يبني العميل شاشتين: «جدّد اشتراكك» مقابل «اطلب صلاحية».
+        if (principal.ReadsOnlyIn(companyId) && !IsSafe(context.Request.Method))
+        {
+            denied = HttpProblemResults.Code(
+                context,
+                "membership.read_only",
+                "دورك في هذه المنشأة قراءةٌ فقط، فلا تُكتب بها مستندات. والاشتراك سليم ولا علاقة له بهذا: "
+                + "من يريد الكتابة يطلب من مالك المنشأة أن يرفع دوره.",
+                "Your role in this company is read-only, so no documents are written with it. The subscription is "
+                + "healthy and unrelated to this: to write, ask the company's owner to raise your role.",
+                "companyId");
+            return false;
+        }
+
         return true;
     }
+
+    /// <summary>الأفعال الآمنة كما تعرّفها <c>RFC 9110 §9.2.1</c> — ولا قائمة ثانية تُكتب بيد.</summary>
+    /// <param name="method">فعل الطلب.</param>
+    private static bool IsSafe(string method) =>
+        HttpMethods.IsGet(method) || HttpMethods.IsHead(method) || HttpMethods.IsOptions(method);
 
     /// <summary>
     /// يقرأ رمز نوع المستند من المسار بفحص شكلي وحده.

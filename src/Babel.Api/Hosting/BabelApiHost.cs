@@ -5,6 +5,7 @@ using Babel.Api.Ports;
 using Babel.Api.Security;
 using Babel.Compliance;
 using Babel.Core;
+using Babel.Core.Access;
 using Babel.Core.Entitlement;
 using Babel.Core.Tenancy;
 using Babel.Inventory;
@@ -71,8 +72,19 @@ internal static class BabelApiHost
         builder.Services.AddScoped<RequestTenantContext>();
         builder.Services.AddScoped<ITenantContext>(static sp => sp.GetRequiredService<RequestTenantContext>());
 
-        builder.Services.AddSingleton<IApiPrincipalResolver>(
+        // ── دليل الاعتمادات: المُصدَر أولاً، ثم اعتماد التزويد المُهيَّأ من الإعداد ──
+        //
+        // ‏**وتنفيذٌ واحد مسجَّل لا اثنان**: الوسيط ينادي IApiPrincipalResolver كما كان،
+        // ولا يعرف أن خلفه دليلين. وآليتا تصريح متوازيتان في خط المعالجة تعنيان أن
+        // إحداهما تُصان وتُنسى الأخرى، ولا يظهر الفارق إلا يوم يتجاوزه أحد.
+        //
+        // ودليل الإعداد **باب إقلاع معلَن**: هو الاعتماد الوحيد الذي لا يُصدره السطح ولا
+        // يدور ولا يُبطَل من HTTP، ووظيفته أن يُنشئ أوّل مالك في منشأةٍ زُوِّدت للتوّ.
+        builder.Services.AddSingleton<ConfiguredPrincipalResolver>(
             _ => new ConfiguredPrincipalResolver(ReadPrincipals(builder.Configuration)));
+        builder.Services.AddSingleton<IApiPrincipalResolver>(provider => new IssuedSessionResolver(
+            provider.GetRequiredService<AccessResolver>(),
+            provider.GetRequiredService<ConfiguredPrincipalResolver>()));
 
         // منفذ قراءة القيد: العقد منشور، والتنفيذ ينتظر سطح قراءة في الدفتر (ADR-0018).
         builder.Services.AddSingleton<IJournalEntryReader, UnavailableJournalEntryReader>();
@@ -82,6 +94,7 @@ internal static class BabelApiHost
         app.UseUnhandledFailureGuard();
         app.UseBabelAuthentication();
         app.MapSessionApi();
+        app.MapAccessApi();
         app.MapLedgerApi();
         app.MapCapabilityProfileApi();
         app.MapCompanySetupApi();

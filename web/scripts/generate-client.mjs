@@ -433,8 +433,16 @@ function emitClient() {
       op.responses[okStatuses[0]].content &&
       op.responses[okStatuses[0]].content["application/json"] &&
       op.responses[okStatuses[0]].content["application/json"].schema;
-    const resultName = okSchema ? refName(okSchema.$ref) : "void";
-    const resultTs = okSchema ? "T." + resultName : "void";
+    /* استجابةُ JSON قد تكون **مخطّطاً مسمّى** وقد تكون شكلاً مضمَّناً بلا $ref.
+       والحالة الثانية ليست إغفالاً في العقد: باب /openapi/v1.json يخدم وثيقة OpenAPI
+       نفسها، وليس لها نموذج مجال في هذه الشيفرة يُسمّى — واختراع اسم لها كان سيضع في
+       العقد مخطّطاً لا يقابله نوع. فتُعطى `unknown`: نوعٌ يُجبر القارئ على التحقّق قبل
+       الاستعمال، ولا يُمرَّر على فاكّ التشفير لأن لا مخطّط يُفكّ به. وقبل هذا الباب لم
+       يكن في العقد استجابةُ JSON بلا $ref قطّ، فانكسر المولّد عليها بـ
+       `Cannot read properties of undefined` — وهو انكسارٌ بصوت عالٍ، وهو الصحيح. */
+    const okRef = okSchema && okSchema.$ref ? okSchema : null;
+    const resultName = okRef ? refName(okRef.$ref) : null;
+    const resultTs = okRef ? "T." + resultName : okSchema ? "unknown" : "void";
 
     /* نوع الوسائط */
     const argLines = [];
@@ -511,7 +519,7 @@ function emitClient() {
         "signal });"
     );
     out.push("  if (!response.ok) throw ProblemError.from(response);");
-    if (okSchema) {
+    if (okRef) {
       out.push(
         "  return decodeSchema(SCHEMAS, " +
           q(resultName) +
@@ -519,6 +527,8 @@ function emitClient() {
           resultTs +
           ";"
       );
+    } else if (okSchema) {
+      out.push("  return response.json as unknown;");
     }
     out.push("}");
     out.push("");

@@ -12,6 +12,26 @@
     <UserSecretsId>babel-api-skeleton</UserSecretsId>
   </PropertyGroup>
 
+  <!--
+    العقد المنشور **مضمَّن في التجميعة**، لا مقروءاً من القرص وقت التشغيل.
+    ولماذا التضمين: الخادم المنشور لا يملك نسخة من المستودع، فقراءةُ مسارٍ نسبيّ منه
+    تنجح على جهاز المطوّر وتفشل حيث يهمّ. والتضميـن يجعل البايتات المخدومة **هي**
+    البايتات المُودَعة وقت البناء، فلا مصدر حقيقة ثانٍ يُبنى وقت التشغيل.
+    وإن تغيّر الملفّ ولم يُعَد البناء، فالحارس
+    `الوثيقة_المخدومة_تطابق_الملفّ_المُودَع_بايتاً_بايت` يحمرّ ويطلب إعادة البناء —
+    وهو الجواب الصحيح، لا أن يُخدَم عقدٌ قديم بصمت.
+  -->
+  <ItemGroup>
+    <EmbeddedResource Include="../../contracts/openapi/v1.json" LogicalName="Babel.Api.contract.v1.json" />
+
+    <!--
+      صفحة الاستعراض. تُزال أولاً من مجموعة Content التي يضمّها Web SDK تلقائياً،
+      وإلا صار الملفّ الواحد عنصرين فيفشل البناء بـNETSDK1022.
+    -->
+    <Content Remove="OpenApi/docs.html" />
+    <EmbeddedResource Include="OpenApi/docs.html" LogicalName="Babel.Api.docs.html" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="../Babel.SharedKernel/Babel.SharedKernel.csproj" />
     <ProjectReference Include="../Babel.Contracts/Babel.Contracts.csproj" />

@@ -281,55 +281,52 @@ public sealed class IntakeTests
             PostedDocumentTranslator.DocumentIdOf(Tenant, "sales.invoice", "sales-6001")));
     }
 
-    public static TheoryData<string, Func<TaxableDocumentPosted, TaxableDocumentPosted>> Malformed() => new()
+    /// <summary>
+    /// <b>صفوف الجدول رموزُ أخطاء نصّية، لا مندوبات.</b> ‏<c>Func</c> في
+    /// <c>TheoryData</c> غير قابل للتسلسل، فيكتشفه المستكشِف بنداً واحداً ويُنفَّذ تسعة —
+    /// ومسحُ العزل يقارن المُكتشَف بالمُنفَّذ ويرفض الفرق، بحقّ: مسحٌ لم يُنفّذ ما اكتشفه
+    /// لا يعني شيئاً. <b>مقيس: 1084 مُنفَّذاً مقابل 1076 مُكتشَفاً — والفرق ثمانية بالضبط.</b>
+    /// </summary>
+    public static TheoryData<string> MalformedCodes() =>
+    [
+        "compliance.intake.totals_inconsistent",
+        "compliance.intake.currency_mismatch",
+        "compliance.intake.lines_do_not_sum",
+        "compliance.intake.no_lines",
+        "compliance.intake.issuing_unit_missing",
+        "compliance.intake.source_identity_missing",
+        "compliance.intake.document_number_missing",
+        "compliance.intake.correction_incomplete",
+        "compliance.intake.correction_on_plain_invoice",
+    ];
+
+    /// <summary>يكسر الحقيقة بالطريقة التي يوجبها الرمز المنتظَر — والرمز هو مفتاح الحالة.</summary>
+    private static TaxableDocumentPosted Break(string code, TaxableDocumentPosted p) => code switch
     {
-        {
-            "compliance.intake.totals_inconsistent",
-            static p => p with { GrossTotal = Money.Of(p.GrossTotal.Amount + 1.0000m, CurrencyCode.Sar) }
-        },
-        {
-            "compliance.intake.currency_mismatch",
-            static p => p with { TaxTotal = Money.Of(p.TaxTotal.Amount, new CurrencyCode("USD")) }
-        },
-        {
-            "compliance.intake.lines_do_not_sum",
-            static p => p with { Lines = [p.Lines[0] with { NetAmount = Money.Of(1.0000m, CurrencyCode.Sar) }] }
-        },
-        {
-            "compliance.intake.no_lines",
-            static p => p with { Lines = [] }
-        },
-        {
-            "compliance.intake.issuing_unit_missing",
-            static p => p with { IssuingUnit = "  " }
-        },
-        {
-            "compliance.intake.source_identity_missing",
-            static p => p with { SourceDocumentId = "" }
-        },
-        {
-            "compliance.intake.document_number_missing",
-            static p => p with { DocumentNumber = "" }
-        },
-        {
-            "compliance.intake.correction_incomplete",
-            static p => p with { Kind = TaxableDocumentKind.CreditNote }
-        },
-        {
-            "compliance.intake.correction_on_plain_invoice",
-            static p => p with { CorrectionReasonAr = "خطأ في السعر", CorrectionReasonEn = "price error" }
-        },
+        "compliance.intake.totals_inconsistent" =>
+            p with { GrossTotal = Money.Of(p.GrossTotal.Amount + 1.0000m, CurrencyCode.Sar) },
+        "compliance.intake.currency_mismatch" =>
+            p with { TaxTotal = Money.Of(p.TaxTotal.Amount, new CurrencyCode("USD")) },
+        "compliance.intake.lines_do_not_sum" =>
+            p with { Lines = [p.Lines[0] with { NetAmount = Money.Of(1.0000m, CurrencyCode.Sar) }] },
+        "compliance.intake.no_lines" => p with { Lines = [] },
+        "compliance.intake.issuing_unit_missing" => p with { IssuingUnit = "  " },
+        "compliance.intake.source_identity_missing" => p with { SourceDocumentId = "" },
+        "compliance.intake.document_number_missing" => p with { DocumentNumber = "" },
+        "compliance.intake.correction_incomplete" => p with { Kind = TaxableDocumentKind.CreditNote },
+        "compliance.intake.correction_on_plain_invoice" =>
+            p with { CorrectionReasonAr = "خطأ في السعر", CorrectionReasonEn = "price error" },
+        _ => throw new ArgumentOutOfRangeException(nameof(code), code, "رمز غير مُغطّى في جدول الحالات")
     };
 
     [Theory]
-    [MemberData(nameof(Malformed))]
-    public async Task A_malformed_fact_is_refused_by_code_and_nothing_is_written(
-        string expectedCode, Func<TaxableDocumentPosted, TaxableDocumentPosted> break_)
+    [MemberData(nameof(MalformedCodes))]
+    public async Task A_malformed_fact_is_refused_by_code_and_nothing_is_written(string expectedCode)
     {
         using var c = new Composition();
         await c.OnboardAsync();
 
-        TaxableDocumentPosted posted = break_(Posted(c, "INV-7001", "sales-7001", withBuyerVat: true));
+        TaxableDocumentPosted posted = Break(expectedCode, Posted(c, "INV-7001", "sales-7001", withBuyerVat: true));
 
         Result<ElectronicDocumentOutcome> result = await c.Service.SubmitPostedDocumentAsync(Actor, posted, TestContext.Current.CancellationToken);
 

@@ -387,7 +387,9 @@ public sealed class SalesInvoiceService : IApplicationService
 
         if (invoice.State == SalesDocumentState.Posted)
         {
-            return Result<SalesDocumentView>.Success(ViewOf(invoice));
+            // وصولٌ ثانٍ بعد أن اكتمل الأول: المستند لا يُمسّ، والحقيقة تُقال صراحةً.
+            // ولا تُشتقّ من الحالة عند المستدعي — الحالة نفسها في الحالتين.
+            return Result<SalesDocumentView>.Success(ViewOf(invoice) with { AlreadyPosted = true });
         }
 
         if (invoice.State != SalesDocumentState.Draft)
@@ -444,7 +446,12 @@ public sealed class SalesInvoiceService : IApplicationService
         invoice.PostedEntryId = posted.Value.JournalEntryId;
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        return Result<SalesDocumentView>.Success(ViewOf(invoice));
+        // **حكم البوّابة لا حكمنا.** نداءان متزامنان يجتازان فحص «مسوّدة» معاً، ويلتقيان
+        // عند هوية الإحكام الواحدة: أحدهما يكتب القيد والآخر يعود بإيصاله نفسه موسوماً
+        // بـWasAlreadyPosted. وحسابُ هذا الحقل من الحالة المقروءة قبل النداء كان سيُعلن
+        // للاثنين أنهما رحّلا.
+        return Result<SalesDocumentView>.Success(
+            ViewOf(invoice) with { AlreadyPosted = posted.Value.WasAlreadyPosted });
     }
 
     /// <summary>يرحّل قيد تكلفة المبيعات المصاحب عبر <c>sales.invoice.cost_of_sales</c>.</summary>

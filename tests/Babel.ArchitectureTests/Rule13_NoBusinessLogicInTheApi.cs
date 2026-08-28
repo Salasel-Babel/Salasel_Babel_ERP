@@ -214,6 +214,51 @@ public sealed class Rule13_NoBusinessLogicInTheApi
         "Babel.Purchasing.PurchasingModuleRegistration",
         "Babel.Compliance.ComplianceModuleRegistration",
         "Babel.Inventory.InventoryModuleRegistration",
+
+        // ── السطح المنشور لوحدتَي المبيعات والمشتريات ────────────────────────
+        //
+        // **لماذا هذه الأسماء هنا، وكيف قرّرها البند (ب) نفسه:** خدمات الوحدتين كلها
+        // تسكن `…​.Application`، و`Application` من فضاءات الداخل المُعلَنة أدناه —
+        // فيرفضها الفحص الثاني **ولو أُضيفت إلى هذه القائمة**. أي أن هذه القاعدة لم
+        // تكن تمنع «تسمية خاطئة» بل كانت تمنع **وجود سطح HTTP للوحدتين أصلاً**، ما لم
+        // تُنشئا سطحاً منشوراً خارج فضاءات الداخل. وذلك ما فعلتاه: `…​.Surface`.
+        //
+        // والشكل مأخوذ حرفياً من الدفتر: `Babel.Ledger.Audit.LedgerAuditService`
+        // وأنواع تقاريره أعلاه — خدمةٌ واحدة منشورة ونماذج قراءة، لا سياق قاعدة بيانات
+        // ولا نوع صفّ ولا رمز حدث.
+        //
+        // **وكل اسم هنا هو نوع نقلٍ أو نقطة نداء واحدة، ولا واحد منها يسمّي حساباً**:
+        // السطر يحمل `ItemGroup` — مؤهّل دور — والمصفوفة وحدها تُحوّله إلى حساب،
+        // وحارس القاعدة 2 على ذلك خضراء.
+        //
+        // وإضافة سطر هنا تعني أن مفردة جديدة من مفردات وحدة دخلت طبقة HTTP: تُقرأ في
+        // مراجعة ولا تمرّ في تحويل نوع.
+        "Babel.Sales.Surface.SalesSurface",
+        "Babel.Sales.Surface.SalesPartyRequest",
+        "Babel.Sales.Surface.SalesParty",
+        "Babel.Sales.Surface.SalesLineRequest",
+        "Babel.Sales.Surface.SalesInvoiceRequest",
+        "Babel.Sales.Surface.SalesCreditNoteRequest",
+        "Babel.Sales.Surface.SalesDocument",
+        "Babel.Sales.Surface.SalesAgingBands",
+        "Babel.Sales.Surface.SalesAgingParty",
+        "Babel.Sales.Surface.SalesAging",
+
+        "Babel.Purchasing.Surface.PurchasingSurface",
+        "Babel.Purchasing.Surface.PurchasingPartyRequest",
+        "Babel.Purchasing.Surface.PurchasingParty",
+        "Babel.Purchasing.Surface.PurchasingLineRequest",
+        "Babel.Purchasing.Surface.PurchasingExpenseBillRequest",
+        "Babel.Purchasing.Surface.PurchasingDocument",
+        "Babel.Purchasing.Surface.PurchasingAgingBands",
+        "Babel.Purchasing.Surface.PurchasingAgingParty",
+        "Babel.Purchasing.Surface.PurchasingAging",
+
+        // وإعدادات الوحدتين — كإعدادات الدفتر أعلاه وللسبب نفسه: الجذر التركيبي هو من
+        // يقرأ اتصال النشر من الإعداد ويُسلّمه، ولا سبيل إلى ذلك بلا تسمية نوع الإعداد.
+        // ولا اتصال مالك في أيّهما: نشر المخطّط عملية مالك لا يملكها مسار التطبيق.
+        "Babel.Sales.SalesOptions",
+        "Babel.Purchasing.PurchasingOptions",
     ];
 
     /// <summary>أجزاء فضاء اسم تدلّ على داخل وحدة، لا على سطحها المنشور.</summary>

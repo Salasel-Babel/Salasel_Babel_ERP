@@ -286,6 +286,186 @@ internal static class OpenApiEmitter
                 + "never without a cost centre. To suspend it, move the default to another active centre first.",
                 Body: "SuspendCostCenterRequest", Response: "CompanySetup", Success: 201, Anonymous: false, Query: []),
 
+            // ── سطح المستندات: المبيعات والمشتريات ───────────────────────────
+            // ولاحظ الشكل الواحد الذي تسلكه الأربعة عشر: **إنشاء مسوّدة · قراءة ·
+            // ترحيل على مورد فرعي**. ولا PUT ولا PATCH ولا DELETE على مستند واحد
+            // منها — لا اتفاقاً بل بنيةً: المستند المُرحَّل واقعة، وتصحيحه إشعار
+            // دائن يُنشئ قيداً جديداً (ADR-0002 · ADR-0003).
+
+            new(ApiRoutes.Customers, "post", "addCustomer",
+                "تسجيل عميل", "Register a customer",
+                "يسجّل عميلاً جديداً: رمزه، واسمه ثنائي اللغة، وحدّ ائتمانه، ومهلة سداده. "
+                + "والرمز **هوية** تحملها مستنداته المُرحَّلة، والاسم عرضٌ يتغيّر.\n\n"
+                + "**ولا حقل vatNumber هنا**: رقم التسجيل الضريبي حقل مورد لا حقل عميل على هذا السطح، "
+                + "وإرساله يُرفض به الطلب كلّه — التجاهل الصامت يجعل المُرسِل يظنّ أنه سجّل رقماً لم يصل.",
+                "Registers a customer: its code, its bilingual name, its credit limit, and its payment terms. "
+                + "The code is an **identity** its posted documents carry; the name is display that changes.\n\n"
+                + "**There is no vatNumber here**: the VAT registration number is a supplier field, not a customer field on "
+                + "this surface, and sending it fails the whole request — silently ignoring it would make the sender believe "
+                + "a number was recorded that never arrived.",
+                Body: "CustomerRequest", Response: "Party", Success: 201, Anonymous: false, Query: []),
+
+            new(ApiRoutes.Customer, "get", "readCustomer",
+                "قراءة عميل", "Read one customer",
+                "يقرأ عميلاً واحداً داخل نطاق الشركة.\n\n"
+                + "**ولاحظ ما ليس على هذا المورد: لا PUT ولا DELETE ولا مورد إيقاف.** غياب الحذف بنيوي "
+                + "كغيابه على القيود ومراكز التكلفة: عميلٌ تشير إليه قيود سنة سابقة لا يُحذف، وحذفه يكسر كل "
+                + "تقرير مُرحَّل. أمّا غياب الإيقاف فهو **إعلان نقص لا قرار منع**: وحدة المبيعات لا تملك اليوم "
+                + "إيقافاً — العمود is_active يُكتب مرّةً عند الإنشاء ولا يقرؤه مسار ترحيل واحد — وبابٌ اسمه "
+                + "«إيقاف» لا يمنع فاتورةً واحدة أسوأ من غيابه: يبدو ضابطاً وليس كذلك.",
+                "Reads a single customer within the company scope.\n\n"
+                + "**Note what this resource does not carry: no PUT, no DELETE, and no suspension sub-resource.** The absence of "
+                + "delete is structural, as it is on entries and cost centres: a customer referenced by last year's entries is never "
+                + "deleted, and deleting it breaks every posted report. The absence of suspension is instead a **declared gap, not a "
+                + "prohibition**: the sales module has no suspension today — the is_active column is written once at creation and read "
+                + "by no posting path — and a door labelled 'suspend' that stops not one invoice is worse than no door: it looks like a "
+                + "control and is not one.",
+                Body: null, Response: "Party", Success: 200, Anonymous: false, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.SalesInvoices, "post", "draftSalesInvoice",
+                "إنشاء فاتورة مبيعات مسوّدة", "Draft a sales invoice",
+                "يُنشئ فاتورة مبيعات في حالة **DRAFT**. ولا قيد ولا أثر في الدفتر: الترحيل مورد فرعي مستقلّ "
+                + "يُنادى بعده. والضريبة تُحسب وتُقرَّب **على السطر**، ومجموع المستند مجموع سطور مقرَّبة — "
+                + "والحساب كلّه في الوحدة لا في هذا السطح.\n\n"
+                + "**ولا رمز حساب في الحمولة ولا رمز حدث**: السطر يحمل itemGroup — مؤهّل دور — ومصفوفة الترحيل "
+                + "وحدها تُحوّله إلى حساب (القاعدة 2).",
+                "Creates a sales invoice in state **DRAFT**. No entry and no effect on the ledger: posting is a separate "
+                + "sub-resource called afterwards. Tax is computed and rounded **per line**, and the document total is the sum of "
+                + "rounded lines — all of it computed in the module, none of it on this surface.\n\n"
+                + "**No account code and no event code appear in the payload**: a line carries an itemGroup — a role qualifier — and "
+                + "the posting matrix alone turns it into an account (Rule 2).",
+                Body: "SalesInvoiceRequest", Response: "CommercialDocument", Success: 201, Anonymous: false, Query: [],
+                ProblemStatuses: [404]),
+
+            new(ApiRoutes.SalesInvoice, "get", "readSalesInvoice",
+                "قراءة فاتورة مبيعات", "Read one sales invoice",
+                "يقرأ فاتورة بحالتها ومجاميعها ومعرّف قيدها إن رُحّلت. ونقطة قراءة: تعمل والاشتراك للقراءة فقط.",
+                "Reads an invoice with its state, its totals, and its entry identifier if posted. A read point: it works while the "
+                + "subscription is read-only.",
+                Body: null, Response: "CommercialDocument", Success: 200, Anonymous: false, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.SalesInvoicePosting, "post", "postSalesInvoice",
+                "ترحيل فاتورة مبيعات", "Post a sales invoice",
+                "يرحّل فاتورة مسوّدة فتصير **واقعة محاسبية**. مورد فرعي مستقلّ لا PUT على المستند: الترحيل فعلٌ "
+                + "يُنشئ قيداً، لا حقلٌ يُعدَّل.\n\n"
+                + "**وحصين ضد التكرار بهوية الترحيل** (شركة · نوع المستند · معرّفه · رمز الإطلاق · الجيل · رمز الحدث): "
+                + "الوصول الثاني بالهوية نفسها يُرجع المستند ذاته و‏alreadyPosted = true ورمز 200 بدل 201، ولا يُنشئ "
+                + "قيداً ثانياً — **مهما كان ترتيب الوصول**. والحكم حكم بوّابة الوحدة لا مقارنةَ حالةٍ قُرئت قبل النداء: "
+                + "نداءان متزامنان يجتازان فحص «مسوّدة» معاً، ويلتقيان عند الهوية الواحدة، فيكتب أحدهما ويعود الآخر موسوماً.\n\n"
+                + "ولا جسم لهذا الطلب: كل ما يحتاجه الترحيل موجود على المستند، ومفتاح الحصانة تشتقّه الوحدة من هويته "
+                + "ولا يُرسله العميل — فلا يستطيع عميلان أن يختارا مفتاحين لواقعة واحدة.",
+                "Posts a draft invoice, turning it into an **accounting fact**. A separate sub-resource, not a PUT on the document: "
+                + "posting is an act that creates an entry, not a field that is edited.\n\n"
+                + "**Idempotent by the posting identity** (company, source document type, source document id, trigger, generation, "
+                + "event code): a second arrival with the same identity returns the same document with alreadyPosted = true and status "
+                + "200 instead of 201, and never creates a second entry — **whatever the arrival order**. The verdict is the module "
+                + "gateway's, not a comparison against a state read before the call: two concurrent calls both pass the 'is it a draft' "
+                + "check, meet at the one identity, and one writes while the other returns marked.\n\n"
+                + "This request has no body: everything posting needs is on the document, and the idempotency key is derived by the "
+                + "module from that identity rather than sent by the client — so two clients cannot choose two keys for one fact.",
+                Body: null, Response: "CommercialDocument", Success: 201, Anonymous: false, Query: [],
+                ProblemStatuses: [404, 409, 422]),
+
+            new(ApiRoutes.CreditNotes, "post", "draftCreditNote",
+                "إنشاء إشعار دائن مسوّدة", "Draft a credit note",
+                "يُنشئ إشعاراً دائناً في حالة **DRAFT** على فاتورة **مُرحَّلة**. وهذا هو الطريق الوحيد إلى تصحيح "
+                + "فاتورة مُرحَّلة: لا تعديل ولا حذف على هذا السطح ولا في هذا النظام (ADR-0002).\n\n"
+                + "والوحدة ترفض الإشعار على فاتورة ليست في حالة POSTED، وترفض ما يتجاوز المتبقّي منها.\n\n"
+                + "وسطرٌ يحمل originalInvoiceLineId هو **ردّ بضاعة** يُقيَّم بتكلفة صرفه الأصلي؛ وسطرٌ بلا هذا الحقل "
+                + "**تخفيض قيمة** لا يُحرّك مخزوناً. والفرق قرار تجاري لا يُخمَّن.",
+                "Creates a credit note in state **DRAFT** against a **posted** invoice. This is the only route to correcting a posted "
+                + "invoice: there is no edit and no delete on this surface, and none in this system (ADR-0002).\n\n"
+                + "The module refuses a note against an invoice that is not POSTED, and refuses an amount beyond what is outstanding.\n\n"
+                + "A line carrying originalInvoiceLineId is a **goods return**, valued at the cost of its original issue; a line without "
+                + "that field is a **value reduction** that moves no stock. The difference is a commercial decision, never guessed.",
+                Body: "CreditNoteRequest", Response: "CommercialDocument", Success: 201, Anonymous: false, Query: [],
+                ProblemStatuses: [404]),
+
+            new(ApiRoutes.CreditNotePosting, "post", "postCreditNote",
+                "ترحيل إشعار دائن", "Post a credit note",
+                "يرحّل إشعاراً دائناً مسوّدة ويخصّصه على فاتورته الأصلية. حصين ضد التكرار بالشكل نفسه الذي يسلكه "
+                + "ترحيل الفاتورة: الوصول الثاني يُرجع المستند ذاته و‏alreadyPosted = true ورمز 200.",
+                "Posts a draft credit note and allocates it against its original invoice. Idempotent in exactly the same shape as "
+                + "posting an invoice: a second arrival returns the same document with alreadyPosted = true and status 200.",
+                Body: null, Response: "CommercialDocument", Success: 201, Anonymous: false, Query: [],
+                ProblemStatuses: [404, 409, 422]),
+
+            new(ApiRoutes.ReceivablesAging, "get", "readReceivablesAging",
+                "أعمار الذمم المدينة", "Receivables aging",
+                "أعمار ذمم العملاء في تاريخ معلوم، بشرائح: لم يستحق · 1–30 · 31–60 · 61–90 · فوق 90، ومجموعٍ هو "
+                + "مجموع الشرائح بالضبط. نقطة قراءة: تعمل والاشتراك للقراءة فقط.",
+                "Customer receivables aged at a given date, in bands: not due, 1-30, 31-60, 61-90, over 90, with a total that is "
+                + "exactly the sum of the bands. A read point: it works while the subscription is read-only.",
+                Body: null, Response: "AgingReport", Success: 200, Anonymous: false,
+                Query:
+                [
+                    new QueryParameter("asOf", true, "تاريخ التقرير الميلادي.", "The Gregorian report date.", "date"),
+                ]),
+
+            new(ApiRoutes.Suppliers, "post", "addSupplier",
+                "تسجيل مورد", "Register a supplier",
+                "يسجّل مورداً جديداً. وvatNumber **اختياري لأن غيابه واقع لا نقص**: المورد دون حدّ التسجيل، وغير "
+                + "المقيم، والمُنشأ قبل هذا الحقل — ثلاثتهم بلا رقم. وحين يُرسل يُتحقّق من شكله كاملاً ولا يُقبل "
+                + "«تقريباً صحيح».",
+                "Registers a supplier. vatNumber is **optional because its absence is a fact, not a gap**: the supplier below the "
+                + "registration threshold, the non-resident supplier, and the supplier created before this field all have none. When "
+                + "it is sent, its full shape is verified and 'nearly right' is not accepted.",
+                Body: "SupplierRequest", Response: "Party", Success: 201, Anonymous: false, Query: []),
+
+            new(ApiRoutes.Supplier, "get", "readSupplier",
+                "قراءة مورد", "Read one supplier",
+                "يقرأ مورداً واحداً. وما غاب عن مورد العميل غائب هنا وللسبب نفسه: لا حذف بنيوياً، ولا إيقاف بعد.",
+                "Reads a single supplier. What is absent from the customer resource is absent here for the same reasons: no delete, "
+                + "structurally, and no suspension yet.",
+                Body: null, Response: "Party", Success: 200, Anonymous: false, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.SupplierBills, "post", "draftExpenseBill",
+                "إنشاء فاتورة مصروف مسوّدة", "Draft an expense bill",
+                "يُنشئ فاتورة مورد **مصروفية** في حالة DRAFT — بلا مخزون ولا مطابقة ثلاثية. ومركز التكلفة "
+                + "**إلزامي** عليها: المصروف بلا مركز تكلفة رقمٌ لا يُبوَّب.\n\n"
+                + "**ولاحظ ما ليس على هذا المورد: لا فاتورة مخزنية.** الفاتورة المخزنية تُطابَق بثلاثية "
+                + "(أمر شراء · استلام · فاتورة)، والاستلام لا يُرحَّل إلا عبر حدّ تقييم المخزون — أي أن نشرها "
+                + "يجرّ وحدة المخزون كاملةً إلى هذا السطح. وهذا **نقص مُعلَن**: انظر ADR سطح المستندات.",
+                "Creates an **expense** supplier bill in state DRAFT — no stock, no three-way match. A cost centre is **mandatory** "
+                + "on it: an expense without a cost centre is a number that cannot be grouped.\n\n"
+                + "**Note what this resource does not carry: no stock bill.** A stock bill is three-way matched (purchase order, goods "
+                + "receipt, bill), and a goods receipt posts only through the inventory valuation port — publishing it drags the whole "
+                + "inventory module onto this surface. This is a **declared gap**: see the document-surface ADR.",
+                Body: "ExpenseBillRequest", Response: "CommercialDocument", Success: 201, Anonymous: false, Query: [],
+                ProblemStatuses: [404]),
+
+            new(ApiRoutes.SupplierBill, "get", "readSupplierBill",
+                "قراءة فاتورة مورد", "Read one supplier bill",
+                "يقرأ فاتورة مورد بحالتها ومجاميعها ومعرّف قيدها إن رُحّلت.\n\n"
+                + "وكانت هذه القراءة **غير موجودة في الوحدة أصلاً**: تُنشأ الفاتورة وتُرحَّل ولا توجد جملة تقول "
+                + "«ما حالها الآن؟». فمن أنشأ مسوّدةً ثم انقطع اتصاله لم يكن أمامه إلا أن **يعيد الترحيل ليعرف**.",
+                "Reads a supplier bill with its state, its totals, and its entry identifier if posted.\n\n"
+                + "This read **did not exist in the module at all**: a bill could be created and posted, and there was no sentence for "
+                + "'what state is it in now?'. Whoever created a draft and then lost their connection had no option but to **post again "
+                + "in order to find out**.",
+                Body: null, Response: "CommercialDocument", Success: 200, Anonymous: false, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.SupplierBillPosting, "post", "postSupplierBill",
+                "ترحيل فاتورة مورد", "Post a supplier bill",
+                "يرحّل فاتورة مورد مسوّدة. مورد فرعي مستقلّ، وحصين ضد التكرار بهوية الترحيل نفسها وبالسلوك نفسه: "
+                + "الوصول الثاني يُرجع المستند ذاته و‏alreadyPosted = true ورمز 200 بدل 201، بلا قيد ثانٍ.",
+                "Posts a draft supplier bill. A separate sub-resource, idempotent by the same posting identity with the same behaviour: "
+                + "a second arrival returns the same document with alreadyPosted = true and status 200 instead of 201, with no second entry.",
+                Body: null, Response: "CommercialDocument", Success: 201, Anonymous: false, Query: [],
+                ProblemStatuses: [404, 409, 422]),
+
+            new(ApiRoutes.PayablesAging, "get", "readPayablesAging",
+                "أعمار الذمم الدائنة", "Payables aging",
+                "أعمار ذمم الموردين في تاريخ معلوم، بالشرائح نفسها وبالشكل نفسه الذي تُقرأ به الذمم المدينة — "
+                + "شكلٌ واحد لا شكلان: تقريران بشرائح مختلفة يجعلان المقارنة بينهما عملاً يدوياً.",
+                "Supplier payables aged at a given date, in the same bands and the same shape as receivables — one shape, not two: two "
+                + "reports with different bands make comparing them manual work.",
+                Body: null, Response: "AgingReport", Success: 200, Anonymous: false,
+                Query:
+                [
+                    new QueryParameter("asOf", true, "تاريخ التقرير الميلادي.", "The Gregorian report date.", "date"),
+                ]),
+
             new(ApiRoutes.DocumentAdmission, "post", "admitDocument",
                 "عرض مستند على الملفّ", "Present a document against the profile",
                 "يعرض **أسماء حقول** مستند على ملفّ الشركة فيقبله أو يرفضه. لا قيم ولا مبالغ ولا أثر: هذا حكمٌ لا كتابة. "
@@ -368,6 +548,15 @@ internal static class OpenApiEmitter
                     WritePathParameter(w, "entryId", "معرّف القيد.", "The entry identifier.", "uuid");
                 }
 
+                // معرّفات موارد المستندات — بترتيب معلن، ولا مسار يحمل أكثر من واحد منها.
+                foreach ((string token, string ar, string en) in DocumentPathParameters)
+                {
+                    if (byPath.Key.Contains("{" + token + "}", StringComparison.Ordinal))
+                    {
+                        WritePathParameter(w, token, ar, en, "uuid");
+                    }
+                }
+
                 if (byPath.Key.Contains("{documentType}", StringComparison.Ordinal))
                 {
                     WriteDocumentTypeParameter(w);
@@ -405,6 +594,20 @@ internal static class OpenApiEmitter
         w.WriteEndObject();
         w.WriteEndObject();
     }
+
+    /// <summary>
+    /// معرّفات موارد سطح المستندات — الاسم في المسار ووصفه. <b>قائمة واحدة مرتَّبة</b>:
+    /// شرطٌ مكتوب بيد لكل معرّف كان يطول بطول السطح ويُنسى أحدهم عند الإضافة، فيخرج
+    /// مسارٌ بلا وصف وسيطه.
+    /// </summary>
+    private static IReadOnlyList<(string Token, string Ar, string En)> DocumentPathParameters { get; } =
+    [
+        ("billId", "معرّف فاتورة المورد.", "The supplier bill identifier."),
+        ("creditNoteId", "معرّف الإشعار الدائن.", "The credit note identifier."),
+        ("customerId", "معرّف العميل.", "The customer identifier."),
+        ("invoiceId", "معرّف فاتورة المبيعات.", "The sales invoice identifier."),
+        ("supplierId", "معرّف المورد.", "The supplier identifier."),
+    ];
 
     /// <summary>
     /// رموز أنواع المستندات، مقروءةً من الكتالوج المغلق نفسه لا من قائمة مكتوبة هنا.
@@ -551,6 +754,10 @@ internal static class OpenApiEmitter
                         w.WriteString("type", "string");
                         w.WriteString("pattern", "^[0-9]{4}$");
                         break;
+                    case "date":
+                        w.WriteString("type", "string");
+                        w.WriteString("pattern", "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$");
+                        break;
                     default:
                         w.WriteString("type", "string");
                         w.WriteNumber("maxLength", 32);
@@ -580,7 +787,7 @@ internal static class OpenApiEmitter
         WriteResponse(w, operation.Success, "استجابة ناجحة.", "Successful response.", operation.Response,
             operation.ResponseMediaType, operation.ResponseInlineType);
 
-        if (operation.OperationId == "postJournalEntry")
+        if (IdempotentPostings.Contains(operation.OperationId, StringComparer.Ordinal))
         {
             WriteResponse(w, 200,
                 "المفتاح نفسه رُحِّل من قبل: الإيصال ذاته و‏alreadyPosted = true. لا قيد ثانٍ.",
@@ -608,11 +815,46 @@ internal static class OpenApiEmitter
                 "The single-entry read surface has not landed in the ledger yet. Stable code: ledger.read.entry_surface_unavailable.");
         }
 
+        // مشكلات تخصّ هذه العملية وحدها — وما كُتب أعلاه لا يُكتب مرّتين.
+        foreach (int status in operation.ProblemStatuses ?? [])
+        {
+            if (status is (400 or 409 or 422) && operation.Body is not null)
+            {
+                continue;
+            }
+
+            WriteProblemResponse(w, status, ProblemAr(status), ProblemEn(status));
+        }
+
         WriteProblemResponse(w, 500, "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط.", "Server failure. No internal detail crosses — only the trace id.");
         w.WriteEndObject();
 
         w.WriteEndObject();
     }
+
+    /// <summary>
+    /// العمليات التي تُعلن 200 إلى جانب 201 لأنّ إعادتها بالهوية نفسها لا تُنشئ شيئاً.
+    /// <b>قائمة مكتوبة لا اشتقاق من الاسم:</b> «كل عملية اسمها يبدأ بـpost» كانت ستضمّ
+    /// إنشاءَ مسوّدةٍ يُنشئ مستنداً جديداً في كل مرّة، فيُعلن العقد حصانةً لا وجود لها.
+    /// </summary>
+    private static readonly string[] IdempotentPostings =
+        ["postCreditNote", "postJournalEntry", "postSalesInvoice", "postSupplierBill"];
+
+    private static string ProblemAr(int status) => status switch
+    {
+        404 => "المورد غير موجود داخل نطاق هذه الشركة.",
+        409 => "تعارض مع حالة قائمة: المستند ليس في الحالة التي يقبلها هذا الفعل، أو الفترة مقفلة.",
+        422 => "الطلب مفهوم ومرفوض محاسبياً: تجاوز حدّ ائتمان، أو تخصيص يتجاوز المتبقّي، أو دور لا يُحلّ إلى حساب.",
+        _ => "رفض.",
+    };
+
+    private static string ProblemEn(int status) => status switch
+    {
+        404 => "The resource does not exist within this company's scope.",
+        409 => "Conflict with existing state: the document is not in a state this act accepts, or the period is closed.",
+        422 => "Understood and refused on accounting grounds: a credit limit exceeded, an allocation beyond what is outstanding, or a role that resolves to no account.",
+        _ => "Refused.",
+    };
 
     private static void WriteResponse(
         Utf8JsonWriter w, int status, string ar, string en, string schema,
@@ -1398,6 +1640,282 @@ internal static class OpenApiEmitter
             w.WriteBoolean("additionalProperties", false);
         });
 
+        // ── سطح المستندات ────────────────────────────────────────────────────
+        // وكل مبلغ هنا $ref إلى Money — أي **نصّ** لا رمز رقمي. والسبب مقيس في هذا
+        // المستودع: رمزٌ رقمي في حقل مالي يمرّ عند أغلب العملاء على فاصلة عائمة
+        // ثنائية، فيقع فقدان الدقّة **قبل أن يصل الطلب** ولا يملك الخادم استرداده
+        // (traps.md#fakh-53). والكمية والنسبة نصّان كذلك وللسبب نفسه.
+
+        yield return ("Quantity", static w =>
+        {
+            w.WriteString("type", "string");
+            w.WriteString("pattern", @"^-?(0|[1-9][0-9]*)(\.[0-9]{1,4})?$");
+            w.WriteString("description",
+                "كمّية نصّاً بمقياس لا يتجاوز أربعاً، بالنحو الذي تخضع له المبالغ. وهي ليست مبلغاً — "
+                + "ولذلك لها مخطّطها — لكنها تُضرب في مبلغ، فأي فقدان دقّة فيها يصل إلى المال. / "
+                + "A quantity as a string with at most four decimal places, under the grammar that governs amounts. It is not an "
+                + "amount — hence its own schema — but it is multiplied by one, so any precision lost in it reaches the money.");
+        });
+
+        yield return ("TaxRate", static w =>
+        {
+            w.WriteString("type", "string");
+            w.WriteString("pattern", @"^-?(0|[1-9][0-9]*)(\.[0-9]{1,8})?$");
+            w.WriteString("description",
+                "نسبة الضريبة **كسراً عشرياً لا نسبة مئوية**: خمسة عشر بالمئة تُكتب 0.15 لا 15. "
+                + "والمقياس ثمانٍ لا أربع: النسبة ليست مبلغاً ولا تُقرَّب إلى الهللة. / "
+                + "The tax rate as a **decimal fraction, not a percentage**: fifteen percent is written 0.15, never 15. The scale is "
+                + "eight, not four: a rate is not an amount and is not rounded to the halala.");
+            w.WriteStartArray("examples");
+            w.WriteStringValue("0.15");
+            w.WriteStringValue("0");
+            w.WriteEndArray();
+        });
+
+        yield return ("CustomerRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب تسجيل عميل. ولا حقل مستأجر ولا حقل شركة فيه — النطاق من الاعتماد ومن المسار. "
+                + "**ولا vatNumber**: حقل مورد لا حقل عميل، وإرساله يُفشل الطلب كلّه. / "
+                + "A customer registration request. No tenant field and no company field — scope comes from the credential and the "
+                + "path. **And no vatNumber**: that is a supplier field, not a customer field, and sending it fails the whole request.");
+            w.WriteStartObject("properties");
+            WriteRefProperty(w, "creditLimit", "Money");
+            WriteStringProperty(w, "code", "رمز العميل داخل المستأجر — هوية تحملها مستنداته، لا نصّاً معروضاً.", "The customer code within the tenant — an identity its documents carry, not displayed text.", 64);
+            WriteRefProperty(w, "name", "LocalizedText");
+            WriteIntegerProperty(w, "paymentTermsDays", 0, 3650, "مهلة السداد بالأيام — منها يُشتقّ تاريخ الاستحقاق.", "The payment terms in days; the due date is derived from them.");
+            w.WriteEndObject();
+            WriteRequired(w, "code", "creditLimit", "name", "paymentTermsDays");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("SupplierRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب تسجيل مورد — كطلب العميل ومعه رقم التسجيل الضريبي اختياراً. / "
+                + "A supplier registration request — the customer request plus an optional VAT registration number.");
+            w.WriteStartObject("properties");
+            WriteRefProperty(w, "creditLimit", "Money");
+            WriteStringProperty(w, "code", "رمز المورد داخل المستأجر.", "The supplier code within the tenant.", 64);
+            WriteRefProperty(w, "name", "LocalizedText");
+            WriteIntegerProperty(w, "paymentTermsDays", 0, 3650, "مهلة السداد بالأيام.", "The payment terms in days.");
+            WriteStringProperty(
+                w,
+                "vatNumber",
+                "رقم التسجيل الضريبي، أو غيابه فالمورد غير مسجَّل — وغيابه واقع لا نقص. وحين يُرسل يُتحقّق من شكله كاملاً.",
+                "The VAT registration number, or omit it for an unregistered supplier — its absence is a fact, not a gap. When sent, its full shape is verified.",
+                64);
+            w.WriteEndObject();
+            WriteRequired(w, "code", "creditLimit", "name", "paymentTermsDays");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("Party", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طرف كما يخرج على السلك — عميل أو مورد. / A party as it leaves on the wire — a customer or a supplier.");
+            w.WriteStartObject("properties");
+            WriteRefProperty(w, "creditLimit", "Money");
+            WriteStringProperty(w, "code", "الرمز.", "The code.", 64);
+            WriteStringProperty(w, "id", "المعرّف الذي تُبنى عليه المستندات.", "The identifier documents are built on.", 36);
+            WriteRefProperty(w, "name", "LocalizedText");
+            WriteIntegerProperty(w, "paymentTermsDays", 0, 3650, "مهلة السداد بالأيام.", "The payment terms in days.");
+            WriteNullableStringProperty(
+                w,
+                "vatNumber",
+                "رقم التسجيل الضريبي على المورد؛ وفراغٌ على مورد بلا رقم؛ و‏null على العميل — فالحقل لا يوجد عليه أصلاً. والحالات الثلاث مختلفة ولا تُجمع في تمثيل واحد.",
+                "The VAT number on a supplier; empty on a supplier without one; and null on a customer, where the field does not exist at all. The three states differ and are not collapsed into one spelling.",
+                64);
+            w.WriteEndObject();
+            WriteRequired(w, "code", "creditLimit", "id", "name", "paymentTermsDays", "vatNumber");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("SalesLine", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "سطر مستند مبيعات. **ولا حساب فيه ولا رمز حساب**: يحمل itemGroup — مؤهّل دور — والمصفوفة وحدها "
+                + "تُحوّله إلى حساب (القاعدة 2 ممتدّةً إلى السلك). / "
+                + "A sales document line. **No account and no account code**: it carries an itemGroup — a role qualifier — and the "
+                + "matrix alone turns it into an account (Rule 2 extended to the wire).");
+            w.WriteStartObject("properties");
+            WriteRefProperty(w, "description", "LocalizedText");
+            WriteRefProperty(w, "discount", "Money");
+            WriteStringProperty(w, "itemGroup", "مجموعة الصنف — مؤهّل الدور.", "The item group — the role qualifier.", 64);
+            WriteNullableStringProperty(
+                w,
+                "originalInvoiceLineId",
+                "على سطر الإشعار الدائن وحده: سطر الفاتورة الذي تُردّ بضاعته. و‏null تعني **تخفيض قيمة لا ردّ بضاعة** — إشعارٌ لا يُحرّك مخزوناً ولا يُرحّل قيد تكلفة. والفرق قرار تجاري لا يُخمَّن.",
+                "On a credit note line only: the invoice line whose goods are returned. null means a **value reduction, not a goods return** — a note that moves no stock and posts no cost entry. The difference is a commercial decision, never guessed.",
+                36);
+            WriteRefProperty(w, "quantity", "Quantity");
+            WriteStringProperty(
+                w,
+                "taxClassification",
+                "التصنيف الضريبي. المستعمَل اليوم: standard · zero · exempt — ويُنشر نصّاً لا مجموعةً مغلقة، فلا قيد تحقّق واحد يُغلقه، وتضييقُه بعد نشره يفرض v2.",
+                "The tax classification. In use today: standard, zero, exempt — published as text rather than a closed set, since no check constraint closes it, and narrowing it after publication would force v2.",
+                32);
+            WriteRefProperty(w, "taxRate", "TaxRate");
+            WriteRefProperty(w, "unitPrice", "Money");
+            w.WriteEndObject();
+            WriteRequired(w, "description", "discount", "itemGroup", "quantity", "taxClassification", "taxRate", "unitPrice");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("PurchaseLine", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "سطر فاتورة مصروف. ولا حساب فيه ولا رمز حساب، كسطر المبيعات وللسبب نفسه. / "
+                + "An expense bill line. No account and no account code, as on a sales line and for the same reason.");
+            w.WriteStartObject("properties");
+            WriteRefProperty(w, "description", "LocalizedText");
+            WriteStringProperty(w, "itemGroup", "مجموعة الصنف — مؤهّل الدور.", "The item group — the role qualifier.", 64);
+            WriteStringProperty(w, "itemId", "الصنف أو البند في دفتره المساعد.", "The item or line in its subledger.", 64);
+            WriteRefProperty(w, "quantity", "Quantity");
+            WriteStringProperty(w, "taxClassification", "التصنيف الضريبي. المستعمَل اليوم: standard · zero · exempt.", "The tax classification. In use today: standard, zero, exempt.", 32);
+            WriteRefProperty(w, "taxRate", "TaxRate");
+            WriteBooleanProperty(w, "taxRecoverable", "هل ضريبة هذا السطر قابلة للاسترداد؟ وهي واقعة ضريبية عن السطر لا تُشتقّ من التصنيف.", "Is this line's tax recoverable? A tax fact about the line, not derived from its classification.");
+            WriteRefProperty(w, "unitPrice", "Money");
+            w.WriteEndObject();
+            WriteRequired(w, "description", "itemGroup", "itemId", "quantity", "taxClassification", "taxRate", "taxRecoverable", "unitPrice");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("SalesInvoiceRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب إنشاء فاتورة مبيعات مسوّدة. ولا مجاميع فيه: المجاميع تُحسب في الوحدة على السطر ثم تُجمع، "
+                + "ومجموعٌ يرسله العميل كان سيصير مصدر حقيقة ثانياً يستطيع أن ينحرف. / "
+                + "A request to draft a sales invoice. It carries no totals: totals are computed in the module per line and then summed, "
+                + "and a total sent by the client would be a second source of truth able to diverge.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "branchId", "الفرع — بُعد تحليلي إلزامي على الإيراد.", "The branch — a mandatory analytical dimension on revenue.", 64);
+            WriteStringProperty(w, "customerId", "معرّف العميل.", "The customer identifier.", 36);
+            WriteDateProperty(w, "issuedOn", "تاريخ الإصدار.", "The issue date.");
+            WriteArrayRefProperty(w, "lines", "SalesLine", "السطور. فاتورة بلا سطر تُرفض في الوحدة برمزها.", "The lines. An invoice with no line is refused in the module under its own code.");
+            WriteStringProperty(w, "number", "رقم الفاتورة — فريد داخل المستأجر.", "The invoice number — unique within the tenant.", 64);
+            w.WriteEndObject();
+            WriteRequired(w, "branchId", "customerId", "issuedOn", "lines", "number");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("CreditNoteRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب إنشاء إشعار دائن مسوّدة. **ولا عميل فيه**: عميله عميل الفاتورة الأصلية، وإعادةُ ذكره تفتح "
+                + "باباً لإشعارٍ على عميل غير عميل فاتورته. / "
+                + "A request to draft a credit note. **It carries no customer**: the customer is the original invoice's customer, and "
+                + "repeating it would open a door to a note against a customer other than its invoice's.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "invoiceId", "الفاتورة الأصلية — الإشعار لا يوجد بلا أصل، والأصل يجب أن يكون مُرحَّلاً.", "The original invoice — a note does not exist without one, and the original must be posted.", 36);
+            WriteDateProperty(w, "issuedOn", "تاريخ الإصدار.", "The issue date.");
+            WriteArrayRefProperty(w, "lines", "SalesLine", "سطور المرتجع أو التخفيض.", "The return or reduction lines.");
+            WriteStringProperty(w, "number", "رقم الإشعار — فريد داخل المستأجر.", "The note number — unique within the tenant.", 64);
+            w.WriteEndObject();
+            WriteRequired(w, "invoiceId", "issuedOn", "lines", "number");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("ExpenseBillRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب إنشاء فاتورة مصروف مسوّدة — بلا مخزون ولا مطابقة ثلاثية. / "
+                + "A request to draft an expense bill — no stock, no three-way match.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "costCenterId", "مركز التكلفة — بُعد إلزامي على المصروف: مصروفٌ بلا مركز رقمٌ لا يُبوَّب.", "The cost centre — mandatory on an expense: an expense without one is a number that cannot be grouped.", 64);
+            WriteStringProperty(w, "expenseCategory", "تصنيف المصروف — مؤهّل الدور.", "The expense category — the role qualifier.", 64);
+            WriteDateProperty(w, "issuedOn", "تاريخ الفاتورة.", "The bill date.");
+            WriteArrayRefProperty(w, "lines", "PurchaseLine", "السطور.", "The lines.");
+            WriteStringProperty(w, "number", "رقم الفاتورة — فريد داخل المستأجر.", "The bill number — unique within the tenant.", 64);
+            WriteStringProperty(w, "supplierId", "معرّف المورد.", "The supplier identifier.", 36);
+            w.WriteEndObject();
+            WriteRequired(w, "costCenterId", "expenseCategory", "issuedOn", "lines", "number", "supplierId");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("CommercialDocument", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "مستند تجاري كما يخرج على السلك — فاتورة مبيعات، أو إشعار دائن، أو فاتورة مورد. / "
+                + "A commercial document as it leaves on the wire — a sales invoice, a credit note, or a supplier bill.");
+            w.WriteStartObject("properties");
+            WriteBooleanProperty(
+                w,
+                "alreadyPosted",
+                "هل كانت هذه الهوية مُرحَّلة **قبل** هذا الطلب؟ ولا تُشتقّ من state: المستند بعد أي ترحيل ناجح حالته POSTED — الأول والثاني سواء. ورمز الحالة وحده لا يكفي: 200 يضيع خلف أي وسيط يعيد التوجيه.",
+                "Was this identity already posted **before** this request? It is not derivable from state: after any successful post the document is POSTED, first arrival and second alike. And the status code alone is not enough: a 200 is lost behind any proxy that redirects.");
+            WriteNullableStringProperty(w, "entryId", "معرّف القيد إن رُحّل المستند، و‏null إن كان مسوّدة.", "The journal entry identifier if the document is posted, and null while it is a draft.", 36);
+            WriteRefProperty(w, "gross", "Money");
+            WriteStringProperty(w, "id", "معرّف المستند.", "The document identifier.", 36);
+            WriteRefProperty(w, "net", "Money");
+            WriteStringProperty(w, "number", "رقم المستند.", "The document number.", 64);
+            WriteStringProperty(w, "state", "الحالة: DRAFT · APPROVED · POSTED · REVERSED · CANCELLED.", "The state: DRAFT, APPROVED, POSTED, REVERSED, CANCELLED.", 32);
+            WriteRefProperty(w, "tax", "Money");
+            w.WriteEndObject();
+            WriteRequired(w, "alreadyPosted", "entryId", "gross", "id", "net", "number", "state", "tax");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("AgingBands", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "شرائح أعمار الديون. و‏total مجموع الشرائح بالضبط — يُرسَل محسوباً ولا يُترك لكل عميل أن يجمعه "
+                + "فيختلف تقريران عن الرقم نفسه. / "
+                + "Debt aging bands. total is exactly the sum of the bands — sent computed rather than left for each client to add up, "
+                + "which is how two reports come to disagree about one number.");
+            w.WriteStartObject("properties");
+            WriteRefProperty(w, "days1To30", "Money");
+            WriteRefProperty(w, "days31To60", "Money");
+            WriteRefProperty(w, "days61To90", "Money");
+            WriteRefProperty(w, "notDue", "Money");
+            WriteRefProperty(w, "over90", "Money");
+            WriteRefProperty(w, "total", "Money");
+            w.WriteEndObject();
+            WriteRequired(w, "days1To30", "days31To60", "days61To90", "notDue", "over90", "total");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("AgingParty", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description", "أعمار ديون طرف واحد. / One party's aged debt.");
+            w.WriteStartObject("properties");
+            WriteRefProperty(w, "bands", "AgingBands");
+            WriteStringProperty(w, "code", "رمز الطرف.", "The party code.", 64);
+            WriteRefProperty(w, "name", "LocalizedText");
+            WriteStringProperty(w, "partyId", "معرّف الطرف.", "The party identifier.", 36);
+            w.WriteEndObject();
+            WriteRequired(w, "bands", "code", "name", "partyId");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("AgingReport", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "تقرير أعمار ديون — **بالشكل نفسه للمدينة والدائنة**. شكلان مختلفان كانا سيجعلان مقارنة الذمم "
+                + "بالذمم عملاً يدوياً عند كل عميل. / "
+                + "A debt aging report — **the same shape for receivables and payables**. Two different shapes would make comparing "
+                + "one against the other manual work in every client.");
+            w.WriteStartObject("properties");
+            WriteDateProperty(w, "asOf", "تاريخ التقرير.", "The report date.");
+            WriteArrayRefProperty(w, "parties", "AgingParty", "الأطراف.", "The parties.");
+            WriteRefProperty(w, "totals", "AgingBands");
+            w.WriteEndObject();
+            WriteRequired(w, "asOf", "parties", "totals");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
         yield return ("HealthResponse", static w =>
         {
             w.WriteString("type", "object");
@@ -1674,7 +2192,16 @@ internal static class OpenApiEmitter
         string ResponseMediaType = "application/json",
 
         // شكل الاستجابة حين لا تكون مخطّطاً مسمّى: object أو string.
-        string? ResponseInlineType = null);
+        string? ResponseInlineType = null,
+
+        // رموز مشكلات إضافية تُوثَّق على هذه العملية وحدها.
+        //
+        // **ولماذا لكل عملية لا بقاعدة عامة:** الرموز التي تُكتب تلقائياً (401 و403 على
+        // كل ما يحتاج اعتماداً، و400 و409 و422 على كل ما له جسم) تُشتقّ من شكل العملية
+        // نفسه فلا تكذب. أمّا 404 فيعتمد على **ما إذا كان المورد يُعنون شيئاً قائماً** —
+        // وهي معلومة لا يحملها شكل العملية. وقاعدةٌ عامة تكتب 404 على كل مسار فيه {id}
+        // كانت ستكتبه على مساراتٍ لا تُرجعه أبداً، فيبني عليه عميل معالجةً لحالة لا تقع.
+        IReadOnlyList<int>? ProblemStatuses = null);
 
     private sealed record QueryParameter(string Name, bool Required, string DescriptionAr, string DescriptionEn, string Kind);
 }

@@ -406,7 +406,9 @@ public sealed class SupplierBillService : IApplicationService
 
         if (bill.State == PurchasingDocumentState.Posted)
         {
-            return Result<PurchasingDocumentView>.Success(ViewOf(bill));
+            // وصولٌ ثانٍ بعد أن اكتمل الأول: لا يُمسّ شيء، والحقيقة تُقال صراحةً
+            // بدل أن تُترك لتُشتقّ من حالةٍ لا تفرّق بين النداءين.
+            return Result<PurchasingDocumentView>.Success(ViewOf(bill) with { AlreadyPosted = true });
         }
 
         SupplierRow supplier = await _database.Suppliers
@@ -457,7 +459,10 @@ public sealed class SupplierBillService : IApplicationService
         bill.PostedEntryId = posted.Value.JournalEntryId;
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        return Result<PurchasingDocumentView>.Success(ViewOf(bill));
+        // حكم البوّابة لا حكمنا: نداءان متزامنان يجتازان فحص الحالة معاً ويلتقيان عند
+        // هوية إحكام واحدة، فأحدهما يكتب والآخر يعود بإيصاله موسوماً.
+        return Result<PurchasingDocumentView>.Success(
+            ViewOf(bill) with { AlreadyPosted = posted.Value.WasAlreadyPosted });
     }
 
     /// <summary>يسجّل إشعاراً مديناً على فاتورة مُرحَّلة.</summary>
@@ -585,7 +590,7 @@ public sealed class SupplierBillService : IApplicationService
 
         if (note.State == PurchasingDocumentState.Posted)
         {
-            return Result<PurchasingDocumentView>.Success(ViewOfNote(note));
+            return Result<PurchasingDocumentView>.Success(ViewOfNote(note) with { AlreadyPosted = true });
         }
 
         SupplierRow supplier = await _database.Suppliers
@@ -752,6 +757,45 @@ public sealed class SupplierBillService : IApplicationService
         Actor = actor,
         Generation = bill.PostingGeneration,
     };
+
+    /// <summary>
+    /// يقرأ فاتورة مورد بحالتها ومجاميعها. <b>نقطة قراءة</b>: تعمل عند
+    /// <see cref="EntitlementState.ReadOnly"/> أيضاً.
+    /// <para>
+    /// وكانت غائبة: الوحدة تُنشئ الفاتورة وتُرحّلها ولا تملك جملةً تقول بها «ما حال
+    /// هذه الفاتورة الآن؟». فمن أنشأ مسوّدةً ثم انقطع اتصاله لم يكن أمامه إلا أن
+    /// <b>يعيد الترحيل ليعرف</b> — وهو أسوأ ما يُطلب من عميل في مسار مالي.
+    /// </para>
+    /// </summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="billId">الفاتورة.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    [RequiresEntitlement(BabelModule.Purchasing, EntitlementAccess.Read)]
+    public async ValueTask<Result<PurchasingDocumentView>> GetBillAsync(
+        TenantId tenant,
+        UserId actor,
+        Guid billId,
+        CancellationToken cancellationToken = default)
+    {
+        Result gate = await _enforcer
+            .EnsureAsync(tenant, actor, BabelModule.Purchasing, EntitlementAccess.Read, "Purchasing.Bill.Get", cancellationToken)
+            .ConfigureAwait(false);
+
+        if (gate.IsFailure)
+        {
+            return Result<PurchasingDocumentView>.Failure(gate.Errors);
+        }
+
+        SupplierBillRow? bill = await _database.Bills
+            .AsNoTracking()
+            .FirstOrDefaultAsync(row => row.TenantId == tenant.Value && row.Id == billId, cancellationToken)
+            .ConfigureAwait(false);
+
+        return bill is null
+            ? Result<PurchasingDocumentView>.Failure(PurchasingErrors.DocumentNotFound(BillDocument, billId))
+            : Result<PurchasingDocumentView>.Success(ViewOf(bill));
+    }
 
     private PurchasingDocumentView ViewOf(SupplierBillRow bill) => new(
         bill.Id,

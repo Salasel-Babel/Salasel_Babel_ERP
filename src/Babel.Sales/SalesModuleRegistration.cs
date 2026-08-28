@@ -1,4 +1,5 @@
 using Babel.Sales.Application;
+using Babel.Sales.Surface;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Babel.Sales;
@@ -31,6 +32,10 @@ public static class SalesModuleRegistration
         services.AddScoped<CreditNoteService>();
         services.AddScoped<CustomerReceiptService>();
         services.AddScoped<ReceivablesService>();
+
+        // السطح المنشور: النوع الوحيد من هذه الوحدة الذي يجوز لسطح HTTP أن يسمّيه
+        // (القاعدة 13 البند ب). ونطاقُه نطاق الخدمات التي يلفّها — سياق واحد للطلب.
+        services.AddScoped<SalesSurface>();
         return services;
     }
 }

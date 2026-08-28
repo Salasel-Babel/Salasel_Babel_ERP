@@ -98,7 +98,26 @@ public sealed record DocumentTotals(Money Net, Money Tax, Money Gross);
 /// <param name="State">الحالة.</param>
 /// <param name="Totals">المجاميع.</param>
 /// <param name="EntryId">معرّف القيد إن رُحّل.</param>
-public sealed record SalesDocumentView(Guid Id, string Number, string State, DocumentTotals Totals, Guid? EntryId);
+/// <param name="AlreadyPosted">
+/// هل كانت هوية الترحيل مُرحَّلة <b>قبل</b> هذا النداء؟
+/// <para>
+/// <b>ولا تُشتقّ من <paramref name="State"/>:</b> المستند بعد أي نداء ترحيل ناجح حالته
+/// <c>POSTED</c> — الأول والثاني سواء. والفرق بينهما هو ما يحتاجه عميلٌ أعاد المحاولة
+/// بعد انقطاع شبكة، وهو معلومة يملكها الدفتر وحده (<c>PostingReceipt.WasAlreadyPosted</c>)
+/// وكانت تُهدَر عند هذا الحدّ قبل أن يُضاف هذا الحقل.
+/// </para>
+/// <para>
+/// والقيمة الافتراضية <c>false</c> تجعل الإضافة **إضافةً محضة**: كل موضع يبني عرضاً
+/// لمستند لم يُرحَّل الآن — إنشاءٌ أو قراءة — يبقى كما هو ويعني ما كان يعنيه.
+/// </para>
+/// </param>
+public sealed record SalesDocumentView(
+    Guid Id,
+    string Number,
+    string State,
+    DocumentTotals Totals,
+    Guid? EntryId,
+    bool AlreadyPosted = false);
 
 /// <summary>تخصيص مبلغ على فاتورة.</summary>
 /// <param name="InvoiceId">الفاتورة.</param>

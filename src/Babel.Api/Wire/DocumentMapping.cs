@@ -1,0 +1,321 @@
+using System.Globalization;
+using Babel.Purchasing.Surface;
+using Babel.Sales.Surface;
+using Babel.SharedKernel;
+
+namespace Babel.Api.Wire;
+
+/// <summary>
+/// نقل مستندات المبيعات والمشتريات بين السلك والسطح المنشور للوحدتين.
+/// <para>
+/// <b>نقلٌ لا حساب.</b> لا مجموع ولا فرق ولا تقريب في هذا الملفّ: المجاميع تصل محسوبةً
+/// من الوحدة، والمبالغ تُنسَّق بتمثيلها القانوني وحده. والقاعدة 13 (البند أ) تفرض ذلك
+/// بمسح IL لا بالمراجعة.
+/// </para>
+/// <para>
+/// <b>وكل تاريخ ورقم يمرّ من هنا يمرّ بماسح واحد</b> — هو ماسح <see cref="WireMapping"/>
+/// نفسه لا نسخة ثانية منه. ونسختان من ماسح تاريخ تفترقان عند أول تعديل، فيقبل أحد
+/// المسارين ما يرفضه الآخر (فخ-40).
+/// </para>
+/// </summary>
+internal static class DocumentMapping
+{
+    /// <summary>أقصى عدد سطور في مستند واحد — حدٌّ معلن لا مفاجأة عند أول حمولة كبيرة.</summary>
+    public const int MaxLines = 1000;
+
+    /// <summary>أقصى مهلة سداد بالأيام: عشر سنوات. وما فوقها خطأ إدخال لا شرط تجاري.</summary>
+    public const int MaxPaymentTermsDays = 3650;
+
+    private const int CodeLength = 64;
+    private const int ClassificationLength = 32;
+
+    /// <summary>يقرأ طلب عميل من السلك.</summary>
+    /// <param name="dto">الحمولة.</param>
+    public static SalesPartyRequest ToCustomerRequest(PartyRequestDto dto)
+    {
+        ArgumentNullException.ThrowIfNull(dto);
+
+        if (dto.VatNumber is not null)
+        {
+            // العميل لا يحمل رقم تسجيل ضريبي على هذا السطح. والتجاهل الصامت يجعل
+            // المُرسِل يظنّ أنه سجّل رقماً لم يصل — وهو صمت في بيانات أساسية.
+            throw WireNumbers.Reject(
+                "wire.field.not_on_this_resource",
+                "vatNumber",
+                "رقم التسجيل الضريبي حقل مورد لا حقل عميل على هذا السطح.",
+                "The VAT number is a supplier field, not a customer field on this surface.");
+        }
+
+        return new SalesPartyRequest(
+            WireMapping.ReadRequiredText(dto.Code, "code", CodeLength),
+            WireMapping.ReadLocalized(dto.Name, "name"),
+            WireNumbers.ParseStrict(dto.CreditLimit.Raw, WireNumbers.MoneyScale, "creditLimit"),
+            ReadTerms(dto.PaymentTermsDays));
+    }
+
+    /// <summary>يقرأ طلب مورد من السلك.</summary>
+    /// <param name="dto">الحمولة.</param>
+    public static PurchasingPartyRequest ToSupplierRequest(PartyRequestDto dto)
+    {
+        ArgumentNullException.ThrowIfNull(dto);
+
+        return new PurchasingPartyRequest(
+            WireMapping.ReadRequiredText(dto.Code, "code", CodeLength),
+            WireMapping.ReadLocalized(dto.Name, "name"),
+            WireNumbers.ParseStrict(dto.CreditLimit.Raw, WireNumbers.MoneyScale, "creditLimit"),
+            ReadTerms(dto.PaymentTermsDays),
+
+            // فراغٌ لا null: «لم يُسجَّل» حالةٌ واحدة، ولها تمثيل واحد في الوحدة.
+            WireMapping.ReadOptional(dto.VatNumber, "vatNumber", CodeLength) ?? string.Empty);
+    }
+
+    /// <summary>يقرأ طلب فاتورة مبيعات مسوّدة.</summary>
+    /// <param name="dto">الحمولة.</param>
+    public static SalesInvoiceRequest ToInvoiceRequest(SalesInvoiceRequestDto dto)
+    {
+        ArgumentNullException.ThrowIfNull(dto);
+
+        return new SalesInvoiceRequest(
+            WireMapping.ReadRequiredText(dto.Number, "number", CodeLength),
+            WireMapping.ReadGuid(dto.CustomerId, "customerId"),
+            WireMapping.ReadDate(dto.IssuedOn, "issuedOn"),
+            WireMapping.ReadRequiredText(dto.BranchId, "branchId", CodeLength),
+            SalesLines(dto.Lines));
+    }
+
+    /// <summary>يقرأ طلب إشعار دائن مسوّدة.</summary>
+    /// <param name="dto">الحمولة.</param>
+    public static SalesCreditNoteRequest ToCreditNoteRequest(CreditNoteRequestDto dto)
+    {
+        ArgumentNullException.ThrowIfNull(dto);
+
+        return new SalesCreditNoteRequest(
+            WireMapping.ReadRequiredText(dto.Number, "number", CodeLength),
+            WireMapping.ReadGuid(dto.InvoiceId, "invoiceId"),
+            WireMapping.ReadDate(dto.IssuedOn, "issuedOn"),
+            SalesLines(dto.Lines));
+    }
+
+    /// <summary>يقرأ طلب فاتورة مصروف مسوّدة.</summary>
+    /// <param name="dto">الحمولة.</param>
+    public static PurchasingExpenseBillRequest ToExpenseBillRequest(ExpenseBillRequestDto dto)
+    {
+        ArgumentNullException.ThrowIfNull(dto);
+
+        return new PurchasingExpenseBillRequest(
+            WireMapping.ReadRequiredText(dto.Number, "number", CodeLength),
+            WireMapping.ReadGuid(dto.SupplierId, "supplierId"),
+            WireMapping.ReadDate(dto.IssuedOn, "issuedOn"),
+            WireMapping.ReadRequiredText(dto.ExpenseCategory, "expenseCategory", CodeLength),
+            WireMapping.ReadRequiredText(dto.CostCenterId, "costCenterId", CodeLength),
+            PurchaseLines(dto.Lines));
+    }
+
+    /// <summary>ينقل عميلاً إلى السلك.</summary>
+    /// <param name="party">العميل.</param>
+    public static PartyDto ToDto(SalesParty party)
+    {
+        ArgumentNullException.ThrowIfNull(party);
+
+        return new PartyDto(
+            Id(party.Id),
+            party.Code,
+            Text(party.Name),
+            WireNumbers.FormatMoney(party.CreditLimit),
+            party.PaymentTermsDays,
+
+            // ‏null لا فراغ: العميل لا يحمل هذا الحقل أصلاً، والفراغ كان سيعني
+            // «مورد بلا رقم» — وهي حالة أخرى.
+            null);
+    }
+
+    /// <summary>ينقل مورداً إلى السلك.</summary>
+    /// <param name="party">المورد.</param>
+    public static PartyDto ToDto(PurchasingParty party)
+    {
+        ArgumentNullException.ThrowIfNull(party);
+
+        return new PartyDto(
+            Id(party.Id),
+            party.Code,
+            Text(party.Name),
+            WireNumbers.FormatMoney(party.CreditLimit),
+            party.PaymentTermsDays,
+            party.VatNumber);
+    }
+
+    /// <summary>ينقل مستند مبيعات إلى السلك.</summary>
+    /// <param name="document">المستند.</param>
+    public static CommercialDocumentDto ToDto(SalesDocument document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+
+        return new CommercialDocumentDto(
+            Id(document.Id),
+            document.Number,
+            document.State,
+            WireNumbers.FormatMoney(document.Net),
+            WireNumbers.FormatMoney(document.Tax),
+            WireNumbers.FormatMoney(document.Gross),
+            document.EntryId is { } entry ? Id(entry) : null,
+            document.AlreadyPosted);
+    }
+
+    /// <summary>ينقل مستند مشتريات إلى السلك.</summary>
+    /// <param name="document">المستند.</param>
+    public static CommercialDocumentDto ToDto(PurchasingDocument document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+
+        return new CommercialDocumentDto(
+            Id(document.Id),
+            document.Number,
+            document.State,
+            WireNumbers.FormatMoney(document.Net),
+            WireNumbers.FormatMoney(document.Tax),
+            WireNumbers.FormatMoney(document.Gross),
+            document.EntryId is { } entry ? Id(entry) : null,
+            document.AlreadyPosted);
+    }
+
+    /// <summary>ينقل أعمار الذمم المدينة إلى السلك.</summary>
+    /// <param name="report">التقرير.</param>
+    public static AgingReportDto ToDto(SalesAging report)
+    {
+        ArgumentNullException.ThrowIfNull(report);
+
+        return new AgingReportDto(
+            Date(report.AsOf),
+            [.. report.Parties.Select(static party => new AgingPartyDto(
+                Id(party.PartyId), party.Code, Text(party.Name), Bands(party.Bands)))],
+            Bands(report.Totals));
+    }
+
+    /// <summary>ينقل أعمار الذمم الدائنة إلى السلك.</summary>
+    /// <param name="report">التقرير.</param>
+    public static AgingReportDto ToDto(PurchasingAging report)
+    {
+        ArgumentNullException.ThrowIfNull(report);
+
+        return new AgingReportDto(
+            Date(report.AsOf),
+            [.. report.Parties.Select(static party => new AgingPartyDto(
+                Id(party.PartyId), party.Code, Text(party.Name), Bands(party.Bands)))],
+            Bands(report.Totals));
+    }
+
+    private static AgingBandsDto Bands(SalesAgingBands bands) => new(
+        WireNumbers.FormatMoney(bands.NotDue),
+        WireNumbers.FormatMoney(bands.Days1To30),
+        WireNumbers.FormatMoney(bands.Days31To60),
+        WireNumbers.FormatMoney(bands.Days61To90),
+        WireNumbers.FormatMoney(bands.Over90),
+        WireNumbers.FormatMoney(bands.Total));
+
+    private static AgingBandsDto Bands(PurchasingAgingBands bands) => new(
+        WireNumbers.FormatMoney(bands.NotDue),
+        WireNumbers.FormatMoney(bands.Days1To30),
+        WireNumbers.FormatMoney(bands.Days31To60),
+        WireNumbers.FormatMoney(bands.Days61To90),
+        WireNumbers.FormatMoney(bands.Over90),
+        WireNumbers.FormatMoney(bands.Total));
+
+    private static List<SalesLineRequest> SalesLines(IReadOnlyList<SalesLineDto>? lines)
+    {
+        Guard(lines, out IReadOnlyList<SalesLineDto> present);
+
+        List<SalesLineRequest> mapped = [];
+
+        for (int index = 0; index < present.Count; index++)
+        {
+            SalesLineDto line = present[index];
+            string at = Field(index);
+
+            mapped.Add(new SalesLineRequest(
+                WireMapping.ReadRequiredText(line.ItemGroup, at + ".itemGroup", CodeLength),
+                WireMapping.ReadLocalized(line.Description, at + ".description"),
+                WireNumbers.ParseStrict(line.Quantity.Raw, WireNumbers.MoneyScale, at + ".quantity"),
+                WireNumbers.ParseStrict(line.UnitPrice.Raw, WireNumbers.MoneyScale, at + ".unitPrice"),
+                WireNumbers.ParseStrict(line.Discount.Raw, WireNumbers.MoneyScale, at + ".discount"),
+                WireMapping.ReadRequiredText(line.TaxClassification, at + ".taxClassification", ClassificationLength),
+                WireNumbers.ParseStrict(line.TaxRate.Raw, WireNumbers.RateScale, at + ".taxRate"),
+                line.OriginalInvoiceLineId is null
+                    ? null
+                    : WireMapping.ReadGuid(line.OriginalInvoiceLineId, at + ".originalInvoiceLineId")));
+        }
+
+        return mapped;
+    }
+
+    private static List<PurchasingLineRequest> PurchaseLines(IReadOnlyList<PurchaseLineDto>? lines)
+    {
+        Guard(lines, out IReadOnlyList<PurchaseLineDto> present);
+
+        List<PurchasingLineRequest> mapped = [];
+
+        for (int index = 0; index < present.Count; index++)
+        {
+            PurchaseLineDto line = present[index];
+            string at = Field(index);
+
+            mapped.Add(new PurchasingLineRequest(
+                WireMapping.ReadRequiredText(line.ItemId, at + ".itemId", CodeLength),
+                WireMapping.ReadRequiredText(line.ItemGroup, at + ".itemGroup", CodeLength),
+                WireMapping.ReadLocalized(line.Description, at + ".description"),
+                WireNumbers.ParseStrict(line.Quantity.Raw, WireNumbers.MoneyScale, at + ".quantity"),
+                WireNumbers.ParseStrict(line.UnitPrice.Raw, WireNumbers.MoneyScale, at + ".unitPrice"),
+                WireMapping.ReadRequiredText(line.TaxClassification, at + ".taxClassification", ClassificationLength),
+                WireNumbers.ParseStrict(line.TaxRate.Raw, WireNumbers.RateScale, at + ".taxRate"),
+                line.TaxRecoverable));
+        }
+
+        return mapped;
+    }
+
+    /// <summary>
+    /// يفحص وجود السطور وعددها — <b>ولا يفحص «صفر سطور»</b>: ذلك حكم الوحدة
+    /// (<c>sales.no_lines</c> · <c>purchasing.no_lines</c>) برسالته التي تسمّي المستند،
+    /// ونسخُه هنا كان سيجعل الرفض نفسه يخرج برمزين مختلفين حسب الباب.
+    /// </summary>
+    private static void Guard<T>(IReadOnlyList<T>? lines, out IReadOnlyList<T> present)
+    {
+        if (lines is null)
+        {
+            throw WireNumbers.Reject("wire.text.missing", "lines", "السطور مفقودة.", "The lines are missing.");
+        }
+
+        if (lines.Count > MaxLines)
+        {
+            throw WireNumbers.Reject(
+                "wire.list.too_long",
+                "lines",
+                FormattableString.Invariant($"عدد السطور يتجاوز الحدّ المعلن {MaxLines}."),
+                FormattableString.Invariant($"The number of lines exceeds the published limit of {MaxLines}."));
+        }
+
+        present = lines;
+    }
+
+    private static int ReadTerms(int days)
+    {
+        if (days is < 0 or > MaxPaymentTermsDays)
+        {
+            throw WireNumbers.Reject(
+                "wire.number.out_of_range",
+                "paymentTermsDays",
+                FormattableString.Invariant($"مهلة السداد بالأيام بين صفر و{MaxPaymentTermsDays}."),
+                FormattableString.Invariant($"The payment terms in days are between zero and {MaxPaymentTermsDays}."));
+        }
+
+        return days;
+    }
+
+    private static string Field(int index) =>
+        string.Create(CultureInfo.InvariantCulture, $"lines[{index}]");
+
+    private static string Id(Guid value) => value.ToString("D", CultureInfo.InvariantCulture);
+
+    private static string Date(DateOnly value) => value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
+    private static LocalizedTextDto Text(LocalizedName name) => new(name.Arabic, name.English);
+}

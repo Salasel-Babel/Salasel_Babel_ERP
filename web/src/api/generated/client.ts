@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     03c76b7b232225176cd92cbef06411102197f3e1b1a90db2001eea51dd36d74b
+     63c3b477e2e6dbcf9ca20df58b2cb06a6f649c6754d096b4a261c9544948c1f6
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -43,6 +43,56 @@ export async function addCostCenter(transport: Transport, args: AddCostCenterArg
   return decodeSchema(SCHEMAS, "CompanySetup", response.json) as T.CompanySetup;
 }
 
+export interface AddCustomerArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.CustomerRequest;
+}
+
+/**
+ * تسجيل عميل / Register a customer
+ * 
+ * يسجّل عميلاً جديداً: رمزه، واسمه ثنائي اللغة، وحدّ ائتمانه، ومهلة سداده. والرمز **هوية** تحملها مستنداته المُرحَّلة، والاسم عرضٌ يتغيّر.
+ * 
+ * **ولا حقل vatNumber هنا**: رقم التسجيل الضريبي حقل مورد لا حقل عميل على هذا السطح، وإرساله يُرفض به الطلب كلّه — التجاهل الصامت يجعل المُرسِل يظنّ أنه سجّل رقماً لم يصل.
+ * 
+ * Registers a customer: its code, its bilingual name, its credit limit, and its payment terms. The code is an **identity** its posted documents carry; the name is display that changes.
+ * 
+ * **There is no vatNumber here**: the VAT registration number is a supplier field, not a customer field on this surface, and sending it fails the whole request — silently ignoring it would make the sender believe a number was recorded that never arrived.
+ */
+export async function addCustomer(transport: Transport, args: AddCustomerArgs, signal?: AbortSignal): Promise<T.Party> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/customers";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "CustomerRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "Party", response.json) as T.Party;
+}
+
+export interface AddSupplierArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.SupplierRequest;
+}
+
+/**
+ * تسجيل مورد / Register a supplier
+ * 
+ * يسجّل مورداً جديداً. وvatNumber **اختياري لأن غيابه واقع لا نقص**: المورد دون حدّ التسجيل، وغير المقيم، والمُنشأ قبل هذا الحقل — ثلاثتهم بلا رقم. وحين يُرسل يُتحقّق من شكله كاملاً ولا يُقبل «تقريباً صحيح».
+ * 
+ * Registers a supplier. vatNumber is **optional because its absence is a fact, not a gap**: the supplier below the registration threshold, the non-resident supplier, and the supplier created before this field all have none. When it is sent, its full shape is verified and 'nearly right' is not accepted.
+ */
+export async function addSupplier(transport: Transport, args: AddSupplierArgs, signal?: AbortSignal): Promise<T.Party> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/suppliers";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "SupplierRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "Party", response.json) as T.Party;
+}
+
 export interface AdmitDocumentArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
@@ -66,6 +116,91 @@ export async function admitDocument(transport: Transport, args: AdmitDocumentArg
   const response = await transport({ method: "POST", url, body, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "DocumentAdmission", response.json) as T.DocumentAdmission;
+}
+
+export interface DraftCreditNoteArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.CreditNoteRequest;
+}
+
+/**
+ * إنشاء إشعار دائن مسوّدة / Draft a credit note
+ * 
+ * يُنشئ إشعاراً دائناً في حالة **DRAFT** على فاتورة **مُرحَّلة**. وهذا هو الطريق الوحيد إلى تصحيح فاتورة مُرحَّلة: لا تعديل ولا حذف على هذا السطح ولا في هذا النظام (ADR-0002).
+ * 
+ * والوحدة ترفض الإشعار على فاتورة ليست في حالة POSTED، وترفض ما يتجاوز المتبقّي منها.
+ * 
+ * وسطرٌ يحمل originalInvoiceLineId هو **ردّ بضاعة** يُقيَّم بتكلفة صرفه الأصلي؛ وسطرٌ بلا هذا الحقل **تخفيض قيمة** لا يُحرّك مخزوناً. والفرق قرار تجاري لا يُخمَّن.
+ * 
+ * Creates a credit note in state **DRAFT** against a **posted** invoice. This is the only route to correcting a posted invoice: there is no edit and no delete on this surface, and none in this system (ADR-0002).
+ * 
+ * The module refuses a note against an invoice that is not POSTED, and refuses an amount beyond what is outstanding.
+ * 
+ * A line carrying originalInvoiceLineId is a **goods return**, valued at the cost of its original issue; a line without that field is a **value reduction** that moves no stock. The difference is a commercial decision, never guessed.
+ */
+export async function draftCreditNote(transport: Transport, args: DraftCreditNoteArgs, signal?: AbortSignal): Promise<T.CommercialDocument> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/credit-notes";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "CreditNoteRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "CommercialDocument", response.json) as T.CommercialDocument;
+}
+
+export interface DraftExpenseBillArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.ExpenseBillRequest;
+}
+
+/**
+ * إنشاء فاتورة مصروف مسوّدة / Draft an expense bill
+ * 
+ * يُنشئ فاتورة مورد **مصروفية** في حالة DRAFT — بلا مخزون ولا مطابقة ثلاثية. ومركز التكلفة **إلزامي** عليها: المصروف بلا مركز تكلفة رقمٌ لا يُبوَّب.
+ * 
+ * **ولاحظ ما ليس على هذا المورد: لا فاتورة مخزنية.** الفاتورة المخزنية تُطابَق بثلاثية (أمر شراء · استلام · فاتورة)، والاستلام لا يُرحَّل إلا عبر حدّ تقييم المخزون — أي أن نشرها يجرّ وحدة المخزون كاملةً إلى هذا السطح. وهذا **نقص مُعلَن**: انظر ADR سطح المستندات.
+ * 
+ * Creates an **expense** supplier bill in state DRAFT — no stock, no three-way match. A cost centre is **mandatory** on it: an expense without a cost centre is a number that cannot be grouped.
+ * 
+ * **Note what this resource does not carry: no stock bill.** A stock bill is three-way matched (purchase order, goods receipt, bill), and a goods receipt posts only through the inventory valuation port — publishing it drags the whole inventory module onto this surface. This is a **declared gap**: see the document-surface ADR.
+ */
+export async function draftExpenseBill(transport: Transport, args: DraftExpenseBillArgs, signal?: AbortSignal): Promise<T.CommercialDocument> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/supplier-bills";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "ExpenseBillRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "CommercialDocument", response.json) as T.CommercialDocument;
+}
+
+export interface DraftSalesInvoiceArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.SalesInvoiceRequest;
+}
+
+/**
+ * إنشاء فاتورة مبيعات مسوّدة / Draft a sales invoice
+ * 
+ * يُنشئ فاتورة مبيعات في حالة **DRAFT**. ولا قيد ولا أثر في الدفتر: الترحيل مورد فرعي مستقلّ يُنادى بعده. والضريبة تُحسب وتُقرَّب **على السطر**، ومجموع المستند مجموع سطور مقرَّبة — والحساب كلّه في الوحدة لا في هذا السطح.
+ * 
+ * **ولا رمز حساب في الحمولة ولا رمز حدث**: السطر يحمل itemGroup — مؤهّل دور — ومصفوفة الترحيل وحدها تُحوّله إلى حساب (القاعدة 2).
+ * 
+ * Creates a sales invoice in state **DRAFT**. No entry and no effect on the ledger: posting is a separate sub-resource called afterwards. Tax is computed and rounded **per line**, and the document total is the sum of rounded lines — all of it computed in the module, none of it on this surface.
+ * 
+ * **No account code and no event code appear in the payload**: a line carries an itemGroup — a role qualifier — and the posting matrix alone turns it into an account (Rule 2).
+ */
+export async function draftSalesInvoice(transport: Transport, args: DraftSalesInvoiceArgs, signal?: AbortSignal): Promise<T.CommercialDocument> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/sales-invoices";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "SalesInvoiceRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "CommercialDocument", response.json) as T.CommercialDocument;
 }
 
 /**
@@ -114,6 +249,28 @@ export async function initialiseCompanySetup(transport: Transport, args: Initial
   return decodeSchema(SCHEMAS, "CompanySetup", response.json) as T.CompanySetup;
 }
 
+export interface PostCreditNoteArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف الإشعار الدائن. / The credit note identifier. */
+  creditNoteId: string;
+}
+
+/**
+ * ترحيل إشعار دائن / Post a credit note
+ * 
+ * يرحّل إشعاراً دائناً مسوّدة ويخصّصه على فاتورته الأصلية. حصين ضد التكرار بالشكل نفسه الذي يسلكه ترحيل الفاتورة: الوصول الثاني يُرجع المستند ذاته وalreadyPosted = true ورمز 200.
+ * 
+ * Posts a draft credit note and allocates it against its original invoice. Idempotent in exactly the same shape as posting an invoice: a second arrival returns the same document with alreadyPosted = true and status 200.
+ */
+export async function postCreditNote(transport: Transport, args: PostCreditNoteArgs, signal?: AbortSignal): Promise<T.CommercialDocument> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/credit-notes/" + encodeURIComponent(args.creditNoteId) + "/posting";
+  const url = path;
+  const response = await transport({ method: "POST", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "CommercialDocument", response.json) as T.CommercialDocument;
+}
+
 export interface PostJournalEntryArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
@@ -135,6 +292,58 @@ export async function postJournalEntry(transport: Transport, args: PostJournalEn
   const response = await transport({ method: "POST", url, body, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "PostingReceipt", response.json) as T.PostingReceipt;
+}
+
+export interface PostSalesInvoiceArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف فاتورة المبيعات. / The sales invoice identifier. */
+  invoiceId: string;
+}
+
+/**
+ * ترحيل فاتورة مبيعات / Post a sales invoice
+ * 
+ * يرحّل فاتورة مسوّدة فتصير **واقعة محاسبية**. مورد فرعي مستقلّ لا PUT على المستند: الترحيل فعلٌ يُنشئ قيداً، لا حقلٌ يُعدَّل.
+ * 
+ * **وحصين ضد التكرار بهوية الترحيل** (شركة · نوع المستند · معرّفه · رمز الإطلاق · الجيل · رمز الحدث): الوصول الثاني بالهوية نفسها يُرجع المستند ذاته وalreadyPosted = true ورمز 200 بدل 201، ولا يُنشئ قيداً ثانياً — **مهما كان ترتيب الوصول**. والحكم حكم بوّابة الوحدة لا مقارنةَ حالةٍ قُرئت قبل النداء: نداءان متزامنان يجتازان فحص «مسوّدة» معاً، ويلتقيان عند الهوية الواحدة، فيكتب أحدهما ويعود الآخر موسوماً.
+ * 
+ * ولا جسم لهذا الطلب: كل ما يحتاجه الترحيل موجود على المستند، ومفتاح الحصانة تشتقّه الوحدة من هويته ولا يُرسله العميل — فلا يستطيع عميلان أن يختارا مفتاحين لواقعة واحدة.
+ * 
+ * Posts a draft invoice, turning it into an **accounting fact**. A separate sub-resource, not a PUT on the document: posting is an act that creates an entry, not a field that is edited.
+ * 
+ * **Idempotent by the posting identity** (company, source document type, source document id, trigger, generation, event code): a second arrival with the same identity returns the same document with alreadyPosted = true and status 200 instead of 201, and never creates a second entry — **whatever the arrival order**. The verdict is the module gateway's, not a comparison against a state read before the call: two concurrent calls both pass the 'is it a draft' check, meet at the one identity, and one writes while the other returns marked.
+ * 
+ * This request has no body: everything posting needs is on the document, and the idempotency key is derived by the module from that identity rather than sent by the client — so two clients cannot choose two keys for one fact.
+ */
+export async function postSalesInvoice(transport: Transport, args: PostSalesInvoiceArgs, signal?: AbortSignal): Promise<T.CommercialDocument> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/sales-invoices/" + encodeURIComponent(args.invoiceId) + "/posting";
+  const url = path;
+  const response = await transport({ method: "POST", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "CommercialDocument", response.json) as T.CommercialDocument;
+}
+
+export interface PostSupplierBillArgs {
+  /** معرّف فاتورة المورد. / The supplier bill identifier. */
+  billId: string;
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+}
+
+/**
+ * ترحيل فاتورة مورد / Post a supplier bill
+ * 
+ * يرحّل فاتورة مورد مسوّدة. مورد فرعي مستقلّ، وحصين ضد التكرار بهوية الترحيل نفسها وبالسلوك نفسه: الوصول الثاني يُرجع المستند ذاته وalreadyPosted = true ورمز 200 بدل 201، بلا قيد ثانٍ.
+ * 
+ * Posts a draft supplier bill. A separate sub-resource, idempotent by the same posting identity with the same behaviour: a second arrival returns the same document with alreadyPosted = true and status 200 instead of 201, with no second entry.
+ */
+export async function postSupplierBill(transport: Transport, args: PostSupplierBillArgs, signal?: AbortSignal): Promise<T.CommercialDocument> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/supplier-bills/" + encodeURIComponent(args.billId) + "/posting";
+  const url = path;
+  const response = await transport({ method: "POST", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "CommercialDocument", response.json) as T.CommercialDocument;
 }
 
 export interface ReadCapabilityProfileArgs {
@@ -197,6 +406,32 @@ export async function readCompanySetup(transport: Transport, args: ReadCompanySe
   return decodeSchema(SCHEMAS, "CompanySetup", response.json) as T.CompanySetup;
 }
 
+export interface ReadCustomerArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف العميل. / The customer identifier. */
+  customerId: string;
+}
+
+/**
+ * قراءة عميل / Read one customer
+ * 
+ * يقرأ عميلاً واحداً داخل نطاق الشركة.
+ * 
+ * **ولاحظ ما ليس على هذا المورد: لا PUT ولا DELETE ولا مورد إيقاف.** غياب الحذف بنيوي كغيابه على القيود ومراكز التكلفة: عميلٌ تشير إليه قيود سنة سابقة لا يُحذف، وحذفه يكسر كل تقرير مُرحَّل. أمّا غياب الإيقاف فهو **إعلان نقص لا قرار منع**: وحدة المبيعات لا تملك اليوم إيقافاً — العمود is_active يُكتب مرّةً عند الإنشاء ولا يقرؤه مسار ترحيل واحد — وبابٌ اسمه «إيقاف» لا يمنع فاتورةً واحدة أسوأ من غيابه: يبدو ضابطاً وليس كذلك.
+ * 
+ * Reads a single customer within the company scope.
+ * 
+ * **Note what this resource does not carry: no PUT, no DELETE, and no suspension sub-resource.** The absence of delete is structural, as it is on entries and cost centres: a customer referenced by last year's entries is never deleted, and deleting it breaks every posted report. The absence of suspension is instead a **declared gap, not a prohibition**: the sales module has no suspension today — the is_active column is written once at creation and read by no posting path — and a door labelled 'suspend' that stops not one invoice is worse than no door: it looks like a control and is not one.
+ */
+export async function readCustomer(transport: Transport, args: ReadCustomerArgs, signal?: AbortSignal): Promise<T.Party> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/customers/" + encodeURIComponent(args.customerId) + "";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "Party", response.json) as T.Party;
+}
+
 /**
  * صفحة استعراض العقد / The contract browser page
  * 
@@ -255,6 +490,30 @@ export async function readJournalEntry(transport: Transport, args: ReadJournalEn
   return decodeSchema(SCHEMAS, "JournalEntry", response.json) as T.JournalEntry;
 }
 
+export interface ReadPayablesAgingArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** تاريخ التقرير الميلادي. / The Gregorian report date. */
+  asOf: string;
+}
+
+/**
+ * أعمار الذمم الدائنة / Payables aging
+ * 
+ * أعمار ذمم الموردين في تاريخ معلوم، بالشرائح نفسها وبالشكل نفسه الذي تُقرأ به الذمم المدينة — شكلٌ واحد لا شكلان: تقريران بشرائح مختلفة يجعلان المقارنة بينهما عملاً يدوياً.
+ * 
+ * Supplier payables aged at a given date, in the same bands and the same shape as receivables — one shape, not two: two reports with different bands make comparing them manual work.
+ */
+export async function readPayablesAging(transport: Transport, args: ReadPayablesAgingArgs, signal?: AbortSignal): Promise<T.AgingReport> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/payables-aging";
+  const query = new URLSearchParams();
+  query.set("asOf", args.asOf);
+  const url = query.size > 0 ? path + "?" + query.toString() : path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "AgingReport", response.json) as T.AgingReport;
+}
+
 /**
  * العقد المنشور نفسه / The published contract itself
  * 
@@ -268,6 +527,52 @@ export async function readPublishedContract(transport: Transport, signal?: Abort
   const response = await transport({ method: "GET", url, signal });
   if (!response.ok) throw ProblemError.from(response);
   return response.json as unknown;
+}
+
+export interface ReadReceivablesAgingArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** تاريخ التقرير الميلادي. / The Gregorian report date. */
+  asOf: string;
+}
+
+/**
+ * أعمار الذمم المدينة / Receivables aging
+ * 
+ * أعمار ذمم العملاء في تاريخ معلوم، بشرائح: لم يستحق · 1–30 · 31–60 · 61–90 · فوق 90، ومجموعٍ هو مجموع الشرائح بالضبط. نقطة قراءة: تعمل والاشتراك للقراءة فقط.
+ * 
+ * Customer receivables aged at a given date, in bands: not due, 1-30, 31-60, 61-90, over 90, with a total that is exactly the sum of the bands. A read point: it works while the subscription is read-only.
+ */
+export async function readReceivablesAging(transport: Transport, args: ReadReceivablesAgingArgs, signal?: AbortSignal): Promise<T.AgingReport> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/receivables-aging";
+  const query = new URLSearchParams();
+  query.set("asOf", args.asOf);
+  const url = query.size > 0 ? path + "?" + query.toString() : path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "AgingReport", response.json) as T.AgingReport;
+}
+
+export interface ReadSalesInvoiceArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف فاتورة المبيعات. / The sales invoice identifier. */
+  invoiceId: string;
+}
+
+/**
+ * قراءة فاتورة مبيعات / Read one sales invoice
+ * 
+ * يقرأ فاتورة بحالتها ومجاميعها ومعرّف قيدها إن رُحّلت. ونقطة قراءة: تعمل والاشتراك للقراءة فقط.
+ * 
+ * Reads an invoice with its state, its totals, and its entry identifier if posted. A read point: it works while the subscription is read-only.
+ */
+export async function readSalesInvoice(transport: Transport, args: ReadSalesInvoiceArgs, signal?: AbortSignal): Promise<T.CommercialDocument> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/sales-invoices/" + encodeURIComponent(args.invoiceId) + "";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "CommercialDocument", response.json) as T.CommercialDocument;
 }
 
 /**
@@ -295,6 +600,54 @@ export async function readSession(transport: Transport, signal?: AbortSignal): P
   const response = await transport({ method: "GET", url, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "Session", response.json) as T.Session;
+}
+
+export interface ReadSupplierArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف المورد. / The supplier identifier. */
+  supplierId: string;
+}
+
+/**
+ * قراءة مورد / Read one supplier
+ * 
+ * يقرأ مورداً واحداً. وما غاب عن مورد العميل غائب هنا وللسبب نفسه: لا حذف بنيوياً، ولا إيقاف بعد.
+ * 
+ * Reads a single supplier. What is absent from the customer resource is absent here for the same reasons: no delete, structurally, and no suspension yet.
+ */
+export async function readSupplier(transport: Transport, args: ReadSupplierArgs, signal?: AbortSignal): Promise<T.Party> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/suppliers/" + encodeURIComponent(args.supplierId) + "";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "Party", response.json) as T.Party;
+}
+
+export interface ReadSupplierBillArgs {
+  /** معرّف فاتورة المورد. / The supplier bill identifier. */
+  billId: string;
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+}
+
+/**
+ * قراءة فاتورة مورد / Read one supplier bill
+ * 
+ * يقرأ فاتورة مورد بحالتها ومجاميعها ومعرّف قيدها إن رُحّلت.
+ * 
+ * وكانت هذه القراءة **غير موجودة في الوحدة أصلاً**: تُنشأ الفاتورة وتُرحَّل ولا توجد جملة تقول «ما حالها الآن؟». فمن أنشأ مسوّدةً ثم انقطع اتصاله لم يكن أمامه إلا أن **يعيد الترحيل ليعرف**.
+ * 
+ * Reads a supplier bill with its state, its totals, and its entry identifier if posted.
+ * 
+ * This read **did not exist in the module at all**: a bill could be created and posted, and there was no sentence for 'what state is it in now?'. Whoever created a draft and then lost their connection had no option but to **post again in order to find out**.
+ */
+export async function readSupplierBill(transport: Transport, args: ReadSupplierBillArgs, signal?: AbortSignal): Promise<T.CommercialDocument> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/supplier-bills/" + encodeURIComponent(args.billId) + "";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "CommercialDocument", response.json) as T.CommercialDocument;
 }
 
 export interface ReadTrialBalanceArgs {

@@ -2,6 +2,8 @@ using System.Globalization;
 using System.Reflection;
 using Babel.Core;
 using Babel.Ledger;
+using Babel.Purchasing;
+using Babel.Sales;
 using Npgsql;
 
 namespace Babel.Api.Tests;
@@ -36,6 +38,18 @@ internal static class ApiTestDatabase
     /// </para>
     /// </summary>
     public static string Database { get; } = TestRunScope.Name(DatabaseStem);
+
+    /// <summary>الجذع الثابت لاسم قاعدة المبيعات — منفصلة، انظر <see cref="Sales"/>.</summary>
+    public const string SalesStem = "babel_api_tests_sales";
+
+    /// <summary>الجذع الثابت لاسم قاعدة المشتريات.</summary>
+    public const string PurchasingStem = "babel_api_tests_purchasing";
+
+    /// <summary>قاعدة المبيعات لهذه العملية وحدها.</summary>
+    public static string SalesDatabase { get; } = TestRunScope.Name(SalesStem);
+
+    /// <summary>قاعدة المشتريات لهذه العملية وحدها.</summary>
+    public static string PurchasingDatabase { get; } = TestRunScope.Name(PurchasingStem);
 
     /// <summary>
     /// دور التطبيق: يدخل، ولا يملك شيئاً، وليس superuser. واسمه <b>مشترك عمداً</b> —
@@ -104,6 +118,36 @@ internal static class ApiTestDatabase
         AppRole = AppRole,
     };
 
+    /// <summary>
+    /// إعدادات المبيعات لهذه المجموعة — <b>قاعدة مستقلّة</b>، لا مخطّط بجوار الدفتر.
+    /// <para>
+    /// <b>ولماذا مستقلّة هنا بينما النواة تجاور الدفتر:</b> ناشرا المبيعات والمشتريات
+    /// يبدآن بـ<c>EnsureCreatedAsync</c>، وهي <b>لا تفعل شيئاً في قاعدة فيها جدول
+    /// واحد أصلاً</b>. فنشرهما في قاعدة الدفتر كان سيمرّ صامتاً ولا يُنشئ جدولاً، ثم
+    /// يسقط أول طلب بـ«العلاقة غير موجودة» — نصفُ تهيئةٍ تبدو ناجحة. والفصل هنا هو
+    /// نفسه ما يفعله <c>tools/gate/run.sh --with-demo</c> بقواعده الخمس.
+    /// </para>
+    /// <para>
+    /// <b>وبمستخدم <c>postgres</c> لا بدور تطبيق — وهذا واقع مُعلَن لا اختصار اختبار:</b>
+    /// وحدتا المبيعات والمشتريات <b>لا تملكان دور تطبيق غير مالك أصلاً</b>. لهما اتصال
+    /// واحد يُنشر به المخطّط ويُقرأ به ويُكتب، ولا <c>REVOKE</c> عليه. والفصل الذي
+    /// يحرسه ADR-0003 قائم على الدفتر وحده — وهو حيث تعيش القيود. وقد كان هذا
+    /// <b>غير مرئي</b> ما دام لا باب HTTP يبلغ الوحدتين.
+    /// </para>
+    /// </summary>
+    public static SalesOptions Sales { get; } = new()
+    {
+        ConnectionString = $"Host=127.0.0.1;Port=5432;Database={SalesDatabase};Username=postgres;Include Error Detail=true;Maximum Pool Size=5;Minimum Pool Size=0",
+        CompanyCurrency = "SAR",
+    };
+
+    /// <summary>إعدادات المشتريات لهذه المجموعة — قاعدة مستقلّة، وللأسباب نفسها.</summary>
+    public static PurchasingOptions Purchasing { get; } = new()
+    {
+        ConnectionString = $"Host=127.0.0.1;Port=5432;Database={PurchasingDatabase};Username=postgres;Include Error Detail=true;Maximum Pool Size=5;Minimum Pool Size=0",
+        CompanyCurrency = "SAR",
+    };
+
     /// <summary>جذر المستودع.</summary>
     public static string RepositoryRoot { get; } = RepositoryPaths.Root;
 
@@ -168,6 +212,11 @@ internal static class ApiTestDatabase
         // النواة أولاً: تأسيس المنشأة هو ما تفترضه بوّابة الترحيل قبل أن تبني طلباً.
         await CoreSchema.DeployAsync(Core, cancellationToken).ConfigureAwait(false);
         await LedgerSchema.DeployAsync(Options, cancellationToken).ConfigureAwait(false);
+
+        // وحدتا المستندات في قاعدتيهما — ونشرهما بالناشر نفسه الذي يستعمله العرض
+        // والإنتاج، لا بنسخة ثانية من نصوص المخطّط تنحرف عنه بصمت.
+        await SalesSchemaDeployer.DeployAsync(Sales, cancellationToken).ConfigureAwait(false);
+        await PurchasingSchemaDeployer.DeployAsync(Purchasing, cancellationToken).ConfigureAwait(false);
     }
 
     private static async Task CreateDatabaseAndRoleAsync(CancellationToken cancellationToken)
@@ -181,6 +230,8 @@ internal static class ApiTestDatabase
         // ولا فحص وجود هنا ولا إسقاط: الاسم خاصّ بهذه العملية ولم يوجد قبلها. فإن
         // وُجد فذلك خلل حقيقي يُرفع بصوته (‏42P04)، لا يُبتلع بتبنّي قاعدة غريبة.
         await ExecAsync(admin, $"create database {Database}", cancellationToken).ConfigureAwait(false);
+        await ExecAsync(admin, $"create database {SalesDatabase}", cancellationToken).ConfigureAwait(false);
+        await ExecAsync(admin, $"create database {PurchasingDatabase}", cancellationToken).ConfigureAwait(false);
 
         // ‏nosuperuser ليست تفصيلاً: بدونها تسقط كل طبقات الحصانة معاً (فخ-30 · ADR-0003).
         //
@@ -238,6 +289,8 @@ internal static class ApiTestDatabase
             using NpgsqlConnection admin = new(Maintenance);
             admin.Open();
             DropOne(admin, Database);
+            DropOne(admin, SalesDatabase);
+            DropOne(admin, PurchasingDatabase);
         }
         catch (NpgsqlException exception)
         {
@@ -294,9 +347,13 @@ internal static class ApiTestDatabase
     {
         List<string> candidates = [];
 
+        // ‏**الجذوع الثلاثة**، لا الجذع الأول وحده: قاعدتا المبيعات والمشتريات تحملان
+        // جذعيهما، فنمطٌ يسمّي `babel_api_tests_p%` لا يراهما — فتُتركان بعد كل تشغيل
+        // يُقتل بـSIGKILL، وتتراكمان بلا حدّ. والكنس يبقى محافظاً: قاعدةٌ لا يُعرف
+        // مالكها، أو مالكها حيّ، **تُترك**.
         await using (NpgsqlCommand query = new("select datname from pg_database where datname like $1", admin))
         {
-            query.Parameters.AddWithValue(DatabaseStem + "_p%");
+            query.Parameters.AddWithValue(DatabaseStem + "%");
             await using NpgsqlDataReader reader = await query.ExecuteReaderAsync(cancellationToken)
                 .ConfigureAwait(false);
             while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
@@ -307,7 +364,16 @@ internal static class ApiTestDatabase
 
         foreach (string database in candidates)
         {
-            int? owner = TestRunScope.OwnerProcessId(database, DatabaseStem);
+            int? owner = null;
+            foreach (string stem in new[] { DatabaseStem, SalesStem, PurchasingStem })
+            {
+                owner = TestRunScope.OwnerProcessId(database, stem);
+                if (owner is not null)
+                {
+                    break;
+                }
+            }
+
             if (owner is null || TestRunScope.OwnerIsAlive(owner.Value))
             {
                 continue;

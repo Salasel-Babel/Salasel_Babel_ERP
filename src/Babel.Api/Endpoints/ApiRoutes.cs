@@ -109,6 +109,72 @@ internal static class ApiRoutes
     /// </summary>
     public const string CostCenterSuspension = CostCenter + "/suspension";
 
+    // ── المبيعات ─────────────────────────────────────────────────────────────
+    // ولاحظ شكل الترحيل هنا: **مورد فرعي مستقلّ** ‏`/posting`‏ كما `/reversal` على
+    // القيد و`/suspension` على مركز التكلفة. والترحيل فعلٌ يُنشئ قيداً، لا حقلٌ
+    // يُعدَّل على المستند — ولو كان `PUT` على المستند لصار «تعديل مستند» أول ما يتبادر،
+    // وهو بالضبط ما لا يوجد في هذا النظام.
+
+    /// <summary>العملاء: الإضافة. بيانات أساسية، لا مستند.</summary>
+    public const string Customers = Company + "/customers";
+
+    /// <summary>
+    /// عميل واحد: القراءة.
+    /// <para>
+    /// <b>ولاحظ ما ليس هنا: لا حذف — ولا إعادة تسمية ولا إيقاف بعد.</b> غياب الحذف
+    /// بنيوي كغيابه على القيود ومراكز التكلفة: عميلٌ تشير إليه قيود سنة سابقة لا يُحذف،
+    /// وحذفُه يكسر كل تقرير مُرحَّل. وغياب الإيقاف <b>ليس قراراً بأنه لا يُوقَف</b>،
+    /// بل إعلانٌ بأن الوحدة لا تملكه اليوم: العمود <c>is_active</c> يُكتب مرّةً عند
+    /// الإنشاء ولا يقرؤه مسار ترحيل واحد. وبابٌ اسمه «إيقاف» لا يمنع فاتورةً واحدة
+    /// أسوأ من غيابه — يبدو ضابطاً وليس كذلك.
+    /// </para>
+    /// </summary>
+    public const string Customer = Customers + "/{customerId}";
+
+    /// <summary>فواتير المبيعات: إنشاء <b>مسوّدة</b>. لا قيد ولا أثر في الدفتر.</summary>
+    public const string SalesInvoices = Company + "/sales-invoices";
+
+    /// <summary>فاتورة مبيعات واحدة: القراءة بحالتها ومجاميعها.</summary>
+    public const string SalesInvoice = SalesInvoices + "/{invoiceId}";
+
+    /// <summary>
+    /// ترحيل فاتورة. مورد فرعي مستقلّ، وحصين ضد التكرار: الوصول الثاني بالهوية نفسها
+    /// يُرجع المستند ذاته بـ<c>alreadyPosted = true</c> ورمز 200 بدل 201.
+    /// </summary>
+    public const string SalesInvoicePosting = SalesInvoice + "/posting";
+
+    /// <summary>
+    /// الإشعارات الدائنة: إنشاء <b>مسوّدة</b> على فاتورة <b>مُرحَّلة</b>.
+    /// <para>وهذا هو الطريق الوحيد إلى تصحيح فاتورة مُرحَّلة — لا تعديل ولا حذف (ADR-0002).</para>
+    /// </summary>
+    public const string CreditNotes = Company + "/credit-notes";
+
+    /// <summary>ترحيل إشعار دائن.</summary>
+    public const string CreditNotePosting = CreditNotes + "/{creditNoteId}/posting";
+
+    /// <summary>أعمار الذمم المدينة في تاريخ معلوم.</summary>
+    public const string ReceivablesAging = Company + "/receivables-aging";
+
+    // ── المشتريات ────────────────────────────────────────────────────────────
+
+    /// <summary>الموردون: الإضافة.</summary>
+    public const string Suppliers = Company + "/suppliers";
+
+    /// <summary>مورد واحد: القراءة. وما غاب عن العميل غائب هنا وللسبب نفسه.</summary>
+    public const string Supplier = Suppliers + "/{supplierId}";
+
+    /// <summary>فواتير الموردين: إنشاء فاتورة مصروف <b>مسوّدة</b>.</summary>
+    public const string SupplierBills = Company + "/supplier-bills";
+
+    /// <summary>فاتورة مورد واحدة: القراءة.</summary>
+    public const string SupplierBill = SupplierBills + "/{billId}";
+
+    /// <summary>ترحيل فاتورة مورد — بالشكل نفسه وبالحصانة نفسها.</summary>
+    public const string SupplierBillPosting = SupplierBill + "/posting";
+
+    /// <summary>أعمار الذمم الدائنة في تاريخ معلوم.</summary>
+    public const string PayablesAging = Company + "/payables-aging";
+
     /// <summary>
     /// العقد المنشور نفسه، بايتاته كما أُودعت في <c>contracts/openapi/v1.json</c>.
     /// <para>

@@ -28,6 +28,13 @@
   <ItemGroup>
     <ProjectReference Include="../../src/Babel.Ledger/Babel.Ledger.csproj" />
     <ProjectReference Include="../../src/Babel.Canonicalization/Babel.Canonicalization.csproj" />
+    <!--
+      والمرجعان إلى المبيعات والمشتريات لنشر مخطّطيهما في قاعدتَي هذه العملية وحده —
+      بالناشر نفسه الذي يستعمله الإنتاج والعرض. ولا يُقرأ من الوحدتين نوعٌ آخر: كل
+      ما تعرفه هذه المجموعة عن السطح يمرّ عبر HTTP والعقد المنشور.
+    -->
+    <ProjectReference Include="../../src/Babel.Sales/Babel.Sales.csproj" />
+    <ProjectReference Include="../../src/Babel.Purchasing/Babel.Purchasing.csproj" />
   </ItemGroup>
 
   <ItemGroup>

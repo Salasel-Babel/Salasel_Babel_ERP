@@ -550,6 +550,410 @@
         }
       }
     },
+    "/api/v1/companies/{companyId}/credit-notes": {
+      "parameters": [
+        {
+          "name": "companyId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "draftCreditNote",
+        "summary": "إنشاء إشعار دائن مسوّدة / Draft a credit note",
+        "description": "يُنشئ إشعاراً دائناً في حالة **DRAFT** على فاتورة **مُرحَّلة**. وهذا هو الطريق الوحيد إلى تصحيح فاتورة مُرحَّلة: لا تعديل ولا حذف على هذا السطح ولا في هذا النظام (ADR-0002).\n\nوالوحدة ترفض الإشعار على فاتورة ليست في حالة POSTED، وترفض ما يتجاوز المتبقّي منها.\n\nوسطرٌ يحمل originalInvoiceLineId هو **ردّ بضاعة** يُقيَّم بتكلفة صرفه الأصلي؛ وسطرٌ بلا هذا الحقل **تخفيض قيمة** لا يُحرّك مخزوناً. والفرق قرار تجاري لا يُخمَّن.\n\nCreates a credit note in state **DRAFT** against a **posted** invoice. This is the only route to correcting a posted invoice: there is no edit and no delete on this surface, and none in this system (ADR-0002).\n\nThe module refuses a note against an invoice that is not POSTED, and refuses an amount beyond what is outstanding.\n\nA line carrying originalInvoiceLineId is a **goods return**, valued at the cost of its original issue; a line without that field is a **value reduction** that moves no stock. The difference is a commercial decision, never guessed.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreditNoteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommercialDocument"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "الجسم لا يطابق العقد: حقل غير معروف، أو مبلغ وصل رمزاً رقمياً، أو صيغة مرفوضة. / The body does not match the contract: an unknown field, an amount that arrived as a number token, or a refused spelling.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "تعارض مع حالة قائمة: فترة مقفلة، أو قيد معكوس من قبل. / Conflict with existing state: a closed period, or an already-reversed entry.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "الطلب مفهوم ومرفوض محاسبياً: قيد غير متوازن، أو دور لا يُحلّ إلى حساب. / Understood and refused on accounting grounds: an unbalanced entry, or a role that resolves to no account.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "المورد غير موجود داخل نطاق هذه الشركة. / The resource does not exist within this company's scope.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/companies/{companyId}/credit-notes/{creditNoteId}/posting": {
+      "parameters": [
+        {
+          "name": "companyId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "creditNoteId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الإشعار الدائن. / The credit note identifier.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "postCreditNote",
+        "summary": "ترحيل إشعار دائن / Post a credit note",
+        "description": "يرحّل إشعاراً دائناً مسوّدة ويخصّصه على فاتورته الأصلية. حصين ضد التكرار بالشكل نفسه الذي يسلكه ترحيل الفاتورة: الوصول الثاني يُرجع المستند ذاته و‏alreadyPosted = true ورمز 200.\n\nPosts a draft credit note and allocates it against its original invoice. Idempotent in exactly the same shape as posting an invoice: a second arrival returns the same document with alreadyPosted = true and status 200.",
+        "responses": {
+          "201": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommercialDocument"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "المفتاح نفسه رُحِّل من قبل: الإيصال ذاته و‏alreadyPosted = true. لا قيد ثانٍ. / The same key was already posted: the same receipt with alreadyPosted = true. No second entry.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommercialDocument"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "المورد غير موجود داخل نطاق هذه الشركة. / The resource does not exist within this company's scope.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "تعارض مع حالة قائمة: المستند ليس في الحالة التي يقبلها هذا الفعل، أو الفترة مقفلة. / Conflict with existing state: the document is not in a state this act accepts, or the period is closed.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "الطلب مفهوم ومرفوض محاسبياً: تجاوز حدّ ائتمان، أو تخصيص يتجاوز المتبقّي، أو دور لا يُحلّ إلى حساب. / Understood and refused on accounting grounds: a credit limit exceeded, an allocation beyond what is outstanding, or a role that resolves to no account.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/companies/{companyId}/customers": {
+      "parameters": [
+        {
+          "name": "companyId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "addCustomer",
+        "summary": "تسجيل عميل / Register a customer",
+        "description": "يسجّل عميلاً جديداً: رمزه، واسمه ثنائي اللغة، وحدّ ائتمانه، ومهلة سداده. والرمز **هوية** تحملها مستنداته المُرحَّلة، والاسم عرضٌ يتغيّر.\n\n**ولا حقل vatNumber هنا**: رقم التسجيل الضريبي حقل مورد لا حقل عميل على هذا السطح، وإرساله يُرفض به الطلب كلّه — التجاهل الصامت يجعل المُرسِل يظنّ أنه سجّل رقماً لم يصل.\n\nRegisters a customer: its code, its bilingual name, its credit limit, and its payment terms. The code is an **identity** its posted documents carry; the name is display that changes.\n\n**There is no vatNumber here**: the VAT registration number is a supplier field, not a customer field on this surface, and sending it fails the whole request — silently ignoring it would make the sender believe a number was recorded that never arrived.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomerRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Party"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "الجسم لا يطابق العقد: حقل غير معروف، أو مبلغ وصل رمزاً رقمياً، أو صيغة مرفوضة. / The body does not match the contract: an unknown field, an amount that arrived as a number token, or a refused spelling.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "تعارض مع حالة قائمة: فترة مقفلة، أو قيد معكوس من قبل. / Conflict with existing state: a closed period, or an already-reversed entry.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "الطلب مفهوم ومرفوض محاسبياً: قيد غير متوازن، أو دور لا يُحلّ إلى حساب. / Understood and refused on accounting grounds: an unbalanced entry, or a role that resolves to no account.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/companies/{companyId}/customers/{customerId}": {
+      "parameters": [
+        {
+          "name": "companyId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "customerId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف العميل. / The customer identifier.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "readCustomer",
+        "summary": "قراءة عميل / Read one customer",
+        "description": "يقرأ عميلاً واحداً داخل نطاق الشركة.\n\n**ولاحظ ما ليس على هذا المورد: لا PUT ولا DELETE ولا مورد إيقاف.** غياب الحذف بنيوي كغيابه على القيود ومراكز التكلفة: عميلٌ تشير إليه قيود سنة سابقة لا يُحذف، وحذفه يكسر كل تقرير مُرحَّل. أمّا غياب الإيقاف فهو **إعلان نقص لا قرار منع**: وحدة المبيعات لا تملك اليوم إيقافاً — العمود is_active يُكتب مرّةً عند الإنشاء ولا يقرؤه مسار ترحيل واحد — وبابٌ اسمه «إيقاف» لا يمنع فاتورةً واحدة أسوأ من غيابه: يبدو ضابطاً وليس كذلك.\n\nReads a single customer within the company scope.\n\n**Note what this resource does not carry: no PUT, no DELETE, and no suspension sub-resource.** The absence of delete is structural, as it is on entries and cost centres: a customer referenced by last year's entries is never deleted, and deleting it breaks every posted report. The absence of suspension is instead a **declared gap, not a prohibition**: the sales module has no suspension today — the is_active column is written once at creation and read by no posting path — and a door labelled 'suspend' that stops not one invoice is worse than no door: it looks like a control and is not one.",
+        "responses": {
+          "200": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Party"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "المورد غير موجود داخل نطاق هذه الشركة. / The resource does not exist within this company's scope.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/companies/{companyId}/document-shapes/{documentType}": {
       "parameters": [
         {
@@ -1126,6 +1530,455 @@
         }
       }
     },
+    "/api/v1/companies/{companyId}/payables-aging": {
+      "parameters": [
+        {
+          "name": "companyId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "readPayablesAging",
+        "summary": "أعمار الذمم الدائنة / Payables aging",
+        "description": "أعمار ذمم الموردين في تاريخ معلوم، بالشرائح نفسها وبالشكل نفسه الذي تُقرأ به الذمم المدينة — شكلٌ واحد لا شكلان: تقريران بشرائح مختلفة يجعلان المقارنة بينهما عملاً يدوياً.\n\nSupplier payables aged at a given date, in the same bands and the same shape as receivables — one shape, not two: two reports with different bands make comparing them manual work.",
+        "parameters": [
+          {
+            "name": "asOf",
+            "in": "query",
+            "required": true,
+            "description": "تاريخ التقرير الميلادي. / The Gregorian report date.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgingReport"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/companies/{companyId}/receivables-aging": {
+      "parameters": [
+        {
+          "name": "companyId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "readReceivablesAging",
+        "summary": "أعمار الذمم المدينة / Receivables aging",
+        "description": "أعمار ذمم العملاء في تاريخ معلوم، بشرائح: لم يستحق · 1–30 · 31–60 · 61–90 · فوق 90، ومجموعٍ هو مجموع الشرائح بالضبط. نقطة قراءة: تعمل والاشتراك للقراءة فقط.\n\nCustomer receivables aged at a given date, in bands: not due, 1-30, 31-60, 61-90, over 90, with a total that is exactly the sum of the bands. A read point: it works while the subscription is read-only.",
+        "parameters": [
+          {
+            "name": "asOf",
+            "in": "query",
+            "required": true,
+            "description": "تاريخ التقرير الميلادي. / The Gregorian report date.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgingReport"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/companies/{companyId}/sales-invoices": {
+      "parameters": [
+        {
+          "name": "companyId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "draftSalesInvoice",
+        "summary": "إنشاء فاتورة مبيعات مسوّدة / Draft a sales invoice",
+        "description": "يُنشئ فاتورة مبيعات في حالة **DRAFT**. ولا قيد ولا أثر في الدفتر: الترحيل مورد فرعي مستقلّ يُنادى بعده. والضريبة تُحسب وتُقرَّب **على السطر**، ومجموع المستند مجموع سطور مقرَّبة — والحساب كلّه في الوحدة لا في هذا السطح.\n\n**ولا رمز حساب في الحمولة ولا رمز حدث**: السطر يحمل itemGroup — مؤهّل دور — ومصفوفة الترحيل وحدها تُحوّله إلى حساب (القاعدة 2).\n\nCreates a sales invoice in state **DRAFT**. No entry and no effect on the ledger: posting is a separate sub-resource called afterwards. Tax is computed and rounded **per line**, and the document total is the sum of rounded lines — all of it computed in the module, none of it on this surface.\n\n**No account code and no event code appear in the payload**: a line carries an itemGroup — a role qualifier — and the posting matrix alone turns it into an account (Rule 2).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SalesInvoiceRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommercialDocument"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "الجسم لا يطابق العقد: حقل غير معروف، أو مبلغ وصل رمزاً رقمياً، أو صيغة مرفوضة. / The body does not match the contract: an unknown field, an amount that arrived as a number token, or a refused spelling.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "تعارض مع حالة قائمة: فترة مقفلة، أو قيد معكوس من قبل. / Conflict with existing state: a closed period, or an already-reversed entry.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "الطلب مفهوم ومرفوض محاسبياً: قيد غير متوازن، أو دور لا يُحلّ إلى حساب. / Understood and refused on accounting grounds: an unbalanced entry, or a role that resolves to no account.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "المورد غير موجود داخل نطاق هذه الشركة. / The resource does not exist within this company's scope.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/companies/{companyId}/sales-invoices/{invoiceId}": {
+      "parameters": [
+        {
+          "name": "companyId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "invoiceId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف فاتورة المبيعات. / The sales invoice identifier.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "readSalesInvoice",
+        "summary": "قراءة فاتورة مبيعات / Read one sales invoice",
+        "description": "يقرأ فاتورة بحالتها ومجاميعها ومعرّف قيدها إن رُحّلت. ونقطة قراءة: تعمل والاشتراك للقراءة فقط.\n\nReads an invoice with its state, its totals, and its entry identifier if posted. A read point: it works while the subscription is read-only.",
+        "responses": {
+          "200": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommercialDocument"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "المورد غير موجود داخل نطاق هذه الشركة. / The resource does not exist within this company's scope.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/companies/{companyId}/sales-invoices/{invoiceId}/posting": {
+      "parameters": [
+        {
+          "name": "companyId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "invoiceId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف فاتورة المبيعات. / The sales invoice identifier.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "postSalesInvoice",
+        "summary": "ترحيل فاتورة مبيعات / Post a sales invoice",
+        "description": "يرحّل فاتورة مسوّدة فتصير **واقعة محاسبية**. مورد فرعي مستقلّ لا PUT على المستند: الترحيل فعلٌ يُنشئ قيداً، لا حقلٌ يُعدَّل.\n\n**وحصين ضد التكرار بهوية الترحيل** (شركة · نوع المستند · معرّفه · رمز الإطلاق · الجيل · رمز الحدث): الوصول الثاني بالهوية نفسها يُرجع المستند ذاته و‏alreadyPosted = true ورمز 200 بدل 201، ولا يُنشئ قيداً ثانياً — **مهما كان ترتيب الوصول**. والحكم حكم بوّابة الوحدة لا مقارنةَ حالةٍ قُرئت قبل النداء: نداءان متزامنان يجتازان فحص «مسوّدة» معاً، ويلتقيان عند الهوية الواحدة، فيكتب أحدهما ويعود الآخر موسوماً.\n\nولا جسم لهذا الطلب: كل ما يحتاجه الترحيل موجود على المستند، ومفتاح الحصانة تشتقّه الوحدة من هويته ولا يُرسله العميل — فلا يستطيع عميلان أن يختارا مفتاحين لواقعة واحدة.\n\nPosts a draft invoice, turning it into an **accounting fact**. A separate sub-resource, not a PUT on the document: posting is an act that creates an entry, not a field that is edited.\n\n**Idempotent by the posting identity** (company, source document type, source document id, trigger, generation, event code): a second arrival with the same identity returns the same document with alreadyPosted = true and status 200 instead of 201, and never creates a second entry — **whatever the arrival order**. The verdict is the module gateway's, not a comparison against a state read before the call: two concurrent calls both pass the 'is it a draft' check, meet at the one identity, and one writes while the other returns marked.\n\nThis request has no body: everything posting needs is on the document, and the idempotency key is derived by the module from that identity rather than sent by the client — so two clients cannot choose two keys for one fact.",
+        "responses": {
+          "201": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommercialDocument"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "المفتاح نفسه رُحِّل من قبل: الإيصال ذاته و‏alreadyPosted = true. لا قيد ثانٍ. / The same key was already posted: the same receipt with alreadyPosted = true. No second entry.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommercialDocument"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "المورد غير موجود داخل نطاق هذه الشركة. / The resource does not exist within this company's scope.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "تعارض مع حالة قائمة: المستند ليس في الحالة التي يقبلها هذا الفعل، أو الفترة مقفلة. / Conflict with existing state: the document is not in a state this act accepts, or the period is closed.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "الطلب مفهوم ومرفوض محاسبياً: تجاوز حدّ ائتمان، أو تخصيص يتجاوز المتبقّي، أو دور لا يُحلّ إلى حساب. / Understood and refused on accounting grounds: a credit limit exceeded, an allocation beyond what is outstanding, or a role that resolves to no account.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/companies/{companyId}/setup": {
       "parameters": [
         {
@@ -1253,6 +2106,491 @@
           },
           "422": {
             "description": "الطلب مفهوم ومرفوض محاسبياً: قيد غير متوازن، أو دور لا يُحلّ إلى حساب. / Understood and refused on accounting grounds: an unbalanced entry, or a role that resolves to no account.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/companies/{companyId}/supplier-bills": {
+      "parameters": [
+        {
+          "name": "companyId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "draftExpenseBill",
+        "summary": "إنشاء فاتورة مصروف مسوّدة / Draft an expense bill",
+        "description": "يُنشئ فاتورة مورد **مصروفية** في حالة DRAFT — بلا مخزون ولا مطابقة ثلاثية. ومركز التكلفة **إلزامي** عليها: المصروف بلا مركز تكلفة رقمٌ لا يُبوَّب.\n\n**ولاحظ ما ليس على هذا المورد: لا فاتورة مخزنية.** الفاتورة المخزنية تُطابَق بثلاثية (أمر شراء · استلام · فاتورة)، والاستلام لا يُرحَّل إلا عبر حدّ تقييم المخزون — أي أن نشرها يجرّ وحدة المخزون كاملةً إلى هذا السطح. وهذا **نقص مُعلَن**: انظر ADR سطح المستندات.\n\nCreates an **expense** supplier bill in state DRAFT — no stock, no three-way match. A cost centre is **mandatory** on it: an expense without a cost centre is a number that cannot be grouped.\n\n**Note what this resource does not carry: no stock bill.** A stock bill is three-way matched (purchase order, goods receipt, bill), and a goods receipt posts only through the inventory valuation port — publishing it drags the whole inventory module onto this surface. This is a **declared gap**: see the document-surface ADR.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExpenseBillRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommercialDocument"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "الجسم لا يطابق العقد: حقل غير معروف، أو مبلغ وصل رمزاً رقمياً، أو صيغة مرفوضة. / The body does not match the contract: an unknown field, an amount that arrived as a number token, or a refused spelling.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "تعارض مع حالة قائمة: فترة مقفلة، أو قيد معكوس من قبل. / Conflict with existing state: a closed period, or an already-reversed entry.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "الطلب مفهوم ومرفوض محاسبياً: قيد غير متوازن، أو دور لا يُحلّ إلى حساب. / Understood and refused on accounting grounds: an unbalanced entry, or a role that resolves to no account.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "المورد غير موجود داخل نطاق هذه الشركة. / The resource does not exist within this company's scope.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/companies/{companyId}/supplier-bills/{billId}": {
+      "parameters": [
+        {
+          "name": "companyId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "billId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف فاتورة المورد. / The supplier bill identifier.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "readSupplierBill",
+        "summary": "قراءة فاتورة مورد / Read one supplier bill",
+        "description": "يقرأ فاتورة مورد بحالتها ومجاميعها ومعرّف قيدها إن رُحّلت.\n\nوكانت هذه القراءة **غير موجودة في الوحدة أصلاً**: تُنشأ الفاتورة وتُرحَّل ولا توجد جملة تقول «ما حالها الآن؟». فمن أنشأ مسوّدةً ثم انقطع اتصاله لم يكن أمامه إلا أن **يعيد الترحيل ليعرف**.\n\nReads a supplier bill with its state, its totals, and its entry identifier if posted.\n\nThis read **did not exist in the module at all**: a bill could be created and posted, and there was no sentence for 'what state is it in now?'. Whoever created a draft and then lost their connection had no option but to **post again in order to find out**.",
+        "responses": {
+          "200": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommercialDocument"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "المورد غير موجود داخل نطاق هذه الشركة. / The resource does not exist within this company's scope.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/companies/{companyId}/supplier-bills/{billId}/posting": {
+      "parameters": [
+        {
+          "name": "companyId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "billId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف فاتورة المورد. / The supplier bill identifier.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "postSupplierBill",
+        "summary": "ترحيل فاتورة مورد / Post a supplier bill",
+        "description": "يرحّل فاتورة مورد مسوّدة. مورد فرعي مستقلّ، وحصين ضد التكرار بهوية الترحيل نفسها وبالسلوك نفسه: الوصول الثاني يُرجع المستند ذاته و‏alreadyPosted = true ورمز 200 بدل 201، بلا قيد ثانٍ.\n\nPosts a draft supplier bill. A separate sub-resource, idempotent by the same posting identity with the same behaviour: a second arrival returns the same document with alreadyPosted = true and status 200 instead of 201, with no second entry.",
+        "responses": {
+          "201": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommercialDocument"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "المفتاح نفسه رُحِّل من قبل: الإيصال ذاته و‏alreadyPosted = true. لا قيد ثانٍ. / The same key was already posted: the same receipt with alreadyPosted = true. No second entry.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommercialDocument"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "المورد غير موجود داخل نطاق هذه الشركة. / The resource does not exist within this company's scope.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "تعارض مع حالة قائمة: المستند ليس في الحالة التي يقبلها هذا الفعل، أو الفترة مقفلة. / Conflict with existing state: the document is not in a state this act accepts, or the period is closed.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "الطلب مفهوم ومرفوض محاسبياً: تجاوز حدّ ائتمان، أو تخصيص يتجاوز المتبقّي، أو دور لا يُحلّ إلى حساب. / Understood and refused on accounting grounds: a credit limit exceeded, an allocation beyond what is outstanding, or a role that resolves to no account.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/companies/{companyId}/suppliers": {
+      "parameters": [
+        {
+          "name": "companyId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "addSupplier",
+        "summary": "تسجيل مورد / Register a supplier",
+        "description": "يسجّل مورداً جديداً. وvatNumber **اختياري لأن غيابه واقع لا نقص**: المورد دون حدّ التسجيل، وغير المقيم، والمُنشأ قبل هذا الحقل — ثلاثتهم بلا رقم. وحين يُرسل يُتحقّق من شكله كاملاً ولا يُقبل «تقريباً صحيح».\n\nRegisters a supplier. vatNumber is **optional because its absence is a fact, not a gap**: the supplier below the registration threshold, the non-resident supplier, and the supplier created before this field all have none. When it is sent, its full shape is verified and 'nearly right' is not accepted.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SupplierRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Party"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "الجسم لا يطابق العقد: حقل غير معروف، أو مبلغ وصل رمزاً رقمياً، أو صيغة مرفوضة. / The body does not match the contract: an unknown field, an amount that arrived as a number token, or a refused spelling.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "تعارض مع حالة قائمة: فترة مقفلة، أو قيد معكوس من قبل. / Conflict with existing state: a closed period, or an already-reversed entry.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "الطلب مفهوم ومرفوض محاسبياً: قيد غير متوازن، أو دور لا يُحلّ إلى حساب. / Understood and refused on accounting grounds: an unbalanced entry, or a role that resolves to no account.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/companies/{companyId}/suppliers/{supplierId}": {
+      "parameters": [
+        {
+          "name": "companyId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "supplierId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف المورد. / The supplier identifier.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "readSupplier",
+        "summary": "قراءة مورد / Read one supplier",
+        "description": "يقرأ مورداً واحداً. وما غاب عن مورد العميل غائب هنا وللسبب نفسه: لا حذف بنيوياً، ولا إيقاف بعد.\n\nReads a single supplier. What is absent from the customer resource is absent here for the same reasons: no delete, structurally, and no suspension yet.",
+        "responses": {
+          "200": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Party"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "المورد غير موجود داخل نطاق هذه الشركة. / The resource does not exist within this company's scope.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -1524,6 +2862,95 @@
         ],
         "additionalProperties": false
       },
+      "AgingBands": {
+        "type": "object",
+        "description": "شرائح أعمار الديون. و‏total مجموع الشرائح بالضبط — يُرسَل محسوباً ولا يُترك لكل عميل أن يجمعه فيختلف تقريران عن الرقم نفسه. / Debt aging bands. total is exactly the sum of the bands — sent computed rather than left for each client to add up, which is how two reports come to disagree about one number.",
+        "properties": {
+          "days1To30": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "days31To60": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "days61To90": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "notDue": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "over90": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "total": {
+            "$ref": "#/components/schemas/Money"
+          }
+        },
+        "required": [
+          "days1To30",
+          "days31To60",
+          "days61To90",
+          "notDue",
+          "over90",
+          "total"
+        ],
+        "additionalProperties": false
+      },
+      "AgingParty": {
+        "type": "object",
+        "description": "أعمار ديون طرف واحد. / One party's aged debt.",
+        "properties": {
+          "bands": {
+            "$ref": "#/components/schemas/AgingBands"
+          },
+          "code": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "رمز الطرف. / The party code."
+          },
+          "name": {
+            "$ref": "#/components/schemas/LocalizedText"
+          },
+          "partyId": {
+            "type": "string",
+            "maxLength": 36,
+            "description": "معرّف الطرف. / The party identifier."
+          }
+        },
+        "required": [
+          "bands",
+          "code",
+          "name",
+          "partyId"
+        ],
+        "additionalProperties": false
+      },
+      "AgingReport": {
+        "type": "object",
+        "description": "تقرير أعمار ديون — **بالشكل نفسه للمدينة والدائنة**. شكلان مختلفان كانا سيجعلان مقارنة الذمم بالذمم عملاً يدوياً عند كل عميل. / A debt aging report — **the same shape for receivables and payables**. Two different shapes would make comparing one against the other manual work in every client.",
+        "properties": {
+          "asOf": {
+            "type": "string",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+            "description": "تاريخ التقرير. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The report date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period."
+          },
+          "parties": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgingParty"
+            },
+            "description": "الأطراف. / The parties."
+          },
+          "totals": {
+            "$ref": "#/components/schemas/AgingBands"
+          }
+        },
+        "required": [
+          "asOf",
+          "parties",
+          "totals"
+        ],
+        "additionalProperties": false
+      },
       "ApiError": {
         "type": "object",
         "properties": {
@@ -1680,6 +3107,59 @@
         ],
         "additionalProperties": false
       },
+      "CommercialDocument": {
+        "type": "object",
+        "description": "مستند تجاري كما يخرج على السلك — فاتورة مبيعات، أو إشعار دائن، أو فاتورة مورد. / A commercial document as it leaves on the wire — a sales invoice, a credit note, or a supplier bill.",
+        "properties": {
+          "alreadyPosted": {
+            "type": "boolean",
+            "description": "هل كانت هذه الهوية مُرحَّلة **قبل** هذا الطلب؟ ولا تُشتقّ من state: المستند بعد أي ترحيل ناجح حالته POSTED — الأول والثاني سواء. ورمز الحالة وحده لا يكفي: 200 يضيع خلف أي وسيط يعيد التوجيه. / Was this identity already posted **before** this request? It is not derivable from state: after any successful post the document is POSTED, first arrival and second alike. And the status code alone is not enough: a 200 is lost behind any proxy that redirects."
+          },
+          "entryId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 36,
+            "description": "معرّف القيد إن رُحّل المستند، و‏null إن كان مسوّدة. / The journal entry identifier if the document is posted, and null while it is a draft."
+          },
+          "gross": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "id": {
+            "type": "string",
+            "maxLength": 36,
+            "description": "معرّف المستند. / The document identifier."
+          },
+          "net": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "number": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "رقم المستند. / The document number."
+          },
+          "state": {
+            "type": "string",
+            "maxLength": 32,
+            "description": "الحالة: DRAFT · APPROVED · POSTED · REVERSED · CANCELLED. / The state: DRAFT, APPROVED, POSTED, REVERSED, CANCELLED."
+          },
+          "tax": {
+            "$ref": "#/components/schemas/Money"
+          }
+        },
+        "required": [
+          "alreadyPosted",
+          "entryId",
+          "gross",
+          "id",
+          "net",
+          "number",
+          "state",
+          "tax"
+        ],
+        "additionalProperties": false
+      },
       "CompanySetup": {
         "type": "object",
         "description": "تأسيس المنشأة كما يُقرأ. **defaultCostCenter غير فارغ أبداً** وcostCenters لا تكون فارغة أبداً — الثابتة مفروضة في النواة بغياب عملية حذف، لا بفحص عند مستدعٍ. / The company setup as read. **defaultCostCenter is never empty** and costCenters is never empty — the invariant is enforced in the core by the absence of any delete operation, not by a caller-side check.",
@@ -1791,6 +3271,71 @@
         },
         "required": [
           "nameAr"
+        ],
+        "additionalProperties": false
+      },
+      "CreditNoteRequest": {
+        "type": "object",
+        "description": "طلب إنشاء إشعار دائن مسوّدة. **ولا عميل فيه**: عميله عميل الفاتورة الأصلية، وإعادةُ ذكره تفتح باباً لإشعارٍ على عميل غير عميل فاتورته. / A request to draft a credit note. **It carries no customer**: the customer is the original invoice's customer, and repeating it would open a door to a note against a customer other than its invoice's.",
+        "properties": {
+          "invoiceId": {
+            "type": "string",
+            "maxLength": 36,
+            "description": "الفاتورة الأصلية — الإشعار لا يوجد بلا أصل، والأصل يجب أن يكون مُرحَّلاً. / The original invoice — a note does not exist without one, and the original must be posted."
+          },
+          "issuedOn": {
+            "type": "string",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+            "description": "تاريخ الإصدار. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The issue date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period."
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SalesLine"
+            },
+            "description": "سطور المرتجع أو التخفيض. / The return or reduction lines."
+          },
+          "number": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "رقم الإشعار — فريد داخل المستأجر. / The note number — unique within the tenant."
+          }
+        },
+        "required": [
+          "invoiceId",
+          "issuedOn",
+          "lines",
+          "number"
+        ],
+        "additionalProperties": false
+      },
+      "CustomerRequest": {
+        "type": "object",
+        "description": "طلب تسجيل عميل. ولا حقل مستأجر ولا حقل شركة فيه — النطاق من الاعتماد ومن المسار. **ولا vatNumber**: حقل مورد لا حقل عميل، وإرساله يُفشل الطلب كلّه. / A customer registration request. No tenant field and no company field — scope comes from the credential and the path. **And no vatNumber**: that is a supplier field, not a customer field, and sending it fails the whole request.",
+        "properties": {
+          "creditLimit": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "code": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "رمز العميل داخل المستأجر — هوية تحملها مستنداته، لا نصّاً معروضاً. / The customer code within the tenant — an identity its documents carry, not displayed text."
+          },
+          "name": {
+            "$ref": "#/components/schemas/LocalizedText"
+          },
+          "paymentTermsDays": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3650,
+            "description": "مهلة السداد بالأيام — منها يُشتقّ تاريخ الاستحقاق. / The payment terms in days; the due date is derived from them."
+          }
+        },
+        "required": [
+          "code",
+          "creditLimit",
+          "name",
+          "paymentTermsDays"
         ],
         "additionalProperties": false
       },
@@ -1962,6 +3507,53 @@
         "type": "string",
         "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,8})?$",
         "description": "سعر صرف نصّاً بمقياس لا يتجاوز ثمانياً، بالقواعد نفسها التي تحكم المبالغ. / An exchange rate as a string with at most eight decimal places, under the same rules as amounts."
+      },
+      "ExpenseBillRequest": {
+        "type": "object",
+        "description": "طلب إنشاء فاتورة مصروف مسوّدة — بلا مخزون ولا مطابقة ثلاثية. / A request to draft an expense bill — no stock, no three-way match.",
+        "properties": {
+          "costCenterId": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "مركز التكلفة — بُعد إلزامي على المصروف: مصروفٌ بلا مركز رقمٌ لا يُبوَّب. / The cost centre — mandatory on an expense: an expense without one is a number that cannot be grouped."
+          },
+          "expenseCategory": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "تصنيف المصروف — مؤهّل الدور. / The expense category — the role qualifier."
+          },
+          "issuedOn": {
+            "type": "string",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+            "description": "تاريخ الفاتورة. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The bill date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period."
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PurchaseLine"
+            },
+            "description": "السطور. / The lines."
+          },
+          "number": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "رقم الفاتورة — فريد داخل المستأجر. / The bill number — unique within the tenant."
+          },
+          "supplierId": {
+            "type": "string",
+            "maxLength": 36,
+            "description": "معرّف المورد. / The supplier identifier."
+          }
+        },
+        "required": [
+          "costCenterId",
+          "expenseCategory",
+          "issuedOn",
+          "lines",
+          "number",
+          "supplierId"
+        ],
+        "additionalProperties": false
       },
       "HealthResponse": {
         "type": "object",
@@ -2259,6 +3851,51 @@
         "required": [
           "name",
           "value"
+        ],
+        "additionalProperties": false
+      },
+      "Party": {
+        "type": "object",
+        "description": "طرف كما يخرج على السلك — عميل أو مورد. / A party as it leaves on the wire — a customer or a supplier.",
+        "properties": {
+          "creditLimit": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "code": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "الرمز. / The code."
+          },
+          "id": {
+            "type": "string",
+            "maxLength": 36,
+            "description": "المعرّف الذي تُبنى عليه المستندات. / The identifier documents are built on."
+          },
+          "name": {
+            "$ref": "#/components/schemas/LocalizedText"
+          },
+          "paymentTermsDays": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3650,
+            "description": "مهلة السداد بالأيام. / The payment terms in days."
+          },
+          "vatNumber": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 64,
+            "description": "رقم التسجيل الضريبي على المورد؛ وفراغٌ على مورد بلا رقم؛ و‏null على العميل — فالحقل لا يوجد عليه أصلاً. والحالات الثلاث مختلفة ولا تُجمع في تمثيل واحد. / The VAT number on a supplier; empty on a supplier without one; and null on a customer, where the field does not exist at all. The three states differ and are not collapsed into one spelling."
+          }
+        },
+        "required": [
+          "code",
+          "creditLimit",
+          "id",
+          "name",
+          "paymentTermsDays",
+          "vatNumber"
         ],
         "additionalProperties": false
       },
@@ -2694,6 +4331,54 @@
         ],
         "additionalProperties": false
       },
+      "PurchaseLine": {
+        "type": "object",
+        "description": "سطر فاتورة مصروف. ولا حساب فيه ولا رمز حساب، كسطر المبيعات وللسبب نفسه. / An expense bill line. No account and no account code, as on a sales line and for the same reason.",
+        "properties": {
+          "description": {
+            "$ref": "#/components/schemas/LocalizedText"
+          },
+          "itemGroup": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "مجموعة الصنف — مؤهّل الدور. / The item group — the role qualifier."
+          },
+          "itemId": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "الصنف أو البند في دفتره المساعد. / The item or line in its subledger."
+          },
+          "quantity": {
+            "$ref": "#/components/schemas/Quantity"
+          },
+          "taxClassification": {
+            "type": "string",
+            "maxLength": 32,
+            "description": "التصنيف الضريبي. المستعمَل اليوم: standard · zero · exempt. / The tax classification. In use today: standard, zero, exempt."
+          },
+          "taxRate": {
+            "$ref": "#/components/schemas/TaxRate"
+          },
+          "taxRecoverable": {
+            "type": "boolean",
+            "description": "هل ضريبة هذا السطر قابلة للاسترداد؟ وهي واقعة ضريبية عن السطر لا تُشتقّ من التصنيف. / Is this line's tax recoverable? A tax fact about the line, not derived from its classification."
+          },
+          "unitPrice": {
+            "$ref": "#/components/schemas/Money"
+          }
+        },
+        "required": [
+          "description",
+          "itemGroup",
+          "itemId",
+          "quantity",
+          "taxClassification",
+          "taxRate",
+          "taxRecoverable",
+          "unitPrice"
+        ],
+        "additionalProperties": false
+      },
       "PutCapabilityProfileRequest": {
         "type": "object",
         "properties": {
@@ -2718,6 +4403,11 @@
         ],
         "additionalProperties": false
       },
+      "Quantity": {
+        "type": "string",
+        "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$",
+        "description": "كمّية نصّاً بمقياس لا يتجاوز أربعاً، بالنحو الذي تخضع له المبالغ. وهي ليست مبلغاً — ولذلك لها مخطّطها — لكنها تُضرب في مبلغ، فأي فقدان دقّة فيها يصل إلى المال. / A quantity as a string with at most four decimal places, under the grammar that governs amounts. It is not an amount — hence its own schema — but it is multiplied by one, so any precision lost in it reaches the money."
+      },
       "ReverseJournalEntryRequest": {
         "type": "object",
         "properties": {
@@ -2735,6 +4425,96 @@
         },
         "required": [
           "reason"
+        ],
+        "additionalProperties": false
+      },
+      "SalesInvoiceRequest": {
+        "type": "object",
+        "description": "طلب إنشاء فاتورة مبيعات مسوّدة. ولا مجاميع فيه: المجاميع تُحسب في الوحدة على السطر ثم تُجمع، ومجموعٌ يرسله العميل كان سيصير مصدر حقيقة ثانياً يستطيع أن ينحرف. / A request to draft a sales invoice. It carries no totals: totals are computed in the module per line and then summed, and a total sent by the client would be a second source of truth able to diverge.",
+        "properties": {
+          "branchId": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "الفرع — بُعد تحليلي إلزامي على الإيراد. / The branch — a mandatory analytical dimension on revenue."
+          },
+          "customerId": {
+            "type": "string",
+            "maxLength": 36,
+            "description": "معرّف العميل. / The customer identifier."
+          },
+          "issuedOn": {
+            "type": "string",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+            "description": "تاريخ الإصدار. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The issue date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period."
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SalesLine"
+            },
+            "description": "السطور. فاتورة بلا سطر تُرفض في الوحدة برمزها. / The lines. An invoice with no line is refused in the module under its own code."
+          },
+          "number": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "رقم الفاتورة — فريد داخل المستأجر. / The invoice number — unique within the tenant."
+          }
+        },
+        "required": [
+          "branchId",
+          "customerId",
+          "issuedOn",
+          "lines",
+          "number"
+        ],
+        "additionalProperties": false
+      },
+      "SalesLine": {
+        "type": "object",
+        "description": "سطر مستند مبيعات. **ولا حساب فيه ولا رمز حساب**: يحمل itemGroup — مؤهّل دور — والمصفوفة وحدها تُحوّله إلى حساب (القاعدة 2 ممتدّةً إلى السلك). / A sales document line. **No account and no account code**: it carries an itemGroup — a role qualifier — and the matrix alone turns it into an account (Rule 2 extended to the wire).",
+        "properties": {
+          "description": {
+            "$ref": "#/components/schemas/LocalizedText"
+          },
+          "discount": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "itemGroup": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "مجموعة الصنف — مؤهّل الدور. / The item group — the role qualifier."
+          },
+          "originalInvoiceLineId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 36,
+            "description": "على سطر الإشعار الدائن وحده: سطر الفاتورة الذي تُردّ بضاعته. و‏null تعني **تخفيض قيمة لا ردّ بضاعة** — إشعارٌ لا يُحرّك مخزوناً ولا يُرحّل قيد تكلفة. والفرق قرار تجاري لا يُخمَّن. / On a credit note line only: the invoice line whose goods are returned. null means a **value reduction, not a goods return** — a note that moves no stock and posts no cost entry. The difference is a commercial decision, never guessed."
+          },
+          "quantity": {
+            "$ref": "#/components/schemas/Quantity"
+          },
+          "taxClassification": {
+            "type": "string",
+            "maxLength": 32,
+            "description": "التصنيف الضريبي. المستعمَل اليوم: standard · zero · exempt — ويُنشر نصّاً لا مجموعةً مغلقة، فلا قيد تحقّق واحد يُغلقه، وتضييقُه بعد نشره يفرض v2. / The tax classification. In use today: standard, zero, exempt — published as text rather than a closed set, since no check constraint closes it, and narrowing it after publication would force v2."
+          },
+          "taxRate": {
+            "$ref": "#/components/schemas/TaxRate"
+          },
+          "unitPrice": {
+            "$ref": "#/components/schemas/Money"
+          }
+        },
+        "required": [
+          "description",
+          "discount",
+          "itemGroup",
+          "quantity",
+          "taxClassification",
+          "taxRate",
+          "unitPrice"
         ],
         "additionalProperties": false
       },
@@ -2929,6 +4709,41 @@
         ],
         "additionalProperties": false
       },
+      "SupplierRequest": {
+        "type": "object",
+        "description": "طلب تسجيل مورد — كطلب العميل ومعه رقم التسجيل الضريبي اختياراً. / A supplier registration request — the customer request plus an optional VAT registration number.",
+        "properties": {
+          "creditLimit": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "code": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "رمز المورد داخل المستأجر. / The supplier code within the tenant."
+          },
+          "name": {
+            "$ref": "#/components/schemas/LocalizedText"
+          },
+          "paymentTermsDays": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3650,
+            "description": "مهلة السداد بالأيام. / The payment terms in days."
+          },
+          "vatNumber": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "رقم التسجيل الضريبي، أو غيابه فالمورد غير مسجَّل — وغيابه واقع لا نقص. وحين يُرسل يُتحقّق من شكله كاملاً. / The VAT registration number, or omit it for an unregistered supplier — its absence is a fact, not a gap. When sent, its full shape is verified."
+          }
+        },
+        "required": [
+          "code",
+          "creditLimit",
+          "name",
+          "paymentTermsDays"
+        ],
+        "additionalProperties": false
+      },
       "SuspendCostCenterRequest": {
         "type": "object",
         "properties": {
@@ -2942,6 +4757,15 @@
           "reason"
         ],
         "additionalProperties": false
+      },
+      "TaxRate": {
+        "type": "string",
+        "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,8})?$",
+        "description": "نسبة الضريبة **كسراً عشرياً لا نسبة مئوية**: خمسة عشر بالمئة تُكتب 0.15 لا 15. والمقياس ثمانٍ لا أربع: النسبة ليست مبلغاً ولا تُقرَّب إلى الهللة. / The tax rate as a **decimal fraction, not a percentage**: fifteen percent is written 0.15, never 15. The scale is eight, not four: a rate is not an amount and is not rounded to the halala.",
+        "examples": [
+          "0.15",
+          "0"
+        ]
       },
       "TrialBalance": {
         "type": "object",

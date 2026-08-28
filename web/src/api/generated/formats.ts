@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     03c76b7b232225176cd92cbef06411102197f3e1b1a90db2001eea51dd36d74b
+     63c3b477e2e6dbcf9ca20df58b2cb06a6f649c6754d096b4a261c9544948c1f6
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -17,6 +17,10 @@ export const PARAM_API_V1_COMPANIES_COMPANYID_COST_CENTERS_COSTCENTERCODE_SUSPEN
 export const PARAM_API_V1_COMPANIES_COMPANYID_COST_CENTERS_COSTCENTERCODE_SUSPENSION_costCenterCode_RE = new RegExp("^[a-z0-9._]{1,32}$");
 export const PARAM_API_V1_COMPANIES_COMPANYID_COST_CENTERS_COSTCENTERCODE_costCenterCode = "^[a-z0-9._]{1,32}$";
 export const PARAM_API_V1_COMPANIES_COMPANYID_COST_CENTERS_COSTCENTERCODE_costCenterCode_RE = new RegExp("^[a-z0-9._]{1,32}$");
+export const PARAM_readPayablesAging_asOf = "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$";
+export const PARAM_readPayablesAging_asOf_RE = new RegExp("^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$");
+export const PARAM_readReceivablesAging_asOf = "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$";
+export const PARAM_readReceivablesAging_asOf_RE = new RegExp("^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$");
 export const PARAM_readTrialBalance_period = "^[0-9]{4}-(0[1-9]|1[0-2])$";
 export const PARAM_readTrialBalance_period_RE = new RegExp("^[0-9]{4}-(0[1-9]|1[0-2])$");
 export const PARAM_verifyLedgerChain_fiscalYear = "^[0-9]{4}$";
@@ -27,3 +31,7 @@ export const SCHEMA_Int64String = "^-?(0|[1-9][0-9]*)$";
 export const SCHEMA_Int64String_RE = new RegExp("^-?(0|[1-9][0-9]*)$");
 export const SCHEMA_Money = "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$";
 export const SCHEMA_Money_RE = new RegExp("^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$");
+export const SCHEMA_Quantity = "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$";
+export const SCHEMA_Quantity_RE = new RegExp("^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$");
+export const SCHEMA_TaxRate = "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,8})?$";
+export const SCHEMA_TaxRate_RE = new RegExp("^-?(0|[1-9][0-9]*)(\\.[0-9]{1,8})?$");

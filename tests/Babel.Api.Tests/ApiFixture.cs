@@ -251,6 +251,13 @@ internal static class ApiFixture
             // الخادم أصلاً — خادمٌ يحمله يستطيع إسقاط مشغّل ثبات المقياس (ADR-0003).
             ["Babel__Core__AppConnectionString"] = ApiTestDatabase.Core.AppConnectionString,
             ["Babel__Core__AppRole"] = ApiTestDatabase.Core.AppRole,
+
+            // وحدتا المستندات: اتصالٌ لكلٍّ إلى قاعدتها. وبدون هذين المفتاحين يقلع
+            // الخادم على الافتراضيّين — `babel_sales` و`babel_purchasing` على المضيف
+            // المحلي — أيّاً كان النشر، فيكتب في قاعدة ليست قاعدة هذا التشغيل أو يسقط.
+            // وكان ذلك غير مرئي ما دام لا باب HTTP يبلغ الوحدتين.
+            ["Babel__Sales__ConnectionString"] = ApiTestDatabase.Sales.ConnectionString,
+            ["Babel__Purchasing__ConnectionString"] = ApiTestDatabase.Purchasing.ConnectionString,
         };
 
         int index = 0;
@@ -275,14 +282,24 @@ internal static class ApiFixture
             index++;
         }
 
-        // مستأجر «ج»: العقارات «للقراءة فقط» — أي اشتُريت ثم انقضى الاشتراك، فتبقى القراءة
-        // كاملة ويُغلق الترحيل؛ والأصول لم تُشترَ قط.
-        //
-        // ⚠️ ولماذا العقارات لا المبيعات: خمس وحدات **إلزامية** في ModuleDependencyGraph
-        // (النواة والدفتر والمبيعات والمشتريات والالتزام)، والإلزامية لا تقبل حالة غير
-        // Entitled إطلاقاً. أي أن «عميل توقّف عن الدفع» حالة **غير قابلة للتمثيل** على
-        // أهمّ وحدات المنتج — وهو قيد مسجَّل في التقرير سؤالاً على المالك، لا عيب اختبار.
+        // مستأجر «ج»: اشتراكٌ انقضى. العقارات «للقراءة فقط»، والأصول لم تُشترَ قط.
         environment[Entitlement(ApiTestDatabase.CompanyC, "RealEstate")] = "ReadOnly";
+
+        // ── والمبيعات والمشتريات كذلك — **وهذا تصحيح لما كان مكتوباً هنا** ────────
+        // كان في هذا الموضع أنّ الوحدات الإلزامية «لا تقبل حالة غير Entitled إطلاقاً»،
+        // وأنّ «عميلاً توقّف عن الدفع» حالة غير قابلة للتمثيل على أهمّ وحدات المنتج.
+        // وقد قُرئ `EntitlementSet.Validate` فوُجد أنّ ذلك **لم يعد صحيحاً**: المرفوض
+        // على الإلزامية هو `NotEntitled` وحده، و`ReadOnly` مقبولة صراحةً — وذلك هو
+        // مضمون `traps.md#fakh-mandatory-module-cannot-be-read-only`، فُتِح ثم أُغلق،
+        // وبقي هذا التعليق يصف الحال قبل إغلاقه. وتعليقٌ يصف قيداً زال أسوأ من غيابه:
+        // يُقرأ فيُصرَف الناظر عن اختبارٍ صار ممكناً.
+        //
+        // والالتزام معهما بالضرورة لا بالاختيار: `Compliance` يعتمد على `Sales` في
+        // ‏`ModuleDependencyGraph`، و«قدرة الوحدة لا تتجاوز قدرة ما تعتمد عليه» — فمجموعةٌ
+        // فيها التزامٌ فاعل فوق مبيعاتٍ للقراءة تُرفض عند الإقلاع، ويسقط الخادم بصوته.
+        environment[Entitlement(ApiTestDatabase.CompanyC, "Sales")] = "ReadOnly";
+        environment[Entitlement(ApiTestDatabase.CompanyC, "Purchasing")] = "ReadOnly";
+        environment[Entitlement(ApiTestDatabase.CompanyC, "Compliance")] = "ReadOnly";
 
         return environment;
     }

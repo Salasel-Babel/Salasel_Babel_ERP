@@ -1,5 +1,6 @@
 using Babel.Contracts.Capture;
 using Babel.Purchasing.Application;
+using Babel.Purchasing.Surface;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Babel.Purchasing;
@@ -33,6 +34,10 @@ public static class PurchasingModuleRegistration
         services.AddScoped<SupplierBillService>();
         services.AddScoped<SupplierPaymentService>();
         services.AddScoped<PayablesService>();
+
+        // السطح المنشور: النوع الوحيد من هذه الوحدة الذي يجوز لسطح HTTP أن يسمّيه
+        // (القاعدة 13 البند ب).
+        services.AddScoped<PurchasingSurface>();
 
         // ── منفذ الترقية: الوحدة **المالكة للمستند** تسجّل تنفيذها له ────────────
         // والمنفذ يعيش في Babel.Contracts، فلا تكتسب أي وحدة بتسجيله معرفةً بجارتها:

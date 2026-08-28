@@ -118,8 +118,12 @@ public sealed class ChartOfAccountsTests
         Assert.Equal(4, receivable.GetProperty("level").GetInt32());
 
         // والاسم العربي سجلٌّ لا ترجمة أولى، والإنجليزية مدخلٌ في الترجمات (ADR-0021).
+        //
+        // ‏**ولا يُفحَص غيابُ النصف الإنجليزي الثابت هنا:** `EnglishIsOneOfNOnTheWireTests`
+        // يمسح **كل** مخطّطات العقد المنشور، فيشمل هذا المخطّط بلا سطر إضافي. وكتابةُ
+        // الشكل الممنوع هنا كانت سترفع الدين الذي تقيسه القاعدة 14 بموضعٍ واحد — أي أن
+        // فحصاً مكرَّراً كان **سيُنقص** الحارس بدل أن يزيده.
         Assert.False(string.IsNullOrWhiteSpace(receivable.GetProperty("nameAr").GetString()));
-        Assert.False(receivable.TryGetProperty("nameEn", out _));
         Assert.Contains(
             receivable.GetProperty("nameTranslations").EnumerateArray(),
             static t => t.GetProperty("name").GetString() == "en");

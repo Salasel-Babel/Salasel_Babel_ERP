@@ -16,6 +16,28 @@ internal static class SalesErrors
         "لا مستند " + type + " بهذا المعرّف: " + id.ToString("D", CultureInfo.InvariantCulture),
         "No " + type + " document with this identifier: " + id.ToString("D", CultureInfo.InvariantCulture));
 
+    /// <summary>
+    /// سطرٌ لا وجود له تحت هذا المستند.
+    /// <para>
+    /// <b>ولماذا يُرفض بدل أن يُخترع له معرّف:</b> معرّف السطر هو معرّف المستند في هوية
+    /// الترحيل بعد أن صار قيد التكلفة بحبيبيّة السطر. فمعرّفٌ لا يقابله صفٌّ حقيقي
+    /// مملوكٌ لهذه الفاتورة يجعل «كل قيود هذه الفاتورة» سؤالاً بلا جواب، ويُنتج قيداً
+    /// معلّقاً تحت مستندٍ لا وجود له — وهو <c>docs/evidence/traps.md#fakh-49</c> حرفياً.
+    /// </para>
+    /// </summary>
+    /// <param name="documentType">نوع المستند المالك.</param>
+    /// <param name="ownerId">معرّف المستند المالك.</param>
+    /// <param name="lineId">معرّف السطر المطلوب.</param>
+    public static Error LineNotFound(string documentType, Guid ownerId, Guid lineId) => new(
+        "sales.line_not_found",
+        "لا سطر بالمعرّف " + lineId.ToString("D", CultureInfo.InvariantCulture) + " تحت المستند "
+        + documentType + "/" + ownerId.ToString("D", CultureInfo.InvariantCulture)
+        + ". ومعرّف السطر هو معرّف المستند في هوية ترحيل قيد التكلفة، فلا يُقبل معرّف لا يقابله سطر.",
+        "No line with identifier " + lineId.ToString("D", CultureInfo.InvariantCulture) + " under document "
+        + documentType + "/" + ownerId.ToString("D", CultureInfo.InvariantCulture)
+        + ". The line identifier is the document identifier in the cost entry's posting identity, "
+        + "so an identifier with no matching line is refused.");
+
     public static Error DuplicateNumber(string number) => new(
         "sales.duplicate_number",
         "رقم مستند مستعمل من قبل: " + number,

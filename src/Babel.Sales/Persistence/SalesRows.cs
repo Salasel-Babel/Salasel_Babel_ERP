@@ -143,6 +143,22 @@ internal sealed class SalesInvoiceRow
     public int PostingGeneration { get; set; } = 1;
 }
 
+/// <summary>
+/// نوع المستند المالك لسطر المبيعات.
+/// <para>
+/// كانت هذه القيم أربع سلاسل نصّية متناثرة في مواضع الاستدعاء. وبعد أن صار معرّف
+/// السطر <b>معرّف مستند في هوية الترحيل</b>، صار خطأٌ مطبعي في إحداها يُنتج بحثاً
+/// لا يجد شيئاً ورفضاً لسطر قائم — فجُمعت في موضع واحد.
+/// </para>
+/// </summary>
+internal static class LineOwner
+{
+    public const string Quotation = "QUOTATION";
+    public const string Order = "ORDER";
+    public const string Invoice = "INVOICE";
+    public const string CreditNote = "CREDIT_NOTE";
+}
+
 /// <summary>سطر مستند مبيعات — يخدم عرض السعر وأمر البيع والفاتورة والإشعار الدائن.</summary>
 internal sealed class SalesLineRow
 {
@@ -156,6 +172,17 @@ internal sealed class SalesLineRow
     public Guid OwnerId { get; set; }
 
     public int LineNo { get; set; }
+
+    /// <summary>
+    /// سطر الفاتورة الأصلي الذي يردّ عليه سطرُ الإشعار الدائن — <b>هوية الصرف
+    /// الأصلي</b>، و<c>null</c> على كل ما عداه.
+    /// <para>
+    /// عمودٌ في وحدة المبيعات لا في المخزون: المخزون يعرف كيف يُقيّم مرتجعاً بهوية
+    /// صرفه، ولا يعرف أي فاتورة يردّ عليها أي إشعار. وبدونه كان
+    /// <c>sales.credit_note.cost_of_sales</c> حدثاً في المصفوفة لا يُطلقه شيء.
+    /// </para>
+    /// </summary>
+    public Guid? OriginalInvoiceLineId { get; set; }
 
     public string DescriptionAr { get; set; } = string.Empty;
 

@@ -205,6 +205,10 @@ public sealed class PurchasingCapturedInvoiceReceiver : ICapturedInvoiceReceiver
         UnqualifiedExpenseCategory,
         new LocalizedName(line.Description, line.Description),
         line.Quantity,
+
+        // فاتورة مصروف لا تُحرّك مخزوناً، فوحدتها **العدّ صراحةً** لا فراغٌ يُقرأ
+        // «وحدة مجهولة». والفرق بينهما هو الفرق بين صفٍّ يُجمَع وصفٍّ لا يُدرى بأي مقياس.
+        Babel.Contracts.Inventory.InventoryUnits.Each,
         Money.Of(line.UnitPrice, order.Currency),
         ClassificationOf(order),
         order.TaxRate);

@@ -1,3 +1,5 @@
+using System.Globalization;
+using Babel.Contracts.Inventory;
 using Babel.Contracts.Posting;
 using Babel.Core.Application;
 using Babel.Core.CapabilityProfile;
@@ -24,10 +26,14 @@ public sealed class SupplierBillService : IApplicationService
     /// <summary>نوع مستند الإشعار المدين.</summary>
     internal const string DebitNoteDocument = "SupplierDebitNote";
 
+    /// <summary>رمز حدث مرتجع المشتريات في المصفوفة.</summary>
+    internal const string DebitNotePostedEvent = "purchasing.debit_note.posted";
+
     private readonly IEntitlementEnforcer _enforcer;
     private readonly PurchasingDbContext _database;
     private readonly SubledgerPostingGateway _gateway;
     private readonly PurchasingAdmission _admission;
+    private readonly IInventoryValuation _valuation;
     private readonly CurrencyCode _currency;
 
     /// <summary>ينشئ الخدمة.</summary>
@@ -35,16 +41,26 @@ public sealed class SupplierBillService : IApplicationService
     /// <param name="runtime">موارد الوحدة.</param>
     /// <param name="posting">محرك الترحيل.</param>
     /// <param name="profiles">مخزن ملفّات القدرات — بوابة القبول (‏ADR-0023).</param>
+    /// <param name="valuation">
+    /// حدّ تقييم المخزون — <b>الجهة الوحيدة التي تُقيّم مرتجع المشتريات</b>. والمصفوفة
+    /// تقول إن صافي المرتجع «بتكلفة الاستلام الأصلي»، وتلك التكلفة يملكها دفتر المخزون
+    /// وحده. وكان هذا المسار يُدين حساب مراقبة المخزون بمبلغٍ يُسلّمه المستدعي
+    /// <b>ولا يكتب حركة واحدة في الدفتر المساعد</b> — أي حسابٌ ضابط يتحرّك ودفترٌ
+    /// مساعد ساكن، وهو الانحراف الذي أُنشئت له المطابقة (‏ADR-0041).
+    /// </param>
     public SupplierBillService(
         IEntitlementEnforcer enforcer,
         PurchasingRuntime runtime,
         IPostingService posting,
-        ICapabilityProfileStore profiles)
+        ICapabilityProfileStore profiles,
+        IInventoryValuation valuation)
     {
         ArgumentNullException.ThrowIfNull(enforcer);
         ArgumentNullException.ThrowIfNull(runtime);
         ArgumentNullException.ThrowIfNull(posting);
         ArgumentNullException.ThrowIfNull(profiles);
+        ArgumentNullException.ThrowIfNull(valuation);
+        _valuation = valuation;
         _enforcer = enforcer;
         _database = runtime.Database;
         _currency = CurrencyCode.FromString(runtime.Options.CompanyCurrency);
@@ -235,6 +251,7 @@ public sealed class SupplierBillService : IApplicationService
                 DescriptionAr = entry.ReceiptLine.DescriptionAr,
                 DescriptionEn = entry.ReceiptLine.DescriptionEn,
                 Quantity = entry.Draft.Quantity,
+                Unit = entry.ReceiptLine.Unit,
                 UnitPrice = entry.Draft.UnitPrice.Amount,
                 TaxClassification = entry.Draft.TaxClassification,
                 TaxRate = entry.Draft.TaxRate,
@@ -509,13 +526,35 @@ public sealed class SupplierBillService : IApplicationService
                 PurchasingErrors.DebitNoteOnExpenseBillNotExpressible(bill.Number));
         }
 
-        decimal gross = draft.Net.Amount + draft.Tax.Amount;
-        decimal outstanding = bill.GrossTotal - bill.AllocatedAmount;
-
-        if (gross > outstanding)
+        if (draft.Quantity <= 0m)
         {
             return Result<PurchasingDocumentView>.Failure(
-                PurchasingErrors.OverAllocation(bill.Number, gross, outstanding));
+                PurchasingErrors.NegativeAmount);
+        }
+
+        // ── سطر الاستلام يُتحقَّق أنه صفٌّ قائم يخصّ فاتورة هذا المرتجع ───────────
+        // ومعرّفٌ مخترَع يُرفض باسمه: به يُقيَّم المرتجع، فقبولُه بلا تحقّق يعني
+        // تقييماً بحركة صنفٍ آخر — بقيدٍ متوازن تماماً.
+        PurchaseLineRow? billLine = await _database.Lines
+            .AsNoTracking()
+            .FirstOrDefaultAsync(
+                row => row.TenantId == tenant.Value
+                       && row.OwnerType == LineOwner.Bill
+                       && row.OwnerId == bill.Id
+                       && row.ReceiptLineId == draft.ReceiptLineId,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        if (billLine is null)
+        {
+            return Result<PurchasingDocumentView>.Failure(
+                PurchasingErrors.LineNotFound(draft.ReceiptLineId));
+        }
+
+        if (draft.Quantity > billLine.Quantity)
+        {
+            return Result<PurchasingDocumentView>.Failure(
+                PurchasingErrors.ReturnExceedsBilled(bill.Number, billLine.Quantity, draft.Quantity));
         }
 
         if (await _database.DebitNotes
@@ -536,12 +575,16 @@ public sealed class SupplierBillService : IApplicationService
             State = PurchasingDocumentState.Draft,
             CurrencyCode = _currency.Value,
             WarehouseId = bill.WarehouseId,
-            ItemGroup = bill.ItemGroup,
-            ItemId = draft.ItemId,
+            ItemGroup = billLine.ItemGroup,
+            ItemId = billLine.ItemId,
+            ReceiptLineId = draft.ReceiptLineId,
+            Quantity = draft.Quantity,
             OriginalWasTaxable = bill.HasTaxableLine,
-            NetTotal = draft.Net.Amount,
+
+            // الصافي صفرٌ ما دام مسوّدة: يُحسب لحظة الترحيل في وحدة المخزون ولا يُملى.
+            NetTotal = 0m,
             TaxTotal = draft.Tax.Amount,
-            GrossTotal = gross,
+            GrossTotal = draft.Tax.Amount,
         };
 
         _database.DebitNotes.Add(note);
@@ -579,6 +622,28 @@ public sealed class SupplierBillService : IApplicationService
             return Result<PurchasingDocumentView>.Failure(gate.Errors);
         }
 
+        // ── القبول: المرتجع يمارس قدرة المطابقة الثلاثية نفسها ─────────────────
+        // وهو الشقّ العكسي منها: البضاعة التي دخلت باستلامٍ تخرج بمرتجع، ويُقيَّم
+        // كلاهما بحركة الاستلام نفسها. ومستأجرٌ لا يملك القدرة لا استلام عنده أصلاً،
+        // فلا مرتجع — والرفض هنا أصدق من مسارٍ يعمل على وحدةٍ لم تُشترَ.
+        Result<AdmittedDocument> admitted = await _admission
+            .AdmitBillAsync(
+                tenant,
+                [PurchasingAdmission.SupplierField, PurchasingAdmission.LinesField, PurchasingAdmission.ReceiptField],
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        if (admitted.IsFailure)
+        {
+            return Result<PurchasingDocumentView>.Failure(admitted.Errors);
+        }
+
+        Result covers = PurchasingAdmission.EnsureCovers(admitted.Value, PurchasingAdmission.ReceiptField);
+        if (covers.IsFailure)
+        {
+            return Result<PurchasingDocumentView>.Failure(covers.Errors);
+        }
+
         DebitNoteRow? note = await _database.DebitNotes
             .FirstOrDefaultAsync(row => row.TenantId == tenant.Value && row.Id == debitNoteId, cancellationToken)
             .ConfigureAwait(false);
@@ -601,13 +666,90 @@ public sealed class SupplierBillService : IApplicationService
             .FirstAsync(row => row.TenantId == tenant.Value && row.Id == note.BillId, cancellationToken)
             .ConfigureAwait(false);
 
+        // ── ١ · الدفتر المساعد أوّلاً — ومنه يأتي **صافي المرتجع** ──────────────
+        // «بتكلفة الاستلام الأصلي لا بتكلفة اليوم» — نصّ المصفوفة على هذا الحدث.
+        // وهوية الحركة الأصلية هي هوية ترحيل سطر الاستلام حرفاً بحرف، وجيلُها يُقرأ
+        // من سجلّ المحاولات ولا يُفترَض: استلامٌ عُكس ثم أُعيد يحمل حركته على جيله.
+        string receiptLineId = note.ReceiptLineId.ToString("D", CultureInfo.InvariantCulture);
+        string receiptTrigger = PostingTrigger.OnReceipt.ToString();
+
+        DocumentPostingRow? receiptPosting = await _database.Postings
+            .AsNoTracking()
+            .Where(row => row.TenantId == tenant.Value
+                          && row.DocumentType == GoodsReceiptService.ReceiptLineDocument
+                          && row.DocumentId == receiptLineId
+                          && row.TriggerCode == receiptTrigger
+                          && row.EventCode == GoodsReceiptService.ReceiptPostedEvent
+                          && row.State == PostingAttemptState.Posted)
+            .OrderByDescending(row => row.Generation)
+            .FirstOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        if (receiptPosting is null)
+        {
+            return Result<PurchasingDocumentView>.Failure(
+                PurchasingErrors.OriginalReceiptMovementNotFound(note.ReceiptLineId));
+        }
+
+        InventoryMovementSource receiptMovement = new(
+            BabelModule.Purchasing,
+            GoodsReceiptService.ReceiptLineDocument,
+            receiptLineId,
+            receiptTrigger,
+            receiptPosting.Generation,
+            GoodsReceiptService.ReceiptPostedEvent);
+
+        // وحدة المرتجع هي وحدة الاستلام — تُقرأ ولا تُخترَع.
+        Result<InventoryMovementCost> received = await _valuation
+            .ReadMovementAsync(tenant, actor, receiptMovement, cancellationToken).ConfigureAwait(false);
+
+        if (received.IsFailure)
+        {
+            return Result<PurchasingDocumentView>.Failure(received.Errors);
+        }
+
+        Result<InventoryMovementCost> returned = await _valuation.ReturnAsync(
+            new InventoryReturn
+            {
+                Tenant = tenant,
+                Actor = actor,
+                Source = new InventoryMovementSource(
+                    BabelModule.Purchasing,
+                    DebitNoteDocument,
+                    note.Id.ToString("D", CultureInfo.InvariantCulture),
+                    PostingTrigger.OnApproval.ToString(),
+                    note.PostingGeneration,
+                    DebitNotePostedEvent),
+                OriginalMovement = receiptMovement,
+                Quantity = new InventoryQuantity(note.Quantity, received.Value.Quantity.Unit),
+                OccurredOn = note.IssuedOn,
+            },
+            cancellationToken).ConfigureAwait(false);
+
+        if (returned.IsFailure)
+        {
+            return Result<PurchasingDocumentView>.Failure(returned.Errors);
+        }
+
+        // ── ٢ · المبالغ تُبنى على الرقم المحسوب، ثم يُفحص التخصيص عليه ─────────
+        note.NetTotal = returned.Value.Cost.Amount;
+        note.GrossTotal = note.NetTotal + note.TaxTotal;
+
+        decimal outstanding = bill.GrossTotal - bill.AllocatedAmount;
+
+        if (note.GrossTotal > outstanding)
+        {
+            return Result<PurchasingDocumentView>.Failure(
+                PurchasingErrors.OverAllocation(bill.Number, note.GrossTotal, outstanding));
+        }
+
         PostingIntent intent = new()
         {
             Tenant = tenant,
             DocumentType = DebitNoteDocument,
             DocumentId = note.Id,
             Trigger = PostingTrigger.OnApproval,
-            Event = new PostingEventCode("purchasing.debit_note.posted"),
+            Event = new PostingEventCode(DebitNotePostedEvent),
             DocumentDate = note.IssuedOn,
             Narration = new LocalizedName("إشعار مدين " + note.Number, "Debit note " + note.Number),
             Amounts =
@@ -795,6 +937,44 @@ public sealed class SupplierBillService : IApplicationService
         return bill is null
             ? Result<PurchasingDocumentView>.Failure(PurchasingErrors.DocumentNotFound(BillDocument, billId))
             : Result<PurchasingDocumentView>.Success(ViewOf(bill));
+    }
+
+    /// <summary>
+    /// يقرأ إشعاراً مديناً (مرتجع مشتريات) بحالته ومجاميعه.
+    /// <para>
+    /// <b>وكانت هذه القراءة غير موجودة</b>: يُنشأ المرتجع ويُرحَّل ولا توجد جملة تقول
+    /// «ما حاله الآن؟» — فمن انقطع اتصاله بعد الإنشاء لم يكن أمامه إلا أن يُعيد
+    /// الترحيل ليعرف، وهو أسوأ ما يُطلب من عميل في مسار مالي.
+    /// </para>
+    /// </summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="debitNoteId">الإشعار.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    [RequiresEntitlement(BabelModule.Purchasing, EntitlementAccess.Read)]
+    public async ValueTask<Result<PurchasingDocumentView>> GetDebitNoteAsync(
+        TenantId tenant,
+        UserId actor,
+        Guid debitNoteId,
+        CancellationToken cancellationToken = default)
+    {
+        Result gate = await _enforcer
+            .EnsureAsync(tenant, actor, BabelModule.Purchasing, EntitlementAccess.Read, "Purchasing.DebitNote.Get", cancellationToken)
+            .ConfigureAwait(false);
+
+        if (gate.IsFailure)
+        {
+            return Result<PurchasingDocumentView>.Failure(gate.Errors);
+        }
+
+        DebitNoteRow? note = await _database.DebitNotes
+            .AsNoTracking()
+            .FirstOrDefaultAsync(row => row.TenantId == tenant.Value && row.Id == debitNoteId, cancellationToken)
+            .ConfigureAwait(false);
+
+        return note is null
+            ? Result<PurchasingDocumentView>.Failure(PurchasingErrors.DocumentNotFound(DebitNoteDocument, debitNoteId))
+            : Result<PurchasingDocumentView>.Success(ViewOfNote(note));
     }
 
     private PurchasingDocumentView ViewOf(SupplierBillRow bill) => new(

@@ -39,6 +39,11 @@ public sealed record SupplierView(
 /// <param name="ItemGroup">مجموعة الصنف — مؤهّل الدور.</param>
 /// <param name="Description">البيان ثنائي اللغة.</param>
 /// <param name="Quantity">الكمية.</param>
+/// <param name="Unit">
+/// وحدة قياس الكمية — <b>تعبر إلى المخزون مع الكمية عند الاستلام</b>. و«عشرة» بلا وحدة
+/// ليست معلومة: عشر حبّات أم عشر كراتين؟ والفرق يصل إلى المال لأن الكمية تُضرب في
+/// تكلفة الوحدة. ومَن لا يملك وحدةً بعد يُسلّم <c>InventoryUnits.Each</c> صراحةً.
+/// </param>
 /// <param name="UnitPrice">سعر الوحدة.</param>
 /// <param name="TaxClassification">التصنيف الضريبي.</param>
 /// <param name="TaxRate">نسبة الضريبة كسراً عشرياً.</param>
@@ -48,6 +53,7 @@ public sealed record PurchaseLineDraft(
     string ItemGroup,
     LocalizedName Description,
     decimal Quantity,
+    string Unit,
     Money UnitPrice,
     string TaxClassification,
     decimal TaxRate,
@@ -134,19 +140,31 @@ public sealed record ExpenseBillDraft(
     string CostCenterId,
     IReadOnlyList<PurchaseLineDraft> Lines);
 
-/// <summary>مسوّدة إشعار مدين — مرتجع مشتريات.</summary>
+/// <summary>
+/// مسوّدة إشعار مدين — <b>مرتجع مشتريات</b>.
+/// <para>
+/// <b>ولاحظ ما ليس فيه: صافي المرتجع.</b> المصفوفة تقول على
+/// <c>purchasing.debit_note.posted</c> إن الصافي «بتكلفة الاستلام الأصلي لا بتكلفة
+/// اليوم»، وتلك التكلفة يملكها دفتر المخزون وحده. فالمسوّدة تحمل <b>الكمّية</b>،
+/// ويُحسب المبلغ لحظة الترحيل — وهو مبدأ ADR-0039 نفسه مطبَّقاً على الطرف الآخر
+/// من الدورة.
+/// </para>
+/// </summary>
 /// <param name="Number">رقم الإشعار.</param>
 /// <param name="BillId">الفاتورة الأصلية.</param>
 /// <param name="IssuedOn">تاريخه.</param>
-/// <param name="ItemId">الصنف المرتجع.</param>
-/// <param name="Net">صافي المرتجع.</param>
-/// <param name="Tax">ضريبة المرتجع.</param>
+/// <param name="ReceiptLineId">سطر الاستلام الذي تُردّ بضاعته — به يُقيَّم المرتجع.</param>
+/// <param name="Quantity">الكمية المرتجعة بوحدة الاستلام — موجبة، ولا تتجاوز ما استُلم.</param>
+/// <param name="Tax">
+/// ضريبة المرتجع. <b>تُسلَّم ولا تُحسب</b>: هي بتصنيف الفاتورة الأصلية وواقعةٌ تجارية
+/// لا يملكها المخزون، بخلاف الصافي.
+/// </param>
 public sealed record DebitNoteDraft(
     string Number,
     Guid BillId,
     DateOnly IssuedOn,
-    string ItemId,
-    Money Net,
+    Guid ReceiptLineId,
+    decimal Quantity,
     Money Tax);
 
 /// <summary>تخصيص مبلغ على فاتورة مورد.</summary>
@@ -228,8 +246,10 @@ public sealed record PurchasingDocumentView(
 /// <param name="LineNo">رقمه.</param>
 /// <param name="ItemId">الصنف.</param>
 /// <param name="Quantity">الكمية.</param>
+/// <param name="Unit">وحدة قياس الكمية.</param>
 /// <param name="UnitPrice">سعر الوحدة.</param>
-public sealed record PurchaseLineView(Guid Id, int LineNo, string ItemId, decimal Quantity, Money UnitPrice);
+public sealed record PurchaseLineView(
+    Guid Id, int LineNo, string ItemId, decimal Quantity, string Unit, Money UnitPrice);
 
 /// <summary>شرائح أعمار الذمم الدائنة.</summary>
 /// <param name="NotDue">لم يستحق بعد.</param>

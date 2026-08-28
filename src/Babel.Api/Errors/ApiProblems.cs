@@ -90,11 +90,27 @@ internal static class ApiProblems
                 or "purchasing.line_not_found" or "purchasing.supplier.vat_number_not_found" => 404,
             "purchasing.duplicate_number" or "purchasing.wrong_state" => 409,
 
+            // ── مستندات المخزون ──────────────────────────────────────────────
+            // بالتصنيف نفسه، ولاستثناءين يستحقّان تسميتهما:
+            //   · «حركةٌ بالهوية نفسها ومحتوىً مختلف» **409 لا 422**: الطلب ليس
+            //     خاطئ الصياغة، بل يصطدم بواقعةٍ مسجّلة — والعميل يقرأ ما سُجّل
+            //     ثم يقرّر، ولا يُعيد الإرسال بصيغة أخرى.
+            //   · «عبارة أصابت عدداً غير متوقَّع من الصفوف» **500**: خرقُ ثابتةٍ
+            //     داخلية لا يُصلحه العميل بإعادة صياغة، وإخراجه 422 يُغري بمحاولة
+            //     ثانية على قاعدةٍ حالتها غير معروفة.
+            "inventory.item_not_found" or "inventory.document_not_found"
+                or "inventory.original_movement_not_found" or "inventory.original_issue_not_found" => 404,
+            "inventory.duplicate_item_code" or "inventory.duplicate_document_number"
+                or "inventory.wrong_state" or "inventory.movement_already_returned"
+                or "inventory.movement_identity_conflict" or "inventory.movement_quantity_conflict" => 409,
+            "inventory.unexpected_row_count" => 500,
+
             _ when code.StartsWith("company_setup.", StringComparison.Ordinal) => 422,
             _ when code.StartsWith("cost_center.", StringComparison.Ordinal) => 422,
 
             _ when code.StartsWith("sales.", StringComparison.Ordinal) => 422,
             _ when code.StartsWith("purchasing.", StringComparison.Ordinal) => 422,
+            _ when code.StartsWith("inventory.", StringComparison.Ordinal) => 422,
 
             _ when code.StartsWith("capability_profile.", StringComparison.Ordinal) => 422,
             _ when code.StartsWith("document_admission.", StringComparison.Ordinal) => 422,

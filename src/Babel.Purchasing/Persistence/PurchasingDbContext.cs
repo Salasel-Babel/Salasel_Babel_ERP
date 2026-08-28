@@ -147,6 +147,7 @@ internal sealed class PurchasingDbContext(DbContextOptions<PurchasingDbContext> 
             entity.Property(row => row.WarehouseId).HasMaxLength(64);
             entity.Property(row => row.ItemGroup).HasMaxLength(64);
             entity.Property(row => row.ItemId).HasMaxLength(64);
+            entity.Property(row => row.Quantity).HasColumnType(Money);
             entity.Property(row => row.NetTotal).HasColumnType(Money);
             entity.Property(row => row.TaxTotal).HasColumnType(Money);
             entity.Property(row => row.GrossTotal).HasColumnType(Money);
@@ -197,6 +198,7 @@ internal sealed class PurchasingDbContext(DbContextOptions<PurchasingDbContext> 
             entity.Property(row => row.DescriptionAr).HasMaxLength(400);
             entity.Property(row => row.DescriptionEn).HasMaxLength(400);
             entity.Property(row => row.TaxClassification).HasMaxLength(16).IsRequired();
+            entity.Property(row => row.Unit).HasMaxLength(32).IsRequired().HasDefaultValue(string.Empty);
             entity.Property(row => row.Quantity).HasColumnType(Money);
             entity.Property(row => row.ReceivedQuantity).HasColumnType(Money);
             entity.Property(row => row.BilledQuantity).HasColumnType(Money);

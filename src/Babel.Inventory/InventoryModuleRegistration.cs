@@ -1,5 +1,6 @@
 using Babel.Contracts.Inventory;
 using Babel.Inventory.Application;
+using Babel.Inventory.Surface;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Babel.Inventory;
@@ -29,6 +30,12 @@ public static class InventoryModuleRegistration
         services.AddScoped<InventoryRuntime>();
         services.AddScoped<StockMovementService>();
         services.AddScoped<InventoryValuationService>();
+        services.AddScoped<ItemCatalogueService>();
+        services.AddScoped<StockDocumentService>();
+
+        // السطح المنشور: النوع الوحيد من هذه الوحدة الذي يجوز لسطح HTTP أن يسمّيه
+        // (القاعدة 13 البند ب). ونطاقُه نطاق الخدمات التي يلفّها — سياق واحد للطلب.
+        services.AddScoped<InventorySurface>();
 
         // ── منفذ التقييم: الوحدة **المالكة للمخزون** تسجّل تنفيذها له ─────────────
         // والمنفذ يعيش في Babel.Contracts، فلا تكتسب وحدة المبيعات بتسجيله معرفةً

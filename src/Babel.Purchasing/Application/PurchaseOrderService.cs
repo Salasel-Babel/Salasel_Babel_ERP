@@ -214,6 +214,44 @@ public sealed class PurchaseOrderService : IApplicationService
         return Result<PurchasingDocumentView>.Success(View(row.Id, row.Number, row.State, net, tax));
     }
 
+    /// <summary>
+    /// يقرأ أمر شراء بحالته ومجاميعه.
+    /// <para>
+    /// <b>وكانت هذه القراءة غير موجودة</b>: يُنشأ الأمر ولا توجد جملة تقول «ما حاله
+    /// الآن؟» — والسطح المنشور لا يستطيع أن يعطي عنواناً لمورد لا يُقرأ.
+    /// </para>
+    /// </summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="orderId">الأمر.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    [RequiresEntitlement(BabelModule.Purchasing, EntitlementAccess.Read)]
+    public async ValueTask<Result<PurchasingDocumentView>> GetOrderAsync(
+        TenantId tenant,
+        UserId actor,
+        Guid orderId,
+        CancellationToken cancellationToken = default)
+    {
+        Result gate = await _enforcer
+            .EnsureAsync(tenant, actor, BabelModule.Purchasing, EntitlementAccess.Read, "Purchasing.Order.Get", cancellationToken)
+            .ConfigureAwait(false);
+
+        if (gate.IsFailure)
+        {
+            return Result<PurchasingDocumentView>.Failure(gate.Errors);
+        }
+
+        PurchaseOrderRow? order = await _database.Orders
+            .AsNoTracking()
+            .FirstOrDefaultAsync(row => row.TenantId == tenant.Value && row.Id == orderId, cancellationToken)
+            .ConfigureAwait(false);
+
+        return order is null
+            ? Result<PurchasingDocumentView>.Failure(PurchasingErrors.DocumentNotFound("PurchaseOrder", orderId))
+            : Result<PurchasingDocumentView>.Success(
+                View(order.Id, order.Number, order.State, order.NetTotal, order.TaxTotal));
+    }
+
     /// <summary>يقرأ سطور أمر شراء — معرّفات السطور هي مدخل المطابقة الثلاثية.</summary>
     /// <param name="tenant">المستأجر.</param>
     /// <param name="actor">الفاعل.</param>
@@ -244,7 +282,7 @@ public sealed class PurchaseOrderService : IApplicationService
 
         return Result<IReadOnlyList<PurchaseLineView>>.Success(
             [.. lines.Select(line => new PurchaseLineView(
-                line.Id, line.LineNo, line.ItemId, line.Quantity, Money.Of(line.UnitPrice, _currency)))]);
+                line.Id, line.LineNo, line.ItemId, line.Quantity, line.Unit, Money.Of(line.UnitPrice, _currency)))]);
     }
 
     internal static (decimal Net, decimal Tax) Totals(IReadOnlyList<PurchaseLineDraft> lines)
@@ -283,6 +321,7 @@ public sealed class PurchaseOrderService : IApplicationService
                 DescriptionAr = line.Description.Arabic,
                 DescriptionEn = line.Description.English,
                 Quantity = line.Quantity,
+                Unit = line.Unit,
                 UnitPrice = line.UnitPrice.Amount,
                 TaxClassification = line.TaxClassification,
                 TaxRate = line.TaxRate,

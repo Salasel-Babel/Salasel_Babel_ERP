@@ -39,6 +39,12 @@ internal static class WireNumbers
     /// <summary>أقصى عدد خانات عشرية لسعر الصرف (‏<c>PostingRequest.ExchangeRate</c> بمقياس 8).</summary>
     public const int RateScale = 8;
 
+    /// <summary>
+    /// مقياس الكمّية وتكلفة الوحدة على السلك — <b>ستّ خانات لا أربع</b>، وهو مقياس
+    /// عمودَيهما في المخطّط. والتضييق هنا يُنتج انحرافاً يتراكم على كل حركة.
+    /// </summary>
+    public const int QuantityScale = 6;
+
     /// <summary>أقصى عدد خانات صحيحة — يمنع نصّاً طويلاً يُرهق المحلّل قبل أن يُرفض.</summary>
     private const int MaxIntegerDigits = 20;
 
@@ -174,6 +180,18 @@ internal static class WireNumbers
     /// <summary>التمثيل القانوني لمبلغ على السلك: مقياس أربعة وثقافة ثابتة، دائماً.</summary>
     /// <param name="value">القيمة.</param>
     public static string FormatMoney(decimal value) => value.ToString("0.0000", CultureInfo.InvariantCulture);
+
+    /// <summary>
+    /// التمثيل القانوني لكمّية أو لتكلفة وحدة على السلك: <b>مقياس ستّة</b> وثقافة ثابتة.
+    /// <para>
+    /// <b>ولماذا ستّة لا أربعة:</b> صنفٌ يُشترى بألف حبّة بمئة ريال تكلفة وحدته
+    /// <c>0.100000</c>، وبمقياس أربعة تصير <c>0.1000</c> والفرق لا يظهر — لكنه يتراكم
+    /// على كل صرف حتى ينحرف رصيد القيمة عن مجموع حركاته. والكمّية كذلك: الكيلوغرامات
+    /// واللترات تُكسَر إلى ما دون الهللة.
+    /// </para>
+    /// </summary>
+    /// <param name="value">القيمة.</param>
+    public static string FormatQuantity(decimal value) => value.ToString("0.000000", CultureInfo.InvariantCulture);
 
     /// <summary>التمثيل القانوني لعدد صحيح 64 بت على السلك — نصّاً لا رقماً.</summary>
     /// <remarks>

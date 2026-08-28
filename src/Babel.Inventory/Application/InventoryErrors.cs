@@ -52,14 +52,39 @@ internal static class InventoryErrors
         FormattableString.Invariant(
             $"Document '{documentType}/{documentId}' on event '{eventCode}' already has a movement of {recorded}, and {requested} is now requested under the same identity. A replay under the same identity does nothing; a different quantity is a correction, and a correction is made by a reversal followed by the next generation."));
 
-    /// <summary>مرتجع بلا صرفٍ أصلي.</summary>
+    /// <summary>
+    /// مرتجع بلا حركةٍ أصلية.
+    /// <para>
+    /// <b>و«حركة» لا «صرف»:</b> يُرَدّ على الصرف بضاعةٌ تعود من العميل، ويُرَدّ على
+    /// الاستلام بضاعةٌ تخرج إلى المورد. ونصٌّ يقول «صرف» في الحالتين كان يُرسل قارئه
+    /// يبحث عن مستند لا وجود له في مساره.
+    /// </para>
+    /// </summary>
     public static Error OriginalIssueNotFound(string documentType, string documentId, string eventCode) => new(
         "inventory.original_issue_not_found",
-        $"لا حركة صرف مسجَّلة للمستند «{documentType}/{documentId}» على الحدث «{eventCode}». "
-        + "والمرتجع يُقيَّم بتكلفة صرفه الأصلي لا بتكلفة اليوم، فبلا الصرف الأصلي لا يوجد رقم يُقال.",
-        $"No issue movement is recorded for document '{documentType}/{documentId}' on event "
-        + $"'{eventCode}'. A return is valued at the cost of its original issue, not at today's cost, "
-        + "so without that issue there is no number to state.");
+        $"لا حركة مخزون مسجَّلة للمستند «{documentType}/{documentId}» على الحدث «{eventCode}». "
+        + "والمرتجع يُقيَّم بتكلفة حركته الأصلية لا بتكلفة اليوم، فبلا تلك الحركة لا يوجد رقم يُقال.",
+        $"No stock movement is recorded for document '{documentType}/{documentId}' on event "
+        + $"'{eventCode}'. A return is valued at the cost of its original movement, not at today's cost, "
+        + "so without that movement there is no number to state.");
+
+    /// <summary>إلغاء حركة لا وجود لها.</summary>
+    public static Error OriginalMovementNotFound(string documentType, string documentId, string eventCode) => new(
+        "inventory.original_movement_not_found",
+        $"لا حركة مخزون مسجَّلة للمستند «{documentType}/{documentId}» على الحدث «{eventCode}»، "
+        + "فلا شيء يُلغى. والإلغاء يُبطل واقعةً مُسجَّلة بقيمتها هي، فبلا تلك الواقعة لا يوجد رقم يُقال.",
+        $"No stock movement is recorded for document '{documentType}/{documentId}' on event '{eventCode}', "
+        + "so there is nothing to reverse. A reversal annuls a recorded fact at its own value; without that fact "
+        + "there is no number to state.");
+
+    /// <summary>إلغاء حركة رُدّ عليها سلفاً — الإلغاء الكامل بعد ردٍّ جزئي يُخرج البضاعة مرّتين.</summary>
+    public static Error MovementAlreadyReturned(
+        string documentType, string documentId, string eventCode, decimal returned) => new(
+        "inventory.movement_already_returned",
+        FormattableString.Invariant(
+            $"حركة المستند «{documentType}/{documentId}» على الحدث «{eventCode}» رُدّ عليها {returned} سلفاً، فلا تُلغى بكاملها: الإلغاء يُعيد الكمية كلّها فتُعاد البضاعة مرّتين. عالِج المرتجع القائم أولاً، أو أصدر إشعاراً دائناً بالباقي بدل العكس."),
+        FormattableString.Invariant(
+            $"The movement of document '{documentType}/{documentId}' on event '{eventCode}' already has {returned} returned against it, so it cannot be reversed in full: a reversal restores the whole quantity and the goods would return twice. Settle the existing return first, or issue a credit note for the remainder instead of reversing."));
 
     /// <summary>مرتجع يتجاوز صرفه.</summary>
     public static Error ReturnExceedsIssue(decimal issued, decimal alreadyReturned, decimal requested) => new(
@@ -68,6 +93,99 @@ internal static class InventoryErrors
             $"المرتجع {requested} يتجاوز ما بقي من الصرف الأصلي: صُرف {issued} ورُدّ منه {alreadyReturned}."),
         FormattableString.Invariant(
             $"Return of {requested} exceeds what remains of the original issue: {issued} issued, {alreadyReturned} already returned."));
+
+    /// <summary>كمّية بلا وحدة — وهي ليست كمّية.</summary>
+    public static Error UnitMissing() => new(
+        "inventory.unit_missing",
+        "الكمّية بلا وحدة قياس. و«عشرة» ليست معلومة: عشر حبّات أم عشر كراتين؟ "
+        + "أرسل رمز الوحدة مع المقدار — وحدة أساس الصنف أو وحدةً لها معامل تحويل إليها.",
+        "The quantity carries no unit of measure. 'Ten' is not information: ten pieces or ten cartons? "
+        + "Send the unit code with the magnitude — the item's base unit, or a unit that has a conversion factor to it.");
+
+    /// <summary>وحدة لا معامل لها إلى وحدة أساس الرصيد.</summary>
+    public static Error UnitNotConvertible(string itemId, string unit, string baseUnit) => new(
+        "inventory.unit_not_convertible",
+        $"لا معامل تحويل من الوحدة «{unit}» إلى وحدة أساس الصنف «{itemId}» وهي «{baseUnit}». "
+        + "وخلطُ وحدتين بلا معامل تقديرٌ لا حساب، ولذلك يُرفض ولا يُقرَّب. "
+        + "سجّل معامل التحويل على الصنف، أو أرسل الكمّية بوحدة الأساس.",
+        $"There is no conversion factor from unit '{unit}' to the base unit '{baseUnit}' of item '{itemId}'. "
+        + "Mixing two units without a factor is an estimate, not a computation, so it is refused rather than rounded. "
+        + "Register the conversion factor on the item, or send the quantity in the base unit.");
+
+    /// <summary>تحويل لا يقع بلا باقٍ.</summary>
+    public static Error ConversionNotExact(decimal magnitude, string ratio) => new(
+        "inventory.unit_conversion_not_exact",
+        FormattableString.Invariant(
+            $"تحويل المقدار {magnitude} بالمعامل {ratio} لا يقع بلا باقٍ، فالناتج كسرٌ يُقرَّب. والتقريب في كمّية تُضرب في تكلفة الوحدة يدخل المال ويتراكم على كل حركة. أرسل مقداراً يقبل القسمة على مقام المعامل، أو أرسله بوحدة الأساس."),
+        FormattableString.Invariant(
+            $"Converting magnitude {magnitude} by factor {ratio} does not divide exactly, so the result is a rounded fraction. Rounding a quantity that is multiplied by a unit cost reaches the money and accumulates on every movement. Send a magnitude divisible by the factor's denominator, or send it in the base unit."));
+
+    /// <summary>معامل تحويل غير موجب.</summary>
+    public static Error UnitRatioNotPositive(string ratio) => new(
+        "inventory.unit_ratio_not_positive",
+        $"معامل التحويل «{ratio}» غير موجب. والمقام الصفري ليس معاملاً، والبسط غير الموجب يقلب اتجاه الكمّية بصمت.",
+        $"The conversion factor '{ratio}' is not positive. A zero denominator is not a factor, and a non-positive numerator silently reverses the direction of the quantity.");
+
+    /// <summary>حركة تُسلَّم بوحدة تخالف أساس الصنف المُسجَّل.</summary>
+    public static Error BaseUnitMismatch(string itemId, string balanceBase, string itemBase) => new(
+        "inventory.base_unit_mismatch",
+        $"رصيد الصنف «{itemId}» مُمسَك بوحدة الأساس «{balanceBase}»، وكتالوج الأصناف يقول إن أساسه «{itemBase}». "
+        + "ورصيدٌ يتغيّر أساسه بعد أن كُتبت عليه حركات لا يُجمَع: مجموعُ حركاته جمعُ أعدادٍ بمقاييس مختلفة. "
+        + "التصحيح بإفراغ الرصيد بمستند ثم إعادة إدخاله بالأساس الجديد، لا بتبديل العمود.",
+        $"The balance of item '{itemId}' is held in base unit '{balanceBase}', while the item catalogue states its base is "
+        + $"'{itemBase}'. A balance whose base changes after movements have been written against it cannot be summed: the sum "
+        + "of its movements would add numbers on different scales. Correct it by emptying the balance with a document and "
+        + "re-entering it on the new base, not by swapping the column.");
+
+    /// <summary>صنف غير موجود في الكتالوج.</summary>
+    public static Error ItemNotFound(string itemId) => new(
+        "inventory.item_not_found",
+        $"لا صنف بالرمز «{itemId}» في كتالوج هذه المنشأة.",
+        $"No item with code '{itemId}' exists in this company's catalogue.");
+
+    /// <summary>رمز صنف مكرّر.</summary>
+    public static Error DuplicateItemCode(string code) => new(
+        "inventory.duplicate_item_code",
+        $"رمز الصنف «{code}» مستعمَل في هذه المنشأة. والرمز هوية تحملها الحركات والقيود، فلا يتكرّر.",
+        $"Item code '{code}' is already used in this company. The code is an identity carried by movements and entries, so it is never duplicated.");
+
+    /// <summary>رقم مستند مكرّر.</summary>
+    public static Error DuplicateDocumentNumber(string number) => new(
+        "inventory.duplicate_document_number",
+        $"رقم المستند «{number}» مستعمَل في هذه المنشأة.",
+        $"Document number '{number}' is already used in this company.");
+
+    /// <summary>مستند غير موجود.</summary>
+    public static Error DocumentNotFound(string documentType, Guid documentId) => new(
+        "inventory.document_not_found",
+        FormattableString.Invariant($"لا مستند «{documentType}» بالمعرّف {documentId} في هذه المنشأة."),
+        FormattableString.Invariant($"No '{documentType}' document with id {documentId} exists in this company."));
+
+    /// <summary>المستند ليس في الحالة المطلوبة.</summary>
+    public static Error NotInState(string number, string actual, string expected) => new(
+        "inventory.wrong_state",
+        $"المستند «{number}» حالته «{actual}» والمطلوب «{expected}».",
+        $"Document '{number}' is in state '{actual}' where '{expected}' is required.");
+
+    /// <summary>وارد بلا تكلفة.</summary>
+    public static Error ReceiptCostNotPositive(decimal cost) => new(
+        "inventory.receipt_cost_not_positive",
+        FormattableString.Invariant(
+            $"تكلفة الوارد {cost} غير موجبة. والوارد بلا تكلفة يُنشئ أساس تكلفة قيمته صفر، فيصير كل صرفٍ بعده بصفر — رقمٌ صحيحٌ حسابياً وخاطئٌ محاسبياً. أدخل تكلفة الكمية الواردة كلّها."),
+        FormattableString.Invariant(
+            $"The receipt cost {cost} is not positive. A receipt without cost creates a zero cost basis, so every later issue is valued at zero — arithmetically consistent and accounting-wise wrong. Enter the cost of the whole received quantity."));
+
+    /// <summary>ترحيل رُفض من الدفتر.</summary>
+    public static Error PostingRefused(IReadOnlyList<Error> causes) => new(
+        "inventory.posting_refused",
+        "رفض الدفتر ترحيل مستند المخزون: " + string.Join(" · ", causes.Select(static e => e.MessageAr)),
+        "The ledger refused to post the inventory document: " + string.Join(" · ", causes.Select(static e => e.MessageEn)));
+
+    /// <summary>طلب ترحيل بلا رمز حدث.</summary>
+    public static Error MissingEventCode(string documentType, Guid documentId) => new(
+        "inventory.missing_event_code",
+        FormattableString.Invariant($"مستند «{documentType}» بالمعرّف {documentId} بلا رمز حدث — وحدثان بلا رمز هويةٌ واحدة."),
+        FormattableString.Invariant($"Document '{documentType}' with id {documentId} carries no event code; two events without a code share one identity."));
 
     /// <summary>عبارة كتابة أصابت عدداً غير متوقَّع من الصفوف.</summary>
     public static Error UnexpectedRowCount(string statement, int expected, int actual) => new(

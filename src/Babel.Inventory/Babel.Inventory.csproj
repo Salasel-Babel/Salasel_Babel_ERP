@@ -27,6 +27,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- نصوص الترقية مضمَّنة: النشر لا يفترض وجود شجرة المستودع على الخادم. -->
+    <EmbeddedResource Include="Persistence/Migrations/*.sql" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!--
       الاختبار يبلغ حساب التكلفة نفسه.
       الحساب <c>internal</c> عمداً (القاعدة 5): طريقة التقييم قرارٌ داخلي للوحدة، ولا

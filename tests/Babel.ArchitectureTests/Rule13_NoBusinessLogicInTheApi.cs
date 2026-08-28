@@ -253,6 +253,35 @@ public sealed class Rule13_NoBusinessLogicInTheApi
         "Babel.Purchasing.Surface.PurchasingAgingBands",
         "Babel.Purchasing.Surface.PurchasingAgingParty",
         "Babel.Purchasing.Surface.PurchasingAging",
+        "Babel.Purchasing.Surface.PurchasingStockLineRequest",
+        "Babel.Purchasing.Surface.PurchasingOrderRequest",
+        "Babel.Purchasing.Surface.PurchasingLine",
+        "Babel.Purchasing.Surface.PurchasingDocumentWithLines",
+        "Babel.Purchasing.Surface.PurchasingReceiptLineRequest",
+        "Babel.Purchasing.Surface.PurchasingReceiptRequest",
+        "Babel.Purchasing.Surface.PurchasingStockBillLineRequest",
+        "Babel.Purchasing.Surface.PurchasingStockBillRequest",
+        "Babel.Purchasing.Surface.PurchasingReturnRequest",
+
+        // ── السطح المنشور لوحدة المخزون ──────────────────────────────────────
+        //
+        // وبالشكل نفسه وللسبب نفسه: خدمات المخزون كلّها في `Babel.Inventory.Application`
+        // و`…​.Subledger`، وكلاهما من فضاءات الداخل المُعلَنة أدناه — فلا يستطيع سطح
+        // ‏HTTP أن يناديها ولو أُدرجت هنا. والباب المشروع سطحٌ منشور خارجها: `…​.Surface`.
+        //
+        // **ولا واحد من هذه الأسماء يسمّي حساباً**: الصنف يحمل `ItemGroup` — مؤهّل دور —
+        // والمصفوفة وحدها تُحوّله إلى حساب.
+        "Babel.Inventory.Surface.InventorySurface",
+        "Babel.Inventory.Surface.InventoryUnitFactor",
+        "Babel.Inventory.Surface.InventoryItemRequest",
+        "Babel.Inventory.Surface.InventoryItem",
+        "Babel.Inventory.Surface.InventoryMeasure",
+        "Babel.Inventory.Surface.InventoryStockMovementRequest",
+        "Babel.Inventory.Surface.InventoryStockMovement",
+        "Babel.Inventory.Surface.InventoryBalance",
+        "Babel.Inventory.Surface.InventoryDivergence",
+        "Babel.Inventory.Surface.InventoryValuationReport",
+        "Babel.Inventory.InventoryOptions",
 
         // وإعدادات الوحدتين — كإعدادات الدفتر أعلاه وللسبب نفسه: الجذر التركيبي هو من
         // يقرأ اتصال النشر من الإعداد ويُسلّمه، ولا سبيل إلى ذلك بلا تسمية نوع الإعداد.

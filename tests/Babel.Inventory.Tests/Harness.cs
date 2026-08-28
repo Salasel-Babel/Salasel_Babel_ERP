@@ -51,6 +51,8 @@ internal sealed class Harness : IDisposable
         Profiles = new InMemoryCapabilityProfileStore();
 
         Stock = new StockMovementService(enforcer, inventory);
+        Items = new ItemCatalogueService(enforcer, inventory);
+        StockDocuments = new StockDocumentService(enforcer, inventory, Posting, Stock);
         Valuation = new InventoryValuationService(
             enforcer,
             inventory,
@@ -83,6 +85,12 @@ internal sealed class Harness : IDisposable
     /// <summary>خدمة المخزون — وهي تنفيذ منفذ التقييم في العقود.</summary>
     public StockMovementService Stock { get; }
 
+    /// <summary>كتالوج الأصناف — وحدة الأساس ومعاملات التحويل.</summary>
+    public ItemCatalogueService Items { get; }
+
+    /// <summary>مستندات حركة المخزون القائمة بذاتها: تسوية الجرد والرصيد الافتتاحي.</summary>
+    public StockDocumentService StockDocuments { get; }
+
     public InventoryValuationService Valuation { get; }
 
     public SupplierService Suppliers { get; }
@@ -111,7 +119,9 @@ internal sealed class Harness : IDisposable
         // المنشآت مؤسَّسة قبل أول ترحيل: البوّابة تسأل النواة عن مركز التكلفة، ومنشأةٌ
         // لم تُؤسَّس لا مركز لها أصلاً (ADR-0026).
         Harness harness = new(
-            new InventoryRuntime(InventoryTestEnvironment.Inventory),
+            new InventoryRuntime(
+                InventoryTestEnvironment.Inventory,
+                FoundedTenants.ResolverFor(InventoryTestEnvironment.AllTenants)),
             new PurchasingRuntime(
                 InventoryTestEnvironment.Purchasing,
                 FoundedTenants.ResolverFor(InventoryTestEnvironment.AllTenants)),
@@ -219,6 +229,7 @@ internal sealed class Harness : IDisposable
                         "*",
                         new LocalizedName("صنف اختبار", "Test item"),
                         quantity,
+                        Babel.Contracts.Inventory.InventoryUnits.Each,
                         Money.Of(unitPrice, CurrencyCode.Sar),
                         "standard",
                         0.15m,

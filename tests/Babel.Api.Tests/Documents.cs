@@ -143,6 +143,201 @@ internal static class Documents
                    "unitPrice":"100.0000","taxClassification":"standard","taxRate":"0.15","taxRecoverable":true}]}
         """;
 
+    // ── المخزون وسلسلة المشتريات المخزنية ────────────────────────────────────
+
+    /// <summary>مسار الأصناف.</summary>
+    /// <param name="company">الشركة.</param>
+    public static string Items(Guid company) =>
+        string.Create(CultureInfo.InvariantCulture, $"/api/v1/companies/{company:D}/items");
+
+    /// <summary>مسار صنف واحد.</summary>
+    /// <param name="company">الشركة.</param>
+    /// <param name="itemId">الصنف.</param>
+    public static string Item(Guid company, string itemId) => Items(company) + "/" + itemId;
+
+    /// <summary>مسار حركات المخزون.</summary>
+    /// <param name="company">الشركة.</param>
+    public static string StockMovements(Guid company) =>
+        string.Create(CultureInfo.InvariantCulture, $"/api/v1/companies/{company:D}/stock-movements");
+
+    /// <summary>مسار ترحيل حركة مخزون.</summary>
+    /// <param name="company">الشركة.</param>
+    /// <param name="movementId">الحركة.</param>
+    public static string StockMovementPosting(Guid company, string movementId) =>
+        StockMovements(company) + "/" + movementId + "/posting";
+
+    /// <summary>مسار أرصدة المخزون.</summary>
+    /// <param name="company">الشركة.</param>
+    public static string StockBalances(Guid company) =>
+        string.Create(CultureInfo.InvariantCulture, $"/api/v1/companies/{company:D}/stock-balances");
+
+    /// <summary>مسار تقييم المخزون في تاريخ.</summary>
+    /// <param name="company">الشركة.</param>
+    /// <param name="asOf">التاريخ.</param>
+    public static string InventoryValuation(Guid company, string asOf) => string.Create(
+        CultureInfo.InvariantCulture,
+        $"/api/v1/companies/{company:D}/inventory-valuation?asOf={Uri.EscapeDataString(asOf)}");
+
+    /// <summary>مسار أوامر الشراء.</summary>
+    /// <param name="company">الشركة.</param>
+    public static string PurchaseOrders(Guid company) =>
+        string.Create(CultureInfo.InvariantCulture, $"/api/v1/companies/{company:D}/purchase-orders");
+
+    /// <summary>مسار أمر شراء واحد.</summary>
+    /// <param name="company">الشركة.</param>
+    /// <param name="orderId">الأمر.</param>
+    public static string PurchaseOrder(Guid company, string orderId) => PurchaseOrders(company) + "/" + orderId;
+
+    /// <summary>مسار استلامات البضاعة.</summary>
+    /// <param name="company">الشركة.</param>
+    public static string GoodsReceipts(Guid company) =>
+        string.Create(CultureInfo.InvariantCulture, $"/api/v1/companies/{company:D}/goods-receipts");
+
+    /// <summary>مسار استلام واحد.</summary>
+    /// <param name="company">الشركة.</param>
+    /// <param name="receiptId">الاستلام.</param>
+    public static string GoodsReceipt(Guid company, string receiptId) => GoodsReceipts(company) + "/" + receiptId;
+
+    /// <summary>مسار ترحيل استلام.</summary>
+    /// <param name="company">الشركة.</param>
+    /// <param name="receiptId">الاستلام.</param>
+    public static string GoodsReceiptPosting(Guid company, string receiptId) =>
+        GoodsReceipt(company, receiptId) + "/posting";
+
+    /// <summary>مسار الفواتير المخزنية.</summary>
+    /// <param name="company">الشركة.</param>
+    public static string StockBills(Guid company) =>
+        string.Create(CultureInfo.InvariantCulture, $"/api/v1/companies/{company:D}/stock-bills");
+
+    /// <summary>مسار مرتجعات المشتريات.</summary>
+    /// <param name="company">الشركة.</param>
+    public static string PurchaseReturns(Guid company) =>
+        string.Create(CultureInfo.InvariantCulture, $"/api/v1/companies/{company:D}/purchase-returns");
+
+    /// <summary>مسار مرتجع مشتريات واحد.</summary>
+    /// <param name="company">الشركة.</param>
+    /// <param name="returnId">المرتجع.</param>
+    public static string PurchaseReturn(Guid company, string returnId) => PurchaseReturns(company) + "/" + returnId;
+
+    /// <summary>مسار ترحيل مرتجع مشتريات.</summary>
+    /// <param name="company">الشركة.</param>
+    /// <param name="returnId">المرتجع.</param>
+    public static string PurchaseReturnPosting(Guid company, string returnId) =>
+        PurchaseReturn(company, returnId) + "/posting";
+
+    /// <summary>
+    /// حمولة صنف: وحدة أساسه الحبّة، والكرتون اثنتا عشرة حبّة — <b>معاملٌ نسبيّ لا عائم</b>.
+    /// </summary>
+    /// <param name="code">رمز الصنف.</param>
+    public static string Item(string code) => $$"""
+        {"code":"{{code}}","name":{"ar":"صنف اختبار المخزون","en":"Inventory surface test item"},
+         "itemGroup":"*","baseUnit":"EA",
+         "units":[{"unitCode":"CTN","numerator":12,"denominator":1}]}
+        """;
+
+    /// <summary>حمولة حركة مخزون واردة: كرتونان بـ240 ⇒ 24 حبّة بمتوسط 10.</summary>
+    /// <param name="number">رقم المستند.</param>
+    /// <param name="itemCode">الصنف.</param>
+    /// <param name="occurredOn">التاريخ.</param>
+    public static string StockMovementIn(string number, string itemCode, string occurredOn = "2026-03-05") => $$"""
+        {"number":"{{number}}","direction":"IN","itemId":"{{itemCode}}","warehouseId":"WH-01",
+         "locationId":"DEFAULT","itemGroup":"*","quantity":{"magnitude":"2","unit":"CTN"},
+         "cost":"240.0000","occurredOn":"{{occurredOn}}"}
+        """;
+
+    /// <summary>حمولة أمر شراء: أربع وحدات بمئة، وضريبة 15٪.</summary>
+    /// <param name="number">الرقم.</param>
+    /// <param name="supplierId">المورد.</param>
+    /// <param name="itemCode">الصنف.</param>
+    /// <param name="costCenterId">مركز التكلفة.</param>
+    /// <param name="orderedOn">التاريخ.</param>
+    public static string PurchaseOrder(
+        string number, string supplierId, string itemCode, string costCenterId, string orderedOn = "2026-03-06") => $$"""
+        {"number":"{{number}}","supplierId":"{{supplierId}}","orderedOn":"{{orderedOn}}",
+         "warehouseId":"WH-01","costCenterId":"{{costCenterId}}",
+         "lines":[{"itemId":"{{itemCode}}","itemGroup":"*","description":{"ar":"بضاعة","en":"Goods"},
+                   "quantity":"4","unit":"EA","unitPrice":"100.0000",
+                   "taxClassification":"standard","taxRate":"0.15"}]}
+        """;
+
+    /// <summary>حمولة استلام: أربع وحدات من سطر الأمر.</summary>
+    /// <param name="number">الرقم.</param>
+    /// <param name="orderId">الأمر.</param>
+    /// <param name="orderLineId">سطر الأمر.</param>
+    /// <param name="receivedOn">التاريخ.</param>
+    public static string GoodsReceipt(
+        string number, string orderId, string orderLineId, string receivedOn = "2026-03-07") => $$"""
+        {"number":"{{number}}","orderId":"{{orderId}}","receivedOn":"{{receivedOn}}",
+         "lines":[{"orderLineId":"{{orderLineId}}","quantity":"4"}]}
+        """;
+
+    /// <summary>حمولة فاتورة مخزنية على سطر استلام.</summary>
+    /// <param name="number">الرقم.</param>
+    /// <param name="receiptId">الاستلام.</param>
+    /// <param name="receiptLineId">سطر الاستلام.</param>
+    /// <param name="issuedOn">التاريخ.</param>
+    public static string StockBill(
+        string number, string receiptId, string receiptLineId, string issuedOn = "2026-03-08") => $$"""
+        {"number":"{{number}}","receiptId":"{{receiptId}}","issuedOn":"{{issuedOn}}",
+         "lines":[{"receiptLineId":"{{receiptLineId}}","quantity":"4","unitPrice":"100.0000",
+                   "taxClassification":"standard","taxRate":"0.15"}]}
+        """;
+
+    /// <summary>
+    /// حمولة مرتجع مشتريات: وحدة واحدة — <b>بلا صافٍ</b>، فالمبلغ يُحسب لحظة الترحيل.
+    /// </summary>
+    /// <param name="number">الرقم.</param>
+    /// <param name="billId">الفاتورة المخزنية.</param>
+    /// <param name="receiptLineId">سطر الاستلام.</param>
+    /// <param name="issuedOn">التاريخ.</param>
+    public static string PurchaseReturn(
+        string number, string billId, string receiptLineId, string issuedOn = "2026-03-09") => $$"""
+        {"number":"{{number}}","billId":"{{billId}}","receiptLineId":"{{receiptLineId}}",
+         "issuedOn":"{{issuedOn}}","quantity":"1","tax":"15.0000"}
+        """;
+
+    /// <summary>يسجّل صنفاً ويُعيد رمزه ومعرّفه.</summary>
+    /// <param name="api">الخادم.</param>
+    /// <param name="company">الشركة.</param>
+    /// <param name="credential">الاعتماد.</param>
+    public static async Task<(string Code, string Id)> AddItemAsync(
+        ApiProcess api, Guid company, TestCredential credential)
+    {
+        string code = Number("ITEM");
+
+        using HttpResponseMessage response = await api.Call(
+            Http.Request(HttpMethod.Post, Items(company), credential, Item(code)));
+
+        (string text, JsonElement body) = await Http.BodyAsync(response);
+        Assert.True(response.StatusCode == HttpStatusCode.Created, "تسجيل الصنف: " + text);
+        return (code, body.GetProperty("id").GetString()!);
+    }
+
+    /// <summary>يقرأ رصيد صنف من قائمة الأرصدة، أو يرمي إن لم يوجد.</summary>
+    /// <param name="api">الخادم.</param>
+    /// <param name="company">الشركة.</param>
+    /// <param name="credential">الاعتماد.</param>
+    /// <param name="itemCode">الصنف.</param>
+    public static async Task<JsonElement> BalanceOfAsync(
+        ApiProcess api, Guid company, TestCredential credential, string itemCode)
+    {
+        using HttpResponseMessage response = await api.Call(
+            Http.Request(HttpMethod.Get, StockBalances(company), credential));
+
+        (string text, JsonElement body) = await Http.BodyAsync(response);
+        Assert.True(response.StatusCode == HttpStatusCode.OK, "قراءة الأرصدة: " + text);
+
+        foreach (JsonElement balance in body.GetProperty("balances").EnumerateArray())
+        {
+            if (string.Equals(balance.GetProperty("itemId").GetString(), itemCode, StringComparison.Ordinal))
+            {
+                return balance.Clone();
+            }
+        }
+
+        throw new InvalidOperationException("لا رصيد للصنف " + itemCode + " في: " + text);
+    }
+
     /// <summary>يسجّل عميلاً ويُعيد معرّفه.</summary>
     /// <param name="api">الخادم.</param>
     /// <param name="company">الشركة.</param>

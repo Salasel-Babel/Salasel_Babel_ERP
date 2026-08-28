@@ -60,11 +60,17 @@ public sealed record ControlReconciliationReport(
 /// <summary>بندٌ يمنع إقفال الفترة على المخزون.</summary>
 /// <param name="ItemId">الصنف.</param>
 /// <param name="WarehouseId">المستودع.</param>
-/// <param name="Quantity">الكمية.</param>
+/// <param name="LocationId">الموقع داخل المستودع — البند يُسمّي موضعه لا مستودعه وحده.</param>
+/// <param name="Quantity">الكمية بوحدة أساسها.</param>
 /// <param name="Value">القيمة.</param>
 /// <param name="ReasonCode">سبب المنع.</param>
 public sealed record CloseObstacle(
-    string ItemId, string WarehouseId, decimal Quantity, Money Value, string ReasonCode);
+    string ItemId,
+    string WarehouseId,
+    string LocationId,
+    Babel.Contracts.Inventory.InventoryQuantity Quantity,
+    Money Value,
+    string ReasonCode);
 
 /// <summary>أسباب منع إقفال الفترة على المخزون.</summary>
 public static class CloseObstacleReason

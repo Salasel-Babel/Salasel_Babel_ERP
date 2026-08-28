@@ -106,7 +106,7 @@ public sealed class CapabilityAdmissionTests : IAsyncLifetime
 
             // معرّف سطر مخترَع مقصود: البند يقيس أن **بوّابة القبول** ترفض قبل أن
             // يُقرأ سطرٌ أو يُبلَغ مخزون. فلو مرّ لكان الرفض الثاني هو المقيس لا الأول.
-            new CostOfSalesDraft(Guid.CreateVersion7(), "ITEM-X", "WH-01", "*", 10m),
+            new CostOfSalesDraft(Guid.CreateVersion7(), "ITEM-X", "WH-01", Babel.Contracts.Inventory.InventoryLocations.Default, "*", new Babel.Contracts.Inventory.InventoryQuantity(10m, Babel.Contracts.Inventory.InventoryUnits.Each)),
             token);
 
         ValidatedCapabilityProfile? stored = await bare.Profiles
@@ -241,7 +241,7 @@ public sealed class CapabilityAdmissionTests : IAsyncLifetime
             tenant,
             Harness.Actor,
             invoiceId,
-            new CostOfSalesDraft(lineId, Next("ITEM"), "WH-01", "*", 120m),
+            new CostOfSalesDraft(lineId, Next("ITEM"), "WH-01", Babel.Contracts.Inventory.InventoryLocations.Default, "*", new Babel.Contracts.Inventory.InventoryQuantity(120m, Babel.Contracts.Inventory.InventoryUnits.Each)),
             token);
     }
 

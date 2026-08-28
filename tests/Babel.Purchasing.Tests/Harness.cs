@@ -36,7 +36,7 @@ internal sealed class Harness : IDisposable
         Suppliers = new SupplierService(enforcer, runtime);
         Orders = new PurchaseOrderService(enforcer, runtime);
         Receipts = new GoodsReceiptService(enforcer, runtime, Posting, Profiles, Valuation);
-        Bills = new SupplierBillService(enforcer, runtime, Posting, Profiles);
+        Bills = new SupplierBillService(enforcer, runtime, Posting, Profiles, Valuation);
         Payments = new SupplierPaymentService(enforcer, runtime, Posting, Profiles);
         Promotion = new PurchasingCapturedInvoiceReceiver(Suppliers, Bills);
         Payables = new PayablesService(
@@ -207,6 +207,7 @@ internal sealed class Harness : IDisposable
             "*",
             new LocalizedName("صنف اختبار", "Test item"),
             quantity,
+            Babel.Contracts.Inventory.InventoryUnits.Each,
             Money.Of(unitPrice, CurrencyCode.Sar),
             "standard",
             taxRate,

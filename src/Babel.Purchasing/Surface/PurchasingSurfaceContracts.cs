@@ -121,3 +121,122 @@ public sealed record PurchasingAging(
     DateOnly AsOf,
     IReadOnlyList<PurchasingAgingParty> Parties,
     PurchasingAgingBands Totals);
+
+/// <summary>
+/// سطر مستند مشتريات <b>مخزني</b> — ومعه وحدة قياسه.
+/// <para>
+/// <b>والفرق عن سطر المصروف هو الوحدة</b>: هذا السطر تصل كمّيته إلى دفتر المخزون
+/// المساعد فتُضرب في تكلفة الوحدة، و«عشرة» بلا وحدة ليست معلومة. أمّا سطر المصروف
+/// فلا يُحرّك مخزوناً، فوحدته العدّ دائماً.
+/// </para>
+/// </summary>
+/// <param name="ItemId">رمز الصنف كما هو في كتالوج المخزون.</param>
+/// <param name="ItemGroup">مجموعة الصنف — مؤهّل الدور.</param>
+/// <param name="Description">البيان ثنائي اللغة.</param>
+/// <param name="Quantity">الكمية بوحدتها.</param>
+/// <param name="Unit">رمز وحدة القياس.</param>
+/// <param name="UnitPrice">سعر الوحدة.</param>
+/// <param name="TaxClassification">التصنيف الضريبي.</param>
+/// <param name="TaxRate">نسبة الضريبة كسراً عشرياً.</param>
+public sealed record PurchasingStockLineRequest(
+    string ItemId,
+    string ItemGroup,
+    LocalizedName Description,
+    decimal Quantity,
+    string Unit,
+    decimal UnitPrice,
+    string TaxClassification,
+    decimal TaxRate);
+
+/// <summary>طلب إنشاء أمر شراء.</summary>
+/// <param name="Number">رقم الأمر.</param>
+/// <param name="SupplierId">المورد.</param>
+/// <param name="OrderedOn">تاريخ الأمر.</param>
+/// <param name="WarehouseId">المستودع المستقبِل.</param>
+/// <param name="CostCenterId">مركز التكلفة.</param>
+/// <param name="Lines">السطور.</param>
+public sealed record PurchasingOrderRequest(
+    string Number,
+    Guid SupplierId,
+    DateOnly OrderedOn,
+    string WarehouseId,
+    string CostCenterId,
+    IReadOnlyList<PurchasingStockLineRequest> Lines);
+
+/// <summary>سطر مستند مشتريات كما يخرج من السطح — ومعرّفه مدخل المستند التالي في الدورة.</summary>
+/// <param name="Id">معرّف السطر.</param>
+/// <param name="LineNo">رقمه.</param>
+/// <param name="ItemId">الصنف.</param>
+/// <param name="Quantity">الكمية.</param>
+/// <param name="Unit">وحدة القياس.</param>
+/// <param name="UnitPrice">سعر الوحدة.</param>
+public sealed record PurchasingLine(
+    Guid Id, int LineNo, string ItemId, decimal Quantity, string Unit, decimal UnitPrice);
+
+/// <summary>مستند مشتريات ومعه سطوره — مورد واحد لا موردان.</summary>
+/// <param name="Document">المستند بحالته ومجاميعه.</param>
+/// <param name="Lines">سطوره بمعرّفاتها.</param>
+public sealed record PurchasingDocumentWithLines(
+    PurchasingDocument Document, IReadOnlyList<PurchasingLine> Lines);
+
+/// <summary>سطر استلام: أي سطر أمر، وبأي كمية.</summary>
+/// <param name="OrderLineId">سطر الأمر.</param>
+/// <param name="Quantity">الكمية المستلمة.</param>
+public sealed record PurchasingReceiptLineRequest(Guid OrderLineId, decimal Quantity);
+
+/// <summary>طلب تسجيل استلام بضاعة <b>مسوّدة</b>.</summary>
+/// <param name="Number">رقم الاستلام.</param>
+/// <param name="OrderId">أمر الشراء.</param>
+/// <param name="ReceivedOn">تاريخ الاستلام.</param>
+/// <param name="Lines">السطور.</param>
+public sealed record PurchasingReceiptRequest(
+    string Number,
+    Guid OrderId,
+    DateOnly ReceivedOn,
+    IReadOnlyList<PurchasingReceiptLineRequest> Lines);
+
+/// <summary>سطر فاتورة مورد مخزنية — يرجع إلى سطر استلام بعينه، وهو ضلع المطابقة الثالث.</summary>
+/// <param name="ReceiptLineId">سطر الاستلام.</param>
+/// <param name="Quantity">الكمية المفوترة.</param>
+/// <param name="UnitPrice">سعر الوحدة على الفاتورة.</param>
+/// <param name="TaxClassification">التصنيف الضريبي.</param>
+/// <param name="TaxRate">نسبة الضريبة كسراً عشرياً.</param>
+public sealed record PurchasingStockBillLineRequest(
+    Guid ReceiptLineId,
+    decimal Quantity,
+    decimal UnitPrice,
+    string TaxClassification,
+    decimal TaxRate);
+
+/// <summary>طلب إنشاء فاتورة مورد <b>مخزنية</b> تُطابَق ثلاثياً.</summary>
+/// <param name="Number">رقم الفاتورة.</param>
+/// <param name="ReceiptId">الاستلام.</param>
+/// <param name="IssuedOn">تاريخ الفاتورة.</param>
+/// <param name="Lines">السطور.</param>
+public sealed record PurchasingStockBillRequest(
+    string Number,
+    Guid ReceiptId,
+    DateOnly IssuedOn,
+    IReadOnlyList<PurchasingStockBillLineRequest> Lines);
+
+/// <summary>
+/// طلب إنشاء <b>مرتجع مشتريات</b> (إشعار مدين) <b>مسوّدة</b> على فاتورة مخزنية مُرحَّلة.
+/// <para>
+/// <b>ولاحظ ما ليس فيه: صافي المرتجع.</b> المصفوفة تقول إن الصافي «بتكلفة الاستلام
+/// الأصلي لا بتكلفة اليوم»، وتلك التكلفة يملكها دفتر المخزون وحده — فالطلب يحمل
+/// الكمّية، والمبلغ يُحسب لحظة الترحيل ولا يُملى.
+/// </para>
+/// </summary>
+/// <param name="Number">رقم المرتجع.</param>
+/// <param name="BillId">الفاتورة المخزنية الأصلية.</param>
+/// <param name="ReceiptLineId">سطر الاستلام الذي تُردّ بضاعته — به يُقيَّم المرتجع.</param>
+/// <param name="IssuedOn">تاريخ المرتجع.</param>
+/// <param name="Quantity">الكمية المرتجعة بوحدة الاستلام.</param>
+/// <param name="Tax">ضريبة المرتجع — بتصنيف الفاتورة الأصلية.</param>
+public sealed record PurchasingReturnRequest(
+    string Number,
+    Guid BillId,
+    Guid ReceiptLineId,
+    DateOnly IssuedOn,
+    decimal Quantity,
+    decimal Tax);

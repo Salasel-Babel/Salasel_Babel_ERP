@@ -66,7 +66,13 @@ internal static class BabelApiHost
         builder.Services.AddBabelSales(options => ApplySalesConfiguration(builder.Configuration, options));
         builder.Services.AddBabelPurchasing(options => ApplyPurchasingConfiguration(builder.Configuration, options));
         builder.Services.AddBabelCompliance();
-        builder.Services.AddBabelInventory();
+
+        // ‏**واتصال المخزون يُقرأ من الإعداد** — ولم يكن يُقرأ. كان الجذر يسجّل الوحدة
+        // بإعداداتها الافتراضية، فيشير كل خادم إلى `babel_inventory` على المضيف المحلي
+        // مهما كان النشر. ولم يكن ذلك مرئياً لأن **لا باب HTTP واحداً كان يبلغ الوحدة**:
+        // مسارٌ لا يُسلَك لا يُظهر إعداداً خاطئاً — وهو الشكل نفسه الذي وقع في المبيعات
+        // والمشتريات وقت نشرهما.
+        builder.Services.AddBabelInventory(options => ApplyInventoryConfiguration(builder.Configuration, options));
 
         // سياق الطلب: يُملأ من الاعتماد وحده.
         builder.Services.AddScoped<RequestTenantContext>();
@@ -213,6 +219,22 @@ internal static class BabelApiHost
         }
 
         string? currency = configuration["Babel:Purchasing:CompanyCurrency"];
+        if (!string.IsNullOrWhiteSpace(currency))
+        {
+            options.CompanyCurrency = currency;
+        }
+    }
+
+    /// <summary>يقرأ إعداد المخزون، بالقيود نفسها: <b>لا اتصال مالك</b> — نشر المخطّط عملية مالك.</summary>
+    private static void ApplyInventoryConfiguration(ConfigurationManager configuration, InventoryOptions options)
+    {
+        string? connection = configuration["Babel:Inventory:ConnectionString"];
+        if (!string.IsNullOrWhiteSpace(connection))
+        {
+            options.ConnectionString = connection;
+        }
+
+        string? currency = configuration["Babel:Inventory:CompanyCurrency"];
         if (!string.IsNullOrWhiteSpace(currency))
         {
             options.CompanyCurrency = currency;

@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     2eb37c204d1d48eba87addf22298f81af646a2e1f5e5546fa8b2ea4b1357bcfa
+     e322ea7b531c14e43bf661d3c63817c5e29a7a268fe787b1b9fafc95b44ca1ed
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -48,6 +48,22 @@ export function asInt64String(text: unknown): Int64String {
   return text as Int64String;
 }
 
+/** مقدار كمّية نصّاً بمقياس لا يتجاوز **ستّاً**. والكمّية ليست مبلغاً — ولذلك لها مقياسها — لكنها تُضرب في تكلفة الوحدة، فأي دقّة تُفقد فيها تصل إلى المال. والكيلوغرامات واللترات والأمتار تُكسَر إلى ما دون الهللة، ومقياسٌ مالي عليها يُنتج تقريباً صامتاً يتراكم على كل حركة. / A quantity magnitude as a string with at most **six** decimal places. A quantity is not an amount — hence its own scale — but it is multiplied by a unit cost, so any precision lost in it reaches the money. Kilograms, litres, and metres divide below the halala, and a money scale over them produces a silent rounding that accumulates on every movement. */
+export type Magnitude = string & { readonly __Magnitude: unique symbol };
+
+/**
+ * يتحقّق من النمط المنشور ثم يحتجز النوع. / Validates then brands.
+ * @param text النصّ كما ورد. / the text as received.
+ */
+export function asMagnitude(text: unknown): Magnitude {
+  if (typeof text !== "string" || !F.SCHEMA_Magnitude_RE.test(text)) {
+    throw new TypeError(
+      "asMagnitude: نصّ لا يطابق النمط المنشور " + F.SCHEMA_Magnitude + " — «" + String(text) + "». / does not match the published pattern."
+    );
+  }
+  return text as Magnitude;
+}
+
 /** كمّية نصّاً بمقياس لا يتجاوز أربعاً، بالنحو الذي تخضع له المبالغ. وهي ليست مبلغاً — ولذلك لها مخطّطها — لكنها تُضرب في مبلغ، فأي فقدان دقّة فيها يصل إلى المال. / A quantity as a string with at most four decimal places, under the grammar that governs amounts. It is not an amount — hence its own schema — but it is multiplied by one, so any precision lost in it reaches the money. */
 export type Quantity = string & { readonly __Quantity: unique symbol };
 
@@ -80,10 +96,28 @@ export function asTaxRate(text: unknown): TaxRate {
   return text as TaxRate;
 }
 
+/** متوسط تكلفة الوحدة نصّاً بمقياس **ستّ خانات لا أربع**: صنفٌ يُشترى بألف حبّة بمئة ريال تكلفة وحدته 0.100000، وبمقياس أربعة تصير 0.1000 والفرق لا يظهر — لكنه يتراكم على كل صرف حتى ينحرف رصيد القيمة عن مجموع حركاته. / The moving average unit cost as a string with **six** decimal places rather than four: an item bought at a thousand pieces for a hundred riyals has a unit cost of 0.100000, which at scale four becomes 0.1000 and the difference disappears — yet it accumulates on every issue until the value balance no longer equals the sum of its movements. */
+export type UnitCost = string & { readonly __UnitCost: unique symbol };
+
+/**
+ * يتحقّق من النمط المنشور ثم يحتجز النوع. / Validates then brands.
+ * @param text النصّ كما ورد. / the text as received.
+ */
+export function asUnitCost(text: unknown): UnitCost {
+  if (typeof text !== "string" || !F.SCHEMA_UnitCost_RE.test(text)) {
+    throw new TypeError(
+      "asUnitCost: نصّ لا يطابق النمط المنشور " + F.SCHEMA_UnitCost + " — «" + String(text) + "». / does not match the published pattern."
+    );
+  }
+  return text as UnitCost;
+}
+
 /** مدقّق لكل صيغة، مفهرساً باسمها في العقد. / A validator per published format. */
 export const BRANDS: Readonly<Record<string, (text: unknown) => string>> = {
   ExchangeRate: asExchangeRate,
   Int64String: asInt64String,
+  Magnitude: asMagnitude,
   Quantity: asQuantity,
   TaxRate: asTaxRate,
+  UnitCost: asUnitCost,
 };

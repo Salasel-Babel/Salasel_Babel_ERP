@@ -172,10 +172,10 @@ public sealed class InventoryValuationService : IApplicationService
 
         await using (NpgsqlCommand command = new(
             """
-            select "ItemId","WarehouseId","Quantity","ValueAmount"
+            select "ItemId","WarehouseId","LocationId","BaseUnit","Quantity","ValueAmount"
               from inventory.item_balance
              where "TenantId" = $1 and ("Quantity" < 0 or ("Quantity" <= 0 and "ValueAmount" <> 0))
-             order by "ItemId","WarehouseId"
+             order by "ItemId","WarehouseId","LocationId"
             """, Connection))
         {
             command.Parameters.AddWithValue(tenant.Value);
@@ -183,13 +183,14 @@ public sealed class InventoryValuationService : IApplicationService
 
             while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
             {
-                decimal quantity = reader.GetDecimal(2);
-                decimal value = reader.GetDecimal(3);
+                decimal quantity = reader.GetDecimal(4);
+                decimal value = reader.GetDecimal(5);
 
                 obstacles.Add(new CloseObstacle(
                     reader.GetString(0),
                     reader.GetString(1),
-                    quantity,
+                    reader.GetString(2),
+                    new Babel.Contracts.Inventory.InventoryQuantity(quantity, reader.GetString(3)),
                     Money.Of(value, _currency),
                     quantity < 0m ? CloseObstacleReason.NegativeQuantity : CloseObstacleReason.ValueWithoutQuantity));
             }
@@ -201,7 +202,7 @@ public sealed class InventoryValuationService : IApplicationService
         }
 
         string[] reasons = [.. obstacles.Select(static o => FormattableString.Invariant(
-            $"  - {o.ItemId} @ {o.WarehouseId}: quantity {o.Quantity} / value {o.Value.Amount} / {o.ReasonCode}"))];
+            $"  - {o.ItemId} @ {o.WarehouseId}/{o.LocationId}: quantity {o.Quantity.Magnitude} {o.Quantity.Unit} / value {o.Value.Amount} / {o.ReasonCode}"))];
 
         return Result<IReadOnlyList<CloseObstacle>>.Failure(
             InventoryErrors.PeriodNotCloseable(periodCode, reasons));

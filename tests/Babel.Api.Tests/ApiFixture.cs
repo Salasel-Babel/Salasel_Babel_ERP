@@ -258,6 +258,7 @@ internal static class ApiFixture
             // وكان ذلك غير مرئي ما دام لا باب HTTP يبلغ الوحدتين.
             ["Babel__Sales__ConnectionString"] = ApiTestDatabase.Sales.ConnectionString,
             ["Babel__Purchasing__ConnectionString"] = ApiTestDatabase.Purchasing.ConnectionString,
+            ["Babel__Inventory__ConnectionString"] = ApiTestDatabase.Inventory.ConnectionString,
         };
 
         int index = 0;
@@ -297,6 +298,19 @@ internal static class ApiFixture
         // والالتزام معهما بالضرورة لا بالاختيار: `Compliance` يعتمد على `Sales` في
         // ‏`ModuleDependencyGraph`، و«قدرة الوحدة لا تتجاوز قدرة ما تعتمد عليه» — فمجموعةٌ
         // فيها التزامٌ فاعل فوق مبيعاتٍ للقراءة تُرفض عند الإقلاع، ويسقط الخادم بصوته.
+        // ── والمخزون وحدة **غير إلزامية**: افتراضها NotEntitled ────────────────
+        // فبلا هذه الأسطر يردّ كل باب مخزون 403 على كل منشأة — وهو سلوك صحيح ومطلوب
+        // إثباته، لكنه ليس ما تقيسه اختبارات السطح. ومنشأة «ج» تبقى **للقراءة فقط**
+        // كأخواتها، فيُقاس عليها أنّ القراءة تعمل والكتابة تُرفض على المخزون أيضاً.
+        environment[Entitlement(ApiTestDatabase.CompanyA, "Inventory")] = "Entitled";
+        environment[Entitlement(ApiTestDatabase.CompanyB, "Inventory")] = "Entitled";
+        environment[Entitlement(ApiTestDatabase.CompanyC, "Inventory")] = "ReadOnly";
+
+        foreach (Guid company in SetupCompanies)
+        {
+            environment[Entitlement(company, "Inventory")] = "Entitled";
+        }
+
         environment[Entitlement(ApiTestDatabase.CompanyC, "Sales")] = "ReadOnly";
         environment[Entitlement(ApiTestDatabase.CompanyC, "Purchasing")] = "ReadOnly";
         environment[Entitlement(ApiTestDatabase.CompanyC, "Compliance")] = "ReadOnly";

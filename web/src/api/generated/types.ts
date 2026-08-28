@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     2eb37c204d1d48eba87addf22298f81af646a2e1f5e5546fa8b2ea4b1357bcfa
+     e322ea7b531c14e43bf661d3c63817c5e29a7a268fe787b1b9fafc95b44ca1ed
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -14,10 +14,10 @@
    ═══════════════════════════════════════════════════════════════════════ */
 
 import type { Money } from "../money";
-import type { ExchangeRate, Int64String, Quantity, TaxRate } from "./brands";
+import type { ExchangeRate, Int64String, Magnitude, Quantity, TaxRate, UnitCost } from "./brands";
 
 /* المال يصل هنا **مغلّفاً**: Money كائن يرمي عند أي تحويل ضمني إلى نصّ أو رقم.
-   وبقيّة الصيغ النصّية المنشورة أنواع محتجزة (ExchangeRate · Int64String · Quantity · TaxRate).
+   وبقيّة الصيغ النصّية المنشورة أنواع محتجزة (ExchangeRate · Int64String · Magnitude · Quantity · TaxRate · UnitCost).
    ولا حقل مالي واحد نوعه number — لا هنا ولا في أي ملف مكتوب بيد.
    Money is an object whose implicit coercions throw; the other published string
    formats are branded types. No monetary field is ever typed `number`. */
@@ -272,6 +272,25 @@ export interface ExpenseBillRequest {
   supplierId: string;
 }
 
+/** سطر استلام: أي سطر أمر، وبأي كمية. / A receipt line: which order line, and how much of it. */
+export interface GoodsReceiptLine {
+  /** معرّف سطر الأمر. / The order line identifier. */
+  orderLineId: string;
+  quantity: Quantity;
+}
+
+/** طلب تسجيل استلام بضاعة **مسوّدة** — الضلع الثاني. / A **draft** goods receipt request — the second side. */
+export interface GoodsReceiptRequest {
+  /** السطور. / The lines. */
+  lines: GoodsReceiptLine[];
+  /** رقم الاستلام. / The receipt number. */
+  number: string;
+  /** أمر الشراء. / The purchase order. */
+  orderId: string;
+  /** تاريخ الاستلام الميلادي. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The Gregorian receipt date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  receivedOn: string;
+}
+
 /** طلب دعوة عضو. ولا حقل معرّف مستخدم فيه: المعرّف يسكّه الخادم — ومعرّفٌ يرسله العميل يجعل الدعوة طريقاً إلى ربط اعتمادٍ بمستخدمٍ قائم في مستأجرٍ آخر. / An invitation request. It carries no user identifier: the server mints it — a client-sent identifier would make an invitation a route to binding a credential to an existing user in another tenant. */
 export interface GrantMembershipRequest {
   /** اسم المدعوّ بالعربية — السجلّ لا ترجمةً أولى (ADR-0021). / The invited person's Arabic name — the record, not a first translation (ADR-0021). */
@@ -320,6 +339,71 @@ export interface InitialiseCompanySetupRequest {
 
 /** عدد صحيح 64 بت نصّاً: Number في JavaScript يفقد الدقّة فوق 2^53، ورقم القيد معرّف لا كمّية. / A 64-bit integer as a string: JavaScript Number loses precision above 2^53, and an entry number is an identifier, not a quantity. */
 /* Int64String مُعرَّف في ../money كنوع محتجز وقت التشغيل. */
+
+/** مستندٌ منحرف بين دفتر المخزون المساعد وحسابه الضابط — **يُسمّى بنوعه ومعرّفه وصنفه وسببه**، فلا يُقال «هناك مشكلة» بلا «أين». / A document diverging between the inventory subledger and its control account — **named by its type, its identifier, its item, and the reason**, so the report never says 'there is a problem' without saying where. */
+export interface InventoryDivergence {
+  controlEffect: Money;
+  divergence: Money;
+  /** معرّف المستند. / The document identifier. */
+  documentId: string;
+  /** نوع المستند. / The document type. */
+  documentType: string;
+  /** الصنف. / The item. */
+  itemId: string;
+  /** سبب الانحراف: حركةٌ بلا نظير في نقطة الضبط، أو نظيرٌ بلا حركة، أو مبلغان مختلفان. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The reason: a movement with no counterpart at the control point, a counterpart with no movement, or two different amounts. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  reasonCode: "amount_mismatch" | "missing_in_control" | "missing_in_subledger";
+  subledgerEffect: Money;
+}
+
+/** تقييم المخزون ومطابقته — **ثلاثة طرق مستقلّة إلى الرقم نفسه**: مجموع الحركات، ومجموع أرصدة الأصناف، ونقطة الضبط في الدفتر. واثنان يكفيان لكشف انحراف بين الوحدة والدفتر؛ والثالث يكشف انحراف الوحدة عن نفسها. وisReconciled يعني الفارق **صفر بالضبط** لا «قريب من الصفر». / The inventory valuation and its reconciliation — **three independent routes to the same number**: the sum of movements, the sum of item balances, and the ledger's control point. Two are enough to reveal a divergence between the module and the ledger; the third reveals the module diverging from itself. isReconciled means the difference is **exactly zero**, not 'close to zero'. */
+export interface InventoryValuation {
+  /** تاريخ التقييم. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The valuation date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  asOf: string;
+  balanceTotal: Money;
+  controlTotal: Money;
+  divergence: Money;
+  /** المستندات المسؤولة عن الفارق. / The documents responsible for the difference. */
+  divergences: InventoryDivergence[];
+  /** هل الفارق صفر بالضبط؟ / Is the difference exactly zero? */
+  isReconciled: boolean;
+  subledgerTotal: Money;
+}
+
+/** صنف كما يخرج على السلك. / An item as it leaves on the wire. */
+export interface Item {
+  /** وحدة الأساس. / The base unit. */
+  baseUnit: string;
+  /** الرمز. / The code. */
+  code: string;
+  /** المعرّف الذي تُبنى عليه القراءة. / The identifier reads are built on. */
+  id: string;
+  /** مجموعة الصنف. / The item group. */
+  itemGroup: string;
+  name: LocalizedText;
+  /** الوحدات الأكبر ومعاملاتها. / The larger units and their factors. */
+  units: UnitFactor[];
+}
+
+/** أصناف المنشأة، مرتَّبة بالرمز ترتيباً حرفياً ثابتاً. **وغلافٌ لا مصفوفة عارية**: مصفوفةٌ في جذر الاستجابة لا موضع فيها لعدّاد ولا لصفحة، فأول حاجة إليهما تكسر العقد. / The company's items, ordered by code in a stable ordinal order. **An envelope, not a bare array**: an array at the response root has no place for a count or a page, so the first need for either breaks the contract. */
+export interface ItemList {
+  /** عدد الأصناف. / The number of items. */
+  itemCount: number;
+  /** الأصناف. / The items. */
+  items: Item[];
+}
+
+/** طلب تسجيل صنف. **ولا رمز حساب فيه**: الصنف يحمل itemGroup — مؤهّل دور — ومصفوفة الترحيل وحدها تُحوّله إلى حساب (القاعدة 2). / An item registration request. **No account code appears in it**: an item carries an itemGroup — a role qualifier — and the posting matrix alone turns it into an account (Rule 2). */
+export interface ItemRequest {
+  /** وحدة الأساس: أصغر وحدة يُمسَك بها الصنف، وإليها تُحوَّل البقية. ولا تتغيّر بعد أن تُكتب على الصنف حركات. / The base unit: the smallest unit the item is held in, into which everything else converts. It does not change once movements have been written against the item. */
+  baseUnit: string;
+  /** رمز الصنف داخل المنشأة — هوية تحملها حركاته وقيوده، لا نصّاً معروضاً. / The item code within the company — an identity carried by its movements and entries, not displayed text. */
+  code: string;
+  /** مجموعة الصنف — مؤهّل الدور عند المصفوفة. / The item group — a role qualifier for the posting matrix. */
+  itemGroup: string;
+  name: LocalizedText;
+  /** الوحدات الأكبر ومعاملاتها — قائمة فارغة إن كان الصنف يُمسَك بوحدة أساسه وحدها. / The larger units and their factors — an empty list if the item is held in its base unit alone. */
+  units: UnitFactor[];
+}
 
 export interface JournalEntry {
   /** الدفتر. / The book. */
@@ -371,6 +455,16 @@ export interface LocalizedText {
   ar: string;
   /** النصّ الإنجليزي. / The English text. */
   en: string;
+}
+
+/** مقدار كمّية نصّاً بمقياس لا يتجاوز **ستّاً**. والكمّية ليست مبلغاً — ولذلك لها مقياسها — لكنها تُضرب في تكلفة الوحدة، فأي دقّة تُفقد فيها تصل إلى المال. والكيلوغرامات واللترات والأمتار تُكسَر إلى ما دون الهللة، ومقياسٌ مالي عليها يُنتج تقريباً صامتاً يتراكم على كل حركة. / A quantity magnitude as a string with at most **six** decimal places. A quantity is not an amount — hence its own scale — but it is multiplied by a unit cost, so any precision lost in it reaches the money. Kilograms, litres, and metres divide below the halala, and a money scale over them produces a silent rounding that accumulates on every movement. */
+/* Magnitude مُعرَّف في ../money كنوع محتجز وقت التشغيل. */
+
+/** كمّية **بوحدتها** — ولا كمّية مجرّدة تعبر هذا السطح. و«عشرة» ليست معلومة: عشر حبّات أم عشر كراتين؟ والفرق بينهما في دفترٍ يمسك قيمةً هو الفرق بين رقمٍ صحيح ورقمٍ أكبر منه اثني عشر ضعفاً، **ولا يُظهره توازنٌ ولا سلسلة** لأن القيد المبنيّ عليه متوازن تماماً. / A quantity **with its unit** — no bare quantity crosses this surface. 'Ten' is not information: ten pieces or ten cartons? In a ledger that holds value the difference between them is the difference between a correct number and one twelve times larger, and **no balance check and no hash chain reveals it**, because the entry built on it balances perfectly. */
+export interface Measure {
+  magnitude: Magnitude;
+  /** رمز وحدة القياس كما سجّله المستأجر. معرّف لا نصّ معروض: لا يُترجَم ولا يُطابَق بلا حساسية حالة. / The unit-of-measure code as the tenant registered it. An identifier, not displayed text: never translated and never matched case-insensitively. */
+  unit: string;
 }
 
 /** عضو في منشأة كما يُعرض في قائمة الأعضاء. **ولا اعتماد فيه**: اعتماد الانتساب يخرج مرّة واحدة في استجابة الدعوة ولا يُعاد أبداً. / A member of a company as shown in the member list. **It carries no credential**: an enrolment credential leaves once, in the invitation response, and is never re-issued. */
@@ -560,6 +654,27 @@ export interface Problem {
   type: string;
 }
 
+/** سطر مستند مشتريات كما يخرج على السلك — **معرّفه مدخل المستند التالي في الدورة**. / A purchasing document line as it leaves on the wire — **its identifier is the input to the next document in the cycle**. */
+export interface PurchaseDocumentLine {
+  /** معرّف السطر. / The line identifier. */
+  id: string;
+  /** الصنف. / The item. */
+  itemId: string;
+  /** رقم السطر داخل مستنده. / The line number within its document. */
+  lineNo: number;
+  quantity: Magnitude;
+  /** وحدة القياس. / The unit of measure. */
+  unit: string;
+  unitPrice: Money;
+}
+
+/** مستند مشتريات ومعه سطوره — **مورد واحد لا موردان**: «ما حاله؟» و«ما سطوره؟» سؤالان يُجابان بطلبٍ واحد فلا يفترقان. / A purchasing document with its lines — **one resource, not two**: 'what state is it in?' and 'what are its lines?' are answered by a single request, so they cannot drift apart. */
+export interface PurchaseDocumentWithLines {
+  document: CommercialDocument;
+  /** السطور بمعرّفاتها. / The lines with their identifiers. */
+  lines: PurchaseDocumentLine[];
+}
+
 /** سطر فاتورة مصروف. ولا حساب فيه ولا رمز حساب، كسطر المبيعات وللسبب نفسه. / An expense bill line. No account and no account code, as on a sales line and for the same reason. */
 export interface PurchaseLine {
   description: LocalizedText;
@@ -574,6 +689,36 @@ export interface PurchaseLine {
   /** هل ضريبة هذا السطر قابلة للاسترداد؟ وهي واقعة ضريبية عن السطر لا تُشتقّ من التصنيف. / Is this line's tax recoverable? A tax fact about the line, not derived from its classification. */
   taxRecoverable: boolean;
   unitPrice: Money;
+}
+
+/** طلب إنشاء أمر شراء — الضلع الأول من المطابقة الثلاثية. / A purchase order request — the first side of the three-way match. */
+export interface PurchaseOrderRequest {
+  /** مركز التكلفة. / The cost centre. */
+  costCenterId: string;
+  /** السطور. أمرٌ بلا سطر يُرفض. / The lines. An order with no line is refused. */
+  lines: StockLine[];
+  /** رقم الأمر — فريد داخل المنشأة. / The order number — unique within the company. */
+  number: string;
+  /** تاريخ الأمر الميلادي. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The Gregorian order date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  orderedOn: string;
+  /** معرّف المورد. / The supplier identifier. */
+  supplierId: string;
+  /** المستودع المستقبِل. / The receiving warehouse. */
+  warehouseId: string;
+}
+
+/** طلب إنشاء **مرتجع مشتريات** مسوّدة. **ولا صافي فيه**: المصفوفة تقول إن صافي المرتجع «بتكلفة الاستلام الأصلي لا بتكلفة اليوم»، وتلك التكلفة يملكها دفتر المخزون وحده — فيُسلَّم ما يملكه المستدعي: الكمّية وسطر الاستلام والضريبة. / A **purchase return** draft request. **It carries no net**: the matrix says the return net is 'at the original receipt cost, not today's cost', and only the inventory subledger owns that cost — so what the caller owns is what is sent: the quantity, the receipt line, and the tax. */
+export interface PurchaseReturnRequest {
+  /** الفاتورة المخزنية الأصلية. / The original stock bill. */
+  billId: string;
+  /** تاريخ المرتجع الميلادي. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The Gregorian return date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  issuedOn: string;
+  /** رقم المرتجع. / The return number. */
+  number: string;
+  quantity: Quantity;
+  /** سطر الاستلام الذي تُردّ بضاعته — به يُقيَّم المرتجع. / The goods receipt line whose goods are being returned — the return is valued by it. */
+  receiptLineId: string;
+  tax: Money;
 }
 
 export interface PutCapabilityProfileRequest {
@@ -685,6 +830,124 @@ export interface SourceDocument {
   module: "Core" | "Ledger" | "Sales" | "Purchasing" | "Compliance" | "Inventory" | "Pos" | "Hr" | "Projects" | "RealEstate" | "Assets" | "Portals" | "Ai";
 }
 
+/** رصيد صنف في موقعٍ من مستودع — **مفتاحه أربعة أبعاد**: المنشأة والصنف والمستودع والموقع. / The balance of an item in a location within a warehouse — **its key has four dimensions**: company, item, warehouse, and location. */
+export interface StockBalance {
+  /** هل ورد هذا الصنف إلى هذا الموقع مرّةً بتكلفة؟ **حقلٌ مستقلّ عن unitCost عمداً**: بدونه لا يُفرَّق بين «تكلفة الوحدة صفر لأن الصنف لم يُستلم قط» و«تكلفته صفر فعلاً». / Has this item ever been received into this location with a cost? **A field separate from unitCost on purpose**: without it there is no telling 'the unit cost is zero because it was never received' from 'its cost really is zero'. */
+  hasCostBasis: boolean;
+  /** الصنف. / The item. */
+  itemId: string;
+  /** الموقع داخل المستودع. / The location within the warehouse. */
+  locationId: string;
+  quantity: Measure;
+  unitCost: UnitCost;
+  value: Money;
+  /** المستودع. / The warehouse. */
+  warehouseId: string;
+}
+
+/** أرصدة المخزون، مرتَّبة بالصنف ثم المستودع ثم الموقع. / The stock balances, ordered by item then warehouse then location. */
+export interface StockBalanceList {
+  /** عدد الأرصدة. / The number of balances. */
+  balanceCount: number;
+  /** الأرصدة. / The balances. */
+  balances: StockBalance[];
+}
+
+/** سطر فاتورة مورد مخزنية — يرجع إلى سطر استلام بعينه، وهو ضلع المطابقة الثالث. / A stock supplier bill line — it refers to a specific goods receipt line, the third side of the match. */
+export interface StockBillLine {
+  quantity: Quantity;
+  /** معرّف سطر الاستلام. / The goods receipt line identifier. */
+  receiptLineId: string;
+  /** التصنيف الضريبي. / The tax classification. */
+  taxClassification: string;
+  taxRate: TaxRate;
+  unitPrice: Money;
+}
+
+/** طلب إنشاء فاتورة مورد **مخزنية** مسوّدة تُطابَق ثلاثياً. / A **stock** supplier bill draft request, three-way matched. */
+export interface StockBillRequest {
+  /** تاريخ الفاتورة الميلادي. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The Gregorian bill date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  issuedOn: string;
+  /** السطور. / The lines. */
+  lines: StockBillLine[];
+  /** رقم الفاتورة. / The bill number. */
+  number: string;
+  /** الاستلام الذي تُطابَق به. / The goods receipt it is matched against. */
+  receiptId: string;
+}
+
+/** سطر مستند مشتريات **مخزني** — ومعه وحدة قياسه. والفرق عن سطر المصروف هو الوحدة: كمّية هذا السطر تصل إلى دفتر المخزون فتُضرب في تكلفة الوحدة. **ولا حساب فيه ولا رمز حساب.** / A **stock** purchasing line — with its unit of measure. What separates it from an expense line is that unit: this line's quantity reaches the inventory subledger and gets multiplied by a unit cost. **No account and no account code appears in it.** */
+export interface StockLine {
+  description: LocalizedText;
+  /** مجموعة الصنف — مؤهّل الدور. / The item group — a role qualifier. */
+  itemGroup: string;
+  /** رمز الصنف كما هو في كتالوج المخزون. / The item code as registered in the inventory catalogue. */
+  itemId: string;
+  quantity: Quantity;
+  /** التصنيف الضريبي: standard · zero · exempt. / The tax classification: standard, zero, or exempt. */
+  taxClassification: string;
+  taxRate: TaxRate;
+  /** رمز وحدة القياس — وحدة أساس الصنف أو وحدةٌ لها معامل تحويل إليها. / The unit-of-measure code — the item's base unit, or a unit with a conversion factor into it. */
+  unit: string;
+  unitPrice: Money;
+}
+
+/** مستند حركة مخزون كما يخرج على السلك. / A stock movement document as it leaves on the wire. */
+export interface StockMovement {
+  /** هل كانت هذه الهوية مُرحَّلة **قبل** هذا الطلب؟ ولا تُشتقّ من state: المستند بعد أي ترحيل ناجح حالته POSTED — الأول والثاني سواء. / Was this identity already posted **before** this request? It is not derivable from state: after any successful post the document is POSTED, first arrival and second alike. */
+  alreadyPosted: boolean;
+  cost: Money;
+  /** الاتجاه. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The direction. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  direction: "IN" | "OUT";
+  /** معرّف القيد إن رُحّل، وnull إن كان مسوّدة. / The journal entry identifier if posted, and null while a draft. */
+  entryId: string | null;
+  /** المعرّف. / The identifier. */
+  id: string;
+  /** مجموعة الصنف. / The item group. */
+  itemGroup: string;
+  /** الصنف. / The item. */
+  itemId: string;
+  /** الموقع داخل المستودع. / The location within the warehouse. */
+  locationId: string;
+  /** الرقم. / The number. */
+  number: string;
+  /** تاريخ الحركة. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The movement date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  occurredOn: string;
+  quantity: Measure;
+  /** الحالة: DRAFT · POSTED. / The state: DRAFT or POSTED. */
+  state: string;
+  /** المستودع. / The warehouse. */
+  warehouseId: string;
+}
+
+/** مستندات حركة المخزون، مرتَّبة بالتاريخ ثم بالرقم. / The stock movement documents, ordered by date then by number. */
+export interface StockMovementList {
+  /** عدد المستندات. / The number of documents. */
+  movementCount: number;
+  /** المستندات. / The documents. */
+  movements: StockMovement[];
+}
+
+/** طلب إنشاء مستند حركة مخزون **مسوّدة**: تسوية جرد، أو رصيد افتتاحي، أو إعدام. والتكلفة **على الوارد وحده** — الصادر تُحسب تكلفته في وحدة المخزون ولا تُملى، فتُرسَل عليه "0". / A request to create a **draft** stock movement document: a count adjustment, an opening balance, or a write-off. Cost is **for inbound only** — an outbound movement is valued by the inventory module and never dictated, so send "0" for it. */
+export interface StockMovementRequest {
+  cost: Money;
+  /** IN زيادة جرد أو رصيد افتتاحي · OUT عجز أو إعدام. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / IN for a count surplus or opening balance; OUT for a shortage or write-off. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  direction: "IN" | "OUT";
+  /** مجموعة الصنف — مؤهّل الدور. / The item group — a role qualifier. */
+  itemGroup: string;
+  /** رمز الصنف. / The item code. */
+  itemId: string;
+  /** الموقع داخل المستودع — بُعدٌ في مفتاح الرصيد لا وصفٌ عليه. و DEFAULT للمستودع الذي لم يُسكَّن بعد. / The location within the warehouse — a dimension in the balance key, not a description on it. Use DEFAULT for a warehouse that is not binned yet. */
+  locationId: string;
+  /** رقم المستند — فريد داخل المنشأة. / The document number — unique within the company. */
+  number: string;
+  /** تاريخ الحركة الميلادي. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The Gregorian movement date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  occurredOn: string;
+  quantity: Measure;
+  /** المستودع. / The warehouse. */
+  warehouseId: string;
+}
+
 export interface Subledger {
   /** نوع الدفتر المساعد. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The subledger kind. Matched literally and case-sensitively; a number is never accepted in place of a name. */
   kind: "None" | "Customer" | "Supplier" | "Employee" | "Asset" | "Treasury";
@@ -737,4 +1000,17 @@ export interface TrialBalanceRow {
   nameAr: string;
   /** ترجمات اسم الحساب: الاسم وسم لغة BCP-47 والقيمة النصّ المترجَم، مرتَّبةً بالوسم ترتيباً حرفياً ثابتاً. وقد تكون فارغة — والعرض يرتدّ حينها إلى الاسم العربي، وهو ارتداد **يُعلَن** لا يقع صامتاً. و**الإنجليزية واحدة من هذه الترجمات لا حقلاً مستقلاً**: من أرادها قرأ المدخل ذا الوسم en، وغيابه غيابُ ترجمة إنجليزية لا غيابُ اسم. / The account name's translations: the name is a BCP-47 language tag and the value is the translated text, ordered by tag with a stable ordinal sort. It may be empty, in which case display falls back to the Arabic name — a fallback that is declared, never silent. **English is one of these translations rather than a field of its own**: read the entry tagged 'en', whose absence means there is no English translation, not that there is no name. */
   nameTranslations: NameValue[];
+}
+
+/** متوسط تكلفة الوحدة نصّاً بمقياس **ستّ خانات لا أربع**: صنفٌ يُشترى بألف حبّة بمئة ريال تكلفة وحدته 0.100000، وبمقياس أربعة تصير 0.1000 والفرق لا يظهر — لكنه يتراكم على كل صرف حتى ينحرف رصيد القيمة عن مجموع حركاته. / The moving average unit cost as a string with **six** decimal places rather than four: an item bought at a thousand pieces for a hundred riyals has a unit cost of 0.100000, which at scale four becomes 0.1000 and the difference disappears — yet it accumulates on every issue until the value balance no longer equals the sum of its movements. */
+/* UnitCost مُعرَّف في ../money كنوع محتجز وقت التشغيل. */
+
+/** معامل تحويل وحدةٍ إلى وحدة أساس الصنف — **بسطٌ ومقام صحيحان، لا عددٌ عشري**. «الكرتون اثنتا عشرة حبّة» هو 12/1، و«الحبّة ثلث علبة» هو 1/3 — والثاني لا يُمثَّل عشرياً بلا خسارة، وخسارةٌ في كمّية تُضرب في تكلفة الوحدة تصل إلى المال. والتحويل الذي لا يقع بلا باقٍ يُرفض بـinventory.unit_conversion_not_exact ولا يُقرَّب. / A factor converting a unit into the item's base unit — **an integer numerator and denominator, not a decimal**. 'A carton is twelve pieces' is 12/1; 'a piece is a third of a box' is 1/3 — and the second cannot be represented decimally without loss, while loss in a quantity that gets multiplied by a unit cost reaches the money. A conversion that does not divide exactly is refused with inventory.unit_conversion_not_exact rather than rounded. */
+export interface UnitFactor {
+  /** المقام — موجب. / The denominator; positive. */
+  denominator: number;
+  /** البسط: كم وحدةَ أساسٍ في «المقام» من هذه الوحدة. / The numerator: how many base units are in 'denominator' of this unit. */
+  numerator: number;
+  /** رمز الوحدة الأكبر. / The larger unit's code. */
+  unitCode: string;
 }

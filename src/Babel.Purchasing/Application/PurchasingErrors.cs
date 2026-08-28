@@ -36,6 +36,25 @@ internal static class PurchasingErrors
         "لا سطر بهذا المعرّف: " + id.ToString("D", CultureInfo.InvariantCulture),
         "No line with this identifier: " + id.ToString("D", CultureInfo.InvariantCulture));
 
+    /// <summary>مرتجع بكمّية تتجاوز ما فُوتر من سطر الاستلام.</summary>
+    public static Error ReturnExceedsBilled(string number, decimal billed, decimal requested) => new(
+        "purchasing.return_exceeds_billed",
+        "المرتجع " + Format(requested) + " يتجاوز ما فُوتر من هذا السطر في الفاتورة " + number
+        + " وهو " + Format(billed) + ". ولا يُردّ إلى المورد أكثر ممّا طولِبنا به.",
+        "The return of " + Format(requested) + " exceeds the " + Format(billed) + " billed on this line of bill "
+        + number + ". No more can be returned to the supplier than was billed.");
+
+    /// <summary>مرتجع على سطر استلام لا حركة مخزون مُرحَّلة له.</summary>
+    public static Error OriginalReceiptMovementNotFound(Guid receiptLineId) => new(
+        "purchasing.original_receipt_movement_not_found",
+        "لا حركة مخزون مُرحَّلة لسطر الاستلام " + receiptLineId.ToString("D", CultureInfo.InvariantCulture)
+        + ". والمرتجع يُقيَّم بتكلفة استلامه الأصلي، فبلا تلك الحركة لا يوجد رقم يُقال — "
+        + "رحّل الاستلام أولاً ثم أصدر المرتجع.",
+        "No posted stock movement exists for goods receipt line "
+        + receiptLineId.ToString("D", CultureInfo.InvariantCulture)
+        + ". A purchase return is valued at the cost of its original receipt, so without that movement there is no "
+        + "number to state — post the receipt first, then issue the return.");
+
     /// <summary>الضلع الأول من المطابقة الثلاثية: المستلَم لا يتجاوز المطلوب.</summary>
     public static Error ReceiptExceedsOrder(string item, decimal attempted, decimal available) => new(
         "purchasing.receipt_exceeds_order",

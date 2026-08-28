@@ -21,6 +21,16 @@ internal sealed class InventoryDbContext(DbContextOptions<InventoryDbContext> op
 
     public DbSet<ItemBalanceRow> Balances => Set<ItemBalanceRow>();
 
+    public DbSet<ItemRow> Items => Set<ItemRow>();
+
+    public DbSet<ItemTranslationRow> ItemNames => Set<ItemTranslationRow>();
+
+    public DbSet<ItemUnitRow> ItemUnits => Set<ItemUnitRow>();
+
+    public DbSet<StockDocumentRow> Documents => Set<StockDocumentRow>();
+
+    public DbSet<InventoryPostingRow> Postings => Set<InventoryPostingRow>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);
@@ -37,6 +47,10 @@ internal sealed class InventoryDbContext(DbContextOptions<InventoryDbContext> op
             entity.Property(row => row.EventCode).HasMaxLength(128).IsRequired();
             entity.Property(row => row.ItemId).HasMaxLength(64).IsRequired();
             entity.Property(row => row.WarehouseId).HasMaxLength(64).IsRequired();
+            entity.Property(row => row.LocationId).HasMaxLength(64).IsRequired();
+            entity.Property(row => row.BaseUnit).HasMaxLength(32).IsRequired();
+            entity.Property(row => row.EnteredUnit).HasMaxLength(32).IsRequired();
+            entity.Property(row => row.EnteredMagnitude).HasColumnType(Quantity);
             entity.Property(row => row.ItemGroup).HasMaxLength(64).IsRequired();
             entity.Property(row => row.Direction).HasMaxLength(8).IsRequired();
             entity.Property(row => row.Method).HasMaxLength(32).IsRequired();
@@ -61,7 +75,7 @@ internal sealed class InventoryDbContext(DbContextOptions<InventoryDbContext> op
                 row.EventCode,
             }).IsUnique().HasDatabaseName("uq_inventory_movement_identity");
 
-            entity.HasIndex(row => new { row.TenantId, row.ItemId, row.WarehouseId })
+            entity.HasIndex(row => new { row.TenantId, row.ItemId, row.WarehouseId, row.LocationId })
                   .HasDatabaseName("ix_inventory_movement_item");
 
             // ‏فهرس على «ما تَرُدّ عليه» — جزئيّ لأن الغالبية العظمى من الحركات لا تَرُدّ
@@ -89,11 +103,102 @@ internal sealed class InventoryDbContext(DbContextOptions<InventoryDbContext> op
             entity.HasKey(row => row.Id);
             entity.Property(row => row.ItemId).HasMaxLength(64).IsRequired();
             entity.Property(row => row.WarehouseId).HasMaxLength(64).IsRequired();
+            entity.Property(row => row.LocationId).HasMaxLength(64).IsRequired();
+            entity.Property(row => row.BaseUnit).HasMaxLength(32).IsRequired();
             entity.Property(row => row.Quantity).HasColumnType(Quantity);
             entity.Property(row => row.ValueAmount).HasColumnType(Money);
             entity.Property(row => row.UnitCost).HasColumnType(UnitCost);
-            entity.HasIndex(row => new { row.TenantId, row.ItemId, row.WarehouseId })
+
+            // ‏**المفتاح أربعة أبعاد لا ثلاثة**: المنشأة والصنف والمستودع والموقع.
+            entity.HasIndex(row => new { row.TenantId, row.ItemId, row.WarehouseId, row.LocationId })
                   .IsUnique().HasDatabaseName("uq_inventory_item_balance");
+        });
+
+        modelBuilder.Entity<ItemRow>(entity =>
+        {
+            entity.ToTable("item");
+            entity.HasKey(row => row.Id);
+            entity.Property(row => row.Code).HasMaxLength(64).IsRequired();
+            entity.Property(row => row.NameAr).HasMaxLength(256).IsRequired();
+            entity.Property(row => row.ItemGroup).HasMaxLength(64).IsRequired();
+            entity.Property(row => row.BaseUnit).HasMaxLength(32).IsRequired();
+            entity.HasIndex(row => new { row.TenantId, row.Code })
+                  .IsUnique().HasDatabaseName("uq_inventory_item_code");
+        });
+
+        modelBuilder.Entity<ItemTranslationRow>(entity =>
+        {
+            entity.ToTable("item_name_translation");
+            entity.HasKey(row => row.Id);
+            entity.Property(row => row.ItemCode).HasMaxLength(64).IsRequired();
+            entity.Property(row => row.Locale).HasMaxLength(16).IsRequired();
+            entity.Property(row => row.Text).HasMaxLength(256).IsRequired();
+            entity.HasIndex(row => new { row.TenantId, row.ItemCode, row.Locale })
+                  .IsUnique().HasDatabaseName("uq_inventory_item_name_translation");
+        });
+
+        modelBuilder.Entity<ItemUnitRow>(entity =>
+        {
+            entity.ToTable("item_unit");
+            entity.HasKey(row => row.Id);
+            entity.Property(row => row.ItemCode).HasMaxLength(64).IsRequired();
+            entity.Property(row => row.UnitCode).HasMaxLength(32).IsRequired();
+            entity.HasIndex(row => new { row.TenantId, row.ItemCode, row.UnitCode })
+                  .IsUnique().HasDatabaseName("uq_inventory_item_unit");
+
+            // معاملٌ بمقامٍ صفر ليس معاملاً، وبسطٌ غير موجب يقلب اتجاه الكمية بصمت.
+            entity.ToTable(table => table.HasCheckConstraint(
+                "ck_inventory_item_unit_ratio_positive",
+                """ "Numerator" > 0 and "Denominator" > 0 """));
+        });
+
+        modelBuilder.Entity<StockDocumentRow>(entity =>
+        {
+            entity.ToTable("stock_document");
+            entity.HasKey(row => row.Id);
+            entity.Property(row => row.Number).HasMaxLength(64).IsRequired();
+            entity.Property(row => row.Direction).HasMaxLength(8).IsRequired();
+            entity.Property(row => row.ItemCode).HasMaxLength(64).IsRequired();
+            entity.Property(row => row.WarehouseId).HasMaxLength(64).IsRequired();
+            entity.Property(row => row.LocationId).HasMaxLength(64).IsRequired();
+            entity.Property(row => row.ItemGroup).HasMaxLength(64).IsRequired();
+            entity.Property(row => row.UnitCode).HasMaxLength(32).IsRequired();
+            entity.Property(row => row.State).HasMaxLength(16).IsRequired();
+            entity.Property(row => row.Magnitude).HasColumnType(Quantity);
+            entity.Property(row => row.CostAmount).HasColumnType(Money);
+            entity.HasIndex(row => new { row.TenantId, row.Number })
+                  .IsUnique().HasDatabaseName("uq_inventory_stock_document_number");
+
+            entity.ToTable(table => table.HasCheckConstraint(
+                "ck_inventory_stock_document_magnitude_positive",
+                """ "Magnitude" > 0 """));
+        });
+
+        modelBuilder.Entity<InventoryPostingRow>(entity =>
+        {
+            entity.ToTable("document_posting");
+            entity.HasKey(row => row.Id);
+            entity.Property(row => row.DocumentType).HasMaxLength(64).IsRequired();
+            entity.Property(row => row.DocumentId).HasMaxLength(64).IsRequired();
+            entity.Property(row => row.TriggerCode).HasMaxLength(32).IsRequired();
+            entity.Property(row => row.EventCode).HasMaxLength(128).IsRequired();
+            entity.Property(row => row.IdempotencyKey).HasMaxLength(128).IsRequired();
+            entity.Property(row => row.PartyId).HasMaxLength(64).IsRequired();
+            entity.Property(row => row.State).HasMaxLength(16).IsRequired();
+            entity.Property(row => row.FailureCode).HasMaxLength(128).IsRequired();
+            entity.Property(row => row.FailureMessageAr).HasMaxLength(1000).IsRequired();
+            entity.Property(row => row.FailureMessageEn).HasMaxLength(1000).IsRequired();
+
+            // هوية الإحكام السداسية — ورمز الحدث فيها (‏ADR-0016 · فخ-45).
+            entity.HasIndex(row => new
+            {
+                row.TenantId,
+                row.DocumentType,
+                row.DocumentId,
+                row.TriggerCode,
+                row.Generation,
+                row.EventCode,
+            }).IsUnique().HasDatabaseName("uq_inventory_document_posting_identity");
         });
     }
 }

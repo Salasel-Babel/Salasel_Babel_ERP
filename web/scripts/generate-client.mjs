@@ -425,6 +425,15 @@ function emitClient() {
       op.requestBody.content &&
       op.requestBody.content["application/json"] &&
       op.requestBody.content["application/json"].schema;
+    /* حمولة متعدّدة الأجزاء: بابا إيداع المرفق وتصحيحه يرفعان **بايتات ملفّ**، لا
+       جسم JSON — لأن جسم JSON يعني base64 يعني انتفاخ الثلث وصورةً كاملة في سجلّ
+       الطلب. ولا مخطّط مسمّى لها في العقد عمداً: مخطّطٌ باسمٍ كان سيُولِّد هنا
+       واجهةً حقلُها `content: string` وهي كذبة عن حقلٍ بايتاته ملفّ. فالوسيط
+       `FormData` نفسه، ويمرّ من النقل بلا JSON.stringify وبلا ترويسة نوع محتوى —
+       المتصفّح وحده يكتب الحدّ الفاصل. */
+    const multipart = Boolean(
+      op.requestBody && op.requestBody.content && op.requestBody.content["multipart/form-data"]
+    );
     const okStatuses = Object.keys(op.responses)
       .filter((s) => /^2/.test(s))
       .sort();
@@ -433,6 +442,14 @@ function emitClient() {
       op.responses[okStatuses[0]].content &&
       op.responses[okStatuses[0]].content["application/json"] &&
       op.responses[okStatuses[0]].content["application/json"].schema;
+    /* استجابةٌ بايتات لا JSON: باب تنزيل المرفق. تُعاد Blob، ولا تمرّ على فاكّ
+       الترميز لأن لا مخطّط يُفكّ به — وإرجاع void كان سيجعل دالّةً تُنزّل ملفّاً
+       ولا تسلّمه لأحد. */
+    const binary = Boolean(
+      op.responses[okStatuses[0]] &&
+      op.responses[okStatuses[0]].content &&
+      op.responses[okStatuses[0]].content["application/octet-stream"]
+    );
     /* استجابةُ JSON قد تكون **مخطّطاً مسمّى** وقد تكون شكلاً مضمَّناً بلا $ref.
        والحالة الثانية ليست إغفالاً في العقد: باب /openapi/v1.json يخدم وثيقة OpenAPI
        نفسها، وليس لها نموذج مجال في هذه الشيفرة يُسمّى — واختراع اسم لها كان سيضع في
@@ -442,7 +459,7 @@ function emitClient() {
        `Cannot read properties of undefined` — وهو انكسارٌ بصوت عالٍ، وهو الصحيح. */
     const okRef = okSchema && okSchema.$ref ? okSchema : null;
     const resultName = okRef ? refName(okRef.$ref) : null;
-    const resultTs = okRef ? "T." + resultName : okSchema ? "unknown" : "void";
+    const resultTs = okRef ? "T." + resultName : okSchema ? "unknown" : binary ? "Blob" : "void";
 
     /* نوع الوسائط */
     const argLines = [];
@@ -457,6 +474,11 @@ function emitClient() {
     if (bodyRef) {
       argLines.push("  /** جسم الطلب. / The request body. */");
       argLines.push("  body: T." + refName(bodyRef.$ref) + ";");
+    } else if (multipart) {
+      argLines.push(
+        "  /** حمولة multipart: جزءٌ اسمه content يحمل البايتات. / The multipart payload: a part named content carries the bytes. */"
+      );
+      argLines.push("  body: FormData;");
     }
     const argsType = op.operationId[0].toUpperCase() + op.operationId.slice(1) + "Args";
     if (argLines.length) {
@@ -510,12 +532,15 @@ function emitClient() {
       out.push(
         "  const body = encodeSchema(SCHEMAS, " + q(refName(bodyRef.$ref)) + ", args.body as unknown);"
       );
+    } else if (multipart) {
+      out.push("  const body = args.body;");
     }
     out.push(
       "  const response = await transport({ method: " +
         q(method.toUpperCase()) +
         ", url, " +
-        (bodyRef ? "body, " : "") +
+        (bodyRef || multipart ? "body, " : "") +
+        (binary ? "binary: true, " : "") +
         "signal });"
     );
     out.push("  if (!response.ok) throw ProblemError.from(response);");
@@ -529,6 +554,15 @@ function emitClient() {
       );
     } else if (okSchema) {
       out.push("  return response.json as unknown;");
+    } else if (binary) {
+      out.push("  if (!response.bytes) {");
+      out.push(
+        '    throw new TypeError("' +
+          "استجابة ناجحة بلا بايتات · a successful response carried no bytes: " +
+          '" + url);'
+      );
+      out.push("  }");
+      out.push("  return response.bytes;");
     }
     out.push("}");
     out.push("");

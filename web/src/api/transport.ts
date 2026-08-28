@@ -28,13 +28,21 @@ export interface RawResponse {
   /** رمز الحالة. */ status: number;
   /** الجسم مُحلَّلاً، أو null. */ json: unknown;
   /** المسار المطلوب — يظهر في رسالة الخطأ حين لا يرسل الخادم instance. */ url: string;
+  /**
+   * البايتات حين يكون الجواب ملفّاً لا JSON — تنزيلُ مرفق وحده اليوم.
+   * اختياريٌّ عمداً: نقلٌ لا يعرف الأبواب الثنائية يبقى صالحاً كما هو.
+   */
+  bytes?: Blob | null;
 }
 
 /** النقل: دالّة واحدة، فالاختبار يستبدلها بلا شبكة. */
 export type Transport = (request: {
   method: string;
   url: string;
+  /** جسمٌ يُرمَّز JSON، أو FormData يمرّ كما هو — والمرفق يرفع بايتاته لا نصّاً. */
   body?: unknown;
+  /** هل الجواب المتوقّع بايتات ملفّ؟ */
+  binary?: boolean;
   signal?: AbortSignal;
 }) => Promise<RawResponse>;
 
@@ -224,16 +232,28 @@ export function fetchTransport(options: {
 }): Transport {
   const doFetch = options.fetch ?? globalThis.fetch.bind(globalThis);
   const base = options.baseUrl.replace(/\/+$/, "");
-  return async ({ method, url, body, signal }) => {
-    const headers: Record<string, string> = { Accept: "application/json, application/problem+json" };
+  return async ({ method, url, body, binary, signal }) => {
+    const headers: Record<string, string> = {
+      Accept: binary
+        ? "application/octet-stream, application/problem+json"
+        : "application/json, application/problem+json",
+    };
     if (options.token) headers.Authorization = "Bearer " + options.token;
-    if (body !== undefined) headers["Content-Type"] = "application/json";
+    /* ‏FormData يمرّ كما هو **وبلا ترويسة نوع محتوى**: الحدّ الفاصل (boundary) يكتبه
+       المتصفّح، وترويسةٌ نكتبها نحن تُلغيه فتصل حمولة بلا فاصل يُقرأ بها. */
+    const form = typeof FormData !== "undefined" && body instanceof FormData;
+    if (body !== undefined && !form) headers["Content-Type"] = "application/json";
     const response = await doFetch(base + url, {
       method,
       headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: body === undefined ? undefined : form ? (body as FormData) : JSON.stringify(body),
       signal,
     });
+    /* الجواب الثنائي يُقرأ بايتات، **والرفض يبقى JSON**: خادمٌ يردّ 413 يردّه
+       application/problem+json مهما كان الباب، فلا تُقرأ رسالة خطأ Blob. */
+    if (binary && response.ok) {
+      return { ok: true, status: response.status, json: null, bytes: await response.blob(), url };
+    }
     const text = await response.text();
     let json: unknown = null;
     if (text.length > 0) {

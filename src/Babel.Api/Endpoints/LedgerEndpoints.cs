@@ -355,41 +355,13 @@ internal static class LedgerEndpoints
         return true;
     }
 
+    /// <summary>
+    /// وسيط استعلام — <b>بالماسح الواحد في <see cref="Scope"/></b>. وكانت نسخته هنا،
+    /// فلمّا احتاجها سطح المستندات كان الطريقان: نسخةٌ ثانية تنحرف عند أول تعديل
+    /// (فخ-40)، أو موضعٌ واحد يقرأ منه الاثنان. وهذا هو الثاني.
+    /// </summary>
     private static string? ReadQuery(HttpContext context, string name, bool required, int maxLength)
-    {
-        if (!context.Request.Query.TryGetValue(name, out Microsoft.Extensions.Primitives.StringValues values)
-            || values.Count == 0)
-        {
-            if (!required)
-            {
-                return null;
-            }
-
-            throw WireNumbers.Reject(
-                "wire.query.missing", name, "وسيط استعلام إلزامي مفقود.", "A required query parameter is missing.");
-        }
-
-        if (values.Count > 1)
-        {
-            // تكرار الوسيط يجعل «أي القيمتين» سؤالاً بلا جواب معلن — والاختيار الصامت
-            // لأولاهما هو ما يجعل تسميم الوسائط ممكناً.
-            throw WireNumbers.Reject(
-                "wire.query.repeated", name, "وسيط الاستعلام مكرَّر.", "The query parameter is repeated.");
-        }
-
-        string value = values[0] ?? string.Empty;
-
-        if (value.Length == 0 || value.Length > maxLength)
-        {
-            throw WireNumbers.Reject(
-                "wire.query.malformed",
-                name,
-                FormattableString.Invariant($"قيمة الوسيط فارغة أو أطول من {maxLength} محرفاً."),
-                FormattableString.Invariant($"The parameter value is empty or longer than {maxLength} characters."));
-        }
-
-        return value;
-    }
+        => Scope.Query(context, name, required, maxLength);
 
     private static int ReadFiscalYear(HttpContext context)
     {

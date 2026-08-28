@@ -464,7 +464,7 @@ internal static class WireMapping
     /// <c>InvariantCulture</c> صراحةً يقرأ ويكتب بالهجري بلا استثناء ولا سطر سجل (فخ-38).
     /// </para>
     /// </summary>
-    private static DateOnly ReadDate(string? value, string field)
+    internal static DateOnly ReadDate(string? value, string field)
     {
         string text = ReadRequiredText(value, field, 10);
 
@@ -492,7 +492,7 @@ internal static class WireMapping
         return date;
     }
 
-    private static Guid ReadGuid(string? value, string field)
+    internal static Guid ReadGuid(string? value, string field)
     {
         string text = ReadRequiredText(value, field, 36);
 
@@ -508,7 +508,7 @@ internal static class WireMapping
         return parsed;
     }
 
-    private static LocalizedName ReadLocalized(LocalizedTextDto? dto, string field)
+    internal static LocalizedName ReadLocalized(LocalizedTextDto? dto, string field)
     {
         if (dto is null)
         {
@@ -520,7 +520,7 @@ internal static class WireMapping
             ReadRequiredText(dto.En, field + ".en", 512));
     }
 
-    private static string ReadRequiredText(string? value, string field, int maxLength)
+    internal static string ReadRequiredText(string? value, string field, int maxLength)
     {
         if (string.IsNullOrWhiteSpace(value))
         {
@@ -530,7 +530,7 @@ internal static class WireMapping
         return ReadText(value, field, maxLength);
     }
 
-    private static string ReadText(string value, string field, int maxLength)
+    internal static string ReadText(string value, string field, int maxLength)
     {
         if (value.Length > maxLength)
         {
@@ -559,7 +559,7 @@ internal static class WireMapping
         return value;
     }
 
-    private static string? ReadOptional(string? value, string field, int maxLength) =>
+    internal static string? ReadOptional(string? value, string field, int maxLength) =>
         string.IsNullOrEmpty(value) ? null : ReadText(value, field, maxLength);
 
     /// <summary>محارف التحكّم الاتجاهية — مكتوبة بهروبها لا بذاتها، فهي غير مرئية في المحرّر.</summary>

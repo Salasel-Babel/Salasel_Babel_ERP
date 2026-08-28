@@ -144,6 +144,95 @@ internal static class Scope
         return true;
     }
 
+    /// <summary>
+    /// يقرأ معرّفاً من المسار بفحص شكلي وحده، <b>باسم الوسيط في الرسالة</b>.
+    /// <para>
+    /// وموضعٌ واحد لكل معرّفات المسار: نسخةٌ لكل مورد كانت ستُنتج رسائل تختلف في
+    /// صياغتها ورموزها بين بابٍ وباب على العطل نفسه — وهو ما يجعل عميلاً يعالج
+    /// «معرّف مشوّه» في مسار ويتجاهله في آخر.
+    /// </para>
+    /// <para>
+    /// <b>والمعرّف الذي لا يوجد يمرّ من هنا</b> ليُرفض في الوحدة بـ<c>not_found</c>:
+    /// السطح لا يملك جداول الوحدة ولا يجوز أن يسأل عنها.
+    /// </para>
+    /// </summary>
+    /// <param name="context">سياق الطلب.</param>
+    /// <param name="name">اسم وسيط المسار.</param>
+    /// <param name="id">المعرّف عند النجاح.</param>
+    /// <param name="malformed">استجابة الرفض عند الفشل.</param>
+    public static bool TryRouteId(HttpContext context, string name, out Guid id, out IResult? malformed)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+
+        malformed = null;
+        string raw = context.Request.RouteValues.TryGetValue(name, out object? value)
+            ? value?.ToString() ?? string.Empty
+            : string.Empty;
+
+        if (!Guid.TryParseExact(raw, "D", out id) || id == Guid.Empty)
+        {
+            malformed = HttpProblemResults.Code(
+                context,
+                "wire.guid.malformed",
+                "المعرّف في المسار ليس معرّفاً صالحاً بصيغة 8-4-4-4-12.",
+                "The identifier in the path is not a valid 8-4-4-4-12 identifier.",
+                name,
+                StatusCodes.Status400BadRequest);
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// يقرأ وسيط استعلام بفحص شكلي واحد لكل السطح.
+    /// <para>
+    /// <b>والوسيط المكرَّر يُرفض</b> ولا يُختار أوّله صامتاً: الاختيار الصامت هو ما
+    /// يجعل تسميم الوسائط ممكناً — وسيطٌ ثانٍ يضيفه وسيطٌ في الطريق فيُقرأ بدل الأول
+    /// أو يُهمل، وكلاهما بلا إعلان.
+    /// </para>
+    /// </summary>
+    /// <param name="context">سياق الطلب.</param>
+    /// <param name="name">اسم الوسيط.</param>
+    /// <param name="required">هل هو إلزامي؟</param>
+    /// <param name="maxLength">أقصى طول مقبول.</param>
+    /// <exception cref="WireFormatException">الوسيط مفقود أو مكرَّر أو خارج الطول.</exception>
+    public static string? Query(HttpContext context, string name, bool required, int maxLength)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+
+        if (!context.Request.Query.TryGetValue(name, out Microsoft.Extensions.Primitives.StringValues values)
+            || values.Count == 0)
+        {
+            if (!required)
+            {
+                return null;
+            }
+
+            throw WireNumbers.Reject(
+                "wire.query.missing", name, "وسيط استعلام إلزامي مفقود.", "A required query parameter is missing.");
+        }
+
+        if (values.Count > 1)
+        {
+            throw WireNumbers.Reject(
+                "wire.query.repeated", name, "وسيط الاستعلام مكرَّر.", "The query parameter is repeated.");
+        }
+
+        string value = values[0] ?? string.Empty;
+
+        if (value.Length == 0 || value.Length > maxLength)
+        {
+            throw WireNumbers.Reject(
+                "wire.query.malformed",
+                name,
+                FormattableString.Invariant($"قيمة الوسيط فارغة أو أطول من {maxLength} محرفاً."),
+                FormattableString.Invariant($"The parameter value is empty or longer than {maxLength} characters."));
+        }
+
+        return value;
+    }
+
     /// <summary>يترجم فشل التسلسل إلى رفض بحقله ورمزه، ولا يسرّب شيئاً عن الخادم.</summary>
     /// <param name="context">سياق الطلب.</param>
     /// <param name="exception">استثناء التسلسل.</param>

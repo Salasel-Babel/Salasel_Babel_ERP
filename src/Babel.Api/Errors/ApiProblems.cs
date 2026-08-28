@@ -70,8 +70,23 @@ internal static class ApiProblems
             "capability_profile.not_found" => 404,
             "capability_profile.capability_withdrawal_requires_acknowledgement" => 409,
 
+            // ── مستندات المبيعات والمشتريات ──────────────────────────────────
+            // «غير موجود» و«تعارض حالة» يُميّزان صراحةً، وما عداهما رفضٌ محاسبي 422:
+            // عميلٌ يقرأ 404 يعرف أن يتوقّف، وعميلٌ يقرأ 409 يعرف أن يقرأ الحالة ثم
+            // يقرّر، وعميلٌ يقرأ 422 يعرف أن الطلب فُهم ورُفض. وجمعُها كلها تحت 422
+            // كان سيجعل «فاتورة لا وجود لها» و«فاتورة مُرحَّلة سلفاً» جواباً واحداً.
+            "sales.customer_not_found" or "sales.document_not_found" or "sales.line_not_found" => 404,
+            "sales.duplicate_number" or "sales.wrong_state" or "sales.posted_document_is_immutable" => 409,
+
+            "purchasing.supplier_not_found" or "purchasing.document_not_found"
+                or "purchasing.line_not_found" or "purchasing.supplier.vat_number_not_found" => 404,
+            "purchasing.duplicate_number" or "purchasing.wrong_state" => 409,
+
             _ when code.StartsWith("company_setup.", StringComparison.Ordinal) => 422,
             _ when code.StartsWith("cost_center.", StringComparison.Ordinal) => 422,
+
+            _ when code.StartsWith("sales.", StringComparison.Ordinal) => 422,
+            _ when code.StartsWith("purchasing.", StringComparison.Ordinal) => 422,
 
             _ when code.StartsWith("capability_profile.", StringComparison.Ordinal) => 422,
             _ when code.StartsWith("document_admission.", StringComparison.Ordinal) => 422,

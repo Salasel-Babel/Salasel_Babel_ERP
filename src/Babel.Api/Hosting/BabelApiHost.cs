@@ -57,8 +57,13 @@ internal static class BabelApiHost
         builder.Services.AddBabelLedger(options => ApplyLedgerConfiguration(builder.Configuration, options));
 
         // الوحدات الأفقية: خدمات تطبيق فقط. لا وصول إلى جداول بعضها ولا إلى جداول الدفتر.
-        builder.Services.AddBabelSales();
-        builder.Services.AddBabelPurchasing();
+        //
+        // ‏**واتصالاهما يُقرآن من الإعداد** — ولم يكونا يُقرآن. كان الجذر التركيبي
+        // يسجّلهما بإعداداتهما الافتراضية، فكان كل خادم يشير إلى `babel_sales` و
+        // `babel_purchasing` على المضيف المحلي مهما كان النشر. ولم يظهر ذلك قطّ لأن
+        // **لا باب HTTP واحداً كان يبلغ الوحدتين**: مسارٌ لا يُسلَك لا يُظهر إعداداً خاطئاً.
+        builder.Services.AddBabelSales(options => ApplySalesConfiguration(builder.Configuration, options));
+        builder.Services.AddBabelPurchasing(options => ApplyPurchasingConfiguration(builder.Configuration, options));
         builder.Services.AddBabelCompliance();
         builder.Services.AddBabelInventory();
 
@@ -80,6 +85,7 @@ internal static class BabelApiHost
         app.MapLedgerApi();
         app.MapCapabilityProfileApi();
         app.MapCompanySetupApi();
+        app.MapDocumentApi();
         app.MapDocsApi();
 
         return app;
@@ -162,6 +168,41 @@ internal static class BabelApiHost
         if (!string.IsNullOrWhiteSpace(role))
         {
             options.AppRole = role;
+        }
+    }
+
+    /// <summary>
+    /// يقرأ إعداد المبيعات. <b>ولا اتصال مالك هنا</b>: نشر المخطّط عملية مالك، ومسار
+    /// التطبيق لا يحتاجها ولا يجوز أن يملكها — كما في النواة والدفتر بالضبط.
+    /// </summary>
+    private static void ApplySalesConfiguration(ConfigurationManager configuration, SalesOptions options)
+    {
+        string? connection = configuration["Babel:Sales:ConnectionString"];
+        if (!string.IsNullOrWhiteSpace(connection))
+        {
+            options.ConnectionString = connection;
+        }
+
+        string? currency = configuration["Babel:Sales:CompanyCurrency"];
+        if (!string.IsNullOrWhiteSpace(currency))
+        {
+            options.CompanyCurrency = currency;
+        }
+    }
+
+    /// <summary>يقرأ إعداد المشتريات، بالقيود نفسها.</summary>
+    private static void ApplyPurchasingConfiguration(ConfigurationManager configuration, PurchasingOptions options)
+    {
+        string? connection = configuration["Babel:Purchasing:ConnectionString"];
+        if (!string.IsNullOrWhiteSpace(connection))
+        {
+            options.ConnectionString = connection;
+        }
+
+        string? currency = configuration["Babel:Purchasing:CompanyCurrency"];
+        if (!string.IsNullOrWhiteSpace(currency))
+        {
+            options.CompanyCurrency = currency;
         }
     }
 

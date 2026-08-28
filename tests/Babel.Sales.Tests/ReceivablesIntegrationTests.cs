@@ -618,51 +618,80 @@ public sealed class ReceivablesIntegrationTests : IAsyncLifetime
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // 12 · «كل قيود هذه الفاتورة» — سؤال صار له جواب
+    // 12 · «كل قيود هذه الفاتورة» — سؤال له جواب، والجواب ضمُّ جدول لا اصطلاح تسمية
     // ═══════════════════════════════════════════════════════════════════════
     //
-    // كان قيد التكلفة يُرحَّل بنوع مستند مُختلَق (SalesInvoiceCostOfSales) هرباً من
+    // كان قيد التكلفة يُرحَّل بنوع مستند **مُختلَق** (SalesInvoiceCostOfSales) هرباً من
     // تصادم هوية لم تكن تعرف رمز الحدث. وكانت كلفة ذلك أن قيدَي الفاتورة الواحدة
-    // يقعان تحت نوعَي مستند مختلفين، فلا استعلام يجمعهما. وبعد أن دخل رمز الحدث
-    // الهوية، عاد القيدان إلى نوعهما الصادق ويفترقان به.
+    // يقعان تحت نوعَي مستند مختلفين ولا استعلام يجمعهما: الاسم لم يكن يقابله كيان،
+    // فلم يكن ثمّ ما يُضمّ إليه (فخ-49). ثم دخل رمز الحدث الهوية فزال الاختلاق.
+    //
+    // واليوم يقع قيد التكلفة تحت **SalesInvoiceLine**، وهذا ليس عودة إلى الاختلاق:
+    //   · معرّفه معرّف صفّ قائم في sales.sales_line مملوك للفاتورة بـOwnerId،
+    //     فسؤال «كل قيود هذه الفاتورة» يُجاب **بضمّ الجدول** — وهذا ما يُثبته البند.
+    //   · والداعي ليس الهروب من تصادم بين الإيراد والتكلفة — رمز الحدث يفصلهما —
+    //     بل أن الواقعة نفسها عن سطر: فاتورةٌ بصنفين تكلفتان لا واحدة.
     [Fact]
-    public async Task Every_journal_entry_of_one_invoice_is_found_under_its_own_document_type()
+    public async Task Every_journal_entry_of_one_invoice_is_reachable_from_the_invoice_by_a_real_join()
     {
         CancellationToken token = TestContext.Current.CancellationToken;
         TenantId tenant = SalesTestEnvironment.Tenant;
         Guid customer = await _harness.CustomerAsync(Next("CUS"));
         Guid invoice = await PostedInvoiceAsync(customer, 900m, token);
 
+        Guid lineId = await FirstLineIdAsync(invoice, token);
+
         Result<PostingReceipt> cost = await _harness.Invoices.PostCostOfSalesAsync(
             tenant,
             Harness.Actor,
             invoice,
-            new CostOfSalesDraft(await FirstLineIdAsync(invoice, token), "ITEM-1", "WH-01", "*", 500m),
+            new CostOfSalesDraft(lineId, "ITEM-1", "WH-01", "*", 500m),
             token);
 
         Assert.True(cost.IsSuccess, Describe(cost.Errors));
 
         string documentId = invoice.ToString("D", CultureInfo.InvariantCulture);
+        string lineDocumentId = lineId.ToString("D", CultureInfo.InvariantCulture);
 
         long invoiceEntries = await LedgerProbe.EntryCountAsync(
             SalesTestEnvironment.Ledger.AppConnectionString, tenant, "SalesInvoice", documentId, token);
 
-        long fabricatedEntries = await LedgerProbe.EntryCountAsync(
-            SalesTestEnvironment.Ledger.AppConnectionString, tenant, "SalesInvoiceCostOfSales", documentId, token);
+        long lineEntries = await LedgerProbe.EntryCountAsync(
+            SalesTestEnvironment.Ledger.AppConnectionString, tenant, "SalesInvoiceLine", lineDocumentId, token);
 
-        IReadOnlyList<string> events = await EventsOfDocumentAsync(tenant, "SalesInvoice", documentId, token);
+        // النوع المُختلَق لم يعد ولن يعود — لا تحت معرّف الفاتورة ولا تحت معرّف سطرها.
+        long fabricatedEntries = await LedgerProbe.EntryCountAsync(
+            SalesTestEnvironment.Ledger.AppConnectionString, tenant, "SalesInvoiceCostOfSales", documentId, token)
+            + await LedgerProbe.EntryCountAsync(
+                SalesTestEnvironment.Ledger.AppConnectionString, tenant, "SalesInvoiceCostOfSales", lineDocumentId, token);
+
+        IReadOnlyList<string> invoiceEvents = await EventsOfDocumentAsync(tenant, "SalesInvoice", documentId, token);
+        IReadOnlyList<string> lineEvents = await EventsOfDocumentAsync(tenant, "SalesInvoiceLine", lineDocumentId, token);
 
         Proof.Require(
-            invoiceEntries == 2
+            invoiceEntries == 1
+            && lineEntries == 1
             && fabricatedEntries == 0
             && !cost.Value.WasAlreadyPosted
-            && events.Count == 2
-            && events.Contains("sales.invoice.posted", StringComparer.Ordinal)
-            && events.Contains("sales.invoice.cost_of_sales", StringComparer.Ordinal),
-            "كل قيود الفاتورة الواحدة تحت نوع مستندها الصادق، ويفترقان برمز الحدث",
+            && invoiceEvents.SequenceEqual(["sales.invoice.posted"], StringComparer.Ordinal)
+            && lineEvents.SequenceEqual(["sales.invoice.cost_of_sales"], StringComparer.Ordinal),
+            "قيد الإيراد تحت الفاتورة وقيد التكلفة تحت سطرها، ولا أثر للنوع المُختلَق",
             "قيود SalesInvoice=" + invoiceEntries.ToString(CultureInfo.InvariantCulture)
+            + " · قيود SalesInvoiceLine=" + lineEntries.ToString(CultureInfo.InvariantCulture)
             + " · قيود النوع المُختلَق=" + fabricatedEntries.ToString(CultureInfo.InvariantCulture)
-            + " · الأحداث=" + string.Join(" + ", events));
+            + " · أحداث الفاتورة=" + string.Join(" + ", invoiceEvents)
+            + " · أحداث السطر=" + string.Join(" + ", lineEvents));
+
+        // ── وهذا هو الفرق عن فخ-49: «كل قيود هذه الفاتورة» يُجاب بضمّ حقيقي ─────
+        // سطور الفاتورة صفوفٌ في sales.sales_line تحت OwnerId = معرّف الفاتورة،
+        // فمعرّفات مستندات قيود التكلفة تُشتقّ من الفاتورة نفسها — لا من معرفة أن
+        // «هناك اصطلاح تسمية اسمه كذا».
+        long joined = await EntriesReachableFromInvoiceAsync(tenant, invoice, token);
+
+        Proof.Require(
+            joined == 2,
+            "وكل قيود الفاتورة الاثنان يُبلغان بضمّ سطورها من جدولها — لا باصطلاح تسمية",
+            "القيود المبلوغة بالضمّ=" + joined.ToString(CultureInfo.InvariantCulture));
 
         // ولا شيء من هذا يُزحزح المطابقة: أثر قيد التكلفة على نقطة ضبط العملاء صفر.
         Result<ControlReconciliationReport> reconciliation = await _harness.Receivables
@@ -681,9 +710,14 @@ public sealed class ReceivablesIntegrationTests : IAsyncLifetime
     // 13 · عكس فاتورة لها قيد تكلفة يُصفّر أثر **صفّها الصحيح** على نقطة الضبط
     // ═══════════════════════════════════════════════════════════════════════
     //
-    // للفاتورة الآن صفّا محاولة عند الإطلاق نفسه. وقراءة الصفّ بأربعة حقول تُعيد
-    // أيّهما اتّفق، فيُصفَّر أثر قيد التكلفة (وهو صفر أصلاً) ويبقى أثر الإيراد
-    // قائماً بعد عكسه — انحراف صامت لا يُظهره لا التوازن ولا سلسلة البصمات.
+    // للفاتورة صفّا محاولة: الإيراد تحت SalesInvoice، والتكلفة تحت SalesInvoiceLine.
+    // وقراءة الصفّ بمفتاح ناقص تُعيد أيّهما اتّفق، فيُصفَّر أثر قيد التكلفة (وهو صفر
+    // أصلاً) ويبقى أثر الإيراد قائماً بعد عكسه — انحراف صامت لا يُظهره لا التوازن
+    // ولا سلسلة البصمات.
+    //
+    // ⚠️ ولا يزال العكس **لا يعكس قيد التكلفة ولا يردّ حركة المخزون**: يعكس قيد
+    // الإيراد وحده ويرفع الجيل. بندٌ مفتوح مُسجَّل في القرار، لا سلوكٌ يُثبته هذا
+    // البند على أنه صواب.
     [Fact]
     public async Task Reversing_an_invoice_that_carries_a_cost_entry_clears_the_right_attempt_row()
     {
@@ -692,11 +726,13 @@ public sealed class ReceivablesIntegrationTests : IAsyncLifetime
         Guid customer = await _harness.CustomerAsync(Next("CUS"));
         Guid invoice = await PostedInvoiceAsync(customer, 1300m, token);
 
+        Guid lineId = await FirstLineIdAsync(invoice, token);
+
         Result<PostingReceipt> cost = await _harness.Invoices.PostCostOfSalesAsync(
             tenant,
             Harness.Actor,
             invoice,
-            new CostOfSalesDraft(await FirstLineIdAsync(invoice, token), "ITEM-2", "WH-01", "*", 700m),
+            new CostOfSalesDraft(lineId, "ITEM-2", "WH-01", "*", 700m),
             token);
 
         Assert.True(cost.IsSuccess, Describe(cost.Errors));
@@ -710,7 +746,7 @@ public sealed class ReceivablesIntegrationTests : IAsyncLifetime
 
         Assert.True(reversal.IsSuccess, Describe(reversal.Errors));
 
-        (string EventCode, decimal Effect)[] rows = await AttemptEffectsAsync(invoice, token);
+        (string EventCode, decimal Effect)[] rows = await AttemptEffectsAsync(invoice, lineId, token);
 
         Result<ControlReconciliationReport> reconciliation = await _harness.Receivables
             .ReconcileAsync(tenant, Harness.Actor, new DateOnly(2026, 5, 31), token);
@@ -719,9 +755,12 @@ public sealed class ReceivablesIntegrationTests : IAsyncLifetime
 
         decimal revenueEffect = rows.Single(row => row.EventCode == "sales.invoice.posted").Effect;
 
+        decimal costEffect = rows.Single(row => row.EventCode == "sales.invoice.cost_of_sales").Effect;
+
         Proof.Require(
             rows.Length == 2
             && revenueEffect == 0m
+            && costEffect == 0m
             && reconciliation.Value.IsReconciled
             && reconciliation.Value.Divergences.Count == 0,
             "العكس يُصفّر أثر صفّ الإيراد بعينه، والمطابقة تبقى صفراً",
@@ -730,8 +769,12 @@ public sealed class ReceivablesIntegrationTests : IAsyncLifetime
             + " · الانحرافات=" + reconciliation.Value.Divergences.Count.ToString(CultureInfo.InvariantCulture));
     }
 
+    /// <summary>
+    /// صفوف محاولة الفاتورة كلّها: صفّ الإيراد تحت <c>SalesInvoice</c> وصفّ التكلفة
+    /// تحت <c>SalesInvoiceLine</c> — <b>ويُقرآن بمفتاحيهما الكاملين</b>.
+    /// </summary>
     private static async Task<(string EventCode, decimal Effect)[]> AttemptEffectsAsync(
-        Guid invoice, CancellationToken token)
+        Guid invoice, Guid invoiceLine, CancellationToken token)
     {
         List<(string, decimal)> rows = [];
         await using NpgsqlConnection connection = new(SalesTestEnvironment.Sales.ConnectionString);
@@ -740,10 +783,12 @@ public sealed class ReceivablesIntegrationTests : IAsyncLifetime
             """
             select "EventCode", "ControlEffect"
               from sales.document_posting
-             where "DocumentType" = 'SalesInvoice' and "DocumentId" = $1
+             where ("DocumentType" = 'SalesInvoice' and "DocumentId" = $1)
+                or ("DocumentType" = 'SalesInvoiceLine' and "DocumentId" = $2)
              order by "EventCode"
             """, connection);
         command.Parameters.AddWithValue(invoice.ToString("D", CultureInfo.InvariantCulture));
+        command.Parameters.AddWithValue(invoiceLine.ToString("D", CultureInfo.InvariantCulture));
         await using NpgsqlDataReader reader = await command.ExecuteReaderAsync(token);
         while (await reader.ReadAsync(token))
         {
@@ -751,6 +796,50 @@ public sealed class ReceivablesIntegrationTests : IAsyncLifetime
         }
 
         return [.. rows];
+    }
+
+    /// <summary>
+    /// عدد قيود الفاتورة المبلوغة <b>بضمّ حقيقي</b>: قيدها هي، وقيود سطورها التي
+    /// تملكها بـ<c>OwnerId</c>. وهذا ما كان مستحيلاً تحت النوع المُختلَق (فخ-49):
+    /// معرّفات مستندات قيود التكلفة تُشتقّ من الفاتورة، لا من اصطلاح تسمية يعرفه
+    /// كاتب الاستعلام.
+    /// </summary>
+    private static async Task<long> EntriesReachableFromInvoiceAsync(
+        TenantId tenant, Guid invoice, CancellationToken token)
+    {
+        List<string> documentIds = [invoice.ToString("D", CultureInfo.InvariantCulture)];
+        List<string> lineIds = [];
+
+        await using (NpgsqlConnection sales = new(SalesTestEnvironment.Sales.ConnectionString))
+        {
+            await sales.OpenAsync(token);
+            await using NpgsqlCommand command = new(
+                """
+                select "Id" from sales.sales_line
+                 where "TenantId" = $1 and "OwnerType" = 'INVOICE' and "OwnerId" = $2
+                """, sales);
+            command.Parameters.AddWithValue(tenant.Value);
+            command.Parameters.AddWithValue(invoice);
+            await using NpgsqlDataReader reader = await command.ExecuteReaderAsync(token);
+            while (await reader.ReadAsync(token))
+            {
+                lineIds.Add(reader.GetGuid(0).ToString("D", CultureInfo.InvariantCulture));
+            }
+        }
+
+        await using NpgsqlConnection ledger = new(SalesTestEnvironment.Ledger.AppConnectionString);
+        await ledger.OpenAsync(token);
+        await using NpgsqlCommand entries = new(
+            """
+            select count(*) from ledger.journal_entry
+             where company_id = $1
+               and ((source_doc_type = 'SalesInvoice' and source_doc_id = any($2))
+                 or (source_doc_type = 'SalesInvoiceLine' and source_doc_id = any($3)))
+            """, ledger);
+        entries.Parameters.AddWithValue(tenant.Value);
+        entries.Parameters.AddWithValue(documentIds.ToArray());
+        entries.Parameters.AddWithValue(lineIds.ToArray());
+        return (long)(await entries.ExecuteScalarAsync(token))!;
     }
 
     private static async Task<IReadOnlyList<string>> EventsOfDocumentAsync(

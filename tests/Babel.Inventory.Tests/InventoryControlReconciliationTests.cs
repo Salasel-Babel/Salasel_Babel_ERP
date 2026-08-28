@@ -3,6 +3,7 @@ using Babel.Contracts.Inventory;
 using Babel.Contracts.Posting;
 using Babel.Inventory.Application;
 using Babel.Inventory.Subledger;
+using Babel.Sales.Application;
 using Babel.SharedKernel;
 using Xunit;
 
@@ -50,46 +51,53 @@ public sealed class InventoryControlReconciliationTests : IAsyncLifetime
         string item = Harness.Next("ITEM");
 
         // ── ١ · استلام بضاعة يُرحَّل فعلاً: 100 وحدة بعشرة ريالات ─────────────
+        //     **ولا نداء ثانٍ بعده.** الاستلام نفسه يبلغ الدفتر المساعد؛ وكان
+        //     ذلك النداء مكتوباً هنا في تجهيزة الاختبار وحدها، فكان الحساب الضابط
+        //     يتحرّك في أي نشرٍ حقيقي والدفتر المساعد لا يتحرّك.
         ReceiptFacts receipt = await _harness.PostGoodsReceiptAsync(
             tenant, item, Warehouse, 100m, 10m, March, token);
 
-        Result<InventoryMovementCost> received = await _harness.Stock.ReceiveAsync(
-            new InventoryReceipt
-            {
-                Tenant = tenant,
-                Actor = Harness.Actor,
-                Source = SourceOfReceiptLine(receipt.LineId),
-                Location = new InventoryItemLocation(item, Warehouse, "*"),
-                Quantity = 100m,
-                Cost = receipt.LineNet,
-                OccurredOn = March,
-            },
-            token);
+        Result<StockBalanceView> afterReceipt = await _harness.Stock
+            .ReadStockAsync(tenant, Harness.Actor, item, Warehouse, token);
 
-        Assert.True(received.IsSuccess, Describe(received));
+        Assert.True(afterReceipt.IsSuccess, Describe(afterReceipt));
 
         Proof.Require(
-            received.Value.QuantityAfter == 100m && received.Value.ValueAfter.Amount == 1_000.0000m,
-            "الاستلام أنشأ أساس التكلفة",
-            "الكمية=" + Quantity(received.Value.QuantityAfter) + " والقيمة=" + Proof.Money(received.Value.ValueAfter.Amount));
+            afterReceipt.Value.Quantity == 100m
+            && afterReceipt.Value.Value.Amount == 1_000.0000m
+            && afterReceipt.Value.HasCostBasis,
+            "الاستلام وحده أنشأ أساس التكلفة في الدفتر المساعد — بلا نداء منفصل",
+            "الكمية=" + Quantity(afterReceipt.Value.Quantity)
+            + " والقيمة=" + Proof.Money(afterReceipt.Value.Value.Amount));
+
+        // والحركة تحت هوية سطر الاستلام نفسها التي رُحّل بها القيد، لا هوية أخرى.
+        string receiptLineId = receipt.LineId.ToString("D", CultureInfo.InvariantCulture);
+        decimal receiptControl = await DocumentNetOnItemControlAsync(
+            tenant, "GoodsReceiptLine", receiptLineId, token);
+
+        Proof.Require(
+            receiptControl == 1_000.0000m,
+            "وحساب مراقبة المخزون تحرّك بالمبلغ نفسه تحت المستند نفسه",
+            "أثر GoodsReceiptLine على نقطة الضبط=" + Proof.Money(receiptControl));
 
         // ── ٢ · فاتورة مبيعات مُرحَّلة، ثم قيد تكلفتها ────────────────────────
         //     والمستدعي يُسلّم **كمية** لا مبلغاً. المبلغ يأتي من حدّ التقييم.
         Guid customer = await _harness.CustomerAsync(tenant, token);
         Guid invoice = await _harness.PostedInvoiceAsync(tenant, customer, 900m, March, token);
+        Guid invoiceLine = (await _harness.InvoiceLineIdsAsync(tenant, invoice, token))[0];
 
         Result<PostingReceipt> cost = await _harness.Invoices.PostCostOfSalesAsync(
             tenant,
             Harness.Actor,
             invoice,
-            new Babel.Sales.Application.CostOfSalesDraft(await FirstLineIdAsync(tenant, invoice, token), item, Warehouse, "*", 30m),
+            new Babel.Sales.Application.CostOfSalesDraft(invoiceLine, item, Warehouse, "*", 30m),
             token);
 
         Assert.True(cost.IsSuccess, Describe(cost));
 
         // ── ٣ · الرقم في الدفتر هو الرقم المحسوب، لا رقمٌ سلّمه أحد ───────────
-        string invoiceId = invoice.ToString("D", CultureInfo.InvariantCulture);
-        decimal relieved = -await DocumentNetOnItemControlAsync(tenant, "SalesInvoice", invoiceId, token);
+        string invoiceLineId = invoiceLine.ToString("D", CultureInfo.InvariantCulture);
+        decimal relieved = -await DocumentNetOnItemControlAsync(tenant, "SalesInvoiceLine", invoiceLineId, token);
 
         Proof.Require(
             relieved == 300.0000m,
@@ -130,6 +138,260 @@ public sealed class InventoryControlReconciliationTests : IAsyncLifetime
     }
 
     // ═══════════════════════════════════════════════════════════════════════
+    // 1-ب · فاتورة **بصنفين** — وهي التي كانت لا تُباع
+    // ═══════════════════════════════════════════════════════════════════════
+    //
+    // كان قيد التكلفة بحبيبيّة المستند، فالصنف الثاني يصطدم بهوية الأول ويُرفض
+    // بـinventory.movement_identity_conflict. والرفض كان صادقاً — والحدّ حقيقياً:
+    // فاتورةٌ بصنفين لا تُباع. وبعد أن صار القيد بحبيبيّة السطر (SalesInvoiceLine)
+    // صار لكل سطر هويته، والمطابقة تبقى صفراً لأن **الطرفين** اتّسعا معاً.
+    [Fact]
+    public async Task فاتورة_بصنفين_تُرحّل_قيدي_تكلفة_والمطابقة_تبقى_صفراً()
+    {
+        CancellationToken token = TestContext.Current.CancellationToken;
+        TenantId tenant = InventoryTestEnvironment.Tenant;
+        string first = Harness.Next("ITEM");
+        string second = Harness.Next("ITEM");
+
+        // استلامان حقيقيان: 40 × 5 = 200 · 60 × 3 = 180
+        await _harness.PostGoodsReceiptAsync(tenant, first, Warehouse, 40m, 5m, March, token);
+        await _harness.PostGoodsReceiptAsync(tenant, second, Warehouse, 60m, 3m, March, token);
+
+        Guid customer = await _harness.CustomerAsync(tenant, token);
+        Guid invoice = await _harness.PostedInvoiceAsync(tenant, customer, [700m, 500m], March, token);
+        IReadOnlyList<Guid> lines = await _harness.InvoiceLineIdsAsync(tenant, invoice, token);
+
+        Assert.Equal(2, lines.Count);
+
+        Result<PostingReceipt> costOfFirst = await _harness.Invoices.PostCostOfSalesAsync(
+            tenant, Harness.Actor, invoice,
+            new Babel.Sales.Application.CostOfSalesDraft(lines[0], first, Warehouse, "*", 10m), token);
+
+        Result<PostingReceipt> costOfSecond = await _harness.Invoices.PostCostOfSalesAsync(
+            tenant, Harness.Actor, invoice,
+            new Babel.Sales.Application.CostOfSalesDraft(lines[1], second, Warehouse, "*", 20m), token);
+
+        Assert.True(costOfFirst.IsSuccess, Describe(costOfFirst));
+        Assert.True(costOfSecond.IsSuccess, Describe(costOfSecond));
+
+        decimal relievedFirst = -await DocumentNetOnItemControlAsync(
+            tenant, "SalesInvoiceLine", lines[0].ToString("D", CultureInfo.InvariantCulture), token);
+
+        decimal relievedSecond = -await DocumentNetOnItemControlAsync(
+            tenant, "SalesInvoiceLine", lines[1].ToString("D", CultureInfo.InvariantCulture), token);
+
+        Proof.Require(
+            relievedFirst == 50.0000m && relievedSecond == 60.0000m,
+            "صنفان على فاتورة واحدة: قيدان بمبلغين محسوبين (10×5.000000 و20×3.000000)",
+            "السطر الأول=" + Proof.Money(relievedFirst) + " · السطر الثاني=" + Proof.Money(relievedSecond));
+
+        // ولا يُلتفّ على الهوية: سطرٌ لا وجود له تحت هذه الفاتورة يُرفض باسمه.
+        Result<PostingReceipt> invented = await _harness.Invoices.PostCostOfSalesAsync(
+            tenant, Harness.Actor, invoice,
+            new Babel.Sales.Application.CostOfSalesDraft(Guid.CreateVersion7(), first, Warehouse, "*", 1m), token);
+
+        Assert.True(invented.IsFailure, "معرّف سطر مخترَع مرّ.");
+
+        Proof.Require(
+            invented.Errors[0].Code == "sales.line_not_found"
+            && invented.Errors[0].MessageAr.Length > 0
+            && invented.Errors[0].MessageEn.Length > 0,
+            "ومعرّف سطر مخترَع يُرفض باسمه بلغتين — لا يُقبل مستنداً لا يقابله صفّ",
+            invented.Errors[0].Code);
+
+        // والصنف الثاني تحت هوية السطر الأول ما يزال تصادماً يُرفض: الحبيبيّة
+        // اتّسعت، ولم يُفتَح باب حركتين تحت هوية واحدة.
+        Result<PostingReceipt> collision = await _harness.Invoices.PostCostOfSalesAsync(
+            tenant, Harness.Actor, invoice,
+            new Babel.Sales.Application.CostOfSalesDraft(lines[0], second, Warehouse, "*", 1m), token);
+
+        Assert.True(collision.IsFailure, "صنفان تحت هوية سطر واحد مرّا.");
+
+        Proof.Require(
+            collision.Errors[0].Code == "inventory.movement_identity_conflict",
+            "وصنفان تحت هوية سطر واحد ما زالا يُرفضان — الحبيبيّة اتّسعت ولم يسقط الحارس",
+            collision.Errors[0].Code);
+
+        Result<ControlReconciliationReport> report = await _harness.Valuation
+            .ReconcileAsync(tenant, Harness.Actor, AsOf, token);
+
+        Assert.True(report.IsSuccess, Describe(report));
+
+        Proof.Require(
+            report.Value.IsReconciled
+            && report.Value.Divergences.Count == 0
+            && report.Value.SubledgerTotal.Amount == report.Value.ControlTotal.Amount
+            && report.Value.BalanceTotal.Amount == report.Value.ControlTotal.Amount,
+            "والمستأجر كلّه ما يزال مطابقاً بثلاثة طرق بعد فاتورة الصنفين",
+            "الحركات=" + Proof.Money(report.Value.SubledgerTotal.Amount)
+            + " · الأرصدة=" + Proof.Money(report.Value.BalanceTotal.Amount)
+            + " · نقطة الضبط=" + Proof.Money(report.Value.ControlTotal.Amount)
+            + " · الانحراف=" + Proof.Money(report.Value.Divergence.Amount));
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // 1-ج · إشعار دائن يردّ بضاعة — بتكلفة صرفها الأصلي لا بمتوسط اليوم
+    // ═══════════════════════════════════════════════════════════════════════
+    //
+    // sales.credit_note.cost_of_sales كان في المصفوفة ولا يُطلقه شيء. القصة:
+    //   استلام  20 × 4 = 80        ⇒ متوسط 4
+    //   بيع     10 بتكلفة 40       ⇒ رصيد 10 وقيمة 40
+    //   استلام  20 × 10 = 200      ⇒ رصيد 30 وقيمة 240 ومتوسط 8
+    //   ردّ      10                 ⇒ **40** لا 80: تكلفة الصرف الأصلي
+    [Fact]
+    public async Task الإشعار_الدائن_يردّ_البضاعة_بتكلفة_صرفها_الأصلي_والمطابقة_تبقى_صفراً()
+    {
+        CancellationToken token = TestContext.Current.CancellationToken;
+        TenantId tenant = InventoryTestEnvironment.Tenant;
+        string item = Harness.Next("ITEM");
+
+        await _harness.PostGoodsReceiptAsync(tenant, item, Warehouse, 20m, 4m, March, token);
+
+        Guid customer = await _harness.CustomerAsync(tenant, token);
+        Guid invoice = await _harness.PostedInvoiceAsync(tenant, customer, 900m, March, token);
+        Guid invoiceLine = (await _harness.InvoiceLineIdsAsync(tenant, invoice, token))[0];
+
+        Result<PostingReceipt> cost = await _harness.Invoices.PostCostOfSalesAsync(
+            tenant, Harness.Actor, invoice,
+            new Babel.Sales.Application.CostOfSalesDraft(invoiceLine, item, Warehouse, "*", 10m), token);
+
+        Assert.True(cost.IsSuccess, Describe(cost));
+
+        // استلام ثانٍ يرفع المتوسط إلى 8 قبل الردّ: 10 وحدات بـ40 + 20 بـ200.
+        await _harness.PostGoodsReceiptAsync(tenant, item, Warehouse, 20m, 10m, March, token);
+
+        Result<StockBalanceView> beforeReturn = await _harness.Stock
+            .ReadStockAsync(tenant, Harness.Actor, item, Warehouse, token);
+
+        Assert.True(beforeReturn.IsSuccess, Describe(beforeReturn));
+
+        // ── الإشعار الدائن يحمل هوية الصرف الأصلي على سطره ───────────────────
+        Result<SalesDocumentView> note = await _harness.CreditNotes.CreateAsync(
+            tenant,
+            Harness.Actor,
+            new CreditNoteDraft(
+                Harness.Next("CN"),
+                invoice,
+                March,
+                [
+                    new SalesLineDraft(
+                        "*",
+                        new LocalizedName("مرتجع", "Return"),
+                        10m,
+                        Harness.Sar(20m),
+                        Harness.Sar(0m),
+                        "standard",
+                        0.15m,
+                        invoiceLine),
+                ]),
+            token);
+
+        Assert.True(note.IsSuccess, Describe(note));
+
+        Result<SalesDocumentView> posted = await _harness.CreditNotes
+            .PostAsync(tenant, Harness.Actor, note.Value.Id, token);
+
+        Assert.True(posted.IsSuccess, Describe(posted));
+
+        Result<StockBalanceView> afterReturn = await _harness.Stock
+            .ReadStockAsync(tenant, Harness.Actor, item, Warehouse, token);
+
+        Assert.True(afterReturn.IsSuccess, Describe(afterReturn));
+
+        decimal returnedValue = afterReturn.Value.Value.Amount - beforeReturn.Value.Value.Amount;
+
+        Proof.Require(
+            beforeReturn.Value.UnitCost == 8.000000m && returnedValue == 40.0000m,
+            "المرتجع رجع بـ40.0000 — تكلفة صرفه الأصلي — لا بـ80.0000 وهي عشر وحدات بمتوسط اليوم 8",
+            "متوسط اليوم قبل الردّ=" + Quantity(beforeReturn.Value.UnitCost)
+            + " · القيمة المضافة بالردّ=" + Proof.Money(returnedValue));
+
+        // والقيد رُحّل بحبيبيّة سطر الإشعار، وأثره على مراقبة المخزون **مدين**.
+        Guid creditLine = await CreditNoteLineIdAsync(tenant, note.Value.Id, token);
+        decimal control = await DocumentNetOnItemControlAsync(
+            tenant, "SalesCreditNoteLine", creditLine.ToString("D", CultureInfo.InvariantCulture), token);
+
+        Proof.Require(
+            control == 40.0000m,
+            "وقيد sales.credit_note.cost_of_sales رُحّل بالمبلغ نفسه تحت سطر الإشعار",
+            "أثر SalesCreditNoteLine على نقطة الضبط=" + Proof.Money(control));
+
+        Result<ControlReconciliationReport> report = await _harness.Valuation
+            .ReconcileAsync(tenant, Harness.Actor, AsOf, token);
+
+        Assert.True(report.IsSuccess, Describe(report));
+
+        Proof.Require(
+            report.Value.IsReconciled
+            && report.Value.Divergences.Count == 0
+            && report.Value.SubledgerTotal.Amount == report.Value.ControlTotal.Amount
+            && report.Value.BalanceTotal.Amount == report.Value.ControlTotal.Amount,
+            "والمستأجر كلّه ما يزال مطابقاً بثلاثة طرق بعد المرتجع",
+            "الحركات=" + Proof.Money(report.Value.SubledgerTotal.Amount)
+            + " · الأرصدة=" + Proof.Money(report.Value.BalanceTotal.Amount)
+            + " · نقطة الضبط=" + Proof.Money(report.Value.ControlTotal.Amount)
+            + " · الانحراف=" + Proof.Money(report.Value.Divergence.Amount));
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // 1-د · إشعار دائن على سطر بلا قيد تكلفة: يُرفض باسمه، ولا يُخترع له رقم
+    // ═══════════════════════════════════════════════════════════════════════
+    [Fact]
+    public async Task ردّ_بضاعة_على_سطر_بلا_قيد_تكلفة_يُرفض_ولا_يُخترع_له_رقم()
+    {
+        CancellationToken token = TestContext.Current.CancellationToken;
+        TenantId tenant = InventoryTestEnvironment.Tenant;
+
+        Guid customer = await _harness.CustomerAsync(tenant, token);
+        Guid invoice = await _harness.PostedInvoiceAsync(tenant, customer, 600m, March, token);
+        Guid invoiceLine = (await _harness.InvoiceLineIdsAsync(tenant, invoice, token))[0];
+
+        Result<SalesDocumentView> note = await _harness.CreditNotes.CreateAsync(
+            tenant,
+            Harness.Actor,
+            new CreditNoteDraft(
+                Harness.Next("CN"),
+                invoice,
+                March,
+                [
+                    new SalesLineDraft(
+                        "*",
+                        new LocalizedName("مرتجع", "Return"),
+                        1m,
+                        Harness.Sar(50m),
+                        Harness.Sar(0m),
+                        "standard",
+                        0.15m,
+                        invoiceLine),
+                ]),
+            token);
+
+        Assert.True(note.IsSuccess, Describe(note));
+
+        Result<SalesDocumentView> posted = await _harness.CreditNotes
+            .PostAsync(tenant, Harness.Actor, note.Value.Id, token);
+
+        Assert.True(posted.IsFailure, "ردّ بضاعة على سطر لم يُصرَف مرّ.");
+
+        Error refusal = posted.Errors[0];
+
+        Proof.Require(
+            refusal.Code == "sales.original_cost_entry_not_found"
+            && refusal.MessageAr.Contains("تكلفة صرف", StringComparison.Ordinal)
+            && refusal.MessageEn.Contains("original issue cost", StringComparison.Ordinal),
+            "الردّ بلا صرفٍ أصلي يُرفض باسمه بالعربية والإنجليزية، ولا يُقيَّم بمتوسط اليوم",
+            refusal.Code);
+
+        // والرفض يترك المستند على حاله: لا قيد تجاري رُحّل، ولا حركة كُتبت.
+        long entries = await EntryCountAsync(tenant, "SalesCreditNote", note.Value.Id, token);
+
+        Proof.Require(
+            entries == 0,
+            "ولا قيد واحد رُحّل للإشعار المرفوض — الرفض قبل الكتابة لا بعدها",
+            "قيود الإشعار=" + entries.ToString(CultureInfo.InvariantCulture));
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
     // 2 · بيعٌ لصنف لم يُستلم قط: رفضٌ مكتوب بلغتين، لا رقم مخترَع
     // ═══════════════════════════════════════════════════════════════════════
     [Fact]
@@ -146,7 +408,8 @@ public sealed class InventoryControlReconciliationTests : IAsyncLifetime
             tenant,
             Harness.Actor,
             invoice,
-            new Babel.Sales.Application.CostOfSalesDraft(await FirstLineIdAsync(tenant, invoice, token), item, Warehouse, "*", 10m),
+            new Babel.Sales.Application.CostOfSalesDraft(
+                (await _harness.InvoiceLineIdsAsync(tenant, invoice, token))[0], item, Warehouse, "*", 10m),
             token);
 
         Assert.True(cost.IsFailure, "قيد التكلفة نجح على صنف بلا أساس تكلفة.");
@@ -189,8 +452,7 @@ public sealed class InventoryControlReconciliationTests : IAsyncLifetime
         string item = Harness.Next("ITEM");
 
         // ── ١ · استلام أول: 10 × 12 ──────────────────────────────────────────
-        ReceiptFacts first = await _harness.PostGoodsReceiptAsync(tenant, item, Warehouse, 10m, 12m, March, token);
-        await ReceiveAsync(tenant, item, first, 10m, token);
+        await _harness.PostGoodsReceiptAsync(tenant, item, Warehouse, 10m, 12m, March, token);
 
         // ── ٢ · بيع 15 وحدة والرصيد 10 ───────────────────────────────────────
         Guid customer = await _harness.CustomerAsync(tenant, token);
@@ -200,7 +462,8 @@ public sealed class InventoryControlReconciliationTests : IAsyncLifetime
             tenant,
             Harness.Actor,
             invoice,
-            new Babel.Sales.Application.CostOfSalesDraft(await FirstLineIdAsync(tenant, invoice, token), item, Warehouse, "*", 15m),
+            new Babel.Sales.Application.CostOfSalesDraft(
+                (await _harness.InvoiceLineIdsAsync(tenant, invoice, token))[0], item, Warehouse, "*", 15m),
             token);
 
         Assert.True(cost.IsSuccess, Describe(cost));
@@ -216,8 +479,7 @@ public sealed class InventoryControlReconciliationTests : IAsyncLifetime
             "الكمية=" + Quantity(afterSale.Value.Quantity) + " والقيمة=" + Proof.Money(afterSale.Value.Value.Amount));
 
         // ── ٣ · استلام متأخّر بسعر أعلى: 5 × 14 ──────────────────────────────
-        ReceiptFacts late = await _harness.PostGoodsReceiptAsync(tenant, item, Warehouse, 5m, 14m, March, token);
-        await ReceiveAsync(tenant, item, late, 5m, token);
+        await _harness.PostGoodsReceiptAsync(tenant, item, Warehouse, 5m, 14m, March, token);
 
         Result<StockBalanceView> afterLate = await _harness.Stock
             .ReadStockAsync(tenant, Harness.Actor, item, Warehouse, token);
@@ -406,19 +668,6 @@ public sealed class InventoryControlReconciliationTests : IAsyncLifetime
 
     // ────────────────────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// معرّف أول سطر في فاتورة — <b>معرّف مستند قيد تكلفتها</b> بعد أن صار القيد
-    /// بحبيبيّة السطر (‏<c>SalesInvoiceLine</c>).
-    /// </summary>
-    private async Task<Guid> FirstLineIdAsync(TenantId tenant, Guid invoice, CancellationToken token)
-    {
-        Result<IReadOnlyList<Babel.Sales.Application.SalesLineView>> lines = await _harness.Invoices
-            .GetInvoiceLinesAsync(tenant, Harness.Actor, invoice, token);
-
-        Assert.True(lines.IsSuccess, Describe(lines));
-        return lines.Value[0].Id;
-    }
-
     private async Task SeedAsync(TenantId tenant, string item, decimal quantity, decimal cost, CancellationToken token)
     {
         Result<InventoryMovementCost> seeded = await _harness.Stock.ReceiveAsync(
@@ -451,38 +700,6 @@ public sealed class InventoryControlReconciliationTests : IAsyncLifetime
             },
             token).AsTask();
 
-    private async Task ReceiveAsync(
-        TenantId tenant, string item, ReceiptFacts receipt, decimal quantity, CancellationToken token)
-    {
-        Result<InventoryMovementCost> received = await _harness.Stock.ReceiveAsync(
-            new InventoryReceipt
-            {
-                Tenant = tenant,
-                Actor = Harness.Actor,
-                Source = SourceOfReceiptLine(receipt.LineId),
-                Location = new InventoryItemLocation(item, Warehouse, "*"),
-                Quantity = quantity,
-                Cost = receipt.LineNet,
-                OccurredOn = March,
-            },
-            token);
-
-        Assert.True(received.IsSuccess, Describe(received));
-    }
-
-    /// <summary>
-    /// هوية سطر الاستلام كما يعرفها الدفتر بالضبط: نوع المستند ومعرّفه ورمز الإطلاق
-    /// والجيل ورمز الحدث. الاختلاف في أي حرف منها يُنتج مستنداً لا يقابله شيء في
-    /// نقطة الضبط — وهو ما تُظهره المطابقة فوراً.
-    /// </summary>
-    private static InventoryMovementSource SourceOfReceiptLine(Guid lineId) => new(
-        BabelModule.Purchasing,
-        "GoodsReceiptLine",
-        lineId.ToString("D", CultureInfo.InvariantCulture),
-        PostingTrigger.OnReceipt.ToString(),
-        1,
-        "purchasing.goods_receipt.posted");
-
     private static InventoryMovementSource Source(BabelModule module, string documentType, string eventCode) => new(
         module,
         documentType,
@@ -512,6 +729,43 @@ public sealed class InventoryControlReconciliationTests : IAsyncLifetime
         command.Parameters.AddWithValue(documentId);
 
         return (decimal)(await command.ExecuteScalarAsync(token))!;
+    }
+
+    /// <summary>معرّف أول سطر في إشعار دائن — معرّف مستند قيد تكلفة مرتجعه.</summary>
+    private static async Task<Guid> CreditNoteLineIdAsync(TenantId tenant, Guid noteId, CancellationToken token)
+    {
+        await using Npgsql.NpgsqlConnection connection = new(InventoryTestEnvironment.Sales.ConnectionString);
+        await connection.OpenAsync(token);
+
+        await using Npgsql.NpgsqlCommand command = new(
+            """
+            select "Id" from sales.sales_line
+             where "TenantId" = $1 and "OwnerType" = 'CREDIT_NOTE' and "OwnerId" = $2
+             order by "LineNo" limit 1
+            """, connection);
+
+        command.Parameters.AddWithValue(tenant.Value);
+        command.Parameters.AddWithValue(noteId);
+        return (Guid)(await command.ExecuteScalarAsync(token))!;
+    }
+
+    /// <summary>عدد القيود المكتوبة لمستند بعينه.</summary>
+    private static async Task<long> EntryCountAsync(
+        TenantId tenant, string documentType, Guid documentId, CancellationToken token)
+    {
+        await using Npgsql.NpgsqlConnection connection = new(InventoryTestEnvironment.Ledger.AppConnectionString);
+        await connection.OpenAsync(token);
+
+        await using Npgsql.NpgsqlCommand command = new(
+            """
+            select count(*) from ledger.journal_entry
+             where company_id = $1 and source_doc_type = $2 and source_doc_id = $3
+            """, connection);
+
+        command.Parameters.AddWithValue(tenant.Value);
+        command.Parameters.AddWithValue(documentType);
+        command.Parameters.AddWithValue(documentId.ToString("D", CultureInfo.InvariantCulture));
+        return (long)(await command.ExecuteScalarAsync(token))!;
     }
 
     private static string Quantity(decimal value) => value.ToString("0.######", CultureInfo.InvariantCulture);

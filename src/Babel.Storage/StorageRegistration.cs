@@ -1,4 +1,5 @@
 using Babel.Contracts.Storage;
+using Babel.Storage.Surface;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Babel.Storage;
@@ -34,6 +35,26 @@ public static class StorageRegistration
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<IAttachmentStore>(provider =>
             new FileSystemAttachmentStore(options, provider.GetRequiredService<TimeProvider>()));
+
+        return services;
+    }
+
+    /// <summary>
+    /// يركّب <b>السطح المنشور للمرفقات</b> — وهو ما يناديه سطح HTTP، ولا شيء غيره.
+    /// <para>
+    /// <b>ويحتاج المخزن والتذاكر معاً</b>، فمن يركّبه يكون قد ضبط مفتاح التوقيع: سطحُ
+    /// تنزيلٍ بلا مفتاح ليس سطحاً منقوصاً بل سطحٌ يردّ عطلاً عند أول طلب.
+    /// </para>
+    /// </summary>
+    /// <param name="services">حاوية الخدمات.</param>
+    public static IServiceCollection AddBabelAttachmentSurface(this IServiceCollection services)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+
+        services.AddSingleton(provider => new AttachmentSurface(
+            provider.GetRequiredService<IAttachmentStore>(),
+            provider.GetRequiredService<IAttachmentTickets>(),
+            provider.GetRequiredService<StorageOptions>()));
 
         return services;
     }

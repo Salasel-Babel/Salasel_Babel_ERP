@@ -1,3 +1,4 @@
+using Babel.Tests.Shared;
 using System.Collections.Immutable;
 using Babel.Contracts.Posting;
 using Babel.Core.CapabilityProfile;
@@ -36,7 +37,7 @@ internal sealed class Harness : IDisposable
         Customers = new CustomerService(enforcer, runtime);
         Valuation = new UnitCostOfOne();
         Invoices = new SalesInvoiceService(enforcer, runtime, Posting, Profiles, Valuation);
-        CreditNotes = new CreditNoteService(enforcer, runtime, Posting);
+        CreditNotes = new CreditNoteService(enforcer, runtime, Posting, Profiles, Valuation);
         Receipts = new CustomerReceiptService(enforcer, runtime, Posting, Profiles);
         Receivables = new ReceivablesService(
             enforcer, runtime, new LedgerControlPointReader(SalesTestEnvironment.Ledger.AppConnectionString));

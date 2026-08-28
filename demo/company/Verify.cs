@@ -1,4 +1,5 @@
 using System.Globalization;
+using Babel.Contracts.Subledger;
 using Babel.Core;
 using Babel.Core.Audit;
 using Babel.Core.CompanySetup;
@@ -143,7 +144,7 @@ internal static class Verify
         PrintAging("الذمم المدينة (العملاء)", ar.Value);
 
         PayablesService payables = new(
-            enforcer, purchasing, new PayablesControlPoint(settings.Ledger.AppConnectionString));
+            enforcer, purchasing, new ControlPoint(settings.Ledger.AppConnectionString));
         Result<PurchasingAging> ap = await payables
             .AgingAsync(tenant, Seed.Actor, asOf, cancellationToken)
             .ConfigureAwait(false);
@@ -188,18 +189,24 @@ internal static class Verify
         => result.IsSuccess ? "نجح" : string.Join(" | ", result.Errors.Select(static error => error.ToString()));
 
     /// <summary>
-    /// قارئ نقطة الضبط للمبيعات.
+    /// قارئ نقطة الضبط — <b>واحدٌ للدفاتر المساعدة كلّها</b>.
+    /// <para>
+    /// كان صنفين متطابقين لأن العقد كان معلَناً في كل وحدة على حدة. وبعد أن صار
+    /// <see cref="Babel.Contracts.Subledger.IControlPointReader"/> معلَناً في العقود
+    /// مرّةً واحدة، صار المحوّل واحداً كذلك — وهو ما كان يجب أن يكون
+    /// (<c>docs/evidence/traps.md#fakh-81</c>).
+    /// </para>
     /// <para>
     /// <b>ولا يسمّي حساباً واحداً</b>: الاستعلام على <c>subledger_kind</c>، فأي حساب
     /// ضابط يُضاف لاحقاً لهذا الدفتر المساعد يدخل المطابقة من تلقاء نفسه (القاعدة 2).
     /// </para>
     /// </summary>
-    private sealed class ControlPoint(string connectionString) : Babel.Sales.Subledger.IControlPointReader
+    private sealed class ControlPoint(string connectionString) : IControlPointReader
     {
-        public async ValueTask<Result<Babel.Sales.Subledger.ControlPointSnapshot>> ReadAsync(
+        public async ValueTask<Result<ControlPointSnapshot>> ReadAsync(
             TenantId tenant, string subledgerKind, DateOnly asOf, CancellationToken cancellationToken = default)
         {
-            List<Babel.Sales.Subledger.ControlPointMovement> movements = [];
+            List<ControlPointMovement> movements = [];
             decimal net = 0m;
 
             await foreach ((string type, string id, string party, decimal value)
@@ -207,33 +214,10 @@ internal static class Verify
                                .ConfigureAwait(false))
             {
                 net += value;
-                movements.Add(new Babel.Sales.Subledger.ControlPointMovement(type, id, party, value));
+                movements.Add(new ControlPointMovement(type, id, party, value));
             }
 
-            return Result<Babel.Sales.Subledger.ControlPointSnapshot>.Success(
-                new Babel.Sales.Subledger.ControlPointSnapshot(net, movements));
-        }
-    }
-
-    /// <summary>نظيره للمشتريات. العقد مكرَّر في الوحدتين، وموضعه الطبيعي <c>Babel.Contracts</c>.</summary>
-    private sealed class PayablesControlPoint(string connectionString) : Babel.Purchasing.Subledger.IControlPointReader
-    {
-        public async ValueTask<Result<Babel.Purchasing.Subledger.ControlPointSnapshot>> ReadAsync(
-            TenantId tenant, string subledgerKind, DateOnly asOf, CancellationToken cancellationToken = default)
-        {
-            List<Babel.Purchasing.Subledger.ControlPointMovement> movements = [];
-            decimal net = 0m;
-
-            await foreach ((string type, string id, string party, decimal value)
-                           in ReadMovementsAsync(connectionString, tenant, subledgerKind, asOf, cancellationToken)
-                               .ConfigureAwait(false))
-            {
-                net += value;
-                movements.Add(new Babel.Purchasing.Subledger.ControlPointMovement(type, id, party, value));
-            }
-
-            return Result<Babel.Purchasing.Subledger.ControlPointSnapshot>.Success(
-                new Babel.Purchasing.Subledger.ControlPointSnapshot(net, movements));
+            return Result<ControlPointSnapshot>.Success(new ControlPointSnapshot(net, movements));
         }
     }
 

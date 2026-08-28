@@ -24,12 +24,25 @@ namespace Babel.Sales.Application;
 /// ومتوسط التكلفة. والحارس على ذلك في
 /// <c>tests/Babel.ArchitectureTests/InventoryValuationIsTheOnlySourceOfCostOfSales.cs</c>.
 /// </para>
+/// <para>
+/// <b>ومعها اليوم معرّف السطر.</b> قيد التكلفة واقعةٌ عن <b>سطر</b> لا عن مستند:
+/// كل سطر صنفٌ ومستودعٌ وكميّة. وكانت هويّته هوية الفاتورة، فكانت الفاتورة ذات
+/// الصنفين تصطدم على الصنف الثاني وتُرفض بـ<c>inventory.movement_identity_conflict</c>
+/// — أي أن فاتورةً بصنفين لا تُباع أصلاً. والمخرج هو مخرج المشتريات نفسه
+/// (<c>GoodsReceiptLine</c>): نوع مستند بحبيبيّة السطر، ومعرّفه <b>معرّف صفّ حقيقي</b>
+/// في <c>sales.sales_line</c> مملوك لهذه الفاتورة.
+/// </para>
 /// </summary>
+/// <param name="InvoiceLineId">
+/// سطر الفاتورة الذي يحمل هذا الصنف — <b>وهو معرّف المستند في هوية الترحيل</b>.
+/// ويُتحقَّق أنه صفٌّ قائم مملوك لهذه الفاتورة، فلا يُقبل معرّف مخترَع.
+/// </param>
 /// <param name="ItemId">الصنف في دفتره المساعد — معرّف مبهم لا رقم حساب.</param>
 /// <param name="WarehouseId">المستودع — بُعد تحليلي إلزامي على مراقبة المخزون.</param>
 /// <param name="ItemGroup">مجموعة الصنف — مؤهّل الدور.</param>
 /// <param name="Quantity">الكمية المباعة من هذا الصنف. موجبة.</param>
-public sealed record CostOfSalesDraft(string ItemId, string WarehouseId, string ItemGroup, decimal Quantity);
+public sealed record CostOfSalesDraft(
+    Guid InvoiceLineId, string ItemId, string WarehouseId, string ItemGroup, decimal Quantity);
 
 /// <summary>
 /// دورة مستند البيع: عرض سعر ← أمر بيع ← فاتورة ← ترحيل.
@@ -50,6 +63,31 @@ public sealed class SalesInvoiceService : IApplicationService
 
     /// <summary>رمز حدث الاعتراف بالإيراد — أحد شقّي هوية إحكام الفاتورة.</summary>
     internal const string InvoicePostedEvent = "sales.invoice.posted";
+
+    /// <summary>
+    /// نوع مستند <b>سطر</b> الفاتورة في هوية الإحكام — حامل قيد تكلفة المبيعات.
+    /// <para>
+    /// <b>وهذا ليس نوعاً مُختلَقاً</b> (<c>docs/evidence/traps.md#fakh-49</c>): معرّفه
+    /// معرّف صفّ قائم في <c>sales.sales_line</c> مملوك للفاتورة بمفتاح أجنبي حقيقي،
+    /// فسؤال «كل قيود هذه الفاتورة» يُجاب بضمّ الجدول لا بمعرفة اصطلاح تسمية. والنوع
+    /// المُختلَق الذي أُزيل — <c>SalesInvoiceCostOfSales</c> — كان يحمل معرّف
+    /// <b>الفاتورة نفسها</b> تحت اسمٍ لا يقابله كيان، ولم يكن يفصل شيئاً في الواقع.
+    /// </para>
+    /// <para>
+    /// <b>ولماذا السطر لا المستند:</b> الهوية بعد ADR-0016 تحمل رمز الحدث، فالإيراد
+    /// والتكلفة لا يتصادمان أصلاً. التصادم الباقي كان <b>بين تكلفةٍ وتكلفة</b>:
+    /// فاتورةٌ بصنفين تُنتج واقعتَي صرف مختلفتين تحت هوية واحدة. وذلك ليس نقصاً في
+    /// المفتاح بل <b>حبيبيّة خاطئة</b>: الواقعة عن سطر. والمشتريات سبقت إلى هذا
+    /// بالضبط في <c>GoodsReceiptLine</c> وللسبب نفسه.
+    /// </para>
+    /// <para>
+    /// <b>والحبيبيّة تتّسع على الطرفين معاً</b> — الدفتر والدفتر المساعد — في هذا
+    /// الموضع الواحد. وتوسيع أحدهما وحده يُنتج انحرافاً على مستند سليم
+    /// (<c>docs/evidence/traps.md#fakh-48</c>).
+    /// </para>
+    /// </summary>
+    internal const string InvoiceLineDocument = "SalesInvoiceLine";
+
 
     /// <summary>
     /// رمز حدث قيد التكلفة المصاحب.
@@ -168,7 +206,7 @@ public sealed class SalesInvoiceService : IApplicationService
         };
 
         _database.Quotations.Add(row);
-        AddLines(tenant, "QUOTATION", row.Id, draft.Lines);
+        AddLines(_database, tenant, LineOwner.Quotation, row.Id, draft.Lines);
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         return Result<SalesDocumentView>.Success(View(row.Id, row.Number, row.State, totals.Value, null));
@@ -235,7 +273,7 @@ public sealed class SalesInvoiceService : IApplicationService
         };
 
         _database.Orders.Add(row);
-        AddLines(tenant, "ORDER", row.Id, draft.Lines);
+        AddLines(_database, tenant, LineOwner.Order, row.Id, draft.Lines);
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         return Result<SalesDocumentView>.Success(View(row.Id, row.Number, row.State, totals.Value, null));
@@ -305,7 +343,7 @@ public sealed class SalesInvoiceService : IApplicationService
         };
 
         _database.Invoices.Add(row);
-        AddLines(tenant, "INVOICE", row.Id, draft.Lines);
+        AddLines(_database, tenant, LineOwner.Invoice, row.Id, draft.Lines);
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         return Result<SalesDocumentView>.Success(View(row.Id, row.Number, row.State, totals.Value, null));
@@ -494,14 +532,30 @@ public sealed class SalesInvoiceService : IApplicationService
         // كلّفت هذه الكمية. وهي تسجّل الصرف **بهوية الترحيل نفسها**، فحركة المخزون
         // وقيد التكلفة واقعةٌ واحدة بمفتاح واحد — لا دفتران يعدّان بحبيبيّتين
         // مختلفتين، ولا انحراف بلا مستند مسؤول (فخ-44 · فخ-48).
+        // ── السطر أولاً: معرّفه هو معرّف المستند في الهوية، فلا يُقبل مخترَعاً ──
+        SalesLineRow? line = await _database.Lines
+            .FirstOrDefaultAsync(
+                row => row.TenantId == tenant.Value
+                       && row.OwnerType == LineOwner.Invoice
+                       && row.OwnerId == invoice.Id
+                       && row.Id == draft.InvoiceLineId,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        if (line is null)
+        {
+            return Result<PostingReceipt>.Failure(
+                SalesErrors.LineNotFound(InvoiceDocument, invoice.Id, draft.InvoiceLineId));
+        }
+
         InventoryIssue issue = new()
         {
             Tenant = tenant,
             Actor = actor,
             Source = new InventoryMovementSource(
                 BabelModule.Sales,
-                InvoiceDocument,
-                invoice.Id.ToString("D", CultureInfo.InvariantCulture),
+                InvoiceLineDocument,
+                line.Id.ToString("D", CultureInfo.InvariantCulture),
                 PostingTrigger.OnApproval.ToString(),
                 invoice.PostingGeneration,
                 CostOfSalesEvent),
@@ -519,8 +573,8 @@ public sealed class SalesInvoiceService : IApplicationService
         PostingIntent intent = new()
         {
             Tenant = tenant,
-            DocumentType = InvoiceDocument,
-            DocumentId = invoice.Id,
+            DocumentType = InvoiceLineDocument,
+            DocumentId = line.Id,
             Trigger = PostingTrigger.OnApproval,
             Event = new PostingEventCode(CostOfSalesEvent),
             DocumentDate = invoice.IssuedOn,
@@ -628,6 +682,53 @@ public sealed class SalesInvoiceService : IApplicationService
 
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return reversal;
+    }
+
+    /// <summary>
+    /// يقرأ سطور فاتورة — <b>ومعرّفاتها مدخل ترحيل قيد التكلفة</b>.
+    /// <para>
+    /// نظير <c>GoodsReceiptService.GetLinesAsync</c> بالضبط: قيد التكلفة يُرحَّل
+    /// بحبيبيّة السطر، ومعرّف السطر هو معرّف مستنده — فلا سبيل إلى ترحيله بلا قراءة
+    /// السطور أولاً.
+    /// </para>
+    /// </summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="invoiceId">الفاتورة.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    [RequiresEntitlement(BabelModule.Sales, EntitlementAccess.Read)]
+    public async ValueTask<Result<IReadOnlyList<SalesLineView>>> GetInvoiceLinesAsync(
+        TenantId tenant,
+        UserId actor,
+        Guid invoiceId,
+        CancellationToken cancellationToken = default)
+    {
+        Result gate = await _enforcer
+            .EnsureAsync(tenant, actor, BabelModule.Sales, EntitlementAccess.Read, "Sales.Invoice.Lines", cancellationToken)
+            .ConfigureAwait(false);
+
+        if (gate.IsFailure)
+        {
+            return Result<IReadOnlyList<SalesLineView>>.Failure(gate.Errors);
+        }
+
+        List<SalesLineRow> lines = await _database.Lines
+            .AsNoTracking()
+            .Where(row => row.TenantId == tenant.Value
+                          && row.OwnerType == LineOwner.Invoice
+                          && row.OwnerId == invoiceId)
+            .OrderBy(row => row.LineNo)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        return Result<IReadOnlyList<SalesLineView>>.Success(
+            [.. lines.Select(line => new SalesLineView(
+                line.Id,
+                line.LineNo,
+                line.ItemGroup,
+                line.Quantity,
+                Money.Of(line.UnitPrice, _currency),
+                line.OriginalInvoiceLineId))]);
     }
 
     /// <summary>يقرأ فاتورة.</summary>
@@ -760,7 +861,18 @@ public sealed class SalesInvoiceService : IApplicationService
         return Result<Totals>.Success(new Totals(net, tax, net + tax, taxable));
     }
 
-    internal void AddLines(TenantId tenant, string ownerType, Guid ownerId, IReadOnlyList<SalesLineDraft> lines)
+    /// <summary>
+    /// يكتب سطور مستند. <b>ساكنة وتأخذ المخزن</b> لأن الإشعار الدائن يكتب سطوره
+    /// كذلك: صار لسطره معرّف يُبنى عليه قيد تكلفة المرتجع، فلم يعد سطراً يُحسب
+    /// مجموعه ثم يُرمى.
+    /// </summary>
+    /// <param name="database">مخزن الوحدة.</param>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="ownerType">نوع المستند المالك.</param>
+    /// <param name="ownerId">معرّفه.</param>
+    /// <param name="lines">السطور.</param>
+    internal static void AddLines(
+        SalesDbContext database, TenantId tenant, string ownerType, Guid ownerId, IReadOnlyList<SalesLineDraft> lines)
     {
         for (int index = 0; index < lines.Count; index++)
         {
@@ -768,7 +880,7 @@ public sealed class SalesInvoiceService : IApplicationService
             (decimal lineNet, decimal lineTax) = LineMath.Line(
                 line.Quantity, line.UnitPrice.Amount, line.Discount.Amount, line.TaxRate, line.TaxClassification);
 
-            _database.Lines.Add(new SalesLineRow
+            database.Lines.Add(new SalesLineRow
             {
                 Id = Guid.CreateVersion7(),
                 TenantId = tenant.Value,
@@ -785,6 +897,7 @@ public sealed class SalesInvoiceService : IApplicationService
                 TaxRate = line.TaxRate,
                 LineNet = lineNet,
                 LineTax = lineTax,
+                OriginalInvoiceLineId = line.OriginalInvoiceLineId,
             });
         }
     }

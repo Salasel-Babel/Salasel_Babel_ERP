@@ -103,7 +103,10 @@ public sealed class CapabilityAdmissionTests : IAsyncLifetime
             SalesTestEnvironment.AdvanceEnabledTenant,
             Harness.Actor,
             Guid.CreateVersion7(),
-            new CostOfSalesDraft("ITEM-X", "WH-01", "*", 10m),
+
+            // معرّف سطر مخترَع مقصود: البند يقيس أن **بوّابة القبول** ترفض قبل أن
+            // يُقرأ سطرٌ أو يُبلَغ مخزون. فلو مرّ لكان الرفض الثاني هو المقيس لا الأول.
+            new CostOfSalesDraft(Guid.CreateVersion7(), "ITEM-X", "WH-01", "*", 10m),
             token);
 
         ValidatedCapabilityProfile? stored = await bare.Profiles
@@ -225,13 +228,22 @@ public sealed class CapabilityAdmissionTests : IAsyncLifetime
         return new Attempt(recorded, applied, invoice.Value.Id);
     }
 
-    private Task<Result<PostingReceipt>> CostOfSalesAsync(TenantId tenant, Guid invoiceId, CancellationToken token)
-        => _harness.Invoices.PostCostOfSalesAsync(
+    private async Task<Result<PostingReceipt>> CostOfSalesAsync(TenantId tenant, Guid invoiceId, CancellationToken token)
+    {
+        // معرّف السطر يُقرأ من الفاتورة: قيد التكلفة صار بحبيبيّة السطر، ومعرّفه
+        // معرّف صفّ حقيقي مملوك لها.
+        Result<IReadOnlyList<SalesLineView>> lines = await _harness.Invoices
+            .GetInvoiceLinesAsync(tenant, Harness.Actor, invoiceId, token);
+
+        Guid lineId = lines.IsSuccess && lines.Value.Count > 0 ? lines.Value[0].Id : Guid.CreateVersion7();
+
+        return await _harness.Invoices.PostCostOfSalesAsync(
             tenant,
             Harness.Actor,
             invoiceId,
-            new CostOfSalesDraft(Next("ITEM"), "WH-01", "*", 120m),
-            token).AsTask();
+            new CostOfSalesDraft(lineId, Next("ITEM"), "WH-01", "*", 120m),
+            token);
+    }
 
     private static string Describe<T>(Result<T> result)
         => result.IsSuccess ? "نجح" : string.Join(" | ", result.Errors.Select(static error => error.Code));

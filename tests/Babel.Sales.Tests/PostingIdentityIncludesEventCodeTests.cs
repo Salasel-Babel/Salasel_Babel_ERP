@@ -1,3 +1,4 @@
+using Babel.Tests.Shared;
 using System.Globalization;
 using Babel.Contracts.Posting;
 using Babel.Sales.Application;

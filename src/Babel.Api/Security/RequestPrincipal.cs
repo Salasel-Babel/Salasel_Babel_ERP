@@ -68,9 +68,11 @@ internal static class RequestPrincipal
                 return;
             }
 
-            ApiPrincipal? principal = resolver.Resolve(header[Scheme.Length..].Trim());
+            CredentialVerdict verdict = await resolver
+                .ResolveAsync(header[Scheme.Length..].Trim(), context.RequestAborted)
+                .ConfigureAwait(false);
 
-            if (principal is null)
+            if (verdict.Outcome == CredentialOutcome.Rejected)
             {
                 await DenyAsync(
                     context,
@@ -80,6 +82,36 @@ internal static class RequestPrincipal
                     .ConfigureAwait(false);
                 return;
             }
+
+            // ── الإبطال: رمزٌ ثالث مستقلّ عن الرفض وعن الانقضاء ──────────────────────
+            // ولماذا يفترق: من أُبطلت جلسته يحتاج أن يعرف أن **شيئاً وقع** — ربما لم يقع
+            // منه — فيغيّر سلوكه؛ ومن انقضت جلسته يدخل من جديد ولا شيء غير ذلك. ورمزٌ
+            // واحد للاثنين يجعل الأول يظنّ أنه مجرّد وقت مضى، وهو أخطر ما يُقال له.
+            if (verdict.Outcome == CredentialOutcome.Revoked)
+            {
+                await DenyAsync(
+                    context,
+                    "auth.credential_revoked",
+                    "أُبطلت هذه الجلسة. ادخل من جديد — والإبطال يقع فوراً ولا يُنتظر به انقضاء. "
+                    + "وإن لم تكن أنت من أبطلها فأخبر صاحب المنشأة الآن.",
+                    "This session has been revoked. Sign in again — revocation takes effect immediately and never "
+                    + "waits for an expiry. If it was not you who revoked it, tell the company's owner now.")
+                    .ConfigureAwait(false);
+                return;
+            }
+
+            if (verdict.Outcome == CredentialOutcome.Expired)
+            {
+                await DenyAsync(
+                    context,
+                    "auth.credential_expired",
+                    "انقضى هذا الاعتماد. ادخل من جديد — ولم يُسحب منك شيء ولم يتغيّر شيء في البيانات.",
+                    "This credential has expired. Sign in again — nothing was revoked and nothing in the data changed.")
+                    .ConfigureAwait(false);
+                return;
+            }
+
+            ApiPrincipal principal = verdict.Principal!;
 
             // ── الانقضاء يقع **بعد** التحقّق من الاعتماد وقبل أي عمل ────────────────
             // ورمزه مستقلّ عمداً: من انقضت جلسته يحتاج أن يعرف أنه يدخل من جديد، لا أن
@@ -121,6 +153,14 @@ internal static class RequestPrincipal
     ///         يضع ترويسة <c>Authorization</c> على تنقّلٍ عُلوي</b>، فصفحةُ توثيق محميّة
     ///         بـ<c>Bearer</c> غير قابلة للفتح أصلاً؛ وعلاجُها الوحيد ملفّ ارتباط أو
     ///         جلسة — أي آلية تصريح ثانية، وهي أخطر من غيابها.</item>
+    ///   <item><c>/api/v1/access/sessions</c> و<c>/api/v1/access/sessions/renewal</c> —
+    ///         <b>وغيابُ الاعتماد عنهما بنيوي:</b> من يطلب اعتماداً لا يملك اعتماداً،
+    ///         وبابٌ يُصدر جلسةً ويشترط جلسةً بابٌ لا يُفتح أبداً. والاعتماد ليس غائباً
+    ///         عنهما بل <b>منقولاً من الترويسة إلى الجسم</b>: اعتماد انتساب على الأول
+    ///         واعتماد تجديد على الثاني، وكلاهما يُبصَم ويُطابَق بالبصمة كأي اعتماد،
+    ///         والرفض واحدٌ لا يُفرَّق فيه المختلَق عن غيره. <b>وما لا يُفتح بفتحهما:</b>
+    ///         لا يقرأ أيٌّ منهما بيانات مستأجرٍ ولا يكتبها إلا بعد أن يُثبت مُقدِّمُه
+    ///         اعتماداً، ولا يُرجع أيٌّ منهما شيئاً لمن لم يُثبت.</item>
     /// </list>
     /// <para>
     /// <b>وما لا يُفتح بفتحها:</b> الثلاثة تكتب بايتات ثابتة أو حالةَ عملية. ولا واحد
@@ -131,7 +171,9 @@ internal static class RequestPrincipal
     private static bool IsAnonymous(PathString path) =>
         path.Equals(Endpoints.ApiRoutes.Health, StringComparison.Ordinal)
         || path.Equals(Endpoints.ApiRoutes.OpenApiDocument, StringComparison.Ordinal)
-        || path.Equals(Endpoints.ApiRoutes.Docs, StringComparison.Ordinal);
+        || path.Equals(Endpoints.ApiRoutes.Docs, StringComparison.Ordinal)
+        || path.Equals(Endpoints.AccessRoutes.Sessions, StringComparison.Ordinal)
+        || path.Equals(Endpoints.AccessRoutes.SessionRenewal, StringComparison.Ordinal);
 
     private static async Task DenyAsync(HttpContext context, string code, string ar, string en)
     {

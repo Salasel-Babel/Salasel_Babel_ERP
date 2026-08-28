@@ -67,6 +67,14 @@ internal static class ApiProblems
             "cost_center.default_cannot_be_suspended" => 409,
             "cost_center.already_suspended" or "cost_center.already_active" => 409,
 
+            // ── سطح المصادقة ────────────────────────────────────────────────────
+            // اعتمادٌ مُقدَّم ومرفوض ⇒ 401 بحكم بادئة access. أمّا ما ليس عن اعتماد
+            // مُقدَّم فيُصنَّف بنفسه: اسمٌ ناقص في دعوة طلبٌ مفهوم ومرفوض (422)، ودعوةٌ
+            // لعضوٍ قائم تعارضٌ مع حالة (409)، وداعٍ ليس مالكاً منعٌ (403).
+            "membership.already_granted" => 409,
+            "membership.inviter_is_not_an_owner" or "membership.read_only" => 403,
+            "access.session_not_issued_here" => 409,
+
             "capability_profile.not_found" => 404,
             "capability_profile.capability_withdrawal_requires_acknowledgement" => 409,
 
@@ -76,8 +84,15 @@ internal static class ApiProblems
             _ when code.StartsWith("capability_profile.", StringComparison.Ordinal) => 422,
             _ when code.StartsWith("document_admission.", StringComparison.Ordinal) => 422,
 
+            _ when code.StartsWith("membership.", StringComparison.Ordinal) => 422,
+
             _ when code.StartsWith("wire.", StringComparison.Ordinal) => 400,
             _ when code.StartsWith("auth.", StringComparison.Ordinal) => 401,
+
+            // اعتمادٌ قُدِّم ولم يُقبل — انتساباً كان أو تجديداً أو جلسةً أُبطلت. و401
+            // لا 403 عمداً: الفرق بينهما هو الفرق بين «لم تُصادِق» و«صادقتَ ومُنعت»،
+            // وهما إجراءان مختلفان تماماً عند العميل (‏RFC 9110 §15.5.4).
+            _ when code.StartsWith("access.", StringComparison.Ordinal) => 401,
             _ when code.StartsWith("tenancy.", StringComparison.Ordinal) => 403,
             _ when code.StartsWith("ledger.posting.guard.", StringComparison.Ordinal) => 422,
             _ when code.StartsWith("ledger.posting.", StringComparison.Ordinal) => 422,

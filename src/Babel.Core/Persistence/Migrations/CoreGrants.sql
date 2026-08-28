@@ -70,6 +70,36 @@ begin
                                      core.capability_profile_capability,
                                      core.capability_profile_default from %I', v_role);
 
+    -- ── العضويات: تُقرأ وتُضاف، ولا تُحذف **اليوم** ───────────────────────
+    -- والصلاحية تتبع ما هو مبنيّ لا ما يُنوى: لا مسار سحبِ عضوية على هذا السطح
+    -- بعد، فمنحُ DELETE الآن صلاحيةٌ يحملها خادمٌ ولا يستدعيها شيء — وهي أسوأ
+    -- من غيابها لأنها تُقرأ «مدروسة». وسحبُ العضوية دَينٌ **مُعلَن** في القرار:
+    -- حين يُبنى، يُضاف السطر ومعه مساره واختباره في الإيداع نفسه.
+    execute format('grant select, insert on core.access_membership to %I', v_role);
+    execute format('revoke update, delete, truncate on core.access_membership from %I', v_role);
+
+    -- ── اعتمادات الانتساب والجلسات والاعتمادات المُصدَرة ────────────────────
+    -- **ولا DELETE على الثلاثة**، وهذا هو بيت القصيد لا تشدّداً:
+    --
+    --   · صفّ انتسابٍ محذوف لا يُفرَّق عن دعوةٍ لم توجد قط، فيُقرأ الاستعمالُ
+    --     الثاني «اعتماد مختلَق» بدل «استُعملت دعوتك» — وهما جوابان يُبنى عليهما
+    --     فعلان مختلفان عند من يقرؤهما.
+    --
+    --   · وصفّ اعتماد تجديدٍ **مستهلَك** محذوف يُسقط كشف إعادة الاستعمال كلّه:
+    --     اعتمادٌ مسروق يعود فيُقرأ «مختلَق»، فيُرفض الطلب وحده وتبقى الجلسة حيّة
+    --     في يد سارقها. الصفّ المستهلَك **هو** الشاهد، وحذفُه إتلافُ الشاهد.
+    --
+    --   · والإبطال ليس حذفاً بل عمودٌ يُكتب — ولذلك UPDATE ممنوحة على الجلسة.
+    --
+    -- وتنظيف الصفوف المنقضية — إن لزم يوماً — فعلٌ يملكه المالك في نافذة صيانة،
+    -- لا صلاحيةٌ يحملها خادمٌ يخدم طلبات إنترنت.
+    execute format('grant select, insert, update on core.access_enrolment,
+                                     core.access_session,
+                                     core.access_credential to %I', v_role);
+    execute format('revoke delete, truncate on core.access_enrolment,
+                                     core.access_session,
+                                     core.access_credential from %I', v_role);
+
     -- ── وجدول تاريخ الهجرات يُقرأ ولا يُكتب: الهجرة ملك المالك ────────────
     execute format('grant select on core."__EFMigrationsHistory" to %I', v_role);
     execute format('revoke insert, update, delete, truncate on core."__EFMigrationsHistory" from %I', v_role);

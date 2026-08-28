@@ -25,15 +25,36 @@ namespace Babel.Api.Security;
 /// يجعل من انقضت جلسته يظنّ أن اعتماده سُحب منه فيفتح تذكرة دعم بدل أن يدخل من جديد.
 /// </para>
 /// </param>
+/// <param name="Session">
+/// عائلة الجلسة التي أُصدر منها هذا الاعتماد، أو <c>null</c> لاعتماد التزويد المُهيَّأ من
+/// الإعداد — وهو الاعتماد الوحيد الذي لا عائلة له، فلا شيء فيه يُبطَل من HTTP.
+/// </param>
+/// <param name="ReadOnlyCompanies">
+/// الشركات التي دور صاحب هذا الاعتماد فيها <b>قراءةٌ فقط</b>. و<c>null</c> تعني «لا واحدة» —
+/// وهي حال اعتماد التزويد، فسلوكه لا يتغيّر بوجود هذا الحقل.
+/// </param>
 internal sealed record ApiPrincipal(
     TenantId Tenant,
     UserId User,
     IReadOnlySet<Guid> Companies,
-    DateTimeOffset? NotAfter = null)
+    DateTimeOffset? NotAfter = null,
+    Guid? Session = null,
+    IReadOnlySet<Guid>? ReadOnlyCompanies = null)
 {
     /// <summary>هل يبلغ هذا الاعتماد الشركة المطلوبة؟</summary>
     /// <param name="companyId">معرّف الشركة من المسار.</param>
     public bool Reaches(Guid companyId) => Companies.Contains(companyId);
+
+    /// <summary>
+    /// هل دور صاحب هذا الاعتماد في هذه الشركة <b>قراءةٌ فقط</b>؟
+    /// <para>
+    /// وهو سؤالٌ غير سؤال الاستحقاق ولا يُخلط به: الاستحقاق يسأل «أدُفع ثمن هذه الوحدة؟»
+    /// ويجيب عن المستأجر كلّه؛ وهذا يسأل «من هذا الإنسان في هذه المنشأة؟». وخلطهما يجعل
+    /// قارئاً يُقال له «اشتراكك منقطع» فيتّصل بالمحاسبة بلا سبب (ADR-0034 · ADR-0036).
+    /// </para>
+    /// </summary>
+    /// <param name="companyId">معرّف الشركة من المسار.</param>
+    public bool ReadsOnlyIn(Guid companyId) => ReadOnlyCompanies is { } readOnly && readOnly.Contains(companyId);
 
     /// <summary>هل انقضى هذا الاعتماد عند اللحظة المعطاة؟</summary>
     /// <param name="now">اللحظة الجارية كما يقرؤها مصدر الوقت المحقون.</param>
@@ -46,6 +67,22 @@ internal interface IApiPrincipalResolver
     /// <summary>يحلّ نصّ الاعتماد الوارد. <c>null</c> يعني رفضاً — ولا يعني «ضيف».</summary>
     /// <param name="presentedToken">النصّ المقدَّم بعد <c>Bearer</c>.</param>
     ApiPrincipal? Resolve(string presentedToken);
+
+    /// <summary>
+    /// يحلّ الاعتماد بحكمٍ <b>يفرّق بين الرفض والانقضاء والإبطال</b>.
+    /// <para>
+    /// ولماذا نسخةٌ لا متزامنة: الإبطال يجب أن يُقرأ <b>عند الطلب التالي</b> لا عند
+    /// الانقضاء، وقراءتُه تعني بلوغ مخزنٍ مشترك. ودليلُ الإعداد لا يبلغ شيئاً فتنفيذه
+    /// الافتراضي هنا يلفّ <see cref="Resolve"/> ولا يُنشئ مساراً ثانياً.
+    /// </para>
+    /// </summary>
+    /// <param name="presentedToken">النصّ المقدَّم بعد <c>Bearer</c>.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    ValueTask<CredentialVerdict> ResolveAsync(string presentedToken, CancellationToken cancellationToken)
+        => ValueTask.FromResult(
+            Resolve(presentedToken) is { } principal
+                ? CredentialVerdict.Accepted(principal)
+                : CredentialVerdict.Rejected);
 
     /// <summary>عدد الاعتمادات المُهيّأة — يُقرأ عند الإقلاع للتحقق من أن الإعداد وصل.</summary>
     int Count { get; }
@@ -115,4 +152,46 @@ internal sealed class RequestTenantContext : ITenantContext
         Tenant = principal.Tenant;
         User = principal.User;
     }
+}
+
+/// <summary>
+/// حكمُ حدّ المصادقة على اعتماد مُقدَّم — <b>ثلاثة رفوض متمايزة لا رفضٌ واحد</b>.
+/// <para>
+/// اعتمادٌ منقضٍ واعتمادٌ مُبطَل <b>يملكهما صاحبهما</b>، فإخباره لا يكشف له شيئاً لا
+/// يعرفه، ويوفّر عليه تشخيصاً خاطئاً ومكالمةَ دعم. أمّا المختلَق فلا يتعلّم منه مقدّمُه
+/// شيئاً: رمزٌ واحد لكل ما ليس في الدليل.
+/// </para>
+/// </summary>
+/// <param name="Outcome">الحكم.</param>
+/// <param name="Principal">الهوية عند القبول وحده.</param>
+internal readonly record struct CredentialVerdict(CredentialOutcome Outcome, ApiPrincipal? Principal)
+{
+    /// <summary>رفضٌ لا يُفرَّق فيه المختلَق عن غيره.</summary>
+    public static CredentialVerdict Rejected => new(CredentialOutcome.Rejected, null);
+
+    /// <summary>انقضاء.</summary>
+    public static CredentialVerdict Expired => new(CredentialOutcome.Expired, null);
+
+    /// <summary>إبطال.</summary>
+    public static CredentialVerdict Revoked => new(CredentialOutcome.Revoked, null);
+
+    /// <summary>قبولٌ بهوية.</summary>
+    /// <param name="principal">الهوية المحلولة.</param>
+    public static CredentialVerdict Accepted(ApiPrincipal principal) => new(CredentialOutcome.Accepted, principal);
+}
+
+/// <summary>أحكام حدّ المصادقة الأربعة.</summary>
+internal enum CredentialOutcome
+{
+    /// <summary>لا يقابله شيء.</summary>
+    Rejected = 0,
+
+    /// <summary>انقضى.</summary>
+    Expired = 1,
+
+    /// <summary>أُبطلت جلسته — فوراً، لا عند الانقضاء.</summary>
+    Revoked = 2,
+
+    /// <summary>مقبول.</summary>
+    Accepted = 3,
 }

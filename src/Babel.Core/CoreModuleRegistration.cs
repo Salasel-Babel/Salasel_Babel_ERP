@@ -1,3 +1,4 @@
+using Babel.Core.Access;
 using Babel.Core.Application;
 using Babel.Core.Audit;
 using Babel.Core.CapabilityProfile;
@@ -31,6 +32,7 @@ public static class CoreModuleRegistration
 
         services.AddSingleton<ICapabilityProfileStore, InMemoryCapabilityProfileStore>();
         services.AddSingleton<ICompanySetupStore, InMemoryCompanySetupStore>();
+        services.AddSingleton<IAccessDirectory, InMemoryAccessDirectory>();
         return services.AddBabelCoreShared();
     }
 
@@ -61,6 +63,11 @@ public static class CoreModuleRegistration
             provider.GetRequiredService<CoreOptions>(),
             provider.GetRequiredService<TimeProvider>()));
 
+        // دليل المصادقة فوق PostgreSQL: جلسةٌ في ذاكرة العملية تعني أن كل مستخدم يخرج
+        // عند كل نشر، وأن «أُبطلت جلسته» جملةٌ صحيحة على خادمٍ واحد من ثلاثة.
+        services.AddSingleton<IAccessDirectory>(provider => new PostgresAccessDirectory(
+            provider.GetRequiredService<CoreOptions>()));
+
         return services.AddBabelCoreShared();
     }
 
@@ -82,6 +89,11 @@ public static class CoreModuleRegistration
 
         // تأسيس المنشأة: المخزن حالة المستأجر، والخدمة نطاق طلب — كملفّ القدرات تماماً.
         services.AddScoped<CompanySetupService>();
+
+        // المصادقة: الخدمة نطاق طلب كسائر خدمات التطبيق، والحالّ مفردة لأنه يقرأ ولا يحمل
+        // حالة — وهو يُنادى **قبل** المصادقة في كل طلب، فلا يجوز أن يعتمد على نطاقها.
+        services.AddScoped<AccessService>();
+        services.AddSingleton<AccessResolver>();
 
         // حلّ مركز التكلفة: يقرأ المخزن ولا يحمل حالة، فهو مفردة واحدة تكفي الجميع.
         // وهو ما تسأله كل بوّابة ترحيل قبل أن تبني طلباً (ADR-0026).

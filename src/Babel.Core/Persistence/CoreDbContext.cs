@@ -35,6 +35,18 @@ internal sealed class CoreDbContext(DbContextOptions<CoreDbContext> options) : D
     /// <summary>القيم الافتراضية.</summary>
     public DbSet<CapabilityProfileDefaultRow> ProfileDefaults => Set<CapabilityProfileDefaultRow>();
 
+    /// <summary>عضويات المستخدمين في المنشآت — مصدر ما يبلغه كل اعتماد.</summary>
+    public DbSet<AccessMembershipRow> Memberships => Set<AccessMembershipRow>();
+
+    /// <summary>اعتمادات الانتساب، مبصومةً لا مكتوبة.</summary>
+    public DbSet<AccessEnrolmentRow> Enrolments => Set<AccessEnrolmentRow>();
+
+    /// <summary>عائلات الجلسات، وعليها مفتاح الإبطال.</summary>
+    public DbSet<AccessSessionRow> Sessions => Set<AccessSessionRow>();
+
+    /// <summary>الاعتمادات المُصدَرة داخل العائلات، مبصومةً لا مكتوبة.</summary>
+    public DbSet<AccessCredentialRow> Credentials => Set<AccessCredentialRow>();
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -132,6 +144,91 @@ internal sealed class CoreDbContext(DbContextOptions<CoreDbContext> options) : D
             entity.Property(row => row.DocumentType).HasColumnName("document_type").HasMaxLength(64).IsRequired();
             entity.Property(row => row.Capability).HasColumnName("capability").HasMaxLength(64).IsRequired();
             entity.Property(row => row.Enabled).HasColumnName("enabled");
+        });
+
+        modelBuilder.Entity<AccessMembershipRow>(entity =>
+        {
+            entity.ToTable("access_membership", t =>
+            {
+                t.HasCheckConstraint("ck_access_membership_role", "role in ('reader','contributor','owner')");
+                t.HasCheckConstraint("ck_access_membership_name_not_blank", "length(btrim(display_name_ar)) > 0");
+            });
+
+            entity.HasKey(row => new { row.CompanyId, row.UserId }).HasName("pk_access_membership");
+            entity.Property(row => row.CompanyId).HasColumnName("company_id");
+            entity.Property(row => row.UserId).HasColumnName("user_id");
+            entity.Property(row => row.TenantId).HasColumnName("tenant_id");
+            entity.Property(row => row.Role).HasColumnName("role").HasMaxLength(16).IsRequired();
+            entity.Property(row => row.DisplayNameAr).HasColumnName("display_name_ar").HasMaxLength(200).IsRequired();
+            entity.Property(row => row.GrantedAt).HasColumnName("granted_at");
+            entity.Property(row => row.GrantedBy).HasColumnName("granted_by");
+
+            // الفهرس على (المستأجر، المستخدم): هو استعلامُ **كل طلب** — «ما الذي يبلغه هذا
+            // الاعتماد؟» — وبلا فهرسٍ عليه يصير مسحاً كاملاً على أكثر جدولٍ قراءةً في السطح.
+            entity.HasIndex(row => new { row.TenantId, row.UserId }).HasDatabaseName("ix_access_membership_tenant_user");
+        });
+
+        modelBuilder.Entity<AccessEnrolmentRow>(entity =>
+        {
+            entity.ToTable("access_enrolment", t =>
+                t.HasCheckConstraint("ck_access_enrolment_digest_shape", "digest ~ '^[0-9a-f]{64}$'"));
+
+            entity.HasKey(row => row.Digest).HasName("pk_access_enrolment");
+            entity.Property(row => row.Digest).HasColumnName("digest").HasMaxLength(64).IsRequired();
+            entity.Property(row => row.TenantId).HasColumnName("tenant_id");
+            entity.Property(row => row.UserId).HasColumnName("user_id");
+            entity.Property(row => row.IssuedAt).HasColumnName("issued_at");
+            entity.Property(row => row.ExpiresAt).HasColumnName("expires_at");
+            entity.Property(row => row.ConsumedAt).HasColumnName("consumed_at");
+        });
+
+        modelBuilder.Entity<AccessSessionRow>(entity =>
+        {
+            entity.ToTable("access_session", t =>
+            {
+                t.HasCheckConstraint("ck_access_session_generation", "generation >= 1");
+
+                // السبب مكتوبٌ **بالضبط** حين تكون الجلسة مُبطَلة: إبطالٌ بلا سبب يجعل من
+                // يقرأ السجلّ لا يعرف أخرج المستخدم أم سُرق اعتماده، وسببٌ على جلسة حيّة
+                // نصٌّ لا يصفه شيء. وهو شكل قيد مركز التكلفة نفسه، لا نمطٌ ثانٍ.
+                t.HasCheckConstraint(
+                    "ck_access_session_reason_matches_state",
+                    "(revoked_at is not null) = (length(btrim(revoked_reason)) > 0)");
+                t.HasCheckConstraint(
+                    "ck_access_session_reason_closed",
+                    "revoked_reason in ('', 'signed_out', 'refresh_replayed')");
+            });
+
+            entity.HasKey(row => row.SessionId).HasName("pk_access_session");
+            entity.Property(row => row.SessionId).HasColumnName("session_id");
+            entity.Property(row => row.TenantId).HasColumnName("tenant_id");
+            entity.Property(row => row.UserId).HasColumnName("user_id");
+            entity.Property(row => row.OpenedAt).HasColumnName("opened_at");
+            entity.Property(row => row.Generation).HasColumnName("generation");
+            entity.Property(row => row.RevokedAt).HasColumnName("revoked_at");
+            entity.Property(row => row.RevokedReason)
+                  .HasColumnName("revoked_reason").HasMaxLength(32).IsRequired().HasDefaultValue(string.Empty);
+        });
+
+        modelBuilder.Entity<AccessCredentialRow>(entity =>
+        {
+            entity.ToTable("access_credential", t =>
+            {
+                t.HasCheckConstraint("ck_access_credential_kind", "kind in ('access','refresh')");
+                t.HasCheckConstraint("ck_access_credential_digest_shape", "digest ~ '^[0-9a-f]{64}$'");
+                t.HasCheckConstraint("ck_access_credential_generation", "generation >= 1");
+            });
+
+            entity.HasKey(row => row.Digest).HasName("pk_access_credential");
+            entity.Property(row => row.Digest).HasColumnName("digest").HasMaxLength(64).IsRequired();
+            entity.Property(row => row.SessionId).HasColumnName("session_id");
+            entity.Property(row => row.Kind).HasColumnName("kind").HasMaxLength(8).IsRequired();
+            entity.Property(row => row.Generation).HasColumnName("generation");
+            entity.Property(row => row.IssuedAt).HasColumnName("issued_at");
+            entity.Property(row => row.ExpiresAt).HasColumnName("expires_at");
+            entity.Property(row => row.ConsumedAt).HasColumnName("consumed_at");
+
+            entity.HasIndex(row => row.SessionId).HasDatabaseName("ix_access_credential_session");
         });
 
         modelBuilder.Entity<CapabilityProfileDefaultRow>(entity =>

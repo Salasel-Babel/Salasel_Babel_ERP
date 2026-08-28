@@ -28,6 +28,7 @@
     <ProjectReference Include="../../src/Babel.Ledger/Babel.Ledger.csproj" />
     <ProjectReference Include="../../src/Babel.Sales/Babel.Sales.csproj" />
     <ProjectReference Include="../../src/Babel.Purchasing/Babel.Purchasing.csproj" />
+    <ProjectReference Include="../../src/Babel.Inventory/Babel.Inventory.csproj" />
   </ItemGroup>
 
   <ItemGroup>

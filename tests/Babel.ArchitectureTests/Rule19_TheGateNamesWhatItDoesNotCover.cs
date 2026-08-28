@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Babel.ArchitectureTests.Support;
 using Xunit;
 
@@ -28,7 +29,7 @@ namespace Babel.ArchitectureTests;
 /// أيّ الحالتين هي — بدل أن تسقط في الصمت.
 /// </para>
 /// </summary>
-public sealed class Rule19_TheGateNamesWhatItDoesNotCover
+public sealed partial class Rule19_TheGateNamesWhatItDoesNotCover
 {
     private const string GateScript = "tools/gate/run.sh";
     private const string WebWorkflow = ".github/workflows/web.yml";
@@ -62,6 +63,73 @@ public sealed class Rule19_TheGateNamesWhatItDoesNotCover
         "node scripts/generate-client.mjs --check",
         "node scripts/audit.mjs",
     ];
+
+    /// <summary>
+    /// القدرات التي تملكها البوّابة و<b>لا تُشغّلها افتراضياً</b>، ولكلٍّ رايتها وسببها.
+    /// <b>ليست إعفاءً بل إعلاناً</b>: من يقرأ خُضرة البوّابة يعرف بالضبط ما لم تقسه.
+    /// </summary>
+    private static readonly (string Flag, string Adds, string WhyNotDefault)[] OptionalCapabilities =
+    [
+        ("--with-frontend",
+            "فحوص الواجهة التي تحتاج npm ci: البناء وقواعد الحدّ واختبارات الوحدة",
+            "‏npm ci يكلّف دقيقتين في كل بوّابة ولكل وكيل على أربع أنوية — والازدحام نفسه يُفسد القياسات"),
+        ("--with-demo",
+            "بناء الشركة التجريبية **من الصفر** وتشغيلها بعد إسقاط قواعد العرض الخمس",
+            "خطوةٌ **مُدمِّرة**: تُسقط قواعد بيانات، فلا تصلح افتراضاً على آلة يتقاسمها وكلاء يشغّلون مسوحاً؛ وثمنها دقائق"),
+    ];
+
+    /// <summary>
+    /// كل راية <c>--with-*</c> في نصّ البوّابة <b>مُعلَنة أعلاه ومعها سببها</b>، وكل
+    /// راية مُعلَنة <b>منفَّذة فعلاً</b> في النصّ. والاتجاهان كلاهما يُفشل البناء:
+    /// رايةٌ جديدة بلا إعلان تُخفي نقص تغطية، وإعلانٌ بلا راية يَعِد بما لا وجود له.
+    /// </summary>
+    [Fact]
+    public void EveryOptionalGateCapabilityIsDeclaredWithItsReasonAndActuallyImplemented()
+    {
+        string gate = Read(GateScript);
+        string[] flagsInScript = [.. GateFlags(gate)];
+
+        Assert.True(
+            flagsInScript.Length >= 2,
+            $"استُخرجت {flagsInScript.Length.ToString(System.Globalization.CultureInfo.InvariantCulture)} راية فقط من "
+            + $"{GateScript} — المُحلِّل ضامر والقاعدة تمرّ فراغاً.");
+
+        List<string> problems = [];
+
+        foreach (string flag in flagsInScript)
+        {
+            if (!OptionalCapabilities.Any(c => string.Equals(c.Flag, flag, StringComparison.Ordinal)))
+            {
+                problems.Add(
+                    $"الراية «{flag}» في {GateScript} وليست في OptionalCapabilities.\n"
+                    + "  → أعلنها **ومعها سببها**: قدرةٌ لا تعمل افتراضياً وغير مُعلَنة تُخفي نقص تغطية.");
+            }
+        }
+
+        foreach ((string flag, string adds, string why) in OptionalCapabilities)
+        {
+            if (!flagsInScript.Contains(flag, StringComparer.Ordinal))
+            {
+                problems.Add($"«{flag}» مُعلَنة ولا وجود لها في {GateScript} — إعلانٌ يَعِد بما لا يُنفَّذ.");
+            }
+
+            if (string.IsNullOrWhiteSpace(why) || string.IsNullOrWhiteSpace(adds))
+            {
+                problems.Add($"«{flag}» مُعلَنة بلا سبب أو بلا وصف — تصريحٌ ناقص ليس تصريحاً.");
+            }
+        }
+
+        Assert.True(problems.Count == 0, string.Join('\n', problems));
+    }
+
+    /// <summary>رايات <c>--with-*</c> كما يقرؤها مُحلِّل الوسائط في النصّ.</summary>
+    private static IEnumerable<string> GateFlags(string gate)
+    {
+        foreach (Match match in GateFlagPattern().Matches(gate))
+        {
+            yield return match.Groups["flag"].Value;
+        }
+    }
 
     [Fact]
     public void TheDefaultGateRunsTheTwoDependencyFreeFrontendChecks()
@@ -158,6 +226,9 @@ public sealed class Rule19_TheGateNamesWhatItDoesNotCover
             yield return command;
         }
     }
+
+    [GeneratedRegex(@"^\s*(?<flag>--with-[a-z-]+)\)", RegexOptions.Multiline | RegexOptions.CultureInvariant)]
+    private static partial Regex GateFlagPattern();
 
     private static string Read(string relative) =>
         File.ReadAllText(Path.Combine(RepositoryLayout.Root, relative));

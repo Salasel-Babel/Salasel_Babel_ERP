@@ -1,6 +1,7 @@
 using System.Globalization;
 using Babel.Core;
 using Babel.Ledger;
+using Babel.Inventory;
 using Babel.Purchasing;
 using Babel.Sales;
 using Npgsql;
@@ -27,6 +28,7 @@ internal sealed class Settings
         CoreOptions core,
         SalesOptions salesOwner,
         PurchasingOptions purchasingOwner,
+        InventoryOptions inventoryOwner,
         Guid company,
         int fiscalYear)
     {
@@ -35,6 +37,7 @@ internal sealed class Settings
         Core = core;
         SalesOwner = salesOwner;
         PurchasingOwner = purchasingOwner;
+        InventoryOwner = inventoryOwner;
         Company = company;
         FiscalYear = fiscalYear;
     }
@@ -61,6 +64,9 @@ internal sealed class Settings
     /// <summary>اتصال <b>مالك</b> مخطّط المشتريات — للنشر وحده.</summary>
     public PurchasingOptions PurchasingOwner { get; }
 
+    /// <summary>إعدادات المخزون — التقييم وتكلفة المبيعات (‏ADR-0039).</summary>
+    public InventoryOptions InventoryOwner { get; }
+
     /// <summary>معرّف الشركة/المستأجر التجريبي.</summary>
     public Guid Company { get; }
 
@@ -75,6 +81,9 @@ internal sealed class Settings
 
     /// <summary>اسم قاعدة المشتريات.</summary>
     public string PurchasingDatabase => DatabaseOf(PurchasingOwner.ConnectionString);
+
+    /// <summary>اسم قاعدة المخزون.</summary>
+    public string InventoryDatabase => DatabaseOf(InventoryOwner.ConnectionString);
 
     /// <summary>اسم قاعدة النواة.</summary>
     public string CoreDatabase => DatabaseOf(Core.OwnerConnectionString);
@@ -91,6 +100,10 @@ internal sealed class Settings
         string purchasingOwner = Env("BABEL_PURCHASING_OWNER_DB")
             ?? Env("BABEL_PURCHASING_DB")
             ?? "Host=127.0.0.1;Port=5432;Database=babel_purchasing;Username=postgres;Include Error Detail=true";
+
+        string inventoryOwner = Env("BABEL_INVENTORY_OWNER_DB")
+            ?? Env("BABEL_INVENTORY_DB")
+            ?? "Host=127.0.0.1;Port=5432;Database=babel_inventory;Username=postgres;Include Error Detail=true";
 
         string coreOwner = Env("BABEL_CORE_OWNER_DB")
             ?? $"Host=127.0.0.1;Port=5432;Database={CoreOptions.DefaultDatabase};Username=postgres;Include Error Detail=true";
@@ -111,6 +124,7 @@ internal sealed class Settings
             },
             new SalesOptions { ConnectionString = salesOwner, CompanyCurrency = ledger.CompanyCurrency },
             new PurchasingOptions { ConnectionString = purchasingOwner, CompanyCurrency = ledger.CompanyCurrency },
+            new InventoryOptions { ConnectionString = inventoryOwner, CompanyCurrency = ledger.CompanyCurrency },
             Guid.TryParseExact(Env("BABEL_DEMO_COMPANY_ID"), "D", out Guid company)
                 ? company
                 : new Guid("d3305e1e-0000-4000-8000-000000000001"),

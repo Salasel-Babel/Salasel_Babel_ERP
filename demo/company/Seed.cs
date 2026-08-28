@@ -4,6 +4,7 @@ using Babel.Core;
 using Babel.Core.CapabilityProfile;
 using Babel.Core.CompanySetup;
 using Babel.Ledger;
+using Babel.Inventory;
 using Babel.Purchasing;
 using Babel.Purchasing.Application;
 using Babel.Sales;
@@ -91,6 +92,13 @@ internal sealed class Seed : IDisposable
         services.AddBabelPurchasing(options =>
         {
             options.ConnectionString = settings.PurchasingOwner.ConnectionString;
+            options.CompanyCurrency = settings.Ledger.CompanyCurrency;
+        });
+        // ‏SalesInvoiceService تطلب IInventoryValuation منذ ADR-0039، ولا يسجّلها إلا
+        // AddBabelInventory. وغيابها هنا لا يُكتشف بالبناء بل عند أول تركيب حقيقي.
+        services.AddBabelInventory(options =>
+        {
+            options.ConnectionString = settings.InventoryOwner.ConnectionString;
             options.CompanyCurrency = settings.Ledger.CompanyCurrency;
         });
 

@@ -17,6 +17,7 @@
 #   tools/gate/run.sh --configuration Debug
 #   tools/gate/run.sh --no-isolation      # يتخطّى مسح العزل الطويل (لا يُتخطّى قبل الدمج)
 #   tools/gate/run.sh --with-frontend     # يضيف فحوص الواجهة التي تحتاج npm ci
+#   tools/gate/run.sh --with-demo         # يبني الشركة التجريبية **من الصفر** ويُشغّلها
 #
 # وهذه البوّابة **ليست** كل ما يفعله ci.yml: العزل ومتّجهات الشكل القانوني وأداة
 # مصفوفة الترحيل وحرّاس المعرّفات هناك أيضاً. هي **الحدّ الأدنى الذي لا يُدفَع فرعٌ بدونه**.
@@ -31,12 +32,14 @@ cd "$root"
 configuration="Release"
 isolation="yes"
 frontend="static"
+demo="no"
 
 while [ $# -gt 0 ]; do
     case "$1" in
         --configuration) configuration="${2:?--configuration يحتاج قيمة}"; shift 2 ;;
         --no-isolation)  isolation="no"; shift ;;
     --with-frontend) frontend="full"; shift ;;
+    --with-demo)     demo="yes"; shift ;;
         -h|--help)       sed -n '2,24p' "$0"; exit 0 ;;
         *) printf '✗ وسيط غير معروف: %s\n' "$1" >&2; exit 2 ;;
     esac
@@ -125,6 +128,49 @@ if [ "$frontend" = "full" ]; then
     ( cd web && npm test )      || fail "اختبارات وحدة الواجهة"
 else
     printf '\n── فحوص الواجهة التي تحتاج npm ci مُتخطّاة. أضف --with-frontend لتشغيلها.\n'
+fi
+
+# ── ٨ · الشركة التجريبية — بناءٌ من الصفر وتشغيل ────────────────────────────────
+# ‏**لماذا خلف راية:** هذه الخطوة **تُسقط قواعد العرض وتُعيد بناءها**، فهي مُدمِّرة
+# بطبيعتها ولا تصلح افتراضاً على آلة يتقاسمها وكلاء يشغّلون مسوحاً. وثمنها دقائق.
+#
+# ‏**ولماذا وُجدت أصلاً:** ‏`demo/company` كان **يُبنى ولا يُشغَّل**. فحين صارت
+# ‏`SalesInvoiceService` تطلب `IInventoryValuation` (‏ADR-0039) ولم يسجّلها `Seed.cs`،
+# بقي العطل غير مرئي: الحلّ يُترجَم، والاختبارات خضراء، والقاعدة 15 راضية لأن
+# المشروع **مبنيّ**. وأول تشغيل حقيقي رمى عند حقن الاعتماديات. ثم — وهذا الأخبث —
+# تشغيلٌ لاحق **تخطّى البذر** لأن البيانات مبذورة سلفاً، فقرأ نتائج قديمة وأعلن
+# نجاحاً. ‏**ثلاث طبقات خضراء فوق عطلٍ يمنع كل عميل جديد من الإقلاع.**
+# والقاعدة 15 تضمن أن ما يُدَّعى تغطيته **يُبنى**؛ وهذه تضمن أن ما لا يكفيه البناء
+# **يُشغَّل**. والقاعدة 19 تحرس التصريح بأنها ليست افتراضية.
+if [ "$demo" = "yes" ]; then
+    step "٨ · الشركة التجريبية — من الصفر"
+    command -v psql >/dev/null 2>&1 || fail "psql غير موجود و--with-demo يطلبه"
+    pg_isready >/dev/null 2>&1 || fail "PostgreSQL متوقّف — شغّله: pg_ctlcluster 16 main start"
+
+    # الأسماء تُملى هنا ولا تُخمَّن: هذه الخطوة تُسقط قواعد، و`DROP … IF EXISTS`
+    # على اسمٍ خاطئ **ينجح** فيُثبت لا شيء ويبدو أنه أثبت. فتُصدَّر الأسماء نفسها
+    # التي سيقرأها البنّاء، ثم تُسقط بها، ثم يُشغَّل عليها.
+    export BABEL_LEDGER_OWNER_DB="Host=127.0.0.1;Port=5432;Database=babel_demo_ledger;Username=postgres;Include Error Detail=true"
+    export BABEL_LEDGER_APP_DB="Host=127.0.0.1;Port=5432;Database=babel_demo_ledger;Username=babel_ledger_app;Include Error Detail=true"
+    export BABEL_SALES_OWNER_DB="Host=127.0.0.1;Port=5432;Database=babel_demo_sales;Username=postgres;Include Error Detail=true"
+    export BABEL_PURCHASING_OWNER_DB="Host=127.0.0.1;Port=5432;Database=babel_demo_purchasing;Username=postgres;Include Error Detail=true"
+    export BABEL_INVENTORY_OWNER_DB="Host=127.0.0.1;Port=5432;Database=babel_demo_inventory;Username=postgres;Include Error Detail=true"
+    export BABEL_CORE_OWNER_DB="Host=127.0.0.1;Port=5432;Database=babel_demo_core;Username=postgres;Include Error Detail=true"
+    export BABEL_CORE_APP_DB="Host=127.0.0.1;Port=5432;Database=babel_demo_core;Username=babel_ledger_app;Include Error Detail=true"
+
+    for database in babel_demo_ledger babel_demo_sales babel_demo_purchasing \
+                    babel_demo_core babel_demo_inventory
+    do
+        psql "host=127.0.0.1 port=5432 dbname=postgres user=postgres" \
+             -Atc "DROP DATABASE IF EXISTS \"$database\" WITH (FORCE)" >/dev/null \
+            || fail "إسقاط قاعدة العرض $database"
+    done
+    printf '   · أُسقطت قواعد العرض الخمس — البناء من الصفر لا من بقايا\n'
+
+    dotnet demo/company/bin/"$configuration"/net10.0/BabelDemoCompany.dll all \
+        || fail "بناء الشركة التجريبية من الصفر"
+else
+    printf '\n── الشركة التجريبية لم تُبنَ من الصفر. أضف --with-demo (وهي تُسقط قواعد العرض).\n'
 fi
 
 printf '\n✔ البوّابة المحلية خضراء: بناء الحلّ كلّه + المسابر + الحدود + الاختبارات + الواجهة الساكنة'

@@ -138,12 +138,16 @@ command -v node   >/dev/null 2>&1 || { echo "✗ node غير موجود في PAT
 : "${BABEL_LEDGER_APP_DB:=Host=127.0.0.1;Port=5432;Database=babel_demo_ledger;Username=babel_ledger_app;Include Error Detail=true}"
 : "${BABEL_SALES_OWNER_DB:=Host=127.0.0.1;Port=5432;Database=babel_demo_sales;Username=postgres;Include Error Detail=true}"
 : "${BABEL_PURCHASING_OWNER_DB:=Host=127.0.0.1;Port=5432;Database=babel_demo_purchasing;Username=postgres;Include Error Detail=true}"
+# المخزون: التقييم وتكلفة المبيعات (‏ADR-0039). واسمه يتبع بقيّة قواعد العرض —
+# غيابه من هنا كان سيُشغّل العرض على `babel_inventory` بينما بقيّته على `babel_demo_*`.
+: "${BABEL_INVENTORY_OWNER_DB:=Host=127.0.0.1;Port=5432;Database=babel_demo_inventory;Username=postgres;Include Error Detail=true}"
+
 # النواة: تأسيس المنشأة ومراكز تكلفتها. المالك للترحيل، والتطبيق للخادم — والخادم
 # لا يرى اتصال المالك أبداً (ADR-0003).
 : "${BABEL_CORE_OWNER_DB:=Host=127.0.0.1;Port=5432;Database=babel_demo_core;Username=postgres;Include Error Detail=true}"
 : "${BABEL_CORE_APP_DB:=Host=127.0.0.1;Port=5432;Database=babel_demo_core;Username=babel_ledger_app;Include Error Detail=true}"
 export BABEL_ADMIN_DB BABEL_LEDGER_OWNER_DB BABEL_LEDGER_APP_DB BABEL_SALES_OWNER_DB BABEL_PURCHASING_OWNER_DB
-export BABEL_CORE_OWNER_DB BABEL_CORE_APP_DB
+export BABEL_CORE_OWNER_DB BABEL_CORE_APP_DB BABEL_INVENTORY_OWNER_DB
 export BABEL_DEMO_COMPANY_ID="$company"
 
 echo "── بناء الخادم والمُنشئ"

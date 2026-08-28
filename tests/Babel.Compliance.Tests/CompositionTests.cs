@@ -100,7 +100,7 @@ public sealed class CompositionTests
     private sealed class RefusingEnforcer : IEntitlementEnforcer
     {
         public ValueTask<Result> EnsureAsync(
-            TenantId tenant, UserId actor, BabelModule module, EntitlementAccess access,
+            SharedKernel.TenantId tenant, UserId actor, BabelModule module, EntitlementAccess access,
             string operation, CancellationToken cancellationToken = default) =>
             ValueTask.FromResult(Result.Failure(new Error(
                 "test.not_called", "لا يُستدعى في هذه الاختبارات", "not called in these tests")));

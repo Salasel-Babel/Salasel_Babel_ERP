@@ -56,6 +56,11 @@ public static class ComplianceModuleRegistration
         // ما لا تملكه الوحدة ويجب أن يأتي من التركيب: المزوّد، والمخزن، وسياسة المسار.
         // غيابها ليس عطلاً صامتاً ولا رسالة حقن اعتمادية غامضة، بل رفضٌ يسمّي نفسه
         // بالعربية والإنجليزية ويسمّي النداء الذي كان يجب أن يقع.
+        //
+        // ونوّاب يرمون — لا نوّاب صامتون: نائبٌ يعمل بلا ضجيج يجعل مستودعاً بلا التزام
+        // يبدو مركَّباً، وهو الفخّ الذي فُتح هذا الفرع لإغلاقه. ولذلك أيضاً **كل** دالّة
+        // تركيب صريحة أدناه تستعمل AddSingleton لا TryAdd: النائب مسجَّل سلفاً، فـTryAdd
+        // كان يجعل النداء الصريح لا-عملية صامتة.
         services.TryAddSingleton<IComplianceProvider>(static _ => throw NotComposed(
             "مزوّد الالتزام", "the compliance provider", "AddComplianceProvider<T>()"));
         services.TryAddSingleton<IComplianceStore>(static _ => throw NotComposed(
@@ -110,9 +115,15 @@ public static class ComplianceModuleRegistration
         return services;
     }
 
+    /// <summary>
+    /// مخزن في الذاكرة. <b>‏<c>AddSingleton</c> لا <c>TryAdd</c> عمداً</b>: التركيب يسجّل
+    /// نائباً يرمي لكل ما لا تملكه الوحدة، فـ<c>TryAdd</c> هنا كان يُصبح لا-عملية ويبقى
+    /// النائب هو المحلول — أي أن نداء التركيب الصريح يُبتلع بصمت. والتسجيل الصريح يغلب
+    /// النائب مهما كان ترتيب النداءين، لأن آخر تسجيل هو ما يحلّه <c>GetRequiredService</c>.
+    /// </summary>
     public static IServiceCollection AddInMemoryComplianceStore(this IServiceCollection services)
     {
-        services.TryAddSingleton<IComplianceStore>(sp =>
+        services.AddSingleton<IComplianceStore>(sp =>
             new InMemoryComplianceStore { Clock = sp.GetRequiredService<TimeProvider>() });
         return services;
     }

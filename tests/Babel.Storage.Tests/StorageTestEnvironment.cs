@@ -155,6 +155,10 @@ internal static class StorageTestEnvironment
                 cancellationToken).ConfigureAwait(false);
 
             Available = true;
+
+            // **حذفٌ عند الانتهاء لا عند البدء** (فخ-51): الإسقاط عند البدء على اسم
+            // ثابت يقطع جلسات عملية أخرى، والاسم هنا خاصّ بهذه العملية أصلاً.
+            AppDomain.CurrentDomain.ProcessExit += static (_, _) => Cleanup();
         }
         catch (NpgsqlException exception)
         {
@@ -197,6 +201,43 @@ internal static class StorageTestEnvironment
         {
             Debug.Assert(exception.SqlState is not null, "PostgresException بلا SQLSTATE");
             return exception.SqlState;
+        }
+    }
+
+    /// <summary>يُسقط قاعدة هذه العملية ومجلدها. أخطاء التنظيف لا تُفشل تشغيلاً انتهى.</summary>
+    private static void Cleanup()
+    {
+        try
+        {
+            // تُقطع اتصالات هذه العملية قبل الإسقاط: تجمّع اتصالاتٍ حيّ يجعل
+            // ‏drop database يعلن «القاعدة مستعملة» بعد انتظارٍ طويل.
+            NpgsqlConnection.ClearAllPools();
+
+            using NpgsqlConnection admin = new(AdminConnectionString);
+            admin.Open();
+            using NpgsqlCommand drop = new($"drop database if exists \"{_database}\" with (force)", admin);
+            drop.ExecuteNonQuery();
+        }
+        catch (NpgsqlException exception)
+        {
+            // الخروج لا يُفشَل بسببه، لكنه لا يمرّ صامتاً: قاعدة متروكة خبرٌ يُقال.
+            Console.WriteLine("        تعذّر حذف قاعدة هذا التشغيل: " + exception.Message);
+        }
+
+        try
+        {
+            if (Directory.Exists(_root))
+            {
+                Directory.Delete(_root, recursive: true);
+            }
+        }
+        catch (IOException)
+        {
+            // كما أعلاه.
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // كما أعلاه.
         }
     }
 }

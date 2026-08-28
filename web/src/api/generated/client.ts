@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     03c76b7b232225176cd92cbef06411102197f3e1b1a90db2001eea51dd36d74b
+     d35221adde470e1a856fe5264cd50039d669d9238957b784f5302672fbcf4851
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -68,6 +68,41 @@ export async function admitDocument(transport: Transport, args: AdmitDocumentArg
   return decodeSchema(SCHEMAS, "DocumentAdmission", response.json) as T.DocumentAdmission;
 }
 
+export interface GrantMembershipArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.GrantMembershipRequest;
+}
+
+/**
+ * دعوة عضو إلى المنشأة / Invite a member into the company
+ * 
+ * يسكّ للمدعوّ **معرّف مستخدم**، ويمنحه دوره في هذه المنشأة، ويُصدر له **اعتماد انتساب يُسلَّم مرّة واحدة** يبدّله هو بجلسة عبر POST /api/v1/access/sessions. وهذا هو التسجيل: لا كلمة مرور تُخزَّن، ولا اعتماد قابل للاستعمال يُودَع في جدول.
+ * 
+ * **والدعوة فعلُ مالك:** من يستطيع أن يدعو يستطيع أن يمنح نفسه ما شاء عبر عضوٍ يدعوه، فالحدّ عند الدعوة لا عند ما بعدها — وغيرُ المالك يُرفض بـ403 وmembership.inviter_is_not_an_owner.
+ * 
+ * **والدور ليس زينة:** جلسةُ Reader تُرفض على كل فعلٍ غير آمن في منشأتها بـ403 وmembership.read_only — وهو رمز يفترق عن entitlement.read_only عمداً: الأول يقول «اطلب صلاحية» والثاني يقول «جدّد اشتراكك»، وخلطهما يجعل قارئاً يتّصل بالمحاسبة بلا سبب.
+ * 
+ * ودعوةٌ ثانية لعضوٍ قائم تُرفض بـ409 وmembership.already_granted: تغييرُ دورٍ فعلٌ آخر يُطلب باسمه، لا دعوةٌ تُنتج اعتماد انتساب جديداً لمن يملك جلسة.
+ * 
+ * Mints the invited person a **user identifier**, grants their role in this company, and issues them an **enrolment credential handed over exactly once**, which they exchange for a session at POST /api/v1/access/sessions. This is registration: no password is stored, and no usable credential is ever written to a table.
+ * 
+ * **Inviting is an owner's act:** whoever can invite can grant themselves anything through the member they invite, so the limit sits at the invitation rather than after it — a non-owner is refused with 403 and membership.inviter_is_not_an_owner.
+ * 
+ * **The role is not decoration:** a Reader's session is refused on every unsafe method in its company with 403 and membership.read_only — a code deliberately distinct from entitlement.read_only: the first says 'ask for permission', the second says 'renew your subscription', and conflating them has a reader calling accounts payable for no reason.
+ * 
+ * A second invitation for an existing member is refused with 409 and membership.already_granted: changing a role is a different act asked for by its own name, not an invitation minting a fresh enrolment credential for someone who already holds a session.
+ */
+export async function grantMembership(transport: Transport, args: GrantMembershipArgs, signal?: AbortSignal): Promise<T.GrantedMembership> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/memberships";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "GrantMembershipRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "GrantedMembership", response.json) as T.GrantedMembership;
+}
+
 /**
  * حالة الخدمة وثقافتها / Service health and culture
  * 
@@ -112,6 +147,39 @@ export async function initialiseCompanySetup(transport: Transport, args: Initial
   const response = await transport({ method: "PUT", url, body, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "CompanySetup", response.json) as T.CompanySetup;
+}
+
+export interface OpenSessionArgs {
+  /** جسم الطلب. / The request body. */
+  body: T.OpenSessionRequest;
+}
+
+/**
+ * فتح جلسة باعتماد انتساب / Open a session with an enrolment credential
+ * 
+ * يبدّل **اعتماد انتساب** — وهو ما يُسلَّم للمدعوّ مرّة واحدة عند دعوته — بجلسة كاملة: اعتماد فاعل قصير العمر، واعتماد تجديد يدور، ومعرّف عائلة هو **ما يُبطَل** لاحقاً.
+ * 
+ * **والاعتماد في الجسم لا في الترويسة، ولذلك هذا الباب بلا مصادقة:** من يطلب اعتماداً لا يملك اعتماداً، وبابٌ يُصدر جلسةً ويشترط جلسةً بابٌ لا يُفتح أبداً. ومع ذلك لا يخرج منه شيء لمن لا يقدّم انتساباً صحيحاً، والرفض 401 لا 403: الفرق بينهما هو الفرق بين «لم تُصادِق» و«صادقتَ ومُنعت» (RFC 9110 §15.5.4).
+ * 
+ * **واعتماد الانتساب يُقبل مرّة واحدة**، ذرّياً عند قاعدة البيانات لا بانضباط المستدعي: الوصول الثاني — ولو تزامن مع الأول — يُرفض بـaccess.enrolment_consumed. والرمز يفترق عن access.credential_rejected عمداً: «استُعملت دعوتك» جوابٌ يُخبر صاحبها أن شيئاً وقع فيسأل عنه، و«اعتماد غير مقبول» جوابٌ لا يتعلّم منه مختلِقٌ شيئاً.
+ * 
+ * **ولا يُخزَّن اعتماد قابل للاستعمال:** المُودَع بصمة SHA-256، والنصّان يخرجان في هذه الاستجابة وحدها ولا يُعادان. **والاستحقاق لا يمنع الدخول:** اشتراكٌ منقطع يُخفَّض إلى القراءة ولا يُنتزَع به السجلّ (ADR-0034)، ومن مُنع الدخول لا يستطيع أن يقرأ.
+ * 
+ * Exchanges an **enrolment credential** — handed to an invited member once, at invitation — for a whole session: a short-lived access credential, a rotating refresh credential, and a family identifier which is what gets revoked later.
+ * 
+ * **The credential travels in the body, not the header, and that is why this door is unauthenticated:** whoever asks for a credential has none, and a door that issues a session while demanding a session never opens. Even so nothing crosses it without a valid enrolment, and the refusal is 401 rather than 403: that distinction is the distinction between 'you did not authenticate' and 'you authenticated and were refused' (RFC 9110 §15.5.4).
+ * 
+ * **An enrolment is accepted exactly once**, atomically at the database rather than by a disciplined caller: a second arrival — even one concurrent with the first — is refused with access.enrolment_consumed. That code differs from access.credential_rejected on purpose: 'your invitation was already used' tells its owner something happened so they ask about it, while 'the credential was rejected' teaches a forger nothing.
+ * 
+ * **No usable credential is ever stored:** what is persisted is a SHA-256 digest; both texts leave the server in this response alone and are never re-issued. **And entitlement never blocks sign-in:** a lapsed subscription degrades to read-only and never strips the record (ADR-0034), and whoever cannot sign in cannot read.
+ */
+export async function openSession(transport: Transport, args: OpenSessionArgs, signal?: AbortSignal): Promise<T.AccessSession> {
+  const path = "/api/v1/access/sessions";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "OpenSessionRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "AccessSession", response.json) as T.AccessSession;
 }
 
 export interface PostJournalEntryArgs {
@@ -255,6 +323,30 @@ export async function readJournalEntry(transport: Transport, args: ReadJournalEn
   return decodeSchema(SCHEMAS, "JournalEntry", response.json) as T.JournalEntry;
 }
 
+export interface ReadMembershipsArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+}
+
+/**
+ * أعضاء المنشأة / The company's members
+ * 
+ * يقرأ من يعمل في هذه المنشأة وبأي دور. **ولا اعتماد واحد يخرج من هنا**: القائمة أسماء وأدوار ولحظاتُ منح، واعتماد الانتساب يخرج مرّة واحدة في استجابة الدعوة ولا يُعاد أبداً.
+ * 
+ * وهو داخل نطاق المنشأة كأي مسار آخر: اعتمادٌ لا يبلغها يُرفض بـ403 وtenancy.company_out_of_scope، ولا يخرج من الرفض شيء عنها — لا عدد أعضائها ولا وجودها.
+ * 
+ * Reads who works in this company and in what role. **Not one credential leaves here**: the list is names, roles, and grant instants; an enrolment credential leaves once, in the invitation response, and is never re-issued.
+ * 
+ * It sits inside company scope like every other path: a credential that does not reach the company is refused with 403 and tenancy.company_out_of_scope, and nothing about that company crosses the refusal — not its member count, not its existence.
+ */
+export async function readMemberships(transport: Transport, args: ReadMembershipsArgs, signal?: AbortSignal): Promise<T.MembershipList> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/memberships";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "MembershipList", response.json) as T.MembershipList;
+}
+
 /**
  * العقد المنشور نفسه / The published contract itself
  * 
@@ -349,6 +441,39 @@ export async function renameCostCenter(transport: Transport, args: RenameCostCen
   return decodeSchema(SCHEMAS, "CompanySetup", response.json) as T.CompanySetup;
 }
 
+export interface RenewSessionArgs {
+  /** جسم الطلب. / The request body. */
+  body: T.RenewSessionRequest;
+}
+
+/**
+ * تجديد جلسة بتدوير اعتمادها / Renew a session by rotating its credential
+ * 
+ * يستهلك اعتماد التجديد الجاري ويُصدر **زوجاً جديداً كاملاً** في الدورة التالية من العائلة نفسها. ومعرّف العائلة لا يتغيّر: هو ما يُبطَل، فلا يهرب المُبطَل بتجديدٍ لاحق.
+ * 
+ * **وتقديم اعتماد التجديد مرّتين سرقة، والجواب إسقاط العائلة كلّها.** فاعتمادٌ يدور ثم يعود هو اعتمادٌ في يد اثنين — أحدهما ليس صاحبه — ولا يوجد ما يميّز أيّهما. فلا يُخدَم الطلب الثاني، ولا يُخدَم الأول بعده: تُبطَل الجلسة فوراً بـaccess.refresh_replayed ويعود الاثنان إلى الدخول من جديد. والبديل — خدمةُ الثاني — يترك سارقاً بجلسة حيّة ولا يعلم بذلك أحد.
+ * 
+ * **والكشف يقع قبل الاستحقاق وقبل الانقضاء وقبل الإبطال:** هو إجراء أمنٍ لا امتياز اشتراك، ويجب أن يقع ولو كان المستأجر منقطعاً — بل لا سيّما حينئذ. والصفّ المستهلَك يبقى في قاعدة البيانات ولا يُحذف: **هو الشاهد الوحيد** على إعادة الاستعمال، وحذفُه يجعل اعتماداً مسروقاً يُقرأ «مختلَقاً» فيُرفض الطلب وحده وتبقى الجلسة حيّة.
+ * 
+ * واعتمادٌ فاعل قُدِّم في موضع اعتماد التجديد لا يُميَّز عن مختلَق: تمييزه كان سيجعل السطح يقول لمن يجرّب «هذا اعتماد موجود ولكن نوعه غير المطلوب».
+ * 
+ * Consumes the current refresh credential and issues a **whole new pair** in the next generation of the same family. The family identifier does not change: it is what gets revoked, so a revoked session cannot escape by renewing.
+ * 
+ * **Presenting a refresh credential twice is theft, and the answer is dropping the whole family.** A credential that rotates and then comes back is a credential in two hands — one of them is not its owner's — and nothing distinguishes which. So the second request is not served, and neither is the first afterwards: the session is revoked immediately with access.refresh_replayed and both parties must sign in again. The alternative — serving the second — leaves a thief holding a live session with nobody the wiser.
+ * 
+ * **Detection happens before entitlement, before expiry, and before revocation:** it is a security act, not a subscription privilege, and it must happen even for a lapsed tenant — especially then. The consumed row stays in the database and is never deleted: **it is the only witness** to reuse, and deleting it makes a stolen credential read as 'forged', refusing the one request while the session stays alive.
+ * 
+ * An access credential presented where a refresh credential belongs is indistinguishable from a forged one: distinguishing it would have the surface tell a prober 'this credential exists but is of the wrong kind'.
+ */
+export async function renewSession(transport: Transport, args: RenewSessionArgs, signal?: AbortSignal): Promise<T.AccessSession> {
+  const path = "/api/v1/access/sessions/renewal";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "RenewSessionRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "AccessSession", response.json) as T.AccessSession;
+}
+
 export interface ReverseJournalEntryArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
@@ -372,6 +497,33 @@ export async function reverseJournalEntry(transport: Transport, args: ReverseJou
   const response = await transport({ method: "POST", url, body, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "PostingReceipt", response.json) as T.PostingReceipt;
+}
+
+/**
+ * إبطال الجلسة الجارية / Revoke the current session
+ * 
+ * يُبطل العائلة التي أُصدر منها الاعتماد المُقدَّم — **فوراً**. والإبطال يُقرأ في استعلام حلّ الاعتماد نفسه على الطلب التالي مباشرة، ولا يُنتظر به انقضاء: «سُحب هذا الاعتماد» جملةٌ إمّا أن تكون صحيحة الآن أو لا تكون.
+ * 
+ * **ويقع على العائلة لا على الاعتماد المفرد:** إبطالُ اعتمادٍ واحد يترك اعتماد تجديده حيّاً فيُصدر بديلاً بعد ثوانٍ — أي أن «أبطلتُ الجلسة» تكون قد كذبت.
+ * 
+ * ولا جسم لهذا الطلب: الاعتماد المُقدَّم هو الذي يسمّي ما يُبطَل، والسبب رمزٌ مغلق (signed_out) لا نصّاً يكتبه أحد. ونداءٌ ثانٍ على جلسة مُبطَلة لا يقع أصلاً — الاعتماد نفسه يُرفض عند الحدّ بـauth.credential_revoked.
+ * 
+ * **واعتماد التزويد المُهيَّأ من الإعداد لا عائلة له**، فيُرفض هنا بـ409 وaccess.session_not_issued_here: قولُ ذلك برمزه أصدق من ردّ «تمّ» على فعلٍ لم يقع.
+ * 
+ * Revokes the family the presented credential was issued from — **immediately**. Revocation is read in the credential resolution query itself on the very next request and never waits for an expiry: 'this credential is withdrawn' is a sentence that is either true now or not true at all.
+ * 
+ * **It applies to the family, not to a single credential:** revoking one credential leaves its refresh credential alive to mint a replacement seconds later — which would make 'I revoked the session' a lie.
+ * 
+ * This request has no body: the presented credential names what is revoked, and the reason is a closed code (signed_out) rather than prose anyone writes. A second call on a revoked session never happens — the credential itself is refused at the boundary with auth.credential_revoked.
+ * 
+ * **The configured provisioning credential has no family**, so it is refused here with 409 and access.session_not_issued_here: saying so by its code is more honest than answering 'done' to an act that did not happen.
+ */
+export async function revokeSession(transport: Transport, signal?: AbortSignal): Promise<T.SessionRevocation> {
+  const path = "/api/v1/access/sessions/revocation";
+  const url = path;
+  const response = await transport({ method: "POST", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "SessionRevocation", response.json) as T.SessionRevocation;
 }
 
 export interface SuspendCostCenterArgs {

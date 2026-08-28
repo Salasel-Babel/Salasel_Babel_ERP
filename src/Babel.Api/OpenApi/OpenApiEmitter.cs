@@ -3,6 +3,7 @@ using System.Text.Json;
 using Babel.Api.Endpoints;
 using Babel.Contracts.Posting;
 using Babel.Core.CapabilityProfile;
+using Babel.Core.Access;
 using Babel.Core.CompanySetup;
 using Babel.SharedKernel;
 
@@ -137,6 +138,153 @@ internal static class OpenApiEmitter
                 + "This path is outside company scope deliberately — the only one after health — and still nothing about "
                 + "another tenant crosses it: the list is the credential's own set, not a filtered query over a companies table.",
                 Body: null, Response: "Session", Success: 200, Anonymous: false, Query: []),
+
+            new(AccessRoutes.Sessions, "post", "openSession",
+                "فتح جلسة باعتماد انتساب", "Open a session with an enrolment credential",
+                "يبدّل **اعتماد انتساب** — وهو ما يُسلَّم للمدعوّ مرّة واحدة عند دعوته — بجلسة كاملة: اعتماد فاعل قصير "
+                + "العمر، واعتماد تجديد يدور، ومعرّف عائلة هو **ما يُبطَل** لاحقاً.\n\n"
+                + "**والاعتماد في الجسم لا في الترويسة، ولذلك هذا الباب بلا مصادقة:** من يطلب اعتماداً لا يملك اعتماداً، "
+                + "وبابٌ يُصدر جلسةً ويشترط جلسةً بابٌ لا يُفتح أبداً. ومع ذلك لا يخرج منه شيء لمن لا يقدّم انتساباً صحيحاً، "
+                + "والرفض 401 لا 403: الفرق بينهما هو الفرق بين «لم تُصادِق» و«صادقتَ ومُنعت» (RFC 9110 §15.5.4).\n\n"
+                + "**واعتماد الانتساب يُقبل مرّة واحدة**، ذرّياً عند قاعدة البيانات لا بانضباط المستدعي: الوصول الثاني — "
+                + "ولو تزامن مع الأول — يُرفض بـaccess.enrolment_consumed. والرمز يفترق عن access.credential_rejected عمداً: "
+                + "«استُعملت دعوتك» جوابٌ يُخبر صاحبها أن شيئاً وقع فيسأل عنه، و«اعتماد غير مقبول» جوابٌ لا يتعلّم منه مختلِقٌ شيئاً.\n\n"
+                + "**ولا يُخزَّن اعتماد قابل للاستعمال:** المُودَع بصمة SHA-256، والنصّان يخرجان في هذه الاستجابة وحدها ولا يُعادان. "
+                + "**والاستحقاق لا يمنع الدخول:** اشتراكٌ منقطع يُخفَّض إلى القراءة ولا يُنتزَع به السجلّ (ADR-0034)، ومن مُنع الدخول "
+                + "لا يستطيع أن يقرأ.",
+                "Exchanges an **enrolment credential** — handed to an invited member once, at invitation — for a whole session: "
+                + "a short-lived access credential, a rotating refresh credential, and a family identifier which is what gets "
+                + "revoked later.\n\n"
+                + "**The credential travels in the body, not the header, and that is why this door is unauthenticated:** whoever "
+                + "asks for a credential has none, and a door that issues a session while demanding a session never opens. Even so "
+                + "nothing crosses it without a valid enrolment, and the refusal is 401 rather than 403: that distinction is the "
+                + "distinction between 'you did not authenticate' and 'you authenticated and were refused' (RFC 9110 §15.5.4).\n\n"
+                + "**An enrolment is accepted exactly once**, atomically at the database rather than by a disciplined caller: a second "
+                + "arrival — even one concurrent with the first — is refused with access.enrolment_consumed. That code differs from "
+                + "access.credential_rejected on purpose: 'your invitation was already used' tells its owner something happened so they "
+                + "ask about it, while 'the credential was rejected' teaches a forger nothing.\n\n"
+                + "**No usable credential is ever stored:** what is persisted is a SHA-256 digest; both texts leave the server in this "
+                + "response alone and are never re-issued. **And entitlement never blocks sign-in:** a lapsed subscription degrades to "
+                + "read-only and never strips the record (ADR-0034), and whoever cannot sign in cannot read.",
+                Body: "OpenSessionRequest", Response: "AccessSession", Success: 201, Anonymous: true, Query: [],
+                Refusals:
+                [
+                    new Refusal(400, "الجسم لا يطابق العقد: حقل غير معروف، أو حقل مفقود.", "The body does not match the contract: an unknown field, or a missing one."),
+                    new Refusal(401,
+                        "اعتماد الانتساب غير مقبول، أو انقضت مهلته، أو استُعمل من قبل — والرموز الثلاثة تفترق: "
+                        + "access.credential_rejected و access.enrolment_expired و access.enrolment_consumed.",
+                        "The enrolment credential is rejected, expired, or already used — three distinct codes: "
+                        + "access.credential_rejected, access.enrolment_expired, and access.enrolment_consumed."),
+                ]),
+
+            new(AccessRoutes.SessionRenewal, "post", "renewSession",
+                "تجديد جلسة بتدوير اعتمادها", "Renew a session by rotating its credential",
+                "يستهلك اعتماد التجديد الجاري ويُصدر **زوجاً جديداً كاملاً** في الدورة التالية من العائلة نفسها. ومعرّف العائلة "
+                + "لا يتغيّر: هو ما يُبطَل، فلا يهرب المُبطَل بتجديدٍ لاحق.\n\n"
+                + "**وتقديم اعتماد التجديد مرّتين سرقة، والجواب إسقاط العائلة كلّها.** فاعتمادٌ يدور ثم يعود هو اعتمادٌ في يد "
+                + "اثنين — أحدهما ليس صاحبه — ولا يوجد ما يميّز أيّهما. فلا يُخدَم الطلب الثاني، ولا يُخدَم الأول بعده: تُبطَل "
+                + "الجلسة فوراً بـaccess.refresh_replayed ويعود الاثنان إلى الدخول من جديد. والبديل — خدمةُ الثاني — يترك سارقاً "
+                + "بجلسة حيّة ولا يعلم بذلك أحد.\n\n"
+                + "**والكشف يقع قبل الاستحقاق وقبل الانقضاء وقبل الإبطال:** هو إجراء أمنٍ لا امتياز اشتراك، ويجب أن يقع ولو كان "
+                + "المستأجر منقطعاً — بل لا سيّما حينئذ. والصفّ المستهلَك يبقى في قاعدة البيانات ولا يُحذف: **هو الشاهد الوحيد** "
+                + "على إعادة الاستعمال، وحذفُه يجعل اعتماداً مسروقاً يُقرأ «مختلَقاً» فيُرفض الطلب وحده وتبقى الجلسة حيّة.\n\n"
+                + "واعتمادٌ فاعل قُدِّم في موضع اعتماد التجديد لا يُميَّز عن مختلَق: تمييزه كان سيجعل السطح يقول لمن يجرّب "
+                + "«هذا اعتماد موجود ولكن نوعه غير المطلوب».",
+                "Consumes the current refresh credential and issues a **whole new pair** in the next generation of the same family. "
+                + "The family identifier does not change: it is what gets revoked, so a revoked session cannot escape by renewing.\n\n"
+                + "**Presenting a refresh credential twice is theft, and the answer is dropping the whole family.** A credential that "
+                + "rotates and then comes back is a credential in two hands — one of them is not its owner's — and nothing distinguishes "
+                + "which. So the second request is not served, and neither is the first afterwards: the session is revoked immediately "
+                + "with access.refresh_replayed and both parties must sign in again. The alternative — serving the second — leaves a thief "
+                + "holding a live session with nobody the wiser.\n\n"
+                + "**Detection happens before entitlement, before expiry, and before revocation:** it is a security act, not a subscription "
+                + "privilege, and it must happen even for a lapsed tenant — especially then. The consumed row stays in the database and is "
+                + "never deleted: **it is the only witness** to reuse, and deleting it makes a stolen credential read as 'forged', refusing "
+                + "the one request while the session stays alive.\n\n"
+                + "An access credential presented where a refresh credential belongs is indistinguishable from a forged one: distinguishing "
+                + "it would have the surface tell a prober 'this credential exists but is of the wrong kind'.",
+                Body: "RenewSessionRequest", Response: "AccessSession", Success: 201, Anonymous: true, Query: [],
+                Refusals:
+                [
+                    new Refusal(400, "الجسم لا يطابق العقد: حقل غير معروف، أو حقل مفقود.", "The body does not match the contract: an unknown field, or a missing one."),
+                    new Refusal(401,
+                        "اعتماد التجديد غير مقبول، أو انقضى، أو **قُدِّم مرّتين فأُسقطت العائلة**، أو أُبطلت الجلسة: "
+                        + "access.credential_rejected و access.refresh_expired و access.refresh_replayed و access.session_revoked.",
+                        "The refresh credential is rejected, expired, **presented twice so the family was dropped**, or its session was "
+                        + "revoked: access.credential_rejected, access.refresh_expired, access.refresh_replayed, and access.session_revoked."),
+                ]),
+
+            new(AccessRoutes.SessionRevocation, "post", "revokeSession",
+                "إبطال الجلسة الجارية", "Revoke the current session",
+                "يُبطل العائلة التي أُصدر منها الاعتماد المُقدَّم — **فوراً**. والإبطال يُقرأ في استعلام حلّ الاعتماد نفسه على "
+                + "الطلب التالي مباشرة، ولا يُنتظر به انقضاء: «سُحب هذا الاعتماد» جملةٌ إمّا أن تكون صحيحة الآن أو لا تكون.\n\n"
+                + "**ويقع على العائلة لا على الاعتماد المفرد:** إبطالُ اعتمادٍ واحد يترك اعتماد تجديده حيّاً فيُصدر بديلاً بعد "
+                + "ثوانٍ — أي أن «أبطلتُ الجلسة» تكون قد كذبت.\n\n"
+                + "ولا جسم لهذا الطلب: الاعتماد المُقدَّم هو الذي يسمّي ما يُبطَل، والسبب رمزٌ مغلق (signed_out) لا نصّاً يكتبه "
+                + "أحد. ونداءٌ ثانٍ على جلسة مُبطَلة لا يقع أصلاً — الاعتماد نفسه يُرفض عند الحدّ بـauth.credential_revoked.\n\n"
+                + "**واعتماد التزويد المُهيَّأ من الإعداد لا عائلة له**، فيُرفض هنا بـ409 وaccess.session_not_issued_here: قولُ ذلك "
+                + "برمزه أصدق من ردّ «تمّ» على فعلٍ لم يقع.",
+                "Revokes the family the presented credential was issued from — **immediately**. Revocation is read in the credential "
+                + "resolution query itself on the very next request and never waits for an expiry: 'this credential is withdrawn' is a "
+                + "sentence that is either true now or not true at all.\n\n"
+                + "**It applies to the family, not to a single credential:** revoking one credential leaves its refresh credential alive to "
+                + "mint a replacement seconds later — which would make 'I revoked the session' a lie.\n\n"
+                + "This request has no body: the presented credential names what is revoked, and the reason is a closed code (signed_out) "
+                + "rather than prose anyone writes. A second call on a revoked session never happens — the credential itself is refused at "
+                + "the boundary with auth.credential_revoked.\n\n"
+                + "**The configured provisioning credential has no family**, so it is refused here with 409 and "
+                + "access.session_not_issued_here: saying so by its code is more honest than answering 'done' to an act that did not happen.",
+                Body: null, Response: "SessionRevocation", Success: 201, Anonymous: false, Query: [],
+                Refusals:
+                [
+                    new Refusal(409,
+                        "الاعتماد المُقدَّم لم يُصدره سطح الجلسات فلا عائلة له تُبطَل: access.session_not_issued_here.",
+                        "The presented credential was not issued by the session surface, so there is no family to revoke: "
+                        + "access.session_not_issued_here."),
+                ]),
+
+            new(AccessRoutes.Memberships, "get", "readMemberships",
+                "أعضاء المنشأة", "The company's members",
+                "يقرأ من يعمل في هذه المنشأة وبأي دور. **ولا اعتماد واحد يخرج من هنا**: القائمة أسماء وأدوار ولحظاتُ منح، "
+                + "واعتماد الانتساب يخرج مرّة واحدة في استجابة الدعوة ولا يُعاد أبداً.\n\n"
+                + "وهو داخل نطاق المنشأة كأي مسار آخر: اعتمادٌ لا يبلغها يُرفض بـ403 وtenancy.company_out_of_scope، ولا يخرج "
+                + "من الرفض شيء عنها — لا عدد أعضائها ولا وجودها.",
+                "Reads who works in this company and in what role. **Not one credential leaves here**: the list is names, roles, and "
+                + "grant instants; an enrolment credential leaves once, in the invitation response, and is never re-issued.\n\n"
+                + "It sits inside company scope like every other path: a credential that does not reach the company is refused with 403 "
+                + "and tenancy.company_out_of_scope, and nothing about that company crosses the refusal — not its member count, not its existence.",
+                Body: null, Response: "MembershipList", Success: 200, Anonymous: false, Query: []),
+
+            new(AccessRoutes.Memberships, "post", "grantMembership",
+                "دعوة عضو إلى المنشأة", "Invite a member into the company",
+                "يسكّ للمدعوّ **معرّف مستخدم**، ويمنحه دوره في هذه المنشأة، ويُصدر له **اعتماد انتساب يُسلَّم مرّة واحدة** "
+                + "يبدّله هو بجلسة عبر POST /api/v1/access/sessions. وهذا هو التسجيل: لا كلمة مرور تُخزَّن، ولا اعتماد قابل "
+                + "للاستعمال يُودَع في جدول.\n\n"
+                + "**والدعوة فعلُ مالك:** من يستطيع أن يدعو يستطيع أن يمنح نفسه ما شاء عبر عضوٍ يدعوه، فالحدّ عند الدعوة لا عند "
+                + "ما بعدها — وغيرُ المالك يُرفض بـ403 وmembership.inviter_is_not_an_owner.\n\n"
+                + "**والدور ليس زينة:** جلسةُ Reader تُرفض على كل فعلٍ غير آمن في منشأتها بـ403 وmembership.read_only — وهو "
+                + "رمز يفترق عن entitlement.read_only عمداً: الأول يقول «اطلب صلاحية» والثاني يقول «جدّد اشتراكك»، وخلطهما "
+                + "يجعل قارئاً يتّصل بالمحاسبة بلا سبب.\n\n"
+                + "ودعوةٌ ثانية لعضوٍ قائم تُرفض بـ409 وmembership.already_granted: تغييرُ دورٍ فعلٌ آخر يُطلب باسمه، لا دعوةٌ "
+                + "تُنتج اعتماد انتساب جديداً لمن يملك جلسة.",
+                "Mints the invited person a **user identifier**, grants their role in this company, and issues them an **enrolment "
+                + "credential handed over exactly once**, which they exchange for a session at POST /api/v1/access/sessions. This is "
+                + "registration: no password is stored, and no usable credential is ever written to a table.\n\n"
+                + "**Inviting is an owner's act:** whoever can invite can grant themselves anything through the member they invite, so the "
+                + "limit sits at the invitation rather than after it — a non-owner is refused with 403 and membership.inviter_is_not_an_owner.\n\n"
+                + "**The role is not decoration:** a Reader's session is refused on every unsafe method in its company with 403 and "
+                + "membership.read_only — a code deliberately distinct from entitlement.read_only: the first says 'ask for permission', the "
+                + "second says 'renew your subscription', and conflating them has a reader calling accounts payable for no reason.\n\n"
+                + "A second invitation for an existing member is refused with 409 and membership.already_granted: changing a role is a "
+                + "different act asked for by its own name, not an invitation minting a fresh enrolment credential for someone who already "
+                + "holds a session.",
+                Body: "GrantMembershipRequest", Response: "GrantedMembership", Success: 201, Anonymous: false, Query: [],
+                Refusals:
+                [
+                    new Refusal(400, "الجسم لا يطابق العقد: حقل غير معروف، أو حقل مفقود.", "The body does not match the contract: an unknown field, or a missing one."),
+                    new Refusal(409, "لهذا المستخدم عضوية في هذه المنشأة فعلاً: membership.already_granted.", "This user already has a membership in this company: membership.already_granted."),
+                    new Refusal(422, "الطلب مفهوم ومرفوض: اسمٌ عربي مفقود أو أطول من الحدّ، أو دورٌ ليس من المجموعة المغلقة.", "Understood and refused: a missing or over-long Arabic name, or a role outside the closed set."),
+                ]),
 
             new(ApiRoutes.PostJournalEntry, "post", "postJournalEntry",
                 "ترحيل قيد", "Post a journal entry",
@@ -594,7 +742,14 @@ internal static class OpenApiEmitter
             WriteProblemResponse(w, 403, "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول.", "The credential does not reach this company, or entitlement forbids this access.");
         }
 
-        if (operation.Body is not null)
+        if (operation.Refusals is { } declared)
+        {
+            foreach (Refusal refusal in declared)
+            {
+                WriteProblemResponse(w, refusal.Status, refusal.Ar, refusal.En);
+            }
+        }
+        else if (operation.Body is not null)
         {
             WriteProblemResponse(w, 400, "الجسم لا يطابق العقد: حقل غير معروف، أو مبلغ وصل رمزاً رقمياً، أو صيغة مرفوضة.", "The body does not match the contract: an unknown field, an amount that arrived as a number token, or a refused spelling.");
             WriteProblemResponse(w, 409, "تعارض مع حالة قائمة: فترة مقفلة، أو قيد معكوس من قبل.", "Conflict with existing state: a closed period, or an already-reversed entry.");
@@ -692,6 +847,190 @@ internal static class OpenApiEmitter
 
     private static IEnumerable<(string Name, Action<Utf8JsonWriter> Write)> Schemas()
     {
+        yield return ("OpenSessionRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب فتح جلسة. ولا حقل مستأجر فيه ولا حقل مستخدم: الهوية تُشتقّ من الاعتماد كما في كل مسار آخر، "
+                + "وحقلٌ يقول «أنا فلان» في جسم طلبِ دخول ادّعاءٌ لا مصادقة. / "
+                + "A request to open a session. It carries no tenant field and no user field: identity is derived from the "
+                + "credential as on every other path, and a field saying 'I am so-and-so' in a sign-in body is a claim, not authentication.");
+            w.WriteStartObject("properties");
+            WriteCredentialProperty(w, "enrolmentCredential",
+                "اعتماد الانتساب كما سُلِّم مرّة واحدة عند الدعوة.",
+                "The enrolment credential exactly as handed over once at invitation.");
+            w.WriteEndObject();
+            WriteRequired(w, "enrolmentCredential");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("RenewSessionRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب تجديد جلسة. واعتماد التجديد يُستهلك بهذا النداء ولا يُقبل ثانيةً — وتقديمه مرّتين يُسقط العائلة كلّها. / "
+                + "A request to renew a session. The refresh credential is consumed by this call and never accepted again — "
+                + "presenting it twice drops the whole family.");
+            w.WriteStartObject("properties");
+            WriteCredentialProperty(w, "refreshCredential",
+                "اعتماد التجديد الجاري.",
+                "The current refresh credential.");
+            w.WriteEndObject();
+            WriteRequired(w, "refreshCredential");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("AccessMembership", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "عضوية صاحب الجلسة في منشأة واحدة. / One membership of the session's holder in a single company.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "companyId", "المنشأة كما تُكتب في المسار.", "The company as written in the path.", 36);
+            WriteEnumProperty(w, "role", "الدور في هذه المنشأة.", "The role in this company.", MembershipRoles.All);
+            w.WriteEndObject();
+            WriteRequired(w, "companyId", "role");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("AccessSession", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "جلسة مفتوحة كما تُسلَّم لصاحبها — **ومرّة واحدة**. الاعتمادان يخرجان من الخادم في هذه الاستجابة وحدها "
+                + "ولا يُخزَّنان في أي جدول: المُودَع بصمتهما SHA-256. فمن فقد الاستجابة فقد الاعتماد، ولا يوجد في الخادم "
+                + "من يعيده إليه — وهذا هو المقصود. وsessionId هو معرّف **العائلة**: يبقى ثابتاً عبر كل تجديد، وهو ما "
+                + "يُبطَل، فلا يهرب المُبطَل بتجديدٍ لاحق. / "
+                + "An opened session as handed to its holder — **once**. Both credentials leave the server in this response alone "
+                + "and are stored in no table: what is persisted is their SHA-256 digest. Whoever loses the response has lost the "
+                + "credential and nobody on the server can return it — which is the point. sessionId identifies the **family**: it "
+                + "stays constant across every renewal and it is what gets revoked, so a revoked session cannot escape by renewing.");
+            w.WriteStartObject("properties");
+            WriteCredentialProperty(w, "accessCredential",
+                "الاعتماد الفاعل — يُقدَّم في ترويسة Authorization: Bearer.",
+                "The access credential — presented in the Authorization: Bearer header.");
+            WriteInstantProperty(w, "accessExpiresAt", "لحظة انقضاء الاعتماد الفاعل.", "When the access credential expires.");
+            WriteIntegerProperty(w, "generation", 1, int.MaxValue,
+                "رقم الدورة. يبدأ من 1 ويزيد بواحد عند كل تجديد، فقفزةٌ فيه بلا تجديدٍ من هذا العميل تعني أن غيره جدّد.",
+                "The generation. It starts at 1 and increments by one on every renewal, so a jump without a renewal from this client means someone else renewed.");
+            WriteArrayRefProperty(w, "memberships", "AccessMembership",
+                "عضويات صاحب الجلسة، مرتَّبة بمعرّف المنشأة ترتيباً حرفياً ثابتاً.",
+                "The holder's memberships, ordered by company identifier in a stable ordinal order.");
+            WriteCredentialProperty(w, "refreshCredential",
+                "اعتماد التجديد — يُقدَّم مرّة واحدة، ثم يصير تقديمه سرقةً تُسقط العائلة.",
+                "The refresh credential — presented once; presenting it again is theft and drops the family.");
+            WriteInstantProperty(w, "refreshExpiresAt", "لحظة انقضاء اعتماد التجديد.", "When the refresh credential expires.");
+            WriteStringProperty(w, "sessionId", "معرّف العائلة — وهو ما يُبطَل.", "The family identifier — the thing that gets revoked.", 36);
+            WriteStringProperty(w, "tenantId", "المستأجر خلف الجلسة.", "The tenant behind the session.", 36);
+            WriteBooleanProperty(w, "writeReachesNothing",
+                "‏true حين تكون كل عضويات صاحب الجلسة Reader — أي أن هذه الجلسة لا تكتب في أي منشأة. تقرؤها الواجهة "
+                + "فتبني شاشة قراءة بدل أن تعرض أزراراً يرفضها الخادم.",
+                "true when every membership of the holder is Reader — this session writes in no company. A client reads it and "
+                + "builds a read-only screen instead of showing buttons the server will refuse.");
+            WriteStringProperty(w, "userId", "المستخدم خلف الجلسة.", "The user behind the session.", 36);
+            w.WriteEndObject();
+            WriteRequired(w, "accessCredential", "accessExpiresAt", "generation", "memberships", "refreshCredential",
+                "refreshExpiresAt", "sessionId", "tenantId", "userId", "writeReachesNothing");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("SessionRevocation", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "إبطال جلسة: ما أُبطل، ومتى، ولماذا برمزٍ من مجموعة مغلقة يقرؤها العميل ولا يفسّر نصّاً. / "
+                + "A session revocation: what was revoked, when, and why — by a code from a closed set the client reads rather than prose it interprets.");
+            w.WriteStartObject("properties");
+            WriteEnumProperty(w, "reason",
+                "‏signed_out حين يطلبه صاحب الجلسة، وrefresh_replayed حين يُسقطها كشفُ إعادة استعمال اعتماد تجديد.",
+                "signed_out when the holder asks for it, refresh_replayed when refresh-reuse detection drops it.",
+                RevocationReasons.All);
+            WriteInstantProperty(w, "revokedAt", "لحظة الإبطال.", "When the revocation took effect.");
+            WriteStringProperty(w, "sessionId", "الجلسة المُبطَلة.", "The revoked session.", 36);
+            w.WriteEndObject();
+            WriteRequired(w, "reason", "revokedAt", "sessionId");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("GrantMembershipRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب دعوة عضو. ولا حقل معرّف مستخدم فيه: المعرّف يسكّه الخادم — ومعرّفٌ يرسله العميل يجعل الدعوة طريقاً "
+                + "إلى ربط اعتمادٍ بمستخدمٍ قائم في مستأجرٍ آخر. / "
+                + "An invitation request. It carries no user identifier: the server mints it — a client-sent identifier would make an "
+                + "invitation a route to binding a credential to an existing user in another tenant.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "displayNameAr",
+                "اسم المدعوّ بالعربية — السجلّ لا ترجمةً أولى (ADR-0021).",
+                "The invited person's Arabic name — the record, not a first translation (ADR-0021).",
+                AccessLimits.MaximumNameLength);
+            WriteEnumProperty(w, "role",
+                "الدور المطلوب. وReader يقرأ ولا يكتب: جلسته تُرفض على كل فعل غير آمن بـmembership.read_only.",
+                "The requested role. Reader reads and never writes: its session is refused on every unsafe method with membership.read_only.",
+                MembershipRoles.All);
+            w.WriteEndObject();
+            WriteRequired(w, "displayNameAr", "role");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("Membership", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "عضو في منشأة كما يُعرض في قائمة الأعضاء. **ولا اعتماد فيه**: اعتماد الانتساب يخرج مرّة واحدة في استجابة "
+                + "الدعوة ولا يُعاد أبداً. / "
+                + "A member of a company as shown in the member list. **It carries no credential**: an enrolment credential leaves "
+                + "once, in the invitation response, and is never re-issued.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "displayNameAr", "الاسم العربي.", "The Arabic name.", AccessLimits.MaximumNameLength);
+            WriteInstantProperty(w, "grantedAt", "لحظة منح العضوية.", "When the membership was granted.");
+            WriteEnumProperty(w, "role", "الدور في هذه المنشأة.", "The role in this company.", MembershipRoles.All);
+            WriteStringProperty(w, "userId", "معرّف المستخدم كما سكّه الخادم.", "The user identifier as the server minted it.", 36);
+            w.WriteEndObject();
+            WriteRequired(w, "displayNameAr", "grantedAt", "role", "userId");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("MembershipList", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "أعضاء منشأة واحدة، مرتَّبين بمعرّف المستخدم ترتيباً حرفياً ثابتاً — قائمةٌ يتغيّر ترتيبها بين نداءين "
+                + "تجعل «العضو الثاني» يعني شخصين في دقيقتين. / "
+                + "The members of one company, ordered by user identifier in a stable ordinal order — a list whose order changes "
+                + "between calls makes 'the second member' mean two different people two minutes apart.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "companyId", "المنشأة.", "The company.", 36);
+            WriteIntegerProperty(w, "memberCount", 0, int.MaxValue, "عدد الأعضاء.", "The number of members.");
+            WriteArrayRefProperty(w, "members", "Membership", "الأعضاء.", "The members.");
+            w.WriteEndObject();
+            WriteRequired(w, "companyId", "memberCount", "members");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("GrantedMembership", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "عضوية مُنحت للتوّ ومعها اعتماد انتسابها. وهذه هي الاستجابة **الوحيدة** التي يخرج فيها اعتماد انتساب، "
+                + "ويخرج فيها **مرّة واحدة**: المُودَع بصمته. فمن دعا عضواً يسلّمه هذا النصّ بنفسه، ولا يوجد في الخادم من "
+                + "يعيده. / "
+                + "A membership just granted together with its enrolment credential. This is the **only** response in which an "
+                + "enrolment credential appears, and it appears **once**: what is persisted is its digest. Whoever invited the member "
+                + "hands the text over themselves; nobody on the server can reproduce it.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "companyId", "المنشأة.", "The company.", 36);
+            WriteCredentialProperty(w, "enrolmentCredential",
+                "اعتماد الانتساب — يُقبل مرّة واحدة ثم يُستهلك.",
+                "The enrolment credential — accepted once, then consumed.");
+            WriteInstantProperty(w, "enrolmentExpiresAt", "لحظة انقضاء الدعوة.", "When the invitation expires.");
+            WriteRefProperty(w, "member", "Membership");
+            w.WriteEndObject();
+            WriteRequired(w, "companyId", "enrolmentCredential", "enrolmentExpiresAt", "member");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
         yield return ("Money", static w =>
         {
             w.WriteString("type", "string");
@@ -1518,6 +1857,41 @@ internal static class OpenApiEmitter
         w.WriteEndObject();
     }
 
+    /// <summary>
+    /// اعتمادٌ مبهم على السلك: <c>base64url</c> بلا حشو.
+    /// <para>
+    /// <b>ولا بنية فيه يقرؤها العميل</b> — لا مستأجر، ولا انقضاء، ولا توقيع. وذلك مقصود:
+    /// اعتمادٌ يحمل دعاواه بنفسه يُصدَّق بالتحقق من توقيعه وحده، فيبقى صالحاً بعد الإبطال
+    /// إلى أن ينقضي. والانقضاء والإبطال هنا حالةٌ تُقرأ من الخادم عند كل طلب، والاعتماد
+    /// <b>مفتاحٌ لا وثيقة</b>.
+    /// </para>
+    /// </summary>
+    private static void WriteCredentialProperty(Utf8JsonWriter w, string name, string ar, string en)
+    {
+        w.WriteStartObject(name);
+        w.WriteString("type", "string");
+        w.WriteString("pattern", "^[A-Za-z0-9_-]{16,512}$");
+        w.WriteNumber("maxLength", AccessLimits.MaximumPresentedLength);
+        w.WriteString("description",
+            ar + " نصٌّ مبهم لا بنية فيه: لا يُحلَّل ولا يُشتقّ منه شيء، ويُقدَّم كما وصل. / "
+            + en + " An opaque string with no structure: never parsed, nothing derived from it, presented exactly as received.");
+        w.WriteEndObject();
+    }
+
+    /// <summary>لحظةٌ على السلك: ‏ISO 8601 الدوّارة بتوقيت UTC وبأرقام لاتينية.</summary>
+    private static void WriteInstantProperty(Utf8JsonWriter w, string name, string ar, string en)
+    {
+        w.WriteStartObject(name);
+        w.WriteString("type", "string");
+        w.WriteString("format", "date-time");
+        w.WriteString("description",
+            ar + " بصيغة ISO 8601 الدوّارة بتوقيت UTC وبأرقام لاتينية — الصيغة نفسها التي يقرأ بها الخادم صلاحية "
+            + "اعتماده من إعداده، فلا وقتٌ يُكتب بشكل ويُقرأ بآخر. / "
+            + en + " In round-trip ISO 8601, UTC, Latin digits — the same spelling the server reads a credential expiry with "
+            + "from its own configuration, so no instant is written one way and read another.");
+        w.WriteEndObject();
+    }
+
     private static void WriteRefProperty(Utf8JsonWriter w, string name, string schema)
     {
         w.WriteStartObject(name);
@@ -1674,7 +2048,20 @@ internal static class OpenApiEmitter
         string ResponseMediaType = "application/json",
 
         // شكل الاستجابة حين لا تكون مخطّطاً مسمّى: object أو string.
-        string? ResponseInlineType = null);
+        string? ResponseInlineType = null,
+
+        // ‏**رفوضٌ مُعلَنة بأعيانها** بدل الطقم الافتراضي (400 · 409 · 422) الذي يُضاف لكل
+        // عملية ذات جسم. والافتراضي باقٍ كما هو — القيمة null هنا تعني «كما كان» فلم تتغيّر
+        // بايتة واحدة من العمليات القائمة — وما يُعلن هنا يُكتب حرفياً.
+        //
+        // ولماذا وُجد أصلاً: بابا الجلسة يَقبلان جسماً ولا يُرجعان 409 ولا 422 أبداً،
+        // ويُرجعان 401 وهما **بلا مصادقة** (الاعتماد في الجسم لا في الترويسة). فالطقم
+        // الافتراضي كان سيصف بابين بما لا يفعلانه ويسكت عمّا يفعلانه — وعقدٌ يصف رفضاً
+        // لا يقع أسوأ من عقدٍ ساكت: يُبنى عليه فرعٌ لا يُنفَّذ أبداً.
+        IReadOnlyList<Refusal>? Refusals = null);
+
+    /// <summary>رفضٌ مُعلَن على عملية بعينها: رمزه ووصفه بلغتيه.</summary>
+    private sealed record Refusal(int Status, string Ar, string En);
 
     private sealed record QueryParameter(string Name, bool Required, string DescriptionAr, string DescriptionEn, string Kind);
 }

@@ -18,6 +18,185 @@
     }
   ],
   "paths": {
+    "/api/v1/access/sessions": {
+      "post": {
+        "operationId": "openSession",
+        "summary": "فتح جلسة باعتماد انتساب / Open a session with an enrolment credential",
+        "description": "يبدّل **اعتماد انتساب** — وهو ما يُسلَّم للمدعوّ مرّة واحدة عند دعوته — بجلسة كاملة: اعتماد فاعل قصير العمر، واعتماد تجديد يدور، ومعرّف عائلة هو **ما يُبطَل** لاحقاً.\n\n**والاعتماد في الجسم لا في الترويسة، ولذلك هذا الباب بلا مصادقة:** من يطلب اعتماداً لا يملك اعتماداً، وبابٌ يُصدر جلسةً ويشترط جلسةً بابٌ لا يُفتح أبداً. ومع ذلك لا يخرج منه شيء لمن لا يقدّم انتساباً صحيحاً، والرفض 401 لا 403: الفرق بينهما هو الفرق بين «لم تُصادِق» و«صادقتَ ومُنعت» (RFC 9110 §15.5.4).\n\n**واعتماد الانتساب يُقبل مرّة واحدة**، ذرّياً عند قاعدة البيانات لا بانضباط المستدعي: الوصول الثاني — ولو تزامن مع الأول — يُرفض بـaccess.enrolment_consumed. والرمز يفترق عن access.credential_rejected عمداً: «استُعملت دعوتك» جوابٌ يُخبر صاحبها أن شيئاً وقع فيسأل عنه، و«اعتماد غير مقبول» جوابٌ لا يتعلّم منه مختلِقٌ شيئاً.\n\n**ولا يُخزَّن اعتماد قابل للاستعمال:** المُودَع بصمة SHA-256، والنصّان يخرجان في هذه الاستجابة وحدها ولا يُعادان. **والاستحقاق لا يمنع الدخول:** اشتراكٌ منقطع يُخفَّض إلى القراءة ولا يُنتزَع به السجلّ (ADR-0034)، ومن مُنع الدخول لا يستطيع أن يقرأ.\n\nExchanges an **enrolment credential** — handed to an invited member once, at invitation — for a whole session: a short-lived access credential, a rotating refresh credential, and a family identifier which is what gets revoked later.\n\n**The credential travels in the body, not the header, and that is why this door is unauthenticated:** whoever asks for a credential has none, and a door that issues a session while demanding a session never opens. Even so nothing crosses it without a valid enrolment, and the refusal is 401 rather than 403: that distinction is the distinction between 'you did not authenticate' and 'you authenticated and were refused' (RFC 9110 §15.5.4).\n\n**An enrolment is accepted exactly once**, atomically at the database rather than by a disciplined caller: a second arrival — even one concurrent with the first — is refused with access.enrolment_consumed. That code differs from access.credential_rejected on purpose: 'your invitation was already used' tells its owner something happened so they ask about it, while 'the credential was rejected' teaches a forger nothing.\n\n**No usable credential is ever stored:** what is persisted is a SHA-256 digest; both texts leave the server in this response alone and are never re-issued. **And entitlement never blocks sign-in:** a lapsed subscription degrades to read-only and never strips the record (ADR-0034), and whoever cannot sign in cannot read.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OpenSessionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessSession"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "الجسم لا يطابق العقد: حقل غير معروف، أو حقل مفقود. / The body does not match the contract: an unknown field, or a missing one.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد الانتساب غير مقبول، أو انقضت مهلته، أو استُعمل من قبل — والرموز الثلاثة تفترق: access.credential_rejected و access.enrolment_expired و access.enrolment_consumed. / The enrolment credential is rejected, expired, or already used — three distinct codes: access.credential_rejected, access.enrolment_expired, and access.enrolment_consumed.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/access/sessions/renewal": {
+      "post": {
+        "operationId": "renewSession",
+        "summary": "تجديد جلسة بتدوير اعتمادها / Renew a session by rotating its credential",
+        "description": "يستهلك اعتماد التجديد الجاري ويُصدر **زوجاً جديداً كاملاً** في الدورة التالية من العائلة نفسها. ومعرّف العائلة لا يتغيّر: هو ما يُبطَل، فلا يهرب المُبطَل بتجديدٍ لاحق.\n\n**وتقديم اعتماد التجديد مرّتين سرقة، والجواب إسقاط العائلة كلّها.** فاعتمادٌ يدور ثم يعود هو اعتمادٌ في يد اثنين — أحدهما ليس صاحبه — ولا يوجد ما يميّز أيّهما. فلا يُخدَم الطلب الثاني، ولا يُخدَم الأول بعده: تُبطَل الجلسة فوراً بـaccess.refresh_replayed ويعود الاثنان إلى الدخول من جديد. والبديل — خدمةُ الثاني — يترك سارقاً بجلسة حيّة ولا يعلم بذلك أحد.\n\n**والكشف يقع قبل الاستحقاق وقبل الانقضاء وقبل الإبطال:** هو إجراء أمنٍ لا امتياز اشتراك، ويجب أن يقع ولو كان المستأجر منقطعاً — بل لا سيّما حينئذ. والصفّ المستهلَك يبقى في قاعدة البيانات ولا يُحذف: **هو الشاهد الوحيد** على إعادة الاستعمال، وحذفُه يجعل اعتماداً مسروقاً يُقرأ «مختلَقاً» فيُرفض الطلب وحده وتبقى الجلسة حيّة.\n\nواعتمادٌ فاعل قُدِّم في موضع اعتماد التجديد لا يُميَّز عن مختلَق: تمييزه كان سيجعل السطح يقول لمن يجرّب «هذا اعتماد موجود ولكن نوعه غير المطلوب».\n\nConsumes the current refresh credential and issues a **whole new pair** in the next generation of the same family. The family identifier does not change: it is what gets revoked, so a revoked session cannot escape by renewing.\n\n**Presenting a refresh credential twice is theft, and the answer is dropping the whole family.** A credential that rotates and then comes back is a credential in two hands — one of them is not its owner's — and nothing distinguishes which. So the second request is not served, and neither is the first afterwards: the session is revoked immediately with access.refresh_replayed and both parties must sign in again. The alternative — serving the second — leaves a thief holding a live session with nobody the wiser.\n\n**Detection happens before entitlement, before expiry, and before revocation:** it is a security act, not a subscription privilege, and it must happen even for a lapsed tenant — especially then. The consumed row stays in the database and is never deleted: **it is the only witness** to reuse, and deleting it makes a stolen credential read as 'forged', refusing the one request while the session stays alive.\n\nAn access credential presented where a refresh credential belongs is indistinguishable from a forged one: distinguishing it would have the surface tell a prober 'this credential exists but is of the wrong kind'.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenewSessionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessSession"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "الجسم لا يطابق العقد: حقل غير معروف، أو حقل مفقود. / The body does not match the contract: an unknown field, or a missing one.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد التجديد غير مقبول، أو انقضى، أو **قُدِّم مرّتين فأُسقطت العائلة**، أو أُبطلت الجلسة: access.credential_rejected و access.refresh_expired و access.refresh_replayed و access.session_revoked. / The refresh credential is rejected, expired, **presented twice so the family was dropped**, or its session was revoked: access.credential_rejected, access.refresh_expired, access.refresh_replayed, and access.session_revoked.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/access/sessions/revocation": {
+      "post": {
+        "operationId": "revokeSession",
+        "summary": "إبطال الجلسة الجارية / Revoke the current session",
+        "description": "يُبطل العائلة التي أُصدر منها الاعتماد المُقدَّم — **فوراً**. والإبطال يُقرأ في استعلام حلّ الاعتماد نفسه على الطلب التالي مباشرة، ولا يُنتظر به انقضاء: «سُحب هذا الاعتماد» جملةٌ إمّا أن تكون صحيحة الآن أو لا تكون.\n\n**ويقع على العائلة لا على الاعتماد المفرد:** إبطالُ اعتمادٍ واحد يترك اعتماد تجديده حيّاً فيُصدر بديلاً بعد ثوانٍ — أي أن «أبطلتُ الجلسة» تكون قد كذبت.\n\nولا جسم لهذا الطلب: الاعتماد المُقدَّم هو الذي يسمّي ما يُبطَل، والسبب رمزٌ مغلق (signed_out) لا نصّاً يكتبه أحد. ونداءٌ ثانٍ على جلسة مُبطَلة لا يقع أصلاً — الاعتماد نفسه يُرفض عند الحدّ بـauth.credential_revoked.\n\n**واعتماد التزويد المُهيَّأ من الإعداد لا عائلة له**، فيُرفض هنا بـ409 وaccess.session_not_issued_here: قولُ ذلك برمزه أصدق من ردّ «تمّ» على فعلٍ لم يقع.\n\nRevokes the family the presented credential was issued from — **immediately**. Revocation is read in the credential resolution query itself on the very next request and never waits for an expiry: 'this credential is withdrawn' is a sentence that is either true now or not true at all.\n\n**It applies to the family, not to a single credential:** revoking one credential leaves its refresh credential alive to mint a replacement seconds later — which would make 'I revoked the session' a lie.\n\nThis request has no body: the presented credential names what is revoked, and the reason is a closed code (signed_out) rather than prose anyone writes. A second call on a revoked session never happens — the credential itself is refused at the boundary with auth.credential_revoked.\n\n**The configured provisioning credential has no family**, so it is refused here with 409 and access.session_not_issued_here: saying so by its code is more honest than answering 'done' to an act that did not happen.",
+        "responses": {
+          "201": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionRevocation"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "الاعتماد المُقدَّم لم يُصدره سطح الجلسات فلا عائلة له تُبطَل: access.session_not_issued_here. / The presented credential was not issued by the session surface, so there is no family to revoke: access.session_not_issued_here.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/companies/{companyId}/capability-profile": {
       "parameters": [
         {
@@ -1126,6 +1305,154 @@
         }
       }
     },
+    "/api/v1/companies/{companyId}/memberships": {
+      "parameters": [
+        {
+          "name": "companyId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "readMemberships",
+        "summary": "أعضاء المنشأة / The company's members",
+        "description": "يقرأ من يعمل في هذه المنشأة وبأي دور. **ولا اعتماد واحد يخرج من هنا**: القائمة أسماء وأدوار ولحظاتُ منح، واعتماد الانتساب يخرج مرّة واحدة في استجابة الدعوة ولا يُعاد أبداً.\n\nوهو داخل نطاق المنشأة كأي مسار آخر: اعتمادٌ لا يبلغها يُرفض بـ403 وtenancy.company_out_of_scope، ولا يخرج من الرفض شيء عنها — لا عدد أعضائها ولا وجودها.\n\nReads who works in this company and in what role. **Not one credential leaves here**: the list is names, roles, and grant instants; an enrolment credential leaves once, in the invitation response, and is never re-issued.\n\nIt sits inside company scope like every other path: a credential that does not reach the company is refused with 403 and tenancy.company_out_of_scope, and nothing about that company crosses the refusal — not its member count, not its existence.",
+        "responses": {
+          "200": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MembershipList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "grantMembership",
+        "summary": "دعوة عضو إلى المنشأة / Invite a member into the company",
+        "description": "يسكّ للمدعوّ **معرّف مستخدم**، ويمنحه دوره في هذه المنشأة، ويُصدر له **اعتماد انتساب يُسلَّم مرّة واحدة** يبدّله هو بجلسة عبر POST /api/v1/access/sessions. وهذا هو التسجيل: لا كلمة مرور تُخزَّن، ولا اعتماد قابل للاستعمال يُودَع في جدول.\n\n**والدعوة فعلُ مالك:** من يستطيع أن يدعو يستطيع أن يمنح نفسه ما شاء عبر عضوٍ يدعوه، فالحدّ عند الدعوة لا عند ما بعدها — وغيرُ المالك يُرفض بـ403 وmembership.inviter_is_not_an_owner.\n\n**والدور ليس زينة:** جلسةُ Reader تُرفض على كل فعلٍ غير آمن في منشأتها بـ403 وmembership.read_only — وهو رمز يفترق عن entitlement.read_only عمداً: الأول يقول «اطلب صلاحية» والثاني يقول «جدّد اشتراكك»، وخلطهما يجعل قارئاً يتّصل بالمحاسبة بلا سبب.\n\nودعوةٌ ثانية لعضوٍ قائم تُرفض بـ409 وmembership.already_granted: تغييرُ دورٍ فعلٌ آخر يُطلب باسمه، لا دعوةٌ تُنتج اعتماد انتساب جديداً لمن يملك جلسة.\n\nMints the invited person a **user identifier**, grants their role in this company, and issues them an **enrolment credential handed over exactly once**, which they exchange for a session at POST /api/v1/access/sessions. This is registration: no password is stored, and no usable credential is ever written to a table.\n\n**Inviting is an owner's act:** whoever can invite can grant themselves anything through the member they invite, so the limit sits at the invitation rather than after it — a non-owner is refused with 403 and membership.inviter_is_not_an_owner.\n\n**The role is not decoration:** a Reader's session is refused on every unsafe method in its company with 403 and membership.read_only — a code deliberately distinct from entitlement.read_only: the first says 'ask for permission', the second says 'renew your subscription', and conflating them has a reader calling accounts payable for no reason.\n\nA second invitation for an existing member is refused with 409 and membership.already_granted: changing a role is a different act asked for by its own name, not an invitation minting a fresh enrolment credential for someone who already holds a session.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GrantMembershipRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GrantedMembership"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "الجسم لا يطابق العقد: حقل غير معروف، أو حقل مفقود. / The body does not match the contract: an unknown field, or a missing one.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "لهذا المستخدم عضوية في هذه المنشأة فعلاً: membership.already_granted. / This user already has a membership in this company: membership.already_granted.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "الطلب مفهوم ومرفوض: اسمٌ عربي مفقود أو أطول من الحدّ، أو دورٌ ليس من المجموعة المغلقة. / Understood and refused: a missing or over-long Arabic name, or a role outside the closed set.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/companies/{companyId}/setup": {
       "parameters": [
         {
@@ -1506,6 +1833,104 @@
       }
     },
     "schemas": {
+      "AccessMembership": {
+        "type": "object",
+        "description": "عضوية صاحب الجلسة في منشأة واحدة. / One membership of the session's holder in a single company.",
+        "properties": {
+          "companyId": {
+            "type": "string",
+            "maxLength": 36,
+            "description": "المنشأة كما تُكتب في المسار. / The company as written in the path."
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "Reader",
+              "Contributor",
+              "Owner"
+            ],
+            "description": "الدور في هذه المنشأة. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The role in this company. Matched literally and case-sensitively; a number is never accepted in place of a name."
+          }
+        },
+        "required": [
+          "companyId",
+          "role"
+        ],
+        "additionalProperties": false
+      },
+      "AccessSession": {
+        "type": "object",
+        "description": "جلسة مفتوحة كما تُسلَّم لصاحبها — **ومرّة واحدة**. الاعتمادان يخرجان من الخادم في هذه الاستجابة وحدها ولا يُخزَّنان في أي جدول: المُودَع بصمتهما SHA-256. فمن فقد الاستجابة فقد الاعتماد، ولا يوجد في الخادم من يعيده إليه — وهذا هو المقصود. وsessionId هو معرّف **العائلة**: يبقى ثابتاً عبر كل تجديد، وهو ما يُبطَل، فلا يهرب المُبطَل بتجديدٍ لاحق. / An opened session as handed to its holder — **once**. Both credentials leave the server in this response alone and are stored in no table: what is persisted is their SHA-256 digest. Whoever loses the response has lost the credential and nobody on the server can return it — which is the point. sessionId identifies the **family**: it stays constant across every renewal and it is what gets revoked, so a revoked session cannot escape by renewing.",
+        "properties": {
+          "accessCredential": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{16,512}$",
+            "maxLength": 512,
+            "description": "الاعتماد الفاعل — يُقدَّم في ترويسة Authorization: Bearer. نصٌّ مبهم لا بنية فيه: لا يُحلَّل ولا يُشتقّ منه شيء، ويُقدَّم كما وصل. / The access credential — presented in the Authorization: Bearer header. An opaque string with no structure: never parsed, nothing derived from it, presented exactly as received."
+          },
+          "accessExpiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "لحظة انقضاء الاعتماد الفاعل. بصيغة ISO 8601 الدوّارة بتوقيت UTC وبأرقام لاتينية — الصيغة نفسها التي يقرأ بها الخادم صلاحية اعتماده من إعداده، فلا وقتٌ يُكتب بشكل ويُقرأ بآخر. / When the access credential expires. In round-trip ISO 8601, UTC, Latin digits — the same spelling the server reads a credential expiry with from its own configuration, so no instant is written one way and read another."
+          },
+          "generation": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647,
+            "description": "رقم الدورة. يبدأ من 1 ويزيد بواحد عند كل تجديد، فقفزةٌ فيه بلا تجديدٍ من هذا العميل تعني أن غيره جدّد. / The generation. It starts at 1 and increments by one on every renewal, so a jump without a renewal from this client means someone else renewed."
+          },
+          "memberships": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AccessMembership"
+            },
+            "description": "عضويات صاحب الجلسة، مرتَّبة بمعرّف المنشأة ترتيباً حرفياً ثابتاً. / The holder's memberships, ordered by company identifier in a stable ordinal order."
+          },
+          "refreshCredential": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{16,512}$",
+            "maxLength": 512,
+            "description": "اعتماد التجديد — يُقدَّم مرّة واحدة، ثم يصير تقديمه سرقةً تُسقط العائلة. نصٌّ مبهم لا بنية فيه: لا يُحلَّل ولا يُشتقّ منه شيء، ويُقدَّم كما وصل. / The refresh credential — presented once; presenting it again is theft and drops the family. An opaque string with no structure: never parsed, nothing derived from it, presented exactly as received."
+          },
+          "refreshExpiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "لحظة انقضاء اعتماد التجديد. بصيغة ISO 8601 الدوّارة بتوقيت UTC وبأرقام لاتينية — الصيغة نفسها التي يقرأ بها الخادم صلاحية اعتماده من إعداده، فلا وقتٌ يُكتب بشكل ويُقرأ بآخر. / When the refresh credential expires. In round-trip ISO 8601, UTC, Latin digits — the same spelling the server reads a credential expiry with from its own configuration, so no instant is written one way and read another."
+          },
+          "sessionId": {
+            "type": "string",
+            "maxLength": 36,
+            "description": "معرّف العائلة — وهو ما يُبطَل. / The family identifier — the thing that gets revoked."
+          },
+          "tenantId": {
+            "type": "string",
+            "maxLength": 36,
+            "description": "المستأجر خلف الجلسة. / The tenant behind the session."
+          },
+          "writeReachesNothing": {
+            "type": "boolean",
+            "description": "‏true حين تكون كل عضويات صاحب الجلسة Reader — أي أن هذه الجلسة لا تكتب في أي منشأة. تقرؤها الواجهة فتبني شاشة قراءة بدل أن تعرض أزراراً يرفضها الخادم. / true when every membership of the holder is Reader — this session writes in no company. A client reads it and builds a read-only screen instead of showing buttons the server will refuse."
+          },
+          "userId": {
+            "type": "string",
+            "maxLength": 36,
+            "description": "المستخدم خلف الجلسة. / The user behind the session."
+          }
+        },
+        "required": [
+          "accessCredential",
+          "accessExpiresAt",
+          "generation",
+          "memberships",
+          "refreshCredential",
+          "refreshExpiresAt",
+          "sessionId",
+          "tenantId",
+          "userId",
+          "writeReachesNothing"
+        ],
+        "additionalProperties": false
+      },
       "AdmitDocumentRequest": {
         "type": "object",
         "description": "أسماء حقول المستند لا قيمها: القبول حكمٌ على الشكل، ولا يعبر منه مبلغ. / The document's field names, not its values: admission is a verdict on shape and no amount crosses it.",
@@ -1963,6 +2388,63 @@
         "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,8})?$",
         "description": "سعر صرف نصّاً بمقياس لا يتجاوز ثمانياً، بالقواعد نفسها التي تحكم المبالغ. / An exchange rate as a string with at most eight decimal places, under the same rules as amounts."
       },
+      "GrantMembershipRequest": {
+        "type": "object",
+        "description": "طلب دعوة عضو. ولا حقل معرّف مستخدم فيه: المعرّف يسكّه الخادم — ومعرّفٌ يرسله العميل يجعل الدعوة طريقاً إلى ربط اعتمادٍ بمستخدمٍ قائم في مستأجرٍ آخر. / An invitation request. It carries no user identifier: the server mints it — a client-sent identifier would make an invitation a route to binding a credential to an existing user in another tenant.",
+        "properties": {
+          "displayNameAr": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "اسم المدعوّ بالعربية — السجلّ لا ترجمةً أولى (ADR-0021). / The invited person's Arabic name — the record, not a first translation (ADR-0021)."
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "Reader",
+              "Contributor",
+              "Owner"
+            ],
+            "description": "الدور المطلوب. وReader يقرأ ولا يكتب: جلسته تُرفض على كل فعل غير آمن بـmembership.read_only. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The requested role. Reader reads and never writes: its session is refused on every unsafe method with membership.read_only. Matched literally and case-sensitively; a number is never accepted in place of a name."
+          }
+        },
+        "required": [
+          "displayNameAr",
+          "role"
+        ],
+        "additionalProperties": false
+      },
+      "GrantedMembership": {
+        "type": "object",
+        "description": "عضوية مُنحت للتوّ ومعها اعتماد انتسابها. وهذه هي الاستجابة **الوحيدة** التي يخرج فيها اعتماد انتساب، ويخرج فيها **مرّة واحدة**: المُودَع بصمته. فمن دعا عضواً يسلّمه هذا النصّ بنفسه، ولا يوجد في الخادم من يعيده. / A membership just granted together with its enrolment credential. This is the **only** response in which an enrolment credential appears, and it appears **once**: what is persisted is its digest. Whoever invited the member hands the text over themselves; nobody on the server can reproduce it.",
+        "properties": {
+          "companyId": {
+            "type": "string",
+            "maxLength": 36,
+            "description": "المنشأة. / The company."
+          },
+          "enrolmentCredential": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{16,512}$",
+            "maxLength": 512,
+            "description": "اعتماد الانتساب — يُقبل مرّة واحدة ثم يُستهلك. نصٌّ مبهم لا بنية فيه: لا يُحلَّل ولا يُشتقّ منه شيء، ويُقدَّم كما وصل. / The enrolment credential — accepted once, then consumed. An opaque string with no structure: never parsed, nothing derived from it, presented exactly as received."
+          },
+          "enrolmentExpiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "لحظة انقضاء الدعوة. بصيغة ISO 8601 الدوّارة بتوقيت UTC وبأرقام لاتينية — الصيغة نفسها التي يقرأ بها الخادم صلاحية اعتماده من إعداده، فلا وقتٌ يُكتب بشكل ويُقرأ بآخر. / When the invitation expires. In round-trip ISO 8601, UTC, Latin digits — the same spelling the server reads a credential expiry with from its own configuration, so no instant is written one way and read another."
+          },
+          "member": {
+            "$ref": "#/components/schemas/Membership"
+          }
+        },
+        "required": [
+          "companyId",
+          "enrolmentCredential",
+          "enrolmentExpiresAt",
+          "member"
+        ],
+        "additionalProperties": false
+      },
       "HealthResponse": {
         "type": "object",
         "properties": {
@@ -2214,6 +2696,73 @@
         ],
         "additionalProperties": false
       },
+      "Membership": {
+        "type": "object",
+        "description": "عضو في منشأة كما يُعرض في قائمة الأعضاء. **ولا اعتماد فيه**: اعتماد الانتساب يخرج مرّة واحدة في استجابة الدعوة ولا يُعاد أبداً. / A member of a company as shown in the member list. **It carries no credential**: an enrolment credential leaves once, in the invitation response, and is never re-issued.",
+        "properties": {
+          "displayNameAr": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "الاسم العربي. / The Arabic name."
+          },
+          "grantedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "لحظة منح العضوية. بصيغة ISO 8601 الدوّارة بتوقيت UTC وبأرقام لاتينية — الصيغة نفسها التي يقرأ بها الخادم صلاحية اعتماده من إعداده، فلا وقتٌ يُكتب بشكل ويُقرأ بآخر. / When the membership was granted. In round-trip ISO 8601, UTC, Latin digits — the same spelling the server reads a credential expiry with from its own configuration, so no instant is written one way and read another."
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "Reader",
+              "Contributor",
+              "Owner"
+            ],
+            "description": "الدور في هذه المنشأة. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The role in this company. Matched literally and case-sensitively; a number is never accepted in place of a name."
+          },
+          "userId": {
+            "type": "string",
+            "maxLength": 36,
+            "description": "معرّف المستخدم كما سكّه الخادم. / The user identifier as the server minted it."
+          }
+        },
+        "required": [
+          "displayNameAr",
+          "grantedAt",
+          "role",
+          "userId"
+        ],
+        "additionalProperties": false
+      },
+      "MembershipList": {
+        "type": "object",
+        "description": "أعضاء منشأة واحدة، مرتَّبين بمعرّف المستخدم ترتيباً حرفياً ثابتاً — قائمةٌ يتغيّر ترتيبها بين نداءين تجعل «العضو الثاني» يعني شخصين في دقيقتين. / The members of one company, ordered by user identifier in a stable ordinal order — a list whose order changes between calls makes 'the second member' mean two different people two minutes apart.",
+        "properties": {
+          "companyId": {
+            "type": "string",
+            "maxLength": 36,
+            "description": "المنشأة. / The company."
+          },
+          "memberCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2147483647,
+            "description": "عدد الأعضاء. / The number of members."
+          },
+          "members": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Membership"
+            },
+            "description": "الأعضاء. / The members."
+          }
+        },
+        "required": [
+          "companyId",
+          "memberCount",
+          "members"
+        ],
+        "additionalProperties": false
+      },
       "Money": {
         "type": "string",
         "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$",
@@ -2259,6 +2808,22 @@
         "required": [
           "name",
           "value"
+        ],
+        "additionalProperties": false
+      },
+      "OpenSessionRequest": {
+        "type": "object",
+        "description": "طلب فتح جلسة. ولا حقل مستأجر فيه ولا حقل مستخدم: الهوية تُشتقّ من الاعتماد كما في كل مسار آخر، وحقلٌ يقول «أنا فلان» في جسم طلبِ دخول ادّعاءٌ لا مصادقة. / A request to open a session. It carries no tenant field and no user field: identity is derived from the credential as on every other path, and a field saying 'I am so-and-so' in a sign-in body is a claim, not authentication.",
+        "properties": {
+          "enrolmentCredential": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{16,512}$",
+            "maxLength": 512,
+            "description": "اعتماد الانتساب كما سُلِّم مرّة واحدة عند الدعوة. نصٌّ مبهم لا بنية فيه: لا يُحلَّل ولا يُشتقّ منه شيء، ويُقدَّم كما وصل. / The enrolment credential exactly as handed over once at invitation. An opaque string with no structure: never parsed, nothing derived from it, presented exactly as received."
+          }
+        },
+        "required": [
+          "enrolmentCredential"
         ],
         "additionalProperties": false
       },
@@ -2718,6 +3283,22 @@
         ],
         "additionalProperties": false
       },
+      "RenewSessionRequest": {
+        "type": "object",
+        "description": "طلب تجديد جلسة. واعتماد التجديد يُستهلك بهذا النداء ولا يُقبل ثانيةً — وتقديمه مرّتين يُسقط العائلة كلّها. / A request to renew a session. The refresh credential is consumed by this call and never accepted again — presenting it twice drops the whole family.",
+        "properties": {
+          "refreshCredential": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{16,512}$",
+            "maxLength": 512,
+            "description": "اعتماد التجديد الجاري. نصٌّ مبهم لا بنية فيه: لا يُحلَّل ولا يُشتقّ منه شيء، ويُقدَّم كما وصل. / The current refresh credential. An opaque string with no structure: never parsed, nothing derived from it, presented exactly as received."
+          }
+        },
+        "required": [
+          "refreshCredential"
+        ],
+        "additionalProperties": false
+      },
       "ReverseJournalEntryRequest": {
         "type": "object",
         "properties": {
@@ -2859,6 +3440,36 @@
           "nameAr",
           "nameTranslations",
           "state"
+        ],
+        "additionalProperties": false
+      },
+      "SessionRevocation": {
+        "type": "object",
+        "description": "إبطال جلسة: ما أُبطل، ومتى، ولماذا برمزٍ من مجموعة مغلقة يقرؤها العميل ولا يفسّر نصّاً. / A session revocation: what was revoked, when, and why — by a code from a closed set the client reads rather than prose it interprets.",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "enum": [
+              "refresh_replayed",
+              "signed_out"
+            ],
+            "description": "‏signed_out حين يطلبه صاحب الجلسة، وrefresh_replayed حين يُسقطها كشفُ إعادة استعمال اعتماد تجديد. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / signed_out when the holder asks for it, refresh_replayed when refresh-reuse detection drops it. Matched literally and case-sensitively; a number is never accepted in place of a name."
+          },
+          "revokedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "لحظة الإبطال. بصيغة ISO 8601 الدوّارة بتوقيت UTC وبأرقام لاتينية — الصيغة نفسها التي يقرأ بها الخادم صلاحية اعتماده من إعداده، فلا وقتٌ يُكتب بشكل ويُقرأ بآخر. / When the revocation took effect. In round-trip ISO 8601, UTC, Latin digits — the same spelling the server reads a credential expiry with from its own configuration, so no instant is written one way and read another."
+          },
+          "sessionId": {
+            "type": "string",
+            "maxLength": 36,
+            "description": "الجلسة المُبطَلة. / The revoked session."
+          }
+        },
+        "required": [
+          "reason",
+          "revokedAt",
+          "sessionId"
         ],
         "additionalProperties": false
       },

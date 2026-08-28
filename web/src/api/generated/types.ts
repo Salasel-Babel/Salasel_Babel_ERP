@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     03c76b7b232225176cd92cbef06411102197f3e1b1a90db2001eea51dd36d74b
+     d35221adde470e1a856fe5264cd50039d669d9238957b784f5302672fbcf4851
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -21,6 +21,38 @@ import type { ExchangeRate, Int64String } from "./brands";
    ولا حقل مالي واحد نوعه number — لا هنا ولا في أي ملف مكتوب بيد.
    Money is an object whose implicit coercions throw; the other published string
    formats are branded types. No monetary field is ever typed `number`. */
+
+/** عضوية صاحب الجلسة في منشأة واحدة. / One membership of the session's holder in a single company. */
+export interface AccessMembership {
+  /** المنشأة كما تُكتب في المسار. / The company as written in the path. */
+  companyId: string;
+  /** الدور في هذه المنشأة. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The role in this company. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  role: "Reader" | "Contributor" | "Owner";
+}
+
+/** جلسة مفتوحة كما تُسلَّم لصاحبها — **ومرّة واحدة**. الاعتمادان يخرجان من الخادم في هذه الاستجابة وحدها ولا يُخزَّنان في أي جدول: المُودَع بصمتهما SHA-256. فمن فقد الاستجابة فقد الاعتماد، ولا يوجد في الخادم من يعيده إليه — وهذا هو المقصود. وsessionId هو معرّف **العائلة**: يبقى ثابتاً عبر كل تجديد، وهو ما يُبطَل، فلا يهرب المُبطَل بتجديدٍ لاحق. / An opened session as handed to its holder — **once**. Both credentials leave the server in this response alone and are stored in no table: what is persisted is their SHA-256 digest. Whoever loses the response has lost the credential and nobody on the server can return it — which is the point. sessionId identifies the **family**: it stays constant across every renewal and it is what gets revoked, so a revoked session cannot escape by renewing. */
+export interface AccessSession {
+  /** الاعتماد الفاعل — يُقدَّم في ترويسة Authorization: Bearer. نصٌّ مبهم لا بنية فيه: لا يُحلَّل ولا يُشتقّ منه شيء، ويُقدَّم كما وصل. / The access credential — presented in the Authorization: Bearer header. An opaque string with no structure: never parsed, nothing derived from it, presented exactly as received. */
+  accessCredential: string;
+  /** لحظة انقضاء الاعتماد الفاعل. بصيغة ISO 8601 الدوّارة بتوقيت UTC وبأرقام لاتينية — الصيغة نفسها التي يقرأ بها الخادم صلاحية اعتماده من إعداده، فلا وقتٌ يُكتب بشكل ويُقرأ بآخر. / When the access credential expires. In round-trip ISO 8601, UTC, Latin digits — the same spelling the server reads a credential expiry with from its own configuration, so no instant is written one way and read another. */
+  accessExpiresAt: string;
+  /** رقم الدورة. يبدأ من 1 ويزيد بواحد عند كل تجديد، فقفزةٌ فيه بلا تجديدٍ من هذا العميل تعني أن غيره جدّد. / The generation. It starts at 1 and increments by one on every renewal, so a jump without a renewal from this client means someone else renewed. */
+  generation: number;
+  /** عضويات صاحب الجلسة، مرتَّبة بمعرّف المنشأة ترتيباً حرفياً ثابتاً. / The holder's memberships, ordered by company identifier in a stable ordinal order. */
+  memberships: AccessMembership[];
+  /** اعتماد التجديد — يُقدَّم مرّة واحدة، ثم يصير تقديمه سرقةً تُسقط العائلة. نصٌّ مبهم لا بنية فيه: لا يُحلَّل ولا يُشتقّ منه شيء، ويُقدَّم كما وصل. / The refresh credential — presented once; presenting it again is theft and drops the family. An opaque string with no structure: never parsed, nothing derived from it, presented exactly as received. */
+  refreshCredential: string;
+  /** لحظة انقضاء اعتماد التجديد. بصيغة ISO 8601 الدوّارة بتوقيت UTC وبأرقام لاتينية — الصيغة نفسها التي يقرأ بها الخادم صلاحية اعتماده من إعداده، فلا وقتٌ يُكتب بشكل ويُقرأ بآخر. / When the refresh credential expires. In round-trip ISO 8601, UTC, Latin digits — the same spelling the server reads a credential expiry with from its own configuration, so no instant is written one way and read another. */
+  refreshExpiresAt: string;
+  /** معرّف العائلة — وهو ما يُبطَل. / The family identifier — the thing that gets revoked. */
+  sessionId: string;
+  /** المستأجر خلف الجلسة. / The tenant behind the session. */
+  tenantId: string;
+  /** المستخدم خلف الجلسة. / The user behind the session. */
+  userId: string;
+  /** true حين تكون كل عضويات صاحب الجلسة Reader — أي أن هذه الجلسة لا تكتب في أي منشأة. تقرؤها الواجهة فتبني شاشة قراءة بدل أن تعرض أزراراً يرفضها الخادم. / true when every membership of the holder is Reader — this session writes in no company. A client reads it and builds a read-only screen instead of showing buttons the server will refuse. */
+  writeReachesNothing: boolean;
+}
 
 /** أسماء حقول المستند لا قيمها: القبول حكمٌ على الشكل، ولا يعبر منه مبلغ. / The document's field names, not its values: admission is a verdict on shape and no amount crosses it. */
 export interface AdmitDocumentRequest {
@@ -156,6 +188,25 @@ export interface DocumentShape {
 /** سعر صرف نصّاً بمقياس لا يتجاوز ثمانياً، بالقواعد نفسها التي تحكم المبالغ. / An exchange rate as a string with at most eight decimal places, under the same rules as amounts. */
 /* ExchangeRate مُعرَّف في ../money كنوع محتجز وقت التشغيل. */
 
+/** طلب دعوة عضو. ولا حقل معرّف مستخدم فيه: المعرّف يسكّه الخادم — ومعرّفٌ يرسله العميل يجعل الدعوة طريقاً إلى ربط اعتمادٍ بمستخدمٍ قائم في مستأجرٍ آخر. / An invitation request. It carries no user identifier: the server mints it — a client-sent identifier would make an invitation a route to binding a credential to an existing user in another tenant. */
+export interface GrantMembershipRequest {
+  /** اسم المدعوّ بالعربية — السجلّ لا ترجمةً أولى (ADR-0021). / The invited person's Arabic name — the record, not a first translation (ADR-0021). */
+  displayNameAr: string;
+  /** الدور المطلوب. وReader يقرأ ولا يكتب: جلسته تُرفض على كل فعل غير آمن بـmembership.read_only. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The requested role. Reader reads and never writes: its session is refused on every unsafe method with membership.read_only. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  role: "Reader" | "Contributor" | "Owner";
+}
+
+/** عضوية مُنحت للتوّ ومعها اعتماد انتسابها. وهذه هي الاستجابة **الوحيدة** التي يخرج فيها اعتماد انتساب، ويخرج فيها **مرّة واحدة**: المُودَع بصمته. فمن دعا عضواً يسلّمه هذا النصّ بنفسه، ولا يوجد في الخادم من يعيده. / A membership just granted together with its enrolment credential. This is the **only** response in which an enrolment credential appears, and it appears **once**: what is persisted is its digest. Whoever invited the member hands the text over themselves; nobody on the server can reproduce it. */
+export interface GrantedMembership {
+  /** المنشأة. / The company. */
+  companyId: string;
+  /** اعتماد الانتساب — يُقبل مرّة واحدة ثم يُستهلك. نصٌّ مبهم لا بنية فيه: لا يُحلَّل ولا يُشتقّ منه شيء، ويُقدَّم كما وصل. / The enrolment credential — accepted once, then consumed. An opaque string with no structure: never parsed, nothing derived from it, presented exactly as received. */
+  enrolmentCredential: string;
+  /** لحظة انقضاء الدعوة. بصيغة ISO 8601 الدوّارة بتوقيت UTC وبأرقام لاتينية — الصيغة نفسها التي يقرأ بها الخادم صلاحية اعتماده من إعداده، فلا وقتٌ يُكتب بشكل ويُقرأ بآخر. / When the invitation expires. In round-trip ISO 8601, UTC, Latin digits — the same spelling the server reads a credential expiry with from its own configuration, so no instant is written one way and read another. */
+  enrolmentExpiresAt: string;
+  member: Membership;
+}
+
 export interface HealthResponse {
   /** إصدار السطح. / The surface version. */
   apiVersion: string;
@@ -238,6 +289,28 @@ export interface LocalizedText {
   en: string;
 }
 
+/** عضو في منشأة كما يُعرض في قائمة الأعضاء. **ولا اعتماد فيه**: اعتماد الانتساب يخرج مرّة واحدة في استجابة الدعوة ولا يُعاد أبداً. / A member of a company as shown in the member list. **It carries no credential**: an enrolment credential leaves once, in the invitation response, and is never re-issued. */
+export interface Membership {
+  /** الاسم العربي. / The Arabic name. */
+  displayNameAr: string;
+  /** لحظة منح العضوية. بصيغة ISO 8601 الدوّارة بتوقيت UTC وبأرقام لاتينية — الصيغة نفسها التي يقرأ بها الخادم صلاحية اعتماده من إعداده، فلا وقتٌ يُكتب بشكل ويُقرأ بآخر. / When the membership was granted. In round-trip ISO 8601, UTC, Latin digits — the same spelling the server reads a credential expiry with from its own configuration, so no instant is written one way and read another. */
+  grantedAt: string;
+  /** الدور في هذه المنشأة. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The role in this company. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  role: "Reader" | "Contributor" | "Owner";
+  /** معرّف المستخدم كما سكّه الخادم. / The user identifier as the server minted it. */
+  userId: string;
+}
+
+/** أعضاء منشأة واحدة، مرتَّبين بمعرّف المستخدم ترتيباً حرفياً ثابتاً — قائمةٌ يتغيّر ترتيبها بين نداءين تجعل «العضو الثاني» يعني شخصين في دقيقتين. / The members of one company, ordered by user identifier in a stable ordinal order — a list whose order changes between calls makes 'the second member' mean two different people two minutes apart. */
+export interface MembershipList {
+  /** المنشأة. / The company. */
+  companyId: string;
+  /** عدد الأعضاء. / The number of members. */
+  memberCount: number;
+  /** الأعضاء. / The members. */
+  members: Membership[];
+}
+
 /** مبلغ نصّاً، بمقياس لا يتجاوز أربع خانات عشرية. النحو المقبول كاملاً: -?(0|[1-9][0-9]*)(\.[0-9]{1,4})? — فتُرفض الصيغة الأسّية، والصفر البادئ، والإشارة الموجبة الصريحة، والفراغ، والأرقام العربية-الهندية والديفاناغارية، وكل ما زاد على أربع خانات. ورمزٌ رقمي في هذا الحقل يُرفض الطلب بسببه: JSON لا يملك نوعاً عشرياً، وأغلب العملاء يمرّرون الرمز الرقمي على فاصلة عائمة ثنائية فيقع فقدان الدقّة قبل أن يصل الطلب. / An amount as a string with at most four decimal places. The full accepted grammar is -?(0|[1-9][0-9]*)(\.[0-9]{1,4})? — exponent notation, leading zeros, an explicit plus sign, whitespace, Arabic-Indic and Devanagari digits, and any fifth decimal are all refused. A JSON number token in this field fails the request: JSON has no decimal type, and most clients route a number token through a binary double, so precision is lost before the request arrives. */
 /* Money مُعرَّف في ../money كنوع محتجز وقت التشغيل. */
 
@@ -252,6 +325,12 @@ export interface NamedAmount {
   /** اسم المبلغ كما تعرّفه مصفوفة الترحيل. / The amount name as the posting matrix defines it. */
   name: string;
   value: Money;
+}
+
+/** طلب فتح جلسة. ولا حقل مستأجر فيه ولا حقل مستخدم: الهوية تُشتقّ من الاعتماد كما في كل مسار آخر، وحقلٌ يقول «أنا فلان» في جسم طلبِ دخول ادّعاءٌ لا مصادقة. / A request to open a session. It carries no tenant field and no user field: identity is derived from the credential as on every other path, and a field saying 'I am so-and-so' in a sign-in body is a claim, not authentication. */
+export interface OpenSessionRequest {
+  /** اعتماد الانتساب كما سُلِّم مرّة واحدة عند الدعوة. نصٌّ مبهم لا بنية فيه: لا يُحلَّل ولا يُشتقّ منه شيء، ويُقدَّم كما وصل. / The enrolment credential exactly as handed over once at invitation. An opaque string with no structure: never parsed, nothing derived from it, presented exactly as received. */
+  enrolmentCredential: string;
 }
 
 /** طلب ترحيل. ولاحظ ما ليس فيه: لا حقل مستأجر ولا حقل شركة — النطاق من الاعتماد ومن المسار. وأي حقل غير معروف يُرفض الطلب كلّه بسببه. / A posting request. Note what is absent: no tenant field and no company field — scope comes from the credential and the path. Any unknown field fails the whole request. */
@@ -390,6 +469,12 @@ export interface PutCapabilityProfileRequest {
   withdrawalReason?: string | null;
 }
 
+/** طلب تجديد جلسة. واعتماد التجديد يُستهلك بهذا النداء ولا يُقبل ثانيةً — وتقديمه مرّتين يُسقط العائلة كلّها. / A request to renew a session. The refresh credential is consumed by this call and never accepted again — presenting it twice drops the whole family. */
+export interface RenewSessionRequest {
+  /** اعتماد التجديد الجاري. نصٌّ مبهم لا بنية فيه: لا يُحلَّل ولا يُشتقّ منه شيء، ويُقدَّم كما وصل. / The current refresh credential. An opaque string with no structure: never parsed, nothing derived from it, presented exactly as received. */
+  refreshCredential: string;
+}
+
 export interface ReverseJournalEntryRequest {
   closedPeriodAuthorisation?: ClosedPeriodAuthorisation;
   reason: LocalizedText;
@@ -433,6 +518,16 @@ export interface SessionCompany {
   nameTranslations: NameValue[];
   /** Ready لمنشأة مؤسَّسة، وNotSetUp لمنشأة يبلغها الاعتماد ولم تُؤسَّس بعد. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / Ready for a company that is set up, NotSetUp for one the credential reaches that has not been set up yet. Matched literally and case-sensitively; a number is never accepted in place of a name. */
   state: "NotSetUp" | "Ready";
+}
+
+/** إبطال جلسة: ما أُبطل، ومتى، ولماذا برمزٍ من مجموعة مغلقة يقرؤها العميل ولا يفسّر نصّاً. / A session revocation: what was revoked, when, and why — by a code from a closed set the client reads rather than prose it interprets. */
+export interface SessionRevocation {
+  /** signed_out حين يطلبه صاحب الجلسة، وrefresh_replayed حين يُسقطها كشفُ إعادة استعمال اعتماد تجديد. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / signed_out when the holder asks for it, refresh_replayed when refresh-reuse detection drops it. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  reason: "refresh_replayed" | "signed_out";
+  /** لحظة الإبطال. بصيغة ISO 8601 الدوّارة بتوقيت UTC وبأرقام لاتينية — الصيغة نفسها التي يقرأ بها الخادم صلاحية اعتماده من إعداده، فلا وقتٌ يُكتب بشكل ويُقرأ بآخر. / When the revocation took effect. In round-trip ISO 8601, UTC, Latin digits — the same spelling the server reads a credential expiry with from its own configuration, so no instant is written one way and read another. */
+  revokedAt: string;
+  /** الجلسة المُبطَلة. / The revoked session. */
+  sessionId: string;
 }
 
 export interface SourceDocument {

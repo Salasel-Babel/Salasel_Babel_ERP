@@ -65,7 +65,7 @@ internal sealed class Harness : IDisposable
         // ‏**هنا يقع الربط كلّه**: خدمة الفواتير تأخذ منفذ التقييم، وتنفيذه هو خدمة
         // المخزون نفسها. لا بديل، ولا رقم يُملى من مستدعٍ.
         Invoices = new SalesInvoiceService(enforcer, sales, Posting, Profiles, Stock);
-        CreditNotes = new CreditNoteService(enforcer, sales, Posting, Stock);
+        CreditNotes = new CreditNoteService(enforcer, sales, Posting, Profiles, Stock);
     }
 
     public InventoryRuntime InventoryRuntime { get; }

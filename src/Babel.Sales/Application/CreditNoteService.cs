@@ -2,6 +2,7 @@ using System.Globalization;
 using Babel.Contracts.Inventory;
 using Babel.Contracts.Posting;
 using Babel.Core.Application;
+using Babel.Core.CapabilityProfile;
 using Babel.Core.Entitlement;
 using Babel.Sales.Persistence;
 using Babel.SharedKernel;
@@ -55,6 +56,7 @@ public sealed class CreditNoteService : IApplicationService
     private readonly IEntitlementEnforcer _enforcer;
     private readonly SalesDbContext _database;
     private readonly SubledgerPostingGateway _gateway;
+    private readonly SalesAdmission _admission;
     private readonly IInventoryValuation _valuation;
     private readonly CurrencyCode _currency;
 
@@ -62,6 +64,7 @@ public sealed class CreditNoteService : IApplicationService
     /// <param name="enforcer">منفِّذ الاستحقاق.</param>
     /// <param name="runtime">موارد الوحدة.</param>
     /// <param name="posting">محرك الترحيل.</param>
+    /// <param name="profiles">مخزن ملفّات القدرات — بوابة القبول (ADR-0023).</param>
     /// <param name="valuation">
     /// حدّ تقييم المخزون — <b>الجهة الوحيدة التي تقول بكم يرجع المرتجع</b>، وتقوله
     /// بتكلفة الصرف الأصلي لا بمتوسط اليوم. ومنفذٌ في <c>Babel.Contracts</c> لا مرجعٌ
@@ -71,14 +74,17 @@ public sealed class CreditNoteService : IApplicationService
         IEntitlementEnforcer enforcer,
         SalesRuntime runtime,
         IPostingService posting,
+        ICapabilityProfileStore profiles,
         IInventoryValuation valuation)
     {
         ArgumentNullException.ThrowIfNull(enforcer);
         ArgumentNullException.ThrowIfNull(runtime);
         ArgumentNullException.ThrowIfNull(posting);
+        ArgumentNullException.ThrowIfNull(profiles);
         ArgumentNullException.ThrowIfNull(valuation);
         _enforcer = enforcer;
         _database = runtime.Database;
+        _admission = new SalesAdmission(profiles);
         _valuation = valuation;
         _currency = CurrencyCode.FromString(runtime.Options.CompanyCurrency);
         _gateway = new SubledgerPostingGateway(_database, posting, runtime.CostCenters);
@@ -353,6 +359,39 @@ public sealed class CreditNoteService : IApplicationService
             .OrderBy(row => row.LineNo)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
+
+        if (lines.Count == 0)
+        {
+            // إشعارٌ كلّه تخفيض قيمة: لا حركة مخزون ولا قيد تكلفة ولا قدرة تُمارَس.
+            // ومستأجرٌ على الجرد الدوري يُصدر مثل هذا الإشعار بلا أي رخصة إضافية.
+            return Result.Success();
+        }
+
+        // ── القبول: ردّ البضاعة يمارس قدرة «تكلفة المبيعات بالجرد المستمر» ──────
+        // وهو الشقّ العكسي من الرخصة نفسها: الكتالوج يعلّق
+        // sales.invoice.cost_of_sales على قدرة cost_of_sales، وحقلُها المرخَّص هو
+        // «المستودع» — وهو الحقل الذي يحمله قيد المرتجع كذلك.
+        //
+        // ⚠️ والكتالوج لا يعرف نوع مستند sales.credit_note بعدُ، فالرخصة تُقرأ من
+        // ملفّ الفاتورة. بندٌ مفتوح مُسجَّل في القرار، لا التفافٌ صامت: إضافة نوع
+        // مستند إلى الكتالوج تمسّ Babel.Core وتُغيّر عقداً منشوراً.
+        Result<AdmittedDocument> admitted = await _admission
+            .AdmitInvoiceAsync(
+                tenant,
+                [SalesAdmission.CustomerField, SalesAdmission.LinesField, SalesAdmission.WarehouseField],
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        if (admitted.IsFailure)
+        {
+            return Result.Failure(admitted.Errors);
+        }
+
+        Result covers = SalesAdmission.EnsureCovers(admitted.Value, SalesAdmission.WarehouseField);
+        if (covers.IsFailure)
+        {
+            return Result.Failure(covers.Errors);
+        }
 
         foreach (SalesLineRow line in lines)
         {

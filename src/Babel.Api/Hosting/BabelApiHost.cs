@@ -80,7 +80,6 @@ internal static class BabelApiHost
         app.MapLedgerApi();
         app.MapCapabilityProfileApi();
         app.MapCompanySetupApi();
-        app.MapDocsApi();
 
         return app;
     }

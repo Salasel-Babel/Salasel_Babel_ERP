@@ -82,7 +82,22 @@ services:
       Babel__Api__Tokens__0__Tenant: ${BABEL_DEMO_COMPANY_ID:-d3305e1e-0000-4000-8000-000000000001}
       Babel__Api__Tokens__0__User: ${BABEL_DEMO_USER_ID:-d3305e1e-0000-4000-8000-0000000000a1}
       Babel__Api__Tokens__0__Companies__0: ${BABEL_DEMO_COMPANY_ID:-d3305e1e-0000-4000-8000-000000000001}
+      # ── مخزن المرفقات ────────────────────────────────────────────────────
+      # ‏**ولا مفتاح افتراضي هنا ولا في أي ملفّ مُودَع**: `:?` يوقف `compose up`
+      # برسالة تسمّي المتغيّر، بدل أن تُقلع حاوية تسقط عند التركيب. ومفتاحٌ
+      # مُودَع مفتاحٌ عامّ يسكّ به من يقرأ المستودع تذاكرَ أي مرفق (ADR-0046).
+      BABEL_STORAGE_TICKET_KEY: ${BABEL_STORAGE_TICKET_KEY:?مفتاح توقيع تذاكر المرفقات — 32 بايتاً ست‌عشرياً على الأقل، من البيئة ولا يُودَع}
+      BABEL_STORAGE_ROOT: /var/lib/babel/attachments
+      # واتصال دور التطبيق وحده، كالدفتر والنواة: خادمٌ يحمل اتصال المالك يستطيع
+      # إسقاط مشغّل «يُضاف ولا يُعدَّل» ثم الكتابة فوق سند إثبات.
+      BABEL_STORAGE_APP_DB: "Host=db;Port=5432;Database=babel_storage;Username=${BABEL_STORAGE_APP_ROLE:-babel_storage_app};Password=${BABEL_STORAGE_APP_PASSWORD:-};Maximum Pool Size=10"
+      BABEL_STORAGE_APP_ROLE: ${BABEL_STORAGE_APP_ROLE:-babel_storage_app}
       Logging__LogLevel__Default: ${BABEL_LOG_LEVEL:-Information}
+    volumes:
+      # البايتات على حجم دائم لا في طبقة الحاوية: حاويةٌ تُستبدَل تأخذ معها كل
+      # سند إثبات فيها. **ونشرُ مخطّط `storage` وإنشاء دوره ليسا في حاوية الترحيل
+      # بعد** — فأبواب المرفقات غير قابلة للبلوغ حتى يُزوَّدا، وذلك نقصٌ مُعلَن.
+      - babel-attachments:/var/lib/babel/attachments
 
   web:
     image: ${BABEL_REGISTRY}/babel-web:${BABEL_IMAGE_TAG}
@@ -117,3 +132,5 @@ volumes:
   db-data:
   caddy-data:
   caddy-config:
+  # بايتات المرفقات — سندُ إثبات لا يُحذف، فلا يعيش في طبقة حاوية تُستبدَل.
+  babel-attachments:

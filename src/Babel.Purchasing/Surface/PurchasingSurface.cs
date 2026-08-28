@@ -26,27 +26,42 @@ public sealed class PurchasingSurface
 {
     private readonly SupplierService _suppliers;
     private readonly SupplierBillService _bills;
+    private readonly SupplierPaymentService _payments;
+    private readonly PurchaseOrderService _orders;
+    private readonly GoodsReceiptService _receipts;
     private readonly PayablesService _payables;
     private readonly CurrencyCode _currency;
 
     /// <summary>ينشئ السطح فوق خدمات الوحدة.</summary>
     /// <param name="suppliers">خدمة الموردين.</param>
     /// <param name="bills">خدمة فواتير الموردين.</param>
+    /// <param name="payments">خدمة سندات الصرف.</param>
+    /// <param name="orders">خدمة أوامر الشراء.</param>
+    /// <param name="receipts">خدمة استلام البضاعة.</param>
     /// <param name="payables">خدمة الذمم الدائنة.</param>
     /// <param name="options">إعدادات الوحدة — ومنها عملة المنشأة.</param>
     public PurchasingSurface(
         SupplierService suppliers,
         SupplierBillService bills,
+        SupplierPaymentService payments,
+        PurchaseOrderService orders,
+        GoodsReceiptService receipts,
         PayablesService payables,
         PurchasingOptions options)
     {
         ArgumentNullException.ThrowIfNull(suppliers);
         ArgumentNullException.ThrowIfNull(bills);
+        ArgumentNullException.ThrowIfNull(payments);
+        ArgumentNullException.ThrowIfNull(orders);
+        ArgumentNullException.ThrowIfNull(receipts);
         ArgumentNullException.ThrowIfNull(payables);
         ArgumentNullException.ThrowIfNull(options);
 
         _suppliers = suppliers;
         _bills = bills;
+        _payments = payments;
+        _orders = orders;
+        _receipts = receipts;
         _payables = payables;
         _currency = CurrencyCode.FromString(options.CompanyCurrency);
     }
@@ -170,6 +185,207 @@ public sealed class PurchasingSurface
         return Document(result);
     }
 
+    /// <summary>
+    /// يسجّل سند صرف <b>مسوّدة</b> بتخصيصاته. لا قيد ولا أثر على ذمّة المورد قبل الترحيل.
+    /// </summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="request">الطلب.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    public async ValueTask<Result<PurchasingDocument>> DraftSupplierPaymentAsync(
+        TenantId tenant,
+        UserId actor,
+        PurchasingPaymentRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        Result<PurchasingDocumentView> result = await _payments
+            .RecordPaymentAsync(
+                tenant,
+                actor,
+                new SupplierPaymentDraft(
+                    request.Number,
+                    request.SupplierId,
+                    request.PaidOn,
+                    request.SettlementMethod,
+                    request.TreasuryPartyId,
+                    Money.Of(request.Paid, _currency),
+                    Money.Of(request.BankFee, _currency),
+                    Allocations(request.Allocations)),
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        return Document(result);
+    }
+
+    /// <summary>يقرأ سند صرف بحالته ومجاميعه ومعرّف قيده إن رُحّل.</summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="paymentId">السند.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    public async ValueTask<Result<PurchasingDocument>> ReadSupplierPaymentAsync(
+        TenantId tenant,
+        UserId actor,
+        Guid paymentId,
+        CancellationToken cancellationToken = default)
+    {
+        Result<PurchasingDocumentView> result = await _payments
+            .GetPaymentAsync(tenant, actor, paymentId, cancellationToken).ConfigureAwait(false);
+
+        return Document(result);
+    }
+
+    /// <summary>
+    /// يرحّل سند صرف مسوّدة: <b>يُسقط من ذمّة المورد</b> بالمدفوع وحده، ويُخصم من الخزينة
+    /// بالمدفوع والرسوم معاً. حصين ضدّ التكرار بالشكل نفسه وبلا تخصيص ثانٍ.
+    /// </summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="paymentId">السند.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    public async ValueTask<Result<PurchasingDocument>> PostSupplierPaymentAsync(
+        TenantId tenant,
+        UserId actor,
+        Guid paymentId,
+        CancellationToken cancellationToken = default)
+    {
+        Result<PurchasingDocumentView> result = await _payments
+            .PostPaymentAsync(tenant, actor, paymentId, cancellationToken).ConfigureAwait(false);
+
+        return Document(result);
+    }
+
+    /// <summary>
+    /// يُنشئ أمر شراء ويُرجعه <b>بسطوره ومعرّفاتها</b> — وهي مدخل الاستلام.
+    /// <para>
+    /// <b>ولا ترحيل له:</b> أمر الشراء التزام تعاقدي لا حدث محاسبي، ولا مورد
+    /// <c>…/posting</c> عليه.
+    /// </para>
+    /// </summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="request">الطلب.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    public async ValueTask<Result<PurchasingOrder>> CreatePurchaseOrderAsync(
+        TenantId tenant,
+        UserId actor,
+        PurchasingOrderRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        Result<PurchasingDocumentView> created = await _orders
+            .CreateOrderAsync(
+                tenant,
+                actor,
+                new PurchaseOrderDraft(
+                    request.Number,
+                    request.SupplierId,
+                    request.OrderedOn,
+                    request.WarehouseId,
+                    request.CostCenterId,
+                    Lines(request.Lines)),
+
+                // ‏**ولا طلب شراء داخلي على هذا السطح**: طلب الشراء مستندٌ داخلي لا
+                // يُرحَّل ولم يُنشر بعد، وربطُ الأمر بطلبٍ لا يستطيع العميل إنشاؤه كان
+                // سيجعل الحقل زينةً لا سبيل إلى ملئها. وهو نقصٌ مُعلَن في القرار.
+                requestId: null,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        return created.IsFailure
+            ? Result<PurchasingOrder>.Failure(created.Errors)
+            : await OrderWithLinesAsync(tenant, actor, created.Value, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>يقرأ أمر شراء بسطوره ومعرّفاتها.</summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="orderId">الأمر.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    public async ValueTask<Result<PurchasingOrder>> ReadPurchaseOrderAsync(
+        TenantId tenant,
+        UserId actor,
+        Guid orderId,
+        CancellationToken cancellationToken = default)
+    {
+        Result<PurchasingDocumentView> order = await _orders
+            .GetOrderAsync(tenant, actor, orderId, cancellationToken).ConfigureAwait(false);
+
+        return order.IsFailure
+            ? Result<PurchasingOrder>.Failure(order.Errors)
+            : await OrderWithLinesAsync(tenant, actor, order.Value, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>يسجّل استلام بضاعة <b>مسوّدة</b> على أمر شراء. لا مخزون ولا قيد قبل الترحيل.</summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="request">الطلب.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    public async ValueTask<Result<PurchasingDocument>> DraftGoodsReceiptAsync(
+        TenantId tenant,
+        UserId actor,
+        PurchasingGoodsReceiptRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        Result<PurchasingDocumentView> result = await _receipts
+            .RecordAsync(
+                tenant,
+                actor,
+                new GoodsReceiptDraft(
+                    request.Number,
+                    request.OrderId,
+                    request.ReceivedOn,
+                    [.. request.Lines.Select(static line =>
+                        new GoodsReceiptLineDraft(line.OrderLineId, line.Quantity))]),
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        return Document(result);
+    }
+
+    /// <summary>يقرأ استلاماً بحالته وتكلفته ومعرّف قيده إن رُحّل.</summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="receiptId">الاستلام.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    public async ValueTask<Result<PurchasingDocument>> ReadGoodsReceiptAsync(
+        TenantId tenant,
+        UserId actor,
+        Guid receiptId,
+        CancellationToken cancellationToken = default)
+    {
+        Result<PurchasingDocumentView> result = await _receipts
+            .GetAsync(tenant, actor, receiptId, cancellationToken).ConfigureAwait(false);
+
+        return Document(result);
+    }
+
+    /// <summary>
+    /// يرحّل استلاماً مسوّدة: يُسجّل الوارد في <b>دفتر المخزون المساعد</b> بتكلفته الفعلية
+    /// ثم يُدين حساب المراقبة ويُنشئ التزام «بضاعة مستلمة لم تُفوتر» — سطراً سطراً، وبهوية
+    /// ترحيلٍ واحدة للدفترين. حصين ضدّ التكرار: الوصول الثاني لا يصرف كميةً ثانية ولا
+    /// يُنشئ قيداً ثانياً.
+    /// </summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="receiptId">الاستلام.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    public async ValueTask<Result<PurchasingDocument>> PostGoodsReceiptAsync(
+        TenantId tenant,
+        UserId actor,
+        Guid receiptId,
+        CancellationToken cancellationToken = default)
+    {
+        Result<PurchasingDocumentView> result = await _receipts
+            .PostAsync(tenant, actor, receiptId, cancellationToken).ConfigureAwait(false);
+
+        return Document(result);
+    }
+
     /// <summary>يقرأ أعمار الذمم الدائنة في تاريخ معلوم. نقطة قراءة بحتة.</summary>
     /// <param name="tenant">المستأجر.</param>
     /// <param name="actor">الفاعل.</param>
@@ -196,6 +412,29 @@ public sealed class PurchasingSurface
             [.. report.Parties.Select(static party =>
                 new PurchasingAgingParty(party.PartyId, party.Code, party.Name, Bands(party.Buckets)))],
             Bands(report.Totals)));
+    }
+
+    /// <summary>يُلبس مستند الأمر سطوره — نداءٌ ثانٍ يمرّ بالمنفِّذ كأي قراءة.</summary>
+    private async ValueTask<Result<PurchasingOrder>> OrderWithLinesAsync(
+        TenantId tenant,
+        UserId actor,
+        PurchasingDocumentView order,
+        CancellationToken cancellationToken)
+    {
+        Result<IReadOnlyList<PurchaseLineView>> lines = await _orders
+            .GetOrderLinesAsync(tenant, actor, order.Id, cancellationToken).ConfigureAwait(false);
+
+        return lines.IsFailure
+            ? Result<PurchasingOrder>.Failure(lines.Errors)
+            : Result<PurchasingOrder>.Success(new PurchasingOrder(
+                order.Id,
+                order.Number,
+                order.State,
+                order.Totals.Net.Amount,
+                order.Totals.Tax.Amount,
+                order.Totals.Gross.Amount,
+                [.. lines.Value.Select(static line => new PurchasingOrderLine(
+                    line.Id, line.LineNo, line.ItemId, line.Quantity, line.UnitPrice.Amount))]));
     }
 
     private static PurchasingParty Party(SupplierView view) =>
@@ -228,6 +467,13 @@ public sealed class PurchasingSurface
         buckets.Days61To90.Amount,
         buckets.Over90.Amount,
         buckets.Total.Amount);
+
+    private List<PayableAllocationDraft> Allocations(
+        IReadOnlyList<PurchasingPaymentAllocationRequest> allocations) =>
+    [
+        .. allocations.Select(allocation =>
+            new PayableAllocationDraft(allocation.BillId, Money.Of(allocation.Amount, _currency))),
+    ];
 
     private List<PurchaseLineDraft> Lines(IReadOnlyList<PurchasingLineRequest> lines) =>
     [

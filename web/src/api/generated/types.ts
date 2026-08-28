@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     2eb37c204d1d48eba87addf22298f81af646a2e1f5e5546fa8b2ea4b1357bcfa
+     8aae61c612441715b5f507e25d0685fb307582f7e5c4f4b837bd94672b1ee09e
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -204,6 +204,24 @@ export interface CreditNoteRequest {
   number: string;
 }
 
+/** طلب تسجيل سند قبض مسوّدة. ولا مجاميع فيه: المجموع هو received + settlementDiscount وتحسبه الوحدة. **ولا حساب ولا رمز حساب**: settlementMethod مؤهّل دور تحلّه المصفوفة إلى حساب خزينة أو بنك، وtreasuryPartyId طرفٌ في دفتره المساعد لا رقم حساب. / A request to draft a customer receipt. It carries no totals: the total is received + settlementDiscount and the module computes it. **No account and no account code**: settlementMethod is a role qualifier the matrix resolves into a cash or bank account, and treasuryPartyId is a party in its subledger, not an account number. */
+export interface CustomerReceiptRequest {
+  /** التخصيصات على فواتير مُرحَّلة لهذا العميل. وقائمةٌ فارغة مقبولة شكلاً — سندٌ يُقبض على الحساب — ومجموعها لا يتجاوز received + settlementDiscount. / Allocations against this customer's posted invoices. An empty list is structurally accepted — a receipt on account — and their sum may not exceed received + settlementDiscount. */
+  allocations: ReceiptAllocation[];
+  /** العميل المقبوض منه. / The customer the amount was collected from. */
+  customerId: string;
+  /** رقم السند — فريد داخل المستأجر. / The receipt number — unique within the tenant. */
+  number: string;
+  received: Money;
+  /** تاريخ القبض. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The collection date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  receivedOn: string;
+  settlementDiscount: Money;
+  /** طريقة التسوية — مؤهّل دور تحلّه المصفوفة إلى حساب. المستعمَل اليوم: cash · bank · card_clearing، ويُنشر نصّاً لا مجموعةً مغلقة كما يُنشر التصنيف الضريبي وللسبب نفسه. / The settlement method — a role qualifier the matrix resolves into an account. In use today: cash, bank, card_clearing; published as text rather than a closed set, as the tax classification is and for the same reason. */
+  settlementMethod: string;
+  /** الخزينة أو الحساب البنكي في دفترها المساعد — **طرفٌ لا رقم حساب**. / The cash box or bank account in its subledger — **a party, not an account number**. */
+  treasuryPartyId: string;
+}
+
 /** طلب تسجيل عميل. ولا حقل مستأجر ولا حقل شركة فيه — النطاق من الاعتماد ومن المسار. **ولا vatNumber**: حقل مورد لا حقل عميل، وإرساله يُفشل الطلب كلّه. / A customer registration request. No tenant field and no company field — scope comes from the credential and the path. **And no vatNumber**: that is a supplier field, not a customer field, and sending it fails the whole request. */
 export interface CustomerRequest {
   /** رمز العميل داخل المستأجر — هوية تحملها مستنداته، لا نصّاً معروضاً. / The customer code within the tenant — an identity its documents carry, not displayed text. */
@@ -270,6 +288,25 @@ export interface ExpenseBillRequest {
   number: string;
   /** معرّف المورد. / The supplier identifier. */
   supplierId: string;
+}
+
+/** سطر استلام: أي سطر أمر، وبأي كمية. **ولا سعر فيه**: التكلفة تُحسب في الوحدة بسعر أمر الشراء للكمية المستلمة، وسعرٌ يرسله العميل كان سيصير مصدر حقيقة ثانياً ينحرف عن الأمر. / A goods receipt line: which order line, and how much. **It carries no price**: the cost is computed in the module at the purchase-order price for the quantity received, and a price sent by the client would be a second source of truth able to diverge from the order. */
+export interface GoodsReceiptLine {
+  /** سطر الأمر المستلَم عليه — معرّفه من مخطّط PurchaseOrderLine. / The order line being received against — its identifier from the PurchaseOrderLine schema. */
+  orderLineId: string;
+  quantity: Quantity;
+}
+
+/** طلب تسجيل استلام بضاعة مسوّدة على أمر شراء. ولا مورد فيه: مورده مورد الأمر، ولا مستودع: مستودعه مستودع الأمر — وإعادة ذكرهما تفتح باب انحراف عن الأمر الذي يُطابَق به لاحقاً. / A request to draft a goods receipt against a purchase order. It carries no supplier — its supplier is the order's — and no warehouse — its warehouse is the order's; repeating either would open a door to drifting from the very order it is later matched against. */
+export interface GoodsReceiptRequest {
+  /** السطور. استلامٌ بلا سطر يُرفض في الوحدة برمزه. / The lines. A receipt with no line is refused in the module under its own code. */
+  lines: GoodsReceiptLine[];
+  /** رقم الاستلام — فريد داخل المستأجر. / The receipt number — unique within the tenant. */
+  number: string;
+  /** أمر الشراء المستلَم عليه. / The purchase order being received against. */
+  orderId: string;
+  /** تاريخ الاستلام. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The receipt date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  receivedOn: string;
 }
 
 /** طلب دعوة عضو. ولا حقل معرّف مستخدم فيه: المعرّف يسكّه الخادم — ومعرّفٌ يرسله العميل يجعل الدعوة طريقاً إلى ربط اعتمادٍ بمستخدمٍ قائم في مستأجرٍ آخر. / An invitation request. It carries no user identifier: the server mints it — a client-sent identifier would make an invitation a route to binding a credential to an existing user in another tenant. */
@@ -431,6 +468,13 @@ export interface Party {
   vatNumber: string | null;
 }
 
+/** تخصيص مبلغ من سند صرف على فاتورة مورد **مُرحَّلة**. / An allocation of part of a payment against a **posted** supplier bill. */
+export interface PaymentAllocation {
+  amount: Money;
+  /** فاتورة المورد المُرحَّلة. / The posted supplier bill. */
+  billId: string;
+}
+
 /** طلب ترحيل. ولاحظ ما ليس فيه: لا حقل مستأجر ولا حقل شركة — النطاق من الاعتماد ومن المسار. وأي حقل غير معروف يُرفض الطلب كلّه بسببه. / A posting request. Note what is absent: no tenant field and no company field — scope comes from the credential and the path. Any unknown field fails the whole request. */
 export interface PostJournalEntryRequest {
   /** مفردات المبالغ التي يقرؤها قالب الحدث. / The amount vocabulary the event template reads. */
@@ -576,6 +620,49 @@ export interface PurchaseLine {
   unitPrice: Money;
 }
 
+/** أمر شراء كما يخرج على السلك. **ولاحظ ما ليس فيه: لا entryId ولا alreadyPosted** — وذلك ليس نقصاً بل هو الفرق نفسه: أمر الشراء لا يُرحَّل أبداً، وحقلٌ فارغ لهما كان سيُقرأ «لم يُرحَّل بعد» بدل «لا يُرحَّل أبداً». وهو المخطّط الوحيد لمستند على هذا السطح بلا هذين الحقلين، والفرق مقصود ومقروء. / A purchase order as it leaves on the wire. **Note what it does not carry: neither entryId nor alreadyPosted** — not a gap but the distinction itself: a purchase order is never posted, and an empty field for either would read as 'not posted yet' rather than 'never posted'. It is the only document schema on this surface without those two fields, and the difference is deliberate and readable. */
+export interface PurchaseOrder {
+  gross: Money;
+  /** معرّف الأمر. / The order identifier. */
+  id: string;
+  /** السطور بمعرّفاتها — مدخل الاستلام. / The lines with their identifiers — the input a goods receipt needs. */
+  lines: PurchaseOrderLine[];
+  net: Money;
+  /** رقم الأمر. / The order number. */
+  number: string;
+  /** الحالة: DRAFT · APPROVED · CANCELLED. ولا POSTED عليه أبداً. / The state: DRAFT, APPROVED, CANCELLED. Never POSTED. */
+  state: string;
+  tax: Money;
+}
+
+/** سطر أمر شراء كما يخرج على السلك — **ومعرّفه هو مدخل الاستلام**: سطر الاستلام يشير إليه بمعرّفه هذا. وبدون نشر هذه المعرّفات يصير باب الاستلام باباً لا يوصل إليه بابٌ آخر. / A purchase order line as it leaves on the wire — **and its identifier is the input a goods receipt needs**: a receipt line refers to it by this identifier. Without publishing these identifiers the goods receipt door would be a door no other door on this surface leads to. */
+export interface PurchaseOrderLine {
+  /** معرّف السطر. / The line identifier. */
+  id: string;
+  /** الصنف في دفتره المساعد. / The item in its subledger. */
+  itemId: string;
+  /** رقم السطر داخل الأمر. / The line number within the order. */
+  lineNo: number;
+  quantity: Quantity;
+  unitPrice: Money;
+}
+
+/** طلب إنشاء أمر شراء. **ولا حالة فيه ولا ترحيل**: أمر الشراء التزام تعاقدي لا حدث محاسبي، ولا مورد posting له. ولا حقل يشير إلى طلب شراء داخلي: طلب الشراء غير منشور على هذا السطح. / A request to create a purchase order. **It carries no state and no posting**: a purchase order is a contractual commitment, not an accounting event, and has no posting sub-resource. It carries no reference to an internal purchase request either: the purchase request is not published on this surface. */
+export interface PurchaseOrderRequest {
+  /** مركز التكلفة. / The cost centre. */
+  costCenterId: string;
+  /** السطور. أمرٌ بلا سطر يُرفض في الوحدة برمزه. / The lines. An order with no line is refused in the module under its own code. */
+  lines: PurchaseLine[];
+  /** رقم الأمر — فريد داخل المستأجر. / The order number — unique within the tenant. */
+  number: string;
+  /** تاريخ الأمر. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The order date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  orderedOn: string;
+  /** المورد. / The supplier. */
+  supplierId: string;
+  /** المستودع المستقبِل — يصير بُعد سطر الاستلام حين يُرحَّل. / The receiving warehouse — it becomes the receipt line's dimension when that posts. */
+  warehouseId: string;
+}
+
 export interface PutCapabilityProfileRequest {
   /** أنواع المستندات. / The document types. */
   documents: DocumentProfile[];
@@ -585,6 +672,13 @@ export interface PutCapabilityProfileRequest {
 
 /** كمّية نصّاً بمقياس لا يتجاوز أربعاً، بالنحو الذي تخضع له المبالغ. وهي ليست مبلغاً — ولذلك لها مخطّطها — لكنها تُضرب في مبلغ، فأي فقدان دقّة فيها يصل إلى المال. / A quantity as a string with at most four decimal places, under the grammar that governs amounts. It is not an amount — hence its own schema — but it is multiplied by one, so any precision lost in it reaches the money. */
 /* Quantity مُعرَّف في ../money كنوع محتجز وقت التشغيل. */
+
+/** تخصيص مبلغ من سند قبض على فاتورة مبيعات **مُرحَّلة**. ولا عميل فيه: عميلُه عميل السند، والفاتورة تُفحص أنها له — وإعادة ذكره كانت ستفتح باباً لتخصيصٍ على فاتورة عميل آخر. / An allocation of part of a receipt against a **posted** sales invoice. It carries no customer: the customer is the receipt's, and the invoice is checked to be theirs — repeating it would open a door to allocating against another customer's invoice. */
+export interface ReceiptAllocation {
+  amount: Money;
+  /** الفاتورة المُرحَّلة التي يُنزَل عليها المبلغ. / The posted invoice the amount is applied to. */
+  invoiceId: string;
+}
 
 /** طلب تجديد جلسة. واعتماد التجديد يُستهلك بهذا النداء ولا يُقبل ثانيةً — وتقديمه مرّتين يُسقط العائلة كلّها. / A request to renew a session. The refresh credential is consumed by this call and never accepted again — presenting it twice drops the whole family. */
 export interface RenewSessionRequest {
@@ -690,6 +784,24 @@ export interface Subledger {
   kind: "None" | "Customer" | "Supplier" | "Employee" | "Asset" | "Treasury";
   /** معرّف الطرف داخل الوحدة المالكة له. / The party identifier within its owning module. */
   partyId: string;
+}
+
+/** طلب تسجيل سند صرف مسوّدة. و**bankFee ليست ذمّة مورد**: يخرج من الخزينة paid + bankFee وينقص من ذمّة المورد paid وحده، ومجموع التخصيصات يُقاس على paid لا على مجموعهما. / A request to draft a supplier payment. **bankFee is not a supplier balance**: paid + bankFee leaves the treasury while only paid comes off the supplier's balance, and the sum of allocations is measured against paid rather than against their total. */
+export interface SupplierPaymentRequest {
+  /** التخصيصات على فواتير هذا المورد المُرحَّلة. ومجموعها لا يتجاوز paid. / Allocations against this supplier's posted bills. Their sum may not exceed paid. */
+  allocations: PaymentAllocation[];
+  bankFee: Money;
+  /** رقم السند — فريد داخل المستأجر. / The payment number — unique within the tenant. */
+  number: string;
+  paid: Money;
+  /** تاريخ الصرف. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The payment date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  paidOn: string;
+  /** طريقة التسوية — مؤهّل دور. المستعمَل اليوم: cash · bank · card_clearing. / The settlement method — a role qualifier. In use today: cash, bank, card_clearing. */
+  settlementMethod: string;
+  /** المورد المدفوع له. / The supplier being paid. */
+  supplierId: string;
+  /** الخزينة أو الحساب البنكي في دفترها المساعد — طرفٌ لا رقم حساب. / The cash box or bank account in its subledger — a party, not an account number. */
+  treasuryPartyId: string;
 }
 
 /** طلب تسجيل مورد — كطلب العميل ومعه رقم التسجيل الضريبي اختياراً. / A supplier registration request — the customer request plus an optional VAT registration number. */

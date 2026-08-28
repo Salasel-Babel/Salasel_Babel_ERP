@@ -45,11 +45,15 @@ public sealed class PublishedDocumentSurfaceIsGuarded
     private static readonly string[] DocumentSegments =
     [
         "/credit-notes",
+        "/customer-receipts",
         "/customers",
+        "/goods-receipts",
         "/payables-aging",
+        "/purchase-orders",
         "/receivables-aging",
         "/sales-invoices",
         "/supplier-bills",
+        "/supplier-payments",
         "/suppliers",
     ];
 
@@ -92,7 +96,7 @@ public sealed class PublishedDocumentSurfaceIsGuarded
         // أو تغيّرت مقاطع مساراته، لصار «صفر مخالفات» جملةً عن لا شيء.
         int examined = Examined(paths);
         Assert.True(
-            examined >= 14,
+            examined >= 25,
             FormattableString.Invariant(
                 $"الحارس فحص {examined} عمليةً على موارد المستندات — أقلّ من أن يعني «لا مخالفة» شيئاً."));
 
@@ -190,7 +194,7 @@ public sealed class PublishedDocumentSurfaceIsGuarded
         // اللافراغ: السطوح تحمل خدمات فعلاً. سطحٌ بلا خدمة واحدة يجعل «لا مخالفة»
         // جملةً عن لا شيء.
         Assert.True(
-            guarded >= 6,
+            guarded >= 10,
             FormattableString.Invariant($"السطوح تحمل {guarded} خدمة تطبيق — أقلّ من أن يعني الفحص شيئاً."));
 
         Assert.True(

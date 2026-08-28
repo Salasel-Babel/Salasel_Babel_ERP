@@ -215,3 +215,162 @@ internal sealed record AgingPartyDto(string PartyId, string Code, LocalizedTextD
 /// <param name="Parties">الأطراف.</param>
 /// <param name="Totals">المجاميع.</param>
 internal sealed record AgingReportDto(string AsOf, IReadOnlyList<AgingPartyDto> Parties, AgingBandsDto Totals);
+
+/// <summary>تخصيص مبلغ من سند قبض على فاتورة مبيعات مُرحَّلة — والمبلغ نصّاً.</summary>
+internal sealed record ReceiptAllocationDto
+{
+    /// <summary>الفاتورة المُرحَّلة التي يُنزَل عليها المبلغ.</summary>
+    public required string InvoiceId { get; init; }
+
+    /// <summary>المبلغ المخصَّص نصّاً — لا يتجاوز المتبقّي على الفاتورة.</summary>
+    public required WireDecimal Amount { get; init; }
+}
+
+/// <summary>
+/// طلب تسجيل سند قبض <b>مسوّدة</b>. لا قيد ولا أثر على ذمّة العميل: الترحيل مورد مستقلّ.
+/// </summary>
+internal sealed record CustomerReceiptRequestDto
+{
+    /// <summary>رقم السند — فريد داخل المستأجر.</summary>
+    public required string Number { get; init; }
+
+    /// <summary>معرّف العميل.</summary>
+    public required string CustomerId { get; init; }
+
+    /// <summary>تاريخ القبض الميلادي بصيغة yyyy-MM-dd.</summary>
+    public required string ReceivedOn { get; init; }
+
+    /// <summary>طريقة التسوية: <c>cash</c> · <c>bank</c> · <c>card_clearing</c>.</summary>
+    public required string SettlementMethod { get; init; }
+
+    /// <summary>الخزينة أو الحساب البنكي في دفترها المساعد.</summary>
+    public required string TreasuryPartyId { get; init; }
+
+    /// <summary>المبلغ المقبوض فعلاً — <b>نصّاً</b>.</summary>
+    public required WireDecimal Received { get; init; }
+
+    /// <summary>خصم تعجيل السداد الممنوح — نصّاً، وصفرٌ إن لم يُمنَح.</summary>
+    public required WireDecimal SettlementDiscount { get; init; }
+
+    /// <summary>التخصيصات على الفواتير المُرحَّلة.</summary>
+    public required IReadOnlyList<ReceiptAllocationDto> Allocations { get; init; }
+}
+
+/// <summary>تخصيص مبلغ من سند صرف على فاتورة مورد مُرحَّلة.</summary>
+internal sealed record PaymentAllocationDto
+{
+    /// <summary>فاتورة المورد المُرحَّلة.</summary>
+    public required string BillId { get; init; }
+
+    /// <summary>المبلغ المخصَّص نصّاً.</summary>
+    public required WireDecimal Amount { get; init; }
+}
+
+/// <summary>طلب تسجيل سند صرف <b>مسوّدة</b>.</summary>
+internal sealed record SupplierPaymentRequestDto
+{
+    /// <summary>رقم السند.</summary>
+    public required string Number { get; init; }
+
+    /// <summary>معرّف المورد.</summary>
+    public required string SupplierId { get; init; }
+
+    /// <summary>تاريخ الصرف الميلادي.</summary>
+    public required string PaidOn { get; init; }
+
+    /// <summary>طريقة التسوية.</summary>
+    public required string SettlementMethod { get; init; }
+
+    /// <summary>الخزينة أو الحساب البنكي.</summary>
+    public required string TreasuryPartyId { get; init; }
+
+    /// <summary>المبلغ المدفوع للمورد نصّاً.</summary>
+    public required WireDecimal Paid { get; init; }
+
+    /// <summary>رسوم التحويل على المنشأة نصّاً — <b>وليست نقصاً في ذمّة المورد</b>.</summary>
+    public required WireDecimal BankFee { get; init; }
+
+    /// <summary>التخصيصات على فواتير المورد.</summary>
+    public required IReadOnlyList<PaymentAllocationDto> Allocations { get; init; }
+}
+
+/// <summary>طلب إنشاء أمر شراء. ولا ترحيل له — وهو ما يقوله غياب مورد <c>posting</c>.</summary>
+internal sealed record PurchaseOrderRequestDto
+{
+    /// <summary>رقم الأمر.</summary>
+    public required string Number { get; init; }
+
+    /// <summary>معرّف المورد.</summary>
+    public required string SupplierId { get; init; }
+
+    /// <summary>تاريخ الأمر الميلادي.</summary>
+    public required string OrderedOn { get; init; }
+
+    /// <summary>المستودع المستقبِل.</summary>
+    public required string WarehouseId { get; init; }
+
+    /// <summary>مركز التكلفة.</summary>
+    public required string CostCenterId { get; init; }
+
+    /// <summary>السطور.</summary>
+    public required IReadOnlyList<PurchaseLineDto> Lines { get; init; }
+}
+
+/// <summary>سطر أمر شراء كما يخرج على السلك — <b>ومعرّفه مدخل الاستلام</b>.</summary>
+/// <param name="Id">معرّف السطر.</param>
+/// <param name="LineNo">رقمه داخل الأمر.</param>
+/// <param name="ItemId">الصنف.</param>
+/// <param name="Quantity">الكمية المطلوبة نصّاً.</param>
+/// <param name="UnitPrice">سعر الوحدة نصّاً.</param>
+internal sealed record PurchaseOrderLineDto(
+    string Id, int LineNo, string ItemId, string Quantity, string UnitPrice);
+
+/// <summary>
+/// أمر شراء كما يخرج على السلك.
+/// <para>
+/// <b>ولا <c>entryId</c> فيه ولا <c>alreadyPosted</c>:</b> أمر الشراء التزام تعاقدي لا
+/// واقعة محاسبية. وحقلٌ فارغ لهما كان سيُقرأ «لم يُرحَّل بعد» بدل «لا يُرحَّل أبداً» —
+/// وهو فرقٌ يقرأه من يبني عميلاً قبل أن يسأل.
+/// </para>
+/// </summary>
+/// <param name="Id">المعرّف.</param>
+/// <param name="Number">الرقم.</param>
+/// <param name="State">الحالة.</param>
+/// <param name="Net">الصافي نصّاً.</param>
+/// <param name="Tax">الضريبة نصّاً.</param>
+/// <param name="Gross">الإجمالي نصّاً.</param>
+/// <param name="Lines">السطور بمعرّفاتها.</param>
+internal sealed record PurchaseOrderDto(
+    string Id,
+    string Number,
+    string State,
+    string Net,
+    string Tax,
+    string Gross,
+    IReadOnlyList<PurchaseOrderLineDto> Lines);
+
+/// <summary>سطر استلام على السلك: أي سطر أمر، وبأي كمية.</summary>
+internal sealed record GoodsReceiptLineDto
+{
+    /// <summary>سطر الأمر المستلَم عليه.</summary>
+    public required string OrderLineId { get; init; }
+
+    /// <summary>الكمية المستلمة نصّاً — وما يتجاوز المطلوب يُرفض عند الاستلام لا عند الفاتورة.</summary>
+    public required WireDecimal Quantity { get; init; }
+}
+
+/// <summary>طلب تسجيل استلام بضاعة <b>مسوّدة</b> على أمر شراء.</summary>
+internal sealed record GoodsReceiptRequestDto
+{
+    /// <summary>رقم الاستلام.</summary>
+    public required string Number { get; init; }
+
+    /// <summary>أمر الشراء.</summary>
+    public required string OrderId { get; init; }
+
+    /// <summary>تاريخ الاستلام الميلادي.</summary>
+    public required string ReceivedOn { get; init; }
+
+    /// <summary>السطور.</summary>
+    public required IReadOnlyList<GoodsReceiptLineDto> Lines { get; init; }
+}

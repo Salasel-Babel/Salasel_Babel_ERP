@@ -49,6 +49,9 @@ internal static class DocumentEndpoints
         app.MapPost(ApiRoutes.SalesInvoicePosting, PostInvoiceAsync);
         app.MapPost(ApiRoutes.CreditNotes, DraftCreditNoteAsync);
         app.MapPost(ApiRoutes.CreditNotePosting, PostCreditNoteAsync);
+        app.MapPost(ApiRoutes.CustomerReceipts, DraftCustomerReceiptAsync);
+        app.MapGet(ApiRoutes.CustomerReceipt, ReadCustomerReceiptAsync);
+        app.MapPost(ApiRoutes.CustomerReceiptPosting, PostCustomerReceiptAsync);
         app.MapGet(ApiRoutes.ReceivablesAging, ReceivablesAgingAsync);
 
         app.MapPost(ApiRoutes.Suppliers, AddSupplierAsync);
@@ -56,6 +59,20 @@ internal static class DocumentEndpoints
         app.MapPost(ApiRoutes.SupplierBills, DraftExpenseBillAsync);
         app.MapGet(ApiRoutes.SupplierBill, ReadBillAsync);
         app.MapPost(ApiRoutes.SupplierBillPosting, PostBillAsync);
+        app.MapPost(ApiRoutes.SupplierPayments, DraftSupplierPaymentAsync);
+        app.MapGet(ApiRoutes.SupplierPayment, ReadSupplierPaymentAsync);
+        app.MapPost(ApiRoutes.SupplierPaymentPosting, PostSupplierPaymentAsync);
+
+        // ‏**وأمر الشراء بابان لا ثلاثة.** لا `MapPost(… + "/posting")` هنا، ولا يجوز
+        // أن يوجد: أمر الشراء التزام تعاقدي لا حدث محاسبي، والقيد الأول في دورة الشراء
+        // هو الاستلام. وغيابُ السطر مقروءٌ في العقد المنشور نفسه، لا في تعليق وحده.
+        app.MapPost(ApiRoutes.PurchaseOrders, CreatePurchaseOrderAsync);
+        app.MapGet(ApiRoutes.PurchaseOrder, ReadPurchaseOrderAsync);
+
+        app.MapPost(ApiRoutes.GoodsReceipts, DraftGoodsReceiptAsync);
+        app.MapGet(ApiRoutes.GoodsReceipt, ReadGoodsReceiptAsync);
+        app.MapPost(ApiRoutes.GoodsReceiptPosting, PostGoodsReceiptAsync);
+
         app.MapGet(ApiRoutes.PayablesAging, PayablesAgingAsync);
     }
 
@@ -268,6 +285,91 @@ internal static class DocumentEndpoints
             : Posted(context, DocumentMapping.ToDto(result.Value), null);
     }
 
+    private static async Task<IResult> DraftCustomerReceiptAsync(
+        HttpContext context,
+        SalesSurface sales,
+        CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        (CustomerReceiptRequestDto? dto, IResult? refused) =
+            await BodyAsync<CustomerReceiptRequestDto>(context, cancellationToken).ConfigureAwait(false);
+
+        if (dto is null)
+        {
+            return refused!;
+        }
+
+        SalesReceiptRequest request;
+        try
+        {
+            request = DocumentMapping.ToCustomerReceiptRequest(dto);
+        }
+        catch (WireFormatException wire)
+        {
+            return HttpProblemResults.Wire(context, wire);
+        }
+
+        Result<SalesDocument> result = await sales
+            .DraftCustomerReceiptAsync(new TenantId(companyId), Actor(context), request, cancellationToken)
+            .ConfigureAwait(false);
+
+        return result.IsFailure
+            ? HttpProblemResults.Domain(context, result.Errors)
+            : Created(context, DocumentMapping.ToDto(result.Value), Location(ApiRoutes.CustomerReceipt, companyId, "receiptId", result.Value.Id));
+    }
+
+    private static async Task<IResult> ReadCustomerReceiptAsync(
+        HttpContext context,
+        SalesSurface sales,
+        CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        if (!Scope.TryRouteId(context, "receiptId", out Guid receiptId, out IResult? malformed))
+        {
+            return malformed!;
+        }
+
+        Result<SalesDocument> result = await sales
+            .ReadCustomerReceiptAsync(new TenantId(companyId), Actor(context), receiptId, cancellationToken)
+            .ConfigureAwait(false);
+
+        return result.IsFailure
+            ? HttpProblemResults.Domain(context, result.Errors)
+            : Results.Json(DocumentMapping.ToDto(result.Value), ApiJson.Options);
+    }
+
+    private static async Task<IResult> PostCustomerReceiptAsync(
+        HttpContext context,
+        SalesSurface sales,
+        CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        if (!Scope.TryRouteId(context, "receiptId", out Guid receiptId, out IResult? malformed))
+        {
+            return malformed!;
+        }
+
+        Result<SalesDocument> result = await sales
+            .PostCustomerReceiptAsync(new TenantId(companyId), Actor(context), receiptId, cancellationToken)
+            .ConfigureAwait(false);
+
+        return result.IsFailure
+            ? HttpProblemResults.Domain(context, result.Errors)
+            : Posted(context, DocumentMapping.ToDto(result.Value), Location(ApiRoutes.CustomerReceipt, companyId, "receiptId", receiptId));
+    }
+
     private static async Task<IResult> ReceivablesAgingAsync(
         HttpContext context,
         SalesSurface sales,
@@ -443,6 +545,237 @@ internal static class DocumentEndpoints
         return result.IsFailure
             ? HttpProblemResults.Domain(context, result.Errors)
             : Posted(context, DocumentMapping.ToDto(result.Value), Location(ApiRoutes.SupplierBill, companyId, "billId", billId));
+    }
+
+    private static async Task<IResult> DraftSupplierPaymentAsync(
+        HttpContext context,
+        PurchasingSurface purchasing,
+        CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        (SupplierPaymentRequestDto? dto, IResult? refused) =
+            await BodyAsync<SupplierPaymentRequestDto>(context, cancellationToken).ConfigureAwait(false);
+
+        if (dto is null)
+        {
+            return refused!;
+        }
+
+        PurchasingPaymentRequest request;
+        try
+        {
+            request = DocumentMapping.ToSupplierPaymentRequest(dto);
+        }
+        catch (WireFormatException wire)
+        {
+            return HttpProblemResults.Wire(context, wire);
+        }
+
+        Result<PurchasingDocument> result = await purchasing
+            .DraftSupplierPaymentAsync(new TenantId(companyId), Actor(context), request, cancellationToken)
+            .ConfigureAwait(false);
+
+        return result.IsFailure
+            ? HttpProblemResults.Domain(context, result.Errors)
+            : Created(context, DocumentMapping.ToDto(result.Value), Location(ApiRoutes.SupplierPayment, companyId, "paymentId", result.Value.Id));
+    }
+
+    private static async Task<IResult> ReadSupplierPaymentAsync(
+        HttpContext context,
+        PurchasingSurface purchasing,
+        CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        if (!Scope.TryRouteId(context, "paymentId", out Guid paymentId, out IResult? malformed))
+        {
+            return malformed!;
+        }
+
+        Result<PurchasingDocument> result = await purchasing
+            .ReadSupplierPaymentAsync(new TenantId(companyId), Actor(context), paymentId, cancellationToken)
+            .ConfigureAwait(false);
+
+        return result.IsFailure
+            ? HttpProblemResults.Domain(context, result.Errors)
+            : Results.Json(DocumentMapping.ToDto(result.Value), ApiJson.Options);
+    }
+
+    private static async Task<IResult> PostSupplierPaymentAsync(
+        HttpContext context,
+        PurchasingSurface purchasing,
+        CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        if (!Scope.TryRouteId(context, "paymentId", out Guid paymentId, out IResult? malformed))
+        {
+            return malformed!;
+        }
+
+        Result<PurchasingDocument> result = await purchasing
+            .PostSupplierPaymentAsync(new TenantId(companyId), Actor(context), paymentId, cancellationToken)
+            .ConfigureAwait(false);
+
+        return result.IsFailure
+            ? HttpProblemResults.Domain(context, result.Errors)
+            : Posted(context, DocumentMapping.ToDto(result.Value), Location(ApiRoutes.SupplierPayment, companyId, "paymentId", paymentId));
+    }
+
+    private static async Task<IResult> CreatePurchaseOrderAsync(
+        HttpContext context,
+        PurchasingSurface purchasing,
+        CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        (PurchaseOrderRequestDto? dto, IResult? refused) =
+            await BodyAsync<PurchaseOrderRequestDto>(context, cancellationToken).ConfigureAwait(false);
+
+        if (dto is null)
+        {
+            return refused!;
+        }
+
+        PurchasingOrderRequest request;
+        try
+        {
+            request = DocumentMapping.ToPurchaseOrderRequest(dto);
+        }
+        catch (WireFormatException wire)
+        {
+            return HttpProblemResults.Wire(context, wire);
+        }
+
+        Result<PurchasingOrder> result = await purchasing
+            .CreatePurchaseOrderAsync(new TenantId(companyId), Actor(context), request, cancellationToken)
+            .ConfigureAwait(false);
+
+        return result.IsFailure
+            ? HttpProblemResults.Domain(context, result.Errors)
+            : Created(context, DocumentMapping.ToDto(result.Value), Location(ApiRoutes.PurchaseOrder, companyId, "orderId", result.Value.Id));
+    }
+
+    private static async Task<IResult> ReadPurchaseOrderAsync(
+        HttpContext context,
+        PurchasingSurface purchasing,
+        CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        if (!Scope.TryRouteId(context, "orderId", out Guid orderId, out IResult? malformed))
+        {
+            return malformed!;
+        }
+
+        Result<PurchasingOrder> result = await purchasing
+            .ReadPurchaseOrderAsync(new TenantId(companyId), Actor(context), orderId, cancellationToken)
+            .ConfigureAwait(false);
+
+        return result.IsFailure
+            ? HttpProblemResults.Domain(context, result.Errors)
+            : Results.Json(DocumentMapping.ToDto(result.Value), ApiJson.Options);
+    }
+
+    private static async Task<IResult> DraftGoodsReceiptAsync(
+        HttpContext context,
+        PurchasingSurface purchasing,
+        CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        (GoodsReceiptRequestDto? dto, IResult? refused) =
+            await BodyAsync<GoodsReceiptRequestDto>(context, cancellationToken).ConfigureAwait(false);
+
+        if (dto is null)
+        {
+            return refused!;
+        }
+
+        PurchasingGoodsReceiptRequest request;
+        try
+        {
+            request = DocumentMapping.ToGoodsReceiptRequest(dto);
+        }
+        catch (WireFormatException wire)
+        {
+            return HttpProblemResults.Wire(context, wire);
+        }
+
+        Result<PurchasingDocument> result = await purchasing
+            .DraftGoodsReceiptAsync(new TenantId(companyId), Actor(context), request, cancellationToken)
+            .ConfigureAwait(false);
+
+        return result.IsFailure
+            ? HttpProblemResults.Domain(context, result.Errors)
+            : Created(context, DocumentMapping.ToDto(result.Value), Location(ApiRoutes.GoodsReceipt, companyId, "receiptId", result.Value.Id));
+    }
+
+    private static async Task<IResult> ReadGoodsReceiptAsync(
+        HttpContext context,
+        PurchasingSurface purchasing,
+        CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        if (!Scope.TryRouteId(context, "receiptId", out Guid receiptId, out IResult? malformed))
+        {
+            return malformed!;
+        }
+
+        Result<PurchasingDocument> result = await purchasing
+            .ReadGoodsReceiptAsync(new TenantId(companyId), Actor(context), receiptId, cancellationToken)
+            .ConfigureAwait(false);
+
+        return result.IsFailure
+            ? HttpProblemResults.Domain(context, result.Errors)
+            : Results.Json(DocumentMapping.ToDto(result.Value), ApiJson.Options);
+    }
+
+    private static async Task<IResult> PostGoodsReceiptAsync(
+        HttpContext context,
+        PurchasingSurface purchasing,
+        CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        if (!Scope.TryRouteId(context, "receiptId", out Guid receiptId, out IResult? malformed))
+        {
+            return malformed!;
+        }
+
+        Result<PurchasingDocument> result = await purchasing
+            .PostGoodsReceiptAsync(new TenantId(companyId), Actor(context), receiptId, cancellationToken)
+            .ConfigureAwait(false);
+
+        return result.IsFailure
+            ? HttpProblemResults.Domain(context, result.Errors)
+            : Posted(context, DocumentMapping.ToDto(result.Value), Location(ApiRoutes.GoodsReceipt, companyId, "receiptId", receiptId));
     }
 
     private static async Task<IResult> PayablesAgingAsync(

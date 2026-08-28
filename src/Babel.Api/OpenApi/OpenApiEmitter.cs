@@ -538,6 +538,83 @@ internal static class OpenApiEmitter
                 Body: null, Response: "CommercialDocument", Success: 201, Anonymous: false, Query: [],
                 ProblemStatuses: [404, 409, 422]),
 
+            new(ApiRoutes.CustomerReceipts, "post", "draftCustomerReceipt",
+                "تسجيل سند قبض مسوّدة", "Draft a customer receipt",
+                "يسجّل سند قبض من عميل في حالة **DRAFT** بتخصيصاته على فواتير **مُرحَّلة**. ولا أثر على ذمّة "
+                + "العميل ولا على الفواتير قبل الترحيل: التخصيص يُنزَل مع القيد لا قبله، فمسوّدةٌ لم تُرحَّل لا "
+                + "تُنقص متبقّي فاتورة واحدة.\n\n"
+                + "**والتخصيص الزائد مرفوض على الطرفين** برمز sales.over_allocation يُسمّي الرقمين: مجموع "
+                + "التخصيصات لا يتجاوز (received + settlementDiscount)، وتخصيص كل فاتورة لا يتجاوز المتبقّي "
+                + "عليها بعد ما سبق من تخصيصات ودفعات مقدّمة.\n\n"
+                + "**ومقبوضٌ يتجاوز المستحقّ يُرفض ولا يصير دفعةً مقدّمة**: الدفعة المقدّمة **مستندٌ آخر وحدثٌ "
+                + "آخر في مصفوفة الترحيل** يُنشئ التزاماً على المنشأة بدل أن يُسقط ذمّةً لها، فتحويلُ الفائض "
+                + "إليها ضمناً كان سيرحّل حدثاً لم يطلبه أحد إلى حساب لم يقصده أحد. ونيّةُ المُرسِل لا تُخمَّن.\n\n"
+                + "و**التصنيف الضريبي لا يظهر هنا**: القبض تسويةٌ لا توريد، ولا ضريبة على تحصيل دينٍ سبق أن "
+                + "فُوتر. أمّا خصم تعجيل السداد فمعالجته الضريبية **بند مفتوح في المصفوفة** ينتظر تأكيد "
+                + "المستشار الضريبي — وهو مسجَّل في دَين التحقّق ولا يُبنى عليه وعد.",
+                "Records a customer receipt in state **DRAFT** with its allocations against **posted** invoices. "
+                + "Nothing touches the customer's balance or the invoices before posting: allocations are applied with the "
+                + "entry, never before it, so an unposted draft reduces no invoice's outstanding amount.\n\n"
+                + "**Over-allocation is refused on both sides** under sales.over_allocation, naming both numbers: the sum of "
+                + "allocations may not exceed (received + settlementDiscount), and each invoice's allocation may not exceed "
+                + "what remains outstanding on it after earlier allocations and advances.\n\n"
+                + "**A receipt beyond what is owed is refused rather than turned into an advance**: a customer advance is a "
+                + "**different document and a different matrix event** that creates a liability on the company instead of "
+                + "clearing a receivable, so silently converting the excess would post an event nobody asked for to an "
+                + "account nobody intended. The sender's intent is never guessed.\n\n"
+                + "**No tax classification appears here**: a collection is a settlement, not a supply, and there is no VAT on "
+                + "collecting a debt that was already invoiced. The VAT treatment of an early-settlement discount is an **open "
+                + "item in the matrix** awaiting a tax adviser's confirmation; it is recorded in the verification debt and no "
+                + "promise is built on it.",
+                Body: "CustomerReceiptRequest", Response: "CommercialDocument", Success: 201, Anonymous: false, Query: [],
+                ProblemStatuses: [404]),
+
+            new(ApiRoutes.CustomerReceipt, "get", "readCustomerReceipt",
+                "قراءة سند قبض", "Read one customer receipt",
+                "يقرأ سند قبض بحالته ومجاميعه ومعرّف قيده إن رُحّل. و**net** هو المقبوض و**tax** هو خصم "
+                + "تعجيل السداد و**gross** مجموعهما — أي ما سقط عن ذمّة العميل.\n\n"
+                + "وكانت هذه القراءة **غير موجودة في الوحدة أصلاً**: يُسجَّل السند ويُرحَّل ولا جملة تقول «ما "
+                + "حاله الآن؟». فمن أنشأ مسوّدةً ثم انقطع اتصاله لم يكن أمامه إلا أن **يعيد الترحيل ليعرف** — "
+                + "والحصانة تجعل ذلك غير مؤذٍ، لا تجعله مقبولاً.",
+                "Reads a customer receipt with its state, its totals, and its entry identifier if posted. Here **net** is the "
+                + "amount collected, **tax** is the early-settlement discount, and **gross** is their sum — that is, what came "
+                + "off the customer's balance.\n\n"
+                + "This read **did not exist in the module at all**: a receipt could be recorded and posted with no sentence "
+                + "for 'what state is it in now?'. Whoever created a draft and then lost their connection had no option but to "
+                + "**post again in order to find out** — which idempotency makes harmless, not acceptable.",
+                Body: null, Response: "CommercialDocument", Success: 200, Anonymous: false, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.CustomerReceiptPosting, "post", "postCustomerReceipt",
+                "ترحيل سند قبض", "Post a customer receipt",
+                "يرحّل سند قبض مسوّدة فتصير **واقعة محاسبية**: تُدين الخزينة أو البنك بالمقبوض، ويُدين حساب "
+                + "خصم التعجيل بالخصم إن وُجد، و**يُدان دائناً حساب مراقبة ذمم العملاء بمجموعهما** — أي أنّ "
+                + "المقبوض **يُسقط من ذمّة العميل**. ثم تُنزَل تخصيصاته على فواتيره فينقص متبقّي كلٍّ منها.\n\n"
+                + "**وحصين ضد التكرار بهوية الترحيل** (شركة · نوع المستند المصدر · معرّف المستند · المُحفِّز · "
+                + "الجيل · رمز الحدث): الوصول الثاني بالهوية نفسها يُرجع السند ذاته و‏alreadyPosted = true ورمز "
+                + "200 بدل 201 و**معرّف القيد نفسه**، ولا يُنشئ قيداً ثانياً — **ولا يُنزل التخصيص مرّة ثانية**. "
+                + "والثاني هو الأخطر: البوّابة تحرس القيد، وأثرُ التخصيص على الفواتير أثرٌ جانبي بعدها؛ ولو وقع "
+                + "بلا شرط لأُنقص متبقّي الفاتورة بضعف ما سُدِّد **بلا قيد ثانٍ يدلّ عليه**.\n\n"
+                + "والحكم حكم بوّابة الوحدة لا مقارنةَ حالةٍ قُرئت قبل النداء: نداءان متزامنان يجتازان فحص "
+                + "«مسوّدة» معاً ويلتقيان عند الهوية الواحدة، فيكتب أحدهما ويعود الآخر موسوماً.\n\n"
+                + "ولا جسم لهذا الطلب، ولا مفتاح حصانة يرسله العميل: تشتقّه الوحدة من هوية السند نفسه.",
+                "Posts a draft receipt, turning it into an **accounting fact**: the cash box or bank is debited with the amount "
+                + "collected, the settlement-discount account is debited with the discount if there is one, and **the accounts "
+                + "receivable control account is credited with their sum** — that is, the collection **comes off the customer's "
+                + "balance**. Its allocations are then applied to that customer's invoices, reducing what remains on each.\n\n"
+                + "**Idempotent by the posting identity** (company, source document type, source document id, trigger, "
+                + "generation, event code): a second arrival with the same identity returns the same receipt with "
+                + "alreadyPosted = true, status 200 instead of 201, and **the same entry identifier**; it creates no second "
+                + "entry — **and applies no second allocation**. The second is the more dangerous: the gateway guards the "
+                + "entry, while applying allocations to invoices is a side effect after it; done unconditionally it would cut "
+                + "an invoice's outstanding amount by twice what was paid, **with no second entry to point at it**.\n\n"
+                + "The verdict is the module gateway's, not a comparison against a state read before the call: two concurrent "
+                + "calls both pass the 'is it a draft' check, meet at the one identity, and one writes while the other returns "
+                + "marked.\n\n"
+                + "This request has no body, and no idempotency key is sent by the client: the module derives it from the "
+                + "receipt's own identity.",
+                Body: null, Response: "CommercialDocument", Success: 201, Anonymous: false, Query: [],
+                ProblemStatuses: [404, 409, 422]),
+
             new(ApiRoutes.ReceivablesAging, "get", "readReceivablesAging",
                 "أعمار الذمم المدينة", "Receivables aging",
                 "أعمار ذمم العملاء في تاريخ معلوم، بشرائح: لم يستحق · 1–30 · 31–60 · 61–90 · فوق 90، ومجموعٍ هو "
@@ -599,6 +676,151 @@ internal static class OpenApiEmitter
                 + "الوصول الثاني يُرجع المستند ذاته و‏alreadyPosted = true ورمز 200 بدل 201، بلا قيد ثانٍ.",
                 "Posts a draft supplier bill. A separate sub-resource, idempotent by the same posting identity with the same behaviour: "
                 + "a second arrival returns the same document with alreadyPosted = true and status 200 instead of 201, with no second entry.",
+                Body: null, Response: "CommercialDocument", Success: 201, Anonymous: false, Query: [],
+                ProblemStatuses: [404, 409, 422]),
+
+            new(ApiRoutes.SupplierPayments, "post", "draftSupplierPayment",
+                "تسجيل سند صرف مسوّدة", "Draft a supplier payment",
+                "يسجّل سند صرف لمورد في حالة **DRAFT** بتخصيصاته على فواتيره **المُرحَّلة**. ولا أثر على ذمّة "
+                + "المورد قبل الترحيل.\n\n"
+                + "**ورسوم التحويل ليست ذمّة مورد**: السند يُخصم من الخزينة بـ(paid + bankFee) ويُنقص ذمّة "
+                + "المورد بـpaid وحده — والرسوم مصروف بنكي على المنشأة. وخلطهما يجعل رصيد المورد أقلّ ممّا هو، "
+                + "فتظهر مطالبةٌ لا يعرف أحد مصدرها بعد أشهر. ولذلك مجموع التخصيصات يُقاس على paid لا على "
+                + "مجموعهما.\n\n"
+                + "والتخصيص الزائد مرفوض على الطرفين برمز purchasing.over_allocation يُسمّي الرقمين.",
+                "Records a supplier payment in state **DRAFT** with its allocations against that supplier's **posted** bills. "
+                + "Nothing touches the supplier's balance before posting.\n\n"
+                + "**A transfer fee is not a supplier balance**: the payment takes (paid + bankFee) out of the treasury and "
+                + "reduces the supplier's balance by paid alone — the fee is a bank charge borne by the company. Mixing the two "
+                + "makes the supplier's balance smaller than it is, and a claim nobody can trace surfaces months later. That is "
+                + "why the sum of allocations is measured against paid, not against their total.\n\n"
+                + "Over-allocation is refused on both sides under purchasing.over_allocation, naming both numbers.",
+                Body: "SupplierPaymentRequest", Response: "CommercialDocument", Success: 201, Anonymous: false, Query: [],
+                ProblemStatuses: [404]),
+
+            new(ApiRoutes.SupplierPayment, "get", "readSupplierPayment",
+                "قراءة سند صرف", "Read one supplier payment",
+                "يقرأ سند صرف بحالته ومجاميعه ومعرّف قيده إن رُحّل. و**net** هو المدفوع و**tax** هو رسوم "
+                + "التحويل و**gross** مجموعهما — أي ما خرج من الخزينة. ولاحظ أنّ ما سقط عن ذمّة المورد هو "
+                + "**net وحده** لا gross.",
+                "Reads a supplier payment with its state, its totals, and its entry identifier if posted. Here **net** is the "
+                + "amount paid, **tax** is the transfer fee, and **gross** is their sum — what left the treasury. Note that what "
+                + "came off the supplier's balance is **net alone**, not gross.",
+                Body: null, Response: "CommercialDocument", Success: 200, Anonymous: false, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.SupplierPaymentPosting, "post", "postSupplierPayment",
+                "ترحيل سند صرف", "Post a supplier payment",
+                "يرحّل سند صرف مسوّدة: **يُدان مديناً حساب مراقبة ذمم الموردين بالمدفوع** — أي أنّ المدفوع "
+                + "**يُسقط من ذمّة المورد** — ويُدان حساب المصاريف البنكية بالرسوم إن وُجدت، ويُدان دائناً حساب "
+                + "التسوية بمجموعهما. ثم تُنزَل تخصيصاته على فواتير المورد.\n\n"
+                + "وحصين ضد التكرار بهوية الترحيل نفسها وبالسلوك نفسه: الوصول الثاني يُرجع السند ذاته و"
+                + "alreadyPosted = true ورمز 200 ومعرّف القيد نفسه، بلا قيد ثانٍ **وبلا تخصيص ثانٍ**.",
+                "Posts a draft supplier payment: **the accounts payable control account is debited with the amount paid** — "
+                + "that is, the payment **comes off the supplier's balance** — the bank charges account is debited with the fee "
+                + "if there is one, and the settlement account is credited with their sum. Its allocations are then applied to "
+                + "that supplier's bills.\n\n"
+                + "Idempotent by the same posting identity with the same behaviour: a second arrival returns the same payment "
+                + "with alreadyPosted = true, status 200, and the same entry identifier, with no second entry **and no second "
+                + "allocation**.",
+                Body: null, Response: "CommercialDocument", Success: 201, Anonymous: false, Query: [],
+                ProblemStatuses: [404, 409, 422]),
+
+            new(ApiRoutes.PurchaseOrders, "post", "createPurchaseOrder",
+                "إنشاء أمر شراء", "Create a purchase order",
+                "يُنشئ أمر شراء ويُرجعه **بسطوره ومعرّفاتها** — وهي مدخل الاستلام: سطر الاستلام يشير إلى سطر "
+                + "الأمر بمعرّفه، فمن أراد أن يستلم قرأ أمره أولاً أو استعمل جواب هذا الطلب.\n\n"
+                + "**ولاحظ ما ليس على هذا المورد — ولا يجوز أن يوجد: لا مورد ‎/posting.** أمر الشراء **التزام "
+                + "تعاقدي لا حدث محاسبي**: لا يُنشئ قيداً، ولا يمسّ حساباً، ولا يُثبَت في الدفتر. والقيد الأول "
+                + "في دورة الشراء هو **الاستلام**، لأن البضاعة عنده دخلت والالتزام نشأ فعلاً بينما فاتورة "
+                + "المورد لم تصل بعد. وبابُ ترحيلٍ هنا كان سيكون خطأً محاسبياً مكتوباً في عقد منشور — وهو ما "
+                + "يُقرأ من شكل السطح نفسه لا من تعليق.\n\n"
+                + "ولذلك أيضاً مخطّط الجواب PurchaseOrder **لا يحمل entryId ولا alreadyPosted**: حقلٌ فارغ "
+                + "لهما كان سيُقرأ «لم يُرحَّل بعد» بدل «لا يُرحَّل أبداً».\n\n"
+                + "**ولا ربط بطلب شراء داخلي هنا**: طلب الشراء مستند داخلي لم يُنشر على هذا السطح، وحقلٌ "
+                + "يشير إلى ما لا يستطيع العميل إنشاؤه زينةٌ لا سبيل إلى ملئها. وهو نقصٌ مُعلَن.",
+                "Creates a purchase order and returns it **with its lines and their identifiers** — the input a goods receipt "
+                + "needs: a receipt line refers to an order line by its identifier, so whoever receives goods reads the order "
+                + "first, or uses this response.\n\n"
+                + "**Note what this resource does not carry, and must not: no /posting sub-resource.** A purchase order is a "
+                + "**contractual commitment, not an accounting event**: it creates no entry, touches no account, and is never "
+                + "recorded in the ledger. The first entry in the purchasing cycle is the **goods receipt**, because that is "
+                + "when the goods arrive and the obligation actually exists while the supplier's invoice has not yet come. A "
+                + "posting door here would be an accounting error written into a published contract — and its absence is read "
+                + "from the shape of the surface itself, not from a comment.\n\n"
+                + "For the same reason the PurchaseOrder response schema **carries neither entryId nor alreadyPosted**: an empty "
+                + "field for either would read as 'not posted yet' rather than 'never posted'.\n\n"
+                + "**And there is no link to an internal purchase request here**: the purchase request is an internal document "
+                + "not published on this surface, and a field pointing at something the client cannot create is decoration with "
+                + "no way to fill it. This is a declared gap.",
+                Body: "PurchaseOrderRequest", Response: "PurchaseOrder", Success: 201, Anonymous: false, Query: [],
+                ProblemStatuses: [404]),
+
+            new(ApiRoutes.PurchaseOrder, "get", "readPurchaseOrder",
+                "قراءة أمر شراء", "Read one purchase order",
+                "يقرأ أمر شراء بحالته ومجاميعه و**سطوره بمعرّفاتها**. ولا معرّف قيد له ولا سيكون: أمر الشراء "
+                + "لا يُرحَّل.",
+                "Reads a purchase order with its state, its totals, and **its lines with their identifiers**. It carries no "
+                + "entry identifier and never will: a purchase order is not posted.",
+                Body: null, Response: "PurchaseOrder", Success: 200, Anonymous: false, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.GoodsReceipts, "post", "draftGoodsReceipt",
+                "تسجيل استلام بضاعة مسوّدة", "Draft a goods receipt",
+                "يسجّل استلام بضاعة على أمر شراء في حالة **DRAFT**. و**الضلع الأول من المطابقة الثلاثية**: "
+                + "كمية مستلمة تتجاوز المطلوب على سطر الأمر تُرفض **هنا** لا عند الفاتورة، برمز "
+                + "purchasing.receipt_exceeds_order يُسمّي الصنف والرقمين.\n\n"
+                + "وتكلفة كل سطر تُحسب في الوحدة **بسعر أمر الشراء للكمية المستلمة فعلاً** — لا يرسلها العميل، "
+                + "فمبلغٌ يرسله المستدعي كان سيصير مصدر حقيقة ثانياً يستطيع أن ينحرف عن الأمر.\n\n"
+                + "ولا مخزون ولا قيد قبل الترحيل: المسوّدة تحجز الكمية على سطر الأمر ولا تُحرّك رصيد صنف.",
+                "Records a goods receipt against a purchase order in state **DRAFT**. It is the **first leg of the three-way "
+                + "match**: a received quantity beyond what remains on the order line is refused **here**, not at the invoice, "
+                + "under purchasing.receipt_exceeds_order, naming the item and both numbers.\n\n"
+                + "Each line's cost is computed in the module **at the purchase-order price for the quantity actually "
+                + "received** — the client never sends it, since an amount sent by the caller would be a second source of truth "
+                + "able to diverge from the order.\n\n"
+                + "No stock and no entry before posting: the draft consumes quantity on the order line and moves no item balance.",
+                Body: "GoodsReceiptRequest", Response: "CommercialDocument", Success: 201, Anonymous: false, Query: [],
+                ProblemStatuses: [404]),
+
+            new(ApiRoutes.GoodsReceipt, "get", "readGoodsReceipt",
+                "قراءة استلام بضاعة", "Read one goods receipt",
+                "يقرأ استلاماً بحالته وتكلفته ومعرّف قيده إن رُحّل. و**entryId عليه هو قيد آخر سطر رُحّل**، لا "
+                + "قيداً واحداً للاستلام: كل سطر يُرحَّل قيداً مستقلاً لأن قالب المصفوفة يحمل مرجع صنف واحداً "
+                + "ومستودعاً واحداً على مستوى الطلب، فقيدٌ واحد لاستلام متعدد الأصناف كان سيحمل مرجع صنف واحد "
+                + "لأصناف عدّة ويفسد الدفتر المساعد للأصناف بصمت.",
+                "Reads a goods receipt with its state, its cost, and its entry identifier if posted. **Its entryId is the entry "
+                + "of the last posted line**, not one entry for the receipt: each line posts its own entry because the matrix "
+                + "template carries a single item reference and a single warehouse at request level, so one entry for a "
+                + "multi-item receipt would carry one item reference for several items and silently corrupt the item subledger.",
+                Body: null, Response: "CommercialDocument", Success: 200, Anonymous: false, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.GoodsReceiptPosting, "post", "postGoodsReceipt",
+                "ترحيل استلام بضاعة", "Post a goods receipt",
+                "يرحّل استلاماً مسوّدة **سطراً سطراً**. وهو الباب الوحيد على هذا السطح الذي **يمسّ دفتراً "
+                + "مساعداً غير دفتر الأطراف**: كل سطر يُسجَّل أولاً في **دفتر المخزون المساعد** بتكلفته الفعلية "
+                + "فيصير أساس تكلفة الصنف، **ثم** يُدين حساب مراقبة المخزون بالمبلغ نفسه ويُنشئ التزام «بضاعة "
+                + "مستلمة لم تُفوتر» على المورد.\n\n"
+                + "**وترتيب النداءين ليس تفصيلاً:** الحركة تُسجَّل أولاً، فإن رُفضت لم يُكتب في الدفتر شيء ولم "
+                + "ينحرف طرفٌ عن طرف. وهوية الحركة هي هوية الترحيل حرفاً بحرف، فالوصول الثاني لا يصرف كميةً "
+                + "ثانية ولا يُنشئ قيداً ثانياً.\n\n"
+                + "**ولذلك يشترط هذا الباب شيئين لا يشترطهما غيره على هذا السطح:** استحقاق وحدة **المخزون** "
+                + "للمنشأة — ومنشأةٌ لم تشترِها تُرفض بـ403 وentitlement.not_entitled، وهو رفضٌ صحيح لا عطل — "
+                + "وقدرة **المطابقة الثلاثية** (three_way_match) مُشغَّلةً في ملفّ قدراتها، وإلا رُفض بـ422.\n\n"
+                + "و**gross** على الجواب هو تكلفة الاستلام كاملةً، و**tax** صفر دائماً: الاستلام لا ضريبة عليه "
+                + "— الضريبة تقع عند فاتورة المورد لا عند دخول البضاعة.",
+                "Posts a draft goods receipt **line by line**. It is the only door on this surface that **touches a subledger "
+                + "other than the party subledger**: each line is first recorded in the **inventory subledger** at its actual "
+                + "cost, becoming the item's cost basis, and **only then** is the inventory control account debited with the "
+                + "same amount and a 'goods received not invoiced' liability raised against the supplier.\n\n"
+                + "**The order of the two calls is not a detail:** the movement is recorded first, so that if it is refused "
+                + "nothing is written to the ledger and neither side drifts from the other. The movement's identity is the "
+                + "posting identity letter for letter, so a second arrival issues no second quantity and creates no second "
+                + "entry.\n\n"
+                + "**This door therefore requires two things no other door on this surface requires:** the company's "
+                + "entitlement to the **Inventory** module — a company that has not bought it is refused with 403 and "
+                + "entitlement.not_entitled, which is a correct refusal and not a fault — and the **three-way match** "
+                + "capability enabled in its capability profile, failing which it is refused with 422.\n\n"
+                + "In the response **gross** is the full receipt cost and **tax** is always zero: a receipt carries no VAT — "
+                + "tax arises at the supplier's invoice, not when the goods arrive.",
                 Body: null, Response: "CommercialDocument", Success: 201, Anonymous: false, Query: [],
                 ProblemStatuses: [404, 409, 422]),
 
@@ -993,7 +1215,15 @@ internal static class OpenApiEmitter
     /// إنشاءَ مسوّدةٍ يُنشئ مستنداً جديداً في كل مرّة، فيُعلن العقد حصانةً لا وجود لها.
     /// </summary>
     private static readonly string[] IdempotentPostings =
-        ["postCreditNote", "postJournalEntry", "postSalesInvoice", "postSupplierBill"];
+    [
+        "postCreditNote",
+        "postCustomerReceipt",
+        "postGoodsReceipt",
+        "postJournalEntry",
+        "postSalesInvoice",
+        "postSupplierBill",
+        "postSupplierPayment",
+    ];
 
     private static string ProblemAr(int status) => status switch
     {
@@ -2177,6 +2407,221 @@ internal static class OpenApiEmitter
             WriteStringProperty(w, "supplierId", "معرّف المورد.", "The supplier identifier.", 36);
             w.WriteEndObject();
             WriteRequired(w, "costCenterId", "expenseCategory", "issuedOn", "lines", "number", "supplierId");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("ReceiptAllocation", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "تخصيص مبلغ من سند قبض على فاتورة مبيعات **مُرحَّلة**. ولا عميل فيه: عميلُه عميل السند، "
+                + "والفاتورة تُفحص أنها له — وإعادة ذكره كانت ستفتح باباً لتخصيصٍ على فاتورة عميل آخر. / "
+                + "An allocation of part of a receipt against a **posted** sales invoice. It carries no customer: the "
+                + "customer is the receipt's, and the invoice is checked to be theirs — repeating it would open a door to "
+                + "allocating against another customer's invoice.");
+            w.WriteStartObject("properties");
+            WriteRefProperty(w, "amount", "Money");
+            WriteStringProperty(w, "invoiceId", "الفاتورة المُرحَّلة التي يُنزَل عليها المبلغ.", "The posted invoice the amount is applied to.", 36);
+            w.WriteEndObject();
+            WriteRequired(w, "amount", "invoiceId");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("CustomerReceiptRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب تسجيل سند قبض مسوّدة. ولا مجاميع فيه: المجموع هو received + settlementDiscount وتحسبه "
+                + "الوحدة. **ولا حساب ولا رمز حساب**: settlementMethod مؤهّل دور تحلّه المصفوفة إلى حساب "
+                + "خزينة أو بنك، وtreasuryPartyId طرفٌ في دفتره المساعد لا رقم حساب. / "
+                + "A request to draft a customer receipt. It carries no totals: the total is received + settlementDiscount and "
+                + "the module computes it. **No account and no account code**: settlementMethod is a role qualifier the matrix "
+                + "resolves into a cash or bank account, and treasuryPartyId is a party in its subledger, not an account number.");
+            w.WriteStartObject("properties");
+            WriteArrayRefProperty(
+                w,
+                "allocations",
+                "ReceiptAllocation",
+                "التخصيصات على فواتير مُرحَّلة لهذا العميل. وقائمةٌ فارغة مقبولة شكلاً — سندٌ يُقبض على الحساب — ومجموعها لا يتجاوز received + settlementDiscount.",
+                "Allocations against this customer's posted invoices. An empty list is structurally accepted — a receipt on account — and their sum may not exceed received + settlementDiscount.");
+            WriteStringProperty(w, "customerId", "العميل المقبوض منه.", "The customer the amount was collected from.", 36);
+            WriteStringProperty(w, "number", "رقم السند — فريد داخل المستأجر.", "The receipt number — unique within the tenant.", 64);
+            WriteRefProperty(w, "received", "Money");
+            WriteDateProperty(w, "receivedOn", "تاريخ القبض.", "The collection date.");
+            WriteRefProperty(w, "settlementDiscount", "Money");
+            WriteStringProperty(
+                w,
+                "settlementMethod",
+                "طريقة التسوية — مؤهّل دور تحلّه المصفوفة إلى حساب. المستعمَل اليوم: cash · bank · card_clearing، ويُنشر نصّاً لا مجموعةً مغلقة كما يُنشر التصنيف الضريبي وللسبب نفسه.",
+                "The settlement method — a role qualifier the matrix resolves into an account. In use today: cash, bank, card_clearing; published as text rather than a closed set, as the tax classification is and for the same reason.",
+                32);
+            WriteStringProperty(
+                w,
+                "treasuryPartyId",
+                "الخزينة أو الحساب البنكي في دفترها المساعد — **طرفٌ لا رقم حساب**.",
+                "The cash box or bank account in its subledger — **a party, not an account number**.",
+                64);
+            w.WriteEndObject();
+            WriteRequired(w, "allocations", "customerId", "number", "received", "receivedOn", "settlementDiscount", "settlementMethod", "treasuryPartyId");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("PaymentAllocation", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "تخصيص مبلغ من سند صرف على فاتورة مورد **مُرحَّلة**. / "
+                + "An allocation of part of a payment against a **posted** supplier bill.");
+            w.WriteStartObject("properties");
+            WriteRefProperty(w, "amount", "Money");
+            WriteStringProperty(w, "billId", "فاتورة المورد المُرحَّلة.", "The posted supplier bill.", 36);
+            w.WriteEndObject();
+            WriteRequired(w, "amount", "billId");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("SupplierPaymentRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب تسجيل سند صرف مسوّدة. و**bankFee ليست ذمّة مورد**: يخرج من الخزينة paid + bankFee "
+                + "وينقص من ذمّة المورد paid وحده، ومجموع التخصيصات يُقاس على paid لا على مجموعهما. / "
+                + "A request to draft a supplier payment. **bankFee is not a supplier balance**: paid + bankFee leaves the "
+                + "treasury while only paid comes off the supplier's balance, and the sum of allocations is measured against "
+                + "paid rather than against their total.");
+            w.WriteStartObject("properties");
+            WriteArrayRefProperty(
+                w,
+                "allocations",
+                "PaymentAllocation",
+                "التخصيصات على فواتير هذا المورد المُرحَّلة. ومجموعها لا يتجاوز paid.",
+                "Allocations against this supplier's posted bills. Their sum may not exceed paid.");
+            WriteRefProperty(w, "bankFee", "Money");
+            WriteStringProperty(w, "number", "رقم السند — فريد داخل المستأجر.", "The payment number — unique within the tenant.", 64);
+            WriteRefProperty(w, "paid", "Money");
+            WriteDateProperty(w, "paidOn", "تاريخ الصرف.", "The payment date.");
+            WriteStringProperty(
+                w,
+                "settlementMethod",
+                "طريقة التسوية — مؤهّل دور. المستعمَل اليوم: cash · bank · card_clearing.",
+                "The settlement method — a role qualifier. In use today: cash, bank, card_clearing.",
+                32);
+            WriteStringProperty(w, "supplierId", "المورد المدفوع له.", "The supplier being paid.", 36);
+            WriteStringProperty(
+                w,
+                "treasuryPartyId",
+                "الخزينة أو الحساب البنكي في دفترها المساعد — طرفٌ لا رقم حساب.",
+                "The cash box or bank account in its subledger — a party, not an account number.",
+                64);
+            w.WriteEndObject();
+            WriteRequired(w, "allocations", "bankFee", "number", "paid", "paidOn", "settlementMethod", "supplierId", "treasuryPartyId");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("PurchaseOrderRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب إنشاء أمر شراء. **ولا حالة فيه ولا ترحيل**: أمر الشراء التزام تعاقدي لا حدث محاسبي، "
+                + "ولا مورد posting له. ولا حقل يشير إلى طلب شراء داخلي: طلب الشراء غير منشور على هذا السطح. / "
+                + "A request to create a purchase order. **It carries no state and no posting**: a purchase order is a "
+                + "contractual commitment, not an accounting event, and has no posting sub-resource. It carries no reference to "
+                + "an internal purchase request either: the purchase request is not published on this surface.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "costCenterId", "مركز التكلفة.", "The cost centre.", 64);
+            WriteArrayRefProperty(w, "lines", "PurchaseLine", "السطور. أمرٌ بلا سطر يُرفض في الوحدة برمزه.", "The lines. An order with no line is refused in the module under its own code.");
+            WriteStringProperty(w, "number", "رقم الأمر — فريد داخل المستأجر.", "The order number — unique within the tenant.", 64);
+            WriteDateProperty(w, "orderedOn", "تاريخ الأمر.", "The order date.");
+            WriteStringProperty(w, "supplierId", "المورد.", "The supplier.", 36);
+            WriteStringProperty(
+                w,
+                "warehouseId",
+                "المستودع المستقبِل — يصير بُعد سطر الاستلام حين يُرحَّل.",
+                "The receiving warehouse — it becomes the receipt line's dimension when that posts.",
+                64);
+            w.WriteEndObject();
+            WriteRequired(w, "costCenterId", "lines", "number", "orderedOn", "supplierId", "warehouseId");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("PurchaseOrderLine", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "سطر أمر شراء كما يخرج على السلك — **ومعرّفه هو مدخل الاستلام**: سطر الاستلام يشير إليه "
+                + "بمعرّفه هذا. وبدون نشر هذه المعرّفات يصير باب الاستلام باباً لا يوصل إليه بابٌ آخر. / "
+                + "A purchase order line as it leaves on the wire — **and its identifier is the input a goods receipt "
+                + "needs**: a receipt line refers to it by this identifier. Without publishing these identifiers the goods "
+                + "receipt door would be a door no other door on this surface leads to.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "id", "معرّف السطر.", "The line identifier.", 36);
+            WriteIntegerProperty(w, "lineNo", 1, 1000, "رقم السطر داخل الأمر.", "The line number within the order.");
+            WriteStringProperty(w, "itemId", "الصنف في دفتره المساعد.", "The item in its subledger.", 64);
+            WriteRefProperty(w, "quantity", "Quantity");
+            WriteRefProperty(w, "unitPrice", "Money");
+            w.WriteEndObject();
+            WriteRequired(w, "id", "itemId", "lineNo", "quantity", "unitPrice");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("PurchaseOrder", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "أمر شراء كما يخرج على السلك. **ولاحظ ما ليس فيه: لا entryId ولا alreadyPosted** — وذلك ليس "
+                + "نقصاً بل هو الفرق نفسه: أمر الشراء لا يُرحَّل أبداً، وحقلٌ فارغ لهما كان سيُقرأ «لم يُرحَّل "
+                + "بعد» بدل «لا يُرحَّل أبداً». وهو المخطّط الوحيد لمستند على هذا السطح بلا هذين الحقلين، "
+                + "والفرق مقصود ومقروء. / "
+                + "A purchase order as it leaves on the wire. **Note what it does not carry: neither entryId nor "
+                + "alreadyPosted** — not a gap but the distinction itself: a purchase order is never posted, and an empty field "
+                + "for either would read as 'not posted yet' rather than 'never posted'. It is the only document schema on this "
+                + "surface without those two fields, and the difference is deliberate and readable.");
+            w.WriteStartObject("properties");
+            WriteRefProperty(w, "gross", "Money");
+            WriteStringProperty(w, "id", "معرّف الأمر.", "The order identifier.", 36);
+            WriteArrayRefProperty(w, "lines", "PurchaseOrderLine", "السطور بمعرّفاتها — مدخل الاستلام.", "The lines with their identifiers — the input a goods receipt needs.");
+            WriteRefProperty(w, "net", "Money");
+            WriteStringProperty(w, "number", "رقم الأمر.", "The order number.", 64);
+            WriteStringProperty(w, "state", "الحالة: DRAFT · APPROVED · CANCELLED. ولا POSTED عليه أبداً.", "The state: DRAFT, APPROVED, CANCELLED. Never POSTED.", 32);
+            WriteRefProperty(w, "tax", "Money");
+            w.WriteEndObject();
+            WriteRequired(w, "gross", "id", "lines", "net", "number", "state", "tax");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("GoodsReceiptLine", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "سطر استلام: أي سطر أمر، وبأي كمية. **ولا سعر فيه**: التكلفة تُحسب في الوحدة بسعر أمر الشراء "
+                + "للكمية المستلمة، وسعرٌ يرسله العميل كان سيصير مصدر حقيقة ثانياً ينحرف عن الأمر. / "
+                + "A goods receipt line: which order line, and how much. **It carries no price**: the cost is computed in the "
+                + "module at the purchase-order price for the quantity received, and a price sent by the client would be a "
+                + "second source of truth able to diverge from the order.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "orderLineId", "سطر الأمر المستلَم عليه — معرّفه من مخطّط PurchaseOrderLine.", "The order line being received against — its identifier from the PurchaseOrderLine schema.", 36);
+            WriteRefProperty(w, "quantity", "Quantity");
+            w.WriteEndObject();
+            WriteRequired(w, "orderLineId", "quantity");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("GoodsReceiptRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب تسجيل استلام بضاعة مسوّدة على أمر شراء. ولا مورد فيه: مورده مورد الأمر، ولا مستودع: "
+                + "مستودعه مستودع الأمر — وإعادة ذكرهما تفتح باب انحراف عن الأمر الذي يُطابَق به لاحقاً. / "
+                + "A request to draft a goods receipt against a purchase order. It carries no supplier — its supplier is the "
+                + "order's — and no warehouse — its warehouse is the order's; repeating either would open a door to drifting "
+                + "from the very order it is later matched against.");
+            w.WriteStartObject("properties");
+            WriteArrayRefProperty(w, "lines", "GoodsReceiptLine", "السطور. استلامٌ بلا سطر يُرفض في الوحدة برمزه.", "The lines. A receipt with no line is refused in the module under its own code.");
+            WriteStringProperty(w, "number", "رقم الاستلام — فريد داخل المستأجر.", "The receipt number — unique within the tenant.", 64);
+            WriteStringProperty(w, "orderId", "أمر الشراء المستلَم عليه.", "The purchase order being received against.", 36);
+            WriteDateProperty(w, "receivedOn", "تاريخ الاستلام.", "The receipt date.");
+            w.WriteEndObject();
+            WriteRequired(w, "lines", "number", "orderId", "receivedOn");
             w.WriteBoolean("additionalProperties", false);
         });
 

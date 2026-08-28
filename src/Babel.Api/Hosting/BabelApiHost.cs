@@ -66,7 +66,15 @@ internal static class BabelApiHost
         builder.Services.AddBabelSales(options => ApplySalesConfiguration(builder.Configuration, options));
         builder.Services.AddBabelPurchasing(options => ApplyPurchasingConfiguration(builder.Configuration, options));
         builder.Services.AddBabelCompliance();
-        builder.Services.AddBabelInventory();
+
+        // ── والمخزون كذلك يُقرأ اتصاله من الإعداد ─────────────────────────────
+        // ‏**وهو نفس العطل الذي أُصلح للمبيعات والمشتريات، باقياً في وحدة ثالثة**:
+        // كان الجذر يستدعي `AddBabelInventory()` بلا ضابط، فيشير كل خادم إلى
+        // ‏`babel_inventory` على المضيف المحلي مهما كان النشر. وغير مرئي للسبب نفسه —
+        // ‏**مسارٌ لا يُسلَك لا يُظهر إعداداً خاطئاً**: لم يكن باب HTTP واحد يبلغ منفذ
+        // التقييم قبل نشر استلام البضاعة على هذا السطح.
+        // (‏docs/evidence/traps.md#fakh-one-module-connection-still-read-from-a-default-after-its-siblings-were-fixed)
+        builder.Services.AddBabelInventory(options => ApplyInventoryConfiguration(builder.Configuration, options));
 
         // سياق الطلب: يُملأ من الاعتماد وحده.
         builder.Services.AddScoped<RequestTenantContext>();
@@ -213,6 +221,27 @@ internal static class BabelApiHost
         }
 
         string? currency = configuration["Babel:Purchasing:CompanyCurrency"];
+        if (!string.IsNullOrWhiteSpace(currency))
+        {
+            options.CompanyCurrency = currency;
+        }
+    }
+
+    /// <summary>
+    /// يقرأ إعداد المخزون. <b>ولا اتصال مالك هنا</b> — نشر المخطّط عملية مالك، ومسار
+    /// التطبيق لا يحتاجها ولا يجوز أن يملكها، كما في النواة والدفتر والمبيعات بالضبط.
+    /// </summary>
+    /// <param name="configuration">الإعداد.</param>
+    /// <param name="options">إعدادات الوحدة.</param>
+    private static void ApplyInventoryConfiguration(ConfigurationManager configuration, InventoryOptions options)
+    {
+        string? connection = configuration["Babel:Inventory:ConnectionString"];
+        if (!string.IsNullOrWhiteSpace(connection))
+        {
+            options.ConnectionString = connection;
+        }
+
+        string? currency = configuration["Babel:Inventory:CompanyCurrency"];
         if (!string.IsNullOrWhiteSpace(currency))
         {
             options.CompanyCurrency = currency;

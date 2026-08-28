@@ -83,6 +83,16 @@ public sealed class CustomerReceiptService : IApplicationService
             return Result<SalesDocumentView>.Failure(SalesErrors.NegativeAmount);
         }
 
+        // ── العملة تُقرأ، لا تُهمل ────────────────────────────────────────────
+        // كل مبلغ داخلٍ هنا <see cref="Money"/> — أي **يحمل عملته** — وكان المسار
+        // يقرأ `.Amount` ويكتب `CurrencyCode = _currency.Value`، فمسوّدةٌ بالدولار
+        // تُسجَّل بالريال بالرقم نفسه بلا خطأ ولا سطر سجلّ. والرفض هنا يُسمّي العملتين.
+        Result uniform = EnsureCompanyCurrency(draft);
+        if (uniform.IsFailure)
+        {
+            return Result<SalesDocumentView>.Failure(uniform.Errors);
+        }
+
         decimal settled = draft.Received.Amount + draft.SettlementDiscount.Amount;
         decimal requested = draft.Allocations.Sum(static allocation => allocation.Amount.Amount);
 
@@ -206,7 +216,9 @@ public sealed class CustomerReceiptService : IApplicationService
 
         if (receipt.State == SalesDocumentState.Posted)
         {
-            return Result<SalesDocumentView>.Success(ViewOfReceipt(receipt));
+            // وصولٌ ثانٍ بعد أن اكتمل الأول: السند لا يُمسّ، والحقيقة تُقال صراحةً —
+            // ولا تُشتقّ من الحالة عند المستدعي، فالحالة نفسها في الحالتين.
+            return Result<SalesDocumentView>.Success(ViewOfReceipt(receipt) with { AlreadyPosted = true });
         }
 
         CustomerRow customer = await _database.Customers
@@ -256,22 +268,37 @@ public sealed class CustomerReceiptService : IApplicationService
         receipt.State = SalesDocumentState.Posted;
         receipt.PostedEntryId = posted.Value.JournalEntryId;
 
-        List<ReceivableAllocationRow> allocations = await _database.Allocations
-            .Where(row => row.SourceType == "RECEIPT" && row.SourceId == receipt.Id)
-            .OrderBy(row => row.InvoiceId)
-            .ToListAsync(cancellationToken)
-            .ConfigureAwait(false);
-
-        foreach (ReceivableAllocationRow allocation in allocations)
+        // ── الأثر الجانبي يتبع حكم البوّابة، لا يقع بعده بلا شرط ─────────────────
+        // البوّابة تحرس **القيد**؛ وهذه الحلقة أثرٌ جانبي على مستند آخر. ونداءان
+        // متزامنان يجتازان فحص «مسوّدة» معاً ويلتقيان عند هوية الإحكام الواحدة:
+        // أحدهما يكتب القيد والآخر يعود بإيصاله موسوماً — ولو أُنزلت التخصيصات في
+        // الحالتين لأُضيف المبلغ نفسه مرّتين إلى `AllocatedAmount`، فيقلّ المتبقّي
+        // على الفاتورة بضعف ما سُدِّد، **بلا قيد ثانٍ يدلّ عليه**.
+        // (‏docs/evidence/traps.md#fakh-an-idempotent-gateway-with-an-unconditional-side-effect-after-it)
+        if (!posted.Value.WasAlreadyPosted)
         {
-            SalesInvoiceRow invoice = await _database.Invoices
-                .FirstAsync(row => row.Id == allocation.InvoiceId, cancellationToken)
+            List<ReceivableAllocationRow> allocations = await _database.Allocations
+                .Where(row => row.SourceType == "RECEIPT" && row.SourceId == receipt.Id)
+                .OrderBy(row => row.InvoiceId)
+                .ToListAsync(cancellationToken)
                 .ConfigureAwait(false);
-            invoice.AllocatedAmount += allocation.AllocatedAmount;
+
+            foreach (ReceivableAllocationRow allocation in allocations)
+            {
+                SalesInvoiceRow invoice = await _database.Invoices
+                    .FirstAsync(row => row.Id == allocation.InvoiceId, cancellationToken)
+                    .ConfigureAwait(false);
+                invoice.AllocatedAmount += allocation.AllocatedAmount;
+            }
         }
 
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        return Result<SalesDocumentView>.Success(ViewOfReceipt(receipt));
+
+        // **حكم البوّابة لا حكمنا** — نفس ما تفعله `SalesInvoiceService.PostInvoiceAsync`
+        // حرفاً بحرف: حسابُ الحقل من الحالة المقروءة قبل النداء كان سيُعلن للنداءين
+        // المتزامنين معاً أنهما رحّلا.
+        return Result<SalesDocumentView>.Success(
+            ViewOfReceipt(receipt) with { AlreadyPosted = posted.Value.WasAlreadyPosted });
     }
 
     /// <summary>يسجّل دفعة مقدمة من عميل.</summary>
@@ -384,7 +411,7 @@ public sealed class CustomerReceiptService : IApplicationService
 
         if (advance.State == SalesDocumentState.Posted)
         {
-            return Result<SalesDocumentView>.Success(ViewOfAdvance(advance));
+            return Result<SalesDocumentView>.Success(ViewOfAdvance(advance) with { AlreadyPosted = true });
         }
 
         CustomerRow customer = await _database.Customers
@@ -432,7 +459,8 @@ public sealed class CustomerReceiptService : IApplicationService
         advance.PostedEntryId = posted.Value.JournalEntryId;
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        return Result<SalesDocumentView>.Success(ViewOfAdvance(advance));
+        return Result<SalesDocumentView>.Success(
+            ViewOfAdvance(advance) with { AlreadyPosted = posted.Value.WasAlreadyPosted });
     }
 
     /// <summary>يستنفد جزءاً من دفعة مقدمة مقابل فاتورة، ويرحّل الاستنفاد.</summary>
@@ -599,6 +627,84 @@ public sealed class CustomerReceiptService : IApplicationService
             tenant,
             [SalesAdmission.CustomerField, SalesAdmission.LinesField, SalesAdmission.AdvanceAppliedField],
             cancellationToken);
+
+    /// <summary>
+    /// يقرأ سند قبض بحالته ومجاميعه ومعرّف قيده إن رُحّل.
+    /// <para>
+    /// <b>ولم تكن هذه الجملة موجودة في الوحدة:</b> يُسجَّل السند ويُرحَّل ولا سبيل إلى
+    /// سؤال «ما حاله الآن؟». فمن أنشأ مسوّدةً ثم انقطع اتصاله لم يكن أمامه إلا أن
+    /// <b>يعيد الترحيل ليعرف</b> — وهو أسوأ ما يُطلب من عميل في مسار مالي، والحصانة
+    /// وحدها تجعله غير مؤذٍ لا تجعله مقبولاً.
+    /// </para>
+    /// </summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="receiptId">السند.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    [RequiresEntitlement(BabelModule.Sales, EntitlementAccess.Read)]
+    public async ValueTask<Result<SalesDocumentView>> GetReceiptAsync(
+        TenantId tenant,
+        UserId actor,
+        Guid receiptId,
+        CancellationToken cancellationToken = default)
+    {
+        Result gate = await _enforcer
+            .EnsureAsync(tenant, actor, BabelModule.Sales, EntitlementAccess.Read, "Sales.Receipt.Get", cancellationToken)
+            .ConfigureAwait(false);
+
+        if (gate.IsFailure)
+        {
+            return Result<SalesDocumentView>.Failure(gate.Errors);
+        }
+
+        CustomerReceiptRow? receipt = await _database.Receipts
+            .AsNoTracking()
+            .FirstOrDefaultAsync(row => row.TenantId == tenant.Value && row.Id == receiptId, cancellationToken)
+            .ConfigureAwait(false);
+
+        return receipt is null
+            ? Result<SalesDocumentView>.Failure(SalesErrors.DocumentNotFound(ReceiptDocument, receiptId))
+            : Result<SalesDocumentView>.Success(ViewOfReceipt(receipt));
+    }
+
+    /// <summary>
+    /// كل مبلغ على السند بعملة المنشأة، والخلط مرفوض برسالة تُسمّي العملتين.
+    /// <para>
+    /// والفحص يشمل التخصيصات: سندٌ بالريال يُخصَّص بمبلغ بالدولار كان يُنزل الرقم على
+    /// فاتورة بالريال — وهو الخلط نفسه في موضع لا يراه أحد.
+    /// </para>
+    /// </summary>
+    /// <param name="draft">المسوّدة.</param>
+    private Result EnsureCompanyCurrency(CustomerReceiptDraft draft)
+    {
+        Result received = Same(draft.Received, "received");
+        if (received.IsFailure)
+        {
+            return received;
+        }
+
+        Result discount = Same(draft.SettlementDiscount, "settlementDiscount");
+        if (discount.IsFailure)
+        {
+            return discount;
+        }
+
+        foreach (AllocationDraft allocation in draft.Allocations)
+        {
+            Result line = Same(allocation.Amount, "allocations.amount");
+            if (line.IsFailure)
+            {
+                return line;
+            }
+        }
+
+        return Result.Success();
+    }
+
+    private Result Same(Money amount, string field) =>
+        amount.Currency.Equals(_currency)
+            ? Result.Success()
+            : Result.Failure(SalesErrors.CurrencyMismatch(_currency, amount.Currency, field));
 
     private SalesDocumentView ViewOfReceipt(CustomerReceiptRow receipt) => new(
         receipt.Id,

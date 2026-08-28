@@ -57,6 +57,71 @@ internal static class Documents
     public static string CreditNotePosting(Guid company, string creditNoteId) =>
         CreditNotes(company) + "/" + creditNoteId + "/posting";
 
+    /// <summary>مسار سندات القبض.</summary>
+    /// <param name="company">الشركة.</param>
+    public static string CustomerReceipts(Guid company) =>
+        string.Create(CultureInfo.InvariantCulture, $"/api/v1/companies/{company:D}/customer-receipts");
+
+    /// <summary>مسار سند قبض واحد.</summary>
+    /// <param name="company">الشركة.</param>
+    /// <param name="receiptId">السند.</param>
+    public static string CustomerReceipt(Guid company, string receiptId) =>
+        CustomerReceipts(company) + "/" + receiptId;
+
+    /// <summary>مسار ترحيل سند قبض.</summary>
+    /// <param name="company">الشركة.</param>
+    /// <param name="receiptId">السند.</param>
+    public static string CustomerReceiptPosting(Guid company, string receiptId) =>
+        CustomerReceipt(company, receiptId) + "/posting";
+
+    /// <summary>مسار سندات الصرف.</summary>
+    /// <param name="company">الشركة.</param>
+    public static string SupplierPayments(Guid company) =>
+        string.Create(CultureInfo.InvariantCulture, $"/api/v1/companies/{company:D}/supplier-payments");
+
+    /// <summary>مسار سند صرف واحد.</summary>
+    /// <param name="company">الشركة.</param>
+    /// <param name="paymentId">السند.</param>
+    public static string SupplierPayment(Guid company, string paymentId) =>
+        SupplierPayments(company) + "/" + paymentId;
+
+    /// <summary>مسار ترحيل سند صرف.</summary>
+    /// <param name="company">الشركة.</param>
+    /// <param name="paymentId">السند.</param>
+    public static string SupplierPaymentPosting(Guid company, string paymentId) =>
+        SupplierPayment(company, paymentId) + "/posting";
+
+    /// <summary>مسار أوامر الشراء.</summary>
+    /// <param name="company">الشركة.</param>
+    public static string PurchaseOrders(Guid company) =>
+        string.Create(CultureInfo.InvariantCulture, $"/api/v1/companies/{company:D}/purchase-orders");
+
+    /// <summary>مسار أمر شراء واحد.</summary>
+    /// <param name="company">الشركة.</param>
+    /// <param name="orderId">الأمر.</param>
+    public static string PurchaseOrder(Guid company, string orderId) => PurchaseOrders(company) + "/" + orderId;
+
+    /// <summary>مسار استلامات البضاعة.</summary>
+    /// <param name="company">الشركة.</param>
+    public static string GoodsReceipts(Guid company) =>
+        string.Create(CultureInfo.InvariantCulture, $"/api/v1/companies/{company:D}/goods-receipts");
+
+    /// <summary>مسار استلام واحد.</summary>
+    /// <param name="company">الشركة.</param>
+    /// <param name="receiptId">الاستلام.</param>
+    public static string GoodsReceipt(Guid company, string receiptId) => GoodsReceipts(company) + "/" + receiptId;
+
+    /// <summary>مسار ترحيل استلام.</summary>
+    /// <param name="company">الشركة.</param>
+    /// <param name="receiptId">الاستلام.</param>
+    public static string GoodsReceiptPosting(Guid company, string receiptId) =>
+        GoodsReceipt(company, receiptId) + "/posting";
+
+    /// <summary>مسار ملفّ القدرات.</summary>
+    /// <param name="company">الشركة.</param>
+    public static string CapabilityProfile(Guid company) =>
+        string.Create(CultureInfo.InvariantCulture, $"/api/v1/companies/{company:D}/capability-profile");
+
     /// <summary>مسار أعمار الذمم المدينة.</summary>
     /// <param name="company">الشركة.</param>
     /// <param name="asOf">التاريخ.</param>
@@ -141,6 +206,61 @@ internal static class Documents
          "expenseCategory":"office","costCenterId":"{{costCenterId}}",
          "lines":[{"itemId":"SRV-1","itemGroup":"*","description":{"ar":"خدمة","en":"Service"},"quantity":"5",
                    "unitPrice":"100.0000","taxClassification":"standard","taxRate":"0.15","taxRecoverable":true}]}
+        """;
+
+    /// <summary>
+    /// حمولة سند قبض بتخصيص واحد على فاتورة.
+    /// </summary>
+    /// <param name="number">رقم السند.</param>
+    /// <param name="customerId">العميل.</param>
+    /// <param name="invoiceId">الفاتورة المُرحَّلة.</param>
+    /// <param name="amount">المبلغ المقبوض والمخصَّص نصّاً.</param>
+    /// <param name="receivedOn">تاريخ القبض.</param>
+    public static string Receipt(
+        string number, string customerId, string invoiceId, string amount, string receivedOn = "2026-03-15") => $$"""
+        {"number":"{{number}}","customerId":"{{customerId}}","receivedOn":"{{receivedOn}}",
+         "settlementMethod":"bank","treasuryPartyId":"BANK-01",
+         "received":"{{amount}}","settlementDiscount":"0",
+         "allocations":[{"invoiceId":"{{invoiceId}}","amount":"{{amount}}"}]}
+        """;
+
+    /// <summary>حمولة سند صرف بتخصيص واحد على فاتورة مورد.</summary>
+    /// <param name="number">رقم السند.</param>
+    /// <param name="supplierId">المورد.</param>
+    /// <param name="billId">الفاتورة المُرحَّلة.</param>
+    /// <param name="amount">المبلغ المدفوع والمخصَّص نصّاً.</param>
+    /// <param name="paidOn">تاريخ الصرف.</param>
+    public static string Payment(
+        string number, string supplierId, string billId, string amount, string paidOn = "2026-03-16") => $$"""
+        {"number":"{{number}}","supplierId":"{{supplierId}}","paidOn":"{{paidOn}}",
+         "settlementMethod":"bank","treasuryPartyId":"BANK-01",
+         "paid":"{{amount}}","bankFee":"0",
+         "allocations":[{"billId":"{{billId}}","amount":"{{amount}}"}]}
+        """;
+
+    /// <summary>حمولة أمر شراء: عشر وحدات بمئة على صنف واحد.</summary>
+    /// <param name="number">رقم الأمر.</param>
+    /// <param name="supplierId">المورد.</param>
+    /// <param name="costCenterId">مركز التكلفة.</param>
+    /// <param name="orderedOn">تاريخ الأمر.</param>
+    public static string PurchaseOrder(
+        string number, string supplierId, string costCenterId, string orderedOn = "2026-03-05") => $$"""
+        {"number":"{{number}}","supplierId":"{{supplierId}}","orderedOn":"{{orderedOn}}",
+         "warehouseId":"WH-01","costCenterId":"{{costCenterId}}",
+         "lines":[{"itemId":"ITEM-A","itemGroup":"*","description":{"ar":"صنف","en":"Item"},"quantity":"10",
+                   "unitPrice":"100.0000","taxClassification":"standard","taxRate":"0.15","taxRecoverable":true}]}
+        """;
+
+    /// <summary>حمولة استلام بضاعة على سطر أمر.</summary>
+    /// <param name="number">رقم الاستلام.</param>
+    /// <param name="orderId">الأمر.</param>
+    /// <param name="orderLineId">سطر الأمر.</param>
+    /// <param name="quantity">الكمية المستلمة نصّاً.</param>
+    /// <param name="receivedOn">تاريخ الاستلام.</param>
+    public static string GoodsReceipt(
+        string number, string orderId, string orderLineId, string quantity, string receivedOn = "2026-03-08") => $$"""
+        {"number":"{{number}}","orderId":"{{orderId}}","receivedOn":"{{receivedOn}}",
+         "lines":[{"orderLineId":"{{orderLineId}}","quantity":"{{quantity}}"}]}
         """;
 
     /// <summary>يسجّل عميلاً ويُعيد معرّفه.</summary>

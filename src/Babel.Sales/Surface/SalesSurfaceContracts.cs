@@ -126,3 +126,41 @@ public sealed record SalesAgingParty(Guid PartyId, string Code, LocalizedName Na
 /// <param name="Parties">العملاء.</param>
 /// <param name="Totals">المجاميع.</param>
 public sealed record SalesAging(DateOnly AsOf, IReadOnlyList<SalesAgingParty> Parties, SalesAgingBands Totals);
+
+/// <summary>
+/// تخصيص مبلغ من سند قبض على فاتورة مُرحَّلة.
+/// <para>
+/// <b>ولا عميل فيه:</b> عميلُ التخصيص هو عميل السند، والفاتورة تُفحص أنها له.
+/// </para>
+/// </summary>
+/// <param name="InvoiceId">الفاتورة المُرحَّلة.</param>
+/// <param name="Amount">المبلغ المخصَّص عليها — لا يتجاوز المتبقّي منها.</param>
+public sealed record SalesReceiptAllocationRequest(Guid InvoiceId, decimal Amount);
+
+/// <summary>
+/// طلب تسجيل سند قبض <b>مسوّدة</b> بتخصيصاته.
+/// <para>
+/// <b>والتخصيص الزائد مرفوض على الطرفين</b>: مجموع التخصيصات لا يتجاوز
+/// (<paramref name="Received"/> + <paramref name="SettlementDiscount"/>)، وتخصيص كل
+/// فاتورة لا يتجاوز المتبقّي عليها. والرفض في الوحدة برمز <c>sales.over_allocation</c>
+/// يُسمّي الرقمين — ولا يُحوَّل الفائض إلى دفعة مقدّمة: الدفعة المقدّمة <b>مستندٌ آخر
+/// وحدثٌ آخر في المصفوفة</b> يمسّ حساباً آخر، ولا تُخمَّن نيّة المُرسِل.
+/// </para>
+/// </summary>
+/// <param name="Number">رقم السند — فريد داخل المستأجر.</param>
+/// <param name="CustomerId">العميل القابض منه.</param>
+/// <param name="ReceivedOn">تاريخ القبض الميلادي.</param>
+/// <param name="SettlementMethod">طريقة التسوية: <c>cash</c> · <c>bank</c> · <c>card_clearing</c>.</param>
+/// <param name="TreasuryPartyId">الخزينة أو الحساب البنكي في دفترها المساعد.</param>
+/// <param name="Received">المبلغ المقبوض فعلاً.</param>
+/// <param name="SettlementDiscount">خصم تعجيل السداد الممنوح، وصفرٌ إن لم يُمنَح.</param>
+/// <param name="Allocations">التخصيصات على الفواتير المُرحَّلة.</param>
+public sealed record SalesReceiptRequest(
+    string Number,
+    Guid CustomerId,
+    DateOnly ReceivedOn,
+    string SettlementMethod,
+    string TreasuryPartyId,
+    decimal Received,
+    decimal SettlementDiscount,
+    IReadOnlyList<SalesReceiptAllocationRequest> Allocations);

@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     2eb37c204d1d48eba87addf22298f81af646a2e1f5e5546fa8b2ea4b1357bcfa
+     8aae61c612441715b5f507e25d0685fb307582f7e5c4f4b837bd94672b1ee09e
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -118,6 +118,41 @@ export async function admitDocument(transport: Transport, args: AdmitDocumentArg
   return decodeSchema(SCHEMAS, "DocumentAdmission", response.json) as T.DocumentAdmission;
 }
 
+export interface CreatePurchaseOrderArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.PurchaseOrderRequest;
+}
+
+/**
+ * إنشاء أمر شراء / Create a purchase order
+ * 
+ * يُنشئ أمر شراء ويُرجعه **بسطوره ومعرّفاتها** — وهي مدخل الاستلام: سطر الاستلام يشير إلى سطر الأمر بمعرّفه، فمن أراد أن يستلم قرأ أمره أولاً أو استعمل جواب هذا الطلب.
+ * 
+ * **ولاحظ ما ليس على هذا المورد — ولا يجوز أن يوجد: لا مورد /posting.** أمر الشراء **التزام تعاقدي لا حدث محاسبي**: لا يُنشئ قيداً، ولا يمسّ حساباً، ولا يُثبَت في الدفتر. والقيد الأول في دورة الشراء هو **الاستلام**، لأن البضاعة عنده دخلت والالتزام نشأ فعلاً بينما فاتورة المورد لم تصل بعد. وبابُ ترحيلٍ هنا كان سيكون خطأً محاسبياً مكتوباً في عقد منشور — وهو ما يُقرأ من شكل السطح نفسه لا من تعليق.
+ * 
+ * ولذلك أيضاً مخطّط الجواب PurchaseOrder **لا يحمل entryId ولا alreadyPosted**: حقلٌ فارغ لهما كان سيُقرأ «لم يُرحَّل بعد» بدل «لا يُرحَّل أبداً».
+ * 
+ * **ولا ربط بطلب شراء داخلي هنا**: طلب الشراء مستند داخلي لم يُنشر على هذا السطح، وحقلٌ يشير إلى ما لا يستطيع العميل إنشاؤه زينةٌ لا سبيل إلى ملئها. وهو نقصٌ مُعلَن.
+ * 
+ * Creates a purchase order and returns it **with its lines and their identifiers** — the input a goods receipt needs: a receipt line refers to an order line by its identifier, so whoever receives goods reads the order first, or uses this response.
+ * 
+ * **Note what this resource does not carry, and must not: no /posting sub-resource.** A purchase order is a **contractual commitment, not an accounting event**: it creates no entry, touches no account, and is never recorded in the ledger. The first entry in the purchasing cycle is the **goods receipt**, because that is when the goods arrive and the obligation actually exists while the supplier's invoice has not yet come. A posting door here would be an accounting error written into a published contract — and its absence is read from the shape of the surface itself, not from a comment.
+ * 
+ * For the same reason the PurchaseOrder response schema **carries neither entryId nor alreadyPosted**: an empty field for either would read as 'not posted yet' rather than 'never posted'.
+ * 
+ * **And there is no link to an internal purchase request here**: the purchase request is an internal document not published on this surface, and a field pointing at something the client cannot create is decoration with no way to fill it. This is a declared gap.
+ */
+export async function createPurchaseOrder(transport: Transport, args: CreatePurchaseOrderArgs, signal?: AbortSignal): Promise<T.PurchaseOrder> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/purchase-orders";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "PurchaseOrderRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "PurchaseOrder", response.json) as T.PurchaseOrder;
+}
+
 export interface DraftCreditNoteArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
@@ -144,6 +179,41 @@ export async function draftCreditNote(transport: Transport, args: DraftCreditNot
   const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/credit-notes";
   const url = path;
   const body = encodeSchema(SCHEMAS, "CreditNoteRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "CommercialDocument", response.json) as T.CommercialDocument;
+}
+
+export interface DraftCustomerReceiptArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.CustomerReceiptRequest;
+}
+
+/**
+ * تسجيل سند قبض مسوّدة / Draft a customer receipt
+ * 
+ * يسجّل سند قبض من عميل في حالة **DRAFT** بتخصيصاته على فواتير **مُرحَّلة**. ولا أثر على ذمّة العميل ولا على الفواتير قبل الترحيل: التخصيص يُنزَل مع القيد لا قبله، فمسوّدةٌ لم تُرحَّل لا تُنقص متبقّي فاتورة واحدة.
+ * 
+ * **والتخصيص الزائد مرفوض على الطرفين** برمز sales.over_allocation يُسمّي الرقمين: مجموع التخصيصات لا يتجاوز (received + settlementDiscount)، وتخصيص كل فاتورة لا يتجاوز المتبقّي عليها بعد ما سبق من تخصيصات ودفعات مقدّمة.
+ * 
+ * **ومقبوضٌ يتجاوز المستحقّ يُرفض ولا يصير دفعةً مقدّمة**: الدفعة المقدّمة **مستندٌ آخر وحدثٌ آخر في مصفوفة الترحيل** يُنشئ التزاماً على المنشأة بدل أن يُسقط ذمّةً لها، فتحويلُ الفائض إليها ضمناً كان سيرحّل حدثاً لم يطلبه أحد إلى حساب لم يقصده أحد. ونيّةُ المُرسِل لا تُخمَّن.
+ * 
+ * و**التصنيف الضريبي لا يظهر هنا**: القبض تسويةٌ لا توريد، ولا ضريبة على تحصيل دينٍ سبق أن فُوتر. أمّا خصم تعجيل السداد فمعالجته الضريبية **بند مفتوح في المصفوفة** ينتظر تأكيد المستشار الضريبي — وهو مسجَّل في دَين التحقّق ولا يُبنى عليه وعد.
+ * 
+ * Records a customer receipt in state **DRAFT** with its allocations against **posted** invoices. Nothing touches the customer's balance or the invoices before posting: allocations are applied with the entry, never before it, so an unposted draft reduces no invoice's outstanding amount.
+ * 
+ * **Over-allocation is refused on both sides** under sales.over_allocation, naming both numbers: the sum of allocations may not exceed (received + settlementDiscount), and each invoice's allocation may not exceed what remains outstanding on it after earlier allocations and advances.
+ * 
+ * **A receipt beyond what is owed is refused rather than turned into an advance**: a customer advance is a **different document and a different matrix event** that creates a liability on the company instead of clearing a receivable, so silently converting the excess would post an event nobody asked for to an account nobody intended. The sender's intent is never guessed.
+ * 
+ * **No tax classification appears here**: a collection is a settlement, not a supply, and there is no VAT on collecting a debt that was already invoiced. The VAT treatment of an early-settlement discount is an **open item in the matrix** awaiting a tax adviser's confirmation; it is recorded in the verification debt and no promise is built on it.
+ */
+export async function draftCustomerReceipt(transport: Transport, args: DraftCustomerReceiptArgs, signal?: AbortSignal): Promise<T.CommercialDocument> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/customer-receipts";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "CustomerReceiptRequest", args.body as unknown);
   const response = await transport({ method: "POST", url, body, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "CommercialDocument", response.json) as T.CommercialDocument;
@@ -176,6 +246,37 @@ export async function draftExpenseBill(transport: Transport, args: DraftExpenseB
   return decodeSchema(SCHEMAS, "CommercialDocument", response.json) as T.CommercialDocument;
 }
 
+export interface DraftGoodsReceiptArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.GoodsReceiptRequest;
+}
+
+/**
+ * تسجيل استلام بضاعة مسوّدة / Draft a goods receipt
+ * 
+ * يسجّل استلام بضاعة على أمر شراء في حالة **DRAFT**. و**الضلع الأول من المطابقة الثلاثية**: كمية مستلمة تتجاوز المطلوب على سطر الأمر تُرفض **هنا** لا عند الفاتورة، برمز purchasing.receipt_exceeds_order يُسمّي الصنف والرقمين.
+ * 
+ * وتكلفة كل سطر تُحسب في الوحدة **بسعر أمر الشراء للكمية المستلمة فعلاً** — لا يرسلها العميل، فمبلغٌ يرسله المستدعي كان سيصير مصدر حقيقة ثانياً يستطيع أن ينحرف عن الأمر.
+ * 
+ * ولا مخزون ولا قيد قبل الترحيل: المسوّدة تحجز الكمية على سطر الأمر ولا تُحرّك رصيد صنف.
+ * 
+ * Records a goods receipt against a purchase order in state **DRAFT**. It is the **first leg of the three-way match**: a received quantity beyond what remains on the order line is refused **here**, not at the invoice, under purchasing.receipt_exceeds_order, naming the item and both numbers.
+ * 
+ * Each line's cost is computed in the module **at the purchase-order price for the quantity actually received** — the client never sends it, since an amount sent by the caller would be a second source of truth able to diverge from the order.
+ * 
+ * No stock and no entry before posting: the draft consumes quantity on the order line and moves no item balance.
+ */
+export async function draftGoodsReceipt(transport: Transport, args: DraftGoodsReceiptArgs, signal?: AbortSignal): Promise<T.CommercialDocument> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/goods-receipts";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "GoodsReceiptRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "CommercialDocument", response.json) as T.CommercialDocument;
+}
+
 export interface DraftSalesInvoiceArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
@@ -198,6 +299,37 @@ export async function draftSalesInvoice(transport: Transport, args: DraftSalesIn
   const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/sales-invoices";
   const url = path;
   const body = encodeSchema(SCHEMAS, "SalesInvoiceRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "CommercialDocument", response.json) as T.CommercialDocument;
+}
+
+export interface DraftSupplierPaymentArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.SupplierPaymentRequest;
+}
+
+/**
+ * تسجيل سند صرف مسوّدة / Draft a supplier payment
+ * 
+ * يسجّل سند صرف لمورد في حالة **DRAFT** بتخصيصاته على فواتيره **المُرحَّلة**. ولا أثر على ذمّة المورد قبل الترحيل.
+ * 
+ * **ورسوم التحويل ليست ذمّة مورد**: السند يُخصم من الخزينة بـ(paid + bankFee) ويُنقص ذمّة المورد بـpaid وحده — والرسوم مصروف بنكي على المنشأة. وخلطهما يجعل رصيد المورد أقلّ ممّا هو، فتظهر مطالبةٌ لا يعرف أحد مصدرها بعد أشهر. ولذلك مجموع التخصيصات يُقاس على paid لا على مجموعهما.
+ * 
+ * والتخصيص الزائد مرفوض على الطرفين برمز purchasing.over_allocation يُسمّي الرقمين.
+ * 
+ * Records a supplier payment in state **DRAFT** with its allocations against that supplier's **posted** bills. Nothing touches the supplier's balance before posting.
+ * 
+ * **A transfer fee is not a supplier balance**: the payment takes (paid + bankFee) out of the treasury and reduces the supplier's balance by paid alone — the fee is a bank charge borne by the company. Mixing the two makes the supplier's balance smaller than it is, and a claim nobody can trace surfaces months later. That is why the sum of allocations is measured against paid, not against their total.
+ * 
+ * Over-allocation is refused on both sides under purchasing.over_allocation, naming both numbers.
+ */
+export async function draftSupplierPayment(transport: Transport, args: DraftSupplierPaymentArgs, signal?: AbortSignal): Promise<T.CommercialDocument> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/supplier-payments";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "SupplierPaymentRequest", args.body as unknown);
   const response = await transport({ method: "POST", url, body, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "CommercialDocument", response.json) as T.CommercialDocument;
@@ -339,6 +471,70 @@ export async function postCreditNote(transport: Transport, args: PostCreditNoteA
   return decodeSchema(SCHEMAS, "CommercialDocument", response.json) as T.CommercialDocument;
 }
 
+export interface PostCustomerReceiptArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+}
+
+/**
+ * ترحيل سند قبض / Post a customer receipt
+ * 
+ * يرحّل سند قبض مسوّدة فتصير **واقعة محاسبية**: تُدين الخزينة أو البنك بالمقبوض، ويُدين حساب خصم التعجيل بالخصم إن وُجد، و**يُدان دائناً حساب مراقبة ذمم العملاء بمجموعهما** — أي أنّ المقبوض **يُسقط من ذمّة العميل**. ثم تُنزَل تخصيصاته على فواتيره فينقص متبقّي كلٍّ منها.
+ * 
+ * **وحصين ضد التكرار بهوية الترحيل** (شركة · نوع المستند المصدر · معرّف المستند · المُحفِّز · الجيل · رمز الحدث): الوصول الثاني بالهوية نفسها يُرجع السند ذاته وalreadyPosted = true ورمز 200 بدل 201 و**معرّف القيد نفسه**، ولا يُنشئ قيداً ثانياً — **ولا يُنزل التخصيص مرّة ثانية**. والثاني هو الأخطر: البوّابة تحرس القيد، وأثرُ التخصيص على الفواتير أثرٌ جانبي بعدها؛ ولو وقع بلا شرط لأُنقص متبقّي الفاتورة بضعف ما سُدِّد **بلا قيد ثانٍ يدلّ عليه**.
+ * 
+ * والحكم حكم بوّابة الوحدة لا مقارنةَ حالةٍ قُرئت قبل النداء: نداءان متزامنان يجتازان فحص «مسوّدة» معاً ويلتقيان عند الهوية الواحدة، فيكتب أحدهما ويعود الآخر موسوماً.
+ * 
+ * ولا جسم لهذا الطلب، ولا مفتاح حصانة يرسله العميل: تشتقّه الوحدة من هوية السند نفسه.
+ * 
+ * Posts a draft receipt, turning it into an **accounting fact**: the cash box or bank is debited with the amount collected, the settlement-discount account is debited with the discount if there is one, and **the accounts receivable control account is credited with their sum** — that is, the collection **comes off the customer's balance**. Its allocations are then applied to that customer's invoices, reducing what remains on each.
+ * 
+ * **Idempotent by the posting identity** (company, source document type, source document id, trigger, generation, event code): a second arrival with the same identity returns the same receipt with alreadyPosted = true, status 200 instead of 201, and **the same entry identifier**; it creates no second entry — **and applies no second allocation**. The second is the more dangerous: the gateway guards the entry, while applying allocations to invoices is a side effect after it; done unconditionally it would cut an invoice's outstanding amount by twice what was paid, **with no second entry to point at it**.
+ * 
+ * The verdict is the module gateway's, not a comparison against a state read before the call: two concurrent calls both pass the 'is it a draft' check, meet at the one identity, and one writes while the other returns marked.
+ * 
+ * This request has no body, and no idempotency key is sent by the client: the module derives it from the receipt's own identity.
+ */
+export async function postCustomerReceipt(transport: Transport, args: PostCustomerReceiptArgs, signal?: AbortSignal): Promise<T.CommercialDocument> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/customer-receipts/{receiptId}/posting";
+  const url = path;
+  const response = await transport({ method: "POST", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "CommercialDocument", response.json) as T.CommercialDocument;
+}
+
+export interface PostGoodsReceiptArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+}
+
+/**
+ * ترحيل استلام بضاعة / Post a goods receipt
+ * 
+ * يرحّل استلاماً مسوّدة **سطراً سطراً**. وهو الباب الوحيد على هذا السطح الذي **يمسّ دفتراً مساعداً غير دفتر الأطراف**: كل سطر يُسجَّل أولاً في **دفتر المخزون المساعد** بتكلفته الفعلية فيصير أساس تكلفة الصنف، **ثم** يُدين حساب مراقبة المخزون بالمبلغ نفسه ويُنشئ التزام «بضاعة مستلمة لم تُفوتر» على المورد.
+ * 
+ * **وترتيب النداءين ليس تفصيلاً:** الحركة تُسجَّل أولاً، فإن رُفضت لم يُكتب في الدفتر شيء ولم ينحرف طرفٌ عن طرف. وهوية الحركة هي هوية الترحيل حرفاً بحرف، فالوصول الثاني لا يصرف كميةً ثانية ولا يُنشئ قيداً ثانياً.
+ * 
+ * **ولذلك يشترط هذا الباب شيئين لا يشترطهما غيره على هذا السطح:** استحقاق وحدة **المخزون** للمنشأة — ومنشأةٌ لم تشترِها تُرفض بـ403 وentitlement.not_entitled، وهو رفضٌ صحيح لا عطل — وقدرة **المطابقة الثلاثية** (three_way_match) مُشغَّلةً في ملفّ قدراتها، وإلا رُفض بـ422.
+ * 
+ * و**gross** على الجواب هو تكلفة الاستلام كاملةً، و**tax** صفر دائماً: الاستلام لا ضريبة عليه — الضريبة تقع عند فاتورة المورد لا عند دخول البضاعة.
+ * 
+ * Posts a draft goods receipt **line by line**. It is the only door on this surface that **touches a subledger other than the party subledger**: each line is first recorded in the **inventory subledger** at its actual cost, becoming the item's cost basis, and **only then** is the inventory control account debited with the same amount and a 'goods received not invoiced' liability raised against the supplier.
+ * 
+ * **The order of the two calls is not a detail:** the movement is recorded first, so that if it is refused nothing is written to the ledger and neither side drifts from the other. The movement's identity is the posting identity letter for letter, so a second arrival issues no second quantity and creates no second entry.
+ * 
+ * **This door therefore requires two things no other door on this surface requires:** the company's entitlement to the **Inventory** module — a company that has not bought it is refused with 403 and entitlement.not_entitled, which is a correct refusal and not a fault — and the **three-way match** capability enabled in its capability profile, failing which it is refused with 422.
+ * 
+ * In the response **gross** is the full receipt cost and **tax** is always zero: a receipt carries no VAT — tax arises at the supplier's invoice, not when the goods arrive.
+ */
+export async function postGoodsReceipt(transport: Transport, args: PostGoodsReceiptArgs, signal?: AbortSignal): Promise<T.CommercialDocument> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/goods-receipts/{receiptId}/posting";
+  const url = path;
+  const response = await transport({ method: "POST", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "CommercialDocument", response.json) as T.CommercialDocument;
+}
+
 export interface PostJournalEntryArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
@@ -408,6 +604,30 @@ export interface PostSupplierBillArgs {
  */
 export async function postSupplierBill(transport: Transport, args: PostSupplierBillArgs, signal?: AbortSignal): Promise<T.CommercialDocument> {
   const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/supplier-bills/" + encodeURIComponent(args.billId) + "/posting";
+  const url = path;
+  const response = await transport({ method: "POST", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "CommercialDocument", response.json) as T.CommercialDocument;
+}
+
+export interface PostSupplierPaymentArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+}
+
+/**
+ * ترحيل سند صرف / Post a supplier payment
+ * 
+ * يرحّل سند صرف مسوّدة: **يُدان مديناً حساب مراقبة ذمم الموردين بالمدفوع** — أي أنّ المدفوع **يُسقط من ذمّة المورد** — ويُدان حساب المصاريف البنكية بالرسوم إن وُجدت، ويُدان دائناً حساب التسوية بمجموعهما. ثم تُنزَل تخصيصاته على فواتير المورد.
+ * 
+ * وحصين ضد التكرار بهوية الترحيل نفسها وبالسلوك نفسه: الوصول الثاني يُرجع السند ذاته وalreadyPosted = true ورمز 200 ومعرّف القيد نفسه، بلا قيد ثانٍ **وبلا تخصيص ثانٍ**.
+ * 
+ * Posts a draft supplier payment: **the accounts payable control account is debited with the amount paid** — that is, the payment **comes off the supplier's balance** — the bank charges account is debited with the fee if there is one, and the settlement account is credited with their sum. Its allocations are then applied to that supplier's bills.
+ * 
+ * Idempotent by the same posting identity with the same behaviour: a second arrival returns the same payment with alreadyPosted = true, status 200, and the same entry identifier, with no second entry **and no second allocation**.
+ */
+export async function postSupplierPayment(transport: Transport, args: PostSupplierPaymentArgs, signal?: AbortSignal): Promise<T.CommercialDocument> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/supplier-payments/{paymentId}/posting";
   const url = path;
   const response = await transport({ method: "POST", url, signal });
   if (!response.ok) throw ProblemError.from(response);
@@ -500,6 +720,30 @@ export async function readCustomer(transport: Transport, args: ReadCustomerArgs,
   return decodeSchema(SCHEMAS, "Party", response.json) as T.Party;
 }
 
+export interface ReadCustomerReceiptArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+}
+
+/**
+ * قراءة سند قبض / Read one customer receipt
+ * 
+ * يقرأ سند قبض بحالته ومجاميعه ومعرّف قيده إن رُحّل. و**net** هو المقبوض و**tax** هو خصم تعجيل السداد و**gross** مجموعهما — أي ما سقط عن ذمّة العميل.
+ * 
+ * وكانت هذه القراءة **غير موجودة في الوحدة أصلاً**: يُسجَّل السند ويُرحَّل ولا جملة تقول «ما حاله الآن؟». فمن أنشأ مسوّدةً ثم انقطع اتصاله لم يكن أمامه إلا أن **يعيد الترحيل ليعرف** — والحصانة تجعل ذلك غير مؤذٍ، لا تجعله مقبولاً.
+ * 
+ * Reads a customer receipt with its state, its totals, and its entry identifier if posted. Here **net** is the amount collected, **tax** is the early-settlement discount, and **gross** is their sum — that is, what came off the customer's balance.
+ * 
+ * This read **did not exist in the module at all**: a receipt could be recorded and posted with no sentence for 'what state is it in now?'. Whoever created a draft and then lost their connection had no option but to **post again in order to find out** — which idempotency makes harmless, not acceptable.
+ */
+export async function readCustomerReceipt(transport: Transport, args: ReadCustomerReceiptArgs, signal?: AbortSignal): Promise<T.CommercialDocument> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/customer-receipts/{receiptId}";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "CommercialDocument", response.json) as T.CommercialDocument;
+}
+
 /**
  * صفحة استعراض العقد / The contract browser page
  * 
@@ -534,6 +778,26 @@ export async function readDocumentShape(transport: Transport, args: ReadDocument
   const response = await transport({ method: "GET", url, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "DocumentShape", response.json) as T.DocumentShape;
+}
+
+export interface ReadGoodsReceiptArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+}
+
+/**
+ * قراءة استلام بضاعة / Read one goods receipt
+ * 
+ * يقرأ استلاماً بحالته وتكلفته ومعرّف قيده إن رُحّل. و**entryId عليه هو قيد آخر سطر رُحّل**، لا قيداً واحداً للاستلام: كل سطر يُرحَّل قيداً مستقلاً لأن قالب المصفوفة يحمل مرجع صنف واحداً ومستودعاً واحداً على مستوى الطلب، فقيدٌ واحد لاستلام متعدد الأصناف كان سيحمل مرجع صنف واحد لأصناف عدّة ويفسد الدفتر المساعد للأصناف بصمت.
+ * 
+ * Reads a goods receipt with its state, its cost, and its entry identifier if posted. **Its entryId is the entry of the last posted line**, not one entry for the receipt: each line posts its own entry because the matrix template carries a single item reference and a single warehouse at request level, so one entry for a multi-item receipt would carry one item reference for several items and silently corrupt the item subledger.
+ */
+export async function readGoodsReceipt(transport: Transport, args: ReadGoodsReceiptArgs, signal?: AbortSignal): Promise<T.CommercialDocument> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/goods-receipts/{receiptId}";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "CommercialDocument", response.json) as T.CommercialDocument;
 }
 
 export interface ReadJournalEntryArgs {
@@ -619,6 +883,26 @@ export async function readPublishedContract(transport: Transport, signal?: Abort
   const response = await transport({ method: "GET", url, signal });
   if (!response.ok) throw ProblemError.from(response);
   return response.json as unknown;
+}
+
+export interface ReadPurchaseOrderArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+}
+
+/**
+ * قراءة أمر شراء / Read one purchase order
+ * 
+ * يقرأ أمر شراء بحالته ومجاميعه و**سطوره بمعرّفاتها**. ولا معرّف قيد له ولا سيكون: أمر الشراء لا يُرحَّل.
+ * 
+ * Reads a purchase order with its state, its totals, and **its lines with their identifiers**. It carries no entry identifier and never will: a purchase order is not posted.
+ */
+export async function readPurchaseOrder(transport: Transport, args: ReadPurchaseOrderArgs, signal?: AbortSignal): Promise<T.PurchaseOrder> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/purchase-orders/{orderId}";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "PurchaseOrder", response.json) as T.PurchaseOrder;
 }
 
 export interface ReadReceivablesAgingArgs {
@@ -736,6 +1020,26 @@ export interface ReadSupplierBillArgs {
  */
 export async function readSupplierBill(transport: Transport, args: ReadSupplierBillArgs, signal?: AbortSignal): Promise<T.CommercialDocument> {
   const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/supplier-bills/" + encodeURIComponent(args.billId) + "";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "CommercialDocument", response.json) as T.CommercialDocument;
+}
+
+export interface ReadSupplierPaymentArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+}
+
+/**
+ * قراءة سند صرف / Read one supplier payment
+ * 
+ * يقرأ سند صرف بحالته ومجاميعه ومعرّف قيده إن رُحّل. و**net** هو المدفوع و**tax** هو رسوم التحويل و**gross** مجموعهما — أي ما خرج من الخزينة. ولاحظ أنّ ما سقط عن ذمّة المورد هو **net وحده** لا gross.
+ * 
+ * Reads a supplier payment with its state, its totals, and its entry identifier if posted. Here **net** is the amount paid, **tax** is the transfer fee, and **gross** is their sum — what left the treasury. Note that what came off the supplier's balance is **net alone**, not gross.
+ */
+export async function readSupplierPayment(transport: Transport, args: ReadSupplierPaymentArgs, signal?: AbortSignal): Promise<T.CommercialDocument> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/supplier-payments/{paymentId}";
   const url = path;
   const response = await transport({ method: "GET", url, signal });
   if (!response.ok) throw ProblemError.from(response);

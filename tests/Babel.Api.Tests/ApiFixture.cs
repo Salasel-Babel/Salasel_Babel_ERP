@@ -258,6 +258,12 @@ internal static class ApiFixture
             // وكان ذلك غير مرئي ما دام لا باب HTTP يبلغ الوحدتين.
             ["Babel__Sales__ConnectionString"] = ApiTestDatabase.Sales.ConnectionString,
             ["Babel__Purchasing__ConnectionString"] = ApiTestDatabase.Purchasing.ConnectionString,
+
+            // ووحدة المخزون: ترحيل استلام البضاعة يسجّل الوارد في دفترها المساعد
+            // **قبل** أن يُدين حساب المراقبة، فقاعدتها في مسار الطلب لا خارجه. وبدون
+            // هذا المفتاح يقلع الخادم على `babel_inventory` على المضيف المحلي — وهو
+            // نفس عطل المبيعات والمشتريات، باقياً في وحدة ثالثة لأن لا باب كان يبلغها.
+            ["Babel__Inventory__ConnectionString"] = ApiTestDatabase.Inventory.ConnectionString,
         };
 
         int index = 0;
@@ -297,6 +303,14 @@ internal static class ApiFixture
         // والالتزام معهما بالضرورة لا بالاختيار: `Compliance` يعتمد على `Sales` في
         // ‏`ModuleDependencyGraph`، و«قدرة الوحدة لا تتجاوز قدرة ما تعتمد عليه» — فمجموعةٌ
         // فيها التزامٌ فاعل فوق مبيعاتٍ للقراءة تُرفض عند الإقلاع، ويسقط الخادم بصوته.
+        // ── والمخزون على الشركة «ب» وحدها ────────────────────────────────────────
+        // ‏**والفارق مقصود ومُختبَر:** المخزون وحدة اختيارية لا إلزامية، فالافتراضي
+        // على كل منشأة `NotEntitled`. والشركة «ب» تشتريه فيعمل عندها ترحيل الاستلام؛
+        // والشركة «أ» لا تشتريه، فترحيل الاستلام عندها يُرفض بـ403
+        // `entitlement.not_entitled` — **وهو الجواب الصحيح لا عطل**: باب الاستلام
+        // يمسّ دفتر المخزون المساعد، فمنشأةٌ لم تشترِ المخزون لا تملكه.
+        environment[Entitlement(ApiTestDatabase.CompanyB, "Inventory")] = "Entitled";
+
         environment[Entitlement(ApiTestDatabase.CompanyC, "Sales")] = "ReadOnly";
         environment[Entitlement(ApiTestDatabase.CompanyC, "Purchasing")] = "ReadOnly";
         environment[Entitlement(ApiTestDatabase.CompanyC, "Compliance")] = "ReadOnly";

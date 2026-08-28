@@ -83,6 +83,25 @@ internal static class PurchasingErrors
         "A negative amount on a document; direction is expressed by the document type, not by the sign.");
 
     /// <summary>
+    /// مبلغٌ بعملةٍ غير عملة المنشأة على مستند مشتريات — <b>والرسالة تُسمّي العملتين</b>.
+    /// <para>
+    /// نفس رفض المبيعات وللسبب نفسه: سعر الصرف قرارٌ محاسبي بتاريخ ومصدر، ولا يُخترع
+    /// داخل خدمة. والمسار كان يقرأ المبلغ ويُهمل عملته، فيُسجَّل الدولار ريالاً بالرقم
+    /// نفسه بلا خطأ ولا سطر سجلّ
+    /// (‏<c>docs/evidence/traps.md#fakh-a-currency-carrying-amount-crosses-a-boundary-that-reads-only-its-number</c>).
+    /// </para>
+    /// </summary>
+    /// <param name="expected">عملة المنشأة.</param>
+    /// <param name="found">عملة المبلغ الوارد.</param>
+    /// <param name="field">الحقل الذي حمل المبلغ.</param>
+    public static Error CurrencyMismatch(CurrencyCode expected, CurrencyCode found, string field) => new(
+        "purchasing.currency_mismatch",
+        "عملة واحدة للمستند كله: عملة المنشأة " + expected.Value + " والحقل «" + field + "» بعملة "
+        + found.Value + ". الخلط بلا سعر صرف صريح مرفوض، ولا يُحوَّل المبلغ ضمناً.",
+        "One currency per document: the company currency is " + expected.Value + " and the field '" + field
+        + "' is in " + found.Value + ". Mixing without an explicit exchange rate is refused, and no amount is converted implicitly.");
+
+    /// <summary>
     /// نية ترحيل بلا رمز حدث. رمز الحدث حقل في هوية الإحكام، ورمزٌ فارغ يجعل حدثين
     /// مختلفين من المستند نفسه وعند الإطلاق نفسه هويةً واحدة — فيُبتلع الثاني بصمت
     /// (ADR-0016 · ADR-0017). والمحرك يرفضه بـ<c>ledger.posting.missing_event_code</c>،

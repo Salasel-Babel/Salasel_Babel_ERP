@@ -42,6 +42,12 @@ public sealed class GoodsReceiptService : IApplicationService
     /// <summary>نوع مستند سطر الاستلام في هوية الإحكام.</summary>
     internal const string ReceiptLineDocument = "GoodsReceiptLine";
 
+    /// <summary>
+    /// نوع مستند الاستلام نفسه — يُستعمل في الرفض بالاسم وحده.
+    /// <b>ولا هوية ترحيل له</b>: الترحيل بحبيبيّة السطر، ومعرّف السطر هو معرّف المستند فيها.
+    /// </summary>
+    internal const string ReceiptDocument = "GoodsReceipt";
+
     /// <summary>رمز حدث الاستلام — ثالث حقول الهوية التي يتشاركها الدفتران.</summary>
     internal const string ReceiptPostedEvent = "purchasing.goods_receipt.posted";
 
@@ -283,12 +289,13 @@ public sealed class GoodsReceiptService : IApplicationService
 
         if (receipt is null)
         {
-            return Result<PurchasingDocumentView>.Failure(PurchasingErrors.DocumentNotFound("GoodsReceipt", receiptId));
+            return Result<PurchasingDocumentView>.Failure(PurchasingErrors.DocumentNotFound(ReceiptDocument, receiptId));
         }
 
         if (receipt.State == PurchasingDocumentState.Posted)
         {
-            return Result<PurchasingDocumentView>.Success(ViewOf(receipt));
+            // وصولٌ ثانٍ بعد أن اكتمل الأول: الاستلام لا يُمسّ، والحقيقة تُقال صراحةً.
+            return Result<PurchasingDocumentView>.Success(ViewOf(receipt) with { AlreadyPosted = true });
         }
 
         SupplierRow supplier = await _database.Suppliers
@@ -302,6 +309,12 @@ public sealed class GoodsReceiptService : IApplicationService
             .ConfigureAwait(false);
 
         Guid? lastEntry = null;
+
+        // ‏**حكم البوّابة على مستوى الاستلام كلّه:** الاستلام يُرحَّل سطراً سطراً، وكل
+        // سطر هويةُ إحكامٍ مستقلّة. فـ«رُحّل سلفاً» عن الاستلام تعني: **لم يُنشئ هذا
+        // النداء قيداً واحداً** — أي أن كل سطر عاد بإيصالٍ موسوم. واستلامٌ عاد أحد
+        // سطوره بقيدٍ جديد نداءٌ رحّل فعلاً، ولو كان بقيّة سطوره مُرحَّلة من قبل.
+        bool everyLineWasAlreadyPosted = true;
 
         foreach (PurchaseLineRow line in lines)
         {
@@ -371,13 +384,56 @@ public sealed class GoodsReceiptService : IApplicationService
             }
 
             lastEntry = posted.Value.JournalEntryId;
+            everyLineWasAlreadyPosted &= posted.Value.WasAlreadyPosted;
         }
 
         receipt.State = PurchasingDocumentState.Posted;
         receipt.PostedEntryId = lastEntry;
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        return Result<PurchasingDocumentView>.Success(ViewOf(receipt));
+        // استلامٌ بلا سطر واحد لا يُدَّعى أنه «رُحّل سلفاً»: لا هوية له عند البوّابة
+        // أصلاً، فلا حكم لها عليه. (والمسار لا يبلغه اليوم — `RecordAsync` ترفض
+        // مسوّدة بلا سطور — والشرط مكتوب كي لا يصير الحياد الابتدائي حكماً.)
+        return Result<PurchasingDocumentView>.Success(
+            ViewOf(receipt) with { AlreadyPosted = lines.Count > 0 && everyLineWasAlreadyPosted });
+    }
+
+    /// <summary>
+    /// يقرأ استلاماً بحالته وتكلفته ومعرّف قيده إن رُحّل.
+    /// <para>
+    /// و<c>EntryId</c> عليه هو قيد <b>آخر سطر</b> رُحّل، لا قيداً واحداً للاستلام:
+    /// كل سطر يُرحَّل قيداً مستقلاً لأن قالب المصفوفة يحمل مرجع صنف واحداً ومستودعاً
+    /// واحداً على مستوى الطلب. ومن أراد قيود الاستلام كلها قرأ سطوره.
+    /// </para>
+    /// </summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="receiptId">الاستلام.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    [RequiresEntitlement(BabelModule.Purchasing, EntitlementAccess.Read)]
+    public async ValueTask<Result<PurchasingDocumentView>> GetAsync(
+        TenantId tenant,
+        UserId actor,
+        Guid receiptId,
+        CancellationToken cancellationToken = default)
+    {
+        Result gate = await _enforcer
+            .EnsureAsync(tenant, actor, BabelModule.Purchasing, EntitlementAccess.Read, "Purchasing.Receipt.Get", cancellationToken)
+            .ConfigureAwait(false);
+
+        if (gate.IsFailure)
+        {
+            return Result<PurchasingDocumentView>.Failure(gate.Errors);
+        }
+
+        GoodsReceiptRow? receipt = await _database.Receipts
+            .AsNoTracking()
+            .FirstOrDefaultAsync(row => row.TenantId == tenant.Value && row.Id == receiptId, cancellationToken)
+            .ConfigureAwait(false);
+
+        return receipt is null
+            ? Result<PurchasingDocumentView>.Failure(PurchasingErrors.DocumentNotFound(ReceiptDocument, receiptId))
+            : Result<PurchasingDocumentView>.Success(ViewOf(receipt));
     }
 
     /// <summary>يقرأ سطور استلام — معرّفاتها مدخل الضلع الثالث من المطابقة.</summary>

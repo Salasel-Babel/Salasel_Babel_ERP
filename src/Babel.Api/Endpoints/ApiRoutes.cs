@@ -152,6 +152,21 @@ internal static class ApiRoutes
     /// <summary>ترحيل إشعار دائن.</summary>
     public const string CreditNotePosting = CreditNotes + "/{creditNoteId}/posting";
 
+    /// <summary>
+    /// سندات القبض من العملاء: إنشاء <b>مسوّدة</b> بتخصيصاتها على فواتير مُرحَّلة.
+    /// <para>ولا أثر على ذمّة العميل قبل الترحيل: التخصيص يُنزَل مع القيد لا قبله.</para>
+    /// </summary>
+    public const string CustomerReceipts = Company + "/customer-receipts";
+
+    /// <summary>سند قبض واحد: القراءة بحالته ومجاميعه ومعرّف قيده إن رُحّل.</summary>
+    public const string CustomerReceipt = CustomerReceipts + "/{receiptId}";
+
+    /// <summary>
+    /// ترحيل سند قبض. مورد فرعي مستقلّ وحصين ضد التكرار — والقبض <b>يُسقط من ذمّة
+    /// العميل</b> بالمقبوض وخصم التعجيل معاً.
+    /// </summary>
+    public const string CustomerReceiptPosting = CustomerReceipt + "/posting";
+
     /// <summary>أعمار الذمم المدينة في تاريخ معلوم.</summary>
     public const string ReceivablesAging = Company + "/receivables-aging";
 
@@ -171,6 +186,46 @@ internal static class ApiRoutes
 
     /// <summary>ترحيل فاتورة مورد — بالشكل نفسه وبالحصانة نفسها.</summary>
     public const string SupplierBillPosting = SupplierBill + "/posting";
+
+    /// <summary>سندات الصرف للموردين: إنشاء <b>مسوّدة</b> بتخصيصاتها.</summary>
+    public const string SupplierPayments = Company + "/supplier-payments";
+
+    /// <summary>سند صرف واحد: القراءة.</summary>
+    public const string SupplierPayment = SupplierPayments + "/{paymentId}";
+
+    /// <summary>
+    /// ترحيل سند صرف. مورد فرعي مستقلّ وحصين ضد التكرار — والصرف <b>يُسقط من ذمّة
+    /// المورد</b> بالمدفوع وحده، والرسوم مصروفٌ على المنشأة لا نقصٌ في ذمّته.
+    /// </summary>
+    public const string SupplierPaymentPosting = SupplierPayment + "/posting";
+
+    /// <summary>
+    /// أوامر الشراء: الإنشاء.
+    /// <para>
+    /// <b>ولاحظ ما ليس هنا — ولا يجوز أن يوجد: لا مورد <c>…/posting</c>.</b> أمر الشراء
+    /// <b>التزام تعاقدي لا حدث محاسبي</b>: لا يُنشئ قيداً، ولا يمسّ حساباً، ولا يُدخل
+    /// المنشأة في التزامٍ يُثبَت في الدفتر. والقيد الأول في دورة الشراء هو
+    /// <b>الاستلام</b> — لأن البضاعة عندها دخلت والالتزام نشأ فعلاً.
+    /// وبابُ ترحيلٍ عليه كان سيكون خطأً محاسبياً مكتوباً في عقد منشور.
+    /// </para>
+    /// </summary>
+    public const string PurchaseOrders = Company + "/purchase-orders";
+
+    /// <summary>أمر شراء واحد: القراءة <b>بسطوره ومعرّفاتها</b> — وهي مدخل الاستلام.</summary>
+    public const string PurchaseOrder = PurchaseOrders + "/{orderId}";
+
+    /// <summary>استلامات البضاعة: إنشاء <b>مسوّدة</b> على أمر شراء.</summary>
+    public const string GoodsReceipts = Company + "/goods-receipts";
+
+    /// <summary>استلام واحد: القراءة.</summary>
+    public const string GoodsReceipt = GoodsReceipts + "/{receiptId}";
+
+    /// <summary>
+    /// ترحيل استلام. <b>وهو الباب الوحيد على هذا السطح الذي يمسّ دفتراً مساعداً غير
+    /// دفتر الأطراف</b>: يُسجّل الوارد في دفتر المخزون بتكلفته الفعلية ثم يُدين حساب
+    /// المراقبة، بهوية ترحيلٍ واحدة للدفترين وبنفس الحصانة.
+    /// </summary>
+    public const string GoodsReceiptPosting = GoodsReceipt + "/posting";
 
     /// <summary>أعمار الذمم الدائنة في تاريخ معلوم.</summary>
     public const string PayablesAging = Company + "/payables-aging";

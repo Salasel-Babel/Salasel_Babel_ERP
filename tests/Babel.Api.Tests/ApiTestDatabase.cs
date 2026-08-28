@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Reflection;
 using Babel.Core;
+using Babel.Inventory;
 using Babel.Ledger;
 using Babel.Purchasing;
 using Babel.Sales;
@@ -45,11 +46,25 @@ internal static class ApiTestDatabase
     /// <summary>الجذع الثابت لاسم قاعدة المشتريات.</summary>
     public const string PurchasingStem = "babel_api_tests_purchasing";
 
+    /// <summary>
+    /// الجذع الثابت لاسم قاعدة المخزون.
+    /// <para>
+    /// <b>ولماذا صارت لازمة هنا:</b> ترحيل استلام البضاعة يبلغ منفذ تقييم المخزون
+    /// قبل أن يبلغ الدفتر، ومنفذُه تنفيذُه في وحدة المخزون على قاعدتها. فما دام لا
+    /// باب HTTP يبلغ الاستلام كانت هذه القاعدة غير مطلوبة — وكان اتصالها يُقرأ من
+    /// الافتراضي بلا أن يظهر ذلك.
+    /// </para>
+    /// </summary>
+    public const string InventoryStem = "babel_api_tests_inventory";
+
     /// <summary>قاعدة المبيعات لهذه العملية وحدها.</summary>
     public static string SalesDatabase { get; } = TestRunScope.Name(SalesStem);
 
     /// <summary>قاعدة المشتريات لهذه العملية وحدها.</summary>
     public static string PurchasingDatabase { get; } = TestRunScope.Name(PurchasingStem);
+
+    /// <summary>قاعدة المخزون لهذه العملية وحدها.</summary>
+    public static string InventoryDatabase { get; } = TestRunScope.Name(InventoryStem);
 
     /// <summary>
     /// دور التطبيق: يدخل، ولا يملك شيئاً، وليس superuser. واسمه <b>مشترك عمداً</b> —
@@ -148,6 +163,13 @@ internal static class ApiTestDatabase
         CompanyCurrency = "SAR",
     };
 
+    /// <summary>إعدادات المخزون لهذه المجموعة — قاعدة مستقلّة، وللأسباب نفسها.</summary>
+    public static InventoryOptions Inventory { get; } = new()
+    {
+        ConnectionString = $"Host=127.0.0.1;Port=5432;Database={InventoryDatabase};Username=postgres;Include Error Detail=true;Maximum Pool Size=5;Minimum Pool Size=0",
+        CompanyCurrency = "SAR",
+    };
+
     /// <summary>جذر المستودع.</summary>
     public static string RepositoryRoot { get; } = RepositoryPaths.Root;
 
@@ -217,6 +239,9 @@ internal static class ApiTestDatabase
         // والإنتاج، لا بنسخة ثانية من نصوص المخطّط تنحرف عنه بصمت.
         await SalesSchemaDeployer.DeployAsync(Sales, cancellationToken).ConfigureAwait(false);
         await PurchasingSchemaDeployer.DeployAsync(Purchasing, cancellationToken).ConfigureAwait(false);
+
+        // والمخزون: دفترٌ مساعد يبلغه ترحيل الاستلام قبل أن يبلغ الدفتر.
+        await InventorySchemaDeployer.DeployAsync(Inventory, cancellationToken).ConfigureAwait(false);
     }
 
     private static async Task CreateDatabaseAndRoleAsync(CancellationToken cancellationToken)
@@ -232,6 +257,7 @@ internal static class ApiTestDatabase
         await ExecAsync(admin, $"create database {Database}", cancellationToken).ConfigureAwait(false);
         await ExecAsync(admin, $"create database {SalesDatabase}", cancellationToken).ConfigureAwait(false);
         await ExecAsync(admin, $"create database {PurchasingDatabase}", cancellationToken).ConfigureAwait(false);
+        await ExecAsync(admin, $"create database {InventoryDatabase}", cancellationToken).ConfigureAwait(false);
 
         // ‏nosuperuser ليست تفصيلاً: بدونها تسقط كل طبقات الحصانة معاً (فخ-30 · ADR-0003).
         //
@@ -291,6 +317,7 @@ internal static class ApiTestDatabase
             DropOne(admin, Database);
             DropOne(admin, SalesDatabase);
             DropOne(admin, PurchasingDatabase);
+            DropOne(admin, InventoryDatabase);
         }
         catch (NpgsqlException exception)
         {
@@ -365,7 +392,7 @@ internal static class ApiTestDatabase
         foreach (string database in candidates)
         {
             int? owner = null;
-            foreach (string stem in new[] { DatabaseStem, SalesStem, PurchasingStem })
+            foreach (string stem in new[] { DatabaseStem, SalesStem, PurchasingStem, InventoryStem })
             {
                 owner = TestRunScope.OwnerProcessId(database, stem);
                 if (owner is not null)

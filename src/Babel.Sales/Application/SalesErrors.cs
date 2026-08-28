@@ -69,10 +69,25 @@ internal static class SalesErrors
         "مستند بلا سطور لا يُصدَر.",
         "A document without lines is not issued.");
 
-    public static readonly Error CurrencyMismatch = new(
+    /// <summary>
+    /// مبلغٌ بعملةٍ غير عملة المنشأة على مستند. <b>والرسالة تُسمّي العملتين</b>: رفضٌ
+    /// يقول «عملة خاطئة» ولا يقول أيّهما لا يُصلَح إلا بالتخمين.
+    /// <para>
+    /// <b>ولماذا رفضٌ لا تحويل:</b> التحويل يحتاج سعر صرف، وسعر الصرف قرارٌ محاسبي
+    /// بتاريخ ومصدر — ولا يُخترع داخل خدمة. والأخطر أنّ المسار كان <b>يقرأ المبلغ
+    /// ويُهمل عملته</b>: مسوّدةٌ بالدولار تُسجَّل بالريال بالرقم نفسه، بلا خطأ ولا سطر
+    /// سجلّ (‏<c>docs/evidence/traps.md#fakh-a-currency-carrying-amount-crosses-a-boundary-that-reads-only-its-number</c>).
+    /// </para>
+    /// </summary>
+    /// <param name="expected">عملة المنشأة.</param>
+    /// <param name="found">عملة المبلغ الوارد.</param>
+    /// <param name="field">الحقل الذي حمل المبلغ.</param>
+    public static Error CurrencyMismatch(CurrencyCode expected, CurrencyCode found, string field) => new(
         "sales.currency_mismatch",
-        "عملة واحدة للمستند كله. الخلط بلا سعر صرف صريح مرفوض.",
-        "One currency per document; mixing without an explicit exchange rate is refused.");
+        "عملة واحدة للمستند كله: عملة المنشأة " + expected.Value + " والحقل «" + field + "» بعملة "
+        + found.Value + ". الخلط بلا سعر صرف صريح مرفوض، ولا يُحوَّل المبلغ ضمناً.",
+        "One currency per document: the company currency is " + expected.Value + " and the field '" + field
+        + "' is in " + found.Value + ". Mixing without an explicit exchange rate is refused, and no amount is converted implicitly.");
 
     public static Error NotInState(string number, string state, string expected) => new(
         "sales.wrong_state",

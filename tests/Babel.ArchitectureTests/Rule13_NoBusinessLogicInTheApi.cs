@@ -244,6 +244,12 @@ public sealed class Rule13_NoBusinessLogicInTheApi
         "Babel.Sales.Surface.SalesAgingParty",
         "Babel.Sales.Surface.SalesAging",
 
+        // ── سندات القبض ──────────────────────────────────────────────────────
+        // نوعا نقلٍ لا غير، ولا واحد منهما يسمّي حساباً: السند يحمل «طريقة تسوية»
+        // و«طرف خزينة» — مؤهّلَي دور — والمصفوفة وحدها تُحوّلهما إلى حسابين.
+        "Babel.Sales.Surface.SalesReceiptAllocationRequest",
+        "Babel.Sales.Surface.SalesReceiptRequest",
+
         "Babel.Purchasing.Surface.PurchasingSurface",
         "Babel.Purchasing.Surface.PurchasingPartyRequest",
         "Babel.Purchasing.Surface.PurchasingParty",
@@ -254,11 +260,28 @@ public sealed class Rule13_NoBusinessLogicInTheApi
         "Babel.Purchasing.Surface.PurchasingAgingParty",
         "Babel.Purchasing.Surface.PurchasingAging",
 
+        // ── سندات الصرف وأوامر الشراء والاستلام ──────────────────────────────
+        // و`PurchasingOrder` نوعٌ **بلا معرّف قيد وبلا رُحّل-سلفاً** عمداً: أمر الشراء
+        // التزام تعاقدي لا واقعة محاسبية، وحقلٌ فارغ لهما كان سيُقرأ «لم يُرحَّل بعد»
+        // بدل «لا يُرحَّل أبداً».
+        "Babel.Purchasing.Surface.PurchasingPaymentAllocationRequest",
+        "Babel.Purchasing.Surface.PurchasingPaymentRequest",
+        "Babel.Purchasing.Surface.PurchasingOrderRequest",
+        "Babel.Purchasing.Surface.PurchasingOrderLine",
+        "Babel.Purchasing.Surface.PurchasingOrder",
+        "Babel.Purchasing.Surface.PurchasingGoodsReceiptLineRequest",
+        "Babel.Purchasing.Surface.PurchasingGoodsReceiptRequest",
+
         // وإعدادات الوحدتين — كإعدادات الدفتر أعلاه وللسبب نفسه: الجذر التركيبي هو من
         // يقرأ اتصال النشر من الإعداد ويُسلّمه، ولا سبيل إلى ذلك بلا تسمية نوع الإعداد.
         // ولا اتصال مالك في أيّهما: نشر المخطّط عملية مالك لا يملكها مسار التطبيق.
         "Babel.Sales.SalesOptions",
         "Babel.Purchasing.PurchasingOptions",
+
+        // وإعدادات المخزون معهما — **وسببُ إضافتها بعدهما بتسليم كامل هو الدليل نفسه**:
+        // ما دام لا باب HTTP يبلغ منفذ تقييم المخزون، لم يكن للجذر سببٌ يقرأ به اتصالها،
+        // فبقيت تُقرأ من الافتراضي بلا أن يظهر ذلك. وأوّل باب فوق الاستلام هو ما أظهره.
+        "Babel.Inventory.InventoryOptions",
     ];
 
     /// <summary>أجزاء فضاء اسم تدلّ على داخل وحدة، لا على سطحها المنشور.</summary>

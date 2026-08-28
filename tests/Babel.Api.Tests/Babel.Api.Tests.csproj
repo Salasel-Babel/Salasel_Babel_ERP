@@ -35,6 +35,11 @@
     -->
     <ProjectReference Include="../../src/Babel.Sales/Babel.Sales.csproj" />
     <ProjectReference Include="../../src/Babel.Purchasing/Babel.Purchasing.csproj" />
+    <!--
+      والمخزون للسبب نفسه: ترحيل استلام البضاعة عبر HTTP يبلغ دفتر المخزون المساعد قبل
+      أن يبلغ الدفتر، فقاعدته لازمة لهذه العملية — ولا يُقرأ منه إلا ناشر المخطّط.
+    -->
+    <ProjectReference Include="../../src/Babel.Inventory/Babel.Inventory.csproj" />
   </ItemGroup>
 
   <ItemGroup>

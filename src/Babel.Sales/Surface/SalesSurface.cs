@@ -32,6 +32,7 @@ public sealed class SalesSurface
     private readonly CustomerService _customers;
     private readonly SalesInvoiceService _invoices;
     private readonly CreditNoteService _creditNotes;
+    private readonly CustomerReceiptService _receipts;
     private readonly ReceivablesService _receivables;
     private readonly CurrencyCode _currency;
 
@@ -39,24 +40,28 @@ public sealed class SalesSurface
     /// <param name="customers">خدمة العملاء.</param>
     /// <param name="invoices">خدمة فواتير المبيعات.</param>
     /// <param name="creditNotes">خدمة الإشعارات الدائنة.</param>
+    /// <param name="receipts">خدمة سندات القبض.</param>
     /// <param name="receivables">خدمة الذمم المدينة.</param>
     /// <param name="options">إعدادات الوحدة — ومنها عملة المنشأة.</param>
     public SalesSurface(
         CustomerService customers,
         SalesInvoiceService invoices,
         CreditNoteService creditNotes,
+        CustomerReceiptService receipts,
         ReceivablesService receivables,
         SalesOptions options)
     {
         ArgumentNullException.ThrowIfNull(customers);
         ArgumentNullException.ThrowIfNull(invoices);
         ArgumentNullException.ThrowIfNull(creditNotes);
+        ArgumentNullException.ThrowIfNull(receipts);
         ArgumentNullException.ThrowIfNull(receivables);
         ArgumentNullException.ThrowIfNull(options);
 
         _customers = customers;
         _invoices = invoices;
         _creditNotes = creditNotes;
+        _receipts = receipts;
         _receivables = receivables;
         _currency = CurrencyCode.FromString(options.CompanyCurrency);
     }
@@ -213,6 +218,79 @@ public sealed class SalesSurface
         return Document(result);
     }
 
+    /// <summary>
+    /// يسجّل سند قبض <b>مسوّدة</b> بتخصيصاته. لا قيد ولا أثر على ذمّة العميل: الترحيل
+    /// خطوة مستقلّة، والتخصيص لا يُنزَل على الفواتير إلا معه.
+    /// </summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="request">الطلب.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    public async ValueTask<Result<SalesDocument>> DraftCustomerReceiptAsync(
+        TenantId tenant,
+        UserId actor,
+        SalesReceiptRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        Result<SalesDocumentView> result = await _receipts
+            .RecordReceiptAsync(
+                tenant,
+                actor,
+                new CustomerReceiptDraft(
+                    request.Number,
+                    request.CustomerId,
+                    request.ReceivedOn,
+                    request.SettlementMethod,
+                    request.TreasuryPartyId,
+                    Money.Of(request.Received, _currency),
+                    Money.Of(request.SettlementDiscount, _currency),
+                    Allocations(request.Allocations)),
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        return Document(result);
+    }
+
+    /// <summary>يقرأ سند قبض بحالته ومجاميعه ومعرّف قيده إن رُحّل.</summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="receiptId">السند.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    public async ValueTask<Result<SalesDocument>> ReadCustomerReceiptAsync(
+        TenantId tenant,
+        UserId actor,
+        Guid receiptId,
+        CancellationToken cancellationToken = default)
+    {
+        Result<SalesDocumentView> result = await _receipts
+            .GetReceiptAsync(tenant, actor, receiptId, cancellationToken).ConfigureAwait(false);
+
+        return Document(result);
+    }
+
+    /// <summary>
+    /// يرحّل سند قبض مسوّدة: <b>يُسقط من ذمّة العميل</b> بالمقبوض والخصم معاً، ويُنزل
+    /// تخصيصاته على فواتيره. حصين ضدّ التكرار بالشكل نفسه — الوصول الثاني بالهوية
+    /// نفسها يُرجع السند ذاته و<c>AlreadyPosted = true</c> بلا قيد ثانٍ وبلا تخصيص ثانٍ.
+    /// </summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="receiptId">السند.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    public async ValueTask<Result<SalesDocument>> PostCustomerReceiptAsync(
+        TenantId tenant,
+        UserId actor,
+        Guid receiptId,
+        CancellationToken cancellationToken = default)
+    {
+        Result<SalesDocumentView> result = await _receipts
+            .PostReceiptAsync(tenant, actor, receiptId, cancellationToken).ConfigureAwait(false);
+
+        return Document(result);
+    }
+
     /// <summary>يقرأ أعمار الذمم المدينة في تاريخ معلوم. نقطة قراءة بحتة.</summary>
     /// <param name="tenant">المستأجر.</param>
     /// <param name="actor">الفاعل.</param>
@@ -270,6 +348,12 @@ public sealed class SalesSurface
         buckets.Days61To90.Amount,
         buckets.Over90.Amount,
         buckets.Total.Amount);
+
+    private List<AllocationDraft> Allocations(IReadOnlyList<SalesReceiptAllocationRequest> allocations) =>
+    [
+        .. allocations.Select(allocation =>
+            new AllocationDraft(allocation.InvoiceId, Money.Of(allocation.Amount, _currency))),
+    ];
 
     private List<SalesLineDraft> Lines(IReadOnlyList<SalesLineRequest> lines) =>
     [

@@ -111,6 +111,89 @@ internal static class DocumentMapping
             PurchaseLines(dto.Lines));
     }
 
+    /// <summary>يقرأ طلب سند قبض مسوّدة.</summary>
+    /// <param name="dto">الحمولة.</param>
+    public static SalesReceiptRequest ToCustomerReceiptRequest(CustomerReceiptRequestDto dto)
+    {
+        ArgumentNullException.ThrowIfNull(dto);
+
+        return new SalesReceiptRequest(
+            WireMapping.ReadRequiredText(dto.Number, "number", CodeLength),
+            WireMapping.ReadGuid(dto.CustomerId, "customerId"),
+            WireMapping.ReadDate(dto.ReceivedOn, "receivedOn"),
+            WireMapping.ReadRequiredText(dto.SettlementMethod, "settlementMethod", ClassificationLength),
+            WireMapping.ReadRequiredText(dto.TreasuryPartyId, "treasuryPartyId", CodeLength),
+            WireNumbers.ParseStrict(dto.Received.Raw, WireNumbers.MoneyScale, "received"),
+            WireNumbers.ParseStrict(dto.SettlementDiscount.Raw, WireNumbers.MoneyScale, "settlementDiscount"),
+            ReceiptAllocations(dto.Allocations));
+    }
+
+    /// <summary>يقرأ طلب سند صرف مسوّدة.</summary>
+    /// <param name="dto">الحمولة.</param>
+    public static PurchasingPaymentRequest ToSupplierPaymentRequest(SupplierPaymentRequestDto dto)
+    {
+        ArgumentNullException.ThrowIfNull(dto);
+
+        return new PurchasingPaymentRequest(
+            WireMapping.ReadRequiredText(dto.Number, "number", CodeLength),
+            WireMapping.ReadGuid(dto.SupplierId, "supplierId"),
+            WireMapping.ReadDate(dto.PaidOn, "paidOn"),
+            WireMapping.ReadRequiredText(dto.SettlementMethod, "settlementMethod", ClassificationLength),
+            WireMapping.ReadRequiredText(dto.TreasuryPartyId, "treasuryPartyId", CodeLength),
+            WireNumbers.ParseStrict(dto.Paid.Raw, WireNumbers.MoneyScale, "paid"),
+            WireNumbers.ParseStrict(dto.BankFee.Raw, WireNumbers.MoneyScale, "bankFee"),
+            PaymentAllocations(dto.Allocations));
+    }
+
+    /// <summary>يقرأ طلب أمر شراء.</summary>
+    /// <param name="dto">الحمولة.</param>
+    public static PurchasingOrderRequest ToPurchaseOrderRequest(PurchaseOrderRequestDto dto)
+    {
+        ArgumentNullException.ThrowIfNull(dto);
+
+        return new PurchasingOrderRequest(
+            WireMapping.ReadRequiredText(dto.Number, "number", CodeLength),
+            WireMapping.ReadGuid(dto.SupplierId, "supplierId"),
+            WireMapping.ReadDate(dto.OrderedOn, "orderedOn"),
+            WireMapping.ReadRequiredText(dto.WarehouseId, "warehouseId", CodeLength),
+            WireMapping.ReadRequiredText(dto.CostCenterId, "costCenterId", CodeLength),
+            PurchaseLines(dto.Lines));
+    }
+
+    /// <summary>يقرأ طلب استلام بضاعة مسوّدة.</summary>
+    /// <param name="dto">الحمولة.</param>
+    public static PurchasingGoodsReceiptRequest ToGoodsReceiptRequest(GoodsReceiptRequestDto dto)
+    {
+        ArgumentNullException.ThrowIfNull(dto);
+
+        return new PurchasingGoodsReceiptRequest(
+            WireMapping.ReadRequiredText(dto.Number, "number", CodeLength),
+            WireMapping.ReadGuid(dto.OrderId, "orderId"),
+            WireMapping.ReadDate(dto.ReceivedOn, "receivedOn"),
+            ReceiptLines(dto.Lines));
+    }
+
+    /// <summary>ينقل أمر شراء بسطوره إلى السلك.</summary>
+    /// <param name="order">الأمر.</param>
+    public static PurchaseOrderDto ToDto(PurchasingOrder order)
+    {
+        ArgumentNullException.ThrowIfNull(order);
+
+        return new PurchaseOrderDto(
+            Id(order.Id),
+            order.Number,
+            order.State,
+            WireNumbers.FormatMoney(order.Net),
+            WireNumbers.FormatMoney(order.Tax),
+            WireNumbers.FormatMoney(order.Gross),
+            [.. order.Lines.Select(static line => new PurchaseOrderLineDto(
+                Id(line.Id),
+                line.LineNo,
+                line.ItemId,
+                WireNumbers.FormatMoney(line.Quantity),
+                WireNumbers.FormatMoney(line.UnitPrice)))]);
+    }
+
     /// <summary>ينقل عميلاً إلى السلك.</summary>
     /// <param name="party">العميل.</param>
     public static PartyDto ToDto(SalesParty party)
@@ -220,6 +303,65 @@ internal static class DocumentMapping
         WireNumbers.FormatMoney(bands.Over90),
         WireNumbers.FormatMoney(bands.Total));
 
+    private static List<SalesReceiptAllocationRequest> ReceiptAllocations(
+        IReadOnlyList<ReceiptAllocationDto>? allocations)
+    {
+        Guard(allocations, "allocations", out IReadOnlyList<ReceiptAllocationDto> present);
+
+        List<SalesReceiptAllocationRequest> mapped = [];
+
+        for (int index = 0; index < present.Count; index++)
+        {
+            ReceiptAllocationDto allocation = present[index];
+            string at = Field("allocations", index);
+
+            mapped.Add(new SalesReceiptAllocationRequest(
+                WireMapping.ReadGuid(allocation.InvoiceId, at + ".invoiceId"),
+                WireNumbers.ParseStrict(allocation.Amount.Raw, WireNumbers.MoneyScale, at + ".amount")));
+        }
+
+        return mapped;
+    }
+
+    private static List<PurchasingPaymentAllocationRequest> PaymentAllocations(
+        IReadOnlyList<PaymentAllocationDto>? allocations)
+    {
+        Guard(allocations, "allocations", out IReadOnlyList<PaymentAllocationDto> present);
+
+        List<PurchasingPaymentAllocationRequest> mapped = [];
+
+        for (int index = 0; index < present.Count; index++)
+        {
+            PaymentAllocationDto allocation = present[index];
+            string at = Field("allocations", index);
+
+            mapped.Add(new PurchasingPaymentAllocationRequest(
+                WireMapping.ReadGuid(allocation.BillId, at + ".billId"),
+                WireNumbers.ParseStrict(allocation.Amount.Raw, WireNumbers.MoneyScale, at + ".amount")));
+        }
+
+        return mapped;
+    }
+
+    private static List<PurchasingGoodsReceiptLineRequest> ReceiptLines(IReadOnlyList<GoodsReceiptLineDto>? lines)
+    {
+        Guard(lines, "lines", out IReadOnlyList<GoodsReceiptLineDto> present);
+
+        List<PurchasingGoodsReceiptLineRequest> mapped = [];
+
+        for (int index = 0; index < present.Count; index++)
+        {
+            GoodsReceiptLineDto line = present[index];
+            string at = Field("lines", index);
+
+            mapped.Add(new PurchasingGoodsReceiptLineRequest(
+                WireMapping.ReadGuid(line.OrderLineId, at + ".orderLineId"),
+                WireNumbers.ParseStrict(line.Quantity.Raw, WireNumbers.MoneyScale, at + ".quantity")));
+        }
+
+        return mapped;
+    }
+
     private static List<SalesLineRequest> SalesLines(IReadOnlyList<SalesLineDto>? lines)
     {
         Guard(lines, out IReadOnlyList<SalesLineDto> present);
@@ -278,22 +420,33 @@ internal static class DocumentMapping
     /// ونسخُه هنا كان سيجعل الرفض نفسه يخرج برمزين مختلفين حسب الباب.
     /// </summary>
     private static void Guard<T>(IReadOnlyList<T>? lines, out IReadOnlyList<T> present)
+        => Guard(lines, "lines", out present);
+
+    /// <summary>
+    /// نفس الفحص لأي مجموعة على مستند — <b>وباسمها في الرفض</b>: «السطور مفقودة» على
+    /// حقلٍ اسمه <c>allocations</c> رسالةٌ تدلّ على الحقل الخطأ.
+    /// </summary>
+    private static void Guard<T>(IReadOnlyList<T>? items, string field, out IReadOnlyList<T> present)
     {
-        if (lines is null)
+        if (items is null)
         {
-            throw WireNumbers.Reject("wire.text.missing", "lines", "السطور مفقودة.", "The lines are missing.");
+            throw WireNumbers.Reject(
+                "wire.text.missing",
+                field,
+                "الحقل «" + field + "» مفقود.",
+                "The field '" + field + "' is missing.");
         }
 
-        if (lines.Count > MaxLines)
+        if (items.Count > MaxLines)
         {
             throw WireNumbers.Reject(
                 "wire.list.too_long",
-                "lines",
-                FormattableString.Invariant($"عدد السطور يتجاوز الحدّ المعلن {MaxLines}."),
-                FormattableString.Invariant($"The number of lines exceeds the published limit of {MaxLines}."));
+                field,
+                FormattableString.Invariant($"عدد عناصر «{field}» يتجاوز الحدّ المعلن {MaxLines}."),
+                FormattableString.Invariant($"The number of items in '{field}' exceeds the published limit of {MaxLines}."));
         }
 
-        present = lines;
+        present = items;
     }
 
     private static int ReadTerms(int days)
@@ -310,8 +463,10 @@ internal static class DocumentMapping
         return days;
     }
 
-    private static string Field(int index) =>
-        string.Create(CultureInfo.InvariantCulture, $"lines[{index}]");
+    private static string Field(int index) => Field("lines", index);
+
+    private static string Field(string collection, int index) =>
+        string.Create(CultureInfo.InvariantCulture, $"{collection}[{index}]");
 
     private static string Id(Guid value) => value.ToString("D", CultureInfo.InvariantCulture);
 

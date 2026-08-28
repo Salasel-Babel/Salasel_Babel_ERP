@@ -12,6 +12,9 @@ namespace Babel.Purchasing.Application;
 /// </summary>
 public sealed class PurchaseOrderService : IApplicationService
 {
+    /// <summary>نوع مستند أمر الشراء — يُستعمل في الرفض بالاسم، لا في هوية ترحيل: لا ترحيل له.</summary>
+    internal const string OrderDocument = "PurchaseOrder";
+
     private readonly IEntitlementEnforcer _enforcer;
     private readonly PurchasingDbContext _database;
     private readonly CurrencyCode _currency;
@@ -156,6 +159,13 @@ public sealed class PurchaseOrderService : IApplicationService
             return Result<PurchasingDocumentView>.Failure(PurchasingErrors.NoLines);
         }
 
+        // سعر الوحدة يحمل عملته، وكان يُقرأ رقماً وتُكتب عملة المنشأة فوقه.
+        Result uniform = EnsureCompanyCurrency(draft.Lines);
+        if (uniform.IsFailure)
+        {
+            return Result<PurchasingDocumentView>.Failure(uniform.Errors);
+        }
+
         if (!await _database.Suppliers
                 .AnyAsync(row => row.TenantId == tenant.Value && row.Id == draft.SupplierId, cancellationToken)
                 .ConfigureAwait(false))
@@ -212,6 +222,45 @@ public sealed class PurchaseOrderService : IApplicationService
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         return Result<PurchasingDocumentView>.Success(View(row.Id, row.Number, row.State, net, tax));
+    }
+
+    /// <summary>
+    /// يقرأ أمر شراء بحالته ومجاميعه.
+    /// <para>
+    /// <b>ولا معرّف قيد له ولا سيكون:</b> أمر الشراء <b>التزام تعاقدي لا حدث محاسبي</b>،
+    /// والقيد الأول في دورة الشراء هو الاستلام. فالقراءة هنا تُرجع مستنداً بلا قيد،
+    /// ولا مورد ترحيل عليه أصلاً.
+    /// </para>
+    /// </summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="orderId">الأمر.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    [RequiresEntitlement(BabelModule.Purchasing, EntitlementAccess.Read)]
+    public async ValueTask<Result<PurchasingDocumentView>> GetOrderAsync(
+        TenantId tenant,
+        UserId actor,
+        Guid orderId,
+        CancellationToken cancellationToken = default)
+    {
+        Result gate = await _enforcer
+            .EnsureAsync(tenant, actor, BabelModule.Purchasing, EntitlementAccess.Read, "Purchasing.Order.Get", cancellationToken)
+            .ConfigureAwait(false);
+
+        if (gate.IsFailure)
+        {
+            return Result<PurchasingDocumentView>.Failure(gate.Errors);
+        }
+
+        PurchaseOrderRow? order = await _database.Orders
+            .AsNoTracking()
+            .FirstOrDefaultAsync(row => row.TenantId == tenant.Value && row.Id == orderId, cancellationToken)
+            .ConfigureAwait(false);
+
+        return order is null
+            ? Result<PurchasingDocumentView>.Failure(PurchasingErrors.DocumentNotFound(OrderDocument, orderId))
+            : Result<PurchasingDocumentView>.Success(
+                View(order.Id, order.Number, order.State, order.NetTotal, order.TaxTotal));
     }
 
     /// <summary>يقرأ سطور أمر شراء — معرّفات السطور هي مدخل المطابقة الثلاثية.</summary>
@@ -291,6 +340,22 @@ public sealed class PurchaseOrderService : IApplicationService
                 LineTax = lineTax,
             });
         }
+    }
+
+    /// <summary>كل سعر وحدة بعملة المنشأة، والخلط مرفوض برسالة تُسمّي العملتين.</summary>
+    /// <param name="lines">السطور.</param>
+    private Result EnsureCompanyCurrency(IReadOnlyList<PurchaseLineDraft> lines)
+    {
+        foreach (PurchaseLineDraft line in lines)
+        {
+            if (!line.UnitPrice.Currency.Equals(_currency))
+            {
+                return Result.Failure(
+                    PurchasingErrors.CurrencyMismatch(_currency, line.UnitPrice.Currency, "lines.unitPrice"));
+            }
+        }
+
+        return Result.Success();
     }
 
     private PurchasingDocumentView View(Guid id, string number, string state, decimal net, decimal tax) => new(

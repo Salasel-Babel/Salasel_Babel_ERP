@@ -117,6 +117,40 @@ internal sealed class ApiProcess : IAsyncDisposable
         return api;
     }
 
+    /// <summary>
+    /// ينتظر ظهور شذرةٍ في مُخرَج العملية، بمهلة قصيرة معلَنة.
+    /// <para>
+    /// <b>ولماذا انتظارٌ لا قراءةٌ فورية:</b> ‏<see cref="Process.OutputDataReceived"/> يصل
+    /// على خيطٍ آخر، فبين وصول استجابة HTTP إلى الاختبار ووصول سطر السجلّ إلى
+    /// <see cref="Output"/> سباقٌ لا يحسمه شيء. وقد سقط <c>ErrorContractTests</c> فعلاً على
+    /// آلةٍ حِملها 20 بـ<c>Output == ""</c> — <b>لا لأن الخادم لم يسجّل، بل لأن السطر لم
+    /// يصل بعد</b>. والانتظار المحدود <b>لا يُضعف الحكم</b>: الشذرة ما زالت مطلوبة، وغيابُها
+    /// بعد المهلة سقوطٌ كما كان.
+    /// </para>
+    /// </summary>
+    /// <param name="fragment">الشذرة المطلوبة.</param>
+    /// <param name="timeout">المهلة القصوى.</param>
+    public async Task<string> OutputContainingAsync(string fragment, TimeSpan timeout)
+    {
+        ArgumentNullException.ThrowIfNull(fragment);
+
+        DateTimeOffset deadline = DateTimeOffset.UtcNow + timeout;
+
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            string snapshot = Output;
+
+            if (snapshot.Contains(fragment, StringComparison.Ordinal))
+            {
+                return snapshot;
+            }
+
+            await Task.Delay(50).ConfigureAwait(false);
+        }
+
+        return Output;
+    }
+
     /// <summary>يوقف العملية ويحرّر العميل.</summary>
     public async ValueTask DisposeAsync()
     {

@@ -106,9 +106,17 @@ public sealed class ErrorContractTests
         }
 
         // والأثر كاملاً موجود — في سجلّ الخادم، تحت معرّف التتبّع نفسه.
+        //
+        // ‏**والانتظار المحدود ليس تخفيفاً للحكم:** سطر السجلّ يصل إلى الاختبار على خيطٍ
+        // آخر غير الخيط الذي وصلت عليه استجابة HTTP، فقراءتُه فور الاستجابة سباقٌ لا يحسمه
+        // شيء — وقد سقط هذا الاختبار فعلاً بـ`Output == ""` على آلةٍ حِملها 20، **لا لأن
+        // الخادم لم يسجّل بل لأن السطر لم يصل بعد**. والشذرتان ما زالتا مطلوبتين، وغيابهما
+        // بعد المهلة سقوطٌ كما كان.
         string traceId = problem.GetProperty("traceId").GetString()!;
-        Assert.Contains(traceId, broken.Output, StringComparison.Ordinal);
-        Assert.Contains("Npgsql", broken.Output, StringComparison.Ordinal);
+        string log = await broken.OutputContainingAsync(traceId, TimeSpan.FromSeconds(10));
+
+        Assert.Contains(traceId, log, StringComparison.Ordinal);
+        Assert.Contains("Npgsql", log, StringComparison.Ordinal);
     }
 
     [Fact]

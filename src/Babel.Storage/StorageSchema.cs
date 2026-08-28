@@ -14,6 +14,8 @@ namespace Babel.Storage;
 ///         قاعدة قائمة — ولذلك تُشغَّل نصوص الترقية بعده.</item>
 ///   <item><c>001_AttachmentsAreAppendOnly.sql</c>: مشغّل الرفض والمفاتيح الخارجية —
 ///         ما لا يعبّر عنه نموذج EF.</item>
+///   <item><c>002_AttachmentsCarryTheirSourceDocument.sql</c>: عمودا المستند المصدر
+///         وقيد اقترانهما وفهرس الجرد — لقاعدةٍ أُنشئت قبل أن يوجدا.</item>
 ///   <item><c>StorageGrants.sql</c>: الصلاحيات، آخر خطوة لأنها تحتاج اسم دور التطبيق
 ///         وقت النشر، واسم بيئة لا يُثبَّت في نصّ نشر.</item>
 /// </list>
@@ -26,7 +28,11 @@ namespace Babel.Storage;
 public static class StorageSchema
 {
     /// <summary>نصوص الترقية بترتيب تطبيقها.</summary>
-    private static readonly string[] Migrations = ["001_AttachmentsAreAppendOnly.sql"];
+    private static readonly string[] Migrations =
+    [
+        "001_AttachmentsAreAppendOnly.sql",
+        "002_AttachmentsCarryTheirSourceDocument.sql",
+    ];
 
     /// <summary>ينشر المخطّط كاملاً ويمنح الصلاحيات لدور التطبيق.</summary>
     /// <param name="options">الإعدادات — يُقرأ منها اتصال المالك واسم الدور.</param>

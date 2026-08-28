@@ -88,6 +88,13 @@ public sealed class FileSystemAttachmentStore : IAttachmentStore
 
         await using StorageDbContext database = StorageRuntime.Build(_options.AppConnectionString);
 
+        // ── ٣.٥ · ربط المستند المصدر: كاملٌ أو غائب، ولا نصف ربط ─────────────
+        Result<bool> link = SourceDocumentLink.Check(submission.SourceDocumentType, submission.SourceDocumentId);
+        if (link.IsFailure)
+        {
+            return Result<StoredAttachment>.Failure(link.Errors);
+        }
+
         // ── ٤ · إن كان تصحيحاً: السلف موجود، وفي المستأجر نفسه، وقابل للتصحيح ──
         int version = 1;
         if (submission.Supersedes.IsAssigned)
@@ -132,6 +139,8 @@ public sealed class FileSystemAttachmentStore : IAttachmentStore
             StoredBy = submission.Actor.Value,
             Version = version,
             SupersedesId = submission.Supersedes.IsAssigned ? submission.Supersedes.Value : null,
+            SourceDocumentType = link.Value ? submission.SourceDocumentType : null,
+            SourceDocumentId = link.Value ? submission.SourceDocumentId : null,
         };
 
         database.Attachments.Add(row);
@@ -260,6 +269,75 @@ public sealed class FileSystemAttachmentStore : IAttachmentStore
             ObservedHash = observed,
             BytesRead = bytesRead,
             Elapsed = Stopwatch.GetElapsedTime(timestamp),
+        });
+    }
+
+    /// <inheritdoc />
+    public async ValueTask<Result<AttachmentPage>> ListAsync(
+        AttachmentQuery query,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+
+        Result<bool> page = SourceDocumentLink.CheckPage(query);
+        if (page.IsFailure)
+        {
+            return Result<AttachmentPage>.Failure(page.Errors);
+        }
+
+        Result<bool> link = SourceDocumentLink.Check(query.SourceDocumentType, query.SourceDocumentId);
+        if (link.IsFailure)
+        {
+            return Result<AttachmentPage>.Failure(link.Errors);
+        }
+
+        await using StorageDbContext database = StorageRuntime.Build(_options.AppConnectionString);
+
+        // **المستأجر أول شرط، لا مرشّح يُضاف بعد**: جرد بلا مستأجر ليس جرداً ناقصاً
+        // بل جردٌ عبر الحدّ، والفهرس نفسه يبدأ بالمستأجر كي يقول الشكلُ ذلك أيضاً.
+        IQueryable<AttachmentRow> rows = database.Attachments
+            .AsNoTracking()
+            .Where(candidate => candidate.TenantId == query.Tenant.Value);
+
+        if (link.Value)
+        {
+            rows = rows.Where(candidate =>
+                candidate.SourceDocumentType == query.SourceDocumentType
+                && candidate.SourceDocumentId == query.SourceDocumentId);
+        }
+
+        int total = await rows.CountAsync(cancellationToken).ConfigureAwait(false);
+
+        // ‏Guid v7 يرتّب زمنياً، والترتيب التنازلي عليه هو «الأحدث أولاً» بلا عمود ثانٍ.
+        // والترتيب **صريح دائماً**: صفحةٌ بلا ترتيب مُعلن تُعيد صفوفاً مكرّرة وأخرى
+        // مفقودة بين طلبين — وهو عطلٌ لا يُرى إلا عند العميل.
+        List<AttachmentRow> window = await rows
+            .OrderByDescending(candidate => candidate.Id)
+            .Skip(query.Skip)
+            .Take(query.Take)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        List<StoredAttachment> items = [];
+        foreach (AttachmentRow row in window)
+        {
+            Result<StoredAttachment> described =
+                await FindAsync(database, query.Tenant, new AttachmentId(row.Id), cancellationToken).ConfigureAwait(false);
+
+            if (described.IsFailure)
+            {
+                return Result<AttachmentPage>.Failure(described.Errors);
+            }
+
+            items.Add(described.Value);
+        }
+
+        return Result<AttachmentPage>.Success(new AttachmentPage
+        {
+            Items = items,
+            Total = total,
+            Skip = query.Skip,
+            Take = query.Take,
         });
     }
 
@@ -401,6 +479,8 @@ public sealed class FileSystemAttachmentStore : IAttachmentStore
         StoredBy = new UserId(row.StoredBy),
         Version = row.Version,
         Supersedes = row.SupersedesId is { } predecessor ? new AttachmentId(predecessor) : AttachmentId.None,
+        SourceDocumentType = row.SourceDocumentType,
+        SourceDocumentId = row.SourceDocumentId,
         SupersededBy = successor is { } next ? new AttachmentId(next) : AttachmentId.None,
         Withdrawal = withdrawal is null
             ? null

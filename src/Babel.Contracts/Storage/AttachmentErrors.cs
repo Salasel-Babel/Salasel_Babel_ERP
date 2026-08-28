@@ -88,6 +88,31 @@ public static class AttachmentErrors
         "المرفق " + id + " صُحِّح من قبل بالإصدار " + successor + " — السلسلة خطّية ولا تتفرّع.",
         "attachment " + id + " was already superseded by " + successor + "; the chain is linear and does not fork.");
 
+    /// <summary>
+    /// نوع المستند المصدر ومعرّفه: أحدهما بلا الآخر.
+    /// <b>رفضٌ لا تجاهل صامت</b> — من أرسل نصفَ ربطٍ يظنّ أن المرفق مربوط.
+    /// </summary>
+    public static Error SourceDocumentIncomplete => new(
+        "storage.source_document_incomplete",
+        "ربط المرفق بمستنده يحتاج النوع والمعرّف معاً — أحدهما بلا الآخر مرفوض.",
+        "linking an attachment to its document needs both the type and the identifier; one without the other is refused.");
+
+    /// <summary>رمز نوع مستند مصدر خارج الشكل المقبول.</summary>
+    /// <param name="declared">ما أُرسل.</param>
+    public static Error SourceDocumentTypeRefused(string declared) => new(
+        "storage.source_document_type_refused",
+        "رمز المستند المصدر «" + declared + "» ليس رمزاً: الرموز أحرف لاتينية صغيرة وأرقام ونقطة وشرطة سفلية، وطولها بين محرف و64.",
+        "the source document type '" + declared + "' is not a code: codes are lower-case Latin letters, digits, dots, and underscores, between one and 64 characters.");
+
+    /// <summary>حجم صفحة أو إزاحة خارج المدى المقبول.</summary>
+    /// <param name="skip">الإزاحة المطلوبة.</param>
+    /// <param name="take">حجم الصفحة المطلوب.</param>
+    /// <param name="maximum">السقف.</param>
+    public static Error PageRefused(int skip, int take, int maximum) => new(
+        "storage.page_refused",
+        string.Format(CultureInfo.InvariantCulture, "الصفحة المطلوبة (تخطّي {0}، حجم {1}) خارج المدى: التخطّي غير سالب والحجم بين 1 و{2}.", skip, take, maximum),
+        string.Format(CultureInfo.InvariantCulture, "the requested page (skip {0}, size {1}) is out of range: skip is non-negative and size is between 1 and {2}.", skip, take, maximum));
+
     /// <summary>تذكرة لا يصحّ توقيعها.</summary>
     public static Error TicketNotSigned => new(
         "storage.ticket_signature_invalid",

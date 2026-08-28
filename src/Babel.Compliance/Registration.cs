@@ -21,15 +21,19 @@ namespace Babel.Compliance;
 /// المستودع كله بلا مسار التزام واحد بينما يبدو أن الوحدة مركَّبة
 /// (‏<c>docs/evidence/traps.md#fakh-two-registrations-one-name</c>).
 /// </summary>
-public static class ComplianceRegistration
+public static class ComplianceModuleRegistration
 {
-    public static IServiceCollection AddBabelCompliance(
-        this IServiceCollection services,
-        ComplianceSettings? settings = null,
-        TimeProvider? clock = null)
+    /// <summary>
+    /// نقطة تركيب الوحدة — <b>بلا معاملات اختيارية عمداً</b>. الساعة والإعدادات تُركَّبان
+    /// بـ<c>TryAdd</c>، فمن أراد غير الافتراضي سجّله <b>قبل</b> هذا النداء. ومعاملٌ اختياري
+    /// هنا كان يجعل الجذر التركيبي يسمّي نوعاً داخلياً للوحدة في موضع النداء (القاعدة 13).
+    /// </summary>
+    public static IServiceCollection AddBabelCompliance(this IServiceCollection services)
     {
-        services.TryAddSingleton(clock ?? TimeProvider.System);
-        services.TryAddSingleton(settings ?? new ComplianceSettings());
+        ArgumentNullException.ThrowIfNull(services);
+
+        services.TryAddSingleton(TimeProvider.System);
+        services.TryAddSingleton(new ComplianceSettings());
 
         services.TryAddSingleton<IXmlCanonicaliser, DeterministicXmlSerialiser>();
         services.TryAddSingleton<IDocumentRenderer>(sp =>

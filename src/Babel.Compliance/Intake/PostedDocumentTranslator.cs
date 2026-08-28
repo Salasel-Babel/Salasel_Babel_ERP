@@ -194,7 +194,7 @@ public static class PostedDocumentTranslator
 
     private static PartyRef? PartyOf(TaxableDocumentParty? party) => party is null
         ? null
-        : new PartyRef(party.NameAr, party.NameEn, party.TaxRegistrationNumber, party.AddressAr, party.AddressEn);
+        : new PartyRef(party.Name.Arabic, party.Name.English, party.TaxRegistrationNumber, party.AddressAr, party.AddressEn);
 
     private static DocumentLine LineOf(TaxableDocumentLine line) => new(
         line.LineNo,

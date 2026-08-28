@@ -102,9 +102,11 @@ public sealed class IntakeTests
             DocumentNumber = number,
             IssuedAt = c.Harness.Clock.GetUtcNow(),
             Seller = new TaxableDocumentParty(
-                "سلاسل بابل للمقاولات", "Salasel Babel Contracting", "300000000000003", "الرياض", "Riyadh"),
+                new LocalizedName("سلاسل بابل للمقاولات", "Salasel Babel Contracting"),
+                "300000000000003", "الرياض", "Riyadh"),
             Buyer = withBuyerVat
-                ? new TaxableDocumentParty("شركة العميل", "Client Co", "310000000000003", "جدة", "Jeddah")
+                ? new TaxableDocumentParty(
+                    new LocalizedName("شركة العميل", "Client Co"), "310000000000003", "جدة", "Jeddah")
                 : null,
             Lines =
             [

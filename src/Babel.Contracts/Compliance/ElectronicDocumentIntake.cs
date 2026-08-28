@@ -26,14 +26,12 @@ public enum TaxableDocumentKind
 /// طرف في مستند خاضع للضريبة. الاسم بالعربية والإنجليزية إلزاماً.
 /// <para>A party on a taxable document; both names are mandatory.</para>
 /// </summary>
-/// <param name="NameAr">الاسم بالعربية.</param>
-/// <param name="NameEn">الاسم بالإنجليزية.</param>
+/// <param name="Name">الاسم — <see cref="LocalizedName"/> يفرض الطرفين، وهما واقعتان مسجَّلتان يغطّيهما الختم.</param>
 /// <param name="TaxRegistrationNumber">الرقم الضريبي إن وُجد. <b>غيابه ليس نقصاً</b> — هو ما يجعل المستند مبسّطاً.</param>
 /// <param name="AddressAr">العنوان بالعربية.</param>
 /// <param name="AddressEn">العنوان بالإنجليزية.</param>
 public sealed record TaxableDocumentParty(
-    string NameAr,
-    string NameEn,
+    LocalizedName Name,
     string? TaxRegistrationNumber = null,
     string? AddressAr = null,
     string? AddressEn = null);

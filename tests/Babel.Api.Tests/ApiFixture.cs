@@ -258,6 +258,21 @@ internal static class ApiFixture
             // وكان ذلك غير مرئي ما دام لا باب HTTP يبلغ الوحدتين.
             ["Babel__Sales__ConnectionString"] = ApiTestDatabase.Sales.ConnectionString,
             ["Babel__Purchasing__ConnectionString"] = ApiTestDatabase.Purchasing.ConnectionString,
+
+            // ── مخزن المرفقات: اتصال دور التطبيق، وجذرٌ على القرص، ومفتاح توقيع ──
+            //
+            // ‏**والمفتاح يُولَّد لهذه العملية ولا يُودَع.** غيابُه عطلٌ يُعلَن عند
+            // التركيب لا مفتاحٌ يُخترع (ADR-0046 دليل 14): مُصدِرٌ يولّد لنفسه مفتاحاً
+            // عند الإقلاع يجعل كل تذكرة صالحةً قبل إعادة التشغيل ومرفوضةً بعدها،
+            // والفشل يُقرأ «انتهت الصلاحية» لا «لا مفتاح».
+            //
+            // ‏**ولا اتصال مالك هنا** كما في النواة والدفتر: خادمٌ يحمله يستطيع إسقاط
+            // مشغّل «يُضاف ولا يُعدَّل» ثم الكتابة فوق سند إثبات.
+            ["Babel__Storage__AppConnectionString"] = ApiTestDatabase.Storage.AppConnectionString,
+            ["Babel__Storage__RootPath"] = ApiTestDatabase.StorageRoot,
+            ["Babel__Storage__TicketSigningKey"] = ApiTestDatabase.StorageTicketKeyHex,
+            ["Babel__Storage__MaximumBytes"] =
+                ApiTestDatabase.StorageMaximumBytes.ToString(CultureInfo.InvariantCulture),
         };
 
         int index = 0;

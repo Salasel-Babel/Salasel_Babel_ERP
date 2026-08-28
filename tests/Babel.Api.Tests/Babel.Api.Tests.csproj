@@ -35,6 +35,12 @@
     -->
     <ProjectReference Include="../../src/Babel.Sales/Babel.Sales.csproj" />
     <ProjectReference Include="../../src/Babel.Purchasing/Babel.Purchasing.csproj" />
+    <!--
+      ومحوّل المرفقات لنشر مخطّط المخزن في قاعدة هذه العملية وحده — بالناشر نفسه
+      (StorageSchema.DeployAsync) الذي يستعمله النشر، لا بنسخة ثانية من نصوصه.
+      ولا يُقرأ منه نوعٌ آخر: كل ما تعرفه هذه المجموعة عن سطح المرفقات يمرّ عبر HTTP.
+    -->
+    <ProjectReference Include="../../src/Babel.Storage/Babel.Storage.csproj" />
   </ItemGroup>
 
   <ItemGroup>

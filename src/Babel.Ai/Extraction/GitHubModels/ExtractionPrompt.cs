@@ -203,6 +203,21 @@ public static class ExtractionPrompt
         }
     }
 
+    /// <summary>
+    /// <b>الموضع الوحيد في المستودع الذي تُرمَّز فيه بايتات مستندٍ نصّاً — وهو مقصود
+    /// ومحصور هنا.</b>
+    /// <para>
+    /// هذا هو <b>الطرف البعيد</b>: نموذج رؤية عبر HTTP لا يقبل الثنائي إلّا هكذا. والقرار
+    /// الذي يسبقه ليس تقنياً بل تنظيمي — <c>ExtractionResidency</c> و
+    /// <c>DocumentBytesLeaveThePremises</c> — ويُقرأ وقت التركيب لا وقت النداء.
+    /// </para>
+    /// <para>
+    /// <b>وما لم يعد يقع:</b> الترميز عند <b>الطرف القريب</b>، أي أن يرسل العميل صورته
+    /// إلينا <c>base64</c> داخل جسم JSON. ذلك كان الشكل الوحيد الممكن ما دامت نقطة
+    /// الدخول تأخذ بايتات؛ وقد صارت تأخذ <c>AttachmentId</c>، فالبايتات تصل ثنائيةً
+    /// إلى المخزن مرّة، وتُقرأ منه هنا. والحارس على ذلك في اختبارات المعمارية.
+    /// </para>
+    /// </summary>
     private static string DataUri(ExtractionRequest request) =>
         "data:" + request.MediaType + ";base64," + Convert.ToBase64String(request.Content.Span);
 

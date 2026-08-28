@@ -1,6 +1,7 @@
 using Babel.Ai.Reconciliation;
 using Babel.Ai.Suggestions;
 using Babel.Contracts.Capture;
+using Babel.Contracts.Storage;
 using Babel.SharedKernel;
 
 namespace Babel.Ai.Capture;
@@ -127,6 +128,26 @@ public sealed record CapturedInvoiceDraft
 
     /// <summary>معرّف المزوّد الذي استخرج السطور — يُسجَّل كي يُعرف من قرأ ماذا.</summary>
     public required string ExtractionProviderId { get; init; }
+
+    /// <summary>
+    /// <b>المستند المصدر — إشارةٌ إلى المرفق المُودَع، لا بايتاته.</b>
+    /// <para>
+    /// المسوّدة تحمل ما قُرئ من الصورة، والصورة نفسها سندُ إثبات يعيش في المخزن
+    /// ويُقرأ عبر <see cref="IAttachmentStore"/>. وحملُ البايتات هنا كان سيعني
+    /// نسخةً ثانية منها في كل مسوّدة، ونسخةً ثالثة في كل سجلّ طلب.
+    /// </para>
+    /// </summary>
+    public required AttachmentId SourceDocument { get; init; }
+
+    /// <summary>
+    /// بصمة بايتات المستند المصدر كما سجّلها المخزن.
+    /// <para>
+    /// <b>ولماذا تُنسخ هنا:</b> كي يبقى الربط بين ما قرأه النموذج وما في المخزن
+    /// <b>قابلاً للتحقّق من المسوّدة وحدها</b>. مسوّدةٌ تحمل معرّفاً فقط تصير بلا
+    /// معنى لو بُدِّلت البايتات تحت المعرّف؛ ومعها البصمة يُكتشف ذلك بمقارنة.
+    /// </para>
+    /// </summary>
+    public required string SourceDocumentHash { get; init; }
 
     /// <summary>اسم البائع.</summary>
     public required CapturedField<string> SellerName { get; init; }

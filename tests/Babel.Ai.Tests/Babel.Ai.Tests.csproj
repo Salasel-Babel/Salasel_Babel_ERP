@@ -20,6 +20,14 @@
       تُركَّب في الجذر التركيبي. ونسخة الوصلة الجاهزة للنقل في Support/ZatcaQrAttestationReader.cs.
     -->
     <ProjectReference Include="../../src/Babel.Compliance.Zatca/Babel.Compliance.Zatca.csproj" />
+    <!--
+      ومحوّل المرفقات **في الذاكرة**: الالتقاط صار يشير إلى مستند مُودَع بدل أن يحمل
+      بايتاته، فالاختبار يحتاج محوّلاً للمنفذ. ويُختار المحوّل الذي لا يحتاج قرصاً ولا
+      قاعدة بيانات — أمّا الشمّ والصلاحيات ومشغّل «يُضاف ولا يُعدَّل» فمُثبَتة على
+      PostgreSQL حقيقية في tests/Babel.Storage.Tests/ ولا تُعاد هنا.
+      ووحدة Babel.Ai نفسها لا تشير إليه ولا تستطيع (القاعدة 3): المنفذ في Babel.Contracts.
+    -->
+    <ProjectReference Include="../../src/Babel.Storage/Babel.Storage.csproj" />
   </ItemGroup>
 
   <ItemGroup>

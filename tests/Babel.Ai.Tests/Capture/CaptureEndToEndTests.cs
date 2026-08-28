@@ -342,7 +342,9 @@ public sealed class CaptureEndToEndTests(ITestOutputHelper output)
     {
         CaptureHarness harness = CaptureHarness.Create(CaptureHarness.ConsistentInvoice());
 
-        ExtractionRequest unknown = harness.Request(null) with { DocumentId = "CAP-UNKNOWN" };
+        // مستندٌ **مُودَع فعلاً** لكن المزوّد لا يعرفه: الرفض يجب أن يأتي من المزوّد
+        // لا من المخزن، وإلّا لكان الاختبار يقيس شيئاً آخر.
+        CaptureRequest unknown = harness.Request(null) with { Document = harness.DepositAnother([0xFF, 0xD8, 0xFF, 0x01]) };
         Result<CapturedInvoiceDraft> captured = await harness.Service.CaptureAsync(harness.Tenant, harness.Actor, unknown, Ct);
 
         output.WriteLine(Report(captured));

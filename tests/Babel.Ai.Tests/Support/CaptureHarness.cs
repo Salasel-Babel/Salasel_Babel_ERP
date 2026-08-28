@@ -4,6 +4,8 @@ using Babel.Ai.Promotion;
 using Babel.Ai.Suggestions;
 using Babel.Compliance.Zatca.Qr;
 using Babel.Contracts.Capture;
+using Babel.Contracts.Storage;
+using Babel.Storage;
 using Babel.Core.Entitlement;
 using Babel.SharedKernel;
 
@@ -85,14 +87,24 @@ internal sealed class CaptureHarness
         DeterministicExtractionProvider provider,
         RecordingReceiver receiver,
         ICapturedDraftStore store,
+        InMemoryAttachmentStore attachments,
+        AttachmentId document,
         TenantId tenant)
     {
         Service = service;
         Provider = provider;
         Receiver = receiver;
         Store = store;
+        Attachments = attachments;
+        Document = document;
         Tenant = tenant;
     }
+
+    /// <summary>مخزن المرفقات — البايتات فيه، والمسوّدة تشير إليها.</summary>
+    public InMemoryAttachmentStore Attachments { get; }
+
+    /// <summary>المستند المُودَع الذي تشير إليه طلبات هذه البيئة.</summary>
+    public AttachmentId Document { get; }
 
     public InvoiceCaptureService Service { get; }
 
@@ -109,10 +121,17 @@ internal sealed class CaptureHarness
     /// <summary>ينشئ بيئة كاملة. المزوّد يُبذر بالمُخرَج المعطى.</summary>
     public static CaptureHarness Create(string json, ICapturedInvoiceReceiver? receiver = null)
     {
-        DeterministicExtractionProvider provider = new DeterministicExtractionProvider().Answering(DocumentId, json);
         RecordingReceiver recording = new();
         InMemoryCapturedDraftStore store = new();
+        InMemoryAttachmentStore attachments = new();
         TenantId tenant = new(Guid.CreateVersion7());
+
+        // **البايتات تُودَع أولاً، ثم يُشار إليها.** ولذلك يُبذر المزوّد بمعرّف المرفق
+        // نفسه: هوية المستند في هذا المسار صارت هوية ما أُودِع، لا نصّاً يخترعه المستدعي.
+        AttachmentId document = Deposit(attachments, tenant, DocumentBytes);
+
+        DeterministicExtractionProvider provider = new DeterministicExtractionProvider()
+            .Answering(document.ToString(), json);
 
         InvoiceCaptureService service = new(
             new AlwaysEntitled(),
@@ -120,12 +139,37 @@ internal sealed class CaptureHarness
             new ZatcaQrAttestationReader(),
             MatrixPostingVocabulary.Default,
             store,
+            attachments,
             receiver ?? recording,
             new AiOptions(),
             new FixedClock(IssuedAt));
 
-        return new CaptureHarness(service, provider, recording, store, tenant);
+        return new CaptureHarness(service, provider, recording, store, attachments, document, tenant);
     }
+
+    /// <summary>بايتات مستند صادقة الترويسة — ترويسة JPEG.</summary>
+    public static byte[] DocumentBytes => [0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46];
+
+    /// <summary>يودِع بايتات في مخزن ويعيد معرّفها.</summary>
+    public static AttachmentId Deposit(InMemoryAttachmentStore attachments, TenantId tenant, byte[] content)
+    {
+        // النائب يكتمل تزامنياً بحكم بنائه، والتأكيد يقولها بدل أن يفترضها القارئ.
+        ValueTask<Result<StoredAttachment>> put = attachments.PutAsync(new AttachmentSubmission
+        {
+            Tenant = tenant,
+            Actor = new UserId(Guid.CreateVersion7()),
+            Content = content,
+            DeclaredFileName = "فاتورة.jpg",
+            DeclaredMediaType = "image/jpeg",
+        });
+
+        return put.IsCompleted
+            ? put.Result.Value.Id
+            : throw new InvalidOperationException("نائب المخزن لم يكتمل تزامنياً — النائب تغيّر ولم يتغيّر هذا الافتراض.");
+    }
+
+    /// <summary>يودِع مستنداً ثانياً في هذه البيئة ويعيد معرّفه.</summary>
+    public AttachmentId DepositAnother(byte[] content) => Deposit(Attachments, Tenant, content);
 
     /// <summary>ينشئ بيئة بمُخرَج مُركَّب.</summary>
     public static CaptureHarness Create(ComposedExtraction extraction, ICapturedInvoiceReceiver? receiver = null) =>
@@ -149,14 +193,15 @@ internal sealed class CaptureHarness
             certificateSignature: new byte[] { 0x01, 0x02, 0x03, 0x04 },
             isSimplified: false);
 
-    /// <summary>طلب التقاط من قناة محادثة، مع حمولة رمز أو بدونها.</summary>
-    public ExtractionRequest Request(string? qrPayload) => new()
+    /// <summary>
+    /// طلب التقاط من قناة محادثة، مع حمولة رمز أو بدونها.
+    /// <b>ولا بايتة فيه</b> — معرّف مرفق وقناة وحمولة رمز.
+    /// </summary>
+    public CaptureRequest Request(string? qrPayload) => new()
     {
         Tenant = Tenant,
-        DocumentId = DocumentId,
+        Document = Document,
         Channel = CaptureChannel.Chat,
-        MediaType = "image/jpeg",
-        Content = new byte[] { 0xFF, 0xD8, 0xFF },
         QrPayload = qrPayload,
     };
 

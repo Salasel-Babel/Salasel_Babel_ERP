@@ -239,7 +239,7 @@ export function fetchTransport(options: {
         : "application/json, application/problem+json",
     };
     if (options.token) headers.Authorization = "Bearer " + options.token;
-    /* ‏FormData يمرّ كما هو **وبلا ترويسة نوع محتوى**: الحدّ الفاصل (boundary) يكتبه
+    /* FormData يمرّ كما هو **وبلا ترويسة نوع محتوى**: الحدّ الفاصل (boundary) يكتبه
        المتصفّح، وترويسةٌ نكتبها نحن تُلغيه فتصل حمولة بلا فاصل يُقرأ بها. */
     const form = typeof FormData !== "undefined" && body instanceof FormData;
     if (body !== undefined && !form) headers["Content-Type"] = "application/json";

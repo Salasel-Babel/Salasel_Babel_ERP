@@ -100,11 +100,18 @@ public static class AttachmentErrors
         "انتهت صلاحية تذكرة الوصول.",
         "the access ticket has expired.");
 
-    /// <summary>عمر تذكرة يتجاوز السقف المُعلَن.</summary>
-    /// <param name="requested">المطلوب بالثواني.</param>
-    /// <param name="cap">السقف بالثواني.</param>
-    public static Error TicketLifetimeRefused(double requested, double cap) => new(
+    /// <summary>
+    /// عمر تذكرة يتجاوز السقف المُعلَن.
+    /// <para>
+    /// <b>و<c>TimeSpan</c> لا <c>double</c> بالثواني</b>: القاعدة 4 تمنع الفاصلة العائمة
+    /// في العقود منعاً باتاً، ومدّةٌ تعبر حدّاً بوصفها <c>double</c> هي مدّةٌ تُقارَن
+    /// يوماً بمدّةٍ أخرى فتختلفان في الخانة السابعة عشرة.
+    /// </para>
+    /// </summary>
+    /// <param name="requested">العمر المطلوب.</param>
+    /// <param name="cap">السقف.</param>
+    public static Error TicketLifetimeRefused(TimeSpan requested, TimeSpan cap) => new(
         "storage.ticket_lifetime_refused",
-        string.Format(CultureInfo.InvariantCulture, "عمر التذكرة المطلوب {0} ثانية ويتجاوز السقف {1}.", requested, cap),
-        string.Format(CultureInfo.InvariantCulture, "the requested ticket lifetime of {0}s exceeds the {1}s cap.", requested, cap));
+        string.Format(CultureInfo.InvariantCulture, "عمر التذكرة المطلوب {0} ويتجاوز السقف {1}.", requested, cap),
+        string.Format(CultureInfo.InvariantCulture, "the requested ticket lifetime of {0} exceeds the {1} cap.", requested, cap));
 }

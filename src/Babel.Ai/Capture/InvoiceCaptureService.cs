@@ -5,6 +5,7 @@ using Babel.Ai.Promotion;
 using Babel.Ai.Reconciliation;
 using Babel.Ai.Suggestions;
 using Babel.Contracts.Capture;
+using Babel.Contracts.Storage;
 using Babel.Core.Application;
 using Babel.Core.Entitlement;
 using Babel.SharedKernel;
@@ -32,6 +33,7 @@ public sealed class InvoiceCaptureService : IApplicationService
     private readonly IAttestedQrReader _qr;
     private readonly IPostingVocabulary _vocabulary;
     private readonly ICapturedDraftStore _store;
+    private readonly IAttachmentStore _attachments;
     private readonly ICapturedInvoiceReceiver _receiver;
     private readonly AiOptions _options;
     private readonly TimeProvider _clock;
@@ -42,6 +44,7 @@ public sealed class InvoiceCaptureService : IApplicationService
     /// <param name="qr">قارئ الرمز المُصدَّق.</param>
     /// <param name="vocabulary">المفردات المغلقة.</param>
     /// <param name="store">مخزن المسوّدات.</param>
+    /// <param name="attachments">مخزن المرفقات — <b>منفذٌ في العقد</b>، ومحوّله يركّبه الجذر.</param>
     /// <param name="receiver">منفذ الترقية إلى الوحدة المالكة.</param>
     /// <param name="options">إعدادات الوحدة.</param>
     /// <param name="clock">مصدر الوقت.</param>
@@ -51,6 +54,7 @@ public sealed class InvoiceCaptureService : IApplicationService
         IAttestedQrReader qr,
         IPostingVocabulary vocabulary,
         ICapturedDraftStore store,
+        IAttachmentStore attachments,
         ICapturedInvoiceReceiver receiver,
         AiOptions options,
         TimeProvider clock)
@@ -60,6 +64,7 @@ public sealed class InvoiceCaptureService : IApplicationService
         ArgumentNullException.ThrowIfNull(qr);
         ArgumentNullException.ThrowIfNull(vocabulary);
         ArgumentNullException.ThrowIfNull(store);
+        ArgumentNullException.ThrowIfNull(attachments);
         ArgumentNullException.ThrowIfNull(receiver);
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(clock);
@@ -69,6 +74,7 @@ public sealed class InvoiceCaptureService : IApplicationService
         _qr = qr;
         _vocabulary = vocabulary;
         _store = store;
+        _attachments = attachments;
         _receiver = receiver;
         _options = options;
         _clock = clock;
@@ -83,13 +89,13 @@ public sealed class InvoiceCaptureService : IApplicationService
     /// </summary>
     /// <param name="tenant">المستأجر.</param>
     /// <param name="actor">الفاعل.</param>
-    /// <param name="request">طلب الالتقاط.</param>
+    /// <param name="request">طلب الالتقاط — <b>إشارةٌ إلى مستند مُودَع لا بايتاته</b>.</param>
     /// <param name="cancellationToken">رمز الإلغاء.</param>
     [RequiresEntitlement(BabelModule.Ai, EntitlementAccess.Write)]
     public async ValueTask<Result<CapturedInvoiceDraft>> CaptureAsync(
         TenantId tenant,
         UserId actor,
-        ExtractionRequest request,
+        CaptureRequest request,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -103,11 +109,36 @@ public sealed class InvoiceCaptureService : IApplicationService
             return Result<CapturedInvoiceDraft>.Failure(gate.Errors);
         }
 
+        // ── 0 · البايتات تُقرأ من المخزن **بمستأجر هذا النداء** ─────────────────
+        // ولا تصل هذه الدالّة بايتةٌ من مستدعٍ. فمعرّفٌ مسرَّب من مستأجر آخر يعود
+        // بـstorage.attachment_not_found، ومستندٌ بُدِّل تحت مساره يعود
+        // بـstorage.content_hash_mismatch — **قبل أن يقرأه نموذج**.
+        Result<AttachmentContent> document = await _attachments
+            .OpenAsync(tenant, request.Document, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (document.IsFailure)
+        {
+            return Result<CapturedInvoiceDraft>.Failure(document.Errors);
+        }
+
+        StoredAttachment source = document.Value.Descriptor;
+
+        ExtractionRequest extraction = new()
+        {
+            Tenant = tenant,
+            DocumentId = source.Id.ToString(),
+            Channel = request.Channel,
+            MediaType = AttachmentMediaTypes.NameOf(source.MediaType),
+            Content = document.Value.Content,
+            QrPayload = request.QrPayload,
+        };
+
         // ── 1 · الرمز: مُصدَّق أو رفض. ورمزٌ معطوب لا ينحدر بصمت إلى «قراءة ضوئية» ──
         AttestedInvoiceFacts? attested = null;
-        if (!string.IsNullOrWhiteSpace(request.QrPayload))
+        if (!string.IsNullOrWhiteSpace(extraction.QrPayload))
         {
-            Result<AttestedInvoiceFacts> read = _qr.Read(request.QrPayload);
+            Result<AttestedInvoiceFacts> read = _qr.Read(extraction.QrPayload);
             if (read.IsFailure)
             {
                 return Result<CapturedInvoiceDraft>.Failure(read.Errors);
@@ -117,7 +148,7 @@ public sealed class InvoiceCaptureService : IApplicationService
         }
 
         // ── 2 · المزوّد، ثم المخطط عند الحدّ ──────────────────────────────────
-        Result<ExtractionOutput> output = await _extractor.ExtractAsync(request, cancellationToken).ConfigureAwait(false);
+        Result<ExtractionOutput> output = await _extractor.ExtractAsync(extraction, cancellationToken).ConfigureAwait(false);
         if (output.IsFailure)
         {
             return Result<CapturedInvoiceDraft>.Failure(output.Errors);
@@ -152,7 +183,7 @@ public sealed class InvoiceCaptureService : IApplicationService
             suggestion = candidate.Confidence >= _options.MinimumSuggestionConfidence ? candidate : null;
         }
 
-        CapturedInvoiceDraft draft = Build(tenant, request, output.Value.ProviderId, extracted, attested, suggestion);
+        CapturedInvoiceDraft draft = Build(tenant, request, source, output.Value.ProviderId, extracted, attested, suggestion);
         draft = Settle(draft);
 
         await _store.SaveAsync(draft, cancellationToken).ConfigureAwait(false);
@@ -391,7 +422,8 @@ public sealed class InvoiceCaptureService : IApplicationService
 
     private CapturedInvoiceDraft Build(
         TenantId tenant,
-        ExtractionRequest request,
+        CaptureRequest request,
+        StoredAttachment source,
         string providerId,
         ExtractedInvoice extracted,
         AttestedInvoiceFacts? attested,
@@ -434,6 +466,8 @@ public sealed class InvoiceCaptureService : IApplicationService
             Channel = request.Channel,
             CapturedAt = _clock.GetUtcNow(),
             ExtractionProviderId = providerId,
+            SourceDocument = source.Id,
+            SourceDocumentHash = source.ContentHash,
             SellerName = sellerName,
             SellerVatNumber = vatNumber,
             InvoiceNumber = CapturedField<string>.Read(extracted.InvoiceNumber.Value, extracted.InvoiceNumber.Confidence),

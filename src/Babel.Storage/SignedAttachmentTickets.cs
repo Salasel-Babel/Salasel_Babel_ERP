@@ -71,9 +71,8 @@ public sealed class SignedAttachmentTickets : IAttachmentTickets
     {
         if (lifetime <= TimeSpan.Zero || lifetime > _options.TicketLifetimeCap)
         {
-            return Result<AttachmentTicket>.Failure(AttachmentErrors.TicketLifetimeRefused(
-                lifetime.TotalSeconds,
-                _options.TicketLifetimeCap.TotalSeconds));
+            return Result<AttachmentTicket>.Failure(
+                AttachmentErrors.TicketLifetimeRefused(lifetime, _options.TicketLifetimeCap));
         }
 
         DateTimeOffset expiresAt = _clock.GetUtcNow() + lifetime;

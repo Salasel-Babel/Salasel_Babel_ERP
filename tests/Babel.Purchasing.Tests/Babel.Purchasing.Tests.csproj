@@ -25,6 +25,12 @@
       سابقة قائمة على الشكل نفسه (تشير إلى مزوّد الهيئة).
     -->
     <ProjectReference Include="../../src/Babel.Ai/Babel.Ai.csproj" />
+    <!--
+      ومحوّل المرفقات في الذاكرة: الالتقاط صار يشير إلى مستند مُودَع لا يحمل بايتاته،
+      فيحتاج الاختبار محوّلاً للمنفذ. والمحوّل الحقيقي — نظام ملفّات وPostgreSQL —
+      مُثبَتٌ في tests/Babel.Storage.Tests/ ولا يُعاد إثباته هنا.
+    -->
+    <ProjectReference Include="../../src/Babel.Storage/Babel.Storage.csproj" />
     <ProjectReference Include="../../src/Babel.Compliance.Zatca/Babel.Compliance.Zatca.csproj" />
     <ProjectReference Include="../../src/Babel.Ledger/Babel.Ledger.csproj" />
     <ProjectReference Include="../../src/Babel.Core/Babel.Core.csproj" />

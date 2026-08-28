@@ -7,6 +7,8 @@ using Babel.Ai.Promotion;
 using Babel.Ai.Suggestions;
 using Babel.Compliance.Zatca.Qr;
 using Babel.Contracts.Capture;
+using Babel.Contracts.Storage;
+using Babel.Storage;
 using Babel.Purchasing.Application;
 using Babel.SharedKernel;
 using Npgsql;
@@ -218,7 +220,7 @@ public sealed class CapturePromotionTests : IAsyncLifetime
 
         // بلا حمولة رمز: الرقم مقروء لا مُصدَّق.
         Result<CapturedInvoiceDraft> captured = await capture.Service.CaptureAsync(
-            tenant, Harness.Actor, capture.Request(null, "303333333333333"), token);
+            tenant, Harness.Actor, capture.Request(null), token);
         Assert.True(captured.IsSuccess, Describe(captured.Errors));
 
         Result<PromotedDocumentReference> promoted = await capture.Service.PromoteAsync(
@@ -390,15 +392,18 @@ public sealed class CapturePromotionTests : IAsyncLifetime
 
     private sealed record PostedLine(string Account, string Side, decimal Amount, string CostCenter);
 
-    private sealed record Capture(InvoiceCaptureService Service, ICapturedDraftStore Store, TenantId Tenant)
+    private sealed record Capture(
+        InvoiceCaptureService Service,
+        ICapturedDraftStore Store,
+        AttachmentId Document,
+        TenantId Tenant)
     {
-        public ExtractionRequest Request(string? qr, string? vatNumber = null) => new()
+        /// <summary>طلب التقاط — <b>إشارةٌ إلى مستند مُودَع، ولا بايتة فيه</b>.</summary>
+        public CaptureRequest Request(string? qr) => new()
         {
             Tenant = Tenant,
-            DocumentId = "CAP-DOC",
+            Document = Document,
             Channel = CaptureChannel.Chat,
-            MediaType = "image/jpeg",
-            Content = new byte[] { 0xFF, 0xD8, 0xFF },
             QrPayload = qr,
         };
     }
@@ -410,9 +415,26 @@ public sealed class CapturePromotionTests : IAsyncLifetime
     private Capture Build(string vatNumber = SellerVat)
     {
         InMemoryCapturedDraftStore store = new();
+        InMemoryAttachmentStore attachments = new();
+
+        // البايتات تُودَع مرّة، ثم يُشار إليها. وهوية المستند في هذا المسار هي هوية
+        // ما أُودِع، لا نصّاً يخترعه المستدعي.
+        ValueTask<Result<StoredAttachment>> put = attachments.PutAsync(new AttachmentSubmission
+        {
+            Tenant = PurchasingTestEnvironment.Tenant,
+            Actor = Harness.Actor,
+            Content = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46 },
+            DeclaredFileName = "فاتورة المورد.jpg",
+            DeclaredMediaType = "image/jpeg",
+        });
+
+        // النائب يكتمل تزامنياً بحكم بنائه، والتأكيد يقولها بدل أن يفترضها القارئ.
+        AttachmentId document = put.IsCompleted
+            ? put.Result.Value.Id
+            : throw new InvalidOperationException("المحوّل في الذاكرة لم يكتمل تزامنياً");
 
         DeterministicExtractionProvider provider = new DeterministicExtractionProvider()
-            .Answering("CAP-DOC", new ComposedExtraction
+            .Answering(document.ToString(), new ComposedExtraction
             {
                 SellerName = SellerName,
                 SellerVatNumber = vatNumber,
@@ -434,11 +456,12 @@ public sealed class CapturePromotionTests : IAsyncLifetime
             new ZatcaQrAttestationReader(),
             MatrixPostingVocabulary.Default,
             store,
+            attachments,
             _harness.Promotion,
             new AiOptions(),
             new FixedClock(IssuedAt));
 
-        return new Capture(service, store, PurchasingTestEnvironment.Tenant);
+        return new Capture(service, store, document, PurchasingTestEnvironment.Tenant);
     }
 
     private static PromotionConfirmation ConfirmAll(CapturedInvoiceDraft draft, string category = "")

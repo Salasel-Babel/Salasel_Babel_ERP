@@ -1,4 +1,5 @@
 using Babel.Contracts.Posting;
+using Babel.Contracts.Subledger;
 using Babel.Ledger.Posting;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -32,6 +33,14 @@ public static class LedgerModuleRegistration
         services.AddSingleton(provider => new LedgerRuntime(provider.GetRequiredService<LedgerOptions>()));
         services.AddScoped<IPostingService, PostingService>();
         services.AddScoped<Audit.LedgerAuditService>();
+
+        // ── منفذ نقطة الضبط: تنفيذٌ في الخادم، لا في تجهيزات الاختبار وحدها ──────
+        // كان `IControlPointReader` معلَناً في العقود بلا تنفيذ واحد في `src/`، فكانت
+        // ‏`ReceivablesService` و`PayablesService` و`InventoryValuationService` —
+        // ومعها `SalesInvoiceService` عبر `IInventoryValuation` — **غير قابلة للبناء
+        // في الخادم**. ولم يظهر ذلك لأن لا باب HTTP كان يبلغها: الحاوية لا تتحقّق من
+        // رسم بياني لا يطلبه أحد.
+        services.AddScoped<IControlPointReader, Subledger.ControlPointReader>();
         return services;
     }
 }

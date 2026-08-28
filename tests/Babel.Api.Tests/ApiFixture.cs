@@ -251,6 +251,13 @@ internal static class ApiFixture
             // الخادم أصلاً — خادمٌ يحمله يستطيع إسقاط مشغّل ثبات المقياس (ADR-0003).
             ["Babel__Core__AppConnectionString"] = ApiTestDatabase.Core.AppConnectionString,
             ["Babel__Core__AppRole"] = ApiTestDatabase.Core.AppRole,
+
+            // وحدتا المستندات: اتصالٌ لكلٍّ إلى قاعدتها. وبدون هذين المفتاحين يقلع
+            // الخادم على الافتراضيّين — `babel_sales` و`babel_purchasing` على المضيف
+            // المحلي — أيّاً كان النشر، فيكتب في قاعدة ليست قاعدة هذا التشغيل أو يسقط.
+            // وكان ذلك غير مرئي ما دام لا باب HTTP يبلغ الوحدتين.
+            ["Babel__Sales__ConnectionString"] = ApiTestDatabase.Sales.ConnectionString,
+            ["Babel__Purchasing__ConnectionString"] = ApiTestDatabase.Purchasing.ConnectionString,
         };
 
         int index = 0;

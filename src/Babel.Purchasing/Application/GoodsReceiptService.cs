@@ -192,6 +192,7 @@ public sealed class GoodsReceiptService : IApplicationService
                 DescriptionAr = orderLine.DescriptionAr,
                 DescriptionEn = orderLine.DescriptionEn,
                 Quantity = quantity,
+                Unit = orderLine.Unit,
                 UnitPrice = orderLine.UnitPrice,
                 TaxClassification = orderLine.TaxClassification,
                 TaxRate = orderLine.TaxRate,
@@ -335,8 +336,12 @@ public sealed class GoodsReceiptService : IApplicationService
                         PostingTrigger.OnReceipt.ToString(),
                         receipt.PostingGeneration,
                         ReceiptPostedEvent),
-                    Location = new InventoryItemLocation(line.ItemId, receipt.WarehouseId, line.ItemGroup),
-                    Quantity = line.Quantity,
+                    // والموقع `DEFAULT` **صراحةً**: وحدة المشتريات لا تحمل تسكيناً بعد،
+                    // والقيمة المكتوبة تُقرأ في المراجعة — بخلاف افتراضٍ صامت في التوقيع
+                    // يُنسى يوم يصير للمستودع مواقع. (‏نقصٌ مُعلَن في القرار.)
+                    Location = new InventoryItemLocation(
+                        line.ItemId, receipt.WarehouseId, InventoryLocations.Default, line.ItemGroup),
+                    Quantity = new InventoryQuantity(line.Quantity, line.Unit),
 
                     // تكلفة الوارد هي صافي السطر بالضبط — وهو المبلغ نفسه الذي
                     // يُدين حساب مراقبة المخزون في القيد أدناه. رقمان مختلفان
@@ -436,6 +441,44 @@ public sealed class GoodsReceiptService : IApplicationService
             : Result<PurchasingDocumentView>.Success(ViewOf(receipt));
     }
 
+    /// <summary>
+    /// يقرأ استلام بضاعة بحالته ومجاميعه.
+    /// <para>
+    /// <b>وكانت هذه القراءة غير موجودة</b>: يُسجَّل الاستلام ويُرحَّل ولا توجد جملة
+    /// تقول «ما حاله الآن؟» — فمن انقطع اتصاله بعد التسجيل لم يكن أمامه إلا أن يُعيد
+    /// الترحيل ليعرف.
+    /// </para>
+    /// </summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="receiptId">الاستلام.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    [RequiresEntitlement(BabelModule.Purchasing, EntitlementAccess.Read)]
+    public async ValueTask<Result<PurchasingDocumentView>> GetReceiptAsync(
+        TenantId tenant,
+        UserId actor,
+        Guid receiptId,
+        CancellationToken cancellationToken = default)
+    {
+        Result gate = await _enforcer
+            .EnsureAsync(tenant, actor, BabelModule.Purchasing, EntitlementAccess.Read, "Purchasing.Receipt.Get", cancellationToken)
+            .ConfigureAwait(false);
+
+        if (gate.IsFailure)
+        {
+            return Result<PurchasingDocumentView>.Failure(gate.Errors);
+        }
+
+        GoodsReceiptRow? receipt = await _database.Receipts
+            .AsNoTracking()
+            .FirstOrDefaultAsync(row => row.TenantId == tenant.Value && row.Id == receiptId, cancellationToken)
+            .ConfigureAwait(false);
+
+        return receipt is null
+            ? Result<PurchasingDocumentView>.Failure(PurchasingErrors.DocumentNotFound("GoodsReceipt", receiptId))
+            : Result<PurchasingDocumentView>.Success(ViewOf(receipt));
+    }
+
     /// <summary>يقرأ سطور استلام — معرّفاتها مدخل الضلع الثالث من المطابقة.</summary>
     /// <param name="tenant">المستأجر.</param>
     /// <param name="actor">الفاعل.</param>
@@ -466,7 +509,7 @@ public sealed class GoodsReceiptService : IApplicationService
 
         return Result<IReadOnlyList<PurchaseLineView>>.Success(
             [.. lines.Select(line => new PurchaseLineView(
-                line.Id, line.LineNo, line.ItemId, line.Quantity, Money.Of(line.UnitPrice, _currency)))]);
+                line.Id, line.LineNo, line.ItemId, line.Quantity, line.Unit, Money.Of(line.UnitPrice, _currency)))]);
     }
 
     private PurchasingDocumentView ViewOf(GoodsReceiptRow receipt) => new(

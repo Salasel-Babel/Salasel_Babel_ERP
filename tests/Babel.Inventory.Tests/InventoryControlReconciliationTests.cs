@@ -29,6 +29,12 @@ public sealed class InventoryControlReconciliationTests : IAsyncLifetime
     private static readonly DateOnly AsOf = new(2026, 12, 31);
     private const string Warehouse = "WH-01";
 
+    /// <summary>
+    /// الموقع داخل المستودع — <b>قيمة صريحة في كل نداء</b>. ووحدة المخزون تُمسك رصيدها
+    /// بأربعة أبعاد، والاختبار يمرّ من حيث يمرّ الإنتاج.
+    /// </summary>
+    private const string Location = InventoryLocations.Default;
+
     private Harness _harness = null!;
 
     public async ValueTask InitializeAsync()
@@ -58,16 +64,16 @@ public sealed class InventoryControlReconciliationTests : IAsyncLifetime
             tenant, item, Warehouse, 100m, 10m, March, token);
 
         Result<StockBalanceView> afterReceipt = await _harness.Stock
-            .ReadStockAsync(tenant, Harness.Actor, item, Warehouse, token);
+            .ReadStockAsync(tenant, Harness.Actor, item, Warehouse, Location, token);
 
         Assert.True(afterReceipt.IsSuccess, Describe(afterReceipt));
 
         Proof.Require(
-            afterReceipt.Value.Quantity == 100m
+            afterReceipt.Value.Quantity.Magnitude == 100m
             && afterReceipt.Value.Value.Amount == 1_000.0000m
             && afterReceipt.Value.HasCostBasis,
             "الاستلام وحده أنشأ أساس التكلفة في الدفتر المساعد — بلا نداء منفصل",
-            "الكمية=" + Quantity(afterReceipt.Value.Quantity)
+            "الكمية=" + Quantity(afterReceipt.Value.Quantity.Magnitude)
             + " والقيمة=" + Proof.Money(afterReceipt.Value.Value.Amount));
 
         // والحركة تحت هوية سطر الاستلام نفسها التي رُحّل بها القيد، لا هوية أخرى.
@@ -90,7 +96,7 @@ public sealed class InventoryControlReconciliationTests : IAsyncLifetime
             tenant,
             Harness.Actor,
             invoice,
-            new Babel.Sales.Application.CostOfSalesDraft(invoiceLine, item, Warehouse, "*", 30m),
+            new Babel.Sales.Application.CostOfSalesDraft(invoiceLine, item, Warehouse, Location, "*", Sold(30m)),
             token);
 
         Assert.True(cost.IsSuccess, Describe(cost));
@@ -125,14 +131,14 @@ public sealed class InventoryControlReconciliationTests : IAsyncLifetime
 
         // ── ٥ · ورصيد الصنف نفسه بعد الدورة ──────────────────────────────────
         Result<StockBalanceView> balance = await _harness.Stock
-            .ReadStockAsync(tenant, Harness.Actor, item, Warehouse, token);
+            .ReadStockAsync(tenant, Harness.Actor, item, Warehouse, Location, token);
 
         Assert.True(balance.IsSuccess, Describe(balance));
 
         Proof.Require(
-            balance.Value.Quantity == 70m && balance.Value.Value.Amount == 700.0000m,
+            balance.Value.Quantity.Magnitude == 70m && balance.Value.Value.Amount == 700.0000m,
             "رصيد الصنف بعد الاستلام والبيع",
-            "الكمية=" + Quantity(balance.Value.Quantity)
+            "الكمية=" + Quantity(balance.Value.Quantity.Magnitude)
             + " والقيمة=" + Proof.Money(balance.Value.Value.Amount)
             + " ومتوسط الوحدة=" + Quantity(balance.Value.UnitCost));
     }
@@ -165,11 +171,11 @@ public sealed class InventoryControlReconciliationTests : IAsyncLifetime
 
         Result<PostingReceipt> costOfFirst = await _harness.Invoices.PostCostOfSalesAsync(
             tenant, Harness.Actor, invoice,
-            new Babel.Sales.Application.CostOfSalesDraft(lines[0], first, Warehouse, "*", 10m), token);
+            new Babel.Sales.Application.CostOfSalesDraft(lines[0], first, Warehouse, Location, "*", Sold(10m)), token);
 
         Result<PostingReceipt> costOfSecond = await _harness.Invoices.PostCostOfSalesAsync(
             tenant, Harness.Actor, invoice,
-            new Babel.Sales.Application.CostOfSalesDraft(lines[1], second, Warehouse, "*", 20m), token);
+            new Babel.Sales.Application.CostOfSalesDraft(lines[1], second, Warehouse, Location, "*", Sold(20m)), token);
 
         Assert.True(costOfFirst.IsSuccess, Describe(costOfFirst));
         Assert.True(costOfSecond.IsSuccess, Describe(costOfSecond));
@@ -188,7 +194,7 @@ public sealed class InventoryControlReconciliationTests : IAsyncLifetime
         // ولا يُلتفّ على الهوية: سطرٌ لا وجود له تحت هذه الفاتورة يُرفض باسمه.
         Result<PostingReceipt> invented = await _harness.Invoices.PostCostOfSalesAsync(
             tenant, Harness.Actor, invoice,
-            new Babel.Sales.Application.CostOfSalesDraft(Guid.CreateVersion7(), first, Warehouse, "*", 1m), token);
+            new Babel.Sales.Application.CostOfSalesDraft(Guid.CreateVersion7(), first, Warehouse, Location, "*", Sold(1m)), token);
 
         Assert.True(invented.IsFailure, "معرّف سطر مخترَع مرّ.");
 
@@ -203,7 +209,7 @@ public sealed class InventoryControlReconciliationTests : IAsyncLifetime
         // اتّسعت، ولم يُفتَح باب حركتين تحت هوية واحدة.
         Result<PostingReceipt> collision = await _harness.Invoices.PostCostOfSalesAsync(
             tenant, Harness.Actor, invoice,
-            new Babel.Sales.Application.CostOfSalesDraft(lines[0], second, Warehouse, "*", 1m), token);
+            new Babel.Sales.Application.CostOfSalesDraft(lines[0], second, Warehouse, Location, "*", Sold(1m)), token);
 
         Assert.True(collision.IsFailure, "صنفان تحت هوية سطر واحد مرّا.");
 
@@ -253,7 +259,7 @@ public sealed class InventoryControlReconciliationTests : IAsyncLifetime
 
         Result<PostingReceipt> cost = await _harness.Invoices.PostCostOfSalesAsync(
             tenant, Harness.Actor, invoice,
-            new Babel.Sales.Application.CostOfSalesDraft(invoiceLine, item, Warehouse, "*", 10m), token);
+            new Babel.Sales.Application.CostOfSalesDraft(invoiceLine, item, Warehouse, Location, "*", Sold(10m)), token);
 
         Assert.True(cost.IsSuccess, Describe(cost));
 
@@ -261,7 +267,7 @@ public sealed class InventoryControlReconciliationTests : IAsyncLifetime
         await _harness.PostGoodsReceiptAsync(tenant, item, Warehouse, 20m, 10m, March, token);
 
         Result<StockBalanceView> beforeReturn = await _harness.Stock
-            .ReadStockAsync(tenant, Harness.Actor, item, Warehouse, token);
+            .ReadStockAsync(tenant, Harness.Actor, item, Warehouse, Location, token);
 
         Assert.True(beforeReturn.IsSuccess, Describe(beforeReturn));
 
@@ -294,7 +300,7 @@ public sealed class InventoryControlReconciliationTests : IAsyncLifetime
         Assert.True(posted.IsSuccess, Describe(posted));
 
         Result<StockBalanceView> afterReturn = await _harness.Stock
-            .ReadStockAsync(tenant, Harness.Actor, item, Warehouse, token);
+            .ReadStockAsync(tenant, Harness.Actor, item, Warehouse, Location, token);
 
         Assert.True(afterReturn.IsSuccess, Describe(afterReturn));
 
@@ -333,14 +339,14 @@ public sealed class InventoryControlReconciliationTests : IAsyncLifetime
                     PostingTrigger.OnApproval.ToString(),
                     1,
                     "sales.credit_note.cost_of_sales"),
-                OriginalIssue = new InventoryMovementSource(
+                OriginalMovement = new InventoryMovementSource(
                     BabelModule.Sales,
                     "SalesInvoiceLine",
                     invoiceLine.ToString("D", CultureInfo.InvariantCulture),
                     PostingTrigger.OnApproval.ToString(),
                     1,
                     "sales.invoice.cost_of_sales"),
-                Quantity = 10m,
+                Quantity = Sold(10m),
                 OccurredOn = March,
             },
             token);
@@ -348,7 +354,7 @@ public sealed class InventoryControlReconciliationTests : IAsyncLifetime
         Assert.True(replay.IsSuccess, Describe(replay));
 
         Result<StockBalanceView> afterReplay = await _harness.Stock
-            .ReadStockAsync(tenant, Harness.Actor, item, Warehouse, token);
+            .ReadStockAsync(tenant, Harness.Actor, item, Warehouse, Location, token);
 
         Assert.True(afterReplay.IsSuccess, Describe(afterReplay));
 
@@ -356,7 +362,7 @@ public sealed class InventoryControlReconciliationTests : IAsyncLifetime
             replay.Value.WasAlreadyRecorded
             && replay.Value.Cost.Amount == 40.0000m
             && afterReplay.Value.Value.Amount == afterReturn.Value.Value.Amount
-            && afterReplay.Value.Quantity == afterReturn.Value.Quantity,
+            && afterReplay.Value.Quantity.Magnitude == afterReturn.Value.Quantity.Magnitude,
             "وإعادة الردّ بالهوية نفسها تُعيد الرقم ولا تردّ مرّة ثانية — ولا تُرفض ردّاً زائداً",
             "الإعادة=" + Proof.Money(replay.Value.Cost.Amount)
             + " · مُسجَّلة سلفاً=" + replay.Value.WasAlreadyRecorded.ToString(CultureInfo.InvariantCulture)
@@ -455,7 +461,7 @@ public sealed class InventoryControlReconciliationTests : IAsyncLifetime
             Harness.Actor,
             invoice,
             new Babel.Sales.Application.CostOfSalesDraft(
-                (await _harness.InvoiceLineIdsAsync(tenant, invoice, token))[0], item, Warehouse, "*", 10m),
+                (await _harness.InvoiceLineIdsAsync(tenant, invoice, token))[0], item, Warehouse, Location, "*", Sold(10m)),
             token);
 
         Assert.True(cost.IsFailure, "قيد التكلفة نجح على صنف بلا أساس تكلفة.");
@@ -509,33 +515,33 @@ public sealed class InventoryControlReconciliationTests : IAsyncLifetime
             Harness.Actor,
             invoice,
             new Babel.Sales.Application.CostOfSalesDraft(
-                (await _harness.InvoiceLineIdsAsync(tenant, invoice, token))[0], item, Warehouse, "*", 15m),
+                (await _harness.InvoiceLineIdsAsync(tenant, invoice, token))[0], item, Warehouse, Location, "*", Sold(15m)),
             token);
 
         Assert.True(cost.IsSuccess, Describe(cost));
 
         Result<StockBalanceView> afterSale = await _harness.Stock
-            .ReadStockAsync(tenant, Harness.Actor, item, Warehouse, token);
+            .ReadStockAsync(tenant, Harness.Actor, item, Warehouse, Location, token);
 
         Assert.True(afterSale.IsSuccess, Describe(afterSale));
 
         Proof.Require(
-            afterSale.Value.Quantity == -5m && afterSale.Value.Value.Amount == -60.0000m,
+            afterSale.Value.Quantity.Magnitude == -5m && afterSale.Value.Value.Amount == -60.0000m,
             "البيع على المكشوف وقع وسُجّل ولم يُرفض",
-            "الكمية=" + Quantity(afterSale.Value.Quantity) + " والقيمة=" + Proof.Money(afterSale.Value.Value.Amount));
+            "الكمية=" + Quantity(afterSale.Value.Quantity.Magnitude) + " والقيمة=" + Proof.Money(afterSale.Value.Value.Amount));
 
         // ── ٣ · استلام متأخّر بسعر أعلى: 5 × 14 ──────────────────────────────
         await _harness.PostGoodsReceiptAsync(tenant, item, Warehouse, 5m, 14m, March, token);
 
         Result<StockBalanceView> afterLate = await _harness.Stock
-            .ReadStockAsync(tenant, Harness.Actor, item, Warehouse, token);
+            .ReadStockAsync(tenant, Harness.Actor, item, Warehouse, Location, token);
 
         Assert.True(afterLate.IsSuccess, Describe(afterLate));
 
         Proof.Require(
-            afterLate.Value.Quantity == 0m && afterLate.Value.Value.Amount == 10.0000m,
+            afterLate.Value.Quantity.Magnitude == 0m && afterLate.Value.Value.Amount == 10.0000m,
             "التكلفة المتأخّرة تركت 10.0000 على كمية صفر — وهي 5 وحدات × فرق السعر 2",
-            "الكمية=" + Quantity(afterLate.Value.Quantity) + " والقيمة=" + Proof.Money(afterLate.Value.Value.Amount));
+            "الكمية=" + Quantity(afterLate.Value.Quantity.Magnitude) + " والقيمة=" + Proof.Money(afterLate.Value.Value.Amount));
 
         // ── ٤ · والمطابقة **صفر بالضبط** رغم كل ذلك ──────────────────────────
         Result<ControlReconciliationReport> report = await _harness.Valuation
@@ -588,8 +594,8 @@ public sealed class InventoryControlReconciliationTests : IAsyncLifetime
                 Tenant = tenant,
                 Actor = Harness.Actor,
                 Source = opening,
-                Location = new InventoryItemLocation(item, Warehouse, "*"),
-                Quantity = 10m,
+                Location = new InventoryItemLocation(item, Warehouse, Location, "*"),
+                Quantity = Sold(10m),
                 Cost = Harness.Sar(50.0000m),
                 OccurredOn = March,
             },
@@ -641,14 +647,14 @@ public sealed class InventoryControlReconciliationTests : IAsyncLifetime
 
         // والرصيد لم يتحرّك إلا بالصرف الأول.
         Result<StockBalanceView> balance = await _harness.Stock
-            .ReadStockAsync(tenant, Harness.Actor, item, Warehouse, token);
+            .ReadStockAsync(tenant, Harness.Actor, item, Warehouse, Location, token);
 
         Assert.True(balance.IsSuccess, Describe(balance));
 
         Proof.Require(
-            balance.Value.Quantity == 6m && balance.Value.Value.Amount == 30.0000m,
+            balance.Value.Quantity.Magnitude == 6m && balance.Value.Value.Amount == 30.0000m,
             "الرصيد تحرّك مرّة واحدة رغم أربع محاولات",
-            "الكمية=" + Quantity(balance.Value.Quantity) + " والقيمة=" + Proof.Money(balance.Value.Value.Amount));
+            "الكمية=" + Quantity(balance.Value.Quantity.Magnitude) + " والقيمة=" + Proof.Money(balance.Value.Value.Amount));
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -677,8 +683,8 @@ public sealed class InventoryControlReconciliationTests : IAsyncLifetime
                 Tenant = tenant,
                 Actor = Harness.Actor,
                 Source = Source(BabelModule.Sales, "SalesCreditNote", "sales.credit_note.cost_of_sales"),
-                OriginalIssue = issueSource,
-                Quantity = 4m,
+                OriginalMovement = issueSource,
+                Quantity = Sold(4m),
                 OccurredOn = March,
             },
             token);
@@ -698,8 +704,8 @@ public sealed class InventoryControlReconciliationTests : IAsyncLifetime
                 Tenant = tenant,
                 Actor = Harness.Actor,
                 Source = Source(BabelModule.Sales, "SalesCreditNote", "sales.credit_note.cost_of_sales"),
-                OriginalIssue = issueSource,
-                Quantity = 1m,
+                OriginalMovement = issueSource,
+                Quantity = Sold(1m),
                 OccurredOn = March,
             },
             token);
@@ -722,8 +728,8 @@ public sealed class InventoryControlReconciliationTests : IAsyncLifetime
                 Tenant = tenant,
                 Actor = Harness.Actor,
                 Source = Source(BabelModule.Inventory, "OpeningBalance", "inventory.count_adjustment.posted"),
-                Location = new InventoryItemLocation(item, Warehouse, "*"),
-                Quantity = quantity,
+                Location = new InventoryItemLocation(item, Warehouse, Location, "*"),
+                Quantity = Sold(quantity),
                 Cost = Harness.Sar(cost),
                 OccurredOn = March,
             },
@@ -740,8 +746,8 @@ public sealed class InventoryControlReconciliationTests : IAsyncLifetime
                 Tenant = tenant,
                 Actor = Harness.Actor,
                 Source = source,
-                Location = new InventoryItemLocation(item, Warehouse, "*"),
-                Quantity = quantity,
+                Location = new InventoryItemLocation(item, Warehouse, Location, "*"),
+                Quantity = Sold(quantity),
                 OccurredOn = March,
             },
             token).AsTask();
@@ -813,6 +819,9 @@ public sealed class InventoryControlReconciliationTests : IAsyncLifetime
         command.Parameters.AddWithValue(documentId.ToString("D", CultureInfo.InvariantCulture));
         return (long)(await command.ExecuteScalarAsync(token))!;
     }
+
+    /// <summary>كمّية بوحدة العدّ — <b>ولا كمّية مجرّدة تعبر حدّ المخزون</b>.</summary>
+    private static InventoryQuantity Sold(decimal magnitude) => new(magnitude, InventoryUnits.Each);
 
     private static string Quantity(decimal value) => value.ToString("0.######", CultureInfo.InvariantCulture);
 

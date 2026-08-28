@@ -647,7 +647,7 @@ internal sealed class PostingService : IPostingService, IApplicationService
             SourceDocId = docId,
             // مفتاح الإحكام يختلف عن الأصل برمز الإطلاق لا بالجيل: العكس حقيقة
             // مستقلة عن «الجيل التالي» الذي قد يأتي بعده تصحيحاً.
-            TriggerCode = "REVERSAL:" + triggerCode,
+            TriggerCode = ReversalIdentity.TriggerCodeOf(triggerCode),
             Generation = generation,
             EventCode = eventCode,
             IdempotencyKey = "reversal:" + request.EntryId.ToString("D", CultureInfo.InvariantCulture),

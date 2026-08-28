@@ -293,7 +293,7 @@ public sealed class PurchaseOrderService : IApplicationService
 
         return Result<IReadOnlyList<PurchaseLineView>>.Success(
             [.. lines.Select(line => new PurchaseLineView(
-                line.Id, line.LineNo, line.ItemId, line.Quantity, Money.Of(line.UnitPrice, _currency)))]);
+                line.Id, line.LineNo, line.ItemId, line.Quantity, line.Unit, Money.Of(line.UnitPrice, _currency)))]);
     }
 
     internal static (decimal Net, decimal Tax) Totals(IReadOnlyList<PurchaseLineDraft> lines)
@@ -332,6 +332,7 @@ public sealed class PurchaseOrderService : IApplicationService
                 DescriptionAr = line.Description.Arabic,
                 DescriptionEn = line.Description.English,
                 Quantity = line.Quantity,
+                Unit = line.Unit,
                 UnitPrice = line.UnitPrice.Amount,
                 TaxClassification = line.TaxClassification,
                 TaxRate = line.TaxRate,

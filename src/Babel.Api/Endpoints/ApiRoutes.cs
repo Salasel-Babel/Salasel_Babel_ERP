@@ -227,8 +227,76 @@ internal static class ApiRoutes
     /// </summary>
     public const string GoodsReceiptPosting = GoodsReceipt + "/posting";
 
+    /// <summary>
+    /// سطور استلامٍ واحد بمعرّفاتها — <b>مدخل الفاتورة المخزنية والمرتجع</b>.
+    /// <para>
+    /// وهو مورد فرعي لا مورد ثانٍ للمستند: قراءة الاستلام تُرجع رأسه كما نُشرت في
+    /// <c>ADR-0047</c> ولا تتغيّر، وسطوره تُقرأ هنا. وبلا هذا الباب يصير
+    /// <c>POST /stock-bills</c> و<c>POST /purchase-returns</c> بابين لا يوصل إليهما
+    /// بابٌ آخر على هذا السطح — وهو الاعتراض الذي كتبه ADR-0044 بنصّه.
+    /// </para>
+    /// </summary>
+    public const string GoodsReceiptLines = GoodsReceipt + "/lines";
+
     /// <summary>أعمار الذمم الدائنة في تاريخ معلوم.</summary>
     public const string PayablesAging = Company + "/payables-aging";
+
+    /// <summary>
+    /// فواتير الموردين المخزنية: الإنشاء وحده.
+    /// <para>
+    /// <b>وتُقرأ وتُرحَّل من مورد فاتورة المورد نفسه</b> — <c>/supplier-bills/{billId}</c>
+    /// و<c>…/posting</c>: مستندٌ واحد وعنوانٌ واحد. وموردان يقرآن الصفّ نفسه كانا
+    /// سيجعلان «أي العنوانين الصحيح؟» سؤالاً يُطرح على كل عميل.
+    /// </para>
+    /// </summary>
+    public const string StockBills = Company + "/stock-bills";
+
+    /// <summary>مرتجعات المشتريات: إنشاء <b>مسوّدة</b> على فاتورة مخزنية مُرحَّلة.</summary>
+    public const string PurchaseReturns = Company + "/purchase-returns";
+
+    /// <summary>مرتجع مشتريات واحد: القراءة.</summary>
+    public const string PurchaseReturn = PurchaseReturns + "/{returnId}";
+
+    /// <summary>ترحيل مرتجع مشتريات — البضاعة تخرج بتكلفة استلامها، والذمة تنقص.</summary>
+    public const string PurchaseReturnPosting = PurchaseReturn + "/posting";
+
+    // ── المخزون ──────────────────────────────────────────────────────────────
+    // والشكل هو الشكل نفسه: **إنشاء مسوّدة · قراءة · ترحيل على مورد فرعي**. ولا
+    // ‏`PUT` ولا `PATCH` ولا `DELETE` على مستند ولا على صنف.
+
+    /// <summary>
+    /// الأصناف: التسجيل والقائمة.
+    /// <para>
+    /// <b>ولاحظ ما ليس هنا: لا حذف ولا تعديل.</b> رمزُ الصنف هوية تحملها قيود سنةٍ
+    /// مضت، وحذفُه يكسر كل تقرير مُرحَّل؛ وتغييرُ وحدة أساسه بعد أن كُتبت عليه حركات
+    /// يجعل مجموع حركاته جمعَ أعدادٍ بمقاييس مختلفة. وذلك <b>نقصُ سطحٍ مُعلَن</b>.
+    /// </para>
+    /// </summary>
+    public const string Items = Company + "/items";
+
+    /// <summary>صنف واحد: القراءة بوحدته ومعاملات تحويله.</summary>
+    public const string Item = Items + "/{itemId}";
+
+    /// <summary>
+    /// حركات المخزون القائمة بذاتها: إنشاء <b>مسوّدة</b> والقائمة.
+    /// <para>
+    /// وهي تسوية الجرد والرصيد الافتتاحي والإعدام — <b>لا استلام المشتريات ولا صرف
+    /// المبيعات</b>: تلك مستنداتٌ في وحدتيهما، وحركتُها أثرٌ لها. وبابٌ ثانٍ لها هنا
+    /// كان سيكتب الحركة مرّتين بهويتين.
+    /// </para>
+    /// </summary>
+    public const string StockMovements = Company + "/stock-movements";
+
+    /// <summary>ترحيل حركة مخزون: حركةٌ في الدفتر المساعد وقيدٌ في الدفتر.</summary>
+    public const string StockMovementPosting = StockMovements + "/{movementId}/posting";
+
+    /// <summary>أرصدة المخزون: الصنف في موقعه من مستودعه، بكمّيته ووحدتها وقيمتها.</summary>
+    public const string StockBalances = Company + "/stock-balances";
+
+    /// <summary>
+    /// تقييم المخزون في تاريخ، ومطابقته بحسابه الضابط بثلاثة طرق مستقلّة.
+    /// </summary>
+    public const string InventoryValuation = Company + "/inventory-valuation";
 
     /// <summary>
     /// العقد المنشور نفسه، بايتاته كما أُودعت في <c>contracts/openapi/v1.json</c>.

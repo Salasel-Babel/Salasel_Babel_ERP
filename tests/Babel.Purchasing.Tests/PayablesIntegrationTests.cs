@@ -255,7 +255,9 @@ public sealed class PayablesIntegrationTests : IAsyncLifetime
         Result<PurchasingDocumentView> note = await _harness.Bills.CreateDebitNoteAsync(
             tenant,
             Harness.Actor,
-            new DebitNoteDraft(Next("DBN"), bill.Value.Id, March, "ITEM-A", Harness.Sar(100m), Harness.Sar(15m)),
+            // **الكمّية لا المبلغ**: صافي المرتجع يُحسب في وحدة المخزون بتكلفة
+            // الاستلام الأصلي (400.0000 ÷ 4 وحدات = 100.0000 للوحدة)، ولا يُملى.
+            new DebitNoteDraft(Next("DBN"), bill.Value.Id, March, cycle.ReceiptLineId, 1m, Harness.Sar(15m)),
             token);
         Assert.True(note.IsSuccess, Describe(note.Errors));
 
@@ -294,7 +296,7 @@ public sealed class PayablesIntegrationTests : IAsyncLifetime
         Result<PurchasingDocumentView> note = await _harness.Bills.CreateDebitNoteAsync(
             tenant,
             Harness.Actor,
-            new DebitNoteDraft(Next("DBN"), bill, March, "SRV-1", Harness.Sar(50m), Harness.Sar(7.50m)),
+            new DebitNoteDraft(Next("DBN"), bill, March, Guid.CreateVersion7(), 1m, Harness.Sar(7.50m)),
             token);
 
         Proof.Require(

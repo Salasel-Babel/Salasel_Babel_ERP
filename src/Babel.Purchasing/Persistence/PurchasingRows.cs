@@ -230,8 +230,27 @@ internal sealed class DebitNoteRow
 
     public string ItemId { get; set; } = string.Empty;
 
+    /// <summary>
+    /// سطر الاستلام الذي تُردّ بضاعته — <b>وهو ما يُقيَّم به المرتجع</b>.
+    /// <para>
+    /// «بتكلفة الاستلام الأصلي لا بتكلفة اليوم» هو نصّ المصفوفة على
+    /// <c>purchasing.debit_note.posted</c> حرفياً. وتلك التكلفة لا تُعرَف إلا من حركة
+    /// المخزون التي كتبها ذلك السطر، فالمرتجع يحمل هويته ولا يُخمّنه من «آخر استلام».
+    /// </para>
+    /// </summary>
+    public Guid ReceiptLineId { get; set; }
+
+    /// <summary>الكمية المرتجعة بوحدة الاستلام — <b>وهي ما يُسلَّم، لا المبلغ</b>.</summary>
+    public decimal Quantity { get; set; }
+
     public bool OriginalWasTaxable { get; set; }
 
+    /// <summary>
+    /// صافي المرتجع — <b>صفرٌ ما دام مسوّدة</b>، ويُملأ لحظة الترحيل بما تحسبه وحدة
+    /// المخزون. ورقمٌ يُسلّمه المستدعي هنا هو بعينه «المبلغ المُملى» الذي أُزيل من
+    /// وحدة المبيعات في ADR-0039، وأثره أن يُدان الحساب الضابط بمبلغ لا يقابله ما
+    /// خرج من المستودع.
+    /// </summary>
     public decimal NetTotal { get; set; }
 
     public decimal TaxTotal { get; set; }
@@ -347,6 +366,13 @@ internal sealed class PurchaseLineRow
     public string DescriptionEn { get; set; } = string.Empty;
 
     public decimal Quantity { get; set; }
+
+    /// <summary>
+    /// وحدة قياس الكمّية — <b>وليست وصفاً</b>: هي ما يعبر إلى المخزون مع الكمّية عند
+    /// الاستلام، ومنها يعرف الدفتر المساعد بأي مقياس يُمسك الرصيد. وكمّيةٌ بلا وحدة
+    /// ليست كمّية (‏<c>Babel.Contracts.Inventory.InventoryQuantity</c>).
+    /// </summary>
+    public string Unit { get; set; } = string.Empty;
 
     /// <summary>ما استُلم من هذا السطر (على سطور الأمر).</summary>
     public decimal ReceivedQuantity { get; set; }

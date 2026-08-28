@@ -2,6 +2,8 @@ using System.Reflection;
 using System.Text.Json;
 using Babel.ArchitectureTests.Support;
 using Babel.Core.Application;
+using Babel.Inventory;
+using Babel.Inventory.Surface;
 using Babel.Purchasing;
 using Babel.Purchasing.Application;
 using Babel.Purchasing.Surface;
@@ -48,10 +50,16 @@ public sealed class PublishedDocumentSurfaceIsGuarded
         "/customer-receipts",
         "/customers",
         "/goods-receipts",
+        "/inventory-valuation",
+        "/items",
         "/payables-aging",
         "/purchase-orders",
+        "/purchase-returns",
         "/receivables-aging",
         "/sales-invoices",
+        "/stock-balances",
+        "/stock-bills",
+        "/stock-movements",
         "/supplier-bills",
         "/supplier-payments",
         "/suppliers",
@@ -96,7 +104,7 @@ public sealed class PublishedDocumentSurfaceIsGuarded
         // أو تغيّرت مقاطع مساراته، لصار «صفر مخالفات» جملةً عن لا شيء.
         int examined = Examined(paths);
         Assert.True(
-            examined >= 25,
+            examined >= 35,
             FormattableString.Invariant(
                 $"الحارس فحص {examined} عمليةً على موارد المستندات — أقلّ من أن يعني «لا مخالفة» شيئاً."));
 
@@ -154,10 +162,12 @@ public sealed class PublishedDocumentSurfaceIsGuarded
     // ── الحارس الثاني ────────────────────────────────────────────────────────
 
     /// <summary>السطوح المنشورة التي يناديها الجذر التركيبي.</summary>
-    private static readonly Type[] PublishedSurfaces = [typeof(SalesSurface), typeof(PurchasingSurface)];
+    private static readonly Type[] PublishedSurfaces =
+        [typeof(SalesSurface), typeof(PurchasingSurface), typeof(InventorySurface)];
 
     /// <summary>الإعدادات المسموح للسطح أن يحملها — العملة تُقرأ منها ولا شيء غيرها.</summary>
-    private static readonly Type[] AllowedOptions = [typeof(SalesOptions), typeof(PurchasingOptions)];
+    private static readonly Type[] AllowedOptions =
+        [typeof(SalesOptions), typeof(PurchasingOptions), typeof(InventoryOptions)];
 
     /// <summary>
     /// المتعاونون غير المسموح بهم: كل نوع ليس خدمة تطبيق ولا إعدادات وحدة.

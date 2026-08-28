@@ -645,7 +645,7 @@ public sealed class ReceivablesIntegrationTests : IAsyncLifetime
             tenant,
             Harness.Actor,
             invoice,
-            new CostOfSalesDraft(lineId, "ITEM-1", "WH-01", "*", 500m),
+            new CostOfSalesDraft(lineId, "ITEM-1", "WH-01", Babel.Contracts.Inventory.InventoryLocations.Default, "*", new Babel.Contracts.Inventory.InventoryQuantity(500m, Babel.Contracts.Inventory.InventoryUnits.Each)),
             token);
 
         Assert.True(cost.IsSuccess, Describe(cost.Errors));
@@ -732,7 +732,7 @@ public sealed class ReceivablesIntegrationTests : IAsyncLifetime
             tenant,
             Harness.Actor,
             invoice,
-            new CostOfSalesDraft(lineId, "ITEM-2", "WH-01", "*", 700m),
+            new CostOfSalesDraft(lineId, "ITEM-2", "WH-01", Babel.Contracts.Inventory.InventoryLocations.Default, "*", new Babel.Contracts.Inventory.InventoryQuantity(700m, Babel.Contracts.Inventory.InventoryUnits.Each)),
             token);
 
         Assert.True(cost.IsSuccess, Describe(cost.Errors));

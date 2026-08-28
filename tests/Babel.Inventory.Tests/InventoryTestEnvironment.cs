@@ -110,7 +110,18 @@ internal static class InventoryTestEnvironment
     /// </summary>
     public static TenantId ValuationTenant { get; } = new(new Guid("7b1e0c33-0000-4000-8000-000000000003"));
 
-    public static TenantId[] AllTenants { get; } = [Tenant, NegativeStockTenant, ValuationTenant];
+    /// <summary>
+    /// منشأة الوحدات والمواقع: تُسجَّل عليها أصناف بوحدات ومعاملات تحويل، وتُملأ مواقع
+    /// متعددة، ويُصرَف عليها على المكشوف.
+    /// <para>
+    /// <b>ومعزولة لأن ما تتركه هو بالضبط ما تفحصه منشأة أخرى:</b> رصيدٌ سالب وقيمةٌ على
+    /// كمية صفرية. وخلطُها بمنشأة المطابقة يجعل كل إثبات يُفسد الآخر — وهو «أخضر بترتيب
+    /// التشغيل لا ببنائه».
+    /// </para>
+    /// </summary>
+    public static TenantId UnitsTenant { get; } = new(new Guid("7b1e0c33-0000-4000-8000-000000000004"));
+
+    public static TenantId[] AllTenants { get; } = [Tenant, NegativeStockTenant, ValuationTenant, UnitsTenant];
 
     /// <summary>عدد محاولات الحذف قبل اللجوء إلى الإنهاء القسري.</summary>
     private const int DropAttempts = 40;

@@ -259,6 +259,31 @@ public sealed class Rule13_NoBusinessLogicInTheApi
         "Babel.Purchasing.Surface.PurchasingAgingBands",
         "Babel.Purchasing.Surface.PurchasingAgingParty",
         "Babel.Purchasing.Surface.PurchasingAging",
+        "Babel.Purchasing.Surface.PurchasingOrderRequest",
+        "Babel.Purchasing.Surface.PurchasingDocumentLine",
+        "Babel.Purchasing.Surface.PurchasingStockBillLineRequest",
+        "Babel.Purchasing.Surface.PurchasingStockBillRequest",
+        "Babel.Purchasing.Surface.PurchasingReturnRequest",
+
+        // ── السطح المنشور لوحدة المخزون ──────────────────────────────────────
+        //
+        // وبالشكل نفسه وللسبب نفسه: خدمات المخزون كلّها في `Babel.Inventory.Application`
+        // و`…​.Subledger`، وكلاهما من فضاءات الداخل المُعلَنة أدناه — فلا يستطيع سطح
+        // ‏HTTP أن يناديها ولو أُدرجت هنا. والباب المشروع سطحٌ منشور خارجها: `…​.Surface`.
+        //
+        // **ولا واحد من هذه الأسماء يسمّي حساباً**: الصنف يحمل `ItemGroup` — مؤهّل دور —
+        // والمصفوفة وحدها تُحوّله إلى حساب.
+        "Babel.Inventory.Surface.InventorySurface",
+        "Babel.Inventory.Surface.InventoryUnitFactor",
+        "Babel.Inventory.Surface.InventoryItemRequest",
+        "Babel.Inventory.Surface.InventoryItem",
+        "Babel.Inventory.Surface.InventoryMeasure",
+        "Babel.Inventory.Surface.InventoryStockMovementRequest",
+        "Babel.Inventory.Surface.InventoryStockMovement",
+        "Babel.Inventory.Surface.InventoryBalance",
+        "Babel.Inventory.Surface.InventoryDivergence",
+        "Babel.Inventory.Surface.InventoryValuationReport",
+        "Babel.Inventory.InventoryOptions",
 
         // ── سندات الصرف وأوامر الشراء والاستلام ──────────────────────────────
         // و`PurchasingOrder` نوعٌ **بلا معرّف قيد وبلا رُحّل-سلفاً** عمداً: أمر الشراء

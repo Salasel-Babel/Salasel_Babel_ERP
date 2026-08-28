@@ -1,4 +1,5 @@
 using System.Globalization;
+using Babel.Inventory.Surface;
 using Babel.Purchasing.Surface;
 using Babel.Sales.Surface;
 using Babel.SharedKernel;
@@ -26,8 +27,12 @@ internal static class DocumentMapping
     /// <summary>أقصى مهلة سداد بالأيام: عشر سنوات. وما فوقها خطأ إدخال لا شرط تجاري.</summary>
     public const int MaxPaymentTermsDays = 3650;
 
+    /// <summary>أقصى حدّ لبسط معامل التحويل أو مقامه — حدٌّ معلن لا مفاجأة.</summary>
+    public const long MaxUnitFactor = 1_000_000_000L;
+
     private const int CodeLength = 64;
     private const int ClassificationLength = 32;
+    private const int UnitLength = 32;
 
     /// <summary>يقرأ طلب عميل من السلك.</summary>
     /// <param name="dto">الحمولة.</param>
@@ -285,6 +290,233 @@ internal static class DocumentMapping
             [.. report.Parties.Select(static party => new AgingPartyDto(
                 Id(party.PartyId), party.Code, Text(party.Name), Bands(party.Bands)))],
             Bands(report.Totals));
+    }
+
+    /// <summary>يقرأ طلب فاتورة مورد مخزنية من السلك.</summary>
+    /// <param name="dto">الحمولة.</param>
+    public static PurchasingStockBillRequest ToStockBillRequest(StockBillRequestDto dto)
+    {
+        ArgumentNullException.ThrowIfNull(dto);
+
+        Guard(dto.Lines, out IReadOnlyList<StockBillLineDto> present);
+        List<PurchasingStockBillLineRequest> mapped = [];
+
+        for (int index = 0; index < present.Count; index++)
+        {
+            StockBillLineDto line = present[index];
+            string at = Field(index);
+
+            mapped.Add(new PurchasingStockBillLineRequest(
+                WireMapping.ReadGuid(line.ReceiptLineId, at + ".receiptLineId"),
+                WireNumbers.ParseStrict(line.Quantity.Raw, WireNumbers.QuantityScale, at + ".quantity"),
+                WireNumbers.ParseStrict(line.UnitPrice.Raw, WireNumbers.MoneyScale, at + ".unitPrice"),
+                WireMapping.ReadRequiredText(line.TaxClassification, at + ".taxClassification", ClassificationLength),
+                WireNumbers.ParseStrict(line.TaxRate.Raw, WireNumbers.RateScale, at + ".taxRate")));
+        }
+
+        return new PurchasingStockBillRequest(
+            WireMapping.ReadRequiredText(dto.Number, "number", CodeLength),
+            WireMapping.ReadGuid(dto.ReceiptId, "receiptId"),
+            WireMapping.ReadDate(dto.IssuedOn, "issuedOn"),
+            mapped);
+    }
+
+    /// <summary>يقرأ طلب مرتجع مشتريات من السلك.</summary>
+    /// <param name="dto">الحمولة.</param>
+    public static PurchasingReturnRequest ToPurchaseReturnRequest(PurchaseReturnRequestDto dto)
+    {
+        ArgumentNullException.ThrowIfNull(dto);
+
+        return new PurchasingReturnRequest(
+            WireMapping.ReadRequiredText(dto.Number, "number", CodeLength),
+            WireMapping.ReadGuid(dto.BillId, "billId"),
+            WireMapping.ReadGuid(dto.ReceiptLineId, "receiptLineId"),
+            WireMapping.ReadDate(dto.IssuedOn, "issuedOn"),
+            WireNumbers.ParseStrict(dto.Quantity.Raw, WireNumbers.QuantityScale, "quantity"),
+            WireNumbers.ParseStrict(dto.Tax.Raw, WireNumbers.MoneyScale, "tax"));
+    }
+
+    /// <summary>يقرأ طلب تسجيل صنف من السلك.</summary>
+    /// <param name="dto">الحمولة.</param>
+    public static InventoryItemRequest ToItemRequest(ItemRequestDto dto)
+    {
+        ArgumentNullException.ThrowIfNull(dto);
+
+        if (dto.Units is null)
+        {
+            throw WireNumbers.Reject("wire.text.missing", "units", "الوحدات مفقودة.", "The units are missing.");
+        }
+
+        if (dto.Units.Count > MaxLines)
+        {
+            throw WireNumbers.Reject(
+                "wire.list.too_long",
+                "units",
+                FormattableString.Invariant($"عدد الوحدات يتجاوز الحدّ المعلن {MaxLines}."),
+                FormattableString.Invariant($"The number of units exceeds the published limit of {MaxLines}."));
+        }
+
+        List<InventoryUnitFactor> units = [];
+
+        for (int index = 0; index < dto.Units.Count; index++)
+        {
+            UnitFactorDto unit = dto.Units[index];
+            string at = string.Create(CultureInfo.InvariantCulture, $"units[{index}]");
+
+            units.Add(new InventoryUnitFactor(
+                WireMapping.ReadRequiredText(unit.UnitCode, at + ".unitCode", UnitLength),
+                ReadFactor(unit.Numerator, at + ".numerator"),
+                ReadFactor(unit.Denominator, at + ".denominator")));
+        }
+
+        return new InventoryItemRequest(
+            WireMapping.ReadRequiredText(dto.Code, "code", CodeLength),
+            WireMapping.ReadLocalized(dto.Name, "name"),
+            WireMapping.ReadRequiredText(dto.ItemGroup, "itemGroup", CodeLength),
+            WireMapping.ReadRequiredText(dto.BaseUnit, "baseUnit", UnitLength),
+            units);
+    }
+
+    /// <summary>يقرأ طلب مستند حركة مخزون من السلك.</summary>
+    /// <param name="dto">الحمولة.</param>
+    public static InventoryStockMovementRequest ToStockMovementRequest(StockMovementRequestDto dto)
+    {
+        ArgumentNullException.ThrowIfNull(dto);
+        ArgumentNullException.ThrowIfNull(dto.Quantity);
+
+        return new InventoryStockMovementRequest(
+            WireMapping.ReadRequiredText(dto.Number, "number", CodeLength),
+            WireMapping.ReadRequiredText(dto.Direction, "direction", ClassificationLength),
+            WireMapping.ReadRequiredText(dto.ItemId, "itemId", CodeLength),
+            WireMapping.ReadRequiredText(dto.WarehouseId, "warehouseId", CodeLength),
+            WireMapping.ReadRequiredText(dto.LocationId, "locationId", CodeLength),
+            WireMapping.ReadRequiredText(dto.ItemGroup, "itemGroup", CodeLength),
+            new InventoryMeasure(
+                WireNumbers.ParseStrict(dto.Quantity.Magnitude.Raw, WireNumbers.QuantityScale, "quantity.magnitude"),
+                WireMapping.ReadRequiredText(dto.Quantity.Unit, "quantity.unit", UnitLength)),
+            WireNumbers.ParseStrict(dto.Cost.Raw, WireNumbers.MoneyScale, "cost"),
+            WireMapping.ReadDate(dto.OccurredOn, "occurredOn"));
+    }
+
+    /// <summary>ينقل سطور مستند مشتريات إلى السلك.</summary>
+    /// <param name="lines">السطور.</param>
+    public static PurchaseDocumentLineListDto ToDto(IReadOnlyList<PurchasingDocumentLine> lines)
+    {
+        ArgumentNullException.ThrowIfNull(lines);
+
+        return new PurchaseDocumentLineListDto(
+            lines.Count,
+            [
+                .. lines.Select(static line => new PurchaseDocumentLineDto(
+                    Id(line.Id),
+                    line.LineNo,
+                    line.ItemId,
+                    WireNumbers.FormatQuantity(line.Quantity),
+                    line.Unit,
+                    WireNumbers.FormatMoney(line.UnitPrice))),
+            ]);
+    }
+
+    /// <summary>ينقل صنفاً إلى السلك.</summary>
+    /// <param name="item">الصنف.</param>
+    public static ItemDto ToDto(InventoryItem item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+
+        return new ItemDto(
+            Id(item.Id),
+            item.Code,
+            Text(item.Name),
+            item.ItemGroup,
+            item.BaseUnit,
+            [.. item.Units.Select(static unit => new UnitFactorDto(unit.UnitCode, unit.Numerator, unit.Denominator))]);
+    }
+
+    /// <summary>ينقل مستند حركة مخزون إلى السلك.</summary>
+    /// <param name="movement">المستند.</param>
+    public static StockMovementDto ToDto(InventoryStockMovement movement)
+    {
+        ArgumentNullException.ThrowIfNull(movement);
+
+        return new StockMovementDto(
+            Id(movement.Id),
+            movement.Number,
+            movement.State,
+            movement.Direction,
+            movement.ItemId,
+            movement.WarehouseId,
+            movement.LocationId,
+            movement.ItemGroup,
+            Measure(movement.Quantity),
+            WireNumbers.FormatMoney(movement.Cost),
+            Date(movement.OccurredOn),
+            movement.EntryId is { } entry ? Id(entry) : null,
+            movement.AlreadyPosted);
+    }
+
+    /// <summary>ينقل رصيد مخزون إلى السلك.</summary>
+    /// <param name="balance">الرصيد.</param>
+    public static StockBalanceDto ToDto(InventoryBalance balance)
+    {
+        ArgumentNullException.ThrowIfNull(balance);
+
+        return new StockBalanceDto(
+            balance.ItemId,
+            balance.WarehouseId,
+            balance.LocationId,
+            Measure(balance.Quantity),
+            WireNumbers.FormatMoney(balance.Value),
+            WireNumbers.FormatQuantity(balance.UnitCost),
+            balance.HasCostBasis);
+    }
+
+    /// <summary>ينقل تقييم المخزون إلى السلك.</summary>
+    /// <param name="report">التقرير.</param>
+    public static InventoryValuationDto ToDto(InventoryValuationReport report)
+    {
+        ArgumentNullException.ThrowIfNull(report);
+
+        return new InventoryValuationDto(
+            Date(report.AsOf),
+            WireNumbers.FormatMoney(report.SubledgerTotal),
+            WireNumbers.FormatMoney(report.ControlTotal),
+            WireNumbers.FormatMoney(report.BalanceTotal),
+            WireNumbers.FormatMoney(report.Divergence),
+            report.IsReconciled,
+            [
+                .. report.Divergences.Select(static divergence => new InventoryDivergenceDto(
+                    divergence.DocumentType,
+                    divergence.DocumentId,
+                    divergence.ItemId,
+                    WireNumbers.FormatMoney(divergence.SubledgerEffect),
+                    WireNumbers.FormatMoney(divergence.ControlEffect),
+                    WireNumbers.FormatMoney(divergence.Divergence),
+                    divergence.ReasonCode)),
+            ]);
+    }
+
+    private static MeasureDto Measure(InventoryMeasure measure) =>
+        new(WireNumbers.FormatQuantity(measure.Magnitude), measure.Unit);
+
+    /// <summary>
+    /// يقرأ حدّ معامل تحويل: عددٌ صحيح موجب.
+    /// <para>
+    /// <b>والمقام الصفري ليس معاملاً</b>، والبسط غير الموجب يقلب اتجاه الكمّية بصمت.
+    /// والرفض هنا شكليٌّ قبل أن يبلغ الوحدة، فيُسمّي الحقل بموضعه في القائمة.
+    /// </para>
+    /// </summary>
+    private static long ReadFactor(long value, string field)
+    {
+        if (value is <= 0L or > MaxUnitFactor)
+        {
+            throw WireNumbers.Reject(
+                "wire.number.out_of_range",
+                field,
+                FormattableString.Invariant($"حدّ معامل التحويل بين واحد و{MaxUnitFactor}."),
+                FormattableString.Invariant($"A conversion factor term is between one and {MaxUnitFactor}."));
+        }
+
+        return value;
     }
 
     private static AgingBandsDto Bands(SalesAgingBands bands) => new(

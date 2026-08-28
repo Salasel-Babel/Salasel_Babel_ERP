@@ -824,6 +824,26 @@ internal static class OpenApiEmitter
                 Body: null, Response: "CommercialDocument", Success: 201, Anonymous: false, Query: [],
                 ProblemStatuses: [404, 409, 422]),
 
+            new(ApiRoutes.GoodsReceiptLines, "get", "readGoodsReceiptLines",
+                "قراءة سطور استلام", "Read the lines of one goods receipt",
+                "يقرأ سطور استلامٍ بمعرّفاتها ووحداتها — **ومعرّف السطر هو مدخل الفاتورة المخزنية ومدخل المرتجع**.\n\n"
+                + "**ولماذا مورد فرعي لا حقلٌ يُضاف إلى قراءة الاستلام:** شكلُ جواب "
+                + "‏GET /goods-receipts/{receiptId} منشورٌ في العقد، وتغليفُه في مغلَّفٍ جديد يكسر كل عميل بُني "
+                + "عليه — أي v2 لا نموّاً. والنموّ إضافةٌ محضة: مسارٌ جديد لا مسارٌ مُعاد كتابته.\n\n"
+                + "**وكل سطر يحمل وحدة قياسه**: كمّيته تصل إلى دفتر المخزون فتُضرب في تكلفة الوحدة، و«عشرة» بلا "
+                + "وحدة ليست معلومة — عشر حبّات أم عشر كراتين؟ والفرق يصل إلى المال بقيدٍ متوازن تماماً.",
+                "Reads the lines of a goods receipt with their identifiers and their units — **a line identifier is the "
+                + "input to a stock bill and to a purchase return**.\n\n"
+                + "**Why a sub-resource and not a field added to reading the receipt:** the response shape of "
+                + "GET /goods-receipts/{receiptId} is already published in this contract, and wrapping it in a new "
+                + "envelope breaks every client built on it — that is v2, not growth. Growth is pure addition: a new "
+                + "path, not a rewritten one.\n\n"
+                + "**Every line carries its unit of measure**: its quantity reaches the inventory subledger and is "
+                + "multiplied by a unit cost, and 'ten' without a unit is not information — ten pieces or ten cartons? "
+                + "The difference reaches the money inside a perfectly balanced entry.",
+                Body: null, Response: "PurchaseDocumentLineList", Success: 200, Anonymous: false, Query: [],
+                ProblemStatuses: [404]),
+
             new(ApiRoutes.PayablesAging, "get", "readPayablesAging",
                 "أعمار الذمم الدائنة", "Payables aging",
                 "أعمار ذمم الموردين في تاريخ معلوم، بالشرائح نفسها وبالشكل نفسه الذي تُقرأ به الذمم المدينة — "
@@ -834,6 +854,222 @@ internal static class OpenApiEmitter
                 Query:
                 [
                     new QueryParameter("asOf", true, "تاريخ التقرير الميلادي.", "The Gregorian report date.", "date"),
+                ]),
+
+            // ── تتمّة سلسلة المشتريات المخزنية، والمخزون ─────────────────────
+            //
+            // **ولماذا نُشرت السلسلة كاملةً لا المرتجع وحده:** ADR-0044 رفض نشر المرتجع
+            // منفرداً بنصّه — «بابٌ لا يوصل إليه بابٌ آخر على هذا السطح يعطي عقداً يَعِد
+            // بدورة لا تكتمل». والمرتجع لا يُقبل إلا على فاتورة مخزنية، والمخزنية لا
+            // توجد إلا عن استلام، والاستلام لا يُرحَّل إلا عبر حدّ تقييم المخزون.
+            //
+            // وأوّلا الأضلاع — **أمر الشراء والاستلام** — منشوران أعلاه منذ ADR-0047
+            // ولا يُنشران مرّتين؛ ومعرّفات سطور الاستلام تُقرأ من موردها الفرعي
+            // ‏`…/lines`. فالدورة كاملة، والعقد ينمو ولا يُعاد كتابة بابٍ منشور.
+
+            new(ApiRoutes.StockBills, "post", "draftStockBill",
+                "إنشاء فاتورة مورد مخزنية مسوّدة", "Draft a stock supplier bill",
+                "يُنشئ فاتورة مورد **مخزنية** في حالة DRAFT — الضلع الثالث: ما طولِبنا به. وكل سطر يرجع إلى سطر "
+                + "استلام بعينه، وكميةٌ مفوترة تتجاوز المستلَم غير المفوتَر **تُرفض**: من غير هذا الضلع تُدفَع بضاعة "
+                + "لم تصل، ولا يُكتشف ذلك إلا في الجرد السنوي.\n\n"
+                + "**وتُقرأ وتُرحَّل من مورد فاتورة المورد نفسه** — ‏/supplier-bills/{billId} و…/posting: مستندٌ واحد "
+                + "وعنوانٌ واحد. وعنوانان يقرآن الصفّ نفسه كانا سيجعلان «أيّهما الصحيح؟» سؤالاً يُطرح على كل عميل.",
+                "Creates a **stock** supplier bill in state DRAFT — the third side: what we were billed for. Each line refers "
+                + "to a specific goods receipt line, and a billed quantity beyond the received-but-unbilled remainder is "
+                + "**refused**: without this side, goods that never arrived get paid for and nobody finds out until the "
+                + "annual count.\n\n"
+                + "**It is read and posted through the supplier bill resource** — /supplier-bills/{billId} and …/posting: one "
+                + "document, one address. Two addresses onto the same row would make 'which one is right?' a question every "
+                + "client has to ask.",
+                Body: "StockBillRequest", Response: "CommercialDocument", Success: 201, Anonymous: false, Query: [],
+                ProblemStatuses: [404]),
+
+            new(ApiRoutes.PurchaseReturns, "post", "draftPurchaseReturn",
+                "إنشاء مرتجع مشتريات مسوّدة", "Draft a purchase return",
+                "يُنشئ **مرتجع مشتريات** (إشعاراً مديناً) في حالة DRAFT على فاتورة مخزنية **مُرحَّلة**.\n\n"
+                + "**ولاحظ ما ليس في الحمولة: صافي المرتجع.** مصفوفة الترحيل تقول على purchasing.debit_note.posted إن "
+                + "الصافي «بتكلفة الاستلام الأصلي لا بتكلفة اليوم»، وتلك التكلفة يملكها دفتر المخزون وحده. فالطلب يحمل "
+                + "**الكمّية** ومعرّف سطر الاستلام، ويُحسب المبلغ لحظة الترحيل ولا يُملى — وهو مبدأ ADR-0039 نفسه "
+                + "مطبَّقاً على الطرف الآخر من الدورة. ولذلك تخرج المسوّدة بصافٍ صفر: الرقم لم يُحسب بعد، ولا يُخترَع "
+                + "ليملأ خانة.\n\n"
+                + "والضريبة **تُسلَّم**: هي بتصنيف الفاتورة الأصلية وواقعةٌ تجارية لا يملكها المخزون.",
+                "Creates a **purchase return** (a supplier debit note) in state DRAFT against a **posted** stock bill.\n\n"
+                + "**Note what the payload does not carry: the return net.** The posting matrix says of "
+                + "purchasing.debit_note.posted that the net is 'at the original receipt cost, not today's cost', and only the "
+                + "inventory subledger owns that cost. So the request carries the **quantity** and the goods receipt line "
+                + "identifier, and the amount is computed at posting time rather than dictated — the same principle as ADR-0039, "
+                + "applied to the other end of the cycle. That is why the draft comes back with a net of zero: the number has "
+                + "not been computed yet, and nothing is invented to fill the field.\n\n"
+                + "The tax **is** supplied: it follows the original invoice's classification and is a commercial fact the "
+                + "inventory module does not own.",
+                Body: "PurchaseReturnRequest", Response: "CommercialDocument", Success: 201, Anonymous: false, Query: [],
+                ProblemStatuses: [404]),
+
+            new(ApiRoutes.PurchaseReturn, "get", "readPurchaseReturn",
+                "قراءة مرتجع مشتريات", "Read one purchase return",
+                "يقرأ مرتجع مشتريات بحالته ومجاميعه ومعرّف قيده إن رُحّل. وكانت هذه القراءة **غير موجودة في الوحدة "
+                + "أصلاً**: يُنشأ المرتجع ويُرحَّل ولا توجد جملة تقول «ما حاله الآن؟».",
+                "Reads a purchase return with its state, its totals, and its entry identifier if posted. This read **did not "
+                + "exist in the module at all**: a return could be created and posted with no sentence for 'what state is it "
+                + "in now?'.",
+                Body: null, Response: "CommercialDocument", Success: 200, Anonymous: false, Query: [],
+                ProblemStatuses: [404]),
+
+            new(ApiRoutes.PurchaseReturnPosting, "post", "postPurchaseReturn",
+                "ترحيل مرتجع مشتريات", "Post a purchase return",
+                "يرحّل مرتجع مشتريات: **البضاعة تخرج من المخزون بتكلفة استلامها الأصلي، ثم تنقص ذمّة المورد**. "
+                + "والدفتر المساعد أوّلاً ثم القيد، فرفضٌ من المخزون — كردٍّ يتجاوز ما استُلم — يترك الدفتر نظيفاً.\n\n"
+                + "**وهنا يُملأ صافي المرتجع**: بالرقم الذي حسبته وحدة المخزون، لا برقمٍ سلّمه المستدعي. وكان هذا "
+                + "المسار قبل اليوم يُدين الحساب الضابط للمخزون بمبلغٍ من المستدعي **ولا يكتب حركة واحدة في الدفتر "
+                + "المساعد** — أي حسابٌ ضابط يتحرّك ودفترٌ مساعد ساكن، وهو الانحراف الذي أُنشئت المطابقة لكشفه.\n\n"
+                + "وحصين ضد التكرار بالشكل نفسه: 201 أوّلاً و200 ثانياً ومعرّف القيد نفسه.",
+                "Posts a purchase return: **the goods leave inventory at their original receipt cost, then the supplier's "
+                + "payable is reduced**. The subledger is written first and the entry second, so a refusal from inventory — a "
+                + "return beyond what was received, say — leaves the ledger clean.\n\n"
+                + "**This is where the return net is filled in**: with the number the inventory module computed, not one the "
+                + "caller supplied. Until today this path debited the inventory control account with a caller-supplied amount "
+                + "**and wrote not one movement in the subledger** — a control account moving while its subledger stands "
+                + "still, which is precisely the divergence reconciliation exists to catch.\n\n"
+                + "Idempotent in the same shape: 201 first, 200 second, same entry identifier.",
+                Body: null, Response: "CommercialDocument", Success: 201, Anonymous: false, Query: [],
+                ProblemStatuses: [404, 409, 422]),
+
+            new(ApiRoutes.Items, "post", "addItem",
+                "تسجيل صنف", "Register an item",
+                "يسجّل صنفاً: رمزه، واسمه ثنائي اللغة، ومجموعته، و**وحدة أساسه ومعاملات تحويل وحداته الأكبر**.\n\n"
+                + "**ووحدة الأساس أصغر وحدة يُمسَك بها الصنف**، وإليها تُحوَّل البقية. والمعامل **بسطٌ ومقام صحيحان "
+                + "لا عددٌ عشري**: «الكرتون اثنتا عشرة حبّة» هو 12/1، و«الحبّة ثلث علبة» هو 1/3 — والثاني لا يُكتب "
+                + "عشرياً بلا خسارة، وخسارةٌ في كمّية تُضرب في تكلفة الوحدة تصل إلى المال. والتحويل الذي لا يقع بلا "
+                + "باقٍ **يُرفض باسمه** ولا يُقرَّب.\n\n"
+                + "**ولا رمز حساب هنا**: الصنف يحمل itemGroup — مؤهّل دور — ومصفوفة الترحيل وحدها تُحوّله إلى حساب.\n\n"
+                + "**ولاحظ ما ليس على هذا المورد: لا تعديل ولا حذف.** رمزُ الصنف هوية تحملها قيود سنةٍ مضت، وحذفُه "
+                + "يكسر كل تقرير مُرحَّل؛ وتغييرُ وحدة أساسه بعد أن كُتبت عليه حركات يجعل مجموع حركاته جمعَ أعدادٍ "
+                + "بمقاييس مختلفة. وذلك **نقص سطحٍ مُعلَن** لا قرار منع.",
+                "Registers an item: its code, its bilingual name, its group, and **its base unit with the conversion factors "
+                + "of its larger units**.\n\n"
+                + "**The base unit is the smallest unit the item is held in**, and everything else converts into it. A factor "
+                + "is **an integer numerator and denominator, not a decimal**: 'a carton is twelve pieces' is 12/1 and 'a piece "
+                + "is a third of a box' is 1/3 — the second cannot be written decimally without loss, and loss in a quantity "
+                + "that gets multiplied by a unit cost reaches the money. A conversion that does not divide exactly is "
+                + "**refused by name** rather than rounded.\n\n"
+                + "**No account code appears here**: an item carries an itemGroup — a role qualifier — and the posting matrix "
+                + "alone turns it into an account.\n\n"
+                + "**Note what this resource does not carry: no update and no delete.** The item code is an identity carried by "
+                + "last year's entries; deleting it breaks every posted report, and changing its base unit after movements have "
+                + "been written against it makes the sum of those movements an addition of numbers on different scales. That is "
+                + "a **declared surface gap**, not a prohibition.",
+                Body: "ItemRequest", Response: "Item", Success: 201, Anonymous: false, Query: []),
+
+            new(ApiRoutes.Items, "get", "listItems",
+                "قراءة الأصناف", "List the items",
+                "يقرأ أصناف المنشأة مرتَّبةً بالرمز **ترتيباً حرفياً ثابتاً** — لا بترتيب الإدخال، ولا بترتيبٍ ثقافي "
+                + "يختلف بين tr-TR و en-US على الحروف نفسها. نقطة قراءة: تعمل والاشتراك للقراءة فقط.",
+                "Lists the company's items ordered by code in a **stable ordinal order** — not by insertion order, and not by a "
+                + "cultural order that differs between tr-TR and en-US on the same letters. A read point: it works while the "
+                + "subscription is read-only.",
+                Body: null, Response: "ItemList", Success: 200, Anonymous: false, Query: []),
+
+            new(ApiRoutes.Item, "get", "readItem",
+                "قراءة صنف", "Read one item",
+                "يقرأ صنفاً واحداً بوحدة أساسه ومعاملات تحويله.",
+                "Reads a single item with its base unit and its conversion factors.",
+                Body: null, Response: "Item", Success: 200, Anonymous: false, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.StockMovements, "post", "draftStockMovement",
+                "إنشاء حركة مخزون مسوّدة", "Draft a stock movement",
+                "يُنشئ مستند حركة مخزون في حالة **DRAFT**: تسوية جرد، أو رصيد افتتاحي، أو إعدام. ولا حركة ولا قيد: "
+                + "الترحيل مورد فرعي مستقلّ.\n\n"
+                + "**ولاحظ ما ليس من اختصاص هذا المورد: استلام المشتريات وصرف المبيعات.** تلك مستنداتٌ في وحدتيهما "
+                + "وحركتُها أثرٌ لها، وبابٌ ثانٍ لها هنا كان سيكتب الحركة مرّتين بهويتين مختلفتين — وهو انحراف لا "
+                + "يُظهره توازن.\n\n"
+                + "**والكمّية تحمل وحدتها دائماً**، والتكلفة **على الوارد وحده**: الصادر تُحسب تكلفته في وحدة المخزون "
+                + "بالمتوسط المرجّح المتحرّك ولا تُملى (ADR-0039)، فتُرسَل عليه \"0\".\n\n"
+                + "والحدث في المصفوفة inventory.count_adjustment.posted بسيناريوَيه — عجزٌ وزيادة — وهما بالضبط "
+                + "اتجاها هذا المستند. ولا حدث جديد اختُرع.",
+                "Creates a stock movement document in state **DRAFT**: a count adjustment, an opening balance, or a write-off. "
+                + "No movement and no entry: posting is a separate sub-resource.\n\n"
+                + "**Note what this resource is not for: purchase receipts and sales issues.** Those are documents in their own "
+                + "modules and their stock movement is an effect of them; a second door here would write the movement twice "
+                + "under two identities — a divergence no balance check reveals.\n\n"
+                + "**A quantity always carries its unit**, and cost is **for inbound only**: an outbound movement is valued by "
+                + "the inventory module at the moving weighted average and is never dictated (ADR-0039), so send \"0\" for it.\n\n"
+                + "The matrix event is inventory.count_adjustment.posted with its two scenarios — shortage and surplus — which "
+                + "are exactly this document's two directions. No new event was invented.",
+                Body: "StockMovementRequest", Response: "StockMovement", Success: 201, Anonymous: false, Query: [],
+                ProblemStatuses: [404]),
+
+            new(ApiRoutes.StockMovements, "get", "listStockMovements",
+                "قراءة حركات المخزون", "List the stock movements",
+                "يقرأ مستندات حركة المخزون مرتَّبةً بالتاريخ ثم بالرقم ترتيباً حرفياً ثابتاً. نقطة قراءة.",
+                "Lists the stock movement documents ordered by date then by number in a stable ordinal order. A read point.",
+                Body: null, Response: "StockMovementList", Success: 200, Anonymous: false, Query: []),
+
+            new(ApiRoutes.StockMovementPosting, "post", "postStockMovement",
+                "ترحيل حركة مخزون", "Post a stock movement",
+                "يرحّل مستند حركة مسوّدة: **حركةٌ في دفتر المخزون المساعد أوّلاً ثم قيدٌ في الدفتر**، بهوية ترحيل "
+                + "واحدة على الطرفين. والترتيب مقصود (ADR-0041): رفضٌ من المخزون — كصرفٍ بلا أساس تكلفة — يترك الدفتر "
+                + "نظيفاً؛ ولو وقع القيد أوّلاً لترك حساباً ضابطاً تحرّك بلا حركةٍ تقابله.\n\n"
+                + "**وقيمة الصادر تُحسب هنا ولا تُملى**: تخرج في الحقل cost بعد الترحيل.\n\n"
+                + "**وحصين ضد التكرار**: الوصول الثاني بالهوية نفسها يُرجع المستند ذاته و‏alreadyPosted = true ورمز 200 "
+                + "بدل 201، بلا حركة ثانية وبلا قيد ثانٍ. والحكم حكمُ بوّابة الترحيل لا مقارنةَ حالةٍ قُرئت قبل النداء: "
+                + "نداءان متزامنان يجتازان فحص «مسوّدة» معاً ويلتقيان عند الهوية الواحدة.",
+                "Posts a draft stock movement: **a movement in the inventory subledger first, then an entry in the ledger**, "
+                + "under one posting identity on both sides. The order is deliberate (ADR-0041): a refusal from inventory — an "
+                + "issue with no cost basis, say — leaves the ledger clean, whereas an entry written first would leave a control "
+                + "account that moved with no movement facing it.\n\n"
+                + "**An outbound movement's value is computed here, never dictated**: it comes back in the cost field after "
+                + "posting.\n\n"
+                + "**Idempotent**: a second arrival with the same identity returns the same document with alreadyPosted = true "
+                + "and status 200 instead of 201, with no second movement and no second entry. The verdict is the posting "
+                + "gateway's, not a comparison against a state read before the call: two concurrent calls both pass the "
+                + "'is it a draft' check and meet at the one identity.",
+                Body: null, Response: "StockMovement", Success: 201, Anonymous: false, Query: [],
+                ProblemStatuses: [404, 409, 422]),
+
+            new(ApiRoutes.StockBalances, "get", "readStockBalances",
+                "أرصدة المخزون", "Stock balances",
+                "يقرأ أرصدة المخزون: الصنف في **موقعه من مستودعه**، بكمّيته ووحدة أساسها وقيمتها ومتوسط تكلفة "
+                + "وحدتها.\n\n"
+                + "**ومفتاح الرصيد أربعة أبعاد**: المنشأة والصنف والمستودع **والموقع**. والموقع بُعدٌ في المفتاح منذ "
+                + "اليوم ولو لم يُسكَّن شيء بعد: إضافته إلى مفتاح رصيدٍ قائم لاحقاً هجرةٌ تُعيد توزيع كل رصيد على "
+                + "مواقع لا يعرفها أحد — أي إعادة كتابة واقعةٍ مضت.\n\n"
+                + "**والكمّية قد تكون سالبة**: البيع قبل إدخال الاستلام واقعة يومية في منشأة عاملة لا حالة خطأ، "
+                + "وتُوسَم ولا تُمنع — لكنها تمنع إقفال الفترة.\n\n"
+                + "و‏hasCostBasis حقلٌ مستقلّ عن unitCost عمداً: بدونه لا يُفرَّق بين «تكلفة الوحدة صفر لأن الصنف لم "
+                + "يُستلم قط» و«تكلفته صفر فعلاً».",
+                "Reads the stock balances: an item in **its location within its warehouse**, with its quantity, that quantity's "
+                + "base unit, its value, and its moving average unit cost.\n\n"
+                + "**The balance key has four dimensions**: company, item, warehouse, **and location**. The location is in the key "
+                + "from today even though nothing is binned yet: adding it to an existing balance key later is a migration that "
+                + "redistributes every balance across locations nobody knows — that is, rewriting a fact that has already "
+                + "happened.\n\n"
+                + "**A quantity may be negative**: selling before the receipt has been entered is a daily occurrence in a working "
+                + "business, not an error state; it is flagged rather than blocked — but it blocks the period close.\n\n"
+                + "hasCostBasis is a field separate from unitCost on purpose: without it there is no way to tell 'the unit cost is "
+                + "zero because the item was never received' from 'its cost really is zero'.",
+                Body: null, Response: "StockBalanceList", Success: 200, Anonymous: false, Query: []),
+
+            new(ApiRoutes.InventoryValuation, "get", "readInventoryValuation",
+                "تقييم المخزون ومطابقته", "Inventory valuation and reconciliation",
+                "يقرأ تقييم المخزون في تاريخ معلوم، و**يطابقه بحسابه الضابط بثلاثة طرق مستقلّة إلى الرقم نفسه**: "
+                + "مجموع الحركات، ومجموع أرصدة الأصناف، ورصيد نقطة الضبط في دفتر الأستاذ.\n\n"
+                + "**واثنان يكفيان لكشف انحراف بين الوحدة والدفتر؛ والثالث يكشف انحراف الوحدة عن نفسها** — رصيدٌ لا "
+                + "يساوي مجموع حركاته — وهو عطلٌ لا يراه أي فحص يقارن طرفين فقط.\n\n"
+                + "و‏isReconciled يعني **الفارق صفر بالضبط**، لا «قريب من الصفر». وكل مستند منحرف يُسمّى بنوعه "
+                + "ومعرّفه وصنفه وسبب انحرافه، فلا يُقال «هناك مشكلة» بلا «أين».",
+                "Reads the inventory valuation at a given date and **reconciles it against its control account by three "
+                + "independent routes to the same number**: the sum of movements, the sum of item balances, and the control point "
+                + "balance in the general ledger.\n\n"
+                + "**Two are enough to reveal a divergence between the module and the ledger; the third reveals the module "
+                + "diverging from itself** — a balance that does not equal the sum of its own movements — a failure no two-sided "
+                + "check can see.\n\n"
+                + "isReconciled means **the difference is exactly zero**, not 'close to zero'. Every diverging document is named "
+                + "by its type, its identifier, its item, and the reason, so the report never says 'there is a problem' without "
+                + "saying where.",
+                Body: null, Response: "InventoryValuation", Success: 200, Anonymous: false,
+                Query:
+                [
+                    new QueryParameter("asOf", true, "تاريخ التقييم الميلادي.", "The Gregorian valuation date.", "date"),
                 ]),
 
             new(ApiRoutes.DocumentAdmission, "post", "admitDocument",
@@ -976,6 +1212,11 @@ internal static class OpenApiEmitter
         ("creditNoteId", "معرّف الإشعار الدائن.", "The credit note identifier."),
         ("customerId", "معرّف العميل.", "The customer identifier."),
         ("invoiceId", "معرّف فاتورة المبيعات.", "The sales invoice identifier."),
+        ("itemId", "معرّف الصنف.", "The item identifier."),
+        ("movementId", "معرّف مستند حركة المخزون.", "The stock movement document identifier."),
+        ("orderId", "معرّف أمر الشراء.", "The purchase order identifier."),
+        ("receiptId", "معرّف استلام البضاعة.", "The goods receipt identifier."),
+        ("returnId", "معرّف مرتجع المشتريات.", "The purchase return identifier."),
         ("supplierId", "معرّف المورد.", "The supplier identifier."),
     ];
 
@@ -1037,6 +1278,19 @@ internal static class OpenApiEmitter
 
     /// <summary>نمط العملة — مغلق بـ<c>ck_account_currency_mode</c>.</summary>
     private static IReadOnlyList<string> CurrencyModes { get; } = ["any", "company_only", "fixed"];
+
+    /// <summary>
+    /// اتجاها حركة المخزون — <b>مجموعة مغلقة فعلاً</b>: العمود <c>Direction</c> في
+    /// المخطّط لا يقبل غيرهما، والوحدة ترفض ثالثاً باسمه. ولذلك تُنشر <c>enum</c>.
+    /// </summary>
+    private static IReadOnlyList<string> MovementDirections { get; } = ["IN", "OUT"];
+
+    /// <summary>
+    /// أسباب الانحراف في المطابقة — مجموعة مغلقة يُنتجها كود الوحدة وحده، ولا تأتي من
+    /// بيانات مستأجر. ولذلك تُنشر <c>enum</c> بخلاف <c>subledgerType</c>.
+    /// </summary>
+    private static IReadOnlyList<string> DivergenceReasons { get; } =
+        ["amount_mismatch", "missing_in_control", "missing_in_subledger"];
 
     private static IReadOnlyList<string> CostCenterPlans { get; } = Enum.GetNames<CostCenterPlan>();
 
@@ -2697,6 +2951,384 @@ internal static class OpenApiEmitter
             WriteRefProperty(w, "totals", "AgingBands");
             w.WriteEndObject();
             WriteRequired(w, "asOf", "parties", "totals");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("Magnitude", static w =>
+        {
+            w.WriteString("type", "string");
+            w.WriteString("pattern", @"^-?(0|[1-9][0-9]*)(\.[0-9]{1,6})?$");
+            w.WriteString("description",
+                "مقدار كمّية نصّاً بمقياس لا يتجاوز **ستّاً**. والكمّية ليست مبلغاً — ولذلك لها مقياسها — لكنها "
+                + "تُضرب في تكلفة الوحدة، فأي دقّة تُفقد فيها تصل إلى المال. والكيلوغرامات واللترات والأمتار تُكسَر "
+                + "إلى ما دون الهللة، ومقياسٌ مالي عليها يُنتج تقريباً صامتاً يتراكم على كل حركة. / "
+                + "A quantity magnitude as a string with at most **six** decimal places. A quantity is not an amount — hence its "
+                + "own scale — but it is multiplied by a unit cost, so any precision lost in it reaches the money. Kilograms, "
+                + "litres, and metres divide below the halala, and a money scale over them produces a silent rounding that "
+                + "accumulates on every movement.");
+            w.WriteStartArray("examples");
+            w.WriteStringValue("100.000000");
+            w.WriteStringValue("-5.500000");
+            w.WriteEndArray();
+        });
+
+        yield return ("UnitCost", static w =>
+        {
+            w.WriteString("type", "string");
+            w.WriteString("pattern", @"^-?(0|[1-9][0-9]*)(\.[0-9]{1,6})?$");
+            w.WriteString("description",
+                "متوسط تكلفة الوحدة نصّاً بمقياس **ستّ خانات لا أربع**: صنفٌ يُشترى بألف حبّة بمئة ريال تكلفة وحدته "
+                + "0.100000، وبمقياس أربعة تصير 0.1000 والفرق لا يظهر — لكنه يتراكم على كل صرف حتى ينحرف رصيد القيمة "
+                + "عن مجموع حركاته. / "
+                + "The moving average unit cost as a string with **six** decimal places rather than four: an item bought at a "
+                + "thousand pieces for a hundred riyals has a unit cost of 0.100000, which at scale four becomes 0.1000 and the "
+                + "difference disappears — yet it accumulates on every issue until the value balance no longer equals the sum of "
+                + "its movements.");
+        });
+
+        yield return ("Measure", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "كمّية **بوحدتها** — ولا كمّية مجرّدة تعبر هذا السطح. و«عشرة» ليست معلومة: عشر حبّات أم عشر كراتين؟ "
+                + "والفرق بينهما في دفترٍ يمسك قيمةً هو الفرق بين رقمٍ صحيح ورقمٍ أكبر منه اثني عشر ضعفاً، **ولا "
+                + "يُظهره توازنٌ ولا سلسلة** لأن القيد المبنيّ عليه متوازن تماماً. / "
+                + "A quantity **with its unit** — no bare quantity crosses this surface. 'Ten' is not information: ten pieces or "
+                + "ten cartons? In a ledger that holds value the difference between them is the difference between a correct "
+                + "number and one twelve times larger, and **no balance check and no hash chain reveals it**, because the entry "
+                + "built on it balances perfectly.");
+            w.WriteStartObject("properties");
+            WriteRefProperty(w, "magnitude", "Magnitude");
+            WriteStringProperty(w, "unit",
+                "رمز وحدة القياس كما سجّله المستأجر. معرّف لا نصّ معروض: لا يُترجَم ولا يُطابَق بلا حساسية حالة.",
+                "The unit-of-measure code as the tenant registered it. An identifier, not displayed text: never translated and never matched case-insensitively.",
+                32);
+            w.WriteEndObject();
+            WriteRequired(w, "magnitude", "unit");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("UnitFactor", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "معامل تحويل وحدةٍ إلى وحدة أساس الصنف — **بسطٌ ومقام صحيحان، لا عددٌ عشري**. «الكرتون اثنتا عشرة "
+                + "حبّة» هو 12/1، و«الحبّة ثلث علبة» هو 1/3 — والثاني لا يُمثَّل عشرياً بلا خسارة، وخسارةٌ في كمّية "
+                + "تُضرب في تكلفة الوحدة تصل إلى المال. والتحويل الذي لا يقع بلا باقٍ يُرفض بـ"
+                + "inventory.unit_conversion_not_exact ولا يُقرَّب. / "
+                + "A factor converting a unit into the item's base unit — **an integer numerator and denominator, not a decimal**. "
+                + "'A carton is twelve pieces' is 12/1; 'a piece is a third of a box' is 1/3 — and the second cannot be represented "
+                + "decimally without loss, while loss in a quantity that gets multiplied by a unit cost reaches the money. A "
+                + "conversion that does not divide exactly is refused with inventory.unit_conversion_not_exact rather than rounded.");
+            w.WriteStartObject("properties");
+            WriteIntegerProperty(w, "denominator", 1, 1_000_000_000, "المقام — موجب.", "The denominator; positive.");
+            WriteIntegerProperty(w, "numerator", 1, 1_000_000_000,
+                "البسط: كم وحدةَ أساسٍ في «المقام» من هذه الوحدة.",
+                "The numerator: how many base units are in 'denominator' of this unit.");
+            WriteStringProperty(w, "unitCode", "رمز الوحدة الأكبر.", "The larger unit's code.", 32);
+            w.WriteEndObject();
+            WriteRequired(w, "denominator", "numerator", "unitCode");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("ItemRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب تسجيل صنف. **ولا رمز حساب فيه**: الصنف يحمل itemGroup — مؤهّل دور — ومصفوفة الترحيل وحدها "
+                + "تُحوّله إلى حساب (القاعدة 2). / "
+                + "An item registration request. **No account code appears in it**: an item carries an itemGroup — a role "
+                + "qualifier — and the posting matrix alone turns it into an account (Rule 2).");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "baseUnit",
+                "وحدة الأساس: أصغر وحدة يُمسَك بها الصنف، وإليها تُحوَّل البقية. ولا تتغيّر بعد أن تُكتب على الصنف حركات.",
+                "The base unit: the smallest unit the item is held in, into which everything else converts. It does not change once movements have been written against the item.",
+                32);
+            WriteStringProperty(w, "code", "رمز الصنف داخل المنشأة — هوية تحملها حركاته وقيوده، لا نصّاً معروضاً.", "The item code within the company — an identity carried by its movements and entries, not displayed text.", 64);
+            WriteStringProperty(w, "itemGroup", "مجموعة الصنف — مؤهّل الدور عند المصفوفة.", "The item group — a role qualifier for the posting matrix.", 64);
+            WriteRefProperty(w, "name", "LocalizedText");
+            WriteArrayRefProperty(w, "units", "UnitFactor",
+                "الوحدات الأكبر ومعاملاتها — قائمة فارغة إن كان الصنف يُمسَك بوحدة أساسه وحدها.",
+                "The larger units and their factors — an empty list if the item is held in its base unit alone.");
+            w.WriteEndObject();
+            WriteRequired(w, "baseUnit", "code", "itemGroup", "name", "units");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("Item", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description", "صنف كما يخرج على السلك. / An item as it leaves on the wire.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "baseUnit", "وحدة الأساس.", "The base unit.", 32);
+            WriteStringProperty(w, "code", "الرمز.", "The code.", 64);
+            WriteStringProperty(w, "id", "المعرّف الذي تُبنى عليه القراءة.", "The identifier reads are built on.", 36);
+            WriteStringProperty(w, "itemGroup", "مجموعة الصنف.", "The item group.", 64);
+            WriteRefProperty(w, "name", "LocalizedText");
+            WriteArrayRefProperty(w, "units", "UnitFactor", "الوحدات الأكبر ومعاملاتها.", "The larger units and their factors.");
+            w.WriteEndObject();
+            WriteRequired(w, "baseUnit", "code", "id", "itemGroup", "name", "units");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("ItemList", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "أصناف المنشأة، مرتَّبة بالرمز ترتيباً حرفياً ثابتاً. **وغلافٌ لا مصفوفة عارية**: مصفوفةٌ في جذر "
+                + "الاستجابة لا موضع فيها لعدّاد ولا لصفحة، فأول حاجة إليهما تكسر العقد. / "
+                + "The company's items, ordered by code in a stable ordinal order. **An envelope, not a bare array**: an array at "
+                + "the response root has no place for a count or a page, so the first need for either breaks the contract.");
+            w.WriteStartObject("properties");
+            WriteIntegerProperty(w, "itemCount", 0, int.MaxValue, "عدد الأصناف.", "The number of items.");
+            WriteArrayRefProperty(w, "items", "Item", "الأصناف.", "The items.");
+            w.WriteEndObject();
+            WriteRequired(w, "itemCount", "items");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("StockMovementRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب إنشاء مستند حركة مخزون **مسوّدة**: تسوية جرد، أو رصيد افتتاحي، أو إعدام. والتكلفة **على الوارد "
+                + "وحده** — الصادر تُحسب تكلفته في وحدة المخزون ولا تُملى، فتُرسَل عليه \"0\". / "
+                + "A request to create a **draft** stock movement document: a count adjustment, an opening balance, or a "
+                + "write-off. Cost is **for inbound only** — an outbound movement is valued by the inventory module and never "
+                + "dictated, so send \"0\" for it.");
+            w.WriteStartObject("properties");
+            WriteRefProperty(w, "cost", "Money");
+            WriteEnumProperty(w, "direction",
+                "‏IN زيادة جرد أو رصيد افتتاحي · OUT عجز أو إعدام.",
+                "IN for a count surplus or opening balance; OUT for a shortage or write-off.",
+                MovementDirections);
+            WriteStringProperty(w, "itemGroup", "مجموعة الصنف — مؤهّل الدور.", "The item group — a role qualifier.", 64);
+            WriteStringProperty(w, "itemId", "رمز الصنف.", "The item code.", 64);
+            WriteStringProperty(w, "locationId",
+                "الموقع داخل المستودع — بُعدٌ في مفتاح الرصيد لا وصفٌ عليه. و DEFAULT للمستودع الذي لم يُسكَّن بعد.",
+                "The location within the warehouse — a dimension in the balance key, not a description on it. Use DEFAULT for a warehouse that is not binned yet.",
+                64);
+            WriteStringProperty(w, "number", "رقم المستند — فريد داخل المنشأة.", "The document number — unique within the company.", 64);
+            WriteDateProperty(w, "occurredOn", "تاريخ الحركة الميلادي.", "The Gregorian movement date.");
+            WriteRefProperty(w, "quantity", "Measure");
+            WriteStringProperty(w, "warehouseId", "المستودع.", "The warehouse.", 64);
+            w.WriteEndObject();
+            WriteRequired(w, "cost", "direction", "itemGroup", "itemId", "locationId", "number", "occurredOn", "quantity", "warehouseId");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("StockMovement", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "مستند حركة مخزون كما يخرج على السلك. / A stock movement document as it leaves on the wire.");
+            w.WriteStartObject("properties");
+            WriteBooleanProperty(
+                w,
+                "alreadyPosted",
+                "هل كانت هذه الهوية مُرحَّلة **قبل** هذا الطلب؟ ولا تُشتقّ من state: المستند بعد أي ترحيل ناجح حالته POSTED — الأول والثاني سواء.",
+                "Was this identity already posted **before** this request? It is not derivable from state: after any successful post the document is POSTED, first arrival and second alike.");
+            WriteRefProperty(w, "cost", "Money");
+            WriteEnumProperty(w, "direction", "الاتجاه.", "The direction.", MovementDirections);
+            WriteNullableStringProperty(w, "entryId", "معرّف القيد إن رُحّل، و‏null إن كان مسوّدة.", "The journal entry identifier if posted, and null while a draft.", 36);
+            WriteStringProperty(w, "id", "المعرّف.", "The identifier.", 36);
+            WriteStringProperty(w, "itemGroup", "مجموعة الصنف.", "The item group.", 64);
+            WriteStringProperty(w, "itemId", "الصنف.", "The item.", 64);
+            WriteStringProperty(w, "locationId", "الموقع داخل المستودع.", "The location within the warehouse.", 64);
+            WriteStringProperty(w, "number", "الرقم.", "The number.", 64);
+            WriteDateProperty(w, "occurredOn", "تاريخ الحركة.", "The movement date.");
+            WriteRefProperty(w, "quantity", "Measure");
+            WriteStringProperty(w, "state", "الحالة: DRAFT · POSTED.", "The state: DRAFT or POSTED.", 32);
+            WriteStringProperty(w, "warehouseId", "المستودع.", "The warehouse.", 64);
+            w.WriteEndObject();
+            WriteRequired(w, "alreadyPosted", "cost", "direction", "entryId", "id", "itemGroup", "itemId",
+                "locationId", "number", "occurredOn", "quantity", "state", "warehouseId");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("StockMovementList", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "مستندات حركة المخزون، مرتَّبة بالتاريخ ثم بالرقم. / The stock movement documents, ordered by date then by number.");
+            w.WriteStartObject("properties");
+            WriteIntegerProperty(w, "movementCount", 0, int.MaxValue, "عدد المستندات.", "The number of documents.");
+            WriteArrayRefProperty(w, "movements", "StockMovement", "المستندات.", "The documents.");
+            w.WriteEndObject();
+            WriteRequired(w, "movementCount", "movements");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("StockBalance", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "رصيد صنف في موقعٍ من مستودع — **مفتاحه أربعة أبعاد**: المنشأة والصنف والمستودع والموقع. / "
+                + "The balance of an item in a location within a warehouse — **its key has four dimensions**: company, item, "
+                + "warehouse, and location.");
+            w.WriteStartObject("properties");
+            WriteBooleanProperty(
+                w,
+                "hasCostBasis",
+                "هل ورد هذا الصنف إلى هذا الموقع مرّةً بتكلفة؟ **حقلٌ مستقلّ عن unitCost عمداً**: بدونه لا يُفرَّق بين «تكلفة الوحدة صفر لأن الصنف لم يُستلم قط» و«تكلفته صفر فعلاً».",
+                "Has this item ever been received into this location with a cost? **A field separate from unitCost on purpose**: without it there is no telling 'the unit cost is zero because it was never received' from 'its cost really is zero'.");
+            WriteStringProperty(w, "itemId", "الصنف.", "The item.", 64);
+            WriteStringProperty(w, "locationId", "الموقع داخل المستودع.", "The location within the warehouse.", 64);
+            WriteRefProperty(w, "quantity", "Measure");
+            WriteRefProperty(w, "unitCost", "UnitCost");
+            WriteRefProperty(w, "value", "Money");
+            WriteStringProperty(w, "warehouseId", "المستودع.", "The warehouse.", 64);
+            w.WriteEndObject();
+            WriteRequired(w, "hasCostBasis", "itemId", "locationId", "quantity", "unitCost", "value", "warehouseId");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("StockBalanceList", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "أرصدة المخزون، مرتَّبة بالصنف ثم المستودع ثم الموقع. / The stock balances, ordered by item then warehouse then location.");
+            w.WriteStartObject("properties");
+            WriteIntegerProperty(w, "balanceCount", 0, int.MaxValue, "عدد الأرصدة.", "The number of balances.");
+            WriteArrayRefProperty(w, "balances", "StockBalance", "الأرصدة.", "The balances.");
+            w.WriteEndObject();
+            WriteRequired(w, "balanceCount", "balances");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("InventoryDivergence", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "مستندٌ منحرف بين دفتر المخزون المساعد وحسابه الضابط — **يُسمّى بنوعه ومعرّفه وصنفه وسببه**، فلا يُقال "
+                + "«هناك مشكلة» بلا «أين». / "
+                + "A document diverging between the inventory subledger and its control account — **named by its type, its "
+                + "identifier, its item, and the reason**, so the report never says 'there is a problem' without saying where.");
+            w.WriteStartObject("properties");
+            WriteRefProperty(w, "controlEffect", "Money");
+            WriteRefProperty(w, "divergence", "Money");
+            WriteStringProperty(w, "documentId", "معرّف المستند.", "The document identifier.", 64);
+            WriteStringProperty(w, "documentType", "نوع المستند.", "The document type.", 64);
+            WriteStringProperty(w, "itemId", "الصنف.", "The item.", 64);
+            WriteEnumProperty(w, "reasonCode",
+                "سبب الانحراف: حركةٌ بلا نظير في نقطة الضبط، أو نظيرٌ بلا حركة، أو مبلغان مختلفان.",
+                "The reason: a movement with no counterpart at the control point, a counterpart with no movement, or two different amounts.",
+                DivergenceReasons);
+            WriteRefProperty(w, "subledgerEffect", "Money");
+            w.WriteEndObject();
+            WriteRequired(w, "controlEffect", "divergence", "documentId", "documentType", "itemId", "reasonCode", "subledgerEffect");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("InventoryValuation", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "تقييم المخزون ومطابقته — **ثلاثة طرق مستقلّة إلى الرقم نفسه**: مجموع الحركات، ومجموع أرصدة الأصناف، "
+                + "ونقطة الضبط في الدفتر. واثنان يكفيان لكشف انحراف بين الوحدة والدفتر؛ والثالث يكشف انحراف الوحدة عن "
+                + "نفسها. و‏isReconciled يعني الفارق **صفر بالضبط** لا «قريب من الصفر». / "
+                + "The inventory valuation and its reconciliation — **three independent routes to the same number**: the sum of "
+                + "movements, the sum of item balances, and the ledger's control point. Two are enough to reveal a divergence "
+                + "between the module and the ledger; the third reveals the module diverging from itself. isReconciled means the "
+                + "difference is **exactly zero**, not 'close to zero'.");
+            w.WriteStartObject("properties");
+            WriteDateProperty(w, "asOf", "تاريخ التقييم.", "The valuation date.");
+            WriteRefProperty(w, "balanceTotal", "Money");
+            WriteRefProperty(w, "controlTotal", "Money");
+            WriteRefProperty(w, "divergence", "Money");
+            WriteArrayRefProperty(w, "divergences", "InventoryDivergence", "المستندات المسؤولة عن الفارق.", "The documents responsible for the difference.");
+            WriteBooleanProperty(w, "isReconciled", "هل الفارق صفر بالضبط؟", "Is the difference exactly zero?");
+            WriteRefProperty(w, "subledgerTotal", "Money");
+            w.WriteEndObject();
+            WriteRequired(w, "asOf", "balanceTotal", "controlTotal", "divergence", "divergences", "isReconciled", "subledgerTotal");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("StockBillLine", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "سطر فاتورة مورد مخزنية — يرجع إلى سطر استلام بعينه، وهو ضلع المطابقة الثالث. / "
+                + "A stock supplier bill line — it refers to a specific goods receipt line, the third side of the match.");
+            w.WriteStartObject("properties");
+            WriteRefProperty(w, "quantity", "Quantity");
+            WriteStringProperty(w, "receiptLineId", "معرّف سطر الاستلام.", "The goods receipt line identifier.", 36);
+            WriteRefProperty(w, "taxRate", "TaxRate");
+            WriteStringProperty(w, "taxClassification", "التصنيف الضريبي.", "The tax classification.", 32);
+            WriteRefProperty(w, "unitPrice", "Money");
+            w.WriteEndObject();
+            WriteRequired(w, "quantity", "receiptLineId", "taxClassification", "taxRate", "unitPrice");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("StockBillRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب إنشاء فاتورة مورد **مخزنية** مسوّدة تُطابَق ثلاثياً. / A **stock** supplier bill draft request, three-way matched.");
+            w.WriteStartObject("properties");
+            WriteDateProperty(w, "issuedOn", "تاريخ الفاتورة الميلادي.", "The Gregorian bill date.");
+            WriteArrayRefProperty(w, "lines", "StockBillLine", "السطور.", "The lines.");
+            WriteStringProperty(w, "number", "رقم الفاتورة.", "The bill number.", 64);
+            WriteStringProperty(w, "receiptId", "الاستلام الذي تُطابَق به.", "The goods receipt it is matched against.", 36);
+            w.WriteEndObject();
+            WriteRequired(w, "issuedOn", "lines", "number", "receiptId");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("PurchaseReturnRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب إنشاء **مرتجع مشتريات** مسوّدة. **ولا صافي فيه**: المصفوفة تقول إن صافي المرتجع «بتكلفة الاستلام "
+                + "الأصلي لا بتكلفة اليوم»، وتلك التكلفة يملكها دفتر المخزون وحده — فيُسلَّم ما يملكه المستدعي: "
+                + "الكمّية وسطر الاستلام والضريبة. / "
+                + "A **purchase return** draft request. **It carries no net**: the matrix says the return net is 'at the original "
+                + "receipt cost, not today's cost', and only the inventory subledger owns that cost — so what the caller owns is "
+                + "what is sent: the quantity, the receipt line, and the tax.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "billId", "الفاتورة المخزنية الأصلية.", "The original stock bill.", 36);
+            WriteDateProperty(w, "issuedOn", "تاريخ المرتجع الميلادي.", "The Gregorian return date.");
+            WriteStringProperty(w, "number", "رقم المرتجع.", "The return number.", 64);
+            WriteRefProperty(w, "quantity", "Quantity");
+            WriteStringProperty(w, "receiptLineId", "سطر الاستلام الذي تُردّ بضاعته — به يُقيَّم المرتجع.", "The goods receipt line whose goods are being returned — the return is valued by it.", 36);
+            WriteRefProperty(w, "tax", "Money");
+            w.WriteEndObject();
+            WriteRequired(w, "billId", "issuedOn", "number", "quantity", "receiptLineId", "tax");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("PurchaseDocumentLine", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "سطر مستند مشتريات كما يخرج على السلك — **معرّفه مدخل المستند التالي في الدورة**. / "
+                + "A purchasing document line as it leaves on the wire — **its identifier is the input to the next document in the cycle**.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "id", "معرّف السطر.", "The line identifier.", 36);
+            WriteStringProperty(w, "itemId", "الصنف.", "The item.", 64);
+            WriteIntegerProperty(w, "lineNo", 1, int.MaxValue, "رقم السطر داخل مستنده.", "The line number within its document.");
+            WriteRefProperty(w, "quantity", "Magnitude");
+            WriteStringProperty(w, "unit", "وحدة القياس.", "The unit of measure.", 32);
+            WriteRefProperty(w, "unitPrice", "Money");
+            w.WriteEndObject();
+            WriteRequired(w, "id", "itemId", "lineNo", "quantity", "unit", "unitPrice");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("PurchaseDocumentLineList", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "سطور مستند مشتريات، مرتَّبة برقم السطر — **وغلافٌ لا مصفوفة عارية**: مصفوفةٌ في جذر الاستجابة "
+                + "لا موضع فيها لعدّاد ولا لصفحة، فأول حاجة إليهما تكسر العقد. / "
+                + "The lines of a purchasing document, ordered by line number — **an envelope, not a bare array**: a "
+                + "root-level array has nowhere to put a count or a page, so the first need for either breaks the contract.");
+            w.WriteStartObject("properties");
+            WriteIntegerProperty(w, "lineCount", 0, int.MaxValue, "عدد السطور.", "The number of lines.");
+            WriteArrayRefProperty(w, "lines", "PurchaseDocumentLine", "السطور بمعرّفاتها.", "The lines with their identifiers.");
+            w.WriteEndObject();
+            WriteRequired(w, "lineCount", "lines");
             w.WriteBoolean("additionalProperties", false);
         });
 

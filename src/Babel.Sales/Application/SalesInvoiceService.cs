@@ -39,10 +39,23 @@ namespace Babel.Sales.Application;
 /// </param>
 /// <param name="ItemId">الصنف في دفتره المساعد — معرّف مبهم لا رقم حساب.</param>
 /// <param name="WarehouseId">المستودع — بُعد تحليلي إلزامي على مراقبة المخزون.</param>
+/// <param name="LocationId">
+/// الموقع داخل المستودع — <b>ضلعٌ في مفتاح الرصيد لا وصفٌ عليه</b>. ووحدةُ المبيعات
+/// لا تملك تسكيناً بعد، فتُسلّم <c>InventoryLocations.Default</c> <b>صراحةً</b>: قيمةٌ
+/// مكتوبة تُقرأ في المراجعة، لا افتراضٌ صامت في توقيعٍ يُنسى يوم تصير للمستودع مواقع.
+/// </param>
 /// <param name="ItemGroup">مجموعة الصنف — مؤهّل الدور.</param>
-/// <param name="Quantity">الكمية المباعة من هذا الصنف. موجبة.</param>
+/// <param name="Quantity">
+/// الكمية المباعة من هذا الصنف <b>بوحدتها</b>. موجبة. و«عشرة» بلا وحدة ليست معلومة:
+/// عشر حبّات أم عشر كراتين؟ والفرق يصل إلى المال لأن الكمية تُضرب في تكلفة الوحدة.
+/// </param>
 public sealed record CostOfSalesDraft(
-    Guid InvoiceLineId, string ItemId, string WarehouseId, string ItemGroup, decimal Quantity);
+    Guid InvoiceLineId,
+    string ItemId,
+    string WarehouseId,
+    string LocationId,
+    string ItemGroup,
+    InventoryQuantity Quantity);
 
 /// <summary>
 /// دورة مستند البيع: عرض سعر ← أمر بيع ← فاتورة ← ترحيل.
@@ -100,6 +113,17 @@ public sealed class SalesInvoiceService : IApplicationService
     /// </para>
     /// </summary>
     internal const string CostOfSalesEvent = "sales.invoice.cost_of_sales";
+
+    /// <summary>
+    /// رمز رفض الدفتر لقيدٍ عُكس من قبل — <b>يُقرأ ولا يُعدّ عطلاً في مسار العكس</b>.
+    /// <para>
+    /// عكسُ فاتورةٍ يمسّ قيدين ونداءً على المخزون، وهي ثلاث كتابات في ثلاثة مواضع بلا
+    /// معاملة واحدة تجمعها. فمن انقطع اتصاله بينها يعيد النداء، والإعادة يجب أن تُكمل
+    /// لا أن تسقط. والدفتر يُضاف إليه فقط، فـ«معكوس سلفاً» ليس خطأً بل <b>الحالة
+    /// المطلوبة</b> بلغة الرفض.
+    /// </para>
+    /// </summary>
+    internal const string LedgerEntryAlreadyReversed = "ledger.posting.already_reversed";
 
     private readonly IEntitlementEnforcer _enforcer;
     private readonly SalesDbContext _database;
@@ -566,7 +590,7 @@ public sealed class SalesInvoiceService : IApplicationService
                 PostingTrigger.OnApproval.ToString(),
                 invoice.PostingGeneration,
                 CostOfSalesEvent),
-            Location = new InventoryItemLocation(draft.ItemId, draft.WarehouseId, draft.ItemGroup),
+            Location = new InventoryItemLocation(draft.ItemId, draft.WarehouseId, draft.LocationId, draft.ItemGroup),
             Quantity = draft.Quantity,
             OccurredOn = invoice.IssuedOn,
         };
@@ -652,6 +676,22 @@ public sealed class SalesInvoiceService : IApplicationService
         {
             return Result<PostingReceipt>.Failure(
                 SalesErrors.NotInState(invoice.Number, invoice.State, SalesDocumentState.Posted));
+        }
+
+        // ── الأثر المادي أولاً: البضاعة تعود، ثم يُعكس قيد تكلفتها ──────────────
+        // وعكسٌ يوازن الدفتر ويترك الأثر المخزني معلَّقاً هو أخبث ما في هذا الباب:
+        // القيد المُلغى متوازن بذاته، والسلسلة سليمة، وميزان المراجعة يقفل — بينما
+        // الكمية خرجت ولم تعُد والتكلفة سُجّلت ولم تُعكس. لا استثناء ولا سطر سجلّ.
+        // (‏docs/evidence/traps.md#fakh-a-reversal-that-balances-the-ledger-and-strands-the-stock)
+        //
+        // وترتيبها قبل عكس قيد الإيراد مقصود ومطابق لـADR-0041: **الدفتر المساعد
+        // أوّلاً**، كي لا يترك رفضٌ في منتصف الطريق قيداً معكوساً وبضاعةً خارج المستودع.
+        Result annulled = await AnnulCostOfSalesAsync(tenant, actor, invoice, reason, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (annulled.IsFailure)
+        {
+            return Result<PostingReceipt>.Failure(annulled.Errors);
         }
 
         Result<PostingReceipt> reversal = await _posting.ReverseAsync(
@@ -772,6 +812,133 @@ public sealed class SalesInvoiceService : IApplicationService
     internal static string Boolean(bool value) => value ? "true" : "false";
 
     internal readonly record struct Totals(decimal Net, decimal Tax, decimal Gross, bool HasTaxableLine);
+
+    /// <summary>
+    /// <b>يُلغي أثر قيود تكلفة المبيعات على المخزون وعلى الدفتر معاً</b> — لكل سطرٍ
+    /// رُحّل له قيد تكلفة على الجيل الجاري.
+    /// <para>
+    /// وترتيب الخطوتين هو القرار كلّه: <b>حركة الدفتر المساعد أوّلاً، ثم عكس القيد</b>
+    /// (‏ADR-0041). فرفضٌ من المخزون — بضاعةٌ رُدّ عليها سلفاً بإشعار دائن مثلاً — يترك
+    /// القيد قائماً والحالة متّسقة؛ والعكس لو وقع أوّلاً لترك قيداً معكوساً وبضاعةً
+    /// خارج المستودع، وهو نصفُ عكسٍ لا يُقرأ من أي تقرير.
+    /// </para>
+    /// <para>
+    /// <b>ومُعادةٌ آمنة</b>: حركة الإلغاء محكومة بهويتها في وحدة المخزون، وعكسُ القيد
+    /// المعكوس سلفاً يُقرأ بـ<c>ledger.posting.already_reversed</c> ويُعدّ منتهياً —
+    /// فمن انقطع اتصاله في منتصف العكس يعيد النداء ولا يُخرج البضاعة مرّتين.
+    /// </para>
+    /// </summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="invoice">الفاتورة المعكوسة.</param>
+    /// <param name="reason">سبب العكس — يُنقل إلى قيد عكس التكلفة كما هو.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    private async Task<Result> AnnulCostOfSalesAsync(
+        TenantId tenant,
+        UserId actor,
+        SalesInvoiceRow invoice,
+        LocalizedName reason,
+        CancellationToken cancellationToken)
+    {
+        string trigger = PostingTrigger.OnApproval.ToString();
+
+        List<Guid> lineIds = await _database.Lines
+            .Where(row => row.TenantId == tenant.Value
+                          && row.OwnerType == LineOwner.Invoice
+                          && row.OwnerId == invoice.Id)
+            .OrderBy(row => row.LineNo)
+            .Select(row => row.Id)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        List<(Guid LineId, Guid EntryId)> annulled = [];
+
+        foreach (Guid lineId in lineIds)
+        {
+            DocumentPostingRow? found = await FindAttemptAsync(
+                tenant, InvoiceLineDocument, lineId, PostingTrigger.OnApproval,
+                invoice.PostingGeneration, CostOfSalesEvent, cancellationToken).ConfigureAwait(false);
+
+            // لا قيد تكلفة على هذا السطر — فاتورةٌ لم تُرحَّل تكلفتها بعد، أو سطرُ
+            // خدمة لا يمسّ المخزون. ولا شيء يُلغى، ولا خطأ.
+            if (found is { State: PostingAttemptState.Posted, EntryId: { } posted })
+            {
+                annulled.Add((lineId, posted));
+            }
+        }
+
+        if (annulled.Count == 0)
+        {
+            // فاتورةٌ بلا قيد تكلفة واحد: عكسُها إيرادٌ وحده، ولا قدرة تُمارَس هنا.
+            // ومستأجرٌ على الجرد الدوري يعكس فواتيره بلا أي رخصة إضافية.
+            return Result.Success();
+        }
+
+        // ── القبول: إلغاء أثر التكلفة يمارس قدرة «تكلفة المبيعات بالجرد المستمر» ──
+        // وهو الشقّ العكسي من الرخصة نفسها التي رحّلت القيد الأصلي، وحقلُها المرخَّص
+        // هو المستودع. ومستأجرٌ لا يملك القدرة لا قيد تكلفة عنده أصلاً — والحلقة
+        // أعلاه تكون قد خرجت فارغة قبل أن تبلغ هذا السطر.
+        Result<AdmittedDocument> admitted = await _admission
+            .AdmitInvoiceAsync(
+                tenant,
+                [SalesAdmission.CustomerField, SalesAdmission.LinesField, SalesAdmission.WarehouseField],
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        if (admitted.IsFailure)
+        {
+            return Result.Failure(admitted.Errors);
+        }
+
+        Result covers = SalesAdmission.EnsureCovers(admitted.Value, SalesAdmission.WarehouseField);
+        if (covers.IsFailure)
+        {
+            return Result.Failure(covers.Errors);
+        }
+
+        foreach ((Guid lineId, Guid entryId) in annulled)
+        {
+            string id = lineId.ToString("D", CultureInfo.InvariantCulture);
+
+            InventoryMovementSource issued = new(
+                BabelModule.Sales, InvoiceLineDocument, id, trigger, invoice.PostingGeneration, CostOfSalesEvent);
+
+            Result<InventoryMovementCost> restored = await _valuation.ReverseMovementAsync(
+                new InventoryMovementReversal
+                {
+                    Tenant = tenant,
+                    Actor = actor,
+                    Source = issued with { TriggerCode = ReversalIdentity.TriggerCodeOf(trigger) },
+                    ReversedMovement = issued,
+                    OccurredOn = invoice.IssuedOn,
+                },
+                cancellationToken).ConfigureAwait(false);
+
+            if (restored.IsFailure)
+            {
+                return Result.Failure(restored.Errors);
+            }
+
+            Result<PostingReceipt> reversed = await _posting.ReverseAsync(
+                new ReversalRequest
+                {
+                    Tenant = tenant,
+                    EntryId = entryId,
+                    Reason = reason,
+                    Actor = actor,
+                },
+                cancellationToken).ConfigureAwait(false);
+
+            if (reversed.IsFailure
+                && !reversed.Errors.Any(static error =>
+                    string.Equals(error.Code, LedgerEntryAlreadyReversed, StringComparison.Ordinal)))
+            {
+                return Result.Failure(SalesErrors.PostingRefused(reversed.Errors));
+            }
+        }
+
+        return Result.Success();
+    }
 
     /// <summary>
     /// يقرأ صفّ محاولة بعينه <b>بهويته الخماسية كاملةً</b>.

@@ -5,8 +5,12 @@ namespace Babel.Inventory.Application;
 /// <param name="Value">القيمة بمقياس 4.</param>
 /// <param name="UnitCost">متوسط تكلفة الوحدة المتحرّك بمقياس 6.</param>
 /// <param name="HasCostBasis">هل وردت هذه التركيبة مرّةً بتكلفة؟</param>
+/// <param name="BaseUnit">
+/// وحدة الأساس التي يُمسَك بها هذا الرصيد، أو فراغٌ إن لم يُنشأ الصفّ بعد.
+/// <b>وفراغٌ هنا يعني «لم تُثبَّت وحدة بعد» لا «لا وحدة»</b>: أول حركة تُثبّتها.
+/// </param>
 internal readonly record struct StockPosition(
-    decimal Quantity, decimal Value, decimal UnitCost, bool HasCostBasis);
+    decimal Quantity, decimal Value, decimal UnitCost, bool HasCostBasis, string BaseUnit);
 
 /// <summary>أثر حركة على الرصيد.</summary>
 /// <param name="Value">قيمة الحركة — موجبة دائماً.</param>
@@ -45,7 +49,7 @@ internal static class WeightedAverageCost
     public const int UnitCostScale = 6;
 
     /// <summary>الرصيد الابتدائي: لا كمية، ولا قيمة، و<b>لا أساس تكلفة</b>.</summary>
-    public static StockPosition Empty => new(0m, 0m, 0m, false);
+    public static StockPosition Empty => new(0m, 0m, 0m, false, string.Empty);
 
     /// <summary>
     /// وارد بتكلفته الفعلية. المتوسط يُعاد حسابه <b>فقط</b> حين تصير الكمية موجبة:
@@ -65,7 +69,7 @@ internal static class WeightedAverageCost
             ? Round(valueAfter / quantityAfter, UnitCostScale)
             : position.UnitCost;
 
-        StockPosition after = new(quantityAfter, valueAfter, unitCost, true);
+        StockPosition after = new(quantityAfter, valueAfter, unitCost, true, position.BaseUnit);
         return new StockEffect(value, quantity == 0m ? unitCost : Round(value / quantity, UnitCostScale), after, quantityAfter < 0m);
     }
 
@@ -92,8 +96,44 @@ internal static class WeightedAverageCost
 
         decimal valueAfter = Round(position.Value - value, ValueScale);
 
-        StockPosition after = new(quantityAfter, valueAfter, position.UnitCost, position.HasCostBasis);
+        StockPosition after = new(quantityAfter, valueAfter, position.UnitCost, position.HasCostBasis, position.BaseUnit);
         return new StockEffect(value, position.UnitCost, after, quantityAfter < 0m);
+    }
+
+    /// <summary>
+    /// <b>إلغاء حركة مُسجَّلة بقيمتها هي</b> — لا بمتوسط اليوم.
+    /// <para>
+    /// وهذا هو الفرق بين «العكس» و«الصرف»: الصرف واقعةٌ جديدة تُقيَّم بما هو معروف
+    /// لحظتها، والعكس إبطالُ واقعةٍ قُيِّمت من قبل. فلو أُعيد حساب قيمة العكس بمتوسط
+    /// اليوم لبقي في الرصيد فارقٌ يساوي حركة المتوسط بين اللحظتين — رقمٌ لا يقابله
+    /// شيء في المستودع، وهو بعينه الشكل الذي يمنع الإقفال في §3.3 من ADR-0039.
+    /// </para>
+    /// <para>
+    /// <b>ولا يُمسّ <c>HasCostBasis</c> بالإنقاص:</b> «ورد هذا الصنف مرّةً بتكلفة»
+    /// واقعةٌ تاريخية لا تُمحى بإلغاء الحركة التي أنشأتها — وإنزالُها كان سيجعل صرفاً
+    /// لاحقاً يُرفض بـ<c>no_cost_basis</c> على صنفٍ له تاريخ.
+    /// </para>
+    /// </summary>
+    /// <param name="position">الرصيد قبل الإلغاء.</param>
+    /// <param name="quantity">كمية الحركة المُلغاة — موجبة.</param>
+    /// <param name="value">قيمة الحركة المُلغاة كما سُجّلت.</param>
+    /// <param name="inbound">هل حركة الإلغاء واردة؟ (إلغاء صادرٍ وارد، وإلغاء واردٍ صادر.)</param>
+    public static StockEffect Annul(StockPosition position, decimal quantity, decimal value, bool inbound)
+    {
+        decimal quantityAfter = inbound ? position.Quantity + quantity : position.Quantity - quantity;
+        decimal valueAfter = Round(inbound ? position.Value + value : position.Value - value, ValueScale);
+
+        decimal unitCost = quantityAfter > 0m
+            ? Round(valueAfter / quantityAfter, UnitCostScale)
+            : position.UnitCost;
+
+        StockPosition after = new(quantityAfter, valueAfter, unitCost, position.HasCostBasis, position.BaseUnit);
+
+        return new StockEffect(
+            value,
+            quantity == 0m ? unitCost : Round(value / quantity, UnitCostScale),
+            after,
+            quantityAfter < 0m);
     }
 
     /// <summary>

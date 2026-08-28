@@ -448,6 +448,7 @@ internal sealed class Seed : IDisposable
                                 "*",
                                 new LocalizedName(expense.Arabic, expense.English),
                                 quantity,
+                                Babel.Contracts.Inventory.InventoryUnits.Each,
                                 Money.Of(expense.UnitPrice, Currency),
                                 "standard",
                                 0.15m),

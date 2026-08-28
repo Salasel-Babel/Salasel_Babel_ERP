@@ -242,3 +242,65 @@ public sealed record PurchasingGoodsReceiptRequest(
     Guid OrderId,
     DateOnly ReceivedOn,
     IReadOnlyList<PurchasingGoodsReceiptLineRequest> Lines);
+
+/// <summary>
+/// سطر مستند مشتريات كما يخرج من السطح — <b>ومعرّفه مدخل المستند التالي في الدورة</b>.
+/// <para>
+/// <b>ومعه وحدته:</b> كمّية هذا السطر تصل إلى دفتر المخزون المساعد فتُضرب في تكلفة
+/// الوحدة، و«عشرة» بلا وحدة ليست معلومة.
+/// </para>
+/// </summary>
+/// <param name="Id">معرّف السطر.</param>
+/// <param name="LineNo">رقمه داخل المستند.</param>
+/// <param name="ItemId">الصنف.</param>
+/// <param name="Quantity">الكمية بوحدتها.</param>
+/// <param name="Unit">رمز وحدة القياس.</param>
+/// <param name="UnitPrice">سعر الوحدة.</param>
+public sealed record PurchasingDocumentLine(
+    Guid Id, int LineNo, string ItemId, decimal Quantity, string Unit, decimal UnitPrice);
+
+/// <summary>سطر فاتورة مورد مخزنية — يرجع إلى سطر استلام بعينه، وهو ضلع المطابقة الثالث.</summary>
+/// <param name="ReceiptLineId">سطر الاستلام.</param>
+/// <param name="Quantity">الكمية المفوترة.</param>
+/// <param name="UnitPrice">سعر الوحدة على الفاتورة.</param>
+/// <param name="TaxClassification">التصنيف الضريبي.</param>
+/// <param name="TaxRate">نسبة الضريبة كسراً عشرياً.</param>
+public sealed record PurchasingStockBillLineRequest(
+    Guid ReceiptLineId,
+    decimal Quantity,
+    decimal UnitPrice,
+    string TaxClassification,
+    decimal TaxRate);
+
+/// <summary>طلب إنشاء فاتورة مورد <b>مخزنية</b> تُطابَق ثلاثياً.</summary>
+/// <param name="Number">رقم الفاتورة.</param>
+/// <param name="ReceiptId">الاستلام.</param>
+/// <param name="IssuedOn">تاريخ الفاتورة.</param>
+/// <param name="Lines">السطور.</param>
+public sealed record PurchasingStockBillRequest(
+    string Number,
+    Guid ReceiptId,
+    DateOnly IssuedOn,
+    IReadOnlyList<PurchasingStockBillLineRequest> Lines);
+
+/// <summary>
+/// طلب إنشاء <b>مرتجع مشتريات</b> (إشعار مدين) <b>مسوّدة</b> على فاتورة مخزنية مُرحَّلة.
+/// <para>
+/// <b>ولاحظ ما ليس فيه: صافي المرتجع.</b> المصفوفة تقول إن الصافي «بتكلفة الاستلام
+/// الأصلي لا بتكلفة اليوم»، وتلك التكلفة يملكها دفتر المخزون وحده — فالطلب يحمل
+/// الكمّية، والمبلغ يُحسب لحظة الترحيل ولا يُملى.
+/// </para>
+/// </summary>
+/// <param name="Number">رقم المرتجع.</param>
+/// <param name="BillId">الفاتورة المخزنية الأصلية.</param>
+/// <param name="ReceiptLineId">سطر الاستلام الذي تُردّ بضاعته — به يُقيَّم المرتجع.</param>
+/// <param name="IssuedOn">تاريخ المرتجع.</param>
+/// <param name="Quantity">الكمية المرتجعة بوحدة الاستلام.</param>
+/// <param name="Tax">ضريبة المرتجع — بتصنيف الفاتورة الأصلية.</param>
+public sealed record PurchasingReturnRequest(
+    string Number,
+    Guid BillId,
+    Guid ReceiptLineId,
+    DateOnly IssuedOn,
+    decimal Quantity,
+    decimal Tax);

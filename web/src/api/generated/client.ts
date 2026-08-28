@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     8aae61c612441715b5f507e25d0685fb307582f7e5c4f4b837bd94672b1ee09e
+     9b4b67ebfa420bef3bce6afd7e80cf12fa6181923c47e4af8c8f6d1a33b23adc
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -68,6 +68,41 @@ export async function addCustomer(transport: Transport, args: AddCustomerArgs, s
   const response = await transport({ method: "POST", url, body, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "Party", response.json) as T.Party;
+}
+
+export interface AddItemArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.ItemRequest;
+}
+
+/**
+ * تسجيل صنف / Register an item
+ * 
+ * يسجّل صنفاً: رمزه، واسمه ثنائي اللغة، ومجموعته، و**وحدة أساسه ومعاملات تحويل وحداته الأكبر**.
+ * 
+ * **ووحدة الأساس أصغر وحدة يُمسَك بها الصنف**، وإليها تُحوَّل البقية. والمعامل **بسطٌ ومقام صحيحان لا عددٌ عشري**: «الكرتون اثنتا عشرة حبّة» هو 12/1، و«الحبّة ثلث علبة» هو 1/3 — والثاني لا يُكتب عشرياً بلا خسارة، وخسارةٌ في كمّية تُضرب في تكلفة الوحدة تصل إلى المال. والتحويل الذي لا يقع بلا باقٍ **يُرفض باسمه** ولا يُقرَّب.
+ * 
+ * **ولا رمز حساب هنا**: الصنف يحمل itemGroup — مؤهّل دور — ومصفوفة الترحيل وحدها تُحوّله إلى حساب.
+ * 
+ * **ولاحظ ما ليس على هذا المورد: لا تعديل ولا حذف.** رمزُ الصنف هوية تحملها قيود سنةٍ مضت، وحذفُه يكسر كل تقرير مُرحَّل؛ وتغييرُ وحدة أساسه بعد أن كُتبت عليه حركات يجعل مجموع حركاته جمعَ أعدادٍ بمقاييس مختلفة. وذلك **نقص سطحٍ مُعلَن** لا قرار منع.
+ * 
+ * Registers an item: its code, its bilingual name, its group, and **its base unit with the conversion factors of its larger units**.
+ * 
+ * **The base unit is the smallest unit the item is held in**, and everything else converts into it. A factor is **an integer numerator and denominator, not a decimal**: 'a carton is twelve pieces' is 12/1 and 'a piece is a third of a box' is 1/3 — the second cannot be written decimally without loss, and loss in a quantity that gets multiplied by a unit cost reaches the money. A conversion that does not divide exactly is **refused by name** rather than rounded.
+ * 
+ * **No account code appears here**: an item carries an itemGroup — a role qualifier — and the posting matrix alone turns it into an account.
+ * 
+ * **Note what this resource does not carry: no update and no delete.** The item code is an identity carried by last year's entries; deleting it breaks every posted report, and changing its base unit after movements have been written against it makes the sum of those movements an addition of numbers on different scales. That is a **declared surface gap**, not a prohibition.
+ */
+export async function addItem(transport: Transport, args: AddItemArgs, signal?: AbortSignal): Promise<T.Item> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/items";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "ItemRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "Item", response.json) as T.Item;
 }
 
 export interface AddSupplierArgs {
@@ -277,6 +312,37 @@ export async function draftGoodsReceipt(transport: Transport, args: DraftGoodsRe
   return decodeSchema(SCHEMAS, "CommercialDocument", response.json) as T.CommercialDocument;
 }
 
+export interface DraftPurchaseReturnArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.PurchaseReturnRequest;
+}
+
+/**
+ * إنشاء مرتجع مشتريات مسوّدة / Draft a purchase return
+ * 
+ * يُنشئ **مرتجع مشتريات** (إشعاراً مديناً) في حالة DRAFT على فاتورة مخزنية **مُرحَّلة**.
+ * 
+ * **ولاحظ ما ليس في الحمولة: صافي المرتجع.** مصفوفة الترحيل تقول على purchasing.debit_note.posted إن الصافي «بتكلفة الاستلام الأصلي لا بتكلفة اليوم»، وتلك التكلفة يملكها دفتر المخزون وحده. فالطلب يحمل **الكمّية** ومعرّف سطر الاستلام، ويُحسب المبلغ لحظة الترحيل ولا يُملى — وهو مبدأ ADR-0039 نفسه مطبَّقاً على الطرف الآخر من الدورة. ولذلك تخرج المسوّدة بصافٍ صفر: الرقم لم يُحسب بعد، ولا يُخترَع ليملأ خانة.
+ * 
+ * والضريبة **تُسلَّم**: هي بتصنيف الفاتورة الأصلية وواقعةٌ تجارية لا يملكها المخزون.
+ * 
+ * Creates a **purchase return** (a supplier debit note) in state DRAFT against a **posted** stock bill.
+ * 
+ * **Note what the payload does not carry: the return net.** The posting matrix says of purchasing.debit_note.posted that the net is 'at the original receipt cost, not today's cost', and only the inventory subledger owns that cost. So the request carries the **quantity** and the goods receipt line identifier, and the amount is computed at posting time rather than dictated — the same principle as ADR-0039, applied to the other end of the cycle. That is why the draft comes back with a net of zero: the number has not been computed yet, and nothing is invented to fill the field.
+ * 
+ * The tax **is** supplied: it follows the original invoice's classification and is a commercial fact the inventory module does not own.
+ */
+export async function draftPurchaseReturn(transport: Transport, args: DraftPurchaseReturnArgs, signal?: AbortSignal): Promise<T.CommercialDocument> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/purchase-returns";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "PurchaseReturnRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "CommercialDocument", response.json) as T.CommercialDocument;
+}
+
 export interface DraftSalesInvoiceArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
@@ -302,6 +368,68 @@ export async function draftSalesInvoice(transport: Transport, args: DraftSalesIn
   const response = await transport({ method: "POST", url, body, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "CommercialDocument", response.json) as T.CommercialDocument;
+}
+
+export interface DraftStockBillArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.StockBillRequest;
+}
+
+/**
+ * إنشاء فاتورة مورد مخزنية مسوّدة / Draft a stock supplier bill
+ * 
+ * يُنشئ فاتورة مورد **مخزنية** في حالة DRAFT — الضلع الثالث: ما طولِبنا به. وكل سطر يرجع إلى سطر استلام بعينه، وكميةٌ مفوترة تتجاوز المستلَم غير المفوتَر **تُرفض**: من غير هذا الضلع تُدفَع بضاعة لم تصل، ولا يُكتشف ذلك إلا في الجرد السنوي.
+ * 
+ * **وتُقرأ وتُرحَّل من مورد فاتورة المورد نفسه** — /supplier-bills/{billId} و…/posting: مستندٌ واحد وعنوانٌ واحد. وعنوانان يقرآن الصفّ نفسه كانا سيجعلان «أيّهما الصحيح؟» سؤالاً يُطرح على كل عميل.
+ * 
+ * Creates a **stock** supplier bill in state DRAFT — the third side: what we were billed for. Each line refers to a specific goods receipt line, and a billed quantity beyond the received-but-unbilled remainder is **refused**: without this side, goods that never arrived get paid for and nobody finds out until the annual count.
+ * 
+ * **It is read and posted through the supplier bill resource** — /supplier-bills/{billId} and …/posting: one document, one address. Two addresses onto the same row would make 'which one is right?' a question every client has to ask.
+ */
+export async function draftStockBill(transport: Transport, args: DraftStockBillArgs, signal?: AbortSignal): Promise<T.CommercialDocument> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/stock-bills";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "StockBillRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "CommercialDocument", response.json) as T.CommercialDocument;
+}
+
+export interface DraftStockMovementArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.StockMovementRequest;
+}
+
+/**
+ * إنشاء حركة مخزون مسوّدة / Draft a stock movement
+ * 
+ * يُنشئ مستند حركة مخزون في حالة **DRAFT**: تسوية جرد، أو رصيد افتتاحي، أو إعدام. ولا حركة ولا قيد: الترحيل مورد فرعي مستقلّ.
+ * 
+ * **ولاحظ ما ليس من اختصاص هذا المورد: استلام المشتريات وصرف المبيعات.** تلك مستنداتٌ في وحدتيهما وحركتُها أثرٌ لها، وبابٌ ثانٍ لها هنا كان سيكتب الحركة مرّتين بهويتين مختلفتين — وهو انحراف لا يُظهره توازن.
+ * 
+ * **والكمّية تحمل وحدتها دائماً**، والتكلفة **على الوارد وحده**: الصادر تُحسب تكلفته في وحدة المخزون بالمتوسط المرجّح المتحرّك ولا تُملى (ADR-0039)، فتُرسَل عليه "0".
+ * 
+ * والحدث في المصفوفة inventory.count_adjustment.posted بسيناريوَيه — عجزٌ وزيادة — وهما بالضبط اتجاها هذا المستند. ولا حدث جديد اختُرع.
+ * 
+ * Creates a stock movement document in state **DRAFT**: a count adjustment, an opening balance, or a write-off. No movement and no entry: posting is a separate sub-resource.
+ * 
+ * **Note what this resource is not for: purchase receipts and sales issues.** Those are documents in their own modules and their stock movement is an effect of them; a second door here would write the movement twice under two identities — a divergence no balance check reveals.
+ * 
+ * **A quantity always carries its unit**, and cost is **for inbound only**: an outbound movement is valued by the inventory module at the moving weighted average and is never dictated (ADR-0039), so send "0" for it.
+ * 
+ * The matrix event is inventory.count_adjustment.posted with its two scenarios — shortage and surplus — which are exactly this document's two directions. No new event was invented.
+ */
+export async function draftStockMovement(transport: Transport, args: DraftStockMovementArgs, signal?: AbortSignal): Promise<T.StockMovement> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/stock-movements";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "StockMovementRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "StockMovement", response.json) as T.StockMovement;
 }
 
 export interface DraftSupplierPaymentArgs {
@@ -416,6 +544,46 @@ export async function initialiseCompanySetup(transport: Transport, args: Initial
   return decodeSchema(SCHEMAS, "CompanySetup", response.json) as T.CompanySetup;
 }
 
+export interface ListItemsArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+}
+
+/**
+ * قراءة الأصناف / List the items
+ * 
+ * يقرأ أصناف المنشأة مرتَّبةً بالرمز **ترتيباً حرفياً ثابتاً** — لا بترتيب الإدخال، ولا بترتيبٍ ثقافي يختلف بين tr-TR و en-US على الحروف نفسها. نقطة قراءة: تعمل والاشتراك للقراءة فقط.
+ * 
+ * Lists the company's items ordered by code in a **stable ordinal order** — not by insertion order, and not by a cultural order that differs between tr-TR and en-US on the same letters. A read point: it works while the subscription is read-only.
+ */
+export async function listItems(transport: Transport, args: ListItemsArgs, signal?: AbortSignal): Promise<T.ItemList> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/items";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "ItemList", response.json) as T.ItemList;
+}
+
+export interface ListStockMovementsArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+}
+
+/**
+ * قراءة حركات المخزون / List the stock movements
+ * 
+ * يقرأ مستندات حركة المخزون مرتَّبةً بالتاريخ ثم بالرقم ترتيباً حرفياً ثابتاً. نقطة قراءة.
+ * 
+ * Lists the stock movement documents ordered by date then by number in a stable ordinal order. A read point.
+ */
+export async function listStockMovements(transport: Transport, args: ListStockMovementsArgs, signal?: AbortSignal): Promise<T.StockMovementList> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/stock-movements";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "StockMovementList", response.json) as T.StockMovementList;
+}
+
 export interface OpenSessionArgs {
   /** جسم الطلب. / The request body. */
   body: T.OpenSessionRequest;
@@ -474,6 +642,8 @@ export async function postCreditNote(transport: Transport, args: PostCreditNoteA
 export interface PostCustomerReceiptArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
+  /** معرّف استلام البضاعة. / The goods receipt identifier. */
+  receiptId: string;
 }
 
 /**
@@ -496,7 +666,7 @@ export interface PostCustomerReceiptArgs {
  * This request has no body, and no idempotency key is sent by the client: the module derives it from the receipt's own identity.
  */
 export async function postCustomerReceipt(transport: Transport, args: PostCustomerReceiptArgs, signal?: AbortSignal): Promise<T.CommercialDocument> {
-  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/customer-receipts/{receiptId}/posting";
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/customer-receipts/" + encodeURIComponent(args.receiptId) + "/posting";
   const url = path;
   const response = await transport({ method: "POST", url, signal });
   if (!response.ok) throw ProblemError.from(response);
@@ -506,6 +676,8 @@ export async function postCustomerReceipt(transport: Transport, args: PostCustom
 export interface PostGoodsReceiptArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
+  /** معرّف استلام البضاعة. / The goods receipt identifier. */
+  receiptId: string;
 }
 
 /**
@@ -528,7 +700,7 @@ export interface PostGoodsReceiptArgs {
  * In the response **gross** is the full receipt cost and **tax** is always zero: a receipt carries no VAT — tax arises at the supplier's invoice, not when the goods arrive.
  */
 export async function postGoodsReceipt(transport: Transport, args: PostGoodsReceiptArgs, signal?: AbortSignal): Promise<T.CommercialDocument> {
-  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/goods-receipts/{receiptId}/posting";
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/goods-receipts/" + encodeURIComponent(args.receiptId) + "/posting";
   const url = path;
   const response = await transport({ method: "POST", url, signal });
   if (!response.ok) throw ProblemError.from(response);
@@ -556,6 +728,36 @@ export async function postJournalEntry(transport: Transport, args: PostJournalEn
   const response = await transport({ method: "POST", url, body, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "PostingReceipt", response.json) as T.PostingReceipt;
+}
+
+export interface PostPurchaseReturnArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف مرتجع المشتريات. / The purchase return identifier. */
+  returnId: string;
+}
+
+/**
+ * ترحيل مرتجع مشتريات / Post a purchase return
+ * 
+ * يرحّل مرتجع مشتريات: **البضاعة تخرج من المخزون بتكلفة استلامها الأصلي، ثم تنقص ذمّة المورد**. والدفتر المساعد أوّلاً ثم القيد، فرفضٌ من المخزون — كردٍّ يتجاوز ما استُلم — يترك الدفتر نظيفاً.
+ * 
+ * **وهنا يُملأ صافي المرتجع**: بالرقم الذي حسبته وحدة المخزون، لا برقمٍ سلّمه المستدعي. وكان هذا المسار قبل اليوم يُدين الحساب الضابط للمخزون بمبلغٍ من المستدعي **ولا يكتب حركة واحدة في الدفتر المساعد** — أي حسابٌ ضابط يتحرّك ودفترٌ مساعد ساكن، وهو الانحراف الذي أُنشئت المطابقة لكشفه.
+ * 
+ * وحصين ضد التكرار بالشكل نفسه: 201 أوّلاً و200 ثانياً ومعرّف القيد نفسه.
+ * 
+ * Posts a purchase return: **the goods leave inventory at their original receipt cost, then the supplier's payable is reduced**. The subledger is written first and the entry second, so a refusal from inventory — a return beyond what was received, say — leaves the ledger clean.
+ * 
+ * **This is where the return net is filled in**: with the number the inventory module computed, not one the caller supplied. Until today this path debited the inventory control account with a caller-supplied amount **and wrote not one movement in the subledger** — a control account moving while its subledger stands still, which is precisely the divergence reconciliation exists to catch.
+ * 
+ * Idempotent in the same shape: 201 first, 200 second, same entry identifier.
+ */
+export async function postPurchaseReturn(transport: Transport, args: PostPurchaseReturnArgs, signal?: AbortSignal): Promise<T.CommercialDocument> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/purchase-returns/" + encodeURIComponent(args.returnId) + "/posting";
+  const url = path;
+  const response = await transport({ method: "POST", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "CommercialDocument", response.json) as T.CommercialDocument;
 }
 
 export interface PostSalesInvoiceArgs {
@@ -586,6 +788,36 @@ export async function postSalesInvoice(transport: Transport, args: PostSalesInvo
   const response = await transport({ method: "POST", url, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "CommercialDocument", response.json) as T.CommercialDocument;
+}
+
+export interface PostStockMovementArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف مستند حركة المخزون. / The stock movement document identifier. */
+  movementId: string;
+}
+
+/**
+ * ترحيل حركة مخزون / Post a stock movement
+ * 
+ * يرحّل مستند حركة مسوّدة: **حركةٌ في دفتر المخزون المساعد أوّلاً ثم قيدٌ في الدفتر**، بهوية ترحيل واحدة على الطرفين. والترتيب مقصود (ADR-0041): رفضٌ من المخزون — كصرفٍ بلا أساس تكلفة — يترك الدفتر نظيفاً؛ ولو وقع القيد أوّلاً لترك حساباً ضابطاً تحرّك بلا حركةٍ تقابله.
+ * 
+ * **وقيمة الصادر تُحسب هنا ولا تُملى**: تخرج في الحقل cost بعد الترحيل.
+ * 
+ * **وحصين ضد التكرار**: الوصول الثاني بالهوية نفسها يُرجع المستند ذاته وalreadyPosted = true ورمز 200 بدل 201، بلا حركة ثانية وبلا قيد ثانٍ. والحكم حكمُ بوّابة الترحيل لا مقارنةَ حالةٍ قُرئت قبل النداء: نداءان متزامنان يجتازان فحص «مسوّدة» معاً ويلتقيان عند الهوية الواحدة.
+ * 
+ * Posts a draft stock movement: **a movement in the inventory subledger first, then an entry in the ledger**, under one posting identity on both sides. The order is deliberate (ADR-0041): a refusal from inventory — an issue with no cost basis, say — leaves the ledger clean, whereas an entry written first would leave a control account that moved with no movement facing it.
+ * 
+ * **An outbound movement's value is computed here, never dictated**: it comes back in the cost field after posting.
+ * 
+ * **Idempotent**: a second arrival with the same identity returns the same document with alreadyPosted = true and status 200 instead of 201, with no second movement and no second entry. The verdict is the posting gateway's, not a comparison against a state read before the call: two concurrent calls both pass the 'is it a draft' check and meet at the one identity.
+ */
+export async function postStockMovement(transport: Transport, args: PostStockMovementArgs, signal?: AbortSignal): Promise<T.StockMovement> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/stock-movements/" + encodeURIComponent(args.movementId) + "/posting";
+  const url = path;
+  const response = await transport({ method: "POST", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "StockMovement", response.json) as T.StockMovement;
 }
 
 export interface PostSupplierBillArgs {
@@ -723,6 +955,8 @@ export async function readCustomer(transport: Transport, args: ReadCustomerArgs,
 export interface ReadCustomerReceiptArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
+  /** معرّف استلام البضاعة. / The goods receipt identifier. */
+  receiptId: string;
 }
 
 /**
@@ -737,7 +971,7 @@ export interface ReadCustomerReceiptArgs {
  * This read **did not exist in the module at all**: a receipt could be recorded and posted with no sentence for 'what state is it in now?'. Whoever created a draft and then lost their connection had no option but to **post again in order to find out** — which idempotency makes harmless, not acceptable.
  */
 export async function readCustomerReceipt(transport: Transport, args: ReadCustomerReceiptArgs, signal?: AbortSignal): Promise<T.CommercialDocument> {
-  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/customer-receipts/{receiptId}";
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/customer-receipts/" + encodeURIComponent(args.receiptId) + "";
   const url = path;
   const response = await transport({ method: "GET", url, signal });
   if (!response.ok) throw ProblemError.from(response);
@@ -783,6 +1017,8 @@ export async function readDocumentShape(transport: Transport, args: ReadDocument
 export interface ReadGoodsReceiptArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
+  /** معرّف استلام البضاعة. / The goods receipt identifier. */
+  receiptId: string;
 }
 
 /**
@@ -793,11 +1029,95 @@ export interface ReadGoodsReceiptArgs {
  * Reads a goods receipt with its state, its cost, and its entry identifier if posted. **Its entryId is the entry of the last posted line**, not one entry for the receipt: each line posts its own entry because the matrix template carries a single item reference and a single warehouse at request level, so one entry for a multi-item receipt would carry one item reference for several items and silently corrupt the item subledger.
  */
 export async function readGoodsReceipt(transport: Transport, args: ReadGoodsReceiptArgs, signal?: AbortSignal): Promise<T.CommercialDocument> {
-  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/goods-receipts/{receiptId}";
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/goods-receipts/" + encodeURIComponent(args.receiptId) + "";
   const url = path;
   const response = await transport({ method: "GET", url, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "CommercialDocument", response.json) as T.CommercialDocument;
+}
+
+export interface ReadGoodsReceiptLinesArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف استلام البضاعة. / The goods receipt identifier. */
+  receiptId: string;
+}
+
+/**
+ * قراءة سطور استلام / Read the lines of one goods receipt
+ * 
+ * يقرأ سطور استلامٍ بمعرّفاتها ووحداتها — **ومعرّف السطر هو مدخل الفاتورة المخزنية ومدخل المرتجع**.
+ * 
+ * **ولماذا مورد فرعي لا حقلٌ يُضاف إلى قراءة الاستلام:** شكلُ جواب GET /goods-receipts/{receiptId} منشورٌ في العقد، وتغليفُه في مغلَّفٍ جديد يكسر كل عميل بُني عليه — أي v2 لا نموّاً. والنموّ إضافةٌ محضة: مسارٌ جديد لا مسارٌ مُعاد كتابته.
+ * 
+ * **وكل سطر يحمل وحدة قياسه**: كمّيته تصل إلى دفتر المخزون فتُضرب في تكلفة الوحدة، و«عشرة» بلا وحدة ليست معلومة — عشر حبّات أم عشر كراتين؟ والفرق يصل إلى المال بقيدٍ متوازن تماماً.
+ * 
+ * Reads the lines of a goods receipt with their identifiers and their units — **a line identifier is the input to a stock bill and to a purchase return**.
+ * 
+ * **Why a sub-resource and not a field added to reading the receipt:** the response shape of GET /goods-receipts/{receiptId} is already published in this contract, and wrapping it in a new envelope breaks every client built on it — that is v2, not growth. Growth is pure addition: a new path, not a rewritten one.
+ * 
+ * **Every line carries its unit of measure**: its quantity reaches the inventory subledger and is multiplied by a unit cost, and 'ten' without a unit is not information — ten pieces or ten cartons? The difference reaches the money inside a perfectly balanced entry.
+ */
+export async function readGoodsReceiptLines(transport: Transport, args: ReadGoodsReceiptLinesArgs, signal?: AbortSignal): Promise<T.PurchaseDocumentLineList> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/goods-receipts/" + encodeURIComponent(args.receiptId) + "/lines";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "PurchaseDocumentLineList", response.json) as T.PurchaseDocumentLineList;
+}
+
+export interface ReadInventoryValuationArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** تاريخ التقييم الميلادي. / The Gregorian valuation date. */
+  asOf: string;
+}
+
+/**
+ * تقييم المخزون ومطابقته / Inventory valuation and reconciliation
+ * 
+ * يقرأ تقييم المخزون في تاريخ معلوم، و**يطابقه بحسابه الضابط بثلاثة طرق مستقلّة إلى الرقم نفسه**: مجموع الحركات، ومجموع أرصدة الأصناف، ورصيد نقطة الضبط في دفتر الأستاذ.
+ * 
+ * **واثنان يكفيان لكشف انحراف بين الوحدة والدفتر؛ والثالث يكشف انحراف الوحدة عن نفسها** — رصيدٌ لا يساوي مجموع حركاته — وهو عطلٌ لا يراه أي فحص يقارن طرفين فقط.
+ * 
+ * وisReconciled يعني **الفارق صفر بالضبط**، لا «قريب من الصفر». وكل مستند منحرف يُسمّى بنوعه ومعرّفه وصنفه وسبب انحرافه، فلا يُقال «هناك مشكلة» بلا «أين».
+ * 
+ * Reads the inventory valuation at a given date and **reconciles it against its control account by three independent routes to the same number**: the sum of movements, the sum of item balances, and the control point balance in the general ledger.
+ * 
+ * **Two are enough to reveal a divergence between the module and the ledger; the third reveals the module diverging from itself** — a balance that does not equal the sum of its own movements — a failure no two-sided check can see.
+ * 
+ * isReconciled means **the difference is exactly zero**, not 'close to zero'. Every diverging document is named by its type, its identifier, its item, and the reason, so the report never says 'there is a problem' without saying where.
+ */
+export async function readInventoryValuation(transport: Transport, args: ReadInventoryValuationArgs, signal?: AbortSignal): Promise<T.InventoryValuation> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/inventory-valuation";
+  const query = new URLSearchParams();
+  query.set("asOf", args.asOf);
+  const url = query.size > 0 ? path + "?" + query.toString() : path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "InventoryValuation", response.json) as T.InventoryValuation;
+}
+
+export interface ReadItemArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف الصنف. / The item identifier. */
+  itemId: string;
+}
+
+/**
+ * قراءة صنف / Read one item
+ * 
+ * يقرأ صنفاً واحداً بوحدة أساسه ومعاملات تحويله.
+ * 
+ * Reads a single item with its base unit and its conversion factors.
+ */
+export async function readItem(transport: Transport, args: ReadItemArgs, signal?: AbortSignal): Promise<T.Item> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/items/" + encodeURIComponent(args.itemId) + "";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "Item", response.json) as T.Item;
 }
 
 export interface ReadJournalEntryArgs {
@@ -888,6 +1208,8 @@ export async function readPublishedContract(transport: Transport, signal?: Abort
 export interface ReadPurchaseOrderArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
+  /** معرّف أمر الشراء. / The purchase order identifier. */
+  orderId: string;
 }
 
 /**
@@ -898,11 +1220,33 @@ export interface ReadPurchaseOrderArgs {
  * Reads a purchase order with its state, its totals, and **its lines with their identifiers**. It carries no entry identifier and never will: a purchase order is not posted.
  */
 export async function readPurchaseOrder(transport: Transport, args: ReadPurchaseOrderArgs, signal?: AbortSignal): Promise<T.PurchaseOrder> {
-  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/purchase-orders/{orderId}";
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/purchase-orders/" + encodeURIComponent(args.orderId) + "";
   const url = path;
   const response = await transport({ method: "GET", url, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "PurchaseOrder", response.json) as T.PurchaseOrder;
+}
+
+export interface ReadPurchaseReturnArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف مرتجع المشتريات. / The purchase return identifier. */
+  returnId: string;
+}
+
+/**
+ * قراءة مرتجع مشتريات / Read one purchase return
+ * 
+ * يقرأ مرتجع مشتريات بحالته ومجاميعه ومعرّف قيده إن رُحّل. وكانت هذه القراءة **غير موجودة في الوحدة أصلاً**: يُنشأ المرتجع ويُرحَّل ولا توجد جملة تقول «ما حاله الآن؟».
+ * 
+ * Reads a purchase return with its state, its totals, and its entry identifier if posted. This read **did not exist in the module at all**: a return could be created and posted with no sentence for 'what state is it in now?'.
+ */
+export async function readPurchaseReturn(transport: Transport, args: ReadPurchaseReturnArgs, signal?: AbortSignal): Promise<T.CommercialDocument> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/purchase-returns/" + encodeURIComponent(args.returnId) + "";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "CommercialDocument", response.json) as T.CommercialDocument;
 }
 
 export interface ReadReceivablesAgingArgs {
@@ -976,6 +1320,38 @@ export async function readSession(transport: Transport, signal?: AbortSignal): P
   const response = await transport({ method: "GET", url, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "Session", response.json) as T.Session;
+}
+
+export interface ReadStockBalancesArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+}
+
+/**
+ * أرصدة المخزون / Stock balances
+ * 
+ * يقرأ أرصدة المخزون: الصنف في **موقعه من مستودعه**، بكمّيته ووحدة أساسها وقيمتها ومتوسط تكلفة وحدتها.
+ * 
+ * **ومفتاح الرصيد أربعة أبعاد**: المنشأة والصنف والمستودع **والموقع**. والموقع بُعدٌ في المفتاح منذ اليوم ولو لم يُسكَّن شيء بعد: إضافته إلى مفتاح رصيدٍ قائم لاحقاً هجرةٌ تُعيد توزيع كل رصيد على مواقع لا يعرفها أحد — أي إعادة كتابة واقعةٍ مضت.
+ * 
+ * **والكمّية قد تكون سالبة**: البيع قبل إدخال الاستلام واقعة يومية في منشأة عاملة لا حالة خطأ، وتُوسَم ولا تُمنع — لكنها تمنع إقفال الفترة.
+ * 
+ * وhasCostBasis حقلٌ مستقلّ عن unitCost عمداً: بدونه لا يُفرَّق بين «تكلفة الوحدة صفر لأن الصنف لم يُستلم قط» و«تكلفته صفر فعلاً».
+ * 
+ * Reads the stock balances: an item in **its location within its warehouse**, with its quantity, that quantity's base unit, its value, and its moving average unit cost.
+ * 
+ * **The balance key has four dimensions**: company, item, warehouse, **and location**. The location is in the key from today even though nothing is binned yet: adding it to an existing balance key later is a migration that redistributes every balance across locations nobody knows — that is, rewriting a fact that has already happened.
+ * 
+ * **A quantity may be negative**: selling before the receipt has been entered is a daily occurrence in a working business, not an error state; it is flagged rather than blocked — but it blocks the period close.
+ * 
+ * hasCostBasis is a field separate from unitCost on purpose: without it there is no way to tell 'the unit cost is zero because the item was never received' from 'its cost really is zero'.
+ */
+export async function readStockBalances(transport: Transport, args: ReadStockBalancesArgs, signal?: AbortSignal): Promise<T.StockBalanceList> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/stock-balances";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "StockBalanceList", response.json) as T.StockBalanceList;
 }
 
 export interface ReadSupplierArgs {

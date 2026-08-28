@@ -422,6 +422,26 @@ public sealed class CreditNoteService : IApplicationService
                 return Result.Failure(SalesErrors.OriginalCostEntryNotFound(originalLineId));
             }
 
+            InventoryMovementSource issued = new(
+                BabelModule.Sales,
+                SalesInvoiceService.InvoiceLineDocument,
+                originalId,
+                trigger,
+                original.Generation,
+                SalesInvoiceService.CostOfSalesEvent);
+
+            // ── وحدة المرتجع هي وحدة صرفه الأصلي — تُقرأ ولا تُخترَع ────────────
+            // «رُدّ عشرة» على صرفٍ مُمسَك بالكرتون شيء، وعلى صرفٍ مُمسَك بالحبّة شيء
+            // آخر. ووحدة المبيعات لا تملك الجواب: أساس الرصيد مِلكُ المخزون. فلو
+            // اخترعت هنا وحدةً لكان ذلك عودةَ الرقم المُملى من بابٍ آخر.
+            Result<InventoryMovementCost> issue = await _valuation
+                .ReadMovementAsync(tenant, actor, issued, cancellationToken).ConfigureAwait(false);
+
+            if (issue.IsFailure)
+            {
+                return Result.Failure(issue.Errors);
+            }
+
             Result<InventoryMovementCost> cost = await _valuation.ReturnAsync(
                 new InventoryReturn
                 {
@@ -434,14 +454,8 @@ public sealed class CreditNoteService : IApplicationService
                         trigger,
                         note.PostingGeneration,
                         CostOfReturnEvent),
-                    OriginalIssue = new InventoryMovementSource(
-                        BabelModule.Sales,
-                        SalesInvoiceService.InvoiceLineDocument,
-                        originalId,
-                        trigger,
-                        original.Generation,
-                        SalesInvoiceService.CostOfSalesEvent),
-                    Quantity = line.Quantity,
+                    OriginalMovement = issued,
+                    Quantity = new InventoryQuantity(line.Quantity, issue.Value.Quantity.Unit),
                     OccurredOn = note.IssuedOn,
                 },
                 cancellationToken).ConfigureAwait(false);

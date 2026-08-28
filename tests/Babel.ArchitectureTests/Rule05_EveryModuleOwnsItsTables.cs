@@ -124,8 +124,8 @@ public sealed class Rule05_EveryModuleOwnsItsTables
     [Fact]
     public void TheRuleIsNotVacuous()
     {
-        // خمس وحدات تملك جداول فعلاً بعد دفتري الذمم المساعدين: الالتزام والنواة
-        // والدفتر والمشتريات والمبيعات.
+        // ستّ وحدات تملك جداول فعلاً بعد دفتر المخزون المساعد: الالتزام والنواة
+        // والدفتر والمخزون والمشتريات والمبيعات.
         // القائمة جرد صريح لا حدّ أعلى: وحدة جديدة تملك جدولاً تُضاف هنا بقرار واعٍ،
         // وهذا هو ما يمنع ظهور سياق EF سادس دون أن يراه أحد.
         string[] owners = [.. BabelAssemblies.AllTypes()
@@ -135,7 +135,7 @@ public sealed class Rule05_EveryModuleOwnsItsTables
             .Order(StringComparer.Ordinal)];
 
         Assert.Equal(
-            [ModuleMap.Compliance, ModuleMap.Core, ModuleMap.Ledger, "Babel.Purchasing", "Babel.Sales"],
+            [ModuleMap.Compliance, ModuleMap.Core, "Babel.Inventory", ModuleMap.Ledger, "Babel.Purchasing", "Babel.Sales"],
             owners);
     }
 }

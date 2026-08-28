@@ -1,4 +1,5 @@
 using System.Globalization;
+using Babel.Contracts.Inventory;
 using Babel.Contracts.Posting;
 using Babel.Core.Application;
 using Babel.Core.CapabilityProfile;
@@ -9,12 +10,26 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Babel.Sales.Application;
 
-/// <summary>مسوّدة قيد تكلفة المبيعات المصاحب.</summary>
+/// <summary>
+/// مسوّدة قيد تكلفة المبيعات المصاحب.
+/// <para>
+/// <b>ولاحظ ما لم يعد هنا: المبلغ.</b> كان الحقل <c>Money Cost</c>، فكان مستدعي
+/// <c>PostCostOfSalesAsync</c> هو من يقرّر تكلفة البضاعة المباعة — بينما المصفوفة تقول
+/// نصّاً إنها «بطريقة التكلفة المعتمدة لحظة البيع لا بسعر الشراء الأخير». أي أن الحقل
+/// المحاسبي كان مُسمّى ولا يحسبه شيء، وأي رقم يمرّ.
+/// </para>
+/// <para>
+/// اليوم تُسلّم المبيعات <b>الكمية</b>، ويُحسب المبلغ في حدّ تقييم المخزون
+/// (<see cref="Babel.Contracts.Inventory.IInventoryValuation"/>) الذي يملك الرصيد
+/// ومتوسط التكلفة. والحارس على ذلك في
+/// <c>tests/Babel.ArchitectureTests/InventoryValuationIsTheOnlySourceOfCostOfSales.cs</c>.
+/// </para>
+/// </summary>
 /// <param name="ItemId">الصنف في دفتره المساعد — معرّف مبهم لا رقم حساب.</param>
 /// <param name="WarehouseId">المستودع — بُعد تحليلي إلزامي على مراقبة المخزون.</param>
 /// <param name="ItemGroup">مجموعة الصنف — مؤهّل الدور.</param>
-/// <param name="Cost">تكلفة الأصناف المباعة بطريقة التكلفة المعتمدة لحظة البيع.</param>
-public sealed record CostOfSalesDraft(string ItemId, string WarehouseId, string ItemGroup, Money Cost);
+/// <param name="Quantity">الكمية المباعة من هذا الصنف. موجبة.</param>
+public sealed record CostOfSalesDraft(string ItemId, string WarehouseId, string ItemGroup, decimal Quantity);
 
 /// <summary>
 /// دورة مستند البيع: عرض سعر ← أمر بيع ← فاتورة ← ترحيل.
@@ -53,6 +68,7 @@ public sealed class SalesInvoiceService : IApplicationService
     private readonly IPostingService _posting;
     private readonly SubledgerPostingGateway _gateway;
     private readonly SalesAdmission _admission;
+    private readonly IInventoryValuation _valuation;
     private readonly CurrencyCode _currency;
 
     /// <summary>ينشئ الخدمة.</summary>
@@ -60,16 +76,30 @@ public sealed class SalesInvoiceService : IApplicationService
     /// <param name="runtime">موارد الوحدة.</param>
     /// <param name="posting">محرك الترحيل — الطريق الوحيد إلى دفتر الأستاذ.</param>
     /// <param name="profiles">مخزن ملفّات القدرات — بوابة القبول (ADR-0023).</param>
+    /// <param name="valuation">
+    /// حدّ تقييم المخزون — <b>الجهة الوحيدة التي تُنتج تكلفة الأصناف المباعة</b>.
+    /// <para>
+    /// وهو منفذ في <c>Babel.Contracts</c> لا مرجعٌ إلى وحدة المخزون: الوحدات الأفقية لا
+    /// يعتمد بعضها على بعض (القاعدة 3)، والجذر التركيبي وحده يعرف الطرفين.
+    /// </para>
+    /// <para>
+    /// <b>وهو إلزامي لا اختياري.</b> منفذٌ يُقبَل غيابه يعني مساراً يعمل بلا تقييم —
+    /// أي عودة الرقم المُملى من حيث أُزيل، لكن هذه المرّة بصمت أعمق (ADR-0023).
+    /// </para>
+    /// </param>
     public SalesInvoiceService(
         IEntitlementEnforcer enforcer,
         SalesRuntime runtime,
         IPostingService posting,
-        ICapabilityProfileStore profiles)
+        ICapabilityProfileStore profiles,
+        IInventoryValuation valuation)
     {
         ArgumentNullException.ThrowIfNull(enforcer);
         ArgumentNullException.ThrowIfNull(runtime);
         ArgumentNullException.ThrowIfNull(posting);
         ArgumentNullException.ThrowIfNull(profiles);
+        ArgumentNullException.ThrowIfNull(valuation);
+        _valuation = valuation;
         _enforcer = enforcer;
         _database = runtime.Database;
         _posting = posting;
@@ -459,6 +489,33 @@ public sealed class SalesInvoiceService : IApplicationService
                 SalesErrors.NotInState(invoice.Number, invoice.State, SalesDocumentState.Posted));
         }
 
+        // ── التكلفة تُطلب ولا تُملى ───────────────────────────────────────────────
+        // وحدة المخزون تملك الرصيد ومتوسط التكلفة، فهي وحدها من يستطيع أن يقول كم
+        // كلّفت هذه الكمية. وهي تسجّل الصرف **بهوية الترحيل نفسها**، فحركة المخزون
+        // وقيد التكلفة واقعةٌ واحدة بمفتاح واحد — لا دفتران يعدّان بحبيبيّتين
+        // مختلفتين، ولا انحراف بلا مستند مسؤول (فخ-44 · فخ-48).
+        InventoryIssue issue = new()
+        {
+            Tenant = tenant,
+            Actor = actor,
+            Source = new InventoryMovementSource(
+                BabelModule.Sales,
+                InvoiceDocument,
+                invoice.Id.ToString("D", CultureInfo.InvariantCulture),
+                PostingTrigger.OnApproval.ToString(),
+                invoice.PostingGeneration,
+                CostOfSalesEvent),
+            Location = new InventoryItemLocation(draft.ItemId, draft.WarehouseId, draft.ItemGroup),
+            Quantity = draft.Quantity,
+            OccurredOn = invoice.IssuedOn,
+        };
+
+        Result<InventoryMovementCost> cost = await _valuation.IssueAsync(issue, cancellationToken).ConfigureAwait(false);
+        if (cost.IsFailure)
+        {
+            return Result<PostingReceipt>.Failure(cost.Errors);
+        }
+
         PostingIntent intent = new()
         {
             Tenant = tenant,
@@ -468,7 +525,7 @@ public sealed class SalesInvoiceService : IApplicationService
             Event = new PostingEventCode(CostOfSalesEvent),
             DocumentDate = invoice.IssuedOn,
             Narration = new LocalizedName("تكلفة مبيعات " + invoice.Number, "Cost of sales " + invoice.Number),
-            Amounts = [new PostingAmount("cost", draft.Cost)],
+            Amounts = [new PostingAmount("cost", cost.Value.Cost)],
             Facts =
             [
                 new PostingFact("subledger.item", draft.ItemId),
@@ -485,6 +542,11 @@ public sealed class SalesInvoiceService : IApplicationService
             ControlEffect = 0m,
             Currency = _currency,
             Actor = actor,
+
+            // الجيل نفسه الذي يحمله قيد الإيراد. كان ثابتاً عند 1، فكانت فاتورةٌ
+            // أُعيد ترحيلها بعد عكسٍ مشروع تُعيد إيرادها بالجيل 2 و**يُبتلع قيد
+            // تكلفتها** بالجيل 1 المُرحَّل سلفاً — حدثٌ محاسبي يختفي بصمت (فخ-45).
+            Generation = invoice.PostingGeneration,
         };
 
         return await _gateway.PostAsync(intent, cancellationToken).ConfigureAwait(false);

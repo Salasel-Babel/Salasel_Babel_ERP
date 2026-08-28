@@ -1,9 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    Babel.Inventory — وحدة أفقية.
+    Babel.Inventory — وحدة أفقية، ودفتر المخزون المساعد.
     لا تعتمد على Babel.Ledger ولا على أي وحدة أفقية أخرى — مفروض ببناء في Rule01 و Rule03.
     الترحيل عبر Babel.Contracts.Posting.IPostingService، والتخاطب عبر عقود الأحداث.
+    ولا رمز حساب واحد في هذا المشروع كله: الوحدة تمسك كميةً وقيمة، والمصفوفة تقرّر الحساب (Rule02).
   -->
 
   <PropertyGroup>
@@ -18,7 +19,21 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Npgsql" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      الاختبار يبلغ حساب التكلفة نفسه.
+      الحساب <c>internal</c> عمداً (القاعدة 5): طريقة التقييم قرارٌ داخلي للوحدة، ولا
+      تُكشف كي لا تُعاد كتابتها في مكان آخر. وإثبات حالات الحدّ — الصرف الذي يُفرغ
+      الرصيد بالضبط، والصرف على رصيد سالب — يجب أن يمرّ **من حيث يمرّ الإنتاج**.
+    -->
+    <InternalsVisibleTo Include="Babel.Inventory.Tests" />
   </ItemGroup>
 
 </Project>

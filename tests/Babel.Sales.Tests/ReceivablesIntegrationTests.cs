@@ -636,7 +636,7 @@ public sealed class ReceivablesIntegrationTests : IAsyncLifetime
             tenant,
             Harness.Actor,
             invoice,
-            new CostOfSalesDraft("ITEM-1", "WH-01", "*", Harness.Sar(500m)),
+            new CostOfSalesDraft("ITEM-1", "WH-01", "*", 500m),
             token);
 
         Assert.True(cost.IsSuccess, Describe(cost.Errors));
@@ -695,7 +695,7 @@ public sealed class ReceivablesIntegrationTests : IAsyncLifetime
             tenant,
             Harness.Actor,
             invoice,
-            new CostOfSalesDraft("ITEM-2", "WH-01", "*", Harness.Sar(700m)),
+            new CostOfSalesDraft("ITEM-2", "WH-01", "*", 700m),
             token);
 
         Assert.True(cost.IsSuccess, Describe(cost.Errors));

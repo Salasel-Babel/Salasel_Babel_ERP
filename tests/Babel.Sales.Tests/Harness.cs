@@ -34,7 +34,8 @@ internal sealed class Harness : IDisposable
         Posting = new PostingService(enforcer, ledger);
         Profiles = new InMemoryCapabilityProfileStore();
         Customers = new CustomerService(enforcer, runtime);
-        Invoices = new SalesInvoiceService(enforcer, runtime, Posting, Profiles);
+        Valuation = new UnitCostOfOne();
+        Invoices = new SalesInvoiceService(enforcer, runtime, Posting, Profiles, Valuation);
         CreditNotes = new CreditNoteService(enforcer, runtime, Posting);
         Receipts = new CustomerReceiptService(enforcer, runtime, Posting, Profiles);
         Receivables = new ReceivablesService(
@@ -47,6 +48,9 @@ internal sealed class Harness : IDisposable
     /// ما كتبه غيره.
     /// </summary>
     public InMemoryCapabilityProfileStore Profiles { get; }
+
+    /// <summary>حدّ التقييم البديل لهذه التجهيزة — انظر <see cref="UnitCostOfOne"/>.</summary>
+    public UnitCostOfOne Valuation { get; }
 
     public SalesRuntime Runtime { get; }
 

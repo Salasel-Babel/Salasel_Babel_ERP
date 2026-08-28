@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="same-origin">
+<title>سلاسل بابل — العقد المنشور</title>
+<!--
+  صفحةٌ قائمة بذاتها: لا خطّ خارجي، ولا نصّ برمجي من شبكة توصيل، ولا صورة بعيدة.
+  ولماذا: الخادم التجريبي قد يكون خلف خروجٍ مقيَّد، وصفحةُ توثيق تُخفق في العرض
+  لأن شبكة التوصيل غير مبلوغة هي فخ-83 نفسه — نجاحٌ على مسارٍ لا تسلكه الحركة
+  الحقيقية. وكل ما تحتاجه هذه الصفحة موجود فيها، وما تعرضه تقرؤه من /openapi/v1.json.
+-->
+<style>
+  :root{
+    --bg:#fbfaf7; --panel:#fff; --ink:#1b1a17; --muted:#6b675f; --line:#e2ded4;
+    --accent:#7a5c2e; --get:#2b6b4f; --post:#8a5a1a; --put:#3a5a8a; --bad:#8a2b2b;
+    --code:#f4f1ea;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#16150f; --panel:#1e1d17; --ink:#f0ece2; --muted:#a9a396; --line:#33312a;
+      --accent:#d8b271; --get:#6fbf95; --post:#d8a45f; --put:#8fb0dd; --bad:#e08a8a;
+      --code:#24231c;
+    }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font-family:"Noto Naskh Arabic","Segoe UI",Tahoma,system-ui,sans-serif;
+       line-height:1.7;font-size:16px}
+  code,pre,.mono{font-family:ui-monospace,"Cascadia Mono",Menlo,Consolas,monospace;
+       direction:ltr;unicode-bidi:isolate}
+  header{padding:1.5rem 1.25rem;border-bottom:1px solid var(--line);background:var(--panel)}
+  h1{margin:0 0 .25rem;font-size:1.5rem}
+  .sub{color:var(--muted);font-size:.9rem;margin:0}
+  main{max-width:1040px;margin:0 auto;padding:1.25rem}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+        padding:1rem;margin-bottom:1rem}
+  .row{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center}
+  label{font-size:.85rem;color:var(--muted);display:block;margin-bottom:.2rem}
+  input[type=text],input[type=password],textarea,select{
+    width:100%;padding:.5rem .6rem;border:1px solid var(--line);border-radius:7px;
+    background:var(--bg);color:var(--ink);font-size:.9rem}
+  textarea{min-height:8rem;direction:ltr}
+  button{padding:.45rem .9rem;border:1px solid var(--line);border-radius:7px;
+    background:var(--accent);color:#fff;cursor:pointer;font-size:.88rem;font-family:inherit}
+  button.ghost{background:transparent;color:var(--ink)}
+  button:hover{filter:brightness(1.08)}
+  .op{border:1px solid var(--line);border-radius:9px;margin-bottom:.55rem;background:var(--panel);overflow:hidden}
+  .op>summary{cursor:pointer;padding:.6rem .8rem;display:flex;gap:.6rem;align-items:center;flex-wrap:wrap}
+  .op>summary::-webkit-details-marker{display:none}
+  .verb{font-weight:700;font-size:.72rem;padding:.15rem .5rem;border-radius:5px;
+        color:#fff;letter-spacing:.04em}
+  .verb.get{background:var(--get)} .verb.post{background:var(--post)}
+  .verb.put{background:var(--put)} .verb.patch{background:var(--put)}
+  .path{font-family:ui-monospace,monospace;direction:ltr;unicode-bidi:isolate;font-size:.92rem}
+  .sum{color:var(--muted);font-size:.85rem}
+  .lock{font-size:.75rem;color:var(--muted);border:1px solid var(--line);
+        border-radius:20px;padding:.05rem .5rem}
+  .body{padding:.2rem .9rem .9rem;border-top:1px solid var(--line)}
+  pre{background:var(--code);padding:.7rem;border-radius:7px;overflow-x:auto;font-size:.82rem;margin:.4rem 0}
+  table{width:100%;border-collapse:collapse;font-size:.85rem;margin:.4rem 0}
+  th,td{text-align:right;padding:.35rem .5rem;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--muted);font-weight:600}
+  .desc{white-space:pre-wrap;font-size:.87rem}
+  .status{font-weight:700}
+  .ok{color:var(--get)} .err{color:var(--bad)}
+  .note{font-size:.83rem;color:var(--muted);border-inline-start:3px solid var(--accent);
+        padding:.4rem .7rem;margin:.5rem 0;background:var(--code);border-radius:0 7px 7px 0}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}
+  @media(max-width:700px){.grid2{grid-template-columns:1fr}}
+  .schema summary{cursor:pointer;font-family:ui-monospace,monospace;direction:ltr;
+        unicode-bidi:isolate;font-size:.86rem;padding:.3rem 0}
+  .muted{color:var(--muted)}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<header>
+  <h1>سلاسل بابل — العقد المنشور</h1>
+  <p class="sub">
+    هذه الصفحة تعرض <code>contracts/openapi/v1.json</code> <b>كما أُودع</b> — تُقرأ بايتاته من
+    <code>/openapi/v1.json</code> ولا تُبنى وثيقةٌ وقت التشغيل.
+    <span id="meta"></span>
+  </p>
+</header>
+
+<main>
+  <section class="card">
+    <div class="grid2">
+      <div>
+        <label for="tok">رمز الاعتماد (Bearer) — للتجربة الحيّة وحدها</label>
+        <input id="tok" type="password" autocomplete="off" spellcheck="false"
+               placeholder="ألصق رمزك هنا">
+      </div>
+      <div>
+        <label for="filter">ترشيح المسارات</label>
+        <input id="filter" type="text" spellcheck="false" placeholder="مثلاً: chart أو journal">
+      </div>
+    </div>
+    <div class="note">
+      <b>الرمز لا يغادر متصفّحك إلا إلى هذا الخادم، ولا يُخزَّن.</b> يبقى في ذاكرة الصفحة
+      وحدها — لا في <code>localStorage</code> ولا في عنوان ولا في ملفّ ارتباط — ويزول بإغلاق
+      التبويب. و<b>لا رمز مطبوع في هذه الصفحة</b>: تُخدَم للجميع وهي فارغة من كل اعتماد.
+      وزرّ «جرّب» يُرسل طلباً حقيقياً يمرّ بالمصادقة والنطاق والاستحقاق كأي عميل آخر — لا التفاف.
+    </div>
+  </section>
+
+  <div id="ops"></div>
+
+  <section class="card">
+    <h2 style="font-size:1.1rem;margin:.2rem 0 .6rem">المخطّطات · schemas</h2>
+    <div id="schemas"></div>
+  </section>
+</main>
+
+<script>
+"use strict";
+/* ── لا حالة عامّة إلا الوثيقة والرمز؛ والرمز في الذاكرة وحدها ───────────── */
+let DOC = null;
+const $ = (id) => document.getElementById(id);
+const el = (tag, cls, text) => {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text !== undefined && text !== null) n.textContent = String(text);
+  return n;
+};
+
+/* النصوص في هذا العقد مكتوبة «عربي / English» في حقل واحد. تُعرض كما هي:
+   اقتطاعُ أحد النصفين هنا يجعل الصفحة تقرّر أي لغة يقرأ الناس. */
+function pretty(v) { return JSON.stringify(v, null, 2); }
+
+function refName(schema) {
+  if (!schema) return null;
+  if (schema.$ref) return schema.$ref.split("/").pop();
+  if (schema.type === "array" && schema.items) {
+    const inner = refName(schema.items);
+    return inner ? inner + "[]" : "array";
+  }
+  return null;
+}
+
+function boot() {
+  fetch("/openapi/v1.json", { headers: { accept: "application/json" } })
+    .then((r) => {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.text();
+    })
+    .then((text) => {
+      DOC = JSON.parse(text);
+      const bytes = new TextEncoder().encode(text).length;
+      $("meta").textContent =
+        " · الإصدار " + DOC.info.version + " · " + bytes + " بايت · " +
+        Object.keys(DOC.paths).length + " مساراً";
+      render();
+      $("filter").addEventListener("input", render);
+    })
+    .catch((e) => {
+      const box = el("div", "card");
+      box.appendChild(el("p", "err", "تعذّر قراءة العقد من /openapi/v1.json — " + e.message));
+      box.appendChild(el("p", "muted",
+        "وهذا عطلٌ يُعلَن ولا يُبتلع: صفحةٌ تعرض قائمةً فارغة تُقرأ «سطحٌ بلا أبواب»."));
+      $("ops").replaceChildren(box);
+    });
+}
+
+function render() {
+  const q = $("filter").value.trim().toLowerCase();
+  const host = $("ops");
+  host.replaceChildren();
+
+  const paths = Object.keys(DOC.paths).sort();
+  let shown = 0;
+
+  for (const p of paths) {
+    if (q && p.toLowerCase().indexOf(q) === -1) continue;
+    const item = DOC.paths[p];
+    for (const verb of ["get", "post", "put", "patch", "delete"]) {
+      if (!item[verb]) continue;
+      host.appendChild(operation(p, verb, item[verb], item.parameters || []));
+      shown++;
+    }
+  }
+
+  if (shown === 0) host.appendChild(el("p", "muted", "لا مسار يطابق الترشيح."));
+  renderSchemas(q);
+}
+
+function operation(path, verb, op, pathParams) {
+  const d = el("details", "op");
+  const s = el("summary");
+  s.appendChild(el("span", "verb " + verb, verb.toUpperCase()));
+  s.appendChild(el("span", "path", path));
+  const anonymous = Array.isArray(op.security) && op.security.length === 0;
+  s.appendChild(el("span", "lock", anonymous ? "بلا اعتماد" : "يحتاج اعتماداً"));
+  s.appendChild(el("span", "sum", op.summary || ""));
+  d.appendChild(s);
+
+  const b = el("div", "body");
+  if (op.description) b.appendChild(el("p", "desc", op.description));
+
+  const params = pathParams.concat(op.parameters || []);
+  if (params.length) {
+    const t = el("table");
+    const head = el("tr");
+    for (const h of ["الوسيط", "الموضع", "إلزامي", "الوصف"]) head.appendChild(el("th", null, h));
+    t.appendChild(head);
+    for (const p of params) {
+      const r = el("tr");
+      r.appendChild(el("td", "mono", p.name));
+      r.appendChild(el("td", null, p.in));
+      r.appendChild(el("td", null, p.required ? "نعم" : "لا"));
+      r.appendChild(el("td", "desc", p.description || ""));
+      t.appendChild(r);
+    }
+    b.appendChild(el("h4", null, "الوسائط"));
+    b.appendChild(t);
+  }
+
+  const bodyRef = op.requestBody &&
+    refName(op.requestBody.content["application/json"].schema);
+  if (bodyRef) {
+    b.appendChild(el("h4", null, "جسم الطلب"));
+    b.appendChild(el("p", "mono", bodyRef));
+  }
+
+  b.appendChild(el("h4", null, "الاستجابات"));
+  const rt = el("table");
+  const rh = el("tr");
+  for (const h of ["الرمز", "المخطّط", "الوصف"]) rh.appendChild(el("th", null, h));
+  rt.appendChild(rh);
+  for (const code of Object.keys(op.responses).sort()) {
+    const r = op.responses[code];
+    const tr = el("tr");
+    tr.appendChild(el("td", "mono", code));
+    let schema = "—";
+    if (r.content) {
+      const media = Object.keys(r.content)[0];
+      schema = refName(r.content[media].schema) || media;
+    }
+    tr.appendChild(el("td", "mono", schema));
+    tr.appendChild(el("td", "desc", r.description || ""));
+    rt.appendChild(tr);
+  }
+  b.appendChild(rt);
+
+  b.appendChild(tryIt(path, verb, params, bodyRef));
+  d.appendChild(b);
+  return d;
+}
+
+function tryIt(path, verb, params, bodyRef) {
+  const wrap = el("div");
+  wrap.appendChild(el("h4", null, "جرّب"));
+
+  const inputs = {};
+  for (const p of params) {
+    const f = el("div");
+    f.appendChild(el("label", null, p.name + " (" + p.in + ")"));
+    const i = el("input");
+    i.type = "text";
+    i.spellcheck = false;
+    inputs[p.name] = { el: i, where: p.in };
+    f.appendChild(i);
+    wrap.appendChild(f);
+  }
+
+  let bodyBox = null;
+  if (bodyRef) {
+    wrap.appendChild(el("label", null, "الجسم (JSON)"));
+    bodyBox = el("textarea");
+    bodyBox.spellcheck = false;
+    bodyBox.value = skeleton(bodyRef.replace("[]", ""));
+    wrap.appendChild(bodyBox);
+  }
+
+  const bar = el("div", "row");
+  bar.style.marginTop = ".5rem";
+  const go = el("button", null, "جرّب");
+  bar.appendChild(go);
+  wrap.appendChild(bar);
+
+  const out = el("div", "hidden");
+  wrap.appendChild(out);
+
+  go.addEventListener("click", () => {
+    let url = path;
+    const query = [];
+    for (const name of Object.keys(inputs)) {
+      const v = inputs[name].el.value.trim();
+      if (inputs[name].where === "path") {
+        url = url.replace("{" + name + "}", encodeURIComponent(v));
+      } else if (v !== "") {
+        query.push(encodeURIComponent(name) + "=" + encodeURIComponent(v));
+      }
+    }
+    if (query.length) url += "?" + query.join("&");
+
+    const headers = { accept: "application/json" };
+    const token = $("tok").value.trim();
+    /* الرمز يُقرأ من الحقل عند كل نقرة ولا يُحتفظ به في أي مكان آخر. */
+    if (token !== "") headers.authorization = "Bearer " + token;
+    const init = { method: verb.toUpperCase(), headers };
+    if (bodyBox) {
+      headers["content-type"] = "application/json";
+      init.body = bodyBox.value;
+    }
+
+    out.className = "";
+    out.replaceChildren(el("p", "muted", "…"));
+
+    fetch(url, init)
+      .then((r) => r.text().then((t) => ({ status: r.status, text: t })))
+      .then((r) => {
+        out.replaceChildren();
+        const line = el("p");
+        line.appendChild(el("span", "status " + (r.status < 400 ? "ok" : "err"),
+          r.status + " " + (r.status < 400 ? "" : "— مرفوض")));
+        out.appendChild(line);
+        out.appendChild(el("p", "mono muted", verb.toUpperCase() + " " + url));
+        let shownText = r.text;
+        try { shownText = pretty(JSON.parse(r.text)); } catch (_) { /* نصّ كما هو */ }
+        out.appendChild(el("pre", null, shownText));
+      })
+      .catch((e) => {
+        out.replaceChildren(el("p", "err", "تعذّر الإرسال: " + e.message));
+      });
+  });
+
+  return wrap;
+}
+
+/* هيكلٌ مبدئي للجسم من المخطّط — **مساعدةُ كتابة لا تحقّق**: الخادم هو الذي يحكم. */
+function skeleton(name, depth) {
+  depth = depth || 0;
+  const s = DOC.components.schemas[name];
+  if (!s || depth > 3) return "{}";
+  if (s.type !== "object" || !s.properties) return "{}";
+  const o = {};
+  for (const k of Object.keys(s.properties)) {
+    const p = s.properties[k];
+    const r = refName(p);
+    if (r && !r.endsWith("[]")) {
+      const nested = DOC.components.schemas[r];
+      o[k] = nested && nested.type === "string" ? "" : JSON.parse(skeleton(r, depth + 1));
+    } else if (p.type === "array") {
+      o[k] = [];
+    } else if (p.type === "boolean") {
+      o[k] = false;
+    } else if (p.type === "integer" || p.type === "number") {
+      o[k] = 0;
+    } else {
+      o[k] = "";
+    }
+  }
+  return pretty(o);
+}
+
+function renderSchemas(q) {
+  const host = $("schemas");
+  host.replaceChildren();
+  const names = Object.keys(DOC.components.schemas).sort();
+  for (const n of names) {
+    if (q && n.toLowerCase().indexOf(q) === -1) continue;
+    const d = el("details", "schema");
+    d.appendChild(el("summary", null, n));
+    d.appendChild(el("pre", null, pretty(DOC.components.schemas[n])));
+    host.appendChild(d);
+  }
+}
+
+boot();
+</script>
+</body>
+</html>

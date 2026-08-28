@@ -109,6 +109,22 @@ internal static class ApiRoutes
     /// </summary>
     public const string CostCenterSuspension = CostCenter + "/suspension";
 
+    /// <summary>
+    /// العقد المنشور نفسه، بايتاته كما أُودعت في <c>contracts/openapi/v1.json</c>.
+    /// <para>
+    /// <b>ولا يُبنى وقت التشغيل.</b> الوثيقة تُولَّد بـ<c>--emit-openapi</c> وتُودَع
+    /// ويحرسها <c>PublishedContractTests</c> بايتاً بايت. وخادمٌ يبني وثيقةً من نفسه
+    /// عند كل طلب يُنشئ <b>مصدر حقيقة ثانياً يستطيع أن ينحرف</b> — وواجهةٌ تعرض عقداً
+    /// لم يولّده أحد أسوأ من غياب الواجهة: تبدو مرجعاً وهي خطأ. وهذا الشكل بعينه —
+    /// عقدٌ له أكثر من طرف وحارسٌ على طرفٍ واحد — كلّف هذا المستودع مرّة
+    /// (‏<c>traps.md#fakh-a-two-sided-contract-guarded-on-one-side-only</c>).
+    /// </para>
+    /// </summary>
+    public const string OpenApiDocument = "/openapi/" + Version + ".json";
+
+    /// <summary>صفحة استعراض العقد — قائمة بذاتها، بلا أي أصل خارجي.</summary>
+    public const string Docs = "/docs";
+
     /// <summary>حالة الخدمة — خارج النطاق وخارج المصادقة عمداً.</summary>
     public const string Health = "/health";
 }

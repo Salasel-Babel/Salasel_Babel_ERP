@@ -92,6 +92,39 @@ public static class AccessErrors
         "This user already has a membership in this company. Changing a role is a different act asked for by its own "
         + "name, not a second invitation minting an enrolment credential for someone who already holds a session.");
 
+    /// <summary>لا عضوية بهذا المعرّف في هذه المنشأة.</summary>
+    public static Error MembershipNotFound { get; } = new(
+        "membership.not_found",
+        "لا عضوية بهذا المعرّف في هذه المنشأة. ومعرّف العضوية هو معرّف عضوها — وهو ما تُرجعه قائمة الأعضاء.",
+        "No membership with this identifier exists in this company. A membership's identifier is its member's identifier — the one the member list returns.");
+
+    /// <summary>
+    /// الفعل يترك المنشأة بلا مالك — <b>ويُرفض</b>.
+    /// </summary>
+    public static Error LastOwnerCannotBeRemoved { get; } = new(
+        "membership.last_owner",
+        "هذه آخر عضوية مالكة في المنشأة، فلا تُسحب ولا يُخفَض دورها. ومنشأةٌ بلا مالك لا يستطيع أحد أن "
+        + "يدعو إليها عضواً ولا أن يُصلح أدوارها — أي بيانات محبوسة عن أصحابها بفعلٍ يبدو إدارياً. "
+        + "امنح مالكاً آخر أولاً، ثم أعِد المحاولة.",
+        "This is the company's last owner membership: it is neither revoked nor demoted. A company without an owner "
+        + "is one nobody can invite into or repair roles in — data locked away from its owners by an act that looks "
+        + "administrative. Grant another owner first, then retry.");
+
+    /// <summary>الدور المطلوب هو الدور القائم.</summary>
+    public static Error RoleUnchanged { get; } = new(
+        "membership.role_unchanged",
+        "الدور المطلوب هو الدور القائم لهذا العضو، فلم يقع تغيير. والرفض أصدق من ردّ «تمّ» على فعلٍ لم يقع.",
+        "The requested role is the member's current role, so nothing changed. Refusing is more truthful than "
+        + "answering 'done' to an act that did not happen.");
+
+    /// <summary>الفاعل ليس مالكاً في المنشأة.</summary>
+    public static Error ActorIsNotAnOwner { get; } = new(
+        "membership.actor_is_not_an_owner",
+        "سحبُ عضويةٍ وتغييرُ دورٍ فعلا مالكٍ في المنشأة. ومن يستطيع أن يغيّر الأدوار يستطيع أن يرفع دور "
+        + "نفسه، فالحدّ عند الفعل لا عند ما بعده.",
+        "Revoking a membership and changing a role are an owner's acts in the company. Whoever can change roles can "
+        + "raise their own, so the limit sits at the act, not after it.");
+
     /// <summary>الداعي ليس مالكاً.</summary>
     public static Error InviterIsNotAnOwner { get; } = new(
         "membership.inviter_is_not_an_owner",

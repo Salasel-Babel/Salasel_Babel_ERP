@@ -35,6 +35,8 @@ internal static class AccessEndpoints
         app.MapPost(AccessRoutes.SessionRevocation, RevokeSessionAsync);
         app.MapGet(AccessRoutes.Memberships, ListMembersAsync);
         app.MapPost(AccessRoutes.Memberships, GrantMembershipAsync);
+        app.MapPost(AccessRoutes.MembershipRevocation, RevokeMembershipAsync);
+        app.MapPost(AccessRoutes.MembershipRoleChanges, ChangeMembershipRoleAsync);
     }
 
     private static async Task<IResult> OpenSessionAsync(
@@ -43,7 +45,7 @@ internal static class AccessEndpoints
         CancellationToken cancellationToken)
     {
         (OpenSessionRequestDto? dto, IResult? refused) =
-            await ReadBodyAsync<OpenSessionRequestDto>(context, cancellationToken).ConfigureAwait(false);
+            await Bodies.ReadAsync<OpenSessionRequestDto>(context, cancellationToken).ConfigureAwait(false);
 
         if (dto is null)
         {
@@ -63,7 +65,7 @@ internal static class AccessEndpoints
         CancellationToken cancellationToken)
     {
         (RenewSessionRequestDto? dto, IResult? refused) =
-            await ReadBodyAsync<RenewSessionRequestDto>(context, cancellationToken).ConfigureAwait(false);
+            await Bodies.ReadAsync<RenewSessionRequestDto>(context, cancellationToken).ConfigureAwait(false);
 
         if (dto is null)
         {
@@ -149,7 +151,7 @@ internal static class AccessEndpoints
         }
 
         (GrantMembershipRequestDto? dto, IResult? refused) =
-            await ReadBodyAsync<GrantMembershipRequestDto>(context, cancellationToken).ConfigureAwait(false);
+            await Bodies.ReadAsync<GrantMembershipRequestDto>(context, cancellationToken).ConfigureAwait(false);
 
         if (dto is null)
         {
@@ -182,6 +184,118 @@ internal static class AccessEndpoints
                     Instant(result.Value.Enrolment.ExpiresAt)),
                 ApiJson.Options,
                 statusCode: StatusCodes.Status201Created);
+    }
+
+    private static async Task<IResult> RevokeMembershipAsync(
+        HttpContext context,
+        AccessService access,
+        CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        if (!TryMember(context, out Guid memberId, out IResult? malformed))
+        {
+            return malformed!;
+        }
+
+        ApiPrincipal principal = RequestPrincipal.Of(context);
+
+        Result<MembershipRevocation> result = await access
+            .RevokeMembershipAsync(principal.Tenant, principal.User, companyId, new UserId(memberId), cancellationToken)
+            .ConfigureAwait(false);
+
+        return result.IsFailure
+            ? HttpProblemResults.Domain(context, result.Errors)
+            : Results.Json(
+                new MembershipRevocationDto(
+                    Identifier(companyId), ToDto(result.Value.Membership!), Instant(result.Value.RevokedAt)),
+                ApiJson.Options,
+                statusCode: StatusCodes.Status201Created);
+    }
+
+    private static async Task<IResult> ChangeMembershipRoleAsync(
+        HttpContext context,
+        AccessService access,
+        CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        if (!TryMember(context, out Guid memberId, out IResult? malformed))
+        {
+            return malformed!;
+        }
+
+        (ChangeMembershipRoleRequestDto? dto, IResult? refused) =
+            await Bodies.ReadAsync<ChangeMembershipRoleRequestDto>(context, cancellationToken).ConfigureAwait(false);
+
+        if (dto is null)
+        {
+            return refused!;
+        }
+
+        // الدور يُقرأ شكلياً وحده هنا، والرمز على المجهول من النواة — هي التي تملك
+        // الكتالوج وتسمّي المعروف في رسالتها (القاعدة 13).
+        if (!Enum.TryParse(dto.Role, ignoreCase: false, out MembershipRole role) || !Enum.IsDefined(role))
+        {
+            return HttpProblemResults.Domain(context, [AccessErrors.RoleUnknown(dto.Role ?? string.Empty)]);
+        }
+
+        ApiPrincipal principal = RequestPrincipal.Of(context);
+
+        Result<MembershipRoleChange> result = await access
+            .ChangeMembershipRoleAsync(
+                principal.Tenant, principal.User, companyId, new UserId(memberId), role, cancellationToken)
+            .ConfigureAwait(false);
+
+        return result.IsFailure
+            ? HttpProblemResults.Domain(context, result.Errors)
+            : Results.Json(
+                new MembershipRoleChangeDto(
+                    Identifier(companyId),
+                    ToDto(result.Value.Membership!),
+                    result.Value.PreviousRole.ToString(),
+                    Instant(result.Value.ChangedAt)),
+                ApiJson.Options,
+                statusCode: StatusCodes.Status201Created);
+    }
+
+    /// <summary>
+    /// يقرأ معرّف العضوية من المسار بفحص شكلي وحده.
+    /// <para>
+    /// <b>ومعرّف العضوية هو معرّف عضوها</b> — هويتها <c>(المنشأة، العضو)</c> والمنشأة في
+    /// المسار سلفاً. وعضويةٌ لا وجود لها تُرفض في النواة برمزها لا هنا: التمييز بين
+    /// «شكلٌ خاطئ» و«لا وجود له» يقع حيث تُقرأ الحقيقة.
+    /// </para>
+    /// </summary>
+    private static bool TryMember(HttpContext context, out Guid memberId, out IResult? malformed)
+    {
+        malformed = null;
+
+        string raw = context.Request.RouteValues.TryGetValue("membershipId", out object? value)
+            ? value?.ToString() ?? string.Empty
+            : string.Empty;
+
+        if (Guid.TryParseExact(raw, "D", out memberId) && memberId != Guid.Empty)
+        {
+            return true;
+        }
+
+        malformed = HttpProblemResults.Code(
+            context,
+            "membership.id_malformed",
+            "معرّف العضوية في المسار ليس معرّفاً صالحاً بصيغة 8-4-4-4-12. وهو معرّف العضو نفسه، "
+            + "كما تُرجعه قائمة الأعضاء.",
+            "The membership identifier in the path is not a valid 8-4-4-4-12 identifier. It is the member's own "
+            + "identifier, exactly as the member list returns it.",
+            "membershipId",
+            StatusCodes.Status400BadRequest);
+        return false;
     }
 
     private static IResult Translate(HttpContext context, Result<OpenedSession> result)
@@ -228,25 +342,4 @@ internal static class AccessEndpoints
     private static string Instant(DateTimeOffset value) =>
         value.ToUniversalTime().ToString("o", CultureInfo.InvariantCulture);
 
-    private static async Task<(TBody? Body, IResult? Refused)> ReadBodyAsync<TBody>(
-        HttpContext context,
-        CancellationToken cancellationToken)
-        where TBody : class
-    {
-        TBody? dto;
-        try
-        {
-            dto = await context.Request
-                .ReadFromJsonAsync<TBody>(ApiJson.Options, cancellationToken)
-                .ConfigureAwait(false);
-        }
-        catch (System.Text.Json.JsonException exception)
-        {
-            return (null, Scope.BadJson(context, exception));
-        }
-
-        return dto is null
-            ? (null, HttpProblemResults.Code(context, "wire.body.missing", "جسم الطلب مفقود.", "The request body is missing."))
-            : (dto, null);
-    }
 }

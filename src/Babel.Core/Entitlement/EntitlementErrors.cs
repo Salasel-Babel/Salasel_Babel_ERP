@@ -12,13 +12,29 @@ public static class EntitlementErrors
         string.Create(CultureInfo.InvariantCulture, $"الوحدة «{module}» غير مشمولة بالاشتراك."),
         string.Create(CultureInfo.InvariantCulture, $"Module '{module}' is not part of the subscription."));
 
-    /// <summary>الوحدة للقراءة فقط: الاشتراك انقضى.</summary>
+    /// <summary>
+    /// الوحدة للقراءة فقط <b>لانقطاع الاشتراك</b>.
+    /// <para>
+    /// <b>والنصّ يُسمّي السبب ويقول ما الذي يبقى متاحاً</b>، وذلك مقصود بحرفه ومنقول
+    /// من ADR-0034 §٤: رسالةٌ تقول «للقراءة فقط» ولا تقول لماذا <b>تُقرأ عطلاً
+    /// تقنياً</b>، فيفتح المحاسب تذكرة دعم بدل أن يتّصل بمن يجدّد الاشتراك؛ ورسالةٌ لا
+    /// تقول ما الذي بقي تجعله يظنّ أن سجلاته حُجبت عنه، وهي متاحةٌ كاملةً — وحفظُها
+    /// وإبرازها التزامٌ عليه هو.
+    /// </para>
+    /// <para>
+    /// وكان النصّ يقول «البيانات والتقارير متاحة» بلا ذكر السبب، فكان يصف الأثر ويسكت
+    /// عن العلّة. وتحسينُ نصّ رسالة يبقى في <c>v1</c> بنصّ سياسة الإصدار: الرمز الثابت
+    /// <c>entitlement.read_only</c> لم يتغيّر، وهو ما يقرؤه العميل ليقرّر.
+    /// </para>
+    /// </summary>
+    /// <param name="module">الوحدة المرفوضة.</param>
     public static Error ReadOnly(BabelModule module) => new(
         "entitlement.read_only",
-        string.Create(CultureInfo.InvariantCulture,
-            $"الوحدة «{module}» للقراءة فقط: البيانات والتقارير متاحة، ولا يمكن إنشاء مستندات أو ترحيل قيود جديدة."),
-        string.Create(CultureInfo.InvariantCulture,
-            $"Module '{module}' is read-only: data and reports remain available, but no new documents or postings."));
+        "الوحدة «" + module + "» للقراءة فقط **لانقطاع الاشتراك**: القراءة والتقارير وتصدير بياناتك "
+            + "متاحة كاملةً، وإنشاء المستندات والترحيل والعكس موقوفة حتى يُستأنف الاشتراك.",
+        "Module '" + module + "' is read-only **because the subscription has lapsed**: reading, reports and export "
+            + "of your own data remain fully available; creating documents, posting and reversing are suspended "
+            + "until the subscription resumes.");
 
     /// <summary>
     /// <b>تسمية الرفض</b> — لا تقريره. القرار وقع في

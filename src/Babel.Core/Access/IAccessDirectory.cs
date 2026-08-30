@@ -116,6 +116,39 @@ public interface IAccessDirectory
         DateTimeOffset enrolmentExpiresAt,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// يسحب عضوية <b>ذرّياً</b>، ويرفض السحب إن كانت آخر عضوية مالكة في المنشأة.
+    /// <para>
+    /// <b>والذرّية شرطٌ لا زينة:</b> «كم مالكاً في هذه المنشأة؟» ثم «احذف» في ندائين
+    /// يجعل سحبَين متزامنَين لمالكَين اثنين يفوزان معاً — فتبقى المنشأة بلا مالك،
+    /// ولا يشتكي شيء. والعدّ والحذف يقعان تحت قفل الصفوف نفسها.
+    /// </para>
+    /// <para>
+    /// <b>والسحب حذفُ صفّ فعلاً</b>، وهو الفرق عن الدفتر عمداً: العضوية ليست سجلّاً
+    /// محاسبياً بل <b>صلاحيةُ وصولٍ جارية</b>، وأثرُها التاريخي محفوظ في سجلّ التدقيق
+    /// بمن منحها ومن سحبها ومتى. وصلاحيةٌ «موقوفة» تبقى صفّاً في جدول وصول هي بالضبط
+    /// الشكل الذي يُنسى فيه أحدهم مُفعَّلاً.
+    /// </para>
+    /// </summary>
+    /// <param name="company">المنشأة.</param>
+    /// <param name="member">العضو المطلوب سحبه.</param>
+    /// <param name="now">اللحظة الجارية.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    Task<MembershipRevocation> RevokeMembershipAsync(
+        Guid company, UserId member, DateTimeOffset now, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// يغيّر دور عضوية <b>ذرّياً</b>، ويرفض خفض آخر مالك — بالحكم نفسه وللسبب نفسه.
+    /// </summary>
+    /// <param name="company">المنشأة.</param>
+    /// <param name="member">العضو.</param>
+    /// <param name="role">الدور المطلوب.</param>
+    /// <param name="now">اللحظة الجارية.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    Task<MembershipRoleChange> ChangeRoleAsync(
+        Guid company, UserId member, MembershipRole role, DateTimeOffset now,
+        CancellationToken cancellationToken = default);
+
     /// <summary>عضوية واحدة، أو <c>null</c>.</summary>
     /// <param name="company">المنشأة.</param>
     /// <param name="user">المستخدم.</param>
@@ -126,6 +159,23 @@ public interface IAccessDirectory
     /// <param name="company">المنشأة.</param>
     /// <param name="cancellationToken">رمز الإلغاء.</param>
     Task<IReadOnlyList<Membership>> ListMembershipsAsync(Guid company, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// منشآت المستأجر — <b>كل منشأة فيها عضويةٌ واحدة على الأقل</b>، مرتَّبةً ترتيباً
+    /// حرفياً ثابتاً.
+    /// <para>
+    /// <b>ولماذا يحتاجها سطحٌ عن الاشتراك:</b> مسارات المنشأة في هذا المستودع تسأل
+    /// الاستحقاق <b>بمعرّف المنشأة</b> لا بمعرّف المستأجر (‏<c>new TenantId(companyId)</c>
+    /// في كل معالج تحت <c>/companies/{companyId}</c>)، بينما مسارات المصادقة تسأله
+    /// بمعرّف المستأجر. فمفتاحُ الاستحقاق مفتاحان، وتغييرٌ يُكتب على أحدهما لا يُقرأ
+    /// من الآخر. وهذا خلطٌ <b>قائم</b>، وسطحُ الاشتراك يعترف به ويكتب على المفتاحين
+    /// معاً بدل أن يكتب على واحد ويبدو أنه نفّذ
+    /// (‏<c>traps.md#fakh-the-entitlement-key-is-the-company-on-one-surface-and-the-tenant-on-another</c>).
+    /// </para>
+    /// </summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    Task<IReadOnlyList<Guid>> CompaniesOfAsync(TenantId tenant, CancellationToken cancellationToken = default);
 
     /// <summary>عضويات مستخدم داخل مستأجره — <b>وهي مصدر ما تبلغه جلسته</b>.</summary>
     /// <param name="tenant">المستأجر.</param>

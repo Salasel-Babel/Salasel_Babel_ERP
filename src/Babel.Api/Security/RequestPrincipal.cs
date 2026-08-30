@@ -139,41 +139,18 @@ internal static class RequestPrincipal
     }
 
     /// <summary>
-    /// الأبواب الثلاثة التي تُفتح بلا اعتماد — <b>مسمّاةً واحداً واحداً، لا بنمط</b>.
+    /// هل هذا المسار بابٌ مفتوح؟ — <b>والقائمة في موضعٍ واحد</b>، هو
+    /// <see cref="Endpoints.OpenDoors"/>، يقرؤها هذا الوسيط ويقرؤها مولّد العقد.
     /// <para>
-    /// نمطٌ فضفاض («ما تحت <c>/docs</c>» أو «ما ليس تحت <c>/api/</c>») كان سيقبل أي
-    /// مسارٍ جديد يقع خارج <c>/api/</c> دون أن ينتبه أحد — وهو بالضبط ما يجعل حارساً
-    /// كهذا يمرّ على العطل الذي وُجد لأجله.
-    /// </para>
-    /// <list type="bullet">
-    ///   <item><c>/health</c> — لا يقرأ بيانات مستأجر ولا يكتبها.</item>
-    ///   <item><c>/openapi/v1.json</c> — بايتات ملفٍّ مُودَع في المستودع. لا سرّ فيه،
-    ///         ولا بيانات مستأجر واحد.</item>
-    ///   <item><c>/docs</c> — صفحةٌ ساكنة تقرأ ذلك الملفّ. <b>والمتصفّح لا يستطيع أن
-    ///         يضع ترويسة <c>Authorization</c> على تنقّلٍ عُلوي</b>، فصفحةُ توثيق محميّة
-    ///         بـ<c>Bearer</c> غير قابلة للفتح أصلاً؛ وعلاجُها الوحيد ملفّ ارتباط أو
-    ///         جلسة — أي آلية تصريح ثانية، وهي أخطر من غيابها.</item>
-    ///   <item><c>/api/v1/access/sessions</c> و<c>/api/v1/access/sessions/renewal</c> —
-    ///         <b>وغيابُ الاعتماد عنهما بنيوي:</b> من يطلب اعتماداً لا يملك اعتماداً،
-    ///         وبابٌ يُصدر جلسةً ويشترط جلسةً بابٌ لا يُفتح أبداً. والاعتماد ليس غائباً
-    ///         عنهما بل <b>منقولاً من الترويسة إلى الجسم</b>: اعتماد انتساب على الأول
-    ///         واعتماد تجديد على الثاني، وكلاهما يُبصَم ويُطابَق بالبصمة كأي اعتماد،
-    ///         والرفض واحدٌ لا يُفرَّق فيه المختلَق عن غيره. <b>وما لا يُفتح بفتحهما:</b>
-    ///         لا يقرأ أيٌّ منهما بيانات مستأجرٍ ولا يكتبها إلا بعد أن يُثبت مُقدِّمُه
-    ///         اعتماداً، ولا يُرجع أيٌّ منهما شيئاً لمن لم يُثبت.</item>
-    /// </list>
-    /// <para>
-    /// <b>وما لا يُفتح بفتحها:</b> الثلاثة تكتب بايتات ثابتة أو حالةَ عملية. ولا واحد
-    /// منها يلمس مستأجراً، ولا يعكس مدخلاً من العميل، ولا يمنح الصفحة امتيازاً: زرّ
-    /// «جرّب» فيها عميلٌ يمرّ بهذا الوسيط نفسه سطراً بسطر.
+    /// وقد كانت هنا وهناك، فكان الجواب عن «أي المسارات تُفتح بلا اعتماد؟» جوابين
+    /// يُقرأ كلٌّ منهما ضماناً — والحارس الذي رُبطا به يمسك الانحراف <b>بعد وقوعه</b>
+    /// ولا يمنع وقوعه
+    /// (‏<c>traps.md#fakh-the-open-door-list-is-declared-twice-and-guarded-in-neither</c>).
+    /// والحارس باقٍ ولم يُحذف: هو الآن يُثبت أن <b>القراءتين تُنفَّذان</b>.
     /// </para>
     /// </summary>
     private static bool IsAnonymous(PathString path) =>
-        path.Equals(Endpoints.ApiRoutes.Health, StringComparison.Ordinal)
-        || path.Equals(Endpoints.ApiRoutes.OpenApiDocument, StringComparison.Ordinal)
-        || path.Equals(Endpoints.ApiRoutes.Docs, StringComparison.Ordinal)
-        || path.Equals(Endpoints.AccessRoutes.Sessions, StringComparison.Ordinal)
-        || path.Equals(Endpoints.AccessRoutes.SessionRenewal, StringComparison.Ordinal);
+        Endpoints.OpenDoors.IsOpen(path.Value ?? string.Empty);
 
     private static async Task DenyAsync(HttpContext context, string code, string ar, string en)
     {

@@ -33,6 +33,15 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!--
+      مستوى التحكّم — والمرجع هنا **وحده**، ولا مرجع إليه من أي مشروع آخر.
+      ‏ModuleMap يجعل مجموعة مراجع Babel.ControlPlane **فارغة**: لا يعتمد على أي مشروع
+      بابل، فلا يعرف TenantId ولا UserId ولا Result ولا وحدة منتَج واحدة. والحاجز في
+      ذلك الاتجاه هو الحاجز الحقيقي، وهو **باقٍ كما كان**. أمّا هذا الاتجاه فمسموح في
+      ModuleMap منذ البداية — مجموعة Babel.Api هي «كل المشاريع» — لأن الجذر التركيبي
+      هو الموضع الذي يعرف الطرفين ويترجم بينهما. (ADR-جديد · ADR-0036 §2)
+    -->
+    <ProjectReference Include="../Babel.ControlPlane/Babel.ControlPlane.csproj" />
     <ProjectReference Include="../Babel.SharedKernel/Babel.SharedKernel.csproj" />
     <ProjectReference Include="../Babel.Contracts/Babel.Contracts.csproj" />
     <ProjectReference Include="../Babel.Core/Babel.Core.csproj" />

@@ -24,6 +24,20 @@ public sealed class ControlPlaneOptions
     /// <summary>دور التطبيق — ليس superuser وليس مالك المخطط (فخ-30، ADR-0003).</summary>
     public string AppRole { get; init; } = Env("BABEL_CP_APP_ROLE", "babel_cp_app");
 
+    /// <summary>
+    /// <b>دور سطح الاشتراك</b> — الدور الذي يقرأ به الجذر التركيبي مستوى التحكّم ويكتب
+    /// به الاشتراك والاستحقاق، ولا شيء غير ذلك.
+    /// <para>
+    /// وهو <b>ليس</b> <see cref="AppRole"/> ولا مستخدم الإدارة، والفرق مقصود: دور
+    /// التطبيق مسحوبةٌ منه صلاحية مخطّط التحكّم كلّها بنصّ <c>ControlSchema.EnsureAsync</c>
+    /// («مستوى التحكّم عملياتي لا يُقرأ من مسار طلب المستأجر»)، ومستخدمُ الإدارة يستطيع
+    /// أن يُسقط الجدول الذي يقرؤه. فسطحُ الاشتراك — وهو مسار طلب يخدم الإنترنت — يحتاج
+    /// دوراً ثالثاً: يقرأ الأسطول، ويكتب الاشتراك والاستحقاق وسطورهما التدقيقية،
+    /// <b>ولا يحذف صفّاً واحداً في أي جدول</b>.
+    /// </para>
+    /// </summary>
+    public string SurfaceRole { get; init; } = Env("BABEL_CP_SURFACE_ROLE", "babel_cp_surface");
+
     /// <summary>مضيف الخادم ومنفذه ومستخدم الإدارة — تُقرأ من البيئة.</summary>
     public string AdminHost { get; init; } = Env("BABEL_CP_HOST", "127.0.0.1");
     /// <summary>منفذ الخادم.</summary>
@@ -109,12 +123,27 @@ public sealed class ControlPlaneOptions
     /// </summary>
     public int ControlPoolSize { get; init; } = EnvInt("BABEL_CP_CONTROL_POOL", 8);
 
+    /// <summary>
+    /// هل تُبنى سلسلة اتصال قاعدة التحكّم بدور <see cref="SurfaceRole"/> بدل مستخدم
+    /// الإدارة؟ <b>يضبطها الجذر التركيبي وحده</b>، فيصير كل ما يقرؤه ويكتبه سطحُ
+    /// الاشتراك مارّاً بدورٍ لا يملك <c>delete</c> ولا <c>drop</c> ولا مخطّط مستأجر.
+    /// وتبقى الأدوات التشغيلية — التزويد والترحيل الأسطولي والأرشفة — على مستخدم
+    /// الإدارة كما كانت، فلا سطر واحد منها يتغيّر.
+    /// </summary>
+    public bool UseSurfaceRole { get; init; }
+
     /// <summary>سلسلة الاتصال بقاعدة التحكّم، مُجمَّعة بسقف صغير مُعلَن.</summary>
     public string ControlConnectionString
     {
         get
         {
             var b = BaseBuilder(ControlDatabase);
+            if (UseSurfaceRole)
+            {
+                b.Username = SurfaceRole;
+                b.Password = Environment.GetEnvironmentVariable("BABEL_CP_SURFACE_PASSWORD");
+            }
+
             b.Pooling = true;
             b.MinPoolSize = 0;
             b.MaxPoolSize = ControlPoolSize;

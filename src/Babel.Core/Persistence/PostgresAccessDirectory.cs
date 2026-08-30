@@ -96,6 +96,140 @@ internal sealed class PostgresAccessDirectory : IAccessDirectory
     }
 
     /// <inheritdoc />
+    public async Task<MembershipRevocation> RevokeMembershipAsync(
+        Guid company, UserId member, DateTimeOffset now, CancellationToken cancellationToken = default)
+    {
+        await using NpgsqlConnection connection = await OpenAsync(cancellationToken).ConfigureAwait(false);
+        await using NpgsqlTransaction transaction =
+            await connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+
+        (Membership? existing, int owners) = await LockCompanyAsync(connection, transaction, company, member, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (existing is null)
+        {
+            await transaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
+            return new MembershipRevocation(MembershipMutation.NotFound, null, now);
+        }
+
+        if (existing.Role == MembershipRole.Owner && owners <= 1)
+        {
+            await transaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
+            return new MembershipRevocation(MembershipMutation.LastOwner, null, now);
+        }
+
+        await using (NpgsqlCommand delete = new(
+            "delete from core.access_membership where company_id = $1 and user_id = $2",
+            connection,
+            transaction))
+        {
+            delete.Parameters.Add(Uuid(company));
+            delete.Parameters.Add(Uuid(member.Value));
+            await delete.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+        return new MembershipRevocation(MembershipMutation.Applied, existing, now);
+    }
+
+    /// <inheritdoc />
+    public async Task<MembershipRoleChange> ChangeRoleAsync(
+        Guid company, UserId member, MembershipRole role, DateTimeOffset now,
+        CancellationToken cancellationToken = default)
+    {
+        await using NpgsqlConnection connection = await OpenAsync(cancellationToken).ConfigureAwait(false);
+        await using NpgsqlTransaction transaction =
+            await connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+
+        (Membership? existing, int owners) = await LockCompanyAsync(connection, transaction, company, member, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (existing is null)
+        {
+            await transaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
+            return new MembershipRoleChange(MembershipMutation.NotFound, null, role, now);
+        }
+
+        if (existing.Role == role)
+        {
+            await transaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
+            return new MembershipRoleChange(MembershipMutation.Unchanged, null, existing.Role, now);
+        }
+
+        if (existing.Role == MembershipRole.Owner && owners <= 1)
+        {
+            await transaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
+            return new MembershipRoleChange(MembershipMutation.LastOwner, null, existing.Role, now);
+        }
+
+        await using (NpgsqlCommand update = new(
+            "update core.access_membership set role = $3 where company_id = $1 and user_id = $2",
+            connection,
+            transaction))
+        {
+            update.Parameters.Add(Uuid(company));
+            update.Parameters.Add(Uuid(member.Value));
+            update.Parameters.Add(Text(MembershipRoles.ToColumn(role)));
+            await update.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+        return new MembershipRoleChange(
+            MembershipMutation.Applied, existing with { Role = role }, existing.Role, now);
+    }
+
+    /// <summary>
+    /// يقفل صفوف عضويات المنشأة ويعيد العضوية المطلوبة وعدد المالكين — <b>في استعلام
+    /// واحد تحت <c>FOR UPDATE</c></b>.
+    /// <para>
+    /// وهذا هو موضع الذرّية: «كم مالكاً؟» ثم «احذف» في ندائين غير مقفلين يجعل سحبَين
+    /// متزامنَين لمالكَين اثنين <b>يفوزان معاً</b>، فتبقى المنشأة بلا مالك ولا يشتكي
+    /// شيء. والقفل على صفوف المنشأة كلّها لأن الحكم عن المنشأة لا عن الصفّ.
+    /// </para>
+    /// </summary>
+    private static async Task<(Membership? Existing, int Owners)> LockCompanyAsync(
+        NpgsqlConnection connection,
+        NpgsqlTransaction transaction,
+        Guid company,
+        UserId member,
+        CancellationToken cancellationToken)
+    {
+        await using NpgsqlCommand command = new(
+            """
+            select company_id, user_id, role, display_name_ar, granted_at
+            from core.access_membership
+            where company_id = $1
+            order by user_id::text
+            for update
+            """,
+            connection,
+            transaction);
+
+        command.Parameters.Add(Uuid(company));
+
+        Membership? existing = null;
+        int owners = 0;
+
+        await using NpgsqlDataReader reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+        while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+        {
+            Membership row = Read(reader);
+
+            if (row.Role == MembershipRole.Owner)
+            {
+                owners++;
+            }
+
+            if (row.User == member)
+            {
+                existing = row;
+            }
+        }
+
+        return (existing, owners);
+    }
+
+    /// <inheritdoc />
     public async Task<Membership?> FindMembershipAsync(Guid company, UserId user, CancellationToken cancellationToken = default)
     {
         await using NpgsqlConnection connection = await OpenAsync(cancellationToken).ConfigureAwait(false);
@@ -125,6 +259,37 @@ internal sealed class PostgresAccessDirectory : IAccessDirectory
             """,
             [Uuid(company)],
             cancellationToken);
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<Guid>> CompaniesOfAsync(TenantId tenant, CancellationToken cancellationToken = default)
+    {
+        await using NpgsqlConnection connection = await OpenAsync(cancellationToken).ConfigureAwait(false);
+        await using NpgsqlCommand command = new(
+            """
+            -- والترتيب على نصّ المعرّف كما في سائر هذا الملفّ، ومن استعلام فرعي:
+            -- ‏PostgreSQL يشترط على SELECT DISTINCT أن يظهر تعبير ORDER BY في قائمة
+            -- الاختيار، فـ`company_id::text` بجانب `distinct company_id` يُرفض بـ42P10.
+            select company_id
+            from (
+                select distinct company_id
+                from core.access_membership
+                where tenant_id = $1
+            ) as companies
+            order by company_id::text
+            """,
+            connection);
+
+        command.Parameters.Add(Uuid(tenant.Value));
+
+        List<Guid> companies = [];
+        await using NpgsqlDataReader reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+        while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+        {
+            companies.Add(reader.GetGuid(0));
+        }
+
+        return companies;
+    }
 
     /// <inheritdoc />
     public Task<IReadOnlyList<Membership>> MembershipsOfAsync(TenantId tenant, UserId user, CancellationToken cancellationToken = default) =>

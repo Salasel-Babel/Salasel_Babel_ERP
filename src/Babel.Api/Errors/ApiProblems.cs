@@ -72,8 +72,28 @@ internal static class ApiProblems
             // مُقدَّم فيُصنَّف بنفسه: اسمٌ ناقص في دعوة طلبٌ مفهوم ومرفوض (422)، ودعوةٌ
             // لعضوٍ قائم تعارضٌ مع حالة (409)، وداعٍ ليس مالكاً منعٌ (403).
             "membership.already_granted" => 409,
-            "membership.inviter_is_not_an_owner" or "membership.read_only" => 403,
+            "membership.inviter_is_not_an_owner" or "membership.read_only"
+                or "membership.actor_is_not_an_owner" => 403,
             "access.session_not_issued_here" => 409,
+
+            // ── سطح التسجيل والاشتراك ────────────────────────────────────────────
+            // ‏«لا عضوية بهذا المعرّف» ‏404 لأن المسار يُعنون مورداً؛ و«آخر مالك» و«الدور
+            // كما هو» ‏409 لأنهما تعارضٌ مع حالة قائمة لا رفضٌ محاسبي.
+            "membership.not_found" => 404,
+            "membership.last_owner" or "membership.role_unchanged" => 409,
+
+            // مستوى تحكّم غير مُهيَّأ: عطلٌ **تشغيلي مؤقّت** لا خطأ في الطلب، ولذلك 503
+            // لا 500 ولا 501 — العميل يُعيد المحاولة، ولا يُعيد صياغة طلبه ولا ينتظر
+            // إصداراً جديداً. وسائر السطح يعمل، فالخدمة ليست ساقطة بل هذا الباب وحده.
+            "fleet.unavailable" => 503,
+            "subscription.not_found" => 404,
+            "subscription.operator_credential_required" => 403,
+
+            // تجاوز حدّ المعدّل. والرمز مُصنَّف هنا كسائر الرموز كي لا يبقى 429 معلوماً
+            // في موضع كتابته وحده — ورمزٌ يعرف حالته موضعٌ واحد لا اثنان.
+            "rate.too_many_requests" => 429,
+
+            "signup.request_key_invalid" => 400,
 
             "capability_profile.not_found" => 404,
             "capability_profile.capability_withdrawal_requires_acknowledgement" => 409,
@@ -116,6 +136,8 @@ internal static class ApiProblems
             _ when code.StartsWith("document_admission.", StringComparison.Ordinal) => 422,
 
             _ when code.StartsWith("membership.", StringComparison.Ordinal) => 422,
+            _ when code.StartsWith("signup.", StringComparison.Ordinal) => 422,
+            _ when code.StartsWith("subscription.", StringComparison.Ordinal) => 422,
 
             _ when code.StartsWith("wire.", StringComparison.Ordinal) => 400,
             _ when code.StartsWith("auth.", StringComparison.Ordinal) => 401,
@@ -219,7 +241,9 @@ internal static class ApiProblems
         413 => "الحمولة أكبر من الحدّ",
         415 => "نوع محتوى غير مدعوم",
         422 => "الطلب مفهوم ومرفوض محاسبياً",
+        429 => "طلبات أكثر من الحدّ",
         501 => "غير منفَّذ بعد",
+        503 => "الخدمة غير متاحة الآن",
         _ => "عطل في الخادم",
     };
 
@@ -234,7 +258,9 @@ internal static class ApiProblems
         413 => "Payload too large",
         415 => "Unsupported media type",
         422 => "Understood and refused on accounting grounds",
+        429 => "Too many requests",
         501 => "Not implemented yet",
+        503 => "Service unavailable",
         _ => "Server failure",
     };
 

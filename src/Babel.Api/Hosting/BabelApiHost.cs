@@ -1,5 +1,6 @@
 using System.Globalization;
 using Babel.Api.Endpoints;
+using Babel.Api.Fleet;
 using Babel.Api.Errors;
 using Babel.Api.Ports;
 using Babel.Api.Security;
@@ -8,6 +9,7 @@ using Babel.Core;
 using Babel.Core.Access;
 using Babel.Core.Entitlement;
 using Babel.Core.Tenancy;
+using Babel.ControlPlane.Support;
 using Babel.Inventory;
 using Babel.Ledger;
 using Babel.Purchasing;
@@ -97,12 +99,42 @@ internal static class BabelApiHost
         // منفذ قراءة القيد: العقد منشور، والتنفيذ ينتظر سطح قراءة في الدفتر (ADR-0018).
         builder.Services.AddSingleton<IJournalEntryReader, UnavailableJournalEntryReader>();
 
+        // ── منفذ الأسطول: الجذر التركيبي وحده يعرف الطرفين ──────────────────────
+        //
+        // ‏**والتهيئة صريحة لا مُستنتَجة**: `Babel:Fleet:Enabled` مفتاحٌ يُضبط في البيئة.
+        // واستنتاجُها من وجود متغيّر اتصال كان سيجعل خادماً على آلة فيها قاعدة تحكّم
+        // لغرضٍ آخر يفتح سطح الاشتراك عليها بلا أن يقرّر ذلك أحد.
+        //
+        // وكل سرّ من البيئة: `ControlPlaneOptions` كل قيمة فيها من متغيّر بيئة، ولا
+        // كلمة مرور ولا مضيف ولا اسم قاعدة مكتوبٌ في المستودع (README لمستوى التحكّم).
+        //
+        // و`UseSurfaceRole` يجعل الاتصال بدورٍ **ثالث** لا بمستخدم الإدارة: خادمٌ يخدم
+        // الإنترنت باتصال إدارة يستطيع أن يُسقط سجلّ الأسطول الذي يقرؤه (ADR-0003).
+        builder.Services.AddSingleton<IFleetDirectory>(_ =>
+            builder.Configuration.GetValue<bool>("Babel:Fleet:Enabled")
+                ? new ControlPlaneFleetDirectory(new ControlPlaneOptions { UseSurfaceRole = true })
+                : new UnavailableFleetDirectory());
+
+        // ── حدّ المعدّل على الأبواب المفتوحة ─────────────────────────────────────
+        // الحدّ عددٌ يُضبط في النشر لا في الشيفرة: العدد الصحيح يعتمد على شكل النشر —
+        // خلف بوّابة تتقاسم عنواناً، أو مباشرةً على الإنترنت — لا على ما يفعله الباب.
+        builder.Services.AddSingleton(provider => new OpenDoorRateGuard(
+            provider.GetRequiredService<TimeProvider>(),
+            builder.Configuration.GetValue("Babel:RateLimit:PerMinute", OpenDoorRateGuard.DefaultPerMinute)));
+
         WebApplication app = builder.Build();
 
         app.UseUnhandledFailureGuard();
+
+        // حدّ المعدّل **قبل** المصادقة: الأبواب المحروسة به مفتوحة أصلاً، فلا اعتماد
+        // يُقرأ قبله؛ ووضعُه بعدها كان سيجعل الطرق الآلي يدفع الخادم إلى قاعدة البيانات
+        // في كل محاولة قبل أن يُردّ — أي أن الحارس يحرس بعد أن يقع ما يحرس منه.
+        app.UseOpenDoorRateLimit();
+
         app.UseBabelAuthentication();
         app.MapSessionApi();
         app.MapAccessApi();
+        app.MapTenantApi();
         app.MapLedgerApi();
         app.MapCapabilityProfileApi();
         app.MapCompanySetupApi();

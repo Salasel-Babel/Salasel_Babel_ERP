@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     fafa4da875789323f241b9351d8445a06149c326ef03d96599dd40577fc1e917
+     87c9048f74660a903043ca74290644c3498a3195a97dc5368533bf6871b5a4ed
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -151,6 +151,78 @@ export async function admitDocument(transport: Transport, args: AdmitDocumentArg
   const response = await transport({ method: "POST", url, body, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "DocumentAdmission", response.json) as T.DocumentAdmission;
+}
+
+export interface ChangeMembershipRoleArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف العضوية — **وهو معرّف عضوها**: هوية العضوية (المنشأة، العضو)، والمنشأة في المسار سلفاً. / The membership identifier — **which is its member's identifier**: a membership's identity is (company, member), and the company is already in the path. */
+  membershipId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.ChangeMembershipRoleRequest;
+}
+
+/**
+ * تغيير دور عضوية / Change a membership's role
+ * 
+ * يغيّر دور عضوٍ في المنشأة. مورد فرعي مستقلّ على نمط plan-changes: الدور **صلاحيةُ وصول**، وتغييرُه حدثٌ يُكتب في سجلّ التدقيق لا حقلٌ يُعدَّل بتحديث جزئي.
+ * 
+ * والدور يُطابَق حرفياً من مجموعة مغلقة، ودورٌ لا أثر له زينة: Reader يقرأ ولا يكتب — وكل فعل غير آمن في منشأةٍ دورُه فيها Reader يُردّ بـ403 وmembership.read_only — وOwner يدعو ويسحب ويغيّر الأدوار.
+ * 
+ * **ورمز الدور يفترق عن رمز الاستحقاق عمداً**: ذاك يقول «جدّد اشتراكك» وهذا يقول «اطلب صلاحية»، وخلطهما يجعل قارئاً يتّصل بالمحاسبة بلا سبب.
+ * 
+ * **ولا يُخفَض آخر مالك** (409 وmembership.last_owner)، و**الدور الذي هو الدور القائم يُرفض** (409 وmembership.role_unchanged): ردُّ «تمّ» على فعلٍ لم يقع أسوأ من الرفض.
+ * 
+ * Changes a member's role in the company. A subresource in the plan-changes shape: a role is **an access grant**, and changing it is an event written to the audit log, not a field patched in place.
+ * 
+ * The role is matched literally against a closed set, and a role with no effect is decoration: Reader reads and writes nothing — every unsafe method in a company where the role is Reader is refused with 403 and membership.read_only — and Owner invites, revokes, and changes roles.
+ * 
+ * **The role code differs from the entitlement code deliberately**: that one says 'renew your subscription', this one says 'ask for a permission'; conflating them sends a reader to call accounting for no reason.
+ * 
+ * **The last owner is not demoted** (409, membership.last_owner), and **a role equal to the current role is refused** (409, membership.role_unchanged): answering 'done' to an act that did not happen is worse than refusing.
+ */
+export async function changeMembershipRole(transport: Transport, args: ChangeMembershipRoleArgs, signal?: AbortSignal): Promise<T.MembershipRoleChange> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/memberships/" + encodeURIComponent(args.membershipId) + "/role-changes";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "ChangeMembershipRoleRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "MembershipRoleChange", response.json) as T.MembershipRoleChange;
+}
+
+export interface ChangeSubscriptionPlanArgs {
+  /** معرّف المستأجر. يُطابَق بمستأجر الاعتماد ويُرفض إن اختلف؛ ولا يُفرَّق في الرفض بين «لا وجود له» و«ليس مستأجرك». / The tenant identifier. It is matched against the credential's tenant and refused when it differs; the refusal does not distinguish 'does not exist' from 'not yours'. */
+  tenantId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.ChangePlanRequest;
+}
+
+/**
+ * تغيير الخطّة / Change the plan
+ * 
+ * مورد فرعي مستقلّ لا PUT على الاشتراك: تغيير الخطّة **حدثٌ** له سندٌ وفاعلٌ ولحظة، ويُغلق صفّ اشتراك ويفتح آخر — فيبقى تاريخ الاشتراك مقروءاً.
+ * 
+ * وما تغطّيه الخطّة الجديدة يصير مستحقّاً، و**ما خرج منها يهبط إلى أرضيته لا إلى العدم**: وحدةٌ بلغ عملُها الدفتر تبقى مقروءةً كاملةً بعد خروجها من الحزمة.
+ * 
+ * **والسند إلزامي** — رقم عقد، أو حدث سداد، أو تذكرة، أو قرار مُوثَّق — لأن الاستحقاق يحكم أي بيانات مالية يجوز إنشاؤها، فتغييره حدث تدقيقي لا إعداد واجهة.
+ * 
+ * **وهو فعل مشغِّل** يُطلب باعتماد التزويد وحده: لا قناة سداد في هذا المنتَج بعد، فبابٌ يرفع به صاحبُ الاشتراك خطّته هو ترقيةٌ بلا ثمن. الرمز الثابت عند الرفض: subscription.operator_credential_required.
+ * 
+ * A subresource, not a PUT on the subscription: a plan change is an **event** with authority, an actor, and an instant; it closes one subscription row and opens another, so the subscription's history stays readable.
+ * 
+ * What the new plan covers becomes entitled, and **what falls outside it drops to its floor, not to nothing**: a module whose work reached the ledger stays fully readable after leaving the package.
+ * 
+ * **Authority is mandatory** — a contract number, a payment event, a ticket, or a documented decision — because entitlement governs which financial data may be created, so changing it is an audit event, not a UI setting.
+ * 
+ * **It is an operator act** requested with the provisioning credential alone: this product has no payment channel yet, so a door letting a subscriber raise their own plan is a free upgrade. Stable refusal code: subscription.operator_credential_required.
+ */
+export async function changeSubscriptionPlan(transport: Transport, args: ChangeSubscriptionPlanArgs, signal?: AbortSignal): Promise<T.Subscription> {
+  const path = "/api/v1/tenants/" + encodeURIComponent(args.tenantId) + "/subscription/plan-changes";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "ChangePlanRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "Subscription", response.json) as T.Subscription;
 }
 
 export interface CreatePurchaseOrderArgs {
@@ -542,6 +614,37 @@ export async function initialiseCompanySetup(transport: Transport, args: Initial
   const response = await transport({ method: "PUT", url, body, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "CompanySetup", response.json) as T.CompanySetup;
+}
+
+export interface LapseSubscriptionArgs {
+  /** معرّف المستأجر. يُطابَق بمستأجر الاعتماد ويُرفض إن اختلف؛ ولا يُفرَّق في الرفض بين «لا وجود له» و«ليس مستأجرك». / The tenant identifier. It is matched against the credential's tenant and refused when it differs; the refusal does not distinguish 'does not exist' from 'not yours'. */
+  tenantId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.SubscriptionTransitionRequest;
+}
+
+/**
+ * انقطاع الاشتراك / Lapse the subscription
+ * 
+ * يُنهي الاشتراك ويهبط بكل وحدة إلى **أرضيتها**. ولا يحجب قراءةً ولا يُنتزع سجلّاً: من انقطع اشتراكه **يدخل ويقرأ** — يفتح جلسته، ويقرأ ميزان المراجعة والتقارير، ويصدّر بياناته كاملةً — و**يُردّ عند أول كتابة** بـ403 وentitlement.read_only ورسالةٍ تُسمّي السبب بالعربية والإنجليزية.
+ * 
+ * **والحجّة ليست تجارية أولاً:** حفظ السجلات المحاسبية وإبرازها التزامٌ على المنشأة، ونزاعٌ تجاري بيننا وبين عميل لا يجوز أن يضعه في مخالفة نظامية.
+ * 
+ * **وهو فعل مشغِّل** يُطلب باعتماد التزويد وحده، وسندُه إلزامي.
+ * 
+ * Ends the subscription and drops every module to its **floor**. It blocks no reading and takes no record away: a lapsed tenant **signs in and reads** — opens a session, reads the trial balance and reports, and exports its own data in full — and is **refused at the first write** with 403, entitlement.read_only, and a message naming the cause in Arabic and English.
+ * 
+ * **The argument is not commercial first:** keeping and producing accounting records is an obligation on the company, and a commercial dispute between us and a customer must not put them in breach.
+ * 
+ * **It is an operator act** requested with the provisioning credential alone, and its authority is mandatory.
+ */
+export async function lapseSubscription(transport: Transport, args: LapseSubscriptionArgs, signal?: AbortSignal): Promise<T.Subscription> {
+  const path = "/api/v1/tenants/" + encodeURIComponent(args.tenantId) + "/subscription/lapse";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "SubscriptionTransitionRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "Subscription", response.json) as T.Subscription;
 }
 
 export interface ListItemsArgs {
@@ -1356,6 +1459,38 @@ export async function readStockBalances(transport: Transport, args: ReadStockBal
   return decodeSchema(SCHEMAS, "StockBalanceList", response.json) as T.StockBalanceList;
 }
 
+export interface ReadSubscriptionArgs {
+  /** معرّف المستأجر. يُطابَق بمستأجر الاعتماد ويُرفض إن اختلف؛ ولا يُفرَّق في الرفض بين «لا وجود له» و«ليس مستأجرك». / The tenant identifier. It is matched against the credential's tenant and refused when it differs; the refusal does not distinguish 'does not exist' from 'not yours'. */
+  tenantId: string;
+}
+
+/**
+ * اشتراك المستأجر: الخطّة والحالة والوحدات وتاريخ التجديد / The tenant's subscription: plan, state, modules, and renewal date
+ * 
+ * يُرجع الاشتراك الجاري كاملاً في طلب واحد: الخطّة وسعرها نصّاً، وحالة الاشتراك، و**حالة كل وحدة**، وتاريخ التجديد التالي.
+ * 
+ * وحالةُ الوحدة ثلاث لا أكثر: Entitled تقرأ وتكتب، وReadOnly تقرأ كاملاً ولا تكتب — وهي حالة **الاشتراك المنقطع** — وNotEntitled لم تُشترَ قط. وpostsJournal على كل وحدة يقول إن عملها يبلغ الدفتر، وهو ما يجعل أرضيتها قراءةً لا نزعاً: منشأةٌ رحّلت قيداً واحداً لها دفتر، ولا يُنتزع منها بسبب سداد.
+ * 
+ * وrenewsOn معدومٌ حين لا يكون الاشتراك فعّالاً: تاريخٌ يُعرض على اشتراك منقطع يُقرأ وعداً بأن الخدمة ستعود من تلقاء نفسها، وهي لا تعود.
+ * 
+ * **والقراءة حقُّ صاحب الاشتراك**: يبلغها اعتماد المستأجر نفسه بلا شرط دور.
+ * 
+ * Returns the whole current subscription in one request: the plan and its price as text, the subscription state, **each module's state**, and the next renewal date.
+ * 
+ * A module's state is one of three: Entitled reads and writes; ReadOnly reads fully and writes nothing — this is the **lapsed subscription** state; NotEntitled was never purchased. postsJournal on each module says its work reaches the ledger, which is what makes its floor read-only rather than removal: a company that posted a single entry has a ledger, and it is not taken away over payment.
+ * 
+ * renewsOn is null when the subscription is not active: a date shown on a lapsed subscription reads as a promise that service will return by itself, and it does not.
+ * 
+ * **Reading is the subscriber's own right**: the tenant's own credential reaches it with no role condition.
+ */
+export async function readSubscription(transport: Transport, args: ReadSubscriptionArgs, signal?: AbortSignal): Promise<T.Subscription> {
+  const path = "/api/v1/tenants/" + encodeURIComponent(args.tenantId) + "/subscription";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "Subscription", response.json) as T.Subscription;
+}
+
 export interface ReadSupplierArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
@@ -1453,6 +1588,43 @@ export async function readTrialBalance(transport: Transport, args: ReadTrialBala
   return decodeSchema(SCHEMAS, "TrialBalance", response.json) as T.TrialBalance;
 }
 
+export interface RegisterTenantArgs {
+  /** جسم الطلب. / The request body. */
+  body: T.RegisterTenantRequest;
+}
+
+/**
+ * التسجيل الأول: مستأجر جديد وأول مالك / First registration: a new tenant and its first owner
+ * 
+ * ينشئ مستأجراً، ويفتح اشتراكه على **خطّة الدخول**، وينشئ أول منشأة له وأول عضوية مالكة فيها، ويردّ **اعتماد انتساب** يُفتح به أول جلسة على POST /api/v1/access/sessions.
+ * 
+ * **وهذا الباب بلا اعتماد، وذلك بنيوي:** من ليس عنده حساب هو بالضبط من يستعمله. وما لا يُفتح بفتحه: لا يقرأ بيانات مستأجرٍ قائم، ولا يكشف وجود مستأجر آخر — لا برسالة ولا بفارق زمن — ولا يقبل اسم مستأجر مكرَّراً أو فريداً لأن الأسماء ليست هوية أصلاً.
+ * 
+ * **والخطّة لا تُختار من هنا.** الاشتراك يُفتح على خطّة الدخول وحدها: حقلُ خطّة في جسم طلبٍ بلا اعتماد يمنح الحزمة الشاملة لمن كتب اسمها. وتغييرُ الخطّة فعلٌ آخر باعتماد.
+ * 
+ * **وحصينٌ ضد التكرار بمفتاح الطلب:** كل معرّفاته — المستأجر ورمزه والمنشأة والمالك — مشتقّة حتمياً من requestKey، فإعادةُ الإرسال به تردّ **المستأجر نفسه** بـ200 وalreadyRegistered = true ولا تُنشئ ثانياً. و**اعتماد الانتساب لا يُعاد في الإعادة**: السرّ يُسكّ مرّة ويُسلَّم مرّة (المُودَع بصمته)، وسكُّ سرٍّ ثانٍ عند كل إعادة إرسال يجعل الباب المفتوح مصنعَ اعتمادات. فمن فقد الاستجابة الأولى يطلب من مالك المنشأة دعوةً جديدة.
+ * 
+ * **وعليه حدّ معدّل** لكل عنوان ولكل مفتاح طلب: التجاوز يردّ 429 ومعه ترويسة Retry-After.
+ * 
+ * Creates a tenant, opens its subscription on the **entry plan**, creates its first company and the first owner membership in it, and returns an **enrolment credential** that opens the first session at POST /api/v1/access/sessions.
+ * 
+ * **This door is unauthenticated, and structurally so:** whoever has no account is exactly who uses it. What it does not open: it reads no existing tenant's data and reveals no other tenant's existence — neither by message nor by measurable timing — and it neither requires nor rejects a duplicate name, because names are not identity here.
+ * 
+ * **The plan is not chosen here.** The subscription opens on the entry plan alone: a plan field in an unauthenticated body hands the full package to whoever types its name. Changing the plan is a different act, with a credential.
+ * 
+ * **Idempotent by request key:** every identifier — tenant, tenant code, company, owner — is derived deterministically from requestKey, so resending it returns **the same tenant** with 200 and alreadyRegistered = true and creates no second one. **The enrolment credential is not re-issued on a repeat**: the secret is minted once and handed over once (only its digest is stored), and minting a second secret on every resend turns an open door into a credential factory. Whoever lost the first response asks the company's owner for a fresh invitation.
+ * 
+ * **It carries a rate limit** per address and per request key: exceeding it returns 429 with a Retry-After header.
+ */
+export async function registerTenant(transport: Transport, args: RegisterTenantArgs, signal?: AbortSignal): Promise<T.RegisteredTenant> {
+  const path = "/api/v1/tenants";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "RegisterTenantRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "RegisteredTenant", response.json) as T.RegisteredTenant;
+}
+
 export interface RenameCostCenterArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
@@ -1511,6 +1683,33 @@ export async function renewSession(transport: Transport, args: RenewSessionArgs,
   return decodeSchema(SCHEMAS, "AccessSession", response.json) as T.AccessSession;
 }
 
+export interface ResumeSubscriptionArgs {
+  /** معرّف المستأجر. يُطابَق بمستأجر الاعتماد ويُرفض إن اختلف؛ ولا يُفرَّق في الرفض بين «لا وجود له» و«ليس مستأجرك». / The tenant identifier. It is matched against the credential's tenant and refused when it differs; the refusal does not distinguish 'does not exist' from 'not yours'. */
+  tenantId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.SubscriptionTransitionRequest;
+}
+
+/**
+ * استئناف الاشتراك / Resume the subscription
+ * 
+ * يفتح صفّ اشتراك فعّالاً جديداً على الخطّة نفسها، ويُعيد وحداتها إلى الاستحقاق — فتعود الكتابة كما كانت، ولم تُفقد بيانةٌ واحدة أثناء الانقطاع.
+ * 
+ * **وهو فعل مشغِّل** يُطلب باعتماد التزويد وحده: بابٌ يستأنف به صاحبُ الاشتراك اشتراكه المنقطع هو إلغاءٌ للانقطاع نفسه.
+ * 
+ * Opens a new active subscription row on the same plan and returns its modules to entitlement — writing resumes exactly as before, and not one datum was lost during the lapse.
+ * 
+ * **It is an operator act** requested with the provisioning credential alone: a door letting a subscriber resume their own lapsed subscription undoes the lapse itself.
+ */
+export async function resumeSubscription(transport: Transport, args: ResumeSubscriptionArgs, signal?: AbortSignal): Promise<T.Subscription> {
+  const path = "/api/v1/tenants/" + encodeURIComponent(args.tenantId) + "/subscription/resumption";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "SubscriptionTransitionRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "Subscription", response.json) as T.Subscription;
+}
+
 export interface ReverseJournalEntryArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
@@ -1534,6 +1733,44 @@ export async function reverseJournalEntry(transport: Transport, args: ReverseJou
   const response = await transport({ method: "POST", url, body, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "PostingReceipt", response.json) as T.PostingReceipt;
+}
+
+export interface RevokeMembershipArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف العضوية — **وهو معرّف عضوها**: هوية العضوية (المنشأة، العضو)، والمنشأة في المسار سلفاً. / The membership identifier — **which is its member's identifier**: a membership's identity is (company, member), and the company is already in the path. */
+  membershipId: string;
+}
+
+/**
+ * سحب عضوية / Revoke a membership
+ * 
+ * يسحب عضوية عضوٍ من المنشأة. مورد فرعي مستقلّ لا DELETE على العضوية: السحب **فعلٌ له فاعل ولحظة ويُكتب في سجلّ التدقيق**، وDELETE كان سيقوله «أزل صفّاً».
+ * 
+ * **ومعرّف العضوية هو معرّف عضوها**: هوية العضوية (المنشأة، العضو) والمنشأة في المسار سلفاً، فلم يبقَ منها ما يُعنون غير العضو. واختراعُ مفتاحٍ بديل كان سيُنتج هويتين لصفٍّ واحد.
+ * 
+ * **والأثر فوري**: ما تبلغه الجلسة يُقرأ من العضويات في كل طلب، فالصفّ المسحوب يختفي من مجموعة الاعتماد عند الطلب التالي بلا انتظار انقضاء.
+ * 
+ * **ولا يُسحب آخر مالك** (409 وmembership.last_owner): منشأةٌ بلا مالك لا يستطيع أحد أن يدعو إليها ولا أن يُصلح أدوارها — أي بيانات محبوسة عن أصحابها بفعلٍ يبدو إدارياً.
+ * 
+ * **وهو فعل مالك** في المنشأة: من يستطيع أن يسحب عضويةً يستطيع أن يُخلي المنشأة لنفسه.
+ * 
+ * Revokes a member's membership in the company. A subresource, not a DELETE on the membership: revocation is **an act with an actor and an instant, written to the audit log**; DELETE would have called it 'remove a row'.
+ * 
+ * **A membership's identifier is its member's identifier**: its identity is (company, member) and the company is already in the path, so nothing but the member is left to address. Inventing a surrogate key would give one row two identities.
+ * 
+ * **The effect is immediate**: what a session reaches is read from memberships on every request, so the revoked row leaves the credential's set on the next request without waiting for an expiry.
+ * 
+ * **The last owner is not revoked** (409, membership.last_owner): a company without an owner is one nobody can invite into or repair roles in — data locked away from its owners by an act that looks administrative.
+ * 
+ * **It is an owner's act** in the company: whoever can revoke a membership can empty the company for themselves.
+ */
+export async function revokeMembership(transport: Transport, args: RevokeMembershipArgs, signal?: AbortSignal): Promise<T.MembershipRevocation> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/memberships/" + encodeURIComponent(args.membershipId) + "/revocation";
+  const url = path;
+  const response = await transport({ method: "POST", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "MembershipRevocation", response.json) as T.MembershipRevocation;
 }
 
 /**

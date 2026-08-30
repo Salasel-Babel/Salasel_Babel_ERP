@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     87c9048f74660a903043ca74290644c3498a3195a97dc5368533bf6871b5a4ed
+     dac93701517afebf600cd3f74868a4ca5bd94861699466e41651938520f14959
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -17,6 +17,14 @@ export const PARAM_API_V1_COMPANIES_COMPANYID_COST_CENTERS_COSTCENTERCODE_SUSPEN
 export const PARAM_API_V1_COMPANIES_COMPANYID_COST_CENTERS_COSTCENTERCODE_SUSPENSION_costCenterCode_RE = new RegExp("^[a-z0-9._]{1,32}$");
 export const PARAM_API_V1_COMPANIES_COMPANYID_COST_CENTERS_COSTCENTERCODE_costCenterCode = "^[a-z0-9._]{1,32}$";
 export const PARAM_API_V1_COMPANIES_COMPANYID_COST_CENTERS_COSTCENTERCODE_costCenterCode_RE = new RegExp("^[a-z0-9._]{1,32}$");
+export const PARAM_downloadAttachment_ticket = "^[A-Za-z0-9_-]{16,512}$";
+export const PARAM_downloadAttachment_ticket_RE = new RegExp("^[A-Za-z0-9_-]{16,512}$");
+export const PARAM_listAttachments_skip = "^[0-9]{1,7}$";
+export const PARAM_listAttachments_skip_RE = new RegExp("^[0-9]{1,7}$");
+export const PARAM_listAttachments_sourceDocumentType = "^[a-z0-9._]{1,64}$";
+export const PARAM_listAttachments_sourceDocumentType_RE = new RegExp("^[a-z0-9._]{1,64}$");
+export const PARAM_listAttachments_take = "^[0-9]{1,7}$";
+export const PARAM_listAttachments_take_RE = new RegExp("^[0-9]{1,7}$");
 export const PARAM_readInventoryValuation_asOf = "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$";
 export const PARAM_readInventoryValuation_asOf_RE = new RegExp("^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$");
 export const PARAM_readPayablesAging_asOf = "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$";

@@ -37,6 +37,16 @@ internal sealed class AttachmentRow
 
     /// <summary>سلفُ هذا الإصدار، أو <c>null</c> للإصدار الأول.</summary>
     public Guid? SupersedesId { get; set; }
+
+    /// <summary>
+    /// رمز نوع المستند المصدر، أو <c>null</c>. <b>رمزٌ لا نصٌّ معروض</b>، ولا مفتاح
+    /// خارجي إليه: الجدول في مخطّط <c>storage</c> والمستندات في مخطّطات وحداتها،
+    /// ومفتاحٌ خارجي بينهما يعبر حدّ وحدة (القاعدة 5).
+    /// </summary>
+    public string? SourceDocumentType { get; set; }
+
+    /// <summary>معرّف المستند المصدر، أو <c>null</c>.</summary>
+    public Guid? SourceDocumentId { get; set; }
 }
 
 /// <summary>
@@ -94,6 +104,14 @@ internal sealed class StorageDbContext(DbContextOptions<StorageDbContext> option
             // **السلسلة خطّية ولا تتفرّع.** فرعان يصحّحان السلف نفسه يعنيان إصدارين
             // «حاليين» لمستند واحد، وهو أسوأ من غياب النسخ أصلاً. والتفرّد الجزئي
             // يفرض ذلك في القاعدة، لا في سباق بين طلبين.
+            entity.Property(row => row.SourceDocumentType).HasMaxLength(64);
+
+            // فهرس الجرد: المستأجر أولاً كما في كل فهرس هنا، ثم المستند المصدر. وسؤال
+            // «ما مرفقات هذه الفاتورة؟» يُجاب بفهرس لا بمسح، وسؤال «ما مرفقات مستأجر
+            // آخر؟» لا يُجاب أصلاً لأن المستأجر أول أعمدة المفتاح.
+            entity.HasIndex(row => new { row.TenantId, row.SourceDocumentType, row.SourceDocumentId })
+                  .HasDatabaseName("ix_storage_attachment_source_document");
+
             entity.HasIndex(row => row.SupersedesId)
                   .IsUnique()
                   .HasDatabaseName("uq_storage_attachment_supersedes")
@@ -110,6 +128,13 @@ internal sealed class StorageDbContext(DbContextOptions<StorageDbContext> option
                 table.HasCheckConstraint(
                     "ck_storage_attachment_chain",
                     """ ("Version" = 1) = ("SupersedesId" is null) """);
+
+                // النوع والمعرّف يحضران معاً أو يغيبان معاً. **والقاعدة تقولها لا
+                // الشيفرة**: نصفُ ربطٍ في صفٍّ يُقرأ لاحقاً «مرفقٌ بلا مستند» أو
+                // «مستندٌ بلا معرّف»، وكلاهما كذبة صامتة.
+                table.HasCheckConstraint(
+                    "ck_storage_attachment_source_document",
+                    """ ("SourceDocumentType" is null) = ("SourceDocumentId" is null) """);
             });
         });
 

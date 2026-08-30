@@ -60,6 +60,14 @@ public interface IAttachmentStore
     ValueTask<Result<AttachmentIntegrity>> VerifyAsync(TenantId tenant, AttachmentId id, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// يجرد مرفقات مستأجر، مرشَّحةً على المستند المصدر ومصفَّحةً.
+    /// <b>ولا بايتة تُقرأ هنا</b>: الجرد وصفٌ لا محتوى.
+    /// </summary>
+    /// <param name="query">السؤال — والمستأجر جزء منه.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    ValueTask<Result<AttachmentPage>> ListAsync(AttachmentQuery query, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// يضع علامة سحب. <b>لا يحذف بايتة</b> — الاحتفاظ بسند القيد واجب نظامي، والسحب
     /// إعلانٌ عن حالة لا محو.
     /// </summary>

@@ -76,6 +76,16 @@ if (emitIndex >= 0)
 }
 
 WebApplication app = BabelApiHost.Build(args);
+
+// ‏**مفتاح توقيع تذاكر المرفقات يُطلب هنا عمداً — عند الإقلاع لا عند أول تنزيل.**
+// التسجيل مصنعٌ كسول، فبلا هذا السطر يقلع خادمٌ سليم الظاهر ثم يردّ 500 على أول طلب
+// تنزيل. وغيابُ المفتاح **عطلٌ يُعلَن عند التركيب ولا مفتاحَ يُخترع** (ADR-0046 دليل 14):
+// مُصدِرٌ يولّد لنفسه مفتاحاً عند الإقلاع يجعل كل تذكرة صالحةً قبل إعادة التشغيل ومرفوضةً
+// بعدها، والفشل يُقرأ «انتهت الصلاحية» لا «لا مفتاح».
+// ويُضبط بـBABEL_STORAGE_TICKET_KEY أو Babel__Storage__TicketSigningKey، ستّ‌عشرياً
+// بـ32 بايتاً فأكثر — ولا مفتاح في هذا المستودع ولا في أي ملفّ إعداد مُودَع فيه.
+_ = app.Services.GetRequiredService<Babel.Contracts.Storage.IAttachmentTickets>();
+
 await BabelApiHost.SeedEntitlementsAsync(app).ConfigureAwait(false);
 await app.RunAsync().ConfigureAwait(false);
 return 0;

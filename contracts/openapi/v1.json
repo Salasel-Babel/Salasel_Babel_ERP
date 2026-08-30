@@ -197,6 +197,789 @@
         }
       }
     },
+    "/api/v1/companies/{companyId}/attachments": {
+      "parameters": [
+        {
+          "name": "companyId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "listAttachments",
+        "summary": "جرد المرفقات / List attachments",
+        "description": "يجرد مرفقات الشركة، مرشَّحةً على المستند المصدر ومصفَّحةً. **ولا بايتة تعبر منه**: الجرد وصفٌ لا محتوى.\n\n**والترشيح بحقلين معاً أو بلا حقل**: نوعُ مستندٍ وحده يعني «كل مرفقات فواتير المبيعات في هذه الشركة»، وهو استعلامٌ لا يخدم شاشةً واحدة ويكلّف مسحاً — فيُرفض بـ400 ولا يُنفَّذ.\n\nوالترتيب **الأحدث أولاً** دائماً وصراحةً: صفحةٌ بلا ترتيب مُعلن تُعيد صفوفاً مكرّرة وأخرى مفقودة بين طلبين. وحجم الصفحة الافتراضي خمسون وسقفه مئة، وما تجاوزه **يُرفض ولا يُقصّ**: القصّ الصامت يجعل المستدعي يقرأ صفحةً واحدة ويحسب أن الجرد انتهى.\n\nLists the company's attachments, filtered by source document and paged. **No byte crosses it**: an inventory is description, not content.\n\n**Filtering is by both fields together or by neither**: a document type alone means 'every attachment of every sales invoice in this company', a query that serves no screen and costs a scan — so it is refused with 400 and never run.\n\nOrdering is **newest first**, always and explicitly: a page without a declared order returns duplicated and missing rows between two requests. The default page size is fifty and the cap is one hundred; beyond it the request is **refused, not truncated** — silent truncation makes the caller read one page and conclude the inventory ended.",
+        "parameters": [
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "description": "عدد الصفوف المتخطّاة. الافتراضي صفر. / Rows skipped. Defaults to zero.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]{1,7}$"
+            }
+          },
+          {
+            "name": "sourceDocumentId",
+            "in": "query",
+            "required": false,
+            "description": "معرّف المستند المصدر — يُرسل مع نوعه أو لا يُرسل. / The source document identifier — sent with its type or not at all.",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "sourceDocumentType",
+            "in": "query",
+            "required": false,
+            "description": "رمز نوع المستند المصدر — يُرسل مع معرّفه أو لا يُرسل. / The source document type code — sent with its identifier or not at all.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9._]{1,64}$"
+            }
+          },
+          {
+            "name": "take",
+            "in": "query",
+            "required": false,
+            "description": "حجم الصفحة. الافتراضي خمسون والسقف مئة. / Page size. Defaults to fifty, capped at one hundred.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]{1,7}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttachmentPage"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "ترشيحٌ بنصف ربط، أو رمزٌ مشوّه، أو صفحةٌ خارج المدى. / A half link, a malformed code, or a page out of range.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "depositAttachment",
+        "summary": "إيداع مرفق / Deposit an attachment",
+        "description": "يودِع بايتات مرفق ويُرجع وصفه: المعرّف والبصمة والحجم والنوع **المشموم**.\n\n**والحمولة multipart/form-data لا JSON**: جسم JSON يعني ترميز البايتات نصّاً — انتفاخ الثلث، وصورةً كاملة في سجلّ الطلب، وحمولةً لا يستطيع وسيطٌ أن يتخطّاها بتدفّق.\n\n**والنوع يأتي من البايتات لا من الاسم ولا من الترويسة.** الأرقام السحرية وحدها تُقرأ، وما لا يُتعرَّف عليه **يُرفض** بـ415 ولا يُخزَّن بنوع محايد — فالمحايد يُقدَّم غداً إلى متصفّح بترويسة يخترعها القارئ. وإعلانٌ يخالف المشموم **رفضٌ باسمه لا تصحيحٌ صامت**: التصحيح الصامت يجعل العميل يظنّ أن ما أرسله قُبل كما أرسله.\n\n**واسم الملفّ بيانات لا مسار.** لا يشارك في بناء أي مسار على الإطلاق — مفتاح الكائن يولّده المخزن من 256 بتّاً معمّى — ويُطهَّر بقائمة **سماح** لا منع: يُسقط منه فاصل المسار ومحارف التحكّم والمحارف الاتجاهية غير المرئية (U+202E يقلب gpj.exe فيُقرأ exe.jpg). والاسم العربي يبقى عربياً كاملاً، واسمٌ لا يبقى منه محرف مقبول واحد يُرفض بـ400.\n\n**والحجم يُفحص قبل الشمّ وقبل أي تخصيص**، ويُرفض بـ413 بجسم مشكلة بالعربية والإنجليزية — لا باستثناء ولا باتصالٍ يُقطع.\n\nDeposits attachment bytes and returns its descriptor: identifier, digest, length, and the **sniffed** type.\n\n**The payload is multipart/form-data, not JSON**: a JSON body means text-encoding the bytes — a third larger, a whole image in the request log, and a payload no proxy can stream past.\n\n**The type comes from the bytes, not from the name and not from the header.** Only magic numbers are read, and anything unrecognised is **refused** with 415 rather than stored as a neutral type — a neutral type is handed to a browser tomorrow with a header its reader invents. A declaration that contradicts the sniffed type is a **named refusal, not a silent correction**: silent correction makes the client believe what it sent was accepted as sent.\n\n**A file name is data, never a path.** It takes no part in building any path — the object key is generated by the store from 256 encrypted-random bits — and it is sanitised by an **allow** list, not a deny list: path separators, control characters, and invisible directional characters are dropped (U+202E turns gpj.exe into exe.jpg on screen). An Arabic name stays fully Arabic, and a name from which not one acceptable character survives is refused with 400.\n\n**Size is checked before sniffing and before any allocation**, and refused with 413 and a bilingual problem body — never an exception and never a dropped connection.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "description": "حمولة الإيداع. جزءٌ إلزامي اسمه content يحمل البايتات، وترويستاه filename و Content-Type هما الاسم المُعلَن والنوع المُعلَن — ولا يُصدَّق أيّهما. وجزآن نصّيان اختياريان يربطان المرفق بمستنده. / The deposit payload. One mandatory part named content carries the bytes, and its filename and Content-Type headers are the declared name and declared type — neither is believed. Two optional text parts link the attachment to its source document.",
+                "properties": {
+                  "content": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "بايتات المرفق. السقف الافتراضي عشرون ميبي‌بايت، وما تجاوزه يُرفض بـ413 بجسم مشكلة لا باستثناء. / The attachment bytes. The default cap is twenty mebibytes; beyond it the request is refused with 413 and a problem body, never an exception."
+                  },
+                  "sourceDocumentType": {
+                    "type": "string",
+                    "maxLength": 64,
+                    "description": "رمز نوع المستند المصدر — يُرسل مع معرّفه أو لا يُرسل، ونصفُ ربطٍ يُرفض. / The source document type code — sent together with its identifier or not at all; half a link is refused."
+                  },
+                  "sourceDocumentId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "معرّف المستند المصدر — يُرسل مع نوعه أو لا يُرسل. / The source document identifier — sent together with its type or not at all."
+                  }
+                },
+                "required": [
+                  "content"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Attachment"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "الحمولة مشوّهة، أو ينقصها جزء البايتات، أو فيها جزء غير معروف، أو الاسم لا يُطهَّر إلى اسم، أو نصفُ ربطٍ بمستند. / The payload is malformed, missing the content part, carries an unknown part, has a name that sanitises to nothing, or half a document link.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "المرفق أكبر من السقف المُعلن. والرفض جسم مشكلة لا استثناء ولا اتصال مقطوع. / The attachment exceeds the published cap. The refusal is a problem body, not an exception and not a dropped connection.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "الحمولة ليست multipart/form-data، أو البايتات لا تُتعرَّف على نوع مقبول، أو الإعلان يخالف المشموم. / The payload is not multipart/form-data, or the bytes match no accepted type, or the declaration contradicts the sniffed type.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/companies/{companyId}/attachments/{attachmentId}": {
+      "parameters": [
+        {
+          "name": "companyId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "attachmentId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف المرفق — غامضٌ عمداً: لا يُشتقّ من اسم ملفّ ولا من مسار، ولا يُقرأ منه شيء عن صاحبه. / The attachment identifier — deliberately opaque: derived from no file name and no path, and telling nothing about its owner.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "readAttachment",
+        "summary": "قراءة وصف مرفق / Read one attachment descriptor",
+        "description": "يقرأ وصف مرفق **بلا بايتة**: البصمة والحجم والنوع المشموم والمُودِع والزمن، وسلسلة الإصدارات (سلفه وخلَفه)، وعلامة السحب إن سُحب، ومسارَ تنزيل بايتاته.\n\n**ولاحظ ما ليس في الجواب: مفتاح الكائن في المخزن.** هو مسارٌ فيزيائي يفهمه المحوّل ويعيش في القاعدة وحدها، ونشرُه يجعل عميلاً يبني عليه ثم ينكسر يوم يصير المحوّل مخزناً كائنياً. والمسار الذي يحتاجه العميل هو contentPath.\n\n**ولاحظ ما ليس على هذا المورد: لا PUT ولا PATCH ولا DELETE.** والغياب بنيوي لا اتفاقي: دور التطبيق في PostgreSQL بلا صلاحية UPDATE ولا DELETE (‏42501)، ومشغّلٌ يرفض الاثنين على **كل** دور والمالك منهم (‏23001). والتصحيح إصدارٌ على /revisions، والإزالة علامةٌ على /withdrawal.\n\nReads an attachment's descriptor **without a byte**: digest, length, sniffed type, depositor, instant, the version chain (predecessor and successor), the withdrawal marker if withdrawn, and the path its bytes download from.\n\n**Note what the answer does not carry: the object key in the store.** It is a physical path the adapter understands and it lives in the database alone; publishing it makes a client build on it and break the day the adapter becomes object storage. The path a client needs is contentPath.\n\n**Note what this resource does not carry: no PUT, no PATCH, no DELETE.** The absence is structural, not conventional: the application role in PostgreSQL holds neither UPDATE nor DELETE (42501), and a trigger refuses both for **every** role including the owner (23001). Correction is a version at /revisions; removal is a marker at /withdrawal.",
+        "responses": {
+          "200": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Attachment"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "لا مرفق بهذا المعرّف **داخل هذه الشركة**. ومعرّفٌ صحيح من شركة أخرى يخرج بهذا الرمز نفسه — 404 لا 403، لأن «ممنوع» تُثبت وجود ما لا يخصّ السائل. / No attachment with this identifier **within this company**. A valid identifier from another company leaves with this same code — 404, not 403, because 'forbidden' proves the existence of something that is not the asker's.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/companies/{companyId}/attachments/{attachmentId}/content": {
+      "parameters": [
+        {
+          "name": "companyId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "attachmentId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف المرفق — غامضٌ عمداً: لا يُشتقّ من اسم ملفّ ولا من مسار، ولا يُقرأ منه شيء عن صاحبه. / The attachment identifier — deliberately opaque: derived from no file name and no path, and telling nothing about its owner.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "downloadAttachment",
+        "summary": "تنزيل بايتات مرفق بتذكرة / Download attachment bytes with a ticket",
+        "description": "يُرجع بايتات المرفق **بعد أن يُعيد المخزن حساب البصمة ويقارنها بالمُسجَّلة**. ملفٌّ بُدِّل تحت المسار نفسه **يُرفض هنا ولا يُسلَّم**: مخزنٌ يسلّم ثم يخبرك أنها لا تطابق قد سلّمها بالفعل.\n\n**والترتيب مُعلَن:** يُتحقَّق من توقيع التذكرة، ثم من انتهائها، ثم **يُقارَن مستأجرها بمستأجر الجلسة**، ثم يُنادى المخزن بمستأجر **الجلسة** لا بمستأجر التذكرة. فلو سُرّبت تذكرة كاملة واستُعملت في جلسة شركة أخرى سقطت عند المقارنة بـ**404 لا 403** — لأن 403 تُثبت وجود الملفّ؛ ولو سقطت المقارنة سهواً سقط النداء عند المخزن لأن المستأجر جزء من المفتاح هناك.\n\n**وتذكرةٌ منتهية أو توقيعٌ لا يصحّ ⇒ 401**، كأي اعتماد مرفوض ولا كشف وجود فيه: الرمزان storage.ticket_expired و storage.ticket_signature_invalid لا يقولان شيئاً عن وجود المرفق.\n\n**وترويسة Content-Type من النوع المشموم وحده** — لا من شيء أرسله العميل يوماً — وContent-Disposition بـattachment لا inline، والاسم فيها مرّتين: نسخة ASCII ونسخة UTF-8 مُرمَّزة بـRFC 5987 كي يبقى الاسم العربي عربياً.\n\nReturns the attachment bytes **after the store recomputes the digest and compares it with the recorded one**. A file swapped under the same path is **refused here and never served**: a store that serves and then tells you it did not match has already served it.\n\n**The order is declared:** the ticket signature is verified, then its expiry, then **its tenant is compared with the session's tenant**, and only then is the store called with the **session's** tenant rather than the ticket's. A whole ticket leaked and used in another company's session falls at that comparison with **404, not 403** — 403 would prove the file exists; and if that comparison were dropped by mistake, the call would still fall at the store, where the tenant is part of the key.\n\n**An expired ticket or an invalid signature gives 401**, like any refused credential, and discloses nothing: the codes storage.ticket_expired and storage.ticket_signature_invalid say nothing about whether the attachment exists.\n\n**The Content-Type header comes from the sniffed type alone** — never from anything a client ever sent — and Content-Disposition is attachment, not inline, carrying the name twice: an ASCII copy and an RFC 5987 UTF-8 copy so an Arabic name stays Arabic.",
+        "parameters": [
+          {
+            "name": "ticket",
+            "in": "query",
+            "required": true,
+            "description": "التذكرة الموقّعة كما سكّها باب download-tickets. تُقدَّم كما وصلت ولا يُحلَّل منها شيء. / The signed ticket as the download-tickets door minted it. Presented exactly as received; nothing in it is parsed.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{16,512}$",
+              "maxLength": 512
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "وسيط التذكرة مفقود أو مكرَّر أو خارج الطول. / The ticket parameter is missing, repeated, or out of length.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "لا مرفق بهذا المعرّف داخل هذه الشركة، أو التذكرة لشركة أخرى، أو لمرفق آخر. / No attachment with this identifier within this company, or the ticket belongs to another company or another attachment.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "بايتات المخزن لا تطابق البصمة المُسجَّلة — عبثٌ أو تلف — أو غابت والصفّ قائم. ولا تُسلَّم في الحالتين. / The stored bytes do not match the recorded digest — tampering or corruption — or they are missing while the row stands. Neither is served.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/companies/{companyId}/attachments/{attachmentId}/download-tickets": {
+      "parameters": [
+        {
+          "name": "companyId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "attachmentId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف المرفق — غامضٌ عمداً: لا يُشتقّ من اسم ملفّ ولا من مسار، ولا يُقرأ منه شيء عن صاحبه. / The attachment identifier — deliberately opaque: derived from no file name and no path, and telling nothing about its owner.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "issueAttachmentDownloadTicket",
+        "summary": "سكّ تذكرة تنزيل / Mint a download ticket",
+        "description": "يسكّ تذكرة موقّعة قصيرة الأجل تفتح بايتات مرفق واحد. **وهي ما يُعطى للمتصفّح، لا المسار ولا المعرّف.**\n\nوالتذكرة تحمل المستأجر والمرفق والحامل ولحظة الانتهاء، وعليها جميعاً HMAC-SHA256؛ **والحقول داخل البايتات الموقّعة لا بجانبها** — حقلٌ خارج التوقيع يُبدَّل بلا أن يبطل التوقيع. وقلبُ خانةٍ واحدة في أي بايت منها يُبطلها.\n\n**وما لا تفعله، مُعلَناً: لا تُبطَل قبل انتهائها** — لا قائمة إبطال ولا حالة في القاعدة. وذلك ثمن كونها بلا حالة، ولذلك السقف الافتراضي **خمس دقائق**: نافذةُ ضررٍ تُقاس بالدقائق لا بالساعات. وعمرٌ يتجاوز السقف **يُرفض ولا يُقصّ**: القصّ الصامت يجعل المستدعي يظنّ أنه أصدر ساعةً وقد أصدر خمس دقائق.\n\n**والوجود يُتحقَّق منه أولاً داخل الشركة**: تذكرةٌ تُسَكّ لمعرّفٍ لا وجود له كانت ستُنتج بابين يقولان قولين — سكٌّ ناجح ثم تنزيلٌ يردّ 404 — فيتعلّم السائل من الفرق بينهما شيئاً عن شركة أخرى.\n\nMints a short-lived signed ticket that opens the bytes of one attachment. **It is what a browser is given — not the path and not the identifier.**\n\nThe ticket carries the tenant, the attachment, the bearer, and the expiry instant, all under one HMAC-SHA256; **the fields are inside the signed bytes, not beside them** — a field outside the signature is changed without invalidating it. Flipping a single bit anywhere in it invalidates it.\n\n**What it does not do, declared: it is never revoked before it expires** — no revocation list and no state in the database. That is the price of being stateless, and it is why the default cap is **five minutes**: a damage window measured in minutes, not hours. A lifetime beyond the cap is **refused, not truncated**: silent truncation makes the caller believe it issued an hour when it issued five minutes.\n\n**Existence is checked first, within the company**: minting a ticket for an identifier that does not exist would make two doors say two things — a successful mint and then a 404 download — and the difference teaches the asker something about another company.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IssueAttachmentTicketRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttachmentTicket"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "الجسم لا يطابق العقد، أو العمر المطلوب يتجاوز السقف المُعلن. / The body does not match the contract, or the requested lifetime exceeds the published cap.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "لا مرفق بهذا المعرّف داخل هذه الشركة. / No attachment with this identifier within this company.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/companies/{companyId}/attachments/{attachmentId}/revisions": {
+      "parameters": [
+        {
+          "name": "companyId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "attachmentId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف المرفق — غامضٌ عمداً: لا يُشتقّ من اسم ملفّ ولا من مسار، ولا يُقرأ منه شيء عن صاحبه. / The attachment identifier — deliberately opaque: derived from no file name and no path, and telling nothing about its owner.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "reviseAttachment",
+        "summary": "إصدار جديد على مرفق / Revise an attachment",
+        "description": "يودِع **إصداراً جديداً** يشير إلى سلفه. مورد فرعي مستقلّ لا PUT على المرفق: السجلّ يُضاف إليه ولا يُعدَّل، والتصحيح صفٌّ يشير إلى ما قبله. والسلف **يبقى مقروءاً ببايتاته الأصلية** إلى الأبد.\n\n**والسلسلة خطّية ولا تتفرّع، وتفرضها القاعدة لا الشيفرة**: فهرس فريد جزئي على عمود السلف يرفض الثاني. فتصحيحان متزامنان على السلف نفسه يُنتجان فائزاً واحداً وخاسراً بـ409 ورمزٍ ثابت storage.attachment_already_superseded — **لا 500**، لأن الفحص «هل صُحِّح من قبل؟» لا يمسك السباق والقاعدة وحدها تمسكه.\n\nومرفقٌ **مسحوب** لا يُصحَّح: السحب حكمٌ نهائي على ذلك الإصدار.\n\nوالحمولة هي حمولة الإيداع نفسها وبالشروط نفسها.\n\nDeposits a **new version** that references its predecessor. A separate sub-resource, not a PUT on the attachment: the register is appended to, never modified, and a correction is a row pointing at what came before it. The predecessor **stays readable with its original bytes** forever.\n\n**The chain is linear and does not fork, and the database enforces that, not the code**: a partial unique index on the predecessor column refuses the second. Two concurrent corrections of the same predecessor produce exactly one winner and a loser with 409 and the stable code storage.attachment_already_superseded — **not 500**, because the 'was it already superseded?' check does not catch the race and only the database does.\n\nA **withdrawn** attachment is never corrected: withdrawal is a final verdict on that version.\n\nThe payload is the deposit payload, under the same conditions.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "description": "حمولة الإيداع. جزءٌ إلزامي اسمه content يحمل البايتات، وترويستاه filename و Content-Type هما الاسم المُعلَن والنوع المُعلَن — ولا يُصدَّق أيّهما. وجزآن نصّيان اختياريان يربطان المرفق بمستنده. / The deposit payload. One mandatory part named content carries the bytes, and its filename and Content-Type headers are the declared name and declared type — neither is believed. Two optional text parts link the attachment to its source document.",
+                "properties": {
+                  "content": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "بايتات المرفق. السقف الافتراضي عشرون ميبي‌بايت، وما تجاوزه يُرفض بـ413 بجسم مشكلة لا باستثناء. / The attachment bytes. The default cap is twenty mebibytes; beyond it the request is refused with 413 and a problem body, never an exception."
+                  },
+                  "sourceDocumentType": {
+                    "type": "string",
+                    "maxLength": 64,
+                    "description": "رمز نوع المستند المصدر — يُرسل مع معرّفه أو لا يُرسل، ونصفُ ربطٍ يُرفض. / The source document type code — sent together with its identifier or not at all; half a link is refused."
+                  },
+                  "sourceDocumentId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "معرّف المستند المصدر — يُرسل مع نوعه أو لا يُرسل. / The source document identifier — sent together with its type or not at all."
+                  }
+                },
+                "required": [
+                  "content"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Attachment"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "الحمولة مشوّهة، أو ينقصها جزء البايتات، أو الاسم لا يُطهَّر إلى اسم. / The payload is malformed, missing the content part, or carries a name that sanitises to nothing.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "لا سلف بهذا المعرّف داخل هذه الشركة. / No predecessor with this identifier within this company.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "السلف صُحِّح من قبل — والسلسلة خطّية ولا تتفرّع — أو هو مسحوب. / The predecessor was already superseded — the chain is linear and does not fork — or it is withdrawn.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "المرفق أكبر من السقف المُعلن. / The attachment exceeds the published cap.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "الحمولة ليست multipart/form-data، أو البايتات لا تُتعرَّف، أو الإعلان يخالف المشموم. / The payload is not multipart/form-data, or the bytes are unrecognised, or the declaration contradicts the sniffed type.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/companies/{companyId}/attachments/{attachmentId}/withdrawal": {
+      "parameters": [
+        {
+          "name": "companyId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "attachmentId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف المرفق — غامضٌ عمداً: لا يُشتقّ من اسم ملفّ ولا من مسار، ولا يُقرأ منه شيء عن صاحبه. / The attachment identifier — deliberately opaque: derived from no file name and no path, and telling nothing about its owner.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "withdrawAttachment",
+        "summary": "سحب مرفق / Withdraw an attachment",
+        "description": "يضع علامة سحب على مرفق. مورد فرعي مستقلّ لا DELETE: **لا بايتة تُحذف ولا بصمة تُمحى** — الاحتفاظ بسند القيد واجب نظامي، والسحب إعلانُ حالة لا محو.\n\nوالعلامة **صفٌّ في جدول ثانٍ** مفتاحه المرفق نفسه، فلا يُسحب مرّتين — والقاعدة تقولها لا الشيفرة. ولا صلاحية DELETE على جدول العلامات أيضاً: «سحبٌ ثم تراجعٌ عن السحب» عمليةٌ بلا أثر، وهي بالضبط الرواية التي يمنعها السجلّ.\n\n**والسبب مفتاحٌ من مجموعة يملكها المستدعي، لا نصّ حرّ**: نصٌّ حرّ يُكتب بلغة كاتبه ثم يُقرأ في تقرير بلغة أخرى، ولا يُرشَّح عليه ولا يُترجَم.\n\nMarks an attachment as withdrawn. A separate sub-resource, not a DELETE: **no byte is deleted and no digest is erased** — retaining the evidence behind an entry is a regulatory duty, and a withdrawal declares a state rather than erasing one.\n\nThe marker is **a row in a second table** keyed by the attachment itself, so it is never withdrawn twice — and the database says so, not the code. There is no DELETE grant on the marker table either: 'withdraw then un-withdraw' is an operation that leaves no trace, which is exactly the story this register exists to prevent.\n\n**The reason is a key from a set the caller owns, not free text**: free text is written in its author's language and read in a report in another, is never filtered on, and is never translated.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WithdrawAttachmentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Attachment"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "الجسم لا يطابق العقد، أو مفتاح السبب ليس مفتاحاً. / The body does not match the contract, or the reason key is not a key.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "لا مرفق بهذا المعرّف داخل هذه الشركة. / No attachment with this identifier within this company.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "المرفق مسحوب من قبل — ولا يُسحب مرّتين. / The attachment is already withdrawn, and is never withdrawn twice.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/companies/{companyId}/capability-profile": {
       "parameters": [
         {
@@ -6355,6 +7138,225 @@
         ],
         "additionalProperties": false
       },
+      "Attachment": {
+        "type": "object",
+        "description": "وصف مرفق — البايتات في المخزن وهذا ما في القاعدة. والبصمة هي ما يجعل المسار وحده غير كافٍ: ملفٌّ بُدِّل تحت المسار نفسه يُكتشف. ولا مفتاح كائن هنا: هو مسارٌ فيزيائي يعيش في القاعدة وحدها، والمسار الذي يحتاجه العميل هو contentPath. / An attachment descriptor — the bytes are in the store and this is what is in the database. The digest is what makes a path alone insufficient: a file swapped under the same path is detected. No object key appears here: it is a physical path living in the database alone, and the path a client needs is contentPath.",
+        "properties": {
+          "byteLength": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647,
+            "description": "عدد البايتات كما كُتبت. / The byte count as written."
+          },
+          "contentHash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "description": "‏SHA-256 للبايتات، ستّ‌عشرياً صغيراً. ويُعاد حسابه ويُقارَن **قبل** تسليم أي بايتة. / SHA-256 of the bytes, lower-case hex. Recomputed and compared **before** a single byte is served."
+          },
+          "contentPath": {
+            "type": "string",
+            "maxLength": 256,
+            "description": "مسار تنزيل البايتات على هذا السطح — ويحتاج تذكرة موقّعة في سلسلة استعلامه. / The path these bytes download from on this surface — it needs a signed ticket in its query string."
+          },
+          "fileName": {
+            "type": "string",
+            "maxLength": 120,
+            "description": "اسم العرض بعد التطهير. للعرض وحده، ولا يدخل أي مسار، وامتداده من البايتات لا من الاسم المُرسَل. / The sanitised display name. For display alone, never part of any path, and its extension comes from the bytes rather than from the name sent."
+          },
+          "id": {
+            "type": "string",
+            "maxLength": 36,
+            "description": "المعرّف الغامض — لا يُشتقّ من اسم ولا من مسار، ولا يُقرأ منه شيء عن صاحبه. / The opaque identifier — derived from no name and no path, and telling nothing about its owner."
+          },
+          "mediaType": {
+            "type": "string",
+            "enum": [
+              "application/pdf",
+              "image/heic",
+              "image/jpeg",
+              "image/png",
+              "image/tiff",
+              "image/webp"
+            ],
+            "description": "النوع **المشموم من البايتات**، لا المُعلَن. ومنه وحده تُبنى ترويسة التنزيل. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The type **sniffed from the bytes**, not the declared one. The download header is built from it alone. Matched literally and case-sensitively; a number is never accepted in place of a name."
+          },
+          "sourceDocumentId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 36,
+            "description": "معرّف المستند المصدر، أو null لمرفقٍ لا مستند له. / The source document identifier, or null for an attachment with no document."
+          },
+          "sourceDocumentType": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 64,
+            "description": "رمز نوع المستند المصدر، أو null. رمزٌ لا نصٌّ معروض: يُرشَّح به الجرد ولا يُترجَم. / The source document type code, or null. A code, not displayed text: the inventory filters on it and it is never translated."
+          },
+          "storedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "لحظة الإيداع. بصيغة ISO 8601 الدوّارة بتوقيت UTC وبأرقام لاتينية — الصيغة نفسها التي يقرأ بها الخادم صلاحية اعتماده من إعداده، فلا وقتٌ يُكتب بشكل ويُقرأ بآخر. / The instant of deposit. In round-trip ISO 8601, UTC, Latin digits — the same spelling the server reads a credential expiry with from its own configuration, so no instant is written one way and read another."
+          },
+          "storedBy": {
+            "type": "string",
+            "maxLength": 36,
+            "description": "من أودع — إنسان، لا نظام. / Who deposited it — a human, not the system."
+          },
+          "supersededBy": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 36,
+            "description": "خلَفُ هذا الإصدار إن صُحِّح، أو null. والسلسلة خطّية ولا تتفرّع. / The successor of this version if it was corrected, or null. The chain is linear and does not fork."
+          },
+          "supersedes": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 36,
+            "description": "سلفُ هذا الإصدار، أو null للإصدار الأول. / The predecessor of this version, or null for the first."
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647,
+            "description": "رقم الإصدار — يبدأ بواحد ويزيد مع كل تصحيح. / The version number — starts at one and rises with each correction."
+          },
+          "withdrawal": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/AttachmentWithdrawal"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "علامة السحب إن سُحب، أو null. **والبايتات والبصمة باقيتان في الحالتين.** / The withdrawal marker if withdrawn, or null. **The bytes and the digest remain in both cases.**"
+          }
+        },
+        "required": [
+          "byteLength",
+          "contentHash",
+          "contentPath",
+          "fileName",
+          "id",
+          "mediaType",
+          "sourceDocumentId",
+          "sourceDocumentType",
+          "storedAt",
+          "storedBy",
+          "supersededBy",
+          "supersedes",
+          "version",
+          "withdrawal"
+        ],
+        "additionalProperties": false
+      },
+      "AttachmentPage": {
+        "type": "object",
+        "description": "صفحة من جرد المرفقات ومعها المجموع الكلّي — لا «هل بعدها المزيد؟» وحدها: من يبني ترقيم صفحات يحتاج العدد ليعرف كم صفحة، ولا يستطيع اشتقاقه من صفحةٍ واحدة. / A page of the attachment inventory with the overall total — not merely 'is there more?': building pagination needs the count to know how many pages, and that cannot be derived from a single page.",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Attachment"
+            },
+            "description": "الصفوف، الأحدث أولاً. / The rows, newest first."
+          },
+          "skip": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2147483647,
+            "description": "عدد الصفوف المتخطّاة كما نُفِّذت. / Rows skipped, as executed."
+          },
+          "take": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "حجم الصفحة كما نُفِّذ. / The page size, as executed."
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2147483647,
+            "description": "مجموع ما يطابق الترشيح داخل هذه الشركة. / The total matching the filter within this company."
+          }
+        },
+        "required": [
+          "items",
+          "skip",
+          "take",
+          "total"
+        ],
+        "additionalProperties": false
+      },
+      "AttachmentTicket": {
+        "type": "object",
+        "description": "تذكرة تنزيل موقّعة. وهي ما يُعطى للمتصفّح لا المسار ولا المعرّف، ومستأجرها **داخل** البايتات الموقّعة لا بجانبها. ولا تُبطَل قبل انتهائها. / A signed download ticket. It is what a browser is given — not the path and not the identifier — and its tenant is **inside** the signed bytes rather than beside them. It is never revoked before it expires.",
+        "properties": {
+          "attachmentId": {
+            "type": "string",
+            "maxLength": 36,
+            "description": "المرفق الذي تفتحه هذه التذكرة، ولا تفتح غيره. / The attachment this ticket opens, and no other."
+          },
+          "contentPath": {
+            "type": "string",
+            "maxLength": 512,
+            "description": "المسار الكامل الذي تُنزَّل به البايتات بهذه التذكرة. / The complete path the bytes download from with this ticket."
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "لحظة الانتهاء. بصيغة ISO 8601 الدوّارة بتوقيت UTC وبأرقام لاتينية — الصيغة نفسها التي يقرأ بها الخادم صلاحية اعتماده من إعداده، فلا وقتٌ يُكتب بشكل ويُقرأ بآخر. / The expiry instant. In round-trip ISO 8601, UTC, Latin digits — the same spelling the server reads a credential expiry with from its own configuration, so no instant is written one way and read another."
+          },
+          "token": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{16,512}$",
+            "maxLength": 512,
+            "description": "الرمز الموقّع. نصٌّ مبهم لا بنية فيه: لا يُحلَّل ولا يُشتقّ منه شيء، ويُقدَّم كما وصل. / The signed token. An opaque string with no structure: never parsed, nothing derived from it, presented exactly as received."
+          }
+        },
+        "required": [
+          "attachmentId",
+          "contentPath",
+          "expiresAt",
+          "token"
+        ],
+        "additionalProperties": false
+      },
+      "AttachmentWithdrawal": {
+        "type": "object",
+        "description": "علامة سحب — لا حذف. صفٌّ في جدول ثانٍ، والبايتات باقية والبصمة باقية: الاحتفاظ بسند القيد واجب نظامي. / A withdrawal marker, not a deletion. A row in a second table; the bytes and the digest remain, because retaining the evidence behind an entry is a regulatory duty.",
+        "properties": {
+          "reasonKey": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "مفتاح السبب: رمزٌ يقرؤه برنامج من مجموعة يملكها المستدعي، لا نصٌّ يُعرض. / The reason key: a code a program reads, from a set the caller owns — not text for display."
+          },
+          "withdrawnAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "لحظة السحب. بصيغة ISO 8601 الدوّارة بتوقيت UTC وبأرقام لاتينية — الصيغة نفسها التي يقرأ بها الخادم صلاحية اعتماده من إعداده، فلا وقتٌ يُكتب بشكل ويُقرأ بآخر. / The instant of withdrawal. In round-trip ISO 8601, UTC, Latin digits — the same spelling the server reads a credential expiry with from its own configuration, so no instant is written one way and read another."
+          },
+          "withdrawnBy": {
+            "type": "string",
+            "maxLength": 36,
+            "description": "من سحبه — إنسان، لا نظام. / Who withdrew it — a human, not the system."
+          }
+        },
+        "required": [
+          "reasonKey",
+          "withdrawnAt",
+          "withdrawnBy"
+        ],
+        "additionalProperties": false
+      },
       "CapabilityProfile": {
         "type": "object",
         "properties": {
@@ -7317,6 +8319,22 @@
           "divergences",
           "isReconciled",
           "subledgerTotal"
+        ],
+        "additionalProperties": false
+      },
+      "IssueAttachmentTicketRequest": {
+        "type": "object",
+        "description": "طلب سكّ تذكرة تنزيل. والعمر بالثواني عدداً صحيحاً لا كسراً عشرياً: مدّةٌ تعبر السلك بفاصلة عائمة تُقارَن يوماً بمدّة أخرى فتختلفان في الخانة السابعة عشرة. وما تجاوز السقف يُرفض ولا يُقصّ. / A request to mint a download ticket. The lifetime is whole seconds, not a decimal: a duration crossing the wire as a float is one day compared with another and they differ in the seventeenth digit. Beyond the cap it is refused, never truncated.",
+        "properties": {
+          "lifetimeSeconds": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 300,
+            "description": "عمر التذكرة بالثواني. السقف الافتراضي خمس دقائق — نافذةُ ضررٍ تُقاس بالدقائق لا بالساعات. / The ticket lifetime in seconds. The default cap is five minutes — a damage window measured in minutes, not hours."
+          }
+        },
+        "required": [
+          "lifetimeSeconds"
         ],
         "additionalProperties": false
       },
@@ -9796,6 +10814,21 @@
           "denominator",
           "numerator",
           "unitCode"
+        ],
+        "additionalProperties": false
+      },
+      "WithdrawAttachmentRequest": {
+        "type": "object",
+        "description": "طلب سحب مرفق. والسبب مفتاحٌ من مجموعة يملكها المستدعي لا نصّ حرّ: نصٌّ حرّ يُكتب بلغة كاتبه ثم يُقرأ في تقرير بلغة أخرى، ولا يُرشَّح عليه ولا يُترجَم. / A request to withdraw an attachment. The reason is a key from a set the caller owns, not free text: free text is written in its author's language and read in a report in another, is never filtered on, and is never translated.",
+        "properties": {
+          "reasonKey": {
+            "type": "string",
+            "pattern": "^[a-z0-9._]{1,64}$",
+            "description": "مفتاح السبب: أحرف لاتينية صغيرة وأرقام ونقطة وشرطة سفلية. / The reason key: lower-case Latin letters, digits, dots, and underscores."
+          }
+        },
+        "required": [
+          "reasonKey"
         ],
         "additionalProperties": false
       }

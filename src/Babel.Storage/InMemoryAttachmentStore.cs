@@ -87,6 +87,12 @@ public sealed class InMemoryAttachmentStore : IAttachmentStore
             return ValueTask.FromResult(Result<StoredAttachment>.Failure(fileName.Errors));
         }
 
+        Result<bool> link = SourceDocumentLink.Check(submission.SourceDocumentType, submission.SourceDocumentId);
+        if (link.IsFailure)
+        {
+            return ValueTask.FromResult(Result<StoredAttachment>.Failure(link.Errors));
+        }
+
         int version = 1;
         Entry? predecessor = null;
 
@@ -128,6 +134,8 @@ public sealed class InMemoryAttachmentStore : IAttachmentStore
             StoredBy = submission.Actor,
             Version = version,
             Supersedes = submission.Supersedes,
+            SourceDocumentType = link.Value ? submission.SourceDocumentType : null,
+            SourceDocumentId = link.Value ? submission.SourceDocumentId : null,
         };
 
         _entries[(submission.Tenant.Value, id.Value)] = new Entry(descriptor, bytes);
@@ -193,6 +201,44 @@ public sealed class InMemoryAttachmentStore : IAttachmentStore
             ObservedHash = observed,
             BytesRead = entry.Content.Length,
             Elapsed = TimeSpan.Zero,
+        }));
+    }
+
+    /// <inheritdoc />
+    public ValueTask<Result<AttachmentPage>> ListAsync(
+        AttachmentQuery query,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        Result<bool> page = SourceDocumentLink.CheckPage(query);
+        if (page.IsFailure)
+        {
+            return ValueTask.FromResult(Result<AttachmentPage>.Failure(page.Errors));
+        }
+
+        Result<bool> link = SourceDocumentLink.Check(query.SourceDocumentType, query.SourceDocumentId);
+        if (link.IsFailure)
+        {
+            return ValueTask.FromResult(Result<AttachmentPage>.Failure(link.Errors));
+        }
+
+        // المستأجر جزء من المفتاح هنا أيضاً — لا مرشّح يُضاف بعد قراءة الكلّ.
+        List<StoredAttachment> matching = [.. _entries
+            .Where(pair => pair.Key.Tenant == query.Tenant.Value)
+            .Select(static pair => Describe(pair.Value))
+            .Where(descriptor => !link.Value
+                || (string.Equals(descriptor.SourceDocumentType, query.SourceDocumentType, StringComparison.Ordinal)
+                    && descriptor.SourceDocumentId == query.SourceDocumentId))
+            .OrderByDescending(static descriptor => descriptor.Id.Value)];
+
+        return ValueTask.FromResult(Result<AttachmentPage>.Success(new AttachmentPage
+        {
+            Items = [.. matching.Skip(query.Skip).Take(query.Take)],
+            Total = matching.Count,
+            Skip = query.Skip,
+            Take = query.Take,
         }));
     }
 

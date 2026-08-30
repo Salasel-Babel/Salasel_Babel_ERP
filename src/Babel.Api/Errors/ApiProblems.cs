@@ -124,6 +124,33 @@ internal static class ApiProblems
                 or "inventory.wrong_state" or "inventory.movement_already_returned"
                 or "inventory.movement_identity_conflict" or "inventory.movement_quantity_conflict" => 409,
             "inventory.unexpected_row_count" => 500,
+            // ── المرفقات ─────────────────────────────────────────────────────
+            // و**الأربعة الأولى تُصنَّف بأعيانها لا ببادئتها**: «أكبر من الحدّ» و«نوعٌ لا
+            // يُعرف» و«إعلانٌ يخالف البايتات» رفوضٌ يعرف العميل ما يفعل بكلٍّ منها —
+            // يقصّ الصورة، أو يختار ملفّاً آخر، أو يصحّح ترويسته — وجمعُها تحت رمز واحد
+            // كان سيجعل الثلاثة رسالةً واحدة لا يُبنى عليها فرع.
+            "storage.attachment_not_found" => 404,
+            "storage.content_too_large" => 413,
+            "storage.content_not_recognised" or "storage.declared_type_mismatch" => 415,
+            "storage.content_empty" or "storage.file_name_refused"
+                or "storage.source_document_incomplete" or "storage.source_document_type_refused"
+                or "storage.page_refused" or "storage.ticket_lifetime_refused" => 400,
+
+            // «سُحب من قبل» و«صُحِّح من قبل» تعارضٌ مع حالة قائمة: يقرؤهما العميل ثم
+            // يقرأ الحالة ويقرّر. و**التفرّع يصل هنا 409 لا 500**: الفهرس الفريد الجزئي
+            // يحسم السباق في القاعدة، والمحوّل يمسك التصادم ويعيده رفضاً باسمه.
+            "storage.attachment_withdrawn" or "storage.attachment_already_superseded" => 409,
+
+            // بايتاتٌ لا تطابق بصمتها، أو غابت عن المخزن والصفّ قائم: **لا تُسلَّم**،
+            // ولا تُبتلع بـ500 بلا رمز — العميل الذي يقرأ هذا الرمز يعرف أنه اكتشف عبثاً
+            // أو تلفاً، لا عطلاً عابراً يُعاد معه الطلب.
+            "storage.content_hash_mismatch" or "storage.content_missing" => 409,
+
+            // **التذكرة اعتمادٌ لا صلاحية**: توقيعٌ لا يصحّ أو تذكرةٌ انتهت ⇒ 401 كأي
+            // اعتماد مرفوض، لا 403. وتذكرةٌ لمستأجرٍ آخر لا تصل إلى هنا أصلاً: السطح
+            // يحوّلها إلى attachment_not_found — و**404 لا 403 عمداً**، لأن «ممنوع»
+            // تُثبت وجود الملفّ عند غيرك.
+            "storage.ticket_signature_invalid" or "storage.ticket_expired" => 401,
 
             _ when code.StartsWith("company_setup.", StringComparison.Ordinal) => 422,
             _ when code.StartsWith("cost_center.", StringComparison.Ordinal) => 422,
@@ -138,6 +165,8 @@ internal static class ApiProblems
             _ when code.StartsWith("membership.", StringComparison.Ordinal) => 422,
             _ when code.StartsWith("signup.", StringComparison.Ordinal) => 422,
             _ when code.StartsWith("subscription.", StringComparison.Ordinal) => 422,
+
+            _ when code.StartsWith("storage.", StringComparison.Ordinal) => 422,
 
             _ when code.StartsWith("wire.", StringComparison.Ordinal) => 400,
             _ when code.StartsWith("auth.", StringComparison.Ordinal) => 401,

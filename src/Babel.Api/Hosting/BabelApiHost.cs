@@ -15,6 +15,7 @@ using Babel.Ledger;
 using Babel.Purchasing;
 using Babel.Sales;
 using Babel.SharedKernel;
+using Babel.Storage;
 
 namespace Babel.Api.Hosting;
 
@@ -78,6 +79,15 @@ internal static class BabelApiHost
         // (‏docs/evidence/traps.md#fakh-one-module-connection-still-read-from-a-default-after-its-siblings-were-fixed)
         builder.Services.AddBabelInventory(options => ApplyInventoryConfiguration(builder.Configuration, options));
 
+        // ── مخزن المرفقات: مشروع مساند لا وحدة، والجذر التركيبي وحده يركّبه ──────
+        //
+        // ‏**وثلاثة أسطر لا سطر واحد، ولكلٍّ ثمنه المُعلَن:** المخزن، ثم مُصدِر التذاكر
+        // (ويُلزم من يركّبه بضبط مفتاح توقيع)، ثم السطح المنشور الذي يناديه هذا السطح.
+        // والفصل مقصود في ADR-0046: نشرٌ لا يقدّم تنزيلاً موقّعاً لا يحتاج المفتاح أصلاً.
+        builder.Services.AddBabelStorage(options => ApplyStorageConfiguration(builder.Configuration, options));
+        builder.Services.AddBabelStorageTickets();
+        builder.Services.AddBabelAttachmentSurface();
+
         // سياق الطلب: يُملأ من الاعتماد وحده.
         builder.Services.AddScoped<RequestTenantContext>();
         builder.Services.AddScoped<ITenantContext>(static sp => sp.GetRequiredService<RequestTenantContext>());
@@ -139,6 +149,7 @@ internal static class BabelApiHost
         app.MapCapabilityProfileApi();
         app.MapCompanySetupApi();
         app.MapDocumentApi();
+        app.MapAttachmentApi();
         app.MapDocsApi();
 
         return app;
@@ -240,6 +251,52 @@ internal static class BabelApiHost
         if (!string.IsNullOrWhiteSpace(currency))
         {
             options.CompanyCurrency = currency;
+        }
+    }
+
+    /// <summary>
+    /// يقرأ إعداد المخزن. <b>ولا اتصال مالك هنا</b> — كما في النواة والدفتر والوحدتين:
+    /// خادمٌ يحمله يستطيع إسقاط مشغّل «يُضاف ولا يُعدَّل» ثم الكتابة فوق سند إثبات.
+    /// <para>
+    /// <b>ولا مفتاح توقيع في مستودع ولا في ملفّ إعداد مُودَع.</b> يُقرأ من الإعداد —
+    /// أي من البيئة عملياً — وغيابُه <b>عطلٌ يُعلَن عند التركيب</b> لا مفتاحٌ يُخترع:
+    /// مُصدِرُ تذاكر يولّد لنفسه مفتاحاً عند الإقلاع يُنتج نظاماً تُقبل فيه كل تذكرة
+    /// قبل إعادة التشغيل وتُرفض كلها بعدها، والفشل يُقرأ «انتهت الصلاحية» لا «لا مفتاح»
+    /// (‏ADR-0046 دليل 14).
+    /// </para>
+    /// </summary>
+    /// <param name="configuration">الإعداد.</param>
+    /// <param name="options">إعدادات المخزن.</param>
+    private static void ApplyStorageConfiguration(ConfigurationManager configuration, StorageOptions options)
+    {
+        string? app = configuration["Babel:Storage:AppConnectionString"];
+        if (!string.IsNullOrWhiteSpace(app))
+        {
+            options.AppConnectionString = app;
+        }
+
+        string? root = configuration["Babel:Storage:RootPath"];
+        if (!string.IsNullOrWhiteSpace(root))
+        {
+            options.RootPath = root;
+        }
+
+        string? maximum = configuration["Babel:Storage:MaximumBytes"];
+        if (!string.IsNullOrWhiteSpace(maximum))
+        {
+            options.MaximumBytes = long.Parse(maximum, CultureInfo.InvariantCulture);
+        }
+
+        string? lifetime = configuration["Babel:Storage:TicketLifetimeSeconds"];
+        if (!string.IsNullOrWhiteSpace(lifetime))
+        {
+            options.TicketLifetimeCap = TimeSpan.FromSeconds(int.Parse(lifetime, CultureInfo.InvariantCulture));
+        }
+
+        string? key = configuration["Babel:Storage:TicketSigningKey"];
+        if (!string.IsNullOrWhiteSpace(key))
+        {
+            options.TicketSigningKey = Convert.FromHexString(key);
         }
     }
 

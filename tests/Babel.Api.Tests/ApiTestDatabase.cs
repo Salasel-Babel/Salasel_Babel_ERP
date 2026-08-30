@@ -8,6 +8,7 @@ using Babel.Inventory;
 using Babel.Ledger;
 using Babel.Purchasing;
 using Babel.Sales;
+using Babel.Storage;
 using Npgsql;
 
 namespace Babel.Api.Tests;
@@ -88,6 +89,38 @@ internal static class ApiTestDatabase
 
     /// <summary>قاعدة المخزون لهذه العملية وحدها.</summary>
     public static string InventoryDatabase { get; } = TestRunScope.Name(InventoryStem);
+    /// <summary>الجذع الثابت لاسم قاعدة المرفقات — منفصلة، وللسبب نفسه.</summary>
+    public const string StorageStem = "babel_api_tests_storage";
+
+    /// <summary>قاعدة المرفقات لهذه العملية وحدها.</summary>
+    public static string StorageDatabase { get; } = TestRunScope.Name(StorageStem);
+
+    /// <summary>
+    /// جذر مخزن المرفقات على القرص <b>لهذه العملية وحدها</b> — بلاحقتها نفسها.
+    /// جذرٌ مشترك بين عمليتين يجعل كنسَ إحداهما يسحب البايتات من تحت الأخرى.
+    /// </summary>
+    public static string StorageRoot { get; } =
+        Path.Combine(Path.GetTempPath(), "babel-api-attachments-" + TestRunScope.Suffix);
+
+    /// <summary>
+    /// السقف المفروض على المرفق في هذه المجموعة: <b>ميبي‌بايت واحد</b> لا عشرون.
+    /// <para>
+    /// والسبب أن ما يُختبَر هو <b>أن الحدّ يُفرض عند الحدّ ويردّ 413 بجسم مشكلة</b>، لا
+    /// قيمة السقف نفسها؛ ورفعُ عشرين ميبي‌بايت في كل تشغيلة ثمنٌ يُدفع بلا مقابل.
+    /// والقيمة تصل الخادم من إعداده كما تصله في النشر، فالمسار المُختبَر هو المسار نفسه.
+    /// </para>
+    /// </summary>
+    public const long StorageMaximumBytes = 1024 * 1024;
+
+    /// <summary>
+    /// مفتاح توقيع تذاكر التنزيل — <b>يُولَّد لهذه العملية ولا يُودَع</b>.
+    /// <para>
+    /// ولا مفتاح في المستودع ولا في ملفّ إعداد فيه: مفتاحٌ مُودَع هو مفتاحٌ عامّ، ومن
+    /// يقرؤه يسكّ تذاكر لأي مرفق في أي نشرة تستعمله.
+    /// </para>
+    /// </summary>
+    public static string StorageTicketKeyHex { get; } =
+        Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32)).ToLowerInvariant();
 
     /// <summary>
     /// دور التطبيق: يدخل، ولا يملك شيئاً، وليس superuser. واسمه <b>مشترك عمداً</b> —
@@ -208,6 +241,26 @@ internal static class ApiTestDatabase
         CompanyCurrency = "SAR",
     };
 
+    /// <summary>
+    /// إعدادات مخزن المرفقات لهذه المجموعة — <b>قاعدة مستقلّة، ودور تطبيق غير مالك</b>.
+    /// <para>
+    /// <b>وبدور التطبيق لا بالمالك، بخلاف المبيعات والمشتريات:</b> مخطّط المخزن ينزع
+    /// <c>UPDATE</c> و<c>DELETE</c> من دور التطبيق، وتشغيلُ السطح بدور المالك كان
+    /// سيجعل تلك الطبقة زينةً في كل اختبار يمرّ من HTTP — أي أن أهمّ ما يحرسه ADR-0046
+    /// لا يُشغَّل حيث يهمّ.
+    /// </para>
+    /// </summary>
+    public static StorageOptions Storage { get; } = new()
+    {
+        OwnerConnectionString =
+            $"Host=127.0.0.1;Port=5432;Database={StorageDatabase};Username=postgres;Include Error Detail=true",
+        AppConnectionString =
+            $"Host=127.0.0.1;Port=5432;Database={StorageDatabase};Username={AppRole};Include Error Detail=true;Maximum Pool Size=5;Minimum Pool Size=0",
+        AppRole = AppRole,
+        RootPath = StorageRoot,
+        MaximumBytes = StorageMaximumBytes,
+    };
+
     /// <summary>جذر المستودع.</summary>
     public static string RepositoryRoot { get; } = RepositoryPaths.Root;
 
@@ -295,6 +348,10 @@ internal static class ApiTestDatabase
         // والمنح يُعاد بعد البذر: الجداول التي بُذرت للتوّ موجودة سلفاً، لكن إعادة
         // المنح تجعل الخطوة **مُحكَمة** على قاعدة أُنشئت في تشغيل سابق للعملية نفسها.
         await ControlSchema.GrantSurfaceAsync(control, Control, cancellationToken).ConfigureAwait(false);
+        // ومخزن المرفقات بناشره المُعلَن: EnsureCreated ثم مشغّل «يُضاف ولا يُعدَّل»
+        // وعمودا المستند المصدر، ثم الصلاحيات آخراً لأنها تحتاج اسم دور التطبيق.
+        Directory.CreateDirectory(StorageRoot);
+        await StorageSchema.DeployAsync(Storage, cancellationToken).ConfigureAwait(false);
     }
 
     private static async Task CreateDatabaseAndRoleAsync(CancellationToken cancellationToken)
@@ -311,6 +368,7 @@ internal static class ApiTestDatabase
         await ExecAsync(admin, $"create database {SalesDatabase}", cancellationToken).ConfigureAwait(false);
         await ExecAsync(admin, $"create database {PurchasingDatabase}", cancellationToken).ConfigureAwait(false);
         await ExecAsync(admin, $"create database {InventoryDatabase}", cancellationToken).ConfigureAwait(false);
+        await ExecAsync(admin, $"create database {StorageDatabase}", cancellationToken).ConfigureAwait(false);
 
         // ‏nosuperuser ليست تفصيلاً: بدونها تسقط كل طبقات الحصانة معاً (فخ-30 · ADR-0003).
         //
@@ -362,6 +420,7 @@ internal static class ApiTestDatabase
                 """,
                 cancellationToken).ConfigureAwait(false);
         }
+        await ExecAsync(admin, $"grant connect on database {StorageDatabase} to {AppRole}", cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -396,6 +455,13 @@ internal static class ApiTestDatabase
             DropOne(admin, PurchasingDatabase);
             DropOne(admin, InventoryDatabase);
             DropOne(admin, ControlDatabase);
+            DropOne(admin, StorageDatabase);
+
+            // وبايتات المرفقات على القرص: مجلدٌ خاصّ بهذه العملية، فحذفه لا يمسّ أحداً.
+            if (Directory.Exists(StorageRoot))
+            {
+                Directory.Delete(StorageRoot, recursive: true);
+            }
         }
         catch (NpgsqlException exception)
         {

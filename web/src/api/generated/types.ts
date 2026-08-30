@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     87c9048f74660a903043ca74290644c3498a3195a97dc5368533bf6871b5a4ed
+     dac93701517afebf600cd3f74868a4ca5bd94861699466e41651938520f14959
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -98,6 +98,72 @@ export interface ApiError {
   messageAr: string;
   /** الرسالة الإنجليزية. / The English message. */
   messageEn: string;
+}
+
+/** وصف مرفق — البايتات في المخزن وهذا ما في القاعدة. والبصمة هي ما يجعل المسار وحده غير كافٍ: ملفٌّ بُدِّل تحت المسار نفسه يُكتشف. ولا مفتاح كائن هنا: هو مسارٌ فيزيائي يعيش في القاعدة وحدها، والمسار الذي يحتاجه العميل هو contentPath. / An attachment descriptor — the bytes are in the store and this is what is in the database. The digest is what makes a path alone insufficient: a file swapped under the same path is detected. No object key appears here: it is a physical path living in the database alone, and the path a client needs is contentPath. */
+export interface Attachment {
+  /** عدد البايتات كما كُتبت. / The byte count as written. */
+  byteLength: number;
+  /** SHA-256 للبايتات، ستّعشرياً صغيراً. ويُعاد حسابه ويُقارَن **قبل** تسليم أي بايتة. / SHA-256 of the bytes, lower-case hex. Recomputed and compared **before** a single byte is served. */
+  contentHash: string;
+  /** مسار تنزيل البايتات على هذا السطح — ويحتاج تذكرة موقّعة في سلسلة استعلامه. / The path these bytes download from on this surface — it needs a signed ticket in its query string. */
+  contentPath: string;
+  /** اسم العرض بعد التطهير. للعرض وحده، ولا يدخل أي مسار، وامتداده من البايتات لا من الاسم المُرسَل. / The sanitised display name. For display alone, never part of any path, and its extension comes from the bytes rather than from the name sent. */
+  fileName: string;
+  /** المعرّف الغامض — لا يُشتقّ من اسم ولا من مسار، ولا يُقرأ منه شيء عن صاحبه. / The opaque identifier — derived from no name and no path, and telling nothing about its owner. */
+  id: string;
+  /** النوع **المشموم من البايتات**، لا المُعلَن. ومنه وحده تُبنى ترويسة التنزيل. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The type **sniffed from the bytes**, not the declared one. The download header is built from it alone. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  mediaType: "application/pdf" | "image/heic" | "image/jpeg" | "image/png" | "image/tiff" | "image/webp";
+  /** معرّف المستند المصدر، أو null لمرفقٍ لا مستند له. / The source document identifier, or null for an attachment with no document. */
+  sourceDocumentId: string | null;
+  /** رمز نوع المستند المصدر، أو null. رمزٌ لا نصٌّ معروض: يُرشَّح به الجرد ولا يُترجَم. / The source document type code, or null. A code, not displayed text: the inventory filters on it and it is never translated. */
+  sourceDocumentType: string | null;
+  /** لحظة الإيداع. بصيغة ISO 8601 الدوّارة بتوقيت UTC وبأرقام لاتينية — الصيغة نفسها التي يقرأ بها الخادم صلاحية اعتماده من إعداده، فلا وقتٌ يُكتب بشكل ويُقرأ بآخر. / The instant of deposit. In round-trip ISO 8601, UTC, Latin digits — the same spelling the server reads a credential expiry with from its own configuration, so no instant is written one way and read another. */
+  storedAt: string;
+  /** من أودع — إنسان، لا نظام. / Who deposited it — a human, not the system. */
+  storedBy: string;
+  /** خلَفُ هذا الإصدار إن صُحِّح، أو null. والسلسلة خطّية ولا تتفرّع. / The successor of this version if it was corrected, or null. The chain is linear and does not fork. */
+  supersededBy: string | null;
+  /** سلفُ هذا الإصدار، أو null للإصدار الأول. / The predecessor of this version, or null for the first. */
+  supersedes: string | null;
+  /** رقم الإصدار — يبدأ بواحد ويزيد مع كل تصحيح. / The version number — starts at one and rises with each correction. */
+  version: number;
+  /** علامة السحب إن سُحب، أو null. **والبايتات والبصمة باقيتان في الحالتين.** / The withdrawal marker if withdrawn, or null. **The bytes and the digest remain in both cases.** */
+  withdrawal: AttachmentWithdrawal | null;
+}
+
+/** صفحة من جرد المرفقات ومعها المجموع الكلّي — لا «هل بعدها المزيد؟» وحدها: من يبني ترقيم صفحات يحتاج العدد ليعرف كم صفحة، ولا يستطيع اشتقاقه من صفحةٍ واحدة. / A page of the attachment inventory with the overall total — not merely 'is there more?': building pagination needs the count to know how many pages, and that cannot be derived from a single page. */
+export interface AttachmentPage {
+  /** الصفوف، الأحدث أولاً. / The rows, newest first. */
+  items: Attachment[];
+  /** عدد الصفوف المتخطّاة كما نُفِّذت. / Rows skipped, as executed. */
+  skip: number;
+  /** حجم الصفحة كما نُفِّذ. / The page size, as executed. */
+  take: number;
+  /** مجموع ما يطابق الترشيح داخل هذه الشركة. / The total matching the filter within this company. */
+  total: number;
+}
+
+/** تذكرة تنزيل موقّعة. وهي ما يُعطى للمتصفّح لا المسار ولا المعرّف، ومستأجرها **داخل** البايتات الموقّعة لا بجانبها. ولا تُبطَل قبل انتهائها. / A signed download ticket. It is what a browser is given — not the path and not the identifier — and its tenant is **inside** the signed bytes rather than beside them. It is never revoked before it expires. */
+export interface AttachmentTicket {
+  /** المرفق الذي تفتحه هذه التذكرة، ولا تفتح غيره. / The attachment this ticket opens, and no other. */
+  attachmentId: string;
+  /** المسار الكامل الذي تُنزَّل به البايتات بهذه التذكرة. / The complete path the bytes download from with this ticket. */
+  contentPath: string;
+  /** لحظة الانتهاء. بصيغة ISO 8601 الدوّارة بتوقيت UTC وبأرقام لاتينية — الصيغة نفسها التي يقرأ بها الخادم صلاحية اعتماده من إعداده، فلا وقتٌ يُكتب بشكل ويُقرأ بآخر. / The expiry instant. In round-trip ISO 8601, UTC, Latin digits — the same spelling the server reads a credential expiry with from its own configuration, so no instant is written one way and read another. */
+  expiresAt: string;
+  /** الرمز الموقّع. نصٌّ مبهم لا بنية فيه: لا يُحلَّل ولا يُشتقّ منه شيء، ويُقدَّم كما وصل. / The signed token. An opaque string with no structure: never parsed, nothing derived from it, presented exactly as received. */
+  token: string;
+}
+
+/** علامة سحب — لا حذف. صفٌّ في جدول ثانٍ، والبايتات باقية والبصمة باقية: الاحتفاظ بسند القيد واجب نظامي. / A withdrawal marker, not a deletion. A row in a second table; the bytes and the digest remain, because retaining the evidence behind an entry is a regulatory duty. */
+export interface AttachmentWithdrawal {
+  /** مفتاح السبب: رمزٌ يقرؤه برنامج من مجموعة يملكها المستدعي، لا نصٌّ يُعرض. / The reason key: a code a program reads, from a set the caller owns — not text for display. */
+  reasonKey: string;
+  /** لحظة السحب. بصيغة ISO 8601 الدوّارة بتوقيت UTC وبأرقام لاتينية — الصيغة نفسها التي يقرأ بها الخادم صلاحية اعتماده من إعداده، فلا وقتٌ يُكتب بشكل ويُقرأ بآخر. / The instant of withdrawal. In round-trip ISO 8601, UTC, Latin digits — the same spelling the server reads a credential expiry with from its own configuration, so no instant is written one way and read another. */
+  withdrawnAt: string;
+  /** من سحبه — إنسان، لا نظام. / Who withdrew it — a human, not the system. */
+  withdrawnBy: string;
 }
 
 export interface CapabilityProfile {
@@ -401,6 +467,12 @@ export interface InventoryValuation {
   /** هل الفارق صفر بالضبط؟ / Is the difference exactly zero? */
   isReconciled: boolean;
   subledgerTotal: Money;
+}
+
+/** طلب سكّ تذكرة تنزيل. والعمر بالثواني عدداً صحيحاً لا كسراً عشرياً: مدّةٌ تعبر السلك بفاصلة عائمة تُقارَن يوماً بمدّة أخرى فتختلفان في الخانة السابعة عشرة. وما تجاوز السقف يُرفض ولا يُقصّ. / A request to mint a download ticket. The lifetime is whole seconds, not a decimal: a duration crossing the wire as a float is one day compared with another and they differ in the seventeenth digit. Beyond the cap it is refused, never truncated. */
+export interface IssueAttachmentTicketRequest {
+  /** عمر التذكرة بالثواني. السقف الافتراضي خمس دقائق — نافذةُ ضررٍ تُقاس بالدقائق لا بالساعات. / The ticket lifetime in seconds. The default cap is five minutes — a damage window measured in minutes, not hours. */
+  lifetimeSeconds: number;
 }
 
 /** صنف كما يخرج على السلك. / An item as it leaves on the wire. */
@@ -1199,4 +1271,10 @@ export interface UnitFactor {
   numerator: number;
   /** رمز الوحدة الأكبر. / The larger unit's code. */
   unitCode: string;
+}
+
+/** طلب سحب مرفق. والسبب مفتاحٌ من مجموعة يملكها المستدعي لا نصّ حرّ: نصٌّ حرّ يُكتب بلغة كاتبه ثم يُقرأ في تقرير بلغة أخرى، ولا يُرشَّح عليه ولا يُترجَم. / A request to withdraw an attachment. The reason is a key from a set the caller owns, not free text: free text is written in its author's language and read in a report in another, is never filtered on, and is never translated. */
+export interface WithdrawAttachmentRequest {
+  /** مفتاح السبب: أحرف لاتينية صغيرة وأرقام ونقطة وشرطة سفلية. / The reason key: lower-case Latin letters, digits, dots, and underscores. */
+  reasonKey: string;
 }

@@ -56,6 +56,12 @@ if [ -z "${BABEL_DEMO_TOKEN:-}" ]; then
   BABEL_DEMO_TOKEN_SHA256="$(printf '%s' "$BABEL_DEMO_TOKEN" | sha256sum | cut -d' ' -f1)"
   BABEL_LEDGER_APP_PASSWORD="$(head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n')"
   POSTGRES_PASSWORD="$(head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+  # مفتاح توقيع تذاكر تنزيل المرفقات — 32 بايتاً، **يُولَّد هنا ويُكتب في ملفّ
+  # غير مُودَع**. ولا افتراضَ له في الشيفرة ولا في أي إعداد مُودَع: مفتاحٌ في
+  # المستودع مفتاحٌ عامّ، ومفتاحٌ يولّده الخادم لنفسه عند كل إقلاع يجعل كل تذكرة
+  # صالحةً قبل إعادة التشغيل ومرفوضةً بعدها — والفشل يُقرأ «انتهت الصلاحية»
+  # لا «لا مفتاح» (ADR-0046). وثباتُه هنا عبر التشغيلات هو ما يجعله صالحاً.
+  BABEL_STORAGE_TICKET_KEY="$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')"
   umask 077
   cat > "$env_file" <<EOF
 # مُولَّد محلياً بـdeploy/up.sh — لا يُودَع في git (.gitignore: .env.*)
@@ -63,6 +69,7 @@ BABEL_DEMO_TOKEN=$BABEL_DEMO_TOKEN
 BABEL_DEMO_TOKEN_SHA256=$BABEL_DEMO_TOKEN_SHA256
 BABEL_LEDGER_APP_PASSWORD=$BABEL_LEDGER_APP_PASSWORD
 POSTGRES_PASSWORD=$POSTGRES_PASSWORD
+BABEL_STORAGE_TICKET_KEY=$BABEL_STORAGE_TICKET_KEY
 BABEL_DEMO_COMPANY_ID=$company
 BABEL_DEMO_USER_ID=$user_id
 EOF
@@ -70,6 +77,7 @@ EOF
 fi
 
 export BABEL_DEMO_TOKEN BABEL_DEMO_TOKEN_SHA256 BABEL_LEDGER_APP_PASSWORD POSTGRES_PASSWORD
+export BABEL_STORAGE_TICKET_KEY
 
 banner() {
   echo
@@ -147,6 +155,15 @@ command -v node   >/dev/null 2>&1 || { echo "✗ node غير موجود في PAT
 : "${BABEL_CORE_OWNER_DB:=Host=127.0.0.1;Port=5432;Database=babel_demo_core;Username=postgres;Include Error Detail=true}"
 : "${BABEL_CORE_APP_DB:=Host=127.0.0.1;Port=5432;Database=babel_demo_core;Username=babel_ledger_app;Include Error Detail=true}"
 export BABEL_ADMIN_DB BABEL_LEDGER_OWNER_DB BABEL_LEDGER_APP_DB BABEL_SALES_OWNER_DB BABEL_PURCHASING_OWNER_DB
+# مخزن المرفقات: جذرٌ على القرص يملكه مستخدم الخدمة. **ولا اتصال مالك هنا**،
+# ولا قاعدةَ مرفقات تُنشأ في هذا النصّ: نشرُ مخطّط `storage` عملُ مالك لم يُزوَّد
+# بعد، فأبواب المرفقات **غير قابلة للبلوغ في العرض المحلي** حتى يُزوَّد. وهذا
+# نقصٌ مُعلَن لا صمت — والخادم يقلع ويعمل بقيّة سطحه كما هو.
+: "${BABEL_STORAGE_ROOT:=$here/.attachments}"
+mkdir -p "$BABEL_STORAGE_ROOT"
+chmod 700 "$BABEL_STORAGE_ROOT"
+export BABEL_STORAGE_ROOT
+
 export BABEL_CORE_OWNER_DB BABEL_CORE_APP_DB BABEL_INVENTORY_OWNER_DB
 export BABEL_DEMO_COMPANY_ID="$company"
 

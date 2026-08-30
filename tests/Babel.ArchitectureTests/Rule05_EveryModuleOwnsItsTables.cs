@@ -125,9 +125,19 @@ public sealed class Rule05_EveryModuleOwnsItsTables
     public void TheRuleIsNotVacuous()
     {
         // ستّ وحدات تملك جداول فعلاً بعد دفتر المخزون المساعد: الالتزام والنواة
-        // والدفتر والمخزون والمشتريات والمبيعات.
+        // والدفتر والمخزون والمشتريات والمبيعات. ومعها **مشروع مساند سابع**:
+        // ‏`Babel.Storage`، محوّل المرفقات — يملك مخطّط `storage` وجدوليه.
+        //
+        // ‏**ولماذا ظهر الآن ولم يكن ظاهراً:** هذه القاعدة تقرأ التجميعات التي **تصل
+        // إلى مُخرَج هذه المجموعة**، ووصولُها بمرجعٍ متعدٍّ. وكان `Babel.Storage` في
+        // ملفّ الحلّ ومبنيّاً في البوّابة، **ولا مشروع واحد يشير إليه** — فلم يكن
+        // ملفّه ينزل إلى مُخرَج اختبارات المعمارية أصلاً، فلم تره هذه القاعدة ولا
+        // أخواتها. ولمّا صار الجذر التركيبي يشير إليه (سطح المرفقات) دخل الإحصاء
+        // ومعه مخطّطه. أي أن الحرّاس كانوا **يمرّون خضراً على مشروع لا يفحصونه**،
+        // وهو فخّ مُسجَّل: traps.md#fakh-a-project-outside-the-reference-graph-is-outside-every-guard
+        //
         // القائمة جرد صريح لا حدّ أعلى: وحدة جديدة تملك جدولاً تُضاف هنا بقرار واعٍ،
-        // وهذا هو ما يمنع ظهور سياق EF سادس دون أن يراه أحد.
+        // وهذا هو ما يمنع ظهور سياق EF جديد دون أن يراه أحد.
         string[] owners = [.. BabelAssemblies.AllTypes()
             .Where(TypeShapes.IsDbContext)
             .Select(static type => type.Assembly.GetName().Name!)
@@ -135,7 +145,10 @@ public sealed class Rule05_EveryModuleOwnsItsTables
             .Order(StringComparer.Ordinal)];
 
         Assert.Equal(
-            [ModuleMap.Compliance, ModuleMap.Core, "Babel.Inventory", ModuleMap.Ledger, "Babel.Purchasing", "Babel.Sales"],
+            [
+                ModuleMap.Compliance, ModuleMap.Core, "Babel.Inventory", ModuleMap.Ledger,
+                "Babel.Purchasing", "Babel.Sales", ModuleMap.Storage,
+            ],
             owners);
     }
 }

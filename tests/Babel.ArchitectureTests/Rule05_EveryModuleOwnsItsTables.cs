@@ -144,9 +144,11 @@ public sealed class Rule05_EveryModuleOwnsItsTables
             .Distinct()
             .Order(StringComparer.Ordinal)];
 
+        // و`Babel.Hr` هي الثامنة — دخلت الإحصاء يوم صارت وحدةً حقيقية بمخطّط `hr`
+        // تملكه وحدها، وسياقُها `internal` كأخواتها فلا يعبر حدّها ولا يُقرأ منه بـJOIN.
         Assert.Equal(
             [
-                ModuleMap.Compliance, ModuleMap.Core, "Babel.Inventory", ModuleMap.Ledger,
+                ModuleMap.Compliance, ModuleMap.Core, "Babel.Hr", "Babel.Inventory", ModuleMap.Ledger,
                 "Babel.Purchasing", "Babel.RealEstate", "Babel.Sales", ModuleMap.Storage,
             ],
             owners);

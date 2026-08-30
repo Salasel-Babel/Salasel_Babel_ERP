@@ -1,9 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    Babel.Hr — وحدة أفقية.
+    Babel.Hr — وحدة أفقية، ودفتر مساعد للموظفين (SubledgerKind.Employee).
     لا تعتمد على Babel.Ledger ولا على أي وحدة أفقية أخرى — مفروض ببناء في Rule01 و Rule03.
-    الترحيل عبر Babel.Contracts.Posting.IPostingService، والتخاطب عبر عقود الأحداث.
+    الترحيل عبر Babel.Contracts.Posting.IPostingService بمسار القالب حصراً.
+    ولا رمز حساب واحد في هذا المشروع كله: الوحدة تصف حدثاً، والمصفوفة تقرّر الحساب (Rule02).
+    ولا نسبة تأمينات ولا سقف أجر ولا معادلة نهاية خدمة: كلها صفوف في جدول يعتمده المحاسب،
+    والجدول يُسلَّم فارغاً ويرفض الترحيل صراحةً (CONTRIBUTING §3.6 · م-14).
   -->
 
   <PropertyGroup>
@@ -15,6 +18,26 @@
     <ProjectReference Include="../Babel.SharedKernel/Babel.SharedKernel.csproj" />
     <ProjectReference Include="../Babel.Contracts/Babel.Contracts.csproj" />
     <ProjectReference Include="../Babel.Core/Babel.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- نصوص الترقية مضمَّنة: النشر لا يفترض وجود شجرة المستودع على الخادم. -->
+    <EmbeddedResource Include="Persistence/Migrations/*.sql" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      الاختبار يبلغ البوابة نفسها — بالشكل المعتمد في Babel.Sales وللسبب نفسه:
+      إثبات هوية الإحكام يجب أن يمرّ من حيث يمرّ الإنتاج.
+    -->
+    <InternalsVisibleTo Include="Babel.Hr.Tests" />
   </ItemGroup>
 
 </Project>

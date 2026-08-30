@@ -336,6 +336,54 @@ public sealed class Rule13_NoBusinessLogicInTheApi
         "Babel.RealEstate.Surface.RealEstateArrears",
         "Babel.RealEstate.Surface.RealEstateArrearsParty",
         "Babel.RealEstate.Surface.RealEstateArrearsBands",
+        // ── السطح المنشور لوحدة الموارد البشرية ──────────────────────────────
+        //
+        // وبالشكل نفسه وللسبب نفسه: خدمات الوحدة كلّها في `Babel.Hr.Application`
+        // و`…​.Subledger`، وكلاهما من فضاءات الداخل المُعلَنة أدناه — فلا يستطيع سطح
+        // ‏HTTP أن يناديها ولو أُدرجت هنا. والباب المشروع سطحٌ منشور خارجها: `…​.Surface`.
+        //
+        // **ولا واحد من هذه الأسماء يسمّي حساباً**: المستند يحمل «طريقة تسوية» و«طرف
+        // خزينة» — مؤهّلَي دور — والمصفوفة وحدها تُحوّلهما إلى حسابين. **ولا واحد منها
+        // يحمل حقلاً شخصياً غير مقنَّع**: `HrMaskedIdentity` يحمل قناعين لا قيمتين،
+        // و`HrIdentityRequest` يدخل ولا يعود.
+        "Babel.Hr.HrModuleRegistration",
+        "Babel.Hr.HrOptions",
+        "Babel.Hr.Surface.HrSurface",
+        "Babel.Hr.Surface.HrIdentityRequest",
+        "Babel.Hr.Surface.HrMaskedIdentity",
+        "Babel.Hr.Surface.HrEmployeeRequest",
+        "Babel.Hr.Surface.HrEmployee",
+        "Babel.Hr.Surface.HrTerminationRequest",
+        "Babel.Hr.Surface.HrPayComponentRequest",
+        "Babel.Hr.Surface.HrPayComponent",
+        "Babel.Hr.Surface.HrPayElementRequest",
+        "Babel.Hr.Surface.HrPayElement",
+        "Babel.Hr.Surface.HrPayrollSettingsRequest",
+        "Babel.Hr.Surface.HrPayrollSettings",
+        "Babel.Hr.Surface.HrPayrollRunRequest",
+        "Babel.Hr.Surface.HrPayrollAmounts",
+        "Babel.Hr.Surface.HrPayrollRun",
+        "Babel.Hr.Surface.HrPayslipComponent",
+        "Babel.Hr.Surface.HrPayslip",
+        "Babel.Hr.Surface.HrPayrollPaymentRequest",
+        "Babel.Hr.Surface.HrPayrollPaymentLine",
+        "Babel.Hr.Surface.HrPayrollPayment",
+        "Babel.Hr.Surface.HrSocialInsurancePaymentRequest",
+        "Babel.Hr.Surface.HrSocialInsurancePayment",
+        "Babel.Hr.Surface.HrDeductionRequest",
+        "Babel.Hr.Surface.HrDeduction",
+        "Babel.Hr.Surface.HrInstalmentRequest",
+        "Babel.Hr.Surface.HrInstalment",
+        "Babel.Hr.Surface.HrAdvanceRequest",
+        "Babel.Hr.Surface.HrAdvance",
+        "Babel.Hr.Surface.HrProvisionShareRequest",
+        "Babel.Hr.Surface.HrProvisionRequest",
+        "Babel.Hr.Surface.HrProvisionMovement",
+        "Babel.Hr.Surface.HrProvision",
+        "Babel.Hr.Surface.HrSettlementRequest",
+        "Babel.Hr.Surface.HrSettlement",
+        "Babel.Hr.Surface.HrReconciliationDivergence",
+        "Babel.Hr.Surface.HrReconciliation",
     ];
 
     /// <summary>أجزاء فضاء اسم تدلّ على داخل وحدة، لا على سطحها المنشور.</summary>

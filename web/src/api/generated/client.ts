@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     f190afc20a37f87b028e9f72ad94399c1209454ba037ae74feb1929f982c3c23
+     5737bbd9884cd9f40d0e211f37afd938f378a36c5a1c72e40286dd6fa0a90952
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -133,6 +133,66 @@ export async function addItem(transport: Transport, args: AddItemArgs, signal?: 
   const response = await transport({ method: "POST", url, body, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "Item", response.json) as T.Item;
+}
+
+export interface AddPayComponentArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.HrPayComponentRequest;
+}
+
+/**
+ * تعريف مكوّن أجر / Define a pay component
+ * 
+ * يعرّف مكوّن أجر بوسمَيه: هل يدخل **وعاء اشتراك التأمينات**، وهل يدخل **وعاء مكافأة نهاية الخدمة**.
+ * 
+ * **وهذا هو الباب الذي يجعل الأثر التنظيمي بياناتٍ لا شيفرة.** الوسمان يملؤهما المحاسب، والوحدة تشتقّ منهما الوعاء ولا تعرف أي بدل يدخل وأيّه لا يدخل — وذلك سؤالٌ نظامي **غير محسوم** في هذا المستودع ولا يُخترع في شيفرة.
+ * 
+ * **ولا يحمل المكوّن مبلغاً ولا نسبة**: القيمة تُسنَد بتاريخ سريان على مورد آخر، والنسبة لا تدخل إلا من مورد الإعدادات.
+ * 
+ * Defines a pay component with its two flags: does it enter the **social insurance contributory wage**, and does it enter the **end-of-service benefit base**.
+ * 
+ * **This is the door that makes the regulatory effect data rather than code.** The accountant fills the flags, and the module derives the base from them; it does not know which allowance enters and which does not — that is a regulatory question **left undecided** in this repository and never invented in code.
+ * 
+ * **A component carries neither an amount nor a rate**: a value is assigned with an effective date on another resource, and a rate enters only through the settings resource.
+ */
+export async function addPayComponent(transport: Transport, args: AddPayComponentArgs, signal?: AbortSignal): Promise<T.HrPayComponent> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/pay-components";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "HrPayComponentRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "HrPayComponent", response.json) as T.HrPayComponent;
+}
+
+export interface AddPayElementArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف الموظف. وهو **غير** رمزه المعتم: الرمز هو ما يعبر إلى الدفتر المساعد، والمعرّف عنوانٌ على هذا السطح. / The employee identifier. It is **not** the opaque code: the code is what crosses into the subledger, while the identifier is an address on this surface. */
+  employeeId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.HrPayElementRequest;
+}
+
+/**
+ * إسناد قيمة مكوّن أجر بتاريخ سريان / Assign a pay component value with an effective date
+ * 
+ * يُسند قيمة مكوّن إلى علاقة عمل الموظف بتاريخ سريانها. **إنشاءٌ لا تعديل**: الزيادة صفٌّ جديد بتاريخ سريان جديد، ولا PUT على صفّ قائم.
+ * 
+ * **ولماذا هذا شرطٌ لا اصطلاح:** مسيّرٌ ماضٍ رُحِّل قيده يجب أن يُعاد حسابه فيطابق قيده حرفاً بحرف. وتعديلُ صفّ الأجر في مكانه يجعل ذلك مستحيلاً — يُقرأ الأجر الجديد ويُقارَن بقيدٍ بُني على القديم، فيصير كل مسيّر ماضٍ «منحرفاً» بلا سبب يُقرأ.
+ * 
+ * Assigns a component value to the employee's employment from an effective date. **A creation, not an edit**: an increase is a new row with a new effective date, and there is no PUT on an existing row.
+ * 
+ * **Why this is a requirement and not a convention:** a past run whose entry was posted must be recomputable and match that entry exactly. Editing the pay row in place makes that impossible — the new pay is read and compared against an entry built on the old one, so every past run becomes 'divergent' with no readable cause.
+ */
+export async function addPayElement(transport: Transport, args: AddPayElementArgs, signal?: AbortSignal): Promise<T.HrPayElement> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/employees/" + encodeURIComponent(args.employeeId) + "/pay-elements";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "HrPayElementRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "HrPayElement", response.json) as T.HrPayElement;
 }
 
 export interface AddSupplierArgs {
@@ -480,6 +540,41 @@ export async function depositAttachment(transport: Transport, args: DepositAttac
   return decodeSchema(SCHEMAS, "Attachment", response.json) as T.Attachment;
 }
 
+export interface DepositPayrollSettingsArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.HrPayrollSettingsRequest;
+}
+
+/**
+ * إيداع إصدار من نِسَب التأمينات وحدودها / Deposit a version of the social insurance rates and limits
+ * 
+ * **هذا هو الموضع الوحيد الذي تدخل منه نسبة إلى هذا النظام.** ولا نسبة اشتراك، ولا حدّ أجرٍ خاضع، ولا فرقٌ بين السعودي وغيره، ولا معادلة مكافأة، ولا مدّة إشعار مكتوبةٌ في شيفرة هذا المنتج ولا في اختبار من اختباراته — كلّها موسومة **غير متحقَّق منها** في البند م-14 من docs/evidence/verification-debt.md، والسبب مقيس: تسعة منافذ مصادر تنظيمية سعودية كلّها محجوبة.
+ * 
+ * **والجدول يُسلَّم فارغاً.** ومسيّرٌ لفترة لا يغطّيها صفٌّ سارٍ معتمد **يُرفض رفضاً صريحاً** بالرمز الثابت hr.payroll_settings_missing، برسالة تسمّي البند المعلَّق — **لا قيمة افتراضية واحدة، ولا صفر صامت**. ونسبةٌ تُكتب «مؤقّتاً» في اختبار تُنسخ إلى إنتاج بعد شهرين.
+ * 
+ * و**POST لا PUT**: نسبة فترةٍ ماضية لا تُعدَّل، والزيادة إصدارٌ جديد بتاريخ سريانه. وكل صفّ يحمل **معتمِده ومصدره**: sourceRef غير فارغ بقيدٍ في قاعدة البيانات، فنسبةٌ بلا مصدر مرفوضة عند الكتابة لا عند المراجعة.
+ * 
+ * **والنِّسَب TaxRate لا Money**: كسرٌ عشري بمقياس ثمانٍ — خمسة عشر بالمئة تُكتب 0.15 لا 15 — والحدود Money بمقياس أربع. وكلّها **نصوص** على السلك.
+ * 
+ * **This is the only place a rate enters this system.** No contribution rate, no contributory wage limit, no Saudi-versus-non-Saudi distinction, no benefit formula, and no notice period is written in this product's code or in any of its tests — all of them are tagged **unverified** under item م-14 in docs/evidence/verification-debt.md, and the reason is measured: nine Saudi regulatory source endpoints are all blocked.
+ * 
+ * **The table ships empty.** A run for a period not covered by an approved effective row is **explicitly refused** under the stable code hr.payroll_settings_missing, with a message naming the pending item — **not one default value, and no silent zero**. A rate written 'temporarily' in a test is copied into production two months later.
+ * 
+ * **POST, not PUT**: a past period's rate is never edited; an increase is a new version with its own effective date. Every row carries **its approver and its source**: sourceRef is non-empty by a database constraint, so a rate without a source is refused at write time rather than at review time.
+ * 
+ * **Rates are TaxRate, not Money**: a decimal fraction at scale eight — fifteen percent is 0.15, never 15 — while the limits are Money at scale four. All of them cross the wire as **strings**.
+ */
+export async function depositPayrollSettings(transport: Transport, args: DepositPayrollSettingsArgs, signal?: AbortSignal): Promise<T.HrPayrollSettings> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/payroll-settings";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "HrPayrollSettingsRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "HrPayrollSettings", response.json) as T.HrPayrollSettings;
+}
+
 export interface DownloadAttachmentArgs {
   /** معرّف المرفق — غامضٌ عمداً: لا يُشتقّ من اسم ملفّ ولا من مسار، ولا يُقرأ منه شيء عن صاحبه. / The attachment identifier — deliberately opaque: derived from no file name and no path, and telling nothing about its owner. */
   attachmentId: string;
@@ -587,6 +682,99 @@ export async function draftCustomerReceipt(transport: Transport, args: DraftCust
   return decodeSchema(SCHEMAS, "CommercialDocument", response.json) as T.CommercialDocument;
 }
 
+export interface DraftEmployeeAdvanceArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.HrAdvanceRequest;
+}
+
+/**
+ * إنشاء سلفة موظف مسوّدة / Draft an employee advance
+ * 
+ * يُنشئ سلفة في حالة **DRAFT** بجدول أقساطها، ومجموعُ الأقساط يساوي المبلغ بالضبط — والفارق لا يُسوَّى ضمناً.
+ * 
+ * **ولاحظ ما ليس على هذا المورد اليوم: لا …/posting — والغياب مُعلَن لا مسكوتٌ عنه.** حدث صرف السلفة (hr.employee_advance.paid) **غير موجود في مصفوفة الترحيل**، والمحرك يرفض رمزاً لا يعرفه بـUnknownEvent ولا يخترع قالباً. وبابٌ يَعِد بدورة لا تكتمل أسوأ من غيابه — وهو المعيار نفسه الذي مُنع به مورد ترحيل أمر الشراء.
+ * 
+ * **وثمنُ ذلك عطلٌ محاسبي حقيقي يُقال صراحةً**: المقيس أن دور سلف الموظفين له سطرٌ دائن واحد في المصفوفة كلّها ولا سطر مدين واحد — فالسلفة **تُقسَّط ولا تُصرَف**، ورصيد حسابها يصير دائناً بالتصميم أي دَيناً يُسدَّد ولم يُنشأ. وهو صنف الانحراف الذي لا يُظهره ميزان مراجعة. والإضافة نفسها **بيانات لا شيفرة**، لكن قبول أي مدخل جديد في المصفوفة **مراجعةٌ بشرية إلزامية**، فرخصُ التغيير ليس ملكيةً للقرار.
+ * 
+ * Creates an advance in state **DRAFT** with its instalment schedule; the instalments sum exactly to the amount, and any difference is never settled implicitly.
+ * 
+ * **Note what this resource does not carry today: no …/posting — and the absence is declared, not silent.** The advance disbursement event (hr.employee_advance.paid) **does not exist in the posting matrix**, and the engine refuses an unknown code with UnknownEvent rather than inventing a template. A door promising a cycle that does not complete is worse than no door — the same criterion that withheld a posting resource from the purchase order.
+ * 
+ * **The price of that is a real accounting defect, stated plainly**: it is measured that the employee advances role has exactly one credit line in the whole matrix and not one debit line — so an advance is **instalmented but never disbursed**, and its account balance becomes credit by design, that is, a debt being repaid that was never created. That is the class of divergence a trial balance does not reveal. The addition itself is **data, not code**, but accepting any new matrix entry is **a mandatory human review**, so the cheapness of the change is not ownership of the decision.
+ */
+export async function draftEmployeeAdvance(transport: Transport, args: DraftEmployeeAdvanceArgs, signal?: AbortSignal): Promise<T.HrAdvance> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/employee-advances";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "HrAdvanceRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "HrAdvance", response.json) as T.HrAdvance;
+}
+
+export interface DraftEndOfServiceProvisionArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.HrProvisionRequest;
+}
+
+/**
+ * إنشاء استحقاق مخصص نهاية الخدمة مسوّدة / Draft an end-of-service provision accrual
+ * 
+ * يُنشئ مستند استحقاق في حالة **DRAFT** بحصّةٍ لكل علاقة عمل.
+ * 
+ * **والوحدة لا تقيس المخصص ولا تعرف معادلته.** طريقة القياس ومدخلاتها — وأيّ أجرٍ يدخل الوعاء، وكيف تُعامَل الاستقالة مقابل الإنهاء، وهل يُخصم زمنياً — كلّها **تحتاج اعتماد المحاسب القانوني**، ونصّ المصفوفة على المبلغ صريح: «بطريقة القياس المعتمدة — لا تُخترع في هذا التسليم». فالمبلغ يصل من معتمِد المستند ومعه measurementRef يسمّي أساسه، **والمرجع غير فارغ بقيدٍ في قاعدة البيانات**: مبلغٌ بلا أساسٍ مكتوب تقديرٌ بلا مصدر.
+ * 
+ * **ومستندٌ يُنشئه نداءٌ صريح لا مهمّة مجدولة.** لا مُشغّل دوري ولا جدول عمل ولا مجدوِل في هذه الوحدة: النمط محجوزٌ للانتزاع من وحدة الالتزام ولا يُخترع مرّتين (ADR-0048 §2.3)، ومَن يبني للرواتب مُشغّلاً خاصاً يخلق مصدر حقيقة ثانياً. **وثمنُ ذلك مُعلَن**: نسيان الاستحقاق شهراً لا يُصدر خطأً ولا سطر سجل، ويظهر عند أول مخالصة بعجزٍ يُحمَّل كاملاً على مصروف شهرٍ واحد.
+ * 
+ * Creates an accrual document in state **DRAFT** with one share per employment.
+ * 
+ * **The module does not measure the provision and does not know its formula.** The measurement method and its inputs — which pay enters the base, how resignation is treated against dismissal, whether it is discounted — all **require a chartered accountant's approval**, and the matrix text on the amount is explicit: 'by the approved measurement method — not invented in this deliverable'. So the amount arrives from the document's approver together with a measurementRef naming its basis, **and the reference is non-empty by a database constraint**: an amount with no written basis is an estimate with no source.
+ * 
+ * **And it is a document created by an explicit call, not a scheduled job.** There is no periodic runner, no work queue, and no scheduler in this module: the pattern is reserved for extraction from the compliance module and is not invented twice (ADR-0048 §2.3), and building a payroll-specific runner would create a second source of truth. **The price is declared**: forgetting the accrual for a month raises no error and writes no log line, and surfaces at the first settlement as a shortfall charged wholly to one month's expense.
+ */
+export async function draftEndOfServiceProvision(transport: Transport, args: DraftEndOfServiceProvisionArgs, signal?: AbortSignal): Promise<T.HrProvision> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/end-of-service-provisions";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "HrProvisionRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "HrProvision", response.json) as T.HrProvision;
+}
+
+export interface DraftEndOfServiceSettlementArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.HrSettlementRequest;
+}
+
+/**
+ * إنشاء مخالصة نهاية خدمة مسوّدة / Draft an end-of-service settlement
+ * 
+ * يُنشئ مخالصة في حالة **DRAFT** على علاقة عمل **منتهية**، **والسيناريو المنطبق مُسمّى في الجواب** (exact · short · excess) لا مستنتَجاً من فرق مبلغين عند القارئ.
+ * 
+ * **والمستحقّ يصل من معتمِد المستند**: معادلة المكافأة وشرائحها **غير متحقَّق منها** ولا تُخترع هنا. وما تحسبه الوحدة من عندها هو **رصيد المخصص** وحده — مجموع حركات هذه العلاقة المُرحَّلة ناقص ما استُنفد في مخالصات مُرحَّلة — ثم العجز والزيادة والمخصص المستنفَد، وكلّها اشتقاقٌ حسابي من رقمين لا اجتهادٌ محاسبي.
+ * 
+ * والمتطابقة المعلَنة في المصفوفة مفروضة **في قاعدة البيانات**: provision_utilised = amount_paid − shortfall + excess.
+ * 
+ * Creates a settlement in state **DRAFT** against a **terminated** employment, **with the applicable scenario named in the response** (exact, short, excess) rather than inferred by the reader from the difference of two amounts.
+ * 
+ * **The amount due arrives from the document's approver**: the benefit formula and its bands are **unverified** and are not invented here. What the module computes itself is **the provision balance** alone — the sum of this employment's posted movements less what posted settlements have consumed — and then the shortfall, the excess, and the provision utilised, all of which are arithmetic derivations from two numbers, not accounting judgement.
+ * 
+ * The identity declared in the matrix is enforced **in the database**: provision_utilised = amount_paid − shortfall + excess.
+ */
+export async function draftEndOfServiceSettlement(transport: Transport, args: DraftEndOfServiceSettlementArgs, signal?: AbortSignal): Promise<T.HrSettlement> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/end-of-service-settlements";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "HrSettlementRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "HrSettlement", response.json) as T.HrSettlement;
+}
+
 export interface DraftExpenseBillArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
@@ -674,6 +862,76 @@ export async function draftLeaseContract(transport: Transport, args: DraftLeaseC
   const response = await transport({ method: "POST", url, body, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "Lease", response.json) as T.Lease;
+}
+
+export interface DraftPayrollPaymentArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.HrPayrollPaymentRequest;
+}
+
+/**
+ * إنشاء سند صرف رواتب مسوّدة / Draft a payroll payment
+ * 
+ * يُنشئ سند صرف في حالة **DRAFT** على مسيّر **مُرحَّل**، بسطرٍ لكل قسيمة.
+ * 
+ * **وحقلا settlementMethod و treasuryPartyId إلزاميان.** وسطر التسوية معلَنٌ في المصفوفة subledger: "resolved"، **والمحرك يطويه إلى النوع none** ثم يبحث عن الواقعة subledger.none — والاسم مضلّل. وحسابُ التسوية الافتراضي حسابٌ **ضابط**، فبلا طرف الخزينة يُرفض كل نداء بـledger.posting.missing_subledger عند المحرك بعد أن يُكتب صفّ محاولة.
+ * 
+ * **وطرق التسوية المقبولة هنا ضيّقة عمداً**: نقداً أو تحويلاً مصرفياً. والمؤهّل in_transit موجودٌ في خريطة الأدوار ويقصد حساباً وسيطاً، **وقبولُه يفترض جواب سؤال مفتوح على المالك**: متى يقع قيد صرف الرواتب بالضبط — عند توليد ملفّ حماية الأجور أم عند تأكيد المصرف؟ ونصّ المصفوفة نفسه يحمل «أو» صريحة. فيُفتح الثالث حين يُغلق البند.
+ * 
+ * Creates a payment in state **DRAFT** against a **posted** run, with one line per payslip.
+ * 
+ * **settlementMethod and treasuryPartyId are both mandatory.** The settlement line is declared in the matrix as subledger: "resolved", **and the engine folds that to the kind none** and then looks for the subledger.none fact — the name is misleading. The default settlement account is a **control** account, so without the treasury party every call is refused with ledger.posting.missing_subledger at the engine, after an attempt row is written.
+ * 
+ * **The accepted settlement methods here are deliberately narrow**: cash or bank transfer. The in_transit qualifier exists in the role map and means a clearing account, **and accepting it would assume the answer to an open owner question**: when exactly does the payroll payment entry fall — at wage protection file generation, or at the bank's confirmation? The matrix text itself carries an explicit 'or'. The third is opened when that item closes.
+ */
+export async function draftPayrollPayment(transport: Transport, args: DraftPayrollPaymentArgs, signal?: AbortSignal): Promise<T.HrPayrollPayment> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/payroll-payments";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "HrPayrollPaymentRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "HrPayrollPayment", response.json) as T.HrPayrollPayment;
+}
+
+export interface DraftPayrollRunArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.HrPayrollRunRequest;
+}
+
+/**
+ * إنشاء مسيّر رواتب مسوّدة / Draft a payroll run
+ * 
+ * يبني مسيّراً في حالة **DRAFT** بقسيمة لكل علاقة عمل سارية في الفترة. **والوحدة تحسب، ولا مجاميع في الطلب**: مجموعٌ يرسله العميل مصدرُ حقيقةٍ ثانٍ ينحرف عن الأول ولا يُظهره شيء.
+ * 
+ * والمبالغ الستّة كلّها لها حاسبٌ في الوحدة، والمتطابقة المعلَنة في المصفوفة مفروضة **في قاعدة البيانات** لا في الشيفرة وحدها: net_payable = gross_entitlements − employee_social_insurance − advance_installment − deductions.
+ * 
+ * **ويُرفض المسيّر رفضاً صريحاً إن لم يوجد صفّ نِسَبٍ معتمد يغطّي الفترة** — hr.payroll_settings_missing — ولا قيمة افتراضية واحدة تُخترع لتمريره.
+ * 
+ * ووعاء الاشتراك يُشتقّ من **مكوّنات القسيمة الموسومة** ثم يُقصّ بحدَّي الصفّ المعتمد؛ ولا وسم يُملأ هنا ولا حدّ يُخترع.
+ * 
+ * **ولا يُسمح بمسيّر ثانٍ للفترة الواحدة اليوم**، والمنع في خدمة التطبيق لا في فهرس: «هل يُسمح بأكثر من مسيّر مُرحَّل للفترة؟» سؤالٌ مفتوح على المالك (خارج الدورة · مكافآت · دفعة تصحيحية)، وفهرسٌ اليوم بشرط نوع المسيّر **يفترض جوابه في مفتاح** على جدول لا يُحذف منه شيء.
+ * 
+ * Builds a run in state **DRAFT** with a payslip for every employment active in the period. **The module computes; no totals appear in the request**: a total sent by a client is a second source of truth that drifts from the first with nothing to reveal it.
+ * 
+ * All six amounts have a calculator in the module, and the identity declared in the matrix is enforced **in the database**, not in code alone: net_payable = gross_entitlements − employee_social_insurance − advance_installment − deductions.
+ * 
+ * **The run is explicitly refused when no approved rate row covers the period** — hr.payroll_settings_missing — and not one default value is invented to let it through.
+ * 
+ * The contributory wage is derived from the **flagged payslip components** and then clamped by the approved row's floor and ceiling; no flag is filled here and no limit is invented.
+ * 
+ * **A second run for one period is not allowed today**, and the prohibition lives in the application service rather than an index: whether more than one posted run per period is permitted (off-cycle, bonus, corrective) is an open owner question, and an index today conditioned on a run kind **assumes its answer in a key** on a table nothing is deleted from.
+ */
+export async function draftPayrollRun(transport: Transport, args: DraftPayrollRunArgs, signal?: AbortSignal): Promise<T.HrPayrollRun> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/payroll-runs";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "HrPayrollRunRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "HrPayrollRun", response.json) as T.HrPayrollRun;
 }
 
 export interface DraftPurchaseReturnArgs {
@@ -767,6 +1025,37 @@ export async function draftSalesInvoice(transport: Transport, args: DraftSalesIn
   const response = await transport({ method: "POST", url, body, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "CommercialDocument", response.json) as T.CommercialDocument;
+}
+
+export interface DraftSocialInsurancePaymentArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.HrSocialInsurancePaymentRequest;
+}
+
+/**
+ * إنشاء سند سداد تأمينات مسوّدة / Draft a social insurance payment
+ * 
+ * يُنشئ سند سداد اشتراك التأمينات لفترة، في حالة **DRAFT**.
+ * 
+ * **والمبلغ يصل من المستدعي ولا تُمليه الوحدة**: فاتورة الجهة قد تخالف ما استحقّته المسيّرات لأسباب مشروعة. والقراءة تُرجع accruedForPeriod إلى جانبه **للمقارنة لا للإملاء**، فيُرى الفارق قبل الاعتماد بدل أن يُكتشف عند التسوية.
+ * 
+ * **والرواتب تُرحَّل بالريال السعودي حصراً** — قيدٌ مفروض بحكم البيانات لا باختيار: حساب التأمينات المستحقة معلَنٌ في دليل الحسابات currency_mode=company_only بعملة SAR، فأي عملة أخرى يرفضها المخطِّط بـledger.posting.currency_not_allowed. ويُقال هنا كي لا يُكتشف عند أول نداء.
+ * 
+ * Creates a social insurance settlement document for a period, in state **DRAFT**.
+ * 
+ * **The amount comes from the caller; the module does not dictate it**: the authority's invoice may legitimately differ from what the runs accrued. The read returns accruedForPeriod beside it **for comparison, not for dictation**, so the difference is seen before approval rather than discovered at reconciliation.
+ * 
+ * **Payroll posts in Saudi riyals only** — a constraint imposed by the data rather than chosen: the social insurance payable account is declared in the chart with currency_mode=company_only and currency SAR, so any other currency is refused by the planner with ledger.posting.currency_not_allowed. It is said here so that it is not discovered at the first call.
+ */
+export async function draftSocialInsurancePayment(transport: Transport, args: DraftSocialInsurancePaymentArgs, signal?: AbortSignal): Promise<T.HrSocialInsurancePayment> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/social-insurance-payments";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "HrSocialInsurancePaymentRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "HrSocialInsurancePayment", response.json) as T.HrSocialInsurancePayment;
 }
 
 export interface DraftStockBillArgs {
@@ -1099,6 +1388,94 @@ export async function listItems(transport: Transport, args: ListItemsArgs, signa
   return decodeSchema(SCHEMAS, "ItemList", response.json) as T.ItemList;
 }
 
+export interface ListPayComponentsArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+}
+
+/**
+ * قراءة تصنيفات مكوّنات الأجر / Read the pay component classifications
+ * 
+ * يقرأ مكوّنات الأجر بوسومها. ومراجعٌ خارجي يجب أن يرى **على أي أساس** تكوّن وعاء الاشتراك، لا أن يُخبَر بالنتيجة وحدها.
+ * 
+ * Reads the pay components with their flags. An external reviewer must see **on what basis** the contributory wage was formed, not merely be told the result.
+ */
+export async function listPayComponents(transport: Transport, args: ListPayComponentsArgs, signal?: AbortSignal): Promise<T.HrPayComponentList> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/pay-components";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "HrPayComponentList", response.json) as T.HrPayComponentList;
+}
+
+export interface ListPayElementsArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف الموظف. وهو **غير** رمزه المعتم: الرمز هو ما يعبر إلى الدفتر المساعد، والمعرّف عنوانٌ على هذا السطح. / The employee identifier. It is **not** the opaque code: the code is what crosses into the subledger, while the identifier is an address on this surface. */
+  employeeId: string;
+}
+
+/**
+ * قراءة أجر الموظف بسريانه / Read the employee's pay by effective date
+ * 
+ * يقرأ **كل** صفوف أجر الموظف بتواريخ سريانها — لا الساري اليوم وحده. ومراجعةُ مسيّرٍ ماضٍ تحتاج الصفّ الذي كان سارياً حينها لا الصفّ الجاري.
+ * 
+ * Reads **all** of the employee's pay rows with their effective dates — not merely the one in force today. Reviewing a past run needs the row that was in force then, not the current one.
+ */
+export async function listPayElements(transport: Transport, args: ListPayElementsArgs, signal?: AbortSignal): Promise<T.HrPayElementList> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/employees/" + encodeURIComponent(args.employeeId) + "/pay-elements";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "HrPayElementList", response.json) as T.HrPayElementList;
+}
+
+export interface ListPayrollSettingsArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+}
+
+/**
+ * قراءة إصدارات النِّسَب بسريانها / Read the rate versions by effective date
+ * 
+ * يقرأ إصدارات النِّسَب كلّها بتواريخ سريانها ومعتمِديها ومصادرها. ومن لا يستطيع قراءة النسبة السارية لتاريخٍ لا يستطيع مراجعة مسيّرٍ رُحِّل به.
+ * 
+ * **وقائمة فارغة جوابٌ صحيح لا عطل**: هي حال المنشأة قبل أن يعتمد محاسبها أول إصدار، وهي الحال التي يُرفض فيها كل مسيّر.
+ * 
+ * Reads every rate version with its effective date, its approver, and its source. Whoever cannot read the rate in force on a date cannot review a run posted under it.
+ * 
+ * **An empty list is a correct answer, not a fault**: it is the company's state before its accountant approves a first version, and it is the state in which every run is refused.
+ */
+export async function listPayrollSettings(transport: Transport, args: ListPayrollSettingsArgs, signal?: AbortSignal): Promise<T.HrPayrollSettingsList> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/payroll-settings";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "HrPayrollSettingsList", response.json) as T.HrPayrollSettingsList;
+}
+
+export interface ListPayslipsArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف مسيّر الرواتب. / The payroll run identifier. */
+  runId: string;
+}
+
+/**
+ * قراءة قسائم مسيّر بمعرّفاتها / Read a run's payslips with their identifiers
+ * 
+ * يقرأ قسائم المسيّر **بمعرّفاتها ومعرّفات قيودها**، وهي مدخل باب الدفع. وبلا نشر هذه المعرّفات يصير POST …/payroll-payments باباً لا يوصل إليه بابٌ آخر على هذا السطح — وهو الاعتراض الذي كتبه ADR-0044 بنصّه على مرتجع المشتريات.
+ * 
+ * Reads the run's payslips **with their identifiers and their entry identifiers**, which are the input to the payment door. Without publishing them, POST …/payroll-payments becomes a door no other door on this surface leads to — the objection ADR-0044 wrote verbatim about the purchase return.
+ */
+export async function listPayslips(transport: Transport, args: ListPayslipsArgs, signal?: AbortSignal): Promise<T.HrPayslipList> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/payroll-runs/" + encodeURIComponent(args.runId) + "/payslips";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "HrPayslipList", response.json) as T.HrPayslipList;
+}
+
 export interface ListStockMovementsArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
@@ -1208,6 +1585,58 @@ export async function postCustomerReceipt(transport: Transport, args: PostCustom
   return decodeSchema(SCHEMAS, "CommercialDocument", response.json) as T.CommercialDocument;
 }
 
+export interface PostEndOfServiceProvisionArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف مستند استحقاق المخصص. / The provision accrual document identifier. */
+  provisionId: string;
+}
+
+/**
+ * ترحيل استحقاق المخصص / Post the provision accrual
+ * 
+ * يرحّل الاستحقاق: **قيدٌ لكل علاقة عمل**، لكلٍّ هويّته وطرفه ومركز تكلفته. وتغيير التقدير **قيدٌ مستقلّ لا تعديلٌ للسابق**، بنصّ المصفوفة.
+ * 
+ * **ورمز الإطلاق OnApproval لا Periodic — ويُقال ذلك صراحةً.** نصّ المصفوفة يصف الواقعة بأنها دورية، لكن القيمة Periodic في العقد **بلا كاتب واحد في الإنتاج** اليوم، ومنحُها كاتباً قبل أن يُغلق البند المُسجَّل عن حبيبيّة الاستحقاق ونمط الجدولة قراءةٌ يملكها المالك ومعمار المستودع لا هذا التسليم. فالمُطلِق هنا يصف **ما وقع فعلاً**: اعتمادُ إنسانٍ لمستند.
+ * 
+ * Posts the accrual: **one entry per employment**, each with its own identity, party, and cost centre. Changing the estimate is **a separate entry, never an edit of the previous one**, per the matrix text.
+ * 
+ * **The trigger is OnApproval, not Periodic — and this is said plainly.** The matrix describes the occurrence as periodic, but the Periodic value in the contract has **not one production writer** today, and giving it one before the recorded item on accrual grain and scheduling pattern closes is a reading owned by the owner and the repository's architecture, not by this deliverable. So the trigger here describes **what actually happened**: a human approving a document.
+ */
+export async function postEndOfServiceProvision(transport: Transport, args: PostEndOfServiceProvisionArgs, signal?: AbortSignal): Promise<T.HrProvision> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/end-of-service-provisions/" + encodeURIComponent(args.provisionId) + "/posting";
+  const url = path;
+  const response = await transport({ method: "POST", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "HrProvision", response.json) as T.HrProvision;
+}
+
+export interface PostEndOfServiceSettlementArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف المخالصة. / The final settlement identifier. */
+  settlementId: string;
+}
+
+/**
+ * ترحيل مخالصة نهاية الخدمة / Post the end-of-service settlement
+ * 
+ * يرحّل المخالصة بسيناريوهاتها الثلاثة: المخصص مطابق، أو ناقص فيُحمَّل العجز على مصروف الفترة، أو زائد فتُردّ الزيادة إليه.
+ * 
+ * **ويُمرَّر في قاموس المبالغ — إضافةً إلى الأربعة المعلَنة على الحدث — رصيدُ المخصص والمستحقّ**: تعبيرا الشرط في المصفوفة يستعملانهما وهما **ليسا في كتلة amounts**، وغيابُهما يُنتج UndecidableCondition — رفضاً لا نجاحاً ناقصاً. وهذا موضعٌ يسهل أن يُنسى ويستحيل أن يُكتشف بقراءة الحدث وحده.
+ * 
+ * Posts the settlement under its three scenarios: the provision matches, or falls short and the shortfall is charged to the period expense, or exceeds and the excess is released back to it.
+ * 
+ * **The amounts dictionary carries — beyond the four declared on the event — the provision balance and the amount due**: the matrix's two condition expressions use them and they are **not in the amounts block**, and their absence yields UndecidableCondition — a refusal, not a partial success. This is a place easy to forget and impossible to discover by reading the event alone.
+ */
+export async function postEndOfServiceSettlement(transport: Transport, args: PostEndOfServiceSettlementArgs, signal?: AbortSignal): Promise<T.HrSettlement> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/end-of-service-settlements/" + encodeURIComponent(args.settlementId) + "/posting";
+  const url = path;
+  const response = await transport({ method: "POST", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "HrSettlement", response.json) as T.HrSettlement;
+}
+
 export interface PostGoodsReceiptArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
@@ -1263,6 +1692,74 @@ export async function postJournalEntry(transport: Transport, args: PostJournalEn
   const response = await transport({ method: "POST", url, body, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "PostingReceipt", response.json) as T.PostingReceipt;
+}
+
+export interface PostPayrollPaymentArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف سند صرف الرواتب. / The payroll payment identifier. */
+  paymentId: string;
+}
+
+/**
+ * ترحيل صرف الرواتب / Post the payroll payment
+ * 
+ * يرحّل الصرف: **قيدٌ لكل سطر**، سطرُه الأول يُطفئ التزام الرواتب بطرف الموظف، وسطرُه الثاني يمسّ حساب التسوية بطرف الخزينة واقعةً نصّية.
+ * 
+ * **والحبيبيّة هنا هي الحبيبيّة نفسها في الاستحقاق** — ولا يجوز أن تختلف: طرفا المطابقة يجب أن يتساويا، وقيدٌ واحد للسند مقابل قيدٍ لكل قسيمة في الاستحقاق كان سيجعل المطابقة مستنداً بمستند مستحيلة.
+ * 
+ * **ولحظة وقوع هذا القيد بالضبط معلَّقة على حكم المالك**: نصّ مُطلِق الحدث في المصفوفة يقول «عند تنفيذ ملفّ حماية الأجور **أو** التحويل البنكي»، والمصفوفة لا تحسم بين شقّي «أو» كتبتها هي. وما يفعله هذا الباب هو الشقّ الأول صراحةً: الترحيل عند اعتماد الصرف.
+ * 
+ * Posts the payment: **one entry per line**, its first line clearing the salaries payable against the employee's party, and its second touching the settlement account with the treasury party carried as a textual fact.
+ * 
+ * **The grain here is the same grain as the accrual** — and may not differ: the two sides of the reconciliation must match, and one entry for the document against one entry per payslip in the accrual would make document-by-document reconciliation impossible.
+ * 
+ * **The exact moment this entry falls is pending the owner's judgement**: the event's trigger text in the matrix reads 'on execution of the wage protection file **or** the bank transfer', and the matrix does not settle between the two halves of its own 'or'. What this door does is explicitly the first half: posting on approval of the payment.
+ */
+export async function postPayrollPayment(transport: Transport, args: PostPayrollPaymentArgs, signal?: AbortSignal): Promise<T.HrPayrollPayment> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/payroll-payments/" + encodeURIComponent(args.paymentId) + "/posting";
+  const url = path;
+  const response = await transport({ method: "POST", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "HrPayrollPayment", response.json) as T.HrPayrollPayment;
+}
+
+export interface PostPayrollRunArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف مسيّر الرواتب. / The payroll run identifier. */
+  runId: string;
+}
+
+/**
+ * ترحيل استحقاق الرواتب / Post the payroll accrual
+ * 
+ * يرحّل استحقاق المسيّر. **نداءٌ واحد يُصدر قيداً لكل قسيمة**، لكلٍّ هويّته السداسية (شركة · نوع المستند · **معرّف القسيمة** · رمز الإطلاق · الجيل · رمز الحدث). ولذلك **الجواب قائمة قسائم** لكلٍّ معرّف قيدها وalreadyPosted الخاصّ بها في الجسم، لا مستنداً واحداً بمعرّف قيد واحد.
+ * 
+ * **ولماذا القسيمة لا المسيّر — وهذا مفروضٌ بنيوياً لا مختار:** مسار القالب في محرّك الترحيل يحلّ طرف الدفتر المساعد من واقعةٍ **واحدة** لكل طلب، ويقرأ مركز التكلفة وكل الأبعاد من قاموسٍ **واحد على مستوى الطلب**. فطلبٌ واحد لا يستطيع بنيةً أن يحمل طرفين ولا مركزين. وقيدٌ واحد لثلاثمئة موظف كان سيكتب ذمّة الجميع على **طرفٍ واحد ومركزٍ واحد** — **والقيد الناتج متوازن تماماً، والسلسلة سليمة، وميزان المراجعة صحيح**، ولا شيء يُظهر أن ذمم ثلاثمئة موظف صارت ذمّة موظفٍ واحد.
+ * 
+ * **والمسار الصريح مقفول أصلاً**: مخطّط PostingLine.role مجموعة مغلقة منشورة من أربع عشرة قيمة ليس فيها دور رواتب واحد، فبلوغُ الرواتب منه يكسر مخطّطاً منشوراً.
+ * 
+ * **وحصين ضد التكرار**: الوصول الثاني بالهوية نفسها يُرجع القسائم ذاتها موسومةً ولا يُنشئ قيداً ثانياً — مهما كان ترتيب الوصول. ورمز 200 حين كانت **كلّها** مُرحَّلة من قبل، و201 حين كتب هذا النداء واحدة منها على الأقل.
+ * 
+ * ولا جسم لهذا الطلب: مفتاح الحصانة تشتقّه الوحدة من هوية المستند ولا يرسله العميل.
+ * 
+ * Posts the run's accrual. **One call issues one entry per payslip**, each under its own six-part identity (company, document type, **payslip id**, trigger, generation, event code). Hence **the response is a list of payslips**, each with its own entry identifier and its own alreadyPosted in the body — not one document with one entry id.
+ * 
+ * **Why the payslip and not the run — this is structurally forced, not chosen:** the template path in the posting engine resolves the subledger party from a **single** fact per request, and reads the cost centre and every dimension from a **single request-level** dictionary. One request structurally cannot carry two parties or two centres. One entry for three hundred employees would write everyone's balance against **one party and one centre** — **and the resulting entry balances perfectly, the hash chain is intact, and the trial balance is correct**, with nothing to show that three hundred employees' balances became one employee's.
+ * 
+ * **The explicit path is closed anyway**: the PostingLine.role schema is a published closed set of fourteen values with no payroll role among them, so reaching payroll through it breaks a published schema.
+ * 
+ * **Idempotent**: a second arrival with the same identity returns the same payslips marked and never creates a second entry — whatever the arrival order. Status 200 when **all** of them were already posted, 201 when this call wrote at least one.
+ * 
+ * This request has no body: the idempotency key is derived by the module from the document identity rather than sent by the client.
+ */
+export async function postPayrollRun(transport: Transport, args: PostPayrollRunArgs, signal?: AbortSignal): Promise<T.HrPayslipList> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/payroll-runs/" + encodeURIComponent(args.runId) + "/posting";
+  const url = path;
+  const response = await transport({ method: "POST", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "HrPayslipList", response.json) as T.HrPayslipList;
 }
 
 export interface PostPurchaseReturnArgs {
@@ -1357,6 +1854,32 @@ export async function postSalesInvoice(transport: Transport, args: PostSalesInvo
   const response = await transport({ method: "POST", url, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "CommercialDocument", response.json) as T.CommercialDocument;
+}
+
+export interface PostSocialInsurancePaymentArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف سند سداد التأمينات. / The social insurance payment identifier. */
+  paymentId: string;
+}
+
+/**
+ * ترحيل سداد التأمينات / Post the social insurance payment
+ * 
+ * يرحّل السداد **قيداً واحداً للفترة — وهو المستند الوحيد في هذه الوحدة الذي يجوز فيه ذلك**.
+ * 
+ * **ولماذا يجوز هنا وحده:** سطره الأول على حساب الالتزام معلَنٌ في دليل الحسابات **بلا دفتر مساعد**، فلا طرفَ يُفقد بالتجميع أصلاً. أمّا سطره الثاني فيحمل **طرف الخزينة** كسائر مستندات الدفع.
+ * 
+ * Posts the settlement as **one entry for the period — the only document in this module where that is permissible**.
+ * 
+ * **Why only here:** its first line's liability account is declared in the chart with **no subledger**, so no party is lost by aggregation at all. Its second line carries **the treasury party**, like every other payment document.
+ */
+export async function postSocialInsurancePayment(transport: Transport, args: PostSocialInsurancePaymentArgs, signal?: AbortSignal): Promise<T.HrSocialInsurancePayment> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/social-insurance-payments/" + encodeURIComponent(args.paymentId) + "/posting";
+  const url = path;
+  const response = await transport({ method: "POST", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "HrSocialInsurancePayment", response.json) as T.HrSocialInsurancePayment;
 }
 
 export interface PostStockMovementArgs {
@@ -1637,6 +2160,120 @@ export async function readDocumentShape(transport: Transport, args: ReadDocument
   return decodeSchema(SCHEMAS, "DocumentShape", response.json) as T.DocumentShape;
 }
 
+export interface ReadEmployeeArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف الموظف. وهو **غير** رمزه المعتم: الرمز هو ما يعبر إلى الدفتر المساعد، والمعرّف عنوانٌ على هذا السطح. / The employee identifier. It is **not** the opaque code: the code is what crosses into the subledger, while the identifier is an address on this surface. */
+  employeeId: string;
+}
+
+/**
+ * قراءة موظف / Read one employee
+ * 
+ * يقرأ موظفاً واحداً بعلاقة عمله الجارية وهويته **مقنَّعة**.
+ * 
+ * **ولاحظ ما ليس على هذا المورد: لا PUT ولا DELETE.** الموظف تشير إليه قيود سنة سابقة، وحذفه يكسر كل تقرير مُرحَّل؛ والإنهاء **مورد فرعي** (…/termination) لا حقل حالة يُعدَّل.
+ * 
+ * Reads a single employee with the current employment and a **masked** identity.
+ * 
+ * **Note what this resource does not carry: no PUT and no DELETE.** An employee is referenced by last year's entries and deleting them breaks every posted report; termination is a **sub-resource** (…/termination), not a status field that is edited.
+ */
+export async function readEmployee(transport: Transport, args: ReadEmployeeArgs, signal?: AbortSignal): Promise<T.HrEmployee> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/employees/" + encodeURIComponent(args.employeeId) + "";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "HrEmployee", response.json) as T.HrEmployee;
+}
+
+export interface ReadEmployeeAdvanceArgs {
+  /** معرّف سلفة الموظف. / The employee advance identifier. */
+  advanceId: string;
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+}
+
+/**
+ * قراءة سلفة موظف / Read one employee advance
+ * 
+ * يقرأ السلفة بجدول سدادها **والمتبقّي منها مشتقّاً من الأقساط المستقطَعة فعلاً وحدها** — لا من مرور الزمن ولا من الجدول المخطَّط. وقسطٌ لم يدخل قسيمة لم يُستقطع.
+ * 
+ * Reads the advance with its repayment schedule and **the outstanding amount derived from instalments actually deducted alone** — not from elapsed time and not from the planned schedule. An instalment that never entered a payslip was never deducted.
+ */
+export async function readEmployeeAdvance(transport: Transport, args: ReadEmployeeAdvanceArgs, signal?: AbortSignal): Promise<T.HrAdvance> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/employee-advances/" + encodeURIComponent(args.advanceId) + "";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "HrAdvance", response.json) as T.HrAdvance;
+}
+
+export interface ReadEmployeeDeductionArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف قيد الجزاء. / The deduction record identifier. */
+  deductionId: string;
+}
+
+/**
+ * قراءة جزاء / Read one deduction
+ * 
+ * يقرأ جزاءً واحداً ومعه القسيمة التي استُقطع فيها إن استُقطع. **وبلا entryId وبلا alreadyPosted** — وذلك بنيةٌ لا سهو.
+ * 
+ * Reads a single deduction along with the payslip it was consumed by, if any. **With no entryId and no alreadyPosted** — by construction, not by omission.
+ */
+export async function readEmployeeDeduction(transport: Transport, args: ReadEmployeeDeductionArgs, signal?: AbortSignal): Promise<T.HrDeduction> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/employee-deductions/" + encodeURIComponent(args.deductionId) + "";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "HrDeduction", response.json) as T.HrDeduction;
+}
+
+export interface ReadEndOfServiceProvisionArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف مستند استحقاق المخصص. / The provision accrual document identifier. */
+  provisionId: string;
+}
+
+/**
+ * قراءة مستند استحقاق المخصص / Read one provision accrual document
+ * 
+ * يقرأ المستند بحركاته لكل علاقة عمل ومعرّفات قيودها. **وحبيبيّة الحركة علاقة عمل لا موظف**: من يعود بعد انقطاع يبدأ استحقاقاً جديداً، ومخالصة الأولى لا تُخصم من رصيد الثانية.
+ * 
+ * Reads the document with its per-employment movements and their entry identifiers. **The movement's grain is the employment, not the employee**: someone who returns after a break starts a new entitlement, and the first employment's settlement is not deducted from the second's balance.
+ */
+export async function readEndOfServiceProvision(transport: Transport, args: ReadEndOfServiceProvisionArgs, signal?: AbortSignal): Promise<T.HrProvision> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/end-of-service-provisions/" + encodeURIComponent(args.provisionId) + "";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "HrProvision", response.json) as T.HrProvision;
+}
+
+export interface ReadEndOfServiceSettlementArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف المخالصة. / The final settlement identifier. */
+  settlementId: string;
+}
+
+/**
+ * قراءة مخالصة نهاية خدمة / Read one end-of-service settlement
+ * 
+ * يقرأ المخالصة بأرقامها الستّة وسيناريوها ومرجع أساس حسابها. **وهي أكثر مستند في هذه الوحدة عرضةً للنزاع**، فقراءتها قبل ترحيلها شرط.
+ * 
+ * Reads the settlement with its six amounts, its scenario, and the reference to its calculation basis. **It is the most disputable document in this module**, so reading it before posting is a requirement.
+ */
+export async function readEndOfServiceSettlement(transport: Transport, args: ReadEndOfServiceSettlementArgs, signal?: AbortSignal): Promise<T.HrSettlement> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/end-of-service-settlements/" + encodeURIComponent(args.settlementId) + "";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "HrSettlement", response.json) as T.HrSettlement;
+}
+
 export interface ReadGoodsReceiptArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
@@ -1883,6 +2520,80 @@ export async function readPayablesAging(transport: Transport, args: ReadPayables
   return decodeSchema(SCHEMAS, "AgingReport", response.json) as T.AgingReport;
 }
 
+export interface ReadPayrollPaymentArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف سند صرف الرواتب. / The payroll payment identifier. */
+  paymentId: string;
+}
+
+/**
+ * قراءة سند صرف رواتب / Read one payroll payment
+ * 
+ * يقرأ السند بحالته وسطوره **ومعرّفات قيودها** — قيدٌ لكل سطر لا قيدٌ واحد للسند.
+ * 
+ * Reads the payment with its state, its lines, and **their entry identifiers** — one entry per line, not one entry for the document.
+ */
+export async function readPayrollPayment(transport: Transport, args: ReadPayrollPaymentArgs, signal?: AbortSignal): Promise<T.HrPayrollPayment> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/payroll-payments/" + encodeURIComponent(args.paymentId) + "";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "HrPayrollPayment", response.json) as T.HrPayrollPayment;
+}
+
+export interface ReadPayrollRunArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف مسيّر الرواتب. / The payroll run identifier. */
+  runId: string;
+}
+
+/**
+ * قراءة مسيّر رواتب / Read one payroll run
+ * 
+ * يقرأ المسيّر بحالته ومجاميعه وعدد قسائمه. ونقطة قراءة: تعمل والاشتراك للقراءة فقط.
+ * 
+ * وغياب هذه القراءة كان سيدفع العميل إلى **إعادة الترحيل ليعرف** — والحصانة تجعل ذلك غير مؤذٍ، لا تجعله مقبولاً.
+ * 
+ * Reads the run with its state, its totals, and its payslip count. A read point: it works while the subscription is read-only.
+ * 
+ * Without this read a client would have to **post again in order to find out** — which idempotency makes harmless, not acceptable.
+ */
+export async function readPayrollRun(transport: Transport, args: ReadPayrollRunArgs, signal?: AbortSignal): Promise<T.HrPayrollRun> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/payroll-runs/" + encodeURIComponent(args.runId) + "";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "HrPayrollRun", response.json) as T.HrPayrollRun;
+}
+
+export interface ReadPayslipArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف القسيمة — **وهو DocumentId في هوية الإحكام**، لا معرّف المسيّر. / The payslip identifier — **which is the DocumentId in the posting identity**, not the run's identifier. */
+  payslipId: string;
+}
+
+/**
+ * قراءة قسيمة راتب / Read one payslip
+ * 
+ * يقرأ قسيمة واحدة بمكوّناتها ووعاء اشتراكها ومعرّف قيدها. **وهي مستند الترحيل**: معرّفها هو DocumentId في هوية الإحكام، فقراءتها مفردةً شرطٌ لا زينة.
+ * 
+ * و**contributoryWage محفوظٌ ليُراجَع لا ليُعاد حسابه**: من يراجع مسيّراً بعد سنة يحتاج الوعاء كما كان بعد القصّ بحدَّي الصفّ الذي كان سارياً حينها.
+ * 
+ * Reads a single payslip with its components, its contributory wage, and its entry identifier. **It is the posting document**: its identifier is the DocumentId in the idempotency identity, so reading it individually is a requirement, not an ornament.
+ * 
+ * **contributoryWage is stored to be reviewed, not recomputed**: whoever reviews a run a year later needs the base as it stood after clamping by the row that was in force then.
+ */
+export async function readPayslip(transport: Transport, args: ReadPayslipArgs, signal?: AbortSignal): Promise<T.HrPayslip> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/payslips/" + encodeURIComponent(args.payslipId) + "";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "HrPayslip", response.json) as T.HrPayslip;
+}
+
 export interface ReadPropertyArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
@@ -2083,6 +2794,28 @@ export async function readSession(transport: Transport, signal?: AbortSignal): P
   const response = await transport({ method: "GET", url, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "Session", response.json) as T.Session;
+}
+
+export interface ReadSocialInsurancePaymentArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف سند سداد التأمينات. / The social insurance payment identifier. */
+  paymentId: string;
+}
+
+/**
+ * قراءة سند سداد تأمينات / Read one social insurance payment
+ * 
+ * يقرأ السند ومعه **ما استُحقّ في فترته من مسيّرات مُرحَّلة** — حصّة المنشأة وحصّة الموظف معاً. والرقمان يُعرضان جنباً إلى جنب ولا يُطرح أحدهما من الآخر هنا: الفرق قرارٌ يقرؤه محاسب.
+ * 
+ * Reads the document together with **what was accrued in its period by posted runs** — the employer share and the employee share together. The two numbers are shown side by side and neither is subtracted from the other here: the difference is a judgement an accountant reads.
+ */
+export async function readSocialInsurancePayment(transport: Transport, args: ReadSocialInsurancePaymentArgs, signal?: AbortSignal): Promise<T.HrSocialInsurancePayment> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/social-insurance-payments/" + encodeURIComponent(args.paymentId) + "";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "HrSocialInsurancePayment", response.json) as T.HrSocialInsurancePayment;
 }
 
 export interface ReadStockBalancesArgs {
@@ -2320,6 +3053,108 @@ export async function readUnit(transport: Transport, args: ReadUnitArgs, signal?
   const response = await transport({ method: "GET", url, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "Unit", response.json) as T.Unit;
+}
+
+export interface ReconcileEmployeeSubledgerArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** تاريخ المطابقة: تُقرأ الحركة حتى نهايته. / The reconciliation date: movement is read up to and including it. */
+  asOf: string;
+}
+
+/**
+ * مطابقة دفتر الموظف مستنداً بمستند / Reconcile the employee subledger document by document
+ * 
+ * يطابق دفتر الموظف المساعد بنقطة ضبطه **مستنداً بمستند وطرفاً بطرف**، ويُرجع ما اختلف وحده مع سببه.
+ * 
+ * **ولا يُنشر فيه رقمٌ واحد اسمه «رصيد الموظف» — وهذا قرارٌ لا نقص.** قارئ نقطة الضبط يجمّع **بلا تفصيل بالحساب** ويعيد صافياً واحداً، ودفتر الموظف يمتدّ على **أصلٍ واحد وثلاثة خصوم**: سلفة، وراتب مستحق، واستقطاع محتجَز، ومخصص نهاية خدمة. فصافٍ واحد يقاصّ سلفةً بمخصص خدمة براتب مستحق، **ويعلن التطابق وهو أعمى** — انحرافان متقابلان يُلغيان بعضهما.
+ * 
+ * **وهذه المطابقة ممكنة أصلاً لأن الطرفين متساويا الحبيبيّة**: قيدٌ لكل قسيمة يعني حركةً واحدة في نقطة الضبط لكل قسيمة وصفَّ محاولةٍ واحداً في جدول الوحدة لكل قسيمة. ولو رُحِّل المسيّر قيداً واحداً لصار الطرفان بحبيبيّتين مختلفتين ولاستحال هذا الباب.
+ * 
+ * وسؤال «كم على هذا الموظف من سلفة؟» يُجاب من جداول الوحدة لا من الدفتر.
+ * 
+ * Reconciles the employee subledger against its control point **document by document and party by party**, returning only what differs, with its reason.
+ * 
+ * **No single number called 'the employee's balance' is published here — a decision, not a gap.** The control point reader aggregates **without account detail** and returns one net, while the employee subledger spans **one asset and three liabilities**: an advance, a salary payable, a withheld deduction, and an end-of-service provision. One net therefore offsets an advance against a service provision against a salary payable, **and declares agreement while blind** — two opposite divergences cancelling.
+ * 
+ * **This reconciliation is possible at all because the two sides share one grain**: one entry per payslip means one control-point movement per payslip and one attempt row in the module's table per payslip. Had the run been posted as a single entry, the two sides would carry different grains and this door would be impossible.
+ * 
+ * The question 'how much advance does this employee owe?' is answered from the module's tables, not from the ledger.
+ */
+export async function reconcileEmployeeSubledger(transport: Transport, args: ReconcileEmployeeSubledgerArgs, signal?: AbortSignal): Promise<T.HrReconciliation> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/employee-subledger-reconciliation";
+  const query = new URLSearchParams();
+  query.set("asOf", args.asOf);
+  const url = query.size > 0 ? path + "?" + query.toString() : path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "HrReconciliation", response.json) as T.HrReconciliation;
+}
+
+export interface RecordEmployeeDeductionArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.HrDeductionRequest;
+}
+
+/**
+ * قيد جزاء في السجلّ المعتمد / Record a deduction in the approved register
+ * 
+ * يقيّد جزاءً بفئة سببه ومعتمِده، فيُستقطع داخل مسيّر فترته.
+ * 
+ * **ولاحظ ما ليس على هذا المورد ولا يجوز أن يوجد: لا …/posting.** الاستقطاع يُرحَّل **داخل المسيّر** لا بذاته، وبابٌ يوحي بغير ذلك يبني عليه العميل شاشةً بزرّ ترحيل لا وجود له — وهو نصّ ما عالجه ADR-0047 في أمر الشراء. ولذلك لا يحمل جوابه entryId ولا alreadyPosted: حقلٌ فارغ يُقرأ «لم يُرحَّل بعد» بدل «لا يُرحَّل».
+ * 
+ * **ولا حدّ أقصى لنسبة الاستقطاع يُفرَض هنا**: الحدّ النظامي للاستقطاع من الأجر **غير متحقَّق منه**، وحدٌّ مخترَع يرفض مسيّرات مشروعة ويُدرّب المستخدم على الالتفاف. والبند مفتوح على المالك.
+ * 
+ * **وأيّ الاستقطاعات يُورَّد إلى طرف ثالث وأيّها يبقى للمنشأة سؤالٌ مفتوح كذلك**، والأثر المقيس أن دور الاستقطاعات المستحقّة له سطرٌ دائن واحد في المصفوفة كلّها **ولا سطر مدين واحد** — أي أن حسابه يتراكم ولا يُطفئه شيء. وذلك مكتوبٌ في دَين التحقّق ولم يُبتلع.
+ * 
+ * Records a deduction with its reason category and its approver, to be deducted inside its period's run.
+ * 
+ * **Note what this resource does not carry and may not: no …/posting.** A deduction is posted **inside the run**, not by itself, and a door suggesting otherwise leads a client to build a screen with a posting button that does not exist — exactly what ADR-0047 addressed on the purchase order. Hence its response carries neither entryId nor alreadyPosted: an empty field reads as 'not posted yet' instead of 'never posted'.
+ * 
+ * **No maximum deduction ratio is enforced here**: the regulatory ceiling on deductions from wages is **unverified**, and an invented ceiling refuses legitimate runs and trains users to work around it. The item is open to the owner.
+ * 
+ * **Which deductions are remitted to a third party and which stay with the company is likewise open**, and the measured effect is that the payroll deductions payable role has exactly one credit line in the whole matrix **and not one debit line** — meaning its account accumulates and nothing ever clears it. That is written into the verification debt rather than swallowed.
+ */
+export async function recordEmployeeDeduction(transport: Transport, args: RecordEmployeeDeductionArgs, signal?: AbortSignal): Promise<T.HrDeduction> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/employee-deductions";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "HrDeductionRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "HrDeduction", response.json) as T.HrDeduction;
+}
+
+export interface RegisterEmployeeArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.HrEmployeeRequest;
+}
+
+/**
+ * تسجيل موظف / Register an employee
+ * 
+ * يسجّل موظفاً وعلاقة عمله الأولى. **ولا رمز في الحمولة**: الخادم يولّد رمزاً **معتماً** لا يُشتقّ من هوية ولا من آيبان ولا من اسم ولا من تسلسل، وهو **وحده** ما يُكتب في الدفتر المساعد.
+ * 
+ * **ولماذا معتماً — وهذا قرارٌ بنيوي لا احتياط:** كل ما يدخل ledger.* يدخل البايتات المُجزَّأة في الشكل القانوني v2، وREVOKE UPDATE, DELETE على دور التطبيق يجعل ما دخلها **غير قابل للإزالة**، وعلاجُ المحو الموعود في ADR-0046 — تعميةٌ بمفتاح يُتلَف — لا يبلغ بايتات دخلت سلسلة تجزئة لأن تغييرها يكسر السلسلة. وanتبه أن description_ar_search عمودٌ **مفهرس نصّياً**، فرقمٌ شخصي لا يدخل غيرَ ممحوٍّ فحسب بل **قابلَ البحث** غير ممحوّ.
+ * 
+ * والهوية والآيبان يسكنان جدولاً منفصلاً واحداً لواحد، **ولا يعودان في أي جواب إلا مقنَّعين**: آخر أربعة محارف وحدها. وقراءة القيمة الكاملة تحتاج استحقاقاً **على مستوى الحقل** لا وجود له في النواة اليوم، وذلك **نقصُ سطحٍ مُعلَن** لا قرارُ منع.
+ * 
+ * Registers an employee and their first employment. **No code appears in the payload**: the server mints an **opaque** code derived from no national id, no IBAN, no name, and no sequence — and it alone is written into the subledger.
+ * 
+ * **Why opaque, and this is structural rather than caution:** everything that enters ledger.* enters the hashed bytes of canonical form v2, REVOKE UPDATE, DELETE on the application role makes what entered **unremovable**, and the erasure remedy promised in ADR-0046 — encryption under a destroyable key — cannot reach bytes that entered a hash chain, because changing them breaks the chain. Note also that description_ar_search is a **text-indexed** column, so a personal number enters not merely unerasable but **searchable** and unerasable.
+ * 
+ * The national id and the IBAN live in a separate one-to-one table and **never come back from any read except masked**: the last four characters only. Reading the full value would need **field-level** entitlement, which the core does not have today; that is a **declared surface gap**, not a prohibition.
+ */
+export async function registerEmployee(transport: Transport, args: RegisterEmployeeArgs, signal?: AbortSignal): Promise<T.HrEmployee> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/employees";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "HrEmployeeRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "HrEmployee", response.json) as T.HrEmployee;
 }
 
 export interface RegisterTenantArgs {
@@ -2598,6 +3433,39 @@ export async function suspendCostCenter(transport: Transport, args: SuspendCostC
   const response = await transport({ method: "POST", url, body, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "CompanySetup", response.json) as T.CompanySetup;
+}
+
+export interface TerminateEmployeeArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف الموظف. وهو **غير** رمزه المعتم: الرمز هو ما يعبر إلى الدفتر المساعد، والمعرّف عنوانٌ على هذا السطح. / The employee identifier. It is **not** the opaque code: the code is what crosses into the subledger, while the identifier is an address on this surface. */
+  employeeId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.HrTerminationRequest;
+}
+
+/**
+ * إنهاء خدمة موظف / Terminate an employee
+ * 
+ * يُنهي علاقة العمل السارية بتاريخها وبمفتاح سببها. **مورد فرعي مستقلّ لا PUT بحقل حالة**، بنفس سابقة …/suspension على مركز التكلفة و…/reversal على القيد.
+ * 
+ * **وهو ما يفتح المخالصة**: مخالصة على علاقة عمل ما تزال سارية تُرفض بـhr.employment_not_terminated.
+ * 
+ * ومفتاح السبب **رمزٌ يقرؤه برنامج** من مجموعة يملكها المستدعي، لا نصٌّ يُعرض؛ ولا يُصنَّف هنا إلى «استقالة» و«إنهاء» لأن أثر التمييز على الاستحقاق **بندٌ مفتوح على المالك**، وتصنيفٌ يفترض جوابه يُبنى عليه حساب.
+ * 
+ * Ends the active employment with its date and a reason key. **A separate sub-resource, not a PUT on a status field**, following the same precedent as …/suspension on a cost centre and …/reversal on an entry.
+ * 
+ * **It is what opens the final settlement**: a settlement against an employment that is still active is refused with hr.employment_not_terminated.
+ * 
+ * The reason key is a **code a program reads**, from a set the caller owns — not displayed text; and it is not classified here into 'resignation' and 'dismissal', because the effect of that distinction on the entitlement is an **open owner question**, and a classification that assumes its answer gets computed upon.
+ */
+export async function terminateEmployee(transport: Transport, args: TerminateEmployeeArgs, signal?: AbortSignal): Promise<T.HrEmployee> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/employees/" + encodeURIComponent(args.employeeId) + "/termination";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "HrTerminationRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "HrEmployee", response.json) as T.HrEmployee;
 }
 
 export interface VerifyLedgerChainArgs {

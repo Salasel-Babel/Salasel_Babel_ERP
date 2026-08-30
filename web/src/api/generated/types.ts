@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     f190afc20a37f87b028e9f72ad94399c1209454ba037ae74feb1929f982c3c23
+     5737bbd9884cd9f40d0e211f37afd938f378a36c5a1c72e40286dd6fa0a90952
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -448,6 +448,597 @@ export interface HealthResponse {
   culture: string;
   /** الحالة. / The status. */
   status: string;
+}
+
+/** سلفة كما تخرج من السطح — **بلا حقل قيد**: باب ترحيلها غير منشور لأن حدثها غير موجود في مصفوفة الترحيل، وحقلٌ فارغ كان سيَعِد بدورة لا تكتمل. و`outstandingAmount` مشتقٌّ من الأقساط **المستقطَعة فعلاً** وحدها لا من مرور الزمن. / An advance as the surface returns it — **with no entry field**: its posting door is unpublished because its event does not exist in the posting matrix, and an empty field would promise a cycle that does not complete. `outstandingAmount` is derived from instalments **actually deducted** alone, not from elapsed time. */
+export interface HrAdvance {
+  amount: Money;
+  /** الرمز المعتم. / The opaque code. */
+  employeeCode: string;
+  /** الموظف. / The employee. */
+  employeeId: string;
+  /** المعرّف. / The identifier. */
+  id: string;
+  /** جدول الأقساط. / The instalment schedule. */
+  instalments: HrInstalment[];
+  /** تاريخ المنح ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The grant date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  issuedOn: string;
+  /** الرقم. / The number. */
+  number: string;
+  outstandingAmount: Money;
+  /** طريقة الصرف. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The disbursement method. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  settlementMethod: "bank" | "cash";
+  /** الحالة. / The state. */
+  state: string;
+  /** طرف الخزينة. / The treasury party. */
+  treasuryPartyId: string;
+}
+
+/** طلب إنشاء سلفة مسوّدة بجدول أقساطها، **ومجموع الأقساط يساوي المبلغ بالضبط** — والفارق لا يُسوَّى ضمناً: قسطٌ يُخترع أو يُقصّ يجعل رصيد السلفة رقماً لا يقابله جدول. / An advance draft request with its instalment schedule, **whose instalments sum exactly to the amount** — the difference is never settled implicitly: an invented or truncated instalment makes the advance balance a number with no schedule behind it. */
+export interface HrAdvanceRequest {
+  amount: Money;
+  /** الموظف المستلف. / The employee taking the advance. */
+  employeeId: string;
+  /** جدول الأقساط. / The instalment schedule. */
+  instalments: HrInstalmentRequest[];
+  /** تاريخ منح السلفة ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The date the advance was granted. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  issuedOn: string;
+  /** رقم السلفة. / The advance number. */
+  number: string;
+  /** طريقة الصرف — مؤهّل دور. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The disbursement method — a role qualifier. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  settlementMethod: "bank" | "cash";
+  /** طرف الخزينة. / The treasury party. */
+  treasuryPartyId: string;
+}
+
+/** جزاءٌ كما يخرج من السطح — **بلا entryId وبلا alreadyPosted**. الاستقطاع يُرحَّل داخل المسيّر لا بذاته، وحقلٌ فارغ يُقرأ «لم يُرحَّل بعد» بدل «لا يُرحَّل»، فيبني عليه العميل شاشةً بزرّ ترحيل لا وجود له. / A deduction as the surface returns it — **with no entryId and no alreadyPosted**. A deduction is posted inside the run rather than by itself, and an empty field reads as 'not posted yet' instead of 'never posted', leading a client to build a screen with a posting button that does not exist. */
+export interface HrDeduction {
+  amount: Money;
+  /** المعتمِد. / The approver. */
+  approvedBy: string;
+  /** تاريخ الاعتماد ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The approval date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  approvedOn: string;
+  /** مفتاح فئة السبب. / The reason category key. */
+  categoryKey: string;
+  /** القسيمة التي استُقطع فيها، أو null فلم يُستقطع بعد. / The payslip it was consumed by, or null while it has not been deducted. */
+  consumedByPayslipId: string | null;
+  /** الرمز المعتم. / The opaque code. */
+  employeeCode: string;
+  /** الموظف. / The employee. */
+  employeeId: string;
+  /** المعرّف. / The identifier. */
+  id: string;
+  /** رمز الفترة المالية yyyy-MM ميلادياً دائماً — لا يتغيّر بثقافة الخادم ولا بثقافة العميل. / The fiscal period code yyyy-MM, always Gregorian — unaffected by server or client culture. */
+  periodCode: string;
+}
+
+/** قيد جزاء في السجلّ المعتمد، يُستقطع داخل مسيّر فترته. **ولا حدّ أقصى لنسبة الاستقطاع يُفرَض**: الحدّ النظامي غير متحقَّق منه، وحدٌّ مخترَع يرفض مسيّرات مشروعة ويُدرّب المستخدم على الالتفاف. / A deduction recorded in the approved register, deducted inside its period's run. **No maximum deduction ratio is enforced**: the regulatory ceiling is unverified, and an invented ceiling refuses legitimate runs and trains users to work around it. */
+export interface HrDeductionRequest {
+  amount: Money;
+  /** المعتمِد — إنسان، لا نظام. / The approver — a human, not the system. */
+  approvedBy: string;
+  /** تاريخ الاعتماد ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The approval date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  approvedOn: string;
+  /** مفتاح فئة السبب — رمزٌ يملكه المستدعي لا نصٌّ يُعرض. / The reason category key — a code the caller owns, not displayed text. */
+  categoryKey: string;
+  /** الموظف المستقطَع منه. / The employee being deducted from. */
+  employeeId: string;
+  /** رمز الفترة المالية yyyy-MM ميلادياً دائماً — لا يتغيّر بثقافة الخادم ولا بثقافة العميل. / The fiscal period code yyyy-MM, always Gregorian — unaffected by server or client culture. */
+  periodCode: string;
+}
+
+/** الموظف كما يخرج من السطح — **بلا قيمة شخصية واحدة غير مقنَّعة**. و`code` رمزٌ **معتم** لا يُشتقّ من شيء ولا يُقرأ منه شيء عن صاحبه، وهو ما يظهر في `partyId` عند مطابقة الدفتر المساعد. / The employee as the surface returns it — **with not one unmasked personal value**. `code` is an **opaque** code derived from nothing and telling nothing about its bearer, and it is what appears as `partyId` in the subledger reconciliation. */
+export interface HrEmployee {
+  /** تصنيف الاشتراك. / The contribution class. */
+  classCode: string;
+  /** الرمز المعتم — وهو وحده ما يعبر إلى الدفتر المساعد. / The opaque code — the only thing that crosses into the subledger. */
+  code: string;
+  /** مركز التكلفة كما سُجّل. / The cost centre as recorded. */
+  costCenterId: string;
+  /** علاقة العمل الجارية أو الأخيرة — وهي حبيبيّة مخصص نهاية الخدمة. / The current or latest employment — the grain of the end-of-service provision. */
+  employmentId: string;
+  /** تاريخ انتهاء علاقة العمل، أو null لعلاقة سارية. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية. / The employment end date, or null while it is active. Gregorian, yyyy-MM-dd only, Latin digits. */
+  endedOn: string | null;
+  /** المعرّف على هذا السطح. / The identifier on this surface. */
+  id: string;
+  identity: HrMaskedIdentity;
+  /** الاسم العربي — السجلّ. / The Arabic name — the record. */
+  nameAr: string;
+  /** الترجمات، مرتَّبة ترتيباً حرفياً ثابتاً. / The translations, in a stable ordinal order. */
+  nameTranslations: NameValue[];
+  /** تاريخ بدء علاقة العمل ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The employment start date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  startedOn: string;
+  /** حالة علاقة العمل: ACTIVE أو TERMINATED. / The employment state: ACTIVE or TERMINATED. */
+  state: string;
+}
+
+/** طلب تسجيل موظف. **ولا رمز فيه**: الخادم يولّد رمزاً معتماً ولا يقبل واحداً من العميل، لأن الرمز هو ما يُكتب في دفتر أستاذ لا يُمحى منه شيء. والاسم العربي **سجلّ** وترجماته صفوف. / An employee registration request. **It carries no code**: the server mints an opaque one and accepts none from the client, because the code is what gets written into a ledger nothing is erased from. The Arabic name is the **record**, and its translations are rows. */
+export interface HrEmployeeRequest {
+  /** تصنيف الاشتراك — مؤهّل صفّ الإعدادات، لا نسبة ولا سقف. / The contribution class — a qualifier for the settings row, not a rate and not a ceiling. */
+  classCode: string;
+  /** مركز التكلفة الذي يُحمَّل عليه أجر هذا الموظف، أو فراغٌ فالافتراضي. وواحدٌ لا أكثر. / The cost centre this employee's pay is charged to, or empty for the default. One, and no more. */
+  costCenterId: string;
+  /** تاريخ بدء علاقة العمل ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The employment start date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  hiredOn: string;
+  identity: HrIdentityRequest;
+  /** الاسم العربي — السجلّ، لا ترجمة ثانية. / The Arabic name — the record, not a second translation. */
+  nameAr: string;
+  /** ترجمات الاسم بوسم BCP-47. والعربية سجلٌّ فلا تدخل هنا. / The name's translations by BCP-47 tag. Arabic is the record and never appears here. */
+  nameTranslations?: NameValue[];
+}
+
+/** البيانات الشخصية عند التسجيل — **تدخل ولا تعود**. تسكن جدولاً منفصلاً واحداً لواحد، ولا يخرج منها شيء في أي جواب إلا مقنَّعاً، ولا يعبر منها حرفٌ واحد إلى دفتر الأستاذ. / Personal data at registration — **it goes in and does not come back**. It lives in a separate one-to-one table, nothing of it leaves in any response except masked, and not one character of it crosses into the ledger. */
+export interface HrIdentityRequest {
+  /** تاريخ الميلاد ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The date of birth. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  birthDate: string;
+  /** الآيبان. لا يعبر إلى الدفتر بحال، ولا يعود إلا مقنَّعاً. / The IBAN. It never crosses into the ledger and never returns except masked. */
+  iban: string;
+  /** رقم الهوية أو الإقامة. لا يعبر إلى الدفتر بحال، ولا يعود إلا مقنَّعاً. / The national or residence identity number. It never crosses into the ledger and never returns except masked. */
+  nationalId: string;
+}
+
+/** قسط سلفة كما يخرج من السطح، ومعه القسيمة التي استُقطع فيها إن استُقطع. / An advance instalment as the surface returns it, with the payslip it was deducted in, if any. */
+export interface HrInstalment {
+  amount: Money;
+  /** القسيمة التي استُقطع فيها، أو null. / The payslip it was deducted in, or null. */
+  consumedByPayslipId: string | null;
+  /** رقم القسط. / The instalment number. */
+  lineNo: number;
+  /** رمز الفترة المالية yyyy-MM ميلادياً دائماً — لا يتغيّر بثقافة الخادم ولا بثقافة العميل. / The fiscal period code yyyy-MM, always Gregorian — unaffected by server or client culture. */
+  periodCode: string;
+}
+
+/** قسط سداد سلفة في الطلب: فترته ومبلغه. / An advance repayment instalment in the request: its period and its amount. */
+export interface HrInstalmentRequest {
+  amount: Money;
+  /** رمز الفترة المالية yyyy-MM ميلادياً دائماً — لا يتغيّر بثقافة الخادم ولا بثقافة العميل. / The fiscal period code yyyy-MM, always Gregorian — unaffected by server or client culture. */
+  periodCode: string;
+}
+
+/** الهوية مقنَّعة: آخر أربعة محارف وحدها وما قبلها نجومٌ **بعدد ثابت**. وعددٌ يساوي طول الأصل يُسرّب الطول، وطولُ الآيبان يُميّز بلد إصداره. / A masked identity: the last four characters only, preceded by a **fixed** number of dots. A count matching the original's length would leak the length, and an IBAN's length distinguishes its issuing country. */
+export interface HrMaskedIdentity {
+  /** قناع الآيبان. / The IBAN mask. */
+  ibanMask: string;
+  /** قناع رقم الهوية. / The identity number mask. */
+  nationalIdMask: string;
+}
+
+/** مكوّن أجر كما يخرج من السطح. / A pay component as the surface returns it. */
+export interface HrPayComponent {
+  /** الرمز. / The code. */
+  code: string;
+  /** وسم وعاء الاشتراك. / The contributory wage flag. */
+  entersContributoryWage: boolean;
+  /** وسم وعاء نهاية الخدمة. / The end-of-service base flag. */
+  entersEndOfServiceBase: boolean;
+  /** المعرّف. / The identifier. */
+  id: string;
+  /** نوع المكوّن. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The component kind. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  kind: "deduction" | "earning";
+  /** الاسم العربي — السجلّ. / The Arabic name — the record. */
+  nameAr: string;
+  /** الترجمات. / The translations. */
+  nameTranslations: NameValue[];
+}
+
+/** تصنيفات مكوّنات الأجر، مرتَّبة بالرمز. **وغلافٌ لا مصفوفة عارية**: مصفوفةٌ في جذر الاستجابة لا موضع فيها لعدّاد ولا لصفحة. / The pay component classifications, ordered by code. **An envelope, not a bare array**: an array at the response root has no place for a count or a page. */
+export interface HrPayComponentList {
+  /** عدد المكوّنات. / The number of components. */
+  itemCount: number;
+  /** المكوّنات. / The components. */
+  items: HrPayComponent[];
+}
+
+/** طلب تعريف مكوّن أجر — **تصنيفٌ لا مبلغ ولا نسبة**. والوسمان هما الموضع الذي يصير فيه الأثر التنظيمي بياناتٍ يملؤها المحاسب بدل شيفرة يكتبها مبرمج. / A pay component definition request — **a classification, not an amount and not a rate**. The two flags are where the regulatory effect becomes data an accountant fills instead of code a programmer writes. */
+export interface HrPayComponentRequest {
+  /** رمز المكوّن داخل المنشأة. / The component code within the company. */
+  code: string;
+  /** هل يدخل وعاء اشتراك التأمينات؟ يملؤه المحاسب. / Does it enter the social insurance contributory wage? The accountant fills it. */
+  entersContributoryWage: boolean;
+  /** هل يدخل وعاء مكافأة نهاية الخدمة؟ يملؤه المحاسب. / Does it enter the end-of-service benefit base? The accountant fills it. */
+  entersEndOfServiceBase: boolean;
+  /** نوع المكوّن: استحقاق أو استقطاع. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The component kind: an earning or a deduction. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  kind: "deduction" | "earning";
+  /** الاسم العربي — السجلّ. / The Arabic name — the record. */
+  nameAr: string;
+  /** ترجمات الاسم. / The name's translations. */
+  nameTranslations?: NameValue[];
+}
+
+/** قيمة مكوّن كما تخرج من السطح، بتاريخ سريانها. / A component value as the surface returns it, with its effective date. */
+export interface HrPayElement {
+  amount: Money;
+  /** رمز المكوّن. / The component code. */
+  componentCode: string;
+  /** تاريخ السريان ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The effective date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  effectiveFrom: string;
+  /** المعرّف. / The identifier. */
+  id: string;
+}
+
+/** أجر الموظف بسريانه — **كل الصفوف لا الساري اليوم وحده**، لأن مراجعة مسيّرٍ ماضٍ تحتاج ما كان سارياً حينها. / The employee's pay by effective date — **every row, not only the one in force today**, because reviewing a past run needs what was in force then. */
+export interface HrPayElementList {
+  /** عدد الصفوف. / The number of rows. */
+  itemCount: number;
+  /** الصفوف، مرتَّبة بالمكوّن ثم بتاريخ السريان. / The rows, ordered by component then by effective date. */
+  items: HrPayElement[];
+}
+
+/** طلب إسناد قيمة مكوّن بتاريخ سريان — **إنشاءٌ لا تعديل**. والزيادة صفٌّ جديد، لأن مسيّراً ماضياً رُحِّل قيده يجب أن يُعاد حسابه فيطابقه. / A request to assign a component value from an effective date — **a creation, not an edit**. An increase is a new row, because a past run whose entry was posted must be recomputable and match it. */
+export interface HrPayElementRequest {
+  amount: Money;
+  /** رمز المكوّن المُسنَدة قيمته. / The code of the component being valued. */
+  componentCode: string;
+  /** تاريخ سريان القيمة ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The date the value takes effect. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  effectiveFrom: string;
+}
+
+/** المبالغ الستّة **بأسماء مفردات مصفوفة الترحيل نفسها**، فما يُقرأ هنا هو ما يُمرَّر إلى المحرك حرفاً بحرف. والمتطابقة المعلَنة في المصفوفة مفروضة في قاعدة البيانات: netPayable = grossEntitlements − employeeSocialInsurance − advanceInstalment − deductions. / The six amounts **under the posting matrix's own vocabulary names**, so what is read here is what is passed to the engine verbatim. The identity declared in the matrix is enforced in the database: netPayable = grossEntitlements − employeeSocialInsurance − advanceInstalment − deductions. */
+export interface HrPayrollAmounts {
+  advanceInstalment: Money;
+  deductions: Money;
+  employeeSocialInsurance: Money;
+  employerSocialInsurance: Money;
+  grossEntitlements: Money;
+  netPayable: Money;
+}
+
+/** سند صرف الرواتب كما يخرج من السطح، بسطوره ومعرّفات قيودها. / The payroll payment as the surface returns it, with its lines and their entry identifiers. */
+export interface HrPayrollPayment {
+  /** هل كانت سطوره كلّها مُرحَّلة قبل هذا النداء؟ / Were all of its lines already posted before this call? */
+  alreadyPosted: boolean;
+  /** المعرّف. / The identifier. */
+  id: string;
+  /** السطور — واحدٌ لكل قسيمة. / The lines — one per payslip. */
+  lines: HrPayrollPaymentLine[];
+  netPayable: Money;
+  /** الرقم. / The number. */
+  number: string;
+  /** تاريخ الصرف ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The payment date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  paidOn: string;
+  /** المسيّر. / The run. */
+  runId: string;
+  /** طريقة التسوية. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The settlement method. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  settlementMethod: "bank" | "cash";
+  /** الحالة: DRAFT أو POSTED. / The state: DRAFT or POSTED. */
+  state: string;
+  /** طرف الخزينة. / The treasury party. */
+  treasuryPartyId: string;
+}
+
+/** سطر سند صرف — **واحدٌ لكل قسيمة، وهو حبيبيّة القيد**. ولو كان القيد واحداً للسند لاختلفت حبيبيّة طرفَي المطابقة واستحالت. / A payment line — **one per payslip, and it is the entry's grain**. Were the entry one per document, the two sides of the reconciliation would carry different grains and it would be impossible. */
+export interface HrPayrollPaymentLine {
+  amount: Money;
+  /** الرمز المعتم — طرف الدفتر المساعد. / The opaque code — the subledger party. */
+  employeeCode: string;
+  /** معرّف قيد هذا السطر إن رُحّل، أو null. / This line's entry identifier if posted, or null. */
+  entryId: string | null;
+  /** رقم السطر. / The line number. */
+  lineNo: number;
+  /** القسيمة التي يُصرف صافيها. / The payslip whose net is being paid. */
+  payslipId: string;
+}
+
+/** طلب إنشاء سند صرف رواتب مسوّدة على مسيّر مُرحَّل. و`treasuryPartyId` **إلزامي**: سطر التسوية معلَنٌ في المصفوفة subledger: "resolved"، والمحرك يطويه إلى النوع none ثم يبحث عن الواقعة subledger.none — وحسابُ التسوية الافتراضي حسابٌ ضابط، فبلا الطرف يُرفض الترحيل كلّه. / A payroll payment draft request against a posted run. `treasuryPartyId` is **mandatory**: the settlement line is declared in the matrix as subledger: "resolved", the engine folds that to kind none and then looks for the subledger.none fact — and the default settlement account is a control account, so without the party the whole posting is refused. */
+export interface HrPayrollPaymentRequest {
+  /** رقم السند — فريد داخل المنشأة. / The document number — unique within the company. */
+  number: string;
+  /** تاريخ الصرف ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The payment date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  paidOn: string;
+  /** المسيّر المُرحَّل الذي يُصرف. / The posted run being paid. */
+  runId: string;
+  /** طريقة التسوية — **مؤهّل دور لا رمز حساب**. والمجموعة ضيّقة عمداً: قبولُ حساب وسيط يفترض جواب سؤال مفتوح عن لحظة وقوع قيد الصرف. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The settlement method — **a role qualifier, not an account code**. The set is deliberately narrow: accepting a clearing account would assume the answer to an open question about when the payment entry falls. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  settlementMethod: "bank" | "cash";
+  /** طرف الخزينة أو الحساب المصرفي في دفترها المساعد. / The treasury or bank party within its own subledger. */
+  treasuryPartyId: string;
+}
+
+/** مسيّر رواتب كما يخرج من السطح. **ولا معرّف قيد عليه**: القيود على قسائمه لا عليه — قيدٌ لكل قسيمة. / A payroll run as the surface returns it. **It carries no entry identifier**: the entries belong to its payslips, not to it — one entry per payslip. */
+export interface HrPayrollRun {
+  amounts: HrPayrollAmounts;
+  /** المعرّف. / The identifier. */
+  id: string;
+  /** الرقم. / The number. */
+  number: string;
+  /** عدد القسائم — وهو عدد القيود التي يُصدرها الترحيل. / The payslip count — which is the number of entries posting issues. */
+  payslipCount: number;
+  /** رمز الفترة المالية yyyy-MM ميلادياً دائماً — لا يتغيّر بثقافة الخادم ولا بثقافة العميل. / The fiscal period code yyyy-MM, always Gregorian — unaffected by server or client culture. */
+  periodCode: string;
+  /** نهاية الفترة ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The period end. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  periodEnd: string;
+  /** بداية الفترة ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The period start. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  periodStart: string;
+  /** الحالة: DRAFT أو POSTED. / The state: DRAFT or POSTED. */
+  state: string;
+}
+
+/** طلب إنشاء مسيّر رواتب مسوّدة. **ولا مجاميع فيه**: مجموعٌ يرسله العميل مصدرُ حقيقةٍ ثانٍ ينحرف عن الأول ولا يُظهره شيء. / A payroll run draft request. **It carries no totals**: a total sent by a client is a second source of truth that drifts from the first with nothing to reveal it. */
+export interface HrPayrollRunRequest {
+  /** رقم المسيّر — فريد داخل المنشأة. / The run number — unique within the company. */
+  number: string;
+  /** رمز الفترة المالية yyyy-MM ميلادياً دائماً — لا يتغيّر بثقافة الخادم ولا بثقافة العميل. / The fiscal period code yyyy-MM, always Gregorian — unaffected by server or client culture. */
+  periodCode: string;
+  /** نهاية الفترة — وهي تاريخ قيد الاستحقاق ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The period end — the accrual entry's date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  periodEnd: string;
+  /** بداية الفترة ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The period start. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  periodStart: string;
+}
+
+/** إصدار نِسَبٍ كما يخرج من السطح، بمعتمِده ومصدره وتاريخ سريانه. / A rate version as the surface returns it, with its approver, its source, and its effective date. */
+export interface HrPayrollSettings {
+  /** المعتمِد. / The approver. */
+  approvedBy: string;
+  /** تاريخ الاعتماد ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The approval date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  approvedOn: string;
+  /** التصنيف. / The class. */
+  classCode: string;
+  /** تاريخ السريان ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The effective date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  effectiveFrom: string;
+  employeeRate: TaxRate;
+  employerRate: TaxRate;
+  /** المعرّف. / The identifier. */
+  id: string;
+  maximumContributoryWage: Money;
+  minimumContributoryWage: Money;
+  /** مرجع المصدر النظامي. / The regulatory source reference. */
+  sourceRef: string;
+}
+
+/** إصدارات النِّسَب بسريانها. **وقائمة فارغة جوابٌ صحيح**: هي حال المنشأة قبل أن يعتمد محاسبها أول إصدار، وهي الحال التي يُرفض فيها كل مسيّر. / The rate versions by effective date. **An empty list is a correct answer**: it is the company's state before its accountant approves a first version, and the state in which every run is refused. */
+export interface HrPayrollSettingsList {
+  /** عدد الإصدارات. / The number of versions. */
+  itemCount: number;
+  /** الإصدارات، مرتَّبة بالتصنيف ثم بتاريخ السريان. / The versions, ordered by class then by effective date. */
+  items: HrPayrollSettings[];
+}
+
+/** إيداع إصدار من نِسَب الاشتراك وحدودها — **وهذا هو الموضع الوحيد الذي تدخل منه نسبة إلى هذا النظام**. والنِّسَب TaxRate بمقياس ثمانٍ لا Money: خمسة عشر بالمئة تُكتب 0.15 لا 15. و`sourceRef` **غير فارغ بقيدٍ في قاعدة البيانات**: نسبةٌ بلا مصدر مكتوب مرفوضة عند الكتابة لا عند المراجعة. / Depositing a version of the contribution rates and their limits — **the only place a rate enters this system**. Rates are TaxRate at scale eight, not Money: fifteen percent is 0.15, never 15. `sourceRef` is **non-empty by a database constraint**: a rate with no written source is refused at write time, not at review time. */
+export interface HrPayrollSettingsRequest {
+  /** من اعتمد الإصدار — إنسان، لا نظام. / Who approved the version — a human, not the system. */
+  approvedBy: string;
+  /** تاريخ اعتماد هذا الإصدار ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The date this version was approved. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  approvedOn: string;
+  /** تصنيف الاشتراك الذي تسري عليه هذه النِّسَب. / The contribution class these rates apply to. */
+  classCode: string;
+  /** تاريخ سريان الإصدار ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The date the version takes effect. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  effectiveFrom: string;
+  employeeRate: TaxRate;
+  employerRate: TaxRate;
+  maximumContributoryWage: Money;
+  minimumContributoryWage: Money;
+  /** مرجع المصدر النظامي الذي أُخذت منه هذه القيم — نصٌّ يقرؤه مراجع، وغير فارغ. / The reference to the regulatory source these values came from — text a reviewer reads, and non-empty. */
+  sourceRef: string;
+}
+
+/** القسيمة — **وهي مستند الترحيل**: معرّفها هو DocumentId في هوية الإحكام السداسية، و`entryId` قيدُها هي وحدها. و`employeeCode` هو الرمز المعتم الذي كُتب في الدفتر المساعد وقت الترحيل، محفوظاً على الصفّ كي يبقى مطابقاً لما في الدفتر مهما تغيّر بعده. / The payslip — **which is the posting document**: its identifier is the DocumentId in the six-part idempotency identity, and `entryId` is its own entry. `employeeCode` is the opaque code written into the subledger at posting time, stored on the row so that it keeps matching the ledger whatever changes afterwards. */
+export interface HrPayslip {
+  /** هل كانت هذه الهوية مُرحَّلة قبل هذا النداء؟ **معلومة لا تُشتقّ من الحالة**: قسيمةٌ حالتها POSTED بعد النداء لا تقول أيُّ النداءين رحّلها. / Was this identity already posted before this call? **Not derivable from the state**: a payslip in state POSTED after the call does not say which call posted it. */
+  alreadyPosted: boolean;
+  amounts: HrPayrollAmounts;
+  /** تفصيل المكوّنات — فارغٌ في القوائم، ومملوءٌ عند قراءة القسيمة مفردةً. / The component breakdown — empty in listings, populated when the payslip is read on its own. */
+  components: HrPayslipComponent[];
+  contributoryWage: Money;
+  /** مركز التكلفة كما كان وقت بناء القسيمة. / The cost centre as it stood when the payslip was built. */
+  costCenterId: string;
+  /** الرمز المعتم — وهو طرف الدفتر المساعد. / The opaque code — the subledger party. */
+  employeeCode: string;
+  /** معرّف الموظف على هذا السطح. / The employee identifier on this surface. */
+  employeeId: string;
+  /** علاقة العمل. / The employment. */
+  employmentId: string;
+  /** معرّف قيد هذه القسيمة إن رُحّلت، أو null. / This payslip's entry identifier if posted, or null. */
+  entryId: string | null;
+  /** المعرّف — وهو DocumentId في هوية الإحكام. / The identifier — the DocumentId in the posting identity. */
+  id: string;
+  /** المسيّر الذي بُنيت فيه. / The run it was built in. */
+  runId: string;
+  /** الحالة: DRAFT أو POSTED. / The state: DRAFT or POSTED. */
+  state: string;
+}
+
+/** مكوّن على قسيمة — تفصيل ما بُني منه المبلغ، ليُراجَع. ووسم دخوله الوعاء محفوظٌ على السطر نفسه: من يراجع بعد سنة يحتاج الوسم كما كان لا كما صار. / A component on a payslip — the breakdown the amount was built from, for review. Its contributory flag is stored on the line itself: whoever reviews a year later needs the flag as it was, not as it became. */
+export interface HrPayslipComponent {
+  amount: Money;
+  /** رمز المكوّن. / The component code. */
+  componentCode: string;
+  /** هل دخل هذا المكوّن وعاء الاشتراك وقت بناء القسيمة؟ / Did this component enter the contributory wage when the payslip was built? */
+  entersContributoryWage: boolean;
+  /** نوع المكوّن. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The component kind. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  kind: "deduction" | "earning";
+  /** رقم السطر داخل القسيمة. / The line number within the payslip. */
+  lineNo: number;
+}
+
+/** قسائم مسيّر — **وهو أيضاً جواب باب الترحيل**: نداءٌ واحد يُصدر قيداً لكل قسيمة، فالجواب قائمة قسائم لكلٍّ معرّف قيدها وحصانتها، لا مستنداً واحداً بمعرّف قيد واحد. / A run's payslips — **and also the posting door's response**: one call issues one entry per payslip, so the response is a list of payslips each with its own entry identifier and its own idempotency flag, not one document with one entry id. */
+export interface HrPayslipList {
+  /** عدد القسائم. / The number of payslips. */
+  itemCount: number;
+  /** القسائم، مرتَّبة بالرمز المعتم. / The payslips, ordered by opaque code. */
+  items: HrPayslip[];
+}
+
+/** مستند استحقاق المخصص كما يخرج من السطح، بحركاته ومعرّفات قيودها — قيدٌ لكل علاقة عمل. / The provision accrual document as the surface returns it, with its movements and their entry identifiers — one entry per employment. */
+export interface HrProvision {
+  /** تاريخ الاستحقاق ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The accrual date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  accruedOn: string;
+  /** هل كانت حركاته كلّها مُرحَّلة قبل هذا النداء؟ / Were all of its movements already posted before this call? */
+  alreadyPosted: boolean;
+  /** المعتمِد. / The approver. */
+  approvedBy: string;
+  /** المعرّف. / The identifier. */
+  id: string;
+  /** مرجع أساس القياس المعتمد. / The approved measurement basis reference. */
+  measurementRef: string;
+  /** الحركات، مرتَّبة بالرمز المعتم. / The movements, ordered by opaque code. */
+  movements: HrProvisionMovement[];
+  /** الرقم. / The number. */
+  number: string;
+  /** رمز الفترة المالية yyyy-MM ميلادياً دائماً — لا يتغيّر بثقافة الخادم ولا بثقافة العميل. / The fiscal period code yyyy-MM, always Gregorian — unaffected by server or client culture. */
+  periodCode: string;
+  periodShare: Money;
+  /** الحالة. / The state. */
+  state: string;
+}
+
+/** حركة مخصص لعلاقة عمل في فترة — **تُضاف ولا تُعدَّل**، وهي حبيبيّة الطرف المساعد ومصدر الرصيد الذي تقرأه المخالصة. / A provision movement for one employment in one period — **appended, never edited** — and it is the subledger party's grain and the source of the balance the settlement reads. */
+export interface HrProvisionMovement {
+  /** الرمز المعتم. / The opaque code. */
+  employeeCode: string;
+  /** علاقة العمل. / The employment. */
+  employmentId: string;
+  /** معرّف قيد هذه الحركة إن رُحّلت، أو null. / This movement's entry identifier if posted, or null. */
+  entryId: string | null;
+  /** المعرّف — وهو DocumentId في هوية إحكام هذه الحركة. / The identifier — the DocumentId in this movement's posting identity. */
+  id: string;
+  periodShare: Money;
+}
+
+/** طلب إنشاء مستند استحقاق مخصص نهاية الخدمة. و`measurementRef` **غير فارغ بقيدٍ في قاعدة البيانات**: مبلغٌ بلا أساسٍ مكتوب تقديرٌ بلا مصدر. **ومستندٌ يُنشئه نداءٌ صريح لا مهمّة مجدولة**: لا مُشغّل دوري في هذه الوحدة، والنمط محجوزٌ للانتزاع ولا يُخترع مرّتين. / A request to create an end-of-service provision accrual document. `measurementRef` is **non-empty by a database constraint**: an amount with no written basis is an estimate with no source. **It is a document created by an explicit call, not a scheduled job**: there is no periodic runner in this module, and the pattern is reserved for extraction rather than invented twice. */
+export interface HrProvisionRequest {
+  /** تاريخ الاستحقاق ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The accrual date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  accruedOn: string;
+  /** المعتمِد. / The approver. */
+  approvedBy: string;
+  /** مرجع أساس القياس المعتمد — نصٌّ يقرؤه مراجع، وغير فارغ. / The reference to the approved measurement basis — text a reviewer reads, and non-empty. */
+  measurementRef: string;
+  /** رقم المستند. / The document number. */
+  number: string;
+  /** رمز الفترة المالية yyyy-MM ميلادياً دائماً — لا يتغيّر بثقافة الخادم ولا بثقافة العميل. / The fiscal period code yyyy-MM, always Gregorian — unaffected by server or client culture. */
+  periodCode: string;
+  /** حصص علاقات العمل. / The per-employment shares. */
+  shares: HrProvisionShareRequest[];
+}
+
+/** حصّة علاقة عمل من مخصص الفترة — **مبلغٌ يُدخله معتمِد المستند، والوحدة لا تقيسه**. طريقة قياس المخصص ومدخلاتها تحتاج اعتماد المحاسب القانوني، ونصّ المصفوفة صريح: «بطريقة القياس المعتمدة — لا تُخترع في هذا التسليم». / One employment's share of the period provision — **an amount the document's approver enters; the module does not measure it**. The provision's measurement method and inputs require a chartered accountant's approval, and the matrix text is explicit: 'by the approved measurement method — not invented in this deliverable'. */
+export interface HrProvisionShareRequest {
+  /** علاقة العمل — وهي حبيبيّة المخصص لا الموظف. / The employment — the provision's grain, not the employee. */
+  employmentId: string;
+  periodShare: Money;
+}
+
+/** تقرير مطابقة دفتر الموظف — **ولا رقم فيه اسمه «رصيد الموظف»، وهذا قرارٌ لا نقص**. قارئ نقطة الضبط يجمّع بلا تفصيل بالحساب ويعيد صافياً واحداً، ودفتر الموظف يمتدّ على أصلٍ واحد وثلاثة خصوم — فصافٍ واحد يقاصّ سلفةً بمخصص خدمة براتب مستحق ويعلن التطابق وهو أعمى. / The employee subledger reconciliation report — **and it publishes no single number called 'the employee's balance'; a decision, not a gap**. The control point reader aggregates without account detail and returns one net, while the employee subledger spans one asset and three liabilities — so one net offsets an advance against a service provision against a salary payable and declares agreement while blind. */
+export interface HrReconciliation {
+  /** تاريخ المطابقة ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The reconciliation date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  asOf: string;
+  /** المستندات المسؤولة عن الفارق وحدها، مرتَّبة ترتيباً ثابتاً. / Only the documents responsible for the difference, in a stable order. */
+  divergences: HrReconciliationDivergence[];
+  /** هل خلا التقرير من أي انحراف؟ **لا «قريب من الصفر»**. / Is the report free of any divergence? **Not 'close to zero'**. */
+  isReconciled: boolean;
+  /** عدد المستندات التي تطابق طرفاها بالضبط — وهو ما يمنع «صفر انحراف» من أن يعني «لم يُفحص شيء». / The number of documents whose two sides matched exactly — which is what stops 'zero divergences' from meaning 'nothing was checked'. */
+  matchedDocuments: number;
+}
+
+/** سطر انحراف واحد — **بحبيبيّة المستند والطرف معاً**. و`documentId` على قيود الاستحقاق هو معرّف القسيمة، وهو ما يجعل الطرفين متساويي الحبيبيّة فتمكن المقارنة أصلاً. / A single divergence row — **at the grain of the document and the party together**. On accrual entries `documentId` is the payslip's identifier, which is what makes the two sides share one grain so the comparison is possible at all. */
+export interface HrReconciliationDivergence {
+  controlEffect: Money;
+  divergence: Money;
+  /** معرّف المستند كما أرسلته الوحدة إلى الدفتر. / The document identifier as the module sent it to the ledger. */
+  documentId: string;
+  /** نوع المستند كما أرسلته الوحدة. / The document type as the module sent it. */
+  documentType: string;
+  /** الرمز المعتم للموظف — وهو كل ما يعرفه الدفتر عنه. / The employee's opaque code — all the ledger knows of them. */
+  partyId: string;
+  /** سبب الانحراف. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The divergence reason. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  reasonCode: "amount_mismatch" | "missing_in_control" | "missing_in_subledger" | "posting_unresolved";
+  subledgerEffect: Money;
+}
+
+/** المخالصة كما تخرج من السطح، **والسيناريو المنطبق مُسمّى** لا مستنتَجاً من فرق مبلغين. والمتطابقة المعلَنة في المصفوفة مفروضة في قاعدة البيانات: provisionUtilised = amountPaid − shortfall + excess. / The settlement as the surface returns it, **with the applicable scenario named** rather than inferred from the difference of two amounts. The identity declared in the matrix is enforced in the database: provisionUtilised = amountPaid − shortfall + excess. */
+export interface HrSettlement {
+  /** هل كانت مُرحَّلة قبل هذا النداء؟ / Was it already posted before this call? */
+  alreadyPosted: boolean;
+  amountPaid: Money;
+  /** الرمز المعتم. / The opaque code. */
+  employeeCode: string;
+  /** علاقة العمل. / The employment. */
+  employmentId: string;
+  /** معرّف القيد إن رُحّلت، أو null. / The entry identifier if posted, or null. */
+  entryId: string | null;
+  excess: Money;
+  /** المعرّف. / The identifier. */
+  id: string;
+  /** مرجع أساس الحساب المعتمد. / The approved calculation basis reference. */
+  measurementRef: string;
+  /** الرقم. / The number. */
+  number: string;
+  provisionBalance: Money;
+  provisionUtilised: Money;
+  /** السيناريو المنطبق بأسماء المصفوفة نفسها: مطابق، أو ناقص فيُحمَّل العجز على مصروف الفترة، أو زائد فتُردّ الزيادة إليه. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The applicable scenario under the matrix's own names: exact, short with the shortfall charged to the period expense, or excess with the surplus released back to it. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  scenarioCode: "exact" | "excess" | "short";
+  /** تاريخ المخالصة ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The settlement date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  settledOn: string;
+  settlementDue: Money;
+  /** طريقة الصرف. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The disbursement method. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  settlementMethod: "bank" | "cash";
+  shortfall: Money;
+  /** الحالة. / The state. */
+  state: string;
+  /** طرف الخزينة. / The treasury party. */
+  treasuryPartyId: string;
+}
+
+/** طلب إنشاء مخالصة نهاية خدمة على علاقة عمل منتهية. **والمستحقّ يصل من معتمِد المستند**: معادلة المكافأة وشرائحها غير متحقَّق منها ولا تُخترع هنا. وما تحسبه الوحدة هو رصيد المخصص وحده ثم العجز والزيادة، وكلاهما اشتقاقٌ حسابي من رقمين. / A final settlement draft request against a terminated employment. **The amount due arrives from the document's approver**: the benefit formula and its bands are unverified and are not invented here. What the module computes is the provision balance alone, and then the shortfall and the excess — both arithmetic derivations from two numbers. */
+export interface HrSettlementRequest {
+  /** علاقة العمل المنتهية. / The terminated employment. */
+  employmentId: string;
+  /** مرجع أساس الحساب المعتمد. / The approved calculation basis reference. */
+  measurementRef: string;
+  /** رقم المخالصة. / The settlement number. */
+  number: string;
+  /** تاريخ المخالصة ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The settlement date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  settledOn: string;
+  settlementDue: Money;
+  /** طريقة الصرف. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The disbursement method. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  settlementMethod: "bank" | "cash";
+  /** طرف الخزينة — إلزامي. / The treasury party — mandatory. */
+  treasuryPartyId: string;
+}
+
+/** سداد التأمينات كما يخرج من السطح، ومعه ما استُحقّ في فترته من مسيّرات مُرحَّلة **للمقارنة لا للإملاء**. وهو المستند الوحيد في هذه الوحدة الذي يُرحَّل قيداً واحداً للفترة، لأن سطره الأول على حساب الالتزام بلا دفتر مساعد. / The social insurance settlement as the surface returns it, together with what its period accrued from posted runs **for comparison, not for dictation**. It is the only document in this module posted as a single entry per period, because its first line's liability account has no subledger. */
+export interface HrSocialInsurancePayment {
+  accruedForPeriod: Money;
+  /** هل كان مُرحَّلاً قبل هذا النداء؟ / Was it already posted before this call? */
+  alreadyPosted: boolean;
+  amount: Money;
+  /** معرّف القيد إن رُحّل، أو null. / The entry identifier if posted, or null. */
+  entryId: string | null;
+  /** المعرّف. / The identifier. */
+  id: string;
+  /** الرقم. / The number. */
+  number: string;
+  /** تاريخ السداد ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The settlement date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  paidOn: string;
+  /** رمز الفترة المالية yyyy-MM ميلادياً دائماً — لا يتغيّر بثقافة الخادم ولا بثقافة العميل. / The fiscal period code yyyy-MM, always Gregorian — unaffected by server or client culture. */
+  periodCode: string;
+  /** طريقة التسوية. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The settlement method. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  settlementMethod: "bank" | "cash";
+  /** الحالة. / The state. */
+  state: string;
+  /** طرف الخزينة. / The treasury party. */
+  treasuryPartyId: string;
+}
+
+/** طلب إنشاء سند سداد اشتراك التأمينات لفترة. **والمبلغ يصل من المستدعي ولا تُمليه الوحدة**: فاتورة الجهة قد تخالف ما استحقّته المسيّرات لأسباب مشروعة. / A social insurance settlement draft request for a period. **The amount comes from the caller; the module does not dictate it**: the authority's invoice may legitimately differ from what the runs accrued. */
+export interface HrSocialInsurancePaymentRequest {
+  amount: Money;
+  /** رقم السند. / The document number. */
+  number: string;
+  /** تاريخ السداد ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The settlement date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  paidOn: string;
+  /** رمز الفترة المالية yyyy-MM ميلادياً دائماً — لا يتغيّر بثقافة الخادم ولا بثقافة العميل. / The fiscal period code yyyy-MM, always Gregorian — unaffected by server or client culture. */
+  periodCode: string;
+  /** طريقة التسوية — مؤهّل دور. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The settlement method — a role qualifier. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  settlementMethod: "bank" | "cash";
+  /** طرف الخزينة — إلزامي على كل مستند دفع. / The treasury party — mandatory on every payment document. */
+  treasuryPartyId: string;
+}
+
+/** طلب إنهاء خدمة. والسبب **مفتاحٌ يقرؤه برنامج** من مجموعة يملكها المستدعي لا نصّاً يُعرض؛ ولا تصنيف هنا إلى «استقالة» و«إنهاء» لأن أثر التمييز على الاستحقاق بندٌ مفتوح على المالك. / A termination request. The reason is a **key a program reads**, from a set the caller owns, not displayed text; and there is no classification here into 'resignation' and 'dismissal', because the effect of that distinction on the entitlement is an open owner question. */
+export interface HrTerminationRequest {
+  /** تاريخ انتهاء الخدمة ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The service end date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  endedOn: string;
+  /** مفتاح سبب الإنهاء — رمزٌ لا نصّ. / The termination reason key — a code, not text. */
+  reasonKey: string;
 }
 
 /** تأسيس المنشأة كما يصل من العميل. **يُقبل مرّة واحدة**، والثانية 409. / The company setup as the client sends it. **Accepted once**; a second attempt is 409. */

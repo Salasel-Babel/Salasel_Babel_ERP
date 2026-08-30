@@ -86,6 +86,14 @@ WebApplication app = BabelApiHost.Build(args);
 // بـ32 بايتاً فأكثر — ولا مفتاح في هذا المستودع ولا في أي ملفّ إعداد مُودَع فيه.
 _ = app.Services.GetRequiredService<Babel.Contracts.Storage.IAttachmentTickets>();
 
+// ‏**واتصال قاعدة الموارد البشرية يُطلب هنا كذلك — عند الإقلاع لا عند أول قسيمة.**
+// وهو الوحيد بين الوحدات الذي **لا افتراضي له**: المبيعات والمشتريات والمخزون تحمل
+// نصّاً افتراضياً يشير إلى المضيف المحلي، فكان كل خادم يشير إليه مهما كان النشر —
+// عطلٌ لم يظهر إلا حين نُشر لها سطح HTTP، لأن مسارًا لا يُسلَك لا يُظهر إعداداً خاطئاً.
+// وهذه الوحدة أثقل جدول بيانات شخصية في المنتج، فخادمٌ يشير بها إلى قاعدة أخرى بصمت
+// ليس عطلَ إعدادٍ بل حادثة بيانات. ويُضبط بـBABEL_HR_DB أو Babel__Hr__ConnectionString.
+app.Services.GetRequiredService<Babel.Hr.HrOptions>().EnsureConfigured();
+
 await BabelApiHost.SeedEntitlementsAsync(app).ConfigureAwait(false);
 await app.RunAsync().ConfigureAwait(false);
 return 0;

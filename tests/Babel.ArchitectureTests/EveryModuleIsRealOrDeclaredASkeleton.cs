@@ -84,12 +84,6 @@ public sealed class EveryModuleIsRealOrDeclaredASkeleton
             + "بلا كاتب واحد. ونموذج الاتصال — متصل أم دون إنترنت — سؤالٌ مفتوح على المالك في docs/RECORD.md §7، "
             + "وهو ما يحجزها لا حجم العمل. وتُباع اليوم برمز POS ضمن خطّتَي RETAIL وFULL."),
 
-        (BabelModule.Hr,
-            "الموارد البشرية: خمسة أحداث في data/posting-matrix/events/hr.json بلا كاتب، ونسب التأمينات "
-            + "غير مُتحقَّق منها ولا تُكتب في شيفرة، وقاعدة توزيع تكلفة الموظف على المشاريع غير محسومة "
-            + "(‏caveat مكتوب داخل hr.payroll.accrual). وبياناتها شخصية، وADR-0003 يمنع الحذف من الدفتر. "
-            + "وتُباع اليوم برمز PAY ضمن خطة FULL."),
-
         (BabelModule.Projects,
             "المقاولات: خمسة أحداث في data/posting-matrix/events/projects.json بلا كاتب — والمستخلص "
             + "مستندها الأساسي بمحتجز ودفعة مقدمة تُستنفد. وبُعدا project وboq_item موجودان على سطر القيد "

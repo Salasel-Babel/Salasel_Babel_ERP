@@ -464,7 +464,7 @@ public sealed class Rule06_NothingBypassesEntitlement
         // القائمة في القاعدة 5 وللسبب نفسه.)
         Assert.Equal(
             [
-                "Babel.Ai", "Babel.Compliance", ModuleMap.Core, "Babel.Inventory", ModuleMap.Ledger,
+                "Babel.Ai", "Babel.Compliance", ModuleMap.Core, "Babel.Hr", "Babel.Inventory", ModuleMap.Ledger,
                 "Babel.Purchasing", "Babel.RealEstate", "Babel.Sales",
             ],
             modulesWithServices);

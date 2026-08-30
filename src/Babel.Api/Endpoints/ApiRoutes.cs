@@ -340,6 +340,161 @@ internal static class ApiRoutes
     /// </summary>
     public const string InventoryValuation = Company + "/inventory-valuation";
 
+    // ── الموارد البشرية ──────────────────────────────────────────────────────
+    // والشكل هو شكل ADR-0044/0047 حرفياً: **إنشاء مسوّدة · قراءة · ترحيل على مورد
+    // فرعي**. ولا `PUT` ولا `PATCH` ولا `DELETE` على مورد واحد منها — والإنهاء نفسه
+    // مورد فرعي (`…/termination`) لا حقل حالة يُعدَّل.
+
+    /// <summary>
+    /// الموظفون: التسجيل.
+    /// <para>
+    /// <b>ولا رمز في الحمولة</b>: الخادم يولّد رمزاً <b>معتماً</b> هو وحده ما يعبر إلى
+    /// دفتر الأستاذ. ولا هوية وطنية ولا آيبان ولا اسم يعبر إلى <c>ledger.*</c> بحال:
+    /// كل ما يدخله يدخل البايتات المُجزَّأة، و<c>REVOKE UPDATE, DELETE</c> يجعله غير
+    /// قابل للإزالة، وعلاجُ المحو الموعود في ADR-0046 لا يبلغ سلسلة تجزئة.
+    /// </para>
+    /// </summary>
+    public const string Employees = Company + "/employees";
+
+    /// <summary>موظف واحد: القراءة — والهوية الشخصية <b>مقنَّعة دائماً</b>.</summary>
+    public const string Employee = Employees + "/{employeeId}";
+
+    /// <summary>
+    /// إنهاء خدمة موظف. <b>مورد فرعي مستقلّ لا <c>PUT</c> بحقل حالة</b>، بسابقة
+    /// <c>…/suspension</c> على مركز التكلفة و<c>…/reversal</c> على القيد. وهو ما يفتح
+    /// المخالصة.
+    /// </summary>
+    public const string EmployeeTermination = Employee + "/termination";
+
+    /// <summary>
+    /// مكوّنات الأجر: التعريف والقائمة.
+    /// <para>
+    /// <b>وهذا هو الباب الذي يجعل الأثر التنظيمي بياناتٍ لا شيفرة</b>: وسمُ دخول
+    /// المكوّن وعاءَ الاشتراك يملؤه المحاسب. ولا يحمل المكوّن مبلغاً ولا نسبة.
+    /// </para>
+    /// </summary>
+    public const string PayComponents = Company + "/pay-components";
+
+    /// <summary>
+    /// عناصر أجر موظف: الإسناد بتاريخ سريان، والقراءة.
+    /// <para><b>إنشاء لا تعديل</b>: الزيادة صفٌّ جديد، وإلا استحال إعادة حساب مسيّر
+    /// ماضٍ ليطابق قيده المُرحَّل.</para>
+    /// </summary>
+    public const string PayElements = Employee + "/pay-elements";
+
+    /// <summary>
+    /// إعدادات نِسَب التأمينات: إيداع إصدار، وقراءة الإصدارات.
+    /// <para>
+    /// <b>وهذا هو الموضع الوحيد الذي تدخل منه نسبة إلى هذا النظام.</b> و<c>POST</c> لا
+    /// <c>PUT</c>: نسبة فترةٍ ماضية لا تُعدَّل. والجدول يُسلَّم <b>فارغاً</b>، ومسيّرٌ
+    /// لفترة لا يغطّيها صفٌّ سارٍ معتمد يُرفض صراحةً — لا قيمة افتراضية واحدة.
+    /// </para>
+    /// </summary>
+    public const string PayrollSettings = Company + "/payroll-settings";
+
+    /// <summary>مسيّرات الرواتب: إنشاء <b>مسوّدة</b>. الوحدة تحسب، ولا مجاميع في الطلب.</summary>
+    public const string PayrollRuns = Company + "/payroll-runs";
+
+    /// <summary>مسيّر واحد: القراءة بحالته ومجاميعه.</summary>
+    public const string PayrollRun = PayrollRuns + "/{runId}";
+
+    /// <summary>
+    /// قسائم مسيّر بمعرّفاتها ومعرّفات قيودها — <b>مدخل باب الدفع</b>، وبلاها يصير
+    /// بابٌ لا يوصل إليه بابٌ آخر على هذا السطح.
+    /// </summary>
+    public const string PayrollRunPayslips = PayrollRun + "/payslips";
+
+    /// <summary>
+    /// ترحيل مسيّر. <b>نداءٌ واحد يُصدر قيداً لكل قسيمة</b>، لكلٍّ هويّته السداسية
+    /// و<c>DocumentId</c> فيها معرّف القسيمة لا معرّف المسيّر.
+    /// </summary>
+    public const string PayrollRunPosting = PayrollRun + "/posting";
+
+    /// <summary>قسيمة واحدة: القراءة بمكوّناتها ومعرّف قيدها — <b>وهي مستند الترحيل</b>.</summary>
+    public const string Payslip = Company + "/payslips/{payslipId}";
+
+    /// <summary>سندات صرف الرواتب: إنشاء <b>مسوّدة</b> على مسيّر مُرحَّل.</summary>
+    public const string PayrollPayments = Company + "/payroll-payments";
+
+    /// <summary>سند صرف واحد: القراءة بسطوره ومعرّفات قيودها.</summary>
+    public const string PayrollPayment = PayrollPayments + "/{paymentId}";
+
+    /// <summary>ترحيل سند صرف الرواتب — قيدٌ لكل سطر، ومعه طرف الخزينة.</summary>
+    public const string PayrollPaymentPosting = PayrollPayment + "/posting";
+
+    /// <summary>سندات سداد التأمينات: إنشاء <b>مسوّدة</b> للفترة.</summary>
+    public const string SocialInsurancePayments = Company + "/social-insurance-payments";
+
+    /// <summary>سند سداد تأمينات واحد: القراءة ومعه ما استُحقّ في فترته.</summary>
+    public const string SocialInsurancePayment = SocialInsurancePayments + "/{paymentId}";
+
+    /// <summary>
+    /// ترحيل سداد التأمينات — <b>قيدٌ واحد للفترة، وهو الوحيد الذي يجوز فيه ذلك</b>
+    /// في هذه الوحدة، لأن سطره الأول على حساب الالتزام بلا دفتر مساعد.
+    /// </summary>
+    public const string SocialInsurancePaymentPosting = SocialInsurancePayment + "/posting";
+
+    /// <summary>
+    /// سجلّ الجزاءات المعتمد: القيد.
+    /// <para>
+    /// <b>ولاحظ ما ليس هنا ولا يجوز أن يوجد: لا مورد <c>…/posting</c>.</b> الاستقطاع
+    /// يُرحَّل <b>داخل المسيّر</b> لا بذاته، وبابٌ يوحي بغير ذلك يُبنى عليه عميل شاشةً
+    /// بزرّ ترحيل لا وجود له.
+    /// </para>
+    /// </summary>
+    public const string EmployeeDeductions = Company + "/employee-deductions";
+
+    /// <summary>جزاء واحد: القراءة. <b>وبلا <c>entryId</c> وبلا <c>alreadyPosted</c>.</b></summary>
+    public const string EmployeeDeduction = EmployeeDeductions + "/{deductionId}";
+
+    /// <summary>
+    /// سلف الموظفين: إنشاء <b>مسوّدة</b> بجدول أقساطها.
+    /// <para>
+    /// <b>ولا مورد <c>…/posting</c> عليها في هذا التسليم</b>: حدث صرف السلفة
+    /// (<c>hr.employee_advance.paid</c>) <b>غير موجود في مصفوفة الترحيل</b>، والمحرك
+    /// يرفض رمزاً لا يعرفه ولا يخترع قالباً. وبابٌ يَعِد بدورة لا تكتمل أسوأ من غيابه —
+    /// وهو المعيار نفسه الذي مُنع به مورد ترحيل أمر الشراء في ADR-0047.
+    /// </para>
+    /// </summary>
+    public const string EmployeeAdvances = Company + "/employee-advances";
+
+    /// <summary>سلفة واحدة: القراءة بجدول سدادها والمتبقّي منها.</summary>
+    public const string EmployeeAdvance = EmployeeAdvances + "/{advanceId}";
+
+    /// <summary>
+    /// استحقاق مخصص نهاية الخدمة: إنشاء <b>مسوّدة</b> لفترة.
+    /// <para>
+    /// <b>ومستندٌ يُنشئه نداءٌ صريح لا مهمّة مجدولة</b>: لا مُشغّل دوري ولا جدول عمل
+    /// في هذه الوحدة، والنمط محجوزٌ للانتزاع ولا يُخترع مرّتين (ADR-0048 §2.3).
+    /// </para>
+    /// </summary>
+    public const string EndOfServiceProvisions = Company + "/end-of-service-provisions";
+
+    /// <summary>مستند استحقاق واحد: القراءة بحركاته لكل علاقة عمل.</summary>
+    public const string EndOfServiceProvision = EndOfServiceProvisions + "/{provisionId}";
+
+    /// <summary>ترحيل الاستحقاق — قيدٌ لكل علاقة عمل. وتغيير التقدير قيدٌ مستقلّ.</summary>
+    public const string EndOfServiceProvisionPosting = EndOfServiceProvision + "/posting";
+
+    /// <summary>مخالصات نهاية الخدمة: إنشاء <b>مسوّدة</b> على علاقة عمل منتهية.</summary>
+    public const string EndOfServiceSettlements = Company + "/end-of-service-settlements";
+
+    /// <summary>مخالصة واحدة: القراءة — وهي أكثر مستند في الوحدة عرضةً للنزاع.</summary>
+    public const string EndOfServiceSettlement = EndOfServiceSettlements + "/{settlementId}";
+
+    /// <summary>ترحيل المخالصة بسيناريوهاتها الثلاثة.</summary>
+    public const string EndOfServiceSettlementPosting = EndOfServiceSettlement + "/posting";
+
+    /// <summary>
+    /// مطابقة دفتر الموظف المساعد بنقطة ضبطه — <b>مستنداً بمستند</b>.
+    /// <para>
+    /// <b>ولا يُنشر فيه رقمٌ واحد اسمه «رصيد الموظف»</b>: نقطة الضبط تجمّع بلا تفصيل
+    /// بالحساب، ودفتر الموظف يمتدّ على أصلٍ وثلاثة خصوم — فصافٍ واحد يقاصّ سلفةً
+    /// بمخصص خدمة براتب مستحق ويعلن التطابق وهو أعمى.
+    /// </para>
+    /// </summary>
+    public const string EmployeeSubledgerReconciliation = Company + "/employee-subledger-reconciliation";
+
     /// <summary>
     /// العقد المنشور نفسه، بايتاته كما أُودعت في <c>contracts/openapi/v1.json</c>.
     /// <para>

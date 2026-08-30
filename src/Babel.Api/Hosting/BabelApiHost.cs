@@ -9,6 +9,7 @@ using Babel.Core;
 using Babel.Core.Access;
 using Babel.Core.Entitlement;
 using Babel.Core.Tenancy;
+using Babel.Hr;
 using Babel.ControlPlane.Support;
 using Babel.Inventory;
 using Babel.Ledger;
@@ -78,6 +79,13 @@ internal static class BabelApiHost
         // التقييم قبل نشر استلام البضاعة على هذا السطح.
         // (‏docs/evidence/traps.md#fakh-one-module-connection-still-read-from-a-default-after-its-siblings-were-fixed)
         builder.Services.AddBabelInventory(options => ApplyInventoryConfiguration(builder.Configuration, options));
+
+        // ── الموارد البشرية ───────────────────────────────────────────────────
+        // ‏**وضابطُها إلزامي لا اختياري** — وهذا هو الفارق عن الوحدات الثلاث أعلاه:
+        // اتصالها **يُرفض غيابه عند التركيب برمزه** (`hr.connection_not_configured`)
+        // ولا افتراضي محلي يُخترع. والسبب أن هذه الوحدة أثقل جدول بيانات شخصية في
+        // المنتج، فخادمٌ يشير بها إلى قاعدة أخرى بصمت ليس عطلَ إعدادٍ بل حادثة بيانات.
+        builder.Services.AddBabelHr(options => ApplyHrConfiguration(builder.Configuration, options));
 
         // ── مخزن المرفقات: مشروع مساند لا وحدة، والجذر التركيبي وحده يركّبه ──────
         //
@@ -149,6 +157,7 @@ internal static class BabelApiHost
         app.MapCapabilityProfileApi();
         app.MapCompanySetupApi();
         app.MapDocumentApi();
+        app.MapPayrollApi();
         app.MapAttachmentApi();
         app.MapDocsApi();
 
@@ -331,6 +340,27 @@ internal static class BabelApiHost
         }
 
         string? currency = configuration["Babel:Inventory:CompanyCurrency"];
+        if (!string.IsNullOrWhiteSpace(currency))
+        {
+            options.CompanyCurrency = currency;
+        }
+    }
+
+    /// <summary>
+    /// يقرأ إعداد الموارد البشرية. <b>ولا افتراضي هنا</b>: <c>HrOptions.EnsureConfigured</c>
+    /// يرفض الغياب برمزه عند التركيب، فلا يُشحن خادمٌ يشير إلى قاعدة لم يقصدها أحد.
+    /// </summary>
+    /// <param name="configuration">الإعداد.</param>
+    /// <param name="options">إعدادات الوحدة.</param>
+    private static void ApplyHrConfiguration(ConfigurationManager configuration, HrOptions options)
+    {
+        string? connection = configuration["Babel:Hr:ConnectionString"];
+        if (!string.IsNullOrWhiteSpace(connection))
+        {
+            options.ConnectionString = connection;
+        }
+
+        string? currency = configuration["Babel:Hr:CompanyCurrency"];
         if (!string.IsNullOrWhiteSpace(currency))
         {
             options.CompanyCurrency = currency;

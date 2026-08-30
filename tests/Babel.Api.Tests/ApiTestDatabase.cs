@@ -4,6 +4,7 @@ using Babel.ControlPlane.Entitlement;
 using Babel.ControlPlane.Registry;
 using Babel.ControlPlane.Support;
 using Babel.Core;
+using Babel.Hr;
 using Babel.Inventory;
 using Babel.Ledger;
 using Babel.Purchasing;
@@ -62,6 +63,17 @@ internal static class ApiTestDatabase
     public const string InventoryStem = "babel_api_tests_inventory";
 
     /// <summary>
+    /// الجذع الثابت لاسم <b>قاعدة الموارد البشرية</b> لهذه العملية.
+    /// <para>
+    /// <b>وهي الوحدة الوحيدة التي يرفض الخادم الإقلاع بلا اتصالها</b> — لا افتراضي لها
+    /// عمداً: خادمٌ يشير بأثقل جدول بيانات شخصية في المنتج إلى قاعدة أخرى بصمت ليس
+    /// عطلَ إعدادٍ بل حادثة بيانات. فغياب المفتاح هنا يُسقط الإقلاع بصوته لا بعطلٍ
+    /// يظهر عند أول قسيمة.
+    /// </para>
+    /// </summary>
+    public const string HrStem = "babel_api_tests_hr";
+
+    /// <summary>
     /// الجذع الثابت لاسم <b>قاعدة مستوى التحكّم</b> لهذه العملية.
     /// <para>
     /// وهي قاعدة رابعة مستقلّة لأن مستوى التحكّم مستقلٌّ فعلاً: مخطّطه <c>control</c>،
@@ -89,6 +101,9 @@ internal static class ApiTestDatabase
 
     /// <summary>قاعدة المخزون لهذه العملية وحدها.</summary>
     public static string InventoryDatabase { get; } = TestRunScope.Name(InventoryStem);
+
+    /// <summary>قاعدة الموارد البشرية لهذه العملية وحدها.</summary>
+    public static string HrDatabase { get; } = TestRunScope.Name(HrStem);
     /// <summary>الجذع الثابت لاسم قاعدة المرفقات — منفصلة، وللسبب نفسه.</summary>
     public const string StorageStem = "babel_api_tests_storage";
 
@@ -241,6 +256,13 @@ internal static class ApiTestDatabase
         CompanyCurrency = "SAR",
     };
 
+    /// <summary>إعدادات الموارد البشرية لهذه المجموعة — قاعدة مستقلّة، وللأسباب نفسها.</summary>
+    public static HrOptions Hr { get; } = new()
+    {
+        ConnectionString = $"Host=127.0.0.1;Port=5432;Database={HrDatabase};Username=postgres;Include Error Detail=true;Maximum Pool Size=5;Minimum Pool Size=0",
+        CompanyCurrency = "SAR",
+    };
+
     /// <summary>
     /// إعدادات مخزن المرفقات لهذه المجموعة — <b>قاعدة مستقلّة، ودور تطبيق غير مالك</b>.
     /// <para>
@@ -333,6 +355,11 @@ internal static class ApiTestDatabase
 
         // والمخزون: دفترٌ مساعد يبلغه ترحيل الاستلام قبل أن يبلغ الدفتر.
         await InventorySchemaDeployer.DeployAsync(Inventory, cancellationToken).ConfigureAwait(false);
+
+        // والموارد البشرية: مخطّط hr كاملاً — **ولا صفّ نِسَبٍ واحد يُبذَر فيه**.
+        // جدول الإعدادات يُسلَّم فارغاً في الاختبار كما يُسلَّم في الإنتاج، فمسيّرٌ
+        // بلا صفّ سارٍ يُرفض هنا بالرمز نفسه الذي يُرفض به هناك.
+        await HrSchemaDeployer.DeployAsync(Hr, cancellationToken).ConfigureAwait(false);
         // ── مستوى التحكّم: قاعدته ومخطّطه وكتالوجه ─────────────────────────────
         // بالناشر نفسه الذي يستعمله الأسطول (‏ControlSchema.EnsureAsync)، لا بنسخة
         // ثانية من نصوص المخطّط. والكتالوج والخطط مبذوران لأن سطح الاشتراك يقرؤهما:
@@ -368,6 +395,7 @@ internal static class ApiTestDatabase
         await ExecAsync(admin, $"create database {SalesDatabase}", cancellationToken).ConfigureAwait(false);
         await ExecAsync(admin, $"create database {PurchasingDatabase}", cancellationToken).ConfigureAwait(false);
         await ExecAsync(admin, $"create database {InventoryDatabase}", cancellationToken).ConfigureAwait(false);
+        await ExecAsync(admin, $"create database {HrDatabase}", cancellationToken).ConfigureAwait(false);
         await ExecAsync(admin, $"create database {StorageDatabase}", cancellationToken).ConfigureAwait(false);
 
         // ‏nosuperuser ليست تفصيلاً: بدونها تسقط كل طبقات الحصانة معاً (فخ-30 · ADR-0003).
@@ -454,6 +482,7 @@ internal static class ApiTestDatabase
             DropOne(admin, SalesDatabase);
             DropOne(admin, PurchasingDatabase);
             DropOne(admin, InventoryDatabase);
+            DropOne(admin, HrDatabase);
             DropOne(admin, ControlDatabase);
             DropOne(admin, StorageDatabase);
 
@@ -536,7 +565,7 @@ internal static class ApiTestDatabase
         foreach (string database in candidates)
         {
             int? owner = null;
-            foreach (string stem in new[] { DatabaseStem, SalesStem, PurchasingStem, InventoryStem, ControlStem })
+            foreach (string stem in new[] { DatabaseStem, SalesStem, PurchasingStem, InventoryStem, HrStem, ControlStem })
             {
                 owner = TestRunScope.OwnerProcessId(database, stem);
                 if (owner is not null)

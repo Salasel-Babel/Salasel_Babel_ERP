@@ -1551,6 +1551,555 @@ internal static class OpenApiEmitter
                     new Refusal(409, "بايتات المخزن لا تطابق البصمة المُسجَّلة — عبثٌ أو تلف — أو غابت والصفّ قائم. ولا تُسلَّم في الحالتين.",
                         "The stored bytes do not match the recorded digest — tampering or corruption — or they are missing while the row stands. Neither is served."),
                 ]),
+
+            // ── سطح الموارد البشرية ──────────────────────────────────────────
+            // والشكل هو شكل ADR-0044/0047 حرفياً: **إنشاء مسوّدة · قراءة · ترحيل على
+            // مورد فرعي**. ولا PUT ولا PATCH ولا DELETE على مورد واحد منها، والإنهاء
+            // نفسه مورد فرعي لا حقل حالة يُعدَّل.
+            //
+            // ‏**والقرار الحاكم في هذا السطح كلّه مقروءٌ في شكله:** حبيبيّة الترحيل هي
+            // القسيمة لا المسيّر، ولذلك جواب POST …/payroll-runs/{runId}/posting
+            // **قائمة قسائم** لكلٍّ معرّف قيدها وحصانتها — لا مستنداً واحداً بمعرّف قيد
+            // واحد. وقيدٌ واحد للمسيّر كان سيكتب ذمّة كل الموظفين على طرفٍ واحد ومركز
+            // تكلفة واحد، **وهو متوازن تماماً** ولا يُظهره ميزان مراجعة ولا سلسلة بصمات.
+
+            new(ApiRoutes.Employees, "post", "registerEmployee",
+                "تسجيل موظف", "Register an employee",
+                "يسجّل موظفاً وعلاقة عمله الأولى. **ولا رمز في الحمولة**: الخادم يولّد رمزاً **معتماً** لا يُشتقّ من "
+                + "هوية ولا من آيبان ولا من اسم ولا من تسلسل، وهو **وحده** ما يُكتب في الدفتر المساعد.\n\n"
+                + "**ولماذا معتماً — وهذا قرارٌ بنيوي لا احتياط:** كل ما يدخل ledger.* يدخل البايتات المُجزَّأة في "
+                + "الشكل القانوني v2، و‏REVOKE UPDATE, DELETE على دور التطبيق يجعل ما دخلها **غير قابل للإزالة**، "
+                + "وعلاجُ المحو الموعود في ADR-0046 — تعميةٌ بمفتاح يُتلَف — لا يبلغ بايتات دخلت سلسلة تجزئة لأن "
+                + "تغييرها يكسر السلسلة. وanتبه أن description_ar_search عمودٌ **مفهرس نصّياً**، فرقمٌ شخصي لا يدخل "
+                + "غيرَ ممحوٍّ فحسب بل **قابلَ البحث** غير ممحوّ.\n\n"
+                + "والهوية والآيبان يسكنان جدولاً منفصلاً واحداً لواحد، **ولا يعودان في أي جواب إلا مقنَّعين**: آخر "
+                + "أربعة محارف وحدها. وقراءة القيمة الكاملة تحتاج استحقاقاً **على مستوى الحقل** لا وجود له في النواة "
+                + "اليوم، وذلك **نقصُ سطحٍ مُعلَن** لا قرارُ منع.",
+                "Registers an employee and their first employment. **No code appears in the payload**: the server mints an "
+                + "**opaque** code derived from no national id, no IBAN, no name, and no sequence — and it alone is written "
+                + "into the subledger.\n\n"
+                + "**Why opaque, and this is structural rather than caution:** everything that enters ledger.* enters the "
+                + "hashed bytes of canonical form v2, REVOKE UPDATE, DELETE on the application role makes what entered "
+                + "**unremovable**, and the erasure remedy promised in ADR-0046 — encryption under a destroyable key — cannot "
+                + "reach bytes that entered a hash chain, because changing them breaks the chain. Note also that "
+                + "description_ar_search is a **text-indexed** column, so a personal number enters not merely unerasable but "
+                + "**searchable** and unerasable.\n\n"
+                + "The national id and the IBAN live in a separate one-to-one table and **never come back from any read except "
+                + "masked**: the last four characters only. Reading the full value would need **field-level** entitlement, which "
+                + "the core does not have today; that is a **declared surface gap**, not a prohibition.",
+                Body: "HrEmployeeRequest", Response: "HrEmployee", Success: 201, Query: []),
+
+            new(ApiRoutes.Employee, "get", "readEmployee",
+                "قراءة موظف", "Read one employee",
+                "يقرأ موظفاً واحداً بعلاقة عمله الجارية وهويته **مقنَّعة**.\n\n"
+                + "**ولاحظ ما ليس على هذا المورد: لا PUT ولا DELETE.** الموظف تشير إليه قيود سنة سابقة، وحذفه يكسر كل "
+                + "تقرير مُرحَّل؛ والإنهاء **مورد فرعي** (…/termination) لا حقل حالة يُعدَّل.",
+                "Reads a single employee with the current employment and a **masked** identity.\n\n"
+                + "**Note what this resource does not carry: no PUT and no DELETE.** An employee is referenced by last year's "
+                + "entries and deleting them breaks every posted report; termination is a **sub-resource** (…/termination), "
+                + "not a status field that is edited.",
+                Body: null, Response: "HrEmployee", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.EmployeeTermination, "post", "terminateEmployee",
+                "إنهاء خدمة موظف", "Terminate an employee",
+                "يُنهي علاقة العمل السارية بتاريخها وبمفتاح سببها. **مورد فرعي مستقلّ لا PUT بحقل حالة**، بنفس سابقة "
+                + "…/suspension على مركز التكلفة و…/reversal على القيد.\n\n"
+                + "**وهو ما يفتح المخالصة**: مخالصة على علاقة عمل ما تزال سارية تُرفض بـhr.employment_not_terminated.\n\n"
+                + "ومفتاح السبب **رمزٌ يقرؤه برنامج** من مجموعة يملكها المستدعي، لا نصٌّ يُعرض؛ ولا يُصنَّف هنا إلى "
+                + "«استقالة» و«إنهاء» لأن أثر التمييز على الاستحقاق **بندٌ مفتوح على المالك**، وتصنيفٌ يفترض جوابه "
+                + "يُبنى عليه حساب.",
+                "Ends the active employment with its date and a reason key. **A separate sub-resource, not a PUT on a status "
+                + "field**, following the same precedent as …/suspension on a cost centre and …/reversal on an entry.\n\n"
+                + "**It is what opens the final settlement**: a settlement against an employment that is still active is refused "
+                + "with hr.employment_not_terminated.\n\n"
+                + "The reason key is a **code a program reads**, from a set the caller owns — not displayed text; and it is not "
+                + "classified here into 'resignation' and 'dismissal', because the effect of that distinction on the entitlement "
+                + "is an **open owner question**, and a classification that assumes its answer gets computed upon.",
+                Body: "HrTerminationRequest", Response: "HrEmployee", Success: 201, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.PayComponents, "post", "addPayComponent",
+                "تعريف مكوّن أجر", "Define a pay component",
+                "يعرّف مكوّن أجر بوسمَيه: هل يدخل **وعاء اشتراك التأمينات**، وهل يدخل **وعاء مكافأة نهاية الخدمة**.\n\n"
+                + "**وهذا هو الباب الذي يجعل الأثر التنظيمي بياناتٍ لا شيفرة.** الوسمان يملؤهما المحاسب، والوحدة "
+                + "تشتقّ منهما الوعاء ولا تعرف أي بدل يدخل وأيّه لا يدخل — وذلك سؤالٌ نظامي **غير محسوم** في هذا "
+                + "المستودع ولا يُخترع في شيفرة.\n\n"
+                + "**ولا يحمل المكوّن مبلغاً ولا نسبة**: القيمة تُسنَد بتاريخ سريان على مورد آخر، والنسبة لا تدخل إلا "
+                + "من مورد الإعدادات.",
+                "Defines a pay component with its two flags: does it enter the **social insurance contributory wage**, and does "
+                + "it enter the **end-of-service benefit base**.\n\n"
+                + "**This is the door that makes the regulatory effect data rather than code.** The accountant fills the flags, "
+                + "and the module derives the base from them; it does not know which allowance enters and which does not — that "
+                + "is a regulatory question **left undecided** in this repository and never invented in code.\n\n"
+                + "**A component carries neither an amount nor a rate**: a value is assigned with an effective date on another "
+                + "resource, and a rate enters only through the settings resource.",
+                Body: "HrPayComponentRequest", Response: "HrPayComponent", Success: 201, Query: []),
+
+            new(ApiRoutes.PayComponents, "get", "listPayComponents",
+                "قراءة تصنيفات مكوّنات الأجر", "Read the pay component classifications",
+                "يقرأ مكوّنات الأجر بوسومها. ومراجعٌ خارجي يجب أن يرى **على أي أساس** تكوّن وعاء الاشتراك، لا أن "
+                + "يُخبَر بالنتيجة وحدها.",
+                "Reads the pay components with their flags. An external reviewer must see **on what basis** the contributory "
+                + "wage was formed, not merely be told the result.",
+                Body: null, Response: "HrPayComponentList", Success: 200, Query: []),
+
+            new(ApiRoutes.PayElements, "post", "addPayElement",
+                "إسناد قيمة مكوّن أجر بتاريخ سريان", "Assign a pay component value with an effective date",
+                "يُسند قيمة مكوّن إلى علاقة عمل الموظف بتاريخ سريانها. **إنشاءٌ لا تعديل**: الزيادة صفٌّ جديد بتاريخ "
+                + "سريان جديد، ولا PUT على صفّ قائم.\n\n"
+                + "**ولماذا هذا شرطٌ لا اصطلاح:** مسيّرٌ ماضٍ رُحِّل قيده يجب أن يُعاد حسابه فيطابق قيده حرفاً بحرف. "
+                + "وتعديلُ صفّ الأجر في مكانه يجعل ذلك مستحيلاً — يُقرأ الأجر الجديد ويُقارَن بقيدٍ بُني على القديم، "
+                + "فيصير كل مسيّر ماضٍ «منحرفاً» بلا سبب يُقرأ.",
+                "Assigns a component value to the employee's employment from an effective date. **A creation, not an edit**: an "
+                + "increase is a new row with a new effective date, and there is no PUT on an existing row.\n\n"
+                + "**Why this is a requirement and not a convention:** a past run whose entry was posted must be recomputable and "
+                + "match that entry exactly. Editing the pay row in place makes that impossible — the new pay is read and compared "
+                + "against an entry built on the old one, so every past run becomes 'divergent' with no readable cause.",
+                Body: "HrPayElementRequest", Response: "HrPayElement", Success: 201, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.PayElements, "get", "listPayElements",
+                "قراءة أجر الموظف بسريانه", "Read the employee's pay by effective date",
+                "يقرأ **كل** صفوف أجر الموظف بتواريخ سريانها — لا الساري اليوم وحده. ومراجعةُ مسيّرٍ ماضٍ تحتاج الصفّ "
+                + "الذي كان سارياً حينها لا الصفّ الجاري.",
+                "Reads **all** of the employee's pay rows with their effective dates — not merely the one in force today. "
+                + "Reviewing a past run needs the row that was in force then, not the current one.",
+                Body: null, Response: "HrPayElementList", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.PayrollSettings, "post", "depositPayrollSettings",
+                "إيداع إصدار من نِسَب التأمينات وحدودها", "Deposit a version of the social insurance rates and limits",
+                "**هذا هو الموضع الوحيد الذي تدخل منه نسبة إلى هذا النظام.** ولا نسبة اشتراك، ولا حدّ أجرٍ خاضع، ولا "
+                + "فرقٌ بين السعودي وغيره، ولا معادلة مكافأة، ولا مدّة إشعار مكتوبةٌ في شيفرة هذا المنتج ولا في "
+                + "اختبار من اختباراته — كلّها موسومة **غير متحقَّق منها** في البند م-14 من "
+                + "docs/evidence/verification-debt.md، والسبب مقيس: تسعة منافذ مصادر تنظيمية سعودية كلّها محجوبة.\n\n"
+                + "**والجدول يُسلَّم فارغاً.** ومسيّرٌ لفترة لا يغطّيها صفٌّ سارٍ معتمد **يُرفض رفضاً صريحاً** بالرمز "
+                + "الثابت hr.payroll_settings_missing، برسالة تسمّي البند المعلَّق — **لا قيمة افتراضية واحدة، ولا "
+                + "صفر صامت**. ونسبةٌ تُكتب «مؤقّتاً» في اختبار تُنسخ إلى إنتاج بعد شهرين.\n\n"
+                + "و**POST لا PUT**: نسبة فترةٍ ماضية لا تُعدَّل، والزيادة إصدارٌ جديد بتاريخ سريانه. وكل صفّ يحمل "
+                + "**معتمِده ومصدره**: sourceRef غير فارغ بقيدٍ في قاعدة البيانات، فنسبةٌ بلا مصدر مرفوضة عند الكتابة "
+                + "لا عند المراجعة.\n\n"
+                + "**والنِّسَب TaxRate لا Money**: كسرٌ عشري بمقياس ثمانٍ — خمسة عشر بالمئة تُكتب 0.15 لا 15 — والحدود "
+                + "Money بمقياس أربع. وكلّها **نصوص** على السلك.",
+                "**This is the only place a rate enters this system.** No contribution rate, no contributory wage limit, no "
+                + "Saudi-versus-non-Saudi distinction, no benefit formula, and no notice period is written in this product's code "
+                + "or in any of its tests — all of them are tagged **unverified** under item م-14 in "
+                + "docs/evidence/verification-debt.md, and the reason is measured: nine Saudi regulatory source endpoints are all "
+                + "blocked.\n\n"
+                + "**The table ships empty.** A run for a period not covered by an approved effective row is **explicitly refused** "
+                + "under the stable code hr.payroll_settings_missing, with a message naming the pending item — **not one default "
+                + "value, and no silent zero**. A rate written 'temporarily' in a test is copied into production two months later.\n\n"
+                + "**POST, not PUT**: a past period's rate is never edited; an increase is a new version with its own effective "
+                + "date. Every row carries **its approver and its source**: sourceRef is non-empty by a database constraint, so a "
+                + "rate without a source is refused at write time rather than at review time.\n\n"
+                + "**Rates are TaxRate, not Money**: a decimal fraction at scale eight — fifteen percent is 0.15, never 15 — while "
+                + "the limits are Money at scale four. All of them cross the wire as **strings**.",
+                Body: "HrPayrollSettingsRequest", Response: "HrPayrollSettings", Success: 201, Query: []),
+
+            new(ApiRoutes.PayrollSettings, "get", "listPayrollSettings",
+                "قراءة إصدارات النِّسَب بسريانها", "Read the rate versions by effective date",
+                "يقرأ إصدارات النِّسَب كلّها بتواريخ سريانها ومعتمِديها ومصادرها. ومن لا يستطيع قراءة النسبة السارية "
+                + "لتاريخٍ لا يستطيع مراجعة مسيّرٍ رُحِّل به.\n\n"
+                + "**وقائمة فارغة جوابٌ صحيح لا عطل**: هي حال المنشأة قبل أن يعتمد محاسبها أول إصدار، وهي الحال التي "
+                + "يُرفض فيها كل مسيّر.",
+                "Reads every rate version with its effective date, its approver, and its source. Whoever cannot read the rate in "
+                + "force on a date cannot review a run posted under it.\n\n"
+                + "**An empty list is a correct answer, not a fault**: it is the company's state before its accountant approves a "
+                + "first version, and it is the state in which every run is refused.",
+                Body: null, Response: "HrPayrollSettingsList", Success: 200, Query: []),
+
+            new(ApiRoutes.PayrollRuns, "post", "draftPayrollRun",
+                "إنشاء مسيّر رواتب مسوّدة", "Draft a payroll run",
+                "يبني مسيّراً في حالة **DRAFT** بقسيمة لكل علاقة عمل سارية في الفترة. **والوحدة تحسب، ولا مجاميع في "
+                + "الطلب**: مجموعٌ يرسله العميل مصدرُ حقيقةٍ ثانٍ ينحرف عن الأول ولا يُظهره شيء.\n\n"
+                + "والمبالغ الستّة كلّها لها حاسبٌ في الوحدة، والمتطابقة المعلَنة في المصفوفة مفروضة **في قاعدة "
+                + "البيانات** لا في الشيفرة وحدها: net_payable = gross_entitlements − employee_social_insurance − "
+                + "advance_installment − deductions.\n\n"
+                + "**ويُرفض المسيّر رفضاً صريحاً إن لم يوجد صفّ نِسَبٍ معتمد يغطّي الفترة** — hr.payroll_settings_missing "
+                + "— ولا قيمة افتراضية واحدة تُخترع لتمريره.\n\n"
+                + "ووعاء الاشتراك يُشتقّ من **مكوّنات القسيمة الموسومة** ثم يُقصّ بحدَّي الصفّ المعتمد؛ ولا وسم يُملأ "
+                + "هنا ولا حدّ يُخترع.\n\n"
+                + "**ولا يُسمح بمسيّر ثانٍ للفترة الواحدة اليوم**، والمنع في خدمة التطبيق لا في فهرس: «هل يُسمح بأكثر "
+                + "من مسيّر مُرحَّل للفترة؟» سؤالٌ مفتوح على المالك (خارج الدورة · مكافآت · دفعة تصحيحية)، وفهرسٌ "
+                + "اليوم بشرط نوع المسيّر **يفترض جوابه في مفتاح** على جدول لا يُحذف منه شيء.",
+                "Builds a run in state **DRAFT** with a payslip for every employment active in the period. **The module computes; "
+                + "no totals appear in the request**: a total sent by a client is a second source of truth that drifts from the "
+                + "first with nothing to reveal it.\n\n"
+                + "All six amounts have a calculator in the module, and the identity declared in the matrix is enforced **in the "
+                + "database**, not in code alone: net_payable = gross_entitlements − employee_social_insurance − "
+                + "advance_installment − deductions.\n\n"
+                + "**The run is explicitly refused when no approved rate row covers the period** — hr.payroll_settings_missing — "
+                + "and not one default value is invented to let it through.\n\n"
+                + "The contributory wage is derived from the **flagged payslip components** and then clamped by the approved row's "
+                + "floor and ceiling; no flag is filled here and no limit is invented.\n\n"
+                + "**A second run for one period is not allowed today**, and the prohibition lives in the application service "
+                + "rather than an index: whether more than one posted run per period is permitted (off-cycle, bonus, corrective) "
+                + "is an open owner question, and an index today conditioned on a run kind **assumes its answer in a key** on a "
+                + "table nothing is deleted from.",
+                Body: "HrPayrollRunRequest", Response: "HrPayrollRun", Success: 201, Query: [], ProblemStatuses: [409]),
+
+            new(ApiRoutes.PayrollRun, "get", "readPayrollRun",
+                "قراءة مسيّر رواتب", "Read one payroll run",
+                "يقرأ المسيّر بحالته ومجاميعه وعدد قسائمه. ونقطة قراءة: تعمل والاشتراك للقراءة فقط.\n\n"
+                + "وغياب هذه القراءة كان سيدفع العميل إلى **إعادة الترحيل ليعرف** — والحصانة تجعل ذلك غير مؤذٍ، لا "
+                + "تجعله مقبولاً.",
+                "Reads the run with its state, its totals, and its payslip count. A read point: it works while the subscription is "
+                + "read-only.\n\n"
+                + "Without this read a client would have to **post again in order to find out** — which idempotency makes harmless, "
+                + "not acceptable.",
+                Body: null, Response: "HrPayrollRun", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.PayrollRunPayslips, "get", "listPayslips",
+                "قراءة قسائم مسيّر بمعرّفاتها", "Read a run's payslips with their identifiers",
+                "يقرأ قسائم المسيّر **بمعرّفاتها ومعرّفات قيودها**، وهي مدخل باب الدفع. وبلا نشر هذه المعرّفات يصير "
+                + "POST …/payroll-payments باباً لا يوصل إليه بابٌ آخر على هذا السطح — وهو الاعتراض الذي كتبه ADR-0044 "
+                + "بنصّه على مرتجع المشتريات.",
+                "Reads the run's payslips **with their identifiers and their entry identifiers**, which are the input to the payment "
+                + "door. Without publishing them, POST …/payroll-payments becomes a door no other door on this surface leads to — "
+                + "the objection ADR-0044 wrote verbatim about the purchase return.",
+                Body: null, Response: "HrPayslipList", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.PayrollRunPosting, "post", "postPayrollRun",
+                "ترحيل استحقاق الرواتب", "Post the payroll accrual",
+                "يرحّل استحقاق المسيّر. **نداءٌ واحد يُصدر قيداً لكل قسيمة**، لكلٍّ هويّته السداسية (شركة · نوع "
+                + "المستند · **معرّف القسيمة** · رمز الإطلاق · الجيل · رمز الحدث). ولذلك **الجواب قائمة قسائم** لكلٍّ "
+                + "معرّف قيدها وalreadyPosted الخاصّ بها في الجسم، لا مستنداً واحداً بمعرّف قيد واحد.\n\n"
+                + "**ولماذا القسيمة لا المسيّر — وهذا مفروضٌ بنيوياً لا مختار:** مسار القالب في محرّك الترحيل يحلّ طرف "
+                + "الدفتر المساعد من واقعةٍ **واحدة** لكل طلب، ويقرأ مركز التكلفة وكل الأبعاد من قاموسٍ **واحد على "
+                + "مستوى الطلب**. فطلبٌ واحد لا يستطيع بنيةً أن يحمل طرفين ولا مركزين. وقيدٌ واحد لثلاثمئة موظف كان "
+                + "سيكتب ذمّة الجميع على **طرفٍ واحد ومركزٍ واحد** — **والقيد الناتج متوازن تماماً، والسلسلة سليمة، "
+                + "وميزان المراجعة صحيح**، ولا شيء يُظهر أن ذمم ثلاثمئة موظف صارت ذمّة موظفٍ واحد.\n\n"
+                + "**والمسار الصريح مقفول أصلاً**: مخطّط PostingLine.role مجموعة مغلقة منشورة من أربع عشرة قيمة ليس "
+                + "فيها دور رواتب واحد، فبلوغُ الرواتب منه يكسر مخطّطاً منشوراً.\n\n"
+                + "**وحصين ضد التكرار**: الوصول الثاني بالهوية نفسها يُرجع القسائم ذاتها موسومةً ولا يُنشئ قيداً "
+                + "ثانياً — مهما كان ترتيب الوصول. ورمز 200 حين كانت **كلّها** مُرحَّلة من قبل، و201 حين كتب هذا "
+                + "النداء واحدة منها على الأقل.\n\n"
+                + "ولا جسم لهذا الطلب: مفتاح الحصانة تشتقّه الوحدة من هوية المستند ولا يرسله العميل.",
+                "Posts the run's accrual. **One call issues one entry per payslip**, each under its own six-part identity (company, "
+                + "document type, **payslip id**, trigger, generation, event code). Hence **the response is a list of payslips**, "
+                + "each with its own entry identifier and its own alreadyPosted in the body — not one document with one entry id.\n\n"
+                + "**Why the payslip and not the run — this is structurally forced, not chosen:** the template path in the posting "
+                + "engine resolves the subledger party from a **single** fact per request, and reads the cost centre and every "
+                + "dimension from a **single request-level** dictionary. One request structurally cannot carry two parties or two "
+                + "centres. One entry for three hundred employees would write everyone's balance against **one party and one "
+                + "centre** — **and the resulting entry balances perfectly, the hash chain is intact, and the trial balance is "
+                + "correct**, with nothing to show that three hundred employees' balances became one employee's.\n\n"
+                + "**The explicit path is closed anyway**: the PostingLine.role schema is a published closed set of fourteen values "
+                + "with no payroll role among them, so reaching payroll through it breaks a published schema.\n\n"
+                + "**Idempotent**: a second arrival with the same identity returns the same payslips marked and never creates a "
+                + "second entry — whatever the arrival order. Status 200 when **all** of them were already posted, 201 when this "
+                + "call wrote at least one.\n\n"
+                + "This request has no body: the idempotency key is derived by the module from the document identity rather than "
+                + "sent by the client.",
+                Body: null, Response: "HrPayslipList", Success: 201, Query: [],
+                ProblemStatuses: [404, 409, 422]),
+
+            new(ApiRoutes.Payslip, "get", "readPayslip",
+                "قراءة قسيمة راتب", "Read one payslip",
+                "يقرأ قسيمة واحدة بمكوّناتها ووعاء اشتراكها ومعرّف قيدها. **وهي مستند الترحيل**: معرّفها هو "
+                + "DocumentId في هوية الإحكام، فقراءتها مفردةً شرطٌ لا زينة.\n\n"
+                + "و**contributoryWage محفوظٌ ليُراجَع لا ليُعاد حسابه**: من يراجع مسيّراً بعد سنة يحتاج الوعاء كما "
+                + "كان بعد القصّ بحدَّي الصفّ الذي كان سارياً حينها.",
+                "Reads a single payslip with its components, its contributory wage, and its entry identifier. **It is the posting "
+                + "document**: its identifier is the DocumentId in the idempotency identity, so reading it individually is a "
+                + "requirement, not an ornament.\n\n"
+                + "**contributoryWage is stored to be reviewed, not recomputed**: whoever reviews a run a year later needs the base "
+                + "as it stood after clamping by the row that was in force then.",
+                Body: null, Response: "HrPayslip", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.PayrollPayments, "post", "draftPayrollPayment",
+                "إنشاء سند صرف رواتب مسوّدة", "Draft a payroll payment",
+                "يُنشئ سند صرف في حالة **DRAFT** على مسيّر **مُرحَّل**، بسطرٍ لكل قسيمة.\n\n"
+                + "**وحقلا settlementMethod و treasuryPartyId إلزاميان.** وسطر التسوية معلَنٌ في المصفوفة "
+                + "subledger: \"resolved\"، **والمحرك يطويه إلى النوع none** ثم يبحث عن الواقعة subledger.none — "
+                + "والاسم مضلّل. وحسابُ التسوية الافتراضي حسابٌ **ضابط**، فبلا طرف الخزينة يُرفض كل نداء بـ"
+                + "ledger.posting.missing_subledger عند المحرك بعد أن يُكتب صفّ محاولة.\n\n"
+                + "**وطرق التسوية المقبولة هنا ضيّقة عمداً**: نقداً أو تحويلاً مصرفياً. والمؤهّل in_transit موجودٌ في "
+                + "خريطة الأدوار ويقصد حساباً وسيطاً، **وقبولُه يفترض جواب سؤال مفتوح على المالك**: متى يقع قيد صرف "
+                + "الرواتب بالضبط — عند توليد ملفّ حماية الأجور أم عند تأكيد المصرف؟ ونصّ المصفوفة نفسه يحمل «أو» "
+                + "صريحة. فيُفتح الثالث حين يُغلق البند.",
+                "Creates a payment in state **DRAFT** against a **posted** run, with one line per payslip.\n\n"
+                + "**settlementMethod and treasuryPartyId are both mandatory.** The settlement line is declared in the matrix as "
+                + "subledger: \"resolved\", **and the engine folds that to the kind none** and then looks for the subledger.none "
+                + "fact — the name is misleading. The default settlement account is a **control** account, so without the treasury "
+                + "party every call is refused with ledger.posting.missing_subledger at the engine, after an attempt row is "
+                + "written.\n\n"
+                + "**The accepted settlement methods here are deliberately narrow**: cash or bank transfer. The in_transit "
+                + "qualifier exists in the role map and means a clearing account, **and accepting it would assume the answer to an "
+                + "open owner question**: when exactly does the payroll payment entry fall — at wage protection file generation, or "
+                + "at the bank's confirmation? The matrix text itself carries an explicit 'or'. The third is opened when that item "
+                + "closes.",
+                Body: "HrPayrollPaymentRequest", Response: "HrPayrollPayment", Success: 201, Query: [],
+                ProblemStatuses: [404]),
+
+            new(ApiRoutes.PayrollPayment, "get", "readPayrollPayment",
+                "قراءة سند صرف رواتب", "Read one payroll payment",
+                "يقرأ السند بحالته وسطوره **ومعرّفات قيودها** — قيدٌ لكل سطر لا قيدٌ واحد للسند.",
+                "Reads the payment with its state, its lines, and **their entry identifiers** — one entry per line, not one entry "
+                + "for the document.",
+                Body: null, Response: "HrPayrollPayment", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.PayrollPaymentPosting, "post", "postPayrollPayment",
+                "ترحيل صرف الرواتب", "Post the payroll payment",
+                "يرحّل الصرف: **قيدٌ لكل سطر**، سطرُه الأول يُطفئ التزام الرواتب بطرف الموظف، وسطرُه الثاني يمسّ حساب "
+                + "التسوية بطرف الخزينة واقعةً نصّية.\n\n"
+                + "**والحبيبيّة هنا هي الحبيبيّة نفسها في الاستحقاق** — ولا يجوز أن تختلف: طرفا المطابقة يجب أن "
+                + "يتساويا، وقيدٌ واحد للسند مقابل قيدٍ لكل قسيمة في الاستحقاق كان سيجعل المطابقة مستنداً بمستند "
+                + "مستحيلة.\n\n"
+                + "**ولحظة وقوع هذا القيد بالضبط معلَّقة على حكم المالك**: نصّ مُطلِق الحدث في المصفوفة يقول «عند "
+                + "تنفيذ ملفّ حماية الأجور **أو** التحويل البنكي»، والمصفوفة لا تحسم بين شقّي «أو» كتبتها هي. وما "
+                + "يفعله هذا الباب هو الشقّ الأول صراحةً: الترحيل عند اعتماد الصرف.",
+                "Posts the payment: **one entry per line**, its first line clearing the salaries payable against the employee's "
+                + "party, and its second touching the settlement account with the treasury party carried as a textual fact.\n\n"
+                + "**The grain here is the same grain as the accrual** — and may not differ: the two sides of the reconciliation "
+                + "must match, and one entry for the document against one entry per payslip in the accrual would make "
+                + "document-by-document reconciliation impossible.\n\n"
+                + "**The exact moment this entry falls is pending the owner's judgement**: the event's trigger text in the matrix "
+                + "reads 'on execution of the wage protection file **or** the bank transfer', and the matrix does not settle "
+                + "between the two halves of its own 'or'. What this door does is explicitly the first half: posting on approval of "
+                + "the payment.",
+                Body: null, Response: "HrPayrollPayment", Success: 201, Query: [],
+                ProblemStatuses: [404, 409, 422]),
+
+            new(ApiRoutes.SocialInsurancePayments, "post", "draftSocialInsurancePayment",
+                "إنشاء سند سداد تأمينات مسوّدة", "Draft a social insurance payment",
+                "يُنشئ سند سداد اشتراك التأمينات لفترة، في حالة **DRAFT**.\n\n"
+                + "**والمبلغ يصل من المستدعي ولا تُمليه الوحدة**: فاتورة الجهة قد تخالف ما استحقّته المسيّرات لأسباب "
+                + "مشروعة. والقراءة تُرجع accruedForPeriod إلى جانبه **للمقارنة لا للإملاء**، فيُرى الفارق قبل "
+                + "الاعتماد بدل أن يُكتشف عند التسوية.\n\n"
+                + "**والرواتب تُرحَّل بالريال السعودي حصراً** — قيدٌ مفروض بحكم البيانات لا باختيار: حساب التأمينات "
+                + "المستحقة معلَنٌ في دليل الحسابات currency_mode=company_only بعملة SAR، فأي عملة أخرى يرفضها "
+                + "المخطِّط بـledger.posting.currency_not_allowed. ويُقال هنا كي لا يُكتشف عند أول نداء.",
+                "Creates a social insurance settlement document for a period, in state **DRAFT**.\n\n"
+                + "**The amount comes from the caller; the module does not dictate it**: the authority's invoice may legitimately "
+                + "differ from what the runs accrued. The read returns accruedForPeriod beside it **for comparison, not for "
+                + "dictation**, so the difference is seen before approval rather than discovered at reconciliation.\n\n"
+                + "**Payroll posts in Saudi riyals only** — a constraint imposed by the data rather than chosen: the social "
+                + "insurance payable account is declared in the chart with currency_mode=company_only and currency SAR, so any "
+                + "other currency is refused by the planner with ledger.posting.currency_not_allowed. It is said here so that it is "
+                + "not discovered at the first call.",
+                Body: "HrSocialInsurancePaymentRequest", Response: "HrSocialInsurancePayment", Success: 201, Query: []),
+
+            new(ApiRoutes.SocialInsurancePayment, "get", "readSocialInsurancePayment",
+                "قراءة سند سداد تأمينات", "Read one social insurance payment",
+                "يقرأ السند ومعه **ما استُحقّ في فترته من مسيّرات مُرحَّلة** — حصّة المنشأة وحصّة الموظف معاً. "
+                + "والرقمان يُعرضان جنباً إلى جنب ولا يُطرح أحدهما من الآخر هنا: الفرق قرارٌ يقرؤه محاسب.",
+                "Reads the document together with **what was accrued in its period by posted runs** — the employer share and the "
+                + "employee share together. The two numbers are shown side by side and neither is subtracted from the other here: "
+                + "the difference is a judgement an accountant reads.",
+                Body: null, Response: "HrSocialInsurancePayment", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.SocialInsurancePaymentPosting, "post", "postSocialInsurancePayment",
+                "ترحيل سداد التأمينات", "Post the social insurance payment",
+                "يرحّل السداد **قيداً واحداً للفترة — وهو المستند الوحيد في هذه الوحدة الذي يجوز فيه ذلك**.\n\n"
+                + "**ولماذا يجوز هنا وحده:** سطره الأول على حساب الالتزام معلَنٌ في دليل الحسابات **بلا دفتر مساعد**، "
+                + "فلا طرفَ يُفقد بالتجميع أصلاً. أمّا سطره الثاني فيحمل **طرف الخزينة** كسائر مستندات الدفع.",
+                "Posts the settlement as **one entry for the period — the only document in this module where that is "
+                + "permissible**.\n\n"
+                + "**Why only here:** its first line's liability account is declared in the chart with **no subledger**, so no party "
+                + "is lost by aggregation at all. Its second line carries **the treasury party**, like every other payment document.",
+                Body: null, Response: "HrSocialInsurancePayment", Success: 201, Query: [],
+                ProblemStatuses: [404, 409, 422]),
+
+            new(ApiRoutes.EmployeeDeductions, "post", "recordEmployeeDeduction",
+                "قيد جزاء في السجلّ المعتمد", "Record a deduction in the approved register",
+                "يقيّد جزاءً بفئة سببه ومعتمِده، فيُستقطع داخل مسيّر فترته.\n\n"
+                + "**ولاحظ ما ليس على هذا المورد ولا يجوز أن يوجد: لا …/posting.** الاستقطاع يُرحَّل **داخل المسيّر** "
+                + "لا بذاته، وبابٌ يوحي بغير ذلك يبني عليه العميل شاشةً بزرّ ترحيل لا وجود له — وهو نصّ ما عالجه "
+                + "ADR-0047 في أمر الشراء. ولذلك لا يحمل جوابه entryId ولا alreadyPosted: حقلٌ فارغ يُقرأ «لم يُرحَّل "
+                + "بعد» بدل «لا يُرحَّل».\n\n"
+                + "**ولا حدّ أقصى لنسبة الاستقطاع يُفرَض هنا**: الحدّ النظامي للاستقطاع من الأجر **غير متحقَّق منه**، "
+                + "وحدٌّ مخترَع يرفض مسيّرات مشروعة ويُدرّب المستخدم على الالتفاف. والبند مفتوح على المالك.\n\n"
+                + "**وأيّ الاستقطاعات يُورَّد إلى طرف ثالث وأيّها يبقى للمنشأة سؤالٌ مفتوح كذلك**، والأثر المقيس أن "
+                + "دور الاستقطاعات المستحقّة له سطرٌ دائن واحد في المصفوفة كلّها **ولا سطر مدين واحد** — أي أن حسابه "
+                + "يتراكم ولا يُطفئه شيء. وذلك مكتوبٌ في دَين التحقّق ولم يُبتلع.",
+                "Records a deduction with its reason category and its approver, to be deducted inside its period's run.\n\n"
+                + "**Note what this resource does not carry and may not: no …/posting.** A deduction is posted **inside the run**, "
+                + "not by itself, and a door suggesting otherwise leads a client to build a screen with a posting button that does "
+                + "not exist — exactly what ADR-0047 addressed on the purchase order. Hence its response carries neither entryId "
+                + "nor alreadyPosted: an empty field reads as 'not posted yet' instead of 'never posted'.\n\n"
+                + "**No maximum deduction ratio is enforced here**: the regulatory ceiling on deductions from wages is "
+                + "**unverified**, and an invented ceiling refuses legitimate runs and trains users to work around it. The item is "
+                + "open to the owner.\n\n"
+                + "**Which deductions are remitted to a third party and which stay with the company is likewise open**, and the "
+                + "measured effect is that the payroll deductions payable role has exactly one credit line in the whole matrix "
+                + "**and not one debit line** — meaning its account accumulates and nothing ever clears it. That is written into "
+                + "the verification debt rather than swallowed.",
+                Body: "HrDeductionRequest", Response: "HrDeduction", Success: 201, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.EmployeeDeduction, "get", "readEmployeeDeduction",
+                "قراءة جزاء", "Read one deduction",
+                "يقرأ جزاءً واحداً ومعه القسيمة التي استُقطع فيها إن استُقطع. **وبلا entryId وبلا alreadyPosted** — "
+                + "وذلك بنيةٌ لا سهو.",
+                "Reads a single deduction along with the payslip it was consumed by, if any. **With no entryId and no "
+                + "alreadyPosted** — by construction, not by omission.",
+                Body: null, Response: "HrDeduction", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.EmployeeAdvances, "post", "draftEmployeeAdvance",
+                "إنشاء سلفة موظف مسوّدة", "Draft an employee advance",
+                "يُنشئ سلفة في حالة **DRAFT** بجدول أقساطها، ومجموعُ الأقساط يساوي المبلغ بالضبط — والفارق لا يُسوَّى "
+                + "ضمناً.\n\n"
+                + "**ولاحظ ما ليس على هذا المورد اليوم: لا …/posting — والغياب مُعلَن لا مسكوتٌ عنه.** حدث صرف السلفة "
+                + "(hr.employee_advance.paid) **غير موجود في مصفوفة الترحيل**، والمحرك يرفض رمزاً لا يعرفه بـ"
+                + "UnknownEvent ولا يخترع قالباً. وبابٌ يَعِد بدورة لا تكتمل أسوأ من غيابه — وهو المعيار نفسه الذي "
+                + "مُنع به مورد ترحيل أمر الشراء.\n\n"
+                + "**وثمنُ ذلك عطلٌ محاسبي حقيقي يُقال صراحةً**: المقيس أن دور سلف الموظفين له سطرٌ دائن واحد في "
+                + "المصفوفة كلّها ولا سطر مدين واحد — فالسلفة **تُقسَّط ولا تُصرَف**، ورصيد حسابها يصير دائناً "
+                + "بالتصميم أي دَيناً يُسدَّد ولم يُنشأ. وهو صنف الانحراف الذي لا يُظهره ميزان مراجعة. والإضافة نفسها "
+                + "**بيانات لا شيفرة**، لكن قبول أي مدخل جديد في المصفوفة **مراجعةٌ بشرية إلزامية**، فرخصُ التغيير "
+                + "ليس ملكيةً للقرار.",
+                "Creates an advance in state **DRAFT** with its instalment schedule; the instalments sum exactly to the amount, and "
+                + "any difference is never settled implicitly.\n\n"
+                + "**Note what this resource does not carry today: no …/posting — and the absence is declared, not silent.** The "
+                + "advance disbursement event (hr.employee_advance.paid) **does not exist in the posting matrix**, and the engine "
+                + "refuses an unknown code with UnknownEvent rather than inventing a template. A door promising a cycle that does "
+                + "not complete is worse than no door — the same criterion that withheld a posting resource from the purchase "
+                + "order.\n\n"
+                + "**The price of that is a real accounting defect, stated plainly**: it is measured that the employee advances "
+                + "role has exactly one credit line in the whole matrix and not one debit line — so an advance is **instalmented "
+                + "but never disbursed**, and its account balance becomes credit by design, that is, a debt being repaid that was "
+                + "never created. That is the class of divergence a trial balance does not reveal. The addition itself is **data, "
+                + "not code**, but accepting any new matrix entry is **a mandatory human review**, so the cheapness of the change "
+                + "is not ownership of the decision.",
+                Body: "HrAdvanceRequest", Response: "HrAdvance", Success: 201, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.EmployeeAdvance, "get", "readEmployeeAdvance",
+                "قراءة سلفة موظف", "Read one employee advance",
+                "يقرأ السلفة بجدول سدادها **والمتبقّي منها مشتقّاً من الأقساط المستقطَعة فعلاً وحدها** — لا من مرور "
+                + "الزمن ولا من الجدول المخطَّط. وقسطٌ لم يدخل قسيمة لم يُستقطع.",
+                "Reads the advance with its repayment schedule and **the outstanding amount derived from instalments actually "
+                + "deducted alone** — not from elapsed time and not from the planned schedule. An instalment that never entered a "
+                + "payslip was never deducted.",
+                Body: null, Response: "HrAdvance", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.EndOfServiceProvisions, "post", "draftEndOfServiceProvision",
+                "إنشاء استحقاق مخصص نهاية الخدمة مسوّدة", "Draft an end-of-service provision accrual",
+                "يُنشئ مستند استحقاق في حالة **DRAFT** بحصّةٍ لكل علاقة عمل.\n\n"
+                + "**والوحدة لا تقيس المخصص ولا تعرف معادلته.** طريقة القياس ومدخلاتها — وأيّ أجرٍ يدخل الوعاء، وكيف "
+                + "تُعامَل الاستقالة مقابل الإنهاء، وهل يُخصم زمنياً — كلّها **تحتاج اعتماد المحاسب القانوني**، ونصّ "
+                + "المصفوفة على المبلغ صريح: «بطريقة القياس المعتمدة — لا تُخترع في هذا التسليم». فالمبلغ يصل من "
+                + "معتمِد المستند ومعه measurementRef يسمّي أساسه، **والمرجع غير فارغ بقيدٍ في قاعدة البيانات**: "
+                + "مبلغٌ بلا أساسٍ مكتوب تقديرٌ بلا مصدر.\n\n"
+                + "**ومستندٌ يُنشئه نداءٌ صريح لا مهمّة مجدولة.** لا مُشغّل دوري ولا جدول عمل ولا مجدوِل في هذه "
+                + "الوحدة: النمط محجوزٌ للانتزاع من وحدة الالتزام ولا يُخترع مرّتين (ADR-0048 §2.3)، ومَن يبني "
+                + "للرواتب مُشغّلاً خاصاً يخلق مصدر حقيقة ثانياً. **وثمنُ ذلك مُعلَن**: نسيان الاستحقاق شهراً لا "
+                + "يُصدر خطأً ولا سطر سجل، ويظهر عند أول مخالصة بعجزٍ يُحمَّل كاملاً على مصروف شهرٍ واحد.",
+                "Creates an accrual document in state **DRAFT** with one share per employment.\n\n"
+                + "**The module does not measure the provision and does not know its formula.** The measurement method and its "
+                + "inputs — which pay enters the base, how resignation is treated against dismissal, whether it is discounted — all "
+                + "**require a chartered accountant's approval**, and the matrix text on the amount is explicit: 'by the approved "
+                + "measurement method — not invented in this deliverable'. So the amount arrives from the document's approver "
+                + "together with a measurementRef naming its basis, **and the reference is non-empty by a database constraint**: an "
+                + "amount with no written basis is an estimate with no source.\n\n"
+                + "**And it is a document created by an explicit call, not a scheduled job.** There is no periodic runner, no work "
+                + "queue, and no scheduler in this module: the pattern is reserved for extraction from the compliance module and is "
+                + "not invented twice (ADR-0048 §2.3), and building a payroll-specific runner would create a second source of "
+                + "truth. **The price is declared**: forgetting the accrual for a month raises no error and writes no log line, and "
+                + "surfaces at the first settlement as a shortfall charged wholly to one month's expense.",
+                Body: "HrProvisionRequest", Response: "HrProvision", Success: 201, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.EndOfServiceProvision, "get", "readEndOfServiceProvision",
+                "قراءة مستند استحقاق المخصص", "Read one provision accrual document",
+                "يقرأ المستند بحركاته لكل علاقة عمل ومعرّفات قيودها. **وحبيبيّة الحركة علاقة عمل لا موظف**: من يعود "
+                + "بعد انقطاع يبدأ استحقاقاً جديداً، ومخالصة الأولى لا تُخصم من رصيد الثانية.",
+                "Reads the document with its per-employment movements and their entry identifiers. **The movement's grain is the "
+                + "employment, not the employee**: someone who returns after a break starts a new entitlement, and the first "
+                + "employment's settlement is not deducted from the second's balance.",
+                Body: null, Response: "HrProvision", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.EndOfServiceProvisionPosting, "post", "postEndOfServiceProvision",
+                "ترحيل استحقاق المخصص", "Post the provision accrual",
+                "يرحّل الاستحقاق: **قيدٌ لكل علاقة عمل**، لكلٍّ هويّته وطرفه ومركز تكلفته. وتغيير التقدير **قيدٌ "
+                + "مستقلّ لا تعديلٌ للسابق**، بنصّ المصفوفة.\n\n"
+                + "**ورمز الإطلاق OnApproval لا Periodic — ويُقال ذلك صراحةً.** نصّ المصفوفة يصف الواقعة بأنها دورية، "
+                + "لكن القيمة Periodic في العقد **بلا كاتب واحد في الإنتاج** اليوم، ومنحُها كاتباً قبل أن يُغلق البند "
+                + "المُسجَّل عن حبيبيّة الاستحقاق ونمط الجدولة قراءةٌ يملكها المالك ومعمار المستودع لا هذا التسليم. "
+                + "فالمُطلِق هنا يصف **ما وقع فعلاً**: اعتمادُ إنسانٍ لمستند.",
+                "Posts the accrual: **one entry per employment**, each with its own identity, party, and cost centre. Changing the "
+                + "estimate is **a separate entry, never an edit of the previous one**, per the matrix text.\n\n"
+                + "**The trigger is OnApproval, not Periodic — and this is said plainly.** The matrix describes the occurrence as "
+                + "periodic, but the Periodic value in the contract has **not one production writer** today, and giving it one "
+                + "before the recorded item on accrual grain and scheduling pattern closes is a reading owned by the owner and the "
+                + "repository's architecture, not by this deliverable. So the trigger here describes **what actually happened**: a "
+                + "human approving a document.",
+                Body: null, Response: "HrProvision", Success: 201, Query: [],
+                ProblemStatuses: [404, 409, 422]),
+
+            new(ApiRoutes.EndOfServiceSettlements, "post", "draftEndOfServiceSettlement",
+                "إنشاء مخالصة نهاية خدمة مسوّدة", "Draft an end-of-service settlement",
+                "يُنشئ مخالصة في حالة **DRAFT** على علاقة عمل **منتهية**، **والسيناريو المنطبق مُسمّى في الجواب** "
+                + "(exact · short · excess) لا مستنتَجاً من فرق مبلغين عند القارئ.\n\n"
+                + "**والمستحقّ يصل من معتمِد المستند**: معادلة المكافأة وشرائحها **غير متحقَّق منها** ولا تُخترع هنا. "
+                + "وما تحسبه الوحدة من عندها هو **رصيد المخصص** وحده — مجموع حركات هذه العلاقة المُرحَّلة ناقص ما "
+                + "استُنفد في مخالصات مُرحَّلة — ثم العجز والزيادة والمخصص المستنفَد، وكلّها اشتقاقٌ حسابي من رقمين "
+                + "لا اجتهادٌ محاسبي.\n\n"
+                + "والمتطابقة المعلَنة في المصفوفة مفروضة **في قاعدة البيانات**: provision_utilised = amount_paid − "
+                + "shortfall + excess.",
+                "Creates a settlement in state **DRAFT** against a **terminated** employment, **with the applicable scenario named "
+                + "in the response** (exact, short, excess) rather than inferred by the reader from the difference of two "
+                + "amounts.\n\n"
+                + "**The amount due arrives from the document's approver**: the benefit formula and its bands are **unverified** and "
+                + "are not invented here. What the module computes itself is **the provision balance** alone — the sum of this "
+                + "employment's posted movements less what posted settlements have consumed — and then the shortfall, the excess, "
+                + "and the provision utilised, all of which are arithmetic derivations from two numbers, not accounting "
+                + "judgement.\n\n"
+                + "The identity declared in the matrix is enforced **in the database**: provision_utilised = amount_paid − "
+                + "shortfall + excess.",
+                Body: "HrSettlementRequest", Response: "HrSettlement", Success: 201, Query: [],
+                ProblemStatuses: [404, 409]),
+
+            new(ApiRoutes.EndOfServiceSettlement, "get", "readEndOfServiceSettlement",
+                "قراءة مخالصة نهاية خدمة", "Read one end-of-service settlement",
+                "يقرأ المخالصة بأرقامها الستّة وسيناريوها ومرجع أساس حسابها. **وهي أكثر مستند في هذه الوحدة عرضةً "
+                + "للنزاع**، فقراءتها قبل ترحيلها شرط.",
+                "Reads the settlement with its six amounts, its scenario, and the reference to its calculation basis. **It is the "
+                + "most disputable document in this module**, so reading it before posting is a requirement.",
+                Body: null, Response: "HrSettlement", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.EndOfServiceSettlementPosting, "post", "postEndOfServiceSettlement",
+                "ترحيل مخالصة نهاية الخدمة", "Post the end-of-service settlement",
+                "يرحّل المخالصة بسيناريوهاتها الثلاثة: المخصص مطابق، أو ناقص فيُحمَّل العجز على مصروف الفترة، أو زائد "
+                + "فتُردّ الزيادة إليه.\n\n"
+                + "**ويُمرَّر في قاموس المبالغ — إضافةً إلى الأربعة المعلَنة على الحدث — رصيدُ المخصص والمستحقّ**: "
+                + "تعبيرا الشرط في المصفوفة يستعملانهما وهما **ليسا في كتلة amounts**، وغيابُهما يُنتج "
+                + "UndecidableCondition — رفضاً لا نجاحاً ناقصاً. وهذا موضعٌ يسهل أن يُنسى ويستحيل أن يُكتشف بقراءة "
+                + "الحدث وحده.",
+                "Posts the settlement under its three scenarios: the provision matches, or falls short and the shortfall is charged "
+                + "to the period expense, or exceeds and the excess is released back to it.\n\n"
+                + "**The amounts dictionary carries — beyond the four declared on the event — the provision balance and the amount "
+                + "due**: the matrix's two condition expressions use them and they are **not in the amounts block**, and their "
+                + "absence yields UndecidableCondition — a refusal, not a partial success. This is a place easy to forget and "
+                + "impossible to discover by reading the event alone.",
+                Body: null, Response: "HrSettlement", Success: 201, Query: [],
+                ProblemStatuses: [404, 409, 422]),
+
+            new(ApiRoutes.EmployeeSubledgerReconciliation, "get", "reconcileEmployeeSubledger",
+                "مطابقة دفتر الموظف مستنداً بمستند", "Reconcile the employee subledger document by document",
+                "يطابق دفتر الموظف المساعد بنقطة ضبطه **مستنداً بمستند وطرفاً بطرف**، ويُرجع ما اختلف وحده مع سببه.\n\n"
+                + "**ولا يُنشر فيه رقمٌ واحد اسمه «رصيد الموظف» — وهذا قرارٌ لا نقص.** قارئ نقطة الضبط يجمّع **بلا "
+                + "تفصيل بالحساب** ويعيد صافياً واحداً، ودفتر الموظف يمتدّ على **أصلٍ واحد وثلاثة خصوم**: سلفة، "
+                + "وراتب مستحق، واستقطاع محتجَز، ومخصص نهاية خدمة. فصافٍ واحد يقاصّ سلفةً بمخصص خدمة براتب مستحق، "
+                + "**ويعلن التطابق وهو أعمى** — انحرافان متقابلان يُلغيان بعضهما.\n\n"
+                + "**وهذه المطابقة ممكنة أصلاً لأن الطرفين متساويا الحبيبيّة**: قيدٌ لكل قسيمة يعني حركةً واحدة في "
+                + "نقطة الضبط لكل قسيمة وصفَّ محاولةٍ واحداً في جدول الوحدة لكل قسيمة. ولو رُحِّل المسيّر قيداً واحداً "
+                + "لصار الطرفان بحبيبيّتين مختلفتين ولاستحال هذا الباب.\n\n"
+                + "وسؤال «كم على هذا الموظف من سلفة؟» يُجاب من جداول الوحدة لا من الدفتر.",
+                "Reconciles the employee subledger against its control point **document by document and party by party**, returning "
+                + "only what differs, with its reason.\n\n"
+                + "**No single number called 'the employee's balance' is published here — a decision, not a gap.** The control point "
+                + "reader aggregates **without account detail** and returns one net, while the employee subledger spans **one asset "
+                + "and three liabilities**: an advance, a salary payable, a withheld deduction, and an end-of-service provision. One "
+                + "net therefore offsets an advance against a service provision against a salary payable, **and declares agreement "
+                + "while blind** — two opposite divergences cancelling.\n\n"
+                + "**This reconciliation is possible at all because the two sides share one grain**: one entry per payslip means one "
+                + "control-point movement per payslip and one attempt row in the module's table per payslip. Had the run been posted "
+                + "as a single entry, the two sides would carry different grains and this door would be impossible.\n\n"
+                + "The question 'how much advance does this employee owe?' is answered from the module's tables, not from the ledger.",
+                Body: null, Response: "HrReconciliation", Success: 200, Query:
+                [
+                    new QueryParameter("asOf", true,
+                        "تاريخ المطابقة: تُقرأ الحركة حتى نهايته.",
+                        "The reconciliation date: movement is read up to and including it.",
+                        "date"),
+                ]),
+
         }.OrderBy(static o => o.Path, StringComparer.Ordinal).ThenBy(static o => o.Method, StringComparer.Ordinal),
     ];
 
@@ -1709,6 +2258,19 @@ internal static class OpenApiEmitter
             "معرّف المرفق — غامضٌ عمداً: لا يُشتقّ من اسم ملفّ ولا من مسار، ولا يُقرأ منه شيء عن صاحبه.",
             "The attachment identifier — deliberately opaque: derived from no file name and no path, and telling nothing about its owner."),
         ("credit-notes", "creditNoteId", "معرّف الإشعار الدائن.", "The credit note identifier."),
+        ("employee-advances", "advanceId", "معرّف سلفة الموظف.", "The employee advance identifier."),
+        ("employee-deductions", "deductionId", "معرّف قيد الجزاء.", "The deduction record identifier."),
+        ("employees", "employeeId",
+            "معرّف الموظف. وهو **غير** رمزه المعتم: الرمز هو ما يعبر إلى الدفتر المساعد، والمعرّف عنوانٌ على هذا السطح.",
+            "The employee identifier. It is **not** the opaque code: the code is what crosses into the subledger, while the identifier is an address on this surface."),
+        ("end-of-service-provisions", "provisionId", "معرّف مستند استحقاق المخصص.", "The provision accrual document identifier."),
+        ("end-of-service-settlements", "settlementId", "معرّف المخالصة.", "The final settlement identifier."),
+        ("payroll-payments", "paymentId", "معرّف سند صرف الرواتب.", "The payroll payment identifier."),
+        ("payroll-runs", "runId", "معرّف مسيّر الرواتب.", "The payroll run identifier."),
+        ("payslips", "payslipId",
+            "معرّف القسيمة — **وهو DocumentId في هوية الإحكام**، لا معرّف المسيّر.",
+            "The payslip identifier — **which is the DocumentId in the posting identity**, not the run's identifier."),
+        ("social-insurance-payments", "paymentId", "معرّف سند سداد التأمينات.", "The social insurance payment identifier."),
         ("customer-receipts", "receiptId", "معرّف سند القبض.", "The customer receipt identifier."),
         ("customers", "customerId", "معرّف العميل.", "The customer identifier."),
         ("goods-receipts", "receiptId", "معرّف استلام البضاعة.", "The goods receipt identifier."),
@@ -2014,9 +2576,14 @@ internal static class OpenApiEmitter
     [
         "postCreditNote",
         "postCustomerReceipt",
+        "postEndOfServiceProvision",
+        "postEndOfServiceSettlement",
         "postGoodsReceipt",
         "postJournalEntry",
+        "postPayrollPayment",
+        "postPayrollRun",
         "postSalesInvoice",
+        "postSocialInsurancePayment",
         "postSupplierBill",
         "postSupplierPayment",
     ];
@@ -4288,6 +4855,867 @@ internal static class OpenApiEmitter
             WriteRequired(w, "code", "detail", "detailAr", "errors", "instance", "status", "title", "titleAr", "traceId", "type");
             w.WriteBoolean("additionalProperties", false);
         });
+
+        // ── سطح الموارد البشرية ──────────────────────────────────────────────
+        // وكل مبلغ هنا $ref إلى Money — أي **نصّ** لا رمز رقمي — وكل نسبة $ref إلى
+        // TaxRate بمقياس ثمانٍ: النسبة ليست مبلغاً ولا تُقرَّب إلى الهللة.
+        //
+        // ‏**ولا حقل شخصي واحد يخرج من هذا السطح غير مقنَّع**: الهوية والآيبان يدخلان
+        // ولا يعودان إلا بآخر أربعة محارف. والرمز المعتم هو **وحده** ما يعبر إلى
+        // الدفتر، لأن ما يدخل البايتات المُجزَّأة لا يُمحى.
+
+        yield return ("HrIdentityRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "البيانات الشخصية عند التسجيل — **تدخل ولا تعود**. تسكن جدولاً منفصلاً واحداً لواحد، ولا يخرج منها "
+                + "شيء في أي جواب إلا مقنَّعاً، ولا يعبر منها حرفٌ واحد إلى دفتر الأستاذ. / "
+                + "Personal data at registration — **it goes in and does not come back**. It lives in a separate one-to-one table, "
+                + "nothing of it leaves in any response except masked, and not one character of it crosses into the ledger.");
+            w.WriteStartObject("properties");
+            WriteDateProperty(w, "birthDate", "تاريخ الميلاد", "The date of birth.");
+            WriteStringProperty(w, "iban", "الآيبان. لا يعبر إلى الدفتر بحال، ولا يعود إلا مقنَّعاً.",
+                "The IBAN. It never crosses into the ledger and never returns except masked.", 64);
+            WriteStringProperty(w, "nationalId", "رقم الهوية أو الإقامة. لا يعبر إلى الدفتر بحال، ولا يعود إلا مقنَّعاً.",
+                "The national or residence identity number. It never crosses into the ledger and never returns except masked.", 32);
+            w.WriteEndObject();
+            WriteRequired(w, "birthDate", "iban", "nationalId");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("HrMaskedIdentity", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "الهوية مقنَّعة: آخر أربعة محارف وحدها وما قبلها نجومٌ **بعدد ثابت**. وعددٌ يساوي طول الأصل يُسرّب "
+                + "الطول، وطولُ الآيبان يُميّز بلد إصداره. / "
+                + "A masked identity: the last four characters only, preceded by a **fixed** number of dots. A count matching the "
+                + "original's length would leak the length, and an IBAN's length distinguishes its issuing country.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "ibanMask", "قناع الآيبان.", "The IBAN mask.", 32);
+            WriteStringProperty(w, "nationalIdMask", "قناع رقم الهوية.", "The identity number mask.", 32);
+            w.WriteEndObject();
+            WriteRequired(w, "ibanMask", "nationalIdMask");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("HrEmployeeRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب تسجيل موظف. **ولا رمز فيه**: الخادم يولّد رمزاً معتماً ولا يقبل واحداً من العميل، لأن الرمز هو "
+                + "ما يُكتب في دفتر أستاذ لا يُمحى منه شيء. والاسم العربي **سجلّ** وترجماته صفوف. / "
+                + "An employee registration request. **It carries no code**: the server mints an opaque one and accepts none from "
+                + "the client, because the code is what gets written into a ledger nothing is erased from. The Arabic name is the "
+                + "**record**, and its translations are rows.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "classCode", "تصنيف الاشتراك — مؤهّل صفّ الإعدادات، لا نسبة ولا سقف.",
+                "The contribution class — a qualifier for the settings row, not a rate and not a ceiling.", 64);
+            WriteStringProperty(w, "costCenterId", "مركز التكلفة الذي يُحمَّل عليه أجر هذا الموظف، أو فراغٌ فالافتراضي. وواحدٌ لا أكثر.",
+                "The cost centre this employee's pay is charged to, or empty for the default. One, and no more.", 64);
+            WriteDateProperty(w, "hiredOn", "تاريخ بدء علاقة العمل", "The employment start date.");
+            WriteRefProperty(w, "identity", "HrIdentityRequest");
+            WriteStringProperty(w, "nameAr", "الاسم العربي — السجلّ، لا ترجمة ثانية.", "The Arabic name — the record, not a second translation.", 200);
+            WriteArrayRefProperty(w, "nameTranslations", "NameValue",
+                "ترجمات الاسم بوسم BCP-47. والعربية سجلٌّ فلا تدخل هنا.",
+                "The name's translations by BCP-47 tag. Arabic is the record and never appears here.");
+            w.WriteEndObject();
+            WriteRequired(w, "classCode", "costCenterId", "hiredOn", "identity", "nameAr");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("HrEmployee", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "الموظف كما يخرج من السطح — **بلا قيمة شخصية واحدة غير مقنَّعة**. و`code` رمزٌ **معتم** لا يُشتقّ من "
+                + "شيء ولا يُقرأ منه شيء عن صاحبه، وهو ما يظهر في `partyId` عند مطابقة الدفتر المساعد. / "
+                + "The employee as the surface returns it — **with not one unmasked personal value**. `code` is an **opaque** code "
+                + "derived from nothing and telling nothing about its bearer, and it is what appears as `partyId` in the subledger "
+                + "reconciliation.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "classCode", "تصنيف الاشتراك.", "The contribution class.", 64);
+            WriteStringProperty(w, "code", "الرمز المعتم — وهو وحده ما يعبر إلى الدفتر المساعد.",
+                "The opaque code — the only thing that crosses into the subledger.", 64);
+            WriteStringProperty(w, "costCenterId", "مركز التكلفة كما سُجّل.", "The cost centre as recorded.", 64);
+            WriteNullableDateProperty(w, "endedOn", "تاريخ انتهاء علاقة العمل، أو null لعلاقة سارية.",
+                "The employment end date, or null while it is active.");
+            WriteStringProperty(w, "employmentId", "علاقة العمل الجارية أو الأخيرة — وهي حبيبيّة مخصص نهاية الخدمة.",
+                "The current or latest employment — the grain of the end-of-service provision.", 36);
+            WriteRefProperty(w, "identity", "HrMaskedIdentity");
+            WriteStringProperty(w, "id", "المعرّف على هذا السطح.", "The identifier on this surface.", 36);
+            WriteStringProperty(w, "nameAr", "الاسم العربي — السجلّ.", "The Arabic name — the record.", 200);
+            WriteArrayRefProperty(w, "nameTranslations", "NameValue", "الترجمات، مرتَّبة ترتيباً حرفياً ثابتاً.",
+                "The translations, in a stable ordinal order.");
+            WriteDateProperty(w, "startedOn", "تاريخ بدء علاقة العمل", "The employment start date.");
+            WriteStringProperty(w, "state", "حالة علاقة العمل: ACTIVE أو TERMINATED.", "The employment state: ACTIVE or TERMINATED.", 16);
+            w.WriteEndObject();
+            WriteRequired(w, "classCode", "code", "costCenterId", "employmentId", "endedOn", "id", "identity", "nameAr", "nameTranslations", "startedOn", "state");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("HrTerminationRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب إنهاء خدمة. والسبب **مفتاحٌ يقرؤه برنامج** من مجموعة يملكها المستدعي لا نصّاً يُعرض؛ ولا تصنيف "
+                + "هنا إلى «استقالة» و«إنهاء» لأن أثر التمييز على الاستحقاق بندٌ مفتوح على المالك. / "
+                + "A termination request. The reason is a **key a program reads**, from a set the caller owns, not displayed text; "
+                + "and there is no classification here into 'resignation' and 'dismissal', because the effect of that distinction "
+                + "on the entitlement is an open owner question.");
+            w.WriteStartObject("properties");
+            WriteDateProperty(w, "endedOn", "تاريخ انتهاء الخدمة", "The service end date.");
+            WriteStringProperty(w, "reasonKey", "مفتاح سبب الإنهاء — رمزٌ لا نصّ.", "The termination reason key — a code, not text.", 64);
+            w.WriteEndObject();
+            WriteRequired(w, "endedOn", "reasonKey");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("HrPayComponentRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب تعريف مكوّن أجر — **تصنيفٌ لا مبلغ ولا نسبة**. والوسمان هما الموضع الذي يصير فيه الأثر التنظيمي "
+                + "بياناتٍ يملؤها المحاسب بدل شيفرة يكتبها مبرمج. / "
+                + "A pay component definition request — **a classification, not an amount and not a rate**. The two flags are where "
+                + "the regulatory effect becomes data an accountant fills instead of code a programmer writes.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "code", "رمز المكوّن داخل المنشأة.", "The component code within the company.", 64);
+            WriteBooleanProperty(w, "entersContributoryWage", "هل يدخل وعاء اشتراك التأمينات؟ يملؤه المحاسب.",
+                "Does it enter the social insurance contributory wage? The accountant fills it.");
+            WriteBooleanProperty(w, "entersEndOfServiceBase", "هل يدخل وعاء مكافأة نهاية الخدمة؟ يملؤه المحاسب.",
+                "Does it enter the end-of-service benefit base? The accountant fills it.");
+            WriteEnumProperty(w, "kind", "نوع المكوّن: استحقاق أو استقطاع.", "The component kind: an earning or a deduction.",
+                PayComponentKinds);
+            WriteStringProperty(w, "nameAr", "الاسم العربي — السجلّ.", "The Arabic name — the record.", 200);
+            WriteArrayRefProperty(w, "nameTranslations", "NameValue", "ترجمات الاسم.", "The name's translations.");
+            w.WriteEndObject();
+            WriteRequired(w, "code", "entersContributoryWage", "entersEndOfServiceBase", "kind", "nameAr");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("HrPayComponent", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "مكوّن أجر كما يخرج من السطح. / A pay component as the surface returns it.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "code", "الرمز.", "The code.", 64);
+            WriteBooleanProperty(w, "entersContributoryWage", "وسم وعاء الاشتراك.", "The contributory wage flag.");
+            WriteBooleanProperty(w, "entersEndOfServiceBase", "وسم وعاء نهاية الخدمة.", "The end-of-service base flag.");
+            WriteStringProperty(w, "id", "المعرّف.", "The identifier.", 36);
+            WriteEnumProperty(w, "kind", "نوع المكوّن.", "The component kind.", PayComponentKinds);
+            WriteStringProperty(w, "nameAr", "الاسم العربي — السجلّ.", "The Arabic name — the record.", 200);
+            WriteArrayRefProperty(w, "nameTranslations", "NameValue", "الترجمات.", "The translations.");
+            w.WriteEndObject();
+            WriteRequired(w, "code", "entersContributoryWage", "entersEndOfServiceBase", "id", "kind", "nameAr", "nameTranslations");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("HrPayComponentList", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "تصنيفات مكوّنات الأجر، مرتَّبة بالرمز. **وغلافٌ لا مصفوفة عارية**: مصفوفةٌ في جذر الاستجابة لا موضع "
+                + "فيها لعدّاد ولا لصفحة. / "
+                + "The pay component classifications, ordered by code. **An envelope, not a bare array**: an array at the response "
+                + "root has no place for a count or a page.");
+            w.WriteStartObject("properties");
+            WriteIntegerProperty(w, "itemCount", 0, int.MaxValue, "عدد المكوّنات.", "The number of components.");
+            WriteArrayRefProperty(w, "items", "HrPayComponent", "المكوّنات.", "The components.");
+            w.WriteEndObject();
+            WriteRequired(w, "itemCount", "items");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("HrPayElementRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب إسناد قيمة مكوّن بتاريخ سريان — **إنشاءٌ لا تعديل**. والزيادة صفٌّ جديد، لأن مسيّراً ماضياً "
+                + "رُحِّل قيده يجب أن يُعاد حسابه فيطابقه. / "
+                + "A request to assign a component value from an effective date — **a creation, not an edit**. An increase is a new "
+                + "row, because a past run whose entry was posted must be recomputable and match it.");
+            w.WriteStartObject("properties");
+            WriteRefProperty(w, "amount", "Money");
+            WriteStringProperty(w, "componentCode", "رمز المكوّن المُسنَدة قيمته.", "The code of the component being valued.", 64);
+            WriteDateProperty(w, "effectiveFrom", "تاريخ سريان القيمة", "The date the value takes effect.");
+            w.WriteEndObject();
+            WriteRequired(w, "amount", "componentCode", "effectiveFrom");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("HrPayElement", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "قيمة مكوّن كما تخرج من السطح، بتاريخ سريانها. / A component value as the surface returns it, with its effective date.");
+            w.WriteStartObject("properties");
+            WriteRefProperty(w, "amount", "Money");
+            WriteStringProperty(w, "componentCode", "رمز المكوّن.", "The component code.", 64);
+            WriteDateProperty(w, "effectiveFrom", "تاريخ السريان", "The effective date.");
+            WriteStringProperty(w, "id", "المعرّف.", "The identifier.", 36);
+            w.WriteEndObject();
+            WriteRequired(w, "amount", "componentCode", "effectiveFrom", "id");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("HrPayElementList", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "أجر الموظف بسريانه — **كل الصفوف لا الساري اليوم وحده**، لأن مراجعة مسيّرٍ ماضٍ تحتاج ما كان "
+                + "سارياً حينها. / "
+                + "The employee's pay by effective date — **every row, not only the one in force today**, because reviewing a past "
+                + "run needs what was in force then.");
+            w.WriteStartObject("properties");
+            WriteIntegerProperty(w, "itemCount", 0, int.MaxValue, "عدد الصفوف.", "The number of rows.");
+            WriteArrayRefProperty(w, "items", "HrPayElement", "الصفوف، مرتَّبة بالمكوّن ثم بتاريخ السريان.",
+                "The rows, ordered by component then by effective date.");
+            w.WriteEndObject();
+            WriteRequired(w, "itemCount", "items");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("HrPayrollSettingsRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "إيداع إصدار من نِسَب الاشتراك وحدودها — **وهذا هو الموضع الوحيد الذي تدخل منه نسبة إلى هذا النظام**. "
+                + "والنِّسَب TaxRate بمقياس ثمانٍ لا Money: خمسة عشر بالمئة تُكتب 0.15 لا 15. و`sourceRef` **غير فارغ "
+                + "بقيدٍ في قاعدة البيانات**: نسبةٌ بلا مصدر مكتوب مرفوضة عند الكتابة لا عند المراجعة. / "
+                + "Depositing a version of the contribution rates and their limits — **the only place a rate enters this system**. "
+                + "Rates are TaxRate at scale eight, not Money: fifteen percent is 0.15, never 15. `sourceRef` is **non-empty by a "
+                + "database constraint**: a rate with no written source is refused at write time, not at review time.");
+            w.WriteStartObject("properties");
+            WriteDateProperty(w, "approvedOn", "تاريخ اعتماد هذا الإصدار", "The date this version was approved.");
+            WriteStringProperty(w, "approvedBy", "من اعتمد الإصدار — إنسان، لا نظام.", "Who approved the version — a human, not the system.", 64);
+            WriteStringProperty(w, "classCode", "تصنيف الاشتراك الذي تسري عليه هذه النِّسَب.", "The contribution class these rates apply to.", 64);
+            WriteDateProperty(w, "effectiveFrom", "تاريخ سريان الإصدار", "The date the version takes effect.");
+            WriteRefProperty(w, "employeeRate", "TaxRate");
+            WriteRefProperty(w, "employerRate", "TaxRate");
+            WriteRefProperty(w, "maximumContributoryWage", "Money");
+            WriteRefProperty(w, "minimumContributoryWage", "Money");
+            WriteStringProperty(w, "sourceRef",
+                "مرجع المصدر النظامي الذي أُخذت منه هذه القيم — نصٌّ يقرؤه مراجع، وغير فارغ.",
+                "The reference to the regulatory source these values came from — text a reviewer reads, and non-empty.", 400);
+            w.WriteEndObject();
+            WriteRequired(w, "approvedBy", "approvedOn", "classCode", "effectiveFrom", "employeeRate", "employerRate", "maximumContributoryWage", "minimumContributoryWage", "sourceRef");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("HrPayrollSettings", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "إصدار نِسَبٍ كما يخرج من السطح، بمعتمِده ومصدره وتاريخ سريانه. / "
+                + "A rate version as the surface returns it, with its approver, its source, and its effective date.");
+            w.WriteStartObject("properties");
+            WriteDateProperty(w, "approvedOn", "تاريخ الاعتماد", "The approval date.");
+            WriteStringProperty(w, "approvedBy", "المعتمِد.", "The approver.", 64);
+            WriteStringProperty(w, "classCode", "التصنيف.", "The class.", 64);
+            WriteDateProperty(w, "effectiveFrom", "تاريخ السريان", "The effective date.");
+            WriteRefProperty(w, "employeeRate", "TaxRate");
+            WriteRefProperty(w, "employerRate", "TaxRate");
+            WriteStringProperty(w, "id", "المعرّف.", "The identifier.", 36);
+            WriteRefProperty(w, "maximumContributoryWage", "Money");
+            WriteRefProperty(w, "minimumContributoryWage", "Money");
+            WriteStringProperty(w, "sourceRef", "مرجع المصدر النظامي.", "The regulatory source reference.", 400);
+            w.WriteEndObject();
+            WriteRequired(w, "approvedBy", "approvedOn", "classCode", "effectiveFrom", "employeeRate", "employerRate", "id", "maximumContributoryWage", "minimumContributoryWage", "sourceRef");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("HrPayrollSettingsList", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "إصدارات النِّسَب بسريانها. **وقائمة فارغة جوابٌ صحيح**: هي حال المنشأة قبل أن يعتمد محاسبها أول "
+                + "إصدار، وهي الحال التي يُرفض فيها كل مسيّر. / "
+                + "The rate versions by effective date. **An empty list is a correct answer**: it is the company's state before its "
+                + "accountant approves a first version, and the state in which every run is refused.");
+            w.WriteStartObject("properties");
+            WriteIntegerProperty(w, "itemCount", 0, int.MaxValue, "عدد الإصدارات.", "The number of versions.");
+            WriteArrayRefProperty(w, "items", "HrPayrollSettings", "الإصدارات، مرتَّبة بالتصنيف ثم بتاريخ السريان.",
+                "The versions, ordered by class then by effective date.");
+            w.WriteEndObject();
+            WriteRequired(w, "itemCount", "items");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("HrPayrollRunRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب إنشاء مسيّر رواتب مسوّدة. **ولا مجاميع فيه**: مجموعٌ يرسله العميل مصدرُ حقيقةٍ ثانٍ ينحرف عن "
+                + "الأول ولا يُظهره شيء. / "
+                + "A payroll run draft request. **It carries no totals**: a total sent by a client is a second source of truth that "
+                + "drifts from the first with nothing to reveal it.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "number", "رقم المسيّر — فريد داخل المنشأة.", "The run number — unique within the company.", 64);
+            WritePeriodProperty(w, "periodCode");
+            WriteDateProperty(w, "periodEnd", "نهاية الفترة — وهي تاريخ قيد الاستحقاق", "The period end — the accrual entry's date.");
+            WriteDateProperty(w, "periodStart", "بداية الفترة", "The period start.");
+            w.WriteEndObject();
+            WriteRequired(w, "number", "periodCode", "periodEnd", "periodStart");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("HrPayrollAmounts", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "المبالغ الستّة **بأسماء مفردات مصفوفة الترحيل نفسها**، فما يُقرأ هنا هو ما يُمرَّر إلى المحرك حرفاً "
+                + "بحرف. والمتطابقة المعلَنة في المصفوفة مفروضة في قاعدة البيانات: "
+                + "netPayable = grossEntitlements − employeeSocialInsurance − advanceInstalment − deductions. / "
+                + "The six amounts **under the posting matrix's own vocabulary names**, so what is read here is what is passed to "
+                + "the engine verbatim. The identity declared in the matrix is enforced in the database: "
+                + "netPayable = grossEntitlements − employeeSocialInsurance − advanceInstalment − deductions.");
+            w.WriteStartObject("properties");
+            WriteRefProperty(w, "advanceInstalment", "Money");
+            WriteRefProperty(w, "deductions", "Money");
+            WriteRefProperty(w, "employeeSocialInsurance", "Money");
+            WriteRefProperty(w, "employerSocialInsurance", "Money");
+            WriteRefProperty(w, "grossEntitlements", "Money");
+            WriteRefProperty(w, "netPayable", "Money");
+            w.WriteEndObject();
+            WriteRequired(w, "advanceInstalment", "deductions", "employeeSocialInsurance", "employerSocialInsurance", "grossEntitlements", "netPayable");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("HrPayrollRun", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "مسيّر رواتب كما يخرج من السطح. **ولا معرّف قيد عليه**: القيود على قسائمه لا عليه — قيدٌ لكل قسيمة. / "
+                + "A payroll run as the surface returns it. **It carries no entry identifier**: the entries belong to its payslips, "
+                + "not to it — one entry per payslip.");
+            w.WriteStartObject("properties");
+            WriteRefProperty(w, "amounts", "HrPayrollAmounts");
+            WriteStringProperty(w, "id", "المعرّف.", "The identifier.", 36);
+            WriteStringProperty(w, "number", "الرقم.", "The number.", 64);
+            WriteIntegerProperty(w, "payslipCount", 0, int.MaxValue, "عدد القسائم — وهو عدد القيود التي يُصدرها الترحيل.",
+                "The payslip count — which is the number of entries posting issues.");
+            WritePeriodProperty(w, "periodCode");
+            WriteDateProperty(w, "periodEnd", "نهاية الفترة", "The period end.");
+            WriteDateProperty(w, "periodStart", "بداية الفترة", "The period start.");
+            WriteStringProperty(w, "state", "الحالة: DRAFT أو POSTED.", "The state: DRAFT or POSTED.", 16);
+            w.WriteEndObject();
+            WriteRequired(w, "amounts", "id", "number", "payslipCount", "periodCode", "periodEnd", "periodStart", "state");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("HrPayslipComponent", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "مكوّن على قسيمة — تفصيل ما بُني منه المبلغ، ليُراجَع. ووسم دخوله الوعاء محفوظٌ على السطر نفسه: من "
+                + "يراجع بعد سنة يحتاج الوسم كما كان لا كما صار. / "
+                + "A component on a payslip — the breakdown the amount was built from, for review. Its contributory flag is stored "
+                + "on the line itself: whoever reviews a year later needs the flag as it was, not as it became.");
+            w.WriteStartObject("properties");
+            WriteRefProperty(w, "amount", "Money");
+            WriteStringProperty(w, "componentCode", "رمز المكوّن.", "The component code.", 64);
+            WriteBooleanProperty(w, "entersContributoryWage", "هل دخل هذا المكوّن وعاء الاشتراك وقت بناء القسيمة؟",
+                "Did this component enter the contributory wage when the payslip was built?");
+            WriteEnumProperty(w, "kind", "نوع المكوّن.", "The component kind.", PayComponentKinds);
+            WriteIntegerProperty(w, "lineNo", 1, int.MaxValue, "رقم السطر داخل القسيمة.", "The line number within the payslip.");
+            w.WriteEndObject();
+            WriteRequired(w, "amount", "componentCode", "entersContributoryWage", "kind", "lineNo");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("HrPayslip", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "القسيمة — **وهي مستند الترحيل**: معرّفها هو DocumentId في هوية الإحكام السداسية، و`entryId` قيدُها هي "
+                + "وحدها. و`employeeCode` هو الرمز المعتم الذي كُتب في الدفتر المساعد وقت الترحيل، محفوظاً على الصفّ "
+                + "كي يبقى مطابقاً لما في الدفتر مهما تغيّر بعده. / "
+                + "The payslip — **which is the posting document**: its identifier is the DocumentId in the six-part idempotency "
+                + "identity, and `entryId` is its own entry. `employeeCode` is the opaque code written into the subledger at posting "
+                + "time, stored on the row so that it keeps matching the ledger whatever changes afterwards.");
+            w.WriteStartObject("properties");
+            WriteBooleanProperty(w, "alreadyPosted",
+                "هل كانت هذه الهوية مُرحَّلة قبل هذا النداء؟ **معلومة لا تُشتقّ من الحالة**: قسيمةٌ حالتها POSTED بعد النداء لا تقول أيُّ النداءين رحّلها.",
+                "Was this identity already posted before this call? **Not derivable from the state**: a payslip in state POSTED after the call does not say which call posted it.");
+            WriteRefProperty(w, "amounts", "HrPayrollAmounts");
+            WriteArrayRefProperty(w, "components", "HrPayslipComponent",
+                "تفصيل المكوّنات — فارغٌ في القوائم، ومملوءٌ عند قراءة القسيمة مفردةً.",
+                "The component breakdown — empty in listings, populated when the payslip is read on its own.");
+            WriteRefProperty(w, "contributoryWage", "Money");
+            WriteStringProperty(w, "costCenterId", "مركز التكلفة كما كان وقت بناء القسيمة.", "The cost centre as it stood when the payslip was built.", 64);
+            WriteStringProperty(w, "employeeCode", "الرمز المعتم — وهو طرف الدفتر المساعد.", "The opaque code — the subledger party.", 64);
+            WriteStringProperty(w, "employeeId", "معرّف الموظف على هذا السطح.", "The employee identifier on this surface.", 36);
+            WriteStringProperty(w, "employmentId", "علاقة العمل.", "The employment.", 36);
+            WriteNullableStringProperty(w, "entryId", "معرّف قيد هذه القسيمة إن رُحّلت، أو null.",
+                "This payslip's entry identifier if posted, or null.", 36);
+            WriteStringProperty(w, "id", "المعرّف — وهو DocumentId في هوية الإحكام.", "The identifier — the DocumentId in the posting identity.", 36);
+            WriteStringProperty(w, "runId", "المسيّر الذي بُنيت فيه.", "The run it was built in.", 36);
+            WriteStringProperty(w, "state", "الحالة: DRAFT أو POSTED.", "The state: DRAFT or POSTED.", 16);
+            w.WriteEndObject();
+            WriteRequired(w, "alreadyPosted", "amounts", "components", "contributoryWage", "costCenterId", "employeeCode", "employeeId", "employmentId", "entryId", "id", "runId", "state");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("HrPayslipList", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "قسائم مسيّر — **وهو أيضاً جواب باب الترحيل**: نداءٌ واحد يُصدر قيداً لكل قسيمة، فالجواب قائمة قسائم "
+                + "لكلٍّ معرّف قيدها وحصانتها، لا مستنداً واحداً بمعرّف قيد واحد. / "
+                + "A run's payslips — **and also the posting door's response**: one call issues one entry per payslip, so the "
+                + "response is a list of payslips each with its own entry identifier and its own idempotency flag, not one document "
+                + "with one entry id.");
+            w.WriteStartObject("properties");
+            WriteIntegerProperty(w, "itemCount", 0, int.MaxValue, "عدد القسائم.", "The number of payslips.");
+            WriteArrayRefProperty(w, "items", "HrPayslip", "القسائم، مرتَّبة بالرمز المعتم.", "The payslips, ordered by opaque code.");
+            w.WriteEndObject();
+            WriteRequired(w, "itemCount", "items");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("HrPayrollPaymentRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب إنشاء سند صرف رواتب مسوّدة على مسيّر مُرحَّل. و`treasuryPartyId` **إلزامي**: سطر التسوية معلَنٌ "
+                + "في المصفوفة subledger: \"resolved\"، والمحرك يطويه إلى النوع none ثم يبحث عن الواقعة "
+                + "subledger.none — وحسابُ التسوية الافتراضي حسابٌ ضابط، فبلا الطرف يُرفض الترحيل كلّه. / "
+                + "A payroll payment draft request against a posted run. `treasuryPartyId` is **mandatory**: the settlement line is "
+                + "declared in the matrix as subledger: \"resolved\", the engine folds that to kind none and then looks for the "
+                + "subledger.none fact — and the default settlement account is a control account, so without the party the whole "
+                + "posting is refused.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "number", "رقم السند — فريد داخل المنشأة.", "The document number — unique within the company.", 64);
+            WriteDateProperty(w, "paidOn", "تاريخ الصرف", "The payment date.");
+            WriteStringProperty(w, "runId", "المسيّر المُرحَّل الذي يُصرف.", "The posted run being paid.", 36);
+            WriteEnumProperty(w, "settlementMethod",
+                "طريقة التسوية — **مؤهّل دور لا رمز حساب**. والمجموعة ضيّقة عمداً: قبولُ حساب وسيط يفترض جواب سؤال مفتوح عن لحظة وقوع قيد الصرف.",
+                "The settlement method — **a role qualifier, not an account code**. The set is deliberately narrow: accepting a clearing account would assume the answer to an open question about when the payment entry falls.",
+                SettlementMethodNames);
+            WriteStringProperty(w, "treasuryPartyId", "طرف الخزينة أو الحساب المصرفي في دفترها المساعد.",
+                "The treasury or bank party within its own subledger.", 64);
+            w.WriteEndObject();
+            WriteRequired(w, "number", "paidOn", "runId", "settlementMethod", "treasuryPartyId");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("HrPayrollPaymentLine", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "سطر سند صرف — **واحدٌ لكل قسيمة، وهو حبيبيّة القيد**. ولو كان القيد واحداً للسند لاختلفت حبيبيّة "
+                + "طرفَي المطابقة واستحالت. / "
+                + "A payment line — **one per payslip, and it is the entry's grain**. Were the entry one per document, the two "
+                + "sides of the reconciliation would carry different grains and it would be impossible.");
+            w.WriteStartObject("properties");
+            WriteRefProperty(w, "amount", "Money");
+            WriteStringProperty(w, "employeeCode", "الرمز المعتم — طرف الدفتر المساعد.", "The opaque code — the subledger party.", 64);
+            WriteNullableStringProperty(w, "entryId", "معرّف قيد هذا السطر إن رُحّل، أو null.", "This line's entry identifier if posted, or null.", 36);
+            WriteIntegerProperty(w, "lineNo", 1, int.MaxValue, "رقم السطر.", "The line number.");
+            WriteStringProperty(w, "payslipId", "القسيمة التي يُصرف صافيها.", "The payslip whose net is being paid.", 36);
+            w.WriteEndObject();
+            WriteRequired(w, "amount", "employeeCode", "entryId", "lineNo", "payslipId");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("HrPayrollPayment", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "سند صرف الرواتب كما يخرج من السطح، بسطوره ومعرّفات قيودها. / "
+                + "The payroll payment as the surface returns it, with its lines and their entry identifiers.");
+            w.WriteStartObject("properties");
+            WriteBooleanProperty(w, "alreadyPosted",
+                "هل كانت سطوره كلّها مُرحَّلة قبل هذا النداء؟",
+                "Were all of its lines already posted before this call?");
+            WriteStringProperty(w, "id", "المعرّف.", "The identifier.", 36);
+            WriteArrayRefProperty(w, "lines", "HrPayrollPaymentLine", "السطور — واحدٌ لكل قسيمة.", "The lines — one per payslip.");
+            WriteRefProperty(w, "netPayable", "Money");
+            WriteStringProperty(w, "number", "الرقم.", "The number.", 64);
+            WriteDateProperty(w, "paidOn", "تاريخ الصرف", "The payment date.");
+            WriteStringProperty(w, "runId", "المسيّر.", "The run.", 36);
+            WriteEnumProperty(w, "settlementMethod", "طريقة التسوية.", "The settlement method.", SettlementMethodNames);
+            WriteStringProperty(w, "state", "الحالة: DRAFT أو POSTED.", "The state: DRAFT or POSTED.", 16);
+            WriteStringProperty(w, "treasuryPartyId", "طرف الخزينة.", "The treasury party.", 64);
+            w.WriteEndObject();
+            WriteRequired(w, "alreadyPosted", "id", "lines", "netPayable", "number", "paidOn", "runId", "settlementMethod", "state", "treasuryPartyId");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("HrSocialInsurancePaymentRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب إنشاء سند سداد اشتراك التأمينات لفترة. **والمبلغ يصل من المستدعي ولا تُمليه الوحدة**: فاتورة "
+                + "الجهة قد تخالف ما استحقّته المسيّرات لأسباب مشروعة. / "
+                + "A social insurance settlement draft request for a period. **The amount comes from the caller; the module does not "
+                + "dictate it**: the authority's invoice may legitimately differ from what the runs accrued.");
+            w.WriteStartObject("properties");
+            WriteRefProperty(w, "amount", "Money");
+            WriteStringProperty(w, "number", "رقم السند.", "The document number.", 64);
+            WriteDateProperty(w, "paidOn", "تاريخ السداد", "The settlement date.");
+            WritePeriodProperty(w, "periodCode");
+            WriteEnumProperty(w, "settlementMethod", "طريقة التسوية — مؤهّل دور.", "The settlement method — a role qualifier.", SettlementMethodNames);
+            WriteStringProperty(w, "treasuryPartyId", "طرف الخزينة — إلزامي على كل مستند دفع.", "The treasury party — mandatory on every payment document.", 64);
+            w.WriteEndObject();
+            WriteRequired(w, "amount", "number", "paidOn", "periodCode", "settlementMethod", "treasuryPartyId");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("HrSocialInsurancePayment", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "سداد التأمينات كما يخرج من السطح، ومعه ما استُحقّ في فترته من مسيّرات مُرحَّلة **للمقارنة لا "
+                + "للإملاء**. وهو المستند الوحيد في هذه الوحدة الذي يُرحَّل قيداً واحداً للفترة، لأن سطره الأول على "
+                + "حساب الالتزام بلا دفتر مساعد. / "
+                + "The social insurance settlement as the surface returns it, together with what its period accrued from posted runs "
+                + "**for comparison, not for dictation**. It is the only document in this module posted as a single entry per "
+                + "period, because its first line's liability account has no subledger.");
+            w.WriteStartObject("properties");
+            WriteRefProperty(w, "accruedForPeriod", "Money");
+            WriteBooleanProperty(w, "alreadyPosted", "هل كان مُرحَّلاً قبل هذا النداء؟", "Was it already posted before this call?");
+            WriteRefProperty(w, "amount", "Money");
+            WriteNullableStringProperty(w, "entryId", "معرّف القيد إن رُحّل، أو null.", "The entry identifier if posted, or null.", 36);
+            WriteStringProperty(w, "id", "المعرّف.", "The identifier.", 36);
+            WriteStringProperty(w, "number", "الرقم.", "The number.", 64);
+            WriteDateProperty(w, "paidOn", "تاريخ السداد", "The settlement date.");
+            WritePeriodProperty(w, "periodCode");
+            WriteEnumProperty(w, "settlementMethod", "طريقة التسوية.", "The settlement method.", SettlementMethodNames);
+            WriteStringProperty(w, "state", "الحالة.", "The state.", 16);
+            WriteStringProperty(w, "treasuryPartyId", "طرف الخزينة.", "The treasury party.", 64);
+            w.WriteEndObject();
+            WriteRequired(w, "accruedForPeriod", "alreadyPosted", "amount", "entryId", "id", "number", "paidOn", "periodCode", "settlementMethod", "state", "treasuryPartyId");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("HrDeductionRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "قيد جزاء في السجلّ المعتمد، يُستقطع داخل مسيّر فترته. **ولا حدّ أقصى لنسبة الاستقطاع يُفرَض**: الحدّ "
+                + "النظامي غير متحقَّق منه، وحدٌّ مخترَع يرفض مسيّرات مشروعة ويُدرّب المستخدم على الالتفاف. / "
+                + "A deduction recorded in the approved register, deducted inside its period's run. **No maximum deduction ratio is "
+                + "enforced**: the regulatory ceiling is unverified, and an invented ceiling refuses legitimate runs and trains "
+                + "users to work around it.");
+            w.WriteStartObject("properties");
+            WriteRefProperty(w, "amount", "Money");
+            WriteDateProperty(w, "approvedOn", "تاريخ الاعتماد", "The approval date.");
+            WriteStringProperty(w, "approvedBy", "المعتمِد — إنسان، لا نظام.", "The approver — a human, not the system.", 64);
+            WriteStringProperty(w, "categoryKey", "مفتاح فئة السبب — رمزٌ يملكه المستدعي لا نصٌّ يُعرض.",
+                "The reason category key — a code the caller owns, not displayed text.", 64);
+            WriteStringProperty(w, "employeeId", "الموظف المستقطَع منه.", "The employee being deducted from.", 36);
+            WritePeriodProperty(w, "periodCode");
+            w.WriteEndObject();
+            WriteRequired(w, "amount", "approvedBy", "approvedOn", "categoryKey", "employeeId", "periodCode");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("HrDeduction", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "جزاءٌ كما يخرج من السطح — **بلا entryId وبلا alreadyPosted**. الاستقطاع يُرحَّل داخل المسيّر لا "
+                + "بذاته، وحقلٌ فارغ يُقرأ «لم يُرحَّل بعد» بدل «لا يُرحَّل»، فيبني عليه العميل شاشةً بزرّ ترحيل لا "
+                + "وجود له. / "
+                + "A deduction as the surface returns it — **with no entryId and no alreadyPosted**. A deduction is posted inside "
+                + "the run rather than by itself, and an empty field reads as 'not posted yet' instead of 'never posted', leading a "
+                + "client to build a screen with a posting button that does not exist.");
+            w.WriteStartObject("properties");
+            WriteRefProperty(w, "amount", "Money");
+            WriteDateProperty(w, "approvedOn", "تاريخ الاعتماد", "The approval date.");
+            WriteStringProperty(w, "approvedBy", "المعتمِد.", "The approver.", 64);
+            WriteStringProperty(w, "categoryKey", "مفتاح فئة السبب.", "The reason category key.", 64);
+            WriteNullableStringProperty(w, "consumedByPayslipId", "القسيمة التي استُقطع فيها، أو null فلم يُستقطع بعد.",
+                "The payslip it was consumed by, or null while it has not been deducted.", 36);
+            WriteStringProperty(w, "employeeCode", "الرمز المعتم.", "The opaque code.", 64);
+            WriteStringProperty(w, "employeeId", "الموظف.", "The employee.", 36);
+            WriteStringProperty(w, "id", "المعرّف.", "The identifier.", 36);
+            WritePeriodProperty(w, "periodCode");
+            w.WriteEndObject();
+            WriteRequired(w, "amount", "approvedBy", "approvedOn", "categoryKey", "consumedByPayslipId", "employeeCode", "employeeId", "id", "periodCode");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("HrInstalmentRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "قسط سداد سلفة في الطلب: فترته ومبلغه. / An advance repayment instalment in the request: its period and its amount.");
+            w.WriteStartObject("properties");
+            WriteRefProperty(w, "amount", "Money");
+            WritePeriodProperty(w, "periodCode");
+            w.WriteEndObject();
+            WriteRequired(w, "amount", "periodCode");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("HrAdvanceRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب إنشاء سلفة مسوّدة بجدول أقساطها، **ومجموع الأقساط يساوي المبلغ بالضبط** — والفارق لا يُسوَّى "
+                + "ضمناً: قسطٌ يُخترع أو يُقصّ يجعل رصيد السلفة رقماً لا يقابله جدول. / "
+                + "An advance draft request with its instalment schedule, **whose instalments sum exactly to the amount** — the "
+                + "difference is never settled implicitly: an invented or truncated instalment makes the advance balance a number "
+                + "with no schedule behind it.");
+            w.WriteStartObject("properties");
+            WriteRefProperty(w, "amount", "Money");
+            WriteStringProperty(w, "employeeId", "الموظف المستلف.", "The employee taking the advance.", 36);
+            WriteArrayRefProperty(w, "instalments", "HrInstalmentRequest", "جدول الأقساط.", "The instalment schedule.");
+            WriteDateProperty(w, "issuedOn", "تاريخ منح السلفة", "The date the advance was granted.");
+            WriteStringProperty(w, "number", "رقم السلفة.", "The advance number.", 64);
+            WriteEnumProperty(w, "settlementMethod", "طريقة الصرف — مؤهّل دور.", "The disbursement method — a role qualifier.", SettlementMethodNames);
+            WriteStringProperty(w, "treasuryPartyId", "طرف الخزينة.", "The treasury party.", 64);
+            w.WriteEndObject();
+            WriteRequired(w, "amount", "employeeId", "instalments", "issuedOn", "number", "settlementMethod", "treasuryPartyId");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("HrInstalment", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "قسط سلفة كما يخرج من السطح، ومعه القسيمة التي استُقطع فيها إن استُقطع. / "
+                + "An advance instalment as the surface returns it, with the payslip it was deducted in, if any.");
+            w.WriteStartObject("properties");
+            WriteRefProperty(w, "amount", "Money");
+            WriteNullableStringProperty(w, "consumedByPayslipId", "القسيمة التي استُقطع فيها، أو null.",
+                "The payslip it was deducted in, or null.", 36);
+            WriteIntegerProperty(w, "lineNo", 1, int.MaxValue, "رقم القسط.", "The instalment number.");
+            WritePeriodProperty(w, "periodCode");
+            w.WriteEndObject();
+            WriteRequired(w, "amount", "consumedByPayslipId", "lineNo", "periodCode");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("HrAdvance", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "سلفة كما تخرج من السطح — **بلا حقل قيد**: باب ترحيلها غير منشور لأن حدثها غير موجود في مصفوفة "
+                + "الترحيل، وحقلٌ فارغ كان سيَعِد بدورة لا تكتمل. و`outstandingAmount` مشتقٌّ من الأقساط **المستقطَعة "
+                + "فعلاً** وحدها لا من مرور الزمن. / "
+                + "An advance as the surface returns it — **with no entry field**: its posting door is unpublished because its event "
+                + "does not exist in the posting matrix, and an empty field would promise a cycle that does not complete. "
+                + "`outstandingAmount` is derived from instalments **actually deducted** alone, not from elapsed time.");
+            w.WriteStartObject("properties");
+            WriteRefProperty(w, "amount", "Money");
+            WriteStringProperty(w, "employeeCode", "الرمز المعتم.", "The opaque code.", 64);
+            WriteStringProperty(w, "employeeId", "الموظف.", "The employee.", 36);
+            WriteStringProperty(w, "id", "المعرّف.", "The identifier.", 36);
+            WriteArrayRefProperty(w, "instalments", "HrInstalment", "جدول الأقساط.", "The instalment schedule.");
+            WriteDateProperty(w, "issuedOn", "تاريخ المنح", "The grant date.");
+            WriteStringProperty(w, "number", "الرقم.", "The number.", 64);
+            WriteRefProperty(w, "outstandingAmount", "Money");
+            WriteEnumProperty(w, "settlementMethod", "طريقة الصرف.", "The disbursement method.", SettlementMethodNames);
+            WriteStringProperty(w, "state", "الحالة.", "The state.", 16);
+            WriteStringProperty(w, "treasuryPartyId", "طرف الخزينة.", "The treasury party.", 64);
+            w.WriteEndObject();
+            WriteRequired(w, "amount", "employeeCode", "employeeId", "id", "instalments", "issuedOn", "number", "outstandingAmount", "settlementMethod", "state", "treasuryPartyId");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("HrProvisionShareRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "حصّة علاقة عمل من مخصص الفترة — **مبلغٌ يُدخله معتمِد المستند، والوحدة لا تقيسه**. طريقة قياس "
+                + "المخصص ومدخلاتها تحتاج اعتماد المحاسب القانوني، ونصّ المصفوفة صريح: «بطريقة القياس المعتمدة — لا "
+                + "تُخترع في هذا التسليم». / "
+                + "One employment's share of the period provision — **an amount the document's approver enters; the module does not "
+                + "measure it**. The provision's measurement method and inputs require a chartered accountant's approval, and the "
+                + "matrix text is explicit: 'by the approved measurement method — not invented in this deliverable'.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "employmentId", "علاقة العمل — وهي حبيبيّة المخصص لا الموظف.",
+                "The employment — the provision's grain, not the employee.", 36);
+            WriteRefProperty(w, "periodShare", "Money");
+            w.WriteEndObject();
+            WriteRequired(w, "employmentId", "periodShare");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("HrProvisionRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب إنشاء مستند استحقاق مخصص نهاية الخدمة. و`measurementRef` **غير فارغ بقيدٍ في قاعدة البيانات**: "
+                + "مبلغٌ بلا أساسٍ مكتوب تقديرٌ بلا مصدر. **ومستندٌ يُنشئه نداءٌ صريح لا مهمّة مجدولة**: لا مُشغّل "
+                + "دوري في هذه الوحدة، والنمط محجوزٌ للانتزاع ولا يُخترع مرّتين. / "
+                + "A request to create an end-of-service provision accrual document. `measurementRef` is **non-empty by a database "
+                + "constraint**: an amount with no written basis is an estimate with no source. **It is a document created by an "
+                + "explicit call, not a scheduled job**: there is no periodic runner in this module, and the pattern is reserved for "
+                + "extraction rather than invented twice.");
+            w.WriteStartObject("properties");
+            WriteDateProperty(w, "accruedOn", "تاريخ الاستحقاق", "The accrual date.");
+            WriteStringProperty(w, "approvedBy", "المعتمِد.", "The approver.", 64);
+            WriteStringProperty(w, "measurementRef", "مرجع أساس القياس المعتمد — نصٌّ يقرؤه مراجع، وغير فارغ.",
+                "The reference to the approved measurement basis — text a reviewer reads, and non-empty.", 400);
+            WriteStringProperty(w, "number", "رقم المستند.", "The document number.", 64);
+            WritePeriodProperty(w, "periodCode");
+            WriteArrayRefProperty(w, "shares", "HrProvisionShareRequest", "حصص علاقات العمل.", "The per-employment shares.");
+            w.WriteEndObject();
+            WriteRequired(w, "accruedOn", "approvedBy", "measurementRef", "number", "periodCode", "shares");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("HrProvisionMovement", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "حركة مخصص لعلاقة عمل في فترة — **تُضاف ولا تُعدَّل**، وهي حبيبيّة الطرف المساعد ومصدر الرصيد الذي "
+                + "تقرأه المخالصة. / "
+                + "A provision movement for one employment in one period — **appended, never edited** — and it is the subledger "
+                + "party's grain and the source of the balance the settlement reads.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "employeeCode", "الرمز المعتم.", "The opaque code.", 64);
+            WriteStringProperty(w, "employmentId", "علاقة العمل.", "The employment.", 36);
+            WriteNullableStringProperty(w, "entryId", "معرّف قيد هذه الحركة إن رُحّلت، أو null.",
+                "This movement's entry identifier if posted, or null.", 36);
+            WriteStringProperty(w, "id", "المعرّف — وهو DocumentId في هوية إحكام هذه الحركة.",
+                "The identifier — the DocumentId in this movement's posting identity.", 36);
+            WriteRefProperty(w, "periodShare", "Money");
+            w.WriteEndObject();
+            WriteRequired(w, "employeeCode", "employmentId", "entryId", "id", "periodShare");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("HrProvision", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "مستند استحقاق المخصص كما يخرج من السطح، بحركاته ومعرّفات قيودها — قيدٌ لكل علاقة عمل. / "
+                + "The provision accrual document as the surface returns it, with its movements and their entry identifiers — one "
+                + "entry per employment.");
+            w.WriteStartObject("properties");
+            WriteDateProperty(w, "accruedOn", "تاريخ الاستحقاق", "The accrual date.");
+            WriteBooleanProperty(w, "alreadyPosted", "هل كانت حركاته كلّها مُرحَّلة قبل هذا النداء؟",
+                "Were all of its movements already posted before this call?");
+            WriteStringProperty(w, "approvedBy", "المعتمِد.", "The approver.", 64);
+            WriteStringProperty(w, "id", "المعرّف.", "The identifier.", 36);
+            WriteStringProperty(w, "measurementRef", "مرجع أساس القياس المعتمد.", "The approved measurement basis reference.", 400);
+            WriteArrayRefProperty(w, "movements", "HrProvisionMovement", "الحركات، مرتَّبة بالرمز المعتم.",
+                "The movements, ordered by opaque code.");
+            WriteStringProperty(w, "number", "الرقم.", "The number.", 64);
+            WritePeriodProperty(w, "periodCode");
+            WriteRefProperty(w, "periodShare", "Money");
+            WriteStringProperty(w, "state", "الحالة.", "The state.", 16);
+            w.WriteEndObject();
+            WriteRequired(w, "accruedOn", "alreadyPosted", "approvedBy", "id", "measurementRef", "movements", "number", "periodCode", "periodShare", "state");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("HrSettlementRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب إنشاء مخالصة نهاية خدمة على علاقة عمل منتهية. **والمستحقّ يصل من معتمِد المستند**: معادلة "
+                + "المكافأة وشرائحها غير متحقَّق منها ولا تُخترع هنا. وما تحسبه الوحدة هو رصيد المخصص وحده ثم العجز "
+                + "والزيادة، وكلاهما اشتقاقٌ حسابي من رقمين. / "
+                + "A final settlement draft request against a terminated employment. **The amount due arrives from the document's "
+                + "approver**: the benefit formula and its bands are unverified and are not invented here. What the module computes "
+                + "is the provision balance alone, and then the shortfall and the excess — both arithmetic derivations from two "
+                + "numbers.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "employmentId", "علاقة العمل المنتهية.", "The terminated employment.", 36);
+            WriteStringProperty(w, "measurementRef", "مرجع أساس الحساب المعتمد.", "The approved calculation basis reference.", 400);
+            WriteStringProperty(w, "number", "رقم المخالصة.", "The settlement number.", 64);
+            WriteDateProperty(w, "settledOn", "تاريخ المخالصة", "The settlement date.");
+            WriteRefProperty(w, "settlementDue", "Money");
+            WriteEnumProperty(w, "settlementMethod", "طريقة الصرف.", "The disbursement method.", SettlementMethodNames);
+            WriteStringProperty(w, "treasuryPartyId", "طرف الخزينة — إلزامي.", "The treasury party — mandatory.", 64);
+            w.WriteEndObject();
+            WriteRequired(w, "employmentId", "measurementRef", "number", "settledOn", "settlementDue", "settlementMethod", "treasuryPartyId");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("HrSettlement", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "المخالصة كما تخرج من السطح، **والسيناريو المنطبق مُسمّى** لا مستنتَجاً من فرق مبلغين. والمتطابقة "
+                + "المعلَنة في المصفوفة مفروضة في قاعدة البيانات: provisionUtilised = amountPaid − shortfall + excess. / "
+                + "The settlement as the surface returns it, **with the applicable scenario named** rather than inferred from the "
+                + "difference of two amounts. The identity declared in the matrix is enforced in the database: "
+                + "provisionUtilised = amountPaid − shortfall + excess.");
+            w.WriteStartObject("properties");
+            WriteBooleanProperty(w, "alreadyPosted", "هل كانت مُرحَّلة قبل هذا النداء؟", "Was it already posted before this call?");
+            WriteRefProperty(w, "amountPaid", "Money");
+            WriteStringProperty(w, "employeeCode", "الرمز المعتم.", "The opaque code.", 64);
+            WriteStringProperty(w, "employmentId", "علاقة العمل.", "The employment.", 36);
+            WriteNullableStringProperty(w, "entryId", "معرّف القيد إن رُحّلت، أو null.", "The entry identifier if posted, or null.", 36);
+            WriteRefProperty(w, "excess", "Money");
+            WriteStringProperty(w, "id", "المعرّف.", "The identifier.", 36);
+            WriteStringProperty(w, "measurementRef", "مرجع أساس الحساب المعتمد.", "The approved calculation basis reference.", 400);
+            WriteStringProperty(w, "number", "الرقم.", "The number.", 64);
+            WriteRefProperty(w, "provisionBalance", "Money");
+            WriteRefProperty(w, "provisionUtilised", "Money");
+            WriteEnumProperty(w, "scenarioCode",
+                "السيناريو المنطبق بأسماء المصفوفة نفسها: مطابق، أو ناقص فيُحمَّل العجز على مصروف الفترة، أو زائد فتُردّ الزيادة إليه.",
+                "The applicable scenario under the matrix's own names: exact, short with the shortfall charged to the period expense, or excess with the surplus released back to it.",
+                EndOfServiceScenarioCodes);
+            WriteDateProperty(w, "settledOn", "تاريخ المخالصة", "The settlement date.");
+            WriteRefProperty(w, "settlementDue", "Money");
+            WriteEnumProperty(w, "settlementMethod", "طريقة الصرف.", "The disbursement method.", SettlementMethodNames);
+            WriteRefProperty(w, "shortfall", "Money");
+            WriteStringProperty(w, "state", "الحالة.", "The state.", 16);
+            WriteStringProperty(w, "treasuryPartyId", "طرف الخزينة.", "The treasury party.", 64);
+            w.WriteEndObject();
+            WriteRequired(w, "alreadyPosted", "amountPaid", "employeeCode", "employmentId", "entryId", "excess", "id", "measurementRef", "number", "provisionBalance", "provisionUtilised", "scenarioCode", "settledOn", "settlementDue", "settlementMethod", "shortfall", "state", "treasuryPartyId");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("HrReconciliationDivergence", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "سطر انحراف واحد — **بحبيبيّة المستند والطرف معاً**. و`documentId` على قيود الاستحقاق هو معرّف "
+                + "القسيمة، وهو ما يجعل الطرفين متساويي الحبيبيّة فتمكن المقارنة أصلاً. / "
+                + "A single divergence row — **at the grain of the document and the party together**. On accrual entries "
+                + "`documentId` is the payslip's identifier, which is what makes the two sides share one grain so the comparison is "
+                + "possible at all.");
+            w.WriteStartObject("properties");
+            WriteRefProperty(w, "controlEffect", "Money");
+            WriteRefProperty(w, "divergence", "Money");
+            WriteStringProperty(w, "documentId", "معرّف المستند كما أرسلته الوحدة إلى الدفتر.",
+                "The document identifier as the module sent it to the ledger.", 64);
+            WriteStringProperty(w, "documentType", "نوع المستند كما أرسلته الوحدة.", "The document type as the module sent it.", 64);
+            WriteStringProperty(w, "partyId", "الرمز المعتم للموظف — وهو كل ما يعرفه الدفتر عنه.",
+                "The employee's opaque code — all the ledger knows of them.", 64);
+            WriteEnumProperty(w, "reasonCode", "سبب الانحراف.", "The divergence reason.", DivergenceReasonCodes);
+            WriteRefProperty(w, "subledgerEffect", "Money");
+            w.WriteEndObject();
+            WriteRequired(w, "controlEffect", "divergence", "documentId", "documentType", "partyId", "reasonCode", "subledgerEffect");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("HrReconciliation", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "تقرير مطابقة دفتر الموظف — **ولا رقم فيه اسمه «رصيد الموظف»، وهذا قرارٌ لا نقص**. قارئ نقطة الضبط "
+                + "يجمّع بلا تفصيل بالحساب ويعيد صافياً واحداً، ودفتر الموظف يمتدّ على أصلٍ واحد وثلاثة خصوم — فصافٍ "
+                + "واحد يقاصّ سلفةً بمخصص خدمة براتب مستحق ويعلن التطابق وهو أعمى. / "
+                + "The employee subledger reconciliation report — **and it publishes no single number called 'the employee's "
+                + "balance'; a decision, not a gap**. The control point reader aggregates without account detail and returns one "
+                + "net, while the employee subledger spans one asset and three liabilities — so one net offsets an advance against "
+                + "a service provision against a salary payable and declares agreement while blind.");
+            w.WriteStartObject("properties");
+            WriteDateProperty(w, "asOf", "تاريخ المطابقة", "The reconciliation date.");
+            WriteArrayRefProperty(w, "divergences", "HrReconciliationDivergence",
+                "المستندات المسؤولة عن الفارق وحدها، مرتَّبة ترتيباً ثابتاً.",
+                "Only the documents responsible for the difference, in a stable order.");
+            WriteBooleanProperty(w, "isReconciled", "هل خلا التقرير من أي انحراف؟ **لا «قريب من الصفر»**.",
+                "Is the report free of any divergence? **Not 'close to zero'**.");
+            WriteIntegerProperty(w, "matchedDocuments", 0, int.MaxValue,
+                "عدد المستندات التي تطابق طرفاها بالضبط — وهو ما يمنع «صفر انحراف» من أن يعني «لم يُفحص شيء».",
+                "The number of documents whose two sides matched exactly — which is what stops 'zero divergences' from meaning 'nothing was checked'.");
+            w.WriteEndObject();
+            WriteRequired(w, "asOf", "divergences", "isReconciled", "matchedDocuments");
+            w.WriteBoolean("additionalProperties", false);
+        });
     }
 
     /// <summary>
@@ -4477,6 +5905,47 @@ internal static class OpenApiEmitter
             + en + " Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period.");
         w.WriteEndObject();
     }
+
+    /// <summary>
+    /// تاريخ ميلادي <b>أو <c>null</c></b> — لحقلٍ غيابه واقعة لا نقص (علاقة عمل سارية
+    /// لم تنتهِ بعد). ونشرُه نصّاً بلا نمط كان سيُسقط النمط الذي يمنع التقويم الآخر.
+    /// </summary>
+    private static void WriteNullableDateProperty(Utf8JsonWriter w, string name, string ar, string en)
+    {
+        w.WriteStartObject(name);
+        w.WriteStartArray("type");
+        w.WriteStringValue("string");
+        w.WriteStringValue("null");
+        w.WriteEndArray();
+        w.WriteString("pattern", "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$");
+        w.WriteString("description",
+            ar + " ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية. / "
+            + en + " Gregorian, yyyy-MM-dd only, Latin digits.");
+        w.WriteEndObject();
+    }
+
+    /// <summary>
+    /// أنواع مكوّنات الأجر — <b>مجموعة مغلقة منشورة</b>: المكوّن إمّا يزيد الأجر وإمّا
+    /// ينقصه، ولا ثالث يُحتسب في مسيّر.
+    /// </summary>
+    private static readonly string[] PayComponentKinds = ["deduction", "earning"];
+
+    /// <summary>
+    /// طرق التسوية المقبولة على مستندات الموارد البشرية — <b>مجموعة ضيّقة عمداً</b>.
+    /// <para>
+    /// وهي مؤهّلات دور تقرؤها خريطة الأدوار، لا رموز حسابات. والمؤهّل الوسيط الموجود في
+    /// الخريطة <b>غير مقبول هنا</b> لأن قبوله يفترض جواب سؤال مفتوح على المالك: متى يقع
+    /// قيد صرف الرواتب بالضبط — عند توليد ملفّ حماية الأجور أم عند تأكيد المصرف؟
+    /// </para>
+    /// </summary>
+    private static readonly string[] SettlementMethodNames = ["bank", "cash"];
+
+    /// <summary>سيناريوهات مخالصة نهاية الخدمة — <b>بأسماء المصفوفة نفسها</b>.</summary>
+    private static readonly string[] EndOfServiceScenarioCodes = ["exact", "excess", "short"];
+
+    /// <summary>أسباب الانحراف في تقرير مطابقة دفتر الموظف.</summary>
+    private static readonly string[] DivergenceReasonCodes =
+        ["amount_mismatch", "missing_in_control", "missing_in_subledger", "posting_unresolved"];
 
     private static void WritePeriodProperty(Utf8JsonWriter w, string name)
     {

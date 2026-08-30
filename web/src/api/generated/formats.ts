@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     dac93701517afebf600cd3f74868a4ca5bd94861699466e41651938520f14959
+     6e849ca796b921874391e629a9ec473cd90b7a8ff3fa175397d05e0ed90c60fe
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -33,6 +33,8 @@ export const PARAM_readReceivablesAging_asOf = "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9
 export const PARAM_readReceivablesAging_asOf_RE = new RegExp("^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$");
 export const PARAM_readTrialBalance_period = "^[0-9]{4}-(0[1-9]|1[0-2])$";
 export const PARAM_readTrialBalance_period_RE = new RegExp("^[0-9]{4}-(0[1-9]|1[0-2])$");
+export const PARAM_reconcileEmployeeSubledger_asOf = "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$";
+export const PARAM_reconcileEmployeeSubledger_asOf_RE = new RegExp("^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$");
 export const PARAM_verifyLedgerChain_fiscalYear = "^[0-9]{4}$";
 export const PARAM_verifyLedgerChain_fiscalYear_RE = new RegExp("^[0-9]{4}$");
 export const SCHEMA_ExchangeRate = "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,8})?$";

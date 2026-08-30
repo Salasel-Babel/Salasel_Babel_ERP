@@ -66,8 +66,8 @@
         "layer_1_en": "The posting template: the disbursement event contains no expense line and no input VAT line.",
         "layer_2_ar": "محرك الترحيل: رفض القيد كاملاً عند تحقق الشرط.",
         "layer_2_en": "The posting engine: the whole entry is refused when the condition holds.",
-        "layer_3_ar": "قاعدة البيانات: قيد تحقق على مستوى سطر القيد بمرجع أمر الصيانة.",
-        "layer_3_en": "The database: a check constraint at journal line level keyed on the work order reference."
+        "layer_3_ar": "لا طبقة ثالثة لهذه القاعدة — وذلك مكتوب هنا بدل أن يُوعَد بحارس لا يوجد. شرط القاعدة واقعة عن أمر الصيانة (work_order.billing_mode) ولا عمود لها على ledger.journal_line ولا جدول وقائع في مخطّط ledger: الوقائع قاموس عابر داخل محرك الترحيل. والإنفاذ الفعلي طبقتان: غياب سطر المصروف من قالب الصرف نيابة، ورفض المحرك للقيد كاملاً عند تحقق الشرط. وإضافة عمود «مرجع أمر الصيانة» إلى سطر القيد مرفوضة: الأبعاد السبعة على السطر هي بالضبط صفوف dimensions.csv.",
+        "layer_3_en": "This rule has no third layer — and that is written here rather than promising a guard that does not exist. Its condition is a fact about the work order (work_order.billing_mode) and there is no such column on ledger.journal_line and no fact table in the ledger schema: facts are a transient dictionary inside the posting engine. Enforcement is genuinely two layers: the disbursement template carries no expense line, and the engine refuses the whole entry when the condition holds. Adding a work-order-reference column to the journal line is refused: the seven dimensions on the line are exactly the rows of dimensions.csv."
       }
     },
     {

@@ -13,6 +13,7 @@ using Babel.ControlPlane.Support;
 using Babel.Inventory;
 using Babel.Ledger;
 using Babel.Purchasing;
+using Babel.RealEstate;
 using Babel.Sales;
 using Babel.SharedKernel;
 using Babel.Storage;
@@ -78,6 +79,14 @@ internal static class BabelApiHost
         // التقييم قبل نشر استلام البضاعة على هذا السطح.
         // (‏docs/evidence/traps.md#fakh-one-module-connection-still-read-from-a-default-after-its-siblings-were-fixed)
         builder.Services.AddBabelInventory(options => ApplyInventoryConfiguration(builder.Configuration, options));
+
+        // ── والعقارات كذلك يُقرأ اتصالها من الإعداد من أول سطر ──────────────────
+        // ‏**الوحدة الرابعة، ولم تُترك تكرّر العطل نفسه**: ثلاث وحدات قبلها شُحنت
+        // بإعداداتها الافتراضية فأشار كل خادم إلى قاعدةٍ على المضيف المحلي مهما كان
+        // النشر، ولم يظهر ذلك لأن لا باب HTTP كان يبلغها — و**مسارٌ لا يُسلَك لا يُظهر
+        // إعداداً خاطئاً**. وهذه الوحدة تُنشر أبوابها في هذا الإيداع نفسه، فيُقرأ
+        // اتصالها من الإعداد في السطر نفسه الذي تُسجَّل فيه.
+        builder.Services.AddBabelRealEstate(options => ApplyRealEstateConfiguration(builder.Configuration, options));
 
         // ── مخزن المرفقات: مشروع مساند لا وحدة، والجذر التركيبي وحده يركّبه ──────
         //
@@ -149,6 +158,7 @@ internal static class BabelApiHost
         app.MapCapabilityProfileApi();
         app.MapCompanySetupApi();
         app.MapDocumentApi();
+        app.MapRealEstateApi();
         app.MapAttachmentApi();
         app.MapDocsApi();
 
@@ -331,6 +341,28 @@ internal static class BabelApiHost
         }
 
         string? currency = configuration["Babel:Inventory:CompanyCurrency"];
+        if (!string.IsNullOrWhiteSpace(currency))
+        {
+            options.CompanyCurrency = currency;
+        }
+    }
+
+    /// <summary>
+    /// يقرأ إعداد العقارات. <b>ولا اتصال مالك هنا</b> — نشر المخطّط عملية مالك، وهي
+    /// في هذه الوحدة تحتاج امتداداً (<c>btree_gist</c>) فتزداد الحجّة على إبقائها خارج
+    /// مسار التطبيق.
+    /// </summary>
+    /// <param name="configuration">الإعداد.</param>
+    /// <param name="options">إعدادات الوحدة.</param>
+    private static void ApplyRealEstateConfiguration(ConfigurationManager configuration, RealEstateOptions options)
+    {
+        string? connection = configuration["Babel:RealEstate:ConnectionString"];
+        if (!string.IsNullOrWhiteSpace(connection))
+        {
+            options.ConnectionString = connection;
+        }
+
+        string? currency = configuration["Babel:RealEstate:CompanyCurrency"];
         if (!string.IsNullOrWhiteSpace(currency))
         {
             options.CompanyCurrency = currency;

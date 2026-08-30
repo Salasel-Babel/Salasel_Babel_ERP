@@ -3,10 +3,37 @@
   <PropertyGroup>
     <RootNamespace>Babel.RealEstate.Tests</RootNamespace>
     <AssemblyName>Babel.RealEstate.Tests</AssemblyName>
+    <!-- العربية لغة أولى: بيانات المناطق مطلوبة، والتطبيع الصامت أخطر مصيدة نشر. -->
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <PredefinedCulturesOnly>false</PredefinedCulturesOnly>
   </PropertyGroup>
 
   <ItemGroup>
+    <!--
+      مشروع الاختبار — لا مشروع منتج — يشير إلى الدفتر: الإثبات المطلوب هو أن
+      **دائن الفاتورة يختلف باختلاف نموذج الملكية المُسجَّل** في دفتر أستاذ حقيقي،
+      وأن غياب صفّ العقار يُعطّل الترحيل رفضاً كاملاً. ولا سبيل إلى ذلك بمحاكاة:
+      محاكاة الدفتر تُثبت أن المحاكاة تعمل. القاعدة 1 تفحص مشاريع src/ وحدها،
+      و Babel.Sales.Tests سابقة قائمة على الشكل نفسه.
+    -->
     <ProjectReference Include="../../src/Babel.RealEstate/Babel.RealEstate.csproj" />
+    <ProjectReference Include="../../src/Babel.Ledger/Babel.Ledger.csproj" />
+    <ProjectReference Include="../../src/Babel.Core/Babel.Core.csproj" />
+    <ProjectReference Include="../../src/Babel.Canonicalization/Babel.Canonicalization.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Npgsql" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      ملفّ واحد لقارئ نقطة الضبط تتشاركه مشاريع الاختبار بالربط لا بالنسخ.
+      والحارس على ذلك في tests/Babel.ArchitectureTests/ControlPointPortIsDeclaredOnce.cs
+    -->
+    <Compile Include="../shared/LedgerControlPointReader.cs" Link="LedgerControlPointReader.cs" />
   </ItemGroup>
 
 </Project>

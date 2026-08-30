@@ -1551,6 +1551,291 @@ internal static class OpenApiEmitter
                     new Refusal(409, "بايتات المخزن لا تطابق البصمة المُسجَّلة — عبثٌ أو تلف — أو غابت والصفّ قائم. ولا تُسلَّم في الحالتين.",
                         "The stored bytes do not match the recorded digest — tampering or corruption — or they are missing while the row stands. Neither is served."),
                 ]),
+
+            // ── العقارات ─────────────────────────────────────────────────────
+            // دورةٌ واحدة كاملة تعمل من طرفها إلى طرفها: العقار ⇒ الوحدة ⇒ الطرف ⇒
+            // العقد ⇒ جدول الدفعات ⇒ الفاتورة ⇒ ترحيلها ⇒ التحصيل ⇒ ترحيله ⇒
+            // تخصيصه ⇒ أعمار المتأخرات ومطابقتها. وما لم يُبنَ من الوحدة مكتوبٌ
+            // نقصاً مُعلَناً في وثيقة القرار وفي سجلّ دَين التحقّق، لا مسكوتاً عنه.
+
+            new(ApiRoutes.Properties, "post", "createProperty",
+                "تسجيل عقار", "Register a property",
+                "يسجّل عقاراً **ويسجّل بُعده في دفتر الأستاذ في العملية نفسها**.\n\n"
+                + "**ولماذا العمليتان واحدة:** قاعدة الحجب GR-RE-001 تُقيَّم على واقعة نموذج ملكية العقار، ومصدرها "
+                + "الوحيد المُعتمَد صفُّ العقار في سجلّ أبعاد الدفتر. وحين يغيب ذلك الصفّ تعود القاعدة **غير قابلة "
+                + "للتقييم**، والقاعدة التي لا تُقيَّم لا تُتجاوَز — فيُرفض القيد كاملاً. أي أن عقاراً غير مسجَّل "
+                + "يُعطّل دورته كلها بصوت عالٍ ولا يمرّ صامتاً.\n\n"
+                + "**وownershipModel بلا قيمة افتراضية**: هو ما يقرّر أدائنُ الأجرة إيرادَ الشركة أم أمانةً لمالكها، "
+                + "و**لا يُعدَّل بعد التسجيل** — تغييره يُعيد تفسير قيودٍ مُرحَّلة بأثر رجعي، ودورُ التطبيق لا يملك "
+                + "update ولا delete على ذلك السجلّ أصلاً.\n\n"
+                + "وفي نموذج الإدارة **المالك إلزامي**: سطر أمانات الملاك يحمل طرفاً في دفتره المساعد.",
+                "Registers a property **and registers its dimension in the ledger within the same operation**.\n\n"
+                + "**Why the two are one act:** guard rule GR-RE-001 is evaluated on the property ownership-model fact, whose "
+                + "only authoritative source is the property row in the ledger dimension register. When that row is missing the "
+                + "rule becomes **undecidable**, and a rule that cannot be evaluated is never bypassed — so the whole entry is "
+                + "refused. An unregistered property therefore disables its entire cycle loudly rather than passing silently.\n\n"
+                + "**ownershipModel has no default**: it decides whether the credit of rent is company revenue or a liability to "
+                + "an owner, and it **is never edited after registration** — changing it reinterprets already-posted entries "
+                + "retroactively, and the application role holds neither update nor delete on that register.\n\n"
+                + "Under the managed model an **owner is mandatory**: the owner trust line carries a party in its subledger.",
+                Body: "PropertyRequest", Response: "Property", Success: 201, Query: [],
+                ProblemStatuses: [404]),
+
+            new(ApiRoutes.Property, "get", "readProperty",
+                "قراءة عقار", "Read one property",
+                "يقرأ عقاراً بنموذج ملكيته وحصّة مالكه. ونقطة قراءة: تعمل والاشتراك للقراءة فقط.\n\n"
+                + "و**الحصّة كسرٌ ببسطٍ ومقام** لا عدد عشري: لا مقياس عشري معلَن لأي نسبة في هذا المنتج، "
+                + "واختيار مقياسٍ هنا كتابةُ رقم نظامي في عقد منشور.",
+                "Reads a property with its ownership model and its owner share. A read point: it works while the subscription "
+                + "is read-only.\n\n"
+                + "The **share is a fraction with a numerator and a denominator**, not a decimal: no decimal scale is declared "
+                + "for any ratio in this product, and picking one here would write a regulatory number into a published contract.",
+                Body: null, Response: "Property", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.PropertyUnits, "post", "createUnit",
+                "تسجيل وحدة داخل عقار", "Register a unit within a property",
+                "يسجّل وحدةً **مورداً فرعياً للعقار**: بيانات الأبعاد تشترط العقار مع الوحدة، وقيدُ تحقّقٍ على سطر "
+                + "القيد يفرض الاقتران على أي كاتب. فالاشتراط **بنيةٌ في العنوان** لا تحقّقٌ في الجسم.\n\n"
+                + "**وusage وvatTreatment حقلان صريحان لا يُشتقّ أحدهما من الآخر ولا من نوع العقار**: العقار المختلط "
+                + "يولّد توريداً خاضعاً ومعفى في آنٍ واحد، والاشتقاق الآلي يُنتج آلاف العقود بتصنيفٍ واحد خاطئ.",
+                "Registers a unit as a **sub-resource of the property**: the dimension data requires the property alongside the "
+                + "unit, and a check constraint on the journal line enforces the pairing against any writer. The requirement is "
+                + "therefore **structure in the address**, not validation in the body.\n\n"
+                + "**usage and vatTreatment are explicit fields, neither derived from the other nor from the property type**: a "
+                + "mixed-use property produces taxable and exempt supplies at once, and automatic derivation produces thousands "
+                + "of contracts under one wrong classification.",
+                Body: "UnitRequest", Response: "Unit", Success: 201, Query: [],
+                ProblemStatuses: [404]),
+
+            new(ApiRoutes.Unit, "get", "readUnit",
+                "قراءة وحدة", "Read one unit",
+                "يقرأ وحدةً بتصنيفها — وهو ما يقود شرط خضوع الإيجار للضريبة في قالب الفاتورة.",
+                "Reads a unit with its classification — which drives the taxability condition in the invoice template.",
+                Body: null, Response: "Unit", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.Lessees, "post", "createLessee",
+                "تسجيل مستأجر عقاري", "Register a lessee",
+                "يسجّل مستأجراً عقارياً.\n\n"
+                + "**ولماذا اسم المورد lessees لا tenants:** المسار /api/v1/tenants ومسارات الاشتراك تحته منشورةٌ "
+                + "في هذا العقد نفسه لمستأجر **النظام**، ونشرُ الكلمة بمعنيين يجعل العقد يكذب على قارئه قبل أن "
+                + "يتصادم التوجيه.\n\n"
+                + "**وtaxResidency بلا افتراضي**: عليها يتوقّف سطر الاستقطاع في توريد المالك، وقيمةٌ افتراضية «مقيم» "
+                + "تُسقط الاستقطاع بصمت عن كل طرفٍ لم يُملأ حقله.",
+                "Registers a real-estate lessee.\n\n"
+                + "**Why the resource is lessees and not tenants:** the path /api/v1/tenants and the subscription paths beneath "
+                + "it are published in this very contract for the **system** tenant, and publishing the word with two meanings "
+                + "makes the contract lie to its reader before routing ever collides.\n\n"
+                + "**taxResidency has no default**: the withholding line on an owner payout depends on it, and a default of "
+                + "'resident' silently drops withholding for every party whose field was left unfilled.",
+                Body: "RealEstatePartyRequest", Response: "RealEstateParty", Success: 201, Query: []),
+
+            new(ApiRoutes.Lessee, "get", "readLessee",
+                "قراءة مستأجر عقاري", "Read one lessee",
+                "يقرأ مستأجراً بتسجيله الضريبي وإقامته الضريبية.",
+                "Reads a lessee with its VAT registration and tax residency.",
+                Body: null, Response: "RealEstateParty", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.PropertyOwners, "post", "createPropertyOwner",
+                "تسجيل مالك عقار", "Register a property owner",
+                "يسجّل مالك عقار بحقلَي التسجيل الضريبي والإقامة الضريبية. وفي نموذج الإدارة تُقيَّد أجرةُ عقاره "
+                + "**أمانةً له** لا إيراداً للشركة، وإيرادُ الشركة هو العمولة وحدها.",
+                "Registers a property owner with its VAT registration and tax residency. Under the managed model the rent of "
+                + "its property is booked **as a liability to it** rather than as company revenue; the company's revenue is the "
+                + "commission alone.",
+                Body: "RealEstatePartyRequest", Response: "RealEstateParty", Success: 201, Query: []),
+
+            new(ApiRoutes.PropertyOwner, "get", "readPropertyOwner",
+                "قراءة مالك عقار", "Read one property owner",
+                "يقرأ مالكاً بتسجيله الضريبي وإقامته الضريبية.",
+                "Reads an owner with its VAT registration and tax residency.",
+                Body: null, Response: "RealEstateParty", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.LeaseContracts, "post", "draftLeaseContract",
+                "إنشاء عقد إيجار مسوّدة", "Draft a lease contract",
+                "يُنشئ عقد إيجار في حالة **DRAFT**.\n\n"
+                + "**ولاحظ ما ليس على هذا المورد ولا يجوز أن يوجد: لا مورد posting.** حدث توقيع العقد مُعلَنٌ في "
+                + "مصفوفة الترحيل بأنه **لا يُنشئ قيداً**: العقد التزام متبادل مستقبلي لم ينفّذه أي طرف بعد. "
+                + "وغيابُ الباب هو ما يجعل «العقد لا يُرحّل» مقروءاً من شكل السطح لا من تعليق.\n\n"
+                + "**والأقساط تصل مصرَّحاً بها ولا تُوزَّع من قيمة العقد**: التوزيع يستلزم سياسة تقريب — أين يقع "
+                + "فائض الهللات — وهي **قرار مالك مفتوح** لا يُحسم في شيفرة. والنظام يفحص عند التفعيل أن مجموع "
+                + "الأقساط يساوي قيمة العقد بالضبط، ويرفض بخلاف ذلك برمزٍ يسمّي البند المعلَّق.",
+                "Creates a lease contract in state **DRAFT**.\n\n"
+                + "**Note what this resource does not carry and must never carry: no posting sub-resource.** The lease-signature "
+                + "event is declared in the posting matrix as posting **no entry**: the contract is a future mutual obligation "
+                + "neither party has yet performed. The absence of the door is what makes 'a lease posts nothing' readable from "
+                + "the shape of the surface rather than from a comment.\n\n"
+                + "**Instalments arrive declared and are never spread from a contract value**: spreading requires a rounding "
+                + "policy — where the halala surplus lands — which is an **open owner decision**, not something settled in code. "
+                + "On activation the system checks that the instalments sum exactly to the contract value and refuses otherwise "
+                + "under a code that names the pending item.",
+                Body: "LeaseRequest", Response: "Lease", Success: 201, Query: [],
+                ProblemStatuses: [404]),
+
+            new(ApiRoutes.LeaseContract, "get", "readLeaseContract",
+                "قراءة عقد إيجار", "Read one lease contract",
+                "يقرأ العقد بحالته ومدّته وقيمته.",
+                "Reads the contract with its state, its term, and its value.",
+                Body: null, Response: "Lease", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.LeaseContractSchedule, "get", "readLeaseSchedule",
+                "قراءة جدول دفعات العقد بمعرّفات سطوره", "Read the lease payment schedule with its line identifiers",
+                "يُرجع جدول الدفعات **بمعرّفات سطوره** — وهي مدخل الفوترة: طلب الفاتورة يحمل معرّفات الأقساط "
+                + "المفوترة ولا يحمل مبالغ.\n\n"
+                + "**وبلا نشر هذه المعرّفات يصير باب الفوترة باباً لا يوصل إليه بابٌ آخر على هذا السطح** — وهو "
+                + "الاعتراض المكتوب حرفياً في قرار نشر المستندات النقدية.",
+                "Returns the payment schedule **with its line identifiers** — the entry point to invoicing: the invoice request "
+                + "carries the identifiers of the instalments being billed and carries no amounts.\n\n"
+                + "**Without publishing these identifiers the invoicing door becomes a door no other door on this surface can "
+                + "reach** — the objection written literally in the cash-documents publication decision.",
+                Body: null, Response: "LeaseSchedule", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.LeaseContractActivation, "post", "activateLeaseContract",
+                "تفعيل عقد إيجار", "Activate a lease contract",
+                "يُفعّل العقد: يفحص أن مجموع الأقساط يساوي قيمة العقد بالضبط، ثم يجعل جدول الدفعات قابلاً "
+                + "للفوترة، ويُدخل المدّة **قيد الاستبعاد الزمني** في قاعدة البيانات.\n\n"
+                + "**والقيد في القاعدة لا في الواجهة**: «مدّة سارية واحدة لكل وحدة» شرط **تقاطع مدى** لا شرط "
+                + "تساوٍ، فلا يعبّر عنه فهرس فريد مهما اتّسع؛ وفحصٌ في الخدمة يقرأ ثم يكتب، وبين القراءة والكتابة "
+                + "يمرّ نداءٌ آخر فتُؤجَّر الوحدة مرّتين.\n\n"
+                + "**ولا يُرحّل قيداً**، ومخطّط جوابه بلا معرّف قيد.",
+                "Activates the contract: it checks that the instalments sum exactly to the contract value, makes the payment "
+                + "schedule billable, and enters the term into a **temporal exclusion constraint** in the database.\n\n"
+                + "**The constraint is in the database, not the interface**: 'one live term per unit' is a **range-overlap** "
+                + "condition, not an equality condition, so no unique index however wide can express it; and a check in the "
+                + "service reads then writes, and between the read and the write another call slips through and the unit is let "
+                + "twice.\n\n"
+                + "**It posts no entry**, and its response schema carries no entry identifier.",
+                Body: null, Response: "Lease", Success: 201, Query: [],
+                ProblemStatuses: [404, 409, 422]),
+
+            new(ApiRoutes.RentInvoices, "post", "draftRentInvoice",
+                "إنشاء فاتورة إيجار مسوّدة", "Draft a rent invoice",
+                "يُنشئ فاتورة إيجار في حالة **DRAFT** على أقساط مُسمّاة من جدول دفعات عقدٍ سارٍ.\n\n"
+                + "**ولا رمز حدث في الحمولة ولا نموذج ملكية**: الوحدة تقرأ نموذج ملكية العقار **المُسجَّل في الدفتر** "
+                + "وتختار الحدث منه — فلا يستطيع عميل HTTP أن يطلب «فاتورة ملكية ذاتية» على عقارٍ مُدار. والفرق يظهر "
+                + "في **دائن الفاتورة**: إيرادُ إيجار مؤجَّل للشركة في الملكية الذاتية، وأماناتُ مالكٍ في الإدارة.\n\n"
+                + "**وtaxRate تصل مع الطلب ولا تُكتب في شيفرة** (لا نسبة نظامية في هذا المنتج)، ولا تُطبَّق إلا على "
+                + "وحدةٍ معاملتها standard. وعلى الوحدة المعفاة يبقى exemptionReasonCode **فارغاً بعلامة ظاهرة** "
+                + "حتى يُعرف الرمز من القائمة الرسمية السارية — وحقلٌ إلزامي بقيمة مُختلَقة أسوأ من حقلٍ فارغ.\n\n"
+                + "**والقسط لا يُفوتَر مرّتين**: فهرس فريد على (المستأجر، القسط) لا فحصٌ في الخدمة.",
+                "Creates a rent invoice in state **DRAFT** over named instalments from an active lease's payment schedule.\n\n"
+                + "**No event code and no ownership model appear in the payload**: the module reads the property's ownership "
+                + "model **as registered in the ledger** and selects the event from it — so an HTTP client cannot request an "
+                + "'own-property invoice' against a managed property. The difference shows in the **credit of the invoice**: "
+                + "deferred rental income of the company under own property, and owner trust under management.\n\n"
+                + "**taxRate arrives with the request and is never written in code** (no regulatory rate lives in this product), "
+                + "and it applies only to a unit whose treatment is standard. On an exempt unit exemptionReasonCode stays "
+                + "**empty with a visible flag** until the code is known from the official list in force — a mandatory field "
+                + "holding an invented value is worse than an empty one.\n\n"
+                + "**An instalment is never invoiced twice**: a unique index on (tenant, instalment), not a check in the service.",
+                Body: "RentInvoiceRequest", Response: "RentInvoice", Success: 201, Query: [],
+                ProblemStatuses: [404, 409]),
+
+            new(ApiRoutes.RentInvoice, "get", "readRentInvoice",
+                "قراءة فاتورة إيجار", "Read one rent invoice",
+                "يقرأ الفاتورة بحالتها ومجاميعها وحدثها ومعرّف قيدها إن رُحّلت. ونقطة قراءة: تعمل والاشتراك "
+                + "للقراءة فقط.",
+                "Reads the invoice with its state, totals, event, and entry identifier if posted. A read point: it works while "
+                + "the subscription is read-only.",
+                Body: null, Response: "RentInvoice", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.RentInvoicePosting, "post", "postRentInvoice",
+                "ترحيل فاتورة إيجار", "Post a rent invoice",
+                "يرحّل فاتورة مسوّدة فتصير **واقعة محاسبية**. مورد فرعي مستقلّ لا PUT على المستند.\n\n"
+                + "**وحصين ضد التكرار بهوية الترحيل** (شركة · نوع المستند · معرّفه · رمز الإطلاق · الجيل · رمز "
+                + "الحدث): الوصول الثاني بالهوية نفسها يُرجع المستند ذاته و‏alreadyPosted = true ورمز 200 بدل 201 "
+                + "**ومعرّف القيد نفسه**، ولا يُنشئ قيداً ثانياً مهما كان ترتيب الوصول. والحكم حكمُ بوّابة الوحدة "
+                + "لا مقارنةَ حالةٍ قُرئت قبل النداء.\n\n"
+                + "ولا جسم لهذا الطلب: مفتاح الحصانة تشتقّه الوحدة من هوية المستند ولا يُرسله العميل.\n\n"
+                + "**والرفض حين لا يكون العقار مسجَّلاً في الدفتر رفضٌ كامل** لا سطرٌ ناقص: قاعدة الحجب التي لا "
+                + "تُقيَّم لا تُتجاوَز.",
+                "Posts a draft invoice, turning it into an **accounting fact**. A separate sub-resource, not a PUT on the "
+                + "document.\n\n"
+                + "**Idempotent by the posting identity** (company, source document type, source document id, trigger, "
+                + "generation, event code): a second arrival with the same identity returns the same document with "
+                + "alreadyPosted = true, status 200 instead of 201, **and the same entry identifier**, and never creates a second "
+                + "entry whatever the arrival order. The verdict belongs to the module gateway, not to a state read before the "
+                + "call.\n\n"
+                + "This request has no body: the idempotency key is derived by the module from the document identity rather "
+                + "than sent by the client.\n\n"
+                + "**When the property is not registered in the ledger the refusal is total**, not a missing line: a guard rule "
+                + "that cannot be evaluated is never bypassed.",
+                Body: null, Response: "RentInvoice", Success: 201, Query: [],
+                ProblemStatuses: [404, 409, 422]),
+
+            new(ApiRoutes.TenantReceipts, "post", "draftTenantReceipt",
+                "تسجيل سند قبض من مستأجر", "Draft a tenant receipt",
+                "يُنشئ سند قبض في حالة **DRAFT**.\n\n"
+                + "**وحدثان لا حدث واحد، والفارق مرجعٌ لا مبلغ:** سندٌ يحمل lesseeId يُرحَّل تحصيلاً يُسقط من ذمّة "
+                + "ذلك المستأجر؛ وسندٌ بلا lesseeId — مبلغٌ ورد في الحساب بلا مرجع يربطه بأحد — يُرحَّل إلى حساب "
+                + "**التحصيلات غير المخصَّصة**، ولا يُنسب إلى مستأجر بالتخمين. والاختيار من غياب الحقل أو حضوره، "
+                + "لا من حقلٍ يختاره العميل.",
+                "Creates a tenant receipt in state **DRAFT**.\n\n"
+                + "**Two events, not one, and the difference is a reference not an amount:** a receipt carrying lesseeId posts a "
+                + "collection that reduces that tenant's receivable; a receipt without lesseeId — an amount that arrived in the "
+                + "account with no reference tying it to anyone — posts to the **unallocated collections** account and is never "
+                + "attributed to a tenant by guesswork. The choice comes from the absence or presence of the field, not from a "
+                + "field the client selects.",
+                Body: "TenantReceiptRequest", Response: "TenantReceipt", Success: 201, Query: [],
+                ProblemStatuses: [404]),
+
+            new(ApiRoutes.TenantReceipt, "get", "readTenantReceipt",
+                "قراءة سند قبض", "Read one tenant receipt",
+                "يقرأ السند بحالته وحدثه ومعرّف قيده، ومعرّف قيد تخصيصه إن وقع.",
+                "Reads the receipt with its state, its event, its entry identifier, and its allocation entry identifier if one "
+                + "occurred.",
+                Body: null, Response: "TenantReceipt", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.TenantReceiptPosting, "post", "postTenantReceipt",
+                "ترحيل سند قبض", "Post a tenant receipt",
+                "يرحّل السند بالحدث الذي اختاره حضور المرجع أو غيابه، وبالحصانة نفسها: الوصول الثاني بالهوية "
+                + "نفسها يُرجع 200 و‏alreadyPosted = true ومعرّف القيد نفسه.",
+                "Posts the receipt under the event chosen by the presence or absence of the reference, with the same "
+                + "idempotency: a second arrival with the same identity returns 200, alreadyPosted = true, and the same entry "
+                + "identifier.",
+                Body: null, Response: "TenantReceipt", Success: 201, Query: [],
+                ProblemStatuses: [404, 409, 422]),
+
+            new(ApiRoutes.TenantReceiptAllocation, "post", "allocateTenantReceipt",
+                "تخصيص سند قبض ورد بلا مرجع", "Allocate a tenant receipt that arrived without a reference",
+                "يخصّص سنداً رُحّل غير مخصَّص على مستأجر تبيّن أنه صاحبه — **بقيدٍ مستقلّ لا عكسٍ للقيد السابق**.\n\n"
+                + "**ولماذا لا عكس:** المال وصل فعلاً، وعكسُ قيد التحصيل يمحو واقعةً وقعت ويترك الدفتر يقول إنها "
+                + "لم تقع. والتخصيص ينقل من حساب التحصيلات غير المخصَّصة إلى ذمم المستأجرين، وهو حدثٌ قائم بذاته "
+                + "في مصفوفة الترحيل.\n\n"
+                + "ورمز الحدث **داخل هوية الترحيل**، فقيدا التحصيل والتخصيص على المستند نفسه لا يتصادمان ولا "
+                + "يبتلع أحدهما الآخر.",
+                "Allocates a receipt that was posted unallocated to the tenant it turns out to belong to — **as a separate "
+                + "entry, never as a reversal of the earlier one**.\n\n"
+                + "**Why not a reversal:** the money genuinely arrived, and reversing the collection entry erases a fact that "
+                + "occurred and leaves the ledger saying it did not. Allocation moves from unallocated collections to the tenant "
+                + "receivable, and is an event in its own right in the posting matrix.\n\n"
+                + "The event code sits **inside the posting identity**, so the collection and allocation entries on the same "
+                + "document never collide and neither swallows the other.",
+                Body: "AllocationRequest", Response: "TenantReceipt", Success: 201, Query: [],
+                ProblemStatuses: [404, 409, 422]),
+
+            new(ApiRoutes.TenantArrearsAging, "get", "readTenantArrearsAging",
+                "أعمار متأخرات المستأجرين ومطابقتها", "Tenant arrears ageing and its reconciliation",
+                "يُرجع أعمار متأخرات المستأجرين حتى تاريخ، **ومعها مطابقتها بنقطة ضبطها في دفتر الأستاذ** في "
+                + "الجواب نفسه.\n\n"
+                + "**ولماذا في الجواب نفسه لا في مورد ثانٍ:** تقريرٌ لا يُفتح لا يكشف انحرافاً، ودفترٌ مساعد ينحرف "
+                + "بصمت عن نقطة ضبطه أشيع عيب في الأنظمة المحاسبية ولا يُكتشف إلا بعد شهور.\n\n"
+                + "**ووجود هذا التقرير أصلاً نتيجةٌ لقرار محاسبي**: القيد يُثبت عند الفوترة لا عند التحصيل، فالذمّة "
+                + "موجودة في الدفتر ويمكن تقادمها. ولو اعتُمدت السياسة البديلة لصار التقرير فارغاً من معناه ووجب سحبه.",
+                "Returns tenant arrears ageing as at a date, **together with its reconciliation against its control point in "
+                + "the general ledger**, in the same response.\n\n"
+                + "**Why in the same response rather than a second resource:** a report nobody opens reveals no divergence, and "
+                + "a subledger drifting silently from its control point is the commonest defect in accounting systems and is "
+                + "found only months later.\n\n"
+                + "**That this report exists at all follows from an accounting decision**: the entry is recognised at invoicing "
+                + "rather than at collection, so the receivable exists in the ledger and can age. Had the alternative policy "
+                + "been adopted the report would be void of meaning and would have to be withdrawn.",
+                Body: null, Response: "TenantArrears", Success: 200, Query:
+                [
+                    new QueryParameter("asOf", true,
+                        "تاريخ التقرير الميلادي بصيغة yyyy-MM-dd.",
+                        "The report date in yyyy-MM-dd.",
+                        "date"),
+                ]),
         }.OrderBy(static o => o.Path, StringComparer.Ordinal).ThenBy(static o => o.Method, StringComparer.Ordinal),
     ];
 
@@ -1713,13 +1998,21 @@ internal static class OpenApiEmitter
         ("customers", "customerId", "معرّف العميل.", "The customer identifier."),
         ("goods-receipts", "receiptId", "معرّف استلام البضاعة.", "The goods receipt identifier."),
         ("items", "itemId", "معرّف الصنف.", "The item identifier."),
+        ("lease-contracts", "leaseId", "معرّف عقد الإيجار.", "The lease contract identifier."),
+        ("lessees", "lesseeId", "معرّف المستأجر العقاري — **لا مستأجر النظام**: هذا مورد داخل نطاق منشأة.",
+            "The lessee identifier — **not the system tenant**: this resource lives inside a company scope."),
+        ("properties", "propertyId", "معرّف العقار.", "The property identifier."),
+        ("property-owners", "ownerId", "معرّف مالك العقار.", "The property owner identifier."),
         ("purchase-orders", "orderId", "معرّف أمر الشراء.", "The purchase order identifier."),
         ("purchase-returns", "returnId", "معرّف مرتجع المشتريات.", "The purchase return identifier."),
         ("sales-invoices", "invoiceId", "معرّف فاتورة المبيعات.", "The sales invoice identifier."),
+        ("rent-invoices", "invoiceId", "معرّف فاتورة الإيجار.", "The rent invoice identifier."),
         ("stock-movements", "movementId", "معرّف مستند حركة المخزون.", "The stock movement document identifier."),
         ("supplier-bills", "billId", "معرّف فاتورة المورد.", "The supplier bill identifier."),
         ("supplier-payments", "paymentId", "معرّف سند الصرف.", "The supplier payment identifier."),
         ("suppliers", "supplierId", "معرّف المورد.", "The supplier identifier."),
+        ("tenant-receipts", "receiptId", "معرّف سند القبض من المستأجر.", "The tenant receipt identifier."),
+        ("units", "unitId", "معرّف الوحدة.", "The unit identifier."),
     ];
 
     /// <summary>
@@ -1795,6 +2088,31 @@ internal static class OpenApiEmitter
     /// المخطّط لا يقبل غيرهما، والوحدة ترفض ثالثاً باسمه. ولذلك تُنشر <c>enum</c>.
     /// </summary>
     private static IReadOnlyList<string> MovementDirections { get; } = ["IN", "OUT"];
+
+    /// <summary>
+    /// نماذج ملكية العقار — <b>مجموعة مغلقة يفرضها قيد تحقّق في قاعدة بيانات الدفتر</b>،
+    /// لا قائمةٌ اتفاقية. ونموذجٌ ثالث (الإيجار المضمون) لا وجود له في البيانات ولا حدث
+    /// واحد له في المصفوفة، فلا يُنشر في عقدٍ قبل أن يوجد.
+    /// </summary>
+    private static IReadOnlyList<string> OwnershipModels { get; } = ["managed_for_others", "own_property"];
+
+    /// <summary>استعمال الوحدة — يُدخَل ويُراجَع ولا يُشتقّ من نوع العقار.</summary>
+    private static IReadOnlyList<string> UnitUsages { get; } = ["commercial", "residential"];
+
+    /// <summary>المعاملة الضريبية للوحدة — تُدخَل ولا تُشتقّ من استعمالها.</summary>
+    private static IReadOnlyList<string> VatTreatments { get; } = ["exempt", "standard"];
+
+    /// <summary>أدوار الأطراف في وحدة العقارات.</summary>
+    private static IReadOnlyList<string> PartyRoles { get; } = ["broker", "lessee", "owner"];
+
+    /// <summary>الإقامة الضريبية — بلا افتراضي، وعليها يتوقّف سطر الاستقطاع.</summary>
+    private static IReadOnlyList<string> TaxResidencies { get; } = ["non_resident", "resident"];
+
+    /// <summary>حالات عقد الإيجار.</summary>
+    private static IReadOnlyList<string> LeaseStates { get; } = ["ACTIVE", "DRAFT"];
+
+    /// <summary>حالات المستند العقاري. ولا حالة «ملغى»: التصحيح إشعارٌ أو عكس.</summary>
+    private static IReadOnlyList<string> DocumentStates { get; } = ["DRAFT", "POSTED"];
 
     /// <summary>
     /// أسباب الانحراف في المطابقة — مجموعة مغلقة يُنتجها كود الوحدة وحده، ولا تأتي من
@@ -2012,13 +2330,16 @@ internal static class OpenApiEmitter
     /// </summary>
     private static readonly string[] IdempotentPostings =
     [
+        "allocateTenantReceipt",
         "postCreditNote",
         "postCustomerReceipt",
         "postGoodsReceipt",
         "postJournalEntry",
+        "postRentInvoice",
         "postSalesInvoice",
         "postSupplierBill",
         "postSupplierPayment",
+        "postTenantReceipt",
     ];
 
     private static string ProblemAr(int status) => status switch
@@ -3255,6 +3576,402 @@ internal static class OpenApiEmitter
             w.WriteStringValue("0.15");
             w.WriteStringValue("0");
             w.WriteEndArray();
+        });
+
+        // ── العقارات ─────────────────────────────────────────────────────────
+        // ولا مخطّط منها يحمل رقم حساب ولا رمز حدث في **طلب**: الوحدة تختار الحدث من
+        // سجلّ الدفتر، والمصفوفة تختار الحساب. والاسم سجلٌّ عربي وترجماتٌ صفوف — لا
+        // حقل إنجليزي ثابت في أي منها.
+
+        yield return ("PropertyRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب تسجيل عقار. **وownershipModel بلا افتراضي ولا يُعدَّل بعد التسجيل**: هو ما يقرّر أدائنُ الأجرة "
+                + "إيرادَ الشركة أم أمانةً لمالكها، وتغييره بعد الترحيل يُعيد تفسير قيودٍ ماضية بأثر رجعي. "
+                + "وفي نموذج الإدارة المالك إلزامي، وفي الملكية الذاتية إرسالُه يُفشل الطلب. / "
+                + "A property registration request. **ownershipModel has no default and is never edited after registration**: "
+                + "it decides whether the credit of rent is company revenue or a liability to its owner, and changing it after "
+                + "posting reinterprets past entries retroactively. Under the managed model the owner is mandatory; under own "
+                + "property, sending one fails the request.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "code", "رمز العقار — وهو ما يظهر بُعداً على سطر القيد.", "The property code — what appears as a dimension on the journal line.", 64);
+            WriteStringProperty(w, "nameAr", "اسم العقار بالعربية — وهو السجلّ لا ترجمته.", "The property's Arabic name — the record itself, not a translation of it.", 256);
+            WriteArrayRefProperty(w, "nameTranslations", "NameValue",
+                "ترجمات الاسم بأوسمة BCP-47. ولا حقل إنجليزي ثابت: الإنجليزية واحدة من N.",
+                "The name's translations keyed by BCP-47 tags. There is no fixed English field: English is one of N.");
+            WriteNullableStringProperty(w, "ownerId", "المالك في نموذج الإدارة، أو null في الملكية الذاتية.", "The owner under the managed model, or null under own property.", 36);
+            WriteEnumProperty(w, "ownershipModel",
+                "نموذج الملكية. own_property: العقار أصلٌ للمنشأة والأجرة إيرادها. managed_for_others: الأجرة المحصَّلة التزام تجاه المالك، وإيراد الشركة هو العمولة وحدها.",
+                "The ownership model. own_property: the property is a company asset and the rent is its revenue. managed_for_others: collected rent is a liability to the owner and the company's revenue is the commission alone.",
+                OwnershipModels);
+            w.WriteEndObject();
+            WriteRequired(w, "code", "nameAr", "ownershipModel");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("Property", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "عقارٌ كما سُجِّل — **وصفُّه في سجلّ أبعاد الدفتر مكتوبٌ في العملية نفسها**، فبلا ذلك الصفّ تُرفض "
+                + "كل قيوده رفضاً كاملاً لا صامتاً. / "
+                + "A property as registered — **its row in the ledger dimension register is written in the same operation**, "
+                + "and without that row every entry of its is refused totally rather than silently.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "code", "الرمز.", "The code.", 64);
+            WriteStringProperty(w, "id", "المعرّف الذي تُبنى عليه الوحدات والعقود.", "The identifier units and leases are built on.", 36);
+            WriteStringProperty(w, "nameAr", "الاسم العربي — السجلّ.", "The Arabic name — the record.", 256);
+            WriteArrayRefProperty(w, "nameTranslations", "NameValue", "ترجمات الاسم.", "The name's translations.");
+            WriteNullableStringProperty(w, "ownerId", "المالك إن وُجد.", "The owner if any.", 36);
+            WriteRefProperty(w, "ownerShareDenominator", "Int64String");
+            WriteRefProperty(w, "ownerShareNumerator", "Int64String");
+            WriteEnumProperty(w, "ownershipModel", "نموذج الملكية المُسجَّل في الدفتر.", "The ownership model as registered in the ledger.", OwnershipModels);
+            w.WriteEndObject();
+            WriteRequired(w, "code", "id", "nameAr", "nameTranslations", "ownerId", "ownerShareDenominator", "ownerShareNumerator", "ownershipModel");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("UnitRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب تسجيل وحدة داخل عقار. **وusage وvatTreatment حقلان صريحان لا يُشتقّ أحدهما من الآخر ولا من "
+                + "نوع العقار**: العقار المختلط يولّد توريداً خاضعاً ومعفى معاً. / "
+                + "A unit registration request within a property. **usage and vatTreatment are explicit fields, neither derived "
+                + "from the other nor from the property type**: a mixed-use property produces taxable and exempt supplies at once.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "code", "رمز الوحدة — وهو ما يظهر بُعداً على سطر القيد مع بُعد عقاره.", "The unit code — what appears as a dimension on the journal line alongside its property dimension.", 64);
+            WriteStringProperty(w, "nameAr", "اسم الوحدة بالعربية — السجلّ.", "The unit's Arabic name — the record.", 256);
+            WriteArrayRefProperty(w, "nameTranslations", "NameValue", "ترجمات الاسم.", "The name's translations.");
+            WriteEnumProperty(w, "usage", "استعمال الوحدة، يُدخَل ويُراجَع ولا يُشتقّ.", "The unit's use, entered and reviewed, never derived.", UnitUsages);
+            WriteEnumProperty(w, "vatTreatment", "المعاملة الضريبية للوحدة، تُدخَل ولا تُشتقّ.", "The unit's VAT treatment, entered and never derived.", VatTreatments);
+            w.WriteEndObject();
+            WriteRequired(w, "code", "nameAr", "usage", "vatTreatment");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("Unit", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "وحدةٌ داخل عقار، بتصنيفها الذي يقود شرط خضوع الإيجار للضريبة. / "
+                + "A unit within a property, with the classification that drives the letting's taxability condition.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "code", "الرمز.", "The code.", 64);
+            WriteStringProperty(w, "id", "المعرّف.", "The identifier.", 36);
+            WriteStringProperty(w, "nameAr", "الاسم العربي.", "The Arabic name.", 256);
+            WriteArrayRefProperty(w, "nameTranslations", "NameValue", "ترجمات الاسم.", "The name's translations.");
+            WriteStringProperty(w, "propertyId", "العقار المالك — والوحدة لا تقف بلا عقارها على أي سطر قيد.", "The owning property — a unit never stands without its property on any journal line.", 36);
+            WriteEnumProperty(w, "usage", "الاستعمال.", "The use.", UnitUsages);
+            WriteEnumProperty(w, "vatTreatment", "المعاملة الضريبية.", "The VAT treatment.", VatTreatments);
+            w.WriteEndObject();
+            WriteRequired(w, "code", "id", "nameAr", "nameTranslations", "propertyId", "usage", "vatTreatment");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("RealEstatePartyRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب تسجيل طرف عقاري — مستأجر أو مالك. **وtaxResidency بلا افتراضي**: عليها يتوقّف سطر الاستقطاع "
+                + "في توريد المالك، وقيمةٌ افتراضية «مقيم» تُسقطه بصمت عمّن لم يُملأ حقله. / "
+                + "A real-estate party registration request — a lessee or an owner. **taxResidency has no default**: the "
+                + "withholding line on an owner payout depends on it, and a default of 'resident' silently drops it for "
+                + "whoever's field was left unfilled.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "code", "رمز الطرف داخل المنشأة — هوية يحملها تاريخه المُرحَّل.", "The party code within the company — an identity its posted history carries.", 64);
+            WriteStringProperty(w, "nameAr", "الاسم بالعربية — السجلّ.", "The Arabic name — the record.", 256);
+            WriteArrayRefProperty(w, "nameTranslations", "NameValue", "ترجمات الاسم.", "The name's translations.");
+            WriteEnumProperty(w, "taxResidency", "الإقامة الضريبية.", "The tax residency.", TaxResidencies);
+            WriteStringProperty(w, "vatNumber", "رقم التسجيل الضريبي، أو نصّ فارغ لمن لا رقم له — والغياب واقعة لا نقص.", "The VAT registration number, or an empty string for a party without one — its absence is a fact, not a gap.", 64);
+            w.WriteEndObject();
+            WriteRequired(w, "code", "nameAr", "taxResidency", "vatNumber");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("RealEstateParty", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طرفٌ عقاري كما سُجِّل. / A real-estate party as registered.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "code", "الرمز.", "The code.", 64);
+            WriteStringProperty(w, "id", "المعرّف.", "The identifier.", 36);
+            WriteStringProperty(w, "nameAr", "الاسم العربي.", "The Arabic name.", 256);
+            WriteArrayRefProperty(w, "nameTranslations", "NameValue", "ترجمات الاسم.", "The name's translations.");
+            WriteEnumProperty(w, "role", "دور الطرف في هذه الوحدة.", "The party's role in this module.", PartyRoles);
+            WriteEnumProperty(w, "taxResidency", "الإقامة الضريبية.", "The tax residency.", TaxResidencies);
+            WriteStringProperty(w, "vatNumber", "رقم التسجيل الضريبي.", "The VAT registration number.", 64);
+            w.WriteEndObject();
+            WriteRequired(w, "code", "id", "nameAr", "nameTranslations", "role", "taxResidency", "vatNumber");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("Instalment", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "قسطٌ مُصرَّح به. **وحقلا الفترة قبل تاريخ الاستحقاق**: أساس الاعتراف مدى الفترة لا يوم السداد، "
+                + "وقسطٌ بلا فترته لا يُنسب إلى شهرٍ في قائمة دخل. / "
+                + "A declared instalment. **The period fields come before the due date**: recognition rests on the period "
+                + "range, not the payment day, and an instalment without its period belongs to no month in an income statement.");
+            w.WriteStartObject("properties");
+            WriteRefProperty(w, "amount", "Money");
+            WriteDateProperty(w, "dueOn", "تاريخ استحقاق القسط.", "The instalment's due date.");
+            WriteDateProperty(w, "periodFrom", "بداية الفترة المستحقّة.", "The start of the period covered.");
+            WriteDateProperty(w, "periodTo", "نهاية الفترة المستحقّة.", "The end of the period covered.");
+            w.WriteEndObject();
+            WriteRequired(w, "amount", "dueOn", "periodFrom", "periodTo");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("LeaseRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب إنشاء عقد إيجار مسوّدة. **وقيمة العقد والأقساط تُصرَّحان معاً**: النظام لا يوزّع القيمة على "
+                + "الأقساط — التوزيع يستلزم سياسة تقريب هي قرار مالك مفتوح — بل **يفحص** أن مجموع الأقساط يساوي "
+                + "قيمة العقد بالضبط ويرفض بخلافه. ولو اشتُقّت القيمة من الأقساط لصارت الثابتة صحيحةً بحكم البناء "
+                + "ولم تمسك توزيعاً خاطئاً. / "
+                + "A request to draft a lease contract. **The contract value and the instalments are both declared**: the "
+                + "system does not spread the value across the instalments — spreading requires a rounding policy that is an "
+                + "open owner decision — it **checks** that the instalments sum exactly to the contract value and refuses "
+                + "otherwise. Had the value been derived from the instalments the invariant would hold by construction and "
+                + "would catch no wrong split.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "contractNo", "رقم العقد — فريد داخل المنشأة.", "The contract number — unique within the company.", 64);
+            WriteDateProperty(w, "endsOn", "نهاية المدّة — داخلة في المدى.", "The end of the term — inclusive.");
+            WriteArrayRefProperty(w, "instalments", "Instalment",
+                "الأقساط بفتراتها ومبالغها. ومجموعها يُفحص عند التفعيل ولا يُصلَح.",
+                "The instalments with their periods and amounts. Their sum is checked on activation and never corrected.");
+            WriteStringProperty(w, "lesseeId", "المستأجر.", "The lessee.", 36);
+            WriteDateProperty(w, "startsOn", "بداية المدّة.", "The start of the term.");
+            WriteRefProperty(w, "totalRent", "Money");
+            WriteStringProperty(w, "unitId", "الوحدة المؤجَّرة — ومنها يُشتقّ العقار، فلا يُذكر العقار مرّتين فينحرف.", "The unit being let — the property is derived from it, so the property is never stated twice and cannot drift.", 36);
+            w.WriteEndObject();
+            WriteRequired(w, "contractNo", "endsOn", "instalments", "lesseeId", "startsOn", "totalRent", "unitId");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("Lease", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "عقد إيجار بحالته. **ولا معرّف قيد فيه**: توقيع العقد لا يُنشئ قيداً، ولا مورد ترحيل عليه. / "
+                + "A lease contract with its state. **It carries no entry identifier**: signing a lease creates no entry, and "
+                + "the resource has no posting sub-resource.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "contractNo", "رقم العقد.", "The contract number.", 64);
+            WriteDateProperty(w, "endsOn", "نهاية المدّة.", "The end of the term.");
+            WriteStringProperty(w, "id", "المعرّف.", "The identifier.", 36);
+            WriteStringProperty(w, "lesseeId", "المستأجر.", "The lessee.", 36);
+            WriteStringProperty(w, "propertyId", "العقار المشتقّ من الوحدة.", "The property derived from the unit.", 36);
+            WriteDateProperty(w, "startsOn", "بداية المدّة.", "The start of the term.");
+            WriteEnumProperty(w, "state", "حالة العقد. وACTIVE وحدها تدخل قيد الاستبعاد الزمني وتُتيح الفوترة.", "The lease state. Only ACTIVE enters the temporal exclusion constraint and permits invoicing.", LeaseStates);
+            WriteRefProperty(w, "totalRent", "Money");
+            WriteStringProperty(w, "unitId", "الوحدة.", "The unit.", 36);
+            w.WriteEndObject();
+            WriteRequired(w, "contractNo", "endsOn", "id", "lesseeId", "propertyId", "startsOn", "state", "totalRent", "unitId");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("LeaseScheduleLine", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "سطر جدول الدفعات **بمعرّفه** — وهو ما يُرسَل في طلب الفاتورة. / "
+                + "A payment schedule line **with its identifier** — what is sent in the invoice request.");
+            w.WriteStartObject("properties");
+            WriteRefProperty(w, "amount", "Money");
+            WriteDateProperty(w, "dueOn", "تاريخ الاستحقاق — وهو ما تُقاس عليه أعمار المتأخرات لا تاريخ الإصدار.", "The due date — what arrears ageing is measured against, not the issue date.");
+            WriteStringProperty(w, "id", "معرّف السطر — مدخل الفوترة.", "The line identifier — the entry point to invoicing.", 36);
+            WriteBooleanProperty(w, "isInvoiced", "هل فُوتر هذا القسط؟ والقسط لا يُفوتَر مرّتين.", "Has this instalment been invoiced? An instalment is never invoiced twice.");
+            WriteDateProperty(w, "periodFrom", "بداية الفترة.", "The start of the period.");
+            WriteDateProperty(w, "periodTo", "نهاية الفترة.", "The end of the period.");
+            WriteIntegerProperty(w, "seq", 1, 100000, "تسلسل القسط في العقد.", "The instalment's sequence within the lease.");
+            w.WriteEndObject();
+            WriteRequired(w, "amount", "dueOn", "id", "isInvoiced", "periodFrom", "periodTo", "seq");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("LeaseSchedule", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "جدول دفعات عقد بمعرّفات سطوره. / A lease payment schedule with its line identifiers.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "leaseId", "العقد.", "The lease.", 36);
+            WriteArrayRefProperty(w, "lines", "LeaseScheduleLine", "السطور بترتيب تسلسلها.", "The lines in sequence order.");
+            w.WriteEndObject();
+            WriteRequired(w, "leaseId", "lines");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("RentInvoiceRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب إنشاء فاتورة إيجار مسوّدة. **ولا رمز حدث فيه ولا نموذج ملكية ولا مبالغ سطور**: المبالغ من "
+                + "جدول الدفعات، والحدث من نموذج الملكية المُسجَّل في الدفتر. وtaxRate تصل مع الطلب ولا تُكتب في "
+                + "شيفرة، ولا تُطبَّق إلا على وحدةٍ معاملتها standard. / "
+                + "A request to draft a rent invoice. **It carries no event code, no ownership model, and no line amounts**: "
+                + "amounts come from the payment schedule and the event from the ownership model registered in the ledger. "
+                + "taxRate arrives with the request rather than being written in code, and applies only to a unit whose "
+                + "treatment is standard.");
+            w.WriteStartObject("properties");
+            WriteDateProperty(w, "issuedOn", "تاريخ الإصدار الميلادي.", "The issue date.");
+            WriteStringProperty(w, "leaseId", "العقد — ويجب أن يكون سارياً.", "The lease — it must be active.", 36);
+            WriteStringProperty(w, "number", "رقم الفاتورة — فريد داخل المنشأة.", "The invoice number — unique within the company.", 64);
+            WriteStringArrayProperty(w, "scheduleLineIds",
+                "معرّفات الأقساط المفوترة كما نشرها مورد جدول الدفعات.",
+                "The identifiers of the instalments being billed, as published by the schedule resource.", 36);
+            WriteRefProperty(w, "taxRate", "Money");
+            w.WriteEndObject();
+            WriteRequired(w, "issuedOn", "leaseId", "number", "scheduleLineIds", "taxRate");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("RentInvoice", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "فاتورة إيجار بحالتها ومجاميعها وحدثها. وexemptionReasonPending **علامة ظاهرة** على إعفاءٍ بلا رمز "
+                + "سبب: الرمز يُؤخذ من القائمة الرسمية السارية ولا يُخترع، وغيابه يُرى في التقرير لا في تعليق. / "
+                + "A rent invoice with its state, totals, and event. exemptionReasonPending is a **visible flag** on an exempt "
+                + "invoice with no reason code: the code comes from the official list in force and is never invented, and its "
+                + "absence is seen in the report rather than in a comment.");
+            w.WriteStartObject("properties");
+            WriteBooleanProperty(w, "alreadyPosted",
+                "هل كانت هذه الهوية مُرحَّلة قبل هذا النداء؟ **معلومة لا تُشتقّ من الحالة**: مستندٌ حالته POSTED بعد النداء لا يقول وحده أيُّ النداءين رحّله.",
+                "Was this identity already posted before this call? **Not derivable from the state**: a document that is POSTED after the call does not by itself say which call posted it.");
+            WriteNullableStringProperty(w, "entryId", "معرّف القيد إن رُحّلت، وإلا null.", "The entry identifier if posted, otherwise null.", 36);
+            WriteStringProperty(w, "eventCode", "الحدث الذي اختارته الوحدة من نموذج الملكية المُسجَّل — لا من الطلب.", "The event the module selected from the registered ownership model — never from the request.", 128);
+            WriteStringProperty(w, "exemptionReasonCode", "رمز سبب الإعفاء، ونصٌّ فارغ ما دام غير معروف.", "The exemption reason code, an empty string while it is unknown.", 64);
+            WriteBooleanProperty(w, "exemptionReasonPending", "إعفاءٌ بلا رمز سبب — علامة ظاهرة لا تعليق في شيفرة.", "An exemption with no reason code — a visible flag, not a comment in code.");
+            WriteRefProperty(w, "gross", "Money");
+            WriteStringProperty(w, "id", "المعرّف.", "The identifier.", 36);
+            WriteRefProperty(w, "net", "Money");
+            WriteStringProperty(w, "number", "الرقم.", "The number.", 64);
+            WriteEnumProperty(w, "state", "حالة الفاتورة.", "The invoice state.", DocumentStates);
+            WriteRefProperty(w, "tax", "Money");
+            WriteEnumProperty(w, "vatTreatment", "معاملة الوحدة الضريبية المنسوخة وقت الإصدار.", "The unit's VAT treatment as copied at issue time.", VatTreatments);
+            w.WriteEndObject();
+            WriteRequired(w, "alreadyPosted", "entryId", "eventCode", "exemptionReasonCode", "exemptionReasonPending",
+                "gross", "id", "net", "number", "state", "tax", "vatTreatment");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("TenantReceiptRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب تسجيل سند قبض من مستأجر. **وغياب lesseeId ليس نقصاً بل واقعة**: مبلغٌ ورد بلا مرجع يُرحَّل "
+                + "إلى حساب التحصيلات غير المخصَّصة ولا يُنسب إلى أحد بالتخمين، ثم يُخصَّص بقيدٍ مستقل حين يُعرف "
+                + "صاحبه. / "
+                + "A tenant receipt request. **A missing lesseeId is a fact, not a gap**: an amount that arrived without a "
+                + "reference posts to the unallocated collections account and is never attributed by guesswork, then is "
+                + "allocated by a separate entry once its owner is known.");
+            w.WriteStartObject("properties");
+            WriteNullableStringProperty(w, "lesseeId", "المستأجر، أو null فالمبلغ ورد بلا مرجع.", "The lessee, or null when the amount arrived without a reference.", 36);
+            WriteStringProperty(w, "number", "رقم السند — فريد داخل المنشأة.", "The receipt number — unique within the company.", 64);
+            WriteRefProperty(w, "received", "Money");
+            WriteDateProperty(w, "receivedOn", "تاريخ القبض الميلادي.", "The collection date.");
+            WriteStringProperty(w, "settlementMethod", "طريقة التسوية — مؤهّل دور تقرؤه المصفوفة. المستعمَل اليوم: cash · bank · card_clearing.", "The settlement method — a role qualifier the matrix reads. In use today: cash, bank, card_clearing.", 32);
+            WriteStringProperty(w, "treasuryPartyId", "الخزينة أو الحساب البنكي في دفتره المساعد — **طرفٌ لا رقم حساب**.", "The cash box or bank account in its subledger — **a party, not an account number**.", 64);
+            w.WriteEndObject();
+            WriteRequired(w, "number", "received", "receivedOn", "settlementMethod", "treasuryPartyId");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("AllocationRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب تخصيص سند ورد بلا مرجع على مستأجر تبيّن أنه صاحبه. / "
+                + "A request to allocate a receipt that arrived without a reference to the tenant it turns out to belong to.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "lesseeId", "المستأجر.", "The lessee.", 36);
+            w.WriteEndObject();
+            WriteRequired(w, "lesseeId");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("TenantReceipt", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "سند قبض بحالته وحدثه. و**قيدان لا قيد واحد** حين يُخصَّص: قيد التحصيل باقٍ كما وقع، وقيد التخصيص "
+                + "مستقلٌّ عنه — والعكس كان سيمحو واقعةً وقعت. / "
+                + "A tenant receipt with its state and event. **Two entries, not one** once allocated: the collection entry "
+                + "stands as it occurred and the allocation entry is separate — a reversal would have erased a fact that happened.");
+            w.WriteStartObject("properties");
+            WriteNullableStringProperty(w, "allocationEntryId", "قيد التخصيص المستقلّ إن وقع، وإلا null.", "The separate allocation entry if it occurred, otherwise null.", 36);
+            WriteBooleanProperty(w, "alreadyPosted", "هل كانت هذه الهوية مُرحَّلة قبل هذا النداء؟", "Was this identity already posted before this call?");
+            WriteNullableStringProperty(w, "entryId", "قيد الترحيل إن وقع.", "The posting entry if it occurred.", 36);
+            WriteStringProperty(w, "eventCode", "الحدث المُرحَّل — اختاره حضور المرجع أو غيابه.", "The posted event — chosen by the presence or absence of the reference.", 128);
+            WriteStringProperty(w, "id", "المعرّف.", "The identifier.", 36);
+            WriteBooleanProperty(w, "isAllocated", "هل خُصِّص؟ والتخصيص يقع مرّة.", "Has it been allocated? Allocation happens once.");
+            WriteStringProperty(w, "number", "الرقم.", "The number.", 64);
+            WriteRefProperty(w, "received", "Money");
+            WriteEnumProperty(w, "state", "حالة السند.", "The receipt state.", DocumentStates);
+            w.WriteEndObject();
+            WriteRequired(w, "allocationEntryId", "alreadyPosted", "entryId", "eventCode", "id", "isAllocated", "number", "received", "state");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("ArrearsBands", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "شرائح أعمار المتأخرات. والمجموع مجموع الشرائح بالضبط. / "
+                + "The arrears ageing bands. The total is exactly the sum of the bands.");
+            w.WriteStartObject("properties");
+            WriteRefProperty(w, "days1To30", "Money");
+            WriteRefProperty(w, "days31To60", "Money");
+            WriteRefProperty(w, "days61To90", "Money");
+            WriteRefProperty(w, "notDue", "Money");
+            WriteRefProperty(w, "over90", "Money");
+            WriteRefProperty(w, "total", "Money");
+            w.WriteEndObject();
+            WriteRequired(w, "days1To30", "days31To60", "days61To90", "notDue", "over90", "total");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("ArrearsParty", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "متأخرات مستأجر واحد. / One tenant's arrears.");
+            w.WriteStartObject("properties");
+            WriteRefProperty(w, "bands", "ArrearsBands");
+            WriteStringProperty(w, "code", "رمز المستأجر.", "The lessee's code.", 64);
+            WriteStringProperty(w, "nameAr", "اسمه العربي — السجلّ.", "Its Arabic name — the record.", 256);
+            WriteArrayRefProperty(w, "nameTranslations", "NameValue", "ترجمات الاسم.", "The name's translations.");
+            WriteStringProperty(w, "partyId", "معرّف المستأجر.", "The lessee's identifier.", 36);
+            w.WriteEndObject();
+            WriteRequired(w, "bands", "code", "nameAr", "nameTranslations", "partyId");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("TenantArrears", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "أعمار متأخرات المستأجرين **ومطابقتها بنقطة ضبطها** في الجواب نفسه: isReconciled صحيح حين يكون "
+                + "الفارق **صفراً بالضبط** لا «قريباً من الصفر». / "
+                + "Tenant arrears ageing **together with its reconciliation against its control point** in the same response: "
+                + "isReconciled is true when the divergence is **exactly zero**, never 'close to zero'.");
+            w.WriteStartObject("properties");
+            WriteDateProperty(w, "asOf", "تاريخ التقرير.", "The report date.");
+            WriteRefProperty(w, "controlTotal", "Money");
+            WriteRefProperty(w, "divergence", "Money");
+            WriteBooleanProperty(w, "isReconciled", "هل الفارق صفر بالضبط؟", "Is the divergence exactly zero?");
+            WriteArrayRefProperty(w, "parties", "ArrearsParty", "المستأجرون الذين عليهم متأخرات.", "The tenants carrying arrears.");
+            WriteRefProperty(w, "totals", "ArrearsBands");
+            w.WriteEndObject();
+            WriteRequired(w, "asOf", "controlTotal", "divergence", "isReconciled", "parties", "totals");
+            w.WriteBoolean("additionalProperties", false);
         });
 
         yield return ("CustomerRequest", static w =>

@@ -214,6 +214,7 @@ public sealed class Rule13_NoBusinessLogicInTheApi
         "Babel.Purchasing.PurchasingModuleRegistration",
         "Babel.Compliance.ComplianceModuleRegistration",
         "Babel.Inventory.InventoryModuleRegistration",
+        "Babel.RealEstate.RealEstateModuleRegistration",
 
         // ── السطح المنشور لوحدتَي المبيعات والمشتريات ────────────────────────
         //
@@ -307,6 +308,34 @@ public sealed class Rule13_NoBusinessLogicInTheApi
         // ما دام لا باب HTTP يبلغ منفذ تقييم المخزون، لم يكن للجذر سببٌ يقرأ به اتصالها،
         // فبقيت تُقرأ من الافتراضي بلا أن يظهر ذلك. وأوّل باب فوق الاستلام هو ما أظهره.
         "Babel.Inventory.InventoryOptions",
+
+        // ── العقارات: سطحٌ منشور بالشكل نفسه، ونوعُ إعداداته معه ────────────────
+        // ولا نوع واحد من `Application` ولا من `Persistence` في القائمة: الوحدة تُخاطَب
+        // من سطحها وحده، وطلباتُها وأجوبتها أنواعٌ في `Surface` لا في داخلها.
+        //
+        // ‏**ولاحظ ما ليس هنا: لا نوع طلبٍ لترحيل عقدِ إيجار.** حدث توقيع العقد مُعلَنٌ
+        // في المصفوفة بأنه لا يُنشئ قيداً، فلا مورد ترحيل عليه ولا نوع يمرّره — وغياب
+        // النوع من هذه القائمة هو الوجه الآخر لغياب الباب من العقد.
+        "Babel.RealEstate.RealEstateOptions",
+        "Babel.RealEstate.Surface.RealEstateSurface",
+        "Babel.RealEstate.Surface.RealEstateProperty",
+        "Babel.RealEstate.Surface.RealEstatePropertyRequest",
+        "Babel.RealEstate.Surface.RealEstateUnit",
+        "Babel.RealEstate.Surface.RealEstateUnitRequest",
+        "Babel.RealEstate.Surface.RealEstateParty",
+        "Babel.RealEstate.Surface.RealEstatePartyRequest",
+        "Babel.RealEstate.Surface.RealEstateLease",
+        "Babel.RealEstate.Surface.RealEstateLeaseRequest",
+        "Babel.RealEstate.Surface.RealEstateInstalmentRequest",
+        "Babel.RealEstate.Surface.RealEstateScheduleLine",
+        "Babel.RealEstate.Surface.RealEstateRentInvoice",
+        "Babel.RealEstate.Surface.RealEstateRentInvoiceRequest",
+        "Babel.RealEstate.Surface.RealEstateReceipt",
+        "Babel.RealEstate.Surface.RealEstateReceiptRequest",
+        "Babel.RealEstate.Surface.RealEstateAllocationRequest",
+        "Babel.RealEstate.Surface.RealEstateArrears",
+        "Babel.RealEstate.Surface.RealEstateArrearsParty",
+        "Babel.RealEstate.Surface.RealEstateArrearsBands",
     ];
 
     /// <summary>أجزاء فضاء اسم تدلّ على داخل وحدة، لا على سطحها المنشور.</summary>

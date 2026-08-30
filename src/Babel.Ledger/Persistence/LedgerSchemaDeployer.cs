@@ -56,6 +56,18 @@ internal static class LedgerSchemaDeployer
         await using NpgsqlConnection connection = new(options.OwnerConnectionString);
         await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
 
+        // ── المشغّلات تُعاد تسميتها بعد الهجرات، لا داخلها وحدها ────────────────
+        // ‏`LedgerTriggers.sql` يُنفَّذ **داخل** هجرة الأساس، وهجرةٌ طُبِّقت لا تُعاد.
+        // فقاعدة عميل قائمة كانت ستبقى على النسخة القديمة من `assert_line_allowed`
+        // إلى الأبد مهما أُضيفت إليها قاعدة حجب — وذلك عطلٌ صامت من الصنف الأخطر:
+        // حارسٌ مكتوبٌ في المستودع وغائبٌ عن القاعدة التي يُفترض أنه يحرسها.
+        //
+        // والنصّ **مكتوبٌ ليُعاد تشغيله بلا أثر** من أول سطر فيه: كل دالّة
+        // `create or replace`، وكل مشغّل `drop … if exists` ثم `create`، وكل قيد
+        // تحقّق محروسٌ بوجوده. فإعادة تنفيذه بدور المالك عند كل نشر تُقارب المخطّط
+        // إلى ما في المستودع بدل أن تفترض أنه هناك.
+        await ExecuteAsync(connection, Script("LedgerTriggers.sql"), cancellationToken).ConfigureAwait(false);
+
         // اسم الدور يصل عبر إعداد الجلسة كي لا يُثبَّت اسم بيئة داخل نصّ ترحيل.
         await ExecuteAsync(
             connection,

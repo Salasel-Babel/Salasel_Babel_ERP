@@ -147,7 +147,7 @@ public sealed class Rule05_EveryModuleOwnsItsTables
         Assert.Equal(
             [
                 ModuleMap.Compliance, ModuleMap.Core, "Babel.Inventory", ModuleMap.Ledger,
-                "Babel.Purchasing", "Babel.Sales", ModuleMap.Storage,
+                "Babel.Purchasing", "Babel.RealEstate", "Babel.Sales", ModuleMap.Storage,
             ],
             owners);
     }

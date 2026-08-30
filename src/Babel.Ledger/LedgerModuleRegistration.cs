@@ -41,6 +41,15 @@ public static class LedgerModuleRegistration
         // في الخادم**. ولم يظهر ذلك لأن لا باب HTTP كان يبلغها: الحاوية لا تتحقّق من
         // رسم بياني لا يطلبه أحد.
         services.AddScoped<IControlPointReader, Subledger.ControlPointReader>();
+
+        // ── منفذ تسجيل بُعد العقار: هنا لا في الجذر التركيبي ────────────────────
+        // الدرس الحرفي من `IControlPointReader` أعلاه: منفذٌ في العقد بلا تنفيذ
+        // مسجَّل في `src/` **عطلٌ صامت تحت اختبارات خضراء** — الحاوية لا تتحقّق من
+        // رسم بياني لا يطلبه أحد، فلا يظهر النقص إلا يوم يُفتح له باب. والوحدة
+        // المالكة للجدول هي التي تسجّل تنفيذه، فلا تكتسب الوحدة العقارية بتسجيله
+        // معرفةً بالدفتر: ترى الواجهة وحدها، والحاوية توصلها بهذا التنفيذ.
+        services.AddScoped<Babel.Contracts.RealEstate.IPropertyDimensionRegistrar,
+                           RealEstate.PropertyDimensionRegistrar>();
         return services;
     }
 }

@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     dac93701517afebf600cd3f74868a4ca5bd94861699466e41651938520f14959
+     f190afc20a37f87b028e9f72ad94399c1209454ba037ae74feb1929f982c3c23
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -89,6 +89,12 @@ export interface AgingReport {
   totals: AgingBands;
 }
 
+/** طلب تخصيص سند ورد بلا مرجع على مستأجر تبيّن أنه صاحبه. / A request to allocate a receipt that arrived without a reference to the tenant it turns out to belong to. */
+export interface AllocationRequest {
+  /** المستأجر. / The lessee. */
+  lesseeId: string;
+}
+
 export interface ApiError {
   /** الرمز الثابت — نقطة الاعتماد البرمجية الوحيدة. لا يُقرأ نصّ رسالة لاتخاذ قرار أبداً. / The stable code — the only thing to program against. Message text is never parsed to make a decision. */
   code: string;
@@ -98,6 +104,29 @@ export interface ApiError {
   messageAr: string;
   /** الرسالة الإنجليزية. / The English message. */
   messageEn: string;
+}
+
+/** شرائح أعمار المتأخرات. والمجموع مجموع الشرائح بالضبط. / The arrears ageing bands. The total is exactly the sum of the bands. */
+export interface ArrearsBands {
+  days1To30: Money;
+  days31To60: Money;
+  days61To90: Money;
+  notDue: Money;
+  over90: Money;
+  total: Money;
+}
+
+/** متأخرات مستأجر واحد. / One tenant's arrears. */
+export interface ArrearsParty {
+  bands: ArrearsBands;
+  /** رمز المستأجر. / The lessee's code. */
+  code: string;
+  /** اسمه العربي — السجلّ. / Its Arabic name — the record. */
+  nameAr: string;
+  /** ترجمات الاسم. / The name's translations. */
+  nameTranslations: NameValue[];
+  /** معرّف المستأجر. / The lessee's identifier. */
+  partyId: string;
 }
 
 /** وصف مرفق — البايتات في المخزن وهذا ما في القاعدة. والبصمة هي ما يجعل المسار وحده غير كافٍ: ملفٌّ بُدِّل تحت المسار نفسه يُكتشف. ولا مفتاح كائن هنا: هو مسارٌ فيزيائي يعيش في القاعدة وحدها، والمسار الذي يحتاجه العميل هو contentPath. / An attachment descriptor — the bytes are in the store and this is what is in the database. The digest is what makes a path alone insufficient: a file swapped under the same path is detected. No object key appears here: it is a physical path living in the database alone, and the path a client needs is contentPath. */
@@ -437,6 +466,17 @@ export interface InitialiseCompanySetupRequest {
   firstCostCenterTranslations?: NameValue[];
 }
 
+/** قسطٌ مُصرَّح به. **وحقلا الفترة قبل تاريخ الاستحقاق**: أساس الاعتراف مدى الفترة لا يوم السداد، وقسطٌ بلا فترته لا يُنسب إلى شهرٍ في قائمة دخل. / A declared instalment. **The period fields come before the due date**: recognition rests on the period range, not the payment day, and an instalment without its period belongs to no month in an income statement. */
+export interface Instalment {
+  amount: Money;
+  /** تاريخ استحقاق القسط. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The instalment's due date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  dueOn: string;
+  /** بداية الفترة المستحقّة. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The start of the period covered. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  periodFrom: string;
+  /** نهاية الفترة المستحقّة. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The end of the period covered. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  periodTo: string;
+}
+
 /** عدد صحيح 64 بت نصّاً: Number في JavaScript يفقد الدقّة فوق 2^53، ورقم القيد معرّف لا كمّية. / A 64-bit integer as a string: JavaScript Number loses precision above 2^53, and an entry number is an identifier, not a quantity. */
 /* Int64String مُعرَّف في ../money كنوع محتجز وقت التشغيل. */
 
@@ -553,6 +593,69 @@ export interface JournalLine {
   qualifier: string;
   /** رمز الدور كما خُزِّن. / The role code as stored. */
   role: string;
+}
+
+/** عقد إيجار بحالته. **ولا معرّف قيد فيه**: توقيع العقد لا يُنشئ قيداً، ولا مورد ترحيل عليه. / A lease contract with its state. **It carries no entry identifier**: signing a lease creates no entry, and the resource has no posting sub-resource. */
+export interface Lease {
+  /** رقم العقد. / The contract number. */
+  contractNo: string;
+  /** نهاية المدّة. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The end of the term. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  endsOn: string;
+  /** المعرّف. / The identifier. */
+  id: string;
+  /** المستأجر. / The lessee. */
+  lesseeId: string;
+  /** العقار المشتقّ من الوحدة. / The property derived from the unit. */
+  propertyId: string;
+  /** بداية المدّة. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The start of the term. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  startsOn: string;
+  /** حالة العقد. وACTIVE وحدها تدخل قيد الاستبعاد الزمني وتُتيح الفوترة. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The lease state. Only ACTIVE enters the temporal exclusion constraint and permits invoicing. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  state: "ACTIVE" | "DRAFT";
+  totalRent: Money;
+  /** الوحدة. / The unit. */
+  unitId: string;
+}
+
+/** طلب إنشاء عقد إيجار مسوّدة. **وقيمة العقد والأقساط تُصرَّحان معاً**: النظام لا يوزّع القيمة على الأقساط — التوزيع يستلزم سياسة تقريب هي قرار مالك مفتوح — بل **يفحص** أن مجموع الأقساط يساوي قيمة العقد بالضبط ويرفض بخلافه. ولو اشتُقّت القيمة من الأقساط لصارت الثابتة صحيحةً بحكم البناء ولم تمسك توزيعاً خاطئاً. / A request to draft a lease contract. **The contract value and the instalments are both declared**: the system does not spread the value across the instalments — spreading requires a rounding policy that is an open owner decision — it **checks** that the instalments sum exactly to the contract value and refuses otherwise. Had the value been derived from the instalments the invariant would hold by construction and would catch no wrong split. */
+export interface LeaseRequest {
+  /** رقم العقد — فريد داخل المنشأة. / The contract number — unique within the company. */
+  contractNo: string;
+  /** نهاية المدّة — داخلة في المدى. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The end of the term — inclusive. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  endsOn: string;
+  /** الأقساط بفتراتها ومبالغها. ومجموعها يُفحص عند التفعيل ولا يُصلَح. / The instalments with their periods and amounts. Their sum is checked on activation and never corrected. */
+  instalments: Instalment[];
+  /** المستأجر. / The lessee. */
+  lesseeId: string;
+  /** بداية المدّة. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The start of the term. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  startsOn: string;
+  totalRent: Money;
+  /** الوحدة المؤجَّرة — ومنها يُشتقّ العقار، فلا يُذكر العقار مرّتين فينحرف. / The unit being let — the property is derived from it, so the property is never stated twice and cannot drift. */
+  unitId: string;
+}
+
+/** جدول دفعات عقد بمعرّفات سطوره. / A lease payment schedule with its line identifiers. */
+export interface LeaseSchedule {
+  /** العقد. / The lease. */
+  leaseId: string;
+  /** السطور بترتيب تسلسلها. / The lines in sequence order. */
+  lines: LeaseScheduleLine[];
+}
+
+/** سطر جدول الدفعات **بمعرّفه** — وهو ما يُرسَل في طلب الفاتورة. / A payment schedule line **with its identifier** — what is sent in the invoice request. */
+export interface LeaseScheduleLine {
+  amount: Money;
+  /** تاريخ الاستحقاق — وهو ما تُقاس عليه أعمار المتأخرات لا تاريخ الإصدار. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The due date — what arrears ageing is measured against, not the issue date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  dueOn: string;
+  /** معرّف السطر — مدخل الفوترة. / The line identifier — the entry point to invoicing. */
+  id: string;
+  /** هل فُوتر هذا القسط؟ والقسط لا يُفوتَر مرّتين. / Has this instalment been invoiced? An instalment is never invoiced twice. */
+  isInvoiced: boolean;
+  /** بداية الفترة. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The start of the period. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  periodFrom: string;
+  /** نهاية الفترة. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The end of the period. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  periodTo: string;
+  /** تسلسل القسط في العقد. / The instalment's sequence within the lease. */
+  seq: number;
 }
 
 /** نصّ ثنائي اللغة. الطرفان إلزاميان — العربية أساسية لا ترجمة ثانية. / Bilingual text; both sides are mandatory. */
@@ -787,6 +890,38 @@ export interface Problem {
   type: string;
 }
 
+/** عقارٌ كما سُجِّل — **وصفُّه في سجلّ أبعاد الدفتر مكتوبٌ في العملية نفسها**، فبلا ذلك الصفّ تُرفض كل قيوده رفضاً كاملاً لا صامتاً. / A property as registered — **its row in the ledger dimension register is written in the same operation**, and without that row every entry of its is refused totally rather than silently. */
+export interface Property {
+  /** الرمز. / The code. */
+  code: string;
+  /** المعرّف الذي تُبنى عليه الوحدات والعقود. / The identifier units and leases are built on. */
+  id: string;
+  /** الاسم العربي — السجلّ. / The Arabic name — the record. */
+  nameAr: string;
+  /** ترجمات الاسم. / The name's translations. */
+  nameTranslations: NameValue[];
+  /** المالك إن وُجد. / The owner if any. */
+  ownerId: string | null;
+  ownerShareDenominator: Int64String;
+  ownerShareNumerator: Int64String;
+  /** نموذج الملكية المُسجَّل في الدفتر. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The ownership model as registered in the ledger. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  ownershipModel: "managed_for_others" | "own_property";
+}
+
+/** طلب تسجيل عقار. **وownershipModel بلا افتراضي ولا يُعدَّل بعد التسجيل**: هو ما يقرّر أدائنُ الأجرة إيرادَ الشركة أم أمانةً لمالكها، وتغييره بعد الترحيل يُعيد تفسير قيودٍ ماضية بأثر رجعي. وفي نموذج الإدارة المالك إلزامي، وفي الملكية الذاتية إرسالُه يُفشل الطلب. / A property registration request. **ownershipModel has no default and is never edited after registration**: it decides whether the credit of rent is company revenue or a liability to its owner, and changing it after posting reinterprets past entries retroactively. Under the managed model the owner is mandatory; under own property, sending one fails the request. */
+export interface PropertyRequest {
+  /** رمز العقار — وهو ما يظهر بُعداً على سطر القيد. / The property code — what appears as a dimension on the journal line. */
+  code: string;
+  /** اسم العقار بالعربية — وهو السجلّ لا ترجمته. / The property's Arabic name — the record itself, not a translation of it. */
+  nameAr: string;
+  /** ترجمات الاسم بأوسمة BCP-47. ولا حقل إنجليزي ثابت: الإنجليزية واحدة من N. / The name's translations keyed by BCP-47 tags. There is no fixed English field: English is one of N. */
+  nameTranslations?: NameValue[];
+  /** المالك في نموذج الإدارة، أو null في الملكية الذاتية. / The owner under the managed model, or null under own property. */
+  ownerId?: string | null;
+  /** نموذج الملكية. own_property: العقار أصلٌ للمنشأة والأجرة إيرادها. managed_for_others: الأجرة المحصَّلة التزام تجاه المالك، وإيراد الشركة هو العمولة وحدها. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The ownership model. own_property: the property is a company asset and the rent is its revenue. managed_for_others: collected rent is a liability to the owner and the company's revenue is the commission alone. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  ownershipModel: "managed_for_others" | "own_property";
+}
+
 /** سطر مستند مشتريات كما يخرج على السلك — **معرّفه مدخل المستند التالي في الدورة**. / A purchasing document line as it leaves on the wire — **its identifier is the input to the next document in the cycle**. */
 export interface PurchaseDocumentLine {
   /** معرّف السطر. / The line identifier. */
@@ -892,6 +1027,38 @@ export interface PutCapabilityProfileRequest {
 /** كمّية نصّاً بمقياس لا يتجاوز أربعاً، بالنحو الذي تخضع له المبالغ. وهي ليست مبلغاً — ولذلك لها مخطّطها — لكنها تُضرب في مبلغ، فأي فقدان دقّة فيها يصل إلى المال. / A quantity as a string with at most four decimal places, under the grammar that governs amounts. It is not an amount — hence its own schema — but it is multiplied by one, so any precision lost in it reaches the money. */
 /* Quantity مُعرَّف في ../money كنوع محتجز وقت التشغيل. */
 
+/** طرفٌ عقاري كما سُجِّل. / A real-estate party as registered. */
+export interface RealEstateParty {
+  /** الرمز. / The code. */
+  code: string;
+  /** المعرّف. / The identifier. */
+  id: string;
+  /** الاسم العربي. / The Arabic name. */
+  nameAr: string;
+  /** ترجمات الاسم. / The name's translations. */
+  nameTranslations: NameValue[];
+  /** دور الطرف في هذه الوحدة. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The party's role in this module. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  role: "broker" | "lessee" | "owner";
+  /** الإقامة الضريبية. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The tax residency. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  taxResidency: "non_resident" | "resident";
+  /** رقم التسجيل الضريبي. / The VAT registration number. */
+  vatNumber: string;
+}
+
+/** طلب تسجيل طرف عقاري — مستأجر أو مالك. **وtaxResidency بلا افتراضي**: عليها يتوقّف سطر الاستقطاع في توريد المالك، وقيمةٌ افتراضية «مقيم» تُسقطه بصمت عمّن لم يُملأ حقله. / A real-estate party registration request — a lessee or an owner. **taxResidency has no default**: the withholding line on an owner payout depends on it, and a default of 'resident' silently drops it for whoever's field was left unfilled. */
+export interface RealEstatePartyRequest {
+  /** رمز الطرف داخل المنشأة — هوية يحملها تاريخه المُرحَّل. / The party code within the company — an identity its posted history carries. */
+  code: string;
+  /** الاسم بالعربية — السجلّ. / The Arabic name — the record. */
+  nameAr: string;
+  /** ترجمات الاسم. / The name's translations. */
+  nameTranslations?: NameValue[];
+  /** الإقامة الضريبية. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The tax residency. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  taxResidency: "non_resident" | "resident";
+  /** رقم التسجيل الضريبي، أو نصّ فارغ لمن لا رقم له — والغياب واقعة لا نقص. / The VAT registration number, or an empty string for a party without one — its absence is a fact, not a gap. */
+  vatNumber: string;
+}
+
 /** تخصيص مبلغ من سند قبض على فاتورة مبيعات **مُرحَّلة**. ولا عميل فيه: عميلُه عميل السند، والفاتورة تُفحص أنها له — وإعادة ذكره كانت ستفتح باباً لتخصيصٍ على فاتورة عميل آخر. / An allocation of part of a receipt against a **posted** sales invoice. It carries no customer: the customer is the receipt's, and the invoice is checked to be theirs — repeating it would open a door to allocating against another customer's invoice. */
 export interface ReceiptAllocation {
   amount: Money;
@@ -933,6 +1100,44 @@ export interface RegisteredTenant {
 export interface RenewSessionRequest {
   /** اعتماد التجديد الجاري. نصٌّ مبهم لا بنية فيه: لا يُحلَّل ولا يُشتقّ منه شيء، ويُقدَّم كما وصل. / The current refresh credential. An opaque string with no structure: never parsed, nothing derived from it, presented exactly as received. */
   refreshCredential: string;
+}
+
+/** فاتورة إيجار بحالتها ومجاميعها وحدثها. وexemptionReasonPending **علامة ظاهرة** على إعفاءٍ بلا رمز سبب: الرمز يُؤخذ من القائمة الرسمية السارية ولا يُخترع، وغيابه يُرى في التقرير لا في تعليق. / A rent invoice with its state, totals, and event. exemptionReasonPending is a **visible flag** on an exempt invoice with no reason code: the code comes from the official list in force and is never invented, and its absence is seen in the report rather than in a comment. */
+export interface RentInvoice {
+  /** هل كانت هذه الهوية مُرحَّلة قبل هذا النداء؟ **معلومة لا تُشتقّ من الحالة**: مستندٌ حالته POSTED بعد النداء لا يقول وحده أيُّ النداءين رحّله. / Was this identity already posted before this call? **Not derivable from the state**: a document that is POSTED after the call does not by itself say which call posted it. */
+  alreadyPosted: boolean;
+  /** معرّف القيد إن رُحّلت، وإلا null. / The entry identifier if posted, otherwise null. */
+  entryId: string | null;
+  /** الحدث الذي اختارته الوحدة من نموذج الملكية المُسجَّل — لا من الطلب. / The event the module selected from the registered ownership model — never from the request. */
+  eventCode: string;
+  /** رمز سبب الإعفاء، ونصٌّ فارغ ما دام غير معروف. / The exemption reason code, an empty string while it is unknown. */
+  exemptionReasonCode: string;
+  /** إعفاءٌ بلا رمز سبب — علامة ظاهرة لا تعليق في شيفرة. / An exemption with no reason code — a visible flag, not a comment in code. */
+  exemptionReasonPending: boolean;
+  gross: Money;
+  /** المعرّف. / The identifier. */
+  id: string;
+  net: Money;
+  /** الرقم. / The number. */
+  number: string;
+  /** حالة الفاتورة. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The invoice state. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  state: "DRAFT" | "POSTED";
+  tax: Money;
+  /** معاملة الوحدة الضريبية المنسوخة وقت الإصدار. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The unit's VAT treatment as copied at issue time. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  vatTreatment: "exempt" | "standard";
+}
+
+/** طلب إنشاء فاتورة إيجار مسوّدة. **ولا رمز حدث فيه ولا نموذج ملكية ولا مبالغ سطور**: المبالغ من جدول الدفعات، والحدث من نموذج الملكية المُسجَّل في الدفتر. وtaxRate تصل مع الطلب ولا تُكتب في شيفرة، ولا تُطبَّق إلا على وحدةٍ معاملتها standard. / A request to draft a rent invoice. **It carries no event code, no ownership model, and no line amounts**: amounts come from the payment schedule and the event from the ownership model registered in the ledger. taxRate arrives with the request rather than being written in code, and applies only to a unit whose treatment is standard. */
+export interface RentInvoiceRequest {
+  /** تاريخ الإصدار الميلادي. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The issue date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  issuedOn: string;
+  /** العقد — ويجب أن يكون سارياً. / The lease — it must be active. */
+  leaseId: string;
+  /** رقم الفاتورة — فريد داخل المنشأة. / The invoice number — unique within the company. */
+  number: string;
+  /** معرّفات الأقساط المفوترة كما نشرها مورد جدول الدفعات. / The identifiers of the instalments being billed, as published by the schedule resource. */
+  scheduleLineIds: string[];
+  taxRate: Money;
 }
 
 export interface ReverseJournalEntryRequest {
@@ -1233,6 +1438,55 @@ export interface SuspendCostCenterRequest {
 /** نسبة الضريبة **كسراً عشرياً لا نسبة مئوية**: خمسة عشر بالمئة تُكتب 0.15 لا 15. والمقياس ثمانٍ لا أربع: النسبة ليست مبلغاً ولا تُقرَّب إلى الهللة. / The tax rate as a **decimal fraction, not a percentage**: fifteen percent is written 0.15, never 15. The scale is eight, not four: a rate is not an amount and is not rounded to the halala. */
 /* TaxRate مُعرَّف في ../money كنوع محتجز وقت التشغيل. */
 
+/** أعمار متأخرات المستأجرين **ومطابقتها بنقطة ضبطها** في الجواب نفسه: isReconciled صحيح حين يكون الفارق **صفراً بالضبط** لا «قريباً من الصفر». / Tenant arrears ageing **together with its reconciliation against its control point** in the same response: isReconciled is true when the divergence is **exactly zero**, never 'close to zero'. */
+export interface TenantArrears {
+  /** تاريخ التقرير. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The report date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  asOf: string;
+  controlTotal: Money;
+  divergence: Money;
+  /** هل الفارق صفر بالضبط؟ / Is the divergence exactly zero? */
+  isReconciled: boolean;
+  /** المستأجرون الذين عليهم متأخرات. / The tenants carrying arrears. */
+  parties: ArrearsParty[];
+  totals: ArrearsBands;
+}
+
+/** سند قبض بحالته وحدثه. و**قيدان لا قيد واحد** حين يُخصَّص: قيد التحصيل باقٍ كما وقع، وقيد التخصيص مستقلٌّ عنه — والعكس كان سيمحو واقعةً وقعت. / A tenant receipt with its state and event. **Two entries, not one** once allocated: the collection entry stands as it occurred and the allocation entry is separate — a reversal would have erased a fact that happened. */
+export interface TenantReceipt {
+  /** قيد التخصيص المستقلّ إن وقع، وإلا null. / The separate allocation entry if it occurred, otherwise null. */
+  allocationEntryId: string | null;
+  /** هل كانت هذه الهوية مُرحَّلة قبل هذا النداء؟ / Was this identity already posted before this call? */
+  alreadyPosted: boolean;
+  /** قيد الترحيل إن وقع. / The posting entry if it occurred. */
+  entryId: string | null;
+  /** الحدث المُرحَّل — اختاره حضور المرجع أو غيابه. / The posted event — chosen by the presence or absence of the reference. */
+  eventCode: string;
+  /** المعرّف. / The identifier. */
+  id: string;
+  /** هل خُصِّص؟ والتخصيص يقع مرّة. / Has it been allocated? Allocation happens once. */
+  isAllocated: boolean;
+  /** الرقم. / The number. */
+  number: string;
+  received: Money;
+  /** حالة السند. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The receipt state. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  state: "DRAFT" | "POSTED";
+}
+
+/** طلب تسجيل سند قبض من مستأجر. **وغياب lesseeId ليس نقصاً بل واقعة**: مبلغٌ ورد بلا مرجع يُرحَّل إلى حساب التحصيلات غير المخصَّصة ولا يُنسب إلى أحد بالتخمين، ثم يُخصَّص بقيدٍ مستقل حين يُعرف صاحبه. / A tenant receipt request. **A missing lesseeId is a fact, not a gap**: an amount that arrived without a reference posts to the unallocated collections account and is never attributed by guesswork, then is allocated by a separate entry once its owner is known. */
+export interface TenantReceiptRequest {
+  /** المستأجر، أو null فالمبلغ ورد بلا مرجع. / The lessee, or null when the amount arrived without a reference. */
+  lesseeId?: string | null;
+  /** رقم السند — فريد داخل المنشأة. / The receipt number — unique within the company. */
+  number: string;
+  received: Money;
+  /** تاريخ القبض الميلادي. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The collection date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  receivedOn: string;
+  /** طريقة التسوية — مؤهّل دور تقرؤه المصفوفة. المستعمَل اليوم: cash · bank · card_clearing. / The settlement method — a role qualifier the matrix reads. In use today: cash, bank, card_clearing. */
+  settlementMethod: string;
+  /** الخزينة أو الحساب البنكي في دفتره المساعد — **طرفٌ لا رقم حساب**. / The cash box or bank account in its subledger — **a party, not an account number**. */
+  treasuryPartyId: string;
+}
+
 /** ميزان المراجعة بمجموعيه. والمجموعان محسوبان بـ sum() على numeric داخل PostgreSQL في الاستعلام نفسه الذي أنتج الصفوف: الجمع هناك مضبوط بلا فاصلة عائمة في أي خطوة. ولا يُجمع العمود في طبقة HTTP (حسابٌ على المال)، ولا في المتصفّح (Number فاصلة عائمة ثنائية). و balanced يصل محسوماً كذلك، وميزانٌ غير متوازن يُرى ولا يُقرَّب. / The trial balance with its totals. Both are computed by sum() over numeric inside PostgreSQL in the same query that produced the rows, where summation is exact with no floating point at any step. The column is never summed in the HTTP layer (that is money arithmetic) nor in the browser (Number is a binary float). The balanced flag arrives decided too, and a trial balance that does not balance is visible, never rounded away. */
 export interface TrialBalance {
   /** هل تساوى المجموعان؟ محسوم في الدفتر لا عند العميل. / Do the two totals match? Decided in the ledger, not at the client. */
@@ -1260,6 +1514,24 @@ export interface TrialBalanceRow {
   nameTranslations: NameValue[];
 }
 
+/** وحدةٌ داخل عقار، بتصنيفها الذي يقود شرط خضوع الإيجار للضريبة. / A unit within a property, with the classification that drives the letting's taxability condition. */
+export interface Unit {
+  /** الرمز. / The code. */
+  code: string;
+  /** المعرّف. / The identifier. */
+  id: string;
+  /** الاسم العربي. / The Arabic name. */
+  nameAr: string;
+  /** ترجمات الاسم. / The name's translations. */
+  nameTranslations: NameValue[];
+  /** العقار المالك — والوحدة لا تقف بلا عقارها على أي سطر قيد. / The owning property — a unit never stands without its property on any journal line. */
+  propertyId: string;
+  /** الاستعمال. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The use. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  usage: "commercial" | "residential";
+  /** المعاملة الضريبية. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The VAT treatment. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  vatTreatment: "exempt" | "standard";
+}
+
 /** متوسط تكلفة الوحدة نصّاً بمقياس **ستّ خانات لا أربع**: صنفٌ يُشترى بألف حبّة بمئة ريال تكلفة وحدته 0.100000، وبمقياس أربعة تصير 0.1000 والفرق لا يظهر — لكنه يتراكم على كل صرف حتى ينحرف رصيد القيمة عن مجموع حركاته. / The moving average unit cost as a string with **six** decimal places rather than four: an item bought at a thousand pieces for a hundred riyals has a unit cost of 0.100000, which at scale four becomes 0.1000 and the difference disappears — yet it accumulates on every issue until the value balance no longer equals the sum of its movements. */
 /* UnitCost مُعرَّف في ../money كنوع محتجز وقت التشغيل. */
 
@@ -1271,6 +1543,20 @@ export interface UnitFactor {
   numerator: number;
   /** رمز الوحدة الأكبر. / The larger unit's code. */
   unitCode: string;
+}
+
+/** طلب تسجيل وحدة داخل عقار. **وusage وvatTreatment حقلان صريحان لا يُشتقّ أحدهما من الآخر ولا من نوع العقار**: العقار المختلط يولّد توريداً خاضعاً ومعفى معاً. / A unit registration request within a property. **usage and vatTreatment are explicit fields, neither derived from the other nor from the property type**: a mixed-use property produces taxable and exempt supplies at once. */
+export interface UnitRequest {
+  /** رمز الوحدة — وهو ما يظهر بُعداً على سطر القيد مع بُعد عقاره. / The unit code — what appears as a dimension on the journal line alongside its property dimension. */
+  code: string;
+  /** اسم الوحدة بالعربية — السجلّ. / The unit's Arabic name — the record. */
+  nameAr: string;
+  /** ترجمات الاسم. / The name's translations. */
+  nameTranslations?: NameValue[];
+  /** استعمال الوحدة، يُدخَل ويُراجَع ولا يُشتقّ. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The unit's use, entered and reviewed, never derived. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  usage: "commercial" | "residential";
+  /** المعاملة الضريبية للوحدة، تُدخَل ولا تُشتقّ. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The unit's VAT treatment, entered and never derived. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  vatTreatment: "exempt" | "standard";
 }
 
 /** طلب سحب مرفق. والسبب مفتاحٌ من مجموعة يملكها المستدعي لا نصّ حرّ: نصٌّ حرّ يُكتب بلغة كاتبه ثم يُقرأ في تقرير بلغة أخرى، ولا يُرشَّح عليه ولا يُترجَم. / A request to withdraw an attachment. The reason is a key from a set the caller owns, not free text: free text is written in its author's language and read in a report in another, is never filtered on, and is never translated. */

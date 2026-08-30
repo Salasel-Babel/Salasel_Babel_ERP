@@ -69,6 +69,13 @@ create constraint trigger trg_journal_entry_balanced
 -- GR-COA-001 — لا ترحيل على حساب تجميعي.
 -- GR-COA-002 — لا ترحيل بلا كل بُعد إلزامي على الحساب.
 -- GR-RE-001  — لا ترحيل إلى دور إيراد الإيجار على عقار «مُدار لصالح الغير».
+-- GR-RE-002  — لا إهلاك عقارٍ استثماري «مُدار لصالح الغير»: ليس أصلاً للشركة.
+--
+-- وما ليس هنا مكتوبٌ باسمه: **GR-RE-003 لا طبقة ثالثة لها**، لأن شرطها واقعةٌ عن
+-- أمر الصيانة (`work_order.billing_mode`) ولا عمود لها على `journal_line` ولا جدول
+-- وقائع في مخطّط `ledger` — الوقائع قاموسٌ عابر في `PostingPlanner`. ونصّ القاعدة في
+-- `data/posting-matrix/guard-rules.json` صُحِّح ليقول ما يُفرَض فعلاً (طبقتان)،
+-- لأن **وعداً بحارسٍ لا يوجد أخطر من غياب الحارس**.
 -- ═══════════════════════════════════════════════════════════════════════════
 create or replace function ledger.assert_line_allowed() returns trigger
 language plpgsql security definer set search_path = ledger, pg_catalog as $fn$
@@ -124,6 +131,24 @@ begin
         end if;
     end if;
 
+    -- GR-RE-002 — بنفس شكل GR-RE-001 وللسبب نفسه، وقابلةٌ للتنفيذ هنا لأن حساب
+    -- إهلاك العقارات الاستثمارية يُعلن `required_dimensions=property` في الدليل
+    -- المشحون، فبُعد العقار حاضرٌ حتماً على سطره (وGR-COA-002 أعلاه ترفضه إن غاب).
+    -- وإهلاك أصل لا تملكه المنشأة يُحمّل قائمة الدخل مصروفاً وهمياً ويُثبت أصلاً
+    -- وهمياً في الميزانية.
+    if new.role_code = 'investment_property_depreciation_expense' and new.property_id is not null then
+        select ownership_model into v_ownership
+          from ledger.property_dimension
+         where company_id = new.company_id and property_id = new.property_id;
+
+        if v_ownership = 'managed_for_others' then
+            raise exception
+                'GR-RE-002 property=% : يُمنع إهلاك عقار مُدار لصالح الغير — العقار ليس أصلاً للشركة ولا يظهر في ميزانيتها / depreciating a property managed for others is refused',
+                new.property_id
+                using errcode = 'check_violation';
+        end if;
+    end if;
+
     return null;
 end
 $fn$;
@@ -133,3 +158,33 @@ create constraint trigger trg_journal_line_allowed
     after insert on ledger.journal_line
     deferrable initially deferred
     for each row execute function ledger.assert_line_allowed();
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- الوحدة لا تقف وحدها: بُعد الوحدة يستلزم بُعد العقار على السطر نفسه
+--
+-- ‏`data/posting-matrix/dimensions.csv` يقول عن `unit` إن «العقار يُشترط تحديده
+-- معها»، وحلقة GR-COA-002 أعلاه تفحص **العدم وحده** ولا تفرض الاقتران: حسابٌ
+-- يُعلن `unit` بلا أن يُعلن `property` كان يمرّ بوحدةٍ بلا عقارها.
+--
+-- ووحدةٌ بلا عقارها ليست خطأ عرض: تقرير ربحية العقار يجمع سطوراً بعضها معلَّق
+-- بوحدةٍ لا يعرف أحد لأي عقارٍ هي، فيُنقص مجموعاً بلا أن يُنقص شيءٌ يُرى.
+--
+-- ‏**والقيد لا يكسر صفّاً اليوم**: مقيس أن صفر سطر في مصفوفة الترحيل كلّها يحمل
+-- `unit` بلا `property`. وبعد أول عميل يصير هجرةً على جدولٍ ينمو بكل قيد — وذلك
+-- بعينه سبب كتابته الآن.
+--
+-- والإضافة محروسة بالوجود كي يبقى النصّ قابلاً لإعادة التشغيل بلا أثر.
+-- ═══════════════════════════════════════════════════════════════════════════
+do $unit_requires_property$
+begin
+    if not exists (
+        select 1 from pg_constraint
+         where conname = 'ck_journal_line_unit_requires_property'
+           and conrelid = 'ledger.journal_line'::regclass)
+    then
+        alter table ledger.journal_line
+            add constraint ck_journal_line_unit_requires_property
+            check (unit_id is null or property_id is not null);
+    end if;
+end
+$unit_requires_property$;

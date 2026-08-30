@@ -340,6 +340,94 @@ internal static class ApiRoutes
     /// </summary>
     public const string InventoryValuation = Company + "/inventory-valuation";
 
+    // ── العقارات ─────────────────────────────────────────────────────────────
+    // والشكل هو الشكل نفسه: **إنشاء مسوّدة · قراءة · فعلٌ على مورد فرعي**. ولا `PUT`
+    // ولا `PATCH` ولا `DELETE` على عقارٍ ولا وحدةٍ ولا عقدٍ ولا فاتورةٍ ولا سند.
+    //
+    // ‏**ولاحظ اسم مورد المستأجر: `lessees` لا `tenants`.** المسار `/api/v1/tenants`
+    // وأربعة مسارات اشتراك تحته منشورةٌ اليوم **لمستأجر النظام**، ونشرُ الكلمة بمعنيين
+    // يجعل العقد يكذب على قارئه قبل أن يتصادم التوجيه.
+
+    /// <summary>العقارات: التسجيل. <b>ويسجّل بُعد العقار في الدفتر في العملية نفسها.</b></summary>
+    public const string Properties = Company + "/properties";
+
+    /// <summary>عقار واحد: القراءة بنموذج ملكيته وحصّة مالكه.</summary>
+    public const string Property = Properties + "/{propertyId}";
+
+    /// <summary>
+    /// وحدات عقار: التسجيل. <b>مورد فرعي لا مورد رئيسي</b> — <c>dimensions.csv</c>
+    /// يشترط العقار مع الوحدة، فالشرط بنيةٌ في العنوان لا تحقّقٌ في الجسم.
+    /// </summary>
+    public const string PropertyUnits = Property + "/units";
+
+    /// <summary>وحدة واحدة: القراءة بتصنيفها — وهو ما يقود شرط الخضوع للضريبة.</summary>
+    public const string Unit = Company + "/units/{unitId}";
+
+    /// <summary>المستأجرون العقاريون: التسجيل.</summary>
+    public const string Lessees = Company + "/lessees";
+
+    /// <summary>مستأجر واحد: القراءة.</summary>
+    public const string Lessee = Lessees + "/{lesseeId}";
+
+    /// <summary>ملّاك العقارات: التسجيل.</summary>
+    public const string PropertyOwners = Company + "/property-owners";
+
+    /// <summary>مالك واحد: القراءة.</summary>
+    public const string PropertyOwner = PropertyOwners + "/{ownerId}";
+
+    /// <summary>
+    /// عقود الإيجار: إنشاء <b>مسوّدة</b>.
+    /// <para>
+    /// <b>ولا مورد <c>…/posting</c> عليه إطلاقاً ولا يجوز أن يوجد:</b> الحدث
+    /// <c>realestate.lease.signed</c> مُعلَنٌ في المصفوفة بـ<c>posts_entry=false</c> —
+    /// العقد التزام متبادل مستقبلي لم ينفّذه أي طرف. وغيابُ الباب هو ما يجعل «العقد
+    /// لا يُرحّل» مقروءاً من شكل السطح لا من تعليق.
+    /// </para>
+    /// </summary>
+    public const string LeaseContracts = Company + "/lease-contracts";
+
+    /// <summary>عقد واحد: القراءة بحالته.</summary>
+    public const string LeaseContract = LeaseContracts + "/{leaseId}";
+
+    /// <summary>
+    /// جدول دفعات العقد <b>بمعرّفات سطوره</b> — وهي مدخل الفوترة. وبلا نشرها يصير باب
+    /// الفوترة باباً لا يوصل إليه بابٌ آخر (ADR-0047).
+    /// </summary>
+    public const string LeaseContractSchedule = LeaseContract + "/schedule";
+
+    /// <summary>
+    /// تفعيل العقد. مورد فرعي مستقلّ: التفعيل <b>فعلٌ يولّد جدول الدفعات</b> ويُدخل
+    /// المدّة قيد الاستبعاد الزمني، لا حقلٌ يُعدَّل. <b>ولا يُرحّل قيداً.</b>
+    /// </summary>
+    public const string LeaseContractActivation = LeaseContract + "/activation";
+
+    /// <summary>فواتير الإيجار: إنشاء <b>مسوّدة</b>. والوحدة تختار الحدث من السجلّ لا من الطلب.</summary>
+    public const string RentInvoices = Company + "/rent-invoices";
+
+    /// <summary>فاتورة إيجار واحدة: القراءة.</summary>
+    public const string RentInvoice = RentInvoices + "/{invoiceId}";
+
+    /// <summary>ترحيل فاتورة إيجار — مورد فرعي مستقلّ وحصين ضد التكرار.</summary>
+    public const string RentInvoicePosting = RentInvoice + "/posting";
+
+    /// <summary>سندات القبض من المستأجرين: إنشاء <b>مسوّدة</b>.</summary>
+    public const string TenantReceipts = Company + "/tenant-receipts";
+
+    /// <summary>سند قبض واحد: القراءة.</summary>
+    public const string TenantReceipt = TenantReceipts + "/{receiptId}";
+
+    /// <summary>ترحيل سند قبض — بالحدث الذي اختاره حضور المرجع أو غيابه.</summary>
+    public const string TenantReceiptPosting = TenantReceipt + "/posting";
+
+    /// <summary>
+    /// تخصيص سند ورد بلا مرجع. مورد فرعي مستقلّ: التخصيص <b>قيدٌ مستقل لا عكسٌ</b>
+    /// للقيد السابق — المال وصل فعلاً، والعكس يجعل الدفتر يقول إنه لم يصل.
+    /// </summary>
+    public const string TenantReceiptAllocation = TenantReceipt + "/allocation";
+
+    /// <summary>أعمار متأخرات المستأجرين ومطابقتها بنقطة ضبطها في تاريخ معلوم.</summary>
+    public const string TenantArrearsAging = Company + "/tenant-arrears-aging";
+
     /// <summary>
     /// العقد المنشور نفسه، بايتاته كما أُودعت في <c>contracts/openapi/v1.json</c>.
     /// <para>

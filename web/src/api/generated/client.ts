@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     dac93701517afebf600cd3f74868a4ca5bd94861699466e41651938520f14959
+     f190afc20a37f87b028e9f72ad94399c1209454ba037ae74feb1929f982c3c23
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -19,6 +19,36 @@ import { SCHEMAS } from "./runtime-schema";
 import { decodeSchema, encodeSchema, type Transport, ProblemError } from "../transport";
 
 export type { Transport } from "../transport";
+
+export interface ActivateLeaseContractArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف عقد الإيجار. / The lease contract identifier. */
+  leaseId: string;
+}
+
+/**
+ * تفعيل عقد إيجار / Activate a lease contract
+ * 
+ * يُفعّل العقد: يفحص أن مجموع الأقساط يساوي قيمة العقد بالضبط، ثم يجعل جدول الدفعات قابلاً للفوترة، ويُدخل المدّة **قيد الاستبعاد الزمني** في قاعدة البيانات.
+ * 
+ * **والقيد في القاعدة لا في الواجهة**: «مدّة سارية واحدة لكل وحدة» شرط **تقاطع مدى** لا شرط تساوٍ، فلا يعبّر عنه فهرس فريد مهما اتّسع؛ وفحصٌ في الخدمة يقرأ ثم يكتب، وبين القراءة والكتابة يمرّ نداءٌ آخر فتُؤجَّر الوحدة مرّتين.
+ * 
+ * **ولا يُرحّل قيداً**، ومخطّط جوابه بلا معرّف قيد.
+ * 
+ * Activates the contract: it checks that the instalments sum exactly to the contract value, makes the payment schedule billable, and enters the term into a **temporal exclusion constraint** in the database.
+ * 
+ * **The constraint is in the database, not the interface**: 'one live term per unit' is a **range-overlap** condition, not an equality condition, so no unique index however wide can express it; and a check in the service reads then writes, and between the read and the write another call slips through and the unit is let twice.
+ * 
+ * **It posts no entry**, and its response schema carries no entry identifier.
+ */
+export async function activateLeaseContract(transport: Transport, args: ActivateLeaseContractArgs, signal?: AbortSignal): Promise<T.Lease> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/lease-contracts/" + encodeURIComponent(args.leaseId) + "/activation";
+  const url = path;
+  const response = await transport({ method: "POST", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "Lease", response.json) as T.Lease;
+}
 
 export interface AddCostCenterArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
@@ -153,6 +183,39 @@ export async function admitDocument(transport: Transport, args: AdmitDocumentArg
   return decodeSchema(SCHEMAS, "DocumentAdmission", response.json) as T.DocumentAdmission;
 }
 
+export interface AllocateTenantReceiptArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف سند القبض من المستأجر. / The tenant receipt identifier. */
+  receiptId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.AllocationRequest;
+}
+
+/**
+ * تخصيص سند قبض ورد بلا مرجع / Allocate a tenant receipt that arrived without a reference
+ * 
+ * يخصّص سنداً رُحّل غير مخصَّص على مستأجر تبيّن أنه صاحبه — **بقيدٍ مستقلّ لا عكسٍ للقيد السابق**.
+ * 
+ * **ولماذا لا عكس:** المال وصل فعلاً، وعكسُ قيد التحصيل يمحو واقعةً وقعت ويترك الدفتر يقول إنها لم تقع. والتخصيص ينقل من حساب التحصيلات غير المخصَّصة إلى ذمم المستأجرين، وهو حدثٌ قائم بذاته في مصفوفة الترحيل.
+ * 
+ * ورمز الحدث **داخل هوية الترحيل**، فقيدا التحصيل والتخصيص على المستند نفسه لا يتصادمان ولا يبتلع أحدهما الآخر.
+ * 
+ * Allocates a receipt that was posted unallocated to the tenant it turns out to belong to — **as a separate entry, never as a reversal of the earlier one**.
+ * 
+ * **Why not a reversal:** the money genuinely arrived, and reversing the collection entry erases a fact that occurred and leaves the ledger saying it did not. Allocation moves from unallocated collections to the tenant receivable, and is an event in its own right in the posting matrix.
+ * 
+ * The event code sits **inside the posting identity**, so the collection and allocation entries on the same document never collide and neither swallows the other.
+ */
+export async function allocateTenantReceipt(transport: Transport, args: AllocateTenantReceiptArgs, signal?: AbortSignal): Promise<T.TenantReceipt> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/tenant-receipts/" + encodeURIComponent(args.receiptId) + "/allocation";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "AllocationRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "TenantReceipt", response.json) as T.TenantReceipt;
+}
+
 export interface ChangeMembershipRoleArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
@@ -225,6 +288,95 @@ export async function changeSubscriptionPlan(transport: Transport, args: ChangeS
   return decodeSchema(SCHEMAS, "Subscription", response.json) as T.Subscription;
 }
 
+export interface CreateLesseeArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.RealEstatePartyRequest;
+}
+
+/**
+ * تسجيل مستأجر عقاري / Register a lessee
+ * 
+ * يسجّل مستأجراً عقارياً.
+ * 
+ * **ولماذا اسم المورد lessees لا tenants:** المسار /api/v1/tenants ومسارات الاشتراك تحته منشورةٌ في هذا العقد نفسه لمستأجر **النظام**، ونشرُ الكلمة بمعنيين يجعل العقد يكذب على قارئه قبل أن يتصادم التوجيه.
+ * 
+ * **وtaxResidency بلا افتراضي**: عليها يتوقّف سطر الاستقطاع في توريد المالك، وقيمةٌ افتراضية «مقيم» تُسقط الاستقطاع بصمت عن كل طرفٍ لم يُملأ حقله.
+ * 
+ * Registers a real-estate lessee.
+ * 
+ * **Why the resource is lessees and not tenants:** the path /api/v1/tenants and the subscription paths beneath it are published in this very contract for the **system** tenant, and publishing the word with two meanings makes the contract lie to its reader before routing ever collides.
+ * 
+ * **taxResidency has no default**: the withholding line on an owner payout depends on it, and a default of 'resident' silently drops withholding for every party whose field was left unfilled.
+ */
+export async function createLessee(transport: Transport, args: CreateLesseeArgs, signal?: AbortSignal): Promise<T.RealEstateParty> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/lessees";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "RealEstatePartyRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "RealEstateParty", response.json) as T.RealEstateParty;
+}
+
+export interface CreatePropertyArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.PropertyRequest;
+}
+
+/**
+ * تسجيل عقار / Register a property
+ * 
+ * يسجّل عقاراً **ويسجّل بُعده في دفتر الأستاذ في العملية نفسها**.
+ * 
+ * **ولماذا العمليتان واحدة:** قاعدة الحجب GR-RE-001 تُقيَّم على واقعة نموذج ملكية العقار، ومصدرها الوحيد المُعتمَد صفُّ العقار في سجلّ أبعاد الدفتر. وحين يغيب ذلك الصفّ تعود القاعدة **غير قابلة للتقييم**، والقاعدة التي لا تُقيَّم لا تُتجاوَز — فيُرفض القيد كاملاً. أي أن عقاراً غير مسجَّل يُعطّل دورته كلها بصوت عالٍ ولا يمرّ صامتاً.
+ * 
+ * **وownershipModel بلا قيمة افتراضية**: هو ما يقرّر أدائنُ الأجرة إيرادَ الشركة أم أمانةً لمالكها، و**لا يُعدَّل بعد التسجيل** — تغييره يُعيد تفسير قيودٍ مُرحَّلة بأثر رجعي، ودورُ التطبيق لا يملك update ولا delete على ذلك السجلّ أصلاً.
+ * 
+ * وفي نموذج الإدارة **المالك إلزامي**: سطر أمانات الملاك يحمل طرفاً في دفتره المساعد.
+ * 
+ * Registers a property **and registers its dimension in the ledger within the same operation**.
+ * 
+ * **Why the two are one act:** guard rule GR-RE-001 is evaluated on the property ownership-model fact, whose only authoritative source is the property row in the ledger dimension register. When that row is missing the rule becomes **undecidable**, and a rule that cannot be evaluated is never bypassed — so the whole entry is refused. An unregistered property therefore disables its entire cycle loudly rather than passing silently.
+ * 
+ * **ownershipModel has no default**: it decides whether the credit of rent is company revenue or a liability to an owner, and it **is never edited after registration** — changing it reinterprets already-posted entries retroactively, and the application role holds neither update nor delete on that register.
+ * 
+ * Under the managed model an **owner is mandatory**: the owner trust line carries a party in its subledger.
+ */
+export async function createProperty(transport: Transport, args: CreatePropertyArgs, signal?: AbortSignal): Promise<T.Property> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/properties";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "PropertyRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "Property", response.json) as T.Property;
+}
+
+export interface CreatePropertyOwnerArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.RealEstatePartyRequest;
+}
+
+/**
+ * تسجيل مالك عقار / Register a property owner
+ * 
+ * يسجّل مالك عقار بحقلَي التسجيل الضريبي والإقامة الضريبية. وفي نموذج الإدارة تُقيَّد أجرةُ عقاره **أمانةً له** لا إيراداً للشركة، وإيرادُ الشركة هو العمولة وحدها.
+ * 
+ * Registers a property owner with its VAT registration and tax residency. Under the managed model the rent of its property is booked **as a liability to it** rather than as company revenue; the company's revenue is the commission alone.
+ */
+export async function createPropertyOwner(transport: Transport, args: CreatePropertyOwnerArgs, signal?: AbortSignal): Promise<T.RealEstateParty> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/property-owners";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "RealEstatePartyRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "RealEstateParty", response.json) as T.RealEstateParty;
+}
+
 export interface CreatePurchaseOrderArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
@@ -258,6 +410,35 @@ export async function createPurchaseOrder(transport: Transport, args: CreatePurc
   const response = await transport({ method: "POST", url, body, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "PurchaseOrder", response.json) as T.PurchaseOrder;
+}
+
+export interface CreateUnitArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف العقار. / The property identifier. */
+  propertyId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.UnitRequest;
+}
+
+/**
+ * تسجيل وحدة داخل عقار / Register a unit within a property
+ * 
+ * يسجّل وحدةً **مورداً فرعياً للعقار**: بيانات الأبعاد تشترط العقار مع الوحدة، وقيدُ تحقّقٍ على سطر القيد يفرض الاقتران على أي كاتب. فالاشتراط **بنيةٌ في العنوان** لا تحقّقٌ في الجسم.
+ * 
+ * **وusage وvatTreatment حقلان صريحان لا يُشتقّ أحدهما من الآخر ولا من نوع العقار**: العقار المختلط يولّد توريداً خاضعاً ومعفى في آنٍ واحد، والاشتقاق الآلي يُنتج آلاف العقود بتصنيفٍ واحد خاطئ.
+ * 
+ * Registers a unit as a **sub-resource of the property**: the dimension data requires the property alongside the unit, and a check constraint on the journal line enforces the pairing against any writer. The requirement is therefore **structure in the address**, not validation in the body.
+ * 
+ * **usage and vatTreatment are explicit fields, neither derived from the other nor from the property type**: a mixed-use property produces taxable and exempt supplies at once, and automatic derivation produces thousands of contracts under one wrong classification.
+ */
+export async function createUnit(transport: Transport, args: CreateUnitArgs, signal?: AbortSignal): Promise<T.Unit> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/properties/" + encodeURIComponent(args.propertyId) + "/units";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "UnitRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "Unit", response.json) as T.Unit;
 }
 
 export interface DepositAttachmentArgs {
@@ -464,6 +645,37 @@ export async function draftGoodsReceipt(transport: Transport, args: DraftGoodsRe
   return decodeSchema(SCHEMAS, "CommercialDocument", response.json) as T.CommercialDocument;
 }
 
+export interface DraftLeaseContractArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.LeaseRequest;
+}
+
+/**
+ * إنشاء عقد إيجار مسوّدة / Draft a lease contract
+ * 
+ * يُنشئ عقد إيجار في حالة **DRAFT**.
+ * 
+ * **ولاحظ ما ليس على هذا المورد ولا يجوز أن يوجد: لا مورد posting.** حدث توقيع العقد مُعلَنٌ في مصفوفة الترحيل بأنه **لا يُنشئ قيداً**: العقد التزام متبادل مستقبلي لم ينفّذه أي طرف بعد. وغيابُ الباب هو ما يجعل «العقد لا يُرحّل» مقروءاً من شكل السطح لا من تعليق.
+ * 
+ * **والأقساط تصل مصرَّحاً بها ولا تُوزَّع من قيمة العقد**: التوزيع يستلزم سياسة تقريب — أين يقع فائض الهللات — وهي **قرار مالك مفتوح** لا يُحسم في شيفرة. والنظام يفحص عند التفعيل أن مجموع الأقساط يساوي قيمة العقد بالضبط، ويرفض بخلاف ذلك برمزٍ يسمّي البند المعلَّق.
+ * 
+ * Creates a lease contract in state **DRAFT**.
+ * 
+ * **Note what this resource does not carry and must never carry: no posting sub-resource.** The lease-signature event is declared in the posting matrix as posting **no entry**: the contract is a future mutual obligation neither party has yet performed. The absence of the door is what makes 'a lease posts nothing' readable from the shape of the surface rather than from a comment.
+ * 
+ * **Instalments arrive declared and are never spread from a contract value**: spreading requires a rounding policy — where the halala surplus lands — which is an **open owner decision**, not something settled in code. On activation the system checks that the instalments sum exactly to the contract value and refuses otherwise under a code that names the pending item.
+ */
+export async function draftLeaseContract(transport: Transport, args: DraftLeaseContractArgs, signal?: AbortSignal): Promise<T.Lease> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/lease-contracts";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "LeaseRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "Lease", response.json) as T.Lease;
+}
+
 export interface DraftPurchaseReturnArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
@@ -493,6 +705,41 @@ export async function draftPurchaseReturn(transport: Transport, args: DraftPurch
   const response = await transport({ method: "POST", url, body, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "CommercialDocument", response.json) as T.CommercialDocument;
+}
+
+export interface DraftRentInvoiceArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.RentInvoiceRequest;
+}
+
+/**
+ * إنشاء فاتورة إيجار مسوّدة / Draft a rent invoice
+ * 
+ * يُنشئ فاتورة إيجار في حالة **DRAFT** على أقساط مُسمّاة من جدول دفعات عقدٍ سارٍ.
+ * 
+ * **ولا رمز حدث في الحمولة ولا نموذج ملكية**: الوحدة تقرأ نموذج ملكية العقار **المُسجَّل في الدفتر** وتختار الحدث منه — فلا يستطيع عميل HTTP أن يطلب «فاتورة ملكية ذاتية» على عقارٍ مُدار. والفرق يظهر في **دائن الفاتورة**: إيرادُ إيجار مؤجَّل للشركة في الملكية الذاتية، وأماناتُ مالكٍ في الإدارة.
+ * 
+ * **وtaxRate تصل مع الطلب ولا تُكتب في شيفرة** (لا نسبة نظامية في هذا المنتج)، ولا تُطبَّق إلا على وحدةٍ معاملتها standard. وعلى الوحدة المعفاة يبقى exemptionReasonCode **فارغاً بعلامة ظاهرة** حتى يُعرف الرمز من القائمة الرسمية السارية — وحقلٌ إلزامي بقيمة مُختلَقة أسوأ من حقلٍ فارغ.
+ * 
+ * **والقسط لا يُفوتَر مرّتين**: فهرس فريد على (المستأجر، القسط) لا فحصٌ في الخدمة.
+ * 
+ * Creates a rent invoice in state **DRAFT** over named instalments from an active lease's payment schedule.
+ * 
+ * **No event code and no ownership model appear in the payload**: the module reads the property's ownership model **as registered in the ledger** and selects the event from it — so an HTTP client cannot request an 'own-property invoice' against a managed property. The difference shows in the **credit of the invoice**: deferred rental income of the company under own property, and owner trust under management.
+ * 
+ * **taxRate arrives with the request and is never written in code** (no regulatory rate lives in this product), and it applies only to a unit whose treatment is standard. On an exempt unit exemptionReasonCode stays **empty with a visible flag** until the code is known from the official list in force — a mandatory field holding an invented value is worse than an empty one.
+ * 
+ * **An instalment is never invoiced twice**: a unique index on (tenant, instalment), not a check in the service.
+ */
+export async function draftRentInvoice(transport: Transport, args: DraftRentInvoiceArgs, signal?: AbortSignal): Promise<T.RentInvoice> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/rent-invoices";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "RentInvoiceRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "RentInvoice", response.json) as T.RentInvoice;
 }
 
 export interface DraftSalesInvoiceArgs {
@@ -613,6 +860,33 @@ export async function draftSupplierPayment(transport: Transport, args: DraftSupp
   const response = await transport({ method: "POST", url, body, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "CommercialDocument", response.json) as T.CommercialDocument;
+}
+
+export interface DraftTenantReceiptArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.TenantReceiptRequest;
+}
+
+/**
+ * تسجيل سند قبض من مستأجر / Draft a tenant receipt
+ * 
+ * يُنشئ سند قبض في حالة **DRAFT**.
+ * 
+ * **وحدثان لا حدث واحد، والفارق مرجعٌ لا مبلغ:** سندٌ يحمل lesseeId يُرحَّل تحصيلاً يُسقط من ذمّة ذلك المستأجر؛ وسندٌ بلا lesseeId — مبلغٌ ورد في الحساب بلا مرجع يربطه بأحد — يُرحَّل إلى حساب **التحصيلات غير المخصَّصة**، ولا يُنسب إلى مستأجر بالتخمين. والاختيار من غياب الحقل أو حضوره، لا من حقلٍ يختاره العميل.
+ * 
+ * Creates a tenant receipt in state **DRAFT**.
+ * 
+ * **Two events, not one, and the difference is a reference not an amount:** a receipt carrying lesseeId posts a collection that reduces that tenant's receivable; a receipt without lesseeId — an amount that arrived in the account with no reference tying it to anyone — posts to the **unallocated collections** account and is never attributed to a tenant by guesswork. The choice comes from the absence or presence of the field, not from a field the client selects.
+ */
+export async function draftTenantReceipt(transport: Transport, args: DraftTenantReceiptArgs, signal?: AbortSignal): Promise<T.TenantReceipt> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/tenant-receipts";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "TenantReceiptRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "TenantReceipt", response.json) as T.TenantReceipt;
 }
 
 export interface GrantMembershipArgs {
@@ -1021,6 +1295,40 @@ export async function postPurchaseReturn(transport: Transport, args: PostPurchas
   return decodeSchema(SCHEMAS, "CommercialDocument", response.json) as T.CommercialDocument;
 }
 
+export interface PostRentInvoiceArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف فاتورة الإيجار. / The rent invoice identifier. */
+  invoiceId: string;
+}
+
+/**
+ * ترحيل فاتورة إيجار / Post a rent invoice
+ * 
+ * يرحّل فاتورة مسوّدة فتصير **واقعة محاسبية**. مورد فرعي مستقلّ لا PUT على المستند.
+ * 
+ * **وحصين ضد التكرار بهوية الترحيل** (شركة · نوع المستند · معرّفه · رمز الإطلاق · الجيل · رمز الحدث): الوصول الثاني بالهوية نفسها يُرجع المستند ذاته وalreadyPosted = true ورمز 200 بدل 201 **ومعرّف القيد نفسه**، ولا يُنشئ قيداً ثانياً مهما كان ترتيب الوصول. والحكم حكمُ بوّابة الوحدة لا مقارنةَ حالةٍ قُرئت قبل النداء.
+ * 
+ * ولا جسم لهذا الطلب: مفتاح الحصانة تشتقّه الوحدة من هوية المستند ولا يُرسله العميل.
+ * 
+ * **والرفض حين لا يكون العقار مسجَّلاً في الدفتر رفضٌ كامل** لا سطرٌ ناقص: قاعدة الحجب التي لا تُقيَّم لا تُتجاوَز.
+ * 
+ * Posts a draft invoice, turning it into an **accounting fact**. A separate sub-resource, not a PUT on the document.
+ * 
+ * **Idempotent by the posting identity** (company, source document type, source document id, trigger, generation, event code): a second arrival with the same identity returns the same document with alreadyPosted = true, status 200 instead of 201, **and the same entry identifier**, and never creates a second entry whatever the arrival order. The verdict belongs to the module gateway, not to a state read before the call.
+ * 
+ * This request has no body: the idempotency key is derived by the module from the document identity rather than sent by the client.
+ * 
+ * **When the property is not registered in the ledger the refusal is total**, not a missing line: a guard rule that cannot be evaluated is never bypassed.
+ */
+export async function postRentInvoice(transport: Transport, args: PostRentInvoiceArgs, signal?: AbortSignal): Promise<T.RentInvoice> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/rent-invoices/" + encodeURIComponent(args.invoiceId) + "/posting";
+  const url = path;
+  const response = await transport({ method: "POST", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "RentInvoice", response.json) as T.RentInvoice;
+}
+
 export interface PostSalesInvoiceArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
@@ -1127,6 +1435,28 @@ export async function postSupplierPayment(transport: Transport, args: PostSuppli
   const response = await transport({ method: "POST", url, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "CommercialDocument", response.json) as T.CommercialDocument;
+}
+
+export interface PostTenantReceiptArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف سند القبض من المستأجر. / The tenant receipt identifier. */
+  receiptId: string;
+}
+
+/**
+ * ترحيل سند قبض / Post a tenant receipt
+ * 
+ * يرحّل السند بالحدث الذي اختاره حضور المرجع أو غيابه، وبالحصانة نفسها: الوصول الثاني بالهوية نفسها يُرجع 200 وalreadyPosted = true ومعرّف القيد نفسه.
+ * 
+ * Posts the receipt under the event chosen by the presence or absence of the reference, with the same idempotency: a second arrival with the same identity returns 200, alreadyPosted = true, and the same entry identifier.
+ */
+export async function postTenantReceipt(transport: Transport, args: PostTenantReceiptArgs, signal?: AbortSignal): Promise<T.TenantReceipt> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/tenant-receipts/" + encodeURIComponent(args.receiptId) + "/posting";
+  const url = path;
+  const response = await transport({ method: "POST", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "TenantReceipt", response.json) as T.TenantReceipt;
 }
 
 export interface ReadAttachmentArgs {
@@ -1435,6 +1765,76 @@ export async function readJournalEntry(transport: Transport, args: ReadJournalEn
   return decodeSchema(SCHEMAS, "JournalEntry", response.json) as T.JournalEntry;
 }
 
+export interface ReadLeaseContractArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف عقد الإيجار. / The lease contract identifier. */
+  leaseId: string;
+}
+
+/**
+ * قراءة عقد إيجار / Read one lease contract
+ * 
+ * يقرأ العقد بحالته ومدّته وقيمته.
+ * 
+ * Reads the contract with its state, its term, and its value.
+ */
+export async function readLeaseContract(transport: Transport, args: ReadLeaseContractArgs, signal?: AbortSignal): Promise<T.Lease> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/lease-contracts/" + encodeURIComponent(args.leaseId) + "";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "Lease", response.json) as T.Lease;
+}
+
+export interface ReadLeaseScheduleArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف عقد الإيجار. / The lease contract identifier. */
+  leaseId: string;
+}
+
+/**
+ * قراءة جدول دفعات العقد بمعرّفات سطوره / Read the lease payment schedule with its line identifiers
+ * 
+ * يُرجع جدول الدفعات **بمعرّفات سطوره** — وهي مدخل الفوترة: طلب الفاتورة يحمل معرّفات الأقساط المفوترة ولا يحمل مبالغ.
+ * 
+ * **وبلا نشر هذه المعرّفات يصير باب الفوترة باباً لا يوصل إليه بابٌ آخر على هذا السطح** — وهو الاعتراض المكتوب حرفياً في قرار نشر المستندات النقدية.
+ * 
+ * Returns the payment schedule **with its line identifiers** — the entry point to invoicing: the invoice request carries the identifiers of the instalments being billed and carries no amounts.
+ * 
+ * **Without publishing these identifiers the invoicing door becomes a door no other door on this surface can reach** — the objection written literally in the cash-documents publication decision.
+ */
+export async function readLeaseSchedule(transport: Transport, args: ReadLeaseScheduleArgs, signal?: AbortSignal): Promise<T.LeaseSchedule> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/lease-contracts/" + encodeURIComponent(args.leaseId) + "/schedule";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "LeaseSchedule", response.json) as T.LeaseSchedule;
+}
+
+export interface ReadLesseeArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف المستأجر العقاري — **لا مستأجر النظام**: هذا مورد داخل نطاق منشأة. / The lessee identifier — **not the system tenant**: this resource lives inside a company scope. */
+  lesseeId: string;
+}
+
+/**
+ * قراءة مستأجر عقاري / Read one lessee
+ * 
+ * يقرأ مستأجراً بتسجيله الضريبي وإقامته الضريبية.
+ * 
+ * Reads a lessee with its VAT registration and tax residency.
+ */
+export async function readLessee(transport: Transport, args: ReadLesseeArgs, signal?: AbortSignal): Promise<T.RealEstateParty> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/lessees/" + encodeURIComponent(args.lesseeId) + "";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "RealEstateParty", response.json) as T.RealEstateParty;
+}
+
 export interface ReadMembershipsArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
@@ -1481,6 +1881,54 @@ export async function readPayablesAging(transport: Transport, args: ReadPayables
   const response = await transport({ method: "GET", url, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "AgingReport", response.json) as T.AgingReport;
+}
+
+export interface ReadPropertyArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف العقار. / The property identifier. */
+  propertyId: string;
+}
+
+/**
+ * قراءة عقار / Read one property
+ * 
+ * يقرأ عقاراً بنموذج ملكيته وحصّة مالكه. ونقطة قراءة: تعمل والاشتراك للقراءة فقط.
+ * 
+ * و**الحصّة كسرٌ ببسطٍ ومقام** لا عدد عشري: لا مقياس عشري معلَن لأي نسبة في هذا المنتج، واختيار مقياسٍ هنا كتابةُ رقم نظامي في عقد منشور.
+ * 
+ * Reads a property with its ownership model and its owner share. A read point: it works while the subscription is read-only.
+ * 
+ * The **share is a fraction with a numerator and a denominator**, not a decimal: no decimal scale is declared for any ratio in this product, and picking one here would write a regulatory number into a published contract.
+ */
+export async function readProperty(transport: Transport, args: ReadPropertyArgs, signal?: AbortSignal): Promise<T.Property> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/properties/" + encodeURIComponent(args.propertyId) + "";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "Property", response.json) as T.Property;
+}
+
+export interface ReadPropertyOwnerArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف مالك العقار. / The property owner identifier. */
+  ownerId: string;
+}
+
+/**
+ * قراءة مالك عقار / Read one property owner
+ * 
+ * يقرأ مالكاً بتسجيله الضريبي وإقامته الضريبية.
+ * 
+ * Reads an owner with its VAT registration and tax residency.
+ */
+export async function readPropertyOwner(transport: Transport, args: ReadPropertyOwnerArgs, signal?: AbortSignal): Promise<T.RealEstateParty> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/property-owners/" + encodeURIComponent(args.ownerId) + "";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "RealEstateParty", response.json) as T.RealEstateParty;
 }
 
 /**
@@ -1564,6 +2012,28 @@ export async function readReceivablesAging(transport: Transport, args: ReadRecei
   const response = await transport({ method: "GET", url, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "AgingReport", response.json) as T.AgingReport;
+}
+
+export interface ReadRentInvoiceArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف فاتورة الإيجار. / The rent invoice identifier. */
+  invoiceId: string;
+}
+
+/**
+ * قراءة فاتورة إيجار / Read one rent invoice
+ * 
+ * يقرأ الفاتورة بحالتها ومجاميعها وحدثها ومعرّف قيدها إن رُحّلت. ونقطة قراءة: تعمل والاشتراك للقراءة فقط.
+ * 
+ * Reads the invoice with its state, totals, event, and entry identifier if posted. A read point: it works while the subscription is read-only.
+ */
+export async function readRentInvoice(transport: Transport, args: ReadRentInvoiceArgs, signal?: AbortSignal): Promise<T.RentInvoice> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/rent-invoices/" + encodeURIComponent(args.invoiceId) + "";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "RentInvoice", response.json) as T.RentInvoice;
 }
 
 export interface ReadSalesInvoiceArgs {
@@ -1749,6 +2219,60 @@ export async function readSupplierPayment(transport: Transport, args: ReadSuppli
   return decodeSchema(SCHEMAS, "CommercialDocument", response.json) as T.CommercialDocument;
 }
 
+export interface ReadTenantArrearsAgingArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** تاريخ التقرير الميلادي بصيغة yyyy-MM-dd. / The report date in yyyy-MM-dd. */
+  asOf: string;
+}
+
+/**
+ * أعمار متأخرات المستأجرين ومطابقتها / Tenant arrears ageing and its reconciliation
+ * 
+ * يُرجع أعمار متأخرات المستأجرين حتى تاريخ، **ومعها مطابقتها بنقطة ضبطها في دفتر الأستاذ** في الجواب نفسه.
+ * 
+ * **ولماذا في الجواب نفسه لا في مورد ثانٍ:** تقريرٌ لا يُفتح لا يكشف انحرافاً، ودفترٌ مساعد ينحرف بصمت عن نقطة ضبطه أشيع عيب في الأنظمة المحاسبية ولا يُكتشف إلا بعد شهور.
+ * 
+ * **ووجود هذا التقرير أصلاً نتيجةٌ لقرار محاسبي**: القيد يُثبت عند الفوترة لا عند التحصيل، فالذمّة موجودة في الدفتر ويمكن تقادمها. ولو اعتُمدت السياسة البديلة لصار التقرير فارغاً من معناه ووجب سحبه.
+ * 
+ * Returns tenant arrears ageing as at a date, **together with its reconciliation against its control point in the general ledger**, in the same response.
+ * 
+ * **Why in the same response rather than a second resource:** a report nobody opens reveals no divergence, and a subledger drifting silently from its control point is the commonest defect in accounting systems and is found only months later.
+ * 
+ * **That this report exists at all follows from an accounting decision**: the entry is recognised at invoicing rather than at collection, so the receivable exists in the ledger and can age. Had the alternative policy been adopted the report would be void of meaning and would have to be withdrawn.
+ */
+export async function readTenantArrearsAging(transport: Transport, args: ReadTenantArrearsAgingArgs, signal?: AbortSignal): Promise<T.TenantArrears> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/tenant-arrears-aging";
+  const query = new URLSearchParams();
+  query.set("asOf", args.asOf);
+  const url = query.size > 0 ? path + "?" + query.toString() : path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "TenantArrears", response.json) as T.TenantArrears;
+}
+
+export interface ReadTenantReceiptArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف سند القبض من المستأجر. / The tenant receipt identifier. */
+  receiptId: string;
+}
+
+/**
+ * قراءة سند قبض / Read one tenant receipt
+ * 
+ * يقرأ السند بحالته وحدثه ومعرّف قيده، ومعرّف قيد تخصيصه إن وقع.
+ * 
+ * Reads the receipt with its state, its event, its entry identifier, and its allocation entry identifier if one occurred.
+ */
+export async function readTenantReceipt(transport: Transport, args: ReadTenantReceiptArgs, signal?: AbortSignal): Promise<T.TenantReceipt> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/tenant-receipts/" + encodeURIComponent(args.receiptId) + "";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "TenantReceipt", response.json) as T.TenantReceipt;
+}
+
 export interface ReadTrialBalanceArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
@@ -1774,6 +2298,28 @@ export async function readTrialBalance(transport: Transport, args: ReadTrialBala
   const response = await transport({ method: "GET", url, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "TrialBalance", response.json) as T.TrialBalance;
+}
+
+export interface ReadUnitArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف الوحدة. / The unit identifier. */
+  unitId: string;
+}
+
+/**
+ * قراءة وحدة / Read one unit
+ * 
+ * يقرأ وحدةً بتصنيفها — وهو ما يقود شرط خضوع الإيجار للضريبة في قالب الفاتورة.
+ * 
+ * Reads a unit with its classification — which drives the taxability condition in the invoice template.
+ */
+export async function readUnit(transport: Transport, args: ReadUnitArgs, signal?: AbortSignal): Promise<T.Unit> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/units/" + encodeURIComponent(args.unitId) + "";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "Unit", response.json) as T.Unit;
 }
 
 export interface RegisterTenantArgs {

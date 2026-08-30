@@ -155,6 +155,17 @@ command -v node   >/dev/null 2>&1 || { echo "✗ node غير موجود في PAT
 : "${BABEL_CORE_OWNER_DB:=Host=127.0.0.1;Port=5432;Database=babel_demo_core;Username=postgres;Include Error Detail=true}"
 : "${BABEL_CORE_APP_DB:=Host=127.0.0.1;Port=5432;Database=babel_demo_core;Username=babel_ledger_app;Include Error Detail=true}"
 export BABEL_ADMIN_DB BABEL_LEDGER_OWNER_DB BABEL_LEDGER_APP_DB BABEL_SALES_OWNER_DB BABEL_PURCHASING_OWNER_DB
+# ── العقارات: **قاعدةٌ لم تُزوَّد بعد، والنقص مُعلَن لا مسكوت عنه** ──────────
+# سطح العقارات منشورٌ في العقد (عشرون باباً)، ومخطّطه `realestate` **يُنشر بدور
+# المالك** ويستلزم امتداد `btree_gist` لقيد الاستبعاد الزمني على مدّة العقد. ولا
+# قاعدة تُنشأ له في هذا النصّ ولا في `demo/company`، فأبوابه **غير قابلة للبلوغ في
+# العرض المحلي** حتى تُزوَّد — بالضبط كأبواب المرفقات أدناه وللسبب نفسه.
+#
+# ولا يمنع ذلك الخادم من الإقلاع: التسجيل كسول، فلا يُبنى سياق الوحدة إلا عند أول
+# طلب يبلغها. والتزويد: قاعدةٌ باسم `babel_demo_realestate`، ثم
+# `RealEstateSchemaDeployer.DeployAsync` بدور المالك، ثم
+# `Babel__RealEstate__ConnectionString` على الخادم.
+
 # مخزن المرفقات: جذرٌ على القرص يملكه مستخدم الخدمة. **ولا اتصال مالك هنا**،
 # ولا قاعدةَ مرفقات تُنشأ في هذا النصّ: نشرُ مخطّط `storage` عملُ مالك لم يُزوَّد
 # بعد، فأبواب المرفقات **غير قابلة للبلوغ في العرض المحلي** حتى يُزوَّد. وهذا

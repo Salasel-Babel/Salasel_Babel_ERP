@@ -149,7 +149,7 @@ public sealed class PayablesService : IApplicationService
         }
 
         Result<ControlPointSnapshot> snapshot = await _controlPoint
-            .ReadAsync(tenant, SubledgerKindCode, asOf, cancellationToken)
+            .ReadAsync(tenant, SubledgerKindCode, asOf, writtenBy: null, cancellationToken)
             .ConfigureAwait(false);
 
         if (snapshot.IsFailure)

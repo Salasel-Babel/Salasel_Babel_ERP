@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     dac93701517afebf600cd3f74868a4ca5bd94861699466e41651938520f14959
+     e25d2ecb3673e9e5364e6e1bac84e2e55f24100d5f24ddf15175661144024721
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -31,6 +31,10 @@ export const PARAM_readPayablesAging_asOf = "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[
 export const PARAM_readPayablesAging_asOf_RE = new RegExp("^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$");
 export const PARAM_readReceivablesAging_asOf = "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$";
 export const PARAM_readReceivablesAging_asOf_RE = new RegExp("^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$");
+export const PARAM_readRetentionRegister_asOf = "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$";
+export const PARAM_readRetentionRegister_asOf_RE = new RegExp("^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$");
+export const PARAM_readSubcontractorStatement_asOf = "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$";
+export const PARAM_readSubcontractorStatement_asOf_RE = new RegExp("^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$");
 export const PARAM_readTrialBalance_period = "^[0-9]{4}-(0[1-9]|1[0-2])$";
 export const PARAM_readTrialBalance_period_RE = new RegExp("^[0-9]{4}-(0[1-9]|1[0-2])$");
 export const PARAM_verifyLedgerChain_fiscalYear = "^[0-9]{4}$";
@@ -45,6 +49,8 @@ export const SCHEMA_Money = "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$";
 export const SCHEMA_Money_RE = new RegExp("^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$");
 export const SCHEMA_Quantity = "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$";
 export const SCHEMA_Quantity_RE = new RegExp("^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$");
+export const SCHEMA_Rate = "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,8})?$";
+export const SCHEMA_Rate_RE = new RegExp("^-?(0|[1-9][0-9]*)(\\.[0-9]{1,8})?$");
 export const SCHEMA_TaxRate = "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,8})?$";
 export const SCHEMA_TaxRate_RE = new RegExp("^-?(0|[1-9][0-9]*)(\\.[0-9]{1,8})?$");
 export const SCHEMA_UnitCost = "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,6})?$";

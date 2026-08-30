@@ -55,6 +55,7 @@ internal sealed class ControlPointReader : IControlPointReader
         TenantId tenant,
         string subledgerKind,
         DateOnly asOf,
+        BabelModule? writtenBy = null,
         CancellationToken cancellationToken = default)
     {
         List<ControlPointMovement> movements = [];
@@ -62,6 +63,14 @@ internal sealed class ControlPointReader : IControlPointReader
 
         await using NpgsqlConnection connection = await _dataSource
             .OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
+
+        // ‏**المُرشِّح شرطٌ إضافي لا استعلامٌ ثانٍ**، وعلى عمودٍ يحمله كل قيد. وغيابه
+        // يعني «كل ما حرّك نقطة الضبط»، وهو معنى كل مستدعٍ قائم حرفاً بحرف.
+        //
+        // ‏**وعلى الوحدة لا على نوع المستند**: التضييق بالأنواع يُخفي القيد اليدوي على
+        // الحساب الضابط — أشيع سببٍ حقيقي للانحراف — لأن نوعه ليس في جرد أي وحدة.
+        // والوحدة تحمله كل القيود، فيبقى القيد اليدوي مرئياً لمطابقة وحدته.
+        bool filtered = writtenBy is not null;
 
         await using NpgsqlCommand command = new(
             """
@@ -74,6 +83,7 @@ internal sealed class ControlPointReader : IControlPointReader
              where l.company_id = $1
                and l.subledger_kind = $2
                and e.entry_date <= $3
+               and ($4 or e.source_module = $5)
              group by e.source_doc_type, e.source_doc_id, coalesce(l.subledger_party_id, '')
              order by e.source_doc_type, e.source_doc_id
             """, connection);
@@ -81,6 +91,8 @@ internal sealed class ControlPointReader : IControlPointReader
         command.Parameters.AddWithValue(tenant.Value);
         command.Parameters.AddWithValue(subledgerKind);
         command.Parameters.AddWithValue(asOf);
+        command.Parameters.AddWithValue(!filtered);
+        command.Parameters.AddWithValue(filtered ? writtenBy!.Value.ToString() : string.Empty);
 
         await using NpgsqlDataReader reader = await command
             .ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);

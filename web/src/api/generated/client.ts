@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     dac93701517afebf600cd3f74868a4ca5bd94861699466e41651938520f14959
+     e25d2ecb3673e9e5364e6e1bac84e2e55f24100d5f24ddf15175661144024721
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -19,6 +19,33 @@ import { SCHEMAS } from "./runtime-schema";
 import { decodeSchema, encodeSchema, type Transport, ProblemError } from "../transport";
 
 export type { Transport } from "../transport";
+
+export interface AddChangeOrderArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.ChangeOrderRequest;
+}
+
+/**
+ * تسجيل أمر تغييري / Register a change order
+ * 
+ * يسجّل أمراً تغييرياً ببنوده الجديدة على جدول الكميات.
+ * 
+ * **ولاحظ ما ليس هنا — ولا يجوز أن يوجد: لا مورد …/posting.** الأمر التغييري **التزام تعاقدي لا حدث محاسبي**: لا يُنشئ قيداً، ولا يمسّ حساباً، ولا حدث له في مصفوفة الترحيل. ومخطّط جوابه **بلا entryId وبلا alreadyPosted** — لأن حقلاً فارغاً لهما يُقرأ «لم يُرحَّل بعد» بدل «لا يُرحَّل أبداً»، فيبني عليه العميل زرّاً لا وجود له. وهي حجّة ADR-0047 على أمر الشراء نفسها.
+ * 
+ * Registers a change order with the lines it adds to the bill of quantities.
+ * 
+ * **Note what is not here — and must not be: no …/posting sub-resource.** A change order is a **contractual commitment, not an accounting event**: it creates no entry, touches no account, and has no event in the posting matrix. Its response schema carries **no entryId and no alreadyPosted** — an empty value for either reads as 'not posted yet' rather than 'never posted', and a client builds a button on it that has no door. This is ADR-0047's argument about the purchase order, verbatim.
+ */
+export async function addChangeOrder(transport: Transport, args: AddChangeOrderArgs, signal?: AbortSignal): Promise<T.ChangeOrder> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/change-orders";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "ChangeOrderRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "ChangeOrder", response.json) as T.ChangeOrder;
+}
 
 export interface AddCostCenterArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
@@ -70,6 +97,37 @@ export async function addCustomer(transport: Transport, args: AddCustomerArgs, s
   return decodeSchema(SCHEMAS, "Party", response.json) as T.Party;
 }
 
+export interface AddGuaranteeArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.GuaranteeRequest;
+}
+
+/**
+ * تسجيل خطاب ضمان / Register a guarantee
+ * 
+ * يسجّل خطاب ضمان — ابتدائي أو حسن تنفيذ أو دفعة مقدمة — بتواريخ سريانه وانتهائه ومرفقه.
+ * 
+ * **ولاحظ ما ليس هنا — ولا يجوز أن يوجد: لا مورد …/posting.** خطاب الضمان **سجلٌّ لا يُرحَّل أبداً**: لا حدث له في مصفوفة الترحيل، ومخطّط جوابه بلا entryId وبلا alreadyPosted للسبب نفسه الذي يخلو منه جواب الأمر التغييري.
+ * 
+ * **والمرفق يُشار إليه بمعرّفه على السطح المنشور للمرفقات — لا بايتات هنا**: خطاب الضمان سندُ إثبات، فيُودَع حيث تُحرَس البصمة والإصدار والسحب (ADR-0046 · ADR-0051)، وإخراجُه من هناك يُفرغ المراجعة.
+ * 
+ * Registers a guarantee — bid, performance, or advance-payment — with its effective and expiry dates and its attachment.
+ * 
+ * **Note what is not here — and must not be: no …/posting sub-resource.** A guarantee is **a record that never posts**: it has no event in the posting matrix, and its response schema carries no entryId and no alreadyPosted for exactly the reason the change order's does not.
+ * 
+ * **The attachment is referenced by its identifier on the published attachment surface — no bytes here**: a guarantee is evidence, so it is deposited where the digest, the revision chain, and the withdrawal are guarded (ADR-0046, ADR-0051), and taking it out of there hollows out the review.
+ */
+export async function addGuarantee(transport: Transport, args: AddGuaranteeArgs, signal?: AbortSignal): Promise<T.Guarantee> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/guarantees";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "GuaranteeRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "Guarantee", response.json) as T.Guarantee;
+}
+
 export interface AddItemArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
@@ -103,6 +161,114 @@ export async function addItem(transport: Transport, args: AddItemArgs, signal?: 
   const response = await transport({ method: "POST", url, body, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "Item", response.json) as T.Item;
+}
+
+export interface AddProjectArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.ProjectRequest;
+}
+
+/**
+ * تسجيل مشروع / Register a project
+ * 
+ * يسجّل مشروعاً. و**رمزه هو القيمة الحرفية التي تدخل بُعد المشروع على سطر القيد**، فهو هوية لا اسم عرض: لا تعديل له ولا حذف بعد أن تحمله قيود سنةٍ مضت — والغياب بنيوي كغيابه على الأصناف ومراكز التكلفة.
+ * 
+ * **والاسم العربي هو السجلّ وnameTranslations ترجماته أيّاً كان عددها** (ADR-0021): لا حقل ثابت للإنجليزية هنا كما لا حقل لها في صفّ ميزان المراجعة.
+ * 
+ * Registers a project. Its **code is the literal value that enters the project dimension on a journal line**, so it is an identity rather than a display name: it is never edited and never deleted once entries carry it — the absence is structural, exactly as it is for items and cost centres.
+ * 
+ * **The Arabic name is the record and nameTranslations are its translations, however many** (ADR-0021): there is no fixed English field here, just as there is none on a trial-balance row.
+ */
+export async function addProject(transport: Transport, args: AddProjectArgs, signal?: AbortSignal): Promise<T.Project> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/projects";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "ProjectRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "Project", response.json) as T.Project;
+}
+
+export interface AddProjectContractArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.ProjectContractRequest;
+}
+
+/**
+ * إنشاء عقد مقاولة / Create a project contract
+ * 
+ * يُنشئ عقد مقاولة ببنود جدول الكميات ونسبة المحتجز وفترة الضمان وعملة المنشأة.
+ * 
+ * **ولاحظ ما ليس في هذا الجسم: وعاء نسبة المحتجز، ولا قاعدة استرداد الدفعة المقدمة.** موضعُهما نفسه قرارُ محاسبٍ لم يُحسم — أحقلٌ على العقد أم جدول قواعد بتاريخ سريان؟ — ونشرُ أحدهما هنا اختيارٌ لجوابٍ لم يقله أحد، ولا رجعة فيه بلا إصدار ثانٍ من هذا العقد. وهما بندٌ معلَّق يُرجعه هذا الباب في pendingPolicy، ويرفض به بابُ الترحيل.
+ * 
+ * **والنسبة كسرٌ عشري نصّاً** بمقياس لا يتجاوز ثماني خانات، لا نسبة مئوية: 0.10 لا 10.
+ * 
+ * Creates a project contract with its bill-of-quantities lines, its retention rate, its guarantee period, and the company currency.
+ * 
+ * **Note what this body does not carry: the base the retention rate applies to, and the advance recovery rule.** Where they belong is itself an unsettled accounting decision — a field on the contract, or a rules table with effective dates? — and publishing either here chooses an answer nobody has given, irreversibly without a second version of this contract. They are a pending item this door returns in pendingPolicy and the posting door refuses on.
+ * 
+ * **The rate is a decimal fraction as a string** with at most eight decimal places, never a percentage: 0.10, not 10.
+ */
+export async function addProjectContract(transport: Transport, args: AddProjectContractArgs, signal?: AbortSignal): Promise<T.ProjectContract> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/project-contracts";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "ProjectContractRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "ProjectContract", response.json) as T.ProjectContract;
+}
+
+export interface AddSubcontractArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.SubcontractRequest;
+}
+
+/**
+ * إنشاء عقد باطن / Create a subcontract
+ * 
+ * يُنشئ عقد باطن بنسبة محتجزه وفترة ضمانه وبنوده. والنسبة كسرٌ عشري نصّاً من العقد لا من الكود.
+ * 
+ * Creates a subcontract with its retention rate, its guarantee period, and its lines. The rate is a decimal fraction as a string, taken from the contract and never from code.
+ */
+export async function addSubcontract(transport: Transport, args: AddSubcontractArgs, signal?: AbortSignal): Promise<T.Subcontract> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/subcontracts";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "SubcontractRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "Subcontract", response.json) as T.Subcontract;
+}
+
+export interface AddSubcontractorArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.SubcontractorRequest;
+}
+
+/**
+ * تسجيل مقاول من الباطن / Register a subcontractor
+ * 
+ * يسجّل مقاولاً من الباطن — **طرفاً في دفتر subcontractor المساعد**، وهو دفترٌ مُعلَن في بيانات الدفاتر بحساباته الثلاثة و**بلا مالكٍ في المستودع قبل هذه الوحدة**.
+ * 
+ * **ولا حذف ولا إيقاف**، لما غاب عن سجلّ العملاء وللسبب نفسه: طرفٌ تشير إليه قيود سنةٍ مضت لا يُحذف، وبابٌ اسمه «إيقاف» لا يمنع مستخلصاً واحداً أسوأ من غيابه — يبدو ضابطاً وليس كذلك.
+ * 
+ * Registers a subcontractor — **a party in the subcontractor subledger**, a ledger declared in the subledger data with its three control accounts and **with no owner in this repository before this module**.
+ * 
+ * **No deletion and no suspension**, exactly as on the customer register and for the same reason: a party referenced by last year's entries is never deleted, and a door named 'suspend' that stops no certificate is worse than its absence — it looks like a control and is not.
+ */
+export async function addSubcontractor(transport: Transport, args: AddSubcontractorArgs, signal?: AbortSignal): Promise<T.Subcontractor> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/subcontractors";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "SubcontractorRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "Subcontractor", response.json) as T.Subcontractor;
 }
 
 export interface AddSupplierArgs {
@@ -340,6 +506,41 @@ export async function downloadAttachment(transport: Transport, args: DownloadAtt
   return response.bytes;
 }
 
+export interface DraftClientCertificateArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.CertificateRequest;
+}
+
+/**
+ * إنشاء مستخلص عميل مسوّدة / Draft a client certificate
+ * 
+ * يُنشئ مستخلص عميل في حالة **DRAFT**: لا قيد ولا أثر في الدفتر.
+ * 
+ * **والمستخلص تراكميّ**: كل سطر يحمل الكمّية التراكمية المُنجَزة حتى نهاية الفترة، ويُرجع الجواب معها الكمّية السابقة **كما جاءت من آخر مستخلصٍ مُرحَّل** — لا من آخر مسوّدة. ومسوّدةٌ تُزيح الأساس تُنتج إيراداً مضاعفاً أو ناقصاً بلا استثناء ولا رسالة.
+ * 
+ * **ونسبة المحتجز تُجمَّد لحظة المسوّدة** من العقد: بدونها يُغيّر تعديلٌ على العقد أرقامَ مستخلصٍ راجعه إنسان.
+ * 
+ * **ولاحظ ما ليس في الجواب: مبالغ محسوبة.** قيمة الأعمال والضريبة والمحتجز واسترداد الدفعة أربعةٌ تسمّيها المصفوفة، ولكلٍّ منها حاسبٌ يجب أن يعيش في الوحدة — ولم يُبنَ أيٌّ منها لأن أساسه بندٌ معلَّق: أين يقع التقريب، وعلى أي وعاء تُضرب نسبة المحتجز، وبأي قاعدة تُستردّ الدفعة، وعلى أي مستوى يُقرَّر التصنيف الضريبي. وعرضُ رقمٍ قبل أن يُحسم أساسه أسوأ من غيابه.
+ * 
+ * Creates a client certificate in state **DRAFT**: no entry and no effect on the ledger.
+ * 
+ * **The certificate is cumulative**: every line carries the cumulative quantity executed to the end of the period, and the response returns alongside it the previous quantity **as it came from the last posted certificate** — never from the last draft. A draft that shifts the base produces doubled or missing revenue with no exception and no message.
+ * 
+ * **The retention rate is frozen at draft time** from the contract: without that, an edit to the contract changes the figures of a certificate a human has already reviewed.
+ * 
+ * **Note what is not in the response: computed amounts.** Works value, tax, retention, and advance recovery are the four the matrix names, and each needs a calculator that lives in the module — none has been built, because each rests on a pending decision: where rounding falls, what base the retention rate applies to, by what rule the advance is recovered, and at what level the tax classification is decided. Showing a figure before its basis is settled is worse than its absence.
+ */
+export async function draftClientCertificate(transport: Transport, args: DraftClientCertificateArgs, signal?: AbortSignal): Promise<T.Certificate> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/client-certificates";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "CertificateRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "Certificate", response.json) as T.Certificate;
+}
+
 export interface DraftCreditNoteArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
@@ -495,6 +696,64 @@ export async function draftPurchaseReturn(transport: Transport, args: DraftPurch
   return decodeSchema(SCHEMAS, "CommercialDocument", response.json) as T.CommercialDocument;
 }
 
+export interface DraftRetentionCollectionArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.RetentionCollectionRequest;
+}
+
+/**
+ * إنشاء تحصيل محتجز مسوّدة / Draft a client retention collection
+ * 
+ * يُنشئ تحصيل محتجزٍ مدين من العميل على دفعة محتجزٍ مُسمّاة، بطريقة تسوية مُسمّاة.
+ * 
+ * **ويُرفض بـ404 حتى يُرحَّل أول مستخلص** لنفس السبب الذي يرفض به الإفراج.
+ * 
+ * Creates a collection of debit retention from the client against a named retention movement, with a named settlement method.
+ * 
+ * **It is refused with 404 until the first certificate posts**, for the same reason the release is.
+ */
+export async function draftRetentionCollection(transport: Transport, args: DraftRetentionCollectionArgs, signal?: AbortSignal): Promise<T.ProjectsDocument> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/retention-collections";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "RetentionCollectionRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "ProjectsDocument", response.json) as T.ProjectsDocument;
+}
+
+export interface DraftRetentionReleaseArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.RetentionReleaseRequest;
+}
+
+/**
+ * إنشاء إفراج عن محتجز مسوّدة / Draft a retention release
+ * 
+ * يُنشئ إفراجاً عن محتجزٍ دائن على **دفعة محتجزٍ مُسمّاة** — لا على رصيد — باعتمادٍ صريح.
+ * 
+ * **والاعتماد الصريح شرطُ الإطلاق بنصّه**: «عند انقضاء فترة الضمان **واعتماد الإفراج**». وقيدُ تحقّق في قاعدة البيانات يرفض اعتماداً فارغاً، فلا يمرّ الشرط بالاتفاق وحده.
+ * 
+ * **ويُرفض بـ404 وprojects.retention_movement_not_found حتى يُرحَّل أول مستخلص**: حركات المحتجز تُشتقّ من المُرحَّل وحده، ولا يُفرَج عن رصيدٍ لم يُثبته قيد. وهذا أثرٌ مباشر للبند المعلَّق على المستخلص، لا عطلٌ في هذا المسار.
+ * 
+ * Creates a release of credit retention against **a named retention movement** — never against a balance — with an explicit approval.
+ * 
+ * **The explicit approval is the trigger condition verbatim**: 'on expiry of the guarantee period **and approval of the release**'. A database check constraint refuses an empty approver, so the condition is not left to convention.
+ * 
+ * **It is refused with 404 and projects.retention_movement_not_found until the first certificate posts**: retention movements are derived from posted entries alone, and no balance is released that no entry established. That is a direct consequence of the certificate's pending item, not a defect in this path.
+ */
+export async function draftRetentionRelease(transport: Transport, args: DraftRetentionReleaseArgs, signal?: AbortSignal): Promise<T.ProjectsDocument> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/retention-releases";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "RetentionReleaseRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "ProjectsDocument", response.json) as T.ProjectsDocument;
+}
+
 export interface DraftSalesInvoiceArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
@@ -582,6 +841,60 @@ export async function draftStockMovement(transport: Transport, args: DraftStockM
   const response = await transport({ method: "POST", url, body, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "StockMovement", response.json) as T.StockMovement;
+}
+
+export interface DraftSubcontractorAdvanceArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.SubcontractorAdvanceRequest;
+}
+
+/**
+ * إنشاء صرف دفعة مقدمة لمقاول / Draft a subcontractor advance payment
+ * 
+ * يُنشئ صرف دفعة مقدمة لمقاول من الباطن في حالة **DRAFT**، ومعه طريقة التسوية ومرجع خطاب الضمان الذي يشترطه نصّ إطلاق الحدث.
+ * 
+ * **وطريقة التسوية مؤهّل دور لا حساب**: المصفوفة وحدها تُحوّلها إلى حساب، وسطح HTTP لا يسمّي حساباً (القاعدة 2). و**معرّف الخزينة معرّف مبهم** في دفترها المساعد، لا رقم حساب بنكي.
+ * 
+ * Creates a subcontractor advance payment in state **DRAFT**, with its settlement method and the reference to the guarantee its event's trigger text requires.
+ * 
+ * **The settlement method is a role qualifier, not an account**: the matrix alone turns it into an account, and this HTTP surface never names one (Rule 2). The **treasury party identifier is an opaque identifier** in its own subledger, not a bank account number.
+ */
+export async function draftSubcontractorAdvance(transport: Transport, args: DraftSubcontractorAdvanceArgs, signal?: AbortSignal): Promise<T.ProjectsDocument> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/subcontractor-advances";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "SubcontractorAdvanceRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "ProjectsDocument", response.json) as T.ProjectsDocument;
+}
+
+export interface DraftSubcontractorCertificateArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.CertificateRequest;
+}
+
+/**
+ * إنشاء مستخلص باطن مسوّدة / Draft a subcontractor certificate
+ * 
+ * يُنشئ مستخلص مقاول من الباطن في حالة **DRAFT**، بالشكل التراكمي نفسه.
+ * 
+ * **وسطور الغرامات والخصومات مستقلّة لا صافٍ محسوب**، بتحفّظ مصفوفة الترحيل نصّه: «تُسجَّل كسطور مستقلة تخفّض المستحق **ولا تُخصم من قيمة الأعمال**». وسطرُ الغرامة يُخزَّن بصنفه PENALTY أو DEDUCTION ومبلغِه، ولا كمّية له ولا بند.
+ * 
+ * Creates a subcontractor certificate in state **DRAFT**, in the same cumulative shape.
+ * 
+ * **Penalty and deduction lines are independent, never a computed net**, by the matrix caveat verbatim: 'recorded as separate lines that reduce the amount due and **are never netted against the works value**'. A penalty line is stored with its kind — PENALTY or DEDUCTION — and its amount, with no quantity and no item.
+ */
+export async function draftSubcontractorCertificate(transport: Transport, args: DraftSubcontractorCertificateArgs, signal?: AbortSignal): Promise<T.Certificate> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/subcontractor-certificates";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "CertificateRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "Certificate", response.json) as T.Certificate;
 }
 
 export interface DraftSupplierPaymentArgs {
@@ -825,6 +1138,26 @@ export async function listItems(transport: Transport, args: ListItemsArgs, signa
   return decodeSchema(SCHEMAS, "ItemList", response.json) as T.ItemList;
 }
 
+export interface ListProjectsArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+}
+
+/**
+ * قائمة المشاريع / List the projects
+ * 
+ * يقرأ مشاريع المنشأة بأسمائها ورموزها. و**لازمٌ لا زينة**: باب العقد يحتاج معرّف مشروع، وبابان لا يوصل إليهما بابٌ آخر اعتراضٌ مكتوب في ADR-0044.
+ * 
+ * Reads the company's projects with their names and codes. **Necessary, not decorative**: the contract door needs a project identifier, and doors no other door leads to are the objection written into ADR-0044.
+ */
+export async function listProjects(transport: Transport, args: ListProjectsArgs, signal?: AbortSignal): Promise<T.ProjectList> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/projects";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "ProjectList", response.json) as T.ProjectList;
+}
+
 export interface ListStockMovementsArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
@@ -876,6 +1209,36 @@ export async function openSession(transport: Transport, args: OpenSessionArgs, s
   const response = await transport({ method: "POST", url, body, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "AccessSession", response.json) as T.AccessSession;
+}
+
+export interface PostClientCertificateArgs {
+  /** معرّف مستخلص العميل. / The client certificate identifier. */
+  certificateId: string;
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+}
+
+/**
+ * ترحيل مستخلص عميل / Post a client certificate
+ * 
+ * يرحّل مستخلصاً مسوّدة فيصير **واقعة محاسبية**. مورد فرعي مستقلّ لا PUT على المستند: الترحيل فعلٌ يُنشئ قيداً، لا حقلٌ يُعدَّل. ومفتاح الحصانة تشتقّه الوحدة من هوية الترحيل ولا يرسله العميل.
+ * 
+ * **ويُرفض اليوم رفضاً صريحاً بـ409 وprojects.contract_policy.pending**، ورسالتُه تسمّي البنود المعلَّقة واحداً واحداً. وهذا **سلوكٌ منشور لا نقصٌ مخفيّ**: المصفوفة تفرض أن نسبة المحتجز «تأتي من العقد لا من قيمة ثابتة في الكود»، ولا تقول على أي وعاء تُضرب ولا بأي قاعدة تُستردّ الدفعة المقدمة ولا أين يقع التقريب ولا على أي مستوى يُقرَّر التصنيف الضريبي. فبلا هذه الأجوبة يصير القيد متوازناً بأرقامٍ اخترعها من نادى الباب — **ولا يمسك ذلك توازنٌ ولا حارس**.
+ * 
+ * وحين تُحسم البنود ويُبنى حاسبُ كل مبلغ، يصير هذا الباب حصيناً ضد التكرار بهوية الترحيل: الوصول الثاني بالهوية نفسها يُرجع المستند ذاته وalreadyPosted = true ورمز 200 بدل 201، ولا يُنشئ قيداً ثانياً مهما كان ترتيب الوصول.
+ * 
+ * Posts a draft certificate, turning it into an **accounting fact**. A separate sub-resource, not a PUT on the document: posting is an act that creates an entry, not a field that is edited. The idempotency key is derived by the module from the posting identity and never sent by the client.
+ * 
+ * **It is refused today, explicitly, with 409 and projects.contract_policy.pending**, and the message names each pending item. This is **published behaviour, not a hidden gap**: the matrix requires the retention rate to 'come from the contract, never from a constant in code', and it does not say what base the rate applies to, by what rule the advance is recovered, where rounding falls, or at what level the tax classification is decided. Without those answers the entry balances on figures invented by whoever called the door — **and neither balance nor guard catches that**.
+ * 
+ * Once the items are settled and each amount has its calculator, this door is idempotent by the posting identity: a second arrival with the same identity returns the same document with alreadyPosted = true and status 200 instead of 201, and never creates a second entry, whatever the arrival order.
+ */
+export async function postClientCertificate(transport: Transport, args: PostClientCertificateArgs, signal?: AbortSignal): Promise<T.Certificate> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/client-certificates/" + encodeURIComponent(args.certificateId) + "/posting";
+  const url = path;
+  const response = await transport({ method: "POST", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "Certificate", response.json) as T.Certificate;
 }
 
 export interface PostCreditNoteArgs {
@@ -1021,6 +1384,62 @@ export async function postPurchaseReturn(transport: Transport, args: PostPurchas
   return decodeSchema(SCHEMAS, "CommercialDocument", response.json) as T.CommercialDocument;
 }
 
+export interface PostRetentionCollectionArgs {
+  /** معرّف مستند تحصيل المحتجز. / The retention collection identifier. */
+  collectionId: string;
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+}
+
+/**
+ * ترحيل تحصيل المحتجز من العميل / Post a client retention collection
+ * 
+ * يرحّل تحصيل المحتجز بحدثه.
+ * 
+ * **وهذا هو المسار الوحيد في هذه الوحدة الذي يمارس قدرةً مُرخِّصة**: حدثُه هو ما تفتحه قدرة retention على نوع المستند projects.client_certificate في كتالوج القدرات. فيمرّ من بوّابة القبول أوّلاً، و**غياب ملفّ القدرات رفضٌ لا فتح**: منشأةٌ بلا ملفّ ليست بلا قيود، بل لم يُقرَّر بعد ما اشترته.
+ * 
+ * **ويحجبه بندٌ معلَّق أيضاً**: أثرُ هذا القيد على نقطة ضبط العميل يتوقّف على ما إذا كان المحتجز المدين جزءاً من ضبط العميل أصلاً — وهو تناقضٌ قائم بين ملفَّي بياناتٍ في دليل الحسابات لم يُغلَق بعد. فكتابةُ أثرٍ هنا اختيارٌ لأحد جوابيه بلا أن يقوله أحد.
+ * 
+ * Posts the retention collection under its event.
+ * 
+ * **This is the only path in this module that exercises a licensing capability**: its event is what the retention capability opens on document type projects.client_certificate in the capability catalogue. It therefore passes through the admission gate first, and **a missing capability profile fails closed**: a company without one is not unconstrained, it is one whose purchase has not been decided yet.
+ * 
+ * **A pending item blocks it too**: this entry's effect on the customer control point depends on whether debit retention belongs to the customer control set at all — an open contradiction between two chart-of-accounts data files. Writing an effect here would choose one of its two answers with nobody having said so.
+ */
+export async function postRetentionCollection(transport: Transport, args: PostRetentionCollectionArgs, signal?: AbortSignal): Promise<T.ProjectsDocument> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/retention-collections/" + encodeURIComponent(args.collectionId) + "/posting";
+  const url = path;
+  const response = await transport({ method: "POST", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "ProjectsDocument", response.json) as T.ProjectsDocument;
+}
+
+export interface PostRetentionReleaseArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف مستند الإفراج عن المحتجز. / The retention release identifier. */
+  releaseId: string;
+}
+
+/**
+ * ترحيل الإفراج عن المحتجز / Post a retention release
+ * 
+ * يرحّل الإفراج بحدثه — **قيدٌ مستقلّ لا تعديلٌ لقيد المستخلص**، بنصّ الحدث. ومعرّف هذا المستند هو ما يجعل حدثاً بلا مستندٍ بطبعه **حصيناً ضد التكرار**: بلا مستندٍ يحمل هوية، تكون إعادةُ نداءٍ إفراجاً ثانياً.
+ * 
+ * **وأثره على نقطة ضبط المقاول صفرٌ بحكم القالب**: الحركة داخل الدفتر المساعد نفسه — يُدين المحتجز الدائن ويُدين به مستحقّ المقاول — فالمجموع لا يتغيّر. وكتابةُ أثرٍ غير صفري هنا كانت ستُنتج انحرافاً في المطابقة على مستندٍ سليم.
+ * 
+ * Posts the release under its event — **a standalone entry, not an edit to the certificate's entry**, by the event text. This document's identifier is what makes an event that is naturally document-less **idempotent**: without a document carrying an identity, a repeated call is a second release.
+ * 
+ * **Its effect on the subcontractor control point is zero by the template**: the movement stays inside the same subledger — it debits the retention payable and debits the subcontractor's balance — so the total does not change. Writing a non-zero effect here would have produced a reconciliation divergence on a perfectly sound document.
+ */
+export async function postRetentionRelease(transport: Transport, args: PostRetentionReleaseArgs, signal?: AbortSignal): Promise<T.ProjectsDocument> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/retention-releases/" + encodeURIComponent(args.releaseId) + "/posting";
+  const url = path;
+  const response = await transport({ method: "POST", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "ProjectsDocument", response.json) as T.ProjectsDocument;
+}
+
 export interface PostSalesInvoiceArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
@@ -1079,6 +1498,66 @@ export async function postStockMovement(transport: Transport, args: PostStockMov
   const response = await transport({ method: "POST", url, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "StockMovement", response.json) as T.StockMovement;
+}
+
+export interface PostSubcontractorAdvanceArgs {
+  /** معرّف مستند صرف الدفعة المقدمة للمقاول. / The subcontractor advance identifier. */
+  advanceId: string;
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+}
+
+/**
+ * ترحيل صرف دفعة مقدمة لمقاول / Post a subcontractor advance payment
+ * 
+ * يرحّل صرف الدفعة المقدمة فيصير **واقعة محاسبية**: **أصلٌ لا مصروف** بنصّ الحدث — «يُستنفَد باستقطاعات المستخلصات».
+ * 
+ * **وهذا هو المستند الوحيد في هذه الوحدة الذي يُرحَّل فعلاً اليوم**، ولسببٍ واحد: مبلغُه واقعةٌ يُدخلها المستخدم — ما صُرف — لا رقمٌ يشتقّه حاسبٌ من نسبةٍ ووعاءٍ وقاعدةِ تقريب. فلا بند معلَّق فيه، فلا شيء يمنع قيده.
+ * 
+ * **وحصين ضد التكرار بهوية الترحيل** (شركة · نوع المستند · معرّفه · رمز الإطلاق · الجيل · رمز الحدث): الوصول الثاني بالهوية نفسها يُرجع **معرّف القيد الأول** وalreadyPosted = true ورمز 200 بدل 201، ولا يُنشئ قيداً ثانياً — والحكم حكم بوّابة الوحدة لا مقارنةَ حالةٍ قُرئت قبل النداء.
+ * 
+ * Posts the advance payment, turning it into an **accounting fact**: **an asset, not an expense**, by the event text — 'consumed by deductions on the certificates'.
+ * 
+ * **This is the only document in this module that actually posts today**, for one reason: its amount is a fact the user enters — what was paid — not a figure a calculator derives from a rate, a base, and a rounding rule. No item is pending on it, so nothing blocks its entry.
+ * 
+ * **Idempotent by the posting identity** (company, source document type, source document id, trigger, generation, event code): a second arrival with the same identity returns **the first entry's identifier** with alreadyPosted = true and status 200 instead of 201, and never creates a second entry — the verdict is the module gateway's, not a comparison against a state read before the call.
+ */
+export async function postSubcontractorAdvance(transport: Transport, args: PostSubcontractorAdvanceArgs, signal?: AbortSignal): Promise<T.ProjectsDocument> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/subcontractor-advances/" + encodeURIComponent(args.advanceId) + "/posting";
+  const url = path;
+  const response = await transport({ method: "POST", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "ProjectsDocument", response.json) as T.ProjectsDocument;
+}
+
+export interface PostSubcontractorCertificateArgs {
+  /** معرّف مستخلص المقاول من الباطن. / The subcontractor certificate identifier. */
+  certificateId: string;
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+}
+
+/**
+ * ترحيل مستخلص باطن / Post a subcontractor certificate
+ * 
+ * يرحّل مستخلص الباطن بحدث المصفوفة الخاص به. مورد فرعي مستقلّ وحصين ضد التكرار بالشكل نفسه.
+ * 
+ * **ويُرفض بـ409 وprojects.penalty_line_has_no_template إن حمل المستخلص سطر غرامة أو خصم.** والسبب مكتوب في القالب نفسه: مبالغه أربعة ليس فيها غرامة، وتعبير سطر الدائن لا يحتمل طرفاً خامساً — فلا سطر لها. والمخرج السهل أمام المنفِّذ — خصمُها من قيمة الأعمال — **ممنوع بنصّ التحفّظ**، لأنه يُنقص التكلفة المعترف بها للمشروع بمبلغ غرامة فتنحرف ربحيته وتكلفةُ بنده معاً. **فرفضٌ مُعلَن خيرٌ من خصمٍ صامت**، والسطور تبقى مخزَّنة حتى يهبط مبلغ الغرامة وسطرُه في المصفوفة بتوقيع محاسب.
+ * 
+ * **ويُرفض بـ409 وprojects.contract_policy.pending** إن خلا من الغرامات، لنفس البنود المعلَّقة التي تحجب مستخلص العميل.
+ * 
+ * Posts the subcontractor certificate under its own matrix event. A separate sub-resource, idempotent in the same shape.
+ * 
+ * **It is refused with 409 and projects.penalty_line_has_no_template when the certificate carries a penalty or deduction line.** The reason is written into the template itself: it has four amounts and none is a penalty, and the credit line's expression cannot take a fifth term — so there is no line for it. The easy way out — netting it against the works value — is **forbidden by the caveat text**, because it reduces the cost recognised for the project by a penalty amount, so both the project's profitability and its item cost drift. **A declared refusal beats a silent netting**, and the lines stay stored until a penalty amount and its line land in the matrix with an accountant's signature.
+ * 
+ * **It is refused with 409 and projects.contract_policy.pending** when free of penalties, for the same pending items that block the client certificate.
+ */
+export async function postSubcontractorCertificate(transport: Transport, args: PostSubcontractorCertificateArgs, signal?: AbortSignal): Promise<T.Certificate> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/subcontractor-certificates/" + encodeURIComponent(args.certificateId) + "/posting";
+  const url = path;
+  const response = await transport({ method: "POST", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "Certificate", response.json) as T.Certificate;
 }
 
 export interface PostSupplierBillArgs {
@@ -1159,6 +1638,32 @@ export async function readAttachment(transport: Transport, args: ReadAttachmentA
   return decodeSchema(SCHEMAS, "Attachment", response.json) as T.Attachment;
 }
 
+export interface ReadBoqItemsArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف عقد المقاولة. / The project contract identifier. */
+  contractId: string;
+}
+
+/**
+ * قراءة بنود جدول الكميات / Read the bill-of-quantities lines
+ * 
+ * يقرأ بنود جدول الكميات **بمعرّفاتها ووحداتها** — ومعرّف البند هو مدخل سطر المستخلص.
+ * 
+ * **وكل بند يحمل وحدة قياسه**، والمستخلص الذي تخالف وحدةُ سطره وحدةَ بنده **يُرفض ولا يُحوَّل**: قاعدة تحويل الوحدات يملكها المخزون، ونسخةٌ ثانية منها في وحدة المقاولات تنحرف عن أصلها عند أول تعديل.
+ * 
+ * Reads the bill-of-quantities lines **with their identifiers and units** — a line identifier is the input to a certificate line.
+ * 
+ * **Every line carries its unit of measure**, and a certificate line whose unit differs from its item's unit is **refused, never converted**: the conversion rule belongs to inventory, and a second copy of it inside the contracting module drifts from its original at the first edit.
+ */
+export async function readBoqItems(transport: Transport, args: ReadBoqItemsArgs, signal?: AbortSignal): Promise<T.BoqItemList> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/project-contracts/" + encodeURIComponent(args.contractId) + "/boq-items";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "BoqItemList", response.json) as T.BoqItemList;
+}
+
 export interface ReadCapabilityProfileArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
@@ -1177,6 +1682,28 @@ export async function readCapabilityProfile(transport: Transport, args: ReadCapa
   const response = await transport({ method: "GET", url, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "CapabilityProfile", response.json) as T.CapabilityProfile;
+}
+
+export interface ReadChangeOrderArgs {
+  /** معرّف الأمر التغييري. / The change order identifier. */
+  changeOrderId: string;
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+}
+
+/**
+ * قراءة أمر تغييري / Read one change order
+ * 
+ * يقرأ أمراً تغييرياً ببنوده الجديدة.
+ * 
+ * Reads a change order with the lines it added.
+ */
+export async function readChangeOrder(transport: Transport, args: ReadChangeOrderArgs, signal?: AbortSignal): Promise<T.ChangeOrder> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/change-orders/" + encodeURIComponent(args.changeOrderId) + "";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "ChangeOrder", response.json) as T.ChangeOrder;
 }
 
 export interface ReadChartOfAccountsArgs {
@@ -1199,6 +1726,28 @@ export async function readChartOfAccounts(transport: Transport, args: ReadChartO
   return decodeSchema(SCHEMAS, "PostingChart", response.json) as T.PostingChart;
 }
 
+export interface ReadClientCertificateArgs {
+  /** معرّف مستخلص العميل. / The client certificate identifier. */
+  certificateId: string;
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+}
+
+/**
+ * قراءة مستخلص عميل / Read one client certificate
+ * 
+ * يقرأ المستخلص بحالته وسطوره بكمّياتها التراكمية والسابقة، وبنوده المعلَّقة، ومعرّف قيده إن رُحّل.
+ * 
+ * Reads the certificate with its state, its lines with their cumulative and previous quantities, its pending items, and its entry identifier if posted.
+ */
+export async function readClientCertificate(transport: Transport, args: ReadClientCertificateArgs, signal?: AbortSignal): Promise<T.Certificate> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/client-certificates/" + encodeURIComponent(args.certificateId) + "";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "Certificate", response.json) as T.Certificate;
+}
+
 export interface ReadCompanySetupArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
@@ -1217,6 +1766,76 @@ export async function readCompanySetup(transport: Transport, args: ReadCompanySe
   const response = await transport({ method: "GET", url, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "CompanySetup", response.json) as T.CompanySetup;
+}
+
+export interface ReadContractChangeOrdersArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف عقد المقاولة. / The project contract identifier. */
+  contractId: string;
+}
+
+/**
+ * قراءة أوامر العقد التغييرية / Read a contract's change orders
+ * 
+ * يقرأ أوامر العقد التغييرية ببنودها الجديدة.
+ * 
+ * Reads a contract's change orders with the lines each of them added.
+ */
+export async function readContractChangeOrders(transport: Transport, args: ReadContractChangeOrdersArgs, signal?: AbortSignal): Promise<T.ChangeOrderList> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/project-contracts/" + encodeURIComponent(args.contractId) + "/change-orders";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "ChangeOrderList", response.json) as T.ChangeOrderList;
+}
+
+export interface ReadContractClientCertificatesArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف عقد المقاولة. / The project contract identifier. */
+  contractId: string;
+}
+
+/**
+ * قراءة مستخلصات العقد / Read a contract's client certificates
+ * 
+ * يقرأ مستخلصات العقد بتسلسلها. و**لازمٌ لأن الأساس المطروح منه هو آخر مستخلصٍ مُرحَّل**: بلا هذا الباب لا يعرف العميل ذلك المستخلص إلا بمعرّفٍ يملكه سلفاً.
+ * 
+ * Reads a contract's certificates in sequence. **Necessary because the base a certificate subtracts from is the last posted certificate**: without this door a client only knows that certificate by an identifier it already holds.
+ */
+export async function readContractClientCertificates(transport: Transport, args: ReadContractClientCertificatesArgs, signal?: AbortSignal): Promise<T.CertificateList> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/project-contracts/" + encodeURIComponent(args.contractId) + "/client-certificates";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "CertificateList", response.json) as T.CertificateList;
+}
+
+export interface ReadContractPositionArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف عقد المقاولة. / The project contract identifier. */
+  contractId: string;
+}
+
+/**
+ * قراءة موقف العقد / Read a contract's position
+ * 
+ * يقرأ موقف العقد **مشتقّاً من المُرحَّل وحده**: عدد المستخلصات المُرحَّلة، والمحتجز القائم، والدفعة المقدمة غير المستنفَدة.
+ * 
+ * **وهو بديلٌ لتقرير ربحية المشروع لا نسخةٌ منه.** قاعدة تحميل تكلفة الموظف والمعدّة على المشروع قرارٌ لم يُحسم، وثلاثة حسابات تكلفة مشاريع قائمة في دليل الحسابات **بلا كاتب واحد** — فرقمُ ربحيةٍ مقنع بلا قاعدة معلنة أسوأ من غيابه.
+ * 
+ * Reads the contract's position **derived from posted entries alone**: the count of posted certificates, the outstanding retention, and the unconsumed advance.
+ * 
+ * **It replaces a project profitability report rather than being one.** The rule for charging labour and equipment cost to a project is undecided, and three project cost accounts stand in the chart **with no writer at all** — so a convincing profitability figure with no published basis is worse than its absence.
+ */
+export async function readContractPosition(transport: Transport, args: ReadContractPositionArgs, signal?: AbortSignal): Promise<T.ContractPosition> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/project-contracts/" + encodeURIComponent(args.contractId) + "/position";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "ContractPosition", response.json) as T.ContractPosition;
 }
 
 export interface ReadCustomerArgs {
@@ -1359,6 +1978,28 @@ export async function readGoodsReceiptLines(transport: Transport, args: ReadGood
   return decodeSchema(SCHEMAS, "PurchaseDocumentLineList", response.json) as T.PurchaseDocumentLineList;
 }
 
+export interface ReadGuaranteeArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف خطاب الضمان. / The guarantee identifier. */
+  guaranteeId: string;
+}
+
+/**
+ * قراءة خطاب ضمان / Read one guarantee
+ * 
+ * يقرأ خطاب الضمان بتواريخه ومبلغه ومعرّف مرفقه.
+ * 
+ * Reads the guarantee with its dates, its amount, and its attachment identifier.
+ */
+export async function readGuarantee(transport: Transport, args: ReadGuaranteeArgs, signal?: AbortSignal): Promise<T.Guarantee> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/guarantees/" + encodeURIComponent(args.guaranteeId) + "";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "Guarantee", response.json) as T.Guarantee;
+}
+
 export interface ReadInventoryValuationArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
@@ -1483,6 +2124,50 @@ export async function readPayablesAging(transport: Transport, args: ReadPayables
   return decodeSchema(SCHEMAS, "AgingReport", response.json) as T.AgingReport;
 }
 
+export interface ReadProjectArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف المشروع. / The project identifier. */
+  projectId: string;
+}
+
+/**
+ * قراءة مشروع / Read one project
+ * 
+ * يقرأ مشروعاً بحالته وعقوده. ونقطة قراءة: تعمل والاشتراك للقراءة فقط.
+ * 
+ * Reads a project with its state and its contracts. A read point: it works while the subscription is read-only.
+ */
+export async function readProject(transport: Transport, args: ReadProjectArgs, signal?: AbortSignal): Promise<T.Project> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/projects/" + encodeURIComponent(args.projectId) + "";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "Project", response.json) as T.Project;
+}
+
+export interface ReadProjectContractArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف عقد المقاولة. / The project contract identifier. */
+  contractId: string;
+}
+
+/**
+ * قراءة عقد مقاولة / Read one project contract
+ * 
+ * يقرأ العقد **ومعه بنوده المعلَّقة** التي تمنع ترحيل مستخلصاته اليوم. وإظهارها على العقد نفسه مقصود: من يقرأ العقد قبل أن يُنشئ مستخلصاً يعرف سلفاً ما الذي سيرفضه الترحيل ولماذا، بدل أن يكتشفه عند أول محاولة مالية.
+ * 
+ * Reads the contract **together with its pending items**, which block posting its certificates today. Exposing them on the contract itself is deliberate: whoever reads the contract before drafting a certificate learns in advance what posting will refuse and why, instead of discovering it at the first financial attempt.
+ */
+export async function readProjectContract(transport: Transport, args: ReadProjectContractArgs, signal?: AbortSignal): Promise<T.ProjectContract> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/project-contracts/" + encodeURIComponent(args.contractId) + "";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "ProjectContract", response.json) as T.ProjectContract;
+}
+
 /**
  * العقد المنشور نفسه / The published contract itself
  * 
@@ -1566,6 +2251,78 @@ export async function readReceivablesAging(transport: Transport, args: ReadRecei
   return decodeSchema(SCHEMAS, "AgingReport", response.json) as T.AgingReport;
 }
 
+export interface ReadRetentionCollectionArgs {
+  /** معرّف مستند تحصيل المحتجز. / The retention collection identifier. */
+  collectionId: string;
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+}
+
+/**
+ * قراءة مستند تحصيل محتجز / Read one retention collection
+ * 
+ * يقرأ مستند التحصيل بحالته ومبلغه ومعرّف قيده إن رُحّل.
+ * 
+ * Reads the collection document with its state, its amount, and its entry identifier if posted.
+ */
+export async function readRetentionCollection(transport: Transport, args: ReadRetentionCollectionArgs, signal?: AbortSignal): Promise<T.ProjectsDocument> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/retention-collections/" + encodeURIComponent(args.collectionId) + "";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "ProjectsDocument", response.json) as T.ProjectsDocument;
+}
+
+export interface ReadRetentionRegisterArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** تاريخ القراءة بصيغة yyyy-MM-dd. ميلادي حصراً، وأي تقويم آخر يُقرأ فترة مالية مختلفة. / The as-of date in yyyy-MM-dd. Gregorian only; any other calendar reads as a different fiscal period. */
+  asOf: string;
+}
+
+/**
+ * قراءة سجلّ المحتجزات / Read the retention register
+ * 
+ * يقرأ المحتجزات مدينةً ودائنة بتواريخ استحقاق الإفراج على الطرفين، **مشتقّةً من المُرحَّل وحده** — ومعرّف الحركة في كل صفّ هو ما يُفرَج عنه أو يُحصَّل.
+ * 
+ * **ولا عمود رصيدٍ يُنقَص في أي مكان**: الرصيد القائم يُشتقّ من الحركات، وكل رصيدٍ قابل لإعادة الاشتقاق من أسطر الدفتر.
+ * 
+ * Reads retention, debit and credit, with the release due dates on both sides, **derived from posted entries alone** — and the movement identifier on each row is what a release or a collection acts upon.
+ * 
+ * **No balance column is decremented anywhere**: the outstanding balance is derived from the movements, and every balance is re-derivable from the ledger's lines.
+ */
+export async function readRetentionRegister(transport: Transport, args: ReadRetentionRegisterArgs, signal?: AbortSignal): Promise<T.RetentionRegister> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/retention-register";
+  const query = new URLSearchParams();
+  query.set("asOf", args.asOf);
+  const url = query.size > 0 ? path + "?" + query.toString() : path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "RetentionRegister", response.json) as T.RetentionRegister;
+}
+
+export interface ReadRetentionReleaseArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف مستند الإفراج عن المحتجز. / The retention release identifier. */
+  releaseId: string;
+}
+
+/**
+ * قراءة مستند إفراج / Read one retention release
+ * 
+ * يقرأ مستند الإفراج بحالته ومبلغه ومعرّف قيده إن رُحّل.
+ * 
+ * Reads the release document with its state, its amount, and its entry identifier if posted.
+ */
+export async function readRetentionRelease(transport: Transport, args: ReadRetentionReleaseArgs, signal?: AbortSignal): Promise<T.ProjectsDocument> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/retention-releases/" + encodeURIComponent(args.releaseId) + "";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "ProjectsDocument", response.json) as T.ProjectsDocument;
+}
+
 export interface ReadSalesInvoiceArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
@@ -1645,6 +2402,148 @@ export async function readStockBalances(transport: Transport, args: ReadStockBal
   const response = await transport({ method: "GET", url, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "StockBalanceList", response.json) as T.StockBalanceList;
+}
+
+export interface ReadSubcontractArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف عقد الباطن. / The subcontract identifier. */
+  subcontractId: string;
+}
+
+/**
+ * قراءة عقد باطن / Read one subcontract
+ * 
+ * يقرأ عقد الباطن ومعه بنوده المعلَّقة التي تمنع ترحيل مستخلصاته.
+ * 
+ * Reads the subcontract together with the pending items that block posting its certificates.
+ */
+export async function readSubcontract(transport: Transport, args: ReadSubcontractArgs, signal?: AbortSignal): Promise<T.Subcontract> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/subcontracts/" + encodeURIComponent(args.subcontractId) + "";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "Subcontract", response.json) as T.Subcontract;
+}
+
+export interface ReadSubcontractLinesArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف عقد الباطن. / The subcontract identifier. */
+  subcontractId: string;
+}
+
+/**
+ * قراءة بنود عقد الباطن / Read a subcontract's lines
+ * 
+ * يقرأ بنود عقد الباطن بمعرّفاتها ووحداتها — ومعرّف البند هو مدخل سطر مستخلصه.
+ * 
+ * Reads the subcontract's lines with their identifiers and units — a line identifier is the input to its certificate line.
+ */
+export async function readSubcontractLines(transport: Transport, args: ReadSubcontractLinesArgs, signal?: AbortSignal): Promise<T.SubcontractLineList> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/subcontracts/" + encodeURIComponent(args.subcontractId) + "/lines";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "SubcontractLineList", response.json) as T.SubcontractLineList;
+}
+
+export interface ReadSubcontractorArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف المقاول من الباطن. / The subcontractor identifier. */
+  subcontractorId: string;
+}
+
+/**
+ * قراءة مقاول من الباطن / Read one subcontractor
+ * 
+ * يقرأ المقاول بمعرّفه — **وهو الطرف الذي تحمله سطور دفتره المساعد**.
+ * 
+ * Reads the subcontractor by identifier — **the party its subledger lines carry**.
+ */
+export async function readSubcontractor(transport: Transport, args: ReadSubcontractorArgs, signal?: AbortSignal): Promise<T.Subcontractor> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/subcontractors/" + encodeURIComponent(args.subcontractorId) + "";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "Subcontractor", response.json) as T.Subcontractor;
+}
+
+export interface ReadSubcontractorAdvanceArgs {
+  /** معرّف مستند صرف الدفعة المقدمة للمقاول. / The subcontractor advance identifier. */
+  advanceId: string;
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+}
+
+/**
+ * قراءة صرف دفعة مقدمة / Read one subcontractor advance payment
+ * 
+ * يقرأ المستند بحالته ومبلغه ومعرّف قيده إن رُحّل. **والرصيد مشتقٌّ من المُرحَّل وحده** لا عمودٌ يُنقَص.
+ * 
+ * Reads the document with its state, its amount, and its entry identifier if posted. **The balance is derived from posted entries alone**, never a column that is decremented.
+ */
+export async function readSubcontractorAdvance(transport: Transport, args: ReadSubcontractorAdvanceArgs, signal?: AbortSignal): Promise<T.ProjectsDocument> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/subcontractor-advances/" + encodeURIComponent(args.advanceId) + "";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "ProjectsDocument", response.json) as T.ProjectsDocument;
+}
+
+export interface ReadSubcontractorCertificateArgs {
+  /** معرّف مستخلص المقاول من الباطن. / The subcontractor certificate identifier. */
+  certificateId: string;
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+}
+
+/**
+ * قراءة مستخلص باطن / Read one subcontractor certificate
+ * 
+ * يقرأ مستخلص الباطن بحالته وسطوره — سطور الأعمال وسطور الغرامات معاً وكلٌّ بصنفه.
+ * 
+ * Reads the subcontractor certificate with its state and its lines — works lines and penalty lines together, each with its kind.
+ */
+export async function readSubcontractorCertificate(transport: Transport, args: ReadSubcontractorCertificateArgs, signal?: AbortSignal): Promise<T.Certificate> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/subcontractor-certificates/" + encodeURIComponent(args.certificateId) + "";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "Certificate", response.json) as T.Certificate;
+}
+
+export interface ReadSubcontractorStatementArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** تاريخ الكشف بصيغة yyyy-MM-dd. / The statement date in yyyy-MM-dd. */
+  asOf: string;
+}
+
+/**
+ * قراءة كشف المقاولين / Read the subcontractor statement
+ * 
+ * يقرأ كشف المقاولين حتى تاريخ، **ومعه مطابقته بنقطة ضبطه**. وهو المطابقة المُعلَنة نصّاً في بيانات الدفاتر المساعدة: «كشف المقاولين = رصيد الحساب».
+ * 
+ * **والقراءة مُضيَّقة على مستندات هذه الوحدة.** نقطة الضبط الواحدة يُحرّكها أكثر من وحدة، فمطابقةٌ تقرأ الدفتر بالنوع وحده ثم تقارنه بمستنداتها هي تُصدر انحرافاً على مستأجرٍ سليم — وكل حركة ليست في جدولها تُقرأ «مفقودة من الدفتر المساعد».
+ * 
+ * **وisReconciled صفرٌ بالضبط لا «قريب من الصفر»**: الفارق بريال واحد فارقٌ يُسمّى، وصفوفُه تُسمّي الطرف المسؤول عنه.
+ * 
+ * Reads the subcontractor statement to a date, **together with its reconciliation against its control point**. This is the reconciliation declared verbatim in the subledger data: 'the subcontractor statement equals the account balance'.
+ * 
+ * **The read is narrowed to this module's own documents.** One control point is moved by more than one module, so a reconciliation that reads the ledger by kind alone and compares it to its own documents raises a divergence on a sound tenant — every movement absent from its table reads as 'missing from the subledger'.
+ * 
+ * **isReconciled means exactly zero, not 'close to zero'**: a one-riyal difference is a difference that gets named, and the rows name the party responsible for it.
+ */
+export async function readSubcontractorStatement(transport: Transport, args: ReadSubcontractorStatementArgs, signal?: AbortSignal): Promise<T.SubcontractorStatement> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/subcontractor-statement";
+  const query = new URLSearchParams();
+  query.set("asOf", args.asOf);
+  const url = query.size > 0 ? path + "?" + query.toString() : path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "SubcontractorStatement", response.json) as T.SubcontractorStatement;
 }
 
 export interface ReadSubscriptionArgs {

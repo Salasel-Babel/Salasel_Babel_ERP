@@ -314,6 +314,10 @@ internal static class ApiFixture
             // هذا المفتاح يقلع الخادم على `babel_inventory` على المضيف المحلي — وهو
             // نفس عطل المبيعات والمشتريات، باقياً في وحدة ثالثة لأن لا باب كان يبلغها.
             ["Babel__Inventory__ConnectionString"] = ApiTestDatabase.Inventory.ConnectionString,
+
+            // ووحدة المقاولات: قاعدتها في مسار الطلب كسائرها. و**سُجّلت باتصالها من
+            // الإعداد منذ سطرها الأول** — لا بعد تسليمٍ كامل كما وقع للثلاث قبلها.
+            ["Babel__Projects__ConnectionString"] = ApiTestDatabase.Projects.ConnectionString,
             // ── سطح الاشتراك: مُهيَّأ صراحةً، وبدور سطحٍ لا بمستخدم إدارة ────────
             // والتهيئة مفتاحٌ صريح لا استنتاج من وجود قاعدة: خادمٌ على آلة فيها قاعدة
             // تحكّم لغرضٍ آخر لا يفتح سطح الاشتراك عليها إلا بقرار.
@@ -384,6 +388,15 @@ internal static class ApiFixture
         // `entitlement.not_entitled` — **وهو الجواب الصحيح لا عطل**: باب الاستلام
         // يمسّ دفتر المخزون المساعد، فمنشأةٌ لم تشترِ المخزون لا تملكه.
         environment[Entitlement(ApiTestDatabase.CompanyB, "Inventory")] = "Entitled";
+
+        // ── والمقاولات على الشركة «ب» وحدها كذلك ─────────────────────────────────
+        // ‏`Projects` وحدة اختيارية، فالافتراضي `NotEntitled` على كل منشأة، ولا
+        // يُشترى إلا حيث اشتُري ما تعتمد عليه: `ModuleDependencyGraph` يجعل
+        // المقاولات فوق `Core` و`Ledger` و`Inventory`، و«قدرة الوحدة لا تتجاوز
+        // قدرة ما تعتمد عليه» — فالشركة «ب» وحدها تصلح لها لأنّها وحدها اشترت
+        // المخزون أعلاه. والشركة «أ» تبقى بلا مقاولات، فكل باب من أبواب المقاولات
+        // عندها يُرفض بـ403 `entitlement.not_entitled` — **وهو الجواب الصحيح لا عطل**.
+        environment[Entitlement(ApiTestDatabase.CompanyB, "Projects")] = "Entitled";
 
         environment[Entitlement(ApiTestDatabase.CompanyC, "Sales")] = "ReadOnly";
         environment[Entitlement(ApiTestDatabase.CompanyC, "Purchasing")] = "ReadOnly";

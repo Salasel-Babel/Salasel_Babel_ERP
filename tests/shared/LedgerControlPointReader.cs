@@ -29,6 +29,7 @@ internal sealed class LedgerControlPointReader(string connectionString) : IContr
         TenantId tenant,
         string subledgerKind,
         DateOnly asOf,
+        BabelModule? writtenBy = null,
         CancellationToken cancellationToken = default)
     {
         List<ControlPointMovement> movements = [];
@@ -48,6 +49,7 @@ internal sealed class LedgerControlPointReader(string connectionString) : IContr
              where l.company_id = $1
                and l.subledger_kind = $2
                and e.entry_date <= $3
+               and ($4 or e.source_module = $5)
              group by e.source_doc_type, e.source_doc_id, coalesce(l.subledger_party_id, '')
              order by e.source_doc_type, e.source_doc_id
             """, connection);
@@ -55,6 +57,8 @@ internal sealed class LedgerControlPointReader(string connectionString) : IContr
         command.Parameters.AddWithValue(tenant.Value);
         command.Parameters.AddWithValue(subledgerKind);
         command.Parameters.AddWithValue(asOf);
+        command.Parameters.AddWithValue(writtenBy is null);
+        command.Parameters.AddWithValue(writtenBy?.ToString() ?? string.Empty);
 
         await using NpgsqlDataReader reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
         while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))

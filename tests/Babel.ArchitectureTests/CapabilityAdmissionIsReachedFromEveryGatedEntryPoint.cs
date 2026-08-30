@@ -36,6 +36,10 @@ public sealed class UnguardedGatedEventControl : IApplicationService
     /// <summary>ورمز حدث تفتحه قدرة في وحدة المبيعات — كي يعضّ الشاهد على الوحدتين معاً.</summary>
     [RequiresEntitlement(BabelModule.Sales, EntitlementAccess.Write)]
     public string PostsASalesGatedEventWithoutAdmission() => "sales.invoice.cost_of_sales" + _suffix;
+
+    /// <summary>ورمز حدث تفتحه قدرة في وحدة المقاولات — والوحدات الثلاث تُفحص بالماسح نفسه.</summary>
+    [RequiresEntitlement(BabelModule.Projects, EntitlementAccess.Write)]
+    public string PostsAProjectsGatedEventWithoutAdmission() => "projects.client_retention.collected" + _suffix;
 }
 
 /// <summary>
@@ -66,6 +70,12 @@ public sealed class CapabilityAdmissionIsReachedFromEveryGatedEntryPoint(ITestOu
         AdmissionScan.AdmissionOf(
             BabelAssemblies.Named("Babel.Purchasing"), "Babel.Purchasing.Application.PurchasingAdmission", "AdmitBillAsync"));
 
+    private static AdmissionScan Projects => AdmissionScan.Run(
+        BabelAssemblies.Named("Babel.Projects"),
+        BabelModule.Projects,
+        AdmissionScan.AdmissionOf(
+            BabelAssemblies.Named("Babel.Projects"), "Babel.Projects.Application.ProjectsAdmission", "AdmitCertificateAsync"));
+
     [Fact]
     public void NoPublicEntryPointInSalesReachesACapabilityGatedEventWithoutReachingAdmission()
         => Check(Sales, "Babel.Sales");
@@ -73,6 +83,15 @@ public sealed class CapabilityAdmissionIsReachedFromEveryGatedEntryPoint(ITestOu
     [Fact]
     public void NoPublicEntryPointInPurchasingReachesACapabilityGatedEventWithoutReachingAdmission()
         => Check(Purchasing, "Babel.Purchasing");
+
+    /// <summary>
+    /// <b>وفي المقاولات كذلك.</b> الحدث الذي تفتحه قدرة <c>retention</c> هو
+    /// <c>projects.client_retention.collected</c>، وكاتبُه الوحيد هو مسار ترحيل تحصيل
+    /// المحتجز — فيجب أن يمرّ من بوّابة القبول قبل أن يبني طلباً.
+    /// </summary>
+    [Fact]
+    public void NoPublicEntryPointInProjectsReachesACapabilityGatedEventWithoutReachingAdmission()
+        => Check(Projects, "Babel.Projects");
 
     /// <summary>
     /// <b>الحارس يعضّ.</b> الماسح نفسه يُشغَّل على تجميعة الاختبار — وفيها
@@ -90,6 +109,7 @@ public sealed class CapabilityAdmissionIsReachedFromEveryGatedEntryPoint(ITestOu
 
         foreach ((BabelModule module, string gate, string method) in new[]
                  {
+                     (BabelModule.Projects, "Babel.Projects.Application.ProjectsAdmission", "AdmitCertificateAsync"),
                      (BabelModule.Purchasing, "Babel.Purchasing.Application.PurchasingAdmission", "AdmitBillAsync"),
                      (BabelModule.Sales, "Babel.Sales.Application.SalesAdmission", "AdmitInvoiceAsync"),
                  })

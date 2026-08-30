@@ -124,6 +124,20 @@ internal static class ApiProblems
                 or "inventory.wrong_state" or "inventory.movement_already_returned"
                 or "inventory.movement_identity_conflict" or "inventory.movement_quantity_conflict" => 409,
             "inventory.unexpected_row_count" => 500,
+
+            // ── مستندات المقاولات ────────────────────────────────────────────
+            // بالتصنيف نفسه، **ورفضان يستحقّان تسميتهما 409 لا 422**:
+            //   · «بندٌ معلَّق على قرار محاسب» و«قرارٌ اعتُمد ولا حاسبَ له» ليسا خطأً في
+            //     صياغة الطلب: الطلب سليم تماماً، ويصطدم بـ**حالةٍ قائمة على العقد**.
+            //     والعميل الذي يقرأ 409 يعرف أن يقرأ pendingPolicy على العقد ثم يتوقّف؛
+            //     ولو قُرئ 422 لظنّ أن إعادة الصياغة تُجدي، وهي لا تُجدي أبداً.
+            //   · و«سطر غرامة بلا قالب» كذلك: السطر مقبولٌ ومحفوظ، والمانع أن المصفوفة
+            //     لا تحمل له سطراً بعد — حالةُ نظامٍ لا عيبُ حمولة.
+            "projects.not_found" or "projects.retention_movement_not_found" => 404,
+            "projects.duplicate_number" or "projects.duplicate_sequence"
+                or "projects.wrong_state" or "projects.penalty_line_has_no_template"
+                or "projects.contract_policy.pending"
+                or "projects.contract_policy.resolution_not_implemented" => 409,
             // ── المرفقات ─────────────────────────────────────────────────────
             // و**الأربعة الأولى تُصنَّف بأعيانها لا ببادئتها**: «أكبر من الحدّ» و«نوعٌ لا
             // يُعرف» و«إعلانٌ يخالف البايتات» رفوضٌ يعرف العميل ما يفعل بكلٍّ منها —
@@ -158,6 +172,7 @@ internal static class ApiProblems
             _ when code.StartsWith("sales.", StringComparison.Ordinal) => 422,
             _ when code.StartsWith("purchasing.", StringComparison.Ordinal) => 422,
             _ when code.StartsWith("inventory.", StringComparison.Ordinal) => 422,
+            _ when code.StartsWith("projects.", StringComparison.Ordinal) => 422,
 
             _ when code.StartsWith("capability_profile.", StringComparison.Ordinal) => 422,
             _ when code.StartsWith("document_admission.", StringComparison.Ordinal) => 422,

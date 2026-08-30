@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     dac93701517afebf600cd3f74868a4ca5bd94861699466e41651938520f14959
+     e25d2ecb3673e9e5364e6e1bac84e2e55f24100d5f24ddf15175661144024721
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -80,6 +80,22 @@ export function asQuantity(text: unknown): Quantity {
   return text as Quantity;
 }
 
+/** نسبة تعاقدية **كسراً عشرياً لا نسبة مئوية**: عشرة بالمئة تُكتب 0.10 لا 10. والمقياس ثمانٍ لا أربع: النسبة ليست مبلغاً ولا تُقرَّب إلى الهللة. **وهي تأتي من العقد لا من قيمة ثابتة في الكود** — نصّ مصفوفة الترحيل على المحتجز بحرفه. / A contractual rate as a **decimal fraction, not a percentage**: ten percent is written 0.10, never 10. The scale is eight, not four: a rate is not an amount and is not rounded to the halala. **It comes from the contract, never from a constant in code** — the posting matrix's text on retention, verbatim. */
+export type Rate = string & { readonly __Rate: unique symbol };
+
+/**
+ * يتحقّق من النمط المنشور ثم يحتجز النوع. / Validates then brands.
+ * @param text النصّ كما ورد. / the text as received.
+ */
+export function asRate(text: unknown): Rate {
+  if (typeof text !== "string" || !F.SCHEMA_Rate_RE.test(text)) {
+    throw new TypeError(
+      "asRate: نصّ لا يطابق النمط المنشور " + F.SCHEMA_Rate + " — «" + String(text) + "». / does not match the published pattern."
+    );
+  }
+  return text as Rate;
+}
+
 /** نسبة الضريبة **كسراً عشرياً لا نسبة مئوية**: خمسة عشر بالمئة تُكتب 0.15 لا 15. والمقياس ثمانٍ لا أربع: النسبة ليست مبلغاً ولا تُقرَّب إلى الهللة. / The tax rate as a **decimal fraction, not a percentage**: fifteen percent is written 0.15, never 15. The scale is eight, not four: a rate is not an amount and is not rounded to the halala. */
 export type TaxRate = string & { readonly __TaxRate: unique symbol };
 
@@ -118,6 +134,7 @@ export const BRANDS: Readonly<Record<string, (text: unknown) => string>> = {
   Int64String: asInt64String,
   Magnitude: asMagnitude,
   Quantity: asQuantity,
+  Rate: asRate,
   TaxRate: asTaxRate,
   UnitCost: asUnitCost,
 };

@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     dac93701517afebf600cd3f74868a4ca5bd94861699466e41651938520f14959
+     e25d2ecb3673e9e5364e6e1bac84e2e55f24100d5f24ddf15175661144024721
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -14,10 +14,10 @@
    ═══════════════════════════════════════════════════════════════════════ */
 
 import type { Money } from "../money";
-import type { ExchangeRate, Int64String, Magnitude, Quantity, TaxRate, UnitCost } from "./brands";
+import type { ExchangeRate, Int64String, Magnitude, Quantity, Rate, TaxRate, UnitCost } from "./brands";
 
 /* المال يصل هنا **مغلّفاً**: Money كائن يرمي عند أي تحويل ضمني إلى نصّ أو رقم.
-   وبقيّة الصيغ النصّية المنشورة أنواع محتجزة (ExchangeRate · Int64String · Magnitude · Quantity · TaxRate · UnitCost).
+   وبقيّة الصيغ النصّية المنشورة أنواع محتجزة (ExchangeRate · Int64String · Magnitude · Quantity · Rate · TaxRate · UnitCost).
    ولا حقل مالي واحد نوعه number — لا هنا ولا في أي ملف مكتوب بيد.
    Money is an object whose implicit coercions throw; the other published string
    formats are branded types. No monetary field is ever typed `number`. */
@@ -166,6 +166,40 @@ export interface AttachmentWithdrawal {
   withdrawnBy: string;
 }
 
+/** بند جدول كميات **بمعرّفه** — وهو مدخل سطر المستخلص. / A bill-of-quantities line **with its identifier** — the input to a certificate line. */
+export interface BoqItem {
+  /** الأمر التغييري الذي أدخل هذا البند، أو null لبنود العقد الأصلي. / The change order that added this line, or null for the original contract's lines. */
+  changeOrderId: string | null;
+  /** الرمز. / The code. */
+  code: string;
+  contractQuantity: Measure;
+  /** البيان. / The description. */
+  descriptionAr: string;
+  /** المعرّف — وهو ما يُرسَل في سطر المستخلص. / The identifier — what a certificate line sends. */
+  id: string;
+  /** ترتيب البند. / The line's ordinal. */
+  lineNo: number;
+  unitRate: Money;
+}
+
+/** بنود جدول الكميات بمعرّفاتها. / The bill-of-quantities lines with their identifiers. */
+export interface BoqItemList {
+  /** عدد البنود. / The number of lines. */
+  itemCount: number;
+  /** البنود مرتَّبة بترتيبها. / The lines in their order. */
+  items: BoqItem[];
+}
+
+/** بند جدول كميات في طلب. **ولا رمز حساب فيه**: البند وحدة تسعير داخل المشروع، والمصفوفة وحدها تقرّر الحساب (القاعدة 2). / A bill-of-quantities line in a request. **No account code appears in it**: the line is a pricing unit inside the project, and the matrix alone decides the account (Rule 2). */
+export interface BoqItemRequest {
+  /** رمز البند داخل العقد. / The line's code within the contract. */
+  code: string;
+  contractQuantity: Measure;
+  /** بيان البند بالعربية. / The line's Arabic description. */
+  descriptionAr: string;
+  unitRate: Money;
+}
+
 export interface CapabilityProfile {
   /** الأشكال مرتَّبة بنوع المستند. / The shapes ordered by document type. */
   documents: DocumentShape[];
@@ -177,6 +211,88 @@ export interface CapabilitySwitch {
   capability: "advance" | "cost_of_sales" | "landed_cost" | "retention" | "three_way_match";
   /** مُشغَّلة أم لا. / Enabled or not. */
   enabled: boolean;
+}
+
+/** مستخلص بحالته وسطوره وبنوده المعلَّقة. **ولا مبالغ محسوبة فيه**: قيمة الأعمال والضريبة والمحتجز واسترداد الدفعة أربعةٌ لكلٍّ منها حاسبٌ يجب أن يعيش في الوحدة، ولم يُبنَ أيٌّ منها لأن أساسه بندٌ معلَّق — وعرضُ رقمٍ قبل أن يُحسم أساسه أسوأ من غيابه. / A certificate with its state, its lines, and its pending items. **It carries no computed amounts**: works value, tax, retention, and advance recovery each need a calculator living in the module, and none has been built because each rests on a pending decision — showing a figure before its basis is settled is worse than its absence. */
+export interface Certificate {
+  /** true حين ردّ هذا النداءُ ترحيلاً سابقاً بالهوية نفسها، ومعه رمز 200 بدل 201. / true when this call returned an earlier posting with the same identity, alongside 200 instead of 201. */
+  alreadyPosted: boolean;
+  /** معرّف القيد إن رُحّل، وnull قبل ذلك. / The entry identifier if posted, and null before that. */
+  entryId: string | null;
+  /** المعرّف. / The identifier. */
+  id: string;
+  /** السطور بترتيبها. / The lines in their order. */
+  lines: CertificateLine[];
+  /** الرقم المرئي. / The visible number. */
+  number: string;
+  /** العقد أو عقد الباطن. / The contract or subcontract. */
+  ownerId: string;
+  /** البنود المعلَّقة التي تمنع ترحيله. / The pending items that block posting it. */
+  pendingPolicy: PendingPolicyItem[];
+  /** بداية الفترة ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The period's start. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  periodFrom: string;
+  /** نهاية الفترة ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The period's end. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  periodTo: string;
+  retentionRate: Rate;
+  /** التسلسل داخل العقد. / The sequence within the contract. */
+  sequenceNo: number;
+  /** حالة المستند. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The document state. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  state: "DRAFT" | "POSTED";
+}
+
+/** سطر مستخلص بكمّيتيه: التراكمية والسابقة، **وكلٌّ بوحدتها**. والسابقة من آخر مستخلصٍ مُرحَّل لا من آخر مسوّدة — ومسوّدةٌ تُزيح الأساس تُنتج إيراداً مضاعفاً أو ناقصاً بلا رسالة. / A certificate line with both quantities: cumulative and previous, **each with its unit**. The previous one comes from the last posted certificate, never from the last draft — a draft that shifts the base produces doubled or missing revenue with no message. */
+export interface CertificateLine {
+  amount: Money;
+  cumulativeQuantity: Measure;
+  /** البيان. / The description. */
+  descriptionAr: string;
+  /** معرّف السطر. / The line identifier. */
+  id: string;
+  /** رمز البند، أو نصّ فارغ على سطر غرامة أو خصم. / The item's code, or an empty string on a penalty or deduction line. */
+  itemCode: string;
+  /** معرّف البند، أو null. / The item identifier, or null. */
+  itemId: string | null;
+  /** صنف السطر. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The line kind. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  lineKind: "WORK" | "PENALTY" | "DEDUCTION";
+  /** الترتيب. / The ordinal. */
+  lineNo: number;
+  previousQuantity: Measure;
+}
+
+/** سطر مستخلص في طلب. **والكمّية تراكمية**: ما نُفِّذ حتى نهاية الفترة لا ما نُفِّذ فيها، وقيمة الفترة تُشتقّ طرحاً من آخر مستخلصٍ **مُرحَّل**. وسطر الغرامة أو الخصم يحمل مبلغه وحده بلا بند وبلا كمّية. / A certificate line in a request. **The quantity is cumulative**: what has been executed to the end of the period, not what was executed within it, and the period's value is derived by subtracting the last **posted** certificate. A penalty or deduction line carries only its amount, with no item and no quantity. */
+export interface CertificateLineRequest {
+  amount: Money;
+  cumulativeQuantity: Measure;
+  /** بيان السطر بالعربية. / The line's Arabic description. */
+  descriptionAr: string;
+  /** بند جدول الكميات أو بند عقد الباطن، أو null على سطر غرامة أو خصم. / The bill-of-quantities line or subcontract line, or null on a penalty or deduction line. */
+  itemId: string | null;
+  /** صنف السطر: WORK عملٌ منفَّذ · PENALTY غرامة تأخير · DEDUCTION خصم آخر. والغرامة سطرٌ مستقلّ لا خصمٌ من قيمة الأعمال. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The line kind: WORK for executed work, PENALTY for a delay penalty, DEDUCTION for another deduction. A penalty is an independent line, never netted against the works value. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  lineKind: "WORK" | "PENALTY" | "DEDUCTION";
+}
+
+/** مستخلصات عقدٍ بتسلسلها. / A contract's certificates in sequence. */
+export interface CertificateList {
+  /** عددها. / Their count. */
+  certificateCount: number;
+  /** المستخلصات مرتَّبة بتسلسلها. / The certificates ordered by sequence. */
+  certificates: Certificate[];
+}
+
+/** طلب إنشاء مستخلص **مسوّدة** — عميلٍ كان أو باطن. ورقمه المرئي يرسله العميل ويُتحقَّق من تفرّده؛ **ولا SEQUENCE ولا IDENTITY لأي رقم يراه مستخدم أو مدقّق**. / A request to create a **draft** certificate, client or subcontractor. Its visible number is sent by the client and checked for uniqueness; **no SEQUENCE and no IDENTITY backs any number a user or auditor reads**. */
+export interface CertificateRequest {
+  /** سطور المستخلص. / The certificate's lines. */
+  lines: CertificateLineRequest[];
+  /** الرقم المرئي. / The visible number. */
+  number: string;
+  /** العقد أو عقد الباطن الذي يقع تحته المستخلص. / The contract or subcontract this certificate falls under. */
+  ownerId: string;
+  /** بداية فترة المستخلص ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The certificate period's start. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  periodFrom: string;
+  /** نهاية فترة المستخلص ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The certificate period's end. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  periodTo: string;
+  /** تسلسل المستخلص داخل عقده — وهو التفرّد الذي يقوم عليه الاشتقاق التراكمي. / The certificate's sequence within its contract — the uniqueness the cumulative derivation rests on. */
+  sequenceNo: number;
 }
 
 /** حكم إعادة التحقق. ولماذا «أول تسلسل منحرف» لا «هل السلسلة سليمة»: المدقّق يسأل أين ومتى وما الذي بعده يجب أن يُراجَع؛ وإجابة منطقية واحدة لا تصلح تقريراً. / The re-verification verdict. Why the first divergent sequence rather than a boolean: an auditor asks where, when, and what after it must be reviewed — a single boolean is not a report. */
@@ -199,6 +315,48 @@ export interface ChainVerification {
 export interface ChangeMembershipRoleRequest {
   /** الدور المطلوب. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The requested role. Matched literally and case-sensitively; a number is never accepted in place of a name. */
   role: "Reader" | "Contributor" | "Owner";
+}
+
+/** أمر تغييري ببنوده الجديدة. **ولا entryId ولا alreadyPosted فيه** — لأنه لا يُرحَّل أبداً، وحقلٌ فارغ لهما يُقرأ «لم يُرحَّل بعد» بدل «لا يُرحَّل أبداً». / A change order with the lines it added. **No entryId and no alreadyPosted** — it never posts, and an empty value for either reads as 'not posted yet' rather than 'never posted'. */
+export interface ChangeOrder {
+  /** البنود الجديدة بمعرّفاتها. / The added lines with their identifiers. */
+  addedItems: BoqItem[];
+  /** المعتمِد. / The approver. */
+  approvedBy: string;
+  /** العقد. / The contract. */
+  contractId: string;
+  /** المعرّف. / The identifier. */
+  id: string;
+  /** تاريخ الإصدار ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The issue date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  issuedOn: string;
+  /** الرقم. / The number. */
+  number: string;
+  /** السبب. / The reason. */
+  reasonAr: string;
+}
+
+/** أوامر عقدٍ التغييرية. / A contract's change orders. */
+export interface ChangeOrderList {
+  /** عددها. / Their count. */
+  changeOrderCount: number;
+  /** الأوامر مرتَّبة برقمها. / The orders ordered by number. */
+  changeOrders: ChangeOrder[];
+}
+
+/** طلب تسجيل أمر تغييري ببنوده الجديدة. / A request to register a change order with the lines it adds. */
+export interface ChangeOrderRequest {
+  /** البنود التي يُدخلها الأمر على جدول الكميات. / The lines this order adds to the bill of quantities. */
+  addedItems: BoqItemRequest[];
+  /** من اعتمد الأمر — والاعتماد فعلٌ يُنسب لا حقلٌ يُملأ. / Who approved the order — approval is an act that is attributed, not a field that is filled. */
+  approvedBy: string;
+  /** العقد. / The contract. */
+  contractId: string;
+  /** تاريخ إصدار الأمر ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The order's issue date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  issuedOn: string;
+  /** رقم الأمر. / The order number. */
+  number: string;
+  /** سبب التغيير بالعربية. / The Arabic reason for the change. */
+  reasonAr: string;
 }
 
 /** طلب تغيير الخطّة. والسند إلزامي: الاستحقاق يحكم أي بيانات مالية يجوز إنشاؤها، فتغييره حدث تدقيقي لا إعداد واجهة. / A plan-change request. Authority is mandatory: entitlement governs which financial data may be created, so changing it is an audit event, not a UI setting. */
@@ -249,6 +407,20 @@ export interface CompanySetup {
   nameAr: string;
   /** ترجمات اسم المنشأة. / The company name's translations. */
   nameTranslations: NameValue[];
+}
+
+/** موقف العقد مشتقّاً من المُرحَّل وحده. **وهو بديلٌ لتقرير ربحية المشروع لا نسخةٌ منه**: قاعدة تحميل تكلفة الموظف والمعدّة على المشروع لم تُحسم، وثلاثة حسابات تكلفة مشاريع قائمة في الدليل بلا كاتب — فرقمُ ربحيةٍ مقنع بلا قاعدة معلنة أسوأ من غيابه. / The contract's position derived from posted entries alone. **It replaces a project profitability report rather than being one**: the rule for charging labour and equipment cost to a project is unsettled, and three project cost accounts stand in the chart with no writer — a convincing profitability figure with no published basis is worse than its absence. */
+export interface ContractPosition {
+  advanceOutstanding: Money;
+  /** العقد. / The contract. */
+  contractId: string;
+  /** رقمه. / Its number. */
+  contractNumber: string;
+  /** البنود المعلَّقة. / The pending items. */
+  pendingPolicy: PendingPolicyItem[];
+  /** عدد المستخلصات المُرحَّلة على هذا العقد. / The number of posted certificates on this contract. */
+  postedCertificateCount: number;
+  retentionOutstanding: Money;
 }
 
 export interface CostCenter {
@@ -408,6 +580,50 @@ export interface GrantedMembership {
   /** لحظة انقضاء الدعوة. بصيغة ISO 8601 الدوّارة بتوقيت UTC وبأرقام لاتينية — الصيغة نفسها التي يقرأ بها الخادم صلاحية اعتماده من إعداده، فلا وقتٌ يُكتب بشكل ويُقرأ بآخر. / When the invitation expires. In round-trip ISO 8601, UTC, Latin digits — the same spelling the server reads a credential expiry with from its own configuration, so no instant is written one way and read another. */
   enrolmentExpiresAt: string;
   member: Membership;
+}
+
+/** خطاب ضمان — **سجلٌّ لا يُرحَّل أبداً**، ولذلك لا entryId ولا alreadyPosted فيه. / A guarantee — **a record that never posts**, which is why it carries no entryId and no alreadyPosted. */
+export interface Guarantee {
+  amount: Money;
+  /** معرّف المرفق. / The attachment identifier. */
+  attachmentId: string;
+  /** عقد العميل، أو null. / The client contract, or null. */
+  contractId: string | null;
+  /** بدء السريان ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The effective date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  effectiveFrom: string;
+  /** الانتهاء ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The expiry date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  expiresOn: string;
+  /** المعرّف. / The identifier. */
+  id: string;
+  /** المُصدِر. / The issuer. */
+  issuerNameAr: string;
+  /** الصنف. / The kind. */
+  kind: string;
+  /** الرقم. / The number. */
+  number: string;
+  /** عقد الباطن، أو null. / The subcontract, or null. */
+  subcontractId: string | null;
+}
+
+/** طلب تسجيل خطاب ضمان. **والمرفق معرّفٌ على السطح المنشور للمرفقات لا بايتات هنا**: خطاب الضمان سندُ إثبات، فيُودَع حيث تُحرَس البصمة والإصدار والسحب. / A request to register a guarantee. **The attachment is an identifier on the published attachment surface, not bytes here**: a guarantee is evidence, so it is deposited where the digest, the revision chain, and the withdrawal are guarded. */
+export interface GuaranteeRequest {
+  amount: Money;
+  /** معرّف المرفق كما أرجعه باب الإيداع. / The attachment identifier as the deposit door returned it. */
+  attachmentId: string;
+  /** عقد العميل الذي يخصّه الضمان، أو null. / The client contract the guarantee belongs to, or null. */
+  contractId: string | null;
+  /** بدء سريان الضمان ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The guarantee's effective date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  effectiveFrom: string;
+  /** انتهاء الضمان ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The guarantee's expiry date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  expiresOn: string;
+  /** اسم الجهة المُصدِرة بالعربية. / The issuing party's Arabic name. */
+  issuerNameAr: string;
+  /** صنف الضمان: ابتدائي أو حسن تنفيذ أو دفعة مقدمة، برمز يختاره المستأجر. / The guarantee kind — bid, performance, or advance payment — by a code the tenant chooses. */
+  kind: string;
+  /** رقم الخطاب. / The guarantee number. */
+  number: string;
+  /** عقد الباطن الذي يخصّه الضمان، أو null. وواحدٌ من الاثنين إلزامي. / The subcontract the guarantee belongs to, or null. One of the two is required. */
+  subcontractId: string | null;
 }
 
 export interface HealthResponse {
@@ -658,6 +874,18 @@ export interface PaymentAllocation {
   billId: string;
 }
 
+/** بندٌ معلَّق على قرار محاسب — **وهو ما يمنع الترحيل اليوم**. ووجوده في الجواب مقصود: من يقرأ العقد أو المستخلص يعرف سلفاً ما الذي سيرفضه الترحيل ولماذا، بدل أن يكتشفه عند أول محاولة مالية. و**الرمز هو نقطة الاعتماد البرمجية**، والعنوانان للعرض. / An item pending an accountant's decision — **what blocks posting today**. Its presence in the response is deliberate: whoever reads a contract or a certificate learns in advance what posting will refuse and why, instead of discovering it at the first financial attempt. **The code is the programmatic anchor**; the two titles are for display. */
+export interface PendingPolicyItem {
+  /** رمز البند الثابت. / The item's stable code. */
+  code: string;
+  /** الموضع الذي يحمل السؤال كاملاً بخياراته. / Where the full question and its options live. */
+  sourceRef: string;
+  /** عنوان البند بالعربية. / The item's Arabic title. */
+  titleAr: string;
+  /** عنوانه بالإنجليزية — تشخيصيٌّ يصحبه رمز ثابت، لا نصّ عرض. / Its English title — diagnostic text accompanied by a stable code, not display text. */
+  titleEn: string;
+}
+
 /** طلب ترحيل. ولاحظ ما ليس فيه: لا حقل مستأجر ولا حقل شركة — النطاق من الاعتماد ومن المسار. وأي حقل غير معروف يُرفض الطلب كلّه بسببه. / A posting request. Note what is absent: no tenant field and no company field — scope comes from the credential and the path. Any unknown field fails the whole request. */
 export interface PostJournalEntryRequest {
   /** مفردات المبالغ التي يقرؤها قالب الحدث. / The amount vocabulary the event template reads. */
@@ -787,6 +1015,109 @@ export interface Problem {
   type: string;
 }
 
+/** مشروع بحالته وعقوده. / A project with its state and its contracts. */
+export interface Project {
+  /** الرمز — وهو ما يدخل بُعد المشروع على سطر القيد. / The code — what enters the project dimension on a journal line. */
+  code: string;
+  /** عقود هذا المشروع. / This project's contracts. */
+  contracts: ProjectContractSummary[];
+  /** المعرّف الذي تُبنى عليه العقود. / The identifier contracts are built on. */
+  id: string;
+  /** هل المشروع عامل؟ / Is the project active? */
+  isActive: boolean;
+  /** الاسم العربي — السجلّ. / The Arabic name — the record. */
+  nameAr: string;
+  /** الترجمات مرتَّبة بالوسم. / The translations ordered by tag. */
+  nameTranslations: NameValue[];
+  /** تاريخ البدء ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The start date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  startedOn: string;
+}
+
+/** عقد مقاولة **ومعه بنوده المعلَّقة** التي تمنع ترحيل مستخلصاته. / A project contract **together with the pending items** that block posting its certificates. */
+export interface ProjectContract {
+  /** عملة العقد — عملة المنشأة. / The contract currency — the company currency. */
+  currencyCode: string;
+  /** العميل. / The customer. */
+  customerPartyId: string;
+  /** فترة الضمان بالأشهر. / The guarantee period in months. */
+  guaranteeMonths: number;
+  /** المعرّف. / The identifier. */
+  id: string;
+  /** الرقم. / The number. */
+  number: string;
+  /** البنود المعلَّقة التي يرفض بها بابُ الترحيل اليوم. وقائمة فارغة تعني أن كل بند اعتُمد. / The pending items the posting door refuses on today. An empty list means every item has been approved. */
+  pendingPolicy: PendingPolicyItem[];
+  /** رمز المشروع — وهو ما يدخل بُعد القيد. / The project code — what enters the journal dimension. */
+  projectCode: string;
+  /** المشروع. / The project. */
+  projectId: string;
+  retentionRate: Rate;
+  /** تاريخ التوقيع ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The signature date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  signedOn: string;
+}
+
+/** طلب إنشاء عقد مقاولة. **ولا وعاء لنسبة المحتجز فيه ولا قاعدة استرداد**: موضعُهما نفسه قرارُ محاسبٍ لم يُحسم، ونشرُ أحدهما هنا اختيارٌ لجوابٍ لم يقله أحد. / A request to create a project contract. **It carries no base for the retention rate and no advance recovery rule**: where they belong is itself an unsettled accounting decision, and publishing either here chooses an answer nobody has given. */
+export interface ProjectContractRequest {
+  /** معرّف العميل في دفتره المساعد — معرّف مبهم لا رقم حساب. / The customer's identifier in its subledger — an opaque identifier, not an account number. */
+  customerPartyId: string;
+  /** فترة الضمان بالأشهر كما نصّ عليها العقد. / The guarantee period in months as the contract states it. */
+  guaranteeMonths: number;
+  /** بنود جدول الكميات. / The bill-of-quantities lines. */
+  items: BoqItemRequest[];
+  /** رقم العقد — يرسله العميل ويُتحقَّق من تفرّده. / The contract number — sent by the client and checked for uniqueness. */
+  number: string;
+  /** المشروع الذي يقع تحته العقد. / The project this contract falls under. */
+  projectId: string;
+  retentionRate: Rate;
+  /** تاريخ توقيع العقد ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The contract signature date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  signedOn: string;
+}
+
+/** عقدٌ مختصر تحت مشروعه. / A contract in brief under its project. */
+export interface ProjectContractSummary {
+  /** عملة العقد. / The contract currency. */
+  currencyCode: string;
+  /** معرّف العقد. / The contract identifier. */
+  id: string;
+  /** رقم العقد. / The contract number. */
+  number: string;
+}
+
+/** قائمة مشاريع المنشأة. / The company's projects. */
+export interface ProjectList {
+  /** عدد المشاريع. / The number of projects. */
+  projectCount: number;
+  /** المشاريع مرتَّبة برمزها. / The projects ordered by code. */
+  projects: Project[];
+}
+
+/** طلب تسجيل مشروع. **ورمزه هوية لا اسم عرض**: هو القيمة الحرفية التي تدخل بُعد المشروع على سطر القيد، فلا تعديل له ولا حذف بعد أن تحمله قيود. / A project registration request. **Its code is an identity, not a display name**: it is the literal value that enters the project dimension on a journal line, so it is never edited and never deleted once entries carry it. */
+export interface ProjectRequest {
+  /** رمز المشروع داخل المنشأة. / The project code within the company. */
+  code: string;
+  /** اسم المشروع بالعربية — وهو السجلّ لا ترجمته. / The project's Arabic name — the record itself, not a translation of it. */
+  nameAr: string;
+  /** ترجمات الاسم، مفاتيحها أوسمة BCP-47. ولا حقل إنجليزي ثابت: الإنجليزية واحدة من N. / The name's translations, keyed by BCP-47 tags. There is no fixed English field: English is one of N. */
+  nameTranslations: NameValue[];
+  /** تاريخ بدء المشروع ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The project start date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  startedOn: string;
+}
+
+/** مستند مقاولات مالي بحالته ومبلغه ومعرّف قيده. و**alreadyPosted معلنٌ في الجسم** لا في رمز الحالة وحده: الرمز يضيع خلف أي وسيط يعيد التوجيه، وعميلٌ أعاد المحاولة بعد انقطاع شبكة يحتاج أن يعرف أيّ النداءين رحّل. / A financial contracting document with its state, its amount, and its entry identifier. **alreadyPosted is declared in the body**, not only in the status code: the code is lost behind any proxy that redirects, and a client retrying after a network cut needs to know which of the two calls posted. */
+export interface ProjectsDocument {
+  /** true حين ردّ هذا النداءُ ترحيلاً سابقاً بالهوية نفسها. / true when this call returned an earlier posting with the same identity. */
+  alreadyPosted: boolean;
+  amount: Money;
+  /** معرّف القيد إن رُحّل، وnull قبل ذلك. / The entry identifier if posted, and null before that. */
+  entryId: string | null;
+  /** المعرّف. / The identifier. */
+  id: string;
+  /** الرقم. / The number. */
+  number: string;
+  /** حالة المستند. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The document state. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  state: "DRAFT" | "POSTED";
+}
+
 /** سطر مستند مشتريات كما يخرج على السلك — **معرّفه مدخل المستند التالي في الدورة**. / A purchasing document line as it leaves on the wire — **its identifier is the input to the next document in the cycle**. */
 export interface PurchaseDocumentLine {
   /** معرّف السطر. / The line identifier. */
@@ -892,6 +1223,9 @@ export interface PutCapabilityProfileRequest {
 /** كمّية نصّاً بمقياس لا يتجاوز أربعاً، بالنحو الذي تخضع له المبالغ. وهي ليست مبلغاً — ولذلك لها مخطّطها — لكنها تُضرب في مبلغ، فأي فقدان دقّة فيها يصل إلى المال. / A quantity as a string with at most four decimal places, under the grammar that governs amounts. It is not an amount — hence its own schema — but it is multiplied by one, so any precision lost in it reaches the money. */
 /* Quantity مُعرَّف في ../money كنوع محتجز وقت التشغيل. */
 
+/** نسبة تعاقدية **كسراً عشرياً لا نسبة مئوية**: عشرة بالمئة تُكتب 0.10 لا 10. والمقياس ثمانٍ لا أربع: النسبة ليست مبلغاً ولا تُقرَّب إلى الهللة. **وهي تأتي من العقد لا من قيمة ثابتة في الكود** — نصّ مصفوفة الترحيل على المحتجز بحرفه. / A contractual rate as a **decimal fraction, not a percentage**: ten percent is written 0.10, never 10. The scale is eight, not four: a rate is not an amount and is not rounded to the halala. **It comes from the contract, never from a constant in code** — the posting matrix's text on retention, verbatim. */
+/* Rate مُعرَّف في ../money كنوع محتجز وقت التشغيل. */
+
 /** تخصيص مبلغ من سند قبض على فاتورة مبيعات **مُرحَّلة**. ولا عميل فيه: عميلُه عميل السند، والفاتورة تُفحص أنها له — وإعادة ذكره كانت ستفتح باباً لتخصيصٍ على فاتورة عميل آخر. / An allocation of part of a receipt against a **posted** sales invoice. It carries no customer: the customer is the receipt's, and the invoice is checked to be theirs — repeating it would open a door to allocating against another customer's invoice. */
 export interface ReceiptAllocation {
   amount: Money;
@@ -933,6 +1267,68 @@ export interface RegisteredTenant {
 export interface RenewSessionRequest {
   /** اعتماد التجديد الجاري. نصٌّ مبهم لا بنية فيه: لا يُحلَّل ولا يُشتقّ منه شيء، ويُقدَّم كما وصل. / The current refresh credential. An opaque string with no structure: never parsed, nothing derived from it, presented exactly as received. */
   refreshCredential: string;
+}
+
+/** طلب تحصيل محتجزٍ مدين من العميل. / A request to collect debit retention from the client. */
+export interface RetentionCollectionRequest {
+  amount: Money;
+  /** تاريخ التحصيل ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The collection date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  collectedOn: string;
+  /** رقم المستند. / The document number. */
+  number: string;
+  /** حركة المحتجز المُحصَّلة. / The retention movement being collected. */
+  retentionMovementId: string;
+  /** طريقة التسوية — مؤهّل دور لا حساب. / The settlement method — a role qualifier, not an account. */
+  settlementMethod: string;
+  /** طرف الخزينة في دفترها المساعد. / The treasury party in its subledger. */
+  treasuryPartyId: string;
+}
+
+/** سجلّ المحتجزات مدينةً ودائنة، **مشتقّاً من المُرحَّل وحده**. ولا عمود رصيدٍ يُنقَص في أي مكان: كل رصيدٍ قابل لإعادة الاشتقاق من أسطر الدفتر. / The retention register, debit and credit, **derived from posted entries alone**. No balance column is decremented anywhere: every balance is re-derivable from the ledger's lines. */
+export interface RetentionRegister {
+  /** تاريخ القراءة ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The as-of date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  asOf: string;
+  payableTotal: Money;
+  receivableTotal: Money;
+  /** الدفعات بتاريخها. / The movements by date. */
+  rows: RetentionRegisterRow[];
+}
+
+/** دفعة محتجزٍ واحدة برصيدها القائم. **ومعرّف الحركة هو ما يُفرَج عنه أو يُحصَّل** — لا رصيد مجمَّع. / One retention movement with its outstanding balance. **The movement identifier is what a release or a collection acts upon** — never an aggregated balance. */
+export interface RetentionRegisterRow {
+  amount: Money;
+  /** معرّف المستند الذي أنشأ الحركة. / The identifier of the document that created the movement. */
+  documentId: string;
+  /** نوع ذلك المستند. / That document's type. */
+  documentType: string;
+  /** تاريخ استحقاق الإفراج، مشتقّاً من فترة الضمان في العقد ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The release due date, derived from the contract's guarantee period. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  dueOn: string;
+  /** تاريخ الحركة ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The movement date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  movedOn: string;
+  /** معرّف الحركة. / The movement identifier. */
+  movementId: string;
+  outstanding: Money;
+  /** الطرف. / The party. */
+  partyId: string;
+  /** نوع الدفتر المساعد للطرف: customer أو subcontractor. / The party's subledger kind: customer or subcontractor. */
+  partyKind: string;
+  /** رمز المشروع. / The project code. */
+  projectCode: string;
+  /** الجانب: RECEIVABLE محتجزٌ مدين لدى العميل · PAYABLE محتجزٌ دائن على المقاول. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The side: RECEIVABLE for debit retention held by the client, PAYABLE for credit retention owed to the subcontractor. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  side: "RECEIVABLE" | "PAYABLE";
+}
+
+/** طلب إفراج عن محتجزٍ دائن على **دفعة محتجزٍ مُسمّاة** لا على رصيد، باعتمادٍ صريح يشترطه نصّ الإطلاق. / A request to release credit retention against **a named retention movement** rather than a balance, with the explicit approval the trigger text requires. */
+export interface RetentionReleaseRequest {
+  amount: Money;
+  /** المعتمِد — وقيدُ تحقّق في قاعدة البيانات يرفض اعتماداً فارغاً. / The approver — a database check constraint refuses an empty approver. */
+  approvedBy: string;
+  /** رقم المستند. / The document number. */
+  number: string;
+  /** تاريخ الإفراج ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The release date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  releasedOn: string;
+  /** حركة المحتجز المُفرَج عنها، كما يُرجعها سجلّ المحتجزات. / The retention movement being released, as the retention register returns it. */
+  retentionMovementId: string;
 }
 
 export interface ReverseJournalEntryRequest {
@@ -1128,6 +1524,149 @@ export interface StockMovementRequest {
   quantity: Measure;
   /** المستودع. / The warehouse. */
   warehouseId: string;
+}
+
+/** عقد باطن ومعه بنوده المعلَّقة. / A subcontract together with its pending items. */
+export interface Subcontract {
+  /** العملة. / The currency. */
+  currencyCode: string;
+  /** فترة الضمان بالأشهر. / The guarantee period in months. */
+  guaranteeMonths: number;
+  /** المعرّف. / The identifier. */
+  id: string;
+  /** الرقم. / The number. */
+  number: string;
+  /** البنود المعلَّقة التي تمنع ترحيل مستخلصاته. / The pending items that block posting its certificates. */
+  pendingPolicy: PendingPolicyItem[];
+  /** رمز المشروع. / The project code. */
+  projectCode: string;
+  /** المشروع. / The project. */
+  projectId: string;
+  retentionRate: Rate;
+  /** تاريخ التوقيع ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The signature date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  signedOn: string;
+  /** المقاول. / The subcontractor. */
+  subcontractorId: string;
+}
+
+/** بند عقد باطن بمعرّفه — مدخل سطر مستخلصه. / A subcontract line with its identifier — the input to its certificate line. */
+export interface SubcontractLine {
+  /** الرمز. / The code. */
+  code: string;
+  contractQuantity: Measure;
+  /** البيان. / The description. */
+  descriptionAr: string;
+  /** المعرّف. / The identifier. */
+  id: string;
+  /** الترتيب. / The ordinal. */
+  lineNo: number;
+  unitRate: Money;
+}
+
+/** بنود عقد الباطن. / A subcontract's lines. */
+export interface SubcontractLineList {
+  /** عددها. / Their count. */
+  lineCount: number;
+  /** البنود بترتيبها. / The lines in their order. */
+  lines: SubcontractLine[];
+}
+
+/** بند عقد باطن في طلب. / A subcontract line in a request. */
+export interface SubcontractLineRequest {
+  /** رمز البند داخل عقد الباطن. / The line's code within the subcontract. */
+  code: string;
+  contractQuantity: Measure;
+  /** البيان بالعربية. / The Arabic description. */
+  descriptionAr: string;
+  unitRate: Money;
+}
+
+/** طلب إنشاء عقد باطن. / A request to create a subcontract. */
+export interface SubcontractRequest {
+  /** فترة الضمان بالأشهر. / The guarantee period in months. */
+  guaranteeMonths: number;
+  /** بنود عقد الباطن. / The subcontract's lines. */
+  lines: SubcontractLineRequest[];
+  /** رقم العقد. / The subcontract number. */
+  number: string;
+  /** المشروع. / The project. */
+  projectId: string;
+  retentionRate: Rate;
+  /** تاريخ التوقيع ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The signature date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  signedOn: string;
+  /** المقاول. / The subcontractor. */
+  subcontractorId: string;
+}
+
+/** مقاول من الباطن — **ومعرّفه هو الطرف في دفتر subcontractor المساعد**. / A subcontractor — **its identifier is the party in the subcontractor subledger**. */
+export interface Subcontractor {
+  /** الرمز. / The code. */
+  code: string;
+  /** المعرّف — وهو الطرف في الدفتر المساعد. / The identifier — the party in the subledger. */
+  id: string;
+  /** هل هو عامل؟ / Is it active? */
+  isActive: boolean;
+  /** الاسم العربي. / The Arabic name. */
+  nameAr: string;
+  /** الترجمات. / The translations. */
+  nameTranslations: NameValue[];
+  /** رقم التسجيل الضريبي. / The VAT registration number. */
+  vatNumber: string;
+}
+
+/** طلب صرف دفعة مقدمة لمقاول من الباطن. **ومبلغه واقعةٌ يُدخلها المستخدم** — ما صُرف — لا رقمٌ يشتقّه حاسبٌ من نسبةٍ ووعاءٍ وقاعدةِ تقريب، ولذلك يُرحَّل هذا المستند اليوم بينما يُرفض المستخلص. / A request to pay a subcontractor advance. **Its amount is a fact the user enters** — what was paid — not a figure a calculator derives from a rate, a base, and a rounding rule, which is why this document posts today while the certificate is refused. */
+export interface SubcontractorAdvanceRequest {
+  amount: Money;
+  /** خطاب ضمان الدفعة المقدمة الذي يشترطه نصّ إطلاق الحدث، أو null. / The advance-payment guarantee the event's trigger text requires, or null. */
+  guaranteeId: string | null;
+  /** رقم المستند. / The document number. */
+  number: string;
+  /** تاريخ الصرف ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The payment date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  paidOn: string;
+  /** طريقة التسوية — مؤهّل دور لا حساب. والمصفوفة وحدها تُحوّلها إلى حساب. / The settlement method — a role qualifier, not an account. The matrix alone turns it into an account. */
+  settlementMethod: string;
+  /** عقد الباطن. / The subcontract. */
+  subcontractId: string;
+  /** معرّف الخزينة أو الحساب البنكي في دفترها المساعد — معرّف مبهم لا رقم حساب. / The treasury or bank account identifier in its subledger — an opaque identifier, not an account number. */
+  treasuryPartyId: string;
+}
+
+/** طلب تسجيل مقاول من الباطن. / A request to register a subcontractor. */
+export interface SubcontractorRequest {
+  /** رمز المقاول داخل المنشأة. / The subcontractor's code within the company. */
+  code: string;
+  /** الاسم بالعربية — السجلّ. / The Arabic name — the record. */
+  nameAr: string;
+  /** ترجمات الاسم بأوسمة BCP-47. / The name's translations, keyed by BCP-47 tags. */
+  nameTranslations: NameValue[];
+  /** رقم التسجيل الضريبي، أو نصّ فارغ لمن لا رقم له — والغياب واقعٌ لا نقص. / The VAT registration number, or an empty string for a party without one — the absence is a fact, not a gap. */
+  vatNumber: string;
+}
+
+/** كشف المقاولين ومطابقته بنقطة ضبطه — «كشف المقاولين = رصيد الحساب». و**isReconciled صفرٌ بالضبط لا «قريب من الصفر»**: الفارق بريال واحد فارقٌ يُسمّى. / The subcontractor statement and its reconciliation against its control point — 'the subcontractor statement equals the account balance'. **isReconciled means exactly zero, not 'close to zero'**: a one-riyal difference is a difference that gets named. */
+export interface SubcontractorStatement {
+  /** تاريخ الكشف ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The statement date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  asOf: string;
+  controlTotal: Money;
+  divergence: Money;
+  /** هل الفارق صفر بالضبط؟ / Is the divergence exactly zero? */
+  isReconciled: boolean;
+  /** الأطراف مرتَّبة برمزها. / The parties ordered by code. */
+  rows: SubcontractorStatementRow[];
+  subledgerTotal: Money;
+}
+
+/** طرفٌ في كشف المقاولين وأثره المُرحَّل. / A party in the subcontractor statement and its posted effect. */
+export interface SubcontractorStatementRow {
+  /** رمز المقاول. / The subcontractor's code. */
+  code: string;
+  effect: Money;
+  /** الاسم العربي. / The Arabic name. */
+  nameAr: string;
+  /** الترجمات. / The translations. */
+  nameTranslations: NameValue[];
+  /** المقاول. / The subcontractor. */
+  subcontractorId: string;
 }
 
 export interface Subledger {

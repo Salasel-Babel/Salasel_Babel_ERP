@@ -5,6 +5,7 @@ using Babel.ControlPlane.Registry;
 using Babel.ControlPlane.Support;
 using Babel.Core;
 using Babel.Inventory;
+using Babel.Projects;
 using Babel.Ledger;
 using Babel.Purchasing;
 using Babel.Sales;
@@ -61,6 +62,9 @@ internal static class ApiTestDatabase
     /// </summary>
     public const string InventoryStem = "babel_api_tests_inventory";
 
+    /// <summary>الجذع الثابت لاسم قاعدة المقاولات — منفصلة، انظر <see cref="Projects"/>.</summary>
+    public const string ProjectsStem = "babel_api_tests_projects";
+
     /// <summary>
     /// الجذع الثابت لاسم <b>قاعدة مستوى التحكّم</b> لهذه العملية.
     /// <para>
@@ -89,6 +93,9 @@ internal static class ApiTestDatabase
 
     /// <summary>قاعدة المخزون لهذه العملية وحدها.</summary>
     public static string InventoryDatabase { get; } = TestRunScope.Name(InventoryStem);
+
+    /// <summary>قاعدة المقاولات <b>لهذه العملية وحدها</b>.</summary>
+    public static string ProjectsDatabase { get; } = TestRunScope.Name(ProjectsStem);
     /// <summary>الجذع الثابت لاسم قاعدة المرفقات — منفصلة، وللسبب نفسه.</summary>
     public const string StorageStem = "babel_api_tests_storage";
 
@@ -242,6 +249,20 @@ internal static class ApiTestDatabase
     };
 
     /// <summary>
+    /// إعدادات المقاولات لهذه المجموعة — قاعدة مستقلّة، وللأسباب نفسها.
+    /// <para>
+    /// <b>ووجودها هنا هو ما يجعل أبواب المقاولات مُثبَتةً لا مُعلَنة:</b> خمسةٌ وثلاثون
+    /// باباً في العقد المنشور لا يطرقها اختبارٌ واحد هي خمسةٌ وثلاثون بابًا **لم
+    /// تُنفَّذ قطّ** — ورمزُ حالةٍ خاطئ عليها لا يُكتشف إلا عند أول عميل.
+    /// </para>
+    /// </summary>
+    public static ProjectsOptions Projects { get; } = new()
+    {
+        ConnectionString = $"Host=127.0.0.1;Port=5432;Database={ProjectsDatabase};Username=postgres;Include Error Detail=true;Maximum Pool Size=5;Minimum Pool Size=0",
+        CompanyCurrency = "SAR",
+    };
+
+    /// <summary>
     /// إعدادات مخزن المرفقات لهذه المجموعة — <b>قاعدة مستقلّة، ودور تطبيق غير مالك</b>.
     /// <para>
     /// <b>وبدور التطبيق لا بالمالك، بخلاف المبيعات والمشتريات:</b> مخطّط المخزن ينزع
@@ -333,6 +354,7 @@ internal static class ApiTestDatabase
 
         // والمخزون: دفترٌ مساعد يبلغه ترحيل الاستلام قبل أن يبلغ الدفتر.
         await InventorySchemaDeployer.DeployAsync(Inventory, cancellationToken).ConfigureAwait(false);
+        await ProjectsSchemaDeployer.DeployAsync(Projects, cancellationToken).ConfigureAwait(false);
         // ── مستوى التحكّم: قاعدته ومخطّطه وكتالوجه ─────────────────────────────
         // بالناشر نفسه الذي يستعمله الأسطول (‏ControlSchema.EnsureAsync)، لا بنسخة
         // ثانية من نصوص المخطّط. والكتالوج والخطط مبذوران لأن سطح الاشتراك يقرؤهما:
@@ -368,6 +390,7 @@ internal static class ApiTestDatabase
         await ExecAsync(admin, $"create database {SalesDatabase}", cancellationToken).ConfigureAwait(false);
         await ExecAsync(admin, $"create database {PurchasingDatabase}", cancellationToken).ConfigureAwait(false);
         await ExecAsync(admin, $"create database {InventoryDatabase}", cancellationToken).ConfigureAwait(false);
+        await ExecAsync(admin, $"create database {ProjectsDatabase}", cancellationToken).ConfigureAwait(false);
         await ExecAsync(admin, $"create database {StorageDatabase}", cancellationToken).ConfigureAwait(false);
 
         // ‏nosuperuser ليست تفصيلاً: بدونها تسقط كل طبقات الحصانة معاً (فخ-30 · ADR-0003).
@@ -454,6 +477,7 @@ internal static class ApiTestDatabase
             DropOne(admin, SalesDatabase);
             DropOne(admin, PurchasingDatabase);
             DropOne(admin, InventoryDatabase);
+            DropOne(admin, ProjectsDatabase);
             DropOne(admin, ControlDatabase);
             DropOne(admin, StorageDatabase);
 
@@ -536,7 +560,10 @@ internal static class ApiTestDatabase
         foreach (string database in candidates)
         {
             int? owner = null;
-            foreach (string stem in new[] { DatabaseStem, SalesStem, PurchasingStem, InventoryStem, ControlStem })
+            foreach (string stem in new[]
+                     {
+                         DatabaseStem, SalesStem, PurchasingStem, InventoryStem, ProjectsStem, ControlStem,
+                     })
             {
                 owner = TestRunScope.OwnerProcessId(database, stem);
                 if (owner is not null)

@@ -204,8 +204,15 @@ internal static class Verify
     private sealed class ControlPoint(string connectionString) : IControlPointReader
     {
         public async ValueTask<Result<ControlPointSnapshot>> ReadAsync(
-            TenantId tenant, string subledgerKind, DateOnly asOf, CancellationToken cancellationToken = default)
+            TenantId tenant,
+            string subledgerKind,
+            DateOnly asOf,
+            BabelModule? writtenBy = null,
+            CancellationToken cancellationToken = default)
         {
+            // أداة العرض تقرأ نقطة الضبط كاملةً — لا وحدة لها هي تُقصيها.
+            _ = writtenBy;
+
             List<ControlPointMovement> movements = [];
             decimal net = 0m;
 

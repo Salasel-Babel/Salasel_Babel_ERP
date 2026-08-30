@@ -68,6 +68,7 @@
     <InternalsVisibleTo Include="Babel.Sales.Tests" />
     <InternalsVisibleTo Include="Babel.Purchasing.Tests" />
     <InternalsVisibleTo Include="Babel.Inventory.Tests" />
+    <InternalsVisibleTo Include="Babel.Projects.Tests" />
   </ItemGroup>
 
 </Project>

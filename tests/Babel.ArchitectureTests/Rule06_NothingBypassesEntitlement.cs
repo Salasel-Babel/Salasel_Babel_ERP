@@ -463,7 +463,10 @@ public sealed class Rule06_NothingBypassesEntitlement
         // واعٍ — وهذا هو ما يمنع ظهور خدمة تطبيق سابعة دون أن يراها أحد. (نفس شكل
         // القائمة في القاعدة 5 وللسبب نفسه.)
         Assert.Equal(
-            ["Babel.Ai", "Babel.Compliance", ModuleMap.Core, "Babel.Inventory", ModuleMap.Ledger, "Babel.Purchasing", "Babel.Sales"],
+            [
+                "Babel.Ai", "Babel.Compliance", ModuleMap.Core, "Babel.Inventory", ModuleMap.Ledger,
+                "Babel.Projects", "Babel.Purchasing", "Babel.Sales",
+            ],
             modulesWithServices);
     }
 }

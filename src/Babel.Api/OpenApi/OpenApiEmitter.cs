@@ -1551,6 +1551,460 @@ internal static class OpenApiEmitter
                     new Refusal(409, "بايتات المخزن لا تطابق البصمة المُسجَّلة — عبثٌ أو تلف — أو غابت والصفّ قائم. ولا تُسلَّم في الحالتين.",
                         "The stored bytes do not match the recorded digest — tampering or corruption — or they are missing while the row stands. Neither is served."),
                 ]),
+
+            // ══ المقاولات ═══════════════════════════════════════════════════════
+            // خمسةٌ وثلاثون باباً بشكل ADR-0044 و ADR-0047 حرفاً. وثلاثةٌ منها تُرفض
+            // اليوم رفضاً صريحاً ببندٍ معلَّق على قرار محاسب — وذلك **سلوكٌ منشور** لا
+            // نقصٌ مخفيّ: العقد يصف الرفض برمزه، والجواب يسمّي البند.
+
+            new(ApiRoutes.Projects, "post", "addProject",
+                "تسجيل مشروع", "Register a project",
+                "يسجّل مشروعاً. و**رمزه هو القيمة الحرفية التي تدخل بُعد المشروع على سطر القيد**، فهو هوية "
+                + "لا اسم عرض: لا تعديل له ولا حذف بعد أن تحمله قيود سنةٍ مضت — والغياب بنيوي كغيابه على "
+                + "الأصناف ومراكز التكلفة.\n\n"
+                + "**والاسم العربي هو السجلّ وnameTranslations ترجماته أيّاً كان عددها** (ADR-0021): لا حقل "
+                + "ثابت للإنجليزية هنا كما لا حقل لها في صفّ ميزان المراجعة.",
+                "Registers a project. Its **code is the literal value that enters the project dimension on a journal line**, "
+                + "so it is an identity rather than a display name: it is never edited and never deleted once entries carry it — "
+                + "the absence is structural, exactly as it is for items and cost centres.\n\n"
+                + "**The Arabic name is the record and nameTranslations are its translations, however many** (ADR-0021): there is "
+                + "no fixed English field here, just as there is none on a trial-balance row.",
+                Body: "ProjectRequest", Response: "Project", Success: 201, Query: []),
+
+            new(ApiRoutes.Projects, "get", "listProjects",
+                "قائمة المشاريع", "List the projects",
+                "يقرأ مشاريع المنشأة بأسمائها ورموزها. و**لازمٌ لا زينة**: باب العقد يحتاج معرّف مشروع، "
+                + "وبابان لا يوصل إليهما بابٌ آخر اعتراضٌ مكتوب في ADR-0044.",
+                "Reads the company's projects with their names and codes. **Necessary, not decorative**: the contract door needs a "
+                + "project identifier, and doors no other door leads to are the objection written into ADR-0044.",
+                Body: null, Response: "ProjectList", Success: 200, Query: []),
+
+            new(ApiRoutes.Project, "get", "readProject",
+                "قراءة مشروع", "Read one project",
+                "يقرأ مشروعاً بحالته وعقوده. ونقطة قراءة: تعمل والاشتراك للقراءة فقط.",
+                "Reads a project with its state and its contracts. A read point: it works while the subscription is read-only.",
+                Body: null, Response: "Project", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.ProjectContracts, "post", "addProjectContract",
+                "إنشاء عقد مقاولة", "Create a project contract",
+                "يُنشئ عقد مقاولة ببنود جدول الكميات ونسبة المحتجز وفترة الضمان وعملة المنشأة.\n\n"
+                + "**ولاحظ ما ليس في هذا الجسم: وعاء نسبة المحتجز، ولا قاعدة استرداد الدفعة المقدمة.** "
+                + "موضعُهما نفسه قرارُ محاسبٍ لم يُحسم — أحقلٌ على العقد أم جدول قواعد بتاريخ سريان؟ — ونشرُ "
+                + "أحدهما هنا اختيارٌ لجوابٍ لم يقله أحد، ولا رجعة فيه بلا إصدار ثانٍ من هذا العقد. "
+                + "وهما بندٌ معلَّق يُرجعه هذا الباب في pendingPolicy، ويرفض به بابُ الترحيل.\n\n"
+                + "**والنسبة كسرٌ عشري نصّاً** بمقياس لا يتجاوز ثماني خانات، لا نسبة مئوية: 0.10 لا 10.",
+                "Creates a project contract with its bill-of-quantities lines, its retention rate, its guarantee period, and the "
+                + "company currency.\n\n"
+                + "**Note what this body does not carry: the base the retention rate applies to, and the advance recovery rule.** "
+                + "Where they belong is itself an unsettled accounting decision — a field on the contract, or a rules table with "
+                + "effective dates? — and publishing either here chooses an answer nobody has given, irreversibly without a second "
+                + "version of this contract. They are a pending item this door returns in pendingPolicy and the posting door refuses on.\n\n"
+                + "**The rate is a decimal fraction as a string** with at most eight decimal places, never a percentage: 0.10, not 10.",
+                Body: "ProjectContractRequest", Response: "ProjectContract", Success: 201, Query: [],
+                ProblemStatuses: [404]),
+
+            new(ApiRoutes.ProjectContract, "get", "readProjectContract",
+                "قراءة عقد مقاولة", "Read one project contract",
+                "يقرأ العقد **ومعه بنوده المعلَّقة** التي تمنع ترحيل مستخلصاته اليوم. وإظهارها على العقد نفسه "
+                + "مقصود: من يقرأ العقد قبل أن يُنشئ مستخلصاً يعرف سلفاً ما الذي سيرفضه الترحيل ولماذا، بدل أن "
+                + "يكتشفه عند أول محاولة مالية.",
+                "Reads the contract **together with its pending items**, which block posting its certificates today. Exposing them on "
+                + "the contract itself is deliberate: whoever reads the contract before drafting a certificate learns in advance what "
+                + "posting will refuse and why, instead of discovering it at the first financial attempt.",
+                Body: null, Response: "ProjectContract", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.BoqItems, "get", "readBoqItems",
+                "قراءة بنود جدول الكميات", "Read the bill-of-quantities lines",
+                "يقرأ بنود جدول الكميات **بمعرّفاتها ووحداتها** — ومعرّف البند هو مدخل سطر المستخلص.\n\n"
+                + "**وكل بند يحمل وحدة قياسه**، والمستخلص الذي تخالف وحدةُ سطره وحدةَ بنده **يُرفض ولا يُحوَّل**: "
+                + "قاعدة تحويل الوحدات يملكها المخزون، ونسخةٌ ثانية منها في وحدة المقاولات تنحرف عن أصلها عند "
+                + "أول تعديل.",
+                "Reads the bill-of-quantities lines **with their identifiers and units** — a line identifier is the input to a "
+                + "certificate line.\n\n"
+                + "**Every line carries its unit of measure**, and a certificate line whose unit differs from its item's unit is "
+                + "**refused, never converted**: the conversion rule belongs to inventory, and a second copy of it inside the "
+                + "contracting module drifts from its original at the first edit.",
+                Body: null, Response: "BoqItemList", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.ContractClientCertificates, "get", "readContractClientCertificates",
+                "قراءة مستخلصات العقد", "Read a contract's client certificates",
+                "يقرأ مستخلصات العقد بتسلسلها. و**لازمٌ لأن الأساس المطروح منه هو آخر مستخلصٍ مُرحَّل**: بلا "
+                + "هذا الباب لا يعرف العميل ذلك المستخلص إلا بمعرّفٍ يملكه سلفاً.",
+                "Reads a contract's certificates in sequence. **Necessary because the base a certificate subtracts from is the last "
+                + "posted certificate**: without this door a client only knows that certificate by an identifier it already holds.",
+                Body: null, Response: "CertificateList", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.ContractChangeOrders, "get", "readContractChangeOrders",
+                "قراءة أوامر العقد التغييرية", "Read a contract's change orders",
+                "يقرأ أوامر العقد التغييرية ببنودها الجديدة.",
+                "Reads a contract's change orders with the lines each of them added.",
+                Body: null, Response: "ChangeOrderList", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.ContractPosition, "get", "readContractPosition",
+                "قراءة موقف العقد", "Read a contract's position",
+                "يقرأ موقف العقد **مشتقّاً من المُرحَّل وحده**: عدد المستخلصات المُرحَّلة، والمحتجز القائم، "
+                + "والدفعة المقدمة غير المستنفَدة.\n\n"
+                + "**وهو بديلٌ لتقرير ربحية المشروع لا نسخةٌ منه.** قاعدة تحميل تكلفة الموظف والمعدّة على "
+                + "المشروع قرارٌ لم يُحسم، وثلاثة حسابات تكلفة مشاريع قائمة في دليل الحسابات **بلا كاتب واحد** — "
+                + "فرقمُ ربحيةٍ مقنع بلا قاعدة معلنة أسوأ من غيابه.",
+                "Reads the contract's position **derived from posted entries alone**: the count of posted certificates, the "
+                + "outstanding retention, and the unconsumed advance.\n\n"
+                + "**It replaces a project profitability report rather than being one.** The rule for charging labour and equipment "
+                + "cost to a project is undecided, and three project cost accounts stand in the chart **with no writer at all** — so a "
+                + "convincing profitability figure with no published basis is worse than its absence.",
+                Body: null, Response: "ContractPosition", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.ChangeOrders, "post", "addChangeOrder",
+                "تسجيل أمر تغييري", "Register a change order",
+                "يسجّل أمراً تغييرياً ببنوده الجديدة على جدول الكميات.\n\n"
+                + "**ولاحظ ما ليس هنا — ولا يجوز أن يوجد: لا مورد ‏…/posting.** الأمر التغييري **التزام تعاقدي "
+                + "لا حدث محاسبي**: لا يُنشئ قيداً، ولا يمسّ حساباً، ولا حدث له في مصفوفة الترحيل. ومخطّط جوابه "
+                + "**بلا entryId وبلا alreadyPosted** — لأن حقلاً فارغاً لهما يُقرأ «لم يُرحَّل بعد» بدل «لا "
+                + "يُرحَّل أبداً»، فيبني عليه العميل زرّاً لا وجود له. وهي حجّة ADR-0047 على أمر الشراء نفسها.",
+                "Registers a change order with the lines it adds to the bill of quantities.\n\n"
+                + "**Note what is not here — and must not be: no …/posting sub-resource.** A change order is a **contractual "
+                + "commitment, not an accounting event**: it creates no entry, touches no account, and has no event in the posting "
+                + "matrix. Its response schema carries **no entryId and no alreadyPosted** — an empty value for either reads as 'not "
+                + "posted yet' rather than 'never posted', and a client builds a button on it that has no door. This is ADR-0047's "
+                + "argument about the purchase order, verbatim.",
+                Body: "ChangeOrderRequest", Response: "ChangeOrder", Success: 201, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.ChangeOrder, "get", "readChangeOrder",
+                "قراءة أمر تغييري", "Read one change order",
+                "يقرأ أمراً تغييرياً ببنوده الجديدة.",
+                "Reads a change order with the lines it added.",
+                Body: null, Response: "ChangeOrder", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.Subcontractors, "post", "addSubcontractor",
+                "تسجيل مقاول من الباطن", "Register a subcontractor",
+                "يسجّل مقاولاً من الباطن — **طرفاً في دفتر subcontractor المساعد**، وهو دفترٌ مُعلَن في بيانات "
+                + "الدفاتر بحساباته الثلاثة و**بلا مالكٍ في المستودع قبل هذه الوحدة**.\n\n"
+                + "**ولا حذف ولا إيقاف**، لما غاب عن سجلّ العملاء وللسبب نفسه: طرفٌ تشير إليه قيود سنةٍ مضت لا "
+                + "يُحذف، وبابٌ اسمه «إيقاف» لا يمنع مستخلصاً واحداً أسوأ من غيابه — يبدو ضابطاً وليس كذلك.",
+                "Registers a subcontractor — **a party in the subcontractor subledger**, a ledger declared in the subledger data with "
+                + "its three control accounts and **with no owner in this repository before this module**.\n\n"
+                + "**No deletion and no suspension**, exactly as on the customer register and for the same reason: a party referenced "
+                + "by last year's entries is never deleted, and a door named 'suspend' that stops no certificate is worse than its "
+                + "absence — it looks like a control and is not.",
+                Body: "SubcontractorRequest", Response: "Subcontractor", Success: 201, Query: []),
+
+            new(ApiRoutes.Subcontractor, "get", "readSubcontractor",
+                "قراءة مقاول من الباطن", "Read one subcontractor",
+                "يقرأ المقاول بمعرّفه — **وهو الطرف الذي تحمله سطور دفتره المساعد**.",
+                "Reads the subcontractor by identifier — **the party its subledger lines carry**.",
+                Body: null, Response: "Subcontractor", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.Subcontracts, "post", "addSubcontract",
+                "إنشاء عقد باطن", "Create a subcontract",
+                "يُنشئ عقد باطن بنسبة محتجزه وفترة ضمانه وبنوده. والنسبة كسرٌ عشري نصّاً من العقد لا من الكود.",
+                "Creates a subcontract with its retention rate, its guarantee period, and its lines. The rate is a decimal fraction as "
+                + "a string, taken from the contract and never from code.",
+                Body: "SubcontractRequest", Response: "Subcontract", Success: 201, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.Subcontract, "get", "readSubcontract",
+                "قراءة عقد باطن", "Read one subcontract",
+                "يقرأ عقد الباطن ومعه بنوده المعلَّقة التي تمنع ترحيل مستخلصاته.",
+                "Reads the subcontract together with the pending items that block posting its certificates.",
+                Body: null, Response: "Subcontract", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.SubcontractLines, "get", "readSubcontractLines",
+                "قراءة بنود عقد الباطن", "Read a subcontract's lines",
+                "يقرأ بنود عقد الباطن بمعرّفاتها ووحداتها — ومعرّف البند هو مدخل سطر مستخلصه.",
+                "Reads the subcontract's lines with their identifiers and units — a line identifier is the input to its certificate line.",
+                Body: null, Response: "SubcontractLineList", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.ClientCertificates, "post", "draftClientCertificate",
+                "إنشاء مستخلص عميل مسوّدة", "Draft a client certificate",
+                "يُنشئ مستخلص عميل في حالة **DRAFT**: لا قيد ولا أثر في الدفتر.\n\n"
+                + "**والمستخلص تراكميّ**: كل سطر يحمل الكمّية التراكمية المُنجَزة حتى نهاية الفترة، ويُرجع الجواب "
+                + "معها الكمّية السابقة **كما جاءت من آخر مستخلصٍ مُرحَّل** — لا من آخر مسوّدة. ومسوّدةٌ تُزيح "
+                + "الأساس تُنتج إيراداً مضاعفاً أو ناقصاً بلا استثناء ولا رسالة.\n\n"
+                + "**ونسبة المحتجز تُجمَّد لحظة المسوّدة** من العقد: بدونها يُغيّر تعديلٌ على العقد أرقامَ مستخلصٍ "
+                + "راجعه إنسان.\n\n"
+                + "**ولاحظ ما ليس في الجواب: مبالغ محسوبة.** قيمة الأعمال والضريبة والمحتجز واسترداد الدفعة "
+                + "أربعةٌ تسمّيها المصفوفة، ولكلٍّ منها حاسبٌ يجب أن يعيش في الوحدة — ولم يُبنَ أيٌّ منها لأن "
+                + "أساسه بندٌ معلَّق: أين يقع التقريب، وعلى أي وعاء تُضرب نسبة المحتجز، وبأي قاعدة تُستردّ الدفعة، "
+                + "وعلى أي مستوى يُقرَّر التصنيف الضريبي. وعرضُ رقمٍ قبل أن يُحسم أساسه أسوأ من غيابه.",
+                "Creates a client certificate in state **DRAFT**: no entry and no effect on the ledger.\n\n"
+                + "**The certificate is cumulative**: every line carries the cumulative quantity executed to the end of the period, and "
+                + "the response returns alongside it the previous quantity **as it came from the last posted certificate** — never from "
+                + "the last draft. A draft that shifts the base produces doubled or missing revenue with no exception and no message.\n\n"
+                + "**The retention rate is frozen at draft time** from the contract: without that, an edit to the contract changes the "
+                + "figures of a certificate a human has already reviewed.\n\n"
+                + "**Note what is not in the response: computed amounts.** Works value, tax, retention, and advance recovery are the four "
+                + "the matrix names, and each needs a calculator that lives in the module — none has been built, because each rests on a "
+                + "pending decision: where rounding falls, what base the retention rate applies to, by what rule the advance is recovered, "
+                + "and at what level the tax classification is decided. Showing a figure before its basis is settled is worse than its absence.",
+                Body: "CertificateRequest", Response: "Certificate", Success: 201, Query: [],
+                ProblemStatuses: [404]),
+
+            new(ApiRoutes.ClientCertificate, "get", "readClientCertificate",
+                "قراءة مستخلص عميل", "Read one client certificate",
+                "يقرأ المستخلص بحالته وسطوره بكمّياتها التراكمية والسابقة، وبنوده المعلَّقة، ومعرّف قيده إن رُحّل.",
+                "Reads the certificate with its state, its lines with their cumulative and previous quantities, its pending items, and "
+                + "its entry identifier if posted.",
+                Body: null, Response: "Certificate", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.ClientCertificatePosting, "post", "postClientCertificate",
+                "ترحيل مستخلص عميل", "Post a client certificate",
+                "يرحّل مستخلصاً مسوّدة فيصير **واقعة محاسبية**. مورد فرعي مستقلّ لا PUT على المستند: الترحيل فعلٌ "
+                + "يُنشئ قيداً، لا حقلٌ يُعدَّل. ومفتاح الحصانة تشتقّه الوحدة من هوية الترحيل ولا يرسله العميل.\n\n"
+                + "**ويُرفض اليوم رفضاً صريحاً بـ409 وprojects.contract_policy.pending**، ورسالتُه تسمّي البنود "
+                + "المعلَّقة واحداً واحداً. وهذا **سلوكٌ منشور لا نقصٌ مخفيّ**: المصفوفة تفرض أن نسبة المحتجز "
+                + "«تأتي من العقد لا من قيمة ثابتة في الكود»، ولا تقول على أي وعاء تُضرب ولا بأي قاعدة تُستردّ "
+                + "الدفعة المقدمة ولا أين يقع التقريب ولا على أي مستوى يُقرَّر التصنيف الضريبي. فبلا هذه الأجوبة "
+                + "يصير القيد متوازناً بأرقامٍ اخترعها من نادى الباب — **ولا يمسك ذلك توازنٌ ولا حارس**.\n\n"
+                + "وحين تُحسم البنود ويُبنى حاسبُ كل مبلغ، يصير هذا الباب حصيناً ضد التكرار بهوية الترحيل: "
+                + "الوصول الثاني بالهوية نفسها يُرجع المستند ذاته وalreadyPosted = true ورمز 200 بدل 201، ولا "
+                + "يُنشئ قيداً ثانياً مهما كان ترتيب الوصول.",
+                "Posts a draft certificate, turning it into an **accounting fact**. A separate sub-resource, not a PUT on the document: "
+                + "posting is an act that creates an entry, not a field that is edited. The idempotency key is derived by the module from "
+                + "the posting identity and never sent by the client.\n\n"
+                + "**It is refused today, explicitly, with 409 and projects.contract_policy.pending**, and the message names each pending "
+                + "item. This is **published behaviour, not a hidden gap**: the matrix requires the retention rate to 'come from the "
+                + "contract, never from a constant in code', and it does not say what base the rate applies to, by what rule the advance "
+                + "is recovered, where rounding falls, or at what level the tax classification is decided. Without those answers the entry "
+                + "balances on figures invented by whoever called the door — **and neither balance nor guard catches that**.\n\n"
+                + "Once the items are settled and each amount has its calculator, this door is idempotent by the posting identity: a "
+                + "second arrival with the same identity returns the same document with alreadyPosted = true and status 200 instead of 201, "
+                + "and never creates a second entry, whatever the arrival order.",
+                Body: null, Response: "Certificate", Success: 201, Query: [],
+                ProblemStatuses: [404, 409, 422]),
+
+            new(ApiRoutes.SubcontractorCertificates, "post", "draftSubcontractorCertificate",
+                "إنشاء مستخلص باطن مسوّدة", "Draft a subcontractor certificate",
+                "يُنشئ مستخلص مقاول من الباطن في حالة **DRAFT**، بالشكل التراكمي نفسه.\n\n"
+                + "**وسطور الغرامات والخصومات مستقلّة لا صافٍ محسوب**، بتحفّظ مصفوفة الترحيل نصّه: «تُسجَّل "
+                + "كسطور مستقلة تخفّض المستحق **ولا تُخصم من قيمة الأعمال**». وسطرُ الغرامة يُخزَّن بصنفه "
+                + "PENALTY أو DEDUCTION ومبلغِه، ولا كمّية له ولا بند.",
+                "Creates a subcontractor certificate in state **DRAFT**, in the same cumulative shape.\n\n"
+                + "**Penalty and deduction lines are independent, never a computed net**, by the matrix caveat verbatim: 'recorded as "
+                + "separate lines that reduce the amount due and **are never netted against the works value**'. A penalty line is stored "
+                + "with its kind — PENALTY or DEDUCTION — and its amount, with no quantity and no item.",
+                Body: "CertificateRequest", Response: "Certificate", Success: 201, Query: [],
+                ProblemStatuses: [404]),
+
+            new(ApiRoutes.SubcontractorCertificate, "get", "readSubcontractorCertificate",
+                "قراءة مستخلص باطن", "Read one subcontractor certificate",
+                "يقرأ مستخلص الباطن بحالته وسطوره — سطور الأعمال وسطور الغرامات معاً وكلٌّ بصنفه.",
+                "Reads the subcontractor certificate with its state and its lines — works lines and penalty lines together, each with its kind.",
+                Body: null, Response: "Certificate", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.SubcontractorCertificatePosting, "post", "postSubcontractorCertificate",
+                "ترحيل مستخلص باطن", "Post a subcontractor certificate",
+                "يرحّل مستخلص الباطن بحدث المصفوفة الخاص به. مورد فرعي مستقلّ وحصين ضد التكرار بالشكل نفسه.\n\n"
+                + "**ويُرفض بـ409 وprojects.penalty_line_has_no_template إن حمل المستخلص سطر غرامة أو خصم.** "
+                + "والسبب مكتوب في القالب نفسه: مبالغه أربعة ليس فيها غرامة، وتعبير سطر الدائن لا يحتمل طرفاً "
+                + "خامساً — فلا سطر لها. والمخرج السهل أمام المنفِّذ — خصمُها من قيمة الأعمال — **ممنوع بنصّ "
+                + "التحفّظ**، لأنه يُنقص التكلفة المعترف بها للمشروع بمبلغ غرامة فتنحرف ربحيته وتكلفةُ بنده معاً. "
+                + "**فرفضٌ مُعلَن خيرٌ من خصمٍ صامت**، والسطور تبقى مخزَّنة حتى يهبط مبلغ الغرامة وسطرُه في "
+                + "المصفوفة بتوقيع محاسب.\n\n"
+                + "**ويُرفض بـ409 وprojects.contract_policy.pending** إن خلا من الغرامات، لنفس البنود المعلَّقة "
+                + "التي تحجب مستخلص العميل.",
+                "Posts the subcontractor certificate under its own matrix event. A separate sub-resource, idempotent in the same shape.\n\n"
+                + "**It is refused with 409 and projects.penalty_line_has_no_template when the certificate carries a penalty or deduction "
+                + "line.** The reason is written into the template itself: it has four amounts and none is a penalty, and the credit line's "
+                + "expression cannot take a fifth term — so there is no line for it. The easy way out — netting it against the works value — "
+                + "is **forbidden by the caveat text**, because it reduces the cost recognised for the project by a penalty amount, so both "
+                + "the project's profitability and its item cost drift. **A declared refusal beats a silent netting**, and the lines stay "
+                + "stored until a penalty amount and its line land in the matrix with an accountant's signature.\n\n"
+                + "**It is refused with 409 and projects.contract_policy.pending** when free of penalties, for the same pending items that "
+                + "block the client certificate.",
+                Body: null, Response: "Certificate", Success: 201, Query: [],
+                ProblemStatuses: [404, 409, 422]),
+
+            new(ApiRoutes.SubcontractorAdvances, "post", "draftSubcontractorAdvance",
+                "إنشاء صرف دفعة مقدمة لمقاول", "Draft a subcontractor advance payment",
+                "يُنشئ صرف دفعة مقدمة لمقاول من الباطن في حالة **DRAFT**، ومعه طريقة التسوية ومرجع خطاب الضمان "
+                + "الذي يشترطه نصّ إطلاق الحدث.\n\n"
+                + "**وطريقة التسوية مؤهّل دور لا حساب**: المصفوفة وحدها تُحوّلها إلى حساب، وسطح HTTP لا يسمّي "
+                + "حساباً (القاعدة 2). و**معرّف الخزينة معرّف مبهم** في دفترها المساعد، لا رقم حساب بنكي.",
+                "Creates a subcontractor advance payment in state **DRAFT**, with its settlement method and the reference to the "
+                + "guarantee its event's trigger text requires.\n\n"
+                + "**The settlement method is a role qualifier, not an account**: the matrix alone turns it into an account, and this HTTP "
+                + "surface never names one (Rule 2). The **treasury party identifier is an opaque identifier** in its own subledger, not a "
+                + "bank account number.",
+                Body: "SubcontractorAdvanceRequest", Response: "ProjectsDocument", Success: 201, Query: [],
+                ProblemStatuses: [404]),
+
+            new(ApiRoutes.SubcontractorAdvance, "get", "readSubcontractorAdvance",
+                "قراءة صرف دفعة مقدمة", "Read one subcontractor advance payment",
+                "يقرأ المستند بحالته ومبلغه ومعرّف قيده إن رُحّل. **والرصيد مشتقٌّ من المُرحَّل وحده** لا عمودٌ يُنقَص.",
+                "Reads the document with its state, its amount, and its entry identifier if posted. **The balance is derived from posted "
+                + "entries alone**, never a column that is decremented.",
+                Body: null, Response: "ProjectsDocument", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.SubcontractorAdvancePosting, "post", "postSubcontractorAdvance",
+                "ترحيل صرف دفعة مقدمة لمقاول", "Post a subcontractor advance payment",
+                "يرحّل صرف الدفعة المقدمة فيصير **واقعة محاسبية**: **أصلٌ لا مصروف** بنصّ الحدث — «يُستنفَد "
+                + "باستقطاعات المستخلصات».\n\n"
+                + "**وهذا هو المستند الوحيد في هذه الوحدة الذي يُرحَّل فعلاً اليوم**، ولسببٍ واحد: مبلغُه واقعةٌ "
+                + "يُدخلها المستخدم — ما صُرف — لا رقمٌ يشتقّه حاسبٌ من نسبةٍ ووعاءٍ وقاعدةِ تقريب. فلا بند "
+                + "معلَّق فيه، فلا شيء يمنع قيده.\n\n"
+                + "**وحصين ضد التكرار بهوية الترحيل** (شركة · نوع المستند · معرّفه · رمز الإطلاق · الجيل · رمز "
+                + "الحدث): الوصول الثاني بالهوية نفسها يُرجع **معرّف القيد الأول** وalreadyPosted = true ورمز 200 "
+                + "بدل 201، ولا يُنشئ قيداً ثانياً — والحكم حكم بوّابة الوحدة لا مقارنةَ حالةٍ قُرئت قبل النداء.",
+                "Posts the advance payment, turning it into an **accounting fact**: **an asset, not an expense**, by the event text — "
+                + "'consumed by deductions on the certificates'.\n\n"
+                + "**This is the only document in this module that actually posts today**, for one reason: its amount is a fact the user "
+                + "enters — what was paid — not a figure a calculator derives from a rate, a base, and a rounding rule. No item is pending "
+                + "on it, so nothing blocks its entry.\n\n"
+                + "**Idempotent by the posting identity** (company, source document type, source document id, trigger, generation, event "
+                + "code): a second arrival with the same identity returns **the first entry's identifier** with alreadyPosted = true and "
+                + "status 200 instead of 201, and never creates a second entry — the verdict is the module gateway's, not a comparison "
+                + "against a state read before the call.",
+                Body: null, Response: "ProjectsDocument", Success: 201, Query: [],
+                ProblemStatuses: [404, 409, 422]),
+
+            new(ApiRoutes.RetentionReleases, "post", "draftRetentionRelease",
+                "إنشاء إفراج عن محتجز مسوّدة", "Draft a retention release",
+                "يُنشئ إفراجاً عن محتجزٍ دائن على **دفعة محتجزٍ مُسمّاة** — لا على رصيد — باعتمادٍ صريح.\n\n"
+                + "**والاعتماد الصريح شرطُ الإطلاق بنصّه**: «عند انقضاء فترة الضمان **واعتماد الإفراج**». وقيدُ "
+                + "تحقّق في قاعدة البيانات يرفض اعتماداً فارغاً، فلا يمرّ الشرط بالاتفاق وحده.\n\n"
+                + "**ويُرفض بـ404 وprojects.retention_movement_not_found حتى يُرحَّل أول مستخلص**: حركات المحتجز "
+                + "تُشتقّ من المُرحَّل وحده، ولا يُفرَج عن رصيدٍ لم يُثبته قيد. وهذا أثرٌ مباشر للبند المعلَّق على "
+                + "المستخلص، لا عطلٌ في هذا المسار.",
+                "Creates a release of credit retention against **a named retention movement** — never against a balance — with an "
+                + "explicit approval.\n\n"
+                + "**The explicit approval is the trigger condition verbatim**: 'on expiry of the guarantee period **and approval of the "
+                + "release**'. A database check constraint refuses an empty approver, so the condition is not left to convention.\n\n"
+                + "**It is refused with 404 and projects.retention_movement_not_found until the first certificate posts**: retention "
+                + "movements are derived from posted entries alone, and no balance is released that no entry established. That is a direct "
+                + "consequence of the certificate's pending item, not a defect in this path.",
+                Body: "RetentionReleaseRequest", Response: "ProjectsDocument", Success: 201, Query: [],
+                ProblemStatuses: [404]),
+
+            new(ApiRoutes.RetentionRelease, "get", "readRetentionRelease",
+                "قراءة مستند إفراج", "Read one retention release",
+                "يقرأ مستند الإفراج بحالته ومبلغه ومعرّف قيده إن رُحّل.",
+                "Reads the release document with its state, its amount, and its entry identifier if posted.",
+                Body: null, Response: "ProjectsDocument", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.RetentionReleasePosting, "post", "postRetentionRelease",
+                "ترحيل الإفراج عن المحتجز", "Post a retention release",
+                "يرحّل الإفراج بحدثه — **قيدٌ مستقلّ لا تعديلٌ لقيد المستخلص**، بنصّ الحدث. ومعرّف هذا المستند "
+                + "هو ما يجعل حدثاً بلا مستندٍ بطبعه **حصيناً ضد التكرار**: بلا مستندٍ يحمل هوية، تكون إعادةُ "
+                + "نداءٍ إفراجاً ثانياً.\n\n"
+                + "**وأثره على نقطة ضبط المقاول صفرٌ بحكم القالب**: الحركة داخل الدفتر المساعد نفسه — يُدين "
+                + "المحتجز الدائن ويُدين به مستحقّ المقاول — فالمجموع لا يتغيّر. وكتابةُ أثرٍ غير صفري هنا كانت "
+                + "ستُنتج انحرافاً في المطابقة على مستندٍ سليم.",
+                "Posts the release under its event — **a standalone entry, not an edit to the certificate's entry**, by the event text. "
+                + "This document's identifier is what makes an event that is naturally document-less **idempotent**: without a document "
+                + "carrying an identity, a repeated call is a second release.\n\n"
+                + "**Its effect on the subcontractor control point is zero by the template**: the movement stays inside the same subledger "
+                + "— it debits the retention payable and debits the subcontractor's balance — so the total does not change. Writing a "
+                + "non-zero effect here would have produced a reconciliation divergence on a perfectly sound document.",
+                Body: null, Response: "ProjectsDocument", Success: 201, Query: [],
+                ProblemStatuses: [404, 409, 422]),
+
+            new(ApiRoutes.RetentionCollections, "post", "draftRetentionCollection",
+                "إنشاء تحصيل محتجز مسوّدة", "Draft a client retention collection",
+                "يُنشئ تحصيل محتجزٍ مدين من العميل على دفعة محتجزٍ مُسمّاة، بطريقة تسوية مُسمّاة.\n\n"
+                + "**ويُرفض بـ404 حتى يُرحَّل أول مستخلص** لنفس السبب الذي يرفض به الإفراج.",
+                "Creates a collection of debit retention from the client against a named retention movement, with a named settlement method.\n\n"
+                + "**It is refused with 404 until the first certificate posts**, for the same reason the release is.",
+                Body: "RetentionCollectionRequest", Response: "ProjectsDocument", Success: 201, Query: [],
+                ProblemStatuses: [404]),
+
+            new(ApiRoutes.RetentionCollection, "get", "readRetentionCollection",
+                "قراءة مستند تحصيل محتجز", "Read one retention collection",
+                "يقرأ مستند التحصيل بحالته ومبلغه ومعرّف قيده إن رُحّل.",
+                "Reads the collection document with its state, its amount, and its entry identifier if posted.",
+                Body: null, Response: "ProjectsDocument", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.RetentionCollectionPosting, "post", "postRetentionCollection",
+                "ترحيل تحصيل المحتجز من العميل", "Post a client retention collection",
+                "يرحّل تحصيل المحتجز بحدثه.\n\n"
+                + "**وهذا هو المسار الوحيد في هذه الوحدة الذي يمارس قدرةً مُرخِّصة**: حدثُه هو ما تفتحه قدرة "
+                + "retention على نوع المستند projects.client_certificate في كتالوج القدرات. فيمرّ من بوّابة "
+                + "القبول أوّلاً، و**غياب ملفّ القدرات رفضٌ لا فتح**: منشأةٌ بلا ملفّ ليست بلا قيود، بل لم "
+                + "يُقرَّر بعد ما اشترته.\n\n"
+                + "**ويحجبه بندٌ معلَّق أيضاً**: أثرُ هذا القيد على نقطة ضبط العميل يتوقّف على ما إذا كان المحتجز "
+                + "المدين جزءاً من ضبط العميل أصلاً — وهو تناقضٌ قائم بين ملفَّي بياناتٍ في دليل الحسابات لم "
+                + "يُغلَق بعد. فكتابةُ أثرٍ هنا اختيارٌ لأحد جوابيه بلا أن يقوله أحد.",
+                "Posts the retention collection under its event.\n\n"
+                + "**This is the only path in this module that exercises a licensing capability**: its event is what the retention "
+                + "capability opens on document type projects.client_certificate in the capability catalogue. It therefore passes through "
+                + "the admission gate first, and **a missing capability profile fails closed**: a company without one is not unconstrained, "
+                + "it is one whose purchase has not been decided yet.\n\n"
+                + "**A pending item blocks it too**: this entry's effect on the customer control point depends on whether debit retention "
+                + "belongs to the customer control set at all — an open contradiction between two chart-of-accounts data files. Writing an "
+                + "effect here would choose one of its two answers with nobody having said so.",
+                // ‏**ولا 403 هنا**: يُكتب تلقائياً لكل عملية تحتاج اعتماداً، وإعادةُ
+                // ذكره تُنتج مفتاحاً مكرَّراً في وثيقةٍ يقرؤها مولّد. ورفضُ القدرة
+                // المُطفأة يخرج 422 برمزه document_admission.capability_not_enabled —
+                // فالاعتماد صحيح والنطاق مبلوغ، والمانع ما اشترته المنشأة.
+                Body: null, Response: "ProjectsDocument", Success: 201, Query: [],
+                ProblemStatuses: [404, 409, 422]),
+
+            new(ApiRoutes.RetentionRegister, "get", "readRetentionRegister",
+                "قراءة سجلّ المحتجزات", "Read the retention register",
+                "يقرأ المحتجزات مدينةً ودائنة بتواريخ استحقاق الإفراج على الطرفين، **مشتقّةً من المُرحَّل وحده** — "
+                + "ومعرّف الحركة في كل صفّ هو ما يُفرَج عنه أو يُحصَّل.\n\n"
+                + "**ولا عمود رصيدٍ يُنقَص في أي مكان**: الرصيد القائم يُشتقّ من الحركات، وكل رصيدٍ قابل لإعادة "
+                + "الاشتقاق من أسطر الدفتر.",
+                "Reads retention, debit and credit, with the release due dates on both sides, **derived from posted entries alone** — and "
+                + "the movement identifier on each row is what a release or a collection acts upon.\n\n"
+                + "**No balance column is decremented anywhere**: the outstanding balance is derived from the movements, and every balance "
+                + "is re-derivable from the ledger's lines.",
+                Body: null, Response: "RetentionRegister", Success: 200,
+                Query:
+                [
+                    new QueryParameter("asOf", true,
+                        "تاريخ القراءة بصيغة yyyy-MM-dd. ميلادي حصراً، وأي تقويم آخر يُقرأ فترة مالية مختلفة.",
+                        "The as-of date in yyyy-MM-dd. Gregorian only; any other calendar reads as a different fiscal period.",
+                        "date"),
+                ]),
+
+            new(ApiRoutes.SubcontractorStatement, "get", "readSubcontractorStatement",
+                "قراءة كشف المقاولين", "Read the subcontractor statement",
+                "يقرأ كشف المقاولين حتى تاريخ، **ومعه مطابقته بنقطة ضبطه**. وهو المطابقة المُعلَنة نصّاً في "
+                + "بيانات الدفاتر المساعدة: «كشف المقاولين = رصيد الحساب».\n\n"
+                + "**والقراءة مُضيَّقة على مستندات هذه الوحدة.** نقطة الضبط الواحدة يُحرّكها أكثر من وحدة، "
+                + "فمطابقةٌ تقرأ الدفتر بالنوع وحده ثم تقارنه بمستنداتها هي تُصدر انحرافاً على مستأجرٍ سليم — "
+                + "وكل حركة ليست في جدولها تُقرأ «مفقودة من الدفتر المساعد».\n\n"
+                + "**وisReconciled صفرٌ بالضبط لا «قريب من الصفر»**: الفارق بريال واحد فارقٌ يُسمّى، وصفوفُه "
+                + "تُسمّي الطرف المسؤول عنه.",
+                "Reads the subcontractor statement to a date, **together with its reconciliation against its control point**. This is the "
+                + "reconciliation declared verbatim in the subledger data: 'the subcontractor statement equals the account balance'.\n\n"
+                + "**The read is narrowed to this module's own documents.** One control point is moved by more than one module, so a "
+                + "reconciliation that reads the ledger by kind alone and compares it to its own documents raises a divergence on a sound "
+                + "tenant — every movement absent from its table reads as 'missing from the subledger'.\n\n"
+                + "**isReconciled means exactly zero, not 'close to zero'**: a one-riyal difference is a difference that gets named, and "
+                + "the rows name the party responsible for it.",
+                Body: null, Response: "SubcontractorStatement", Success: 200,
+                Query:
+                [
+                    new QueryParameter("asOf", true,
+                        "تاريخ الكشف بصيغة yyyy-MM-dd.",
+                        "The statement date in yyyy-MM-dd.",
+                        "date"),
+                ]),
+
+            new(ApiRoutes.Guarantees, "post", "addGuarantee",
+                "تسجيل خطاب ضمان", "Register a guarantee",
+                "يسجّل خطاب ضمان — ابتدائي أو حسن تنفيذ أو دفعة مقدمة — بتواريخ سريانه وانتهائه ومرفقه.\n\n"
+                + "**ولاحظ ما ليس هنا — ولا يجوز أن يوجد: لا مورد ‏…/posting.** خطاب الضمان **سجلٌّ لا يُرحَّل "
+                + "أبداً**: لا حدث له في مصفوفة الترحيل، ومخطّط جوابه بلا entryId وبلا alreadyPosted للسبب نفسه "
+                + "الذي يخلو منه جواب الأمر التغييري.\n\n"
+                + "**والمرفق يُشار إليه بمعرّفه على السطح المنشور للمرفقات — لا بايتات هنا**: خطاب الضمان سندُ "
+                + "إثبات، فيُودَع حيث تُحرَس البصمة والإصدار والسحب (ADR-0046 · ADR-0051)، وإخراجُه من هناك "
+                + "يُفرغ المراجعة.",
+                "Registers a guarantee — bid, performance, or advance-payment — with its effective and expiry dates and its attachment.\n\n"
+                + "**Note what is not here — and must not be: no …/posting sub-resource.** A guarantee is **a record that never posts**: "
+                + "it has no event in the posting matrix, and its response schema carries no entryId and no alreadyPosted for exactly the "
+                + "reason the change order's does not.\n\n"
+                + "**The attachment is referenced by its identifier on the published attachment surface — no bytes here**: a guarantee is "
+                + "evidence, so it is deposited where the digest, the revision chain, and the withdrawal are guarded (ADR-0046, ADR-0051), "
+                + "and taking it out of there hollows out the review.",
+                Body: "GuaranteeRequest", Response: "Guarantee", Success: 201, Query: [],
+                ProblemStatuses: [404]),
+
+            new(ApiRoutes.Guarantee, "get", "readGuarantee",
+                "قراءة خطاب ضمان", "Read one guarantee",
+                "يقرأ خطاب الضمان بتواريخه ومبلغه ومعرّف مرفقه.",
+                "Reads the guarantee with its dates, its amount, and its attachment identifier.",
+                Body: null, Response: "Guarantee", Success: 200, Query: [], ProblemStatuses: [404]),
         }.OrderBy(static o => o.Path, StringComparer.Ordinal).ThenBy(static o => o.Method, StringComparer.Ordinal),
     ];
 
@@ -1708,15 +2162,26 @@ internal static class OpenApiEmitter
         ("attachments", "attachmentId",
             "معرّف المرفق — غامضٌ عمداً: لا يُشتقّ من اسم ملفّ ولا من مسار، ولا يُقرأ منه شيء عن صاحبه.",
             "The attachment identifier — deliberately opaque: derived from no file name and no path, and telling nothing about its owner."),
+        ("change-orders", "changeOrderId", "معرّف الأمر التغييري.", "The change order identifier."),
+        ("client-certificates", "certificateId", "معرّف مستخلص العميل.", "The client certificate identifier."),
         ("credit-notes", "creditNoteId", "معرّف الإشعار الدائن.", "The credit note identifier."),
         ("customer-receipts", "receiptId", "معرّف سند القبض.", "The customer receipt identifier."),
         ("customers", "customerId", "معرّف العميل.", "The customer identifier."),
         ("goods-receipts", "receiptId", "معرّف استلام البضاعة.", "The goods receipt identifier."),
+        ("guarantees", "guaranteeId", "معرّف خطاب الضمان.", "The guarantee identifier."),
         ("items", "itemId", "معرّف الصنف.", "The item identifier."),
+        ("project-contracts", "contractId", "معرّف عقد المقاولة.", "The project contract identifier."),
+        ("projects", "projectId", "معرّف المشروع.", "The project identifier."),
         ("purchase-orders", "orderId", "معرّف أمر الشراء.", "The purchase order identifier."),
         ("purchase-returns", "returnId", "معرّف مرتجع المشتريات.", "The purchase return identifier."),
         ("sales-invoices", "invoiceId", "معرّف فاتورة المبيعات.", "The sales invoice identifier."),
+        ("retention-collections", "collectionId", "معرّف مستند تحصيل المحتجز.", "The retention collection identifier."),
+        ("retention-releases", "releaseId", "معرّف مستند الإفراج عن المحتجز.", "The retention release identifier."),
         ("stock-movements", "movementId", "معرّف مستند حركة المخزون.", "The stock movement document identifier."),
+        ("subcontractor-advances", "advanceId", "معرّف مستند صرف الدفعة المقدمة للمقاول.", "The subcontractor advance identifier."),
+        ("subcontractor-certificates", "certificateId", "معرّف مستخلص المقاول من الباطن.", "The subcontractor certificate identifier."),
+        ("subcontractors", "subcontractorId", "معرّف المقاول من الباطن.", "The subcontractor identifier."),
+        ("subcontracts", "subcontractId", "معرّف عقد الباطن.", "The subcontract identifier."),
         ("supplier-bills", "billId", "معرّف فاتورة المورد.", "The supplier bill identifier."),
         ("supplier-payments", "paymentId", "معرّف سند الصرف.", "The supplier payment identifier."),
         ("suppliers", "supplierId", "معرّف المورد.", "The supplier identifier."),
@@ -3381,6 +3846,706 @@ internal static class OpenApiEmitter
                 "The total matching the filter within this company.");
             w.WriteEndObject();
             WriteRequired(w, "items", "skip", "take", "total");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        // ══ مخطّطات المقاولات ══════════════════════════════════════════════
+        // ولا نوع منها يعيد تعريف ما هو منشور: الكمّية Measure، والمبلغ Money،
+        // وترجمة الاسم NameValue — الأشكال نفسها التي يستعملها المخزون والمبيعات.
+
+        yield return ("Rate", static w =>
+        {
+            w.WriteString("type", "string");
+            w.WriteString("pattern", @"^-?(0|[1-9][0-9]*)(\.[0-9]{1,8})?$");
+            w.WriteString("description",
+                "نسبة تعاقدية **كسراً عشرياً لا نسبة مئوية**: عشرة بالمئة تُكتب 0.10 لا 10. والمقياس ثمانٍ لا "
+                + "أربع: النسبة ليست مبلغاً ولا تُقرَّب إلى الهللة. **وهي تأتي من العقد لا من قيمة ثابتة في "
+                + "الكود** — نصّ مصفوفة الترحيل على المحتجز بحرفه. / "
+                + "A contractual rate as a **decimal fraction, not a percentage**: ten percent is written 0.10, never 10. The "
+                + "scale is eight, not four: a rate is not an amount and is not rounded to the halala. **It comes from the "
+                + "contract, never from a constant in code** — the posting matrix's text on retention, verbatim.");
+            w.WriteStartArray("examples");
+            w.WriteStringValue("0.10");
+            w.WriteStringValue("0");
+            w.WriteEndArray();
+        });
+
+        yield return ("PendingPolicyItem", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "بندٌ معلَّق على قرار محاسب — **وهو ما يمنع الترحيل اليوم**. ووجوده في الجواب مقصود: من يقرأ "
+                + "العقد أو المستخلص يعرف سلفاً ما الذي سيرفضه الترحيل ولماذا، بدل أن يكتشفه عند أول محاولة "
+                + "مالية. و**الرمز هو نقطة الاعتماد البرمجية**، والعنوانان للعرض. / "
+                + "An item pending an accountant's decision — **what blocks posting today**. Its presence in the response is "
+                + "deliberate: whoever reads a contract or a certificate learns in advance what posting will refuse and why, "
+                + "instead of discovering it at the first financial attempt. **The code is the programmatic anchor**; the two "
+                + "titles are for display.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "code", "رمز البند الثابت.", "The item's stable code.", 64);
+            WriteStringProperty(w, "sourceRef", "الموضع الذي يحمل السؤال كاملاً بخياراته.", "Where the full question and its options live.", 256);
+            WriteStringProperty(w, "titleAr", "عنوان البند بالعربية.", "The item's Arabic title.", 512);
+            WriteStringProperty(w, "titleEn", "عنوانه بالإنجليزية — تشخيصيٌّ يصحبه رمز ثابت، لا نصّ عرض.", "Its English title — diagnostic text accompanied by a stable code, not display text.", 512);
+            w.WriteEndObject();
+            WriteRequired(w, "code", "sourceRef", "titleAr", "titleEn");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("ProjectRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب تسجيل مشروع. **ورمزه هوية لا اسم عرض**: هو القيمة الحرفية التي تدخل بُعد المشروع على سطر "
+                + "القيد، فلا تعديل له ولا حذف بعد أن تحمله قيود. / "
+                + "A project registration request. **Its code is an identity, not a display name**: it is the literal value that "
+                + "enters the project dimension on a journal line, so it is never edited and never deleted once entries carry it.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "code", "رمز المشروع داخل المنشأة.", "The project code within the company.", 64);
+            WriteStringProperty(w, "nameAr", "اسم المشروع بالعربية — وهو السجلّ لا ترجمته.", "The project's Arabic name — the record itself, not a translation of it.", 200);
+            WriteArrayRefProperty(w, "nameTranslations", "NameValue",
+                "ترجمات الاسم، مفاتيحها أوسمة BCP-47. ولا حقل إنجليزي ثابت: الإنجليزية واحدة من N.",
+                "The name's translations, keyed by BCP-47 tags. There is no fixed English field: English is one of N.");
+            WriteDateProperty(w, "startedOn", "تاريخ بدء المشروع", "The project start date.");
+            w.WriteEndObject();
+            WriteRequired(w, "code", "nameAr", "nameTranslations", "startedOn");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("ProjectContractSummary", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description", "عقدٌ مختصر تحت مشروعه. / A contract in brief under its project.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "currencyCode", "عملة العقد.", "The contract currency.", 3);
+            WriteStringProperty(w, "id", "معرّف العقد.", "The contract identifier.", 36);
+            WriteStringProperty(w, "number", "رقم العقد.", "The contract number.", 64);
+            w.WriteEndObject();
+            WriteRequired(w, "currencyCode", "id", "number");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("Project", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description", "مشروع بحالته وعقوده. / A project with its state and its contracts.");
+            w.WriteStartObject("properties");
+            WriteArrayRefProperty(w, "contracts", "ProjectContractSummary", "عقود هذا المشروع.", "This project's contracts.");
+            WriteStringProperty(w, "code", "الرمز — وهو ما يدخل بُعد المشروع على سطر القيد.", "The code — what enters the project dimension on a journal line.", 64);
+            WriteStringProperty(w, "id", "المعرّف الذي تُبنى عليه العقود.", "The identifier contracts are built on.", 36);
+            WriteBooleanProperty(w, "isActive", "هل المشروع عامل؟", "Is the project active?");
+            WriteStringProperty(w, "nameAr", "الاسم العربي — السجلّ.", "The Arabic name — the record.", 200);
+            WriteArrayRefProperty(w, "nameTranslations", "NameValue", "الترجمات مرتَّبة بالوسم.", "The translations ordered by tag.");
+            WriteDateProperty(w, "startedOn", "تاريخ البدء", "The start date.");
+            w.WriteEndObject();
+            WriteRequired(w, "code", "contracts", "id", "isActive", "nameAr", "nameTranslations", "startedOn");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("ProjectList", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description", "قائمة مشاريع المنشأة. / The company's projects.");
+            w.WriteStartObject("properties");
+            WriteIntegerProperty(w, "projectCount", 0, int.MaxValue, "عدد المشاريع.", "The number of projects.");
+            WriteArrayRefProperty(w, "projects", "Project", "المشاريع مرتَّبة برمزها.", "The projects ordered by code.");
+            w.WriteEndObject();
+            WriteRequired(w, "projectCount", "projects");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("BoqItemRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "بند جدول كميات في طلب. **ولا رمز حساب فيه**: البند وحدة تسعير داخل المشروع، والمصفوفة وحدها "
+                + "تقرّر الحساب (القاعدة 2). / "
+                + "A bill-of-quantities line in a request. **No account code appears in it**: the line is a pricing unit inside the "
+                + "project, and the matrix alone decides the account (Rule 2).");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "code", "رمز البند داخل العقد.", "The line's code within the contract.", 64);
+            WriteRefProperty(w, "contractQuantity", "Measure");
+            WriteStringProperty(w, "descriptionAr", "بيان البند بالعربية.", "The line's Arabic description.", 400);
+            WriteRefProperty(w, "unitRate", "Money");
+            w.WriteEndObject();
+            WriteRequired(w, "code", "contractQuantity", "descriptionAr", "unitRate");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("BoqItem", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "بند جدول كميات **بمعرّفه** — وهو مدخل سطر المستخلص. / "
+                + "A bill-of-quantities line **with its identifier** — the input to a certificate line.");
+            w.WriteStartObject("properties");
+            WriteNullableStringProperty(w, "changeOrderId", "الأمر التغييري الذي أدخل هذا البند، أو null لبنود العقد الأصلي.", "The change order that added this line, or null for the original contract's lines.", 36);
+            WriteStringProperty(w, "code", "الرمز.", "The code.", 64);
+            WriteRefProperty(w, "contractQuantity", "Measure");
+            WriteStringProperty(w, "descriptionAr", "البيان.", "The description.", 400);
+            WriteStringProperty(w, "id", "المعرّف — وهو ما يُرسَل في سطر المستخلص.", "The identifier — what a certificate line sends.", 36);
+            WriteIntegerProperty(w, "lineNo", 1, int.MaxValue, "ترتيب البند.", "The line's ordinal.");
+            WriteRefProperty(w, "unitRate", "Money");
+            w.WriteEndObject();
+            WriteRequired(w, "changeOrderId", "code", "contractQuantity", "descriptionAr", "id", "lineNo", "unitRate");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("BoqItemList", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description", "بنود جدول الكميات بمعرّفاتها. / The bill-of-quantities lines with their identifiers.");
+            w.WriteStartObject("properties");
+            WriteIntegerProperty(w, "itemCount", 0, int.MaxValue, "عدد البنود.", "The number of lines.");
+            WriteArrayRefProperty(w, "items", "BoqItem", "البنود مرتَّبة بترتيبها.", "The lines in their order.");
+            w.WriteEndObject();
+            WriteRequired(w, "itemCount", "items");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("ProjectContractRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب إنشاء عقد مقاولة. **ولا وعاء لنسبة المحتجز فيه ولا قاعدة استرداد**: موضعُهما نفسه قرارُ "
+                + "محاسبٍ لم يُحسم، ونشرُ أحدهما هنا اختيارٌ لجوابٍ لم يقله أحد. / "
+                + "A request to create a project contract. **It carries no base for the retention rate and no advance recovery "
+                + "rule**: where they belong is itself an unsettled accounting decision, and publishing either here chooses an "
+                + "answer nobody has given.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "customerPartyId", "معرّف العميل في دفتره المساعد — معرّف مبهم لا رقم حساب.", "The customer's identifier in its subledger — an opaque identifier, not an account number.", 64);
+            WriteIntegerProperty(w, "guaranteeMonths", 0, 600, "فترة الضمان بالأشهر كما نصّ عليها العقد.", "The guarantee period in months as the contract states it.");
+            WriteArrayRefProperty(w, "items", "BoqItemRequest", "بنود جدول الكميات.", "The bill-of-quantities lines.");
+            WriteStringProperty(w, "number", "رقم العقد — يرسله العميل ويُتحقَّق من تفرّده.", "The contract number — sent by the client and checked for uniqueness.", 64);
+            WriteStringProperty(w, "projectId", "المشروع الذي يقع تحته العقد.", "The project this contract falls under.", 36);
+            WriteRefProperty(w, "retentionRate", "Rate");
+            WriteDateProperty(w, "signedOn", "تاريخ توقيع العقد", "The contract signature date.");
+            w.WriteEndObject();
+            WriteRequired(w, "customerPartyId", "guaranteeMonths", "items", "number", "projectId", "retentionRate", "signedOn");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("ProjectContract", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "عقد مقاولة **ومعه بنوده المعلَّقة** التي تمنع ترحيل مستخلصاته. / "
+                + "A project contract **together with the pending items** that block posting its certificates.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "currencyCode", "عملة العقد — عملة المنشأة.", "The contract currency — the company currency.", 3);
+            WriteStringProperty(w, "customerPartyId", "العميل.", "The customer.", 64);
+            WriteIntegerProperty(w, "guaranteeMonths", 0, 600, "فترة الضمان بالأشهر.", "The guarantee period in months.");
+            WriteStringProperty(w, "id", "المعرّف.", "The identifier.", 36);
+            WriteStringProperty(w, "number", "الرقم.", "The number.", 64);
+            WriteArrayRefProperty(w, "pendingPolicy", "PendingPolicyItem",
+                "البنود المعلَّقة التي يرفض بها بابُ الترحيل اليوم. وقائمة فارغة تعني أن كل بند اعتُمد.",
+                "The pending items the posting door refuses on today. An empty list means every item has been approved.");
+            WriteStringProperty(w, "projectCode", "رمز المشروع — وهو ما يدخل بُعد القيد.", "The project code — what enters the journal dimension.", 64);
+            WriteStringProperty(w, "projectId", "المشروع.", "The project.", 36);
+            WriteRefProperty(w, "retentionRate", "Rate");
+            WriteDateProperty(w, "signedOn", "تاريخ التوقيع", "The signature date.");
+            w.WriteEndObject();
+            WriteRequired(w, "currencyCode", "customerPartyId", "guaranteeMonths", "id", "number", "pendingPolicy", "projectCode", "projectId", "retentionRate", "signedOn");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("ChangeOrderRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description", "طلب تسجيل أمر تغييري ببنوده الجديدة. / A request to register a change order with the lines it adds.");
+            w.WriteStartObject("properties");
+            WriteArrayRefProperty(w, "addedItems", "BoqItemRequest", "البنود التي يُدخلها الأمر على جدول الكميات.", "The lines this order adds to the bill of quantities.");
+            WriteStringProperty(w, "approvedBy", "من اعتمد الأمر — والاعتماد فعلٌ يُنسب لا حقلٌ يُملأ.", "Who approved the order — approval is an act that is attributed, not a field that is filled.", 200);
+            WriteStringProperty(w, "contractId", "العقد.", "The contract.", 36);
+            WriteDateProperty(w, "issuedOn", "تاريخ إصدار الأمر", "The order's issue date.");
+            WriteStringProperty(w, "number", "رقم الأمر.", "The order number.", 64);
+            WriteStringProperty(w, "reasonAr", "سبب التغيير بالعربية.", "The Arabic reason for the change.", 400);
+            w.WriteEndObject();
+            WriteRequired(w, "addedItems", "approvedBy", "contractId", "issuedOn", "number", "reasonAr");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("ChangeOrder", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "أمر تغييري ببنوده الجديدة. **ولا entryId ولا alreadyPosted فيه** — لأنه لا يُرحَّل أبداً، "
+                + "وحقلٌ فارغ لهما يُقرأ «لم يُرحَّل بعد» بدل «لا يُرحَّل أبداً». / "
+                + "A change order with the lines it added. **No entryId and no alreadyPosted** — it never posts, and an empty "
+                + "value for either reads as 'not posted yet' rather than 'never posted'.");
+            w.WriteStartObject("properties");
+            WriteArrayRefProperty(w, "addedItems", "BoqItem", "البنود الجديدة بمعرّفاتها.", "The added lines with their identifiers.");
+            WriteStringProperty(w, "approvedBy", "المعتمِد.", "The approver.", 200);
+            WriteStringProperty(w, "contractId", "العقد.", "The contract.", 36);
+            WriteStringProperty(w, "id", "المعرّف.", "The identifier.", 36);
+            WriteDateProperty(w, "issuedOn", "تاريخ الإصدار", "The issue date.");
+            WriteStringProperty(w, "number", "الرقم.", "The number.", 64);
+            WriteStringProperty(w, "reasonAr", "السبب.", "The reason.", 400);
+            w.WriteEndObject();
+            WriteRequired(w, "addedItems", "approvedBy", "contractId", "id", "issuedOn", "number", "reasonAr");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("ChangeOrderList", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description", "أوامر عقدٍ التغييرية. / A contract's change orders.");
+            w.WriteStartObject("properties");
+            WriteIntegerProperty(w, "changeOrderCount", 0, int.MaxValue, "عددها.", "Their count.");
+            WriteArrayRefProperty(w, "changeOrders", "ChangeOrder", "الأوامر مرتَّبة برقمها.", "The orders ordered by number.");
+            w.WriteEndObject();
+            WriteRequired(w, "changeOrderCount", "changeOrders");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("SubcontractorRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description", "طلب تسجيل مقاول من الباطن. / A request to register a subcontractor.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "code", "رمز المقاول داخل المنشأة.", "The subcontractor's code within the company.", 64);
+            WriteStringProperty(w, "nameAr", "الاسم بالعربية — السجلّ.", "The Arabic name — the record.", 200);
+            WriteArrayRefProperty(w, "nameTranslations", "NameValue", "ترجمات الاسم بأوسمة BCP-47.", "The name's translations, keyed by BCP-47 tags.");
+            WriteStringProperty(w, "vatNumber", "رقم التسجيل الضريبي، أو نصّ فارغ لمن لا رقم له — والغياب واقعٌ لا نقص.", "The VAT registration number, or an empty string for a party without one — the absence is a fact, not a gap.", 32);
+            w.WriteEndObject();
+            WriteRequired(w, "code", "nameAr", "nameTranslations", "vatNumber");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("Subcontractor", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "مقاول من الباطن — **ومعرّفه هو الطرف في دفتر subcontractor المساعد**. / "
+                + "A subcontractor — **its identifier is the party in the subcontractor subledger**.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "code", "الرمز.", "The code.", 64);
+            WriteStringProperty(w, "id", "المعرّف — وهو الطرف في الدفتر المساعد.", "The identifier — the party in the subledger.", 36);
+            WriteBooleanProperty(w, "isActive", "هل هو عامل؟", "Is it active?");
+            WriteStringProperty(w, "nameAr", "الاسم العربي.", "The Arabic name.", 200);
+            WriteArrayRefProperty(w, "nameTranslations", "NameValue", "الترجمات.", "The translations.");
+            WriteStringProperty(w, "vatNumber", "رقم التسجيل الضريبي.", "The VAT registration number.", 32);
+            w.WriteEndObject();
+            WriteRequired(w, "code", "id", "isActive", "nameAr", "nameTranslations", "vatNumber");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("SubcontractLineRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description", "بند عقد باطن في طلب. / A subcontract line in a request.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "code", "رمز البند داخل عقد الباطن.", "The line's code within the subcontract.", 64);
+            WriteRefProperty(w, "contractQuantity", "Measure");
+            WriteStringProperty(w, "descriptionAr", "البيان بالعربية.", "The Arabic description.", 400);
+            WriteRefProperty(w, "unitRate", "Money");
+            w.WriteEndObject();
+            WriteRequired(w, "code", "contractQuantity", "descriptionAr", "unitRate");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("SubcontractRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description", "طلب إنشاء عقد باطن. / A request to create a subcontract.");
+            w.WriteStartObject("properties");
+            WriteIntegerProperty(w, "guaranteeMonths", 0, 600, "فترة الضمان بالأشهر.", "The guarantee period in months.");
+            WriteArrayRefProperty(w, "lines", "SubcontractLineRequest", "بنود عقد الباطن.", "The subcontract's lines.");
+            WriteStringProperty(w, "number", "رقم العقد.", "The subcontract number.", 64);
+            WriteStringProperty(w, "projectId", "المشروع.", "The project.", 36);
+            WriteRefProperty(w, "retentionRate", "Rate");
+            WriteDateProperty(w, "signedOn", "تاريخ التوقيع", "The signature date.");
+            WriteStringProperty(w, "subcontractorId", "المقاول.", "The subcontractor.", 36);
+            w.WriteEndObject();
+            WriteRequired(w, "guaranteeMonths", "lines", "number", "projectId", "retentionRate", "signedOn", "subcontractorId");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("Subcontract", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description", "عقد باطن ومعه بنوده المعلَّقة. / A subcontract together with its pending items.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "currencyCode", "العملة.", "The currency.", 3);
+            WriteIntegerProperty(w, "guaranteeMonths", 0, 600, "فترة الضمان بالأشهر.", "The guarantee period in months.");
+            WriteStringProperty(w, "id", "المعرّف.", "The identifier.", 36);
+            WriteStringProperty(w, "number", "الرقم.", "The number.", 64);
+            WriteArrayRefProperty(w, "pendingPolicy", "PendingPolicyItem", "البنود المعلَّقة التي تمنع ترحيل مستخلصاته.", "The pending items that block posting its certificates.");
+            WriteStringProperty(w, "projectCode", "رمز المشروع.", "The project code.", 64);
+            WriteStringProperty(w, "projectId", "المشروع.", "The project.", 36);
+            WriteRefProperty(w, "retentionRate", "Rate");
+            WriteDateProperty(w, "signedOn", "تاريخ التوقيع", "The signature date.");
+            WriteStringProperty(w, "subcontractorId", "المقاول.", "The subcontractor.", 36);
+            w.WriteEndObject();
+            WriteRequired(w, "currencyCode", "guaranteeMonths", "id", "number", "pendingPolicy", "projectCode", "projectId", "retentionRate", "signedOn", "subcontractorId");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("SubcontractLine", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description", "بند عقد باطن بمعرّفه — مدخل سطر مستخلصه. / A subcontract line with its identifier — the input to its certificate line.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "code", "الرمز.", "The code.", 64);
+            WriteRefProperty(w, "contractQuantity", "Measure");
+            WriteStringProperty(w, "descriptionAr", "البيان.", "The description.", 400);
+            WriteStringProperty(w, "id", "المعرّف.", "The identifier.", 36);
+            WriteIntegerProperty(w, "lineNo", 1, int.MaxValue, "الترتيب.", "The ordinal.");
+            WriteRefProperty(w, "unitRate", "Money");
+            w.WriteEndObject();
+            WriteRequired(w, "code", "contractQuantity", "descriptionAr", "id", "lineNo", "unitRate");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("SubcontractLineList", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description", "بنود عقد الباطن. / A subcontract's lines.");
+            w.WriteStartObject("properties");
+            WriteIntegerProperty(w, "lineCount", 0, int.MaxValue, "عددها.", "Their count.");
+            WriteArrayRefProperty(w, "lines", "SubcontractLine", "البنود بترتيبها.", "The lines in their order.");
+            w.WriteEndObject();
+            WriteRequired(w, "lineCount", "lines");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("CertificateLineRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "سطر مستخلص في طلب. **والكمّية تراكمية**: ما نُفِّذ حتى نهاية الفترة لا ما نُفِّذ فيها، وقيمة "
+                + "الفترة تُشتقّ طرحاً من آخر مستخلصٍ **مُرحَّل**. وسطر الغرامة أو الخصم يحمل مبلغه وحده بلا "
+                + "بند وبلا كمّية. / "
+                + "A certificate line in a request. **The quantity is cumulative**: what has been executed to the end of the period, "
+                + "not what was executed within it, and the period's value is derived by subtracting the last **posted** certificate. "
+                + "A penalty or deduction line carries only its amount, with no item and no quantity.");
+            w.WriteStartObject("properties");
+            WriteRefProperty(w, "amount", "Money");
+            WriteRefProperty(w, "cumulativeQuantity", "Measure");
+            WriteStringProperty(w, "descriptionAr", "بيان السطر بالعربية.", "The line's Arabic description.", 400);
+            WriteNullableStringProperty(w, "itemId", "بند جدول الكميات أو بند عقد الباطن، أو null على سطر غرامة أو خصم.", "The bill-of-quantities line or subcontract line, or null on a penalty or deduction line.", 36);
+            WriteEnumProperty(w, "lineKind",
+                "صنف السطر: WORK عملٌ منفَّذ · PENALTY غرامة تأخير · DEDUCTION خصم آخر. والغرامة سطرٌ مستقلّ لا خصمٌ من قيمة الأعمال.",
+                "The line kind: WORK for executed work, PENALTY for a delay penalty, DEDUCTION for another deduction. A penalty is an independent line, never netted against the works value.",
+                ["WORK", "PENALTY", "DEDUCTION"]);
+            w.WriteEndObject();
+            WriteRequired(w, "amount", "cumulativeQuantity", "descriptionAr", "itemId", "lineKind");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("CertificateRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب إنشاء مستخلص **مسوّدة** — عميلٍ كان أو باطن. ورقمه المرئي يرسله العميل ويُتحقَّق من تفرّده؛ "
+                + "**ولا SEQUENCE ولا IDENTITY لأي رقم يراه مستخدم أو مدقّق**. / "
+                + "A request to create a **draft** certificate, client or subcontractor. Its visible number is sent by the client and "
+                + "checked for uniqueness; **no SEQUENCE and no IDENTITY backs any number a user or auditor reads**.");
+            w.WriteStartObject("properties");
+            WriteArrayRefProperty(w, "lines", "CertificateLineRequest", "سطور المستخلص.", "The certificate's lines.");
+            WriteStringProperty(w, "number", "الرقم المرئي.", "The visible number.", 64);
+            WriteStringProperty(w, "ownerId", "العقد أو عقد الباطن الذي يقع تحته المستخلص.", "The contract or subcontract this certificate falls under.", 36);
+            WriteDateProperty(w, "periodFrom", "بداية فترة المستخلص", "The certificate period's start.");
+            WriteDateProperty(w, "periodTo", "نهاية فترة المستخلص", "The certificate period's end.");
+            WriteIntegerProperty(w, "sequenceNo", 1, int.MaxValue,
+                "تسلسل المستخلص داخل عقده — وهو التفرّد الذي يقوم عليه الاشتقاق التراكمي.",
+                "The certificate's sequence within its contract — the uniqueness the cumulative derivation rests on.");
+            w.WriteEndObject();
+            WriteRequired(w, "lines", "number", "ownerId", "periodFrom", "periodTo", "sequenceNo");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("CertificateLine", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "سطر مستخلص بكمّيتيه: التراكمية والسابقة، **وكلٌّ بوحدتها**. والسابقة من آخر مستخلصٍ مُرحَّل لا "
+                + "من آخر مسوّدة — ومسوّدةٌ تُزيح الأساس تُنتج إيراداً مضاعفاً أو ناقصاً بلا رسالة. / "
+                + "A certificate line with both quantities: cumulative and previous, **each with its unit**. The previous one comes "
+                + "from the last posted certificate, never from the last draft — a draft that shifts the base produces doubled or "
+                + "missing revenue with no message.");
+            w.WriteStartObject("properties");
+            WriteRefProperty(w, "amount", "Money");
+            WriteRefProperty(w, "cumulativeQuantity", "Measure");
+            WriteStringProperty(w, "descriptionAr", "البيان.", "The description.", 400);
+            WriteStringProperty(w, "id", "معرّف السطر.", "The line identifier.", 36);
+            WriteStringProperty(w, "itemCode", "رمز البند، أو نصّ فارغ على سطر غرامة أو خصم.", "The item's code, or an empty string on a penalty or deduction line.", 64);
+            WriteNullableStringProperty(w, "itemId", "معرّف البند، أو null.", "The item identifier, or null.", 36);
+            WriteIntegerProperty(w, "lineNo", 1, int.MaxValue, "الترتيب.", "The ordinal.");
+            WriteEnumProperty(w, "lineKind", "صنف السطر.", "The line kind.", ["WORK", "PENALTY", "DEDUCTION"]);
+            WriteRefProperty(w, "previousQuantity", "Measure");
+            w.WriteEndObject();
+            WriteRequired(w, "amount", "cumulativeQuantity", "descriptionAr", "id", "itemCode", "itemId", "lineKind", "lineNo", "previousQuantity");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("Certificate", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "مستخلص بحالته وسطوره وبنوده المعلَّقة. **ولا مبالغ محسوبة فيه**: قيمة الأعمال والضريبة والمحتجز "
+                + "واسترداد الدفعة أربعةٌ لكلٍّ منها حاسبٌ يجب أن يعيش في الوحدة، ولم يُبنَ أيٌّ منها لأن أساسه "
+                + "بندٌ معلَّق — وعرضُ رقمٍ قبل أن يُحسم أساسه أسوأ من غيابه. / "
+                + "A certificate with its state, its lines, and its pending items. **It carries no computed amounts**: works value, "
+                + "tax, retention, and advance recovery each need a calculator living in the module, and none has been built because "
+                + "each rests on a pending decision — showing a figure before its basis is settled is worse than its absence.");
+            w.WriteStartObject("properties");
+            WriteBooleanProperty(w, "alreadyPosted", "‏true حين ردّ هذا النداءُ ترحيلاً سابقاً بالهوية نفسها، ومعه رمز 200 بدل 201.", "true when this call returned an earlier posting with the same identity, alongside 200 instead of 201.");
+            WriteNullableStringProperty(w, "entryId", "معرّف القيد إن رُحّل، وnull قبل ذلك.", "The entry identifier if posted, and null before that.", 36);
+            WriteStringProperty(w, "id", "المعرّف.", "The identifier.", 36);
+            WriteArrayRefProperty(w, "lines", "CertificateLine", "السطور بترتيبها.", "The lines in their order.");
+            WriteStringProperty(w, "number", "الرقم المرئي.", "The visible number.", 64);
+            WriteStringProperty(w, "ownerId", "العقد أو عقد الباطن.", "The contract or subcontract.", 36);
+            WriteArrayRefProperty(w, "pendingPolicy", "PendingPolicyItem", "البنود المعلَّقة التي تمنع ترحيله.", "The pending items that block posting it.");
+            WriteDateProperty(w, "periodFrom", "بداية الفترة", "The period's start.");
+            WriteDateProperty(w, "periodTo", "نهاية الفترة", "The period's end.");
+            WriteRefProperty(w, "retentionRate", "Rate");
+            WriteIntegerProperty(w, "sequenceNo", 1, int.MaxValue, "التسلسل داخل العقد.", "The sequence within the contract.");
+            WriteEnumProperty(w, "state", "حالة المستند.", "The document state.", ["DRAFT", "POSTED"]);
+            w.WriteEndObject();
+            WriteRequired(w, "alreadyPosted", "entryId", "id", "lines", "number", "ownerId", "pendingPolicy", "periodFrom", "periodTo", "retentionRate", "sequenceNo", "state");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("CertificateList", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description", "مستخلصات عقدٍ بتسلسلها. / A contract's certificates in sequence.");
+            w.WriteStartObject("properties");
+            WriteIntegerProperty(w, "certificateCount", 0, int.MaxValue, "عددها.", "Their count.");
+            WriteArrayRefProperty(w, "certificates", "Certificate", "المستخلصات مرتَّبة بتسلسلها.", "The certificates ordered by sequence.");
+            w.WriteEndObject();
+            WriteRequired(w, "certificateCount", "certificates");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("SubcontractorAdvanceRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب صرف دفعة مقدمة لمقاول من الباطن. **ومبلغه واقعةٌ يُدخلها المستخدم** — ما صُرف — لا رقمٌ "
+                + "يشتقّه حاسبٌ من نسبةٍ ووعاءٍ وقاعدةِ تقريب، ولذلك يُرحَّل هذا المستند اليوم بينما يُرفض "
+                + "المستخلص. / "
+                + "A request to pay a subcontractor advance. **Its amount is a fact the user enters** — what was paid — not a figure "
+                + "a calculator derives from a rate, a base, and a rounding rule, which is why this document posts today while the "
+                + "certificate is refused.");
+            w.WriteStartObject("properties");
+            WriteRefProperty(w, "amount", "Money");
+            WriteNullableStringProperty(w, "guaranteeId", "خطاب ضمان الدفعة المقدمة الذي يشترطه نصّ إطلاق الحدث، أو null.", "The advance-payment guarantee the event's trigger text requires, or null.", 36);
+            WriteStringProperty(w, "number", "رقم المستند.", "The document number.", 64);
+            WriteDateProperty(w, "paidOn", "تاريخ الصرف", "The payment date.");
+            WriteStringProperty(w, "settlementMethod", "طريقة التسوية — مؤهّل دور لا حساب. والمصفوفة وحدها تُحوّلها إلى حساب.", "The settlement method — a role qualifier, not an account. The matrix alone turns it into an account.", 32);
+            WriteStringProperty(w, "subcontractId", "عقد الباطن.", "The subcontract.", 36);
+            WriteStringProperty(w, "treasuryPartyId", "معرّف الخزينة أو الحساب البنكي في دفترها المساعد — معرّف مبهم لا رقم حساب.", "The treasury or bank account identifier in its subledger — an opaque identifier, not an account number.", 64);
+            w.WriteEndObject();
+            WriteRequired(w, "amount", "guaranteeId", "number", "paidOn", "settlementMethod", "subcontractId", "treasuryPartyId");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("RetentionReleaseRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب إفراج عن محتجزٍ دائن على **دفعة محتجزٍ مُسمّاة** لا على رصيد، باعتمادٍ صريح يشترطه نصّ "
+                + "الإطلاق. / "
+                + "A request to release credit retention against **a named retention movement** rather than a balance, with the "
+                + "explicit approval the trigger text requires.");
+            w.WriteStartObject("properties");
+            WriteRefProperty(w, "amount", "Money");
+            WriteStringProperty(w, "approvedBy", "المعتمِد — وقيدُ تحقّق في قاعدة البيانات يرفض اعتماداً فارغاً.", "The approver — a database check constraint refuses an empty approver.", 200);
+            WriteStringProperty(w, "number", "رقم المستند.", "The document number.", 64);
+            WriteDateProperty(w, "releasedOn", "تاريخ الإفراج", "The release date.");
+            WriteStringProperty(w, "retentionMovementId", "حركة المحتجز المُفرَج عنها، كما يُرجعها سجلّ المحتجزات.", "The retention movement being released, as the retention register returns it.", 36);
+            w.WriteEndObject();
+            WriteRequired(w, "amount", "approvedBy", "number", "releasedOn", "retentionMovementId");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("RetentionCollectionRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description", "طلب تحصيل محتجزٍ مدين من العميل. / A request to collect debit retention from the client.");
+            w.WriteStartObject("properties");
+            WriteRefProperty(w, "amount", "Money");
+            WriteDateProperty(w, "collectedOn", "تاريخ التحصيل", "The collection date.");
+            WriteStringProperty(w, "number", "رقم المستند.", "The document number.", 64);
+            WriteStringProperty(w, "retentionMovementId", "حركة المحتجز المُحصَّلة.", "The retention movement being collected.", 36);
+            WriteStringProperty(w, "settlementMethod", "طريقة التسوية — مؤهّل دور لا حساب.", "The settlement method — a role qualifier, not an account.", 32);
+            WriteStringProperty(w, "treasuryPartyId", "طرف الخزينة في دفترها المساعد.", "The treasury party in its subledger.", 64);
+            w.WriteEndObject();
+            WriteRequired(w, "amount", "collectedOn", "number", "retentionMovementId", "settlementMethod", "treasuryPartyId");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("ProjectsDocument", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "مستند مقاولات مالي بحالته ومبلغه ومعرّف قيده. و**alreadyPosted معلنٌ في الجسم** لا في رمز "
+                + "الحالة وحده: الرمز يضيع خلف أي وسيط يعيد التوجيه، وعميلٌ أعاد المحاولة بعد انقطاع شبكة "
+                + "يحتاج أن يعرف أيّ النداءين رحّل. / "
+                + "A financial contracting document with its state, its amount, and its entry identifier. **alreadyPosted is declared "
+                + "in the body**, not only in the status code: the code is lost behind any proxy that redirects, and a client "
+                + "retrying after a network cut needs to know which of the two calls posted.");
+            w.WriteStartObject("properties");
+            WriteBooleanProperty(w, "alreadyPosted", "‏true حين ردّ هذا النداءُ ترحيلاً سابقاً بالهوية نفسها.", "true when this call returned an earlier posting with the same identity.");
+            WriteRefProperty(w, "amount", "Money");
+            WriteNullableStringProperty(w, "entryId", "معرّف القيد إن رُحّل، وnull قبل ذلك.", "The entry identifier if posted, and null before that.", 36);
+            WriteStringProperty(w, "id", "المعرّف.", "The identifier.", 36);
+            WriteStringProperty(w, "number", "الرقم.", "The number.", 64);
+            WriteEnumProperty(w, "state", "حالة المستند.", "The document state.", ["DRAFT", "POSTED"]);
+            w.WriteEndObject();
+            WriteRequired(w, "alreadyPosted", "amount", "entryId", "id", "number", "state");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("GuaranteeRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب تسجيل خطاب ضمان. **والمرفق معرّفٌ على السطح المنشور للمرفقات لا بايتات هنا**: خطاب الضمان "
+                + "سندُ إثبات، فيُودَع حيث تُحرَس البصمة والإصدار والسحب. / "
+                + "A request to register a guarantee. **The attachment is an identifier on the published attachment surface, not "
+                + "bytes here**: a guarantee is evidence, so it is deposited where the digest, the revision chain, and the "
+                + "withdrawal are guarded.");
+            w.WriteStartObject("properties");
+            WriteRefProperty(w, "amount", "Money");
+            WriteStringProperty(w, "attachmentId", "معرّف المرفق كما أرجعه باب الإيداع.", "The attachment identifier as the deposit door returned it.", 64);
+            WriteNullableStringProperty(w, "contractId", "عقد العميل الذي يخصّه الضمان، أو null.", "The client contract the guarantee belongs to, or null.", 36);
+            WriteDateProperty(w, "effectiveFrom", "بدء سريان الضمان", "The guarantee's effective date.");
+            WriteDateProperty(w, "expiresOn", "انتهاء الضمان", "The guarantee's expiry date.");
+            WriteStringProperty(w, "issuerNameAr", "اسم الجهة المُصدِرة بالعربية.", "The issuing party's Arabic name.", 200);
+            WriteStringProperty(w, "kind", "صنف الضمان: ابتدائي أو حسن تنفيذ أو دفعة مقدمة، برمز يختاره المستأجر.", "The guarantee kind — bid, performance, or advance payment — by a code the tenant chooses.", 32);
+            WriteStringProperty(w, "number", "رقم الخطاب.", "The guarantee number.", 64);
+            WriteNullableStringProperty(w, "subcontractId", "عقد الباطن الذي يخصّه الضمان، أو null. وواحدٌ من الاثنين إلزامي.", "The subcontract the guarantee belongs to, or null. One of the two is required.", 36);
+            w.WriteEndObject();
+            WriteRequired(w, "amount", "attachmentId", "contractId", "effectiveFrom", "expiresOn", "issuerNameAr", "kind", "number", "subcontractId");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("Guarantee", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "خطاب ضمان — **سجلٌّ لا يُرحَّل أبداً**، ولذلك لا entryId ولا alreadyPosted فيه. / "
+                + "A guarantee — **a record that never posts**, which is why it carries no entryId and no alreadyPosted.");
+            w.WriteStartObject("properties");
+            WriteRefProperty(w, "amount", "Money");
+            WriteStringProperty(w, "attachmentId", "معرّف المرفق.", "The attachment identifier.", 64);
+            WriteNullableStringProperty(w, "contractId", "عقد العميل، أو null.", "The client contract, or null.", 36);
+            WriteDateProperty(w, "effectiveFrom", "بدء السريان", "The effective date.");
+            WriteDateProperty(w, "expiresOn", "الانتهاء", "The expiry date.");
+            WriteStringProperty(w, "id", "المعرّف.", "The identifier.", 36);
+            WriteStringProperty(w, "issuerNameAr", "المُصدِر.", "The issuer.", 200);
+            WriteStringProperty(w, "kind", "الصنف.", "The kind.", 32);
+            WriteStringProperty(w, "number", "الرقم.", "The number.", 64);
+            WriteNullableStringProperty(w, "subcontractId", "عقد الباطن، أو null.", "The subcontract, or null.", 36);
+            w.WriteEndObject();
+            WriteRequired(w, "amount", "attachmentId", "contractId", "effectiveFrom", "expiresOn", "id", "issuerNameAr", "kind", "number", "subcontractId");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("RetentionRegisterRow", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "دفعة محتجزٍ واحدة برصيدها القائم. **ومعرّف الحركة هو ما يُفرَج عنه أو يُحصَّل** — لا رصيد "
+                + "مجمَّع. / "
+                + "One retention movement with its outstanding balance. **The movement identifier is what a release or a collection "
+                + "acts upon** — never an aggregated balance.");
+            w.WriteStartObject("properties");
+            WriteRefProperty(w, "amount", "Money");
+            WriteStringProperty(w, "documentId", "معرّف المستند الذي أنشأ الحركة.", "The identifier of the document that created the movement.", 64);
+            WriteStringProperty(w, "documentType", "نوع ذلك المستند.", "That document's type.", 64);
+            WriteDateProperty(w, "dueOn", "تاريخ استحقاق الإفراج، مشتقّاً من فترة الضمان في العقد", "The release due date, derived from the contract's guarantee period.");
+            WriteDateProperty(w, "movedOn", "تاريخ الحركة", "The movement date.");
+            WriteStringProperty(w, "movementId", "معرّف الحركة.", "The movement identifier.", 36);
+            WriteRefProperty(w, "outstanding", "Money");
+            WriteStringProperty(w, "partyId", "الطرف.", "The party.", 64);
+            WriteStringProperty(w, "partyKind", "نوع الدفتر المساعد للطرف: customer أو subcontractor.", "The party's subledger kind: customer or subcontractor.", 32);
+            WriteStringProperty(w, "projectCode", "رمز المشروع.", "The project code.", 64);
+            WriteEnumProperty(w, "side",
+                "الجانب: RECEIVABLE محتجزٌ مدين لدى العميل · PAYABLE محتجزٌ دائن على المقاول.",
+                "The side: RECEIVABLE for debit retention held by the client, PAYABLE for credit retention owed to the subcontractor.",
+                ["RECEIVABLE", "PAYABLE"]);
+            w.WriteEndObject();
+            WriteRequired(w, "amount", "documentId", "documentType", "dueOn", "movedOn", "movementId", "outstanding", "partyId", "partyKind", "projectCode", "side");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("RetentionRegister", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "سجلّ المحتجزات مدينةً ودائنة، **مشتقّاً من المُرحَّل وحده**. ولا عمود رصيدٍ يُنقَص في أي مكان: "
+                + "كل رصيدٍ قابل لإعادة الاشتقاق من أسطر الدفتر. / "
+                + "The retention register, debit and credit, **derived from posted entries alone**. No balance column is decremented "
+                + "anywhere: every balance is re-derivable from the ledger's lines.");
+            w.WriteStartObject("properties");
+            WriteDateProperty(w, "asOf", "تاريخ القراءة", "The as-of date.");
+            WriteRefProperty(w, "payableTotal", "Money");
+            WriteRefProperty(w, "receivableTotal", "Money");
+            WriteArrayRefProperty(w, "rows", "RetentionRegisterRow", "الدفعات بتاريخها.", "The movements by date.");
+            w.WriteEndObject();
+            WriteRequired(w, "asOf", "payableTotal", "receivableTotal", "rows");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("SubcontractorStatementRow", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description", "طرفٌ في كشف المقاولين وأثره المُرحَّل. / A party in the subcontractor statement and its posted effect.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "code", "رمز المقاول.", "The subcontractor's code.", 64);
+            WriteRefProperty(w, "effect", "Money");
+            WriteStringProperty(w, "nameAr", "الاسم العربي.", "The Arabic name.", 200);
+            WriteArrayRefProperty(w, "nameTranslations", "NameValue", "الترجمات.", "The translations.");
+            WriteStringProperty(w, "subcontractorId", "المقاول.", "The subcontractor.", 36);
+            w.WriteEndObject();
+            WriteRequired(w, "code", "effect", "nameAr", "nameTranslations", "subcontractorId");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("SubcontractorStatement", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "كشف المقاولين ومطابقته بنقطة ضبطه — «كشف المقاولين = رصيد الحساب». و**isReconciled صفرٌ "
+                + "بالضبط لا «قريب من الصفر»**: الفارق بريال واحد فارقٌ يُسمّى. / "
+                + "The subcontractor statement and its reconciliation against its control point — 'the subcontractor statement equals "
+                + "the account balance'. **isReconciled means exactly zero, not 'close to zero'**: a one-riyal difference is a "
+                + "difference that gets named.");
+            w.WriteStartObject("properties");
+            WriteDateProperty(w, "asOf", "تاريخ الكشف", "The statement date.");
+            WriteRefProperty(w, "controlTotal", "Money");
+            WriteRefProperty(w, "divergence", "Money");
+            WriteBooleanProperty(w, "isReconciled", "هل الفارق صفر بالضبط؟", "Is the divergence exactly zero?");
+            WriteArrayRefProperty(w, "rows", "SubcontractorStatementRow", "الأطراف مرتَّبة برمزها.", "The parties ordered by code.");
+            WriteRefProperty(w, "subledgerTotal", "Money");
+            w.WriteEndObject();
+            WriteRequired(w, "asOf", "controlTotal", "divergence", "isReconciled", "rows", "subledgerTotal");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("ContractPosition", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "موقف العقد مشتقّاً من المُرحَّل وحده. **وهو بديلٌ لتقرير ربحية المشروع لا نسخةٌ منه**: قاعدة "
+                + "تحميل تكلفة الموظف والمعدّة على المشروع لم تُحسم، وثلاثة حسابات تكلفة مشاريع قائمة في الدليل "
+                + "بلا كاتب — فرقمُ ربحيةٍ مقنع بلا قاعدة معلنة أسوأ من غيابه. / "
+                + "The contract's position derived from posted entries alone. **It replaces a project profitability report rather "
+                + "than being one**: the rule for charging labour and equipment cost to a project is unsettled, and three project "
+                + "cost accounts stand in the chart with no writer — a convincing profitability figure with no published basis is "
+                + "worse than its absence.");
+            w.WriteStartObject("properties");
+            WriteRefProperty(w, "advanceOutstanding", "Money");
+            WriteStringProperty(w, "contractId", "العقد.", "The contract.", 36);
+            WriteStringProperty(w, "contractNumber", "رقمه.", "Its number.", 64);
+            WriteArrayRefProperty(w, "pendingPolicy", "PendingPolicyItem", "البنود المعلَّقة.", "The pending items.");
+            WriteIntegerProperty(w, "postedCertificateCount", 0, int.MaxValue, "عدد المستخلصات المُرحَّلة على هذا العقد.", "The number of posted certificates on this contract.");
+            WriteRefProperty(w, "retentionOutstanding", "Money");
+            w.WriteEndObject();
+            WriteRequired(w, "advanceOutstanding", "contractId", "contractNumber", "pendingPolicy", "postedCertificateCount", "retentionOutstanding");
             w.WriteBoolean("additionalProperties", false);
         });
 

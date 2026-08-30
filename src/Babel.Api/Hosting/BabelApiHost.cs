@@ -12,6 +12,7 @@ using Babel.Core.Tenancy;
 using Babel.ControlPlane.Support;
 using Babel.Inventory;
 using Babel.Ledger;
+using Babel.Projects;
 using Babel.Purchasing;
 using Babel.Sales;
 using Babel.SharedKernel;
@@ -78,6 +79,12 @@ internal static class BabelApiHost
         // التقييم قبل نشر استلام البضاعة على هذا السطح.
         // (‏docs/evidence/traps.md#fakh-one-module-connection-still-read-from-a-default-after-its-siblings-were-fixed)
         builder.Services.AddBabelInventory(options => ApplyInventoryConfiguration(builder.Configuration, options));
+
+        // ── والمقاولات تُسجَّل باتصالها من الإعداد منذ سطرها الأول ────────────────
+        // ‏**ولا تُكرَّر الغلطة التي كُتب لها فخّ**: ثلاث وحدات سبقتها سُجّلت بلا ضابط،
+        // فأشار كل خادم إلى قاعدة على المضيف المحلي مهما كان النشر — ولم يظهر ذلك حتى
+        // نُشر لها باب. فهذه تُسجَّل بضابطها في السطر نفسه الذي وُلدت فيه.
+        builder.Services.AddBabelProjects(options => ApplyProjectsConfiguration(builder.Configuration, options));
 
         // ── مخزن المرفقات: مشروع مساند لا وحدة، والجذر التركيبي وحده يركّبه ──────
         //
@@ -149,6 +156,7 @@ internal static class BabelApiHost
         app.MapCapabilityProfileApi();
         app.MapCompanySetupApi();
         app.MapDocumentApi();
+        app.MapProjectsApi();
         app.MapAttachmentApi();
         app.MapDocsApi();
 
@@ -331,6 +339,21 @@ internal static class BabelApiHost
         }
 
         string? currency = configuration["Babel:Inventory:CompanyCurrency"];
+        if (!string.IsNullOrWhiteSpace(currency))
+        {
+            options.CompanyCurrency = currency;
+        }
+    }
+
+    private static void ApplyProjectsConfiguration(ConfigurationManager configuration, ProjectsOptions options)
+    {
+        string? connection = configuration["Babel:Projects:ConnectionString"];
+        if (!string.IsNullOrWhiteSpace(connection))
+        {
+            options.ConnectionString = connection;
+        }
+
+        string? currency = configuration["Babel:Projects:CompanyCurrency"];
         if (!string.IsNullOrWhiteSpace(currency))
         {
             options.CompanyCurrency = currency;

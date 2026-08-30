@@ -4,6 +4,8 @@ using Babel.ArchitectureTests.Support;
 using Babel.Core.Application;
 using Babel.Inventory;
 using Babel.Inventory.Surface;
+using Babel.Projects;
+using Babel.Projects.Surface;
 using Babel.Purchasing;
 using Babel.Purchasing.Application;
 using Babel.Purchasing.Surface;
@@ -46,6 +48,8 @@ public sealed class PublishedDocumentSurfaceIsGuarded
     /// </summary>
     private static readonly string[] DocumentSegments =
     [
+        "/change-orders",
+        "/client-certificates",
         "/credit-notes",
         "/customer-receipts",
         "/customers",
@@ -53,13 +57,24 @@ public sealed class PublishedDocumentSurfaceIsGuarded
         "/inventory-valuation",
         "/items",
         "/payables-aging",
+        "/guarantees",
+        "/project-contracts",
+        "/projects",
         "/purchase-orders",
         "/purchase-returns",
         "/receivables-aging",
+        "/retention-collections",
+        "/retention-register",
+        "/retention-releases",
         "/sales-invoices",
         "/stock-balances",
         "/stock-bills",
         "/stock-movements",
+        "/subcontractor-advances",
+        "/subcontractor-certificates",
+        "/subcontractor-statement",
+        "/subcontractors",
+        "/subcontracts",
         "/supplier-bills",
         "/supplier-payments",
         "/suppliers",
@@ -163,11 +178,11 @@ public sealed class PublishedDocumentSurfaceIsGuarded
 
     /// <summary>السطوح المنشورة التي يناديها الجذر التركيبي.</summary>
     private static readonly Type[] PublishedSurfaces =
-        [typeof(SalesSurface), typeof(PurchasingSurface), typeof(InventorySurface)];
+        [typeof(SalesSurface), typeof(PurchasingSurface), typeof(InventorySurface), typeof(ProjectsSurface)];
 
     /// <summary>الإعدادات المسموح للسطح أن يحملها — العملة تُقرأ منها ولا شيء غيرها.</summary>
     private static readonly Type[] AllowedOptions =
-        [typeof(SalesOptions), typeof(PurchasingOptions), typeof(InventoryOptions)];
+        [typeof(SalesOptions), typeof(PurchasingOptions), typeof(InventoryOptions), typeof(ProjectsOptions)];
 
     /// <summary>
     /// المتعاونون غير المسموح بهم: كل نوع ليس خدمة تطبيق ولا إعدادات وحدة.

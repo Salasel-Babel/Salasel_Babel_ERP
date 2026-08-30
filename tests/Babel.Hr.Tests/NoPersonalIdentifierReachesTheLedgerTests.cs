@@ -91,7 +91,7 @@ public sealed class NoPersonalIdentifierReachesTheLedgerTests
     {
         CancellationToken token = TestContext.Current.CancellationToken;
         using Harness harness = await Harness.CreateAsync(token).ConfigureAwait(true);
-        TenantId tenant = HrTestEnvironment.PrivacyTenant;
+        TenantId tenant = HrTestEnvironment.MaskedReadTenant;
         string suffix = Scenario.Suffix();
         string component = await Scenario.BasicComponentAsync(harness, tenant, suffix, token).ConfigureAwait(true);
 

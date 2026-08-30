@@ -110,7 +110,7 @@ public sealed class PublishedContractTests
 
         JsonElement paths = root.GetProperty("paths");
 
-        // ‏**96 عمليةً — والعدد مكتوب بيد عمداً.** عدٌّ مشتقٌّ من الوثيقة نفسها يقارنها
+        // ‏**162 عمليةً — والعدد مكتوب بيد عمداً.** عدٌّ مشتقٌّ من الوثيقة نفسها يقارنها
         // بذاتها فيمرّ على أي إضافة وأي حذف؛ والرقم هنا يُجبر من يوسّع السطح على أن
         // **يمرّ بهذا الملف** فيقرأ سياسة الإصدار قبل أن يوسّعه. ورفعاته: من 16 إلى 17
         // بإضافة GET /companies/{companyId}/chart-of-accounts، ثم من 17 إلى 19 ببابَي
@@ -167,11 +167,13 @@ public sealed class PublishedContractTests
         //   • ‏POST …/payroll-runs/{runId}/wage-protection-files — مواصفة الملفّ نفسها
         //     غير متحقَّق منها، ومخزنُ المرفقات المنشور يقبل مجموعة أنواع محتوى مغلقة
         //     ليس فيها نوعٌ نصّي — وتوسيعُها **تغييرٌ في مجموعة مغلقة منشورة**.
+        // ثم من 127 إلى **162** بخمسةٍ وثلاثين باباً للمقاولات: المشاريع وعقود المقاولة
+        // وجداول الكميات والمستخلصات والمحتجزات والأوامر التغييرية والضمانات.
         //
         // وكلّها إضافات محضة تُبقي v1: **لا مسار حُذف، ولا مخطّط حُذف، ولا حقل ضُيّق،
         // ولا اختياري صار إلزامياً** — وذلك مُثبَت بفرق بين العقد المُودَع على
         // ‏origin/develop والعقد هنا، لا بادّعاء.
-        Assert.Equal(127, paths.EnumerateObject().SelectMany(static p => p.Value.EnumerateObject())
+        Assert.Equal(162, paths.EnumerateObject().SelectMany(static p => p.Value.EnumerateObject())
             .Count(static o => o.Name is "get" or "post" or "put" or "patch" or "delete"));
 
         // ولا فعل حذف على السطح كلّه — لا على قيد، ولا على مركز تكلفة، ولا على منشأة.

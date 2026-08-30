@@ -84,10 +84,6 @@ public sealed class EveryModuleIsRealOrDeclaredASkeleton
             + "بلا كاتب واحد. ونموذج الاتصال — متصل أم دون إنترنت — سؤالٌ مفتوح على المالك في docs/RECORD.md §7، "
             + "وهو ما يحجزها لا حجم العمل. وتُباع اليوم برمز POS ضمن خطّتَي RETAIL وFULL."),
 
-        (BabelModule.Projects,
-            "المقاولات: خمسة أحداث في data/posting-matrix/events/projects.json بلا كاتب — والمستخلص "
-            + "مستندها الأساسي بمحتجز ودفعة مقدمة تُستنفد. وبُعدا project وboq_item موجودان على سطر القيد "
-            + "اليوم، فلا هجرة على مفتاح قائم تنتظرها. وتُباع اليوم برمز PRJ ضمن خطة FULL."),
 
         (BabelModule.Assets,
             "الأصول الثابتة: ثلاثة أحداث في data/posting-matrix/events/assets.json بلا كاتب، ولا سجلّ أصول "

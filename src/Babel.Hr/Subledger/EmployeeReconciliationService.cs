@@ -72,7 +72,7 @@ public sealed class EmployeeReconciliationService : IApplicationService
         }
 
         Result<ControlPointSnapshot> snapshot = await _control
-            .ReadAsync(tenant, SubledgerKindName, asOf, cancellationToken)
+            .ReadAsync(tenant, SubledgerKindName, asOf, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
 
         if (snapshot.IsFailure)

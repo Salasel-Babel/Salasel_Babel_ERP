@@ -78,7 +78,7 @@ public sealed class InventoryValuationService : IApplicationService
         }
 
         Result<ControlPointSnapshot> control = await _controlPoint
-            .ReadAsync(tenant, SubledgerKind, asOf, cancellationToken).ConfigureAwait(false);
+            .ReadAsync(tenant, SubledgerKind, asOf, writtenBy: null, cancellationToken).ConfigureAwait(false);
 
         if (control.IsFailure)
         {

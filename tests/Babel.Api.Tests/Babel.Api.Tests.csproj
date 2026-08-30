@@ -46,6 +46,7 @@
       أن يبلغ الدفتر، فقاعدته لازمة لهذه العملية — ولا يُقرأ منه إلا ناشر المخطّط.
     -->
     <ProjectReference Include="../../src/Babel.Inventory/Babel.Inventory.csproj" />
+    <ProjectReference Include="../../src/Babel.Projects/Babel.Projects.csproj" />
     <!--
       ومرجعٌ إلى مستوى التحكّم لتهيئة قاعدة الأسطول لهذه العملية وحدها: قاعدتها،
       ومخطّط control، وكتالوج الوحدات والخطط، وصلاحيات دور سطح الاشتراك — بالناشر

@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     5737bbd9884cd9f40d0e211f37afd938f378a36c5a1c72e40286dd6fa0a90952
+     bd9a3ec99569ae7bbe8a4def9a1e5d52942ab4732289f7897df7762912d72d02
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -31,6 +31,10 @@ export const PARAM_readPayablesAging_asOf = "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[
 export const PARAM_readPayablesAging_asOf_RE = new RegExp("^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$");
 export const PARAM_readReceivablesAging_asOf = "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$";
 export const PARAM_readReceivablesAging_asOf_RE = new RegExp("^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$");
+export const PARAM_readRetentionRegister_asOf = "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$";
+export const PARAM_readRetentionRegister_asOf_RE = new RegExp("^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$");
+export const PARAM_readSubcontractorStatement_asOf = "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$";
+export const PARAM_readSubcontractorStatement_asOf_RE = new RegExp("^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$");
 export const PARAM_readTenantArrearsAging_asOf = "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$";
 export const PARAM_readTenantArrearsAging_asOf_RE = new RegExp("^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$");
 export const PARAM_readTrialBalance_period = "^[0-9]{4}-(0[1-9]|1[0-2])$";
@@ -49,6 +53,8 @@ export const SCHEMA_Money = "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$";
 export const SCHEMA_Money_RE = new RegExp("^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$");
 export const SCHEMA_Quantity = "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$";
 export const SCHEMA_Quantity_RE = new RegExp("^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$");
+export const SCHEMA_Rate = "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,8})?$";
+export const SCHEMA_Rate_RE = new RegExp("^-?(0|[1-9][0-9]*)(\\.[0-9]{1,8})?$");
 export const SCHEMA_TaxRate = "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,8})?$";
 export const SCHEMA_TaxRate_RE = new RegExp("^-?(0|[1-9][0-9]*)(\\.[0-9]{1,8})?$");
 export const SCHEMA_UnitCost = "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,6})?$";

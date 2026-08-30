@@ -137,6 +137,19 @@ internal static class HrTestEnvironment
     public static TenantId PeriodUniquenessTenant { get; } = new(new Guid("9c2f0d44-0000-4000-8000-000000000007"));
 
     /// <summary>
+    /// منشأة القراءة المقنَّعة: عليها يُثبَت أن قراءة الموظف لا تُعيد الهوية ولا الآيبان
+    /// إلا مقنَّعين.
+    /// <para>
+    /// <b>ومعزولةٌ لسببٍ مقيس:</b> كانت تتقاسم منشأة الخصوصية مع إثبات «لا معرّف شخصي
+    /// يبلغ الدفتر»، <b>وهي لا تُرحّل شيئاً</b> — لكنّ موظّفها يدخل مسيّر جارها، لأن
+    /// المسيّر مسحٌ يشمل <b>كل</b> علاقة عمل سارية. فرُدَّ مسيّر الجار
+    /// بـ<c>hr.payroll_settings_missing</c> عن تصنيفٍ ليس تصنيفه. <b>والقاعدة لكل
+    /// إثباتٍ لا لكل ملفّ</b> — وهما إثباتان في ملفٍّ واحد.
+    /// </para>
+    /// </summary>
+    public static TenantId MaskedReadTenant { get; } = new(new Guid("9c2f0d44-0000-4000-8000-000000000008"));
+
+    /// <summary>
     /// <b>ولكل إثباتٍ منشأتُه.</b> والسبب ليس ترتيباً: المسيّر يشمل <b>كل</b> علاقة عمل
     /// سارية في المنشأة، فموظفٌ يُسجّله اختبارٌ آخر يدخل مسيّر هذا الاختبار ويُغيّر عدد
     /// القسائم. ومجموعةٌ تمرّ لأن جارتها لم تسبقها هي «أخضر بترتيب التشغيل لا ببنائه»،
@@ -144,7 +157,7 @@ internal static class HrTestEnvironment
     /// </summary>
     public static TenantId[] AllTenants { get; } =
         [Tenant, EmptyRatesTenant, EndOfServiceTenant, IdempotencyTenant, PrivacyTenant, CycleTenant,
-         PeriodUniquenessTenant];
+         PeriodUniquenessTenant, MaskedReadTenant];
 
     /// <summary>عدد محاولات الحذف قبل اللجوء إلى الإنهاء القسري.</summary>
     private const int DropAttempts = 40;

@@ -13,6 +13,7 @@ using Babel.Hr;
 using Babel.ControlPlane.Support;
 using Babel.Inventory;
 using Babel.Ledger;
+using Babel.Projects;
 using Babel.Purchasing;
 using Babel.RealEstate;
 using Babel.Sales;
@@ -94,6 +95,11 @@ internal static class BabelApiHost
         // ولا افتراضي محلي يُخترع. والسبب أن هذه الوحدة أثقل جدول بيانات شخصية في
         // المنتج، فخادمٌ يشير بها إلى قاعدة أخرى بصمت ليس عطلَ إعدادٍ بل حادثة بيانات.
         builder.Services.AddBabelHr(options => ApplyHrConfiguration(builder.Configuration, options));
+        // ── والمقاولات تُسجَّل باتصالها من الإعداد منذ سطرها الأول ────────────────
+        // ‏**ولا تُكرَّر الغلطة التي كُتب لها فخّ**: ثلاث وحدات سبقتها سُجّلت بلا ضابط،
+        // فأشار كل خادم إلى قاعدة على المضيف المحلي مهما كان النشر — ولم يظهر ذلك حتى
+        // نُشر لها باب. فهذه تُسجَّل بضابطها في السطر نفسه الذي وُلدت فيه.
+        builder.Services.AddBabelProjects(options => ApplyProjectsConfiguration(builder.Configuration, options));
 
         // ── مخزن المرفقات: مشروع مساند لا وحدة، والجذر التركيبي وحده يركّبه ──────
         //
@@ -167,6 +173,7 @@ internal static class BabelApiHost
         app.MapDocumentApi();
         app.MapRealEstateApi();
         app.MapPayrollApi();
+        app.MapProjectsApi();
         app.MapAttachmentApi();
         app.MapDocsApi();
 
@@ -392,6 +399,26 @@ internal static class BabelApiHost
         }
 
         string? currency = configuration["Babel:Hr:CompanyCurrency"];
+        if (!string.IsNullOrWhiteSpace(currency))
+        {
+            options.CompanyCurrency = currency;
+        }
+    }
+
+    /// <summary>
+    /// يقرأ إعداد المقاولات — اتصالاً وعملةً، بلا افتراضٍ صامت.
+    /// </summary>
+    /// <param name="configuration">الإعداد.</param>
+    /// <param name="options">إعدادات الوحدة.</param>
+    private static void ApplyProjectsConfiguration(ConfigurationManager configuration, ProjectsOptions options)
+    {
+        string? connection = configuration["Babel:Projects:ConnectionString"];
+        if (!string.IsNullOrWhiteSpace(connection))
+        {
+            options.ConnectionString = connection;
+        }
+
+        string? currency = configuration["Babel:Projects:CompanyCurrency"];
         if (!string.IsNullOrWhiteSpace(currency))
         {
             options.CompanyCurrency = currency;

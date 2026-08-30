@@ -75,6 +75,59 @@ public sealed class EveryPathTemplateDeclaresItsParameter
             + string.Join('\n', offenders));
     }
 
+    /// <summary>
+    /// <b>ولا وسيطَ يُعلَن مرّتين على المسار الواحد.</b>
+    /// <para>
+    /// <b>ولماذا وُجد بعد أخيه:</b> الحارس فوقه يمسك الوسيط <b>الناقص</b> ولا يرى
+    /// <b>المكرَّر</b>. ووقع المكرَّر فعلاً عند إنزال وحدة المقاولات: حُلّ تعارضٌ في جدول
+    /// الأوصاف بإبقاء الجانبين، فصار ثلاثة موارد بصفَّين، فكتب المولّد وسيطها مرّتين في
+    /// ثلاثة مسارات منشورة. ووثيقة تُعلن وسيطاً مرّتين <b>مخالِفة للمواصفة</b>، ومولّدات
+    /// العملاء تتصرّف حيالها كما تشاء — منها ما يسكت ومنها ما يسقط.
+    /// </para>
+    /// <para>
+    /// وهو من عائلة «أبقِ الجانبين» نفسها التي كلّفت هذا الإنزال أربعة إخفاقات: حافظُ
+    /// كتلةٍ في السياق المشترك، وذيلُ تعبيرٍ يتكرّر، ومُهيِّئٌ لا يُغلق، وصفٌّ يتضاعف.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void NoPathDeclaresTheSameParameterTwice()
+    {
+        using JsonDocument contract = JsonDocument.Parse(
+            File.ReadAllBytes(Path.Combine(RepositoryPaths.Root, "contracts", "openapi", "v1.json")));
+
+        List<string> offenders = [];
+
+        foreach (JsonProperty path in contract.RootElement.GetProperty("paths").EnumerateObject())
+        {
+            if (!path.Value.TryGetProperty("parameters", out JsonElement parameters))
+            {
+                continue;
+            }
+
+            Dictionary<string, int> counted = [];
+
+            foreach (JsonElement parameter in parameters.EnumerateArray())
+            {
+                if (parameter.TryGetProperty("name", out JsonElement name)
+                    && parameter.TryGetProperty("in", out JsonElement wherein))
+                {
+                    string key = (wherein.GetString() ?? string.Empty) + ":" + (name.GetString() ?? string.Empty);
+                    counted[key] = counted.TryGetValue(key, out int seen) ? seen + 1 : 1;
+                }
+            }
+
+            offenders.AddRange(counted
+                .Where(static pair => pair.Value > 1)
+                .OrderBy(static pair => pair.Key, StringComparer.Ordinal)
+                .Select(pair => $"{path.Name}: الوسيط «{pair.Key}» مُعلَن {pair.Value} مرّات"));
+        }
+
+        Assert.True(
+            offenders.Count == 0,
+            "وسيطٌ مُعلَن أكثر من مرّة على المسار الواحد — والوثيقة بذلك مخالِفة للمواصفة:\n"
+            + string.Join('\n', offenders));
+    }
+
     [Fact]
     public void EveryPathParameterDescriptionNamesItsOwnResource()
     {

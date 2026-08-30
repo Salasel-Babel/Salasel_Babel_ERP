@@ -178,4 +178,56 @@ public sealed class EnglishIsOneOfNOnTheWireTests
             static row => row.GetProperty("nameTranslations").EnumerateArray()
                 .Any(static entry => entry.GetProperty("name").GetString() == "en"));
     }
+
+    /// <summary>
+    /// <b>وجسم المشروع الحيّ كذلك — لأن المخطّط النظيف لا يُثبت أن المُسلسِل نظيف.</b>
+    /// <para>
+    /// المسح الأول أعلاه يقرأ <b>العقد</b>، فيبلغ مخطّطات المقاولات كلها بالضرورة. وهذا
+    /// الاختبار يقرأ <b>ما يخرج من المقبس</b> على وحدةٍ ثانية: تسجيلُ مشروعٍ باسمٍ عربي
+    /// وترجمةٍ واحدة، ثم قراءةُ الجسم المُعاد.
+    /// </para>
+    /// <para>
+    /// <b>وموضعه هنا لا في مجموعة المقاولات مقصود:</b> حارسُ القاعدة 14 يعدّ مواضع
+    /// «النصف الإنجليزي الثابت» في الشجرة المتعقَّبة، وشاهدٌ <b>موجب</b> يكتب الشكل
+    /// الممنوع ليؤكّد غيابه يرفع الدين الذي يقيسه الحارس — وهو انعكاسٌ تامّ لما يقيسه.
+    /// ولذلك هذا الملفّ وحده مُقصى من العدّ بسببٍ مكتوب، وكل شاهدٍ من هذا النوع يُجمع
+    /// فيه بدل أن يُنثر في المجموعات فتُقصى واحدةً بعد أخرى حتى يصير الإقصاء هو القاعدة.
+    /// </para>
+    /// <para>
+    /// <b>وعلى الشركة «ب»</b>: المقاولات وحدةٌ اختيارية، والشركة «ب» وحدها تشتريها
+    /// (‏<c>ApiFixture</c>) لأنها وحدها اشترت المخزون الذي تعتمد عليه.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task جسم_المشروع_الحيّ_يحمل_السجلّ_وترجماته_ولا_يحمل_nameEn()
+    {
+        ApiProcess api = await ApiFixture.DefaultAsync();
+
+        using HttpResponseMessage created = await api.Call(Http.Request(
+            HttpMethod.Post,
+            string.Create(
+                System.Globalization.CultureInfo.InvariantCulture,
+                $"/api/v1/companies/{ApiTestDatabase.CompanyB:D}/projects"),
+            ApiFixture.TokenB,
+            $$"""
+              {
+                "code": "{{Documents.Number("PRJ")}}",
+                "nameAr": "مشروع شاهد اللغات",
+                "nameTranslations": [{ "name": "en", "value": "Language witness project" }],
+                "startedOn": "2026-01-01"
+              }
+              """));
+
+        (string text, JsonElement project) = await Http.BodyAsync(created);
+        Console.WriteLine(text);
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+
+        Assert.False(project.TryGetProperty("nameEn", out _), "مشروعٌ يحمل nameEn على السلك الحيّ.");
+        Assert.Equal("مشروع شاهد اللغات", project.GetProperty("nameAr").GetString());
+
+        // والإنجليزية **مدخل** لا حقل: ما أُرسل وسماً عاد وسماً، فالترجمة حُفظت صفّاً.
+        JsonElement entry = Assert.Single(project.GetProperty("nameTranslations").EnumerateArray().ToList());
+        Assert.Equal("en", entry.GetProperty("name").GetString());
+        Assert.Equal("Language witness project", entry.GetProperty("value").GetString());
+    }
 }

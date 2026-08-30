@@ -24,6 +24,30 @@ public sealed class ReceivablesService : IApplicationService
     /// <summary>نوع الدفتر المساعد كما تعرّفه بيانات الدفتر.</summary>
     internal const string SubledgerKindCode = "customer";
 
+    /// <summary>
+    /// <b>الوحدة التي كتبت الحركة — وهي ما تُقرأ به نقطة الضبط، لا نوع الدفتر وحده.</b>
+    /// <para>
+    /// كانت المطابقة تقرأ دفتر <c>customer</c> <b>بالنوع وحده</b> ثم تُصدر
+    /// <c>MissingInSubledger</c> عن كل حركة ليست في <c>sales.document_posting</c>. وهذا
+    /// كان صحيحاً ما دامت المبيعات هي الكاتب الوحيد في ذلك الدفتر — <b>وقد كفّت عن أن
+    /// تكون</b>: قالب <c>projects.client_certificate.posted</c> يحمل ثلاثة سطور
+    /// <c>subledger: customer</c>. فأوّل مستخلص عميل يُرحَّل كان سينتج انحرافاً على
+    /// مستأجرٍ سليم، ولا شيء في المطابقة يقول إن المستند ليس مستندها.
+    /// </para>
+    /// <para>
+    /// <b>والتضييق بالوحدة لا بأنواع المستندات — وهذا فرقٌ قِيس:</b> التضييق بالأنواع
+    /// يُخفي <b>القيد اليدوي على الحساب الضابط</b>، وهو أشيع سببٍ حقيقي للانحراف؛
+    /// ونوعُه ليس في جرد أي وحدة فيخرج من القراءة بصمت وتُعلن المطابقة صفراً على حسابٍ
+    /// منحرف. وقد أمسك ذلك اختبارُ الحقن المقصود في هذه المجموعة نفسها: تضييقٌ
+    /// بالأنواع أسقط حقناً بـ<b>777.0000</b> من التقرير.
+    /// </para>
+    /// <para>
+    /// <b>والتضييق نصفُ العلاج لا كلّه:</b> الحركة التي خرجت من هنا تدخل مطابقة
+    /// المقاولات — من حرّك الحساب الضابط يكتب دفتره المساعد ويُطابقه (ADR-0041).
+    /// </para>
+    /// </summary>
+    internal const BabelModule OwningModule = BabelModule.Sales;
+
     private readonly IEntitlementEnforcer _enforcer;
     private readonly SalesDbContext _database;
     private readonly IControlPointReader _controlPoint;
@@ -149,7 +173,7 @@ public sealed class ReceivablesService : IApplicationService
         }
 
         Result<ControlPointSnapshot> snapshot = await _controlPoint
-            .ReadAsync(tenant, SubledgerKindCode, asOf, cancellationToken)
+            .ReadAsync(tenant, SubledgerKindCode, asOf, OwningModule, cancellationToken)
             .ConfigureAwait(false);
 
         if (snapshot.IsFailure)

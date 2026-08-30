@@ -72,7 +72,7 @@ public sealed class TenantArrearsService : IApplicationService
         ArrearsReport aging = await BuildAgingAsync(tenant, companyId, asOf, cancellationToken).ConfigureAwait(false);
 
         Result<ControlPointSnapshot> snapshot = await _controlPoint
-            .ReadAsync(tenant, SubledgerKindCode, asOf, cancellationToken).ConfigureAwait(false);
+            .ReadAsync(tenant, SubledgerKindCode, asOf, cancellationToken: cancellationToken).ConfigureAwait(false);
 
         if (snapshot.IsFailure)
         {

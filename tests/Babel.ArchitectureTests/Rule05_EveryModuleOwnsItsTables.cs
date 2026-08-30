@@ -124,8 +124,8 @@ public sealed class Rule05_EveryModuleOwnsItsTables
     [Fact]
     public void TheRuleIsNotVacuous()
     {
-        // ستّ وحدات تملك جداول فعلاً بعد دفتر المخزون المساعد: الالتزام والنواة
-        // والدفتر والمخزون والمشتريات والمبيعات. ومعها **مشروع مساند سابع**:
+        // سبع وحدات تملك جداول فعلاً بعد وحدة المقاولات: الالتزام والنواة والدفتر
+        // والمخزون والمقاولات والمشتريات والمبيعات. ومعها **مشروع مساند ثامن**:
         // ‏`Babel.Storage`، محوّل المرفقات — يملك مخطّط `storage` وجدوليه.
         //
         // ‏**ولماذا ظهر الآن ولم يكن ظاهراً:** هذه القاعدة تقرأ التجميعات التي **تصل
@@ -149,7 +149,7 @@ public sealed class Rule05_EveryModuleOwnsItsTables
         Assert.Equal(
             [
                 ModuleMap.Compliance, ModuleMap.Core, "Babel.Hr", "Babel.Inventory", ModuleMap.Ledger,
-                "Babel.Purchasing", "Babel.RealEstate", "Babel.Sales", ModuleMap.Storage,
+                "Babel.Projects", "Babel.Purchasing", "Babel.RealEstate", "Babel.Sales", ModuleMap.Storage,
             ],
             owners);
     }

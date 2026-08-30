@@ -581,6 +581,172 @@ internal static class ApiRoutes
     /// </para>
     /// </summary>
     public const string EmployeeSubledgerReconciliation = Company + "/employee-subledger-reconciliation";
+    // ── المقاولات ────────────────────────────────────────────────────────────
+    // والشكل هو شكل ADR-0044 و ADR-0047 حرفاً: **إنشاء مسوّدة · قراءة · ترحيل على
+    // مورد فرعي**. ولا ‏`PUT` ولا `PATCH` ولا `DELETE` على مستند ولا على مشروع ولا
+    // على عقد ولا على مقاول.
+    //
+    // ‏**وبابان لا ثلاثة في موضعين**: الأمر التغييري وخطاب الضمان. كلاهما التزامٌ أو
+    // سجلّ لا واقعة محاسبية، ولا حدث لأيٍّ منهما في المصفوفة — فلا مورد ترحيل لهما،
+    // ولا حقل `entryId` ولا `alreadyPosted` في مخطّطي جوابيهما. وحقلٌ فارغ لهما يُقرأ
+    // «لم يُرحَّل بعد» بدل «لا يُرحَّل أبداً»، وهي حجّة ADR-0047 على أمر الشراء نفسها.
+
+    /// <summary>
+    /// المشاريع: التسجيل والقائمة.
+    /// <para>
+    /// <b>ورمز المشروع هوية لا اسم عرض</b>: هو القيمة الحرفية التي تدخل بُعد المشروع
+    /// على سطر القيد. فلا تعديل له ولا حذف بعد أن تحمله قيود سنةٍ مضت — والغياب بنيوي
+    /// كغيابه على الأصناف ومراكز التكلفة.
+    /// </para>
+    /// <para>
+    /// والقائمة لازمة لا زينة: باب العقد يحتاج معرّف مشروع، و<b>بابان لا يوصل إليهما
+    /// بابٌ آخر</b> اعتراضٌ مكتوب في ADR-0044.
+    /// </para>
+    /// </summary>
+    public const string Projects = Company + "/projects";
+
+    /// <summary>مشروع واحد: القراءة بحالته وعقوده.</summary>
+    public const string Project = Projects + "/{projectId}";
+
+    /// <summary>
+    /// عقود المقاولة: الإنشاء ببنود جدول الكميات ونسبة المحتجز وفترة الضمان والعملة.
+    /// <para>
+    /// <b>ولاحظ ما ليس في جسمه: وعاء نسبة المحتجز ولا قاعدة استرداد الدفعة المقدمة.</b>
+    /// موضعُهما نفسه قرارُ مالك — حقلٌ على العقد؟ أم جدول قواعد بتاريخ سريان؟ — ونشرُ
+    /// أحدهما في عقدٍ منشور اختيارٌ لجوابٍ لم يقله أحد، ولا رجعة فيه بلا إصدار ثانٍ.
+    /// </para>
+    /// </summary>
+    public const string ProjectContracts = Company + "/project-contracts";
+
+    /// <summary>عقد واحد: القراءة ومعه <b>بنوده المعلَّقة</b> التي تمنع ترحيل مستخلصاته.</summary>
+    public const string ProjectContract = ProjectContracts + "/{contractId}";
+
+    /// <summary>
+    /// بنود جدول الكميات <b>بمعرّفاتها</b> — وهي مدخل سطور المستخلص. والنظير الحرفي
+    /// لسطور الاستلام المنشورة في ADR-0047.
+    /// </summary>
+    public const string BoqItems = ProjectContract + "/boq-items";
+
+    /// <summary>مستخلصات العقد: القائمة — والأساس المطروح منه هو آخر مستخلص مُرحَّل.</summary>
+    public const string ContractClientCertificates = ProjectContract + "/client-certificates";
+
+    /// <summary>أوامر العقد التغييرية: القائمة.</summary>
+    public const string ContractChangeOrders = ProjectContract + "/change-orders";
+
+    /// <summary>
+    /// موقف العقد: المُعتمَد تراكمياً، والمحتجز القائم، والدفعة غير المستنفَدة —
+    /// <b>مشتقّاً من المُرحَّل وحده</b>.
+    /// <para>
+    /// وهو <b>بديلٌ لتقرير ربحية المشروع لا نسخةٌ منه</b>: قاعدة تحميل تكلفة الموظف
+    /// والمعدّة على المشروع غير محسومة، وثلاثة حسابات تكلفة مشاريع قائمة في الدليل
+    /// بلا كاتب واحد — فرقمُ ربحيةٍ مقنع بلا قاعدة معلنة أسوأ من غيابه.
+    /// </para>
+    /// </summary>
+    public const string ContractPosition = ProjectContract + "/position";
+
+    /// <summary>
+    /// الأوامر التغييرية: الإنشاء. <b>بابان لا ثلاثة</b> — لا مورد ترحيل ولا حقل قيد.
+    /// </summary>
+    public const string ChangeOrders = Company + "/change-orders";
+
+    /// <summary>أمر تغييري واحد: القراءة ببنوده الجديدة.</summary>
+    public const string ChangeOrder = ChangeOrders + "/{changeOrderId}";
+
+    /// <summary>
+    /// المقاولون من الباطن: التسجيل. طرفٌ في دفتر <c>subcontractor</c> المساعد الذي
+    /// لم يكن له مالكٌ في المستودع قبل هذه الوحدة.
+    /// </summary>
+    public const string Subcontractors = Company + "/subcontractors";
+
+    /// <summary>مقاول واحد: القراءة. وما غاب عن العميل غائب هنا وللسبب نفسه.</summary>
+    public const string Subcontractor = Subcontractors + "/{subcontractorId}";
+
+    /// <summary>عقود الباطن: الإنشاء بنسبة محتجزه وفترة ضمانه وبنوده.</summary>
+    public const string Subcontracts = Company + "/subcontracts";
+
+    /// <summary>عقد باطن واحد: القراءة.</summary>
+    public const string Subcontract = Subcontracts + "/{subcontractId}";
+
+    /// <summary>بنود عقد الباطن بمعرّفاتها — مدخل سطور مستخلصه.</summary>
+    public const string SubcontractLines = Subcontract + "/lines";
+
+    /// <summary>
+    /// مستخلصات العملاء: إنشاء <b>مسوّدة</b> بالكمّيات التراكمية والسابقة صراحةً.
+    /// <para>ولا قيد ولا أثر في الدفتر: الترحيل خطوة مستقلّة على مورد فرعي.</para>
+    /// </summary>
+    public const string ClientCertificates = Company + "/client-certificates";
+
+    /// <summary>مستخلص عميل واحد: القراءة بحالته وسطوره وبنوده المعلَّقة.</summary>
+    public const string ClientCertificate = ClientCertificates + "/{certificateId}";
+
+    /// <summary>
+    /// ترحيل مستخلص عميل. مورد فرعي مستقلّ لا <c>PUT</c>: فعلٌ يُنشئ قيداً لا حقلٌ يُعدَّل.
+    /// </summary>
+    public const string ClientCertificatePosting = ClientCertificate + "/posting";
+
+    /// <summary>
+    /// مستخلصات الباطن: إنشاء <b>مسوّدة</b>، ومعها سطور الغرامات والخصومات
+    /// <b>مستقلّةً</b> لا مخصومةً من قيمة الأعمال.
+    /// </summary>
+    public const string SubcontractorCertificates = Company + "/subcontractor-certificates";
+
+    /// <summary>مستخلص باطن واحد: القراءة.</summary>
+    public const string SubcontractorCertificate = SubcontractorCertificates + "/{certificateId}";
+
+    /// <summary>ترحيل مستخلص باطن — ويُرفض بمشكلةٍ مُسمّاة إن حمل سطر غرامة.</summary>
+    public const string SubcontractorCertificatePosting = SubcontractorCertificate + "/posting";
+
+    /// <summary>دفعات المقاولين المقدمة: إنشاء <b>مسوّدة</b> بطريقة تسويتها ومرجع ضمانها.</summary>
+    public const string SubcontractorAdvances = Company + "/subcontractor-advances";
+
+    /// <summary>دفعة مقدمة واحدة: القراءة.</summary>
+    public const string SubcontractorAdvance = SubcontractorAdvances + "/{advanceId}";
+
+    /// <summary>
+    /// ترحيل دفعة مقدمة لمقاول: <b>أصلٌ لا مصروف</b>، وحصينٌ ضد التكرار —
+    /// الوصول الثاني بالهوية نفسها يُرجع معرّف القيد الأول بـ<c>alreadyPosted = true</c>.
+    /// </summary>
+    public const string SubcontractorAdvancePosting = SubcontractorAdvance + "/posting";
+
+    /// <summary>الإفراج عن المحتجز: إنشاء <b>مسوّدة</b> على دفعة محتجزٍ مُسمّاة باعتماد صريح.</summary>
+    public const string RetentionReleases = Company + "/retention-releases";
+
+    /// <summary>مستند إفراج واحد: القراءة.</summary>
+    public const string RetentionRelease = RetentionReleases + "/{releaseId}";
+
+    /// <summary>ترحيل الإفراج: <b>قيدٌ مستقلّ لا تعديل لقيد المستخلص</b>.</summary>
+    public const string RetentionReleasePosting = RetentionRelease + "/posting";
+
+    /// <summary>تحصيل المحتجز من العميل: إنشاء <b>مسوّدة</b> بطريقة تسوية مُسمّاة.</summary>
+    public const string RetentionCollections = Company + "/retention-collections";
+
+    /// <summary>مستند تحصيل واحد: القراءة.</summary>
+    public const string RetentionCollection = RetentionCollections + "/{collectionId}";
+
+    /// <summary>ترحيل تحصيل المحتجز — وهو المسار الذي يمارس قدرةً في هذه الوحدة.</summary>
+    public const string RetentionCollectionPosting = RetentionCollection + "/posting";
+
+    /// <summary>
+    /// سجلّ المحتجزات مدينةً ودائنة بتواريخ استحقاق الإفراج على الطرفين، مشتقّاً من
+    /// المُرحَّل — وهو ما تُطابَق به نقطتا الضبط على الجانبين.
+    /// </summary>
+    public const string RetentionRegister = Company + "/retention-register";
+
+    /// <summary>
+    /// كشف المقاولين — وهو المطابقة المُعلَنة نصّاً في بيانات الدفاتر المساعدة:
+    /// «كشف المقاولين = رصيد الحساب». وإظهارُ نقطة الضبط عبر منفذها المُعلَن لا تقريرٌ
+    /// يُحتسب جانباً.
+    /// </summary>
+    public const string SubcontractorStatement = Company + "/subcontractor-statement";
+
+    /// <summary>
+    /// خطابات الضمان: التسجيل بمرفقها. <b>بابان لا ثلاثة</b> — لا مورد ترحيل، ولا حقل
+    /// قيد في مخطّط الجواب، لأنه لا يُرحَّل أبداً.
+    /// </summary>
+    public const string Guarantees = Company + "/guarantees";
+
+    /// <summary>خطاب ضمان واحد: القراءة.</summary>
+    public const string Guarantee = Guarantees + "/{guaranteeId}";
 
     /// <summary>
     /// العقد المنشور نفسه، بايتاته كما أُودعت في <c>contracts/openapi/v1.json</c>.

@@ -465,7 +465,7 @@ public sealed class Rule06_NothingBypassesEntitlement
         Assert.Equal(
             [
                 "Babel.Ai", "Babel.Compliance", ModuleMap.Core, "Babel.Hr", "Babel.Inventory", ModuleMap.Ledger,
-                "Babel.Purchasing", "Babel.RealEstate", "Babel.Sales",
+                "Babel.Projects", "Babel.Purchasing", "Babel.RealEstate", "Babel.Sales",
             ],
             modulesWithServices);
     }

@@ -215,6 +215,7 @@ public sealed class Rule13_NoBusinessLogicInTheApi
         "Babel.Compliance.ComplianceModuleRegistration",
         "Babel.Inventory.InventoryModuleRegistration",
         "Babel.RealEstate.RealEstateModuleRegistration",
+        "Babel.Projects.ProjectsModuleRegistration",
 
         // ── السطح المنشور لوحدتَي المبيعات والمشتريات ────────────────────────
         //
@@ -384,6 +385,50 @@ public sealed class Rule13_NoBusinessLogicInTheApi
         "Babel.Hr.Surface.HrSettlement",
         "Babel.Hr.Surface.HrReconciliationDivergence",
         "Babel.Hr.Surface.HrReconciliation",
+        // ── المقاولات ────────────────────────────────────────────────────────
+        // و`ProjectsChangeOrder` و`ProjectsGuarantee` نوعان **بلا معرّف قيد وبلا
+        // رُحّل-سلفاً** عمداً — للسبب نفسه الذي أخلى منهما `PurchasingOrder`: الأمر
+        // التغييري التزامٌ تعاقدي، وخطاب الضمان سجلّ، ولا حدث لأيٍّ منهما في المصفوفة.
+        // و`ProjectsPendingItem` نوعٌ يُنشر عمداً: البند المعلَّق جزءٌ من جواب العقد
+        // والمستخلص، فمن يقرأهما يعرف سلفاً ما الذي سيرفضه الترحيل ولماذا.
+        "Babel.Projects.Surface.ProjectsSurface",
+        "Babel.Projects.Surface.ProjectsNameValue",
+        "Babel.Projects.Surface.ProjectsMeasure",
+        "Babel.Projects.Surface.ProjectsPendingItem",
+        "Babel.Projects.Surface.ProjectsProjectRequest",
+        "Babel.Projects.Surface.ProjectsProject",
+        "Babel.Projects.Surface.ProjectsContractSummary",
+        "Babel.Projects.Surface.ProjectsContractRequest",
+        "Babel.Projects.Surface.ProjectsContract",
+        "Babel.Projects.Surface.ProjectsBoqItemRequest",
+        "Babel.Projects.Surface.ProjectsBoqItem",
+        "Babel.Projects.Surface.ProjectsChangeOrderRequest",
+        "Babel.Projects.Surface.ProjectsChangeOrder",
+        "Babel.Projects.Surface.ProjectsSubcontractorRequest",
+        "Babel.Projects.Surface.ProjectsSubcontractor",
+        "Babel.Projects.Surface.ProjectsSubcontractRequest",
+        "Babel.Projects.Surface.ProjectsSubcontract",
+        "Babel.Projects.Surface.ProjectsSubcontractLineRequest",
+        "Babel.Projects.Surface.ProjectsSubcontractLine",
+        "Babel.Projects.Surface.ProjectsCertificateRequest",
+        "Babel.Projects.Surface.ProjectsCertificateLineRequest",
+        "Babel.Projects.Surface.ProjectsCertificate",
+        "Babel.Projects.Surface.ProjectsCertificateLine",
+        "Babel.Projects.Surface.ProjectsAdvanceRequest",
+        "Babel.Projects.Surface.ProjectsDocument",
+        "Babel.Projects.Surface.ProjectsRetentionReleaseRequest",
+        "Babel.Projects.Surface.ProjectsRetentionCollectionRequest",
+        "Babel.Projects.Surface.ProjectsGuaranteeRequest",
+        "Babel.Projects.Surface.ProjectsGuarantee",
+        "Babel.Projects.Surface.ProjectsRetentionEntry",
+        "Babel.Projects.Surface.ProjectsRetentionRegister",
+        "Babel.Projects.Surface.ProjectsStatementLine",
+        "Babel.Projects.Surface.ProjectsSubcontractorStatement",
+        "Babel.Projects.Surface.ProjectsContractPosition",
+
+        // وإعدادات المقاولات — **وقد قُرئ اتصالها من الإعداد في السطر نفسه الذي وُلدت
+        // فيه**، لا بعد تسليمٍ كامل كما وقع لأخواتها الثلاث.
+        "Babel.Projects.ProjectsOptions",
     ];
 
     /// <summary>أجزاء فضاء اسم تدلّ على داخل وحدة، لا على سطحها المنشور.</summary>

@@ -8,6 +8,8 @@ using Babel.Core.Metering;
 using Babel.Ledger;
 using Babel.Ledger.Audit;
 using Babel.Purchasing;
+using Babel.RealEstate;
+using Babel.RealEstate.Application;
 using Babel.Sales;
 using Babel.Sales.Application;
 using PayablesService = Babel.Purchasing.Application.PayablesService;
@@ -156,6 +158,59 @@ internal static class Verify
             ar.Value.Totals.Total.Amount > 0m,
             "الذمم المدينة القائمة ليست صفراً — العرض يُظهر أعماراً لا جدولاً فارغاً",
             "الإجمالي=" + Say.Money(ar.Value.Totals.Total.Amount));
+
+        // ── ٤ · متأخرات المستأجرين ومطابقتها ────────────────────────────────
+        // ‏**وهذا هو الإثبات الذي كان ناقصاً**: وحدة العقارات كانت مبنيّةً ومُختبَرة
+        // و**قاعدتُها لا تُزوَّد**، فأبوابها العشرون غير قابلة للبلوغ في أي نشرة. وقراءةُ
+        // هذا التقرير هنا تمرّ بالقاعدة المزوَّدة نفسها التي يقرؤها الخادم
+        // (‏docs/evidence/traps.md#fakh-a-module-fully-built-fully-tested-and-never-provisioned).
+        // ‏**والاستحقاق يُشترى هنا كما يُشترى في البذر وفي إعداد الخادم**: العقارات وحدة
+        // اختيارية، ومخزن الاستحقاق في هذه الموجة عمرُه عمرُ العملية — فخطوة الإثبات
+        // تشتري لنفسها كما تؤسّس لنفسها أعلاه، **من الإعلان نفسه لا من التفاف**.
+        Result<EntitlementSet> bought = await entitlements
+            .ApplyAsync(
+                new EntitlementChangeRequest(
+                    tenant,
+                    new Dictionary<BabelModule, EntitlementState> { [BabelModule.RealEstate] = EntitlementState.Entitled },
+                    Seed.Actor,
+                    "إثبات وحدة العقارات / real-estate entitled for the proof step"),
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        Say.Require(bought.IsSuccess, "شراء وحدة العقارات للإثبات", Describe(bought));
+
+        using RealEstateRuntime realEstate = new(settings.RealEstateOwner, costCentres);
+        TenantArrearsService tenantArrears = new(
+            enforcer, realEstate, new ControlPoint(settings.Ledger.AppConnectionString));
+
+        Result<(ArrearsReport Aging, Babel.RealEstate.Subledger.ControlReconciliationReport Reconciliation)> arrears =
+            await tenantArrears
+                .AgingAsync(tenant, Seed.Actor, settings.Company, asOf, cancellationToken)
+                .ConfigureAwait(false);
+
+        Say.Require(arrears.IsSuccess, "تقرير متأخرات المستأجرين يُقرأ", Describe(arrears));
+
+        ArrearsBuckets tenantTotals = arrears.Value.Aging.Totals;
+        Console.WriteLine("     متأخرات المستأجرين كما في " + asOf.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+        Console.WriteLine(string.Create(
+            CultureInfo.InvariantCulture,
+            $"       أطراف={arrears.Value.Aging.Parties.Count} · لم يستحق={Say.Money(tenantTotals.NotDue.Amount)}"
+            + $" · 1–30={Say.Money(tenantTotals.Days1To30.Amount)} · 31–60={Say.Money(tenantTotals.Days31To60.Amount)}"
+            + $" · 61–90={Say.Money(tenantTotals.Days61To90.Amount)} · +90={Say.Money(tenantTotals.Over90.Amount)}"
+            + $" · الإجمالي={Say.Money(tenantTotals.Total.Amount)}"));
+
+        Say.Require(
+            tenantTotals.Total.Amount > 0m && arrears.Value.Aging.Parties.Count > 0,
+            "شاشة المتأخرات العقارية تجد ما تعرضه — قاعدة العقارات مزوَّدة ومبذورة",
+            "أطراف=" + Say.Count(arrears.Value.Aging.Parties.Count)
+            + " · الإجمالي=" + Say.Money(tenantTotals.Total.Amount));
+
+        Say.Require(
+            arrears.Value.Reconciliation.IsReconciled && arrears.Value.Reconciliation.Divergence.Amount == 0m,
+            "دفتر المستأجرين المساعد يطابق نقطة ضبطه في الدفتر بالضبط — لا «قريباً من الصفر»",
+            "نقطة الضبط=" + Say.Money(arrears.Value.Reconciliation.ControlTotal.Amount)
+            + " · الدفتر المساعد=" + Say.Money(arrears.Value.Reconciliation.SubledgerTotal.Amount)
+            + " · الانحراف=" + Say.Money(arrears.Value.Reconciliation.Divergence.Amount));
     }
 
     private static void PrintAging(string title, AgingReport report)

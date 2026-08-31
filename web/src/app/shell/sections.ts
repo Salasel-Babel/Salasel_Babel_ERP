@@ -80,9 +80,6 @@ export const SCREENS: readonly ScreenEntry[] = [
   { path: "/sign-in", labelKey: "app.nav.signIn", section: "accounting" },
   { path: "/contract", labelKey: "app.nav.contract", section: "accounting" },
   { path: "/design", labelKey: "app.nav.design", section: "accounting" },
-  /* الأمر المنطوق يعبر الأقسام الخمسة كلّها، ولا قسمَ واحداً يملكه. وهو مُدرَجٌ
-     هنا تحت المحاسبة **لأجل لونه وحده** — وهو اللون المرجعي حين لا يُعرَف القسم. */
-  { path: "/voice", labelKey: "app.nav.voice", section: "accounting" },
   { path: "/realestate", labelKey: "realestate.nav.register", section: "realestate" },
   { path: "/realestate/lease", labelKey: "realestate.nav.lease", section: "realestate" },
   { path: "/realestate/arrears", labelKey: "realestate.nav.arrears", section: "realestate" },
@@ -97,7 +94,13 @@ export const SCREENS: readonly ScreenEntry[] = [
   { path: "/hr", labelKey: "hr.nav.register", section: "hr" },
   { path: "/hr/payroll", labelKey: "hr.nav.payroll", section: "hr" },
   { path: "/hr/payslip", labelKey: "hr.nav.payslip", section: "hr" },
-  { path: "/hr/end-of-service", labelKey: "hr.nav.endOfService", section: "hr" }
+  { path: "/hr/end-of-service", labelKey: "hr.nav.endOfService", section: "hr" },
+  /* الأمر المنطوق يعبر الأقسام الخمسة كلّها، ولا قسمَ واحداً يملكه. وهو مُدرَجٌ
+     هنا تحت المحاسبة **لأجل لونه وحده** — وهو اللون المرجعي حين لا يُعرَف القسم.
+     (وكُتب هذا الصفّ حين كانت الأقسام الأربعة الأخرى `built: false`؛ وقد صارت
+     كلّها مبنيّةً عند إنزال شاشاتها، فالنيّةُ المؤكَّدة تجد اليوم شاشةً تقودها
+     إليها.) */
+  { path: "/voice", labelKey: "app.nav.voice", section: "accounting" },
 ];
 
 /**

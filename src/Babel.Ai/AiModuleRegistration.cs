@@ -1,6 +1,9 @@
 using Babel.Ai.Capture;
 using Babel.Ai.Extraction;
 using Babel.Ai.Suggestions;
+using Babel.Ai.Voice;
+using Babel.Contracts.Voice;
+using Babel.SharedKernel;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Babel.Ai;
@@ -51,6 +54,28 @@ public static class AiModuleRegistration
         services.AddSingleton<IPostingVocabulary>(MatrixPostingVocabulary.Default);
         services.AddSingleton<ICapturedDraftStore, InMemoryCapturedDraftStore>();
         services.AddScoped<InvoiceCaptureService>();
+
+        // ‏**سجلّ النيّات المنطوقة — يُجمَع ولا يُكتب هنا.**
+        // ما يصل هذه الدالة هو ما سجّلته الوحدات بنفسها من <c>IVoiceIntentCatalogue</c>،
+        // وهو نوعٌ في العقد لا في هذا المشروع. فإضافة نيّةٍ للمخزون أو للعقارات
+        // **لا تفتح هذا الملف**، ولا يظهر اسم وحدةٍ واحدة في هذا المشروع (القاعدة 3).
+        //
+        // ‏**والبناء يُسقط التركيب إن كان السجلّ معتلّاً** — رمزَ حدثٍ ليس في المصفوفة،
+        // أو معرّفاً مكرّراً، أو ترحيلاً بلا حدث. وسجلٌّ نصفُه صالح يعمل تسعاً وتسعين
+        // مرّة ثم يُرحّل مرّةً إلى حدثٍ لا وجود له، وذلك أسوأ من أن يرفض أن يُبنى.
+        services.AddSingleton(static provider =>
+        {
+            Result<VoiceIntentRegistry> registry = VoiceIntentRegistry.Build(
+                provider.GetServices<IVoiceIntentCatalogue>(),
+                provider.GetRequiredService<IPostingVocabulary>());
+
+            return registry.IsSuccess
+                ? registry.Value
+                : throw new InvalidOperationException(
+                    "سجلّ النيّات المنطوقة معتلّ فلا يُركَّب: "
+                    + string.Join(" · ", registry.Errors.Select(static error => error.MessageAr)));
+        });
+
         return services;
     }
 

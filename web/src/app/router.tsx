@@ -9,6 +9,10 @@ import { JournalVoucherScreen } from "../screens/voucher/JournalVoucherScreen";
 import { DemoStage } from "../demo/DemoStage";
 /* صفحة العرض الحيّة لنظام التصميم — هي عقد الطبقة البصرية مع من يبني الأقسام. */
 import { DesignScreen } from "../screens/design/DesignScreen";
+/* قسم العقارات — السجلّ، والعقد وجدوله، والمتأخرات وسندات القبض. */
+import { RegisterScreen } from "../screens/realestate/RegisterScreen";
+import { LeaseScreen } from "../screens/realestate/LeaseScreen";
+import { ArrearsScreen } from "../screens/realestate/ArrearsScreen";
 
 const rootRoute = createRootRoute({ component: AppShell });
 
@@ -50,6 +54,24 @@ const demoRoute = createRoute({
   component: DemoStage,
 });
 
+const realEstateRegisterRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/realestate",
+  component: RegisterScreen,
+});
+
+const realEstateLeaseRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/realestate/lease",
+  component: LeaseScreen,
+});
+
+const realEstateArrearsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/realestate/arrears",
+  component: ArrearsScreen,
+});
+
 const routeTree = rootRoute.addChildren([
   trialBalanceRoute,
   signInRoute,
@@ -57,6 +79,9 @@ const routeTree = rootRoute.addChildren([
   contractRoute,
   designRoute,
   demoRoute,
+  realEstateRegisterRoute,
+  realEstateLeaseRoute,
+  realEstateArrearsRoute,
 ]);
 
 /** ينشئ موجّهاً. الاختبارات تمرّر تاريخاً في الذاكرة فلا تحتاج متصفّحاً. */

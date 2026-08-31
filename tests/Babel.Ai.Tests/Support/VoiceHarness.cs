@@ -16,9 +16,14 @@ namespace Babel.Ai.Tests.Support;
 /// </summary>
 internal static class VoiceHarness
 {
-    /// <summary>مجموعات الوحدات الست كما تُسجّلها كلٌّ منها.</summary>
+    /// <summary>
+    /// مجموعات الوحدات <b>السبع</b> كما تُسجّلها كلٌّ منها. والسابعة هي الدفتر:
+    /// يُسهم بنيّةٍ واحدة هي <b>امتناع</b> — قيدُ يوميةٍ يُملى ولا يُنفَّذ، لأن السطح
+    /// المنشور لا يحمل له بابَ مسوّدة.
+    /// </summary>
     public static IReadOnlyList<IVoiceIntentCatalogue> Catalogues { get; } =
     [
+        new Ledger.Voice.LedgerVoiceIntents(),
         new Purchasing.Voice.PurchasingVoiceIntents(),
         new Sales.Voice.SalesVoiceIntents(),
         new Projects.Voice.ProjectsVoiceIntents(),

@@ -58,7 +58,7 @@ public sealed class TheBrowserCatalogueMirrorsTheServer
     public void مرآة_المتصفح_ليست_ضامرة()
     {
         // حارس لا فراغ: استخراجٌ توقّف عن المطابقة يجعل كل ما تحته يمرّ على مصفوفة فارغة.
-        Assert.True(Mirror().Count >= 18, "النيّات المُلتقَطة من الواجهة: " + Mirror().Count.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        Assert.True(Mirror().Count >= 40, "النيّات المُلتقَطة من الواجهة: " + Mirror().Count.ToString(System.Globalization.CultureInfo.InvariantCulture));
     }
 
     [Fact]
@@ -80,6 +80,10 @@ public sealed class TheBrowserCatalogueMirrorsTheServer
             Assert.Equal(intent.Status.ToString(), mirrored.Status);
             Assert.Equal(intent.LedgerEffect.ToString(), mirrored.LedgerEffect);
             Assert.Equal(intent.EventCode, mirrored.EventCode);
+
+            // ‏**والعملية المنشورة تُطابَق أيضاً**: المتصفّح هو الذي ينادي الباب، فمرآةٌ
+            // تحمل عمليةً غير التي أعلنتها الوحدة تُنشئ مستنداً في مكانٍ آخر.
+            Assert.Equal(intent.OperationId, mirrored.OperationId);
             Assert.Equal(intent.RequiresConfirmation, mirrored.RequiresConfirmation);
             Assert.Equal(intent.ReadsPersonalData, mirrored.ReadsPersonalData);
             Assert.Equal(intent.NameAr, mirrored.NameAr);
@@ -109,7 +113,29 @@ public sealed class TheBrowserCatalogueMirrorsTheServer
                 "رمز حدث في " + CataloguePath + " ليس في مصفوفة الترحيل: " + mirrored.EventCode);
         }
 
-        Assert.True(posting >= 9, "رموز الأحداث المُلتقَطة: " + posting.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        Assert.True(posting >= 18, "رموز الأحداث المُلتقَطة: " + posting.ToString(System.Globalization.CultureInfo.InvariantCulture));
+    }
+
+    [Fact]
+    public void لا_عملية_ترحيل_واحدة_في_مرآة_المتصفح()
+    {
+        // ‏**والمرآة تُفحَص بالقاعدة نفسها لا بالثقة**: المتصفّح هو ما ينادي الباب فعلاً،
+        // فسطرٌ يُحرَّر هنا بيدٍ ويكتب «postSalesInvoice» يجعل جملةً منطوقة تُرحّل —
+        // ولا يراه أيُّ حارسٍ في الخادم إلا هذا.
+        int checked_ = 0;
+
+        foreach (VectorIntent mirrored in Mirror())
+        {
+            if (mirrored.OperationId is null)
+            {
+                continue;
+            }
+
+            checked_++;
+            Assert.Null(Babel.Ai.Voice.VoiceOperationGuard.Refuse(mirrored.OperationId));
+        }
+
+        Assert.True(checked_ >= 40, "العمليات المُلتقَطة من الواجهة: " + checked_.ToString(System.Globalization.CultureInfo.InvariantCulture));
     }
 
     [Fact]

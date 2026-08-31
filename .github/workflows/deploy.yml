@@ -193,11 +193,18 @@ jobs:
             exit 1
           fi
 
-          # وضع `auto` بنطاق حقيقي يتّصل بسلطة شهادات، وهي تطلب بريداً. وبريدٌ ناقص
-          # هنا يظهر لاحقاً بصفحةٍ لا تُفتح أمام الضيف — فيُرفض النشر الآن.
-          if [ "$BABEL_TLS_MODE" = "auto" ] && [ "${BABEL_SITE#:}" = "$BABEL_SITE" ] && [ -z "${BABEL_TLS_EMAIL:-}" ]; then
-            echo "::error::‏BABEL_TLS_MODE=auto بنطاق «$BABEL_SITE» يتطلّب BABEL_TLS_EMAIL."
-            echo "::error::إمّا أن تضبطه، أو تنتقل إلى BABEL_TLS_MODE=internal — راجع deploy/README.md §3."
+          # ══ TLS — الأوضاع الأربعة، وشرطُ كلٍّ منها يُفحَص هنا لا على الخادم ══
+          #
+          # والمنطق في `deploy/tls-mode.sh` لا في هذه السطور، وجدولُ حالاته في
+          # `deploy/tls-mode-check.sh` بجانبه — وهو يُشغَّل في «حزمة النشر» على
+          # كل دفعة. منطقٌ داخل YAML لا يُشغَّل إلا بدفعة كاملة إلى خادم حقيقي،
+          # فلا يُجرَّب ولا يُختبَر: وهو السبب نفسه الذي أخرج `remote.sh` من هنا.
+          #
+          # والسكربت يرفض ولا يخمّن: `auto` بعنوان IP، ووضع مجهول، وعنوان غير
+          # عامّ، ووضع `ip` بلا بريد أو بلا مخطّط — كلّها توقف النشر **قبل** أن
+          # تُوقَف الحزمة القائمة على الخادم. ومُخرَجه الوحيد هو العنوان الذي
+          # تُقدَّم به الشهادة، مشتقّاً من BABEL_SITE فلا ينحرف عنه.
+          if ! BABEL_TLS_IP="$(deploy/tls-mode.sh)"; then
             exit 1
           fi
 
@@ -230,6 +237,7 @@ jobs:
             echo "BABEL_SITE=$BABEL_SITE"
             echo "BABEL_TLS_MODE=$BABEL_TLS_MODE"
             echo "BABEL_TLS_EMAIL=$BABEL_TLS_EMAIL"
+            echo "BABEL_TLS_IP=$BABEL_TLS_IP"
             echo "BABEL_DEMO_COMPANY_ID=$BABEL_DEMO_COMPANY_ID"
             echo "BABEL_DEMO_USER_ID=$BABEL_DEMO_USER_ID"
           } | ssh -i ~/.ssh/id_deploy -p "$PORT" "$USER_NAME@$HOST" \

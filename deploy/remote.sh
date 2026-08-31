@@ -9,6 +9,7 @@
 #   remote.sh deploy <وسم>   يبدّل الوسم، يسحب، يقيم، يفحص، ويرجع عند الفشل
 #   remote.sh rollback       يعود إلى الوسم السابق المحفوظ
 #   remote.sh health         يفحص وحده
+#   remote.sh certs [ساعات]  يقرأ الشهادة **كما تُقدَّم** ويسقط قبل انتهائها
 #   remote.sh logs [خدمة]    يطبع السجلّ
 #
 # ولا اعتماد واحد في هذا الملف: كلّها في ‎.env‎ بجانبه، بصلاحية 600.
@@ -121,6 +122,76 @@ case "${1:-}" in
     health
     ;;
 
+  # ── الشهادة: مصدرها وعمرها الباقي ─────────────────────────────────────────
+  #
+  # **لماذا هذا الأمر موجود:** شهادة بعمر 160 ساعة تُجدَّد آلياً ما دام كل شيء
+  # سليماً، و**تعطُّلُ التجديد لا يُصدر إشعاراً واحداً**: Let's Encrypt أوقفت
+  # رسائل الانتهاء في 2025-06-04، وCaddy يكتب الإخفاق في سجلّه ولا أحد يقرؤه.
+  # فالفارق بين «انتبهنا قبل يومين» و«العرض غداً والموقع لا يُفتح» هو أمرٌ
+  # يُشغَّل — إمّا بيد إنسان وإمّا من `cron`. صيغته في README §3.
+  #
+  # وهو يقرأ الشهادة **من المصافحة لا من القرص**: ما يُقاس هو ما يراه الضيف.
+  # وبلا SNI عمداً، لأن المتصفّح الذي يفتح عنواناً حرفياً لا يرسل SNI أصلاً
+  # (‏RFC 6066) — فهذا الأمر يفحص المسار نفسه الذي يفشل بلا `default_sni`.
+  certs)
+    threshold_hours="${2:-40}"
+
+    if ! command -v openssl >/dev/null 2>&1; then
+      echo "✘ openssl غير موجود على الخادم — لا سبيل إلى قراءة الشهادة من هنا." >&2
+      exit 2
+    fi
+
+    # ‏`-noservername` هو بيت القصيد: بدونه يرسل openssl اسم المضيف في SNI،
+    # فيُقاس مسارٌ لا يسلكه أي متصفّح يفتح عنواناً حرفياً. وغيابُ الخيار من
+    # نسخة openssl قديمة يُقال صراحةً، ولا يُقرأ «لا شهادة».
+    if ! openssl s_client -help 2>&1 | grep -q -- '-noservername'; then
+      echo "✘ نسخة openssl هنا لا تعرف -noservername، ولا سبيل إلى قياس المسار بلا SNI." >&2
+      echo "  وهو المسار الوحيد الذي يهمّ في وضع ip. حدِّث openssl أو افحص من جهاز آخر." >&2
+      exit 2
+    fi
+
+    pem="$(echo | openssl s_client -connect 127.0.0.1:443 -noservername 2>/dev/null \
+             | sed -n '/BEGIN CERTIFICATE/,/END CERTIFICATE/p')"
+    if [ -z "$pem" ]; then
+      echo "✘ لا شهادة تُقدَّم على 443. إمّا أن الحافة على HTTP عارٍ، أو أن الإصدار لم ينجح." >&2
+      echo "  اقرأ السبب: ./remote.sh logs edge 200" >&2
+      exit 1
+    fi
+
+    issuer="$(printf '%s' "$pem" | openssl x509 -noout -issuer | sed 's/^issuer=//')"
+    not_after="$(printf '%s' "$pem" | openssl x509 -noout -enddate | sed 's/^notAfter=//')"
+    subject_alt="$(printf '%s' "$pem" | openssl x509 -noout -ext subjectAltName 2>/dev/null | tail -n +2 | tr -s ' ')"
+
+    expires_at="$(date -u -d "$not_after" +%s 2>/dev/null || echo '')"
+    if [ -z "$expires_at" ]; then
+      echo "✘ تعذّرت قراءة تاريخ الانتهاء «$not_after»." >&2
+      exit 2
+    fi
+    remaining=$(( (expires_at - $(date -u +%s)) / 3600 ))
+
+    echo "  المُصدِر     : $issuer"
+    echo "  الأسماء     :$subject_alt"
+    echo "  ينتهي في    : $not_after"
+    echo "  الباقي      : ${remaining} ساعة"
+
+    # **المُصدِر أوّلاً لا العمر:** سلطة Caddy الداخلية تعني شهادة غير موثوقة —
+    # قفلٌ مكسور أمام كل ضيف — مهما كان عمرها الباقي طويلاً.
+    case "$issuer" in
+      *"Caddy Local Authority"*)
+        echo "✘ الشهادة من سلطة Caddy الداخلية: **غير موثوقة على أي جهاز لم يُثبَّت جذرها عليه**." >&2
+        echo "  إن كان المقصود شهادة عامّة على عنوان، فالوضع هو BABEL_TLS_MODE=ip — deploy/README.md §3." >&2
+        exit 1 ;;
+    esac
+
+    if [ "$remaining" -lt "$threshold_hours" ]; then
+      echo "✘ الباقي ${remaining} ساعة، والحدّ ${threshold_hours}. التجديد التلقائي كان يجب أن يقع قبل الآن." >&2
+      echo "  اقرأ السبب: ./remote.sh logs edge 200" >&2
+      exit 1
+    fi
+
+    echo "✔ الشهادة موثوقة وعمرها فوق الحدّ (${threshold_hours} ساعة)"
+    ;;
+
   logs)
     # الخدمة اختيارية: وسيطٌ فارغ يُمرَّر إلى compose يُعدّ اسم خدمة لا وجود لها.
     if [ -n "${2:-}" ]; then
@@ -131,7 +202,7 @@ case "${1:-}" in
     ;;
 
   *)
-    echo "استعمال: remote.sh deploy <وسم> | rollback | health | logs [خدمة]" >&2
+    echo "استعمال: remote.sh deploy <وسم> | rollback | health | certs [ساعات] | logs [خدمة]" >&2
     exit 2
     ;;
 esac

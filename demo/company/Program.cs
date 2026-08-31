@@ -6,7 +6,7 @@ using BabelDemoCompany;
 //
 //   bootstrap  قواعد البيانات ودور التطبيق ......... باتصال الصيانة (دور خارق)
 //   migrate    المخطّطات والصلاحيات والبيانات المرجعية  بدور المالك
-//   seed       ثمانية أشهر من النشاط ................ بدور التطبيق، عبر محرّك الترحيل
+//   seed       ثمانية أشهر من النشاط ودورةُ إيجارٍ كاملة  بدور التطبيق، عبر محرّك الترحيل
 //   verify     ميزان + سلسلة + أعمار ................ بدور التطبيق، قراءةً محضة
 //
 //   all        الأربع بالترتيب — وهو ما تستدعيه حاوية الترحيل عند كل نشر.
@@ -46,6 +46,7 @@ try
 
         case "seed":
             await Seed.RunAsync(settings, cancellation.Token).ConfigureAwait(false);
+            await RealEstateSeed.RunAsync(settings, cancellation.Token).ConfigureAwait(false);
             break;
 
         case "verify":
@@ -57,6 +58,7 @@ try
             await ApplicationPasswordAsync(settings, cancellation.Token).ConfigureAwait(false);
             await Schema.RunAsync(settings, cancellation.Token).ConfigureAwait(false);
             await Seed.RunAsync(settings, cancellation.Token).ConfigureAwait(false);
+            await RealEstateSeed.RunAsync(settings, cancellation.Token).ConfigureAwait(false);
             await Verify.RunAsync(settings, cancellation.Token).ConfigureAwait(false);
             break;
 

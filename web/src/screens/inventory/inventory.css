@@ -1,0 +1,121 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   القسم المخزني — ما يحتاجه فوق الطبقة السينمائية، ولا شيء غيره
+   The inventory section — what it needs above the cinematic layer, no more
+   ───────────────────────────────────────────────────────────────────────────
+   **لا لونَ جديد هنا ولا مدّةَ حركةٍ جديدة.** كل قيمةٍ في هذا الملفّ رمزٌ من
+   `tokens.css` أو `cinematic.css`، وكل حركةٍ مفردةٌ من `motion.css`. وما
+   أُضيف إنما هو **تخطيطٌ** لا يستطيع وعاءٌ عامّ أن يحمله: سلّم الوحدات،
+   وشجرة المستودع والموقع، وأعلام الرصيد.
+
+   والأسماء كلّها ببادئة `inv-` عدا ما هو مشتقٌّ من وعاءٍ قائم، فلا يصطدم
+   بقسمٍ آخر يُبنى في الوقت نفسه.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── تخطيطٌ بعمودين ينهار إلى عمود ───────────────────────────────────────
+   `minmax(0,…)` لا `1fr` وحدها: عمودٌ يحمل جدولاً يمرَّر أفقياً يتمدّد على
+   جاره بلا هذا الحدّ الأدنى، فينزلق جسم الصفحة كلّه — وهو ممنوع. */
+.inv-two{
+  display:grid; gap:var(--space-16);
+  grid-template-columns:repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+  align-items:start;
+}
+
+/* ── سلّم الوحدات ─────────────────────────────────────────────────────────
+   كل درجةٍ رقاقةٌ تحمل **رمز الوحدة ونسبته**. والنسبة معزولةٌ اتجاهياً
+   ومكتوبةٌ بخطٍّ أحادي: «12/1» تُقرأ من اليسار في اللغات الأربع. */
+.uladder{ display:flex; flex-wrap:wrap; gap:var(--space-6) }
+.uchip{
+  display:inline-flex; align-items:baseline; gap:var(--space-6);
+  padding:2px var(--space-8);
+  border:var(--border-width) solid var(--edge-line);
+  border-radius:var(--radius-pill);
+  background:var(--color-surface-sunken);
+  font-size:var(--font-size-3xs); line-height:1.8; white-space:nowrap;
+}
+.uchip__u{ font-weight:var(--font-weight-semibold); unicode-bidi:isolate }
+.uchip__r{
+  font-family:var(--font-mono); unicode-bidi:isolate;
+  color:var(--color-text-subtle);
+}
+/* وحدة الأساس هي أصل السلّم، فتحمل لون القسم لا لوناً محايداً. */
+.uchip[data-base="true"]{
+  border-color:var(--section-inventory);
+  color:var(--section-inventory);
+  background:transparent;
+}
+/* صنفٌ بلا وحدةٍ أكبر: الفراغ **يُشرَح** ولا يُترك خانةً بيضاء. */
+.uladder__none{ color:var(--color-text-subtle); font-size:var(--font-size-3xs) }
+
+/* ── أعلام الرصيد ────────────────────────────────────────────────────────
+   ثلاثة أعلام، وكلٌّ منها **يمنع شيئاً** لا يزيّن: «غير مُسكَّن» و«لا أساس
+   تكلفة» و«سالب». وتُعرض مكدّسةً في خليّةٍ واحدة فلا تتفرّق على أعمدة. */
+.inv-flags{ display:flex; flex-wrap:wrap; gap:var(--space-6) }
+
+/* ── خليّةُ «لا أساس تكلفة» ──────────────────────────────────────────────
+   لا تُعرض صفراً: الصفر رقمٌ، وغياب الأساس **ليس رقماً**. فتُعرض كلمةً
+   بلون التحذير وشَرطةً بدل العدد. */
+.inv-nobasis{
+  color:var(--color-warning); font-size:var(--font-size-3xs);
+  font-weight:var(--font-weight-semibold);
+}
+
+/* ── مجموعة المستودع في عرض التسكين ─────────────────────────────────────
+   رأسٌ لكل مستودع، ثم مواقعه تحته — وهو ترتيب المخزن الحقيقي لا ترتيب
+   الجدول. والحدّ على البداية خاصيةٌ منطقية فتنقلب وحدها في اللغات الأربع. */
+.inv-wh{ margin-block-end:var(--space-16) }
+.inv-wh__hd{
+  display:flex; align-items:baseline; gap:var(--space-10);
+  padding-block-end:var(--space-6);
+  border-block-end:var(--border-width) solid var(--edge-line);
+  margin-block-end:var(--space-8);
+}
+.inv-wh__name{
+  font-family:var(--font-mono); font-weight:var(--font-weight-bold);
+  unicode-bidi:isolate;
+}
+.inv-loc{
+  border-inline-start:var(--border-width-accent) solid var(--edge-faint);
+  padding-inline-start:var(--space-12);
+  margin-block-end:var(--space-12);
+}
+.inv-loc[data-unbinned="true"]{ border-inline-start-color:var(--color-warning) }
+.inv-loc__hd{
+  display:flex; align-items:baseline; gap:var(--space-8);
+  margin-block-end:var(--space-6);
+}
+.inv-loc__name{ font-family:var(--font-mono); unicode-bidi:isolate }
+
+/* ── لوح النقص المُعلَن ──────────────────────────────────────────────────
+   ليس رفضاً — النظام لم يرفض، **لا باب أصلاً** — وليس فراغاً. فله وعاءٌ
+   ثالث: حدٌّ متقطّع يقول «غير مبنيّ»، لا أحمر يقول «وقع خطأ». */
+.inv-gap{
+  border:var(--border-width) dashed var(--edge-strong);
+  border-radius:var(--radius-panel);
+  padding:var(--space-16);
+  background:var(--color-surface-sunken);
+}
+.inv-gap h3{
+  margin:0 0 var(--space-6);
+  font-size:var(--font-size-lg); font-weight:var(--font-weight-bold);
+}
+.inv-gap p{ margin:0 0 var(--space-8); color:var(--color-text-muted); font-size:var(--font-size-sm) }
+.inv-gap p:last-child{ margin-block-end:0 }
+
+/* ── صفّ الجدول المختار ──────────────────────────────────────────────────
+   التحديد يحمل لون القسم، فيُعرف أي صفٍّ تقرأ لوحُ التفصيل عنه. */
+.ledger tbody tr[data-selected="true"] td{
+  background:color-mix(in srgb, var(--section-inventory) 14%, transparent);
+}
+.ledger tbody tr[aria-selected] td:first-child{ cursor:pointer }
+
+/* ── سطرُ الطريق في لوح المطابقة ─────────────────────────────────────────
+   ثلاثة طرقٍ إلى رقمٍ واحد: الاسم إلى البداية والرقم إلى النهاية، فتقع
+   الأرقام الثلاثة تحت بعضها وتُقارَن بالعين في لمحة. */
+.inv-route{
+  display:flex; align-items:baseline; gap:var(--space-10);
+  padding-block:var(--space-6);
+  border-block-end:var(--border-width) solid var(--edge-faint);
+}
+.inv-route:last-child{ border-block-end:none }
+.inv-route__k{ flex:1 1 auto; color:var(--color-text-muted); font-size:var(--font-size-sm) }
+.inv-route__v{ font-weight:var(--font-weight-semibold) }

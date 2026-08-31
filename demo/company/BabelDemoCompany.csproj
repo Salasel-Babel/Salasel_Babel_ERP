@@ -29,6 +29,10 @@
     <ProjectReference Include="../../src/Babel.Sales/Babel.Sales.csproj" />
     <ProjectReference Include="../../src/Babel.Purchasing/Babel.Purchasing.csproj" />
     <ProjectReference Include="../../src/Babel.Inventory/Babel.Inventory.csproj" />
+    <ProjectReference Include="../../src/Babel.RealEstate/Babel.RealEstate.csproj" />
+    <ProjectReference Include="../../src/Babel.Projects/Babel.Projects.csproj" />
+    <ProjectReference Include="../../src/Babel.Hr/Babel.Hr.csproj" />
+    <ProjectReference Include="../../src/Babel.Storage/Babel.Storage.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -87,6 +87,14 @@ export function AppShell(): ReactNode {
 
         <SectionNav path={path} />
 
+        {/*
+          ⚠ هذه القائمة **نسخةٌ ثانية من `SCREENS`** في `shell/sections.ts`، ولا
+          شيء يقارن الاثنتين. ولوحة الأوامر تُبنى من `SCREENS`، فالانحراف بينهما
+          لا يظهر عطلاً بل **شاشةً تُفتح بـCtrl+K ولا يراها من يقرأ الملاحة** —
+          وهو أسوأ من رابطٍ مكسور لأنه لا يُشتكى منه. ومن يبني قسماً يضيف صفّه
+          في المكانين حتى تُقاد هذه القائمة من `SCREENS` (انظر التوصية في تقرير
+          القسم المخزني).
+        */}
         <p className="sections__label">{t("app.nav.screens")}</p>
         <Link to="/" className="navitem" data-testid="nav-trial-balance">
           {t("app.nav.trialBalance")}
@@ -100,8 +108,23 @@ export function AppShell(): ReactNode {
         <Link to="/contract" className="navitem" data-testid="nav-contract">
           {t("app.nav.contract")}
         </Link>
+        <Link to="/voice" className="navitem" data-testid="nav-voice">
+          {t("app.nav.voice")}
+        </Link>
         <Link to="/design" className="navitem" data-testid="nav-design">
           {t("app.nav.design")}
+        </Link>
+        <Link to="/inventory/stock" className="navitem" data-testid="nav-inventory-stock">
+          {t("inventory.nav.stock")}
+        </Link>
+        <Link to="/inventory/items" className="navitem" data-testid="nav-inventory-items">
+          {t("inventory.nav.items")}
+        </Link>
+        <Link to="/inventory/movements" className="navitem" data-testid="nav-inventory-movements">
+          {t("inventory.nav.movements")}
+        </Link>
+        <Link to="/inventory/valuation" className="navitem" data-testid="nav-inventory-valuation">
+          {t("inventory.nav.valuation")}
         </Link>
       </nav>
 

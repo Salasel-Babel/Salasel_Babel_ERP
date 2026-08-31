@@ -1,0 +1,218 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   الموارد البشرية — ما يضيفه القسم فوق الطبقة السينمائية
+   ───────────────────────────────────────────────────────────────────────────
+   **لا لونَ جديد ولا مدّةَ حركةٍ جديدة هنا.** كل قيمةٍ أدناه رمزٌ من
+   `tokens.css` أو `cinematic.css`، ولون القسم `--section-hr` (وهو
+   `--color-ai` بدوره) يُستعمل **دلالةً لا زينة**: يُوسَم به ما هو خاصٌّ
+   بهذا القسم — القناع، وباب لم يُنشَر.
+
+   **وكل خاصية اتجاهية منطقية**: `inset-inline` و`border-inline-start` وما
+   شابههما، فلا تنقلب لوحةٌ في الهندية ولا في الإنجليزية. والخانات الرقمية
+   وحدها تحمل اتجاهاً مثبّتاً، ومعه عزلٌ صريح.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════ ١ · رأس الصفحة وتخطيطها */
+.hr-lede{
+  margin:0; max-inline-size:78ch;
+  color:var(--color-text-muted); font-size:var(--font-size-sm);
+  line-height:var(--line-relaxed, 1.7);
+}
+.hr-grid2{
+  display:grid; gap:var(--space-16);
+  grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));
+  align-items:start;
+}
+/* خليّةُ فعلٍ داخل شبكة حقول: الزرّ يقف على خطّ الحقول ولا يتمدّد بعرض
+   العمود — زرٌّ بعرض العمود يُقرأ لوحاً لا فعلاً. */
+.hr-act{
+  display:flex; align-items:flex-end; justify-content:flex-start;
+  padding-block-start:var(--space-24);
+}
+.hr-act .btn{ inline-size:auto }
+@media (max-width:720px){ .hr-act{ padding-block-start:0 } }
+.hr-split{
+  display:flex; align-items:center; gap:var(--space-8); flex-wrap:wrap;
+}
+.hr-split .spacer{ margin-inline-start:auto }
+
+/* ═══════════════════════════════════════════════════ ٢ · القناع */
+/* اللوح الوحيد في القسم الذي يحمل لونه: القناع **قرارُ نظامٍ لا نقصُ بيانات**،
+   فيُوسَم بصرياً حتى لا يُقرأ حقلاً لم يُملأ. */
+.hr-mask{
+  border:var(--border-width) solid var(--color-ai-line);
+  border-radius:var(--radius-panel);
+  background:linear-gradient(180deg, var(--color-ai-soft), var(--color-surface) 72%);
+  padding:var(--space-16);
+  display:flex; flex-direction:column; gap:var(--space-10);
+}
+.hr-mask__head{
+  display:flex; align-items:center; gap:var(--space-8); flex-wrap:wrap;
+  color:var(--color-ai); font-weight:var(--font-weight-semibold);
+}
+.hr-mask__head .pill{ margin-inline-start:auto }
+.hr-mask .kv{ margin-bottom:0 }
+/* القناع نصٌّ آليّ: اتجاهٌ مثبّت **مع عزلٍ صريح** فلا ينزلق داخل جملة عربية. */
+.hr-mask__value{
+  direction:ltr; unicode-bidi:isolate;
+  letter-spacing:.08em; font-variant-numeric:tabular-nums;
+}
+.hr-mask .hint{ margin:0 }
+
+/* ═════════════════════════════════════════════ ٣ · الرمز المعتم والاسم */
+.hr-code{
+  display:inline-block;
+  padding:1px var(--space-8); border-radius:var(--radius-mark);
+  background:var(--color-surface-sunken);
+  border:var(--border-width) solid var(--edge-faint);
+  font-size:.92em; color:var(--color-text-muted);
+  direction:ltr; unicode-bidi:isolate;
+}
+.hr-name{ display:inline-flex; flex-direction:column; gap:1px; min-inline-size:0 }
+.hr-name .alt{
+  unicode-bidi:isolate;
+  font-size:var(--font-size-3xs); color:var(--color-text-subtle); line-height:1.4;
+}
+
+/* ═════════════════════════════════════════ ٤ · بابٌ لم يُنشَر — مُعلَناً */
+.hr-gap{
+  border:var(--border-width) dashed var(--color-border-strong);
+  border-inline-start:var(--border-width-accent) solid var(--section-hr);
+  border-radius:var(--radius-panel);
+  background:var(--color-surface-sunken);
+  padding:var(--space-14) var(--space-16);
+  display:flex; flex-direction:column; gap:var(--space-8);
+}
+.hr-gap__head{ display:flex; align-items:center; gap:var(--space-8); flex-wrap:wrap }
+.hr-gap p{ margin:0; color:var(--color-text-muted); font-size:var(--font-size-sm); max-inline-size:80ch }
+.hr-gap .hint{ margin:0 }
+.hr-gap__owed{ color:var(--section-hr); font-weight:var(--font-weight-bold) }
+
+/* ═══════════════════════════════════════════════════ ٥ · جدول القسم */
+/* الشكل نفسه الذي يحمله `.ledger`: رأسٌ لاصق، وخاناتٌ رقمية معزولة، ومرورٌ
+   داخل الوعاء وحده. والفارق أن أعمدة هذا القسم ليست مديناً ودائناً. */
+.hr-table{
+  max-block-size:clamp(200px, 46dvh, 640px);
+  overflow:auto; overscroll-behavior:contain;
+  border-radius:var(--radius-well);
+  border:var(--border-width) solid var(--edge-line);
+}
+.hr-table table{
+  inline-size:100%; min-inline-size:640px;
+  border-collapse:separate; border-spacing:0;
+}
+.hr-table thead th{
+  position:sticky; inset-block-start:0; z-index:var(--z-table-head);
+  background:var(--color-surface-sunken); color:var(--color-text-muted);
+  font-size:var(--font-size-2xs); font-weight:var(--font-weight-semibold);
+  padding:var(--space-8) var(--space-10);
+  border-block-end:var(--border-width) solid var(--edge-line);
+  text-align:start; white-space:nowrap;
+}
+.hr-table thead th.n{ text-align:end }
+.hr-table tbody td{
+  padding:var(--space-8) var(--space-10);
+  border-block-end:var(--border-width) solid var(--edge-faint);
+  vertical-align:top;
+}
+.hr-table tbody tr{ position:relative }
+.hr-table tbody tr:nth-child(even) td{
+  background:color-mix(in srgb, var(--color-surface-sunken) 42%, transparent);
+}
+.hr-table tbody tr:hover td{ background:var(--color-surface-raised) }
+.hr-table tfoot td{
+  position:sticky; inset-block-end:0; z-index:var(--z-table-head);
+  background:var(--color-surface-sunken);
+  border-block-start:var(--border-width-accent) solid var(--edge-strong);
+  padding:var(--space-8) var(--space-10);
+  font-weight:var(--font-weight-bold);
+}
+.hr-table tbody tr.cine-arrive::after{ border-radius:0 }
+/* زرّ يفتح صفّاً: يبدو نصّاً ويتصرّف زرّاً — ويبقى بالغاً بلوحة المفاتيح. */
+.hr-open{
+  background:none; border:0; padding:0; cursor:pointer; font:inherit;
+  color:var(--color-primary); text-decoration:underline;
+  text-underline-offset:3px;
+}
+.hr-open:hover{ color:var(--color-primary-hover) }
+.hr-open:focus-visible{ outline:2px solid var(--color-focus); outline-offset:2px }
+
+/* ═════════════════════════════════════ ٦ · سطور تُضاف وتُحذف (الحصص) */
+.hr-lines{ display:flex; flex-direction:column; gap:var(--space-10) }
+.hr-line{
+  display:grid; gap:var(--space-10);
+  grid-template-columns:minmax(0,3fr) minmax(0,1fr) auto;
+  align-items:end;
+  padding:var(--space-12);
+  border:var(--border-width) solid var(--edge-line);
+  border-radius:var(--radius-well);
+  background:var(--color-surface-sunken);
+}
+@media (max-width:720px){
+  .hr-line{ grid-template-columns:1fr }
+}
+
+/* ═════════════════════════════════════════════ ٧ · إيصال الترحيل */
+/* «رُحِّل الآن» و«كان مُرحَّلاً» **حالتان مختلفتان بصرياً** — لأن عرض الثانية
+   بمظهر الأولى يُقرأ «رُحِّل مرّتين»، وهي جملةٌ محاسبية كاذبة. */
+.hr-receipt{
+  border-radius:var(--radius-panel);
+  padding:var(--space-16);
+  display:flex; flex-direction:column; gap:var(--space-12);
+  border:var(--border-width) solid var(--color-success-line);
+  background:var(--color-success-soft);
+}
+.hr-receipt[data-already="true"]{
+  border-color:color-mix(in srgb, var(--color-info) 26%, transparent);
+  background:var(--color-info-soft);
+}
+.hr-receipt h2{ margin:0; font-size:var(--font-size-card-title) }
+.hr-receipt p{ margin:0; font-size:var(--font-size-sm) }
+
+/* ═════════════════════════════════════════════ ٨ · قسيمة العامل */
+/* القسيمة تُقرأ **بلغة قارئها**، ولذلك رأسها يقول بأي لغة هو الآن. */
+.hr-payslip{
+  border:var(--border-width) solid var(--edge-line);
+  border-radius:var(--radius-panel);
+  background:var(--backdrop-panel);
+  box-shadow:var(--elevation-raised);
+  padding:var(--space-20);
+  display:flex; flex-direction:column; gap:var(--space-16);
+}
+.hr-payslip__head{
+  display:flex; align-items:flex-start; gap:var(--space-12); flex-wrap:wrap;
+  padding-block-end:var(--space-12);
+  border-block-end:var(--border-width) solid var(--edge-faint);
+}
+.hr-payslip__head .spacer{ margin-inline-start:auto }
+/* بطاقةُ إحصاءٍ وحيدة لا تتمدّد بعرض الصفّ: رقمٌ واحد بعرض الشاشة يُقرأ
+   عنواناً لا قيمة. */
+.hr-one{ grid-template-columns:minmax(200px, 340px) }
+.hr-subhead{
+  margin:0; font-size:var(--font-size-card-title); font-weight:var(--font-weight-bold);
+}
+.hr-payslip__lang{
+  display:inline-flex; align-items:center; gap:var(--space-6);
+  font-size:var(--font-size-3xs); color:var(--color-text-subtle);
+}
+
+/* ═══════════════════════════════════════════ ٩ · شريط شاشات القسم */
+.hr-tabs{
+  display:flex; gap:var(--space-6); flex-wrap:wrap;
+  padding:var(--space-6);
+  border:var(--border-width) solid var(--edge-line);
+  border-radius:var(--radius-panel);
+  background:var(--color-surface-sunken);
+}
+.hr-tab{
+  padding:var(--space-6) var(--space-12);
+  border-radius:var(--radius-control);
+  color:var(--color-text-muted); text-decoration:none;
+  font-size:var(--font-size-sm); font-weight:var(--font-weight-semibold);
+  transition:color var(--motion-swift) var(--ease-enter),
+             background-color var(--motion-swift) var(--ease-enter);
+}
+.hr-tab:hover{ color:var(--color-text); background:var(--color-surface-raised) }
+.hr-tab:focus-visible{ outline:2px solid var(--color-focus); outline-offset:2px }
+.hr-tab[aria-current="page"]{
+  color:var(--on-brand); background:var(--section-hr);
+}

@@ -1,6 +1,8 @@
 using Babel.Contracts.Capture;
+using Babel.Contracts.Voice;
 using Babel.Purchasing.Application;
 using Babel.Purchasing.Surface;
+using Babel.Purchasing.Voice;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Babel.Purchasing;
@@ -46,6 +48,12 @@ public static class PurchasingModuleRegistration
         services.AddScoped<PurchasingCapturedInvoiceReceiver>();
         services.AddScoped<ICapturedInvoiceReceiver>(
             static provider => provider.GetRequiredService<PurchasingCapturedInvoiceReceiver>());
+
+        // ‏**النيّات المنطوقة تُسجَّل من هنا، لا من مشروع الذكاء.**
+        // الوحدة تُعلن ما تُنطَق به، ووحدةُ الذكاء تجمع ما وجدته في الحاوية عبر
+        // ‏<c>IVoiceIntentCatalogue</c> في العقد. ولا تعرف إحداهما الأخرى في أي اتجاه —
+        // وهو ما تفرضه القاعدة 3، وما يجعل إضافة نيّةٍ لا تمسّ مشروع الذكاء بسطر.
+        services.AddSingleton<IVoiceIntentCatalogue, PurchasingVoiceIntents>();
 
         return services;
     }

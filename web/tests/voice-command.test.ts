@@ -1,0 +1,262 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   قارئ الأمر المنطوق في المتصفّح — يقرأ **نفس** ملفّ المتجهات الذي يقرؤه نظيره
+   في الخادم. تنفيذان بملفَّي متجهات ينحرفان، ولا يُكتشف الانحراف إلا على شاشة
+   صاحب المصلحة (ADR-0030 خامساً).
+   ═══════════════════════════════════════════════════════════════════════════ */
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { describe, expect, it } from "vitest";
+import {
+  authorise,
+  isSpokenCancellation,
+  isSpokenConfirmation,
+  maskPersonal,
+  disclosureFault,
+  readCommand,
+  CONFIRM_CALL_AR,
+  type VoiceCaller,
+} from "../src/voice/command";
+import { VOICE_INTENTS, VOICE_SECTIONS, intentById } from "../src/voice/catalogue";
+
+/* المسار من جذر المستودع لا من ملفّ الاختبار: vitest يشغّل من web/. */
+const VECTORS_PATH = path.resolve(
+  process.cwd(),
+  "../tests/Babel.Ai.Tests/golden/voice-intents.v1.json"
+);
+
+interface Vectors {
+  today: string;
+  statutoryTaxRate: string;
+  companyNameAr: string;
+  intents: {
+    id: string;
+    section: string;
+    kind: string;
+    status: string;
+    ledgerEffect: string;
+    eventCode: string | null;
+    requiresConfirmation: boolean;
+    readsPersonalData: boolean;
+    nameAr: string;
+    phrases: string[];
+    slots: { name: string; kind: string; nameAr: string; required: boolean; cues: string[]; choices: string[] }[];
+  }[];
+  utterances: { transcript: string; intent: string; slots: Record<string, string>; units?: Record<string, string> }[];
+  missing: { transcript: string; intent: string; missing: string[]; faults?: string[] }[];
+  refusals: { transcript: string; code: string }[];
+}
+
+const vectors: Vectors = JSON.parse(readFileSync(VECTORS_PATH, "utf8"));
+const options = { today: vectors.today, statutoryTaxRate: vectors.statutoryTaxRate };
+
+const caller: VoiceCaller = {
+  companyId: "0d0e2b7a-9c1f-4a55-9d2e-6f8a1b3c5d70",
+  companyNameAr: vectors.companyNameAr,
+  permittedIntentIds: VOICE_INTENTS.map((intent) => intent.id),
+};
+
+describe("سجلّ النيّات في المتصفّح", () => {
+  it("مجموعة المتجهات ليست ضامرة", () => {
+    /* حارس لا فراغ: ملفٌّ فارغ يجعل كل ما تحته يمرّ بلا أن يقرأ شيئاً. */
+    expect(vectors.intents.length).toBeGreaterThanOrEqual(18);
+    expect(vectors.utterances.length).toBeGreaterThanOrEqual(18);
+    expect(vectors.missing.length).toBeGreaterThanOrEqual(18);
+    expect(vectors.refusals.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("مرآة المتصفّح تطابق سجلّ الخادم نيّةً نيّة", () => {
+    expect(VOICE_INTENTS.map((i) => i.id)).toEqual(vectors.intents.map((i) => i.id));
+
+    for (const declared of vectors.intents) {
+      const mirrored = intentById(declared.id);
+      expect(mirrored, declared.id).not.toBeNull();
+      expect(mirrored).toEqual(declared);
+    }
+  });
+
+  it("الأقسام الخمسة كلّها مسكونة، ولكلٍّ ثلاثُ نيّاتٍ إلى ستّ", () => {
+    expect(VOICE_SECTIONS).toHaveLength(5);
+    for (const section of VOICE_SECTIONS) {
+      const count = VOICE_INTENTS.filter((intent) => intent.section === section.id).length;
+      expect(count, section.id).toBeGreaterThanOrEqual(3);
+      expect(count, section.id).toBeLessThanOrEqual(6);
+    }
+  });
+
+  it("كل نيّة تُغيّر الحال تطلب تأكيداً، ولا استعلام يطلبه", () => {
+    let changing = 0;
+    for (const intent of VOICE_INTENTS) {
+      if (intent.kind === "StateChange") {
+        changing++;
+        expect(intent.requiresConfirmation, intent.id).toBe(true);
+      } else {
+        expect(intent.requiresConfirmation, intent.id).toBe(false);
+      }
+    }
+    expect(changing).toBeGreaterThanOrEqual(12);
+  });
+});
+
+describe("القراءة الحتمية", () => {
+  it.each(vectors.utterances.map((v) => [v.transcript, v.intent] as const))(
+    "«%s» ← %s",
+    (transcript, intentId) => {
+      const vector = vectors.utterances.find((v) => v.transcript === transcript)!;
+      const read = readCommand(transcript, options);
+      expect(read.ok, transcript).toBe(true);
+      if (!read.ok) return;
+
+      expect(read.resolution.intent.id).toBe(intentId);
+      expect(read.resolution.missingSlots).toEqual([]);
+
+      for (const [name, expected] of Object.entries(vector.slots)) {
+        const value = read.resolution.slots.find((s) => s.name === name);
+        expect(value, name + " في «" + transcript + "»").toBeDefined();
+        expect(value!.text, name).toBe(expected);
+      }
+      for (const [name, unit] of Object.entries(vector.units ?? {})) {
+        expect(read.resolution.slots.find((s) => s.name === name)!.unit, name).toBe(unit);
+      }
+    }
+  );
+
+  it.each(vectors.missing.map((v) => [v.transcript, v.missing.join(",")] as const))(
+    "«%s» ينقصها %s",
+    (transcript) => {
+      const vector = vectors.missing.find((v) => v.transcript === transcript)!;
+      const read = readCommand(transcript, options);
+      expect(read.ok, transcript).toBe(true);
+      if (!read.ok) return;
+
+      expect([...read.resolution.missingSlots].sort()).toEqual([...vector.missing].sort());
+      for (const name of vector.missing) {
+        expect(read.resolution.slots.find((s) => s.name === name)).toBeUndefined();
+      }
+      for (const code of vector.faults ?? []) {
+        expect(read.resolution.faults).toContain(code);
+      }
+    }
+  );
+
+  it.each(vectors.refusals.map((v) => [v.transcript, v.code] as const))(
+    "يرفض «%s» برمز %s",
+    (transcript, code) => {
+      const read = readCommand(transcript, options);
+      expect(read.ok).toBe(false);
+      if (read.ok) return;
+      expect(read.codes).toContain(code);
+    }
+  );
+
+  it("جملة تطابق نيّتين تُرفض ولا يُختار أحدهما بالقرعة", () => {
+    const read = readCommand("سجل سند قبض وسجل سند صرف", options);
+    expect(read.ok).toBe(false);
+    if (!read.ok) expect(read.codes).toContain("ai.voice.intent_ambiguous");
+  });
+
+  it("بلا حقن تاريخ اليوم لا يُملأ حقل تاريخ إطلاقاً", () => {
+    const read = readCommand("سجل سند قبض من العميل مؤسسة الرياض بمبلغ ألف ريال نقد", {});
+    expect(read.ok).toBe(true);
+    if (!read.ok) return;
+    expect(read.resolution.missingSlots).toContain("receivedOn");
+  });
+});
+
+describe("البوابة في المتصفّح", () => {
+  const changing = vectors.utterances.filter((v) => {
+    const intent = intentById(v.intent)!;
+    return intent.kind === "StateChange" && intent.status === "Published";
+  });
+
+  it("قائمة العمليات المُغيِّرة ليست ضامرة", () => {
+    expect(changing.length).toBeGreaterThanOrEqual(11);
+  });
+
+  it.each(changing.map((v) => [v.transcript, v.intent] as const))(
+    "«%s» لا تمرّ بلا تأكيد",
+    (transcript) => {
+      const read = readCommand(transcript, options);
+      expect(read.ok).toBe(true);
+      if (!read.ok) return;
+
+      const refused = authorise(read.resolution, caller, null);
+      expect(refused.ok).toBe(false);
+      if (!refused.ok) expect(refused.codes).toContain("ai.voice.confirmation_required");
+
+      /* والملخّص يدعو إلى التأكيد نصّاً — يُقرأ ويُعرض معاً. */
+      expect(read.resolution.readbackAr).toContain(CONFIRM_CALL_AR);
+
+      const allowed = authorise(read.resolution, caller, read.resolution.confirmationToken);
+      expect(allowed.ok, transcript).toBe(true);
+      if (allowed.ok) expect(allowed.dispatch.confirmedByHuman).toBe(true);
+
+      const stale = authorise(read.resolution, caller, read.resolution.confirmationToken + "|تغيّر");
+      expect(stale.ok).toBe(false);
+      if (!stale.ok) expect(stale.codes).toContain("ai.voice.confirmation_mismatch");
+    }
+  );
+
+  it("ما لا يملكه المتكلّم يُرفض قبل كل شيء", () => {
+    const read = readCommand("كم رصيد العميل مؤسسة الرياض", options);
+    expect(read.ok).toBe(true);
+    if (!read.ok) return;
+    const refused = authorise(read.resolution, { ...caller, permittedIntentIds: [] }, null);
+    expect(refused.ok).toBe(false);
+    if (!refused.ok) expect(refused.codes).toEqual(["ai.voice.not_permitted"]);
+  });
+
+  it("شركة منطوقة غير المفتوحة تُرفض ولا يُنتقَل إليها داخل أمر آخر", () => {
+    const read = readCommand(
+      "سجل سند قبض من العميل مؤسسة الرياض بمبلغ ألف ريال نقد اليوم في شركة الفروع",
+      options
+    );
+    expect(read.ok).toBe(true);
+    if (!read.ok) return;
+    expect(read.resolution.spokenCompany).toBe("الفروع");
+    const refused = authorise(read.resolution, caller, read.resolution.confirmationToken);
+    expect(refused.ok).toBe(false);
+    if (!refused.ok) expect(refused.codes).toContain("ai.voice.company_not_switched");
+  });
+
+  it("النيّة التي تنتظر قرار المالك تُفهَم ولا تُنفَّذ ولو اكتملت وأُكِّدت", () => {
+    const read = readCommand(
+      "تسكين القطع الصنف اسمنت كمية خمسة أكياس المستودع الرئيسي من الرف واحد الى الرف اثنين",
+      options
+    );
+    expect(read.ok).toBe(true);
+    if (!read.ok) return;
+    expect(read.resolution.missingSlots).toEqual([]);
+    const refused = authorise(read.resolution, caller, read.resolution.confirmationToken);
+    expect(refused.ok).toBe(false);
+    if (!refused.ok) expect(refused.codes).toEqual(["ai.voice.owner_decision_pending"]);
+  });
+
+  it("كلمة التأكيد المنطوقة مغلقة ولا تُقارَب بأقرب شبيه", () => {
+    expect(isSpokenConfirmation("تأكيد")).toBe(true);
+    expect(isSpokenConfirmation("تمام اعتمد")).toBe(true);
+    expect(isSpokenConfirmation("تقريباً")).toBe(false);
+    expect(isSpokenCancellation("إلغاء")).toBe(true);
+    expect(isSpokenCancellation("تأكيد")).toBe(false);
+  });
+});
+
+describe("حارس الإفشاء في المتصفّح", () => {
+  it("القناع هو قناع الموارد البشرية نفسه", () => {
+    expect(maskPersonal("1092837465")).toBe("••••7465");
+    expect(maskPersonal("SA0380000000608010167519")).toBe("••••7519");
+    expect(maskPersonal("123")).toBe("••••");
+    expect(maskPersonal(null)).toBe("••••");
+  });
+
+  it("نصّ يحمل هويةً أو آيباناً كاملاً يُرفض نُطقُه، والمُقنَّع يمرّ", () => {
+    expect(disclosureFault("الهوية 1092837465")).toBe("ai.voice.masked_read_required");
+    expect(disclosureFault("الآيبان SA0380000000608010167519")).toBe("ai.voice.masked_read_required");
+    expect(disclosureFault("الهوية ••••7465 والآيبان ••••7519")).toBeNull();
+  });
+
+  it("قراءة تُنتج ملخصاً يحمل هويةً غير مقنّعة تُرفض قبل أن تعود", () => {
+    const read = readCommand("حالة الوحدة 1092837465", options);
+    expect(read.ok).toBe(false);
+    if (!read.ok) expect(read.codes).toContain("ai.voice.masked_read_required");
+  });
+});

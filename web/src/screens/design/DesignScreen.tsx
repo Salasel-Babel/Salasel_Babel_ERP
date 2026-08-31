@@ -25,6 +25,8 @@ import {
   ProgressBar,
   PeriodBand,
   ProvenanceMark,
+  QuantityValue,
+  RateValue,
   RefusalPanel,
   StatCard,
   StatusBadge,
@@ -44,6 +46,7 @@ import {
   MOTIONS,
   PALETTE,
   PROVENANCES,
+  QUANTITY_SAMPLES,
   type MotionEntry,
 } from "./catalogue";
 import {
@@ -320,8 +323,56 @@ function PrimitivesSection(): ReactNode {
           next={t("screen.design.refusal.next")}
           moment={refuseCls}
           testId="refusal-panel"
-        />
+        >
+          {/* الرفض الذي يُعدِّد بنوداً مُسمّاة يُريها كلّها — لا يجمعها في سطر. */}
+          <ol className="refusal-items">
+            <li className="refusal-item">
+              <code className="mono refusal-item__code" dir="ltr">
+                {"ledger.posting.rate_not_approved"}
+              </code>
+              <span className="refusal-item__ar">{t("screen.design.refusal.item")}</span>
+            </li>
+          </ol>
+        </RefusalPanel>
       </div>
+
+      <Panel title={t("screen.design.prim.measure")} note={t("screen.design.prim.measureNote")} testId="design-measure">
+        <div className="kv kv--split">
+          <span className="kv__k">{t("screen.design.prim.quantity")}</span>
+          <span className="kv__v n">
+            {/* سياسة «كما وصل»: ستّ خانات تبقى كما نشرها الخادم. */}
+            <QuantityValue magnitude="1284.500000" unit="M3" scale="wire" testId="design-quantity" />
+          </span>
+        </div>
+        <div className="kv kv--split">
+          <span className="kv__k">{t("screen.design.prim.rate")}</span>
+          <span className="kv__v n">
+            <RateValue rate="0.10" testId="design-rate" />
+          </span>
+        </div>
+        <p className="muted">{t("screen.design.prim.rateNote")}</p>
+      </Panel>
+
+      <Panel
+        title={t("inventory.design.quantity")}
+        note={t("inventory.design.quantityNote")}
+        testId="section-quantity"
+      >
+        <div className="stack">
+          {QUANTITY_SAMPLES.map((sample) => (
+            <div className="kv kv--split" key={sample.key}>
+              <span className="kv__k">{t(sample.labelKey)}</span>
+              <span className="kv__v">
+                <QuantityValue
+                  magnitude={sample.magnitude}
+                  unit={sample.unit}
+                  testId={"quantity-" + sample.key}
+                />
+              </span>
+            </div>
+          ))}
+        </div>
+      </Panel>
 
       <Panel title={t("screen.design.prim.empty")} note={t("screen.design.prim.emptyNote")}>
         <EmptyState

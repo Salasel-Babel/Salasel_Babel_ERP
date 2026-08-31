@@ -182,6 +182,7 @@ jobs:
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           BABEL_LEDGER_APP_PASSWORD: ${{ secrets.BABEL_LEDGER_APP_PASSWORD }}
           BABEL_DEMO_TOKEN_SHA256: ${{ secrets.BABEL_DEMO_TOKEN_SHA256 }}
+          BABEL_STORAGE_TICKET_KEY: ${{ secrets.BABEL_STORAGE_TICKET_KEY }}
           BABEL_SITE: ${{ secrets.BABEL_SITE }}
           BABEL_TLS_MODE: ${{ vars.BABEL_TLS_MODE || 'auto' }}
           BABEL_TLS_EMAIL: ${{ secrets.BABEL_TLS_EMAIL }}
@@ -191,7 +192,8 @@ jobs:
           set -euo pipefail
 
           missing=""
-          for name in POSTGRES_PASSWORD BABEL_LEDGER_APP_PASSWORD BABEL_DEMO_TOKEN_SHA256 BABEL_SITE; do
+          for name in POSTGRES_PASSWORD BABEL_LEDGER_APP_PASSWORD BABEL_DEMO_TOKEN_SHA256 \
+                      BABEL_STORAGE_TICKET_KEY BABEL_SITE; do
             if [ -z "${!name:-}" ]; then missing="$missing $name"; fi
           done
           if [ -n "$missing" ]; then
@@ -213,6 +215,18 @@ jobs:
             exit 1
           fi
 
+          # ‏**والمفتاح يُفحص شكلاً هنا لا على الخادم.** `Convert.FromHexString` يرمي
+          # على محرفٍ غير سداسي وعلى طولٍ فردي، و`SignedAttachmentTickets` يرفض ما
+          # دون 32 بايتاً — والثلاثة تقع **بعد** أن تُسحب الصور وتُقام الحاويات، فيُقرأ
+          # الفشل «الخادم لا يقلع» لا «المفتاح شكله خاطئ». والزوج `([0-9a-f]{2})` يقيس
+          # البايت لا المحرف، فالطول الفردي مرفوض بحكم النمط نفسه.
+          if ! printf '%s' "$BABEL_STORAGE_TICKET_KEY" | grep -qE '^([0-9a-f]{2}){32,}$'; then
+            echo "::error::‏BABEL_STORAGE_TICKET_KEY ليس مفتاحاً سداسياً صغيراً بـ32 بايتاً فأكثر (64 محرفاً فأكثر، وعددها زوجي)."
+            echo "::error::ولّده هكذا: head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \\n'"
+            echo "::error::ولا يُولَّد على الخادم ولا عند الإقلاع: مفتاحٌ يتغيّر يُبطل كل تذكرة سابقة، والفشل يُقرأ «انتهت الصلاحية» لا «لا مفتاح» (ADR-0046)."
+            exit 1
+          fi
+
           {
             echo "BABEL_REGISTRY=$REGISTRY"
             echo "BABEL_IMAGE_TAG=$TAG"
@@ -220,6 +234,7 @@ jobs:
             echo "BABEL_LEDGER_APP_PASSWORD=$BABEL_LEDGER_APP_PASSWORD"
             echo "BABEL_LEDGER_APP_ROLE=babel_ledger_app"
             echo "BABEL_DEMO_TOKEN_SHA256=$BABEL_DEMO_TOKEN_SHA256"
+            echo "BABEL_STORAGE_TICKET_KEY=$BABEL_STORAGE_TICKET_KEY"
             echo "BABEL_SITE=$BABEL_SITE"
             echo "BABEL_TLS_MODE=$BABEL_TLS_MODE"
             echo "BABEL_TLS_EMAIL=$BABEL_TLS_EMAIL"

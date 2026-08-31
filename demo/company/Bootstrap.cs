@@ -52,11 +52,18 @@ internal static class Bootstrap
 
         Say.Detail("دور التطبيق: " + settings.Ledger.AppRole + " (غير مالك، وغير superuser)");
 
-        foreach (string database in new[]
-                 {
-                     settings.LedgerDatabase, settings.SalesDatabase, settings.PurchasingDatabase,
-                     settings.InventoryDatabase, settings.CoreDatabase, settings.RealEstateDatabase,
-                 })
+        // ‏**والقائمة تُقرأ من موضع واحد** (<see cref="ModuleProvisioning"/>) لا تُعاد
+        // كتابتها هنا: قاعدةٌ تُنسى في هذه الحلقة لا تُفشل شيئاً — يقلع الخادم ويفشل
+        // أول نداءٍ يبلغ وحدتها بـ«Connection refused»، وهي رسالةٌ تُقرأ عطلَ شبكةٍ في
+        // قاعدة البيانات لا إعداداً ناقصاً، فتُرسل من يبحث إلى المكان الخطأ.
+        IEnumerable<string> databases =
+        [
+            settings.LedgerDatabase,
+            settings.CoreDatabase,
+            .. ModuleProvisioning.Of(settings).Select(static module => module.Database),
+        ];
+
+        foreach (string database in databases)
         {
             await EnsureDatabaseAsync(admin, database, cancellationToken).ConfigureAwait(false);
             await ExecAsync(

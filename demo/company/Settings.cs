@@ -1,10 +1,13 @@
 using System.Globalization;
 using Babel.Core;
+using Babel.Hr;
 using Babel.Ledger;
 using Babel.Inventory;
+using Babel.Projects;
 using Babel.Purchasing;
 using Babel.RealEstate;
 using Babel.Sales;
+using Babel.Storage;
 using Npgsql;
 
 namespace BabelDemoCompany;
@@ -31,6 +34,9 @@ internal sealed class Settings
         PurchasingOptions purchasingOwner,
         InventoryOptions inventoryOwner,
         RealEstateOptions realEstateOwner,
+        ProjectsOptions projectsOwner,
+        HrOptions hrOwner,
+        StorageOptions storageOwner,
         Guid company,
         int fiscalYear)
     {
@@ -41,6 +47,9 @@ internal sealed class Settings
         PurchasingOwner = purchasingOwner;
         InventoryOwner = inventoryOwner;
         RealEstateOwner = realEstateOwner;
+        ProjectsOwner = projectsOwner;
+        HrOwner = hrOwner;
+        StorageOwner = storageOwner;
         Company = company;
         FiscalYear = fiscalYear;
     }
@@ -81,6 +90,18 @@ internal sealed class Settings
     /// </summary>
     public RealEstateOptions RealEstateOwner { get; }
 
+    /// <summary>اتصال <b>مالك</b> قاعدة المقاولات — للنشر وحده.</summary>
+    public ProjectsOptions ProjectsOwner { get; }
+
+    /// <summary>اتصال <b>مالك</b> قاعدة الموارد البشرية — للنشر وحده.</summary>
+    public HrOptions HrOwner { get; }
+
+    /// <summary>
+    /// إعدادات مخزن المرفقات بدور المالك — ومعها <b>اسم دور التطبيق</b>، لأن
+    /// <c>StorageGrants.sql</c> يقرؤه من إعداد الجلسة ولا يُثبَّت اسم بيئة في نصّ نشر.
+    /// </summary>
+    public StorageOptions StorageOwner { get; }
+
     /// <summary>معرّف الشركة/المستأجر التجريبي.</summary>
     public Guid Company { get; }
 
@@ -104,6 +125,15 @@ internal sealed class Settings
 
     /// <summary>اسم قاعدة العقارات.</summary>
     public string RealEstateDatabase => DatabaseOf(RealEstateOwner.ConnectionString);
+
+    /// <summary>اسم قاعدة المقاولات.</summary>
+    public string ProjectsDatabase => DatabaseOf(ProjectsOwner.ConnectionString);
+
+    /// <summary>اسم قاعدة الموارد البشرية.</summary>
+    public string HrDatabase => DatabaseOf(HrOwner.ConnectionString);
+
+    /// <summary>اسم قاعدة المرفقات.</summary>
+    public string StorageDatabase => DatabaseOf(StorageOwner.OwnerConnectionString);
 
     /// <summary>يقرأ الإعدادات من البيئة.</summary>
     public static Settings FromEnvironment()
@@ -129,6 +159,18 @@ internal sealed class Settings
         string realEstateOwner = Env("BABEL_REALESTATE_OWNER_DB")
             ?? "Host=127.0.0.1;Port=5432;Database=babel_realestate;Username=postgres;Include Error Detail=true";
 
+        string projectsOwner = Env("BABEL_PROJECTS_OWNER_DB")
+            ?? "Host=127.0.0.1;Port=5432;Database=babel_projects;Username=postgres;Include Error Detail=true";
+
+        // ‏**ولا ارتداد إلى `BABEL_HR_DB` هنا** رغم أن `HrOptions` تقرؤه افتراضياً:
+        // ذلك اتصال **الخادم** بدور التطبيق، وهذه الأداة تنشر بدور المالك. والارتداد
+        // إليه كان يجعل حاويةً تحمل الاثنين تحاول نشر مخطّطٍ بدورٍ لا يملك DDL.
+        string hrOwner = Env("BABEL_HR_OWNER_DB")
+            ?? "Host=127.0.0.1;Port=5432;Database=babel_hr;Username=postgres;Include Error Detail=true";
+
+        string storageOwner = Env("BABEL_STORAGE_OWNER_DB")
+            ?? $"Host=127.0.0.1;Port=5432;Database={StorageOptions.DefaultDatabase};Username=postgres;Include Error Detail=true";
+
         string coreOwner = Env("BABEL_CORE_OWNER_DB")
             ?? $"Host=127.0.0.1;Port=5432;Database={CoreOptions.DefaultDatabase};Username=postgres;Include Error Detail=true";
 
@@ -150,6 +192,9 @@ internal sealed class Settings
             new PurchasingOptions { ConnectionString = purchasingOwner, CompanyCurrency = ledger.CompanyCurrency },
             new InventoryOptions { ConnectionString = inventoryOwner, CompanyCurrency = ledger.CompanyCurrency },
             new RealEstateOptions { ConnectionString = realEstateOwner, CompanyCurrency = ledger.CompanyCurrency },
+            new ProjectsOptions { ConnectionString = projectsOwner, CompanyCurrency = ledger.CompanyCurrency },
+            new HrOptions { ConnectionString = hrOwner, CompanyCurrency = ledger.CompanyCurrency },
+            new StorageOptions { OwnerConnectionString = storageOwner, AppRole = ledger.AppRole },
             Guid.TryParseExact(Env("BABEL_DEMO_COMPANY_ID"), "D", out Guid company)
                 ? company
                 : new Guid("d3305e1e-0000-4000-8000-000000000001"),

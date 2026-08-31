@@ -2,10 +2,6 @@ using System.Globalization;
 using Babel.Canonicalization;
 using Babel.Core;
 using Babel.Ledger;
-using Babel.Inventory;
-using Babel.Purchasing;
-using Babel.RealEstate;
-using Babel.Sales;
 using Npgsql;
 
 namespace BabelDemoCompany;
@@ -51,31 +47,27 @@ internal static class Schema
         await LedgerSchema.DeployAsync(settings.Ledger, cancellationToken).ConfigureAwait(false);
         Say.Detail("الدفتر: هجرات + مشغّلات + دالّة الترحيل + الصلاحيات → " + settings.LedgerDatabase);
 
-        await SalesSchemaDeployer.DeployAsync(settings.SalesOwner, cancellationToken).ConfigureAwait(false);
-        Say.Detail("المبيعات → " + settings.SalesDatabase);
+        // ── وحدات المنتج: نشرٌ ثم منح، من القائمة الواحدة ────────────────────
+        // ‏**والنشر والمنح متلازمان في دورةٍ واحدة عمداً**: مخطّطٌ يُنشر بلا منح يترك
+        // الخادم يتّصل بقاعدة موجودة ويُرفض عند أول `select` بـ42501، وهو عطلٌ يُقرأ
+        // «صلاحيات» لا «تزويد ناقص». فالخطوتان لا تفترقان.
+        foreach (ModuleDatabase module in ModuleProvisioning.Of(settings))
+        {
+            await module.Deploy(cancellationToken).ConfigureAwait(false);
+            Say.Detail(module.Label + " → " + module.Database);
 
-        await PurchasingSchemaDeployer.DeployAsync(settings.PurchasingOwner, cancellationToken).ConfigureAwait(false);
-        Say.Detail("المشتريات → " + settings.PurchasingDatabase);
+            if (module.Schema is null)
+            {
+                Say.Detail("صلاحيات «" + module.Database + "» يمنحها ناشرها بنفسه — وهي أضيق من حقوق الدفتر المساعد");
+                continue;
+            }
 
-        await InventorySchemaDeployer.DeployAsync(settings.InventoryOwner, cancellationToken).ConfigureAwait(false);
-        Say.Detail("المخزون → " + settings.InventoryDatabase);
+            await GrantSubledgerAsync(module.OwnerConnectionString, module.Schema, settings.Ledger.AppRole, cancellationToken)
+                .ConfigureAwait(false);
+        }
 
-        // العقارات: مخطّطٌ + هجرةٌ تبني قيد استبعاد زمنياً فوق btree_gist المُتحقَّق منه أعلاه.
-        await RealEstateSchemaDeployer.DeployAsync(settings.RealEstateOwner, cancellationToken).ConfigureAwait(false);
-        Say.Detail("العقارات → " + settings.RealEstateDatabase);
+        // وقيد الاستبعاد الزمني يُقرأ من **القاعدة المنشورة** لا من ملفّ في المستودع.
         await RealEstateExtension.AssertConstraintAsync(settings, cancellationToken).ConfigureAwait(false);
-
-        await GrantSubledgerAsync(settings.SalesOwner.ConnectionString, "sales", settings.Ledger.AppRole, cancellationToken)
-            .ConfigureAwait(false);
-        await GrantSubledgerAsync(
-                settings.PurchasingOwner.ConnectionString, "purchasing", settings.Ledger.AppRole, cancellationToken)
-            .ConfigureAwait(false);
-        await GrantSubledgerAsync(
-                settings.InventoryOwner.ConnectionString, "inventory", settings.Ledger.AppRole, cancellationToken)
-            .ConfigureAwait(false);
-        await GrantSubledgerAsync(
-                settings.RealEstateOwner.ConnectionString, "realestate", settings.Ledger.AppRole, cancellationToken)
-            .ConfigureAwait(false);
 
         await SeedReferenceAsync(settings, cancellationToken).ConfigureAwait(false);
     }

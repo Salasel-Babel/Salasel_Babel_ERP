@@ -1,0 +1,146 @@
+‏شاهدٌ موجب لفحص الأسرار — لا سرَّ واحد في هذا الملف
+=====================================================
+
+‏هذا الملف **جزء من الحارس، لا مخالفة له**. غرضه واحد: أن يُثبت أن فحص الأسرار في
+‏`.github/workflows/ci.yml` ما زال **قادراً على الالتقاط**. فحارسٌ لا يجد شيئاً ولم
+‏يُثبَت أنه ينطق لا يُفرَّق عن حارسٍ معطَّل — و«لم يجد شيئاً» عندها ليست نتيجةً بل صمت.
+
+‏كل سطر أدناه يطابق نمطاً واحداً على الأقل من `tools/secret-scan/patterns.txt`،
+‏و`tools/secret-scan/run.sh` يبدأ بمطابقة **كل** نمط على هذا الملف: إن سقط نمطٌ واحد
+‏عن المطابقة — أو حُذف هذا الملف — فالبناء **أحمر**، قبل أن يُمسح المستودع أصلاً.
+
+‏ولماذا هذا آمن:
+
+1. ‏**المفاتيح الخاصة أدناه وُلِّدت لهذا الملف وحده** (‏`openssl genpkey` /‏ `genrsa` /
+   ‏`ecparam`)، ولم تُثبَّت في أي `authorized_keys` ولا خادم ولا خدمة، ولا يوجد في
+   ‏الدنيا طرفٌ ثانٍ يقبلها. مفتاحٌ خاصّ بلا طرف يقبله ليس اعتماداً بل بايتات.
+2. ‏**والرموز المُصطنعة قيمٌ محجوزة أو ظاهرة الاصطناع**: معرّفُ AWS أدناه هو
+   ‏المثال المنشور في وثائق AWS نفسها، وما عداه أجسامٌ مكتوبة `EXAMPLE…` تسقط في أول
+   ‏تحقّق من مجموع تدقيق المزوّد.
+3. ‏**ولا يحمل سطرٌ هنا وسم الاستثناء** المذكور في `patterns.txt`. لو حمله لصار الشاهد
+   ‏عاجزاً عن الشهادة: الوسم يُخرج السطر من المسح الحقيقي، فيُخرجه من الاختبار الذاتي معه.
+
+‏والمسح الحقيقي يستثني هذا الملف **بمساره كاملاً وحده** — لا بنمط دليل. استثناءُ دليلٍ
+‏كامل هو ما جعل `docs/**` و`spikes/**` بقعتين عمياوين، وهو ما أُزيل.
+
+-----------------------------------------------------------------------
+‏١ · مفتاح OpenSSH خاص (‏ed25519) — مُولَّد لهذا الملف، غير مُثبَّت في أي مكان
+-----------------------------------------------------------------------
+-----BEGIN OPENSSH PRIVATE KEY-----
+b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW
+QyNTUxOQAAACD6A9WgTi60QSh8a0c6Gqkiv1MIOYe9fOlXdQeSWPuD6QAAAKhEZ0LoRGdC
+6AAAAAtzc2gtZWQyNTUxOQAAACD6A9WgTi60QSh8a0c6Gqkiv1MIOYe9fOlXdQeSWPuD6Q
+AAAEDd7ioJ512zGIT9uwdRhQ7nUu+dCzUAyXY61ncJ2plgI/oD1aBOLrRBKHxrRzoaqSK/
+Uwg5h7186Vd1B5JY+4PpAAAAImJhYmVsLXNlY3JldC1zY2FuLXBvc2l0aXZlLWNvbnRyb2
+wBAgM=
+-----END OPENSSH PRIVATE KEY-----
+
+-----------------------------------------------------------------------
+‏٢ · مفتاح RSA خاص بالشكل التقليدي (‏PKCS#1)
+-----------------------------------------------------------------------
+-----BEGIN RSA PRIVATE KEY-----
+MIIEpAIBAAKCAQEAxPmD+KTStGFsjgoPOSADtorWl+c2B09+G2N7gtSfDIaSmUYy
+D/48Fwl228bHCoElCYcNPXFF1jOqNxKlvJtBa17CMsSInu6mMpHqAb1B0tlPH3c0
+83rHDpuuDhX/AKDa9hKtE/NAvYx6vXeeavnCzPGjKRHlvcVzYmq6duOLXrXWze2a
+XMp4+s5C2GelMGrWomKYsusrE2C2lQ0cY508GpAxpWHwBFkIpiOms/QcrkXKx51U
+dgbpow4Gyv9K2uRUe2aO0fOeC3Zj5A6CdN4ZnbaApBmqAXcnO5wnYnUqWpyV78RT
+2jAwObG4CZUgd50b9InWpxvUXZ5sZiu4fDf6swIDAQABAoIBAB3I9THGCq6IBNg9
+oSusMaOKvwRdTAgy9wjBNE4GRL6qIsTWnn9YnFGHdteo6TQnbyhPqare1Aad7WFC
+iplIiM3pmEgA+/+8apk/AzmcGrX9cj950SH4MN1+oQU0QkkgCbwn+tAHeoSvF2hL
+DEN03QYMi/WL5Uea8eWx6dxMcCiz5oXz+zXcObUCMBT7O//BNaK/SlDEsH+dA1rl
+sLo9jPI5ms+yHg59YzM25O5X6z4u+YuLR8g8SZMbsE50NShEnRVQh/UuKYJxwfVI
+f1orV9sOnO3+RTJ41/SZpzBVHyR9fTLjkQ6ZmFqzwYdDQwLSoSq1woLT0KBCGRLU
+gu3delECgYEA5nZno33IA8U+BFyC7j7w4Je+7/UYE4JBZgWg6IGT8AXS0/ldV19B
+dR+N1I/jy2Frl4xaKt5KMO+g3gOWsKDyYrkHwAC9jNNvXjsZAkvue3I84Qt9XeO3
+t6DK0loI21wf1s2wWJ/9lnShhyi6TuT1u60C9+8NyAeqKc12Ms/XlScCgYEA2s0m
+xHNAQqYk6GFAf3svHUGjegjrZL8d5Qw34C/92TxNBPsyRkZ0ybTtIYSaiDeqAPK0
+EV/VeVLU+CiTwLRYaazweGOgbXoS/3wnV0aS4OkgCWPu08TvREWvFW8Fj3tlm9YP
+IFGIi+p3QbHe8dx+C1v2VNyS12CUE8OaCuhZXZUCgYEA33byOVJObnGEGACIKHG5
+aV1alBwos0n7FezhQHHcu8E507aZLo47z1DAWtsG+39EL1e1WpnegKLqbjw2kqAN
+R3K4tBFDutiNxWYycsqjvOlhZKmabz7ONmzgHaWVrvYeHU+m7dh8sLX4pjD0rmlO
+aSNynGwdBdeAxTXnpY9pL8MCgYEAzZ+67Sg6negyC0lKKgQEVQRYs9kqDzYkzBrd
+cAzqDXvEDghcSPrxypYDvFo4OAfH9rggTau4nRohF05a/OD/reBe5WULYZc1v3BY
+MIcchc3Q08JcshwDmC+8yPHbUepvpTJYaND2+DbS+KRGlxnWQqqcJ0hbn5kd0C0k
+2VdelLkCgYAYMO6mZEzOCHtK+GSuQVUtFPk63IEnXL7cjklhHLfhTdzW/LJUt1a0
+LvaFNEPFDJLoctCfJlrItcT3wyrIaL/+MFr/TluJYJG+j1tP2+OyIQY/H8HQam2c
+F4soT6b2oqVdZMYoFd3bzgYKF7E8zXWIhrVCtV3dqGpfA7p6Wsloyw==
+-----END RSA PRIVATE KEY-----
+
+-----------------------------------------------------------------------
+‏٣ · مفتاح EC خاص (‏prime256v1، شكل SEC1)
+-----------------------------------------------------------------------
+-----BEGIN EC PRIVATE KEY-----
+MHcCAQEEIMxlkxI0RfBaGvJkwumx8O/uIgYGkpLW4nCg3pxyPIyIoAoGCCqGSM49
+AwEHoUQDQgAEw901nOTM0mPl7kviIup+UWzzbKRX5c6Mf7xjJCfSreLLFClPPkEI
+MLsk/WiS7C0XmW2vCIDG0R8qwVexKVXkIA==
+-----END EC PRIVATE KEY-----
+
+-----------------------------------------------------------------------
+‏٤ · مفتاح خاص بشكل PKCS#8 المُعمَّم (‏ed25519)
+-----------------------------------------------------------------------
+-----BEGIN PRIVATE KEY-----
+MC4CAQAwBQYDK2VwBCIEIN3uKgnnXbMYhP27B1GFDudS750LNQDJdjrWdwnamWAj
+-----END PRIVATE KEY-----
+
+-----------------------------------------------------------------------
+‏٥ · كتلة PGP خاصة (‏الغلاف صحيح، والحشو بايتات عشوائية)
+-----------------------------------------------------------------------
+-----BEGIN PGP PRIVATE KEY BLOCK-----
+
+cPP5oyefZQCTFsPSw02y88ZjmLZSO/VdrZ2v9OLrwivYRiGSkQ5DKcw6NaXpPZ1Q
+hE4+zT77smBZWFnyVardI8pbCnOMFCtb6wQ/U7iUI8jsoXCl2MIF2p85+bddqlPM
+MnEsXaw5BjxfrFyfs+lKHnSq4wP6ltaIzyy8RJU+YC0/nUB9JytBZejrAb4z7R1M
+167pAp76ruePsMlvvBtLr2vGxx/a5cwBvBkMJv2W3VTrpFL5
+-----END PGP PRIVATE KEY BLOCK-----
+
+-----------------------------------------------------------------------
+‏٦ · معرّف مفتاح وصول AWS — المثال المنشور في وثائق AWS نفسها
+-----------------------------------------------------------------------
+aws_access_key_id = AKIAIOSFODNN7EXAMPLE
+
+-----------------------------------------------------------------------
+‏٧ · رمز GitHub بالشكل الكلاسيكي — جسمه مكتوب EXAMPLE، ومجموع تدقيقه باطل
+-----------------------------------------------------------------------
+ghp_EXAMPLENOTAREALGITHUBTOKEN0000000000
+
+-----------------------------------------------------------------------
+‏٨ · رمز GitHub دقيق الصلاحيات
+-----------------------------------------------------------------------
+github_pat_EXAMPLE_NOT_A_REAL_FINE_GRAINED_TOKEN_0000000000000000
+
+-----------------------------------------------------------------------
+‏٩ · رمز Slack — **بثلاثة أقسام لا أربعة، عمداً**: حمايةُ الدفع لدى GitHub
+‏     رفضت الشكل الرباعي الكامل (‏GH013 · «Slack API Token»)، وهو رفضٌ صحيح
+‏     من طبقةٍ أخرى. غُيِّر الشكل ولم يُشوَّه — والنمط ما زال يطابقه.
+-----------------------------------------------------------------------
+xoxb-EXAMPLE0000-EXAMPLENOTAREALSLACKTOKEN
+
+-----------------------------------------------------------------------
+‏١٠ · مفتاح Google API
+-----------------------------------------------------------------------
+AIzaSyEXAMPLE_NOT_A_REAL_GOOGLE_API_KEY
+
+-----------------------------------------------------------------------
+‏١١ · رمز JWT بثلاثة أقسام
+-----------------------------------------------------------------------
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJFWEFNUExFIiwibmFtZSI6IkVYQU1QTEUifQ.EXAMPLEnotarealsignature0000
+
+-----------------------------------------------------------------------
+‏١٢ · سلسلة اتصال تحمل كلمة مرور نصّاً — وهي الشكل الذي سرَّب هذا المشروعُ مثيلَه مرّة
+-----------------------------------------------------------------------
+Host=db.example.invalid;Port=5432;Database=babel_ledger;Username=babel_ledger_app;Password=EXAMPLEnotarealpassword
+
+-----------------------------------------------------------------------
+‏١٣ · كلمة مرور نصّية بين علامتَي اقتباس في شيفرة
+-----------------------------------------------------------------------
+var password = "EXAMPLEnotarealpassword";
+
+-----------------------------------------------------------------------
+‏١٤ · كلمة مرور نصّية بلا اقتباس في YAML
+-----------------------------------------------------------------------
+  password: EXAMPLEnotarealpassword
+
+-----------------------------------------------------------------------
+‏١٥ · مفتاح واجهة برمجية نصّي
+-----------------------------------------------------------------------
+api_key = "EXAMPLEnotarealapikey0123456789"

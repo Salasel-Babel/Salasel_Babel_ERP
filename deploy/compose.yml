@@ -1,0 +1,210 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# حزمة العرض — خمس خدمات، وترتيبها هو نصف القرار.
+#
+#   db        PostgreSQL 16 على حجم مسمّى. لا منفذ منشور.
+#   migrator  يعمل **مرّة** ثم يخرج: تهيئة ← هجرات ← بذر ← إثبات.
+#             وهو وحده يحمل اتصال المالك واتصال الصيانة.
+#   api       يقلع **بعد** خروج migrator بنجاح، وبدور التطبيق وحده.
+#   web       ملفّات ثابتة + وسيط على الأصل نفسه.
+#   edge      Caddy: هو الوحيد الذي ينشر منفذاً، وهو مصدر الشهادة.
+#
+# **ولا قيمة بيئة واحدة مكتوبة في هذا الملف.** كلّها ‎${…}‎ تُقرأ من ملف .env
+# يُكتب على الخادم لحظة النشر من مخزن أسرار، وهو في .gitignore بحكم `.env`.
+# جدول ما يجب أن يحتويه في deploy/README.md.
+# ═══════════════════════════════════════════════════════════════════════════
+name: babel-demo
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?كلمة مرور المستخدم الخارق لـPostgreSQL}
+      POSTGRES_DB: postgres
+      # ترتيب مستقلّ عن لغة المضيف: الفرز الثقافي يختلف بين ثقافتين على الحروف
+      # نفسها، والمخطّط لا يجوز أن يعتمد على لغة الخادم (القاعدة 10).
+      POSTGRES_INITDB_ARGS: "--locale=C --encoding=UTF8"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  migrator:
+    image: ${BABEL_REGISTRY:?سجلّ الصور}/babel-migrator:${BABEL_IMAGE_TAG:?وسم الصورة — لا افتراضي عمداً}
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # الصيانة والمالك — **هنا وحدها**.
+      BABEL_ADMIN_DB: "Host=db;Port=5432;Database=postgres;Username=postgres;Password=${POSTGRES_PASSWORD}"
+      BABEL_LEDGER_OWNER_DB: "Host=db;Port=5432;Database=babel_ledger;Username=postgres;Password=${POSTGRES_PASSWORD}"
+      BABEL_SALES_OWNER_DB: "Host=db;Port=5432;Database=babel_sales;Username=postgres;Password=${POSTGRES_PASSWORD}"
+      BABEL_PURCHASING_OWNER_DB: "Host=db;Port=5432;Database=babel_purchasing;Username=postgres;Password=${POSTGRES_PASSWORD}"
+      # ‏**وسطرُ المخزون كان ناقصاً، وأثره أنّ الترحيل يسقط** — لا أنّ المخزون يتعطّل:
+      # ‏`Settings.FromEnvironment` يرتدّ عند غيابه إلى نصٍّ افتراضي على `127.0.0.1`،
+      # وهو **داخل حاوية الترحيل نفسها** لا قاعدةَ فيها. فتُنشأ القاعدة في خطوة التهيئة
+      # ثم يفشل نشر مخطّطها بـ«Connection refused»، ويخرج الترحيل بغير صفر، ويتوقّف
+      # النشر كلّه. وهذا هو الشكل الأخطر من النقص: **افتراضٌ صامت** لا صيغة ‎:?‎ —
+      # فلا شيء يقول «متغيّر ناقص»، بل يُقرأ العطل شبكةً في قاعدة البيانات.
+      BABEL_INVENTORY_OWNER_DB: "Host=db;Port=5432;Database=babel_inventory;Username=postgres;Password=${POSTGRES_PASSWORD}"
+      BABEL_CORE_OWNER_DB: "Host=db;Port=5432;Database=babel_core;Username=postgres;Password=${POSTGRES_PASSWORD}"
+      # العقارات: **اتصال المالك هنا وحده**، وهو الاتصال الوحيد في الحزمة الذي يحتاج
+      # أكثر من `create table` — مخطّطه يركّب امتداد `btree_gist` ويبني عليه قيد
+      # استبعاد زمنياً يمنع تأجير الوحدة الواحدة مرّتين. والمُرحِّل يفحص الامتداد
+      # **قبل** أن ينشر مخطّطاً واحداً، ويتوقّف برسالة تسمّيه إن مُنع (ADR-0052 §7).
+      BABEL_REALESTATE_OWNER_DB: "Host=db;Port=5432;Database=babel_realestate;Username=postgres;Password=${POSTGRES_PASSWORD}"
+      # والمقاولات والموارد البشرية والمرفقات كذلك — **مخطّطاتها الثلاثة لم تكن تُنشر
+      # في أي مسار نشر**، فكانت أسطحها الثلاثة تردّ عطل اتصال عند أول نقرة. والاسم
+      # هنا `…_OWNER_DB` لا `…_DB`: الأخير اتصالُ الخادم بدور التطبيق، والخلط بينهما
+      # يجعل حاويةً واحدة تحاول نشر مخطّط بدورٍ لا يملك DDL.
+      BABEL_PROJECTS_OWNER_DB: "Host=db;Port=5432;Database=babel_projects;Username=postgres;Password=${POSTGRES_PASSWORD}"
+      BABEL_HR_OWNER_DB: "Host=db;Port=5432;Database=babel_hr;Username=postgres;Password=${POSTGRES_PASSWORD}"
+      BABEL_STORAGE_OWNER_DB: "Host=db;Port=5432;Database=babel_storage;Username=postgres;Password=${POSTGRES_PASSWORD}"
+      # واتصال التطبيق: يُستعمل في خطوتَي البذر والإثبات — وهو ما يجعل البذر
+      # عاجزاً بنيوياً عن الكتابة خارج ledger.post_entry.
+      BABEL_LEDGER_APP_DB: "Host=db;Port=5432;Database=babel_ledger;Username=${BABEL_LEDGER_APP_ROLE:-babel_ledger_app};Password=${BABEL_LEDGER_APP_PASSWORD}"
+      BABEL_LEDGER_APP_ROLE: ${BABEL_LEDGER_APP_ROLE:-babel_ledger_app}
+      BABEL_CORE_APP_DB: "Host=db;Port=5432;Database=babel_core;Username=${BABEL_LEDGER_APP_ROLE:-babel_ledger_app};Password=${BABEL_LEDGER_APP_PASSWORD}"
+      BABEL_CORE_APP_ROLE: ${BABEL_LEDGER_APP_ROLE:-babel_ledger_app}
+      BABEL_LEDGER_APP_PASSWORD: ${BABEL_LEDGER_APP_PASSWORD:?كلمة مرور دور التطبيق}
+      BABEL_DEMO_COMPANY_ID: ${BABEL_DEMO_COMPANY_ID:-d3305e1e-0000-4000-8000-000000000001}
+      BABEL_DEMO_FISCAL_YEAR: ${BABEL_DEMO_FISCAL_YEAR:-2026}
+    command: ["all"]
+
+  api:
+    image: ${BABEL_REGISTRY}/babel-api:${BABEL_IMAGE_TAG}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+    # ‏**قائمةٌ لا خريطة، ولسببٍ واحد لا غير:** ‏docker compose يعوّض ‎${…}‎ في
+    # **القيم** ولا يعوّضها في **مفاتيح** الخريطة (مقيس: `docker compose config`
+    # يُخرج المفتاح كما هو بعد أن يهرّب الدولار). ومفتاح الاستحقاق يحمل معرّف
+    # المنشأة داخله (`Babel__Entitlements__<الشركة>__RealEstate`)، فبالخريطة كان
+    # يلزم كتابة المعرّف حرفاً — فتُصبح منشأةٌ بمعرّفٍ آخر بلا استحقاق عقارات
+    # ويردّ كل باب عقاري 403. وبالقائمة يُعوَّض المعرّف كما يُعوَّض في بقيّة السطور.
+    environment:
+      - ASPNETCORE_URLS=http://0.0.0.0:8080
+      # ‏**اتصال دور التطبيق وحده.** لا BABEL_LEDGER_OWNER_DB هنا، ولا يجوز أن
+      # يوجد: خادمٌ يحمل اتصال المالك يستطيع إسقاط المشغّل المؤجَّل ثم الكتابة
+      # فوق قيد مُرحَّل، فتسقط طبقتا الحصانة معاً (ADR-0003).
+      - "BABEL_LEDGER_APP_DB=Host=db;Port=5432;Database=babel_ledger;Username=${BABEL_LEDGER_APP_ROLE:-babel_ledger_app};Password=${BABEL_LEDGER_APP_PASSWORD};Maximum Pool Size=20"
+      - "BABEL_LEDGER_APP_ROLE=${BABEL_LEDGER_APP_ROLE:-babel_ledger_app}"
+      # النواة: تأسيس المنشأة ومراكز تكلفتها وملفّ قدراتها. **اتصال دور التطبيق
+      # وحده** كذلك — ولا BABEL_CORE_OWNER_DB هنا: خادمٌ يحمله يستطيع إسقاط مشغّل
+      # ثبات مقياس العرض ثم كتابة مقياس آخر على منشأة قائمة.
+      - "BABEL_CORE_APP_DB=Host=db;Port=5432;Database=babel_core;Username=${BABEL_LEDGER_APP_ROLE:-babel_ledger_app};Password=${BABEL_LEDGER_APP_PASSWORD};Maximum Pool Size=10"
+      - "BABEL_CORE_APP_ROLE=${BABEL_LEDGER_APP_ROLE:-babel_ledger_app}"
+      # ── العقارات ─────────────────────────────────────────────────────────
+      # ‏**اتصال دور التطبيق وحده كذلك، ولا BABEL_REALESTATE_OWNER_DB هنا**: نشرُ
+      # مخطّط العقارات يركّب امتداداً ويبني قيد استبعاد زمنياً، وخادمٌ يحمل اتصال
+      # المالك يستطيع إسقاط ذلك القيد ثم تأجير الوحدة الواحدة مرّتين. والفصل في
+      # هذا الملفّ بالبناء لا بالانضباط (ADR-0003 · ADR-0052 §7).
+      - "BABEL_REALESTATE_DB=Host=db;Port=5432;Database=babel_realestate;Username=${BABEL_LEDGER_APP_ROLE:-babel_ledger_app};Password=${BABEL_LEDGER_APP_PASSWORD};Maximum Pool Size=10"
+      # ── الدفاتر المساعدة الثلاثة والمقاولات ───────────────────────────────
+      # ‏**وهذه أربعة أسطر كان غيابها يقرأ كذباً.** الوحدات الأربع تحمل في شيفرتها
+      # نصّ اتصال افتراضياً يشير إلى `127.0.0.1` بمستخدم `postgres` — أي **إلى داخل
+      # حاوية الخادم نفسها**، حيث لا قاعدة ولا مستمع. فلا `:?` يوقف النشر ولا رسالة
+      # تُقال: الحزمة تقوم، و`/health` يُجيب، ثم يفشل أول نداء بـ«Connection refused»
+      # — وهي رسالة تُقرأ **عطلَ شبكةٍ في قاعدة البيانات** لا إعداداً ناقصاً، فتُرسل
+      # من يبحث إلى المكان الخطأ. ومخطّطاتها الأربعة منشورةٌ في حاوية الترحيل ودورُ
+      # التطبيق ممنوحٌ عليها، فلا ينقص إلا العنوان.
+      - "BABEL_SALES_DB=Host=db;Port=5432;Database=babel_sales;Username=${BABEL_LEDGER_APP_ROLE:-babel_ledger_app};Password=${BABEL_LEDGER_APP_PASSWORD};Maximum Pool Size=10"
+      - "BABEL_PURCHASING_DB=Host=db;Port=5432;Database=babel_purchasing;Username=${BABEL_LEDGER_APP_ROLE:-babel_ledger_app};Password=${BABEL_LEDGER_APP_PASSWORD};Maximum Pool Size=10"
+      - "BABEL_INVENTORY_DB=Host=db;Port=5432;Database=babel_inventory;Username=${BABEL_LEDGER_APP_ROLE:-babel_ledger_app};Password=${BABEL_LEDGER_APP_PASSWORD};Maximum Pool Size=10"
+      - "BABEL_PROJECTS_DB=Host=db;Port=5432;Database=babel_projects;Username=${BABEL_LEDGER_APP_ROLE:-babel_ledger_app};Password=${BABEL_LEDGER_APP_PASSWORD};Maximum Pool Size=10"
+      # والاستحقاق يُشترى صراحةً: العقارات وحدة **اختيارية**، فحالتها الافتراضية
+      # على كل منشأة `NotEntitled` — وقاعدةٌ مزوَّدة بلا استحقاق تعني عشرين باباً
+      # يردّ كلٌّ منها 403 `entitlement.not_entitled`. وهو **الجواب الصحيح** لمن لم
+      # يشترِ، فالشراء يُكتب هنا بمعرّف المنشأة نفسه الذي يحمله رمز العرض.
+      - "Babel__Entitlements__${BABEL_DEMO_COMPANY_ID:-d3305e1e-0000-4000-8000-000000000001}__RealEstate=Entitled"
+      - "Babel__Entitlements__${BABEL_DEMO_COMPANY_ID:-d3305e1e-0000-4000-8000-000000000001}__Inventory=Entitled"
+      - "Babel__Entitlements__${BABEL_DEMO_COMPANY_ID:-d3305e1e-0000-4000-8000-000000000001}__Projects=Entitled"
+      - "Babel__Entitlements__${BABEL_DEMO_COMPANY_ID:-d3305e1e-0000-4000-8000-000000000001}__Hr=Entitled"
+      # دليل الاعتمادات: **بصمة** لا اعتماد. الخادم لا يعرف الرمز الأصلي أبداً.
+      - "Babel__Api__Tokens__0__Sha256=${BABEL_DEMO_TOKEN_SHA256:?بصمة SHA-256 لرمز العرض}"
+      - "Babel__Api__Tokens__0__Tenant=${BABEL_DEMO_COMPANY_ID:-d3305e1e-0000-4000-8000-000000000001}"
+      - "Babel__Api__Tokens__0__User=${BABEL_DEMO_USER_ID:-d3305e1e-0000-4000-8000-0000000000a1}"
+      - "Babel__Api__Tokens__0__Companies__0=${BABEL_DEMO_COMPANY_ID:-d3305e1e-0000-4000-8000-000000000001}"
+      # ── الموارد البشرية ──────────────────────────────────────────────────
+      # ‏**هذا السطر شرطُ إقلاع لا إعداداً اختيارياً.** `Program.cs` يستدعي
+      # `HrOptions.EnsureConfigured()` عند التركيب، وهي **ترفض الغياب** لأن هذه
+      # الوحدة أثقل جدول بيانات شخصية في المنتج فلا يجوز أن يشير خادمٌ بها إلى
+      # قاعدة لم يقصدها أحد. وبلا هذا السطر لا تقلع حاوية `api` أصلاً، فيفشل
+      # ‏`compose up --wait` ويرتدّ النشر — **وهو ما وقع** حين نزلت الوحدة ولم
+      # تنزل معها خانتها هنا.
+      - "BABEL_HR_DB=Host=db;Port=5432;Database=babel_hr;Username=${BABEL_LEDGER_APP_ROLE:-babel_ledger_app};Password=${BABEL_LEDGER_APP_PASSWORD};Maximum Pool Size=5"
+      # ── مخزن المرفقات ────────────────────────────────────────────────────
+      # ‏**ولا مفتاح افتراضي هنا ولا في أي ملفّ مُودَع**: `:?` يوقف `compose up`
+      # برسالة تسمّي المتغيّر، بدل أن تُقلع حاوية تسقط عند التركيب. ومفتاحٌ
+      # مُودَع مفتاحٌ عامّ يسكّ به من يقرأ المستودع تذاكرَ أي مرفق (ADR-0046).
+      - "BABEL_STORAGE_TICKET_KEY=${BABEL_STORAGE_TICKET_KEY:?مفتاح توقيع تذاكر المرفقات — 32 بايتاً ست‌عشرياً على الأقل، من البيئة ولا يُودَع}"
+      - BABEL_STORAGE_ROOT=/var/lib/babel/attachments
+      # واتصال دور التطبيق وحده، كالدفتر والنواة: خادمٌ يحمل اتصال المالك يستطيع
+      # إسقاط مشغّل «يُضاف ولا يُعدَّل» ثم الكتابة فوق سند إثبات.
+      # ‏**ودورُ المرفقات هو دور التطبيق نفسه** لا دورٌ ثانٍ بكلمة مرور ثانية: كان
+      # السطر يشير إلى `babel_storage_app` بكلمة مرور **فارغة بالافتراض**، ولا شيء
+      # ينشئ ذلك الدور. والفصل الذي يهمّ **مالك/تطبيق** لا دورٌ لكل مخطّط — وهو
+      # الجواب نفسه الذي اتُّخذ للنواة. وصلاحياتُه على `storage` أضيق مما على أي
+      # دفتر مساعد (إضافةٌ وقراءة بلا تعديل)، ويفرضها `StorageGrants.sql`.
+      - "BABEL_STORAGE_APP_DB=Host=db;Port=5432;Database=babel_storage;Username=${BABEL_LEDGER_APP_ROLE:-babel_ledger_app};Password=${BABEL_LEDGER_APP_PASSWORD};Maximum Pool Size=10"
+      - "BABEL_STORAGE_APP_ROLE=${BABEL_LEDGER_APP_ROLE:-babel_ledger_app}"
+      - "Logging__LogLevel__Default=${BABEL_LOG_LEVEL:-Information}"
+    volumes:
+      # البايتات على حجم دائم لا في طبقة الحاوية: حاويةٌ تُستبدَل تأخذ معها كل
+      # سند إثبات فيها. **ونشرُ مخطّط `storage` وإنشاء دوره ليسا في حاوية الترحيل
+      # بعد** — فأبواب المرفقات غير قابلة للبلوغ حتى يُزوَّدا، وذلك نقصٌ مُعلَن.
+      - babel-attachments:/var/lib/babel/attachments
+
+  web:
+    image: ${BABEL_REGISTRY}/babel-web:${BABEL_IMAGE_TAG}
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+
+  edge:
+    # ‏**الوسم مثبَّت على إصدار بعينه لا على `2-alpine`،** لأن هذا الملف يعتمد
+    # على قدرتين لم تكونا في كل إصدارات الفرع الثاني: اختيار ملمح ACME
+    # (`profile`) الذي وصل في **2.10.0**، وسماح CertMagic بشهادة على عنوان IP
+    # من Let's Encrypt الذي وصل مع CertMagic v0.24.0 في **2.10.2**. ووسمٌ
+    # عائم يعني أن وضع `ip` يعمل اليوم ويسقط بعد سحبٍ لا يقرّره أحد.
+    image: caddy:2.11.4-alpine
+    restart: unless-stopped
+    depends_on:
+      web:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      # اسم النطاق يحكم شكل الشهادة كلّه. القيمة الفارغة تعني «بلا نطاق»،
+      # وحينها Caddy يُصدر شهادة من سلطته الداخلية — انظر Caddyfile وREADME §3.
+      BABEL_SITE: ${BABEL_SITE:-:80}
+      BABEL_TLS_MODE: ${BABEL_TLS_MODE:-auto}
+      # عنوان IP العام بلا مخطّط ولا أقواس — **فارغ في غير وضع `ip`**. وهو ما
+      # يصير `default_sni` في Caddyfile، وبدونه تفشل كل مصافحة بلا SNI (أي كل
+      # متصفّح يفتح عنواناً حرفياً). يشتقّه سير عمل النشر من `BABEL_SITE` فلا
+      # يمكن أن ينحرف عنه.
+      BABEL_TLS_IP: ${BABEL_TLS_IP:-}
+      # ‏`:-` لا `:?`: يُبدَّل عند الغياب **وعند الفراغ** معاً — والفراغ هو الحالة
+      # التي كسرت الحافة (انظر Caddyfile).
+      BABEL_TLS_EMAIL: ${BABEL_TLS_EMAIL:-tls-email-not-set@invalid}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  db-data:
+  caddy-data:
+  caddy-config:
+  # بايتات المرفقات — سندُ إثبات لا يُحذف، فلا يعيش في طبقة حاوية تُستبدَل.
+  babel-attachments:

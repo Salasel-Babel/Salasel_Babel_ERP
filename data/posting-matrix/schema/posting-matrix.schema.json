@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://salasel-babel/schema/posting-matrix-1.0.0.json",
+  "title": "Salasel Babel posting matrix — event file",
+  "type": "object",
+  "required": ["schema_version", "module", "events"],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "module": { "type": "string" },
+    "source_refs": { "type": "array", "items": { "type": "string" } },
+    "events": { "type": "array", "items": { "$ref": "#/$defs/event" } }
+  },
+  "$defs": {
+    "bilingual": {
+      "type": "object",
+      "required": ["name_ar", "name_en"],
+      "properties": { "name_ar": { "type": "string", "minLength": 1 }, "name_en": { "type": "string", "minLength": 1 } }
+    },
+    "event": {
+      "type": "object",
+      "required": ["event_code", "name_ar", "name_en", "module", "status", "source_ref", "trigger", "posts_entry", "lines"],
+      "properties": {
+        "event_code": { "type": "string", "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$" },
+        "name_ar": { "type": "string", "minLength": 1 },
+        "name_en": { "type": "string", "minLength": 1 },
+        "module": { "type": "string" },
+        "status": { "enum": ["drafted", "proposed"] },
+        "source_ref": { "type": "string" },
+        "trigger": { "$ref": "#/$defs/bilingual" },
+        "precondition": { "$ref": "#/$defs/bilingual" },
+        "reversal": { "$ref": "#/$defs/bilingual" },
+        "posts_entry": { "type": "boolean" },
+        "caveats": { "type": "array", "items": { "type": "object", "required": ["ref", "text_ar", "text_en"] } },
+        "amounts": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["name_ar", "name_en", "derivation_ar", "derivation_en"],
+            "properties": {
+              "name_ar": { "type": "string", "minLength": 1 },
+              "name_en": { "type": "string", "minLength": 1 },
+              "derivation_ar": { "type": "string", "minLength": 1 },
+              "derivation_en": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        "identities": { "type": "object", "additionalProperties": { "type": "string" } },
+        "conditions": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["name_ar", "name_en", "expression"],
+            "properties": {
+              "name_ar": { "type": "string", "minLength": 1 },
+              "name_en": { "type": "string", "minLength": 1 },
+              "expression": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        "scenarios": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["code", "name_ar", "name_en", "true_conditions"],
+            "properties": {
+              "code": { "type": "string" },
+              "name_ar": { "type": "string", "minLength": 1 },
+              "name_en": { "type": "string", "minLength": 1 },
+              "true_conditions": { "type": "array", "items": { "type": "string" } },
+              "zero_amounts": { "type": "array", "items": { "type": "string" } },
+              "identities": { "type": "object", "additionalProperties": { "type": "string" } }
+            }
+          }
+        },
+        "lines": { "type": "array", "items": { "$ref": "#/$defs/line" } }
+      }
+    },
+    "line": {
+      "type": "object",
+      "required": ["line_no", "line_kind", "side", "amount"],
+      "properties": {
+        "line_no": { "type": "integer", "minimum": 1 },
+        "line_kind": { "enum": ["role", "sweep", "import", "manual", "mirror"] },
+        "role": { "type": ["string", "null"] },
+        "qualifier_source": { "type": ["string", "null"] },
+        "side": { "enum": ["debit", "credit", "mirror"] },
+        "amount": { "type": "string", "minLength": 1 },
+        "dimensions": { "type": "array", "items": { "type": "string" } },
+        "subledger": { "type": ["string", "null"] },
+        "when": { "type": ["string", "array", "null"], "items": { "type": "string" } },
+        "sweep": {
+          "type": "object",
+          "required": ["selector", "postable_only", "name_ar", "name_en"],
+          "properties": {
+            "selector": { "enum": ["account_class", "foreign_currency_balances", "imported_opening_lines", "operator_entered_lines", "source_entry_lines"] },
+            "classes": { "type": "array", "items": { "type": "string" } },
+            "postable_only": { "const": true },
+            "name_ar": { "type": "string", "minLength": 1 },
+            "name_en": { "type": "string", "minLength": 1 }
+          }
+        },
+        "note_ar": { "type": "string" },
+        "note_en": { "type": "string" }
+      }
+    }
+  }
+}

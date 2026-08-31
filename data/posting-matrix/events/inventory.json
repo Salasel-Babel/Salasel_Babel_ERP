@@ -1,0 +1,326 @@
+{
+  "schema_version": "1.0.0",
+  "module": "inventory",
+  "source_refs": [
+    "docs/reference/posting-matrix.md §3"
+  ],
+  "events": [
+    {
+      "event_code": "inventory.issue_to_project",
+      "name_ar": "صرف مواد لمشروع",
+      "name_en": "Issue materials to a project",
+      "module": "inventory",
+      "status": "drafted",
+      "source_ref": "posting-matrix.md §3.1",
+      "trigger": {
+        "name_ar": "عند اعتماد أمر الصرف وإخراج المواد فعلياً",
+        "name_en": "On approving the issue order and physically releasing the materials"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "مرتجع مواد من المشروع بقيد عكسي مستقل",
+        "name_en": "A materials return from the project by a separate reversing entry"
+      },
+      "caveats": [
+        {
+          "ref": "posting-matrix.md بند مفتوح 3",
+          "text_ar": "طريقة التكلفة محسومة: المتوسط المرجّح المتحرّك لكل (شركة × صنف × مستودع) — ADR-0039. ⚠️ وما يبقى مفتوحاً هو اختلافها بين مجموعات الأصناف: الطريقة عمودٌ على كل حركة لا ثابتٌ في الشيفرة",
+          "text_en": "The costing method is settled: moving weighted average per (company x item x warehouse) — ADR-0039. WARNING: what remains open is whether it may differ by item group; the method is a column on every movement, not a constant in code"
+        }
+      ],
+      "amounts": {
+        "cost": {
+          "name_ar": "تكلفة المواد المصروفة",
+          "name_en": "Cost of materials issued",
+          "derivation_ar": "بطريقة التكلفة المعتمدة لحظة الصرف لا بسعر الشراء الأخير",
+          "derivation_en": "By the approved costing method at the moment of issue not the last purchase price"
+        }
+      },
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "project_material_cost",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "cost",
+          "dimensions": [
+            "project",
+            "boq_item"
+          ],
+          "subledger": null,
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "inventory_control",
+          "qualifier_source": "line.item_group",
+          "side": "credit",
+          "amount": "cost",
+          "dimensions": [
+            "warehouse"
+          ],
+          "subledger": "item",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "inventory.transfer.between_warehouses",
+      "name_ar": "تحويل مخزني بين مستودعين بحسابي مخزون مختلفين",
+      "name_en": "Inter-warehouse transfer between different inventory accounts",
+      "module": "inventory",
+      "status": "drafted",
+      "source_ref": "posting-matrix.md §3.2",
+      "trigger": {
+        "name_ar": "عند اعتماد التحويل واستلامه في المستودع المستقبِل",
+        "name_en": "On approving the transfer and receiving it in the destination warehouse"
+      },
+      "posts_entry": true,
+      "precondition": {
+        "name_ar": "حساب مخزون المستودع المصدر يختلف عن حساب مخزون المستودع الوجهة — وإلا فلا قيد مالي إطلاقاً",
+        "name_en": "The source and destination warehouses map to different inventory accounts — otherwise no financial entry is produced at all"
+      },
+      "reversal": {
+        "name_ar": "تحويل عكسي مستقل",
+        "name_en": "A separate reverse transfer"
+      },
+      "caveats": [
+        {
+          "ref": "posting-matrix.md بند مفتوح 7",
+          "text_ar": "⚠️ هل لكل مستودع مشروع حساب مخزون مستقل أم حساب موحّد؟ قرار مفتوح يحدد متى ينشأ هذا القيد أصلاً",
+          "text_en": "⚠️ Does each project warehouse get its own inventory account or a single shared account? An open decision that determines when this entry arises at all"
+        }
+      ],
+      "amounts": {
+        "cost": {
+          "name_ar": "تكلفة المنقول",
+          "name_en": "Cost transferred",
+          "derivation_ar": "بتكلفة المستودع المصدر لحظة التحويل",
+          "derivation_en": "At the source warehouse cost at the moment of transfer"
+        }
+      },
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "inventory_control",
+          "qualifier_source": "destination_warehouse.item_group",
+          "side": "debit",
+          "amount": "cost",
+          "dimensions": [
+            "warehouse"
+          ],
+          "subledger": "item",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "inventory_control",
+          "qualifier_source": "source_warehouse.item_group",
+          "side": "credit",
+          "amount": "cost",
+          "dimensions": [
+            "warehouse"
+          ],
+          "subledger": "item",
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        }
+      ]
+    },
+    {
+      "event_code": "inventory.count_adjustment.posted",
+      "name_ar": "تسوية جرد — عجز أو زيادة",
+      "name_en": "Inventory count adjustment — shortage or surplus",
+      "module": "inventory",
+      "status": "drafted",
+      "source_ref": "posting-matrix.md §3.3",
+      "trigger": {
+        "name_ar": "عند اعتماد محضر الجرد بصلاحية موثّقة",
+        "name_en": "On approving the count sheet under a documented authority"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "قيد عكسي مستقل بمحضر مبرِّر",
+        "name_en": "A separate reversing entry with a justifying record"
+      },
+      "caveats": [
+        {
+          "ref": "posting-matrix.md بند مفتوح 2",
+          "text_ar": "⚠️ هل يُستوجب رد ضريبة المدخلات على البضاعة التالفة؟ غير محسوم — لا يُبنى سطر ضريبة هنا قبل التأكيد",
+          "text_en": "⚠️ Must input VAT be repaid on damaged goods? Unresolved — no VAT line is built here before confirmation"
+        }
+      ],
+      "amounts": {
+        "diff": {
+          "name_ar": "قيمة فرق الجرد",
+          "name_en": "Value of the count difference",
+          "derivation_ar": "الكمية الفرقية مضروبة في تكلفة الوحدة المعتمدة",
+          "derivation_en": "The differential quantity times the approved unit cost"
+        }
+      },
+      "conditions": {
+        "is_shortage": {
+          "name_ar": "الجرد يُظهر عجزاً",
+          "name_en": "The count shows a shortage",
+          "expression": "counted_quantity < book_quantity"
+        },
+        "is_surplus": {
+          "name_ar": "الجرد يُظهر زيادة",
+          "name_en": "The count shows a surplus",
+          "expression": "counted_quantity > book_quantity"
+        }
+      },
+      "scenarios": [
+        {
+          "code": "shortage",
+          "name_ar": "عجز جرد",
+          "name_en": "Count shortage",
+          "true_conditions": [
+            "is_shortage"
+          ]
+        },
+        {
+          "code": "surplus",
+          "name_ar": "زيادة جرد",
+          "name_en": "Count surplus",
+          "true_conditions": [
+            "is_surplus"
+          ]
+        }
+      ],
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "inventory_shortage_expense",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "diff",
+          "dimensions": [
+            "warehouse"
+          ],
+          "subledger": null,
+          "when": "is_shortage",
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "inventory_control",
+          "qualifier_source": "line.item_group",
+          "side": "credit",
+          "amount": "diff",
+          "dimensions": [
+            "warehouse"
+          ],
+          "subledger": "item",
+          "when": "is_shortage",
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 3,
+          "line_kind": "role",
+          "role": "inventory_control",
+          "qualifier_source": "line.item_group",
+          "side": "debit",
+          "amount": "diff",
+          "dimensions": [
+            "warehouse"
+          ],
+          "subledger": "item",
+          "when": "is_surplus",
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 4,
+          "line_kind": "role",
+          "role": "inventory_shortage_expense",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "diff",
+          "dimensions": [
+            "warehouse"
+          ],
+          "subledger": null,
+          "when": "is_surplus",
+          "note_ar": "الزيادة تُرحَّل دائنة على حساب فروقات الجرد نفسه",
+          "note_en": "A surplus is credited to the same count difference account"
+        }
+      ]
+    },
+    {
+      "event_code": "inventory.obsolescence_provision.posted",
+      "name_ar": "تكوين مخصص تقادم وبطء حركة المخزون",
+      "name_en": "Recognise the slow-moving and obsolete inventory provision",
+      "module": "inventory",
+      "status": "proposed",
+      "source_ref": "proposed:matrix-seed",
+      "trigger": {
+        "name_ar": "دورياً بعد اعتماد المدير المالي لقائمة الأصناف المقترحة",
+        "name_en": "Periodically after the finance manager approves the proposed item list"
+      },
+      "posts_entry": true,
+      "reversal": {
+        "name_ar": "رد المخصص بقيد عكسي مستقل مؤرّخ",
+        "name_en": "Release of the provision by a separate dated reversing entry"
+      },
+      "caveats": [
+        {
+          "ref": "proposed:matrix-seed",
+          "text_ar": "⚠️ وحدة المخزون بلا وثيقة تحليل — هذا الحدث وحساباه 5302 و1406 مقترحان بالكامل ويحتاجان مراجعة محاسب وسياسة مخصص معتمدة",
+          "text_en": "⚠️ The inventory module has no analysis document — this event and its accounts 5302 and 1406 are entirely proposed and need accountant review and an approved provision policy"
+        }
+      ],
+      "amounts": {
+        "provision": {
+          "name_ar": "حصة الفترة من المخصص",
+          "name_en": "The period share of the provision",
+          "derivation_ar": "من سياسة المخصص المعتمدة — قاعدة في جدول إعدادات لا ثابت في الكود",
+          "derivation_en": "From the approved provision policy — a rule in a settings table not a constant in code"
+        }
+      },
+      "lines": [
+        {
+          "line_no": 1,
+          "line_kind": "role",
+          "role": "inventory_obsolescence_expense",
+          "qualifier_source": null,
+          "side": "debit",
+          "amount": "provision",
+          "dimensions": [],
+          "subledger": null,
+          "when": null,
+          "note_ar": "",
+          "note_en": ""
+        },
+        {
+          "line_no": 2,
+          "line_kind": "role",
+          "role": "inventory_obsolescence_allowance",
+          "qualifier_source": null,
+          "side": "credit",
+          "amount": "provision",
+          "dimensions": [],
+          "subledger": null,
+          "when": null,
+          "note_ar": "حساب مقابل — لا يُخفَّض رصيد المخزون مباشرة",
+          "note_en": "A contra account — the inventory balance is never reduced directly"
+        }
+      ]
+    }
+  ]
+}

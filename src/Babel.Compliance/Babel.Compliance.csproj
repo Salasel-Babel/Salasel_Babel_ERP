@@ -1,0 +1,53 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Babel.Compliance — وحدة أفقية.
+    لا تعتمد على Babel.Ledger ولا على أي وحدة أفقية أخرى — مفروض ببناء في Rule01 و Rule03.
+    الترحيل عبر Babel.Contracts.Posting.IPostingService، والتخاطب عبر عقود الأحداث.
+
+    التنسيق المستقل عن المزوّد: البناء، والعدّاد، والسلسلة، والتوحيد القياسي،
+    والصندوق الصادر، وإعادة المحاولة، وانتقالات الحالة، والمطابقة.
+    لا شيء هنا يعرف اسم مزوّد واحد — العقد كله في Babel.Compliance.Abstractions.
+
+    ملاحظة على الإعدادات: TargetFramework وNullable وImplicitUsings وLangVersion
+    وTreatWarningsAsErrors وInvariantGlobalization كلها في Directory.Build.props،
+    ولا تُكرَّر هنا. وإصدارات الحزم في Directory.Packages.props وحدها (Rule08).
+  -->
+
+  <PropertyGroup>
+    <RootNamespace>Babel.Compliance</RootNamespace>
+    <AssemblyName>Babel.Compliance</AssemblyName>
+    <!-- الشرح المفصَّل في DESIGN.md وفي تعليقات الأنواع نفسها؛ لا تعليق XML على كل عضو. -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Babel.SharedKernel/Babel.SharedKernel.csproj" />
+    <ProjectReference Include="../Babel.Contracts/Babel.Contracts.csproj" />
+    <ProjectReference Include="../Babel.Core/Babel.Core.csproj" />
+    <ProjectReference Include="../Babel.Compliance.Abstractions/Babel.Compliance.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- التخزين العلائقي — نفس مقاس تجربة spikes/relational-stack -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Npgsql" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="DESIGN.md" />
+  </ItemGroup>
+
+  <!--
+    أنواع الاستمرارية internal (Rule05): مشروع الاختبار وحده يراها كي تبقى اختبارات
+    المخزن العلائقي على النسخة الحقيقية لا على نسخة موازية.
+  -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="Babel.Compliance.Tests" />
+  </ItemGroup>
+
+</Project>

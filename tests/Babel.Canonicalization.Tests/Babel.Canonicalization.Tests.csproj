@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    اختبارات مكتبة التوحيد القياسي.
+
+    الإطار وNullable وImplicitUsings والتحذير-خطأ وInvariantGlobalization=false
+    كلها في Directory.Build.props، ومشغّل الاختبارات (Microsoft.Testing.Platform)
+    وحزمة xunit.v3 تأتيان من هناك أيضاً — فلا تُكرَّر هنا.
+    وإصدارات الحزم في Directory.Packages.props وحدها: لا Version في أي PackageReference (Rule08).
+  -->
+
+  <PropertyGroup>
+    <RootNamespace>Babel.Canonicalization.Tests</RootNamespace>
+    <AssemblyName>Babel.Canonicalization.Tests</AssemblyName>
+    <!--
+      ليست إعداداً أسلوبياً: بدون بيانات المناطق يصير String.Normalize عملية لا شيء
+      بصمت، فتتغيّر كل بصمة نص عربي. الأساس في Directory.Build.props، وهذا مكمّله.
+    -->
+    <PredefinedCulturesOnly>false</PredefinedCulturesOnly>
+    <!-- CA1711: اسم صنف تجميع xunit **يجب** أن ينتهي بـCollection — اصطلاح الإطار لا خيار. -->
+    <NoWarn>$(NoWarn);CA1711</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Npgsql هنا فقط: اختبار الدورة الحقيقية مع PostgreSQL. المكتبة نفسها بلا اعتماديات. -->
+    <PackageReference Include="Npgsql" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/Babel.Canonicalization/Babel.Canonicalization.csproj" />
+    <ProjectReference Include="../../tools/Babel.Canonicalization.Golden/Babel.Canonicalization.Golden.csproj" />
+  </ItemGroup>
+
+</Project>

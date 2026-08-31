@@ -1,0 +1,162 @@
+using Babel.SharedKernel;
+
+namespace Babel.ArchitectureTests.Support;
+
+/// <summary>
+/// خريطة الاعتماد المسموح بها — إعلان واحد تقرأه كل قواعد الاتجاه.
+/// <para>
+/// الاتجاه دائماً إلى الأسفل: SharedKernel ← Contracts ← Core ← Ledger، والوحدات الأفقية
+/// فوقها لا تعتمد على بعضها ولا على الدفتر. مشروع واحد فقط يعرف الجميع: Babel.Api.
+/// </para>
+/// <para>
+/// إضافة سطر هنا قرار معماري واعٍ يمرّ بمراجعة — وهذا هو المقصود بالضبط.
+/// </para>
+/// </summary>
+internal static class ModuleMap
+{
+    public const string SharedKernel = "Babel.SharedKernel";
+    public const string Contracts = "Babel.Contracts";
+    public const string Core = "Babel.Core";
+    public const string Ledger = "Babel.Ledger";
+    public const string Api = "Babel.Api";
+    public const string Compliance = "Babel.Compliance";
+
+    /// <summary>
+    /// مكتبة التوحيد القياسي — <b>ليست وحدة منتج</b> بل أساس تحت الجميع، بلا حزمة خارجية
+    /// واحدة وبلا معرفة بأي وحدة، وهي الطريق الوحيد إلى دالة التجزئة. بايتاتها المُجزَّأة
+    /// لا يجوز أن تتحرّك بسبب ترقية اعتمادية، ولذلك لا اعتمادية لها أصلاً. ولا تدخل
+    /// <see cref="BabelModule"/> ولا الاستحقاق ولا القياس: لا يشتريها عميل ولا تُطفأ.
+    /// حدودها مفروضة في القاعدة 11.
+    /// </summary>
+    public const string Canonicalization = "Babel.Canonicalization";
+
+    /// <summary>
+    /// مستوى التحكّم: سجل المستأجرين والتزويد وترحيل الأسطول والاتصالات والاستحقاق والقياس.
+    /// يعمل <b>فوق</b> الأسطول لا داخل مستأجر، فلا مكان له في خريطة الوحدات ولا استحقاق له.
+    /// ولا يعتمد على أي مشروع بابل — مجموعة مراجعه المسموحة فارغة أدناه.
+    /// </summary>
+    public const string ControlPlane = "Babel.ControlPlane";
+
+    /// <summary>
+    /// عقد حدّ الالتزام: أنواع فقط، بلا EF ولا Wolverine ولا Npgsql ولا HTTP.
+    /// خاصية «بلا اعتمادية خارج مكتبة الأساس» مفروضة أيضاً باختبار في مجموعة اختبارات الالتزام.
+    /// </summary>
+    public const string ComplianceAbstractions = "Babel.Compliance.Abstractions";
+
+    /// <summary>
+    /// <b>محوّل مخزن المرفقات</b>: نظام ملفّات على خادم واحد، ووصفٌ في PostgreSQL.
+    /// <para>
+    /// المنفذ نفسه — <c>Babel.Contracts.Storage.IAttachmentStore</c> — يعيش في العقد لا
+    /// هنا، وذلك بالضبط سبب كون هذا المشروع <b>مساندًا لا يعرفه أحد</b>: لو كان المنفذ
+    /// فيه لاحتاجت كل وحدة تريد إيداع مرفق سطراً جديداً في هذه الخريطة، وهو فتحُ
+    /// الخريطة المرفوض في ADR-0042. فمجموعة مراجعه أدناه لا تضمّه إلى أحد، ولا أحد
+    /// يضمّه — والجذر التركيبي وحده يركّبه.
+    /// </para>
+    /// </summary>
+    public const string Storage = "Babel.Storage";
+
+    /// <summary>مزوّد وهمي كامل التنفيذ للاختبار: يعتمد على العقد وحده، ولا يعرف التنسيق.</summary>
+    public const string ComplianceFakeProvider = "Babel.Compliance.FakeProvider";
+
+    /// <summary>محوّل الصندوق الصادر: يعزل Wolverine كي يبقى تشغيل الالتزام ممكناً بدونها.</summary>
+    public const string ComplianceWolverine = "Babel.Compliance.Wolverine";
+
+    /// <summary>
+    /// المزوّد الحقيقي للفوترة الإلكترونية: توليد UBL، وتوحيد قياسي، وتوقيع، ورمز QR،
+    /// وتسجيل، وإرسال. يعتمد على العقد وحده ولا يعرف المُنسِّق — ولا يعرف الدفتر بحال.
+    /// </summary>
+    public const string ComplianceZatca = "Babel.Compliance.Zatca";
+
+    /// <summary>الوحدات الأفقية: لا تستدعي بعضها مباشرة، بل عبر Contracts أو الأحداث.</summary>
+    public static IReadOnlyList<string> Horizontal { get; } =
+    [
+        "Babel.Sales",
+        "Babel.Purchasing",
+        Compliance,
+        "Babel.Inventory",
+        "Babel.Pos",
+        "Babel.Hr",
+        "Babel.Projects",
+        "Babel.RealEstate",
+        "Babel.Assets",
+        "Babel.Portals",
+        "Babel.Ai",
+    ];
+
+    /// <summary>
+    /// مشاريع مساندة: أساس تحت الجميع، أو عقد وحدة، أو محوّل مورّد. ليست وحدات منتج،
+    /// فلا بطاقة وحدة لها ولا استحقاق ولا مدخل في <c>BabelModule</c> — ولا تدخل قائمة
+    /// الوحدات الأفقية، لأن الوحدة الأفقية تُمنع من الاعتماد على أخواتها، وهذه يُعتمد عليها.
+    /// </summary>
+    public static IReadOnlyList<string> Supporting { get; } =
+    [
+        Canonicalization,
+        ControlPlane,
+        ComplianceAbstractions,
+        ComplianceFakeProvider,
+        ComplianceWolverine,
+        ComplianceZatca,
+        Storage,
+    ];
+
+    /// <summary>كل مشاريع المنتج.</summary>
+    public static IReadOnlyList<string> AllProjects { get; } =
+        [SharedKernel, Contracts, Core, Ledger, .. Horizontal, .. Supporting, Api];
+
+    /// <summary>اسم مشروع الوحدة.</summary>
+    public static string ProjectOf(BabelModule module) => "Babel." + module;
+
+    /// <summary>المراجع المسموح بها لكل مشروع. ما ليس في القائمة ممنوع.</summary>
+    public static IReadOnlyDictionary<string, IReadOnlySet<string>> AllowedProjectReferences { get; } = Build();
+
+    private static Dictionary<string, IReadOnlySet<string>> Build()
+    {
+        Dictionary<string, IReadOnlySet<string>> allowed = new(StringComparer.Ordinal)
+        {
+            [SharedKernel] = new HashSet<string>(StringComparer.Ordinal),
+            [Contracts] = new HashSet<string>([SharedKernel], StringComparer.Ordinal),
+            [Core] = new HashSet<string>([SharedKernel, Contracts], StringComparer.Ordinal),
+
+            // الدفتر وحده يجوز أن يعتمد على المُوحِّد: هو الجهة الوحيدة التي تُجزّئ قيداً.
+            [Ledger] = new HashSet<string>([SharedKernel, Contracts, Core, Canonicalization], StringComparer.Ordinal),
+
+            // الأساس والعقود والمحوّلات: الاتجاه هنا أيضاً إلى الأسفل حصراً.
+            // والمكتبة لا تعتمد على شيء إطلاقاً — ولا حتى على النواة المشتركة.
+            [Canonicalization] = new HashSet<string>(StringComparer.Ordinal),
+            [ControlPlane] = new HashSet<string>(StringComparer.Ordinal),
+            [ComplianceAbstractions] = new HashSet<string>(StringComparer.Ordinal),
+            [ComplianceFakeProvider] = new HashSet<string>([ComplianceAbstractions], StringComparer.Ordinal),
+            [ComplianceWolverine] = new HashSet<string>([Compliance, ComplianceAbstractions], StringComparer.Ordinal),
+
+            // المزوّد يعرف العقد وحده. **لا Ledger ولا Contracts ولا Compliance** —
+            // فالمزوّد يُبلّغ عمّا سجّله الدفتر ولا يكتب محاسبة (ADR-0011 وADR-0012).
+            [ComplianceZatca] = new HashSet<string>([ComplianceAbstractions], StringComparer.Ordinal),
+
+            // محوّل المرفقات يعرف العقد الذي ينفّذه، ولا يعرف وحدةً واحدة — ولا النواة:
+            // لا استحقاق ولا مستأجر ولا إعداد شركة يمرّ من هنا. المستأجر يصل معامِلاً
+            // في كل نداء، والاستحقاق يُفرض عند خدمة التطبيق التي تنادي المخزن.
+            [Storage] = new HashSet<string>([SharedKernel, Contracts], StringComparer.Ordinal),
+
+            // الجذر التركيبي وحده يعرف الجميع.
+            [Api] = new HashSet<string>(AllProjects.Where(static p => p != Api), StringComparer.Ordinal),
+        };
+
+        foreach (string horizontal in Horizontal)
+        {
+            // لا Ledger — الترحيل عبر العقد. ولا وحدة أفقية أخرى — التخاطب بالأحداث.
+            HashSet<string> references = new([SharedKernel, Contracts, Core], StringComparer.Ordinal);
+
+            // استثناء واحد معلن: وحدة الالتزام تعتمد على عقد حدّ الالتزام — وهو أنواع
+            // بلا مورّد ولا استمرارية، لا وحدة أفقية. الغرض منه أن يبقى اسم المزوّد
+            // خارج الوحدة نفسها؛ حذفه يعني عودة اسم المزوّد إلى قلب التنسيق.
+            if (horizontal == Compliance)
+            {
+                references.Add(ComplianceAbstractions);
+            }
+
+            allowed[horizontal] = references;
+        }
+
+        return allowed;
+    }
+}

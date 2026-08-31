@@ -1,0 +1,177 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   الطبقة السينمائية — رموز  ·  The cinematic layer — tokens
+   ───────────────────────────────────────────────────────────────────────────
+   هذا الملفّ **يوسّع** `tokens.css` ولا يحلّ محلّه: الطبقة الدلالية القائمة
+   (--color-debit · --color-posted · --color-ai …) تبقى **العقد**، وما هنا
+   طبقةٌ فوقها تحمل ما لم يكن للنظام حاجة به قبل اليوم: أرضيات وارتفاعات
+   وأضواء ومقياس حركةٍ بالزمن والمنحنى وطبقات z للهيكل السينمائي.
+
+   ┌─ القواعد الأربع التي لا تُخالَف في هذا الملفّ ───────────────────────┐
+   │ ١ · **الاسم يقول الوظيفة لا الشكل**: `--surface-overlay` لا `--blue-3`،│
+   │     و`--glow-posted` لا `--glow-green`. خمسةُ وكلاءٍ يبنون فوق هذه     │
+   │     الأسماء، ومن يقرأ `--blue-3` لا يعرف متى يستعملها فيخترع بديلاً.  │
+   │ ٢ · **لوحة العرض تُورَث ولا تُخترع**: كل قيمةٍ هنا مشتقّة من           │
+   │     `src/demo/demo.css` — وهي اللغة البصرية المُثبتة — أو من السمة.    │
+   │ ٣ · **الفاتح يبقى صحيحاً**: كل رمز مُعرَّف كاملاً على `:root` المجرّد،  │
+   │     ثم يُعاد تعريفه مرّتين للداكن (media مع الحارس، ثم الاختيار        │
+   │     الصريح). ولا لونَ يُولَد أول مرّة داخل `@media` أو `[data-theme]`. │
+   │ ٤ · **لا حركةَ إلا على `transform` و`opacity`** في المسارات الساخنة.   │
+   │     ولذلك الأضواء هنا قيمُ `box-shadow` تُستعمل في **حالة ساكنة**،     │
+   │     والتحريك يقع على طبقةٍ زائفة (`::after`) بالشفافية والتحويل وحدهما.│
+   └──────────────────────────────────────────────────────────────────────┘
+
+   والتطبيق **داكنٌ افتراضاً** بقرار المالك (ADR-جديد «الداكن السينمائي هو
+   المظهر الافتراضي»)، والفاتح **بديلٌ صحيح لا مهجور**: لوحة الوصولية
+   `theme-accessible.css` تبقى تعمل فوق الاثنين.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ════════════════════════════════════════════════ ١ · الأرضيات والأسطح
+   سلّم الارتفاع من الأعمق إلى ما يعلو كلّ شيء. الاسم يقول **أين يقع السطح**
+   من العين لا ما لونه:
+
+     ground   الأرضية السينمائية خلف كل شيء — تحمل تدرّجاً لا لوناً مسطّحاً
+     base     خلفية الصفحة (= --color-bg)
+     raised   لوحٌ يعلو الصفحة: بطاقة، لوحة، رأس جدول
+     inset    سطحٌ **غائر**: طرفية، كتلة شيفرة، بئر رقم
+     overlay  ما يعلو الجميع: حوار، لوحة أوامر، قائمة منسدلة
+     veil     طبقة تعتيمٍ خلف ما يعلو
+   ═══════════════════════════════════════════════════════════════════════ */
+:root{
+  --surface-ground:var(--bg);
+  --surface-base:var(--surface);
+  --surface-raised:var(--surface-2);
+  --surface-inset:var(--surface-3);
+  --surface-overlay:var(--surface);
+  --surface-veil:var(--scrim);
+
+  /* تدرّج الأرضية السينمائية: ضوءٌ واحد بعيد أعلى الجانب، لا وميضَ متعدّد.
+     **مشتقّ من `.demo-stage`** — نفس الزاوية ونفس نصف القطر. */
+  --backdrop-cinematic:
+    radial-gradient(1400px 900px at 78% -12%,
+      color-mix(in srgb, var(--brand) 12%, var(--surface-ground)) 0%,
+      var(--surface-ground) 62%);
+  /* تدرّج اللوح: من الأفتح إلى الأغمق نزولاً — مشتقّ من `.demo-panel`. */
+  --backdrop-panel:linear-gradient(180deg, var(--surface-raised), var(--surface-inset));
+
+  /* ═════════════════════════════════════════════════════ ٢ · الحدود
+     faint فاصلٌ داخلي لا يُرى إلا بطرف العين · line الحدّ العادي ·
+     strong حدٌّ يفصل كتلتين · accent حدٌّ يحمل حالة (تركيز، نشاط). */
+  --edge-faint:color-mix(in srgb, var(--border) 55%, transparent);
+  --edge-line:var(--border);
+  --edge-strong:var(--border-2);
+  /* control حدُّ مكوّنٍ تفاعلي — يجتاز 3:1 على السطح الذي يقع عليه. */
+  --edge-control:var(--color-border-control);
+  --edge-accent:var(--brand);
+
+  /* ═══════════════════════════════════════════ ٣ · الأضواء · glow
+     **الضوء يحمل معلومة**: لونه يقول أي شيءٍ وقع، لا «هنا شيءٌ جميل».
+       arrival  رقمٌ أو صفٌّ وصل من الخادم للتوّ
+       posted   الترحيل وقع — الفعل الذي لا رجعة فيه
+       refusal  النظام رفض ولم يخمّن
+       inferred قيمةٌ استنتجها النظام لا أدخلها المستخدم
+       debit/credit  طرفا القيد
+       focus    العنصر الذي تحمله لوحة المفاتيح الآن
+     ولكلٍّ ثلاث شدّات حيث يلزم: soft (حالة ساكنة) · مجرّد (حدث) ·
+     strong (ذروة لحظة). */
+  --glow-arrival:0 0 0 1px color-mix(in srgb, var(--brand) 42%, transparent),
+                 0 0 22px color-mix(in srgb, var(--brand) 26%, transparent);
+  --glow-posted-soft:0 0 0 1px color-mix(in srgb, var(--good) 28%, transparent);
+  --glow-posted:0 0 0 1px color-mix(in srgb, var(--good) 55%, transparent),
+                0 0 30px color-mix(in srgb, var(--good) 30%, transparent);
+  --glow-posted-strong:0 0 0 2px color-mix(in srgb, var(--good) 78%, transparent),
+                       0 0 56px color-mix(in srgb, var(--good) 44%, transparent);
+  --glow-refusal:0 0 0 1px color-mix(in srgb, var(--req) 62%, transparent),
+                 0 0 26px color-mix(in srgb, var(--req) 26%, transparent);
+  --glow-inferred:0 0 0 1px color-mix(in srgb, var(--ai) 52%, transparent),
+                  0 0 24px color-mix(in srgb, var(--ai) 24%, transparent);
+  --glow-debit:0 0 18px color-mix(in srgb, var(--debit) 26%, transparent);
+  --glow-credit:0 0 18px color-mix(in srgb, var(--credit) 26%, transparent);
+  --glow-focus:0 0 0 3px color-mix(in srgb, var(--brand) 34%, transparent);
+
+  /* ═══════════════════════════════════════ ٤ · الارتفاع · elevation
+     ظلٌّ لكل درجة من سلّم الأسطح، فلا يُكتب ظلٌّ حرفيّ في مكوّن. */
+  --elevation-flat:none;
+  --elevation-raised:0 1px 2px color-mix(in srgb, var(--shade) 22%, transparent),
+                     0 14px 38px -18px color-mix(in srgb, var(--shade) 46%, transparent);
+  --elevation-floating:0 2px 6px color-mix(in srgb, var(--shade) 24%, transparent),
+                       0 20px 52px -22px color-mix(in srgb, var(--shade) 58%, transparent);
+  --elevation-overlay:0 4px 12px color-mix(in srgb, var(--shade) 30%, transparent),
+                      0 34px 90px -28px color-mix(in srgb, var(--shade) 70%, transparent);
+
+  /* ═══════════════════════════════════════════ ٥ · أنصاف الأقطار
+     الأسماء بالدور فوق سلّم `tokens.css`، فلا يُكتب رقمٌ في مكوّن. */
+  --radius-control:var(--radius-sm);
+  --radius-panel:var(--radius-xl);
+  --radius-overlay:var(--radius-xl);
+  --radius-well:var(--radius-lg);
+  --radius-mark:var(--radius-xs);
+
+  /* ═══════════════════════════════ ٦ · مقياس الحركة — الزمن والمنحنى
+     **كل مدّة هنا لها استعمالٌ واحد مسمّى.** ومن يحتاج مدّةً ليست في
+     السلّم فليضفها **باسم استعمالها**، لا برقمٍ في مكوّن.
+
+       swift       .10s  تغيّرُ حالةٍ فوري: تحويم، تركيز، ضغط
+       quick       .16s  ظهورُ عنصرٍ صغير: تلميح، شارة
+       deliberate  .34s  حركةٌ **تحمل معلومة** تُقرأ: وصول، استنتاج
+       weighty     .52s  فعلٌ لا رجعة فيه: الترحيل
+       cinematic   .62s  الانتقال بين الأقسام — مسار العرض
+       dwell       1.10s كم يبقى الأثر ظاهراً قبل أن ينطفئ
+
+     والمنحنيات أربعة لا أكثر، ولكلٍّ معنى:
+       enter   يدخل بسرعة ثم يستقرّ — الوصول والكشف
+       exit    يخرج بلا تردّد — الاختفاء
+       settle  استقرارٌ بارتدادٍ صغير — الترحيل وحده
+       refuse  قاطعٌ بلا ارتداد — الرفض وحده (والارتداد فيه يقول «ربما»)
+   ═══════════════════════════════════════════════════════════════════════ */
+  --motion-swift:.10s;
+  --motion-quick:.16s;
+  --motion-deliberate:.34s;
+  --motion-weighty:.52s;
+  --motion-cinematic:.62s;
+  --motion-dwell:1.10s;
+
+  --ease-enter:cubic-bezier(.16,.9,.3,1);
+  --ease-exit:cubic-bezier(.5,0,.9,.4);
+  --ease-settle:cubic-bezier(.2,.9,.25,1.08);
+  --ease-refuse:cubic-bezier(.36,.07,.19,.97);
+
+  /* مقدارُ الإزاحة في حركات الدخول. صغيرٌ عمداً: إزاحةٌ كبيرة تُبعد الرقم
+     عن موضعه فتؤخّر قراءته، وذلك ممنوع في هذا المنتج. */
+  --motion-rise:6px;
+
+  /* ═══════════════════════════════════ ٧ · الطبقات · z-index
+     ما فوق سلّم `tokens.css` (table-head 2 … toast 120). */
+  --z-glow:1;              /* طبقة الضوء داخل عنصر — تحت محتواه */
+  --z-voice-dock:70;       /* زرّ الصوت الحاضر دائماً — فوق الرأس (60) */
+  --z-command:110;         /* لوحة الأوامر — فوق التعتيم (100) ودون التنبيه */
+
+  /* ═══════════════════════════════ ٨ · ألوان الأقسام الخمسة
+     كل قسمٍ يحمل لوناً واحداً يميّزه في الملاحة وفي شريط الانتقال. وهي
+     **ليست ألواناً جديدة**: كلها من لوحة السمة القائمة، مُسمّاةً بدورها. */
+  --section-accounting:var(--debit);
+  --section-inventory:var(--credit);
+  --section-hr:var(--ai);
+  --section-contracting:var(--warn);
+  --section-realestate:var(--good);
+}
+
+/* ══════════════════════════════════ الداكن — تفضيل النظام (بحارس الاختيار)
+   لا يُعرَّف رمزٌ هنا لأول مرّة: كل ما أدناه إعادةُ تعريف لما فوق. */
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --backdrop-cinematic:
+      radial-gradient(1400px 900px at 78% -12%, #1a2b4d 0%, var(--surface-ground) 62%);
+    --elevation-raised:0 1px 2px rgba(0,0,0,.34), 0 18px 50px -20px rgba(0,0,0,.72);
+    --elevation-floating:0 2px 8px rgba(0,0,0,.4), 0 26px 64px -24px rgba(0,0,0,.8);
+    --elevation-overlay:0 6px 16px rgba(0,0,0,.46), 0 40px 100px -30px rgba(0,0,0,.9);
+  }
+}
+
+/* ═════════════════════════════════════════ الداكن — الاختيار الصريح يفوز */
+:root[data-theme="dark"]{
+  --backdrop-cinematic:
+    radial-gradient(1400px 900px at 78% -12%, #1a2b4d 0%, var(--surface-ground) 62%);
+  --elevation-raised:0 1px 2px rgba(0,0,0,.34), 0 18px 50px -20px rgba(0,0,0,.72);
+  --elevation-floating:0 2px 8px rgba(0,0,0,.4), 0 26px 64px -24px rgba(0,0,0,.8);
+  --elevation-overlay:0 6px 16px rgba(0,0,0,.46), 0 40px 100px -30px rgba(0,0,0,.9);
+}

@@ -1,0 +1,5 @@
+{
+  "id": "chatcmpl-0005",
+  "object": "chat.completion",
+  "choices": [{ "index": 0, "finish_reason": "stop", "message": { "role": "assistant", "content": "```json\n__CONTENT__\n```" } }]
+}

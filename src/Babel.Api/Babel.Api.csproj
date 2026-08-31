@@ -1,0 +1,65 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!--
+    Babel.Api — الجذر التركيبي وسطح HTTP. المشروع الوحيد الذي يعرف كل الوحدات.
+    ولا يعرف رغم ذلك أنواعها الداخلية: كل تسجيل يمرّ بدالة Add<Module> المعلنة.
+    Rule03: لا مشروع يعتمد على Babel.Api — أبداً.
+  -->
+
+  <PropertyGroup>
+    <RootNamespace>Babel.Api</RootNamespace>
+    <AssemblyName>Babel.Api</AssemblyName>
+    <UserSecretsId>babel-api-skeleton</UserSecretsId>
+  </PropertyGroup>
+
+  <!--
+    العقد المنشور **مضمَّن في التجميعة**، لا مقروءاً من القرص وقت التشغيل.
+    ولماذا التضمين: الخادم المنشور لا يملك نسخة من المستودع، فقراءةُ مسارٍ نسبيّ منه
+    تنجح على جهاز المطوّر وتفشل حيث يهمّ. والتضميـن يجعل البايتات المخدومة **هي**
+    البايتات المُودَعة وقت البناء، فلا مصدر حقيقة ثانٍ يُبنى وقت التشغيل.
+    وإن تغيّر الملفّ ولم يُعَد البناء، فالحارس
+    `الوثيقة_المخدومة_تطابق_الملفّ_المُودَع_بايتاً_بايت` يحمرّ ويطلب إعادة البناء —
+    وهو الجواب الصحيح، لا أن يُخدَم عقدٌ قديم بصمت.
+  -->
+  <ItemGroup>
+    <EmbeddedResource Include="../../contracts/openapi/v1.json" LogicalName="Babel.Api.contract.v1.json" />
+
+    <!--
+      صفحة الاستعراض. تُزال أولاً من مجموعة Content التي يضمّها Web SDK تلقائياً،
+      وإلا صار الملفّ الواحد عنصرين فيفشل البناء بـNETSDK1022.
+    -->
+    <Content Remove="OpenApi/docs.html" />
+    <EmbeddedResource Include="OpenApi/docs.html" LogicalName="Babel.Api.docs.html" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      مستوى التحكّم — والمرجع هنا **وحده**، ولا مرجع إليه من أي مشروع آخر.
+      ‏ModuleMap يجعل مجموعة مراجع Babel.ControlPlane **فارغة**: لا يعتمد على أي مشروع
+      بابل، فلا يعرف TenantId ولا UserId ولا Result ولا وحدة منتَج واحدة. والحاجز في
+      ذلك الاتجاه هو الحاجز الحقيقي، وهو **باقٍ كما كان**. أمّا هذا الاتجاه فمسموح في
+      ModuleMap منذ البداية — مجموعة Babel.Api هي «كل المشاريع» — لأن الجذر التركيبي
+      هو الموضع الذي يعرف الطرفين ويترجم بينهما. (ADR-جديد · ADR-0036 §2)
+    -->
+    <ProjectReference Include="../Babel.ControlPlane/Babel.ControlPlane.csproj" />
+    <ProjectReference Include="../Babel.SharedKernel/Babel.SharedKernel.csproj" />
+    <ProjectReference Include="../Babel.Contracts/Babel.Contracts.csproj" />
+    <ProjectReference Include="../Babel.Core/Babel.Core.csproj" />
+    <ProjectReference Include="../Babel.Ledger/Babel.Ledger.csproj" />
+    <ProjectReference Include="../Babel.Sales/Babel.Sales.csproj" />
+    <ProjectReference Include="../Babel.Purchasing/Babel.Purchasing.csproj" />
+    <ProjectReference Include="../Babel.Compliance/Babel.Compliance.csproj" />
+    <ProjectReference Include="../Babel.Inventory/Babel.Inventory.csproj" />
+    <ProjectReference Include="../Babel.Pos/Babel.Pos.csproj" />
+    <ProjectReference Include="../Babel.Hr/Babel.Hr.csproj" />
+    <ProjectReference Include="../Babel.Projects/Babel.Projects.csproj" />
+    <ProjectReference Include="../Babel.RealEstate/Babel.RealEstate.csproj" />
+    <ProjectReference Include="../Babel.Assets/Babel.Assets.csproj" />
+    <ProjectReference Include="../Babel.Portals/Babel.Portals.csproj" />
+    <ProjectReference Include="../Babel.Ai/Babel.Ai.csproj" />
+
+    <!-- محوّل المرفقات: مشروع مساند لا وحدة. الجذر التركيبي وحده يركّبه (ADR-0046). -->
+    <ProjectReference Include="../Babel.Storage/Babel.Storage.csproj" />
+  </ItemGroup>
+
+</Project>

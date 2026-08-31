@@ -1,0 +1,181 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   طبقة الحضور الذكي  ·  The intelligent-presence layer
+   ───────────────────────────────────────────────────────────────────────────
+   «ذكاء اصطناعي» هنا **ليس** زخرفةً نيونية ولا جسيماتٍ عائمة. المقصود أن
+   يبدو النظام **مُدرِكاً**: يُظهر أنه يقرأ، ويستنتج، ويثق بدرجة، ويعيد
+   الحساب أمامك. وكل مكوّن في هذه الطبقة يحمل **معلومةً محاسبية**، لا أثراً.
+
+   **والمطلب المحاسبي الحاكم:** من يقرأ القائمة يجب أن يعرف **مصدر كل رقم**.
+   ولذلك الوسم البصري الذي يفرّق المُستنتَج عن المُدخَل **ليس تجميلاً** — وهو
+   امتدادٌ لسابقةٍ مُثبتة في طبقة العرض: ما لا يكون حقيقياً يحمل وسماً
+   بنفسجياً (`--stage-sim`)، وهو هنا `--color-ai` نفسه.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ══════════════════════════════════════ ١ · وسم المصدر · provenance mark
+   المصادر الستّة هي **نفسها** التي يعلنها الخادم (`FieldProvenance`) وطبقة
+   الصوت (`voice/intent.ts`)، ولا يُخترع سابعٌ في الواجهة:
+     attested  مُصدَّق   · read مقروء · spoken منطوق
+     inferred  مُستنتَج · defaulted من الإعدادات · typed أدخلتَه
+
+   والتقسيم البصري **ثنائي لا سداسي**، لأن السؤال المحاسبي ثنائي:
+   هل الرقمُ من إنسانٍ يملكه (typed · attested) أم من النظام (read · spoken
+   · inferred · defaulted)؟ الأول محايدٌ بلا وسم، والثاني موسومٌ دائماً. */
+.prov{
+  display:inline-flex; align-items:center; gap:var(--space-6);
+  padding:2px var(--space-8); border-radius:var(--radius-pill);
+  border:var(--border-width) solid transparent;
+  font-size:var(--font-size-3xs); font-weight:var(--font-weight-semibold);
+  line-height:1.7; white-space:nowrap;
+}
+.prov::before{
+  content:""; inline-size:6px; block-size:6px; border-radius:var(--radius-circle);
+  background:currentColor; flex:none;
+}
+/* ما يملكه الإنسان: محايدٌ بلا لون حالة — الأصل لا يُوسَم، الاستثناء يُوسَم. */
+.prov[data-source="typed"]{
+  background:var(--color-surface-sunken); border-color:var(--color-border);
+  color:var(--color-text-muted);
+}
+.prov[data-source="attested"]{
+  background:var(--color-success-soft); border-color:var(--color-success-line);
+  color:var(--color-success);
+}
+/* ما أنتجه النظام: بنفسجيّ `--color-ai` بثلاث شدّات حسب قوّة الادّعاء. */
+.prov[data-source="read"],
+.prov[data-source="spoken"],
+.prov[data-source="inferred"]{
+  background:var(--color-ai-soft); border-color:var(--color-ai-line); color:var(--color-ai);
+}
+.prov[data-source="inferred"]{ border-style:dashed; }
+.prov[data-source="defaulted"]{
+  background:transparent; border-style:dashed; border-color:var(--color-border-strong);
+  color:var(--color-text-subtle);
+}
+
+/* الحقل نفسه يحمل أثر مصدره: شريطٌ على بدايته بلون المصدر. خاصية منطقية
+   فتنقلب وحدها في اللغات الأربع.
+
+   ⚠ **واللون ليس الحامل الوحيد.** كان هذا الشريط يقول المصدر بلونه وحده:
+   من لا يفرّق البنفسجي عن الأخضر لا يعرف أن الحقل ملأه النظام لا هو —
+   وهذا في منتجٍ محاسبي ليس نقصَ زينة. فلكلّ مصدرٍ **شكلٌ** أيضاً:
+     مُدخَل   خطٌّ متّصل محايد    (الأصل لا يُوسَم)
+     مُصدَّق  خطٌّ مزدوج          attested
+     مُستنتَج/مقروء/منطوق  خطٌّ متقطّع — وهو نفس تقطيع `.prov[inferred]`
+     افتراضي  خطٌّ منقّط          defaulted
+   والشكل يُقرأ بلا لون، ويبقى مقروءاً في الطباعة بالأبيض والأسود. */
+.prov-field{
+  border-inline-start:var(--border-width-accent) solid var(--color-border);
+  padding-inline-start:var(--space-10);
+}
+.prov-field[data-source="inferred"],
+.prov-field[data-source="read"],
+.prov-field[data-source="spoken"]{
+  border-inline-start-color:var(--color-ai);
+  border-inline-start-style:dashed;
+}
+.prov-field[data-source="attested"]{
+  border-inline-start-color:var(--color-success);
+  border-inline-start-style:double;
+  border-inline-start-width:4px;
+}
+.prov-field[data-source="defaulted"]{
+  border-inline-start-color:var(--color-border-control);
+  border-inline-start-style:dotted;
+}
+
+/* ══════════════════════════════════════════ ٢ · درجة الثقة · confidence
+   **تُعرض حين يستنتج النظام، ولا تُعرض حين يكون الرقم مُدخَلاً.** وثقةٌ
+   تُعرض على قيمةٍ كتبها المستخدم كذبٌ مهذّب: النظام لا «يثق» بما لم يقله.
+
+   والعتبات ثلاث ومسمّاة — لا تدرّج مستمرّ، لأن القرار الذي يبنيه المحاسب
+   ثلاثيّ: امضِ · راجع · لا تعتمد عليه.
+     high   ≥ 85  — يُقبل بنظرة
+     medium 60–84 — يُراجَع
+     low    < 60  — لا يُعتمد، والحقل يُملأ ويُوسَم ولا يُخفى */
+.confidence{
+  display:flex; align-items:center; gap:var(--space-8); min-inline-size:0;
+}
+.confidence__rail{
+  position:relative; flex:1 1 auto; min-inline-size:52px;
+  block-size:5px; border-radius:var(--radius-pill);
+  background:var(--color-surface-sunken);
+  border:var(--border-width) solid var(--edge-faint);
+  overflow:hidden;
+}
+.confidence__fill{
+  position:absolute; inset-block:0; inset-inline-start:0;
+  /* العرض من رمزٍ يكتبه المكوّن مرّة واحدة — ولا يُحرَّك: تحريك `width`
+     يُعيد التخطيط، والقياس هنا حالةٌ لا حدث. */
+  inline-size:calc(var(--confidence, 0) * 1%);
+  border-radius:inherit;
+  background:currentColor;
+}
+.confidence__value{
+  font-variant-numeric:tabular-nums; font-size:var(--font-size-3xs);
+  font-weight:var(--font-weight-bold); flex:none;
+}
+.confidence[data-band="high"]{ color:var(--color-success) }
+.confidence[data-band="medium"]{ color:var(--color-warning) }
+.confidence[data-band="low"]{ color:var(--color-danger) }
+
+/* ═════════════════════════════════════ ٣ · أثر الصوت · the voice trace
+   النظام **يسمع → يفرّغ → يفهم نيّة → يملأ حقولاً**. والرحلة تُعرض كاملةً
+   لا نتيجتها وحدها: من يرى الخطوة التي وقف عندها النظام يعرف لماذا الحقل
+   فارغ، ومن يرى الحقل فارغاً وحده يظنّ العطل في الميكروفون. */
+.trace{
+  display:flex; align-items:stretch; gap:var(--space-8); flex-wrap:wrap;
+}
+.trace__step{
+  flex:1 1 140px; min-inline-size:0;
+  display:flex; flex-direction:column; gap:var(--space-4);
+  padding:var(--space-10) var(--space-12);
+  border:var(--border-width) solid var(--edge-line);
+  border-radius:var(--radius-well);
+  background:var(--color-surface-sunken);
+  color:var(--color-text-subtle);
+  transition:border-color var(--motion-quick) var(--ease-enter),
+             color var(--motion-quick) var(--ease-enter);
+}
+.trace__step[data-state="active"]{
+  border-color:var(--color-ai); color:var(--color-ai);
+  background:var(--color-ai-soft);
+}
+.trace__step[data-state="done"]{ border-color:var(--color-success-line); color:var(--color-success) }
+.trace__k{ font-size:var(--font-size-3xs); font-weight:var(--font-weight-semibold) }
+.trace__v{
+  font-size:var(--font-size-sm); color:var(--color-text);
+  overflow-wrap:anywhere; min-inline-size:0;
+}
+.trace__step[data-state="idle"] .trace__v{ color:var(--color-text-subtle) }
+
+/* ═══════════════════════════════ ٤ · القيمة المُستنتَجة داخل النصّ · inline
+   قيمةٌ استنتجها النظام تظهر داخل جملةٍ أو خليّة: تحتها خطٌّ متقطّع بلون
+   `--color-ai`، وهو الوسم نفسه في الجدول وفي الحقل وفي الجملة — فلا يتعلّم
+   المستخدم ثلاث لغاتٍ لمعنى واحد. */
+.inferred{
+  border-block-end:var(--border-width-strong) dashed
+    color-mix(in srgb, var(--color-ai) 66%, transparent);
+  padding-block-end:1px;
+}
+.inferred-cell{ background:color-mix(in srgb, var(--color-ai) 9%, transparent) }
+
+/* ══════════════════════════════════ ٥ · لوح الحضور · the presence panel
+   لوحٌ يقول «النظام يفكّر الآن»، وهو الوعاء الذي يجمع الثقة والأثر والكشف. */
+.presence{
+  border:var(--border-width) solid var(--color-ai-line);
+  border-radius:var(--radius-panel);
+  background:linear-gradient(180deg, var(--color-ai-soft), var(--color-surface) 68%);
+  padding:var(--space-16);
+  display:flex; flex-direction:column; gap:var(--space-12);
+  box-shadow:var(--elevation-raised);
+}
+.presence__head{
+  display:flex; align-items:center; gap:var(--space-8); flex-wrap:wrap;
+  color:var(--color-ai); font-weight:var(--font-weight-semibold);
+  font-size:var(--font-size-card-title);
+}
+.presence__head .spacer{ margin-inline-start:auto }
+.presence__note{
+  font-size:var(--font-size-xs); color:var(--color-text-muted);
+  line-height:var(--line-snug);
+}

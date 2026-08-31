@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    مُولِّد ومتحقّق المتجهات الذهبية. يخرج برمز غير صفري عند أي انحراف. انظر README.
+    تحت tools/ عمداً: أداة تكامل مستمر لا وحدة منتج، فلا تفحصها قواعد الحدود
+    (RepositoryLayout يمسح src/ و tests/ فقط) — لكنها في Babel.slnx كي يبنيها CI.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Babel.Canonicalization.Golden</RootNamespace>
+    <AssemblyName>Babel.Canonicalization.Golden</AssemblyName>
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <PredefinedCulturesOnly>false</PredefinedCulturesOnly>
+    <!-- أداة تشغيل لا مكتبة عامة؛ الشرح في README ولا حاجة لتعليق XML على كل عضو. -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/Babel.Canonicalization/Babel.Canonicalization.csproj" />
+  </ItemGroup>
+
+</Project>

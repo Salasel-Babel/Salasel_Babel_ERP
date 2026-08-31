@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    مزوّد وهمي كامل التنفيذ. لا شبكة، لا اعتمادات، لا شهادات في المستودع.
+    كل مفتاح يُولَّد في الذاكرة عند التشغيل ويموت مع العملية.
+    لا يعرف شيئاً عن التنسيق: يعتمد على العقد وحده.
+  -->
+
+  <PropertyGroup>
+    <RootNamespace>Babel.Compliance.FakeProvider</RootNamespace>
+    <AssemblyName>Babel.Compliance.FakeProvider</AssemblyName>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Babel.Compliance.Abstractions/Babel.Compliance.Abstractions.csproj" />
+  </ItemGroup>
+
+</Project>

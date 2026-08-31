@@ -1,0 +1,80 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Babel.Api.Tests — اختبارات عند حدّ HTTP، **من خارج العملية**.
+
+    ولا مرجع مشروع واحد إلى Babel.Api هنا، ولا يجوز أن يوجد. سببان:
+
+    1. القاعدة 3 «لا شيء يعتمد على الجذر التركيبي» تشمل مشاريع الاختبار. مرجعٌ من هنا
+       إلى Babel.Api يُفشل Rule03_DependencyDirectionIsAlwaysDownward مباشرةً.
+
+    2. وهو الأهمّ: **هذا بالضبط ما طلبه المالك.** «العزل التام بين فرونت اند وباك اند»
+       لا يُثبته اختبار يستضيف الخادم داخل عمليته ويصل إلى أنواعه الداخلية؛ يُثبته عميل
+       لا يملك إلا العنوان والعقد — كما ستكون الواجهة تماماً. فالاختبارات هنا تُقلع
+       الثنائي المبنيّ عمليةً مستقلّة، وتخاطبه عبر HTTP، ولا ترى منه سطراً واحداً.
+
+    والمرجع إلى Babel.Ledger لتهيئة قاعدة بيانات الاختبار وحدها (المخطّط والبذر)، وهو
+    ما تفعله tests/Babel.Ledger.Tests بالنمط نفسه.
+  -->
+
+  <PropertyGroup>
+    <RootNamespace>Babel.Api.Tests</RootNamespace>
+    <AssemblyName>Babel.Api.Tests</AssemblyName>
+    <!-- العربية لغة أولى: بيانات المناطق مطلوبة، والتطبيع الصامت أخطر مصيدة نشر. -->
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <PredefinedCulturesOnly>false</PredefinedCulturesOnly>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/Babel.Ledger/Babel.Ledger.csproj" />
+    <ProjectReference Include="../../src/Babel.Canonicalization/Babel.Canonicalization.csproj" />
+    <!--
+      والمرجعان إلى المبيعات والمشتريات لنشر مخطّطيهما في قاعدتَي هذه العملية وحده —
+      بالناشر نفسه الذي يستعمله الإنتاج والعرض. ولا يُقرأ من الوحدتين نوعٌ آخر: كل
+      ما تعرفه هذه المجموعة عن السطح يمرّ عبر HTTP والعقد المنشور.
+    -->
+    <ProjectReference Include="../../src/Babel.Sales/Babel.Sales.csproj" />
+    <ProjectReference Include="../../src/Babel.Purchasing/Babel.Purchasing.csproj" />
+    <!--
+      والموارد البشرية للسبب نفسه، ولسببٍ ثانٍ يخصّها وحدها: الخادم **يرفض الإقلاع**
+      بلا اتصال قاعدتها — لا افتراضي لها عمداً — فبلا نشر مخطّطها هنا لا تُقلع عملية
+      الاختبار أصلاً. ولا يُقرأ منها إلا ناشر المخطّط وإعداداته.
+    -->
+    <ProjectReference Include="../../src/Babel.Hr/Babel.Hr.csproj" />
+    <!--
+      والمخزون للسبب نفسه: ترحيل استلام البضاعة عبر HTTP يبلغ دفتر المخزون المساعد قبل
+      أن يبلغ الدفتر، فقاعدته لازمة لهذه العملية — ولا يُقرأ منه إلا ناشر المخطّط.
+    -->
+    <ProjectReference Include="../../src/Babel.Inventory/Babel.Inventory.csproj" />
+    <ProjectReference Include="../../src/Babel.Projects/Babel.Projects.csproj" />
+    <!--
+      ومرجعٌ إلى مستوى التحكّم لتهيئة قاعدة الأسطول لهذه العملية وحدها: قاعدتها،
+      ومخطّط control، وكتالوج الوحدات والخطط، وصلاحيات دور سطح الاشتراك — بالناشر
+      نفسه الذي يستعمله الأسطول. ولا يُقرأ منه نوعٌ آخر: كل ما تعرفه هذه المجموعة عن
+      سطح الاشتراك يمرّ عبر HTTP والعقد المنشور، كما في المبيعات والمشتريات بالضبط.
+    -->
+    <ProjectReference Include="../../src/Babel.ControlPlane/Babel.ControlPlane.csproj" />
+    <!--
+      ومحوّل المرفقات لنشر مخطّط المخزن في قاعدة هذه العملية وحده — بالناشر نفسه
+      (StorageSchema.DeployAsync) الذي يستعمله النشر، لا بنسخة ثانية من نصوصه.
+      ولا يُقرأ منه نوعٌ آخر: كل ما تعرفه هذه المجموعة عن سطح المرفقات يمرّ عبر HTTP.
+    -->
+    <ProjectReference Include="../../src/Babel.Storage/Babel.Storage.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Npgsql" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+  </ItemGroup>
+
+  <!--
+    جذر المستودع وتهيئة البناء يُحقنان في التجميعة: الاختبار يجد ثنائي الخادم بمساره،
+    لا بمرجع مشروع.
+  -->
+  <ItemGroup>
+    <AssemblyMetadata Include="BabelRepositoryRoot" Value="$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../'))" />
+    <AssemblyMetadata Include="BabelConfiguration" Value="$(Configuration)" />
+  </ItemGroup>
+
+</Project>

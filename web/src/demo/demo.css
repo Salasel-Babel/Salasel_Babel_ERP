@@ -1,0 +1,284 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   مِنصّة العرض — طبقة عرض محضة، تُرمى بعد العرض (انظر ADR-0028 §2)
+   ───────────────────────────────────────────────────────────────────────────
+   لا رمز لون خام هنا يخصّ المنتج: الطبقة الدلالية في styles/tokens.css هي
+   العقد، وما دونها ألوان مِنصّة سينمائية داكنة تخصّ التسجيل وحده.
+   ═══════════════════════════════════════════════════════════════════════════ */
+@import "./fonts.css";
+
+.demo-stage{
+  --stage-bg:#0b1220;
+  --stage-bg-2:#111c31;
+  --stage-panel:#16233c;
+  --stage-panel-2:#1d2d4d;
+  --stage-line:#2b3f66;
+  --stage-line-2:#3d5a8c;
+  --stage-text:#eef4ff;
+  --stage-text-2:#9db0d0;
+  --stage-text-3:#6b81a6;
+  --stage-brand:#5b9dff;
+  --stage-good:#34d399;
+  --stage-good-bg:rgba(52,211,153,.12);
+  --stage-bad:#fb7185;
+  --stage-bad-bg:rgba(251,113,133,.13);
+  --stage-warn:#fbbf24;
+  --stage-warn-bg:rgba(251,191,36,.13);
+  --stage-debit:#2dd4bf;
+  --stage-credit:#7dd3fc;
+  --stage-sim:#c084fc;
+  --stage-mono:ui-monospace,"DejaVu Sans Mono","Cascadia Mono",monospace;
+
+  position:fixed; inset:0; z-index:9000;
+  background:radial-gradient(1400px 900px at 78% -12%, #1a2b4d 0%, var(--stage-bg) 62%);
+  color:var(--stage-text);
+  font-family:var(--font-sans);
+  display:grid; grid-template-rows:auto 1fr auto;
+  overflow:hidden;
+}
+
+/* ── شريط التعليق ─────────────────────────────────────────────────────── */
+.demo-cap{
+  display:flex; align-items:flex-start; gap:24px;
+  padding:26px 56px 20px;
+  border-bottom:1px solid var(--stage-line);
+  background:linear-gradient(180deg, rgba(11,18,32,.94), rgba(11,18,32,.55));
+  min-height:118px;
+}
+.demo-cap__text{ flex:1 1 auto; min-width:0; }
+.demo-cap__title{
+  margin:0; font-family:var(--font-display); font-weight:700;
+  font-size:40px; line-height:1.28; letter-spacing:-.01em;
+}
+.demo-cap__sub{ margin:6px 0 0; font-size:21px; color:var(--stage-text-2); line-height:1.5; }
+.demo-cap__brand{ display:flex; align-items:center; gap:12px; flex:0 0 auto; padding-top:4px; }
+.demo-cap__mark{
+  width:34px; height:34px; border-radius:10px;
+  background:linear-gradient(135deg,var(--stage-brand),#a78bfa);
+  box-shadow:0 0 0 1px rgba(255,255,255,.14), 0 8px 26px rgba(91,157,255,.35);
+}
+.demo-cap__name{ font-size:22px; font-weight:600; letter-spacing:-.01em; }
+
+/* ── وسم الصدق ────────────────────────────────────────────────────────── */
+.demo-truth{
+  flex:0 0 auto; display:inline-flex; align-items:center; gap:9px;
+  padding:9px 18px; border-radius:999px; font-size:19px; font-weight:600;
+  border:1px solid transparent; white-space:nowrap;
+}
+.demo-truth[data-truth="real"]{ color:var(--stage-good); background:var(--stage-good-bg); border-color:rgba(52,211,153,.4); }
+.demo-truth[data-truth="sim"]{ color:var(--stage-sim); background:rgba(192,132,252,.14); border-color:rgba(192,132,252,.45); }
+.demo-truth[data-truth="mixed"]{ color:var(--stage-warn); background:var(--stage-warn-bg); border-color:rgba(251,191,36,.42); }
+.demo-truth__dot{ width:11px; height:11px; border-radius:50%; background:currentColor; }
+
+/* ── الجسم ────────────────────────────────────────────────────────────── */
+.demo-body{ padding:26px 56px; overflow:hidden; min-height:0; display:flex; flex-direction:column; }
+.demo-foot{
+  display:flex; align-items:center; gap:18px; padding:12px 56px 16px;
+  border-top:1px solid var(--stage-line); color:var(--stage-text-3); font-size:16px;
+  background:rgba(11,18,32,.7);
+}
+.demo-foot__spacer{ flex:1 1 auto; }
+.demo-foot__mono{ font-family:var(--stage-mono); font-size:14px; letter-spacing:.02em; }
+
+/* ── ألواح ────────────────────────────────────────────────────────────── */
+.demo-grid{ display:grid; gap:22px; min-height:0; flex:1 1 auto; }
+.demo-grid--2{ grid-template-columns:1fr 1fr; }
+.demo-grid--wide{ grid-template-columns:1.15fr .85fr; }
+.demo-panel{
+  background:linear-gradient(180deg,var(--stage-panel),var(--stage-panel-2));
+  border:1px solid var(--stage-line); border-radius:16px;
+  padding:20px 22px; min-height:0; display:flex; flex-direction:column;
+  box-shadow:0 18px 50px rgba(0,0,0,.34);
+}
+.demo-panel__head{
+  display:flex; align-items:center; gap:12px; margin:0 0 14px;
+  font-size:19px; font-weight:600; color:var(--stage-text-2);
+  padding-bottom:12px; border-bottom:1px solid var(--stage-line);
+}
+.demo-panel__head strong{ color:var(--stage-text); font-weight:700; }
+.demo-panel__body{ flex:1 1 auto; min-height:0; overflow:hidden; }
+.demo-panel--flush{ padding:0; overflow:hidden; }
+
+/* ── جداول ────────────────────────────────────────────────────────────── */
+.demo-table{ width:100%; border-collapse:collapse; font-size:19px; }
+.demo-table th{
+  text-align:start; font-weight:600; color:var(--stage-text-3); font-size:16px;
+  padding:8px 12px; border-bottom:1px solid var(--stage-line); white-space:nowrap;
+}
+.demo-table td{ padding:9px 12px; border-bottom:1px solid rgba(43,63,102,.5); }
+.demo-table tr:last-child td{ border-bottom:0; }
+.demo-table .num,.demo-table .amt{ font-variant-numeric:tabular-nums; text-align:end; white-space:nowrap; }
+.demo-code{ font-family:var(--stage-mono); font-size:17px; color:var(--stage-text-2); letter-spacing:.02em; }
+.demo-debit{ color:var(--stage-debit); font-weight:600; }
+.demo-credit{ color:var(--stage-credit); font-weight:600; }
+.demo-zero{ color:var(--stage-text-3); }
+.demo-row-hit{ background:rgba(91,157,255,.16); }
+.demo-row-bad{ background:var(--stage-bad-bg); }
+.demo-row-bad td{ color:var(--stage-bad); }
+
+/* ── الطرفية ──────────────────────────────────────────────────────────── */
+.demo-term{
+  /* الطرفية إطارٌ لاتيني داخل صفحة عربية: العزل يمنع تسرّب اتجاه ما حوله إليه. */
+  direction:ltr; unicode-bidi:isolate; text-align:left;
+  font-family:var(--stage-mono); font-size:16.5px; line-height:1.65;
+  background:#070d18; border:1px solid var(--stage-line); border-radius:14px;
+  padding:16px 18px; height:100%; overflow:hidden;
+  display:flex; flex-direction:column; gap:2px;
+  box-shadow:inset 0 0 60px rgba(0,0,0,.5);
+}
+.demo-term__line{ white-space:pre-wrap; word-break:break-word; }
+.demo-term__line[data-kind="cmd"]{ color:#8fd3ff; }
+.demo-term__line[data-kind="cmd"]::before{ content:"$ "; color:#4b6a95; }
+.demo-term__line[data-kind="sql"]{ color:#8fd3ff; }
+.demo-term__line[data-kind="sql"]::before{ content:"babel_demo_ledger=# "; color:#4b6a95; }
+.demo-term__line[data-kind="out"]{ color:#c7d5ea; }
+.demo-term__line[data-kind="err"]{ color:#ff8f9f; font-weight:600; }
+.demo-term__line[data-kind="ok"]{ color:#5eead4; }
+/* سطور الشرح عربية داخل طرفية اتجاهها ltr — فتُعطى اتجاهها الصحيح، وإلّا
+   تناثرت المقاطع وصار «الجملة.» في أوّلها. */
+.demo-term__line[data-kind="note"]{
+  /* سطر شرحٍ عربي داخل الطرفية اللاتينية — يُعزل عمّا قبله وما بعده. */
+  color:#8ba3c7; direction:rtl; unicode-bidi:isolate; text-align:right; font-style:normal;
+  border-inline-start:3px solid #2f4a75; padding-inline-start:10px;
+  margin:6px 0; line-height:1.75;
+}
+.demo-term__caret{ display:inline-block; width:9px; height:19px; background:#8fd3ff; vertical-align:-3px; animation:demo-blink 1s steps(1) infinite; }
+@keyframes demo-blink{ 50%{opacity:0} }
+
+/* ── الأحكام الكبيرة ──────────────────────────────────────────────────── */
+.demo-verdict{
+  display:flex; flex-direction:column; gap:8px; padding:20px 24px;
+  border-radius:14px; border:1px solid transparent; margin-top:14px;
+  animation:demo-pop .45s cubic-bezier(.2,.9,.25,1.1) both;
+}
+.demo-verdict[data-tone="good"]{ background:var(--stage-good-bg); border-color:rgba(52,211,153,.45); }
+.demo-verdict[data-tone="bad"]{ background:var(--stage-bad-bg); border-color:rgba(251,113,133,.5); }
+.demo-verdict[data-tone="warn"]{ background:var(--stage-warn-bg); border-color:rgba(251,191,36,.45); }
+/* رمز الحكم لاتيني دائماً (CHAIN-OK وأمثاله) — معزول عن اتجاه ما يجاوره. */
+.demo-verdict__code{ font-family:var(--stage-mono); font-size:29px; font-weight:700; letter-spacing:.02em; direction:ltr; unicode-bidi:isolate; text-align:start; }
+.demo-verdict[data-tone="good"] .demo-verdict__code{ color:var(--stage-good); }
+.demo-verdict[data-tone="bad"] .demo-verdict__code{ color:var(--stage-bad); }
+.demo-verdict[data-tone="warn"] .demo-verdict__code{ color:var(--stage-warn); }
+.demo-verdict__why{ font-size:20px; color:var(--stage-text-2); line-height:1.5; }
+@keyframes demo-pop{ from{opacity:0; transform:translateY(14px) scale(.97)} to{opacity:1; transform:none} }
+
+/* ── بطاقات إحصاء ─────────────────────────────────────────────────────── */
+.demo-stats{ display:flex; gap:16px; flex-wrap:wrap; }
+.demo-stat{
+  flex:1 1 0; min-width:150px; background:rgba(29,45,77,.7);
+  border:1px solid var(--stage-line); border-radius:14px; padding:14px 18px;
+}
+.demo-stat__k{ font-size:15px; color:var(--stage-text-3); margin-bottom:6px; }
+.demo-stat__v{ font-size:31px; font-weight:700; font-variant-numeric:tabular-nums; }
+.demo-stat[data-tone="good"] .demo-stat__v{ color:var(--stage-good); }
+.demo-stat[data-tone="bad"] .demo-stat__v{ color:var(--stage-bad); }
+
+/* ── المشهد الافتتاحي ─────────────────────────────────────────────────── */
+.demo-title{ display:flex; flex-direction:column; justify-content:center; align-items:center; height:100%; gap:26px; text-align:center; }
+.demo-title__h{ font-family:var(--font-display); font-size:96px; font-weight:700; margin:0; letter-spacing:-.02em;
+  background:linear-gradient(120deg,#eef4ff 20%,#93c5fd 60%,#c4b5fd 100%);
+  -webkit-background-clip:text; background-clip:text; color:transparent; }
+.demo-title__p{ font-size:30px; color:var(--stage-text-2); margin:0; max-width:1100px; line-height:1.55; }
+.demo-title__strip{ display:flex; gap:14px; flex-wrap:wrap; justify-content:center; margin-top:8px; }
+.demo-chip{
+  padding:11px 22px; border-radius:999px; border:1px solid var(--stage-line);
+  background:rgba(29,45,77,.75); font-size:20px; color:var(--stage-text-2);
+}
+.demo-chip strong{ color:var(--stage-text); font-weight:700; }
+
+/* ── المؤشّر الزمني ───────────────────────────────────────────────────── */
+.demo-timeline{ display:flex; flex-direction:column; gap:10px; }
+.demo-timeline__rail{ position:relative; height:14px; border-radius:999px; background:rgba(29,45,77,.9); border:1px solid var(--stage-line); overflow:hidden; }
+.demo-timeline__fill{ position:absolute; inset-block:0; inset-inline-start:0; background:linear-gradient(90deg,#3b82f6,#22d3ee); }
+.demo-timeline__ticks{ display:flex; justify-content:space-between; font-size:15px; color:var(--stage-text-3); font-variant-numeric:tabular-nums; }
+.demo-day{ font-size:48px; font-weight:700; font-variant-numeric:tabular-nums; letter-spacing:.01em; }
+.demo-bar{ height:12px; border-radius:6px; background:linear-gradient(90deg,var(--stage-debit),rgba(45,212,191,.25)); transition:width .18s linear; }
+.demo-bar--credit{ background:linear-gradient(90deg,var(--stage-credit),rgba(125,211,252,.25)); }
+
+/* ── مسار التفسير ─────────────────────────────────────────────────────── */
+.demo-trail{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:14px; font-size:17px; }
+.demo-trail__step{ padding:7px 15px; border-radius:10px; background:rgba(29,45,77,.8); border:1px solid var(--stage-line); color:var(--stage-text-2); }
+.demo-trail__step[data-on="1"]{ color:var(--stage-text); border-color:var(--stage-brand); background:rgba(91,157,255,.16); }
+.demo-trail__sep{ color:var(--stage-text-3); }
+.demo-fade{ animation:demo-fade .4s ease both; }
+@keyframes demo-fade{ from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:none} }
+
+/* ── الفاتورة ─────────────────────────────────────────────────────────── */
+.demo-doc{ background:#fff; color:#0f172a; border-radius:12px; padding:22px 24px; font-size:18px; }
+.demo-doc h4{ margin:0 0 4px; font-size:24px; }
+.demo-doc__meta{ display:flex; gap:22px; flex-wrap:wrap; color:#475569; font-size:16px; margin-bottom:14px; }
+.demo-doc table{ width:100%; border-collapse:collapse; }
+.demo-doc th{ text-align:start; font-size:15px; color:#64748b; border-bottom:1px solid #e2e8f0; padding:7px 9px; }
+.demo-doc td{ padding:8px 9px; border-bottom:1px solid #f1f5f9; }
+.demo-doc .num,.demo-doc .amt{ text-align:end; font-variant-numeric:tabular-nums; }
+.demo-doc__totals{ display:flex; justify-content:flex-end; gap:26px; margin-top:12px; font-size:19px; }
+.demo-doc__totals b{ font-variant-numeric:tabular-nums; }
+
+/* ── الشاشة الحقيقية داخل المِنصّة ────────────────────────────────────── */
+.demo-embed{
+  background:var(--color-bg); color:var(--color-text); border-radius:14px;
+  padding:22px 26px; height:100%; overflow:hidden;
+  font-family:var(--font-sans);
+}
+
+/* ── لوحة الرأي الثاني ────────────────────────────────────────────────── */
+.demo-queue{ display:flex; flex-direction:column; gap:12px; }
+.demo-sugg{
+  border:1px solid rgba(192,132,252,.45); background:rgba(192,132,252,.09);
+  border-radius:14px; padding:16px 18px; display:flex; flex-direction:column; gap:8px;
+}
+.demo-sugg__head{ display:flex; align-items:center; gap:10px; font-size:17px; color:var(--stage-sim); font-weight:600; }
+.demo-sugg__body{ font-size:20px; line-height:1.55; }
+.demo-sugg__acts{ display:flex; gap:10px; margin-top:4px; }
+.demo-btn{
+  padding:9px 18px; border-radius:10px; font-size:17px; font-weight:600;
+  border:1px solid var(--stage-line); background:rgba(29,45,77,.85); color:var(--stage-text);
+}
+.demo-btn[data-kind="primary"]{ border-color:var(--stage-brand); background:rgba(91,157,255,.2); }
+.demo-note{ font-size:17px; color:var(--stage-text-3); line-height:1.55; margin-top:10px; }
+.demo-list{ margin:0; padding-inline-start:22px; font-size:19px; line-height:1.75; color:var(--stage-text-2); }
+.demo-list strong{ color:var(--stage-text); }
+
+/* ── ضبط الارتفاع لكل مشهد ────────────────────────────────────────────
+   مشاهد محتواها أقصر من الشاشة تُتوسَّط رأسياً بدل أن تُمطّ ألواحها؛
+   ومشهدا المؤشّر الزمني واللغة يملآن الارتفاع لأن جدوليهما طويلان. */
+.demo-body[data-scene="tamper"] .demo-grid,
+.demo-body[data-scene="explain"] .demo-grid,
+.demo-body[data-scene="qr"] .demo-grid,
+.demo-body[data-scene="voice"] .demo-grid,
+.demo-body[data-scene="opinion"] .demo-grid{ align-items:center; }
+.demo-body[data-scene="tamper"] .demo-panel,
+.demo-body[data-scene="explain"] .demo-panel,
+.demo-body[data-scene="qr"] .demo-panel,
+.demo-body[data-scene="voice"] .demo-panel,
+.demo-body[data-scene="opinion"] .demo-panel{ max-height:100%; }
+
+/* الطرفية تبقى ممتدّة: سطورها تتراكم وارتفاعٌ قافز يشتّت العين. */
+.demo-body[data-scene="tamper"] .demo-panel--flush{ height:100%; align-self:stretch; }
+
+/* ── جدول كثيف: أربعة عشر حساباً يجب أن تُرى كلّها في إطار واحد ─────── */
+.demo-table--dense{ font-size:16.5px; }
+.demo-table--dense td{ padding:6px 10px; white-space:nowrap; }
+.demo-table--dense th{ padding:6px 10px; font-size:14px; }
+
+/* ── بطاقة الطبقات الثلاث ─────────────────────────────────────────────*/
+.demo-layers{ display:flex; flex-direction:column; gap:8px; margin-top:16px; }
+.demo-layer{
+  display:flex; align-items:center; gap:12px; font-size:17px;
+  padding:10px 14px; border-radius:11px; border:1px solid var(--stage-line);
+  background:rgba(29,45,77,.55); color:var(--stage-text-2);
+}
+.demo-layer b{ color:var(--stage-text); font-weight:600; }
+.demo-layer__n{
+  flex:0 0 auto; width:26px; height:26px; border-radius:8px; display:grid; place-items:center;
+  background:rgba(91,157,255,.2); color:var(--stage-brand); font-weight:700; font-size:15px;
+}
+
+/* ── المبالغ داخل المِنصّة ─────────────────────────────────────────────
+   المكوّن <Amount> يحمل الصنف .amt، ولونه في الطبقة الدلالية هو لون النصّ
+   **في السمة الفاتحة** — أي كحليٌّ داكن على مِنصّة داكنة. فيُورَّث اللون هنا،
+   ويُعاد الأصل داخل الشاشات المُركَّبة وداخل المستند الأبيض. */
+.demo-stage .amt{ color:inherit; }
+.demo-stage .amt-zero{ color:var(--stage-text-3); }
+.demo-embed .amt{ color:var(--color-amount); }
+.demo-embed .amt-zero{ color:var(--color-amount-zero); }
+.demo-doc .amt{ color:#0f172a; }

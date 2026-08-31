@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Babel.Storage — مشروع مساند، لا وحدة منتج.
+    المنفذ نفسه (IAttachmentStore) يعيش في Babel.Contracts كي تبلغه كل وحدة أفقية بلا
+    سطر جديد في ModuleMap؛ وهذا المشروع **محوّل واحد** له: نظام ملفّات على خادم واحد،
+    ووصفٌ في PostgreSQL. لا وحدة تشير إليه — الجذر التركيبي وحده يركّبه.
+    لا استحقاق له ولا مدخل في BabelModule: لا يشتريه عميل ولا يُطفأ.
+  -->
+
+  <PropertyGroup>
+    <RootNamespace>Babel.Storage</RootNamespace>
+    <AssemblyName>Babel.Storage</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Babel.SharedKernel/Babel.SharedKernel.csproj" />
+    <ProjectReference Include="../Babel.Contracts/Babel.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Npgsql" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- نصوص النشر مضمَّنة: النشر لا يفترض وجود شجرة المستودع على الخادم. -->
+    <EmbeddedResource Include="Persistence/Migrations/*.sql" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- الاختبار يبلغ الجداول نفسها كي يُثبت أن الرفض يأتي من PostgreSQL لا من الشيفرة. -->
+    <InternalsVisibleTo Include="Babel.Storage.Tests" />
+  </ItemGroup>
+
+</Project>

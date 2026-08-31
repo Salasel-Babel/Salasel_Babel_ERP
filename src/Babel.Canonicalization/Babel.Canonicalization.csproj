@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    مكتبة التوحيد القياسي (canonicalisation).
+
+    قاعدة ملزمة: هذا المشروع لا يعتمد على أي حزمة خارجية إطلاقاً.
+    لا EF Core، ولا Npgsql، ولا System.Text.Json، ولا أي وحدة من وحدات النظام.
+    السبب: البايتات المُجزَّأة يجب ألا تتغيّر أبداً بسبب ترقية حزمة.
+
+    HARD RULE: zero external package references. Ever.
+    The hashed bytes must never move because a dependency was upgraded.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>Babel.Canonicalization</RootNamespace>
+    <AssemblyName>Babel.Canonicalization</AssemblyName>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
+    <!-- الرموز الثابتة موثّقة في SPEC.md؛ لا حاجة لتعليق XML على كل ثابت. -->
+    <!--
+      CA1720 («المعرّف يحتوي اسم نوع») على CanonicalKind.Integer وCanonicalValue.Integer:
+      مفردات الشكل القانوني **مجمّدة في v1** وموثّقة في SPEC.md §2، ورمز السلك هو المحرف 'I'
+      لا اسم العضو — فإعادة التسمية تغيّر مواصفة موقَّعة، لا تحسّن تسمية، وبلا أثر سلوكي.
+      ولذلك يُسكَت هنا صراحةً وبتعليل — لا برفع مستوى التحليل عن المستودع كله؛ والاستثناء
+      مقصور على هذا المشروع ولا يمسّ أي قاعدة من قواعد المعمارية.
+      CA1720: 'Integer' is frozen wire-format vocabulary (SPEC.md §2, type character I).
+      Renaming it edits a signed specification; suppressed here explicitly, not globally.
+    -->
+    <NoWarn>$(NoWarn);CS1591;CA1720</NoWarn>
+
+    <!--
+      لا يجوز أبداً تشغيل هذه المكتبة في وضع InvariantGlobalization:
+      String.Normalize يصبح عندها عملية لا شيء (no-op) بصمت، فتتغيّر كل بصمة نص عربي.
+      المكتبة تتحقّق من ذلك عند التحميل وترمي استثناءً (انظر CanonicalRuntime).
+    -->
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <PredefinedCulturesOnly>false</PredefinedCulturesOnly>
+  </PropertyGroup>
+
+</Project>

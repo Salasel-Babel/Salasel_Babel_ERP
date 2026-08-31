@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    أداة التحقق من دليل الحسابات ومصفوفة الترحيل. تُبنى مع الحل (Babel.slnx) لا خارجه:
+    مشروع لا يبنيه شيء تصير محلّلاته واختباراته وأخطاؤه غير مرئية بينما التكامل المستمر أخضر
+    (docs/evidence/traps.md — فخ-43).
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>SalaselBabel.MatrixValidator</RootNamespace>
+    <AssemblyName>MatrixValidator</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="tests/**" />
+    <None Remove="tests/**" />
+  </ItemGroup>
+
+  <!--
+    الأداة برنامج تنفيذي لا مكتبة عامة: كل أنواعها internal، ومشروع اختباراتها وحده يراها.
+    هذا هو سبب اختفاء CS1591 هنا — لا إسكات، بل غياب سطح عام أصلاً.
+  -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="MatrixValidator.Tests" />
+  </ItemGroup>
+
+</Project>

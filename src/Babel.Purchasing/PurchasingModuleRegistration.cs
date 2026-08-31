@@ -1,0 +1,60 @@
+using Babel.Contracts.Capture;
+using Babel.Contracts.Voice;
+using Babel.Purchasing.Application;
+using Babel.Purchasing.Surface;
+using Babel.Purchasing.Voice;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace Babel.Purchasing;
+
+/// <summary>
+/// نقطة تركيب الوحدة. الجذر التركيبي يستدعي هذه الدالة ولا يعرف الأنواع الداخلية للوحدة.
+/// </summary>
+public static class PurchasingModuleRegistration
+{
+    /// <summary>يسجّل الوحدة بإعداداتها الافتراضية.</summary>
+    /// <param name="services">حاوية الخدمات.</param>
+    public static IServiceCollection AddBabelPurchasing(this IServiceCollection services)
+        => services.AddBabelPurchasing(static _ => { });
+
+    /// <summary>يسجّل الوحدة بإعدادات صريحة.</summary>
+    /// <param name="services">حاوية الخدمات.</param>
+    /// <param name="configure">ضابط الإعدادات.</param>
+    public static IServiceCollection AddBabelPurchasing(this IServiceCollection services, Action<PurchasingOptions> configure)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(configure);
+
+        PurchasingOptions options = new();
+        configure(options);
+
+        services.AddSingleton(options);
+        services.AddScoped<PurchasingRuntime>();
+        services.AddScoped<SupplierService>();
+        services.AddScoped<PurchaseOrderService>();
+        services.AddScoped<GoodsReceiptService>();
+        services.AddScoped<SupplierBillService>();
+        services.AddScoped<SupplierPaymentService>();
+        services.AddScoped<PayablesService>();
+
+        // السطح المنشور: النوع الوحيد من هذه الوحدة الذي يجوز لسطح HTTP أن يسمّيه
+        // (القاعدة 13 البند ب).
+        services.AddScoped<PurchasingSurface>();
+
+        // ── منفذ الترقية: الوحدة **المالكة للمستند** تسجّل تنفيذها له ────────────
+        // والمنفذ يعيش في Babel.Contracts، فلا تكتسب أي وحدة بتسجيله معرفةً بجارتها:
+        // وحدة الالتقاط ترى الواجهة وحدها، والحاوية توصلها بهذا التنفيذ. وهو الطرف
+        // الذي كان مفقوداً — منفذٌ معلن لا ينفّذه أحد.
+        services.AddScoped<PurchasingCapturedInvoiceReceiver>();
+        services.AddScoped<ICapturedInvoiceReceiver>(
+            static provider => provider.GetRequiredService<PurchasingCapturedInvoiceReceiver>());
+
+        // ‏**النيّات المنطوقة تُسجَّل من هنا، لا من مشروع الذكاء.**
+        // الوحدة تُعلن ما تُنطَق به، ووحدةُ الذكاء تجمع ما وجدته في الحاوية عبر
+        // ‏<c>IVoiceIntentCatalogue</c> في العقد. ولا تعرف إحداهما الأخرى في أي اتجاه —
+        // وهو ما تفرضه القاعدة 3، وما يجعل إضافة نيّةٍ لا تمسّ مشروع الذكاء بسطر.
+        services.AddSingleton<IVoiceIntentCatalogue, PurchasingVoiceIntents>();
+
+        return services;
+    }
+}

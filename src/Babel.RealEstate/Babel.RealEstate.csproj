@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Babel.RealEstate — وحدة أفقية.
+    لا تعتمد على Babel.Ledger ولا على أي وحدة أفقية أخرى — مفروض ببناء في Rule01 و Rule03.
+    الترحيل عبر Babel.Contracts.Posting.IPostingService، والتخاطب عبر عقود الأحداث.
+    ولا رمز حساب واحد في هذا المشروع كله: الوحدة تصف عقاراً ووحدةً وعقداً ومبلغاً،
+    والمصفوفة تقرّر الحساب (Rule02).
+  -->
+
+  <PropertyGroup>
+    <RootNamespace>Babel.RealEstate</RootNamespace>
+    <AssemblyName>Babel.RealEstate</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Babel.SharedKernel/Babel.SharedKernel.csproj" />
+    <ProjectReference Include="../Babel.Contracts/Babel.Contracts.csproj" />
+    <ProjectReference Include="../Babel.Core/Babel.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Npgsql" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- نصوص الترقية مضمَّنة: النشر لا يفترض وجود شجرة المستودع على الخادم. -->
+    <EmbeddedResource Include="Persistence/Migrations/*.sql" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      الاختبار يبلغ بوّابة الترحيل ورياضيات السطر نفسيهما.
+      كلاهما internal عمداً (القاعدة 5): اشتقاق مفتاح الحصانة وسياسة تقريب السطر
+      قراران داخليان للوحدة، ولا يُكشفان كي لا يُعادا كتابةً في مكان آخر — وإثبات
+      «الوصول الثاني لا يُنشئ قيداً ثانياً» يجب أن يمرّ **من حيث يمرّ الإنتاج**.
+    -->
+    <InternalsVisibleTo Include="Babel.RealEstate.Tests" />
+  </ItemGroup>
+
+</Project>

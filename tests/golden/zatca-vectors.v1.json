@@ -1,0 +1,172 @@
+{
+  "_": "متجهات ذهبية لمسار الهيئة — لا تُحرَّر يدوياً. تُولَّد بـBABEL_ZATCA_GOLDEN_EMIT=1 وتُفحص في كل بناء.",
+  "_تحذير": "هذه المتجهات تُثبت الحتمية، لا القبول لدى الهيئة. بيئة البناء محجوبة عنها (403 مقيس).",
+  "format_version": "zatca.v1",
+  "hash_algorithm": "SHA-256",
+  "encoding": "UTF-8 without BOM",
+  "vector_count": 30,
+  "manifest_sha256": "297c17e09850c86067477127c2a83c8a62178a0d7cb003457fafe9e249e73121",
+  "vectors": [
+    {
+      "id": "standard.body.canonical",
+      "ar": "الفاتورة القياسية كاملةً بعد التوحيد القياسي، بمواضع التوقيع وQR فارغة",
+      "text": "<Invoice xmlns=\"urn:oasis:names:specification:ubl:schema:xsd:Invoice-2\" xmlns:cac=\"urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2\" xmlns:cbc=\"urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2\" xmlns:ext=\"urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2\"><ext:UBLExtensions></ext:UBLExtensions><cbc:ProfileID>reporting:1.0</cbc:ProfileID><cbc:ID>INV-2026-000001</cbc:ID><cbc:UUID>0192f3a0-1111-7000-8000-000000000001</cbc:UUID><cbc:IssueDate>2026-08-25</cbc:IssueDate><cbc:IssueTime>10:30:00</cbc:IssueTime><cbc:InvoiceTypeCode name=\"0100000\">388</cbc:InvoiceTypeCode><cbc:DocumentCurrencyCode>SAR</cbc:DocumentCurrencyCode><cbc:TaxCurrencyCode>SAR</cbc:TaxCurrencyCode><cac:AdditionalDocumentReference><cbc:ID>ICV</cbc:ID><cbc:UUID>2</cbc:UUID></cac:AdditionalDocumentReference><cac:AdditionalDocumentReference><cbc:ID>PIH</cbc:ID><cac:Attachment><cbc:EmbeddedDocumentBinaryObject mimeCode=\"text/plain\">q6urq6urq6urq6urq6urq6urq6urq6urq6urq6urq6s=</cbc:EmbeddedDocumentBinaryObject></cac:Attachment></cac:AdditionalDocumentReference><cac:AdditionalDocumentReference><cbc:ID>QR</cbc:ID><cac:Attachment><cbc:EmbeddedDocumentBinaryObject mimeCode=\"text/plain\"></cbc:EmbeddedDocumentBinaryObject></cac:Attachment></cac:AdditionalDocumentReference><cac:Signature><cbc:ID>urn:oasis:names:specification:ubl:signature:Invoice</cbc:ID><cbc:SignatureMethod>urn:oasis:names:specification:ubl:dsig:enveloped:xades</cbc:SignatureMethod></cac:Signature><cac:AccountingSupplierParty><cac:Party><cac:PartyIdentification><cbc:ID schemeID=\"CRN\">1010101010</cbc:ID></cac:PartyIdentification><cac:PostalAddress><cbc:StreetName>طريق الملك فهد</cbc:StreetName><cbc:BuildingNumber>1234</cbc:BuildingNumber><cbc:PlotIdentification>5678</cbc:PlotIdentification><cbc:CitySubdivisionName>حي العليا</cbc:CitySubdivisionName><cbc:CityName>الرياض</cbc:CityName><cbc:PostalZone>12211</cbc:PostalZone><cbc:CountrySubentity>منطقة الرياض</cbc:CountrySubentity><cac:Country><cbc:IdentificationCode>SA</cbc:IdentificationCode></cac:Country></cac:PostalAddress><cac:PartyTaxScheme><cbc:CompanyID>300000000000003</cbc:CompanyID><cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme></cac:PartyTaxScheme><cac:PartyLegalEntity><cbc:RegistrationName>شركة سلاسل بابل للمقاولات</cbc:RegistrationName></cac:PartyLegalEntity></cac:Party></cac:AccountingSupplierParty><cac:AccountingCustomerParty><cac:Party><cac:PostalAddress><cbc:StreetName>شارع التحلية</cbc:StreetName><cbc:BuildingNumber>4321</cbc:BuildingNumber><cbc:PlotIdentification></cbc:PlotIdentification><cbc:CitySubdivisionName></cbc:CitySubdivisionName><cbc:CityName>جدة</cbc:CityName><cbc:PostalZone>23442</cbc:PostalZone><cbc:CountrySubentity></cbc:CountrySubentity><cac:Country><cbc:IdentificationCode>SA</cbc:IdentificationCode></cac:Country></cac:PostalAddress><cac:PartyTaxScheme><cbc:CompanyID>310000000000003</cbc:CompanyID><cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme></cac:PartyTaxScheme><cac:PartyLegalEntity><cbc:RegistrationName>مؤسسة العميل التجارية</cbc:RegistrationName></cac:PartyLegalEntity></cac:Party></cac:AccountingCustomerParty><cac:Delivery><cbc:ActualDeliveryDate>2026-08-25</cbc:ActualDeliveryDate></cac:Delivery><cac:PaymentMeans><cbc:PaymentMeansCode>10</cbc:PaymentMeansCode></cac:PaymentMeans><cac:TaxTotal><cbc:TaxAmount currencyID=\"SAR\">150.00</cbc:TaxAmount></cac:TaxTotal><cac:TaxTotal><cbc:TaxAmount currencyID=\"SAR\">150.00</cbc:TaxAmount><cac:TaxSubtotal><cbc:TaxableAmount currencyID=\"SAR\">200.00</cbc:TaxableAmount><cbc:TaxAmount currencyID=\"SAR\">0.00</cbc:TaxAmount><cac:TaxCategory><cbc:ID>Z</cbc:ID><cbc:Percent>0</cbc:Percent><cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme></cac:TaxCategory></cac:TaxSubtotal><cac:TaxSubtotal><cbc:TaxableAmount currencyID=\"SAR\">1000.00</cbc:TaxableAmount><cbc:TaxAmount currencyID=\"SAR\">150.00</cbc:TaxAmount><cac:TaxCategory><cbc:ID>S</cbc:ID><cbc:Percent>15</cbc:Percent><cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme></cac:TaxCategory></cac:TaxSubtotal></cac:TaxTotal><cac:LegalMonetaryTotal><cbc:LineExtensionAmount currencyID=\"SAR\">1200.00</cbc:LineExtensionAmount><cbc:TaxExclusiveAmount currencyID=\"SAR\">1200.00</cbc:TaxExclusiveAmount><cbc:TaxInclusiveAmount currencyID=\"SAR\">1350.00</cbc:TaxInclusiveAmount><cbc:AllowanceTotalAmount currencyID=\"SAR\">0.00</cbc:AllowanceTotalAmount><cbc:PrepaidAmount currencyID=\"SAR\">0.00</cbc:PrepaidAmount><cbc:PayableAmount currencyID=\"SAR\">1350.00</cbc:PayableAmount></cac:LegalMonetaryTotal><cac:InvoiceLine><cbc:ID>1</cbc:ID><cbc:InvoicedQuantity unitCode=\"PCE\">2</cbc:InvoicedQuantity><cbc:LineExtensionAmount currencyID=\"SAR\">1000.00</cbc:LineExtensionAmount><cac:TaxTotal><cbc:TaxAmount currencyID=\"SAR\">150.00</cbc:TaxAmount><cbc:RoundingAmount currencyID=\"SAR\">1150.00</cbc:RoundingAmount></cac:TaxTotal><cac:Item><cbc:Name>خدمات استشارية هندسية</cbc:Name><cac:ClassifiedTaxCategory><cbc:ID>S</cbc:ID><cbc:Percent>15</cbc:Percent><cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme></cac:ClassifiedTaxCategory></cac:Item><cac:Price><cbc:PriceAmount currencyID=\"SAR\">500.00</cbc:PriceAmount></cac:Price></cac:InvoiceLine><cac:InvoiceLine><cbc:ID>2</cbc:ID><cbc:InvoicedQuantity unitCode=\"PCE\">1</cbc:InvoicedQuantity><cbc:LineExtensionAmount currencyID=\"SAR\">200.00</cbc:LineExtensionAmount><cac:TaxTotal><cbc:TaxAmount currencyID=\"SAR\">0.00</cbc:TaxAmount><cbc:RoundingAmount currencyID=\"SAR\">200.00</cbc:RoundingAmount></cac:TaxTotal><cac:Item><cbc:Name>توريد مواد معفاة</cbc:Name><cac:ClassifiedTaxCategory><cbc:ID>Z</cbc:ID><cbc:Percent>0</cbc:Percent><cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme></cac:ClassifiedTaxCategory></cac:Item><cac:Price><cbc:PriceAmount currencyID=\"SAR\">200.00</cbc:PriceAmount></cac:Price></cac:InvoiceLine></Invoice>",
+      "sha256": "71f20f5bb1413f33bc50aeeec8c195332974ad0dc0b8a41e4e2affab06fe9542"
+    },
+    {
+      "id": "standard.signing.input",
+      "ar": "بايتات التوقيع للفاتورة القياسية: بعد استبعاد المجموعات الثلاث وقبل الختم",
+      "text": "<Invoice xmlns=\"urn:oasis:names:specification:ubl:schema:xsd:Invoice-2\" xmlns:cac=\"urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2\" xmlns:cbc=\"urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2\" xmlns:ext=\"urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2\"><cbc:ProfileID>reporting:1.0</cbc:ProfileID><cbc:ID>INV-2026-000001</cbc:ID><cbc:UUID>0192f3a0-1111-7000-8000-000000000001</cbc:UUID><cbc:IssueDate>2026-08-25</cbc:IssueDate><cbc:IssueTime>10:30:00</cbc:IssueTime><cbc:InvoiceTypeCode name=\"0100000\">388</cbc:InvoiceTypeCode><cbc:DocumentCurrencyCode>SAR</cbc:DocumentCurrencyCode><cbc:TaxCurrencyCode>SAR</cbc:TaxCurrencyCode><cac:AdditionalDocumentReference><cbc:ID>ICV</cbc:ID><cbc:UUID>2</cbc:UUID></cac:AdditionalDocumentReference><cac:AdditionalDocumentReference><cbc:ID>PIH</cbc:ID><cac:Attachment><cbc:EmbeddedDocumentBinaryObject mimeCode=\"text/plain\">q6urq6urq6urq6urq6urq6urq6urq6urq6urq6urq6s=</cbc:EmbeddedDocumentBinaryObject></cac:Attachment></cac:AdditionalDocumentReference><cac:AccountingSupplierParty><cac:Party><cac:PartyIdentification><cbc:ID schemeID=\"CRN\">1010101010</cbc:ID></cac:PartyIdentification><cac:PostalAddress><cbc:StreetName>طريق الملك فهد</cbc:StreetName><cbc:BuildingNumber>1234</cbc:BuildingNumber><cbc:PlotIdentification>5678</cbc:PlotIdentification><cbc:CitySubdivisionName>حي العليا</cbc:CitySubdivisionName><cbc:CityName>الرياض</cbc:CityName><cbc:PostalZone>12211</cbc:PostalZone><cbc:CountrySubentity>منطقة الرياض</cbc:CountrySubentity><cac:Country><cbc:IdentificationCode>SA</cbc:IdentificationCode></cac:Country></cac:PostalAddress><cac:PartyTaxScheme><cbc:CompanyID>300000000000003</cbc:CompanyID><cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme></cac:PartyTaxScheme><cac:PartyLegalEntity><cbc:RegistrationName>شركة سلاسل بابل للمقاولات</cbc:RegistrationName></cac:PartyLegalEntity></cac:Party></cac:AccountingSupplierParty><cac:AccountingCustomerParty><cac:Party><cac:PostalAddress><cbc:StreetName>شارع التحلية</cbc:StreetName><cbc:BuildingNumber>4321</cbc:BuildingNumber><cbc:PlotIdentification></cbc:PlotIdentification><cbc:CitySubdivisionName></cbc:CitySubdivisionName><cbc:CityName>جدة</cbc:CityName><cbc:PostalZone>23442</cbc:PostalZone><cbc:CountrySubentity></cbc:CountrySubentity><cac:Country><cbc:IdentificationCode>SA</cbc:IdentificationCode></cac:Country></cac:PostalAddress><cac:PartyTaxScheme><cbc:CompanyID>310000000000003</cbc:CompanyID><cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme></cac:PartyTaxScheme><cac:PartyLegalEntity><cbc:RegistrationName>مؤسسة العميل التجارية</cbc:RegistrationName></cac:PartyLegalEntity></cac:Party></cac:AccountingCustomerParty><cac:Delivery><cbc:ActualDeliveryDate>2026-08-25</cbc:ActualDeliveryDate></cac:Delivery><cac:PaymentMeans><cbc:PaymentMeansCode>10</cbc:PaymentMeansCode></cac:PaymentMeans><cac:TaxTotal><cbc:TaxAmount currencyID=\"SAR\">150.00</cbc:TaxAmount></cac:TaxTotal><cac:TaxTotal><cbc:TaxAmount currencyID=\"SAR\">150.00</cbc:TaxAmount><cac:TaxSubtotal><cbc:TaxableAmount currencyID=\"SAR\">200.00</cbc:TaxableAmount><cbc:TaxAmount currencyID=\"SAR\">0.00</cbc:TaxAmount><cac:TaxCategory><cbc:ID>Z</cbc:ID><cbc:Percent>0</cbc:Percent><cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme></cac:TaxCategory></cac:TaxSubtotal><cac:TaxSubtotal><cbc:TaxableAmount currencyID=\"SAR\">1000.00</cbc:TaxableAmount><cbc:TaxAmount currencyID=\"SAR\">150.00</cbc:TaxAmount><cac:TaxCategory><cbc:ID>S</cbc:ID><cbc:Percent>15</cbc:Percent><cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme></cac:TaxCategory></cac:TaxSubtotal></cac:TaxTotal><cac:LegalMonetaryTotal><cbc:LineExtensionAmount currencyID=\"SAR\">1200.00</cbc:LineExtensionAmount><cbc:TaxExclusiveAmount currencyID=\"SAR\">1200.00</cbc:TaxExclusiveAmount><cbc:TaxInclusiveAmount currencyID=\"SAR\">1350.00</cbc:TaxInclusiveAmount><cbc:AllowanceTotalAmount currencyID=\"SAR\">0.00</cbc:AllowanceTotalAmount><cbc:PrepaidAmount currencyID=\"SAR\">0.00</cbc:PrepaidAmount><cbc:PayableAmount currencyID=\"SAR\">1350.00</cbc:PayableAmount></cac:LegalMonetaryTotal><cac:InvoiceLine><cbc:ID>1</cbc:ID><cbc:InvoicedQuantity unitCode=\"PCE\">2</cbc:InvoicedQuantity><cbc:LineExtensionAmount currencyID=\"SAR\">1000.00</cbc:LineExtensionAmount><cac:TaxTotal><cbc:TaxAmount currencyID=\"SAR\">150.00</cbc:TaxAmount><cbc:RoundingAmount currencyID=\"SAR\">1150.00</cbc:RoundingAmount></cac:TaxTotal><cac:Item><cbc:Name>خدمات استشارية هندسية</cbc:Name><cac:ClassifiedTaxCategory><cbc:ID>S</cbc:ID><cbc:Percent>15</cbc:Percent><cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme></cac:ClassifiedTaxCategory></cac:Item><cac:Price><cbc:PriceAmount currencyID=\"SAR\">500.00</cbc:PriceAmount></cac:Price></cac:InvoiceLine><cac:InvoiceLine><cbc:ID>2</cbc:ID><cbc:InvoicedQuantity unitCode=\"PCE\">1</cbc:InvoicedQuantity><cbc:LineExtensionAmount currencyID=\"SAR\">200.00</cbc:LineExtensionAmount><cac:TaxTotal><cbc:TaxAmount currencyID=\"SAR\">0.00</cbc:TaxAmount><cbc:RoundingAmount currencyID=\"SAR\">200.00</cbc:RoundingAmount></cac:TaxTotal><cac:Item><cbc:Name>توريد مواد معفاة</cbc:Name><cac:ClassifiedTaxCategory><cbc:ID>Z</cbc:ID><cbc:Percent>0</cbc:Percent><cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme></cac:ClassifiedTaxCategory></cac:Item><cac:Price><cbc:PriceAmount currencyID=\"SAR\">200.00</cbc:PriceAmount></cac:Price></cac:InvoiceLine></Invoice>",
+      "sha256": "ec9083fb49170d42f28045534b0cf7b3827131bf4f9e76200dca9a228e58865f"
+    },
+    {
+      "id": "standard.invoice.hash",
+      "ar": "بصمة الفاتورة القياسية — وهي ما يدخل مرجع SignedInfo الأول ووسم QR السادس وجسم الإرسال",
+      "text": "7JCD+0kXDULygEVTSwz3s4JxMb9PnnYgDcqaIo5Yhl8=",
+      "note": "base64 لبايتات البصمة الخام — لا للنصّ الستّ‌عشري"
+    },
+    {
+      "id": "simplified.body.canonical",
+      "ar": "الفاتورة المبسّطة كاملةً — بلا مشتري، والسمة name تبدأ بـ02",
+      "text": "<Invoice xmlns=\"urn:oasis:names:specification:ubl:schema:xsd:Invoice-2\" xmlns:cac=\"urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2\" xmlns:cbc=\"urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2\" xmlns:ext=\"urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2\"><ext:UBLExtensions></ext:UBLExtensions><cbc:ProfileID>reporting:1.0</cbc:ProfileID><cbc:ID>SIM-2026-000001</cbc:ID><cbc:UUID>0192f3a0-2222-7000-8000-000000000002</cbc:UUID><cbc:IssueDate>2026-08-25</cbc:IssueDate><cbc:IssueTime>10:30:00</cbc:IssueTime><cbc:InvoiceTypeCode name=\"0200000\">388</cbc:InvoiceTypeCode><cbc:DocumentCurrencyCode>SAR</cbc:DocumentCurrencyCode><cbc:TaxCurrencyCode>SAR</cbc:TaxCurrencyCode><cac:AdditionalDocumentReference><cbc:ID>ICV</cbc:ID><cbc:UUID>2</cbc:UUID></cac:AdditionalDocumentReference><cac:AdditionalDocumentReference><cbc:ID>PIH</cbc:ID><cac:Attachment><cbc:EmbeddedDocumentBinaryObject mimeCode=\"text/plain\">q6urq6urq6urq6urq6urq6urq6urq6urq6urq6urq6s=</cbc:EmbeddedDocumentBinaryObject></cac:Attachment></cac:AdditionalDocumentReference><cac:AdditionalDocumentReference><cbc:ID>QR</cbc:ID><cac:Attachment><cbc:EmbeddedDocumentBinaryObject mimeCode=\"text/plain\"></cbc:EmbeddedDocumentBinaryObject></cac:Attachment></cac:AdditionalDocumentReference><cac:Signature><cbc:ID>urn:oasis:names:specification:ubl:signature:Invoice</cbc:ID><cbc:SignatureMethod>urn:oasis:names:specification:ubl:dsig:enveloped:xades</cbc:SignatureMethod></cac:Signature><cac:AccountingSupplierParty><cac:Party><cac:PartyIdentification><cbc:ID schemeID=\"CRN\">1010101010</cbc:ID></cac:PartyIdentification><cac:PostalAddress><cbc:StreetName>طريق الملك فهد</cbc:StreetName><cbc:BuildingNumber>1234</cbc:BuildingNumber><cbc:PlotIdentification>5678</cbc:PlotIdentification><cbc:CitySubdivisionName>حي العليا</cbc:CitySubdivisionName><cbc:CityName>الرياض</cbc:CityName><cbc:PostalZone>12211</cbc:PostalZone><cbc:CountrySubentity>منطقة الرياض</cbc:CountrySubentity><cac:Country><cbc:IdentificationCode>SA</cbc:IdentificationCode></cac:Country></cac:PostalAddress><cac:PartyTaxScheme><cbc:CompanyID>300000000000003</cbc:CompanyID><cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme></cac:PartyTaxScheme><cac:PartyLegalEntity><cbc:RegistrationName>شركة سلاسل بابل للمقاولات</cbc:RegistrationName></cac:PartyLegalEntity></cac:Party></cac:AccountingSupplierParty><cac:AccountingCustomerParty><cac:Party><cac:PostalAddress><cac:Country><cbc:IdentificationCode>SA</cbc:IdentificationCode></cac:Country></cac:PostalAddress></cac:Party></cac:AccountingCustomerParty><cac:Delivery><cbc:ActualDeliveryDate>2026-08-25</cbc:ActualDeliveryDate></cac:Delivery><cac:PaymentMeans><cbc:PaymentMeansCode>10</cbc:PaymentMeansCode></cac:PaymentMeans><cac:TaxTotal><cbc:TaxAmount currencyID=\"SAR\">150.00</cbc:TaxAmount></cac:TaxTotal><cac:TaxTotal><cbc:TaxAmount currencyID=\"SAR\">150.00</cbc:TaxAmount><cac:TaxSubtotal><cbc:TaxableAmount currencyID=\"SAR\">200.00</cbc:TaxableAmount><cbc:TaxAmount currencyID=\"SAR\">0.00</cbc:TaxAmount><cac:TaxCategory><cbc:ID>Z</cbc:ID><cbc:Percent>0</cbc:Percent><cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme></cac:TaxCategory></cac:TaxSubtotal><cac:TaxSubtotal><cbc:TaxableAmount currencyID=\"SAR\">1000.00</cbc:TaxableAmount><cbc:TaxAmount currencyID=\"SAR\">150.00</cbc:TaxAmount><cac:TaxCategory><cbc:ID>S</cbc:ID><cbc:Percent>15</cbc:Percent><cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme></cac:TaxCategory></cac:TaxSubtotal></cac:TaxTotal><cac:LegalMonetaryTotal><cbc:LineExtensionAmount currencyID=\"SAR\">1200.00</cbc:LineExtensionAmount><cbc:TaxExclusiveAmount currencyID=\"SAR\">1200.00</cbc:TaxExclusiveAmount><cbc:TaxInclusiveAmount currencyID=\"SAR\">1350.00</cbc:TaxInclusiveAmount><cbc:AllowanceTotalAmount currencyID=\"SAR\">0.00</cbc:AllowanceTotalAmount><cbc:PrepaidAmount currencyID=\"SAR\">0.00</cbc:PrepaidAmount><cbc:PayableAmount currencyID=\"SAR\">1350.00</cbc:PayableAmount></cac:LegalMonetaryTotal><cac:InvoiceLine><cbc:ID>1</cbc:ID><cbc:InvoicedQuantity unitCode=\"PCE\">2</cbc:InvoicedQuantity><cbc:LineExtensionAmount currencyID=\"SAR\">1000.00</cbc:LineExtensionAmount><cac:TaxTotal><cbc:TaxAmount currencyID=\"SAR\">150.00</cbc:TaxAmount><cbc:RoundingAmount currencyID=\"SAR\">1150.00</cbc:RoundingAmount></cac:TaxTotal><cac:Item><cbc:Name>خدمات استشارية هندسية</cbc:Name><cac:ClassifiedTaxCategory><cbc:ID>S</cbc:ID><cbc:Percent>15</cbc:Percent><cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme></cac:ClassifiedTaxCategory></cac:Item><cac:Price><cbc:PriceAmount currencyID=\"SAR\">500.00</cbc:PriceAmount></cac:Price></cac:InvoiceLine><cac:InvoiceLine><cbc:ID>2</cbc:ID><cbc:InvoicedQuantity unitCode=\"PCE\">1</cbc:InvoicedQuantity><cbc:LineExtensionAmount currencyID=\"SAR\">200.00</cbc:LineExtensionAmount><cac:TaxTotal><cbc:TaxAmount currencyID=\"SAR\">0.00</cbc:TaxAmount><cbc:RoundingAmount currencyID=\"SAR\">200.00</cbc:RoundingAmount></cac:TaxTotal><cac:Item><cbc:Name>توريد مواد معفاة</cbc:Name><cac:ClassifiedTaxCategory><cbc:ID>Z</cbc:ID><cbc:Percent>0</cbc:Percent><cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme></cac:ClassifiedTaxCategory></cac:Item><cac:Price><cbc:PriceAmount currencyID=\"SAR\">200.00</cbc:PriceAmount></cac:Price></cac:InvoiceLine></Invoice>",
+      "sha256": "879791c2f0780f45a5a19f16190f1f8240ea2dd83418d4c00862a0d84c9cd260"
+    },
+    {
+      "id": "simplified.invoice.hash",
+      "ar": "بصمة الفاتورة المبسّطة — تختلف عن القياسية لأن نوع المستند ومساره داخل البايتات",
+      "text": "TwDM57OalwMq27wQCQN9Pd4eORvSTH0Zzvyxrr2VQV8="
+    },
+    {
+      "id": "domain.chain.digest.equals.invoice.hash",
+      "ar": "‼ سلسلتنا هي سلسلة الهيئة نفسها: DomainChainDigest يساوي SigningInputDigest",
+      "text": "identical",
+      "note": "سلسلة ثانية مستقلة تعني سلسلة تتحقّق عندنا وليست التي تفحصها الجهة"
+    },
+    {
+      "id": "chain.pih.first.document",
+      "ar": "بصمة الفاتورة السابقة للمستند الأول: بذرة ثابتة منشورة، لا بصمة تكويننا",
+      "text": "NWZlY2ViNjZmZmM4NmYzOGQ5NTI3ODZjNmQ2OTZjNzljMmRiYzIzOWRkNGU5MWI0NjcyOWQ3M2EyN2ZiNTdlOQ==",
+      "note": "هذه هي الفجوة الوحيدة بين سلسلتنا وسلسلة الهيئة، وهي عند العدّاد 1 وحده"
+    },
+    {
+      "id": "chain.pih.second.document",
+      "ar": "بصمة الفاتورة السابقة للمستند الثاني: base64 لبايتات البصمة السابقة كما هي",
+      "text": "q6urq6urq6urq6urq6urq6urq6urq6urq6urq6urq6s="
+    },
+    {
+      "id": "chain.icv.is.inside.the.signed.bytes",
+      "ar": "‼ تغيير العدّاد وحده يغيّر بصمة الفاتورة — أي أن العدّاد داخل البايتات لا بجوارها",
+      "text": "changed",
+      "note": "«unchanged» هنا تعني سلسلة زخرفية: رابط خارج البايتات المُجزَّأة"
+    },
+    {
+      "id": "chain.pih.is.inside.the.signed.bytes",
+      "ar": "‼ تغيير البصمة السابقة وحدها يغيّر بصمة الفاتورة",
+      "text": "changed"
+    },
+    {
+      "id": "exclusion.removes.exactly.three.node.sets",
+      "ar": "تحويل التوقيع يزيل ثلاث مجموعات عقد بالضبط: الامتدادات، وعنصر التوقيع، ومرجع QR",
+      "text": "3",
+      "note": "أي رقم غير 3 خطأ في القراءة أو خطأ في الإعداد"
+    },
+    {
+      "id": "qr.phase1.tlv",
+      "ar": "رمز المرحلة الأولى: خمسة وسوم بترتيبها، بلا بصمة ولا توقيع ولا مفتاح عام",
+      "text": "AS/YtNix2YPYqSDYs9mE2KfYs9mEINio2KfYqNmEINmE2YTZhdmC2KfZiNmE2KfYqgIPMzAwMDAwMDAwMDAwMDAzAxQyMDI2LTA4LTI1VDEwOjMwOjAwWgQHMTM1MC4wMAUGMTUwLjAw"
+    },
+    {
+      "id": "qr.phase1.tag.lengths",
+      "ar": "أطوال الوسوم الخمسة بالبايت — الاسم العربي يكلّف ضعف حروفه تقريباً",
+      "text": "1:47,2:15,3:20,4:7,5:6"
+    },
+    {
+      "id": "qr.timestamp",
+      "ar": "الطابع الزمني داخل الرمز: ثقافة ثابتة و UTC صريح، لا تقويم محلي",
+      "text": "2026-08-25T10:30:00Z"
+    },
+    {
+      "id": "c14n.subtree.inherits.ancestor.namespaces",
+      "ar": "‼ توحيد جزء من مستند يكتب على العنصر الأعلى كل تصريحات مساحات الأسماء السارية عليه",
+      "text": "<b:Inner xmlns:a=\"urn:example:a\" xmlns:b=\"urn:example:b\"><b:Value>قيمة</b:Value></b:Inner>",
+      "note": "لو حُسبت البصمة على نسخة مقتطعة لنقصت التصريحات ولاختلفت البصمة تماماً"
+    },
+    {
+      "id": "c14n.subtree.detached.differs",
+      "ar": "المقارنة المقابلة: النسخة المقتطعة تعطي بايتات أخرى — وهذا هو مصدر العطل",
+      "text": "<Inner xmlns=\"urn:example:b\"><Value>قيمة</Value></Inner>"
+    },
+    {
+      "id": "c14n.empty.element.is.expanded",
+      "ar": "الوسم الفارغ يُكتب مفتوحاً ومغلقاً — سلوك C14N الذي يخالف أي تسلسل ساذج",
+      "text": "<Root xmlns=\"urn:x\"><Empty></Empty><Text>نصّ</Text></Root>"
+    },
+    {
+      "id": "xades.signed.properties.canonical.shape",
+      "ar": "شكل الخصائص الموقَّعة بقيم ثابتة مصطنعة — يُثبّت البنية والترميز بلا أي مادة مفتاح",
+      "text": "<xades:SignedProperties xmlns:ds=\"http://www.w3.org/2000/09/xmldsig#\" xmlns:xades=\"http://uri.etsi.org/01903/v1.3.2#\" Id=\"xadesSignedProperties\"><xades:SignedSignatureProperties><xades:SigningTime>2026-08-25T10:30:00Z</xades:SigningTime><xades:SigningCertificate><xades:Cert><xades:CertDigest><ds:DigestMethod Algorithm=\"http://www.w3.org/2001/04/xmlenc#sha256\"></ds:DigestMethod><ds:DigestValue>0000000000000000000000000000000000000000000000000000000000000000</ds:DigestValue></xades:CertDigest><xades:IssuerSerial><ds:X509IssuerName>CN=babel-test-issuer, C=SA</ds:X509IssuerName><ds:X509SerialNumber>1234567890</ds:X509SerialNumber></xades:IssuerSerial></xades:Cert></xades:SigningCertificate></xades:SignedSignatureProperties></xades:SignedProperties>",
+      "sha256": "46453ffa6b2dacfca3eb0e315b474ba51df4d8718c2d8454690dea0c25458095"
+    },
+    {
+      "id": "digest.encoding.raw.vs.hex",
+      "ar": "‼ الفرق بين ترميزَي البصمة: 44 محرفاً مقابل 88 — والخلط بينهما يُرفض عند الجهة وحدها",
+      "text": "agksw9mQ5QikINWfI+pFlMTA7+pj8pp387tm0n0WkPI=|NmEwOTJjYzNkOTkwZTUwOGE0MjBkNTlmMjNlYTQ1OTRjNGMwZWZlYTYzZjI5YTc3ZjNiYjY2ZDI3ZDE2OTBmMg=="
+    },
+    {
+      "id": "digest.policy.default.is.asymmetric",
+      "ar": "‼ الافتراضي غير متماثل عمداً: مرجع الفاتورة خام، والخصائص والشهادة ستّ‌عشرياً",
+      "text": "RawDigestBase64|HexDigestBase64|HexDigestBase64"
+    },
+    {
+      "id": "binary.security.token.is.double.base64",
+      "ar": "رمز الأمان الثنائي: base64 فوق base64 فوق DER — دورتا فكّ ترميز",
+      "text": "TUFNQ0FRVT0=",
+      "note": "فكّ دورة واحدة يعطي نصّاً يبدو معقولاً ويفشل لاحقاً"
+    },
+    {
+      "id": "amounts.scale.two",
+      "ar": "المبالغ داخل المستند بخانتين، بثقافة ثابتة",
+      "text": "1350.00|1350.00|0.00|1000000000000.50"
+    },
+    {
+      "id": "invoice.type.name.standard",
+      "ar": "السمة name للفاتورة القياسية: تبدأ بـ01 أي مسار مقاصة",
+      "text": "0100000"
+    },
+    {
+      "id": "invoice.type.name.simplified",
+      "ar": "السمة name للفاتورة المبسّطة: تبدأ بـ02 أي مسار إبلاغ",
+      "text": "0200000"
+    },
+    {
+      "id": "invoice.type.name.flags",
+      "ar": "الأعلام الخمسة بترتيبها: طرف ثالث، صوري، تصدير، مجمَّع، فوترة ذاتية",
+      "text": "0210101"
+    },
+    {
+      "id": "invoice.type.codes",
+      "ar": "رموز أنواع المستندات الثلاثة",
+      "text": "388|381|383"
+    },
+    {
+      "id": "signing.time.format",
+      "ar": "وقت التوقيع: ثانية بلا كسور، و UTC صريح",
+      "text": "2026-08-25T10:30:00Z"
+    },
+    {
+      "id": "csr.rdn.order",
+      "ar": "ترتيب معرّفات RDN داخل الاسم البديل — مفروض بقائمة معلنة لا بترتيب قاموس",
+      "text": "SN|UID|title|registeredAddress|businessCategory"
+    },
+    {
+      "id": "csr.template.per.environment",
+      "ar": "اسم قالب الشهادة لكل بيئة — بيئتان منفصلتان تماماً",
+      "text": "PREZATCA-Code-Signing|ZATCA-Code-Signing"
+    },
+    {
+      "id": "idempotency.key.shape",
+      "ar": "مفتاح الإحكام من جانبنا: ثابت عبر المحاولات لأنه مشتقّ من هوية المستند وموضعه",
+      "text": "POS-01:2:0192f3a0-1111-7000-8000-000000000001"
+    }
+  ]
+}

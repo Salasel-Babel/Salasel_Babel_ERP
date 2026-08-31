@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    اختبارات أداة التحقق. اسم المشروع ينتهي بـTests، فـDirectory.Build.props هو من يضيف
+    xunit.v3 ويضبط مشغّل منصّة الاختبار ونوع الإخراج — ولا يُكرَّر شيء من ذلك هنا.
+    وإصدار الحزمة يأتي من Directory.Packages.props وحدها (لا Version= داخل csproj).
+  -->
+  <PropertyGroup>
+    <RootNamespace>SalaselBabel.MatrixValidator.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../MatrixValidator.csproj" />
+  </ItemGroup>
+
+</Project>

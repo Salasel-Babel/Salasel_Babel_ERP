@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="ar" dir="rtl" data-i18n-pending>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="فحص التدويل والسمة" data-i18n-attr="content:audit.lede">
+<title data-i18n="audit.docTitle">فحص نظام التصميم — سلاسل بابل</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="tokens/tokens.css">
+<link rel="stylesheet" href="components/components.css">
+<script src="i18n/i18n.js" defer></script>
+<script src="i18n/locales/manifest.js" defer></script>
+<script src="i18n/locales/ar.js" defer></script>
+<script src="i18n/locales/en.js" defer></script>
+<script src="i18n/locales/ur.js" defer></script>
+<script src="i18n/locales/hi.js" defer></script>
+<noscript><style>:root[data-i18n-pending] body{visibility:visible}</style></noscript>
+<style>
+.aud{max-width:1100px;margin:0 auto;padding:var(--space-24) var(--page-pad-x) var(--space-48)}
+.aud h1{margin:0 0 var(--space-6);font-size:var(--font-size-display);font-weight:700}
+.aud > .lede{margin:0 0 var(--space-20);color:var(--color-text-muted);max-width:78ch;line-height:var(--line-relaxed)}
+.aud h2{margin:var(--space-32) 0 var(--space-8);font-size:var(--font-size-3xl);font-weight:700}
+.aud .bar{display:flex;gap:var(--space-10);flex-wrap:wrap;align-items:center;margin-bottom:var(--space-16)}
+</style>
+</head>
+<body>
+
+<div class="aud">
+  <h1 data-i18n="audit.title"></h1>
+  <p class="lede" data-i18n="audit.lede"></p>
+
+  <div class="bar">
+    <span class="localepick">
+      <label class="visually-hidden" for="aud-locale" data-i18n="app.locale.aria"></label>
+      <select class="ctl ctl-sm" id="aud-locale" data-locale-select></select>
+    </span>
+    <button class="iconbtn" data-theme-toggle data-i18n-attr="aria-label:app.theme.toggle"></button>
+    <a class="btn btn-sm" href="gallery.html" data-i18n="app.nav.designGallery"></a>
+  </div>
+
+  <h2 data-i18n="audit.sec.keys"></h2>
+  <div class="tablewrap"><table class="data" id="t-keys" data-i18n-managed></table></div>
+
+  <h2 data-i18n="audit.sec.plurals"></h2>
+  <div class="tablewrap"><table class="data" id="t-plurals" data-i18n-managed></table></div>
+
+  <h2 data-i18n="audit.sec.params"></h2>
+  <div id="t-params" data-i18n-managed></div>
+
+  <h2 data-i18n="audit.sec.convention"></h2>
+  <div id="t-conv" data-i18n-managed></div>
+
+  <h2 data-i18n="audit.sec.dom"></h2>
+  <div id="t-dom" data-i18n-managed></div>
+
+  <h2 data-i18n="audit.sec.intl"></h2>
+  <div class="tablewrap"><table class="data" id="t-intl" data-i18n-managed></table></div>
+
+  <h2 data-i18n="audit.sec.files"></h2>
+  <p class="hint" data-i18n="audit.filesBody"></p>
+  <code class="server-text">node design/audit.js</code>
+</div>
+
+<script src="components/behaviors.js" defer></script>
+<script>
+(function () {
+  "use strict";
+  function esc(x) { return String(x).replace(/[&<>"]/g, function (c) {
+    return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]; }); }
+  function $(s) { return document.querySelector(s); }
+  function pill(ok) {
+    return '<span class="pill ' + (ok ? "pill--posted" : "pill--pending") + '">'
+      + esc(SB.t(ok ? "audit.ok" : "audit.fail")) + "</span>";
+  }
+  function list(items) {
+    if (!items.length) return pill(true);
+    return pill(false) + '<ul style="margin:6px 0 0;padding-inline-start:18px">'
+      + items.slice(0, 60).map(function (x) { return '<li><code class="ltr">' + esc(x) + "</code></li>"; }).join("")
+      + (items.length > 60 ? "<li>…</li>" : "") + "</ul>";
+  }
+
+  function render() {
+    var k = SB.audit.keys(), codes = SB.I18N.loaded();
+
+    $("#t-keys").innerHTML =
+      "<thead><tr><th class='start'>" + esc(SB.t("app.locale.label")) + "</th>"
+      + "<th class='n'>" + esc(SB.t("audit.total")) + "</th>"
+      + "<th class='start'>" + esc(SB.t("gallery.audit.categories")) + "</th>"
+      + "<th class='start'>" + esc(SB.t("gallery.audit.missingKeys")) + "</th>"
+      + "<th class='start'>" + esc(SB.t("gallery.audit.orphanKeys")) + "</th></tr></thead><tbody>"
+      + codes.map(function (c) {
+          var m = SB.I18N.meta(c);
+          return "<tr><td class='start' lang='" + c + "' dir='" + (m.dir || "rtl") + "'>"
+            + esc(m.native || c) + " <code class='ltr'>" + esc(c) + "</code></td>"
+            + "<td class='n'>" + k.locales[c].count + "</td>"
+            + "<td class='start'><code class='ltr'>" + k.locales[c].categories.join(" · ") + "</code></td>"
+            + "<td class='start'>" + list(k.missing[c]) + "</td>"
+            + "<td class='start'>" + list(k.orphans[c]) + "</td></tr>";
+        }).join("") + "</tbody>";
+
+    $("#t-plurals").innerHTML =
+      "<thead><tr><th class='start'>" + esc(SB.t("app.locale.label")) + "</th>"
+      + "<th class='start'>" + esc(SB.t("gallery.audit.pluralGaps")) + "</th></tr></thead><tbody>"
+      + codes.map(function (c) {
+          return "<tr><td class='start'><code class='ltr'>" + esc(c) + "</code></td>"
+            + "<td class='start'>" + list(k.plural[c]) + "</td></tr>";
+        }).join("") + "</tbody>";
+
+    var par = [];
+    codes.forEach(function (c) { k.params[c].forEach(function (x) { par.push(c + " · " + x); }); });
+    $("#t-params").innerHTML = list(par);
+    $("#t-conv").innerHTML = list(SB.audit.convention().map(function (b) { return b.key + " — " + b.why; }));
+    $("#t-dom").innerHTML = list(SB.audit.hardcodedStrings(document.body)
+      .map(function (h) { return h.text + "   @ " + h.path; }));
+
+    $("#t-intl").innerHTML =
+      "<thead><tr><th class='start'>" + esc(SB.t("gallery.i18n.hazardLocale")) + "</th>"
+      + "<th class='start'>" + esc(SB.t("gallery.i18n.hazardNumber")) + "</th>"
+      + "<th class='start'>" + esc(SB.t("gallery.i18n.hazardDate")) + "</th>"
+      + "<th class='start'>" + esc(SB.t("gallery.i18n.hazardMarks")) + "</th></tr></thead><tbody>"
+      + SB.audit.intlHazards().map(function (r) {
+          return "<tr><td class='start'><code class='ltr'>" + esc(r.locale) + "</code></td>"
+            + "<td class='start' dir='ltr'>" + esc(r.number) + "</td>"
+            + "<td class='start' dir='ltr'>" + esc(r.date) + "</td>"
+            + "<td class='start' dir='ltr'>" + (r.marks.length
+                ? "<b style='color:var(--color-danger)'>" + esc(r.marks.join(" ")) + "</b>"
+                : esc(SB.t("gallery.i18n.hazardNone"))) + "</td></tr>";
+        }).join("") + "</tbody>";
+  }
+
+  function boot() {
+    SB.I18N.boot();
+    SB.$$("[data-locale-select]").forEach(function (sel) {
+      SB.I18N.catalog.forEach(function (e) {
+        if (!SB.I18N.has(e.code)) return;
+        var o = document.createElement("option");
+        o.value = e.code; o.textContent = e.native;
+        o.setAttribute("lang", e.code); o.setAttribute("dir", e.dir);
+        sel.appendChild(o);
+      });
+      sel.value = SB.I18N.active();
+      sel.addEventListener("change", function () { SB.I18N.use(sel.value); });
+    });
+    render();
+    SB.I18N.onChange(function () {
+      SB.$$("[data-locale-select]").forEach(function (s) { s.value = SB.I18N.active(); });
+      render();
+    });
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
+  else boot();
+})();
+</script>
+</body>
+</html>

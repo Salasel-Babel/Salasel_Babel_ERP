@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Babel.Ai — وحدة أفقية.
+    لا تعتمد على Babel.Ledger ولا على أي وحدة أفقية أخرى — مفروض ببناء في Rule01 و Rule03.
+
+    وما لا تعتمد عليه **داخل** Babel.Contracts هو نصف هذه الوحدة:
+    لا Babel.Contracts.Posting إطلاقاً — لا محرك ترحيل، ولا طلب ترحيل، ولا سطر، ولا دور.
+    مسوّدة الالتقاط ليست مستنداً محاسبياً، ويجب أن تكون **عاجزة بنيوياً** عن بلوغ الدفتر
+    قبل أن يرقّيها إنسان. والقاعدة مفروضة باختبار معماري في tests/Babel.Ai.Tests.
+  -->
+
+  <PropertyGroup>
+    <RootNamespace>Babel.Ai</RootNamespace>
+    <AssemblyName>Babel.Ai</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Babel.SharedKernel/Babel.SharedKernel.csproj" />
+    <ProjectReference Include="../Babel.Contracts/Babel.Contracts.csproj" />
+    <ProjectReference Include="../Babel.Core/Babel.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+  </ItemGroup>
+
+  <!--
+    المفردات المغلقة: **رموز** الأحداث و**رموز** الأدوار وحدها.
+    ولا تُضمَّن role-map.default.csv ولا أي خريطة مستأجر — فهي وحدها التي تحمل أرقام
+    الحسابات. أي أن هذه التجميعة لا تملك ما تُسمّي به حساباً حتى لو أرادت (القاعدة 2).
+  -->
+  <ItemGroup>
+    <EmbeddedResource Include="../../data/posting-matrix/events/*.json">
+      <LogicalName>Babel.Ai.Matrix.Events.%(Filename).json</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="../../data/posting-matrix/account-roles.csv">
+      <LogicalName>Babel.Ai.Matrix.roles.csv</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
+</Project>

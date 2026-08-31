@@ -1,0 +1,60 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Babel.Core — النواة. إلزامية دائماً ولا تكون اختيارية أبداً.
+    تملك: الهوية · الصلاحيات · الشجرة التنظيمية · المستندات · سير العمل · التدقيق ·
+          الإشعارات · تعدد المستأجرين · الاستحقاق · قياس الاستخدام.
+    Core لا تعتمد على أي وحدة أعلى منها — أبداً (Rule03).
+  -->
+
+  <PropertyGroup>
+    <RootNamespace>Babel.Core</RootNamespace>
+    <AssemblyName>Babel.Core</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Babel.SharedKernel/Babel.SharedKernel.csproj" />
+    <ProjectReference Include="../Babel.Contracts/Babel.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Npgsql" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <!--
+    المخطّط الحيّ: الهجرة تنفّذ هذه النصوص حرفياً، والصلاحيات تُنفَّذ بعدها بدور
+    المالك. مضمَّنة في التجميعة كي لا يعتمد النشر على وجود شجرة المستودع على القرص.
+  -->
+  <ItemGroup>
+    <EmbeddedResource Include="Persistence/Migrations/*.sql" />
+  </ItemGroup>
+
+  <!--
+    مشاريع الاختبار وحدها ترى داخل النواة: صفوف الاستمرارية internal بحكم القاعدة 5،
+    وإثباتُ أن صفّاً مخالفاً **لا يُنتج كائناً** يحتاج أن يبلغ الصفّ نفسه.
+  -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="Babel.Core.Tests" />
+  </ItemGroup>
+
+  <!--
+    مصفوفة الترحيل مضمَّنة هنا **للوجود لا للقالب**: النواة تحكم على ملفّ قدرات المستأجر
+    فتسأل «هل هذا الحدث معرَّف أصلاً؟»، ولا تقرأ سطراً ولا دوراً ولا حساباً. والمصدر واحد
+    (data/posting-matrix/events) ويقرؤه الدفتر أيضاً — ولا تستطيع النواة أن تسأل الدفتر
+    لأن اتجاه الاعتماد إلى الأسفل (Rule03).
+  -->
+  <ItemGroup>
+    <EmbeddedResource Include="../../data/posting-matrix/events/*.json">
+      <LogicalName>Babel.Core.Matrix.Events.%(Filename).json</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
+</Project>

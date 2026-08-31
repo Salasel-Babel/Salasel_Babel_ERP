@@ -1,0 +1,59 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Babel.Ai/Babel.Ai.csproj" />
+    <Project Path="src/Babel.Api/Babel.Api.csproj" />
+    <Project Path="src/Babel.Assets/Babel.Assets.csproj" />
+    <Project Path="src/Babel.Canonicalization/Babel.Canonicalization.csproj" />
+    <Project Path="src/Babel.Compliance/Babel.Compliance.csproj" />
+    <Project Path="src/Babel.Compliance.Abstractions/Babel.Compliance.Abstractions.csproj" />
+    <Project Path="src/Babel.Compliance.FakeProvider/Babel.Compliance.FakeProvider.csproj" />
+    <Project Path="src/Babel.Compliance.Wolverine/Babel.Compliance.Wolverine.csproj" />
+    <Project Path="src/Babel.Compliance.Zatca/Babel.Compliance.Zatca.csproj" />
+    <Project Path="src/Babel.Contracts/Babel.Contracts.csproj" />
+    <Project Path="src/Babel.ControlPlane/Babel.ControlPlane.csproj" />
+    <Project Path="src/Babel.Core/Babel.Core.csproj" />
+    <Project Path="src/Babel.Hr/Babel.Hr.csproj" />
+    <Project Path="src/Babel.Inventory/Babel.Inventory.csproj" />
+    <Project Path="src/Babel.Ledger/Babel.Ledger.csproj" />
+    <Project Path="src/Babel.Portals/Babel.Portals.csproj" />
+    <Project Path="src/Babel.Pos/Babel.Pos.csproj" />
+    <Project Path="src/Babel.Projects/Babel.Projects.csproj" />
+    <Project Path="src/Babel.Purchasing/Babel.Purchasing.csproj" />
+    <Project Path="src/Babel.RealEstate/Babel.RealEstate.csproj" />
+    <Project Path="src/Babel.Sales/Babel.Sales.csproj" />
+    <Project Path="src/Babel.SharedKernel/Babel.SharedKernel.csproj" />
+    <Project Path="src/Babel.Storage/Babel.Storage.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Babel.Ai.Tests/Babel.Ai.Tests.csproj" />
+    <Project Path="tests/Babel.Api.Tests/Babel.Api.Tests.csproj" />
+    <Project Path="tests/Babel.ArchitectureTests/Babel.ArchitectureTests.csproj" />
+    <Project Path="tests/Babel.Assets.Tests/Babel.Assets.Tests.csproj" />
+    <Project Path="tests/Babel.Canonicalization.Tests/Babel.Canonicalization.Tests.csproj" />
+    <Project Path="tests/Babel.Compliance.Tests/Babel.Compliance.Tests.csproj" />
+    <Project Path="tests/Babel.Contracts.Tests/Babel.Contracts.Tests.csproj" />
+    <Project Path="tests/Babel.ControlPlane.Proofs/Babel.ControlPlane.Proofs.csproj" />
+    <Project Path="tests/Babel.ControlPlane.Tests/Babel.ControlPlane.Tests.csproj" />
+    <Project Path="tests/Babel.Core.Tests/Babel.Core.Tests.csproj" />
+    <Project Path="tests/Babel.Hr.Tests/Babel.Hr.Tests.csproj" />
+    <Project Path="tests/Babel.Inventory.Tests/Babel.Inventory.Tests.csproj" />
+    <Project Path="tests/Babel.Ledger.Tests/Babel.Ledger.Tests.csproj" />
+    <Project Path="tests/Babel.Portals.Tests/Babel.Portals.Tests.csproj" />
+    <Project Path="tests/Babel.Pos.Tests/Babel.Pos.Tests.csproj" />
+    <Project Path="tests/Babel.Projects.Tests/Babel.Projects.Tests.csproj" />
+    <Project Path="tests/Babel.Purchasing.Tests/Babel.Purchasing.Tests.csproj" />
+    <Project Path="tests/Babel.RealEstate.Tests/Babel.RealEstate.Tests.csproj" />
+    <Project Path="tests/Babel.Sales.Tests/Babel.Sales.Tests.csproj" />
+    <Project Path="tests/Babel.SharedKernel.Tests/Babel.SharedKernel.Tests.csproj" />
+    <Project Path="tests/Babel.Storage.Tests/Babel.Storage.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/Babel.Canonicalization.Golden/Babel.Canonicalization.Golden.csproj" />
+    <Project Path="tools/matrix-validator/MatrixValidator.csproj" />
+    <Project Path="tools/matrix-validator/tests/MatrixValidator.Tests.csproj" />
+  </Folder>
+  <Folder Name="/demo/">
+    <Project Path="demo/company/BabelDemoCompany.csproj" />
+    <Project Path="demo/vertical-slice/BabelDemo.csproj" />
+  </Folder>
+</Solution>

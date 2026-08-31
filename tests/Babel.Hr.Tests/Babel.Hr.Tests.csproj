@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Babel.Hr.Tests</RootNamespace>
+    <AssemblyName>Babel.Hr.Tests</AssemblyName>
+    <!-- العربية لغة أولى: بيانات المناطق مطلوبة، والتطبيع الصامت أخطر مصيدة نشر. -->
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <PredefinedCulturesOnly>false</PredefinedCulturesOnly>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      مشروع الاختبار — لا مشروع منتج — يشير إلى الدفتر: الإثبات المطلوب هو أن قيداً
+      **لكل قسيمة** يقع في دفتر أستاذ **حقيقي** بمخطّطه وبياناته المرجعية، وأن دفتر
+      الموظف المساعد يطابق حسابه الضابط مستنداً بمستند. ولا سبيل إلى ذلك بمحاكاة:
+      محاكاة الدفتر تُثبت أن المحاكاة تعمل. والقاعدة 3 تفحص مشاريع src/ وحدها،
+      و Babel.Inventory.Tests سابقة قائمة على الشكل نفسه.
+    -->
+    <ProjectReference Include="../../src/Babel.Hr/Babel.Hr.csproj" />
+    <ProjectReference Include="../../src/Babel.Ledger/Babel.Ledger.csproj" />
+    <ProjectReference Include="../../src/Babel.Core/Babel.Core.csproj" />
+    <ProjectReference Include="../../src/Babel.Canonicalization/Babel.Canonicalization.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Npgsql" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      ملفّ واحد لقارئ نقطة الضبط تتشاركه مشاريع الاختبار بالربط لا بالنسخ — وهو
+      الشكل الذي فرضه ControlPointPortIsDeclaredOnce بعد أن كُتب ثلاث مرّات متطابقة.
+    -->
+    <Compile Include="../shared/LedgerControlPointReader.cs" Link="LedgerControlPointReader.cs" />
+  </ItemGroup>
+
+</Project>

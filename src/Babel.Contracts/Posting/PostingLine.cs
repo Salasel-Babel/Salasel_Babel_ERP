@@ -1,0 +1,47 @@
+using Babel.SharedKernel;
+
+namespace Babel.Contracts.Posting;
+
+/// <summary>
+/// سطر في طلب ترحيل.
+/// <para>
+/// <b>لاحظ ما ليس هنا:</b> لا حقل حساب، ولا رقم حساب، ولا نوع حساب. غياب هذا الحقل
+/// هو القاعدة 2 مطبَّقة بنيوياً؛ الاختبار في Rule02 يحرس الغياب حتى لا يعود أحد فيضيفه.
+/// </para>
+/// </summary>
+public sealed record PostingLine
+{
+    /// <summary>دور السطر في الحدث التجاري.</summary>
+    public required PostingRole Role { get; init; }
+
+    /// <summary>جانب السطر: مدين أو دائن.</summary>
+    public required PostingSide Side { get; init; }
+
+    /// <summary>المبلغ بعملة الحركة. <see cref="Money"/> يفرض decimal ومقياس 4.</summary>
+    public required Money Amount { get; init; }
+
+    /// <summary>
+    /// النطاق التحليلي: مركز تكلفة إلزامي، وفرعٌ ومشروعٌ اختياريان.
+    /// <para>
+    /// <b>و<c>required</c> ليست زينة:</b> مركز التكلفة لا يكون فارغاً (ADR-0026)، وسطرٌ
+    /// يُبنى بلا نطاق كان يأخذ <c>default</c> فيصير مركزه <c>null</c> بصمت. فالبناء هو
+    /// ما يمنع ذلك الآن، لا مراجعةٌ ولا اتفاق.
+    /// </para>
+    /// </summary>
+    public required PostingScope Scope { get; init; }
+
+    /// <summary>الطرف في الدفتر المساعد، إن وُجد.</summary>
+    public SubledgerReference Subledger { get; init; } = SubledgerReference.None;
+
+    /// <summary>بيان السطر ثنائي اللغة، إن وُجد.</summary>
+    public LocalizedName? Narration { get; init; }
+
+    /// <summary>
+    /// مؤهّل الدور حين يُحلّ الدور الواحد إلى حسابات متعددة حسب سياق المستند
+    /// (‏<c>cash</c> · <c>bank</c> · <c>card_clearing</c> …). فارغ = المؤهّل الافتراضي <c>*</c>.
+    /// </summary>
+    public string Qualifier { get; init; } = string.Empty;
+
+    /// <summary>الأبعاد التحليلية الخاصة بهذا السطر، فوق أبعاد الطلب.</summary>
+    public IReadOnlyList<PostingDimension> Dimensions { get; init; } = [];
+}

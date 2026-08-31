@@ -1,0 +1,5 @@
+{
+  "id": "chatcmpl-0002",
+  "object": "chat.completion",
+  "choices": [{ "index": 0, "finish_reason": "content_filter", "message": { "role": "assistant", "content": null } }]
+}

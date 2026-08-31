@@ -1,0 +1,429 @@
+# التكامل المستمر لـ«سلاسل بابل»
+#
+# قاعدة هذا الملف: البناء يفشل عند أول مخالفة حدّ، لا يُنبَّه عليها.
+# TreatWarningsAsErrors مفعّل في Directory.Build.props، واختبارات المعمارية جزء من مجموعة
+# الاختبارات — فمخالفة أي قاعدة من قواعد src/README.md توقف الدمج.
+#
+# حلٌّ واحد وسير عمل واحد: Babel.slnx يحمل **كل** مشاريع المستودع الشاحنة — src/ وtests/
+# وtools/ (المتجهات الذهبية وأداة مصفوفة الترحيل واختباراتها) وdemo/ — فلا تُبنى شجرة مرتين
+# ولا تُشغَّل مجموعة اختبارات في ملفَّي سير عمل. ما كان في canonicalization.yml من قيمة لا
+# يغطّيها البناء العام — المتجهات الذهبية تحت ثقافات مختلفة، وحارس وضع العولمة الثابتة —
+# انتقل إلى هنا كخطوات ووظيفة مستقلة.
+#
+# ولماذا «كل» مؤكَّدة هنا: ثلاثة مشاريع بقيت خارج هذا الملف شهوراً، فلم يبنِها شيء، فصارت
+# محلّلاتها واختباراتها وأخطاء ترجمتها غير مرئية والتكامل المستمر أخضر
+# (docs/evidence/traps.md — فخ-43). الحارس ضدّ تكرار ذلك ليس هذا التعليق بل
+# Rule09_TheSolutionMatchesTheModuleMap.EveryProjectOnDiskIsInTheSolution: يبحث عن كل
+# ‎*.csproj على القرص ويُفشِل البناء على أي واحد خارج Babel.slnx، والمُعفى الوحيد spikes/.
+#
+# مصدر الـSDK هنا هو مصنوعات Microsoft الرسمية، لا أرشيف توزيعة — شرط تطابق الإصدار
+# وسلسلة التوريد (docs/analysis/02-architecture.md §2.2 ملاحظة 2).
+
+name: CI
+
+on:
+  push:
+    branches:
+      - develop
+      - main
+      - production
+      - 'feature/**'
+      - 'claude/**'
+      - 'fix/**'
+  pull_request:
+    branches:
+      - develop
+      - main
+      - production
+  # التشغيل اليدوي: انتقل مع بوابة الشكل القانوني من canonicalization.yml المحذوف.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  # يُفعّل البناء الحتمي وتطبيع مسارات المصدر (Directory.Build.props).
+  CI: true
+
+jobs:
+  build-and-enforce:
+    name: بناء وإنفاذ الحدود
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    # قاعدة بيانات حقيقية: اختبارات الدورة الكاملة (التوحيد القياسي) وعدّاد الالتزام
+    # المقفول بالصف لا تُثبت شيئاً على بديل في الذاكرة. واختبارات الدفتر مثلها:
+    # أربع من المصائد المقيسة لا تظهر إلا بعد أن تمرّ القيمة على قاعدة البيانات
+    # وتعود — مقياس numeric(19,4)، ودقّة timestamptz، ورفض الصلاحيات 42501،
+    # والمشغّل المؤجَّل عند COMMIT. بديلٌ في الذاكرة يجعل الأربعة تمرّ وهي مكسورة.
+    # المصادقة trust بلا كلمة مرور: لا اعتماد في هذا المستودع، ولا في هذا الملف
+    # (CONTRIBUTING §3 بند 7).
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    # لا كلمة مرور واحدة هنا: خدمة PostgreSQL أعلاه تعمل بـtrust، فتُستعمل نفس
+    # الافتراضيات التي يعمل بها المطوّر محلياً — ولا سرّ يُودَع في المستودع.
+    env:
+      BABEL_CANON_TEST_ADMIN_DB: "Host=127.0.0.1;Port=5432;Database=postgres;Username=postgres;Include Error Detail=true"
+      BABEL_COMPLIANCE_TEST_DB: "Host=127.0.0.1;Port=5432;Database=postgres;Username=postgres"
+      BABEL_LEDGER_TEST_ADMIN_DB: "Host=127.0.0.1;Port=5432;Database=postgres;Username=postgres;Include Error Detail=true"
+      # ولا BABEL_LEDGER_TEST_OWNER_DB ولا BABEL_LEDGER_TEST_APP_DB هنا (ولا نظيراهما
+      # لسطح HTTP): كانا يثبّتان اسم قاعدة الاختبار على قيمة واحدة، فيُبطلان الاسم
+      # الخاصّ بكل عملية ويُعيدان تدمير التشغيلات المتزامنة بعضها بعضاً — بينما
+      # الشيفرة تبدو مُصلَحة محلياً. اتصال الصيانة وحده يبقى، وهو لا يسمّي قاعدة
+      # الاختبار أصلاً. (‏docs/evidence/traps.md#fakh-test-databases-share-a-fixed-name-across-processes)
+
+    steps:
+      - name: سحب المستودع
+        uses: actions/checkout@v4
+
+      - name: تهيئة .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      # ‏**أي حزمة تطوير بنَت هذه الخُضرة؟** `global.json` يطلب 10.0.100 بـ
+      # ‏`rollForward: latestFeature`، وهي صيغة تقبل **أي نطاق ميزات أعلى**: العدّاء
+      # يشغّل ما يجده (قيس 10.0.400 في التشغيلة 33318850660) بينما جهاز التطوير قد
+      # يحمل 10.0.111 — نطاقان مختلفان، ومحلّلا شيفرةٍ مختلفان تحت
+      # `TreatWarningsAsErrors`. فيمرّ البناء محلياً ويسقط هنا بتشخيصٍ لا يراه المطوّر
+      # إطلاقاً. الرقم يُطبع هنا وفي `tools/gate/run.sh` كليهما كي تصير المقارنة
+      # ممكنة بلا تخمين.
+      # (‏docs/evidence/traps.md#fakh-the-gate-and-ci-run-different-sdk-feature-bands)
+      - name: حزمة التطوير المُستعملة فعلاً
+        run: |
+          set -eux
+          dotnet --version
+
+      # ICU مطلوب: بدونه يصير String.Normalize عملية لا شيء بصمت، فتتغيّر كل بصمة نص عربي
+      # (src/Babel.Canonicalization/SPEC.md §8.2). الحارس الموجب في الوظيفة الثانية أدناه.
+      - name: التأكّد من وجود ICU
+        run: |
+          set -eux
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libicu-dev
+
+      - name: ذاكرة NuGet المؤقتة
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', '**/*.csproj') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: استرجاع الحزم
+        run: dotnet restore Babel.slnx
+
+      - name: البناء — التحذير خطأ
+        run: dotnet build Babel.slnx --configuration Release --no-restore
+
+      # المسابر خارج Babel.slnx بقرار (ADR-0032-spikes-are-built-beside-the-solution-not-inside-it،
+      # والقاعدة 9 تُعفيها بالاسم). وثمنُ الإعفاء أنّ لا شيء كان يبنيها: ثلاثة من أربعة
+      # لم تكن تستعيد أصلاً، وخلف الجدار 353 تشخيصاً لم يرها أحد.
+      # (docs/evidence/traps.md#fakh-an-exemption-from-the-solution-guard-rots-unbuilt)
+      # الحارس على وجود هذه الخطوة: tests/Babel.ArchitectureTests/Rule16_*.cs
+      - name: بناء المسابر — كلٌّ وحده
+        run: |
+          for spike in \
+            spikes/culture-calendar/CultureCalendarSpike.csproj \
+            spikes/dotnet-stack/BabelSpike.csproj \
+            spikes/pos-offline/PosOfflineSpike.csproj \
+            spikes/relational-stack/RelationalSpike.csproj
+          do
+            dotnet build "$spike" --configuration Release --nologo
+          done
+
+      # جدول الحزم المحلولة يُسجَّل مع كل بناء: «الرقم الملزم هو ما يحلّه dotnet restore
+      # وقت التنفيذ، لا ما في وثيقة» (docs/analysis/02-architecture.md §2.1).
+      - name: تسجيل شجرة الحزم المحلولة
+        run: dotnet list Babel.slnx package --include-transitive > resolved-packages.txt || true
+
+      - name: رفع شجرة الحزم
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: resolved-packages
+          path: resolved-packages.txt
+          if-no-files-found: ignore
+
+      # اختبارات المعمارية تُشغَّل أولاً ومنفصلة: إن انكسر حدّ، تُقرأ الرسالة فوراً
+      # بدل البحث عنها بين مئتي اختبار.
+      - name: إنفاذ الحدود المعمارية
+        run: dotnet test --project tests/Babel.ArchitectureTests/Babel.ArchitectureTests.csproj --configuration Release --no-build
+
+      - name: كل الاختبارات
+        run: dotnet test --solution Babel.slnx --configuration Release --no-build
+
+      # الأداة تفعل عملها لا مجرّد تترجم: تشغيلها على البيانات الحقيقية في كل دفعة، لا في
+      # data-validation.yml وحده — فذاك مُقيَّد بمسارات data/ وtools/، وتغيير في
+      # Directory.Build.props (وهو ما كسرها أصلاً) لا يوقظه.
+      - name: أداة مصفوفة الترحيل على البيانات الحقيقية
+        run: dotnet run -c Release --no-build --project tools/matrix-validator -- --data data
+
+      # بوابة الشكل القانوني: البايتات المُجزَّأة لا تتحرّك بسبب ثقافة المضيف.
+      # إن سقطت هذه الخطوات فالسبب في 99٪ من الحالات تعديل الشكل القانوني بحسن نيّة
+      # (src/Babel.Canonicalization/SPEC.md §12 — إجراء إدخال v2).
+      - name: المتجهات الذهبية (ثقافة ar-SA)
+        run: dotnet run -c Release --no-build --project tools/Babel.Canonicalization.Golden -- --verify
+
+      - name: المتجهات الذهبية تحت ثقافة de-DE
+        env:
+          BABEL_GOLDEN_CULTURE: de-DE
+        run: dotnet run -c Release --no-build --project tools/Babel.Canonicalization.Golden -- --verify
+
+      - name: المتجهات الذهبية تحت ثقافة tr-TR
+        env:
+          BABEL_GOLDEN_CULTURE: tr-TR
+        run: dotnet run -c Release --no-build --project tools/Babel.Canonicalization.Golden -- --verify
+
+      - name: التأكّد أن الملف الذهبي لم يُعدَّل يدوياً
+        run: |
+          set -eux
+          dotnet run -c Release --no-build --project tools/Babel.Canonicalization.Golden -- --emit
+          if ! git diff --exit-code -- tests/golden/; then
+            echo '::error::الملف الذهبي لا يطابق ما تنتجه الشيفرة. راجع SPEC.md §12.'
+            exit 1
+          fi
+
+      # معرّفات المصائد: المؤلف يكتب «فخ-جديد» بمفتاح نصّي، ومن يُنزل الدمج يخصّص الرقم
+      # (docs/evidence/traps.md §0.0). الاتساق كله يفرضه TrapRegisterIsSelfConsistent على كل
+      # فرع؛ وهذه الخطوة هي البوابة الأخيرة وحدها: لا يصل فخّ بلا رقم إلى فرع رئيس.
+      # النمط يشترط مفتاحاً لاتينياً، فلا يلتقط المثال التوضيحي في §0.0 (مفتاحه عربي).
+      # ‏`always()` عمداً — فخ-80: هذا الحارس نصّي بحت (grep/git) ولا يمسّ البناء،
+      # فلا يجوز أن يُسكته سقوطُ بناءٍ أو اختبارٍ قبله ويُعلَّم `skipped` بلا أن يقرأه أحد.
+      - name: لا معرّف فخّ بلا رقم على فرع رئيس
+        if: always() && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/production')
+        run: |
+          set -euo pipefail
+          if grep -nE '^(### فخ-جديد — .* · `[a-z]|\| \[فخ-جديد\]\(#fakh-[a-z])' docs/evidence/traps.md; then
+            echo "::error::فخّ بلا رقم وصل إلى فرع رئيس. خصّص له الرقم التالي — docs/evidence/traps.md §0.0."
+            exit 1
+          fi
+
+      # ونظيرتها لسجل القرارات: المؤلف يكتب «ADR-جديد» بمفتاح نصّي، ومن يُنزل الدمج
+      # يخصّص الرقم (docs/decisions/README.md §0.0). AdrRegisterIsSelfConsistent يفرض
+      # الاتساق على كل فرع؛ وهذه البوابة الأخيرة وحدها تمنع وصول نائبٍ بلا رقم.
+      # ‏`always()` عمداً — فخ-80: هذا الحارس نصّي بحت (grep/git) ولا يمسّ البناء،
+      # فلا يجوز أن يُسكته سقوطُ بناءٍ أو اختبارٍ قبله ويُعلَّم `skipped` بلا أن يقرأه أحد.
+      #
+      # **ونطاق المسح يستثني الفهرس `README.md` بالبناء.** كان النمط يُطبَّق على
+      # `docs/decisions/*.md` كلّها، والفهرس **يوثّق الاصطلاح بعرض النائب نفسه**
+      # `# ADR-جديد: عنوان القرار` داخل كتلة شيفرة في §0.0 — فكان الحارس يلتقط
+      # **وثيقته هو**، ويحمرّ على **كل** تشغيلة على develop منذ كُتب، حتى حين كان كل
+      # قرار مرقّماً بصحّة. وحارسٌ أحمر لسبب لا علاقة له بما يحرسه يُدرّب الناس على
+      # تجاهله فيصير لا يحرس شيئاً — وهو فخ-65 بعينه.
+      # (‏docs/evidence/traps.md#fakh-a-guard-whose-scan-includes-the-page-that-documents-it)
+      #
+      # والعلاج **تضييق النطاق لا إضعاف النمط**: `ADR-*.md` يشمل كل وثيقة قرار —
+      # ومنها `ADR-جديد-*.md` — ولا يشمل `README.md`. والنمط يبقى `^# ADR-جديد:`
+      # على حاله، فلا يفلت منه نائبٌ حقيقي.
+      #
+      # وصفّ الفهرس وحده يُفحص **داخل** `README.md` لأن الصفوف تسكنه، ولذلك يشترط
+      # **مفتاحاً لاتينياً** (`ADR-جديد-[a-z]`) كما تفعل نظيرته لسجل المصائد أعلاه:
+      # §0.0 تفرض على كل قرار حقيقي مفتاحاً بحروف لاتينية صغيرة، والمثال التوضيحي
+      # في الوثيقة مفتاحه عربي — فالتمييز بنيوي لا حيلة.
+      - name: لا معرّف قرار بلا رقم على فرع رئيس
+        if: always() && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/production')
+        run: |
+          set -euo pipefail
+          # حارس لافراغ صريح: نطاقٌ انكسر يعود بمجموعة فارغة، ومجموعة فارغة تُرضي
+          # كل فحص تحتها فيمرّ الحارس أخضر وهو لا يقرأ شيئاً (فخ-43).
+          documents=(docs/decisions/ADR-*.md)
+          if [ "${#documents[@]}" -lt 40 ] || [ ! -e "${documents[0]}" ]; then
+            echo "::error::نطاق مسح حارس القرارات عاد بـ${#documents[@]} وثيقة — النطاق انكسر، والحارس لا يقرأ شيئاً."
+            exit 1
+          fi
+          if ls docs/decisions/ADR-جديد-*.md >/dev/null 2>&1 \
+             || grep -nE '^# ADR-جديد:' "${documents[@]}" \
+             || grep -nE '^\| \[جديد\]\(ADR-جديد-[a-z]' docs/decisions/README.md; then
+            echo "::error::قرار بلا رقم وصل إلى فرع رئيس. خصّص له الرقم التالي — docs/decisions/README.md §0.0."
+            exit 1
+          fi
+
+      # سقف دَين الاسم الإنجليزي (ADR-0021 §6.3 بند 2) لا يرتفع. والحارس داخل المستودع
+      # يمنع **الانحدار الصامت**؛ وهذه البوّابة تمنع **رفع السقف نفسه**، وهي خارج الملفّ
+      # الذي يملكه المؤلف — فالمقارنة بـdevelop لا بقيمةٍ مكتوبة هنا.
+      # وخفضُ السقف مسموح دائماً وهو المطلوب عند كل مرحلة هجرة.
+      # ‏`always()` عمداً — فخ-80: هذا الحارس نصّي بحت (grep/git) ولا يمسّ البناء،
+      # فلا يجوز أن يُسكته سقوطُ بناءٍ أو اختبارٍ قبله ويُعلَّم `skipped` بلا أن يقرأه أحد.
+      - name: سقف دَين الاسم الإنجليزي لا يرتفع
+        if: always() && (github.event_name == 'pull_request' || github.ref != 'refs/heads/develop')
+        run: |
+          set -euo pipefail
+          FILE=tests/Babel.ArchitectureTests/Rule14_TranslationsAreRowsNotColumns.cs
+          # المرساة على **التصريح** لا على ذكر الاسم: `const int … = N;`. كان النمط
+          # `.*MaximumEnglishNameSites = ([0-9]+);.*` يقبل أي سطر يذكر الاسم — ومنه
+          # تعليقُ توثيقٍ أو رسالةُ تأكيد — و`head -1` يأخذ أوّلها، فيقرأ الحارس رقماً
+          # ليس السقف. (النطاق يُضيَّق ولا يُضعَّف: التصريح الحقيقي ما زال يُلتقط،
+          # وهو مُثبَتٌ بطفرةٍ في الحارس أدناه.)
+          read_ceiling() {
+            sed -nE 's/.*const int MaximumEnglishNameSites = ([0-9]+);.*/\1/p' "$1" | head -1
+          }
+          git fetch --no-tags --depth=1 origin develop
+          BASE=$(git show origin/develop:$FILE 2>/dev/null | read_ceiling /dev/stdin || true)
+          HEAD_VALUE=$(read_ceiling "$FILE")
+          # حارس لافراغ: قراءةٌ عادت فارغة تعني أنّ شكل التصريح تغيّر، لا أنّ السقف
+          # صفر. وبلا هذا الفحص يُنزع الحارس بإعادة تسميةٍ واحدة **بلا أن يحمرّ شيء**.
+          if [ -z "${HEAD_VALUE:-}" ]; then
+            echo "::error::تعذّرت قراءة سقف MaximumEnglishNameSites من ${FILE} — شكل التصريح تغيّر، والحارس صار لا يقرأ شيئاً."
+            exit 1
+          fi
+          if [ -z "${BASE:-}" ]; then
+            echo "لا سقف على develop بعد — أول إنزال لهذا الحارس. السقف الحالي: ${HEAD_VALUE}"
+            exit 0
+          fi
+          echo "سقف develop = ${BASE} · سقف هذا الفرع = ${HEAD_VALUE}"
+          if [ "${HEAD_VALUE}" -gt "${BASE}" ]; then
+            echo "::error::سقف دَين الاسم الإنجليزي ارتفع من ${BASE} إلى ${HEAD_VALUE}."
+            echo "::error::ADR-0021 §6.3 بند 2: لا يُضاف زوج ar/en جديد في حقل عرض. صنّف نصّك بـ§6.2،"
+            echo "::error::ثم انقله إلى جدول ترجمات، أو أضِف موضعه إلى قائمة الإقصاء بسببه المكتوب."
+            exit 1
+          fi
+
+      # ‏`always()` عمداً — فخ-80: هذا الحارس نصّي بحت (grep/git) ولا يمسّ البناء،
+      # فلا يجوز أن يُسكته سقوطُ بناءٍ أو اختبارٍ قبله ويُعلَّم `skipped` بلا أن يقرأه أحد.
+      #
+      # والحارس **يُثبت أنه ينطق قبل أن يُصدَّق صمتُه**: `tools/secret-scan/run.sh` يُطابق
+      # كل نمط في `patterns.txt` على الشاهد الموجب `positive-control.txt` أولاً، ويُفشل
+      # البناء إن سقط نمطٌ واحد أو حُذف الشاهد — **ثم** يمسح المستودع. كان هذا الحارس
+      # قبل ذلك يجد **صفراً على كل تشغيل** ولا يُفرَّق عن حارس معطَّل، وكان يُعفي
+      # ‏`docs/**` و`spikes/**` و`**/ci.yml` بالجملة، فمفتاحٌ خاصّ يُودَع تحت `docs/`
+      # لا يراه. أُزيلت الإعفاءات الثلاثة، وبقي استثناء واحد **بمسارٍ كامل واحد** هو
+      # الشاهد نفسه، ومُميِّزٌ على مستوى السطر (`NOT-A-SECRET`) للأمثلة التوضيحية.
+      # (‏docs/evidence/traps.md#fakh-a-guard-that-never-fires-cannot-be-told-from-a-broken-one)
+      - name: التحقق من عدم وجود أسرار في التغييرات
+        if: always()
+        run: tools/secret-scan/run.sh
+
+  test-isolation:
+    name: عزل الاختبارات — كل دالّة وحدها
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    # لماذا وظيفة مستقلّة لا خطوة في الوظيفة الأولى: هي أطول من كل ما قبلها مجتمعاً
+    # (‏687 عملية مقابل تشغيل واحد)، وإلحاقها بالوظيفة الأولى يؤخّر كل بلاغ فيها. وهي
+    # تعمل بالتوازي معها، فزمن الدفعة هو زمن الأطول لا مجموعهما.
+    #
+    # ولماذا تعمل على **كل** دفعة لا ليلاً: العطل الذي تمنعه يدخل مع الاختبار الجديد
+    # نفسه، ومسحٌ ليلي يعني أن مؤلّف الاختبار يقرأ البلاغ بعد أن انتقل إلى عمل آخر —
+    # وأن البلاغ يصل بلا صاحب. الكلفة المقيسة على جهاز التطوير: **3 دقائق و28 ثانية**
+    # بحبيبة الصنف و**17 دقيقة و21 ثانية** بحبيبة الدالّة، مقابل **29 ثانية** للتشغيل
+    # الكامل (docs/evidence/measurements.md §3.6-ي). وحبيبة الدالّة هي المختارة لأن حبيبة
+    # الصنف **لم تلتقط أحد العطلين المقيسين**: الاختبار الثاني كان يبذره جاره داخل الصنف
+    # نفسه، فلو أُصلح الأوّل وحده لعاد الصنف كلّه أخضر والعطل قائم.
+    # (‏docs/evidence/traps.md#fakh-green-by-ordering-not-by-construction)
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      BABEL_CANON_TEST_ADMIN_DB: "Host=127.0.0.1;Port=5432;Database=postgres;Username=postgres;Include Error Detail=true"
+      BABEL_COMPLIANCE_TEST_DB: "Host=127.0.0.1;Port=5432;Database=postgres;Username=postgres"
+      BABEL_LEDGER_TEST_ADMIN_DB: "Host=127.0.0.1;Port=5432;Database=postgres;Username=postgres;Include Error Detail=true"
+
+    steps:
+      - name: سحب المستودع
+        uses: actions/checkout@v4
+
+      - name: تهيئة .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: التأكّد من وجود ICU
+        run: |
+          set -eux
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libicu-dev
+
+      - name: ذاكرة NuGet المؤقتة
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('Directory.Packages.props', '**/*.csproj') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: البناء
+        run: dotnet build Babel.slnx --configuration Release
+
+      # الحكم في الشيفرة لا هنا: السكربت يفشل على أي دالّة تسقط منفردة، وعلى **مسحٍ
+      # ضامر** أيضاً — عدد ما نُفِّذ يجب أن يساوي عدد ما اكتُشف، وقائمة التجميعات تُقرأ
+      # من Babel.slnx لا من نمط مسارات (فخ-43).
+      #
+      # ‏**بأربع عمليات متوازية.** كان التوازي ممنوعاً هنا بسبب مقيس: `--jobs 4` كان
+      # يُنتج فشلاً كاذباً لأن `Babel.Canonicalization.Tests` و`Babel.Compliance.Tests`
+      # كانتا تعملان على قواعد بأسماء ثابتة تُسقطانها عند التهيئة. وقد أُغلق فخ-51
+      # فيهما معاً، والقياس على جهاز التطوير بعد الإغلاق: **5 د 18 ث · 543 وحدة ·
+      # 687 اختباراً · صفر فشل** مقابل **16 د 52 ث** تسلسلياً — أي 3.18×، والسقف
+      # الباقي عتادي لا برمجي.
+      # (‏docs/evidence/traps.md#fakh-test-databases-share-a-fixed-name-across-processes)
+      - name: كل دالّة اختبار وحدها في عمليتها
+        run: tools/test-isolation/run.sh --grain method --configuration Release --jobs 4
+
+      - name: رفع سجلّات المسح
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: test-isolation-logs
+          path: artifacts/test-isolation
+          if-no-files-found: ignore
+
+  invariant-globalization-guard:
+    name: الحارس ينفجر في وضع العولمة الثابتة
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: سحب المستودع
+        uses: actions/checkout@v4
+
+      - name: تهيئة .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: البناء
+        run: dotnet build Babel.slnx -c Release
+
+      # إثبات موجب: البيئة المعطوبة يجب أن تُرفَض، لا أن تنتج بصمات صامتة خاطئة.
+      # مقيس على هذا المستودع: تحت DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 يصير التطبيع
+      # عملية لا شيء، ويُبلّغ IsNormalized(FormC) بالصواب عن نصّ غير مطبَّع، فتتغيّر
+      # بصمة كل نص يحمل أ/إ/آ بلا استثناء واحد.
+      - name: يجب أن يفشل تحت DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
+        env:
+          DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: '1'
+        run: |
+          set -eu
+          if dotnet run -c Release --no-build --project tools/Babel.Canonicalization.Golden -- --verify; then
+            echo '::error::المكتبة أنتجت بصمات في وضع العولمة الثابتة. الحارس معطّل — هذه أخطر حالة ممكنة.'
+            exit 1
+          fi
+          echo 'الحارس رفض البيئة المعطوبة كما يجب.'

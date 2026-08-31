@@ -1,0 +1,42 @@
+{
+  "schema": "ai.voice.spoken-numbers.v1",
+  "note_ar": "متجهات مشتركة بين تنفيذَي القارئ: C# في src/Babel.Ai/Voice و TypeScript في web/src/voice. الملف واحد عمداً — تنفيذان يقرآن ملفَّي متجهات مختلفَين ينحرفان ولا يُكتشف الانحراف.",
+  "note_en": "Shared vectors for both reader implementations: C# and TypeScript. One file on purpose.",
+  "accepted": [
+    { "phrase": "ألف وخمسمئة", "value": "1500", "why_ar": "المضاعِف يُرحِّل المُراكِم، والمئة المركّبة قيمة واحدة" },
+    { "phrase": "ألف وخمسمائة", "value": "1500", "why_ar": "رسم «مائة» الآخر" },
+    { "phrase": "ألفين وخمسمئة", "value": "2500", "why_ar": "«ألفين» قيمة قائمة لا مضاعِف" },
+    { "phrase": "ثلاثة آلاف", "value": "3000", "why_ar": "العدد يسبق المضاعِف فيضربه" },
+    { "phrase": "مئة وخمسين", "value": "150", "why_ar": "مئة ثم عقد" },
+    { "phrase": "ثلاث مئة", "value": "300", "why_ar": "المئة منطوقة كلمتين تضرب ما قبلها" },
+    { "phrase": "مئتين وخمسة وعشرين", "value": "225", "why_ar": "مئتان ثم آحاد ثم عقد" },
+    { "phrase": "خمسة عشر", "value": "15", "why_ar": "العقد المركّب جمعٌ لا ضرب" },
+    { "phrase": "خمسين", "value": "50", "why_ar": "الجار الصوتي لـ«خمسة عشر»، وفرقهما 35" },
+    { "phrase": "أحد عشر", "value": "11", "why_ar": null },
+    { "phrase": "تسعة وتسعين", "value": "99", "why_ar": null },
+    { "phrase": "مليون ومئتين ألف", "value": "1200000", "why_ar": "مضاعِفان في جملة واحدة" },
+    { "phrase": "ألف ونص", "value": "1000.5", "why_ar": "كسر منطوق شائع في الكلام السعودي" },
+    { "phrase": "مئة وربع", "value": "100.25", "why_ar": null },
+    { "phrase": "مئة فاصلة خمسة وسبعين", "value": "100.75", "why_ar": "ما بعد الفاصلة عدد فيُوضع بعدد خاناته" },
+    { "phrase": "مئة فاصلة صفر خمسة", "value": "100.05", "why_ar": "ما بعد الفاصلة آحاد فتُقرأ سلسلة أرقام — وقراءتها عدداً تعطي عُشر القيمة" },
+    { "phrase": "خمسة وسبعين", "value": "75", "why_ar": null },
+    { "phrase": "صفر", "value": "0", "why_ar": "الصفر قيمة لا غياب" },
+    { "phrase": "١٥٠٠", "value": "1500", "why_ar": "أرقام عربية-هندية خالصة" },
+    { "phrase": "١٥٠٠٫٧٥", "value": "1500.75", "why_ar": "الفاصلة العشرية العربية U+066B تُحوَّل صراحةً" },
+    { "phrase": "١٬٥٠٠", "value": "1500", "why_ar": "فاصل الآلاف العربي U+066C يُحذف صراحةً" },
+    { "phrase": "१५००", "value": "1500", "why_ar": "أرقام ديفاناغرية — الواجهة تحمل لغة تستعملها" },
+    { "phrase": "۱۵۰۰", "value": "1500", "why_ar": "أرقام فارسية موسّعة" },
+    { "phrase": "1500", "value": "1500", "why_ar": null },
+    { "phrase": "1500.75", "value": "1500.75", "why_ar": null },
+    { "phrase": "  ألف   وخمسمئة  ", "value": "1500", "why_ar": "فراغ زائد لا يغيّر شيئاً" }
+  ],
+  "rejected": [
+    { "phrase": "١٢3", "code": "ai.voice.mixed_digit_systems", "why_ar": "خلط نظامَي أرقام في كلمة واحدة — يُرفض ولا يُطبَّع" },
+    { "phrase": "१२٣", "code": "ai.voice.mixed_digit_systems", "why_ar": "ديفاناغري مع عربي-هندي" },
+    { "phrase": "ألف و500", "code": "ai.voice.digits_and_words_mixed", "why_ar": "تحتمل 1500 وتحتمل عددين متتاليين" },
+    { "phrase": "كذا وكذا", "code": "ai.voice.unknown_number_word", "why_ar": "كلمة خارج القاموس المغلق تُرفض باسمها" },
+    { "phrase": "تلاتميه", "code": "ai.voice.unknown_number_word", "why_ar": "نطق عامّي غير مُدرَج — يُرفض ولا يُقارَب بأقرب شبيه" },
+    { "phrase": "", "code": "ai.voice.number_not_composable", "why_ar": "لا شيء" },
+    { "phrase": "فاصلة", "code": "ai.voice.number_not_composable", "why_ar": "فاصلة بلا صحيح ولا كسر" }
+  ]
+}

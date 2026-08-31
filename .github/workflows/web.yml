@@ -1,0 +1,203 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# التكامل المستمر للواجهة — منفصل عن ci.yml بالكامل
+#
+# ولماذا ملفّ مستقلّ لا وظيفة داخل ci.yml: العزل بين الواجهة والخلفية قرارُ
+# منتج لا ترتيبُ مجلدات. سير عمل مستقلّ يعني أن الواجهة تُبنى وتُختبر بلا
+# ‏.NET SDK ولا PostgreSQL ولا سطر واحد من شيفرة الخلفية — وهو ما يجب أن
+# يكون صحيحاً فعلاً لا أن يُقال.
+#
+# والبوّابة الحاكمة هنا هي الأولى: **إعادة توليد العميل من العقد لا تُنتج
+# أي اختلاف**. تغيّر العقد بلا إعادة توليد يوقف الدمج بصوت عالٍ بدل أن
+# تنحرف الواجهة عن الخلفية شهراً بلا أن يلاحظ أحد.
+#
+# ═══ وشكلُ هذا الملفّ نفسه قرار — فخ-80 ═══════════════════════════════════
+# كان هذا السير **وظيفةً واحدة من خطوات متتالية**. وسقوطُ خطوةٍ في وظيفة
+# متتالية لا يُحمِّر ما بعدها بل **يُعلّمه `skipped`** — و`skipped` تُقرأ
+# «لا بأس» لمن يمرّ على ملخّص التشغيل. فكانت `audit:i18n` تسقط بـ154 مخالفة
+# كلّها في `web/src/demo/`، وتُسكِت خمس خطوات بعدها **منها مصفوفة العرض
+# كاملة** — فلم تُنفَّذ المصفوفة على أي التزام في `develop` ولا مرّة.
+#
+# فصار الملفّ على مبدأين:
+#   ‏١ · **ما لا يعتمد على غيره لا يُسكته غيره.** الفحوص المستقلّة في وظيفة
+#        واحدة وكلٌّ منها `if: always()`؛ ومصفوفة العرض في **وظيفة مستقلّة
+#        لا `needs`** لها، فلا يمنعها سقوطُ حارس نصوص من أن تُشغَّل.
+#   ‏٢ · **والتبعية الحقيقية تبقى، ولا تبقى صامتة.** المصفوفة تحتاج `dist/`
+#        فعلاً (‏`vite preview` يقدّمه)، فإن سقط البناء لم تُشغَّل — لكنّ خطوة
+#        الحصيلة **تقول ذلك بالحرف** في ملخّص التشغيل بدل أن تتركه `skipped`
+#        صامتة. لا سكوت عن خطوةٍ لم تُنفَّذ.
+# ═══════════════════════════════════════════════════════════════════════════
+
+name: الواجهة
+
+on:
+  push:
+    branches:
+      - develop
+      - main
+      - production
+      - 'feature/**'
+      - 'claude/**'
+      - 'fix/**'
+    paths:
+      - 'web/**'
+      - 'contracts/openapi/**'
+      - '.github/workflows/web.yml'
+  pull_request:
+    branches:
+      - develop
+      - main
+      - production
+    paths:
+      - 'web/**'
+      - 'contracts/openapi/**'
+      - '.github/workflows/web.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: web
+
+jobs:
+  # ── الفحوص المستقلّة ─────────────────────────────────────────────────────
+  # خمسة حرّاس لا يعتمد أيٌّ منها على الآخر: العقد يقرأ العقد، والتدويل يقرأ
+  # النصّ، والأنواع تُترجِم، والحدّ يفحص الأسلوب، والوحدة تُشغّل vitest.
+  # فكلٌّ منها `if: always()`، وسقوطُ أحدها لا يُلغي البقية.
+  static-checks:
+    name: فحوص الواجهة المستقلّة
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: جلب المستودع
+        uses: actions/checkout@v4
+
+      - name: تهيئة Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      # تبعية حقيقية: بلا اعتماديات لا يعمل شيء — والخمسة تحتها مشروطة بها.
+      - name: تثبيت الاعتماديات
+        id: install
+        run: npm ci
+
+      - name: العقد — إعادة التوليد لا تُنتج أي اختلاف
+        id: contract
+        if: always() && steps.install.outcome == 'success'
+        run: npm run gen:check
+
+      - name: فحص التدويل والاتجاه
+        id: i18n
+        if: always() && steps.install.outcome == 'success'
+        run: npm run audit:i18n
+
+      - name: التحقق من الأنواع والبناء
+        id: build
+        if: always() && steps.install.outcome == 'success'
+        run: npm run build
+
+      - name: قواعد الحدّ (ESLint)
+        id: lint
+        if: always() && steps.install.outcome == 'success'
+        run: npm run lint
+
+      - name: اختبارات الوحدة
+        id: unit
+        if: always() && steps.install.outcome == 'success'
+        run: npm test
+
+      # الحصيلة — تقول ما نُفِّذ وما لم يُنفَّذ بالحرف، لا بلونٍ في قائمة.
+      - name: الحصيلة — كل خطوة ونتيجتها
+        if: always()
+        run: |
+          {
+            echo "### فحوص الواجهة المستقلّة · independent front-end checks"
+            echo ""
+            echo "| الخطوة · step | النتيجة · outcome |"
+            echo "|---|---|"
+            echo "| العقد · gen:check | ${{ steps.contract.outcome }} |"
+            echo "| التدويل · audit:i18n | ${{ steps.i18n.outcome }} |"
+            echo "| الأنواع والبناء · build | ${{ steps.build.outcome }} |"
+            echo "| الحدّ · lint | ${{ steps.lint.outcome }} |"
+            echo "| الوحدة · unit tests | ${{ steps.unit.outcome }} |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # ── مصفوفة العرض ────────────────────────────────────────────────────────
+  # **بلا `needs`** عمداً: هذه هي الوظيفة التي أسكتها فخ-80، ولا يجوز أن
+  # يعود حارسُ نصوصٍ ساقط قادراً على منعها من التشغيل. وتبني نسختها من
+  # `dist/` بنفسها لأن `vite preview` يقدّمه — وهي التبعية الحقيقية الوحيدة.
+  rendering-matrix:
+    name: مصفوفة العرض — ٤ لغات × ٢ مظهر × ٣ عروض
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: جلب المستودع
+        uses: actions/checkout@v4
+
+      - name: تهيئة Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: تثبيت الاعتماديات
+        run: npm ci
+
+      # تبعية حقيقية ومُعلَنة: المصفوفة تُقدَّم من بناء الإنتاج نفسه.
+      - name: البناء — مصدرُ dist/ الذي تقدّمه المعاينة
+        id: build
+        run: npm run build
+
+      - name: تثبيت متصفّح Playwright
+        id: browser
+        if: always()
+        run: npx playwright install --with-deps chromium
+
+      # لا `if: always()` هنا: بلا `dist/` لا معنى لتشغيلها — وهذه تبعية
+      # حقيقية تُصان. وخطوة الحصيلة تحتها تقول صراحةً إن لم تُشغَّل ولماذا.
+      - name: مصفوفة العرض — ٤ لغات × ٢ مظهر × ٣ عروض، والسلوك، والقياس
+        id: matrix
+        run: npx playwright test
+        env:
+          PLAYWRIGHT_CHROMIUM: ''
+
+      - name: الحصيلة — هل نُفِّذت المصفوفة فعلاً
+        if: always()
+        run: |
+          {
+            echo "### مصفوفة العرض · rendering matrix"
+            echo ""
+            echo "| الخطوة · step | النتيجة · outcome |"
+            echo "|---|---|"
+            echo "| البناء · build | ${{ steps.build.outcome }} |"
+            echo "| متصفّح Playwright | ${{ steps.browser.outcome }} |"
+            echo "| المصفوفة · matrix | ${{ steps.matrix.outcome }} |"
+            echo ""
+            if [ "${{ steps.matrix.outcome }}" = "skipped" ]; then
+              echo "> ⚠️ **المصفوفة لم تُنفَّذ** لأن البناء سقط — تبعية حقيقية،"
+              echo "> ‏\`vite preview\` يقدّم \`dist/\`. **The matrix did not run**"
+              echo "> because the build failed; it serves the production bundle."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: رفع لقطات المصفوفة والقياس
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-matrix
+          path: |
+            web/test-results/matrix/**
+            web/test-results/perf-500.json
+          if-no-files-found: warn
+          retention-days: 14

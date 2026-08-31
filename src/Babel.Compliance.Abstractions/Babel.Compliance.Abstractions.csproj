@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    حدّ الالتزام: العقد وحده. لا EF، ولا Wolverine، ولا Npgsql، ولا HTTP.
+    The compliance boundary: the contract only. No EF, no Wolverine, no Npgsql, no HTTP.
+    إن احتاج هذا المشروع يوماً حزمة مورّد، فقد تسرّب المورّد إلى العقد.
+    If this project ever needs a vendor package, the vendor has leaked into the contract.
+
+    القاعدة مفروضة باختبار: BoundaryCostTests.The_contract_assembly_references_nothing_but_the_base_class_library
+    ولذلك لا يوجد هنا أي PackageReference ولا أي ProjectReference — ولا يجوز أن يوجد.
+
+    الإعدادات المشتركة (الإطار، Nullable، ImplicitUsings، التحذير خطأ، InvariantGlobalization)
+    في Directory.Build.props ولا تُكرَّر هنا.
+  -->
+
+  <PropertyGroup>
+    <RootNamespace>Babel.Compliance.Abstractions</RootNamespace>
+    <AssemblyName>Babel.Compliance.Abstractions</AssemblyName>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+</Project>

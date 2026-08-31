@@ -1,0 +1,57 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Babel.Purchasing.Tests</RootNamespace>
+    <AssemblyName>Babel.Purchasing.Tests</AssemblyName>
+    <!-- العربية لغة أولى: بيانات المناطق مطلوبة، والتطبيع الصامت أخطر مصيدة نشر. -->
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <PredefinedCulturesOnly>false</PredefinedCulturesOnly>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      مشروع الاختبار — لا مشروع منتج — يشير إلى الدفتر: الإثبات المطلوب هو أن
+      الحساب الضابط في دفتر أستاذ **حقيقي** يتحرّك بالمبلغ الصحيح، ولا سبيل إلى
+      ذلك بمحاكاة. القاعدة 1 تفحص مشاريع src/ وحدها، و Babel.Ledger.Tests سابقة
+      قائمة على الشكل نفسه.
+    -->
+    <ProjectReference Include="../../src/Babel.Purchasing/Babel.Purchasing.csproj" />
+    <!--
+      وحدة الالتقاط ومزوّد الهيئة — للإثبات من طرف إلى طرف: رمز فاتورة مورد **حقيقي**
+      مولَّد بالمُرمِّز القائم، يُفكّ ثم يصير مسوّدة ثم يصير فاتورة مورد مُرحَّلة في دفتر
+      أستاذ حقيقي. ولا سبيل إلى ذلك بمحاكاة: المطلوب إثباته هو أن السلسلة **موصولة**.
+
+      و**لا مشروع منتج يفعل هذا**: القاعدتان 1 و3 تفحصان src/ وحدها، وBabel.Ai.Tests
+      سابقة قائمة على الشكل نفسه (تشير إلى مزوّد الهيئة).
+    -->
+    <ProjectReference Include="../../src/Babel.Ai/Babel.Ai.csproj" />
+    <!--
+      ومحوّل المرفقات في الذاكرة: الالتقاط صار يشير إلى مستند مُودَع لا يحمل بايتاته،
+      فيحتاج الاختبار محوّلاً للمنفذ. والمحوّل الحقيقي — نظام ملفّات وPostgreSQL —
+      مُثبَتٌ في tests/Babel.Storage.Tests/ ولا يُعاد إثباته هنا.
+    -->
+    <ProjectReference Include="../../src/Babel.Storage/Babel.Storage.csproj" />
+    <ProjectReference Include="../../src/Babel.Compliance.Zatca/Babel.Compliance.Zatca.csproj" />
+    <ProjectReference Include="../../src/Babel.Ledger/Babel.Ledger.csproj" />
+    <ProjectReference Include="../../src/Babel.Core/Babel.Core.csproj" />
+    <ProjectReference Include="../../src/Babel.Canonicalization/Babel.Canonicalization.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Npgsql" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      ملفّ واحد لقارئ نقطة الضبط تتشاركه مشاريع الاختبار الثلاثة بالربط لا بالنسخ.
+      كان مكتوباً ثلاث مرّات متطابقةً، وهو شكل فخ-81 بعينه: قاعدة واحدة في مواضع
+      بلا حارس يربطها. والحارس على ذلك في
+      tests/Babel.ArchitectureTests/ControlPointPortIsDeclaredOnce.cs
+    -->
+    <Compile Include="../shared/LedgerControlPointReader.cs" Link="LedgerControlPointReader.cs" />
+    <Compile Include="../shared/UnitCostOfOne.cs" Link="UnitCostOfOne.cs" />
+  </ItemGroup>
+
+</Project>

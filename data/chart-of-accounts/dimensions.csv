@@ -1,0 +1,8 @@
+dimension_code,name_ar,name_en,is_hierarchical,default_required,status,note_ar,note_en
+branch,الفرع,Branch,true,false,drafted,وحدة تنظيمية جغرافية أو تشغيلية — تُشتق من المستند لا من رقم الحساب,A geographic or operational unit derived from the document not encoded in the account number
+cost_center,مركز التكلفة,Cost Centre,true,false,drafted,شجرة مراكز التكلفة الإدارية,The tree of administrative cost centres
+project,المشروع,Project,true,false,drafted,مركز ربح وتكلفة لعقود المقاولات,A profit and cost centre for construction contracts
+property,العقار,Property,true,false,drafted,العقار كمركز ربحية · الوثيقة العقارية تعامله معاملة مركز التكلفة وقد فُصل هنا بعداً مستقلاً,The property as a profitability centre; the real estate document treats it as a cost centre and it is separated here as its own dimension
+unit,الوحدة العقارية,Property Unit,true,false,drafted,الوحدة داخل العقار — يشترط تحديد العقار معها,The unit inside a property; the property must be supplied with it
+warehouse,المستودع,Warehouse,true,false,drafted,,
+boq_item,بند جدول الكميات,BOQ Item,true,false,drafted,بند التسعير داخل المشروع,The pricing line item inside a project

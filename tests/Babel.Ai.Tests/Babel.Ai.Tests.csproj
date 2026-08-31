@@ -1,0 +1,59 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Babel.Ai.Tests</RootNamespace>
+    <AssemblyName>Babel.Ai.Tests</AssemblyName>
+    <!-- العربية لغة أولى: بيانات المناطق مطلوبة، والتطبيع الصامت أخطر مصيدة نشر. -->
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <PredefinedCulturesOnly>false</PredefinedCulturesOnly>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/Babel.Ai/Babel.Ai.csproj" />
+    <!--
+      مشروع الاختبار — لا مشروع منتج — يشير إلى مزوّد الهيئة: المطلوب إثباته هو أن
+      الفاكّ **عكس المُرمِّز القائم بالضبط**، ولا سبيل إلى ذلك إلا بالمُرمِّز نفسه.
+      والقاعدتان 1 و3 تفحصان مشاريع src/ وحدها، وBabel.Purchasing.Tests سابقة قائمة
+      على الشكل نفسه (تشير إلى الدفتر).
+
+      ووحدة Babel.Ai نفسها **لا** تشير إليه ولا تستطيع: القاعدة 3 تمنع ذلك، والوصلة
+      تُركَّب في الجذر التركيبي. ونسخة الوصلة الجاهزة للنقل في Support/ZatcaQrAttestationReader.cs.
+    -->
+    <ProjectReference Include="../../src/Babel.Compliance.Zatca/Babel.Compliance.Zatca.csproj" />
+    <!--
+      ومحوّل المرفقات **في الذاكرة**: الالتقاط صار يشير إلى مستند مُودَع بدل أن يحمل
+      بايتاته، فالاختبار يحتاج محوّلاً للمنفذ. ويُختار المحوّل الذي لا يحتاج قرصاً ولا
+      قاعدة بيانات — أمّا الشمّ والصلاحيات ومشغّل «يُضاف ولا يُعدَّل» فمُثبَتة على
+      PostgreSQL حقيقية في tests/Babel.Storage.Tests/ ولا تُعاد هنا.
+      ووحدة Babel.Ai نفسها لا تشير إليه ولا تستطيع (القاعدة 3): المنفذ في Babel.Contracts.
+    -->
+    <ProjectReference Include="../../src/Babel.Storage/Babel.Storage.csproj" />
+    <!--
+      ‏**الوحدات الخمس المُسهِمة بنيّات منطوقة.** المسار المنطوق صار سجلّاً تُسهم فيه
+      الوحدات عبر <c>IVoiceIntentCatalogue</c> في العقد، فإثباتُه لا يكون إلا على
+      **مجموعِ ما أسهمت به**: معرّفٌ يتكرّر بين وحدتين، أو رمز حدثٍ ليس في المصفوفة،
+      لا يظهر أيٌّ منهما وهي تُقرأ وحدةً وحدة.
+
+      ومشروع <c>Babel.Ai</c> نفسه **لا يشير إلى واحدةٍ منها ولا يستطيع** — القاعدة 3،
+      ويقيسه الحارس في Architecture/TheCapturedDraftCannotReachTheLedger.cs الذي يقرأ
+      ملفّ المشروع نفسه. والقاعدتان 1 و3 تفحصان مشاريع src/ وحدها، وهذه سابقةٌ قائمة
+      في هذا الملفّ نفسه (مزوّد الهيئة ومحوّل المرفقات).
+    -->
+    <ProjectReference Include="../../src/Babel.Hr/Babel.Hr.csproj" />
+    <ProjectReference Include="../../src/Babel.Inventory/Babel.Inventory.csproj" />
+    <ProjectReference Include="../../src/Babel.Projects/Babel.Projects.csproj" />
+    <ProjectReference Include="../../src/Babel.Purchasing/Babel.Purchasing.csproj" />
+    <ProjectReference Include="../../src/Babel.RealEstate/Babel.RealEstate.csproj" />
+    <ProjectReference Include="../../src/Babel.Sales/Babel.Sales.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NetArchTest.Rules" />
+  </ItemGroup>
+
+  <!-- جذر المستودع يُحقن في التجميعة: الحارس المعماري يقرأ ملفات المشاريع نفسها لا IL فقط. -->
+  <ItemGroup>
+    <AssemblyMetadata Include="BabelRepositoryRoot" Value="$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../'))" />
+  </ItemGroup>
+
+</Project>

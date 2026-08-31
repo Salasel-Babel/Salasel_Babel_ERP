@@ -1,0 +1,343 @@
+using System.Globalization;
+using Babel.Api.Wire;
+using Babel.SharedKernel;
+
+namespace Babel.Api.Errors;
+
+/// <summary>
+/// ترجمة الأخطاء المجالية إلى <c>RFC 9457</c>.
+/// <para>
+/// <b>القاعدة الحاكمة:</b> العميل يقرأ <b>الرمز</b>، ولا يقرأ نصّ الرسالة أبداً ليتخذ
+/// قراراً. ولذلك كل خطأ يخرج من هنا برمزٍ ثابت واحد على الأقل، ورسالتين للعرض. وتصنيف
+/// الخطأ إلى رمز حالة HTTP يقع هنا وحده — لا في نقطة النهاية — كي لا يختلف تصنيف
+/// «فترة مقفلة» بين مسار وآخر.
+/// </para>
+/// <para>
+/// <b>وما لا يخرج من هنا أبداً:</b> نصّ خطأ قاعدة بيانات، أو أثر مكدّس، أو شذرة SQL.
+/// محرّك الترحيل يُرجع اليوم <c>ledger.posting.database.&lt;SQLSTATE&gt;</c> ومعه
+/// <c>MessageText</c> الخام من PostgreSQL — وهو نصّ يحمل أسماء جداول وقيود. الرمز يعبر
+/// (فهو معلومة تصنيفية بلا تسريب)، <b>والنصّ يُحجب ويُستبدل</b>. وحارس ذلك اختبار عند
+/// حدّ HTTP لا مراجعة بشرية.
+/// </para>
+/// </summary>
+internal static class ApiProblems
+{
+    /// <summary>البادئة التي يحملها كل مرجع نوع مشكلة في هذا السطح.</summary>
+    public const string TypeBase = "https://salasel-babel.example/problems/";
+
+    /// <summary>بادئة أخطاء قاعدة البيانات كما يصدرها محرّك الترحيل.</summary>
+    public const string DatabaseErrorPrefix = "ledger.posting.database.";
+
+    /// <summary>الرمز الذي يخرج به أي عطل غير متوقّع — بلا تفصيل، ومع معرّف تتبّع.</summary>
+    public const string InternalErrorCode = "api.internal_error";
+
+    /// <summary>الرمز الذي يخرج به رفض قاعدة البيانات بعد حجب نصّه.</summary>
+    public const string DatabaseRefusedCode = "ledger.posting.database_refused";
+
+    /// <summary>رمز الحالة الذي يقابل خطأً مجالياً بعينه.</summary>
+    /// <param name="code">رمز الخطأ المجالي.</param>
+    public static int StatusOf(string code)
+    {
+        ArgumentNullException.ThrowIfNull(code);
+
+        if (code.StartsWith(DatabaseErrorPrefix, StringComparison.Ordinal))
+        {
+            // ‏23514 (check_violation) و‏23505 (unique_violation) رفضٌ مجالي كتبه المشغّل
+            // المؤجَّل أو قيد فريد: 409. وما عداها — ومنها 42501 صلاحيات — عطل تشغيلي
+            // لا يُصلحه العميل بإعادة صياغة الطلب.
+            string sqlState = code[DatabaseErrorPrefix.Length..];
+            return sqlState is "23514" or "23505" or "23503" ? 409 : 500;
+        }
+
+        return code switch
+        {
+            "entitlement.not_entitled" or "entitlement.read_only" => 403,
+            "entitlement.mandatory_disabled" or "entitlement.unsatisfied_requirement" or "entitlement.incomplete_set" => 409,
+
+            "ledger.posting.entry_not_found" => 404,
+            "ledger.posting.already_reversed" or "ledger.posting.cannot_reverse_a_reversal" => 409,
+            "ledger.posting.closed_period" or "ledger.posting.permanently_closed_period" => 409,
+
+            "ledger.posting.missing_tenant" or "ledger.posting.missing_idempotency_key" => 400,
+
+            "company_setup.not_found" => 404,
+            "company_setup.already_initialised" => 409,
+
+            "cost_center.not_found" => 404,
+            "cost_center.default_cannot_be_suspended" => 409,
+            "cost_center.already_suspended" or "cost_center.already_active" => 409,
+
+            // ── سطح المصادقة ────────────────────────────────────────────────────
+            // اعتمادٌ مُقدَّم ومرفوض ⇒ 401 بحكم بادئة access. أمّا ما ليس عن اعتماد
+            // مُقدَّم فيُصنَّف بنفسه: اسمٌ ناقص في دعوة طلبٌ مفهوم ومرفوض (422)، ودعوةٌ
+            // لعضوٍ قائم تعارضٌ مع حالة (409)، وداعٍ ليس مالكاً منعٌ (403).
+            "membership.already_granted" => 409,
+            "membership.inviter_is_not_an_owner" or "membership.read_only"
+                or "membership.actor_is_not_an_owner" => 403,
+            "access.session_not_issued_here" => 409,
+
+            // ── سطح التسجيل والاشتراك ────────────────────────────────────────────
+            // ‏«لا عضوية بهذا المعرّف» ‏404 لأن المسار يُعنون مورداً؛ و«آخر مالك» و«الدور
+            // كما هو» ‏409 لأنهما تعارضٌ مع حالة قائمة لا رفضٌ محاسبي.
+            "membership.not_found" => 404,
+            "membership.last_owner" or "membership.role_unchanged" => 409,
+
+            // مستوى تحكّم غير مُهيَّأ: عطلٌ **تشغيلي مؤقّت** لا خطأ في الطلب، ولذلك 503
+            // لا 500 ولا 501 — العميل يُعيد المحاولة، ولا يُعيد صياغة طلبه ولا ينتظر
+            // إصداراً جديداً. وسائر السطح يعمل، فالخدمة ليست ساقطة بل هذا الباب وحده.
+            "fleet.unavailable" => 503,
+            "subscription.not_found" => 404,
+            "subscription.operator_credential_required" => 403,
+
+            // تجاوز حدّ المعدّل. والرمز مُصنَّف هنا كسائر الرموز كي لا يبقى 429 معلوماً
+            // في موضع كتابته وحده — ورمزٌ يعرف حالته موضعٌ واحد لا اثنان.
+            "rate.too_many_requests" => 429,
+
+            "signup.request_key_invalid" => 400,
+
+            "capability_profile.not_found" => 404,
+            "capability_profile.capability_withdrawal_requires_acknowledgement" => 409,
+
+            // ── مستندات المبيعات والمشتريات ──────────────────────────────────
+            // «غير موجود» و«تعارض حالة» يُميّزان صراحةً، وما عداهما رفضٌ محاسبي 422:
+            // عميلٌ يقرأ 404 يعرف أن يتوقّف، وعميلٌ يقرأ 409 يعرف أن يقرأ الحالة ثم
+            // يقرّر، وعميلٌ يقرأ 422 يعرف أن الطلب فُهم ورُفض. وجمعُها كلها تحت 422
+            // كان سيجعل «فاتورة لا وجود لها» و«فاتورة مُرحَّلة سلفاً» جواباً واحداً.
+            "sales.customer_not_found" or "sales.document_not_found" or "sales.line_not_found" => 404,
+            "sales.duplicate_number" or "sales.wrong_state" or "sales.posted_document_is_immutable" => 409,
+
+            "purchasing.supplier_not_found" or "purchasing.document_not_found"
+                or "purchasing.line_not_found" or "purchasing.supplier.vat_number_not_found" => 404,
+            "purchasing.duplicate_number" or "purchasing.wrong_state" => 409,
+
+            // ── مستندات المخزون ──────────────────────────────────────────────
+            // بالتصنيف نفسه، ولاستثناءين يستحقّان تسميتهما:
+            //   · «حركةٌ بالهوية نفسها ومحتوىً مختلف» **409 لا 422**: الطلب ليس
+            //     خاطئ الصياغة، بل يصطدم بواقعةٍ مسجّلة — والعميل يقرأ ما سُجّل
+            //     ثم يقرّر، ولا يُعيد الإرسال بصيغة أخرى.
+            //   · «عبارة أصابت عدداً غير متوقَّع من الصفوف» **500**: خرقُ ثابتةٍ
+            //     داخلية لا يُصلحه العميل بإعادة صياغة، وإخراجه 422 يُغري بمحاولة
+            //     ثانية على قاعدةٍ حالتها غير معروفة.
+            "inventory.item_not_found" or "inventory.document_not_found"
+                or "inventory.original_movement_not_found" or "inventory.original_issue_not_found" => 404,
+            "inventory.duplicate_item_code" or "inventory.duplicate_document_number"
+                or "inventory.wrong_state" or "inventory.movement_already_returned"
+                or "inventory.movement_identity_conflict" or "inventory.movement_quantity_conflict" => 409,
+            "inventory.unexpected_row_count" => 500,
+
+            // ── مستندات المقاولات ────────────────────────────────────────────
+            // بالتصنيف نفسه، **ورفضان يستحقّان تسميتهما 409 لا 422**:
+            //   · «بندٌ معلَّق على قرار محاسب» و«قرارٌ اعتُمد ولا حاسبَ له» ليسا خطأً في
+            //     صياغة الطلب: الطلب سليم تماماً، ويصطدم بـ**حالةٍ قائمة على العقد**.
+            //     والعميل الذي يقرأ 409 يعرف أن يقرأ pendingPolicy على العقد ثم يتوقّف؛
+            //     ولو قُرئ 422 لظنّ أن إعادة الصياغة تُجدي، وهي لا تُجدي أبداً.
+            //   · و«سطر غرامة بلا قالب» كذلك: السطر مقبولٌ ومحفوظ، والمانع أن المصفوفة
+            //     لا تحمل له سطراً بعد — حالةُ نظامٍ لا عيبُ حمولة.
+            "projects.not_found" or "projects.retention_movement_not_found" => 404,
+            "projects.duplicate_number" or "projects.duplicate_sequence"
+                or "projects.wrong_state" or "projects.penalty_line_has_no_template"
+                or "projects.contract_policy.pending"
+                or "projects.contract_policy.resolution_not_implemented" => 409,
+            // ── مستندات العقارات ─────────────────────────────────────────────
+            // ‏**ولم يكن لهذا السطح تصنيفٌ واحد**: عشرون باباً منشوراً، وكل رفضٍ مجالي
+            // فيها يسقط إلى `_ => 500` — أي أن «الوحدة مؤجَّرة سلفاً» و«العقد ليس
+            // مسوّدة» و«العقار غير موجود» كانت تُقرأ كلها **«عطل في الخادم»**. والعقد
+            // المنشور يُعلن لهذه المسارات 404 و409 و422 صراحةً، فكان الخادم يخالف عقده.
+            // واكتُشف بنداءٍ حقيقي: تفعيلُ مدّةٍ متداخلة ردّ **500** ورمزه
+            // `realestate.lease_term_overlaps` — وهو **رفضٌ صحيح** يقرؤه العميل عطلاً.
+            //
+            // و**قيد الاستبعاد الزمني 409 بعينه**: الطلب سليم تماماً، ويصطدم بحالةٍ
+            // قائمة على الوحدة. والعميل الذي يقرأ 409 يقرأ العقد الساري ثم يقرّر؛ ولو
+            // قرأ 422 لظنّ أن إعادة الصياغة تُجدي، ولو قرأ 500 لأعاد المحاولة.
+            "realestate.property_not_found" or "realestate.unit_not_found"
+                or "realestate.party_not_found" or "realestate.lease_not_found"
+                or "realestate.document_not_found" or "realestate.schedule_line_not_found" => 404,
+            "realestate.duplicate_code" or "realestate.lease_term_overlaps"
+                or "realestate.lease_is_already_active" or "realestate.lease_is_not_active"
+                or "realestate.document_is_not_a_draft" or "realestate.schedule_line_already_invoiced"
+                or "realestate.receipt_is_already_allocated" or "realestate.receipt_is_not_posted"
+                or "realestate.receipt_was_not_unallocated" => 409,
+
+            // ── مستندات الموارد البشرية ──────────────────────────────────────
+            // بالتصنيف نفسه وللسبب نفسه: السطح منشور ولا تصنيف له، فكان كل رفضٍ 500.
+            "hr.employee_not_found" or "hr.employment_not_found" or "hr.document_not_found"
+                or "hr.pay_component_not_found" => 404,
+            "hr.duplicate_number" or "hr.wrong_state" or "hr.posted_document_is_immutable"
+                or "hr.already_consumed" or "hr.period_already_has_a_run"
+                or "hr.employment_not_terminated" => 409,
+
+            // ── المرفقات ─────────────────────────────────────────────────────
+            // و**الأربعة الأولى تُصنَّف بأعيانها لا ببادئتها**: «أكبر من الحدّ» و«نوعٌ لا
+            // يُعرف» و«إعلانٌ يخالف البايتات» رفوضٌ يعرف العميل ما يفعل بكلٍّ منها —
+            // يقصّ الصورة، أو يختار ملفّاً آخر، أو يصحّح ترويسته — وجمعُها تحت رمز واحد
+            // كان سيجعل الثلاثة رسالةً واحدة لا يُبنى عليها فرع.
+            "storage.attachment_not_found" => 404,
+            "storage.content_too_large" => 413,
+            "storage.content_not_recognised" or "storage.declared_type_mismatch" => 415,
+            "storage.content_empty" or "storage.file_name_refused"
+                or "storage.source_document_incomplete" or "storage.source_document_type_refused"
+                or "storage.page_refused" or "storage.ticket_lifetime_refused" => 400,
+
+            // «سُحب من قبل» و«صُحِّح من قبل» تعارضٌ مع حالة قائمة: يقرؤهما العميل ثم
+            // يقرأ الحالة ويقرّر. و**التفرّع يصل هنا 409 لا 500**: الفهرس الفريد الجزئي
+            // يحسم السباق في القاعدة، والمحوّل يمسك التصادم ويعيده رفضاً باسمه.
+            "storage.attachment_withdrawn" or "storage.attachment_already_superseded" => 409,
+
+            // بايتاتٌ لا تطابق بصمتها، أو غابت عن المخزن والصفّ قائم: **لا تُسلَّم**،
+            // ولا تُبتلع بـ500 بلا رمز — العميل الذي يقرأ هذا الرمز يعرف أنه اكتشف عبثاً
+            // أو تلفاً، لا عطلاً عابراً يُعاد معه الطلب.
+            "storage.content_hash_mismatch" or "storage.content_missing" => 409,
+
+            // **التذكرة اعتمادٌ لا صلاحية**: توقيعٌ لا يصحّ أو تذكرةٌ انتهت ⇒ 401 كأي
+            // اعتماد مرفوض، لا 403. وتذكرةٌ لمستأجرٍ آخر لا تصل إلى هنا أصلاً: السطح
+            // يحوّلها إلى attachment_not_found — و**404 لا 403 عمداً**، لأن «ممنوع»
+            // تُثبت وجود الملفّ عند غيرك.
+            "storage.ticket_signature_invalid" or "storage.ticket_expired" => 401,
+
+            _ when code.StartsWith("company_setup.", StringComparison.Ordinal) => 422,
+            _ when code.StartsWith("cost_center.", StringComparison.Ordinal) => 422,
+
+            _ when code.StartsWith("sales.", StringComparison.Ordinal) => 422,
+            _ when code.StartsWith("purchasing.", StringComparison.Ordinal) => 422,
+            _ when code.StartsWith("inventory.", StringComparison.Ordinal) => 422,
+            _ when code.StartsWith("projects.", StringComparison.Ordinal) => 422,
+            _ when code.StartsWith("realestate.", StringComparison.Ordinal) => 422,
+            _ when code.StartsWith("hr.", StringComparison.Ordinal) => 422,
+
+            _ when code.StartsWith("capability_profile.", StringComparison.Ordinal) => 422,
+            _ when code.StartsWith("document_admission.", StringComparison.Ordinal) => 422,
+
+            _ when code.StartsWith("membership.", StringComparison.Ordinal) => 422,
+            _ when code.StartsWith("signup.", StringComparison.Ordinal) => 422,
+            _ when code.StartsWith("subscription.", StringComparison.Ordinal) => 422,
+
+            _ when code.StartsWith("storage.", StringComparison.Ordinal) => 422,
+
+            _ when code.StartsWith("wire.", StringComparison.Ordinal) => 400,
+            _ when code.StartsWith("auth.", StringComparison.Ordinal) => 401,
+
+            // اعتمادٌ قُدِّم ولم يُقبل — انتساباً كان أو تجديداً أو جلسةً أُبطلت. و401
+            // لا 403 عمداً: الفرق بينهما هو الفرق بين «لم تُصادِق» و«صادقتَ ومُنعت»،
+            // وهما إجراءان مختلفان تماماً عند العميل (‏RFC 9110 §15.5.4).
+            _ when code.StartsWith("access.", StringComparison.Ordinal) => 401,
+            _ when code.StartsWith("tenancy.", StringComparison.Ordinal) => 403,
+            _ when code.StartsWith("ledger.posting.guard.", StringComparison.Ordinal) => 422,
+            _ when code.StartsWith("ledger.posting.", StringComparison.Ordinal) => 422,
+            _ when code.StartsWith("ledger.read.", StringComparison.Ordinal) => 501,
+
+            _ => 500,
+        };
+    }
+
+    /// <summary>يبني تفاصيل مشكلة من قائمة أخطاء مجالية بعد تعقيمها.</summary>
+    /// <param name="errors">الأخطاء كما جاءت من الخدمة.</param>
+    /// <param name="instance">مسار الطلب.</param>
+    /// <param name="traceId">معرّف التتبّع.</param>
+    public static ProblemDto FromDomain(IReadOnlyList<Error> errors, string instance, string traceId)
+    {
+        ArgumentNullException.ThrowIfNull(errors);
+
+        List<ApiErrorDto> sanitised = [.. errors.Select(Sanitise)];
+        ApiErrorDto first = sanitised.Count > 0
+            ? sanitised[0]
+            : new ApiErrorDto(InternalErrorCode, "عطل غير محدّد.", "An unspecified failure.");
+
+        int status = StatusOf(first.Code);
+        return Build(status, first, sanitised, instance, traceId);
+    }
+
+    /// <summary>يبني تفاصيل مشكلة من خطأ واحد يخصّ الحدّ نفسه (مصادقة، نطاق، شكل).</summary>
+    /// <param name="code">الرمز الثابت.</param>
+    /// <param name="messageAr">الرسالة العربية.</param>
+    /// <param name="messageEn">الرسالة الإنجليزية.</param>
+    /// <param name="instance">مسار الطلب.</param>
+    /// <param name="traceId">معرّف التتبّع.</param>
+    /// <param name="field">الحقل المعنيّ، إن وُجد.</param>
+    /// <param name="status">رمز حالة صريح يتجاوز التصنيف الافتراضي.</param>
+    public static ProblemDto FromCode(
+        string code,
+        string messageAr,
+        string messageEn,
+        string instance,
+        string traceId,
+        string? field = null,
+        int? status = null)
+    {
+        ApiErrorDto error = new(code, messageAr, messageEn, field);
+        return Build(status ?? StatusOf(code), error, [error], instance, traceId);
+    }
+
+    /// <summary>
+    /// يحجب ما لا يجوز أن يعبر: نصّ قاعدة البيانات يُستبدل، والرمز يبقى.
+    /// </summary>
+    /// <param name="error">الخطأ المجالي.</param>
+    private static ApiErrorDto Sanitise(Error error)
+    {
+        if (error.Code.StartsWith(DatabaseErrorPrefix, StringComparison.Ordinal))
+        {
+            string sqlState = error.Code[DatabaseErrorPrefix.Length..];
+            return new ApiErrorDto(
+                DatabaseRefusedCode + "." + sqlState,
+                "رفضت طبقة التخزين هذه العملية. التصنيف في الرمز، والتفصيل في سجلّ الخادم "
+                + "تحت معرّف التتبّع — ولا يعبر نصّ قاعدة البيانات إلى العميل.",
+                "The storage layer refused this operation. The classification is in the code and the detail is in "
+                + "the server log under the trace id; database text never crosses to the client.");
+        }
+
+        return new ApiErrorDto(error.Code, error.MessageAr, error.MessageEn);
+    }
+
+    private static ProblemDto Build(
+        int status,
+        ApiErrorDto first,
+        IReadOnlyList<ApiErrorDto> errors,
+        string instance,
+        string traceId) => new(
+            TypeBase + first.Code,
+            TitleEn(status),
+            TitleAr(status),
+            status,
+            first.MessageEn,
+            first.MessageAr,
+            instance,
+            first.Code,
+            traceId,
+            errors);
+
+    private static string TitleAr(int status) => status switch
+    {
+        400 => "طلب غير صالح",
+        401 => "اعتماد مفقود أو غير مقبول",
+        403 => "ممنوع",
+        404 => "غير موجود",
+        405 => "فعل غير مسموح",
+        409 => "تعارض مع حالة قائمة",
+        413 => "الحمولة أكبر من الحدّ",
+        415 => "نوع محتوى غير مدعوم",
+        422 => "الطلب مفهوم ومرفوض محاسبياً",
+        429 => "طلبات أكثر من الحدّ",
+        501 => "غير منفَّذ بعد",
+        503 => "الخدمة غير متاحة الآن",
+        _ => "عطل في الخادم",
+    };
+
+    private static string TitleEn(int status) => status switch
+    {
+        400 => "Bad request",
+        401 => "Missing or unacceptable credential",
+        403 => "Forbidden",
+        404 => "Not found",
+        405 => "Method not allowed",
+        409 => "Conflict with existing state",
+        413 => "Payload too large",
+        415 => "Unsupported media type",
+        422 => "Understood and refused on accounting grounds",
+        429 => "Too many requests",
+        501 => "Not implemented yet",
+        503 => "Service unavailable",
+        _ => "Server failure",
+    };
+
+    /// <summary>معرّف تتبّع جديد بصيغة ثابتة لا تقرأ ثقافة.</summary>
+    public static string NewTraceId() => Guid.CreateVersion7().ToString("N", CultureInfo.InvariantCulture);
+}

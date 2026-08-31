@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Babel.Sales.Tests</RootNamespace>
+    <AssemblyName>Babel.Sales.Tests</AssemblyName>
+    <!-- العربية لغة أولى: بيانات المناطق مطلوبة، والتطبيع الصامت أخطر مصيدة نشر. -->
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <PredefinedCulturesOnly>false</PredefinedCulturesOnly>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      مشروع الاختبار — لا مشروع منتج — يشير إلى الدفتر: الإثبات المطلوب هو أن
+      الحساب الضابط في دفتر أستاذ **حقيقي** يتحرّك بالمبلغ الصحيح، ولا سبيل إلى
+      ذلك بمحاكاة. القاعدة 1 تفحص مشاريع src/ وحدها، و Babel.Ledger.Tests سابقة
+      قائمة على الشكل نفسه.
+    -->
+    <ProjectReference Include="../../src/Babel.Sales/Babel.Sales.csproj" />
+    <ProjectReference Include="../../src/Babel.Ledger/Babel.Ledger.csproj" />
+    <ProjectReference Include="../../src/Babel.Core/Babel.Core.csproj" />
+    <ProjectReference Include="../../src/Babel.Canonicalization/Babel.Canonicalization.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Npgsql" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      ملفّ واحد لقارئ نقطة الضبط تتشاركه مشاريع الاختبار الثلاثة بالربط لا بالنسخ.
+      كان مكتوباً ثلاث مرّات متطابقةً، وهو شكل فخ-81 بعينه: قاعدة واحدة في مواضع
+      بلا حارس يربطها. والحارس على ذلك في
+      tests/Babel.ArchitectureTests/ControlPointPortIsDeclaredOnce.cs
+    -->
+    <Compile Include="../shared/LedgerControlPointReader.cs" Link="LedgerControlPointReader.cs" />
+    <Compile Include="../shared/UnitCostOfOne.cs" Link="UnitCostOfOne.cs" />
+  </ItemGroup>
+
+</Project>

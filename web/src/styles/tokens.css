@@ -1,0 +1,248 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   سلاسل بابل ERP — رموز التصميم  ·  Salasel Babel ERP — Design Tokens
+   ───────────────────────────────────────────────────────────────────────────
+   المصدر الوحيد للحقيقة: docs/prototypes/journal-entry/index.html (معتمد).
+   Source of truth: the approved journal-entry prototype.
+
+   الطبقات · Layers
+   1. palette   — لوحة الألوان الخام. **خرجت من هذا الملف** إلى ملفّ سمة خارجي:
+                  design/theme/theme-default.css (يُستورَد أدناه).
+   2. semantic  — طبقة المعنى، وهي **العقد** الذي تستعمله المكوّنات
+                  (--color-debit, --color-posted …) وهي هنا.
+   3. layout    — القياسات والخطوط والمسافات والاتجاه — وهي هنا.
+
+   ┌─ لماذا خرجت الألوان؟ ────────────────────────────────────────────────┐
+   │ لأن اللون صار إعداداً للعميل. سمة عميل جديدة = ملفّ واحد يُربَط بعد     │
+   │ هذا الملف، بلا تعديل مكوّن. الطبقة الدلالية أدناه هي العقد الثابت،     │
+   │ فالمكوّن لا يعرف اسم اللون الخام ولا يمكن أن يعتمد عليه.               │
+   │   <link rel="stylesheet" href="design/tokens/tokens.css">            │
+   │   <link rel="stylesheet" href="design/theme/theme-<اسم>.css"> ← اختياري│
+   └──────────────────────────────────────────────────────────────────────┘
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════ 1 · PALETTE (external theme)
+   السمة الافتراضية تُستورَد هنا فلا تبقى صفحة بلا ألوان أبداً. أي ملفّ سمة
+   يُربَط في الصفحة **بعد** هذا الملف يفوز عليها بترتيب المصدر. */
+@import url("./theme/theme-default.css");
+
+/* ═══════════════════════════════════════════════════════ 2 · SEMANTIC LAYER
+   هذه هي الطبقة التي **يجب** أن تستعملها المكوّنات والشاشات.
+   لا تكتب لوناً خاماً (#hex) في أي مكوّن. أبداً. ولا تستعمل --good مباشرةً
+   لحالة «مُرحَّل» — استعمل --color-posted، فإن تغيّر معنى الحالة لاحقاً تغيّر
+   في موضع واحد.
+   لأنها مراجع (var) لا قيم، فهي تتبع السمة تلقائياً وتُعرَّف مرة واحدة فقط.
+   ═════════════════════════════════════════════════════════════════════════ */
+:root{
+  /* — الخلفيات والنص — */
+  --color-bg:var(--bg);
+  --color-surface:var(--surface);
+  --color-surface-raised:var(--surface-2);
+  --color-surface-sunken:var(--surface-3);
+  --color-border:var(--border);
+  --color-border-strong:var(--border-2);
+  /* حدُّ مكوّنٍ تفاعلي — الحقل والزرّ والمفتاح. مفصولٌ عن السابق لأن
+     WCAG 1.4.11 تطلب 3:1 لما يلزم لتمييز مكوّن، لا لكل فاصل. */
+  --color-border-control:var(--border-control);
+  --color-text:var(--text);
+  --color-text-muted:var(--text-2);
+  --color-text-subtle:var(--text-3);
+
+  /* — التفاعل — */
+  --color-primary:var(--brand);
+  --color-primary-hover:var(--brand-ink);
+  --color-primary-soft:var(--brand-soft);
+  --color-focus:var(--brand);
+  --color-link:var(--brand);
+
+  /* — طرفا القيد · the two sides of an entry — */
+  --color-debit:var(--debit);
+  --color-debit-soft:var(--debit-soft);
+  --color-credit:var(--credit);
+  --color-credit-soft:var(--credit-soft);
+
+  /* — دلالات الرقم · number semantics — */
+  --color-amount:var(--text);
+  --color-amount-zero:var(--text-3);
+  --color-amount-negative:var(--req);
+
+  /* — حالات المستند · document states — */
+  --color-draft:var(--text-3);
+  --color-draft-soft:var(--surface-3);
+  --color-posted:var(--good);
+  --color-posted-soft:var(--good-soft);
+  --color-posted-line:var(--good-line);
+  --color-reversed:var(--ai);
+  --color-reversed-soft:var(--ai-soft);
+  --color-reversed-line:var(--ai-line);
+  --color-pending:var(--warn);
+  --color-pending-soft:var(--warn-soft);
+  --color-pending-line:var(--warn-line);
+  --color-rejected:var(--req);
+  --color-rejected-soft:var(--req-soft);
+  --color-rejected-line:var(--req-line);
+  --color-archived:var(--text-3);
+  --color-archived-soft:var(--surface-3);
+
+  /* — التحقق والتوازن · validation & balance — */
+  --color-success:var(--good);
+  --color-success-soft:var(--good-soft);
+  --color-success-line:var(--good-line);
+  --color-warning:var(--warn);
+  --color-warning-soft:var(--warn-soft);
+  --color-warning-line:var(--warn-line);
+  --color-danger:var(--req);
+  --color-danger-soft:var(--req-soft);
+  --color-danger-line:var(--req-line);
+  --color-info:var(--brand);
+  --color-info-soft:var(--brand-soft);
+  --color-required:var(--req);
+  --color-balanced:var(--good);
+  --color-unbalanced:var(--warn);
+
+  /* — الذكاء الاصطناعي · AI assist — */
+  --color-ai:var(--ai);
+  --color-ai-soft:var(--ai-soft);
+  --color-ai-line:var(--ai-line);
+}
+
+/* ══════════════════════════════════════════ 3 · TYPOGRAPHY · SPACE · SHAPE
+   لا تتغيّر بين السمتين. */
+:root{
+  /* — الخط · font —
+     ⚠ --font-sans و--font-display **تتبعان اللغة النشطة**: طبقة التدويل
+     (design/i18n/i18n.js) تكتبهما مباشرةً على :root من الحقل font في ملفّ
+     اللغة، والقيم أدناه هي الاحتياط قبل تحميل أي لغة وعند تعطيل JavaScript.
+     ولهذا: **لا تكتب اسم خطّ في أي مكوّن.** الخط رمز كالألوان تماماً. */
+  --font-sans:'IBM Plex Sans Arabic','Segoe UI',Tahoma,system-ui,sans-serif;
+  --font-display:var(--font-sans);       /* العناوين — قد يختلف عن خطّ الواجهة */
+  --font-mono:ui-monospace,SFMono-Regular,'Cascadia Mono','IBM Plex Sans Arabic',monospace;
+
+  --font-weight-regular:400;
+  --font-weight-medium:500;
+  --font-weight-semibold:600;
+  --font-weight-bold:700;
+
+  /* — سلّم الحجم · size ladder (كما هو مستخرَج من النموذج) — */
+  --font-size-3xs:11.5px;   /* تلميح، مفتاح في بطاقة، شرح إحصائية */
+  --font-size-2xs:12px;     /* عنوان عمود، مفتاح إحصائية */
+  --font-size-xs:12.5px;    /* تسمية حقل، فتات الخبز، رقاقة */
+  --font-size-sm:13px;      /* عنصر قائمة فرعية، خلية جدول عرض */
+  --font-size-md:13.5px;    /* زر، تبويب، عنصر تنقّل */
+  --font-size-base:14px;    /* نص الواجهة */
+  --font-size-lg:14.5px;    /* عنوان بطاقة */
+  --font-size-xl:15px;      /* نص صفحة الفهرس */
+  --font-size-2xl:16px;     /* عنوان نافذة */
+  --font-size-3xl:17px;     /* عنوان قسم */
+  --font-size-4xl:19px;     /* قيمة حالة كبيرة */
+  --font-size-5xl:21px;     /* عنوان صفحة h1 */
+  --font-size-6xl:23px;     /* قيمة إحصائية */
+  --font-size-display:clamp(24px,4vw,32px);
+
+  /* — أسماء بالدور (استعملها في المكوّنات) — */
+  --font-size-hint:var(--font-size-3xs);
+  --font-size-label:var(--font-size-xs);
+  --font-size-control:var(--font-size-md);
+  --font-size-body:var(--font-size-base);
+  --font-size-card-title:var(--font-size-lg);
+  --font-size-dialog-title:var(--font-size-2xl);
+  --font-size-h1:var(--font-size-5xl);
+  --font-size-stat:var(--font-size-6xl);
+
+  /* — ارتفاع السطر · line height — */
+  /* --line-display تتبع اللغة أيضاً: النستعليق الأردي يحتاج ~2.05 وإلا
+     تراكبت المدّات على السطر الذي فوقه. تكتبها طبقة التدويل. */
+  --line-display:var(--line-tight);
+  --line-tight:1.35;
+  --line-snug:1.5;
+  --line-base:1.6;
+  --line-relaxed:1.7;
+  --line-loose:1.75;
+
+  /* — التتبّع · letter spacing — */
+  --tracking-title:-.01em;
+  --tracking-stat:-.02em;
+  --tracking-num:.01em;
+
+  /* — المسافات · spacing (الاسم = القيمة بالبكسل) — */
+  --space-0:0;
+  --space-2:2px;
+  --space-4:4px;
+  --space-6:6px;
+  --space-8:8px;
+  --space-10:10px;
+  --space-12:12px;
+  --space-14:14px;
+  --space-16:16px;
+  --space-18:18px;
+  --space-20:20px;
+  --space-24:24px;
+  --space-32:32px;
+  --space-48:48px;
+  --space-64:64px;
+
+  /* — الاستدارة · radii — */
+  --radius-xs:4px;
+  --radius-sm:8px;
+  --radius-md:9px;
+  --radius-lg:12px;
+  --radius-xl:16px;
+  --radius-pill:999px;
+  --radius-circle:50%;
+  /* أسماء النموذج المعتمد، مُبقاة للتوافق */
+  --r:var(--radius-lg);
+  --r-sm:var(--radius-sm);
+
+  /* — سُمك الحدّ · border widths — */
+  --border-width:1px;
+  --border-width-strong:1.5px;
+  --border-width-accent:2px;
+
+  /* — الحركة · motion — */
+  --motion-fast:.12s;
+  --motion-base:.15s;
+  --motion-slow:.2s;
+  --ease:ease;
+
+  /* — الطبقات · z-index — */
+  --z-table-head:2;
+  --z-menu:20;
+  --z-actionbar:50;
+  --z-topbar:60;
+  --z-drawer:90;
+  --z-overlay:100;
+  --z-toast:120;
+
+  /* — قياسات الهيكل · layout metrics — */
+  --topbar-h:56px;
+  --sidenav-w:216px;
+  --control-h:38px;       /* ارتفاع حقل الإدخال */
+  --control-h-sm:34px;    /* زر أيقونة */
+  --cell-h:42px;          /* خلية جدول قابلة للتحرير */
+  --control-pad-x:11px;
+  --control-pad-y:8px;
+  --page-pad-x:20px;
+  --page-pad-x-sm:14px;
+}
+
+/* ═══════════════════════════════════════════════════════ 4 · الاتجاه
+   الاتجاه خاصية اللغة لا خاصية المنتج: <html dir> تكتبه طبقة التدويل من
+   ملفّ اللغة. كل التخطيط بخصائص منطقية فينقلب وحده — **إلا `transform`**،
+   فهي فيزيائية ولا تعرف الاتجاه (README §٣٫١).
+
+   --flip-x هو **الإذن الوحيد** بكتابة transform اتجاهي، وهو إشارة لا قيمة:
+     transform: translateX(calc(100% * var(--flip-x)));
+   يساوي +1 في RTL (السلوك الأصلي المعتمد) و−1 في LTR. بلا هذا الرمز كان
+   الدرج ينزلق من الجهة الخطأ في الإنجليزية والهندية، ومفتاح التبديل يتحرّك
+   عكسياً، وشريط الإشعارات يخرج من الشاشة — وهي أعطال لا تظهر إطلاقاً في
+   منتج ثنائي اللغة عربي/عربي. */
+:root,:root[dir="rtl"]{ --flip-x:1 }
+:root[dir="ltr"]{ --flip-x:-1 }
+
+/* إخفاء الصفحة حتى تُطبَّق اللغة، فلا يومض نصّ فارغ أو مفاتيح خام.
+   يُزيله i18n.js، ويُلغيه <noscript> في كل صفحة. */
+:root[data-i18n-pending] body{visibility:hidden}
+
+/* نقاط الانكسار المعتمدة (لا يمكن أن تكون متغيّرات داخل @media، فهي موثّقة هنا
+   وفي tokens.json ليستعملها الجميع بنفس القيم):
+   440px · 520px · 620px · 760px · 860px · 980px · 1180px
+   860px هو الانكسار الحاكم: عنده يختفي الشريط الجانبي ويتحوّل إلى درج. */

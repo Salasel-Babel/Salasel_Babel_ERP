@@ -1,0 +1,107 @@
+name: التحقق من البيانات المحاسبية / accounting data validation
+
+on:
+  push:
+    branches: ['**']
+    paths:
+      - 'data/**'
+      - 'tools/matrix-validator/**'
+      - '.github/workflows/data-validation.yml'
+  pull_request:
+    paths:
+      - 'data/**'
+      - 'tools/matrix-validator/**'
+      - '.github/workflows/data-validation.yml'
+  workflow_dispatch:
+
+jobs:
+  validate:
+    name: مصفوفة الترحيل ودليل الحسابات
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: قائمة قواعد التحقق / list validation rules
+        run: dotnet run --project tools/matrix-validator -- --rules
+
+      - name: التحقق من البيانات التأسيسية / validate the seed data
+        run: dotnet run --project tools/matrix-validator -- --data data
+
+      # ‏dotnet test لا يقبل مجلداً: يجب --project أو --solution. كان السطر السابق يفشل
+      # فوراً، ولم يُلاحَظ لأن الخطوة التي قبله كانت حمراء أصلاً (المشروع لا يُبنى).
+      - name: اختبارات أداة التحقق / validator tests
+        run: dotnet test --project tools/matrix-validator/tests/MatrixValidator.Tests.csproj --nologo
+
+      - name: تقرير JSON للمرفقات / JSON report artefact
+        if: always()
+        run: |
+          mkdir -p artefacts
+          dotnet run --project tools/matrix-validator -- --data data --json > artefacts/validation.json || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: validation-report
+          path: artefacts/validation.json
+
+  load:
+    name: تحميل البيانات في PostgreSQL
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          # كلمة مرور حاوية خدمة تُخلق وتُهدَم مع الوظيفة، ولا تصل إليها شبكةٌ خارجها،
+          # ولا تفتح شيئاً خارج هذا التشغيل. قيمةٌ حرفية لا سرّ — ولذلك الوسم:
+          POSTGRES_PASSWORD: postgres  # NOT-A-SECRET
+          POSTGRES_DB: babel_seed
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: postgres  # NOT-A-SECRET — نظيرة ما فوقها، للحاوية نفسها
+      PGDATABASE: babel_seed
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: دليل الحسابات — المخطط والتحميل / chart of accounts schema and load
+        run: |
+          psql -v ON_ERROR_STOP=1 -f data/chart-of-accounts/ddl/001-schema.sql
+          cd data/chart-of-accounts && psql -v ON_ERROR_STOP=1 -f ddl/002-load.sql
+
+      - name: مصفوفة الترحيل — المخطط والتحميل / posting matrix schema and load
+        run: |
+          psql -v ON_ERROR_STOP=1 -f data/posting-matrix/ddl/001-schema.sql
+          cd data/posting-matrix && psql -v ON_ERROR_STOP=1 -f ddl/002-load.sql
+
+      - name: الفحوص التشخيصية / diagnostic checks
+        run: |
+          cd data/chart-of-accounts && psql -v ON_ERROR_STOP=1 -f ddl/003-checks.sql && cd -
+          cd data/posting-matrix   && psql -v ON_ERROR_STOP=1 -f ddl/003-checks.sql
+
+      - name: إثبات قاعدة الحجب GR-RE-001 في قاعدة البيانات
+        run: |
+          psql -v ON_ERROR_STOP=1 -c "
+            do \$\$
+            declare n bigint;
+            begin
+              select count(*) into n from matrix.event_line
+               where role_code = 'rental_revenue' and event_code like '%managed%';
+              if n > 0 then
+                raise exception 'GR-RE-001 violated: % managed-property line(s) reach the rental revenue role', n;
+              end if;
+              raise notice 'GR-RE-001 holds: no managed-property line reaches the rental revenue role';
+            end \$\$;"

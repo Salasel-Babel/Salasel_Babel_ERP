@@ -45,6 +45,13 @@ services:
       BABEL_LEDGER_OWNER_DB: "Host=db;Port=5432;Database=babel_ledger;Username=postgres;Password=${POSTGRES_PASSWORD}"
       BABEL_SALES_OWNER_DB: "Host=db;Port=5432;Database=babel_sales;Username=postgres;Password=${POSTGRES_PASSWORD}"
       BABEL_PURCHASING_OWNER_DB: "Host=db;Port=5432;Database=babel_purchasing;Username=postgres;Password=${POSTGRES_PASSWORD}"
+      # ‏**وسطرُ المخزون كان ناقصاً، وأثره أنّ الترحيل يسقط** — لا أنّ المخزون يتعطّل:
+      # ‏`Settings.FromEnvironment` يرتدّ عند غيابه إلى نصٍّ افتراضي على `127.0.0.1`،
+      # وهو **داخل حاوية الترحيل نفسها** لا قاعدةَ فيها. فتُنشأ القاعدة في خطوة التهيئة
+      # ثم يفشل نشر مخطّطها بـ«Connection refused»، ويخرج الترحيل بغير صفر، ويتوقّف
+      # النشر كلّه. وهذا هو الشكل الأخطر من النقص: **افتراضٌ صامت** لا صيغة ‎:?‎ —
+      # فلا شيء يقول «متغيّر ناقص»، بل يُقرأ العطل شبكةً في قاعدة البيانات.
+      BABEL_INVENTORY_OWNER_DB: "Host=db;Port=5432;Database=babel_inventory;Username=postgres;Password=${POSTGRES_PASSWORD}"
       BABEL_CORE_OWNER_DB: "Host=db;Port=5432;Database=babel_core;Username=postgres;Password=${POSTGRES_PASSWORD}"
       # واتصال التطبيق: يُستعمل في خطوتَي البذر والإثبات — وهو ما يجعل البذر
       # عاجزاً بنيوياً عن الكتابة خارج ledger.post_entry.
@@ -82,6 +89,17 @@ services:
       Babel__Api__Tokens__0__Tenant: ${BABEL_DEMO_COMPANY_ID:-d3305e1e-0000-4000-8000-000000000001}
       Babel__Api__Tokens__0__User: ${BABEL_DEMO_USER_ID:-d3305e1e-0000-4000-8000-0000000000a1}
       Babel__Api__Tokens__0__Companies__0: ${BABEL_DEMO_COMPANY_ID:-d3305e1e-0000-4000-8000-000000000001}
+      # ── الموارد البشرية ──────────────────────────────────────────────────
+      # ‏**هذا السطر شرطُ إقلاع لا إعداداً اختيارياً.** `Program.cs` يستدعي
+      # `HrOptions.EnsureConfigured()` عند التركيب، وهي **ترفض الغياب** لأن هذه
+      # الوحدة أثقل جدول بيانات شخصية في المنتج فلا يجوز أن يشير خادمٌ بها إلى
+      # قاعدة لم يقصدها أحد. وبلا هذا السطر لا تقلع حاوية `api` أصلاً، فيفشل
+      # ‏`compose up --wait` ويرتدّ النشر — **وهو ما وقع** حين نزلت الوحدة ولم
+      # تنزل معها خانتها هنا.
+      # **ومخطّط `hr` غير منشور في حاوية الترحيل بعد**، كمخطّط `storage`: القاعدة
+      # مسمّاة هنا كي يقلع الخادم ويفشل أول نداء موارد بشرية بعطل اتصال مقروء،
+      # لا كي يُدّعى أن الوحدة تعمل. وذلك نقصٌ مُعلَن.
+      BABEL_HR_DB: "Host=db;Port=5432;Database=babel_hr;Username=${BABEL_LEDGER_APP_ROLE:-babel_ledger_app};Password=${BABEL_LEDGER_APP_PASSWORD};Maximum Pool Size=5"
       # ── مخزن المرفقات ────────────────────────────────────────────────────
       # ‏**ولا مفتاح افتراضي هنا ولا في أي ملفّ مُودَع**: `:?` يوقف `compose up`
       # برسالة تسمّي المتغيّر، بدل أن تُقلع حاوية تسقط عند التركيب. ومفتاحٌ

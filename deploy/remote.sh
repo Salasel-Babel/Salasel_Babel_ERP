@@ -16,6 +16,11 @@
 set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# ‏**المسار المطلق للسكربت نفسه، لا `$0`.** الرجوع التلقائي يستدعي هذا الملفّ ثانيةً،
+# و`$0` هو المسار **كما كُتب في الاستدعاء**؛ والسكربت قد بدّل مجلّده بـ`cd` قبله. فمن
+# ناداه بمسار نسبي — وهكذا يناديه حارس التكامل: `deploy/remote.sh deploy ci` — يحصل
+# على «‏No such file or directory» بدل الرجوع، **في اللحظة التي يقع فيها الفشل بالضبط**.
+self="$here/$(basename "${BASH_SOURCE[0]}")"
 cd "$here"
 
 compose() { docker compose --env-file "$here/.env" -f "$here/compose.yml" "$@"; }
@@ -87,14 +92,14 @@ case "${1:-}" in
     if ! compose up -d --wait --wait-timeout 300 --remove-orphans api web edge; then
       echo "✘ فشلت الإقامة — سجلّ الترحيل:" >&2
       compose logs --no-color --tail 200 migrator >&2 || true
-      "$0" rollback || true
+      "$self" rollback || true
       exit 1
     fi
 
     if ! health; then
       echo "✘ الحزمة أُقيمت ولا تُجيب — رجوع تلقائي" >&2
       compose logs --no-color --tail 200 api >&2 || true
-      "$0" rollback || true
+      "$self" rollback || true
       exit 1
     fi
     ;;

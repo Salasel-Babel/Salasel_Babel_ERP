@@ -240,3 +240,26 @@ describe("<VoiceConsole> — الوصول", () => {
     expect(document.querySelector('label[for="' + input.id + '"]')).toBeTruthy();
   });
 });
+
+describe("الوصول إلى اللوحة — من كل شاشة لا من شاشةٍ واحدة", () => {
+  it("للوحة مسارٌ مُعلَن في الموجّه، وهي مُدرَجة في لوحة الأوامر", async () => {
+    const { createAppRouter } = await import("../src/app/router");
+    const { SCREENS } = await import("../src/app/shell/sections");
+
+    const router = createAppRouter({ memory: true, initialPath: "/voice" });
+    expect(Object.keys(router.routesByPath)).toContain("/voice");
+
+    /* ولوحة الأوامر تُبنى من SCREENS، فوجودُها هناك هو وجودُها في Ctrl+K. */
+    expect(SCREENS.map((s) => s.path)).toContain("/voice");
+  });
+
+  it("زرّ الصوت الحاضر دائماً يقود إلى اللوحة، فيفي بما يَعِد به", async () => {
+    const source = await import("node:fs").then((fs) =>
+      fs.readFileSync("src/app/shell/VoiceDock.tsx", "utf8")
+    );
+    /* حارسٌ نصّي لا رسمٌ للهيكل كلّه: الزرّ يعيش داخل مزوّدَي الموجّه والاستعلام
+       معاً، ورسمُهما هنا يُثبت تركيبَ الهيكل لا وعدَ الزرّ. والمقصود إثباتُ أن
+       الزرّ **يقود** إلى مسارٍ قائم، وأن ذلك المسار هو /voice. */
+    expect(source).toContain('navigate({ to: "/voice" })');
+  });
+});

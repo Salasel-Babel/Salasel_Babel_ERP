@@ -80,6 +80,11 @@ export const SCREENS: readonly ScreenEntry[] = [
   { path: "/sign-in", labelKey: "app.nav.signIn", section: "accounting" },
   { path: "/contract", labelKey: "app.nav.contract", section: "accounting" },
   { path: "/design", labelKey: "app.nav.design", section: "accounting" },
+  /* الأمر المنطوق يعبر الأقسام الخمسة كلّها، ولا قسمَ واحداً يملكه. وهو مُدرَجٌ
+     هنا تحت المحاسبة **لأجل لونه وحده** — وهو اللون المرجعي حين لا يُعرَف القسم —
+     ولا يُقرأ ذلك ادّعاءً بأن الأقسام الأربعة الأخرى بُنيت: `built` عندها ما زال
+     false، وهذه الشاشة تعرض نيّاتها ولا تفتح شاشاتها. */
+  { path: "/voice", labelKey: "app.nav.voice", section: "accounting" },
 ];
 
 /**

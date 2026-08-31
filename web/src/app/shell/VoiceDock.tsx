@@ -11,8 +11,13 @@
 
    وما يُلتقط **لا يصير حقيقة محاسبية**: يملأ مسوّدةً يؤكّدها إنسان
    (ADR-0024)، والقيمة المنطوقة مصدرها السادس «منطوق» (ADR-0030).
+
+   **والزرّ يفتح لوحة الأمر المنطوق `/voice`** — أي أنه يفي بما يَعِد به. وكان
+   قبل ذلك يبدّل حالةً ولا يقود إلى شيء، لأن ما يقود إليه لم يكن قد بُني بعد:
+   لوحةٌ تحمل الأقسام الخمسة، وتقرأ ما يُقال، وتردّ الملخّص قبل أن تُنفّذ.
    ═══════════════════════════════════════════════════════════════════════════ */
 import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { useT } from "../../i18n/react";
 import { speechSupport } from "../../voice";
 
@@ -26,10 +31,15 @@ export function VoiceDock(props: { onAsk?: (available: boolean) => void }): Reac
   const support = useMemo(() => speechSupport(), []);
   const available = support === "supported";
 
+  const navigate = useNavigate();
+
   const onClick = useCallback(() => {
     setPressed((v) => !v);
     props.onAsk?.(available);
-  }, [available, props]);
+    /* والانتقال يقع **سواء أكان التفريغ متاحاً أم لا**: اللوحة تعمل بالنصّ
+       المكتوب حين يتعذّر الصوت، وحجبُها عمّن لا ميكروفون له حجبٌ للميزة كلّها. */
+    void navigate({ to: "/voice" });
+  }, [available, navigate, props]);
 
   const label = available
     ? pressed

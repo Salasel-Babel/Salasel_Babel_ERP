@@ -95,6 +95,12 @@ export const SCREENS: readonly ScreenEntry[] = [
   { path: "/hr/payroll", labelKey: "hr.nav.payroll", section: "hr" },
   { path: "/hr/payslip", labelKey: "hr.nav.payslip", section: "hr" },
   { path: "/hr/end-of-service", labelKey: "hr.nav.endOfService", section: "hr" },
+  /* الأمر المنطوق يعبر الأقسام الخمسة كلّها، ولا قسمَ واحداً يملكه. وهو مُدرَجٌ
+     هنا تحت المحاسبة **لأجل لونه وحده** — وهو اللون المرجعي حين لا يُعرَف القسم.
+     (وكُتب هذا الصفّ حين كانت الأقسام الأربعة الأخرى `built: false`؛ وقد صارت
+     كلّها مبنيّةً عند إنزال شاشاتها، فالنيّةُ المؤكَّدة تجد اليوم شاشةً تقودها
+     إليها.) */
+  { path: "/voice", labelKey: "app.nav.voice", section: "accounting" },
 ];
 
 /**

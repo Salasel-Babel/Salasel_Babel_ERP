@@ -1,5 +1,7 @@
+using Babel.Contracts.Voice;
 using Babel.Projects.Application;
 using Babel.Projects.Surface;
+using Babel.Projects.Voice;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Babel.Projects;
@@ -38,6 +40,13 @@ public static class ProjectsModuleRegistration
         // السطح المنشور: النوع الوحيد من هذه الوحدة الذي يجوز لسطح HTTP أن يسمّيه
         // (القاعدة 13 البند ب). ونطاقُه نطاق الخدمات التي يلفّها — سياق واحد للطلب.
         services.AddScoped<ProjectsSurface>();
+
+        // ‏**النيّات المنطوقة تُسجَّل من هنا، لا من مشروع الذكاء.**
+        // الوحدة تُعلن ما تُنطَق به، ووحدةُ الذكاء تجمع ما وجدته في الحاوية عبر
+        // ‏<c>IVoiceIntentCatalogue</c> في العقد. ولا تعرف إحداهما الأخرى في أي اتجاه —
+        // وهو ما تفرضه القاعدة 3، وما يجعل إضافة نيّةٍ لا تمسّ مشروع الذكاء بسطر.
+        services.AddSingleton<IVoiceIntentCatalogue, ProjectsVoiceIntents>();
+
         return services;
     }
 }

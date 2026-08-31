@@ -1,6 +1,8 @@
+using Babel.Contracts.Voice;
 using Babel.Hr.Application;
 using Babel.Hr.Subledger;
 using Babel.Hr.Surface;
+using Babel.Hr.Voice;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Babel.Hr;
@@ -42,6 +44,13 @@ public static class HrModuleRegistration
         // السطح المنشور: النوع الوحيد من هذه الوحدة الذي يجوز لسطح HTTP أن يسمّيه
         // (القاعدة 13 البند ب). ونطاقُه نطاق الخدمات التي يلفّها — سياق واحد للطلب.
         services.AddScoped<HrSurface>();
+
+        // ‏**النيّات المنطوقة تُسجَّل من هنا، لا من مشروع الذكاء.**
+        // الوحدة تُعلن ما تُنطَق به، ووحدةُ الذكاء تجمع ما وجدته في الحاوية عبر
+        // ‏<c>IVoiceIntentCatalogue</c> في العقد. ولا تعرف إحداهما الأخرى في أي اتجاه —
+        // وهو ما تفرضه القاعدة 3، وما يجعل إضافة نيّةٍ لا تمسّ مشروع الذكاء بسطر.
+        services.AddSingleton<IVoiceIntentCatalogue, HrVoiceIntents>();
+
         return services;
     }
 }

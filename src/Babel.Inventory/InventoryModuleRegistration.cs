@@ -1,6 +1,8 @@
 using Babel.Contracts.Inventory;
+using Babel.Contracts.Voice;
 using Babel.Inventory.Application;
 using Babel.Inventory.Surface;
+using Babel.Inventory.Voice;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Babel.Inventory;
@@ -43,6 +45,12 @@ public static class InventoryModuleRegistration
         // المعتمد في ICapturedInvoiceReceiver.
         services.AddScoped<IInventoryValuation>(
             static provider => provider.GetRequiredService<StockMovementService>());
+
+        // ‏**النيّات المنطوقة تُسجَّل من هنا، لا من مشروع الذكاء.**
+        // الوحدة تُعلن ما تُنطَق به، ووحدةُ الذكاء تجمع ما وجدته في الحاوية عبر
+        // ‏<c>IVoiceIntentCatalogue</c> في العقد. ولا تعرف إحداهما الأخرى في أي اتجاه —
+        // وهو ما تفرضه القاعدة 3، وما يجعل إضافة نيّةٍ لا تمسّ مشروع الذكاء بسطر.
+        services.AddSingleton<IVoiceIntentCatalogue, InventoryVoiceIntents>();
 
         return services;
     }

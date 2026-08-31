@@ -28,6 +28,23 @@
       ووحدة Babel.Ai نفسها لا تشير إليه ولا تستطيع (القاعدة 3): المنفذ في Babel.Contracts.
     -->
     <ProjectReference Include="../../src/Babel.Storage/Babel.Storage.csproj" />
+    <!--
+      ‏**الوحدات الخمس المُسهِمة بنيّات منطوقة.** المسار المنطوق صار سجلّاً تُسهم فيه
+      الوحدات عبر <c>IVoiceIntentCatalogue</c> في العقد، فإثباتُه لا يكون إلا على
+      **مجموعِ ما أسهمت به**: معرّفٌ يتكرّر بين وحدتين، أو رمز حدثٍ ليس في المصفوفة،
+      لا يظهر أيٌّ منهما وهي تُقرأ وحدةً وحدة.
+
+      ومشروع <c>Babel.Ai</c> نفسه **لا يشير إلى واحدةٍ منها ولا يستطيع** — القاعدة 3،
+      ويقيسه الحارس في Architecture/TheCapturedDraftCannotReachTheLedger.cs الذي يقرأ
+      ملفّ المشروع نفسه. والقاعدتان 1 و3 تفحصان مشاريع src/ وحدها، وهذه سابقةٌ قائمة
+      في هذا الملفّ نفسه (مزوّد الهيئة ومحوّل المرفقات).
+    -->
+    <ProjectReference Include="../../src/Babel.Hr/Babel.Hr.csproj" />
+    <ProjectReference Include="../../src/Babel.Inventory/Babel.Inventory.csproj" />
+    <ProjectReference Include="../../src/Babel.Projects/Babel.Projects.csproj" />
+    <ProjectReference Include="../../src/Babel.Purchasing/Babel.Purchasing.csproj" />
+    <ProjectReference Include="../../src/Babel.RealEstate/Babel.RealEstate.csproj" />
+    <ProjectReference Include="../../src/Babel.Sales/Babel.Sales.csproj" />
   </ItemGroup>
 
   <ItemGroup>

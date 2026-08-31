@@ -4,6 +4,7 @@ import { useT } from "../../i18n/react";
 
 /** صفّ اختصار: المفتاح كما يُضغَط، ووصفه من ملفّ اللغة. */
 const SHORTCUTS: readonly { keys: string[]; key: string }[] = [
+  { keys: ["Ctrl", "K"], key: "common.keys.command" },
   { keys: ["/"], key: "common.keys.search" },
   { keys: ["↓", "j"], key: "common.keys.rowNext" },
   { keys: ["↑", "k"], key: "common.keys.rowPrev" },

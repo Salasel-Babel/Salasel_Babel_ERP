@@ -37,6 +37,12 @@ export type ThemeChoice = "system" | "light" | "dark";
 /** اللوحة المعتمدة أو المقترحة (وصولية). */
 export type PaletteChoice = "default" | "accessible";
 
+/* **الداكن السينمائي هو المظهر الافتراضي للتطبيق كلّه** — قرارُ مالك صريح
+   (ADR-جديد «الداكن السينمائي مظهرٌ افتراضي والفاتح بديلٌ قائم»). والفاتح
+   يبقى **بديلاً صحيحاً لا مهجوراً**: هو المظهر المعتمد في `theme-default.css`
+   على `:root` المجرّد، وتبقى فوقه لوحة الوصولية تعمل. */
+const DEFAULT_THEME: ThemeChoice = "dark";
+
 const THEME_KEY = "sb-theme";
 const PALETTE_KEY = "sb-palette";
 
@@ -51,7 +57,7 @@ function read(key: string, fallback: string): string {
 /** يطبّق المظهر واللوحة على الجذر ويحفظهما. */
 export function ThemeSwitcher(props: { accessiblePaletteHref: string }): ReactNode {
   const { t } = useT();
-  const [theme, setTheme] = useState<ThemeChoice>(() => read(THEME_KEY, "system") as ThemeChoice);
+  const [theme, setTheme] = useState<ThemeChoice>(() => read(THEME_KEY, DEFAULT_THEME) as ThemeChoice);
   const [palette, setPalette] = useState<PaletteChoice>(
     () => read(PALETTE_KEY, "default") as PaletteChoice
   );
@@ -100,7 +106,7 @@ export function ThemeSwitcher(props: { accessiblePaletteHref: string }): ReactNo
           value={theme}
           onChange={(e) => setTheme(e.target.value as ThemeChoice)}
         >
-          <option value="system">{t("common.label.all")}</option>
+          <option value="system">{t("app.theme.system")}</option>
           <option value="light">{t("app.theme.light")}</option>
           <option value="dark">{t("app.theme.dark")}</option>
         </select>

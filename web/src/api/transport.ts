@@ -246,7 +246,9 @@ export function fetchTransport(options: {
     const response = await doFetch(base + url, {
       method,
       headers,
-      body: body === undefined ? undefined : form ? (body as FormData) : JSON.stringify(body),
+      /* لا تحويل نوعٍ هنا: `BodyInit` يقبل نوع `body` الأصلي كما هو، وتحويلٌ
+         لا يغيّر شيئاً يُخفي تغيّرَ النوع لاحقاً بدل أن يُظهره. */
+      body: body === undefined ? undefined : form ? body : JSON.stringify(body),
       signal,
     });
     /* الجواب الثنائي يُقرأ بايتات، **والرفض يبقى JSON**: خادمٌ يردّ 413 يردّه

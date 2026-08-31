@@ -1,5 +1,7 @@
+using Babel.Contracts.Voice;
 using Babel.RealEstate.Application;
 using Babel.RealEstate.Surface;
+using Babel.RealEstate.Voice;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Babel.RealEstate;
@@ -37,6 +39,13 @@ public static class RealEstateModuleRegistration
         // السطح المنشور: النوع الوحيد من هذه الوحدة الذي يجوز لسطح HTTP أن يسمّيه
         // (القاعدة 13 البند ب). ونطاقُه نطاق الخدمات التي يلفّها — سياق واحد للطلب.
         services.AddScoped<RealEstateSurface>();
+
+        // ‏**النيّات المنطوقة تُسجَّل من هنا، لا من مشروع الذكاء.**
+        // الوحدة تُعلن ما تُنطَق به، ووحدةُ الذكاء تجمع ما وجدته في الحاوية عبر
+        // ‏<c>IVoiceIntentCatalogue</c> في العقد. ولا تعرف إحداهما الأخرى في أي اتجاه —
+        // وهو ما تفرضه القاعدة 3، وما يجعل إضافة نيّةٍ لا تمسّ مشروع الذكاء بسطر.
+        services.AddSingleton<IVoiceIntentCatalogue, RealEstateVoiceIntents>();
+
         return services;
     }
 }

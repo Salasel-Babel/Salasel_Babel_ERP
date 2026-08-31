@@ -282,7 +282,7 @@ head("٤ · اصطلاح التسمية · key naming convention");
    واحدٌ مُلحَقٌ في آخر شجرة اللغة يجعل دمج أربعة وكلاءٍ سطراً لا اشتباكاً. */
 const NAMESPACES = [
   "app", "common", "acct", "field", "screen", "gallery", "css", "audit",
-  "realestate", "contracting", "inventory",
+  "realestate", "contracting", "inventory", "hr",
 ];
 const conventionProblems = [];
 for (const k of Object.keys(messages[SOURCE])) {

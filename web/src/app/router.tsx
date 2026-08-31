@@ -23,6 +23,11 @@ import { InventoryItemsScreen } from "../screens/inventory/ItemsScreen";
 import { InventoryStockScreen } from "../screens/inventory/StockScreen";
 import { InventoryMovementsScreen } from "../screens/inventory/MovementsScreen";
 import { InventoryValuationScreen } from "../screens/inventory/ValuationScreen";
+/* الموارد البشرية — أربع شاشات: السجلّ، والمسيّر، والقسيمة، ونهاية الخدمة. */
+import { EmployeeRegisterScreen } from "../screens/hr/EmployeeRegisterScreen";
+import { PayrollRunScreen } from "../screens/hr/PayrollRunScreen";
+import { PayslipScreen } from "../screens/hr/PayslipScreen";
+import { EndOfServiceScreen } from "../screens/hr/EndOfServiceScreen";
 
 const rootRoute = createRootRoute({ component: AppShell });
 
@@ -134,6 +139,31 @@ const inventoryValuationRoute = createRoute({
   component: InventoryValuationScreen,
 });
 
+/* ── الموارد البشرية ──────────────────────────────────────────────────── */
+const hrRegisterRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/hr",
+  component: EmployeeRegisterScreen,
+});
+
+const hrPayrollRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/hr/payroll",
+  component: PayrollRunScreen,
+});
+
+const hrPayslipRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/hr/payslip",
+  component: PayslipScreen,
+});
+
+const hrEndOfServiceRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/hr/end-of-service",
+  component: EndOfServiceScreen,
+});
+
 const routeTree = rootRoute.addChildren([
   trialBalanceRoute,
   signInRoute,
@@ -152,6 +182,10 @@ const routeTree = rootRoute.addChildren([
   inventoryItemsRoute,
   inventoryMovementsRoute,
   inventoryValuationRoute,
+  hrRegisterRoute,
+  hrPayrollRoute,
+  hrPayslipRoute,
+  hrEndOfServiceRoute,
 ]);
 
 /** ينشئ موجّهاً. الاختبارات تمرّر تاريخاً في الذاكرة فلا تحتاج متصفّحاً. */

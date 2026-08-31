@@ -30,7 +30,9 @@ import {
   type VoiceDraftHandoff,
 } from "../src/voice";
 
-const COMPANY = "11111111-1111-1111-1111-111111111111";
+/* منشأةٌ **تخصّ هذا الإثبات وحده**. ولا يتقاسم إثباتان منشأةً في هذا المستودع
+   (‏فخ-132): المنشأة وحدة عزلٍ لا قيمةَ زينة، ومَن يتقاسمها يقرأ أثر جاره. */
+const COMPANY = "7c3f19b4-6d20-4a8e-9f51-2b8d40c6a913";
 const HEALTH = { apiVersion: "v1", calendar: "GregorianCalendar", culture: "ar-SA", status: "ok" };
 
 const CALLER: VoiceCaller = {

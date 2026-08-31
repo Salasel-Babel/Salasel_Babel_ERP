@@ -13,7 +13,18 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { audit, distinctness, PAIRS, PALETTES, THRESHOLD, MIN_DELTA_E } from "../scripts/contrast.mjs";
+import {
+  audit,
+  coverageProblems,
+  COVERAGE_EXEMPT,
+  declaredPairs,
+  distinctness,
+  MIN_DELTA_E,
+  PAIRS,
+  PALETTES,
+  SOURCES,
+  THRESHOLD,
+} from "../scripts/contrast.mjs";
 
 /* الأنواع مكتوبةٌ هنا لا مُستنتَجة من ملفّ .mjs: `checkJs` مطفأة، فالمستنتَج
    اتحادٌ فضفاض يجعل قالب النصّ يطبع [object Object] بلا أن يشتكي أحد. */
@@ -56,6 +67,20 @@ describe("عتبة التباين", () => {
 
   it("الداكن الصريح وتفضيل النظام يعرّفان نفس الرموز بنفس القيم", () => {
     expect(result.parity.join("\n  ")).toBe("");
+  });
+
+  it("لا قاعدةَ تحمل حبراً وخلفيةً تمرّ بلا قياس — ولا استثناءَ بلا سبب", () => {
+    /* الجرد مكتوبٌ بيد، وستّة وكلاء يبنون على هذه الطبقة الآن. هذا الحارس هو
+       ما يمنع مكوّناً جديداً من الهبوط بزوجٍ لا يقيسه أحد. */
+    expect(declaredPairs().length).toBeGreaterThanOrEqual(40);
+    expect(coverageProblems().join("\n  ")).toBe("");
+    for (const e of COVERAGE_EXEMPT) expect(e.why.length).toBeGreaterThan(40);
+  });
+
+  it("المصادر المقروءة مُعلَنة — فالتغطية مُدقَّقة لا مفترضة", () => {
+    expect(SOURCES.length).toBeGreaterThanOrEqual(9);
+    expect(SOURCES).toContain("primitives.css");
+    expect(SOURCES).toContain("theme/theme-default.css");
   });
 
   it("العتبات هي عتبات المعيار لا عتباتٌ مخفَّضة", () => {

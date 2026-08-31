@@ -45,6 +45,21 @@ export const PALETTES = {
   high: [...THEME_FILES, "theme/theme-accessible.css"],
 };
 
+/* ملفّات **المكوّنات** — لا تُعرَّف فيها رموز، ومنها يُشتقّ حارس التغطية أدناه.
+   وهي كل CSS في `src/styles/` عدا ملفّات الرموز والطباعة: الطباعة لوحةٌ
+   مستقلّة تُقاس بأزواجها الأربعة صراحةً. */
+export const COMPONENT_FILES = [
+  "app.css",
+  "components.css",
+  "primitives.css",
+  "shell.css",
+  "presence.css",
+  "motion.css",
+];
+
+/** كل ما يقرؤه هذا المقياس فعلاً — يُطبَع في التقرير لتكون التغطية مُدقَّقة لا مفترضة. */
+export const SOURCES = [...THEME_FILES, "theme/theme-accessible.css", ...COMPONENT_FILES];
+
 /* ═══════════════════════════════════════════════ ١ · قراءة CSS إلى قواعد */
 
 function stripComments(css) {
@@ -486,6 +501,24 @@ export const PAIRS = [
     where: "presence.css .prov[data-source=attested]" },
   { id: "textSubtle/archived", fg: "var(--color-text-subtle)", bg: ["var(--color-surface)"], kind: TEXT,
     where: "components.css .pill--archived (خلفيةٌ شفّافة فوق اللوح)" },
+  { id: "textMuted/dbAlertTint", fg: "var(--color-text-muted)",
+    bg: ["color-mix(in srgb,var(--color-danger) 8%,var(--color-surface))"], kind: TEXT,
+    where: "components.css .alert--db .server-text — التقطه حارس التغطية لا اليد" },
+  { id: "text/cmdkSelected", fg: "var(--color-text)", bg: ["var(--color-primary-soft)"], kind: TEXT,
+    where: "shell.css .cmdk__item[aria-selected=true] — التقطه حارس التغطية لا اليد" },
+
+  /* ── شريط المدّة — أوّليّةٌ تهبط من فرعٍ مجاور (‏claude/screens-realestate)
+     وتُقاس **قبل** أن تهبط. أزواجها تُبنى من رموزٍ قائمة، فتُحلّ اليوم؛ ولو
+     تأخّر الفرع بقيت قياساً صحيحاً لتركيبةِ رموزٍ موجودة. */
+  { id: "text/bandSpan", fg: "var(--color-text)",
+    bg: ["color-mix(in srgb, var(--color-primary) 26%, var(--color-surface))"], kind: TEXT,
+    where: "primitives.css .band__span (وارد من claude/screens-realestate)" },
+  { id: "text/bandSpanDone", fg: "var(--color-text)",
+    bg: ["color-mix(in srgb, var(--color-success) 26%, var(--color-surface))"], kind: TEXT,
+    where: "primitives.css .band__span[data-state=done] (وارد)" },
+  { id: "text/bandSpanConflict", fg: "var(--color-text)",
+    bg: ["color-mix(in srgb, var(--color-danger) 30%, var(--color-surface))"], kind: TEXT,
+    where: "primitives.css .band__span[data-state=conflict] (وارد)" },
 
   /* ── ٥ · الأرقام في الدفتر — أكثر ما يُقرأ في المنتج ─────────────────── */
   { id: "debit/surface", fg: "var(--color-debit)", bg: ["var(--color-surface)"], kind: TEXT,
@@ -569,6 +602,114 @@ export const PAIRS = [
    · العناصر المعطّلة (`:disabled`) — مستثناة بنصّ 1.4.3 و1.4.11. */
 
 export const THRESHOLD = { [TEXT]: 4.5, [LARGE]: 3, [NONTEXT]: 3 };
+
+/* ═══════════════════════════ ٥٫١ · حارس التغطية — لا زوجَ يمرّ بلا قياس
+
+   **لماذا يوجد:** الجرد أعلاه مكتوبٌ بيد، وستّة وكلاء يبنون على هذه الطبقة
+   الآن. مكوّنٌ جديد يهبط بـ`color:` و`background:` جديدين **لا يظهر في الجرد
+   من نفسه** — فيمرّ بلا قياس، والمقياس يبقى أخضر وهو لا يعرف بوجوده. وحارسٌ
+   يُعلن تغطيةً لا يملكها أسوأ من غياب الحارس.
+
+   فهذا الحارس يمشي على ملفّات المكوّنات، ويلتقط **كل قاعدة تحمل حبراً وخلفية
+   معاً**، ويحلّهما، ويطلب أن يكون الزوج (بلونيه المحلولين، في السمتين)
+   **مقيساً في الجرد**. وما ليس فيه يُسمّى بمحدِّده وملفّه.
+
+   وما يتخطّاه مُصرَّح به لا مسكوتٌ عنه:
+     · `background:transparent` — الخلفية الفعلية سطحُ الأب، ولا يُعرف ساكناً.
+     · `color:inherit` — الحبر من الأب.
+     · قواعد بلا واحدٍ منهما.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const SKIP_BG = new Set(["transparent", "none", "currentcolor", "inherit"]);
+
+/**
+ * قواعدُ **مستثناةٌ بالاسم ومعها سببها** — والاستثناء المكتوب أشرف من قاعدةٍ
+ * تُسقَط بصمت من الجرد. ومن يحذف السبب يحذف الاستثناء معه.
+ */
+export const COVERAGE_EXEMPT = [
+  {
+    selector: ".brand .mark",
+    why: "شعارٌ في عنصرٍ **فارغ** `aria-hidden=\"true\"` — لا نصّ فيه ولا معلومة. ولو حمل نصّاً لكان شعار المنتج، وهو مستثنى بنصّ 1.4.3.",
+  },
+  {
+    selector: '.section[aria-current="page"]',
+    why: "`--section-tint` تكتبه `sections.ts` **على العنصر وقت التشغيل** فلا يوجد في أي ملفّ سمة. وهو مقيسٌ صراحةً في `text/currentSection` على الألوان الخمسة كلّها، وتُؤخذ أسوؤها.",
+  },
+];
+
+const exempt = (selector) =>
+  COVERAGE_EXEMPT.some((e) => selector.includes(e.selector));
+
+/** يلتقط من ملفّات المكوّنات كل قاعدة تحمل حبراً وخلفيةً معاً. */
+export function declaredPairs(dir = STYLES, files = COMPONENT_FILES) {
+  const found = [];
+  for (const file of files) {
+    const rules = walk(stripComments(readFileSync(path.join(dir, file), "utf8")), [], []);
+    for (const rule of rules) {
+      const body = rule.body;
+      const fg = /(?:^|[;\s])color\s*:([^;]+)/.exec(body)?.[1]?.trim();
+      const bg = /background(?:-color)?\s*:([^;]+)/.exec(body)?.[1]?.trim();
+      if (!fg || !bg) continue;
+      if (SKIP_BG.has(fg.toLowerCase()) || SKIP_BG.has(bg.toLowerCase())) continue;
+      if (exempt(rule.selector)) continue;
+      found.push({ file, selector: rule.selector, fg, bg });
+    }
+  }
+  return found;
+}
+
+/**
+ * يُخرج القواعد التي لا يغطّيها الجرد. والمقارنة **بالألوان المحلولة** لا
+ * بنصّ التعبير: صياغتان مختلفتان للون نفسه زوجٌ واحد، ولا يُطلَب من أحد أن
+ * يكتب المسافات كما كُتبت هنا.
+ */
+export function coverageProblems(palettes = PALETTES) {
+  const problems = [];
+  for (const [palette, files] of Object.entries(palettes)) {
+    const themes = readThemes(files);
+    for (const [theme, vars] of [["light", themes.light], ["dark", themes.dark]]) {
+      const measured = new Set();
+      for (const pair of PAIRS) {
+        let fgs;
+        let layers;
+        try {
+          fgs = expand(pair.fg, vars);
+          layers = pair.bg.map((l) => expand(l, vars));
+        } catch {
+          continue;
+        }
+        for (const combo of cartesian(layers)) {
+          const bg = combo.reduce((acc, layer) => (acc === null ? layer : over(layer, acc)), null);
+          for (const fg of fgs) measured.add(hex(fg.a < 1 ? over(fg, bg) : fg) + "/" + hex(bg));
+        }
+      }
+      for (const rule of declaredPairs()) {
+        let fg;
+        let bgs;
+        try {
+          fg = resolveColor(rule.fg, vars);
+          bgs = gradientStops(rule.bg, vars) ?? [resolveColor(rule.bg, vars)];
+        } catch {
+          problems.push(
+            `${palette}/${theme} · ${rule.file} · ${rule.selector}: تعذّر حلّ «${rule.fg}» أو «${rule.bg}»`
+          );
+          continue;
+        }
+        for (const bg of bgs) {
+          if (bg.a < 1) continue; /* خلفيةٌ شفّافة: سطح الأب غير معلوم ساكناً. */
+          const key = hex(fg.a < 1 ? over(fg, bg) : fg) + "/" + hex(bg);
+          if (!measured.has(key)) {
+            problems.push(
+              `${palette}/${theme} · ${rule.file} · ${rule.selector}: ` +
+                `«${rule.fg}» على «${rule.bg}» (${key}) ليس في الجرد — أضِف صفّاً إلى PAIRS`
+            );
+          }
+        }
+      }
+    }
+  }
+  return [...new Set(problems)];
+}
 
 /* ═══════════════════════════════════════════════════ ٦ · تنفيذ القياس */
 
@@ -721,10 +862,15 @@ function main() {
   const result = audit();
   const distinct = distinctness();
   const flat = distinct.filter((d) => !d.pass);
-  const green = result.failures.length === 0 && result.parity.length === 0 && flat.length === 0;
+  const uncovered = coverageProblems();
+  const green =
+    result.failures.length === 0 && result.parity.length === 0 &&
+    flat.length === 0 && uncovered.length === 0;
 
   if (asJson) {
-    process.stdout.write(JSON.stringify({ ...result, distinctness: distinct }, null, 2) + "\n");
+    process.stdout.write(
+      JSON.stringify({ ...result, distinctness: distinct, uncovered, sources: SOURCES }, null, 2) + "\n"
+    );
   } else {
     const shown = quiet ? result.failures : result.rows;
     process.stdout.write(
@@ -732,6 +878,17 @@ function main() {
       Object.keys(PALETTES).length + " لوحة × سمتين = " + result.rows.length + " قياساً\n\n"
     );
     process.stdout.write(table(shown) + "\n\n");
+    process.stdout.write("── ما قُرئ فعلاً (src/styles/):\n    " + SOURCES.join("\n    ") + "\n\n");
+    if (uncovered.length) {
+      process.stdout.write("✗ قواعدُ تحمل حبراً وخلفيةً ولا تُقاس:\n");
+      for (const u of uncovered) process.stdout.write("    " + u + "\n");
+      process.stdout.write("\n");
+    } else {
+      process.stdout.write(
+        "✓ التغطية: كل قاعدة تحمل حبراً وخلفيةً في " + COMPONENT_FILES.length +
+        " ملفّ مكوّنات مقيسةٌ في الجرد، عدا " + COVERAGE_EXEMPT.length + " استثناءً مُصرَّحاً به.\n\n"
+      );
+    }
     if (result.parity.length) {
       process.stdout.write("✗ الداكن الصريح وتفضيل النظام لا يتطابقان:\n");
       for (const p of result.parity) process.stdout.write("    " + p + "\n");
@@ -748,7 +905,8 @@ function main() {
     process.stdout.write(
       "\n" + (green
         ? "✔ كل قياسٍ فوق عتبته، والسمتان متطابقتان، والألوان الحاملة للمعنى متمايزة.\n"
-        : "✗ " + (result.failures.length + flat.length + result.parity.length) + " مخالفة.\n")
+        : "✗ " + (result.failures.length + flat.length + result.parity.length + uncovered.length) +
+          " مخالفة.\n")
     );
   }
   process.exitCode = green ? 0 : 1;

@@ -122,6 +122,7 @@ export const messages: MessageTree = {
         presence: "Intelligent presence",
         primitives: "Primitives",
         ledger: "The financial table and its four states",
+        band: "The period band and its states",
       },
       palette: {
         note: "A name states the role, not the shape. No raw colour is ever written in a component — and a settled palette is extended, never replaced.",
@@ -186,6 +187,14 @@ export const messages: MessageTree = {
         high: "Proceed",
         medium: "Review",
         low: "Do not rely on it",
+        /* شريطُ المدّة `PeriodBand` — أوّليّةٌ أخرى تحت الاسم نفسه في الفهرس. */
+        intro: "A span of time and its segments. **Overlap is shown, not stacked**: two clashing segments drop to a second lane and take the refusal colour, so a clash is never read as one sound segment. And a gap — a day of the period no segment covers — is hatched, never passed over in silence.",
+        caption: "A period band from January to December 2026",
+        gap: "Gap: days of the period no segment covers",
+        note: "Positions use logical properties, so the band flips with the language without a second line of code.",
+        done: "Quarter settled",
+        plain: "Quarter open",
+        clash: "Segment clashing with the one before it",
       },
       trace: {
         hear: "Hears",

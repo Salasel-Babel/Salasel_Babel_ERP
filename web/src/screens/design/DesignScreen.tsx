@@ -23,6 +23,7 @@ import {
   Panel,
   PresencePanel,
   ProgressBar,
+  PeriodBand,
   ProvenanceMark,
   RefusalPanel,
   StatCard,
@@ -33,7 +34,18 @@ import {
   VoiceTrace,
   type TraceStep,
 } from "../../ui";
-import { DOC_STATES, GLOWS, INKS, MOTIONS, PALETTE, PROVENANCES, type MotionEntry } from "./catalogue";
+import {
+  BAND_SAMPLES,
+  BAND_SAMPLE_FROM,
+  BAND_SAMPLE_TO,
+  DOC_STATES,
+  GLOWS,
+  INKS,
+  MOTIONS,
+  PALETTE,
+  PROVENANCES,
+  type MotionEntry,
+} from "./catalogue";
 import {
   DEMO_DIFFERENCE,
   DEMO_TOTAL_CREDIT,
@@ -469,6 +481,31 @@ export function DesignScreen(): ReactNode {
         testId="section-primitives"
       >
         <PrimitivesSection />
+      </Panel>
+
+      <Panel
+        title={t("screen.design.sec.band")}
+        note={t("screen.design.band.intro")}
+        testId="section-band"
+      >
+        <PeriodBand
+          from={BAND_SAMPLE_FROM}
+          to={BAND_SAMPLE_TO}
+          spans={BAND_SAMPLES.map((sample) => ({
+            key: sample.key,
+            from: sample.from,
+            to: sample.to,
+            state: sample.state,
+            label: t(sample.labelKey),
+            title: t(sample.labelKey),
+          }))}
+          labels={{
+            caption: t("screen.design.band.caption"),
+            gap: t("screen.design.band.gap"),
+          }}
+          testId="design-band"
+        />
+        <p className="muted">{t("screen.design.band.note")}</p>
       </Panel>
 
       <Panel

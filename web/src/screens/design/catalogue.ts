@@ -171,3 +171,36 @@ export const DOC_STATES = [
   "rejected",
   "archived",
 ] as const;
+
+/* ═══════════════════════════ شريط المدّة · the period band
+   أُضيف إلى الفهرس مع أوّليّة `PeriodBand`. والفهرس **عقدٌ حيّ**: أوّليّةٌ
+   موجودة ولا مدخل لها فيه تُقرأ غير موجودة، فيخترع من يحتاجها بديلاً لها —
+   وهو ما يمنعه هذا الملفّ أصلاً.
+
+   وعيّنةُ العرض تُظهر الحالات الثلاث معاً عمداً — مقطعٌ عادي، ومقطعٌ منتهٍ،
+   ومقطعان متقاطعان — **ومعها فجوة**: شريطٌ يُعرَض بحالةٍ واحدة سليمة لا
+   يُري ما وُجد الشريط لأجله. */
+
+/** مقطعُ عيّنةٍ في الفهرس: مداه وحالته ومفتاح تسميته. */
+export interface BandSample {
+  readonly key: string;
+  readonly from: string;
+  readonly to: string;
+  readonly state: "plain" | "done" | "conflict";
+  /** مفتاح ما يُكتب داخل المقطع ويُقرأ بالتحويم. */
+  readonly labelKey: string;
+}
+
+/** مدّةُ العيّنة: سنةٌ مالية كاملة. */
+export const BAND_SAMPLE_FROM = "2026-01-01";
+/** نهاية مدّة العيّنة — داخلة. */
+export const BAND_SAMPLE_TO = "2026-12-31";
+
+/** مقاطع العيّنة الثلاثة — والفجوة بينها وبين نهاية المدّة مقصودة. */
+export const BAND_SAMPLES: readonly BandSample[] = [
+  { key: "q1", from: "2026-01-01", to: "2026-03-31", state: "done", labelKey: "screen.design.band.done" },
+  { key: "q2", from: "2026-04-01", to: "2026-06-30", state: "plain", labelKey: "screen.design.band.plain" },
+  /* هذا يتقاطع مع سابقه في حزيران، فينزلان إلى مسارين ويأخذان لون الرفض. */
+  { key: "q3", from: "2026-06-15", to: "2026-09-30", state: "plain", labelKey: "screen.design.band.clash" },
+  /* وبين أيلول وكانون الأول فجوةٌ لا يغطّيها مقطع — تُعلَّم ولا يُسكَت عنها. */
+];

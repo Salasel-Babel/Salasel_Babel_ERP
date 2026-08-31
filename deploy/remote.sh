@@ -136,6 +136,15 @@ case "${1:-}" in
       exit 2
     fi
 
+    # ‏`-noservername` هو بيت القصيد: بدونه يرسل openssl اسم المضيف في SNI،
+    # فيُقاس مسارٌ لا يسلكه أي متصفّح يفتح عنواناً حرفياً. وغيابُ الخيار من
+    # نسخة openssl قديمة يُقال صراحةً، ولا يُقرأ «لا شهادة».
+    if ! openssl s_client -help 2>&1 | grep -q -- '-noservername'; then
+      echo "✘ نسخة openssl هنا لا تعرف -noservername، ولا سبيل إلى قياس المسار بلا SNI." >&2
+      echo "  وهو المسار الوحيد الذي يهمّ في وضع ip. حدِّث openssl أو افحص من جهاز آخر." >&2
+      exit 2
+    fi
+
     pem="$(echo | openssl s_client -connect 127.0.0.1:443 -noservername 2>/dev/null \
              | sed -n '/BEGIN CERTIFICATE/,/END CERTIFICATE/p')"
     if [ -z "$pem" ]; then

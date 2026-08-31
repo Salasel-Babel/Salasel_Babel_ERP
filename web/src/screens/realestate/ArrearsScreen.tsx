@@ -24,6 +24,7 @@ import {
   draftTenantReceipt,
   postTenantReceipt,
   readTenantArrearsAging,
+  readTenantReceipt,
 } from "../../api/generated/client";
 import type { ArrearsParty, TenantArrears, TenantReceipt } from "../../api/generated/types";
 import { PARAM_readTenantArrearsAging_asOf_RE } from "../../api/generated/formats";
@@ -292,6 +293,7 @@ function ReceiptFlow(props: { companyId: string; transport: Transport }): ReactN
   const [treasury, setTreasury] = useState("");
   const [lesseeId, setLesseeId] = useState("");
   const [allocateTo, setAllocateTo] = useState("");
+  const [openId, setOpenId] = useState("");
 
   const draft = useWrite<TenantReceipt>("arrive");
   const post = useWrite<TenantReceipt>("post");
@@ -328,6 +330,16 @@ function ReceiptFlow(props: { companyId: string; transport: Transport }): ReactN
     );
   }, [draft.value, post, props]);
 
+  /* فتحُ سندٍ قائم بمعرّفه: سندٌ حُفظ في جلسةٍ سابقة يُقرأ فيُرحَّل أو يُخصَّص،
+     ولا باب يسرد السندات فالمعرّف هو الطريق. */
+  const openExisting = useCallback(() => {
+    post.reset();
+    allocate.reset();
+    void draft.run(() =>
+      readTenantReceipt(props.transport, { companyId: props.companyId, receiptId: openId })
+    );
+  }, [allocate, draft, openId, post, props]);
+
   const submitAllocate = useCallback(() => {
     const current = draft.value;
     if (!current) return;
@@ -359,6 +371,33 @@ function ReceiptFlow(props: { companyId: string; transport: Transport }): ReactN
           <span className="re-step__dot" aria-hidden="true" />
           {t("realestate.receipt.stepAllocated")}
         </span>
+      </div>
+
+      <div className="grid fields-half">
+        <div className="field">
+          <label htmlFor="re-receipt-open">{t("realestate.common.id")}</label>
+          <div className="row">
+            <input
+              id="re-receipt-open"
+              className="ctl mono"
+              dir="ltr"
+              autoComplete="off"
+              data-testid="re-receipt-open-id"
+              value={openId}
+              onChange={(e) => setOpenId(e.target.value)}
+            />
+            <button
+              type="button"
+              className="btn btn-sm"
+              data-testid="re-receipt-open-go"
+              disabled={openId === "" || draft.busy}
+              onClick={openExisting}
+            >
+              {t("realestate.common.read")}
+            </button>
+          </div>
+          <span className="hint">{t("realestate.receipt.openHint")}</span>
+        </div>
       </div>
 
       <div className="grid fields-3">

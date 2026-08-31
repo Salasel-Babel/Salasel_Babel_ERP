@@ -40,6 +40,7 @@ import {
   draftRentInvoice,
   postRentInvoice,
   readLeaseContract,
+  readRentInvoice,
   readLeaseSchedule,
 } from "../../api/generated/client";
 import type { Lease, LeaseSchedule, RentInvoice } from "../../api/generated/types";
@@ -979,6 +980,7 @@ function Invoicing(props: {
   const [number, setNumber] = useState("");
   const [issuedOn, setIssuedOn] = useState(todayIso);
   const [taxRate, setTaxRate] = useState("");
+  const [openId, setOpenId] = useState("");
   const draft = useWrite<RentInvoice>("arrive");
   const post = useWrite<RentInvoice>("post");
   const invoice = post.value ?? draft.value;
@@ -1013,10 +1015,46 @@ function Invoicing(props: {
       .then(() => props.onInvoiced());
   }, [draft.value, post, props]);
 
+  /* فتحُ فاتورةٍ قائمة بمعرّفها: مسوّدةٌ حُفظت في جلسةٍ سابقة تُقرأ وتُرحَّل،
+     ولا باب يسرد الفواتير فالمعرّف هو الطريق. */
+  const openExisting = useCallback(() => {
+    post.reset();
+    void draft.run(() =>
+      readRentInvoice(props.transport, { companyId: props.companyId, invoiceId: openId })
+    );
+  }, [draft, openId, post, props]);
+
   return (
     <div className="card card-pad" data-testid="re-invoice">
       <h3 className="k">{t("realestate.invoice.title")}</h3>
       <p className="muted">{t("realestate.invoice.note")}</p>
+
+      <div className="grid fields-half">
+        <div className="field">
+          <label htmlFor="re-invoice-open">{t("realestate.common.id")}</label>
+          <div className="row">
+            <input
+              id="re-invoice-open"
+              className="ctl mono"
+              dir="ltr"
+              autoComplete="off"
+              data-testid="re-invoice-open-id"
+              value={openId}
+              onChange={(e) => setOpenId(e.target.value)}
+            />
+            <button
+              type="button"
+              className="btn btn-sm"
+              data-testid="re-invoice-open-go"
+              disabled={openId === "" || draft.busy}
+              onClick={openExisting}
+            >
+              {t("realestate.common.read")}
+            </button>
+          </div>
+          <span className="hint">{t("realestate.invoice.openHint")}</span>
+        </div>
+      </div>
 
       <div className="grid fields-3">
         <div className="field">

@@ -278,7 +278,7 @@ if (paramProblems.length) bad("معاملات لا تطابق المصدر", par
 else ok("معاملات كل ترجمة تطابق المصدر");
 
 head("٤ · اصطلاح التسمية · key naming convention");
-const NAMESPACES = ["app", "common", "acct", "field", "screen", "gallery", "css", "audit"];
+const NAMESPACES = ["app", "common", "acct", "field", "screen", "gallery", "css", "audit", "realestate"];
 const conventionProblems = [];
 for (const k of Object.keys(messages[SOURCE])) {
   const seg = k.split(".");

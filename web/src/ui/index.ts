@@ -45,3 +45,6 @@ export {
   bandOf,
 } from "./presence";
 export type { ConfidenceBand, TraceStep } from "./presence";
+
+export { PeriodBand, dayNumber, overlappingSpans, uncoveredGaps } from "./PeriodBand";
+export type { BandGap, BandLabels, BandSpan, PeriodBandProps, SpanState } from "./PeriodBand";

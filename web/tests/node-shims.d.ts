@@ -3,6 +3,10 @@
    تفتح باباً لاستدعاء fs من مكوّن، وهو ما لا يُكتشف إلا وقت التشغيل في المتصفّح. */
 declare module "node:fs" {
   export function readFileSync(path: string, encoding: string): string;
+  /* يُستعمل في حرّاس المصدر: «لا مبلغ يمرّ بـNumber في هذا المجلّد» تفحص
+     **كل** ملفّاته لا قائمةً مكتوبة بيد — وقائمةٌ مكتوبة بيد تعمي عن الملفّ
+     الذي يُضاف غداً. */
+  export function readdirSync(path: string): string[];
 }
 
 declare module "node:path" {

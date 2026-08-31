@@ -126,6 +126,7 @@ export const messages: MessageTree = {
       palette: {
         note: "A name states the role, not the shape. No raw colour is ever written in a component — and a settled palette is extended, never replaced.",
         glows: "Glows — each carrying one piece of information",
+        inks: "Ink on filled surfaces — each surface has its own ink, not an imposed white",
       },
       role: {
         ground: "The cinematic ground behind everything",
@@ -135,6 +136,7 @@ export const messages: MessageTree = {
         overlay: "Above everything: dialog, command palette",
         edgeLine: "The ordinary border",
         edgeStrong: "A border separating two blocks",
+        edgeControl: "The edge of an interactive control: field, button, switch",
         text: "Primary text",
         textMuted: "Secondary text",
         textSubtle: "Hint and explanation",
@@ -231,7 +233,7 @@ export const messages: MessageTree = {
         intro: "Numeric columns in a monospaced face with tabular figures, debit and credit in their own colours, and sticky totals and header.",
         caption: "Trial balance — realistically shaped data for the showcase",
         refetch: "Read again from the server",
-        contrast: "An owner decision is pending: the ink on the debit and credit headers is white over their own colours, measuring 1.86:1 and 2.54:1 in the dark theme — both below AA. Neither value changed; the dark theme simply became the default, so the flaw became everyone's. The fix is six lines already written in the theme file, awaiting a decision.",
+        contrast: "The owner decided: raise the contrast. In the dark theme the ink on the debit and credit headers is no longer white — it is a deep ink drawn from each surface's own family, lifting 1.86:1 and 2.54:1 to 8.92:1 and 11.71:1. The two sides still part by hue, not by intensity: debit teal, credit sky, ΔE 41 apart. And the threshold is now enforced, not advisory: a meter reads the theme file itself, measures 78 pairs across both palettes, and the build fails if one pair drops below it.",
         note: "The marked row holds an inferred value, not an entered one. The two totals are equal and the difference is zero.",
       },
     },

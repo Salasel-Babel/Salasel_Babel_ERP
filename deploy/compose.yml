@@ -171,7 +171,12 @@ services:
         condition: service_healthy
 
   edge:
-    image: caddy:2-alpine
+    # ‏**الوسم مثبَّت على إصدار بعينه لا على `2-alpine`،** لأن هذا الملف يعتمد
+    # على قدرتين لم تكونا في كل إصدارات الفرع الثاني: اختيار ملمح ACME
+    # (`profile`) الذي وصل في **2.10.0**، وسماح CertMagic بشهادة على عنوان IP
+    # من Let's Encrypt الذي وصل مع CertMagic v0.24.0 في **2.10.2**. ووسمٌ
+    # عائم يعني أن وضع `ip` يعمل اليوم ويسقط بعد سحبٍ لا يقرّره أحد.
+    image: caddy:2.11.4-alpine
     restart: unless-stopped
     depends_on:
       web:
@@ -184,6 +189,11 @@ services:
       # وحينها Caddy يُصدر شهادة من سلطته الداخلية — انظر Caddyfile وREADME §3.
       BABEL_SITE: ${BABEL_SITE:-:80}
       BABEL_TLS_MODE: ${BABEL_TLS_MODE:-auto}
+      # عنوان IP العام بلا مخطّط ولا أقواس — **فارغ في غير وضع `ip`**. وهو ما
+      # يصير `default_sni` في Caddyfile، وبدونه تفشل كل مصافحة بلا SNI (أي كل
+      # متصفّح يفتح عنواناً حرفياً). يشتقّه سير عمل النشر من `BABEL_SITE` فلا
+      # يمكن أن ينحرف عنه.
+      BABEL_TLS_IP: ${BABEL_TLS_IP:-}
       # ‏`:-` لا `:?`: يُبدَّل عند الغياب **وعند الفراغ** معاً — والفراغ هو الحالة
       # التي كسرت الحافة (انظر Caddyfile).
       BABEL_TLS_EMAIL: ${BABEL_TLS_EMAIL:-tls-email-not-set@invalid}

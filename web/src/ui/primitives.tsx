@@ -10,9 +10,9 @@
    **ولا نصّ مرئي مكتوب هنا:** كل أوّليّة تستقبل نصّها من الشاشة، والشاشة
    تأخذه من `useT()`. وهذا يفرضه `scripts/audit.mjs` فحصاً حاكماً.
    ═══════════════════════════════════════════════════════════════════════════ */
-import type { CSSProperties, ReactNode } from "react";
+import { useMemo, type CSSProperties, type ReactNode } from "react";
 import type { Money } from "../api/money";
-import { Amount, Decimal, Num } from "../i18n/react";
+import { Amount, Decimal, Num, Rendered, useLocale } from "../i18n/react";
 
 /* ═══════════════════════════════════════════════════════ ١ · سطح ولوح */
 
@@ -359,29 +359,8 @@ export function ProgressBar(props: {
    وكلتاهما تمرّان بـ`<Decimal>`: أرقامُ اللغة، والمقياس **مقروءٌ من النصّ
    الواصل** لا مفترَض، ولا عائم في أي خطوة. */
 
-/**
- * كمّية **بوحدتها**. ولا كمّية مجرّدة تُعرض في هذا النظام: «عشرة» ليست
- * معلومة، ورمز الوحدة معرّفٌ لا يُترجَم — فيبقى كما سجّله المستأجر ويُعزَل
- * اتجاهياً إلى جانب المقدار.
- * @param props المقدار نصّاً ورمز الوحدة.
- */
-export function QuantityValue(props: {
-  /** المقدار كما وصل نصّاً — Magnitude، ولا يصير رقماً. */
-  readonly magnitude: string;
-  /** رمز وحدة القياس كما سجّله المستأجر — معرّف لا نصّ معروض. */
-  readonly unit: string;
-  readonly className?: string;
-  readonly testId?: string;
-}): ReactNode {
-  return (
-    <span className={"qty " + (props.className ?? "")} data-testid={props.testId}>
-      <Decimal value={props.magnitude} className="qty__n" />
-      <span className="qty__u mono" dir="ltr">
-        {props.unit}
-      </span>
-    </span>
-  );
-}
+/* تعريفُ `QuantityValue` الوحيد يقع في §٩ مع `magnitudeScale` — فهو يقرأ
+   المقياس من النصّ ويُعلّم السالب، وهما ما تعتمد عليه شاشات المخزون. */
 
 /**
  * نسبة تعاقدية **كسراً عشرياً لا نسبة مئوية** — كما ينصّ العقد المنشور:
@@ -460,5 +439,83 @@ export function AlertBell(props: {
         </span>
       ) : null}
     </button>
+  );
+}
+
+/* ═══════════════════════════════ ٩ · كمّية بوحدتها · a quantity with its unit
+   **«عشرة» ليست معلومة.** عشر حبّات أم عشر كراتين؟ والعقد يعرف ذلك فلا يُمرِّر
+   كمّيةً مجرّدة أبداً: كل كمّية <c>Measure</c> — مقدارٌ **نصّاً**
+   ووحدةٌ معه. وهذه الأوّليّة هي مقابل `<Amount>` في جهة الكمّيات، ووُجدت لأن
+   الطبقة كانت تحمل عرضاً للمال ولا تحمل عرضاً للكمّية، فكان كل قسمٍ سيخترع
+   واحداً.
+
+   وثلاثة قرارات تحكمها، وكلّها مقيسة لا مفترَضة:
+
+   ١ · **المقدار لا يمرّ بـ`Number` ولا بـ`parseFloat`.** مقياسه ستٌّ لا أربع
+       (لأنه يُضرب في تكلفة الوحدة)، و`Number` يفقده فوق ٢^٥٣ وفي الكسر معاً.
+       فيُسلَّم نصّه إلى طبقة التدويل كما وصل، وتُعرَض قيمةُ عرضٍ لا نصّ.
+
+   ٢ · **المقياس المعروض هو مقياس القيمة نفسها**، مقصوصةً أصفارُه الزائدة
+       **نصّياً**: «100.000000» تُقرأ «100» و«1.500000» تُقرأ «1.5». ولا تقريب
+       يقع أبداً — القصّ على أصفارٍ لاحقة لا يغيّر قيمة، والنصّ الأصلي يبقى
+       كاملاً في `title` كما يفعل `<Amount>`.
+
+   ٣ · **رمز الوحدة معرّفٌ لا نصّ معروض** (العقد: «لا يُترجَم ولا يُطابَق بلا
+       حساسية حالة»). فيُعرض كما سجّله المستأجر، **معزولاً اتجاهياً** لأنه قد
+       يكون «PCS» وقد يكون «حبة»، والصفحة قد تكون بأي من اللغات الأربع. */
+
+/**
+ * يحسب مقياس العرض الطبيعي لمقدارٍ نصّي: خاناتُه العشرية بعد قصّ الأصفار
+ * اللاحقة. **نصّيٌّ بالكامل** — لا `Number` ولا `parseFloat` في أي خطوة.
+ * @param text المقدار كما وصل على السلك.
+ */
+export function magnitudeScale(text: string): number {
+  const dot = text.indexOf(".");
+  if (dot < 0) return 0;
+  let end = text.length;
+  while (end > dot + 1 && text.charAt(end - 1) === "0") end -= 1;
+  return end - dot - 1;
+}
+
+/**
+ * هل المقدار سالب؟ **نصّياً بلا حساب**، والصفر السالب ليس سالباً — كما في
+ * `Money.isNegative` حرفاً بحرف، فلا قاعدتان لسؤالٍ واحد.
+ * @param text المقدار كما وصل على السلك.
+ */
+export function magnitudeIsNegative(text: string): boolean {
+  return text.charAt(0) === "-" && !/^-0(\.0+)?$/.test(text);
+}
+
+/** خصائص الكمّية. */
+export interface QuantityValueProps {
+  /** المقدار نصّاً كما وصل — `Magnitude` أو `Quantity` في العقد. */
+  readonly magnitude: string;
+  /** رمز الوحدة كما سجّله المستأجر. معرّفٌ لا يُترجَم. */
+  readonly unit: string;
+  readonly className?: string;
+  readonly testId?: string;
+}
+
+/**
+ * كمّيةٌ ووحدتها. المقدار يمرّ بطبقة التدويل، والوحدة تُعرض كما هي معزولة.
+ * @param props المقدار والوحدة.
+ */
+export function QuantityValue(props: QuantityValueProps): ReactNode {
+  const { i18n, locale } = useLocale();
+  const { magnitude } = props;
+  const display = useMemo(() => {
+    void locale;
+    return i18n.amount(magnitude, { scale: magnitudeScale(magnitude) });
+  }, [i18n, locale, magnitude]);
+
+  return (
+    <span
+      className={"qty " + (props.className ?? "")}
+      data-negative={magnitudeIsNegative(magnitude) ? "true" : undefined}
+      data-testid={props.testId}
+    >
+      <Rendered display={display} className="qty__n" title={magnitude} />
+      <span className="qty__u mono">{props.unit}</span>
+    </span>
   );
 }

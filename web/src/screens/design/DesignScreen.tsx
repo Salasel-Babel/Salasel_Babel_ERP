@@ -35,7 +35,15 @@ import {
   VoiceTrace,
   type TraceStep,
 } from "../../ui";
-import { DOC_STATES, GLOWS, MOTIONS, PALETTE, PROVENANCES, type MotionEntry } from "./catalogue";
+import {
+  DOC_STATES,
+  GLOWS,
+  MOTIONS,
+  PALETTE,
+  PROVENANCES,
+  QUANTITY_SAMPLES,
+  type MotionEntry,
+} from "./catalogue";
 import {
   DEMO_DIFFERENCE,
   DEMO_TOTAL_CREDIT,
@@ -320,6 +328,27 @@ function PrimitivesSection(): ReactNode {
           </span>
         </div>
         <p className="muted">{t("screen.design.prim.rateNote")}</p>
+      </Panel>
+
+      <Panel
+        title={t("inventory.design.quantity")}
+        note={t("inventory.design.quantityNote")}
+        testId="section-quantity"
+      >
+        <div className="stack">
+          {QUANTITY_SAMPLES.map((sample) => (
+            <div className="kv kv--split" key={sample.key}>
+              <span className="kv__k">{t(sample.labelKey)}</span>
+              <span className="kv__v">
+                <QuantityValue
+                  magnitude={sample.magnitude}
+                  unit={sample.unit}
+                  testId={"quantity-" + sample.key}
+                />
+              </span>
+            </div>
+          ))}
+        </div>
       </Panel>
 
       <Panel title={t("screen.design.prim.empty")} note={t("screen.design.prim.emptyNote")}>

@@ -278,9 +278,12 @@ if (paramProblems.length) bad("معاملات لا تطابق المصدر", par
 else ok("معاملات كل ترجمة تطابق المصدر");
 
 head("٤ · اصطلاح التسمية · key naming convention");
-/* المجالات المعتمدة. ومن يبني قسماً يضيف مجاله **هنا** — والقائمة تُقرأ عقداً:
-   مفتاحٌ خارجها يُقرأ خطأً مطبعياً لا مجالاً جديداً، وهذا هو ما تمنعه. */
-const NAMESPACES = ["app", "common", "acct", "field", "screen", "gallery", "css", "audit", "realestate", "contracting"];
+/* النطاقات المعتمدة. والأقسام الخمسة تُضيف نطاقاً واحداً لكلٍّ منها — نطاقٌ
+   واحدٌ مُلحَقٌ في آخر شجرة اللغة يجعل دمج أربعة وكلاءٍ سطراً لا اشتباكاً. */
+const NAMESPACES = [
+  "app", "common", "acct", "field", "screen", "gallery", "css", "audit",
+  "realestate", "contracting", "inventory",
+];
 const conventionProblems = [];
 for (const k of Object.keys(messages[SOURCE])) {
   const seg = k.split(".");

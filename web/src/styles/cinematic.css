@@ -59,6 +59,8 @@
   --edge-faint:color-mix(in srgb, var(--border) 55%, transparent);
   --edge-line:var(--border);
   --edge-strong:var(--border-2);
+  /* control حدُّ مكوّنٍ تفاعلي — يجتاز 3:1 على السطح الذي يقع عليه. */
+  --edge-control:var(--color-border-control);
   --edge-accent:var(--brand);
 
   /* ═══════════════════════════════════════════ ٣ · الأضواء · glow

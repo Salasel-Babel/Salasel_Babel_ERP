@@ -22,10 +22,12 @@
    :not([data-theme="light"])، ثم على :root[data-theme="dark"] ليفوز الاختيار
    الصريح في الاتجاهين. لا يُعرَّف لون لأول مرة داخل media أو attribute. أبداً.
 
-   ⚠ هذه السمة تحمل ١٤ ملاحظة مرفوعة إلى المالك في design/README.md §٧،
-   منها خمس فشل تباين مقيسة. **لم يُصلَح شيء منها هنا** لأن المظهر معتمد.
-   الإصلاحات الموصى بها موجودة كاملةً في theme-accessible.css، وكل إصلاح
-   سطر واحد — والمعرض يبدّل بينهما ليرى المالك الاثنين ويقرّر.
+   ⚠ **قرارُ مالكٍ مُنفَّذ:** كانت هذه السمة تحمل ملاحظات تباينٍ مرفوعة في
+   design/README.md §٧ ومتروكةً لقرار. القرار وقع: **يُرفع التباين**. وكل
+   قيمةٍ هنا تجتاز الآن عتبات WCAG 2.1 AA في السمتين — 4.5:1 للنصّ و3:1 لما
+   ليس نصّاً — وهذا **مقيسٌ لا مُدّعى**: `web/scripts/contrast.mjs` يقرأ هذا
+   الملفّ نفسه ويقيس 132 زوجاً، ويسقط البناءُ إن هبط زوجٌ واحد.
+   ولذلك: **من يغيّر لوناً هنا يُشغّل المقياس** — `node scripts/contrast.mjs`.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* ───────────────────────────────────────────────────────── 1 · CORE (light) */
@@ -39,28 +41,40 @@
   /* — حدود · borders — */
   --border:#e2e8f0;
   --border-2:#cbd5e1;
+  /* حدُّ **مكوّنٍ تفاعلي** — حقلٌ أو زرٌّ أو مفتاح. مفصولٌ عن --border-2 عمداً:
+     ‏WCAG 1.4.11 تطلب 3:1 لما يلزم لتمييز مكوّن، ولا تطلبها لفاصلٍ زخرفي.
+     ورفعُ --border-2 إلى 3:1 كان سيُثقل كل فاصلٍ في النظام بلا سبب. */
+  --border-control:#66798f;
 
   /* — نص · text — */
   --text:#0f172a;
   --text-2:#475569;
-  --text-3:#94a3b8;
+  /* رُفع من #94a3b8 (2.56:1 على --surface) إلى 4.74:1 على أغمق سطحٍ يقع عليه
+     (--surface-3). كان يحمل أيضاً --color-draft و--color-amount-zero، فسقوطه
+     كان يُسقط ثلاثة معانٍ لا واحداً. (ADR-جديد · contrast-floor-is-enforced) */
+  --text-3:#5b6e8a;
 
   /* — العلامة · brand — */
   --brand:#2563eb;
   --brand-ink:#1d4ed8;
   --brand-soft:#eff6ff;
-  /* لون التدرّج في شعار النظام. القيمة حرفية في النموذج المعتمد في السمتين. */
+  /* لون التدرّج في شعار النظام. القيمة حرفية في النموذج المعتمد في السمتين،
+     ولا تتبع --ai: الشعار لا يحمل نصّاً (عنصرٌ فارغ aria-hidden)، فلا عتبة
+     تباينٍ عليه — وتغميقه مع --ai كان سيغيّر الشعار بلا سببٍ وصولي. */
   --brand-mark-accent:#7c3aed;
 
-  /* — المحاسبة · accounting — */
-  --debit:#0f9d8f;   --debit-soft:#ecfdf7;
-  --credit:#3b82f6;  --credit-soft:#eff6ff;
+  /* — المحاسبة · accounting —
+     الطرفان **يفترقان بالصبغة لا بالشدّة**: المدين فيروزي (‏175°) والدائن
+     سماوي (‏201°)، وبينهما ΔE≈42. وأُخرج الدائن من عائلة الأزرق التي تسكنها
+     العلامة، فصار ΔE عن --brand ‏50.7 بعد أن كان 19. */
+  --debit:#0f766e;   --debit-soft:#ecfdf7;
+  --credit:#0369a1;  --credit-soft:#e8f4fe;
 
   /* — الحالة · status — */
-  --good:#16a34a;  --good-soft:#f0fdf4;  --good-line:#bbf7d0;
+  --good:#15803d;  --good-soft:#f0fdf4;  --good-line:#bbf7d0;
   --warn:#b45309;  --warn-soft:#fffbeb;  --warn-line:#fde68a;
-  --ai:#7c3aed;    --ai-soft:#f5f3ff;    --ai-line:#ddd6fe;
-  --req:#dc2626;
+  --ai:#6d28d9;    --ai-soft:#f5f3ff;    --ai-line:#ddd6fe;
+  --req:#c81f1f;
 
   /* --req-soft / --req-line غير معرَّفين في النموذج. مشتقّان بنفس أسلوب النموذج
      نفسه (color-mix على --req كما في .menu button.danger:hover). */
@@ -68,12 +82,11 @@
   --req-line:color-mix(in srgb,var(--req) 34%,var(--surface));
 
   /* — نص فوق الأسطح الملوّنة · text on filled surfaces —
-     القيمة #fff في **السمتين** لأن النموذج المعتمد يكتبها حرفياً في السمتين.
-     ⚠ قياس التباين في السمة الداكنة: أبيض على --debit 1.86:1، وعلى --brand 2.54:1،
-     وكلاهما دون عتبة AA. التوصية (بانتظار قرار المالك، ولم تُطبَّق):
-       الداكن → --on-brand:#0a1120 · --on-debit:#04231f · --on-credit:#0a1120
-                --on-danger:#2a0a0a · --on-success:#052e16 · --on-warning:#2a1a02
-     التغيير عندها سطرٌ واحد هنا، لا مئة موضع في المكوّنات. */
+     في الفاتح تبقى #fff: أسطحُ الحالة هنا داكنةٌ بما يكفي بعد رفعها أعلاه
+     (أبيض على --debit صار 5.47:1، وعلى --good 5.02:1، وعلى --credit 5.93:1).
+     وفي الداكن **تنقلب**: الأسطح هناك فاتحة، فالحبر الأبيض عليها كان يعطي
+     1.67:1 – 2.77:1 — ورأسا «مدين» و«دائن» أكثرُ ما يُقرأ في هذا المنتج.
+     انظر كتلة الداكن أدناه. (ADR-جديد · contrast-floor-is-enforced) */
   --on-brand:#fff;
   --on-debit:#fff;
   --on-credit:#fff;
@@ -111,18 +124,21 @@
 
     --border:#1e2c45;
     --border-2:#2b3d5c;
+    --border-control:#5e7fad;   /* 1.56:1 على --surface ← 4.16:1 (‏1.4.11) */
 
     --text:#e6edf7;
     --text-2:#9db0ca;
-    --text-3:#6b7f9c;
+    --text-3:#8296b3;   /* 3.85:1 على --surface-3 ← 5.21:1 */
 
     --brand:#60a5fa;
     --brand-ink:#93c5fd;
     --brand-soft:#16294d;
     --brand-mark-accent:#7c3aed;
 
+    /* الدائن كان #60a5fa = --brand **حرفياً**، فلا يُميَّز مبلغ دائن عن رابط.
+       صار سماويّاً: ΔE‏ 31 عن العلامة و41 عن المدين، وصبغته 199° مقابل 172°. */
     --debit:#2dd4bf;   --debit-soft:#0b2f2c;
-    --credit:#60a5fa;  --credit-soft:#16294d;
+    --credit:#7dd3fc;  --credit-soft:#0c2b3d;
 
     --good:#4ade80;  --good-soft:#0a2c18;  --good-line:#166534;
     --warn:#fbbf24;  --warn-soft:#31240a;  --warn-line:#78500b;
@@ -131,13 +147,15 @@
     --req-soft:color-mix(in srgb,var(--req) 14%,var(--surface));
     --req-line:color-mix(in srgb,var(--req) 40%,var(--surface));
 
-    /* مطابق للنموذج المعتمد — انظر تحذير التباين في كتلة :root */
-    --on-brand:#fff;
-    --on-debit:#fff;
-    --on-credit:#fff;
-    --on-danger:#fff;
-    --on-success:#fff;
-    --on-warning:#fff;
+    /* **الحبر ينقلب في الداكن.** أسطح الحالة هنا فاتحة، والأبيض عليها كان
+       يعطي 1.67:1 – 2.77:1. والقيم أدناه أحبارٌ داكنة من عائلة كل سطح، فيبقى
+       الشكل واحداً ويصير مقروءاً. القياس بعد/قبل بجانب كلٍّ منها. */
+    --on-brand:#0a1120;     /* 2.54 → 7.41  */
+    --on-debit:#04231f;     /* 1.86 → 8.92  — رأس «مدين» */
+    --on-credit:#00212e;    /* 2.54 → 11.71 — رأس «دائن» */
+    --on-danger:#2a0a0a;    /* 2.77 → 6.62  */
+    --on-success:#052e16;   /* 1.74 → 8.55  */
+    --on-warning:#2a1a02;   /* 1.67 → 10.09 */
 
     --scrim:rgba(3,7,18,.66);
 
@@ -156,10 +174,11 @@
 
   --border:#1e2c45;
   --border-2:#2b3d5c;
+  --border-control:#5e7fad;
 
   --text:#e6edf7;
   --text-2:#9db0ca;
-  --text-3:#6b7f9c;
+  --text-3:#8296b3;
 
   --brand:#60a5fa;
   --brand-ink:#93c5fd;
@@ -167,7 +186,7 @@
   --brand-mark-accent:#7c3aed;
 
   --debit:#2dd4bf;   --debit-soft:#0b2f2c;
-  --credit:#60a5fa;  --credit-soft:#16294d;
+  --credit:#7dd3fc;  --credit-soft:#0c2b3d;
 
   --good:#4ade80;  --good-soft:#0a2c18;  --good-line:#166534;
   --warn:#fbbf24;  --warn-soft:#31240a;  --warn-line:#78500b;
@@ -176,13 +195,13 @@
   --req-soft:color-mix(in srgb,var(--req) 14%,var(--surface));
   --req-line:color-mix(in srgb,var(--req) 40%,var(--surface));
 
-  /* مطابق للنموذج المعتمد — انظر تحذير التباين في كتلة :root */
-  --on-brand:#fff;
-  --on-debit:#fff;
-  --on-credit:#fff;
-  --on-danger:#fff;
-  --on-success:#fff;
-  --on-warning:#fff;
+  /* الحبر ينقلب في الداكن — انظر كتلة @media أعلاه للقياسات. */
+  --on-brand:#0a1120;
+  --on-debit:#04231f;
+  --on-credit:#00212e;
+  --on-danger:#2a0a0a;
+  --on-success:#052e16;
+  --on-warning:#2a1a02;
 
   --scrim:rgba(3,7,18,.66);
 

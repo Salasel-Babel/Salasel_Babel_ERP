@@ -40,6 +40,9 @@
   --color-surface-sunken:var(--surface-3);
   --color-border:var(--border);
   --color-border-strong:var(--border-2);
+  /* حدُّ مكوّنٍ تفاعلي — الحقل والزرّ والمفتاح. مفصولٌ عن السابق لأن
+     WCAG 1.4.11 تطلب 3:1 لما يلزم لتمييز مكوّن، لا لكل فاصل. */
+  --color-border-control:var(--border-control);
   --color-text:var(--text);
   --color-text-muted:var(--text-2);
   --color-text-subtle:var(--text-3);

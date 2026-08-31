@@ -47,6 +47,21 @@
 .swatch__token{ font-size:var(--font-size-3xs); color:var(--color-text-subtle) }
 .swatch[data-kind="glow"]{ background:var(--color-surface) }
 
+/* ── الحبر على سطحه ──────────────────────────────────────────────────
+   لا لونَ هنا: الخلفية والحبر يأتيان من الرمزين اللذين تعرضهما البطاقة
+   نفسها، فما يُرى **هو** القيمة لا وصفٌ لها. */
+.inkchip{
+  display:flex; flex-direction:column; gap:var(--space-4); min-inline-size:0;
+  padding:var(--space-10) var(--space-12);
+  border-radius:var(--radius-well);
+  border:var(--border-width) solid var(--edge-strong);
+}
+.inkchip__sample{
+  font-size:var(--font-size-card-title); font-weight:var(--font-weight-bold);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.inkchip__token{ font-size:var(--font-size-3xs); opacity:.86 }
+
 /* ── بطاقات مفردات الحركة ────────────────────────────────────────────── */
 .mtiles{
   display:grid; gap:var(--space-12);

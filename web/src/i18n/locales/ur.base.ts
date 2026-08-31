@@ -102,8 +102,8 @@ export const messages: MessageTree = {
       "light": "روشن تھیم",
       "dark": "تاریک تھیم",
       "palette": "رنگوں کا پیلٹ",
-      "paletteDefault": "منظور شدہ",
-      "paletteAccessible": "تجویز کردہ (قابلِ رسائی)"
+      "paletteDefault": "طے شدہ (AA)",
+      "paletteAccessible": "بلند تضاد"
     },
     "locale": {
       "label": "زبان",

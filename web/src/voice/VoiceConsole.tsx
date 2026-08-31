@@ -30,6 +30,7 @@ import {
   type VoiceDispatch,
   type VoiceResolution,
 } from "./command";
+import { dropVoiceDraft, handoffOf, type VoiceDraftHandoff } from "./handoff";
 import { canSpeak, hush, speak } from "./speak";
 import { listen, speechSupport, type SpeechSession, type SpeechUnavailable } from "./speech";
 
@@ -45,8 +46,19 @@ export interface VoiceConsoleProps {
   readonly statutoryTaxRate?: string;
   /** المتكلّم ومنشأته وصلاحياته. */
   readonly caller: VoiceCaller;
-  /** يُستدعى بالأمر بعد أن يجتاز البوابة — وهو **الأثر الوحيد** الذي تُخرجه اللوحة. */
+  /** يُستدعى بالأمر بعد أن يجتاز البوابة. */
   readonly onDispatch?: (dispatch: VoiceDispatch) => void;
+  /**
+   * يُستدعى بـ**تسليم المسوّدة** — وهو ما تُخرجه اللوحة فعلاً بعد التأكيد.
+   * ومن يتلقّاه يُودعه لشاشة المستند وينتقل إليها؛ <b>واللوحة لا تنادي باباً</b>.
+   */
+  readonly onDraft?: (handoff: VoiceDraftHandoff) => void;
+  /**
+   * نصّ الوجهة كما تعرفها طبقةُ التطبيق — «شاشة مستخلص العميل» مثلاً — أو `null`
+   * حين لم تهبط شاشة هذا المستند بعد. <b>ويُعرض كما هو</b>، فلا يقفز المستخدم إلى
+   * لا شيء ولا يظنّ أن أمره ضاع.
+   */
+  readonly destinationOf?: (intentId: string) => string | null;
   /** تفريغ يُحقن بدل الميكروفون. **يُوسَم على الشاشة وسماً ظاهراً**. */
   readonly simulatedTranscript?: string;
   /** هل يُنطَق الملخّص تلقائياً؟ الافتراضي: نعم، وللمستخدم إطفاؤه. */
@@ -57,7 +69,12 @@ export interface VoiceConsoleProps {
 type Outcome =
   | { readonly kind: "none" }
   | { readonly kind: "refused"; readonly codes: readonly string[] }
-  | { readonly kind: "confirmed"; readonly dispatch: VoiceDispatch }
+  | {
+      readonly kind: "confirmed";
+      readonly dispatch: VoiceDispatch;
+      readonly handoff: VoiceDraftHandoff | null;
+      readonly destination: string | null;
+    }
   | { readonly kind: "cancelled" };
 
 /* «ai.voice.slot_missing» ← «slotMissing»: مفتاح العرض يُشتقّ من رمز الرفض
@@ -163,6 +180,33 @@ export function VoiceConsole(props: VoiceConsoleProps): ReactNode {
     hush();
   }, []);
 
+  /**
+   * يُسلّم أمراً اجتاز البوابة. <b>ولا ينادي باباً</b>: يبني تسليم المسوّدة ويُعلنه،
+   * وشاشةُ المستند هي التي تنادي عمليتها المنشورة وتملك زرّ الترحيل.
+   */
+  const hand = useCallback(
+    (dispatch: VoiceDispatch) => {
+      const handoff = handoffOf(dispatch);
+      const destination = handoff === null ? null : (props.destinationOf?.(dispatch.intent.id) ?? null);
+
+      setOutcome({ kind: "confirmed", dispatch, handoff, destination });
+      props.onDispatch?.(dispatch);
+      if (handoff !== null) props.onDraft?.(handoff);
+
+      /* **والهبوط يُسمع كما يُرى**: من لا يرى يعرف أين ذهبت مسوّدته، ومن لا يسمع
+         يقرأ النصّ نفسه في `voice-outcome`. ونصٌّ واحد لا اثنان. */
+      if (speakOn && dispatch.confirmedByHuman) {
+        speak(
+          destination === null
+            ? t("screen.voice.console.draftHeld", { name: dispatch.intent.nameAr })
+            : t("screen.voice.console.draftHanded", { name: dispatch.intent.nameAr }),
+          lang
+        );
+      }
+    },
+    [lang, props, speakOn, t]
+  );
+
   /** التأكيد — **الباب الوحيد** إلى أمرٍ ينفَّذ. */
   const confirm = useCallback(() => {
     if (!resolution) return;
@@ -174,9 +218,8 @@ export function VoiceConsole(props: VoiceConsoleProps): ReactNode {
       return;
     }
 
-    setOutcome({ kind: "confirmed", dispatch: decided.dispatch });
-    props.onDispatch?.(decided.dispatch);
-  }, [props, resolution]);
+    hand(decided.dispatch);
+  }, [hand, props.caller, resolution]);
 
   /** التنفيذ بلا تأكيد — مسموحٌ للاستعلام وحده، والبوابة هي التي تقرّر لا هذا الملفّ. */
   const run = useCallback(() => {
@@ -188,12 +231,12 @@ export function VoiceConsole(props: VoiceConsoleProps): ReactNode {
       return;
     }
 
-    setOutcome({ kind: "confirmed", dispatch: decided.dispatch });
-    props.onDispatch?.(decided.dispatch);
-  }, [props, resolution]);
+    hand(decided.dispatch);
+  }, [hand, props.caller, resolution]);
 
   const cancel = useCallback(() => {
     hush();
+    dropVoiceDraft();
     setOutcome({ kind: "cancelled" });
     setResolution(null);
   }, []);
@@ -437,12 +480,44 @@ export function VoiceConsole(props: VoiceConsoleProps): ReactNode {
         </div>
       ) : null}
 
+      {/* ── ما بعد التأكيد: المسوّدة تُرى كما تُسمع، ووجهتُها تُقال باسمها ── */}
       {outcome.kind === "confirmed" ? (
-        <p className="vcx-outcome" data-testid="voice-outcome" role="status" aria-live="polite">
-          {outcome.dispatch.confirmedByHuman
-            ? t("screen.voice.console.confirmed")
-            : t("screen.voice.console.queryReady")}
-        </p>
+        <div className="vcx-handoff" data-testid="voice-handoff">
+          <p className="vcx-outcome" data-testid="voice-outcome" role="status" aria-live="polite">
+            {outcome.dispatch.confirmedByHuman
+              ? outcome.destination === null
+                ? t("screen.voice.console.draftHeld", { name: outcome.dispatch.intent.nameAr })
+                : t("screen.voice.console.draftHanded", { name: outcome.dispatch.intent.nameAr })
+              : t("screen.voice.console.queryReady")}
+          </p>
+
+          {outcome.handoff ? (
+            <>
+              <p className="vc-note" data-testid="voice-handoff-operation" data-operation={outcome.handoff.operationId}>
+                {t("screen.voice.console.handoffOperation", { operation: outcome.handoff.operationId })}
+              </p>
+              <p className="vc-note" data-testid="voice-handoff-destination" data-destination={outcome.destination ?? ""}>
+                {outcome.destination === null
+                  ? t("screen.voice.console.screenNotLanded")
+                  : t("screen.voice.console.destination", { path: outcome.destination })}
+              </p>
+              <dl className="vc-fields" data-testid="voice-handoff-fields">
+                {outcome.handoff.fields.map((field) => (
+                  <div key={field.name} className="vc-field" data-provenance={field.provenance}>
+                    <dt className="vc-field-label">{field.nameAr}</dt>
+                    <dd className="vc-field-value" data-testid={"voice-handoff-value-" + field.name}>
+                      {field.text + (field.unit ? " " + field.unit : "")}
+                    </dd>
+                    <dd className="vc-field-source">{t("screen.voice.provenance." + field.provenance)}</dd>
+                  </div>
+                ))}
+              </dl>
+              <p className="vc-not-a-fact" data-testid="voice-post-is-not-spoken">
+                {t("screen.voice.console.postIsNotSpoken")}
+              </p>
+            </>
+          ) : null}
+        </div>
       ) : null}
 
       {outcome.kind === "cancelled" ? (

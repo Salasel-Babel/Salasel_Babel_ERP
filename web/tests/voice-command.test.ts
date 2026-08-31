@@ -35,6 +35,7 @@ interface Vectors {
     status: string;
     ledgerEffect: string;
     eventCode: string | null;
+    operationId: string | null;
     requiresConfirmation: boolean;
     readsPersonalData: boolean;
     nameAr: string;
@@ -42,7 +43,7 @@ interface Vectors {
     slots: { name: string; kind: string; nameAr: string; required: boolean; cues: string[]; choices: string[] }[];
   }[];
   utterances: { transcript: string; intent: string; slots: Record<string, string>; units?: Record<string, string> }[];
-  missing: { transcript: string; intent: string; missing: string[]; faults?: string[] }[];
+  missing: { transcript: string; intent: string; missing: string[]; faults?: string[]; withoutToday?: boolean }[];
   refusals: { transcript: string; code: string }[];
 }
 
@@ -58,9 +59,9 @@ const caller: VoiceCaller = {
 describe("سجلّ النيّات في المتصفّح", () => {
   it("مجموعة المتجهات ليست ضامرة", () => {
     /* حارس لا فراغ: ملفٌّ فارغ يجعل كل ما تحته يمرّ بلا أن يقرأ شيئاً. */
-    expect(vectors.intents.length).toBeGreaterThanOrEqual(18);
-    expect(vectors.utterances.length).toBeGreaterThanOrEqual(18);
-    expect(vectors.missing.length).toBeGreaterThanOrEqual(18);
+    expect(vectors.intents.length).toBeGreaterThanOrEqual(40);
+    expect(vectors.utterances.length).toBeGreaterThanOrEqual(40);
+    expect(vectors.missing.length).toBeGreaterThanOrEqual(40);
     expect(vectors.refusals.length).toBeGreaterThanOrEqual(3);
   });
 
@@ -74,13 +75,39 @@ describe("سجلّ النيّات في المتصفّح", () => {
     }
   });
 
-  it("الأقسام الخمسة كلّها مسكونة، ولكلٍّ ثلاثُ نيّاتٍ إلى ستّ", () => {
+  /* ‏**والسقف سقط بسقوط المعيار القديم**: عددُ نيّات القسم صار مشتقّاً من عدد عمليات
+     المسوّدة المنشورة فيه، وهو ينمو بنموّ المنتج. وسقفٌ مكتوب كان سيمنع نيّةً صحيحة
+     لأنها السابعة. */
+  it("الأقسام الخمسة كلّها مسكونة، ولكلٍّ خمسُ نيّاتٍ فأكثر", () => {
     expect(VOICE_SECTIONS).toHaveLength(5);
     for (const section of VOICE_SECTIONS) {
       const count = VOICE_INTENTS.filter((intent) => intent.section === section.id).length;
-      expect(count, section.id).toBeGreaterThanOrEqual(3);
-      expect(count, section.id).toBeLessThanOrEqual(6);
+      expect(count, section.id).toBeGreaterThanOrEqual(5);
     }
+  });
+
+  /* ⚠ **الحارس الذي يمنع خطأ الغد في المتصفّح**: لا نيّة تبلغ عملية ترحيلٍ أو توقيعٍ
+     أو اعتماد. والفعلُ يُفحص لا الاسم، فعمليةٌ تُنشر غداً بفعلٍ لم يُصنَّف لا تمرّ.
+     ونظيرُه في الخادم يقرأ هذا الملفّ نفسه ويطابقه بالعقد المنشور. */
+  it("لا نيّة تبلغ عملية ترحيل ولا توقيع ولا اعتماد", () => {
+    const forbidden = ["post", "activate", "sign", "approve", "terminate", "revoke", "reverse", "lapse", "delete", "forfeit", "void"];
+    const permitted = ["draft", "create", "add", "record", "read", "list", "reconcile", "verify"];
+    let measured = 0;
+
+    for (const intent of VOICE_INTENTS) {
+      if (intent.status === "AwaitingOwnerDecision") {
+        expect(intent.operationId, intent.id).toBeNull();
+        continue;
+      }
+
+      measured++;
+      expect(intent.operationId, intent.id).not.toBeNull();
+      const verb = /^[a-z]+/.exec(intent.operationId!)?.[0] ?? "";
+      expect(forbidden, intent.id + " → " + intent.operationId).not.toContain(verb);
+      expect(permitted, intent.id + " → " + intent.operationId).toContain(verb);
+    }
+
+    expect(measured).toBeGreaterThanOrEqual(40);
   });
 
   it("كل نيّة تُغيّر الحال تطلب تأكيداً، ولا استعلام يطلبه", () => {
@@ -93,7 +120,7 @@ describe("سجلّ النيّات في المتصفّح", () => {
         expect(intent.requiresConfirmation, intent.id).toBe(false);
       }
     }
-    expect(changing).toBeGreaterThanOrEqual(12);
+    expect(changing).toBeGreaterThanOrEqual(26);
   });
 });
 
@@ -124,7 +151,12 @@ describe("القراءة الحتمية", () => {
     "«%s» ينقصها %s",
     (transcript) => {
       const vector = vectors.missing.find((v) => v.transcript === transcript)!;
-      const read = readCommand(transcript, options);
+      /* ‏**بلا حقنِ تاريخِ اليوم لا يُملأ حقلُ تاريخٍ إطلاقاً** — والمتجه الذي يطلب
+         ذلك يقيس القاعدة نفسها في التنفيذين معاً. */
+      const read = readCommand(
+        transcript,
+        vector.withoutToday ? { statutoryTaxRate: vectors.statutoryTaxRate } : options
+      );
       expect(read.ok, transcript).toBe(true);
       if (!read.ok) return;
 

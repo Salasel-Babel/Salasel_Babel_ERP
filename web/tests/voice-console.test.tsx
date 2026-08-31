@@ -93,7 +93,51 @@ describe("<VoiceConsole> — بوّابة التأكيد", () => {
     expect(dispatched).toHaveLength(1);
     expect(dispatched[0]!.intent.id).toBe("accounting.customer_receipt.record");
     expect(dispatched[0]!.confirmedByHuman).toBe(true);
-    expect(screen.getByTestId("voice-outcome").textContent).toContain("أُكِّد الأمر");
+    expect(screen.getByTestId("voice-outcome").textContent).toContain("صارت مسوّدة");
+  });
+
+  it("المسوّدة المؤكَّدة تُسلَّم بمعرّف عمليةٍ منشورة — **وليست عملية ترحيل**", () => {
+    const handed: { intentId: string; operationId: string }[] = [];
+    open({ onDraft: (h) => handed.push({ intentId: h.intentId, operationId: h.operationId }) });
+    say(RECEIPT);
+    fireEvent.click(screen.getByTestId("voice-confirm"));
+
+    expect(handed).toHaveLength(1);
+    expect(handed[0]!.intentId).toBe("accounting.customer_receipt.record");
+    expect(handed[0]!.operationId).toBe("draftCustomerReceipt");
+    expect(handed[0]!.operationId.startsWith("post")).toBe(false);
+
+    /* ‏**والتسليم يُرى كما يُسمع**: من لا يسمع يقرأ العملية والقيم والوجهة. */
+    expect(screen.getByTestId("voice-handoff-operation").getAttribute("data-operation")).toBe("draftCustomerReceipt");
+    expect(screen.getByTestId("voice-handoff-value-amount").textContent).toContain("1000");
+    expect(screen.getByTestId("voice-post-is-not-spoken").textContent).toContain("الترحيل لا يُقال");
+  });
+
+  it("شاشةٌ لم تهبط تُقال باسمها، ولا يُقفَز إلى مسارٍ غير مسجَّل", () => {
+    open({ destinationOf: () => null });
+    say(RECEIPT);
+    fireEvent.click(screen.getByTestId("voice-confirm"));
+
+    expect(screen.getByTestId("voice-handoff-destination").getAttribute("data-destination")).toBe("");
+    expect(screen.getByTestId("voice-handoff-destination").textContent).toContain("لم تهبط بعد");
+  });
+
+  it("الوجهة تُعلَن حين تكون الشاشة مسجَّلة", () => {
+    open({ destinationOf: () => "/realestate" });
+    say(RECEIPT);
+    fireEvent.click(screen.getByTestId("voice-confirm"));
+
+    expect(screen.getByTestId("voice-handoff-destination").getAttribute("data-destination")).toBe("/realestate");
+    expect(screen.getByTestId("voice-outcome").textContent).toContain("سُلِّمت إلى شاشة مستندها");
+  });
+
+  it("النيّة التي تنتظر قراراً لا تُنتج تسليماً أصلاً", () => {
+    const handed: string[] = [];
+    open({ section: "Inventory", onDraft: (h) => handed.push(h.intentId) });
+    say("تسكين القطع الصنف اسمنت كمية عشرة كراتين المستودع الرياض من الموقع رف ثلاثة الى الموقع رف اربعة");
+
+    expect(screen.getByTestId("voice-awaiting-owner")).toBeTruthy();
+    expect(handed).toHaveLength(0);
   });
 
   it("الإلغاء لا ينفّذ شيئاً ويُعلن ذلك", () => {

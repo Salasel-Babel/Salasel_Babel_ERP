@@ -30,7 +30,8 @@ public sealed class VoiceIntentRegistryTests
         VoiceIntentStatus status = VoiceIntentStatus.Published,
         string? ownerDecision = null,
         IReadOnlyList<VoiceSlot>? slots = null,
-        IReadOnlyList<string>? phrases = null)
+        IReadOnlyList<string>? phrases = null,
+        string? operationId = "draftSalesInvoice")
         => new(
             id,
             VoiceSection.Accounting,
@@ -39,6 +40,7 @@ public sealed class VoiceIntentRegistryTests
             status,
             effect,
             eventCode,
+            status == VoiceIntentStatus.AwaitingOwnerDecision ? null : operationId,
             "نيّة إثبات",
             phrases ?? ["عبارة إثبات"],
             slots ?? [],
@@ -57,17 +59,20 @@ public sealed class VoiceIntentRegistryTests
     {
         VoiceIntentRegistry registry = VoiceHarness.Registry;
 
-        Assert.Equal(6, VoiceHarness.Catalogues.Count);
-        Assert.True(registry.Count >= 18, "عدد النيّات " + registry.Count.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        Assert.Equal(7, VoiceHarness.Catalogues.Count);
+        Assert.True(registry.Count >= 40, "عدد النيّات " + registry.Count.ToString(System.Globalization.CultureInfo.InvariantCulture));
 
         foreach (VoiceSection section in Enum.GetValues<VoiceSection>())
         {
             IReadOnlyList<VoiceIntent> inSection = registry.InSection(section);
+            // ‏**والحدّ الأدنى وحده يُقاس، والأعلى سقط بسقوط المعيار القديم.** كان
+            // «ثلاثٌ إلى ستّ» عدداً مشتقّاً من قائمةٍ منتقاة بيد؛ وصار العدد مشتقّاً من
+            // **عدد عمليات المسوّدة المنشورة في القسم**، وهو ينمو بنموّ المنتج. وسقفٌ
+            // مكتوب هنا كان سيمنع نيّةً صحيحة لأنها السابعة.
             Assert.True(
-                inSection.Count >= 3,
+                inSection.Count >= 5,
                 "القسم " + section + " فيه " + inSection.Count.ToString(System.Globalization.CultureInfo.InvariantCulture)
-                + " نيّة — والخطة تعد بثلاثٍ إلى ستّ لكل قسم.");
-            Assert.True(inSection.Count <= 6, "القسم " + section + " تجاوز الستّ.");
+                + " نيّة — ولكل قسمٍ خمسٌ فأكثر بعد أن فُتحت المسوّدات كلّها.");
         }
     }
 
@@ -92,7 +97,7 @@ public sealed class VoiceIntentRegistryTests
         }
 
         // حارس لا فراغ: سجلٌّ بلا نيّةٍ تُرحّل يجعل الفحص أعلاه يمرّ على لا شيء.
-        Assert.True(posting >= 9, "النيّات المُرحِّلة " + posting.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        Assert.True(posting >= 18, "النيّات المُرحِّلة " + posting.ToString(System.Globalization.CultureInfo.InvariantCulture));
     }
 
     [Fact]
@@ -113,7 +118,7 @@ public sealed class VoiceIntentRegistryTests
             }
         }
 
-        Assert.True(changing >= 12, "النيّات المُغيِّرة " + changing.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        Assert.True(changing >= 26, "النيّات المُغيِّرة " + changing.ToString(System.Globalization.CultureInfo.InvariantCulture));
     }
 
     [Fact]
@@ -136,6 +141,107 @@ public sealed class VoiceIntentRegistryTests
     }
 
     // ── ما يرفضه ───────────────────────────────────────────────────────────
+
+    [Fact]
+    public void لا_نية_في_السجل_تبلغ_عملية_ترحيل_ولا_توقيع_ولا_اعتماد()
+    {
+        // ‏**القاعدة كاملةً على النيّات الحقيقية**: كل نيّةٍ منشورة تسمّي عمليةً واحدة،
+        // وكلُّها يُجيزها حارسُ الأفعال. وهذا الإثبات يقيس **الحال القائمة**؛ والحارس
+        // البنيوي الذي يمنع الغد يقع في بناء السجلّ نفسه وفي
+        // ‏<c>NoVoiceIntentReachesAPostingOperation</c> على العقد المنشور.
+        int published = 0;
+
+        foreach (VoiceIntent intent in VoiceHarness.Registry.Intents)
+        {
+            if (intent.Status == VoiceIntentStatus.AwaitingOwnerDecision)
+            {
+                Assert.Null(intent.OperationId);
+                continue;
+            }
+
+            published++;
+            Assert.NotNull(intent.OperationId);
+            Assert.DoesNotContain(
+                intent.OperationId!,
+                new[] { string.Empty },
+                StringComparer.Ordinal);
+            Assert.Null(VoiceOperationGuard.Refuse(intent.OperationId));
+            Assert.False(
+                intent.OperationId!.StartsWith("post", StringComparison.Ordinal),
+                intent.Id + " تبلغ ترحيلاً: " + intent.OperationId);
+        }
+
+        Assert.True(published >= 40, "النيّات المنشورة " + published.ToString(System.Globalization.CultureInfo.InvariantCulture));
+    }
+
+    [Fact]
+    public void نية_توصَل_بعملية_ترحيل_تُسقط_البناء()
+    {
+        // ‏**هذا هو الحارس بعينه.** ولا يُقاس بعدّ النيّات القائمة بل بمحاولةٍ جديدة:
+        // من يوصّل نيّةً بـ«post…» غداً لا يجد بوّابةً خضراء.
+        Result<VoiceIntentRegistry> built = BuildWith(
+            Probe("probe.posts", operationId: "postSalesInvoice"));
+
+        Assert.True(built.IsFailure);
+        Assert.Contains(built.Errors, error => error.Code == "ai.voice.catalogue.operation_not_reachable");
+    }
+
+    [Fact]
+    public void نية_توصَل_بتوقيع_او_اعتماد_او_انهاء_تُسقط_البناء()
+    {
+        foreach (string forbidden in new[] { "activateLeaseContract", "terminateEmployee", "revokeMembership", "reverseJournalEntry" })
+        {
+            Result<VoiceIntentRegistry> built = BuildWith(Probe("probe.signs", operationId: forbidden));
+
+            Assert.True(built.IsFailure, forbidden + " مرّت.");
+            Assert.Contains(built.Errors, error => error.Code == "ai.voice.catalogue.operation_not_reachable");
+        }
+    }
+
+    [Fact]
+    public void نية_توصَل_بفعل_لم_يُصنف_بعد_تُسقط_البناء()
+    {
+        // ‏**وهذا ما يجعل الحارس يمنع خطأ الغد لا خطأ اليوم**: عمليةٌ تُنشر غداً بفعلٍ
+        // جديد — «settle» أو «approveAndPost» — لا تبلغ الصوت بالصدفة، بل تنتظر إنساناً
+        // يصنّفها في القائمة المغلقة.
+        Result<VoiceIntentRegistry> built = BuildWith(Probe("probe.unclassified", operationId: "settleEverything"));
+
+        Assert.True(built.IsFailure);
+        Assert.Contains(built.Errors, error => error.Code == "ai.voice.catalogue.operation_not_reachable");
+    }
+
+    [Fact]
+    public void نية_منشورة_بلا_عملية_تُسقط_البناء()
+    {
+        Result<VoiceIntentRegistry> built = BuildWith(Probe("probe.nowhere", operationId: null));
+
+        Assert.True(built.IsFailure);
+        Assert.Contains(built.Errors, error => error.Code == "ai.voice.catalogue.operation_not_stated");
+    }
+
+    [Fact]
+    public void نية_تنتظر_قراراً_وتسمي_عملية_تُسقط_البناء()
+    {
+        VoiceIntent waiting = new(
+            "probe.waiting_with_operation",
+            VoiceSection.Accounting,
+            BabelModule.Sales,
+            VoiceIntentKind.StateChange,
+            VoiceIntentStatus.AwaitingOwnerDecision,
+            VoiceLedgerEffect.None,
+            null,
+            "draftSalesInvoice",
+            "نيّة إثبات",
+            ["عبارة إثبات"],
+            [],
+            false,
+            "قرارٌ منتظَر");
+
+        Result<VoiceIntentRegistry> built = BuildWith(waiting);
+
+        Assert.True(built.IsFailure);
+        Assert.Contains(built.Errors, error => error.Code == "ai.voice.catalogue.operation_not_expected");
+    }
 
     [Fact]
     public void معرف_مكرر_بين_وحدتين_يُسقط_البناء()

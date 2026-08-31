@@ -308,3 +308,17 @@
   border-radius: var(--radius-2, 0.5rem);
   background: var(--color-surface-raised);
 }
+
+/* ── تسليم المسوّدة: ما بعد التأكيد ────────────────────────────────────────
+   **لوحةٌ لها حدٌّ يخصّها** كي يعرف من لا يسمع أن شيئاً وقع، ولا يبحث عنه في
+   الصفحة. والنصّ نفسه يُنطَق لمن لا يرى — نصٌّ واحد لا اثنان. */
+.vcx-handoff {
+  margin-block-start: var(--space-4, 1rem);
+  padding: var(--space-3, 0.75rem);
+  border: 1px solid var(--border-strong, currentColor);
+  border-radius: var(--radius-2, 0.5rem);
+}
+
+.vcx-handoff .vc-fields {
+  margin-block-start: var(--space-2, 0.5rem);
+}

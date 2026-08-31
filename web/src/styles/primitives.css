@@ -100,3 +100,24 @@
     var(--color-surface-sunken), var(--color-surface-raised), var(--color-surface-sunken));
   margin-block-end:var(--space-8);
 }
+
+/* ── الكمّية ووحدتها ─────────────────────────────────────────────────────
+   المقدار رقمٌ يُقرأ في عمود، والوحدة **معرّفٌ** إلى جانبه لا جزءٌ منه. ولذلك
+   ثلاثة قيود:
+     ١ · المقدار بخطّ أحادي المسافة و`tabular-nums`، فتقع الفاصلة تحت أختها.
+     ٢ · الوحدة **معزولةٌ اتجاهياً بلا اتجاه مفروض**: قد تكون «PCS» وقد تكون
+         «حبة»، والصفحة قد تكون بأي من اللغات الأربع — فالعزل يمنع انقلاب ما
+         حولها، وترْكُ الاتجاه للمحتوى يمنع قلبها هي.
+     ٣ · الكمّية السالبة **تُوسَم ولا تُخفى**: البيع قبل إدخال الاستلام واقعة
+         يومية في منشأة عاملة (العقد يقولها صراحةً)، لكنها تمنع إقفال الفترة. */
+.qty{ display:inline-flex; align-items:baseline; gap:var(--space-6); white-space:nowrap }
+.qty__n{
+  font-family:var(--font-mono); font-variant-numeric:tabular-nums;
+  unicode-bidi:isolate;
+}
+.qty__u{
+  unicode-bidi:isolate;
+  font-size:var(--font-size-3xs); color:var(--color-text-subtle);
+  font-weight:var(--font-weight-semibold);
+}
+.qty[data-negative="true"] .qty__n{ color:var(--color-danger) }

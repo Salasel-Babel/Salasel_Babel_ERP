@@ -20,6 +20,9 @@ export {
   ProgressBar,
   EmptyState,
   AlertBell,
+  QuantityValue,
+  magnitudeScale,
+  magnitudeIsNegative,
 } from "./primitives";
 export type {
   SurfaceProps,
@@ -30,6 +33,7 @@ export type {
   RefusalProps,
   DocState,
   Provenance,
+  QuantityValueProps,
 } from "./primitives";
 
 export { LedgerTable } from "./LedgerTable";

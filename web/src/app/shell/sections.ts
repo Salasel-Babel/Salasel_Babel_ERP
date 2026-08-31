@@ -40,8 +40,8 @@ export const SECTIONS: readonly Section[] = [
     id: "inventory",
     labelKey: "app.section.inventory",
     tint: "var(--section-inventory)",
-    path: null,
-    built: false,
+    path: "/inventory/stock",
+    built: true,
   },
   {
     id: "hr",
@@ -80,6 +80,10 @@ export const SCREENS: readonly ScreenEntry[] = [
   { path: "/sign-in", labelKey: "app.nav.signIn", section: "accounting" },
   { path: "/contract", labelKey: "app.nav.contract", section: "accounting" },
   { path: "/design", labelKey: "app.nav.design", section: "accounting" },
+  { path: "/inventory/stock", labelKey: "inventory.nav.stock", section: "inventory" },
+  { path: "/inventory/items", labelKey: "inventory.nav.items", section: "inventory" },
+  { path: "/inventory/movements", labelKey: "inventory.nav.movements", section: "inventory" },
+  { path: "/inventory/valuation", labelKey: "inventory.nav.valuation", section: "inventory" },
 ];
 
 /**

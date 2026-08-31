@@ -9,6 +9,11 @@ import { JournalVoucherScreen } from "../screens/voucher/JournalVoucherScreen";
 import { DemoStage } from "../demo/DemoStage";
 /* صفحة العرض الحيّة لنظام التصميم — هي عقد الطبقة البصرية مع من يبني الأقسام. */
 import { DesignScreen } from "../screens/design/DesignScreen";
+/* القسم المخزني. */
+import { InventoryItemsScreen } from "../screens/inventory/ItemsScreen";
+import { InventoryStockScreen } from "../screens/inventory/StockScreen";
+import { InventoryMovementsScreen } from "../screens/inventory/MovementsScreen";
+import { InventoryValuationScreen } from "../screens/inventory/ValuationScreen";
 
 const rootRoute = createRootRoute({ component: AppShell });
 
@@ -50,6 +55,33 @@ const demoRoute = createRoute({
   component: DemoStage,
 });
 
+/* ── القسم المخزني — أربع شاشات على أبوابٍ قائمة في العقد وحدها ────────────
+   ولا خامسة: النقل بين موقعين وقائمة المستودعات لا بابَ لهما اليوم، فهما
+   لوحا «نقصٍ مُعلَن» داخل الشاشتين لا مسارَين يقودان إلى بياناتٍ مُختلَقة. */
+const inventoryStockRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/inventory/stock",
+  component: InventoryStockScreen,
+});
+
+const inventoryItemsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/inventory/items",
+  component: InventoryItemsScreen,
+});
+
+const inventoryMovementsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/inventory/movements",
+  component: InventoryMovementsScreen,
+});
+
+const inventoryValuationRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/inventory/valuation",
+  component: InventoryValuationScreen,
+});
+
 const routeTree = rootRoute.addChildren([
   trialBalanceRoute,
   signInRoute,
@@ -57,6 +89,10 @@ const routeTree = rootRoute.addChildren([
   contractRoute,
   designRoute,
   demoRoute,
+  inventoryStockRoute,
+  inventoryItemsRoute,
+  inventoryMovementsRoute,
+  inventoryValuationRoute,
 ]);
 
 /** ينشئ موجّهاً. الاختبارات تمرّر تاريخاً في الذاكرة فلا تحتاج متصفّحاً. */

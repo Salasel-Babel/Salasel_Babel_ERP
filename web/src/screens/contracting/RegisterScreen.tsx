@@ -811,6 +811,9 @@ function ContractDossier(props: { readonly contractId: string }): ReactNode {
                         <QuantityValue
                           magnitude={item.contractQuantity.magnitude}
                           unit={item.contractQuantity.unit}
+                          /* المقياس كما وصل لا مقصوصاً: كمّيات المقاولات تُقرأ في عمودٍ
+                             ويُقارَن بعمود، والمقياس الموحَّد هو ما يجعل المقارنة بالعين ممكنة. */
+                          scale="wire"
                         />
                       </td>
                       <td className="n">

@@ -22,6 +22,8 @@ export {
   RateValue,
   EmptyState,
   AlertBell,
+  magnitudeScale,
+  magnitudeIsNegative,
 } from "./primitives";
 export type {
   SurfaceProps,
@@ -32,6 +34,8 @@ export type {
   RefusalProps,
   DocState,
   Provenance,
+  QuantityValueProps,
+  MagnitudeScalePolicy,
 } from "./primitives";
 
 export { LedgerTable } from "./LedgerTable";

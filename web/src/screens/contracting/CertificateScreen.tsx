@@ -240,6 +240,9 @@ export function CertificateLines(props: { readonly certificate: Certificate }): 
                   <QuantityValue
                     magnitude={line.cumulativeQuantity.magnitude}
                     unit={line.cumulativeQuantity.unit}
+                    /* المقياس كما وصل لا مقصوصاً: كمّيات المقاولات تُقرأ في عمودٍ
+                       ويُقارَن بعمود، والمقياس الموحَّد هو ما يجعل المقارنة بالعين ممكنة. */
+                    scale="wire"
                   />
                 ) : (
                   <span className="muted">{t("contracting.common.dash")}</span>
@@ -250,6 +253,9 @@ export function CertificateLines(props: { readonly certificate: Certificate }): 
                   <QuantityValue
                     magnitude={line.previousQuantity.magnitude}
                     unit={line.previousQuantity.unit}
+                    /* المقياس كما وصل لا مقصوصاً: كمّيات المقاولات تُقرأ في عمودٍ
+                       ويُقارَن بعمود، والمقياس الموحَّد هو ما يجعل المقارنة بالعين ممكنة. */
+                    scale="wire"
                   />
                 ) : (
                   <span className="muted">{t("contracting.common.dash")}</span>

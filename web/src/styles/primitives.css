@@ -161,18 +161,34 @@
   border-color:var(--color-warning-line);
 }
 /* ── الكمّية بوحدتها، والنسبة التعاقدية ──────────────────────────────────
-   رمز الوحدة **معرّف لا نصّ معروض**: لا يُترجَم ولا يتبع اتجاه الصفحة، فهو
-   معزولٌ صراحةً إلى جانب المقدار وأخفت منه — المقدار هو ما يُقرأ، والوحدة
-   هي ما يمنع قراءته خطأً. */
+   كُتبت هذه الكتلة مرّتين على التوازي — في القسم المخزني وفي المقاولات —
+   ووُحِّدت هنا. والقيود الأربعة كلّها من الطرفين معاً:
+     ١ · المقدار بخطّ أحادي المسافة و`tabular-nums`، فتقع الفاصلة تحت أختها
+         في عمودٍ يُقرأ رأسياً.
+     ٢ · رمز الوحدة **معرّفٌ لا نصّ معروض**: يُعرض كما سجّله المستأجر — بلا
+         `text-transform` لأن ذلك يغيّر معرّفاً — و**معزولاً اتجاهياً بلا
+         اتجاه مفروض**: قد يكون «PCS» وقد يكون «حبة»، والصفحة قد تكون بأي من
+         اللغات الأربع. فالعزل يمنع انقلاب ما حولها، وترْكُ الاتجاه للمحتوى
+         يمنع قلبها هي.
+     ٣ · الوحدة أخفت من المقدار: المقدار هو ما يُقرأ، والوحدة هي ما يمنع
+         قراءته خطأً.
+     ٤ · الكمّية السالبة **تُوسَم ولا تُخفى**: البيع قبل إدخال الاستلام واقعة
+         يومية في منشأة عاملة (العقد يقولها صراحةً)، لكنها تمنع إقفال الفترة. */
 .qty{
-  display:inline-flex; align-items:baseline; gap:var(--space-4);
+  display:inline-flex; align-items:baseline; gap:var(--space-6);
+  white-space:nowrap; unicode-bidi:isolate;
+}
+.qty__n{
+  font-family:var(--font-mono); font-variant-numeric:tabular-nums;
+  font-weight:var(--font-weight-semibold);
   unicode-bidi:isolate;
 }
-.qty__n{ font-variant-numeric:tabular-nums; font-weight:var(--font-weight-semibold) }
 .qty__u{
+  unicode-bidi:isolate;
   font-size:var(--font-size-3xs); color:var(--color-text-subtle);
-  text-transform:uppercase; letter-spacing:.02em;
+  font-weight:var(--font-weight-semibold); letter-spacing:.02em;
 }
+.qty[data-negative="true"] .qty__n{ color:var(--color-danger) }
 /* النسبة كسرٌ عشري: تُعرض كما وصلت بلا علامة مئوية وبلا ضربٍ في مئة. */
 .rate{ font-variant-numeric:tabular-nums; unicode-bidi:isolate }
 

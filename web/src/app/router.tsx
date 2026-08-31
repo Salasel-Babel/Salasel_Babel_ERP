@@ -18,6 +18,11 @@ import { ContractingRegisterScreen } from "../screens/contracting/RegisterScreen
 import { CertificateScreen } from "../screens/contracting/CertificateScreen";
 import { SubcontractingScreen } from "../screens/contracting/SubcontractingScreen";
 import { RetentionScreen } from "../screens/contracting/RetentionScreen";
+/* القسم المخزني. */
+import { InventoryItemsScreen } from "../screens/inventory/ItemsScreen";
+import { InventoryStockScreen } from "../screens/inventory/StockScreen";
+import { InventoryMovementsScreen } from "../screens/inventory/MovementsScreen";
+import { InventoryValuationScreen } from "../screens/inventory/ValuationScreen";
 
 const rootRoute = createRootRoute({ component: AppShell });
 
@@ -102,6 +107,33 @@ const contractingRetentionRoute = createRoute({
   component: RetentionScreen,
 });
 
+/* ── القسم المخزني — أربع شاشات على أبوابٍ قائمة في العقد وحدها ────────────
+   ولا خامسة: النقل بين موقعين وقائمة المستودعات لا بابَ لهما اليوم، فهما
+   لوحا «نقصٍ مُعلَن» داخل الشاشتين لا مسارَين يقودان إلى بياناتٍ مُختلَقة. */
+const inventoryStockRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/inventory/stock",
+  component: InventoryStockScreen,
+});
+
+const inventoryItemsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/inventory/items",
+  component: InventoryItemsScreen,
+});
+
+const inventoryMovementsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/inventory/movements",
+  component: InventoryMovementsScreen,
+});
+
+const inventoryValuationRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/inventory/valuation",
+  component: InventoryValuationScreen,
+});
+
 const routeTree = rootRoute.addChildren([
   trialBalanceRoute,
   signInRoute,
@@ -116,6 +148,10 @@ const routeTree = rootRoute.addChildren([
   contractingCertificateRoute,
   contractingSubcontractingRoute,
   contractingRetentionRoute,
+  inventoryStockRoute,
+  inventoryItemsRoute,
+  inventoryMovementsRoute,
+  inventoryValuationRoute,
 ]);
 
 /** ينشئ موجّهاً. الاختبارات تمرّر تاريخاً في الذاكرة فلا تحتاج متصفّحاً. */

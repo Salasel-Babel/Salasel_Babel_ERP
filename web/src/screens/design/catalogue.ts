@@ -204,3 +204,28 @@ export const BAND_SAMPLES: readonly BandSample[] = [
   { key: "q3", from: "2026-06-15", to: "2026-09-30", state: "plain", labelKey: "screen.design.band.clash" },
   /* وبين أيلول وكانون الأول فجوةٌ لا يغطّيها مقطع — تُعلَّم ولا يُسكَت عنها. */
 ];
+
+/* ═══════════════════════════════ الكمّية ووحدتها · quantity with its unit
+   أُضيفت إلى الفهرس مع أوّليّة `QuantityValue`: الطبقة كانت تحمل عرضاً
+   للمال (`<Amount>`) ولا تحمل عرضاً للكمّية، فكان كلّ قسمٍ سيخترع واحداً.
+   ومفاتيح تسمياتها تحت `inventory.design.*` لأن الكمّية بوحدتها مفردةُ القسم
+   المخزني، والفهرس يعرض ما هو موجود لا ما يملكه هو. */
+
+/** عيّنةُ كمّيةٍ في الفهرس: مقدارٌ **نصّاً** ووحدةٌ معه، وتسميةُ ما تُظهره. */
+export interface QuantitySample {
+  /** مفتاح العيّنة — للفهرسة لا للعرض. */
+  readonly key: string;
+  /** المقدار كما يصل على السلك، بمقياسه الكامل. */
+  readonly magnitude: string;
+  /** رمز الوحدة كما يسجّله المستأجر — معرّفٌ لا يُترجَم. */
+  readonly unit: string;
+  /** مفتاح ما تُظهره هذه العيّنة. */
+  readonly labelKey: string;
+}
+
+/** ثلاث عيّنات: صحيحٌ تُقصّ أصفاره، وكسرٌ يبقى، وسالبٌ يُوسَم ولا يُخفى. */
+export const QUANTITY_SAMPLES: readonly QuantitySample[] = [
+  { key: "whole", magnitude: "1440.000000", unit: "PCS", labelKey: "inventory.design.whole" },
+  { key: "fraction", magnitude: "12.500000", unit: "KG", labelKey: "inventory.design.fraction" },
+  { key: "negative", magnitude: "-6.000000", unit: "حبة", labelKey: "inventory.design.negative" },
+];

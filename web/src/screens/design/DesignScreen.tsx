@@ -46,6 +46,7 @@ import {
   MOTIONS,
   PALETTE,
   PROVENANCES,
+  QUANTITY_SAMPLES,
   type MotionEntry,
 } from "./catalogue";
 import {
@@ -339,7 +340,8 @@ function PrimitivesSection(): ReactNode {
         <div className="kv kv--split">
           <span className="kv__k">{t("screen.design.prim.quantity")}</span>
           <span className="kv__v n">
-            <QuantityValue magnitude="1284.500000" unit="M3" testId="design-quantity" />
+            {/* سياسة «كما وصل»: ستّ خانات تبقى كما نشرها الخادم. */}
+            <QuantityValue magnitude="1284.500000" unit="M3" scale="wire" testId="design-quantity" />
           </span>
         </div>
         <div className="kv kv--split">
@@ -349,6 +351,27 @@ function PrimitivesSection(): ReactNode {
           </span>
         </div>
         <p className="muted">{t("screen.design.prim.rateNote")}</p>
+      </Panel>
+
+      <Panel
+        title={t("inventory.design.quantity")}
+        note={t("inventory.design.quantityNote")}
+        testId="section-quantity"
+      >
+        <div className="stack">
+          {QUANTITY_SAMPLES.map((sample) => (
+            <div className="kv kv--split" key={sample.key}>
+              <span className="kv__k">{t(sample.labelKey)}</span>
+              <span className="kv__v">
+                <QuantityValue
+                  magnitude={sample.magnitude}
+                  unit={sample.unit}
+                  testId={"quantity-" + sample.key}
+                />
+              </span>
+            </div>
+          ))}
+        </div>
       </Panel>
 
       <Panel title={t("screen.design.prim.empty")} note={t("screen.design.prim.emptyNote")}>

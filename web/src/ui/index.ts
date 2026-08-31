@@ -18,6 +18,8 @@ export {
   StatusBadge,
   RefusalPanel,
   ProgressBar,
+  QuantityValue,
+  RateValue,
   EmptyState,
   AlertBell,
 } from "./primitives";

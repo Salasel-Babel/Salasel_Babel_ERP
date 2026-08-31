@@ -12,7 +12,7 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 import type { CSSProperties, ReactNode } from "react";
 import type { Money } from "../api/money";
-import { Amount, Num } from "../i18n/react";
+import { Amount, Decimal, Num } from "../i18n/react";
 
 /* ═══════════════════════════════════════════════════════ ١ · سطح ولوح */
 
@@ -262,6 +262,12 @@ export interface RefusalProps {
   readonly next?: string;
   /** صنفُ حركةٍ من {@link MOTION} عند وقوع الرفض. */
   readonly moment?: string;
+  /**
+   * تفصيلُ الرفض حين يكون **بنوداً مُسمّاة** لا جملةً واحدة: رفضٌ يُعدِّد أربعة
+   * بنودٍ معلَّقة يجب أن يُريها كلّها، لا أن يجمعها في سطر. ويُعرض بين الجسم
+   * والرمز، فيبقى ترتيب القراءة: ماذا وقع ← ما البنود ← الرمز ← الخطوة التالية.
+   */
+  readonly children?: ReactNode;
   readonly testId?: string;
 }
 
@@ -283,6 +289,7 @@ export function RefusalPanel(props: RefusalProps): ReactNode {
         </span>
       ) : null}
       <p>{props.body}</p>
+      {props.children}
       {props.code || props.subject ? (
         <dl>
           {props.code ? (
@@ -340,6 +347,62 @@ export function ProgressBar(props: {
         />
       </div>
     </div>
+  );
+}
+
+/* ═════════════════════════════ ٦٫٥ · الكمّية والنسبة — نصّان لا رقمان
+   **لماذا أوّليّتان لا `<Amount>`:** المال مقياسه المعروض منزلتان، والكمّية
+   (Magnitude) مقياسها ستّ، والنسبة التعاقدية (Rate) مقياسها ثمانٍ. فعرضُ
+   كمّيةٍ بمُنسِّق المال يقرّبها إلى الهللة — والكيلوغرامات والأمتار تُكسَر
+   إلى ما دونها — وعرضُ نسبةٍ به يُسقط أربع خانات صامتاً.
+
+   وكلتاهما تمرّان بـ`<Decimal>`: أرقامُ اللغة، والمقياس **مقروءٌ من النصّ
+   الواصل** لا مفترَض، ولا عائم في أي خطوة. */
+
+/**
+ * كمّية **بوحدتها**. ولا كمّية مجرّدة تُعرض في هذا النظام: «عشرة» ليست
+ * معلومة، ورمز الوحدة معرّفٌ لا يُترجَم — فيبقى كما سجّله المستأجر ويُعزَل
+ * اتجاهياً إلى جانب المقدار.
+ * @param props المقدار نصّاً ورمز الوحدة.
+ */
+export function QuantityValue(props: {
+  /** المقدار كما وصل نصّاً — Magnitude، ولا يصير رقماً. */
+  readonly magnitude: string;
+  /** رمز وحدة القياس كما سجّله المستأجر — معرّف لا نصّ معروض. */
+  readonly unit: string;
+  readonly className?: string;
+  readonly testId?: string;
+}): ReactNode {
+  return (
+    <span className={"qty " + (props.className ?? "")} data-testid={props.testId}>
+      <Decimal value={props.magnitude} className="qty__n" />
+      <span className="qty__u mono" dir="ltr">
+        {props.unit}
+      </span>
+    </span>
+  );
+}
+
+/**
+ * نسبة تعاقدية **كسراً عشرياً لا نسبة مئوية** — كما ينصّ العقد المنشور:
+ * عشرة بالمئة تُكتب `0.10` لا `10`.
+ * <p>
+ * ولا علامة `%` هنا ولا ضربٌ في مئة: الضرب حسابٌ على قيمةٍ مالية الأثر،
+ * وعلامةٌ على كسرٍ تجعل «0.10» تُقرأ عُشر بالمئة. فالقيمة تُعرض كما وصلت،
+ * وتسميتُها من الشاشة تقول إنها كسر.
+ * </p>
+ * @param props النسبة نصّاً.
+ */
+export function RateValue(props: {
+  /** النسبة كما وصلت نصّاً — Rate، ولا تصير رقماً. */
+  readonly rate: string;
+  readonly className?: string;
+  readonly testId?: string;
+}): ReactNode {
+  return (
+    <span className={"rate " + (props.className ?? "")} data-testid={props.testId} data-rate={props.rate}>
+      <Decimal value={props.rate} />
+    </span>
   );
 }
 

@@ -9,6 +9,11 @@ import { JournalVoucherScreen } from "../screens/voucher/JournalVoucherScreen";
 import { DemoStage } from "../demo/DemoStage";
 /* صفحة العرض الحيّة لنظام التصميم — هي عقد الطبقة البصرية مع من يبني الأقسام. */
 import { DesignScreen } from "../screens/design/DesignScreen";
+/* المقاولات — أربع شاشات: السجلّ والمستخلص والباطن والمحتجزات. */
+import { ContractingRegisterScreen } from "../screens/contracting/RegisterScreen";
+import { CertificateScreen } from "../screens/contracting/CertificateScreen";
+import { SubcontractingScreen } from "../screens/contracting/SubcontractingScreen";
+import { RetentionScreen } from "../screens/contracting/RetentionScreen";
 
 const rootRoute = createRootRoute({ component: AppShell });
 
@@ -50,6 +55,31 @@ const demoRoute = createRoute({
   component: DemoStage,
 });
 
+/* ── المقاولات ─────────────────────────────────────────────────────────── */
+const contractingRegisterRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/contracting",
+  component: ContractingRegisterScreen,
+});
+
+const contractingCertificateRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/contracting/certificate",
+  component: CertificateScreen,
+});
+
+const contractingSubcontractingRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/contracting/subcontracting",
+  component: SubcontractingScreen,
+});
+
+const contractingRetentionRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/contracting/retention",
+  component: RetentionScreen,
+});
+
 const routeTree = rootRoute.addChildren([
   trialBalanceRoute,
   signInRoute,
@@ -57,6 +87,10 @@ const routeTree = rootRoute.addChildren([
   contractRoute,
   designRoute,
   demoRoute,
+  contractingRegisterRoute,
+  contractingCertificateRoute,
+  contractingSubcontractingRoute,
+  contractingRetentionRoute,
 ]);
 
 /** ينشئ موجّهاً. الاختبارات تمرّر تاريخاً في الذاكرة فلا تحتاج متصفّحاً. */

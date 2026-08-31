@@ -54,8 +54,8 @@ export const SECTIONS: readonly Section[] = [
     id: "contracting",
     labelKey: "app.section.contracting",
     tint: "var(--section-contracting)",
-    path: null,
-    built: false,
+    path: "/contracting",
+    built: true,
   },
   {
     id: "realestate",
@@ -80,6 +80,10 @@ export const SCREENS: readonly ScreenEntry[] = [
   { path: "/sign-in", labelKey: "app.nav.signIn", section: "accounting" },
   { path: "/contract", labelKey: "app.nav.contract", section: "accounting" },
   { path: "/design", labelKey: "app.nav.design", section: "accounting" },
+  { path: "/contracting", labelKey: "contracting.nav.register", section: "contracting" },
+  { path: "/contracting/certificate", labelKey: "contracting.nav.certificate", section: "contracting" },
+  { path: "/contracting/subcontracting", labelKey: "contracting.nav.subcontracting", section: "contracting" },
+  { path: "/contracting/retention", labelKey: "contracting.nav.retention", section: "contracting" },
 ];
 
 /**

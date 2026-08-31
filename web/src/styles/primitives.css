@@ -160,3 +160,47 @@
     color-mix(in srgb, var(--color-warning) 34%, transparent) 4px 8px);
   border-color:var(--color-warning-line);
 }
+/* ── الكمّية بوحدتها، والنسبة التعاقدية ──────────────────────────────────
+   رمز الوحدة **معرّف لا نصّ معروض**: لا يُترجَم ولا يتبع اتجاه الصفحة، فهو
+   معزولٌ صراحةً إلى جانب المقدار وأخفت منه — المقدار هو ما يُقرأ، والوحدة
+   هي ما يمنع قراءته خطأً. */
+.qty{
+  display:inline-flex; align-items:baseline; gap:var(--space-4);
+  unicode-bidi:isolate;
+}
+.qty__n{ font-variant-numeric:tabular-nums; font-weight:var(--font-weight-semibold) }
+.qty__u{
+  font-size:var(--font-size-3xs); color:var(--color-text-subtle);
+  text-transform:uppercase; letter-spacing:.02em;
+}
+/* النسبة كسرٌ عشري: تُعرض كما وصلت بلا علامة مئوية وبلا ضربٍ في مئة. */
+.rate{ font-variant-numeric:tabular-nums; unicode-bidi:isolate }
+
+/* ── البنود المعلَّقة داخل لوحة الرفض ───────────────────────────────────
+   بندٌ في كل صفّ: رمزُه ثابتٌ يُنسَخ، وعنوانُه بلغتين، وموضعُ سؤاله كاملاً.
+   ورقمُ البند يُرى، لأن الرفض الذي يقول «أربعة بنود» ثم يعرض ثلاثة يكذب. */
+.refusal-count{
+  margin:var(--space-8) 0 var(--space-4);
+  font-size:var(--font-size-xs); font-weight:var(--font-weight-semibold);
+}
+.refusal-items{
+  margin:0; padding-inline-start:var(--space-20);
+  display:flex; flex-direction:column; gap:var(--space-10);
+}
+.refusal-item{
+  display:flex; flex-direction:column; gap:2px;
+  padding-inline-start:var(--space-8);
+  border-inline-start:3px solid var(--color-danger-line);
+}
+.refusal-item__code{ font-size:var(--font-size-3xs); color:var(--color-text-subtle) }
+.refusal-item__ar{ font-weight:var(--font-weight-semibold); line-height:var(--line-snug) }
+.refusal-item__en{
+  font-size:var(--font-size-3xs); color:var(--color-text-muted);
+  unicode-bidi:isolate; line-height:var(--line-snug);
+}
+.refusal-item__src{
+  display:flex; gap:var(--space-6); flex-wrap:wrap;
+  font-size:var(--font-size-3xs); color:var(--color-text-subtle);
+}
+.refusal-item__srck{ font-weight:var(--font-weight-semibold) }
+

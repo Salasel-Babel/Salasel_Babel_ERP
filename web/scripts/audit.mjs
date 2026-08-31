@@ -278,10 +278,25 @@ if (paramProblems.length) bad("معاملات لا تطابق المصدر", par
 else ok("معاملات كل ترجمة تطابق المصدر");
 
 head("٤ · اصطلاح التسمية · key naming convention");
-/* النطاقات المعتمدة. والأقسام الخمسة تُضيف نطاقاً واحداً لكلٍّ منها — نطاقٌ
-   واحدٌ مُلحَقٌ في آخر شجرة اللغة يجعل دمج أربعة وكلاءٍ سطراً لا اشتباكاً. */
+/* ═══════════════ النطاقات المعتمدة — وكلُّ قسمٍ يسجّل نطاقه هنا ═══════════
+   هذه القائمة هي **الحدّ**: مفتاحٌ مقطعُه الأول ليس فيها يُعدّ مخالفةَ اصطلاح
+   ويُحمِّر البوّابة. فمن يبني قسماً من الأقسام الخمسة ويضيف نطاقه إلى شجرة
+   اللغة **يضيف اسمه هنا في السطر نفسه**، وإلّا سقط فحصُ الاصطلاح عنده وهو
+   يظنّ العطل في مفاتيحه.
+
+   ولماذا نطاقٌ واحدٌ لكل قسم لا نطاقٌ لكل شاشة: أربعة وكلاءٍ يكتبون في
+   ملفّات اللغة نفسها في الوقت نفسه، ونطاقٌ واحدٌ مُلحَقٌ في آخر الشجرة يجعل
+   الدمج **سطراً يُقرأ** لا اشتباكاً يُفكَّك. والسطر أدناه يتعارض عند الدمج
+   عمداً: تعارضٌ يشرح نفسه أرخص من غيابٍ صامت.
+
+   The approved key namespaces. A key whose first segment is absent here is a
+   convention violation and reddens the gate — so whoever builds one of the
+   five sections registers its namespace on the line below. One namespace per
+   section, appended at the end of the locale tree, keeps concurrent merges to
+   a single self-explaining line. */
 const NAMESPACES = [
   "app", "common", "acct", "field", "screen", "gallery", "css", "audit",
+  /* نطاقات الأقسام الخمسة · the five sections' namespaces: */
   "inventory",
 ];
 const conventionProblems = [];

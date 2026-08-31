@@ -759,6 +759,37 @@ describe("عقد الملاحة", () => {
     expect(paths).toHaveLength(4);
   });
 
+  /*
+   * ‏**الملاحة الجانبية نسخةٌ ثانية من `SCREENS` ولا شيء يقارنهما** (‏App.tsx).
+   * وهذا الحارس **مقصورٌ على شاشات هذا القسم عمداً**: لو عمّ كل الشاشات لأحمَرَّ
+   * فرعَ من يبني قسماً آخر بملفٍّ لم يلمسه. فهو يحرس ما أضفتُه، ويترك التوصية
+   * الأوسع — أن تُقاد القائمة من `SCREENS` — قراراً للمالك.
+   */
+  it("كل شاشةٍ مخزنية يبلغها من يقرأ الملاحة، لا من يعرف اختصار لوحة الأوامر وحده", async () => {
+    withCompany();
+    const router = createAppRouter({ memory: true, initialPath: "/inventory/stock" });
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
+    render(
+      <LocaleProvider i18n={createI18n()} initial="ar">
+        <QueryClientProvider client={client}>
+          <ApiProvider transport={stubTransport({ [BALANCES_URL]: BALANCES, [ITEMS_URL]: ITEM_LIST })}>
+            <RouterProvider router={router} />
+          </ApiProvider>
+        </QueryClientProvider>
+      </LocaleProvider>
+    );
+    await screen.findByTestId("inventory-stock-screen");
+
+    const wanted = SCREENS.filter((s) => s.section === "inventory").map((s) => s.path);
+    expect(wanted).toHaveLength(4);
+    const reachable = [...document.querySelectorAll('nav [data-testid^="nav-inventory-"]')].map(
+      (a) => a.getAttribute("href")
+    );
+    for (const path of wanted) {
+      expect(reachable, "لا رابط في الملاحة إلى " + path).toContain(path);
+    }
+  });
+
   it("كل شاشةٍ مخزنية اسمها مترجَمٌ في اللغات الأربع", () => {
     const i18n = createI18n();
     const screens = SCREENS.filter((s) => s.section === "inventory");

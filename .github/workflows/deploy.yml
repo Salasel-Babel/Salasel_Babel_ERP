@@ -174,6 +174,7 @@ jobs:
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           BABEL_LEDGER_APP_PASSWORD: ${{ secrets.BABEL_LEDGER_APP_PASSWORD }}
           BABEL_DEMO_TOKEN_SHA256: ${{ secrets.BABEL_DEMO_TOKEN_SHA256 }}
+          BABEL_STORAGE_TICKET_KEY: ${{ secrets.BABEL_STORAGE_TICKET_KEY }}
           BABEL_SITE: ${{ secrets.BABEL_SITE }}
           BABEL_TLS_MODE: ${{ vars.BABEL_TLS_MODE || 'auto' }}
           BABEL_TLS_EMAIL: ${{ secrets.BABEL_TLS_EMAIL }}
@@ -183,7 +184,8 @@ jobs:
           set -euo pipefail
 
           missing=""
-          for name in POSTGRES_PASSWORD BABEL_LEDGER_APP_PASSWORD BABEL_DEMO_TOKEN_SHA256 BABEL_SITE; do
+          for name in POSTGRES_PASSWORD BABEL_LEDGER_APP_PASSWORD BABEL_DEMO_TOKEN_SHA256 \
+                      BABEL_STORAGE_TICKET_KEY BABEL_SITE; do
             if [ -z "${!name:-}" ]; then missing="$missing $name"; fi
           done
           if [ -n "$missing" ]; then
@@ -191,17 +193,36 @@ jobs:
             exit 1
           fi
 
-          # وضع `auto` بنطاق حقيقي يتّصل بسلطة شهادات، وهي تطلب بريداً. وبريدٌ ناقص
-          # هنا يظهر لاحقاً بصفحةٍ لا تُفتح أمام الضيف — فيُرفض النشر الآن.
-          if [ "$BABEL_TLS_MODE" = "auto" ] && [ "${BABEL_SITE#:}" = "$BABEL_SITE" ] && [ -z "${BABEL_TLS_EMAIL:-}" ]; then
-            echo "::error::‏BABEL_TLS_MODE=auto بنطاق «$BABEL_SITE» يتطلّب BABEL_TLS_EMAIL."
-            echo "::error::إمّا أن تضبطه، أو تنتقل إلى BABEL_TLS_MODE=internal — راجع deploy/README.md §3."
+          # ══ TLS — الأوضاع الأربعة، وشرطُ كلٍّ منها يُفحَص هنا لا على الخادم ══
+          #
+          # والمنطق في `deploy/tls-mode.sh` لا في هذه السطور، وجدولُ حالاته في
+          # `deploy/tls-mode-check.sh` بجانبه — وهو يُشغَّل في «حزمة النشر» على
+          # كل دفعة. منطقٌ داخل YAML لا يُشغَّل إلا بدفعة كاملة إلى خادم حقيقي،
+          # فلا يُجرَّب ولا يُختبَر: وهو السبب نفسه الذي أخرج `remote.sh` من هنا.
+          #
+          # والسكربت يرفض ولا يخمّن: `auto` بعنوان IP، ووضع مجهول، وعنوان غير
+          # عامّ، ووضع `ip` بلا بريد أو بلا مخطّط — كلّها توقف النشر **قبل** أن
+          # تُوقَف الحزمة القائمة على الخادم. ومُخرَجه الوحيد هو العنوان الذي
+          # تُقدَّم به الشهادة، مشتقّاً من BABEL_SITE فلا ينحرف عنه.
+          if ! BABEL_TLS_IP="$(deploy/tls-mode.sh)"; then
             exit 1
           fi
 
           if ! printf '%s' "$BABEL_DEMO_TOKEN_SHA256" | grep -qE '^[0-9a-f]{64}$'; then
             echo "::error::‏BABEL_DEMO_TOKEN_SHA256 ليس بصمة SHA-256 سداسية صغيرة بأربعة وستين محرفاً."
             echo "::error::احسبها هكذا: printf '%s' \"<الرمز>\" | sha256sum"
+            exit 1
+          fi
+
+          # ‏**والمفتاح يُفحص شكلاً هنا لا على الخادم.** `Convert.FromHexString` يرمي
+          # على محرفٍ غير سداسي وعلى طولٍ فردي، و`SignedAttachmentTickets` يرفض ما
+          # دون 32 بايتاً — والثلاثة تقع **بعد** أن تُسحب الصور وتُقام الحاويات، فيُقرأ
+          # الفشل «الخادم لا يقلع» لا «المفتاح شكله خاطئ». والزوج `([0-9a-f]{2})` يقيس
+          # البايت لا المحرف، فالطول الفردي مرفوض بحكم النمط نفسه.
+          if ! printf '%s' "$BABEL_STORAGE_TICKET_KEY" | grep -qE '^([0-9a-f]{2}){32,}$'; then
+            echo "::error::‏BABEL_STORAGE_TICKET_KEY ليس مفتاحاً سداسياً صغيراً بـ32 بايتاً فأكثر (64 محرفاً فأكثر، وعددها زوجي)."
+            echo "::error::ولّده هكذا: head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \\n'"
+            echo "::error::ولا يُولَّد على الخادم ولا عند الإقلاع: مفتاحٌ يتغيّر يُبطل كل تذكرة سابقة، والفشل يُقرأ «انتهت الصلاحية» لا «لا مفتاح» (ADR-0046)."
             exit 1
           fi
 
@@ -212,9 +233,11 @@ jobs:
             echo "BABEL_LEDGER_APP_PASSWORD=$BABEL_LEDGER_APP_PASSWORD"
             echo "BABEL_LEDGER_APP_ROLE=babel_ledger_app"
             echo "BABEL_DEMO_TOKEN_SHA256=$BABEL_DEMO_TOKEN_SHA256"
+            echo "BABEL_STORAGE_TICKET_KEY=$BABEL_STORAGE_TICKET_KEY"
             echo "BABEL_SITE=$BABEL_SITE"
             echo "BABEL_TLS_MODE=$BABEL_TLS_MODE"
             echo "BABEL_TLS_EMAIL=$BABEL_TLS_EMAIL"
+            echo "BABEL_TLS_IP=$BABEL_TLS_IP"
             echo "BABEL_DEMO_COMPANY_ID=$BABEL_DEMO_COMPANY_ID"
             echo "BABEL_DEMO_USER_ID=$BABEL_DEMO_USER_ID"
           } | ssh -i ~/.ssh/id_deploy -p "$PORT" "$USER_NAME@$HOST" \

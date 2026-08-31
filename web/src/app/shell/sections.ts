@@ -40,29 +40,29 @@ export const SECTIONS: readonly Section[] = [
     id: "inventory",
     labelKey: "app.section.inventory",
     tint: "var(--section-inventory)",
-    path: null,
-    built: false,
+    path: "/inventory/stock",
+    built: true,
   },
   {
     id: "hr",
     labelKey: "app.section.hr",
     tint: "var(--section-hr)",
-    path: null,
-    built: false,
+    path: "/hr",
+    built: true,
   },
   {
     id: "contracting",
     labelKey: "app.section.contracting",
     tint: "var(--section-contracting)",
-    path: null,
-    built: false,
+    path: "/contracting",
+    built: true,
   },
   {
     id: "realestate",
     labelKey: "app.section.realestate",
     tint: "var(--section-realestate)",
-    path: null,
-    built: false,
+    path: "/realestate",
+    built: true,
   },
 ];
 
@@ -81,10 +81,23 @@ export const SCREENS: readonly ScreenEntry[] = [
   { path: "/contract", labelKey: "app.nav.contract", section: "accounting" },
   { path: "/design", labelKey: "app.nav.design", section: "accounting" },
   /* الأمر المنطوق يعبر الأقسام الخمسة كلّها، ولا قسمَ واحداً يملكه. وهو مُدرَجٌ
-     هنا تحت المحاسبة **لأجل لونه وحده** — وهو اللون المرجعي حين لا يُعرَف القسم —
-     ولا يُقرأ ذلك ادّعاءً بأن الأقسام الأربعة الأخرى بُنيت: `built` عندها ما زال
-     false، وهذه الشاشة تعرض نيّاتها ولا تفتح شاشاتها. */
+     هنا تحت المحاسبة **لأجل لونه وحده** — وهو اللون المرجعي حين لا يُعرَف القسم. */
   { path: "/voice", labelKey: "app.nav.voice", section: "accounting" },
+  { path: "/realestate", labelKey: "realestate.nav.register", section: "realestate" },
+  { path: "/realestate/lease", labelKey: "realestate.nav.lease", section: "realestate" },
+  { path: "/realestate/arrears", labelKey: "realestate.nav.arrears", section: "realestate" },
+  { path: "/contracting", labelKey: "contracting.nav.register", section: "contracting" },
+  { path: "/contracting/certificate", labelKey: "contracting.nav.certificate", section: "contracting" },
+  { path: "/contracting/subcontracting", labelKey: "contracting.nav.subcontracting", section: "contracting" },
+  { path: "/contracting/retention", labelKey: "contracting.nav.retention", section: "contracting" },
+  { path: "/inventory/stock", labelKey: "inventory.nav.stock", section: "inventory" },
+  { path: "/inventory/items", labelKey: "inventory.nav.items", section: "inventory" },
+  { path: "/inventory/movements", labelKey: "inventory.nav.movements", section: "inventory" },
+  { path: "/inventory/valuation", labelKey: "inventory.nav.valuation", section: "inventory" },
+  { path: "/hr", labelKey: "hr.nav.register", section: "hr" },
+  { path: "/hr/payroll", labelKey: "hr.nav.payroll", section: "hr" },
+  { path: "/hr/payslip", labelKey: "hr.nav.payslip", section: "hr" },
+  { path: "/hr/end-of-service", labelKey: "hr.nav.endOfService", section: "hr" }
 ];
 
 /**

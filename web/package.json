@@ -13,6 +13,7 @@
     "gen": "node scripts/generate-client.mjs",
     "gen:check": "node scripts/generate-client.mjs --check",
     "audit:i18n": "node scripts/audit.mjs",
+    "contrast": "node scripts/contrast.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint .",
@@ -20,7 +21,7 @@
     "e2e:matrix": "npm run build && playwright test matrix.spec.ts",
     "perf": "npm run build && playwright test perf.spec.ts",
     "mock": "node scripts/mock-api.mjs",
-    "verify": "npm run gen:check && npm run audit:i18n && npm run build && npm run lint && npm test && npm run e2e",
+    "verify": "npm run gen:check && npm run audit:i18n && npm run contrast && npm run build && npm run lint && npm test && npm run e2e",
     "live": "node scripts/live-api-check.mjs",
     "locales": "node scripts/port-locales.mjs"
   },

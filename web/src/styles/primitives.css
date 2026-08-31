@@ -100,3 +100,123 @@
     var(--color-surface-sunken), var(--color-surface-raised), var(--color-surface-sunken));
   margin-block-end:var(--space-8);
 }
+
+/* ═══════════════════════════════════════════════════════ شريط المدّة · band
+   المدى الزمني ومقاطعه. **التداخل يُرى ولا يُكدَّس**: المقطعان المتقاطعان
+   على مسارين ولونهما لون الرفض، فلا يُقرأ تقاطعٌ على أنه مقطعٌ واحد سليم.
+   والفجوة — يومٌ من المدّة بلا قسط يغطّيه — تُعلَّم بخطوطٍ مائلة تحت المسارات.
+   والمواضع بخصائص منطقية، فالشريط ينقلب مع اللغة بلا سطرٍ ثانٍ. */
+.band{
+  position:relative; display:flex; flex-direction:column; gap:var(--space-4);
+  padding:var(--space-10);
+  border:var(--border-width) solid var(--edge-line);
+  border-radius:var(--radius-well);
+  background:var(--color-surface-sunken);
+  overflow:hidden;
+}
+.band__gaps{ position:absolute; inset:0; pointer-events:none }
+.band__gap{
+  position:absolute; inset-block:0;
+  background:repeating-linear-gradient(135deg,
+    transparent 0 6px,
+    color-mix(in srgb, var(--color-warning) 24%, transparent) 6px 12px);
+}
+.band__lane{ position:relative; block-size:var(--space-24); min-inline-size:0 }
+.band__span{
+  position:absolute; inset-block:0;
+  display:flex; align-items:center; justify-content:center;
+  padding-inline:var(--space-4);
+  border-radius:var(--radius-mark);
+  border:var(--border-width) solid transparent;
+  background:color-mix(in srgb, var(--color-primary) 26%, var(--color-surface));
+  color:var(--color-text);
+  font-size:var(--font-size-3xs); white-space:nowrap; overflow:hidden;
+}
+.band__span[data-state="done"]{
+  background:color-mix(in srgb, var(--color-success) 26%, var(--color-surface));
+  border-color:var(--color-success-line);
+}
+.band__span[data-state="conflict"]{
+  background:color-mix(in srgb, var(--color-danger) 30%, var(--color-surface));
+  border-color:var(--color-danger-line);
+  box-shadow:var(--glow-refusal);
+}
+.band__span[data-selected="true"]{ border-color:var(--color-focus); box-shadow:var(--glow-focus) }
+.band__text{ overflow:hidden; text-overflow:ellipsis }
+/* مفتاح قراءة الشريط: عيّنةٌ من كل حالة إلى جانب اسمها. */
+.band-key{ display:flex; flex-wrap:wrap; gap:var(--space-12); align-items:center }
+.band-key__item{ display:inline-flex; align-items:center; gap:var(--space-6); font-size:var(--font-size-3xs) }
+.band-key__chip{
+  inline-size:var(--space-16); block-size:var(--space-10); flex:none;
+  border-radius:var(--radius-mark);
+  border:var(--border-width) solid transparent;
+  background:color-mix(in srgb, var(--color-primary) 26%, var(--color-surface));
+}
+.band-key__chip[data-state="done"]{ background:color-mix(in srgb, var(--color-success) 26%, var(--color-surface)) }
+.band-key__chip[data-state="conflict"]{ background:color-mix(in srgb, var(--color-danger) 30%, var(--color-surface)) }
+.band-key__chip[data-state="gap"]{
+  background:repeating-linear-gradient(135deg,
+    transparent 0 4px,
+    color-mix(in srgb, var(--color-warning) 34%, transparent) 4px 8px);
+  border-color:var(--color-warning-line);
+}
+/* ── الكمّية بوحدتها، والنسبة التعاقدية ──────────────────────────────────
+   كُتبت هذه الكتلة مرّتين على التوازي — في القسم المخزني وفي المقاولات —
+   ووُحِّدت هنا. والقيود الأربعة كلّها من الطرفين معاً:
+     ١ · المقدار بخطّ أحادي المسافة و`tabular-nums`، فتقع الفاصلة تحت أختها
+         في عمودٍ يُقرأ رأسياً.
+     ٢ · رمز الوحدة **معرّفٌ لا نصّ معروض**: يُعرض كما سجّله المستأجر — بلا
+         `text-transform` لأن ذلك يغيّر معرّفاً — و**معزولاً اتجاهياً بلا
+         اتجاه مفروض**: قد يكون «PCS» وقد يكون «حبة»، والصفحة قد تكون بأي من
+         اللغات الأربع. فالعزل يمنع انقلاب ما حولها، وترْكُ الاتجاه للمحتوى
+         يمنع قلبها هي.
+     ٣ · الوحدة أخفت من المقدار: المقدار هو ما يُقرأ، والوحدة هي ما يمنع
+         قراءته خطأً.
+     ٤ · الكمّية السالبة **تُوسَم ولا تُخفى**: البيع قبل إدخال الاستلام واقعة
+         يومية في منشأة عاملة (العقد يقولها صراحةً)، لكنها تمنع إقفال الفترة. */
+.qty{
+  display:inline-flex; align-items:baseline; gap:var(--space-6);
+  white-space:nowrap; unicode-bidi:isolate;
+}
+.qty__n{
+  font-family:var(--font-mono); font-variant-numeric:tabular-nums;
+  font-weight:var(--font-weight-semibold);
+  unicode-bidi:isolate;
+}
+.qty__u{
+  unicode-bidi:isolate;
+  font-size:var(--font-size-3xs); color:var(--color-text-subtle);
+  font-weight:var(--font-weight-semibold); letter-spacing:.02em;
+}
+.qty[data-negative="true"] .qty__n{ color:var(--color-danger) }
+/* النسبة كسرٌ عشري: تُعرض كما وصلت بلا علامة مئوية وبلا ضربٍ في مئة. */
+.rate{ font-variant-numeric:tabular-nums; unicode-bidi:isolate }
+
+/* ── البنود المعلَّقة داخل لوحة الرفض ───────────────────────────────────
+   بندٌ في كل صفّ: رمزُه ثابتٌ يُنسَخ، وعنوانُه بلغتين، وموضعُ سؤاله كاملاً.
+   ورقمُ البند يُرى، لأن الرفض الذي يقول «أربعة بنود» ثم يعرض ثلاثة يكذب. */
+.refusal-count{
+  margin:var(--space-8) 0 var(--space-4);
+  font-size:var(--font-size-xs); font-weight:var(--font-weight-semibold);
+}
+.refusal-items{
+  margin:0; padding-inline-start:var(--space-20);
+  display:flex; flex-direction:column; gap:var(--space-10);
+}
+.refusal-item{
+  display:flex; flex-direction:column; gap:2px;
+  padding-inline-start:var(--space-8);
+  border-inline-start:3px solid var(--color-danger-line);
+}
+.refusal-item__code{ font-size:var(--font-size-3xs); color:var(--color-text-subtle) }
+.refusal-item__ar{ font-weight:var(--font-weight-semibold); line-height:var(--line-snug) }
+.refusal-item__en{
+  font-size:var(--font-size-3xs); color:var(--color-text-muted);
+  unicode-bidi:isolate; line-height:var(--line-snug);
+}
+.refusal-item__src{
+  display:flex; gap:var(--space-6); flex-wrap:wrap;
+  font-size:var(--font-size-3xs); color:var(--color-text-subtle);
+}
+.refusal-item__srck{ font-weight:var(--font-weight-semibold) }
+

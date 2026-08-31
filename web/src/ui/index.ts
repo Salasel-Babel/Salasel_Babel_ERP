@@ -18,8 +18,12 @@ export {
   StatusBadge,
   RefusalPanel,
   ProgressBar,
+  QuantityValue,
+  RateValue,
   EmptyState,
   AlertBell,
+  magnitudeScale,
+  magnitudeIsNegative,
 } from "./primitives";
 export type {
   SurfaceProps,
@@ -30,6 +34,8 @@ export type {
   RefusalProps,
   DocState,
   Provenance,
+  QuantityValueProps,
+  MagnitudeScalePolicy,
 } from "./primitives";
 
 export { LedgerTable } from "./LedgerTable";
@@ -45,3 +51,6 @@ export {
   bandOf,
 } from "./presence";
 export type { ConfidenceBand, TraceStep } from "./presence";
+
+export { PeriodBand, dayNumber, overlappingSpans, uncoveredGaps } from "./PeriodBand";
+export type { BandGap, BandLabels, BandSpan, PeriodBandProps, SpanState } from "./PeriodBand";

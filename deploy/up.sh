@@ -76,6 +76,16 @@ EOF
   echo "── وُلِّد رمز عرض محلي جديد في $env_file"
 fi
 
+# ‏**ورفدٌ لملفّ قديم**: `.env.local` وُلِّد قبل أن يوجد مفتاح التذاكر أصلاً، فملفٌّ
+# على جهاز مطوّرٍ سابقٍ لا يحمله. وبلا هذا السطر يسقط السكربت بـ`unbound variable`
+# على جهازه وحده — أي عطلٌ لا يراه من ولّد ملفّه اليوم. والمفتاح يُلحَق بالملفّ لا
+# يُولَّد في الذاكرة، فيثبت عبر التشغيلات كما يوجب ADR-0046.
+if [ -z "${BABEL_STORAGE_TICKET_KEY:-}" ]; then
+  BABEL_STORAGE_TICKET_KEY="$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+  ( umask 077; printf 'BABEL_STORAGE_TICKET_KEY=%s\n' "$BABEL_STORAGE_TICKET_KEY" >> "$env_file" )
+  echo "── أُلحق مفتاح توقيع التذاكر بملفّ قديم: $env_file"
+fi
+
 export BABEL_DEMO_TOKEN BABEL_DEMO_TOKEN_SHA256 BABEL_LEDGER_APP_PASSWORD POSTGRES_PASSWORD
 export BABEL_STORAGE_TICKET_KEY
 
@@ -96,15 +106,21 @@ if [ "$mode" = "containers" ] || [ "$mode" = "down" ]; then
   fi
 
   compose_env="$here/.env"
+  # ‏**ومفتاح التذاكر يُنقل من `.env.local` ولا يُولَّد هنا**: الملفّان يجب أن يحملا
+  # المفتاح نفسه، وإلّا صار كل تشغيل حاويات مفتاحاً جديداً — وهو بالضبط ما يرفضه
+  # ADR-0046. وغيابه من هذه الكتلة كان يوقف `compose up` برسالة `:?` على جهازٍ
+  # وُلِّد فيه المفتاح سلفاً. والشرح خارج الكتلة عمداً: ما بداخلها يُكتب في الملفّ.
   umask 077
   cat > "$compose_env" <<EOF
 BABEL_REGISTRY=babel-local
 BABEL_IMAGE_TAG=local
 BABEL_SITE=:80
 BABEL_TLS_MODE=auto
+BABEL_TLS_IP=
 POSTGRES_PASSWORD=$POSTGRES_PASSWORD
 BABEL_LEDGER_APP_PASSWORD=$BABEL_LEDGER_APP_PASSWORD
 BABEL_DEMO_TOKEN_SHA256=$BABEL_DEMO_TOKEN_SHA256
+BABEL_STORAGE_TICKET_KEY=$BABEL_STORAGE_TICKET_KEY
 BABEL_DEMO_COMPANY_ID=$company
 BABEL_DEMO_USER_ID=$user_id
 EOF

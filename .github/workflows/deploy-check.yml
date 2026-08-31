@@ -51,12 +51,25 @@ jobs:
       - name: سحب المستودع
         uses: actions/checkout@v4
 
+      # صورة الحافة **تُقرأ من compose.yml ولا تُكتب هنا**: وسمان في ملفّين
+      # ينحرفان، فيُفحَص إعدادٌ على إصدار غير الذي يعمل على الخادم — وهو أسوأ
+      # من عدم فحصه، لأنه يُقرأ أخضر.
+      - name: وسم صورة الحافة — من compose لا من هنا
+        run: |
+          set -euo pipefail
+          image=$(sed -n 's|^ *image: *\(caddy:[^ ]*\) *$|\1|p' deploy/compose.yml | head -1)
+          [ -n "$image" ] || { echo '::error::تعذّرت قراءة وسم صورة الحافة من deploy/compose.yml'; exit 1; }
+          echo "EDGE_IMAGE=$image" >> "$GITHUB_ENV"
+          echo "── صورة الحافة: $image"
+
       # فحص نحوي أولاً: خطأ مطبعي في سكربت لا يستحق دورة بناء صور كاملة.
       - name: نحو السكربتات وصحّة ملفّ الحزمة
         run: |
           set -euo pipefail
           bash -n deploy/up.sh
           bash -n deploy/remote.sh
+          bash -n deploy/tls-mode.sh
+          bash -n deploy/tls-mode-check.sh
           node --check deploy/local/serve.mjs
 
           # ‏config يفشل على أي متغيّر إلزامي غير مضبوط — وهذا مقصود: الإلزام
@@ -66,28 +79,81 @@ jobs:
           POSTGRES_PASSWORD=x \
           BABEL_LEDGER_APP_PASSWORD=x \
           BABEL_DEMO_TOKEN_SHA256=0000000000000000000000000000000000000000000000000000000000000000 \
+          BABEL_STORAGE_TICKET_KEY=0000000000000000000000000000000000000000000000000000000000000000 \
             docker compose -f deploy/compose.yml config --quiet
+
+      # ‏**حارس أوضاع TLS يُشغَّل هنا، لا يُقرأ.** جدول حالاته ملفٌّ قائم بذاته
+      # كي يعمل بيد إنسان على أي جهاز — وهو السبب نفسه الذي أخرج `remote.sh`
+      # من YAML. وما يُثبته: أن كل شرطٍ ناقص **يوقف النشر باسمه**، وأن `auto`
+      # بعنوان IP — وهو هبوطٌ صامت إلى شهادة غير موثوقة — مرفوض.
+      - name: أوضاع TLS — كل شرط يُرفض باسمه
+        run: deploy/tls-mode-check.sh
 
       # ‏**ست حالات لا حالتان.** البريد الفارغ هو ما كسر الحافة مرّتين، ولم يكن
       # في المصفوفة أصلاً — فحارسٌ يجرّب الحالة السليمة وحدها يمرّ على العطل.
       # والحالات الثلاث للبريد مقصودة: غائب، ومضبوطٌ وفارغ (وهو ما يمرّره
       # compose)، ومضبوطٌ بقيمة.
-      - name: صحّة إعداد الحافة — ثلاثة أوضاع بريد × وضعَي شهادة
+      #
+      # و`BABEL_TLS_IP` يُجرَّب في الحالات الثلاث نفسها — غائباً وفارغاً — لأن
+      # compose يمرّره فارغاً في ثلاثة أوضاع من أربعة، وقيمةٌ فارغة في وسيط
+      # `default_sni` هي بعينها الحالة التي كسرت الحافة في `email`.
+      - name: صحّة إعداد الحافة — ثلاثة أوضاع بريد × حالتَي عنوان × وضعَي شهادة
         run: |
           set -euo pipefail
           for mode in auto internal; do
             for email_case in absent empty present; do
-              args=(--rm -e BABEL_SITE=":80" -e BABEL_TLS_MODE="$mode")
-              case "$email_case" in
-                empty)   args+=(-e BABEL_TLS_EMAIL=) ;;
-                present) args+=(-e BABEL_TLS_EMAIL=ops@example.invalid) ;;
-              esac
-              echo "── tls=$mode · email=$email_case"
-              docker run "${args[@]}" \
-                -v "$PWD/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" \
-                caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+              for ip_case in absent empty; do
+                args=(--rm -e BABEL_SITE=":80" -e BABEL_TLS_MODE="$mode")
+                case "$email_case" in
+                  empty)   args+=(-e BABEL_TLS_EMAIL=) ;;
+                  present) args+=(-e BABEL_TLS_EMAIL=ops@example.invalid) ;;
+                esac
+                case "$ip_case" in
+                  empty) args+=(-e BABEL_TLS_IP=) ;;
+                esac
+                echo "── tls=$mode · email=$email_case · ip=$ip_case"
+                docker run "${args[@]}" \
+                  -v "$PWD/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" \
+                  "$EDGE_IMAGE" caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+              done
             done
           done
+
+      # ‏**وضع `ip`: لا يكفي أن يمرّ التحليل.** إعدادٌ صحيح نحوياً يستطيع أن
+      # يُصدر شهادة **من سلطة Caddy الداخلية** بلا خطأ واحد — وهو الهبوط الصامت
+      # بعينه. فما يُفحَص هنا هو الإعداد المُولَّد نفسه: مُصدِرٌ من نوع `acme`،
+      # وملمح `shortlived` (وهو الوحيد الذي تقبل عليه Let's Encrypt مُعرِّفاً من
+      # نوع IP)، و`default_sni` بالعنوان — وبدونه تسقط كل مصافحة بلا SNI، أي كل
+      # متصفّح يفتح عنواناً حرفياً — و`tls-alpn` مُقفَل لأنه غير قابل للحلّ هنا.
+      - name: وضع ip يُولّد شهادة عامّة لا داخلية
+        run: |
+          set -euo pipefail
+          adapted=$(docker run --rm \
+            -e BABEL_SITE="https://203.0.113.10" \
+            -e BABEL_TLS_MODE=ip \
+            -e BABEL_TLS_IP=203.0.113.10 \
+            -e BABEL_TLS_EMAIL=ops@example.invalid \
+            -v "$PWD/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" \
+            "$EDGE_IMAGE" caddy adapt --config /etc/caddy/Caddyfile --adapter caddyfile)
+          echo "$adapted"
+
+          need() {
+            case "$adapted" in
+              *"$1"*) echo "  ✔ $2" ;;
+              *) echo "::error::$2 — غير موجود في الإعداد المُولَّد: $1"; exit 1 ;;
+            esac
+          }
+          need '"module":"acme"'                  'المُصدِر من نوع acme لا internal'
+          need '"profile":"shortlived"'           'ملمح shortlived — وهو شرط Let'"'"'s Encrypt لمُعرِّف IP'
+          need '"default_sni":"203.0.113.10"'     'اسم افتراضي للاتصالات بلا SNI'
+          need '"sni":["","203.0.113.10"]'        'سياسة الاتصال تطابق الفراغ والعنوان معاً'
+          need '"tls-alpn":{"disabled":true}'     'tls-alpn مقفول — يبقى http-01'
+          need '"subjects":["203.0.113.10"]'      'موضوع الشهادة هو العنوان'
+
+          case "$adapted" in
+            *'"module":"internal"'*)
+              echo "::error::الإعداد المُولَّد يحمل مُصدِراً داخلياً في وضع ip — هذا هو الهبوط الصامت."; exit 1 ;;
+          esac
 
       - name: تهيئة Buildx
         uses: docker/setup-buildx-action@v3
@@ -115,10 +181,15 @@ jobs:
             echo "BABEL_SITE=:80"
             echo "BABEL_TLS_MODE=auto"
             echo "BABEL_TLS_EMAIL="
+            echo "BABEL_TLS_IP="
             echo "POSTGRES_PASSWORD=$(head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n')"
             echo "BABEL_LEDGER_APP_PASSWORD=$(head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n')"
             echo "BABEL_LEDGER_APP_ROLE=babel_ledger_app"
             echo "BABEL_DEMO_TOKEN_SHA256=$(printf '%s' "$TOKEN" | sha256sum | cut -d' ' -f1)"
+            # مفتاح توقيع التذاكر — **مُولَّد لهذه التشغيلة** ولا يعيش بعدها، كأخواته.
+            # وغيابه هنا كان يوقف `compose config` في أول خطوة، فيصير هذا الحارس أحمر
+            # ولا يبلغ شيئاً ممّا بعده — وهو ما وقع فعلاً.
+            echo "BABEL_STORAGE_TICKET_KEY=$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')"
             echo "BABEL_DEMO_COMPANY_ID=d3305e1e-0000-4000-8000-000000000001"
             echo "BABEL_DEMO_USER_ID=d3305e1e-0000-4000-8000-0000000000a1"
           } > deploy/.env

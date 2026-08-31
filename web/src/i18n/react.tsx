@@ -188,6 +188,45 @@ export function Amount(props: { value: Money; className?: string; as?: "span" | 
   );
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   عددٌ عشري نصّي — الكمّية والنسبة، لا المال
+   ───────────────────────────────────────────────────────────────────────────
+   المال يمرّ بـ<Amount> لأن نوعه Money ومقياسه المعروض منزلتان. والكمّية
+   (Magnitude، مقياسها ستّ) والنسبة التعاقدية (Rate، مقياسها ثمانٍ) نصّان
+   محتجزان لا Money، ومقياسهما **ليس منزلتين**. فعرضُهما بـ<Amount> كان
+   يقرّب الكمّية إلى الهللة ويُسقط خانات النسبة صامتاً.
+
+   والمقياس هنا **يُقرأ من النصّ الواصل** لا يُفترض: عدد ما بعد الفاصلة
+   كما كتبه الخادم. فلا خانة تُزاد ولا خانة تُحذف، ولا يمرّ الرقم بعائم في
+   أي خطوة (الحساب كلّه نصّي في decimal-text.ts).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/** مقياسُ نصٍّ عشري: عدد خاناته بعد الفاصلة، بلا تحويل إلى رقم. */
+function scaleOfText(text: string): number {
+  const dot = text.indexOf(".");
+  return dot < 0 ? 0 : text.length - dot - 1;
+}
+
+/**
+ * عدد عشري نصّي معروضاً بأرقام اللغة **بمقياسه كما وصل** — بلا تقريب وبلا عائم.
+ * @param props النصّ العشري والصنف.
+ */
+export function Decimal(props: { value: string; className?: string; title?: string }): ReactNode {
+  const { i18n, locale } = useLocale();
+  const { value } = props;
+  const display = useMemo(() => {
+    void locale;
+    return i18n.amount(value, { scale: scaleOfText(value) });
+  }, [i18n, locale, value]);
+  return (
+    <Rendered
+      display={display}
+      title={props.title ?? value}
+      className={(props.className ? props.className + " " : "") + "num"}
+    />
+  );
+}
+
 /**
  * عدد صحيح معروضاً بأرقام اللغة.
  * @param props القيمة والصنف.

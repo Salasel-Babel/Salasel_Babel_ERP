@@ -100,6 +100,19 @@ jobs:
         with:
           global-json-file: global.json
 
+      # ‏**أي حزمة تطوير بنَت هذه الخُضرة؟** `global.json` يطلب 10.0.100 بـ
+      # ‏`rollForward: latestFeature`، وهي صيغة تقبل **أي نطاق ميزات أعلى**: العدّاء
+      # يشغّل ما يجده (قيس 10.0.400 في التشغيلة 33318850660) بينما جهاز التطوير قد
+      # يحمل 10.0.111 — نطاقان مختلفان، ومحلّلا شيفرةٍ مختلفان تحت
+      # `TreatWarningsAsErrors`. فيمرّ البناء محلياً ويسقط هنا بتشخيصٍ لا يراه المطوّر
+      # إطلاقاً. الرقم يُطبع هنا وفي `tools/gate/run.sh` كليهما كي تصير المقارنة
+      # ممكنة بلا تخمين.
+      # (‏docs/evidence/traps.md#fakh-the-gate-and-ci-run-different-sdk-feature-bands)
+      - name: حزمة التطوير المُستعملة فعلاً
+        run: |
+          set -eux
+          dotnet --version
+
       # ICU مطلوب: بدونه يصير String.Normalize عملية لا شيء بصمت، فتتغيّر كل بصمة نص عربي
       # (src/Babel.Canonicalization/SPEC.md §8.2). الحارس الموجب في الوظيفة الثانية أدناه.
       - name: التأكّد من وجود ICU
@@ -209,13 +222,37 @@ jobs:
       # الاتساق على كل فرع؛ وهذه البوابة الأخيرة وحدها تمنع وصول نائبٍ بلا رقم.
       # ‏`always()` عمداً — فخ-80: هذا الحارس نصّي بحت (grep/git) ولا يمسّ البناء،
       # فلا يجوز أن يُسكته سقوطُ بناءٍ أو اختبارٍ قبله ويُعلَّم `skipped` بلا أن يقرأه أحد.
+      #
+      # **ونطاق المسح يستثني الفهرس `README.md` بالبناء.** كان النمط يُطبَّق على
+      # `docs/decisions/*.md` كلّها، والفهرس **يوثّق الاصطلاح بعرض النائب نفسه**
+      # `# ADR-جديد: عنوان القرار` داخل كتلة شيفرة في §0.0 — فكان الحارس يلتقط
+      # **وثيقته هو**، ويحمرّ على **كل** تشغيلة على develop منذ كُتب، حتى حين كان كل
+      # قرار مرقّماً بصحّة. وحارسٌ أحمر لسبب لا علاقة له بما يحرسه يُدرّب الناس على
+      # تجاهله فيصير لا يحرس شيئاً — وهو فخ-65 بعينه.
+      # (‏docs/evidence/traps.md#fakh-a-guard-whose-scan-includes-the-page-that-documents-it)
+      #
+      # والعلاج **تضييق النطاق لا إضعاف النمط**: `ADR-*.md` يشمل كل وثيقة قرار —
+      # ومنها `ADR-جديد-*.md` — ولا يشمل `README.md`. والنمط يبقى `^# ADR-جديد:`
+      # على حاله، فلا يفلت منه نائبٌ حقيقي.
+      #
+      # وصفّ الفهرس وحده يُفحص **داخل** `README.md` لأن الصفوف تسكنه، ولذلك يشترط
+      # **مفتاحاً لاتينياً** (`ADR-جديد-[a-z]`) كما تفعل نظيرته لسجل المصائد أعلاه:
+      # §0.0 تفرض على كل قرار حقيقي مفتاحاً بحروف لاتينية صغيرة، والمثال التوضيحي
+      # في الوثيقة مفتاحه عربي — فالتمييز بنيوي لا حيلة.
       - name: لا معرّف قرار بلا رقم على فرع رئيس
         if: always() && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/production')
         run: |
           set -euo pipefail
+          # حارس لافراغ صريح: نطاقٌ انكسر يعود بمجموعة فارغة، ومجموعة فارغة تُرضي
+          # كل فحص تحتها فيمرّ الحارس أخضر وهو لا يقرأ شيئاً (فخ-43).
+          documents=(docs/decisions/ADR-*.md)
+          if [ "${#documents[@]}" -lt 40 ] || [ ! -e "${documents[0]}" ]; then
+            echo "::error::نطاق مسح حارس القرارات عاد بـ${#documents[@]} وثيقة — النطاق انكسر، والحارس لا يقرأ شيئاً."
+            exit 1
+          fi
           if ls docs/decisions/ADR-جديد-*.md >/dev/null 2>&1 \
-             || grep -nE '^# ADR-جديد:' docs/decisions/*.md \
-             || grep -nE '^\| \[جديد\]\(ADR-جديد-' docs/decisions/README.md; then
+             || grep -nE '^# ADR-جديد:' "${documents[@]}" \
+             || grep -nE '^\| \[جديد\]\(ADR-جديد-[a-z]' docs/decisions/README.md; then
             echo "::error::قرار بلا رقم وصل إلى فرع رئيس. خصّص له الرقم التالي — docs/decisions/README.md §0.0."
             exit 1
           fi
@@ -231,12 +268,23 @@ jobs:
         run: |
           set -euo pipefail
           FILE=tests/Babel.ArchitectureTests/Rule14_TranslationsAreRowsNotColumns.cs
+          # المرساة على **التصريح** لا على ذكر الاسم: `const int … = N;`. كان النمط
+          # `.*MaximumEnglishNameSites = ([0-9]+);.*` يقبل أي سطر يذكر الاسم — ومنه
+          # تعليقُ توثيقٍ أو رسالةُ تأكيد — و`head -1` يأخذ أوّلها، فيقرأ الحارس رقماً
+          # ليس السقف. (النطاق يُضيَّق ولا يُضعَّف: التصريح الحقيقي ما زال يُلتقط،
+          # وهو مُثبَتٌ بطفرةٍ في الحارس أدناه.)
           read_ceiling() {
-            sed -nE 's/.*MaximumEnglishNameSites = ([0-9]+);.*/\1/p' "$1" | head -1
+            sed -nE 's/.*const int MaximumEnglishNameSites = ([0-9]+);.*/\1/p' "$1" | head -1
           }
           git fetch --no-tags --depth=1 origin develop
           BASE=$(git show origin/develop:$FILE 2>/dev/null | read_ceiling /dev/stdin || true)
           HEAD_VALUE=$(read_ceiling "$FILE")
+          # حارس لافراغ: قراءةٌ عادت فارغة تعني أنّ شكل التصريح تغيّر، لا أنّ السقف
+          # صفر. وبلا هذا الفحص يُنزع الحارس بإعادة تسميةٍ واحدة **بلا أن يحمرّ شيء**.
+          if [ -z "${HEAD_VALUE:-}" ]; then
+            echo "::error::تعذّرت قراءة سقف MaximumEnglishNameSites من ${FILE} — شكل التصريح تغيّر، والحارس صار لا يقرأ شيئاً."
+            exit 1
+          fi
           if [ -z "${BASE:-}" ]; then
             echo "لا سقف على develop بعد — أول إنزال لهذا الحارس. السقف الحالي: ${HEAD_VALUE}"
             exit 0
@@ -251,15 +299,18 @@ jobs:
 
       # ‏`always()` عمداً — فخ-80: هذا الحارس نصّي بحت (grep/git) ولا يمسّ البناء،
       # فلا يجوز أن يُسكته سقوطُ بناءٍ أو اختبارٍ قبله ويُعلَّم `skipped` بلا أن يقرأه أحد.
+      #
+      # والحارس **يُثبت أنه ينطق قبل أن يُصدَّق صمتُه**: `tools/secret-scan/run.sh` يُطابق
+      # كل نمط في `patterns.txt` على الشاهد الموجب `positive-control.txt` أولاً، ويُفشل
+      # البناء إن سقط نمطٌ واحد أو حُذف الشاهد — **ثم** يمسح المستودع. كان هذا الحارس
+      # قبل ذلك يجد **صفراً على كل تشغيل** ولا يُفرَّق عن حارس معطَّل، وكان يُعفي
+      # ‏`docs/**` و`spikes/**` و`**/ci.yml` بالجملة، فمفتاحٌ خاصّ يُودَع تحت `docs/`
+      # لا يراه. أُزيلت الإعفاءات الثلاثة، وبقي استثناء واحد **بمسارٍ كامل واحد** هو
+      # الشاهد نفسه، ومُميِّزٌ على مستوى السطر (`NOT-A-SECRET`) للأمثلة التوضيحية.
+      # (‏docs/evidence/traps.md#fakh-a-guard-that-never-fires-cannot-be-told-from-a-broken-one)
       - name: التحقق من عدم وجود أسرار في التغييرات
         if: always()
-        run: |
-          set -euo pipefail
-          if git grep -nIE '(BEGIN (RSA|EC|OPENSSH|PRIVATE) KEY|password[[:space:]]*=[[:space:]]*["'"'"'][^"'"'"']+)' \
-               -- ':!**/ci.yml' ':!docs/**' ':!spikes/**'; then
-            echo "::error::يبدو أن هناك سرّاً في المستودع. CONTRIBUTING §3 بند 7."
-            exit 1
-          fi
+        run: tools/secret-scan/run.sh
 
   test-isolation:
     name: عزل الاختبارات — كل دالّة وحدها

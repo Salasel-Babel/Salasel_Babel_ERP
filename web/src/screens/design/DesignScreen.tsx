@@ -23,7 +23,10 @@ import {
   Panel,
   PresencePanel,
   ProgressBar,
+  PeriodBand,
   ProvenanceMark,
+  QuantityValue,
+  RateValue,
   RefusalPanel,
   StatCard,
   StatusBadge,
@@ -33,7 +36,19 @@ import {
   VoiceTrace,
   type TraceStep,
 } from "../../ui";
-import { DOC_STATES, GLOWS, MOTIONS, PALETTE, PROVENANCES, type MotionEntry } from "./catalogue";
+import {
+  BAND_SAMPLES,
+  BAND_SAMPLE_FROM,
+  BAND_SAMPLE_TO,
+  DOC_STATES,
+  GLOWS,
+  INKS,
+  MOTIONS,
+  PALETTE,
+  PROVENANCES,
+  QUANTITY_SAMPLES,
+  type MotionEntry,
+} from "./catalogue";
 import {
   DEMO_DIFFERENCE,
   DEMO_TOTAL_CREDIT,
@@ -55,6 +70,23 @@ function Swatch(props: { token: string; roleKey: string; kind: string }): ReactN
         <span className="swatch__role">{t(props.roleKey)}</span>
         <code className="swatch__token mono">{props.token}</code>
       </span>
+    </div>
+  );
+}
+
+/** حبرٌ معروضٌ **على سطحه** — فما يُرى هنا هو ما يراه المستخدم حرفياً. */
+function InkChip(props: { ink: string; surface: string; roleKey: string }): ReactNode {
+  const { t } = useT();
+  const style = {
+    background: `var(${props.surface})`,
+    color: `var(${props.ink})`,
+  } as CSSProperties;
+  return (
+    <div className="inkchip" style={style}>
+      <span className="inkchip__sample">{t(props.roleKey)}</span>
+      <code className="inkchip__token mono" dir="ltr">
+        {props.ink}
+      </code>
     </div>
   );
 }
@@ -291,8 +323,56 @@ function PrimitivesSection(): ReactNode {
           next={t("screen.design.refusal.next")}
           moment={refuseCls}
           testId="refusal-panel"
-        />
+        >
+          {/* الرفض الذي يُعدِّد بنوداً مُسمّاة يُريها كلّها — لا يجمعها في سطر. */}
+          <ol className="refusal-items">
+            <li className="refusal-item">
+              <code className="mono refusal-item__code" dir="ltr">
+                {"ledger.posting.rate_not_approved"}
+              </code>
+              <span className="refusal-item__ar">{t("screen.design.refusal.item")}</span>
+            </li>
+          </ol>
+        </RefusalPanel>
       </div>
+
+      <Panel title={t("screen.design.prim.measure")} note={t("screen.design.prim.measureNote")} testId="design-measure">
+        <div className="kv kv--split">
+          <span className="kv__k">{t("screen.design.prim.quantity")}</span>
+          <span className="kv__v n">
+            {/* سياسة «كما وصل»: ستّ خانات تبقى كما نشرها الخادم. */}
+            <QuantityValue magnitude="1284.500000" unit="M3" scale="wire" testId="design-quantity" />
+          </span>
+        </div>
+        <div className="kv kv--split">
+          <span className="kv__k">{t("screen.design.prim.rate")}</span>
+          <span className="kv__v n">
+            <RateValue rate="0.10" testId="design-rate" />
+          </span>
+        </div>
+        <p className="muted">{t("screen.design.prim.rateNote")}</p>
+      </Panel>
+
+      <Panel
+        title={t("inventory.design.quantity")}
+        note={t("inventory.design.quantityNote")}
+        testId="section-quantity"
+      >
+        <div className="stack">
+          {QUANTITY_SAMPLES.map((sample) => (
+            <div className="kv kv--split" key={sample.key}>
+              <span className="kv__k">{t(sample.labelKey)}</span>
+              <span className="kv__v">
+                <QuantityValue
+                  magnitude={sample.magnitude}
+                  unit={sample.unit}
+                  testId={"quantity-" + sample.key}
+                />
+              </span>
+            </div>
+          ))}
+        </div>
+      </Panel>
 
       <Panel title={t("screen.design.prim.empty")} note={t("screen.design.prim.emptyNote")}>
         <EmptyState
@@ -406,6 +486,12 @@ export function DesignScreen(): ReactNode {
             <Swatch key={entry.token} token={entry.token} roleKey={entry.roleKey} kind={entry.kind} />
           ))}
         </div>
+        <h3 className="subhead">{t("screen.design.palette.inks")}</h3>
+        <div className="swatches" data-testid="palette-inks">
+          {INKS.map((entry) => (
+            <InkChip key={entry.ink} ink={entry.ink} surface={entry.surface} roleKey={entry.roleKey} />
+          ))}
+        </div>
         <h3 className="subhead">{t("screen.design.palette.glows")}</h3>
         <div className="swatches">
           {GLOWS.map((entry) => (
@@ -446,6 +532,31 @@ export function DesignScreen(): ReactNode {
         testId="section-primitives"
       >
         <PrimitivesSection />
+      </Panel>
+
+      <Panel
+        title={t("screen.design.sec.band")}
+        note={t("screen.design.band.intro")}
+        testId="section-band"
+      >
+        <PeriodBand
+          from={BAND_SAMPLE_FROM}
+          to={BAND_SAMPLE_TO}
+          spans={BAND_SAMPLES.map((sample) => ({
+            key: sample.key,
+            from: sample.from,
+            to: sample.to,
+            state: sample.state,
+            label: t(sample.labelKey),
+            title: t(sample.labelKey),
+          }))}
+          labels={{
+            caption: t("screen.design.band.caption"),
+            gap: t("screen.design.band.gap"),
+          }}
+          testId="design-band"
+        />
+        <p className="muted">{t("screen.design.band.note")}</p>
       </Panel>
 
       <Panel

@@ -35,22 +35,20 @@ public sealed class ProjectsVoiceIntents : IVoiceIntentCatalogue
             VoiceLedgerEffect.Posts,
             "projects.client_certificate.posted",
             "قياس بندٍ في مستخلص عميل",
-            "Measure a client certificate line",
             [
                 "سجل مستخلص عميل", "مستخلص عميل", "قياس مستخلص", "سجل كمية منفذة",
                 "قست في المستخلص", "اضف الى مستخلص العميل",
             ],
             [
-                new VoiceSlot("contract", VoiceSlotKind.Text, "العقد", "Contract", true,
+                new VoiceSlot("contract", VoiceSlotKind.Text, "العقد", true,
                     ["عقد", "العقد", "للعقد", "بعقد"], []),
-                new VoiceSlot("boqItem", VoiceSlotKind.Text, "بند جدول الكميات", "BoQ item", true,
+                new VoiceSlot("boqItem", VoiceSlotKind.Text, "بند جدول الكميات", true,
                     ["بند", "البند", "للبند", "بندي"], []),
-                new VoiceSlot("quantity", VoiceSlotKind.Quantity, "الكمية المنفذة", "Executed quantity", true,
+                new VoiceSlot("quantity", VoiceSlotKind.Quantity, "الكمية المنفذة", true,
                     ["كمية", "الكمية", "بمقدار", "عدد", "منفذ"], []),
-                new VoiceSlot("measuredOn", VoiceSlotKind.Date, "تاريخ القياس", "Measured on", true, [], []),
+                new VoiceSlot("measuredOn", VoiceSlotKind.Date, "تاريخ القياس", true, [], []),
             ],
             false,
-            null,
             null),
 
         new VoiceIntent(
@@ -62,22 +60,20 @@ public sealed class ProjectsVoiceIntents : IVoiceIntentCatalogue
             VoiceLedgerEffect.Posts,
             "projects.subcontractor_certificate.posted",
             "قياس بندٍ في مستخلص مقاول من الباطن",
-            "Measure a subcontractor certificate line",
             [
                 "مستخلص مقاول من الباطن", "مستخلص من الباطن", "سجل مستخلص مقاول",
                 "قياس مقاول الباطن",
             ],
             [
-                new VoiceSlot("subcontract", VoiceSlotKind.Text, "عقد الباطن", "Subcontract", true,
+                new VoiceSlot("subcontract", VoiceSlotKind.Text, "عقد الباطن", true,
                     ["عقد", "العقد", "للعقد"], []),
-                new VoiceSlot("boqItem", VoiceSlotKind.Text, "بند جدول الكميات", "BoQ item", true,
+                new VoiceSlot("boqItem", VoiceSlotKind.Text, "بند جدول الكميات", true,
                     ["بند", "البند", "للبند"], []),
-                new VoiceSlot("quantity", VoiceSlotKind.Quantity, "الكمية المنفذة", "Executed quantity", true,
+                new VoiceSlot("quantity", VoiceSlotKind.Quantity, "الكمية المنفذة", true,
                     ["كمية", "الكمية", "بمقدار", "عدد"], []),
-                new VoiceSlot("measuredOn", VoiceSlotKind.Date, "تاريخ القياس", "Measured on", true, [], []),
+                new VoiceSlot("measuredOn", VoiceSlotKind.Date, "تاريخ القياس", true, [], []),
             ],
             false,
-            null,
             null),
 
         new VoiceIntent(
@@ -89,20 +85,18 @@ public sealed class ProjectsVoiceIntents : IVoiceIntentCatalogue
             VoiceLedgerEffect.Posts,
             "projects.subcontractor_advance.paid",
             "دفعة مقدمة لمقاول من الباطن",
-            "Pay a subcontractor advance",
             [
                 "دفعة مقدمة لمقاول", "سلفة مقاول من الباطن", "صرفت دفعة مقدمة",
                 "دفعة مقدمة للمقاول",
             ],
             [
-                new VoiceSlot("subcontractor", VoiceSlotKind.Text, "المقاول من الباطن", "Subcontractor", true,
+                new VoiceSlot("subcontractor", VoiceSlotKind.Text, "المقاول من الباطن", true,
                     ["للمقاول", "المقاول", "مقاول", "لصالح"], []),
-                new VoiceSlot("amount", VoiceSlotKind.Money, "المبلغ", "Amount", true,
+                new VoiceSlot("amount", VoiceSlotKind.Money, "المبلغ", true,
                     ["بمبلغ", "مبلغ", "بقيمة", "قيمته"], []),
-                new VoiceSlot("paidOn", VoiceSlotKind.Date, "تاريخ الصرف", "Paid on", true, [], []),
+                new VoiceSlot("paidOn", VoiceSlotKind.Date, "تاريخ الصرف", true, [], []),
             ],
             false,
-            null,
             null),
 
         new VoiceIntent(
@@ -114,17 +108,15 @@ public sealed class ProjectsVoiceIntents : IVoiceIntentCatalogue
             VoiceLedgerEffect.None,
             null,
             "موقف العقد",
-            "Contract position",
             [
                 "كم موقف العقد", "موقف العقد", "وضع العقد", "كم المنجز في العقد",
                 "وش موقف العقد",
             ],
             [
-                new VoiceSlot("contract", VoiceSlotKind.Text, "العقد", "Contract", true,
+                new VoiceSlot("contract", VoiceSlotKind.Text, "العقد", true,
                     ["عقد", "العقد", "للعقد"], []),
             ],
             false,
-            null,
             null),
     ];
 }

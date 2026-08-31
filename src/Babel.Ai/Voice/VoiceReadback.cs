@@ -11,6 +11,12 @@ namespace Babel.Ai.Voice;
 /// لم يُعرَض كاملاً ليس تأكيداً.
 /// </para>
 /// <para>
+/// <b>ولا ملخّص إنجليزيّ بجانبه.</b> الملخّص نصّ عرض، والعربية سجلُّه؛ وزوجٌ ثابت
+/// <c>ar</c>/<c>en</c> في حقل عرض ممنوعٌ بنصّ ADR-0021 §6.3 بند 2 وتفرضه القاعدة 14.
+/// ولغةٌ ثالثة تُضاف صفّاً في جدول الترجمات، لا عموداً ثانياً هنا — وهذا بالضبط ما
+/// يعجز عنه الزوج الثابت بنيوياً.
+/// </para>
+/// <para>
 /// <b>ورمز التأكيد صورةٌ حتمية للأمر بعينه</b> — لا رقم عشوائي: تغيّرَ الأمرُ بعد
 /// قراءته فتغيّر الرمز، فيُرفض التأكيد القديم بدل أن يُنفَّذ أمرٌ لم يسمعه أحد.
 /// </para>
@@ -25,9 +31,6 @@ public static class VoiceReadback
 {
     /// <summary>ما يُقال بعد الملخّص لكل عمليةٍ تُغيّر الحال.</summary>
     public const string ConfirmCallAr = "قل «تأكيد» أو اضغط زرّ التأكيد.";
-
-    /// <summary>نظيرها الإنجليزي.</summary>
-    public const string ConfirmCallEn = "Say 'confirm' or press the confirm button.";
 
     /// <summary>يبني الملخّص العربي.</summary>
     /// <param name="intent">النيّة.</param>
@@ -52,30 +55,6 @@ public static class VoiceReadback
         string head = intent.NameAr + " — " + body + ".";
 
         return intent.RequiresConfirmation ? head + " " + ConfirmCallAr : head;
-    }
-
-    /// <summary>يبني الملخّص الإنجليزي.</summary>
-    /// <param name="intent">النيّة.</param>
-    /// <param name="slots">الشرائح.</param>
-    public static string English(VoiceIntent intent, IReadOnlyList<SpokenSlotValue> slots)
-    {
-        ArgumentNullException.ThrowIfNull(intent);
-        ArgumentNullException.ThrowIfNull(slots);
-
-        List<string> parts = [];
-
-        foreach (SpokenSlotValue value in slots)
-        {
-            VoiceSlot? slot = intent.Slots.FirstOrDefault(candidate => candidate.Name == value.Name);
-            string label = slot?.NameEn ?? value.Name;
-            string unit = value.Unit is null ? string.Empty : " " + value.Unit;
-            parts.Add(label + ": " + value.Text + unit);
-        }
-
-        string body = parts.Count == 0 ? "no slots" : string.Join(", ", parts);
-        string head = intent.NameEn + " — " + body + ".";
-
-        return intent.RequiresConfirmation ? head + " " + ConfirmCallEn : head;
     }
 
     /// <summary>

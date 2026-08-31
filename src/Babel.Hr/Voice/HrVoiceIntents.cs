@@ -56,22 +56,20 @@ public sealed class HrVoiceIntents : IVoiceIntentCatalogue
             VoiceLedgerEffect.None,
             null,
             "سلفة موظف",
-            "Employee advance",
             [
                 "سجل سلفة موظف", "سلفة للموظف", "اصرف سلفة", "سلفة موظف",
                 "ابغى اسجل سلفة",
             ],
             [
-                new VoiceSlot("employee", VoiceSlotKind.Text, "الموظف", "Employee", true,
+                new VoiceSlot("employee", VoiceSlotKind.Text, "الموظف", true,
                     ["للموظف", "الموظف", "موظف", "لصالح"], []),
-                new VoiceSlot("amount", VoiceSlotKind.Money, "مبلغ السلفة", "Advance amount", true,
+                new VoiceSlot("amount", VoiceSlotKind.Money, "مبلغ السلفة", true,
                     ["بمبلغ", "مبلغ", "بقيمة", "قيمتها"], []),
-                new VoiceSlot("instalments", VoiceSlotKind.Number, "عدد الأقساط", "Instalments", false,
+                new VoiceSlot("instalments", VoiceSlotKind.Number, "عدد الأقساط", false,
                     ["اقساط", "قسط", "على"], []),
-                new VoiceSlot("grantedOn", VoiceSlotKind.Date, "تاريخ الصرف", "Granted on", true, [], []),
+                new VoiceSlot("grantedOn", VoiceSlotKind.Date, "تاريخ الصرف", true, [], []),
             ],
             false,
-            null,
             null),
 
         new VoiceIntent(
@@ -83,19 +81,17 @@ public sealed class HrVoiceIntents : IVoiceIntentCatalogue
             VoiceLedgerEffect.None,
             null,
             "خصم على موظف",
-            "Employee deduction",
             [
                 "سجل خصم على الموظف", "خصم على الموظف", "جزاء على الموظف", "سجل جزاء",
             ],
             [
-                new VoiceSlot("employee", VoiceSlotKind.Text, "الموظف", "Employee", true,
+                new VoiceSlot("employee", VoiceSlotKind.Text, "الموظف", true,
                     ["الموظف", "موظف", "على"], []),
-                new VoiceSlot("amount", VoiceSlotKind.Money, "مبلغ الخصم", "Deduction amount", true,
+                new VoiceSlot("amount", VoiceSlotKind.Money, "مبلغ الخصم", true,
                     ["بمبلغ", "مبلغ", "بقيمة", "قيمته"], []),
-                new VoiceSlot("effectiveOn", VoiceSlotKind.Date, "تاريخ الاستحقاق", "Effective on", true, [], []),
+                new VoiceSlot("effectiveOn", VoiceSlotKind.Date, "تاريخ الاستحقاق", true, [], []),
             ],
             false,
-            null,
             null),
 
         new VoiceIntent(
@@ -107,17 +103,15 @@ public sealed class HrVoiceIntents : IVoiceIntentCatalogue
             VoiceLedgerEffect.None,
             null,
             "بطاقة موظف — مُقنَّعة",
-            "Employee card — masked",
             [
                 "بيانات الموظف", "كرت الموظف", "ملف الموظف", "بطاقة الموظف",
                 "وش بيانات الموظف",
             ],
             [
-                new VoiceSlot("employee", VoiceSlotKind.Text, "الموظف", "Employee", true,
+                new VoiceSlot("employee", VoiceSlotKind.Text, "الموظف", true,
                     ["الموظف", "موظف", "عن"], []),
             ],
             true,
-            null,
             null),
     ];
 }

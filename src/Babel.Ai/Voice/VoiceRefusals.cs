@@ -66,7 +66,7 @@ public static class VoiceRefusals
             "ai.voice.slot_missing",
             MissingAr + " " + slot.NameAr + " في «" + intent.NameAr + "». "
             + "ولا يُخترَع: قيمةٌ مخمَّنة في مستندٍ يُرحَّل أسوأ من حقلٍ فارغ.",
-            "Missing " + slot.NameEn + " for '" + intent.NameEn + "'; it is refused, not invented.");
+            "Missing slot '" + slot.Name + "' for intent '" + intent.Id + "'; it is refused, not invented.");
     }
 
     /// <summary>كمّية بلا وحدة — والوحدة جزء القيمة لا زينتها.</summary>
@@ -79,7 +79,7 @@ public static class VoiceRefusals
             "ai.voice.unit_missing",
             MissingAr + " وحدة " + slot.NameAr + ": سمعتُ «" + heard + "» بلا وحدة. "
             + "وللصنف الواحد أكثر من وحدة، وفرقُ التفسير بين الحبّة والكرتون يصل إلى المال — فقُل الوحدة.",
-            "Missing the unit of " + slot.NameEn + ": heard '" + heard + "' with no unit.");
+            "Missing the unit of slot '" + slot.Name + "': heard '" + heard + "' with no unit.");
     }
 
     /// <summary>قيمةٌ خارج قائمة مغلقة.</summary>
@@ -92,7 +92,7 @@ public static class VoiceRefusals
             "ai.voice.choice_not_in_list",
             NotUnderstoodAr + " «" + heard + "» في " + slot.NameAr + ". "
             + "والقائمة مغلقة: " + string.Join(" · ", slot.Choices) + ".",
-            "'" + heard + "' is not in the closed list for " + slot.NameEn + ".");
+            "'" + heard + "' is not in the closed list for slot '" + slot.Name + "'.");
     }
 
     /// <summary>عمليةٌ تُغيّر الحال بلا تأكيد.</summary>
@@ -105,7 +105,7 @@ public static class VoiceRefusals
             NeedsConfirmationAr + ": «" + intent.NameAr + "». "
             + "اسمع الملخّص أو اقرأه، ثم قل «تأكيد» أو اضغط زرّ التأكيد. "
             + "وما يكتب في الدفتر أو يحرّك مخزوناً أو يصرف لإنسان لا يمرّ بلا هذه الخطوة — بلا استثناء.",
-            "Confirmation required for '" + intent.NameEn + "'; nothing that writes, moves stock or pays a person passes without it.");
+            "Confirmation required for intent '" + intent.Id + "'; nothing that writes, moves stock or pays a person passes without it.");
     }
 
     /// <summary>تأكيدٌ لا يطابق الأمر الذي قُرئ.</summary>
@@ -124,7 +124,7 @@ public static class VoiceRefusals
             "ai.voice.not_permitted",
             NotPermittedAr + " «" + intent.NameAr + "» في هذه المنشأة. "
             + "والمسار المنطوق لا يفتح باباً مغلقاً على الشاشة: هو مدخلٌ آخر إلى الصلاحيات نفسها.",
-            "Not permitted: '" + intent.NameEn + "'. Voice is another door to the same entitlements, never a wider one.");
+            "Not permitted: intent '" + intent.Id + "'. Voice is another door to the same entitlements, never a wider one.");
     }
 
     /// <summary>شركةٌ منطوقة غير الشركة المفتوحة.</summary>
@@ -145,7 +145,7 @@ public static class VoiceRefusals
             "ai.voice.owner_decision_pending",
             "فهمتُ «" + intent.NameAr + "» ولا أنفّذها: " + (intent.OwnerDecisionAr ?? string.Empty)
             + " والامتناع هنا مقصود — تنفيذُها يقتضي اختراع تفسيرٍ لم يقرّره أحد.",
-            "Understood '" + intent.NameEn + "' but will not execute it: " + (intent.OwnerDecisionEn ?? string.Empty));
+            "Understood intent '" + intent.Id + "' but will not execute it; the Arabic message names the missing owner decision.");
     }
 
     /// <summary>محاولة نُطقِ قيمةٍ شخصية غير مُقنَّعة.</summary>

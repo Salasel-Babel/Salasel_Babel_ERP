@@ -40,12 +40,10 @@ public sealed class VoiceIntentRegistryTests
             effect,
             eventCode,
             "نيّة إثبات",
-            "Probe intent",
             phrases ?? ["عبارة إثبات"],
             slots ?? [],
             false,
-            ownerDecision,
-            ownerDecision is null ? null : "probe");
+            ownerDecision);
 
     private static Result<VoiceIntentRegistry> BuildWith(params VoiceIntent[] intents) =>
         VoiceIntentRegistry.Build(
@@ -196,7 +194,7 @@ public sealed class VoiceIntentRegistryTests
     [Fact]
     public void شريحة_اسمها_يسمي_حساباً_تُسقط_البناء()
     {
-        VoiceSlot slot = new("account_code", VoiceSlotKind.Text, "الحساب", "The code", true, ["حساب"], []);
+        VoiceSlot slot = new("account_code", VoiceSlotKind.Text, "الحساب", true, ["حساب"], []);
         Result<VoiceIntentRegistry> built = BuildWith(Probe("probe.slot", slots: [slot]));
 
         Assert.True(built.IsFailure);

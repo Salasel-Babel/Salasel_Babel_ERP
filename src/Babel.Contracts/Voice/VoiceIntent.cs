@@ -25,8 +25,12 @@ namespace Babel.Contracts.Voice;
 /// رمز الحدث في مصفوفة الترحيل — إلزامي حين <see cref="VoiceLedgerEffect.Posts"/>،
 /// وفارغٌ فيما عداه. <b>ولا رقم حساب هنا بحال</b>.
 /// </param>
-/// <param name="NameAr">اسم النيّة بالعربية كما يُقرأ في الملخّص المرتدّ.</param>
-/// <param name="NameEn">اسمها بالإنجليزية.</param>
+/// <param name="NameAr">
+/// اسم النيّة بالعربية كما يُقرأ في الملخّص المرتدّ. <b>وهو السجلّ لا ترجمتُه</b>،
+/// ولا نصف إنجليزيّ بجانبه: زوج <c>ar</c>/<c>en</c> ثابت عاجزٌ بنيوياً عن اللغة
+/// الثالثة، ونصُّ ADR-0021 §6.3 بند 2 يمنع إدخال زوجٍ جديد في حقل عرض — وتفرضه
+/// القاعدة 14 بدل أن تُذكّر به. والترجمة صفٌّ حين تُطلب، لا عمود.
+/// </param>
 /// <param name="Phrases">
 /// عبارات الإطلاق كما تُنطق — <b>فصحى وعامّية خليجية معاً</b>، ومُجرَّدة من التشكيل.
 /// </param>
@@ -38,7 +42,6 @@ namespace Babel.Contracts.Voice;
 /// القرار الذي ينتظره مالك المنتج — <b>إلزامي</b> حين تكون الحال
 /// <see cref="VoiceIntentStatus.AwaitingOwnerDecision"/>، وفارغ فيما عداها.
 /// </param>
-/// <param name="OwnerDecisionEn">القرار نفسه بالإنجليزية.</param>
 public sealed record VoiceIntent(
     string Id,
     VoiceSection Section,
@@ -48,12 +51,10 @@ public sealed record VoiceIntent(
     VoiceLedgerEffect LedgerEffect,
     string? EventCode,
     string NameAr,
-    string NameEn,
     IReadOnlyList<string> Phrases,
     IReadOnlyList<VoiceSlot> Slots,
     bool ReadsPersonalData,
-    string? OwnerDecisionAr,
-    string? OwnerDecisionEn)
+    string? OwnerDecisionAr)
 {
     /// <summary>
     /// هل تحتاج تأكيداً صريحاً قبل التنفيذ؟ <b>مُشتقّة من الصنف لا مُعلَنة</b>:

@@ -20,8 +20,10 @@ namespace Babel.Ai.Voice;
 /// بيدين مشغولتين يسمع الجملة ولا يقرأ رمزاً.
 /// </param>
 /// <param name="SpokenCompany">اسم شركةٍ نُطق داخل الأمر، إن نُطق.</param>
-/// <param name="ReadbackAr">الملخّص المرتدّ بالعربية — يُقرأ ويُعرض معاً.</param>
-/// <param name="ReadbackEn">الملخّص بالإنجليزية.</param>
+/// <param name="ReadbackAr">
+/// الملخّص المرتدّ — يُقرأ ويُعرض معاً. <b>وواحدٌ بالعربية لا اثنان</b>: الملخّص نصّ
+/// عرض، والعربية سجلُّه، ولغةٌ ثالثة صفٌّ لا عمود (‏ADR-0021 · القاعدة 14).
+/// </param>
 /// <param name="ConfirmationToken">
 /// رمز التأكيد: صورةٌ نصّية حتمية للأمر بعينه. تأكيدٌ برمزٍ آخر يُرفض، فلا يُنفَّذ
 /// أمرٌ تغيّر بعد أن قُرئ على المستخدم.
@@ -33,7 +35,6 @@ public sealed record VoiceResolution(
     IReadOnlyList<Error> Faults,
     string? SpokenCompany,
     string ReadbackAr,
-    string ReadbackEn,
     string ConfirmationToken)
 {
     /// <summary>هل امتلأت كل الشرائح اللازمة؟</summary>

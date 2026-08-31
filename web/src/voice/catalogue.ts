@@ -36,9 +36,11 @@ export type VoiceSlotKind = "Text" | "Number" | "Money" | "Quantity" | "Date" | 
 export interface VoiceSlot {
   readonly name: string;
   readonly kind: VoiceSlotKind;
-  /** الاسم العربي — **هو السجلّ** لا ترجمته (ADR-0021). */
+  /**
+   * الاسم العربي — **هو السجلّ** لا ترجمته، ولا نصف إنجليزيّ بجانبه: زوج ar/en
+   * ثابت عاجزٌ بنيوياً عن اللغة الثالثة (ADR-0021 §6.3 · القاعدة 14).
+   */
   readonly nameAr: string;
-  readonly nameEn: string;
   readonly required: boolean;
   readonly cues: readonly string[];
   readonly choices: readonly string[];
@@ -57,7 +59,6 @@ export interface VoiceIntent {
   readonly requiresConfirmation: boolean;
   readonly readsPersonalData: boolean;
   readonly nameAr: string;
-  readonly nameEn: string;
   readonly phrases: readonly string[];
   readonly slots: readonly VoiceSlot[];
 }
@@ -84,7 +85,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
     "requiresConfirmation": false,
     "readsPersonalData": false,
     "nameAr": "رصيد عميل",
-    "nameEn": "Customer balance",
     "phrases": [
       "كم رصيد العميل",
       "رصيد العميل",
@@ -97,7 +97,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "customer",
         "kind": "Text",
         "nameAr": "العميل",
-        "nameEn": "Customer",
         "required": true,
         "cues": [
           "العميل",
@@ -120,7 +119,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
     "requiresConfirmation": true,
     "readsPersonalData": false,
     "nameAr": "سند قبض من عميل",
-    "nameEn": "Record a customer receipt",
     "phrases": [
       "سجل سند قبض",
       "سند قبض",
@@ -134,7 +132,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "customer",
         "kind": "Text",
         "nameAr": "العميل",
-        "nameEn": "Customer",
         "required": true,
         "cues": [
           "العميل",
@@ -148,7 +145,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "amount",
         "kind": "Money",
         "nameAr": "المبلغ المقبوض",
-        "nameEn": "Amount received",
         "required": true,
         "cues": [
           "بمبلغ",
@@ -163,7 +159,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "method",
         "kind": "Choice",
         "nameAr": "طريقة القبض",
-        "nameEn": "Receipt method",
         "required": true,
         "cues": [],
         "choices": [
@@ -177,7 +172,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "receivedOn",
         "kind": "Date",
         "nameAr": "تاريخ القبض",
-        "nameEn": "Received on",
         "required": true,
         "cues": [],
         "choices": []
@@ -195,7 +189,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
     "requiresConfirmation": true,
     "readsPersonalData": false,
     "nameAr": "التقاط فاتورة مصروف من مورد",
-    "nameEn": "Capture a supplier expense bill",
     "phrases": [
       "سجل فاتورة مصروف",
       "قيد فاتورة مصروف",
@@ -209,7 +202,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "supplier",
         "kind": "Text",
         "nameAr": "المورد",
-        "nameEn": "Supplier",
         "required": true,
         "cues": [
           "من",
@@ -224,7 +216,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "amount",
         "kind": "Money",
         "nameAr": "الإجمالي شامل الضريبة",
-        "nameEn": "Gross total",
         "required": true,
         "cues": [
           "بمبلغ",
@@ -242,7 +233,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "taxRate",
         "kind": "Number",
         "nameAr": "نسبة الضريبة",
-        "nameEn": "Tax rate",
         "required": false,
         "cues": [
           "ضريبة",
@@ -256,7 +246,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "billNumber",
         "kind": "Code",
         "nameAr": "رقم الفاتورة",
-        "nameEn": "Bill number",
         "required": false,
         "cues": [
           "رقم",
@@ -269,7 +258,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "issuedOn",
         "kind": "Date",
         "nameAr": "تاريخ الإصدار",
-        "nameEn": "Issued on",
         "required": true,
         "cues": [],
         "choices": []
@@ -287,7 +275,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
     "requiresConfirmation": true,
     "readsPersonalData": false,
     "nameAr": "سند صرف لمورد",
-    "nameEn": "Record a supplier payment",
     "phrases": [
       "سجل سند صرف",
       "سند صرف",
@@ -301,7 +288,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "supplier",
         "kind": "Text",
         "nameAr": "المورد",
-        "nameEn": "Supplier",
         "required": true,
         "cues": [
           "للمورد",
@@ -316,7 +302,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "amount",
         "kind": "Money",
         "nameAr": "المبلغ المدفوع",
-        "nameEn": "Amount paid",
         "required": true,
         "cues": [
           "بمبلغ",
@@ -331,7 +316,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "method",
         "kind": "Choice",
         "nameAr": "طريقة الدفع",
-        "nameEn": "Payment method",
         "required": true,
         "cues": [],
         "choices": [
@@ -345,7 +329,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "paidOn",
         "kind": "Date",
         "nameAr": "تاريخ الصرف",
-        "nameEn": "Paid on",
         "required": true,
         "cues": [],
         "choices": []
@@ -363,7 +346,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
     "requiresConfirmation": true,
     "readsPersonalData": false,
     "nameAr": "قياس بندٍ في مستخلص عميل",
-    "nameEn": "Measure a client certificate line",
     "phrases": [
       "سجل مستخلص عميل",
       "مستخلص عميل",
@@ -377,7 +359,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "contract",
         "kind": "Text",
         "nameAr": "العقد",
-        "nameEn": "Contract",
         "required": true,
         "cues": [
           "عقد",
@@ -391,7 +372,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "boqItem",
         "kind": "Text",
         "nameAr": "بند جدول الكميات",
-        "nameEn": "BoQ item",
         "required": true,
         "cues": [
           "بند",
@@ -405,7 +385,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "quantity",
         "kind": "Quantity",
         "nameAr": "الكمية المنفذة",
-        "nameEn": "Executed quantity",
         "required": true,
         "cues": [
           "كمية",
@@ -420,7 +399,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "measuredOn",
         "kind": "Date",
         "nameAr": "تاريخ القياس",
-        "nameEn": "Measured on",
         "required": true,
         "cues": [],
         "choices": []
@@ -438,7 +416,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
     "requiresConfirmation": false,
     "readsPersonalData": false,
     "nameAr": "موقف العقد",
-    "nameEn": "Contract position",
     "phrases": [
       "كم موقف العقد",
       "موقف العقد",
@@ -451,7 +428,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "contract",
         "kind": "Text",
         "nameAr": "العقد",
-        "nameEn": "Contract",
         "required": true,
         "cues": [
           "عقد",
@@ -473,7 +449,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
     "requiresConfirmation": true,
     "readsPersonalData": false,
     "nameAr": "دفعة مقدمة لمقاول من الباطن",
-    "nameEn": "Pay a subcontractor advance",
     "phrases": [
       "دفعة مقدمة لمقاول",
       "سلفة مقاول من الباطن",
@@ -485,7 +460,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "subcontractor",
         "kind": "Text",
         "nameAr": "المقاول من الباطن",
-        "nameEn": "Subcontractor",
         "required": true,
         "cues": [
           "للمقاول",
@@ -499,7 +473,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "amount",
         "kind": "Money",
         "nameAr": "المبلغ",
-        "nameEn": "Amount",
         "required": true,
         "cues": [
           "بمبلغ",
@@ -513,7 +486,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "paidOn",
         "kind": "Date",
         "nameAr": "تاريخ الصرف",
-        "nameEn": "Paid on",
         "required": true,
         "cues": [],
         "choices": []
@@ -531,7 +503,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
     "requiresConfirmation": true,
     "readsPersonalData": false,
     "nameAr": "قياس بندٍ في مستخلص مقاول من الباطن",
-    "nameEn": "Measure a subcontractor certificate line",
     "phrases": [
       "مستخلص مقاول من الباطن",
       "مستخلص من الباطن",
@@ -543,7 +514,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "subcontract",
         "kind": "Text",
         "nameAr": "عقد الباطن",
-        "nameEn": "Subcontract",
         "required": true,
         "cues": [
           "عقد",
@@ -556,7 +526,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "boqItem",
         "kind": "Text",
         "nameAr": "بند جدول الكميات",
-        "nameEn": "BoQ item",
         "required": true,
         "cues": [
           "بند",
@@ -569,7 +538,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "quantity",
         "kind": "Quantity",
         "nameAr": "الكمية المنفذة",
-        "nameEn": "Executed quantity",
         "required": true,
         "cues": [
           "كمية",
@@ -583,7 +551,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "measuredOn",
         "kind": "Date",
         "nameAr": "تاريخ القياس",
-        "nameEn": "Measured on",
         "required": true,
         "cues": [],
         "choices": []
@@ -601,7 +568,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
     "requiresConfirmation": false,
     "readsPersonalData": true,
     "nameAr": "بطاقة موظف — مُقنَّعة",
-    "nameEn": "Employee card — masked",
     "phrases": [
       "بيانات الموظف",
       "كرت الموظف",
@@ -614,7 +580,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "employee",
         "kind": "Text",
         "nameAr": "الموظف",
-        "nameEn": "Employee",
         "required": true,
         "cues": [
           "الموظف",
@@ -636,7 +601,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
     "requiresConfirmation": true,
     "readsPersonalData": false,
     "nameAr": "سلفة موظف",
-    "nameEn": "Employee advance",
     "phrases": [
       "سجل سلفة موظف",
       "سلفة للموظف",
@@ -649,7 +613,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "employee",
         "kind": "Text",
         "nameAr": "الموظف",
-        "nameEn": "Employee",
         "required": true,
         "cues": [
           "للموظف",
@@ -663,7 +626,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "amount",
         "kind": "Money",
         "nameAr": "مبلغ السلفة",
-        "nameEn": "Advance amount",
         "required": true,
         "cues": [
           "بمبلغ",
@@ -677,7 +639,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "instalments",
         "kind": "Number",
         "nameAr": "عدد الأقساط",
-        "nameEn": "Instalments",
         "required": false,
         "cues": [
           "اقساط",
@@ -690,7 +651,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "grantedOn",
         "kind": "Date",
         "nameAr": "تاريخ الصرف",
-        "nameEn": "Granted on",
         "required": true,
         "cues": [],
         "choices": []
@@ -708,7 +668,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
     "requiresConfirmation": true,
     "readsPersonalData": false,
     "nameAr": "خصم على موظف",
-    "nameEn": "Employee deduction",
     "phrases": [
       "سجل خصم على الموظف",
       "خصم على الموظف",
@@ -720,7 +679,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "employee",
         "kind": "Text",
         "nameAr": "الموظف",
-        "nameEn": "Employee",
         "required": true,
         "cues": [
           "الموظف",
@@ -733,7 +691,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "amount",
         "kind": "Money",
         "nameAr": "مبلغ الخصم",
-        "nameEn": "Deduction amount",
         "required": true,
         "cues": [
           "بمبلغ",
@@ -747,7 +704,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "effectiveOn",
         "kind": "Date",
         "nameAr": "تاريخ الاستحقاق",
-        "nameEn": "Effective on",
         "required": true,
         "cues": [],
         "choices": []
@@ -765,7 +721,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
     "requiresConfirmation": true,
     "readsPersonalData": false,
     "nameAr": "تسوية جرد",
-    "nameEn": "Stock count adjustment",
     "phrases": [
       "سجل جرد",
       "تسوية جرد",
@@ -778,7 +733,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "item",
         "kind": "Text",
         "nameAr": "الصنف",
-        "nameEn": "Item",
         "required": true,
         "cues": [
           "الصنف",
@@ -792,7 +746,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "quantity",
         "kind": "Quantity",
         "nameAr": "الكمية الفعلية",
-        "nameEn": "Counted quantity",
         "required": true,
         "cues": [
           "كمية",
@@ -808,7 +761,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "warehouse",
         "kind": "Text",
         "nameAr": "المستودع",
-        "nameEn": "Warehouse",
         "required": true,
         "cues": [
           "المستودع",
@@ -822,7 +774,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "location",
         "kind": "Code",
         "nameAr": "الموقع",
-        "nameEn": "Location",
         "required": false,
         "cues": [
           "الموقع",
@@ -834,7 +785,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "countedOn",
         "kind": "Date",
         "nameAr": "تاريخ الجرد",
-        "nameEn": "Counted on",
         "required": true,
         "cues": [],
         "choices": []
@@ -852,7 +802,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
     "requiresConfirmation": true,
     "readsPersonalData": false,
     "nameAr": "صرف مواد لمشروع",
-    "nameEn": "Issue materials to a project",
     "phrases": [
       "اصرف مواد للمشروع",
       "صرف مواد",
@@ -864,7 +813,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "item",
         "kind": "Text",
         "nameAr": "الصنف",
-        "nameEn": "Item",
         "required": true,
         "cues": [
           "الصنف",
@@ -877,7 +825,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "quantity",
         "kind": "Quantity",
         "nameAr": "الكمية المصروفة",
-        "nameEn": "Issued quantity",
         "required": true,
         "cues": [
           "كمية",
@@ -891,7 +838,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "warehouse",
         "kind": "Text",
         "nameAr": "المستودع",
-        "nameEn": "Warehouse",
         "required": true,
         "cues": [
           "المستودع",
@@ -905,7 +851,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "project",
         "kind": "Text",
         "nameAr": "المشروع",
-        "nameEn": "Project",
         "required": true,
         "cues": [
           "للمشروع",
@@ -918,7 +863,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "issuedOn",
         "kind": "Date",
         "nameAr": "تاريخ الصرف",
-        "nameEn": "Issued on",
         "required": true,
         "cues": [],
         "choices": []
@@ -936,7 +880,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
     "requiresConfirmation": true,
     "readsPersonalData": false,
     "nameAr": "تسكين قطعٍ بين موقعين",
-    "nameEn": "Bin-to-bin placement",
     "phrases": [
       "تسكين القطع",
       "سكن الصنف",
@@ -949,7 +892,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "item",
         "kind": "Text",
         "nameAr": "الصنف",
-        "nameEn": "Item",
         "required": true,
         "cues": [
           "الصنف",
@@ -962,7 +904,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "quantity",
         "kind": "Quantity",
         "nameAr": "الكمية",
-        "nameEn": "Quantity",
         "required": true,
         "cues": [
           "كمية",
@@ -976,7 +917,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "warehouse",
         "kind": "Text",
         "nameAr": "المستودع",
-        "nameEn": "Warehouse",
         "required": true,
         "cues": [
           "المستودع",
@@ -989,7 +929,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "fromLocation",
         "kind": "Code",
         "nameAr": "الموقع المصدر",
-        "nameEn": "From location",
         "required": true,
         "cues": [
           "من موقع",
@@ -1003,7 +942,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "toLocation",
         "kind": "Code",
         "nameAr": "الموقع الهدف",
-        "nameEn": "To location",
         "required": true,
         "cues": [
           "الى موقع",
@@ -1027,7 +965,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
     "requiresConfirmation": false,
     "readsPersonalData": false,
     "nameAr": "رصيد صنف",
-    "nameEn": "Item stock balance",
     "phrases": [
       "كم رصيد الصنف",
       "رصيد الصنف",
@@ -1040,7 +977,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "item",
         "kind": "Text",
         "nameAr": "الصنف",
-        "nameEn": "Item",
         "required": true,
         "cues": [
           "الصنف",
@@ -1053,7 +989,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "warehouse",
         "kind": "Text",
         "nameAr": "المستودع",
-        "nameEn": "Warehouse",
         "required": false,
         "cues": [
           "المستودع",
@@ -1076,7 +1011,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
     "requiresConfirmation": true,
     "readsPersonalData": false,
     "nameAr": "تحويل مخزني بين مستودعين",
-    "nameEn": "Transfer stock between warehouses",
     "phrases": [
       "تحويل بين مستودعين",
       "حول من مستودع",
@@ -1088,7 +1022,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "item",
         "kind": "Text",
         "nameAr": "الصنف",
-        "nameEn": "Item",
         "required": true,
         "cues": [
           "الصنف",
@@ -1101,7 +1034,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "quantity",
         "kind": "Quantity",
         "nameAr": "الكمية المحوَّلة",
-        "nameEn": "Transferred quantity",
         "required": true,
         "cues": [
           "كمية",
@@ -1115,7 +1047,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "fromWarehouse",
         "kind": "Text",
         "nameAr": "المستودع المرسِل",
-        "nameEn": "From warehouse",
         "required": true,
         "cues": [
           "من مستودع",
@@ -1128,7 +1059,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "toWarehouse",
         "kind": "Text",
         "nameAr": "المستودع المستقبِل",
-        "nameEn": "To warehouse",
         "required": true,
         "cues": [
           "الى مستودع",
@@ -1142,7 +1072,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "movedOn",
         "kind": "Date",
         "nameAr": "تاريخ التحويل",
-        "nameEn": "Moved on",
         "required": true,
         "cues": [],
         "choices": []
@@ -1160,7 +1089,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
     "requiresConfirmation": true,
     "readsPersonalData": false,
     "nameAr": "مصروف صيانة على الشركة",
-    "nameEn": "Maintenance expense borne by the company",
     "phrases": [
       "سجل مصروف صيانة",
       "صيانة على الشركة",
@@ -1172,7 +1100,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "unit",
         "kind": "Code",
         "nameAr": "الوحدة",
-        "nameEn": "Unit",
         "required": true,
         "cues": [
           "للوحدة",
@@ -1185,7 +1112,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "amount",
         "kind": "Money",
         "nameAr": "قيمة الصيانة",
-        "nameEn": "Maintenance amount",
         "required": true,
         "cues": [
           "بمبلغ",
@@ -1199,7 +1125,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "spentOn",
         "kind": "Date",
         "nameAr": "تاريخ الصرف",
-        "nameEn": "Spent on",
         "required": true,
         "cues": [],
         "choices": []
@@ -1217,7 +1142,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
     "requiresConfirmation": false,
     "readsPersonalData": false,
     "nameAr": "متأخرات مستأجر",
-    "nameEn": "Tenant arrears",
     "phrases": [
       "كم متاخرات المستاجر",
       "متاخرات المستاجر",
@@ -1229,7 +1153,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "lessee",
         "kind": "Text",
         "nameAr": "المستأجر",
-        "nameEn": "Lessee",
         "required": true,
         "cues": [
           "المستاجر",
@@ -1251,7 +1174,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
     "requiresConfirmation": true,
     "readsPersonalData": false,
     "nameAr": "تحصيل من مستأجر",
-    "nameEn": "Record a tenant collection",
     "phrases": [
       "سجل تحصيل من مستاجر",
       "قبضت من المستاجر",
@@ -1264,7 +1186,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "lessee",
         "kind": "Text",
         "nameAr": "المستأجر",
-        "nameEn": "Lessee",
         "required": true,
         "cues": [
           "من المستاجر",
@@ -1278,7 +1199,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "amount",
         "kind": "Money",
         "nameAr": "المبلغ المحصَّل",
-        "nameEn": "Amount collected",
         "required": true,
         "cues": [
           "بمبلغ",
@@ -1292,7 +1212,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "method",
         "kind": "Choice",
         "nameAr": "طريقة التحصيل",
-        "nameEn": "Collection method",
         "required": true,
         "cues": [],
         "choices": [
@@ -1306,7 +1225,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "receivedOn",
         "kind": "Date",
         "nameAr": "تاريخ التحصيل",
-        "nameEn": "Received on",
         "required": true,
         "cues": [],
         "choices": []
@@ -1324,7 +1242,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
     "requiresConfirmation": false,
     "readsPersonalData": false,
     "nameAr": "حالة وحدة",
-    "nameEn": "Unit status",
     "phrases": [
       "حالة الوحدة",
       "وش وضع الوحدة",
@@ -1336,7 +1253,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
         "name": "unit",
         "kind": "Code",
         "nameAr": "الوحدة",
-        "nameEn": "Unit",
         "required": true,
         "cues": [
           "للوحدة",

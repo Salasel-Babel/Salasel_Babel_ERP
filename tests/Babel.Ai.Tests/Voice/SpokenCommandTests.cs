@@ -82,7 +82,6 @@ public sealed class SpokenCommandTests
             Assert.Equal(declaredIntent.RequiresConfirmation, intent.RequiresConfirmation);
             Assert.Equal(declaredIntent.ReadsPersonalData, intent.ReadsPersonalData);
             Assert.Equal(declaredIntent.NameAr, intent.NameAr);
-            Assert.Equal(declaredIntent.NameEn, intent.NameEn);
             Assert.Equal(declaredIntent.Phrases, intent.Phrases);
 
             foreach (VectorSlot declaredSlot in declaredIntent.Slots)
@@ -90,7 +89,6 @@ public sealed class SpokenCommandTests
                 Contracts.Voice.VoiceSlot slot = Assert.Single(intent.Slots, candidate => candidate.Name == declaredSlot.Name);
                 Assert.Equal(declaredSlot.Kind, slot.Kind.ToString());
                 Assert.Equal(declaredSlot.NameAr, slot.NameAr);
-                Assert.Equal(declaredSlot.NameEn, slot.NameEn);
                 Assert.Equal(declaredSlot.Required, slot.Required);
                 Assert.Equal(declaredSlot.Cues, slot.Cues);
                 Assert.Equal(declaredSlot.Choices, slot.Choices);

@@ -133,7 +133,6 @@ public static class SpokenCommandReader
         string? company = ReadCompany(words);
 
         string readbackAr = VoiceReadback.Arabic(intent, values);
-        string readbackEn = VoiceReadback.English(intent, values);
 
         // ‏**الحارس على ما يُنطَق نفسه**: قيمةٌ شخصية تسلّلت إلى الملخّص تُرفض هنا،
         // لا في الطبقة التي تنطقه — فالطبقة قد تُنسى، وهذه لا تُتجاوَز.
@@ -150,7 +149,6 @@ public static class SpokenCommandReader
             faults,
             company,
             readbackAr,
-            readbackEn,
             VoiceReadback.Token(intent, values)));
     }
 

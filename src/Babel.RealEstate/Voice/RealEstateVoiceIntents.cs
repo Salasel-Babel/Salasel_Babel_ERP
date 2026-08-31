@@ -48,22 +48,20 @@ public sealed class RealEstateVoiceIntents : IVoiceIntentCatalogue
             VoiceLedgerEffect.Posts,
             "realestate.collection.received",
             "تحصيل من مستأجر",
-            "Record a tenant collection",
             [
                 "سجل تحصيل من مستاجر", "قبضت من المستاجر", "تحصيل ايجار", "استلمت ايجار",
                 "حصلت من المستاجر",
             ],
             [
-                new VoiceSlot("lessee", VoiceSlotKind.Text, "المستأجر", "Lessee", true,
+                new VoiceSlot("lessee", VoiceSlotKind.Text, "المستأجر", true,
                     ["من المستاجر", "المستاجر", "مستاجر", "من"], []),
-                new VoiceSlot("amount", VoiceSlotKind.Money, "المبلغ المحصَّل", "Amount collected", true,
+                new VoiceSlot("amount", VoiceSlotKind.Money, "المبلغ المحصَّل", true,
                     ["بمبلغ", "مبلغ", "بقيمة", "قيمته"], []),
-                new VoiceSlot("method", VoiceSlotKind.Choice, "طريقة التحصيل", "Collection method", true,
+                new VoiceSlot("method", VoiceSlotKind.Choice, "طريقة التحصيل", true,
                     [], ["نقد", "تحويل", "شيك", "شبكة"]),
-                new VoiceSlot("receivedOn", VoiceSlotKind.Date, "تاريخ التحصيل", "Received on", true, [], []),
+                new VoiceSlot("receivedOn", VoiceSlotKind.Date, "تاريخ التحصيل", true, [], []),
             ],
             false,
-            null,
             null),
 
         new VoiceIntent(
@@ -75,19 +73,17 @@ public sealed class RealEstateVoiceIntents : IVoiceIntentCatalogue
             VoiceLedgerEffect.Posts,
             "realestate.maintenance.company_expense",
             "مصروف صيانة على الشركة",
-            "Maintenance expense borne by the company",
             [
                 "سجل مصروف صيانة", "صيانة على الشركة", "فاتورة صيانة", "مصروف صيانة",
             ],
             [
-                new VoiceSlot("unit", VoiceSlotKind.Code, "الوحدة", "Unit", true,
+                new VoiceSlot("unit", VoiceSlotKind.Code, "الوحدة", true,
                     ["للوحدة", "الوحدة", "وحدة"], []),
-                new VoiceSlot("amount", VoiceSlotKind.Money, "قيمة الصيانة", "Maintenance amount", true,
+                new VoiceSlot("amount", VoiceSlotKind.Money, "قيمة الصيانة", true,
                     ["بمبلغ", "مبلغ", "بقيمة", "قيمتها"], []),
-                new VoiceSlot("spentOn", VoiceSlotKind.Date, "تاريخ الصرف", "Spent on", true, [], []),
+                new VoiceSlot("spentOn", VoiceSlotKind.Date, "تاريخ الصرف", true, [], []),
             ],
             false,
-            null,
             null),
 
         new VoiceIntent(
@@ -99,17 +95,15 @@ public sealed class RealEstateVoiceIntents : IVoiceIntentCatalogue
             VoiceLedgerEffect.None,
             null,
             "متأخرات مستأجر",
-            "Tenant arrears",
             [
                 "كم متاخرات المستاجر", "متاخرات المستاجر", "كم على المستاجر",
                 "وش متاخرات المستاجر",
             ],
             [
-                new VoiceSlot("lessee", VoiceSlotKind.Text, "المستأجر", "Lessee", true,
+                new VoiceSlot("lessee", VoiceSlotKind.Text, "المستأجر", true,
                     ["المستاجر", "مستاجر", "على"], []),
             ],
             false,
-            null,
             null),
 
         new VoiceIntent(
@@ -121,16 +115,14 @@ public sealed class RealEstateVoiceIntents : IVoiceIntentCatalogue
             VoiceLedgerEffect.None,
             null,
             "حالة وحدة",
-            "Unit status",
             [
                 "حالة الوحدة", "وش وضع الوحدة", "الوحدة مؤجرة", "وضع الوحدة",
             ],
             [
-                new VoiceSlot("unit", VoiceSlotKind.Code, "الوحدة", "Unit", true,
+                new VoiceSlot("unit", VoiceSlotKind.Code, "الوحدة", true,
                     ["للوحدة", "الوحدة", "وحدة"], []),
             ],
             false,
-            null,
             null),
     ];
 }

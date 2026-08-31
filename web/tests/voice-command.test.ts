@@ -38,9 +38,8 @@ interface Vectors {
     requiresConfirmation: boolean;
     readsPersonalData: boolean;
     nameAr: string;
-    nameEn: string;
     phrases: string[];
-    slots: { name: string; kind: string; nameAr: string; nameEn: string; required: boolean; cues: string[]; choices: string[] }[];
+    slots: { name: string; kind: string; nameAr: string; required: boolean; cues: string[]; choices: string[] }[];
   }[];
   utterances: { transcript: string; intent: string; slots: Record<string, string>; units?: Record<string, string> }[];
   missing: { transcript: string; intent: string; missing: string[]; faults?: string[] }[];

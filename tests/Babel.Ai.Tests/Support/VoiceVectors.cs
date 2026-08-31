@@ -13,8 +13,7 @@ namespace Babel.Ai.Tests.Support;
 /// <param name="EventCode">رمز الحدث.</param>
 /// <param name="RequiresConfirmation">هل تحتاج تأكيداً؟</param>
 /// <param name="ReadsPersonalData">هل تقرأ بياناً شخصياً؟</param>
-/// <param name="NameAr">الاسم العربي — وهو السجلّ لا ترجمته (‏ADR-0021).</param>
-/// <param name="NameEn">الاسم الإنجليزي.</param>
+/// <param name="NameAr">الاسم العربي — وهو السجلّ لا ترجمته (‏ADR-0021)، ولا نصف إنجليزيّ بجانبه.</param>
 /// <param name="Phrases">عبارات الإطلاق.</param>
 /// <param name="Slots">الشرائح.</param>
 internal sealed record VectorIntent(
@@ -28,7 +27,6 @@ internal sealed record VectorIntent(
     bool RequiresConfirmation,
     bool ReadsPersonalData,
     string NameAr,
-    string NameEn,
     IReadOnlyList<string> Phrases,
     IReadOnlyList<VectorSlot> Slots);
 
@@ -36,7 +34,6 @@ internal sealed record VectorIntent(
 /// <param name="Name">الاسم.</param>
 /// <param name="Kind">الصنف.</param>
 /// <param name="NameAr">اسمها العربي.</param>
-/// <param name="NameEn">اسمها الإنجليزي.</param>
 /// <param name="Required">هل هي لازمة؟</param>
 /// <param name="Cues">الدلائل.</param>
 /// <param name="Choices">القائمة المغلقة.</param>
@@ -44,7 +41,6 @@ internal sealed record VectorSlot(
     string Name,
     string Kind,
     string NameAr,
-    string NameEn,
     bool Required,
     IReadOnlyList<string> Cues,
     IReadOnlyList<string> Choices);

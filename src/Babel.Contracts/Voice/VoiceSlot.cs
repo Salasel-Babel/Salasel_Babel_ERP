@@ -10,8 +10,11 @@ namespace Babel.Contracts.Voice;
 /// </summary>
 /// <param name="Name">اسم الشريحة — مفتاحٌ لاتيني ثابت تعتمد عليه الشيفرة والواجهة.</param>
 /// <param name="Kind">صنفها.</param>
-/// <param name="NameAr">اسمها العربي كما يُقرأ على المستخدم.</param>
-/// <param name="NameEn">اسمها الإنجليزي.</param>
+/// <param name="NameAr">
+/// اسمها العربي كما يُقرأ على المستخدم. <b>وهو السجلّ لا ترجمتُه</b>، ولا نصف
+/// إنجليزيّ بجانبه: زوج <c>ar</c>/<c>en</c> ثابت عاجزٌ بنيوياً عن اللغة الثالثة
+/// (‏ADR-0021 §6.3 بند 2 · القاعدة 14). والترجمة صفٌّ حين تُطلب، لا عمود.
+/// </param>
 /// <param name="Required">هل غيابُها رفضٌ؟ الشريحة غير اللازمة تُترك فارغة ولا تُخترَع.</param>
 /// <param name="Cues">
 /// كلمات دالّة تسبق القيمة في الكلام — «من» و«للمورد» و«بمبلغ» و«حقّ». وتُقرأ
@@ -24,7 +27,6 @@ public sealed record VoiceSlot(
     string Name,
     VoiceSlotKind Kind,
     string NameAr,
-    string NameEn,
     bool Required,
     IReadOnlyList<string> Cues,
     IReadOnlyList<string> Choices);

@@ -38,23 +38,21 @@ public sealed class InventoryVoiceIntents : IVoiceIntentCatalogue
             VoiceLedgerEffect.Posts,
             "inventory.count_adjustment.posted",
             "تسوية جرد",
-            "Stock count adjustment",
             [
                 "سجل جرد", "تسوية جرد", "الجرد الفعلي", "عديت الصنف", "جرد الصنف",
             ],
             [
-                new VoiceSlot("item", VoiceSlotKind.Text, "الصنف", "Item", true,
+                new VoiceSlot("item", VoiceSlotKind.Text, "الصنف", true,
                     ["الصنف", "صنف", "للصنف", "من"], []),
-                new VoiceSlot("quantity", VoiceSlotKind.Quantity, "الكمية الفعلية", "Counted quantity", true,
+                new VoiceSlot("quantity", VoiceSlotKind.Quantity, "الكمية الفعلية", true,
                     ["كمية", "الكمية", "عدد", "العدد", "بمقدار", "لقيت"], []),
-                new VoiceSlot("warehouse", VoiceSlotKind.Text, "المستودع", "Warehouse", true,
+                new VoiceSlot("warehouse", VoiceSlotKind.Text, "المستودع", true,
                     ["المستودع", "مستودع", "المخزن", "مخزن"], []),
-                new VoiceSlot("location", VoiceSlotKind.Code, "الموقع", "Location", false,
+                new VoiceSlot("location", VoiceSlotKind.Code, "الموقع", false,
                     ["الموقع", "موقع"], []),
-                new VoiceSlot("countedOn", VoiceSlotKind.Date, "تاريخ الجرد", "Counted on", true, [], []),
+                new VoiceSlot("countedOn", VoiceSlotKind.Date, "تاريخ الجرد", true, [], []),
             ],
             false,
-            null,
             null),
 
         new VoiceIntent(
@@ -66,23 +64,21 @@ public sealed class InventoryVoiceIntents : IVoiceIntentCatalogue
             VoiceLedgerEffect.Posts,
             "inventory.issue_to_project",
             "صرف مواد لمشروع",
-            "Issue materials to a project",
             [
                 "اصرف مواد للمشروع", "صرف مواد", "سجل صرف مواد لمشروع", "طلعت مواد للمشروع",
             ],
             [
-                new VoiceSlot("item", VoiceSlotKind.Text, "الصنف", "Item", true,
+                new VoiceSlot("item", VoiceSlotKind.Text, "الصنف", true,
                     ["الصنف", "صنف", "للصنف"], []),
-                new VoiceSlot("quantity", VoiceSlotKind.Quantity, "الكمية المصروفة", "Issued quantity", true,
+                new VoiceSlot("quantity", VoiceSlotKind.Quantity, "الكمية المصروفة", true,
                     ["كمية", "الكمية", "عدد", "بمقدار"], []),
-                new VoiceSlot("warehouse", VoiceSlotKind.Text, "المستودع", "Warehouse", true,
+                new VoiceSlot("warehouse", VoiceSlotKind.Text, "المستودع", true,
                     ["المستودع", "مستودع", "المخزن", "مخزن"], []),
-                new VoiceSlot("project", VoiceSlotKind.Text, "المشروع", "Project", true,
+                new VoiceSlot("project", VoiceSlotKind.Text, "المشروع", true,
                     ["للمشروع", "المشروع", "مشروع"], []),
-                new VoiceSlot("issuedOn", VoiceSlotKind.Date, "تاريخ الصرف", "Issued on", true, [], []),
+                new VoiceSlot("issuedOn", VoiceSlotKind.Date, "تاريخ الصرف", true, [], []),
             ],
             false,
-            null,
             null),
 
         new VoiceIntent(
@@ -94,24 +90,22 @@ public sealed class InventoryVoiceIntents : IVoiceIntentCatalogue
             VoiceLedgerEffect.Posts,
             "inventory.transfer.between_warehouses",
             "تحويل مخزني بين مستودعين",
-            "Transfer stock between warehouses",
             [
                 "تحويل بين مستودعين", "حول من مستودع", "نقل بضاعة بين المستودعات",
                 "تحويل مخزني",
             ],
             [
-                new VoiceSlot("item", VoiceSlotKind.Text, "الصنف", "Item", true,
+                new VoiceSlot("item", VoiceSlotKind.Text, "الصنف", true,
                     ["الصنف", "صنف", "للصنف"], []),
-                new VoiceSlot("quantity", VoiceSlotKind.Quantity, "الكمية المحوَّلة", "Transferred quantity", true,
+                new VoiceSlot("quantity", VoiceSlotKind.Quantity, "الكمية المحوَّلة", true,
                     ["كمية", "الكمية", "عدد", "بمقدار"], []),
-                new VoiceSlot("fromWarehouse", VoiceSlotKind.Text, "المستودع المرسِل", "From warehouse", true,
+                new VoiceSlot("fromWarehouse", VoiceSlotKind.Text, "المستودع المرسِل", true,
                     ["من مستودع", "من المستودع", "من مخزن"], []),
-                new VoiceSlot("toWarehouse", VoiceSlotKind.Text, "المستودع المستقبِل", "To warehouse", true,
+                new VoiceSlot("toWarehouse", VoiceSlotKind.Text, "المستودع المستقبِل", true,
                     ["الى مستودع", "الى المستودع", "لمستودع", "الى مخزن"], []),
-                new VoiceSlot("movedOn", VoiceSlotKind.Date, "تاريخ التحويل", "Moved on", true, [], []),
+                new VoiceSlot("movedOn", VoiceSlotKind.Date, "تاريخ التحويل", true, [], []),
             ],
             false,
-            null,
             null),
 
         new VoiceIntent(
@@ -123,20 +117,19 @@ public sealed class InventoryVoiceIntents : IVoiceIntentCatalogue
             VoiceLedgerEffect.None,
             null,
             "تسكين قطعٍ بين موقعين",
-            "Bin-to-bin placement",
             [
                 "تسكين القطع", "سكن الصنف", "تسكين في الموقع", "رص الصنف", "تسكين",
             ],
             [
-                new VoiceSlot("item", VoiceSlotKind.Text, "الصنف", "Item", true,
+                new VoiceSlot("item", VoiceSlotKind.Text, "الصنف", true,
                     ["الصنف", "صنف", "للصنف"], []),
-                new VoiceSlot("quantity", VoiceSlotKind.Quantity, "الكمية", "Quantity", true,
+                new VoiceSlot("quantity", VoiceSlotKind.Quantity, "الكمية", true,
                     ["كمية", "الكمية", "عدد", "بمقدار"], []),
-                new VoiceSlot("warehouse", VoiceSlotKind.Text, "المستودع", "Warehouse", true,
+                new VoiceSlot("warehouse", VoiceSlotKind.Text, "المستودع", true,
                     ["المستودع", "مستودع", "المخزن"], []),
-                new VoiceSlot("fromLocation", VoiceSlotKind.Code, "الموقع المصدر", "From location", true,
+                new VoiceSlot("fromLocation", VoiceSlotKind.Code, "الموقع المصدر", true,
                     ["من موقع", "من الموقع", "من رف", "من الرف"], []),
-                new VoiceSlot("toLocation", VoiceSlotKind.Code, "الموقع الهدف", "To location", true,
+                new VoiceSlot("toLocation", VoiceSlotKind.Code, "الموقع الهدف", true,
                     ["الى موقع", "الى الموقع", "الى رف", "الى الرف", "لموقع"], []),
             ],
             false,
@@ -145,11 +138,7 @@ public sealed class InventoryVoiceIntents : IVoiceIntentCatalogue
             + "فنقلُ كمّيةٍ بين موقعين داخل المستودع نفسه لا يُعبَّر عنه بمستندٍ واحد. "
             + "والقرار المطلوب من مالك المنتج: أيُفتح مستند «تسكين» يحمل موقعَي مصدرٍ ووجهة "
             + "في مستندٍ واحد، أم يُقبل مستندان مترابطان تحت هوية ترحيلٍ واحدة؟ "
-            + "ويترتّب على الجواب هل للتسكين أثرٌ في الدفتر أصلاً حين يكون الحسابان واحداً.",
-            "The published surface emits a stock movement with a single location, not two, so a "
-            + "bin-to-bin move inside one warehouse cannot be expressed as one document. The owner "
-            + "must decide: one placement document carrying source and target locations, or two "
-            + "linked documents under a single posting identity."),
+            + "ويترتّب على الجواب هل للتسكين أثرٌ في الدفتر أصلاً حين يكون الحسابان واحداً."),
 
         new VoiceIntent(
             "inventory.stock_balance.query",
@@ -160,19 +149,17 @@ public sealed class InventoryVoiceIntents : IVoiceIntentCatalogue
             VoiceLedgerEffect.None,
             null,
             "رصيد صنف",
-            "Item stock balance",
             [
                 "كم رصيد الصنف", "رصيد الصنف", "كم عندي من الصنف", "وش رصيد الصنف",
                 "كم باقي من الصنف",
             ],
             [
-                new VoiceSlot("item", VoiceSlotKind.Text, "الصنف", "Item", true,
+                new VoiceSlot("item", VoiceSlotKind.Text, "الصنف", true,
                     ["الصنف", "صنف", "من"], []),
-                new VoiceSlot("warehouse", VoiceSlotKind.Text, "المستودع", "Warehouse", false,
+                new VoiceSlot("warehouse", VoiceSlotKind.Text, "المستودع", false,
                     ["المستودع", "مستودع", "المخزن", "مخزن"], []),
             ],
             false,
-            null,
             null),
     ];
 }

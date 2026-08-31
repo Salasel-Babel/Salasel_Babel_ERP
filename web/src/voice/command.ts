@@ -37,8 +37,11 @@ export interface VoiceResolution {
   /** رموز أعطالٍ وقعت أثناء القراءة — تُعرض ولا تُبتلع. */
   readonly faults: readonly string[];
   readonly spokenCompany: string | null;
+  /**
+   * الملخّص المرتدّ — يُقرأ ويُعرض معاً. **وواحدٌ بالعربية لا اثنان**: الملخّص نصّ
+   * عرض، والعربية سجلُّه، ولغةٌ ثالثة صفٌّ لا عمود (ADR-0021 · القاعدة 14).
+   */
   readonly readbackAr: string;
-  readonly readbackEn: string;
   /** صورةٌ نصّية حتمية للأمر — تأكيدٌ برمزٍ آخر يُرفض. */
   readonly confirmationToken: string;
 }
@@ -82,9 +85,6 @@ const CODE_WORD_LIMIT = 4;
 
 /** ما يُقال بعد الملخّص لكل عمليةٍ تُغيّر الحال — نفس نصّ الخادم حرفاً. */
 export const CONFIRM_CALL_AR = "قل «تأكيد» أو اضغط زرّ التأكيد.";
-
-/** نظيره الإنجليزي. */
-export const CONFIRM_CALL_EN = "Say 'confirm' or press the confirm button.";
 
 /** كلمات التأكيد المنطوقة — قائمة مغلقة. */
 export const CONFIRM_WORDS_AR: readonly string[] = ["تأكيد", "أكّد", "اعتمد", "تمام", "نعم"];
@@ -411,18 +411,6 @@ export function readbackArabic(intent: VoiceIntent, slots: readonly SpokenSlotVa
   return intent.requiresConfirmation ? head + " " + CONFIRM_CALL_AR : head;
 }
 
-/** الملخّص الإنجليزي. */
-export function readbackEnglish(intent: VoiceIntent, slots: readonly SpokenSlotValue[]): string {
-  const parts = slots.map((value) => {
-    const slot = intent.slots.find((candidate) => candidate.name === value.name);
-    const label = slot ? slot.nameEn : value.name;
-    const unit = value.unit ? " " + value.unit : "";
-    return label + ": " + value.text + unit;
-  });
-  const head = intent.nameEn + " — " + (parts.length === 0 ? "no slots" : parts.join(", ")) + ".";
-  return intent.requiresConfirmation ? head + " " + CONFIRM_CALL_EN : head;
-}
-
 /** رمز التأكيد: صورةٌ نصّية مرتَّبة للأمر. الترتيب باسم الشريحة لا بترتيب الكلام. */
 export function confirmationToken(intent: VoiceIntent, slots: readonly SpokenSlotValue[]): string {
   const ordered = [...slots]
@@ -512,7 +500,6 @@ export function readCommand(transcript: string, options: VoiceReadingOptions = {
       faults,
       spokenCompany: readCompany(tokens),
       readbackAr,
-      readbackEn: readbackEnglish(intent, slots),
       confirmationToken: confirmationToken(intent, slots),
     },
   };

@@ -34,22 +34,20 @@ public sealed class SalesVoiceIntents : IVoiceIntentCatalogue
             VoiceLedgerEffect.Posts,
             "sales.receipt.posted",
             "سند قبض من عميل",
-            "Record a customer receipt",
             [
                 "سجل سند قبض", "سند قبض", "استلمت من العميل", "قبضت من العميل",
                 "تحصيل من عميل", "حصلت من العميل",
             ],
             [
-                new VoiceSlot("customer", VoiceSlotKind.Text, "العميل", "Customer", true,
+                new VoiceSlot("customer", VoiceSlotKind.Text, "العميل", true,
                     ["العميل", "عميل", "من", "لصالح"], []),
-                new VoiceSlot("amount", VoiceSlotKind.Money, "المبلغ المقبوض", "Amount received", true,
+                new VoiceSlot("amount", VoiceSlotKind.Money, "المبلغ المقبوض", true,
                     ["بمبلغ", "مبلغ", "بقيمة", "قيمته", "قيمتها"], []),
-                new VoiceSlot("method", VoiceSlotKind.Choice, "طريقة القبض", "Receipt method", true,
+                new VoiceSlot("method", VoiceSlotKind.Choice, "طريقة القبض", true,
                     [], ["نقد", "تحويل", "شيك", "شبكة"]),
-                new VoiceSlot("receivedOn", VoiceSlotKind.Date, "تاريخ القبض", "Received on", true, [], []),
+                new VoiceSlot("receivedOn", VoiceSlotKind.Date, "تاريخ القبض", true, [], []),
             ],
             false,
-            null,
             null),
 
         new VoiceIntent(
@@ -61,17 +59,15 @@ public sealed class SalesVoiceIntents : IVoiceIntentCatalogue
             VoiceLedgerEffect.None,
             null,
             "رصيد عميل",
-            "Customer balance",
             [
                 "كم رصيد العميل", "رصيد العميل", "كم على العميل", "وش رصيد العميل",
                 "كم باقي على العميل",
             ],
             [
-                new VoiceSlot("customer", VoiceSlotKind.Text, "العميل", "Customer", true,
+                new VoiceSlot("customer", VoiceSlotKind.Text, "العميل", true,
                     ["العميل", "عميل", "على", "حق"], []),
             ],
             false,
-            null,
             null),
     ];
 }

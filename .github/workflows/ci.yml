@@ -212,6 +212,19 @@ jobs:
         if: always() && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/production')
         run: |
           set -euo pipefail
+          # حارس لافراغ صريح — نظيرُ ما في حارس القرارات تحته، وكان غائباً هنا وحده.
+          # ‏`grep` يعود بلا شيء حين **لا يجد**، ويعود بلا شيء أيضاً حين **لا يقرأ**:
+          # ملفٌّ انتقل أو أُعيدت تسميته يُخرج `grep` بالرمز 2، وشرطُ `if` يبتلع ذلك
+          # فيمرّ الحارس أخضر وهو لم يقرأ سطراً واحداً (فخ-43). العدّ يسبق الحكم.
+          # والعدّ على العناوين **المرقّمة** وحدها: §0.0 تعرض النائب `فخ-جديد` داخل كتلة
+          # شيفرة، فعدٌّ يشمله يعدّ وثيقةَ الحارس نفسها بين ما يحرسه (فخ-65).
+          minimum=120
+          headings=$(grep -cE '^### فخ-[0-9]{2,3} — ' docs/evidence/traps.md || true)
+          if [ "${headings:-0}" -lt "$minimum" ]; then
+            echo "::error::سجل المصائد عاد بـ${headings:-0} عنواناً والحدّ الأدنى ${minimum} — النطاق انكسر، والحارس لا يقرأ شيئاً."
+            exit 1
+          fi
+          echo "عناوين المصائد المقروءة: ${headings} (الحدّ الأدنى ${minimum})"
           if grep -nE '^(### فخ-جديد — .* · `[a-z]|\| \[فخ-جديد\]\(#fakh-[a-z])' docs/evidence/traps.md; then
             echo "::error::فخّ بلا رقم وصل إلى فرع رئيس. خصّص له الرقم التالي — docs/evidence/traps.md §0.0."
             exit 1

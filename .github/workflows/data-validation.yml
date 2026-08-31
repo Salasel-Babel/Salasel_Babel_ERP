@@ -26,16 +26,41 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
+      # حدٌّ أدنى لا سردٌ فحسب: `--rules` يطبع ما تُعلنه `Validator.Rules` ويخرج بصفر
+      # **مهما كان العدد** — فلو ذبلت القائمة إلى لا شيء لقرأ أحدٌ خُضرةً هنا. والعدد
+      # يُقاس ويُقارَن بحدٍّ مكتوب، والرسالة تسمّي العددين معاً.
       - name: قائمة قواعد التحقق / list validation rules
-        run: dotnet run --project tools/matrix-validator -- --rules
+        run: |
+          set -euo pipefail
+          minimum=26
+          listing=$(dotnet run --project tools/matrix-validator -- --rules)
+          printf '%s\n' "$listing"
+          count=$(printf '%s\n' "$listing" | grep -cE '^V[0-9]+ ' || true)
+          if [ "${count:-0}" -lt "$minimum" ]; then
+            echo "::error::قائمة القواعد عادت بـ${count:-0} قاعدة والحدّ الأدنى ${minimum} — المسح ضامر، وخُضرته لا تعني شيئاً."
+            exit 1
+          fi
+          echo "قواعد التحقق المُعلَنة: ${count} (الحدّ الأدنى ${minimum})"
 
       - name: التحقق من البيانات التأسيسية / validate the seed data
         run: dotnet run --project tools/matrix-validator -- --data data
 
       # ‏dotnet test لا يقبل مجلداً: يجب --project أو --solution. كان السطر السابق يفشل
       # فوراً، ولم يُلاحَظ لأن الخطوة التي قبله كانت حمراء أصلاً (المشروع لا يُبنى).
+      #
+      # ‏**و`--nologo` أُزيل، وهو سبب `total: 0`.** `global.json` يختار منصّة الاختبار
+      # (‏`"test": {"runner": "Microsoft.Testing.Platform"}`)، وفي هذا الوضع لا يعرف
+      # ‏`dotnet test` الخيار `--nologo` — وهو خيارٌ صالح لـ`dotnet build` ولـVSTest —
+      # فيمرّره إلى مضيف الاختبار كخيار امتداد، فيرفضه المضيف، ويطبع مساعدته، ويخرج
+      # بلا اختبارٍ واحد. مقيس: `total: 0 · failed: 0 · succeeded: 0` ورمز خروج 5،
+      # وأربعون اختباراً موجودة في التجميعة لم يُشغَّل منها شيء.
+      # (‏docs/evidence/traps.md#fakh-an-argument-valid-for-one-runner-tells-another-to-run-nothing)
+      #
+      # ‏**والحدّ الأدنى ليس تجميلاً.** العتبة الضمنية في المنصّة اختبارٌ واحد، فمجموعةٌ
+      # ذبلت من أربعين إلى واحد تمرّ خضراء. الرقم أربعون **مقيس** لا مُقدَّر، ورسالة
+      # المخالفة تسمّي العددين: «tests ran N, minimum expected 40».
       - name: اختبارات أداة التحقق / validator tests
-        run: dotnet test --project tools/matrix-validator/tests/MatrixValidator.Tests.csproj --nologo
+        run: dotnet test --project tools/matrix-validator/tests/MatrixValidator.Tests.csproj --minimum-expected-tests 40
 
       - name: تقرير JSON للمرفقات / JSON report artefact
         if: always()
@@ -92,16 +117,51 @@ jobs:
           cd data/chart-of-accounts && psql -v ON_ERROR_STOP=1 -f ddl/003-checks.sql && cd -
           cd data/posting-matrix   && psql -v ON_ERROR_STOP=1 -f ddl/003-checks.sql
 
+      # ‏**غيابٌ يُثبَت، لا غيابٌ يُفترض.** كانت هذه الخطوة تعدّ التقاطع وحده: صفرٌ
+      # ⇒ خضراء. وصفرُ التقاطع له ثلاثة أسباب لا واحد — أن القاعدة صائنة فعلاً، أو أن
+      # ‏`event_line` فارغ (تحميلٌ لم يُحمّل شيئاً، وكل فحوص 002-load.sql بعده سالبةٌ
+      # تمرّ على الفراغ)، أو أن أحد طرفَي الشرط لم يعد يسمّي شيئاً موجوداً (إعادة تسمية
+      # الدور أو تغيير اصطلاح تسمية أحداث «المُدار لصالح الغير»). ولا شيء في المخرَج كان
+      # يفرّق بينها. (‏docs/evidence/traps.md#fakh-an-argument-valid-for-one-runner-tells-another-to-run-nothing
+      # هو الشقيق المقيس لهذا الشكل في هذه الدفعة، وفخ-43 أصلُه.)
+      #
+      # فصار الإثبات في أربعة أشواط: النطاق مأهول · طرف «المُدار» يسمّي سطوراً · طرف
+      # «إيراد الإيجار» يسمّي سطوراً · **ثمّ** التقاطع صفر. وكل حدٍّ مقيس على البيانات
+      # الحقيقية (‏241 سطراً · 21 سطر «مُدار» · سطران يسمّيان الدور)، وكل رسالةِ مخالفة
+      # تسمّي العدد الفعلي والحدّ معاً.
       - name: إثبات قاعدة الحجب GR-RE-001 في قاعدة البيانات
         run: |
           psql -v ON_ERROR_STOP=1 -c "
             do \$\$
-            declare n bigint;
+            declare
+              lines       bigint;
+              managed     bigint;
+              role_lines  bigint;
+              violations  bigint;
+              min_lines   constant bigint := 200;
+              min_managed constant bigint := 10;
+              min_role    constant bigint := 1;
             begin
-              select count(*) into n from matrix.event_line
-               where role_code = 'rental_revenue' and event_code like '%managed%';
-              if n > 0 then
-                raise exception 'GR-RE-001 violated: % managed-property line(s) reach the rental revenue role', n;
+              select count(*) into lines      from matrix.event_line;
+              select count(*) into managed    from matrix.event_line where event_code like '%managed%';
+              select count(*) into role_lines from matrix.event_line where role_code = 'rental_revenue';
+
+              if lines < min_lines then
+                raise exception 'vacuous scope: matrix.event_line holds % line(s), minimum expected %', lines, min_lines;
               end if;
-              raise notice 'GR-RE-001 holds: no managed-property line reaches the rental revenue role';
+              if managed < min_managed then
+                raise exception 'vacuous scope: % managed-property line(s) match, minimum expected %', managed, min_managed;
+              end if;
+              if role_lines < min_role then
+                raise exception 'vacuous scope: % line(s) name the rental revenue role, minimum expected %', role_lines, min_role;
+              end if;
+
+              select count(*) into violations from matrix.event_line
+               where role_code = 'rental_revenue' and event_code like '%managed%';
+              if violations > 0 then
+                raise exception 'GR-RE-001 violated: % managed-property line(s) reach the rental revenue role', violations;
+              end if;
+
+              raise notice 'GR-RE-001 holds: 0 of % managed-property line(s) reach the rental revenue role (% line(s) name it elsewhere, % line(s) scanned)',
+                managed, role_lines, lines;
             end \$\$;"

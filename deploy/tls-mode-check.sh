@@ -79,4 +79,14 @@ case_is "موقع فارغ يُرفض"             1 -             "BABEL_SITE" 
 
 echo
 printf '══ نجح %d · سقط %d\n' "$pass" "$failed"
+
+# حارس لافراغ: جدولٌ ذبلت حالاته يخرج بـ«نجح 0 · سقط 0» — وهي خُضرة لا تعني شيئاً.
+# العدد مقيس (عشرون حالة)، والرسالة تسمّي العددين معاً.
+minimum_cases=20
+run=$((pass + failed))
+if [ "$run" -lt "$minimum_cases" ]; then
+    printf '::error::الجدول شغّل %d حالة والحدّ الأدنى %d — الجدول ضامر، وخُضرته لا تعني شيئاً.\n' "$run" "$minimum_cases"
+    exit 1
+fi
+
 [ "$failed" -eq 0 ] || exit 1

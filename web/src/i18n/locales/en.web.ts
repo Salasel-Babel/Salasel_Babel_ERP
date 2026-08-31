@@ -215,12 +215,18 @@ export const messages: MessageTree = {
         emptyNote: "“No results” is not an empty state: an empty state says why, and gives the next step.",
         emptyBody: "Statutory setting tables ship empty on purpose: no rate, no bracket and no threshold is invented on the company's behalf. Approve the rates first, then come back.",
         emptyAction: "Approve the rates",
+        measure: "Quantity and rate",
+        measureNote: "Money displays at two decimal places, a quantity at six, a rate at eight — each has its own primitive, and none is shown with another's formatter.",
+        quantity: "A quantity with its unit",
+        rate: "A contractual rate",
+        rateNote: "A rate is a decimal fraction, not a percentage: 0.10 is ten per cent. No percent sign here and no multiplying by a hundred — a sign on a fraction makes it read as a tenth of a per cent.",
       },
       refusal: {
         title: "Posting refused: no approved rate",
         body: "Nothing was written to the ledger. The planner requires an approved rate for the item named below, and this company has none for it — and a rate is never guessed.",
         subject: "Value added tax — output",
         next: "Next step: approve the rate for the named item in the rate table, then submit again. Nothing changed, and the same key is still valid.",
+        item: "The statutory rate for the named item — no approved row for it in this company",
       },
       state: {
         loading: "Loading",

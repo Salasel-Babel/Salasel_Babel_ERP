@@ -104,6 +104,7 @@ BABEL_SITE=:80
 BABEL_TLS_MODE=auto
 POSTGRES_PASSWORD=$POSTGRES_PASSWORD
 BABEL_LEDGER_APP_PASSWORD=$BABEL_LEDGER_APP_PASSWORD
+BABEL_STORAGE_TICKET_KEY=$BABEL_STORAGE_TICKET_KEY
 BABEL_DEMO_TOKEN_SHA256=$BABEL_DEMO_TOKEN_SHA256
 BABEL_DEMO_COMPANY_ID=$company
 BABEL_DEMO_USER_ID=$user_id
@@ -155,16 +156,22 @@ command -v node   >/dev/null 2>&1 || { echo "✗ node غير موجود في PAT
 : "${BABEL_CORE_OWNER_DB:=Host=127.0.0.1;Port=5432;Database=babel_demo_core;Username=postgres;Include Error Detail=true}"
 : "${BABEL_CORE_APP_DB:=Host=127.0.0.1;Port=5432;Database=babel_demo_core;Username=babel_ledger_app;Include Error Detail=true}"
 export BABEL_ADMIN_DB BABEL_LEDGER_OWNER_DB BABEL_LEDGER_APP_DB BABEL_SALES_OWNER_DB BABEL_PURCHASING_OWNER_DB
-# ── العقارات: **قاعدةٌ لم تُزوَّد بعد، والنقص مُعلَن لا مسكوت عنه** ──────────
+# ── العقارات: قاعدةٌ **مزوَّدة الآن**، بالشكل نفسه الذي تُزوَّد به بقيّة القواعد ──
 # سطح العقارات منشورٌ في العقد (عشرون باباً)، ومخطّطه `realestate` **يُنشر بدور
-# المالك** ويستلزم امتداد `btree_gist` لقيد الاستبعاد الزمني على مدّة العقد. ولا
-# قاعدة تُنشأ له في هذا النصّ ولا في `demo/company`، فأبوابه **غير قابلة للبلوغ في
-# العرض المحلي** حتى تُزوَّد — بالضبط كأبواب المرفقات أدناه وللسبب نفسه.
+# المالك** لأنه يركّب امتداد `btree_gist` ويبني عليه قيد الاستبعاد الزمني الذي يمنع
+# تأجير الوحدة الواحدة بعقدين متداخلين. وكان هذا النصّ لا ينشئ له قاعدة، فكانت
+# أبوابه العشرون **غير قابلة للبلوغ في أي عرض ولا أي نشرة** — وحدةٌ كاملة البناء
+# والاختبار ولا تُزوَّد قطّ
+# (docs/evidence/traps.md#fakh-a-module-fully-built-fully-tested-and-never-provisioned).
 #
-# ولا يمنع ذلك الخادم من الإقلاع: التسجيل كسول، فلا يُبنى سياق الوحدة إلا عند أول
-# طلب يبلغها. والتزويد: قاعدةٌ باسم `babel_demo_realestate`، ثم
-# `RealEstateSchemaDeployer.DeployAsync` بدور المالك، ثم
-# `Babel__RealEstate__ConnectionString` على الخادم.
+# والتزويد ثلاثة أسطر لا أكثر، وهي بالضبط ما تفعله بقيّة القواعد:
+#   ١ · اتصال **المالك** للمُنشئ  ← BABEL_REALESTATE_OWNER_DB
+#   ٢ · اتصال **التطبيق** للخادم ← BABEL_REALESTATE_DB (أدناه، عند إقلاع الخادم)
+#   ٣ · شراء الوحدة للمنشأة      ← Babel__Entitlements__<الشركة>__RealEstate
+# ولا يرى الخادم اتصال المالك أبداً، هنا كما في compose.yml (ADR-0003).
+: "${BABEL_REALESTATE_OWNER_DB:=Host=127.0.0.1;Port=5432;Database=babel_demo_realestate;Username=postgres;Include Error Detail=true}"
+: "${BABEL_REALESTATE_APP_DB:=Host=127.0.0.1;Port=5432;Database=babel_demo_realestate;Username=babel_ledger_app;Include Error Detail=true}"
+export BABEL_REALESTATE_OWNER_DB
 
 # مخزن المرفقات: جذرٌ على القرص يملكه مستخدم الخدمة. **ولا اتصال مالك هنا**،
 # ولا قاعدةَ مرفقات تُنشأ في هذا النصّ: نشرُ مخطّط `storage` عملُ مالك لم يُزوَّد
@@ -190,12 +197,16 @@ echo "── بناء الواجهة"
 (cd web && npm run build)
 
 echo "── إقلاع الخادم على المنفذ $api_port"
-ASPNETCORE_URLS="http://127.0.0.1:$api_port" \
-Babel__Core__AppConnectionString="$BABEL_CORE_APP_DB" \
-Babel__Api__Tokens__0__Sha256="$BABEL_DEMO_TOKEN_SHA256" \
-Babel__Api__Tokens__0__Tenant="$company" \
-Babel__Api__Tokens__0__User="$user_id" \
-Babel__Api__Tokens__0__Companies__0="$company" \
+# ‏`env` لا بادئةُ إسناد: اسم متغيّر الاستحقاق يحمل معرّف المنشأة بشرطاته، وbash
+# لا يقبل شرطةً في اسم متغيّر — فبادئة الإسناد كانت ستُقرأ اسمَ أمر لا إسناداً.
+env "Babel__Entitlements__${company}__RealEstate=Entitled" \
+  ASPNETCORE_URLS="http://127.0.0.1:$api_port" \
+  Babel__Core__AppConnectionString="$BABEL_CORE_APP_DB" \
+  Babel__RealEstate__ConnectionString="$BABEL_REALESTATE_APP_DB" \
+  Babel__Api__Tokens__0__Sha256="$BABEL_DEMO_TOKEN_SHA256" \
+  Babel__Api__Tokens__0__Tenant="$company" \
+  Babel__Api__Tokens__0__User="$user_id" \
+  Babel__Api__Tokens__0__Companies__0="$company" \
   dotnet src/Babel.Api/bin/Release/net10.0/Babel.Api.dll > "$here/.api.log" 2>&1 &
 api_pid=$!
 echo "$api_pid" > "$here/.api.pid"

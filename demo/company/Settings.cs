@@ -3,6 +3,7 @@ using Babel.Core;
 using Babel.Ledger;
 using Babel.Inventory;
 using Babel.Purchasing;
+using Babel.RealEstate;
 using Babel.Sales;
 using Npgsql;
 
@@ -29,6 +30,7 @@ internal sealed class Settings
         SalesOptions salesOwner,
         PurchasingOptions purchasingOwner,
         InventoryOptions inventoryOwner,
+        RealEstateOptions realEstateOwner,
         Guid company,
         int fiscalYear)
     {
@@ -38,6 +40,7 @@ internal sealed class Settings
         SalesOwner = salesOwner;
         PurchasingOwner = purchasingOwner;
         InventoryOwner = inventoryOwner;
+        RealEstateOwner = realEstateOwner;
         Company = company;
         FiscalYear = fiscalYear;
     }
@@ -67,6 +70,17 @@ internal sealed class Settings
     /// <summary>إعدادات المخزون — التقييم وتكلفة المبيعات (‏ADR-0039).</summary>
     public InventoryOptions InventoryOwner { get; }
 
+    /// <summary>
+    /// اتصال <b>مالك</b> قاعدة العقارات — للنشر والبذر، ولا يصل الخادمَ أبداً.
+    /// <para>
+    /// وهو الاتصال الوحيد في هذه الأداة الذي يستلزم أكثر من <c>create table</c>:
+    /// مخطّط العقارات يركّب امتداد <c>btree_gist</c> ويبني عليه قيد استبعاد زمنياً،
+    /// وذلك فعلُ مالك بامتياز — ولذلك موضعه هنا لا في مسار التطبيق (‏ADR-0003 ·
+    /// <see cref="RealEstateExtension"/>).
+    /// </para>
+    /// </summary>
+    public RealEstateOptions RealEstateOwner { get; }
+
     /// <summary>معرّف الشركة/المستأجر التجريبي.</summary>
     public Guid Company { get; }
 
@@ -88,6 +102,9 @@ internal sealed class Settings
     /// <summary>اسم قاعدة النواة.</summary>
     public string CoreDatabase => DatabaseOf(Core.OwnerConnectionString);
 
+    /// <summary>اسم قاعدة العقارات.</summary>
+    public string RealEstateDatabase => DatabaseOf(RealEstateOwner.ConnectionString);
+
     /// <summary>يقرأ الإعدادات من البيئة.</summary>
     public static Settings FromEnvironment()
     {
@@ -104,6 +121,13 @@ internal sealed class Settings
         string inventoryOwner = Env("BABEL_INVENTORY_OWNER_DB")
             ?? Env("BABEL_INVENTORY_DB")
             ?? "Host=127.0.0.1;Port=5432;Database=babel_inventory;Username=postgres;Include Error Detail=true";
+
+        // ‏**اسمٌ مستقلّ للمالك، ولا ارتداد إلى `BABEL_REALESTATE_DB`**: ذلك المتغيّر
+        // هو اتصال **الخادم** (يقرأه RealEstateOptions افتراضياً)، وارتدادٌ إليه هنا كان
+        // يجعل حاويةً تحمل الاثنين تنشر المخطّط بدور التطبيق فتفشل — أو أسوأ: تنجح لأن
+        // أحدهم منح الدور ما لا يستحقّه. الفصل يبقى بالاسم لا بالانضباط (ADR-0003).
+        string realEstateOwner = Env("BABEL_REALESTATE_OWNER_DB")
+            ?? "Host=127.0.0.1;Port=5432;Database=babel_realestate;Username=postgres;Include Error Detail=true";
 
         string coreOwner = Env("BABEL_CORE_OWNER_DB")
             ?? $"Host=127.0.0.1;Port=5432;Database={CoreOptions.DefaultDatabase};Username=postgres;Include Error Detail=true";
@@ -125,6 +149,7 @@ internal sealed class Settings
             new SalesOptions { ConnectionString = salesOwner, CompanyCurrency = ledger.CompanyCurrency },
             new PurchasingOptions { ConnectionString = purchasingOwner, CompanyCurrency = ledger.CompanyCurrency },
             new InventoryOptions { ConnectionString = inventoryOwner, CompanyCurrency = ledger.CompanyCurrency },
+            new RealEstateOptions { ConnectionString = realEstateOwner, CompanyCurrency = ledger.CompanyCurrency },
             Guid.TryParseExact(Env("BABEL_DEMO_COMPANY_ID"), "D", out Guid company)
                 ? company
                 : new Guid("d3305e1e-0000-4000-8000-000000000001"),

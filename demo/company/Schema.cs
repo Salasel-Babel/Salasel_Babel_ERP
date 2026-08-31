@@ -4,6 +4,7 @@ using Babel.Core;
 using Babel.Ledger;
 using Babel.Inventory;
 using Babel.Purchasing;
+using Babel.RealEstate;
 using Babel.Sales;
 using Npgsql;
 
@@ -34,6 +35,12 @@ internal static class Schema
     {
         ArgumentNullException.ThrowIfNull(settings);
 
+        // ── التبعية البنيوية تُفحص **قبل** أن يُنشر مخطّطٌ واحد ──────────────────
+        // ‏**قبل**، لا عند الحاجة إليها: مخطّط العقارات آخر ما يُنشر، وفحصٌ عنده يترك
+        // النشر يبني أربع قواعد ثم يتوقّف — فيصير التراجع سؤالاً بدل أن يكون بلا موضوع.
+        // ولا شيء يُكتب قبل هذا السطر (‏Bootstrap ينشئ قواعد فارغة وحسب).
+        await RealEstateExtension.EnsureAsync(settings, cancellationToken).ConfigureAwait(false);
+
         Say.Step("نشر المخطّطات بدور المالك / deploying schemas as the owner role");
 
         // النواة أولاً: تأسيس المنشأة ومراكز تكلفتها هو ما يفترضه كل ما بعده — بوّابة
@@ -53,6 +60,11 @@ internal static class Schema
         await InventorySchemaDeployer.DeployAsync(settings.InventoryOwner, cancellationToken).ConfigureAwait(false);
         Say.Detail("المخزون → " + settings.InventoryDatabase);
 
+        // العقارات: مخطّطٌ + هجرةٌ تبني قيد استبعاد زمنياً فوق btree_gist المُتحقَّق منه أعلاه.
+        await RealEstateSchemaDeployer.DeployAsync(settings.RealEstateOwner, cancellationToken).ConfigureAwait(false);
+        Say.Detail("العقارات → " + settings.RealEstateDatabase);
+        await RealEstateExtension.AssertConstraintAsync(settings, cancellationToken).ConfigureAwait(false);
+
         await GrantSubledgerAsync(settings.SalesOwner.ConnectionString, "sales", settings.Ledger.AppRole, cancellationToken)
             .ConfigureAwait(false);
         await GrantSubledgerAsync(
@@ -60,6 +72,9 @@ internal static class Schema
             .ConfigureAwait(false);
         await GrantSubledgerAsync(
                 settings.InventoryOwner.ConnectionString, "inventory", settings.Ledger.AppRole, cancellationToken)
+            .ConfigureAwait(false);
+        await GrantSubledgerAsync(
+                settings.RealEstateOwner.ConnectionString, "realestate", settings.Ledger.AppRole, cancellationToken)
             .ConfigureAwait(false);
 
         await SeedReferenceAsync(settings, cancellationToken).ConfigureAwait(false);

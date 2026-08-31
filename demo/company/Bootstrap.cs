@@ -16,7 +16,7 @@ namespace BabelDemoCompany;
 /// </summary>
 internal static class Bootstrap
 {
-    /// <summary>ينشئ قواعد البيانات الثلاث ودور التطبيق إن لم توجد.</summary>
+    /// <summary>ينشئ قواعد البيانات ودور التطبيق إن لم توجد.</summary>
     /// <param name="settings">الإعدادات.</param>
     /// <param name="cancellationToken">رمز الإلغاء.</param>
     public static async Task RunAsync(Settings settings, CancellationToken cancellationToken)
@@ -55,7 +55,7 @@ internal static class Bootstrap
         foreach (string database in new[]
                  {
                      settings.LedgerDatabase, settings.SalesDatabase, settings.PurchasingDatabase,
-                     settings.InventoryDatabase, settings.CoreDatabase,
+                     settings.InventoryDatabase, settings.CoreDatabase, settings.RealEstateDatabase,
                  })
         {
             await EnsureDatabaseAsync(admin, database, cancellationToken).ConfigureAwait(false);

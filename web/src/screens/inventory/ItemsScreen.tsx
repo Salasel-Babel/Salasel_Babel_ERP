@@ -104,7 +104,7 @@ function ItemDetail(props: { item: Item }): ReactNode {
           <div className="v" lang="ar" dir="rtl">{item.name.ar}</div>
         </div>
         <div>
-          <div className="k">{t("inventory.items.nameEn")}</div>
+          <div className="k">{t("inventory.items.englishName")}</div>
           <div className="v" lang="en" dir="ltr">{item.name.en}</div>
         </div>
         <div>
@@ -174,8 +174,10 @@ export function InventoryItemsScreen(): ReactNode {
 
   /* حقول التسجيل. */
   const [code, setCode] = useState("");
-  const [nameAr, setNameAr] = useState("");
-  const [nameEn, setNameEn] = useState("");
+  const [arabicName, setArabicName] = useState("");
+  /* «الاسم اللاتيني» اسمُ متغيّرٍ لا اسمُ حقل: حقل العقد هو `name.en`، ولا
+     يُسمّى شيءٌ هنا باسمٍ يوحي بعمودٍ إنجليزي في جدول (ADR-0021 §6.3). */
+  const [latinName, setLatinName] = useState("");
   const [group, setGroup] = useState("");
   const [baseUnit, setBaseUnit] = useState("");
   const [units, setUnits] = useState<DraftUnit[]>([]);
@@ -224,8 +226,8 @@ export function InventoryItemsScreen(): ReactNode {
 
   const ready =
     code !== "" &&
-    nameAr !== "" &&
-    nameEn !== "" &&
+    arabicName !== "" &&
+    latinName !== "" &&
     group !== "" &&
     baseUnit !== "" &&
     units.every((unit) => unit.unitCode !== "") &&
@@ -249,7 +251,7 @@ export function InventoryItemsScreen(): ReactNode {
       }));
       const body: ItemRequest = {
         code,
-        name: { ar: nameAr, en: nameEn },
+        name: { ar: arabicName, en: latinName },
         itemGroup: group,
         baseUnit,
         units: wireUnits,
@@ -264,14 +266,14 @@ export function InventoryItemsScreen(): ReactNode {
     } finally {
       setBusy(false);
     }
-  }, [baseUnit, code, config.companyId, fireArrive, group, nameAr, nameEn, result, transport, units]);
+  }, [baseUnit, code, config.companyId, fireArrive, group, arabicName, latinName, result, transport, units]);
 
   const startAnother = useCallback(() => {
     setCreated(null);
     setError(null);
     setCode("");
-    setNameAr("");
-    setNameEn("");
+    setArabicName("");
+    setLatinName("");
     setGroup("");
     setBaseUnit("");
     setUnits([]);
@@ -465,27 +467,27 @@ export function InventoryItemsScreen(): ReactNode {
 
         <div className="grid fields-half" style={{ marginTop: "var(--space-12)" }}>
           <div className="field">
-            <label htmlFor="inv-name-ar">{t("inventory.items.nameAr")}</label>
+            <label htmlFor="inv-name-ar">{t("inventory.items.arabicName")}</label>
             <input
               id="inv-name-ar"
               className="ctl"
               lang="ar"
               data-testid="item-name-ar"
-              value={nameAr}
-              onChange={(e) => setNameAr(e.target.value)}
+              value={arabicName}
+              onChange={(e) => setArabicName(e.target.value)}
             />
             <span className="hint">{t("inventory.items.nameHint")}</span>
           </div>
           <div className="field">
-            <label htmlFor="inv-name-en">{t("inventory.items.nameEn")}</label>
+            <label htmlFor="inv-name-en">{t("inventory.items.englishName")}</label>
             <input
               id="inv-name-en"
               className="ctl"
               lang="en"
               dir="ltr"
               data-testid="item-name-en"
-              value={nameEn}
-              onChange={(e) => setNameEn(e.target.value)}
+              value={latinName}
+              onChange={(e) => setLatinName(e.target.value)}
             />
           </div>
         </div>

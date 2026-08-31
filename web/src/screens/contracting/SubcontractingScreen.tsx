@@ -245,13 +245,13 @@ function NewSubcontractForm(props: {
         </Field>
         <Field
           id="sc-party"
-            data-testid="sc-party"
           label={t("contracting.subcontractor.title")}
           hint={t("contracting.subcontract.partyHint")}
           required
         >
           <input
             id="sc-party"
+            data-testid="sc-party"
             className="ctl mono"
             dir="ltr"
             value={subcontractorId}
@@ -470,8 +470,8 @@ function AdvanceForm(props: { readonly subcontractId: string }): ReactNode {
   return (
     <div className="stack">
       <div className="grid fields-3">
-        <Field id="ad-number" data-testid="ad-number" label={t("contracting.common.number")} required>
-          <input id="ad-number" className="ctl mono" dir="ltr" value={number} onChange={(e) => setNumber(e.target.value)} />
+        <Field id="ad-number" label={t("contracting.common.number")} required>
+          <input id="ad-number" data-testid="ad-number" className="ctl mono" dir="ltr" value={number} onChange={(e) => setNumber(e.target.value)} />
         </Field>
         <Field id="ad-paid" label={t("contracting.advance.paidOn")} required>
           <input
@@ -485,7 +485,6 @@ function AdvanceForm(props: { readonly subcontractId: string }): ReactNode {
         </Field>
         <Field
           id="ad-amount"
-            data-testid="ad-amount"
           label={t("contracting.advance.amount")}
           hint={amount === "" || isMoneyText(amount) ? t("contracting.advance.amountHint") : t("contracting.common.moneyBad")}
           source="typed"
@@ -493,6 +492,7 @@ function AdvanceForm(props: { readonly subcontractId: string }): ReactNode {
         >
           <input
             id="ad-amount"
+            data-testid="ad-amount"
             className={"ctl amt-input" + (amount !== "" && !isMoneyText(amount) ? " is-invalid" : "")}
             inputMode="decimal"
             dir="ltr"
@@ -504,13 +504,13 @@ function AdvanceForm(props: { readonly subcontractId: string }): ReactNode {
         </Field>
         <Field
           id="ad-method"
-            data-testid="ad-method"
           label={t("contracting.advance.settlementMethod")}
           hint={t("contracting.advance.settlementHint")}
           required
         >
           <input
             id="ad-method"
+            data-testid="ad-method"
             className="ctl mono"
             dir="ltr"
             value={settlementMethod}
@@ -519,13 +519,13 @@ function AdvanceForm(props: { readonly subcontractId: string }): ReactNode {
         </Field>
         <Field
           id="ad-treasury"
-            data-testid="ad-treasury"
           label={t("contracting.advance.treasury")}
           hint={t("contracting.advance.treasuryHint")}
           required
         >
           <input
             id="ad-treasury"
+            data-testid="ad-treasury"
             className="ctl mono"
             dir="ltr"
             value={treasuryPartyId}
@@ -673,12 +673,12 @@ export function SubcontractingScreen(): ReactNode {
         <div className="filterbar">
           <Field
             id="sub-id"
-              data-testid="sub-id"
             label={t("contracting.subcontractor.idLabel")}
             hint={t("contracting.subcontractor.idHint")}
           >
             <input
               id="sub-id"
+              data-testid="sub-id"
               className="ctl mono"
               dir="ltr"
               autoComplete="off"
@@ -756,12 +756,12 @@ export function SubcontractingScreen(): ReactNode {
         <div className="filterbar">
           <Field
             id="subc-id"
-              data-testid="subc-id"
             label={t("contracting.subcontract.idLabel")}
             hint={t("contracting.subcontract.idHint")}
           >
             <input
               id="subc-id"
+              data-testid="subc-id"
               className="ctl mono"
               dir="ltr"
               autoComplete="off"

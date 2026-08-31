@@ -581,6 +581,24 @@ function NewChangeOrderForm(props: {
 
 type Tab = "boq" | "changes" | "certificates";
 
+/**
+ * لوحُ تبويبٍ موسوم — الزرّ وحده لا يكفي: قارئ الشاشة يحتاج أن يعرف **أي محتوى**
+ * يحكمه الزرّ الذي وقف عليه، وإلا صارت التبويبات ثلاثة أزرارٍ بلا أثرٍ مُعلَن.
+ * @param props هوية اللوح والتبويب القائم ومحتواه.
+ */
+function TabPanel(props: { readonly id: Tab; readonly active: Tab; readonly children: ReactNode }): ReactNode {
+  return (
+    <div
+      role="tabpanel"
+      id={"con-panel-" + props.id}
+      aria-labelledby={"con-tab-" + props.id}
+      hidden={props.active !== props.id}
+    >
+      {props.active === props.id ? props.children : null}
+    </div>
+  );
+}
+
 function ContractDossier(props: { readonly contractId: string }): ReactNode {
   const { t, tp } = useT();
   const { transport, config } = useApi();
@@ -741,6 +759,8 @@ function ContractDossier(props: { readonly contractId: string }): ReactNode {
               key={id}
               type="button"
               role="tab"
+              id={"con-tab-" + id}
+              aria-controls={"con-panel-" + id}
               className={"btn" + (tab === id ? " btn-primary" : "")}
               aria-selected={tab === id}
               data-testid={"tab-" + id}
@@ -751,6 +771,7 @@ function ContractDossier(props: { readonly contractId: string }): ReactNode {
           ))}
         </div>
 
+        <TabPanel id="boq" active={tab}>
         {tab === "boq" ? (
           boq.isError ? (
             <ReadProblem error={boq.error} onRetry={() => void boq.refetch()} />
@@ -811,7 +832,9 @@ function ContractDossier(props: { readonly contractId: string }): ReactNode {
             <LoadingPanel what={t("contracting.boq.title")} />
           )
         ) : null}
+        </TabPanel>
 
+        <TabPanel id="changes" active={tab}>
         {tab === "changes" ? (
           changes.isError ? (
             <ReadProblem error={changes.error} onRetry={() => void changes.refetch()} />
@@ -846,7 +869,9 @@ function ContractDossier(props: { readonly contractId: string }): ReactNode {
             <LoadingPanel what={t("contracting.changeOrder.title")} />
           )
         ) : null}
+        </TabPanel>
 
+        <TabPanel id="certificates" active={tab}>
         {tab === "certificates" ? (
           certificates.isError ? (
             <ReadProblem error={certificates.error} onRetry={() => void certificates.refetch()} />
@@ -897,6 +922,7 @@ function ContractDossier(props: { readonly contractId: string }): ReactNode {
             <LoadingPanel what={t("contracting.certificate.title")} />
           )
         ) : null}
+        </TabPanel>
       </Panel>
 
       <Foldable

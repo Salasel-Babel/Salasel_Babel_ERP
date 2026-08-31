@@ -426,12 +426,12 @@ export function CertificateScreen(): ReactNode {
           <div className="filterbar con-picker">
             <Field
               id="cert-subcontract"
-                data-testid="cert-subcontract"
               label={t("contracting.subcontract.idLabel")}
               hint={t("contracting.subcontract.idHint")}
             >
               <input
                 id="cert-subcontract"
+                data-testid="cert-subcontract"
                 className="ctl mono"
                 dir="ltr"
                 autoComplete="off"
@@ -506,10 +506,10 @@ export function CertificateScreen(): ReactNode {
       {owner === "subcontractor" ? (
         <Panel title={t("contracting.certificate.byId")} note={t("contracting.certificate.byIdNote")}>
           <div className="filterbar">
-            <Field id="cert-id"
-                data-testid="cert-id" label={t("contracting.certificate.idLabel")}>
+            <Field id="cert-id" label={t("contracting.certificate.idLabel")}>
               <input
                 id="cert-id"
+                data-testid="cert-id"
                 className="ctl mono"
                 dir="ltr"
                 autoComplete="off"
@@ -787,18 +787,18 @@ function DraftCertificateForm(props: {
   return (
     <div className="stack">
       <div className="grid fields-4">
-        <Field id="dc-number" data-testid="dc-number" label={t("contracting.common.number")} required>
-          <input id="dc-number" className="ctl mono" dir="ltr" value={number} onChange={(e) => setNumber(e.target.value)} />
+        <Field id="dc-number" label={t("contracting.common.number")} required>
+          <input id="dc-number" data-testid="dc-number" className="ctl mono" dir="ltr" value={number} onChange={(e) => setNumber(e.target.value)} />
         </Field>
         <Field
           id="dc-sequence"
-            data-testid="dc-sequence"
           label={t("contracting.certificate.sequence")}
           hint={t("contracting.certificate.sequenceHint")}
           required
         >
           <input
             id="dc-sequence"
+            data-testid="dc-sequence"
             className="ctl mono"
             inputMode="numeric"
             dir="ltr"

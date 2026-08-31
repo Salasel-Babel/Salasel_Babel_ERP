@@ -56,16 +56,17 @@ import { Amount, Num, useT } from "../../i18n/react";
 import { Button, EmptyState, Field, Panel, RefusalPanel, StatCard, useMoment } from "../../ui";
 import { useHrFocus } from "./focus";
 import {
+  AmountsRow,
   ChooseCompanyFirst,
-  HrSectionNav,
+  DeclaredGap,
   EntryRef,
+  HrSectionNav,
   HrState,
   OpaqueCode,
   StatePanel,
   isMoneyText,
   isRateText,
   todayIso,
-  AmountsRow,
 } from "./parts";
 import {
   DUPLICATE_NUMBER,
@@ -243,7 +244,11 @@ export function PayrollRunScreen(): ReactNode {
     }
   }, [config.companyId, firePost, fireArrive, fireRefuse, payslips, run, runId, transport]);
 
-  const submitPayment = useCallback(async () => {
+  /* المسوّدة أولاً: سطورُ السند ومجموعه يُقرآن **قبل** أن يقع الترحيل. وفصلُ
+     الفعلين ليس تفصيلاً في الشكل — نداءٌ واحد يُنشئ ويُرحِّل يجعل فشلَ الترحيل
+     يترك مسوّدةً يتيمة برقمٍ صار مستعملاً، فيرتدّ عليها المستخدم برفض
+     «رقم مستند مستعمل من قبل» ولا يفهم لماذا. */
+  const draftPayment = useCallback(async () => {
     setPayBusy(true);
     setPayError(null);
     try {
@@ -251,20 +256,35 @@ export function PayrollRunScreen(): ReactNode {
         companyId: config.companyId,
         body: { number: payNumber, runId, paidOn, settlementMethod: method, treasuryPartyId: treasury },
       });
-      const settled = await postPayrollPayment(transport, {
-        companyId: config.companyId,
-        paymentId: drafted.id,
-      });
-      setPayment(settled);
-      if (!settled.alreadyPosted) firePost();
-      else fireArrive();
+      setPayment(drafted);
+      fireArrive();
     } catch (failure) {
       setPayError(failure);
       fireRefuse();
     } finally {
       setPayBusy(false);
     }
-  }, [config.companyId, firePost, fireArrive, fireRefuse, method, paidOn, payNumber, runId, transport, treasury]);
+  }, [config.companyId, fireArrive, fireRefuse, method, paidOn, payNumber, runId, transport, treasury]);
+
+  const postPayment = useCallback(async () => {
+    if (!payment) return;
+    setPayBusy(true);
+    setPayError(null);
+    try {
+      const settled = await postPayrollPayment(transport, {
+        companyId: config.companyId,
+        paymentId: payment.id,
+      });
+      setPayment(settled);
+      if (settled.alreadyPosted) fireArrive();
+      else firePost();
+    } catch (failure) {
+      setPayError(failure);
+      fireRefuse();
+    } finally {
+      setPayBusy(false);
+    }
+  }, [config.companyId, fireArrive, firePost, fireRefuse, payment, transport]);
 
   const openPayslip = useCallback(
     (id: string) => {
@@ -604,6 +624,12 @@ export function PayrollRunScreen(): ReactNode {
           </div>
           <AmountsRow amounts={current.amounts} moment={arriveCls} testId="hr-run-amounts" />
           <p className="muted">{t("hr.run.amountsNote")}</p>
+          <DeclaredGap
+            title={t("hr.gap.registerTitle")}
+            body={t("hr.gap.registerBody")}
+            owed={t("hr.gap.registerOwed")}
+            testId="hr-gap-registers"
+          />
         </Panel>
       ) : null}
 
@@ -648,6 +674,9 @@ export function PayrollRunScreen(): ReactNode {
                           type="button"
                           className="hr-open"
                           data-testid="hr-payslip-open"
+                          /* اسمٌ مسموع يقول **ما يفتحه** الزرّ لا رمزَه وحده:
+                             قارئ الشاشة يقرأ «قسيمة راتب emp-…» لا رمزاً معلّقاً. */
+                          aria-label={t("hr.payslip.card") + " " + slip.employeeCode}
                           onClick={() => openPayslip(slip.id)}
                         >
                           <OpaqueCode code={slip.employeeCode} testId="hr-payslip-code" />
@@ -759,11 +788,18 @@ export function PayrollRunScreen(): ReactNode {
           </div>
           <div className="inline-group">
             <Button
+              label={t("hr.act.draftPayment")}
+              loading={payBusy}
+              disabled={payBusy || payNumber === "" || paidOn === "" || treasury === "" || payment !== null}
+              onClick={() => void draftPayment()}
+              testId="hr-payment-draft"
+            />
+            <Button
               label={t("hr.act.pay")}
               kind="primary"
               loading={payBusy}
-              disabled={payBusy || payNumber === "" || paidOn === "" || treasury === ""}
-              onClick={() => void submitPayment()}
+              disabled={payBusy || payment === null}
+              onClick={() => void postPayment()}
               testId="hr-payment-submit"
             />
           </div>
@@ -771,12 +807,25 @@ export function PayrollRunScreen(): ReactNode {
           {payment ? (
             <div
               className={"hr-receipt " + (payment.alreadyPosted ? arriveCls : postCls)}
+              data-state={payment.state}
               data-already={String(payment.alreadyPosted)}
               role="status"
               data-testid="hr-payment-receipt"
             >
-              <h2>{payment.alreadyPosted ? t("hr.payment.again") : t("hr.payment.done")}</h2>
-              <p>{payment.alreadyPosted ? t("hr.payment.againBody") : t("hr.payment.doneBody")}</p>
+              <h2>
+                {payment.state !== POSTED
+                  ? t("hr.payment.drafted")
+                  : payment.alreadyPosted
+                    ? t("hr.payment.again")
+                    : t("hr.payment.done")}
+              </h2>
+              <p>
+                {payment.state !== POSTED
+                  ? t("hr.payment.draftedBody")
+                  : payment.alreadyPosted
+                    ? t("hr.payment.againBody")
+                    : t("hr.payment.doneBody")}
+              </p>
               <div className="kv">
                 <div>
                   <div className="k">{t("hr.payment.netPayable")}</div>

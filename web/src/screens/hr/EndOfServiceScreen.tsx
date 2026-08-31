@@ -53,6 +53,7 @@ import {
 import {
   DUPLICATE_NUMBER,
   NOT_TERMINATED,
+  POSTED,
   SETTLEMENT_METHODS,
   TREASURY_MISSING,
 } from "./contract";
@@ -107,7 +108,10 @@ export function EndOfServiceScreen(): ReactNode {
 
   const provPeriodValid = provPeriod === "" || PARAM_readTrialBalance_period_RE.test(provPeriod);
 
-  const submitProvision = useCallback(async () => {
+  /* المسوّدة تُقرأ قبل الترحيل: الحصص تعود من الخادم بأرقامها ورموزها المعتمة،
+     فيُرى ما سيُرحَّل قبل أن يقع. وفصلُ الفعلين يمنع مسوّدةً يتيمة برقمٍ صار
+     مستعملاً حين يسقط الترحيل وحده. */
+  const draftProvision = useCallback(async () => {
     setProvBusy(true);
     setProvError(null);
     try {
@@ -125,13 +129,8 @@ export function EndOfServiceScreen(): ReactNode {
           })),
         },
       });
-      const settled = await postEndOfServiceProvision(transport, {
-        companyId: config.companyId,
-        provisionId: drafted.id,
-      });
-      setProvision(settled);
-      if (settled.alreadyPosted) fireArrive();
-      else firePost();
+      setProvision(drafted);
+      fireArrive();
     } catch (failure) {
       setProvError(failure);
       fireRefuse();
@@ -141,7 +140,6 @@ export function EndOfServiceScreen(): ReactNode {
   }, [
     config.companyId,
     fireArrive,
-    firePost,
     fireRefuse,
     provAccruedOn,
     provBy,
@@ -152,7 +150,27 @@ export function EndOfServiceScreen(): ReactNode {
     transport,
   ]);
 
-  const submitSettlement = useCallback(async () => {
+  const postProvision = useCallback(async () => {
+    if (!provision) return;
+    setProvBusy(true);
+    setProvError(null);
+    try {
+      const settled = await postEndOfServiceProvision(transport, {
+        companyId: config.companyId,
+        provisionId: provision.id,
+      });
+      setProvision(settled);
+      if (settled.alreadyPosted) fireArrive();
+      else firePost();
+    } catch (failure) {
+      setProvError(failure);
+      fireRefuse();
+    } finally {
+      setProvBusy(false);
+    }
+  }, [config.companyId, fireArrive, firePost, fireRefuse, provision, transport]);
+
+  const draftSettlement = useCallback(async () => {
     setSetBusy(true);
     setSetError(null);
     try {
@@ -168,14 +186,11 @@ export function EndOfServiceScreen(): ReactNode {
           treasuryPartyId: treasury,
         },
       });
-      const posted = await postEndOfServiceSettlement(transport, {
-        companyId: config.companyId,
-        settlementId: drafted.id,
-      });
-      setSettlement(posted);
+      /* والمسوّدة **تحمل السيناريو ورصيد المخصص والعجز أو الزيادة سلفاً**:
+         فيرى معتمِدها ما سيقع على نتيجة الفترة قبل أن يقع. */
+      setSettlement(drafted);
       setFocus({ employmentId });
-      if (posted.alreadyPosted) fireArrive();
-      else firePost();
+      fireArrive();
     } catch (failure) {
       setSetError(failure);
       fireRefuse();
@@ -186,7 +201,6 @@ export function EndOfServiceScreen(): ReactNode {
     config.companyId,
     employmentId,
     fireArrive,
-    firePost,
     fireRefuse,
     measurementRef,
     method,
@@ -197,6 +211,26 @@ export function EndOfServiceScreen(): ReactNode {
     treasury,
     transport,
   ]);
+
+  const postSettlement = useCallback(async () => {
+    if (!settlement) return;
+    setSetBusy(true);
+    setSetError(null);
+    try {
+      const posted = await postEndOfServiceSettlement(transport, {
+        companyId: config.companyId,
+        settlementId: settlement.id,
+      });
+      setSettlement(posted);
+      if (posted.alreadyPosted) fireArrive();
+      else firePost();
+    } catch (failure) {
+      setSetError(failure);
+      fireRefuse();
+    } finally {
+      setSetBusy(false);
+    }
+  }, [config.companyId, fireArrive, firePost, fireRefuse, settlement, transport]);
 
   const provCode = provError instanceof ProblemError ? provError.code : null;
   const setCode = setError instanceof ProblemError ? setError.code : null;
@@ -344,11 +378,18 @@ export function EndOfServiceScreen(): ReactNode {
 
         <div className="inline-group">
           <Button
+            label={t("hr.act.draftProvision")}
+            loading={provBusy}
+            disabled={!provReady || provBusy || provision !== null}
+            onClick={() => void draftProvision()}
+            testId="hr-provision-draft"
+          />
+          <Button
             label={t("hr.act.accrue")}
             kind="primary"
             loading={provBusy}
-            disabled={!provReady || provBusy}
-            onClick={() => void submitProvision()}
+            disabled={provBusy || provision === null}
+            onClick={() => void postProvision()}
             testId="hr-provision-submit"
           />
         </div>
@@ -356,12 +397,25 @@ export function EndOfServiceScreen(): ReactNode {
         {provision ? (
           <div
             className={"hr-receipt " + (provision.alreadyPosted ? arriveCls : postCls)}
+            data-state={provision.state}
             data-already={String(provision.alreadyPosted)}
             role="status"
             data-testid="hr-provision-receipt"
           >
-            <h2>{provision.alreadyPosted ? t("hr.provision.again") : t("hr.provision.done")}</h2>
-            <p>{provision.alreadyPosted ? t("hr.provision.againBody") : t("hr.provision.doneBody")}</p>
+            <h2>
+              {provision.state !== POSTED
+                ? t("hr.provision.drafted")
+                : provision.alreadyPosted
+                  ? t("hr.provision.again")
+                  : t("hr.provision.done")}
+            </h2>
+            <p>
+              {provision.state !== POSTED
+                ? t("hr.provision.draftedBody")
+                : provision.alreadyPosted
+                  ? t("hr.provision.againBody")
+                  : t("hr.provision.doneBody")}
+            </p>
             <div className="kv">
               <div>
                 <div className="k">{t("hr.provision.periodShare")}</div>
@@ -502,11 +556,18 @@ export function EndOfServiceScreen(): ReactNode {
 
         <div className="inline-group">
           <Button
+            label={t("hr.act.draftSettlement")}
+            loading={setBusy}
+            disabled={!setReady || setBusy || settlement !== null}
+            onClick={() => void draftSettlement()}
+            testId="hr-settlement-draft"
+          />
+          <Button
             label={t("hr.act.settle")}
             kind="primary"
             loading={setBusy}
-            disabled={!setReady || setBusy}
-            onClick={() => void submitSettlement()}
+            disabled={setBusy || settlement === null}
+            onClick={() => void postSettlement()}
             testId="hr-settlement-submit"
           />
         </div>
@@ -514,12 +575,25 @@ export function EndOfServiceScreen(): ReactNode {
         {settlement ? (
           <div
             className={"hr-receipt " + (settlement.alreadyPosted ? arriveCls : postCls)}
+            data-state={settlement.state}
             data-already={String(settlement.alreadyPosted)}
             role="status"
             data-testid="hr-settlement-receipt"
           >
-            <h2>{settlement.alreadyPosted ? t("hr.settlement.again") : t("hr.settlement.done")}</h2>
-            <p>{settlement.alreadyPosted ? t("hr.settlement.againBody") : t("hr.settlement.doneBody")}</p>
+            <h2>
+              {settlement.state !== POSTED
+                ? t("hr.settlement.drafted")
+                : settlement.alreadyPosted
+                  ? t("hr.settlement.again")
+                  : t("hr.settlement.done")}
+            </h2>
+            <p>
+              {settlement.state !== POSTED
+                ? t("hr.settlement.draftedBody")
+                : settlement.alreadyPosted
+                  ? t("hr.settlement.againBody")
+                  : t("hr.settlement.doneBody")}
+            </p>
             <div className="hr-split">
               <OpaqueCode code={settlement.employeeCode} testId="hr-settlement-code" />
               <span className="pill pill--info" data-testid="hr-settlement-scenario">

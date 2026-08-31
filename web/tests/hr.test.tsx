@@ -16,7 +16,7 @@
    ثانياً على عملٍ لم يقع.
    ═══════════════════════════════════════════════════════════════════════════ */
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { act, cleanup, render, screen, within } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider } from "@tanstack/react-router";
 import type { ReactNode } from "react";
@@ -137,6 +137,31 @@ function payslip(options: { state: string; entryId: string | null; alreadyPosted
       { lineNo: 1, componentCode: "BASIC", kind: "earning", entersContributoryWage: true, amount: EXACT_WIRE },
       { lineNo: 2, componentCode: "GHOST", kind: "deduction", entersContributoryWage: false, amount: "25.0000" },
     ],
+    state: options.state,
+    entryId: options.entryId,
+    alreadyPosted: options.alreadyPosted,
+  };
+}
+
+const SETTLEMENT_ID = "x0000000-0000-0000-0000-000000000001";
+
+function settlement(options: { state: string; entryId: string | null; alreadyPosted: boolean }) {
+  return {
+    id: SETTLEMENT_ID,
+    number: "EOS-S-2026-0007",
+    employmentId: EMPLOYEE.employmentId,
+    employeeCode: EMPLOYEE.code,
+    settledOn: "2026-06-30",
+    settlementDue: "41250.0000",
+    provisionBalance: "38900.0000",
+    amountPaid: "41250.0000",
+    shortfall: "2350.0000",
+    excess: "0.0000",
+    provisionUtilised: "38900.0000",
+    scenarioCode: "short",
+    measurementRef: "أساس القياس المعتمد ٢٠٢٥/٤",
+    settlementMethod: "bank",
+    treasuryPartyId: "BANK-0001",
     state: options.state,
     entryId: options.entryId,
     alreadyPosted: options.alreadyPosted,
@@ -578,6 +603,80 @@ describe("الملاحة", () => {
       "contracting",
       "realestate",
     ]);
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════
+   ٨ · المسوّدة تُرى قبل أن تُرحَّل
+   ═══════════════════════════════════════════════════════════════════════ */
+describe("المسوّدة قبل الترحيل", () => {
+  it("مسوّدة المخالصة تُظهر السيناريو والعجز **قبل** الترحيل، والترحيل فعلٌ ثانٍ", async () => {
+    const sent: Recorded[] = [];
+    await mount({
+      path: "/hr/end-of-service",
+      transport: stub({
+        routes: routesFor({
+          ["POST " + base + "/end-of-service-settlements"]: settlement({
+            state: "DRAFT",
+            entryId: null,
+            alreadyPosted: false,
+          }),
+          ["POST " + base + "/end-of-service-settlements/" + SETTLEMENT_ID + "/posting"]: settlement({
+            state: "POSTED",
+            entryId: "j0000000-0000-0000-0000-00000000000e",
+            alreadyPosted: false,
+          }),
+        }),
+        sent,
+      }),
+    });
+
+    await type(await screen.findByTestId<HTMLInputElement>("hr-settlement-number"), "EOS-S-2026-0007");
+    await type(screen.getByTestId<HTMLInputElement>("hr-settlement-employment"), EMPLOYEE.employmentId);
+    await type(screen.getByTestId<HTMLInputElement>("hr-settlement-date"), "2026-06-30");
+    await type(screen.getByTestId<HTMLInputElement>("hr-settlement-due"), "41250.0000");
+    await type(screen.getByTestId<HTMLInputElement>("hr-settlement-ref"), "أساس القياس المعتمد");
+    await type(screen.getByTestId<HTMLInputElement>("hr-settlement-treasury"), "BANK-0001");
+
+    /* الترحيل معطَّل ما دامت المسوّدة لم تُبنَ: الفعل الذي لا رجعة فيه لا يُبدأ منه. */
+    expect(screen.getByTestId<HTMLButtonElement>("hr-settlement-submit").disabled).toBe(true);
+
+    await click(screen.getByTestId("hr-settlement-draft"));
+
+    const receipt = await screen.findByTestId("hr-settlement-receipt");
+    expect(receipt.getAttribute("data-state")).toBe("DRAFT");
+    /* والسيناريو **يصل مُسمّى من الخادم**، ولا تستنتجه الشاشة بمقارنة مبلغين. */
+    expect(screen.getByTestId("hr-settlement-scenario").textContent).not.toBe("");
+    expect(receipt.textContent).toContain("2,350.00");
+    expect(screen.getByTestId("hr-settlement-entry").textContent).not.toBe("");
+
+    /* ولا ترحيل وقع بعد. */
+    expect(sent.filter((r) => r.url.endsWith("/posting")).length).toBe(0);
+
+    await click(screen.getByTestId("hr-settlement-submit"));
+    await waitFor(() =>
+      expect(screen.getByTestId("hr-settlement-receipt").getAttribute("data-state")).toBe("POSTED")
+    );
+    expect(sent.filter((r) => r.url.endsWith("/posting")).length).toBe(1);
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════
+   ٩ · ما لم يُبنَ مُعلَنٌ لا مسكوتٌ عنه
+   ═══════════════════════════════════════════════════════════════════════ */
+describe("الأبواب المُعلَنة", () => {
+  it("الإجازات والغياب: لا جدول ولا باب ولا حدث — والقسم يقول ذلك", async () => {
+    await mount({ path: "/hr", transport: stub({ routes: routesFor() }) });
+    const gap = await screen.findByTestId("hr-gap-leave");
+    expect(gap.textContent).toContain("لا إجازات");
+    expect(gap.textContent).toContain("القرار المطلوب من المالك");
+  });
+
+  it("السلف والجزاءات: البابان منشوران والشاشة لم تُبنَ — فالصفر يُقرأ على حقيقته", async () => {
+    await mount({ path: "/hr/payroll", transport: stub({ routes: routesFor() }) });
+    await type(screen.getByTestId<HTMLInputElement>("hr-run-id"), RUN_ID);
+    const gap = await screen.findByTestId("hr-gap-registers");
+    expect(gap.textContent).toContain("لا شيء مسجَّل في السجلّ المعتمد");
   });
 });
 

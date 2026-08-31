@@ -264,6 +264,13 @@ export function EmployeeRegisterScreen(): ReactNode {
         testId="hr-gap-no-list"
       />
 
+      <DeclaredGap
+        title={t("hr.gap.leaveTitle")}
+        body={t("hr.gap.leaveBody")}
+        owed={t("hr.gap.leaveOwed")}
+        testId="hr-gap-leave"
+      />
+
       <Panel title={t("hr.employee.lookup")} note={t("hr.employee.lookupNote")} testId="hr-lookup">
         <div className="grid fields-2">
           <Field id="hr-employee-id" label={t("hr.field.employeeId")} hint={t("hr.field.employeeIdHint")} source="typed">

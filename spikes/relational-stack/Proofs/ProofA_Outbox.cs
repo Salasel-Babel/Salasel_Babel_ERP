@@ -1,6 +1,5 @@
 using BabelRelationalSpike.Db;
 using BabelRelationalSpike.Support;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using Wolverine.EntityFrameworkCore;

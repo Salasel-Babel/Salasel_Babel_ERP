@@ -1,0 +1,181 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   الهيكل السينمائي  ·  The cinematic shell
+   ───────────────────────────────────────────────────────────────────────────
+   إطار التطبيق: ملاحةٌ بين **الأقسام الخمسة**، ورأسٌ فيه المنشأة واللغة
+   والمظهر، ولوحةُ أوامر تفتح على كل شاشةٍ وفعل، وزرّ صوتٍ حاضرٌ دائماً،
+   وانتقالٌ بين المسارات يُقرأ كـ«مسار عرض» لا كوميض.
+
+   **والملاحة تحمل الأقسام الخمسة ولو لم تُبنَ شاشاتها** — بحالةٍ صريحة
+   «قيد البناء» لا برابطٍ ميت. ورابطٌ يقود إلى لا شيء يُعلّم المستخدم ألّا
+   يثق بالملاحة كلّها، وذلك أغلى من نقصٍ مُعلَن.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════ ١ · الأرضية السينمائية */
+.app-shell{
+  background:var(--backdrop-cinematic);
+  background-attachment:fixed;
+}
+.app-side{
+  background:color-mix(in srgb, var(--color-surface) 88%, transparent);
+  backdrop-filter:blur(8px);
+}
+.app-topbar{
+  background:color-mix(in srgb, var(--color-surface) 84%, transparent);
+  backdrop-filter:blur(10px);
+}
+
+/* ═══════════════════════════════════════════ ٢ · ملاحة الأقسام الخمسة */
+.sections{ display:flex; flex-direction:column; gap:var(--space-2); min-inline-size:0 }
+@media (max-width:860px){
+  .sections{ flex-direction:row; flex-wrap:wrap; gap:var(--space-6) }
+}
+.sections__label{
+  font-size:var(--font-size-2xs); font-weight:var(--font-weight-semibold);
+  color:var(--color-text-subtle); padding:var(--space-8) var(--space-10) var(--space-4);
+}
+@media (max-width:860px){ .sections__label{ display:none } }
+
+.section{
+  /* الالتفاف إلزامي لا تجميل: «قيد البناء» بالإنجليزية والهندية أطولُ منه
+     بالعربية بنحو الضِعف، وبلا التفافٍ كانت شارة البادئة تأكل الاسم فيصير
+     «Human resources» ⇐ «H…». والاسم لا يُبتَر ليُفسح لبادئةٍ ثانوية. */
+  display:flex; align-items:center; gap:var(--space-8); flex-wrap:wrap;
+  padding:var(--space-8) var(--space-10);
+  border-radius:var(--radius-control);
+  border:var(--border-width) solid transparent;
+  color:var(--color-text-muted); font-size:var(--font-size-control);
+  font-weight:var(--font-weight-semibold); text-decoration:none;
+  min-inline-size:0;
+  transition:background var(--motion-swift) var(--ease-enter),
+             color var(--motion-swift) var(--ease-enter),
+             border-color var(--motion-swift) var(--ease-enter);
+}
+.section:hover{ background:var(--color-surface-sunken); color:var(--color-text) }
+.section:focus-visible{ outline:2px solid var(--color-focus); outline-offset:2px }
+/* شارةُ القسم: مربّعٌ يحمل لون القسم — وهو نفس اللون الذي تحمله موجة الانتقال. */
+.section__mark{
+  inline-size:9px; block-size:9px; border-radius:var(--radius-mark); flex:none;
+  background:var(--section-tint, var(--color-text-subtle));
+  box-shadow:0 0 12px color-mix(in srgb, var(--section-tint, transparent) 60%, transparent);
+}
+.section__name{ flex:1 0 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-inline-size:0 }
+.section[aria-current="page"]{
+  color:var(--color-text);
+  background:color-mix(in srgb, var(--section-tint) 14%, transparent);
+  border-color:color-mix(in srgb, var(--section-tint) 46%, transparent);
+}
+/* قسمٌ لم تُبنَ شاشاته: **مُعلَنٌ لا مخفيّ ولا ميت**. */
+.section[data-built="false"]{
+  cursor:not-allowed; opacity:.72;
+  border-style:dashed; border-color:var(--edge-line);
+}
+.section[data-built="false"]:hover{ background:transparent; color:var(--color-text-muted) }
+.section__soon{
+  margin-inline-start:auto; flex:none;
+  font-size:var(--font-size-3xs); font-weight:var(--font-weight-semibold);
+  color:var(--color-text-subtle);
+  padding:1px var(--space-6); border-radius:var(--radius-pill);
+  border:var(--border-width) solid var(--edge-line);
+}
+
+/* ═══════════════════════════════════════════════ ٣ · موجة الانتقال */
+.transit{
+  position:fixed; inset-block-start:0; inset-inline:0; block-size:2px;
+  z-index:var(--z-command); pointer-events:none;
+  background:var(--section-tint, var(--color-primary));
+  box-shadow:0 0 22px color-mix(in srgb, var(--section-tint, var(--color-primary)) 70%, transparent);
+  transform-origin:center;
+  animation:transit-sweep var(--motion-cinematic) var(--ease-enter) both;
+}
+@keyframes transit-sweep{
+  from{ opacity:1; transform:scaleX(0) } 70%{ opacity:1; transform:scaleX(1) }
+  to{ opacity:0; transform:scaleX(1) }
+}
+@media (prefers-reduced-motion: reduce){
+  .transit{ animation:none !important; opacity:.9; transform:none }
+}
+
+/* ═══════════════════════════════════════════════ ٤ · لوحة الأوامر */
+.cmdk-scrim{
+  position:fixed; inset:0; z-index:var(--z-command);
+  background:var(--surface-veil);
+  backdrop-filter:blur(3px);
+  display:flex; align-items:flex-start; justify-content:center;
+  padding:12dvh var(--space-16) var(--space-16);
+}
+.cmdk{
+  inline-size:min(680px, 100%);
+  background:var(--color-surface);
+  border:var(--border-width) solid var(--edge-strong);
+  border-radius:var(--radius-overlay);
+  box-shadow:var(--elevation-overlay);
+  overflow:hidden;
+  display:flex; flex-direction:column; max-block-size:74dvh;
+  animation:cmdk-in var(--motion-quick) var(--ease-enter) both;
+}
+@keyframes cmdk-in{ from{ opacity:0; transform:translateY(-8px) scale(.99) } to{ opacity:1; transform:none } }
+@media (prefers-reduced-motion: reduce){ .cmdk{ animation:none !important } }
+.cmdk__search{
+  display:flex; align-items:center; gap:var(--space-10);
+  padding:var(--space-14) var(--space-16);
+  border-block-end:var(--border-width) solid var(--edge-line);
+  background:var(--color-surface-raised);
+}
+.cmdk__search input{
+  flex:1 1 auto; min-inline-size:0;
+  border:0; background:transparent; color:var(--color-text);
+  font-size:var(--font-size-2xl); outline:0;
+}
+.cmdk__list{ overflow:auto; overscroll-behavior:contain; padding:var(--space-6) }
+.cmdk__group{
+  font-size:var(--font-size-3xs); font-weight:var(--font-weight-semibold);
+  color:var(--color-text-subtle); padding:var(--space-10) var(--space-12) var(--space-4);
+}
+.cmdk__item{
+  inline-size:100%; display:flex; align-items:center; gap:var(--space-10);
+  padding:var(--space-10) var(--space-12); border:0; border-radius:var(--radius-control);
+  background:transparent; color:var(--color-text-muted);
+  font-size:var(--font-size-control); text-align:start; cursor:pointer;
+}
+.cmdk__item:hover{ background:var(--color-surface-sunken); color:var(--color-text) }
+.cmdk__item[aria-selected="true"]{
+  background:var(--color-primary-soft); color:var(--color-text);
+  box-shadow:inset 0 0 0 1px var(--color-primary);
+}
+.cmdk__item .spacer{ margin-inline-start:auto }
+/* بندٌ مُعلَنٌ لا يُفتَح: مرئيٌّ ومعطَّل — الحذف يجعل النظام يبدو أصغر مما بيع. */
+.cmdk__item[aria-disabled="true"]{ opacity:.58; cursor:not-allowed }
+.cmdk__item[aria-disabled="true"]:hover{ background:transparent; color:var(--color-text-muted) }
+.cmdk__foot{
+  display:flex; align-items:center; gap:var(--space-12); flex-wrap:wrap;
+  padding:var(--space-8) var(--space-16);
+  border-block-start:var(--border-width) solid var(--edge-line);
+  background:var(--color-surface-raised);
+  font-size:var(--font-size-3xs); color:var(--color-text-subtle);
+}
+
+/* ═══════════════════════════════════════════ ٥ · زرّ الصوت الحاضر دائماً */
+.voicedock{
+  position:fixed; inset-block-end:var(--space-20); inset-inline-end:var(--space-20);
+  z-index:var(--z-voice-dock);
+  display:inline-flex; align-items:center; gap:var(--space-8);
+  padding:var(--space-12) var(--space-18);
+  border-radius:var(--radius-pill);
+  border:var(--border-width) solid var(--color-ai-line);
+  background:var(--color-surface);
+  color:var(--color-ai); font-size:var(--font-size-control);
+  font-weight:var(--font-weight-semibold);
+  box-shadow:var(--elevation-floating);
+  cursor:pointer;
+}
+.voicedock:hover{ border-color:var(--color-ai) }
+.voicedock:focus-visible{ outline:2px solid var(--color-focus); outline-offset:3px }
+.voicedock[data-listening="true"]{
+  border-color:var(--color-ai); background:var(--color-ai-soft);
+  box-shadow:var(--glow-inferred), var(--elevation-floating);
+}
+.voicedock__dot{
+  inline-size:9px; block-size:9px; border-radius:var(--radius-circle);
+  background:currentColor; flex:none;
+}
+@media print{ .voicedock, .cmdk-scrim, .transit{ display:none } }

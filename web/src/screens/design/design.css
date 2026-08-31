@@ -1,0 +1,101 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   تخطيط صفحة العرض `/design` — تخطيطٌ وحده، ولا رمز لونٍ جديد فيه
+   ───────────────────────────────────────────────────────────────────────────
+   كل لونٍ هنا مرجعٌ إلى رمزٍ في `cinematic.css` أو الطبقة الدلالية. وصفحةٌ
+   تعرض النظام ثم تخالفه في نفسها لا تُصدَّق.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.subhead{
+  margin:var(--space-20) 0 var(--space-10);
+  font-size:var(--font-size-card-title); font-weight:var(--font-weight-bold);
+  color:var(--color-text-muted);
+}
+
+/* ── شبكة عمودين تنهار إلى عمود عند الشاشات الضيّقة ──────────────────── */
+.grid2{
+  display:grid; gap:var(--space-16);
+  grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));
+  align-items:start;
+}
+
+/* ── مربّعات اللوحة ──────────────────────────────────────────────────── */
+.swatches{
+  display:grid; gap:var(--space-10);
+  grid-template-columns:repeat(auto-fill, minmax(210px, 1fr));
+}
+.swatch{
+  display:flex; align-items:center; gap:var(--space-10); min-inline-size:0;
+  padding:var(--space-10) var(--space-12);
+  border:var(--border-width) solid var(--edge-line);
+  border-radius:var(--radius-well);
+  background:var(--color-surface-raised);
+}
+.swatch__chip{
+  inline-size:34px; block-size:34px; flex:none;
+  border-radius:var(--radius-sm);
+  border:var(--border-width) solid var(--edge-strong);
+  background:var(--swatch);
+}
+.swatch[data-kind="ink"] .swatch__chip{ background:var(--swatch) }
+.swatch[data-kind="edge"] .swatch__chip{ background:transparent; border-color:var(--swatch); border-width:3px }
+.swatch__body{ display:flex; flex-direction:column; gap:2px; min-inline-size:0 }
+.swatch__role{
+  font-size:var(--font-size-sm); font-weight:var(--font-weight-semibold);
+  color:var(--color-text);
+  overflow:hidden; text-overflow:ellipsis;
+}
+.swatch__token{ font-size:var(--font-size-3xs); color:var(--color-text-subtle) }
+.swatch[data-kind="glow"]{ background:var(--color-surface) }
+
+/* ── بطاقات مفردات الحركة ────────────────────────────────────────────── */
+.mtiles{
+  display:grid; gap:var(--space-12);
+  grid-template-columns:repeat(auto-fill, minmax(268px, 1fr));
+}
+.mtile{
+  display:flex; flex-direction:column; gap:var(--space-8); min-inline-size:0;
+  padding:var(--space-12);
+  border:var(--border-width) solid var(--edge-line);
+  border-radius:var(--radius-panel);
+  background:var(--color-surface-raised);
+}
+.mtile__head{
+  display:flex; align-items:center; gap:var(--space-8); flex-wrap:wrap;
+  margin:0; font-size:var(--font-size-card-title);
+}
+.mtile__head .btn{ margin-inline-start:auto }
+.mtile__when{
+  margin:0; font-size:var(--font-size-xs); color:var(--color-text-muted);
+  line-height:var(--line-snug); min-block-size:3.4em;
+}
+.mtile__stage{
+  display:grid; place-items:center; min-block-size:64px;
+  border-radius:var(--radius-well);
+  border:var(--border-width) solid var(--edge-faint);
+  background:var(--color-surface-sunken);
+}
+.mtile__sample{
+  font-size:var(--font-size-4xl); font-weight:var(--font-weight-bold);
+  color:var(--color-debit);
+}
+.mtile__spec{ margin:0; font-size:var(--font-size-3xs); color:var(--color-text-subtle) }
+
+/* ── سطر مفتاح/قيمة ──────────────────────────────────────────────────── */
+.kv{
+  display:flex; align-items:center; gap:var(--space-10); flex-wrap:wrap;
+  padding:var(--space-8) 0;
+  border-block-end:var(--border-width) solid var(--edge-faint);
+}
+.kv:last-child{ border-block-end:0 }
+.kv__k{
+  flex:0 0 auto; min-inline-size:9rem;
+  font-size:var(--font-size-xs); color:var(--color-text-muted);
+}
+.kv__v{ flex:1 1 auto; min-inline-size:0; font-weight:var(--font-weight-semibold) }
+.kv--split .kv__v{ text-align:end }
+
+/* ── صفحة العرض على الشاشات الضيّقة ──────────────────────────────────── */
+@media (max-width:620px){
+  .kv__k{ min-inline-size:100% }
+  .swatches{ grid-template-columns:1fr }
+}

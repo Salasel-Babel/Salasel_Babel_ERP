@@ -1,0 +1,401 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   الأوّليّات — ما يبني عليه الخمسة  ·  The primitives the five agents build on
+   ───────────────────────────────────────────────────────────────────────────
+   **قاعدةٌ مالية تكسر أرقاماً إن خُولفت:** المال والكمّية والنسبة **نصوصٌ على
+   السلك** في هذا المستودع — لا `number` ولا `double`. فكل أوّليّة هنا تستقبل
+   {@link Money} أو نصّاً، وتعرضه بـ`<Amount>` أو `<Num>` عبر طبقة التدويل،
+   و**لا تُحوِّل إلى عائم أبداً**. ومن يمرّر رقماً إلى حقلٍ مالي يرمي `Money`
+   قبل أن يصل إلى الشاشة، لا بعد أن يصل خطأً.
+
+   **ولا نصّ مرئي مكتوب هنا:** كل أوّليّة تستقبل نصّها من الشاشة، والشاشة
+   تأخذه من `useT()`. وهذا يفرضه `scripts/audit.mjs` فحصاً حاكماً.
+   ═══════════════════════════════════════════════════════════════════════════ */
+import type { CSSProperties, ReactNode } from "react";
+import type { Money } from "../api/money";
+import { Amount, Num } from "../i18n/react";
+
+/* ═══════════════════════════════════════════════════════ ١ · سطح ولوح */
+
+/** خصائص السطح. */
+export interface SurfaceProps {
+  readonly children: ReactNode;
+  /** درجة الارتفاع — تختار الظلّ من سلّم `--elevation-*`. */
+  readonly lift?: "flat" | "raised" | "floating";
+  readonly className?: string;
+  readonly testId?: string;
+}
+
+/**
+ * سطحٌ مرتفع بلا رأس ولا حشو مفروض — أدنى وعاءٍ في النظام.
+ * @param props المحتوى ودرجة الارتفاع.
+ */
+export function Surface(props: SurfaceProps): ReactNode {
+  const lift = props.lift ?? "raised";
+  return (
+    <div
+      className={"card " + (props.className ?? "")}
+      data-testid={props.testId}
+      style={{ boxShadow: `var(--elevation-${lift})` }}
+    >
+      {props.children}
+    </div>
+  );
+}
+
+/** خصائص اللوح. */
+export interface PanelProps {
+  /** عنوان اللوح — نصٌّ مترجَم تمرّره الشاشة. */
+  readonly title: string;
+  /** ملاحظةٌ تحت العنوان. */
+  readonly note?: string;
+  /** ما يوضع في نهاية شريط الرأس: شارة، زرّ. */
+  readonly aside?: ReactNode;
+  readonly children: ReactNode;
+  readonly className?: string;
+  readonly testId?: string;
+}
+
+/**
+ * لوحٌ ذو رأسٍ وجسم — الوعاء الأشيع في الشاشات.
+ * @param props العنوان والملاحظة والمحتوى.
+ */
+export function Panel(props: PanelProps): ReactNode {
+  return (
+    <section className={"card " + (props.className ?? "")} data-testid={props.testId}>
+      <div className="card-hd">
+        <strong>{props.title}</strong>
+        {props.aside ? <span className="spacer">{props.aside}</span> : null}
+      </div>
+      <div className="card-pad">
+        {props.note ? <p className="muted">{props.note}</p> : null}
+        {props.children}
+      </div>
+    </section>
+  );
+}
+
+/* ═════════════════════════════════════════════════ ٢ · بطاقة إحصاء */
+
+/** خصائص بطاقة الإحصاء. */
+export interface StatCardProps {
+  /** اسم القيمة. */
+  readonly label: string;
+  /** المبلغ — يُعرض بطبقة التدويل ولا يصير رقماً. */
+  readonly amount?: Money;
+  /** بديلٌ عن المبلغ: عددٌ صحيح أو نصٌّ مُعدّ سلفاً. */
+  readonly count?: number | string;
+  /** شرحٌ صغير تحت القيمة. */
+  readonly hint?: string;
+  /** نغمةُ القيمة: طرف القيد أو حالة. */
+  readonly tone?: "neutral" | "debit" | "credit" | "good" | "bad";
+  /** صنفُ حركةٍ من {@link MOTION} حين تصل القيمة من الخادم. */
+  readonly moment?: string;
+  readonly testId?: string;
+}
+
+/**
+ * بطاقة إحصاء: اسمٌ وقيمةٌ كبيرة وشرح.
+ * @param props الاسم والقيمة والنغمة.
+ */
+export function StatCard(props: StatCardProps): ReactNode {
+  const tone = props.tone ?? "neutral";
+  return (
+    <div
+      className={"stat " + (props.moment ?? "")}
+      data-tone={tone}
+      data-testid={props.testId}
+    >
+      <span className="k">{props.label}</span>
+      <span className="v">
+        {props.amount ? (
+          <Amount value={props.amount} className={tone === "debit" ? "amt--debit" : tone === "credit" ? "amt--credit" : ""} />
+        ) : props.count !== undefined ? (
+          <Num value={props.count} />
+        ) : null}
+      </span>
+      {props.hint ? <span className="s">{props.hint}</span> : null}
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════ ٣ · حقل وزرّ */
+
+/** خصائص الحقل. */
+export interface FieldProps {
+  readonly id: string;
+  readonly label: string;
+  readonly hint?: string;
+  /** رسالة رفضٍ على الحقل — تُعرض ويُوسَم الحقل بها لقارئ الشاشة. */
+  readonly error?: string;
+  readonly required?: boolean;
+  /** مصدرُ القيمة، إن كان النظام هو من ملأها. */
+  readonly source?: Provenance;
+  readonly children: ReactNode;
+}
+
+/** مصادر القيمة الستّة — بأسماء الخادم نفسها. */
+export type Provenance = "attested" | "read" | "spoken" | "inferred" | "defaulted" | "typed";
+
+/**
+ * حقلٌ بتسمية وتلميح ورسالة رفض، ويحمل أثر مصدره على بدايته.
+ * @param props المعرّف والتسمية والمحتوى.
+ */
+export function Field(props: FieldProps): ReactNode {
+  return (
+    <div
+      className={"field" + (props.source ? " prov-field" : "")}
+      data-source={props.source}
+    >
+      <label htmlFor={props.id}>
+        {props.label}
+        {props.required ? <span className="req" aria-hidden="true">{"*"}</span> : null}
+      </label>
+      {props.children}
+      {props.hint ? <span className="hint">{props.hint}</span> : null}
+      {props.error ? (
+        <span className="field-error" role="alert">
+          {props.error}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+/** خصائص الزرّ. */
+export interface ButtonProps {
+  readonly label: string;
+  readonly onClick?: () => void;
+  readonly kind?: "default" | "primary" | "danger" | "ghost";
+  readonly size?: "base" | "sm";
+  readonly loading?: boolean;
+  readonly disabled?: boolean;
+  readonly testId?: string;
+  readonly ariaKeyshortcuts?: string;
+}
+
+/**
+ * زرّ. النصّ يأتي مترجَماً من الشاشة، ولا يُكتب هنا.
+ * @param props التسمية والصنف والحدث.
+ */
+export function Button(props: ButtonProps): ReactNode {
+  const kind = props.kind ?? "default";
+  const classes = [
+    "btn",
+    kind === "primary" ? "btn-primary" : kind === "danger" ? "btn-danger" : kind === "ghost" ? "btn-ghost" : "",
+    props.size === "sm" ? "btn-sm" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  return (
+    <button
+      type="button"
+      className={classes}
+      data-loading={props.loading ? "true" : undefined}
+      disabled={props.disabled}
+      onClick={props.onClick}
+      data-testid={props.testId}
+      aria-keyshortcuts={props.ariaKeyshortcuts}
+    >
+      {props.label}
+    </button>
+  );
+}
+
+/* ══════════════════════════════════════════════════ ٤ · شارة الحالة */
+
+/** حالات المستند المحاسبي — لا تُخترع سابعة في الواجهة. */
+export type DocState =
+  | "draft"
+  | "posted"
+  | "reversed"
+  | "pending"
+  | "rejected"
+  | "archived"
+  | "debit"
+  | "credit"
+  | "info";
+
+/**
+ * شارة حالة. اللون يأتي من الرمز الدلالي للحالة لا من اختيارٍ في الشاشة.
+ * @param props الحالة ونصّها.
+ */
+export function StatusBadge(props: {
+  readonly state: DocState;
+  readonly label: string;
+  readonly title?: string;
+  readonly testId?: string;
+}): ReactNode {
+  return (
+    <span
+      className={"pill pill--" + props.state}
+      title={props.title}
+      data-state={props.state}
+      data-testid={props.testId}
+    >
+      {props.label}
+    </span>
+  );
+}
+
+/* ═════════════════════════════════════ ٥ · لوحة الرفض ثنائية اللغة
+   الرفض **حالةٌ أولى لا خطأ يُخفى**: يسمّي البند، ويقول ما لم يقع، ويعطي
+   الخطوة التالية. والعنوان الإنجليزي إلى جانب العربي لأن رسالة الخادم
+   المنشورة تحملهما معاً (RFC 9457 + ADR-0021). */
+
+/** خصائص لوحة الرفض. */
+export interface RefusalProps {
+  /** العنوان العربي — وهو السجلّ. */
+  readonly title: string;
+  /** العنوان الإنجليزي — وهو العرض. */
+  readonly titleEn?: string;
+  /** ما لم يقع، بجملةٍ واحدة. */
+  readonly body: string;
+  /** رمز الرفض المنشور، لاتينيٌّ معزول. */
+  readonly code?: string;
+  /** تسمية الرمز — «الرمز» لا اسم البند. */
+  readonly codeLabel?: string;
+  /** البند الذي سُمّي: حقل، حساب، بُعد. */
+  readonly subject?: string;
+  /** اسمُ البند بالكلمات. */
+  readonly subjectLabel?: string;
+  /** الخطوة التالية — بلا خطوةٍ تالية تصير اللوحة شكوى. */
+  readonly next?: string;
+  /** صنفُ حركةٍ من {@link MOTION} عند وقوع الرفض. */
+  readonly moment?: string;
+  readonly testId?: string;
+}
+
+/**
+ * لوحة رفضٍ ثنائية اللغة تسمّي البند وتعطي الخطوة التالية.
+ * @param props العنوان والجسم والرمز والخطوة التالية.
+ */
+export function RefusalPanel(props: RefusalProps): ReactNode {
+  return (
+    <div
+      className={"problem " + (props.moment ?? "")}
+      role="alert"
+      data-testid={props.testId}
+    >
+      <h2>{props.title}</h2>
+      {props.titleEn ? (
+        <span className="en" lang="en" dir="ltr">
+          {props.titleEn}
+        </span>
+      ) : null}
+      <p>{props.body}</p>
+      {props.code || props.subject ? (
+        <dl>
+          {props.code ? (
+            <>
+              <dt>{props.codeLabel}</dt>
+              <dd className="mono">{props.code}</dd>
+            </>
+          ) : null}
+          {props.subject ? (
+            <>
+              <dt>{props.subjectLabel}</dt>
+              <dd>{props.subject}</dd>
+            </>
+          ) : null}
+        </dl>
+      ) : null}
+      {props.next ? <p className="muted">{props.next}</p> : null}
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════ ٦ · شريط التقدّم */
+
+/**
+ * شريط تقدّم. القيمة نسبةٌ **نصّاً** (٠–١٠٠) فلا تمرّ بعائم.
+ * @param props القيمة والتسمية.
+ */
+export function ProgressBar(props: {
+  readonly percent: string;
+  readonly label: string;
+  /** غير محدّد المدى: يعمل ولا يُعرف متى ينتهي. */
+  readonly indeterminate?: boolean;
+  readonly tone?: "brand" | "good" | "warn";
+  readonly testId?: string;
+}): ReactNode {
+  const tone = props.tone ?? "brand";
+  return (
+    <div
+      className="confidence confidence--progress"
+      data-band={tone === "good" ? "high" : tone === "warn" ? "medium" : undefined}
+      style={{ color: tone === "brand" ? "var(--color-primary)" : undefined }}
+      data-testid={props.testId}
+    >
+      <div
+        className={"confidence__rail" + (props.indeterminate ? " cine-live" : "")}
+        role="progressbar"
+        aria-label={props.label}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuetext={props.indeterminate ? undefined : props.percent}
+      >
+        <span
+          className="confidence__fill"
+          style={{ "--confidence": props.indeterminate ? "100" : props.percent } as CSSProperties}
+        />
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════ ٧ · حالة فراغٍ ذات معنى
+   «لا نتائج» ليست حالة فراغ: حالةُ الفراغ تقول **لماذا** الجدول فارغ وما
+   الخطوة التالية. وفي هذا المنتج للفراغ معنىً خاصّ: جداول الإعدادات النظامية
+   **تُسلَّم فارغة عمداً** — فالفراغ قرارٌ يُشرَح، لا نقصٌ يُعتذَر عنه. */
+
+/**
+ * حالة فراغٍ تقول لماذا، وتعطي الخطوة التالية.
+ * @param props العنوان والسبب والفعل.
+ */
+export function EmptyState(props: {
+  readonly title: string;
+  readonly body: string;
+  readonly action?: ReactNode;
+  readonly small?: boolean;
+  readonly testId?: string;
+}): ReactNode {
+  return (
+    <div className={"empty" + (props.small ? " empty--sm" : "")} data-testid={props.testId}>
+      <div className="ico" aria-hidden="true">{"\u2205"}</div>
+      <h3>{props.title}</h3>
+      <p>{props.body}</p>
+      {props.action ? <div className="actions">{props.action}</div> : null}
+    </div>
+  );
+}
+
+/* ═════════════════════════════════════════════════════ ٨ · جرس التنبيه */
+
+/**
+ * جرسُ تنبيهٍ يحمل عدد ما لم يُقرأ. العدد يُعرض بأرقام اللغة.
+ * @param props العدد والتسمية.
+ */
+export function AlertBell(props: {
+  readonly count: number;
+  readonly label: string;
+  readonly onClick?: () => void;
+  readonly testId?: string;
+}): ReactNode {
+  return (
+    <button
+      type="button"
+      className="iconbtn bell"
+      data-unread={props.count > 0 ? "true" : "false"}
+      aria-label={props.label}
+      onClick={props.onClick}
+      data-testid={props.testId}
+    >
+      <span aria-hidden="true">{"⊙"}</span>
+      {props.count > 0 ? (
+        <span className="visually-hidden">
+          <Num value={props.count} />
+        </span>
+      ) : null}
+    </button>
+  );
+}

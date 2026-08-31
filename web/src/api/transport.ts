@@ -246,8 +246,8 @@ export function fetchTransport(options: {
     const response = await doFetch(base + url, {
       method,
       headers,
-      /* ولا تأكيدَ نوعٍ هنا: TypeScript يستنتج الحارس من `body instanceof FormData`
-         المخزَّن في `form`، فالتأكيد صار زائداً ويردّه حدّ ESLint. */
+      /* لا تحويل نوعٍ هنا: `BodyInit` يقبل نوع `body` الأصلي كما هو، وتحويلٌ
+         لا يغيّر شيئاً يُخفي تغيّرَ النوع لاحقاً بدل أن يُظهره. */
       body: body === undefined ? undefined : form ? body : JSON.stringify(body),
       signal,
     });

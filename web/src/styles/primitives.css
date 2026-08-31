@@ -1,0 +1,102 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   الأوّليّات — ما تضيفه الطبقة السينمائية فوق `components.css`
+   ───────────────────────────────────────────────────────────────────────────
+   `components.css` هو النظام المعتمد المنقول من `design/`، ولا يُمسّ. وما
+   هنا **إضافةٌ فوقه** لا استبدالٌ له: نغماتٌ لبطاقة الإحصاء، ورأسٌ لاصق
+   لجدولٍ ماليّ داخل لوح، وحالاتُ الجدول الأربع.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── بطاقة الإحصاء ───────────────────────────────────────────────────────
+   الاسم والقيمة والشرح **أسطرٌ ثلاثة**. و`components.css` يعطي كلاً منها
+   `margin-top` وهي لا تعمل على عنصرٍ سطري، فكانت الثلاثة تُقرأ كلمةً واحدة:
+   «0.00متوازن». والعلاج هنا لا هناك: الشاشة المعتمدة لا تُمسّ. */
+.stat > .k,
+.stat > .v,
+.stat > .s{ display:block }
+
+/* ── النغمة تختار لون القيمة ─────────────────────────────────────────── */
+.stat[data-tone="debit"] .v{ color:var(--color-debit) }
+.stat[data-tone="credit"] .v{ color:var(--color-credit) }
+.stat[data-tone="good"] .v{ color:var(--color-success) }
+.stat[data-tone="bad"] .v{ color:var(--color-danger) }
+.stat[data-tone="debit"]{ box-shadow:var(--glow-debit) }
+.stat[data-tone="credit"]{ box-shadow:var(--glow-credit) }
+/* شريط التقدّم أعرض من مقياس الثقة: الثقة تُقرأ بالرقم إلى جانبها،
+   والتقدّم يُقرأ بالطول وحده فيحتاج سُمكاً يُرى. */
+.confidence--progress .confidence__rail{ block-size:9px }
+
+.stats-row{
+  display:grid; gap:var(--space-12);
+  grid-template-columns:repeat(auto-fit, minmax(160px, 1fr));
+}
+
+/* ── الجدول المالي داخل لوح ──────────────────────────────────────────── */
+.ledger{
+  /* الرأس اللاصق يحتاج حاويةً محدودة الارتفاع، والعرض الزائد يُمرَّر هنا
+     وحده فلا ينزلق جسم الصفحة (app.css §الجدول). */
+  max-block-size:clamp(220px, 52dvh, 720px);
+  overflow:auto; overscroll-behavior:contain;
+  border-radius:var(--radius-well);
+  border:var(--border-width) solid var(--edge-line);
+}
+.ledger table{
+  inline-size:100%; min-inline-size:560px;
+  border-collapse:separate; border-spacing:0;
+}
+.ledger thead th{
+  position:sticky; inset-block-start:0; z-index:var(--z-table-head);
+  background:var(--color-surface-sunken);
+  color:var(--color-text-muted);
+  font-size:var(--font-size-2xs); font-weight:var(--font-weight-semibold);
+  padding:var(--space-8) var(--space-10);
+  border-block-end:var(--border-width) solid var(--edge-line);
+  text-align:start; white-space:nowrap;
+}
+.ledger thead th.n{ text-align:end }
+.ledger thead th.h-debit{ background:var(--color-debit); color:var(--on-debit) }
+.ledger thead th.h-credit{ background:var(--color-credit); color:var(--on-credit) }
+.ledger tbody td{
+  padding:var(--space-6) var(--space-10);
+  border-block-end:var(--border-width) solid var(--edge-faint);
+}
+.ledger tbody tr{ position:relative }
+.ledger tbody tr:nth-child(even) td{
+  background:color-mix(in srgb, var(--color-surface-sunken) 42%, transparent);
+}
+.ledger tbody tr:hover td{ background:var(--color-surface-raised) }
+.ledger tbody tr:focus-visible{ outline:2px solid var(--color-focus); outline-offset:-2px }
+.ledger tfoot td{
+  position:sticky; inset-block-end:0; z-index:var(--z-table-head);
+  background:var(--color-surface-sunken);
+  border-block-start:var(--border-width-accent) solid var(--edge-strong);
+  padding:var(--space-8) var(--space-10);
+  font-weight:var(--font-weight-bold);
+}
+.ledger tfoot td.d{ color:var(--color-debit) }
+.ledger tfoot td.c{ color:var(--color-credit) }
+.ledger .code{
+  font-family:var(--font-mono); direction:ltr; unicode-bidi:isolate;
+  font-size:.92em; color:var(--color-text-muted);
+}
+/* الاسم المرافق: العربية سجلٌّ والترجمة عرض (ADR-0021)، والترجمة معزولة
+   لأن اتجاهها قد يخالف اتجاه الصفحة ولا يُفترض أنها إنجليزية. */
+.ledger .alt{
+  display:block; unicode-bidi:isolate;
+  font-size:var(--font-size-3xs); color:var(--color-text-subtle); line-height:1.4;
+}
+/* الصفّ الذي وصل للتوّ: الطبقة الزائفة تغطّي الصفّ كلّه بلا إعادة تخطيط. */
+.ledger tbody tr.cine-arrive::after{ border-radius:0 }
+
+/* ── حالات الجدول الأربع ─────────────────────────────────────────────── */
+.ledger-state{
+  display:flex; align-items:center; justify-content:center;
+  padding:var(--space-32) var(--space-16);
+  color:var(--color-text-subtle); font-size:var(--font-size-sm);
+}
+/* الهيكل العظمي أثناء التحميل: لا نبضَ على مئة صفّ — نبضٌ واحد على الوعاء. */
+.skeleton-row{
+  block-size:var(--space-20); border-radius:var(--radius-mark);
+  background:linear-gradient(90deg,
+    var(--color-surface-sunken), var(--color-surface-raised), var(--color-surface-sunken));
+  margin-block-end:var(--space-8);
+}

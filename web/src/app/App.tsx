@@ -1,7 +1,15 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   هيكل التطبيق: التنقّل، ومبدّلا اللغة والمظهر، وشارة حالة الخدمة.
+   الهيكل السينمائي — ما حول كل شاشة
+   ───────────────────────────────────────────────────────────────────────────
+   ملاحةٌ بين **الأقسام الخمسة** (والقسم غير المبنيّ مُعلَنٌ لا مخفيّ)، ورأسٌ
+   فيه المنشأة واللغة والمظهر وحالة الخدمة، و**لوحةُ أوامر** بـCtrl/⌘+K تفتح
+   على كل شاشةٍ وفعل، و**زرّ صوتٍ حاضرٌ دائماً**، وانتقالٌ بين المسارات يُقرأ
+   كـ«مسار عرض»: شريطٌ بلون القسم الذي دخلتَه، وصفحةٌ تدخل بمنحنى `enter`.
+
+   **والانتقال يقول أين ذهبتَ لا أنه حدث فقط**: لون الشريط هو لون القسم، وهو
+   نفسه لون شارته في الملاحة. مؤثّرٌ يحمل معلومة، لا وميضٌ يُبطئ.
    ═══════════════════════════════════════════════════════════════════════════ */
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { health } from "../api/generated/client";
@@ -10,6 +18,11 @@ import { useT } from "../i18n/react";
 import { HealthBadge, LocaleSwitcher, ThemeSwitcher } from "./shell/Switchers";
 import { CompanyBadge } from "./shell/CompanyBadge";
 import { KeyboardHelp } from "./shell/KeyboardHelp";
+import { CommandPalette } from "./shell/CommandPalette";
+import { SectionNav } from "./shell/SectionNav";
+import { VoiceDock } from "./shell/VoiceDock";
+import { sectionOf } from "./shell/sections";
+import { MOTION } from "../ui";
 import accessiblePaletteHref from "../styles/theme/theme-accessible.css?url";
 
 /** الهيكل حول كل شاشة. */
@@ -17,7 +30,10 @@ export function AppShell(): ReactNode {
   const { t } = useT();
   const { transport } = useApi();
   const [helpOpen, setHelpOpen] = useState(false);
+  const [cmdOpen, setCmdOpen] = useState(false);
   const path = useRouterState({ select: (s) => s.location.pathname });
+  const section = sectionOf(path);
+  const tint = { "--section-tint": section.tint } as CSSProperties;
 
   const healthQuery = useQuery({
     queryKey: ["health"],
@@ -28,6 +44,14 @@ export function AppShell(): ReactNode {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      /* Ctrl/⌘+K يفتح لوحة الأوامر **من داخل الحقول أيضاً**: هي المخرج من
+         شاشةٍ لا يعرف المستخدم أين يمضي منها، فحجبُها أثناء الكتابة يُفقدها
+         أنفع مواضعها. */
+      if ((e.ctrlKey || e.metaKey) && (e.key === "k" || e.key === "K")) {
+        e.preventDefault();
+        setCmdOpen((v) => !v);
+        return;
+      }
       const target = e.target as HTMLElement | null;
       const typing =
         !!target &&
@@ -47,29 +71,40 @@ export function AppShell(): ReactNode {
   }, [t, path]);
 
   return (
-    <div className="app-shell">
+    <div className="app-shell" data-section={section.id} style={tint}>
+      {/* شريط الانتقال: يُعاد بناؤه بتغيّر المسار فتُعاد حركته. */}
+      <span className="transit" key={path} aria-hidden="true" />
+
       <a className="visually-hidden" href="#main">
         {t("app.web.skipToTable")}
       </a>
+
       <nav className="app-side" aria-label={t("app.a11y.mainNav")}>
         <div className="brand">
           <span className="mark" aria-hidden="true" />
           <span>{t("app.name")}</span>
         </div>
-        <Link to="/sign-in" className="navitem" data-testid="nav-sign-in">
-          {t("app.nav.signIn")}
-        </Link>
+
+        <SectionNav path={path} />
+
+        <p className="sections__label">{t("app.nav.screens")}</p>
         <Link to="/" className="navitem" data-testid="nav-trial-balance">
           {t("app.nav.trialBalance")}
         </Link>
         <Link to="/voucher" className="navitem" data-testid="nav-voucher">
           {t("app.nav.voucher")}
         </Link>
+        <Link to="/sign-in" className="navitem" data-testid="nav-sign-in">
+          {t("app.nav.signIn")}
+        </Link>
         <Link to="/contract" className="navitem" data-testid="nav-contract">
           {t("app.nav.contract")}
         </Link>
         <Link to="/voice" className="navitem" data-testid="nav-voice">
           {t("app.nav.voice")}
+        </Link>
+        <Link to="/design" className="navitem" data-testid="nav-design">
+          {t("app.nav.design")}
         </Link>
       </nav>
 
@@ -86,7 +121,16 @@ export function AppShell(): ReactNode {
           />
           <button
             type="button"
-            className="btn"
+            className="btn btn-sm"
+            data-testid="open-command"
+            aria-keyshortcuts="Control+K Meta+K"
+            onClick={() => setCmdOpen(true)}
+          >
+            {t("app.command.open")}
+          </button>
+          <button
+            type="button"
+            className="btn btn-sm"
             data-testid="open-help"
             onClick={() => setHelpOpen(true)}
           >
@@ -95,10 +139,14 @@ export function AppShell(): ReactNode {
         </header>
 
         <main className="app-page" id="main">
-          <Outlet />
+          <div className={MOTION.transit} key={path}>
+            <Outlet />
+          </div>
         </main>
       </div>
 
+      <VoiceDock />
+      {cmdOpen ? <CommandPalette onClose={() => setCmdOpen(false)} /> : null}
       <KeyboardHelp open={helpOpen} onClose={() => setHelpOpen(false)} />
     </div>
   );

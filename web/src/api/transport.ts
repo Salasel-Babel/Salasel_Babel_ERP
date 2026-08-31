@@ -246,7 +246,9 @@ export function fetchTransport(options: {
     const response = await doFetch(base + url, {
       method,
       headers,
-      body: body === undefined ? undefined : form ? (body as FormData) : JSON.stringify(body),
+      /* ولا تأكيدَ نوعٍ هنا: TypeScript يستنتج الحارس من `body instanceof FormData`
+         المخزَّن في `form`، فالتأكيد صار زائداً ويردّه حدّ ESLint. */
+      body: body === undefined ? undefined : form ? body : JSON.stringify(body),
       signal,
     });
     /* الجواب الثنائي يُقرأ بايتات، **والرفض يبقى JSON**: خادمٌ يردّ 413 يردّه

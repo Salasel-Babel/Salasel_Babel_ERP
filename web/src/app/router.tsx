@@ -5,6 +5,8 @@ import { TrialBalanceScreen } from "../screens/trial-balance/TrialBalanceScreen"
 import { ContractScreen } from "../screens/contract/ContractScreen";
 import { SignInScreen } from "../screens/session/SignInScreen";
 import { JournalVoucherScreen } from "../screens/voucher/JournalVoucherScreen";
+/* الأمر المنطوق — الأقسام الخمسة في شاشة واحدة، لا تدفّقٌ واحد في شاشة. */
+import { VoiceScreen } from "../screens/voice/VoiceScreen";
 /* مسار العرض — طبقة عرض تُرمى بعد التسجيل (ADR-0028). ثلاثة أسطر لا أكثر. */
 import { DemoStage } from "../demo/DemoStage";
 
@@ -36,6 +38,12 @@ const voucherRoute = createRoute({
   component: JournalVoucherScreen,
 });
 
+const voiceRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/voice",
+  component: VoiceScreen,
+});
+
 const demoRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/demo",
@@ -47,6 +55,7 @@ const routeTree = rootRoute.addChildren([
   signInRoute,
   voucherRoute,
   contractRoute,
+  voiceRoute,
   demoRoute,
 ]);
 

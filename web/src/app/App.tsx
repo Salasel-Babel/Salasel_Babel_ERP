@@ -68,6 +68,9 @@ export function AppShell(): ReactNode {
         <Link to="/contract" className="navitem" data-testid="nav-contract">
           {t("app.nav.contract")}
         </Link>
+        <Link to="/voice" className="navitem" data-testid="nav-voice">
+          {t("app.nav.voice")}
+        </Link>
       </nav>
 
       <div className="app-main">

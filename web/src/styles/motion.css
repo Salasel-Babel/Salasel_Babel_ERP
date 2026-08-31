@@ -1,0 +1,202 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   لغة الحركة — مفرداتٌ محدودة، ولكلٍّ **متى تُستعمل**
+   The motion vocabulary — a closed set, each with a stated moment
+   ───────────────────────────────────────────────────────────────────────────
+   **المؤثّر الذي لا يحمل معلومة زينةٌ تُبطئ.** ولذلك المفردات هنا سبعٌ لا
+   أكثر، ولكلٍّ منها جملةٌ واحدة تقول متى تُستعمل — ومن احتاج ثامنةً فليضفها
+   بجملتها، لا برقم مدّةٍ في مكوّن.
+
+   ┌─ الثلاثة القيود الصارمة ─────────────────────────────────────────────┐
+   │ ١ · **`prefers-reduced-motion` يُحترم احتراماً كاملاً** — والبديل     │
+   │     ليس «بلا حركة» بل **تغيّرُ حالةٍ فوري ومقروء**: الأثر نفسه يظهر    │
+   │     ساكناً كاملَ مدّة `--motion-dwell` ثم يُرفع، لأن الصنف يُرفع بمؤقّت │
+   │     في `ui/motion.ts` لا بنهاية الحركة. فمن يُغلق الحركة يرى **الحالة**│
+   │     لا الوميض. (وهذا هو الفرق بين احترام التفضيل وبين إلغاء الرسالة.)  │
+   │ ٢ · **لا حركة تؤخّر قراءة رقم.** كل مفردةٍ هنا تُحرّك طبقةً زائفة       │
+   │     (`::after`) فوق المحتوى أو تحته — والرقم نفسه **مقروء عند الإطار   │
+   │     صفر** بشفافيةٍ كاملة وفي موضعه النهائي. الاستثناء الوحيد           │
+   │     `.cine-reveal` و`.cine-infer`، وهما يكشفان قيمةً **لم تكن موجودة   │
+   │     قبلهما**، فلا شيء يتأخّر.                                          │
+   │ ٣ · **`transform` و`opacity` وحدهما.** لا `width` ولا `top` ولا       │
+   │     `box-shadow` مُحرَّكة في مسارٍ ساخن: الجدول قد يحمل مئات الصفوف،   │
+   │     وخاصيةٌ تُعيد التخطيط تُسقط الإطارات على أوّلها.                    │
+   └──────────────────────────────────────────────────────────────────────┘
+
+   **والاتجاه:** لا `translateX` في هذا الملفّ إطلاقاً. الحركة الأفقية
+   فيزيائية ولا تعرف الاتجاه (tokens.css §4)، ومنتجٌ من اليمين إلى اليسار
+   وله أربع لغات لا يحتمل مفردةً تنزلق من الجهة الخطأ في اثنتين منها. وكل ما
+   هنا رأسيٌّ أو قياسٌ أو شفافية — وثلاثتها لا اتجاه لها.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════ ١ · وصولُ بيانات · arrival
+   **متى:** صفٌّ أو رقمٌ **جاء من الخادم للتوّ**. تُوضع على العنصر لحظة وصول
+   البيانات وتُرفع بعد `--motion-dwell`.
+   **ما تقوله:** «هذا الرقم وصل الآن، ولم يكن هنا قبل ثانية».
+   **كيف:** موجةُ ضوءٍ تمرّ **خلف** النصّ وتنطفئ. النصّ لا يتحرّك ولا يخفت. */
+.cine-arrive{ position:relative; }
+.cine-arrive::after{
+  content:""; position:absolute; inset:0; pointer-events:none;
+  z-index:var(--z-glow);
+  border-radius:inherit;
+  background:linear-gradient(180deg,
+    color-mix(in srgb, var(--brand) 22%, transparent),
+    color-mix(in srgb, var(--brand) 6%, transparent));
+  box-shadow:var(--glow-arrival);
+  opacity:0;
+  animation:cine-arrive var(--motion-dwell) var(--ease-enter) both;
+}
+@keyframes cine-arrive{
+  0%  { opacity:0; transform:scaleY(.86); }
+  18% { opacity:1; transform:scaleY(1); }
+  100%{ opacity:0; transform:scaleY(1); }
+}
+
+/* ══════════════════════════════════════════ ٢ · لحظة الترحيل · posting
+   **متى:** الفعل المالي الذي **لا رجعة فيه** وقع: القيد دخل الدفتر.
+   **ما تقوله:** «تمّ، ولا يُحذف ولا يُعدَّل».
+   **كيف:** حلقةٌ خضراء تتّسع من حدّ اللوح وتنطفئ، بمنحنى `settle` — وهو
+   المنحنى الوحيد في النظام الذي يحمل ارتداداً، لأن الاستقرار هو المعنى.
+   **ولا تُستعمل لغير الترحيل**: صرفُها على حفظ مسوّدة يُفقدها معناها. */
+.cine-post{ position:relative; }
+.cine-post::after{
+  content:""; position:absolute; inset:0; pointer-events:none;
+  z-index:var(--z-glow); border-radius:inherit;
+  box-shadow:var(--glow-posted-strong);
+  opacity:0;
+  animation:cine-post var(--motion-weighty) var(--ease-settle) both;
+}
+@keyframes cine-post{
+  0%  { opacity:0; transform:scale(.985); }
+  40% { opacity:1; transform:scale(1.004); }
+  100%{ opacity:0; transform:scale(1.02); }
+}
+
+/* ═════════════════════════════════════════════ ٣ · الرفض · refusal
+   **متى:** النظام يرفض **ولا يخمّن** — وهو مبدأٌ حاكم في هذا المنتج: جداول
+   الإعدادات النظامية تُسلَّم فارغة، والمسيّر بلا نسبةٍ معتمدة يُردّ برسالةٍ
+   تسمّي البند. **الرفض حالةٌ أولى لا خطأ يُخفى.**
+   **ما تقوله:** «لم يقع شيء، والسبب مسمّى».
+   **كيف:** قياسٌ يقترب من موضعه ويقف **وقفةً قاطعة** بمنحنى `refuse` بلا
+   ارتداد — لأن الارتداد يقول «ربما»، والرفض لا يقول ربما. ولا اهتزاز أفقي:
+   الاهتزاز الأفقي فيزيائيٌّ لا يعرف الاتجاه، ويقرأ عصبيةً لا حسماً. */
+.cine-refuse{
+  animation:cine-refuse var(--motion-deliberate) var(--ease-refuse) both;
+}
+@keyframes cine-refuse{
+  0%  { opacity:.55; transform:scale(.972); }
+  55% { opacity:1;   transform:scale(1.006); }
+  100%{ opacity:1;   transform:none; }
+}
+
+/* ══════════════════════════════════════════ ٤ · الاستنتاج · inference
+   **متى:** قيمةٌ **اشتقّها النظام** لا أدخلها المستخدم — من صورة، أو من
+   صوت، أو من قاعدة. تُوضع مع الوسم البصري لا بدلاً عنه.
+   **ما تقوله:** «هذا الرقم استُنتج، فراجعه».
+   **كيف:** القيمة تصعد من شفافية `.55` إلى الكمال — وهي مقروءة من أول
+   إطار — وخلفها موجةٌ بنفسجية بلون `--color-ai`، وهو **لون المُحاكى** نفسه
+   الذي أثبتته طبقة العرض (`--stage-sim`). */
+.cine-infer{
+  animation:cine-infer var(--motion-deliberate) var(--ease-enter) both;
+}
+@keyframes cine-infer{
+  from{ opacity:.55; transform:translateY(calc(var(--motion-rise) * -.5)); }
+  to  { opacity:1;   transform:none; }
+}
+.cine-infer-wash{ position:relative; }
+.cine-infer-wash::after{
+  content:""; position:absolute; inset:0; pointer-events:none;
+  z-index:var(--z-glow); border-radius:inherit;
+  background:color-mix(in srgb, var(--ai) 16%, transparent);
+  box-shadow:var(--glow-inferred);
+  opacity:0;
+  animation:cine-wash var(--motion-dwell) var(--ease-enter) both;
+}
+@keyframes cine-wash{
+  0%{ opacity:0 } 20%{ opacity:1 } 100%{ opacity:0 }
+}
+
+/* ══════════════════════════════════════ ٥ · الكشف المتدفّق · reveal
+   **متى:** مجموعةٌ من القيم تظهر واحدةً بعد أخرى بدل ظهورٍ مفاجئ — نتائج
+   استنتاج، أو حقولٌ يملؤها الصوت، أو سطور قيدٍ مقترح.
+   **ما تقوله:** «النظام يقرأ الآن، وهذا ترتيب ما وجده».
+   **كيف:** كل ابنٍ يتأخّر بمقدار ترتيبه × `--motion-swift`. والترتيب يُكتب
+   على العنصر بـ`--reveal-index`، فلا يحتاج المكوّن مؤقّتاً في JavaScript. */
+.cine-reveal{
+  animation:cine-reveal var(--motion-deliberate) var(--ease-enter) both;
+  animation-delay:calc(var(--reveal-index, 0) * var(--motion-swift));
+}
+@keyframes cine-reveal{
+  from{ opacity:0; transform:translateY(var(--motion-rise)); }
+  to  { opacity:1; transform:none; }
+}
+
+/* ═════════════════════════════════ ٦ · الانتقال بين الأقسام · transit
+   **متى:** تغيّر المسار — وهو «مسار العرض» الذي طلبه المالك.
+   **ما تقوله:** «انتقلتَ إلى قسمٍ آخر من النظام، لا إلى صفحةٍ أخرى منه».
+   **كيف:** الصفحة الداخلة تكبر من `.994` وتصعد `--motion-rise`، مع موجة
+   ضوءٍ عرضية بلون القسم الذي دخلتَه — وهو ما يجعل الانتقال يقول **أين**
+   ذهبت لا أنه حدث فقط. */
+.cine-transit{
+  animation:cine-transit var(--motion-cinematic) var(--ease-enter) both;
+}
+@keyframes cine-transit{
+  from{ opacity:0; transform:scale(.994) translateY(var(--motion-rise)); }
+  to  { opacity:1; transform:none; }
+}
+
+/* ═════════════════════════════════════════════ ٧ · النبض الحيّ · live
+   **متى:** شيءٌ **يعمل الآن** ولا نعرف متى ينتهي: الميكروفون يستمع،
+   والخادم يقرأ صورة، والترحيل قيد التنفيذ.
+   **ما تقوله:** «حيٌّ، لا معلَّق».
+   **كيف:** شفافيةٌ وحدها بسعةٍ صغيرة. ولا يُستعمل زينةً على عنصرٍ ساكن —
+   نبضٌ لا يعني شيئاً يُدرَّب المستخدم على تجاهله فيفوته النبض الذي يعني. */
+.cine-live{ animation:cine-live 1.6s ease-in-out infinite; }
+@keyframes cine-live{ 0%,100%{ opacity:1 } 50%{ opacity:.45 } }
+
+/* موجةُ مسحٍ رأسية: النظام **يقرأ مستنداً**. رأسيةٌ لأن المستند يُقرأ من
+   أعلاه، ولأن الرأسي لا اتجاه له فلا ينقلب في الإنجليزية. */
+.cine-scan{ position:relative; overflow:hidden; }
+.cine-scan::after{
+  content:""; position:absolute; inset-inline:0; inset-block-start:0;
+  block-size:34%; pointer-events:none; z-index:var(--z-glow);
+  background:linear-gradient(180deg,
+    transparent,
+    color-mix(in srgb, var(--brand) 26%, transparent),
+    transparent);
+  animation:cine-scan 1.8s var(--ease-enter) infinite;
+}
+@keyframes cine-scan{
+  from{ transform:translateY(-100%) } to{ transform:translateY(320%) }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   الحركة المخفَّضة — **الرسالة تبقى، والحركة تذهب**
+   ───────────────────────────────────────────────────────────────────────────
+   `app.css` يقصّ كل مدّة إلى `.001ms` عند التفضيل، وذلك وحده يجعل الأثر
+   **يومض ويختفي قبل أن يُرى** — أي يُلغي الرسالة لا الحركة. فيُعاد بناؤها هنا
+   حالةً ساكنة: الطبقة الزائفة تظهر بشفافيةٍ ثابتة **وتبقى** حتى يرفع
+   `ui/motion.ts` الصنف بمؤقّته. فمن أغلق الحركة يقرأ «هذا وصل للتوّ» ساكنةً
+   المدّة نفسها التي يراها غيره متحرّكة.
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce){
+  .cine-arrive::after,
+  .cine-post::after,
+  .cine-infer-wash::after{
+    animation:none !important;
+    opacity:.85;
+    transform:none;
+  }
+  .cine-refuse,
+  .cine-infer,
+  .cine-reveal,
+  .cine-transit{
+    animation:none !important;
+    opacity:1;
+    transform:none;
+  }
+  /* الرفض يبقى **مرئياً** بلا حركة: حدٌّ أحمر فوري بدل القياس القاطع. */
+  .cine-refuse{ box-shadow:var(--glow-refusal); }
+  /* الحيّ يبقى معلوماً بلا نبض: حلقةٌ ثابتة تقول «يعمل الآن». */
+  .cine-live{ animation:none !important; box-shadow:var(--glow-focus); }
+  .cine-scan::after{ animation:none !important; inset-block-start:33%; opacity:.9; }
+}

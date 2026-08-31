@@ -106,6 +106,10 @@ if [ "$mode" = "containers" ] || [ "$mode" = "down" ]; then
   fi
 
   compose_env="$here/.env"
+  # ‏**ومفتاح التذاكر يُنقل من `.env.local` ولا يُولَّد هنا**: الملفّان يجب أن يحملا
+  # المفتاح نفسه، وإلّا صار كل تشغيل حاويات مفتاحاً جديداً — وهو بالضبط ما يرفضه
+  # ADR-0046. وغيابه من هذه الكتلة كان يوقف `compose up` برسالة `:?` على جهازٍ
+  # وُلِّد فيه المفتاح سلفاً. والشرح خارج الكتلة عمداً: ما بداخلها يُكتب في الملفّ.
   umask 077
   cat > "$compose_env" <<EOF
 BABEL_REGISTRY=babel-local
@@ -115,9 +119,6 @@ BABEL_TLS_MODE=auto
 POSTGRES_PASSWORD=$POSTGRES_PASSWORD
 BABEL_LEDGER_APP_PASSWORD=$BABEL_LEDGER_APP_PASSWORD
 BABEL_DEMO_TOKEN_SHA256=$BABEL_DEMO_TOKEN_SHA256
-# ‏**يُنقل من .env.local ولا يُولَّد هنا**: الملفّان يجب أن يحملا المفتاح نفسه، وإلّا
-# صار كل تشغيل حاويات مفتاحاً جديداً — وهو بالضبط ما يرفضه ADR-0046. وغيابه من هنا
-# كان يوقف `compose up` برسالة `:?` على جهازٍ وُلِّد فيه المفتاح سلفاً.
 BABEL_STORAGE_TICKET_KEY=$BABEL_STORAGE_TICKET_KEY
 BABEL_DEMO_COMPANY_ID=$company
 BABEL_DEMO_USER_ID=$user_id

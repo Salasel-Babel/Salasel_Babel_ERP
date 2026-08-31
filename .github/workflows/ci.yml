@@ -299,15 +299,18 @@ jobs:
 
       # ‏`always()` عمداً — فخ-80: هذا الحارس نصّي بحت (grep/git) ولا يمسّ البناء،
       # فلا يجوز أن يُسكته سقوطُ بناءٍ أو اختبارٍ قبله ويُعلَّم `skipped` بلا أن يقرأه أحد.
+      #
+      # والحارس **يُثبت أنه ينطق قبل أن يُصدَّق صمتُه**: `tools/secret-scan/run.sh` يُطابق
+      # كل نمط في `patterns.txt` على الشاهد الموجب `positive-control.txt` أولاً، ويُفشل
+      # البناء إن سقط نمطٌ واحد أو حُذف الشاهد — **ثم** يمسح المستودع. كان هذا الحارس
+      # قبل ذلك يجد **صفراً على كل تشغيل** ولا يُفرَّق عن حارس معطَّل، وكان يُعفي
+      # ‏`docs/**` و`spikes/**` و`**/ci.yml` بالجملة، فمفتاحٌ خاصّ يُودَع تحت `docs/`
+      # لا يراه. أُزيلت الإعفاءات الثلاثة، وبقي استثناء واحد **بمسارٍ كامل واحد** هو
+      # الشاهد نفسه، ومُميِّزٌ على مستوى السطر (`NOT-A-SECRET`) للأمثلة التوضيحية.
+      # (‏docs/evidence/traps.md#fakh-a-guard-that-never-fires-cannot-be-told-from-a-broken-one)
       - name: التحقق من عدم وجود أسرار في التغييرات
         if: always()
-        run: |
-          set -euo pipefail
-          if git grep -nIE '(BEGIN (RSA|EC|OPENSSH|PRIVATE) KEY|password[[:space:]]*=[[:space:]]*["'"'"'][^"'"'"']+)' \
-               -- ':!**/ci.yml' ':!docs/**' ':!spikes/**'; then
-            echo "::error::يبدو أن هناك سرّاً في المستودع. CONTRIBUTING §3 بند 7."
-            exit 1
-          fi
+        run: tools/secret-scan/run.sh
 
   test-isolation:
     name: عزل الاختبارات — كل دالّة وحدها

@@ -57,7 +57,9 @@ jobs:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_PASSWORD: postgres
+          # كلمة مرور حاوية خدمة تُخلق وتُهدَم مع الوظيفة، ولا تصل إليها شبكةٌ خارجها،
+          # ولا تفتح شيئاً خارج هذا التشغيل. قيمةٌ حرفية لا سرّ — ولذلك الوسم:
+          POSTGRES_PASSWORD: postgres  # NOT-A-SECRET
           POSTGRES_DB: babel_seed
         ports: ['5432:5432']
         options: >-
@@ -69,7 +71,7 @@ jobs:
     env:
       PGHOST: localhost
       PGUSER: postgres
-      PGPASSWORD: postgres
+      PGPASSWORD: postgres  # NOT-A-SECRET — نظيرة ما فوقها، للحاوية نفسها
       PGDATABASE: babel_seed
 
     steps:

@@ -7,6 +7,11 @@ import type { MessageTree } from "../types";
 
 export const messages: MessageTree = {
   app: {
+    voiceDraft: {
+      title: "बोला गया प्रारूप आया: {name}",
+      note: "ये मान वैसे ही हैं जैसे कहे गए। इन्हें अपने हाथ से पूरा कीजिए, फिर इसी स्क्रीन के बटन से बहीखाते में चढ़ाइए — चढ़ाना कभी बोला नहीं जाता।",
+      dismiss: "प्रारूप छिपाएँ",
+    },
     section: {
       label: "पाँच खंड",
       accounting: "लेखा",

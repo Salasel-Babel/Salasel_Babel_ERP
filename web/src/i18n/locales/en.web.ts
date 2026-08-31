@@ -4,6 +4,11 @@ import type { MessageTree } from "../types";
 
 export const messages: MessageTree = {
   app: {
+    voiceDraft: {
+      title: "A spoken draft arrived: {name}",
+      note: "These values are as spoken. Complete them by hand, then post with this screen's button — posting is never spoken.",
+      dismiss: "Hide the draft",
+    },
     section: {
       label: "The five sections",
       accounting: "Accounting",

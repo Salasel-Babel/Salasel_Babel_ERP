@@ -88,12 +88,22 @@ export function handoffOf(dispatch: VoiceDispatch): VoiceDraftHandoff | null {
 
 /* ── الحافظة بين الشاشتين ──────────────────────────────────────────────────
    **خانةٌ واحدة تُستهلَك عند القراءة.** ومسوّدةٌ تبقى بعد أن قُرئت تُملأ في نموذجٍ
-   ثانٍ بلا أن يقولها أحد — وهو أخبث ما يمكن أن يفعله تسليمٌ صامت. */
+   ثانٍ بلا أن يقولها أحد — وهو أخبث ما يمكن أن يفعله تسليمٌ صامت.
+
+   وهي **في الذاكرة لا في مخزن المتصفّح**: مسوّدةٌ تنجو من إعادة تحميل الصفحة
+   تظهر بعد يومٍ في نموذجٍ لا يعرف صاحبُه من أين جاءت. وإعادةُ التحميل تعني
+   إعادةَ القول — وهو أرخص من مسوّدةٍ شبح. */
 let held: VoiceDraftHandoff | null = null;
+const listeners = new Set<() => void>();
+
+function announce(): void {
+  for (const listener of listeners) listener();
+}
 
 /** يودع المسوّدة كي تلتقطها شاشةُ المستند. */
 export function stashVoiceDraft(handoff: VoiceDraftHandoff): void {
   held = handoff;
+  announce();
 }
 
 /** يقرأ المسوّدة بلا استهلاك — للعرض وحده. */
@@ -110,10 +120,25 @@ export function takeVoiceDraft(intentId?: string): VoiceDraftHandoff | null {
   if (intentId !== undefined && held.intentId !== intentId) return null;
   const taken = held;
   held = null;
+  announce();
   return taken;
 }
 
 /** يُفرِغ الحافظة — عند الإلغاء، وعند مغادرة اللوحة. */
 export function dropVoiceDraft(): void {
+  if (held === null) return;
   held = null;
+  announce();
+}
+
+/**
+ * يشترك في تغيّر الحافظة — كي تُعيد الشاشةُ رسمَ نفسها حين تصلها مسوّدة.
+ * @param listener ما يُنادى عند كل تغيّر.
+ * @returns دالّةٌ تفكّ الاشتراك.
+ */
+export function subscribeVoiceDraft(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
 }

@@ -5,6 +5,11 @@ import type { MessageTree } from "../types";
 
 export const messages: MessageTree = {
   app: {
+    voiceDraft: {
+      title: "مسوّدة منطوقة وصلت: {name}",
+      note: "هذه القيم كما قِيلت. أكملها بيدك، ثم رحّلها بزرّ هذه الشاشة — والترحيل لا يُقال بالصوت.",
+      dismiss: "أخفِ المسوّدة",
+    },
     section: {
       label: "الأقسام الخمسة",
       accounting: "المحاسبي",

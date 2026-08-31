@@ -7,6 +7,11 @@ import type { MessageTree } from "../types";
 
 export const messages: MessageTree = {
   app: {
+    voiceDraft: {
+      title: "بولا گیا مسودہ آ گیا: {name}",
+      note: "یہ قدریں ویسی ہی ہیں جیسی کہی گئیں۔ انہیں اپنے ہاتھ سے مکمل کیجیے، پھر اسی سکرین کے بٹن سے بہی کھاتے میں چڑھائیے — چڑھانا کبھی بولا نہیں جاتا۔",
+      dismiss: "مسودہ چھپائیں",
+    },
     section: {
       label: "پانچ شعبے",
       accounting: "محاسبہ",

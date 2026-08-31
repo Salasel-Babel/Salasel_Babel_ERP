@@ -57,14 +57,22 @@ const out = [];
    ════════════════════════════════════════════════════════════════════════ */
 const DECLARED_DEBT = {
   check: "٦ · نصّ مرئي مكتوب في الشيفرة",
-  scope: "src/demo/",
-  ceiling: 147,
+  /* مساراتٌ مسمّاة، لا نمطٌ يتّسع من تلقائه: كلٌّ منها طبقةُ عرضٍ تُرمى، وكلٌّ
+     منها مكتوبٌ هنا بيدٍ كي يُقرأ من يزيدها. */
+  scopes: ["src/demo/", "src/showcase/"],
+  ceiling: 153,
   /* لماذا دينٌ لا إصلاح: طبقة العرض نصُّها **سردُ فيلم** لا واجهة منتج —
      ‏146 نصّاً فريداً، 82 منها شظايا جملةٍ مقطوعةٍ حول وسمٍ داخلي لا تصلح
      مفاتيح. ونقلُها إلى ملفّات اللغة يوجب — بحكم الفحص ١ نفسه — اختلاق نحو
      400 ترجمة أردية وهندية وإنجليزية لسردٍ لن يُقرأ إلا بالعربية، فيدخل
      السجلَّ نصٌّ مُختلَق لا يُميَّز عن الترجمة الحقيقية. ADR-جديد
-     «طبقة العرض دينٌ معلَن لا مسارٌ مُعفى». */
+     «طبقة العرض دينٌ معلَن لا مسارٌ مُعفى».
+
+     و`src/showcase/` (٦ نصوص) طبقةُ بناءٍ لصفحةٍ مفردة تُنشَر للمالك: شريطُ
+     إفصاحٍ يقول ما هذه الصفحة. ونصُّه **عربيٌّ عمداً وحصراً** — العربية سجلُّ
+     هذا النظام لا ترجمةٌ فيه، وإفصاحٌ عن غياب الخادم يُقرأ بلغة من يقرأ
+     الشاشة. ونقلُه إلى ملفّات اللغة يوجب اختلاق ثلاث ترجماتٍ لنصٍّ لا يُنشَر
+     إلا بالعربية، فيدخل السجلَّ نصٌّ مُختلَق. */
 };
 const debtScopeFiles = [];
 const head = (t) => out.push("", "─".repeat(74), t, "─".repeat(74));
@@ -357,7 +365,7 @@ const declaredHits = [];
 let jsxTextScanned = 0;
 for (const f of tsFiles.filter((x) => x.endsWith(".tsx"))) {
   const where = rel(f);
-  const inDebtScope = where.startsWith(DECLARED_DEBT.scope);
+  const inDebtScope = DECLARED_DEBT.scopes.some((scope) => where.startsWith(scope));
   if (inDebtScope) debtScopeFiles.push(where);
   const nodes = jsxTextNodes(stripComments(fs.readFileSync(f, "utf8")));
   jsxTextScanned += nodes.length;
@@ -383,10 +391,10 @@ else ok("لا نصّ مرئي مكتوب في الوسم خارج النطاق �
 
 /* ── السقف: ينزل ولا يصعد، ويحمرّ في الاتجاهين ─────────────────────────── */
 info(
-  "نطاق الدين · debt scope: " + DECLARED_DEBT.scope +
+  "نطاق الدين · debt scope: " + DECLARED_DEBT.scopes.join(" · ") +
     " (" + debtScopeFiles.length + " ملفّ · files)"
 );
-if (declaredHits.length) declared(DECLARED_DEBT.scope + " — " + DECLARED_DEBT.check, declaredHits);
+if (declaredHits.length) declared(DECLARED_DEBT.scopes.join(" · ") + " — " + DECLARED_DEBT.check, declaredHits);
 if (declaredHits.length > DECLARED_DEBT.ceiling) {
   fatal += declaredHits.length - DECLARED_DEBT.ceiling;
   out.push(

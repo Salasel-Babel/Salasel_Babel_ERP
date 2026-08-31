@@ -22,7 +22,10 @@
     "mock": "node scripts/mock-api.mjs",
     "verify": "npm run gen:check && npm run audit:i18n && npm run build && npm run lint && npm test && npm run e2e",
     "live": "node scripts/live-api-check.mjs",
-    "locales": "node scripts/port-locales.mjs"
+    "locales": "node scripts/port-locales.mjs",
+    "showcase:map": "node scripts/build-showcase-map.mjs",
+    "showcase:build": "VITE_BABEL_DEMO=1 vite build --config vite.config.showcase.ts && node scripts/emit-showcase-page.mjs",
+    "showcase:walk": "node scripts/walk-showcase.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.102.3",
@@ -47,6 +50,7 @@
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.68.0",
     "vite": "^8.2.2",
+    "vite-plugin-singlefile": "2.3.3",
     "vitest": "^4.1.11"
   }
 }

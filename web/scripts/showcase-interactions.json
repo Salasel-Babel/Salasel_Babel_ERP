@@ -1,0 +1,280 @@
+[
+  {
+    "name": "01-محاسبة-تصفية-الميزان",
+    "path": "/",
+    "actions": [
+      {
+        "selector": "[data-testid=\"filter-search\"]",
+        "fill": "ضريبة",
+        "waitFor": true
+      }
+    ],
+    "expect": "ضريبة القيمة المضافة — مخرجات"
+  },
+  {
+    "name": "02-محاسبة-رفض-قيد-غير-متوازن",
+    "path": "/voucher",
+    "actions": [
+      {
+        "selector": "[data-testid=\"voucher-memo-ar\"]",
+        "fill": "قيدٌ يدوي — عرض",
+        "waitFor": true
+      },
+      {
+        "selector": "[data-testid=\"voucher-memo-en\"]",
+        "fill": "Manual voucher — showcase"
+      },
+      {
+        "selector": "[data-testid=\"voucher-amount\"] >> nth=0",
+        "fill": "4500.0000"
+      },
+      {
+        "selector": "[data-testid=\"voucher-amount\"] >> nth=1",
+        "fill": "4025.0000"
+      },
+      {
+        "selector": "[data-testid=\"voucher-post\"]",
+        "settle": 800
+      }
+    ],
+    "expect": "ledger.posting.unbalanced"
+  },
+  {
+    "name": "03-محاسبة-إيصال-قيد-متوازن",
+    "path": "/voucher",
+    "actions": [
+      {
+        "selector": "[data-testid=\"voucher-memo-ar\"]",
+        "fill": "قيدٌ يدوي — عرض",
+        "waitFor": true
+      },
+      {
+        "selector": "[data-testid=\"voucher-memo-en\"]",
+        "fill": "Manual voucher — showcase"
+      },
+      {
+        "selector": "[data-testid=\"voucher-amount\"] >> nth=0",
+        "fill": "4500.0000"
+      },
+      {
+        "selector": "[data-testid=\"voucher-amount\"] >> nth=1",
+        "fill": "4500.0000"
+      },
+      {
+        "selector": "[data-testid=\"voucher-post\"]",
+        "settle": 800
+      }
+    ],
+    "expect": "412"
+  },
+  {
+    "name": "04-عقارات-فتح-عقد-إيجار",
+    "path": "/realestate/lease",
+    "actions": [
+      {
+        "selector": "[data-testid=\"re-lease-id\"]",
+        "fill": "6e6e6e6e-6e6e-4e6e-8e6e-6e6e6e6e6e6e",
+        "waitFor": true
+      },
+      {
+        "selector": "[data-testid=\"re-lease-open-go\"]",
+        "settle": 800
+      }
+    ],
+    "expect": "LSE-2026-0041"
+  },
+  {
+    "name": "05-عقارات-رفض-قسمة-الحصص",
+    "path": "/realestate/lease",
+    "actions": [
+      {
+        "selector": "[data-testid=\"re-lease-id\"]",
+        "fill": "6e6e6e6e-6e6e-4e6e-8e6e-6e6e6e6e6e6e",
+        "waitFor": true
+      },
+      {
+        "selector": "[data-testid=\"re-lease-open-go\"]",
+        "settle": 900
+      },
+      {
+        "selector": "[data-testid=\"re-schedule-load\"]",
+        "waitFor": true,
+        "settle": 1000
+      },
+      {
+        "selector": "[data-testid=\"re-schedule-pick\"] >> nth=2",
+        "waitFor": true,
+        "check": true
+      },
+      {
+        "selector": "[data-testid=\"re-invoice-no\"]",
+        "fill": "RNT-2026-0112"
+      },
+      {
+        "selector": "[data-testid=\"re-invoice-date\"]",
+        "fill": "2026-07-05"
+      },
+      {
+        "selector": "[data-testid=\"re-invoice-rate\"]",
+        "fill": "0.15"
+      },
+      {
+        "selector": "[data-testid=\"re-invoice-draft\"]",
+        "waitFor": true,
+        "settle": 900
+      }
+    ],
+    "expect": "realestate.owner_share_split_not_decided"
+  },
+  {
+    "name": "06-عقارات-تقرير-المتأخرات",
+    "path": "/realestate/arrears",
+    "actions": [
+      {
+        "selector": "[data-testid=\"re-arrears-load\"]",
+        "waitFor": true,
+        "settle": 800
+      }
+    ],
+    "expect": "LSE-033"
+  },
+  {
+    "name": "07-مقاولات-رفض-بنود-معلّقة",
+    "path": "/contracting/certificate",
+    "actions": [
+      {
+        "selector": "[data-testid=\"picker-project\"]",
+        "waitFor": true,
+        "select": 1,
+        "settle": 600
+      },
+      {
+        "selector": "[data-testid=\"picker-contract\"]",
+        "waitFor": true,
+        "select": 1,
+        "settle": 800
+      },
+      {
+        "selector": "[data-testid=\"certificate-chip\"]",
+        "waitFor": true,
+        "settle": 800
+      },
+      {
+        "selector": "[data-testid=\"post-certificate\"]",
+        "waitFor": true,
+        "settle": 800
+      }
+    ],
+    "expect": "projects.contract_policy.pending"
+  },
+  {
+    "name": "08-مقاولات-سجلّ-المحتجزات",
+    "path": "/contracting/retention",
+    "actions": [
+      {
+        "selector": "[data-testid=\"retention-asof\"]",
+        "fill": "2026-05-31",
+        "waitFor": true,
+        "settle": 800
+      }
+    ],
+    "expect": "PRJ-004"
+  },
+  {
+    "name": "09-مخزون-تبديل-عرض-الأرصدة",
+    "path": "/inventory/stock",
+    "actions": [
+      {
+        "selector": "[data-testid=\"inventory-stock-screen\"] >> text=حسب الصنف",
+        "waitFor": true,
+        "settle": 500
+      }
+    ],
+    "expect": "ITM-002"
+  },
+  {
+    "name": "10-موارد-بشرية-رفض-نِسَب-غير-معتمدة",
+    "path": "/hr/payroll",
+    "actions": [
+      {
+        "selector": "[data-testid=\"hr-run-id\"]",
+        "fill": "4a4a4a4a-4a4a-4a4a-8a4a-4a4a4a4a4a4a",
+        "waitFor": true,
+        "settle": 900
+      },
+      {
+        "selector": "[data-testid=\"hr-post-submit\"]",
+        "waitFor": true,
+        "settle": 900
+      }
+    ],
+    "expect": "hr.payroll_settings_missing"
+  },
+  {
+    "name": "11-موارد-بشرية-قسيمة-راتب",
+    "path": "/hr/payslip",
+    "actions": [
+      {
+        "selector": "[data-testid=\"hr-payslip-id\"]",
+        "fill": "5b5b5b5b-5b5b-4b5b-8b5b-5b5b5b5b5b5b",
+        "waitFor": true,
+        "settle": 900
+      },
+      {
+        "selector": "[data-testid=\"hr-payslip-read\"]",
+        "waitFor": true,
+        "settle": 900
+      }
+    ],
+    "expect": "EMP-0007"
+  },
+  {
+    "name": "12-مخزون-رفض-تحويل-وحدة-بباقٍ",
+    "path": "/inventory/movements",
+    "actions": [
+      {
+        "selector": "[data-testid=\"movement-number\"]",
+        "fill": "SM-0009",
+        "waitFor": true
+      },
+      {
+        "selector": "[data-testid=\"movement-date\"]",
+        "fill": "2026-05-11"
+      },
+      {
+        "selector": "[data-testid=\"movement-item\"]",
+        "waitFor": true,
+        "select": 1,
+        "settle": 500
+      },
+      {
+        "selector": "[data-testid=\"movement-warehouse\"]",
+        "fill": "WH-RIYADH"
+      },
+      {
+        "selector": "[data-testid=\"movement-location\"]",
+        "fill": "A-01-3"
+      },
+      {
+        "selector": "[data-testid=\"movement-magnitude\"]",
+        "fill": "5"
+      },
+      {
+        "selector": "[data-testid=\"movement-unit\"]",
+        "waitFor": true,
+        "select": 2,
+        "settle": 400
+      },
+      {
+        "selector": "[data-testid=\"movement-cost\"]",
+        "fill": "60.0000"
+      },
+      {
+        "selector": "[data-testid=\"movement-create\"]",
+        "waitFor": true,
+        "settle": 900
+      }
+    ],
+    "expect": "inventory.unit_conversion_not_exact"
+  }
+]

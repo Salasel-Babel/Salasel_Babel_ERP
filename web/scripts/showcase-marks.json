@@ -1,0 +1,22 @@
+{
+  "/":                          { "testId": "trial-balance-screen" },
+  "/voucher":                   { "testId": "voucher-screen" },
+  "/sign-in":                   { "testId": "sign-in-screen" },
+  "/contract":                  { "testId": "contract-screen" },
+  "/design":                    { "testId": "design-screen" },
+  "/realestate":                { "testId": "realestate-register" },
+  "/realestate/lease":          { "testId": "realestate-lease" },
+  "/realestate/arrears":        { "testId": "realestate-arrears" },
+  "/contracting":               { "testId": "contracting-register" },
+  "/contracting/certificate":   { "testId": "contracting-certificate" },
+  "/contracting/subcontracting":{ "testId": "contracting-subcontracting" },
+  "/contracting/retention":     { "testId": "contracting-retention" },
+  "/inventory/stock":           { "testId": "inventory-stock-screen" },
+  "/inventory/items":           { "testId": "inventory-items-screen" },
+  "/inventory/movements":       { "testId": "inventory-movements-screen" },
+  "/inventory/valuation":       { "testId": "inventory-valuation-screen" },
+  "/hr":                        { "testId": "hr-register-screen" },
+  "/hr/payroll":                { "testId": "hr-payroll-screen" },
+  "/hr/payslip":                { "testId": "hr-payslip-screen" },
+  "/hr/end-of-service":         { "testId": "hr-eos-screen" }
+}

@@ -1,0 +1,79 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   شريط الإفصاح — يقول ما هذه الصفحة، على كل شاشة، ولا يُطفَأ
+   ───────────────────────────────────────────────────────────────────────────
+   بلغة الطبقة البصرية نفسها: رموزها لا ألوانٌ جديدة، وسطحها سطح الهيكل.
+   **وليس رفضاً ولا خطأً**: لا أحمر ولا حدّ خطر — هذه ليست حالة عطل، بل
+   إفصاحٌ عن طبيعة الصفحة. ولذلك يلبس رمز «المعلومة» لا رمز «الرفض».
+
+   وهو مطويٌّ لا مُغلَق: من يريد نصف سطرٍ يطويه إلى شارة، والشارة تبقى.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.showcase-note{
+  position:fixed; inset-block-end:0; inset-inline:0; z-index:900;
+  display:flex; align-items:center; gap:var(--space-10);
+  padding:var(--space-8) var(--space-16);
+  border-block-start:var(--border-width) solid var(--color-info-soft);
+  background:color-mix(in srgb, var(--color-surface-raised) 94%, transparent);
+  backdrop-filter:blur(10px);
+  color:var(--color-text-muted);
+  font-size:var(--font-size-2xs); line-height:var(--line-snug);
+  box-shadow:0 -6px 24px color-mix(in srgb, var(--color-bg) 60%, transparent);
+}
+.showcase-note__mark{
+  flex:none;
+  padding:2px var(--space-8);
+  border-radius:var(--radius-mark);
+  border:var(--border-width) solid var(--color-info);
+  color:var(--color-info);
+  font-size:var(--font-size-3xs); font-weight:var(--font-weight-semibold);
+  white-space:nowrap;
+}
+.showcase-note__text{ min-inline-size:0 }
+.showcase-note__lead{ color:var(--color-text); font-weight:var(--font-weight-semibold) }
+.showcase-note__toggle{
+  flex:none; margin-inline-start:auto;
+  padding:2px var(--space-8);
+  border-radius:var(--radius-mark);
+  border:var(--border-width) solid var(--color-border);
+  background:transparent; color:var(--color-text-subtle);
+  font:inherit; font-size:var(--font-size-3xs); cursor:pointer;
+}
+.showcase-note__toggle:hover{ color:var(--color-text); border-color:var(--color-border-strong) }
+.showcase-note__toggle:focus-visible{ outline:2px solid var(--color-focus); outline-offset:2px }
+
+/* المطوي: الشارة وحدها — تبقى مرئيةً على كل شاشة، ولا سبيل إلى إخفائها. */
+.showcase-note[data-folded="true"]{
+  inset-inline-start:auto;
+  border-inline-start:var(--border-width) solid var(--color-info-soft);
+  border-start-start-radius:var(--radius-well);
+  padding:var(--space-4) var(--space-10);
+}
+.showcase-note[data-folded="true"] .showcase-note__text{ display:none }
+
+/* الصفحة تترك للشريط موضعه فلا يغطّي آخر صفّ في جدول. */
+.showcase-lift{ padding-block-end:var(--space-48) }
+
+@media print{ .showcase-note{ position:static; page-break-inside:avoid } }
+
+/* مفاتيح العرض — لوحٌ يُفتح فوق الشريط، ويبقى الشريط ظاهراً تحته. */
+.showcase-keys{
+  position:absolute; inset-block-end:100%; inset-inline:0;
+  max-block-size:min(52vh, 420px); overflow:auto;
+  padding:var(--space-12) var(--space-16);
+  border-block-start:var(--border-width) solid var(--color-info-soft);
+  background:color-mix(in srgb, var(--color-surface-raised) 97%, transparent);
+  backdrop-filter:blur(10px);
+}
+.showcase-keys__lead{ margin:0 0 var(--space-8); color:var(--color-text-muted) }
+.showcase-keys__list{
+  margin:0; padding:0; list-style:none;
+  display:grid; grid-template-columns:repeat(auto-fill, minmax(23rem, 1fr)); gap:var(--space-6);
+}
+.showcase-keys__list li{ display:flex; align-items:baseline; gap:var(--space-8); min-inline-size:0 }
+.showcase-keys__label{ color:var(--color-text-subtle); flex:none; inline-size:7rem }
+.showcase-keys__list code{ font-size:var(--font-size-3xs); user-select:all; overflow-wrap:anywhere }
+.showcase-note[data-folded="true"] .showcase-keys{ display:none }
+
+/* الشريط ثابتٌ فوق الصفحة، فآخر سطرٍ في جدولٍ يقع تحته ولا يُنقر. سطرٌ
+   واحد يترك له موضعه — وهو من طبقة العرض، لا من أنماط المنتج. */
+.app-main{ padding-block-end:var(--space-56) }

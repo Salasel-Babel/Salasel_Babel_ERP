@@ -1,5 +1,11 @@
 /* المسارات — مُعرَّفة بالشيفرة، ونوعها مُستنتَج لا مكتوب. */
-import { createRootRoute, createRoute, createRouter, createMemoryHistory } from "@tanstack/react-router";
+import {
+  createRootRoute,
+  createRoute,
+  createRouter,
+  createMemoryHistory,
+  createHashHistory,
+} from "@tanstack/react-router";
 import { AppShell } from "./App";
 import { TrialBalanceScreen } from "../screens/trial-balance/TrialBalanceScreen";
 import { ContractScreen } from "../screens/contract/ContractScreen";
@@ -188,14 +194,21 @@ const routeTree = rootRoute.addChildren([
   hrEndOfServiceRoute,
 ]);
 
-/** ينشئ موجّهاً. الاختبارات تمرّر تاريخاً في الذاكرة فلا تحتاج متصفّحاً. */
-export function createAppRouter(options?: { initialPath?: string; memory?: boolean }) {
-  return createRouter({
-    routeTree,
-    ...(options?.memory
-      ? { history: createMemoryHistory({ initialEntries: [options.initialPath ?? "/"] }) }
-      : {}),
-  });
+/**
+ * ينشئ موجّهاً. الاختبارات تمرّر تاريخاً في الذاكرة فلا تحتاج متصفّحاً.
+ *
+ * و`hash` لصفحة العرض المفردة وحدها: ملفٌّ واحد يُفتح من مسارٍ لا يعرفه أحد
+ * سلفاً، وتاريخُ المتصفّح المعتاد يجعل `/realestate/lease` طلبَ ملفٍّ غير
+ * موجود عند أول إعادة تحميل. **والافتراض لا يتغيّر**: التطبيق الحقيقي يُخدَم
+ * من جذرٍ يعرفه خادمه.
+ */
+export function createAppRouter(options?: { initialPath?: string; memory?: boolean; hash?: boolean }) {
+  const history = options?.memory
+    ? createMemoryHistory({ initialEntries: [options.initialPath ?? "/"] })
+    : options?.hash
+      ? createHashHistory()
+      : null;
+  return createRouter({ routeTree, ...(history ? { history } : {}) });
 }
 
 declare module "@tanstack/react-router" {

@@ -26,6 +26,7 @@ TestResults/
 *.binlog
 artifacts/
 dist/
+dist-showcase/
 build/
 out/
 node_modules/

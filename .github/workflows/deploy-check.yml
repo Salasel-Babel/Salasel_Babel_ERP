@@ -185,6 +185,7 @@ jobs:
             echo "POSTGRES_PASSWORD=$(head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n')"
             echo "BABEL_LEDGER_APP_PASSWORD=$(head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n')"
             echo "BABEL_LEDGER_APP_ROLE=babel_ledger_app"
+            echo "BABEL_STORAGE_TICKET_KEY=$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')"
             echo "BABEL_DEMO_TOKEN_SHA256=$(printf '%s' "$TOKEN" | sha256sum | cut -d' ' -f1)"
             # مفتاح توقيع التذاكر — **مُولَّد لهذه التشغيلة** ولا يعيش بعدها، كأخواته.
             # وغيابه هنا كان يوقف `compose config` في أول خطوة، فيصير هذا الحارس أحمر
@@ -230,6 +231,65 @@ jobs:
           echo "$chain"
           echo "$chain" | grep -q '"verdict":"CHAIN-OK"' \
             || { echo '::error::سلسلة البصمات المبذورة منحرفة.'; exit 1; }
+
+      # ── العقارات: أبوابها كانت **غير قابلة للبلوغ** لأن قاعدتها لا تُزوَّد ──────
+      # وحدةٌ كاملة البناء والاختبار، ومخطّطها وهجرتها وناشرها كلّها في المستودع،
+      # ولا قاعدة تُنشأ لها في أي مسار نشر — فعشرون باباً منشوراً في العقد تردّ
+      # كلّها بعطل اتصال. وهذا الفحص هو ما يمنع عودة ذلك: باب عقاري **يُنادى فعلاً
+      # عبر الحافة**، على بيانات بذرها المُرحِّل
+      # (docs/evidence/traps.md#fakh-a-module-fully-built-fully-tested-and-never-provisioned).
+      - name: بابٌ من كل وحدة يُجيب من خلف الحافة — سبع قواعد لا واحدة
+        run: |
+          set -euo pipefail
+          company=d3305e1e-0000-4000-8000-000000000001
+          base="http://127.0.0.1/api/v1/companies/${company}"
+
+          # كل سطر هنا يبلغ **قاعدة بيانات مختلفة** بدور التطبيق. وقبل هذا الفحص كان
+          # سبعةٌ منها يردّون `Connection refused` لأن اتصالاتهم لم تكن تُمرَّر أصلاً —
+          # وهو عطل يُقرأ «شبكة» لا «إعداد».
+          probe() {
+            local label="$1" url="$2"
+            local code
+            code=$(curl --silent --output /tmp/probe.json --write-out '%{http_code}' \
+                     -H "Authorization: Bearer ${DEMO_TOKEN}" "$url")
+            echo "── $label → HTTP $code"
+            head -c 300 /tmp/probe.json; echo
+            [ "$code" = "200" ] || { echo "::error::$label ردّ $code لا 200 — الوحدة غير موصولة بقاعدتها."; exit 1; }
+          }
+
+          probe "المبيعات"        "$base/receivables-aging?asOf=2026-08-31"
+          probe "المشتريات"       "$base/payables-aging?asOf=2026-08-31"
+          probe "المخزون"         "$base/inventory-valuation?asOf=2026-08-31"
+          probe "العقارات"        "$base/tenant-arrears-aging?asOf=2026-08-31"
+          probe "المقاولات"       "$base/projects"
+          probe "الموارد البشرية" "$base/payroll-settings"
+          probe "المرفقات"        "$base/attachments"
+
+      - name: تقرير المتأخرات العقاري يحمل بيانات مبذورة ويطابق نقطة ضبطه
+        run: |
+          set -euo pipefail
+          company=d3305e1e-0000-4000-8000-000000000001
+          body=$(curl --fail --silent --show-error \
+                   -H "Authorization: Bearer ${DEMO_TOKEN}" \
+                   "http://127.0.0.1/api/v1/companies/${company}/tenant-arrears-aging?asOf=2026-08-31")
+          echo "$body" | head -c 600; echo
+          echo "$body" | grep -q '"isReconciled":true' \
+            || { echo '::error::دفتر المستأجرين المساعد لا يطابق نقطة ضبطه.'; exit 1; }
+          echo "$body" | grep -q '"parties":\[{' \
+            || { echo '::error::تقرير المتأخرات فارغ — البذر العقاري لم يصل القاعدة.'; exit 1; }
+
+      # وقيدُ الاستبعاد الزمني نفسه — يُقرأ من **القاعدة المنشورة** لا من ملفّ نصّ
+      # في المستودع (‏فخ-129). وبدونه تُؤجَّر الوحدة الواحدة مرّتين.
+      - name: امتداد btree_gist وقيد الاستبعاد قائمان في القاعدة المنشورة
+        run: |
+          set -euo pipefail
+          docker compose --env-file deploy/.env -f deploy/compose.yml exec -T db \
+            psql -U postgres -d babel_realestate -Atc \
+            "select extname || ' ' || extversion from pg_extension where extname = 'btree_gist'" | tee /dev/stderr | grep -q btree_gist
+          docker compose --env-file deploy/.env -f deploy/compose.yml exec -T db \
+            psql -U postgres -d babel_realestate -Atc \
+            "select pg_get_constraintdef(oid) from pg_constraint where conname = 'ex_realestate_lease_term_does_not_overlap'" \
+            | tee /dev/stderr | grep -q 'EXCLUDE USING gist'
 
       - name: طلبٌ بلا اعتماد يُرفض
         run: |

@@ -119,6 +119,7 @@ BABEL_TLS_MODE=auto
 BABEL_TLS_IP=
 POSTGRES_PASSWORD=$POSTGRES_PASSWORD
 BABEL_LEDGER_APP_PASSWORD=$BABEL_LEDGER_APP_PASSWORD
+BABEL_STORAGE_TICKET_KEY=$BABEL_STORAGE_TICKET_KEY
 BABEL_DEMO_TOKEN_SHA256=$BABEL_DEMO_TOKEN_SHA256
 BABEL_STORAGE_TICKET_KEY=$BABEL_STORAGE_TICKET_KEY
 BABEL_DEMO_COMPANY_ID=$company
@@ -171,21 +172,42 @@ command -v node   >/dev/null 2>&1 || { echo "✗ node غير موجود في PAT
 : "${BABEL_CORE_OWNER_DB:=Host=127.0.0.1;Port=5432;Database=babel_demo_core;Username=postgres;Include Error Detail=true}"
 : "${BABEL_CORE_APP_DB:=Host=127.0.0.1;Port=5432;Database=babel_demo_core;Username=babel_ledger_app;Include Error Detail=true}"
 export BABEL_ADMIN_DB BABEL_LEDGER_OWNER_DB BABEL_LEDGER_APP_DB BABEL_SALES_OWNER_DB BABEL_PURCHASING_OWNER_DB
-# ── العقارات: **قاعدةٌ لم تُزوَّد بعد، والنقص مُعلَن لا مسكوت عنه** ──────────
+# ── العقارات: قاعدةٌ **مزوَّدة الآن**، بالشكل نفسه الذي تُزوَّد به بقيّة القواعد ──
 # سطح العقارات منشورٌ في العقد (عشرون باباً)، ومخطّطه `realestate` **يُنشر بدور
-# المالك** ويستلزم امتداد `btree_gist` لقيد الاستبعاد الزمني على مدّة العقد. ولا
-# قاعدة تُنشأ له في هذا النصّ ولا في `demo/company`، فأبوابه **غير قابلة للبلوغ في
-# العرض المحلي** حتى تُزوَّد — بالضبط كأبواب المرفقات أدناه وللسبب نفسه.
+# المالك** لأنه يركّب امتداد `btree_gist` ويبني عليه قيد الاستبعاد الزمني الذي يمنع
+# تأجير الوحدة الواحدة بعقدين متداخلين. وكان هذا النصّ لا ينشئ له قاعدة، فكانت
+# أبوابه العشرون **غير قابلة للبلوغ في أي عرض ولا أي نشرة** — وحدةٌ كاملة البناء
+# والاختبار ولا تُزوَّد قطّ
+# (docs/evidence/traps.md#fakh-a-module-fully-built-fully-tested-and-never-provisioned).
 #
-# ولا يمنع ذلك الخادم من الإقلاع: التسجيل كسول، فلا يُبنى سياق الوحدة إلا عند أول
-# طلب يبلغها. والتزويد: قاعدةٌ باسم `babel_demo_realestate`، ثم
-# `RealEstateSchemaDeployer.DeployAsync` بدور المالك، ثم
-# `Babel__RealEstate__ConnectionString` على الخادم.
+# والتزويد ثلاثة أسطر لا أكثر، وهي بالضبط ما تفعله بقيّة القواعد:
+#   ١ · اتصال **المالك** للمُنشئ  ← BABEL_REALESTATE_OWNER_DB
+#   ٢ · اتصال **التطبيق** للخادم ← BABEL_REALESTATE_DB (أدناه، عند إقلاع الخادم)
+#   ٣ · شراء الوحدة للمنشأة      ← Babel__Entitlements__<الشركة>__RealEstate
+# ولا يرى الخادم اتصال المالك أبداً، هنا كما في compose.yml (ADR-0003).
+: "${BABEL_REALESTATE_OWNER_DB:=Host=127.0.0.1;Port=5432;Database=babel_demo_realestate;Username=postgres;Include Error Detail=true}"
+: "${BABEL_REALESTATE_APP_DB:=Host=127.0.0.1;Port=5432;Database=babel_demo_realestate;Username=babel_ledger_app;Include Error Detail=true}"
+export BABEL_REALESTATE_OWNER_DB
 
-# مخزن المرفقات: جذرٌ على القرص يملكه مستخدم الخدمة. **ولا اتصال مالك هنا**،
-# ولا قاعدةَ مرفقات تُنشأ في هذا النصّ: نشرُ مخطّط `storage` عملُ مالك لم يُزوَّد
-# بعد، فأبواب المرفقات **غير قابلة للبلوغ في العرض المحلي** حتى يُزوَّد. وهذا
-# نقصٌ مُعلَن لا صمت — والخادم يقلع ويعمل بقيّة سطحه كما هو.
+# ── والمقاولات والموارد البشرية والمرفقات كذلك ──────────────────────────────
+# ثلاث وحدات أخرى كانت مخطّطاتها لا تُنشر في أي مسار، فكانت أسطحها تردّ عطل اتصال
+# عند أول نقرة. والشكل واحد: مالكٌ للمُنشئ، وتطبيقٌ للخادم أدناه.
+: "${BABEL_PROJECTS_OWNER_DB:=Host=127.0.0.1;Port=5432;Database=babel_demo_projects;Username=postgres;Include Error Detail=true}"
+: "${BABEL_PROJECTS_APP_DB:=Host=127.0.0.1;Port=5432;Database=babel_demo_projects;Username=babel_ledger_app;Include Error Detail=true}"
+: "${BABEL_HR_OWNER_DB:=Host=127.0.0.1;Port=5432;Database=babel_demo_hr;Username=postgres;Include Error Detail=true}"
+: "${BABEL_HR_APP_DB:=Host=127.0.0.1;Port=5432;Database=babel_demo_hr;Username=babel_ledger_app;Include Error Detail=true}"
+: "${BABEL_STORAGE_OWNER_DB:=Host=127.0.0.1;Port=5432;Database=babel_demo_storage;Username=postgres;Include Error Detail=true}"
+: "${BABEL_STORAGE_APP_DB:=Host=127.0.0.1;Port=5432;Database=babel_demo_storage;Username=babel_ledger_app;Include Error Detail=true}"
+export BABEL_PROJECTS_OWNER_DB BABEL_HR_OWNER_DB BABEL_STORAGE_OWNER_DB
+
+# واتصالات دور التطبيق للدفاتر المساعدة الثلاثة — كانت وحداتها تقرأ افتراضياً يشير
+# إلى `babel_sales` و`babel_purchasing` و`babel_inventory` بينما العرض كلّه على
+# ‏`babel_demo_*`، فتُقرأ شاشاتها من قاعدةٍ أخرى أو تفشل بعطل اتصال.
+: "${BABEL_SALES_APP_DB:=Host=127.0.0.1;Port=5432;Database=babel_demo_sales;Username=babel_ledger_app;Include Error Detail=true}"
+: "${BABEL_PURCHASING_APP_DB:=Host=127.0.0.1;Port=5432;Database=babel_demo_purchasing;Username=babel_ledger_app;Include Error Detail=true}"
+: "${BABEL_INVENTORY_APP_DB:=Host=127.0.0.1;Port=5432;Database=babel_demo_inventory;Username=babel_ledger_app;Include Error Detail=true}"
+
+# جذر المرفقات على القرص يملكه مستخدم الخدمة.
 : "${BABEL_STORAGE_ROOT:=$here/.attachments}"
 mkdir -p "$BABEL_STORAGE_ROOT"
 chmod 700 "$BABEL_STORAGE_ROOT"
@@ -206,12 +228,25 @@ echo "── بناء الواجهة"
 (cd web && npm run build)
 
 echo "── إقلاع الخادم على المنفذ $api_port"
-ASPNETCORE_URLS="http://127.0.0.1:$api_port" \
-Babel__Core__AppConnectionString="$BABEL_CORE_APP_DB" \
-Babel__Api__Tokens__0__Sha256="$BABEL_DEMO_TOKEN_SHA256" \
-Babel__Api__Tokens__0__Tenant="$company" \
-Babel__Api__Tokens__0__User="$user_id" \
-Babel__Api__Tokens__0__Companies__0="$company" \
+# ‏`env` لا بادئةُ إسناد: اسم متغيّر الاستحقاق يحمل معرّف المنشأة بشرطاته، وbash
+# لا يقبل شرطةً في اسم متغيّر — فبادئة الإسناد كانت ستُقرأ اسمَ أمر لا إسناداً.
+env "Babel__Entitlements__${company}__RealEstate=Entitled" \
+  "Babel__Entitlements__${company}__Inventory=Entitled" \
+  "Babel__Entitlements__${company}__Projects=Entitled" \
+  "Babel__Entitlements__${company}__Hr=Entitled" \
+  ASPNETCORE_URLS="http://127.0.0.1:$api_port" \
+  Babel__Core__AppConnectionString="$BABEL_CORE_APP_DB" \
+  Babel__RealEstate__ConnectionString="$BABEL_REALESTATE_APP_DB" \
+  Babel__Sales__ConnectionString="$BABEL_SALES_APP_DB" \
+  Babel__Purchasing__ConnectionString="$BABEL_PURCHASING_APP_DB" \
+  Babel__Inventory__ConnectionString="$BABEL_INVENTORY_APP_DB" \
+  Babel__Projects__ConnectionString="$BABEL_PROJECTS_APP_DB" \
+  Babel__Hr__ConnectionString="$BABEL_HR_APP_DB" \
+  Babel__Storage__AppConnectionString="$BABEL_STORAGE_APP_DB" \
+  Babel__Api__Tokens__0__Sha256="$BABEL_DEMO_TOKEN_SHA256" \
+  Babel__Api__Tokens__0__Tenant="$company" \
+  Babel__Api__Tokens__0__User="$user_id" \
+  Babel__Api__Tokens__0__Companies__0="$company" \
   dotnet src/Babel.Api/bin/Release/net10.0/Babel.Api.dll > "$here/.api.log" 2>&1 &
 api_pid=$!
 echo "$api_pid" > "$here/.api.pid"

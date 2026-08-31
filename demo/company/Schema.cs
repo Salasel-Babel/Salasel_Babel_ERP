@@ -2,9 +2,6 @@ using System.Globalization;
 using Babel.Canonicalization;
 using Babel.Core;
 using Babel.Ledger;
-using Babel.Inventory;
-using Babel.Purchasing;
-using Babel.Sales;
 using Npgsql;
 
 namespace BabelDemoCompany;
@@ -34,6 +31,12 @@ internal static class Schema
     {
         ArgumentNullException.ThrowIfNull(settings);
 
+        // ── التبعية البنيوية تُفحص **قبل** أن يُنشر مخطّطٌ واحد ──────────────────
+        // ‏**قبل**، لا عند الحاجة إليها: مخطّط العقارات آخر ما يُنشر، وفحصٌ عنده يترك
+        // النشر يبني أربع قواعد ثم يتوقّف — فيصير التراجع سؤالاً بدل أن يكون بلا موضوع.
+        // ولا شيء يُكتب قبل هذا السطر (‏Bootstrap ينشئ قواعد فارغة وحسب).
+        await RealEstateExtension.EnsureAsync(settings, cancellationToken).ConfigureAwait(false);
+
         Say.Step("نشر المخطّطات بدور المالك / deploying schemas as the owner role");
 
         // النواة أولاً: تأسيس المنشأة ومراكز تكلفتها هو ما يفترضه كل ما بعده — بوّابة
@@ -44,23 +47,27 @@ internal static class Schema
         await LedgerSchema.DeployAsync(settings.Ledger, cancellationToken).ConfigureAwait(false);
         Say.Detail("الدفتر: هجرات + مشغّلات + دالّة الترحيل + الصلاحيات → " + settings.LedgerDatabase);
 
-        await SalesSchemaDeployer.DeployAsync(settings.SalesOwner, cancellationToken).ConfigureAwait(false);
-        Say.Detail("المبيعات → " + settings.SalesDatabase);
+        // ── وحدات المنتج: نشرٌ ثم منح، من القائمة الواحدة ────────────────────
+        // ‏**والنشر والمنح متلازمان في دورةٍ واحدة عمداً**: مخطّطٌ يُنشر بلا منح يترك
+        // الخادم يتّصل بقاعدة موجودة ويُرفض عند أول `select` بـ42501، وهو عطلٌ يُقرأ
+        // «صلاحيات» لا «تزويد ناقص». فالخطوتان لا تفترقان.
+        foreach (ModuleDatabase module in ModuleProvisioning.Of(settings))
+        {
+            await module.Deploy(cancellationToken).ConfigureAwait(false);
+            Say.Detail(module.Label + " → " + module.Database);
 
-        await PurchasingSchemaDeployer.DeployAsync(settings.PurchasingOwner, cancellationToken).ConfigureAwait(false);
-        Say.Detail("المشتريات → " + settings.PurchasingDatabase);
+            if (module.Schema is null)
+            {
+                Say.Detail("صلاحيات «" + module.Database + "» يمنحها ناشرها بنفسه — وهي أضيق من حقوق الدفتر المساعد");
+                continue;
+            }
 
-        await InventorySchemaDeployer.DeployAsync(settings.InventoryOwner, cancellationToken).ConfigureAwait(false);
-        Say.Detail("المخزون → " + settings.InventoryDatabase);
+            await GrantSubledgerAsync(module.OwnerConnectionString, module.Schema, settings.Ledger.AppRole, cancellationToken)
+                .ConfigureAwait(false);
+        }
 
-        await GrantSubledgerAsync(settings.SalesOwner.ConnectionString, "sales", settings.Ledger.AppRole, cancellationToken)
-            .ConfigureAwait(false);
-        await GrantSubledgerAsync(
-                settings.PurchasingOwner.ConnectionString, "purchasing", settings.Ledger.AppRole, cancellationToken)
-            .ConfigureAwait(false);
-        await GrantSubledgerAsync(
-                settings.InventoryOwner.ConnectionString, "inventory", settings.Ledger.AppRole, cancellationToken)
-            .ConfigureAwait(false);
+        // وقيد الاستبعاد الزمني يُقرأ من **القاعدة المنشورة** لا من ملفّ في المستودع.
+        await RealEstateExtension.AssertConstraintAsync(settings, cancellationToken).ConfigureAwait(false);
 
         await SeedReferenceAsync(settings, cancellationToken).ConfigureAwait(false);
     }

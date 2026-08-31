@@ -103,8 +103,8 @@ export const messages: MessageTree = {
       "light": "हल्की थीम",
       "dark": "गहरी थीम",
       "palette": "रंग पट्टिका",
-      "paletteDefault": "स्वीकृत",
-      "paletteAccessible": "प्रस्तावित (सुगम्य)"
+      "paletteDefault": "डिफ़ॉल्ट (AA)",
+      "paletteAccessible": "उच्च विरोध"
     },
     "locale": {
       "label": "भाषा",

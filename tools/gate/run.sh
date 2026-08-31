@@ -115,8 +115,11 @@ fi
 # بقي على العقد القديم. البوّابة التي لا تشغّل شيئاً من `web/` كانت تُعلن خُضرةً عن
 # نصف المستودع. (‏traps.md#fakh-a-two-sided-contract-guarded-on-one-side-only)
 #
-# ‏**ولماذا هذان الفحصان بالذات افتراضياً:** `generate-client.mjs` و`audit.mjs` لا
-# يستوردان إلا وحدات Node المدمجة — **مقيس أنهما ينجحان بلا `node_modules` إطلاقاً**.
+# ‏**ولماذا هذه الفحوص بالذات افتراضياً:** `generate-client.mjs` و`audit.mjs`
+# و`contrast.mjs` لا تستورد إلا وحدات Node المدمجة — **مقيس أنها تنجح بلا
+# `node_modules` إطلاقاً**. و`contrast.mjs` يقيس عتبة WCAG AA على ملفّات السمة
+# نفسها (‏78 زوجاً × لوحتين × سمتين)، فالحدّ الأدنى للتباين **مُنفَّذ لا موصى به**
+# (‏ADR-0059 · contrast-floor-is-enforced).
 # فثمنهما ثوانٍ ولا يحتاجان `npm ci`. وما عداهما يحتاج التثبيت، فهو خلف `--with-frontend`
 # لئلّا تدفع كل بوّابة ثمن دقيقتين. وما لا يُشغَّل هنا **مُصرَّح به** في القاعدة 19،
 # لا متروكاً ليفترض القارئ أنه مُغطّى.
@@ -124,6 +127,7 @@ step "٦ · الواجهة — فحوص لا تحتاج تثبيتاً"
 if command -v node >/dev/null 2>&1; then
     ( cd web && node scripts/generate-client.mjs --check ) || fail "العميل المُولَّد يخالف العقد المنشور (web: gen:check)"
     ( cd web && node scripts/audit.mjs )                   || fail "فحص التدويل والاتجاه (web: audit:i18n)"
+    ( cd web && node scripts/contrast.mjs --quiet )        || fail "عتبة التباين WCAG AA (web: contrast)"
 else
     printf '── node غير موجود: فحوص الواجهة الساكنة لم تُشغَّل. وهذا نقصُ تغطية لا نجاح.\n'
 fi

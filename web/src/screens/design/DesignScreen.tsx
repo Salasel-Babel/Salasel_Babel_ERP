@@ -33,7 +33,7 @@ import {
   VoiceTrace,
   type TraceStep,
 } from "../../ui";
-import { DOC_STATES, GLOWS, MOTIONS, PALETTE, PROVENANCES, type MotionEntry } from "./catalogue";
+import { DOC_STATES, GLOWS, INKS, MOTIONS, PALETTE, PROVENANCES, type MotionEntry } from "./catalogue";
 import {
   DEMO_DIFFERENCE,
   DEMO_TOTAL_CREDIT,
@@ -55,6 +55,23 @@ function Swatch(props: { token: string; roleKey: string; kind: string }): ReactN
         <span className="swatch__role">{t(props.roleKey)}</span>
         <code className="swatch__token mono">{props.token}</code>
       </span>
+    </div>
+  );
+}
+
+/** حبرٌ معروضٌ **على سطحه** — فما يُرى هنا هو ما يراه المستخدم حرفياً. */
+function InkChip(props: { ink: string; surface: string; roleKey: string }): ReactNode {
+  const { t } = useT();
+  const style = {
+    background: `var(${props.surface})`,
+    color: `var(${props.ink})`,
+  } as CSSProperties;
+  return (
+    <div className="inkchip" style={style}>
+      <span className="inkchip__sample">{t(props.roleKey)}</span>
+      <code className="inkchip__token mono" dir="ltr">
+        {props.ink}
+      </code>
     </div>
   );
 }
@@ -404,6 +421,12 @@ export function DesignScreen(): ReactNode {
         <div className="swatches">
           {PALETTE.map((entry) => (
             <Swatch key={entry.token} token={entry.token} roleKey={entry.roleKey} kind={entry.kind} />
+          ))}
+        </div>
+        <h3 className="subhead">{t("screen.design.palette.inks")}</h3>
+        <div className="swatches" data-testid="palette-inks">
+          {INKS.map((entry) => (
+            <InkChip key={entry.ink} ink={entry.ink} surface={entry.surface} roleKey={entry.roleKey} />
           ))}
         </div>
         <h3 className="subhead">{t("screen.design.palette.glows")}</h3>

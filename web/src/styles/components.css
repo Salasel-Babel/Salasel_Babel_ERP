@@ -360,7 +360,9 @@ h1,h2,.gal-hero h1,.page-title h1,.drawer-hd h2,.empty h3{
 .ctl{
   width:100%;min-height:var(--control-h);
   padding:var(--control-pad-y) var(--control-pad-x);
-  border:var(--border-width) solid var(--color-border-strong);
+  /* حدُّ الحقل هو **الشيء الوحيد** الذي يقول «هنا حقل»، فعتبته 3:1 لا أقلّ
+     (WCAG 1.4.11). ولذلك رمزٌ خاصّ به لا --color-border-strong الزخرفي. */
+  border:var(--border-width) solid var(--color-border-control);
   border-radius:var(--radius-sm);
   background:var(--color-surface);color:var(--color-text);
   transition:border-color var(--motion-base),box-shadow var(--motion-base);
@@ -487,7 +489,8 @@ select.ctl-sm{padding-inline-end:var(--space-8)}
 .switch input{position:absolute;opacity:0;width:0;height:0}
 .switch .track{
   width:38px;height:22px;border-radius:var(--radius-pill);flex:none;
-  background:var(--color-border-strong);position:relative;
+  /* المسار هو حدّ المكوّن، فعتبته 3:1 على السطح الذي يقع عليه (1.4.11). */
+  background:var(--color-border-control);position:relative;
   transition:background var(--motion-base);
 }
 .switch .track::after{
@@ -496,7 +499,13 @@ select.ctl-sm{padding-inline-end:var(--space-8)}
   transition:transform var(--motion-base);
 }
 .switch input:checked + .track{background:var(--color-primary)}
-.switch input:checked + .track::after{transform:translateX(calc(-16px * var(--flip-x)))}
+/* القرص فوق مسارٍ بلون العلامة يأخذ **حبر العلامة** لا الأبيض الثابت: الأبيض
+   على --color-primary في الداكن 2.54:1، و--on-brand عليه 7.41:1. والحالة
+   يحملها الموضعُ أيضاً لا اللون وحده. */
+.switch input:checked + .track::after{
+  background:var(--on-brand);
+  transform:translateX(calc(-16px * var(--flip-x)));
+}
 .switch input:focus-visible + .track{box-shadow:var(--ring)}
 
 /* — خانة اختيار — */
@@ -587,7 +596,7 @@ select.ctl-sm{padding-inline-end:var(--space-8)}
 .btn{
   display:inline-flex;align-items:center;justify-content:center;gap:var(--space-8);
   padding:var(--space-10) var(--space-18);border-radius:var(--radius-sm);
-  border:var(--border-width) solid var(--color-border-strong);
+  border:var(--border-width) solid var(--color-border-control);
   background:var(--color-surface);color:var(--color-text-muted);
   font-size:var(--font-size-control);font-weight:var(--font-weight-semibold);
   cursor:pointer;white-space:nowrap;text-decoration:none;
@@ -601,7 +610,7 @@ select.ctl-sm{padding-inline-end:var(--space-8)}
 .btn:hover{border-color:var(--color-text-subtle);color:var(--color-text)}
 .btn:active{transform:translateY(1px)}
 .btn:disabled,.btn[aria-disabled="true"]{opacity:.45;cursor:not-allowed;box-shadow:none;transform:none}
-.btn:disabled:hover{border-color:var(--color-border-strong);color:var(--color-text-muted)}
+.btn:disabled:hover{border-color:var(--color-border-control);color:var(--color-text-muted)}
 .btn svg{flex:none}
 
 .btn-primary{
@@ -643,7 +652,7 @@ select.ctl-sm{padding-inline-end:var(--space-8)}
 .addline{
   display:inline-flex;align-items:center;gap:var(--space-8);margin-top:var(--space-12);
   padding:var(--space-8) var(--space-16);
-  border:var(--border-width-strong) dashed var(--color-border-strong);
+  border:var(--border-width-strong) dashed var(--color-border-control);
   border-radius:var(--radius-sm);background:transparent;color:var(--color-text-muted);
   font-size:var(--font-size-control);font-weight:var(--font-weight-semibold);cursor:pointer;
   transition:border-color var(--motion-base),color var(--motion-base),background var(--motion-base);
@@ -654,7 +663,7 @@ select.ctl-sm{padding-inline-end:var(--space-8)}
 .seg{display:flex;gap:var(--space-6);flex-wrap:wrap}
 .seg button{
   padding:var(--space-8) var(--space-12);border-radius:var(--radius-pill);
-  border:var(--border-width) solid var(--color-border-strong);
+  border:var(--border-width) solid var(--color-border-control);
   background:var(--color-surface);color:var(--color-text-muted);
   font-size:var(--font-size-xs);font-weight:var(--font-weight-semibold);cursor:pointer;
   transition:border-color var(--motion-base),background var(--motion-base),color var(--motion-base);
@@ -1053,7 +1062,7 @@ table.pv .c{color:var(--color-credit)}
 .pager .pages{display:flex;align-items:center;gap:var(--space-4);margin-inline-start:auto}
 .pager .pagebtn{
   min-width:32px;height:32px;padding:0 var(--space-8);
-  border:var(--border-width) solid var(--color-border);border-radius:var(--radius-sm);
+  border:var(--border-width) solid var(--color-border-control);border-radius:var(--radius-sm);
   background:var(--color-surface);color:var(--color-text-muted);
   font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);
   font-variant-numeric:tabular-nums;cursor:pointer;

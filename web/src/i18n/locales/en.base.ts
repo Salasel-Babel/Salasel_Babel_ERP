@@ -101,8 +101,8 @@ export const messages: MessageTree = {
       "light": "Light theme",
       "dark": "Dark theme",
       "palette": "Colour palette",
-      "paletteDefault": "Approved",
-      "paletteAccessible": "Proposed (accessible)"
+      "paletteDefault": "Default (AA)",
+      "paletteAccessible": "High contrast"
     },
     "locale": {
       "label": "Language",

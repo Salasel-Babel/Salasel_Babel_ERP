@@ -53,16 +53,35 @@
 }
 
 /* الحقل نفسه يحمل أثر مصدره: شريطٌ على بدايته بلون المصدر. خاصية منطقية
-   فتنقلب وحدها في اللغات الأربع. */
+   فتنقلب وحدها في اللغات الأربع.
+
+   ⚠ **واللون ليس الحامل الوحيد.** كان هذا الشريط يقول المصدر بلونه وحده:
+   من لا يفرّق البنفسجي عن الأخضر لا يعرف أن الحقل ملأه النظام لا هو —
+   وهذا في منتجٍ محاسبي ليس نقصَ زينة. فلكلّ مصدرٍ **شكلٌ** أيضاً:
+     مُدخَل   خطٌّ متّصل محايد    (الأصل لا يُوسَم)
+     مُصدَّق  خطٌّ مزدوج          attested
+     مُستنتَج/مقروء/منطوق  خطٌّ متقطّع — وهو نفس تقطيع `.prov[inferred]`
+     افتراضي  خطٌّ منقّط          defaulted
+   والشكل يُقرأ بلا لون، ويبقى مقروءاً في الطباعة بالأبيض والأسود. */
 .prov-field{
   border-inline-start:var(--border-width-accent) solid var(--color-border);
   padding-inline-start:var(--space-10);
 }
 .prov-field[data-source="inferred"],
 .prov-field[data-source="read"],
-.prov-field[data-source="spoken"]{ border-inline-start-color:var(--color-ai); }
-.prov-field[data-source="attested"]{ border-inline-start-color:var(--color-success); }
-.prov-field[data-source="defaulted"]{ border-inline-start-color:var(--color-border-strong); }
+.prov-field[data-source="spoken"]{
+  border-inline-start-color:var(--color-ai);
+  border-inline-start-style:dashed;
+}
+.prov-field[data-source="attested"]{
+  border-inline-start-color:var(--color-success);
+  border-inline-start-style:double;
+  border-inline-start-width:4px;
+}
+.prov-field[data-source="defaulted"]{
+  border-inline-start-color:var(--color-border-control);
+  border-inline-start-style:dotted;
+}
 
 /* ══════════════════════════════════════════ ٢ · درجة الثقة · confidence
    **تُعرض حين يستنتج النظام، ولا تُعرض حين يكون الرقم مُدخَلاً.** وثقةٌ

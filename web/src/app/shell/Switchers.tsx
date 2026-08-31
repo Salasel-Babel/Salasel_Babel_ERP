@@ -83,9 +83,18 @@ export function ThemeSwitcher(props: { accessiblePaletteHref: string }): ReactNo
       link.rel = "stylesheet";
       link.href = props.accessiblePaletteHref;
       link.dataset.palette = "accessible";
+      /* ⚠ **الإطفاء بـ`media` لا بـ`disabled` وحدها.** كُتب هذا أولاً بـ
+         `link.disabled = …` وحدها، فكان يعمل أحياناً: `disabled` تُضبَط قبل أن
+         تصل الورقة، وإن وصلت **بعدها** فُقد الإطفاء ودخلت اللوحة الثانية فوق
+         الأولى بلا أن يتغيّر شيء في الواجهة. ومقيسٌ أنه تكرّر: تشغيلان لنفس
+         الأمر على نفس البناء أعطيا لوحتين مختلفتين، أوّلهما بعد بناءٍ بارد.
+         و`media` تُقيَّم في المطابقة لا عند التحميل، فلا تُفقد.
+         (traps.md#fakh-a-stylesheet-disabled-before-it-loads-comes-back-enabled) */
+      link.media = "not all";
       document.head.appendChild(link);
       linkRef.current = link;
     }
+    linkRef.current.media = palette === "accessible" ? "all" : "not all";
     linkRef.current.disabled = palette !== "accessible";
     document.documentElement.setAttribute("data-palette", palette);
     try {

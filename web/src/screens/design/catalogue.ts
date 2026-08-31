@@ -26,6 +26,7 @@ export const PALETTE: readonly PaletteEntry[] = [
   { token: "--surface-overlay", roleKey: "screen.design.role.overlay", kind: "surface" },
   { token: "--edge-line", roleKey: "screen.design.role.edgeLine", kind: "edge" },
   { token: "--edge-strong", roleKey: "screen.design.role.edgeStrong", kind: "edge" },
+  { token: "--edge-control", roleKey: "screen.design.role.edgeControl", kind: "edge" },
   { token: "--color-text", roleKey: "screen.design.role.text", kind: "ink" },
   { token: "--color-text-muted", roleKey: "screen.design.role.textMuted", kind: "ink" },
   { token: "--color-text-subtle", roleKey: "screen.design.role.textSubtle", kind: "ink" },
@@ -41,6 +42,34 @@ export const PALETTE: readonly PaletteEntry[] = [
   { token: "--section-hr", roleKey: "app.section.hr", kind: "ink" },
   { token: "--section-contracting", roleKey: "app.section.contracting", kind: "ink" },
   { token: "--section-realestate", roleKey: "app.section.realestate", kind: "ink" },
+];
+
+/**
+ * حبرٌ فوق سطحٍ ملوّن — والرمزان يُعرضان **معاً** عمداً.
+ *
+ * كانت اللوحة تعرض الأسطح وتُخفي أحبارها، فبقي `--on-debit` غير مرئي في
+ * صفحة العقد بينما هو حبرُ أكثر عمودٍ يُقرأ في المنتج — وحين كان أبيض في
+ * الداكن بتباين 1.86:1 لم تكن صفحةٌ واحدة تُظهر ذلك. والحبر بلا سطحه لا
+ * يُقرأ ولا يُقاس، فيُعرضان زوجاً كما يُقاسان زوجاً في
+ * `scripts/contrast.mjs`.
+ */
+export interface InkEntry {
+  /** رمز الحبر كما يُكتب في CSS. */
+  readonly ink: string;
+  /** رمز السطح الذي يقع عليه. */
+  readonly surface: string;
+  /** مفتاح الدور في طبقة اللغة — وهو نفسه نصّ العيّنة. */
+  readonly roleKey: string;
+}
+
+/** الأحبار الستّة فوق أسطحها — بقيمها **الحقيقية** لا الموصوفة. */
+export const INKS: readonly InkEntry[] = [
+  { ink: "--on-debit", surface: "--color-debit", roleKey: "acct.debit" },
+  { ink: "--on-credit", surface: "--color-credit", roleKey: "acct.credit" },
+  { ink: "--on-brand", surface: "--color-primary", roleKey: "screen.design.role.brand" },
+  { ink: "--on-success", surface: "--color-success", roleKey: "screen.design.role.good" },
+  { ink: "--on-warning", surface: "--color-warning", roleKey: "screen.design.role.warn" },
+  { ink: "--on-danger", surface: "--color-danger", roleKey: "screen.design.role.bad" },
 ];
 
 /** الأضواء — ولكلٍّ منها معلومةٌ يحملها، لا شكلٌ يُعجب. */

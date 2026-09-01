@@ -122,7 +122,7 @@ Number(row.debit)    // TypeError
 | **لا يُحقن رابط خطّ خارجي** | لا شبكة خارجة في هذه البيئة، ورابط `<link>` معطّل للرسم يُبقي الصفحة بيضاء. الحقل `font.href` منقول **كبيانات** ويبقى `font.ui` رمزاً على `:root` |
 | نسخة `I18n` كائنٌ لا مفرد عام | الاختبارات تبني نسختها فلا تتسرّب حالة بين اختبارين |
 
-`npm run audit:i18n` خليفة `design/audit.js`، ويفحص ثمانية أشياء، **وكل فحص فيه يُعلن حجم
+`npm run audit:i18n` خليفة `design/audit.js`، ويفحص ثلاثة عشر شيئاً، **وكل فحص فيه يُعلن حجم
 ما فحصه ويفشل إن كان صفراً**، ومعه شواهد إيجابية تزرع مخالفة معروفة وتتأكّد أن الكاشف
 يلتقطها — كاشفٌ توقّف عن الكشف يمرّ صامتاً على كل شيء.
 
@@ -149,6 +149,25 @@ Number(row.debit)    // TypeError
    `design/components/components.css` (`table.lines`/`table.data`): الخليّة الأولى يبقى
    لها حدّ بداية يلاصق حدّ الحاوية فيتضاعف، والخليّة الأخيرة يسقط فاصلها الداخلي. مصلَح
    في `src/styles/app.css` لجدول الميزان؛ ومرفوع للمالك في `design/` لأنه ملفّ للقراءة فقط.
+
+---
+
+## ٤٫١ · ثوابت نظام التصميم — أربعةٌ مفروضة لا موصوفة
+
+كلٌّ منها فحصٌ في `scripts/audit.mjs` **سجلُّه مشتقٌّ من الشيفرة لا مكتوبٌ بيد**، فمكوّنٌ
+جديد يدخل السجل من نفسه ويُحمِّر البوّابة حتى يُعطى ما ينقصه. والقرار الحاكم
+[`ADR-جديد · design-invariants-are-enforced-not-reviewed`](../docs/decisions/ADR-جديد-design-invariants-are-enforced-not-reviewed.md).
+
+| الفحص | القاعدة | من أين يُشتقّ سجلّه | أين تُضيف |
+|---|---|---|---|
+| **§١٠ سلّم المسافات** | كل قيمة إيقاعٍ على `--space-*`، أو مبرَّرةٌ بتعليقٍ ملاصقٍ فيه «خارج السلّم عمداً» | خطواتُ السلّم من `tokens.css`، ونطاقُه كلُّ ملفٍّ فيه `var(--space-` | الملفّ نفسه |
+| **§١١ عمود الأرقام** | خانةُ `<td>`/`<th>` تعرض `<Amount>`/`<Num>`/`<Decimal>`/`<RateValue>`/`<QuantityValue>` تحمل صنفاً رقمياً؛ وكلُّ قاعدةٍ جدوليّة تختار وجهاً تختار `--font-numeric` | الأصنافُ الرقمية من كل قاعدةٍ تُعلن `tabular-nums` | صنف الخانة في الشاشة |
+| **§١٢ اللمس والضغط والتركيز** | ‏44 بكسل تحت `pointer:coarse`، ورجعُ `:active`، ولا نزعَ لمؤشّر التركيز بلا بديل | السجلُّ من كل قاعدةٍ تُعلن `cursor:pointer` | [`src/styles/touch.css`](src/styles/touch.css) §٢ و§٣ |
+| **§١٣ فهرس الأوّليّات** | كلُّ أوّليّةٍ مُصدَّرة من `ui/index.ts` معروضةٌ في `/design` | كتلُ `export {}` في `ui/index.ts` | `screens/design/DesignScreen.tsx` |
+
+> **والقياس الحيّ دليلٌ لا حارس:** `artifacts/polish/rig.mjs` يقيس في كروميوم — قياسَ اللمس
+> والضغط وعرضَ الأرقام ونسبةَ رأس الجدول — ويقارن الشجرة بمرجعٍ من git. لا يعمل في البوّابة
+> لأنه يحتاج متصفّحاً و`npm ci`، والفحوص الأربعة تعمل قبل التثبيت.
 
 ---
 
@@ -220,13 +239,13 @@ web/
   scripts/
     generate-client.mjs     المولّد وبوّابة الانحراف
     port-locales.mjs        نقل ملفّات اللغة من design/
-    audit.mjs               فحص التدويل والاتجاه
+    audit.mjs               فحص التدويل والاتجاه وثوابت نظام التصميم
     mock-api.mjs            خادم وهمي مطابق للعقد
     live-api-check.mjs      التكامل الحيّ على الخادم الحقيقي
   src/
     api/                    money.ts · transport.ts · generated/
     i18n/                   engine.ts · display.ts · decimal-text.ts · react.tsx · locales/
-    styles/                 tokens · theme · components · print (منقولة) + app.css
+    styles/                 tokens · theme · components · print (منقولة) + app.css + touch.css
     app/                    الهيكل والمسارات وسطح الخطأ والإعداد
     screens/                trial-balance · contract
   tests/                    vitest

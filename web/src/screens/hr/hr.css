@@ -61,13 +61,13 @@
 /* ═════════════════════════════════════════════ ٣ · الرمز المعتم والاسم */
 .hr-code{
   display:inline-block;
-  padding:1px var(--space-8); border-radius:var(--radius-mark);
+  padding:var(--space-2) var(--space-8); border-radius:var(--radius-mark);
   background:var(--color-surface-sunken);
   border:var(--border-width) solid var(--edge-faint);
   font-size:.92em; color:var(--color-text-muted);
   direction:ltr; unicode-bidi:isolate;
 }
-.hr-name{ display:inline-flex; flex-direction:column; gap:1px; min-inline-size:0 }
+.hr-name{ display:inline-flex; flex-direction:column; gap:var(--space-2); min-inline-size:0 }
 .hr-name .alt{
   unicode-bidi:isolate;
   font-size:var(--font-size-3xs); color:var(--color-text-subtle); line-height:1.4;

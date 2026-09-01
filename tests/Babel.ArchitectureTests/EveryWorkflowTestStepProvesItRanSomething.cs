@@ -43,6 +43,13 @@ public sealed class EveryWorkflowTestStepProvesItRanSomething
     /// </summary>
     private const int MinimumTestInvocations = 3;
 
+    /// <summary>
+    /// الحدّ الأدنى لعدد ملفّات سير العمل المقروءة. المجلّد قد يبقى موجوداً ويعود مسحُه
+    /// بلا ملفّ واحد — امتدادٌ تغيّر، أو نُقلت الملفّات — فيمرّ كل تأكيدٍ تحته على الفراغ.
+    /// مقيس: خمسة ملفّات. ويُخفَّض بقرارٍ مكتوب لا بالسهو.
+    /// </summary>
+    private const int MinimumWorkflowFiles = 5;
+
     /// <summary>الحدّ المُعلَن لمجموعة أداة التحقق — مقيس: أربعون اختباراً.</summary>
     private const int ValidatorSuiteFloor = 40;
 
@@ -65,7 +72,14 @@ public sealed class EveryWorkflowTestStepProvesItRanSomething
         string folder = Path.Combine(RepositoryLayout.Root, WorkflowFolder);
         Assert.True(Directory.Exists(folder), $"مجلد سير العمل غير موجود: {WorkflowFolder}");
 
-        foreach (string path in Directory.EnumerateFiles(folder, "*.yml").OrderBy(static p => p, StringComparer.Ordinal))
+        string[] workflows = [.. Directory.EnumerateFiles(folder, "*.yml").OrderBy(static p => p, StringComparer.Ordinal)];
+
+        Assert.True(
+            workflows.Length >= MinimumWorkflowFiles,
+            FormattableString.Invariant(
+                $"مسح {WorkflowFolder} عاد بـ{workflows.Length} ملفّاً والحدّ الأدنى {MinimumWorkflowFiles} — النطاق ضامر، وخُضرته لا تعني شيئاً."));
+
+        foreach (string path in workflows)
         {
             string[] lines = File.ReadAllLines(path);
             for (int i = 0; i < lines.Length; i++)

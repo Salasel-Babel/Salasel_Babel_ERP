@@ -14,6 +14,15 @@ on:
       - '.github/workflows/data-validation.yml'
   workflow_dispatch:
 
+# ‏**نيّة `--nologo` محفوظة، ومكانها هنا لا في سطر الأمر.** الوسيط كان يُقصد به سجلٌّ
+# هادئ، فأدّى — تحت منصّة الاختبار — إلى ألّا يُشغَّل اختبارٌ واحد. والمتغيّر البيئي
+# يُسكت الشعار في **كل** أوامر dotnet في هذا السير بلا أن يمسّ اكتشاف الاختبارات،
+# وهو عين ما يفعله `ci.yml` أصلاً.
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+
 jobs:
   validate:
     name: مصفوفة الترحيل ودليل الحسابات

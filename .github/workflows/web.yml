@@ -164,6 +164,33 @@ jobs:
         if: always()
         run: npx playwright install --with-deps chromium
 
+      # ‏**النطاق يُعدّ قبل أن يُشغَّل.** ‏Playwright يرفض — بحقّ — تشغيلةً بلا اختبارات،
+      # لكنّ الرفض حدّه اختبارٌ واحد: ملفُّ مواصفةٍ يسقط من النطاق (نُقل، أو أُعيدت
+      # تسميته، أو خرج من `testDir`) يترك التشغيلة **خضراء** بما بقي، ولا شيء في
+      # المخرَج يقول إن التغطية نقصت. فالعدّ يسبق الحكم، والرسالة تسمّي العددين معاً.
+      # مقيس على هذا الفرع: `Total: 107 tests in 7 files`.
+      # (‏docs/evidence/traps.md#fakh-an-argument-valid-for-one-runner-tells-another-to-run-nothing)
+      - name: عدّ نطاق المصفوفة قبل تشغيلها / count the matrix scope first
+        id: scope
+        run: |
+          set -euo pipefail
+          minimum_tests=90
+          minimum_files=7
+          listing=$(npx playwright test --list)
+          total=$(printf '%s\n' "$listing" | sed -n 's/^Total: \([0-9]\+\) tests\? in \([0-9]\+\) files\?$/\1/p' | tail -1)
+          files=$(printf '%s\n' "$listing" | sed -n 's/^Total: \([0-9]\+\) tests\? in \([0-9]\+\) files\?$/\2/p' | tail -1)
+          # سطرُ الحصيلة نفسه قد يختفي بتغيّر صيغة المخرَج — وحينها لا يُقرأ عدد،
+          # ولا يجوز أن يُقرأ غيابُه صفراً صامتاً: الرفض صريح باسم ما تغيّر.
+          if [ -z "${total:-}" ] || [ -z "${files:-}" ]; then
+            echo "::error::تعذّر قراءة سطر «Total: N tests in M files» من مخرَج playwright --list — صيغة المخرَج تغيّرت، والحارس لا يقرأ عدداً."
+            exit 1
+          fi
+          if [ "$total" -lt "$minimum_tests" ] || [ "$files" -lt "$minimum_files" ]; then
+            echo "::error::النطاق عاد بـ${total} اختباراً في ${files} ملفّاً، والحدّ الأدنى ${minimum_tests} اختباراً في ${minimum_files} ملفّاً — النطاق ضامر، وخُضرته لا تعني شيئاً."
+            exit 1
+          fi
+          echo "نطاق المصفوفة: ${total} اختباراً في ${files} ملفّاً (الحدّ الأدنى ${minimum_tests} في ${minimum_files})"
+
       # لا `if: always()` هنا: بلا `dist/` لا معنى لتشغيلها — وهذه تبعية
       # حقيقية تُصان. وخطوة الحصيلة تحتها تقول صراحةً إن لم تُشغَّل ولماذا.
       - name: مصفوفة العرض — ٤ لغات × ٢ مظهر × ٣ عروض، والسلوك، والقياس

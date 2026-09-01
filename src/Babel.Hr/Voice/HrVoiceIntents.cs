@@ -49,7 +49,7 @@ public sealed class HrVoiceIntents : IVoiceIntentCatalogue
             ],
             [
                 new VoiceSlot("employee", VoiceSlotKind.Text, "الموظف", true,
-                    ["الموظف", "موظف", "عن"], []),
+                    ["الموظف", "موظف", "عن"], []) { Entity = VoiceEntityKind.Employee },
             ],
             true,
             null),
@@ -69,7 +69,7 @@ public sealed class HrVoiceIntents : IVoiceIntentCatalogue
             ],
             [
                 new VoiceSlot("employee", VoiceSlotKind.Text, "الموظف", true,
-                    ["للموظف", "الموظف", "موظف", "لصالح"], []),
+                    ["للموظف", "الموظف", "موظف", "لصالح"], []) { Entity = VoiceEntityKind.Employee },
                 new VoiceSlot("amount", VoiceSlotKind.Money, "مبلغ السلفة", true,
                     ["بمبلغ", "مبلغ", "بقيمة", "قيمتها"], []),
                 new VoiceSlot("instalments", VoiceSlotKind.Number, "عدد الأقساط", false,
@@ -95,7 +95,7 @@ public sealed class HrVoiceIntents : IVoiceIntentCatalogue
             ],
             [
                 new VoiceSlot("employee", VoiceSlotKind.Text, "الموظف", true,
-                    ["الموظف", "موظف", "على"], []),
+                    ["الموظف", "موظف", "على"], []) { Entity = VoiceEntityKind.Employee },
                 new VoiceSlot("amount", VoiceSlotKind.Money, "مبلغ الخصم", true,
                     ["بمبلغ", "مبلغ", "بقيمة", "قيمته"], []),
                 new VoiceSlot("effectiveOn", VoiceSlotKind.Date, "تاريخ الاستحقاق", true,
@@ -141,7 +141,7 @@ public sealed class HrVoiceIntents : IVoiceIntentCatalogue
             ],
             [
                 new VoiceSlot("employee", VoiceSlotKind.Text, "الموظف", true,
-                    ["للموظف", "الموظف", "موظف"], []),
+                    ["للموظف", "الموظف", "موظف"], []) { Entity = VoiceEntityKind.Employee },
                 new VoiceSlot("amount", VoiceSlotKind.Money, "المستحق", true,
                     ["بمبلغ", "مبلغ", "بقيمة", "قيمتها", "الاجمالي", "اجمالي", "المجموع"], []),
                 new VoiceSlot("method", VoiceSlotKind.Choice, "طريقة الصرف", true,

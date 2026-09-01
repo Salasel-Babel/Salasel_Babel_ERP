@@ -28,6 +28,16 @@ namespace Babel.Ai.Voice;
 /// رمز التأكيد: صورةٌ نصّية حتمية للأمر بعينه. تأكيدٌ برمزٍ آخر يُرفض، فلا يُنفَّذ
 /// أمرٌ تغيّر بعد أن قُرئ على المستخدم.
 /// </param>
+/// <param name="Residue">
+/// <b>ما بقي من نافذة الشريحة بعد الاسم المسجَّل</b> — يُسمّى ولا يُبتلع في الاسم ولا
+/// يُلقى بصمت.
+/// <para>
+/// <b>وهو الخطّاف لا الزينة:</b> «سند قبض من شركة كذا <b>فإن لم تجدها أنشئ لها
+/// حساباً</b>» أمرٌ مركَّب، وشرطُه ليس جزءاً من اسم. فحين تصير الطبقةُ تفهم الأمر
+/// المركَّب خطّةً متعدّدة الخطوات، تجد الشرط هنا مُسمّى محفوظاً — لا مبتلعاً في اسم
+/// طرفٍ ولا مطروحاً في الهواء.
+/// </para>
+/// </param>
 public sealed record VoiceResolution(
     VoiceIntent Intent,
     IReadOnlyList<SpokenSlotValue> Slots,
@@ -35,7 +45,8 @@ public sealed record VoiceResolution(
     IReadOnlyList<Error> Faults,
     string? SpokenCompany,
     string ReadbackAr,
-    string ConfirmationToken)
+    string ConfirmationToken,
+    IReadOnlyList<SpokenResidue> Residue)
 {
     /// <summary>هل امتلأت كل الشرائح اللازمة؟</summary>
     public bool IsComplete => MissingSlots.Count == 0;

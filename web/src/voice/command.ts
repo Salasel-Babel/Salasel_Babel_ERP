@@ -38,6 +38,11 @@ export interface VoiceResolution {
   readonly faults: readonly string[];
   readonly spokenCompany: string | null;
   /**
+   * **ما بقي من نافذة الشريحة بعد الاسم المسجَّل** — الخطّاف لا الزينة: شرطُ الأمر
+   * المركَّب يُحفظ هنا مُسمّى، لا مبتلعاً في اسم طرفٍ ولا مطروحاً في الهواء.
+   */
+  readonly residue: readonly SpokenResidue[];
+  /**
    * الملخّص المرتدّ — يُقرأ ويُعرض معاً. **وواحدٌ بالعربية لا اثنان**: الملخّص نصّ
    * عرض، والعربية سجلُّه، ولغةٌ ثالثة صفٌّ لا عمود (ADR-0021 · القاعدة 14).
    */
@@ -55,6 +60,18 @@ export type VoiceReading =
 export interface VoiceReadingOptions {
   readonly today?: string;
   readonly statutoryTaxRate?: string;
+  /**
+   * **سجلّ الأسماء المعروفة** بالسجلّ الذي تنتمي إليه — وهو ما يحدّ طرفَ اسم الطرف
+   * في الكلام. وحين لا يُحقن لا يُخترع حدّ: يُقاس المقطع بـ`NAME_WORD_LIMIT`،
+   * **وما تجاوزه يُرفض ولا يُقتطع**.
+   */
+  readonly entities?: Readonly<Record<string, readonly string[]>>;
+}
+
+/** ما لم يُفهَم داخل نافذة شريحة — **يُسمّى ولا يُبتلع في اسمٍ ولا يُلقى بصمت**. */
+export interface SpokenResidue {
+  readonly slotName: string;
+  readonly text: string;
 }
 
 /** مَن يتكلّم، وفي أي منشأة، وبأي صلاحيات. */
@@ -83,6 +100,16 @@ export const TRANSCRIPT_LIMIT = 600;
 /** أقصى عدد كلماتٍ في رمزٍ منطوق. */
 const CODE_WORD_LIMIT = 4;
 
+/**
+ * **أقصى عرضٍ يُقبل اسماً حين لا يُحقن سجلّ أسماء** — أرضيةٌ لا جواب، ونظيرُ
+ * `SpokenCommandReader.NameWordLimit` في الخادم رقماً برقم.
+ *
+ * ومن أين جاء الثلاثة: من سجلّ المنتج نفسه لا من الذوق — أوسعُ قيمةٍ مشروعة في ملفّ
+ * المتجهات المُودَع ثلاثُ كلمات. وما لا يدّعيه هذا الحدّ أنه يعرف أين ينتهي الاسم:
+ * لا يعرف، **ولذلك يرفض ولا يقتطع** ما تجاوزه.
+ */
+export const NAME_WORD_LIMIT = 3;
+
 /** ما يُقال بعد الملخّص لكل عمليةٍ تُغيّر الحال — نفس نصّ الخادم حرفاً. */
 export const CONFIRM_CALL_AR = "قل «تأكيد» أو اضغط زرّ التأكيد.";
 
@@ -99,17 +126,49 @@ export function fold(text: string): string {
   return strip(text ?? "").replace(/ة/g, "ه");
 }
 
+/**
+ * علاماتُ الوقف تُبقى **رموزَ فصلٍ صريحة** ولا تُحذف: النقطةُ والفاصلة أرخصُ إشارةٍ
+ * في اللغة على أن المقطع انتهى، و**التفريغُ المكتوب — وهو المسار الوحيد العامل على
+ * عنوانٍ غير مؤمَّن — يحملها فعلاً**. وحذفُ إشارةٍ موجودة أسوأ من عدم فهمها.
+ */
+const BREAKS = new Set(["،", ",", ".", "؟", "?", "!", "؛", ";", ":"]);
+
+/** هل هذا الرمز علامةَ وقفٍ لا كلمة؟ **وهو حدٌّ في كل مقطعٍ حرّ**. */
+function isBreak(word: string): boolean {
+  return BREAKS.has(word);
+}
+
 function words(text: string): string[] {
-  return (text ?? "")
-    .split(/[\s،,.؟?!؛;:]+/)
-    .map((word) => strip(word))
-    .filter((word) => word.length > 0);
+  const out: string[] = [];
+  for (const chunk of (text ?? "").split(/[\s]+/)) {
+    let start = 0;
+    for (let index = 0; index <= chunk.length; index++) {
+      const atBreak = index < chunk.length && BREAKS.has(chunk[index] as string);
+      if (index < chunk.length && !atBreak) continue;
+      if (index > start) {
+        const word = strip(chunk.slice(start, index));
+        if (word.length > 0) out.push(word);
+      }
+      if (atBreak) out.push(chunk[index] as string);
+      start = index + 1;
+    }
+  }
+  return out;
 }
 
 function same(left: string, right: string): boolean {
   return fold(left) === fold(right);
 }
 
+/**
+ * كلمات إيقاف عامّة: **مواضعُ ابتداء الحقل التالي**.
+ *
+ * ⚠ **وهي ليست — ولن تصير — قائمةَ «ما ينهي الاسم».** أدواتُ الشرط والاستئناف
+ * («فإن»، «لو»، «إذا ما»، «لين») لا تُقدّم حقلاً ولا تحمل قيمة، فلا موضع لها هنا؛
+ * **وإضافتها هي بعينها العلاج الذي يبدو علاجاً وليس به**: إحصاءُ ما ليس في الاسم
+ * إحصاءٌ لمتمّمة مجموعةٍ مفتوحة — اللغةُ كلُّها إلا صفّاً واحداً — فأوّلُ أداةٍ لم
+ * تُكتب تُعيد العطل صامتاً. وحدُّ الاسم يقرّره سجلُّ الأسماء، أو يُرفض.
+ */
 const STOP_WORDS = new Set(
   [
     "و", "في", "على", "من", "الى", "عن", "مع", "ثم",
@@ -197,12 +256,137 @@ export function matchIntent(transcript: string): VoiceReading | VoiceIntent {
 
 /* ── الشرائح ────────────────────────────────────────────────────────────── */
 
+/**
+ * حدودُ المقاطع: كلماتُ الإيقاف، ودلائلُ كل شريحة، **وقوائمُها المغلقة**.
+ *
+ * ولماذا القوائم المغلقة أيضاً: قيمةُ شريحةٍ مغلقة كلمةٌ تخصّ شريحتها بالتعريف،
+ * فوقوعُها داخل اسم طرفٍ يعني أن الاسم ابتلع حقلاً آخر — «مؤسسة النور نقد» اسمَ
+ * عميلٍ وشريحةً مغلقة فارغة معاً، مستنداً كامل الشكل بلا رفضٍ في أي موضع.
+ */
 function boundariesOf(intent: VoiceIntent): Set<string> {
   const out = new Set(STOP_WORDS);
   for (const slot of intent.slots) {
     for (const cue of slot.cues) for (const word of words(cue)) out.add(fold(word));
+    for (const choice of slot.choices) for (const word of words(choice)) out.add(fold(word));
   }
   return out;
+}
+
+/**
+ * هل تنتهي النافذة عند هذه الكلمة؟ **حدٌّ واحد يقرؤه كل مقطعٍ حرّ** — كلمةُ إيقاف،
+ * أو دليلُ شريحةٍ أخرى، أو قيمةُ قائمةٍ مغلقة، أو وحدةُ قياس، أو عدد، أو علامةُ وقف.
+ * والعددُ لا يُنهي **الرمز**: «رفّ ثلاثة» رمزٌ يدخله العدد بقصد.
+ */
+function isBoundary(word: string, boundaries: Set<string>, numberEnds: boolean): boolean {
+  return (
+    isBreak(word) ||
+    boundaries.has(fold(word)) ||
+    unitCodeOf(word) !== null ||
+    (numberEnds && isNumberish(word))
+  );
+}
+
+/** النافذة: الكلمات من الموضع إلى أوّل حدّ. **لا قصَّ فيها ولا اختيار**. */
+function windowFrom(
+  tokens: readonly string[],
+  at: number,
+  boundaries: Set<string>,
+  numberEnds: boolean
+): string[] {
+  const out: string[] = [];
+  for (let index = at; index < tokens.length; index++) {
+    const word = tokens[index] ?? "";
+    if (isBoundary(word, boundaries, numberEnds)) break;
+    out.push(word);
+  }
+  return out;
+}
+
+/** اسمٌ مسجَّل طابق بادئةَ النافذة. */
+interface EntityMatch {
+  readonly name: string;
+  readonly words: number;
+  /** هل طابق اسمٌ آخر بالطول نفسه؟ **والتعادل رفضٌ لا قرعة**. */
+  readonly tied: boolean;
+}
+
+/** أطولُ اسمٍ مسجَّل هو بادئةُ هذه النافذة — وهو حدُّ الاسم. */
+function longestPrefix(names: readonly string[], window: readonly string[]): EntityMatch | null {
+  let best = 0;
+  let at = -1;
+  let tied = false;
+
+  for (let index = 0; index < names.length; index++) {
+    const parts = words(names[index] ?? "").map((word) => fold(word));
+    if (parts.length === 0 || parts.length > window.length || parts.length < best) continue;
+
+    let hit = true;
+    for (let offset = 0; offset < parts.length; offset++) {
+      if (fold(window[offset] ?? "") !== parts[offset]) {
+        hit = false;
+        break;
+      }
+    }
+    if (!hit) continue;
+
+    if (parts.length > best) {
+      best = parts.length;
+      at = index;
+      tied = false;
+    } else if (names[index] !== names[at]) {
+      tied = true;
+    }
+  }
+
+  return at < 0 ? null : { name: strip(names[at] ?? ""), words: best, tied };
+}
+
+/**
+ * **يقرّر النافذةَ قيمةً، أو يرفضها باسمها.** وهو الموضع الذي انقلب فيه السؤال: لم
+ * يعد «أين تنتهي هذه الكلمات؟» بل «أيُّ صفٍّ مسجَّل يبدأ بها؟».
+ */
+function decide(
+  slot: VoiceSlot,
+  window: readonly string[],
+  limit: number,
+  options: VoiceReadingOptions,
+  /* أعطالُ **الرفض** — تُروى فقط إن لم يُنتج أيُّ دليلٍ قيمة. */
+  refusals: string[],
+  /* أعطالُ **القبول** — عطلُ الفضلة يقع مع قيمةٍ مقبولة، فيبلغ المستخدم دائماً. */
+  faults: string[],
+  residue: SpokenResidue[]
+): string | null {
+  if (window.length === 0) return null;
+
+  const heard = window.join(" ");
+  const known = slot.entity === "None" ? undefined : options.entities?.[slot.entity];
+
+  /* **السجلّ يقرّر حين يكون حاضراً** — والنحوُ حوله لا يُسأل. */
+  if (known && known.length > 0) {
+    const match = longestPrefix(known, window);
+    if (!match) {
+      refusals.push("ai.voice.name_not_in_register");
+      return null;
+    }
+    if (match.tied) {
+      refusals.push("ai.voice.slot_boundary_ambiguous");
+      return null;
+    }
+    if (match.words < window.length) {
+      const rest = window.slice(match.words).join(" ");
+      residue.push({ slotName: slot.name, text: rest });
+      faults.push("ai.voice.residue_not_understood");
+    }
+    return match.name;
+  }
+
+  /* **ولا سجلّ**: يُقاس المقطع بالأرضية، وما تجاوزها يُرفض ولا يُقتطع. */
+  if (window.length > limit) {
+    refusals.push("ai.voice.slot_boundary_not_found");
+    return null;
+  }
+
+  return heard;
 }
 
 /** مواضع ما بعد كل دليل — **كلُّها لا أوّلُها**: «على ستة أقساط» فيها دليلان. */
@@ -336,38 +520,54 @@ function readChoice(slot: VoiceSlot, tokens: readonly string[]): SpokenSlotValue
   return null;
 }
 
-function readCode(slot: VoiceSlot, tokens: readonly string[], boundaries: Set<string>): SpokenSlotValue | null {
+function readCode(
+  slot: VoiceSlot,
+  tokens: readonly string[],
+  boundaries: Set<string>,
+  options: VoiceReadingOptions,
+  faults: string[],
+  residue: SpokenResidue[]
+): SpokenSlotValue | null {
+  const attempts: string[] = [];
+
   for (const start of cuePositions(slot, tokens)) {
     let at = start;
     while (at < tokens.length && CONNECTORS.has(fold(tokens[at] ?? ""))) at++;
 
-    const parts: string[] = [];
-    for (let index = at; index < tokens.length && parts.length < CODE_WORD_LIMIT; index++) {
-      const word = tokens[index] ?? "";
-      if (boundaries.has(fold(word)) || unitCodeOf(word)) break;
-      parts.push(word);
-    }
-    if (parts.length > 0) {
-      const text = parts.join(" ");
-      return { name: slot.name, text, heard: text, provenance: "spoken" };
-    }
+    const window = windowFrom(tokens, at, boundaries, false);
+    const text = decide(slot, window, CODE_WORD_LIMIT, options, attempts, faults, residue);
+    if (text !== null) return { name: slot.name, text, heard: text, provenance: "spoken" };
   }
+
+  /* **العطل يُروى مرّةً واحدة**: دليلٌ واحد ينجح يُسكت أعطال إخوته. */
+  if (attempts.length > 0) faults.push(attempts[0] as string);
   return null;
 }
 
-function readText(slot: VoiceSlot, tokens: readonly string[], boundaries: Set<string>): SpokenSlotValue | null {
+/**
+ * نصٌّ حرّ. **والنافذة تُؤخذ كاملةً ثم يُقرَّر فيها** — لا تُقصّ أثناء المسح.
+ *
+ * وشريحةُ السجلّ تُقاس بالاسم، وشريحةُ النثر لا تُقاس بشيء: بيانُ قيدٍ طويل إسهابٌ
+ * يقرؤه الإنسان ويقصّره، واسمُ طرفٍ طويل **طرفٌ آخر** يمرّ في مستندٍ صحيح الشكل.
+ */
+function readText(
+  slot: VoiceSlot,
+  tokens: readonly string[],
+  boundaries: Set<string>,
+  options: VoiceReadingOptions,
+  faults: string[],
+  residue: SpokenResidue[]
+): SpokenSlotValue | null {
+  const attempts: string[] = [];
+  const limit = slot.entity === "None" ? Number.MAX_SAFE_INTEGER : NAME_WORD_LIMIT;
+
   for (const at of cuePositions(slot, tokens)) {
-    const parts: string[] = [];
-    for (let index = at; index < tokens.length; index++) {
-      const word = tokens[index] ?? "";
-      if (boundaries.has(fold(word)) || unitCodeOf(word) || isNumberish(word)) break;
-      parts.push(word);
-    }
-    if (parts.length > 0) {
-      const text = parts.join(" ");
-      return { name: slot.name, text, heard: text, provenance: "spoken" };
-    }
+    const window = windowFrom(tokens, at, boundaries, true);
+    const text = decide(slot, window, limit, options, attempts, faults, residue);
+    if (text !== null) return { name: slot.name, text, heard: text, provenance: "spoken" };
   }
+
+  if (attempts.length > 0) faults.push(attempts[0] as string);
   return null;
 }
 
@@ -387,7 +587,7 @@ function readCompany(tokens: readonly string[]): string | null {
       const name: string[] = [];
       for (let at = index + parts.length; at < tokens.length; at++) {
         const word = tokens[at] ?? "";
-        if (STOP_WORDS.has(fold(word)) || isNumberish(word)) break;
+        if (isBreak(word) || STOP_WORDS.has(fold(word)) || isNumberish(word)) break;
         name.push(word);
       }
       if (name.length > 0) return name.join(" ");
@@ -458,6 +658,7 @@ export function readCommand(transcript: string, options: VoiceReadingOptions = {
   const slots: SpokenSlotValue[] = [];
   const missingSlots: string[] = [];
   const faults: string[] = [];
+  const residue: SpokenResidue[] = [];
 
   for (const slot of intent.slots) {
     let value: SpokenSlotValue | null;
@@ -476,10 +677,10 @@ export function readCommand(transcript: string, options: VoiceReadingOptions = {
         value = readChoice(slot, tokens);
         break;
       case "Code":
-        value = readCode(slot, tokens, boundaries);
+        value = readCode(slot, tokens, boundaries, options, faults, residue);
         break;
       default:
-        value = readText(slot, tokens, boundaries);
+        value = readText(slot, tokens, boundaries, options, faults, residue);
         break;
     }
 
@@ -499,6 +700,7 @@ export function readCommand(transcript: string, options: VoiceReadingOptions = {
       missingSlots,
       faults,
       spokenCompany: readCompany(tokens),
+      residue,
       readbackAr,
       confirmationToken: confirmationToken(intent, slots),
     },

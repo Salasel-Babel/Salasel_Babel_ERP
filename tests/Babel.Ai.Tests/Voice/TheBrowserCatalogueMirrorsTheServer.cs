@@ -91,6 +91,12 @@ public sealed class TheBrowserCatalogueMirrorsTheServer
             Assert.Equal(
                 intent.Slots.Select(static slot => slot.Name),
                 mirrored.Slots.Select(static slot => slot.Name));
+
+            // ‏**ووسمُ السجلّ يُطابَق أيضاً**: المتصفّح هو المسار الحيّ، ووسمٌ يسقط هناك
+            // يُعيد الشريحة إلى النثر الحرّ فيبتلع اسمُ الطرف ما بعده — ولا يراه حارسٌ آخر.
+            Assert.Equal(
+                intent.Slots.Select(static slot => slot.Entity.ToString()),
+                mirrored.Slots.Select(static slot => slot.Entity));
         }
     }
 

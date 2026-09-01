@@ -46,7 +46,7 @@ public sealed class ProjectsVoiceIntents : IVoiceIntentCatalogue
             ],
             [
                 new VoiceSlot("contract", VoiceSlotKind.Text, "العقد", true,
-                    ["للعقد", "العقد", "عقد"], []),
+                    ["للعقد", "العقد", "عقد"], []) { Entity = VoiceEntityKind.Contract },
                 new VoiceSlot("reason", VoiceSlotKind.Text, "سبب التغيير", true,
                     ["بسبب", "السبب", "لان"], []),
                 new VoiceSlot("amount", VoiceSlotKind.Money, "قيمة التغيير", true,
@@ -72,9 +72,9 @@ public sealed class ProjectsVoiceIntents : IVoiceIntentCatalogue
             ],
             [
                 new VoiceSlot("contract", VoiceSlotKind.Text, "العقد", true,
-                    ["عقد", "العقد", "للعقد", "بعقد"], []),
+                    ["عقد", "العقد", "للعقد", "بعقد"], []) { Entity = VoiceEntityKind.Contract },
                 new VoiceSlot("boqItem", VoiceSlotKind.Text, "بند جدول الكميات", true,
-                    ["بند", "البند", "للبند", "بندي"], []),
+                    ["بند", "البند", "للبند", "بندي"], []) { Entity = VoiceEntityKind.BoqItem },
                 new VoiceSlot("quantity", VoiceSlotKind.Quantity, "الكمية المنفذة", true,
                     ["كمية", "الكمية", "بمقدار", "عدد", "منفذ"], []),
                 new VoiceSlot("measuredOn", VoiceSlotKind.Date, "تاريخ القياس", true,
@@ -98,7 +98,7 @@ public sealed class ProjectsVoiceIntents : IVoiceIntentCatalogue
             ],
             [
                 new VoiceSlot("contract", VoiceSlotKind.Text, "العقد", true,
-                    ["عقد", "العقد", "للعقد"], []),
+                    ["عقد", "العقد", "للعقد"], []) { Entity = VoiceEntityKind.Contract },
             ],
             false,
             null),
@@ -118,7 +118,7 @@ public sealed class ProjectsVoiceIntents : IVoiceIntentCatalogue
             ],
             [
                 new VoiceSlot("contract", VoiceSlotKind.Text, "العقد", true,
-                    ["للعقد", "العقد", "عقد"], []),
+                    ["للعقد", "العقد", "عقد"], []) { Entity = VoiceEntityKind.Contract },
                 new VoiceSlot("guaranteeNumber", VoiceSlotKind.Code, "رقم الضمان", true,
                     ["رقم الضمان", "الخطاب رقم", "الخطاب"], []),
                 new VoiceSlot("amount", VoiceSlotKind.Money, "قيمة الضمان", true,
@@ -144,7 +144,7 @@ public sealed class ProjectsVoiceIntents : IVoiceIntentCatalogue
             ],
             [
                 new VoiceSlot("contract", VoiceSlotKind.Text, "العقد", true,
-                    ["للعقد", "العقد", "عقد"], []),
+                    ["للعقد", "العقد", "عقد"], []) { Entity = VoiceEntityKind.Contract },
                 new VoiceSlot("amount", VoiceSlotKind.Money, "المبلغ المُحصَّل", true,
                     ["بمبلغ", "مبلغ", "بقيمة", "قيمتها", "الاجمالي", "اجمالي", "المجموع"], []),
                 new VoiceSlot("method", VoiceSlotKind.Choice, "طريقة التحصيل", true,
@@ -170,7 +170,7 @@ public sealed class ProjectsVoiceIntents : IVoiceIntentCatalogue
             ],
             [
                 new VoiceSlot("contract", VoiceSlotKind.Text, "العقد", true,
-                    ["للعقد", "العقد", "عقد"], []),
+                    ["للعقد", "العقد", "عقد"], []) { Entity = VoiceEntityKind.Contract },
             ],
             false,
             null),
@@ -190,7 +190,7 @@ public sealed class ProjectsVoiceIntents : IVoiceIntentCatalogue
             ],
             [
                 new VoiceSlot("contract", VoiceSlotKind.Text, "العقد", true,
-                    ["للعقد", "العقد", "عقد"], []),
+                    ["للعقد", "العقد", "عقد"], []) { Entity = VoiceEntityKind.Contract },
                 new VoiceSlot("amount", VoiceSlotKind.Money, "المبلغ المُفرَج عنه", true,
                     ["بمبلغ", "مبلغ", "بقيمة", "قيمتها", "الاجمالي", "اجمالي", "المجموع"], []),
                 new VoiceSlot("releasedOn", VoiceSlotKind.Date, "تاريخ الإفراج", true,
@@ -214,7 +214,7 @@ public sealed class ProjectsVoiceIntents : IVoiceIntentCatalogue
             ],
             [
                 new VoiceSlot("subcontractor", VoiceSlotKind.Text, "المقاول من الباطن", true,
-                    ["للمقاول", "المقاول", "مقاول", "لصالح"], []),
+                    ["للمقاول", "المقاول", "مقاول", "لصالح"], []) { Entity = VoiceEntityKind.Subcontractor },
                 new VoiceSlot("amount", VoiceSlotKind.Money, "المبلغ", true,
                     ["بمبلغ", "مبلغ", "بقيمة", "قيمته"], []),
                 new VoiceSlot("paidOn", VoiceSlotKind.Date, "تاريخ الصرف", true,
@@ -238,9 +238,9 @@ public sealed class ProjectsVoiceIntents : IVoiceIntentCatalogue
             ],
             [
                 new VoiceSlot("subcontract", VoiceSlotKind.Text, "عقد الباطن", true,
-                    ["عقد", "العقد", "للعقد"], []),
+                    ["عقد", "العقد", "للعقد"], []) { Entity = VoiceEntityKind.Contract },
                 new VoiceSlot("boqItem", VoiceSlotKind.Text, "بند جدول الكميات", true,
-                    ["بند", "البند", "للبند"], []),
+                    ["بند", "البند", "للبند"], []) { Entity = VoiceEntityKind.BoqItem },
                 new VoiceSlot("quantity", VoiceSlotKind.Quantity, "الكمية المنفذة", true,
                     ["كمية", "الكمية", "بمقدار", "عدد"], []),
                 new VoiceSlot("measuredOn", VoiceSlotKind.Date, "تاريخ القياس", true,
@@ -264,7 +264,7 @@ public sealed class ProjectsVoiceIntents : IVoiceIntentCatalogue
             ],
             [
                 new VoiceSlot("subcontractor", VoiceSlotKind.Text, "المقاول من الباطن", true,
-                    ["للمقاول", "المقاول", "مقاول"], []),
+                    ["للمقاول", "المقاول", "مقاول"], []) { Entity = VoiceEntityKind.Subcontractor },
             ],
             false,
             null),

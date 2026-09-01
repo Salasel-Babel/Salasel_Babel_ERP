@@ -45,7 +45,7 @@ public sealed class SalesVoiceIntents : IVoiceIntentCatalogue
             ],
             [
                 new VoiceSlot("customer", VoiceSlotKind.Text, "العميل", true,
-                    ["للعميل", "على العميل", "العميل", "عميل"], []),
+                    ["للعميل", "على العميل", "العميل", "عميل"], []) { Entity = VoiceEntityKind.Customer },
                 new VoiceSlot("invoiceNumber", VoiceSlotKind.Code, "الفاتورة الأصلية", true,
                     ["على الفاتورة", "الفاتورة", "فاتورة"], []),
                 new VoiceSlot("amount", VoiceSlotKind.Money, "قيمة الإشعار", true,
@@ -71,7 +71,7 @@ public sealed class SalesVoiceIntents : IVoiceIntentCatalogue
             ],
             [
                 new VoiceSlot("customer", VoiceSlotKind.Text, "العميل", true,
-                    ["العميل", "عميل", "على", "حق"], []),
+                    ["العميل", "عميل", "على", "حق"], []) { Entity = VoiceEntityKind.Customer },
             ],
             false,
             null),
@@ -91,7 +91,7 @@ public sealed class SalesVoiceIntents : IVoiceIntentCatalogue
             ],
             [
                 new VoiceSlot("customer", VoiceSlotKind.Text, "العميل", true,
-                    ["العميل", "عميل", "من", "لصالح"], []),
+                    ["العميل", "عميل", "من", "لصالح"], []) { Entity = VoiceEntityKind.Customer },
                 new VoiceSlot("amount", VoiceSlotKind.Money, "المبلغ المقبوض", true,
                     ["بمبلغ", "مبلغ", "بقيمة", "قيمته", "قيمتها"], []),
                 new VoiceSlot("method", VoiceSlotKind.Choice, "طريقة القبض", true,
@@ -137,7 +137,7 @@ public sealed class SalesVoiceIntents : IVoiceIntentCatalogue
             ],
             [
                 new VoiceSlot("customer", VoiceSlotKind.Text, "العميل", true,
-                    ["على العميل", "للعميل", "العميل", "عميل"], []),
+                    ["على العميل", "للعميل", "العميل", "عميل"], []) { Entity = VoiceEntityKind.Customer },
                 new VoiceSlot("amount", VoiceSlotKind.Money, "الإجمالي شامل الضريبة", true,
                     ["بمبلغ", "مبلغ", "بقيمة", "قيمتها", "الاجمالي", "اجمالي", "المجموع"], []),
                 new VoiceSlot("taxRate", VoiceSlotKind.Number, "نسبة الضريبة", false,

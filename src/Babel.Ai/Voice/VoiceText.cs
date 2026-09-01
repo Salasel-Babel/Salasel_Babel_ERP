@@ -65,7 +65,30 @@ public static class VoiceText
         return output.ToString();
     }
 
-    /// <summary>يقطّع جملةً إلى كلمات <b>مُجرَّدةً تجريداً أميناً</b>، ويُسقط الترقيم.</summary>
+    /// <summary>
+    /// علاماتُ الوقف التي <b>تُبقى رموزَ فصلٍ صريحة</b> ولا تُحذف.
+    /// <para>
+    /// <b>ولماذا تُبقى:</b> النقطةُ والفاصلة أرخصُ إشارةٍ في اللغة على أن هذا المقطع
+    /// انتهى، و<b>التفريغُ المكتوب — وهو المسار الوحيد العامل على عنوانٍ غير مؤمَّن —
+    /// يحملها فعلاً</b>. وقاطعٌ يحذفها يُتلف المعلومة قبل أن تصل المطابقة، فيصير
+    /// «مؤسسة النور، وأضف لها حساباً» مقطعاً واحداً لا مقطعين. وحذفُ إشارةٍ موجودة
+    /// أسوأ من عدم فهمها: الأولى تُتلف، والثانية تُترك للحدود الأخرى.
+    /// </para>
+    /// </summary>
+    private static readonly char[] Breaks = ['،', ',', '.', '؟', '?', '!', '؛', ';', ':'];
+
+    /// <summary>الفواصل البيضاء وحدها.</summary>
+    private static readonly char[] Blanks = [' ', '\t', '\n', '\r'];
+
+    /// <summary>هل هذه الكلمة علامةَ وقفٍ لا كلمةً؟ <b>وهي حدٌّ في كل مقطعٍ حرّ</b>.</summary>
+    /// <param name="word">الرمز المقروء.</param>
+    public static bool IsBreak(string word) =>
+        word is { Length: 1 } && Array.IndexOf(Breaks, word[0]) >= 0;
+
+    /// <summary>
+    /// يقطّع جملةً إلى كلمات <b>مُجرَّدةً تجريداً أميناً</b>، و<b>يُبقي علامات الوقف
+    /// رموزاً قائمة بذاتها</b> لا يبتلعها مقطعٌ حرّ.
+    /// </summary>
     /// <param name="text">النصّ.</param>
     public static IReadOnlyList<string> Words(string text)
     {
@@ -73,14 +96,33 @@ public static class VoiceText
 
         List<string> words = [];
 
-        foreach (string raw in text.Split(
-            [' ', '\t', '\n', '\r', '،', ',', '.', '؟', '?', '!', '؛', ';', ':'],
-            StringSplitOptions.RemoveEmptyEntries))
+        foreach (string chunk in text.Split(Blanks, StringSplitOptions.RemoveEmptyEntries))
         {
-            string word = Strip(raw);
-            if (word.Length > 0)
+            int start = 0;
+
+            for (int index = 0; index <= chunk.Length; index++)
             {
-                words.Add(word);
+                bool atBreak = index < chunk.Length && Array.IndexOf(Breaks, chunk[index]) >= 0;
+                if (index < chunk.Length && !atBreak)
+                {
+                    continue;
+                }
+
+                if (index > start)
+                {
+                    string word = Strip(chunk[start..index]);
+                    if (word.Length > 0)
+                    {
+                        words.Add(word);
+                    }
+                }
+
+                if (atBreak)
+                {
+                    words.Add(chunk[index].ToString());
+                }
+
+                start = index + 1;
             }
         }
 

@@ -416,6 +416,24 @@ export function VoiceConsole(props: VoiceConsoleProps): ReactNode {
             </ul>
           ) : null}
 
+          {/* ── الفضلة: ما لم يُفهَم يُسمّى ويُقال، ولا يُبتلع في اسمٍ ولا يُلقى ──
+              وهذه هي بعينها الجملة التي ابتلعها اسمُ العميل في أوّل أمرٍ مركَّب قيل
+              للنظام الحيّ: «فإن لم تجدها أنشئ لها حساباً». */}
+          {resolution.residue.length > 0 ? (
+            <ul className="vc-faults" data-testid="voice-residue" role="alert">
+              {resolution.residue.map((left) => (
+                <li key={left.slotName + "|" + left.text}>
+                  {t("screen.voice.refusal.residueSpan", {
+                    slot:
+                      resolution.intent.slots.find((slot) => slot.name === left.slotName)?.nameAr ??
+                      left.slotName,
+                    text: left.text,
+                  })}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+
           {resolution.intent.status === "AwaitingOwnerDecision" ? (
             <p className="vc-blocked" data-testid="voice-awaiting-owner" role="status">
               {t("screen.voice.refusal.ownerDecisionPending")}

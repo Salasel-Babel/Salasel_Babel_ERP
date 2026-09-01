@@ -30,6 +30,7 @@
           "kind": "Text",
           "nameAr": "العميل",
           "required": true,
+          "entity": "Customer",
           "cues": [
             "للعميل",
             "على العميل",
@@ -43,6 +44,7 @@
           "kind": "Code",
           "nameAr": "الفاتورة الأصلية",
           "required": true,
+          "entity": "None",
           "cues": [
             "على الفاتورة",
             "الفاتورة",
@@ -55,6 +57,7 @@
           "kind": "Money",
           "nameAr": "قيمة الإشعار",
           "required": true,
+          "entity": "None",
           "cues": [
             "بمبلغ",
             "مبلغ",
@@ -71,6 +74,7 @@
           "kind": "Date",
           "nameAr": "تاريخ الإصدار",
           "required": true,
+          "entity": "None",
           "cues": [],
           "choices": []
         }
@@ -101,6 +105,7 @@
           "kind": "Text",
           "nameAr": "العميل",
           "required": true,
+          "entity": "Customer",
           "cues": [
             "العميل",
             "عميل",
@@ -137,6 +142,7 @@
           "kind": "Text",
           "nameAr": "العميل",
           "required": true,
+          "entity": "Customer",
           "cues": [
             "العميل",
             "عميل",
@@ -150,6 +156,7 @@
           "kind": "Money",
           "nameAr": "المبلغ المقبوض",
           "required": true,
+          "entity": "None",
           "cues": [
             "بمبلغ",
             "مبلغ",
@@ -164,6 +171,7 @@
           "kind": "Choice",
           "nameAr": "طريقة القبض",
           "required": true,
+          "entity": "None",
           "cues": [
             "نقد",
             "تحويل",
@@ -182,6 +190,7 @@
           "kind": "Date",
           "nameAr": "تاريخ القبض",
           "required": true,
+          "entity": "None",
           "cues": [],
           "choices": []
         }
@@ -212,6 +221,7 @@
           "kind": "Code",
           "nameAr": "أمر الشراء",
           "required": true,
+          "entity": "None",
           "cues": [
             "بامر شراء",
             "على امر شراء",
@@ -224,6 +234,7 @@
           "kind": "Text",
           "nameAr": "الصنف",
           "required": true,
+          "entity": "Item",
           "cues": [
             "الصنف",
             "صنف",
@@ -236,6 +247,7 @@
           "kind": "Quantity",
           "nameAr": "الكمية المستلمة",
           "required": true,
+          "entity": "None",
           "cues": [
             "كمية",
             "الكمية",
@@ -250,6 +262,7 @@
           "kind": "Date",
           "nameAr": "تاريخ الاستلام",
           "required": true,
+          "entity": "None",
           "cues": [],
           "choices": []
         }
@@ -280,6 +293,7 @@
           "kind": "Text",
           "nameAr": "بيان القيد",
           "required": true,
+          "entity": "None",
           "cues": [
             "بيان",
             "البيان",
@@ -293,6 +307,7 @@
           "kind": "Money",
           "nameAr": "قيمة القيد",
           "required": true,
+          "entity": "None",
           "cues": [
             "بمبلغ",
             "مبلغ",
@@ -309,6 +324,7 @@
           "kind": "Date",
           "nameAr": "تاريخ القيد",
           "required": true,
+          "entity": "None",
           "cues": [],
           "choices": []
         }
@@ -338,6 +354,7 @@
           "kind": "Date",
           "nameAr": "تاريخ القطع",
           "required": true,
+          "entity": "None",
           "cues": [],
           "choices": []
         }
@@ -368,6 +385,7 @@
           "kind": "Text",
           "nameAr": "المورد",
           "required": true,
+          "entity": "Supplier",
           "cues": [
             "من المورد",
             "المورد",
@@ -380,6 +398,7 @@
           "kind": "Text",
           "nameAr": "الصنف",
           "required": true,
+          "entity": "Item",
           "cues": [
             "الصنف",
             "صنف",
@@ -392,6 +411,7 @@
           "kind": "Quantity",
           "nameAr": "الكمية المطلوبة",
           "required": true,
+          "entity": "None",
           "cues": [
             "كمية",
             "الكمية",
@@ -406,6 +426,7 @@
           "kind": "Text",
           "nameAr": "المستودع",
           "required": true,
+          "entity": "Warehouse",
           "cues": [
             "المستودع",
             "مستودع",
@@ -419,6 +440,7 @@
           "kind": "Date",
           "nameAr": "تاريخ الأمر",
           "required": true,
+          "entity": "None",
           "cues": [],
           "choices": []
         }
@@ -448,6 +470,7 @@
           "kind": "Code",
           "nameAr": "فاتورة المورد",
           "required": true,
+          "entity": "None",
           "cues": [
             "على الفاتورة",
             "الفاتورة",
@@ -460,6 +483,7 @@
           "kind": "Text",
           "nameAr": "الصنف",
           "required": true,
+          "entity": "Item",
           "cues": [
             "الصنف",
             "صنف",
@@ -472,6 +496,7 @@
           "kind": "Quantity",
           "nameAr": "الكمية المرتجعة",
           "required": true,
+          "entity": "None",
           "cues": [
             "كمية",
             "الكمية",
@@ -486,6 +511,7 @@
           "kind": "Date",
           "nameAr": "تاريخ الإشعار",
           "required": true,
+          "entity": "None",
           "cues": [],
           "choices": []
         }
@@ -515,6 +541,7 @@
           "kind": "Date",
           "nameAr": "تاريخ القطع",
           "required": true,
+          "entity": "None",
           "cues": [],
           "choices": []
         }
@@ -546,6 +573,7 @@
           "kind": "Text",
           "nameAr": "العميل",
           "required": true,
+          "entity": "Customer",
           "cues": [
             "على العميل",
             "للعميل",
@@ -559,6 +587,7 @@
           "kind": "Money",
           "nameAr": "الإجمالي شامل الضريبة",
           "required": true,
+          "entity": "None",
           "cues": [
             "بمبلغ",
             "مبلغ",
@@ -575,6 +604,7 @@
           "kind": "Number",
           "nameAr": "نسبة الضريبة",
           "required": false,
+          "entity": "None",
           "cues": [
             "ضريبة",
             "وضريبة",
@@ -587,6 +617,7 @@
           "kind": "Code",
           "nameAr": "رقم الفاتورة",
           "required": false,
+          "entity": "None",
           "cues": [
             "رقم",
             "برقم",
@@ -599,6 +630,7 @@
           "kind": "Date",
           "nameAr": "تاريخ الإصدار",
           "required": true,
+          "entity": "None",
           "cues": [],
           "choices": []
         }
@@ -628,6 +660,7 @@
           "kind": "Code",
           "nameAr": "محضر الاستلام",
           "required": true,
+          "entity": "None",
           "cues": [
             "على محضر استلام",
             "محضر الاستلام"
@@ -639,6 +672,7 @@
           "kind": "Text",
           "nameAr": "المورد",
           "required": true,
+          "entity": "Supplier",
           "cues": [
             "من المورد",
             "المورد",
@@ -651,6 +685,7 @@
           "kind": "Money",
           "nameAr": "الإجمالي شامل الضريبة",
           "required": true,
+          "entity": "None",
           "cues": [
             "بمبلغ",
             "مبلغ",
@@ -667,6 +702,7 @@
           "kind": "Date",
           "nameAr": "تاريخ الفاتورة",
           "required": true,
+          "entity": "None",
           "cues": [],
           "choices": []
         }
@@ -698,6 +734,7 @@
           "kind": "Text",
           "nameAr": "المورد",
           "required": true,
+          "entity": "Supplier",
           "cues": [
             "من",
             "المورد",
@@ -712,6 +749,7 @@
           "kind": "Money",
           "nameAr": "الإجمالي شامل الضريبة",
           "required": true,
+          "entity": "None",
           "cues": [
             "بمبلغ",
             "مبلغ",
@@ -729,6 +767,7 @@
           "kind": "Number",
           "nameAr": "نسبة الضريبة",
           "required": false,
+          "entity": "None",
           "cues": [
             "ضريبة",
             "وضريبة",
@@ -742,6 +781,7 @@
           "kind": "Code",
           "nameAr": "رقم الفاتورة",
           "required": false,
+          "entity": "None",
           "cues": [
             "رقم",
             "برقم",
@@ -754,6 +794,7 @@
           "kind": "Date",
           "nameAr": "تاريخ الإصدار",
           "required": true,
+          "entity": "None",
           "cues": [],
           "choices": []
         }
@@ -785,6 +826,7 @@
           "kind": "Text",
           "nameAr": "المورد",
           "required": true,
+          "entity": "Supplier",
           "cues": [
             "للمورد",
             "المورد",
@@ -799,6 +841,7 @@
           "kind": "Money",
           "nameAr": "المبلغ المدفوع",
           "required": true,
+          "entity": "None",
           "cues": [
             "بمبلغ",
             "مبلغ",
@@ -813,6 +856,7 @@
           "kind": "Choice",
           "nameAr": "طريقة الدفع",
           "required": true,
+          "entity": "None",
           "cues": [
             "نقد",
             "تحويل",
@@ -831,6 +875,7 @@
           "kind": "Date",
           "nameAr": "تاريخ الصرف",
           "required": true,
+          "entity": "None",
           "cues": [],
           "choices": []
         }
@@ -860,6 +905,7 @@
           "kind": "Text",
           "nameAr": "العقد",
           "required": true,
+          "entity": "Contract",
           "cues": [
             "للعقد",
             "العقد",
@@ -872,6 +918,7 @@
           "kind": "Text",
           "nameAr": "سبب التغيير",
           "required": true,
+          "entity": "None",
           "cues": [
             "بسبب",
             "السبب",
@@ -884,6 +931,7 @@
           "kind": "Money",
           "nameAr": "قيمة التغيير",
           "required": true,
+          "entity": "None",
           "cues": [
             "بمبلغ",
             "مبلغ",
@@ -900,6 +948,7 @@
           "kind": "Date",
           "nameAr": "تاريخ الأمر",
           "required": true,
+          "entity": "None",
           "cues": [],
           "choices": []
         }
@@ -931,6 +980,7 @@
           "kind": "Text",
           "nameAr": "العقد",
           "required": true,
+          "entity": "Contract",
           "cues": [
             "عقد",
             "العقد",
@@ -944,6 +994,7 @@
           "kind": "Text",
           "nameAr": "بند جدول الكميات",
           "required": true,
+          "entity": "BoqItem",
           "cues": [
             "بند",
             "البند",
@@ -957,6 +1008,7 @@
           "kind": "Quantity",
           "nameAr": "الكمية المنفذة",
           "required": true,
+          "entity": "None",
           "cues": [
             "كمية",
             "الكمية",
@@ -971,6 +1023,7 @@
           "kind": "Date",
           "nameAr": "تاريخ القياس",
           "required": true,
+          "entity": "None",
           "cues": [],
           "choices": []
         }
@@ -1001,6 +1054,7 @@
           "kind": "Text",
           "nameAr": "العقد",
           "required": true,
+          "entity": "Contract",
           "cues": [
             "عقد",
             "العقد",
@@ -1034,6 +1088,7 @@
           "kind": "Text",
           "nameAr": "العقد",
           "required": true,
+          "entity": "Contract",
           "cues": [
             "للعقد",
             "العقد",
@@ -1046,6 +1101,7 @@
           "kind": "Code",
           "nameAr": "رقم الضمان",
           "required": true,
+          "entity": "None",
           "cues": [
             "رقم الضمان",
             "الخطاب رقم",
@@ -1058,6 +1114,7 @@
           "kind": "Money",
           "nameAr": "قيمة الضمان",
           "required": true,
+          "entity": "None",
           "cues": [
             "بمبلغ",
             "مبلغ",
@@ -1074,6 +1131,7 @@
           "kind": "Date",
           "nameAr": "تاريخ الانتهاء",
           "required": true,
+          "entity": "None",
           "cues": [],
           "choices": []
         }
@@ -1104,6 +1162,7 @@
           "kind": "Text",
           "nameAr": "العقد",
           "required": true,
+          "entity": "Contract",
           "cues": [
             "للعقد",
             "العقد",
@@ -1116,6 +1175,7 @@
           "kind": "Money",
           "nameAr": "المبلغ المُحصَّل",
           "required": true,
+          "entity": "None",
           "cues": [
             "بمبلغ",
             "مبلغ",
@@ -1132,6 +1192,7 @@
           "kind": "Choice",
           "nameAr": "طريقة التحصيل",
           "required": true,
+          "entity": "None",
           "cues": [
             "نقد",
             "تحويل",
@@ -1150,6 +1211,7 @@
           "kind": "Date",
           "nameAr": "تاريخ التحصيل",
           "required": true,
+          "entity": "None",
           "cues": [],
           "choices": []
         }
@@ -1179,6 +1241,7 @@
           "kind": "Text",
           "nameAr": "العقد",
           "required": true,
+          "entity": "Contract",
           "cues": [
             "للعقد",
             "العقد",
@@ -1213,6 +1276,7 @@
           "kind": "Text",
           "nameAr": "العقد",
           "required": true,
+          "entity": "Contract",
           "cues": [
             "للعقد",
             "العقد",
@@ -1225,6 +1289,7 @@
           "kind": "Money",
           "nameAr": "المبلغ المُفرَج عنه",
           "required": true,
+          "entity": "None",
           "cues": [
             "بمبلغ",
             "مبلغ",
@@ -1241,6 +1306,7 @@
           "kind": "Date",
           "nameAr": "تاريخ الإفراج",
           "required": true,
+          "entity": "None",
           "cues": [],
           "choices": []
         }
@@ -1270,6 +1336,7 @@
           "kind": "Text",
           "nameAr": "المقاول من الباطن",
           "required": true,
+          "entity": "Subcontractor",
           "cues": [
             "للمقاول",
             "المقاول",
@@ -1283,6 +1350,7 @@
           "kind": "Money",
           "nameAr": "المبلغ",
           "required": true,
+          "entity": "None",
           "cues": [
             "بمبلغ",
             "مبلغ",
@@ -1296,6 +1364,7 @@
           "kind": "Date",
           "nameAr": "تاريخ الصرف",
           "required": true,
+          "entity": "None",
           "cues": [],
           "choices": []
         }
@@ -1325,6 +1394,7 @@
           "kind": "Text",
           "nameAr": "عقد الباطن",
           "required": true,
+          "entity": "Contract",
           "cues": [
             "عقد",
             "العقد",
@@ -1337,6 +1407,7 @@
           "kind": "Text",
           "nameAr": "بند جدول الكميات",
           "required": true,
+          "entity": "BoqItem",
           "cues": [
             "بند",
             "البند",
@@ -1349,6 +1420,7 @@
           "kind": "Quantity",
           "nameAr": "الكمية المنفذة",
           "required": true,
+          "entity": "None",
           "cues": [
             "كمية",
             "الكمية",
@@ -1362,6 +1434,7 @@
           "kind": "Date",
           "nameAr": "تاريخ القياس",
           "required": true,
+          "entity": "None",
           "cues": [],
           "choices": []
         }
@@ -1391,6 +1464,7 @@
           "kind": "Text",
           "nameAr": "المقاول من الباطن",
           "required": true,
+          "entity": "Subcontractor",
           "cues": [
             "للمقاول",
             "المقاول",
@@ -1425,6 +1499,7 @@
           "kind": "Text",
           "nameAr": "الموظف",
           "required": true,
+          "entity": "Employee",
           "cues": [
             "الموظف",
             "موظف",
@@ -1459,6 +1534,7 @@
           "kind": "Text",
           "nameAr": "الموظف",
           "required": true,
+          "entity": "Employee",
           "cues": [
             "للموظف",
             "الموظف",
@@ -1472,6 +1548,7 @@
           "kind": "Money",
           "nameAr": "مبلغ السلفة",
           "required": true,
+          "entity": "None",
           "cues": [
             "بمبلغ",
             "مبلغ",
@@ -1485,6 +1562,7 @@
           "kind": "Number",
           "nameAr": "عدد الأقساط",
           "required": false,
+          "entity": "None",
           "cues": [
             "اقساط",
             "قسط",
@@ -1497,6 +1575,7 @@
           "kind": "Date",
           "nameAr": "تاريخ الصرف",
           "required": true,
+          "entity": "None",
           "cues": [],
           "choices": []
         }
@@ -1526,6 +1605,7 @@
           "kind": "Text",
           "nameAr": "الموظف",
           "required": true,
+          "entity": "Employee",
           "cues": [
             "الموظف",
             "موظف",
@@ -1538,6 +1618,7 @@
           "kind": "Money",
           "nameAr": "مبلغ الخصم",
           "required": true,
+          "entity": "None",
           "cues": [
             "بمبلغ",
             "مبلغ",
@@ -1551,6 +1632,7 @@
           "kind": "Date",
           "nameAr": "تاريخ الاستحقاق",
           "required": true,
+          "entity": "None",
           "cues": [],
           "choices": []
         }
@@ -1580,6 +1662,7 @@
           "kind": "Code",
           "nameAr": "رمز الفترة",
           "required": true,
+          "entity": "None",
           "cues": [
             "لفترة",
             "الفترة",
@@ -1593,6 +1676,7 @@
           "kind": "Date",
           "nameAr": "تاريخ الاستحقاق",
           "required": true,
+          "entity": "None",
           "cues": [],
           "choices": []
         }
@@ -1622,6 +1706,7 @@
           "kind": "Text",
           "nameAr": "الموظف",
           "required": true,
+          "entity": "Employee",
           "cues": [
             "للموظف",
             "الموظف",
@@ -1634,6 +1719,7 @@
           "kind": "Money",
           "nameAr": "المستحق",
           "required": true,
+          "entity": "None",
           "cues": [
             "بمبلغ",
             "مبلغ",
@@ -1650,6 +1736,7 @@
           "kind": "Choice",
           "nameAr": "طريقة الصرف",
           "required": true,
+          "entity": "None",
           "cues": [
             "نقد",
             "تحويل",
@@ -1668,6 +1755,7 @@
           "kind": "Date",
           "nameAr": "تاريخ التصفية",
           "required": true,
+          "entity": "None",
           "cues": [],
           "choices": []
         }
@@ -1697,6 +1785,7 @@
           "kind": "Code",
           "nameAr": "المسير",
           "required": true,
+          "entity": "None",
           "cues": [
             "لمسير",
             "المسير رقم",
@@ -1709,6 +1798,7 @@
           "kind": "Choice",
           "nameAr": "طريقة الصرف",
           "required": true,
+          "entity": "None",
           "cues": [
             "نقد",
             "تحويل",
@@ -1727,6 +1817,7 @@
           "kind": "Date",
           "nameAr": "تاريخ الصرف",
           "required": true,
+          "entity": "None",
           "cues": [],
           "choices": []
         }
@@ -1757,6 +1848,7 @@
           "kind": "Code",
           "nameAr": "رمز الفترة",
           "required": true,
+          "entity": "None",
           "cues": [
             "لفترة",
             "الفترة",
@@ -1770,6 +1862,7 @@
           "kind": "Date",
           "nameAr": "تاريخ الإعداد",
           "required": true,
+          "entity": "None",
           "cues": [],
           "choices": []
         }
@@ -1799,6 +1892,7 @@
           "kind": "Code",
           "nameAr": "رمز الفترة",
           "required": true,
+          "entity": "None",
           "cues": [
             "لفترة",
             "الفترة",
@@ -1812,6 +1906,7 @@
           "kind": "Money",
           "nameAr": "المبلغ المسدَّد",
           "required": true,
+          "entity": "None",
           "cues": [
             "بمبلغ",
             "مبلغ",
@@ -1828,6 +1923,7 @@
           "kind": "Choice",
           "nameAr": "طريقة السداد",
           "required": true,
+          "entity": "None",
           "cues": [
             "نقد",
             "تحويل",
@@ -1846,6 +1942,7 @@
           "kind": "Date",
           "nameAr": "تاريخ السداد",
           "required": true,
+          "entity": "None",
           "cues": [],
           "choices": []
         }
@@ -1876,6 +1973,7 @@
           "kind": "Text",
           "nameAr": "الصنف",
           "required": true,
+          "entity": "Item",
           "cues": [
             "الصنف",
             "صنف",
@@ -1889,6 +1987,7 @@
           "kind": "Quantity",
           "nameAr": "الكمية الفعلية",
           "required": true,
+          "entity": "None",
           "cues": [
             "كمية",
             "الكمية",
@@ -1904,6 +2003,7 @@
           "kind": "Text",
           "nameAr": "المستودع",
           "required": true,
+          "entity": "Warehouse",
           "cues": [
             "المستودع",
             "مستودع",
@@ -1917,6 +2017,7 @@
           "kind": "Code",
           "nameAr": "الموقع",
           "required": false,
+          "entity": "None",
           "cues": [
             "الموقع",
             "موقع"
@@ -1928,6 +2029,7 @@
           "kind": "Date",
           "nameAr": "تاريخ الجرد",
           "required": true,
+          "entity": "None",
           "cues": [],
           "choices": []
         }
@@ -1957,6 +2059,7 @@
           "kind": "Text",
           "nameAr": "الصنف",
           "required": true,
+          "entity": "Item",
           "cues": [
             "الصنف",
             "صنف",
@@ -1969,6 +2072,7 @@
           "kind": "Quantity",
           "nameAr": "الكمية المصروفة",
           "required": true,
+          "entity": "None",
           "cues": [
             "كمية",
             "الكمية",
@@ -1982,6 +2086,7 @@
           "kind": "Text",
           "nameAr": "المستودع",
           "required": true,
+          "entity": "Warehouse",
           "cues": [
             "المستودع",
             "مستودع",
@@ -1995,6 +2100,7 @@
           "kind": "Text",
           "nameAr": "المشروع",
           "required": true,
+          "entity": "Project",
           "cues": [
             "للمشروع",
             "المشروع",
@@ -2007,6 +2113,7 @@
           "kind": "Date",
           "nameAr": "تاريخ الصرف",
           "required": true,
+          "entity": "None",
           "cues": [],
           "choices": []
         }
@@ -2037,6 +2144,7 @@
           "kind": "Text",
           "nameAr": "الصنف",
           "required": true,
+          "entity": "Item",
           "cues": [
             "الصنف",
             "صنف",
@@ -2049,6 +2157,7 @@
           "kind": "Quantity",
           "nameAr": "الكمية",
           "required": true,
+          "entity": "None",
           "cues": [
             "كمية",
             "الكمية",
@@ -2062,6 +2171,7 @@
           "kind": "Text",
           "nameAr": "المستودع",
           "required": true,
+          "entity": "Warehouse",
           "cues": [
             "المستودع",
             "مستودع",
@@ -2074,6 +2184,7 @@
           "kind": "Code",
           "nameAr": "الموقع المصدر",
           "required": true,
+          "entity": "None",
           "cues": [
             "من موقع",
             "من الموقع",
@@ -2087,6 +2198,7 @@
           "kind": "Code",
           "nameAr": "الموقع الهدف",
           "required": true,
+          "entity": "None",
           "cues": [
             "الى موقع",
             "الى الموقع",
@@ -2123,6 +2235,7 @@
           "kind": "Text",
           "nameAr": "الصنف",
           "required": true,
+          "entity": "Item",
           "cues": [
             "الصنف",
             "صنف",
@@ -2135,6 +2248,7 @@
           "kind": "Text",
           "nameAr": "المستودع",
           "required": false,
+          "entity": "Warehouse",
           "cues": [
             "المستودع",
             "مستودع",
@@ -2169,6 +2283,7 @@
           "kind": "Text",
           "nameAr": "الصنف",
           "required": true,
+          "entity": "Item",
           "cues": [
             "الصنف",
             "صنف",
@@ -2202,6 +2317,7 @@
           "kind": "Text",
           "nameAr": "المستودع",
           "required": true,
+          "entity": "Warehouse",
           "cues": [
             "المستودع",
             "مستودع",
@@ -2236,6 +2352,7 @@
           "kind": "Text",
           "nameAr": "الصنف",
           "required": true,
+          "entity": "Item",
           "cues": [
             "الصنف",
             "صنف",
@@ -2248,6 +2365,7 @@
           "kind": "Quantity",
           "nameAr": "الكمية المحوَّلة",
           "required": true,
+          "entity": "None",
           "cues": [
             "كمية",
             "الكمية",
@@ -2261,6 +2379,7 @@
           "kind": "Text",
           "nameAr": "المستودع المرسِل",
           "required": true,
+          "entity": "Warehouse",
           "cues": [
             "من مستودع",
             "من المستودع",
@@ -2273,6 +2392,7 @@
           "kind": "Text",
           "nameAr": "المستودع المستقبِل",
           "required": true,
+          "entity": "Warehouse",
           "cues": [
             "الى مستودع",
             "الى المستودع",
@@ -2286,6 +2406,7 @@
           "kind": "Date",
           "nameAr": "تاريخ التحويل",
           "required": true,
+          "entity": "None",
           "cues": [],
           "choices": []
         }
@@ -2315,6 +2436,7 @@
           "kind": "Text",
           "nameAr": "المستأجر",
           "required": true,
+          "entity": "Lessee",
           "cues": [
             "للمستاجر",
             "المستاجر",
@@ -2327,6 +2449,7 @@
           "kind": "Code",
           "nameAr": "الوحدة",
           "required": true,
+          "entity": "None",
           "cues": [
             "للوحدة",
             "الوحدة",
@@ -2339,6 +2462,7 @@
           "kind": "Money",
           "nameAr": "إجمالي الإيجار",
           "required": true,
+          "entity": "None",
           "cues": [
             "بمبلغ",
             "مبلغ",
@@ -2355,6 +2479,7 @@
           "kind": "Date",
           "nameAr": "تاريخ البداية",
           "required": true,
+          "entity": "None",
           "cues": [],
           "choices": []
         }
@@ -2384,6 +2509,7 @@
           "kind": "Code",
           "nameAr": "الوحدة",
           "required": true,
+          "entity": "None",
           "cues": [
             "للوحدة",
             "الوحدة",
@@ -2396,6 +2522,7 @@
           "kind": "Money",
           "nameAr": "قيمة الصيانة",
           "required": true,
+          "entity": "None",
           "cues": [
             "بمبلغ",
             "مبلغ",
@@ -2409,6 +2536,7 @@
           "kind": "Date",
           "nameAr": "تاريخ الصرف",
           "required": true,
+          "entity": "None",
           "cues": [],
           "choices": []
         }
@@ -2438,6 +2566,7 @@
           "kind": "Code",
           "nameAr": "عقد الإيجار",
           "required": true,
+          "entity": "None",
           "cues": [
             "للعقد",
             "العقد",
@@ -2450,6 +2579,7 @@
           "kind": "Money",
           "nameAr": "قيمة الفاتورة",
           "required": true,
+          "entity": "None",
           "cues": [
             "بمبلغ",
             "مبلغ",
@@ -2466,6 +2596,7 @@
           "kind": "Number",
           "nameAr": "نسبة الضريبة",
           "required": false,
+          "entity": "None",
           "cues": [
             "ضريبة",
             "وضريبة",
@@ -2478,6 +2609,7 @@
           "kind": "Date",
           "nameAr": "تاريخ الإصدار",
           "required": true,
+          "entity": "None",
           "cues": [],
           "choices": []
         }
@@ -2507,6 +2639,7 @@
           "kind": "Text",
           "nameAr": "المستأجر",
           "required": true,
+          "entity": "Lessee",
           "cues": [
             "المستاجر",
             "مستاجر",
@@ -2541,6 +2674,7 @@
           "kind": "Text",
           "nameAr": "المستأجر",
           "required": true,
+          "entity": "Lessee",
           "cues": [
             "من المستاجر",
             "المستاجر",
@@ -2554,6 +2688,7 @@
           "kind": "Money",
           "nameAr": "المبلغ المحصَّل",
           "required": true,
+          "entity": "None",
           "cues": [
             "بمبلغ",
             "مبلغ",
@@ -2567,6 +2702,7 @@
           "kind": "Choice",
           "nameAr": "طريقة التحصيل",
           "required": true,
+          "entity": "None",
           "cues": [
             "نقد",
             "تحويل",
@@ -2585,6 +2721,7 @@
           "kind": "Date",
           "nameAr": "تاريخ التحصيل",
           "required": true,
+          "entity": "None",
           "cues": [],
           "choices": []
         }
@@ -2614,6 +2751,7 @@
           "kind": "Code",
           "nameAr": "الوحدة",
           "required": true,
+          "entity": "None",
           "cues": [
             "للوحدة",
             "الوحدة",

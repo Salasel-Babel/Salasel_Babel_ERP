@@ -91,6 +91,10 @@ public sealed class SpokenCommandTests
                 Assert.Equal(declaredSlot.Kind, slot.Kind.ToString());
                 Assert.Equal(declaredSlot.NameAr, slot.NameAr);
                 Assert.Equal(declaredSlot.Required, slot.Required);
+
+                // ‏**والسجلّ الذي تسمّيه الشريحة يُطابَق كغيره**: وسمٌ يسقط عن شريحةٍ
+                // يُعيدها إلى النثر الحرّ — أي إلى الابتلاع الصامت — بلا سطرٍ أحمر واحد.
+                Assert.Equal(declaredSlot.Entity, slot.Entity.ToString());
                 Assert.Equal(declaredSlot.Cues, slot.Cues);
                 Assert.Equal(declaredSlot.Choices, slot.Choices);
             }

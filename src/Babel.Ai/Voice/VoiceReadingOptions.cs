@@ -9,4 +9,17 @@ namespace Babel.Ai.Voice;
 /// <param name="StatutoryTaxRate">
 /// النسبة النظامية حين لا تُنطق — <b>نصّ لا عدد عائم</b>، وتُوسَم «من الإعدادات» لا «منطوق».
 /// </param>
-public sealed record VoiceReadingOptions(string? Today = null, string? StatutoryTaxRate = null);
+/// <param name="Entities">
+/// <b>سجلّ الأسماء المعروفة</b> — وهو ما يحدّ طرفَ اسم الطرف في الكلام. وحين لا يُحقن
+/// (‏<c>null</c> أو فارغ) لا يُخترع حدّ: يُقاس المقطع بعرضٍ مُشتقّ من السجلّ نفسه،
+/// و<b>ما تجاوزه يُرفض ولا يُقتطع</b>.
+/// <para>
+/// <b>ولماذا يُحقن كما يُحقن تاريخ اليوم:</b> قارئٌ يستعلم بنفسه عن العملاء يحتاج
+/// مرجعاً إلى وحدة المبيعات، وهو ما تمنعه القاعدة 3؛ وقارئٌ يستعلم عبر الشبكة يتوقّف
+/// عن العمل في مستودعٍ بلا تغطية — وهو المكان الذي وُجد هذا المسار من أجله.
+/// </para>
+/// </param>
+public sealed record VoiceReadingOptions(
+    string? Today = null,
+    string? StatutoryTaxRate = null,
+    VoiceEntityRegistry? Entities = null);

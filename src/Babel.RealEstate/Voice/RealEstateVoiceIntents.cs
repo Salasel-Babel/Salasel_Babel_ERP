@@ -47,7 +47,7 @@ public sealed class RealEstateVoiceIntents : IVoiceIntentCatalogue
             ],
             [
                 new VoiceSlot("lessee", VoiceSlotKind.Text, "المستأجر", true,
-                    ["للمستاجر", "المستاجر", "مستاجر"], []),
+                    ["للمستاجر", "المستاجر", "مستاجر"], []) { Entity = VoiceEntityKind.Lessee },
                 new VoiceSlot("unit", VoiceSlotKind.Code, "الوحدة", true,
                     ["للوحدة", "الوحدة", "وحدة"], []),
                 new VoiceSlot("totalRent", VoiceSlotKind.Money, "إجمالي الإيجار", true,
@@ -123,7 +123,7 @@ public sealed class RealEstateVoiceIntents : IVoiceIntentCatalogue
             ],
             [
                 new VoiceSlot("lessee", VoiceSlotKind.Text, "المستأجر", true,
-                    ["المستاجر", "مستاجر", "على"], []),
+                    ["المستاجر", "مستاجر", "على"], []) { Entity = VoiceEntityKind.Lessee },
             ],
             false,
             null),
@@ -143,7 +143,7 @@ public sealed class RealEstateVoiceIntents : IVoiceIntentCatalogue
             ],
             [
                 new VoiceSlot("lessee", VoiceSlotKind.Text, "المستأجر", true,
-                    ["من المستاجر", "المستاجر", "مستاجر", "من"], []),
+                    ["من المستاجر", "المستاجر", "مستاجر", "من"], []) { Entity = VoiceEntityKind.Lessee },
                 new VoiceSlot("amount", VoiceSlotKind.Money, "المبلغ المحصَّل", true,
                     ["بمبلغ", "مبلغ", "بقيمة", "قيمته"], []),
                 new VoiceSlot("method", VoiceSlotKind.Choice, "طريقة التحصيل", true,

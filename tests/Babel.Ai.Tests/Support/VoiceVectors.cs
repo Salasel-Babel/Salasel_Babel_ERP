@@ -37,6 +37,7 @@ internal sealed record VectorIntent(
 /// <param name="Kind">الصنف.</param>
 /// <param name="NameAr">اسمها العربي.</param>
 /// <param name="Required">هل هي لازمة؟</param>
+/// <param name="Entity">السجلّ الذي تسمّي صفّاً منه — و«None» نثرٌ حرّ.</param>
 /// <param name="Cues">الدلائل.</param>
 /// <param name="Choices">القائمة المغلقة.</param>
 internal sealed record VectorSlot(
@@ -44,6 +45,7 @@ internal sealed record VectorSlot(
     string Kind,
     string NameAr,
     bool Required,
+    string Entity,
     IReadOnlyList<string> Cues,
     IReadOnlyList<string> Choices);
 

@@ -82,6 +82,85 @@ public static class VoiceRefusals
             "Missing the unit of slot '" + slot.Name + "': heard '" + heard + "' with no unit.");
     }
 
+    /// <summary>
+    /// <b>مقطعٌ حرّ لا يُعرف أين ينتهي.</b> النافذة من دليل الشريحة إلى أوّل حدٍّ أعرضُ
+    /// من أن تكون اسماً، ولا سجلّ يحدّها.
+    /// <para>
+    /// <b>ولماذا رفضٌ لا اقتطاع:</b> اقتطاعُ الاسم عند عرضٍ مختار تخمينٌ يلبس ثوب
+    /// القاعدة، ويُنتج مستنداً <b>صحيح الشكل على طرفٍ آخر</b> — وهو أسوأ من الرفض،
+    /// لأنه يمرّ. والجملةُ تسمّي ما لم يُفهم كي يُقال أمراً مستقلاً.
+    /// </para>
+    /// </summary>
+    /// <param name="slot">الشريحة.</param>
+    /// <param name="heard">النافذة كما سُمعت.</param>
+    /// <param name="limit">أقصى عرضٍ يُقبل بلا سجلّ.</param>
+    public static Error BoundaryNotFound(VoiceSlot slot, string heard, int limit)
+    {
+        ArgumentNullException.ThrowIfNull(slot);
+        return new Error(
+            "ai.voice.slot_boundary_not_found",
+            NotUnderstoodAr + " أين ينتهي " + slot.NameAr + ". سمعتُ «" + heard + "» — و"
+            + Num(limit) + " كلمات حدُّ ما أقبله اسماً بلا سجلّ. "
+            + "ولا أقتطع: اسمٌ مقطوع عند كلمةٍ اخترتُها أنا يصنع مستنداً صحيح الشكل على طرفٍ آخر. "
+            + "قُل " + slot.NameAr + " وحده، ثم قُل الباقي أمراً مستقلاً.",
+            "Cannot bound slot '" + slot.Name + "': heard '" + heard + "', beyond the "
+            + Num(limit) + "-word limit that applies with no register; it is refused, not truncated.");
+    }
+
+    /// <summary>
+    /// <b>اسمان مسجَّلان يبدآن المقطع بالطول نفسه</b> — فيُرفض ولا يُقترع، بالمقياس
+    /// نفسه الذي يرفض نيّتين متعادلتين.
+    /// </summary>
+    /// <param name="slot">الشريحة.</param>
+    /// <param name="heard">النافذة كما سُمعت.</param>
+    public static Error BoundaryAmbiguous(VoiceSlot slot, string heard)
+    {
+        ArgumentNullException.ThrowIfNull(slot);
+        return new Error(
+            "ai.voice.slot_boundary_ambiguous",
+            NotUnderstoodAr + " أيَّ " + slot.NameAr + " تقصد في «" + heard + "»: "
+            + "اسمان مسجَّلان يبدآن الكلام بالطول نفسه. "
+            + "واختيارُ أحدهما بالصدفة يكتب المستند على طرفٍ لم تقصده، فيُطلب منك التخصيص.",
+            "Two registered names of equal length prefix slot '" + slot.Name + "' in '" + heard
+            + "'; the tie is refused, not drawn.");
+    }
+
+    /// <summary>
+    /// اسمٌ ليس في السجلّ. <b>ولا يُقارَب بأقرب شبيه</b>: تقريبٌ في اسم طرفٍ يُنتج
+    /// مستنداً صحيح الشكل على طرفٍ آخر.
+    /// </summary>
+    /// <param name="slot">الشريحة.</param>
+    /// <param name="heard">ما سُمع.</param>
+    public static Error NameNotInRegister(VoiceSlot slot, string heard)
+    {
+        ArgumentNullException.ThrowIfNull(slot);
+        return new Error(
+            "ai.voice.name_not_in_register",
+            NotUnderstoodAr + " «" + heard + "» في " + slot.NameAr + " — لا أجده في السجلّ. "
+            + "ولا أُقارِبه بأقرب شبيه: تقريبٌ في اسم طرفٍ يكتب المستند على غيره ولا يراه أحد. "
+            + "سجّله أوّلاً، ثم أعِد الأمر.",
+            "'" + heard + "' is not in the register for slot '" + slot.Name
+            + "'; no nearest-neighbour match is attempted.");
+    }
+
+    /// <summary>
+    /// <b>فضلةٌ بقيت بعد الاسم المسجَّل</b> — تُسمّى ولا تُبتلع ولا تُلقى. وهي الخطّاف
+    /// الذي يتعلّق به الأمر المركَّب حين يصير خطّةً متعدّدة الخطوات.
+    /// </summary>
+    /// <param name="slot">الشريحة.</param>
+    /// <param name="name">الاسم كما سُجّل.</param>
+    /// <param name="residue">ما بقي.</param>
+    public static Error ResidueNotUnderstood(VoiceSlot slot, string name, string residue)
+    {
+        ArgumentNullException.ThrowIfNull(slot);
+        return new Error(
+            "ai.voice.residue_not_understood",
+            "فهمتُ " + slot.NameAr + ": " + name + ". ولم أفهم: «" + residue + "» — "
+            + "قُلْه أمراً مستقلاً. وما لا يُفهم يُسمّى ولا يُبتلع في اسمٍ ولا يُلقى بصمت.",
+            "Understood slot '" + slot.Name + "' as '" + name + "'; the residue '" + residue
+            + "' is named, neither swallowed into the name nor discarded.");
+    }
+
     /// <summary>قيمةٌ خارج قائمة مغلقة.</summary>
     /// <param name="slot">الشريحة.</param>
     /// <param name="heard">ما سُمع.</param>

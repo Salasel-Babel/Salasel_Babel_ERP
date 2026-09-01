@@ -6,29 +6,22 @@ namespace Babel.RealEstate.Voice;
 /// <summary>
 /// <b>ما تُسهم به وحدة العقارات في المسار المنطوق.</b>
 /// <para>
-/// مسؤولُ التحصيل يتنقّل بين وحداتٍ في مبنى، ويقف عند بابٍ ويستلم نقداً أو شيكاً؛
-/// وفنّيُّ الصيانة يقف على سلّم. وكلاهما بيدين مشغولتين وعينين في مكانٍ آخر — وهذا
-/// بعينه معيارُ إعطاء الصوت.
+/// مسؤولُ التحصيل يتنقّل بين وحداتٍ في مبنى ويقف عند بابٍ ويستلم نقداً أو شيكاً؛
+/// وفنّيُّ الصيانة يقف على سلّم. والقاعدة فوق ذلك: الصوت يبلغ <b>كل مسوّدة</b> ولا
+/// يبلغ <b>ترحيلاً</b>.
 /// </para>
 /// <para>
-/// <b>وما لم يُعطَ صوتاً، ولماذا:</b>
-/// <list type="bullet">
-///   <item>
-///     <b>توقيع عقد الإيجار</b> — عقدٌ بمُدّةٍ ودفعاتٍ ووديعةٍ وشروطِ إخلاء، ويُقرأ
-///     على الطرفين قبل التوقيع. ونطقُه اختصارٌ لخطوةٍ وجودُها هو الغرض.
-///   </item>
-///   <item>
-///     <b>الشيكات الآجلة</b> — إيداعٌ وتحصيلٌ وارتجاعٌ بتواريخ استحقاق، وسلسلةٌ تُتابَع
-///     على جدول لا بالأذن.
-///   </item>
-///   <item>
-///     <b>توريد صافي الإيراد للمالك</b> — حسابٌ يقابل عمولةً ومصاريفَ نيابةً، ويُراجَع
-///     بالعين قبل التوريد.
-///   </item>
-///   <item>
-///     <b>مصادرة الوديعة</b> — قرارٌ خلافي بين طرفين، ولا يُتَّخذ بجملةٍ منطوقة.
-///   </item>
-/// </list>
+/// <b>وما تغيّر — مكتوباً لا مطموساً:</b> كان <b>عقد الإيجار</b> ممنوعاً من الصوت جملةً.
+/// والفرق الذي أضاعه المنع: <b>كتابةُ العقد شيء وتوقيعُه شيء آخر</b>. فمسوّدةُ العقد
+/// تُملى الآن (‏<c>draftLeaseContract</c>)، <b>والتوقيع لا يُبلَغ أبداً</b> —
+/// <c>activateLeaseContract</c> فعلٌ يمنعه حارسُ الأفعال بالبناء. وقراءةُ العقد على
+/// الطرفين قبل التوقيع تبقى كما هي: <b>وجودُها هو الغرض</b>.
+/// </para>
+/// <para>
+/// <b>وما لا يُبلَغ لأنه لا بابَ له في العقد المنشور:</b> سلسلةُ الشيكات الآجلة،
+/// وتوريدُ صافي الإيراد للمالك، ومصادرةُ الوديعة — <b>ثلاثتُها أحداثٌ في مصفوفة
+/// الترحيل بلا عمليةٍ منشورة تُنشئها</b>. وبابٌ لا وجود له لا يُخترَع، والقرار عند
+/// مالك المنتج (خطة الصوت §9).
 /// </para>
 /// </summary>
 public sealed class RealEstateVoiceIntents : IVoiceIntentCatalogue
@@ -40,26 +33,27 @@ public sealed class RealEstateVoiceIntents : IVoiceIntentCatalogue
     public IReadOnlyList<VoiceIntent> Intents { get; } =
     [
         new VoiceIntent(
-            "realestate.tenant_receipt.record",
+            "realestate.lease_contract.draft",
             VoiceSection.RealEstate,
             BabelModule.RealEstate,
             VoiceIntentKind.StateChange,
             VoiceIntentStatus.Published,
-            VoiceLedgerEffect.Posts,
-            "realestate.collection.received",
-            "تحصيل من مستأجر",
+            VoiceLedgerEffect.None,
+            null,
+            "draftLeaseContract",
+            "مسودة عقد إيجار",
             [
-                "سجل تحصيل من مستاجر", "قبضت من المستاجر", "تحصيل ايجار", "استلمت ايجار",
-                "حصلت من المستاجر",
+                "سجل عقد ايجار", "عقد ايجار جديد", "افتح عقد ايجار", "مسودة عقد ايجار",
             ],
             [
                 new VoiceSlot("lessee", VoiceSlotKind.Text, "المستأجر", true,
-                    ["من المستاجر", "المستاجر", "مستاجر", "من"], []),
-                new VoiceSlot("amount", VoiceSlotKind.Money, "المبلغ المحصَّل", true,
-                    ["بمبلغ", "مبلغ", "بقيمة", "قيمته"], []),
-                new VoiceSlot("method", VoiceSlotKind.Choice, "طريقة التحصيل", true,
-                    [], ["نقد", "تحويل", "شيك", "شبكة"]),
-                new VoiceSlot("receivedOn", VoiceSlotKind.Date, "تاريخ التحصيل", true, [], []),
+                    ["للمستاجر", "المستاجر", "مستاجر"], []),
+                new VoiceSlot("unit", VoiceSlotKind.Code, "الوحدة", true,
+                    ["للوحدة", "الوحدة", "وحدة"], []),
+                new VoiceSlot("totalRent", VoiceSlotKind.Money, "إجمالي الإيجار", true,
+                    ["بمبلغ", "مبلغ", "بقيمة", "قيمتها", "الاجمالي", "اجمالي", "المجموع"], []),
+                new VoiceSlot("startsOn", VoiceSlotKind.Date, "تاريخ البداية", true,
+                    [], []),
             ],
             false,
             null),
@@ -72,6 +66,7 @@ public sealed class RealEstateVoiceIntents : IVoiceIntentCatalogue
             VoiceIntentStatus.Published,
             VoiceLedgerEffect.Posts,
             "realestate.maintenance.company_expense",
+            "draftExpenseBill",
             "مصروف صيانة على الشركة",
             [
                 "سجل مصروف صيانة", "صيانة على الشركة", "فاتورة صيانة", "مصروف صيانة",
@@ -81,7 +76,34 @@ public sealed class RealEstateVoiceIntents : IVoiceIntentCatalogue
                     ["للوحدة", "الوحدة", "وحدة"], []),
                 new VoiceSlot("amount", VoiceSlotKind.Money, "قيمة الصيانة", true,
                     ["بمبلغ", "مبلغ", "بقيمة", "قيمتها"], []),
-                new VoiceSlot("spentOn", VoiceSlotKind.Date, "تاريخ الصرف", true, [], []),
+                new VoiceSlot("spentOn", VoiceSlotKind.Date, "تاريخ الصرف", true,
+                    [], []),
+            ],
+            false,
+            null),
+
+        new VoiceIntent(
+            "realestate.rent_invoice.draft",
+            VoiceSection.RealEstate,
+            BabelModule.RealEstate,
+            VoiceIntentKind.StateChange,
+            VoiceIntentStatus.Published,
+            VoiceLedgerEffect.Posts,
+            "realestate.rent_invoice.own_property",
+            "draftRentInvoice",
+            "مسودة فاتورة إيجار",
+            [
+                "سجل فاتورة ايجار", "اصدر فاتورة ايجار", "افتح فاتورة ايجار", "فاتورة ايجار",
+            ],
+            [
+                new VoiceSlot("lease", VoiceSlotKind.Code, "عقد الإيجار", true,
+                    ["للعقد", "العقد", "عقد"], []),
+                new VoiceSlot("amount", VoiceSlotKind.Money, "قيمة الفاتورة", true,
+                    ["بمبلغ", "مبلغ", "بقيمة", "قيمتها", "الاجمالي", "اجمالي", "المجموع"], []),
+                new VoiceSlot("taxRate", VoiceSlotKind.Number, "نسبة الضريبة", false,
+                    ["ضريبة", "وضريبة", "بنسبة"], []),
+                new VoiceSlot("issuedOn", VoiceSlotKind.Date, "تاريخ الإصدار", true,
+                    [], []),
             ],
             false,
             null),
@@ -94,14 +116,40 @@ public sealed class RealEstateVoiceIntents : IVoiceIntentCatalogue
             VoiceIntentStatus.Published,
             VoiceLedgerEffect.None,
             null,
+            "readTenantArrearsAging",
             "متأخرات مستأجر",
             [
-                "كم متاخرات المستاجر", "متاخرات المستاجر", "كم على المستاجر",
-                "وش متاخرات المستاجر",
+                "كم متاخرات المستاجر", "متاخرات المستاجر", "كم على المستاجر", "وش متاخرات المستاجر",
             ],
             [
                 new VoiceSlot("lessee", VoiceSlotKind.Text, "المستأجر", true,
                     ["المستاجر", "مستاجر", "على"], []),
+            ],
+            false,
+            null),
+
+        new VoiceIntent(
+            "realestate.tenant_receipt.record",
+            VoiceSection.RealEstate,
+            BabelModule.RealEstate,
+            VoiceIntentKind.StateChange,
+            VoiceIntentStatus.Published,
+            VoiceLedgerEffect.Posts,
+            "realestate.collection.received",
+            "draftTenantReceipt",
+            "تحصيل من مستأجر",
+            [
+                "سجل تحصيل من مستاجر", "قبضت من المستاجر", "تحصيل ايجار", "استلمت ايجار", "حصلت من المستاجر",
+            ],
+            [
+                new VoiceSlot("lessee", VoiceSlotKind.Text, "المستأجر", true,
+                    ["من المستاجر", "المستاجر", "مستاجر", "من"], []),
+                new VoiceSlot("amount", VoiceSlotKind.Money, "المبلغ المحصَّل", true,
+                    ["بمبلغ", "مبلغ", "بقيمة", "قيمته"], []),
+                new VoiceSlot("method", VoiceSlotKind.Choice, "طريقة التحصيل", true,
+                    ["نقد", "تحويل", "شيك", "شبكة"], ["نقد", "تحويل", "شيك", "شبكة"]),
+                new VoiceSlot("receivedOn", VoiceSlotKind.Date, "تاريخ التحصيل", true,
+                    [], []),
             ],
             false,
             null),
@@ -114,6 +162,7 @@ public sealed class RealEstateVoiceIntents : IVoiceIntentCatalogue
             VoiceIntentStatus.Published,
             VoiceLedgerEffect.None,
             null,
+            "readUnit",
             "حالة وحدة",
             [
                 "حالة الوحدة", "وش وضع الوحدة", "الوحدة مؤجرة", "وضع الوحدة",

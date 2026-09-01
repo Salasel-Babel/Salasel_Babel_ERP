@@ -6,6 +6,77 @@
   "companyNameAr": "سلاسل بابل",
   "intents": [
     {
+      "id": "accounting.credit_note.draft",
+      "section": "Accounting",
+      "module": "Sales",
+      "kind": "StateChange",
+      "status": "Published",
+      "ledgerEffect": "Posts",
+      "eventCode": "sales.credit_note.posted",
+      "operationId": "draftCreditNote",
+      "requiresConfirmation": true,
+      "readsPersonalData": false,
+      "nameAr": "مسودة إشعار دائن",
+      "phrases": [
+        "سجل اشعار دائن",
+        "اشعار دائن للعميل",
+        "اشعار دائن",
+        "مرتجع مبيعات",
+        "العميل رجع البضاعة"
+      ],
+      "slots": [
+        {
+          "name": "customer",
+          "kind": "Text",
+          "nameAr": "العميل",
+          "required": true,
+          "cues": [
+            "للعميل",
+            "على العميل",
+            "العميل",
+            "عميل"
+          ],
+          "choices": []
+        },
+        {
+          "name": "invoiceNumber",
+          "kind": "Code",
+          "nameAr": "الفاتورة الأصلية",
+          "required": true,
+          "cues": [
+            "على الفاتورة",
+            "الفاتورة",
+            "فاتورة"
+          ],
+          "choices": []
+        },
+        {
+          "name": "amount",
+          "kind": "Money",
+          "nameAr": "قيمة الإشعار",
+          "required": true,
+          "cues": [
+            "بمبلغ",
+            "مبلغ",
+            "بقيمة",
+            "قيمتها",
+            "الاجمالي",
+            "اجمالي",
+            "المجموع"
+          ],
+          "choices": []
+        },
+        {
+          "name": "issuedOn",
+          "kind": "Date",
+          "nameAr": "تاريخ الإصدار",
+          "required": true,
+          "cues": [],
+          "choices": []
+        }
+      ]
+    },
+    {
       "id": "accounting.customer_balance.query",
       "section": "Accounting",
       "module": "Sales",
@@ -13,6 +84,7 @@
       "status": "Published",
       "ledgerEffect": "None",
       "eventCode": null,
+      "operationId": "readReceivablesAging",
       "requiresConfirmation": false,
       "readsPersonalData": false,
       "nameAr": "رصيد عميل",
@@ -47,6 +119,7 @@
       "status": "Published",
       "ledgerEffect": "Posts",
       "eventCode": "sales.receipt.posted",
+      "operationId": "draftCustomerReceipt",
       "requiresConfirmation": true,
       "readsPersonalData": false,
       "nameAr": "سند قبض من عميل",
@@ -91,7 +164,12 @@
           "kind": "Choice",
           "nameAr": "طريقة القبض",
           "required": true,
-          "cues": [],
+          "cues": [
+            "نقد",
+            "تحويل",
+            "شيك",
+            "شبكة"
+          ],
           "choices": [
             "نقد",
             "تحويل",
@@ -110,6 +188,491 @@
       ]
     },
     {
+      "id": "accounting.goods_receipt.draft",
+      "section": "Accounting",
+      "module": "Purchasing",
+      "kind": "StateChange",
+      "status": "Published",
+      "ledgerEffect": "Posts",
+      "eventCode": "purchasing.goods_receipt.posted",
+      "operationId": "draftGoodsReceipt",
+      "requiresConfirmation": true,
+      "readsPersonalData": false,
+      "nameAr": "مسودة محضر استلام بضاعة",
+      "phrases": [
+        "سجل استلام بضاعة",
+        "محضر استلام بضاعة",
+        "سجل محضر استلام",
+        "وصلت البضاعة",
+        "استلمت البضاعة"
+      ],
+      "slots": [
+        {
+          "name": "orderNumber",
+          "kind": "Code",
+          "nameAr": "أمر الشراء",
+          "required": true,
+          "cues": [
+            "بامر شراء",
+            "على امر شراء",
+            "امر الشراء"
+          ],
+          "choices": []
+        },
+        {
+          "name": "item",
+          "kind": "Text",
+          "nameAr": "الصنف",
+          "required": true,
+          "cues": [
+            "الصنف",
+            "صنف",
+            "للصنف"
+          ],
+          "choices": []
+        },
+        {
+          "name": "quantity",
+          "kind": "Quantity",
+          "nameAr": "الكمية المستلمة",
+          "required": true,
+          "cues": [
+            "كمية",
+            "الكمية",
+            "عدد",
+            "العدد",
+            "بمقدار"
+          ],
+          "choices": []
+        },
+        {
+          "name": "receivedOn",
+          "kind": "Date",
+          "nameAr": "تاريخ الاستلام",
+          "required": true,
+          "cues": [],
+          "choices": []
+        }
+      ]
+    },
+    {
+      "id": "accounting.journal_entry.draft",
+      "section": "Accounting",
+      "module": "Ledger",
+      "kind": "StateChange",
+      "status": "AwaitingOwnerDecision",
+      "ledgerEffect": "None",
+      "eventCode": null,
+      "operationId": null,
+      "requiresConfirmation": true,
+      "readsPersonalData": false,
+      "nameAr": "مسودة قيد يومية يدوي",
+      "phrases": [
+        "سجل قيد يومية",
+        "قيد يومية يدوي",
+        "اكتب قيد يومية",
+        "افتح قيد يومية",
+        "قيد يومية"
+      ],
+      "slots": [
+        {
+          "name": "description",
+          "kind": "Text",
+          "nameAr": "بيان القيد",
+          "required": true,
+          "cues": [
+            "بيان",
+            "البيان",
+            "وصف",
+            "عن"
+          ],
+          "choices": []
+        },
+        {
+          "name": "amount",
+          "kind": "Money",
+          "nameAr": "قيمة القيد",
+          "required": true,
+          "cues": [
+            "بمبلغ",
+            "مبلغ",
+            "بقيمة",
+            "قيمتها",
+            "الاجمالي",
+            "اجمالي",
+            "المجموع"
+          ],
+          "choices": []
+        },
+        {
+          "name": "entryOn",
+          "kind": "Date",
+          "nameAr": "تاريخ القيد",
+          "required": true,
+          "cues": [],
+          "choices": []
+        }
+      ]
+    },
+    {
+      "id": "accounting.payables_aging.query",
+      "section": "Accounting",
+      "module": "Purchasing",
+      "kind": "Query",
+      "status": "Published",
+      "ledgerEffect": "None",
+      "eventCode": null,
+      "operationId": "readPayablesAging",
+      "requiresConfirmation": false,
+      "readsPersonalData": false,
+      "nameAr": "تقادم الذمم الدائنة",
+      "phrases": [
+        "تقادم الذمم الدائنة",
+        "اعمار الذمم الدائنة",
+        "تقادم الموردين",
+        "كم علينا للموردين"
+      ],
+      "slots": [
+        {
+          "name": "asOf",
+          "kind": "Date",
+          "nameAr": "تاريخ القطع",
+          "required": true,
+          "cues": [],
+          "choices": []
+        }
+      ]
+    },
+    {
+      "id": "accounting.purchase_order.draft",
+      "section": "Accounting",
+      "module": "Purchasing",
+      "kind": "StateChange",
+      "status": "Published",
+      "ledgerEffect": "None",
+      "eventCode": null,
+      "operationId": "createPurchaseOrder",
+      "requiresConfirmation": true,
+      "readsPersonalData": false,
+      "nameAr": "مسودة أمر شراء",
+      "phrases": [
+        "افتح امر شراء",
+        "سجل امر شراء",
+        "اطلب من المورد",
+        "اطلب بضاعة من المورد",
+        "امر شراء جديد"
+      ],
+      "slots": [
+        {
+          "name": "supplier",
+          "kind": "Text",
+          "nameAr": "المورد",
+          "required": true,
+          "cues": [
+            "من المورد",
+            "المورد",
+            "مورد"
+          ],
+          "choices": []
+        },
+        {
+          "name": "item",
+          "kind": "Text",
+          "nameAr": "الصنف",
+          "required": true,
+          "cues": [
+            "الصنف",
+            "صنف",
+            "للصنف"
+          ],
+          "choices": []
+        },
+        {
+          "name": "quantity",
+          "kind": "Quantity",
+          "nameAr": "الكمية المطلوبة",
+          "required": true,
+          "cues": [
+            "كمية",
+            "الكمية",
+            "عدد",
+            "العدد",
+            "بمقدار"
+          ],
+          "choices": []
+        },
+        {
+          "name": "warehouse",
+          "kind": "Text",
+          "nameAr": "المستودع",
+          "required": true,
+          "cues": [
+            "المستودع",
+            "مستودع",
+            "المخزن",
+            "مخزن"
+          ],
+          "choices": []
+        },
+        {
+          "name": "orderedOn",
+          "kind": "Date",
+          "nameAr": "تاريخ الأمر",
+          "required": true,
+          "cues": [],
+          "choices": []
+        }
+      ]
+    },
+    {
+      "id": "accounting.purchase_return.draft",
+      "section": "Accounting",
+      "module": "Purchasing",
+      "kind": "StateChange",
+      "status": "Published",
+      "ledgerEffect": "Posts",
+      "eventCode": "purchasing.debit_note.posted",
+      "operationId": "draftPurchaseReturn",
+      "requiresConfirmation": true,
+      "readsPersonalData": false,
+      "nameAr": "مسودة مرتجع مشتريات",
+      "phrases": [
+        "سجل مرتجع مشتريات",
+        "مرتجع مشتريات",
+        "اشعار مدين على المورد",
+        "رجعت بضاعة للمورد"
+      ],
+      "slots": [
+        {
+          "name": "billNumber",
+          "kind": "Code",
+          "nameAr": "فاتورة المورد",
+          "required": true,
+          "cues": [
+            "على الفاتورة",
+            "الفاتورة",
+            "فاتورة"
+          ],
+          "choices": []
+        },
+        {
+          "name": "item",
+          "kind": "Text",
+          "nameAr": "الصنف",
+          "required": true,
+          "cues": [
+            "الصنف",
+            "صنف",
+            "للصنف"
+          ],
+          "choices": []
+        },
+        {
+          "name": "quantity",
+          "kind": "Quantity",
+          "nameAr": "الكمية المرتجعة",
+          "required": true,
+          "cues": [
+            "كمية",
+            "الكمية",
+            "عدد",
+            "العدد",
+            "بمقدار"
+          ],
+          "choices": []
+        },
+        {
+          "name": "issuedOn",
+          "kind": "Date",
+          "nameAr": "تاريخ الإشعار",
+          "required": true,
+          "cues": [],
+          "choices": []
+        }
+      ]
+    },
+    {
+      "id": "accounting.receivables_aging.query",
+      "section": "Accounting",
+      "module": "Sales",
+      "kind": "Query",
+      "status": "Published",
+      "ledgerEffect": "None",
+      "eventCode": null,
+      "operationId": "readReceivablesAging",
+      "requiresConfirmation": false,
+      "readsPersonalData": false,
+      "nameAr": "تقادم الذمم المدينة",
+      "phrases": [
+        "تقادم الذمم المدينة",
+        "اعمار الذمم المدينة",
+        "تقادم العملاء",
+        "كم على العملاء"
+      ],
+      "slots": [
+        {
+          "name": "asOf",
+          "kind": "Date",
+          "nameAr": "تاريخ القطع",
+          "required": true,
+          "cues": [],
+          "choices": []
+        }
+      ]
+    },
+    {
+      "id": "accounting.sales_invoice.draft",
+      "section": "Accounting",
+      "module": "Sales",
+      "kind": "StateChange",
+      "status": "Published",
+      "ledgerEffect": "Posts",
+      "eventCode": "sales.invoice.posted",
+      "operationId": "draftSalesInvoice",
+      "requiresConfirmation": true,
+      "readsPersonalData": false,
+      "nameAr": "مسودة فاتورة مبيعات",
+      "phrases": [
+        "سجل فاتورة مبيعات",
+        "فاتورة مبيعات",
+        "افتح فاتورة مبيعات",
+        "بعت على العميل",
+        "اكتب فاتورة للعميل",
+        "بيع للعميل"
+      ],
+      "slots": [
+        {
+          "name": "customer",
+          "kind": "Text",
+          "nameAr": "العميل",
+          "required": true,
+          "cues": [
+            "على العميل",
+            "للعميل",
+            "العميل",
+            "عميل"
+          ],
+          "choices": []
+        },
+        {
+          "name": "amount",
+          "kind": "Money",
+          "nameAr": "الإجمالي شامل الضريبة",
+          "required": true,
+          "cues": [
+            "بمبلغ",
+            "مبلغ",
+            "بقيمة",
+            "قيمتها",
+            "الاجمالي",
+            "اجمالي",
+            "المجموع"
+          ],
+          "choices": []
+        },
+        {
+          "name": "taxRate",
+          "kind": "Number",
+          "nameAr": "نسبة الضريبة",
+          "required": false,
+          "cues": [
+            "ضريبة",
+            "وضريبة",
+            "بنسبة"
+          ],
+          "choices": []
+        },
+        {
+          "name": "invoiceNumber",
+          "kind": "Code",
+          "nameAr": "رقم الفاتورة",
+          "required": false,
+          "cues": [
+            "رقم",
+            "برقم",
+            "رقمها"
+          ],
+          "choices": []
+        },
+        {
+          "name": "issuedOn",
+          "kind": "Date",
+          "nameAr": "تاريخ الإصدار",
+          "required": true,
+          "cues": [],
+          "choices": []
+        }
+      ]
+    },
+    {
+      "id": "accounting.stock_bill.capture",
+      "section": "Accounting",
+      "module": "Purchasing",
+      "kind": "StateChange",
+      "status": "Published",
+      "ledgerEffect": "None",
+      "eventCode": null,
+      "operationId": "draftStockBill",
+      "requiresConfirmation": true,
+      "readsPersonalData": false,
+      "nameAr": "التقاط فاتورة مشتريات مخزنية",
+      "phrases": [
+        "سجل فاتورة مشتريات مخزنية",
+        "فاتورة مشتريات مخزنية",
+        "فاتورة بضاعة من المورد",
+        "قيد فاتورة مخزنية"
+      ],
+      "slots": [
+        {
+          "name": "receiptNumber",
+          "kind": "Code",
+          "nameAr": "محضر الاستلام",
+          "required": true,
+          "cues": [
+            "على محضر استلام",
+            "محضر الاستلام"
+          ],
+          "choices": []
+        },
+        {
+          "name": "supplier",
+          "kind": "Text",
+          "nameAr": "المورد",
+          "required": true,
+          "cues": [
+            "من المورد",
+            "المورد",
+            "مورد"
+          ],
+          "choices": []
+        },
+        {
+          "name": "amount",
+          "kind": "Money",
+          "nameAr": "الإجمالي شامل الضريبة",
+          "required": true,
+          "cues": [
+            "بمبلغ",
+            "مبلغ",
+            "بقيمة",
+            "قيمتها",
+            "الاجمالي",
+            "اجمالي",
+            "المجموع"
+          ],
+          "choices": []
+        },
+        {
+          "name": "issuedOn",
+          "kind": "Date",
+          "nameAr": "تاريخ الفاتورة",
+          "required": true,
+          "cues": [],
+          "choices": []
+        }
+      ]
+    },
+    {
       "id": "accounting.supplier_bill.capture",
       "section": "Accounting",
       "module": "Purchasing",
@@ -117,6 +680,7 @@
       "status": "Published",
       "ledgerEffect": "Posts",
       "eventCode": "purchasing.invoice.expense.posted",
+      "operationId": "draftExpenseBill",
       "requiresConfirmation": true,
       "readsPersonalData": false,
       "nameAr": "التقاط فاتورة مصروف من مورد",
@@ -203,6 +767,7 @@
       "status": "Published",
       "ledgerEffect": "Posts",
       "eventCode": "purchasing.payment.posted",
+      "operationId": "draftSupplierPayment",
       "requiresConfirmation": true,
       "readsPersonalData": false,
       "nameAr": "سند صرف لمورد",
@@ -248,7 +813,12 @@
           "kind": "Choice",
           "nameAr": "طريقة الدفع",
           "required": true,
-          "cues": [],
+          "cues": [
+            "نقد",
+            "تحويل",
+            "شيك",
+            "شبكة"
+          ],
           "choices": [
             "نقد",
             "تحويل",
@@ -267,6 +837,75 @@
       ]
     },
     {
+      "id": "contracting.change_order.draft",
+      "section": "Contracting",
+      "module": "Projects",
+      "kind": "StateChange",
+      "status": "Published",
+      "ledgerEffect": "None",
+      "eventCode": null,
+      "operationId": "addChangeOrder",
+      "requiresConfirmation": true,
+      "readsPersonalData": false,
+      "nameAr": "مسودة أمر تغيير",
+      "phrases": [
+        "سجل امر تغيير",
+        "امر تغيير على العقد",
+        "افتح امر تغيير",
+        "امر تغيير"
+      ],
+      "slots": [
+        {
+          "name": "contract",
+          "kind": "Text",
+          "nameAr": "العقد",
+          "required": true,
+          "cues": [
+            "للعقد",
+            "العقد",
+            "عقد"
+          ],
+          "choices": []
+        },
+        {
+          "name": "reason",
+          "kind": "Text",
+          "nameAr": "سبب التغيير",
+          "required": true,
+          "cues": [
+            "بسبب",
+            "السبب",
+            "لان"
+          ],
+          "choices": []
+        },
+        {
+          "name": "amount",
+          "kind": "Money",
+          "nameAr": "قيمة التغيير",
+          "required": true,
+          "cues": [
+            "بمبلغ",
+            "مبلغ",
+            "بقيمة",
+            "قيمتها",
+            "الاجمالي",
+            "اجمالي",
+            "المجموع"
+          ],
+          "choices": []
+        },
+        {
+          "name": "issuedOn",
+          "kind": "Date",
+          "nameAr": "تاريخ الأمر",
+          "required": true,
+          "cues": [],
+          "choices": []
+        }
+      ]
+    },
+    {
       "id": "contracting.client_certificate.measure",
       "section": "Contracting",
       "module": "Projects",
@@ -274,6 +913,7 @@
       "status": "Published",
       "ledgerEffect": "Posts",
       "eventCode": "projects.client_certificate.posted",
+      "operationId": "draftClientCertificate",
       "requiresConfirmation": true,
       "readsPersonalData": false,
       "nameAr": "قياس بندٍ في مستخلص عميل",
@@ -344,6 +984,7 @@
       "status": "Published",
       "ledgerEffect": "None",
       "eventCode": null,
+      "operationId": "readContractPosition",
       "requiresConfirmation": false,
       "readsPersonalData": false,
       "nameAr": "موقف العقد",
@@ -370,6 +1011,242 @@
       ]
     },
     {
+      "id": "contracting.guarantee.draft",
+      "section": "Contracting",
+      "module": "Projects",
+      "kind": "StateChange",
+      "status": "Published",
+      "ledgerEffect": "None",
+      "eventCode": null,
+      "operationId": "addGuarantee",
+      "requiresConfirmation": true,
+      "readsPersonalData": false,
+      "nameAr": "مسودة ضمان بنكي",
+      "phrases": [
+        "سجل ضمان بنكي",
+        "سجل خطاب ضمان",
+        "خطاب ضمان",
+        "ضمان بنكي"
+      ],
+      "slots": [
+        {
+          "name": "contract",
+          "kind": "Text",
+          "nameAr": "العقد",
+          "required": true,
+          "cues": [
+            "للعقد",
+            "العقد",
+            "عقد"
+          ],
+          "choices": []
+        },
+        {
+          "name": "guaranteeNumber",
+          "kind": "Code",
+          "nameAr": "رقم الضمان",
+          "required": true,
+          "cues": [
+            "رقم الضمان",
+            "الخطاب رقم",
+            "الخطاب"
+          ],
+          "choices": []
+        },
+        {
+          "name": "amount",
+          "kind": "Money",
+          "nameAr": "قيمة الضمان",
+          "required": true,
+          "cues": [
+            "بمبلغ",
+            "مبلغ",
+            "بقيمة",
+            "قيمتها",
+            "الاجمالي",
+            "اجمالي",
+            "المجموع"
+          ],
+          "choices": []
+        },
+        {
+          "name": "expiresOn",
+          "kind": "Date",
+          "nameAr": "تاريخ الانتهاء",
+          "required": true,
+          "cues": [],
+          "choices": []
+        }
+      ]
+    },
+    {
+      "id": "contracting.retention_collection.draft",
+      "section": "Contracting",
+      "module": "Projects",
+      "kind": "StateChange",
+      "status": "Published",
+      "ledgerEffect": "Posts",
+      "eventCode": "projects.client_retention.collected",
+      "operationId": "draftRetentionCollection",
+      "requiresConfirmation": true,
+      "readsPersonalData": false,
+      "nameAr": "مسودة تحصيل محتجز من عميل",
+      "phrases": [
+        "سجل تحصيل محتجز",
+        "تحصيل محتجز من العميل",
+        "تحصيل المحتجز",
+        "قبضت المحتجز",
+        "استلمت المحتجز"
+      ],
+      "slots": [
+        {
+          "name": "contract",
+          "kind": "Text",
+          "nameAr": "العقد",
+          "required": true,
+          "cues": [
+            "للعقد",
+            "العقد",
+            "عقد"
+          ],
+          "choices": []
+        },
+        {
+          "name": "amount",
+          "kind": "Money",
+          "nameAr": "المبلغ المُحصَّل",
+          "required": true,
+          "cues": [
+            "بمبلغ",
+            "مبلغ",
+            "بقيمة",
+            "قيمتها",
+            "الاجمالي",
+            "اجمالي",
+            "المجموع"
+          ],
+          "choices": []
+        },
+        {
+          "name": "method",
+          "kind": "Choice",
+          "nameAr": "طريقة التحصيل",
+          "required": true,
+          "cues": [
+            "نقد",
+            "تحويل",
+            "شيك",
+            "شبكة"
+          ],
+          "choices": [
+            "نقد",
+            "تحويل",
+            "شيك",
+            "شبكة"
+          ]
+        },
+        {
+          "name": "collectedOn",
+          "kind": "Date",
+          "nameAr": "تاريخ التحصيل",
+          "required": true,
+          "cues": [],
+          "choices": []
+        }
+      ]
+    },
+    {
+      "id": "contracting.retention_register.query",
+      "section": "Contracting",
+      "module": "Projects",
+      "kind": "Query",
+      "status": "Published",
+      "ledgerEffect": "None",
+      "eventCode": null,
+      "operationId": "readRetentionRegister",
+      "requiresConfirmation": false,
+      "readsPersonalData": false,
+      "nameAr": "كشف المحتجزات",
+      "phrases": [
+        "كشف المحتجزات",
+        "كم المحتجز في العقد",
+        "وش المحتجز في العقد",
+        "المحتجزات في العقد"
+      ],
+      "slots": [
+        {
+          "name": "contract",
+          "kind": "Text",
+          "nameAr": "العقد",
+          "required": true,
+          "cues": [
+            "للعقد",
+            "العقد",
+            "عقد"
+          ],
+          "choices": []
+        }
+      ]
+    },
+    {
+      "id": "contracting.retention_release.draft",
+      "section": "Contracting",
+      "module": "Projects",
+      "kind": "StateChange",
+      "status": "Published",
+      "ledgerEffect": "Posts",
+      "eventCode": "projects.retention.released",
+      "operationId": "draftRetentionRelease",
+      "requiresConfirmation": true,
+      "readsPersonalData": false,
+      "nameAr": "مسودة إفراج عن محتجز",
+      "phrases": [
+        "سجل افراج عن محتجز",
+        "الافراج عن المحتجز",
+        "افراج عن محتجز",
+        "افرج عن المحتجز",
+        "اطلق المحتجز"
+      ],
+      "slots": [
+        {
+          "name": "contract",
+          "kind": "Text",
+          "nameAr": "العقد",
+          "required": true,
+          "cues": [
+            "للعقد",
+            "العقد",
+            "عقد"
+          ],
+          "choices": []
+        },
+        {
+          "name": "amount",
+          "kind": "Money",
+          "nameAr": "المبلغ المُفرَج عنه",
+          "required": true,
+          "cues": [
+            "بمبلغ",
+            "مبلغ",
+            "بقيمة",
+            "قيمتها",
+            "الاجمالي",
+            "اجمالي",
+            "المجموع"
+          ],
+          "choices": []
+        },
+        {
+          "name": "releasedOn",
+          "kind": "Date",
+          "nameAr": "تاريخ الإفراج",
+          "required": true,
+          "cues": [],
+          "choices": []
+        }
+      ]
+    },
+    {
       "id": "contracting.subcontractor_advance.record",
       "section": "Contracting",
       "module": "Projects",
@@ -377,6 +1254,7 @@
       "status": "Published",
       "ledgerEffect": "Posts",
       "eventCode": "projects.subcontractor_advance.paid",
+      "operationId": "draftSubcontractorAdvance",
       "requiresConfirmation": true,
       "readsPersonalData": false,
       "nameAr": "دفعة مقدمة لمقاول من الباطن",
@@ -431,6 +1309,7 @@
       "status": "Published",
       "ledgerEffect": "Posts",
       "eventCode": "projects.subcontractor_certificate.posted",
+      "operationId": "draftSubcontractorCertificate",
       "requiresConfirmation": true,
       "readsPersonalData": false,
       "nameAr": "قياس بندٍ في مستخلص مقاول من الباطن",
@@ -489,6 +1368,39 @@
       ]
     },
     {
+      "id": "contracting.subcontractor_statement.query",
+      "section": "Contracting",
+      "module": "Projects",
+      "kind": "Query",
+      "status": "Published",
+      "ledgerEffect": "None",
+      "eventCode": null,
+      "operationId": "readSubcontractorStatement",
+      "requiresConfirmation": false,
+      "readsPersonalData": false,
+      "nameAr": "كشف حساب مقاول من الباطن",
+      "phrases": [
+        "كشف حساب مقاول من الباطن",
+        "كشف حساب المقاول",
+        "كشف المقاول",
+        "وش موقف المقاول"
+      ],
+      "slots": [
+        {
+          "name": "subcontractor",
+          "kind": "Text",
+          "nameAr": "المقاول من الباطن",
+          "required": true,
+          "cues": [
+            "للمقاول",
+            "المقاول",
+            "مقاول"
+          ],
+          "choices": []
+        }
+      ]
+    },
+    {
       "id": "hr.employee.query",
       "section": "HumanResources",
       "module": "Hr",
@@ -496,6 +1408,7 @@
       "status": "Published",
       "ledgerEffect": "None",
       "eventCode": null,
+      "operationId": "readEmployee",
       "requiresConfirmation": false,
       "readsPersonalData": true,
       "nameAr": "بطاقة موظف — مُقنَّعة",
@@ -529,6 +1442,7 @@
       "status": "Published",
       "ledgerEffect": "None",
       "eventCode": null,
+      "operationId": "draftEmployeeAdvance",
       "requiresConfirmation": true,
       "readsPersonalData": false,
       "nameAr": "سلفة موظف",
@@ -596,6 +1510,7 @@
       "status": "Published",
       "ledgerEffect": "None",
       "eventCode": null,
+      "operationId": "recordEmployeeDeduction",
       "requiresConfirmation": true,
       "readsPersonalData": false,
       "nameAr": "خصم على موظف",
@@ -642,6 +1557,301 @@
       ]
     },
     {
+      "id": "hr.end_of_service_provision.draft",
+      "section": "HumanResources",
+      "module": "Hr",
+      "kind": "StateChange",
+      "status": "Published",
+      "ledgerEffect": "Posts",
+      "eventCode": "hr.end_of_service.accrual",
+      "operationId": "draftEndOfServiceProvision",
+      "requiresConfirmation": true,
+      "readsPersonalData": false,
+      "nameAr": "مسودة مخصص نهاية الخدمة",
+      "phrases": [
+        "سجل مخصص نهاية الخدمة",
+        "مخصص نهاية الخدمة",
+        "استحقاق نهاية الخدمة",
+        "احتساب المخصص"
+      ],
+      "slots": [
+        {
+          "name": "periodCode",
+          "kind": "Code",
+          "nameAr": "رمز الفترة",
+          "required": true,
+          "cues": [
+            "لفترة",
+            "الفترة",
+            "لشهر",
+            "عن شهر"
+          ],
+          "choices": []
+        },
+        {
+          "name": "accruedOn",
+          "kind": "Date",
+          "nameAr": "تاريخ الاستحقاق",
+          "required": true,
+          "cues": [],
+          "choices": []
+        }
+      ]
+    },
+    {
+      "id": "hr.end_of_service_settlement.draft",
+      "section": "HumanResources",
+      "module": "Hr",
+      "kind": "StateChange",
+      "status": "Published",
+      "ledgerEffect": "Posts",
+      "eventCode": "hr.end_of_service.settlement",
+      "operationId": "draftEndOfServiceSettlement",
+      "requiresConfirmation": true,
+      "readsPersonalData": false,
+      "nameAr": "مسودة تصفية نهاية خدمة",
+      "phrases": [
+        "سجل تصفية نهاية الخدمة",
+        "تصفية نهاية الخدمة",
+        "مستحقات نهاية الخدمة",
+        "صرف نهاية الخدمة"
+      ],
+      "slots": [
+        {
+          "name": "employee",
+          "kind": "Text",
+          "nameAr": "الموظف",
+          "required": true,
+          "cues": [
+            "للموظف",
+            "الموظف",
+            "موظف"
+          ],
+          "choices": []
+        },
+        {
+          "name": "amount",
+          "kind": "Money",
+          "nameAr": "المستحق",
+          "required": true,
+          "cues": [
+            "بمبلغ",
+            "مبلغ",
+            "بقيمة",
+            "قيمتها",
+            "الاجمالي",
+            "اجمالي",
+            "المجموع"
+          ],
+          "choices": []
+        },
+        {
+          "name": "method",
+          "kind": "Choice",
+          "nameAr": "طريقة الصرف",
+          "required": true,
+          "cues": [
+            "نقد",
+            "تحويل",
+            "شيك",
+            "شبكة"
+          ],
+          "choices": [
+            "نقد",
+            "تحويل",
+            "شيك",
+            "شبكة"
+          ]
+        },
+        {
+          "name": "settledOn",
+          "kind": "Date",
+          "nameAr": "تاريخ التصفية",
+          "required": true,
+          "cues": [],
+          "choices": []
+        }
+      ]
+    },
+    {
+      "id": "hr.payroll_payment.draft",
+      "section": "HumanResources",
+      "module": "Hr",
+      "kind": "StateChange",
+      "status": "Published",
+      "ledgerEffect": "Posts",
+      "eventCode": "hr.payroll.payment",
+      "operationId": "draftPayrollPayment",
+      "requiresConfirmation": true,
+      "readsPersonalData": false,
+      "nameAr": "مسودة صرف رواتب",
+      "phrases": [
+        "سجل صرف الرواتب",
+        "اصرف الرواتب",
+        "صرف الرواتب",
+        "دفع الرواتب"
+      ],
+      "slots": [
+        {
+          "name": "runNumber",
+          "kind": "Code",
+          "nameAr": "المسير",
+          "required": true,
+          "cues": [
+            "لمسير",
+            "المسير رقم",
+            "المسير"
+          ],
+          "choices": []
+        },
+        {
+          "name": "method",
+          "kind": "Choice",
+          "nameAr": "طريقة الصرف",
+          "required": true,
+          "cues": [
+            "نقد",
+            "تحويل",
+            "شيك",
+            "شبكة"
+          ],
+          "choices": [
+            "نقد",
+            "تحويل",
+            "شيك",
+            "شبكة"
+          ]
+        },
+        {
+          "name": "paidOn",
+          "kind": "Date",
+          "nameAr": "تاريخ الصرف",
+          "required": true,
+          "cues": [],
+          "choices": []
+        }
+      ]
+    },
+    {
+      "id": "hr.payroll_run.draft",
+      "section": "HumanResources",
+      "module": "Hr",
+      "kind": "StateChange",
+      "status": "Published",
+      "ledgerEffect": "Posts",
+      "eventCode": "hr.payroll.accrual",
+      "operationId": "draftPayrollRun",
+      "requiresConfirmation": true,
+      "readsPersonalData": false,
+      "nameAr": "مسودة مسير رواتب",
+      "phrases": [
+        "جهز مسير الرواتب",
+        "افتح مسير رواتب",
+        "سوي مسير الرواتب",
+        "مسير الرواتب",
+        "مسير رواتب"
+      ],
+      "slots": [
+        {
+          "name": "periodCode",
+          "kind": "Code",
+          "nameAr": "رمز الفترة",
+          "required": true,
+          "cues": [
+            "لفترة",
+            "الفترة",
+            "لشهر",
+            "عن شهر"
+          ],
+          "choices": []
+        },
+        {
+          "name": "preparedOn",
+          "kind": "Date",
+          "nameAr": "تاريخ الإعداد",
+          "required": true,
+          "cues": [],
+          "choices": []
+        }
+      ]
+    },
+    {
+      "id": "hr.social_insurance_payment.draft",
+      "section": "HumanResources",
+      "module": "Hr",
+      "kind": "StateChange",
+      "status": "Published",
+      "ledgerEffect": "Posts",
+      "eventCode": "hr.social_insurance.payment",
+      "operationId": "draftSocialInsurancePayment",
+      "requiresConfirmation": true,
+      "readsPersonalData": false,
+      "nameAr": "مسودة سداد تأمينات اجتماعية",
+      "phrases": [
+        "سجل سداد التامينات",
+        "سداد التامينات الاجتماعية",
+        "سداد التامينات",
+        "دفعت التامينات"
+      ],
+      "slots": [
+        {
+          "name": "periodCode",
+          "kind": "Code",
+          "nameAr": "رمز الفترة",
+          "required": true,
+          "cues": [
+            "لفترة",
+            "الفترة",
+            "لشهر",
+            "عن شهر"
+          ],
+          "choices": []
+        },
+        {
+          "name": "amount",
+          "kind": "Money",
+          "nameAr": "المبلغ المسدَّد",
+          "required": true,
+          "cues": [
+            "بمبلغ",
+            "مبلغ",
+            "بقيمة",
+            "قيمتها",
+            "الاجمالي",
+            "اجمالي",
+            "المجموع"
+          ],
+          "choices": []
+        },
+        {
+          "name": "method",
+          "kind": "Choice",
+          "nameAr": "طريقة السداد",
+          "required": true,
+          "cues": [
+            "نقد",
+            "تحويل",
+            "شيك",
+            "شبكة"
+          ],
+          "choices": [
+            "نقد",
+            "تحويل",
+            "شيك",
+            "شبكة"
+          ]
+        },
+        {
+          "name": "paidOn",
+          "kind": "Date",
+          "nameAr": "تاريخ السداد",
+          "required": true,
+          "cues": [],
+          "choices": []
+        }
+      ]
+    },
+    {
       "id": "inventory.count_adjustment.record",
       "section": "Inventory",
       "module": "Inventory",
@@ -649,6 +1859,7 @@
       "status": "Published",
       "ledgerEffect": "Posts",
       "eventCode": "inventory.count_adjustment.posted",
+      "operationId": "draftStockMovement",
       "requiresConfirmation": true,
       "readsPersonalData": false,
       "nameAr": "تسوية جرد",
@@ -730,6 +1941,7 @@
       "status": "Published",
       "ledgerEffect": "Posts",
       "eventCode": "inventory.issue_to_project",
+      "operationId": "draftStockMovement",
       "requiresConfirmation": true,
       "readsPersonalData": false,
       "nameAr": "صرف مواد لمشروع",
@@ -808,6 +2020,7 @@
       "status": "AwaitingOwnerDecision",
       "ledgerEffect": "None",
       "eventCode": null,
+      "operationId": null,
       "requiresConfirmation": true,
       "readsPersonalData": false,
       "nameAr": "تسكين قطعٍ بين موقعين",
@@ -893,6 +2106,7 @@
       "status": "Published",
       "ledgerEffect": "None",
       "eventCode": null,
+      "operationId": "readStockBalances",
       "requiresConfirmation": false,
       "readsPersonalData": false,
       "nameAr": "رصيد صنف",
@@ -932,6 +2146,73 @@
       ]
     },
     {
+      "id": "inventory.stock_movement.query",
+      "section": "Inventory",
+      "module": "Inventory",
+      "kind": "Query",
+      "status": "Published",
+      "ledgerEffect": "None",
+      "eventCode": null,
+      "operationId": "listStockMovements",
+      "requiresConfirmation": false,
+      "readsPersonalData": false,
+      "nameAr": "حركات صنف",
+      "phrases": [
+        "حركات الصنف",
+        "كشف حركة الصنف",
+        "وش حركات الصنف",
+        "حركة الصنف"
+      ],
+      "slots": [
+        {
+          "name": "item",
+          "kind": "Text",
+          "nameAr": "الصنف",
+          "required": true,
+          "cues": [
+            "الصنف",
+            "صنف",
+            "للصنف"
+          ],
+          "choices": []
+        }
+      ]
+    },
+    {
+      "id": "inventory.valuation.query",
+      "section": "Inventory",
+      "module": "Inventory",
+      "kind": "Query",
+      "status": "Published",
+      "ledgerEffect": "None",
+      "eventCode": null,
+      "operationId": "readInventoryValuation",
+      "requiresConfirmation": false,
+      "readsPersonalData": false,
+      "nameAr": "تقييم المخزون",
+      "phrases": [
+        "تقييم المخزون",
+        "كم قيمة المخزون",
+        "وش قيمة المخزون",
+        "قيمة المخزون"
+      ],
+      "slots": [
+        {
+          "name": "warehouse",
+          "kind": "Text",
+          "nameAr": "المستودع",
+          "required": true,
+          "cues": [
+            "المستودع",
+            "مستودع",
+            "المخزن",
+            "مخزن"
+          ],
+          "choices": []
+        }
+      ]
+    },
+    {
       "id": "inventory.warehouse_transfer.record",
       "section": "Inventory",
       "module": "Inventory",
@@ -939,6 +2220,7 @@
       "status": "Published",
       "ledgerEffect": "Posts",
       "eventCode": "inventory.transfer.between_warehouses",
+      "operationId": "draftStockMovement",
       "requiresConfirmation": true,
       "readsPersonalData": false,
       "nameAr": "تحويل مخزني بين مستودعين",
@@ -1010,6 +2292,75 @@
       ]
     },
     {
+      "id": "realestate.lease_contract.draft",
+      "section": "RealEstate",
+      "module": "RealEstate",
+      "kind": "StateChange",
+      "status": "Published",
+      "ledgerEffect": "None",
+      "eventCode": null,
+      "operationId": "draftLeaseContract",
+      "requiresConfirmation": true,
+      "readsPersonalData": false,
+      "nameAr": "مسودة عقد إيجار",
+      "phrases": [
+        "سجل عقد ايجار",
+        "عقد ايجار جديد",
+        "افتح عقد ايجار",
+        "مسودة عقد ايجار"
+      ],
+      "slots": [
+        {
+          "name": "lessee",
+          "kind": "Text",
+          "nameAr": "المستأجر",
+          "required": true,
+          "cues": [
+            "للمستاجر",
+            "المستاجر",
+            "مستاجر"
+          ],
+          "choices": []
+        },
+        {
+          "name": "unit",
+          "kind": "Code",
+          "nameAr": "الوحدة",
+          "required": true,
+          "cues": [
+            "للوحدة",
+            "الوحدة",
+            "وحدة"
+          ],
+          "choices": []
+        },
+        {
+          "name": "totalRent",
+          "kind": "Money",
+          "nameAr": "إجمالي الإيجار",
+          "required": true,
+          "cues": [
+            "بمبلغ",
+            "مبلغ",
+            "بقيمة",
+            "قيمتها",
+            "الاجمالي",
+            "اجمالي",
+            "المجموع"
+          ],
+          "choices": []
+        },
+        {
+          "name": "startsOn",
+          "kind": "Date",
+          "nameAr": "تاريخ البداية",
+          "required": true,
+          "cues": [],
+          "choices": []
+        }
+      ]
+    },
+    {
       "id": "realestate.maintenance_expense.record",
       "section": "RealEstate",
       "module": "RealEstate",
@@ -1017,6 +2368,7 @@
       "status": "Published",
       "ledgerEffect": "Posts",
       "eventCode": "realestate.maintenance.company_expense",
+      "operationId": "draftExpenseBill",
       "requiresConfirmation": true,
       "readsPersonalData": false,
       "nameAr": "مصروف صيانة على الشركة",
@@ -1063,6 +2415,75 @@
       ]
     },
     {
+      "id": "realestate.rent_invoice.draft",
+      "section": "RealEstate",
+      "module": "RealEstate",
+      "kind": "StateChange",
+      "status": "Published",
+      "ledgerEffect": "Posts",
+      "eventCode": "realestate.rent_invoice.own_property",
+      "operationId": "draftRentInvoice",
+      "requiresConfirmation": true,
+      "readsPersonalData": false,
+      "nameAr": "مسودة فاتورة إيجار",
+      "phrases": [
+        "سجل فاتورة ايجار",
+        "اصدر فاتورة ايجار",
+        "افتح فاتورة ايجار",
+        "فاتورة ايجار"
+      ],
+      "slots": [
+        {
+          "name": "lease",
+          "kind": "Code",
+          "nameAr": "عقد الإيجار",
+          "required": true,
+          "cues": [
+            "للعقد",
+            "العقد",
+            "عقد"
+          ],
+          "choices": []
+        },
+        {
+          "name": "amount",
+          "kind": "Money",
+          "nameAr": "قيمة الفاتورة",
+          "required": true,
+          "cues": [
+            "بمبلغ",
+            "مبلغ",
+            "بقيمة",
+            "قيمتها",
+            "الاجمالي",
+            "اجمالي",
+            "المجموع"
+          ],
+          "choices": []
+        },
+        {
+          "name": "taxRate",
+          "kind": "Number",
+          "nameAr": "نسبة الضريبة",
+          "required": false,
+          "cues": [
+            "ضريبة",
+            "وضريبة",
+            "بنسبة"
+          ],
+          "choices": []
+        },
+        {
+          "name": "issuedOn",
+          "kind": "Date",
+          "nameAr": "تاريخ الإصدار",
+          "required": true,
+          "cues": [],
+          "choices": []
+        }
+      ]
+    },
+    {
       "id": "realestate.tenant_arrears.query",
       "section": "RealEstate",
       "module": "RealEstate",
@@ -1070,6 +2491,7 @@
       "status": "Published",
       "ledgerEffect": "None",
       "eventCode": null,
+      "operationId": "readTenantArrearsAging",
       "requiresConfirmation": false,
       "readsPersonalData": false,
       "nameAr": "متأخرات مستأجر",
@@ -1102,6 +2524,7 @@
       "status": "Published",
       "ledgerEffect": "Posts",
       "eventCode": "realestate.collection.received",
+      "operationId": "draftTenantReceipt",
       "requiresConfirmation": true,
       "readsPersonalData": false,
       "nameAr": "تحصيل من مستأجر",
@@ -1144,7 +2567,12 @@
           "kind": "Choice",
           "nameAr": "طريقة التحصيل",
           "required": true,
-          "cues": [],
+          "cues": [
+            "نقد",
+            "تحويل",
+            "شيك",
+            "شبكة"
+          ],
           "choices": [
             "نقد",
             "تحويل",
@@ -1170,6 +2598,7 @@
       "status": "Published",
       "ledgerEffect": "None",
       "eventCode": null,
+      "operationId": "readUnit",
       "requiresConfirmation": false,
       "readsPersonalData": false,
       "nameAr": "حالة وحدة",
@@ -1398,6 +2827,232 @@
       "slots": {
         "unit": "اثنتي عشرة"
       }
+    },
+    {
+      "transcript": "سجل فاتورة مبيعات على العميل مؤسسة الرياض بمبلغ الفين ريال وضريبة خمسة عشر بالمئة رقم 3120 اليوم",
+      "intent": "accounting.sales_invoice.draft",
+      "slots": {
+        "customer": "مؤسسة الرياض",
+        "amount": "2000",
+        "taxRate": "0.15",
+        "invoiceNumber": "3120",
+        "issuedOn": "2026-08-31"
+      }
+    },
+    {
+      "transcript": "سجل اشعار دائن للعميل مؤسسة الرياض على الفاتورة رقم 3120 بمبلغ خمسمئة ريال اليوم",
+      "intent": "accounting.credit_note.draft",
+      "slots": {
+        "customer": "مؤسسة الرياض",
+        "invoiceNumber": "3120",
+        "amount": "500",
+        "issuedOn": "2026-08-31"
+      }
+    },
+    {
+      "transcript": "افتح امر شراء من المورد شركة الخليج الصنف اسمنت مقاوم كمية عشرين كرتون المستودع الرياض اليوم",
+      "intent": "accounting.purchase_order.draft",
+      "slots": {
+        "supplier": "شركة الخليج",
+        "item": "اسمنت مقاوم",
+        "quantity": "20",
+        "warehouse": "الرياض",
+        "orderedOn": "2026-08-31"
+      },
+      "units": {
+        "quantity": "CTN"
+      }
+    },
+    {
+      "transcript": "سجل استلام بضاعة بامر شراء 4410 الصنف اسمنت مقاوم كمية عشرين كرتون اليوم",
+      "intent": "accounting.goods_receipt.draft",
+      "slots": {
+        "orderNumber": "4410",
+        "item": "اسمنت مقاوم",
+        "quantity": "20",
+        "receivedOn": "2026-08-31"
+      },
+      "units": {
+        "quantity": "CTN"
+      }
+    },
+    {
+      "transcript": "سجل مرتجع مشتريات على الفاتورة رقم 7788 الصنف اسمنت مقاوم كمية خمسة كراتين اليوم",
+      "intent": "accounting.purchase_return.draft",
+      "slots": {
+        "billNumber": "7788",
+        "item": "اسمنت مقاوم",
+        "quantity": "5",
+        "issuedOn": "2026-08-31"
+      },
+      "units": {
+        "quantity": "CTN"
+      }
+    },
+    {
+      "transcript": "سجل فاتورة مشتريات مخزنية على محضر استلام 4410 من المورد شركة الخليج بمبلغ تسعة الاف ريال اليوم",
+      "intent": "accounting.stock_bill.capture",
+      "slots": {
+        "receiptNumber": "4410",
+        "supplier": "شركة الخليج",
+        "amount": "9000",
+        "issuedOn": "2026-08-31"
+      }
+    },
+    {
+      "transcript": "تقادم الذمم المدينة حتى 2026-08-31",
+      "intent": "accounting.receivables_aging.query",
+      "slots": {
+        "asOf": "2026-08-31"
+      }
+    },
+    {
+      "transcript": "تقادم الذمم الدائنة حتى 2026-08-31",
+      "intent": "accounting.payables_aging.query",
+      "slots": {
+        "asOf": "2026-08-31"
+      }
+    },
+    {
+      "transcript": "سجل قيد يومية بيان تسوية مصاريف مؤجلة بمبلغ الف ريال اليوم",
+      "intent": "accounting.journal_entry.draft",
+      "slots": {
+        "description": "تسوية مصاريف مؤجلة",
+        "amount": "1000",
+        "entryOn": "2026-08-31"
+      }
+    },
+    {
+      "transcript": "سجل افراج عن محتجز للعقد برج الياسمين بمبلغ خمسين الف ريال اليوم",
+      "intent": "contracting.retention_release.draft",
+      "slots": {
+        "contract": "برج الياسمين",
+        "amount": "50000",
+        "releasedOn": "2026-08-31"
+      }
+    },
+    {
+      "transcript": "سجل تحصيل محتجز للعقد برج الياسمين بمبلغ عشرين الف ريال تحويل اليوم",
+      "intent": "contracting.retention_collection.draft",
+      "slots": {
+        "contract": "برج الياسمين",
+        "amount": "20000",
+        "method": "تحويل",
+        "collectedOn": "2026-08-31"
+      }
+    },
+    {
+      "transcript": "سجل امر تغيير للعقد برج الياسمين بسبب تعديل التشطيبات بمبلغ ثلاثين الف ريال اليوم",
+      "intent": "contracting.change_order.draft",
+      "slots": {
+        "contract": "برج الياسمين",
+        "reason": "تعديل التشطيبات",
+        "amount": "30000",
+        "issuedOn": "2026-08-31"
+      }
+    },
+    {
+      "transcript": "سجل ضمان بنكي للعقد برج الياسمين رقم الضمان ض-4410 بمبلغ مئة الف ريال ينتهي 2027-03-31",
+      "intent": "contracting.guarantee.draft",
+      "slots": {
+        "contract": "برج الياسمين",
+        "guaranteeNumber": "ض-4410",
+        "amount": "100000",
+        "expiresOn": "2027-03-31"
+      }
+    },
+    {
+      "transcript": "كشف المحتجزات للعقد برج الياسمين",
+      "intent": "contracting.retention_register.query",
+      "slots": {
+        "contract": "برج الياسمين"
+      }
+    },
+    {
+      "transcript": "كشف حساب المقاول مؤسسة البناء الحديث",
+      "intent": "contracting.subcontractor_statement.query",
+      "slots": {
+        "subcontractor": "مؤسسة البناء الحديث"
+      }
+    },
+    {
+      "transcript": "جهز مسير الرواتب لفترة 2026-08 اليوم",
+      "intent": "hr.payroll_run.draft",
+      "slots": {
+        "periodCode": "2026-08",
+        "preparedOn": "2026-08-31"
+      }
+    },
+    {
+      "transcript": "سجل صرف الرواتب لمسير 2026-08 تحويل اليوم",
+      "intent": "hr.payroll_payment.draft",
+      "slots": {
+        "runNumber": "2026-08",
+        "method": "تحويل",
+        "paidOn": "2026-08-31"
+      }
+    },
+    {
+      "transcript": "سجل سداد التامينات لفترة 2026-08 بمبلغ عشرين الف ريال تحويل اليوم",
+      "intent": "hr.social_insurance_payment.draft",
+      "slots": {
+        "periodCode": "2026-08",
+        "amount": "20000",
+        "method": "تحويل",
+        "paidOn": "2026-08-31"
+      }
+    },
+    {
+      "transcript": "سجل مخصص نهاية الخدمة لفترة 2026-08 اليوم",
+      "intent": "hr.end_of_service_provision.draft",
+      "slots": {
+        "periodCode": "2026-08",
+        "accruedOn": "2026-08-31"
+      }
+    },
+    {
+      "transcript": "سجل تصفية نهاية الخدمة للموظف احمد العتيبي بمبلغ اربعين الف ريال تحويل اليوم",
+      "intent": "hr.end_of_service_settlement.draft",
+      "slots": {
+        "employee": "احمد العتيبي",
+        "amount": "40000",
+        "method": "تحويل",
+        "settledOn": "2026-08-31"
+      }
+    },
+    {
+      "transcript": "تقييم المخزون المستودع الرياض",
+      "intent": "inventory.valuation.query",
+      "slots": {
+        "warehouse": "الرياض"
+      }
+    },
+    {
+      "transcript": "حركات الصنف اسمنت مقاوم",
+      "intent": "inventory.stock_movement.query",
+      "slots": {
+        "item": "اسمنت مقاوم"
+      }
+    },
+    {
+      "transcript": "سجل فاتورة ايجار للعقد ع-4410 بمبلغ خمسة الاف ريال وضريبة خمسة عشر بالمئة اليوم",
+      "intent": "realestate.rent_invoice.draft",
+      "slots": {
+        "lease": "ع-4410",
+        "amount": "5000",
+        "taxRate": "0.15",
+        "issuedOn": "2026-08-31"
+      }
+    },
+    {
+      "transcript": "سجل عقد ايجار للمستاجر خالد الشمري للوحدة و-12 بمبلغ ستين الف ريال يبدا 2026-09-01",
+      "intent": "realestate.lease_contract.draft",
+      "slots": {
+        "lessee": "خالد الشمري",
+        "unit": "و-12",
+        "totalRent": "60000",
+        "startsOn": "2026-09-01"
+      }
     }
   ],
   "missing": [
@@ -1543,6 +3198,176 @@
       "intent": "realestate.unit_status.query",
       "missing": [
         "unit"
+      ]
+    },
+    {
+      "transcript": "سجل فاتورة مبيعات بمبلغ الفين ريال اليوم",
+      "intent": "accounting.sales_invoice.draft",
+      "missing": [
+        "customer"
+      ]
+    },
+    {
+      "transcript": "سجل اشعار دائن للعميل مؤسسة الرياض على الفاتورة رقم 3120 اليوم",
+      "intent": "accounting.credit_note.draft",
+      "missing": [
+        "amount"
+      ]
+    },
+    {
+      "transcript": "افتح امر شراء من المورد شركة الخليج الصنف اسمنت مقاوم كمية عشرين كرتون اليوم",
+      "intent": "accounting.purchase_order.draft",
+      "missing": [
+        "warehouse"
+      ]
+    },
+    {
+      "transcript": "سجل استلام بضاعة بامر شراء 4410 الصنف اسمنت مقاوم اليوم",
+      "intent": "accounting.goods_receipt.draft",
+      "missing": [
+        "quantity"
+      ]
+    },
+    {
+      "transcript": "سجل مرتجع مشتريات على الفاتورة رقم 7788 كمية خمسة كراتين اليوم",
+      "intent": "accounting.purchase_return.draft",
+      "missing": [
+        "item"
+      ]
+    },
+    {
+      "transcript": "سجل فاتورة مشتريات مخزنية على محضر استلام 4410 بمبلغ تسعة الاف ريال اليوم",
+      "intent": "accounting.stock_bill.capture",
+      "missing": [
+        "supplier"
+      ]
+    },
+    {
+      "transcript": "تقادم الذمم المدينة",
+      "intent": "accounting.receivables_aging.query",
+      "missing": [
+        "asOf"
+      ],
+      "withoutToday": true
+    },
+    {
+      "transcript": "تقادم الذمم الدائنة",
+      "intent": "accounting.payables_aging.query",
+      "missing": [
+        "asOf"
+      ],
+      "withoutToday": true
+    },
+    {
+      "transcript": "سجل قيد يومية بيان تسوية مصاريف مؤجلة اليوم",
+      "intent": "accounting.journal_entry.draft",
+      "missing": [
+        "amount"
+      ]
+    },
+    {
+      "transcript": "سجل افراج عن محتجز للعقد برج الياسمين اليوم",
+      "intent": "contracting.retention_release.draft",
+      "missing": [
+        "amount"
+      ]
+    },
+    {
+      "transcript": "سجل تحصيل محتجز للعقد برج الياسمين بمبلغ عشرين الف ريال اليوم",
+      "intent": "contracting.retention_collection.draft",
+      "missing": [
+        "method"
+      ]
+    },
+    {
+      "transcript": "سجل امر تغيير للعقد برج الياسمين بمبلغ ثلاثين الف ريال اليوم",
+      "intent": "contracting.change_order.draft",
+      "missing": [
+        "reason"
+      ]
+    },
+    {
+      "transcript": "سجل ضمان بنكي للعقد برج الياسمين رقم الضمان ض-4410 ينتهي 2027-03-31",
+      "intent": "contracting.guarantee.draft",
+      "missing": [
+        "amount"
+      ]
+    },
+    {
+      "transcript": "كشف المحتجزات",
+      "intent": "contracting.retention_register.query",
+      "missing": [
+        "contract"
+      ]
+    },
+    {
+      "transcript": "كشف حساب المقاول",
+      "intent": "contracting.subcontractor_statement.query",
+      "missing": [
+        "subcontractor"
+      ]
+    },
+    {
+      "transcript": "جهز مسير الرواتب اليوم",
+      "intent": "hr.payroll_run.draft",
+      "missing": [
+        "periodCode"
+      ]
+    },
+    {
+      "transcript": "سجل صرف الرواتب لمسير 2026-08 اليوم",
+      "intent": "hr.payroll_payment.draft",
+      "missing": [
+        "method"
+      ]
+    },
+    {
+      "transcript": "سجل سداد التامينات لفترة 2026-08 تحويل اليوم",
+      "intent": "hr.social_insurance_payment.draft",
+      "missing": [
+        "amount"
+      ]
+    },
+    {
+      "transcript": "سجل مخصص نهاية الخدمة اليوم",
+      "intent": "hr.end_of_service_provision.draft",
+      "missing": [
+        "periodCode"
+      ]
+    },
+    {
+      "transcript": "سجل تصفية نهاية الخدمة بمبلغ اربعين الف ريال تحويل اليوم",
+      "intent": "hr.end_of_service_settlement.draft",
+      "missing": [
+        "employee"
+      ]
+    },
+    {
+      "transcript": "تقييم المخزون",
+      "intent": "inventory.valuation.query",
+      "missing": [
+        "warehouse"
+      ]
+    },
+    {
+      "transcript": "حركات الصنف",
+      "intent": "inventory.stock_movement.query",
+      "missing": [
+        "item"
+      ]
+    },
+    {
+      "transcript": "سجل فاتورة ايجار للعقد ع-4410 وضريبة خمسة عشر بالمئة اليوم",
+      "intent": "realestate.rent_invoice.draft",
+      "missing": [
+        "amount"
+      ]
+    },
+    {
+      "transcript": "سجل عقد ايجار للوحدة و-12 بمبلغ ستين الف ريال يبدا 2026-09-01",
+      "intent": "realestate.lease_contract.draft",
+      "missing": [
+        "lessee"
       ]
     }
   ],

@@ -11,6 +11,7 @@ namespace Babel.Ai.Tests.Support;
 /// <param name="Status">الحال.</param>
 /// <param name="LedgerEffect">أثر الدفتر.</param>
 /// <param name="EventCode">رمز الحدث.</param>
+/// <param name="OperationId">العملية المنشورة التي تبلغها — ولا تبلغ ترحيلاً أبداً.</param>
 /// <param name="RequiresConfirmation">هل تحتاج تأكيداً؟</param>
 /// <param name="ReadsPersonalData">هل تقرأ بياناً شخصياً؟</param>
 /// <param name="NameAr">الاسم العربي — وهو السجلّ لا ترجمته (‏ADR-0021)، ولا نصف إنجليزيّ بجانبه.</param>
@@ -24,6 +25,7 @@ internal sealed record VectorIntent(
     string Status,
     string LedgerEffect,
     string? EventCode,
+    string? OperationId,
     bool RequiresConfirmation,
     bool ReadsPersonalData,
     string NameAr,
@@ -61,11 +63,18 @@ internal sealed record VectorUtterance(
 /// <param name="Intent">النيّة.</param>
 /// <param name="Missing">الشرائح الناقصة.</param>
 /// <param name="Faults">أعطال القراءة المتوقَّعة.</param>
+/// <param name="WithoutToday">
+/// تُقرأ الجملة <b>بلا حقنِ تاريخ اليوم</b>. وهي الطريقة الوحيدة لإثبات القاعدة
+/// المكتوبة: <b>بلا حقنِ تاريخِ اليوم لا يُملأ حقلُ تاريخٍ إطلاقاً</b> — فحقلُ التاريخ
+/// في تقريرٍ عمريّ ليس زينةً بل هو تاريخ القطع، واختراعُه يُنتج تقريراً صحيح الشكل
+/// عن يومٍ لم يُطلَب.
+/// </param>
 internal sealed record VectorMissing(
     string Transcript,
     string Intent,
     IReadOnlyList<string> Missing,
-    IReadOnlyList<string>? Faults);
+    IReadOnlyList<string>? Faults,
+    bool WithoutToday = false);
 
 /// <summary>جملةٌ تُرفض قراءتُها أصلاً.</summary>
 /// <param name="Transcript">التفريغ.</param>

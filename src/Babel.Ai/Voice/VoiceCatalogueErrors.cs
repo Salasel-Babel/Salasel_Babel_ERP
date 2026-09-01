@@ -75,6 +75,38 @@ public static class VoiceCatalogueErrors
         "النيّة «" + intentId + "» منشورة وتحمل نصّ قرارٍ منتظَر — أحد الحقلين خاطئ.",
         "Intent '" + intentId + "' is published yet carries an owner-decision text.");
 
+    /// <summary>
+    /// <b>نيّةٌ تبلغ عمليةً ممنوعة على الصوت</b> — ترحيلاً أو توقيعاً أو اعتماداً،
+    /// أو فعلاً لم يُصنَّف بعد.
+    /// </summary>
+    /// <param name="intentId">المعرّف.</param>
+    /// <param name="operationId">العملية.</param>
+    /// <param name="why">السبب كما سمّاه الحارس.</param>
+    public static Error OperationNotReachableByVoice(string intentId, string operationId, string why) => new(
+        "ai.voice.catalogue.operation_not_reachable",
+        "النيّة «" + intentId + "» تبلغ العملية «" + operationId + "» — و" + why + ". "
+        + "والصوت يبلغ المسوّدة ولا يبلغ الترحيل: مسوّدةٌ خاطئة تُلقى بلا ثمن، "
+        + "وقيدٌ خاطئ يُكلّف قيداً عاكساً يبقى في السجلّ.",
+        "Intent '" + intentId + "' reaches operation '" + operationId
+        + "', which the voice path may never reach.");
+
+    /// <summary>نيّةٌ منشورة لا تسمّي العملية التي تبلغها.</summary>
+    /// <param name="intentId">المعرّف.</param>
+    public static Error OperationNotStated(string intentId) => new(
+        "ai.voice.catalogue.operation_not_stated",
+        "النيّة «" + intentId + "» منشورة ولا تسمّي عمليةً منشورة تبلغها. "
+        + "ونيّةٌ بلا عملية تنتهي إلى نداءٍ في الهواء: يُؤكَّد الأمر ثم لا يصل مستنداً.",
+        "Intent '" + intentId + "' is published yet names no published operation to reach.");
+
+    /// <summary>نيّةٌ تنتظر قراراً وتسمّي عمليةً — والعملية هي بعينها ما ينقص.</summary>
+    /// <param name="intentId">المعرّف.</param>
+    /// <param name="operationId">العملية.</param>
+    public static Error OperationNotExpected(string intentId, string operationId) => new(
+        "ai.voice.catalogue.operation_not_expected",
+        "النيّة «" + intentId + "» تنتظر قراراً وتسمّي العملية «" + operationId + "». "
+        + "وما ينتظره القرار هو العملية نفسها، فتسميتُها ادّعاءُ بابٍ لم يُفتح.",
+        "Intent '" + intentId + "' awaits an owner decision yet names operation '" + operationId + "'.");
+
     /// <summary>نيّةٌ بلا عبارة إطلاق واحدة.</summary>
     /// <param name="intentId">المعرّف.</param>
     public static Error NoPhrases(string intentId) => new(

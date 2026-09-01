@@ -53,9 +53,9 @@ public sealed class SpokenCommandTests
     public void ملف_المتجهات_ليس_ضامراً()
     {
         // حارس لا فراغ: ملفٌّ فارغ يجعل كل ما تحته يمرّ بلا أن يقرأ شيئاً (فخ-43).
-        Assert.True(VoiceVectors.File.Intents.Count >= 18);
-        Assert.True(VoiceVectors.File.Utterances.Count >= 18);
-        Assert.True(VoiceVectors.File.Missing.Count >= 18);
+        Assert.True(VoiceVectors.File.Intents.Count >= 40);
+        Assert.True(VoiceVectors.File.Utterances.Count >= 40);
+        Assert.True(VoiceVectors.File.Missing.Count >= 40);
         Assert.True(VoiceVectors.File.Refusals.Count >= 3);
     }
 
@@ -79,6 +79,7 @@ public sealed class SpokenCommandTests
             Assert.Equal(declaredIntent.Status, intent.Status.ToString());
             Assert.Equal(declaredIntent.LedgerEffect, intent.LedgerEffect.ToString());
             Assert.Equal(declaredIntent.EventCode, intent.EventCode);
+            Assert.Equal(declaredIntent.OperationId, intent.OperationId);
             Assert.Equal(declaredIntent.RequiresConfirmation, intent.RequiresConfirmation);
             Assert.Equal(declaredIntent.ReadsPersonalData, intent.ReadsPersonalData);
             Assert.Equal(declaredIntent.NameAr, intent.NameAr);
@@ -134,7 +135,13 @@ public sealed class SpokenCommandTests
     {
         VectorMissing vector = VoiceVectors.File.Missing.Single(candidate => candidate.Transcript == transcript);
 
-        Result<VoiceResolution> read = SpokenCommandReader.Read(transcript, VoiceHarness.Registry, VoiceHarness.Options);
+        // ‏**بلا حقنِ تاريخِ اليوم لا يُملأ حقلُ تاريخٍ إطلاقاً** — ولا ساعةَ جهازٍ داخل
+        // المحرّك. والمتجه الذي يطلب ذلك يقيس القاعدة نفسها لا يستثني منها.
+        VoiceReadingOptions options = vector.WithoutToday
+            ? new VoiceReadingOptions(null, VoiceHarness.Options.StatutoryTaxRate)
+            : VoiceHarness.Options;
+
+        Result<VoiceResolution> read = SpokenCommandReader.Read(transcript, VoiceHarness.Registry, options);
 
         Assert.True(read.IsSuccess, read.IsFailure ? read.Errors[0].MessageAr : string.Empty);
         VoiceResolution resolution = read.Value;

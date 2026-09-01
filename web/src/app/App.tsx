@@ -21,6 +21,7 @@ import { KeyboardHelp } from "./shell/KeyboardHelp";
 import { CommandPalette } from "./shell/CommandPalette";
 import { SectionNav } from "./shell/SectionNav";
 import { VoiceDock } from "./shell/VoiceDock";
+import { VoiceDraftBanner } from "./VoiceDraftBanner";
 import { sectionOf } from "./shell/sections";
 import { MOTION } from "../ui";
 import accessiblePaletteHref from "../styles/theme/theme-accessible.css?url";
@@ -159,6 +160,9 @@ export function AppShell(): ReactNode {
         </header>
 
         <main className="app-page" id="main">
+          {/* المسوّدة المنطوقة تظهر **فوق الشاشة التي هبطت عليها**، لا في اللوحة
+              التي غادرها المستخدم. وهي في الهيكل لأن الهبوط عابرٌ للشاشات. */}
+          <VoiceDraftBanner />
           <div className={MOTION.transit} key={path}>
             <Outlet />
           </div>

@@ -98,6 +98,29 @@ public sealed class SpokenCommandTests
         }
     }
 
+    /// <summary>
+    /// <b>القصّ يُقاس، فلا يكون صامتاً.</b> متجهٌ يُعلن ذيلاً مقصوصاً يُحمِّر إن قُصّ
+    /// غيرُه أو إن لم يُقصّ شيء؛ وشريحةٌ لا يُعلن لها ذيلٌ يجب ألّا تحمل واحداً —
+    /// وإلّا كان الإصلاح يقصّ أسماءً لم يُقصد قصُّها.
+    /// </summary>
+    private static void AssertDropped(VoiceResolution resolution, IReadOnlyDictionary<string, string>? declared)
+    {
+        IReadOnlyDictionary<string, string> expected =
+            declared ?? new Dictionary<string, string>(StringComparer.Ordinal);
+
+        foreach (SpokenSlotValue value in resolution.Slots)
+        {
+            if (expected.TryGetValue(value.Name, out string? tail))
+            {
+                Assert.Equal(tail, value.Dropped);
+            }
+            else
+            {
+                Assert.Null(value.Dropped);
+            }
+        }
+    }
+
     [Theory]
     [MemberData(nameof(Utterances))]
     public void المسار_السعيد_يستخرج_كل_شريحة_بقيمتها(string transcript)
@@ -123,6 +146,8 @@ public sealed class SpokenCommandTests
             SpokenSlotValue value = Assert.Single(resolution.Slots, candidate => candidate.Name == name);
             Assert.Equal(unit, value.Unit);
         }
+
+        AssertDropped(resolution, vector.Dropped);
 
         // الملخّص يحمل اسم النيّة ولا يخرج فارغاً — وهو ما يُقرأ ويُعرض معاً.
         Assert.Contains(resolution.Intent.NameAr, resolution.ReadbackAr, StringComparison.Ordinal);
@@ -154,6 +179,16 @@ public sealed class SpokenCommandTests
         {
             Assert.DoesNotContain(resolution.Slots, candidate => candidate.Name == name);
         }
+
+        // ‏**وما امتلأ يُقاس أيضاً**: نقصُ حقلٍ لا يُعفي بقيّةَ الجملة من الصحّة، وجملةٌ
+        // ينقصها حقلٌ واحد وقرأت الباقيَ خطأً تمرّ اليوم بلا أن يراها أحد.
+        foreach ((string name, string expected) in vector.Slots ?? new Dictionary<string, string>(StringComparer.Ordinal))
+        {
+            SpokenSlotValue value = Assert.Single(resolution.Slots, candidate => candidate.Name == name);
+            Assert.Equal(expected, value.Text);
+        }
+
+        AssertDropped(resolution, vector.Dropped);
 
         foreach (string code in vector.Faults ?? [])
         {

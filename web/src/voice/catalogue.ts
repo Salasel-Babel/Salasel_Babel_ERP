@@ -155,6 +155,44 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
       ]
     },
     {
+      "id": "accounting.customer.add",
+      "section": "Accounting",
+      "module": "Sales",
+      "kind": "StateChange",
+      "status": "Published",
+      "ledgerEffect": "None",
+      "eventCode": null,
+      "operationId": "addCustomer",
+      "requiresConfirmation": true,
+      "readsPersonalData": false,
+      "nameAr": "إنشاء عميل",
+      "phrases": [
+        "انشئ عميل",
+        "انشاء عميل",
+        "اضف عميل",
+        "عميل جديد",
+        "افتح حساب عميل",
+        "سوي لي عميل"
+      ],
+      "slots": [
+        {
+          "name": "name",
+          "kind": "Text",
+          "nameAr": "اسم العميل",
+          "required": true,
+          "cues": [
+            "باسم",
+            "اسمه",
+            "للعميل",
+            "العميل",
+            "عميل",
+            "من"
+          ],
+          "choices": []
+        }
+      ]
+    },
+    {
       "id": "accounting.customer_balance.query",
       "section": "Accounting",
       "module": "Sales",
@@ -2702,7 +2740,6 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
       ]
     }
   ];
-
 /** نيّات قسمٍ بعينه. */
 export function intentsOf(section: VoiceSection): readonly VoiceIntent[] {
   return VOICE_INTENTS.filter((intent) => intent.section === section);
@@ -2711,6 +2748,143 @@ export function intentsOf(section: VoiceSection): readonly VoiceIntent[] {
 /** نيّةٌ بمعرّفها، أو لا شيء. */
 export function intentById(id: string): VoiceIntent | null {
   return VOICE_INTENTS.find((intent) => intent.id === id) ?? null;
+}
+
+/* ── الخطط ─────────────────────────────────────────────────────────────────
+   **خطّةٌ منطوقة: عدّةُ خطواتٍ من جملةٍ واحدة، وهي بيانات لا شيفرة.** مرآةٌ محروسة
+   للخطط التي تُعلنها الوحدات في الخادم، بالحارس نفسه الذي يحرس النيّات وللسبب نفسه.
+
+   ⚠ **والخطوة تسمّي نيّةً — ولا تسمّي عمليةً بحال.** فلا توجد في هذه البيانات خانةٌ
+   يُكتب فيها اسم بابٍ منشور أصلاً؛ والعمليةُ تُقرأ من النيّة المُحلّاة، وكلُّ نيّةٍ في
+   السجلّ قد اجتازت حارسَ العمليات عند البناء. ولا شيء يُهرَّب لأن الخطّة **لا تملك
+   أن تسمّي باباً**. */
+
+/** شرطُ تنفيذ خطوة. */
+export type VoicePlanCondition = "Always" | "WhenHumanFindsNothing";
+
+/**
+ * مصدرُ قيمة شريحة في خطوة. **ولا «من خطوةٍ سابقة»**: لا خطوةَ هنا تحسب شيئاً —
+ * كلُّها تنتهي عند شاشة — والمعرّفُ ممنوعٌ أن يحمله الصوت. فما يربط خطوتين هو
+ * **الجملة نفسها**، تُقرأ في كلٍّ منهما من الفم نفسه.
+ */
+export type VoiceSlotSource = "FromUtterance" | "AskedOfHuman";
+
+/** كيف تمتلئ شريحةٌ في خطوة. */
+export interface VoiceSlotBinding {
+  readonly slotName: string;
+  readonly source: VoiceSlotSource;
+}
+
+/** خطوةٌ واحدة في خطّة. */
+export interface VoicePlanStep {
+  readonly stepId: string;
+  /** **معرّفُ نيّةٍ في السجلّ — لا معرّفُ عملية.** */
+  readonly intentId: string;
+  readonly condition: VoicePlanCondition;
+  /** ما تفعله هذه الخطوة بالعربية كما يُقرأ في التوجيه — وهو السجلّ لا ترجمته. */
+  readonly purposeAr: string;
+  readonly bindings: readonly VoiceSlotBinding[];
+  /**
+   * **حقولٌ تطلبها شاشةُ هذه الخطوة ولا يطلبها الصوت** — بأسمائها العربية، وتُقال
+   * جهراً في التوجيه قبل أن تبدأ الخطّة.
+   */
+  readonly screenAsksForAr: readonly string[];
+}
+
+/** خطّةٌ منطوقة. */
+export interface VoicePlan {
+  readonly id: string;
+  readonly section: VoiceSection;
+  readonly module: string;
+  readonly nameAr: string;
+  /** **ما يريده الإنسان** — بدائل، يكفي أن تظهر إحداها. */
+  readonly triggerPhrases: readonly string[];
+  /**
+   * **الشرطُ الذي يجعل الجملة خطّةً لا أمراً واحداً** — بدائل كذلك.
+   * والحقلان اثنان لأن الطلب والشرط **لا يتجاوران** في كلام الناس: «سند قبض **من شركة
+   * المسار الأمثل** فإن لم تجدها…». فتُطابق الخطّةُ باجتماعهما لا بعبارةٍ واحدة.
+   */
+  readonly conditionPhrases: readonly string[];
+  readonly steps: readonly VoicePlanStep[];
+}
+
+/** سجلّ الخطط. مغلق: ما ليس فيه لا يُنطَق ولا يُخمَّن. */
+export const VOICE_PLANS: readonly VoicePlan[] = [
+    {
+      "id": "accounting.customer_receipt.with_new_customer",
+      "section": "Accounting",
+      "module": "Sales",
+      "nameAr": "سند قبض من عميل — مع إنشائه إن لم يوجد",
+      "triggerPhrases": [
+        "سند قبض",
+        "سجل سند قبض",
+        "قبضت من العميل",
+        "استلمت من العميل",
+        "تحصيل من عميل"
+      ],
+      "conditionPhrases": [
+        "فان لم تجدها",
+        "فان لم تجده",
+        "ان لم تجدها",
+        "ان لم تجده",
+        "وان لم يكن العميل موجودا",
+        "والا انشئ",
+        "فان لم يكن موجودا"
+      ],
+      "steps": [
+        {
+          "stepId": "create-customer",
+          "intentId": "accounting.customer.add",
+          "condition": "WhenHumanFindsNothing",
+          "purposeAr": "إن لم تجد العميل، تُفتح شاشة العملاء باسمه مملوءاً.",
+          "bindings": [
+            {
+              "slotName": "name",
+              "source": "FromUtterance"
+            }
+          ],
+          "screenAsksForAr": [
+            "رمز العميل",
+            "حدّ الائتمان",
+            "مهلة السداد"
+          ]
+        },
+        {
+          "stepId": "draft-receipt",
+          "intentId": "accounting.customer_receipt.record",
+          "condition": "Always",
+          "purposeAr": "ثم مسوّدة سند القبض — تُراجَع على الشاشة، ويُرحّلها إنسانٌ بيده.",
+          "bindings": [
+            {
+              "slotName": "customer",
+              "source": "FromUtterance"
+            },
+            {
+              "slotName": "amount",
+              "source": "FromUtterance"
+            },
+            {
+              "slotName": "receivedOn",
+              "source": "FromUtterance"
+            },
+            {
+              "slotName": "method",
+              "source": "AskedOfHuman"
+            }
+          ],
+          "screenAsksForAr": []
+        }
+      ]
+    }
+  ];
+/** خطط قسمٍ بعينه. */
+export function plansOf(section: VoiceSection): readonly VoicePlan[] {
+  return VOICE_PLANS.filter((plan) => plan.section === section);
+}
+
+/** خطّةٌ بمعرّفها، أو لا شيء. */
+export function planById(id: string): VoicePlan | null {
+  return VOICE_PLANS.find((plan) => plan.id === id) ?? null;
 }
 
 /** كل رمز حدثٍ ينطق به المتصفّح — يقرؤه حارسٌ في الخادم ويطابقه بالمصفوفة. */

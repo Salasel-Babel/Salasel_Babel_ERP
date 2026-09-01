@@ -42,12 +42,39 @@ interface Vectors {
     phrases: string[];
     slots: { name: string; kind: string; nameAr: string; required: boolean; cues: string[]; choices: string[] }[];
   }[];
-  utterances: { transcript: string; intent: string; slots: Record<string, string>; units?: Record<string, string> }[];
-  missing: { transcript: string; intent: string; missing: string[]; faults?: string[]; withoutToday?: boolean }[];
+  utterances: {
+    transcript: string;
+    intent: string;
+    slots: Record<string, string>;
+    units?: Record<string, string>;
+    dropped?: Record<string, string>;
+  }[];
+  missing: {
+    transcript: string;
+    intent: string;
+    missing: string[];
+    faults?: string[];
+    slots?: Record<string, string>;
+    dropped?: Record<string, string>;
+    withoutToday?: boolean;
+  }[];
   refusals: { transcript: string; code: string }[];
 }
 
 const vectors: Vectors = JSON.parse(readFileSync(VECTORS_PATH, "utf8"));
+
+/**
+ * **القصّ يُقاس، فلا يكون صامتاً.** شريحةٌ يُعلن لها ذيلٌ مقصوص تُطابَق عليه، وشريحةٌ
+ * لا يُعلن لها ذيل يجب ألّا تحمل واحداً — وإلّا كان الإصلاح يقصّ أسماءً لم يُقصد قصُّها.
+ */
+function expectDropped(
+  slots: readonly { name: string; dropped?: string }[],
+  declared: Record<string, string> | undefined
+): void {
+  for (const value of slots) {
+    expect(value.dropped, value.name).toBe(declared?.[value.name]);
+  }
+}
 const options = { today: vectors.today, statutoryTaxRate: vectors.statutoryTaxRate };
 
 const caller: VoiceCaller = {
@@ -144,6 +171,7 @@ describe("القراءة الحتمية", () => {
       for (const [name, unit] of Object.entries(vector.units ?? {})) {
         expect(read.resolution.slots.find((s) => s.name === name)!.unit, name).toBe(unit);
       }
+      expectDropped(read.resolution.slots, vector.dropped);
     }
   );
 
@@ -167,6 +195,11 @@ describe("القراءة الحتمية", () => {
       for (const code of vector.faults ?? []) {
         expect(read.resolution.faults).toContain(code);
       }
+      /* ‏**وما امتلأ يُقاس أيضاً**: نقصُ حقلٍ لا يُعفي بقيّةَ الجملة من الصحّة. */
+      for (const [name, expected] of Object.entries(vector.slots ?? {})) {
+        expect(read.resolution.slots.find((s) => s.name === name)?.text, name).toBe(expected);
+      }
+      expectDropped(read.resolution.slots, vector.dropped);
     }
   );
 

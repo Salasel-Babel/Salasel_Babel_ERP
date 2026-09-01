@@ -76,6 +76,22 @@ public static class AiModuleRegistration
                     + string.Join(" · ", registry.Errors.Select(static error => error.MessageAr)));
         });
 
+        // ‏**سجلّ الخطط — يُبنى بعد النيّات لا معها.** الخطوة تسمّي نيّةً، فتُقاس الخطط
+        // على سجلٍّ مكتمل؛ ولو قِيست أثناء الجمع لَتغيّر جوابُ الحارس بترتيب التسجيل في
+        // الحاوية، وحارسٌ جوابُه يتغيّر بالترتيب ليس حارساً.
+        services.AddSingleton(static provider =>
+        {
+            Result<VoicePlanRegistry> plans = VoicePlanRegistry.Build(
+                provider.GetServices<IVoicePlanCatalogue>(),
+                provider.GetRequiredService<VoiceIntentRegistry>());
+
+            return plans.IsSuccess
+                ? plans.Value
+                : throw new InvalidOperationException(
+                    "سجلّ الخطط المنطوقة معتلّ فلا يُركَّب: "
+                    + string.Join(" · ", plans.Errors.Select(static error => error.MessageAr)));
+        });
+
         return services;
     }
 

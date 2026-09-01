@@ -56,6 +56,36 @@ public sealed class SalesVoiceIntents : IVoiceIntentCatalogue
             false,
             null),
 
+        // ‏**إنشاء عميل — والباب الذي فتحه طلبُ المالك.** «فإن لم تجدها أنشئ لها حساباً»
+        // كان يقف عند لا شيء: لا نيّةَ إنشاءِ عميل في السجلّ إطلاقاً، فالشرطُ يُقرأ
+        // ولا يجد ما ينفّذه.
+        //
+        // ‏**ولا يُنطَق منها إلا الاسم.** <c>CustomerRequest</c> يطلب رمزاً وحدَّ ائتمانٍ
+        // ومهلةَ سداد، <b>وليس واحدٌ منها شريحةً منطوقة ولا يجوز أن يكون</b>: الرمز
+        // هويّةٌ تحملها مستنداتُ العميل المرحَّلة، <b>ورمزٌ منطوق رمزٌ سُمع خطأً</b> —
+        // وخطؤه لا يظهر في مسوّدة بل بعد شهرٍ في كشف حساب. وحدُّ الائتمان ومهلةُ السداد
+        // سياسةٌ يقرّرها من يملك بيانات العملاء، لا إملاءٌ من واقفٍ عند الزبون.
+        // فتُطلب الثلاثة <b>على الشاشة</b>، وتقولها الخطّةُ بصوتها قبل أن تبدأ.
+        new VoiceIntent(
+            "accounting.customer.add",
+            VoiceSection.Accounting,
+            BabelModule.Sales,
+            VoiceIntentKind.StateChange,
+            VoiceIntentStatus.Published,
+            VoiceLedgerEffect.None,
+            null,
+            "addCustomer",
+            "إنشاء عميل",
+            [
+                "انشئ عميل", "انشاء عميل", "اضف عميل", "عميل جديد", "افتح حساب عميل", "سوي لي عميل",
+            ],
+            [
+                new VoiceSlot("name", VoiceSlotKind.Text, "اسم العميل", true,
+                    ["باسم", "اسمه", "للعميل", "العميل", "عميل", "من"], []),
+            ],
+            false,
+            null),
+
         new VoiceIntent(
             "accounting.customer_balance.query",
             VoiceSection.Accounting,

@@ -45,6 +45,10 @@ public static class SalesModuleRegistration
         // وهو ما تفرضه القاعدة 3، وما يجعل إضافة نيّةٍ لا تمسّ مشروع الذكاء بسطر.
         services.AddSingleton<IVoiceIntentCatalogue, SalesVoiceIntents>();
 
+        // ‏**والخطط كذلك**: خطّةٌ تركّب نيّاتِ المبيعات شأنُ المبيعات، وتُجمع من الحاوية
+        // بالانقلاب نفسه عبر <c>IVoicePlanCatalogue</c>.
+        services.AddSingleton<IVoicePlanCatalogue, SalesVoicePlans>();
+
         return services;
     }
 }

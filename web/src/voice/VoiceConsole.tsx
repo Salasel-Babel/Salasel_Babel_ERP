@@ -31,6 +31,8 @@ import {
   type VoiceResolution,
 } from "./command";
 import { dropVoiceDraft, handoffOf, type VoiceDraftHandoff } from "./handoff";
+import { matchPlan, readCurrentStep, startPlan, type VoicePlanRun } from "./plan";
+import { VoicePlanPanel } from "./VoicePlanPanel";
 import { canSpeak, hush, speak } from "./speak";
 import { listen, speechSupport, type SpeechSession, type SpeechUnavailable } from "./speech";
 
@@ -102,6 +104,9 @@ export function VoiceConsole(props: VoiceConsoleProps): ReactNode {
   const [resolution, setResolution] = useState<VoiceResolution | null>(null);
   const [refusalCodes, setRefusalCodes] = useState<readonly string[]>([]);
   const [outcome, setOutcome] = useState<Outcome>({ kind: "none" });
+  /* **جريانُ الخطّة — في الذاكرة، ويموت مع إعادة التحميل** كحافظة المسوّدة وللسبب
+     نفسه بقوّةٍ أكبر: خطّةٌ تنجو تُستأنف بملخّصٍ سمعه صاحبُها ولم يعد يذكره. */
+  const [planRun, setPlanRun] = useState<VoicePlanRun | null>(null);
 
   const session = useRef<SpeechSession | null>(null);
   const finalText = useRef("");
@@ -121,6 +126,20 @@ export function VoiceConsole(props: VoiceConsoleProps): ReactNode {
       setTranscript(text);
       setOutcome({ kind: "none" });
 
+      /* **الخطّة تُجرَّب أوّلاً — ودليلُها أقوى.** مطابقتُها تطلب طلباً **وشرطاً**، وهو
+         أكثر ممّا تطلبه النيّة المفردة. وجملةٌ بلا شرطٍ لا تُطابق خطّةً أصلاً، فلا
+         تنكسر جملةٌ تعمل اليوم. */
+      const plan = matchPlan(text);
+      if (plan !== null) {
+        const started = readCurrentStep(startPlan(plan, text), options);
+        setPlanRun(started);
+        setResolution(null);
+        setRefusalCodes([]);
+        if (speakOn) speak(started.orientationAr, lang);
+        return;
+      }
+
+      setPlanRun(null);
       const reading = readCommand(text, options);
       if (!reading.ok) {
         setResolution(null);
@@ -239,6 +258,7 @@ export function VoiceConsole(props: VoiceConsoleProps): ReactNode {
     dropVoiceDraft();
     setOutcome({ kind: "cancelled" });
     setResolution(null);
+    setPlanRun(null);
   }, []);
 
   /* «تأكيد» و«إلغاء» منطوقتان: من يعمل بيدين مشغولتين يؤكّد بصوته أيضاً. */
@@ -365,6 +385,21 @@ export function VoiceConsole(props: VoiceConsoleProps): ReactNode {
             <li key={code}>{t("screen.voice.refusal." + refusalKey(code))}</li>
           ))}
         </ul>
+      ) : null}
+
+      {planRun !== null ? (
+        <VoicePlanPanel
+          run={planRun}
+          caller={props.caller}
+          options={options}
+          lang={lang}
+          speakOn={speakOn}
+          say={speak}
+          onRun={setPlanRun}
+          onDraft={props.onDraft}
+          destinationOf={props.destinationOf}
+          onCancel={cancel}
+        />
       ) : null}
 
       {resolution ? (

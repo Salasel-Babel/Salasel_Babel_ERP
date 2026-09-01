@@ -57,6 +57,45 @@ public static class SpokenCommandReader
         }.Select(VoiceText.Fold),
         StringComparer.Ordinal);
 
+    /// <summary>
+    /// <b>كواسرُ المقاطع — أدواتُ الشرط وأفعالُ الأمر.</b>
+    /// <para>
+    /// <b>ولماذا هي امتدادٌ لمبدأ <see cref="StopWords"/> لا مبدأٌ ثانٍ:</b> «من» و«في»
+    /// و«على» و«ثم» ليست في تلك القائمة لأنها تُعلّم حقولاً، بل لأنها <b>كلماتٌ
+    /// وظيفية</b> — والاسم لا يبتلع كلمةً وظيفية. وأداةُ الشرط وفعلُ الأمر من هذا
+    /// الصنف بعينه. فالعطل لم يكن نقصاً في مبدأٍ بل نقصاً <b>في القائمة على مبدئها</b>.
+    /// </para>
+    /// <para>
+    /// <b>والقياس الذي أوجبها</b>: «سجل سند قبض من شركة المسار الامثل <b>فان لم تجدها
+    /// انشيء لها حسابا</b> ثم سند قبض…» — قرأ العميلَ اسماً من ثلاث عشرة كلمة، فيه شرطٌ
+    /// وفعلُ أمر. والاسم عبارةٌ اسمية: أداةُ شرطٍ أو فعلُ أمرٍ داخله يعني أن الاسم
+    /// انتهى قبل كلمة.
+    /// </para>
+    /// <para>
+    /// <b>وخطرُها مُعلَن ومكشوف لا مطمور:</b> اسمٌ مشروع يحمل «لو» أو «الا» يُقصّ.
+    /// ولذلك <b>لا يُقصّ بصمت</b>: ما سقط يُحمل في
+    /// <see cref="SpokenSlotValue.Dropped"/> ويُعرض بجانب الحقل، فيرى الإنسان القصّة
+    /// الخاطئة بعينه بدل أن يوقّع عليها.
+    /// </para>
+    /// </summary>
+    private static readonly HashSet<string> ClauseBreakers = new(
+        new[]
+        {
+            // أدوات الشرط والاستثناء
+            "ان", "اذا", "فان", "فاذا", "لو", "ولو", "والا", "الا", "وان", "لم", "لما", "متى", "إن",
+            // أفعال الأمر التي تبدأ أمراً ثانياً
+            "انشئ", "انشيء", "انشاء", "سجل", "اصرف", "اضف", "افتح", "حول", "اطلع", "سو", "سوي", "اعمل",
+        }.Select(VoiceText.Fold),
+        StringComparer.Ordinal);
+
+    /// <summary>
+    /// حدودُ <b>الاسم</b> حين لا تكون هناك نيّةٌ مطابَقة — كلماتُ الإيقاف وكواسرُ
+    /// المقاطع معاً. يقرؤها <see cref="ReadCompany"/>، وهي نفسها الأساسُ الذي تبني
+    /// عليه <see cref="Boundaries"/> دلائلَ الشرائح.
+    /// </summary>
+    private static readonly HashSet<string> NameBoundaries =
+        new(StopWords.Concat(ClauseBreakers), StringComparer.Ordinal);
+
     /// <summary>كلمات التاريخ النسبي.</summary>
     private static readonly string TodayWord = VoiceText.Fold("اليوم");
 
@@ -93,10 +132,8 @@ public static class SpokenCommandReader
         }
 
         VoiceReadingOptions reading = options ?? new VoiceReadingOptions();
-        string folded = VoiceText.Fold(transcript);
-        IReadOnlyList<string> words = VoiceText.Words(transcript);
 
-        Result<VoiceIntent> matched = Match(folded, registry, transcript);
+        Result<VoiceIntent> matched = Match(VoiceText.Fold(transcript), registry, transcript);
         if (matched.IsFailure)
         {
             return Result<VoiceResolution>.Failure(matched.Errors);
@@ -109,6 +146,66 @@ public static class SpokenCommandReader
             return Result<VoiceResolution>.Failure(
                 VoiceRefusals.TooManySlots(intent.Slots.Count, SlotLimit));
         }
+
+        return Fill(intent, transcript, reading);
+    }
+
+    /// <summary>
+    /// <b>يقرأ نصّاً في نيّةٍ بعينها — بلا مطابقة.</b>
+    /// <para>
+    /// <b>ولماذا بلا مطابقة، وهذا هو بيت القصيد:</b> حين تقف خطوةٌ لأن شريحةً تنقصها،
+    /// يُسأل الإنسان عنها باسمها فيقول «نقد» أو «خمسة آلاف». <b>وتمريرُ ذلك على
+    /// <see cref="Match"/> كارثة</b>: «خمسة آلاف» لا تحمل عبارةَ إطلاقٍ فتُرفض
+    /// «لم أفهم» وقد فهمت تماماً؛ أو — أسوأ — تحمل كلمةً تُطابق نيّةً أخرى فيُملأ حقلٌ
+    /// في مستندٍ لم يطلبه أحد. فالجواب يُقرأ <b>في النيّة التي سألت وحدها</b>.
+    /// </para>
+    /// <para>
+    /// وما عدا المطابقة فكلُّ شيء كما هو: نفسُ قرّاء الشرائح، ونفسُ الحدود، ونفسُ
+    /// الملخّص، ونفسُ الرمز، ونفسُ حارس الإفشاء. <b>ولا بابَ ثانياً إلى التنفيذ</b> —
+    /// ما يخرج من هنا يمرّ من <see cref="VoiceConfirmationGate"/> كما يمرّ ما يخرج من
+    /// <see cref="Read"/>.
+    /// </para>
+    /// </summary>
+    /// <param name="intent">النيّة التي سألت.</param>
+    /// <param name="transcript">جوابُ الإنسان.</param>
+    /// <param name="options">ما يُحقن كي تكون القراءة حتمية.</param>
+    public static Result<VoiceResolution> ReadInto(
+        VoiceIntent intent,
+        string transcript,
+        VoiceReadingOptions? options = null)
+    {
+        ArgumentNullException.ThrowIfNull(intent);
+
+        if (string.IsNullOrWhiteSpace(transcript))
+        {
+            return Result<VoiceResolution>.Failure(VoiceErrors.TranscriptEmpty);
+        }
+
+        if (transcript.Length > TranscriptLimit)
+        {
+            return Result<VoiceResolution>.Failure(
+                VoiceErrors.TranscriptTooLong(transcript.Length, TranscriptLimit));
+        }
+
+        if (intent.Slots.Count > SlotLimit)
+        {
+            return Result<VoiceResolution>.Failure(
+                VoiceRefusals.TooManySlots(intent.Slots.Count, SlotLimit));
+        }
+
+        return Fill(intent, transcript, options ?? new VoiceReadingOptions());
+    }
+
+    /// <summary>
+    /// يملأ شرائح نيّةٍ من نصّ. <b>مشتركٌ بين <see cref="Read"/> و<see cref="ReadInto"/>
+    /// كي لا يوجد قارئان ينحرفان</b>: الفرق بينهما المطابقةُ وحدها.
+    /// </summary>
+    private static Result<VoiceResolution> Fill(
+        VoiceIntent intent,
+        string transcript,
+        VoiceReadingOptions reading)
+    {
+        IReadOnlyList<string> words = VoiceText.Words(transcript);
 
         List<SpokenSlotValue> values = [];
         List<string> missing = [];
@@ -205,10 +302,14 @@ public static class SpokenCommandReader
         return Result<VoiceIntent>.Success(winners[0]);
     }
 
-    /// <summary>حدودُ المقاطع: كلمات الإيقاف العامّة، ودلائل كل شريحة في هذه النيّة.</summary>
+    /// <summary>
+    /// حدودُ المقاطع: كلماتُ الإيقاف، <b>وكواسرُ المقاطع</b>، ودلائلُ كل شريحة في هذه
+    /// النيّة. وتُستهلك في <see cref="ReadText"/> و<see cref="ReadCode"/> معاً، فالكاسر
+    /// يبلغ الاثنين بإضافةٍ واحدة.
+    /// </summary>
     private static HashSet<string> Boundaries(VoiceIntent intent)
     {
-        HashSet<string> boundaries = new(StopWords, StringComparer.Ordinal);
+        HashSet<string> boundaries = new(NameBoundaries, StringComparer.Ordinal);
 
         foreach (VoiceSlot slot in intent.Slots)
         {
@@ -495,12 +596,16 @@ public static class SpokenCommandReader
         return null;
     }
 
-    /// <summary>نصٌّ حرّ: ما بين الدليل وأول حدّ — كلمةِ إيقاف، أو دليلِ شريحةٍ أخرى، أو عدد.</summary>
+    /// <summary>
+    /// نصٌّ حرّ: ما بين الدليل وأول حدّ — كلمةِ إيقاف، أو <b>كاسرِ مقطع</b>، أو دليلِ
+    /// شريحةٍ أخرى، أو عدد. <b>وما قُصّ عند كاسرٍ يُحمَل ولا يُطرح</b>.
+    /// </summary>
     private static SpokenSlotValue? ReadText(VoiceSlot slot, IReadOnlyList<string> words, HashSet<string> boundaries)
     {
         foreach (int at in CuePositions(slot, words))
         {
             List<string> parts = [];
+            int stop = words.Count;
 
             for (int index = at; index < words.Count; index++)
             {
@@ -508,6 +613,7 @@ public static class SpokenCommandReader
 
                 if (boundaries.Contains(VoiceText.Fold(word)) || VoiceUnits.IsUnit(word) || ArabicSpokenNumber.CanRead(word))
                 {
+                    stop = index;
                     break;
                 }
 
@@ -517,11 +623,47 @@ public static class SpokenCommandReader
             if (parts.Count > 0)
             {
                 string text = string.Join(' ', parts);
-                return new SpokenSlotValue(slot.Name, text, null, text, FieldProvenance.Spoken);
+                return new SpokenSlotValue(
+                    slot.Name, text, null, text, FieldProvenance.Spoken, DroppedTail(words, stop, boundaries));
             }
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// <b>ما كان سيُبتلَع لولا كواسرُ المقاطع</b> — يُحسب حين يقع التوقّف على كاسر،
+    /// ويمشي بالقاعدة <b>القديمة</b> وحدها حتى أول حدٍّ ليس كاسراً.
+    /// <para>
+    /// وهو الفرقُ بعينه بين القارئ قبل الإصلاح وبعده، معروضاً على الشاشة بدل أن
+    /// يُستنتَج من غيابه.
+    /// </para>
+    /// </summary>
+    private static string? DroppedTail(IReadOnlyList<string> words, int stop, HashSet<string> boundaries)
+    {
+        if (stop >= words.Count || !ClauseBreakers.Contains(VoiceText.Fold(words[stop])))
+        {
+            return null;
+        }
+
+        List<string> tail = [];
+
+        for (int index = stop; index < words.Count; index++)
+        {
+            string word = words[index];
+            string folded = VoiceText.Fold(word);
+
+            if ((boundaries.Contains(folded) && !ClauseBreakers.Contains(folded))
+                || VoiceUnits.IsUnit(word)
+                || ArabicSpokenNumber.CanRead(word))
+            {
+                break;
+            }
+
+            tail.Add(word);
+        }
+
+        return tail.Count == 0 ? null : string.Join(' ', tail);
     }
 
     /// <summary>
@@ -556,7 +698,9 @@ public static class SpokenCommandReader
 
                 for (int at = index + parts.Count; at < words.Count; at++)
                 {
-                    if (StopWords.Contains(VoiceText.Fold(words[at])) || ArabicSpokenNumber.CanRead(words[at]))
+                    // ‏**واسمُ المنشأة يُقصّ بالمجموعة نفسها**: هذا الماشي لا يقرأ
+                    // <c>Boundaries</c> لأنه يعمل قبل أن تُعرف الشريحة — فيقرأ أساسَها.
+                    if (NameBoundaries.Contains(VoiceText.Fold(words[at])) || ArabicSpokenNumber.CanRead(words[at]))
                     {
                         break;
                     }

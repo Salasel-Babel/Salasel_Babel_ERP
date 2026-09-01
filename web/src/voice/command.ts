@@ -26,6 +26,12 @@ export interface SpokenSlotValue {
   readonly unit?: string;
   /** المقطع من الكلام الذي أنتج القيمة — يُعرض كي يرى الإنسان **لماذا**. */
   readonly heard: string;
+  /**
+   * **الذيل الذي قُصّ عند كاسر مقطع** — ما كان قارئٌ بلا كواسرِ مقاطع سيبتلعه هنا.
+   * ويُعرض بجانب الحقل: القصّ الصامت أسوأ من القصّ الخاطئ، فالخاطئُ المعروض يُصحَّح
+   * والصامت يُوقَّع عليه.
+   */
+  readonly dropped?: string;
   readonly provenance: Provenance;
 }
 
@@ -122,6 +128,24 @@ const STOP_WORDS = new Set(
   ].map(fold)
 );
 
+/**
+ * **كواسرُ المقاطع — أدواتُ الشرط وأفعالُ الأمر.** نظيرُ `ClauseBreakers` في الخادم
+ * كلمةً بكلمة.
+ *
+ * وهي امتدادٌ لمبدأ `STOP_WORDS` لا مبدأٌ ثانٍ: «من» و«في» و«ثم» هناك لأنها **كلماتٌ
+ * وظيفية** لا لأنها تُعلّم حقولاً، وأداةُ الشرط وفعلُ الأمر من الصنف نفسه. والاسم
+ * عبارةٌ اسمية: أداةُ شرطٍ داخله تعني أن الاسم انتهى قبل كلمة.
+ */
+const CLAUSE_BREAKERS = new Set(
+  [
+    "ان", "اذا", "فان", "فاذا", "لو", "ولو", "والا", "الا", "وان", "لم", "لما", "متى", "إن",
+    "انشئ", "انشيء", "انشاء", "سجل", "اصرف", "اضف", "افتح", "حول", "اطلع", "سو", "سوي", "اعمل",
+  ].map(fold)
+);
+
+/** حدودُ الاسم حين لا نيّةَ مطابَقة — الإيقافُ والكواسرُ معاً. يقرؤها `readCompany`. */
+const NAME_BOUNDARIES = new Set([...STOP_WORDS, ...CLAUSE_BREAKERS]);
+
 const PERCENT_WORDS = new Set(["بالمئة", "بالمائة", "المئة", "المائة", "٪", "%"].map(fold));
 const CONNECTORS = new Set(["رقم", "برقم", "رقمها", "هو", "هي"].map(fold));
 const TODAY_WORD = fold("اليوم");
@@ -198,7 +222,7 @@ export function matchIntent(transcript: string): VoiceReading | VoiceIntent {
 /* ── الشرائح ────────────────────────────────────────────────────────────── */
 
 function boundariesOf(intent: VoiceIntent): Set<string> {
-  const out = new Set(STOP_WORDS);
+  const out = new Set(NAME_BOUNDARIES);
   for (const slot of intent.slots) {
     for (const cue of slot.cues) for (const word of words(cue)) out.add(fold(word));
   }
@@ -355,17 +379,42 @@ function readCode(slot: VoiceSlot, tokens: readonly string[], boundaries: Set<st
   return null;
 }
 
+/**
+ * **ما كان سيُبتلَع لولا الكواسر** — يُحسب حين يقع التوقّف على كاسر، ويمشي بالقاعدة
+ * **القديمة** وحدها حتى أول حدٍّ ليس كاسراً. وهو الفرقُ بين القارئ قبل الإصلاح وبعده،
+ * معروضاً بدل أن يُستنتَج من غيابه.
+ */
+function droppedTail(tokens: readonly string[], stop: number, boundaries: Set<string>): string | undefined {
+  if (stop >= tokens.length || !CLAUSE_BREAKERS.has(fold(tokens[stop] ?? ""))) return undefined;
+
+  const tail: string[] = [];
+  for (let index = stop; index < tokens.length; index++) {
+    const word = tokens[index] ?? "";
+    const folded = fold(word);
+    if ((boundaries.has(folded) && !CLAUSE_BREAKERS.has(folded)) || unitCodeOf(word) || isNumberish(word)) break;
+    tail.push(word);
+  }
+  return tail.length === 0 ? undefined : tail.join(" ");
+}
+
 function readText(slot: VoiceSlot, tokens: readonly string[], boundaries: Set<string>): SpokenSlotValue | null {
   for (const at of cuePositions(slot, tokens)) {
     const parts: string[] = [];
+    let stop = tokens.length;
     for (let index = at; index < tokens.length; index++) {
       const word = tokens[index] ?? "";
-      if (boundaries.has(fold(word)) || unitCodeOf(word) || isNumberish(word)) break;
+      if (boundaries.has(fold(word)) || unitCodeOf(word) || isNumberish(word)) {
+        stop = index;
+        break;
+      }
       parts.push(word);
     }
     if (parts.length > 0) {
       const text = parts.join(" ");
-      return { name: slot.name, text, heard: text, provenance: "spoken" };
+      const dropped = droppedTail(tokens, stop, boundaries);
+      return dropped === undefined
+        ? { name: slot.name, text, heard: text, provenance: "spoken" }
+        : { name: slot.name, text, heard: text, dropped, provenance: "spoken" };
     }
   }
   return null;
@@ -387,7 +436,7 @@ function readCompany(tokens: readonly string[]): string | null {
       const name: string[] = [];
       for (let at = index + parts.length; at < tokens.length; at++) {
         const word = tokens[at] ?? "";
-        if (STOP_WORDS.has(fold(word)) || isNumberish(word)) break;
+        if (NAME_BOUNDARIES.has(fold(word)) || isNumberish(word)) break;
         name.push(word);
       }
       if (name.length > 0) return name.join(" ");
@@ -452,7 +501,39 @@ export function readCommand(transcript: string, options: VoiceReadingOptions = {
   const matched = matchIntent(transcript);
   if ("ok" in matched) return matched;
 
-  const intent = matched;
+  return fillIntent(matched, transcript, options);
+}
+
+/**
+ * **يقرأ نصّاً في نيّةٍ بعينها — بلا مطابقة.** نظير `SpokenCommandReader.ReadInto`.
+ *
+ * ولماذا بلا مطابقة، وهذا هو بيت القصيد: حين تقف خطوةٌ لأن شريحةً تنقصها، يُسأل
+ * الإنسان عنها باسمها فيقول «نقد» أو «خمسة آلاف». **وتمريرُ ذلك على `matchIntent`
+ * كارثة**: إمّا يُرفض «لم أفهم» وقد فُهم تماماً، أو — أسوأ — يُطابق نيّةً أخرى فيُملأ
+ * حقلٌ في مستندٍ لم يطلبه أحد. فالجواب يُقرأ **في النيّة التي سألت وحدها**.
+ *
+ * وما عدا المطابقة فكلُّ شيء كما هو: نفسُ القرّاء، ونفسُ الحدود، ونفسُ الرمز، ونفسُ
+ * حارس الإفشاء. **ولا بابَ ثانياً إلى التنفيذ** — ما يخرج من هنا يمرّ من `authorise`.
+ * @param intent النيّة التي سألت.
+ * @param transcript جوابُ الإنسان.
+ * @param options ما يُحقن كي تكون القراءة حتمية.
+ */
+export function readCommandInto(
+  intent: VoiceIntent,
+  transcript: string,
+  options: VoiceReadingOptions = {}
+): VoiceReading {
+  if (!transcript || transcript.trim().length === 0) {
+    return { ok: false, codes: ["ai.voice.transcript_empty"] };
+  }
+  if (transcript.length > TRANSCRIPT_LIMIT) {
+    return { ok: false, codes: ["ai.voice.transcript_too_long"] };
+  }
+  return fillIntent(intent, transcript, options);
+}
+
+/** يملأ شرائح نيّةٍ من نصّ — **مشترَكٌ بين القراءتين كي لا يوجد قارئان ينحرفان**. */
+function fillIntent(intent: VoiceIntent, transcript: string, options: VoiceReadingOptions): VoiceReading {
   const tokens = words(transcript);
   const boundaries = boundariesOf(intent);
   const slots: SpokenSlotValue[] = [];

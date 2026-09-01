@@ -52,11 +52,16 @@ internal sealed record VectorSlot(
 /// <param name="Intent">النيّة المتوقَّعة.</param>
 /// <param name="Slots">الشرائح المتوقَّعة بقيمها النصّية.</param>
 /// <param name="Units">وحدات الشرائح الكمّية.</param>
+/// <param name="Dropped">
+/// <b>ما قُصّ عند كاسر مقطع</b> لكل شريحة. يُقاس كي لا يكون القصّ صامتاً: متجهٌ يقول
+/// «قُصّ هذا بعينه» يُحمِّر إن قُصّ غيرُه أو إن لم يُقصّ شيء.
+/// </param>
 internal sealed record VectorUtterance(
     string Transcript,
     string Intent,
     IReadOnlyDictionary<string, string> Slots,
-    IReadOnlyDictionary<string, string>? Units);
+    IReadOnlyDictionary<string, string>? Units,
+    IReadOnlyDictionary<string, string>? Dropped = null);
 
 /// <summary>جملةٌ تُفهَم نيّتُها وتنقصها شريحة.</summary>
 /// <param name="Transcript">التفريغ.</param>
@@ -69,11 +74,18 @@ internal sealed record VectorUtterance(
 /// في تقريرٍ عمريّ ليس زينةً بل هو تاريخ القطع، واختراعُه يُنتج تقريراً صحيح الشكل
 /// عن يومٍ لم يُطلَب.
 /// </param>
+/// <param name="Slots">
+/// قيمُ الشرائح التي <b>امتلأت</b> رغم النقص — فجملةٌ ينقصها حقلٌ واحد يجب أن تقرأ
+/// بقيّتَها صحيحةً، وإلّا كان النقصُ يخفي خطأً في الباقي.
+/// </param>
+/// <param name="Dropped">ما قُصّ عند كاسر مقطع لكل شريحة.</param>
 internal sealed record VectorMissing(
     string Transcript,
     string Intent,
     IReadOnlyList<string> Missing,
     IReadOnlyList<string>? Faults,
+    IReadOnlyDictionary<string, string>? Slots = null,
+    IReadOnlyDictionary<string, string>? Dropped = null,
     bool WithoutToday = false);
 
 /// <summary>جملةٌ تُرفض قراءتُها أصلاً.</summary>
@@ -81,11 +93,49 @@ internal sealed record VectorMissing(
 /// <param name="Code">رمز الرفض.</param>
 internal sealed record VectorRefusal(string Transcript, string Code);
 
+/// <summary>ربطُ شريحةٍ كما يصفه ملفّ المتجهات.</summary>
+/// <param name="SlotName">الشريحة.</param>
+/// <param name="Source">مصدر القيمة.</param>
+internal sealed record VectorBinding(string SlotName, string Source);
+
+/// <summary>خطوةٌ كما يصفها ملفّ المتجهات.</summary>
+/// <param name="StepId">معرّفها.</param>
+/// <param name="IntentId">النيّة التي تسمّيها — <b>ولا عمليةَ هنا بحال</b>.</param>
+/// <param name="Condition">شرطها.</param>
+/// <param name="PurposeAr">غرضها بالعربية.</param>
+/// <param name="Bindings">روابط شرائحها.</param>
+/// <param name="ScreenAsksForAr">ما تطلبه شاشتُها ولا يطلبه الصوت.</param>
+internal sealed record VectorPlanStep(
+    string StepId,
+    string IntentId,
+    string Condition,
+    string PurposeAr,
+    IReadOnlyList<VectorBinding> Bindings,
+    IReadOnlyList<string> ScreenAsksForAr);
+
+/// <summary>خطّةٌ كما يصفها ملفّ المتجهات.</summary>
+/// <param name="Id">المعرّف.</param>
+/// <param name="Section">القسم.</param>
+/// <param name="Module">الوحدة المالكة.</param>
+/// <param name="NameAr">الاسم العربي — وهو السجلّ لا ترجمته.</param>
+/// <param name="TriggerPhrases">الطلب.</param>
+/// <param name="ConditionPhrases">الشرط.</param>
+/// <param name="Steps">الخطوات.</param>
+internal sealed record VectorPlan(
+    string Id,
+    string Section,
+    string Module,
+    string NameAr,
+    IReadOnlyList<string> TriggerPhrases,
+    IReadOnlyList<string> ConditionPhrases,
+    IReadOnlyList<VectorPlanStep> Steps);
+
 /// <summary>ملفّ المتجهات كاملاً.</summary>
 /// <param name="Today">تاريخ اليوم المُحقَن.</param>
 /// <param name="StatutoryTaxRate">النسبة النظامية.</param>
 /// <param name="CompanyNameAr">اسم المنشأة المفتوحة.</param>
 /// <param name="Intents">النيّات.</param>
+/// <param name="Plans">الخطط.</param>
 /// <param name="Utterances">جمل تُقرأ.</param>
 /// <param name="Missing">جمل ينقصها شيء.</param>
 /// <param name="Refusals">جمل تُرفض.</param>
@@ -94,6 +144,7 @@ internal sealed record VoiceVectorFile(
     string StatutoryTaxRate,
     string CompanyNameAr,
     IReadOnlyList<VectorIntent> Intents,
+    IReadOnlyList<VectorPlan> Plans,
     IReadOnlyList<VectorUtterance> Utterances,
     IReadOnlyList<VectorMissing> Missing,
     IReadOnlyList<VectorRefusal> Refusals);

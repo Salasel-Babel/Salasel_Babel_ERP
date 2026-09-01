@@ -50,3 +50,35 @@ export { VoiceConsole } from "./VoiceConsole";
 export type { VoiceConsoleProps } from "./VoiceConsole";
 export { handoffOf, stashVoiceDraft, takeVoiceDraft, peekVoiceDraft, dropVoiceDraft, subscribeVoiceDraft } from "./handoff";
 export type { VoiceDraftHandoff, VoiceDraftField } from "./handoff";
+
+/* ── الخطّة المنطوقة: عدّةُ خطواتٍ من جملةٍ واحدة، ولكل خطوةٍ تأكيدُها ───── */
+export { VOICE_PLANS, plansOf, planById } from "./catalogue";
+export type {
+  VoicePlan,
+  VoicePlanCondition,
+  VoicePlanStep,
+  VoiceSlotBinding,
+  VoiceSlotSource,
+} from "./catalogue";
+export { readCommandInto } from "./command";
+export {
+  abandonCurrentStep,
+  answerCondition,
+  answerCurrentStep,
+  completeCurrentStep,
+  confirmCurrentStep,
+  currentStep,
+  filledSlots,
+  matchPlan,
+  numeral,
+  planLedgerArabic,
+  planReadbackArabic,
+  planStepPrefix,
+  planStepSentence,
+  planUncertainAr,
+  readCurrentStep,
+  startPlan,
+} from "./plan";
+export type { VoicePlanRun, VoicePlanStepRun, VoicePlanStepState } from "./plan";
+export { VoicePlanPanel } from "./VoicePlanPanel";
+export type { VoicePlanPanelProps } from "./VoicePlanPanel";

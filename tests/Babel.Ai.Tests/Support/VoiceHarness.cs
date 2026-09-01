@@ -32,8 +32,17 @@ internal static class VoiceHarness
         new RealEstate.Voice.RealEstateVoiceIntents(),
     ];
 
+    /// <summary>مجموعات الخطط كما تُسجّلها الوحدات — المبيعات وحدها اليوم.</summary>
+    public static IReadOnlyList<IVoicePlanCatalogue> PlanCatalogues { get; } =
+    [
+        new Sales.Voice.SalesVoicePlans(),
+    ];
+
     /// <summary>السجلّ المبنيّ — يسقط الإثبات إن رفض البناء، ويسمّي السبب.</summary>
     public static VoiceIntentRegistry Registry { get; } = BuildOrThrow();
+
+    /// <summary>سجلّ الخطط المبنيّ — على السجلّ المكتمل لا أثناء جمعه.</summary>
+    public static VoicePlanRegistry Plans { get; } = BuildPlansOrThrow();
 
     /// <summary>تاريخٌ مُحقَن كي تكون القراءة حتمية. لا ساعةَ جهاز في أي إثبات.</summary>
     public const string Today = "2026-08-31";
@@ -46,6 +55,16 @@ internal static class VoiceHarness
         Guid.Parse("0d0e2b7a-9c1f-4a55-9d2e-6f8a1b3c5d70"),
         "سلاسل بابل",
         new HashSet<string>(Registry.Intents.Select(static intent => intent.Id), StringComparer.Ordinal));
+
+    private static VoicePlanRegistry BuildPlansOrThrow()
+    {
+        Result<VoicePlanRegistry> built = VoicePlanRegistry.Build(PlanCatalogues, Registry);
+
+        return built.IsSuccess
+            ? built.Value
+            : throw new InvalidOperationException(
+                "سجلّ الخطط لم يُبنَ: " + string.Join(" · ", built.Errors.Select(static error => error.MessageAr)));
+    }
 
     private static VoiceIntentRegistry BuildOrThrow()
     {

@@ -77,6 +77,44 @@
       ]
     },
     {
+      "id": "accounting.customer.add",
+      "section": "Accounting",
+      "module": "Sales",
+      "kind": "StateChange",
+      "status": "Published",
+      "ledgerEffect": "None",
+      "eventCode": null,
+      "operationId": "addCustomer",
+      "requiresConfirmation": true,
+      "readsPersonalData": false,
+      "nameAr": "إنشاء عميل",
+      "phrases": [
+        "انشئ عميل",
+        "انشاء عميل",
+        "اضف عميل",
+        "عميل جديد",
+        "افتح حساب عميل",
+        "سوي لي عميل"
+      ],
+      "slots": [
+        {
+          "name": "name",
+          "kind": "Text",
+          "nameAr": "اسم العميل",
+          "required": true,
+          "cues": [
+            "باسم",
+            "اسمه",
+            "للعميل",
+            "العميل",
+            "عميل",
+            "من"
+          ],
+          "choices": []
+        }
+      ]
+    },
+    {
       "id": "accounting.customer_balance.query",
       "section": "Accounting",
       "module": "Sales",
@@ -2624,6 +2662,74 @@
       ]
     }
   ],
+  "plans": [
+    {
+      "id": "accounting.customer_receipt.with_new_customer",
+      "section": "Accounting",
+      "module": "Sales",
+      "nameAr": "سند قبض من عميل — مع إنشائه إن لم يوجد",
+      "triggerPhrases": [
+        "سند قبض",
+        "سجل سند قبض",
+        "قبضت من العميل",
+        "استلمت من العميل",
+        "تحصيل من عميل"
+      ],
+      "conditionPhrases": [
+        "فان لم تجدها",
+        "فان لم تجده",
+        "ان لم تجدها",
+        "ان لم تجده",
+        "وان لم يكن العميل موجودا",
+        "والا انشئ",
+        "فان لم يكن موجودا"
+      ],
+      "steps": [
+        {
+          "stepId": "create-customer",
+          "intentId": "accounting.customer.add",
+          "condition": "WhenHumanFindsNothing",
+          "purposeAr": "إن لم تجد العميل، تُفتح شاشة العملاء باسمه مملوءاً.",
+          "bindings": [
+            {
+              "slotName": "name",
+              "source": "FromUtterance"
+            }
+          ],
+          "screenAsksForAr": [
+            "رمز العميل",
+            "حدّ الائتمان",
+            "مهلة السداد"
+          ]
+        },
+        {
+          "stepId": "draft-receipt",
+          "intentId": "accounting.customer_receipt.record",
+          "condition": "Always",
+          "purposeAr": "ثم مسوّدة سند القبض — تُراجَع على الشاشة، ويُرحّلها إنسانٌ بيده.",
+          "bindings": [
+            {
+              "slotName": "customer",
+              "source": "FromUtterance"
+            },
+            {
+              "slotName": "amount",
+              "source": "FromUtterance"
+            },
+            {
+              "slotName": "receivedOn",
+              "source": "FromUtterance"
+            },
+            {
+              "slotName": "method",
+              "source": "AskedOfHuman"
+            }
+          ],
+          "screenAsksForAr": []
+        }
+      ]
+    }
+  ],
   "utterances": [
     {
       "transcript": "سجل فاتورة مصروف من مؤسسة النور بمبلغ ألف وخمسمئة ريال وضريبة خمسة عشر بالمئة رقم 0587 اليوم",
@@ -3053,6 +3159,38 @@
         "totalRent": "60000",
         "startsOn": "2026-09-01"
       }
+    },
+    {
+      "note_ar": "الجملة المركّبة نفسها وقد قيلت طريقة القبض — تُقرأ كاملة، والذيل المقصوص يُحمل ولا يُطرح.",
+      "transcript": "سجل سند قبض من شركة المسار الامثل فان لم تجدها انشيء لها حسابا ثم سند قبض نقد بقيمة 20000 ريال بتاريخ اليوم",
+      "intent": "accounting.customer_receipt.record",
+      "slots": {
+        "customer": "شركة المسار الامثل",
+        "amount": "20000",
+        "method": "نقد",
+        "receivedOn": "2026-08-31"
+      },
+      "dropped": {
+        "customer": "فان لم تجدها انشيء لها حسابا"
+      }
+    },
+    {
+      "note_ar": "متجه سالب: اسمٌ مشروع من أربع كلمات لا يُقصّ. «الاتحاد» تبدأ بحروف «الا» الكاسرة ولا تُطابقها — الكواسر تُطابَق كلماتٍ كاملة لا بداياتٍ، ولولا ذلك لصار الاسم «شركة» وحدها.",
+      "transcript": "سجل سند قبض من شركة الاتحاد الوطني للمقاولات نقد بقيمة 5000 ريال بتاريخ اليوم",
+      "intent": "accounting.customer_receipt.record",
+      "slots": {
+        "customer": "شركة الاتحاد الوطني للمقاولات",
+        "amount": "5000",
+        "method": "نقد",
+        "receivedOn": "2026-08-31"
+      }
+    },
+    {
+      "transcript": "انشئ عميل باسم شركة المسار الامثل",
+      "intent": "accounting.customer.add",
+      "slots": {
+        "name": "شركة المسار الامثل"
+      }
     }
   ],
   "missing": [
@@ -3368,6 +3506,30 @@
       "intent": "realestate.lease_contract.draft",
       "missing": [
         "lessee"
+      ]
+    },
+    {
+      "note_ar": "جملة المالك كما نطقها على الخادم الحيّ. الشرط لا يدخل الاسم، والنقص يبقى نقصاً — الخطة لا تُعفي من شريحة.",
+      "transcript": "سجل سند قبض من شركة المسار الامثل فان لم تجدها انشيء لها حسابا ثم سند قبض بقيمة 20000 ريال سعودي بتاريخ اليوم طبعا",
+      "intent": "accounting.customer_receipt.record",
+      "missing": [
+        "method"
+      ],
+      "slots": {
+        "customer": "شركة المسار الامثل",
+        "amount": "20000",
+        "receivedOn": "2026-08-31"
+      },
+      "dropped": {
+        "customer": "فان لم تجدها انشيء لها حسابا"
+      }
+    },
+    {
+      "note_ar": "إنشاءُ عميلٍ بلا اسم: يُسمّى الناقص ولا يُخترَع اسم. ولا يُقرأ نعتٌ اسماً — «جديد» بعد «عميل» ليست اسم شركة.",
+      "transcript": "اضف عميل",
+      "intent": "accounting.customer.add",
+      "missing": [
+        "name"
       ]
     }
   ],

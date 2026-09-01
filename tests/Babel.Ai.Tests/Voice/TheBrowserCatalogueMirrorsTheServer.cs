@@ -28,6 +28,7 @@ public sealed class TheBrowserCatalogueMirrorsTheServer
 {
     private const string CataloguePath = "web/src/voice/catalogue.ts";
     private const string Anchor = "export const VOICE_INTENTS: readonly VoiceIntent[] = ";
+    private const string PlanAnchor = "export const VOICE_PLANS: readonly VoicePlan[] = ";
 
     private static readonly JsonSerializerOptions Options = new() { PropertyNameCaseInsensitive = true };
 
@@ -36,22 +37,35 @@ public sealed class TheBrowserCatalogueMirrorsTheServer
     /// Node لقراءة الملفّ يجعل الحارس يعتمد على تثبيت حزم، فيُتخطّى في البوّابة التي
     /// لا تُثبّت — وهي البوّابة التي تُشغَّل أكثر.
     /// </summary>
-    private static IReadOnlyList<VectorIntent> Mirror()
+    private static IReadOnlyList<VectorIntent> Mirror() =>
+        Extract<VectorIntent>(Anchor, "النيّات");
+
+    /// <summary>
+    /// <b>ومرآةُ الخطط تُقاس بالمرساة نفسها</b>: الخطط نسخةٌ ثانية من بيانات، ونسخةٌ
+    /// ثانية بلا حارس تنحرف — وهو بعينه العطل الذي وُجد هذا الملفّ ليمنعه.
+    /// </summary>
+    private static IReadOnlyList<VectorPlan> PlanMirror() =>
+        Extract<VectorPlan>(PlanAnchor, "الخطط");
+
+    /// <summary>
+    /// يستخرج مصفوفةً من ملفّ TypeScript. <b>والاستخراج نصّي بقصد</b>: بناءُ Node
+    /// لقراءة الملفّ يجعل الحارس يعتمد على تثبيت حزم، فيُتخطّى في البوّابة التي لا
+    /// تُثبّت — وهي البوّابة التي تُشغَّل أكثر.
+    /// </summary>
+    private static IReadOnlyList<T> Extract<T>(string anchor, string whatAr)
     {
         string source = File.ReadAllText(RepositoryRoot.At(CataloguePath));
 
-        int start = source.IndexOf(Anchor, StringComparison.Ordinal);
-        Assert.True(start >= 0, "المرساة «" + Anchor + "» غير موجودة في " + CataloguePath);
+        int start = source.IndexOf(anchor, StringComparison.Ordinal);
+        Assert.True(start >= 0, "المرساة «" + anchor + "» غير موجودة في " + CataloguePath);
 
-        // ‏**من بعد المرساة لا من أوّلها**: المرساة نفسها تحمل «VoiceIntent[]».
-        int open = source.IndexOf('[', start + Anchor.Length);
-        int close = source.LastIndexOf("];", StringComparison.Ordinal);
-        Assert.True(open >= 0 && close > open, "مصفوفة النيّات غير مغلقة في " + CataloguePath);
+        // ‏**من بعد المرساة لا من أوّلها**: المرساة نفسها تحمل «[]».
+        int open = source.IndexOf('[', start + anchor.Length);
+        int close = source.IndexOf("\n  ];", open, StringComparison.Ordinal) + 4;
+        Assert.True(open >= 0 && close > open, "مصفوفة " + whatAr + " غير مغلقة في " + CataloguePath);
 
-        string json = source[open..(close + 1)];
-
-        return JsonSerializer.Deserialize<IReadOnlyList<VectorIntent>>(json, Options)
-            ?? throw new InvalidOperationException("مصفوفة النيّات في المتصفّح لا تُقرأ.");
+        return JsonSerializer.Deserialize<IReadOnlyList<T>>(source[open..close], Options)
+            ?? throw new InvalidOperationException("مصفوفة " + whatAr + " في المتصفّح لا تُقرأ.");
     }
 
     [Fact]
@@ -136,6 +150,70 @@ public sealed class TheBrowserCatalogueMirrorsTheServer
         }
 
         Assert.True(checked_ >= 40, "العمليات المُلتقَطة من الواجهة: " + checked_.ToString(System.Globalization.CultureInfo.InvariantCulture));
+    }
+
+    [Fact]
+    public void مرآة_الخطط_ليست_ضامرة()
+    {
+        // حارس لا فراغ: استخراجٌ توقّف عن المطابقة يجعل كل ما تحته يمرّ على مصفوفة فارغة.
+        Assert.NotEmpty(PlanMirror());
+        Assert.Equal(VoiceHarness.Plans.Count, PlanMirror().Count);
+    }
+
+    [Fact]
+    public void كل_خطة_في_الخادم_لها_نظير_مطابق_في_المتصفح()
+    {
+        IReadOnlyList<VectorPlan> mirror = PlanMirror();
+
+        Assert.Equal(
+            VoiceHarness.Plans.Plans.Select(static plan => plan.Id),
+            mirror.Select(static plan => plan.Id));
+
+        foreach (VectorPlan mirrored in mirror)
+        {
+            Contracts.Voice.VoicePlan? plan = VoiceHarness.Plans.Find(mirrored.Id);
+            Assert.NotNull(plan);
+
+            Assert.Equal(plan.Section.ToString(), mirrored.Section);
+            Assert.Equal(plan.Module.ToString(), mirrored.Module);
+            Assert.Equal(plan.NameAr, mirrored.NameAr);
+            Assert.Equal(plan.TriggerPhrases, mirrored.TriggerPhrases);
+            Assert.Equal(plan.ConditionPhrases, mirrored.ConditionPhrases);
+
+            Assert.Equal(
+                plan.Steps.Select(static step => step.StepId),
+                mirrored.Steps.Select(static step => step.StepId));
+
+            for (int index = 0; index < plan.Steps.Count; index++)
+            {
+                Contracts.Voice.VoicePlanStep step = plan.Steps[index];
+                VectorPlanStep mirroredStep = mirrored.Steps[index];
+
+                // ‏**والنيّة تُطابَق حرفاً**: مرآةٌ تحمل نيّةً غير التي أعلنتها الوحدة
+                // تُنشئ مستنداً آخر — وهي الخانة الوحيدة التي تقرّر ما تبلغه الخطوة.
+                Assert.Equal(step.IntentId, mirroredStep.IntentId);
+                Assert.Equal(step.Condition.ToString(), mirroredStep.Condition);
+                Assert.Equal(step.PurposeAr, mirroredStep.PurposeAr);
+                Assert.Equal(step.ScreenAsksForAr, mirroredStep.ScreenAsksForAr);
+                Assert.Equal(
+                    step.Bindings.Select(static binding => binding.SlotName + "=" + binding.Source),
+                    mirroredStep.Bindings.Select(static binding => binding.SlotName + "=" + binding.Source));
+            }
+        }
+    }
+
+    [Fact]
+    public void لا_اسم_عملية_واحد_في_بيانات_الخطط_في_المتصفح()
+    {
+        // ‏**الخطوة تسمّي نيّةً ولا تسمّي باباً** — ولا خانةَ في بياناتها لاسم عملية
+        // أصلاً. فيُقاس غيابُ الخانة نفسها لا حسنُ النيّة في ملئها.
+        string source = File.ReadAllText(RepositoryRoot.At(CataloguePath));
+        int start = source.IndexOf(PlanAnchor, StringComparison.Ordinal);
+        int close = source.IndexOf("\n  ];", start, StringComparison.Ordinal);
+        string plans = source[start..close];
+
+        Assert.DoesNotContain("operationId", plans, StringComparison.Ordinal);
+        Assert.DoesNotContain("eventCode", plans, StringComparison.Ordinal);
     }
 
     [Fact]

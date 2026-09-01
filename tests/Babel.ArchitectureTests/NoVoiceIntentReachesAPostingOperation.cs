@@ -48,6 +48,21 @@ public sealed partial class NoVoiceIntentReachesAPostingOperation
     /// <summary>السجلّ كما يبنيه الجذر التركيبي — من الوحدات السبع لا من نيّاتٍ مُصطنَعة.</summary>
     private static VoiceIntentRegistry Registry { get; } = Build();
 
+    /// <summary>سجلّ الخطط كما يبنيه الجذر التركيبي — على السجلّ المكتمل.</summary>
+    private static VoicePlanRegistry Plans { get; } = BuildPlans();
+
+    private static VoicePlanRegistry BuildPlans()
+    {
+        IVoicePlanCatalogue[] catalogues = [new Babel.Sales.Voice.SalesVoicePlans()];
+
+        Result<VoicePlanRegistry> built = VoicePlanRegistry.Build(catalogues, Registry);
+
+        return built.IsSuccess
+            ? built.Value
+            : throw new InvalidOperationException(
+                "سجلّ الخطط لم يُبنَ: " + string.Join(" · ", built.Errors.Select(static error => error.MessageAr)));
+    }
+
     private static VoiceIntentRegistry Build()
     {
         IVoiceIntentCatalogue[] catalogues =
@@ -206,6 +221,69 @@ public sealed partial class NoVoiceIntentReachesAPostingOperation
                 PostingSegment().IsMatch(text),
                 Path.GetFileName(file) + " يحمل مقطع «/posting» — وهو بابُ الترحيل بعينه.");
         }
+    }
+
+    [Fact]
+    public void كل_خطوةٍ_في_كل_خطة_تسمي_نيةً_منشورة_في_السجل()
+    {
+        // ‏**والخطّة لا تملك أن تسمّي باباً.** خطوتُها تحمل <b>معرّف نيّة</b> ولا تحمل
+        // معرّف عملية — لا حقلَ لذلك في نوعها أصلاً. فالعمليةُ تُقرأ من النيّة المُحلّاة،
+        // وكلُّ نيّةٍ في السجلّ قد اجتازت حارسَ العمليات عند البناء. ولا شيء يُهرَّب،
+        // لأن الطريق الوحيد إلى بابٍ يمرّ من نيّةٍ مُحرَّسة.
+        Dictionary<string, (string Path, string Method)> operations = Operations();
+        int steps = 0;
+
+        Assert.True(Plans.Count >= 1, "الخطط المقروءة: " + Count(Plans.Count));
+
+        foreach (VoicePlan plan in Plans.Plans)
+        {
+            Assert.NotEmpty(plan.Steps);
+
+            foreach (VoicePlanStep step in plan.Steps)
+            {
+                steps++;
+
+                VoiceIntent? intent = Registry.Find(step.IntentId);
+                Assert.True(
+                    intent is not null,
+                    "الخطوة «" + step.StepId + "» في الخطّة «" + plan.Id + "» تسمّي نيّةً ليست في السجلّ.");
+
+                Assert.Equal(VoiceIntentStatus.Published, intent!.Status);
+                Assert.Null(VoiceOperationGuard.Refuse(intent.OperationId));
+
+                (string Path, string Method) operation = operations[intent.OperationId!];
+
+                Assert.False(
+                    operation.Path.EndsWith("/posting", StringComparison.Ordinal),
+                    "الخطّة «" + plan.Id + "» تبلغ بابَ ترحيل عبر خطوتها «" + step.StepId + "».");
+            }
+        }
+
+        Assert.True(steps >= 2, "خطوات الخطط المقيسة: " + Count(steps));
+    }
+
+    [Fact]
+    public void خطةٌ_لا_تحمل_أكثر_من_مستندٍ_واحدٍ_يُرحَّل()
+    {
+        // ‏**عطلُ «عدّة نعم»**: الخطّة طريقةٌ للحصول على عدّة تأكيداتٍ من إنسانٍ واحد
+        // بثمنٍ رخيص، ومن قال «نعم» مرّتين يقولها الثالثة بلا أن يقرأ. فبوابةُ التأكيد
+        // تبقى لكل خطوة، <b>ويُقصَر عدد المستندات المرحَّلة في الخطّة على واحد</b>:
+        // خطّةٌ تُنشئ مسوّدتين تُرحَّلان دفعةٌ، والدفعةُ المؤكَّدة بالصوت هي العطل بعينه.
+        int measured = 0;
+
+        foreach (VoicePlan plan in Plans.Plans)
+        {
+            measured++;
+
+            int posting = plan.Steps.Count(step =>
+                Registry.Find(step.IntentId)?.LedgerEffect == VoiceLedgerEffect.Posts);
+
+            Assert.True(
+                posting <= VoicePlanGuard.PostingStepLimit,
+                "الخطّة «" + plan.Id + "» تحمل " + Count(posting) + " مستندات تُرحَّل.");
+        }
+
+        Assert.True(measured >= 1, "الخطط المقيسة: " + Count(measured));
     }
 
     [Fact]

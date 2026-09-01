@@ -186,7 +186,7 @@ export function startPlan(plan: VoicePlan, transcript: string): VoicePlanRun {
     orientationAr: planReadbackArabic(plan),
     steps: plan.steps.map((step) => ({
       step,
-      state: "pending" as VoicePlanStepState,
+      state: "pending",
       resolution: null,
       handoff: null,
       refusals: [],

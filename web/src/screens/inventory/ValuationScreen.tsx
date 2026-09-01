@@ -99,8 +99,10 @@ export function InventoryValuationScreen(): ReactNode {
             {asOfValid ? t("inventory.valuation.asOfHint") : t("inventory.valuation.asOfBad")}
           </span>
         </div>
-        <div className="inline-group">
-          <Button label={t("common.action.refresh")} onClick={reload} testId="valuation-reload" />
+        <div className="rowctl">
+          <div className="inline-group">
+            <Button label={t("common.action.refresh")} onClick={reload} testId="valuation-reload" />
+          </div>
         </div>
         {data ? (
           <span

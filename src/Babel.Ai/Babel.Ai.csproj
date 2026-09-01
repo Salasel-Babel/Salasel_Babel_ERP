@@ -25,6 +25,20 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!--
+      ‏**لماذا يرى مشروعُ الاختبار داخلَ الوحدة هنا:** حدُّ الوكيل يحمل نسخةً ثانية
+      **مفروضة بالمعمارية** من شيئين مكتوبين أصلاً في وحدتين أخريين — شكلِ رقم التسجيل
+      الضريبي (‏`SaudiVatNumber` في `Babel.Purchasing`، وهو `internal` فوق ذلك) ومجموعةِ
+      المحارف غير المرئية (‏`ComplianceText` في `Babel.Compliance`) — والقاعدة 3 تمنع
+      الإشارة إلى أيٍّ منهما من هنا. فالثمن أن **يُثبَت الاتّفاق** لا أن يُدَّعى:
+      `TheScrubberAgreesWithTheRepositoryValidators` يقرأ التعريفين بالانعكاس ويطابقهما
+      بجدولٍ من الحالات — ولا يُقرأ التعريف المحلّي إلا من داخل التجميعة.
+      وهو الشكل نفسه في Babel.Core و Babel.Hr و Babel.Inventory و Babel.Storage.
+    -->
+    <InternalsVisibleTo Include="Babel.Ai.Tests" />
+  </ItemGroup>
+
   <!--
     المفردات المغلقة: **رموز** الأحداث و**رموز** الأدوار وحدها.
     ولا تُضمَّن role-map.default.csv ولا أي خريطة مستأجر — فهي وحدها التي تحمل أرقام

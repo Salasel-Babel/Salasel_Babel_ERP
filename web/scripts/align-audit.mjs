@@ -69,13 +69,20 @@ const VIEWPORTS = [
   { width: 1024, height: 800, name: "1024" },
   { width: 390, height: 844, name: "390" },
 ];
-const LOCALES = [
+const ALL_LOCALES = [
   { locale: "ar", dir: "rtl" },
   { locale: "en", dir: "ltr" },
+  { locale: "ur", dir: "rtl" },
+  { locale: "hi", dir: "ltr" },
 ];
+/* الافتراض لغتان (اتّجاهان)، و`--locales ur,hi` يفتح الأربع — والأردية بخطّ
+   النستعليق أطولُ سطراً وأعلى، فهي الحدّ الأقصى لا الحالة النادرة. */
+const WANT_LOCALES = (opt("locales", "ar,en") || "").split(",").filter(Boolean);
+const WANT_WIDTHS = (opt("widths", "") || "").split(",").filter(Boolean);
+const LOCALES = ALL_LOCALES.filter((l) => WANT_LOCALES.includes(l.locale));
 const SHOT_AT = new Set(["ar-1440", "ar-390"]);
 const PASSES = LOCALES.flatMap((l) =>
-  VIEWPORTS.map((v) => ({
+  VIEWPORTS.filter((v) => WANT_WIDTHS.length === 0 || WANT_WIDTHS.includes(v.name)).map((v) => ({
     locale: l.locale,
     dir: l.dir,
     viewport: { width: v.width, height: v.height },
@@ -586,7 +593,7 @@ async function main() {
     const ctx = await browser.newContext({
       viewport: pass.viewport,
       deviceScaleFactor: 2,
-      locale: pass.locale === "ar" ? "ar-SA" : "en-US",
+      locale: { ar: "ar-SA", en: "en-US", ur: "ur-PK", hi: "hi-IN" }[pass.locale] ?? "en-US",
       colorScheme: "dark",
       reducedMotion: "reduce",
     });

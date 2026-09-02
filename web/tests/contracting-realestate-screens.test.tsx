@@ -44,7 +44,8 @@ import { SCREENS } from "../src/app/shell/sections";
 import { resetContractingSelection } from "../src/screens/contracting/selection";
 import type { RawResponse, Transport } from "../src/api/transport";
 
-const WEB = path.resolve(__dirname, "..");
+/* جذرُ `web/` — من مجلّد التشغيل، فـ`__dirname` غير معرَّف في وحدةٍ ESM. */
+const WEB = process.cwd();
 const COMPANY = "11111111-1111-1111-1111-111111111111";
 const BASE = "/api/v1/companies/" + COMPANY;
 const HEALTH = { apiVersion: "v1", calendar: "GregorianCalendar", culture: "ar-SA", status: "ok" };

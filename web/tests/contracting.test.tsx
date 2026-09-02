@@ -406,7 +406,7 @@ describe("القسم في هيكل التطبيق", () => {
     expect(section?.built).toBe(true);
     expect(section?.path).toBe("/contracting");
     const paths = SCREENS.filter((s) => s.section === "contracting").map((s) => s.path);
-    /* والترتيب ترتيبُ العمل لا ترتيبُ الحروف (ADR-0078): المشروع وعقده ← ما
+    /* والترتيب ترتيبُ العمل لا ترتيبُ الحروف (ADR-جديد): المشروع وعقده ← ما
        يغيّر نطاقه ← ما يُوثَّق عليه ← المستخلص ← الباطن ← دفعته ← المحتجزات. */
     expect(paths).toEqual([
       "/contracting",

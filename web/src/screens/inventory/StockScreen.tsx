@@ -337,30 +337,32 @@ export function InventoryStockScreen(): ReactNode {
           </select>
           <span className="hint">{t("inventory.stock.pickItemHint")}</span>
         </div>
-        <div className="inline-group" role="group" aria-label={t("common.label.type")}>
-          <button
-            type="button"
-            className={"btn" + (view === "place" ? " btn-primary" : "")}
-            aria-pressed={view === "place"}
-            data-testid="view-place"
-            onClick={() => setView("place")}
-          >
-            {t("inventory.stock.byLocation")}
-          </button>
-          <button
-            type="button"
-            className={"btn" + (view === "item" ? " btn-primary" : "")}
-            aria-pressed={view === "item"}
-            data-testid="view-item"
-            onClick={() => setView("item")}
-          >
-            {t("inventory.stock.byItem")}
-          </button>
-          <Button
-            label={t("common.action.refresh")}
-            onClick={() => void balancesQuery.refetch()}
-            testId="stock-reload"
-          />
+        <div className="rowctl">
+          <div className="inline-group" role="group" aria-label={t("common.label.type")}>
+            <button
+              type="button"
+              className={"btn" + (view === "place" ? " btn-primary" : "")}
+              aria-pressed={view === "place"}
+              data-testid="view-place"
+              onClick={() => setView("place")}
+            >
+              {t("inventory.stock.byLocation")}
+            </button>
+            <button
+              type="button"
+              className={"btn" + (view === "item" ? " btn-primary" : "")}
+              aria-pressed={view === "item"}
+              data-testid="view-item"
+              onClick={() => setView("item")}
+            >
+              {t("inventory.stock.byItem")}
+            </button>
+            <Button
+              label={t("common.action.refresh")}
+              onClick={() => void balancesQuery.refetch()}
+              testId="stock-reload"
+            />
+          </div>
         </div>
       </div>
 

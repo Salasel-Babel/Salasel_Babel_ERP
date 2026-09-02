@@ -32,6 +32,15 @@ public static class VoiceReadback
     /// <summary>ما يُقال بعد الملخّص لكل عمليةٍ تُغيّر الحال.</summary>
     public const string ConfirmCallAr = "قل «تأكيد» أو اضغط زرّ التأكيد.";
 
+    /// <summary>وسمُ الطرف الذي طابق صفّاً واحداً في السجلّ المحلّي.</summary>
+    public const string FromYourRegisterAr = "من سجلّك";
+
+    /// <summary>وسمُ الطرف الذي لم يُحلّ بعد — يُعرض ولا يُبتلع.</summary>
+    public const string NotResolvedYetAr = "لم يُحلّ بعد";
+
+    /// <summary>وسمُ الطرف الذي وُرِقت له ورقةُ سؤال. <b>ولا يُقال كم كان المرشّحون.</b></summary>
+    public const string WhichOneAr = "أيّهم تقصد؟";
+
     /// <summary>يبني الملخّص العربي.</summary>
     /// <param name="intent">النيّة.</param>
     /// <param name="slots">الشرائح الممتلئة.</param>
@@ -40,17 +49,76 @@ public static class VoiceReadback
         ArgumentNullException.ThrowIfNull(intent);
         ArgumentNullException.ThrowIfNull(slots);
 
+        return Compose(intent, [.. slots.Select(value => Part(intent, value))]);
+    }
+
+    /// <summary>
+    /// يبني الملخّص من القراءات كلّها — <b>والأطراف تُوسَم ولا تُخفى</b>.
+    /// <para>
+    /// وطرفٌ حُلّ يظهر بالمقطع الذي قاله المستخدم ومعه «<c>من سجلّك</c>»، وطرفٌ معلَّق
+    /// يظهر بمقطعه ومعه «<c>لم يُحلّ بعد</c>». <b>ولا يُخترع اسمٌ من السجلّ هنا</b>:
+    /// المنفذ الذي يُعيد أسماءً محظورٌ على هذا المشروع بحارسٍ قائم، وتسميةُ الصفّ
+    /// المطابَق على الشاشة فعلُ طبقة التركيب.
+    /// </para>
+    /// </summary>
+    /// <param name="intent">النيّة.</param>
+    /// <param name="slots">الشرائح الممتلئة.</param>
+    /// <param name="readings">القراءات كلّها.</param>
+    public static string Arabic(
+        VoiceIntent intent,
+        IReadOnlyList<SpokenSlotValue> slots,
+        IReadOnlyDictionary<string, SlotReading> readings)
+    {
+        ArgumentNullException.ThrowIfNull(intent);
+        ArgumentNullException.ThrowIfNull(slots);
+        ArgumentNullException.ThrowIfNull(readings);
+
         List<string> parts = [];
 
-        foreach (SpokenSlotValue value in slots)
+        foreach (VoiceSlot slot in intent.Slots)
         {
-            VoiceSlot? slot = intent.Slots.FirstOrDefault(candidate => candidate.Name == value.Name);
-            string label = slot?.NameAr ?? value.Name;
-            string unit = value.Unit is null ? string.Empty : " " + value.Unit;
-            string source = value.Provenance == FieldProvenance.Defaulted ? " (من الإعدادات)" : string.Empty;
-            parts.Add(label + ": " + value.Text + unit + source);
+            if (!readings.TryGetValue(slot.Name, out SlotReading? reading))
+            {
+                continue;
+            }
+
+            switch (reading)
+            {
+                case SlotReading.Filled filled:
+                    parts.Add(Part(intent, filled.Value));
+                    break;
+
+                case SlotReading.Resolved resolved:
+                    parts.Add(slot.NameAr + ": " + resolved.Span.Text + " (" + FromYourRegisterAr + ")");
+                    break;
+
+                case SlotReading.Pending pending:
+                    parts.Add(slot.NameAr + ": " + pending.Span.Text + " (" + NotResolvedYetAr + ")");
+                    break;
+
+                case SlotReading.Asked asked:
+                    parts.Add(slot.NameAr + ": " + asked.Span.Text + " (" + WhichOneAr + ")");
+                    break;
+
+                default:
+                    break;
+            }
         }
 
+        return Compose(intent, parts);
+    }
+
+    private static string Part(VoiceIntent intent, SpokenSlotValue value)
+    {
+        VoiceSlot? slot = intent.Slots.FirstOrDefault(candidate => candidate.Name == value.Name);
+        string label = slot?.NameAr ?? value.Name;
+        string unit = value.Unit is null ? string.Empty : " " + value.Unit;
+        string source = value.Provenance == FieldProvenance.Defaulted ? " (من الإعدادات)" : string.Empty;
+        return label + ": " + value.Text + unit + source;
+    }
+
+    private static string Compose(VoiceIntent intent, List<string> parts)
+    {
         string body = parts.Count == 0 ? "بلا شرائح" : string.Join("، ", parts);
         string head = intent.NameAr + " — " + body + ".";
 
@@ -71,6 +139,49 @@ public static class VoiceReadback
         IEnumerable<string> ordered = slots
             .OrderBy(static value => value.Name, StringComparer.Ordinal)
             .Select(static value => value.Name + "=" + value.Text + (value.Unit is null ? string.Empty : ":" + value.Unit));
+
+        return intent.Id + "|" + string.Join(";", ordered);
+    }
+
+    /// <summary>
+    /// رمز التأكيد من القراءات كلّها. <b>وحالةُ الطرف جزءٌ منه</b>: معلَّقٌ يكتب مقطعه،
+    /// ومحلولٌ يكتب مِقبضه — فحلُّ شريحةٍ <b>يغيّر الرمز</b> ويُبطل تأكيداً قيل قبله.
+    /// وذلك مقصود: تأكيدٌ على أمرٍ لم يكن قد اكتمل ليس تأكيداً.
+    /// </summary>
+    /// <param name="intent">النيّة.</param>
+    /// <param name="readings">القراءات.</param>
+    public static string Token(VoiceIntent intent, IReadOnlyDictionary<string, SlotReading> readings)
+    {
+        ArgumentNullException.ThrowIfNull(intent);
+        ArgumentNullException.ThrowIfNull(readings);
+
+        List<string> ordered = [];
+
+        foreach (string name in readings.Keys.OrderBy(static key => key, StringComparer.Ordinal))
+        {
+            switch (readings[name])
+            {
+                case SlotReading.Filled filled:
+                    ordered.Add(name + "=" + filled.Value.Text
+                        + (filled.Value.Unit is null ? string.Empty : ":" + filled.Value.Unit));
+                    break;
+
+                case SlotReading.Resolved resolved:
+                    ordered.Add(name + "@" + resolved.Handle);
+                    break;
+
+                case SlotReading.Pending pending:
+                    ordered.Add(name + "?" + pending.Span.Text);
+                    break;
+
+                case SlotReading.Asked asked:
+                    ordered.Add(name + "!" + asked.QuestionId);
+                    break;
+
+                default:
+                    break;
+            }
+        }
 
         return intent.Id + "|" + string.Join(";", ordered);
     }

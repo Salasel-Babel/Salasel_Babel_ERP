@@ -114,9 +114,25 @@ public sealed class SpokenCommandTests
 
         foreach ((string name, string expected) in vector.Slots)
         {
+            Contracts.Voice.VoiceSlot slot = Assert.Single(resolution.Intent.Slots, candidate => candidate.Name == name);
+
+            // ‏**شريحة الطرف لا تُقرأ قيمةً**: يُحدَّد لها مقطعٌ يُحمل كما سُمع، والقيمةُ
+            // المتوقَّعة في المتجه هي **المقطع** — لا اسمٌ قرّره القارئ.
+            if (slot.Kind == Contracts.Voice.VoiceSlotKind.Entity)
+            {
+                SlotReading.Pending pending = Assert.IsType<SlotReading.Pending>(resolution.Readings[name]);
+                Assert.Equal(expected, pending.Span.Text);
+                Assert.Equal(slot.RegisterKey, pending.RegisterKey);
+                Assert.DoesNotContain(resolution.Slots, candidate => candidate.Name == name);
+                continue;
+            }
+
             SpokenSlotValue value = Assert.Single(resolution.Slots, candidate => candidate.Name == name);
             Assert.Equal(expected, value.Text);
         }
+
+        // ‏**وكل شريحةٍ معلَنة لها قراءةٌ واحدة، لا أقلّ ولا أكثر.**
+        Assert.Equal(resolution.Intent.Slots.Count, resolution.Readings.Count);
 
         foreach ((string name, string unit) in vector.Units ?? new Dictionary<string, string>(StringComparer.Ordinal))
         {
@@ -127,6 +143,24 @@ public sealed class SpokenCommandTests
         // الملخّص يحمل اسم النيّة ولا يخرج فارغاً — وهو ما يُقرأ ويُعرض معاً.
         Assert.Contains(resolution.Intent.NameAr, resolution.ReadbackAr, StringComparison.Ordinal);
         Assert.NotEqual(string.Empty, resolution.ConfirmationToken);
+
+        // ‏**ثم يُسأل السجلّ، فيصير كلُّ طرفٍ مِقبضاً**: هذه هي السباكة كاملةً — مقطعٌ
+        // يُحدَّد، فيُجاب عنه مرّةً واحدة، فيمرّ من البوّابة **بلا نصٍّ لطرف**.
+        VoiceResolution answered = VoiceHarness.ReadAndResolve(transcript);
+
+        foreach (Contracts.Voice.VoiceSlot slot in answered.Intent.Slots)
+        {
+            if (slot.Kind != Contracts.Voice.VoiceSlotKind.Entity)
+            {
+                continue;
+            }
+
+            SlotReading.Resolved resolved = Assert.IsType<SlotReading.Resolved>(answered.Readings[slot.Name]);
+            Assert.Equal(Ai.Lookup.SignedLookupHandles.TokenLength, resolved.Handle.Length);
+        }
+
+        Assert.Empty(answered.Pending);
+        Assert.True(answered.IsComplete);
     }
 
     [Theory]
@@ -241,7 +275,11 @@ public sealed class SpokenCommandTests
             VoiceHarness.Registry,
             VoiceHarness.Options).Value;
 
-        Assert.Contains("quantity", resolution.MissingSlots);
+        // ‏**رفضٌ مُسمّى لا صمت.** والشريحة لم تعد تظهر «ناقصة» و«معطوبة» في قائمتين
+        // متوازيتين: القراءة واحدة، وحالتُها <c>Refused</c>، والرسالة أدلُّ من «ينقصني الكمية».
+        SlotReading.Refused refused = Assert.IsType<SlotReading.Refused>(resolution.Readings["quantity"]);
+        Assert.Equal("ai.voice.unit_missing", refused.Error.Code);
+        Assert.DoesNotContain("quantity", resolution.MissingSlots);
         Assert.Contains(resolution.Faults, fault => fault.Code == "ai.voice.unit_missing");
         Assert.DoesNotContain(resolution.Slots, slot => slot.Name == "quantity");
     }

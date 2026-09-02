@@ -20,6 +20,12 @@ namespace Babel.Ai.Voice;
 /// <b>وترتيب الرفض مقصود:</b> الصلاحية أولاً — فلا يُقرأ على مستخدمٍ ملخّصُ عمليةٍ لا
 /// يملكها فيتعلّم صياغتها؛ ثم القرار المعلَّق؛ ثم الشرائح الناقصة؛ ثم الشركة؛ ثم التأكيد.
 /// </para>
+/// <para>
+/// <b>ولا يُبنى أمرٌ وفيه طرفٌ لم يُحلّ.</b> شريحةُ <c>Entity</c> تصل إمّا
+/// <see cref="SlotReading.Resolved"/> بمِقبض، وإمّا <see cref="SlotReading.Pending"/> —
+/// والثانية رفضٌ مُسمّى (<c>ai.voice.name_unresolved</c>) لا قيمةٌ نصّية تمرّ. وهي الجملة
+/// التي لم تكن موجودة حين خرج طرفٌ آخر على مستندٍ بلا عطلٍ واحد.
+/// </para>
 /// </summary>
 public static class VoiceConfirmationGate
 {
@@ -86,21 +92,48 @@ public static class VoiceConfirmationGate
             return Result<VoiceDispatch>.Failure(VoiceRefusals.OwnerDecisionPending(intent));
         }
 
-        foreach (string name in resolution.MissingSlots)
+        // ‏**قراءةٌ واحدة لكل شريحة، وفرعٌ واحد لكل حالة.** المجموعة مغلقة، فصنفٌ جديد
+        // يُضاف يُحمِّر هنا عند الترجمة ولا يسقط صامتاً إلى «مرّ».
+        List<ResolvedSlotValue> values = [];
+
+        foreach (VoiceSlot slot in intent.Slots)
         {
-            VoiceSlot? slot = intent.Slots.FirstOrDefault(candidate => candidate.Name == name);
-            if (slot is not null)
+            switch (resolution.Readings[slot.Name])
             {
-                errors.Add(VoiceRefusals.SlotMissing(intent, slot));
+                case SlotReading.Filled filled:
+                    values.Add(ResolvedSlotValue.OfValue(filled.Value));
+                    break;
+
+                case SlotReading.Resolved resolved:
+                    values.Add(ResolvedSlotValue.OfEntity(slot.Name, resolved.Handle));
+                    break;
+
+                // ‏**طرفٌ معلَّق لا يمرّ.** وهو الفرق كلّه عن ما قبله: كان المقطع
+                // يُمرَّر نصّاً فيصير طرفَ المستند بلا سؤالٍ واحد.
+                case SlotReading.Pending pending:
+                    errors.Add(VoiceRefusals.NameUnresolved(slot, pending.Span.Text));
+                    break;
+
+                case SlotReading.Asked asked:
+                    errors.Add(VoiceRefusals.NameNeedsQuestion(slot, asked.Span.Text));
+                    break;
+
+                case SlotReading.Refused refused:
+                    errors.Add(refused.Error);
+                    break;
+
+                case SlotReading.Silent when slot.Required:
+                    errors.Add(VoiceRefusals.SlotMissing(intent, slot));
+                    break;
+
+                default:
+                    break;
             }
         }
 
-        errors.AddRange(resolution.Faults);
-
-        if (resolution.SpokenCompany is not null
-            && !VoiceText.Same(resolution.SpokenCompany, caller.CompanyNameAr))
+        if (resolution.CompanyCueHeard)
         {
-            errors.Add(VoiceRefusals.CompanyNotSwitched(resolution.SpokenCompany, caller.CompanyNameAr));
+            errors.Add(VoiceRefusals.CompanyNotSwitched);
         }
 
         if (intent.RequiresConfirmation)
@@ -119,7 +152,7 @@ public static class VoiceConfirmationGate
             ? Result<VoiceDispatch>.Failure(errors)
             : Result<VoiceDispatch>.Success(new VoiceDispatch(
                 intent,
-                resolution.Slots,
+                values,
                 caller.CompanyId,
                 intent.RequiresConfirmation));
     }

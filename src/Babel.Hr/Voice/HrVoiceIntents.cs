@@ -48,8 +48,8 @@ public sealed class HrVoiceIntents : IVoiceIntentCatalogue
                 "بيانات الموظف", "كرت الموظف", "ملف الموظف", "بطاقة الموظف", "وش بيانات الموظف",
             ],
             [
-                new VoiceSlot("employee", VoiceSlotKind.Text, "الموظف", true,
-                    ["الموظف", "موظف", "عن"], []),
+                new VoiceSlot("employee", VoiceSlotKind.Entity, "الموظف", true,
+                    ["الموظف", "موظف", "عن"], [], "employee"),
             ],
             true,
             null),
@@ -68,8 +68,8 @@ public sealed class HrVoiceIntents : IVoiceIntentCatalogue
                 "سجل سلفة موظف", "سلفة للموظف", "اصرف سلفة", "سلفة موظف", "ابغى اسجل سلفة",
             ],
             [
-                new VoiceSlot("employee", VoiceSlotKind.Text, "الموظف", true,
-                    ["للموظف", "الموظف", "موظف", "لصالح"], []),
+                new VoiceSlot("employee", VoiceSlotKind.Entity, "الموظف", true,
+                    ["للموظف", "الموظف", "موظف", "لصالح"], [], "employee"),
                 new VoiceSlot("amount", VoiceSlotKind.Money, "مبلغ السلفة", true,
                     ["بمبلغ", "مبلغ", "بقيمة", "قيمتها"], []),
                 new VoiceSlot("instalments", VoiceSlotKind.Number, "عدد الأقساط", false,
@@ -94,8 +94,8 @@ public sealed class HrVoiceIntents : IVoiceIntentCatalogue
                 "سجل خصم على الموظف", "خصم على الموظف", "جزاء على الموظف", "سجل جزاء",
             ],
             [
-                new VoiceSlot("employee", VoiceSlotKind.Text, "الموظف", true,
-                    ["الموظف", "موظف", "على"], []),
+                new VoiceSlot("employee", VoiceSlotKind.Entity, "الموظف", true,
+                    ["الموظف", "موظف", "على"], [], "employee"),
                 new VoiceSlot("amount", VoiceSlotKind.Money, "مبلغ الخصم", true,
                     ["بمبلغ", "مبلغ", "بقيمة", "قيمته"], []),
                 new VoiceSlot("effectiveOn", VoiceSlotKind.Date, "تاريخ الاستحقاق", true,
@@ -140,8 +140,8 @@ public sealed class HrVoiceIntents : IVoiceIntentCatalogue
                 "سجل تصفية نهاية الخدمة", "تصفية نهاية الخدمة", "مستحقات نهاية الخدمة", "صرف نهاية الخدمة",
             ],
             [
-                new VoiceSlot("employee", VoiceSlotKind.Text, "الموظف", true,
-                    ["للموظف", "الموظف", "موظف"], []),
+                new VoiceSlot("employee", VoiceSlotKind.Entity, "الموظف", true,
+                    ["للموظف", "الموظف", "موظف"], [], "employee"),
                 new VoiceSlot("amount", VoiceSlotKind.Money, "المستحق", true,
                     ["بمبلغ", "مبلغ", "بقيمة", "قيمتها", "الاجمالي", "اجمالي", "المجموع"], []),
                 new VoiceSlot("method", VoiceSlotKind.Choice, "طريقة الصرف", true,

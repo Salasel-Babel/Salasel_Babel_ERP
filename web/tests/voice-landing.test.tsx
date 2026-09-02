@@ -37,7 +37,6 @@ const HEALTH = { apiVersion: "v1", calendar: "GregorianCalendar", culture: "ar-S
 
 const CALLER: VoiceCaller = {
   companyId: COMPANY,
-  companyNameAr: "سلاسل بابل",
   permittedIntentIds: VOICE_INTENTS.map((intent) => intent.id),
 };
 

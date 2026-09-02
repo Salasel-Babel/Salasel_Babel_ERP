@@ -47,7 +47,7 @@ public sealed class LedgerVoiceIntents : IVoiceIntentCatalogue
                 "سجل قيد يومية", "قيد يومية يدوي", "اكتب قيد يومية", "افتح قيد يومية", "قيد يومية",
             ],
             [
-                new VoiceSlot("description", VoiceSlotKind.Text, "بيان القيد", true,
+                new VoiceSlot("description", VoiceSlotKind.Prose, "بيان القيد", true,
                     ["بيان", "البيان", "وصف", "عن"], []),
                 new VoiceSlot("amount", VoiceSlotKind.Money, "قيمة القيد", true,
                     ["بمبلغ", "مبلغ", "بقيمة", "قيمتها", "الاجمالي", "اجمالي", "المجموع"], []),

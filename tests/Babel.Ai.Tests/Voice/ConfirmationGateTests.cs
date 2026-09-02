@@ -53,8 +53,12 @@ public sealed class ConfirmationGateTests
         return data;
     }
 
-    private static VoiceResolution Resolve(string transcript) =>
-        SpokenCommandReader.Read(transcript, VoiceHarness.Registry, VoiceHarness.Options).Value;
+    /// <summary>
+    /// <b>يقرأ ثم يحلّ</b> — والخطوتان معاً هما ما يصل البوّابة في المنتج. وقراءةٌ بلا
+    /// حلٍّ تترك كل طرفٍ <see cref="SlotReading.Pending"/>، والبوّابة ترفضه بالاسم؛ وذلك
+    /// مُثبَتٌ وحده في <c>ARefusedSlotIsNeverOverwritten</c> و<c>TheThirdPartyIsNeverChosen</c>.
+    /// </summary>
+    private static VoiceResolution Resolve(string transcript) => VoiceHarness.ReadAndResolve(transcript);
 
     [Fact]
     public void القائمتان_ليستا_ضامرتين()
@@ -145,30 +149,47 @@ public sealed class ConfirmationGateTests
         Assert.StartsWith(VoiceRefusals.NotPermittedAr, only.MessageAr, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// <b>دليلُ الشركة هو الإشارة، لا الاسمُ المُحلَّل.</b> كان القارئ يجمع اسماً بقاعدة
+    /// الجمع نفسها ثم يُقارَن بتساوي نصّين باسم الشركة المفتوحة — حكمٌ على الهوية
+    /// بالتخمين. فحُذف التحليل، وصار وجودُ الدليل وحده رفضاً.
+    /// </summary>
     [Fact]
-    public void شركة_منطوقة_غير_المفتوحة_تُرفض_ولا_يُنتقَل_إليها_داخل_أمر_آخر()
+    public void دليل_شركة_داخل_أمر_آخر_يُرفض_ولا_يُحلَّل_له_اسم()
     {
         VoiceResolution resolution = Resolve(
             "سجل سند قبض من العميل مؤسسة الرياض بمبلغ ألف ريال نقد اليوم في شركة الفروع");
 
-        Assert.Equal("الفروع", resolution.SpokenCompany);
+        Assert.True(resolution.CompanyCueHeard);
+
+        Result<VoiceDispatch> refused =
+            VoiceConfirmationGate.Authorise(resolution, VoiceHarness.Caller, resolution.ConfirmationToken);
+
+        Assert.True(refused.IsFailure);
+        Error company = Assert.Single(
+            refused.Errors, error => error.Code == "ai.voice.company_not_switched");
+
+        // ‏**ولا يُسمّى ما نُطق**: تسميتُه تقتضي تحليل اسمٍ من الكلام.
+        Assert.DoesNotContain("الفروع", company.MessageAr, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// <b>وحتى اسمُ الشركة المفتوحة نفسِه يُرفض</b> — وهو ثمنٌ مقصود ومُسمّى: قبولُه
+    /// يقتضي مقارنةَ نصٍّ بنصّ، وهي بعينها العملية المحذوفة. والرفض يسمّي الشاشة.
+    /// </summary>
+    [Fact]
+    public void دليل_شركة_ولو_كانت_المفتوحة_يُرفض_لأن_المقارنة_نفسها_محذوفة()
+    {
+        VoiceResolution resolution = Resolve(
+            "سجل سند قبض من العميل مؤسسة الرياض بمبلغ ألف ريال نقد اليوم في شركة سلاسل بابل");
+
+        Assert.True(resolution.CompanyCueHeard);
 
         Result<VoiceDispatch> refused =
             VoiceConfirmationGate.Authorise(resolution, VoiceHarness.Caller, resolution.ConfirmationToken);
 
         Assert.True(refused.IsFailure);
         Assert.Contains(refused.Errors, error => error.Code == "ai.voice.company_not_switched");
-    }
-
-    [Fact]
-    public void الشركة_المنطوقة_المطابقة_للمفتوحة_تمر()
-    {
-        VoiceResolution resolution = Resolve(
-            "سجل سند قبض من العميل مؤسسة الرياض بمبلغ ألف ريال نقد اليوم في شركة سلاسل بابل");
-
-        Assert.Equal("سلاسل بابل", resolution.SpokenCompany);
-        Assert.True(VoiceConfirmationGate
-            .Authorise(resolution, VoiceHarness.Caller, resolution.ConfirmationToken).IsSuccess);
     }
 
     [Fact]

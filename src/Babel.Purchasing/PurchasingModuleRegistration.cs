@@ -3,6 +3,9 @@ using Babel.Contracts.Voice;
 using Babel.Purchasing.Application;
 using Babel.Purchasing.Surface;
 using Babel.Purchasing.Voice;
+using Babel.Contracts.Lookup;
+using Babel.Core.NameRegister;
+using Babel.Purchasing.NameRegister;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Babel.Purchasing;
@@ -54,6 +57,35 @@ public static class PurchasingModuleRegistration
         // ‏<c>IVoiceIntentCatalogue</c> في العقد. ولا تعرف إحداهما الأخرى في أي اتجاه —
         // وهو ما تفرضه القاعدة 3، وما يجعل إضافة نيّةٍ لا تمسّ مشروع الذكاء بسطر.
         services.AddSingleton<IVoiceIntentCatalogue, PurchasingVoiceIntents>();
+
+        // ‏**سجلّات الأسماء تُسجَّل من هنا كذلك، وللسبب نفسه.** الوحدة تصف جدولها
+        // وتُسجّل محوّله؛ ووحدةُ الذكاء تجمع ما وجدته عبر <c>INameCandidateSource</c>
+        // في العقد، ولا تعرف اسمَ جدولٍ واحد ولا تستطيع (القاعدة 3).
+        //
+        // ‏**والإعلان منفصل عن المحوّل عمداً**: المحوّل يحتاج قاعدةً حيّة، والحارس
+        // المعماريّ يحتاج المفاتيح وحدها — فلا يشترط قاعدةً كي يعمل، ولا يصير حدُّ
+        // «كلُّ شريحةِ طرفٍ تسمّي سجلّاً يخدمه أحد» موصىً به بدل أن يكون مُنفَّذاً.
+        services.AddSingleton<INameRegisterCatalogue, PurchasingNameRegisters>();
+
+        // ‏**والمحوّلان يُبنيان عند الحلّ لا عند التسجيل.** بناؤهما هنا يجعل *تسجيل*
+        // الوحدة يطلب نصَّ اتصالٍ صالحاً — فيسقط توليدُ العقد المنشور، وهو مسارٌ لا
+        // قاعدة فيه أصلاً. والسقوط يقع حين **يُستعمل** السجلّ، وهو موضعه الصحيح.
+        foreach (NameRegisterTable table in PurchasingNameRegisters.Tables)
+        {
+            NameRegisterTable described = table;
+
+            services.AddSingleton<INameCandidateSource>(provider => new PostgresNameRegister(
+                provider.GetRequiredService<PurchasingOptions>().ConnectionString,
+                described,
+                NameRegisterDefaults.SimilarityThreshold));
+
+            // ‏والجَرد كائنٌ آخر بمنفذٍ آخر — يُعيد أسماءً، ولا يُنادى في بناء رسالةٍ لنموذج.
+            services.AddSingleton<INameCandidateSheetSource>(provider => new PostgresNameSheet(
+                provider.GetRequiredService<PurchasingOptions>().ConnectionString,
+                described,
+                NameRegisterDefaults.SimilarityThreshold,
+                NameRegisterDefaults.QuestionSheetCap));
+        }
 
         return services;
     }

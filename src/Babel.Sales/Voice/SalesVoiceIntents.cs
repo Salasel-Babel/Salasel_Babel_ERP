@@ -44,8 +44,8 @@ public sealed class SalesVoiceIntents : IVoiceIntentCatalogue
                 "سجل اشعار دائن", "اشعار دائن للعميل", "اشعار دائن", "مرتجع مبيعات", "العميل رجع البضاعة",
             ],
             [
-                new VoiceSlot("customer", VoiceSlotKind.Text, "العميل", true,
-                    ["للعميل", "على العميل", "العميل", "عميل"], []),
+                new VoiceSlot("customer", VoiceSlotKind.Entity, "العميل", true,
+                    ["للعميل", "على العميل", "العميل", "عميل"], [], "customer"),
                 new VoiceSlot("invoiceNumber", VoiceSlotKind.Code, "الفاتورة الأصلية", true,
                     ["على الفاتورة", "الفاتورة", "فاتورة"], []),
                 new VoiceSlot("amount", VoiceSlotKind.Money, "قيمة الإشعار", true,
@@ -70,8 +70,8 @@ public sealed class SalesVoiceIntents : IVoiceIntentCatalogue
                 "كم رصيد العميل", "رصيد العميل", "كم على العميل", "وش رصيد العميل", "كم باقي على العميل",
             ],
             [
-                new VoiceSlot("customer", VoiceSlotKind.Text, "العميل", true,
-                    ["العميل", "عميل", "على", "حق"], []),
+                new VoiceSlot("customer", VoiceSlotKind.Entity, "العميل", true,
+                    ["العميل", "عميل", "على", "حق"], [], "customer"),
             ],
             false,
             null),
@@ -90,8 +90,8 @@ public sealed class SalesVoiceIntents : IVoiceIntentCatalogue
                 "سجل سند قبض", "سند قبض", "استلمت من العميل", "قبضت من العميل", "تحصيل من عميل", "حصلت من العميل",
             ],
             [
-                new VoiceSlot("customer", VoiceSlotKind.Text, "العميل", true,
-                    ["العميل", "عميل", "من", "لصالح"], []),
+                new VoiceSlot("customer", VoiceSlotKind.Entity, "العميل", true,
+                    ["العميل", "عميل", "من", "لصالح"], [], "customer"),
                 new VoiceSlot("amount", VoiceSlotKind.Money, "المبلغ المقبوض", true,
                     ["بمبلغ", "مبلغ", "بقيمة", "قيمته", "قيمتها"], []),
                 new VoiceSlot("method", VoiceSlotKind.Choice, "طريقة القبض", true,
@@ -136,8 +136,8 @@ public sealed class SalesVoiceIntents : IVoiceIntentCatalogue
                 "سجل فاتورة مبيعات", "فاتورة مبيعات", "افتح فاتورة مبيعات", "بعت على العميل", "اكتب فاتورة للعميل", "بيع للعميل",
             ],
             [
-                new VoiceSlot("customer", VoiceSlotKind.Text, "العميل", true,
-                    ["على العميل", "للعميل", "العميل", "عميل"], []),
+                new VoiceSlot("customer", VoiceSlotKind.Entity, "العميل", true,
+                    ["على العميل", "للعميل", "العميل", "عميل"], [], "customer"),
                 new VoiceSlot("amount", VoiceSlotKind.Money, "الإجمالي شامل الضريبة", true,
                     ["بمبلغ", "مبلغ", "بقيمة", "قيمتها", "الاجمالي", "اجمالي", "المجموع"], []),
                 new VoiceSlot("taxRate", VoiceSlotKind.Number, "نسبة الضريبة", false,

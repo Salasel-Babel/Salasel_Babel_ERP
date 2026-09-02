@@ -24,7 +24,7 @@ public sealed class LookupOptions
     /// عشرية يقلب «واحد» إلى «اثنين» فيقلب حلّاً إلى سؤال.
     /// </para>
     /// </summary>
-    public decimal SimilarityThreshold { get; set; } = 0.45m;
+    public decimal SimilarityThreshold { get; set; } = Babel.Core.NameRegister.NameRegisterDefaults.SimilarityThreshold;
 
     /// <summary>
     /// اسم متغيّر البيئة الذي يحمل مفتاح توقيع المقابض.
@@ -45,5 +45,5 @@ public sealed class LookupOptions
     public TimeSpan HandleLifetimeCap { get; set; } = TimeSpan.FromMinutes(30);
 
     /// <summary>سقف صفوف ورقة السؤال. ورقةٌ بلا سقف ليست سؤالاً بل جرداً.</summary>
-    public int QuestionSheetCap { get; set; } = 12;
+    public int QuestionSheetCap { get; set; } = Babel.Core.NameRegister.NameRegisterDefaults.QuestionSheetCap;
 }

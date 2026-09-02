@@ -23,10 +23,21 @@ namespace Babel.Contracts.Voice;
 /// <param name="Choices">
 /// القائمة المغلقة حين يكون الصنف <see cref="VoiceSlotKind.Choice"/> — وفارغة لغيره.
 /// </param>
+/// <param name="RegisterKey">
+/// <b>مفتاح السجلّ الذي يُحلّ فيه الاسم</b> حين يكون الصنف <see cref="VoiceSlotKind.Entity"/> —
+/// و<c>null</c> لكل صنفٍ آخر، و<b>الحالتان المعكوستان تُسقطان البناء</b> في
+/// <c>VoiceIntentRegistry.Build</c>.
+/// <para>
+/// وهو المفتاح نفسه الذي تعلنه الوحدة المالكة في <c>Babel.Contracts.Lookup.INameCandidateSource</c>
+/// (‏<c>customer</c> · <c>supplier</c> · …). ولا يعرف هذا العقد الوحدة التي تخدمه، ولا تعرف
+/// الوحدةُ من ينطق به (القاعدة 3).
+/// </para>
+/// </param>
 public sealed record VoiceSlot(
     string Name,
     VoiceSlotKind Kind,
     string NameAr,
     bool Required,
     IReadOnlyList<string> Cues,
-    IReadOnlyList<string> Choices);
+    IReadOnlyList<string> Choices,
+    string? RegisterKey = null);

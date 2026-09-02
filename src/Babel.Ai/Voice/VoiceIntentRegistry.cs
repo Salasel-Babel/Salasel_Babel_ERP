@@ -49,6 +49,10 @@ public sealed partial class VoiceIntentRegistry
     [GeneratedRegex(@"^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$", RegexOptions.CultureInvariant)]
     private static partial Regex IdShape();
 
+    /// <summary>شكل مفتاح السجلّ: لاتينيّ يبدأ بحرفٍ صغير، بلا نقاط ولا مقاطع رقمية.</summary>
+    [GeneratedRegex("^[a-z][A-Za-z0-9]*$", RegexOptions.CultureInvariant)]
+    private static partial Regex RegisterKeyShape();
+
     /// <summary>
     /// يبني السجلّ من مجموعات الوحدات، ويتحقّق من كلٍّ منها بالمفردات المغلقة.
     /// </summary>
@@ -137,6 +141,26 @@ public sealed partial class VoiceIntentRegistry
             if (SuggestionGuard.LedgerCodeFieldNames.Contains(slot.Name))
             {
                 errors.Add(VoiceCatalogueErrors.NamesALedgerCode(intent.Id, slot.Name));
+            }
+
+            // ‏**شريحةُ طرفٍ بلا سجلّ تُسقط البناء** — لا نُطقاً واحداً. شريحةٌ تسمّي
+            // طرفاً ولا تسمّي السجلّ الذي يُحلّ فيه اسمُه لا يمكن أن تُحلّ، فتبقى
+            // معلَّقةً أبداً وتُظهر نيّةً «منشورة» لا تكتمل قطّ. والعكس كذلك: مفتاح
+            // سجلٍّ على شريحةٍ ليست طرفاً يَعِد بحلٍّ لا يقع.
+            bool entity = slot.Kind == VoiceSlotKind.Entity;
+            bool named = !string.IsNullOrWhiteSpace(slot.RegisterKey);
+
+            if (entity && !named)
+            {
+                errors.Add(VoiceCatalogueErrors.RegisterNotStated(intent.Id, slot.Name));
+            }
+            else if (!entity && named)
+            {
+                errors.Add(VoiceCatalogueErrors.RegisterNotExpected(intent.Id, slot.Name, slot.RegisterKey!));
+            }
+            else if (entity && !RegisterKeyShape().IsMatch(slot.RegisterKey!))
+            {
+                errors.Add(VoiceCatalogueErrors.MalformedRegisterKey(intent.Id, slot.Name, slot.RegisterKey!));
             }
         }
 

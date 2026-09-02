@@ -22,10 +22,13 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { useT } from "../i18n/react";
 import { VOICE_SECTIONS, intentsOf, type VoiceSection } from "./catalogue";
 import {
+  applyNameAnswers,
   authorise,
   isSpokenCancellation,
   isSpokenConfirmation,
   readCommand,
+  type NameAnswer,
+  type SlotReading,
   type VoiceCaller,
   type VoiceDispatch,
   type VoiceResolution,
@@ -46,6 +49,18 @@ export interface VoiceConsoleProps {
   readonly statutoryTaxRate?: string;
   /** المتكلّم ومنشأته وصلاحياته. */
   readonly caller: VoiceCaller;
+  /**
+   * **يسأل السجلَّ المحلّي عن كل مقطعِ طرفٍ سُمع.** ثلاثة أجوبة لا رابع لها، ولا
+   * عدد ولا درجة ولا مرشّح.
+   *
+   * ⚠ **وغيابُه ليس سقوطاً إلى التخمين.** المسار المنطوق «ما يعمل حين لا يعمل
+   * شيء» — فبلا هذا المنفذ يبقى القارئ يقرأ والشاشةُ تمتلئ ويرى المستخدم ما سُمع
+   * موسوماً «لم يُحلّ بعد»؛ **والتأكيد وحده هو ما يُمنع**. وهو تضييقٌ حقيقيّ لخاصّية
+   * مُعلَنة، مُسجَّلٌ في ADR لا مُمرَّرٌ صامتاً.
+   */
+  readonly resolveNames?: (
+    pending: readonly Extract<SlotReading, { kind: "pending" }>[]
+  ) => Promise<Readonly<Record<string, NameAnswer>>>;
   /** يُستدعى بالأمر بعد أن يجتاز البوابة. */
   readonly onDispatch?: (dispatch: VoiceDispatch) => void;
   /**
@@ -114,6 +129,7 @@ export function VoiceConsole(props: VoiceConsoleProps): ReactNode {
   );
 
   const intents = useMemo(() => intentsOf(section), [section]);
+  const resolveNames = props.resolveNames;
 
   /** يقرأ نصّاً ويُظهر ما فهمه — **ولا ينفّذ شيئاً**. */
   const read = useCallback(
@@ -135,8 +151,24 @@ export function VoiceConsole(props: VoiceConsoleProps): ReactNode {
       if (speakOn && reading.resolution.intent.requiresConfirmation) {
         speak(reading.resolution.readbackAr, lang);
       }
+
+      /* ── ثم يُسأل السجلّ عن كل مقطعِ طرف ─────────────────────────────────
+         **ويُعاد قراءةُ الملخّص بعده**: حلُّ شريحةٍ يغيّر رمزَ التأكيد، فتأكيدٌ
+         قيل بينما كان السؤال مفتوحاً يُرفض — وهو الصواب، لكنّ المستخدم يجب أن
+         يسمع الملخّص الجديد وإلّا واجه رفضاً لا يفهمه. */
+      const pending = reading.resolution.intent.slots
+        .map((slot) => reading.resolution.readings[slot.name])
+        .filter((entry): entry is Extract<SlotReading, { kind: "pending" }> => entry?.kind === "pending");
+
+      if (pending.length === 0 || !resolveNames) return;
+
+      void resolveNames(pending).then((answers) => {
+        const answered = applyNameAnswers(reading.resolution, answers);
+        setResolution(answered);
+        if (speakOn && answered.intent.requiresConfirmation) speak(answered.readbackAr, lang);
+      });
     },
-    [lang, options, speakOn]
+    [lang, options, resolveNames, speakOn]
   );
 
   const stop = useCallback(() => {

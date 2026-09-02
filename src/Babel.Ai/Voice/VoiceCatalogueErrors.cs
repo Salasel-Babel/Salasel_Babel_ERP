@@ -114,6 +114,37 @@ public static class VoiceCatalogueErrors
         "النيّة «" + intentId + "» بلا عبارة إطلاق واحدة — نيّةٌ لا يستطيع أحد أن ينطقها.",
         "Intent '" + intentId + "' declares no trigger phrase and can never be spoken.");
 
+    /// <summary>
+    /// شريحةُ طرفٍ لا تسمّي سجلَّها — <b>وذلك يُسقط البناء</b>.
+    /// </summary>
+    /// <param name="intentId">المعرّف.</param>
+    /// <param name="slotName">اسم الشريحة.</param>
+    public static Error RegisterNotStated(string intentId, string slotName) => new(
+        "ai.voice.catalogue.register_not_stated",
+        "الشريحة «" + slotName + "» في النيّة «" + intentId + "» تسمّي طرفاً ولا تسمّي السجلّ "
+        + "الذي يُحلّ فيه اسمه. وشريحةٌ كهذه تبقى معلَّقةً أبداً: تُقرأ ولا تُحلّ، فلا تكتمل النيّة قطّ.",
+        "Entity slot '" + slotName + "' in intent '" + intentId + "' names no register key; it could never resolve.");
+
+    /// <summary>شريحةٌ ليست طرفاً وتسمّي سجلّاً.</summary>
+    /// <param name="intentId">المعرّف.</param>
+    /// <param name="slotName">اسم الشريحة.</param>
+    /// <param name="registerKey">المفتاح المُعلَن.</param>
+    public static Error RegisterNotExpected(string intentId, string slotName, string registerKey) => new(
+        "ai.voice.catalogue.register_not_expected",
+        "الشريحة «" + slotName + "» في النيّة «" + intentId + "» ليست طرفاً وتسمّي السجلّ «"
+        + registerKey + "». والوعدُ بحلٍّ لا يقع أسوأ من غيابه: تُعرض الشريحة «تنتظر السجلّ» ولا ينظرها أحد.",
+        "Slot '" + slotName + "' in intent '" + intentId + "' is not an entity yet names register '" + registerKey + "'.");
+
+    /// <summary>مفتاح سجلٍّ خارج الشكل المُعلَن.</summary>
+    /// <param name="intentId">المعرّف.</param>
+    /// <param name="slotName">اسم الشريحة.</param>
+    /// <param name="registerKey">المفتاح.</param>
+    public static Error MalformedRegisterKey(string intentId, string slotName, string registerKey) => new(
+        "ai.voice.catalogue.malformed_register_key",
+        "مفتاح السجلّ «" + registerKey + "» في الشريحة «" + slotName + "» من النيّة «" + intentId
+        + "» ليس على الشكل المُعلَن: لاتينيّ يبدأ بحرفٍ صغير بلا نقاط ولا فراغ.",
+        "Register key '" + registerKey + "' on slot '" + slotName + "' of intent '" + intentId + "' is malformed.");
+
     /// <summary>سجلٌّ فارغ.</summary>
     public static readonly Error CatalogueEmpty = new(
         "ai.voice.catalogue.empty",

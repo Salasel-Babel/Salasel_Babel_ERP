@@ -9,12 +9,17 @@ namespace Babel.Ai.Voice;
 /// فمن نسي أن يسأل البوابة لا يجد ما يمرّره إلى الوحدة المالكة أصلاً — وهو الفرق بين
 /// حارسٍ يُفحَص وحارسٍ <b>لا يمكن تجاوزه</b>.
 /// </para>
+/// <para>
+/// <b>وشرائحُه <see cref="ResolvedSlotValue"/> لا <see cref="SpokenSlotValue"/>:</b> الطرف
+/// فيها <b>مِقبضٌ ولا شيء غيره</b> — لا نصّ، ولا ما سُمع، ولا اسمٌ من السجلّ. فلا يستطيع
+/// أي بانٍ لجسم مسوّدة أن يجد اسماً منطوقاً ليضعه في موضع معرّف، <b>لأنه غير موجود</b>.
+/// </para>
 /// </summary>
 public sealed record VoiceDispatch
 {
     internal VoiceDispatch(
         VoiceIntent intent,
-        IReadOnlyList<SpokenSlotValue> slots,
+        IReadOnlyList<ResolvedSlotValue> slots,
         Guid companyId,
         bool confirmedByHuman)
     {
@@ -27,8 +32,8 @@ public sealed record VoiceDispatch
     /// <summary>النيّة.</summary>
     public VoiceIntent Intent { get; }
 
-    /// <summary>الشرائح الممتلئة.</summary>
-    public IReadOnlyList<SpokenSlotValue> Slots { get; }
+    /// <summary>الشرائح الممتلئة — والطرف فيها مِقبض.</summary>
+    public IReadOnlyList<ResolvedSlotValue> Slots { get; }
 
     /// <summary>المنشأة التي يُنفَّذ فيها.</summary>
     public Guid CompanyId { get; }

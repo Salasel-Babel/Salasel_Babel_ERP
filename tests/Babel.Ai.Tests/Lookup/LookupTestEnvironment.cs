@@ -106,6 +106,24 @@ internal static class LookupTestEnvironment
     /// <summary>منشأة إثبات «سقف الورقة يُفرض في المحوّل» — تُزرع فيها صفوفٌ فوق السقف.</summary>
     public static TenantId CeilingTenant { get; } = new(new Guid("100c0a5e-0000-4000-8000-000000000011"));
 
+    /// <summary>منشأة إثبات «الطرف الثالث لا يُختار» — يُزرع فيها الطرفان معاً.</summary>
+    public static TenantId ThirdPartyTenant { get; } = new(new Guid("100c0a5e-0000-4000-8000-000000000012"));
+
+    /// <summary>منشأة إثبات «بعد السؤال يمرّ مِقبض» — <b>وحدها</b>، فلا يزرع فيها إثباتٌ آخر.</summary>
+    public static TenantId ThirdPartyAnsweredTenant { get; } = new(new Guid("100c0a5e-0000-4000-8000-000000000017"));
+
+    /// <summary>منشأة إثبات «متجه الانحدار يبقى عميلاً» — صفٌّ واحد فيها.</summary>
+    public static TenantId RegressionOneTenant { get; } = new(new Guid("100c0a5e-0000-4000-8000-000000000013"));
+
+    /// <summary>منشأة إثبات «الثمن الأمين» — صفّان متقاربان فيُسأل ولا يُرجَّح أحدهما.</summary>
+    public static TenantId RegressionManyTenant { get; } = new(new Guid("100c0a5e-0000-4000-8000-000000000014"));
+
+    /// <summary>منشأة إثبات الهزائم الأربع — الطرفان المشروعان مزروعان فيها.</summary>
+    public static TenantId DefeatsTenant { get; } = new(new Guid("100c0a5e-0000-4000-8000-000000000015"));
+
+    /// <summary>منشأة إثبات «الاسم المشروع فيه كلمةٌ ذاتُ دلالة لا يُقصّ».</summary>
+    public static TenantId SignificantWordTenant { get; } = new(new Guid("100c0a5e-0000-4000-8000-000000000016"));
+
     /// <summary>وصف <c>sales.customer</c> كما ينشئه EF فعلاً — <b>ولا عمود شركة فيه</b>.</summary>
     public static NameRegisterTable CustomerRegister { get; } = new(
         registerKey: "customer",

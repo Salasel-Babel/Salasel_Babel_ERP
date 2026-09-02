@@ -27,7 +27,7 @@
       "slots": [
         {
           "name": "customer",
-          "kind": "Text",
+          "kind": "Entity",
           "nameAr": "العميل",
           "required": true,
           "cues": [
@@ -36,7 +36,8 @@
             "العميل",
             "عميل"
           ],
-          "choices": []
+          "choices": [],
+          "registerKey": "customer"
         },
         {
           "name": "invoiceNumber",
@@ -98,7 +99,7 @@
       "slots": [
         {
           "name": "customer",
-          "kind": "Text",
+          "kind": "Entity",
           "nameAr": "العميل",
           "required": true,
           "cues": [
@@ -107,7 +108,8 @@
             "على",
             "حق"
           ],
-          "choices": []
+          "choices": [],
+          "registerKey": "customer"
         }
       ]
     },
@@ -134,7 +136,7 @@
       "slots": [
         {
           "name": "customer",
-          "kind": "Text",
+          "kind": "Entity",
           "nameAr": "العميل",
           "required": true,
           "cues": [
@@ -143,7 +145,8 @@
             "من",
             "لصالح"
           ],
-          "choices": []
+          "choices": [],
+          "registerKey": "customer"
         },
         {
           "name": "amount",
@@ -221,7 +224,7 @@
         },
         {
           "name": "item",
-          "kind": "Text",
+          "kind": "Code",
           "nameAr": "الصنف",
           "required": true,
           "cues": [
@@ -277,7 +280,7 @@
       "slots": [
         {
           "name": "description",
-          "kind": "Text",
+          "kind": "Prose",
           "nameAr": "بيان القيد",
           "required": true,
           "cues": [
@@ -365,7 +368,7 @@
       "slots": [
         {
           "name": "supplier",
-          "kind": "Text",
+          "kind": "Entity",
           "nameAr": "المورد",
           "required": true,
           "cues": [
@@ -373,11 +376,12 @@
             "المورد",
             "مورد"
           ],
-          "choices": []
+          "choices": [],
+          "registerKey": "supplier"
         },
         {
           "name": "item",
-          "kind": "Text",
+          "kind": "Code",
           "nameAr": "الصنف",
           "required": true,
           "cues": [
@@ -403,7 +407,7 @@
         },
         {
           "name": "warehouse",
-          "kind": "Text",
+          "kind": "Code",
           "nameAr": "المستودع",
           "required": true,
           "cues": [
@@ -457,7 +461,7 @@
         },
         {
           "name": "item",
-          "kind": "Text",
+          "kind": "Code",
           "nameAr": "الصنف",
           "required": true,
           "cues": [
@@ -543,7 +547,7 @@
       "slots": [
         {
           "name": "customer",
-          "kind": "Text",
+          "kind": "Entity",
           "nameAr": "العميل",
           "required": true,
           "cues": [
@@ -552,7 +556,8 @@
             "العميل",
             "عميل"
           ],
-          "choices": []
+          "choices": [],
+          "registerKey": "customer"
         },
         {
           "name": "amount",
@@ -636,7 +641,7 @@
         },
         {
           "name": "supplier",
-          "kind": "Text",
+          "kind": "Entity",
           "nameAr": "المورد",
           "required": true,
           "cues": [
@@ -644,7 +649,8 @@
             "المورد",
             "مورد"
           ],
-          "choices": []
+          "choices": [],
+          "registerKey": "supplier"
         },
         {
           "name": "amount",
@@ -695,7 +701,7 @@
       "slots": [
         {
           "name": "supplier",
-          "kind": "Text",
+          "kind": "Entity",
           "nameAr": "المورد",
           "required": true,
           "cues": [
@@ -705,7 +711,8 @@
             "باسم",
             "لصالح"
           ],
-          "choices": []
+          "choices": [],
+          "registerKey": "supplier"
         },
         {
           "name": "amount",
@@ -782,7 +789,7 @@
       "slots": [
         {
           "name": "supplier",
-          "kind": "Text",
+          "kind": "Entity",
           "nameAr": "المورد",
           "required": true,
           "cues": [
@@ -792,7 +799,8 @@
             "لصالح",
             "الى"
           ],
-          "choices": []
+          "choices": [],
+          "registerKey": "supplier"
         },
         {
           "name": "amount",
@@ -857,7 +865,7 @@
       "slots": [
         {
           "name": "contract",
-          "kind": "Text",
+          "kind": "Entity",
           "nameAr": "العقد",
           "required": true,
           "cues": [
@@ -865,11 +873,12 @@
             "العقد",
             "عقد"
           ],
-          "choices": []
+          "choices": [],
+          "registerKey": "contract"
         },
         {
           "name": "reason",
-          "kind": "Text",
+          "kind": "Prose",
           "nameAr": "سبب التغيير",
           "required": true,
           "cues": [
@@ -928,7 +937,7 @@
       "slots": [
         {
           "name": "contract",
-          "kind": "Text",
+          "kind": "Entity",
           "nameAr": "العقد",
           "required": true,
           "cues": [
@@ -937,11 +946,12 @@
             "للعقد",
             "بعقد"
           ],
-          "choices": []
+          "choices": [],
+          "registerKey": "contract"
         },
         {
           "name": "boqItem",
-          "kind": "Text",
+          "kind": "Entity",
           "nameAr": "بند جدول الكميات",
           "required": true,
           "cues": [
@@ -950,7 +960,8 @@
             "للبند",
             "بندي"
           ],
-          "choices": []
+          "choices": [],
+          "registerKey": "boqItem"
         },
         {
           "name": "quantity",
@@ -998,7 +1009,7 @@
       "slots": [
         {
           "name": "contract",
-          "kind": "Text",
+          "kind": "Entity",
           "nameAr": "العقد",
           "required": true,
           "cues": [
@@ -1006,7 +1017,8 @@
             "العقد",
             "للعقد"
           ],
-          "choices": []
+          "choices": [],
+          "registerKey": "contract"
         }
       ]
     },
@@ -1031,7 +1043,7 @@
       "slots": [
         {
           "name": "contract",
-          "kind": "Text",
+          "kind": "Entity",
           "nameAr": "العقد",
           "required": true,
           "cues": [
@@ -1039,7 +1051,8 @@
             "العقد",
             "عقد"
           ],
-          "choices": []
+          "choices": [],
+          "registerKey": "contract"
         },
         {
           "name": "guaranteeNumber",
@@ -1101,7 +1114,7 @@
       "slots": [
         {
           "name": "contract",
-          "kind": "Text",
+          "kind": "Entity",
           "nameAr": "العقد",
           "required": true,
           "cues": [
@@ -1109,7 +1122,8 @@
             "العقد",
             "عقد"
           ],
-          "choices": []
+          "choices": [],
+          "registerKey": "contract"
         },
         {
           "name": "amount",
@@ -1176,7 +1190,7 @@
       "slots": [
         {
           "name": "contract",
-          "kind": "Text",
+          "kind": "Entity",
           "nameAr": "العقد",
           "required": true,
           "cues": [
@@ -1184,7 +1198,8 @@
             "العقد",
             "عقد"
           ],
-          "choices": []
+          "choices": [],
+          "registerKey": "contract"
         }
       ]
     },
@@ -1210,7 +1225,7 @@
       "slots": [
         {
           "name": "contract",
-          "kind": "Text",
+          "kind": "Entity",
           "nameAr": "العقد",
           "required": true,
           "cues": [
@@ -1218,7 +1233,8 @@
             "العقد",
             "عقد"
           ],
-          "choices": []
+          "choices": [],
+          "registerKey": "contract"
         },
         {
           "name": "amount",
@@ -1267,7 +1283,7 @@
       "slots": [
         {
           "name": "subcontractor",
-          "kind": "Text",
+          "kind": "Entity",
           "nameAr": "المقاول من الباطن",
           "required": true,
           "cues": [
@@ -1276,7 +1292,8 @@
             "مقاول",
             "لصالح"
           ],
-          "choices": []
+          "choices": [],
+          "registerKey": "subcontractor"
         },
         {
           "name": "amount",
@@ -1322,7 +1339,7 @@
       "slots": [
         {
           "name": "subcontract",
-          "kind": "Text",
+          "kind": "Entity",
           "nameAr": "عقد الباطن",
           "required": true,
           "cues": [
@@ -1330,11 +1347,12 @@
             "العقد",
             "للعقد"
           ],
-          "choices": []
+          "choices": [],
+          "registerKey": "subcontract"
         },
         {
           "name": "boqItem",
-          "kind": "Text",
+          "kind": "Entity",
           "nameAr": "بند جدول الكميات",
           "required": true,
           "cues": [
@@ -1342,7 +1360,8 @@
             "البند",
             "للبند"
           ],
-          "choices": []
+          "choices": [],
+          "registerKey": "boqItem"
         },
         {
           "name": "quantity",
@@ -1388,7 +1407,7 @@
       "slots": [
         {
           "name": "subcontractor",
-          "kind": "Text",
+          "kind": "Entity",
           "nameAr": "المقاول من الباطن",
           "required": true,
           "cues": [
@@ -1396,7 +1415,8 @@
             "المقاول",
             "مقاول"
           ],
-          "choices": []
+          "choices": [],
+          "registerKey": "subcontractor"
         }
       ]
     },
@@ -1422,7 +1442,7 @@
       "slots": [
         {
           "name": "employee",
-          "kind": "Text",
+          "kind": "Entity",
           "nameAr": "الموظف",
           "required": true,
           "cues": [
@@ -1430,7 +1450,8 @@
             "موظف",
             "عن"
           ],
-          "choices": []
+          "choices": [],
+          "registerKey": "employee"
         }
       ]
     },
@@ -1456,7 +1477,7 @@
       "slots": [
         {
           "name": "employee",
-          "kind": "Text",
+          "kind": "Entity",
           "nameAr": "الموظف",
           "required": true,
           "cues": [
@@ -1465,7 +1486,8 @@
             "موظف",
             "لصالح"
           ],
-          "choices": []
+          "choices": [],
+          "registerKey": "employee"
         },
         {
           "name": "amount",
@@ -1523,7 +1545,7 @@
       "slots": [
         {
           "name": "employee",
-          "kind": "Text",
+          "kind": "Entity",
           "nameAr": "الموظف",
           "required": true,
           "cues": [
@@ -1531,7 +1553,8 @@
             "موظف",
             "على"
           ],
-          "choices": []
+          "choices": [],
+          "registerKey": "employee"
         },
         {
           "name": "amount",
@@ -1619,7 +1642,7 @@
       "slots": [
         {
           "name": "employee",
-          "kind": "Text",
+          "kind": "Entity",
           "nameAr": "الموظف",
           "required": true,
           "cues": [
@@ -1627,7 +1650,8 @@
             "الموظف",
             "موظف"
           ],
-          "choices": []
+          "choices": [],
+          "registerKey": "employee"
         },
         {
           "name": "amount",
@@ -1873,7 +1897,7 @@
       "slots": [
         {
           "name": "item",
-          "kind": "Text",
+          "kind": "Code",
           "nameAr": "الصنف",
           "required": true,
           "cues": [
@@ -1901,7 +1925,7 @@
         },
         {
           "name": "warehouse",
-          "kind": "Text",
+          "kind": "Code",
           "nameAr": "المستودع",
           "required": true,
           "cues": [
@@ -1954,7 +1978,7 @@
       "slots": [
         {
           "name": "item",
-          "kind": "Text",
+          "kind": "Code",
           "nameAr": "الصنف",
           "required": true,
           "cues": [
@@ -1979,7 +2003,7 @@
         },
         {
           "name": "warehouse",
-          "kind": "Text",
+          "kind": "Code",
           "nameAr": "المستودع",
           "required": true,
           "cues": [
@@ -1992,7 +2016,7 @@
         },
         {
           "name": "project",
-          "kind": "Text",
+          "kind": "Entity",
           "nameAr": "المشروع",
           "required": true,
           "cues": [
@@ -2000,7 +2024,8 @@
             "المشروع",
             "مشروع"
           ],
-          "choices": []
+          "choices": [],
+          "registerKey": "project"
         },
         {
           "name": "issuedOn",
@@ -2034,7 +2059,7 @@
       "slots": [
         {
           "name": "item",
-          "kind": "Text",
+          "kind": "Code",
           "nameAr": "الصنف",
           "required": true,
           "cues": [
@@ -2059,7 +2084,7 @@
         },
         {
           "name": "warehouse",
-          "kind": "Text",
+          "kind": "Code",
           "nameAr": "المستودع",
           "required": true,
           "cues": [
@@ -2120,7 +2145,7 @@
       "slots": [
         {
           "name": "item",
-          "kind": "Text",
+          "kind": "Code",
           "nameAr": "الصنف",
           "required": true,
           "cues": [
@@ -2132,7 +2157,7 @@
         },
         {
           "name": "warehouse",
-          "kind": "Text",
+          "kind": "Code",
           "nameAr": "المستودع",
           "required": false,
           "cues": [
@@ -2166,7 +2191,7 @@
       "slots": [
         {
           "name": "item",
-          "kind": "Text",
+          "kind": "Code",
           "nameAr": "الصنف",
           "required": true,
           "cues": [
@@ -2199,7 +2224,7 @@
       "slots": [
         {
           "name": "warehouse",
-          "kind": "Text",
+          "kind": "Code",
           "nameAr": "المستودع",
           "required": true,
           "cues": [
@@ -2233,7 +2258,7 @@
       "slots": [
         {
           "name": "item",
-          "kind": "Text",
+          "kind": "Code",
           "nameAr": "الصنف",
           "required": true,
           "cues": [
@@ -2258,7 +2283,7 @@
         },
         {
           "name": "fromWarehouse",
-          "kind": "Text",
+          "kind": "Code",
           "nameAr": "المستودع المرسِل",
           "required": true,
           "cues": [
@@ -2270,7 +2295,7 @@
         },
         {
           "name": "toWarehouse",
-          "kind": "Text",
+          "kind": "Code",
           "nameAr": "المستودع المستقبِل",
           "required": true,
           "cues": [
@@ -2312,7 +2337,7 @@
       "slots": [
         {
           "name": "lessee",
-          "kind": "Text",
+          "kind": "Entity",
           "nameAr": "المستأجر",
           "required": true,
           "cues": [
@@ -2320,7 +2345,8 @@
             "المستاجر",
             "مستاجر"
           ],
-          "choices": []
+          "choices": [],
+          "registerKey": "lessee"
         },
         {
           "name": "unit",
@@ -2504,7 +2530,7 @@
       "slots": [
         {
           "name": "lessee",
-          "kind": "Text",
+          "kind": "Entity",
           "nameAr": "المستأجر",
           "required": true,
           "cues": [
@@ -2512,7 +2538,8 @@
             "مستاجر",
             "على"
           ],
-          "choices": []
+          "choices": [],
+          "registerKey": "lessee"
         }
       ]
     },
@@ -2538,7 +2565,7 @@
       "slots": [
         {
           "name": "lessee",
-          "kind": "Text",
+          "kind": "Entity",
           "nameAr": "المستأجر",
           "required": true,
           "cues": [
@@ -2547,7 +2574,8 @@
             "مستاجر",
             "من"
           ],
-          "choices": []
+          "choices": [],
+          "registerKey": "lessee"
         },
         {
           "name": "amount",
@@ -3136,12 +3164,11 @@
     {
       "transcript": "سجل جرد الصنف مواسير نحاس كمية عشرين المستودع الرئيسي اليوم",
       "intent": "inventory.count_adjustment.record",
-      "missing": [
-        "quantity"
-      ],
+      "missing": [],
       "faults": [
         "ai.voice.unit_missing"
-      ]
+      ],
+      "note_ar": "الكمّية سُمعت بلا وحدة، فقراءتها **رفضٌ مُسمّى** لا صمت. وبعد أن صارت القراءة مجموعةً مغلقة لم تعد الشريحة الواحدة تظهر «ناقصة» و«معطوبة» معاً في قائمتين متوازيتين — والرفض وحده يُقال، وهو أدلّ: «ينقصني وحدة الكمية: سمعتُ «عشرين» بلا وحدة»."
     },
     {
       "transcript": "اصرف مواد للمشروع برج الشمال الصنف اسمنت كمية مئة كيس اليوم",
@@ -3384,5 +3411,41 @@
       "transcript": "   ",
       "code": "ai.voice.transcript_empty"
     }
-  ]
+  ],
+  "registers_note_ar": "سجلّاتُ الأسماء كما يراها الإثبات: لكل مفتاحِ سجلٍّ قائمةُ المقاطع التي تُحلّ إلى صفٍّ واحد. وهذه القائمة **مِفصلٌ لا مُطابِق**: مُطابِقُ الإنتاج ثلاثيّاتٌ في PostgreSQL بعد الطيّ، ويُثبَت على قاعدةٍ حقيقية في tests/Babel.Ai.Tests/Lookup و‏TheThirdPartyIsNeverChosen و‏TheFourDefeatsProduceNoParty. وما يُثبته هذا الملفّ **السباكة**: مقطعٌ يُحدَّد، فيُسأل عنه السجلّ، فيصير مِقبضاً، فيمرّ من البوّابة.",
+  "registers": {
+    "boqItem": [
+      "حديد تسليح",
+      "خرسانة"
+    ],
+    "contract": [
+      "برج الشمال",
+      "برج الياسمين"
+    ],
+    "customer": [
+      "مؤسسة الرياض"
+    ],
+    "employee": [
+      "احمد العتيبي",
+      "احمد الغامدي"
+    ],
+    "lessee": [
+      "خالد الشمري",
+      "خالد العتيبي"
+    ],
+    "project": [
+      "برج الشمال"
+    ],
+    "subcontract": [
+      "الحديد"
+    ],
+    "subcontractor": [
+      "مؤسسة البناء",
+      "مؤسسة البناء الحديث"
+    ],
+    "supplier": [
+      "شركة الخليج",
+      "مؤسسة النور"
+    ]
+  }
 }

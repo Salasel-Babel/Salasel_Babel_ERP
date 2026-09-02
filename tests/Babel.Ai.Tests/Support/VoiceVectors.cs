@@ -39,24 +39,28 @@ internal sealed record VectorIntent(
 /// <param name="Required">هل هي لازمة؟</param>
 /// <param name="Cues">الدلائل.</param>
 /// <param name="Choices">القائمة المغلقة.</param>
+/// <param name="RegisterKey">مفتاح السجلّ لشريحة الطرف، و<c>null</c> لغيرها.</param>
 internal sealed record VectorSlot(
     string Name,
     string Kind,
     string NameAr,
     bool Required,
     IReadOnlyList<string> Cues,
-    IReadOnlyList<string> Choices);
+    IReadOnlyList<string> Choices,
+    string? RegisterKey = null);
 
 /// <summary>جملةٌ تُقرأ بنجاح، ومعها ما يجب أن يُستخرج منها.</summary>
 /// <param name="Transcript">التفريغ.</param>
 /// <param name="Intent">النيّة المتوقَّعة.</param>
 /// <param name="Slots">الشرائح المتوقَّعة بقيمها النصّية.</param>
 /// <param name="Units">وحدات الشرائح الكمّية.</param>
+/// <param name="NoteAr">ملاحظةٌ في الملفّ تشرح المتجه — تُقرأ ولا تُقاس.</param>
 internal sealed record VectorUtterance(
     string Transcript,
     string Intent,
     IReadOnlyDictionary<string, string> Slots,
-    IReadOnlyDictionary<string, string>? Units);
+    IReadOnlyDictionary<string, string>? Units,
+    string? NoteAr = null);
 
 /// <summary>جملةٌ تُفهَم نيّتُها وتنقصها شريحة.</summary>
 /// <param name="Transcript">التفريغ.</param>
@@ -69,12 +73,14 @@ internal sealed record VectorUtterance(
 /// في تقريرٍ عمريّ ليس زينةً بل هو تاريخ القطع، واختراعُه يُنتج تقريراً صحيح الشكل
 /// عن يومٍ لم يُطلَب.
 /// </param>
+/// <param name="NoteAr">ملاحظةٌ في الملفّ تشرح المتجه — تُقرأ ولا تُقاس.</param>
 internal sealed record VectorMissing(
     string Transcript,
     string Intent,
     IReadOnlyList<string> Missing,
     IReadOnlyList<string>? Faults,
-    bool WithoutToday = false);
+    bool WithoutToday = false,
+    string? NoteAr = null);
 
 /// <summary>جملةٌ تُرفض قراءتُها أصلاً.</summary>
 /// <param name="Transcript">التفريغ.</param>
@@ -89,6 +95,10 @@ internal sealed record VectorRefusal(string Transcript, string Code);
 /// <param name="Utterances">جمل تُقرأ.</param>
 /// <param name="Missing">جمل ينقصها شيء.</param>
 /// <param name="Refusals">جمل تُرفض.</param>
+/// <param name="Registers">
+/// سجلّاتُ الأسماء: لكل مفتاحٍ قائمةُ المقاطع التي تُحلّ إلى صفٍّ واحد.
+/// <b>وهي مِفصلٌ لا مُطابِق</b> — المُطابِق ثلاثيّاتٌ في PostgreSQL، ويُثبَت على قاعدةٍ حقيقية.
+/// </param>
 internal sealed record VoiceVectorFile(
     string Today,
     string StatutoryTaxRate,
@@ -96,7 +106,8 @@ internal sealed record VoiceVectorFile(
     IReadOnlyList<VectorIntent> Intents,
     IReadOnlyList<VectorUtterance> Utterances,
     IReadOnlyList<VectorMissing> Missing,
-    IReadOnlyList<VectorRefusal> Refusals);
+    IReadOnlyList<VectorRefusal> Refusals,
+    IReadOnlyDictionary<string, IReadOnlyList<string>> Registers);
 
 /// <summary>
 /// <b>ملفّ متجهات واحد يقرؤه تنفيذان.</b>

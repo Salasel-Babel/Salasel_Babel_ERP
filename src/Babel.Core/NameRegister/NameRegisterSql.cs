@@ -42,7 +42,13 @@ internal static class NameRegisterSql
             ? string.Empty
             : " and " + NameRegisterTable.Quote(table.ActiveColumn);
 
-        return " where " + scope + active
+        // ‏**الدور شرطٌ في النطاق لا مِصفاةٌ بعده**: جدولٌ يتقاسمه المستأجر والمالك
+        // يُطابِق الطرفَ الخطأ لو سقط هذا السطر، ويُصدر له مِقبضاً صحيحاً.
+        string role = table.RoleColumn is null
+            ? string.Empty
+            : " and " + NameRegisterTable.Quote(table.RoleColumn) + " = @role";
+
+        return " where " + scope + active + role
             + " and ((search_key % babel.fold_arabic(@text)"
             + " and similarity(search_key, babel.fold_arabic(@text)) >= @threshold)"
             + " or search_key_tight = babel.fold_arabic_tight(@text))";
@@ -117,6 +123,11 @@ internal static class NameRegisterSql
         if (table.CompanyColumn is not null)
         {
             command.Parameters.AddWithValue("scope1", request.CompanyId);
+        }
+
+        if (table.RoleValue is not null)
+        {
+            command.Parameters.AddWithValue("role", table.RoleValue);
         }
     }
 }

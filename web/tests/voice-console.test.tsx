@@ -7,10 +7,11 @@
    معروض كاملاً، والأزرار حقيقية، والرفض مكتوب.
    ═══════════════════════════════════════════════════════════════════════════ */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { LocaleProvider } from "../src/i18n/react";
 import { createI18n } from "../src/i18n/setup";
-import { VoiceConsole, VOICE_INTENTS, type VoiceCaller, type VoiceDispatch } from "../src/voice";
+import { VoiceConsole, VOICE_INTENTS, type NameAnswer, type VoiceCaller, type VoiceDispatch } from "../src/voice";
+import { AGENT_TOKEN_LENGTH } from "../src/agent/sheet";
 
 function Wrap(props: { children: React.ReactNode }) {
   return (
@@ -25,18 +26,37 @@ afterEach(cleanup);
 
 const CALLER: VoiceCaller = {
   companyId: "0d0e2b7a-9c1f-4a55-9d2e-6f8a1b3c5d70",
-  companyNameAr: "سلاسل بابل",
   permittedIntentIds: VOICE_INTENTS.map((intent) => intent.id),
 };
 
 const RECEIPT = "سجل سند قبض من العميل مؤسسة الرياض بمبلغ ألف ريال نقد اليوم";
 const BALANCE = "كم رصيد العميل مؤسسة الرياض";
 
+/**
+ * سجلٌّ يجيب عن كل مقطعٍ بمِقبض — **مِفصلٌ لا مُطابِق**: المطابقة تُثبَت على
+ * PostgreSQL في الخادم، وما يُثبَت هنا أنّ اللوحة تسأل ثم تعرض ثم تسمح بالتأكيد.
+ */
+const HANDLE = "h".repeat(AGENT_TOKEN_LENGTH);
+
+function resolveAll(
+  pending: readonly { readonly slot: string }[]
+): Promise<Record<string, NameAnswer>> {
+  const answers: Record<string, NameAnswer> = {};
+  for (const entry of pending) answers[entry.slot] = { outcome: "resolved", handle: HANDLE };
+  return Promise.resolve(answers);
+}
+
 function open(props: Partial<React.ComponentProps<typeof VoiceConsole>> = {}) {
   const dispatched: VoiceDispatch[] = [];
   render(
     <Wrap>
-      <VoiceConsole caller={CALLER} today="2026-08-31" onDispatch={(d) => dispatched.push(d)} {...props} />
+      <VoiceConsole
+        caller={CALLER}
+        today="2026-08-31"
+        resolveNames={resolveAll}
+        onDispatch={(d) => dispatched.push(d)}
+        {...props}
+      />
     </Wrap>
   );
   return dispatched;
@@ -45,6 +65,14 @@ function open(props: Partial<React.ComponentProps<typeof VoiceConsole>> = {}) {
 function say(text: string) {
   fireEvent.change(screen.getByTestId("voice-manual-input"), { target: { value: text } });
   fireEvent.click(screen.getByTestId("voice-manual-apply"));
+}
+
+/** يقول ثم ينتظر جوابَ السجلّ — فحلُّ الأسماء غير متزامن كما هو في المنتج. */
+async function sayAndResolve(text: string) {
+  say(text);
+  await act(async () => {
+    await Promise.resolve();
+  });
 }
 
 describe("<VoiceConsole> — الأقسام الخمسة", () => {
@@ -72,9 +100,9 @@ describe("<VoiceConsole> — الأقسام الخمسة", () => {
 });
 
 describe("<VoiceConsole> — بوّابة التأكيد", () => {
-  it("عملية تُغيّر الحال تُقرأ مرتدّةً **على الشاشة** ولا تُنفَّذ قبل التأكيد", () => {
+  it("عملية تُغيّر الحال تُقرأ مرتدّةً **على الشاشة** ولا تُنفَّذ قبل التأكيد", async () => {
     const dispatched = open();
-    say(RECEIPT);
+    await sayAndResolve(RECEIPT);
 
     /* الملخّص مرئي كاملاً — وهذا شرط أن يستطيع من لا يسمع أن يؤكّد. */
     const readback = screen.getByTestId("voice-readback-text");
@@ -96,10 +124,10 @@ describe("<VoiceConsole> — بوّابة التأكيد", () => {
     expect(screen.getByTestId("voice-outcome").textContent).toContain("صارت مسوّدة");
   });
 
-  it("المسوّدة المؤكَّدة تُسلَّم بمعرّف عمليةٍ منشورة — **وليست عملية ترحيل**", () => {
+  it("المسوّدة المؤكَّدة تُسلَّم بمعرّف عمليةٍ منشورة — **وليست عملية ترحيل**", async () => {
     const handed: { intentId: string; operationId: string }[] = [];
     open({ onDraft: (h) => handed.push({ intentId: h.intentId, operationId: h.operationId }) });
-    say(RECEIPT);
+    await sayAndResolve(RECEIPT);
     fireEvent.click(screen.getByTestId("voice-confirm"));
 
     expect(handed).toHaveLength(1);
@@ -113,18 +141,18 @@ describe("<VoiceConsole> — بوّابة التأكيد", () => {
     expect(screen.getByTestId("voice-post-is-not-spoken").textContent).toContain("الترحيل لا يُقال");
   });
 
-  it("شاشةٌ لم تهبط تُقال باسمها، ولا يُقفَز إلى مسارٍ غير مسجَّل", () => {
+  it("شاشةٌ لم تهبط تُقال باسمها، ولا يُقفَز إلى مسارٍ غير مسجَّل", async () => {
     open({ destinationOf: () => null });
-    say(RECEIPT);
+    await sayAndResolve(RECEIPT);
     fireEvent.click(screen.getByTestId("voice-confirm"));
 
     expect(screen.getByTestId("voice-handoff-destination").getAttribute("data-destination")).toBe("");
     expect(screen.getByTestId("voice-handoff-destination").textContent).toContain("لم تهبط بعد");
   });
 
-  it("الوجهة تُعلَن حين تكون الشاشة مسجَّلة", () => {
+  it("الوجهة تُعلَن حين تكون الشاشة مسجَّلة", async () => {
     open({ destinationOf: () => "/realestate" });
-    say(RECEIPT);
+    await sayAndResolve(RECEIPT);
     fireEvent.click(screen.getByTestId("voice-confirm"));
 
     expect(screen.getByTestId("voice-handoff-destination").getAttribute("data-destination")).toBe("/realestate");
@@ -150,17 +178,17 @@ describe("<VoiceConsole> — بوّابة التأكيد", () => {
     expect(screen.queryByTestId("voice-readback")).toBeNull();
   });
 
-  it("«تأكيد» منطوقة تعمل عمل الزرّ — لمن يداه مشغولتان", () => {
+  it("«تأكيد» منطوقة تعمل عمل الزرّ — لمن يداه مشغولتان", async () => {
     const dispatched = open();
-    say(RECEIPT);
+    await sayAndResolve(RECEIPT);
     expect(dispatched).toHaveLength(0);
-    say("تأكيد");
+    await sayAndResolve("تأكيد");
     expect(dispatched).toHaveLength(1);
   });
 
-  it("الاستعلام لا يُعرض له تأكيد ولا يُوسَم مؤكَّداً", () => {
+  it("الاستعلام لا يُعرض له تأكيد ولا يُوسَم مؤكَّداً", async () => {
     const dispatched = open();
-    say(BALANCE);
+    await sayAndResolve(BALANCE);
 
     expect(screen.queryByTestId("voice-readback")).toBeNull();
     fireEvent.click(screen.getByTestId("voice-run"));
@@ -214,13 +242,18 @@ describe("<VoiceConsole> — بوّابة التأكيد", () => {
     expect(screen.queryByTestId("voice-understood")).toBeNull();
   });
 
-  it("شركة منطوقة غير المفتوحة تُرفض عند التأكيد", () => {
+  it("دليلُ شركةٍ داخل أمرٍ آخر يُرفض — ولا يُسمّى ما نُطق", async () => {
     const dispatched = open();
-    say(RECEIPT + " في شركة الفروع");
+    await sayAndResolve(RECEIPT + " في شركة الفروع");
     fireEvent.click(screen.getByTestId("voice-confirm"));
 
     expect(dispatched).toHaveLength(0);
-    expect(screen.getByTestId("voice-outcome-refusals").textContent).toContain("الشركة المنطوقة");
+
+    const refusal = screen.getByTestId("voice-outcome-refusals").textContent ?? "";
+    expect(refusal).toContain("لا أنتقل بين المنشآت بالكلام");
+
+    /* **ولا يُسمّى ما نُطق**: تسميتُه تقتضي تحليلَ اسمٍ من الكلام، وهو ما حُذف. */
+    expect(refusal).not.toContain("الفروع");
   });
 
   it("ما لا يملكه المتكلّم يُرفض بجملة «لا أملك صلاحية»", () => {
@@ -234,11 +267,11 @@ describe("<VoiceConsole> — بوّابة التأكيد", () => {
 });
 
 describe("<VoiceConsole> — الوصول", () => {
-  it("متصفّح لا ينطق يقول ذلك، ويبقى التأكيد ممكناً بالضغط", () => {
+  it("متصفّح لا ينطق يقول ذلك، ويبقى التأكيد ممكناً بالضغط", async () => {
     const dispatched = open();
     expect(screen.getByTestId("voice-silent-browser")).toBeTruthy();
 
-    say(RECEIPT);
+    await sayAndResolve(RECEIPT);
     fireEvent.click(screen.getByTestId("voice-confirm"));
     expect(dispatched).toHaveLength(1);
   });

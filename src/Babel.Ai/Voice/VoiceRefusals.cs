@@ -127,14 +127,58 @@ public static class VoiceRefusals
             "Not permitted: intent '" + intent.Id + "'. Voice is another door to the same entitlements, never a wider one.");
     }
 
-    /// <summary>شركةٌ منطوقة غير الشركة المفتوحة.</summary>
-    /// <param name="spoken">ما نُطق.</param>
-    /// <param name="current">الشركة المفتوحة.</param>
-    public static Error CompanyNotSwitched(string spoken, string current) => new(
+    /// <summary>
+    /// نُطق دليلُ شركةٍ داخل أمرٍ آخر. <b>ولا يُسمّى ما نُطق</b>: تسميتُه تقتضي تحليلَ
+    /// اسمٍ من الكلام، وتحليلُ الاسم هو بعينه ما حُذف من هذا المسار — وحكمُ الهوية
+    /// بتساوي نصّين هو ما كان يُبنى عليه.
+    /// </summary>
+    public static readonly Error CompanyNotSwitched = new(
         "ai.voice.company_not_switched",
-        "قلتَ «" + spoken + "» والمفتوح الآن «" + current + "». "
-        + "ولا أنتقل بين الشركات بالكلام داخل أمرٍ آخر: بدّل الشركة بخطوةٍ صريحة ثم أعِد الأمر.",
-        "You said '" + spoken + "' while '" + current + "' is open; voice never switches company inside another command.");
+        "لا أنتقل بين المنشآت بالكلام داخل أمرٍ آخر. المنشأة المفتوحة هي التي يُنفَّذ فيها الأمر — "
+        + "بدّلها من شاشة المنشآت ثم أعِد قول الأمر.",
+        "Voice never switches company inside another command; switch it on the companies screen, then say the command again.");
+
+    /// <summary>
+    /// طرفٌ لم يُحلّ بعد — <b>والرفض هنا هو الفرق كلّه</b>: كان القارئ يمرّر المقطع نصّاً
+    /// فيصير طرفَ المستند، وصار المقطع يُسأل عنه السجلّ ولا يمرّ قبل الجواب.
+    /// </summary>
+    /// <param name="slot">الشريحة.</param>
+    /// <param name="heard">المقطع كما سُمع.</param>
+    public static Error NameUnresolved(VoiceSlot slot, string heard)
+    {
+        ArgumentNullException.ThrowIfNull(slot);
+        return new Error(
+            "ai.voice.name_unresolved",
+            slot.NameAr + " لم يُحلّ بعد: سمعتُ «" + heard + "» ولم أسأل السجلّ عنه. "
+            + "ولا أختار طرفاً بالتخمين — اسمٌ قريبٌ من اسمٍ آخر يُنشئ مستنداً على طرفٍ لم يُقصد.",
+            "Slot '" + slot.Name + "' heard '" + heard + "' and is not resolved against the register yet.");
+    }
+
+    /// <summary>الاسم ليس في السجلّ — ولا يُقرَّب إلى أقربه.</summary>
+    /// <param name="slot">الشريحة.</param>
+    /// <param name="heard">المقطع كما سُمع.</param>
+    public static Error NameNotInRegister(VoiceSlot slot, string heard)
+    {
+        ArgumentNullException.ThrowIfNull(slot);
+        return new Error(
+            "ai.voice.name_not_in_register",
+            "لا أجد «" + heard + "» في سجلّ " + slot.NameAr + " في هذه المنشأة. "
+            + "أضِفه من شاشته ثم أعِد قول الأمر — ولا أُنشئه بالكلام ولا أختار أقرب شبيهٍ له.",
+            "'" + heard + "' is not in the register for slot '" + slot.Name + "' in this tenant; nothing is guessed.");
+    }
+
+    /// <summary>أكثر من مطابق — <b>ولا يُقال كم</b>، ولا يُختار أعلاهم تشابهاً.</summary>
+    /// <param name="slot">الشريحة.</param>
+    /// <param name="heard">المقطع كما سُمع.</param>
+    public static Error NameNeedsQuestion(VoiceSlot slot, string heard)
+    {
+        ArgumentNullException.ThrowIfNull(slot);
+        return new Error(
+            "ai.voice.name_needs_question",
+            "أيّ " + slot.NameAr + " تقصد بـ«" + heard + "»؟ اختر من الورقة المعروضة. "
+            + "واختيارُ أحدهم بالصدفة يُنشئ مستنداً على طرفٍ لم يُطلَب.",
+            "Slot '" + slot.Name + "' heard '" + heard + "' and needs a question sheet; no best match is chosen.");
+    }
 
     /// <summary>نيّةٌ تنتظر قراراً من مالك المنتج.</summary>
     /// <param name="intent">النيّة.</param>

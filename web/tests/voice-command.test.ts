@@ -14,8 +14,11 @@ import {
   disclosureFault,
   readCommand,
   CONFIRM_CALL_AR,
+  applyNameAnswers,
+  type NameAnswer,
   type VoiceCaller,
 } from "../src/voice/command";
+import { AGENT_TOKEN_LENGTH } from "../src/agent/sheet";
 import { VOICE_INTENTS, VOICE_SECTIONS, intentById } from "../src/voice/catalogue";
 
 /* المسار من جذر المستودع لا من ملفّ الاختبار: vitest يشغّل من web/. */
@@ -27,7 +30,6 @@ const VECTORS_PATH = path.resolve(
 interface Vectors {
   today: string;
   statutoryTaxRate: string;
-  companyNameAr: string;
   intents: {
     id: string;
     section: string;
@@ -40,19 +42,51 @@ interface Vectors {
     readsPersonalData: boolean;
     nameAr: string;
     phrases: string[];
-    slots: { name: string; kind: string; nameAr: string; required: boolean; cues: string[]; choices: string[] }[];
+    slots: {
+      name: string;
+      kind: string;
+      nameAr: string;
+      required: boolean;
+      cues: string[];
+      choices: string[];
+      registerKey?: string;
+    }[];
   }[];
   utterances: { transcript: string; intent: string; slots: Record<string, string>; units?: Record<string, string> }[];
   missing: { transcript: string; intent: string; missing: string[]; faults?: string[]; withoutToday?: boolean }[];
   refusals: { transcript: string; code: string }[];
+  /** المقاطع التي تُحلّ إلى صفٍّ واحد، لكل سجلّ. **مِفصلٌ لا مُطابِق** — انظر صدر الملفّ. */
+  registers: Record<string, string[]>;
 }
 
 const vectors: Vectors = JSON.parse(readFileSync(VECTORS_PATH, "utf8"));
 const options = { today: vectors.today, statutoryTaxRate: vectors.statutoryTaxRate };
 
+/**
+ * **يقرأ ثم يحلّ** — والخطوتان معاً هما ما يصل البوّابة. والأجوبة تُشتقّ من كتلة
+ * `registers` في ملفّ المتجهات نفسه، فالتنفيذان يقرآن **مِفصلاً واحداً**.
+ */
+function readAndResolve(transcript: string, opts = options) {
+  const read = readCommand(transcript, opts);
+  if (!read.ok) return read;
+
+  const answers: Record<string, NameAnswer> = {};
+
+  for (const slot of read.resolution.intent.slots) {
+    const reading = read.resolution.readings[slot.name];
+    if (!reading || reading.kind !== "pending") continue;
+
+    const known = vectors.registers[reading.registerKey] ?? [];
+    answers[slot.name] = known.includes(reading.span)
+      ? { outcome: "resolved", handle: "h".repeat(AGENT_TOKEN_LENGTH) }
+      : { outcome: "none" };
+  }
+
+  return { ok: true as const, resolution: applyNameAnswers(read.resolution, answers) };
+}
+
 const caller: VoiceCaller = {
   companyId: "0d0e2b7a-9c1f-4a55-9d2e-6f8a1b3c5d70",
-  companyNameAr: vectors.companyNameAr,
   permittedIntentIds: VOICE_INTENTS.map((intent) => intent.id),
 };
 
@@ -137,9 +171,38 @@ describe("القراءة الحتمية", () => {
       expect(read.resolution.missingSlots).toEqual([]);
 
       for (const [name, expected] of Object.entries(vector.slots)) {
+        const slot = read.resolution.intent.slots.find((s) => s.name === name);
+
+        /* **شريحة الطرف لا تُقرأ قيمةً**: القيمة المتوقَّعة في المتجه هي **المقطع**. */
+        if (slot?.kind === "Entity") {
+          const reading = read.resolution.readings[name];
+          expect(reading?.kind, name + " في «" + transcript + "»").toBe("pending");
+          if (reading?.kind === "pending") {
+            expect(reading.span, name).toBe(expected);
+            expect(reading.registerKey, name).toBe(slot.registerKey);
+          }
+          expect(read.resolution.slots.find((s) => s.name === name)).toBeUndefined();
+          continue;
+        }
+
         const value = read.resolution.slots.find((s) => s.name === name);
         expect(value, name + " في «" + transcript + "»").toBeDefined();
         expect(value!.text, name).toBe(expected);
+      }
+
+      /* ولكل شريحةٍ معلَنة قراءةٌ واحدة، لا أقلّ ولا أكثر. */
+      expect(Object.keys(read.resolution.readings).length).toBe(read.resolution.intent.slots.length);
+
+      /* ثم يُسأل السجلّ، فيصير كلُّ طرفٍ مِقبضاً — وهذه هي السباكة كاملةً. */
+      const answered = readAndResolve(transcript);
+      expect(answered.ok).toBe(true);
+      if (answered.ok) {
+        expect(answered.resolution.pending).toEqual([]);
+        for (const slot of answered.resolution.intent.slots) {
+          if (slot.kind !== "Entity") continue;
+          const reading = answered.resolution.readings[slot.name];
+          expect(reading?.kind, slot.name + " بعد السؤال").toBe("resolved");
+        }
       }
       for (const [name, unit] of Object.entries(vector.units ?? {})) {
         expect(read.resolution.slots.find((s) => s.name === name)!.unit, name).toBe(unit);
@@ -207,7 +270,18 @@ describe("البوابة في المتصفّح", () => {
   it.each(changing.map((v) => [v.transcript, v.intent] as const))(
     "«%s» لا تمرّ بلا تأكيد",
     (transcript) => {
-      const read = readCommand(transcript, options);
+      /* **قبل السؤال: كلُّ طرفٍ معلَّق، والبوّابة ترفضه بالاسم.** */
+      const raw = readCommand(transcript, options);
+      expect(raw.ok).toBe(true);
+      if (!raw.ok) return;
+
+      if (raw.resolution.pending.length > 0) {
+        const unresolved = authorise(raw.resolution, caller, raw.resolution.confirmationToken);
+        expect(unresolved.ok).toBe(false);
+        if (!unresolved.ok) expect(unresolved.codes).toContain("ai.voice.name_unresolved");
+      }
+
+      const read = readAndResolve(transcript);
       expect(read.ok).toBe(true);
       if (!read.ok) return;
 
@@ -220,7 +294,17 @@ describe("البوابة في المتصفّح", () => {
 
       const allowed = authorise(read.resolution, caller, read.resolution.confirmationToken);
       expect(allowed.ok, transcript).toBe(true);
-      if (allowed.ok) expect(allowed.dispatch.confirmedByHuman).toBe(true);
+      if (allowed.ok) {
+        expect(allowed.dispatch.confirmedByHuman).toBe(true);
+
+        /* **ولا نصَّ لطرفٍ في الأمر**: الطرف مِقبضٌ و`text` فيه `null`. */
+        for (const slot of allowed.dispatch.intent.slots) {
+          if (slot.kind !== "Entity") continue;
+          const value = allowed.dispatch.slots.find((v) => v.name === slot.name);
+          expect(value?.handle, slot.name).toBeTruthy();
+          expect(value?.text, slot.name).toBeNull();
+        }
+      }
 
       const stale = authorise(read.resolution, caller, read.resolution.confirmationToken + "|تغيّر");
       expect(stale.ok).toBe(false);
@@ -237,14 +321,15 @@ describe("البوابة في المتصفّح", () => {
     if (!refused.ok) expect(refused.codes).toEqual(["ai.voice.not_permitted"]);
   });
 
-  it("شركة منطوقة غير المفتوحة تُرفض ولا يُنتقَل إليها داخل أمر آخر", () => {
+  it("دليل شركة داخل أمر آخر يُرفض — ولا يُحلَّل له اسم", () => {
     const read = readCommand(
       "سجل سند قبض من العميل مؤسسة الرياض بمبلغ ألف ريال نقد اليوم في شركة الفروع",
       options
     );
     expect(read.ok).toBe(true);
     if (!read.ok) return;
-    expect(read.resolution.spokenCompany).toBe("الفروع");
+    /* **الدليل هو الإشارة، لا الاسمُ المُحلَّل**: مقارنةُ نصٍّ بنصٍّ حكماً على الهوية حُذفت. */
+    expect(read.resolution.companyCueHeard).toBe(true);
     const refused = authorise(read.resolution, caller, read.resolution.confirmationToken);
     expect(refused.ok).toBe(false);
     if (!refused.ok) expect(refused.codes).toContain("ai.voice.company_not_switched");

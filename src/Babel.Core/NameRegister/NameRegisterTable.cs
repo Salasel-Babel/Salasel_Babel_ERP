@@ -34,6 +34,17 @@ public sealed partial record NameRegisterTable
     /// </param>
     /// <param name="activeColumn">عمود «سارٍ» إن وُجد، فلا يُقترح طرفٌ مُوقَف.</param>
     /// <param name="subtitleColumn">عمود تمييزٍ يُعرض على الشاشة — رمز الطرف مثلاً.</param>
+    /// <param name="roleColumn">
+    /// عمود الدور حين يتقاسم <b>جدولٌ واحد أدواراً عدّة</b>، و<c>null</c> فيما عداه.
+    /// <para>
+    /// <b>ومقيسٌ أنّ الحاجة إليه حقيقية لا نظرية:</b> ‏<c>realestate.party</c> يحمل
+    /// المستأجرين والملّاك والوسطاء في جدولٍ واحد بقيدٍ على <c>"PartyRole"</c>. فسجلُّ
+    /// «المستأجر» بلا هذا الشرط يُطابق <b>مالكاً</b> باسمٍ متشابه ويُصدر له مِقبضاً
+    /// صحيحاً — وهو الطرف الخطأ بعينه، عائداً من باب النطاق بدل باب القصّ.
+    /// </para>
+    /// </param>
+    /// <param name="roleValue">قيمة الدور المطلوبة — إلزامية مع <paramref name="roleColumn"/>.</param>
+    /// <exception cref="ArgumentException">إن سُمّي أحدُ العمود والقيمة دون الآخر.</exception>
     public NameRegisterTable(
         string registerKey,
         string schema,
@@ -43,8 +54,20 @@ public sealed partial record NameRegisterTable
         string tenantColumn,
         string? companyColumn = null,
         string? activeColumn = null,
-        string? subtitleColumn = null)
+        string? subtitleColumn = null,
+        string? roleColumn = null,
+        string? roleValue = null)
     {
+        // ‏عمودُ دورٍ بلا قيمة يبني نصّاً يسمّي وسيطاً لا يربطه أحد فيسقط **وقت التشغيل**؛
+        // وقيمةٌ بلا عمود تُهمَل صامتةً فيتّسع السجلّ إلى أدوارٍ أخرى. والحالتان تُرفضان هنا.
+        if ((roleColumn is null) != (roleValue is null))
+        {
+            throw new ArgumentException(
+                "عمود الدور وقيمتُه يُسمّيان معاً أو يُتركان معاً. "
+                + "/ the role column and its value are named together or omitted together.",
+                nameof(roleColumn));
+        }
+
         ArgumentException.ThrowIfNullOrWhiteSpace(registerKey);
 
         RegisterKey = registerKey;
@@ -56,6 +79,8 @@ public sealed partial record NameRegisterTable
         CompanyColumn = companyColumn is null ? null : Identifier(companyColumn, nameof(companyColumn));
         ActiveColumn = activeColumn is null ? null : Identifier(activeColumn, nameof(activeColumn));
         SubtitleColumn = subtitleColumn is null ? null : Identifier(subtitleColumn, nameof(subtitleColumn));
+        RoleColumn = roleColumn is null ? null : Identifier(roleColumn, nameof(roleColumn));
+        RoleValue = roleValue;
 
         ScopeColumns = CompanyColumn is null ? [TenantColumn] : [TenantColumn, CompanyColumn];
     }
@@ -92,6 +117,12 @@ public sealed partial record NameRegisterTable
 
     /// <summary>عمود التمييز المعروض أو <c>null</c>.</summary>
     public string? SubtitleColumn { get; }
+
+    /// <summary>عمود الدور أو <c>null</c> — لجدولٍ يتقاسمه أكثر من دور.</summary>
+    public string? RoleColumn { get; }
+
+    /// <summary>قيمة الدور المطلوبة، أو <c>null</c>. <b>تُربَط وسيطاً ولا تُدرَج في النصّ.</b></summary>
+    public string? RoleValue { get; }
 
     /// <summary>الاسم المؤهَّل مقتبساً — للاستعمال في نصّ الاستعلام.</summary>
     public string QualifiedName => Quote(Schema) + "." + Quote(Table);

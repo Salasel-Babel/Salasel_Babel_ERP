@@ -20,6 +20,7 @@ export type {
   VoiceSlotKind,
 } from "./catalogue";
 export {
+  applyNameAnswers,
   authorise,
   confirmationToken,
   disclosureFault,
@@ -29,13 +30,21 @@ export {
   matchIntent,
   readCommand,
   readbackArabic,
+  readbackFromReadings,
+  tokenFromReadings,
   unitCodeOf,
+  FROM_YOUR_REGISTER_AR,
+  NOT_RESOLVED_YET_AR,
+  WHICH_ONE_AR,
   CONFIRM_CALL_AR,
   CONFIRM_WORDS_AR,
   CANCEL_WORDS_AR,
   TRANSCRIPT_LIMIT,
 } from "./command";
 export type {
+  NameAnswer,
+  ResolvedSlotValue,
+  SlotReading,
   SpokenSlotValue,
   VoiceAuthorisation,
   VoiceCaller,

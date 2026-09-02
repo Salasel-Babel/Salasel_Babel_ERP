@@ -46,8 +46,8 @@ public sealed class RealEstateVoiceIntents : IVoiceIntentCatalogue
                 "سجل عقد ايجار", "عقد ايجار جديد", "افتح عقد ايجار", "مسودة عقد ايجار",
             ],
             [
-                new VoiceSlot("lessee", VoiceSlotKind.Text, "المستأجر", true,
-                    ["للمستاجر", "المستاجر", "مستاجر"], []),
+                new VoiceSlot("lessee", VoiceSlotKind.Entity, "المستأجر", true,
+                    ["للمستاجر", "المستاجر", "مستاجر"], [], "lessee"),
                 new VoiceSlot("unit", VoiceSlotKind.Code, "الوحدة", true,
                     ["للوحدة", "الوحدة", "وحدة"], []),
                 new VoiceSlot("totalRent", VoiceSlotKind.Money, "إجمالي الإيجار", true,
@@ -122,8 +122,8 @@ public sealed class RealEstateVoiceIntents : IVoiceIntentCatalogue
                 "كم متاخرات المستاجر", "متاخرات المستاجر", "كم على المستاجر", "وش متاخرات المستاجر",
             ],
             [
-                new VoiceSlot("lessee", VoiceSlotKind.Text, "المستأجر", true,
-                    ["المستاجر", "مستاجر", "على"], []),
+                new VoiceSlot("lessee", VoiceSlotKind.Entity, "المستأجر", true,
+                    ["المستاجر", "مستاجر", "على"], [], "lessee"),
             ],
             false,
             null),
@@ -142,8 +142,8 @@ public sealed class RealEstateVoiceIntents : IVoiceIntentCatalogue
                 "سجل تحصيل من مستاجر", "قبضت من المستاجر", "تحصيل ايجار", "استلمت ايجار", "حصلت من المستاجر",
             ],
             [
-                new VoiceSlot("lessee", VoiceSlotKind.Text, "المستأجر", true,
-                    ["من المستاجر", "المستاجر", "مستاجر", "من"], []),
+                new VoiceSlot("lessee", VoiceSlotKind.Entity, "المستأجر", true,
+                    ["من المستاجر", "المستاجر", "مستاجر", "من"], [], "lessee"),
                 new VoiceSlot("amount", VoiceSlotKind.Money, "المبلغ المحصَّل", true,
                     ["بمبلغ", "مبلغ", "بقيمة", "قيمته"], []),
                 new VoiceSlot("method", VoiceSlotKind.Choice, "طريقة التحصيل", true,

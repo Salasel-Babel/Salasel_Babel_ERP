@@ -29,14 +29,37 @@ export interface SpokenSlotValue {
   readonly provenance: Provenance;
 }
 
+/**
+ * **قراءةُ شريحةٍ واحدة — مجموعةٌ مغلقة ليس فيها «تابع».**
+ *
+ * نظيرُ `SlotReading` في الخادم حالةً بحالة. و`pending` ليست «واصلْ البحث» بل
+ * **«هذا المقطع نهائيّ، وعلى السجلّ أن يجيب عنه مرّةً واحدة»**. وكلُّ `switch`
+ * عليها يُغلَق بفرع `never`، فصنفٌ يُضاف يُحمِّر الترجمة ولا يسقط صامتاً إلى «مرّ».
+ */
+export type SlotReading =
+  | { readonly kind: "silent" }
+  | { readonly kind: "filled"; readonly value: SpokenSlotValue }
+  | { readonly kind: "pending"; readonly slot: string; readonly span: string; readonly registerKey: string }
+  | { readonly kind: "resolved"; readonly slot: string; readonly handle: string; readonly span: string }
+  | { readonly kind: "asked"; readonly slot: string; readonly questionId: string; readonly span: string }
+  | { readonly kind: "refused"; readonly code: string };
+
 /** ما فهمه المحرّك من جملةٍ واحدة. **وليس إذناً بالتنفيذ.** */
 export interface VoiceResolution {
   readonly intent: VoiceIntent;
+  /** قراءةٌ واحدة لكل شريحةٍ معلَنة — **دائماً**، حتى للصامتة. */
+  readonly readings: Readonly<Record<string, SlotReading>>;
   readonly slots: readonly SpokenSlotValue[];
   readonly missingSlots: readonly string[];
   /** رموز أعطالٍ وقعت أثناء القراءة — تُعرض ولا تُبتلع. */
   readonly faults: readonly string[];
-  readonly spokenCompany: string | null;
+  /** الأطراف التي لم تُحلّ بعد — تُعرض، **ويُمنع التأكيد ما دامت**. */
+  readonly pending: readonly string[];
+  /**
+   * هل نُطق دليلُ شركة؟ **والدليل هو الإشارة لا الاسمُ المُحلَّل**: تحليلُ الاسم
+   * ثم مقارنتُه بتساوي نصّين حكمٌ على الهوية بالتخمين، وقد حُذف.
+   */
+  readonly companyCueHeard: boolean;
   /**
    * الملخّص المرتدّ — يُقرأ ويُعرض معاً. **وواحدٌ بالعربية لا اثنان**: الملخّص نصّ
    * عرض، والعربية سجلُّه، ولغةٌ ثالثة صفٌّ لا عمود (ADR-0021 · القاعدة 14).
@@ -57,17 +80,29 @@ export interface VoiceReadingOptions {
   readonly statutoryTaxRate?: string;
 }
 
-/** مَن يتكلّم، وفي أي منشأة، وبأي صلاحيات. */
+/** مَن يتكلّم، وفي أي منشأة، وبأي صلاحيات. **ولا اسمَ شركةٍ فيه**: لا يُقارَن نصٌّ بنصّ. */
 export interface VoiceCaller {
   readonly companyId: string;
-  readonly companyNameAr: string;
   readonly permittedIntentIds: readonly string[];
+}
+
+/**
+ * قيمةُ شريحةٍ في أمرٍ اجتاز البوابة — **والطرف فيها مِقبضٌ لا اسم**.
+ * لا `text` ولا `heard` على حالة الكِيان: فلا يجد بانٍ لجسم مسوّدةٍ اسماً منطوقاً
+ * يضعه في موضع معرّف، **لأنه غير موجود**.
+ */
+export interface ResolvedSlotValue {
+  readonly name: string;
+  readonly text: string | null;
+  readonly unit: string | null;
+  readonly handle: string | null;
+  readonly provenance: Provenance;
 }
 
 /** أمرٌ اجتاز البوابة. */
 export interface VoiceDispatch {
   readonly intent: VoiceIntent;
-  readonly slots: readonly SpokenSlotValue[];
+  readonly slots: readonly ResolvedSlotValue[];
   readonly companyId: string;
   readonly confirmedByHuman: boolean;
 }
@@ -91,6 +126,15 @@ export const CONFIRM_WORDS_AR: readonly string[] = ["تأكيد", "أكّد", "�
 
 /** كلمات الإلغاء المنطوقة. */
 export const CANCEL_WORDS_AR: readonly string[] = ["إلغاء", "ألغِ", "لا", "تراجع"];
+
+/** وسمُ الطرف الذي طابق صفّاً واحداً في السجلّ — نفس نصّ الخادم حرفاً. */
+export const FROM_YOUR_REGISTER_AR = "من سجلّك";
+
+/** وسمُ الطرف الذي لم يُحلّ بعد. */
+export const NOT_RESOLVED_YET_AR = "لم يُحلّ بعد";
+
+/** وسمُ الطرف الذي وُرِقت له ورقةُ سؤال. **ولا يُقال كم كان المرشّحون.** */
+export const WHICH_ONE_AR = "أيّهم تقصد؟";
 
 /* ── التجريد على مرتبتين: أمينٌ يُعرَض، ومطويٌّ يُطابَق ──────────────────── */
 
@@ -126,7 +170,26 @@ const PERCENT_WORDS = new Set(["بالمئة", "بالمائة", "المئة", "
 const CONNECTORS = new Set(["رقم", "برقم", "رقمها", "هو", "هي"].map(fold));
 const TODAY_WORD = fold("اليوم");
 const YESTERDAY_WORDS = new Set(["امس", "أمس", "البارحة"].map(fold));
+/** دلائل الشركة — **مغلقة ومركّبة**، ووجودُها هو الإشارة: لا يُحلَّل ما بعدها. */
 const COMPANY_CUES = ["في شركة", "بشركة", "لشركة", "في منشأة", "بمنشأة", "لمنشأة", "على شركة"];
+
+/** هل نُطق دليلُ شركة؟ **ولا يُقرأ ما بعده** — تحليلُ الاسم هو ما حُذف. */
+function companyCueHeard(tokens: readonly string[]): boolean {
+  for (const cue of COMPANY_CUES) {
+    const parts = words(cue);
+    for (let index = 0; index + parts.length <= tokens.length; index++) {
+      let hit = true;
+      for (let offset = 0; offset < parts.length; offset++) {
+        if (!same(tokens[index + offset] ?? "", parts[offset] ?? "")) {
+          hit = false;
+          break;
+        }
+      }
+      if (hit) return true;
+    }
+  }
+  return false;
+}
 
 /**
  * معجم الوحدات المنطوقة — مغلق، ونظير `VoiceUnits` في الخادم مدخلاً بمدخل.
@@ -268,13 +331,9 @@ function readNumeric(slot: VoiceSlot, tokens: readonly string[]): SpokenSlotValu
   return null;
 }
 
-function readQuantity(
-  slot: VoiceSlot,
-  tokens: readonly string[],
-  faults: string[]
-): SpokenSlotValue | null {
-  let heardWithoutUnit: string | null = null;
-
+function readQuantity(slot: VoiceSlot, tokens: readonly string[]): SlotReading {
+  /* **مرورانِ لا مرورٌ واحد بحالةٍ تعبر `continue`** — نظير الخادم حرفاً: كان الشكل
+     «سجّل ما سُمع ثم تابعْ» وهو الشكل نفسه الذي جعل رفضَ مقطعٍ سبباً في قبول آخر. */
   for (const at of cuePositions(slot, tokens)) {
     const span = numberSpan(tokens, at);
     if (!span) continue;
@@ -286,23 +345,26 @@ function readQuantity(
     let unit = first && second ? unitCodeOfPair(first, second) : null;
     const width = unit ? 2 : 1;
     if (!unit && first) unit = unitCodeOf(first);
-
-    if (!unit) {
-      heardWithoutUnit ??= span.text;
-      continue;
-    }
+    if (!unit) continue;
 
     return {
-      name: slot.name,
-      text: trim(reading.text),
-      unit,
-      heard: span.text + " " + tokens.slice(span.next, span.next + width).join(" "),
-      provenance: "spoken",
+      kind: "filled",
+      value: {
+        name: slot.name,
+        text: trim(reading.text),
+        unit,
+        heard: span.text + " " + tokens.slice(span.next, span.next + width).join(" "),
+        provenance: "spoken",
+      },
     };
   }
 
-  if (heardWithoutUnit !== null) faults.push("ai.voice.unit_missing");
-  return null;
+  for (const at of cuePositions(slot, tokens)) {
+    const span = numberSpan(tokens, at);
+    if (span && readArabicNumber(span.text).ok) return { kind: "refused", code: "ai.voice.unit_missing" };
+  }
+
+  return { kind: "silent" };
 }
 
 function shiftDays(iso: string, days: number): string {
@@ -355,7 +417,12 @@ function readCode(slot: VoiceSlot, tokens: readonly string[], boundaries: Set<st
   return null;
 }
 
-function readText(slot: VoiceSlot, tokens: readonly string[], boundaries: Set<string>): SpokenSlotValue | null {
+/**
+ * نصٌّ حرّ **لا يسمّي أحداً**: «بيان القيد» و«سبب التغيير».
+ * ويحتفظ بالقاعدة التقريبية **عمداً وبالتباين مُسمّى**: بيانٌ خاطئ سطرٌ تجميليّ،
+ * وعميلٌ خاطئ **طرفٌ آخر** على مستندٍ يُرحَّل.
+ */
+function readProse(slot: VoiceSlot, tokens: readonly string[], boundaries: Set<string>): SpokenSlotValue | null {
   for (const at of cuePositions(slot, tokens)) {
     const parts: string[] = [];
     for (let index = at; index < tokens.length; index++) {
@@ -371,28 +438,69 @@ function readText(slot: VoiceSlot, tokens: readonly string[], boundaries: Set<st
   return null;
 }
 
-function readCompany(tokens: readonly string[]): string | null {
-  for (const cue of COMPANY_CUES) {
-    const parts = words(cue);
-    for (let index = 0; index + parts.length <= tokens.length; index++) {
-      let hit = true;
-      for (let offset = 0; offset < parts.length; offset++) {
-        if (!same(tokens[index + offset] ?? "", parts[offset] ?? "")) {
-          hit = false;
-          break;
-        }
-      }
-      if (!hit) continue;
+/** كلماتُ دلائل شريحةٍ واحدة، مطويّة. */
+function cueWords(slot: VoiceSlot): Set<string> {
+  const out = new Set<string>();
+  for (const cue of slot.cues) for (const word of words(cue)) out.add(fold(word));
+  return out;
+}
 
-      const name: string[] = [];
-      for (let at = index + parts.length; at < tokens.length; at++) {
-        const word = tokens[at] ?? "";
-        if (STOP_WORDS.has(fold(word)) || isNumberish(word)) break;
-        name.push(word);
-      }
-      if (name.length > 0) return name.join(" ");
+/** دلائلُ الشرائح الأخرى **عباراتٍ كاملة** — لا كلماتٍ مبعثرة. */
+function foreignCues(intent: VoiceIntent, slot: VoiceSlot): string[][] {
+  const out: string[][] = [];
+  for (const other of intent.slots) {
+    if (other.name === slot.name) continue;
+    for (const cue of other.cues) {
+      const parts = words(cue).map(fold);
+      if (parts.length > 0) out.push(parts);
     }
   }
+  return out;
+}
+
+function terminates(tokens: readonly string[], at: number, foreign: readonly string[][]): boolean {
+  const word = tokens[at] ?? "";
+  if (isNumberish(word) || unitCodeOf(word)) return true;
+
+  for (const phrase of foreign) {
+    if (at + phrase.length > tokens.length) continue;
+    let hit = true;
+    for (let offset = 0; offset < phrase.length; offset++) {
+      if (fold(tokens[at + offset] ?? "") !== phrase[offset]) {
+        hit = false;
+        break;
+      }
+    }
+    if (hit) return true;
+  }
+  return false;
+}
+
+/**
+ * **مقطعُ الطرف — قاعدةٌ كُلّية لا تستطيع أن ترفض ولا أن تختار بين مقطعين.**
+ * نظيرُ `SpokenSpans.Locate` في الخادم: الأبكرُ **بموضع الكلمة** لا بترتيب الإعلان،
+ * ثم تخطّي دلائل الشريحة نفسها في الرأس، ثم الجمع حتى **بدايةِ حقلٍ آخر**.
+ * ودليلُ الشريحة نفسها **ليس حدّاً** — وتلك الطيّةُ بعينها كانت تقطع اسم العميل.
+ */
+function locateSpan(slot: VoiceSlot, intent: VoiceIntent, tokens: readonly string[]): string | null {
+  const positions = cuePositions(slot, tokens);
+  if (positions.length === 0) return null;
+
+  const own = cueWords(slot);
+  const foreign = foreignCues(intent, slot);
+
+  /* **بترتيب ورود الكلمات لا بترتيب إعلان الدلائل** — نظير الخادم. وأوّل موضعٍ
+     يُنتج مقطعاً يفوز، **ولا يُقارَن مقطعُه بمقطعِ موضعٍ آخر** بطولٍ ولا بتشابه. */
+  for (const position of [...new Set(positions)].sort((a, b) => a - b)) {
+    let start = position;
+    while (start < tokens.length && own.has(fold(tokens[start] ?? ""))) start++;
+
+    let end = start;
+    while (end < tokens.length && !terminates(tokens, end, foreign)) end++;
+
+    if (end > start) return tokens.slice(start, end).join(" ");
+  }
+
   return null;
 }
 
@@ -455,39 +563,50 @@ export function readCommand(transcript: string, options: VoiceReadingOptions = {
   const intent = matched;
   const tokens = words(transcript);
   const boundaries = boundariesOf(intent);
+
+  /* **قراءةٌ واحدة لكل شريحة، ولا تُكتب مرّتين.** المفتاح اسمُ الشريحة، والسجلّ
+     في الخادم يرفض تكرار الاسم عند البناء — فطمسُ رفضٍ سابق غير قابل للتعبير. */
+  const readings: Record<string, SlotReading> = {};
+
+  for (const slot of intent.slots) {
+    if (Object.prototype.hasOwnProperty.call(readings, slot.name)) {
+      return { ok: false, codes: ["ai.voice.slot_declared_twice"], detail: slot.name };
+    }
+    readings[slot.name] = readSlot(slot, intent, tokens, boundaries, options);
+  }
+
   const slots: SpokenSlotValue[] = [];
   const missingSlots: string[] = [];
   const faults: string[] = [];
+  const pending: string[] = [];
 
   for (const slot of intent.slots) {
-    let value: SpokenSlotValue | null;
-    switch (slot.kind) {
-      case "Money":
-      case "Number":
-        value = readNumeric(slot, tokens);
+    const reading = readings[slot.name] as SlotReading;
+    switch (reading.kind) {
+      case "filled":
+        slots.push(reading.value);
         break;
-      case "Quantity":
-        value = readQuantity(slot, tokens, faults);
+      case "pending":
+      case "asked":
+        pending.push(slot.name);
         break;
-      case "Date":
-        value = readDate(slot, tokens, options);
+      case "refused":
+        faults.push(reading.code);
         break;
-      case "Choice":
-        value = readChoice(slot, tokens);
+      case "silent":
+        if (slot.required) missingSlots.push(slot.name);
         break;
-      case "Code":
-        value = readCode(slot, tokens, boundaries);
+      case "resolved":
         break;
-      default:
-        value = readText(slot, tokens, boundaries);
-        break;
+      default: {
+        /* فرعُ الاستحالة: صنفٌ يُضاف يُحمِّر الترجمة ولا يسقط صامتاً إلى «مرّ». */
+        const never: never = reading;
+        return { ok: false, codes: ["ai.voice.unknown_reading"], detail: String(never) };
+      }
     }
-
-    if (value) slots.push(value);
-    else if (slot.required) missingSlots.push(slot.name);
   }
 
-  const readbackAr = readbackArabic(intent, slots);
+  const readbackAr = readbackFromReadings(intent, readings);
   const leak = disclosureFault(readbackAr);
   if (leak) return { ok: false, codes: [leak] };
 
@@ -495,13 +614,208 @@ export function readCommand(transcript: string, options: VoiceReadingOptions = {
     ok: true,
     resolution: {
       intent,
+      readings,
       slots,
       missingSlots,
       faults,
-      spokenCompany: readCompany(tokens),
+      pending,
+      companyCueHeard: companyCueHeard(tokens),
       readbackAr,
-      confirmationToken: confirmationToken(intent, slots),
+      confirmationToken: tokenFromReadings(intent, readings),
     },
+  };
+}
+
+/** قراءةُ شريحةٍ واحدة — **وتُعيد حالةً من مجموعةٍ مغلقة، لا قيمةً أو لا شيء**. */
+function readSlot(
+  slot: VoiceSlot,
+  intent: VoiceIntent,
+  tokens: readonly string[],
+  boundaries: Set<string>,
+  options: VoiceReadingOptions
+): SlotReading {
+  if (slot.kind === "Entity") {
+    const span = locateSpan(slot, intent, tokens);
+    if (span === null) return { kind: "silent" };
+    /* مفتاح السجلّ مضمونٌ عند بناء السجلّ في الخادم، ومرآتُه تحمله. */
+    return { kind: "pending", slot: slot.name, span, registerKey: slot.registerKey ?? "" };
+  }
+
+  if (slot.kind === "Quantity") return readQuantity(slot, tokens);
+
+  let value: SpokenSlotValue | null;
+  switch (slot.kind) {
+    case "Money":
+    case "Number":
+      value = readNumeric(slot, tokens);
+      break;
+    case "Date":
+      value = readDate(slot, tokens, options);
+      break;
+    case "Choice":
+      value = readChoice(slot, tokens);
+      break;
+    case "Code":
+      value = readCode(slot, tokens, boundaries);
+      break;
+    case "Prose":
+      value = readProse(slot, tokens, boundaries);
+      break;
+    default: {
+      const never: never = slot.kind;
+      throw new Error("صنفُ شريحةٍ خارج المفردات المغلقة: " + String(never));
+    }
+  }
+
+  return value === null ? { kind: "silent" } : { kind: "filled", value };
+}
+
+/** الملخّص من القراءات — **والأطراف تُوسَم ولا تُخفى**. */
+export function readbackFromReadings(
+  intent: VoiceIntent,
+  readings: Readonly<Record<string, SlotReading>>
+): string {
+  const parts: string[] = [];
+
+  for (const slot of intent.slots) {
+    const reading = readings[slot.name];
+    if (!reading) continue;
+
+    if (reading.kind === "filled") {
+      const unit = reading.value.unit ? " " + reading.value.unit : "";
+      const source = reading.value.provenance === "defaulted" ? " (من الإعدادات)" : "";
+      parts.push(slot.nameAr + ": " + reading.value.text + unit + source);
+    } else if (reading.kind === "resolved") {
+      parts.push(slot.nameAr + ": " + reading.span + " (" + FROM_YOUR_REGISTER_AR + ")");
+    } else if (reading.kind === "pending") {
+      parts.push(slot.nameAr + ": " + reading.span + " (" + NOT_RESOLVED_YET_AR + ")");
+    } else if (reading.kind === "asked") {
+      parts.push(slot.nameAr + ": " + reading.span + " (" + WHICH_ONE_AR + ")");
+    }
+  }
+
+  const head = intent.nameAr + " — " + (parts.length === 0 ? "بلا شرائح" : parts.join("، ")) + ".";
+  return intent.requiresConfirmation ? head + " " + CONFIRM_CALL_AR : head;
+}
+
+/**
+ * رمز التأكيد من القراءات. **وحلُّ شريحةٍ يغيّره** — فتأكيدٌ قيل بينما كان السؤال
+ * مفتوحاً يُرفض، وهو الصواب: تأكيدٌ على أمرٍ لم يكن قد اكتمل ليس تأكيداً.
+ */
+export function tokenFromReadings(
+  intent: VoiceIntent,
+  readings: Readonly<Record<string, SlotReading>>
+): string {
+  const ordered: string[] = [];
+
+  for (const name of Object.keys(readings).sort()) {
+    const reading = readings[name] as SlotReading;
+    if (reading.kind === "filled") {
+      ordered.push(name + "=" + reading.value.text + (reading.value.unit ? ":" + reading.value.unit : ""));
+    } else if (reading.kind === "resolved") {
+      ordered.push(name + "@" + reading.handle);
+    } else if (reading.kind === "pending") {
+      ordered.push(name + "?" + reading.span);
+    } else if (reading.kind === "asked") {
+      ordered.push(name + "!" + reading.questionId);
+    }
+  }
+
+  return intent.id + "|" + ordered.join(";");
+}
+
+/* ── الحلّ: من مقطعٍ معلَّق إلى مِقبضٍ أو رفضٍ مُسمّى ───────────────────────── */
+
+/**
+ * جوابُ السجلّ عن مقطعٍ واحد — **ثلاث حالات لا رابع لها**، بأسماء `NameLookupOutcome`
+ * في الخادم. ولا عدد، ولا درجة، ولا مرشّح، ولا «أفضل تطابق».
+ */
+export type NameAnswer =
+  | { readonly outcome: "resolved"; readonly handle: string }
+  | { readonly outcome: "needs_question"; readonly questionId: string }
+  | { readonly outcome: "none" };
+
+/**
+ * **يطبّق أجوبة السجلّ على القراءات — مرّةً واحدة لكل شريحة.**
+ *
+ * نظيرُ `SpokenNameResolver` في الخادم. وتُبنى مجموعةٌ **جديدة** مدخلاً لكل شريحة،
+ * ولا تُكتب شريحةٌ مرّتين: فلا يوجد شكلٌ يُكتب فيه «إن رُفض فجرّب مقطعاً آخر» —
+ * المقطع مفردٌ، والجواب مفرد، والمدخل يُقفل.
+ *
+ * @param resolution ما قرأه القارئ.
+ * @param answers أجوبة السجلّ بمفاتيح أسماء الشرائح — وما لم يُجَب عنه يبقى معلَّقاً.
+ */
+export function applyNameAnswers(
+  resolution: VoiceResolution,
+  answers: Readonly<Record<string, NameAnswer>>
+): VoiceResolution {
+  const answered: Record<string, SlotReading> = {};
+
+  for (const slot of resolution.intent.slots) {
+    const reading = resolution.readings[slot.name] as SlotReading;
+
+    if (reading.kind !== "pending") {
+      answered[slot.name] = reading;
+      continue;
+    }
+
+    const answer = answers[slot.name];
+    if (!answer) {
+      answered[slot.name] = reading;
+      continue;
+    }
+
+    switch (answer.outcome) {
+      case "resolved":
+        answered[slot.name] = {
+          kind: "resolved",
+          slot: slot.name,
+          handle: answer.handle,
+          span: reading.span,
+        };
+        break;
+      case "needs_question":
+        answered[slot.name] = {
+          kind: "asked",
+          slot: slot.name,
+          questionId: answer.questionId,
+          span: reading.span,
+        };
+        break;
+      case "none":
+        answered[slot.name] = { kind: "refused", code: "ai.voice.name_not_in_register" };
+        break;
+      default: {
+        const never: never = answer;
+        answered[slot.name] = { kind: "refused", code: "ai.voice.unknown_answer:" + String(never) };
+        break;
+      }
+    }
+  }
+
+  const slots: SpokenSlotValue[] = [];
+  const missingSlots: string[] = [];
+  const faults: string[] = [];
+  const pending: string[] = [];
+
+  for (const slot of resolution.intent.slots) {
+    const reading = answered[slot.name] as SlotReading;
+    if (reading.kind === "filled") slots.push(reading.value);
+    else if (reading.kind === "pending" || reading.kind === "asked") pending.push(slot.name);
+    else if (reading.kind === "refused") faults.push(reading.code);
+    else if (reading.kind === "silent" && slot.required) missingSlots.push(slot.name);
+  }
+
+  return {
+    intent: resolution.intent,
+    readings: answered,
+    slots,
+    missingSlots,
+    faults,
+    pending,
+    companyCueHeard: resolution.companyCueHeard,
+    readbackAr: readbackFromReadings(resolution.intent, answered),
+    confirmationToken: tokenFromReadings(resolution.intent, answered),
   };
 }
 
@@ -541,12 +855,46 @@ export function authorise(
   }
 
   const codes: string[] = [];
-  for (let i = 0; i < resolution.missingSlots.length; i++) codes.push("ai.voice.slot_missing");
-  codes.push(...resolution.faults);
+  const slots: ResolvedSlotValue[] = [];
 
-  if (resolution.spokenCompany !== null && !same(resolution.spokenCompany, caller.companyNameAr)) {
-    codes.push("ai.voice.company_not_switched");
+  /* **فرعٌ واحد لكل حالة، ومجموعةٌ مغلقة** — فصنفٌ يُضاف يُحمِّر الترجمة. */
+  for (const slot of intent.slots) {
+    const reading = resolution.readings[slot.name] as SlotReading;
+    switch (reading.kind) {
+      case "filled":
+        slots.push({
+          name: slot.name,
+          text: reading.value.text,
+          unit: reading.value.unit ?? null,
+          handle: null,
+          provenance: reading.value.provenance,
+        });
+        break;
+      case "resolved":
+        slots.push({ name: slot.name, text: null, unit: null, handle: reading.handle, provenance: "spoken" });
+        break;
+      /* **طرفٌ معلَّق لا يمرّ** — وهو الفرق كلّه: كان المقطع يُمرَّر نصّاً فيصير طرفَ المستند. */
+      case "pending":
+        codes.push("ai.voice.name_unresolved");
+        break;
+      case "asked":
+        codes.push("ai.voice.name_needs_question");
+        break;
+      case "refused":
+        codes.push(reading.code);
+        break;
+      case "silent":
+        if (slot.required) codes.push("ai.voice.slot_missing");
+        break;
+      default: {
+        const never: never = reading;
+        codes.push("ai.voice.unknown_reading:" + String(never));
+        break;
+      }
+    }
   }
+
+  if (resolution.companyCueHeard) codes.push("ai.voice.company_not_switched");
 
   if (intent.requiresConfirmation) {
     if (token === null) codes.push("ai.voice.confirmation_required");
@@ -559,7 +907,7 @@ export function authorise(
     ok: true,
     dispatch: {
       intent,
-      slots: resolution.slots,
+      slots,
       companyId: caller.companyId,
       confirmedByHuman: intent.requiresConfirmation,
     },

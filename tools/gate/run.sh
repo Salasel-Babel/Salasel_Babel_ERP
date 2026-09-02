@@ -163,6 +163,17 @@ if [ "$demo" = "yes" ]; then
     # الأسماء تُملى هنا ولا تُخمَّن: هذه الخطوة تُسقط قواعد، و`DROP … IF EXISTS`
     # على اسمٍ خاطئ **ينجح** فيُثبت لا شيء ويبدو أنه أثبت. فتُصدَّر الأسماء نفسها
     # التي سيقرأها البنّاء، ثم تُسقط بها، ثم يُشغَّل عليها.
+    #
+    # ‏**والقائمة تسعٌ لا خمس — والنقص كان يجعل «من الصفر» جملةً كاذبة.** الشركة
+    # التجريبية تزوّد **تسع** قواعد (‏ADR-0060 · `demo/company/ModuleDatabases.cs`)، وكانت
+    # هذه الخطوة تُصدّر خمساً وتُسقط خمساً. فالأربع الباقيات — العقارات والمشاريع والموارد
+    # البشرية والمرفقات — كنّ يرتددن إلى أسمائهنّ **الافتراضية غير المخصَّصة للعرض**
+    # (‏`babel_realestate` …) فلا تُسقطن ولا يُعزلن عن بقية ما على الجهاز. وأثرُ ذلك
+    # **مقيس**: تشغيلتان متتاليتان ⇒ الثانية تسقط، لأن العقارات تبقى مبذورةً من الأولى
+    # فيُتخطّى بذرُها بينما الدفتر يُعاد بناؤه فارغاً — فتقول المطابقة «نقطة الضبط=0.0000
+    # والدفتر المساعد=60,100.0000». **والرسالة تتّهم المطابقة، والجاني قائمةُ الإسقاط.**
+    # وبعد إتمام القائمة: تشغيلتان متتاليتان خضراوان بانحراف 0.0000 في كلتيهما (مقيس).
+    # (‏docs/evidence/traps.md#fakh-150)
     export BABEL_LEDGER_OWNER_DB="Host=127.0.0.1;Port=5432;Database=babel_demo_ledger;Username=postgres;Include Error Detail=true"
     export BABEL_LEDGER_APP_DB="Host=127.0.0.1;Port=5432;Database=babel_demo_ledger;Username=babel_ledger_app;Include Error Detail=true"
     export BABEL_SALES_OWNER_DB="Host=127.0.0.1;Port=5432;Database=babel_demo_sales;Username=postgres;Include Error Detail=true"
@@ -170,15 +181,20 @@ if [ "$demo" = "yes" ]; then
     export BABEL_INVENTORY_OWNER_DB="Host=127.0.0.1;Port=5432;Database=babel_demo_inventory;Username=postgres;Include Error Detail=true"
     export BABEL_CORE_OWNER_DB="Host=127.0.0.1;Port=5432;Database=babel_demo_core;Username=postgres;Include Error Detail=true"
     export BABEL_CORE_APP_DB="Host=127.0.0.1;Port=5432;Database=babel_demo_core;Username=babel_ledger_app;Include Error Detail=true"
+    export BABEL_REALESTATE_OWNER_DB="Host=127.0.0.1;Port=5432;Database=babel_demo_realestate;Username=postgres;Include Error Detail=true"
+    export BABEL_PROJECTS_OWNER_DB="Host=127.0.0.1;Port=5432;Database=babel_demo_projects;Username=postgres;Include Error Detail=true"
+    export BABEL_HR_OWNER_DB="Host=127.0.0.1;Port=5432;Database=babel_demo_hr;Username=postgres;Include Error Detail=true"
+    export BABEL_STORAGE_OWNER_DB="Host=127.0.0.1;Port=5432;Database=babel_demo_storage;Username=postgres;Include Error Detail=true"
 
     for database in babel_demo_ledger babel_demo_sales babel_demo_purchasing \
-                    babel_demo_core babel_demo_inventory
+                    babel_demo_core babel_demo_inventory babel_demo_realestate \
+                    babel_demo_projects babel_demo_hr babel_demo_storage
     do
         psql "host=127.0.0.1 port=5432 dbname=postgres user=postgres" \
              -Atc "DROP DATABASE IF EXISTS \"$database\" WITH (FORCE)" >/dev/null \
             || fail "إسقاط قاعدة العرض $database"
     done
-    printf '   · أُسقطت قواعد العرض الخمس — البناء من الصفر لا من بقايا\n'
+    printf '   · أُسقطت قواعد العرض التسع — البناء من الصفر لا من بقايا\n'
 
     dotnet demo/company/bin/"$configuration"/net10.0/BabelDemoCompany.dll all \
         || fail "بناء الشركة التجريبية من الصفر"

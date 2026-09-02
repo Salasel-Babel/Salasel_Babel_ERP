@@ -82,6 +82,26 @@ public static class VoiceRefusals
             "Missing the unit of slot '" + slot.Name + "': heard '" + heard + "' with no unit.");
     }
 
+    /// <summary>
+    /// مقطعٌ لا يستطيع القارئ أن يبرّره اسماً — <b>فيُرفض كاملاً ولا يُبتَر</b>.
+    /// <para>
+    /// <b>ولماذا الرفض أرخص من القصّ:</b> «شركة المسار الامثل وانشئ لها حسابا» مقصوصةً
+    /// إلى «شركة المسار» تُنتج <b>عميلاً خاطئاً معقولاً</b> يمرّ من بوّابة التأكيد لأن
+    /// الملخّص يبدو سليماً. والرفض يكلّف دورةً واحدة، والقصّ يكلّف مستنداً على طرفٍ آخر.
+    /// </para>
+    /// <para>
+    /// <b>وما سُمع يُعاد كما هو</b> في الرسالة: من يعمل بيدين مشغولتين لا يعرف أين
+    /// اختلط الاسم بالكلام إن لم يُسمع له ما التقطه القارئ.
+    /// </para>
+    /// </summary>
+    /// <param name="whatAr">اسم ما كان يُقرأ بالعربية.</param>
+    /// <param name="heard">المقطع كما سُمع كاملاً.</param>
+    public static Error NameNotBounded(string whatAr, string heard) => new(
+        "ai.voice.name_not_bounded",
+        MissingAr + " " + whatAr + " وحده: سمعتُ «" + heard + "» ولا أعرف أين ينتهي الاسم فيه. "
+        + "ولا أقصّه — اسمٌ مقصوص يُنتج مستنداً على طرفٍ آخر صحيحَ الشكل. قُل الاسم وحده ثم أكمل.",
+        "Cannot justify '" + heard + "' as " + whatAr + "; it is refused whole, never truncated.");
+
     /// <summary>قيمةٌ خارج قائمة مغلقة.</summary>
     /// <param name="slot">الشريحة.</param>
     /// <param name="heard">ما سُمع.</param>

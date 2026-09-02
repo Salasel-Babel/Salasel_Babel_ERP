@@ -7,16 +7,20 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  adjudicateSpan,
   authorise,
   isSpokenCancellation,
   isSpokenConfirmation,
   maskPersonal,
   disclosureFault,
   readCommand,
+  CODE_WORD_LIMIT,
   CONFIRM_CALL_AR,
+  NAME_WORD_LIMIT,
   type VoiceCaller,
 } from "../src/voice/command";
 import { VOICE_INTENTS, VOICE_SECTIONS, intentById } from "../src/voice/catalogue";
+import { FREE_TEXT_SLOTS, fieldsAwaitingResolution, handoffOf } from "../src/voice/handoff";
 
 /* المسار من جذر المستودع لا من ملفّ الاختبار: vitest يشغّل من web/. */
 const VECTORS_PATH = path.resolve(
@@ -191,6 +195,211 @@ describe("القراءة الحتمية", () => {
     expect(read.ok).toBe(true);
     if (!read.ok) return;
     expect(read.resolution.missingSlots).toContain("receivedOn");
+  });
+});
+
+describe("حكم المقطع — يُقبل كاملاً أو يُرفض باسمه", () => {
+  const kindOf = new Map<string, string>();
+  for (const intent of vectors.intents) {
+    for (const slot of intent.slots) kindOf.set(intent.id + "/" + slot.name, slot.kind);
+  }
+
+  /* الرقم **بياناتٌ مملوكة** لا سحرٌ مكتوب بيد: يُعاد حسابه من الملفّ الذي يصف
+     المنتج، فإن احتاج متجهٌ جديد اسماً أطول حمرّ هذا وطلب تعديلاً **يُراجَع**. */
+  it("حدّا الاسم والرمز يُعاد حسابهما من المتجهات لا يُكتبان بيد", () => {
+    let longestName = 0;
+    let longestCode = 0;
+
+    for (const vector of vectors.utterances) {
+      for (const [name, value] of Object.entries(vector.slots)) {
+        const kind = kindOf.get(vector.intent + "/" + name);
+        const count = value.split(" ").filter((word) => word.length > 0).length;
+        if (kind === "Text") longestName = Math.max(longestName, count);
+        if (kind === "Code") longestCode = Math.max(longestCode, count);
+      }
+    }
+
+    /* حارس لا فراغ: صفرٌ هنا يعني أن المُحلِّل لم يقرأ شيئاً فمرّ. */
+    expect(longestName).toBeGreaterThan(0);
+    expect(longestCode).toBeGreaterThan(0);
+
+    expect(longestName).toBe(NAME_WORD_LIMIT);
+    expect(longestCode).toBe(CODE_WORD_LIMIT);
+  });
+
+  /* الحكم يقيس **شكل المقطع**، لا كلماتٍ بأعيانها. فالصيغ المصرَّفة التي لا تُطابقها
+     قائمةُ كلماتٍ كاملة أبداً تُلتقَط هنا، والأسماء الحقيقية تمرّ. */
+  it("الضمير المتّصل يُقاس بالشكل، والأسماء الحقيقية تمرّ", () => {
+    for (const tail of [
+      ["مؤسسة", "الرياض", "سجلها"],
+      ["مؤسسة", "الرياض", "راجعهم"],
+      ["شركة", "النور", "اكتبها"],
+      ["مؤسسة", "النور", "وحولها"],
+      ["شركة", "النور", "ارسلهن"],
+      ["مؤسسة", "النور", "بلغكم"],
+    ]) {
+      expect(adjudicateSpan(tail, NAME_WORD_LIMIT), tail.join(" ")).toBe("predicationTail");
+    }
+
+    for (const name of [
+      ["شركة", "الركن", "الذهبي"],
+      ["مؤسسة", "المساكن"],
+      ["شركة", "الاسهم"],
+      ["مؤسسة", "الحكم"],
+      ["شركة", "النور", "للمساكن"],
+      ["مها", "العتيبي"],
+      ["مؤسسة", "سجل", "الرياض"],
+      ["شركة", "سهم"],
+      ["مؤسسة", "درهم"],
+    ]) {
+      expect(adjudicateSpan(name, NAME_WORD_LIMIT), name.join(" ")).toBe("admitted");
+    }
+
+    /* وكلمةٌ واحدة لا تُحاكَم بالضمير أصلاً: «مها» وحدها اسمٌ تامّ. */
+    expect(adjudicateSpan(["مها"], NAME_WORD_LIMIT)).toBe("admitted");
+    expect(adjudicateSpan(["شركة", "النور", "الاولى", "للمقاولات"], NAME_WORD_LIMIT)).toBe("tooManyWords");
+  });
+
+  /* **انحدارُ الترقيم لا يعود**: حكمُ المقطع لا يُقسّم الجملة ولا يُضيف حدّاً، فالفاصلة
+     تبقى مُهمَلة كما كانت. ويُقاس ذلك خاصّيةً على المتجهات كلّها لا قيمةً واحدة. */
+  it("الفاصلة قبل القيمة لا تُغيّر القراءة في أي متجه", () => {
+    let measured = 0;
+
+    for (const vector of vectors.utterances) {
+      const plain = readCommand(vector.transcript, options);
+      expect(plain.ok, vector.transcript).toBe(true);
+      if (!plain.ok) continue;
+
+      for (const value of Object.values(vector.slots)) {
+        const at = vector.transcript.indexOf(" " + value);
+        if (at < 0) continue;
+
+        const twin =
+          vector.transcript.slice(0, at) + "، " + vector.transcript.slice(at + 1);
+        const comma = readCommand(twin, options);
+        expect(comma.ok, twin).toBe(true);
+        if (!comma.ok) continue;
+        measured++;
+
+        expect(comma.resolution.intent.id).toBe(plain.resolution.intent.id);
+        expect(comma.resolution.slots).toEqual(plain.resolution.slots);
+        expect(comma.resolution.missingSlots).toEqual(plain.resolution.missingSlots);
+        expect(comma.resolution.faults).toEqual(plain.resolution.faults);
+        expect(comma.resolution.spokenCompany).toBe(plain.resolution.spokenCompany);
+        expect(comma.resolution.readbackAr).toBe(plain.resolution.readbackAr);
+        expect(comma.resolution.confirmationToken).toBe(plain.resolution.confirmationToken);
+      }
+    }
+
+    expect(measured).toBeGreaterThanOrEqual(40);
+  });
+
+  /* الرمز المنطوق **لا يُبتَر عند الحدّ**: بترُه كان يُنتج رقم ضمانٍ صحيح الشكل
+     لضمانٍ لا وجود له، وهي صورةُ الفساد الصامت نفسها. */
+  it("الرمز الذي لا يُعرف أين ينتهي يُرفض باسمه ولا يُبتَر", () => {
+    const read = readCommand(
+      "سجل ضمان بنكي للعقد برج الياسمين رقم الضمان ض-4410 ينتهي 2027-03-31",
+      options
+    );
+    expect(read.ok).toBe(true);
+    if (!read.ok) return;
+    expect(read.resolution.missingSlots).toContain("guaranteeNumber");
+    expect(read.resolution.faults).toContain("ai.voice.name_not_bounded");
+    expect(read.resolution.slots.find((s) => s.name === "guaranteeNumber")).toBeUndefined();
+  });
+
+  /* **الثقب المُعلَن — مقيسٌ هنا قبل أن يجده أحد.** فعلٌ بمفعوله يبدأ بشكل أداة
+     التعريف («التقطها»)، وذيلُ إسنادٍ بلا ضمير داخل الحدّ («وحول المبلغ») — لا قاعدة
+     إملائية تفصلهما عن اسمٍ حقيقي، والجواب هو الطبقة الثانية لا بندٌ يُضاف لقائمة. */
+  it("الثقب المُعلَن في الطبقة الأولى مقيس لا موصوف", () => {
+    const article = readCommand(
+      "سجل سند قبض من العميل مؤسسة الرياض التقطها بمبلغ الف ريال نقد اليوم",
+      options
+    );
+    expect(article.ok).toBe(true);
+    if (!article.ok) return;
+    expect(article.resolution.slots.find((s) => s.name === "customer")!.text).toBe(
+      "مؤسسة الرياض التقطها"
+    );
+
+    const tail = readCommand(
+      "سجل سند قبض من العميل النور وحول المبلغ بمبلغ الف ريال نقد اليوم",
+      options
+    );
+    expect(tail.ok).toBe(true);
+    if (!tail.ok) return;
+    expect(tail.resolution.slots.find((s) => s.name === "customer")!.text).toBe("النور وحول المبلغ");
+
+    /* ٣ · الهاء المفردة مفعولاً — مُخرَجة عمداً: التفريغ يكتب التاء المربوطة هاءً بلا
+       قاعدة، فمنعُها يرفض «شركة صيانه» و«مؤسسة تجاره». ورفضُ اسمٍ حقيقي عطلٌ آخر. */
+    const he = readCommand(
+      "سجل جرد الصنف اسمنت مقاوم وسجله كمية عشرين كيس المستودع الرئيسي اليوم",
+      options
+    );
+    expect(he.ok).toBe(true);
+    if (!he.ok) return;
+    expect(he.resolution.slots.find((s) => s.name === "item")!.text).toBe("اسمنت مقاوم وسجله");
+
+    /* ٤ · وثمنُ الحدّ مُعلَن كذلك: اسمٌ حقيقيّ من أربع كلمات **يُرفض ولا يُبتَر**. */
+    const four = readCommand(
+      "سجل سند قبض من العميل شركة النور الأولى للمقاولات بمبلغ الف ريال نقد اليوم",
+      options
+    );
+    expect(four.ok).toBe(true);
+    if (!four.ok) return;
+    expect(four.resolution.missingSlots).toContain("customer");
+    expect(four.resolution.faults).toContain("ai.voice.name_not_bounded");
+
+    /* وما مرّ من الطبقة الأولى يقف عند الثانية: الحقل يخرج موسوماً بأنه يلزمه معرّف. */
+    const allowed = authorise(article.resolution, caller, article.resolution.confirmationToken);
+    expect(allowed.ok).toBe(true);
+    if (!allowed.ok) return;
+    const handoff = handoffOf(allowed.dispatch)!;
+    expect(fieldsAwaitingResolution(handoff).map((f) => f.name)).toContain("customer");
+  });
+});
+
+describe("الطبقة الثانية — الاسم لا يغادر الشاشة إلا معرّفاً", () => {
+  /* قطبُ القائمة هو الحارس: ما ليس في `FREE_TEXT_SLOTS` **يلزمه حلٌّ**، فشريحةٌ
+     تُضاف غداً تبدأ مطلوبةَ الحلّ افتراضاً — والنسيان يُنتج تشدّداً لا تساهلاً. */
+  it("كل شريحة نصّية ليست في قائمة النصّ الحرّ تلزمها الحلّ إلى معرّف", () => {
+    let entities = 0;
+
+    for (const intent of VOICE_INTENTS) {
+      for (const slot of intent.slots) {
+        if (slot.kind !== "Text") continue;
+        if (FREE_TEXT_SLOTS.includes(slot.name)) continue;
+        entities++;
+      }
+    }
+
+    expect(entities).toBeGreaterThanOrEqual(15);
+    expect(FREE_TEXT_SLOTS.length).toBeLessThanOrEqual(4);
+  });
+
+  it("التسليم يحمل الوسم لكل حقل، والأسماء وحدها هي التي تنتظر حلّاً", () => {
+    const read = readCommand(
+      "سجل سند قبض من العميل مؤسسة الرياض بمبلغ ألف ريال نقد اليوم",
+      options
+    );
+    expect(read.ok).toBe(true);
+    if (!read.ok) return;
+
+    const allowed = authorise(read.resolution, caller, read.resolution.confirmationToken);
+    expect(allowed.ok).toBe(true);
+    if (!allowed.ok) return;
+
+    const handoff = handoffOf(allowed.dispatch);
+    expect(handoff).not.toBeNull();
+    if (handoff === null) return;
+
+    for (const field of handoff.fields) {
+      expect(typeof field.requiresResolution, field.name).toBe("boolean");
+    }
+
+    expect(fieldsAwaitingResolution(handoff).map((f) => f.name)).toEqual(["customer"]);
+    expect(handoff.fields.find((f) => f.name === "amount")!.requiresResolution).toBe(false);
+    expect(handoff.fields.find((f) => f.name === "receivedOn")!.requiresResolution).toBe(false);
   });
 });
 

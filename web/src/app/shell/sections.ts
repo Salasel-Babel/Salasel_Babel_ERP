@@ -128,10 +128,19 @@ export const SCREENS: readonly ScreenEntry[] = [
   { path: "/inventory/items", labelKey: "inventory.nav.items", section: "inventory" },
   { path: "/inventory/movements", labelKey: "inventory.nav.movements", section: "inventory" },
   { path: "/inventory/valuation", labelKey: "inventory.nav.valuation", section: "inventory" },
+  /* ── الموارد البشرية — ثمانٍ **بترتيب العمل لا بترتيب الحروف**: ما يُعرَّف
+     مرّةً (مكوّنات الأجر) ← من يُسجَّل ← ما يُقيَّد عليه قبل الشهر (السلف
+     والاستقطاعات) ← المسيّر ← قسيمته ← ما يُسدَّد عن الشهر إلى الجهة ← ما
+     يُنهي العلاقة ← ما يُطابَق عند الإقفال. والترتيب هنا هو ترتيب الشريط
+     داخل القسم في `screens/hr/parts.tsx` نفسه. */
+  { path: "/hr/pay-components", labelKey: "hr.nav.payComponents", section: "hr" },
   { path: "/hr", labelKey: "hr.nav.register", section: "hr" },
+  { path: "/hr/advances-deductions", labelKey: "hr.nav.advances", section: "hr" },
   { path: "/hr/payroll", labelKey: "hr.nav.payroll", section: "hr" },
   { path: "/hr/payslip", labelKey: "hr.nav.payslip", section: "hr" },
+  { path: "/hr/social-insurance", labelKey: "hr.nav.socialInsurance", section: "hr" },
   { path: "/hr/end-of-service", labelKey: "hr.nav.endOfService", section: "hr" },
+  { path: "/hr/subledger-reconciliation", labelKey: "hr.nav.reconciliation", section: "hr" },
   /* الأمر المنطوق يعبر الأقسام الخمسة كلّها، ولا قسمَ واحداً يملكه. وهو مُدرَجٌ
      هنا تحت المحاسبة **لأجل لونه وحده** — وهو اللون المرجعي حين لا يُعرَف القسم.
      (وكُتب هذا الصفّ حين كانت الأقسام الأربعة الأخرى `built: false`؛ وقد صارت

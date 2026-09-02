@@ -87,3 +87,32 @@ export const NOT_TERMINATED = "hr.employment_not_terminated";
 
 /** رقم مستند مستعمل من قبل داخل هذه المنشأة. */
 export const DUPLICATE_NUMBER = "hr.duplicate_number";
+
+/* ══════════════════════════ مجموعاتٌ مغلقة تقرؤها الشاشات الأربع الجديدة
+   وكلٌّ منها يُقرأ **من مخطّطه هو** لا من مخطّطٍ يشبهه: طريقةُ صرف السلفة
+   وطريقةُ سداد التأمينات مجموعتان منفصلتان في العقد ولو تطابق عضواهما اليوم،
+   وقراءتُهما من مصدرٍ واحد تُخفي انفصالَ إحداهما عن الأخرى غداً. */
+
+/** طرق صرف السلفة — من مخطّط السلفة نفسه. */
+export const ADVANCE_METHODS = members("HrAdvanceRequest", "settlementMethod");
+
+/** طرق سداد اشتراك التأمينات — من مخطّط السداد نفسه. */
+export const SOCIAL_INSURANCE_METHODS = members("HrSocialInsurancePaymentRequest", "settlementMethod");
+
+/** أسباب انحراف الدفتر المساعد عن نقطة ضبطه. */
+export const DIVERGENCE_REASONS = members("HrReconciliationDivergence", "reasonCode");
+
+/**
+ * يحوّل عضو مجموعةٍ مغلقة إلى **مقطع مفتاح لغة**.
+ * <p>
+ * أعضاء العقد تُكتب بالشرطة السفلية (`amount_mismatch`)، واصطلاح مفاتيح
+ * اللغة في هذا المستودع يرفض الشرطة السفلية (`scripts/audit.mjs` §٤). فالعضو
+ * يُحوَّل إلى سنام الجمل (`amountMismatch`) **بقاعدةٍ واحدة لا بقائمةٍ مكتوبة
+ * بيد** — وقائمةٌ مكتوبة بيد تنحرف عند أول عضوٍ يُضاف إلى العقد، فيقع العضو
+ * الجديد على مفتاحٍ ليس له فيُقرأ **باسم جاره**.
+ * </p>
+ * @param member العضو كما نشره العقد.
+ */
+export function keySegment(member: string): string {
+  return member.replace(/_([a-z0-9])/g, (_all, ch: string) => ch.toUpperCase());
+}

@@ -289,6 +289,25 @@ export function scanCodeText(code, { file = "<شيفرة>" } = {}) {
       group: 2,
     },
   ];
+  /* والقيمة الحرفية ممنوعةٌ في الشيفرة المشحونة **مهما كان شكل كتابتها**: لا في
+     كائن نمط، ولا في نصٍّ يُركَّب ثم يُسنَد إلى سمة `style`، ولا في قالبٍ يُحقن.
+     وقِيس على هذا الفرع أن `web/src/` و`design/` **خاليان منها تماماً** بعد تفريغ
+     التعليقات — فالقاعدة لا تُكلّف أحداً شيئاً، وتُغلق الطريق الذي تعجز عنه
+     مطابقةُ أسماء الخصائص: `el.setAttribute("style", "font-variant-numeric:" + v)`. */
+  const literalRe = new RegExp("(?<![-\\w])(" + NUMERAL_KEYWORDS.join("|") + ")(?![-\\w])", "gi");
+  for (let m = literalRe.exec(code); m; m = literalRe.exec(code)) {
+    violations.push({
+      file,
+      line: lineOf(code, m.index),
+      property: "(نصّ في الشيفرة)",
+      value: m[1],
+      kind: "numeral-literal-in-shipped-code",
+      why:
+        "القيمة الحرفية `" + m[1] + "` لا تُكتب في شيفرةٍ تُشحن — لا في كائن نمط ولا " +
+        "في نصٍّ يُركَّب. الرمز وحده، ومن `tokens.css` وحده.",
+    });
+  }
+
   for (const shape of shapes) {
     for (let m = shape.re.exec(code); m; m = shape.re.exec(code)) {
       const raw = m[shape.group].trim().replace(/^["'`]|["'`]$/g, "").trim();

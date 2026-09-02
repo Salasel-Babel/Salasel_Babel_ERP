@@ -155,3 +155,109 @@ test.describe("كل رقم مرسوم يتحرّك حين يتحرّك الرم�
     expect(withDigits, "مساراتٌ رسمت رقماً").toBeGreaterThanOrEqual(8);
   });
 });
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   والنتيجة لا السبب: هل تصطفّ الأرقام فعلاً؟
+   ───────────────────────────────────────────────────────────────────────────
+   ما سبق يُثبت أن الخاصّية **تُطلَب** من الرمز. وهذا شرطٌ لا كافٍ: `tabular-nums`
+   طلبٌ إلى المِحرف، والمِحرف الذي لا يحمل الوجه الجدولي **يتجاهله بصمت** — ولا
+   يظهر ذلك في `getComputedStyle` إطلاقاً، لأن القيمة المحسوبة تبقى `tabular-nums`
+   بينما الأعمدة تتعرّج. والمحاسب لا يقرأ خاصّيةً، يقرأ عموداً.
+
+   فيُقاس هنا **ما يراه**: عرضُ مِحرف كل رقمٍ في الوجه الذي تستعمله الصفحة فعلاً.
+   ومجموعاتُ الأرقام المفحوصة **تُكتشَف مما رسمته الصفحة**، لا من قائمة.
+   ═══════════════════════════════════════════════════════════════════════════ */
+const DIGIT_SETS: Record<string, [number, number]> = {
+  latin: [0x30, 0x39],
+  arabicIndic: [0x660, 0x669],
+  eastern: [0x6f0, 0x6f9],
+  devanagari: [0x966, 0x96f],
+};
+
+async function digitMetrics(page: import("@playwright/test").Page, sets: Record<string, [number, number]>) {
+  return page.evaluate((SETS) => {
+    /* ما رسمته الصفحة فعلاً — لا ما قد ترسمه يوماً. */
+    const rendered = new Set<string>();
+    const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    while (walk.nextNode()) {
+      for (const ch of walk.currentNode.nodeValue ?? "") {
+        const c = ch.codePointAt(0) ?? 0;
+        for (const [name, range] of Object.entries(SETS)) {
+          if (c >= range[0] && c <= range[1]) rendered.add(name);
+        }
+      }
+    }
+    /* المسبار داخل الجسم نفسه، فيرث الوجه والخاصّية كما هما على الشاشة. */
+    const host = document.createElement("div");
+    host.style.position = "absolute";
+    host.style.visibility = "hidden";
+    host.style.whiteSpace = "pre";
+    document.body.appendChild(host);
+    const widthsOf = (range: [number, number]) =>
+      Array.from({ length: 10 }, (_, i) => {
+        const span = document.createElement("span");
+        span.textContent = String.fromCodePoint(range[0] + i);
+        host.appendChild(span);
+        const w = Math.round(span.getBoundingClientRect().width * 100) / 100;
+        span.remove();
+        return w;
+      });
+    const measured: Record<string, { widths: number[]; distinct: number }> = {};
+    for (const [name, range] of Object.entries(SETS)) {
+      const widths = widthsOf(range);
+      measured[name] = { widths, distinct: new Set(widths).size };
+    }
+    host.remove();
+    return { rendered: [...rendered], measured, face: getComputedStyle(document.body).fontFamily };
+  }, sets);
+}
+
+const LOCALES = ["ar", "en", "ur", "hi"] as const;
+
+test.describe("الأرقام المرسومة تصطفّ فعلاً — لا الخاصّية مطلوبةً فحسب", () => {
+  for (const locale of LOCALES) {
+    test(`عرضُ المِحرف واحدٌ لكل مجموعةٍ ترسمها الصفحة · ${locale}`, async ({ page }) => {
+      await page.goto(urlFor("/", locale), { waitUntil: "domcontentloaded" });
+      await page.waitForLoadState("networkidle").catch(() => undefined);
+      await page.waitForTimeout(250);
+      const m = await digitMetrics(page, DIGIT_SETS);
+
+      /* حارس اللافراغ: صفحةٌ بلا أرقام لا تُثبت شيئاً. */
+      expect(m.rendered.length, "مجموعات أرقامٍ رسمتها الصفحة").toBeGreaterThan(0);
+      for (const name of m.rendered) {
+        const set = m.measured[name];
+        expect(
+          set.distinct,
+          `المجموعة ${name} مرسومةٌ في ${locale} بعروضٍ مختلفة (${set.widths.join(", ")}) — ` +
+            `الوجه ${m.face} لا ينفّذ الطلب، والعمود يتعرّج`
+        ).toBe(1);
+      }
+    });
+  }
+
+  /* ── الثقب المُعلَن، مقيساً لا محكيّاً ──────────────────────────────────────
+     الرمز شرطٌ لا كافٍ. مقيس على هذا الفرع: أرقام العربية-الهندية (٠-٩) في
+     "IBM Plex Sans Arabic" لها **تسعةُ عروضٍ متمايزة** رغم `tabular-nums`، لأن
+     الوجه لا يحمل `tnum` لها. والمنتج اليوم يرسم الأرقام اللاتينية في اللغات
+     الأربع جميعاً، فالوعد قائم — **لكنه قائمٌ بالمِحرف لا بالخاصّية**.
+     ومقيسٌ أيضاً أن اللاتينية في الأوجه الأربعة متساوية العرض **حتى مع
+     `proportional-nums`**: أي أن هذه الأوجه لا تنفّذ الميزة أصلاً، فتبديلُ الرمز
+     لا يُغيّر منظراً اليوم. وهذا الاختبار يُثبّت الحالتين معاً: فمن يبدّل مجموعة
+     الأرقام المعروضة أو الوجه سيراهما تحمرّان، ويعرف أن عليه اختيار وجهٍ يحمل
+     الوجه الجدولي — لا كتابة قاعدة CSS أخرى. */
+  test("الثقب المُعلَن: العربية-الهندية لا تصطفّ في الوجه المشحون، والرمز لا يُصلح مِحرفاً", async ({ page }) => {
+    await page.goto(urlFor("/", "ar"), { waitUntil: "domcontentloaded" });
+    await page.waitForLoadState("networkidle").catch(() => undefined);
+    await page.waitForTimeout(250);
+    const m = await digitMetrics(page, DIGIT_SETS);
+
+    /* ① المنتج يرسم اللاتينية وحدها — فالوعد المُعلَن للمستخدم صحيحٌ اليوم. */
+    expect(m.rendered).toEqual(["latin"]);
+
+    /* ② ولو رسم العربية-الهندية لانكسر العمود، ولا CSS يُنقذه. */
+    expect(
+      m.measured.arabicIndic.distinct,
+      "إن صارت هذه ١ فقد تغيّر الوجه المشحون: الثقب أُغلق — حدِّث هذا الاختبار ونصّ الفخّ."
+    ).toBeGreaterThan(1);
+  });
+});

@@ -358,5 +358,17 @@ describe("الأرقام الجدولية", () => {
       );
       expect(readOnly.violations).toEqual([]);
     });
+
+    it("يُمسك النصّ المُركَّب الذي يهرب من مطابقة أسماء الخصائص", () => {
+      /* هذا هو الالتفاف الذي **لا** تراه مطابقةُ `fontVariantNumeric:` — القيمة
+         تُبنى نصّاً ثم تُسنَد إلى سمة `style`. فمنعُ القيمة الحرفية في الشيفرة
+         المشحونة كلِّها هو ما يسدّه، لا اسمٌ خامس يُضاف إلى المجموعة. */
+      const built = scanCodeText(
+        'const s = "font-variant-numeric:" + "tabular-nums";\nel.setAttribute("style", s);',
+        { file: "هجوم.ts" }
+      );
+      expect(built.violations.length).toBeGreaterThan(0);
+      expect(built.violations[0]?.kind).toBe("numeral-literal-in-shipped-code");
+    });
   });
 });

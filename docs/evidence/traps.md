@@ -5911,6 +5911,18 @@ Test run completed with non-success exit code: 5
 
 وبإزالة كل طفرة عادت الثلاثة خضراء و`total: 40 · succeeded: 40` برمز صفر.
 
+**والشكل نفسه في إثبات GR-RE-001** — وهو أخطرها لأنه إثبات صحّةٍ محاسبية لا إثبات تغطية.
+كان يعدّ التقاطع وحده ويرفع عند `> 0`، والصفر له ثلاثة أسباب لا واحد. **مقيس على PostgreSQL 16**
+بقاعدتين: واحدة حُمِّلت من `data/` كاملةً (‏241 سطراً · 21 سطر «مُدار» · سطران يسمّيان الدور ·
+تقاطعٌ صفر)، وأخرى طُبِّق عليها **المخطّط وحده بلا تحميل**:
+
+| القاعدة | الإثبات القديم | الإثبات ذو الأشواط الأربعة |
+|---|---|---|
+| مُحمَّلة كاملةً | `GR-RE-001 holds` · **0** | `GR-RE-001 holds: 0 of 21 … (2 line(s) name it elsewhere, 241 line(s) scanned)` · **0** |
+| **مخطّطٌ بلا تحميل** | `GR-RE-001 holds` · **0** — خُضرةٌ على قاعدةٍ فارغة | `vacuous scope: matrix.event_line holds 0 line(s), minimum expected 200` · **يرفض** |
+| والدور أُعيدت تسميته | — | `vacuous scope: 0 line(s) name the rental revenue role, minimum expected 1` |
+| واصطلاح تسمية «المُدار» تغيّر | — | `vacuous scope: 0 managed-property line(s) match, minimum expected 10` |
+
 
 ## 6.2 · مصائد حدّ HTTP والعقد المنشور
 

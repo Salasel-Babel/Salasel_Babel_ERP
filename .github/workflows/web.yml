@@ -170,8 +170,14 @@ jobs:
       # المخرَج يقول إن التغطية نقصت. فالعدّ يسبق الحكم، والرسالة تسمّي العددين معاً.
       # مقيس على هذا الفرع: `Total: 107 tests in 7 files`.
       # (‏docs/evidence/traps.md#fakh-an-argument-valid-for-one-runner-tells-another-to-run-nothing)
+      #
+      # و`if: always()` **ليست تزيّناً**: العدّ يقرأ `testDir` والاعتماديات وحدها ولا
+      # يحتاج `dist/`، فسقوطُ البناء لا يجعله بلا معنى — وخطوةٌ إثباتٍ مستقلّة يُسكتها
+      # سقوطُ غيرها تعود `skipped` لا `failed`، وهو فخ-80 نفسه. والقاعدة 17 تُفشل
+      # البناء إن نُزعت.
       - name: عدّ نطاق المصفوفة قبل تشغيلها / count the matrix scope first
         id: scope
+        if: always()
         run: |
           set -euo pipefail
           minimum_tests=90
@@ -209,6 +215,7 @@ jobs:
             echo "|---|---|"
             echo "| البناء · build | ${{ steps.build.outcome }} |"
             echo "| متصفّح Playwright | ${{ steps.browser.outcome }} |"
+            echo "| عدّ النطاق · scope count | ${{ steps.scope.outcome }} |"
             echo "| المصفوفة · matrix | ${{ steps.matrix.outcome }} |"
             echo ""
             if [ "${{ steps.matrix.outcome }}" = "skipped" ]; then

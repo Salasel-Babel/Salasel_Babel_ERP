@@ -11,12 +11,17 @@
    آليّةُ العطل نفسها — من **نصوص ملفّات اللغة الحيّة**. فلو تغيّر النصّ غداً
    تغيّرت الطفرة معه، ولا يبقى ثابتٌ مشوَّه يصدّق كاشفاً عمي.
    ═══════════════════════════════════════════════════════════════════════════ */
+import { readdirSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   census,
+  foreignRuns,
   hasOwnScript,
   isDiagnostic,
+  junkChars,
   mangle,
+  mangleUnder,
   mojibakeRuns,
   proseWords,
   prose,
@@ -37,6 +42,9 @@ const letters = census as (text: string, code: string) => { letters: number; inS
 const words = proseWords as (text: string) => number;
 const stripped = prose as (text: string) => string;
 const textsOf = valueTexts as (value: unknown) => string[];
+const foreign = foreignRuns as (text: string, code: string) => string[];
+const junk = junkChars as (text: string) => { ch: string; at: number; code: number }[];
+const mangledAs = mangleUnder as (label: string, text: string) => string;
 
 const CODES = LOCALES.map((l) => l.code);
 const SOURCE = "ar";
@@ -246,5 +254,88 @@ describe("النسخ عن المصدر ليس ترجمة — والثقب الب
     expect(reworded).not.toBe(arabicSentence);
     expect(ownScript(reworded, "ur")).toBe(true);
     expect(runs(reworded).length).toBe(0);
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   الهجوم على الحارس نفسه — كل صنفٍ هنا هُزم به قياسٌ سابق، وقُيس علاجُه
+   Attacks on the guard: each class below defeated an earlier rule, measured.
+   ═══════════════════════════════════════════════════════════════════════════ */
+describe("ما يهزم فكَّ الترميز لا يهزم الإذن المغلق", () => {
+  const hindi = ALL["hi"]?.find((v) => v.key === "screen.voice.refusal.nameNotBounded")?.text as string;
+
+  it("‏تشويهٌ بترميزٍ يرفع بايتاتٍ فوق U+00FF **يفلت** من القاعدة (أ) — مقيس، لا مفترَض", () => {
+    for (const label of ["koi8-r", "macintosh", "iso-8859-7", "windows-1251"]) {
+      const broken = mangledAs(label, hindi);
+      expect(broken).not.toBe(hindi);
+      expect(runs(broken).length, label + " كان يجب أن يفلت من فكّ الترميز").toBe(0);
+      /* ويسقط في الإذن المغلق: مقاطع أجنبية غير آلية لا تصدّقها لغةٌ أخرى. */
+      expect(foreign(broken, "hi").length).toBeGreaterThan(0);
+    }
+  });
+
+  it("‏والتشويه **الجزئي** بأيٍّ من الترميزين يفلت من القاعدة (ب) ويسقط في (د)", () => {
+    for (const label of ["koi8-r", "windows-1252"]) {
+      const half = hindi.slice(0, 60) + mangledAs(label, hindi.slice(60));
+      expect(ownScript(half, "hi")).toBe(true); /* (ب) عمياء: بقيت ديفاناغارية */
+      expect(foreign(half, "hi").length).toBeGreaterThan(0);
+    }
+  });
+
+  it("‏وبايتات UTF-16 تُنتج محارف تحكّم لا حروفاً، فتفلت من (أ) و(د) وتسقط في (هـ)", () => {
+    const bytes = [...hindi].map((c) => String.fromCharCode(c.charCodeAt(0) & 0xff, c.charCodeAt(0) >> 8)).join("");
+    expect(runs(bytes).length).toBe(0);
+    expect(foreign(bytes, "hi").length).toBe(0);
+    expect(junk(bytes).length).toBeGreaterThan(0);
+    const half = hindi.slice(0, 60) + bytes.slice(120);
+    expect(ownScript(half, "hi")).toBe(true);
+    expect(junk(half).length).toBeGreaterThan(0);
+  });
+
+  it("‏الإذن مغلق: الرمز الآلي ASCII يمرّ، والمقطع الأجنبي يمرّ **إن صدّقته لغةٌ أخرى** فقط", () => {
+    expect(foreign("PDF SAR BANK-0001 INV-2026-0587 " + hindi, "hi")).toEqual([]);
+    /* المقاطع الحيّة الأجنبية غير الآلية قليلة، وكلُّها مصدَّقة — والعدد مقيس. */
+    let seen = 0;
+    const unlicensed: string[] = [];
+    for (const code of CODES) {
+      for (const { key, text } of ALL[code] ?? []) {
+        for (const run of foreign(text, code)) {
+          seen++;
+          const elsewhere = CODES.some(
+            (o) => o !== code && (ALL[o] ?? []).some((v) => v.key === key && v.text.includes(run))
+          );
+          if (!elsewhere) unlicensed.push(code + " ← " + key + " «" + run + "»");
+        }
+      }
+    }
+    expect(seen).toBe(6);
+    expect(unlicensed).toEqual([]);
+  });
+
+  it("‏ولا محرف حشوٍ في أي قيمة حيّة — والمسح ليس فارغاً", () => {
+    let scanned = 0;
+    const found: string[] = [];
+    for (const code of CODES) {
+      for (const { key, text } of ALL[code] ?? []) {
+        scanned++;
+        if (junk(text).length) found.push(code + " ← " + key);
+      }
+    }
+    expect(scanned).toBeGreaterThan(4000);
+    expect(found).toEqual([]);
+  });
+});
+
+describe("نطاق الفحص هو المجلّد — لا قائمةٌ في الحارس", () => {
+  it("اللغات الأربع المُسجَّلة هي بعينها ملفّات المجلّد", () => {
+    /* ‏نفس ما يقيسه `scripts/audit.mjs` §١٠: المجلّد هو المجموعة المغلقة،
+       وملفُّ لغةٍ خامسة لا يُسجَّل يخرج من الفحوص كلِّها بصمت. */
+    const names = readdirSync(path.resolve(process.cwd(), "src/i18n/locales"));
+    const onDisk = names
+      .filter((n) => n.endsWith(".base.ts"))
+      .map((n) => n.slice(0, -".base.ts".length))
+      .filter((code) => names.includes(code + ".web.ts"));
+    expect(onDisk.length).toBeGreaterThanOrEqual(4);
+    expect([...onDisk].sort()).toEqual([...CODES].sort());
   });
 });

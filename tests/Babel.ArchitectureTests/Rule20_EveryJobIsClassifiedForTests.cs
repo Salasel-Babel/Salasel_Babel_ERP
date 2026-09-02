@@ -448,8 +448,8 @@ public sealed class Rule20_EveryJobIsClassifiedForTests
         // تُعلنه البوّابة، فلا تنحدر الأرضيات واحدةً واحدةً بلا أن يلاحظ أحد المجموع.
         var total = manifest.Surfaces.Where(static s => s.Runner == "dotnet").Sum(static s => s.MinimumExecuted);
         Assert.True(
-            total >= 1599,
-            "مجموع أرضيات أسطح .NET صار " + total + " بعد أن كان 1599 — انحدارٌ في الأرضيات نفسها. "
+            total >= 1630,
+            "مجموع أرضيات أسطح .NET صار " + total + " بعد أن كان 1630 — انحدارٌ في الأرضيات نفسها. "
                 + "إن حُذفت اختبارات عمداً فاخفض الرقم هنا صراحةً. · The floors themselves regressed."
         );
     }

@@ -114,7 +114,7 @@ dotnet test --project tests/Babel.ArchitectureTests/Babel.ArchitectureTests.cspr
 step "٤ · كل الاختبارات"
 dotnet test --solution Babel.slnx -c "$configuration" --no-build \
     --report-xunit-trx --results-directory artifacts/test-reports \
-    --minimum-expected-tests 1599 --zero-tests-policy strict || fail "مجموعة الاختبارات"
+    --minimum-expected-tests 1630 --zero-tests-policy strict || fail "مجموعة الاختبارات"
 
 # ── ٤-ب · الحصيلة — ما نُفِّذ فعلاً ────────────────────────────────────────────
 # ‏**لا تقرأ خياراً ولا سطر أمر.** تسأل مُخرَج التشغيل: لكل سطحٍ يعلنه

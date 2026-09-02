@@ -294,6 +294,7 @@ head("٤ · اصطلاح التسمية · key naming convention");
 const NAMESPACES = [
   "app", "common", "acct", "field", "screen", "gallery", "css", "audit",
   "accounting", "inventory", "hr", "contracting", "realestate",
+  "agent",
 ];
 const conventionProblems = [];
 for (const k of Object.keys(messages[SOURCE])) {

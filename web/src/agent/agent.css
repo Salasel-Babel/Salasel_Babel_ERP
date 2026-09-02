@@ -1,0 +1,138 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   لوحة السؤال — أنماطها
+   ───────────────────────────────────────────────────────────────────────────
+   الرموز كلّها دلالية ومأخوذة من `styles/tokens.css` نفسها التي تبني بها بقيّة
+   الشاشات: لا لون خام هنا، فتتبع اللوحة السمة الفاتحة والداكنة والمتباينة بلا
+   سطر يتغيّر. وأزواج (حبر × خلفية) المستعملة هنا هي أزواج `components.css`
+   نفسها المقيسة عند AA، فلا يدخل زوجٌ جديدٌ غيرُ مقيس.
+
+   وخصائص منطقية وحدها — لا `left` ولا `right` ولا `direction` — فالورقة تُقرأ
+   يميناً-ليساراً بالعربية ويساراً-يميناً بالإنجليزية بلا سطر يتغيّر.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.aq-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-command, 60);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 10dvh var(--space-16, 1rem) var(--space-16, 1rem);
+  background: var(--surface-veil);
+  backdrop-filter: blur(3px);
+}
+
+.aq {
+  inline-size: min(44rem, 100%);
+  max-block-size: 78dvh;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12, 0.75rem);
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: var(--space-16, 1rem);
+  border: var(--border-width, 1px) solid var(--color-border-strong);
+  border-radius: var(--radius-lg, 0.75rem);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  box-shadow: var(--elevation-floating);
+}
+
+.aq__hd {
+  display: flex;
+  align-items: center;
+  gap: var(--space-10, 0.625rem);
+  font-size: var(--font-size-lg);
+}
+
+.aq__note {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.aq__bad {
+  margin: 0;
+  padding: var(--space-8, 0.5rem) var(--space-12, 0.75rem);
+  border: var(--border-width, 1px) solid var(--color-danger-line);
+  border-radius: var(--radius-control, 0.375rem);
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+  font-weight: var(--font-weight-semibold);
+}
+
+.aq__list {
+  display: grid;
+  gap: var(--space-6, 0.375rem);
+}
+
+/* الخيار زرٌّ حقيقي: يبلغه Tab، ويُعلَن دورُه radio، ويحمل موضعه من مجموعته
+   فيقرأ قارئ الشاشة «الثالث من أربعة». والعدد يُعلَن للإنسان ولا يعبر إلى
+   النموذج — وهذا هو الفرق كلّه. */
+.aq__opt {
+  display: flex;
+  align-items: center;
+  gap: var(--space-10, 0.625rem);
+  inline-size: 100%;
+  padding: var(--space-10, 0.625rem) var(--space-12, 0.75rem);
+  border: var(--border-width, 1px) solid var(--color-border);
+  border-radius: var(--radius-control, 0.375rem);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.aq__opt:hover:not(:disabled) {
+  border-color: var(--color-text-subtle);
+}
+
+.aq__opt:focus-visible {
+  outline: 0;
+  border-color: var(--color-focus);
+  box-shadow: var(--ring);
+}
+
+.aq__opt[aria-checked="true"] {
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
+  color: var(--color-text);
+}
+
+.aq__opt:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+/* «جديد» ليست اسماً في السجلّ، فحدُّها متقطّع كوسم المصدر «سيُكتب الآن» —
+   شكلٌ يُقرأ بلا لون. */
+.aq__opt[data-create="true"] {
+  border-style: dashed;
+}
+
+.aq__label {
+  font-weight: var(--font-weight-semibold);
+}
+
+.aq__sub {
+  margin-inline-start: auto;
+  color: var(--color-text-subtle);
+  font-size: var(--font-size-3xs);
+}
+
+.aq__create {
+  display: grid;
+  gap: var(--space-12, 0.75rem);
+}
+
+.aq__foot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12, 0.75rem);
+  flex-wrap: wrap;
+  padding-block-start: var(--space-8, 0.5rem);
+  border-block-start: var(--border-width, 1px) solid var(--edge-line);
+  color: var(--color-text-subtle);
+  font-size: var(--font-size-3xs);
+}

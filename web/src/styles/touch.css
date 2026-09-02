@@ -75,6 +75,10 @@
   .switch,
   .check{ min-block-size:var(--touch-target) }
 
+  /* خيارُ ورقة سؤال الوكيل — هبط مع مسار الوكيل بعد قياس هذا السجلّ،
+     فأمسكه الاشتقاق من `cursor:pointer` عند الدمج لا مراجعةٌ بشرية. */
+  .aq__opt,
+
   /* أقسامٌ تُنقر في الشاشات */
   .con-card,
   .hr-open,
@@ -125,6 +129,7 @@ table.tb thead th button:active,
 .vc-hold:active,
 .vc-manual-apply:active,
 .vcx-section:active,
+.aq__opt:active,
 .ledger tbody tr[aria-selected] td:first-child:active{ transform:translateY(1px) }
 
 /* المعطَّل لا يرتدّ: رجعٌ على زرٍّ لا يعمل وعدٌ كاذب. */

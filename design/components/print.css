@@ -36,7 +36,10 @@
   html,body{
     background:var(--print-paper)!important;
     color:var(--print-ink)!important;
-    font-family:var(--font-sans,'IBM Plex Sans Arabic','Segoe UI',Tahoma,serif);
+    /* ولا سلسلة احتياطٍ هنا: نسخةٌ ثانية من قائمةٍ تعيش في tokens.css،
+       فاختلفت عن --font-numeric-face وصار للورق وجهان. الاحتياط محلُّه
+       تعريفُ الرمز لا مستهلِكُه. */
+    font-family:var(--font-sans);
     font-size:10.5pt;
     line-height:1.55;
   }

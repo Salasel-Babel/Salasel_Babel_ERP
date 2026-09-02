@@ -129,12 +129,12 @@
      `'IBM Plex Sans Arabic'` رابعَ احتياطه — وهو خطّ الواجهة **العربية**،
      وهو خطأ في الأردية (نسخ) والهندية (ديوناجري).
      **والاسم `-face` ليس زخرفاً:** فرعان سمّيا رمزين مختلفين `--font-numeric`
-     — هذا **مِحرفاً** (‏`font-family`) وذاك **طلباً** (‏`font-variant-numeric`)
+     — هذا **مِحرفاً** (`font-family`) وذاك **طلباً** (`font-variant-numeric`)
      — فلمّا التقيا في ملفّ واحد غلب الثاني في التتالي، وصار
      `font-family:var(--font-numeric)` يُحلّ إلى `tabular-nums`: عائلةٌ لا
      وجود لها، فيسقط العنصر إلى الوجه الموروث **بصمت وبلا خطأ**. وهو فخ-135
      بعينه: نسختان من بناءٍ واحد في ملفّ واحد. فصار للمِحرف اسمُه وللطلب اسمُه.
-     (‏web/scripts/numerals.mjs يفرض التمييز: `font-family` على سطحٍ رقمي
+     (web/scripts/numerals.mjs يفرض التمييز: `font-family` على سطحٍ رقمي
      لا تقبل إلّا `var(--font-numeric-face)`.) */
   --font-numeric-face:var(--font-sans);
 

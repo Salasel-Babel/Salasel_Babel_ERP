@@ -30,6 +30,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { NUMERAL_FACE_PROPERTY, scanRepository } from "./numerals.mjs";
 import {
   census,
   foreignRuns,
@@ -773,18 +774,22 @@ mustScan("أصنافٌ رقمية مشتقّة · numeric classes derived", NUME
 /* ‏(أ) **وجهٌ واحد للرقم.** ‏`tabular-nums` يُسوّي الأرقام داخل الوجه الواحد
    ولا يُسوّي بين وجهين: عشرة أرقام عند 14px/600 قاست 98.81 بكسل بـ
    `--font-sans` و84.30 بـ`--font-mono` — 14.7٪ فرقاً بين عمودَين متجاورين.
-   فمن يُعلن `tabular-nums` ويختار وجهاً يختار `--font-numeric-face` — وهو
-   **المِحرف**، غير `--font-numeric` الذي هو **الطلب**. */
-const faceProblems = [];
-for (const r of tabularRules) {
-  const face = /(^|[;\s])font-family\s*:([^;]+)/.exec(r.body)?.[2]?.trim();
-  if (face && !face.includes("--font-numeric-face")) {
-    faceProblems.push(r.file + ":" + r.line + " " + r.selector + " ← font-family:" + face);
-  }
-}
+
+   ‏**والحكم لا يُكتب هنا مرّتين.** النسخة الأولى كانت تقرأ `font-family` من
+   **جسم قاعدةٍ تُعلن `tabular-nums` بنفسها**، فكانت عمياء عن الشكل الذي يهزمها:
+   قاعدةٌ **أخرى** تختار وجهاً لصنفٍ رقميّ ولا تُعلن أرقاماً
+   (‏`tbody tr:nth-child(2n) .acct-code{font-family:"DejaVu Sans"}`). فصار
+   الحكم واحداً في `numerals.mjs` — مِلكيّتُه الخاصّية والصنفُ **مشتقّ** —
+   ويُستدعى من هنا. حكمان بنصّين لبناءٍ واحد هو فخ-135 بعينه. */
+const faceScan = scanRepository(REPO);
+const faceProblems = faceScan.violations
+  .filter((v) => v.property === NUMERAL_FACE_PROPERTY || v.kind.includes("face"))
+  .map((v) => v.file + ":" + v.line + " ← font-family:" + v.value + " · " + v.why);
+mustScan("تصريحات المِحرف المفحوصة · face declarations judged", faceScan.faceDeclarations.length, 20);
+mustScan("أصنافٌ رقمية للمِحرف · numeric classes for the face", faceScan.numericClasses.length, 30);
 if (faceProblems.length) {
   bad("وجهٌ ثانٍ للرقم — الأرقام الجدولية تتطلّب var(--font-numeric-face)", faceProblems, true);
-} else ok("كل قاعدةٍ تُعلن أرقاماً جدولية تستعمل وجه الأرقام الواحد");
+} else ok("كل سطحٍ رقميّ يُرسم بوجهٍ واحد — والحكم من numerals.mjs لا نسخةٌ ثانية منه");
 
 /* ‏(ب) **الخانة التي تعرض رقماً تحمل صنفاً رقمياً.** */
 const NUMERIC_TAG = /<Amount\b|<Decimal\b|<Num\b|<RateValue\b|<QuantityValue\b/;

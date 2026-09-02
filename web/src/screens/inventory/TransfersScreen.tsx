@@ -515,11 +515,11 @@ export function InventoryTransfersScreen(): ReactNode {
           </Field>
         </div>
 
-        {/* ‏**الفراغ فوق الشبكة يُكتب `--grid-lead` لا `margin-top`.** هذه الشاشة
+        {/* **الفراغ فوق الشبكة يُكتب `--grid-lead` لا `margin-top`.** هذه الشاشة
             نزلت على `develop` بعد قاعدة الفرع الذي أنزل هذه الآليّة، فبقيت على
             الشكل القديم وحدها؛ وحارسُ `alignment.spec.ts` أمسكها في ثلاثة مواضع:
             «الفراغ الذي يملكه الوعاء 12px والمتوقّع −14px». والحساب بعد النقل
-            واحدٌ بالبكسل. (‏ADR-0067 · components.css «الإيقاع الرأسيّ يسكن العنصر») */}
+            واحدٌ بالبكسل. (ADR-0067 · components.css «الإيقاع الرأسيّ يسكن العنصر») */}
         <div className="grid fields-3" style={{ "--grid-lead": "var(--space-12)" } as CSSProperties}>
           <Field
             id="tr-group"

@@ -21,6 +21,7 @@ import { LocaleProvider } from "../src/i18n/react";
 import { createI18n } from "../src/i18n/setup";
 import { AgentWorkspace, EMPTY_THREAD, foldAgentEvents, withUtterance } from "../src/agent";
 import type { AgentTurnEvent } from "../src/api/generated/types";
+import type { Transport } from "../src/api/transport";
 
 afterEach(cleanup);
 
@@ -190,6 +191,9 @@ describe("لوحٌ بلا شركة يقول سببه ولا يصمت", () => {
      هنا ولا يُغيَّر المكوّن لأجل بيئة اختبار. وهذا **أوّل موضعٍ يُرسَم فيه اللوح
      فعلاً** في اختبارات الوحدة: ما كان اسمه «اللوح مرسوماً» يرسم بديلاً عنه. */
   const noScroll = (): void => {};
+  /* مُرسِلٌ خامل: لا يُنهي وعدَه أبداً، فلا يقع نداءٌ ولا جواب. الحال المفحوصة
+     تُشتقّ عند التركيب من الشركة، فلا تحتاج شبكةً أصلاً. */
+  const idle: Transport = () => new Promise(() => {});
   if (typeof Element.prototype.scrollTo !== "function") {
     Object.defineProperty(Element.prototype, "scrollTo", { value: noScroll, writable: true });
   }
@@ -202,7 +206,7 @@ describe("لوحٌ بلا شركة يقول سببه ولا يصمت", () => {
     render(
       <Wrap>
         <AgentWorkspace
-          transport={{ baseUrl: "", token: "", book: "MAIN", period: "" }}
+          transport={idle}
           companyId=""
           onClose={() => {}}
         />
@@ -235,7 +239,7 @@ describe("لوحٌ بلا شركة يقول سببه ولا يصمت", () => {
     render(
       <Wrap>
         <AgentWorkspace
-          transport={{ baseUrl: "", token: "", book: "MAIN", period: "" }}
+          transport={idle}
           companyId="d3305e1e-0000-4000-8000-000000000001"
           onClose={() => {}}
         />

@@ -151,7 +151,7 @@
 }
 /* الأرقام تصطفّ في عمود: خاناتٌ متساوية العرض، واتجاهٌ معزول. */
 .acc-table .n{
-  text-align:end; font-variant-numeric:tabular-nums;
+  text-align:end; font-variant-numeric:var(--font-numeric);
   direction:ltr; unicode-bidi:isolate;
 }
 .acc-table tbody tr:last-child td{ border-block-end:0 }
@@ -180,7 +180,7 @@
 .acc-receipt .kv{ margin-bottom:0 }
 .acc-receipt p{ margin:0 }
 /* المعرّفات الآلية: اتجاهٌ مثبّت **مع عزلٍ صريح** فلا تنزلق في جملة عربية. */
-.acc-id{ direction:ltr; unicode-bidi:isolate; font-variant-numeric:tabular-nums }
+.acc-id{ direction:ltr; unicode-bidi:isolate; font-variant-numeric:var(--font-numeric) }
 
 /* ══════════════════════════════════ ٦ · ما لم يُنشَر بابه — مُعلَناً */
 .acc-gap{

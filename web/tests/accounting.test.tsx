@@ -325,7 +325,13 @@ describe("استقامة الصفّ", () => {
         rowsSeen += 1;
         for (const field of [...row.children].filter((c) => c.classList.contains("field"))) {
           fieldsSeen += 1;
-          const descs = [...field.children].filter(
+          /* الوصف يسكن **المسار الثالث** للصفّ، وهو `‎.field__desc` الذي يلفّ
+             التلميح ورسالة الرفض معاً (‏ADR-0067 §2): بلا هذا اللفّ يصير
+             للحقل أربعة أبناء عند الرفض وحده فينزاح المسار. فيُعدّ ما في
+             المسار الثالث، **ويُعدّ معه الشكل المسطَّح** — فحقلٌ يكتب وصفه
+             ابناً مباشراً يبقى مرئياً لهذا الحارس ولا يفلت منه صامتاً. */
+          const track = [...field.children].filter((c) => c.classList.contains("field__desc"));
+          const descs = [...field.children, ...track.flatMap((d) => [...d.children])].filter(
             (c) => c.classList.contains("hint") || c.classList.contains("field-error")
           );
           /* **هذا هو الحارس على قاع الحبر**: حقلٌ بلا وصفٍ ينتهي حبره عند

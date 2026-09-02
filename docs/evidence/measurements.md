@@ -8,7 +8,7 @@
 > فأضِفه هنا بالشروط نفسها بعد قياسه — سجلٌّ ناقص يعني عملاً مُكرَّراً بعد سنتين.
 >
 > **الوثائق الشقيقة:** [`README.md`](README.md) فهرس قاعدة الأدلة وترتيب القراءة ·
-> [`traps.md`](traps.md) **الأعطال** (‏159 فخّاً، و§8 قائمة ما قبل الدمج) ·
+> [`traps.md`](traps.md) **الأعطال** (‏160 فخّاً، و§8 قائمة ما قبل الدمج) ·
 > [`refuted.md`](refuted.md) **ما دُحض** (‏16 ادّعاءً، وما بقي من كلٍّ منها) ·
 > [`verification-debt.md`](verification-debt.md) **ما لا نعرفه** (‏47 مجهولاً لا يُبنى عليها) ·
 > [`../decisions/README.md`](../decisions/README.md) **القرارات** المبنية على كل ما سبق.
@@ -1175,6 +1175,145 @@ node scripts/align-audit.mjs --no-build --no-shots \
 | تخريب ب: نزعُ `sctl enable --now` (تُكتب الوحدات ولا تُسجَّل) | **نجح 12 · سقط 10** — «المؤقّت `babel-certs.timer` موجود على القرص و**غير مُمكَّن**» | حذف سطر `enable --now` ثم تشغيل الحارس | مقيس |
 | بعد إعادة الاثنين | **نجح 22 · سقط 0** (الخروج 0) | `deploy/rotation-check.sh` | مقيس |
 
+
+### 3.‏N · الشرحُ ليس دَينَ عمود — فصلُ مقياسين كانا رقماً واحداً — 2026-09-02
+
+**البيئة:** هذا الجهاز، `dotnet 10.0.111`، الفرع `claude/gloss-is-not-debt` فوق
+`origin/develop` عند `0c3dc20`. القرار المستهلِك:
+[ADR-جديد](../decisions/ADR-جديد-gloss-is-not-column-debt.md) · ويُصحِّح
+[ADR-0021 §4-ب](../decisions/ADR-0021-arabic-is-the-record-translation-is-presentation.md)
+و[ADR-0027 §3-ب](../decisions/ADR-0027-the-translation-table-is-rows-and-the-record-is-a-column.md).
+
+#### أ) المقياس القديم — ماذا كان يعدّ، وأين كان
+
+**المُنتِج** (يُعاد تشغيله حرفياً من جذر المستودع، ويُعطي **862** على `develop`؛ و`perl`
+هو نظير `StripComments` في الحارس، بتمريرةِ كتلةٍ ثم تمريرتَي سطر):
+
+```bash
+git ls-tree -r -z --name-only origin/develop -- src tests web contracts tools demo design data \
+ | grep -zE '\.(cs|sql|json|ts|tsx|js|css|csproj|yml|yaml)$' \
+ | grep -zvE '/(bin|obj|node_modules)/' \
+ | grep -zvE '^src/Babel\.Ledger/Persistence/Migrations|^src/Babel\.Ledger/PostingMatrix|^src/Babel\.Ledger/Posting/PostingPlanner\.cs$|^tests/Babel\.ArchitectureTests/Rule14_TranslationsAreRowsNotColumns\.cs$|^tests/Babel\.Api\.Tests/EnglishIsOneOfNOnTheWireTests\.cs$' \
+ | while IFS= read -r -d '' f; do
+     git show "origin/develop:$f" | perl -0777 -pe 's{/\*.*?\*/}{ }gs; s{//.*$}{ }gm; s{--.*$}{ }gm'
+   done | grep -oE 'name_en|nameEn|NameEn' | wc -l
+```
+
+| ما قيس | الرقم | الشروط | الوسم |
+|---|---|---|---|
+| عدّ الحارس القديم على `develop` | **862** | الأمر أعلاه حرفياً — **يطابق `MaximumEnglishNameSites` المُودَع** | مقيس |
+| العدّ نفسه + حدثُ ترحيلٍ واحد بالعربية والإنجليزية | **866** | الملفّ المعدَّل يحلّ محلّ `data/posting-matrix/events/inventory.json` | مقيس |
+| العدّ نفسه + الحدث بالعربية وحدها | **862** | الشروط نفسها | مقيس |
+
+**والتوزيع على الطبقات** (المُنتِج: نفس التصفية بلا قائمة الإقصاء، والامتدادات
+`cs|json|ts|tsx|sql`):
+
+| الطبقة | مواضع `name_en`/`nameEn`/`NameEn` | الوسم |
+|---|---|---|
+| `data/posting-matrix/` | **641** | مقيس |
+| `src/` | 153 | مقيس |
+| `tests/` | 85 | مقيس |
+| `tools/` | 50 | مقيس |
+| `web/` | 4 | مقيس |
+| ومنها **أعمدةٌ مخزَّنة فعلاً في `src/`** (‏`table.Column` · `HasColumnName` · `text not null`) | **12** | مقيس |
+
+> **ما يقرره:** أن ثُلثي السقف شرحٌ في وثيقة تصميم لا دَينَ عمود، وأن المقياس كان يمنع
+> **النموّ** لا الدَّين — 866 هو الرقم نفسه الذي رآه أسطول المخزون فسحب حدثه.
+
+#### ب) المقياس الجديد — دَينُ الأعمدة، 47
+
+**المُنتِج** (البدائل السبعة تُكتب في سطرٍ واحد؛ `sed` هو نظير تجريد التعليقات):
+
+```bash
+git ls-files -z -- src tests web contracts tools demo design data \
+ | grep -zE '\.(cs|sql|json|ts|tsx|js|css|csproj|yml|yaml)$' \
+ | grep -zvE '/(bin|obj|node_modules)/' \
+ | xargs -0 sed -E 's;//.*$;;; s;--.*$;;' \
+ | grep -oP 'name_en\s+(text|citext|varchar|character\s+varying|nvarchar|jsonb)\b|name_en\s*=\s*table\.Column|HasColumnName\(\s*"{1,2}name_en"{1,2}\s*\)|\[\s*Column\(\s*"{1,2}name_en"{1,2}\s*\)\s*\]|Property\s*<[^>]*>\s*\(\s*"{1,2}name_en"{1,2}\s*\)|Property\(\s*\w+\s*=>\s*\w+\.NameEn\s*\)(?!\s*\.HasColumnName)|(add|alter)\s+column\s+(if\s+not\s+exists\s+)?name_en\b' \
+ | wc -l
+```
+
+| الموضع | مواضع | ملاحظة | الوسم |
+|---|---|---|---|
+| `src/Babel.Ledger/Persistence/Migrations/` | 12 | **كانت مُقصاةً بقائمة مسارات** | مقيس |
+| `src/Babel.ControlPlane/` | 11 | ‏DDL خام لمخطّطَي `control` و`app` | مقيس |
+| `data/chart-of-accounts/ddl/` | 6 | | مقيس |
+| `data/posting-matrix/ddl/001-schema.sql` | 3 | **داخل `data/` ومع ذلك دَين** | مقيس |
+| `src/Babel.Sales` · `src/Babel.Purchasing` | 2 | تخريطتان **بالاصطلاح**، لم يكن يسمّيهما شيء | مقيس |
+| `demo/vertical-slice/` | 2 | | مقيس |
+| `tests/Babel.ControlPlane.Proofs/Harness.cs` | 1 | | مقيس |
+| **دَينُ المنتج** | **37** | | مقيس |
+| `tests/…/Rule14_TranslationsAreRowsNotColumns.cs` | **10** | شواهدُ الحارس — **معدودةٌ لا مُعفاة** | مقيس |
+| **المجموع = `MaximumEnglishNameSites`** | **47** | | مقيس |
+
+> ⚠️ **الخفض 862 ⇒ 47 ليس تسديداً ولا يُقتبَس تسديداً.** لم يُحذف موضعٌ واحد من الشيفرة؛
+> بل دخل العدَّ اثنا عشر موضعاً كانت مُقصاة وموضعان لم يكن يراهما حارس.
+
+#### ج) الشرح — عددٌ ليس سقفاً
+
+**المُنتِج:**
+
+```bash
+git ls-files -- 'data/*.json' 'data/**/*.json' \
+ | xargs -n1 jq '[paths(scalars) as $p
+       | select(($p|last|tostring|endswith("_en"))
+                and (getpath($p)|type=="string")
+                and (getpath($p)|gsub("\\s";"")|length>0))] | length' \
+ | paste -sd+ | bc
+```
+
+| ما قيس | الرقم | الوسم |
+|---|---|---|
+| شروحٌ إنجليزية غير فارغة في وثائق `data/` | **894** | مقيس |
+| منها في `data/posting-matrix/` | **890** | مقيس |
+| منها **بلا شقيقٍ عربي** | **صفر** | مقيس (‏`EveryEnglishGlossHasItsArabicRecordBesideIt`) |
+| أحداثُ الترحيل | **89** | مقيس — `jq -s '[.[].events|length]|add' data/posting-matrix/events/*.json` |
+| مفاتيح `*_en` **مكتوبةً فارغةً** (‏`note_en: ""` وأخواتها) | **642** | مقيس — ولذلك «الفراغ = الغياب» في قاعدة الاتّساق، وإلا لأحمرَّ الحارس 642 مرّة على شجرة سليمة |
+
+#### د) تجربة النموّ — حدثٌ جديد يمرّ، ثم يُنزع
+
+الحدث `inventory.transfer.between_locations` بـ`posts_entry: false` (‏قرارُ «النقل داخل
+المنشأة لا يكتب قيداً» قائم)، أُضيف إلى `data/posting-matrix/events/inventory.json` ثم نُزع.
+
+| الحالة | `Rule14_TranslationsAreRowsNotColumns` | `Rule14_TheDesignGlossIsConsistentNotCapped` | مُدقِّق المصفوفة | التحميل إلى PostgreSQL |
+|---|---|---|---|---|
+| قبل الإضافة | **8/8 أخضر** | **6/6 أخضر** | `OK — 0 errors` | 89 حدثاً · 89 بشرح |
+| بعد الإضافة (عربي + إنجليزي) | **8/8 أخضر** | **6/6 أخضر** | `OK — 0 errors` | **90 حدثاً · 90 بشرح** |
+| بعد الإضافة (عربي وحده) | **8/8 أخضر** | **6/6 أخضر** | `OK — 0 errors` | **90 حدثاً · 89 بشرح** — والحدث بلا شرح مقروءٌ من الجدول |
+| بعد النزع | **8/8 أخضر** | **6/6 أخضر** | `OK — 0 errors` | 89 حدثاً · 89 بشرح |
+| **والمقياس القديم على الحالة الثانية** | **866 والسقف 862 ⇒ كان سيحمرّ** | — | — | — |
+
+**والتحميل مقيسٌ لا مُستنتَج:** قاعدةٌ خردة `babel_gloss_probe`، ثم
+`psql -f data/chart-of-accounts/ddl/001-schema.sql` و`ddl/002-load.sql`، ثم مثيلاهما
+لمصفوفة الترحيل. المُخرَج الحرفي في الحالة الثالثة:
+`posting matrix loaded: 76 roles, 94 mappings, 90 events, 241 lines, 6 guard rules`،
+و`select count(*), count(name_en) from matrix.business_event` ⇒ `90|89`.
+
+#### هـ) الحرّاس — وكلٌّ منهم رُئي ساقطاً ثم مارّاً
+
+| الحارس | الطفرة | المُخرَج عند السقوط | بعد الإعادة |
+|---|---|---|---|
+| `TheStoredColumnDebtNeverGrows` | زرعُ `name_en text not null` في `matrix.guard_rule` | «مواضع العمود الإنجليزي الثابت = **48**، والسقف **47**» + جدولُ الملفّات المخالفة | **8/8 أخضر** |
+| `TheDetectorTellsAStoredColumnFromADocumentValue` | نزعُ الصيغة السادسة من الكاشف | «الكاشف لم يلتقط عموداً مخزَّناً — تخريطة بالاصطلاح بلا تسمية عمود» | **8/8 أخضر** |
+| `ThisGuardsOwnWitnessesAreCountedAndPinnedNotExempted` | الطفرة نفسها | «شواهد هذا الحارس صارت **9** وكانت **10**» | **8/8 أخضر** |
+| `GeneratedBuildOutputOnDiskNeverEntersTheCount` | إرجاعُ المسح إلى القرص بدل `git ls-files` | «ناتج بناء غير متعقَّب غيّر عدّ الحارس: **47 ⇒ 49**» | **8/8 أخضر** |
+| `EveryEnglishGlossHasItsArabicRecordBesideIt` | نزعُ `name_ar` من مُطلِق حدثٍ حقيقي | يسمّي المسار: `data/posting-matrix/events/inventory.json · /events/4/trigger/name_en` | **6/6 أخضر** |
+| `TheSchemaNeverMakesAnEnglishGlossMandatory` | المخطّط قبل تعديله | **ثمانيةُ مواضع مُسمّاة**: `$defs/bilingual` · `$defs/event` · `caveats/text_en` · `amounts` (‏`name_en` و`derivation_en`) · `conditions` · `scenarios` · `line/sweep` | **6/6 أخضر** |
+| `ArabicAloneIsLegalSoANewEventIsNeverBlocked` | إعادةُ «الزوج إلزامي» إلى الكاشف | «الكاشف رفض وثيقةً سليمة، فهو يمنع النموّ» | **6/6 أخضر** |
+| `TheScanReadsTheRealDesignDocuments` | تضييقُ النطاق إلى `data/capability-profiles` | `Assert.Contains() Failure: Filter not matched in collection` | **6/6 أخضر** |
+| `V06_stays_silent_when_an_event_carries_no_english_gloss_at_all` | القاعدة قبل تعديلها | V06 تُطلق على حدثٍ بلا `name_en` | **42/42 أخضر** |
+
+#### و) العطل الصامت الذي اكتُشف في الطريق — مُجرِّدُ التعليقات يبتلع الملفّ
+
+| ما قيس | الرقم | الشروط | الوسم |
+|---|---|---|---|
+| محارف ابتلعها التجريد القديم من ملفّ الحارس | **13,550** | مسارٌ في تعليق `///` فيه `*` بعد `/` فتح «تعليق كتلة» أُغلق بعد **416 سطراً** عند `*/` في التعبير النمطي للتجريد نفسه | مقيس |
+| شواهدُ الحارس الباقية بعد الابتلاع | **صفر** | والحارس **يمرّ أخضر** على مجموعةٍ فُرِّغت | مقيس |
+| ملفّاتٌ أخرى في المستودع لها الخاصّية نفسها | **1** (هذا الملفّ وحده) | مقارنةُ طول النصّ بعد التجريد بالتمريرات الثلاث وبالتمريرة الواحدة على كل ملفّ متعقَّب | مقيس |
+
+**الوقاية:** تمريرةٌ واحدة بتبادلٍ يُمسح يساراً إلى يمين —
+`//[^\n]*|--[^\n]*|/\*.*?\*/` — فيبتلع `//` سطره كلَّه قبل أن تُقرأ النجمة التي فيه.
+(‏[traps.md](traps.md#fakh-a-line-comment-that-opens-a-block-comment-empties-the-guards-corpus))
 
 ---
 

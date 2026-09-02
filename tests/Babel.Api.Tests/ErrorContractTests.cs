@@ -113,7 +113,7 @@ public sealed class ErrorContractTests
         // الخادم لم يسجّل بل لأن السطر لم يصل بعد**. والشذرتان ما زالتا مطلوبتين، وغيابهما
         // بعد المهلة سقوطٌ كما كان.
         string traceId = problem.GetProperty("traceId").GetString()!;
-        string log = await broken.OutputContainingAsync(traceId, TimeSpan.FromSeconds(10));
+        string log = await broken.OutputContainingAsync(TimeSpan.FromSeconds(10), traceId, "Npgsql");
 
         Assert.Contains(traceId, log, StringComparison.Ordinal);
         Assert.Contains("Npgsql", log, StringComparison.Ordinal);

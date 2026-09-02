@@ -47,8 +47,43 @@ export const NUMERAL_PROPERTIES = Object.freeze([
   "font",
 ]);
 
+/**
+ * ‏**والخاصّية الخامسة: `font-family`.** وهي ليست إضافةً إلى قائمة، بل تصحيحُ
+ * خطأٍ في تعريف المجموعة المغلقة نفسها. الأربع أعلاه تحمل **الطلب**؛ ومن يرسم
+ * الرقم هو **المِحرف**. و`tabular-nums` طلبٌ لا أمر: المِحرف الذي لا يحمل
+ * الوجه الجدولي يتجاهله بصمت، ووجهان مختلفان على سطحين رقميّين يرسمان الرقم
+ * نفسه بعرضين مختلفين **و`getComputedStyle().fontVariantNumeric` يقول
+ * `tabular-nums` في كليهما**. مقيس: إلحاق
+ * `tbody tr:nth-child(2n) .acct-code{font-family:"DejaVu Sans",sans-serif}`
+ * كان يُبقي هذا الفحص وفحصَ العرض أخضرين بينما رمزُ الحساب السباعيّ نفسه
+ * يُرسم **58.81px و68.20px**.
+ *
+ * ‏**وحكمُها مشروطٌ لا مُطلَق، وهذا هو الفرق كلُّه:** الطلب يُحكَم أينما كُتب،
+ * لأن كتابته إعلانٌ عن نيّةٍ رقمية. أمّا `font-family` فتُكتب في كل مكان ولا
+ * علاقة لأكثرها بالأرقام. فتُحكَم **حيث تبلغ سطحاً رقمياً**، والسطحُ الرقميّ
+ * **مشتقٌّ لا معدود**: كل صنفٍ يظهر في مُحدِّد قاعدةٍ تُعلن خاصّيةً من الأربع.
+ * فالصنف الذي يُضاف الشهر القادم يدخل الحكم بمجرّد أن يُعلن أرقامه.
+ */
+export const NUMERAL_FACE_PROPERTY = "font-family";
+
 /** الرمزان — وهما الموضع الوحيد الذي يجوز أن تُكتب فيه قيمةٌ حرفية. */
 export const NUMERAL_TOKENS = Object.freeze(["--font-numeric", "--font-numeric-off"]);
+
+/** رمز **المِحرف** — غير رمز الطلب، ولا يجوز خلطهما (فخ-135). */
+export const NUMERAL_FACE_TOKEN = "--font-numeric-face";
+
+/** المسموح لـ`font-family` على سطحٍ رقمي. مجموعةٌ من عنصرٍ واحد عمداً. */
+export const ALLOWED_FACES = Object.freeze(["var(--font-numeric-face)"]);
+
+/**
+ * جذورُ الوراثة. عندها **لا يُطبَّق حكمُ الرمز** بل حكمٌ أقوى منه: وجهُ الجذر
+ * يجب أن يكون **هو نفسه** قيمةَ `--font-numeric-face` حرفاً بحرف. وهذا ليس
+ * إعفاءً: الجذر هو من يُورِّث الوجه لكل سطحٍ رقميّ لا يختار وجهه، فمساواتُه
+ * بالرمز هي **بالضبط** ما يجعل «وجهٌ واحد للرقم» صحيحاً بالبناء. ولو كُتب عنده
+ * `var(--font-numeric-face)` لصار كلُّ نثرٍ في المنتج محكوماً برمز الأرقام،
+ * وذلك اسمٌ يكذب على ما يفعله.
+ */
+export const INHERITANCE_ROOTS = Object.freeze(["html", "body", ":root", "html,body", "body,html"]);
 
 /** المسموح لقيم الخصائص الثلاث الحقيقية. لا `var(--x, fallback)`: الاحتياط بابٌ خلفي. */
 export const ALLOWED_VALUES = Object.freeze(["var(--font-numeric)", "var(--font-numeric-off)"]);
@@ -146,6 +181,18 @@ function* declarationsOf(source, { bare = false } = {}) {
   let buffer = "";
   let bufferStart = 0;
   let quote = null;
+  /* ‏**مكدّس المُحدِّدات.** التصريح وحده لا يكفي بعد أن صار `font-family` من
+     الخصائص الحاكمة: الطلب (`font-variant-numeric`) قاعدةٌ عالمية تُحكم أينما
+     كُتبت، أمّا المِحرف فحكمُه **مشروطٌ بمن يصله**. فلا بدّ أن يعرف الماسحُ
+     المُحدِّد الذي يعيش التصريحُ تحته. وقواعد `@` تُحفظ في المكدّس ولا تُخلط
+     بالمحدِّد، فـ`@media` ليست مُحدِّداً وقاعدةٌ داخلها تحمل محدِّدها هي. */
+  const stack = [];
+  const currentSelector = () => {
+    for (let i = stack.length - 1; i >= 0; i -= 1) {
+      if (!stack[i].startsWith("@")) return stack[i];
+    }
+    return "";
+  };
   const flush = function* (endIndex) {
     if (!buffer.trim()) return;
     const colon = buffer.indexOf(":");
@@ -155,11 +202,13 @@ function* declarationsOf(source, { bare = false } = {}) {
     yield {
       property,
       value,
+      selector: currentSelector(),
       propertyIndex: bufferStart + (buffer.length - buffer.trimStart().length),
       valueIndex: bufferStart + colon + 1,
       endIndex,
     };
   };
+  if (bare) stack.push("");
   for (let i = 0; i < source.length; i += 1) {
     const c = source[i];
     if (quote) {
@@ -169,12 +218,23 @@ function* declarationsOf(source, { bare = false } = {}) {
       continue;
     }
     if (c === '"' || c === "'") { if (buffer === "") bufferStart = i; quote = c; buffer += c; continue; }
-    if (c === "{") { depth += 1; buffer = ""; bufferStart = i + 1; continue; }
-    if (c === "}") { yield* flush(i); depth = Math.max(0, depth - 1); buffer = ""; bufferStart = i + 1; continue; }
+    if (c === "{") {
+      stack.push(buffer.trim().replace(/\s+/g, " "));
+      depth += 1; buffer = ""; bufferStart = i + 1; continue;
+    }
+    if (c === "}") {
+      yield* flush(i);
+      stack.pop();
+      depth = Math.max(0, depth - 1); buffer = ""; bufferStart = i + 1; continue;
+    }
     if (c === ";") { if (depth > 0) yield* flush(i); buffer = ""; bufferStart = i + 1; continue; }
     if (depth > 0) { if (buffer === "") bufferStart = i; buffer += c; }
+    else { if (buffer === "" && !/\s/.test(c)) bufferStart = i; buffer += c; }
   }
-  yield* flush(source.length);
+  /* ‏والدفقة الأخيرة **مشروطةٌ بالعمق**: بعد أن صار المُحدِّد يُجمَّع عند العمق
+     صفر، صار في المُخزَّن عند نهاية الملفّ نصُّ مُحدِّدٍ لا تصريح — و`a:hover`
+     فيه نقطتان، فيُقرأ تصريحاً وهماً. */
+  if (depth > 0) yield* flush(source.length);
 }
 
 /**
@@ -187,6 +247,12 @@ export function scanCssText(cssText, { file = "<نصّ>", origin = null, offset 
   const declarations = [];
   const violations = [];
   const tokenDefinitions = [];
+  /* المِحرف يُجمَع ولا يُحكَم هنا: حكمُه يحتاج **كلَّ** المستودع، لأن القاعدة
+     التي تُعلن الأرقام قد تكون في ملفٍّ والقاعدة التي تختار الوجه في آخر —
+     وهو بالضبط شكل الطفرة التي هزمت النسخة السابقة. */
+  const faceDeclarations = [];
+  const numeralSelectors = [];
+  const faceTokenDefinitions = [];
   const at = (index) => lineOf(whole, offset + index);
 
   const keywordRe = new RegExp("(?<![-\\w])(" + NUMERAL_KEYWORDS.join("|") + ")(?![-\\w])", "gi");
@@ -202,8 +268,21 @@ export function scanCssText(cssText, { file = "<نصّ>", origin = null, offset 
       continue; /* الموضع الوحيد الذي تجوز فيه القيمة الحرفية. */
     }
 
+    if (d.property === NUMERAL_FACE_TOKEN) {
+      faceTokenDefinitions.push({ file, line, token: d.property, value, selector: d.selector });
+      continue;
+    }
+
+    /* ⓪ المِحرف — يُجمَع بمُحدِّده، ويُحكَم في `scanRepository` بعد أن تُعرف
+       الأسطح الرقمية كلُّها. */
+    if (d.property === NUMERAL_FACE_PROPERTY) {
+      faceDeclarations.push({ file, line, selector: d.selector, value });
+    }
+
     /* ① الخاصّية نفسها — المجموعة المغلقة. */
     if (NUMERAL_PROPERTIES.includes(d.property)) {
+      /* المُحدِّد يُسجَّل هنا: هو تعريفُ «سطحٍ رقميّ» ومنه تُشتقّ الأصناف. */
+      if (d.selector) numeralSelectors.push({ file, line, selector: d.selector });
       const record = { file, line, property: d.property, value };
       if (d.property === "font") {
         if (!ALLOWED_FONT_SHORTHAND.includes(value.toLowerCase())) {
@@ -249,7 +328,7 @@ export function scanCssText(cssText, { file = "<نصّ>", origin = null, offset 
     }
   }
 
-  return { declarations, violations, tokenDefinitions };
+  return { declarations, violations, tokenDefinitions, faceDeclarations, numeralSelectors, faceTokenDefinitions };
 }
 
 /** ‏يستخرج مقاطع CSS من ملفّ HTML: كتل `<style>` وسمات `style="…"`. */
@@ -361,6 +440,9 @@ export function scanRepository(root) {
   const tokenDefinitions = [];
   const scannedFiles = [];
   const unclassified = [];
+  const faceDeclarations = [];
+  const numeralSelectors = [];
+  const faceTokenDefinitions = [];
 
   for (const full of walk(root)) {
     const rel = path.relative(root, full).split(path.sep).join("/");
@@ -391,6 +473,9 @@ export function scanRepository(root) {
         declarations.push(...r.declarations);
         violations.push(...r.violations);
         tokenDefinitions.push(...r.tokenDefinitions);
+        faceDeclarations.push(...r.faceDeclarations);
+        numeralSelectors.push(...r.numeralSelectors);
+        faceTokenDefinitions.push(...r.faceTokenDefinitions);
       }
       if (!outside) scannedFiles.push(rel);
       else if (found > 0 && !FROZEN_PROTOTYPES.includes(rel)) {
@@ -417,7 +502,123 @@ export function scanRepository(root) {
     }
   }
 
-  return { declarations, violations, tokenDefinitions, scannedFiles, unclassified };
+  /* ── حكمُ المِحرف: بعد أن صار المستودع كلُّه معروفاً ───────────────────── */
+  const numericClasses = classesOf(numeralSelectors.map((s) => s.selector));
+  violations.push(...judgeFaces({ faceDeclarations, numericClasses, faceTokenDefinitions }));
+
+  return {
+    declarations, violations, tokenDefinitions, scannedFiles, unclassified,
+    faceDeclarations, numericClasses: [...numericClasses].sort(), faceTokenDefinitions,
+  };
+}
+
+/**
+ * ‏**أسماءُ الأصناف التي يذكرها مُحدِّد — بالنقطة وبسمة `class` معاً.**
+ *
+ * ‏**العطل الذي أغلقه الشقّ الثاني، مقيساً:** كانت القراءة `\.(اسم)` وحدها،
+ * وCSS تبلغ الصنف نفسه بلا نقطةٍ إطلاقاً: `[class~="acct-code"]` مُحدِّدٌ
+ * مكافئٌ لـ`.acct-code` حرفاً بحرف في الأثر، ولا نقطة فيه. فقاعدةٌ تُبدّل وجه
+ * الصفوف الزوجية كُتبت بهذا الشكل **مرّت من `numerals.mjs` ومن `audit.mjs`
+ * معاً بالرمز صفر**. والمُعامِلات الخمسة (`~=` `*=` `^=` `$=` `=`) نحوُ CSS
+ * نفسُه، مجموعةٌ مغلقة يعرفها المواصفة — لا قائمةَ أسماءٍ يفتحها كلُّ صنفٍ جديد.
+ *
+ * Class names a selector mentions — through the dot **and** through `[class…]`
+ * attribute selectors, which reach the same element with no dot at all.
+ */
+const CLASS_MENTION =
+  /\.(-?[A-Za-z_][\w-]*)|\[\s*class\s*[~^$*|]?=\s*("([^"]*)"|'([^']*)'|([^\]\s]+))/g;
+
+/** كلُّ اسمِ صنفٍ يذكره مُحدِّدٌ واحد. */
+function* classMentions(selector) {
+  for (const m of selector.matchAll(CLASS_MENTION)) {
+    if (m[1] !== undefined) {
+      yield m[1];
+      continue;
+    }
+    /* قيمةُ السمة قد تكون قائمةَ أصناف (`class="a b"`) أو جزءاً منها — وكلُّ
+       كلمةٍ فيها اسمُ صنفٍ محتمل، فتُقرأ كلُّها. */
+    const value = m[3] ?? m[4] ?? m[5] ?? "";
+    for (const word of value.split(/\s+/)) if (word.length > 0) yield word;
+  }
+}
+
+/** الأصنافُ المذكورة في مجموعة مُحدِّدات — مشتقّةٌ بالمطابقة لا مكتوبة. */
+export function classesOf(selectors) {
+  const classes = new Set();
+  for (const selector of selectors) {
+    for (const name of classMentions(selector)) classes.add(name);
+  }
+  return classes;
+}
+
+/** هل يبلغ هذا المُحدِّد سطحاً رقمياً؟ — أي هل يذكر صنفاً رقمياً واحداً على الأقلّ. */
+export function reachesNumericSurface(selector, numericClasses) {
+  for (const name of classMentions(selector)) {
+    if (numericClasses.has(name)) return name;
+  }
+  return null;
+}
+
+/** هل المُحدِّد جذرُ وراثة؟ يُطبَّع بحذف الفراغ حول الفواصل. */
+export function isInheritanceRoot(selector) {
+  const normal = selector.replace(/\s*,\s*/g, ",").trim().toLowerCase();
+  return INHERITANCE_ROOTS.includes(normal);
+}
+
+/**
+ * ‏**الحكم على `font-family`.** ثلاث حالات، لا رابعة:
+ *   · جذرُ وراثة  ⇐ وجهُه **يساوي تعريف** `--font-numeric-face` حرفاً بحرف.
+ *     (وهذا أقوى من اشتراط الرمز: هو ما يجعل كلَّ سطحٍ لا يختار وجهه يرث
+ *      الوجهَ الرقميّ نفسه.)
+ *   · يبلغ صنفاً رقمياً ⇐ وجهُه `var(--font-numeric-face)` حرفاً بحرف.
+ *   · غير ذلك ⇐ لا شأن للأرقام به.
+ */
+export function judgeFaces({ faceDeclarations, numericClasses, faceTokenDefinitions }) {
+  const violations = [];
+  const rootFace = faceTokenDefinitions.length > 0 ? faceTokenDefinitions[0].value : null;
+
+  for (const d of faceDeclarations) {
+    if (isInheritanceRoot(d.selector)) {
+      if (rootFace === null) {
+        violations.push({
+          file: d.file, line: d.line, property: NUMERAL_FACE_PROPERTY, value: d.value,
+          kind: "numeral-face-token-is-undefined",
+          why:
+            "جذرُ وراثةٍ يختار وجهاً و`" + NUMERAL_FACE_TOKEN + "` غير معرَّف في هذا النطاق — " +
+            "فلا شيء يقول إنّ وجه الأرقام هو وجهُ الجذر.",
+        });
+        continue;
+      }
+      if (normalizeValue(d.value) !== normalizeValue(rootFace)) {
+        violations.push({
+          file: d.file, line: d.line, property: NUMERAL_FACE_PROPERTY, value: normalizeValue(d.value),
+          kind: "root-face-differs-from-the-numeral-face",
+          why:
+            "وجهُ جذر الوراثة «" + normalizeValue(d.value) + "» و`" + NUMERAL_FACE_TOKEN +
+            "` = «" + normalizeValue(rootFace) + "» — وكلُّ سطحٍ رقميّ لا يختار وجهه يرث الأول " +
+            "بينما من يختار يأخذ الثاني، فيصير للرقم وجهان.",
+        });
+      }
+      continue;
+    }
+
+    const via = reachesNumericSurface(d.selector, numericClasses);
+    if (via === null) continue;
+
+    if (!ALLOWED_FACES.includes(normalizeValue(d.value))) {
+      violations.push({
+        file: d.file, line: d.line, property: NUMERAL_FACE_PROPERTY, value: normalizeValue(d.value),
+        kind: "numeral-face-is-not-the-token",
+        why:
+          "المُحدِّد «" + d.selector + "» يبلغ الصنف الرقميّ `." + via + "`، فوجهُه يجب أن يكون " +
+          ALLOWED_FACES.map((v) => "`" + v + "`").join(" أو ") + " — " +
+          "و`tabular-nums` طلبٌ إلى المِحرف لا أمر: وجهان يرسمان الرقم نفسه بعرضين، " +
+          "و`getComputedStyle` يقول `tabular-nums` في كليهما.",
+      });
+    }
+  }
+
+  return violations;
 }
 
 /** جذر المستودع من موضع هذا الملفّ: `web/scripts/` ⇐ صعودان. */
@@ -427,6 +628,14 @@ export function repositoryRoot() {
 
 /** الحدّ الأدنى لعدد التصريحات — حارس لافراغ: حذفُ القواعد لا يجعل الفحص يمرّ. */
 export const DECLARATION_FLOOR = 52;
+
+/**
+ * أرضيتا حكم المِحرف. وهما ليستا زينةً: حكمُ `font-family` **مشتقّ** من
+ * الأصناف الرقمية، ونمطُ اشتقاقٍ يتوقّف عن المطابقة يجعل المجموعة فارغة —
+ * فيمرّ كلُّ وجهٍ ثانٍ صامتاً والفحص يُعلن نجاحاً. وهو فخ-43 داخل الحارس نفسه.
+ */
+export const NUMERIC_CLASS_FLOOR = 30;
+export const FACE_DECLARATION_FLOOR = 20;
 
 /**
  * ‏**عدد مواضع الخروج المسموح بها، مثبَّتاً بالتساوي لا بحدٍّ أعلى.**
@@ -442,6 +651,32 @@ export const EXPECTED_TOKEN_VALUES = Object.freeze({
   "--font-numeric": "tabular-nums",
   "--font-numeric-off": "normal",
 });
+
+/**
+ * ‏**رمز المِحرف يُفحَص كما يُفحص رمز الطلب.** ولا يُثبَّت على قيمةٍ بعينها:
+ * اختيارُ وجهٍ آخر للأرقام قرارٌ مشروع ويكفي أن يقع في موضعٍ واحد. المفروض
+ * أنه **معرَّف، في ملفّ رموز، ومعرَّف مرّةً واحدة لكل نطاق** — فتعريفان
+ * بقيمتين هما «وجهان» بثوبٍ آخر.
+ */
+export function auditFaceToken(faceTokenDefinitions) {
+  const problems = [];
+  if (faceTokenDefinitions.length === 0) {
+    problems.push(`الرمز ${NUMERAL_FACE_TOKEN} غير معرَّف في أي ملفّ — ولا وجهَ واحد بلا رمزٍ يحمله.`);
+  }
+  for (const d of faceTokenDefinitions) {
+    if (!d.file.endsWith("tokens.css")) {
+      problems.push(`${d.file}:${d.line} · ${NUMERAL_FACE_TOKEN} يُعرَّف خارج ملفّ رموز.`);
+    }
+  }
+  const values = new Set(faceTokenDefinitions.map((d) => normalizeValue(d.value)));
+  if (values.size > 1) {
+    problems.push(
+      `${NUMERAL_FACE_TOKEN} معرَّفٌ بقيمتين مختلفتين (${[...values].join(" · ")}) — ` +
+        "وذلك وجهان للرقم في ملفّين، وهو العطل نفسه في موضع التعريف."
+    );
+  }
+  return problems;
+}
 
 /**
  * يفحص الرمزين نفسيهما: مُعرَّفان، وفي ملفّ رموز لا في مكوّن، وبالقيمة المتوقّعة.
@@ -477,7 +712,10 @@ function main() {
     process.stdout.write(JSON.stringify(result, null, 2) + "\n");
   }
   const total = result.declarations.length;
-  const tokenProblems = auditTokens(result.tokenDefinitions);
+  const tokenProblems = [
+    ...auditTokens(result.tokenDefinitions),
+    ...auditFaceToken(result.faceTokenDefinitions),
+  ];
   for (const problem of tokenProblems) process.stderr.write(`✗ ${problem}\n`);
   const offUses = offTokenUses(result.declarations);
   if (offUses !== OFF_TOKEN_USES) {
@@ -489,9 +727,24 @@ function main() {
   for (const v of result.violations) {
     process.stderr.write(`✗ ${v.file}:${v.line} · ${v.property}: ${v.value}\n   ${v.why}\n`);
   }
+  const emptiness = [];
   if (total < DECLARATION_FLOOR) {
+    emptiness.push(`تصريحات الطلب ${total} والحدّ الأدنى ${DECLARATION_FLOOR}`);
+  }
+  if (result.numericClasses.length < NUMERIC_CLASS_FLOOR) {
+    emptiness.push(
+      `الأصناف الرقمية المشتقّة ${result.numericClasses.length} والحدّ الأدنى ${NUMERIC_CLASS_FLOOR} — ` +
+        "ومجموعةٌ فارغة تُمرِّر كلَّ وجهٍ ثانٍ"
+    );
+  }
+  if (result.faceDeclarations.length < FACE_DECLARATION_FLOOR) {
+    emptiness.push(
+      `تصريحات المِحرف الممسوحة ${result.faceDeclarations.length} والحدّ الأدنى ${FACE_DECLARATION_FLOOR}`
+    );
+  }
+  if (emptiness.length > 0) {
     process.stderr.write(
-      `✗ حارس اللافراغ: ${total} تصريحاً فقط، والحدّ الأدنى ${DECLARATION_FLOOR}.\n` +
+      "✗ حارس اللافراغ: " + emptiness.join("؛ ") + ".\n" +
         "   فحصٌ لا يجد شيئاً يمرّ على كل شيء.\n"
     );
     process.exit(1);
@@ -502,7 +755,9 @@ function main() {
   }
   process.stdout.write(
     `✔ الأرقام الجدولية: ${total} تصريحاً في ${result.scannedFiles.length} ملفّاً، ` +
-      `كلُّها تمرّ من ${NUMERAL_TOKENS.join(" أو ")}.\n`
+      `كلُّها تمرّ من ${NUMERAL_TOKENS.join(" أو ")}.\n` +
+      `✔ المِحرف: ${result.faceDeclarations.length} تصريح \`font-family\` مفحوصاً مقابل ` +
+      `${result.numericClasses.length} صنفاً رقمياً مشتقّاً — ولا وجهَ ثانٍ على سطحٍ رقميّ.\n`
   );
 }
 

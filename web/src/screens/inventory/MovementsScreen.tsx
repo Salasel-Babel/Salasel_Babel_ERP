@@ -31,7 +31,7 @@
        نفسها يعيد المستند ذاته و`alreadyPosted = true`؛ وعرضُ نجاحٍ ثانٍ
        يُقرأ «رُحِّل مرّتين»، وهو أسوأ من رسالة غامضة.
    ═══════════════════════════════════════════════════════════════════════════ */
-import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   draftStockMovement,
@@ -471,7 +471,7 @@ export function InventoryMovementsScreen(): ReactNode {
           </div>
         </div>
 
-        <div className="grid fields-3" style={{ marginTop: "var(--space-12)" }}>
+        <div className="grid fields-3" style={{ "--grid-lead": "var(--space-12)" } as CSSProperties}>
           <div className="field">
             <label htmlFor="mv-item">{t("inventory.movements.item")}</label>
             <select
@@ -570,7 +570,7 @@ export function InventoryMovementsScreen(): ReactNode {
           )}
         </fieldset>
 
-        <div className="grid fields-3" style={{ marginTop: "var(--space-12)" }}>
+        <div className="grid fields-3" style={{ "--grid-lead": "var(--space-12)" } as CSSProperties}>
           <div className="field">
             <label htmlFor="mv-magnitude">{t("inventory.movements.magnitude")}</label>
             <input

@@ -64,7 +64,7 @@
   وأن إنفاذها طبقتان — لأن **وعداً بحارسٍ لا يوجد أخطر من غياب الحارس**.
 - **ونصوص المخطّط تُعاد بدور المالك بعد الهجرات**، لا داخلها وحدها: نصٌّ يُنفَّذ داخل هجرةٍ
   طُبِّقت لا يُعاد أبداً، فتعديلُه يبلغ القواعد الفارغة وحدها
-  ([فخ-جديد](../evidence/traps.md#fakh-a-schema-script-run-inside-a-migration-never-reaches-an-applied-database)).
+  ([فخ-129](../evidence/traps.md#fakh-a-schema-script-run-inside-a-migration-never-reaches-an-applied-database)).
 
 ### ٣ · عشرون باباً: **دورةٌ واحدة كاملة تعمل من طرفها إلى طرفها**
 
@@ -153,18 +153,18 @@
 بـ`bank_account` يطلب `subledger.bank_account` — **على الحساب `1201` نفسه**. مقيس بالاتجاهين:
 حذفُ أي من الواقعتين يرفض حدثه بـ`ledger.posting.missing_subledger`. والوحدة تدفع الثمن
 بواقعتين لطرفٍ واحد، **والعلاج في الدفتر لا فيها**
-([فخ-جديد](../evidence/traps.md#fakh-two-fact-names-for-one-control-account)).
+([فخ-127](../evidence/traps.md#fakh-two-fact-names-for-one-control-account)).
 
 **ب · مبلغٌ مُسمّى لا يحمل القالبُ سطراً له عند شرطه يُسقط القيد بـ«غير متوازن».** شرط سطر
 الضريبة في الحدث المُدار يطلب **تسجيل المالك ضريبياً** فوق كون الوحدة خاضعة؛ وحسابُ الضريبة
 من معاملة الوحدة وحدها ينتج مديناً يحمل الضريبة ودائناً لا يحملها. مقيس:
 `ledger.posting.unbalanced` — **ورسالتُه تتّهم المبالغ والعلّة في شرطٍ مكتوب في البيانات**
-([فخ-جديد](../evidence/traps.md#fakh-a-tax-amount-with-no-template-line-unbalances-the-entry)).
+([فخ-128](../evidence/traps.md#fakh-a-tax-amount-with-no-template-line-unbalances-the-entry)).
 
 **ج · نصُّ مخطّطٍ يُنفَّذ داخل هجرة لا يبلغ قاعدةً طُبِّقت عليها.** فحارسٌ يُضاف إلى
 `LedgerTriggers.sql` يبقى في المستودع وحده. عولج بإعادة تنفيذ النصّ بدور المالك بعد الهجرات،
 ومحروسٌ باختبار يقرأ **القاعدة نفسها** لا الملفّ
-([فخ-جديد](../evidence/traps.md#fakh-a-schema-script-run-inside-a-migration-never-reaches-an-applied-database)).
+([فخ-129](../evidence/traps.md#fakh-a-schema-script-run-inside-a-migration-never-reaches-an-applied-database)).
 
 **د · وأخطرها على القراءة: قاعدةُ الحجب GR-RE-001 لا تحرس أي مسارٍ مبنيّ اليوم.** هي مُعلَنة
 على الدور `rental_revenue`، والمقيس أن ذلك الدور يظهر في **حدثين اثنين فقط** من اثنين
@@ -173,7 +173,7 @@
 أمانات المالك، ولا تمسّ الدور المحروس. **فالادّعاء بأن تسجيل العقار هو ما يمنع تضخيم الإيراد
 اليوم باطل** — والصحيح أن ما يمنعه هو **اختيار الوحدة للحدث من السجلّ**، وأن التسجيل يصير
 حاجزاً فعلياً يوم يُكتب كاتب الاستحقاق
-([فخ-جديد](../evidence/traps.md#fakh-a-guard-declared-on-a-role-no-built-event-carries)).
+([فخ-130](../evidence/traps.md#fakh-a-guard-declared-on-a-role-no-built-event-carries)).
 
 **هـ · وتصحيحٌ ثانٍ للمواصفة، بالأمر الذي أثبته.** أوجبت المواصفة أن يكتب المنفذ في **جدولين**:
 سجلّ الأبعاد وجدول الترجمات. والمقيس أن `LedgerGrants.sql` يسحب `insert` عن

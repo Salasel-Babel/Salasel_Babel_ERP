@@ -68,7 +68,7 @@ en-US    2026-08   GregorianCalendar      1234.5000   id
 
 > **وتغيّر فيه شيء بالإصلاح**: سطر الدليل الذي يسجّله الإثبات (ب) كان يُنسَّق بثقافة
 > المشغّل، فالفرق `0.0001` كان يصير `0٫0001` تحت `ar-SA`. صار الآن ثابتاً، فالدليل واحد
-> مهما اختلف الجهاز. (فخ-جديد · `an-interpolation-passed-to-a-base-constructor-escapes-the-analyzer`)
+> مهما اختلف الجهاز. (فخ-75 · `an-interpolation-passed-to-a-base-constructor-escapes-the-analyzer`)
 
 ### `pos-offline` — **الحكم قائم، ومعه خطأ حقيقي كان مستوراً**
 
@@ -87,7 +87,7 @@ en-US    2026-08   GregorianCalendar      1234.5000   id
 > ثقافة**، ثم يُمرّره مَعلَمةً إلى `insert` في الدفتر. مقيس على السلسلة `"2026-08-24"`:
 > `ar-SA` **تُلقي `FormatException`**، و`fa-IR` تُرجع `2647-11-15` و`th-TH` تُرجع
 > `1483-08-24` — **بصمت، وتُخزَّن كما هي**. صار `ParseExact` بصيغة صريحة وثقافة ثابتة.
-> (فخ-جديد · `a-wire-date-parsed-in-the-server-culture`)
+> (فخ-74 · `a-wire-date-parsed-in-the-server-culture`)
 
 **ولم يُوجد في هذا المسبار أي «مفتاح فترة مالية»** — لا مفهوم `fiscal period` فيه أصلاً،
 ومسار `Canonical` (التنسيق الذي يدخل البصمات) كان **ثابتاً وسليماً من قبل**. كل ما وُجد كان

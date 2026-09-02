@@ -167,6 +167,7 @@ test.describe("كل رقم مرسوم يتحرّك حين يتحرّك الرم�
    فيُقاس هنا **ما يراه**: عرضُ مِحرف كل رقمٍ في الوجه الذي تستعمله الصفحة فعلاً.
    ومجموعاتُ الأرقام المفحوصة **تُكتشَف مما رسمته الصفحة**، لا من قائمة.
    ═══════════════════════════════════════════════════════════════════════════ */
+
 const DIGIT_SETS: Record<string, [number, number]> = {
   latin: [0x30, 0x39],
   arabicIndic: [0x660, 0x669],
@@ -174,90 +175,296 @@ const DIGIT_SETS: Record<string, [number, number]> = {
   devanagari: [0x966, 0x96f],
 };
 
-async function digitMetrics(page: import("@playwright/test").Page, sets: Record<string, [number, number]>) {
-  return page.evaluate((SETS) => {
-    /* ما رسمته الصفحة فعلاً — لا ما قد ترسمه يوماً. */
-    const rendered = new Set<string>();
-    const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-    while (walk.nextNode()) {
-      for (const ch of walk.currentNode.nodeValue ?? "") {
-        const c = ch.codePointAt(0) ?? 0;
-        for (const [name, range] of Object.entries(SETS)) {
-          if (c >= range[0] && c <= range[1]) rendered.add(name);
+/**
+ * خصائصُ **التقدُّم** — المجموعة المغلقة التي تقرّر عرض مِحرف الرقم.
+ * وهي نفسها التي يملكها `web/scripts/numerals.mjs` ساكنةً، ومعها ما يضربه
+ * في المقاس: القياس والوزن والنمط والتتبّع. ومن يضيف خاصّيةً تُغيّر التقدُّم
+ * يضيفها هنا وهناك معاً، لا في أحدهما.
+ */
+const ADVANCE_PROPERTIES = [
+  "fontFamily",
+  "fontSize",
+  "fontWeight",
+  "fontStyle",
+  "fontStretch",
+  "fontVariantNumeric",
+  "fontFeatureSettings",
+  "fontVariationSettings",
+  "letterSpacing",
+] as const;
+
+type NodeMetric = {
+  signature: string;
+  face: string;
+  size: string;
+  variant: string;
+  widths: Record<string, number[]>;
+  sample: string;
+};
+
+/**
+ * ‏**يقيس كل عقدةٍ رقمية في سياقها هي.**
+ *
+ * ‏والنسخة السابقة كانت تُلحق مسبارها بـ`document.body` — فكانت تقيس **وجه
+ * الجسم** أبداً، لا الوجه الذي تستعمله العقدة الرقمية. وأثرُ ذلك مقيس: رمزُ
+ * حسابٍ سباعيّ يُرسم **58.81px في صفٍّ و68.20px في الذي يليه**، والمسبار
+ * يقرأ رقماً واحداً في الحالين، و`getComputedStyle().fontVariantNumeric`
+ * يقول `tabular-nums` في الحالين. فصار المسبار ينسخ خصائص التقدّم **من
+ * العقدة نفسها**، ويعمل مع `<input>` والعناصر المستبدَلة أيضاً لأنه ينسخ
+ * ولا يتطفّل على شجرتها.
+ */
+async function faceMetrics(page: import("@playwright/test").Page, sets: Record<string, [number, number]>) {
+  return page.evaluate(
+    ({ SETS, ADVANCE }) => {
+      const DIGIT = /[0-9٠-٩۰-۹०-९]/;
+      const SKIP = new Set(["SCRIPT", "STYLE", "TEMPLATE", "NOSCRIPT"]);
+
+      /* العقد الرقمية — أوراقٌ ترسم رقماً. لا قائمةَ أصنافٍ هنا كذلك. */
+      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT);
+      const all: Element[] = [document.body];
+      while (walker.nextNode()) all.push(walker.currentNode as Element);
+
+      const numeric: HTMLElement[] = [];
+      const rendered = new Set<string>();
+      for (const el of all) {
+        if (SKIP.has(el.tagName)) continue;
+        const value = (el as HTMLInputElement).value;
+        const text = (el.textContent ?? "") + (typeof value === "string" ? value : "");
+        for (const ch of text) {
+          const c = ch.codePointAt(0) ?? 0;
+          for (const [name, range] of Object.entries(SETS)) {
+            if (c >= range[0] && c <= range[1]) rendered.add(name);
+          }
         }
+        if (el.children.length === 0 && DIGIT.test(text)) numeric.push(el as HTMLElement);
       }
-    }
-    /* المسبار داخل الجسم نفسه، فيرث الوجه والخاصّية كما هما على الشاشة. */
-    const host = document.createElement("div");
-    host.style.position = "absolute";
-    host.style.visibility = "hidden";
-    host.style.whiteSpace = "pre";
-    document.body.appendChild(host);
-    const widthsOf = (range: [number, number]) =>
-      Array.from({ length: 10 }, (_, i) => {
+
+      const host = document.createElement("div");
+      host.style.position = "absolute";
+      host.style.top = "0";
+      host.style.left = "-99999px";
+      host.style.whiteSpace = "pre";
+      host.style.visibility = "hidden";
+      document.body.appendChild(host);
+
+      const advanceOf = (cs: CSSStyleDeclaration, text: string) => {
         const span = document.createElement("span");
-        span.textContent = String.fromCodePoint(range[0] + i);
+        for (const key of ADVANCE) {
+          const v = (cs as unknown as Record<string, string>)[key];
+          if (v) (span.style as unknown as Record<string, string>)[key] = v;
+        }
+        span.textContent = text;
         host.appendChild(span);
         const w = Math.round(span.getBoundingClientRect().width * 100) / 100;
         span.remove();
         return w;
-      });
-    const measured: Record<string, { widths: number[]; distinct: number }> = {};
-    for (const [name, range] of Object.entries(SETS)) {
-      const widths = widthsOf(range);
-      measured[name] = { widths, distinct: new Set(widths).size };
-    }
-    host.remove();
-    return { rendered: [...rendered], measured, face: getComputedStyle(document.body).fontFamily };
-  }, sets);
+      };
+
+      const metrics: {
+        signature: string; face: string; size: string; variant: string;
+        widths: Record<string, number[]>; sample: string;
+      }[] = [];
+      for (const el of numeric) {
+        const cs = getComputedStyle(el);
+        const widths: Record<string, number[]> = {};
+        for (const name of rendered) {
+          const range = SETS[name];
+          widths[name] = Array.from({ length: 10 }, (_, i) =>
+            advanceOf(cs, String.fromCodePoint(range[0] + i))
+          );
+        }
+        const classes = typeof el.className === "string" ? el.className.trim().split(/\s+/).filter(Boolean).sort() : [];
+        metrics.push({
+          signature: el.tagName.toLowerCase() + (classes.length ? "." + classes.join(".") : ""),
+          face: cs.fontFamily,
+          size: cs.fontSize,
+          variant: cs.fontVariantNumeric,
+          widths,
+          sample: (el.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 40),
+        });
+      }
+
+      /* والوجهُ الذي كان يُقاس قبلاً — يُعاد هنا **مسمّى** كي لا يُخلط بغيره. */
+      const bodyFace = getComputedStyle(document.body).fontFamily;
+      host.remove();
+      return { rendered: [...rendered], metrics, bodyFace };
+    },
+    { SETS: sets, ADVANCE: ADVANCE_PROPERTIES as unknown as string[] }
+  );
 }
 
 const LOCALES = ["ar", "en", "ur", "hi"] as const;
 
+/* أرضية اللافراغ للقياس المرسوم: صفحةٌ بلا عقدٍ رقمية لا تُثبت شيئاً. */
+const METRIC_FLOOR = 5;
+
+/**
+ * ‏**بابُ الخروج الوحيد من وجه الأرقام — مُعلَنٌ ومغلق.**
+ *
+ * ‏«وجهٌ واحد لكل رقم في المنتج» دعوى أقوى مما يحتمله المنتج، وADR ثوابت
+ * التصميم يقولها بنفسه: «حاجةُ عمودٍ إلى وجهٍ أحاديّ حقيقي ⇒ يصير الشرط
+ * وجهٌ واحد لكل عمود». والنصّ الآليّ المعزول — رمزُ دفتر، ومفتاح لاتكرار،
+ * ومعرّف تتبّع — ليس عموداً يقرؤه محاسب، وهو مكتوبٌ بصنفٍ واحد اسمه `.mono`
+ * وغرضُه هذا بالضبط.
+ *
+ * ‏**فالقاعدة:** كل عقدةٍ ترسم رقماً تُرسم بوجه الجذر، **إلّا** ما حمل صنفاً
+ * من هذه المجموعة — وهي **مغلقة ومسمّاة**، لا حدّاً أعلى ولا استثناء مسار.
+ * وصنفٌ جديد يُخرج عقدةً من الوجه الواحد **يُحمِّر الاختبار** حتى يُكتب هنا،
+ * وذلك إقرارٌ مقروء لا صمت — وهو منوال `OFF_TOKEN_USES` نفسه في `numerals.mjs`.
+ */
+const MACHINE_TEXT_CLASSES = ["mono"];
+
 test.describe("الأرقام المرسومة تصطفّ فعلاً — لا الخاصّية مطلوبةً فحسب", () => {
   for (const locale of LOCALES) {
-    test(`عرضُ المِحرف واحدٌ لكل مجموعةٍ ترسمها الصفحة · ${locale}`, async ({ page }) => {
+    test(`وجهٌ واحد وعرضٌ واحد لكل سطحٍ رقميّ · ${locale}`, async ({ page }) => {
       await page.goto(urlFor("/", locale), { waitUntil: "domcontentloaded" });
       await page.waitForLoadState("networkidle").catch(() => undefined);
       await page.waitForTimeout(250);
-      const m = await digitMetrics(page, DIGIT_SETS);
+      const m = await faceMetrics(page, DIGIT_SETS);
+      const metrics = m.metrics as NodeMetric[];
 
-      /* حارس اللافراغ: صفحةٌ بلا أرقام لا تُثبت شيئاً. */
       expect(m.rendered.length, "مجموعات أرقامٍ رسمتها الصفحة").toBeGreaterThan(0);
-      for (const name of m.rendered) {
-        const set = m.measured[name];
-        expect(
-          set.distinct,
-          `المجموعة ${name} مرسومةٌ في ${locale} بعروضٍ مختلفة (${set.widths.join(", ")}) — ` +
-            `الوجه ${m.face} لا ينفّذ الطلب، والعمود يتعرّج`
-        ).toBe(1);
+      expect(metrics.length, "عقدٌ رقمية قِيست في سياقها").toBeGreaterThanOrEqual(METRIC_FLOOR);
+
+      /* ① **وجهُ الجذر هو وجه الرقم، والخروج منه بصنفٍ مُعلَن وحده.**
+         وهذا ما لم يكن يُقاس إطلاقاً: المسبار القديم كان يُلحق مِقياسه
+         بـ`document.body`، فكان يقرأ **وجه الجسم** مهما كان وجه العقدة —
+         فلا يرى `input.ctl.mono` ولا `tbody tr:nth-child(2n) .acct-code`.
+         والحارس الساكن يُثبت أن وجه الجذر هو `--font-numeric-face` نفسه،
+         فمقارنةُ العقد بوجه الجذر هنا مقارنةٌ برمز الأرقام بالتركيب. */
+      const strays = metrics
+        .filter((x) => x.face !== m.bodyFace)
+        .filter((x) => !MACHINE_TEXT_CLASSES.some((c) => x.signature.split(".").includes(c)));
+      expect(
+        strays.map((x) => `${x.signature} ⟵ ${x.face} « ${x.sample} »`),
+        "عقدٌ رقمية بوجهٍ غير وجه الجذر ولا تحمل صنفاً آلياً مُعلَناً في " + locale
+      ).toEqual([]);
+
+      /* وحارسُ لافراغ للباب نفسه: لو اختفى `.mono` من المنتج لصار الاستثناء
+         نائماً ومرّ كل شيء — فيُقاس أنه **مستعمَل** لا أنه مكتوب. */
+      const machine = metrics.filter((x) =>
+        MACHINE_TEXT_CLASSES.some((c) => x.signature.split(".").includes(c))
+      );
+      const faceCount = new Set(metrics.map((x) => x.face)).size;
+      expect(
+        faceCount,
+        `أوجهُ الأسطح الرقمية في ${locale} = ${faceCount}؛ والمُقَرّ وجهان: وجه الجذر ` +
+          `و${MACHINE_TEXT_CLASSES.join("/")}. العقد الآلية المقيسة: ${machine.length}.\n` +
+          [...new Map(metrics.map((x) => [x.face, x])).values()]
+            .map((x) => `   ${x.face}  ⟵ ${x.signature} « ${x.sample} »`)
+            .join("\n")
+      ).toBeLessThanOrEqual(1 + MACHINE_TEXT_CLASSES.length);
+
+      /* ② **العقدتان بالتوقيع نفسه ترسمان الرقم بالعرض نفسه.** وهو الشكل الذي
+         هزم النسخة السابقة: قاعدةٌ على صفوفٍ زوجية تُبدّل الوجه، فيُرسم رمزُ
+         الحساب السباعيّ نفسه بعرضين في الجدول الواحد. */
+      const groups = new Map<string, NodeMetric[]>();
+      for (const x of metrics) {
+        const list = groups.get(x.signature) ?? [];
+        list.push(x);
+        groups.set(x.signature, list);
       }
+      const split: string[] = [];
+      for (const [signature, list] of groups) {
+        /* الوجه أوّلاً — وهو ما يهزم الفحص الساكن حين تُبدّله قاعدةٌ أخرى. */
+        if (new Set(list.map((x) => x.face)).size > 1) {
+          split.push(
+            `${signature} (${list.length} عقدة) ⟵ وجهان: ` +
+              [...new Map(list.map((x) => [x.face, x])).values()]
+                .map((x) => `${x.face} « ${x.sample} »`)
+                .join("  ✧  ")
+          );
+          continue;
+        }
+        /* ثم العرض **عند المقاس نفسه**: مقاسان لصنفٍ واحد مشروعان، وعرضان
+           عند مقاسٍ واحد ليسا كذلك. */
+        const bySize = new Map<string, NodeMetric[]>();
+        for (const x of list) {
+          const kin = bySize.get(x.size) ?? [];
+          kin.push(x);
+          bySize.set(x.size, kin);
+        }
+        for (const [size, kin] of bySize) {
+          const shapes = new Set(kin.map((x) => JSON.stringify(x.widths)));
+          if (shapes.size > 1) {
+            split.push(
+              `${signature} @${size} (${kin.length} عقدة) ⟵ عروضٌ مختلفة: ` +
+                [...new Map(kin.map((x) => [JSON.stringify(x.widths), x])).values()]
+                  .map((x) => `${JSON.stringify(x.widths.latin ?? [])} « ${x.sample} »`)
+                  .join("  ✧  ")
+            );
+          }
+        }
+      }
+      expect(split, "عقدٌ بالتوقيع نفسه تُرسم بوجهين أو بمقاسين:\n" + split.join("\n")).toEqual([]);
+
+      /* ③ **وداخل كل عقدة، الأرقام العشرة بعرضٍ واحد** — وهو ما تعنيه الجدولية. */
+      const ragged: string[] = [];
+      for (const x of metrics) {
+        for (const [name, widths] of Object.entries(x.widths)) {
+          if (name !== "latin") continue; /* الثقب المُعلَن أدناه يخصّ البقيّة. */
+          if (new Set(widths).size !== 1) {
+            ragged.push(`${x.signature} · ${name} · ${widths.join(", ")} ⟵ ${x.face}`);
+          }
+        }
+      }
+      expect(ragged, "أرقامٌ لاتينية بعروضٍ مختلفة داخل العقدة نفسها:\n" + ragged.join("\n")).toEqual([]);
     });
   }
 
   /* ── الثقب المُعلَن، مقيساً لا محكيّاً ──────────────────────────────────────
      الرمز شرطٌ لا كافٍ. مقيس على هذا الفرع: أرقام العربية-الهندية (٠-٩) في
-     "IBM Plex Sans Arabic" لها **تسعةُ عروضٍ متمايزة** رغم `tabular-nums`، لأن
-     الوجه لا يحمل `tnum` لها. والمنتج اليوم يرسم الأرقام اللاتينية في اللغات
-     الأربع جميعاً، فالوعد قائم — **لكنه قائمٌ بالمِحرف لا بالخاصّية**.
-     ومقيسٌ أيضاً أن اللاتينية في الأوجه الأربعة متساوية العرض **حتى مع
-     `proportional-nums`**: أي أن هذه الأوجه لا تنفّذ الميزة أصلاً، فتبديلُ الرمز
-     لا يُغيّر منظراً اليوم. وهذا الاختبار يُثبّت الحالتين معاً: فمن يبدّل مجموعة
-     الأرقام المعروضة أو الوجه سيراهما تحمرّان، ويعرف أن عليه اختيار وجهٍ يحمل
-     الوجه الجدولي — لا كتابة قاعدة CSS أخرى. */
+     "IBM Plex Sans Arabic" لها **عروضٌ متمايزة** رغم `tabular-nums`، لأن الوجه
+     لا يحمل `tnum` لها. والمنتج اليوم يرسم الأرقام اللاتينية في اللغات الأربع
+     جميعاً، فالوعد قائم — **لكنه قائمٌ بالمِحرف لا بالخاصّية**. */
   test("الثقب المُعلَن: العربية-الهندية لا تصطفّ في الوجه المشحون، والرمز لا يُصلح مِحرفاً", async ({ page }) => {
     await page.goto(urlFor("/", "ar"), { waitUntil: "domcontentloaded" });
     await page.waitForLoadState("networkidle").catch(() => undefined);
     await page.waitForTimeout(250);
-    const m = await digitMetrics(page, DIGIT_SETS);
+    const m = await faceMetrics(page, DIGIT_SETS);
+    const metrics = m.metrics as NodeMetric[];
 
     /* ① المنتج يرسم اللاتينية وحدها — فالوعد المُعلَن للمستخدم صحيحٌ اليوم. */
     expect(m.rendered).toEqual(["latin"]);
 
-    /* ② ولو رسم العربية-الهندية لانكسر العمود، ولا CSS يُنقذه. */
+    /* ② ولو رسم العربية-الهندية لانكسر العمود، ولا CSS يُنقذه. والقياس يقع
+       في سياق عقدةٍ رقمية حقيقية، لا في سياق الجسم. */
+    const context = metrics[0];
+    expect(context, "عقدةٌ رقمية واحدة على الأقلّ").toBeTruthy();
+    const arabicIndic = await page.evaluate(
+      ({ signature, ADVANCE }) => {
+        const el = [...document.querySelectorAll<HTMLElement>("*")].find((n) => {
+          const classes = typeof n.className === "string" ? n.className.trim().split(/\s+/).filter(Boolean).sort() : [];
+          return n.tagName.toLowerCase() + (classes.length ? "." + classes.join(".") : "") === signature;
+        });
+        if (!el) return null;
+        const cs = getComputedStyle(el);
+        const host = document.createElement("div");
+        host.style.cssText = "position:absolute;top:0;left:-99999px;white-space:pre;visibility:hidden";
+        document.body.appendChild(host);
+        const widths = Array.from({ length: 10 }, (_, i) => {
+          const span = document.createElement("span");
+          for (const key of ADVANCE) {
+            const v = (cs as unknown as Record<string, string>)[key];
+            if (v) (span.style as unknown as Record<string, string>)[key] = v;
+          }
+          span.textContent = String.fromCodePoint(0x660 + i);
+          host.appendChild(span);
+          const w = Math.round(span.getBoundingClientRect().width * 100) / 100;
+          span.remove();
+          return w;
+        });
+        host.remove();
+        return { widths, face: cs.fontFamily };
+      },
+      { signature: context.signature, ADVANCE: ADVANCE_PROPERTIES as unknown as string[] }
+    );
+
+    expect(arabicIndic, "سياقُ القياس وُجد").not.toBeNull();
     expect(
-      m.measured.arabicIndic.distinct,
-      "إن صارت هذه ١ فقد تغيّر الوجه المشحون: الثقب أُغلق — حدِّث هذا الاختبار ونصّ الفخّ."
+      new Set(arabicIndic!.widths).size,
+      "إن صارت هذه ١ فقد تغيّر الوجه المشحون: الثقب أُغلق — حدِّث هذا الاختبار ونصّ الفخّ. " +
+        `الوجه ${arabicIndic!.face} · العروض ${arabicIndic!.widths.join(", ")}`
     ).toBeGreaterThan(1);
   });
 });

@@ -484,6 +484,164 @@ public sealed class PlacementIsAHierarchyAndTransferIsNotAnEntryTests : IAsyncLi
             + " · الكمّية=" + Quantity(stray.Quantity.Magnitude));
     }
 
+    // ═══════════════════════════════════════════════════════════════════════
+    // 6 · «فلا تُسكَّن فيه بضاعة» — والتسكين هو المستند، لا النقل وحده
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// <b>العطل الذي يُغلقه هذا الإثبات، مقيساً على قاعدةٍ حقيقية قبل الإصلاح:</b>
+    /// <c>InventoryErrors.PlaceInactive</c> يقول بنصّه «فلا تُسكَّن فيه بضاعة ولا تُنقَل
+    /// إليه»، وكان <c>StockTransferService</c> وحدَه يفرضه — وهو ينقل لا يُسكِّن.
+    /// و<c>StockDocumentService</c>، وهو من يُدخل البضاعة فعلاً، لم يكن يسأل عن الموضع
+    /// عند الإنشاء ولا عند الترحيل. فقيس:
+    /// <list type="number">
+    ///   <item>مسوّدة والموضع عامل ⇐ نجحت؛ ثم تعطيل الموقع ⇐ <c>IsActive=false</c>؛
+    ///         ثم ترحيلها ⇐ <b><c>POSTED</c></b>.</item>
+    ///   <item>ومسوّدةٌ <b>جديدة</b> على الموضع المُعطَّل ⇐ قُبلت، ورُحّلت.</item>
+    ///   <item>والرصيد <b><c>19</c> بقيمة <c>1900.0000</c></b> في موقعٍ مُعلَنٍ خارج
+    ///         الخدمة — ولا فحصَ توازنٍ يراه، لأنه يتوازن مع نفسه.</item>
+    /// </list>
+    /// <b>والبابان اثنان لأن بينهما زمناً:</b> حارسٌ عند الإنشاء وحده يترك المسوّدة
+    /// القائمة تمرّ بعد التعطيل، و<c>item_balance</c> يُكتب عند الترحيل لا عند الإنشاء.
+    /// <para>
+    /// <b>وما لا يُفرَض هنا عمداً: التسجيل.</b> رمزٌ لا صفَّ له يمرّ كما كان — وهو
+    /// مُثبَتٌ في الإثبات الخامس أعلاه — فالحكم على <b>الحالة</b> لا على الوجود.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task المستند_لا_يُسكِّن_بضاعةً_في_موضعٍ_مُعطَّل_لا_عند_الإنشاء_ولا_عند_الترحيل()
+    {
+        CancellationToken token = TestContext.Current.CancellationToken;
+        TenantId tenant = InventoryTestEnvironment.PlacementTenant;
+
+        string warehouseCode = Harness.Next("WH");
+        string locationCode = Harness.Next("LOC");
+
+        Result<StoragePlaceView> warehouse = await CreateAsync(
+            tenant, PlacementLevels.Warehouse, null, warehouseCode, token);
+        Assert.True(warehouse.IsSuccess, Describe(warehouse));
+
+        Result<StoragePlaceView> location = await CreateAsync(
+            tenant, PlacementLevels.Location, warehouse.Value.Id, locationCode, token);
+        Assert.True(location.IsSuccess, Describe(location));
+
+        string item = Harness.Next("ITEM");
+        await RegisterItemAsync(tenant, item, token);
+
+        // ── ① مسوّدةٌ تُنشأ والموضع عامل: تُقبل، وهذا هو الشاهد على أن الحكم ليس «كلُّ شيء أحمر»
+        Result<StockDocumentView> draft = await DocumentAsync(
+            tenant, item, warehouseCode, locationCode, 12m, 1200.0000m, token);
+
+        Assert.True(draft.IsSuccess, Describe(draft));
+
+        // ── ② ثم يُعطَّل الموقع، وهو فارغٌ فيُقبل تعطيله
+        Result<StoragePlaceView> off = await _harness.Places.DeactivateAsync(
+            tenant, Harness.Actor, PlacementLevels.Location, warehouse.Value.Id, location.Value.Id, token);
+
+        Assert.True(off.IsSuccess, Describe(off));
+
+        Proof.Require(
+            !off.Value.IsActive,
+            "الموقع صار مُعلَناً خارج الخدمة — والتعطيل قُبل لأنه فارغ",
+            "عامل=" + off.Value.IsActive.ToString(CultureInfo.InvariantCulture));
+
+        // ── ③ **والمسوّدة القائمة لا تُرحَّل بعده** — وهذا هو الباب الذي كان مفتوحاً
+        Result<StockDocumentView> posted = await _harness.StockDocuments
+            .PostAsync(tenant, Harness.Actor, draft.Value.Id, token);
+
+        Assert.True(posted.IsFailure, "رُحّلت مسوّدةٌ قائمة إلى موضعٍ مُعطَّل — والزمن بين الإنشاء والترحيل هو الثغرة.");
+
+        Proof.Require(
+            posted.Errors[0].Code == "inventory.storage_place_inactive",
+            "مسوّدةٌ أُنشئت والموضع عامل لا تُرحَّل بعد تعطيله — والترحيل هو اللحظة التي تدخل فيها البضاعة، ويُكتب فيها item_balance",
+            posted.Errors[0].Code);
+
+        // ── ④ ولا تُنشأ مسوّدةٌ جديدة عليه أصلاً
+        Result<StockDocumentView> fresh = await DocumentAsync(
+            tenant, item, warehouseCode, locationCode, 7m, 700.0000m, token);
+
+        Assert.True(fresh.IsFailure, "أُنشئت مسوّدةٌ جديدة على موضعٍ مُعطَّل.");
+
+        Proof.Require(
+            fresh.Errors[0].Code == "inventory.storage_place_inactive",
+            "ولا تُنشأ مسوّدةٌ جديدة على موضعٍ مُعطَّل — والبابان اثنان لأن أحدهما لا يُغلق الآخر",
+            fresh.Errors[0].Code);
+
+        // ── ⑤ فلا رصيد في الموضع المُعطَّل: صفرٌ لا تسعةَ عشرَ بألفٍ وتسعمئة
+        Result<StockBalanceView> balance = await _harness.Stock
+            .ReadStockAsync(tenant, Harness.Actor, item, warehouseCode, locationCode, token);
+
+        decimal magnitude = balance.IsSuccess ? balance.Value.Quantity.Magnitude : 0m;
+        decimal value = balance.IsSuccess ? balance.Value.Value.Amount : 0m;
+
+        Proof.Require(
+            magnitude == 0m && value == 0m,
+            "ولا قيمةَ استقرّت في موضعٍ مُعلَنٍ خارج الخدمة — وقبل الإصلاح كان المقيس 19 بقيمة 1900.0000",
+            "الكمّية=" + Quantity(magnitude) + " · القيمة=" + Proof.Money(value));
+
+        // ── ⑥ **والمستودع المُعطَّل كذلك** — والحكم على المستويين لا على الموقع وحده
+        string otherWarehouse = Harness.Next("WH");
+        string otherLocation = Harness.Next("LOC");
+
+        Result<StoragePlaceView> second = await CreateAsync(
+            tenant, PlacementLevels.Warehouse, null, otherWarehouse, token);
+        Result<StoragePlaceView> inside = await CreateAsync(
+            tenant, PlacementLevels.Location, second.Value.Id, otherLocation, token);
+
+        Assert.True(second.IsSuccess && inside.IsSuccess, Describe(second) + " · " + Describe(inside));
+
+        Result<StoragePlaceView> deadLocation = await _harness.Places.DeactivateAsync(
+            tenant, Harness.Actor, PlacementLevels.Location, second.Value.Id, inside.Value.Id, token);
+        Result<StoragePlaceView> deadWarehouse = await _harness.Places.DeactivateAsync(
+            tenant, Harness.Actor, PlacementLevels.Warehouse, null, second.Value.Id, token);
+
+        Assert.True(deadLocation.IsSuccess, Describe(deadLocation));
+        Assert.True(deadWarehouse.IsSuccess, Describe(deadWarehouse));
+
+        Result<StockDocumentView> intoDeadWarehouse = await DocumentAsync(
+            tenant, item, otherWarehouse, otherLocation, 3m, 300.0000m, token);
+
+        Assert.True(intoDeadWarehouse.IsFailure, "أُنشئت مسوّدةٌ في مستودعٍ مُعطَّل.");
+
+        Proof.Require(
+            intoDeadWarehouse.Errors[0].Code == "inventory.storage_place_inactive",
+            "والمستودع المُعطَّل يُرفض كما يُرفض الموقع — والرفض يُسمّي المستوى الذي وقع عنده",
+            intoDeadWarehouse.Errors[0].Code + " · " + intoDeadWarehouse.Errors[0].MessageAr);
+
+        // ── ⑦ **وما لا يُفرَض: التسجيل.** رمزٌ لا صفَّ له يمرّ كما كان
+        Result<StockDocumentView> unregistered = await DocumentAsync(
+            tenant, item, Harness.Next("WH"), "DEFAULT", 2m, 200.0000m, token);
+
+        Proof.Require(
+            unregistered.IsSuccess,
+            "ورمزٌ غير مسجَّل يمرّ — الحكم على الحالة لا على الوجود، وإلزامُ التسجيل بأثرٍ رجعي يوقف مستأجراً عاملاً",
+            Describe(unregistered));
+    }
+
+    /// <summary>مسوّدة مستند وارد — الشكل الذي يتكرّر في الإثبات السادس.</summary>
+    private Task<Result<StockDocumentView>> DocumentAsync(
+        TenantId tenant,
+        string item,
+        string warehouse,
+        string location,
+        decimal magnitude,
+        decimal cost,
+        CancellationToken token)
+        => _harness.StockDocuments.CreateAsync(
+            tenant,
+            Harness.Actor,
+            new StockDocumentDraft(
+                Harness.Next("STK"),
+                "IN",
+                item,
+                warehouse,
+                location,
+                "*",
+                new InventoryQuantity(magnitude, Piece),
+                Harness.Sar(cost),
+                April),
+            token).AsTask();
+
     // ────────────────────────────────────────────────────────────────────────
 
     /// <summary>

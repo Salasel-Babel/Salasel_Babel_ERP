@@ -203,11 +203,19 @@ public sealed partial class Rule19_TheGateNamesWhatItDoesNotCover
         }
     }
 
-    /// <summary>‏`npm run gen:check` و`node scripts/generate-client.mjs --check` فحصٌ واحد.</summary>
+    /// <summary>
+    /// ‏`npm run gen:check` و`node scripts/generate-client.mjs --check` فحصٌ واحد.
+    /// <para>
+    /// والبوّابة تناديها بصيغتها المباشرة لا عبر <c>npm</c>، لأن §6 مشروطةٌ بوجود
+    /// <c>node</c> وحده: هذه الفحوص الثلاثة **مقيسٌ أنها تنجح بلا <c>node_modules</c>
+    /// إطلاقاً**، فلا تُجبَر البوّابة على <c>npm ci</c> من أجلها.
+    /// </para>
+    /// </summary>
     private static bool RunsTheSameCheck(string gate, string command) => command switch
     {
         "npm run gen:check" => gate.Contains("scripts/generate-client.mjs --check", StringComparison.Ordinal),
         "npm run audit:i18n" => gate.Contains("scripts/audit.mjs", StringComparison.Ordinal),
+        "npm run numerals" => gate.Contains("scripts/numerals.mjs", StringComparison.Ordinal),
         _ => false,
     };
 

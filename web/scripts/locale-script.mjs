@@ -83,21 +83,123 @@ export function prose(text) {
 
 const LETTER = /\p{L}/u;
 
-/** إحصاء الحروف: كم منها بخطّ اللغة، وكم بغيره. Letter census by script. */
-export function census(text, code) {
+/**
+ * ‏**أهذا الرمز آليّ؟** — سؤالٌ يُجاب من **كيفية كتابته** لا من قائمة أسماء.
+ *
+ * ‏نثرُ اللاتينية يكتب كلماته بحالةٍ صغرى (وأولُها كبرى)، والمعرّف الآليّ لا
+ * يفعل: `PDF` و`SAR` و`LTR` و`ZATCA` كبرى كلُّها، و`BANK-0001` و`ISO-8601`
+ * تخلط الحرف بالرقم. وكلا الخاصّيتين تُشتقّان من يونيكود مباشرةً —
+ * `toUpperCase`/`toLowerCase` و`\p{Nd}` — بلا حرفٍ واحد من أي لغةٍ مكتوبٍ هنا.
+ *
+ * ‏**والعطل الذي أوجب هذا التمييز، مقيساً:** كانت الخانة الثالثة تبتلع **كل**
+ * حرفٍ لاتينيّ، فصار `foreign` صفراً أبداً في وجه النثر الإنجليزيّ، وانحلّت
+ * `inScript > foreign` إلى `inScript > 0` — أي القاعدةَ الضعيفةَ نفسها التي
+ * وُجد هذا الملفّ ليُبطلها. مقيس: قيمةٌ هنديّة نصُّها إنجليزيٌّ كامل مسبوقٌ
+ * **بحرفٍ ديفاناغاريٍّ واحد** أعطت `letters=64 · inScript=1 · foreign=0 ·
+ * machine=63` وخرج `audit.mjs` بالرمز **صفر**؛ والنصُّ نفسه بلا الحرف يخرج
+ * بالرمز **1**. فالحرفُ الواحد كان يُرخّص للقيمة كلَّها من جديد.
+ *
+ * A token is machine when it is not written the way prose words are: all-caps
+ * (with a case distinction) or letters mixed with digits. Derived from Unicode
+ * casing and `\p{Nd}` — not from a list of identifiers.
+ */
+export function isMachineToken(token) {
+  /* ‏**والمعرّف الآليّ محصورٌ دون U+0080** — وهو القيد نفسه الذي تفرضه
+     `foreignRuns`، ولسببه نفسه: خطُّ المعرّفات في هذا المستودع هو الخطّ الذي
+     يحوي `A`. وبدونه يصير **التشويه** آلياً: نصٌّ ديفاناغاريٌّ رُمِّز ثم قُرئ
+     بترميزٍ آخر يُنتج مقاطع كبرى الحروف كلَّها، فتُعدّ «رمزاً» وتنجو. مقيس:
+     سقط به إثباتُ التشويه الجزئيّ في `locale-script.test.ts`. */
+  for (const ch of token) if (ch.codePointAt(0) >= 0x80) return false;
+  if (/\p{Nd}/u.test(token)) return true;
+  return token === token.toUpperCase() && token !== token.toLowerCase();
+}
+
+/**
+ * ‏**إحصاء الحروف بثلاث خانات**: بخطّ اللغة، وبخطٍّ أجنبيّ، و**آليّ**.
+ *
+ * ‏والخانة الثالثة ليست تلطيفاً: «‏PDF» و«‏LTR» ليستا نثرَ لغةٍ أخرى بل رمزاً
+ * آلياً، والمستودع يقول ذلك في موضعٍ آخر أصلاً — `foreignRuns` تشترط
+ * `>= 0x80`، و`isDiagnostic` تُخرج اللاتينية من الشهادة لأنها خطّ المعرّفات.
+ * فلمّا صار الحكم بالأغلبية ظهر أن الخانتين لا تكفيان: «ملف PDF» ثلاثةُ حروفٍ
+ * عربية وثلاثةٌ لاتينية، فتعادلٌ يُسقط قيمةً عربيةً سليمة. والحلّ ليس عتبةً
+ * أرحم بل **مفهوماً واحداً للأجنبيّ** في كل مواضع هذا الملفّ.
+ *
+ * ‏**والقسمة بالرمز لا بالحرف** — وهذا هو ما أُصلح: الحرف اللاتينيّ وحده لا
+ * يقول إن كان في `PDF` أو في `Speak`. فيُقرأ الرمزُ كلُّه، ويُحكَم عليه مرّةً
+ * واحدة بـ`isMachineToken`، ثم تُضاف حروفُه إلى خانته. فيبقى «ملف PDF» سليماً
+ * ولا يبقى النثرُ الإنجليزيّ معفيًّ.
+ *
+ * Three buckets, decided per token rather than per character: own-script,
+ * foreign prose, and machine identifiers.
+ */
+/** مقاطعُ الحروف في نصّ — كلُّ مقطعٍ أطولُ تتابعٍ من الحروف. Maximal letter runs. */
+const LETTER_RUN = /\p{L}+/gu;
+
+/**
+ * ‏**أيحمل نصُّ المصدر هذا المقطعَ بنفسه؟** فإن حمله فليس نثرَ المترجم غيرَ
+ * المترجَم، بل رمزاً حملته العربيةُ نفسها — قيمةَ سلكٍ أو علامةً أو رمزَ نظام.
+ *
+ * ‏وهذه هي قاعدةُ `corroborates` نفسها مقلوبةً على المحور الآخر: تلك تسأل «هل
+ * يُصدِّق هذا المقطعَ الأجنبيَّ **غيرُ** لغته؟»، وهذه تسأل «هل كتبه **المصدر**
+ * أصلاً؟». والقيمةُ غيرُ المترجَمة تسقط في الاثنتين، لأن نثر الإنجليزية لا
+ * يظهر في `ar.web.ts` تحت المفتاح نفسه.
+ *
+ * Does the source value itself carry this run? Then it is a token the source
+ * wrote, not the translator's untranslated prose.
+ */
+export function sourceCarries(run, sourceTexts) {
+  return sourceTexts.some((t) => String(t).includes(run));
+}
+
+export function census(text, code, sourceTexts = null) {
   const own = scriptMatcher(scriptOf(code));
   let inScript = 0;
   let foreign = 0;
-  for (const ch of prose(text)) {
-    if (!LETTER.test(ch)) continue;
-    if (own.test(ch)) inScript++;
-    else foreign++;
+  let machine = 0;
+  for (const [run] of prose(text).matchAll(LETTER_RUN)) {
+    let mine = 0;
+    let other = 0;
+    for (const ch of run) {
+      if (own.test(ch)) mine++;
+      else other++;
+    }
+    inScript += mine;
+    if (other === 0) continue;
+    const carried = sourceTexts !== null && sourceCarries(run, sourceTexts);
+    if (isMachineToken(run) || carried) machine += other;
+    else foreign += other;
   }
-  return { letters: inScript + foreign, inScript, foreign };
+  return { letters: inScript + foreign + machine, inScript, foreign, machine };
 }
 
-/** أفي النصّ حرفٌ واحد بخطّ لغته؟ Does the value carry one letter of its own script? */
-export function hasOwnScript(text, code) {
+/**
+ * ‏**أهذه القيمة مكتوبةٌ بخطّ لغتها؟** — بالأغلبية، لا بحرفٍ واحد.
+ *
+ * ‏**العطل الذي أُغلق هنا:** كانت القاعدة `census(text, code).inScript > 0`،
+ * أي أن **حرفاً واحداً** يُرخّص للقيمة كلَّها. مقيس: بإلصاق حرفٍ ديفاناغاريٍّ
+ * واحد بنثرٍ عربيّ في قيمةٍ هندية تصير الحصيلة `letters=83 · inScript=1 ·
+ * foreign=82` ويخرج `audit.mjs` بالرمز **صفر**. والصورة الواقعية — أن تُترجَم
+ * الكلمة الأولى وحدها ويبقى الباقي عربياً — تمرّ كذلك. أي أن القاعدة **حسبت
+ * العدد ثم رمته**.
+ *
+ * ‏**والأغلبية ليست عتبةً مختارة**: هي السؤال نفسه معكوساً — «بأيّ خطٍّ كُتبت
+ * هذه القيمة؟» يُجاب بأكثر حروفها، لا بأقلّها. ولا رقمَ يُعايَر: `inScript >
+ * foreign` وحدها، والتعادلُ يسقط لأن قيمةً نصفُها بخطٍّ آخر ليست مكتوبةً بخطّ
+ * لغتها بأي معنى مفيد.
+ *
+ * The value must be *written in* its locale's script — decided by the majority
+ * of its letters, not by the existence of one.
+ */
+export function hasOwnScript(text, code, sourceTexts = null) {
+  const { inScript, foreign } = census(text, code, sourceTexts);
+  return inScript > foreign;
+}
+
+/**
+ * ‏أفي النصّ حرفٌ واحد بخطّ لغته؟ — القاعدة الضعيفة، تبقى **مسمّاةً** لأنها
+ * تصلح لغرضٍ واحد: انتقاءُ عيّنةٍ للشواهد. ولا تصلح حكماً، وهذا سبب اسمها.
+ */
+export function carriesOwnScript(text, code) {
   return census(text, code).inScript > 0;
 }
 
@@ -207,6 +309,23 @@ export function foreignRuns(text, code) {
   }
   if (run) runs.push(run);
   return runs;
+}
+
+/**
+ * ‏**هل يُصدِّق هذا المقطعَ الأجنبيَّ نصٌّ من لغةٍ أخرى؟**
+ *
+ * ‏**العطل الذي أُغلق هنا:** كان التصديق «ظهر المقطع تحت المفتاح نفسه في لغةٍ
+ * أخرى». وقيمةٌ **لم تُترجَم** هي نصُّ العربية حرفاً بحرف — فمقاطعها العربية
+ * تظهر في `ar.web.ts` تحت المفتاح نفسه **دائماً**، فيُصدَّق كلُّ مقطعٍ فيها.
+ * أي أن قاعدة الإذن كانت تُصدِّق العطلَ نفسه الذي وُضعت له.
+ *
+ * ‏**والقاعدة الصحيحة:** لا يُصدِّق المقطعَ إلّا من هو **أجنبيٌّ عنده أيضاً**.
+ * فاسمُ علامةٍ لاتينيٌّ في قيمةٍ هندية يظهر في العربية وهو أجنبيٌّ فيها ⇒
+ * مُصدَّق؛ ومقطعٌ عربيٌّ في قيمةٍ هندية يظهر في العربية وهو **خطّها** ⇒ غير
+ * مُصدَّق، وهو بالضبط النصّ غير المترجَم.
+ */
+export function corroborates(run, otherCode, otherTexts) {
+  return otherTexts.some((t) => t.includes(run)) && foreignRuns(run, otherCode).length > 0;
 }
 
 /* ══════════ محارف لا تُرسم ولا تعني · characters that render nothing ═══════

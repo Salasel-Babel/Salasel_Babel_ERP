@@ -70,7 +70,7 @@ PASS — description = اسم الحدث الإنجليزي من data/ حرفي�
 > بلا بديل. والحدُّ في §2 قائمٌ كما هو: نصفٌ إنجليزي في الذاكرة ينساب إلى عمودٍ مُجزَّأ،
 > ونقلُه إصدارٌ قانوني ثالث — ويحرسه `DisplayTextInsideTheHashedBytesTests` و
 > `TheUnmappedEnglishNamePropertiesAreTheNamedRemainderAndNoNewOneJoinsThem` الذي يسمّي
-> `MatrixModel` بسببه المكتوب. ([ADR-جديد](ADR-0076-gloss-is-not-column-debt.md))
+> `MatrixModel` بسببه المكتوب. ([ADR-0076](ADR-0076-gloss-is-not-column-debt.md))
 
 ## §3 · ما لم يُنقَل في هذه المرحلة — مُسمّى ومقيس، لا متروك ضمناً
 
@@ -121,7 +121,7 @@ PASS — description = اسم الحدث الإنجليزي من data/ حرفي�
 يُبطل السقف نفسه.
 
 **والسقف الآن يعدّ العمود المخزَّن وحده: 47** — مقيس، وتفصيلُه وأمرُ قياسه وسبعُ الصيغ التي
-يعرفه بها في [ADR-جديد](ADR-0076-gloss-is-not-column-debt.md). ومنه:
+يعرفه بها في [ADR-0076](ADR-0076-gloss-is-not-column-debt.md). ومنه:
 
 - **دخل** العدَّ اثنا عشر موضعَ هجرةٍ مجمَّدة كانت مُقصاةً — وهي بالضبط موضعُ **إنشاء**
   العمود، فإقصاؤها كان ثقباً.

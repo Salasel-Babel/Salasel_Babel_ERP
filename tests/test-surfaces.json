@@ -20,15 +20,17 @@
     "إخفاق. وذلك لا يبالي بأيّ خيارٍ أو مطبعةٍ أو سطر استمرارٍ أو مُغلِّفٍ أو ترقية",
     "حزمةِ تطويرٍ سبّب النقص. (‏docs/evidence/traps.md · a-remedy-that-is-a-list-is-not-a-remedy)",
     "",
-    "والأرضيات أدناه **مقيسة** على هذا الفرع: مجموع أسطح .NET الواحد والعشرين 1631،",
-    "ومنها اختبارات المعمارية 205؛ ووحدة الواجهة 402؛ ومصفوفة العرض 107."
+    "والأرضيات أدناه **مقيسة على هذا الفرع بعد الدمج**، لا موروثة: مجموع أسطح .NET",
+    "الواحد والعشرين 1967، ومنها اختبارات المعمارية 219؛ ووحدة الواجهة 488.",
+    "وأرضيةُ مصفوفة العرض 107 **مشتقّة اشتقاقاً آخر**: هي ما يكتبه `--list` متخطّىً",
+    "(‏skipped=107) — فهي تحرس صيغة الإفراغ لا حجم المجموعة، ولا تُشدّ مع الباقي."
   ],
 
   "reportDirectory": "artifacts/test-reports",
 
   "surfaces": [
-    { "id": "dotnet-architecture",     "runner": "dotnet", "project": "tests/Babel.ArchitectureTests/Babel.ArchitectureTests.csproj",     "assembly": "Babel.ArchitectureTests.dll",     "invokedBy": ["tests/Babel.ArchitectureTests/Babel.ArchitectureTests.csproj", "--solution Babel.slnx"], "minimumExecuted": 205 },
-    { "id": "dotnet-ai",               "runner": "dotnet", "project": "tests/Babel.Ai.Tests/Babel.Ai.Tests.csproj",                       "assembly": "Babel.Ai.Tests.dll",               "invokedBy": ["tests/Babel.Ai.Tests/Babel.Ai.Tests.csproj", "--solution Babel.slnx"], "minimumExecuted": 405 },
+    { "id": "dotnet-architecture",     "runner": "dotnet", "project": "tests/Babel.ArchitectureTests/Babel.ArchitectureTests.csproj",     "assembly": "Babel.ArchitectureTests.dll",     "invokedBy": ["tests/Babel.ArchitectureTests/Babel.ArchitectureTests.csproj", "--solution Babel.slnx"], "minimumExecuted": 219 },
+    { "id": "dotnet-ai",               "runner": "dotnet", "project": "tests/Babel.Ai.Tests/Babel.Ai.Tests.csproj",                       "assembly": "Babel.Ai.Tests.dll",               "invokedBy": ["tests/Babel.Ai.Tests/Babel.Ai.Tests.csproj", "--solution Babel.slnx"], "minimumExecuted": 727 },
     { "id": "dotnet-api",              "runner": "dotnet", "project": "tests/Babel.Api.Tests/Babel.Api.Tests.csproj",                     "assembly": "Babel.Api.Tests.dll",              "invokedBy": ["tests/Babel.Api.Tests/Babel.Api.Tests.csproj", "--solution Babel.slnx"], "minimumExecuted": 217 },
     { "id": "dotnet-assets",           "runner": "dotnet", "project": "tests/Babel.Assets.Tests/Babel.Assets.Tests.csproj",               "assembly": "Babel.Assets.Tests.dll",           "invokedBy": ["tests/Babel.Assets.Tests/Babel.Assets.Tests.csproj", "--solution Babel.slnx"], "minimumExecuted": 1 },
     { "id": "dotnet-canonicalization", "runner": "dotnet", "project": "tests/Babel.Canonicalization.Tests/Babel.Canonicalization.Tests.csproj", "assembly": "Babel.Canonicalization.Tests.dll", "invokedBy": ["tests/Babel.Canonicalization.Tests/Babel.Canonicalization.Tests.csproj", "--solution Babel.slnx"], "minimumExecuted": 155 },
@@ -49,7 +51,7 @@
     { "id": "dotnet-storage",          "runner": "dotnet", "project": "tests/Babel.Storage.Tests/Babel.Storage.Tests.csproj",             "assembly": "Babel.Storage.Tests.dll",          "invokedBy": ["tests/Babel.Storage.Tests/Babel.Storage.Tests.csproj", "--solution Babel.slnx"], "minimumExecuted": 59 },
     { "id": "dotnet-matrix-validator", "runner": "dotnet", "project": "tools/matrix-validator/tests/MatrixValidator.Tests.csproj",        "assembly": "MatrixValidator.Tests.dll",        "invokedBy": ["tools/matrix-validator/tests/MatrixValidator.Tests.csproj", "--solution Babel.slnx"], "minimumExecuted": 40 },
 
-    { "id": "web-unit",   "runner": "vitest",     "config": "web/vitest.config.ts",     "report": "web-unit.json",   "invokedBy": ["vitest"], "minimumExecuted": 402 },
+    { "id": "web-unit",   "runner": "vitest",     "config": "web/vitest.config.ts",     "report": "web-unit.json",   "invokedBy": ["vitest"], "minimumExecuted": 488 },
     { "id": "web-matrix", "runner": "playwright", "config": "web/playwright.config.ts", "report": "web-matrix.json", "invokedBy": ["playwright test"], "minimumExecuted": 107 }
   ],
 

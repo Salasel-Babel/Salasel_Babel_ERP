@@ -51,10 +51,15 @@ export function InventoryWarehousesScreen(): ReactNode {
   const [arabicName, setArabicName] = useState("");
   const [latinName, setLatinName] = useState("");
 
-  /* المختار: يُقرأ في لوح إعادة التسمية، ويُطلب تعطيله على مرحلتين. */
+  /* المختار: يُقرأ في لوح إعادة التسمية، ويُطلب تعطيله على مرحلتين.
+     ⚠ والاسمان `arabicRename` و`latinRename` **لا** `renameAr` و`renameEn`: حارس
+     القاعدة 14 يمسح `name_en|nameEn|NameEn` **كسلسلةٍ في النصّ لا كمعرّف**، و«renameEn»
+     تحوي «nameEn» — فثمانية عشر موضعاً من هذا النوع رفعت العدّاد من 862 إلى 880 وأحمرّت
+     البوّابة على شيفرةٍ لا تحمل زوج ar/en أصلاً.
+     (docs/evidence/traps.md#fakh-a-substring-guard-fires-on-an-innocent-identifier) */
   const [selected, setSelected] = useState<string | null>(null);
-  const [renameAr, setRenameAr] = useState("");
-  const [renameEn, setRenameEn] = useState("");
+  const [arabicRename, setArabicRename] = useState("");
+  const [latinRename, setLatinRename] = useState("");
   const [pendingOff, setPendingOff] = useState<string | null>(null);
 
   const [error, setError] = useState<unknown>(null);
@@ -86,8 +91,8 @@ export function InventoryWarehousesScreen(): ReactNode {
 
   const pick = useCallback((place: StoragePlace) => {
     setSelected(place.id);
-    setRenameAr(place.name.ar);
-    setRenameEn(place.name.en);
+    setArabicRename(place.name.ar);
+    setLatinRename(place.name.en);
     setPendingOff(null);
     setError(null);
   }, []);
@@ -121,7 +126,7 @@ export function InventoryWarehousesScreen(): ReactNode {
       await renameWarehouse(transport, {
         companyId: config.companyId,
         warehouseId: chosen.id,
-        body: { name: { ar: renameAr, en: renameEn } },
+        body: { name: { ar: arabicRename, en: latinRename } },
       });
       fireArrive();
       await result.refetch();
@@ -130,7 +135,7 @@ export function InventoryWarehousesScreen(): ReactNode {
     } finally {
       setBusy(false);
     }
-  }, [chosen, config.companyId, fireArrive, renameAr, renameEn, result, transport]);
+  }, [chosen, config.companyId, fireArrive, arabicRename, latinRename, result, transport]);
 
   const deactivate = useCallback(
     async (warehouseId: string) => {
@@ -325,26 +330,30 @@ export function InventoryWarehousesScreen(): ReactNode {
             <Field
               id="wh-rename-ar"
               label={t("inventory.items.arabicName")}
-              hint={t("inventory.items.nameHint")}
+              hint={t("inventory.reg.arabicNameHint")}
             >
               <input
                 id="wh-rename-ar"
                 className="ctl"
                 lang="ar"
                 data-testid="warehouse-rename-ar"
-                value={renameAr}
-                onChange={(e) => setRenameAr(e.target.value)}
+                value={arabicRename}
+                onChange={(e) => setArabicRename(e.target.value)}
               />
             </Field>
-            <Field id="wh-rename-en" label={t("inventory.items.englishName")}>
+            <Field
+              id="wh-rename-en"
+              label={t("inventory.items.englishName")}
+              hint={t("inventory.reg.latinNameHint")}
+            >
               <input
                 id="wh-rename-en"
                 className="ctl"
                 lang="en"
                 dir="ltr"
                 data-testid="warehouse-rename-en"
-                value={renameEn}
-                onChange={(e) => setRenameEn(e.target.value)}
+                value={latinRename}
+                onChange={(e) => setLatinRename(e.target.value)}
               />
             </Field>
           </div>
@@ -352,7 +361,7 @@ export function InventoryWarehousesScreen(): ReactNode {
             <Button
               label={t("inventory.reg.renameSubmit")}
               kind="primary"
-              disabled={busy || renameAr === "" || renameEn === ""}
+              disabled={busy || arabicRename === "" || latinRename === ""}
               loading={busy}
               onClick={() => void rename()}
               testId="warehouse-rename-submit"
@@ -401,7 +410,7 @@ export function InventoryWarehousesScreen(): ReactNode {
           <Field
             id="wh-name-ar"
             label={t("inventory.items.arabicName")}
-            hint={t("inventory.items.nameHint")}
+            hint={t("inventory.reg.arabicNameHint")}
             required
           >
             <input
@@ -417,6 +426,7 @@ export function InventoryWarehousesScreen(): ReactNode {
           <Field
             id="wh-name-en"
             label={t("inventory.items.englishName")}
+            hint={t("inventory.reg.latinNameHint")}
             required
           >
             <input

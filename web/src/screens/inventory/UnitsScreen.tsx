@@ -515,7 +515,7 @@ export function InventoryUnitsScreen(): ReactNode {
           <Field
             id="um-name-ar"
             label={t("inventory.items.arabicName")}
-            hint={t("inventory.items.nameHint")}
+            hint={t("inventory.reg.arabicNameHint")}
             required
           >
             <input
@@ -528,7 +528,12 @@ export function InventoryUnitsScreen(): ReactNode {
               onChange={(e) => setArabicName(e.target.value)}
             />
           </Field>
-          <Field id="um-name-en" label={t("inventory.items.englishName")} required>
+          <Field
+            id="um-name-en"
+            label={t("inventory.items.englishName")}
+            hint={t("inventory.reg.latinNameHint")}
+            required
+          >
             <input
               id="um-name-en"
               className="ctl"

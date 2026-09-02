@@ -92,6 +92,14 @@ function Wrap(props: { children: ReactNode; locale?: string; transport: Transpor
   );
 }
 
+/** أوّلُ ما يطابق، **ويرمي إن لم يطابق شيء**: فحصٌ ينقر على `undefined` يمرّ
+    خضراءَ في TypeScript ويسقط بغموضٍ في المتصفّح. */
+function first(elements: readonly HTMLElement[]): HTMLElement {
+  const one = elements[0];
+  if (!one) throw new Error("لا عنصر يطابق — الفحص أعمى لا ناجح.");
+  return one;
+}
+
 function withCompany(): void {
   globalThis.history.replaceState(null, "", "/?companyId=" + COMPANY);
 }
@@ -288,7 +296,7 @@ describe("التعطيل — الحكم يُقال قبل الضغط، ويخت�
     await screen.findByTestId("warehouses-table");
     const before = sent.length;
 
-    fireEvent.click(screen.getAllByTestId("warehouse-deactivate")[0]);
+    fireEvent.click(first(screen.getAllByTestId("warehouse-deactivate")));
     await screen.findByTestId("warehouse-confirm");
     /* لا نداء وقع: الخطوة الأولى قرارٌ يُقرأ لا فعلٌ يُرسَل. */
     expect(sent.length).toBe(before);
@@ -314,7 +322,7 @@ describe("التعطيل — الحكم يُقال قبل الضغط، ويخت�
     );
     await screen.findByTestId("warehouses-table");
 
-    fireEvent.click(screen.getAllByTestId("warehouse-deactivate")[0]);
+    fireEvent.click(first(screen.getAllByTestId("warehouse-deactivate")));
     fireEvent.click(await screen.findByTestId("warehouse-confirm-off"));
 
     const panel = await screen.findByTestId("problem-panel");
@@ -350,7 +358,7 @@ describe("التعطيل — الحكم يُقال قبل الضغط، ويخت�
     await screen.findByTestId("placement-tree");
 
     /* اختيار مستودعٍ ثم موقعٍ ثم رفّ — والانتماء بنيةٌ في المسار لا حقل. */
-    fireEvent.click(within(screen.getByTestId("rung-warehouse")).getAllByTestId("place-pick")[0]);
+    fireEvent.click(first(within(screen.getByTestId("rung-warehouse")).getAllByTestId("place-pick")));
     const locationRung = await screen.findByTestId("rung-location");
     await waitFor(() => expect(within(locationRung).queryAllByTestId("place-pick")).toHaveLength(1));
 
@@ -358,7 +366,7 @@ describe("التعطيل — الحكم يُقال قبل الضغط، ويخت�
       (screen.getByTestId("placement-chosen").textContent ?? "");
     expect(locationPanelRule()).toContain("WH-RIYADH");
 
-    fireEvent.click(within(locationRung).getAllByTestId("place-pick")[0]);
+    fireEvent.click(first(within(locationRung).getAllByTestId("place-pick")));
     await waitFor(() =>
       expect(screen.getByTestId("placement-chosen").textContent ?? "").toContain("A-01-3")
     );
@@ -367,7 +375,7 @@ describe("التعطيل — الحكم يُقال قبل الضغط، ويخت�
 
     const binRung = await screen.findByTestId("rung-bin");
     await waitFor(() => expect(within(binRung).queryAllByTestId("place-pick")).toHaveLength(1));
-    fireEvent.click(within(binRung).getAllByTestId("place-pick")[0]);
+    fireEvent.click(first(within(binRung).getAllByTestId("place-pick")));
     await waitFor(() =>
       expect(screen.getByTestId("placement-chosen").textContent ?? "").toContain("A-01-3-B")
     );
@@ -395,10 +403,10 @@ describe("التعطيل — الحكم يُقال قبل الضغط، ويخت�
       </Wrap>
     );
     await screen.findByTestId("placement-tree");
-    fireEvent.click(within(screen.getByTestId("rung-warehouse")).getAllByTestId("place-pick")[0]);
+    fireEvent.click(first(within(screen.getByTestId("rung-warehouse")).getAllByTestId("place-pick")));
     const locationRung = await screen.findByTestId("rung-location");
     await waitFor(() => expect(within(locationRung).queryAllByTestId("place-pick")).toHaveLength(1));
-    fireEvent.click(within(locationRung).getAllByTestId("place-pick")[0]);
+    fireEvent.click(first(within(locationRung).getAllByTestId("place-pick")));
 
     fireEvent.click(await screen.findByTestId("place-deactivate"));
     fireEvent.click(await screen.findByTestId("place-confirm-off"));
@@ -558,7 +566,7 @@ describe("النقل بين موقعين — لا أثر محاسبي", () => {
       </Wrap>
     );
     await screen.findByTestId("transfers-table");
-    const qty = screen.getAllByTestId("transfer-quantity")[0];
+    const qty = first(screen.getAllByTestId("transfer-quantity"));
     /* ‏9007199254740993.5 لا يُمثَّل في عائم مزدوج: لو مرّ بـNumber لصار
        …992 أو …994. والنصّ الأصلي كاملٌ في العنوان. */
     const title = qty.querySelector("[title]")?.getAttribute("title");
@@ -585,7 +593,7 @@ describe("النقل بين موقعين — لا أثر محاسبي", () => {
       </Wrap>
     );
     await screen.findByTestId("transfers-table");
-    fireEvent.click(screen.getAllByTestId("transfer-move")[0]);
+    fireEvent.click(first(screen.getAllByTestId("transfer-move")));
 
     const banner = await screen.findByTestId("transfer-moved");
     expect(banner.getAttribute("data-already")).toBe("true");
@@ -610,7 +618,7 @@ describe("النقل بين موقعين — لا أثر محاسبي", () => {
       </Wrap>
     );
     await screen.findByTestId("transfers-table");
-    fireEvent.click(screen.getAllByTestId("transfer-move")[0]);
+    fireEvent.click(first(screen.getAllByTestId("transfer-move")));
 
     const panel = await screen.findByTestId("problem-panel");
     expect(within(panel).getByTestId("problem-code").textContent).toBe(
@@ -702,7 +710,8 @@ describe("قواعد الشيفرة — تُفحص على النصّ لأن لا
     for (const locale of CODES) {
       i18n.use(locale);
       for (const code of added) {
-        const key = INVENTORY_NEXT_STEP[code];
+        const key = INVENTORY_NEXT_STEP[code] ?? "";
+        expect(key).not.toBe("");
         expect(i18n.t(key), locale + " ← " + key).not.toBe(key);
       }
     }
@@ -719,6 +728,35 @@ describe("قواعد الشيفرة — تُفحص على النصّ لأن لا
     ]) {
       expect(paths, "لا صفّ في SCREENS للمسار " + path).toContain(path);
     }
+  });
+
+  /*
+   * حارسُ ADR-جديد · every-field-in-a-row-carries-a-description.
+   * حقلٌ بلا وصفٍ يقف في صفٍّ لجيرانه أوصاف **لا يُخرج صندوق وصفٍ أصلاً**، فيقف قاعُ
+   * حبره عند أسفل عنصر تحكّمه — أعلى من جيرانه بارتفاع مسار الوصف كلّه. مقيسٌ 61.17px
+   * في صفّ «تسجيل وحدة قياس» قبل الإصلاح، وصفرٌ بعده.
+   */
+  it("كل حقلٍ في الشاشات الخمس يحمل وصفاً — وإلّا سُنّن قاعُ صفّه", () => {
+    const offenders: string[] = [];
+    for (const file of NEW_SCREENS) {
+      const text = read(file).replace(/\/\*[\s\S]*?\*\//g, " ");
+      /* كل وسمٍ من `<Field` إلى أول `>` يغلقه — والفحص على نصّ الوسم وحده. */
+      for (const m of text.matchAll(/<Field\b[\s\S]*?>/g)) {
+        const tag = m[0];
+        if (/\bhint=/.test(tag) || /\berror=/.test(tag)) continue;
+        offenders.push(file + " ← " + tag.replace(/\s+/g, " ").slice(0, 70));
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it("حارسُ لافراغ: الشاشات الخمس تحوي حقولاً أصلاً", () => {
+    let fields = 0;
+    for (const file of NEW_SCREENS) {
+      fields += [...read(file).matchAll(/<Field\b/g)].length;
+    }
+    /* العدد مقيس: 22 حقلاً في الشاشات الخمس. وحارسٌ لا يمسح شيئاً يمرّ دائماً. */
+    expect(fields).toBeGreaterThanOrEqual(20);
   });
 
   it("كل حقلٍ في الشاشات الخمس له خانةُ وصفٍ واحدة — الصفّ يملك المسارات", () => {

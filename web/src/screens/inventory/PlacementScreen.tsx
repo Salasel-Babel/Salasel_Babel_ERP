@@ -132,8 +132,8 @@ export function InventoryPlacementScreen(): ReactNode {
   const [location, setLocation] = useState<StoragePlace | null>(null);
   const [bin, setBin] = useState<StoragePlace | null>(null);
 
-  const [renameAr, setRenameAr] = useState("");
-  const [renameEn, setRenameEn] = useState("");
+  const [arabicRename, setArabicRename] = useState("");
+  const [latinRename, setLatinRename] = useState("");
   const [pendingOff, setPendingOff] = useState(false);
 
   const [locCode, setLocCode] = useState("");
@@ -191,8 +191,8 @@ export function InventoryPlacementScreen(): ReactNode {
     setWarehouse(place);
     setLocation(null);
     setBin(null);
-    setRenameAr(place.name.ar);
-    setRenameEn(place.name.en);
+    setArabicRename(place.name.ar);
+    setLatinRename(place.name.en);
     setPendingOff(false);
     setError(null);
   }, []);
@@ -200,16 +200,16 @@ export function InventoryPlacementScreen(): ReactNode {
   const pickLocation = useCallback((place: StoragePlace) => {
     setLocation(place);
     setBin(null);
-    setRenameAr(place.name.ar);
-    setRenameEn(place.name.en);
+    setArabicRename(place.name.ar);
+    setLatinRename(place.name.en);
     setPendingOff(false);
     setError(null);
   }, []);
 
   const pickBin = useCallback((place: StoragePlace) => {
     setBin(place);
-    setRenameAr(place.name.ar);
-    setRenameEn(place.name.en);
+    setArabicRename(place.name.ar);
+    setLatinRename(place.name.en);
     setPendingOff(false);
     setError(null);
   }, []);
@@ -224,7 +224,7 @@ export function InventoryPlacementScreen(): ReactNode {
     if (!chosen) return;
     setBusy(true);
     setError(null);
-    const body = { name: { ar: renameAr, en: renameEn } };
+    const body = { name: { ar: arabicRename, en: latinRename } };
     try {
       if (chosen.level === "WAREHOUSE") {
         await renameWarehouse(transport, {
@@ -254,7 +254,7 @@ export function InventoryPlacementScreen(): ReactNode {
     } finally {
       setBusy(false);
     }
-  }, [chosen, config.companyId, location, reload, renameAr, renameEn, transport, warehouse]);
+  }, [chosen, config.companyId, location, reload, arabicRename, latinRename, transport, warehouse]);
 
   const deactivate = useCallback(async () => {
     if (!chosen) return;
@@ -457,26 +457,30 @@ export function InventoryPlacementScreen(): ReactNode {
             <Field
               id="pl-name-ar"
               label={t("inventory.items.arabicName")}
-              hint={t("inventory.items.nameHint")}
+              hint={t("inventory.reg.arabicNameHint")}
             >
               <input
                 id="pl-name-ar"
                 className="ctl"
                 lang="ar"
                 data-testid="place-name-ar"
-                value={renameAr}
-                onChange={(e) => setRenameAr(e.target.value)}
+                value={arabicRename}
+                onChange={(e) => setArabicRename(e.target.value)}
               />
             </Field>
-            <Field id="pl-name-en" label={t("inventory.items.englishName")}>
+            <Field
+              id="pl-name-en"
+              label={t("inventory.items.englishName")}
+              hint={t("inventory.reg.latinNameHint")}
+            >
               <input
                 id="pl-name-en"
                 className="ctl"
                 lang="en"
                 dir="ltr"
                 data-testid="place-name-en"
-                value={renameEn}
-                onChange={(e) => setRenameEn(e.target.value)}
+                value={latinRename}
+                onChange={(e) => setLatinRename(e.target.value)}
               />
             </Field>
           </div>
@@ -485,7 +489,7 @@ export function InventoryPlacementScreen(): ReactNode {
             <Button
               label={t("inventory.reg.renameSubmit")}
               kind="primary"
-              disabled={busy || renameAr === "" || renameEn === ""}
+              disabled={busy || arabicRename === "" || latinRename === ""}
               loading={busy}
               onClick={() => void rename()}
               testId="place-rename-submit"
@@ -536,7 +540,12 @@ export function InventoryPlacementScreen(): ReactNode {
           <p className="muted" data-testid="add-location-needs-warehouse">
             {t("inventory.placement.needWarehouse")}
           </p>
-        ) : (
+        ) : null}
+        {
+          /* **النموذج لا يظهر ويختفي.** ظهورُ حقولٍ واختفاؤها بتغيّر اختيارٍ
+             فوقها يقفز بالتخطيط ويُفقد ما كُتب؛ فالحقول ثابتة، **والفعل وحده
+             مُقفَل** وسببُه مكتوب أعلاه. ومن كتب الرمز والاسم ثم اختار أباه
+             لا يُعيد الكتابة. */
           <>
             <div className="grid fields-3">
               <Field
@@ -558,7 +567,7 @@ export function InventoryPlacementScreen(): ReactNode {
               <Field
                 id="pl-loc-ar"
                 label={t("inventory.items.arabicName")}
-                hint={t("inventory.items.nameHint")}
+                hint={t("inventory.reg.arabicNameHint")}
                 required
               >
                 <input
@@ -571,7 +580,12 @@ export function InventoryPlacementScreen(): ReactNode {
                   onChange={(e) => setLocAr(e.target.value)}
                 />
               </Field>
-              <Field id="pl-loc-en" label={t("inventory.items.englishName")} required>
+              <Field
+                id="pl-loc-en"
+                label={t("inventory.items.englishName")}
+                hint={t("inventory.reg.latinNameHint")}
+                required
+              >
                 <input
                   id="pl-loc-en"
                   className="ctl"
@@ -588,14 +602,16 @@ export function InventoryPlacementScreen(): ReactNode {
               <Button
                 label={t("inventory.reg.submit")}
                 kind="primary"
-                disabled={busy || locCode === "" || locAr === "" || locEn === ""}
+                disabled={
+                  busy || warehouse === null || locCode === "" || locAr === "" || locEn === ""
+                }
                 loading={busy}
                 onClick={() => void addLocation()}
                 testId="location-submit"
               />
             </div>
           </>
-        )}
+        }
       </Panel>
 
       <Panel
@@ -608,7 +624,12 @@ export function InventoryPlacementScreen(): ReactNode {
           <p className="muted" data-testid="add-bin-needs-location">
             {t("inventory.placement.needLocation")}
           </p>
-        ) : (
+        ) : null}
+        {
+          /* **النموذج لا يظهر ويختفي.** ظهورُ حقولٍ واختفاؤها بتغيّر اختيارٍ
+             فوقها يقفز بالتخطيط ويُفقد ما كُتب؛ فالحقول ثابتة، **والفعل وحده
+             مُقفَل** وسببُه مكتوب أعلاه. ومن كتب الرمز والاسم ثم اختار أباه
+             لا يُعيد الكتابة. */
           <>
             <div className="grid fields-3">
               <Field
@@ -630,7 +651,7 @@ export function InventoryPlacementScreen(): ReactNode {
               <Field
                 id="pl-bin-ar"
                 label={t("inventory.items.arabicName")}
-                hint={t("inventory.items.nameHint")}
+                hint={t("inventory.reg.arabicNameHint")}
                 required
               >
                 <input
@@ -643,7 +664,12 @@ export function InventoryPlacementScreen(): ReactNode {
                   onChange={(e) => setBinAr(e.target.value)}
                 />
               </Field>
-              <Field id="pl-bin-en" label={t("inventory.items.englishName")} required>
+              <Field
+                id="pl-bin-en"
+                label={t("inventory.items.englishName")}
+                hint={t("inventory.reg.latinNameHint")}
+                required
+              >
                 <input
                   id="pl-bin-en"
                   className="ctl"
@@ -660,14 +686,16 @@ export function InventoryPlacementScreen(): ReactNode {
               <Button
                 label={t("inventory.reg.submit")}
                 kind="primary"
-                disabled={busy || binCode === "" || binAr === "" || binEn === ""}
+                disabled={
+                  busy || location === null || binCode === "" || binAr === "" || binEn === ""
+                }
                 loading={busy}
                 onClick={() => void addBin()}
                 testId="bin-submit"
               />
             </div>
           </>
-        )}
+        }
       </Panel>
 
       {error ? (

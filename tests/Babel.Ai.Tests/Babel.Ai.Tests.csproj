@@ -29,7 +29,7 @@
     -->
     <ProjectReference Include="../../src/Babel.Storage/Babel.Storage.csproj" />
     <!--
-      ‏**الوحدات الخمس المُسهِمة بنيّات منطوقة.** المسار المنطوق صار سجلّاً تُسهم فيه
+      ‏**الوحدات المُسهِمة بنيّات منطوقة — وصارت سبعاً بدخول الدفتر.** المسار المنطوق صار سجلّاً تُسهم فيه
       الوحدات عبر <c>IVoiceIntentCatalogue</c> في العقد، فإثباتُه لا يكون إلا على
       **مجموعِ ما أسهمت به**: معرّفٌ يتكرّر بين وحدتين، أو رمز حدثٍ ليس في المصفوفة،
       لا يظهر أيٌّ منهما وهي تُقرأ وحدةً وحدة.
@@ -40,6 +40,7 @@
       في هذا الملفّ نفسه (مزوّد الهيئة ومحوّل المرفقات).
     -->
     <ProjectReference Include="../../src/Babel.Hr/Babel.Hr.csproj" />
+    <ProjectReference Include="../../src/Babel.Ledger/Babel.Ledger.csproj" />
     <ProjectReference Include="../../src/Babel.Inventory/Babel.Inventory.csproj" />
     <ProjectReference Include="../../src/Babel.Projects/Babel.Projects.csproj" />
     <ProjectReference Include="../../src/Babel.Purchasing/Babel.Purchasing.csproj" />

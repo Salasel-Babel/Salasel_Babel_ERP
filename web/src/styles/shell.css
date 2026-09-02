@@ -179,3 +179,28 @@
   background:currentColor; flex:none;
 }
 @media print{ .voicedock, .cmdk-scrim, .transit{ display:none } }
+
+/* ── المسوّدة المنطوقة حين تهبط ────────────────────────────────────────────
+   لوحةٌ لها حدٌّ بلون القسم، فوق الشاشة التي هبطت عليها. **يراها من لا يسمع**
+   كاملةً بقيمها ومصادرها، ويُعلَن نصُّها لمن لا يرى بـaria-live. */
+.voice-landed{
+  margin-block-end:var(--space-16);
+  padding:var(--space-14);
+  border:var(--border-width) solid var(--section-tint, var(--color-border-strong));
+  border-radius:var(--radius-lg);
+  background:var(--color-surface-raised);
+}
+.voice-landed__title{ margin:0; font-size:var(--font-size-lg) }
+.voice-landed__note{
+  margin-block:var(--space-6) var(--space-10);
+  color:var(--color-text-muted); font-size:var(--font-size-sm);
+}
+.voice-landed__fields{
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(12rem, 1fr));
+  gap:var(--space-10);
+  margin-block-end:var(--space-10);
+}
+.voice-landed__field dt{ color:var(--color-text-muted); font-size:var(--font-size-xs) }
+.voice-landed__field dd{ margin:0; font-variant-numeric:tabular-nums }
+@media print{ .voice-landed{ display:none } }

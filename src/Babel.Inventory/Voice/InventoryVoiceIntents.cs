@@ -16,9 +16,14 @@ namespace Babel.Inventory.Voice;
 /// عشر ضعفاً. فكمّيةٌ بلا وحدةٍ <b>تُرفض ولا تُفسَّر بوحدة الأساس</b>.
 /// </para>
 /// <para>
-/// <b>وما لم يُعطَ صوتاً:</b> <b>تسجيل الصنف ومعاملات وحداته</b> — بسطٌ ومقامٌ لكل وحدة،
-/// ويُراجَعان بالعين مرّةً واحدة في عمر الصنف؛ و<b>التقييم ومتوسط التكلفة</b> لأنهما
-/// قراءةُ أعمدةٍ تُقارَن؛ و<b>مخصّص التقادم</b> لأنه حكمٌ إداري على قائمة.
+/// <b>وما تغيّر — مكتوباً لا مطموساً:</b> كان <b>التقييم ومتوسط التكلفة</b> ممنوعاً
+/// بحجّة أنه «قراءةُ أعمدةٍ تُقارَن». وهي حجّةٌ ضدّ <b>نطق الجواب</b> لا ضدّ <b>نطق
+/// السؤال</b>: والسؤال يُنطَق، والجواب يُفتح على الشاشة جدولاً كما هو.
+/// </para>
+/// <para>
+/// <b>وتسجيلُ الصنف ومعاملات وحداته لم يُبلَغ</b> — لا لأنه ممنوع، بل لأنه ليس مستنداً
+/// ولا مسوّدة: بسطٌ ومقامٌ يُراجَعان مرّةً واحدة في عمر الصنف، ولم يطلبه أحد. وهو
+/// <b>مذكورٌ لا مسكوتٌ عنه</b>.
 /// </para>
 /// </summary>
 public sealed class InventoryVoiceIntents : IVoiceIntentCatalogue
@@ -37,6 +42,7 @@ public sealed class InventoryVoiceIntents : IVoiceIntentCatalogue
             VoiceIntentStatus.Published,
             VoiceLedgerEffect.Posts,
             "inventory.count_adjustment.posted",
+            "draftStockMovement",
             "تسوية جرد",
             [
                 "سجل جرد", "تسوية جرد", "الجرد الفعلي", "عديت الصنف", "جرد الصنف",
@@ -50,7 +56,8 @@ public sealed class InventoryVoiceIntents : IVoiceIntentCatalogue
                     ["المستودع", "مستودع", "المخزن", "مخزن"], []),
                 new VoiceSlot("location", VoiceSlotKind.Code, "الموقع", false,
                     ["الموقع", "موقع"], []),
-                new VoiceSlot("countedOn", VoiceSlotKind.Date, "تاريخ الجرد", true, [], []),
+                new VoiceSlot("countedOn", VoiceSlotKind.Date, "تاريخ الجرد", true,
+                    [], []),
             ],
             false,
             null),
@@ -63,6 +70,7 @@ public sealed class InventoryVoiceIntents : IVoiceIntentCatalogue
             VoiceIntentStatus.Published,
             VoiceLedgerEffect.Posts,
             "inventory.issue_to_project",
+            "draftStockMovement",
             "صرف مواد لمشروع",
             [
                 "اصرف مواد للمشروع", "صرف مواد", "سجل صرف مواد لمشروع", "طلعت مواد للمشروع",
@@ -76,34 +84,8 @@ public sealed class InventoryVoiceIntents : IVoiceIntentCatalogue
                     ["المستودع", "مستودع", "المخزن", "مخزن"], []),
                 new VoiceSlot("project", VoiceSlotKind.Text, "المشروع", true,
                     ["للمشروع", "المشروع", "مشروع"], []),
-                new VoiceSlot("issuedOn", VoiceSlotKind.Date, "تاريخ الصرف", true, [], []),
-            ],
-            false,
-            null),
-
-        new VoiceIntent(
-            "inventory.warehouse_transfer.record",
-            VoiceSection.Inventory,
-            BabelModule.Inventory,
-            VoiceIntentKind.StateChange,
-            VoiceIntentStatus.Published,
-            VoiceLedgerEffect.Posts,
-            "inventory.transfer.between_warehouses",
-            "تحويل مخزني بين مستودعين",
-            [
-                "تحويل بين مستودعين", "حول من مستودع", "نقل بضاعة بين المستودعات",
-                "تحويل مخزني",
-            ],
-            [
-                new VoiceSlot("item", VoiceSlotKind.Text, "الصنف", true,
-                    ["الصنف", "صنف", "للصنف"], []),
-                new VoiceSlot("quantity", VoiceSlotKind.Quantity, "الكمية المحوَّلة", true,
-                    ["كمية", "الكمية", "عدد", "بمقدار"], []),
-                new VoiceSlot("fromWarehouse", VoiceSlotKind.Text, "المستودع المرسِل", true,
-                    ["من مستودع", "من المستودع", "من مخزن"], []),
-                new VoiceSlot("toWarehouse", VoiceSlotKind.Text, "المستودع المستقبِل", true,
-                    ["الى مستودع", "الى المستودع", "لمستودع", "الى مخزن"], []),
-                new VoiceSlot("movedOn", VoiceSlotKind.Date, "تاريخ التحويل", true, [], []),
+                new VoiceSlot("issuedOn", VoiceSlotKind.Date, "تاريخ الصرف", true,
+                    [], []),
             ],
             false,
             null),
@@ -115,6 +97,7 @@ public sealed class InventoryVoiceIntents : IVoiceIntentCatalogue
             VoiceIntentKind.StateChange,
             VoiceIntentStatus.AwaitingOwnerDecision,
             VoiceLedgerEffect.None,
+            null,
             null,
             "تسكين قطعٍ بين موقعين",
             [
@@ -148,16 +131,84 @@ public sealed class InventoryVoiceIntents : IVoiceIntentCatalogue
             VoiceIntentStatus.Published,
             VoiceLedgerEffect.None,
             null,
+            "readStockBalances",
             "رصيد صنف",
             [
-                "كم رصيد الصنف", "رصيد الصنف", "كم عندي من الصنف", "وش رصيد الصنف",
-                "كم باقي من الصنف",
+                "كم رصيد الصنف", "رصيد الصنف", "كم عندي من الصنف", "وش رصيد الصنف", "كم باقي من الصنف",
             ],
             [
                 new VoiceSlot("item", VoiceSlotKind.Text, "الصنف", true,
                     ["الصنف", "صنف", "من"], []),
                 new VoiceSlot("warehouse", VoiceSlotKind.Text, "المستودع", false,
                     ["المستودع", "مستودع", "المخزن", "مخزن"], []),
+            ],
+            false,
+            null),
+
+        new VoiceIntent(
+            "inventory.stock_movement.query",
+            VoiceSection.Inventory,
+            BabelModule.Inventory,
+            VoiceIntentKind.Query,
+            VoiceIntentStatus.Published,
+            VoiceLedgerEffect.None,
+            null,
+            "listStockMovements",
+            "حركات صنف",
+            [
+                "حركات الصنف", "كشف حركة الصنف", "وش حركات الصنف", "حركة الصنف",
+            ],
+            [
+                new VoiceSlot("item", VoiceSlotKind.Text, "الصنف", true,
+                    ["الصنف", "صنف", "للصنف"], []),
+            ],
+            false,
+            null),
+
+        new VoiceIntent(
+            "inventory.valuation.query",
+            VoiceSection.Inventory,
+            BabelModule.Inventory,
+            VoiceIntentKind.Query,
+            VoiceIntentStatus.Published,
+            VoiceLedgerEffect.None,
+            null,
+            "readInventoryValuation",
+            "تقييم المخزون",
+            [
+                "تقييم المخزون", "كم قيمة المخزون", "وش قيمة المخزون", "قيمة المخزون",
+            ],
+            [
+                new VoiceSlot("warehouse", VoiceSlotKind.Text, "المستودع", true,
+                    ["المستودع", "مستودع", "المخزن", "مخزن"], []),
+            ],
+            false,
+            null),
+
+        new VoiceIntent(
+            "inventory.warehouse_transfer.record",
+            VoiceSection.Inventory,
+            BabelModule.Inventory,
+            VoiceIntentKind.StateChange,
+            VoiceIntentStatus.Published,
+            VoiceLedgerEffect.Posts,
+            "inventory.transfer.between_warehouses",
+            "draftStockMovement",
+            "تحويل مخزني بين مستودعين",
+            [
+                "تحويل بين مستودعين", "حول من مستودع", "نقل بضاعة بين المستودعات", "تحويل مخزني",
+            ],
+            [
+                new VoiceSlot("item", VoiceSlotKind.Text, "الصنف", true,
+                    ["الصنف", "صنف", "للصنف"], []),
+                new VoiceSlot("quantity", VoiceSlotKind.Quantity, "الكمية المحوَّلة", true,
+                    ["كمية", "الكمية", "عدد", "بمقدار"], []),
+                new VoiceSlot("fromWarehouse", VoiceSlotKind.Text, "المستودع المرسِل", true,
+                    ["من مستودع", "من المستودع", "من مخزن"], []),
+                new VoiceSlot("toWarehouse", VoiceSlotKind.Text, "المستودع المستقبِل", true,
+                    ["الى مستودع", "الى المستودع", "لمستودع", "الى مخزن"], []),
+                new VoiceSlot("movedOn", VoiceSlotKind.Date, "تاريخ التحويل", true,
+                    [], []),
             ],
             false,
             null),

@@ -55,6 +55,7 @@ import { ProblemPanel } from "../../app/shell/ProblemPanel";
 import { Amount, Num, useT } from "../../i18n/react";
 import { Button, EmptyState, Field, Panel, RefusalPanel, StatCard, useMoment } from "../../ui";
 import { useHrFocus } from "./focus";
+import { peekVoiceDraft } from "../../voice";
 import {
   AmountsRow,
   ChooseCompanyFirst,
@@ -123,14 +124,27 @@ export function PayrollRunScreen(): ReactNode {
   const [ratesError, setRatesError] = useState<unknown>(null);
   const [ratesOpen, setRatesOpen] = useState(false);
 
+  /* ── المسوّدة المنطوقة تصل إلى الحقل، لا إلى لوحةٍ بجانبه ──────────────
+     المستخدم قال «جهّز مسيّر الرواتب لفترة 2026-08»، فهبط هنا. ورمزُ الفترة
+     **يُملأ في حقله** ويبقى الباقي عليه — واللوحة فوق الشاشة تعرض القيمة
+     موسومةً «منطوق»، فلا يظنّها أحدٌ شيئاً أدخله بنفسه.
+
+     ⚠ **ولا يُنشأ شيء ولا يُرحَّل**: الزرّان أدناه كما هما، ويُضغطان بيد. */
+  const spokenPeriod = useMemo(() => {
+    const spoken = peekVoiceDraft();
+    if (spoken?.intentId !== "hr.payroll_run.draft") return "";
+    return spoken.fields.find((field) => field.name === "periodCode")?.text ?? "";
+  }, []);
+
   /* ── المسيّر ───────────────────────────────────────────────────────── */
   const [number, setNumber] = useState("");
-  const [periodCode, setPeriodCode] = useState("");
+  const [periodCode, setPeriodCode] = useState(spokenPeriod);
   const [periodStart, setPeriodStart] = useState("");
   const [periodEnd, setPeriodEnd] = useState("");
   const [draftBusy, setDraftBusy] = useState(false);
   const [runError, setRunError] = useState<unknown>(null);
   const [runId, setRunId] = useState(focus.runId);
+
 
   /* ── الترحيل ───────────────────────────────────────────────────────── */
   const [posted, setPosted] = useState<readonly HrPayslip[] | null>(null);

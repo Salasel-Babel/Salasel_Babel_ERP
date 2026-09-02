@@ -1,4 +1,5 @@
 using Babel.Contracts.Posting;
+using Babel.Contracts.Voice;
 using Babel.Contracts.Subledger;
 using Babel.Ledger.Posting;
 using Microsoft.Extensions.DependencyInjection;
@@ -50,6 +51,13 @@ public static class LedgerModuleRegistration
         // معرفةً بالدفتر: ترى الواجهة وحدها، والحاوية توصلها بهذا التنفيذ.
         services.AddScoped<Babel.Contracts.RealEstate.IPropertyDimensionRegistrar,
                            RealEstate.PropertyDimensionRegistrar>();
+
+        // ‏**النيّات المنطوقة تُسجَّل من هنا، لا من مشروع الذكاء.**
+        // وما يُسهم به الدفتر نيّةٌ واحدة، وهي **امتناع مكتوب**: القيد اليدوي يُملى
+        // ويُعرَض ولا يُنفَّذ، لأن السطح المنشور يُرحّله عند إنشائه ولا يُنشئ له مسوّدة.
+        // والصوت يبلغ المسوّدة ولا يبلغ الترحيل — فالنيّة تنتظر قراراً باسمه.
+        services.AddSingleton<IVoiceIntentCatalogue, Voice.LedgerVoiceIntents>();
+
         return services;
     }
 }

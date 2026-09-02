@@ -23,7 +23,9 @@ namespace Babel.Ai.Voice;
 /// <para>
 /// <b>وما يفعله السجلّ عند البناء يُقاس بما يرفضه:</b> معرّفاً مكرّراً، ورمزَ حدثٍ ليس
 /// في مصفوفة الترحيل، وترحيلاً بلا رمز حدث، ورمزاً يحمل مقطعاً رقمياً (أي رقم حساب
-/// متسلّلاً — القاعدة 2)، ونيّةً «تنتظر قراراً» بلا اسمِ القرار. وكلّها تُسقط <b>البناء</b>
+/// متسلّلاً — القاعدة 2)، ونيّةً «تنتظر قراراً» بلا اسمِ القرار،
+/// <b>ونيّةً تبلغ عمليةَ ترحيلٍ أو توقيعٍ أو اعتماد</b> — أو فعلاً لم يُصنَّف بعد.
+/// وكلّها تُسقط <b>البناء</b>
 /// لا النُّطق: سجلٌّ نصفُه صالح يعمل تسعاً وتسعين مرّة ثم يُرحّل مرّةً إلى حدثٍ لا وجود له.
 /// </para>
 /// </summary>
@@ -138,7 +140,27 @@ public sealed partial class VoiceIntentRegistry
             }
         }
 
+        // ‏**الحدّ الذي يمنع خطأ الغد لا خطأ اليوم**: النيّة المنشورة تسمّي عمليةً
+        // منشورة واحدة، ويُفحص **فعلُها** لا اسمُها. فترحيلٌ أو توقيعٌ أو اعتماد —
+        // أو فعلٌ لم يصنّفه إنسان بعد — يُسقط **البناء** لا نُطقاً واحداً.
         bool awaiting = intent.Status == VoiceIntentStatus.AwaitingOwnerDecision;
+
+        if (awaiting)
+        {
+            if (!string.IsNullOrWhiteSpace(intent.OperationId))
+            {
+                errors.Add(VoiceCatalogueErrors.OperationNotExpected(intent.Id, intent.OperationId));
+            }
+        }
+        else if (string.IsNullOrWhiteSpace(intent.OperationId))
+        {
+            errors.Add(VoiceCatalogueErrors.OperationNotStated(intent.Id));
+        }
+        else if (VoiceOperationGuard.Refuse(intent.OperationId) is string why)
+        {
+            errors.Add(VoiceCatalogueErrors.OperationNotReachableByVoice(intent.Id, intent.OperationId, why));
+        }
+
         bool stated = !string.IsNullOrWhiteSpace(intent.OwnerDecisionAr);
 
         if (awaiting && !stated)

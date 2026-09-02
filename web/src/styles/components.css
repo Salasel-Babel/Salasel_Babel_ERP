@@ -56,6 +56,12 @@ body{
   font-size:var(--font-size-body);
   line-height:var(--line-base);
   -webkit-font-smoothing:antialiased;
+  /* **هنا يصير الوعد بنيةً.** `font-variant-numeric` خاصّيةٌ موروثة، فتصريحٌ
+     واحد على الجسم يحكم كل عقدةٍ تحته — لا الأصناف التي خطرت لكاتب الورقة.
+     والصنف الذي يُضاف الشهر القادم يولد محكوماً بلا أن يذكره أحد. وما تحته
+     من تصريحات ليست تكراراً بلا فائدة: هي تُعيد التأكيد حيث قد يقطع الوراثة
+     `font:` مختصرٌ أو محتوى يُحقَن. (tokens.css §3 · الأرقام) */
+  font-variant-numeric:var(--font-numeric);
 }
 
 button,input,select,textarea{font:inherit;color:inherit}
@@ -86,7 +92,7 @@ h1,h2,.gal-hero h1,.page-title h1,.drawer-hd h2,.empty h3{
    ⚠ الترميز dir="ltr" على العنصر الحامل للرقم إلزامي، وإلا انقلبت
    الإشارة السالبة إلى يمين الرقم داخل فقرة عربية. راجع design/README.md §3. */
 .num{
-  font-variant-numeric:tabular-nums;
+  font-variant-numeric:var(--font-numeric);
   letter-spacing:var(--tracking-num);
   unicode-bidi:isolate;
 }
@@ -386,7 +392,7 @@ select.ctl-sm{padding-inline-end:var(--space-8)}
    كل خيار يحمل lang وdir الخاصّين به فيُرسَم اسم اللغة بخطّها وباتجاهها،
    لا باتجاه الصفحة الحالية: «العربية» و«اردو» و«हिन्दी» في قائمة واحدة. */
 .localepick{display:inline-flex;align-items:center;gap:var(--space-6);min-width:0}
-.localepick select{font-variant-numeric:normal;max-width:12ch;text-overflow:ellipsis}
+.localepick select{font-variant-numeric:var(--font-numeric-off);max-width:12ch;text-overflow:ellipsis}
 
 /* ⚠ الشريط العلوي عند 360px: مبدّلا اللغة واللوحة يضيفان عرضاً حقيقياً،
    ولا مجال لإخفائهما — تبديل اللغة هو الميزة. فيُطوى ما هو أقلّ أهمية:
@@ -437,7 +443,7 @@ select.ctl-sm{padding-inline-end:var(--space-8)}
 }
 
 /* — حقل التاريخ: ميلادي مخزَّن، وعرض عربي طويل تحته — */
-.datefield .ctl{font-variant-numeric:tabular-nums}
+.datefield .ctl{font-variant-numeric:var(--font-numeric)}
 .datefield .dateline{
   display:flex;align-items:center;gap:var(--space-8);flex-wrap:wrap;
   font-size:var(--font-size-hint);color:var(--color-text-subtle);
@@ -469,7 +475,7 @@ select.ctl-sm{padding-inline-end:var(--space-8)}
 .picker-opt:hover,.picker-opt[aria-selected="true"]{background:var(--color-primary-soft);color:var(--brand-ink)}
 .picker-opt .code{
   flex:none;min-width:74px;direction:ltr;unicode-bidi:isolate;
-  font-variant-numeric:tabular-nums;font-weight:var(--font-weight-semibold);
+  font-variant-numeric:var(--font-numeric);font-weight:var(--font-weight-semibold);
   color:var(--color-text-subtle);
 }
 .picker-opt[aria-selected="true"] .code{color:var(--brand-ink)}
@@ -519,7 +525,7 @@ select.ctl-sm{padding-inline-end:var(--space-8)}
    القاعدة الحاكمة لكل رقم مالي في هذا النظام:
      • dir="ltr" على العنصر الحامل للرقم  → الإشارة السالبة تبقى يسار الرقم
      • unicode-bidi:isolate               → لا يسحب ما حوله من نصّ عربي
-     • font-variant-numeric:tabular-nums  → الأعمدة تصطفّ عمودياً
+     • font-variant-numeric:var(--font-numeric)  → الأعمدة تصطفّ عمودياً
      • text-align:end داخل صندوق ltr = محاذاة إلى اليمين بصرياً = بداية السطر
        في تخطيط عربي. الخانة نفسها تبقى rtl و text-align:start.
      • المقياس ثابت: منزلتان دائماً في العرض، ولا تُحذف الأصفار.
@@ -528,7 +534,7 @@ select.ctl-sm{padding-inline-end:var(--space-8)}
 .amt{
   direction:ltr;unicode-bidi:isolate;
   display:inline-block;
-  font-variant-numeric:tabular-nums;
+  font-variant-numeric:var(--font-numeric);
   letter-spacing:var(--tracking-num);
   font-weight:var(--font-weight-semibold);
   color:var(--color-amount);
@@ -556,7 +562,7 @@ select.ctl-sm{padding-inline-end:var(--space-8)}
    في كل اللغات، وهو نفس المظهر المعتمد بالضبط في العربية. */
 .n{
   direction:ltr;unicode-bidi:isolate;text-align:end;
-  font-variant-numeric:tabular-nums;white-space:nowrap;
+  font-variant-numeric:var(--font-numeric);white-space:nowrap;
 }
 
 /* مُدخَل مبلغ — نفس مظهر .ctl مع تصحيح الاتجاه */
@@ -565,7 +571,7 @@ select.ctl-sm{padding-inline-end:var(--space-8)}
   /* end داخل صندوق ltr = اليمين في كل اللغات. القيمة الفيزيائية right كانت
      تعطي النتيجة نفسها هنا، لكنها تُغري بنسخها إلى صندوق غير ltr. */
   text-align:end;
-  font-variant-numeric:tabular-nums;
+  font-variant-numeric:var(--font-numeric);
   font-weight:var(--font-weight-semibold);
 }
 .amt-input::placeholder{font-weight:var(--font-weight-regular);color:var(--color-text-subtle)}
@@ -709,7 +715,7 @@ select.ctl-sm{padding-inline-end:var(--space-8)}
 .tab .count{
   margin-inline-start:var(--space-6);padding:0 var(--space-6);border-radius:var(--radius-pill);
   background:var(--color-surface-sunken);color:var(--color-text-subtle);
-  font-size:var(--font-size-3xs);font-variant-numeric:tabular-nums;
+  font-size:var(--font-size-3xs);font-variant-numeric:var(--font-numeric);
 }
 .tabpanel{padding:var(--space-14) var(--space-12) var(--space-16)}
 .tabpanel[hidden]{display:none}
@@ -760,7 +766,7 @@ table.lines tbody tr:hover td,table.data tbody tr:hover td{background:var(--colo
 table.data tbody td{padding:var(--space-8) var(--space-10);font-size:var(--font-size-sm)}
 table.data thead th.start,table.data tbody td.start{text-align:start}
 table.data tbody td.n,table.data thead th.n{
-  direction:ltr;unicode-bidi:isolate;text-align:end;font-variant-numeric:tabular-nums;
+  direction:ltr;unicode-bidi:isolate;text-align:end;font-variant-numeric:var(--font-numeric);
 }
 table.data tbody tr[aria-selected="true"] td{background:var(--color-primary-soft)}
 
@@ -789,7 +795,7 @@ table.data tfoot td,table.lines tfoot td{
   font-weight:var(--font-weight-bold);font-size:var(--font-size-sm);
 }
 table.data tfoot td.n,table.lines tfoot td.n{
-  direction:ltr;unicode-bidi:isolate;text-align:end;font-variant-numeric:tabular-nums;
+  direction:ltr;unicode-bidi:isolate;text-align:end;font-variant-numeric:var(--font-numeric);
 }
 table.data tfoot tr.grand td{background:var(--color-surface-sunken);font-size:var(--font-size-base)}
 table.data tfoot td.d{color:var(--color-debit)}
@@ -811,7 +817,7 @@ tr.is-subtotal > td{
 }
 .acct-code{
   display:inline-block;direction:ltr;unicode-bidi:isolate;
-  font-variant-numeric:tabular-nums;font-weight:var(--font-weight-semibold);
+  font-variant-numeric:var(--font-numeric);font-weight:var(--font-weight-semibold);
   color:var(--color-text-subtle);margin-inline-end:var(--space-8);
 }
 tr.is-group .acct-code{color:var(--color-text-muted)}
@@ -825,7 +831,7 @@ tr.is-group .acct-code{color:var(--color-text-muted)}
 select.cell{appearance:none;cursor:pointer;padding-inline-end:22px}
 .cell.amount{
   direction:ltr;unicode-bidi:isolate;text-align:end;
-  font-variant-numeric:tabular-nums;font-weight:var(--font-weight-semibold);
+  font-variant-numeric:var(--font-numeric);font-weight:var(--font-weight-semibold);
 }
 .cell.amount.debit:not(:placeholder-shown){color:var(--color-debit)}
 .cell.amount.credit:not(:placeholder-shown){color:var(--color-credit)}
@@ -835,7 +841,7 @@ select.cell{appearance:none;cursor:pointer;padding-inline-end:22px}
 /* قيمة محسوبة داخل الجدول (لا تُحرَّر) */
 .taxval{
   display:block;padding:5px var(--space-10);
-  font-variant-numeric:tabular-nums;color:var(--color-text-muted);
+  font-variant-numeric:var(--font-numeric);color:var(--color-text-muted);
   font-weight:var(--font-weight-medium);
   direction:ltr;unicode-bidi:isolate;text-align:end;
 }
@@ -1044,7 +1050,7 @@ table.pv th{
   border-bottom:var(--border-width) solid var(--color-border);
 }
 table.pv th.n,table.pv td.n{
-  direction:ltr;unicode-bidi:isolate;text-align:end;font-variant-numeric:tabular-nums;
+  direction:ltr;unicode-bidi:isolate;text-align:end;font-variant-numeric:var(--font-numeric);
 }
 table.pv td{padding:var(--space-8) var(--space-10);border-bottom:var(--border-width) solid var(--color-border)}
 table.pv tfoot td{font-weight:var(--font-weight-bold);background:var(--color-surface-raised);border-bottom:0}
@@ -1057,7 +1063,7 @@ table.pv .c{color:var(--color-credit)}
   padding:var(--space-10) var(--space-12);
   font-size:var(--font-size-sm);color:var(--color-text-muted);
 }
-.pager .count{font-variant-numeric:tabular-nums}
+.pager .count{font-variant-numeric:var(--font-numeric)}
 .pager .count .n{direction:ltr;unicode-bidi:isolate;display:inline-block;font-weight:var(--font-weight-semibold)}
 .pager .pages{display:flex;align-items:center;gap:var(--space-4);margin-inline-start:auto}
 .pager .pagebtn{
@@ -1065,7 +1071,7 @@ table.pv .c{color:var(--color-credit)}
   border:var(--border-width) solid var(--color-border-control);border-radius:var(--radius-sm);
   background:var(--color-surface);color:var(--color-text-muted);
   font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);
-  font-variant-numeric:tabular-nums;cursor:pointer;
+  font-variant-numeric:var(--font-numeric);cursor:pointer;
   display:inline-grid;place-items:center;
   transition:border-color var(--motion-base),background var(--motion-base),color var(--motion-base);
 }
@@ -1162,7 +1168,7 @@ table.data .skel-row td{padding:var(--space-10)}
 .stat .k{font-size:var(--font-size-2xs);font-weight:var(--font-weight-semibold);color:var(--color-text-subtle)}
 .stat .v{
   margin-top:5px;font-size:var(--font-size-stat);font-weight:var(--font-weight-bold);
-  font-variant-numeric:tabular-nums;letter-spacing:var(--tracking-stat);
+  font-variant-numeric:var(--font-numeric);letter-spacing:var(--tracking-stat);
   /* الصندوق ltr ليصحّ ترتيب الرقم، و text-align:end يُبقيه عند اليمين
      كما في النموذج المعتمد (اليمين = بداية السطر في العربية). */
   direction:ltr;unicode-bidi:isolate;text-align:end;

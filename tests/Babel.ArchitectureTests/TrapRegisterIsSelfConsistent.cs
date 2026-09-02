@@ -64,6 +64,14 @@ public sealed partial class TrapRegisterIsSelfConsistent
     [GeneratedRegex(@"فخ-([0-9]{1,3})(?![0-9A-Za-z٠-٩۰-۹])", RegexOptions.CultureInvariant)]
     private static partial Regex LatinDigitReference();
 
+    /// <summary>إعادةُ ذكرِ مجموع المصائد: رقمٌ يليه «فخّاً» أو «عطلاً».</summary>
+    [GeneratedRegex(@"([0-9]+)\s*(?:فخّاً|عطلاً)", RegexOptions.CultureInvariant)]
+    private static partial Regex RestatedTrapTotal();
+
+    /// <summary>إعادةُ ذكرِ حصيلة ما يفشل بصمت: رقمٌ يليه «منها تفشل بصمت» أو «منها صامت».</summary>
+    [GeneratedRegex(@"([0-9]+)\s*منها\s*(?:تفشل بصمت|صامت)", RegexOptions.CultureInvariant)]
+    private static partial Regex RestatedSilentTally();
+
     /// <summary>‏<c>فخ-١٨</c> — الأرقام العربية-الهندية. هذه الصيغة هي ما فات البحث في الدمجات السابقة.</summary>
     [GeneratedRegex(@"فخ-([٠-٩]{1,3})", RegexOptions.CultureInvariant)]
     private static partial Regex ArabicIndicReference();
@@ -223,39 +231,52 @@ public sealed partial class TrapRegisterIsSelfConsistent
         int total = register.Traps.Count;
         int silent = register.ActualTally.Silent;
 
-        (string Path, string Pattern, int Expected)[] restatements =
-        [
-            ("docs/evidence/README.md", @"\*\*الأعطال\.\*\* ‏([0-9]+) فخّاً", total),
-            ("docs/evidence/README.md", @"\*\*([0-9]+) منها تفشل بصمت\*\*", silent),
-            ("docs/evidence/measurements.md", @"\*\*الأعطال\*\* \(‏([0-9]+) فخّاً", total),
-            ("docs/RECORD.md", @"الأعطال \(([0-9]+) فخّاً", total),
-            ("docs/decisions/README.md", @"\*\*‏([0-9]+) فخّاً\*\*", total),
-        ];
-
+        // ‏**لا قائمةَ مسارات.** كانت هنا خمسةُ أزواج (مسار · نمط) — وهُزمت بموضعٍ سادس:
+        // ‏`docs/decisions/README.md` يُعيد المجموع **مرّتين**، إحداهما بلفظ «عطلاً» لا
+        // «فخّاً»، ولم تكن في القائمة. فبقي مكتوباً 159 والسجلّ 160، **والحارس أخضر** —
+        // أي أنه سقط **مفتوحاً**، وهو العطل نفسه الذي يوثّقه فخ-151.
+        //
+        // والعلاج **مسحٌ بالشكل لا بالموضع**: كل رقمٍ يليه أحد ألفاظ المجموع في أي ملفّ
+        // ‏Markdown تحت `docs/` هو إعادةُ ذكرٍ للمجموع، ويجب أن يساويه. فموضعٌ سابع
+        // يُلتقَط يوم يُكتب، بلا تعديل هنا.
+        //
+        // **وحدُّه مُعلَن:** يبقى معتمداً على **اللفظ** لا الموضع. صياغةٌ بلفظٍ رابع
+        // («مصيدة» مثلاً بغير هذه الأشكال) تفلت — لكن الذي هزمه فعلاً هو الموضع، وهذا
+        // ما أُغلق. ومسحُ الأرقام كلّها بلا لفظٍ يُنتج إيجابيّاتٍ كاذبة بلا حصر.
         List<string> problems = [];
+        int totalsSeen = 0;
+        int silentSeen = 0;
 
-        foreach ((string path, string pattern, int expected) in restatements)
+        foreach (string path in Directory.EnumerateFiles(
+            Path.Combine(RepositoryLayout.Root, "docs"), "*.md", SearchOption.AllDirectories))
         {
-            string full = Path.Combine(RepositoryLayout.Root, path);
-            if (!File.Exists(full))
+            string relative = Path.GetRelativePath(RepositoryLayout.Root, path).Replace('\\', '/');
+            string text = File.ReadAllText(path);
+
+            foreach (Match match in RestatedTrapTotal().Matches(text))
             {
-                problems.Add($"{path}: الملف غير موجود، والمجموع مُعاد فيه");
-                continue;
+                totalsSeen++;
+                int found = int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture);
+                if (found != total)
+                {
+                    problems.Add(FormattableString.Invariant($"{relative}: مكتوب {found} والصحيح {total}"));
+                }
             }
 
-            Match match = Regex.Match(File.ReadAllText(full), pattern, RegexOptions.CultureInvariant, TimeSpan.FromSeconds(5));
-            if (!match.Success)
+            foreach (Match match in RestatedSilentTally().Matches(text))
             {
-                problems.Add($"{path}: لم يُعثر على المجموع المُعاد بالنمط {pattern} — لا تُحوَّل الأرقام إلى كلمات، فالحارس يقرأ الأرقام");
-                continue;
-            }
-
-            int found = int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture);
-            if (found != expected)
-            {
-                problems.Add(FormattableString.Invariant($"{path}: مكتوب {found} والصحيح {expected}"));
+                silentSeen++;
+                int found = int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture);
+                if (found != silent)
+                {
+                    problems.Add(FormattableString.Invariant($"{relative}: «منها بصمت» مكتوب {found} والصحيح {silent}"));
+                }
             }
         }
+
+        // حارسا لافراغ: نمطٌ توقّف عن المطابقة، أو نطاقٌ انكسر، يجعلان الفحص يمرّ على لا شيء.
+        Assert.True(totalsSeen >= 5, FormattableString.Invariant($"وُجد {totalsSeen} موضعاً يُعيد المجموع — النمط أو النطاق انكسر"));
+        Assert.True(silentSeen >= 2, FormattableString.Invariant($"وُجد {silentSeen} موضعاً يُعيد حصيلة الصامت — النمط أو النطاق انكسر"));
 
         Assert.True(problems.Count == 0, "وثيقة تُعيد مجموع المصائد وتخالف السجل:\n" + string.Join('\n', problems));
     }

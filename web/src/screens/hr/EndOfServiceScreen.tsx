@@ -269,7 +269,13 @@ export function EndOfServiceScreen(): ReactNode {
       {/* ═════════════════════════════════════ ١ · مخصص الفترة ═════════ */}
       <Panel title={t("hr.provision.title")} note={t("hr.provision.note")} testId="hr-provision">
         <div className="grid fields-4">
-          <Field id="hr-prov-number" label={t("hr.field.number")} source="typed" required>
+          <Field
+            id="hr-prov-number"
+            label={t("hr.field.number")}
+            hint={t("hr.field.numberHint")}
+            source="typed"
+            required
+          >
             <input id="hr-prov-number" className="ctl mono" dir="ltr" autoComplete="off" spellCheck={false}
               data-testid="hr-provision-number" value={provNumber} onChange={(e) => setProvNumber(e.target.value)}
               placeholder="EOS-P-2026-06" />
@@ -287,11 +293,23 @@ export function EndOfServiceScreen(): ReactNode {
               data-testid="hr-provision-period" value={provPeriod} onChange={(e) => setProvPeriod(e.target.value)}
               placeholder="2026-06" />
           </Field>
-          <Field id="hr-prov-on" label={t("hr.field.accruedOn")} source="typed" required>
+          <Field
+            id="hr-prov-on"
+            label={t("hr.field.accruedOn")}
+            hint={t("hr.field.accruedOnHint")}
+            source="typed"
+            required
+          >
             <input id="hr-prov-on" className="ctl mono" type="date" dir="ltr"
               data-testid="hr-provision-date" value={provAccruedOn} onChange={(e) => setProvAccruedOn(e.target.value)} />
           </Field>
-          <Field id="hr-prov-by" label={t("hr.field.approvedBy")} source="typed" required>
+          <Field
+            id="hr-prov-by"
+            label={t("hr.field.approvedBy")}
+            hint={t("hr.field.approverHint")}
+            source="typed"
+            required
+          >
             <input id="hr-prov-by" className="ctl" autoComplete="off"
               data-testid="hr-provision-by" value={provBy} onChange={(e) => setProvBy(e.target.value)} />
           </Field>
@@ -313,7 +331,18 @@ export function EndOfServiceScreen(): ReactNode {
         <div className="hr-lines" data-testid="hr-provision-shares">
           {shares.map((share) => (
             <div key={share.key} className="hr-line">
-              <Field id={"hr-share-emp-" + share.key} label={t("hr.field.employmentId")} source="typed" required>
+              {/* **وصفان بمقاسين لا بمقاسٍ واحد.** عمودا هذا الصفّ 3fr و1fr،
+                  فنصٌّ واحد الطول فيهما يلتفّ سطرين هنا وستّةً هناك — وذلك هو
+                  «قاعُ الحبر المتعرّج» الذي لا يُصلحه استعارةُ المسارات: الصندوق
+                  يتساوى والحبر لا يتساوى. فالوصفان مكتوبان **على قدر عموديهما**
+                  ليقعا في سطرين معاً. (مقيسٌ بـ`scripts/align-audit.mjs`.) */}
+              <Field
+                id={"hr-share-emp-" + share.key}
+                label={t("hr.field.employmentId")}
+                hint={t("hr.field.shareEmploymentHint")}
+                source="typed"
+                required
+              >
                 <input
                   id={"hr-share-emp-" + share.key}
                   className="ctl mono"
@@ -332,7 +361,7 @@ export function EndOfServiceScreen(): ReactNode {
               <Field
                 id={"hr-share-amount-" + share.key}
                 label={t("hr.field.periodShare")}
-                hint={t("hr.field.amountHint")}
+                hint={t("hr.field.shareAmountHint")}
                 error={share.periodShare !== "" && !isMoneyText(share.periodShare) ? t("hr.field.amountBad") : undefined}
                 source="typed"
                 required
@@ -481,7 +510,16 @@ export function EndOfServiceScreen(): ReactNode {
       {/* ═════════════════════════════════════ ٢ · المخالصة ════════════ */}
       <Panel title={t("hr.settlement.title")} note={t("hr.settlement.note")} testId="hr-settlement">
         <div className="grid fields-4">
-          <Field id="hr-set-number" label={t("hr.field.number")} source="typed" required>
+          {/* أربعةُ حقولٍ في صفٍّ واحد، **وكلٌّ منها بوصف**: خليّةٌ بلا وصف
+              تُنهي حبرها فوق جيرانها بارتفاع كتلة الوصف كاملةً. والأوصاف
+              الأربعة مكتوبة على قدرٍ واحد فتلتفّ سطرين معاً. */}
+          <Field
+            id="hr-set-number"
+            label={t("hr.field.number")}
+            hint={t("hr.field.numberHint")}
+            source="typed"
+            required
+          >
             <input id="hr-set-number" className="ctl mono" dir="ltr" autoComplete="off" spellCheck={false}
               data-testid="hr-settlement-number" value={settlementNumber} onChange={(e) => setSettlementNumber(e.target.value)}
               placeholder="EOS-S-2026-0001" />
@@ -497,7 +535,13 @@ export function EndOfServiceScreen(): ReactNode {
               data-testid="hr-settlement-employment" value={employmentId}
               onChange={(e) => setEmploymentId(e.target.value)} />
           </Field>
-          <Field id="hr-set-on" label={t("hr.field.settledOn")} source="typed" required>
+          <Field
+            id="hr-set-on"
+            label={t("hr.field.settledOn")}
+            hint={t("hr.field.settledOnHint")}
+            source="typed"
+            required
+          >
             <input id="hr-set-on" className="ctl mono" type="date" dir="ltr"
               data-testid="hr-settlement-date" value={settledOn} onChange={(e) => setSettledOn(e.target.value)} />
           </Field>

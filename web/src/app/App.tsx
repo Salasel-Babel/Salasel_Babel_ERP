@@ -127,6 +127,32 @@ export function AppShell(): ReactNode {
         <Link to="/inventory/valuation" className="navitem" data-testid="nav-inventory-valuation">
           {t("inventory.nav.valuation")}
         </Link>
+        {/* ── الموارد البشرية: ثمانٍ بترتيب العمل. وهي **كتلةٌ واحدة متّصلة**
+            كي يندمج جانباها آلياً حين يلمس أسطولٌ آخر هذه القائمة. */}
+        <Link to="/hr/pay-components" className="navitem" data-testid="nav-hr-pay-components">
+          {t("hr.nav.payComponents")}
+        </Link>
+        <Link to="/hr" className="navitem" data-testid="nav-hr-register">
+          {t("hr.nav.register")}
+        </Link>
+        <Link to="/hr/advances-deductions" className="navitem" data-testid="nav-hr-advances">
+          {t("hr.nav.advances")}
+        </Link>
+        <Link to="/hr/payroll" className="navitem" data-testid="nav-hr-payroll">
+          {t("hr.nav.payroll")}
+        </Link>
+        <Link to="/hr/payslip" className="navitem" data-testid="nav-hr-payslip">
+          {t("hr.nav.payslip")}
+        </Link>
+        <Link to="/hr/social-insurance" className="navitem" data-testid="nav-hr-social-insurance">
+          {t("hr.nav.socialInsurance")}
+        </Link>
+        <Link to="/hr/end-of-service" className="navitem" data-testid="nav-hr-end-of-service">
+          {t("hr.nav.endOfService")}
+        </Link>
+        <Link to="/hr/subledger-reconciliation" className="navitem" data-testid="nav-hr-reconciliation">
+          {t("hr.nav.reconciliation")}
+        </Link>
       </nav>
 
       <div className="app-main">

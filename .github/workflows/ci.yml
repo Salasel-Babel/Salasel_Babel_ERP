@@ -182,7 +182,7 @@ jobs:
           dotnet test --project tests/Babel.ArchitectureTests/Babel.ArchitectureTests.csproj
           --configuration Release --no-build
           --report-xunit-trx --results-directory artifacts/test-reports
-          --minimum-expected-tests 219 --zero-tests-policy strict
+          --minimum-expected-tests 259 --zero-tests-policy strict
 
       # مقيس على هذا المستودع: `--minimum-expected-tests` **تراكمية على الحلّ كلّه** —
       # ‏99999 على `--solution Babel.slnx` أعطت الرمز 9 عند 1587. فهي تلتقط اختفاء مشروعٍ
@@ -191,7 +191,7 @@ jobs:
         run: >-
           dotnet test --solution Babel.slnx --configuration Release --no-build
           --report-xunit-trx --results-directory artifacts/test-reports
-          --minimum-expected-tests 1967 --zero-tests-policy strict
+          --minimum-expected-tests 2033 --zero-tests-policy strict
 
       # الأداة تفعل عملها لا مجرّد تترجم: تشغيلها على البيانات الحقيقية في كل دفعة، لا في
       # data-validation.yml وحده — فذاك مُقيَّد بمسارات data/ وtools/، وتغيير في

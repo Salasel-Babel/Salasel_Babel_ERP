@@ -155,6 +155,24 @@ export function AppShell(): ReactNode {
         </Link>
         <Link to="/hr/subledger-reconciliation" className="navitem" data-testid="nav-hr-reconciliation">
           {t("hr.nav.reconciliation")}
+        <Link to="/inventory/warehouses" className="navitem" data-testid="nav-inventory-warehouses">
+          {t("inventory.nav.warehouses")}
+        </Link>
+        <Link to="/inventory/placement" className="navitem" data-testid="nav-inventory-placement">
+          {t("inventory.nav.placement")}
+        </Link>
+        <Link
+          to="/inventory/placement-balances"
+          className="navitem"
+          data-testid="nav-inventory-placement-balances"
+        >
+          {t("inventory.nav.placementBalances")}
+        </Link>
+        <Link to="/inventory/transfers" className="navitem" data-testid="nav-inventory-transfers">
+          {t("inventory.nav.transfers")}
+        </Link>
+        <Link to="/inventory/units" className="navitem" data-testid="nav-inventory-units">
+          {t("inventory.nav.units")}
         </Link>
       </nav>
 

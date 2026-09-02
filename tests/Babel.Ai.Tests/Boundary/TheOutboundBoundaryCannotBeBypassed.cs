@@ -1,4 +1,5 @@
 using System.Reflection;
+using Babel.Ai.Lookup;
 using Babel.Ai.Boundary;
 using Babel.Ai.Tests.Support;
 using Babel.SharedKernel;
@@ -203,6 +204,47 @@ public sealed class TheOutboundBoundaryCannotBeBypassed
 
         Assert.True(sealing.IsFailure);
         Assert.Equal("ai.agent.outbound_empty", Assert.Single(sealing.Errors).Code);
+    }
+
+    /// <summary>
+    /// <b>ونسخة المحادثة تُختم كلّها — لا دورُ المستخدم وحده.</b>
+    /// <para>
+    /// جسمُ <c>tool_result</c> هو الموضع الذي يسمّيه الحدّ نفسه <b>أخطر المواضع</b>:
+    /// يُبنى من بياناتٍ محلّية، وهو الطريق الذي يعبر منه سجلٌّ كامل لو نُسي. وقد قِيس
+    /// على فرعٍ سابق أنّ <c>NameLookupWire.Write</c> لا يُمرَّر إلى <c>Seal</c> في أي
+    /// موضع من الشجرة — وذلك صحيحٌ عن الوحدة وحدها: الحلقة تضع الجواب كتلةً في النسخة،
+    /// و<c>AgentTranscript.Seal</c> يختم <b>كل</b> كتلةٍ فيها. وهذا يقيس الطرفين معاً:
+    /// المِقبض يعبر، والمعرّف في الموضع نفسه لا يعبر.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void TheLookupAnswerCrossesTheBoundaryLikeEveryOtherBlock()
+    {
+        byte[] key = new byte[32];
+        for (int index = 0; index < key.Length; index++)
+        {
+            key[index] = (byte)(index + 11);
+        }
+
+        string handle = new SignedLookupHandles(key, new LookupOptions(), TimeProvider.System)
+            .Issue(
+                LookupHandlePurpose.Entity,
+                new TenantId(new Guid("100c0a5e-0000-4000-8000-0000000000aa")),
+                new Guid("c0000000-0000-4000-8000-0000000000bb"),
+                new Guid("5e551000-0000-4000-8000-0000000000cc"),
+                new Guid("c5700000-0000-4000-8000-0000000000dd"),
+                TimeSpan.FromMinutes(10))
+            .Value;
+
+        string answer = NameLookupWire.Write(NameLookupResult.Resolved(handle));
+
+        Assert.True(AgentOutboundBoundary.Seal(AgentOutboundPartKind.ToolResult, answer).IsSuccess);
+
+        // وفي الموضع نفسه بالضبط: معرّفٌ لا يعبر.
+        Result<AgentOutboundEnvelope> refused = AgentOutboundBoundary.Seal(
+            AgentOutboundPartKind.ToolResult, "{\"name\":\"محمد\",\"id\":\"1092837465\"}");
+
+        Assert.True(refused.IsFailure);
     }
 
     /// <summary>

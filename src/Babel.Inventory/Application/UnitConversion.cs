@@ -65,8 +65,23 @@ internal static class UnitConversion
             return Result<decimal>.Success(magnitude);
         }
 
-        decimal scaled = magnitude * ratio.Numerator;
-        decimal converted = scaled / ratio.Denominator;
+        // ‏**الطفح يُمسَك ويُسمّى، ولا يُترك يرمي.** المقدار يعبر السلك بعشرين خانة
+        // صحيحة (‏<c>WireNumbers.MaxIntegerDigits</c>) والبسط يبلغ ملياراً، وحاصلُهما
+        // يتجاوز مدى <c>decimal</c>. واستثناءٌ غير مُمسَك هنا يخرج من السطح خطأَ خادم
+        // ‏500 — أي «عطلٌ عندنا» — وهو في الحقيقة **مُدخَل مرفوض** له علاجٌ يُقال.
+        decimal scaled;
+        decimal converted;
+
+        try
+        {
+            scaled = magnitude * ratio.Numerator;
+            converted = scaled / ratio.Denominator;
+        }
+        catch (OverflowException)
+        {
+            return Result<decimal>.Failure(InventoryErrors.ConversionOverflows(magnitude, ratio.ToString()));
+        }
+
         decimal rounded = decimal.Round(converted, QuantityScale, MidpointRounding.ToEven);
 
         return rounded * ratio.Denominator == scaled

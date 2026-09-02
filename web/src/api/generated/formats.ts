@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     bd9a3ec99569ae7bbe8a4def9a1e5d52942ab4732289f7897df7762912d72d02
+     2a0636027db4df0aab9564094aa09d3b85c383c420890403cbbde693383e5645
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -25,6 +25,8 @@ export const PARAM_listAttachments_sourceDocumentType = "^[a-z0-9._]{1,64}$";
 export const PARAM_listAttachments_sourceDocumentType_RE = new RegExp("^[a-z0-9._]{1,64}$");
 export const PARAM_listAttachments_take = "^[0-9]{1,7}$";
 export const PARAM_listAttachments_take_RE = new RegExp("^[0-9]{1,7}$");
+export const PARAM_readAgentTurnEvents_after = "^[0-9]{1,7}$";
+export const PARAM_readAgentTurnEvents_after_RE = new RegExp("^[0-9]{1,7}$");
 export const PARAM_readInventoryValuation_asOf = "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$";
 export const PARAM_readInventoryValuation_asOf_RE = new RegExp("^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$");
 export const PARAM_readPayablesAging_asOf = "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$";

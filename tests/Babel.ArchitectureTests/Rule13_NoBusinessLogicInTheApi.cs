@@ -172,6 +172,58 @@ public sealed class Rule13_NoBusinessLogicInTheApi
     /// </summary>
     private static readonly ImmutableHashSet<string> PublishedModuleSurface =
     [
+        // ── السطح المنشور لوحدة الذكاء: مساحة عمل الوكيل ─────────────────────
+        //
+        // ‏**قرارٌ معماري صريح، وهذا موضع كتابته.** مساحة العمل الجانبية سطحٌ منشور
+        // لوحدة `Babel.Ai` كما `…​.Surface` في المبيعات والموارد البشرية: أنواعُ حالٍ
+        // وأحداثٍ ومنافذ، **ولا خدمةَ داخلية ولا مخزنَ ولا حلقة**. والجذر التركيبي
+        // يسمّيها ليركّبها ويترجم بينها وبين HTTP، وهو الموضع الوحيد الذي يعرف الطرفين.
+        //
+        // ‏**وما ليس هنا مقصود:** لا `AgentTurnService` (الحلقة نفسها — يحلّها المصنع
+        // داخل الوحدة ولا يسمّيها السطح)، ولا `AgentToolGate` (البوّابة)، ولا
+        // `AgentDispatch` (الإذن — منشئُه داخليّ أصلاً وموضع إنشائه واحد)، ولا
+        // `SignedLookupHandles` ولا `NameRegisterLookup`.
+        //
+        // ‏**ولا واحد من هذه الأنواع يحمل رقم حساب ولا رمز حدثٍ في المصفوفة**: أبعد ما
+        // يحمله `AgentWorkspaceStep` مسارُ شاشةٍ وعنوانٌ عربيّ، و`AgentStepState` ليس
+        // فيه عضوٌ اسمه `Posted` — فالسطح عاجزٌ عن التعبير عن ترحيلٍ من هذا المسار.
+        "Babel.Ai.Agent.AgentModuleRegistration",
+        "Babel.Ai.Agent.AgentTool",
+        "Babel.Ai.Agent.AgentToolCatalogue",
+        "Babel.Ai.Agent.AgentTurnEventKind",
+        "Babel.Ai.Workspace.AgentDraftField",
+        "Babel.Ai.Workspace.AgentSheetOption",
+        "Babel.Ai.Workspace.AgentStepState",
+        "Babel.Ai.Workspace.AgentTurnPhase",
+        "Babel.Ai.Workspace.AgentWorkspaceConfirmation",
+        "Babel.Ai.Workspace.AgentWorkspaceErrors",
+        "Babel.Ai.Workspace.AgentWorkspaceEvent",
+        "Babel.Ai.Workspace.AgentWorkspaceOptions",
+        "Babel.Ai.Workspace.AgentWorkspaceQuestion",
+        "Babel.Ai.Workspace.AgentWorkspaceRegistration",
+        "Babel.Ai.Workspace.AgentWorkspaceService",
+        "Babel.Ai.Workspace.AgentWorkspaceSession",
+        "Babel.Ai.Workspace.AgentWorkspaceSpend",
+        "Babel.Ai.Workspace.AgentWorkspaceStep",
+        "Babel.Ai.Workspace.IAgentWorkspaceStore",
+
+        // ‏**وطرفُ الإنسان من حدّ الأسماء يعيش هنا بالإكراه لا بالذوق.** حارسُ
+        // `TheNameSheetIsNeverReachableFromTheAgent` يمنع `src/Babel.Ai/` من أن تسمّي
+        // منفذ جَرد الأسماء بحرفٍ واحد — فحقنُه في مسار النموذج لا يقع سهواً في سطر.
+        // وراسمُ الورقة يحتاجه، فموضعُه الجذر التركيبي: الموضع الذي يعرف الطرفين.
+        // ولذلك يسمّي السطحُ مِقبضَ البحث وغرضَه وإعداداته.
+        //
+        // ‏**والمِقبض نفسه لا يُفكّ هنا ولا في أي مكانٍ بلا مفتاح**: `ILookupHandles`
+        // منفذٌ، والتنفيذ `SignedLookupHandles` — **وليس في هذه القائمة** — يعمّي
+        // بـAES-256-GCM بمفتاحٍ من البيئة. فالسطح يسكّ ويفتدي بالمنفذ، ولا يقرأ بايتة.
+        "Babel.Ai.Agent.AgentCaller",
+        "Babel.Ai.Agent.IAgentQuestionSheets",
+        "Babel.Ai.Lookup.ILookupHandles",
+        "Babel.Ai.Lookup.LookupErrors",
+        "Babel.Ai.Lookup.LookupHandlePurpose",
+        "Babel.Ai.Lookup.LookupOptions",
+        "Babel.Ai.Lookup.RedeemedLookupHandle",
+
         // نقطة تركيب الدفتر وإعداده وسطح تدقيقه — ولا شيء من استمراريته ولا من محرّكه.
         "Babel.Ledger.LedgerModuleRegistration",
         "Babel.Ledger.LedgerOptions",
@@ -285,6 +337,35 @@ public sealed class Rule13_NoBusinessLogicInTheApi
         "Babel.Inventory.Surface.InventoryBalance",
         "Babel.Inventory.Surface.InventoryDivergence",
         "Babel.Inventory.Surface.InventoryValuationReport",
+
+        // ── التسكين: مستودع ← موقع ← رفّ، والنقل بينها ───────────────────────
+        // وهي أنواع السطح المنشور نفسه، لا تسرّبٌ من `Application` ولا من
+        // `Persistence`: كلٌّ منها يُترجَم في `InventorySurface` إلى مسوّدة الوحدة.
+        // ‏**ولاحظ ما ليس فيها: لا `PlacementLevel` ولا `QuantityClass`.** المستوى
+        // وصنف الكمّية يعبران السلك **نصّين** في حقلٍ مُعدَّد قيمُه في العقد، ونوعُهما
+        // ‏`internal` في `Persistence` ولا يبلغ الجذر التركيبي.
+        "Babel.Inventory.Surface.InventoryStoragePlaceRequest",
+        "Babel.Inventory.Surface.InventoryPlaceNameRequest",
+        "Babel.Inventory.Surface.InventoryStoragePlace",
+        "Babel.Inventory.Surface.InventoryStockTransferRequest",
+        "Babel.Inventory.Surface.InventoryStockTransfer",
+        "Babel.Inventory.Surface.InventoryPlacementBalance",
+
+        // ── وحدات القياس ومعاملات التحويل ────────────────────────────────────
+        "Babel.Inventory.Surface.InventoryUnitRequest",
+        "Babel.Inventory.Surface.InventoryUnit",
+        "Babel.Inventory.Surface.InventoryUnitConversionRequest",
+        "Babel.Inventory.Surface.InventoryUnitConversion",
+        "Babel.Inventory.Surface.InventoryConversionTrialRequest",
+        "Babel.Inventory.Surface.InventoryConversionResult",
+
+        // ── دورة حياة الصنف ──────────────────────────────────────────────────
+        // و`InventoryItemLifecycle` نوعٌ **مستقلّ عن `InventoryItem`** عمداً: إضافةُ
+        // حالة الصنف حقلاً على شكله كانت ستُغيّر استجابة ثلاث عمليات منشورة يستهلكها
+        // عملاء اليوم، والعقد يُوسَّع ولا يُغيَّر شكلُ عمليةٍ قائمة فيه.
+        "Babel.Inventory.Surface.InventoryItemRevisionRequest",
+        "Babel.Inventory.Surface.InventoryItemLifecycle",
+
         "Babel.Inventory.InventoryOptions",
 
         // ── سندات الصرف وأوامر الشراء والاستلام ──────────────────────────────

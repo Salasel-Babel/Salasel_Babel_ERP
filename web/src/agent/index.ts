@@ -3,6 +3,20 @@
 export { AgentQuestionSheet } from "./QuestionSheet";
 export type { AgentQuestionSheetProps } from "./QuestionSheet";
 
+export { AgentWorkspace } from "./AgentWorkspace";
+export type { AgentWorkspaceProps } from "./AgentWorkspace";
+
+export {
+  AGENT_DISABLED_CODE,
+  AGENT_SESSION_GONE_CODE,
+  AGENT_SPEND_CEILING_CODE,
+  EMPTY_THREAD,
+  foldAgentEvents,
+  hasCode,
+  withUtterance,
+} from "./workspace";
+export type { AgentLine, AgentThread } from "./workspace";
+
 export {
   AGENT_ANSWER_KEYS,
   AGENT_ENTITY_KINDS,

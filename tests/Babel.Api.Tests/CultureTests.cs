@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Xunit;
 
 namespace Babel.Api.Tests;
@@ -19,7 +20,7 @@ namespace Babel.Api.Tests;
 /// مطابقة تمرّ على تحويل حالة الأحرف تصير حجّة لغوية في مسار محاسبي.
 /// </para>
 /// </summary>
-public sealed class CultureTests
+public sealed partial class CultureTests
 {
     [Theory]
     [InlineData("ar_SA.UTF-8", "ar-SA", "UmAlQuraCalendar")]
@@ -64,7 +65,16 @@ public sealed class CultureTests
 
         // ‏1448-03 هو ما كان سيُكتب لو قرأ أي تنسيق تاريخ ثقافةَ العملية تحت ar-SA.
         Assert.Equal("2026-08", receipt.GetProperty("periodCode").GetString());
-        Assert.DoesNotContain("1448", text, StringComparison.Ordinal);
+
+        // ‏**والمسح يبحث عن شكلِ تاريخٍ هجريّ لا عن أربعة أرقام.** كان
+        // ‏`DoesNotContain("1448", text)` يمسح **جسم الاستجابة كلَّه** وفيه بصمةٌ
+        // سداسية عشرية عشوائية؛ فحمرَّ مرّةً على `…c37d891448066e…` — أربعةُ أرقامٍ
+        // وقعت مصادفةً داخل بصمة، والحارس يقول «تسرّب تاريخٌ هجريّ». والشرطةُ وحدها
+        // لا تكفي علاجاً: المعرّف الكوني سداسيٌّ **بشرطات**، فـ`1448-` تقع فيه أيضاً.
+        // فالشرط أن يكون المطابَق **خارج** جريان سداسيٍّ أو معرّف: ما قبله وما بعده
+        // ليسا من `[0-9a-fA-F-]`. وبذلك يُلتقط `"1448-03"` في حقلٍ أو في نصّ رسالة،
+        // ولا يُلتقط شيءٌ داخل بصمةٍ ولا داخل GUID.
+        Assert.DoesNotMatch(HijriPeriodShape(), text);
     }
 
     // فترة مستقلّة لكل ثقافة: حالات النظرية تشترك في قاعدة بيانات واحدة، والمجاميع
@@ -173,5 +183,37 @@ public sealed class CultureTests
                 code == "ledger.posting.no_fiscal_period" ? HttpStatusCode.UnprocessableEntity : HttpStatusCode.BadRequest,
                 response.StatusCode);
         }
+    }
+
+    /// <summary>
+    /// شكلُ الفترة الهجرية <c>NNNN-NN</c> بسنةٍ في المدى 1300–1499، <b>خارج أي جريان
+    /// سداسيّ أو معرّف كوني</b>. النظرتان الخلفية والأمامية هما العلاج: البصمة لا شرطة
+    /// فيها فلا تُطابق أصلاً، والمعرّف الكوني تسبقه أو تتبعه شرطةٌ أو محرفٌ سداسيّ فيُرفض.
+    /// </summary>
+    [GeneratedRegex(@"(?<![0-9a-fA-F-])1[34][0-9]{2}-[0-9]{2}(?![0-9a-fA-F-])", RegexOptions.CultureInvariant)]
+    private static partial Regex HijriPeriodShape();
+
+    /// <summary>
+    /// <b>حارس لافراغ للنمط نفسه.</b> نمطٌ توقّف عن المطابقة يجعل الفحص أعلاه يمرّ على
+    /// كل شيء — وهو بالضبط شكلُ الحارس الذي لا يحرس. والشواهد السالبة هي الغرض: بصمةٌ
+    /// حقيقية حمّرت الحارس القديم، ومعرّفٌ كونيّ يحمل <c>1448</c> في مقطعٍ منه.
+    /// </summary>
+    [Fact]
+    public void شكل_الفترة_الهجرية_يُطابق_التسرّب_ولا_يُطابق_البصمة_ولا_المعرّف()
+    {
+        // موجب: الشكل في حقلٍ، وفي نصّ رسالة.
+        Assert.Matches(HijriPeriodShape(), ("{\"periodCode\":\"1448-03\"}"));
+        Assert.Matches(HijriPeriodShape(), ("الفترة 1448-03 مقفلة"));
+        Assert.Matches(HijriPeriodShape(), ("1447-12"));
+
+        // سالب: البصمة التي حمّرت الحارس القديم فعلاً — لا شرطة فيها.
+        Assert.DoesNotMatch(HijriPeriodShape(), ("71122523b78715b2cc37d891448066e93ab73302e3901940"));
+
+        // سالب: معرّف كوني يحمل 1448 مقطعاً كاملاً — الشرطة قبله وبعده تمنعه.
+        Assert.DoesNotMatch(HijriPeriodShape(), ("d3305e1e-1448-4000-8000-000000000001"));
+        Assert.DoesNotMatch(HijriPeriodShape(), ("00001448-01ab-4000-8000-000000000001"));
+
+        // سالب: التاريخ الميلادي لا يُطابَق — المدى 13xx/14xx وحده.
+        Assert.DoesNotMatch(HijriPeriodShape(), ("2026-08"));
     }
 }

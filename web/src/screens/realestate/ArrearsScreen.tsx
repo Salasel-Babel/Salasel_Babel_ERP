@@ -118,16 +118,18 @@ function ArrearsReport(props: { companyId: string; transport: Transport }): Reac
             {dateValid ? t("realestate.arrears.asOfHint") : t("realestate.common.dateBad")}
           </span>
         </div>
-        <div className="inline-group">
-          <button
-            type="button"
-            className="btn btn-primary"
-            data-testid="re-arrears-load"
-            disabled={!dateValid || read.busy}
-            onClick={load}
-          >
-            {read.busy ? t("common.state.loading") : t("realestate.common.read")}
-          </button>
+        <div className="rowctl">
+          <div className="inline-group">
+            <button
+              type="button"
+              className="btn btn-primary"
+              data-testid="re-arrears-load"
+              disabled={!dateValid || read.busy}
+              onClick={load}
+            >
+              {read.busy ? t("common.state.loading") : t("realestate.common.read")}
+            </button>
+          </div>
         </div>
       </div>
 

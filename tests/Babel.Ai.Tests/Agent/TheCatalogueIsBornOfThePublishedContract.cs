@@ -69,21 +69,30 @@ public sealed class TheCatalogueIsBornOfThePublishedContract
     }
 
     /// <summary>
-    /// مجموعة الأدوات = كل عملية <c>draft…</c> منشورة، زائد أداتَي البروتوكول. لا واحدة أقلّ ولا أكثر.
+    /// مجموعة الأدوات = كل عملية <c>draft…</c> منشورة، زائد أدوات البروتوكول الثلاث. لا واحدة أقلّ ولا أكثر.
     /// </summary>
     [Fact]
-    public void الأدوات_هي_عمليات_المسوّدات_وحدها_مع_أداتي_البروتوكول()
+    public void الأدوات_هي_عمليات_المسوّدات_وحدها_مع_أدوات_البروتوكول()
     {
         string[] drafts = [.. Operations().Keys
             .Where(static name => name.StartsWith("draft", StringComparison.Ordinal))
             .Order(StringComparer.Ordinal)];
 
-        string[] expected = [.. new[] { AgentProtocolTools.AskQuestion, AgentProtocolTools.LookupEntity }
+        string[] expected = [.. new[]
+            {
+                AgentProtocolTools.AskQuestion,
+                AgentProtocolTools.LookupEntity,
+                AgentProtocolTools.ProposePlan,
+            }
             .Concat(drafts).Order(StringComparer.Ordinal)];
 
         string[] actual = [.. Catalogue.Tools.Select(static tool => tool.Name)];
         Assert.Equal<string>(expected, actual);
-        Assert.Equal(23, drafts.Length);
+        // ‏**23 ⇒ 24** بنشر `draftStockTransfer` — نقلٌ بين موقعين، مسوّدة لا تُحرّك
+        // رصيداً ولا تكتب قيداً. **وتنفيذُه `moveStockTransfer` ليس هنا** ولا يجوز أن
+        // يكون: المولّد يقبل الفعل `draft…` وحده، فبابُ التنفيذ — وهو يكتب حركتين في
+        // الدفتر المساعد لا تُحذفان — خارجٌ بالبناء.
+        Assert.Equal(24, drafts.Length);
     }
 
     /// <summary>ولا اسم عمليةِ ترحيلٍ واحد في الكتالوج — شاهدٌ سلبي على الإغلاق.</summary>
@@ -116,7 +125,7 @@ public sealed class TheCatalogueIsBornOfThePublishedContract
             Assert.Null(VoiceOperationGuard.Refuse(tool.OperationId));
         }
 
-        Assert.Equal(23, measured);
+        Assert.Equal(24, measured);
     }
 
     /// <summary>ولا مسارَ أداةٍ ينتهي بمقطعٍ لا يُعكَس — يُقرأ من المسار لا من الاسم.</summary>

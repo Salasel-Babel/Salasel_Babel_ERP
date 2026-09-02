@@ -446,15 +446,17 @@ export function CertificateScreen(): ReactNode {
                 placeholder="00000000-0000-0000-0000-000000000000"
               />
             </Field>
-            <div className="inline-group">
-              <Button
-                label={t("contracting.subcontract.read")}
-                onClick={() =>
-                  selectContracting({ subcontractId: subcontractIdInput, subcontractNumber: "" })
-                }
-                disabled={subcontractIdInput === ""}
-                testId="read-subcontract"
-              />
+            <div className="rowctl">
+              <div className="inline-group">
+                <Button
+                  label={t("contracting.subcontract.read")}
+                  onClick={() =>
+                    selectContracting({ subcontractId: subcontractIdInput, subcontractNumber: "" })
+                  }
+                  disabled={subcontractIdInput === ""}
+                  testId="read-subcontract"
+                />
+              </div>
             </div>
             {subcontract.isError ? <ReadProblem error={subcontract.error} /> : null}
             {subcontract.data ? (
@@ -524,13 +526,15 @@ export function CertificateScreen(): ReactNode {
                 placeholder="00000000-0000-0000-0000-000000000000"
               />
             </Field>
-            <div className="inline-group">
-              <Button
-                label={t("contracting.certificate.read")}
-                onClick={() => void readCertificate(certificateId)}
-                disabled={certificateId === ""}
-                testId="read-certificate"
-              />
+            <div className="rowctl">
+              <div className="inline-group">
+                <Button
+                  label={t("contracting.certificate.read")}
+                  onClick={() => void readCertificate(certificateId)}
+                  disabled={certificateId === ""}
+                  testId="read-certificate"
+                />
+              </div>
             </div>
           </div>
         </Panel>

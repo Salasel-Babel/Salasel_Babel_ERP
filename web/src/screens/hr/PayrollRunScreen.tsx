@@ -537,7 +537,7 @@ export function PayrollRunScreen(): ReactNode {
               data-testid="hr-run-id" value={runId}
               onChange={(e) => { setRunId(e.target.value); setFocus({ runId: e.target.value }); }} />
           </Field>
-          <div className="hr-act">
+          <div className="rowctl hr-act">
             <Button
               label={t("hr.act.draft")}
               kind="primary"

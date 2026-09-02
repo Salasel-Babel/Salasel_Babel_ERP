@@ -11,7 +11,7 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link, Outlet, useRouterState } from "@tanstack/react-router";
+import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { health } from "../api/generated/client";
 import { useApi } from "./api-context";
 import { useT } from "../i18n/react";
@@ -21,6 +21,7 @@ import { KeyboardHelp } from "./shell/KeyboardHelp";
 import { CommandPalette } from "./shell/CommandPalette";
 import { SectionNav } from "./shell/SectionNav";
 import { VoiceDock } from "./shell/VoiceDock";
+import { AgentWorkspace } from "../agent";
 import { VoiceDraftBanner } from "./VoiceDraftBanner";
 import { sectionOf } from "./shell/sections";
 import { MOTION } from "../ui";
@@ -29,9 +30,11 @@ import accessiblePaletteHref from "../styles/theme/theme-accessible.css?url";
 /** الهيكل حول كل شاشة. */
 export function AppShell(): ReactNode {
   const { t } = useT();
-  const { transport } = useApi();
+  const { transport, config } = useApi();
   const [helpOpen, setHelpOpen] = useState(false);
   const [cmdOpen, setCmdOpen] = useState(false);
+  const [agentOpen, setAgentOpen] = useState(false);
+  const navigate = useNavigate();
   const path = useRouterState({ select: (s) => s.location.pathname });
   const section = sectionOf(path);
   const tint = { "--section-tint": section.tint } as CSSProperties;
@@ -143,6 +146,16 @@ export function AppShell(): ReactNode {
           <button
             type="button"
             className="btn btn-sm"
+            data-testid="open-agent"
+            aria-expanded={agentOpen}
+            title={t("agent.workspace.openTitle")}
+            onClick={() => setAgentOpen((v) => !v)}
+          >
+            {t("agent.workspace.open")}
+          </button>
+          <button
+            type="button"
+            className="btn btn-sm"
             data-testid="open-command"
             aria-keyshortcuts="Control+K Meta+K"
             onClick={() => setCmdOpen(true)}
@@ -168,6 +181,21 @@ export function AppShell(): ReactNode {
           </div>
         </main>
       </div>
+
+      {/* مساحةُ عمل الوكيل: **لوحٌ واحد ينفتح فوق أي شاشة** — لا ميزةٌ مبعثرة
+          على كل شاشة. وموضعُه في الهيكل لا في شاشةٍ بعينها للسبب نفسه الذي
+          وضع لوحةَ المسوّدة المنطوقة هنا: ما يعبر الشاشات لا يُنسَخ فيها. */}
+      {agentOpen && config.companyId !== "" ? (
+        <AgentWorkspace
+          transport={transport}
+          companyId={config.companyId}
+          onClose={() => setAgentOpen(false)}
+          onOpenScreen={(route) => {
+            setAgentOpen(false);
+            void navigate({ to: route });
+          }}
+        />
+      ) : null}
 
       <VoiceDock />
       {cmdOpen ? <CommandPalette onClose={() => setCmdOpen(false)} /> : null}

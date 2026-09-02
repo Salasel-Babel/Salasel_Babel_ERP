@@ -29,6 +29,17 @@ public class NegativeFixtureTests : IDisposable
             $"expected rule {ruleId} to fire, got: " + string.Join(" | ", findings.Select(f => f.RuleId).Distinct()));
     }
 
+    /// <summary>
+    /// الوجه الآخر: تعديلٌ **مسموح** لا يُنتج خطأً واحداً. وحارسٌ يرفض كل شيء لا يميّز شيئاً.
+    /// The other face: a permitted edit produces no error at all.
+    /// </summary>
+    private void AssertNoError()
+    {
+        var errors = Validate().Where(f => f.Severity == Severity.Error).ToList();
+        Assert.True(errors.Count == 0,
+            "expected a clean run, got: " + string.Join(" | ", errors.Select(f => f.RuleId + " " + f.Where)));
+    }
+
     private string Accounts => Path.Combine(_root, "chart-of-accounts", "accounts.csv");
     private string Roles => Path.Combine(_root, "posting-matrix", "account-roles.csv");
     private string RoleMap => Path.Combine(_root, "posting-matrix", "role-map.default.csv");
@@ -123,11 +134,48 @@ public class NegativeFixtureTests : IDisposable
         AssertFires("V06");
     }
 
+    /// <summary>
+    /// ‏<c>name_en</c> **مكتوباً فارغاً** خطأ: مفتاحٌ موجود بلا قيمة نصفُ ترجمةٍ لا اختيار.
+    /// An English gloss written empty is an error — a present key with no value is half a translation.
+    /// </summary>
     [Fact]
-    public void V06_fires_when_an_event_loses_its_english_name()
+    public void V06_fires_when_the_english_gloss_is_written_empty()
     {
         EditSalesInvoice(ev => ev["name_en"] = "");
         AssertFires("V06");
+    }
+
+    /// <summary>
+    /// ‏<c>name_ar</c> **هو السجلّ** ولا يغيب — وهذا هو نصف القاعدة الذي بقي إلزامياً.
+    /// The Arabic name is the record and never goes missing.
+    /// </summary>
+    [Fact]
+    public void V06_fires_when_an_event_loses_its_arabic_record()
+    {
+        EditSalesInvoice(ev => ev["name_ar"] = "");
+        AssertFires("V06");
+    }
+
+    /// <summary>
+    /// <b>والنموّ مفتوح: حدثٌ بلا شرحٍ إنجليزي إطلاقاً يمرّ نظيفاً.</b>
+    /// <para>
+    /// هذا هو الشاهد السالب للقرار (‏ADR-جديد · gloss-is-not-column-debt): العربية سجلٌّ
+    /// إلزامي والإنجليزية شرحٌ اختياري، فحذفُ المفتاح كلَّه ليس عطلاً. وقبل هذا الفرع
+    /// كان المخطّط يوجب <c>name_en</c> وكان السقف يعدّ الشرح ديناً، فكان كلُّ حدث ترحيلٍ
+    /// جديد يكسر حارساً.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void V06_stays_silent_when_an_event_carries_no_english_gloss_at_all()
+    {
+        EditSalesInvoice(ev =>
+        {
+            ev.Remove("name_en");
+            ev["trigger"]!.AsObject().Remove("name_en");
+            if (ev["reversal"] is JsonObject reversal) reversal.Remove("name_en");
+        });
+
+        AssertNoError();
     }
 
     [Fact]

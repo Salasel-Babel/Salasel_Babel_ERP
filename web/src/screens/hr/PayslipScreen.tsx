@@ -122,7 +122,7 @@ export function PayslipScreen(): ReactNode {
               placeholder="00000000-0000-0000-0000-000000000000"
             />
           </Field>
-          <div className="hr-act">
+          <div className="rowctl hr-act">
             <Button
               label={t("hr.act.read")}
               kind="primary"
@@ -219,7 +219,7 @@ export function PayslipScreen(): ReactNode {
                 <caption className="visually-hidden">{t("hr.payslip.components")}</caption>
                 <thead>
                   <tr>
-                    <th scope="col">{t("hr.payslip.lineNo")}</th>
+                    <th scope="col" className="n">{t("hr.payslip.lineNo")}</th>
                     <th scope="col">{t("hr.payslip.componentName")}</th>
                     <th scope="col">{t("hr.field.kind")}</th>
                     <th scope="col">{t("hr.payslip.entersWage")}</th>
@@ -235,7 +235,7 @@ export function PayslipScreen(): ReactNode {
                     const untranslated = resolved !== null && resolved.fallback && locale !== SOURCE;
                     return (
                       <tr key={line.lineNo}>
-                        <td><Num value={line.lineNo} /></td>
+                        <td className="n"><Num value={line.lineNo} /></td>
                         <td>
                           {resolved ? (
                             <span className="hr-name">

@@ -20,6 +20,12 @@ public enum AgentTurnEventKind
     /// <summary>غمض اسمٌ: تُعرض ورقة السؤال.</summary>
     QuestionRaised = 5,
 
+    /// <summary>
+    /// <b>خطّةٌ مُعلَنة قبل تنفيذ أولى خطواتها</b> — وهي جواب الطلب المركَّب المتداخل.
+    /// ولا سلطة لها: كل خطوةٍ تمرّ بالبوّابة نفسها حين يحين دورها.
+    /// </summary>
+    PlanProposed = 9,
+
     /// <summary><b>هبطت مسوّدة على شاشتها.</b> ولا ترحيل — الترحيل فعلٌ بصريّ يدويّ.</summary>
     DraftLanded = 6,
 
@@ -43,7 +49,9 @@ public sealed record AgentTurnEvent
         string? questionId,
         string? screenRoute,
         IReadOnlyList<Error>? errors,
-        AgentTurnMetrics? metrics)
+        AgentTurnMetrics? metrics,
+        string? registerKey = null,
+        IReadOnlyList<string>? steps = null)
     {
         Kind = kind;
         Text = text;
@@ -52,6 +60,8 @@ public sealed record AgentTurnEvent
         ScreenRoute = screenRoute;
         Errors = errors ?? [];
         Metrics = metrics;
+        RegisterKey = registerKey;
+        Steps = steps ?? [];
     }
 
     /// <summary>شكل الحدث.</summary>
@@ -65,6 +75,22 @@ public sealed record AgentTurnEvent
 
     /// <summary>معرّف ورقة السؤال — مِقبضٌ معتِم لا فهرس.</summary>
     public string? QuestionId { get; }
+
+    /// <summary>
+    /// مفتاح السجلّ الذي غمض فيه الاسم — <c>customer</c> · <c>supplier</c> · …
+    /// <para>
+    /// <b>وهو مفتاح سجلٍّ لا اسمَ صفّ ولا عدد</b>: النموذج يعرفه سلفاً، فهو في مفردة
+    /// <c>lookup_entity</c> المغلقة وهو من نطق به. ووجودُه هنا يجعل اللوحة تعرف
+    /// <b>أيّ سجلٍّ</b> تُجرد منه الورقة محلّياً بلا أن تسأل النموذج.
+    /// </para>
+    /// </summary>
+    public string? RegisterKey { get; }
+
+    /// <summary>
+    /// خطوات الخطّة بنصّها العربي كما أعلنها النموذج — <b>عناوينُ عملٍ لا معرّفات</b>.
+    /// فارغةٌ في كل حدثٍ غير <see cref="AgentTurnEventKind.PlanProposed"/>.
+    /// </summary>
+    public IReadOnlyList<string> Steps { get; }
 
     /// <summary>مسار شاشة المستند الذي هبطت عليه المسوّدة.</summary>
     public string? ScreenRoute { get; }
@@ -96,10 +122,20 @@ public sealed record AgentTurnEvent
     public static AgentTurnEvent ToolRefused(string toolName, IReadOnlyList<Error> errors) =>
         new(AgentTurnEventKind.ToolRefused, null, toolName, null, null, errors, null);
 
-    /// <summary>ورقة سؤال.</summary>
+    /// <summary>
+    /// ورقة سؤال. <b>ومعها ما تحتاجه اللوحة لتجردها محلّياً</b>: مفتاح السجلّ وكلامُ
+    /// المستخدم نفسه — وكلاهما معلومٌ للنموذج سلفاً لأنه هو من نطق به.
+    /// </summary>
     /// <param name="questionId">معرّفها المعتِم.</param>
-    public static AgentTurnEvent QuestionRaised(string questionId) =>
-        new(AgentTurnEventKind.QuestionRaised, null, null, questionId, null, null, null);
+    /// <param name="registerKey">مفتاح السجلّ.</param>
+    /// <param name="subjectText">كلام المستخدم كما بحث به النموذج.</param>
+    public static AgentTurnEvent QuestionRaised(string questionId, string registerKey, string subjectText) =>
+        new(AgentTurnEventKind.QuestionRaised, subjectText, null, questionId, null, null, null, registerKey);
+
+    /// <summary>خطّةٌ مُعلَنة.</summary>
+    /// <param name="steps">عناوين الخطوات بترتيبها.</param>
+    public static AgentTurnEvent PlanProposed(IReadOnlyList<string> steps) =>
+        new(AgentTurnEventKind.PlanProposed, null, null, null, null, null, null, null, steps);
 
     /// <summary>هبوط مسوّدة.</summary>
     /// <param name="screenRoute">مسار شاشتها.</param>

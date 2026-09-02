@@ -58,6 +58,11 @@ public sealed partial class AdrRegisterIsSelfConsistent
     /// <summary>
     /// كلمات العدد العربية كما تُكتب في صدر الفهرس.
     /// <para>
+    /// <b>ومُدَّ إلى الثمانين حين بلغ السجل الثالث والسبعين.</b> والدرس أدناه هو سببُ المدّ
+    /// نفسه: قاموسٌ ينفد يُسقط البناء برسالة «كلمة العدد غير معروفة» — وهي رسالة صحيحة عن
+    /// حدٍّ في الحارس لا عن عطلٍ في الفهرس — فيُمَدّ عشرةً عشرة قبل أن يُصطدم به لا بعده.
+    /// </para>
+    /// <para>
     /// <b>الجدول يمتدّ إلى الأربعين عمداً.</b> النسخة الأولى وقفت عند «العشرون»، فأسقطت البناء
     /// عند القرار الحادي والعشرين برسالة «كلمة العدد غير معروفة» — وهي رسالة صحيحة عن حدٍّ في
     /// الحارس لا عن عطل في الفهرس. حارسٌ ينفد قاموسه يُدرّب من يصطدم به على توسيع القاموس
@@ -82,6 +87,9 @@ public sealed partial class AdrRegisterIsSelfConsistent
         "التاسع والخمسون", "الستون", "الحادي والستون", "الثاني والستون",
         "الثالث والستون", "الرابع والستون", "الخامس والستون", "السادس والستون",
         "السابع والستون", "الثامن والستون", "التاسع والستون", "السبعون",
+        "الحادي والسبعون", "الثاني والسبعون", "الثالث والسبعون", "الرابع والسبعون",
+        "الخامس والسبعون", "السادس والسبعون", "السابع والسبعون", "الثامن والسبعون",
+        "التاسع والسبعون", "الثمانون",
     ];
 
     // ── الأنماط ─────────────────────────────────────────────────────────────
@@ -114,6 +122,13 @@ public sealed partial class AdrRegisterIsSelfConsistent
     /// </summary>
     [GeneratedRegex(@"ADR-([0-9]{4})(?![0-9])", RegexOptions.CultureInvariant)]
     private static partial Regex LatinDigitReference();
+
+    /// <summary>
+    /// عنوانُ قسم النقض بصيغه الثلاث المستعملة في السجلّ: نقَض (ينقض · تنقض) وسقَط (يُسقط).
+    /// والتشكيل اختياريّ في الجذر الثاني لأن السجلّ يكتبه مُشكَّلاً ويكتبه عارياً.
+    /// </summary>
+    [GeneratedRegex(@"^#{2,}[^\n]*(?:ينقض|تنقض|ي\u064F?سقط)[^\n]*$", RegexOptions.Multiline | RegexOptions.CultureInvariant)]
+    private static partial Regex FalsificationHeading();
 
     /// <summary>‏<c>ADR-٠٠١٦</c> — الأرقام العربية-الهندية. هذه الصيغة هي ما يفوت البحث.</summary>
     [GeneratedRegex(@"ADR-([٠-٩]{4})", RegexOptions.CultureInvariant)]
@@ -399,6 +414,62 @@ public sealed partial class AdrRegisterIsSelfConsistent
         Assert.True(rule >= 0, "قاعدة تخصيص المعرّفات مفقودة من docs/decisions/README.md — بدونها يعود التصادم في أول فرعين متوازيين");
         Assert.True(index > rule, "قاعدة تخصيص المعرّفات يجب أن تسبق الفهرس: تُقرأ قبل إضافة القرار لا بعده");
         Assert.Contains("ADR-جديد", text, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// <b>كل قرارٍ يحمل قسمَ ما ينقضه — وكانت القاعدة في صدر السجلّ بلا حارس.</b>
+    /// <para>
+    /// <c>docs/decisions/README.md</c> يقول في سطره التاسع: «لا يُكتب أي قرار هنا كعقيدة
+    /// نهائية. كل قرار يحمل قسم <b>«ما ينقض هذا القرار»</b>». وهي أهمّ قاعدةٍ في السجلّ
+    /// كلّه — قرارٌ بلا شرطِ نقضٍ ليس قراراً بل عقيدة — <b>ولم يكن يفحصها شيء</b>. فنزل
+    /// <c>ADR-0069</c> بلا القسم، والبوّابة خضراء، والمُنزِل هو من لاحظه بعينه.
+    /// </para>
+    /// <para>
+    /// <b>ولماذا مجموعةُ صيغٍ لا صيغةٌ واحدة:</b> السجلّ يستعمل ثلاث صيغ لهذا العنوان —
+    /// «ما ينقض هذا القرار» (٤٩ مرّة) و«المُحفِّزات التي تنقض هذا القرار» (٤ مرّات)
+    /// و«ما الذي يُسقط هذا القرار» (مرّتان). وتوحيدُها يعني تحرير ثمانٍ وستّين وثيقة
+    /// لتمرير حارس، وهو ثمنٌ لا يشتري شيئاً.
+    /// </para>
+    /// <para>
+    /// <b>وهذه قائمةٌ تسقط مغلقةً، وذلك هو الفرق:</b> القوائم التي هُزمت في هذا المستودع
+    /// كانت تسقط <b>مفتوحةً</b> — عنصرٌ ليس فيها <b>يمرّ</b> بوصفه مقبولاً (فواصلُ الجُمل
+    /// هزمها أمرٌ مسبوقٌ بواو، وخياراتُ منصّة الاختبار هزمها <c>--diag</c>). وهذه بالعكس:
+    /// صيغةٌ رابعة <b>تُحمِّر البناء</b> فيراها كاتبها فوراً، فإمّا اتّبع إحدى الثلاث
+    /// وإمّا وسّعها <b>في فرقٍ يُراجَع</b>. ولا تمرّ وثيقةٌ بلا القسم بحالٍ من الأحوال.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void EveryAdrCarriesTheSectionThatCouldFalsifyIt()
+    {
+        Register register = Parsed.Value;
+
+        List<string> missing =
+        [
+            .. register.Documents
+                .Where(static document => !FalsificationHeading().IsMatch(
+                    File.ReadAllText(Path.Combine(RepositoryLayout.Root, DecisionsFolder, document.FileName))))
+                .Select(static document => document.FileName)
+                .Order(StringComparer.Ordinal)
+        ];
+
+        Assert.True(
+            missing.Count == 0,
+            "قراراتٌ بلا قسم «ما ينقض هذا القرار»: "
+                + string.Join(" · ", missing)
+                + " — والقاعدة في docs/decisions/README.md §الصدر. اكتب القسم؛ ولا تُوسّع نمط الحارس"
+                + " إلا إن كانت الصيغة جديدةً عمداً، وحينها وسّعه في الفرق نفسه.");
+
+        // حارس لافراغ: نمطٌ توقّف عن المطابقة يجعل الفحص أعلاه يمرّ على سجلٍّ فارغ.
+        Assert.True(
+            register.Documents.Count >= MinimumAdrCount,
+            FormattableString.Invariant($"قُرئت {register.Documents.Count} وثيقة قرار فقط — المُحلِّل ضامر والقاعدة تمرّ فراغاً"));
+
+        Assert.Matches(FalsificationHeading(), "## ما ينقض هذا القرار");
+        Assert.Matches(FalsificationHeading(), "## ٨ · ما ينقض هذا القرار");
+        Assert.Matches(FalsificationHeading(), "## المُحفِّزات التي تنقض هذا القرار");
+        Assert.Matches(FalsificationHeading(), "## ٦ · ما الذي يُسقط هذا القرار");
+        Assert.DoesNotMatch(FalsificationHeading(), "## القرار");
+        Assert.DoesNotMatch(FalsificationHeading(), "نصٌّ يقول ينقض هذا القرار بلا عنوان");
     }
 
     /// <summary>

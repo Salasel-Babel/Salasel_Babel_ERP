@@ -322,6 +322,36 @@ public sealed class AgentTurnService
         AgentTurnState state,
         CancellationToken cancellationToken)
     {
+        // ── الخطّة: إعلانٌ يُعرض على الإنسان، ولا يُنفَّذ منه شيء ──────────────
+        //
+        // ‏**ولماذا لا تنتظر هذه الأداة إنساناً:** انتظارُها كان سيجعل «أوافق على
+        // الخطّة» تأكيداً ثانياً فوق تأكيد كل خطوة، فيتعلّم المستخدم أن يضغط «موافق»
+        // مرّتين على كل شيء — وهو بعينه ما يُبطل التأكيد الذي يهمّ. والتأكيد الذي يهمّ
+        // واحد: <b>شكلُ بيانات المسوّدة قبل أن تهبط</b>، وهو عند منفّذ المسوّدات.
+        if (string.Equals(dispatch.Tool.Name, AgentProtocolTools.ProposePlan, StringComparison.Ordinal))
+        {
+            JsonObject planned = (JsonObject)JsonNode.Parse(dispatch.Body)!;
+
+            List<string> steps = [];
+            if (planned["steps"] is JsonArray declared)
+            {
+                foreach (JsonNode? step in declared)
+                {
+                    if (step is not null && step.GetValueKind() == JsonValueKind.String)
+                    {
+                        steps.Add(step.GetValue<string>());
+                    }
+                }
+            }
+
+            return (new AgentTranscriptEntry(
+                AgentWireRole.User,
+                AgentWireBlockKind.ToolResult,
+                "{\"plan\":\"recorded\"}",
+                ToolUseId: dispatch.CallId,
+                ToolName: dispatch.Tool.Name), AgentTurnEvent.PlanProposed(steps));
+        }
+
         if (string.Equals(dispatch.Tool.Name, AgentProtocolTools.LookupEntity, StringComparison.Ordinal))
         {
             JsonObject arguments = (JsonObject)JsonNode.Parse(dispatch.Body)!;
@@ -351,7 +381,7 @@ public sealed class AgentTurnService
                 ToolName: dispatch.Tool.Name);
 
             AgentTurnEvent? panel = answer.Outcome == NameLookupOutcome.NeedsQuestion
-                ? AgentTurnEvent.QuestionRaised(answer.QuestionId!)
+                ? AgentTurnEvent.QuestionRaised(answer.QuestionId!, registerKey, text)
                 : null;
 
             return (result, panel);

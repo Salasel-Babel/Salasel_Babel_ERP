@@ -55,8 +55,12 @@ public sealed class TheGateIsTheOnlyDoorToDispatch
     [Fact]
     public void TheDispatchHasExactlyOneConstructionSiteAndItIsTheGate()
     {
+        // ‏**أربعة نداءاتٍ في ملفٍّ واحد**: خطّةٌ، وبحثٌ، وسؤالٌ، وعمليةُ مسوّدة —
+        // ولكلٍّ منها فرعُها في البوّابة بعد أن تمرّ بكل ما قبلها. والمقيس هنا
+        // **الملفّ** لا العدد: أربعةٌ كلّها في البوّابة تبقى موضع إنشاءٍ واحداً،
+        // وواحدٌ خارجها يكسر الحارس.
         Assert.Equal(
-            [GateFile, GateFile, GateFile],
+            [GateFile, GateFile, GateFile, GateFile],
             Sites("new AgentDispatch("));
     }
 

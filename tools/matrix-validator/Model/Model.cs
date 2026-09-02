@@ -82,28 +82,30 @@ internal sealed class EventFile
 internal sealed class Bilingual
 {
     [JsonPropertyName("name_ar")] public string NameAr { get; set; } = "";
-    [JsonPropertyName("name_en")] public string NameEn { get; set; } = "";
+
+    /// <summary>شرحٌ اختياري: <c>null</c> يعني «لم يُكتب»، و<c>""</c> يعني «كُتب فارغاً» وهو خطأ.</summary>
+    [JsonPropertyName("name_en")] public string? NameEn { get; set; }
 }
 
 internal sealed class Caveat
 {
     [JsonPropertyName("ref")] public string Ref { get; set; } = "";
     [JsonPropertyName("text_ar")] public string TextAr { get; set; } = "";
-    [JsonPropertyName("text_en")] public string TextEn { get; set; } = "";
+    [JsonPropertyName("text_en")] public string? TextEn { get; set; }
 }
 
 internal sealed class AmountVariable
 {
     [JsonPropertyName("name_ar")] public string NameAr { get; set; } = "";
-    [JsonPropertyName("name_en")] public string NameEn { get; set; } = "";
+    [JsonPropertyName("name_en")] public string? NameEn { get; set; }
     [JsonPropertyName("derivation_ar")] public string DerivationAr { get; set; } = "";
-    [JsonPropertyName("derivation_en")] public string DerivationEn { get; set; } = "";
+    [JsonPropertyName("derivation_en")] public string? DerivationEn { get; set; }
 }
 
 internal sealed class ConditionDef
 {
     [JsonPropertyName("name_ar")] public string NameAr { get; set; } = "";
-    [JsonPropertyName("name_en")] public string NameEn { get; set; } = "";
+    [JsonPropertyName("name_en")] public string? NameEn { get; set; }
     [JsonPropertyName("expression")] public string Expression { get; set; } = "";
 }
 
@@ -111,7 +113,7 @@ internal sealed class Scenario
 {
     [JsonPropertyName("code")] public string Code { get; set; } = "";
     [JsonPropertyName("name_ar")] public string NameAr { get; set; } = "";
-    [JsonPropertyName("name_en")] public string NameEn { get; set; } = "";
+    [JsonPropertyName("name_en")] public string? NameEn { get; set; }
     [JsonPropertyName("true_conditions")] public List<string> TrueConditions { get; set; } = new();
     [JsonPropertyName("zero_amounts")] public List<string> ZeroAmounts { get; set; } = new();
     [JsonPropertyName("identities")] public Dictionary<string, string> Identities { get; set; } = new();
@@ -123,7 +125,7 @@ internal sealed class SweepSpec
     [JsonPropertyName("classes")] public List<string> Classes { get; set; } = new();
     [JsonPropertyName("postable_only")] public bool PostableOnly { get; set; }
     [JsonPropertyName("name_ar")] public string NameAr { get; set; } = "";
-    [JsonPropertyName("name_en")] public string NameEn { get; set; } = "";
+    [JsonPropertyName("name_en")] public string? NameEn { get; set; }
 }
 
 internal sealed class PostingLine
@@ -139,7 +141,7 @@ internal sealed class PostingLine
     [JsonPropertyName("when")] public System.Text.Json.JsonElement? When { get; set; }
     [JsonPropertyName("sweep")] public SweepSpec? Sweep { get; set; }
     [JsonPropertyName("note_ar")] public string NoteAr { get; set; } = "";
-    [JsonPropertyName("note_en")] public string NoteEn { get; set; } = "";
+    [JsonPropertyName("note_en")] public string? NoteEn { get; set; }
 
     public IReadOnlyList<string> WhenConditions()
     {
@@ -157,7 +159,7 @@ internal sealed class PostingEvent
 {
     [JsonPropertyName("event_code")] public string EventCode { get; set; } = "";
     [JsonPropertyName("name_ar")] public string NameAr { get; set; } = "";
-    [JsonPropertyName("name_en")] public string NameEn { get; set; } = "";
+    [JsonPropertyName("name_en")] public string? NameEn { get; set; }
     [JsonPropertyName("module")] public string Module { get; set; } = "";
     [JsonPropertyName("status")] public string Status { get; set; } = "";
     [JsonPropertyName("source_ref")] public string SourceRef { get; set; } = "";

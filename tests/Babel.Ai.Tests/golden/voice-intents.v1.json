@@ -3053,6 +3053,61 @@
         "totalRent": "60000",
         "startsOn": "2026-09-01"
       }
+    },
+    {
+      "note_ar": "‏**انحدارُ الترقيم لا يعود**: الفاصلة بين الدليل والاسم مُهمَلة كما كانت، والقراءة تطابق التوأمَ بلا فاصلة حرفاً بحرف.",
+      "transcript": "سجل سند قبض من العميل، مؤسسة الرياض بمبلغ ثلاثة آلاف ريال نقد اليوم",
+      "intent": "accounting.customer_receipt.record",
+      "slots": {
+        "customer": "مؤسسة الرياض",
+        "amount": "3000",
+        "method": "نقد",
+        "receivedOn": "2026-08-31"
+      }
+    },
+    {
+      "note_ar": "اسمٌ حقيقيّ فيه كلمة «سجل» — وهي فعلُ إطلاقٍ في السجلّ نفسه. حكمُ المقطع يقيس الشكل لا الكلمات، فلا يقطعه.",
+      "transcript": "سجل سند قبض من العميل مؤسسة سجل الرياض بمبلغ ألف ريال نقد اليوم",
+      "intent": "accounting.customer_receipt.record",
+      "slots": {
+        "customer": "مؤسسة سجل الرياض",
+        "amount": "1000",
+        "method": "نقد",
+        "receivedOn": "2026-08-31"
+      }
+    },
+    {
+      "note_ar": "‏«المساكن» تنتهي بشكل الضمير «كن» — وأداةُ التعريف تُبرّئها، فالأداة لا تجتمع مع فعلٍ تامّ.",
+      "transcript": "سجل سند صرف للمورد مؤسسة المساكن بمبلغ ألف ريال تحويل اليوم",
+      "intent": "accounting.supplier_payment.record",
+      "slots": {
+        "supplier": "مؤسسة المساكن",
+        "amount": "1000",
+        "method": "تحويل",
+        "paidOn": "2026-08-31"
+      }
+    },
+    {
+      "note_ar": "‏«الركن» و«الذهبي» اسمٌ من ثلاث كلمات على الحدّ المشتقّ من المتجهات — يمرّ كاملاً.",
+      "transcript": "سجل سند قبض من العميل شركة الركن الذهبي بمبلغ ألف ريال نقد اليوم",
+      "intent": "accounting.customer_receipt.record",
+      "slots": {
+        "customer": "شركة الركن الذهبي",
+        "amount": "1000",
+        "method": "نقد",
+        "receivedOn": "2026-08-31"
+      }
+    },
+    {
+      "note_ar": "‏«مها» اسمُ علمٍ ينتهي بشكل الضمير «ها»؛ وأرضيّةُ الجذع (ثلاثة أحرف) تحميه.",
+      "transcript": "سجل سند قبض من العميل مها العتيبي بمبلغ ألف ريال نقد اليوم",
+      "intent": "accounting.customer_receipt.record",
+      "slots": {
+        "customer": "مها العتيبي",
+        "amount": "1000",
+        "method": "نقد",
+        "receivedOn": "2026-08-31"
+      }
     }
   ],
   "missing": [
@@ -3287,10 +3342,15 @@
       ]
     },
     {
+      "note_ar": "‏«ينتهي 2027-03-31» ليست جزءاً من رقم الضمان، والقارئ لا يعرف أين ينتهي الرمز. وكان يبتره إلى أربع كلمات فيُنتج «ض-4410 ينتهي 2027-03-31» رقمَ ضمانٍ صامتاً؛ صار يرفضه باسمه.",
       "transcript": "سجل ضمان بنكي للعقد برج الياسمين رقم الضمان ض-4410 ينتهي 2027-03-31",
       "intent": "contracting.guarantee.draft",
       "missing": [
-        "amount"
+        "amount",
+        "guaranteeNumber"
+      ],
+      "faults": [
+        "ai.voice.name_not_bounded"
       ]
     },
     {
@@ -3368,6 +3428,72 @@
       "intent": "realestate.lease_contract.draft",
       "missing": [
         "lessee"
+      ]
+    },
+    {
+      "note_ar": "الهزيمة الأولى المقيسة على develop: كان يُنتج العميل «شركة المسار الامثل وانشئ لها حسابا» ولا يرفض شيء.",
+      "transcript": "سجل سند قبض من شركة المسار الامثل وانشئ لها حسابا نقد بقيمة 5000 ريال بتاريخ اليوم",
+      "intent": "accounting.customer_receipt.record",
+      "missing": [
+        "customer"
+      ],
+      "faults": [
+        "ai.voice.name_not_bounded"
+      ]
+    },
+    {
+      "note_ar": "الصيغة الخليجية اليومية «واذا ما لقيتها سجلها عندك» — سبع كلمات في مقطع اسم.",
+      "transcript": "سجل سند قبض من شركة النور واذا ما لقيتها سجلها عندك بمبلغ الف ريال نقد اليوم",
+      "intent": "accounting.customer_receipt.record",
+      "missing": [
+        "customer"
+      ],
+      "faults": [
+        "ai.voice.name_not_bounded"
+      ]
+    },
+    {
+      "note_ar": "ثلاث كلمات داخل الحدّ، وآخرها فعلٌ بمفعوله «سجلها» — يلتقطه شكلُ الضمير المتّصل لا قائمةُ كلمات.",
+      "transcript": "سجل سند قبض من العميل مؤسسة الرياض سجلها بمبلغ الف ريال نقد اليوم",
+      "intent": "accounting.customer_receipt.record",
+      "missing": [
+        "customer"
+      ],
+      "faults": [
+        "ai.voice.name_not_bounded"
+      ]
+    },
+    {
+      "note_ar": "«وحولها» صيغةٌ مصرَّفة بواو عطفٍ سابقة — لا تُطابقها قائمةُ كلماتٍ كاملة أبداً.",
+      "transcript": "سجل سند قبض من مؤسسة النور وحولها للمحاسب بمبلغ الف ريال نقد اليوم",
+      "intent": "accounting.customer_receipt.record",
+      "missing": [
+        "customer"
+      ],
+      "faults": [
+        "ai.voice.name_not_bounded"
+      ]
+    },
+    {
+      "note_ar": "ضمير الجمع «هم» من المجموعة النحوية نفسها — لا يحتاج بنداً جديداً في قائمة.",
+      "transcript": "سجل سند قبض من العميل مؤسسة الرياض راجعهم بمبلغ الف ريال نقد اليوم",
+      "intent": "accounting.customer_receipt.record",
+      "missing": [
+        "customer"
+      ],
+      "faults": [
+        "ai.voice.name_not_bounded"
+      ]
+    },
+    {
+      "note_ar": "‏«ارسلها» صيغةُ أمرٍ بهمزة وصل ومفعول متّصل — الشكل يلتقطها والقائمة لا.",
+      "transcript": "سجل سند قبض من العميل مؤسسة الرياض ارسلها للمحاسب بمبلغ الف ريال نقد اليوم",
+      "intent": "accounting.customer_receipt.record",
+      "missing": [
+        "customer"
+      ],
+      "faults": [
+        "ai.voice.name_not_bounded"
       ]
     }
   ],

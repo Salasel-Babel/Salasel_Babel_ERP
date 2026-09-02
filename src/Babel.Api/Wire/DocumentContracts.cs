@@ -651,3 +651,254 @@ internal sealed record StockMovementListDto(int MovementCount, IReadOnlyList<Sto
 /// <param name="BalanceCount">عدد الأرصدة.</param>
 /// <param name="Balances">الأرصدة.</param>
 internal sealed record StockBalanceListDto(int BalanceCount, IReadOnlyList<StockBalanceDto> Balances);
+
+/// <summary>طلب تسجيل موضعٍ في هرم التسكين — مستودعاً أو موقعاً أو رفّاً.</summary>
+internal sealed record StoragePlaceRequestDto
+{
+    /// <summary>رمز الموضع داخل مستواه — هوية تحملها الحركات، لا نصّاً معروضاً.</summary>
+    public required string Code { get; init; }
+
+    /// <summary>الاسم ثنائي اللغة.</summary>
+    public required LocalizedTextDto Name { get; init; }
+}
+
+/// <summary>طلب إعادة تسمية موضع — <b>الاسم وحده، ولا رمز فيه</b>.</summary>
+internal sealed record PlaceNameRequestDto
+{
+    /// <summary>الاسم الجديد.</summary>
+    public required LocalizedTextDto Name { get; init; }
+}
+
+/// <summary>موضعٌ في هرم التسكين كما يخرج على السلك.</summary>
+/// <param name="Id">المعرّف.</param>
+/// <param name="Level">المستوى: <c>WAREHOUSE</c> · <c>LOCATION</c> · <c>BIN</c>.</param>
+/// <param name="Code">الرمز.</param>
+/// <param name="Name">الاسم ثنائي اللغة.</param>
+/// <param name="ParentCode">رمز الأب — نصّ فارغ للمستودع.</param>
+/// <param name="IsActive">هل هو عامل؟</param>
+internal sealed record StoragePlaceDto(
+    string Id,
+    string Level,
+    string Code,
+    LocalizedTextDto Name,
+    string ParentCode,
+    bool IsActive);
+
+/// <summary>مواضع مستوىً، مرتَّبة بالرمز ترتيباً حرفياً ثابتاً.</summary>
+/// <param name="PlaceCount">عدد المواضع.</param>
+/// <param name="Places">المواضع.</param>
+internal sealed record StoragePlaceListDto(int PlaceCount, IReadOnlyList<StoragePlaceDto> Places);
+
+/// <summary>طلب إنشاء مستند نقلٍ بين موقعين <b>مسوّدة</b>.</summary>
+internal sealed record StockTransferRequestDto
+{
+    /// <summary>رقم المستند.</summary>
+    public required string Number { get; init; }
+
+    /// <summary>رمز الصنف — واحدٌ على الطرفين.</summary>
+    public required string ItemId { get; init; }
+
+    /// <summary>مجموعة الصنف — مؤهّل الدور.</summary>
+    public required string ItemGroup { get; init; }
+
+    /// <summary>مستودع المصدر.</summary>
+    public required string FromWarehouseId { get; init; }
+
+    /// <summary>موقع المصدر.</summary>
+    public required string FromLocationId { get; init; }
+
+    /// <summary>مستودع الوجهة.</summary>
+    public required string ToWarehouseId { get; init; }
+
+    /// <summary>موقع الوجهة.</summary>
+    public required string ToLocationId { get; init; }
+
+    /// <summary>الكمّية بوحدتها.</summary>
+    public required MeasureRequestDto Quantity { get; init; }
+
+    /// <summary>تاريخ النقل الميلادي.</summary>
+    public required string OccurredOn { get; init; }
+}
+
+/// <summary>مستند نقلٍ كما يخرج على السلك.</summary>
+/// <param name="Id">المعرّف.</param>
+/// <param name="Number">الرقم.</param>
+/// <param name="State">الحالة: <c>DRAFT</c> · <c>MOVED</c>.</param>
+/// <param name="ItemId">الصنف.</param>
+/// <param name="ItemGroup">مجموعة الصنف.</param>
+/// <param name="FromWarehouseId">مستودع المصدر.</param>
+/// <param name="FromLocationId">موقع المصدر.</param>
+/// <param name="ToWarehouseId">مستودع الوجهة.</param>
+/// <param name="ToLocationId">موقع الوجهة.</param>
+/// <param name="Quantity">الكمّية بوحدتها.</param>
+/// <param name="Value">قيمة المنقول نصّاً بعد التنفيذ — محسوبةٌ لا مُملاة، ولا تصل الدفتر.</param>
+/// <param name="OccurredOn">تاريخ النقل.</param>
+/// <param name="AlreadyMoved">هل كانت هذه الهوية مُنفَّذة قبل هذا الطلب؟</param>
+internal sealed record StockTransferDto(
+    string Id,
+    string Number,
+    string State,
+    string ItemId,
+    string ItemGroup,
+    string FromWarehouseId,
+    string FromLocationId,
+    string ToWarehouseId,
+    string ToLocationId,
+    MeasureDto Quantity,
+    string Value,
+    string OccurredOn,
+    bool AlreadyMoved);
+
+/// <summary>مستندات النقل، مرتَّبة بالتاريخ ثم بالرقم.</summary>
+/// <param name="TransferCount">عدد المستندات.</param>
+/// <param name="Transfers">المستندات.</param>
+internal sealed record StockTransferListDto(int TransferCount, IReadOnlyList<StockTransferDto> Transfers);
+
+/// <summary>رصيدٌ بتسكينه على السلك — الرصيد ومعه اسما مستودعه وموقعه من السجلّ.</summary>
+/// <param name="ItemId">الصنف.</param>
+/// <param name="WarehouseId">رمز المستودع.</param>
+/// <param name="WarehouseName">اسم المستودع — أو رمزه إن لم يكن مسجَّلاً.</param>
+/// <param name="WarehouseRegistered">هل رمز المستودع مسجَّل في سجلّ التسكين؟</param>
+/// <param name="LocationId">رمز الموقع.</param>
+/// <param name="LocationName">اسم الموقع — أو رمزه إن لم يكن مسجَّلاً.</param>
+/// <param name="LocationRegistered">هل رمز الموقع مسجَّل في سجلّ التسكين؟</param>
+/// <param name="Quantity">الكمّية بوحدة أساسها — قد تكون سالبة.</param>
+/// <param name="Value">القيمة نصّاً.</param>
+/// <param name="UnitCost">متوسط تكلفة الوحدة نصّاً بمقياس ستّ خانات.</param>
+/// <param name="HasCostBasis">هل ورد هذا الصنف إلى هذا الموضع مرّةً بتكلفة؟</param>
+internal sealed record PlacementBalanceDto(
+    string ItemId,
+    string WarehouseId,
+    LocalizedTextDto WarehouseName,
+    bool WarehouseRegistered,
+    string LocationId,
+    LocalizedTextDto LocationName,
+    bool LocationRegistered,
+    MeasureDto Quantity,
+    string Value,
+    string UnitCost,
+    bool HasCostBasis);
+
+/// <summary>الأرصدة بتسكينها، مرتَّبة بالصنف ثم المستودع ثم الموقع.</summary>
+/// <param name="BalanceCount">عدد الأرصدة.</param>
+/// <param name="Balances">الأرصدة.</param>
+internal sealed record PlacementBalanceListDto(int BalanceCount, IReadOnlyList<PlacementBalanceDto> Balances);
+
+/// <summary>طلب تسجيل وحدة قياس.</summary>
+internal sealed record UnitOfMeasureRequestDto
+{
+    /// <summary>رمز الوحدة — هوية تحملها كل حركة، لا نصّاً معروضاً.</summary>
+    public required string Code { get; init; }
+
+    /// <summary>الاسم ثنائي اللغة.</summary>
+    public required LocalizedTextDto Name { get; init; }
+
+    /// <summary>صنف الكمّية: <c>COUNT</c> · <c>WEIGHT</c> · <c>VOLUME</c> · <c>LENGTH</c> · <c>AREA</c>.</summary>
+    public required string QuantityClass { get; init; }
+}
+
+/// <summary>وحدة قياس كما تخرج على السلك.</summary>
+/// <param name="Id">المعرّف.</param>
+/// <param name="Code">الرمز.</param>
+/// <param name="Name">الاسم ثنائي اللغة.</param>
+/// <param name="QuantityClass">صنف الكمّية.</param>
+/// <param name="IsActive">هل هي عاملة؟</param>
+internal sealed record UnitOfMeasureDto(
+    string Id,
+    string Code,
+    LocalizedTextDto Name,
+    string QuantityClass,
+    bool IsActive);
+
+/// <summary>وحدات قياس المنشأة، مرتَّبة بالرمز.</summary>
+/// <param name="UnitCount">عدد الوحدات.</param>
+/// <param name="Units">الوحدات.</param>
+internal sealed record UnitOfMeasureListDto(int UnitCount, IReadOnlyList<UnitOfMeasureDto> Units);
+
+/// <summary>طلب تسجيل معامل تحويل بين وحدتين.</summary>
+internal sealed record UnitConversionRequestDto
+{
+    /// <summary>الوحدة المُحوَّل منها.</summary>
+    public required string FromUnit { get; init; }
+
+    /// <summary>الوحدة المُحوَّل إليها.</summary>
+    public required string ToUnit { get; init; }
+
+    /// <summary>البسط.</summary>
+    public required long Numerator { get; init; }
+
+    /// <summary>المقام.</summary>
+    public required long Denominator { get; init; }
+}
+
+/// <summary>معامل تحويل كما يخرج على السلك.</summary>
+/// <param name="Id">المعرّف.</param>
+/// <param name="FromUnit">الوحدة المُحوَّل منها.</param>
+/// <param name="ToUnit">الوحدة المُحوَّل إليها.</param>
+/// <param name="QuantityClass">صنف الكمّية المشترك.</param>
+/// <param name="Numerator">البسط.</param>
+/// <param name="Denominator">المقام.</param>
+internal sealed record UnitConversionDto(
+    string Id,
+    string FromUnit,
+    string ToUnit,
+    string QuantityClass,
+    long Numerator,
+    long Denominator);
+
+/// <summary>معاملات التحويل، مرتَّبة بالوحدتين.</summary>
+/// <param name="ConversionCount">عدد المعاملات.</param>
+/// <param name="Conversions">المعاملات.</param>
+internal sealed record UnitConversionListDto(int ConversionCount, IReadOnlyList<UnitConversionDto> Conversions);
+
+/// <summary>طلب تجربة تحويل — مسبارٌ لا يكتب شيئاً.</summary>
+internal sealed record ConversionTrialRequestDto
+{
+    /// <summary>الكمّية بوحدتها.</summary>
+    public required MeasureRequestDto Quantity { get; init; }
+
+    /// <summary>الوحدة المطلوب التحويل إليها.</summary>
+    public required string ToUnit { get; init; }
+}
+
+/// <summary>نتيجة تحويلٍ وقع بلا باقٍ.</summary>
+/// <param name="From">الكمّية كما سُلّمت.</param>
+/// <param name="To">الكمّية بعد التحويل — <b>دقيقةً لا مقرَّبة</b>.</param>
+/// <param name="Numerator">بسط المعامل المُستعمَل.</param>
+/// <param name="Denominator">مقام المعامل المُستعمَل.</param>
+/// <param name="QuantityClass">صنف الكمّية المشترك.</param>
+internal sealed record ConversionResultDto(
+    MeasureDto From,
+    MeasureDto To,
+    long Numerator,
+    long Denominator,
+    string QuantityClass);
+
+/// <summary>طلب تعديل صنف — <b>ولا رمز فيه</b>: الرمز يُقرأ من المسار.</summary>
+internal sealed record ItemRevisionRequestDto
+{
+    /// <summary>الاسم ثنائي اللغة.</summary>
+    public required LocalizedTextDto Name { get; init; }
+
+    /// <summary>مجموعة الصنف — مؤهّل الدور.</summary>
+    public required string ItemGroup { get; init; }
+
+    /// <summary>وحدة الأساس — لا تتغيّر بعد أن تُكتب على الصنف حركة.</summary>
+    public required string BaseUnit { get; init; }
+
+    /// <summary>الوحدات الأكبر ومعاملاتها — تحلّ محلّ القائمة السابقة كلّها.</summary>
+    public required IReadOnlyList<UnitFactorDto> Units { get; init; }
+}
+
+/// <summary>حالة صنفٍ في دورة حياته ورصيده المتبقّي.</summary>
+/// <param name="Id">معرّف الصنف.</param>
+/// <param name="Code">رمز الصنف.</param>
+/// <param name="IsActive">هل هو متداوَل؟</param>
+/// <param name="HoldsStock">هل بقي له رصيد غير صفري في أي موضع؟</param>
+/// <param name="PlacementsWithStock">عدد المواضع التي بقي فيها رصيد غير صفري.</param>
+internal sealed record ItemLifecycleDto(
+    string Id,
+    string Code,
+    bool IsActive,
+    bool HoldsStock,
+    int PlacementsWithStock);

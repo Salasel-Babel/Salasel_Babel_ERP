@@ -975,6 +975,100 @@ internal static class OpenApiEmitter
                 "Reads a single item with its base unit and its conversion factors.",
                 Body: null, Response: "Item", Success: 200, Query: [], ProblemStatuses: [404]),
 
+            new(ApiRoutes.ItemRevision, "post", "updateItem",
+                "تعديل صنف", "Update an item",
+                "يعدّل صنفاً: اسمه ومجموعته ووحداته الأكبر — **ولا رمزه**.\n\n"
+                + "**ومورد فرعي revision لا PUT على الصنف**: ‏PUT كان سيقبل رمزاً جديداً في الجسم بحكم شكله، "
+                + "والرمز هوية تحملها قيود سنةٍ مضت وتغييرُه يقطعها عنه. فالرمز يُقرأ من المسار ولا يُقبل في "
+                + "الجسم.\n\n"
+                + "**ووحدة الأساس تتغيّر ما لم تُكتب على الصنف حركة أو يُمسَك له رصيد**، وإلا رُفضت بـ"
+                + "inventory.base_unit_locked_by_history والرسالة تُسمّي عدد الحركات. والشرط ليس تشدّداً: رصيدٌ "
+                + "يتغيّر أساسه بعد أن كُتبت عليه حركات لا يُجمَع — مجموعُ حركاته جمعُ أعدادٍ بمقاييس مختلفة. "
+                + "أمّا صنفٌ سُجّل قبل قليل بخطأ كتابة ولم يتحرّك بعد فتصحيحُه تصحيحُ تعريفٍ لا إعادةُ كتابة "
+                + "واقعة، ومنعُه كان **يُلزم المستخدم بتسجيل صنفٍ ثانٍ برمزٍ ثانٍ ليصحّح حرفاً**.\n\n"
+                + "**ومجموعة الصنف تتغيّر بلا شرط ولا تمسّ ما مضى**: كل حركة تحمل مجموعتها على صفّها هي، "
+                + "فالقيود المُرحَّلة تبقى على حسابها الضابط والحركات التالية تذهب إلى ما تقرّره المصفوفة "
+                + "للمجموعة الجديدة.\n\n"
+                + "**والوحدات الأكبر تحلّ محلّ القائمة السابقة كلّها** — ولا يمسّ ذلك حركةً مضت: كل حركة "
+                + "تحمل مقدارها المُسلَّم ومقدارها بوحدة الأساس **معاً** على صفّها، فلا شيء فيها يُعاد حسابه "
+                + "بمعاملٍ تغيّر بعدها.",
+                "Updates an item: its name, its group, and its larger units — **but not its code**.\n\n"
+                + "**A revision sub-resource, not a PUT on the item**: a PUT would accept a new code in the body by the "
+                + "shape of it, and the code is an identity carried by last year's entries that changing severs. The "
+                + "code is read from the path and never accepted in the body.\n\n"
+                + "**The base unit changes only while no movement has been written against the item and no balance is "
+                + "held for it**; otherwise it is refused with inventory.base_unit_locked_by_history and the message "
+                + "names the movement count. The condition is not strictness: a balance whose base changes after "
+                + "movements have been written against it cannot be summed — the sum would add numbers on different "
+                + "scales. An item registered moments ago with a typo and never moved is a definition being corrected, "
+                + "not a fact being rewritten, and refusing it would **force the user to register a second item under a "
+                + "second code to fix one letter**.\n\n"
+                + "**The item group changes unconditionally and touches nothing past**: every movement carries its own "
+                + "group on its own row, so posted entries stay on their control account and later movements go wherever "
+                + "the matrix sends the new group.\n\n"
+                + "**The larger units replace the previous list entirely** — and that touches no past movement: every "
+                + "movement carries both its supplied magnitude and its base-unit magnitude on its own row, so nothing "
+                + "in it is recomputed by a factor that changed afterwards.",
+                Body: "ItemRevisionRequest", Response: "Item", Success: 200, Query: [],
+                ProblemStatuses: [404, 409, 422]),
+
+            new(ApiRoutes.ItemDeactivation, "post", "deactivateItem",
+                "تعطيل صنف", "Deactivate an item",
+                "يعطّل صنفاً — **ولا يحذفه**: رمزُ الصنف هوية تحملها قيود سنةٍ مضت، وحذفُه يكسر كل تقرير "
+                + "مُرحَّل.\n\n"
+                + "**ويُقبل التعطيل وللصنف رصيد** — وهذا يخالف عمداً حكمَ deactivateWarehouse و"
+                + "deactivateStorageLocation، اللذين يُرفضان فوق رصيد. والفرق أن إيقاف صنفٍ عن التداول **يعني "
+                + "بالضبط**: توقّف عن شرائه وبِع ما بقي. ورفضُه فوق رصيدٍ يصنع **دائرةً مغلقة** — لا يُعطَّل "
+                + "حتى ينفد، ولا ينفد إلا ببيعٍ يقتضي أن يكون عاملاً — فلا يُوقَف صنفٌ أبداً ما دامت منه حبّة "
+                + "في مستودعٍ منسيّ، ويلتفّ عليه المستخدم بإعدامٍ مخترَع يدخل مصروفَ عجزٍ لواقعةٍ لم تقع.\n\n"
+                + "**وأثرُه بعد ذلك: الوارد الجديد يُرفض بـ inventory.item_inactive، والصادر يبقى مسموحاً حتى "
+                + "ينفد الرصيد.** والفحص على الوارد وحده لا على كل حركة: **عكسُ صرفٍ مضى ومرتجعُه يجب أن "
+                + "يعملا**، لأن التصحيح لا يُمنع بحالةٍ وُلدت بعد الواقعة — وإلّا صار الإيقاف يُجمّد أخطاءً لا "
+                + "يمكن ردّها.\n\n"
+                + "**وليس صامتاً**: الجواب يحمل holdsStock و placementsWithStock، فلا يظنّ أحدٌ أن البضاعة ذهبت "
+                + "مع الإيقاف.\n\n"
+                + "**وإعادة تعطيل مُعطَّلٍ تنجح ولا تفشل.**",
+                "Deactivates an item — **it does not delete it**: an item code is an identity carried by last year's "
+                + "entries, and deleting it breaks every posted report.\n\n"
+                + "**Deactivation is accepted while the item still holds stock** — deliberately unlike "
+                + "deactivateWarehouse and deactivateStorageLocation, which refuse over a balance. The difference is "
+                + "that discontinuing an item **means exactly**: stop buying it and sell the rest. Refusing over a "
+                + "balance creates a **closed loop** — it cannot be deactivated until it runs out, and it cannot run out "
+                + "except by a sale that requires it to be active — so no item is ever discontinued while one piece of "
+                + "it sits in a forgotten warehouse, and the user works around it with an invented write-off that books "
+                + "a shortage expense for something that never happened.\n\n"
+                + "**The effect afterwards: new inbound stock is refused with inventory.item_inactive, and issuing "
+                + "stays allowed until the balance runs out.** The check is on inbound only, not on every movement: "
+                + "**reversing a past issue and returning against it must keep working**, because a correction is not "
+                + "blocked by a state born after the fact it corrects — otherwise deactivation would freeze errors that "
+                + "cannot be undone.\n\n"
+                + "**And it is not silent**: the response carries holdsStock and placementsWithStock, so nobody assumes "
+                + "the goods left with the discontinuation.\n\n"
+                + "**Deactivating an already deactivated item succeeds.**",
+                Body: null, Response: "ItemLifecycle", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.ItemLifecycle, "get", "readItemLifecycle",
+                "حالة الصنف ورصيده المتبقّي", "An item's lifecycle state and remaining stock",
+                "يقرأ حالة الصنف — متداوَلٌ أم مُوقَف — ومعها **هل بقي له رصيد وفي كم موضع**.\n\n"
+                + "**ومورد فرعي مستقلّ لا حقلٌ على Item**: إضافةُ isActive إلى شكل الصنف كانت ستُغيّر استجابة "
+                + "**ثلاث عمليات منشورة** — addItem و listItems و readItem — يستهلكها عملاء اليوم. فالحالة "
+                + "تُقرأ من هنا، والشكل القائم لا يُمَسّ. **وذلك نقصُ سطحٍ مُعلَن**: listItems لا يقول أيّ "
+                + "أصنافه مُوقَف، ومن أراد ذلك يقرأ هذا المورد لكل صنف.\n\n"
+                + "و‏holdsStock تعني **رصيداً غير صفري**، لا موجباً: رصيدٌ سالب واقعةٌ تقع — بيعٌ قبل إدخال "
+                + "استلامه — وإخفاؤها هنا يجعل الجواب يقول «لا رصيد» على صنفٍ عليه عجزٌ مفتوح يمنع إقفال "
+                + "الفترة. نقطة قراءة.",
+                "Reads an item's state — in circulation or discontinued — together with **whether it still holds stock "
+                + "and in how many places**.\n\n"
+                + "**A separate sub-resource, not a field on Item**: adding isActive to the item shape would change the "
+                + "response of **three published operations** — addItem, listItems and readItem — that today's clients "
+                + "consume. The state is read here and the existing shape is untouched. **That is a declared surface "
+                + "gap**: listItems does not say which of its items are discontinued, and whoever needs that reads this "
+                + "resource per item.\n\n"
+                + "holdsStock means a **non-zero** balance, not a positive one: a negative balance is a real occurrence "
+                + "— a sale entered before its receipt — and hiding it here would make the answer say 'no stock' about "
+                + "an item carrying an open shortage that blocks the period close. A read point.",
+                Body: null, Response: "ItemLifecycle", Success: 200, Query: [], ProblemStatuses: [404]),
+
             new(ApiRoutes.StockMovements, "post", "draftStockMovement",
                 "إنشاء حركة مخزون مسوّدة", "Draft a stock movement",
                 "يُنشئ مستند حركة مخزون في حالة **DRAFT**: تسوية جرد، أو رصيد افتتاحي، أو إعدام. ولا حركة ولا قيد: "
@@ -1071,6 +1165,451 @@ internal static class OpenApiEmitter
                 [
                     new QueryParameter("asOf", true, "تاريخ التقييم الميلادي.", "The Gregorian valuation date.", "date"),
                 ]),
+
+            // ── تسكين المخزون: مستودع ← موقع ← رفّ ───────────────────────────
+            // **وخمس عمليات لكل مستوى بالشكل نفسه.** ولا PUT ولا PATCH ولا DELETE
+            // على موضع: الرمز هوية تحملها حركات مضت، وتغييرُه يقطعها عن موضعها،
+            // وحذفُه يجعل كل حركة عليه بلا موضع يُقرأ. فالاسم وحده يُغيَّر، ومورده
+            // الفرعي /name يقول ذلك في العنوان.
+
+            new(ApiRoutes.Warehouses, "post", "addWarehouse",
+                "تسجيل مستودع", "Register a warehouse",
+                "يسجّل مستودعاً في سجلّ التسكين: رمزه واسمه ثنائي اللغة.\n\n"
+                + "**والسجلّ يصف ولا يُبطل.** حركات المخزون وأرصدته القائمة تحمل رموز مواضع كُتبت قبل أن يوجد هذا "
+                + "السجلّ — DEFAULT وما شابهه — ولا مفتاح خارجي منها إليه. فرمزٌ غير مسجَّل **يبقى عاملاً في "
+                + "draftStockMovement ويُوسَم عند القراءة في readPlacementBalances**، ولا تُعاد كتابة حركةٍ مضت "
+                + "لتوافق سجلّاً وُلد بعدها.\n\n"
+                + "**والرمز هوية لا نصّ عرض**: هو ما يُكتب على كل حركة ورصيد، ولا يُغيَّر بعدها أبداً — ولذلك لا "
+                + "‏PUT على هذا المورد، والاسم وحده يُغيَّر عبر renameWarehouse.",
+                "Registers a warehouse in the placement register: its code and its bilingual name.\n\n"
+                + "**The register describes; it does not invalidate.** Existing stock movements and balances carry place "
+                + "codes written before this register existed — DEFAULT and the like — and no foreign key points from them "
+                + "to it. An unregistered code **keeps working in draftStockMovement and is flagged on read in "
+                + "readPlacementBalances**; no past movement is rewritten to match a register born after it.\n\n"
+                + "**The code is an identity, not display text**: it is what gets written onto every movement and balance, "
+                + "and it never changes afterwards — hence no PUT on this resource; only the name changes, via renameWarehouse.",
+                Body: "StoragePlaceRequest", Response: "StoragePlace", Success: 201, Query: [],
+                ProblemStatuses: [409]),
+
+            new(ApiRoutes.Warehouses, "get", "listWarehouses",
+                "قراءة المستودعات", "List the warehouses",
+                "يقرأ مستودعات المنشأة مرتَّبةً بالرمز **ترتيباً حرفياً ثابتاً**. والمُعطَّل يخرج في القائمة "
+                + "بـ‏isActive = false ولا يُحذف منها: التعطيل حالةٌ تُقرأ لا غياب. نقطة قراءة.",
+                "Lists the company's warehouses ordered by code in a **stable ordinal order**. A deactivated warehouse "
+                + "appears in the list with isActive = false rather than being dropped from it: deactivation is a readable "
+                + "state, not an absence. A read point.",
+                Body: null, Response: "StoragePlaceList", Success: 200, Query: []),
+
+            new(ApiRoutes.Warehouse, "get", "readWarehouse",
+                "قراءة مستودع", "Read one warehouse",
+                "يقرأ مستودعاً واحداً بمعرّفه.",
+                "Reads a single warehouse by its identifier.",
+                Body: null, Response: "StoragePlace", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.WarehouseName, "post", "renameWarehouse",
+                "إعادة تسمية مستودع", "Rename a warehouse",
+                "يغيّر **اسم** المستودع ولا يمسّ رمزه.\n\n"
+                + "**ومورد فرعي لا PUT على المستودع نفسه**: ‏PUT كان سيقبل رمزاً جديداً في الجسم، والرمز محمولٌ على "
+                + "كل حركة ورصيد — وتغييرُه يقطع كل حركة مضت عن موضعها. والاسم نصّ عرضٍ لا هوية، فتغييره لا يمسّ رقماً.",
+                "Changes the warehouse **name** and never touches its code.\n\n"
+                + "**A sub-resource, not a PUT on the warehouse**: a PUT would have accepted a new code in the body, and the "
+                + "code is carried on every movement and balance — changing it severs every past movement from its place. "
+                + "The name is display text, not identity, so changing it touches no number.",
+                Body: "PlaceNameRequest", Response: "StoragePlace", Success: 200, Query: [],
+                ProblemStatuses: [404]),
+
+            new(ApiRoutes.WarehouseDeactivation, "post", "deactivateWarehouse",
+                "تعطيل مستودع", "Deactivate a warehouse",
+                "يعطّل مستودعاً — **ولا يحذفه**: الرمز محمولٌ على حركات مضت.\n\n"
+                + "**ويُرفض التعطيل إن بقي في المستودع رصيدٌ غير صفري** برمز "
+                + "inventory.storage_place_still_holds_stock، والرسالة تُسمّي الصنف وكمّيته. والسبب أن الموضع "
+                + "المُعطَّل لا يُنقَل منه ولا يُصرف، فتبقى البضاعة فيه بقيمتها في الحساب الضابط **بلا بابٍ تخرج "
+                + "منه** — رقمٌ في الميزانية لا يقابله واقعٌ يُبلغ. والعلاج نقلٌ بمستند أو إخراجٌ بمستند، ثم "
+                + "التعطيل.\n\n"
+                + "**ويُرفض أيضاً إن بقي تحته موقعٌ عامل**: ولا تعطيل متسلسل، لأن التسلسل يُخفي ما عُطّل تبعاً عمّن "
+                + "عطّله فلا يُعرف عند التراجع ما كان مُعطَّلاً أصلاً.\n\n"
+                + "**وإعادة تعطيل مُعطَّل تنجح ولا تفشل**: الحالة المطلوبة قائمة، والفشل عليها يجعل كل مستدعٍ يقرأ "
+                + "قبل أن يكتب لينجو من خطأ لا يصف عطلاً.",
+                "Deactivates a warehouse — **it does not delete it**: the code is carried by past movements.\n\n"
+                + "**Deactivation is refused while the warehouse still holds a non-zero balance**, with code "
+                + "inventory.storage_place_still_holds_stock, and the message names the item and its quantity. A deactivated "
+                + "place can neither be transferred from nor issued from, so the goods stay there at their value in the "
+                + "control account **with no door out** — a balance-sheet figure with no reachable reality. The remedy is a "
+                + "transfer document or an issue document, then deactivation.\n\n"
+                + "**It is also refused while an active location sits under it**: no cascade, because a cascade hides what "
+                + "was deactivated by consequence from whoever deactivated it, so a rollback cannot tell them apart.\n\n"
+                + "**Deactivating an already deactivated warehouse succeeds**: the requested state holds, and failing on it "
+                + "would force every caller to read before writing to dodge an error that describes no fault.",
+                Body: null, Response: "StoragePlace", Success: 200, Query: [],
+                ProblemStatuses: [404, 409]),
+
+            new(ApiRoutes.StorageLocations, "post", "addStorageLocation",
+                "تسجيل موقع في مستودع", "Register a location in a warehouse",
+                "يسجّل موقعاً داخل مستودع. **مورد فرعي لا مورد رئيسي**: الانتماء بنيةٌ في العنوان يقرأها كل عميل، "
+                + "لا حقلٌ في الجسم يُتحقَّق منه بعد الوصول.\n\n"
+                + "**والموقع هو مستوى الرصيد المُقيَّم**: مفتاح الرصيد (منشأة × صنف × مستودع × موقع)، والرفّ تحته "
+                + "ليس بُعد تقييم.\n\n"
+                + "**والأب يُتحقَّق أنه عامل**: تسجيل موقعٍ تحت مستودعٍ مُعطَّل إحياءٌ له من الباب الخلفي — يصير فيه "
+                + "ما يُسكَّن وهو مُعلَنٌ خارج الخدمة.\n\n"
+                + "**ورمز الموقع فريدٌ داخل مستواه لا داخل مستودعه**: «‏A1» موقعاً واحداً في المنشأة كلّها. وهو "
+                + "تضييقٌ مقصود — رمز الموقع يُكتب وحده على الحركة والرصيد بلا مستودعه، فرمزان متطابقان في مستودعين "
+                + "كانا سيجعلان قراءة الرصيد تسأل «أيّ ‏A1؟» على كل صفّ.",
+                "Registers a location inside a warehouse. **A sub-resource, not a top-level one**: the parentage is structure "
+                + "in the URL that every client reads, not a body field checked after arrival.\n\n"
+                + "**The location is the level of the valued balance**: the balance key is (company x item x warehouse x "
+                + "location), and the bin below it is not a valuation dimension.\n\n"
+                + "**The parent is checked for being active**: registering a location under a deactivated warehouse revives "
+                + "it through the back door — things get placed in it while it is declared out of service.\n\n"
+                + "**A location code is unique within its level, not within its warehouse**: 'A1' is one location in the "
+                + "whole company. That is a deliberate narrowing — a location code is written onto movements and balances "
+                + "without its warehouse, so two identical codes in two warehouses would make every balance row ask 'which A1?'.",
+                Body: "StoragePlaceRequest", Response: "StoragePlace", Success: 201, Query: [],
+                ProblemStatuses: [404, 409]),
+
+            new(ApiRoutes.StorageLocations, "get", "listStorageLocations",
+                "قراءة مواقع مستودع", "List a warehouse's locations",
+                "يقرأ مواقع مستودعٍ مرتَّبةً بالرمز ترتيباً حرفياً ثابتاً. ومستودعٌ لا وجود له يُرفض بـ404 ولا "
+                + "يُرَدّ عليه بقائمة فارغة: «لا مواقع فيه» و«لا مستودع بهذا المعرّف» جوابان مختلفان، وردُّ الأول "
+                + "على الثاني يُرسل قارئه يبحث عن بيانات مفقودة بدل عنوانٍ خاطئ. نقطة قراءة.",
+                "Lists a warehouse's locations ordered by code in a stable ordinal order. A warehouse that does not exist is "
+                + "refused with 404 rather than answered with an empty list: 'it has no locations' and 'no warehouse with "
+                + "that id' are different answers, and giving the first for the second sends the reader hunting for missing "
+                + "data instead of a wrong URL. A read point.",
+                Body: null, Response: "StoragePlaceList", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.StorageLocation, "get", "readStorageLocation",
+                "قراءة موقع", "Read one location",
+                "يقرأ موقعاً واحداً، **ويتحقّق أنه يقع في المستودع المذكور في المسار**. وموقعٌ في مستودع آخر يُرفض "
+                + "بـ‏inventory.storage_place_not_under_parent ولا يخرج وكأنه فيه: المسار إفادةٌ تُصدَّق لا زينة.",
+                "Reads a single location and **verifies it sits in the warehouse named in the path**. A location in another "
+                + "warehouse is refused with inventory.storage_place_not_under_parent rather than returned as if it belonged: "
+                + "the path is an assertion that must hold, not decoration.",
+                Body: null, Response: "StoragePlace", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.StorageLocationName, "post", "renameStorageLocation",
+                "إعادة تسمية موقع", "Rename a location",
+                "يغيّر **اسم** الموقع ولا يمسّ رمزه — بالحدّ نفسه الذي يحكم المستودع.",
+                "Changes the location **name** and never its code — under the same rule that governs a warehouse.",
+                Body: "PlaceNameRequest", Response: "StoragePlace", Success: 200, Query: [],
+                ProblemStatuses: [404]),
+
+            new(ApiRoutes.StorageLocationDeactivation, "post", "deactivateStorageLocation",
+                "تعطيل موقع", "Deactivate a location",
+                "يعطّل موقعاً. **ويُرفض إن بقي فيه رصيدٌ غير صفري** — بما فيه الرصيد **السالب**: تعطيلُ موضعٍ عليه "
+                + "عجزٌ يُغلق الباب الذي يُصحَّح منه، فيبقى العجز مفتوحاً بلا طريق إلى إقفال الفترة. **ويُرفض إن "
+                + "بقي تحته رفٌّ عامل**.",
+                "Deactivates a location. **Refused while it still holds a non-zero balance** — including a **negative** one: "
+                + "deactivating a place that carries a shortage closes the door the shortage is corrected through, leaving it "
+                + "open with no route to a period close. **Also refused while an active bin sits under it.**",
+                Body: null, Response: "StoragePlace", Success: 200, Query: [],
+                ProblemStatuses: [404, 409]),
+
+            new(ApiRoutes.StorageBins, "post", "addStorageBin",
+                "تسجيل رفّ في موقع", "Register a bin in a location",
+                "يسجّل رفّاً أو حاويةً داخل موقع — أدنى مستويات هرم التسكين.\n\n"
+                + "**والرفّ بُعد تسكينٍ لا بُعد تقييم**، وهو أهمّ ما يُقال عنه: مفتاح الرصيد يقف عند الموقع ولا "
+                + "يمتدّ إلى الرفّ. والسبب في وجهين — المتوسط المرجّح المتحرّك مثبَّتٌ عند (منشأة × صنف × مستودع) "
+                + "بـ‏ADR-0039، فتفريعُ القيمة على الأرفف يجعل نقل كرتونٍ بين رفّين حدثاً ذا قيمة ومجموعَ متوسطات "
+                + "الأرفف لا يساوي متوسط المستودع؛ وتوسيعُ مفتاح الرصيد ببُعدٍ خامس يقتضي إعادة توزيع كل رصيد قائم "
+                + "على أرففٍ لا يعرفها أحد — وهو ثمنٌ دُفع مرّةً حين دخل الموقع المفتاح، ولا يُدفع ثانيةً لبُعدٍ بلا "
+                + "معنىً محاسبي.\n\n"
+                + "**فما فائدته إذن:** يُجيب «في أي ممرّ أجدها» لا «بكم هي في الميزانية». وذلك **نقص سطحٍ مُعلَن**: "
+                + "لا يوجد اليوم بابٌ يقرأ كمّية رفٍّ بعينه.",
+                "Registers a bin or container inside a location — the lowest level of the placement hierarchy.\n\n"
+                + "**A bin is a placement dimension, not a valuation dimension**, which is the most important thing to say "
+                + "about it: the balance key stops at the location and does not extend to the bin. Two reasons — the moving "
+                + "weighted average is fixed at (company x item x warehouse) by ADR-0039, so splitting value across bins "
+                + "makes moving a carton between two shelves a value-bearing event and makes the sum of bin averages differ "
+                + "from the warehouse average; and widening the balance key by a fifth dimension would require redistributing "
+                + "every existing balance across bins nobody knows — a price paid once when the location entered the key, and "
+                + "not paid again for a dimension carrying no accounting meaning.\n\n"
+                + "**So what is it for:** it answers 'which aisle do I find it in', not 'what is it worth on the balance "
+                + "sheet'. That is a **declared surface gap**: there is no endpoint today that reads one bin's quantity.",
+                Body: "StoragePlaceRequest", Response: "StoragePlace", Success: 201, Query: [],
+                ProblemStatuses: [404, 409]),
+
+            new(ApiRoutes.StorageBins, "get", "listStorageBins",
+                "قراءة أرفف موقع", "List a location's bins",
+                "يقرأ أرفف موقعٍ مرتَّبةً بالرمز ترتيباً حرفياً ثابتاً. نقطة قراءة.",
+                "Lists a location's bins ordered by code in a stable ordinal order. A read point.",
+                Body: null, Response: "StoragePlaceList", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.StorageBin, "get", "readStorageBin",
+                "قراءة رفّ", "Read one bin",
+                "يقرأ رفّاً واحداً، **ويتحقّق من ضلعَي المسار كليهما**: أن الموقع في مستودعه، وأن الرفّ في موقعه. "
+                + "وبدون الفحص الأول يُقرأ رفّ الموقع «‏A» عبر مسارٍ يذكر المستودع «‏B» فيخرج وكأنه فيه.",
+                "Reads a single bin and **verifies both links in the path**: that the location sits in its warehouse and that "
+                + "the bin sits in its location. Without the first check, a bin of location 'A' would be readable through a "
+                + "path naming warehouse 'B' and come back as if it belonged there.",
+                Body: null, Response: "StoragePlace", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.StorageBinName, "post", "renameStorageBin",
+                "إعادة تسمية رفّ", "Rename a bin",
+                "يغيّر **اسم** الرفّ ولا يمسّ رمزه.",
+                "Changes the bin **name** and never its code.",
+                Body: "PlaceNameRequest", Response: "StoragePlace", Success: 200, Query: [],
+                ProblemStatuses: [404]),
+
+            new(ApiRoutes.StorageBinDeactivation, "post", "deactivateStorageBin",
+                "تعطيل رفّ", "Deactivate a bin",
+                "يعطّل رفّاً. **ولا فحص رصيدٍ هنا** — بخلاف المستودع والموقع: الرفّ ليس بُعداً في مفتاح الرصيد، فلا "
+                + "صفَّ رصيدٍ يُقرأ عنه، وفحصٌ يبحث عنه كان يُرجع «لا رصيد» دائماً ويبدو حارساً وهو لا يحرس شيئاً.",
+                "Deactivates a bin. **No balance check here** — unlike a warehouse or a location: a bin is not a dimension in "
+                + "the balance key, so no balance row exists to read, and a check looking for one would always return 'no "
+                + "stock' and look like a guard while guarding nothing.",
+                Body: null, Response: "StoragePlace", Success: 200, Query: [],
+                ProblemStatuses: [404]),
+
+            new(ApiRoutes.StockTransfers, "post", "draftStockTransfer",
+                "إنشاء نقلٍ بين موقعين مسوّدة", "Draft a transfer between two locations",
+                "يُنشئ مستند نقلٍ بين موقعين في حالة **DRAFT**. لا حركة ولا رصيد يتغيّر: التنفيذ مورد فرعي مستقلّ.\n\n"
+                + "**ولا حقل تكلفة في هذا الطلب**، وهو مقصود: المنقول يخرج بتكلفة مصدره المتحرّكة لحظة النقل، "
+                + "وتُحسب في وحدة المخزون ولا تُملى (ADR-0039). وحقلُ تكلفةٍ هنا كان سيسمح بنقلٍ «يُعيد تسعير» "
+                + "البضاعة وهو ينقلها — أي بجعل حركة مكانٍ حركةَ قيمة.\n\n"
+                + "**وموضعا النقل يجب أن يكونا مسجَّلين وعاملين** — بخلاف draftStockMovement الذي يقبل رمزاً غير "
+                + "مسجَّل. والفرق مقصود: ذاك بابٌ قائم منذ ما قبل سجلّ التسكين ويحمل رموزاً كُتبت قبله، وإلزامُه "
+                + "بالتسجيل بأثر رجعي يُوقف مستأجراً عاملاً؛ وهذا بابٌ جديد لا حركة سابقة عليه، فيُولد مُلزماً.\n\n"
+                + "**والنقل إلى الموضع نفسه يُرفض**: حركتان تُلغيان بعضهما وتُحدّثان صفّ رصيدٍ واحد مرّتين في "
+                + "معاملة واحدة.",
+                "Creates a transfer document between two locations in state **DRAFT**. No movement and no balance change: "
+                + "execution is a separate sub-resource.\n\n"
+                + "**There is no cost field in this request**, deliberately: what moves leaves at its source's moving average "
+                + "cost at the moment of transfer, computed by the inventory module and never dictated (ADR-0039). A cost "
+                + "field here would allow a transfer to 'reprice' goods while relocating them — turning a movement of place "
+                + "into a movement of value.\n\n"
+                + "**Both places must be registered and active** — unlike draftStockMovement, which accepts an unregistered "
+                + "code. The difference is deliberate: that door predates the placement register and carries codes written "
+                + "before it, and demanding retroactive registration would stop a working tenant; this door is new, with no "
+                + "movement preceding it, so it is born strict.\n\n"
+                + "**A transfer to the same place is refused**: two movements cancelling each other and updating one balance "
+                + "row twice inside a single transaction.",
+                Body: "StockTransferRequest", Response: "StockTransfer", Success: 201, Query: [],
+                ProblemStatuses: [404, 409, 422]),
+
+            new(ApiRoutes.StockTransfers, "get", "listStockTransfers",
+                "قراءة مستندات النقل", "List the transfer documents",
+                "يقرأ مستندات النقل مرتَّبةً بالتاريخ ثم بالرقم ترتيباً حرفياً ثابتاً. نقطة قراءة.",
+                "Lists the transfer documents ordered by date then by number in a stable ordinal order. A read point.",
+                Body: null, Response: "StockTransferList", Success: 200, Query: []),
+
+            new(ApiRoutes.StockTransfer, "get", "readStockTransfer",
+                "قراءة مستند نقل", "Read one transfer document",
+                "يقرأ مستند نقلٍ واحداً بقيمته المحسوبة إن نُفّذ.",
+                "Reads a single transfer document, with its computed value if it has been executed.",
+                Body: null, Response: "StockTransfer", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.StockTransferMovement, "post", "moveStockTransfer",
+                "تنفيذ النقل بين موقعين", "Execute a transfer between two locations",
+                "ينفّذ النقل: **حركتان في دفتر المخزون المساعد — صادرٌ من المصدر ثم واردٌ إلى الوجهة بالقيمة "
+                + "نفسها — ولا قيدٌ في دفتر الأستاذ إطلاقاً**.\n\n"
+                + "**ولماذا لا قيد:** النقل داخل المنشأة نفسها لا يُغيّر قيمة المخزون. والصنف واحدٌ على الطرفين "
+                + "فمجموعته واحدة، ومؤهّل دور inventory_control في المصفوفة هو مجموعة الصنف — فالحساب الذي كان "
+                + "سيُجعل مديناً هو الحساب الذي كان سيُجعل دائناً **بالمبلغ نفسه**. أي أن القيد لا شيء، مكتوباً في "
+                + "دفترٍ يُضاف إليه ولا يُحذف منه، وله رقمٌ متسلسل ويدخل سلسلة البصمات ويُقرأ في كل تقرير حركة إلى "
+                + "الأبد. والمصفوفة نفسها تقول هذا في شرط inventory.transfer.between_warehouses: «وإلا فلا قيد مالي "
+                + "إطلاقاً» — والنقل بين موقعين لا يبلغ ذلك الشرط أبداً، لأن المؤهّل مجموعةُ الصنف وهي لا تتغيّر "
+                + "بنقل مكان.\n\n"
+                + "**ولا حدث لهذا المستند في مصفوفة الترحيل، ولا يحتاج واحداً**: المصفوفة تُجيب «أيّ حسابٍ لأيّ "
+                + "حدث»، وحدثٌ لا يُنتج قيداً لا حساب له فلا جواب لها فيه. و«لا قيد» مفروضٌ **بالبناء لا بالوصف**: "
+                + "خدمة النقل لا تحمل مرجعاً واحداً إلى بوّابة الترحيل، فلا طريق منها إلى الدفتر أصلاً — ويُثبته "
+                + "إثباتٌ يَعُدّ قيود المنشأة قبل النقل وبعده فيجدهما سواء.\n\n"
+                + "**والمورد الفرعي movement لا posting** لهذا السبب حرفياً: posting في هذا العقد تعني «صار له قيد».\n\n"
+                + "**وحركتان برمزَي حدث مختلفين** — issued و received: هوية الحركة سداسية ورمز الحدث فيها، وحركتان "
+                + "بالهوية نفسها تعني أن الثانية تُبتلع بصمت، فيخرج المنقول من المصدر ولا يدخل الوجهة أبداً.\n\n"
+                + "**ويُرفض النقل بكمّية تتجاوز رصيد المصدر** — بخلاف الصرف الذي يقبل الرصيد السالب ويَسِمه: الصرف "
+                + "قبل إدخال استلامه واقعةٌ يومية، أمّا النقل فيُحرّك بضاعةً بين رفّين فعلياً، ولا يُحمَل من رفٍّ ما "
+                + "ليس عليه.\n\n"
+                + "**وحصين ضد التكرار**: الوصول الثاني بالهوية نفسها يُرجع المستند ذاته و‏alreadyMoved = true ورمز "
+                + "200 بدل 201، بلا حركة ثالثة. والحكم حكمُ الحركة لا حالةَ الصفّ: نداءان متزامنان يجتازان فحص "
+                + "«مسوّدة» معاً ويلتقيان عند الفهرس الفريد على الهوية.",
+                "Executes the transfer: **two movements in the inventory subledger — an issue from the source, then a receipt "
+                + "into the destination at the very same value — and no general-ledger entry at all**.\n\n"
+                + "**Why no entry:** a transfer inside the same company does not change the value of inventory. The item is "
+                + "the same on both sides, so its group is the same, and the matrix qualifier for inventory_control is the "
+                + "item group — so the account that would be debited is the account that would be credited, **for the same "
+                + "amount**. That entry is nothing, written into a ledger that is appended to and never deleted from, "
+                + "carrying a sequence number, entering the hash chain, and read in every movement report forever. The matrix "
+                + "says as much in the precondition of inventory.transfer.between_warehouses: 'otherwise no financial entry "
+                + "is produced at all' — and a transfer between two locations never meets that precondition, because the "
+                + "qualifier is the item group and relocating goods does not change it.\n\n"
+                + "**There is no matrix event for this document, and none is needed**: the matrix answers 'which account for "
+                + "which event', and an event that produces no entry has no account for it to answer about. 'No entry' is "
+                + "enforced **by construction, not by description**: the transfer service holds not one reference to the "
+                + "posting gateway, so no route to the ledger exists — and a proof counts the company's ledger entries "
+                + "before and after and finds them equal.\n\n"
+                + "**The sub-resource is movement, not posting**, for exactly that reason: posting means 'it has an entry' in "
+                + "this contract.\n\n"
+                + "**Two movements under two different event codes** — issued and received: movement identity is a sextuple "
+                + "with the event code in it, and two movements under one identity would mean the second is silently "
+                + "swallowed, so the goods would leave the source and never arrive at the destination.\n\n"
+                + "**A transfer exceeding the source balance is refused** — unlike an issue, which accepts a negative balance "
+                + "and flags it: issuing before the receipt is entered is a daily occurrence, whereas a transfer physically "
+                + "moves goods between two shelves, and what is not on a shelf is not carried off it.\n\n"
+                + "**Idempotent**: a second arrival under the same identity returns the same document with alreadyMoved = "
+                + "true and status 200 instead of 201, with no third movement. The verdict is the movement's, not the row's "
+                + "state: two concurrent calls both pass the 'is it a draft' check and meet at the unique index on identity.",
+                Body: null, Response: "StockTransfer", Success: 201, Query: [],
+                ProblemStatuses: [404, 409, 422]),
+
+            new(ApiRoutes.PlacementBalances, "get", "readPlacementBalances",
+                "الأرصدة بتسكينها", "Balances with their placement",
+                "يقرأ أرصدة المخزون **ومعها أسماء مواضعها من سجلّ التسكين**: اسم المستودع واسم الموقع بلغتيهما.\n\n"
+                + "**والرمز غير المسجَّل يخرج ويُوسَم، ولا يُحذف من القائمة ولا يُخترَع له اسم**: "
+                + "‏warehouseRegistered و locationRegistered تقولان ذلك صراحةً، ويخرج الاسم مساوياً للرمز. وحذفُه من "
+                + "القائمة كان سيجعل مجموع الأرصدة المقروءة أقلّ من مجموعها الفعلي — انحرافٌ لا يُظهره أي فحص "
+                + "توازن — واختراعُ اسمٍ له كان سيجعل السجلّ يبدو أشمل ممّا هو.\n\n"
+                + "**ومستوى القراءة هو مستوى الرصيد: الموقع.** ولا رصيد رفٍّ يُقرأ من هنا لأنه لا يُمسَك أصلاً، "
+                + "وقائمةٌ تُرجع صفراً عن رفٍّ فيه بضاعة أسوأ من قائمة لا تذكره.\n\n"
+                + "و‏readStockBalances يبقى كما هو: هذا الباب **يزيد** أسماء التسكين ولا يستبدله. نقطة قراءة.",
+                "Reads the stock balances **together with their place names from the placement register**: the warehouse name "
+                + "and the location name, both bilingual.\n\n"
+                + "**An unregistered code is returned and flagged, never dropped from the list and never given an invented "
+                + "name**: warehouseRegistered and locationRegistered say so explicitly, and the name comes back equal to the "
+                + "code. Dropping it would make the summed balances read smaller than they actually are — a divergence no "
+                + "balance check reveals — and inventing a name would make the register look more complete than it is.\n\n"
+                + "**The read level is the balance level: the location.** No bin balance is read here because none is held, "
+                + "and a list returning zero for a bin that holds goods is worse than a list that does not mention it.\n\n"
+                + "readStockBalances is unchanged: this endpoint **adds** placement names rather than replacing it. A read point.",
+                Body: null, Response: "PlacementBalanceList", Success: 200, Query: []),
+
+            // ── وحدات القياس ─────────────────────────────────────────────────
+            // **والمورد `units-of-measure` لا `units`**: المسار
+            // ‏`/properties/{propertyId}/units` منشورٌ اليوم ووحداته **عقارية**،
+            // ومَورِدٌ ثانٍ باسم `units` كان سيجعل الكلمة تحمل معنيين في عقدٍ واحد.
+
+            new(ApiRoutes.UnitsOfMeasure, "post", "addUnitOfMeasure",
+                "تسجيل وحدة قياس", "Register a unit of measure",
+                "يسجّل وحدة قياس: رمزها، واسمها ثنائي اللغة، و**صنف كمّيتها**.\n\n"
+                + "**وصنف الكمّية هو الحقل الذي يبرّر وجود هذا المورد كلّه.** معامل التحويل بين وحدتين من صنفٍ "
+                + "واحد **واقعةٌ فيزيائية**: الكيلوغرام ألف غرام دائماً وفي كل مكان. وبين صنفين مختلفين **ليس "
+                + "معاملاً بل كثافة**: «كم كيلوغراماً في اللتر؟» جوابه يختلف بين الماء والزيت والرصاص، ويختلف "
+                + "للمادّة الواحدة بالحرارة. فبلا هذا الحقل لا يملك النظام ما يفرّق به بين الاثنين، ويصير "
+                + "«كجم ← م» معاملاً يكتبه أحدهم بحسن نيّة ولا يعترض عليه شيء.\n\n"
+                + "**والقائمة مغلقة عمداً** — عدد · وزن · حجم · طول · مساحة: قيمةٌ حرّة تجعل صنفين مكتوبين "
+                + "بحرفين مختلفين يبدوان مختلفين وهما واحد، فيُرفض تحويلٌ مشروع أو يُقبل تحويلٌ مستحيل. وصنفٌ "
+                + "سادس يدخل بهجرة لا بقيمة.\n\n"
+                + "**وهذا سجلٌّ يصف ولا يُبطل**: الحركات القائمة تحمل رموز وحدات كُتبت قبل وجوده، ولا مفتاح "
+                + "خارجي منها إليه، ورمزٌ غير مسجَّل **يبقى عاملاً في draftStockMovement**. لكن **معامل التحويل "
+                + "لا يُسجَّل بين رمزين لا يُعرَف صنف كمّيتهما**: التحويل بلا صنفٍ معلوم تقديرٌ لا حساب.",
+                "Registers a unit of measure: its code, its bilingual name, and **its quantity class**.\n\n"
+                + "**The quantity class is the field that justifies this whole resource.** A conversion factor between "
+                + "two units of one class is a **physical fact**: a kilogram is a thousand grams, always and everywhere. "
+                + "Between two classes it is **not a factor but a density**: 'how many kilograms in a litre?' is answered "
+                + "differently for water, oil and lead, and differently for one material at different temperatures. "
+                + "Without this field the system has nothing to tell the two apart, and 'kg to m' becomes a factor "
+                + "somebody writes in good faith with nothing to object.\n\n"
+                + "**The list is closed on purpose** — count, weight, volume, length, area: a free value makes two "
+                + "classes spelled differently look different while being the same, so a legitimate conversion gets "
+                + "refused or an impossible one accepted. A sixth class arrives by migration, not by value.\n\n"
+                + "**This register describes rather than invalidates**: existing movements carry unit codes written "
+                + "before it existed, no foreign key points from them to it, and an unregistered code **keeps working in "
+                + "draftStockMovement**. But **a conversion factor is not recorded between two codes whose class is "
+                + "unknown**: converting without a known class is an estimate, not a computation.",
+                Body: "UnitOfMeasureRequest", Response: "UnitOfMeasure", Success: 201, Query: [],
+                ProblemStatuses: [409, 422]),
+
+            new(ApiRoutes.UnitsOfMeasure, "get", "listUnitsOfMeasure",
+                "قراءة وحدات القياس", "List the units of measure",
+                "يقرأ وحدات قياس المنشأة مرتَّبةً بالرمز **ترتيباً حرفياً ثابتاً**. والمُعطَّلة تخرج في القائمة "
+                + "بـ‏isActive = false ولا تُحذف منها. نقطة قراءة.",
+                "Lists the company's units of measure ordered by code in a **stable ordinal order**. A deactivated unit "
+                + "appears with isActive = false rather than being dropped. A read point.",
+                Body: null, Response: "UnitOfMeasureList", Success: 200, Query: []),
+
+            new(ApiRoutes.UnitOfMeasure, "get", "readUnitOfMeasure",
+                "قراءة وحدة قياس", "Read one unit of measure",
+                "يقرأ وحدة قياس واحدة بصنف كمّيتها.",
+                "Reads a single unit of measure with its quantity class.",
+                Body: null, Response: "UnitOfMeasure", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.UnitOfMeasureDeactivation, "post", "deactivateUnitOfMeasure",
+                "تعطيل وحدة قياس", "Deactivate a unit of measure",
+                "يعطّل وحدة قياس — **ولا يحذفها**: الرمز محمولٌ على حركات مضت.\n\n"
+                + "**ولا فحص رصيدٍ هنا** — بخلاف تعطيل موضع التسكين: الوحدة ليست بُعداً في مفتاح الرصيد بل "
+                + "**مقياسُ ما فيه**. وتعطيلُها لا يحبس بضاعة: الرصيد المُمسَك بها يبقى مقروءاً ومصروفاً، لأنه "
+                + "مُمسَك بوحدة أساسٍ ثُبِّتت بأول حركة ولا تتغيّر. والتعطيل يمنع **تسجيل معاملٍ جديد** عليها "
+                + "لا أكثر.\n\n"
+                + "**وإعادة تعطيل مُعطَّلةٍ تنجح ولا تفشل.**",
+                "Deactivates a unit of measure — **it does not delete it**: the code is carried by past movements.\n\n"
+                + "**No balance check here** — unlike deactivating a placement: a unit is not a dimension in the balance "
+                + "key but **the measure of what is in it**. Deactivating it strands no goods: a balance held in it stays "
+                + "readable and issuable, because it is held in a base unit fixed by the first movement and never changed. "
+                + "Deactivation only prevents **recording a new factor** on it.\n\n"
+                + "**Deactivating an already deactivated unit succeeds.**",
+                Body: null, Response: "UnitOfMeasure", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.UnitConversions, "post", "addUnitConversion",
+                "تسجيل معامل تحويل بين وحدتين", "Register a conversion factor between two units",
+                "يسجّل معامل تحويل بين وحدتين **على مستوى المنشأة** — و**يرفض ما بين صنفَي كمّية مختلفين** "
+                + "برمز inventory.unit_class_mismatch. فـ«كجم ← م» ليس معاملاً ناقصاً بل **خطأ**، ولا يُقرَّب.\n\n"
+                + "**وهو غير ItemRequest.units**، والفرق مقصود ولا يُدمَجان: «الكيلوغرام ألف غرام» واقعةٌ لا "
+                + "تخصّ صنفاً، تُكتب مرّةً وتصلح للجميع؛ أمّا «الكرتون اثنتا عشرة حبّة» فهي **خاصّية تعبئةٍ "
+                + "لصنفٍ بعينه** — كرتون هذا الصنف اثنتا عشرة وكرتون ذاك أربع وعشرون. ودمجُهما يعني إمّا تكرار "
+                + "الواقعة الفيزيائية على كل صنف، أو تعميم خاصّية التعبئة على الأصناف كلّها.\n\n"
+                + "**والمعامل بسطٌ ومقام صحيحان لا عددٌ عشري**: «الحبّة ثلث علبة» هو 1/3 ولا يُكتب عشرياً بلا "
+                + "خسارة، والخسارة في كمّيةٍ تُضرب في تكلفة الوحدة تصل إلى المال.\n\n"
+                + "**ويُسجَّل في اتجاهه المُسلَّم وحده ولا يُقلَب تلقائياً**: القلبُ يُنتج معاملات لا يقرؤها "
+                + "أحد ولا يُراجعها، ويجعل القائمة ضعف طولها الحقيقي.\n\n"
+                + "**ولا اشتقاق بسلسلة**: «غرام ← كجم» و«كجم ← طنّ» لا يُنتجان «غرام ← طنّ» — السلسلة تُنتج "
+                + "تحويلاً لم يقرّه أحد، وكسرُها الوسيط يُقرَّب قبل أن يُضرب في الثاني.",
+                "Registers a conversion factor between two units **at company level** — and **refuses one across two "
+                + "quantity classes** with code inventory.unit_class_mismatch. 'kg to m' is not an incomplete factor but "
+                + "an **error**, and it is not rounded.\n\n"
+                + "**This is not ItemRequest.units**, and the two are deliberately never merged: 'a kilogram is a thousand "
+                + "grams' is a fact that belongs to no item, written once and true for all; 'a carton is twelve pieces' is "
+                + "**a packing property of one item** — this item's carton is twelve and that one's is twenty-four. Merging "
+                + "them means either repeating the physical fact on every item, or generalising a packing property across "
+                + "all of them.\n\n"
+                + "**A factor is an integer numerator and denominator, not a decimal**: 'a piece is a third of a box' is "
+                + "1/3 and cannot be written decimally without loss, and loss in a quantity multiplied by a unit cost "
+                + "reaches the money.\n\n"
+                + "**It is recorded in the direction supplied and never inverted automatically**: inverting produces "
+                + "factors nobody reads or reviews, and doubles the list's apparent length.\n\n"
+                + "**And no chaining**: 'g to kg' plus 'kg to t' does not yield 'g to t' — a chain produces a conversion "
+                + "nobody approved, and its intermediate fraction is rounded before it is multiplied by the second.",
+                Body: "UnitConversionRequest", Response: "UnitConversion", Success: 201, Query: [],
+                ProblemStatuses: [404, 409, 422]),
+
+            new(ApiRoutes.UnitConversions, "get", "listUnitConversions",
+                "قراءة معاملات التحويل", "List the conversion factors",
+                "يقرأ معاملات التحويل مرتَّبةً بالوحدة المُحوَّل منها ثم إليها ترتيباً حرفياً ثابتاً. نقطة قراءة.",
+                "Lists the conversion factors ordered by source unit then destination unit in a stable ordinal order. A read point.",
+                Body: null, Response: "UnitConversionList", Success: 200, Query: []),
+
+            new(ApiRoutes.UnitConversionTrials, "post", "convertQuantity",
+                "تجربة تحويل كمّية", "Try converting a quantity",
+                "**مسبارٌ يحوّل كمّيةً ولا يكتب شيئاً.** وُجد كي يُجرَّب التحويل **قبل** أن يُبنى عليه مستند، "
+                + "وكي يكون «سبع حبّات ← كرتون مرفوض» **جواباً يُقرأ على السلك** لا سلوكاً يُستنتَج من فشل "
+                + "مستند.\n\n"
+                + "**والقاعدة الحاكمة: يقع بلا باقٍ أو يُرفض باسمه — ولا تقريب في الحالتين.** «١٢ حبّة ← "
+                + "كرتون» يُجيب \"1\"؛ و«٧ حبّات ← كرتون» يُرفض بـ inventory.unit_conversion_not_exact ولا "
+                + "يُجيب \"0.583333\". والسبب أن الكمّية تُضرب في تكلفة الوحدة، فالتقريب فيها يدخل **المال** "
+                + "ويتراكم على كل حركة حتى يصير الرصيد لا يساوي مجموع حركاته.\n\n"
+                + "**وثلاثة رفضٍ مُسمّاة**: صنفا كمّية مختلفان (inventory.unit_class_mismatch) · لا معامل "
+                + "مسجَّل (inventory.no_conversion_between_units) · تحويلٌ يتجاوز مدى العدد العشري "
+                + "(inventory.unit_conversion_overflow).\n\n"
+                + "**و POST على مورد «محاولات» لا GET باستعلام**: الكمّية تعبر السلك **نصّاً**، ونصٌّ عشري في "
+                + "سلسلة الاستعلام يمرّ على ترميزٍ وتحليلٍ لا يحرسهما محوّل الحقول المالية — وهو بالضبط قناة "
+                + "فقدان الدقّة التي أُغلقت في الجسم. **والجواب 200 لا 201**: لا مورد يُنشأ، ورمزُ إنشاء كان "
+                + "سيَعِد بموردٍ يُقرأ لاحقاً ولا مورد.",
+                "**A probe that converts a quantity and writes nothing.** It exists so a conversion can be tried "
+                + "**before** a document is built on it, and so that 'seven pieces to a carton is refused' is **an answer "
+                + "read off the wire** rather than behaviour inferred from a failing document.\n\n"
+                + "**The governing rule: it divides exactly or it is refused by name — and never rounds either way.** "
+                + "'12 pieces to a carton' answers \"1\"; '7 pieces to a carton' is refused with "
+                + "inventory.unit_conversion_not_exact and does not answer \"0.583333\". Because a quantity gets "
+                + "multiplied by a unit cost, rounding it reaches the **money** and accumulates on every movement until "
+                + "the balance no longer equals the sum of its own movements.\n\n"
+                + "**Three named refusals**: two different quantity classes (inventory.unit_class_mismatch), no registered "
+                + "factor (inventory.no_conversion_between_units), and a conversion exceeding the decimal range "
+                + "(inventory.unit_conversion_overflow).\n\n"
+                + "**A POST on a 'trials' resource, not a GET with query parameters**: quantities cross the wire as "
+                + "**strings**, and a decimal string in a query string passes through encoding and parsing that the "
+                + "monetary-field converter does not guard — precisely the precision-loss channel closed in the body. "
+                + "**And the answer is 200, not 201**: no resource is created, and a creation code would promise a "
+                + "resource to read later where there is none.",
+                Body: "ConversionTrialRequest", Response: "ConversionResult", Success: 200, Query: [],
+                ProblemStatuses: [404, 422]),
 
             new(ApiRoutes.DocumentAdmission, "post", "admitDocument",
                 "عرض مستند على الملفّ", "Present a document against the profile",
@@ -2837,6 +3376,205 @@ internal static class OpenApiEmitter
                 "يقرأ خطاب الضمان بتواريخه ومبلغه ومعرّف مرفقه.",
                 "Reads the guarantee with its dates, its amount, and its attachment identifier.",
                 Body: null, Response: "Guarantee", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            // ── مساحة عمل الوكيل ─────────────────────────────────────────────
+            // ‏**سطحٌ واحد لميزةٍ واحدة**، ولا ميزةٌ مبعثرة على كل شاشة. ولاحظ ما ليس
+            // فيه ولا يجوز أن يوجد: **مورد ترحيل**. الوكيل يبلغ المسوّدة وحدها،
+            // والترحيل فعلٌ بصريّ يدويّ على شاشة المستند — وأربع طبقات تفرض ذلك.
+
+            new(AgentRoutes.Sessions, "post", "openAgentSession",
+                "فتح جلسة مساحة عمل الوكيل", "Open an agent workspace session",
+                "يفتح محادثةً مع الوكيل داخل نطاق هذه الشركة، ويعيد حالها الابتدائي.\n\n"
+                + "**والجلسة مربوطة بالمنشأة والشركة والمستخدم، والثلاثة داخل بايتات كل مِقبضٍ تصدره** — "
+                + "فمِقبضٌ صحيح في محادثةٍ لا يُفكّ في أخرى، ولا يُفكّ لمستخدمٍ ثانٍ ولو كان في الشركة نفسها.\n\n"
+                + "**ولا حقل في الجسم إطلاقاً**: النطاق من المسار، والهوية من الاعتماد، واسم الشركة من تأسيسها — "
+                + "ولا يختار الطالبُ نموذجاً ولا مفتاحاً ولا نصَّ نظام. وحقلٌ يختار منه العميل نموذجه كان سيجعل "
+                + "عميلاً يبدّل النموذج في وسط محادثة فيُبطل ذاكرة البادئة بلا أن يعلم.\n\n"
+                + "**والوكيل تركيبٌ اختياري**: خادمٌ لم يُفعَّل فيه يردّ 503 وai.workspace.agent_disabled من كل "
+                + "باب من هذه الأبواب — وهو رمزٌ يقول «هذه الميزة غير مُفعَّلة هنا» لا «الخادم معطوب».",
+                "Opens a conversation with the agent inside this company's scope and returns its initial state.\n\n"
+                + "**The session is bound to tenant, company, and user, and all three live inside the bytes of every handle it "
+                + "issues** — so a handle valid in one conversation is not redeemable in another, nor by a second user in the "
+                + "same company.\n\n"
+                + "**The body has no fields at all**: scope comes from the path, identity from the credential, and the company "
+                + "name from its founding record. The caller picks no model, no key, and no system text.\n\n"
+                + "**The agent is an optional composition**: a server where it is not enabled answers 503 with "
+                + "ai.workspace.agent_disabled from every one of these doors.",
+                Body: null, Response: "AgentSession", Success: 201, Query: [],
+                Refusals:
+                [
+                    new Refusal(503, "الوكيل غير مركَّب على هذا الخادم.", "The agent is not composed on this server."),
+                ]),
+
+            new(AgentRoutes.Session, "get", "readAgentSession",
+                "قراءة حال مساحة العمل كلِّه", "Read the whole workspace state",
+                "يُرجع حال المساحة في جسمٍ واحد: الطور، والخطّة بخطواتها وحالِ كلٍّ منها، وما ينتظر تأكيداً، "
+                + "وورقة السؤال المعلَّقة، ومؤشّر آخر حدث.\n\n"
+                + "**وهذا هو باب استئناف اللوحة بعد انقطاع**: تقرأ الحال، ثم تُكمل قراءة الأحداث من lastSequence.\n\n"
+                + "**ومورد واحد لا أربعة**، بحجّة capability-profile نفسها: «ما الحال الآن؟» سؤالٌ يُجاب بطلبٍ "
+                + "واحد. وأربعةُ موارد كانت ستجعل لوحةً تُعيد الاتصال تُصدر أربعة طلبات تصل بترتيبٍ لا يضمنه "
+                + "أحد، فتعرض خطّةَ دورٍ وتأكيدَ دورٍ آخر معاً.\n\n"
+                + "**والخطّة هنا ليست تاريخاً**: هي خطوات الدور الجاري أو الأخير، تُستبدل كاملةً حين يُعلن "
+                + "الوكيل خطّةً جديدة.",
+                "Returns the workspace state in one body: the phase, the plan with each step's state, what awaits confirmation, "
+                + "the pending question sheet, and the last event cursor.\n\n"
+                + "**This is the panel's resume-after-disconnect door**: read the state, then continue reading events from "
+                + "lastSequence.\n\n"
+                + "**One resource, not four**, on the capability-profile argument: 'what is the state now?' is answered by one "
+                + "request. Four resources would make a reconnecting panel issue four requests that arrive in no guaranteed "
+                + "order, showing one turn's plan beside another turn's confirmation.",
+                Body: null, Response: "AgentSession", Success: 200, Query: [],
+                ProblemStatuses: [404],
+                Refusals:
+                [
+                    new Refusal(503, "الوكيل غير مركَّب على هذا الخادم.", "The agent is not composed on this server."),
+                ]),
+
+            new(AgentRoutes.Messages, "post", "sendAgentMessage",
+                "إرسال رسالة وبدء دور", "Send a message and begin a turn",
+                "يبدأ دوراً على كلام المستخدم ويعود بمعرّفه **فوراً بـ202** — ولا ينتظر انتهاءه.\n\n"
+                + "**ولماذا لا ينتظر:** الدور يحمل نداءَي نموذجٍ فأكثر، ويقف عند إنسانٍ مرّةً أو مرّتين — ورقةَ "
+                + "سؤالٍ وتأكيدَ شكل بيانات — فيتجاوز كل مهلة HTTP معقولة. وأخطر من ذلك أنّ إغلاق النافذة كان "
+                + "سيقتل دوراً في منتصفه بين تأكيدٍ ومسوّدة. فالطلب يبدأ الدور ويعود، واللوحة تقرأ أحداثه بمؤشّرها.\n\n"
+                + "**ودورٌ فوق دور يُرفض** بـai.workspace.turn_already_running: الجلسة تحمل حديثاً واحداً، "
+                + "ودوران متوازيان على نسخة محادثةٍ واحدة يكتبان فيها بترتيبٍ لا يُعاد إنتاجه.\n\n"
+                + "**ولا يحمل الجسم إلا نصّاً**: لا نموذج، ولا مفتاح، ولا تعليمات نظام — الثلاثة إعدادُ خادم.",
+                "Begins a turn on the user's words and returns its identifier **immediately with 202**; it does not wait for the "
+                + "turn to finish.\n\n"
+                + "**Why it does not wait:** a turn carries two or more model calls and stops for a human once or twice — a "
+                + "question sheet and a data-shape confirmation — so it outlives any sane HTTP timeout. Worse, closing the window "
+                + "would have killed a turn mid-way between a confirmation and a draft. So the request starts the turn and "
+                + "returns, and the panel reads its events by cursor.\n\n"
+                + "**A turn on top of a turn is refused** with ai.workspace.turn_already_running.\n\n"
+                + "**The body carries text and nothing else**: no model, no key, no system instructions — all three are server "
+                + "configuration.",
+                Body: "AgentMessageRequest", Response: "AgentTurn", Success: 202, Query: [],
+                ProblemStatuses: [404],
+                Refusals:
+                [
+                    new Refusal(400, "نصّ الرسالة فارغ أو أطول من الحدّ المنشور.", "The message text is empty or longer than the published limit."),
+                    new Refusal(409, "دورٌ يجري في هذه الجلسة سلفاً.", "A turn is already running in this session."),
+                    new Refusal(503, "الوكيل غير مركَّب على هذا الخادم.", "The agent is not composed on this server."),
+                ]),
+
+            new(AgentRoutes.Events, "get", "readAgentTurnEvents",
+                "قراءة أحداث الدور بعد مؤشّر", "Read turn events after a cursor",
+                "يُرجع ما جدّ من أحداث الدور بعد المؤشّر المُمرَّر، **وينتظر إن لم يكن هناك جديد** حتى تنقضي "
+                + "مهلة الخادم — فتعود صفحةٌ فارغة ويُعاد الطلب بالمؤشّر نفسه.\n\n"
+                + "**وهذا هو بثُّ اللوحة، ومؤشّرٌ لا دفقٌ مفتوح — وذلك قرارٌ لا تقصير.** النموذج يبثّ فعلاً "
+                + "وأجزاء تفكيره ونصّه تصل حدثاً حدثاً، فترى اللوحة تقدّماً لا صمتاً. لكنّ الدور يقف عند إنسان "
+                + "وقد يمتدّ دقائق، ودفقٌ مفتوح يُقطَع عند أوّل وسيطٍ في الطريق فتُبنى فوقه آليةُ استئنافٍ ثانية "
+                + "بترقيم أحداثٍ خاصّ به. والمؤشّر يجعل الاستئناف هو الآلية الأولى نفسها: «ما بعد ن؟».\n\n"
+                + "**وقائمةٌ فارغة ليست نهاية**: هي «لا جديد بعدُ». والذي يقول هل انتهى الدور هو phase — "
+                + "completed أو refused — لا فراغُ القائمة.\n\n"
+                + "**ولا يحمل حدثٌ واحدٌ معرّف صفٍّ ولا اسمَ طرفٍ ولا عددَ مرشّحين**: ما يعبر مسارُ شاشةٍ أو "
+                + "مِقبضٌ معتِم بطولٍ ثابت.",
+                "Returns whatever turn events have appeared after the cursor passed in, **and waits when there is nothing new** "
+                + "until the server's wait elapses, returning an empty page to be retried with the same cursor.\n\n"
+                + "**This is the panel's streaming, and a cursor rather than an open stream — a decision, not a shortfall.** The "
+                + "model does stream, and its thinking and text arrive event by event, so the panel shows progress rather than "
+                + "silence. But a turn stops for a human and may run for minutes, and an open stream is cut by the first "
+                + "intermediary on the path, forcing a second resume mechanism with its own event numbering on top. A cursor "
+                + "makes resuming the first mechanism itself: 'what is after n?'.\n\n"
+                + "**An empty list is not the end**: it means 'nothing new yet'. What says the turn is over is phase — completed "
+                + "or refused — not an empty list.\n\n"
+                + "**No single event carries a row identifier, a party name, or a candidate count.**",
+                Body: null, Response: "AgentTurnEventPage", Success: 200,
+                Query:
+                [
+                    new QueryParameter("after", false,
+                        "آخر مؤشّرٍ قرأته اللوحة. الغياب يعني «من أوّل الجلسة».",
+                        "The last cursor the panel read. Absent means 'from the start of the session'.",
+                        "count"),
+                ],
+                ProblemStatuses: [404],
+                Refusals:
+                [
+                    new Refusal(503, "الوكيل غير مركَّب على هذا الخادم.", "The agent is not composed on this server."),
+                ]),
+
+            new(AgentRoutes.StepConfirmation, "post", "confirmAgentStep",
+                "تأكيد شكل بيانات خطوة", "Confirm a step's data shape",
+                "يُسلّم حكم الإنسان على **شكل** بيانات خطوةٍ تنتظر، فتمضي الخطوة أو تقف.\n\n"
+                + "**ومعنى التأكيد واحدٌ لا ثانيَ له: «أقبل شكل هذه البيانات». ولا يعني الترحيل.** والناتج بعده "
+                + "**مسوّدة** كما كان قبله: تهبط على شاشتها، ويقرؤها إنسان هناك، ويرحّلها بيده إن شاء. ولا يوجد "
+                + "على هذا السطح — ولا يجوز أن يوجد — بابٌ يُرحّل من مساحة الوكيل.\n\n"
+                + "**وaccepted إلزامي ولا يُفترَض عند غيابه**: التأكيد فعلٌ يُقال لا يُستنتَج من صمت. وaccepted=false "
+                + "يوقف الخطوة ولا يقتل الدور — يعود الرفض إلى النموذج فيُصحّح أو يسأل.\n\n"
+                + "**وبطاقة التأكيد لا تعرض معرّفاً واحداً**: كل قيمةٍ شكلُها معرّف تُقنَّع ويُقال إنها مُقنَّعة "
+                + "(masked=true وvalue=null). فالحدّ الذي حُفظ أمام النموذج يُحفظ أمام الكتف الذي يقف خلف المستخدم.",
+                "Delivers the human's verdict on a waiting step's **data shape**, so the step proceeds or stops.\n\n"
+                + "**Confirmation means exactly one thing: 'I accept the shape of this data'. It does not mean posting.** What "
+                + "follows is **a draft**, exactly as before: it lands on its screen, a human reads it there, and posts it by "
+                + "hand if they choose. There is no door on this surface — and there must not be — that posts from the agent "
+                + "workspace.\n\n"
+                + "**accepted is required and never assumed when absent**: confirmation is stated, not inferred from silence. "
+                + "accepted=false stops the step without killing the turn.\n\n"
+                + "**The confirmation card shows no identifier**: every identifier-shaped value is masked and declared masked.",
+                Body: "AgentStepConfirmationRequest", Response: "AgentSession", Success: 200, Query: [],
+                ProblemStatuses: [404],
+                Refusals:
+                [
+                    new Refusal(400, "حقل accepted غائب، أو معرّف الخطوة في المسار غير صالح.", "The accepted field is missing, or the step identifier in the path is malformed."),
+                    new Refusal(409, "لا خطوة تنتظر تأكيداً بهذا المعرّف.", "No step awaits confirmation under this identifier."),
+                    new Refusal(503, "الوكيل غير مركَّب على هذا الخادم.", "The agent is not composed on this server."),
+                ]),
+
+            new(AgentRoutes.Answers, "post", "answerAgentQuestion",
+                "جواب ورقة السؤال", "Answer the question sheet",
+                "يُسلّم اختيار الإنسان على ورقة السؤال، فيمضي الدور.\n\n"
+                + "**والحدّ كلّه في شكل هذا الجسم: مفتاحان لا ثالث لهما** — questionId وoptionToken. لا موضعُ "
+                + "الخيار، ولا نصُّه، ولا عددُ الخيارات، ولا «هل كان جديداً». والموضع يُعدّ: من يرى choice=3 "
+                + "يعلم أن الخيارات كانت أربعةً على الأقل، وثلاثُ محاولاتٍ بأسماءٍ متدرّجة تمسح السجلّ.\n\n"
+                + "**والخيارات تُرسَم في الخادم من بياناتٍ محلّية ولا يراها النموذج**: هو يقول «هذا الاسم ملتبس، "
+                + "اسأل» ويعود إليه بعد الاختيار مِقبضٌ واحد. وشكل ما يعود إليه واحدٌ في كل الحالات، فلا يعلم "
+                + "حتى **أنّ** اختياراً وقع.\n\n"
+                + "**ومعرّف الورقة في الجسم لا في المسار**: هو مِقبضٌ معمّى بطولٍ ثابت من مئةٍ واثنين وخمسين "
+                + "محرفاً، ومقطعُ مسارٍ بهذا الطول يدخل سجلّات الوسطاء ويظهر في ترويسة المُحيل.",
+                "Delivers the human's choice on the question sheet so the turn proceeds.\n\n"
+                + "**The whole boundary is the shape of this body: two keys and no third** — questionId and optionToken. Not the "
+                + "option's position, not its text, not the option count, not whether it was new. Position counts: seeing "
+                + "choice=3 tells you there were at least four options, and three attempts with narrowing names sweep the "
+                + "register.\n\n"
+                + "**The options are drawn on the server from local data and the model never sees them**: it says 'this name is "
+                + "ambiguous, ask' and gets one handle back. The shape of what comes back is identical in every case, so it does "
+                + "not even learn **that** a choice happened.\n\n"
+                + "**The sheet identifier lives in the body, not the path**: it is a 152-character encrypted handle, and a path "
+                + "segment that long lands in intermediaries' logs and referrer headers.",
+                Body: "AgentAnswerRequest", Response: "AgentSession", Success: 200, Query: [],
+                ProblemStatuses: [404],
+                Refusals:
+                [
+                    new Refusal(400, "الجواب يحتاج questionId وoptionToken كليهما.", "An answer needs both questionId and optionToken."),
+                    new Refusal(409, "لا ورقة معلَّقة بهذا المعرّف، أو الرمز ليس من خياراتها.", "No sheet is pending under this identifier, or the token is not one of its options."),
+                    new Refusal(503, "الوكيل غير مركَّب على هذا الخادم.", "The agent is not composed on this server."),
+                ]),
+
+            new(AgentRoutes.Spend, "get", "readAgentSpend",
+                "قراءة إنفاق الوكيل في النافذة الجارية", "Read the agent's spend in the current window",
+                "يُرجع ما أنفقته هذه المنشأة على الوكيل في نافذة المحاسبة الجارية، وسقفَها، وعدد أدوارها.\n\n"
+                + "**والوحدة رموزٌ لا ريالات، وذلك قرارٌ لا كسل**: الرمز واقعةٌ يُعيدها المزوّد في usage ونحن "
+                + "نقيسها؛ والريال يحتاج جدول أسعارٍ ليس في هذا المستودع، وسعرٌ يُكتب في الشيفرة يتجمّد بينما "
+                + "يتحرّك عند المزوّد — فيصير رقمٌ في شاشة فاتورةٍ خطأً مطبوعاً.\n\n"
+                + "**والحسابان اثنان لا واحد**: المالك يشغّل النظام على مفتاحه افتراضاً، وللمنشأة أن تأتي "
+                + "بمفتاحها. فمن جاء بمفتاحه يُقاس إنفاقه ولا يُسقَف بسقف المالك — لأنه يدفعه — وceiling تكون "
+                + "معدومة، وbringsItsOwnKey تقول ذلك صراحةً. ولا يُخمَّن أيّهما.\n\n"
+                + "**ولا يظهر مفتاحٌ ولا اسمُ متغيّرٍ يحمله في هذا الجواب ولا في أي جواب آخر على هذا السطح.**\n\n"
+                + "**وخارج مورد الجلسة عمداً**: الإنفاق يخصّ المنشأة لا محادثةً بعينها، ويُقرأ قبل أن تُفتح أي جلسة.",
+                "Returns what this tenant has spent on the agent in the current accounting window, its ceiling, and its turn count.\n\n"
+                + "**The unit is tokens, not riyals, and that is a decision rather than laziness**: a token is a fact the provider "
+                + "returns in usage and we measure; a riyal needs a price list that is not in this repository, and a price written "
+                + "into code freezes while the provider's moves.\n\n"
+                + "**There are two billing arrangements, not one**: the owner runs the system on their key by default, and a tenant "
+                + "may bring its own. One that brings its own is measured and not capped by the owner's ceiling — because it pays "
+                + "for it — so ceiling is null and bringsItsOwnKey says so explicitly. Neither is guessed.\n\n"
+                + "**No key and no key-variable name appears in this response or any other on this surface.**\n\n"
+                + "**Deliberately outside the session resource**: spend belongs to the tenant, not to one conversation.",
+                Body: null, Response: "AgentSpend", Success: 200, Query: [],
+                Refusals:
+                [
+                    new Refusal(503, "الوكيل غير مركَّب على هذا الخادم.", "The agent is not composed on this server."),
+                ]),
         }.OrderBy(static o => o.Path, StringComparer.Ordinal).ThenBy(static o => o.Method, StringComparer.Ordinal),
     ];
 
@@ -2922,6 +3660,25 @@ internal static class OpenApiEmitter
                     WritePathParameter(w, "entryId", "معرّف القيد.", "The entry identifier.", "uuid");
                 }
 
+                // ‏**مساحة عمل الوكيل**: معرّفا الجلسة والخطوة. وكلاهما معرّفٌ في مسار،
+                // ومعرّف الورقة **ليس** منهما عمداً — هو مِقبضٌ معمّى من مئةٍ واثنين
+                // وخمسين محرفاً، ومقطعُ مسارٍ بهذا الطول يدخل سجلّات الوسطاء.
+                if (byPath.Key.Contains("{agentSessionId}", StringComparison.Ordinal))
+                {
+                    WritePathParameter(w, "agentSessionId",
+                        "معرّف جلسة مساحة عمل الوكيل. وهي مربوطةٌ بالمنشأة والشركة والمستخدم، والثلاثة داخل بايتات كل مِقبضٍ تصدره.",
+                        "The agent workspace session identifier. It is bound to tenant, company, and user, and all three live inside the bytes of every handle it issues.",
+                        "uuid");
+                }
+
+                if (byPath.Key.Contains("{stepId}", StringComparison.Ordinal))
+                {
+                    WritePathParameter(w, "stepId",
+                        "معرّف الخطوة في الخطّة — كما ورد في حال المساحة أو في حدث الدور.",
+                        "The plan step's identifier, as it appeared in the workspace state or in a turn event.",
+                        "uuid");
+                }
+
                 if (byPath.Key.Contains("{membershipId}", StringComparison.Ordinal))
                 {
                     WritePathParameter(w, "membershipId",
@@ -2930,7 +3687,12 @@ internal static class OpenApiEmitter
                         "uuid");
                 }
 
-                // معرّفات موارد المستندات — بترتيب معلن، ولا مسار يحمل أكثر من واحد منها.
+                // معرّفات موارد المستندات — بترتيب معلن.
+                //
+                // ‏**وكان هنا «ولا مسار يحمل أكثر من واحد منها»، وقد سقط ذلك بالتسكين:**
+                // مسار الرفّ `/warehouses/{warehouseId}/locations/{locationId}/bins/{binId}`
+                // يحمل **ثلاثة**. والحلقة تكتبها كلّها بترتيبها المعلَن هنا، فالمُخرَج
+                // حتميّ — وهو الشرط الوحيد الذي كان ذلك الافتراض يخدمه.
                 foreach ((string resource, string token, string ar, string en) in DocumentPathParameters)
                 {
                     if (byPath.Key.Contains("/" + resource + "/{" + token + "}", StringComparison.Ordinal))
@@ -2991,6 +3753,7 @@ internal static class OpenApiEmitter
     /// </summary>
     private static IReadOnlyList<(string Resource, string Token, string Ar, string En)> DocumentPathParameters { get; } =
     [
+        ("bins", "binId", "معرّف الرفّ أو الحاوية داخل الموقع.", "The bin identifier within its location."),
         ("attachments", "attachmentId",
             "معرّف المرفق — غامضٌ عمداً: لا يُشتقّ من اسم ملفّ ولا من مسار، ولا يُقرأ منه شيء عن صاحبه.",
             "The attachment identifier — deliberately opaque: derived from no file name and no path, and telling nothing about its owner."),
@@ -3010,6 +3773,8 @@ internal static class OpenApiEmitter
         ("guarantees", "guaranteeId", "معرّف خطاب الضمان.", "The guarantee identifier."),
         ("items", "itemId", "معرّف الصنف.", "The item identifier."),
         ("lease-contracts", "leaseId", "معرّف عقد الإيجار.", "The lease contract identifier."),
+        ("locations", "locationId", "معرّف الموقع داخل المستودع — **وهو مستوى الرصيد المُقيَّم**.",
+            "The location identifier within its warehouse — **the level at which the valued balance is held**."),
         ("lessees", "lesseeId", "معرّف المستأجر العقاري — **لا مستأجر النظام**: هذا مورد داخل نطاق منشأة.",
             "The lessee identifier — **not the system tenant**: this resource lives inside a company scope."),
         ("payroll-payments", "paymentId", "معرّف سند صرف الرواتب.", "The payroll payment identifier."),
@@ -3029,6 +3794,7 @@ internal static class OpenApiEmitter
         ("sales-invoices", "invoiceId", "معرّف فاتورة المبيعات.", "The sales invoice identifier."),
         ("social-insurance-payments", "paymentId", "معرّف سند سداد التأمينات.", "The social insurance payment identifier."),
         ("stock-movements", "movementId", "معرّف مستند حركة المخزون.", "The stock movement document identifier."),
+        ("stock-transfers", "transferId", "معرّف مستند النقل بين موقعين.", "The between-locations transfer document identifier."),
         ("subcontractor-advances", "advanceId", "معرّف مستند صرف الدفعة المقدمة للمقاول.", "The subcontractor advance identifier."),
         ("subcontractor-certificates", "certificateId", "معرّف مستخلص المقاول من الباطن.", "The subcontractor certificate identifier."),
         ("subcontractors", "subcontractorId", "معرّف المقاول من الباطن.", "The subcontractor identifier."),
@@ -3037,7 +3803,9 @@ internal static class OpenApiEmitter
         ("supplier-payments", "paymentId", "معرّف سند الصرف.", "The supplier payment identifier."),
         ("suppliers", "supplierId", "معرّف المورد.", "The supplier identifier."),
         ("tenant-receipts", "receiptId", "معرّف سند القبض من المستأجر.", "The tenant receipt identifier."),
-        ("units", "unitId", "معرّف الوحدة.", "The unit identifier."),
+        ("units", "unitId", "معرّف الوحدة **العقارية** — لا وحدة القياس.", "The **real-estate** unit identifier — not a unit of measure."),
+        ("units-of-measure", "unitId", "معرّف وحدة القياس.", "The unit-of-measure identifier."),
+        ("warehouses", "warehouseId", "معرّف المستودع.", "The warehouse identifier."),
     ];
 
     /// <summary>
@@ -3113,6 +3881,25 @@ internal static class OpenApiEmitter
     /// المخطّط لا يقبل غيرهما، والوحدة ترفض ثالثاً باسمه. ولذلك تُنشر <c>enum</c>.
     /// </summary>
     private static IReadOnlyList<string> MovementDirections { get; } = ["IN", "OUT"];
+
+    /// <summary>
+    /// مستويات هرم التسكين — <b>ثلاثة لا تزيد</b>، وكلٌّ يعرف أباه بمستواه فلا دورات
+    /// ممكنة بالبناء.
+    /// </summary>
+    private static IReadOnlyList<string> PlacementLevels { get; } = ["WAREHOUSE", "LOCATION", "BIN"];
+
+    /// <summary>
+    /// حالات مستند النقل — <c>MOVED</c> لا <c>POSTED</c>: الثانية تعني في هذا العقد
+    /// «صار له قيد»، والنقل لا يُرحَّل.
+    /// </summary>
+    private static IReadOnlyList<string> TransferStates { get; } = ["DRAFT", "MOVED"];
+
+    /// <summary>
+    /// أصناف الكمّية — <b>قائمة مغلقة</b>. وهي ما يجعل التحويل بين وحدتين ممكناً أو
+    /// مستحيلاً: بين صنفٍ واحد معاملٌ فيزيائي، وبين صنفين <b>كثافةُ مادّة</b> لا معامل.
+    /// </summary>
+    private static IReadOnlyList<string> QuantityClasses { get; } =
+        ["COUNT", "WEIGHT", "VOLUME", "LENGTH", "AREA"];
 
     /// <summary>
     /// نماذج ملكية العقار — <b>مجموعة مغلقة يفرضها قيد تحقّق في قاعدة بيانات الدفتر</b>،
@@ -3471,6 +4258,359 @@ internal static class OpenApiEmitter
 
     private static IEnumerable<(string Name, Action<Utf8JsonWriter> Write)> Schemas()
     {
+        // ── مخطّطات مساحة عمل الوكيل ──────────────────────────────────────────
+
+        yield return ("AgentPlanStep", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "خطوةٌ في خطّة الوكيل. **ولا حالة اسمها posted في state ولا يجوز أن توجد**: أبعد ما تبلغه خطوةٌ landed — "
+                + "مسوّدةٌ هبطت على شاشتها — والترحيل فعلٌ بصريّ يدويّ هناك. / "
+                + "A step in the agent's plan. **There is no 'posted' state and there must not be**: the furthest a step reaches "
+                + "is landed — a draft that arrived on its screen — and posting is a manual act there.");
+            w.WriteStartObject("properties");
+            // ‏**واسمُه «order» لا «ordinal»**: الثانية كلمةُ رسمِ أرقامٍ في CSS،
+            // وحارسُ `scripts/numerals.mjs` يمنع كتابتها حرفياً في أي شيفرةٍ تُشحن —
+            // والعميلُ المُولَّد شيفرةٌ تُشحن. فحقلٌ باسمها يُحمِّر حارساً قائماً على
+            // كل من يولّد العميل، ولا يكسب المعنى شيئاً.
+            WriteIntegerProperty(w, "order", 1, 64,
+                "ترتيب الخطوة بدءاً من واحد.", "The step's order, starting at one.");
+            WriteArrayRefProperty(w, "refusals", "ApiError",
+                "أسباب سقوط الخطوة بلغتيها، أو قائمة فارغة.",
+                "Why the step was refused, in both languages, or an empty list.");
+            WriteNullableStringProperty(w, "screenRoute",
+                "مسار شاشة المسوّدة بعد هبوطها — وهو ما يفتحه الزرّ في اللوحة. ولا يعبر هذا المسار إلى النموذج.",
+                "The draft's screen route once it has landed; the panel's button opens it. This route never crosses to the model.", 256);
+            WriteEnumProperty(w, "state",
+                "حال الخطوة.", "The step's state.", AgentStepStateNames);
+            WriteStringProperty(w, "stepId",
+                "معرّف الخطوة — وهو ما يُكتب في مسار التأكيد.",
+                "The step identifier, written into the confirmation path.", 36);
+            WriteStringProperty(w, "titleAr",
+                "عنوان الخطوة بالعربية كما أعلنه الوكيل، أو اسم أداتها إن نفّذ بلا خطّة مُعلَنة.",
+                "The step's Arabic title as the agent declared it, or its tool name when it acted without a declared plan.", 200);
+            WriteNullableStringProperty(w, "toolName",
+                "اسم العملية المنشورة التي تناديها الخطوة — وفعلُها draft دائماً.",
+                "The published operation the step calls; its verb is always draft.", 128);
+            w.WriteEndObject();
+            WriteRequired(w, "order", "refusals", "screenRoute", "state", "stepId", "titleAr", "toolName");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("AgentDraftField", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "حقلٌ في بطاقة التأكيد. **وقيمةُ ما شكلُه معرّف لا تُعرض**: masked صحيحة وvalue معدومة. والحدّ الذي حُفظ "
+                + "أمام النموذج يُحفظ أمام الكتف الذي يقف خلف المستخدم. / "
+                + "A field on the confirmation card. **Identifier-shaped values are not shown**: masked is true and value is null. "
+                + "The boundary kept from the model is kept from the shoulder behind the user too.");
+            w.WriteStartObject("properties");
+            WriteBooleanProperty(w, "masked",
+                "هل قُنِّعت القيمة لأن شكلها معرّف؟",
+                "Was the value masked because its shape is an identifier?");
+            WriteStringProperty(w, "path",
+                "مسار الحقل داخل جسم العملية كما ينشره العقد.",
+                "The field's path inside the operation body as the contract publishes it.", 256);
+            WriteNullableStringProperty(w, "value",
+                "القيمة المعروضة، أو null حين تُقنَّع.",
+                "The displayed value, or null when masked.", 512);
+            w.WriteEndObject();
+            WriteRequired(w, "masked", "path", "value");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("AgentConfirmation", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "ما ينتظر تأكيد الإنسان الآن. **ومعنى التأكيد واحد: «أقبل شكل هذه البيانات»** — ولا يعني الترحيل، والناتج "
+                + "بعده مسوّدةٌ كما كان قبله. / "
+                + "What awaits the human's confirmation. **Confirmation means one thing: 'I accept the shape of this data'** — "
+                + "not posting; what follows is a draft exactly as before.");
+            w.WriteStartObject("properties");
+            WriteArrayRefProperty(w, "fields", "AgentDraftField",
+                "حقول الجسم بترتيبٍ ثابت.", "The body's fields in a stable order.");
+            WriteStringProperty(w, "operationId",
+                "معرّف العملية المنشورة — وفعلُها draft دائماً، ويُفرض ذلك بنيوياً قبل أن يُسأل إنسان.",
+                "The published operation; its verb is always draft, structurally enforced before any human is asked.", 128);
+            WriteStringProperty(w, "screenRoute",
+                "مسار الشاشة التي ستهبط عليها المسوّدة.",
+                "The screen route the draft will land on.", 256);
+            WriteStringProperty(w, "stepId",
+                "الخطوة المنتظِرة.", "The waiting step.", 36);
+            w.WriteEndObject();
+            WriteRequired(w, "fields", "operationId", "screenRoute", "stepId");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("AgentQuestionOption", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "خيارٌ على ورقة السؤال. **نصُّه محلّي ورمزُه هو ما يعبر**: الاسم يُعرَض على المستخدم ولا يبلغ النموذج أبداً، "
+                + "والرمز معمّى بطولٍ ثابت فلا يُعدّ ولا يُزوَّر ولا يُستعمل في محادثةٍ أخرى. / "
+                + "An option on the question sheet. **Its text is local and its token is what crosses**: the name is shown to the "
+                + "user and never reaches the model, and the token is encrypted at fixed length so it cannot be counted, forged, "
+                + "or reused in another conversation.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "label",
+                "الاسم كما هو في سجلّ المستخدم. **ولا يبلغ النموذج.**",
+                "The name as it stands in the user's own register. **It never reaches the model.**", 400);
+            WriteStringProperty(w, "optionToken",
+                "الرمز الموقَّع المعمّى — وهو وحده ما يعود إلى الخادم.",
+                "The encrypted signed token; it alone returns to the server.", 512);
+            WriteNullableStringProperty(w, "subtitle",
+                "سطرٌ فارق تحت الاسم — قناعٌ لا معرّف.",
+                "A distinguishing line under the name — a mask, never an identifier.", 400);
+            w.WriteEndObject();
+            WriteRequired(w, "label", "optionToken", "subtitle");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("AgentQuestionSheet", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "ورقة السؤال كما رسمها الخادم من بياناتٍ محلّية حين التبس اسم. **ولا يبلغ النموذجَ منها شيء**: لا الأسماء، "
+                + "ولا عددُها، ولا موضعُ ما اختير، ولا أنّ اختياراً وقع أصلاً — وما يعود إليه بعده شكلٌ واحد في كل الحالات.\n\n"
+                + "‏**وallowsCreate تقول ما إذا كان «جديد» متاحاً**، ولا يُستنتَج من فراغ القائمة. / "
+                + "The question sheet the server drew from local data when a name was ambiguous. **Nothing in it reaches the "
+                + "model**: not the names, not their number, not which was chosen, not even that a choice happened.");
+            w.WriteStartObject("properties");
+            WriteBooleanProperty(w, "allowsCreate",
+                "هل يُتاح خيار «جديد»؟ ويُقال صراحةً ولا يُستنتَج من فراغ القائمة.",
+                "Is a 'new' option offered? Stated explicitly, never inferred from an empty list.");
+            WriteStringProperty(w, "kind",
+                "مفتاح السجلّ المسؤول عنه: customer · supplier · … وهو من مفردة lookup_entity المغلقة.",
+                "The register key concerned: customer, supplier, … from lookup_entity's closed vocabulary.", 64);
+            WriteArrayRefProperty(w, "options", "AgentQuestionOption",
+                "الخيارات المرسومة من السجلّ المحلّي.",
+                "The options drawn from the local register.");
+            WriteStringProperty(w, "questionId",
+                "معرّف الورقة المعتِم — وهو ما يُكتب في جواب الورقة، ولا يُقرأ منه شيء.",
+                "The sheet's opaque identifier, written into the answer; nothing is readable from it.", 512);
+            WriteStringProperty(w, "subjectText",
+                "كلام المستخدم كما بحث به الوكيل — منه يُركَّب عنوان الورقة بلغة القارئ. والعنوان يُركَّب في المتصفّح "
+                + "لا هنا: الخادم يعرف العربية وحدها والواجهة أربع لغات.",
+                "The user's own words as the agent searched them; the sheet's title is composed from them in the reader's "
+                + "language — in the browser, not here.", 400);
+            w.WriteEndObject();
+            WriteRequired(w, "allowsCreate", "kind", "options", "questionId", "subjectText");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("AgentSession", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "حال مساحة العمل كلُّه في جسمٍ واحد — وهو ما تقرؤه اللوحة حين تُعيد الاتصال، ثم تُكمل من lastSequence.\n\n"
+                + "‏**وphase هو ما يقول هل ما زال هناك ما يُنتظَر**: running يفكّر أو ينفّذ، وawaitingHuman يقف عند تأكيدٍ "
+                + "أو ورقة، وcompleted انتهى، وrefused سقط. **ولا قيمة اسمها posted**. / "
+                + "The whole workspace state in one body — what the panel reads on reconnect before continuing from lastSequence.\n\n"
+                + "phase says whether anything is still awaited. **There is no 'posted' value.**");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "agentSessionId", "معرّف الجلسة.", "The session identifier.", 36);
+            WriteIntegerProperty(w, "lastSequence", 0, 2_000_000_000,
+                "مؤشّر آخر حدثٍ في السجلّ — تبدأ منه اللوحة قراءتها.",
+                "The cursor of the last event in the log; the panel reads onward from it.");
+            WriteNullableRefProperty(w, "pendingConfirmation", "AgentConfirmation",
+                "ما ينتظر تأكيداً، أو null.", "What awaits confirmation, or null.");
+            WriteNullableRefProperty(w, "pendingQuestion", "AgentQuestionSheet",
+                "ورقة السؤال المعلَّقة، أو null.", "The pending question sheet, or null.");
+            WriteArrayRefProperty(w, "plan", "AgentPlanStep",
+                "خطوات الدور الجاري أو الأخير بحالها الآن. وتُستبدل كاملةً حين يُعلن الوكيل خطّةً جديدة.",
+                "The current or last turn's steps with their states; replaced wholesale when the agent declares a new plan.");
+            WriteEnumProperty(w, "phase",
+                "طور الدور.", "The turn's phase.", AgentTurnPhaseNames);
+            WriteNullableStringProperty(w, "turnId",
+                "الدور الجاري أو آخر دور، أو null إن لم يبدأ دورٌ بعد.",
+                "The current or last turn, or null when no turn has begun.", 36);
+            w.WriteEndObject();
+            WriteRequired(w, "agentSessionId", "lastSequence", "pendingConfirmation", "pendingQuestion",
+                "phase", "plan", "turnId");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("AgentTurn", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "دورٌ بدأ. **ولا ينتظر هذا الجواب انتهاءه** — الأحداث تُقرأ بمؤشّرها، وafter هو المؤشّر الذي تبدأ منه "
+                + "اللوحة قراءة أحداث هذا الدور. / "
+                + "A turn that has begun. **This response does not wait for it to finish**; events are read by cursor, and after "
+                + "is where the panel starts reading this turn's events.");
+            w.WriteStartObject("properties");
+            WriteIntegerProperty(w, "after", 0, 2_000_000_000,
+                "المؤشّر الذي تبدأ منه اللوحة قراءة أحداث هذا الدور.",
+                "The cursor the panel starts this turn's event reading from.");
+            WriteStringProperty(w, "turnId", "معرّف الدور.", "The turn identifier.", 36);
+            w.WriteEndObject();
+            WriteRequired(w, "after", "turnId");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("AgentTurnEvent", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "حدثٌ واحد في سجلّ المساحة. **ولا يحمل معرّف صفٍّ ولا اسمَ طرفٍ ولا عددَ مرشّحين**: ما يعبر إلى الشاشة "
+                + "مسارُ شاشةٍ أو مِقبضٌ معتِم بطولٍ ثابت، وما يعبر إلى النموذج أقلّ من ذلك.\n\n"
+                + "‏**وthinking جزءٌ من تفكيرٍ مُلخَّص يُعرَض تقدّماً**، لا سلسلة استدلالٍ تُخزَّن ولا تُبنى عليها قرارات. / "
+                + "One event in the workspace log. **It carries no row identifier, no party name, and no candidate count.**");
+            w.WriteStartObject("properties");
+            WriteEnumProperty(w, "kind", "شكل الحدث.", "The event's kind.", AgentTurnEventKindNames);
+            WriteNullableStringProperty(w, "questionId",
+                "معرّف ورقة السؤال المعتِم حين يلتبس اسم.",
+                "The opaque question-sheet identifier when a name is ambiguous.", 512);
+            WriteArrayRefProperty(w, "refusals", "ApiError",
+                "أسباب الرفض بلغتيها، أو قائمة فارغة.",
+                "Why it was refused, in both languages, or an empty list.");
+            WriteNullableStringProperty(w, "registerKey",
+                "مفتاح السجلّ في حدث ورقة السؤال — وهو معلومٌ للنموذج سلفاً لأنه هو من نطق به.",
+                "The register key on a question event; the model already knows it because it named it.", 64);
+            WriteNullableStringProperty(w, "screenRoute",
+                "مسار شاشة المسوّدة حين تهبط. **ولا يعبر إلى النموذج**: هو يقرأ «مسوّدة» ولا يقرأ معرّفاً.",
+                "The draft's screen route when it lands. **It never crosses to the model**, which reads 'draft' and no identifier.", 256);
+            WriteIntegerProperty(w, "sequence", 1, 2_000_000_000,
+                "رقم الحدث في الجلسة — يُمرَّر after في الطلب التالي.",
+                "The event's number in the session; passed as after on the next request.");
+            WriteStringArrayProperty(w, "steps",
+                "عناوين الخطوات في حدث الخطّة، بترتيبها. وفارغة في كل حدثٍ آخر.",
+                "The step titles on a plan event, in order; empty on every other event.", 200);
+            WriteNullableStringProperty(w, "stepId",
+                "الخطوة المرتبطة بالحدث، إن وُجدت.",
+                "The step this event belongs to, when there is one.", 36);
+            WriteNullableStringProperty(w, "text",
+                "النصّ المعروض — جزءُ تفكيرٍ أو جزءُ نصّ — أو كلامُ البحث في حدث ورقة السؤال.",
+                "The displayed text — a thinking or text fragment — or the search words on a question event.", 4000);
+            WriteNullableStringProperty(w, "toolName",
+                "اسم الأداة في أحداث الأدوات.",
+                "The tool's name on tool events.", 128);
+            WriteStringProperty(w, "turnId", "الدور الذي أنتج الحدث.", "The turn that produced it.", 36);
+            w.WriteEndObject();
+            WriteRequired(w, "kind", "questionId", "refusals", "registerKey", "screenRoute", "sequence",
+                "stepId", "steps", "text", "toolName", "turnId");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("AgentTurnEventPage", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "صفحةُ أحداثٍ بعد مؤشّر. **وقائمةٌ فارغة ليست نهاية**: هي «لا جديد بعدُ»، ويُعاد الطلب بالمؤشّر نفسه — "
+                + "والذي يقول هل انتهى الدور هو phase لا فراغُ القائمة. / "
+                + "A page of events after a cursor. **An empty list is not the end**: it means 'nothing new yet' and the request "
+                + "is retried with the same cursor; what says the turn is over is phase, not an empty list.");
+            w.WriteStartObject("properties");
+            WriteArrayRefProperty(w, "events", "AgentTurnEvent",
+                "الأحداث بترتيبها.", "The events in order.");
+            WriteIntegerProperty(w, "lastSequence", 0, 2_000_000_000,
+                "آخر مؤشّرٍ في هذه الصفحة، أو المُمرَّر إن كانت فارغة.",
+                "The last cursor in this page, or the one passed in when it is empty.");
+            WriteEnumProperty(w, "phase", "طور الدور لحظةَ الجواب.", "The turn's phase at the moment of reply.",
+                AgentTurnPhaseNames);
+            w.WriteEndObject();
+            WriteRequired(w, "events", "lastSequence", "phase");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("AgentSpend", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "إنفاق المنشأة على الوكيل في نافذة المحاسبة الجارية. **والوحدة رموزٌ لا ريالات** — والسبب في وصف العملية.\n\n"
+                + "‏**وbillable وceiling نصّان لا رمزان رقميّان**: عدّاد رموزٍ يتجاوز مدى الصحيح 32 بت في نافذةٍ طويلة، "
+                + "وقصُّه إلى المدى كذبةٌ صامتة. / "
+                + "The tenant's agent spend in the current accounting window. **The unit is tokens, not riyals.**\n\n"
+                + "billable and ceiling are strings, not JSON numbers: a token counter outgrows 32-bit range in a long window, "
+                + "and clamping it to that range is a silent lie.");
+            w.WriteStartObject("properties");
+            w.WriteStartObject("billable");
+            w.WriteString("type", "string");
+            w.WriteString("pattern", "^(0|[1-9][0-9]{0,18})$");
+            w.WriteString("description",
+                "مجموع الرموز المحاسَب عليها في النافذة، نصّاً. / "
+                + "The billable token total in the window, as a string.");
+            w.WriteEndObject();
+            WriteBooleanProperty(w, "bringsItsOwnKey",
+                "هل تعمل هذه المنشأة على مفتاحها؟ ومن جاء بمفتاحه يُقاس إنفاقه ولا يُسقَف بسقف المالك.",
+                "Does this tenant run on its own key? One that does is measured and not capped by the owner's ceiling.");
+            w.WriteStartObject("ceiling");
+            w.WriteStartArray("type");
+            w.WriteStringValue("string");
+            w.WriteStringValue("null");
+            w.WriteEndArray();
+            w.WriteString("pattern", "^(0|[1-9][0-9]{0,18})$");
+            w.WriteString("description",
+                "السقف بالرموز نصّاً، أو null لمنشأةٍ تعمل بمفتاحها فلا يَسقُفها سقف المالك. / "
+                + "The token ceiling as a string, or null for a tenant on its own key.");
+            w.WriteEndObject();
+            WriteIntegerProperty(w, "turns", 0, 2_000_000_000,
+                "عدد الأدوار المُحاسَبة في النافذة.", "The number of billed turns in the window.");
+            WriteIntegerProperty(w, "windowSeconds", 1, 2_000_000_000,
+                "طول نافذة المحاسبة بالثواني.", "The accounting window's length in seconds.");
+            w.WriteEndObject();
+            WriteRequired(w, "billable", "bringsItsOwnKey", "ceiling", "turns", "windowSeconds");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("AgentMessageRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "رسالةُ المستخدم إلى الوكيل. **حقلٌ واحد لا ثانيَ له**: لا نموذج، ولا مفتاح، ولا تعليمات نظام — الثلاثة "
+                + "إعدادُ خادمٍ لا حقلُ طلب. وحقلٌ يختار منه الطالب نموذجَه يجعل عميلاً يبدّله في وسط محادثةٍ فيُبطل ذاكرة "
+                + "البادئة بلا أن يعلم. / "
+                + "The user's message to the agent. **One field and no second**: no model, no key, no system instructions — all "
+                + "three are server configuration.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "text",
+                "كلام المستخدم بأسمائه. ولا تُكتب فيه أرقام هويةٍ ولا آيبان ولا تسجيلٍ ضريبي: الدور يُرفض قبل إرساله إن حملها.",
+                "The user's own words. Identity, IBAN, and VAT numbers must not appear: the turn is refused before it is sent if they do.",
+                4000);
+            w.WriteEndObject();
+            WriteRequired(w, "text");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("AgentStepConfirmationRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "حكم الإنسان على **شكل** بيانات خطوة. **ولا يعني الترحيل** — والناتج بعده مسوّدةٌ كما كان قبله. "
+                + "وaccepted إلزامي ولا يُفترَض عند غيابه: التأكيد فعلٌ يُقال لا يُستنتَج من صمت. / "
+                + "The human's verdict on a step's **data shape**. **It does not mean posting.** accepted is required and never "
+                + "assumed when absent: confirmation is stated, not inferred from silence.");
+            w.WriteStartObject("properties");
+            WriteBooleanProperty(w, "accepted",
+                "‏true إن قَبِل المستخدم شكل البيانات. وfalse يوقف الخطوة ولا يقتل الدور.",
+                "true when the user accepts the data's shape. false stops the step without killing the turn.");
+            w.WriteEndObject();
+            WriteRequired(w, "accepted");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("AgentAnswerRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "جواب ورقة السؤال. **مفتاحان لا ثالث لهما** — وهذا هو الحدّ كلّه في مخطّط: لا موضعُ الخيار، ولا نصُّه، "
+                + "ولا عددُ الخيارات، ولا «هل كان جديداً». والموضع يُعدّ. / "
+                + "The question sheet's answer. **Two keys and no third** — this schema is the whole boundary: not the option's "
+                + "position, not its text, not the option count, not whether it was new. Position counts.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "optionToken",
+                "رمز الخيار المختار كما ورد في الورقة، حرفاً بحرف.",
+                "The chosen option's token exactly as it appeared on the sheet.", 512);
+            WriteStringProperty(w, "questionId",
+                "معرّف الورقة المعتِم كما ورد في حالها.",
+                "The sheet's opaque identifier as it appeared in the state.", 512);
+            w.WriteEndObject();
+            WriteRequired(w, "optionToken", "questionId");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
         yield return ("RegisterTenantRequest", static w =>
         {
             w.WriteString("type", "object");
@@ -6441,6 +7581,62 @@ internal static class OpenApiEmitter
             w.WriteBoolean("additionalProperties", false);
         });
 
+        yield return ("ItemRevisionRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب تعديل صنف. **ولا رمز فيه**: الرمز هوية تحملها قيود سنةٍ مضت، ويُقرأ من المسار ولا يُقبل "
+                + "في الجسم. / "
+                + "An item update request. **It carries no code**: the code is an identity carried by last year's "
+                + "entries; it is read from the path and never accepted in the body.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "baseUnit",
+                "وحدة الأساس. **ولا تتغيّر بعد أن تُكتب على الصنف حركة أو يُمسَك له رصيد** — وإلا رُفضت بـ inventory.base_unit_locked_by_history.",
+                "The base unit. **It does not change once a movement has been written against the item or a balance is held for it** — otherwise it is refused with inventory.base_unit_locked_by_history.",
+                32);
+            WriteStringProperty(w, "itemGroup",
+                "مجموعة الصنف — مؤهّل الدور. **وتغييرها لا يمسّ ما مضى**: كل حركة تحمل مجموعتها على صفّها هي.",
+                "The item group — a role qualifier. **Changing it touches nothing past**: every movement carries its own group on its own row.",
+                64);
+            WriteRefProperty(w, "name", "LocalizedText");
+            WriteArrayRefProperty(w, "units", "UnitFactor",
+                "الوحدات الأكبر ومعاملاتها — **تحلّ محلّ القائمة السابقة كلّها**، ولا تمسّ حركةً مضت.",
+                "The larger units and their factors — **they replace the previous list entirely**, and touch no past movement.");
+            w.WriteEndObject();
+            WriteRequired(w, "baseUnit", "itemGroup", "name", "units");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("ItemLifecycle", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "حالة صنفٍ في دورة حياته ورصيده المتبقّي. **ونوعٌ مستقلّ لا حقلٌ على Item**: إضافةُ isActive "
+                + "إلى شكل الصنف كانت ستُغيّر استجابة ثلاث عمليات منشورة يستهلكها عملاء اليوم. / "
+                + "An item's lifecycle state and remaining stock. **A separate type, not a field on Item**: adding "
+                + "isActive to the item shape would change the response of three published operations that today's "
+                + "clients consume.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "code", "رمز الصنف.", "The item code.", 64);
+            WriteBooleanProperty(
+                w,
+                "holdsStock",
+                "هل بقي للصنف رصيد **غير صفري** في أي موضع؟ و«غير صفري» لا «موجب»: رصيدٌ سالب واقعةٌ تقع، وإخفاؤها يجعل الجواب يقول «لا رصيد» على صنفٍ عليه عجزٌ مفتوح.",
+                "Does the item still hold a **non-zero** balance anywhere? Non-zero, not positive: a negative balance is a real occurrence, and hiding it would make the answer say 'no stock' about an item carrying an open shortage.");
+            WriteStringProperty(w, "id", "معرّف الصنف.", "The item identifier.", 36);
+            WriteBooleanProperty(
+                w,
+                "isActive",
+                "هل الصنف متداوَل؟ **والتعطيل حالةٌ لا حذف**: الرمز محمولٌ على قيود سنةٍ مضت. والمُعطَّل يُرفض عليه الوارد الجديد ويبقى الصادر حتى ينفد.",
+                "Is the item in circulation? **Deactivation is a state, not a deletion**: the code is carried by last year's entries. A deactivated item refuses new inbound stock and keeps issuing until it runs out.");
+            WriteIntegerProperty(w, "placementsWithStock", 0, int.MaxValue,
+                "عدد المواضع التي بقي فيها رصيد غير صفري — فلا يُقال «بقي رصيد» بلا «أين».",
+                "The number of places still holding a non-zero balance — so the answer never says 'stock remains' without saying where.");
+            w.WriteEndObject();
+            WriteRequired(w, "code", "holdsStock", "id", "isActive", "placementsWithStock");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
         yield return ("StockMovementRequest", static w =>
         {
             w.WriteString("type", "object");
@@ -6547,6 +7743,364 @@ internal static class OpenApiEmitter
             WriteArrayRefProperty(w, "balances", "StockBalance", "الأرصدة.", "The balances.");
             w.WriteEndObject();
             WriteRequired(w, "balanceCount", "balances");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("StoragePlaceRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب تسجيل موضعٍ في هرم التسكين — مستودعاً أو موقعاً أو رفّاً. **ولا مستوى فيه ولا رمز أب**: "
+                + "المستوى يقرأه المسار الذي وصل الطلب إليه، والأب معرّفٌ في المسار. وحقلٌ للأب في الجسم كان "
+                + "سيقبل رمزاً يخالف المسار، فيصير للمولود أبوان مُعلَنان. / "
+                + "A request to register a place in the placement hierarchy — a warehouse, a location, or a bin. **It "
+                + "carries neither a level nor a parent code**: the level is read from the path the request arrived on, "
+                + "and the parent is an identifier in that path. A parent field in the body would accept a code "
+                + "contradicting the path, giving the child two declared parents.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "code",
+                "رمز الموضع داخل مستواه — **هوية تحملها الحركات والأرصدة، لا نصّاً معروضاً**. لا يُترجَم ولا يُطابَق بلا حساسية حالة، ولا يتغيّر بعد التسجيل.",
+                "The place code within its level — **an identity carried by movements and balances, not displayed text**. Never translated, never matched case-insensitively, and never changed after registration.",
+                64);
+            WriteRefProperty(w, "name", "LocalizedText");
+            w.WriteEndObject();
+            WriteRequired(w, "code", "name");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("PlaceNameRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب إعادة تسمية موضع — **الاسم وحده، ولا رمز فيه**. والرمز محمولٌ على كل حركة ورصيد، وتغييرُه "
+                + "يقطع كل حركة مضت عن موضعها. / "
+                + "A request to rename a place — **the name only, with no code in it**. The code is carried on every "
+                + "movement and balance, and changing it severs every past movement from its place.");
+            w.WriteStartObject("properties");
+            WriteRefProperty(w, "name", "LocalizedText");
+            w.WriteEndObject();
+            WriteRequired(w, "name");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("StoragePlace", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "موضعٌ في هرم التسكين كما يخرج على السلك. / A place in the placement hierarchy as it leaves on the wire.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "code", "الرمز.", "The code.", 64);
+            WriteStringProperty(w, "id", "المعرّف الذي تُبنى عليه القراءة.", "The identifier reads are built on.", 36);
+            WriteBooleanProperty(
+                w,
+                "isActive",
+                "هل هو عامل؟ **والتعطيل حالةٌ تُقرأ لا غياب**: المُعطَّل يبقى في القوائم بهذا الحقل false، لأن رمزه محمولٌ على حركات مضت ولا يُحذف.",
+                "Is it active? **Deactivation is a readable state, not an absence**: a deactivated place stays in the lists with this field false, because its code is carried by past movements and is never deleted.");
+            WriteEnumProperty(w, "level",
+                "المستوى في الهرم.",
+                "The level in the hierarchy.",
+                PlacementLevels);
+            WriteRefProperty(w, "name", "LocalizedText");
+            WriteStringProperty(w, "parentCode",
+                "رمز الأب — **نصّ فارغ للمستودع** لأنه أعلى الهرم. ورمز المستودع للموقع، ورمز الموقع للرفّ.",
+                "The parent's code — **an empty string for a warehouse**, which is the top of the hierarchy. The warehouse code for a location, and the location code for a bin.",
+                64);
+            w.WriteEndObject();
+            WriteRequired(w, "code", "id", "isActive", "level", "name", "parentCode");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("StoragePlaceList", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "مواضع مستوىً، مرتَّبة بالرمز ترتيباً حرفياً ثابتاً. **وغلافٌ لا مصفوفة عارية.** / "
+                + "The places of one level, ordered by code in a stable ordinal order. **An envelope, not a bare array.**");
+            w.WriteStartObject("properties");
+            WriteIntegerProperty(w, "placeCount", 0, int.MaxValue, "عدد المواضع.", "The number of places.");
+            WriteArrayRefProperty(w, "places", "StoragePlace", "المواضع.", "The places.");
+            w.WriteEndObject();
+            WriteRequired(w, "placeCount", "places");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("StockTransferRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب إنشاء مستند نقلٍ بين موقعين **مسوّدة**. **ولا حقل تكلفة فيه**: المنقول يخرج بتكلفة مصدره "
+                + "المتحرّكة لحظة النقل، وتُحسب في وحدة المخزون ولا تُملى (ADR-0039). وحقلُ تكلفةٍ هنا كان سيسمح "
+                + "بنقلٍ يُعيد تسعير البضاعة وهو ينقلها — أي بجعل حركة مكانٍ حركةَ قيمة. / "
+                + "A request to create a **draft** transfer document between two locations. **It carries no cost field**: "
+                + "what moves leaves at its source's moving average cost at the moment of transfer, computed by the "
+                + "inventory module and never dictated (ADR-0039). A cost field here would allow a transfer to reprice "
+                + "goods while relocating them — turning a movement of place into a movement of value.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "fromLocationId", "موقع المصدر.", "The source location.", 64);
+            WriteStringProperty(w, "fromWarehouseId", "مستودع المصدر.", "The source warehouse.", 64);
+            WriteStringProperty(w, "itemGroup", "مجموعة الصنف — مؤهّل الدور، وهي **واحدة على الطرفين** لأن الصنف واحد.", "The item group — a role qualifier, and **the same on both sides** because the item is the same.", 64);
+            WriteStringProperty(w, "itemId", "رمز الصنف — **واحدٌ على الطرفين**: النقل يحرّك صنفاً لا يبدّله.", "The item code — **the same on both sides**: a transfer relocates an item, it does not substitute it.", 64);
+            WriteStringProperty(w, "number", "رقم المستند — فريد داخل المنشأة.", "The document number — unique within the company.", 64);
+            WriteDateProperty(w, "occurredOn", "تاريخ النقل الميلادي.", "The Gregorian transfer date.");
+            WriteRefProperty(w, "quantity", "Measure");
+            WriteStringProperty(w, "toLocationId", "موقع الوجهة.", "The destination location.", 64);
+            WriteStringProperty(w, "toWarehouseId", "مستودع الوجهة.", "The destination warehouse.", 64);
+            w.WriteEndObject();
+            WriteRequired(w, "fromLocationId", "fromWarehouseId", "itemGroup", "itemId", "number", "occurredOn",
+                "quantity", "toLocationId", "toWarehouseId");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("StockTransfer", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "مستند نقلٍ بين موقعين كما يخرج على السلك. **ولا حقل entryId فيه** — بخلاف StockMovement: هذا "
+                + "المستند لا يُرحَّل إلى دفتر الأستاذ أبداً، وحقلٌ لمعرّف قيدٍ لا يُملأ قطّ يجعل كل قارئ يسأل متى "
+                + "يُملأ. / "
+                + "A transfer document between two locations as it leaves on the wire. **It has no entryId field** — unlike "
+                + "StockMovement: this document is never posted to the general ledger, and a field for an entry identifier "
+                + "that is never filled makes every reader ask when it would be.");
+            w.WriteStartObject("properties");
+            WriteBooleanProperty(
+                w,
+                "alreadyMoved",
+                "هل كانت هذه الهوية مُنفَّذة **قبل** هذا الطلب؟ ولا تُشتقّ من state: المستند بعد أي تنفيذ ناجح حالته MOVED — الأول والثاني سواء.",
+                "Was this identity already executed **before** this request? It is not derivable from state: after any successful execution the document is MOVED, first arrival and second alike.");
+            WriteStringProperty(w, "fromLocationId", "موقع المصدر.", "The source location.", 64);
+            WriteStringProperty(w, "fromWarehouseId", "مستودع المصدر.", "The source warehouse.", 64);
+            WriteStringProperty(w, "id", "المعرّف.", "The identifier.", 36);
+            WriteStringProperty(w, "itemGroup", "مجموعة الصنف.", "The item group.", 64);
+            WriteStringProperty(w, "itemId", "الصنف.", "The item.", 64);
+            WriteStringProperty(w, "number", "الرقم.", "The number.", 64);
+            WriteDateProperty(w, "occurredOn", "تاريخ النقل.", "The transfer date.");
+            WriteRefProperty(w, "quantity", "Measure");
+            WriteEnumProperty(w, "state",
+                "الحالة: DRAFT مسوّدة · MOVED مُنفَّذ. **و MOVED لا POSTED عمداً**: الثانية تعني في هذا العقد «صار له قيد»، وحالةٌ تحمل الاسم بلا قيد كانت ستجعل كل قارئ يبحث عن قيدٍ لا وجود له.",
+                "The state: DRAFT or MOVED. **MOVED, not POSTED, deliberately**: POSTED means 'it has an entry' in this contract, and a state carrying that name with no entry would send every reader hunting for one that does not exist.",
+                TransferStates);
+            WriteStringProperty(w, "toLocationId", "موقع الوجهة.", "The destination location.", 64);
+            WriteStringProperty(w, "toWarehouseId", "مستودع الوجهة.", "The destination warehouse.", 64);
+            WriteRefProperty(w, "value", "Money");
+            w.WriteEndObject();
+            WriteRequired(w, "alreadyMoved", "fromLocationId", "fromWarehouseId", "id", "itemGroup", "itemId",
+                "number", "occurredOn", "quantity", "state", "toLocationId", "toWarehouseId", "value");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("StockTransferList", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "مستندات النقل، مرتَّبة بالتاريخ ثم بالرقم. / The transfer documents, ordered by date then by number.");
+            w.WriteStartObject("properties");
+            WriteIntegerProperty(w, "transferCount", 0, int.MaxValue, "عدد المستندات.", "The number of documents.");
+            WriteArrayRefProperty(w, "transfers", "StockTransfer", "المستندات.", "The documents.");
+            w.WriteEndObject();
+            WriteRequired(w, "transferCount", "transfers");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("PlacementBalance", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "رصيدٌ بتسكينه: الرصيد نفسه ومعه اسما مستودعه وموقعه من سجلّ التسكين. **ورمزٌ غير مسجَّل يخرج "
+                + "ويُوسَم** بـ warehouseRegistered أو locationRegistered كاذبة، ويخرج اسمه مساوياً لرمزه — لا "
+                + "يُحذف من القائمة ولا يُخترَع له اسم. / "
+                + "A balance with its placement: the balance itself plus its warehouse and location names from the "
+                + "placement register. **An unregistered code is returned and flagged** with warehouseRegistered or "
+                + "locationRegistered false, and its name comes back equal to its code — never dropped from the list and "
+                + "never given an invented name.");
+            w.WriteStartObject("properties");
+            WriteBooleanProperty(
+                w,
+                "hasCostBasis",
+                "هل ورد هذا الصنف إلى هذا الموضع مرّةً بتكلفة؟",
+                "Has this item ever been received into this place with a cost?");
+            WriteStringProperty(w, "itemId", "الصنف.", "The item.", 64);
+            WriteStringProperty(w, "locationId", "رمز الموقع.", "The location code.", 64);
+            WriteRefProperty(w, "locationName", "LocalizedText");
+            WriteBooleanProperty(
+                w,
+                "locationRegistered",
+                "هل رمز الموقع مسجَّل في سجلّ التسكين؟ فإن كان false فاسمه مساوٍ لرمزه، وهو رمزٌ كُتب على حركة قبل أن يوجد السجلّ.",
+                "Is the location code registered in the placement register? When false its name equals its code — a code written onto a movement before the register existed.");
+            WriteRefProperty(w, "quantity", "Measure");
+            WriteRefProperty(w, "unitCost", "UnitCost");
+            WriteRefProperty(w, "value", "Money");
+            WriteStringProperty(w, "warehouseId", "رمز المستودع.", "The warehouse code.", 64);
+            WriteRefProperty(w, "warehouseName", "LocalizedText");
+            WriteBooleanProperty(
+                w,
+                "warehouseRegistered",
+                "هل رمز المستودع مسجَّل في سجلّ التسكين؟",
+                "Is the warehouse code registered in the placement register?");
+            w.WriteEndObject();
+            WriteRequired(w, "hasCostBasis", "itemId", "locationId", "locationName", "locationRegistered",
+                "quantity", "unitCost", "value", "warehouseId", "warehouseName", "warehouseRegistered");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("PlacementBalanceList", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "الأرصدة بتسكينها، مرتَّبة بالصنف ثم المستودع ثم الموقع. / "
+                + "The balances with their placement, ordered by item then warehouse then location.");
+            w.WriteStartObject("properties");
+            WriteIntegerProperty(w, "balanceCount", 0, int.MaxValue, "عدد الأرصدة.", "The number of balances.");
+            WriteArrayRefProperty(w, "balances", "PlacementBalance", "الأرصدة.", "The balances.");
+            w.WriteEndObject();
+            WriteRequired(w, "balanceCount", "balances");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("UnitOfMeasureRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب تسجيل وحدة قياس. **وصنف الكمّية إلزاميّ**: هو الحقل الوحيد الذي يجعل «كجم ← م» خطأً "
+                + "يُرفض بدل أن يكون معاملاً يكتبه أحدهم بحسن نيّة. / "
+                + "A request to register a unit of measure. **The quantity class is required**: it is the only field "
+                + "that makes 'kg to m' a refused error rather than a factor somebody writes in good faith.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "code",
+                "رمز الوحدة — **هوية تحملها كل حركة، لا نصّاً معروضاً**. لا يُترجَم ولا يُطابَق بلا حساسية حالة.",
+                "The unit code — **an identity carried by every movement, not displayed text**. Never translated and never matched case-insensitively.",
+                32);
+            WriteRefProperty(w, "name", "LocalizedText");
+            WriteEnumProperty(w, "quantityClass",
+                "صنف الكمّية. **والقائمة مغلقة**: صنفٌ سادس يدخل بهجرة لا بقيمةٍ حرّة.",
+                "The quantity class. **The list is closed**: a sixth class arrives by migration, not by a free value.",
+                QuantityClasses);
+            w.WriteEndObject();
+            WriteRequired(w, "code", "name", "quantityClass");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("UnitOfMeasure", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "وحدة قياس كما تخرج على السلك. / A unit of measure as it leaves on the wire.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "code", "الرمز.", "The code.", 32);
+            WriteStringProperty(w, "id", "المعرّف الذي تُبنى عليه القراءة.", "The identifier reads are built on.", 36);
+            WriteBooleanProperty(
+                w,
+                "isActive",
+                "هل هي عاملة؟ **والتعطيل حالةٌ تُقرأ لا غياب**: المُعطَّلة تبقى في القوائم بهذا الحقل false، لأن رمزها محمولٌ على حركات مضت.",
+                "Is it active? **Deactivation is a readable state, not an absence**: a deactivated unit stays in the lists with this field false, because its code is carried by past movements.");
+            WriteRefProperty(w, "name", "LocalizedText");
+            WriteEnumProperty(w, "quantityClass", "صنف الكمّية.", "The quantity class.", QuantityClasses);
+            w.WriteEndObject();
+            WriteRequired(w, "code", "id", "isActive", "name", "quantityClass");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("UnitOfMeasureList", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "وحدات قياس المنشأة، مرتَّبة بالرمز ترتيباً حرفياً ثابتاً. **وغلافٌ لا مصفوفة عارية.** / "
+                + "The company's units of measure, ordered by code in a stable ordinal order. **An envelope, not a bare array.**");
+            w.WriteStartObject("properties");
+            WriteIntegerProperty(w, "unitCount", 0, int.MaxValue, "عدد الوحدات.", "The number of units.");
+            WriteArrayRefProperty(w, "units", "UnitOfMeasure", "الوحدات.", "The units.");
+            w.WriteEndObject();
+            WriteRequired(w, "unitCount", "units");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("UnitConversionRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب تسجيل معامل تحويل بين وحدتين **على مستوى المنشأة** — وهو غير ItemRequest.units: ذاك "
+                + "خاصّية تعبئةٍ لصنف، وهذا واقعةٌ فيزيائية تصلح للجميع. **ويُرفض ما بين صنفَي كمّية مختلفين.** / "
+                + "A request to register a conversion factor between two units **at company level** — not the same as "
+                + "ItemRequest.units, which is a packing property of one item, while this is a physical fact true for "
+                + "all. **One across two quantity classes is refused.**");
+            w.WriteStartObject("properties");
+            WriteIntegerProperty(w, "denominator", 1, 1_000_000_000, "المقام — موجب.", "The denominator; positive.");
+            WriteStringProperty(w, "fromUnit", "الوحدة المُحوَّل منها — يجب أن تكون مسجَّلة وعاملة.", "The source unit; it must be registered and active.", 32);
+            WriteIntegerProperty(w, "numerator", 1, 1_000_000_000,
+                "البسط: كم وحدةً من toUnit في «المقام» من fromUnit.",
+                "The numerator: how many toUnit are in 'denominator' of fromUnit.");
+            WriteStringProperty(w, "toUnit", "الوحدة المُحوَّل إليها — يجب أن تكون مسجَّلة وعاملة ومن صنف الكمّية نفسه.", "The destination unit; it must be registered, active, and of the same quantity class.", 32);
+            w.WriteEndObject();
+            WriteRequired(w, "denominator", "fromUnit", "numerator", "toUnit");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("UnitConversion", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "معامل تحويل بين وحدتين كما يخرج على السلك. / A conversion factor between two units as it leaves on the wire.");
+            w.WriteStartObject("properties");
+            WriteIntegerProperty(w, "denominator", 1, 1_000_000_000, "المقام.", "The denominator.");
+            WriteStringProperty(w, "fromUnit", "الوحدة المُحوَّل منها.", "The source unit.", 32);
+            WriteStringProperty(w, "id", "المعرّف.", "The identifier.", 36);
+            WriteIntegerProperty(w, "numerator", 1, 1_000_000_000, "البسط.", "The numerator.");
+            WriteEnumProperty(w, "quantityClass",
+                "صنف الكمّية المشترك بين الوحدتين — ولا معامل بين صنفين.",
+                "The quantity class shared by both units — there is no factor across two classes.",
+                QuantityClasses);
+            WriteStringProperty(w, "toUnit", "الوحدة المُحوَّل إليها.", "The destination unit.", 32);
+            w.WriteEndObject();
+            WriteRequired(w, "denominator", "fromUnit", "id", "numerator", "quantityClass", "toUnit");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("UnitConversionList", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "معاملات التحويل، مرتَّبة بالوحدة المُحوَّل منها ثم إليها. / "
+                + "The conversion factors, ordered by source unit then destination unit.");
+            w.WriteStartObject("properties");
+            WriteIntegerProperty(w, "conversionCount", 0, int.MaxValue, "عدد المعاملات.", "The number of factors.");
+            WriteArrayRefProperty(w, "conversions", "UnitConversion", "المعاملات.", "The factors.");
+            w.WriteEndObject();
+            WriteRequired(w, "conversionCount", "conversions");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("ConversionTrialRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب تجربة تحويل — **مسبارٌ لا يكتب شيئاً**. يُجيب بالناتج الدقيق أو بالرفض المُسمّى، ولا "
+                + "يُقرّب في الحالتين. / "
+                + "A conversion trial request — **a probe that writes nothing**. It answers with the exact result or "
+                + "with a named refusal, and rounds in neither case.");
+            w.WriteStartObject("properties");
+            WriteRefProperty(w, "quantity", "Measure");
+            WriteStringProperty(w, "toUnit", "الوحدة المطلوب التحويل إليها.", "The unit to convert into.", 32);
+            w.WriteEndObject();
+            WriteRequired(w, "quantity", "toUnit");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("ConversionResult", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "نتيجة تحويلٍ **وقع بلا باقٍ**. والمعامل يخرج معها بسطاً ومقاماً كي يُراجَع الناتج بلا "
+                + "استعلامٍ ثانٍ، ولا يُقرأ رقمٌ بلا الطريق الذي أنتجه. / "
+                + "The result of a conversion **that divided exactly**. The factor comes back with it as numerator and "
+                + "denominator so the result can be checked without a second call, and no number is read without the "
+                + "route that produced it.");
+            w.WriteStartObject("properties");
+            WriteIntegerProperty(w, "denominator", 1, 1_000_000_000, "مقام المعامل المُستعمَل.", "The denominator of the factor used.");
+            WriteRefProperty(w, "from", "Measure");
+            WriteIntegerProperty(w, "numerator", 1, 1_000_000_000, "بسط المعامل المُستعمَل.", "The numerator of the factor used.");
+            WriteEnumProperty(w, "quantityClass", "صنف الكمّية المشترك.", "The shared quantity class.", QuantityClasses);
+            WriteRefProperty(w, "to", "Measure");
+            w.WriteEndObject();
+            WriteRequired(w, "denominator", "from", "numerator", "quantityClass", "to");
             w.WriteBoolean("additionalProperties", false);
         });
 
@@ -7604,6 +9158,34 @@ internal static class OpenApiEmitter
     /// حالة رابعة، فيصف العقدُ مجموعةً مغلقة ليست مغلقة.</para>
     /// </summary>
     private static readonly string[] EntitlementStateNames = Enum.GetNames<Babel.Core.Entitlement.EntitlementState>();
+
+    /// <summary>
+    /// أسماء أطوار الدور وحالات الخطوة وأشكال الحدث على السلك.
+    /// <para>
+    /// <b>مقروءةٌ من التعدادات نفسها لا مكتوبةً هنا</b>: قائمةٌ ثانية بيدٍ تنحرف عند أوّل
+    /// عضوٍ يُضاف، فيصف العقد حالةً لا وجود لها — أو يسكت عن حالةٍ تصل إلى اللوحة فلا
+    /// تعرفها. والتحويل إلى الحرف الصغير الأوّل هو اصطلاح هذا السطح نفسه.
+    /// </para>
+    /// <para>
+    /// <b>ولاحظ ما ليس في أيٍّ منها ولا يمكن أن يكون: <c>posted</c>.</b> لا عضو بهذا
+    /// الاسم في <c>AgentStepState</c> ولا في <c>AgentTurnPhase</c>، فالعقد المنشور عاجزٌ
+    /// عن وصف حالةِ ترحيلٍ في مسار الوكيل — <b>لا لأنّا حذفناها، بل لأنها غير موجودة</b>.
+    /// </para>
+    /// </summary>
+    private static readonly string[] AgentStepStateNames =
+        [.. Enum.GetNames<Babel.Ai.Workspace.AgentStepState>().Select(Wire).Order(StringComparer.Ordinal)];
+
+    /// <summary>أطوار الدور — مقروءةً من التعداد.</summary>
+    private static readonly string[] AgentTurnPhaseNames =
+        [.. Enum.GetNames<Babel.Ai.Workspace.AgentTurnPhase>().Select(Wire).Order(StringComparer.Ordinal)];
+
+    /// <summary>أشكال حدث الدور — مقروءةً من التعداد.</summary>
+    private static readonly string[] AgentTurnEventKindNames =
+        [.. Enum.GetNames<Babel.Ai.Agent.AgentTurnEventKind>().Select(Wire).Order(StringComparer.Ordinal)];
+
+    /// <summary>اسمُ عضوٍ على السلك: أوّلُه صغير وما بعده كما هو.</summary>
+    private static string Wire(string member) =>
+        char.ToLowerInvariant(member[0]) + member[1..];
 
     /// <summary>حالات الاشتراك كما يقيّدها <c>ck_sub_state</c> في مخطّط مستوى التحكّم.</summary>
     private static readonly string[] SubscriptionStateNames = ["Active", "Lapsed", "Cancelled"];

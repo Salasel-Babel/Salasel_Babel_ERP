@@ -110,10 +110,20 @@ jobs:
         if: always() && steps.install.outcome == 'success'
         run: npm run lint
 
+      # ‏**ختم مجلّد التقارير قبل أي اختبار** — الحصيلة ترفض تقريراً أقدم منه.
+      - name: ختم مجلّد التقارير / stamp the report directory
+        if: always()
+        working-directory: .
+        run: tools/test-tally/run.sh --begin
+
+      # ‏`npm test` هو `vitest run`، ويُنادى هنا بمُبلِّغَين: الافتراضي لقارئ السجلّ،
+      # وJSON لتقرأه الحصيلة. و`passWithNoTests: false` في `vitest.config.ts` يمنع
+      # الصفر — لكنه **لا يمنع الانكماش**: مجموعةٌ تهبط من 379 إلى ثلاثة تبقى خضراء.
+      # الأرضية في `tests/test-surfaces.json` هي ما يمنعه.
       - name: اختبارات الوحدة
         id: unit
         if: always() && steps.install.outcome == 'success'
-        run: npm test
+        run: npm test -- --reporter=default --reporter=json --outputFile.json="$GITHUB_WORKSPACE/artifacts/test-reports/web-unit.json"
 
       # الحصيلة — تقول ما نُفِّذ وما لم يُنفَّذ بالحرف، لا بلونٍ في قائمة.
       - name: الحصيلة — كل خطوة ونتيجتها
@@ -130,6 +140,13 @@ jobs:
             echo "| الحدّ · lint | ${{ steps.lint.outcome }} |"
             echo "| الوحدة · unit tests | ${{ steps.unit.outcome }} |"
           } >> "$GITHUB_STEP_SUMMARY"
+
+      # الحصيلة تقرأ **ما أنتجه التشغيل** لا نصّ الأمر: تقريرٌ موجود، وعددُ ما نُفِّذ
+      # عند الأرضية أو فوقها، وصفرُ إخفاق. والقاعدة 20 تحرس وجودها وشرطها.
+      - name: الحصيلة — هل نُفِّذ ما يدّعي هذا السير تنفيذه
+        if: always()
+        working-directory: .
+        run: tools/test-tally/run.sh --job web.yml:static-checks
 
   # ── مصفوفة العرض ────────────────────────────────────────────────────────
   # **بلا `needs`** عمداً: هذه هي الوظيفة التي أسكتها فخ-80، ولا يجوز أن
@@ -166,11 +183,21 @@ jobs:
 
       # لا `if: always()` هنا: بلا `dist/` لا معنى لتشغيلها — وهذه تبعية
       # حقيقية تُصان. وخطوة الحصيلة تحتها تقول صراحةً إن لم تُشغَّل ولماذا.
+      - name: ختم مجلّد التقارير / stamp the report directory
+        if: always()
+        working-directory: .
+        run: tools/test-tally/run.sh --begin
+
+      # ‏**ولماذا مُبلِّغ JSON:** `--list` أو تصفيةٌ لا تطابق شيئاً تُبقيان المصفوفة
+      # خضراء بصفر منفَّذ — قِيس أن `--list` يكتب `stats.expected=0` و`skipped=107`.
+      # فالحصيلة تقرأ `expected + unexpected + flaky` وتقابله بالأرضية 107.
       - name: مصفوفة العرض — ٤ لغات × ٢ مظهر × ٣ عروض، والسلوك، والقياس
         id: matrix
-        run: npx playwright test
+        run: npx playwright test --reporter=list,json,html
         env:
           PLAYWRIGHT_CHROMIUM: ''
+          PLAYWRIGHT_HTML_OPEN: never
+          PLAYWRIGHT_JSON_OUTPUT_NAME: ${{ github.workspace }}/artifacts/test-reports/web-matrix.json
 
       - name: الحصيلة — هل نُفِّذت المصفوفة فعلاً
         if: always()
@@ -190,6 +217,11 @@ jobs:
               echo "> because the build failed; it serves the production bundle."
             fi
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: الحصيلة — هل نُفِّذ ما يدّعي هذا السير تنفيذه
+        if: always()
+        working-directory: .
+        run: tools/test-tally/run.sh --job web.yml:rendering-matrix
 
       - name: رفع لقطات المصفوفة والقياس
         if: always()

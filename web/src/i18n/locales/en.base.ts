@@ -711,7 +711,7 @@ export const messages: MessageTree = {
     "lede": {
       "color": "Every value below is read live from the theme file when the page opens, so the gallery cannot drift from the tokens. The “light” and “dark” lines show each token in both themes at once.",
       "colorSem": "Never write a raw colour in a component, and never use a core token for the “posted” state: use the semantic token. If the meaning of the state changes later, it changes in one place instead of a hundred.",
-      "type": "The typeface follows the active language, and each language carries its own fallback stack in its own file. Every number in the interface is tabular-nums without exception.",
+      "type": "The typeface follows the active language, and each language carries its own fallback stack in its own file. Every number in the interface is drawn through the --font-numeric token alone: never write a numeral value in a component — the guard refuses it by file and line.",
       "buttons": "Order in the action bar: primary action first (at the start of the line), then secondary actions. A destructive action never sits next to the primary one.",
       "fields": "Every label is a key, not a string. The companion second label shows **another language the user chooses** — not English pinned in place.",
       "amounts": "This is the most important component in the product. An amount is decimal, not float; it arrives from the server as a string at a fixed scale and the interface only adds thousands separators — using separators declared in the locale file, never from Intl.",

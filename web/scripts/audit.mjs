@@ -731,7 +731,11 @@ head("١١ · عمود الأرقام · the numeric column");
 const tabularRules = [];
 for (const f of cssFiles) {
   for (const r of cssRules(fs.readFileSync(f, "utf8"))) {
-    if (/font-variant-numeric\s*:[^;]*tabular-nums/.test(r.body)) {
+    /* ‏**الطلب يُكتب رمزاً لا حرفاً** بعد أن صار `--font-numeric` هو الموضع
+       الوحيد الذي تُكتب فيه القيمة (numerals.mjs). فلو بقي هذا الاشتقاق
+       يبحث عن `tabular-nums` حرفياً لعاد صفراً — وحارسٌ اشتقاقُه صفرٌ يمرّ
+       فارغاً وهو يُعلن أنه فحص. ولذلك الصيغتان معاً، والحصائل تحرس اللافراغ. */
+    if (/font-variant-numeric\s*:[^;]*(tabular-nums|var\(--font-numeric\))/.test(r.body)) {
       tabularRules.push({ file: rel(f), ...r });
     }
   }
@@ -746,16 +750,17 @@ mustScan("أصنافٌ رقمية مشتقّة · numeric classes derived", NUME
 /* ‏(أ) **وجهٌ واحد للرقم.** ‏`tabular-nums` يُسوّي الأرقام داخل الوجه الواحد
    ولا يُسوّي بين وجهين: عشرة أرقام عند 14px/600 قاست 98.81 بكسل بـ
    `--font-sans` و84.30 بـ`--font-mono` — 14.7٪ فرقاً بين عمودَين متجاورين.
-   فمن يُعلن `tabular-nums` ويختار وجهاً يختار `--font-numeric`. */
+   فمن يُعلن `tabular-nums` ويختار وجهاً يختار `--font-numeric-face` — وهو
+   **المِحرف**، غير `--font-numeric` الذي هو **الطلب**. */
 const faceProblems = [];
 for (const r of tabularRules) {
   const face = /(^|[;\s])font-family\s*:([^;]+)/.exec(r.body)?.[2]?.trim();
-  if (face && !face.includes("--font-numeric")) {
+  if (face && !face.includes("--font-numeric-face")) {
     faceProblems.push(r.file + ":" + r.line + " " + r.selector + " ← font-family:" + face);
   }
 }
 if (faceProblems.length) {
-  bad("وجهٌ ثانٍ للرقم — الأرقام الجدولية تتطلّب var(--font-numeric)", faceProblems, true);
+  bad("وجهٌ ثانٍ للرقم — الأرقام الجدولية تتطلّب var(--font-numeric-face)", faceProblems, true);
 } else ok("كل قاعدةٍ تُعلن أرقاماً جدولية تستعمل وجه الأرقام الواحد");
 
 /* ‏(ب) **الخانة التي تعرض رقماً تحمل صنفاً رقمياً.** */

@@ -59,7 +59,7 @@
 /* القناع نصٌّ آليّ: اتجاهٌ مثبّت **مع عزلٍ صريح** فلا ينزلق داخل جملة عربية. */
 .hr-mask__value{
   direction:ltr; unicode-bidi:isolate;
-  letter-spacing:.08em; font-variant-numeric:tabular-nums;
+  letter-spacing:.08em; font-variant-numeric:var(--font-numeric);
 }
 .hr-mask .hint{ margin:0 }
 

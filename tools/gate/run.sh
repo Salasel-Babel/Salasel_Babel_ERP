@@ -111,6 +111,17 @@ dotnet test --project tests/Babel.ArchitectureTests/Babel.ArchitectureTests.cspr
 # ومقيس على هذا المستودع أن `--minimum-expected-tests` **تراكمية على الحلّ كلّه**:
 # ‏99999 على `--solution Babel.slnx` أعطت الرمز 9 عند 1587. فهي تلتقط اختفاء مشروعٍ
 # كامل من الحلّ — وهو العطل الذي وقع عند ed02df2 والمشروح في رأس هذا الملفّ.
+# ‏**والقاعدة تُفحَص هنا لا في خطوة العرض وحدها.** كان `pg_isready` داخل
+# ‏`if [ "$demo" = "yes" ]` فقط، ومجموعةُ الاختبارات تحتاج القاعدة على أيّ حال.
+# فتشغيلٌ بلا `--with-demo` على قاعدةٍ متوقّفة يُخرج **٤٢٨ خطأ `Connection refused`**
+# موزّعةً على أحد عشر مشروعاً — مقيس بعد إعادة إقلاع الحاوية — بدل سطرٍ واحد
+# يسمّي العلّة. وقارئُ ذلك المُخرَج يقرأ «الشيفرة انكسرت» لا «القاعدة متوقّفة»،
+# فيبحث في الموضع الخطأ. وفحصٌ نطاقُه أضيق ممّا يحرسه يُنيم الانتباه عمّا لا يراه.
+if command -v pg_isready >/dev/null 2>&1; then
+    pg_isready >/dev/null 2>&1 \
+        || fail "PostgreSQL متوقّف ومجموعة الاختبارات تحتاجه — شغّله: pg_ctlcluster 16 main start"
+fi
+
 step "٤ · كل الاختبارات"
 dotnet test --solution Babel.slnx -c "$configuration" --no-build \
     --report-xunit-trx --results-directory artifacts/test-reports \

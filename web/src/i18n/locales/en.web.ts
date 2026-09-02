@@ -80,6 +80,7 @@ export const messages: MessageTree = {
     workspace: {
       title: "Agent workspace",
       close: "Close the panel",
+      chooseCompany: "Go to the session screen",
       open: "Agent",
       openTitle: "Open the agent workspace",
       phase: {
@@ -124,12 +125,14 @@ export const messages: MessageTree = {
         gone: "The session ended",
         ceiling: "You have reached the spend ceiling",
         offline: "The connection to the server dropped",
+        noCompany: "No company is open yet",
       },
       blocked: {
         disabled: "The agent is not composed on this server for this tenant. That is a deployment setting, not a fault.",
         gone: "The agent session expired or the server restarted. Start a new one — the earlier conversation is not restored.",
         ceiling: "This tenant has reached its spend ceiling for this window. Raising it is the subscription owner's decision.",
         offline: "No answer arrived from the server.",
+        noCompany: "The agent works inside a company: it reads that company’s registers and hands its draft to a screen there. Choose a company on the session screen, then come back.",
       },
     },
   },

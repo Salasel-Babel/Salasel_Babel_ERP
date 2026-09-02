@@ -49,14 +49,23 @@ export function ChooseCompanyFirst(props: { readonly testId: string }): ReactNod
 /* ═══════════════════════════════════════ ١٫٥ · الملاحة داخل القسم
    ملاحةُ الهيكل تحمل **الأقسام** لا شاشاتِ كلٍّ منها، ولوحةُ الأوامر تفتح على
    ما يُعرَف اسمه. وبينهما يبقى من دخل القسم ولا يعرف ماذا فيه — فشريطٌ داخل
-   القسم يقول أربعَ شاشاته، والحالية موسومةٌ بـ`aria-current`. */
+   القسم يقول شاشاته، والحالية موسومةٌ بـ`aria-current`.
 
-/** شاشات القسم الأربع بمساراتها. */
+   **والترتيب ترتيبُ العمل لا ترتيبُ الحروف:** ما يُعرَّف مرّةً (مكوّنات
+   الأجر)، ثم من يُسجَّل (السجلّ)، ثم ما يُقيَّد على الموظف قبل الشهر (السلف
+   والاستقطاعات)، ثم المسيّر وقسيمته، ثم ما يُسدَّد عن الشهر إلى الجهة
+   (التأمينات)، ثم ما يُنهي العلاقة (نهاية الخدمة)، ثم ما يُطابَق عند الإقفال. */
+
+/** شاشات القسم الثماني بمساراتها. */
 const HR_SCREENS = [
+  { to: "/hr/pay-components", key: "hr.nav.payComponents" },
   { to: "/hr", key: "hr.nav.register" },
+  { to: "/hr/advances-deductions", key: "hr.nav.advances" },
   { to: "/hr/payroll", key: "hr.nav.payroll" },
   { to: "/hr/payslip", key: "hr.nav.payslip" },
+  { to: "/hr/social-insurance", key: "hr.nav.socialInsurance" },
   { to: "/hr/end-of-service", key: "hr.nav.endOfService" },
+  { to: "/hr/subledger-reconciliation", key: "hr.nav.reconciliation" },
 ] as const;
 
 /**

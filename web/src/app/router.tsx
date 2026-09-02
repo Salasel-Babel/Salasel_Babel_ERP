@@ -34,11 +34,17 @@ import { PurchaseOrderScreen } from "../screens/accounting/PurchaseOrderScreen";
 import { GoodsReceiptScreen } from "../screens/accounting/GoodsReceiptScreen";
 import { SupplierBillScreen } from "../screens/accounting/SupplierBillScreen";
 import { SupplierPaymentScreen } from "../screens/accounting/SupplierPaymentScreen";
-/* الموارد البشرية — أربع شاشات: السجلّ، والمسيّر، والقسيمة، ونهاية الخدمة. */
+/* الموارد البشرية — ثماني شاشات بترتيب العمل: مكوّنات الأجر تُعرَّف مرّةً،
+   ثم السجلّ، ثم ما يُقيَّد على الموظف قبل الشهر، ثم المسيّر وقسيمته، ثم سداد
+   التأمينات، ثم نهاية الخدمة، ثم المطابقة عند الإقفال. */
 import { EmployeeRegisterScreen } from "../screens/hr/EmployeeRegisterScreen";
 import { PayrollRunScreen } from "../screens/hr/PayrollRunScreen";
 import { PayslipScreen } from "../screens/hr/PayslipScreen";
 import { EndOfServiceScreen } from "../screens/hr/EndOfServiceScreen";
+import { PayComponentsScreen } from "../screens/hr/PayComponentsScreen";
+import { AdvancesDeductionsScreen } from "../screens/hr/AdvancesDeductionsScreen";
+import { SocialInsuranceScreen } from "../screens/hr/SocialInsuranceScreen";
+import { SubledgerReconciliationScreen } from "../screens/hr/SubledgerReconciliationScreen";
 
 const rootRoute = createRootRoute({ component: AppShell });
 
@@ -181,6 +187,30 @@ const hrEndOfServiceRoute = createRoute({
   component: EndOfServiceScreen,
 });
 
+const hrPayComponentsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/hr/pay-components",
+  component: PayComponentsScreen,
+});
+
+const hrAdvancesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/hr/advances-deductions",
+  component: AdvancesDeductionsScreen,
+});
+
+const hrSocialInsuranceRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/hr/social-insurance",
+  component: SocialInsuranceScreen,
+});
+
+const hrReconciliationRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/hr/subledger-reconciliation",
+  component: SubledgerReconciliationScreen,
+});
+
 /* ── دورة المستندات: المبيعات ──────────────────────────────────────────── */
 const salesInvoiceRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -250,6 +280,10 @@ const routeTree = rootRoute.addChildren([
   hrPayrollRoute,
   hrPayslipRoute,
   hrEndOfServiceRoute,
+  hrPayComponentsRoute,
+  hrAdvancesRoute,
+  hrSocialInsuranceRoute,
+  hrReconciliationRoute,
   salesInvoiceRoute,
   salesReceiptRoute,
   salesReceivablesRoute,

@@ -49,7 +49,7 @@ public enum AgentTurnPhase
 
 /// <summary>خطوةٌ في الخطّة، بعنوانها العربيّ وحالها.</summary>
 /// <param name="StepId">معرّفها في هذه المساحة — يُستعمل في مسار التأكيد.</param>
-/// <param name="Ordinal">ترتيبها، بدءاً من واحد.</param>
+/// <param name="Order">ترتيبها، بدءاً من واحد.</param>
 /// <param name="TitleAr">عنوانها كما أعلنه النموذج أو كما اشتُقّ من اسم أداتها.</param>
 /// <param name="State">حالها.</param>
 /// <param name="ToolName">اسم الأداة حين تُنفَّذ.</param>
@@ -57,7 +57,7 @@ public enum AgentTurnPhase
 /// <param name="Errors">أسباب السقوط.</param>
 public sealed record AgentWorkspaceStep(
     Guid StepId,
-    int Ordinal,
+    int Order,
     string TitleAr,
     AgentStepState State,
     string? ToolName,

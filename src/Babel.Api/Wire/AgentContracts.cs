@@ -8,7 +8,7 @@ namespace Babel.Api.Wire;
 /// </para>
 /// </summary>
 /// <param name="StepId">معرّف الخطوة — وهو ما يُكتب في مسار التأكيد.</param>
-/// <param name="Ordinal">ترتيبها بدءاً من واحد.</param>
+/// <param name="Order">ترتيبها بدءاً من واحد.</param>
 /// <param name="TitleAr">عنوانها العربي كما أعلنه النموذج، أو اسم أداتها إن نفّذ بلا خطّة.</param>
 /// <param name="State">حالها.</param>
 /// <param name="ToolName">اسم العملية المنشورة التي تناديها الخطوة.</param>
@@ -16,7 +16,7 @@ namespace Babel.Api.Wire;
 /// <param name="Refusals">أسباب السقوط بالعربية والإنجليزية، أو قائمة فارغة.</param>
 internal sealed record AgentPlanStepDto(
     string StepId,
-    int Ordinal,
+    int Order,
     string TitleAr,
     string State,
     string? ToolName,

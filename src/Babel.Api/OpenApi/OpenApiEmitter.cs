@@ -3700,7 +3700,11 @@ internal static class OpenApiEmitter
                 + "A step in the agent's plan. **There is no 'posted' state and there must not be**: the furthest a step reaches "
                 + "is landed — a draft that arrived on its screen — and posting is a manual act there.");
             w.WriteStartObject("properties");
-            WriteIntegerProperty(w, "ordinal", 1, 64,
+            // ‏**واسمُه «order» لا «ordinal»**: الثانية كلمةُ رسمِ أرقامٍ في CSS،
+            // وحارسُ `scripts/numerals.mjs` يمنع كتابتها حرفياً في أي شيفرةٍ تُشحن —
+            // والعميلُ المُولَّد شيفرةٌ تُشحن. فحقلٌ باسمها يُحمِّر حارساً قائماً على
+            // كل من يولّد العميل، ولا يكسب المعنى شيئاً.
+            WriteIntegerProperty(w, "order", 1, 64,
                 "ترتيب الخطوة بدءاً من واحد.", "The step's order, starting at one.");
             WriteArrayRefProperty(w, "refusals", "ApiError",
                 "أسباب سقوط الخطوة بلغتيها، أو قائمة فارغة.",
@@ -3720,7 +3724,7 @@ internal static class OpenApiEmitter
                 "اسم العملية المنشورة التي تناديها الخطوة — وفعلُها draft دائماً.",
                 "The published operation the step calls; its verb is always draft.", 128);
             w.WriteEndObject();
-            WriteRequired(w, "ordinal", "refusals", "screenRoute", "state", "stepId", "titleAr", "toolName");
+            WriteRequired(w, "order", "refusals", "screenRoute", "state", "stepId", "titleAr", "toolName");
             w.WriteBoolean("additionalProperties", false);
         });
 

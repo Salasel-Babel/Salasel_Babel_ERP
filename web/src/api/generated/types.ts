@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     c236c64c98f59c2254ec809144398573949fc1cb117820f6079fc3e40f8d4094
+     2a3731a36e2a415856f1bf9ad707acfc18417900d360c75bbbf4ff9db5f943b6
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -99,7 +99,7 @@ export interface AgentMessageRequest {
 /** خطوةٌ في خطّة الوكيل. **ولا حالة اسمها posted في state ولا يجوز أن توجد**: أبعد ما تبلغه خطوةٌ landed — مسوّدةٌ هبطت على شاشتها — والترحيل فعلٌ بصريّ يدويّ هناك. / A step in the agent's plan. **There is no 'posted' state and there must not be**: the furthest a step reaches is landed — a draft that arrived on its screen — and posting is a manual act there. */
 export interface AgentPlanStep {
   /** ترتيب الخطوة بدءاً من واحد. / The step's order, starting at one. */
-  ordinal: number;
+  order: number;
   /** أسباب سقوط الخطوة بلغتيها، أو قائمة فارغة. / Why the step was refused, in both languages, or an empty list. */
   refusals: ApiError[];
   /** مسار شاشة المسوّدة بعد هبوطها — وهو ما يفتحه الزرّ في اللوحة. ولا يعبر هذا المسار إلى النموذج. / The draft's screen route once it has landed; the panel's button opens it. This route never crosses to the model. */

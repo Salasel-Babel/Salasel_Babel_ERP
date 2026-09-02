@@ -136,3 +136,377 @@
   color: var(--color-text-subtle);
   font-size: var(--font-size-3xs);
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   مساحة العمل الجانبية  ·  The side workspace
+   ───────────────────────────────────────────────────────────────────────────
+   **الجانب المقابل لبداية القراءة**: `inset-inline-end` تعني يسارَ الشاشة
+   بالعربية ويمينَها بالإنجليزية — قاعدةٌ واحدة تصحّ في الاتجاهين، ولا `left`
+   ولا `right` في هذا الملفّ كلّه (يفرضه `scripts/audit.mjs`).
+
+   **والصفُّ يملك المسارات، لا الحقلُ يقيس نفسه**: بطاقة التأكيد شبكةٌ بعمودين
+   ثابتين — اسمُ الحقل ثم قيمته — فتقع كل القيم على مسارٍ واحد مهما طال اسمٌ
+   أو قصُر. وحقلٌ يقيس عرضَه بنفسه يُزيح جيرانه عند أوّل اسمٍ أطول، وهو العطل
+   الذي سمّاه صاحب المصلحة بعينه.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.agw {
+  position: fixed;
+  inset-block: 0;
+  inset-inline-end: 0;
+  z-index: var(--z-command, 60);
+  inline-size: min(30rem, 100vw);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-10, 0.625rem);
+  padding: var(--space-14, 0.875rem);
+  border-inline-start: var(--border-width, 1px) solid var(--color-border-strong);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  box-shadow: var(--elevation-floating);
+  overflow: hidden;
+}
+
+.agw__hd {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8, 0.5rem);
+  flex-wrap: wrap;
+  padding-block-end: var(--space-8, 0.5rem);
+  border-block-end: var(--border-width, 1px) solid var(--edge-line);
+}
+
+.agw__hd .spacer {
+  margin-inline-start: auto;
+}
+
+.agw__spend {
+  font-size: var(--font-size-3xs);
+  color: var(--color-text-subtle);
+  font-variant-numeric: var(--font-numeric);
+}
+
+/* ── ما يمنع اللوح: حالٌ مسمّى وخطوةٌ تالية، لا «تعذّر» ───────────────── */
+.agw__blocked {
+  display: grid;
+  gap: var(--space-6, 0.375rem);
+  padding: var(--space-10, 0.625rem) var(--space-12, 0.75rem);
+  border: var(--border-width, 1px) solid var(--color-danger-line);
+  border-radius: var(--radius-control, 0.375rem);
+  background: var(--color-danger-soft);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+}
+
+.agw__blockedhd {
+  margin: 0;
+  color: var(--color-danger);
+  font-weight: var(--font-weight-semibold);
+}
+
+.agw__blocked p {
+  margin: 0;
+}
+
+/* ── الخطّة ────────────────────────────────────────────────────────────── */
+.agw__plan {
+  padding: var(--space-8, 0.5rem) var(--space-10, 0.625rem);
+  border: var(--border-width, 1px) solid var(--color-border);
+  border-radius: var(--radius-control, 0.375rem);
+  background: var(--color-surface);
+  max-block-size: 30dvh;
+  overflow: auto;
+}
+
+.agw__planhd {
+  margin: 0 0 var(--space-6, 0.375rem);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-3xs);
+}
+
+.agw__steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--space-6, 0.375rem);
+}
+
+/* الخطوة صفٌّ بمسارات: علامةٌ · عنوانٌ يتمدّد · شارةُ حال. فالشارات كلّها
+   على مسارٍ واحد مهما طال عنوان، ولا تتراقص بين خطوةٍ وأخرى. */
+.agw__step {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-8, 0.5rem);
+  font-size: var(--font-size-sm);
+}
+
+.agw__stepmark {
+  inline-size: 8px;
+  block-size: 8px;
+  border-radius: 50%;
+  background: var(--color-text-subtle);
+}
+
+.agw__step[data-state="running"] .agw__stepmark {
+  background: var(--color-primary);
+}
+
+.agw__step[data-state="landed"] .agw__stepmark {
+  background: var(--color-success, var(--color-primary));
+}
+
+.agw__step[data-state="refused"] .agw__stepmark {
+  background: var(--color-danger);
+}
+
+.agw__steptitle {
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+/* سببُ السقوط يمتدّ على الصفّ كلّه تحت الخطوة — فلا يُزيح الشارة عن مسارها. */
+.agw__stepwhy {
+  grid-column: 1 / -1;
+  color: var(--color-danger);
+  font-size: var(--font-size-3xs);
+}
+
+/* ── الخيط ─────────────────────────────────────────────────────────────── */
+.agw__log {
+  flex: 1 1 auto;
+  min-block-size: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  display: grid;
+  align-content: start;
+  gap: var(--space-8, 0.5rem);
+  padding-inline-end: var(--space-4, 0.25rem);
+}
+
+.agw__empty {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.agw__you,
+.agw__said {
+  margin: 0;
+  padding: var(--space-8, 0.5rem) var(--space-10, 0.625rem);
+  border-radius: var(--radius-control, 0.375rem);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.agw__you {
+  justify-self: end;
+  max-inline-size: 85%;
+  background: var(--color-primary-soft);
+  border: var(--border-width, 1px) solid var(--color-primary);
+}
+
+.agw__said {
+  background: var(--color-surface);
+  border: var(--border-width, 1px) solid var(--color-border);
+}
+
+.agw__think {
+  font-size: var(--font-size-3xs);
+  color: var(--color-text-subtle);
+}
+
+.agw__think > summary {
+  cursor: pointer;
+}
+
+.agw__think > p {
+  margin: var(--space-4, 0.25rem) 0 0;
+  white-space: pre-wrap;
+}
+
+.agw__declared,
+.agw__tool {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-8, 0.5rem);
+  flex-wrap: wrap;
+  font-size: var(--font-size-3xs);
+  color: var(--color-text-muted);
+}
+
+.agw__toolname {
+  font-family: var(--font-mono, monospace);
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+.agw__tool--bad,
+.agw__tool--bad .agw__toolwhy,
+.agw__refused {
+  color: var(--color-danger);
+}
+
+.agw__refused {
+  margin: 0;
+  font-size: var(--font-size-sm);
+}
+
+.agw__landed {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-8, 0.5rem);
+  flex-wrap: wrap;
+  padding: var(--space-8, 0.5rem) var(--space-10, 0.625rem);
+  border: var(--border-width, 1px) dashed var(--color-border-strong);
+  border-radius: var(--radius-control, 0.375rem);
+  font-size: var(--font-size-sm);
+}
+
+.agw__stilldraft {
+  color: var(--color-text-subtle);
+  font-size: var(--font-size-3xs);
+}
+
+.agw__pulse {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-8, 0.5rem);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-3xs);
+}
+
+.agw__dot {
+  inline-size: 8px;
+  block-size: 8px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  animation: agw-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes agw-pulse {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agw__dot { animation: none; }
+}
+
+/* ── بطاقة التأكيد ─────────────────────────────────────────────────────── */
+.agw__confirm {
+  display: grid;
+  gap: var(--space-8, 0.5rem);
+  padding: var(--space-10, 0.625rem) var(--space-12, 0.75rem);
+  border: var(--border-width, 1px) solid var(--color-primary);
+  border-radius: var(--radius-control, 0.375rem);
+  background: var(--color-surface);
+  max-block-size: 40dvh;
+  overflow: auto;
+}
+
+.agw__confirmhd {
+  margin: 0;
+  font-weight: var(--font-weight-semibold);
+}
+
+.agw__confirmnote {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-3xs);
+}
+
+.agw__fields {
+  margin: 0;
+  display: grid;
+  gap: var(--space-4, 0.25rem);
+}
+
+/* **الصفُّ يملك المسارين.** اسمُ الحقل على مسارٍ ثابت وقيمتُه على الثاني،
+   فتستوي القيم كلُّها تحت بعضها مهما اختلفت أطوال الأسماء. ووصفٌ يُكتب تحت
+   الحقل فيُزيحه هو العطل الذي سمّاه صاحب المصلحة — ولا وصف هنا تحت حقل. */
+.agw__field {
+  display: grid;
+  grid-template-columns: minmax(7rem, 11rem) minmax(0, 1fr);
+  gap: var(--space-8, 0.5rem);
+  align-items: baseline;
+  font-size: var(--font-size-sm);
+}
+
+.agw__field > dt {
+  color: var(--color-text-muted);
+  font-family: var(--font-mono, monospace);
+  font-size: var(--font-size-3xs);
+  direction: ltr;
+  unicode-bidi: isolate;
+  text-align: start;
+  overflow-wrap: anywhere;
+}
+
+.agw__field > dd {
+  margin: 0;
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+.agw__masked {
+  color: var(--color-text-subtle);
+  font-style: italic;
+}
+
+.agw__confirmact {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8, 0.5rem);
+  flex-wrap: wrap;
+}
+
+.agw__nopost {
+  color: var(--color-text-subtle);
+  font-size: var(--font-size-3xs);
+}
+
+/* ── المؤلِّف ──────────────────────────────────────────────────────────── */
+.agw__composer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--space-8, 0.5rem);
+  padding-block-start: var(--space-8, 0.5rem);
+  border-block-start: var(--border-width, 1px) solid var(--edge-line);
+}
+
+.agw__input {
+  inline-size: 100%;
+  resize: vertical;
+  padding: var(--space-8, 0.5rem) var(--space-10, 0.625rem);
+  border: var(--border-width, 1px) solid var(--color-border);
+  border-radius: var(--radius-control, 0.375rem);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+}
+
+.agw__input:focus-visible {
+  outline: 0;
+  border-color: var(--color-focus);
+  box-shadow: var(--ring);
+}
+
+.agw__input:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+/* على العرض الضيّق يصير اللوح صفحةً كاملة: لوحٌ من 30rem على شاشةٍ من 390px
+   يترك للشاشة تحته شريطاً لا يُقرأ ولا يُلمس. */
+@media (max-width: 40rem) {
+  .agw {
+    inline-size: 100vw;
+    border-inline-start: 0;
+  }
+}

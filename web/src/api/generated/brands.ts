@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     c236c64c98f59c2254ec809144398573949fc1cb117820f6079fc3e40f8d4094
+     2a3731a36e2a415856f1bf9ad707acfc18417900d360c75bbbf4ff9db5f943b6
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen

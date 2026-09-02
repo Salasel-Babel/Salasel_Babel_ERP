@@ -151,6 +151,9 @@ for (const pass of PASSES) {
     let pageUnits = 0;
     let pageRows = 0;
     let worstControl = 0;
+    let agentUnits = 0;
+    let agentRows = 0;
+    let agentCardFields = 0;
 
     for (const p of PATHS) {
       await page.goto(urlOf(p, pass.locale));
@@ -214,6 +217,97 @@ for (const pass of PASSES) {
       writeFileSync(path.join(OUT_DIR, "guard-" + tag + ".json"), JSON.stringify(report, null, 1));
     }
 
+    /* ── مساحة عمل الوكيل: لوحٌ واحد يعلو كل شاشة، فيُقاس مرّةً لا واحدةً
+       لكل شاشة. ويُقاس فيه ثلاثة: **جانبُه** — وهو الجانب المقابل لبداية
+       القراءة، يسارُ الشاشة بالعربية ويمينُها بالإنجليزية — و**استقامةُ صفوفه**
+       بالسماحيتين نفسيهما، و**ألّا ينزلق أفقياً** عند 390px حيث يصير الصفحة كلَّها.
+
+       ولماذا هنا لا في ملفٍّ ثانٍ: اللوح جزءٌ من الهيكل يظهر فوق كل شاشة، وحارسٌ
+       ثانٍ بمصفوفةٍ ثانية ينحرف عن هذه عند أوّل عرضٍ يُضاف. */
+    await page.goto(urlOf(PATHS[0], pass.locale));
+    await settle(page);
+    await page.getByTestId("open-agent").click();
+    await page.waitForSelector("[data-testid='agent-workspace']", { timeout: 20_000 });
+    await page.waitForSelector("[data-testid='agent-confirmation']", { timeout: 20_000 });
+    await settle(page);
+
+    const panelBox = await page.evaluate(() => {
+      const el = document.querySelector("[data-testid='agent-workspace']");
+      if (el === null) return null;
+      const box = el.getBoundingClientRect();
+      return {
+        left: box.left,
+        right: box.right,
+        width: innerWidth,
+        dir: document.documentElement.getAttribute("dir") ?? "ltr",
+      };
+    });
+
+    expect(panelBox, `${tag}: لوح الوكيل لم يُرسَم`).not.toBeNull();
+
+    /* الجانب المقابل لبداية القراءة، بقاعدةٍ منطقية واحدة تصحّ في الاتجاهين. */
+    if (panelBox!.width > 640) {
+      if (pass.dir === "rtl") {
+        expect(Math.round(panelBox!.left), `${tag}: اللوح ليس على يسار الشاشة بالعربية`).toBe(0);
+      } else {
+        expect(
+          Math.round(panelBox!.width - panelBox!.right),
+          `${tag}: اللوح ليس على يمين الشاشة بالإنجليزية`
+        ).toBe(0);
+      }
+    }
+
+    const panel: PageMeasure = await page.evaluate(measureAlignment);
+
+    /* **والعدّ داخل اللوح لا في الصفحة كلّها**: اللوح يعلو شاشةً لها حقولها،
+       فعددٌ يجمعهما يقول عن اللوح ما لم يُقَس فيه. */
+    agentUnits = await page.evaluate(
+      () => document.querySelectorAll("[data-testid='agent-workspace'] .field").length
+    );
+    agentRows = panel.rows.filter(
+      (r) => r.scope === "page" && r.parentClass.includes("agw")
+    ).length;
+
+    for (const f of panel.slotFaults) {
+      faults.push(
+        `agent-workspace · حقل «${f.label}» فيه ${f.descChildren} عناصر وصفٍ مباشرة`
+      );
+    }
+
+    if (panel.overflowX > 1) {
+      faults.push(`agent-workspace · انزلاقٌ أفقي ${panel.overflowX}px — اللوح أعرض من نافذته`);
+    }
+
+    /* **وبطاقةُ التأكيد تُقاس بمقياسها هي.** حقولُها زوجٌ من `dt`/`dd` لا حقلَ
+       نموذجٍ، فلا يراها مقياسُ الصفوف أعلاه؛ والخاصّية التي تهمّ فيها واحدة:
+       **كلُّ القيم تبدأ على مسارٍ واحد** مهما اختلفت أطوال أسماء الحقول. وهو
+       بعينه العطل الذي سمّاه صاحب المصلحة — حقلٌ يقيس نفسه فيُزيح جيرانه. */
+    const cardTracks = await page.evaluate(() => {
+      const values = [...document.querySelectorAll(".agw__field > dd")];
+      const starts = new Set<number>();
+      const rtl = document.documentElement.getAttribute("dir") === "rtl";
+      for (const value of values) {
+        const box = value.getBoundingClientRect();
+        starts.add(Math.round(rtl ? innerWidth - box.right : box.left));
+      }
+      return { fields: values.length, tracks: starts.size };
+    });
+
+    expect(cardTracks.fields, `${tag}: بطاقةُ التأكيد بلا حقولٍ — المقياس أعمى`).toBeGreaterThan(3);
+    expect(
+      cardTracks.tracks,
+      `${tag}: قيمُ بطاقة التأكيد على ${cardTracks.tracks} مسارات لا مسارٍ واحد`
+    ).toBe(1);
+
+    agentCardFields = cardTracks.fields;
+
+    for (const row of panel.rows.filter((r) => r.scope === "page")) {
+      if (row.controlTop) worstControl = Math.max(worstControl, row.controlTop.max);
+      if (row.controlTop && row.controlTop.max > CONTROL_TOLERANCE_PX) {
+        faults.push(describeRow("agent-workspace", row, "حافّة أعلى التحكّم", row.controlTop.max));
+      }
+    }
+
     /* حارسٌ على الحارس: ممرٌّ لم يقس حقلاً واحداً ليس نجاحاً بل مقياسٌ أعمى.
        **والعدّ بالحقول لا بالصفوف عمداً:** عند 390px تنهار كل شبكةٍ إلى عمودٍ
        واحد، فلا وجود لصفٍّ متعدّد الحقول أصلاً — وهي حقيقةٌ مقيسة لا افتراض.
@@ -223,6 +317,18 @@ for (const pass of PASSES) {
     if (pass.width >= 1024) {
       expect(pageRows, `${tag}: لا صفوف متعدّدة الحقول عند ${pass.width}px — المقياس أعمى`).toBeGreaterThan(0);
     }
-    expect(faults.join("\n"), `${tag}: أقصى انحرافٍ في حافّة التحكّم ${worstControl.toFixed(2)}px`).toBe("");
+    /* واللوح نفسه لا يمرّ على لا شيء: حقلٌ واحد على الأقل مقيسٌ فيه. */
+    expect(
+      agentUnits,
+      `${tag}: لوح الوكيل لم يقس حقلاً واحداً — المقياس أعمى لا ناجح`
+    ).toBeGreaterThan(0);
+
+    expect(
+      faults.join("\n"),
+      `${tag}: أقصى انحرافٍ في حافّة التحكّم ${worstControl.toFixed(2)}px — ` +
+        `${pageUnits} حقلاً في ${pageRows} صفّاً على الشاشات، ` +
+        `و${agentUnits} حقلاً في ${agentRows} صفّاً على لوح الوكيل، ` +
+        `و${agentCardFields} حقلاً في بطاقة التأكيد على مسارٍ واحد`
+    ).toBe("");
   });
 }

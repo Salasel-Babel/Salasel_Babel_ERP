@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     c236c64c98f59c2254ec809144398573949fc1cb117820f6079fc3e40f8d4094
+     2a3731a36e2a415856f1bf9ad707acfc18417900d360c75bbbf4ff9db5f943b6
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -38,7 +38,7 @@ export const SCHEMAS: Readonly<Record<string, SchemaShape>> = {
   AgentConfirmation: { required: ["fields","operationId","screenRoute","stepId"], fields: {"fields":{"i":{"k":"ref","r":"AgentDraftField"},"k":"array"},"operationId":{"k":"plain"},"screenRoute":{"k":"plain"},"stepId":{"k":"plain"}} },
   AgentDraftField: { required: ["masked","path","value"], fields: {"masked":{"k":"plain"},"path":{"k":"plain"},"value":{"k":"plain","n":true}} },
   AgentMessageRequest: { required: ["text"], fields: {"text":{"k":"plain"}} },
-  AgentPlanStep: { required: ["ordinal","refusals","screenRoute","state","stepId","titleAr","toolName"], fields: {"ordinal":{"k":"plain"},"refusals":{"i":{"k":"ref","r":"ApiError"},"k":"array"},"screenRoute":{"k":"plain","n":true},"state":{"e":["awaitingAnswer","awaitingConfirmation","landed","planned","refused","running"],"k":"plain"},"stepId":{"k":"plain"},"titleAr":{"k":"plain"},"toolName":{"k":"plain","n":true}} },
+  AgentPlanStep: { required: ["order","refusals","screenRoute","state","stepId","titleAr","toolName"], fields: {"order":{"k":"plain"},"refusals":{"i":{"k":"ref","r":"ApiError"},"k":"array"},"screenRoute":{"k":"plain","n":true},"state":{"e":["awaitingAnswer","awaitingConfirmation","landed","planned","refused","running"],"k":"plain"},"stepId":{"k":"plain"},"titleAr":{"k":"plain"},"toolName":{"k":"plain","n":true}} },
   AgentQuestionOption: { required: ["label","optionToken","subtitle"], fields: {"label":{"k":"plain"},"optionToken":{"k":"plain"},"subtitle":{"k":"plain","n":true}} },
   AgentQuestionSheet: { required: ["allowsCreate","kind","options","questionId","subjectText"], fields: {"allowsCreate":{"k":"plain"},"kind":{"k":"plain"},"options":{"i":{"k":"ref","r":"AgentQuestionOption"},"k":"array"},"questionId":{"k":"plain"},"subjectText":{"k":"plain"}} },
   AgentSession: { required: ["agentSessionId","lastSequence","pendingConfirmation","pendingQuestion","phase","plan","turnId"], fields: {"agentSessionId":{"k":"plain"},"lastSequence":{"k":"plain"},"pendingConfirmation":{"k":"ref","n":true,"r":"AgentConfirmation"},"pendingQuestion":{"k":"ref","n":true,"r":"AgentQuestionSheet"},"phase":{"e":["awaitingHuman","completed","refused","running"],"k":"plain"},"plan":{"i":{"k":"ref","r":"AgentPlanStep"},"k":"array"},"turnId":{"k":"plain","n":true}} },

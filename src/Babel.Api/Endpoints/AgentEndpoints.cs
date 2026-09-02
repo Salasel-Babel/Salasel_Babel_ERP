@@ -24,9 +24,11 @@ namespace Babel.Api.Endpoints;
 /// متغيّر بيئةٍ يُسمّى بالاسم في الإعدادات ولا تُقرأ قيمتُه في أي نوعٍ يُسلسَل.
 /// </para>
 /// <para>
-/// <b>ولاحظ ما ليس في هذا الملفّ ولا يجوز أن يوجد: نداءُ ترحيلٍ واحد.</b> لا
-/// <c>IPostingService</c>، ولا مورد <c>…/posting</c>، ولا اسم عملية ترحيل. وحارسٌ
-/// معماري يقرأ هذا الملفّ نفسه ويفرض ذلك.
+/// <b>ولاحظ ما ليس في هذا الملفّ ولا يجوز أن يوجد: نداءُ ترحيلٍ واحد.</b> لا خدمة
+/// ترحيل، ولا مقطعَ بابِ ترحيلٍ في أي مسار، ولا اسم عملية ترحيلٍ واحدة من العقد
+/// المنشور. و<c>TheAgentSurfaceEndsAtTheDraft</c> يقرأ هذا الملفّ نفسه ويفرض ذلك —
+/// <b>ويقرؤه حرفياً، فلا يُستثنى منه تعليقٌ يذكر ما يمنعه</b>: مقطعُ المنع مكتوبٌ
+/// في موضعٍ واحد يعرّفه (<c>AgentDraftConfirmationGate</c>)، وكلُّ ما عداه يُمسح.
 /// </para>
 /// </summary>
 internal static class AgentEndpoints
@@ -428,7 +430,7 @@ internal static class AgentEndpoints
 
     private static AgentPlanStepDto Dto(AgentWorkspaceStep step) => new(
         Text(step.StepId),
-        step.Ordinal,
+        step.Order,
         step.TitleAr,
         State(step.State),
         step.ToolName,

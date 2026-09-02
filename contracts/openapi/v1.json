@@ -15855,7 +15855,7 @@
         "type": "object",
         "description": "خطوةٌ في خطّة الوكيل. **ولا حالة اسمها posted في state ولا يجوز أن توجد**: أبعد ما تبلغه خطوةٌ landed — مسوّدةٌ هبطت على شاشتها — والترحيل فعلٌ بصريّ يدويّ هناك. / A step in the agent's plan. **There is no 'posted' state and there must not be**: the furthest a step reaches is landed — a draft that arrived on its screen — and posting is a manual act there.",
         "properties": {
-          "ordinal": {
+          "order": {
             "type": "integer",
             "minimum": 1,
             "maximum": 64,
@@ -15908,7 +15908,7 @@
           }
         },
         "required": [
-          "ordinal",
+          "order",
           "refusals",
           "screenRoute",
           "state",

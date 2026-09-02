@@ -25,6 +25,9 @@ import {
   AGENT_CREATE_OPERATIONS,
   AGENT_ENTITY_KINDS,
   AGENT_PERMITTED_VERBS,
+  AGENT_TOKEN_GROUP_LENGTH,
+  AGENT_TOKEN_GROUP_SEPARATOR,
+  AGENT_TOKEN_LENGTH,
   AgentQuestionSheet,
   agentCreateFaults,
   agentSheetFaults,
@@ -40,9 +43,20 @@ afterEach(cleanup);
 
 const REPO = path.resolve(process.cwd(), "..");
 
-/* رموزٌ بطولٍ واحد — كما يصدرها الخادم: قاعدة 64 بلا حشو، ثمانٍ وثمانون خانة.
-   والطول الثابت جزءٌ من الحدّ: رمزٌ يطول بطول الاسم يقول شيئاً عن الاسم. */
-const token = (seed: string): string => (seed + "-").padEnd(88, "abcdefghijklmnopqrstuvwxyz0123456789");
+/* رموزٌ بطولٍ واحد وشكلٍ واحد — **كما يسكّها الخادم**: قاعدة 64 بلا حشو، مجموعاتٍ
+   من ثمانية يفصلها `~`، وطولُها `AGENT_TOKEN_LENGTH` (وحارسٌ في الخادم يقرأ الملفّ
+   ويطابق العدد بـ`SignedLookupHandles.TokenLength`). والطول الثابت جزءٌ من الحدّ:
+   رمزٌ يطول بطول الاسم يقول شيئاً عن الاسم. */
+const token = (seed: string): string => {
+  const alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_";
+  const groups = (AGENT_TOKEN_LENGTH + 1) / (AGENT_TOKEN_GROUP_LENGTH + 1);
+  const flat = (seed + "_").padEnd(groups * AGENT_TOKEN_GROUP_LENGTH, alphabet);
+  const out: string[] = [];
+  for (let at = 0; at < flat.length; at += AGENT_TOKEN_GROUP_LENGTH) {
+    out.push(flat.slice(at, at + AGENT_TOKEN_GROUP_LENGTH));
+  }
+  return out.join(AGENT_TOKEN_GROUP_SEPARATOR);
+};
 
 const QUESTION = token("question");
 
@@ -550,5 +564,89 @@ describe("لا قائمة حقولٍ مكتوبةٌ بيدٍ في هذا الم�
       "name",
       "paymentTermsDays",
     ]);
+  });
+});
+
+/* ═════ ٧ · الرفضُ يبقى قابلاً للتشغيل — وإلا صار حبساً لا حماية ═══════ */
+
+describe("لوحةُ الرفض تُشغَّل بلوحة المفاتيح", () => {
+  /* لوحةٌ بـ`role="dialog"` و`aria-modal="true"` بلا عنصرٍ يقبل التركيز تحبس
+     مستخدم لوحة المفاتيح: التركيز لا يدخلها، وEscape ميّت لأن مُعالِجه على
+     اللوحة والحدث لا يبلغها، فلا مخرج إلا الفأرة على العتمة. والقياس كان:
+     focusables=0 · activeElement=BODY · escapeDismissed=0. */
+  const MALFORMED = {
+    questionId: "",
+    kind: "customer",
+    subjectText: "محمد القحطاني",
+    options: [],
+    allowsCreate: false,
+  } as unknown as AgentQuestionSheetData;
+
+  it("ورقةٌ معتلّة: الرفض يُعرض، والتركيز يدخل، وEscape يُغلق", () => {
+    const captured = open(MALFORMED);
+
+    expect(screen.getByTestId("agent-sheet-fault")).toBeTruthy();
+
+    const dialog = screen.getByTestId("agent-question-sheet");
+    const focusables = dialog.querySelectorAll(
+      'button:not([disabled]):not([tabindex="-1"]), input:not([disabled]), select:not([disabled])'
+    );
+    expect(focusables.length).toBeGreaterThan(0);
+    expect(dialog.contains(document.activeElement)).toBe(true);
+
+    fireEvent.keyDown(document.activeElement!, { key: "Escape" });
+    expect(captured.dismissed.length).toBe(1);
+  });
+
+  it("«جديد» لنوعٍ لا تُرسَم ورقتُه: الرفض يُعرض ومعه العودة إلى الخيارات", () => {
+    const refused: AgentQuestionSheetData = {
+      questionId: token("q-project"),
+      kind: "project",
+      subjectText: "مشروع",
+      options: [
+        { optionToken: token("p-one"), label: "مشروع أ" },
+        { optionToken: token("p-new"), label: "جديد" },
+      ],
+      allowsCreate: true,
+    };
+
+    open(refused);
+
+    fireEvent.click(screen.getByTestId("agent-option-1"));
+
+    expect(screen.getByTestId("agent-create-refusal")).toBeTruthy();
+
+    const back = screen.getByTestId("agent-create-back");
+    expect(back).toBeTruthy();
+
+    fireEvent.click(back);
+    expect(screen.getByTestId("agent-question-options")).toBeTruthy();
+  });
+});
+
+/* ═════ ٨ · فحصُ الورقة يرفض ولا يرمي — والجهة السلكية لا كاتبَ لها ═══ */
+
+describe("agentSheetFaults على حمولةٍ ينقصها مفتاح", () => {
+  const cases: readonly [string, unknown][] = [
+    ["بلا questionId", { kind: "customer", options: [], allowsCreate: false }],
+    ["بلا options", { questionId: "x", kind: "customer", allowsCreate: false }],
+    ["options ليست مصفوفة", { questionId: "x", kind: "customer", options: null, allowsCreate: false }],
+    [
+      "خيارٌ بلا optionToken",
+      { questionId: "x", kind: "customer", options: [{ label: "أ" }], allowsCreate: false },
+    ],
+    ["بلا kind", { questionId: "x", options: [], allowsCreate: false }],
+    ["حمولةٌ فارغة", {}],
+  ];
+
+  for (const [name, payload] of cases) {
+    it(name + " ⇐ يُرفض ولا يُرمى", () => {
+      const faults = agentSheetFaults(payload as AgentQuestionSheetData);
+      expect(faults.length).toBeGreaterThan(0);
+    });
+  }
+
+  it("والورقة السليمة لا عللَ فيها — فالفحص ليس رفضاً شاملاً", () => {
+    expect(agentSheetFaults(FOUR)).toEqual([]);
   });
 });

@@ -6,6 +6,9 @@ export type { AgentQuestionSheetProps } from "./QuestionSheet";
 export {
   AGENT_ANSWER_KEYS,
   AGENT_ENTITY_KINDS,
+  AGENT_TOKEN_GROUP_LENGTH,
+  AGENT_TOKEN_GROUP_SEPARATOR,
+  AGENT_TOKEN_LENGTH,
   agentSheetFaults,
   answerOf,
   isAgentEntityKind,

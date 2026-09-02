@@ -45,6 +45,26 @@ export function isAgentEntityKind(value: string): value is AgentEntityKind {
   return (AGENT_ENTITY_KINDS as readonly string[]).includes(value);
 }
 
+/* ═════════════════════════════════════ ١ب · شكل الرمز كما يسكّه الخادم */
+
+/**
+ * طول الرمز الموقَّع بالمحارف — **وهو `SignedLookupHandles.TokenLength` نفسه**،
+ * وحارسٌ في الخادم يقرأ هذا الملفّ ويطابق العددين. والطول الثابت جزءٌ من الحدّ:
+ * رمزٌ يطول بطول الاسم يقول شيئاً عن الاسم.
+ */
+export const AGENT_TOKEN_LENGTH = 152;
+
+/** حجم مجموعة المحارف الواحدة داخل الرمز. */
+export const AGENT_TOKEN_GROUP_LENGTH = 8;
+
+/**
+ * فاصل المجموعات. **وليس زينة**: الرمز نصٌّ عشوائيّ يعبر مِصفاة الحدّ الخارجة مثل
+ * أي نصّ، وقاعدةُ 64 عُشرُ أبجديتها خانات — فرمزٌ متّصل يحمل صدفةً تسع خاناتٍ
+ * متتالية فيُرفض دورٌ سليم. و`~` ليست فاصلاً عند أي درجة لمّ في المِصفاة، فلا
+ * يتجاوز أي مسارٍ رقميّ في الرمز ثماني خانات.
+ */
+export const AGENT_TOKEN_GROUP_SEPARATOR = "~";
+
 /* ══════════════════════════════════════════════════ ٢ · شكل الورقة */
 
 /** خيارٌ واحد على الورقة — نصُّه محلّي، ورمزُه هو ما يعبر. */
@@ -133,16 +153,39 @@ export type AgentSheetFault =
  * يفحص ورقةً وردت من الخادم. **ورقةٌ معتلّة تُرفض ولا تُعرض**: قائمةٌ بلا
  * خيارٍ ولا «جديد» تجعل الإنسان أمام سؤالٍ بلا جواب، ورمزان متطابقان يجعلان
  * اختيارين يعودان بالشيء نفسه فيظنّ أنه اختار وهو لم يختر.
+ *
+ * **ولا يفترض أن المفاتيح موجودة.** كان يقرأ `sheet.questionId.trim()` و
+ * `sheet.options.length` رأساً، فحمولةٌ ينقصها مفتاحٌ واحد ترمي `TypeError`
+ * أثناء العرض (هو يُنادى داخل `useMemo`) **فتسقط اللوحة كلّها** بدل أن ترسم
+ * الرفض الذي وُجد هذا الفحص ليرسمه. وهو «ارفض ولا تخمّن» ساقطاً على وجهه في
+ * الجهة السلكية بالذات — وهي الجهة الوحيدة التي لا نملك فيها الكاتب.
  * @param sheet الورقة الواردة.
  */
 export function agentSheetFaults(sheet: AgentQuestionSheet): readonly AgentSheetFault[] {
   const faults: AgentSheetFault[] = [];
-  if (!sheet.questionId.trim()) faults.push("noQuestion");
-  if (!isAgentEntityKind(sheet.kind)) faults.push("unknownKind");
-  if (sheet.options.length === 0) faults.push("noChoice");
-  if (sheet.options.some((option) => !option.optionToken.trim())) faults.push("emptyToken");
-  const seen = new Set(sheet.options.map((option) => option.optionToken));
-  if (seen.size !== sheet.options.length) faults.push("duplicateToken");
+  const shape = sheet as Partial<AgentQuestionSheet> | null | undefined;
+
+  const questionId = typeof shape?.questionId === "string" ? shape.questionId : "";
+  if (!questionId.trim()) faults.push("noQuestion");
+
+  if (typeof shape?.kind !== "string" || !isAgentEntityKind(shape.kind)) faults.push("unknownKind");
+
+  const options = Array.isArray(shape?.options) ? shape.options : null;
+  if (options === null) {
+    /* `options` ليست مصفوفةً أصلاً: لا خيار، ولا يُقرأ منها طولٌ ولا عنصر. */
+    faults.push("noChoice");
+    return faults;
+  }
+
+  if (options.length === 0) faults.push("noChoice");
+
+  const tokens = options.map((option) =>
+    typeof option?.optionToken === "string" ? option.optionToken : ""
+  );
+
+  if (tokens.some((token) => !token.trim())) faults.push("emptyToken");
+  if (new Set(tokens).size !== tokens.length) faults.push("duplicateToken");
+
   return faults;
 }
 

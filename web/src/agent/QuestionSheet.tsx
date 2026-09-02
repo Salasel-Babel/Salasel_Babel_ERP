@@ -232,14 +232,33 @@ export function AgentQuestionSheet(props: AgentQuestionSheetProps): ReactNode {
         </p>
 
         {fault ? (
-          <RefusalPanel
-            title={t("agent.sheet.faultTitle")}
-            body={t("agent.sheet.fault." + fault)}
-            code={"agent.sheet." + fault}
-            codeLabel={t("agent.refuse.codeLabel")}
-            next={t("agent.sheet.faultNext")}
-            testId="agent-sheet-fault"
-          />
+          /* **والرفض يحمل زرّه.** لوحةٌ بـ`role="dialog"` و`aria-modal` بلا عنصرٍ
+             واحد يقبل التركيز تحبس مستخدم لوحة المفاتيح: التركيز لا يدخلها (لا شيء
+             يُركَّز عليه)، وEscape ميّت لأن مُعالِجه على اللوحة والحدث لا يبلغها،
+             فلا مخرج إلا الفأرة على العتمة. وهذا يقع بنقرةٍ عادية لا بحمولةٍ
+             مشوَّهة: أربعةٌ من أنواع الكيانات الستّة تُرفض ورقةُ إنشائها اليوم. */
+          <>
+            <RefusalPanel
+              title={t("agent.sheet.faultTitle")}
+              body={t("agent.sheet.fault." + fault)}
+              code={"agent.sheet." + fault}
+              codeLabel={t("agent.refuse.codeLabel")}
+              next={t("agent.sheet.faultNext")}
+              testId="agent-sheet-fault"
+            />
+            <div className="aq__foot">
+              <span>{t("agent.sheet.hintClose")}</span>
+              <span className="spacer">
+                <Button
+                  label={t("agent.sheet.cancel")}
+                  kind="primary"
+                  size="sm"
+                  onClick={onDismiss}
+                  testId="agent-sheet-fault-close"
+                />
+              </span>
+            </div>
+          </>
         ) : step === "choose" ? (
           <>
             <div
@@ -391,17 +410,31 @@ function AgentCreateForm(props: CreateFormProps): ReactNode {
   const { plan } = props;
 
   if (!plan.ok) {
+    /* **الرفض يُعرض ولا يُخرَج من قبل التذييل.** كان `return` يقع قبل الأزرار، فكان
+       من يختار «جديد» لنوعٍ لا تُرسَم ورقتُه — وهي أربعةٌ من ستّة اليوم — يجد لوحةً
+       حاجزة بلا عنصرٍ واحد يقبل التركيز: لا عودةَ ولا إغلاق إلا بالفأرة. */
     return (
-      <RefusalPanel
-        title={t("agent.refuse.title", { kind: props.kindLabel })}
-        body={t("agent.refuse." + plan.reason)}
-        code={"agent.create." + plan.reason}
-        codeLabel={t("agent.refuse.codeLabel")}
-        subject={plan.subject}
-        subjectLabel={t("agent.refuse.subjectLabel")}
-        next={t("agent.refuse.next")}
-        testId="agent-create-refusal"
-      />
+      <div className="aq__create" data-testid="agent-create-refused">
+        <RefusalPanel
+          title={t("agent.refuse.title", { kind: props.kindLabel })}
+          body={t("agent.refuse." + plan.reason)}
+          code={"agent.create." + plan.reason}
+          codeLabel={t("agent.refuse.codeLabel")}
+          subject={plan.subject}
+          subjectLabel={t("agent.refuse.subjectLabel")}
+          next={t("agent.refuse.next")}
+          testId="agent-create-refusal"
+        />
+        <div className="aq__foot">
+          <Button
+            label={t("agent.create.back")}
+            kind="ghost"
+            size="sm"
+            onClick={props.onBack}
+            testId="agent-create-back"
+          />
+        </div>
+      </div>
     );
   }
 

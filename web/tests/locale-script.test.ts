@@ -81,6 +81,48 @@ function probe(code: string): string {
   return found.text;
 }
 
+/**
+ * ‏**أطولُ مفتاحِ نثرٍ موجودٍ في اللغات المطلوبة كلِّها وبخطّ كلٍّ منها.**
+ *
+ * ‏وكان هنا مفتاحٌ **مكتوبٌ بيده** (`screen.voice.refusal.nameNotBounded`)،
+ * فمات الاختبار يوم لم تهبط الميزة التي أضافته: ثلاثةُ إثباتاتٍ سقطت برسالة
+ * «غير موجود» لا علاقة لها بما تحرسه. والعيّنة تُشتقّ لأن الحارس يحرس
+ * **خاصّية اللغة** لا مفتاحاً بعينه؛ والطول شرطٌ لأن الهجمات أدناه تقصّ عند
+ * 60 و120 محرفاً.
+ */
+function longestProseKey(codes: readonly string[], minLength = 140): string {
+  let best = "";
+  let bestLength = 0;
+  for (const v of ALL[codes[0]] ?? []) {
+    const lengths = codes.map((c) => {
+      const found = (ALL[c] ?? []).find((o) => o.key === v.key);
+      /* والعيّنة **نظيفة**: بلا مقطعٍ أجنبيّ أصلاً. وإلّا صارت الأجنبيةُ
+         المشروعة فيها (مثل «ΔE») مخالفةً في الإثبات الذي يفحص الإذن المغلق. */
+      if (!found || !ownScript(found.text, c) || foreign(found.text, c).length > 0) return -1;
+      return found.text.length;
+    });
+    if (lengths.some((l) => l < 0)) continue;
+    const shortest = Math.min(...lengths);
+    if (shortest > bestLength) {
+      bestLength = shortest;
+      best = v.key;
+    }
+  }
+  if (bestLength < minLength) {
+    throw new Error(
+      "لا قيمةَ نثرٍ بطول " + minLength + " محرفاً في " + codes.join("/") + " — أطولُ ما وُجد " + bestLength
+    );
+  }
+  return best;
+}
+
+/** نصُّ مفتاحٍ في لغةٍ ما. */
+function textOf(code: string, key: string): string {
+  const found = (ALL[code] ?? []).find((v) => v.key === key);
+  if (!found) throw new Error(key + " غير موجود في " + code);
+  return found.text;
+}
+
 describe("الخطّ يُشتقّ من رمز اللغة، لا من جدول", () => {
   it("‏Intl يعطي خطّ كل لغة، ولغةٌ خامسة تعمل بلا تعديل", () => {
     expect(scriptFor("ar")).toBe("Arab");
@@ -178,7 +220,7 @@ describe("كل قيمة نثرٍ بخطّ لغتها — بشهادة لغةٍ �
   });
 
   it("‏والقاعدة تحمرّ على المفتاح الذي انكسر فعلاً — طفرةً على قيمته الحيّة", () => {
-    const key = "screen.voice.refusal.nameNotBounded";
+    const key = longestProseKey(["hi", "ur"]);
     for (const code of ["hi", "ur"]) {
       const value = ALL[code]?.find((v) => v.key === key)?.text;
       expect(value, key + " غير موجود في " + code).toBeTruthy();
@@ -262,7 +304,7 @@ describe("النسخ عن المصدر ليس ترجمة — والثقب الب
    Attacks on the guard: each class below defeated an earlier rule, measured.
    ═══════════════════════════════════════════════════════════════════════════ */
 describe("ما يهزم فكَّ الترميز لا يهزم الإذن المغلق", () => {
-  const hindi = ALL["hi"]?.find((v) => v.key === "screen.voice.refusal.nameNotBounded")?.text as string;
+  const hindi = textOf("hi", longestProseKey(["hi"]));
 
   it("‏تشويهٌ بترميزٍ يرفع بايتاتٍ فوق U+00FF **يفلت** من القاعدة (أ) — مقيس، لا مفترَض", () => {
     for (const label of ["koi8-r", "macintosh", "iso-8859-7", "windows-1251"]) {

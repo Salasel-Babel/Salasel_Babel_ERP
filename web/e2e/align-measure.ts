@@ -50,12 +50,55 @@ export interface MeasuredRow {
 }
 
 /** إيقاعُ عمودٍ مفرد: الفجوات بين حقولٍ **متجاورة في الشجرة** داخل وعاءٍ واحد.
-    هذا هو ما يُرى على الهاتف، حيث لا صفوف أصلاً — كل حقلٍ وحده في سطره. */
+    هذا هو ما يُرى على الهاتف، حيث لا صفوف أصلاً — كل حقلٍ وحده في سطره.
+    ‏**والفجوة تُقاس حبراً إلى حبر لا صندوقاً إلى صندوق.** والفرق هو بالضبط ما
+    أخفى انحدار الهاتف: الصناديق كانت متساوية الفواصل (14px بين كل صندوقين)
+    والفراغ الميت **داخل** الصندوق تحت آخر حبرٍ فيه، فيقرأ المقياس الصندوقيّ
+    ‏0.00 انحرافاً على إيقاعٍ يراه المستخدم 24px ثم 14px. */
 export interface MeasuredRhythm {
   readonly parentClass: string;
   readonly scope: "page" | "shell" | "dialog";
+  /** فجوات الصناديق — تُبقى للتشخيص: تساويها مع تفاوت الحبر هو **توقيع العطل**. */
   readonly gaps: readonly number[];
   readonly spread: number;
+  /** فجوات الحبر: من آخر حبرٍ في الخليّة إلى أول حبرٍ في التي تليها. */
+  readonly inkGaps: readonly number[];
+  readonly inkSpread: number;
+}
+
+/**
+ * ‏**الذيلُ الميت في صفّ**: أقلُّ مسافةٍ بين قاع صندوق خليّةٍ وآخر حبرٍ فيها.
+ *
+ * ‏**ولماذا الأقلّ لا الأكبر:** في صفٍّ متعدّد الحقول، حقلٌ وصفُه أقصر من وصف
+ * جاره **يجب** أن يترك فراغاً تحته — هذا هو ثمن مشاركة المسارات، وهو مقصود.
+ * أمّا أن يترك **كلُّ** أعضاء الصفّ فراغاً فمعناه أن الصفّ استأجر مساراً لا
+ * يملؤه أحد، ودفع فاصلته. وعند 390px حيث لكلّ حقلٍ صفُّه، «الأقلّ» هو الحقل
+ * نفسه — فالقاعدة واحدة للهاتف والمكتب، بلا فرعٍ ولا عرضٍ مكتوب.
+ */
+export interface MeasuredTail {
+  readonly parentClass: string;
+  readonly scope: "page" | "shell" | "dialog";
+  readonly label: string;
+  readonly members: number;
+  readonly dead: number;
+}
+
+/**
+ * ‏**آليّةُ الإيقاع في وعاءِ صفوفٍ واحد، مقروءةً من المتصفّح.**
+ * الفراغ الميت يُقاس نتيجةً؛ وهذا يقيس **السبب**: هل الوعاء ما يزال يبتلع
+ * إزاحة صفّه الأول؟ وقد قِيس أن `style={{marginTop}}` مكتوباً في خمسة مواضع
+ * كان يغلب قاعدة الابتلاع **بصمت** فيعيد 14px فوق كل شبكةٍ منها.
+ */
+export interface MeasuredRhythmMechanism {
+  readonly cls: string;
+  readonly scope: "page" | "shell" | "dialog";
+  /** هل يرسم الوعاء (حدٌّ أو خلفية)؟ فمن يرسم يبتلع في حشوته لا في هامشه. */
+  readonly paints: boolean;
+  readonly rhythm: number;
+  readonly lead: number;
+  readonly marginTop: number;
+  /** ما ينبغي أن يكون عليه الهامش: `lead − rhythm` لمن لا يرسم، وصفرٌ لمن يرسم. */
+  readonly expected: number;
 }
 
 /** حقلٌ خالف بنيةَ الخانات الثلاث. */
@@ -71,6 +114,8 @@ export interface PageMeasure {
   readonly pageUnits: number;
   readonly rows: readonly MeasuredRow[];
   readonly rhythms: readonly MeasuredRhythm[];
+  readonly tails: readonly MeasuredTail[];
+  readonly mechanisms: readonly MeasuredRhythmMechanism[];
   readonly slotFaults: readonly SlotFault[];
   readonly overflowX: number;
 }
@@ -222,6 +267,21 @@ export function measureAlignment(): PageMeasure {
     else groups.set(rp.parent, [u]);
   }
 
+  /* حبرُ الوحدة: أعلى ما يُرى فيها وأسفل ما يُرى — لا حافّتا صندوقها.
+     والصندوق بعد «الإيقاع يسكن العنصر» صار يساوي الحبر، وهذا ما يُثبته
+     القياس؛ ولو عاد أحدٌ إلى الفواصل لافترقا **وأُمسك الفرق**. */
+  const inkBottomOf = (u: Unit): number => {
+    const cb = box(u.control);
+    const d = descOf(u);
+    return Math.max(cb.bottom, d ? box(d).bottom : cb.bottom);
+  };
+  const inkTopOf = (u: Unit): number => {
+    const cb = box(u.control);
+    const lab = labelOf(u);
+    const lt = lab ? firstLineTop(lab) : null;
+    return typeof lt === "number" ? Math.min(lt, cb.top) : cb.top;
+  };
+
   const spread = (values: readonly (number | null)[]): Spread | null => {
     const v = values.filter((x): x is number => typeof x === "number" && Number.isFinite(x));
     if (v.length < 2) return null;
@@ -229,10 +289,13 @@ export function measureAlignment(): PageMeasure {
     return { n: v.length, max: Math.round((sorted[sorted.length - 1] - sorted[0]) * 100) / 100 };
   };
 
-  const rows: MeasuredRow[] = [];
+  /* الصفوف (الأشرطة) تُحسب **مرّةً واحدة** ويتقاسمها الحكمان: الاستقامة
+     والإيقاع. ونسختان من اشتقاق «ما هو صفّ» هما بابُ انحرافٍ بينهما. */
+  interface Band { top: number; bottom: number; items: Unit[] }
+  const bandsOf = new Map<Element, Band[]>();
   for (const [parent, list] of groups) {
     list.sort((a, b) => a.rect!.top - b.rect!.top);
-    const bands: { top: number; bottom: number; items: Unit[] }[] = [];
+    const bands: Band[] = [];
     for (const u of list) {
       const r = u.rect!;
       const band = bands.find(
@@ -244,7 +307,61 @@ export function measureAlignment(): PageMeasure {
         band.bottom = Math.max(band.bottom, r.bottom);
       } else bands.push({ top: r.top, bottom: r.bottom, items: [u] });
     }
+    bandsOf.set(parent, bands);
+  }
+
+  const rows: MeasuredRow[] = [];
+  const tails: MeasuredTail[] = [];
+  for (const parent of groups.keys()) {
+    const bands = bandsOf.get(parent) ?? [];
     for (const band of bands) {
+      /* الذيلُ الميت يُقاس لكل صفّ **بما فيه صفُّ الحقل الواحد** — وهو كلُّ
+         صفوف الهاتف. والحكمُ أدناه في `alignment.spec.ts`. */
+      {
+        /* ‏**نطاق الحكم مشتقٌّ من البناء المحروس نفسه، لا من قائمة أسماء:**
+           الوعاء شبكةٌ (`display:grid`) والخليّة تشغل **أكثر من مسارٍ واحد**
+           — أي أنها تستعير مسارات الصفّ. وكومةٌ عمودية أو مرنة (‏`.app-main`،
+           `.stack`) ليست كذلك: خليّتُها بطاقةٌ كاملة، وقاعُ حبرها لا يعني
+           شيئاً. فمن يُدخل وعاءَ حقولٍ جديداً يدخل الحكم من نفسه. */
+        const gridParent = getComputedStyle(parent).display.includes("grid");
+        const spansTracks = (slot: Element) => {
+          /* الامتداد قد يُحسب على أيّ الطرفين — مقيسٌ في Chromium أن
+             `grid-row:span 3` تُحسب `grid-row-start:"span 3"` و
+             `grid-row-end:"auto"`. فيُقرأ الطرفان معاً. */
+          const cs = getComputedStyle(slot);
+          for (const v of [cs.gridRowStart, cs.gridRowEnd]) {
+            const m = /^span\s+(\d+)$/.exec(v.trim());
+            if (m && Number(m[1]) >= 2) return true;
+          }
+          return false;
+        };
+        const perSlot = new Map<Element, number>();
+        for (const u of band.items) {
+          if (!gridParent || !spansTracks(u.slot!)) continue;
+          const prev = perSlot.get(u.slot!);
+          const ink = inkBottomOf(u);
+          perSlot.set(u.slot!, prev === undefined ? ink : Math.max(prev, ink));
+        }
+        let dead = Infinity;
+        let worst: Unit = band.items[0];
+        for (const [slot, ink] of perSlot) {
+          const d = box(slot).bottom - ink;
+          if (d < dead) {
+            dead = d;
+            worst = band.items.find((u) => u.slot === slot) ?? worst;
+          }
+        }
+        if (Number.isFinite(dead)) {
+          tails.push({
+            parentClass: parent.getAttribute("class") ?? parent.tagName.toLowerCase(),
+            scope: scopeOf(parent),
+            label: (labelOf(worst)?.textContent ?? "").trim().slice(0, 40),
+            members: perSlot.size,
+            dead: Math.round(dead * 100) / 100,
+          });
+        }
+      }
+
       if (band.items.length < 2) continue;
       if (new Set(band.items.map((u) => u.slot)).size < 2) continue;
       const members = band.items.map((u) => {
@@ -297,7 +414,19 @@ export function measureAlignment(): PageMeasure {
       if (arr) arr.push(u);
       else bySlot.set(u.slot!, [u]);
     }
+    /* قاعُ حبر **الصفّ** لا الخليّة: في صفٍّ متعدّد الحقول ينتهي حبرُ حقلٍ
+       فوق قاع صفّه لأن جاره أطول وصفاً — وذلك مقصود. فالمقياس هو أعمقُ حبرٍ
+       في الشريط، وهو ما تراه العين قاعاً للصفّ. وفي الهاتف الشريطُ حقلٌ
+       واحد، فيؤول المقياس إلى حبر الحقل نفسه بلا فرعٍ في الشيفرة. */
+    const bands = bandsOf.get(parent) ?? [];
+    const bandInkBottom = (u: Unit): number => {
+      const band = bands.find((b) => b.items.includes(u));
+      const items = band ? band.items : [u];
+      return Math.max(...items.map(inkBottomOf));
+    };
+
     const gaps: number[] = [];
+    const inkGaps: number[] = [];
     for (const [slot, owned] of bySlot) {
       const next = slot.nextElementSibling;
       if (!next) continue;
@@ -307,16 +436,54 @@ export function measureAlignment(): PageMeasure {
       const b = box(next);
       if (b.top < a.bottom - 0.5) continue; /* جنباً إلى جنب لا فوق بعضهما */
       gaps.push(Math.round((b.top - a.bottom) * 100) / 100);
+      inkGaps.push(Math.round((inkTopOf(nOwned[0]) - bandInkBottom(owned[0])) * 100) / 100);
     }
     if (gaps.length >= 2) {
       const sorted = [...gaps].sort((x, y) => x - y);
+      const inkSorted = [...inkGaps].sort((x, y) => x - y);
       rhythms.push({
         parentClass: parent.getAttribute("class") ?? parent.tagName.toLowerCase(),
         scope: scopeOf(parent),
         gaps,
         spread: Math.round((sorted[sorted.length - 1] - sorted[0]) * 100) / 100,
+        inkGaps,
+        inkSpread:
+          inkSorted.length >= 2
+            ? Math.round((inkSorted[inkSorted.length - 1] - inkSorted[0]) * 100) / 100
+            : 0,
       });
     }
+  }
+
+  /* ── ٧ · آليّةُ الإيقاع نفسها ─────────────────────────────────────────
+     يُقرأ الرمزان المسجَّلان (‏`@property … syntax:"<length>"`) بالبكسل،
+     ويُطابَق بهما الهامش المحسوب. والوعاء «يرسم» إن حمل حدّاً مرئياً أو خلفيةً
+     غير شفّافة — خاصّيةٌ تُقاس، لا اسمٌ في قائمة. */
+  const mechanisms: MeasuredRhythmMechanism[] = [];
+  /* ‏`parseFloat` ممنوعة في هذا المستودع (المال نصّ)، والقيمة المحسوبة في
+     المتصفّح دائماً «Npx» — فتُقرأ بحذف اللاحقة لا بتحليلٍ متساهل. */
+  const px = (v: string) => {
+    const n = Number(v.trim().replace(/px$/, ""));
+    return Number.isFinite(n) ? n : 0;
+  };
+  for (const c of document.querySelectorAll(".grid, .filterbar, .toolbar, .hr-line, .con-line")) {
+    if (!visible(c)) continue;
+    const cs = getComputedStyle(c);
+    const rhythm = px(cs.getPropertyValue("--row-rhythm"));
+    if (rhythm <= 0) continue; /* وعاءٌ لم يُعلن إيقاعه بعد — لا حكم عليه هنا. */
+    const lead = px(cs.getPropertyValue("--grid-lead"));
+    const bw = px(cs.borderTopWidth) + px(cs.borderBottomWidth);
+    const bg = cs.backgroundColor;
+    const paints = bw > 0 || (bg !== "transparent" && !/^rgba\(0, 0, 0, 0\)$/.test(bg));
+    mechanisms.push({
+      cls: c.getAttribute("class") ?? c.tagName.toLowerCase(),
+      scope: scopeOf(c),
+      paints,
+      rhythm,
+      lead,
+      marginTop: Math.round(px(cs.marginBlockStart) * 100) / 100,
+      expected: paints ? 0 : Math.round((lead - rhythm) * 100) / 100,
+    });
   }
 
   for (const u of units) u.el.removeAttribute("data-align-unit");
@@ -326,6 +493,8 @@ export function measureAlignment(): PageMeasure {
     pageUnits: units.filter((u) => scopeOf(u.el) === "page").length,
     rows,
     rhythms,
+    tails,
+    mechanisms,
     slotFaults,
     overflowX: Math.round((scroller.scrollWidth - scroller.clientWidth) * 100) / 100,
   };

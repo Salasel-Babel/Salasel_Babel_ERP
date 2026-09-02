@@ -197,6 +197,715 @@
         }
       }
     },
+    "/api/v1/companies/{companyId}/agent/sessions": {
+      "parameters": [
+        {
+          "name": "companyId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "openAgentSession",
+        "summary": "فتح جلسة مساحة عمل الوكيل / Open an agent workspace session",
+        "description": "يفتح محادثةً مع الوكيل داخل نطاق هذه الشركة، ويعيد حالها الابتدائي.\n\n**والجلسة مربوطة بالمنشأة والشركة والمستخدم، والثلاثة داخل بايتات كل مِقبضٍ تصدره** — فمِقبضٌ صحيح في محادثةٍ لا يُفكّ في أخرى، ولا يُفكّ لمستخدمٍ ثانٍ ولو كان في الشركة نفسها.\n\n**ولا حقل في الجسم إطلاقاً**: النطاق من المسار، والهوية من الاعتماد، واسم الشركة من تأسيسها — ولا يختار الطالبُ نموذجاً ولا مفتاحاً ولا نصَّ نظام. وحقلٌ يختار منه العميل نموذجه كان سيجعل عميلاً يبدّل النموذج في وسط محادثة فيُبطل ذاكرة البادئة بلا أن يعلم.\n\n**والوكيل تركيبٌ اختياري**: خادمٌ لم يُفعَّل فيه يردّ 503 وai.workspace.agent_disabled من كل باب من هذه الأبواب — وهو رمزٌ يقول «هذه الميزة غير مُفعَّلة هنا» لا «الخادم معطوب».\n\nOpens a conversation with the agent inside this company's scope and returns its initial state.\n\n**The session is bound to tenant, company, and user, and all three live inside the bytes of every handle it issues** — so a handle valid in one conversation is not redeemable in another, nor by a second user in the same company.\n\n**The body has no fields at all**: scope comes from the path, identity from the credential, and the company name from its founding record. The caller picks no model, no key, and no system text.\n\n**The agent is an optional composition**: a server where it is not enabled answers 503 with ai.workspace.agent_disabled from every one of these doors.",
+        "responses": {
+          "201": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentSession"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "الوكيل غير مركَّب على هذا الخادم. / The agent is not composed on this server.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/companies/{companyId}/agent/sessions/{agentSessionId}": {
+      "parameters": [
+        {
+          "name": "companyId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "agentSessionId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف جلسة مساحة عمل الوكيل. وهي مربوطةٌ بالمنشأة والشركة والمستخدم، والثلاثة داخل بايتات كل مِقبضٍ تصدره. / The agent workspace session identifier. It is bound to tenant, company, and user, and all three live inside the bytes of every handle it issues.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "readAgentSession",
+        "summary": "قراءة حال مساحة العمل كلِّه / Read the whole workspace state",
+        "description": "يُرجع حال المساحة في جسمٍ واحد: الطور، والخطّة بخطواتها وحالِ كلٍّ منها، وما ينتظر تأكيداً، وورقة السؤال المعلَّقة، ومؤشّر آخر حدث.\n\n**وهذا هو باب استئناف اللوحة بعد انقطاع**: تقرأ الحال، ثم تُكمل قراءة الأحداث من lastSequence.\n\n**ومورد واحد لا أربعة**، بحجّة capability-profile نفسها: «ما الحال الآن؟» سؤالٌ يُجاب بطلبٍ واحد. وأربعةُ موارد كانت ستجعل لوحةً تُعيد الاتصال تُصدر أربعة طلبات تصل بترتيبٍ لا يضمنه أحد، فتعرض خطّةَ دورٍ وتأكيدَ دورٍ آخر معاً.\n\n**والخطّة هنا ليست تاريخاً**: هي خطوات الدور الجاري أو الأخير، تُستبدل كاملةً حين يُعلن الوكيل خطّةً جديدة.\n\nReturns the workspace state in one body: the phase, the plan with each step's state, what awaits confirmation, the pending question sheet, and the last event cursor.\n\n**This is the panel's resume-after-disconnect door**: read the state, then continue reading events from lastSequence.\n\n**One resource, not four**, on the capability-profile argument: 'what is the state now?' is answered by one request. Four resources would make a reconnecting panel issue four requests that arrive in no guaranteed order, showing one turn's plan beside another turn's confirmation.",
+        "responses": {
+          "200": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentSession"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "الوكيل غير مركَّب على هذا الخادم. / The agent is not composed on this server.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "المورد غير موجود داخل نطاق هذه الشركة. / The resource does not exist within this company's scope.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/companies/{companyId}/agent/sessions/{agentSessionId}/answers": {
+      "parameters": [
+        {
+          "name": "companyId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "agentSessionId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف جلسة مساحة عمل الوكيل. وهي مربوطةٌ بالمنشأة والشركة والمستخدم، والثلاثة داخل بايتات كل مِقبضٍ تصدره. / The agent workspace session identifier. It is bound to tenant, company, and user, and all three live inside the bytes of every handle it issues.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "answerAgentQuestion",
+        "summary": "جواب ورقة السؤال / Answer the question sheet",
+        "description": "يُسلّم اختيار الإنسان على ورقة السؤال، فيمضي الدور.\n\n**والحدّ كلّه في شكل هذا الجسم: مفتاحان لا ثالث لهما** — questionId وoptionToken. لا موضعُ الخيار، ولا نصُّه، ولا عددُ الخيارات، ولا «هل كان جديداً». والموضع يُعدّ: من يرى choice=3 يعلم أن الخيارات كانت أربعةً على الأقل، وثلاثُ محاولاتٍ بأسماءٍ متدرّجة تمسح السجلّ.\n\n**والخيارات تُرسَم في الخادم من بياناتٍ محلّية ولا يراها النموذج**: هو يقول «هذا الاسم ملتبس، اسأل» ويعود إليه بعد الاختيار مِقبضٌ واحد. وشكل ما يعود إليه واحدٌ في كل الحالات، فلا يعلم حتى **أنّ** اختياراً وقع.\n\n**ومعرّف الورقة في الجسم لا في المسار**: هو مِقبضٌ معمّى بطولٍ ثابت من مئةٍ واثنين وخمسين محرفاً، ومقطعُ مسارٍ بهذا الطول يدخل سجلّات الوسطاء ويظهر في ترويسة المُحيل.\n\nDelivers the human's choice on the question sheet so the turn proceeds.\n\n**The whole boundary is the shape of this body: two keys and no third** — questionId and optionToken. Not the option's position, not its text, not the option count, not whether it was new. Position counts: seeing choice=3 tells you there were at least four options, and three attempts with narrowing names sweep the register.\n\n**The options are drawn on the server from local data and the model never sees them**: it says 'this name is ambiguous, ask' and gets one handle back. The shape of what comes back is identical in every case, so it does not even learn **that** a choice happened.\n\n**The sheet identifier lives in the body, not the path**: it is a 152-character encrypted handle, and a path segment that long lands in intermediaries' logs and referrer headers.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentAnswerRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentSession"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "الجواب يحتاج questionId وoptionToken كليهما. / An answer needs both questionId and optionToken.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "لا ورقة معلَّقة بهذا المعرّف، أو الرمز ليس من خياراتها. / No sheet is pending under this identifier, or the token is not one of its options.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "الوكيل غير مركَّب على هذا الخادم. / The agent is not composed on this server.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "المورد غير موجود داخل نطاق هذه الشركة. / The resource does not exist within this company's scope.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/companies/{companyId}/agent/sessions/{agentSessionId}/events": {
+      "parameters": [
+        {
+          "name": "companyId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "agentSessionId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف جلسة مساحة عمل الوكيل. وهي مربوطةٌ بالمنشأة والشركة والمستخدم، والثلاثة داخل بايتات كل مِقبضٍ تصدره. / The agent workspace session identifier. It is bound to tenant, company, and user, and all three live inside the bytes of every handle it issues.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "readAgentTurnEvents",
+        "summary": "قراءة أحداث الدور بعد مؤشّر / Read turn events after a cursor",
+        "description": "يُرجع ما جدّ من أحداث الدور بعد المؤشّر المُمرَّر، **وينتظر إن لم يكن هناك جديد** حتى تنقضي مهلة الخادم — فتعود صفحةٌ فارغة ويُعاد الطلب بالمؤشّر نفسه.\n\n**وهذا هو بثُّ اللوحة، ومؤشّرٌ لا دفقٌ مفتوح — وذلك قرارٌ لا تقصير.** النموذج يبثّ فعلاً وأجزاء تفكيره ونصّه تصل حدثاً حدثاً، فترى اللوحة تقدّماً لا صمتاً. لكنّ الدور يقف عند إنسان وقد يمتدّ دقائق، ودفقٌ مفتوح يُقطَع عند أوّل وسيطٍ في الطريق فتُبنى فوقه آليةُ استئنافٍ ثانية بترقيم أحداثٍ خاصّ به. والمؤشّر يجعل الاستئناف هو الآلية الأولى نفسها: «ما بعد ن؟».\n\n**وقائمةٌ فارغة ليست نهاية**: هي «لا جديد بعدُ». والذي يقول هل انتهى الدور هو phase — completed أو refused — لا فراغُ القائمة.\n\n**ولا يحمل حدثٌ واحدٌ معرّف صفٍّ ولا اسمَ طرفٍ ولا عددَ مرشّحين**: ما يعبر مسارُ شاشةٍ أو مِقبضٌ معتِم بطولٍ ثابت.\n\nReturns whatever turn events have appeared after the cursor passed in, **and waits when there is nothing new** until the server's wait elapses, returning an empty page to be retried with the same cursor.\n\n**This is the panel's streaming, and a cursor rather than an open stream — a decision, not a shortfall.** The model does stream, and its thinking and text arrive event by event, so the panel shows progress rather than silence. But a turn stops for a human and may run for minutes, and an open stream is cut by the first intermediary on the path, forcing a second resume mechanism with its own event numbering on top. A cursor makes resuming the first mechanism itself: 'what is after n?'.\n\n**An empty list is not the end**: it means 'nothing new yet'. What says the turn is over is phase — completed or refused — not an empty list.\n\n**No single event carries a row identifier, a party name, or a candidate count.**",
+        "parameters": [
+          {
+            "name": "after",
+            "in": "query",
+            "required": false,
+            "description": "آخر مؤشّرٍ قرأته اللوحة. الغياب يعني «من أوّل الجلسة». / The last cursor the panel read. Absent means 'from the start of the session'.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]{1,7}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentTurnEventPage"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "الوكيل غير مركَّب على هذا الخادم. / The agent is not composed on this server.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "المورد غير موجود داخل نطاق هذه الشركة. / The resource does not exist within this company's scope.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/companies/{companyId}/agent/sessions/{agentSessionId}/messages": {
+      "parameters": [
+        {
+          "name": "companyId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "agentSessionId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف جلسة مساحة عمل الوكيل. وهي مربوطةٌ بالمنشأة والشركة والمستخدم، والثلاثة داخل بايتات كل مِقبضٍ تصدره. / The agent workspace session identifier. It is bound to tenant, company, and user, and all three live inside the bytes of every handle it issues.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "sendAgentMessage",
+        "summary": "إرسال رسالة وبدء دور / Send a message and begin a turn",
+        "description": "يبدأ دوراً على كلام المستخدم ويعود بمعرّفه **فوراً بـ202** — ولا ينتظر انتهاءه.\n\n**ولماذا لا ينتظر:** الدور يحمل نداءَي نموذجٍ فأكثر، ويقف عند إنسانٍ مرّةً أو مرّتين — ورقةَ سؤالٍ وتأكيدَ شكل بيانات — فيتجاوز كل مهلة HTTP معقولة. وأخطر من ذلك أنّ إغلاق النافذة كان سيقتل دوراً في منتصفه بين تأكيدٍ ومسوّدة. فالطلب يبدأ الدور ويعود، واللوحة تقرأ أحداثه بمؤشّرها.\n\n**ودورٌ فوق دور يُرفض** بـai.workspace.turn_already_running: الجلسة تحمل حديثاً واحداً، ودوران متوازيان على نسخة محادثةٍ واحدة يكتبان فيها بترتيبٍ لا يُعاد إنتاجه.\n\n**ولا يحمل الجسم إلا نصّاً**: لا نموذج، ولا مفتاح، ولا تعليمات نظام — الثلاثة إعدادُ خادم.\n\nBegins a turn on the user's words and returns its identifier **immediately with 202**; it does not wait for the turn to finish.\n\n**Why it does not wait:** a turn carries two or more model calls and stops for a human once or twice — a question sheet and a data-shape confirmation — so it outlives any sane HTTP timeout. Worse, closing the window would have killed a turn mid-way between a confirmation and a draft. So the request starts the turn and returns, and the panel reads its events by cursor.\n\n**A turn on top of a turn is refused** with ai.workspace.turn_already_running.\n\n**The body carries text and nothing else**: no model, no key, no system instructions — all three are server configuration.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentMessageRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentTurn"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "نصّ الرسالة فارغ أو أطول من الحدّ المنشور. / The message text is empty or longer than the published limit.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "دورٌ يجري في هذه الجلسة سلفاً. / A turn is already running in this session.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "الوكيل غير مركَّب على هذا الخادم. / The agent is not composed on this server.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "المورد غير موجود داخل نطاق هذه الشركة. / The resource does not exist within this company's scope.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/companies/{companyId}/agent/sessions/{agentSessionId}/steps/{stepId}/confirmation": {
+      "parameters": [
+        {
+          "name": "companyId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "agentSessionId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف جلسة مساحة عمل الوكيل. وهي مربوطةٌ بالمنشأة والشركة والمستخدم، والثلاثة داخل بايتات كل مِقبضٍ تصدره. / The agent workspace session identifier. It is bound to tenant, company, and user, and all three live inside the bytes of every handle it issues.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "stepId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الخطوة في الخطّة — كما ورد في حال المساحة أو في حدث الدور. / The plan step's identifier, as it appeared in the workspace state or in a turn event.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "confirmAgentStep",
+        "summary": "تأكيد شكل بيانات خطوة / Confirm a step's data shape",
+        "description": "يُسلّم حكم الإنسان على **شكل** بيانات خطوةٍ تنتظر، فتمضي الخطوة أو تقف.\n\n**ومعنى التأكيد واحدٌ لا ثانيَ له: «أقبل شكل هذه البيانات». ولا يعني الترحيل.** والناتج بعده **مسوّدة** كما كان قبله: تهبط على شاشتها، ويقرؤها إنسان هناك، ويرحّلها بيده إن شاء. ولا يوجد على هذا السطح — ولا يجوز أن يوجد — بابٌ يُرحّل من مساحة الوكيل.\n\n**وaccepted إلزامي ولا يُفترَض عند غيابه**: التأكيد فعلٌ يُقال لا يُستنتَج من صمت. وaccepted=false يوقف الخطوة ولا يقتل الدور — يعود الرفض إلى النموذج فيُصحّح أو يسأل.\n\n**وبطاقة التأكيد لا تعرض معرّفاً واحداً**: كل قيمةٍ شكلُها معرّف تُقنَّع ويُقال إنها مُقنَّعة (masked=true وvalue=null). فالحدّ الذي حُفظ أمام النموذج يُحفظ أمام الكتف الذي يقف خلف المستخدم.\n\nDelivers the human's verdict on a waiting step's **data shape**, so the step proceeds or stops.\n\n**Confirmation means exactly one thing: 'I accept the shape of this data'. It does not mean posting.** What follows is **a draft**, exactly as before: it lands on its screen, a human reads it there, and posts it by hand if they choose. There is no door on this surface — and there must not be — that posts from the agent workspace.\n\n**accepted is required and never assumed when absent**: confirmation is stated, not inferred from silence. accepted=false stops the step without killing the turn.\n\n**The confirmation card shows no identifier**: every identifier-shaped value is masked and declared masked.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentStepConfirmationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentSession"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "حقل accepted غائب، أو معرّف الخطوة في المسار غير صالح. / The accepted field is missing, or the step identifier in the path is malformed.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "لا خطوة تنتظر تأكيداً بهذا المعرّف. / No step awaits confirmation under this identifier.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "الوكيل غير مركَّب على هذا الخادم. / The agent is not composed on this server.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "المورد غير موجود داخل نطاق هذه الشركة. / The resource does not exist within this company's scope.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/companies/{companyId}/agent/spend": {
+      "parameters": [
+        {
+          "name": "companyId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "readAgentSpend",
+        "summary": "قراءة إنفاق الوكيل في النافذة الجارية / Read the agent's spend in the current window",
+        "description": "يُرجع ما أنفقته هذه المنشأة على الوكيل في نافذة المحاسبة الجارية، وسقفَها، وعدد أدوارها.\n\n**والوحدة رموزٌ لا ريالات، وذلك قرارٌ لا كسل**: الرمز واقعةٌ يُعيدها المزوّد في usage ونحن نقيسها؛ والريال يحتاج جدول أسعارٍ ليس في هذا المستودع، وسعرٌ يُكتب في الشيفرة يتجمّد بينما يتحرّك عند المزوّد — فيصير رقمٌ في شاشة فاتورةٍ خطأً مطبوعاً.\n\n**والحسابان اثنان لا واحد**: المالك يشغّل النظام على مفتاحه افتراضاً، وللمنشأة أن تأتي بمفتاحها. فمن جاء بمفتاحه يُقاس إنفاقه ولا يُسقَف بسقف المالك — لأنه يدفعه — وceiling تكون معدومة، وbringsItsOwnKey تقول ذلك صراحةً. ولا يُخمَّن أيّهما.\n\n**ولا يظهر مفتاحٌ ولا اسمُ متغيّرٍ يحمله في هذا الجواب ولا في أي جواب آخر على هذا السطح.**\n\n**وخارج مورد الجلسة عمداً**: الإنفاق يخصّ المنشأة لا محادثةً بعينها، ويُقرأ قبل أن تُفتح أي جلسة.\n\nReturns what this tenant has spent on the agent in the current accounting window, its ceiling, and its turn count.\n\n**The unit is tokens, not riyals, and that is a decision rather than laziness**: a token is a fact the provider returns in usage and we measure; a riyal needs a price list that is not in this repository, and a price written into code freezes while the provider's moves.\n\n**There are two billing arrangements, not one**: the owner runs the system on their key by default, and a tenant may bring its own. One that brings its own is measured and not capped by the owner's ceiling — because it pays for it — so ceiling is null and bringsItsOwnKey says so explicitly. Neither is guessed.\n\n**No key and no key-variable name appears in this response or any other on this surface.**\n\n**Deliberately outside the session resource**: spend belongs to the tenant, not to one conversation.",
+        "responses": {
+          "200": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentSpend"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "الوكيل غير مركَّب على هذا الخادم. / The agent is not composed on this server.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/companies/{companyId}/attachments": {
       "parameters": [
         {
@@ -15039,6 +15748,540 @@
         },
         "required": [
           "fields"
+        ],
+        "additionalProperties": false
+      },
+      "AgentAnswerRequest": {
+        "type": "object",
+        "description": "جواب ورقة السؤال. **مفتاحان لا ثالث لهما** — وهذا هو الحدّ كلّه في مخطّط: لا موضعُ الخيار، ولا نصُّه، ولا عددُ الخيارات، ولا «هل كان جديداً». والموضع يُعدّ. / The question sheet's answer. **Two keys and no third** — this schema is the whole boundary: not the option's position, not its text, not the option count, not whether it was new. Position counts.",
+        "properties": {
+          "optionToken": {
+            "type": "string",
+            "maxLength": 512,
+            "description": "رمز الخيار المختار كما ورد في الورقة، حرفاً بحرف. / The chosen option's token exactly as it appeared on the sheet."
+          },
+          "questionId": {
+            "type": "string",
+            "maxLength": 512,
+            "description": "معرّف الورقة المعتِم كما ورد في حالها. / The sheet's opaque identifier as it appeared in the state."
+          }
+        },
+        "required": [
+          "optionToken",
+          "questionId"
+        ],
+        "additionalProperties": false
+      },
+      "AgentConfirmation": {
+        "type": "object",
+        "description": "ما ينتظر تأكيد الإنسان الآن. **ومعنى التأكيد واحد: «أقبل شكل هذه البيانات»** — ولا يعني الترحيل، والناتج بعده مسوّدةٌ كما كان قبله. / What awaits the human's confirmation. **Confirmation means one thing: 'I accept the shape of this data'** — not posting; what follows is a draft exactly as before.",
+        "properties": {
+          "fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgentDraftField"
+            },
+            "description": "حقول الجسم بترتيبٍ ثابت. / The body's fields in a stable order."
+          },
+          "operationId": {
+            "type": "string",
+            "maxLength": 128,
+            "description": "معرّف العملية المنشورة — وفعلُها draft دائماً، ويُفرض ذلك بنيوياً قبل أن يُسأل إنسان. / The published operation; its verb is always draft, structurally enforced before any human is asked."
+          },
+          "screenRoute": {
+            "type": "string",
+            "maxLength": 256,
+            "description": "مسار الشاشة التي ستهبط عليها المسوّدة. / The screen route the draft will land on."
+          },
+          "stepId": {
+            "type": "string",
+            "maxLength": 36,
+            "description": "الخطوة المنتظِرة. / The waiting step."
+          }
+        },
+        "required": [
+          "fields",
+          "operationId",
+          "screenRoute",
+          "stepId"
+        ],
+        "additionalProperties": false
+      },
+      "AgentDraftField": {
+        "type": "object",
+        "description": "حقلٌ في بطاقة التأكيد. **وقيمةُ ما شكلُه معرّف لا تُعرض**: masked صحيحة وvalue معدومة. والحدّ الذي حُفظ أمام النموذج يُحفظ أمام الكتف الذي يقف خلف المستخدم. / A field on the confirmation card. **Identifier-shaped values are not shown**: masked is true and value is null. The boundary kept from the model is kept from the shoulder behind the user too.",
+        "properties": {
+          "masked": {
+            "type": "boolean",
+            "description": "هل قُنِّعت القيمة لأن شكلها معرّف؟ / Was the value masked because its shape is an identifier?"
+          },
+          "path": {
+            "type": "string",
+            "maxLength": 256,
+            "description": "مسار الحقل داخل جسم العملية كما ينشره العقد. / The field's path inside the operation body as the contract publishes it."
+          },
+          "value": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 512,
+            "description": "القيمة المعروضة، أو null حين تُقنَّع. / The displayed value, or null when masked."
+          }
+        },
+        "required": [
+          "masked",
+          "path",
+          "value"
+        ],
+        "additionalProperties": false
+      },
+      "AgentMessageRequest": {
+        "type": "object",
+        "description": "رسالةُ المستخدم إلى الوكيل. **حقلٌ واحد لا ثانيَ له**: لا نموذج، ولا مفتاح، ولا تعليمات نظام — الثلاثة إعدادُ خادمٍ لا حقلُ طلب. وحقلٌ يختار منه الطالب نموذجَه يجعل عميلاً يبدّله في وسط محادثةٍ فيُبطل ذاكرة البادئة بلا أن يعلم. / The user's message to the agent. **One field and no second**: no model, no key, no system instructions — all three are server configuration.",
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 4000,
+            "description": "كلام المستخدم بأسمائه. ولا تُكتب فيه أرقام هويةٍ ولا آيبان ولا تسجيلٍ ضريبي: الدور يُرفض قبل إرساله إن حملها. / The user's own words. Identity, IBAN, and VAT numbers must not appear: the turn is refused before it is sent if they do."
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "additionalProperties": false
+      },
+      "AgentPlanStep": {
+        "type": "object",
+        "description": "خطوةٌ في خطّة الوكيل. **ولا حالة اسمها posted في state ولا يجوز أن توجد**: أبعد ما تبلغه خطوةٌ landed — مسوّدةٌ هبطت على شاشتها — والترحيل فعلٌ بصريّ يدويّ هناك. / A step in the agent's plan. **There is no 'posted' state and there must not be**: the furthest a step reaches is landed — a draft that arrived on its screen — and posting is a manual act there.",
+        "properties": {
+          "ordinal": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 64,
+            "description": "ترتيب الخطوة بدءاً من واحد. / The step's order, starting at one."
+          },
+          "refusals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiError"
+            },
+            "description": "أسباب سقوط الخطوة بلغتيها، أو قائمة فارغة. / Why the step was refused, in both languages, or an empty list."
+          },
+          "screenRoute": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 256,
+            "description": "مسار شاشة المسوّدة بعد هبوطها — وهو ما يفتحه الزرّ في اللوحة. ولا يعبر هذا المسار إلى النموذج. / The draft's screen route once it has landed; the panel's button opens it. This route never crosses to the model."
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "awaitingAnswer",
+              "awaitingConfirmation",
+              "landed",
+              "planned",
+              "refused",
+              "running"
+            ],
+            "description": "حال الخطوة. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The step's state. Matched literally and case-sensitively; a number is never accepted in place of a name."
+          },
+          "stepId": {
+            "type": "string",
+            "maxLength": 36,
+            "description": "معرّف الخطوة — وهو ما يُكتب في مسار التأكيد. / The step identifier, written into the confirmation path."
+          },
+          "titleAr": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "عنوان الخطوة بالعربية كما أعلنه الوكيل، أو اسم أداتها إن نفّذ بلا خطّة مُعلَنة. / The step's Arabic title as the agent declared it, or its tool name when it acted without a declared plan."
+          },
+          "toolName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 128,
+            "description": "اسم العملية المنشورة التي تناديها الخطوة — وفعلُها draft دائماً. / The published operation the step calls; its verb is always draft."
+          }
+        },
+        "required": [
+          "ordinal",
+          "refusals",
+          "screenRoute",
+          "state",
+          "stepId",
+          "titleAr",
+          "toolName"
+        ],
+        "additionalProperties": false
+      },
+      "AgentQuestionOption": {
+        "type": "object",
+        "description": "خيارٌ على ورقة السؤال. **نصُّه محلّي ورمزُه هو ما يعبر**: الاسم يُعرَض على المستخدم ولا يبلغ النموذج أبداً، والرمز معمّى بطولٍ ثابت فلا يُعدّ ولا يُزوَّر ولا يُستعمل في محادثةٍ أخرى. / An option on the question sheet. **Its text is local and its token is what crosses**: the name is shown to the user and never reaches the model, and the token is encrypted at fixed length so it cannot be counted, forged, or reused in another conversation.",
+        "properties": {
+          "label": {
+            "type": "string",
+            "maxLength": 400,
+            "description": "الاسم كما هو في سجلّ المستخدم. **ولا يبلغ النموذج.** / The name as it stands in the user's own register. **It never reaches the model.**"
+          },
+          "optionToken": {
+            "type": "string",
+            "maxLength": 512,
+            "description": "الرمز الموقَّع المعمّى — وهو وحده ما يعود إلى الخادم. / The encrypted signed token; it alone returns to the server."
+          },
+          "subtitle": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 400,
+            "description": "سطرٌ فارق تحت الاسم — قناعٌ لا معرّف. / A distinguishing line under the name — a mask, never an identifier."
+          }
+        },
+        "required": [
+          "label",
+          "optionToken",
+          "subtitle"
+        ],
+        "additionalProperties": false
+      },
+      "AgentQuestionSheet": {
+        "type": "object",
+        "description": "ورقة السؤال كما رسمها الخادم من بياناتٍ محلّية حين التبس اسم. **ولا يبلغ النموذجَ منها شيء**: لا الأسماء، ولا عددُها، ولا موضعُ ما اختير، ولا أنّ اختياراً وقع أصلاً — وما يعود إليه بعده شكلٌ واحد في كل الحالات.\n\n‏**وallowsCreate تقول ما إذا كان «جديد» متاحاً**، ولا يُستنتَج من فراغ القائمة. / The question sheet the server drew from local data when a name was ambiguous. **Nothing in it reaches the model**: not the names, not their number, not which was chosen, not even that a choice happened.",
+        "properties": {
+          "allowsCreate": {
+            "type": "boolean",
+            "description": "هل يُتاح خيار «جديد»؟ ويُقال صراحةً ولا يُستنتَج من فراغ القائمة. / Is a 'new' option offered? Stated explicitly, never inferred from an empty list."
+          },
+          "kind": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "مفتاح السجلّ المسؤول عنه: customer · supplier · … وهو من مفردة lookup_entity المغلقة. / The register key concerned: customer, supplier, … from lookup_entity's closed vocabulary."
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgentQuestionOption"
+            },
+            "description": "الخيارات المرسومة من السجلّ المحلّي. / The options drawn from the local register."
+          },
+          "questionId": {
+            "type": "string",
+            "maxLength": 512,
+            "description": "معرّف الورقة المعتِم — وهو ما يُكتب في جواب الورقة، ولا يُقرأ منه شيء. / The sheet's opaque identifier, written into the answer; nothing is readable from it."
+          },
+          "subjectText": {
+            "type": "string",
+            "maxLength": 400,
+            "description": "كلام المستخدم كما بحث به الوكيل — منه يُركَّب عنوان الورقة بلغة القارئ. والعنوان يُركَّب في المتصفّح لا هنا: الخادم يعرف العربية وحدها والواجهة أربع لغات. / The user's own words as the agent searched them; the sheet's title is composed from them in the reader's language — in the browser, not here."
+          }
+        },
+        "required": [
+          "allowsCreate",
+          "kind",
+          "options",
+          "questionId",
+          "subjectText"
+        ],
+        "additionalProperties": false
+      },
+      "AgentSession": {
+        "type": "object",
+        "description": "حال مساحة العمل كلُّه في جسمٍ واحد — وهو ما تقرؤه اللوحة حين تُعيد الاتصال، ثم تُكمل من lastSequence.\n\n‏**وphase هو ما يقول هل ما زال هناك ما يُنتظَر**: running يفكّر أو ينفّذ، وawaitingHuman يقف عند تأكيدٍ أو ورقة، وcompleted انتهى، وrefused سقط. **ولا قيمة اسمها posted**. / The whole workspace state in one body — what the panel reads on reconnect before continuing from lastSequence.\n\nphase says whether anything is still awaited. **There is no 'posted' value.**",
+        "properties": {
+          "agentSessionId": {
+            "type": "string",
+            "maxLength": 36,
+            "description": "معرّف الجلسة. / The session identifier."
+          },
+          "lastSequence": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2000000000,
+            "description": "مؤشّر آخر حدثٍ في السجلّ — تبدأ منه اللوحة قراءتها. / The cursor of the last event in the log; the panel reads onward from it."
+          },
+          "pendingConfirmation": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/AgentConfirmation"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ما ينتظر تأكيداً، أو null. / What awaits confirmation, or null."
+          },
+          "pendingQuestion": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/AgentQuestionSheet"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ورقة السؤال المعلَّقة، أو null. / The pending question sheet, or null."
+          },
+          "plan": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgentPlanStep"
+            },
+            "description": "خطوات الدور الجاري أو الأخير بحالها الآن. وتُستبدل كاملةً حين يُعلن الوكيل خطّةً جديدة. / The current or last turn's steps with their states; replaced wholesale when the agent declares a new plan."
+          },
+          "phase": {
+            "type": "string",
+            "enum": [
+              "awaitingHuman",
+              "completed",
+              "refused",
+              "running"
+            ],
+            "description": "طور الدور. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The turn's phase. Matched literally and case-sensitively; a number is never accepted in place of a name."
+          },
+          "turnId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 36,
+            "description": "الدور الجاري أو آخر دور، أو null إن لم يبدأ دورٌ بعد. / The current or last turn, or null when no turn has begun."
+          }
+        },
+        "required": [
+          "agentSessionId",
+          "lastSequence",
+          "pendingConfirmation",
+          "pendingQuestion",
+          "phase",
+          "plan",
+          "turnId"
+        ],
+        "additionalProperties": false
+      },
+      "AgentSpend": {
+        "type": "object",
+        "description": "إنفاق المنشأة على الوكيل في نافذة المحاسبة الجارية. **والوحدة رموزٌ لا ريالات** — والسبب في وصف العملية.\n\n‏**وbillable وceiling نصّان لا رمزان رقميّان**: عدّاد رموزٍ يتجاوز مدى الصحيح 32 بت في نافذةٍ طويلة، وقصُّه إلى المدى كذبةٌ صامتة. / The tenant's agent spend in the current accounting window. **The unit is tokens, not riyals.**\n\nbillable and ceiling are strings, not JSON numbers: a token counter outgrows 32-bit range in a long window, and clamping it to that range is a silent lie.",
+        "properties": {
+          "billable": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]{0,18})$",
+            "description": "مجموع الرموز المحاسَب عليها في النافذة، نصّاً. / The billable token total in the window, as a string."
+          },
+          "bringsItsOwnKey": {
+            "type": "boolean",
+            "description": "هل تعمل هذه المنشأة على مفتاحها؟ ومن جاء بمفتاحه يُقاس إنفاقه ولا يُسقَف بسقف المالك. / Does this tenant run on its own key? One that does is measured and not capped by the owner's ceiling."
+          },
+          "ceiling": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^(0|[1-9][0-9]{0,18})$",
+            "description": "السقف بالرموز نصّاً، أو null لمنشأةٍ تعمل بمفتاحها فلا يَسقُفها سقف المالك. / The token ceiling as a string, or null for a tenant on its own key."
+          },
+          "turns": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2000000000,
+            "description": "عدد الأدوار المُحاسَبة في النافذة. / The number of billed turns in the window."
+          },
+          "windowSeconds": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2000000000,
+            "description": "طول نافذة المحاسبة بالثواني. / The accounting window's length in seconds."
+          }
+        },
+        "required": [
+          "billable",
+          "bringsItsOwnKey",
+          "ceiling",
+          "turns",
+          "windowSeconds"
+        ],
+        "additionalProperties": false
+      },
+      "AgentStepConfirmationRequest": {
+        "type": "object",
+        "description": "حكم الإنسان على **شكل** بيانات خطوة. **ولا يعني الترحيل** — والناتج بعده مسوّدةٌ كما كان قبله. وaccepted إلزامي ولا يُفترَض عند غيابه: التأكيد فعلٌ يُقال لا يُستنتَج من صمت. / The human's verdict on a step's **data shape**. **It does not mean posting.** accepted is required and never assumed when absent: confirmation is stated, not inferred from silence.",
+        "properties": {
+          "accepted": {
+            "type": "boolean",
+            "description": "‏true إن قَبِل المستخدم شكل البيانات. وfalse يوقف الخطوة ولا يقتل الدور. / true when the user accepts the data's shape. false stops the step without killing the turn."
+          }
+        },
+        "required": [
+          "accepted"
+        ],
+        "additionalProperties": false
+      },
+      "AgentTurn": {
+        "type": "object",
+        "description": "دورٌ بدأ. **ولا ينتظر هذا الجواب انتهاءه** — الأحداث تُقرأ بمؤشّرها، وafter هو المؤشّر الذي تبدأ منه اللوحة قراءة أحداث هذا الدور. / A turn that has begun. **This response does not wait for it to finish**; events are read by cursor, and after is where the panel starts reading this turn's events.",
+        "properties": {
+          "after": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2000000000,
+            "description": "المؤشّر الذي تبدأ منه اللوحة قراءة أحداث هذا الدور. / The cursor the panel starts this turn's event reading from."
+          },
+          "turnId": {
+            "type": "string",
+            "maxLength": 36,
+            "description": "معرّف الدور. / The turn identifier."
+          }
+        },
+        "required": [
+          "after",
+          "turnId"
+        ],
+        "additionalProperties": false
+      },
+      "AgentTurnEvent": {
+        "type": "object",
+        "description": "حدثٌ واحد في سجلّ المساحة. **ولا يحمل معرّف صفٍّ ولا اسمَ طرفٍ ولا عددَ مرشّحين**: ما يعبر إلى الشاشة مسارُ شاشةٍ أو مِقبضٌ معتِم بطولٍ ثابت، وما يعبر إلى النموذج أقلّ من ذلك.\n\n‏**وthinking جزءٌ من تفكيرٍ مُلخَّص يُعرَض تقدّماً**، لا سلسلة استدلالٍ تُخزَّن ولا تُبنى عليها قرارات. / One event in the workspace log. **It carries no row identifier, no party name, and no candidate count.**",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "completed",
+              "draftLanded",
+              "planProposed",
+              "questionRaised",
+              "refused",
+              "text",
+              "thinking",
+              "toolRefused",
+              "toolStarted"
+            ],
+            "description": "شكل الحدث. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The event's kind. Matched literally and case-sensitively; a number is never accepted in place of a name."
+          },
+          "questionId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 512,
+            "description": "معرّف ورقة السؤال المعتِم حين يلتبس اسم. / The opaque question-sheet identifier when a name is ambiguous."
+          },
+          "refusals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiError"
+            },
+            "description": "أسباب الرفض بلغتيها، أو قائمة فارغة. / Why it was refused, in both languages, or an empty list."
+          },
+          "registerKey": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 64,
+            "description": "مفتاح السجلّ في حدث ورقة السؤال — وهو معلومٌ للنموذج سلفاً لأنه هو من نطق به. / The register key on a question event; the model already knows it because it named it."
+          },
+          "screenRoute": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 256,
+            "description": "مسار شاشة المسوّدة حين تهبط. **ولا يعبر إلى النموذج**: هو يقرأ «مسوّدة» ولا يقرأ معرّفاً. / The draft's screen route when it lands. **It never crosses to the model**, which reads 'draft' and no identifier."
+          },
+          "sequence": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2000000000,
+            "description": "رقم الحدث في الجلسة — يُمرَّر after في الطلب التالي. / The event's number in the session; passed as after on the next request."
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "description": "عناوين الخطوات في حدث الخطّة، بترتيبها. وفارغة في كل حدثٍ آخر. / The step titles on a plan event, in order; empty on every other event."
+          },
+          "stepId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 36,
+            "description": "الخطوة المرتبطة بالحدث، إن وُجدت. / The step this event belongs to, when there is one."
+          },
+          "text": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 4000,
+            "description": "النصّ المعروض — جزءُ تفكيرٍ أو جزءُ نصّ — أو كلامُ البحث في حدث ورقة السؤال. / The displayed text — a thinking or text fragment — or the search words on a question event."
+          },
+          "toolName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 128,
+            "description": "اسم الأداة في أحداث الأدوات. / The tool's name on tool events."
+          },
+          "turnId": {
+            "type": "string",
+            "maxLength": 36,
+            "description": "الدور الذي أنتج الحدث. / The turn that produced it."
+          }
+        },
+        "required": [
+          "kind",
+          "questionId",
+          "refusals",
+          "registerKey",
+          "screenRoute",
+          "sequence",
+          "stepId",
+          "steps",
+          "text",
+          "toolName",
+          "turnId"
+        ],
+        "additionalProperties": false
+      },
+      "AgentTurnEventPage": {
+        "type": "object",
+        "description": "صفحةُ أحداثٍ بعد مؤشّر. **وقائمةٌ فارغة ليست نهاية**: هي «لا جديد بعدُ»، ويُعاد الطلب بالمؤشّر نفسه — والذي يقول هل انتهى الدور هو phase لا فراغُ القائمة. / A page of events after a cursor. **An empty list is not the end**: it means 'nothing new yet' and the request is retried with the same cursor; what says the turn is over is phase, not an empty list.",
+        "properties": {
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgentTurnEvent"
+            },
+            "description": "الأحداث بترتيبها. / The events in order."
+          },
+          "lastSequence": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2000000000,
+            "description": "آخر مؤشّرٍ في هذه الصفحة، أو المُمرَّر إن كانت فارغة. / The last cursor in this page, or the one passed in when it is empty."
+          },
+          "phase": {
+            "type": "string",
+            "enum": [
+              "awaitingHuman",
+              "completed",
+              "refused",
+              "running"
+            ],
+            "description": "طور الدور لحظةَ الجواب. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The turn's phase at the moment of reply. Matched literally and case-sensitively; a number is never accepted in place of a name."
+          }
+        },
+        "required": [
+          "events",
+          "lastSequence",
+          "phase"
         ],
         "additionalProperties": false
       },

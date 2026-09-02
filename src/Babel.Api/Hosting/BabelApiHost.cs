@@ -4,6 +4,9 @@ using Babel.Api.Fleet;
 using Babel.Api.Errors;
 using Babel.Api.Ports;
 using Babel.Api.Security;
+using Babel.Ai.Agent;
+using Babel.Ai.Workspace;
+using Babel.Api.Agent;
 using Babel.Compliance;
 using Babel.Core;
 using Babel.Core.Access;
@@ -147,6 +150,30 @@ internal static class BabelApiHost
                 ? new ControlPlaneFleetDirectory(new ControlPlaneOptions { UseSurfaceRole = true })
                 : new UnavailableFleetDirectory());
 
+        // ── مساحة عمل الوكيل — تركيبٌ اختياري صريح لا مُستنتَج ───────────────────
+        //
+        // ‏**ولماذا صريح:** الحلقة تحتاج مفتاح نموذجٍ ومفتاح توقيع مقابض، ولا يملكهما كل
+        // ناشر. واستنتاجُ التفعيل من وجود متغيّر بيئةٍ كان سيفتح سطحاً يُنفق مالاً على
+        // خادمٍ لم يقرّر ذلك أحد فيه — وهي حجّة `Babel:Fleet:Enabled` نفسها بنصّها.
+        //
+        // ‏**ولا مفتاح يُقرأ هنا ولا يُخزَّن في أي كائن**: `AgentOptions.ApiKeyVariable`
+        // و`LookupOptions.HandleSigningKeyVariable` يحملان **اسم** المتغيّر، والقيمة
+        // تُقرأ عند الاستعمال ولا تدخل إعداداً يُسلسَل ولا سطرَ سجلّ.
+        //
+        // وحين لا يُركَّب: أبواب الوكيل مسجَّلة كما هي — العقد يصفها والحارس يطابقه —
+        // وتردّ 503 بـ`ai.workspace.agent_disabled`. واللوحة تعرض ذلك حالاً من حالاتها.
+        if (builder.Configuration.GetValue<bool>("Babel:Agent:Enabled"))
+        {
+            builder.Services.AddBabelAgentLoop();
+            builder.Services.AddBabelAgentWorkspace();
+
+            // ‏**راسم أوراق السؤال يُسجَّل هنا لا في الوحدة** — وهو حارسٌ قائم لا ذوق:
+            // ‏`TheNameSheetIsNeverReachableFromTheAgent` يفرض أنّ `src/Babel.Ai/` لا
+            // تسمّي `INameCandidateSheetSource` بحرفٍ واحد، فحقنُ منفذ الجَرد في مسار
+            // النموذج لا يقع سهواً في سطر: لا يوجد هناك ملفٌّ يستطيع أن يكتبه.
+            builder.Services.AddScoped<IAgentQuestionSheets, AgentQuestionSheetDesk>();
+        }
+
         // ── حدّ المعدّل على الأبواب المفتوحة ─────────────────────────────────────
         // الحدّ عددٌ يُضبط في النشر لا في الشيفرة: العدد الصحيح يعتمد على شكل النشر —
         // خلف بوّابة تتقاسم عنواناً، أو مباشرةً على الإنترنت — لا على ما يفعله الباب.
@@ -175,6 +202,7 @@ internal static class BabelApiHost
         app.MapPayrollApi();
         app.MapProjectsApi();
         app.MapAttachmentApi();
+        app.MapAgentApi();
         app.MapDocsApi();
 
         return app;

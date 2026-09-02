@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     bd9a3ec99569ae7bbe8a4def9a1e5d52942ab4732289f7897df7762912d72d02
+     c236c64c98f59c2254ec809144398573949fc1cb117820f6079fc3e40f8d4094
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -442,6 +442,43 @@ export async function allocateTenantReceipt(transport: Transport, args: Allocate
   return decodeSchema(SCHEMAS, "TenantReceipt", response.json) as T.TenantReceipt;
 }
 
+export interface AnswerAgentQuestionArgs {
+  /** معرّف جلسة مساحة عمل الوكيل. وهي مربوطةٌ بالمنشأة والشركة والمستخدم، والثلاثة داخل بايتات كل مِقبضٍ تصدره. / The agent workspace session identifier. It is bound to tenant, company, and user, and all three live inside the bytes of every handle it issues. */
+  agentSessionId: string;
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.AgentAnswerRequest;
+}
+
+/**
+ * جواب ورقة السؤال / Answer the question sheet
+ * 
+ * يُسلّم اختيار الإنسان على ورقة السؤال، فيمضي الدور.
+ * 
+ * **والحدّ كلّه في شكل هذا الجسم: مفتاحان لا ثالث لهما** — questionId وoptionToken. لا موضعُ الخيار، ولا نصُّه، ولا عددُ الخيارات، ولا «هل كان جديداً». والموضع يُعدّ: من يرى choice=3 يعلم أن الخيارات كانت أربعةً على الأقل، وثلاثُ محاولاتٍ بأسماءٍ متدرّجة تمسح السجلّ.
+ * 
+ * **والخيارات تُرسَم في الخادم من بياناتٍ محلّية ولا يراها النموذج**: هو يقول «هذا الاسم ملتبس، اسأل» ويعود إليه بعد الاختيار مِقبضٌ واحد. وشكل ما يعود إليه واحدٌ في كل الحالات، فلا يعلم حتى **أنّ** اختياراً وقع.
+ * 
+ * **ومعرّف الورقة في الجسم لا في المسار**: هو مِقبضٌ معمّى بطولٍ ثابت من مئةٍ واثنين وخمسين محرفاً، ومقطعُ مسارٍ بهذا الطول يدخل سجلّات الوسطاء ويظهر في ترويسة المُحيل.
+ * 
+ * Delivers the human's choice on the question sheet so the turn proceeds.
+ * 
+ * **The whole boundary is the shape of this body: two keys and no third** — questionId and optionToken. Not the option's position, not its text, not the option count, not whether it was new. Position counts: seeing choice=3 tells you there were at least four options, and three attempts with narrowing names sweep the register.
+ * 
+ * **The options are drawn on the server from local data and the model never sees them**: it says 'this name is ambiguous, ask' and gets one handle back. The shape of what comes back is identical in every case, so it does not even learn **that** a choice happened.
+ * 
+ * **The sheet identifier lives in the body, not the path**: it is a 152-character encrypted handle, and a path segment that long lands in intermediaries' logs and referrer headers.
+ */
+export async function answerAgentQuestion(transport: Transport, args: AnswerAgentQuestionArgs, signal?: AbortSignal): Promise<T.AgentSession> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/agent/sessions/" + encodeURIComponent(args.agentSessionId) + "/answers";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "AgentAnswerRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "AgentSession", response.json) as T.AgentSession;
+}
+
 export interface ChangeMembershipRoleArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
@@ -512,6 +549,45 @@ export async function changeSubscriptionPlan(transport: Transport, args: ChangeS
   const response = await transport({ method: "POST", url, body, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "Subscription", response.json) as T.Subscription;
+}
+
+export interface ConfirmAgentStepArgs {
+  /** معرّف جلسة مساحة عمل الوكيل. وهي مربوطةٌ بالمنشأة والشركة والمستخدم، والثلاثة داخل بايتات كل مِقبضٍ تصدره. / The agent workspace session identifier. It is bound to tenant, company, and user, and all three live inside the bytes of every handle it issues. */
+  agentSessionId: string;
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف الخطوة في الخطّة — كما ورد في حال المساحة أو في حدث الدور. / The plan step's identifier, as it appeared in the workspace state or in a turn event. */
+  stepId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.AgentStepConfirmationRequest;
+}
+
+/**
+ * تأكيد شكل بيانات خطوة / Confirm a step's data shape
+ * 
+ * يُسلّم حكم الإنسان على **شكل** بيانات خطوةٍ تنتظر، فتمضي الخطوة أو تقف.
+ * 
+ * **ومعنى التأكيد واحدٌ لا ثانيَ له: «أقبل شكل هذه البيانات». ولا يعني الترحيل.** والناتج بعده **مسوّدة** كما كان قبله: تهبط على شاشتها، ويقرؤها إنسان هناك، ويرحّلها بيده إن شاء. ولا يوجد على هذا السطح — ولا يجوز أن يوجد — بابٌ يُرحّل من مساحة الوكيل.
+ * 
+ * **وaccepted إلزامي ولا يُفترَض عند غيابه**: التأكيد فعلٌ يُقال لا يُستنتَج من صمت. وaccepted=false يوقف الخطوة ولا يقتل الدور — يعود الرفض إلى النموذج فيُصحّح أو يسأل.
+ * 
+ * **وبطاقة التأكيد لا تعرض معرّفاً واحداً**: كل قيمةٍ شكلُها معرّف تُقنَّع ويُقال إنها مُقنَّعة (masked=true وvalue=null). فالحدّ الذي حُفظ أمام النموذج يُحفظ أمام الكتف الذي يقف خلف المستخدم.
+ * 
+ * Delivers the human's verdict on a waiting step's **data shape**, so the step proceeds or stops.
+ * 
+ * **Confirmation means exactly one thing: 'I accept the shape of this data'. It does not mean posting.** What follows is **a draft**, exactly as before: it lands on its screen, a human reads it there, and posts it by hand if they choose. There is no door on this surface — and there must not be — that posts from the agent workspace.
+ * 
+ * **accepted is required and never assumed when absent**: confirmation is stated, not inferred from silence. accepted=false stops the step without killing the turn.
+ * 
+ * **The confirmation card shows no identifier**: every identifier-shaped value is masked and declared masked.
+ */
+export async function confirmAgentStep(transport: Transport, args: ConfirmAgentStepArgs, signal?: AbortSignal): Promise<T.AgentSession> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/agent/sessions/" + encodeURIComponent(args.agentSessionId) + "/steps/" + encodeURIComponent(args.stepId) + "/confirmation";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "AgentStepConfirmationRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "AgentSession", response.json) as T.AgentSession;
 }
 
 export interface CreateLesseeArgs {
@@ -1829,6 +1905,38 @@ export async function listStockMovements(transport: Transport, args: ListStockMo
   return decodeSchema(SCHEMAS, "StockMovementList", response.json) as T.StockMovementList;
 }
 
+export interface OpenAgentSessionArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+}
+
+/**
+ * فتح جلسة مساحة عمل الوكيل / Open an agent workspace session
+ * 
+ * يفتح محادثةً مع الوكيل داخل نطاق هذه الشركة، ويعيد حالها الابتدائي.
+ * 
+ * **والجلسة مربوطة بالمنشأة والشركة والمستخدم، والثلاثة داخل بايتات كل مِقبضٍ تصدره** — فمِقبضٌ صحيح في محادثةٍ لا يُفكّ في أخرى، ولا يُفكّ لمستخدمٍ ثانٍ ولو كان في الشركة نفسها.
+ * 
+ * **ولا حقل في الجسم إطلاقاً**: النطاق من المسار، والهوية من الاعتماد، واسم الشركة من تأسيسها — ولا يختار الطالبُ نموذجاً ولا مفتاحاً ولا نصَّ نظام. وحقلٌ يختار منه العميل نموذجه كان سيجعل عميلاً يبدّل النموذج في وسط محادثة فيُبطل ذاكرة البادئة بلا أن يعلم.
+ * 
+ * **والوكيل تركيبٌ اختياري**: خادمٌ لم يُفعَّل فيه يردّ 503 وai.workspace.agent_disabled من كل باب من هذه الأبواب — وهو رمزٌ يقول «هذه الميزة غير مُفعَّلة هنا» لا «الخادم معطوب».
+ * 
+ * Opens a conversation with the agent inside this company's scope and returns its initial state.
+ * 
+ * **The session is bound to tenant, company, and user, and all three live inside the bytes of every handle it issues** — so a handle valid in one conversation is not redeemable in another, nor by a second user in the same company.
+ * 
+ * **The body has no fields at all**: scope comes from the path, identity from the credential, and the company name from its founding record. The caller picks no model, no key, and no system text.
+ * 
+ * **The agent is an optional composition**: a server where it is not enabled answers 503 with ai.workspace.agent_disabled from every one of these doors.
+ */
+export async function openAgentSession(transport: Transport, args: OpenAgentSessionArgs, signal?: AbortSignal): Promise<T.AgentSession> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/agent/sessions";
+  const url = path;
+  const response = await transport({ method: "POST", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "AgentSession", response.json) as T.AgentSession;
+}
+
 export interface OpenSessionArgs {
   /** جسم الطلب. / The request body. */
   body: T.OpenSessionRequest;
@@ -2459,6 +2567,112 @@ export async function postTenantReceipt(transport: Transport, args: PostTenantRe
   const response = await transport({ method: "POST", url, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "TenantReceipt", response.json) as T.TenantReceipt;
+}
+
+export interface ReadAgentSessionArgs {
+  /** معرّف جلسة مساحة عمل الوكيل. وهي مربوطةٌ بالمنشأة والشركة والمستخدم، والثلاثة داخل بايتات كل مِقبضٍ تصدره. / The agent workspace session identifier. It is bound to tenant, company, and user, and all three live inside the bytes of every handle it issues. */
+  agentSessionId: string;
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+}
+
+/**
+ * قراءة حال مساحة العمل كلِّه / Read the whole workspace state
+ * 
+ * يُرجع حال المساحة في جسمٍ واحد: الطور، والخطّة بخطواتها وحالِ كلٍّ منها، وما ينتظر تأكيداً، وورقة السؤال المعلَّقة، ومؤشّر آخر حدث.
+ * 
+ * **وهذا هو باب استئناف اللوحة بعد انقطاع**: تقرأ الحال، ثم تُكمل قراءة الأحداث من lastSequence.
+ * 
+ * **ومورد واحد لا أربعة**، بحجّة capability-profile نفسها: «ما الحال الآن؟» سؤالٌ يُجاب بطلبٍ واحد. وأربعةُ موارد كانت ستجعل لوحةً تُعيد الاتصال تُصدر أربعة طلبات تصل بترتيبٍ لا يضمنه أحد، فتعرض خطّةَ دورٍ وتأكيدَ دورٍ آخر معاً.
+ * 
+ * **والخطّة هنا ليست تاريخاً**: هي خطوات الدور الجاري أو الأخير، تُستبدل كاملةً حين يُعلن الوكيل خطّةً جديدة.
+ * 
+ * Returns the workspace state in one body: the phase, the plan with each step's state, what awaits confirmation, the pending question sheet, and the last event cursor.
+ * 
+ * **This is the panel's resume-after-disconnect door**: read the state, then continue reading events from lastSequence.
+ * 
+ * **One resource, not four**, on the capability-profile argument: 'what is the state now?' is answered by one request. Four resources would make a reconnecting panel issue four requests that arrive in no guaranteed order, showing one turn's plan beside another turn's confirmation.
+ */
+export async function readAgentSession(transport: Transport, args: ReadAgentSessionArgs, signal?: AbortSignal): Promise<T.AgentSession> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/agent/sessions/" + encodeURIComponent(args.agentSessionId) + "";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "AgentSession", response.json) as T.AgentSession;
+}
+
+export interface ReadAgentSpendArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+}
+
+/**
+ * قراءة إنفاق الوكيل في النافذة الجارية / Read the agent's spend in the current window
+ * 
+ * يُرجع ما أنفقته هذه المنشأة على الوكيل في نافذة المحاسبة الجارية، وسقفَها، وعدد أدوارها.
+ * 
+ * **والوحدة رموزٌ لا ريالات، وذلك قرارٌ لا كسل**: الرمز واقعةٌ يُعيدها المزوّد في usage ونحن نقيسها؛ والريال يحتاج جدول أسعارٍ ليس في هذا المستودع، وسعرٌ يُكتب في الشيفرة يتجمّد بينما يتحرّك عند المزوّد — فيصير رقمٌ في شاشة فاتورةٍ خطأً مطبوعاً.
+ * 
+ * **والحسابان اثنان لا واحد**: المالك يشغّل النظام على مفتاحه افتراضاً، وللمنشأة أن تأتي بمفتاحها. فمن جاء بمفتاحه يُقاس إنفاقه ولا يُسقَف بسقف المالك — لأنه يدفعه — وceiling تكون معدومة، وbringsItsOwnKey تقول ذلك صراحةً. ولا يُخمَّن أيّهما.
+ * 
+ * **ولا يظهر مفتاحٌ ولا اسمُ متغيّرٍ يحمله في هذا الجواب ولا في أي جواب آخر على هذا السطح.**
+ * 
+ * **وخارج مورد الجلسة عمداً**: الإنفاق يخصّ المنشأة لا محادثةً بعينها، ويُقرأ قبل أن تُفتح أي جلسة.
+ * 
+ * Returns what this tenant has spent on the agent in the current accounting window, its ceiling, and its turn count.
+ * 
+ * **The unit is tokens, not riyals, and that is a decision rather than laziness**: a token is a fact the provider returns in usage and we measure; a riyal needs a price list that is not in this repository, and a price written into code freezes while the provider's moves.
+ * 
+ * **There are two billing arrangements, not one**: the owner runs the system on their key by default, and a tenant may bring its own. One that brings its own is measured and not capped by the owner's ceiling — because it pays for it — so ceiling is null and bringsItsOwnKey says so explicitly. Neither is guessed.
+ * 
+ * **No key and no key-variable name appears in this response or any other on this surface.**
+ * 
+ * **Deliberately outside the session resource**: spend belongs to the tenant, not to one conversation.
+ */
+export async function readAgentSpend(transport: Transport, args: ReadAgentSpendArgs, signal?: AbortSignal): Promise<T.AgentSpend> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/agent/spend";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "AgentSpend", response.json) as T.AgentSpend;
+}
+
+export interface ReadAgentTurnEventsArgs {
+  /** معرّف جلسة مساحة عمل الوكيل. وهي مربوطةٌ بالمنشأة والشركة والمستخدم، والثلاثة داخل بايتات كل مِقبضٍ تصدره. / The agent workspace session identifier. It is bound to tenant, company, and user, and all three live inside the bytes of every handle it issues. */
+  agentSessionId: string;
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** آخر مؤشّرٍ قرأته اللوحة. الغياب يعني «من أوّل الجلسة». / The last cursor the panel read. Absent means 'from the start of the session'. */
+  after?: string;
+}
+
+/**
+ * قراءة أحداث الدور بعد مؤشّر / Read turn events after a cursor
+ * 
+ * يُرجع ما جدّ من أحداث الدور بعد المؤشّر المُمرَّر، **وينتظر إن لم يكن هناك جديد** حتى تنقضي مهلة الخادم — فتعود صفحةٌ فارغة ويُعاد الطلب بالمؤشّر نفسه.
+ * 
+ * **وهذا هو بثُّ اللوحة، ومؤشّرٌ لا دفقٌ مفتوح — وذلك قرارٌ لا تقصير.** النموذج يبثّ فعلاً وأجزاء تفكيره ونصّه تصل حدثاً حدثاً، فترى اللوحة تقدّماً لا صمتاً. لكنّ الدور يقف عند إنسان وقد يمتدّ دقائق، ودفقٌ مفتوح يُقطَع عند أوّل وسيطٍ في الطريق فتُبنى فوقه آليةُ استئنافٍ ثانية بترقيم أحداثٍ خاصّ به. والمؤشّر يجعل الاستئناف هو الآلية الأولى نفسها: «ما بعد ن؟».
+ * 
+ * **وقائمةٌ فارغة ليست نهاية**: هي «لا جديد بعدُ». والذي يقول هل انتهى الدور هو phase — completed أو refused — لا فراغُ القائمة.
+ * 
+ * **ولا يحمل حدثٌ واحدٌ معرّف صفٍّ ولا اسمَ طرفٍ ولا عددَ مرشّحين**: ما يعبر مسارُ شاشةٍ أو مِقبضٌ معتِم بطولٍ ثابت.
+ * 
+ * Returns whatever turn events have appeared after the cursor passed in, **and waits when there is nothing new** until the server's wait elapses, returning an empty page to be retried with the same cursor.
+ * 
+ * **This is the panel's streaming, and a cursor rather than an open stream — a decision, not a shortfall.** The model does stream, and its thinking and text arrive event by event, so the panel shows progress rather than silence. But a turn stops for a human and may run for minutes, and an open stream is cut by the first intermediary on the path, forcing a second resume mechanism with its own event numbering on top. A cursor makes resuming the first mechanism itself: 'what is after n?'.
+ * 
+ * **An empty list is not the end**: it means 'nothing new yet'. What says the turn is over is phase — completed or refused — not an empty list.
+ * 
+ * **No single event carries a row identifier, a party name, or a candidate count.**
+ */
+export async function readAgentTurnEvents(transport: Transport, args: ReadAgentTurnEventsArgs, signal?: AbortSignal): Promise<T.AgentTurnEventPage> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/agent/sessions/" + encodeURIComponent(args.agentSessionId) + "/events";
+  const query = new URLSearchParams();
+  if (args.after !== undefined && args.after !== null) query.set("after", args.after);
+  const url = query.size > 0 ? path + "?" + query.toString() : path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "AgentTurnEventPage", response.json) as T.AgentTurnEventPage;
 }
 
 export interface ReadAttachmentArgs {
@@ -4303,6 +4517,43 @@ export async function revokeSession(transport: Transport, signal?: AbortSignal):
   const response = await transport({ method: "POST", url, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "SessionRevocation", response.json) as T.SessionRevocation;
+}
+
+export interface SendAgentMessageArgs {
+  /** معرّف جلسة مساحة عمل الوكيل. وهي مربوطةٌ بالمنشأة والشركة والمستخدم، والثلاثة داخل بايتات كل مِقبضٍ تصدره. / The agent workspace session identifier. It is bound to tenant, company, and user, and all three live inside the bytes of every handle it issues. */
+  agentSessionId: string;
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.AgentMessageRequest;
+}
+
+/**
+ * إرسال رسالة وبدء دور / Send a message and begin a turn
+ * 
+ * يبدأ دوراً على كلام المستخدم ويعود بمعرّفه **فوراً بـ202** — ولا ينتظر انتهاءه.
+ * 
+ * **ولماذا لا ينتظر:** الدور يحمل نداءَي نموذجٍ فأكثر، ويقف عند إنسانٍ مرّةً أو مرّتين — ورقةَ سؤالٍ وتأكيدَ شكل بيانات — فيتجاوز كل مهلة HTTP معقولة. وأخطر من ذلك أنّ إغلاق النافذة كان سيقتل دوراً في منتصفه بين تأكيدٍ ومسوّدة. فالطلب يبدأ الدور ويعود، واللوحة تقرأ أحداثه بمؤشّرها.
+ * 
+ * **ودورٌ فوق دور يُرفض** بـai.workspace.turn_already_running: الجلسة تحمل حديثاً واحداً، ودوران متوازيان على نسخة محادثةٍ واحدة يكتبان فيها بترتيبٍ لا يُعاد إنتاجه.
+ * 
+ * **ولا يحمل الجسم إلا نصّاً**: لا نموذج، ولا مفتاح، ولا تعليمات نظام — الثلاثة إعدادُ خادم.
+ * 
+ * Begins a turn on the user's words and returns its identifier **immediately with 202**; it does not wait for the turn to finish.
+ * 
+ * **Why it does not wait:** a turn carries two or more model calls and stops for a human once or twice — a question sheet and a data-shape confirmation — so it outlives any sane HTTP timeout. Worse, closing the window would have killed a turn mid-way between a confirmation and a draft. So the request starts the turn and returns, and the panel reads its events by cursor.
+ * 
+ * **A turn on top of a turn is refused** with ai.workspace.turn_already_running.
+ * 
+ * **The body carries text and nothing else**: no model, no key, no system instructions — all three are server configuration.
+ */
+export async function sendAgentMessage(transport: Transport, args: SendAgentMessageArgs, signal?: AbortSignal): Promise<T.AgentTurn> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/agent/sessions/" + encodeURIComponent(args.agentSessionId) + "/messages";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "AgentMessageRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "AgentTurn", response.json) as T.AgentTurn;
 }
 
 export interface SuspendCostCenterArgs {

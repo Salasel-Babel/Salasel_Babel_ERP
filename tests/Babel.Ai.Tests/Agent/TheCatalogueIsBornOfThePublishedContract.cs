@@ -69,16 +69,21 @@ public sealed class TheCatalogueIsBornOfThePublishedContract
     }
 
     /// <summary>
-    /// مجموعة الأدوات = كل عملية <c>draft…</c> منشورة، زائد أداتَي البروتوكول. لا واحدة أقلّ ولا أكثر.
+    /// مجموعة الأدوات = كل عملية <c>draft…</c> منشورة، زائد أدوات البروتوكول الثلاث. لا واحدة أقلّ ولا أكثر.
     /// </summary>
     [Fact]
-    public void الأدوات_هي_عمليات_المسوّدات_وحدها_مع_أداتي_البروتوكول()
+    public void الأدوات_هي_عمليات_المسوّدات_وحدها_مع_أدوات_البروتوكول()
     {
         string[] drafts = [.. Operations().Keys
             .Where(static name => name.StartsWith("draft", StringComparison.Ordinal))
             .Order(StringComparer.Ordinal)];
 
-        string[] expected = [.. new[] { AgentProtocolTools.AskQuestion, AgentProtocolTools.LookupEntity }
+        string[] expected = [.. new[]
+            {
+                AgentProtocolTools.AskQuestion,
+                AgentProtocolTools.LookupEntity,
+                AgentProtocolTools.ProposePlan,
+            }
             .Concat(drafts).Order(StringComparer.Ordinal)];
 
         string[] actual = [.. Catalogue.Tools.Select(static tool => tool.Name)];

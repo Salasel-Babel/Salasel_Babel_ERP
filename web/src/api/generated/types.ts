@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     bd9a3ec99569ae7bbe8a4def9a1e5d52942ab4732289f7897df7762912d72d02
+     c236c64c98f59c2254ec809144398573949fc1cb117820f6079fc3e40f8d4094
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -58,6 +58,186 @@ export interface AccessSession {
 export interface AdmitDocumentRequest {
   /** أسماء الحقول الموجودة على المستند. / The names of the fields present on the document. */
   fields: string[];
+}
+
+/** جواب ورقة السؤال. **مفتاحان لا ثالث لهما** — وهذا هو الحدّ كلّه في مخطّط: لا موضعُ الخيار، ولا نصُّه، ولا عددُ الخيارات، ولا «هل كان جديداً». والموضع يُعدّ. / The question sheet's answer. **Two keys and no third** — this schema is the whole boundary: not the option's position, not its text, not the option count, not whether it was new. Position counts. */
+export interface AgentAnswerRequest {
+  /** رمز الخيار المختار كما ورد في الورقة، حرفاً بحرف. / The chosen option's token exactly as it appeared on the sheet. */
+  optionToken: string;
+  /** معرّف الورقة المعتِم كما ورد في حالها. / The sheet's opaque identifier as it appeared in the state. */
+  questionId: string;
+}
+
+/** ما ينتظر تأكيد الإنسان الآن. **ومعنى التأكيد واحد: «أقبل شكل هذه البيانات»** — ولا يعني الترحيل، والناتج بعده مسوّدةٌ كما كان قبله. / What awaits the human's confirmation. **Confirmation means one thing: 'I accept the shape of this data'** — not posting; what follows is a draft exactly as before. */
+export interface AgentConfirmation {
+  /** حقول الجسم بترتيبٍ ثابت. / The body's fields in a stable order. */
+  fields: AgentDraftField[];
+  /** معرّف العملية المنشورة — وفعلُها draft دائماً، ويُفرض ذلك بنيوياً قبل أن يُسأل إنسان. / The published operation; its verb is always draft, structurally enforced before any human is asked. */
+  operationId: string;
+  /** مسار الشاشة التي ستهبط عليها المسوّدة. / The screen route the draft will land on. */
+  screenRoute: string;
+  /** الخطوة المنتظِرة. / The waiting step. */
+  stepId: string;
+}
+
+/** حقلٌ في بطاقة التأكيد. **وقيمةُ ما شكلُه معرّف لا تُعرض**: masked صحيحة وvalue معدومة. والحدّ الذي حُفظ أمام النموذج يُحفظ أمام الكتف الذي يقف خلف المستخدم. / A field on the confirmation card. **Identifier-shaped values are not shown**: masked is true and value is null. The boundary kept from the model is kept from the shoulder behind the user too. */
+export interface AgentDraftField {
+  /** هل قُنِّعت القيمة لأن شكلها معرّف؟ / Was the value masked because its shape is an identifier? */
+  masked: boolean;
+  /** مسار الحقل داخل جسم العملية كما ينشره العقد. / The field's path inside the operation body as the contract publishes it. */
+  path: string;
+  /** القيمة المعروضة، أو null حين تُقنَّع. / The displayed value, or null when masked. */
+  value: string | null;
+}
+
+/** رسالةُ المستخدم إلى الوكيل. **حقلٌ واحد لا ثانيَ له**: لا نموذج، ولا مفتاح، ولا تعليمات نظام — الثلاثة إعدادُ خادمٍ لا حقلُ طلب. وحقلٌ يختار منه الطالب نموذجَه يجعل عميلاً يبدّله في وسط محادثةٍ فيُبطل ذاكرة البادئة بلا أن يعلم. / The user's message to the agent. **One field and no second**: no model, no key, no system instructions — all three are server configuration. */
+export interface AgentMessageRequest {
+  /** كلام المستخدم بأسمائه. ولا تُكتب فيه أرقام هويةٍ ولا آيبان ولا تسجيلٍ ضريبي: الدور يُرفض قبل إرساله إن حملها. / The user's own words. Identity, IBAN, and VAT numbers must not appear: the turn is refused before it is sent if they do. */
+  text: string;
+}
+
+/** خطوةٌ في خطّة الوكيل. **ولا حالة اسمها posted في state ولا يجوز أن توجد**: أبعد ما تبلغه خطوةٌ landed — مسوّدةٌ هبطت على شاشتها — والترحيل فعلٌ بصريّ يدويّ هناك. / A step in the agent's plan. **There is no 'posted' state and there must not be**: the furthest a step reaches is landed — a draft that arrived on its screen — and posting is a manual act there. */
+export interface AgentPlanStep {
+  /** ترتيب الخطوة بدءاً من واحد. / The step's order, starting at one. */
+  ordinal: number;
+  /** أسباب سقوط الخطوة بلغتيها، أو قائمة فارغة. / Why the step was refused, in both languages, or an empty list. */
+  refusals: ApiError[];
+  /** مسار شاشة المسوّدة بعد هبوطها — وهو ما يفتحه الزرّ في اللوحة. ولا يعبر هذا المسار إلى النموذج. / The draft's screen route once it has landed; the panel's button opens it. This route never crosses to the model. */
+  screenRoute: string | null;
+  /** حال الخطوة. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The step's state. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  state: "awaitingAnswer" | "awaitingConfirmation" | "landed" | "planned" | "refused" | "running";
+  /** معرّف الخطوة — وهو ما يُكتب في مسار التأكيد. / The step identifier, written into the confirmation path. */
+  stepId: string;
+  /** عنوان الخطوة بالعربية كما أعلنه الوكيل، أو اسم أداتها إن نفّذ بلا خطّة مُعلَنة. / The step's Arabic title as the agent declared it, or its tool name when it acted without a declared plan. */
+  titleAr: string;
+  /** اسم العملية المنشورة التي تناديها الخطوة — وفعلُها draft دائماً. / The published operation the step calls; its verb is always draft. */
+  toolName: string | null;
+}
+
+/** خيارٌ على ورقة السؤال. **نصُّه محلّي ورمزُه هو ما يعبر**: الاسم يُعرَض على المستخدم ولا يبلغ النموذج أبداً، والرمز معمّى بطولٍ ثابت فلا يُعدّ ولا يُزوَّر ولا يُستعمل في محادثةٍ أخرى. / An option on the question sheet. **Its text is local and its token is what crosses**: the name is shown to the user and never reaches the model, and the token is encrypted at fixed length so it cannot be counted, forged, or reused in another conversation. */
+export interface AgentQuestionOption {
+  /** الاسم كما هو في سجلّ المستخدم. **ولا يبلغ النموذج.** / The name as it stands in the user's own register. **It never reaches the model.** */
+  label: string;
+  /** الرمز الموقَّع المعمّى — وهو وحده ما يعود إلى الخادم. / The encrypted signed token; it alone returns to the server. */
+  optionToken: string;
+  /** سطرٌ فارق تحت الاسم — قناعٌ لا معرّف. / A distinguishing line under the name — a mask, never an identifier. */
+  subtitle: string | null;
+}
+
+/**
+ * ورقة السؤال كما رسمها الخادم من بياناتٍ محلّية حين التبس اسم. **ولا يبلغ النموذجَ منها شيء**: لا الأسماء، ولا عددُها، ولا موضعُ ما اختير، ولا أنّ اختياراً وقع أصلاً — وما يعود إليه بعده شكلٌ واحد في كل الحالات.
+ * 
+ * **وallowsCreate تقول ما إذا كان «جديد» متاحاً**، ولا يُستنتَج من فراغ القائمة. / The question sheet the server drew from local data when a name was ambiguous. **Nothing in it reaches the model**: not the names, not their number, not which was chosen, not even that a choice happened.
+ */
+export interface AgentQuestionSheet {
+  /** هل يُتاح خيار «جديد»؟ ويُقال صراحةً ولا يُستنتَج من فراغ القائمة. / Is a 'new' option offered? Stated explicitly, never inferred from an empty list. */
+  allowsCreate: boolean;
+  /** مفتاح السجلّ المسؤول عنه: customer · supplier · … وهو من مفردة lookup_entity المغلقة. / The register key concerned: customer, supplier, … from lookup_entity's closed vocabulary. */
+  kind: string;
+  /** الخيارات المرسومة من السجلّ المحلّي. / The options drawn from the local register. */
+  options: AgentQuestionOption[];
+  /** معرّف الورقة المعتِم — وهو ما يُكتب في جواب الورقة، ولا يُقرأ منه شيء. / The sheet's opaque identifier, written into the answer; nothing is readable from it. */
+  questionId: string;
+  /** كلام المستخدم كما بحث به الوكيل — منه يُركَّب عنوان الورقة بلغة القارئ. والعنوان يُركَّب في المتصفّح لا هنا: الخادم يعرف العربية وحدها والواجهة أربع لغات. / The user's own words as the agent searched them; the sheet's title is composed from them in the reader's language — in the browser, not here. */
+  subjectText: string;
+}
+
+/**
+ * حال مساحة العمل كلُّه في جسمٍ واحد — وهو ما تقرؤه اللوحة حين تُعيد الاتصال، ثم تُكمل من lastSequence.
+ * 
+ * **وphase هو ما يقول هل ما زال هناك ما يُنتظَر**: running يفكّر أو ينفّذ، وawaitingHuman يقف عند تأكيدٍ أو ورقة، وcompleted انتهى، وrefused سقط. **ولا قيمة اسمها posted**. / The whole workspace state in one body — what the panel reads on reconnect before continuing from lastSequence.
+ * 
+ * phase says whether anything is still awaited. **There is no 'posted' value.**
+ */
+export interface AgentSession {
+  /** معرّف الجلسة. / The session identifier. */
+  agentSessionId: string;
+  /** مؤشّر آخر حدثٍ في السجلّ — تبدأ منه اللوحة قراءتها. / The cursor of the last event in the log; the panel reads onward from it. */
+  lastSequence: number;
+  /** ما ينتظر تأكيداً، أو null. / What awaits confirmation, or null. */
+  pendingConfirmation: AgentConfirmation | null;
+  /** ورقة السؤال المعلَّقة، أو null. / The pending question sheet, or null. */
+  pendingQuestion: AgentQuestionSheet | null;
+  /** طور الدور. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The turn's phase. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  phase: "awaitingHuman" | "completed" | "refused" | "running";
+  /** خطوات الدور الجاري أو الأخير بحالها الآن. وتُستبدل كاملةً حين يُعلن الوكيل خطّةً جديدة. / The current or last turn's steps with their states; replaced wholesale when the agent declares a new plan. */
+  plan: AgentPlanStep[];
+  /** الدور الجاري أو آخر دور، أو null إن لم يبدأ دورٌ بعد. / The current or last turn, or null when no turn has begun. */
+  turnId: string | null;
+}
+
+/**
+ * إنفاق المنشأة على الوكيل في نافذة المحاسبة الجارية. **والوحدة رموزٌ لا ريالات** — والسبب في وصف العملية.
+ * 
+ * **وbillable وceiling نصّان لا رمزان رقميّان**: عدّاد رموزٍ يتجاوز مدى الصحيح 32 بت في نافذةٍ طويلة، وقصُّه إلى المدى كذبةٌ صامتة. / The tenant's agent spend in the current accounting window. **The unit is tokens, not riyals.**
+ * 
+ * billable and ceiling are strings, not JSON numbers: a token counter outgrows 32-bit range in a long window, and clamping it to that range is a silent lie.
+ */
+export interface AgentSpend {
+  /** مجموع الرموز المحاسَب عليها في النافذة، نصّاً. / The billable token total in the window, as a string. */
+  billable: string;
+  /** هل تعمل هذه المنشأة على مفتاحها؟ ومن جاء بمفتاحه يُقاس إنفاقه ولا يُسقَف بسقف المالك. / Does this tenant run on its own key? One that does is measured and not capped by the owner's ceiling. */
+  bringsItsOwnKey: boolean;
+  /** السقف بالرموز نصّاً، أو null لمنشأةٍ تعمل بمفتاحها فلا يَسقُفها سقف المالك. / The token ceiling as a string, or null for a tenant on its own key. */
+  ceiling: string | null;
+  /** عدد الأدوار المُحاسَبة في النافذة. / The number of billed turns in the window. */
+  turns: number;
+  /** طول نافذة المحاسبة بالثواني. / The accounting window's length in seconds. */
+  windowSeconds: number;
+}
+
+/** حكم الإنسان على **شكل** بيانات خطوة. **ولا يعني الترحيل** — والناتج بعده مسوّدةٌ كما كان قبله. وaccepted إلزامي ولا يُفترَض عند غيابه: التأكيد فعلٌ يُقال لا يُستنتَج من صمت. / The human's verdict on a step's **data shape**. **It does not mean posting.** accepted is required and never assumed when absent: confirmation is stated, not inferred from silence. */
+export interface AgentStepConfirmationRequest {
+  /** true إن قَبِل المستخدم شكل البيانات. وfalse يوقف الخطوة ولا يقتل الدور. / true when the user accepts the data's shape. false stops the step without killing the turn. */
+  accepted: boolean;
+}
+
+/** دورٌ بدأ. **ولا ينتظر هذا الجواب انتهاءه** — الأحداث تُقرأ بمؤشّرها، وafter هو المؤشّر الذي تبدأ منه اللوحة قراءة أحداث هذا الدور. / A turn that has begun. **This response does not wait for it to finish**; events are read by cursor, and after is where the panel starts reading this turn's events. */
+export interface AgentTurn {
+  /** المؤشّر الذي تبدأ منه اللوحة قراءة أحداث هذا الدور. / The cursor the panel starts this turn's event reading from. */
+  after: number;
+  /** معرّف الدور. / The turn identifier. */
+  turnId: string;
+}
+
+/**
+ * حدثٌ واحد في سجلّ المساحة. **ولا يحمل معرّف صفٍّ ولا اسمَ طرفٍ ولا عددَ مرشّحين**: ما يعبر إلى الشاشة مسارُ شاشةٍ أو مِقبضٌ معتِم بطولٍ ثابت، وما يعبر إلى النموذج أقلّ من ذلك.
+ * 
+ * **وthinking جزءٌ من تفكيرٍ مُلخَّص يُعرَض تقدّماً**، لا سلسلة استدلالٍ تُخزَّن ولا تُبنى عليها قرارات. / One event in the workspace log. **It carries no row identifier, no party name, and no candidate count.**
+ */
+export interface AgentTurnEvent {
+  /** شكل الحدث. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The event's kind. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  kind: "completed" | "draftLanded" | "planProposed" | "questionRaised" | "refused" | "text" | "thinking" | "toolRefused" | "toolStarted";
+  /** معرّف ورقة السؤال المعتِم حين يلتبس اسم. / The opaque question-sheet identifier when a name is ambiguous. */
+  questionId: string | null;
+  /** أسباب الرفض بلغتيها، أو قائمة فارغة. / Why it was refused, in both languages, or an empty list. */
+  refusals: ApiError[];
+  /** مفتاح السجلّ في حدث ورقة السؤال — وهو معلومٌ للنموذج سلفاً لأنه هو من نطق به. / The register key on a question event; the model already knows it because it named it. */
+  registerKey: string | null;
+  /** مسار شاشة المسوّدة حين تهبط. **ولا يعبر إلى النموذج**: هو يقرأ «مسوّدة» ولا يقرأ معرّفاً. / The draft's screen route when it lands. **It never crosses to the model**, which reads 'draft' and no identifier. */
+  screenRoute: string | null;
+  /** رقم الحدث في الجلسة — يُمرَّر after في الطلب التالي. / The event's number in the session; passed as after on the next request. */
+  sequence: number;
+  /** الخطوة المرتبطة بالحدث، إن وُجدت. / The step this event belongs to, when there is one. */
+  stepId: string | null;
+  /** عناوين الخطوات في حدث الخطّة، بترتيبها. وفارغة في كل حدثٍ آخر. / The step titles on a plan event, in order; empty on every other event. */
+  steps: string[];
+  /** النصّ المعروض — جزءُ تفكيرٍ أو جزءُ نصّ — أو كلامُ البحث في حدث ورقة السؤال. / The displayed text — a thinking or text fragment — or the search words on a question event. */
+  text: string | null;
+  /** اسم الأداة في أحداث الأدوات. / The tool's name on tool events. */
+  toolName: string | null;
+  /** الدور الذي أنتج الحدث. / The turn that produced it. */
+  turnId: string;
+}
+
+/** صفحةُ أحداثٍ بعد مؤشّر. **وقائمةٌ فارغة ليست نهاية**: هي «لا جديد بعدُ»، ويُعاد الطلب بالمؤشّر نفسه — والذي يقول هل انتهى الدور هو phase لا فراغُ القائمة. / A page of events after a cursor. **An empty list is not the end**: it means 'nothing new yet' and the request is retried with the same cursor; what says the turn is over is phase, not an empty list. */
+export interface AgentTurnEventPage {
+  /** الأحداث بترتيبها. / The events in order. */
+  events: AgentTurnEvent[];
+  /** آخر مؤشّرٍ في هذه الصفحة، أو المُمرَّر إن كانت فارغة. / The last cursor in this page, or the one passed in when it is empty. */
+  lastSequence: number;
+  /** طور الدور لحظةَ الجواب. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The turn's phase at the moment of reply. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  phase: "awaitingHuman" | "completed" | "refused" | "running";
 }
 
 /** شرائح أعمار الديون. وtotal مجموع الشرائح بالضبط — يُرسَل محسوباً ولا يُترك لكل عميل أن يجمعه فيختلف تقريران عن الرقم نفسه. / Debt aging bands. total is exactly the sum of the bands — sent computed rather than left for each client to add up, which is how two reports come to disagree about one number. */

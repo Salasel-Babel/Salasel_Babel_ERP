@@ -202,5 +202,5 @@
   margin-block-end:var(--space-10);
 }
 .voice-landed__field dt{ color:var(--color-text-muted); font-size:var(--font-size-xs) }
-.voice-landed__field dd{ margin:0; font-variant-numeric:tabular-nums }
+.voice-landed__field dd{ margin:0; font-variant-numeric:var(--font-numeric) }
 @media print{ .voice-landed{ display:none } }

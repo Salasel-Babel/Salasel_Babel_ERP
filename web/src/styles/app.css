@@ -226,7 +226,7 @@ table.tb tfoot td.n {
   direction: ltr;
   unicode-bidi: isolate;
   text-align: end;
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: var(--font-numeric);
   white-space: nowrap;
 }
 table.tb td.start,

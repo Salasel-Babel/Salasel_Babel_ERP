@@ -235,7 +235,8 @@ rotation_install() {
     write_privileged_file "$rotation_unit_dir/$rotation_unit.service" <<UNIT
 [Unit]
 Description=فحص شهادة عرض بابل — يسقط قبل انتهائها لا بعده
-Documentation=file://$here/README.md
+# ولا سطر Documentation: ‏deploy/README.md لا يُنسَخ إلى الخادم، وإشارةٌ إلى
+# ملفّ غير موجود أسوأ من غيابها.
 
 [Service]
 Type=oneshot

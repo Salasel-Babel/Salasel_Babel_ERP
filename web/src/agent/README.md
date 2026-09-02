@@ -131,7 +131,7 @@ import { AgentWorkspace } from "../agent";
 وأجزاءُ التفكير والنصّ المتتالية **تُدمَج في سطرٍ ينمو** (`foldAgentEvents`)، فتُقرأ
 كتابةً لا كبرقيّات. وحدثٌ رآه اللوح سلفاً لا يُطوى مرّتين، فانقطاعٌ واحد لا يُنتج
 محادثةً مضاعفة. والسبب والبدائل المرفوضة في
-`docs/decisions/ADR-جديد-the-agent-workspace-is-one-surface-read-by-cursor.md`.
+`docs/decisions/ADR-0074-the-agent-workspace-is-one-surface-read-by-cursor.md`.
 
 ## ما لا يفعله هذا اللوح
 

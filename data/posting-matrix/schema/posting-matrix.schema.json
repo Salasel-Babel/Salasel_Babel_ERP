@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://salasel-babel/schema/posting-matrix-1.0.0.json",
   "title": "Salasel Babel posting matrix — event file",
-  "$comment": "العربية إلزامية والإنجليزية اختيارية: name_ar سجلٌّ ولا يغيب، و name_en شرحُ مراجعةٍ يُقبل الحدث بدونه. ومن كتبه فعليه أن يكتب شقيقه العربي — يفرض ذلك Rule14_TheDesignGlossIsConsistentNotCapped بلا سقف. (ADR-0021 بند 2 · ADR-جديد gloss-is-not-column-debt) / Arabic is the record and English is an optional gloss; whoever writes name_en must write name_ar beside it.",
+  "$comment": "العربية إلزامية والإنجليزية اختيارية: name_ar سجلٌّ ولا يغيب، و name_en شرحُ مراجعةٍ يُقبل الحدث بدونه. ومن كتبه فعليه أن يكتب شقيقه العربي — يفرض ذلك Rule14_TheDesignGlossIsConsistentNotCapped بلا سقف. (ADR-0021 بند 2 · ADR-0076 gloss-is-not-column-debt) / Arabic is the record and English is an optional gloss; whoever writes name_en must write name_ar beside it.",
   "type": "object",
   "required": ["schema_version", "module", "events"],
   "properties": {

@@ -96,7 +96,7 @@ create table matrix.business_event (
     event_code      text primary key
                     check (event_code ~ '^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$'),
     name_ar         text    not null check (length(btrim(name_ar)) > 0),
-    -- العربية سجلٌّ إلزامي والإنجليزية شرحٌ اختياري (ADR-0021 بند 2 · ADR-جديد
+    -- العربية سجلٌّ إلزامي والإنجليزية شرحٌ اختياري (ADR-0021 بند 2 · ADR-0076
     -- gloss-is-not-column-debt). و NULL يعني «لم يُكتب» ويُقبل؛ والفراغ يعني «كُتب
     -- فارغاً» ويُرفض — مفتاحٌ بلا قيمة نصفُ ترجمةٍ لا اختيار.
     name_en         text             check (name_en is null or length(btrim(name_en)) > 0),

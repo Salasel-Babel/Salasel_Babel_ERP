@@ -92,7 +92,7 @@
   /* **رمزُ الحساب رقمٌ، فوجهُه وجهُ الأرقام.** كان `--font-mono` هنا و
      `--font-numeric-face` في `.picker-opt .code` — والصنف واحد (`.code`)
      والقيمة واحدة (رمز الحساب نفسه)، فكان يُرسم بعرضين في شاشتين. وهو
-     العطل الذي أصلحه ADR-جديد-design-invariants في `.qty__n` وفاته هنا،
+     العطل الذي أصلحه ADR-0068 في `.qty__n` وفاته هنا،
      لأن الحارس كان يقرأ **الطلب** ولا يقرأ **المِحرف**. */
   font-family:var(--font-numeric-face); direction:ltr; unicode-bidi:isolate;
   font-size:.92em; color:var(--color-text-muted);

@@ -1,4 +1,3 @@
-using System.Globalization;
 using Babel.Contracts.Lookup;
 using Npgsql;
 
@@ -20,8 +19,17 @@ namespace Babel.Core.NameRegister;
 /// <b>والمنشأة في المفتاح لا بجانبه:</b> كل استعلامٍ هنا مقيَّدٌ بأعمدة النطاق، فمِقبضٌ
 /// مسرَّب من منشأةٍ أخرى لا يجد صفّاً حتى لو سقطت المقارنة التي تسبقه.
 /// </para>
+/// <para>
+/// <b>وهذا النوع يُنفّذ منفذ السبر <u>وحده</u> — وهو حارسٌ لا ترتيب.</b> كان يُنفّذ
+/// المنفذَين معاً، فكان <c>((INameCandidateSheetSource)source).ListForSheetAsync(request, 100000)</c>
+/// على متغيّرٍ نوعُه منفذ السبر يُعيد <b>ثمانمئة صفّ بأسمائها ورموزها</b> — أي الأسماء
+/// والصفوف والعدد الدقيق، الثلاثة التي قال المالك إنها لا تعبر. و«الفصل هو الحارس»
+/// جملةٌ صحيحة في العقد وكانت كاذبة في التنفيذ: كائنٌ واحد يحمل الوجهين يُبطلها بتحويلٍ
+/// واحد. فصار الجَرد في <see cref="PostgresNameSheet"/> — <b>كائنٌ آخر</b> — ومعه سقفٌ
+/// لا يُتجاوز، وحارسٌ معماريّ يمنع <c>Babel.Ai</c> من الإشارة إلى منفذ الجَرد أصلاً.
+/// </para>
 /// </summary>
-public sealed class PostgresNameRegister : INameCandidateSource, INameCandidateSheetSource
+public sealed class PostgresNameRegister : INameCandidateSource
 {
     private readonly string _connectionString;
     private readonly NameRegisterTable _table;
@@ -48,7 +56,7 @@ public sealed class PostgresNameRegister : INameCandidateSource, INameCandidateS
         _connectionString = connectionString;
         _table = table;
         _threshold = similarityThreshold;
-        _probeSql = BuildProbe(table);
+        _probeSql = NameRegisterSql.Probe(table);
     }
 
     /// <inheritdoc />
@@ -105,108 +113,12 @@ public sealed class PostgresNameRegister : INameCandidateSource, INameCandidateS
         };
     }
 
-    /// <inheritdoc />
-    public async Task<IReadOnlyList<NameCandidate>> ListForSheetAsync(
-        NameCandidateRequest request,
-        int cap,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(request);
-        ArgumentOutOfRangeException.ThrowIfLessThan(cap, 1);
-
-        await using NpgsqlConnection connection = new(_connectionString);
-        await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
-
-        await using NpgsqlTransaction transaction = await connection
-            .BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
-
-        await SetThresholdAsync(connection, transaction, cancellationToken).ConfigureAwait(false);
-
-        await using NpgsqlCommand command = new(BuildSheet(_table), connection, transaction);
-        Bind(command, request);
-        command.Parameters.AddWithValue("cap", cap);
-
-        List<NameCandidate> candidates = [];
-
-        await using (NpgsqlDataReader reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
-        {
-            while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
-            {
-                candidates.Add(new NameCandidate(
-                    reader.GetGuid(0),
-                    reader.GetString(1),
-                    reader.IsDBNull(2) ? null : reader.GetString(2)));
-            }
-        }
-
-        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
-        return candidates;
-    }
-
-    private async Task SetThresholdAsync(
+    private Task SetThresholdAsync(
         NpgsqlConnection connection,
         NpgsqlTransaction transaction,
         CancellationToken cancellationToken)
-    {
-        await using NpgsqlCommand limit = new(
-            "set local pg_trgm.similarity_threshold = "
-            + _threshold.ToString("0.####", CultureInfo.InvariantCulture),
-            connection,
-            transaction);
-
-        await limit.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
-    }
+        => NameRegisterSql.SetThresholdAsync(connection, transaction, _threshold, cancellationToken);
 
     private void Bind(NpgsqlCommand command, NameCandidateRequest request)
-    {
-        command.Parameters.AddWithValue("text", request.Text);
-        command.Parameters.AddWithValue("threshold", (float)_threshold);
-        command.Parameters.AddWithValue("scope0", request.Tenant.Value);
-
-        if (_table.ScopeColumns.Count > 1)
-        {
-            command.Parameters.AddWithValue("scope1", request.CompanyId);
-        }
-    }
-
-    /// <summary>الشرط المشترك: النطاق، ثم السريان، ثم المطابقة على المفتاحين.</summary>
-    private static string Where(NameRegisterTable table)
-    {
-        string scope = string.Join(
-            " and ",
-            table.ScopeColumns.Select(static (column, index) =>
-                NameRegisterTable.Quote(column)
-                + " = @scope"
-                + index.ToString(CultureInfo.InvariantCulture)));
-
-        string active = table.ActiveColumn is null
-            ? string.Empty
-            : " and " + NameRegisterTable.Quote(table.ActiveColumn);
-
-        return " where " + scope + active
-            + " and (similarity(search_key, babel.fold_arabic(@text)) >= @threshold"
-            + " or search_key_tight = babel.fold_arabic_tight(@text))";
-    }
-
-    /// <summary>
-    /// استعلام السبر. <b>‏<c>limit 2</c> هو الحارس</b>، و<c>order by</c> على المعرّف
-    /// ليكون الجواب حتمياً عند الصفّ الواحد — ولا ترتيب بالدرجة، فلا «أفضل تطابق» هنا.
-    /// </summary>
-    private static string BuildProbe(NameRegisterTable table)
-        => "select " + NameRegisterTable.Quote(table.IdColumn)
-        + " from " + table.QualifiedName
-        + Where(table)
-        + " order by " + NameRegisterTable.Quote(table.IdColumn)
-        + " limit 2";
-
-    /// <summary>استعلام الورقة — <b>يُعيد أسماءً، ولا يُستدعى في بناء رسالةٍ لنموذج</b>.</summary>
-    private static string BuildSheet(NameRegisterTable table)
-        => "select " + NameRegisterTable.Quote(table.IdColumn)
-        + ", " + NameRegisterTable.Quote(table.NameColumn)
-        + ", " + (table.SubtitleColumn is null ? "null::text" : NameRegisterTable.Quote(table.SubtitleColumn))
-        + " from " + table.QualifiedName
-        + Where(table)
-        + " order by " + NameRegisterTable.Quote(table.NameColumn)
-        + ", " + NameRegisterTable.Quote(table.IdColumn)
-        + " limit @cap";
+        => NameRegisterSql.Bind(command, _table, _threshold, request);
 }

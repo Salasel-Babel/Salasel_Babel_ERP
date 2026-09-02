@@ -112,8 +112,13 @@ public sealed class TheFoldMakesTheseVariantsOneName
     [Fact]
     public void AStrictPrefixIsRecognisedAcrossOrthographicVariants()
     {
-        Assert.True(ArabicNameFold.OneFoldsToAStrictPrefixOfTheOther("محمد", "محمّد عل"));
-        Assert.False(ArabicNameFold.OneFoldsToAStrictPrefixOfTheOther("محمد", "محمد"));
-        Assert.False(ArabicNameFold.OneFoldsToAStrictPrefixOfTheOther("محمد", "احمد"));
+        Assert.True(ArabicNameFold.OneFoldsToAStrictPartOfTheOther("محمد", "محمّد عل"));
+        Assert.False(ArabicNameFold.OneFoldsToAStrictPartOfTheOther("محمد", "محمد"));
+        Assert.False(ArabicNameFold.OneFoldsToAStrictPartOfTheOther("محمد", "احمد"));
+
+        // ‏**والتضييق من الخلف تضييقٌ كذلك** — وكان يمرّ حين كان الفحص على البادئة وحدها.
+        Assert.True(ArabicNameFold.OneFoldsToAStrictPartOfTheOther("محمد", "ال محمد"));
+        Assert.True(ArabicNameFold.OneFoldsToAStrictPartOfTheOther("القحطاني", "محمد القحطاني الغامدي"));
+        Assert.False(ArabicNameFold.OneFoldsToAStrictPartOfTheOther("محمد", string.Empty));
     }
 }

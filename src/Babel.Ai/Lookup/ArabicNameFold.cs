@@ -106,8 +106,14 @@ public static class ArabicNameFold
     public static string FoldTight(string value) => Fold(value).Replace(" ", string.Empty, StringComparison.Ordinal);
 
     /// <summary>
-    /// هل مفتاحُ أحدِهما بادئةٌ صارمة للآخر؟ <b>علامةُ سبرٍ لا علامةُ تشابه</b>:
+    /// هل مفتاحُ أحدِهما جزءٌ صارم من الآخر؟ <b>علامةُ سبرٍ لا علامةُ تشابه</b>:
     /// «محمد» ثم «محمد ع» ثم «محمد عل» بحثٌ ثنائي في السجلّ، لا استفسارٌ عن اسم.
+    /// <para>
+    /// <b>وكان الفحص على البادئة وحدها، والتضييق لا يقع من الأمام وحده:</b> «محمد» ثم
+    /// «ال محمد» ثم «آل محمد الغامدي» يُنصّف السجلّ من الخلف بالضبط كما يُنصّفه من
+    /// الأمام، وكان يمرّ. فصار الفحص على <b>الاحتواء</b>: بادئةً كان أو لاحقةً أو
+    /// وسطاً. والثمن معدوم — نصّان أحدهما جزءٌ من الآخر ليسا سؤالين عن اسمين.
+    /// </para>
     /// <para>
     /// القاعدة نفسها تُطبَّق في حالة الدور (‏<c>AgentTurnState</c>) وليست من مِلك هذا الملفّ؛
     /// وهو يقدّم القياس وحده.
@@ -115,13 +121,19 @@ public static class ArabicNameFold
     /// </summary>
     /// <param name="first">النصّ الأول.</param>
     /// <param name="second">النصّ الثاني.</param>
-    public static bool OneFoldsToAStrictPrefixOfTheOther(string first, string second)
+    public static bool OneFoldsToAStrictPartOfTheOther(string first, string second)
     {
         string a = Fold(first);
         string b = Fold(second);
 
-        return a.Length != b.Length
-            && (a.StartsWith(b, StringComparison.Ordinal) || b.StartsWith(a, StringComparison.Ordinal));
+        if (a.Length == b.Length)
+        {
+            return false;
+        }
+
+        return a.Length > b.Length
+            ? b.Length > 0 && a.Contains(b, StringComparison.Ordinal)
+            : a.Length > 0 && b.Contains(a, StringComparison.Ordinal);
     }
 
     /// <summary>محارف تُحذف: التطويل، والتشكيل، والعلامات القرآنية، وغير المرئي.</summary>

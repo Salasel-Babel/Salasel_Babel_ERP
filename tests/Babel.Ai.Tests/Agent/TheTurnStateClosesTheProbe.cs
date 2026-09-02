@@ -75,6 +75,10 @@ public sealed class TheTurnStateClosesTheProbe
     [InlineData("محمد", "محمد ع")]
     [InlineData("محمد ع", "محمد")]
     [InlineData("أحمد", "احمد الغامدي")]
+    // ‏**والتضييق من الخلف تضييقٌ كذلك** — وكان يمرّ حين كان الفحص على البادئة وحدها.
+    [InlineData("محمد", "ال محمد")]
+    [InlineData("القحطاني", "محمد القحطاني")]
+    [InlineData("المسار", "شركة المسار الأمثل")]
     public void بحثان_أحدهما_بادئةُ_الآخر_يُرفضان(string first, string second)
     {
         AgentTurnState state = new(4);
@@ -96,6 +100,28 @@ public sealed class TheTurnStateClosesTheProbe
         state.RecordLookup("customer", "محمد القحطاني", ambiguous: false);
 
         Assert.Null(state.RefuseLookup("customer", "شركة المسار الامثل"));
+    }
+
+    /// <summary>
+    /// <b>وذاكرة السبر تعبر الأدوار.</b> الحالة تُبنى جديدةً في كل دور، فكان التضييق
+    /// عبر ثلاثة أدوارٍ متتالية يمرّ بلا حارس واحد. والبذر من نسخة المحادثة يُغلقه،
+    /// <b>ولا يستهلك سقف الدور الجديد</b> — فالسقف للكثرة والاحتواءُ للتضييق.
+    /// </summary>
+    [Fact]
+    public void ذاكرةُ_السبر_تعبر_الأدوار_والسقفُ_لا_يعبرها()
+    {
+        AgentTurnState state = new(4);
+        state.RememberEarlierLookup("عبدالرحمن");
+        state.RememberEarlierLookup("محمد القحطاني");
+
+        Assert.Equal(0, state.LookupsMade);
+
+        Error? refusal = state.RefuseLookup("customer", "عبدالرحمن الش");
+        Assert.NotNull(refusal);
+        Assert.Equal("ai.agent.lookup_probing_refused", refusal.Code);
+
+        // واسمٌ لا علاقة له بما سبق يمرّ — فالذاكرة ليست منعاً شاملاً.
+        Assert.Null(state.RefuseLookup("customer", "شركة المسار الأمثل"));
     }
 
     /// <summary>والمرفوض لم يقع: لا يُنقص من السقف ولا يُسجَّل في تاريخ الدور.</summary>

@@ -103,6 +103,9 @@ internal static class LookupTestEnvironment
     /// <summary>منشأة إثبات «نصٌّ يطوى إلى فراغ يُرفض» — ولا صفّ يُزرع فيها إطلاقاً.</summary>
     public static TenantId EmptyTextTenant { get; } = new(new Guid("100c0a5e-0000-4000-8000-000000000010"));
 
+    /// <summary>منشأة إثبات «سقف الورقة يُفرض في المحوّل» — تُزرع فيها صفوفٌ فوق السقف.</summary>
+    public static TenantId CeilingTenant { get; } = new(new Guid("100c0a5e-0000-4000-8000-000000000011"));
+
     /// <summary>وصف <c>sales.customer</c> كما ينشئه EF فعلاً — <b>ولا عمود شركة فيه</b>.</summary>
     public static NameRegisterTable CustomerRegister { get; } = new(
         registerKey: "customer",
@@ -174,9 +177,15 @@ internal static class LookupTestEnvironment
         }
     }
 
-    /// <summary>يُنشئ محوّل السجلّ على العتبة المقيسة.</summary>
+    /// <summary>يُنشئ محوّل السبر على العتبة المقيسة.</summary>
     public static PostgresNameRegister Register()
         => new(ConnectionString, CustomerRegister, Options.SimilarityThreshold);
+
+    /// <summary>
+    /// يُنشئ محوّل الجَرد — <b>كائنٌ آخر</b>، وسقفُه سقفُ الورقة المُعلَن.
+    /// </summary>
+    public static PostgresNameSheet Sheet()
+        => new(ConnectionString, CustomerRegister, Options.SimilarityThreshold, Options.QuestionSheetCap);
 
     /// <summary>مُصدِر مقابض بمفتاحٍ ثابت داخل الإثبات — والمفتاح لا يُقرأ من بيئةٍ هنا.</summary>
     public static SignedLookupHandles Handles()

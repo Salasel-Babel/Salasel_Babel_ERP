@@ -14,7 +14,16 @@ namespace Babel.Ai.Agent;
 /// <para>
 /// <b>فثلاث قواعد تُفحص قبل التنفيذ:</b> سقفٌ عدديّ للبحث في الدور؛ وبعد أي غموضٍ في
 /// سجلٍّ لا يجوز بحثٌ ثانٍ في ذلك السجلّ إلا بعد <c>ask_question</c>؛ وبحثان مفتاح
-/// أحدهما بادئةٌ <b>صارمة</b> للآخر يُرفضان سبراً.
+/// أحدهما <b>جزءٌ صارم</b> من الآخر يُرفضان سبراً.
+/// </para>
+/// <para>
+/// <b>وذاكرة السبر تعبر الأدوار — والحالة نفسها لا تعبرها.</b> الحالة تُبنى جديدةً في
+/// كل <c>RunAsync</c>، فكان الوكيل يسبر «عبدالرحمن» في دور، و«عبدالرحمن الش» في الذي
+/// يليه، و«عبدالرحمن الشم» في الثالث — بلا سقفٍ ولا ذاكرة، وهو بعينه «الخطر الحقيقيّ»
+/// الذي يسمّيه قرار هذا المسار. والعلاج أن تُبذَر الذاكرة من <b>نسخة المحادثة نفسها</b>:
+/// كتلُ <c>tool_use</c> السابقة تحمل نصّ كل بحثٍ جرى، فتُقرأ وتُذكَر. <b>والسقف يبقى
+/// للدور</b> — سقفٌ يعبر المحادثة يوقف حديثاً مشروعاً طويلاً، والسبر يمنعه الاحتواءُ لا
+/// العدد.
 /// </para>
 /// <para>
 /// والرفض يعود إلى النموذج <c>tool_result { is_error: true }</c> بنصّه العربي فيُصحّح،
@@ -73,13 +82,31 @@ public sealed class AgentTurnState
 
         foreach (string earlier in _lookupTexts)
         {
-            if (ArabicNameFold.OneFoldsToAStrictPrefixOfTheOther(earlier, text))
+            if (ArabicNameFold.OneFoldsToAStrictPartOfTheOther(earlier, text))
             {
                 return AgentErrors.LookupProbing;
             }
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// يذكر بحثاً جرى <b>في دورٍ سابق</b>: يدخل ذاكرة السبر ولا يستهلك سقف هذا الدور.
+    /// <para>
+    /// والفرق مقصود: السقف يحمي من <b>كثرة</b> البحث في دورٍ واحد، وذاكرةُ الاحتواء
+    /// تحمي من <b>تضييقه</b> — وهذا الثاني هو ما كان يعبر الأدوار بلا حارس.
+    /// </para>
+    /// </summary>
+    /// <param name="text">نصّ بحثٍ سابق كما ورد في نسخة المحادثة.</param>
+    public void RememberEarlierLookup(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+
+        if (text.Length > 0)
+        {
+            _lookupTexts.Add(text);
+        }
     }
 
     /// <summary>يسجّل بحثاً <b>جرى فعلاً</b> ونتيجته.</summary>

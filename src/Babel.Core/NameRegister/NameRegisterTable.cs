@@ -24,7 +24,11 @@ public sealed partial record NameRegisterTable
     /// <param name="table">اسم الجدول.</param>
     /// <param name="idColumn">عمود المعرّف.</param>
     /// <param name="nameColumn">العمود العربيّ الذي يُطوى.</param>
-    /// <param name="scopeColumns">أعمدة النطاق بالترتيب — المنشأة أوّلاً دائماً.</param>
+    /// <param name="scopeColumns">
+    /// أعمدة النطاق بالترتيب — <b>المنشأة أوّلاً والشركة ثانياً، وعمودان على الأكثر</b>.
+    /// والترتيب عقدٌ لا اصطلاح: الربط بالموضع، وعكسُ الاثنين يقارن منشأة الجلسة بعمود
+    /// الشركة — وكلاهما <c>uuid</c>، فلا شيء يلتقطه.
+    /// </param>
     /// <param name="activeColumn">عمود «سارٍ» إن وُجد، فلا يُقترح طرفٌ مُوقَف.</param>
     /// <param name="subtitleColumn">عمود تمييزٍ يُعرض على الشاشة — رمز الطرف مثلاً.</param>
     public NameRegisterTable(
@@ -45,6 +49,19 @@ public sealed partial record NameRegisterTable
             throw new ArgumentException(
                 "سجلّ أسماء بلا عمود نطاق واحد يُطابق عبر المنشآت. "
                 + "/ a name register with no scope column matches across tenants.",
+                nameof(scopeColumns));
+        }
+
+        // ‏**والقيمتان المتاحتان للربط اثنتان — المنشأة والشركة — فلا يُوصَف ثالث.**
+        // كان الوصف يقبل ثلاثة أعمدة فأكثر ويبني نصّاً يسمّي ‎`@scope2` لا يربطه أحد،
+        // فيسقط أوّل سبرٍ **وقت التشغيل** بدل أن يسقط الوصف **وقت التركيب**. وعطلٌ
+        // يُعلَن عند التركيب أرخص من عطلٍ يُعلَن عند أوّل مستخدم.
+        if (scopeColumns.Count > 2)
+        {
+            throw new ArgumentException(
+                "عمودا النطاق المتاحان اثنان: المنشأة ثم الشركة. ووصفٌ بثلاثة أعمدة فأكثر "
+                + "يبني نصّاً يسمّي وسيطاً لا يُربط. / at most two scope columns are bindable: "
+                + "the tenant then the company.",
                 nameof(scopeColumns));
         }
 

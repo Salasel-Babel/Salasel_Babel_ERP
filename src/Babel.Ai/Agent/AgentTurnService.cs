@@ -152,6 +152,8 @@ public sealed class AgentTurnService
             "المنشأة المفتوحة: " + caller.CompanyNameAr + " · تاريخ اليوم: " + request.TodayIso));
 
         AgentTurnState state = new(_options.LookupBudgetPerTurn);
+        RememberEarlierLookups(request.Prior, state);
+
         AgentTurnMetrics metrics = new();
 
         for (int iteration = 0; iteration < _options.MaxToolIterations; iteration++)
@@ -263,6 +265,54 @@ public sealed class AgentTurnService
         }
 
         yield return AgentTurnEvent.Refused([AgentErrors.ToolIterationsExhausted(_options.MaxToolIterations)]);
+    }
+
+    /// <summary>
+    /// <b>يبذر ذاكرة السبر من نسخة المحادثة — فالتضييق يعبر الأدوار وإن لم تعبرها الحالة.</b>
+    /// <para>
+    /// كانت <see cref="AgentTurnState"/> تُبنى جديدةً في كل دور، فكان «عبدالرحمن» ثم
+    /// «عبدالرحمن الش» ثم «عبدالرحمن الشم» في ثلاثة أدوارٍ متتالية يمرّ بلا حارس واحد —
+    /// وهو نصّاً «الخطر الحقيقيّ» الذي يسمّيه قرار هذا المسار. وكتلُ <c>tool_use</c>
+    /// السابقة تحمل نصّ كل بحثٍ نطق به النموذج، فتُقرأ منها.
+    /// </para>
+    /// <para>
+    /// <b>ووسائطٌ لا تُقرأ لا تُوقف الدور:</b> نسخةٌ محفوظة قد تحمل كتلةً مشوَّهة، وحارسٌ
+    /// يسقط بخطأ برمجي عند نصٍّ مشوَّه يصير باباً لا حارساً — فتُتخطّى الكتلة وحدها.
+    /// </para>
+    /// </summary>
+    /// <param name="prior">نسخة المحادثة السابقة، أو <c>null</c>.</param>
+    /// <param name="state">حالة الدور الجديدة.</param>
+    private static void RememberEarlierLookups(
+        IReadOnlyList<AgentTranscriptEntry>? prior,
+        AgentTurnState state)
+    {
+        if (prior is null)
+        {
+            return;
+        }
+
+        foreach (AgentTranscriptEntry entry in prior)
+        {
+            if (entry.Kind != AgentWireBlockKind.ToolUse
+                || !string.Equals(entry.ToolName, AgentProtocolTools.LookupEntity, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            try
+            {
+                if (JsonNode.Parse(entry.Text) is JsonObject arguments
+                    && arguments["text"] is { } text
+                    && text.GetValueKind() == JsonValueKind.String)
+                {
+                    state.RememberEarlierLookup(text.GetValue<string>());
+                }
+            }
+            catch (JsonException)
+            {
+                // كتلةٌ لا تُقرأ لا تُذكَر، ولا تُسقط الدور.
+            }
+        }
     }
 
     /// <summary>ينفّذ أمراً اجتاز البوّابة، ويعيد نتيجته إلى النموذج وحدثَه إلى اللوحة.</summary>

@@ -1,6 +1,5 @@
 using Babel.Ai.Lookup;
 using Babel.Contracts.Lookup;
-using Babel.Core.NameRegister;
 using Babel.SharedKernel;
 using Xunit;
 
@@ -109,8 +108,12 @@ public sealed class TheLookupAnswersNoneOneOrAmbiguous
     }
 
     /// <summary>
-    /// <b>ورقة السؤال تُرسم من البيانات المحلّية — ومنفذها منفصلٌ عن منفذ السبر.</b>
-    /// المنفذ الذي يُعيد أسماءً اسمه يقول ذلك، والمنفذ الذي يمرّ منه النموذج لا يملك دالّةً تُعيدها.
+    /// <b>ورقة السؤال تُرسم من البيانات المحلّية — ومحوّلها كائنٌ آخر لا وجهٌ آخر.</b>
+    /// <para>
+    /// كان المحوّل واحداً يُنفّذ المنفذَين، فكان تحويلٌ واحد على المتغيّر المُسجَّل منفذَ
+    /// سبرٍ يُعيد الأسماء والصفوف <b>والعدد الدقيق</b>. وهذا الإثبات يقيس الأمرين معاً:
+    /// أن الجَرد يُعيد أسماءً من كائنه، وأن كائن السبر <b>لا يُحوَّل إليه أصلاً</b>.
+    /// </para>
     /// </summary>
     [Fact]
     public async Task TheSheetSourceReturnsNamesAndTheProbeSourceHasNoWayTo()
@@ -123,9 +126,7 @@ public sealed class TheLookupAnswersNoneOneOrAmbiguous
         await LookupTestEnvironment.SeedCustomerAsync(
             tenant, "محمد أحمد القحطاني", cancellationToken: TestContext.Current.CancellationToken);
 
-        PostgresNameRegister register = LookupTestEnvironment.Register();
-
-        IReadOnlyList<NameCandidate> sheet = await ((INameCandidateSheetSource)register).ListForSheetAsync(
+        IReadOnlyList<NameCandidate> sheet = await LookupTestEnvironment.Sheet().ListForSheetAsync(
             new NameCandidateRequest("محمد القحطاني", tenant, Company),
             LookupTestEnvironment.Options.QuestionSheetCap,
             TestContext.Current.CancellationToken);
@@ -133,10 +134,45 @@ public sealed class TheLookupAnswersNoneOneOrAmbiguous
         Assert.Equal(2, sheet.Count);
         Assert.All(sheet, static candidate => Assert.False(string.IsNullOrWhiteSpace(candidate.LabelAr)));
 
-        // والمنفذ الآخر لا يحمل عضواً واحداً يُعيد اسماً.
+        // ‏**والكائن الذي يمرّ منه النموذج لا يُحوَّل إلى منفذ الجَرد** — والقياس على
+        // الكائن نفسه لا على المنفذ، لأن المنفذ كان بريئاً والكائن هو الذي حمل الوجهين.
+        INameCandidateSource probe = LookupTestEnvironment.Register();
+        Assert.False(probe is INameCandidateSheetSource, "كائن السبر يحمل وجه الجَرد — والفصل هو الحارس");
+
+        // ‏**والمنفذ الآخر لا يحمل عضواً واحداً يُعيد اسماً — بفحصٍ على النوع لا على
+        // نصّه.** كان مكتوباً `Contains("NameCandidate>")` و`Task<IReadOnlyList<NameCandidate>>`
+        // يُطبَع `…NameCandidate]]`، فكان التأكيد يمرّ بلا أن يقيس شيئاً.
         Assert.DoesNotContain(
             typeof(INameCandidateSource).GetMethods(),
-            static method => method.ReturnType.ToString().Contains("NameCandidate>", StringComparison.Ordinal));
+            static method => method.ReturnType.GetGenericArguments()
+                .Any(argument => argument == typeof(NameCandidate)
+                    || argument.GetGenericArguments().Contains(typeof(NameCandidate))));
+    }
+
+    /// <summary>
+    /// <b>وسقف الورقة يُفرض في المحوّل لا يُمرَّر رجاءً.</b> كان <c>cap: 100000</c>
+    /// يُعيد ثمانمئة صفّ — الأسماء والصفوف والعدد الدقيق معاً.
+    /// </summary>
+    [Fact]
+    public async Task TheSheetNeverReturnsMoreRowsThanItsCeiling()
+    {
+        await LookupTestEnvironment.EnsureAsync(TestContext.Current.CancellationToken);
+        TenantId tenant = LookupTestEnvironment.CeilingTenant;
+
+        for (int index = 0; index < LookupTestEnvironment.Options.QuestionSheetCap + 4; index++)
+        {
+            await LookupTestEnvironment.SeedCustomerAsync(
+                tenant,
+                "شركة المسار الأمثل " + index.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                cancellationToken: TestContext.Current.CancellationToken);
+        }
+
+        IReadOnlyList<NameCandidate> sheet = await LookupTestEnvironment.Sheet().ListForSheetAsync(
+            new NameCandidateRequest("شركة المسار الأمثل", tenant, Company),
+            cap: 100_000,
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(LookupTestEnvironment.Options.QuestionSheetCap, sheet.Count);
     }
 
     private static Guid Company => new("c0000000-0000-4000-8000-000000000001");

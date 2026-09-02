@@ -80,6 +80,7 @@
   .con-card,
   .hr-open,
   .voicedock,
+  .agw__think > summary,
   .vc-hold,
   .vc-manual-apply,
   .vcx-section{ min-block-size:var(--touch-target) }
@@ -127,6 +128,7 @@ table.tb thead th button:active,
 .vc-manual-apply:active,
 .vcx-section:active,
 .aq__opt:active,
+.agw__think > summary:active,
 .ledger tbody tr[aria-selected] td:first-child:active{ transform:translateY(1px) }
 
 /* المعطَّل لا يرتدّ: رجعٌ على زرٍّ لا يعمل وعدٌ كاذب. */

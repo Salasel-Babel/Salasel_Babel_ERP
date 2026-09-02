@@ -1,5 +1,5 @@
 {
-  "contractSha256": "d062eb84c06a9c54af3e0825393b27d2fecfb2120c09734d57b14b0e5120a5b5",
+  "contractSha256": "2a0636027db4df0aab9564094aa09d3b85c383c420890403cbbde693383e5645",
   "generatedFrom": "contracts/openapi/v1.json",
   "generator": "tools/agent/build-tool-catalogue.mjs",
   "registerKeys": [
@@ -2162,6 +2162,33 @@
         "required": [
           "kind",
           "text"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "propose_plan",
+      "operationId": null,
+      "path": null,
+      "method": null,
+      "idFields": [],
+      "description": "يُعلن خطوات الطلب المركَّب قبل تنفيذ أولاها، فتُعرض على المستخدم ويُرى موضعُ كلّ خطوة. وهي إعلانٌ لا سلطة: لا تفتح باباً ولا تُنفّذ خطوة، وكلّ خطوةٍ تمرّ بالبوّابة نفسها حين يحين دورها.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "steps": {
+            "description": "الخطوات بترتيبها. كلٌّ سطرٌ عربيّ قصير يقول ما سيقع — ولا معرّف فيه ولا رقم.",
+            "items": {
+              "maxLength": 200,
+              "type": "string"
+            },
+            "maxItems": 12,
+            "minItems": 2,
+            "type": "array"
+          }
+        },
+        "required": [
+          "steps"
         ],
         "type": "object"
       }

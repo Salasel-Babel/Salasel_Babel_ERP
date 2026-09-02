@@ -216,6 +216,17 @@ public static class AgentToolGate
         }
 
         // ── ٦ · حالة الدور (أدوات البروتوكول) ────────────────────────────────
+        //
+        // ‏**والخطّة تمرّ بكل ما سبق ولا مقبض فيها:** اسمُها في الكتالوج المغلق،
+        // ومخطّطها فُحص في الخطوة الرابعة، وكلّ نصٍّ فيها عبر المِصفاة في الخامسة،
+        // واستحقاقُ استهلاك المقابض فُحص في الثانية. ولا تفتح باباً ولا تُنفّذ خطوة:
+        // كلّ خطوةٍ تُنادى بعدها تمرّ بهذه البوّابة من أوّلها.
+        if (string.Equals(tool.Name, AgentProtocolTools.ProposePlan, StringComparison.Ordinal))
+        {
+            return Result<AgentDispatch>.Success(new AgentDispatch(
+                tool, call.Id, arguments.ToJsonString(), [], caller));
+        }
+
         if (string.Equals(tool.Name, AgentProtocolTools.LookupEntity, StringComparison.Ordinal))
         {
             Error? refusal = RefuseLookupCall(arguments, catalogue, state);

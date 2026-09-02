@@ -31,6 +31,101 @@ export const PROBLEM_COMPANY = "00000000-0000-4000-8000-0000000000ff";
 
    والصفّ الأخير **بلا ترجمات إطلاقاً**: الارتداد إلى السجلّ حالةٌ مشروعة يجب
    أن تُرى في الوهمي، لا حالةٌ لا يبلغها اختبار. */
+
+/* ═══════════════ مساحة عمل الوكيل — حالٌ ثابت يُقاس عليه اللوح ═══════════ */
+
+const AGENT_SESSION_ID = "22222222-2222-4222-8222-222222222222";
+const AGENT_TURN_ID = "33333333-3333-4333-8333-333333333333";
+const step = (n) => "44444444-4444-4444-8444-4444444444" + String(n).padStart(2, "0");
+
+/** مِقبضٌ بطولٍ ثابت كما يسكّه الخادم: مجموعاتٌ من ثمانية يفصلها `~`. */
+const handle = (seed) => {
+  const alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_";
+  const flat = (seed + "_").padEnd(136, alphabet);
+  const out = [];
+  for (let at = 0; at < 136; at += 8) out.push(flat.slice(at, at + 8));
+  return out.join("~");
+};
+
+const AGENT_SESSION = {
+  agentSessionId: AGENT_SESSION_ID,
+  phase: "awaitingHuman",
+  turnId: AGENT_TURN_ID,
+  lastSequence: 6,
+  plan: [
+    {
+      stepId: step(1), order: 1, titleAr: "ابحث عن العميل في سجلّ المنشأة",
+      state: "landed", toolName: "lookup_entity", screenRoute: null, refusals: [],
+    },
+    {
+      stepId: step(2), order: 2, titleAr: "أنشئ مسوّدة سند القبض بمبلغه وتاريخه",
+      state: "awaitingConfirmation", toolName: "draftCustomerReceipt", screenRoute: null, refusals: [],
+    },
+    {
+      stepId: step(3), order: 3, titleAr: "اربط السند بفاتورةٍ مُرحَّلة إن وُجدت",
+      state: "planned", toolName: null, screenRoute: null, refusals: [],
+    },
+    {
+      stepId: step(4), order: 4, titleAr: "سجّل مرفق الإيصال على المستند",
+      state: "refused", toolName: "draftAttachment", screenRoute: null,
+      refusals: [
+        {
+          code: "ai.agent.not_entitled",
+          messageAr: "الاستحقاق لا يبلغ إيداع المرفقات لهذا المستخدم.",
+          messageEn: "entitlement does not reach attachment deposit for this caller.",
+          field: null,
+        },
+      ],
+    },
+  ],
+  pendingConfirmation: {
+    stepId: step(2),
+    operationId: "draftCustomerReceipt",
+    screenRoute: "/voucher",
+    fields: [
+      { path: "customerId", value: null, masked: true },
+      { path: "amount", value: "1500.0000", masked: false },
+      { path: "receivedOn", value: "2026-05-18", masked: false },
+      { path: "method", value: "BankTransfer", masked: false },
+      { path: "allocations[0].invoiceId", value: null, masked: true },
+      { path: "allocations[0].amount", value: "1500.0000", masked: false },
+    ],
+  },
+  pendingQuestion: null,
+};
+
+const AGENT_SPEND = {
+  billable: "184320",
+  ceiling: "5000000",
+  turns: 3,
+  windowSeconds: 86400,
+  bringsItsOwnKey: false,
+};
+
+const agentEvent = (over) => ({
+  questionId: null, refusals: [], registerKey: null, screenRoute: null,
+  stepId: null, steps: [], text: null, toolName: null, turnId: AGENT_TURN_ID, ...over,
+});
+
+const AGENT_EVENTS = [
+  agentEvent({
+    sequence: 1, kind: "planProposed",
+    steps: [
+      "ابحث عن العميل في سجلّ المنشأة",
+      "أنشئ مسوّدة سند القبض بمبلغه وتاريخه",
+      "اربط السند بفاتورةٍ مُرحَّلة إن وُجدت",
+      "سجّل مرفق الإيصال على المستند",
+    ],
+  }),
+  agentEvent({ sequence: 2, kind: "thinking", text: "الطلب مركَّب: طرفٌ ثمّ سند. أبدأ بالبحث عن الاسم." }),
+  agentEvent({ sequence: 3, kind: "toolStarted", toolName: "lookup_entity" }),
+  agentEvent({ sequence: 4, kind: "text", text: "وجدتُ العميل في سجلّك، " }),
+  agentEvent({ sequence: 5, kind: "text", text: "وأعددتُ مسوّدة سند القبض. راجِع شكل البيانات قبل أن تهبط." }),
+  agentEvent({ sequence: 6, kind: "toolStarted", toolName: "draftCustomerReceipt" }),
+];
+
+void handle;
+
 const NAMES = [
   ["الصندوق الرئيسي", { en: "Main cash box", ur: "مرکزی نقدی صندوق", hi: "मुख्य नकद पेटी" }],
   ["البنك الأهلي — الحساب الجاري", { en: "National Bank — current account", ur: "نیشنل بینک — کرنٹ اکاؤنٹ" }],
@@ -400,6 +495,54 @@ export function createMockServer() {
         return;
       }
       send(res, 200, SESSION, "application/json");
+      return;
+    }
+
+
+    /* ── مساحة عمل الوكيل ───────────────────────────────────────────────
+       ما يُخدَم هنا **حالٌ واحد ثابت** يعرض كل ما يجب أن يُقاس على اللوح:
+       خطّةٌ بأربع خطواتٍ في أربع حالات، وبطاقةُ تأكيدٍ فيها حقلٌ مُقنَّع وحقولٌ
+       ظاهرة. وهو حالٌ **لا يُرحّل شيئاً** — لا يستطيع: لا باب ترحيلٍ في هذا
+       السطح أصلاً.
+
+       **والصفحة الفارغة تنتظر عند الخادم** كما ينتظر الخادم الحقيقي: ردٌّ
+       فوريّ بقائمةٍ فارغة يجعل اللوح يدور في حلقةٍ مشغولة تُتعب الطرفين. */
+    const agentSessions = /^\/api\/v1\/companies\/([^/]+)\/agent\/sessions$/.exec(url.pathname);
+    if (agentSessions && req.method === "POST") {
+      send(res, 201, AGENT_SESSION, "application/json");
+      return;
+    }
+
+    const agentSpend = /^\/api\/v1\/companies\/([^/]+)\/agent\/spend$/.exec(url.pathname);
+    if (agentSpend && req.method === "GET") {
+      send(res, 200, AGENT_SPEND, "application/json");
+      return;
+    }
+
+    const agentEvents =
+      /^\/api\/v1\/companies\/([^/]+)\/agent\/sessions\/([^/]+)\/events$/.exec(url.pathname);
+    if (agentEvents && req.method === "GET") {
+      const after = Number(url.searchParams.get("after") ?? "0");
+      const fresh = AGENT_EVENTS.filter((e) => e.sequence > after);
+      if (fresh.length === 0) {
+        setTimeout(() => {
+          send(res, 200, { events: [], lastSequence: after, phase: "awaitingHuman" }, "application/json");
+        }, 900);
+        return;
+      }
+      send(
+        res,
+        200,
+        { events: fresh, lastSequence: fresh[fresh.length - 1].sequence, phase: "awaitingHuman" },
+        "application/json"
+      );
+      return;
+    }
+
+    const agentSession =
+      /^\/api\/v1\/companies\/([^/]+)\/agent\/sessions\/([^/]+)$/.exec(url.pathname);
+    if (agentSession && req.method === "GET") {
+      send(res, 200, AGENT_SESSION, "application/json");
       return;
     }
 

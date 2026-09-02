@@ -100,8 +100,34 @@ function ordered(value) {
   return out;
 }
 
-/* الأداتان اللتان لا تأتيان من العقد: البحث والسؤال. */
+/* الأدوات الثلاث التي لا تأتي من العقد: الخطّة والبحث والسؤال. */
 const protocolTools = [
+  {
+    name: "propose_plan",
+    operationId: null,
+    path: null,
+    method: null,
+    idFields: [],
+    description:
+      "يُعلن خطوات الطلب المركَّب قبل تنفيذ أولاها، فتُعرض على المستخدم ويُرى موضعُ كلّ "
+      + "خطوة. وهي إعلانٌ لا سلطة: لا تفتح باباً ولا تُنفّذ خطوة، وكلّ خطوةٍ تمرّ "
+      + "بالبوّابة نفسها حين يحين دورها.",
+    inputSchema: {
+      additionalProperties: false,
+      properties: {
+        steps: {
+          description:
+            "الخطوات بترتيبها. كلٌّ سطرٌ عربيّ قصير يقول ما سيقع — ولا معرّف فيه ولا رقم.",
+          items: { maxLength: 200, type: "string" },
+          maxItems: 12,
+          minItems: 2,
+          type: "array",
+        },
+      },
+      required: ["steps"],
+      type: "object",
+    },
+  },
   {
     name: "lookup_entity",
     operationId: null,

@@ -337,6 +337,35 @@ public sealed class Rule13_NoBusinessLogicInTheApi
         "Babel.Inventory.Surface.InventoryBalance",
         "Babel.Inventory.Surface.InventoryDivergence",
         "Babel.Inventory.Surface.InventoryValuationReport",
+
+        // ── التسكين: مستودع ← موقع ← رفّ، والنقل بينها ───────────────────────
+        // وهي أنواع السطح المنشور نفسه، لا تسرّبٌ من `Application` ولا من
+        // `Persistence`: كلٌّ منها يُترجَم في `InventorySurface` إلى مسوّدة الوحدة.
+        // ‏**ولاحظ ما ليس فيها: لا `PlacementLevel` ولا `QuantityClass`.** المستوى
+        // وصنف الكمّية يعبران السلك **نصّين** في حقلٍ مُعدَّد قيمُه في العقد، ونوعُهما
+        // ‏`internal` في `Persistence` ولا يبلغ الجذر التركيبي.
+        "Babel.Inventory.Surface.InventoryStoragePlaceRequest",
+        "Babel.Inventory.Surface.InventoryPlaceNameRequest",
+        "Babel.Inventory.Surface.InventoryStoragePlace",
+        "Babel.Inventory.Surface.InventoryStockTransferRequest",
+        "Babel.Inventory.Surface.InventoryStockTransfer",
+        "Babel.Inventory.Surface.InventoryPlacementBalance",
+
+        // ── وحدات القياس ومعاملات التحويل ────────────────────────────────────
+        "Babel.Inventory.Surface.InventoryUnitRequest",
+        "Babel.Inventory.Surface.InventoryUnit",
+        "Babel.Inventory.Surface.InventoryUnitConversionRequest",
+        "Babel.Inventory.Surface.InventoryUnitConversion",
+        "Babel.Inventory.Surface.InventoryConversionTrialRequest",
+        "Babel.Inventory.Surface.InventoryConversionResult",
+
+        // ── دورة حياة الصنف ──────────────────────────────────────────────────
+        // و`InventoryItemLifecycle` نوعٌ **مستقلّ عن `InventoryItem`** عمداً: إضافةُ
+        // حالة الصنف حقلاً على شكله كانت ستُغيّر استجابة ثلاث عمليات منشورة يستهلكها
+        // عملاء اليوم، والعقد يُوسَّع ولا يُغيَّر شكلُ عمليةٍ قائمة فيه.
+        "Babel.Inventory.Surface.InventoryItemRevisionRequest",
+        "Babel.Inventory.Surface.InventoryItemLifecycle",
+
         "Babel.Inventory.InventoryOptions",
 
         // ── سندات الصرف وأوامر الشراء والاستلام ──────────────────────────────

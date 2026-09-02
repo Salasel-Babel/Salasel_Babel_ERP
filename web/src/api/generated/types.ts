@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     2a3731a36e2a415856f1bf9ad707acfc18417900d360c75bbbf4ff9db5f943b6
+     2a0636027db4df0aab9564094aa09d3b85c383c420890403cbbde693383e5645
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -630,6 +630,25 @@ export interface ContractPosition {
   /** عدد المستخلصات المُرحَّلة على هذا العقد. / The number of posted certificates on this contract. */
   postedCertificateCount: number;
   retentionOutstanding: Money;
+}
+
+/** نتيجة تحويلٍ **وقع بلا باقٍ**. والمعامل يخرج معها بسطاً ومقاماً كي يُراجَع الناتج بلا استعلامٍ ثانٍ، ولا يُقرأ رقمٌ بلا الطريق الذي أنتجه. / The result of a conversion **that divided exactly**. The factor comes back with it as numerator and denominator so the result can be checked without a second call, and no number is read without the route that produced it. */
+export interface ConversionResult {
+  /** مقام المعامل المُستعمَل. / The denominator of the factor used. */
+  denominator: number;
+  from: Measure;
+  /** بسط المعامل المُستعمَل. / The numerator of the factor used. */
+  numerator: number;
+  /** صنف الكمّية المشترك. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The shared quantity class. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  quantityClass: "COUNT" | "WEIGHT" | "VOLUME" | "LENGTH" | "AREA";
+  to: Measure;
+}
+
+/** طلب تجربة تحويل — **مسبارٌ لا يكتب شيئاً**. يُجيب بالناتج الدقيق أو بالرفض المُسمّى، ولا يُقرّب في الحالتين. / A conversion trial request — **a probe that writes nothing**. It answers with the exact result or with a named refusal, and rounds in neither case. */
+export interface ConversionTrialRequest {
+  quantity: Measure;
+  /** الوحدة المطلوب التحويل إليها. / The unit to convert into. */
+  toUnit: string;
 }
 
 export interface CostCenter {
@@ -1517,6 +1536,20 @@ export interface Item {
   units: UnitFactor[];
 }
 
+/** حالة صنفٍ في دورة حياته ورصيده المتبقّي. **ونوعٌ مستقلّ لا حقلٌ على Item**: إضافةُ isActive إلى شكل الصنف كانت ستُغيّر استجابة ثلاث عمليات منشورة يستهلكها عملاء اليوم. / An item's lifecycle state and remaining stock. **A separate type, not a field on Item**: adding isActive to the item shape would change the response of three published operations that today's clients consume. */
+export interface ItemLifecycle {
+  /** رمز الصنف. / The item code. */
+  code: string;
+  /** هل بقي للصنف رصيد **غير صفري** في أي موضع؟ و«غير صفري» لا «موجب»: رصيدٌ سالب واقعةٌ تقع، وإخفاؤها يجعل الجواب يقول «لا رصيد» على صنفٍ عليه عجزٌ مفتوح. / Does the item still hold a **non-zero** balance anywhere? Non-zero, not positive: a negative balance is a real occurrence, and hiding it would make the answer say 'no stock' about an item carrying an open shortage. */
+  holdsStock: boolean;
+  /** معرّف الصنف. / The item identifier. */
+  id: string;
+  /** هل الصنف متداوَل؟ **والتعطيل حالةٌ لا حذف**: الرمز محمولٌ على قيود سنةٍ مضت. والمُعطَّل يُرفض عليه الوارد الجديد ويبقى الصادر حتى ينفد. / Is the item in circulation? **Deactivation is a state, not a deletion**: the code is carried by last year's entries. A deactivated item refuses new inbound stock and keeps issuing until it runs out. */
+  isActive: boolean;
+  /** عدد المواضع التي بقي فيها رصيد غير صفري — فلا يُقال «بقي رصيد» بلا «أين». / The number of places still holding a non-zero balance — so the answer never says 'stock remains' without saying where. */
+  placementsWithStock: number;
+}
+
 /** أصناف المنشأة، مرتَّبة بالرمز ترتيباً حرفياً ثابتاً. **وغلافٌ لا مصفوفة عارية**: مصفوفةٌ في جذر الاستجابة لا موضع فيها لعدّاد ولا لصفحة، فأول حاجة إليهما تكسر العقد. / The company's items, ordered by code in a stable ordinal order. **An envelope, not a bare array**: an array at the response root has no place for a count or a page, so the first need for either breaks the contract. */
 export interface ItemList {
   /** عدد الأصناف. / The number of items. */
@@ -1535,6 +1568,17 @@ export interface ItemRequest {
   itemGroup: string;
   name: LocalizedText;
   /** الوحدات الأكبر ومعاملاتها — قائمة فارغة إن كان الصنف يُمسَك بوحدة أساسه وحدها. / The larger units and their factors — an empty list if the item is held in its base unit alone. */
+  units: UnitFactor[];
+}
+
+/** طلب تعديل صنف. **ولا رمز فيه**: الرمز هوية تحملها قيود سنةٍ مضت، ويُقرأ من المسار ولا يُقبل في الجسم. / An item update request. **It carries no code**: the code is an identity carried by last year's entries; it is read from the path and never accepted in the body. */
+export interface ItemRevisionRequest {
+  /** وحدة الأساس. **ولا تتغيّر بعد أن تُكتب على الصنف حركة أو يُمسَك له رصيد** — وإلا رُفضت بـ inventory.base_unit_locked_by_history. / The base unit. **It does not change once a movement has been written against the item or a balance is held for it** — otherwise it is refused with inventory.base_unit_locked_by_history. */
+  baseUnit: string;
+  /** مجموعة الصنف — مؤهّل الدور. **وتغييرها لا يمسّ ما مضى**: كل حركة تحمل مجموعتها على صفّها هي. / The item group — a role qualifier. **Changing it touches nothing past**: every movement carries its own group on its own row. */
+  itemGroup: string;
+  name: LocalizedText;
+  /** الوحدات الأكبر ومعاملاتها — **تحلّ محلّ القائمة السابقة كلّها**، ولا تمسّ حركةً مضت. / The larger units and their factors — **they replace the previous list entirely**, and touch no past movement. */
   units: UnitFactor[];
 }
 
@@ -1758,6 +1802,40 @@ export interface PendingPolicyItem {
   titleAr: string;
   /** عنوانه بالإنجليزية — تشخيصيٌّ يصحبه رمز ثابت، لا نصّ عرض. / Its English title — diagnostic text accompanied by a stable code, not display text. */
   titleEn: string;
+}
+
+/** طلب إعادة تسمية موضع — **الاسم وحده، ولا رمز فيه**. والرمز محمولٌ على كل حركة ورصيد، وتغييرُه يقطع كل حركة مضت عن موضعها. / A request to rename a place — **the name only, with no code in it**. The code is carried on every movement and balance, and changing it severs every past movement from its place. */
+export interface PlaceNameRequest {
+  name: LocalizedText;
+}
+
+/** رصيدٌ بتسكينه: الرصيد نفسه ومعه اسما مستودعه وموقعه من سجلّ التسكين. **ورمزٌ غير مسجَّل يخرج ويُوسَم** بـ warehouseRegistered أو locationRegistered كاذبة، ويخرج اسمه مساوياً لرمزه — لا يُحذف من القائمة ولا يُخترَع له اسم. / A balance with its placement: the balance itself plus its warehouse and location names from the placement register. **An unregistered code is returned and flagged** with warehouseRegistered or locationRegistered false, and its name comes back equal to its code — never dropped from the list and never given an invented name. */
+export interface PlacementBalance {
+  /** هل ورد هذا الصنف إلى هذا الموضع مرّةً بتكلفة؟ / Has this item ever been received into this place with a cost? */
+  hasCostBasis: boolean;
+  /** الصنف. / The item. */
+  itemId: string;
+  /** رمز الموقع. / The location code. */
+  locationId: string;
+  locationName: LocalizedText;
+  /** هل رمز الموقع مسجَّل في سجلّ التسكين؟ فإن كان false فاسمه مساوٍ لرمزه، وهو رمزٌ كُتب على حركة قبل أن يوجد السجلّ. / Is the location code registered in the placement register? When false its name equals its code — a code written onto a movement before the register existed. */
+  locationRegistered: boolean;
+  quantity: Measure;
+  unitCost: UnitCost;
+  value: Money;
+  /** رمز المستودع. / The warehouse code. */
+  warehouseId: string;
+  warehouseName: LocalizedText;
+  /** هل رمز المستودع مسجَّل في سجلّ التسكين؟ / Is the warehouse code registered in the placement register? */
+  warehouseRegistered: boolean;
+}
+
+/** الأرصدة بتسكينها، مرتَّبة بالصنف ثم المستودع ثم الموقع. / The balances with their placement, ordered by item then warehouse then location. */
+export interface PlacementBalanceList {
+  /** عدد الأرصدة. / The number of balances. */
+  balanceCount: number;
+  /** الأرصدة. / The balances. */
+  balances: PlacementBalance[];
 }
 
 /** طلب ترحيل. ولاحظ ما ليس فيه: لا حقل مستأجر ولا حقل شركة — النطاق من الاعتماد ومن المسار. وأي حقل غير معروف يُرفض الطلب كلّه بسببه. / A posting request. Note what is absent: no tenant field and no company field — scope comes from the credential and the path. Any unknown field fails the whole request. */
@@ -2502,6 +2580,93 @@ export interface StockMovementRequest {
   warehouseId: string;
 }
 
+/** مستند نقلٍ بين موقعين كما يخرج على السلك. **ولا حقل entryId فيه** — بخلاف StockMovement: هذا المستند لا يُرحَّل إلى دفتر الأستاذ أبداً، وحقلٌ لمعرّف قيدٍ لا يُملأ قطّ يجعل كل قارئ يسأل متى يُملأ. / A transfer document between two locations as it leaves on the wire. **It has no entryId field** — unlike StockMovement: this document is never posted to the general ledger, and a field for an entry identifier that is never filled makes every reader ask when it would be. */
+export interface StockTransfer {
+  /** هل كانت هذه الهوية مُنفَّذة **قبل** هذا الطلب؟ ولا تُشتقّ من state: المستند بعد أي تنفيذ ناجح حالته MOVED — الأول والثاني سواء. / Was this identity already executed **before** this request? It is not derivable from state: after any successful execution the document is MOVED, first arrival and second alike. */
+  alreadyMoved: boolean;
+  /** موقع المصدر. / The source location. */
+  fromLocationId: string;
+  /** مستودع المصدر. / The source warehouse. */
+  fromWarehouseId: string;
+  /** المعرّف. / The identifier. */
+  id: string;
+  /** مجموعة الصنف. / The item group. */
+  itemGroup: string;
+  /** الصنف. / The item. */
+  itemId: string;
+  /** الرقم. / The number. */
+  number: string;
+  /** تاريخ النقل. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The transfer date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  occurredOn: string;
+  quantity: Measure;
+  /** الحالة: DRAFT مسوّدة · MOVED مُنفَّذ. **و MOVED لا POSTED عمداً**: الثانية تعني في هذا العقد «صار له قيد»، وحالةٌ تحمل الاسم بلا قيد كانت ستجعل كل قارئ يبحث عن قيدٍ لا وجود له. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The state: DRAFT or MOVED. **MOVED, not POSTED, deliberately**: POSTED means 'it has an entry' in this contract, and a state carrying that name with no entry would send every reader hunting for one that does not exist. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  state: "DRAFT" | "MOVED";
+  /** موقع الوجهة. / The destination location. */
+  toLocationId: string;
+  /** مستودع الوجهة. / The destination warehouse. */
+  toWarehouseId: string;
+  value: Money;
+}
+
+/** مستندات النقل، مرتَّبة بالتاريخ ثم بالرقم. / The transfer documents, ordered by date then by number. */
+export interface StockTransferList {
+  /** عدد المستندات. / The number of documents. */
+  transferCount: number;
+  /** المستندات. / The documents. */
+  transfers: StockTransfer[];
+}
+
+/** طلب إنشاء مستند نقلٍ بين موقعين **مسوّدة**. **ولا حقل تكلفة فيه**: المنقول يخرج بتكلفة مصدره المتحرّكة لحظة النقل، وتُحسب في وحدة المخزون ولا تُملى (ADR-0039). وحقلُ تكلفةٍ هنا كان سيسمح بنقلٍ يُعيد تسعير البضاعة وهو ينقلها — أي بجعل حركة مكانٍ حركةَ قيمة. / A request to create a **draft** transfer document between two locations. **It carries no cost field**: what moves leaves at its source's moving average cost at the moment of transfer, computed by the inventory module and never dictated (ADR-0039). A cost field here would allow a transfer to reprice goods while relocating them — turning a movement of place into a movement of value. */
+export interface StockTransferRequest {
+  /** موقع المصدر. / The source location. */
+  fromLocationId: string;
+  /** مستودع المصدر. / The source warehouse. */
+  fromWarehouseId: string;
+  /** مجموعة الصنف — مؤهّل الدور، وهي **واحدة على الطرفين** لأن الصنف واحد. / The item group — a role qualifier, and **the same on both sides** because the item is the same. */
+  itemGroup: string;
+  /** رمز الصنف — **واحدٌ على الطرفين**: النقل يحرّك صنفاً لا يبدّله. / The item code — **the same on both sides**: a transfer relocates an item, it does not substitute it. */
+  itemId: string;
+  /** رقم المستند — فريد داخل المنشأة. / The document number — unique within the company. */
+  number: string;
+  /** تاريخ النقل الميلادي. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The Gregorian transfer date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  occurredOn: string;
+  quantity: Measure;
+  /** موقع الوجهة. / The destination location. */
+  toLocationId: string;
+  /** مستودع الوجهة. / The destination warehouse. */
+  toWarehouseId: string;
+}
+
+/** موضعٌ في هرم التسكين كما يخرج على السلك. / A place in the placement hierarchy as it leaves on the wire. */
+export interface StoragePlace {
+  /** الرمز. / The code. */
+  code: string;
+  /** المعرّف الذي تُبنى عليه القراءة. / The identifier reads are built on. */
+  id: string;
+  /** هل هو عامل؟ **والتعطيل حالةٌ تُقرأ لا غياب**: المُعطَّل يبقى في القوائم بهذا الحقل false، لأن رمزه محمولٌ على حركات مضت ولا يُحذف. / Is it active? **Deactivation is a readable state, not an absence**: a deactivated place stays in the lists with this field false, because its code is carried by past movements and is never deleted. */
+  isActive: boolean;
+  /** المستوى في الهرم. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The level in the hierarchy. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  level: "WAREHOUSE" | "LOCATION" | "BIN";
+  name: LocalizedText;
+  /** رمز الأب — **نصّ فارغ للمستودع** لأنه أعلى الهرم. ورمز المستودع للموقع، ورمز الموقع للرفّ. / The parent's code — **an empty string for a warehouse**, which is the top of the hierarchy. The warehouse code for a location, and the location code for a bin. */
+  parentCode: string;
+}
+
+/** مواضع مستوىً، مرتَّبة بالرمز ترتيباً حرفياً ثابتاً. **وغلافٌ لا مصفوفة عارية.** / The places of one level, ordered by code in a stable ordinal order. **An envelope, not a bare array.** */
+export interface StoragePlaceList {
+  /** عدد المواضع. / The number of places. */
+  placeCount: number;
+  /** المواضع. / The places. */
+  places: StoragePlace[];
+}
+
+/** طلب تسجيل موضعٍ في هرم التسكين — مستودعاً أو موقعاً أو رفّاً. **ولا مستوى فيه ولا رمز أب**: المستوى يقرأه المسار الذي وصل الطلب إليه، والأب معرّفٌ في المسار. وحقلٌ للأب في الجسم كان سيقبل رمزاً يخالف المسار، فيصير للمولود أبوان مُعلَنان. / A request to register a place in the placement hierarchy — a warehouse, a location, or a bin. **It carries neither a level nor a parent code**: the level is read from the path the request arrived on, and the parent is an identifier in that path. A parent field in the body would accept a code contradicting the path, giving the child two declared parents. */
+export interface StoragePlaceRequest {
+  /** رمز الموضع داخل مستواه — **هوية تحملها الحركات والأرصدة، لا نصّاً معروضاً**. لا يُترجَم ولا يُطابَق بلا حساسية حالة، ولا يتغيّر بعد التسجيل. / The place code within its level — **an identity carried by movements and balances, not displayed text**. Never translated, never matched case-insensitively, and never changed after registration. */
+  code: string;
+  name: LocalizedText;
+}
+
 /** عقد باطن ومعه بنوده المعلَّقة. / A subcontract together with its pending items. */
 export interface Subcontract {
   /** العملة. / The currency. */
@@ -2842,6 +3007,42 @@ export interface Unit {
   vatTreatment: "exempt" | "standard";
 }
 
+/** معامل تحويل بين وحدتين كما يخرج على السلك. / A conversion factor between two units as it leaves on the wire. */
+export interface UnitConversion {
+  /** المقام. / The denominator. */
+  denominator: number;
+  /** الوحدة المُحوَّل منها. / The source unit. */
+  fromUnit: string;
+  /** المعرّف. / The identifier. */
+  id: string;
+  /** البسط. / The numerator. */
+  numerator: number;
+  /** صنف الكمّية المشترك بين الوحدتين — ولا معامل بين صنفين. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The quantity class shared by both units — there is no factor across two classes. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  quantityClass: "COUNT" | "WEIGHT" | "VOLUME" | "LENGTH" | "AREA";
+  /** الوحدة المُحوَّل إليها. / The destination unit. */
+  toUnit: string;
+}
+
+/** معاملات التحويل، مرتَّبة بالوحدة المُحوَّل منها ثم إليها. / The conversion factors, ordered by source unit then destination unit. */
+export interface UnitConversionList {
+  /** عدد المعاملات. / The number of factors. */
+  conversionCount: number;
+  /** المعاملات. / The factors. */
+  conversions: UnitConversion[];
+}
+
+/** طلب تسجيل معامل تحويل بين وحدتين **على مستوى المنشأة** — وهو غير ItemRequest.units: ذاك خاصّية تعبئةٍ لصنف، وهذا واقعةٌ فيزيائية تصلح للجميع. **ويُرفض ما بين صنفَي كمّية مختلفين.** / A request to register a conversion factor between two units **at company level** — not the same as ItemRequest.units, which is a packing property of one item, while this is a physical fact true for all. **One across two quantity classes is refused.** */
+export interface UnitConversionRequest {
+  /** المقام — موجب. / The denominator; positive. */
+  denominator: number;
+  /** الوحدة المُحوَّل منها — يجب أن تكون مسجَّلة وعاملة. / The source unit; it must be registered and active. */
+  fromUnit: string;
+  /** البسط: كم وحدةً من toUnit في «المقام» من fromUnit. / The numerator: how many toUnit are in 'denominator' of fromUnit. */
+  numerator: number;
+  /** الوحدة المُحوَّل إليها — يجب أن تكون مسجَّلة وعاملة ومن صنف الكمّية نفسه. / The destination unit; it must be registered, active, and of the same quantity class. */
+  toUnit: string;
+}
+
 /** متوسط تكلفة الوحدة نصّاً بمقياس **ستّ خانات لا أربع**: صنفٌ يُشترى بألف حبّة بمئة ريال تكلفة وحدته 0.100000، وبمقياس أربعة تصير 0.1000 والفرق لا يظهر — لكنه يتراكم على كل صرف حتى ينحرف رصيد القيمة عن مجموع حركاته. / The moving average unit cost as a string with **six** decimal places rather than four: an item bought at a thousand pieces for a hundred riyals has a unit cost of 0.100000, which at scale four becomes 0.1000 and the difference disappears — yet it accumulates on every issue until the value balance no longer equals the sum of its movements. */
 /* UnitCost مُعرَّف في ../money كنوع محتجز وقت التشغيل. */
 
@@ -2853,6 +3054,36 @@ export interface UnitFactor {
   numerator: number;
   /** رمز الوحدة الأكبر. / The larger unit's code. */
   unitCode: string;
+}
+
+/** وحدة قياس كما تخرج على السلك. / A unit of measure as it leaves on the wire. */
+export interface UnitOfMeasure {
+  /** الرمز. / The code. */
+  code: string;
+  /** المعرّف الذي تُبنى عليه القراءة. / The identifier reads are built on. */
+  id: string;
+  /** هل هي عاملة؟ **والتعطيل حالةٌ تُقرأ لا غياب**: المُعطَّلة تبقى في القوائم بهذا الحقل false، لأن رمزها محمولٌ على حركات مضت. / Is it active? **Deactivation is a readable state, not an absence**: a deactivated unit stays in the lists with this field false, because its code is carried by past movements. */
+  isActive: boolean;
+  name: LocalizedText;
+  /** صنف الكمّية. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The quantity class. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  quantityClass: "COUNT" | "WEIGHT" | "VOLUME" | "LENGTH" | "AREA";
+}
+
+/** وحدات قياس المنشأة، مرتَّبة بالرمز ترتيباً حرفياً ثابتاً. **وغلافٌ لا مصفوفة عارية.** / The company's units of measure, ordered by code in a stable ordinal order. **An envelope, not a bare array.** */
+export interface UnitOfMeasureList {
+  /** عدد الوحدات. / The number of units. */
+  unitCount: number;
+  /** الوحدات. / The units. */
+  units: UnitOfMeasure[];
+}
+
+/** طلب تسجيل وحدة قياس. **وصنف الكمّية إلزاميّ**: هو الحقل الوحيد الذي يجعل «كجم ← م» خطأً يُرفض بدل أن يكون معاملاً يكتبه أحدهم بحسن نيّة. / A request to register a unit of measure. **The quantity class is required**: it is the only field that makes 'kg to m' a refused error rather than a factor somebody writes in good faith. */
+export interface UnitOfMeasureRequest {
+  /** رمز الوحدة — **هوية تحملها كل حركة، لا نصّاً معروضاً**. لا يُترجَم ولا يُطابَق بلا حساسية حالة. / The unit code — **an identity carried by every movement, not displayed text**. Never translated and never matched case-insensitively. */
+  code: string;
+  name: LocalizedText;
+  /** صنف الكمّية. **والقائمة مغلقة**: صنفٌ سادس يدخل بهجرة لا بقيمةٍ حرّة. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The quantity class. **The list is closed**: a sixth class arrives by migration, not by a free value. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  quantityClass: "COUNT" | "WEIGHT" | "VOLUME" | "LENGTH" | "AREA";
 }
 
 /** طلب تسجيل وحدة داخل عقار. **وusage وvatTreatment حقلان صريحان لا يُشتقّ أحدهما من الآخر ولا من نوع العقار**: العقار المختلط يولّد توريداً خاضعاً ومعفى معاً. / A unit registration request within a property. **usage and vatTreatment are explicit fields, neither derived from the other nor from the property type**: a mixed-use property produces taxable and exempt supplies at once. */

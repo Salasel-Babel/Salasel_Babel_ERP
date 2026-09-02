@@ -121,7 +121,42 @@ internal static class InventoryTestEnvironment
     /// </summary>
     public static TenantId UnitsTenant { get; } = new(new Guid("7b1e0c33-0000-4000-8000-000000000004"));
 
-    public static TenantId[] AllTenants { get; } = [Tenant, NegativeStockTenant, ValuationTenant, UnitsTenant];
+    /// <summary>
+    /// منشأة التسكين: يُسجَّل عليها هرم المستودع والموقع والرفّ، ويُنقَل بين موقعين،
+    /// وتُعطَّل مواضع.
+    /// <para>
+    /// <b>ومعزولة لأن ما تتركه هو بالضبط ما يفحصه إثباتٌ آخر</b>: مواضع مُعطَّلة
+    /// وأرصدة موزَّعة على موقعين بعد نقل. وخلطُها بمنشأة الوحدات كان سيجعل «هل يُرفض
+    /// تعطيل موضعٍ فيه رصيد؟» سؤالاً جوابه يعتمد على ترتيب تشغيل الإثباتات — وهو
+    /// «أخضر بترتيب التشغيل لا ببنائه».
+    /// </para>
+    /// </summary>
+    public static TenantId PlacementTenant { get; } = new(new Guid("7b1e0c33-0000-4000-8000-000000000005"));
+
+    /// <summary>
+    /// منشأة سجلّ الوحدات: تُسجَّل عليها وحدات قياس بأصناف كمّية ومعاملات تحويل، ويُجرَّب
+    /// المسبار.
+    /// <para>
+    /// <b>ومعزولة لأن رمز الوحدة فريدٌ في المنشأة</b>: إثباتان يسجّلان «‏KG» على منشأةٍ
+    /// واحدة يُفشل ثانيهما الأولَ برفض التكرار — وهو «أحمر بترتيب التشغيل لا ببنائه».
+    /// </para>
+    /// </summary>
+    public static TenantId UnitRegisterTenant { get; } = new(new Guid("7b1e0c33-0000-4000-8000-000000000006"));
+
+    /// <summary>
+    /// منشأة دورة حياة الصنف: تُعدَّل عليها أصناف وتُعطَّل، ويُجرَّب الوارد على مُعطَّل.
+    /// <para>
+    /// <b>ومعزولة لأن ما تتركه أصنافٌ مُعطَّلة</b>: صنفٌ مُوقَف على منشأةٍ مشتركة يُفشل
+    /// أي إثباتٍ آخر يستلم عليه، بحسب ترتيب التشغيل لا ببناء الإثبات.
+    /// </para>
+    /// </summary>
+    public static TenantId ItemLifecycleTenant { get; } = new(new Guid("7b1e0c33-0000-4000-8000-000000000007"));
+
+    public static TenantId[] AllTenants { get; } =
+    [
+        Tenant, NegativeStockTenant, ValuationTenant, UnitsTenant,
+        PlacementTenant, UnitRegisterTenant, ItemLifecycleTenant,
+    ];
 
     /// <summary>عدد محاولات الحذف قبل اللجوء إلى الإنهاء القسري.</summary>
     private const int DropAttempts = 40;

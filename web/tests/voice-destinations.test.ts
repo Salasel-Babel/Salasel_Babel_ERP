@@ -46,15 +46,57 @@ describe("وجهات المسوّدة المنطوقة", () => {
     expect(landed).toBeGreaterThanOrEqual(29);
   });
 
-  it("قسم المحاسبة بلا وجهةٍ واحدة — والغياب مُعلَن لا مسكوتٌ عنه", () => {
-    /* شاشاتُ مستندات المحاسبة لم تهبط في أي فرع (خطة الصوت §13.4). واللوحة
-       تقول ذلك نصّاً على الشاشة، ولا تقفز إلى مسارٍ غير مسجَّل. */
+  /* كان هذا الحارس يقول «قسم المحاسبة بلا وجهةٍ واحدة» — وكان صادقاً يوم
+     كُتب: لم تكن لمستندات المحاسبة شاشة في أي فرع (خطة الصوت §13.4). وقد
+     هبطت سبعُ شاشاتٍ للدورة، فصار الحارس **يقيس التوزيع لا الغياب**: أيُّ
+     نيّةٍ لها وجهة، وأيُّها لا — وكلتاهما مُسمّاة بالاسم. وعدُّ الطرفين مثبَّت
+     فلا تُضاف وجهةٌ ولا تُسقَط بصمت. */
+
+  /** النيّات المحاسبية التي **لم تُبنَ لمستنداتها شاشة** — وأبوابها منشورة. */
+  const ACCOUNTING_WITHOUT_SCREEN = [
+    "accounting.credit_note.draft",
+    "accounting.payables_aging.query",
+    "accounting.purchase_return.draft",
+    "accounting.stock_bill.capture",
+  ];
+
+  it("كل نيّة محاسبية بُنيت شاشةُ مستندها تهبط عليها", () => {
     const accounting = VOICE_INTENTS.filter((intent) => intent.section === "Accounting");
     expect(accounting.length).toBeGreaterThanOrEqual(13);
 
+    const landed = [];
+    const absent = [];
     for (const intent of accounting) {
-      expect(destinationOf(intent.id, paths), intent.id).toBeNull();
+      const to = destinationOf(intent.id, paths);
+      if (to === null) absent.push(intent.id);
+      else landed.push(intent.id);
     }
+
+    /* والغياب **مُعلَن لا مسكوتٌ عنه**: هذه الأربع بأعيانها، لا عدداً مبهماً. */
+    expect(absent.sort()).toEqual(ACCOUNTING_WITHOUT_SCREEN);
+    expect(landed.length).toBe(accounting.length - ACCOUNTING_WITHOUT_SCREEN.length);
+  });
+
+  it("دورة المستند تهبط على شاشتها بعينها، لا على شاشةٍ تشبه اسمها", () => {
+    /* والوجهة تتبع `operationId` المنشور: رصيدُ عميلٍ عمليتُه readReceivablesAging،
+       فوجهتُه شاشةُ ذلك التقرير. */
+    expect(destinationOf("accounting.sales_invoice.draft", paths)).toBe("/sales/invoice");
+    expect(destinationOf("accounting.customer_receipt.record", paths)).toBe("/sales/receipt");
+    expect(destinationOf("accounting.receivables_aging.query", paths)).toBe("/sales/receivables");
+    expect(destinationOf("accounting.customer_balance.query", paths)).toBe("/sales/receivables");
+    expect(destinationOf("accounting.purchase_order.draft", paths)).toBe("/purchasing/order");
+    expect(destinationOf("accounting.goods_receipt.draft", paths)).toBe("/purchasing/goods-receipt");
+    expect(destinationOf("accounting.supplier_bill.capture", paths)).toBe("/purchasing/bill");
+    expect(destinationOf("accounting.supplier_payment.record", paths)).toBe("/purchasing/payment");
+    expect(destinationOf("accounting.journal_entry.draft", paths)).toBe("/voucher");
+  });
+
+  it("الفاتورة المخزنية لا تُخلَط بفاتورة المصروف", () => {
+    /* بابان منشوران لمستندين مختلفين: draftStockBill وdraftExpenseBill.
+       وشاشةُ المصروف قائمة، والمخزنية لا — فالنيّة تبقى بلا وجهة ولا تُصرَف
+       إلى شاشةٍ لا تكتب مستندها. */
+    expect(destinationOf("accounting.stock_bill.capture", paths)).toBeNull();
+    expect(destinationOf("accounting.supplier_bill.capture", paths)).toBe("/purchasing/bill");
   });
 
   it("مسارٌ غير مسجَّل لا يُقفَز إليه ولو كان في الجدول", () => {

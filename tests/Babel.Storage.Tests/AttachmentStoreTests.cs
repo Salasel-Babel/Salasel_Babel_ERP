@@ -35,6 +35,44 @@ public sealed class AttachmentStoreTests
         return options is null ? null : (new FileSystemAttachmentStore(options, TimeProvider.System), options);
     }
 
+    /// <summary>
+    /// مخزنٌ <b>بجذرٍ خاصّ به وحده</b> — لمن يُثبت دعوى «ولم يُكتب شيء» بعدّ الملفّات.
+    /// <para>
+    /// <b>ولماذا لا يكفي الجذر المشترك:</b> <c>StorageTestEnvironment</c> يُهيّئ مجلّداً
+    /// واحداً <b>للعملية كلّها</b> (‏<c>babel-storage-p&lt;pid&gt;_&lt;عشوائي&gt;</c>)، وxunit
+    /// يُشغّل أصناف الاختبار <b>بالتوازي</b> داخل العملية الواحدة. فعدُّ الشجرة كلّها يقيس
+    /// ما يكتبه <b>غيرُك</b> أيضاً: مقيس في بوّابةٍ كاملة أن هذا الاختبار سقط
+    /// <c>Expected: 0 · Actual: 1</c> بينما هو أخضر منفرداً وأخضر بمجموعته وحدها —
+    /// و<c>AppendOnlyIsEnforcedByPostgresTests</c> في الصنف المجاور يُودِع مرفقاً حقيقياً.
+    /// </para>
+    /// <para>
+    /// <b>والعلاج تضييق المقياس لا تعطيل التوازي:</b> جذرٌ فرعيّ لكل إثبات ⇒ الكاتب الوحيد
+    /// المحتمل فيه هو الإثبات نفسه، فتصير الدعوى «لم يُكتب شيء <b>مني</b>» مقيسةً بالضبط.
+    /// وتعطيلُ التوازي كان سيُخفي التسابق ويُبطئ المجموعة، ولا يجعل المقياس صادقاً.
+    /// </para>
+    /// </summary>
+    private static async Task<(FileSystemAttachmentStore Store, StorageOptions Options)?> StoreInAPrivateRootAsync(
+        [System.Runtime.CompilerServices.CallerMemberName] string proof = "")
+    {
+        StorageOptions? shared = await StorageTestEnvironment.OptionsAsync(TestContext.Current.CancellationToken);
+
+        if (shared is null)
+        {
+            return null;
+        }
+
+        StorageOptions own = new()
+        {
+            OwnerConnectionString = shared.OwnerConnectionString,
+            AppConnectionString = shared.AppConnectionString,
+            AppRole = shared.AppRole,
+            RootPath = Path.Combine(shared.RootPath, "proof-" + proof),
+            TicketSigningKey = shared.TicketSigningKey,
+        };
+
+        return (new FileSystemAttachmentStore(own, TimeProvider.System), own);
+    }
+
     // ── الإيداع والقراءة ─────────────────────────────────────────────────────
 
     /// <summary>
@@ -127,7 +165,7 @@ public sealed class AttachmentStoreTests
     [Fact]
     public async Task An_unrecognised_payload_is_refused_and_nothing_is_written()
     {
-        if (await StoreAsync() is not var (store, options))
+        if (await StoreInAPrivateRootAsync() is not var (store, options))
         {
             return;
         }
@@ -155,7 +193,7 @@ public sealed class AttachmentStoreTests
     [Fact]
     public async Task A_lying_declaration_is_refused_and_nothing_is_written()
     {
-        if (await StoreAsync() is not var (store, options))
+        if (await StoreInAPrivateRootAsync() is not var (store, options))
         {
             return;
         }

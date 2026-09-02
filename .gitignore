@@ -36,6 +36,9 @@ node_modules/
 # معرّفات عمليات التشغيل المحلي (deploy/up.sh) — حالةُ جهازٍ لا شيفرة
 deploy/.*.pid
 deploy/previous.tag
+# حالةُ مناوبة الشهادة وصنبورُ إنذارها (deploy/remote.sh rotation) — حالةُ خادمٍ لا شيفرة
+deploy/certs.state
+deploy/certs-alert
 logs/
 tmp/
 .cache/

@@ -595,12 +595,15 @@ export const messages: MessageTree = {
       arrears: "Arrears and receipts",
     },
     parties: {
+      codeHint: "A code that does not repeat within this role's register; documents are matched by it.",
       kindHint: "It chooses which door is read; the role itself arrives from the server and is never assumed.",
       lede: "The two parties of a lease, before it is written: the owner we collect for and the lessee we collect from. Two panels, not one — the fields are identical and the role is not, so the split stops one being registered in place of the other.",
       lookup: "Read a party by its identifier",
       lookupHint: "This is the only way the contract publishes for either party: there is no listing of owners or of lessees.",
+      nameHint: "Arabic is the record, not a first translation; anything else is added by language tag below.",
       noListBody: "The published contract carries no door that lists owners or lessees. So what appears below is only what was registered in this session, said plainly to be that.",
       noListTitle: "There is no party register to browse",
+      residencyHint: "Its members are read from the generated contract, never written as a list in the screen.",
       title: "Owners and lessees",
     },
     kind: {
@@ -677,6 +680,7 @@ export const messages: MessageTree = {
       vatNumberHint: "It arrives as registered; no value is invented for it.",
     },
     register: {
+      lookupKindHint: "It chooses which door is read: a property or a unit, each with its own path in the contract.",
       title: "Property register",
       lede: "A property, its units and its parties. Registering here writes the property's row in the ledger dimension register in the same operation; without that row every entry of its is refused totally rather than silently.",
       lookup: "Read by identifier",
@@ -694,7 +698,10 @@ export const messages: MessageTree = {
       createPartyNote: "The role arrives from the server, not from the request: the owner operation registers an owner, the tenant operation a tenant.",
       propertyId: "Property identifier",
       propertyIdHint: "Copy it from the registration result or from reading the property by its identifier.",
+      unitCodeHint: "The unit code inside its property; it does not repeat there, and it is what a lease shows.",
+      unitNameHint: "Arabic is the record, not a first translation; its translations are added by tag below.",
       unitProperty: "The property that owns this unit:",
+      unitUsageHint: "Residential or commercial, and its members come from the generated contract, not a list here.",
     },
     lease: {
       title: "The lease and its payment schedule",

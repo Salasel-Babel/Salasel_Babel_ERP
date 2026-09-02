@@ -160,6 +160,9 @@ function LookupPanel(props: { companyId: string; transport: Transport }): ReactN
               </option>
             ))}
           </select>
+          {/* وصفٌ لهذه الخليّة كي لا يبقى قاعُ حبرها فوق جارتها: الاستعارة
+              تُسوّي الصندوق لا الحبر، والعلاج تحريريّ (ADR-0077 · ما قِيس). */}
+          <span className="hint">{t("realestate.register.lookupKindHint")}</span>
         </div>
         <div className="field">
           <label htmlFor="re-lookup-id">{t("realestate.common.id")}</label>
@@ -530,6 +533,10 @@ function UnitForm(props: {
             onChange={(e) => setCode(e.target.value)}
             placeholder="UNT-001"
           />
+          {/* وصفٌ لكلّ خليّة في الصفّ — الاستعارة تُسوّي الصندوق لا الحبر،
+              وخليّةٌ بلا وصفٍ بجانب أخرى بوصفٍ من ثلاثة أسطر تركت هنا
+              61.17px عند en-1024 (ADR-0077 · ما قِيس). */}
+          <span className="hint">{t("realestate.register.unitCodeHint")}</span>
         </div>
         <div className="field">
           <label htmlFor="re-unit-name">
@@ -544,6 +551,7 @@ function UnitForm(props: {
             value={nameAr}
             onChange={(e) => setNameAr(e.target.value)}
           />
+          <span className="hint">{t("realestate.register.unitNameHint")}</span>
         </div>
         <div className="field">
           <label htmlFor="re-unit-usage">{t("realestate.usage.label")}</label>
@@ -560,6 +568,7 @@ function UnitForm(props: {
               </option>
             ))}
           </select>
+          <span className="hint">{t("realestate.register.unitUsageHint")}</span>
         </div>
         <div className="field">
           <label htmlFor="re-unit-vat-select">{t("realestate.vat.label")}</label>

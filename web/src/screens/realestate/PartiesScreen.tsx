@@ -303,6 +303,7 @@ function PartyForm(props: {
             value={code}
             onChange={(e) => setCode(e.target.value)}
           />
+          <span className="hint">{t("realestate.parties.codeHint")}</span>
         </div>
         <div className="field">
           <label htmlFor={"re-party-name-" + role}>
@@ -317,6 +318,7 @@ function PartyForm(props: {
             value={nameAr}
             onChange={(e) => setNameAr(e.target.value)}
           />
+          <span className="hint">{t("realestate.parties.nameHint")}</span>
         </div>
         <div className="field">
           <label htmlFor={"re-party-res-" + role}>{t("realestate.residency.label")}</label>
@@ -333,6 +335,7 @@ function PartyForm(props: {
               </option>
             ))}
           </select>
+          <span className="hint">{t("realestate.parties.residencyHint")}</span>
         </div>
         <div className="field">
           <label htmlFor={"re-party-vat-" + role}>{t("realestate.party.vatNumber")}</label>
@@ -350,6 +353,9 @@ function PartyForm(props: {
         </div>
       </div>
 
+      {/* كلُّ حقلٍ في هذا الصفّ بوصف، والأوصافُ على قدر أعمدتها — وهو العلاج
+          **التحريري** الذي يُسوّي قاعَ الحبر بعد أن سوّى ADR-0067 الصندوق.
+          وخليّةٌ بلا وصفٍ بجانب أخرى بوصفٍ من سطرين تركت هنا 42.78px. */}
       <h3 className="k">{t("realestate.common.translations")}</h3>
       <TranslationEditor idPrefix={"re-party-" + role} rows={rows} onChange={setRows} />
 

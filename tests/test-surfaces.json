@@ -103,6 +103,10 @@
       "workflow": ".github/workflows/web.yml", "job": "rendering-matrix", "classification": "tallied",
       "surfaces": ["web-matrix"],
       "why": "‏playwright — و`--list` أو تصفيةٌ تُبقيها خضراء بصفر منفَّذ لولا الأرضية: قِيس أن `--list` يكتب stats.expected=0 وskipped=107."
+    },
+    {
+      "workflow": ".github/workflows/certs-watch.yml", "job": "watch", "classification": "untallied",
+      "why": "‏عينٌ خارجية على شهادةٍ حيّة لا سطحُ اختبار: تتّصل بالخادم وتُشغّل `remote.sh rotation-status` هناك، فما تقيسه حالةُ آلةٍ لا شيفرةُ المستودع، ولا تكتب تقريراً يعتمد عليه هذا السجلّ. ومنطقُها نفسه يقيسه `deploy/rotation-check.sh` في اثنتين وعشرين حالة داخل «حزمة النشر» — وتلك هي المُحصاة."
     }
   ],
 

@@ -66,6 +66,25 @@ export const INVENTORY_NEXT_STEP: Readonly<Record<string, string>> = {
   "inventory.posting_refused": "inventory.movements.nextPostingRefused",
   "inventory.duplicate_item_code": "inventory.items.nextDuplicate",
   "inventory.unit_ratio_not_positive": "inventory.items.nextRatio",
+  /* ── التسكين: تعطيلٌ ورفضٌ على مستوى الموضع ──────────────────────────
+     والحكم يختلف بين المستويات الثلاثة (ADR-0072)، فلكلّ رمزٍ خطوته هو. */
+  "inventory.storage_place_still_holds_stock": "inventory.placement.nextStillHoldsStock",
+  "inventory.storage_place_has_active_children": "inventory.placement.nextActiveChildren",
+  "inventory.duplicate_storage_place_code": "inventory.placement.nextDuplicateCode",
+  "inventory.storage_place_parent_inactive": "inventory.placement.nextParentInactive",
+  "inventory.storage_place_not_under_parent": "inventory.placement.nextNotUnderParent",
+  /* ── النقل بين موقعين ─────────────────────────────────────────────── */
+  "inventory.duplicate_transfer_number": "inventory.transfers.nextDuplicateNumber",
+  "inventory.transfer_to_same_place": "inventory.transfers.nextSamePlace",
+  "inventory.transfer_exceeds_balance": "inventory.transfers.nextExceedsBalance",
+  /* ── وحدات القياس ومعاملاتها ─────────────────────────────────────── */
+  "inventory.unit_class_mismatch": "inventory.units.nextClassMismatch",
+  "inventory.no_conversion_between_units": "inventory.units.nextNoConversion",
+  "inventory.unit_conversion_overflow": "inventory.units.nextOverflow",
+  "inventory.duplicate_unit_code": "inventory.units.nextDuplicateCode",
+  "inventory.duplicate_unit_conversion": "inventory.units.nextDuplicateConversion",
+  "inventory.unit_not_registered": "inventory.units.nextNotRegistered",
+  "inventory.unit_inactive": "inventory.units.nextUnitInactive",
 };
 
 /**

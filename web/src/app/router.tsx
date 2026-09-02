@@ -25,6 +25,11 @@ import { InventoryItemsScreen } from "../screens/inventory/ItemsScreen";
 import { InventoryStockScreen } from "../screens/inventory/StockScreen";
 import { InventoryMovementsScreen } from "../screens/inventory/MovementsScreen";
 import { InventoryValuationScreen } from "../screens/inventory/ValuationScreen";
+import { InventoryWarehousesScreen } from "../screens/inventory/WarehousesScreen";
+import { InventoryPlacementScreen } from "../screens/inventory/PlacementScreen";
+import { InventoryTransfersScreen } from "../screens/inventory/TransfersScreen";
+import { InventoryUnitsScreen } from "../screens/inventory/UnitsScreen";
+import { InventoryPlacementBalancesScreen } from "../screens/inventory/PlacementBalancesScreen";
 /* دورة المستندات المحاسبية — سبعُ شاشاتٍ على مجموعتين: المبيعات والمشتريات.
    وهي الدورة التي وصفها صاحب المصلحة — فاتورة، سند قبض — ولم تكن لها شاشة. */
 import { SalesInvoiceScreen } from "../screens/accounting/SalesInvoiceScreen";
@@ -129,9 +134,11 @@ const contractingRetentionRoute = createRoute({
   component: RetentionScreen,
 });
 
-/* ── القسم المخزني — أربع شاشات على أبوابٍ قائمة في العقد وحدها ────────────
-   ولا خامسة: النقل بين موقعين وقائمة المستودعات لا بابَ لهما اليوم، فهما
-   لوحا «نقصٍ مُعلَن» داخل الشاشتين لا مسارَين يقودان إلى بياناتٍ مُختلَقة. */
+/* ── القسم المخزني — تسعُ شاشات على أبوابٍ قائمة في العقد وحدها ────────────
+   وكانت أربعاً حين كان «النقل بين موقعين» و«سجلّ المستودعات» لوحَي نقصٍ
+   مُعلَن لا بابَ لهما. ثم نزلت أبوابهما — التسكين ثلاثة مستويات، والنقل
+   مسوّدةً وتنفيذاً، ووحدات القياس ومعاملاتها ومسبار تحويلها، والأرصدة
+   بأسماء مواضعها — فصار النقص المُعلَن **شاشاتٍ تُفتح**، لا نصّاً يعتذر. */
 const inventoryStockRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/inventory/stock",
@@ -154,6 +161,36 @@ const inventoryValuationRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/inventory/valuation",
   component: InventoryValuationScreen,
+});
+
+const inventoryWarehousesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/inventory/warehouses",
+  component: InventoryWarehousesScreen,
+});
+
+const inventoryPlacementRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/inventory/placement",
+  component: InventoryPlacementScreen,
+});
+
+const inventoryTransfersRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/inventory/transfers",
+  component: InventoryTransfersScreen,
+});
+
+const inventoryUnitsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/inventory/units",
+  component: InventoryUnitsScreen,
+});
+
+const inventoryPlacementBalancesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/inventory/placement-balances",
+  component: InventoryPlacementBalancesScreen,
 });
 
 /* ── الموارد البشرية ──────────────────────────────────────────────────── */
@@ -246,6 +283,11 @@ const routeTree = rootRoute.addChildren([
   inventoryItemsRoute,
   inventoryMovementsRoute,
   inventoryValuationRoute,
+  inventoryWarehousesRoute,
+  inventoryPlacementRoute,
+  inventoryTransfersRoute,
+  inventoryUnitsRoute,
+  inventoryPlacementBalancesRoute,
   hrRegisterRoute,
   hrPayrollRoute,
   hrPayslipRoute,

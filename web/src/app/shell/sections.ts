@@ -128,6 +128,13 @@ export const SCREENS: readonly ScreenEntry[] = [
   { path: "/inventory/items", labelKey: "inventory.nav.items", section: "inventory" },
   { path: "/inventory/movements", labelKey: "inventory.nav.movements", section: "inventory" },
   { path: "/inventory/valuation", labelKey: "inventory.nav.valuation", section: "inventory" },
+  /* ── التسكين ووحداته — الشاشات الخمس التي جاءت بعد نزول أبوابها ─────────
+     إضافةٌ في موضعٍ واحد متّصل، فتندمج مع من يعمل على هذا الملفّ بلا تعارض. */
+  { path: "/inventory/warehouses", labelKey: "inventory.nav.warehouses", section: "inventory" },
+  { path: "/inventory/placement", labelKey: "inventory.nav.placement", section: "inventory" },
+  { path: "/inventory/placement-balances", labelKey: "inventory.nav.placementBalances", section: "inventory" },
+  { path: "/inventory/transfers", labelKey: "inventory.nav.transfers", section: "inventory" },
+  { path: "/inventory/units", labelKey: "inventory.nav.units", section: "inventory" },
   { path: "/hr", labelKey: "hr.nav.register", section: "hr" },
   { path: "/hr/payroll", labelKey: "hr.nav.payroll", section: "hr" },
   { path: "/hr/payslip", labelKey: "hr.nav.payslip", section: "hr" },

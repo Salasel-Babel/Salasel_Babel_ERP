@@ -11,14 +11,19 @@ import { VoiceScreen } from "../screens/voice/VoiceScreen";
 import { DemoStage } from "../demo/DemoStage";
 /* صفحة العرض الحيّة لنظام التصميم — هي عقد الطبقة البصرية مع من يبني الأقسام. */
 import { DesignScreen } from "../screens/design/DesignScreen";
-/* قسم العقارات — السجلّ، والعقد وجدوله، والمتأخرات وسندات القبض. */
+/* قسم العقارات — العقارُ ووحداته، وطرفا العقد، والعقد وجدوله، والمتأخرات. */
 import { RegisterScreen } from "../screens/realestate/RegisterScreen";
+import { PartiesScreen } from "../screens/realestate/PartiesScreen";
 import { LeaseScreen } from "../screens/realestate/LeaseScreen";
 import { ArrearsScreen } from "../screens/realestate/ArrearsScreen";
-/* المقاولات — أربع شاشات: السجلّ والمستخلص والباطن والمحتجزات. */
+/* المقاولات — سبع شاشات بترتيب العمل: السجلّ، وأوامر التغيير، وخطابات الضمان،
+   والمستخلص، والباطن، ودفعته المقدمة، والمحتجزات. */
 import { ContractingRegisterScreen } from "../screens/contracting/RegisterScreen";
+import { ChangeOrdersScreen } from "../screens/contracting/ChangeOrdersScreen";
+import { GuaranteesScreen } from "../screens/contracting/GuaranteesScreen";
 import { CertificateScreen } from "../screens/contracting/CertificateScreen";
 import { SubcontractingScreen } from "../screens/contracting/SubcontractingScreen";
+import { SubcontractorAdvancesScreen } from "../screens/contracting/SubcontractorAdvancesScreen";
 import { RetentionScreen } from "../screens/contracting/RetentionScreen";
 /* القسم المخزني. */
 import { InventoryItemsScreen } from "../screens/inventory/ItemsScreen";
@@ -103,6 +108,12 @@ const realEstateRegisterRoute = createRoute({
   component: RegisterScreen,
 });
 
+const realEstatePartiesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/realestate/parties",
+  component: PartiesScreen,
+});
+
 const realEstateLeaseRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/realestate/lease",
@@ -122,6 +133,18 @@ const contractingRegisterRoute = createRoute({
   component: ContractingRegisterScreen,
 });
 
+const contractingChangeOrdersRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/contracting/change-orders",
+  component: ChangeOrdersScreen,
+});
+
+const contractingGuaranteesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/contracting/guarantees",
+  component: GuaranteesScreen,
+});
+
 const contractingCertificateRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/contracting/certificate",
@@ -132,6 +155,12 @@ const contractingSubcontractingRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/contracting/subcontracting",
   component: SubcontractingScreen,
+});
+
+const contractingAdvancesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/contracting/advances",
+  component: SubcontractorAdvancesScreen,
 });
 
 const contractingRetentionRoute = createRoute({
@@ -303,11 +332,15 @@ const routeTree = rootRoute.addChildren([
   designRoute,
   demoRoute,
   realEstateRegisterRoute,
+  realEstatePartiesRoute,
   realEstateLeaseRoute,
   realEstateArrearsRoute,
   contractingRegisterRoute,
+  contractingChangeOrdersRoute,
+  contractingGuaranteesRoute,
   contractingCertificateRoute,
   contractingSubcontractingRoute,
+  contractingAdvancesRoute,
   contractingRetentionRoute,
   inventoryStockRoute,
   inventoryItemsRoute,

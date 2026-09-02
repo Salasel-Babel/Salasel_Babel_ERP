@@ -157,6 +157,32 @@ export function AppShell(): ReactNode {
           {t("hr.nav.reconciliation")}
         </Link>
 
+        {/* ── دورةُ المستندات المحاسبية: المبيعات ثمّ المشتريات، **بترتيب
+            الدورة لا بترتيب الحروف** — أمرٌ ← استلامٌ ← فاتورةٌ ← صرف؛ فمن
+            يبدأ من حيث لا يجوز يكتب مستنداً لا يُطابَق. وكانت السبع كلُّها
+            غائبةً عن هذه القائمة: تُفتح بـCtrl+K ولا يراها من يقرأ الملاحة. */}
+        <Link to="/sales/invoice" className="navitem" data-testid="nav-sales-invoice">
+          {t("accounting.nav.salesInvoice")}
+        </Link>
+        <Link to="/sales/receipt" className="navitem" data-testid="nav-sales-receipt">
+          {t("accounting.nav.customerReceipt")}
+        </Link>
+        <Link to="/sales/receivables" className="navitem" data-testid="nav-sales-receivables">
+          {t("accounting.nav.receivables")}
+        </Link>
+        <Link to="/purchasing/order" className="navitem" data-testid="nav-purchasing-order">
+          {t("accounting.nav.purchaseOrder")}
+        </Link>
+        <Link to="/purchasing/goods-receipt" className="navitem" data-testid="nav-purchasing-goods-receipt">
+          {t("accounting.nav.goodsReceipt")}
+        </Link>
+        <Link to="/purchasing/bill" className="navitem" data-testid="nav-purchasing-bill">
+          {t("accounting.nav.supplierBill")}
+        </Link>
+        <Link to="/purchasing/payment" className="navitem" data-testid="nav-purchasing-payment">
+          {t("accounting.nav.supplierPayment")}
+        </Link>
+
         {/* ── التسكين ووحداته — كتلةٌ واحدة متّصلة كي يندمج جانباها آلياً. */}
         <Link to="/inventory/warehouses" className="navitem" data-testid="nav-inventory-warehouses">
           {t("inventory.nav.warehouses")}
@@ -176,6 +202,43 @@ export function AppShell(): ReactNode {
         </Link>
         <Link to="/inventory/units" className="navitem" data-testid="nav-inventory-units">
           {t("inventory.nav.units")}
+        </Link>
+        {/* ── المقاولات والعقارات: إحدى عشرة شاشةً بترتيب العمل. وهي **كتلةٌ
+            واحدة متّصلة** كي يندمج جانباها آلياً حين يلمس أسطولٌ آخر هذه
+            القائمة. وكانت السبعُ القائمة منها غائبةً عن هذه القائمة كلَّها —
+            تُفتح بـCtrl+K ولا يراها من يقرأ الملاحة (ADR-جديد). */}
+        <Link to="/contracting" className="navitem" data-testid="nav-contracting-register">
+          {t("contracting.nav.register")}
+        </Link>
+        <Link to="/contracting/change-orders" className="navitem" data-testid="nav-contracting-change-orders">
+          {t("contracting.nav.changeOrders")}
+        </Link>
+        <Link to="/contracting/guarantees" className="navitem" data-testid="nav-contracting-guarantees">
+          {t("contracting.nav.guarantees")}
+        </Link>
+        <Link to="/contracting/certificate" className="navitem" data-testid="nav-contracting-certificate">
+          {t("contracting.nav.certificate")}
+        </Link>
+        <Link to="/contracting/subcontracting" className="navitem" data-testid="nav-contracting-subcontracting">
+          {t("contracting.nav.subcontracting")}
+        </Link>
+        <Link to="/contracting/advances" className="navitem" data-testid="nav-contracting-advances">
+          {t("contracting.nav.advances")}
+        </Link>
+        <Link to="/contracting/retention" className="navitem" data-testid="nav-contracting-retention">
+          {t("contracting.nav.retention")}
+        </Link>
+        <Link to="/realestate" className="navitem" data-testid="nav-realestate-register">
+          {t("realestate.nav.register")}
+        </Link>
+        <Link to="/realestate/parties" className="navitem" data-testid="nav-realestate-parties">
+          {t("realestate.nav.parties")}
+        </Link>
+        <Link to="/realestate/lease" className="navitem" data-testid="nav-realestate-lease">
+          {t("realestate.nav.lease")}
+        </Link>
+        <Link to="/realestate/arrears" className="navitem" data-testid="nav-realestate-arrears">
+          {t("realestate.nav.arrears")}
         </Link>
       </nav>
 
@@ -232,7 +295,11 @@ export function AppShell(): ReactNode {
       {/* مساحةُ عمل الوكيل: **لوحٌ واحد ينفتح فوق أي شاشة** — لا ميزةٌ مبعثرة
           على كل شاشة. وموضعُه في الهيكل لا في شاشةٍ بعينها للسبب نفسه الذي
           وضع لوحةَ المسوّدة المنطوقة هنا: ما يعبر الشاشات لا يُنسَخ فيها. */}
-      {agentOpen && config.companyId !== "" ? (
+      {/* **اللوح يُرسَم كلّما فُتح، ولو بلا شركة.** كان مشروطاً بـ
+          `config.companyId !== ""`، فيضغط من يفتح الموقع أوّل مرّة زرَّ «الوكيل»
+          ولا يقع شيء — بلا رسالة ولا تعطيل. والسبب الآن يُقال داخل اللوح ومعه
+          طريقُ الخروج، لا يُبتلع. */}
+      {agentOpen ? (
         <AgentWorkspace
           transport={transport}
           companyId={config.companyId}

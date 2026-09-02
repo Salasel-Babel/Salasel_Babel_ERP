@@ -1,0 +1,113 @@
+{
+  "_": [
+    "سجلّ أسطح الاختبار — المرجع الوحيد لما يجب أن يُنفَّذ، وكم أدنى ما يُنفَّذ منه.",
+    "",
+    "لماذا يوجد هذا الملف: حارسُ «صفرِ اختبارات» السابق كان قائمةَ خياراتٍ يرفضها",
+    "مُشغّل الاختبارات (‏--nologo ومثيلاتها). والقائمة هُزمت مرّتين في يوم واحد:",
+    "بنقل --nologo إلى سطر استمرارٍ داخل `run: |` فلم يعد السطر يحوي `dotnet test`،",
+    "وبـ--diag الذي يُنتج فشلاً مطابقاً بايتاً ببايت وليس في القائمة أصلاً.",
+    "",
+    "والمقيس على هذه الآلة (‏10.0.100، xunit.v3 4.0.0) هو ما بُني عليه البديل:",
+    "  · تشغيل نظيف                       → مِلَفّ TRX فيه Counters executed=\"40\"",
+    "  · ‏--nologo مع طلب تقرير           → لا مجلّد ولا ملفّ إطلاقاً · total: 0 · خروج 1",
+    "  · ‏--diag مع طلب تقرير             → لا مجلّد ولا ملفّ إطلاقاً · total: 0 · خروج 1",
+    "  · ‏--minimum-expected-tests 41     → خروج 9، والتقرير مكتوب (executed=40)",
+    "  · ‏--minimum-expected-tests 99999 على الحلّ كلّه → خروج 9 عند 1587، أي أن العتبة",
+    "    ‏**تراكمية على الحلّ** لا لكل مشروع — فهي تلتقط الانكماش الصامت.",
+    "",
+    "فالخاصّية المفحوصة ليست «أي خيار كُتب» بل «ماذا أنتج التشغيل»: لكل سطحٍ يعلنه",
+    "المستودع تقريرٌ موجود، وعددُ ما نُفِّذ فيه عند الأرضية المُلتزَمة أو فوقها، وصفرُ",
+    "إخفاق. وذلك لا يبالي بأيّ خيارٍ أو مطبعةٍ أو سطر استمرارٍ أو مُغلِّفٍ أو ترقية",
+    "حزمةِ تطويرٍ سبّب النقص. (‏docs/evidence/traps.md · the-remedy-was-a-list-and-the-list-was-short)",
+    "",
+    "والأرضيات أدناه **مقيسة** على هذا الفرع: مجموع أسطح .NET الواحد والعشرين 1599،",
+    "ومنها اختبارات المعمارية 204؛ ووحدة الواجهة 379؛ ومصفوفة العرض 107."
+  ],
+
+  "reportDirectory": "artifacts/test-reports",
+
+  "surfaces": [
+    { "id": "dotnet-architecture",     "runner": "dotnet", "project": "tests/Babel.ArchitectureTests/Babel.ArchitectureTests.csproj",     "assembly": "Babel.ArchitectureTests.dll",     "invokedBy": ["tests/Babel.ArchitectureTests/Babel.ArchitectureTests.csproj", "--solution Babel.slnx"], "minimumExecuted": 204 },
+    { "id": "dotnet-ai",               "runner": "dotnet", "project": "tests/Babel.Ai.Tests/Babel.Ai.Tests.csproj",                       "assembly": "Babel.Ai.Tests.dll",               "invokedBy": ["tests/Babel.Ai.Tests/Babel.Ai.Tests.csproj", "--solution Babel.slnx"], "minimumExecuted": 374 },
+    { "id": "dotnet-api",              "runner": "dotnet", "project": "tests/Babel.Api.Tests/Babel.Api.Tests.csproj",                     "assembly": "Babel.Api.Tests.dll",              "invokedBy": ["tests/Babel.Api.Tests/Babel.Api.Tests.csproj", "--solution Babel.slnx"], "minimumExecuted": 217 },
+    { "id": "dotnet-assets",           "runner": "dotnet", "project": "tests/Babel.Assets.Tests/Babel.Assets.Tests.csproj",               "assembly": "Babel.Assets.Tests.dll",           "invokedBy": ["tests/Babel.Assets.Tests/Babel.Assets.Tests.csproj", "--solution Babel.slnx"], "minimumExecuted": 1 },
+    { "id": "dotnet-canonicalization", "runner": "dotnet", "project": "tests/Babel.Canonicalization.Tests/Babel.Canonicalization.Tests.csproj", "assembly": "Babel.Canonicalization.Tests.dll", "invokedBy": ["tests/Babel.Canonicalization.Tests/Babel.Canonicalization.Tests.csproj", "--solution Babel.slnx"], "minimumExecuted": 155 },
+    { "id": "dotnet-compliance",       "runner": "dotnet", "project": "tests/Babel.Compliance.Tests/Babel.Compliance.Tests.csproj",       "assembly": "Babel.Compliance.Tests.dll",       "invokedBy": ["tests/Babel.Compliance.Tests/Babel.Compliance.Tests.csproj", "--solution Babel.slnx"], "minimumExecuted": 141 },
+    { "id": "dotnet-contracts",        "runner": "dotnet", "project": "tests/Babel.Contracts.Tests/Babel.Contracts.Tests.csproj",         "assembly": "Babel.Contracts.Tests.dll",        "invokedBy": ["tests/Babel.Contracts.Tests/Babel.Contracts.Tests.csproj", "--solution Babel.slnx"], "minimumExecuted": 6 },
+    { "id": "dotnet-controlplane",     "runner": "dotnet", "project": "tests/Babel.ControlPlane.Tests/Babel.ControlPlane.Tests.csproj",   "assembly": "Babel.ControlPlane.Tests.dll",     "invokedBy": ["tests/Babel.ControlPlane.Tests/Babel.ControlPlane.Tests.csproj", "--solution Babel.slnx"], "minimumExecuted": 80 },
+    { "id": "dotnet-core",             "runner": "dotnet", "project": "tests/Babel.Core.Tests/Babel.Core.Tests.csproj",                   "assembly": "Babel.Core.Tests.dll",             "invokedBy": ["tests/Babel.Core.Tests/Babel.Core.Tests.csproj", "--solution Babel.slnx"], "minimumExecuted": 79 },
+    { "id": "dotnet-hr",               "runner": "dotnet", "project": "tests/Babel.Hr.Tests/Babel.Hr.Tests.csproj",                       "assembly": "Babel.Hr.Tests.dll",               "invokedBy": ["tests/Babel.Hr.Tests/Babel.Hr.Tests.csproj", "--solution Babel.slnx"], "minimumExecuted": 16 },
+    { "id": "dotnet-inventory",        "runner": "dotnet", "project": "tests/Babel.Inventory.Tests/Babel.Inventory.Tests.csproj",         "assembly": "Babel.Inventory.Tests.dll",        "invokedBy": ["tests/Babel.Inventory.Tests/Babel.Inventory.Tests.csproj", "--solution Babel.slnx"], "minimumExecuted": 23 },
+    { "id": "dotnet-ledger",           "runner": "dotnet", "project": "tests/Babel.Ledger.Tests/Babel.Ledger.Tests.csproj",               "assembly": "Babel.Ledger.Tests.dll",           "invokedBy": ["tests/Babel.Ledger.Tests/Babel.Ledger.Tests.csproj", "--solution Babel.slnx"], "minimumExecuted": 85 },
+    { "id": "dotnet-portals",          "runner": "dotnet", "project": "tests/Babel.Portals.Tests/Babel.Portals.Tests.csproj",             "assembly": "Babel.Portals.Tests.dll",          "invokedBy": ["tests/Babel.Portals.Tests/Babel.Portals.Tests.csproj", "--solution Babel.slnx"], "minimumExecuted": 1 },
+    { "id": "dotnet-pos",              "runner": "dotnet", "project": "tests/Babel.Pos.Tests/Babel.Pos.Tests.csproj",                     "assembly": "Babel.Pos.Tests.dll",              "invokedBy": ["tests/Babel.Pos.Tests/Babel.Pos.Tests.csproj", "--solution Babel.slnx"], "minimumExecuted": 1 },
+    { "id": "dotnet-projects",         "runner": "dotnet", "project": "tests/Babel.Projects.Tests/Babel.Projects.Tests.csproj",           "assembly": "Babel.Projects.Tests.dll",         "invokedBy": ["tests/Babel.Projects.Tests/Babel.Projects.Tests.csproj", "--solution Babel.slnx"], "minimumExecuted": 12 },
+    { "id": "dotnet-purchasing",       "runner": "dotnet", "project": "tests/Babel.Purchasing.Tests/Babel.Purchasing.Tests.csproj",       "assembly": "Babel.Purchasing.Tests.dll",       "invokedBy": ["tests/Babel.Purchasing.Tests/Babel.Purchasing.Tests.csproj", "--solution Babel.slnx"], "minimumExecuted": 38 },
+    { "id": "dotnet-realestate",       "runner": "dotnet", "project": "tests/Babel.RealEstate.Tests/Babel.RealEstate.Tests.csproj",       "assembly": "Babel.RealEstate.Tests.dll",       "invokedBy": ["tests/Babel.RealEstate.Tests/Babel.RealEstate.Tests.csproj", "--solution Babel.slnx"], "minimumExecuted": 7 },
+    { "id": "dotnet-sales",            "runner": "dotnet", "project": "tests/Babel.Sales.Tests/Babel.Sales.Tests.csproj",                 "assembly": "Babel.Sales.Tests.dll",            "invokedBy": ["tests/Babel.Sales.Tests/Babel.Sales.Tests.csproj", "--solution Babel.slnx"], "minimumExecuted": 24 },
+    { "id": "dotnet-sharedkernel",     "runner": "dotnet", "project": "tests/Babel.SharedKernel.Tests/Babel.SharedKernel.Tests.csproj",   "assembly": "Babel.SharedKernel.Tests.dll",     "invokedBy": ["tests/Babel.SharedKernel.Tests/Babel.SharedKernel.Tests.csproj", "--solution Babel.slnx"], "minimumExecuted": 36 },
+    { "id": "dotnet-storage",          "runner": "dotnet", "project": "tests/Babel.Storage.Tests/Babel.Storage.Tests.csproj",             "assembly": "Babel.Storage.Tests.dll",          "invokedBy": ["tests/Babel.Storage.Tests/Babel.Storage.Tests.csproj", "--solution Babel.slnx"], "minimumExecuted": 59 },
+    { "id": "dotnet-matrix-validator", "runner": "dotnet", "project": "tools/matrix-validator/tests/MatrixValidator.Tests.csproj",        "assembly": "MatrixValidator.Tests.dll",        "invokedBy": ["tools/matrix-validator/tests/MatrixValidator.Tests.csproj", "--solution Babel.slnx"], "minimumExecuted": 40 },
+
+    { "id": "web-unit",   "runner": "vitest",     "config": "web/vitest.config.ts",     "report": "web-unit.json",   "invokedBy": ["vitest"], "minimumExecuted": 379 },
+    { "id": "web-matrix", "runner": "playwright", "config": "web/playwright.config.ts", "report": "web-matrix.json", "invokedBy": ["playwright test"], "minimumExecuted": 107 }
+  ],
+
+  "jobs": [
+    {
+      "workflow": ".github/workflows/ci.yml", "job": "build-and-enforce", "classification": "tallied",
+      "surfaces": [
+        "dotnet-architecture", "dotnet-ai", "dotnet-api", "dotnet-assets", "dotnet-canonicalization",
+        "dotnet-compliance", "dotnet-contracts", "dotnet-controlplane", "dotnet-core", "dotnet-hr",
+        "dotnet-inventory", "dotnet-ledger", "dotnet-portals", "dotnet-pos", "dotnet-projects",
+        "dotnet-purchasing", "dotnet-realestate", "dotnet-sales", "dotnet-sharedkernel",
+        "dotnet-storage", "dotnet-matrix-validator"
+      ],
+      "why": "خطوتان: الحدود المعمارية وحدها ثم الحلّ كلّه — وكلتاهما تكتبان TRX في مجلّد التقارير."
+    },
+    {
+      "workflow": ".github/workflows/ci.yml", "job": "test-isolation", "classification": "untallied",
+      "why": "مسحُ العزل يُشغّل كل دالّة في عمليتها عبر tools/test-isolation/run.sh، وهو يوفّق بنفسه بين ما اكتُشف وما نُفِّذ ويسقط على المسح الضامر. ولا يكتب تقريراً يعتمد عليه هذا السجلّ. وتغطيته ليست موضع ثقة: كل دالّة يشغّلها محسوبة أصلاً في أسطح .NET المُحصاة في build-and-enforce."
+    },
+    {
+      "workflow": ".github/workflows/ci.yml", "job": "invariant-globalization-guard", "classification": "untallied",
+      "why": "إثباتٌ موجب لا مجموعة اختبارات: يشترط أن **يفشل** tools/Babel.Canonicalization.Golden تحت DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1. لا سطح اختبار فيه."
+    },
+    {
+      "workflow": ".github/workflows/data-validation.yml", "job": "validate", "classification": "tallied",
+      "surfaces": ["dotnet-matrix-validator"],
+      "why": "الموضع الذي قِيس فيه العطل: كان `dotnet test … --nologo` هنا يُنفّذ صفر اختبارات على develop."
+    },
+    {
+      "workflow": ".github/workflows/data-validation.yml", "job": "load", "classification": "untallied",
+      "why": "‏psql وحدها: مخطّطٌ وتحميلٌ وفحوصٌ تشخيصية داخل قاعدة البيانات. لا مُشغّل اختبارات."
+    },
+    {
+      "workflow": ".github/workflows/deploy-check.yml", "job": "bundle", "classification": "untallied",
+      "why": "فحص اكتمال حزمة النشر — ملفّات وقوالب، لا اختبارات."
+    },
+    {
+      "workflow": ".github/workflows/deploy.yml", "job": "images", "classification": "untallied",
+      "why": "بناء صور الحاويات ودفعها. لا اختبارات."
+    },
+    {
+      "workflow": ".github/workflows/deploy.yml", "job": "deploy", "classification": "untallied",
+      "why": "النشر نفسه. لا اختبارات."
+    },
+    {
+      "workflow": ".github/workflows/web.yml", "job": "static-checks", "classification": "tallied",
+      "surfaces": ["web-unit"],
+      "why": "‏vitest — و`passWithNoTests: false` في إعداده يمنع الصفر، لكنه لا يمنع الانكماش. الأرضية تمنعه."
+    },
+    {
+      "workflow": ".github/workflows/web.yml", "job": "rendering-matrix", "classification": "tallied",
+      "surfaces": ["web-matrix"],
+      "why": "‏playwright — و`--list` أو تصفيةٌ تُبقيها خضراء بصفر منفَّذ لولا الأرضية: قِيس أن `--list` يكتب stats.expected=0 وskipped=107."
+    }
+  ],
+
+  "webConfigsThatRunNoTests": [
+    { "path": "web/eslint.config.js", "why": "قواعد الحدّ — لا مُشغّل اختبارات." },
+    { "path": "web/vite.config.ts",   "why": "إعداد البناء والتقديم — لا مُشغّل اختبارات." }
+  ]
+}

@@ -163,13 +163,35 @@ jobs:
           path: resolved-packages.txt
           if-no-files-found: ignore
 
+      # ‏**ختم مجلّد التقارير قبل أي اختبار.** الحصيلة أسفل الوظيفة ترفض أي تقرير أقدم
+      # من هذا الختم، فبقايا تشغيلٍ سابق لا تُثبت أن شيئاً نُفِّذ الآن. ونسيانُ هذه الخطوة
+      # **يُحمِّر** ولا يُخضِّر: الحصيلة تسقط على ختمٍ مفقود.
+      - name: ختم مجلّد التقارير / stamp the report directory
+        run: tools/test-tally/run.sh --begin
+
       # اختبارات المعمارية تُشغَّل أولاً ومنفصلة: إن انكسر حدّ، تُقرأ الرسالة فوراً
       # بدل البحث عنها بين مئتي اختبار.
+      #
+      # ‏**ولماذا الأرضية والتقرير على كل نداء:** `--minimum-expected-tests` تُحوّل
+      # الانكماش الصامت إلى خروجٍ بالرمز 9 يسمّي ما نُفِّذ وما كان مُنتظَراً — والانكماش
+      # أخطر من الصفر لأنه يخرج بصفر. و`--zero-tests-policy strict` تجعل مجموعةً كلُّ
+      # اختباراتها متخطّاة سقوطاً (رمز 8) لا نجاحاً. و`--report-xunit-trx` هو ما تقرأه
+      # الحصيلة: **مُخرَج التشغيل لا نصّ الأمر**.
       - name: إنفاذ الحدود المعمارية
-        run: dotnet test --project tests/Babel.ArchitectureTests/Babel.ArchitectureTests.csproj --configuration Release --no-build
+        run: >-
+          dotnet test --project tests/Babel.ArchitectureTests/Babel.ArchitectureTests.csproj
+          --configuration Release --no-build
+          --report-xunit-trx --results-directory artifacts/test-reports
+          --minimum-expected-tests 204 --zero-tests-policy strict
 
+      # مقيس على هذا المستودع: `--minimum-expected-tests` **تراكمية على الحلّ كلّه** —
+      # ‏99999 على `--solution Babel.slnx` أعطت الرمز 9 عند 1587. فهي تلتقط اختفاء مشروعٍ
+      # كامل من الحلّ، وهو بالضبط ما وقع عند ed02df2 (‏tools/gate/run.sh §لماذا يوجد).
       - name: كل الاختبارات
-        run: dotnet test --solution Babel.slnx --configuration Release --no-build
+        run: >-
+          dotnet test --solution Babel.slnx --configuration Release --no-build
+          --report-xunit-trx --results-directory artifacts/test-reports
+          --minimum-expected-tests 1599 --zero-tests-policy strict
 
       # الأداة تفعل عملها لا مجرّد تترجم: تشغيلها على البيانات الحقيقية في كل دفعة، لا في
       # data-validation.yml وحده — فذاك مُقيَّد بمسارات data/ وtools/، وتغيير في
@@ -311,6 +333,17 @@ jobs:
       - name: التحقق من عدم وجود أسرار في التغييرات
         if: always()
         run: tools/secret-scan/run.sh
+
+      # ‏**الحصيلة — تُسأل عن مُخرَج التشغيل لا عن نصّ الأمر.** الحارس الذي سبقها كان
+      # قائمةَ خياراتٍ يرفضها المُشغّل، وهُزم مرّتين في يوم واحد: بنقل `--nologo` إلى سطر
+      # استمرارٍ داخل `run: |`، وبـ`--diag` الذي ليس في القائمة أصلاً. وهذه لا تقرأ خياراً:
+      # تسأل «هل وُجد التقرير، وكم نُفِّذ فيه، وكم أخفق» — فتُجيب إجابةً واحدة عن كل
+      # الخيارات وعن المُغلِّفات والمتغيّرات والمستندات الواردة معاً.
+      # و`always()` واجبة: الخطوة الوحيدة التي تعرف ما نُفِّذ لا يجوز أن يُسكتها سقوطُ
+      # ما قبلها (فخ-80). والقاعدة 20 تحرس وجودها وشرطها.
+      - name: الحصيلة — هل نُفِّذ ما يدّعي هذا السير تنفيذه
+        if: always()
+        run: tools/test-tally/run.sh --job ci.yml:build-and-enforce
 
   test-isolation:
     name: عزل الاختبارات — كل دالّة وحدها

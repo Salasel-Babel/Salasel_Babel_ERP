@@ -128,11 +128,28 @@ internal sealed class ApiProcess : IAsyncDisposable
     /// بعد المهلة سقوطٌ كما كان.
     /// </para>
     /// </summary>
-    /// <param name="fragment">الشذرة المطلوبة.</param>
     /// <param name="timeout">المهلة القصوى.</param>
-    public async Task<string> OutputContainingAsync(string fragment, TimeSpan timeout)
+    /// <param name="fragments">
+    /// الشذرات المطلوبة — <b>كلُّها</b>. والانتظار يقف عند أوّل لحظةٍ تجتمع فيها، لا عند
+    /// أوّل واحدةٍ منها.
+    /// <para>
+    /// <b>والعطل الذي أوجب الجمع، مقيساً:</b> كان الانتظار على شذرةٍ واحدة (معرّف التتبّع)
+    /// والحكم على شذرتين (المعرّف و<c>Npgsql</c>). وسجلُّ الخطأ الواحد <b>أكثر من سطر</b>:
+    /// الرسالة أوّلاً ثم الاستثناء تحتها. فيصل السطر الأول فينتهي الانتظار، ويُقرأ
+    /// المُخرَج قبل أن يصل الثاني. سقط بذلك في بوّابةٍ كاملة والحِمل <b>9.91</b>:
+    /// ‏<c>Not found: "Npgsql"</c> والمُخرَج <c>"fail: Babel.Api.Failure[0] عطل غير
+    /// متوقّع في…"</c> — أي أن السطر الأول وصل وحده. والاختبار نفسه <b>أخضر منفرداً</b>،
+    /// وهي القراءة التي تُنتج «تذبذب» بدل تشخيص (‏فخ-159).
+    /// </para>
+    /// <para>
+    /// <b>ولا يُضعف هذا الحكم:</b> الشذرات كلُّها ما زالت مطلوبة، وغيابُ أيٍّ منها بعد
+    /// المهلة سقوطٌ كما كان. الذي تغيّر أن <b>شرط الانتظار صار هو شرط الحكم نفسه</b> —
+    /// وانتظارٌ على شرطٍ أضعف ممّا يُحكَم به سباقٌ بالبناء.
+    /// </para>
+    /// </param>
+    public async Task<string> OutputContainingAsync(TimeSpan timeout, params string[] fragments)
     {
-        ArgumentNullException.ThrowIfNull(fragment);
+        ArgumentNullException.ThrowIfNull(fragments);
 
         DateTimeOffset deadline = DateTimeOffset.UtcNow + timeout;
 
@@ -140,7 +157,7 @@ internal sealed class ApiProcess : IAsyncDisposable
         {
             string snapshot = Output;
 
-            if (snapshot.Contains(fragment, StringComparison.Ordinal))
+            if (fragments.All(fragment => snapshot.Contains(fragment, StringComparison.Ordinal)))
             {
                 return snapshot;
             }

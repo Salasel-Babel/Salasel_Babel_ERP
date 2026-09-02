@@ -4,6 +4,10 @@ import type { MessageTree } from "../types";
 
 export const messages: MessageTree = {
   agent: {
+    boundary: {
+      panelRefusal: "Nothing identifier-shaped crosses this path — not an identity number, an IBAN, a VAT registration number or a mobile number, neither masked nor whole. Type it in its own field on the screen.",
+      amountRemedy: "If it is an amount or a document number, write it with separators or dashes: 1,500,000,000 and INV-2026-000412 both pass unchanged.",
+    },
     sheet: {
       ask: {
         customer: "Which “{name}” exactly?",

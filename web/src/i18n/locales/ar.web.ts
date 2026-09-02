@@ -5,6 +5,10 @@ import type { MessageTree } from "../types";
 
 export const messages: MessageTree = {
   agent: {
+    boundary: {
+      panelRefusal: "لا يعبر هذا الطريق ما شكلُه معرّف — لا هويةً ولا آيباناً ولا رقمَ تسجيلٍ ضريبي ولا جوّالاً، لا مقنَّعاً ولا كاملاً. اكتبه في حقله على الشاشة.",
+      amountRemedy: "وإن كان مبلغاً أو رقمَ مستند فأعد كتابته بفواصله أو بشرطاته — 1,500,000,000 و INV-2026-000412 يعبران كما هما.",
+    },
     sheet: {
       ask: {
         customer: "من هو «{name}» بالضبط؟",

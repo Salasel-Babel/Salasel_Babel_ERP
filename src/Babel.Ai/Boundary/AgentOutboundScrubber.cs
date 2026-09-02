@@ -36,7 +36,9 @@ public static class AgentOutboundScrubber
     /// </summary>
     public static IReadOnlyList<AgentSplitTolerance> JoinPasses { get; } =
     [
-        AgentSplitTolerance.Whitespace, AgentSplitTolerance.WhitespaceAndDashes,
+        AgentSplitTolerance.Whitespace,
+        AgentSplitTolerance.WhitespaceAndDashes,
+        AgentSplitTolerance.AnchoredSeparators,
     ];
 
     /// <summary>

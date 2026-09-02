@@ -57,16 +57,63 @@ public sealed class AgentOutboundScrubberTests
     public void كل_شكل_مُسمّى_يُرفض_ويُسمّى_باسمه(string value, string shapeKey) =>
         Refuses("سجّل للمورد " + value + " فاتورة", shapeKey);
 
-    [Fact]
-    public void الرفض_يحمل_الجملة_العربية_حرفاً_بحرف_كما_قرّرها_التصميم()
-    {
-        AgentScrubVerdict verdict = AgentOutboundScrubber.Inspect(BoundaryFixtures.NationalId);
+    /// <summary>
+    /// <b>الجُمل السبع حرفاً بحرف — لا واحدةٌ منها.</b>
+    /// <para>
+    /// كان هذا الحارس يؤكّد على جملة <c>national_id</c> وحدها، والستّ الباقية تُفحص
+    /// بـ«طولها عشرون محرفاً فأكثر ولا تحوي كلمة خطأ» — أي أن أيّاً منها كان يُستبدَل
+    /// بعشرين محرفاً من أي شيء ويبقى أخضر. والجملة <b>هي</b> المنتَج هنا: هي ما يقرؤه
+    /// المحاسب ليعرف ماذا يفعل، ولا حارس عليها إن لم يكن نصّها هو المُؤكَّد عليه.
+    /// </para>
+    /// </summary>
+    private static readonly (string Key, string SentenceAr)[] Sentences =
+    [
+        ("national_id", "لا أُرسل رقم الهوية أو الإقامة إلى النموذج. اكتبه في حقله على الشاشة. " + AgentBoundaryErrors.AmountRemedyAr),
+        ("iban", "لا أُرسل رقم الآيبان."),
+        ("vat", "لا أُرسل رقم التسجيل الضريبي — وهو خمس عشرة خانة تبدأ بـ٣ وتنتهي بـ٣."),
+        ("cr_or_national_id", "عشر خانات متتالية: قد تكون سجلاً تجارياً أو رقم هوية. لا أُرسلها ولا أُخمّن أيّهما. " + AgentBoundaryErrors.AmountRemedyAr),
+        ("phone", "لا أُرسل رقم الجوال."),
+        ("digit_run", "سلسلة رقمية طويلة تشبه معرّفاً. لا تمرّ من هنا. " + AgentBoundaryErrors.AmountRemedyAr),
+        (
+            "masked_value",
+            "حتى القيمة المُقنَّعة لا تعبر: قناعٌ مع اسمٍ في الجملة نفسها يكفي للتعرّف على صاحبه. "
+            + "والقناع يُعرض على الشاشة ولا يدخل نصّ المحادثة."
+        ),
+    ];
 
-        Error only = Assert.Single(verdict.Errors);
-        Assert.Equal("ai.agent.identifier_refused.national_id", only.Code);
+    /// <summary>الجدول كما تقرؤه <c>xunit</c>.</summary>
+    public static TheoryData<string, string> SentenceOfEveryShape()
+    {
+        TheoryData<string, string> data = [];
+
+        foreach ((string key, string sentence) in Sentences)
+        {
+            data.Add(key, sentence);
+        }
+
+        return data;
+    }
+
+    /// <summary>كل جملة رفضٍ هي نصُّها المُقرَّر، لا «نصٌّ بطولٍ معقول».</summary>
+    /// <param name="shapeKey">مفتاح الشكل.</param>
+    /// <param name="sentence">الجملة كما قرّرها التصميم.</param>
+    [Theory]
+    [MemberData(nameof(SentenceOfEveryShape))]
+    public void الرفض_يحمل_الجملة_العربية_حرفاً_بحرف_كما_قرّرها_التصميم(string shapeKey, string sentence)
+    {
+        AgentIdentifierShape shape = AgentIdentifierShapes.ByKey(shapeKey);
+
+        Assert.Equal(AgentBoundaryErrors.CodePrefix + shapeKey, shape.Code);
+        Assert.Equal(sentence, shape.Refusal.MessageAr);
+    }
+
+    /// <summary>والجدول أعلاه يغطّي الأشكال كلّها — لا ستّةً منها.</summary>
+    [Fact]
+    public void جدول_الجُمل_يغطّي_كل_شكلٍ_في_القائمة_المغلقة()
+    {
         Assert.Equal(
-            "لا أُرسل رقم الهوية أو الإقامة إلى النموذج. اكتبه في حقله على الشاشة.",
-            only.MessageAr);
+            AgentOutboundScrubber.Shapes.Select(static shape => shape.Key).Order(StringComparer.Ordinal),
+            Sentences.Select(static row => row.Key).Order(StringComparer.Ordinal));
     }
 
     [Fact]

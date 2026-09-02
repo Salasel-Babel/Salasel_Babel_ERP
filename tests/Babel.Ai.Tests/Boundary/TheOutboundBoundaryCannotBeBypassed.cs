@@ -99,6 +99,26 @@ public sealed class TheOutboundBoundaryCannotBeBypassed
             typeof(AgentScrubVerdict).GetProperties(),
             property => property.PropertyType == typeof(string));
 
+        // ‏**والظرفُ لا يُختم على موضعٍ لا وجود له.** «مسارٌ خامس يُضاف عضواً ولا يُلتفّ
+        // حوله» كانت جملةً توثيقية: `Seal((AgentOutboundPartKind)99, …)` كان ينجح ويحمل
+        // الظرفُ القيمةَ غير المعرَّفة، فيصير النوعُ الوحيد المقصود أن يكون بنيوياً
+        // اصطلاحاً كغيره.
+        foreach (int undefined in new[] { 0, 6, 99, -1 })
+        {
+            Result<AgentOutboundEnvelope> sealed_ =
+                AgentOutboundBoundary.Seal((AgentOutboundPartKind)undefined, "نصّ لا معرّف فيه");
+
+            Assert.True(sealed_.IsFailure, "موضعٌ غير معرَّف عبر: " + undefined);
+            Assert.Equal(
+                AgentBoundaryErrors.OutboundPartKindUndefined.Code,
+                Assert.Single(sealed_.Errors).Code);
+        }
+
+        foreach (AgentOutboundPartKind defined in Enum.GetValues<AgentOutboundPartKind>())
+        {
+            Assert.True(AgentOutboundBoundary.Seal(defined, "نصّ لا معرّف فيه").IsSuccess);
+        }
+
         // ‏«لا نوع يحمله» تُقاس على الأنواع لا على النصّ: التوثيق يسمّي المرفوض باسمه
         // اللاتيني عمداً كي يجده من يبحث عنه، والحارس يقرأ الأعضاء لا التعليقات.
         foreach (Type type in typeof(AgentOutboundBoundary).Assembly.GetTypes()

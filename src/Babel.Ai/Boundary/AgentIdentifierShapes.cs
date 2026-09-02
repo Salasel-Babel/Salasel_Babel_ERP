@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Babel.Ai.Voice;
 
 namespace Babel.Ai.Boundary;
 
@@ -35,12 +36,12 @@ public static partial class AgentIdentifierShapes
     /// </summary>
     public static AgentIdentifierShape Iban { get; } = new(
         "iban", IbanPattern(), AgentBoundaryErrors.Iban,
-        tolerance: AgentSplitTolerance.WhitespaceAndDashes, isCatchAll: false);
+        tolerance: AgentSplitTolerance.AnchoredSeparators, isCatchAll: false);
 
     /// <summary>رقم تسجيل ضريبي: خمس عشرة خانة، أولاها <c>3</c> وآخرها <c>3</c>.</summary>
     public static AgentIdentifierShape Vat { get; } = new(
         "vat", VatPattern(), AgentBoundaryErrors.Vat,
-        tolerance: AgentSplitTolerance.WhitespaceAndDashes, isCatchAll: false);
+        tolerance: AgentSplitTolerance.AnchoredSeparators, isCatchAll: false);
 
     /// <summary>
     /// عشر خانات ليست هويةً (‏<c>1</c>/<c>2</c>) ولا جوّالاً (‏<c>05</c>): سجلٌّ تجاري
@@ -53,7 +54,7 @@ public static partial class AgentIdentifierShapes
     /// <summary>جوّال سعودي: <c>05…</c> أو <c>+966 5…</c> أو <c>00966 5…</c>.</summary>
     public static AgentIdentifierShape Phone { get; } = new(
         "phone", PhonePattern(), AgentBoundaryErrors.Phone,
-        tolerance: AgentSplitTolerance.WhitespaceAndDashes, isCatchAll: false);
+        tolerance: AgentSplitTolerance.AnchoredSeparators, isCatchAll: false);
 
     /// <summary>
     /// الشبكة الأخيرة: تسع خانات متّصلة فأكثر لم يُطالب بها شكلٌ مُسمّى.
@@ -69,7 +70,7 @@ public static partial class AgentIdentifierShapes
     /// وهي الشكل السابع الذي لا يذكره جدول التصميم في صفٍّ مستقلّ وتذكره حاشيته.
     /// </summary>
     public static AgentIdentifierShape MaskedValue { get; } = new(
-        "masked_value", MaskedValuePattern(), AgentBoundaryErrors.MaskedValue,
+        "masked_value", BuildMaskPattern(), AgentBoundaryErrors.MaskedValue,
         tolerance: AgentSplitTolerance.None, isCatchAll: false);
 
     /// <summary>الأشكال بترتيبها المُلزِم: المُسمّاة الستّ، ثم القناع.</summary>
@@ -108,6 +109,25 @@ public static partial class AgentIdentifierShapes
     [GeneratedRegex(@"(?<![0-9])[0-9]{9,}(?![0-9])", RegexOptions.CultureInvariant)]
     private static partial Regex DigitRunPattern();
 
-    [GeneratedRegex(@"•{4}", RegexOptions.CultureInvariant)]
-    private static partial Regex MaskedValuePattern();
+    /// <summary>
+    /// <b>نمط القناع يُبنى من <c>VoiceDisclosure.MaskPrefix</c> نفسه، ولا يُكتب حرفياً.</b>
+    /// <para>
+    /// كان النمط <c>•{4}</c> مكتوباً بيده بينما القناع يُنشئه ذلك الثابت — فكان الحارس
+    /// <b>أحاديّ الاتجاه</b>: تغييرُ القناع يُحمِّر الاختبار، وتغييرُ النمط لا يُحمِّر
+    /// شيئاً. وبناؤه من الثابت يجعل الاتجاهين واحداً: لا يبقى للنمط وجودٌ مستقلّ يُحرَّر.
+    /// </para>
+    /// <para>
+    /// <b>ويحتمل الفراغ بين محارف القناع</b>: <c>«• • • •1234»</c> قناعٌ عند من يقرؤه،
+    /// وكان يعبر نظيفاً. والنصّ الذي بينه حروفٌ — <c>«• بند أول • بند ثانٍ»</c> — لا
+    /// يطابق، فالثمن معدوم.
+    /// </para>
+    /// </summary>
+    private static Regex BuildMaskPattern()
+    {
+        string pattern = string.Join(
+            @"\s*",
+            VoiceDisclosure.MaskPrefix.Select(static unit => Regex.Escape(unit.ToString())));
+
+        return new Regex(pattern, RegexOptions.CultureInvariant);
+    }
 }

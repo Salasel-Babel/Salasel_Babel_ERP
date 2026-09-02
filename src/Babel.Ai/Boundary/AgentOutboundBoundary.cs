@@ -43,6 +43,21 @@ public static class AgentOutboundBoundary
         {
             ArgumentNullException.ThrowIfNull(draft);
 
+            // ‏**موضعٌ خارج المفردات المغلقة يُرفض ولا يُختم.** «مسارٌ خامس يُضاف عضواً ولا
+            // يُلتفّ حوله» كانت جملةً توثيقية على النوع الوحيد المفروض أن يكون بنيوياً:
+            // ‏`Seal((AgentOutboundPartKind)99, text)` كان ينجح ويحمل الظرفُ القيمةَ غير
+            // المعرَّفة. وقاعدة هذا المستودع «ارفض ولا تخترع افتراضاً» — فلا يُقرأ 99
+            // «دور مستخدم» ولا يُطوى صامتاً.
+            if (!Enum.IsDefined(draft.Kind))
+            {
+                if (seen.Add(AgentBoundaryErrors.OutboundPartKindUndefined.Code))
+                {
+                    errors.Add(AgentBoundaryErrors.OutboundPartKindUndefined);
+                }
+
+                continue;
+            }
+
             AgentScrubVerdict verdict = AgentOutboundScrubber.Inspect(draft.Text);
 
             if (verdict.IsClean)

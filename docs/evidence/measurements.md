@@ -8,7 +8,7 @@
 > فأضِفه هنا بالشروط نفسها بعد قياسه — سجلٌّ ناقص يعني عملاً مُكرَّراً بعد سنتين.
 >
 > **الوثائق الشقيقة:** [`README.md`](README.md) فهرس قاعدة الأدلة وترتيب القراءة ·
-> [`traps.md`](traps.md) **الأعطال** (‏166 فخّاً، و§8 قائمة ما قبل الدمج) ·
+> [`traps.md`](traps.md) **الأعطال** (‏167 فخّاً، و§8 قائمة ما قبل الدمج) ·
 > [`refuted.md`](refuted.md) **ما دُحض** (‏16 ادّعاءً، وما بقي من كلٍّ منها) ·
 > [`verification-debt.md`](verification-debt.md) **ما لا نعرفه** (‏47 مجهولاً لا يُبنى عليها) ·
 > [`../decisions/README.md`](../decisions/README.md) **القرارات** المبنية على كل ما سبق.
@@ -1311,6 +1311,183 @@ node scripts/align-audit.mjs --no-build --no-shots \
 اتّجاهين لا أربع لغات، **والأردية بخطّ النستعليق أطولُ سطراً وأعلى** فهي الحدّ الأقصى لا
 الحالة النادرة. وصفوفُ بطاقات الإحصاء (`stackRows`) على الشاشات الأربع: الخادم الوهمي لا
 يخدم أبواب هذه المستندات، فلا يصل مستندٌ تُعرض مجاميعه.
+
+---
+
+### 3-ل · المقاولات والعقارات: الفجوة المقيسة، واستقامةُ الصفّ في الشاشات الأربع الجديدة — 2026-09-02
+
+> القرار: [ADR-جديد: عددُ نماذج الكتابة هو ما يقسّم الشاشة](../decisions/ADR-0080-the-write-form-count-splits-the-screen.md)
+> · والقاعدة التي يطبّقها: [ADR-0077](../decisions/ADR-0077-one-screen-per-hand-not-per-door.md)
+> · والأساس البنيوي: [ADR-0067: الصفُّ يملك المسارات](../decisions/ADR-0067-the-row-owns-the-tracks.md).
+
+#### أ) الفجوة كما هي، لا كما تُظنّ
+
+**أمر القياس** (من `web/src`، ويُعيد الجدول أدناه حرفاً):
+
+```bash
+for fn in addChangeOrder readChangeOrder addCostCenter renameCostCenter suspendCostCenter \
+          addGuarantee readGuarantee listProjects addProject readProject \
+          createProperty readProperty createUnit createLessee readLessee \
+          createPropertyOwner readPropertyOwner draftRentInvoice readRentInvoice \
+          postRentInvoice draftTenantReceipt readTenantReceipt allocateTenantReceipt \
+          postTenantReceipt draftSubcontractorAdvance readSubcontractorAdvance \
+          postSubcontractorAdvance readRetentionCollection readRetentionRelease; do
+  printf '%-32s %s\n' "$fn" "$(grep -rl "\b$fn\b" --include=*.tsx --include=*.ts . \
+      | grep -v 'api/generated' | tr '\n' ' ')"
+done
+```
+
+| ما قيس | الرقم | الوسم |
+|---|---|---|
+| عمليات العقارات في الطلب التي **لها سطحٌ يعمل** قبل هذا الفرع | **14 من 14** | مقيس |
+| عمليات المقاولات في الطلب التي **لا يبلغها شيء** | **6** (`readChangeOrder` · `readProject` · `readSubcontractorAdvance` · `addCostCenter` · `renameCostCenter` · `suspendCostCenter`) | مقيس |
+| عملياتٌ **تُنطَق ولا تُرى** (في فهرس الأمر المنطوق وحده) | **1** (`addGuarantee`) | مقيس |
+| أبوابُ قراءةٍ يتيمة أخرى وُجدت أثناء المسح | **2** (`readRetentionCollection` · `readRetentionRelease`) | مقيس |
+
+**ومراكزُ التكلفة ليست من القسمين** — والأمر يُعيد الرقم:
+
+```bash
+node -e "const s=require('./contracts/openapi/v1.json');
+ const hit=Object.entries(s.components.schemas)
+   .filter(([n,sc])=>/costCenter/i.test(JSON.stringify(sc))||/costcenter/i.test(n)).map(([n])=>n);
+ console.log(hit.join('\n'));"
+```
+
+| ما قيس | الرقم/النتيجة | الوسم |
+|---|---|---|
+| مخطّطاتٌ في العقد تذكر `costCenter` | `CompanySetup` · `CostCenter` · `CostCenterNameRequest` · `SuspendCostCenterRequest` · `HrEmployee` · `HrEmployeeRequest` · `HrPayslip` · `ExpenseBillRequest` · `PurchaseOrderRequest` · `InitialiseCompanySetupRequest` · `Scope` · `SessionCompany` | مقيس |
+| منها **مخطّطُ مقاولاتٍ أو عقارات** | **صفر** | مقيس |
+| ما تُعيده أبوابُ مراكز التكلفة الثلاثة | `CompanySetup` — الثلاثة | مقيس |
+
+#### ب) الملاحة اليدوية — الحارس الذي كان يفحص قسماً واحداً
+
+```bash
+# من جذر المستودع، على أساس هذا الفرع (dde8cc8) ثم عليه:
+git show dde8cc8:web/src/app/shell/sections.ts | grep -oE '\{ path: "[^"]+"' \
+  | sed 's/.*path: "//; s/"//' | sort -u > /tmp/b-screens.txt
+git show dde8cc8:web/src/app/App.tsx | grep -oE '<Link to="[^"]+"' \
+  | sed 's/.*to="//; s/"//' | sort -u > /tmp/b-nav.txt
+comm -23 /tmp/b-screens.txt /tmp/b-nav.txt | wc -l
+```
+
+| ما قيس | قبل | بعد | الوسم |
+|---|---|---|---|
+| شاشاتٌ في `SCREENS` بلا رابطٍ في الملاحة اليدوية | **14 من 32** | **7 من 39** | مقيس |
+| منها في المقاولات والعقارات | **7** | **0** | مقيس |
+| منها في المبيعات والمشتريات (خارج ملكيّة هذا الفرع) | **7** | **7** | مقيس |
+
+> **والبناء كان أخضر طوال ذلك.** الاختبار الذي يبدو حارساً عامّاً
+> (`hr-screens.test.tsx` · «كل شاشة … لها رابطٌ في قائمة الملاحة اليدوية») يرشّح
+> `section === "hr"` في سطره الرابع، فلا يرى شيئاً خارج قسمه —
+> [فخ-جديد](traps.md#fakh-a-section-scoped-guard-reads-as-a-universal-one).
+
+#### ج) استقامة الصفّ — المسح الساكن
+
+**أمر القياس** (من `web/`؛ ويسبقه بناءٌ **ناجح** — انظر
+[`traps.md#fakh-a-no-build-measurement-reads-the-previous-build`](traps.md#fakh-a-no-build-measurement-reads-the-previous-build)):
+
+```
+npm run build > /tmp/build.log 2>&1; rc=$?; test $rc -eq 0 || { echo "البناء سقط"; exit 1; }
+node scripts/align-audit.mjs --no-build --no-shots \
+  --locales ar,en --widths 1024,1440 --web-port 5461 --mock-port 5462
+```
+
+والأرقام أدناه **مقصورة على الشاشات الأربع الجديدة** (`/contracting/change-orders` ·
+`/contracting/guarantees` · `/contracting/advances` · `/realestate/parties`)، مستخرجةً من
+`artifacts/align/align-report.json`، ومقياس الانحراف `max` داخل الصفّ الواحد بعتبة نصف بكسل.
+
+| المقياس | ar-1440 | ar-1024 | en-1440 | en-1024 | الوسم |
+|---|---|---|---|---|---|
+| صفوف الصفحة المقيسة | 11 | 9 | 11 | 9 | مقيس |
+| **حافّة أعلى التحكّم** منحرفة | **0** | **0** | **0** | **0** | مقيس |
+| **خطّ قاعدة التسمية** منحرف | **0** | **0** | **0** | **0** | مقيس |
+| **كتلة الوصف** منحرفة | **0** | **0** | **0** | **0** | مقيس |
+| قاعُ الحقل مسنَّن (‏gutter) | **0** | **0** | **0** | **0** | مقيس |
+| **قاعُ الحبر** منحرف (ما تراه العين) | **0** | **0** | **0** | **0** | مقيس |
+
+#### د) استقامة الصفّ — المسبار، لأن صفرًا من صفر ليس دليلاً
+
+نموذجا **أمرِ التغيير** و**الدفعة المقدمة** لا يُرسَمان لزائرٍ أوّل: أحدهما خلف عقدٍ
+مختار والآخر خلف عقد باطن. فالمسح الساكن يقرأ لهما `rows=0` ويطبع `broken=0` — وهو
+**عمى يُقرأ نجاحاً** (فخ-43). و`web/tests/align-probe.mjs` يبلغهما بأجوبةٍ مطابقة للعقد،
+**ويقيس بدالّة القياس نفسها تُقرأ من `scripts/align-audit.mjs` نصّاً** فلا تنحرف نسخةٌ
+ثانية، **ويخرج بالرمز 2 إن لم يقرأ صفّاً واحداً**.
+
+```
+node tests/align-probe.mjs --web-port 5463 --mock-port 5464
+```
+
+| المقياس (نموذجان × أربعة ممرّات) | القيمة | الوسم |
+|---|---|---|
+| صفوفٌ مقيسة | **18** | مقيس |
+| صفوفٌ منكسرة (حافّة التحكّم أو قاع الحبر) | **0** | مقيس |
+| أقصى انحراف | **0.00px** | مقيس |
+
+#### هـ) الشاهد السلبي — والقاعدة معطَّلةٌ في القسمين وحدهما
+
+القاعدة المُعطِّلة كُتبت في `screens/contracting/contracting.css` و`screens/realestate/realestate.css`
+(‏وهما ملفّا القسمين) ونطاقُها `[data-section="…"]` الذي يكتبه الهيكل، فلا تمسّ شاشةً خارجهما؛
+ثم نُزعت وأُعيد البناء والقياس، فعاد الصفر في المقياسين معاً.
+
+```css
+[data-section="contracting"] :is(.grid,.filterbar,.con-line) > :is(.field,.rowctl):not(.field--inline){
+  display:flex !important; flex-direction:column;
+  grid-template-rows:none !important; justify-content:flex-end;
+}
+```
+
+| المقياس (الشاشات الأربع · المسح الساكن) | ar-1440 | ar-1024 | en-1440 | en-1024 | الوسم |
+|---|---|---|---|---|---|
+| صفوف الصفحة المقيسة | 11 | 9 | 11 | 9 | مقيس |
+| **حافّة أعلى التحكّم** منحرفة | **9 · 1.34px** | **9 · 19.73px** | **9 · 19.73px** | **9 · 19.73px** | مقيس |
+| خطّ قاعدة التسمية منحرف | **9 · 1.34px** | **9 · 19.73px** | **9 · 19.73px** | **9 · 19.73px** | مقيس |
+| كتلة الوصف منحرفة | 0 | **4 · 18.39px** | **3 · 18.39px** | **3 · 18.39px** | مقيس |
+| قاعُ الحقل مسنَّن | 0 | **4 · 18.39px** | **3 · 18.39px** | **3 · 18.39px** | مقيس |
+
+| المقياس (المسبار) | القيمة | الوسم |
+|---|---|---|
+| صفوفٌ مقيسة | **18** | مقيس |
+| صفوفٌ منكسرة | **12** | مقيس |
+| أقصى انحراف | **38.13px** (‏`/contracting/change-orders` عند `en-1024`) | مقيس |
+
+**وثلاث قراءات لا تُطوى في رقم:**
+
+1. **الشاهد السلبي يسقط، فالفحص يقيس شيئاً.** والمسبار يخرج بالرمز 1 لا 0 — أي أنه
+   **رُئي ساقطاً**، وهو شرط أن يعني صفرُه شيئاً.
+2. **وقاعُ الحبر يبقى صفراً في الشاهد السلبي، ولا يُقرأ نجاحاً.** ‏`justify-content:flex-end`
+   يُلصق حبر كلّ حقلٍ بقاعه فيستوي القاع **ويرتفع التحكّم** — وهو ما وصفه ADR-0067 حرفاً:
+   محاذاةُ `end` تُنزل العطل من القاع إلى الحافّة العليا ولا تُزيله.
+3. **وأثرُ العلاج التحريري على المنتج كلّه.** عددُ صفوف المنتج التي قاعُ حبرها مسنَّن نزل
+   من **17/78** إلى **13/78** عند `en-1024`، بوصفٍ أُضيف لكلّ خليّةٍ في صفٍّ كانت إحدى
+   خلاياه بلا وصف: **61.17px** على `/realestate` (صفُّ الوحدة: «معرّف العقار» بوصفٍ من
+   ثلاثة أسطر إلى جانب «الرمز» بلا وصف)، و**42.78px** على لوح الأطراف. وأقصى قاعِ حبرٍ في
+   المنتج بقي **79.56px** كما كان — على `/realestate/lease` و`/design`، **لا على شاشةٍ من
+   هذا التسليم**.
+
+**وما لم يُقَس هنا:** الأردية والهندية (‏الممرّان `ur` و`hi`) — القياس اقتصر على اتّجاهين
+لا أربع لغات. وصفوفُ `/contracting/advances` في المسح الساكن (‏صفر صفّ، وهو سببُ وجود
+المسبار). وقيمُ بطاقات الإحصاء، لأن الخادم الوهمي لا يخدم أبواب هذه المستندات.
+
+#### و) البوّابة — الرمز والمُخرَج
+
+```bash
+export PATH=$PATH:/usr/lib/dotnet
+MSBUILDDISABLENODEREUSE=1 DOTNET_CLI_USE_MSBUILD_SERVER=0 \
+  flock -o /tmp/babel-gate.lock tools/gate/run.sh --no-isolation --with-frontend \
+  > /tmp/gate-con-re.log 2>&1; rc=$?; echo "GATE_EXIT=$rc"
+```
+
+| ما قيس | الرقم | الوسم |
+|---|---|---|
+| رمز خروج البوّابة | **0** | مقيس |
+| أسطحُ dotnet التي أنتجت تقريراً عند أرضيتها أو فوقها | **21 من 21**، بصفر إخفاق | مقيس |
+| مجموعُ اختبارات dotnet المنفَّذة | **2012** | مقيس |
+| منها حدودُ المعمارية | **248** (‏الأرضية 205) | مقيس |
+| اختباراتُ الواجهة | **535** (‏الأرضية 402)، بصفر إخفاق | مقيس |
+| ممرّاتُ استقامةِ الصفّ في `playwright` | **8 من 8** خضراء | مقيس |
+
+> **و`flock -o` ليس زينة:** أساطيلُ أخرى على الآلة نفسها وقاعدةِ PostgreSQL نفسها،
+> و`--no-isolation` يعني أنها تتقاسم القاعدة (‏فخ-160).
 
 ---
 

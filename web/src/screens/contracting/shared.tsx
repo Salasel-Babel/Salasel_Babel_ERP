@@ -23,13 +23,15 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { listProjects } from "../../api/generated/client";
+import { asMagnitude } from "../../api/generated/brands";
+import { Money } from "../../api/money";
 import { SCHEMA_Magnitude_RE, SCHEMA_Money_RE, SCHEMA_Rate_RE } from "../../api/generated/formats";
-import type { NameValue, PendingPolicyItem, Project, ProjectsDocument } from "../../api/generated/types";
+import type { BoqItemRequest, NameValue, PendingPolicyItem, Project, ProjectsDocument } from "../../api/generated/types";
 import { useApi } from "../../app/api-context";
 import { ProblemPanel } from "../../app/shell/ProblemPanel";
 import { resolveTranslatedName } from "../../app/translated-name";
-import { useLocale, useT } from "../../i18n/react";
-import { Button, EmptyState, MOTION, Panel, RefusalPanel, StatusBadge, useMoment } from "../../ui";
+import { Num, useLocale, useT } from "../../i18n/react";
+import { Button, EmptyState, Field, MOTION, Panel, RefusalPanel, StatusBadge, useMoment } from "../../ui";
 import { selectContracting, type ContractingSelection } from "./selection";
 import "./contracting.css";
 
@@ -93,13 +95,22 @@ export function NeedsCompany(): ReactNode {
 /* ══════════════════════════════════════════════ ٣ · رأس الشاشة */
 
 /**
- * شاشات القسم الأربع بمساراتها — والملاحة بينها داخل القسم، لا في هيكل
+ * شاشات القسم السبع بمساراتها — والملاحة بينها داخل القسم، لا في هيكل
  * التطبيق: شاشاتُ قسمٍ تُقرأ معاً، ورفعُها إلى الملاحة العامّة يُغرقها.
+ *
+ * **والترتيب ترتيبُ العمل لا ترتيبُ الحروف** (ADR-0077 §3): ما يُسجَّل مرّةً
+ * (المشروع وعقده) ← ما يغيّر نطاقه ← ما يُوثَّق عليه قبل أن يتحرّك مال ←
+ * المستخلص ← الباطن ← دفعته المقدمة ← ما يُحتجز ويُطابَق عند الإقفال.
+ * وهذا الترتيب **واحدٌ في ثلاثة مواضع**: `SCREENS`، وهذا الشريط، وقائمة
+ * الملاحة اليدوية في `App.tsx` — وعليه حارس.
  */
 const CONTRACTING_SCREENS = [
   { path: "/contracting", key: "contracting.nav.register" },
+  { path: "/contracting/change-orders", key: "contracting.nav.changeOrders" },
+  { path: "/contracting/guarantees", key: "contracting.nav.guarantees" },
   { path: "/contracting/certificate", key: "contracting.nav.certificate" },
   { path: "/contracting/subcontracting", key: "contracting.nav.subcontracting" },
+  { path: "/contracting/advances", key: "contracting.nav.advances" },
   { path: "/contracting/retention", key: "contracting.nav.retention" },
 ] as const;
 
@@ -513,4 +524,199 @@ export function ExplainedEmpty(props: {
   readonly testId?: string;
 }): ReactNode {
   return <EmptyState title={props.title} body={props.body} action={props.action} testId={props.testId} />;
+}
+
+
+/* ═══════════════════════ ١١ · محرّر بنود جدول الكميات — نسخةٌ واحدة
+
+   **ولماذا هنا لا في شاشة.** البنود تُكتب في موضعين: عند تسجيل العقد
+   (`/contracting`) وعند تسجيل أمرٍ تغييري (`/contracting/change-orders`) —
+   وهما شاشتان منذ ADR-جديد. ونسختان من محرّرٍ واحد تنحرفان عند أول تعديل على
+   نحو الكمّية أو على سعر الوحدة، فيقبل أحدهما ما يرفضه الآخر **والخادم واحد**.
+
+   وكلُّ قيمةٍ فيه نصٌّ حتى لحظة الإرسال: الكمّية مقياسها ستٌّ وسعر الوحدة
+   أربع، و`Number` يفقد الخانة الأخيرة في كليهما. */
+
+/** بندٌ كما يُحرَّر — كل قيمةٍ نصٌّ حتى لحظة الإرسال. */
+export interface DraftItem {
+  key: string;
+  code: string;
+  descriptionAr: string;
+  magnitude: string;
+  unit: string;
+  unitRate: string;
+}
+
+let itemSequence = 0;
+
+/** بندٌ محرَّرٌ جديد فارغ، بمفتاحٍ لا يتكرّر. */
+export function newItem(): DraftItem {
+  itemSequence += 1;
+  return { key: "b" + String(itemSequence), code: "", descriptionAr: "", magnitude: "", unit: "", unitRate: "" };
+}
+
+/**
+ * هل البند مكتمل بالنحو المنشور؟
+ * @param item البند كما حُرّر.
+ */
+export function itemReady(item: DraftItem): boolean {
+  return (
+    item.code !== "" &&
+    item.descriptionAr !== "" &&
+    isMagnitudeText(item.magnitude) &&
+    item.unit !== "" &&
+    isMoneyText(item.unitRate)
+  );
+}
+
+/**
+ * يرمّز بنداً محرَّراً إلى شكله في العقد المنشور.
+ * @param item البند كما حُرّر.
+ */
+export function toBoqRequest(item: DraftItem): BoqItemRequest {
+  return {
+    code: item.code,
+    descriptionAr: item.descriptionAr,
+    contractQuantity: { magnitude: asMagnitude(item.magnitude), unit: item.unit },
+    unitRate: Money.wire(item.unitRate),
+  };
+}
+
+/**
+ * محرّر بنود — يُستعمل في تسجيل العقد وفي الأمر التغييري بلا نسخة ثانية.
+ * @param props البنود وما يغيّرها.
+ */
+export function BoqEditor(props: {
+  readonly items: readonly DraftItem[];
+  readonly onChange: (next: DraftItem[]) => void;
+  readonly idPrefix: string;
+}): ReactNode {
+  const { t } = useT();
+  const { items, onChange, idPrefix } = props;
+
+  const patch = (key: string, change: Partial<DraftItem>) => {
+    onChange(items.map((item) => (item.key === key ? { ...item, ...change } : item)));
+  };
+
+  return (
+    <div className="con-lines" data-testid={idPrefix + "-lines"}>
+      {items.map((item, index) => (
+        <fieldset key={item.key} className="con-line" data-testid={idPrefix + "-line"}>
+          <legend className="k">
+            <Num value={index + 1} />
+          </legend>
+          <Field
+            id={idPrefix + "-code-" + item.key}
+            label={t("contracting.boq.code")}
+            hint={t("contracting.boq.codeHint")}
+            required
+          >
+            <input
+              id={idPrefix + "-code-" + item.key}
+              className="ctl mono"
+              dir="ltr"
+              autoComplete="off"
+              value={item.code}
+              onChange={(e) => patch(item.key, { code: e.target.value })}
+            />
+          </Field>
+          <Field
+            id={idPrefix + "-desc-" + item.key}
+            label={t("contracting.boq.description")}
+            hint={t("contracting.boq.descriptionHint")}
+            required
+          >
+            <input
+              id={idPrefix + "-desc-" + item.key}
+              className="ctl"
+              lang="ar"
+              value={item.descriptionAr}
+              onChange={(e) => patch(item.key, { descriptionAr: e.target.value })}
+            />
+          </Field>
+          <Field
+            id={idPrefix + "-qty-" + item.key}
+            label={t("contracting.boq.contractQuantity")}
+            hint={
+              item.magnitude === "" || isMagnitudeText(item.magnitude)
+                ? t("contracting.common.quantityHint")
+                : t("contracting.common.quantityBad")
+            }
+            required
+          >
+            <input
+              id={idPrefix + "-qty-" + item.key}
+              className={"ctl amt-input" + (item.magnitude !== "" && !isMagnitudeText(item.magnitude) ? " is-invalid" : "")}
+              inputMode="decimal"
+              dir="ltr"
+              autoComplete="off"
+              aria-invalid={item.magnitude !== "" && !isMagnitudeText(item.magnitude)}
+              value={item.magnitude}
+              onChange={(e) => patch(item.key, { magnitude: e.target.value })}
+              placeholder="0.000000"
+            />
+          </Field>
+          <Field
+            id={idPrefix + "-unit-" + item.key}
+            label={t("contracting.common.unit")}
+            hint={t("contracting.boq.unitRowHint")}
+            required
+          >
+            <input
+              id={idPrefix + "-unit-" + item.key}
+              className="ctl mono"
+              dir="ltr"
+              autoComplete="off"
+              value={item.unit}
+              onChange={(e) => patch(item.key, { unit: e.target.value })}
+              placeholder="M3"
+            />
+          </Field>
+          <Field
+            id={idPrefix + "-rate-" + item.key}
+            label={t("contracting.boq.unitRate")}
+            hint={
+              item.unitRate === "" || isMoneyText(item.unitRate)
+                ? t("contracting.common.moneyHint")
+                : t("contracting.common.moneyBad")
+            }
+            required
+          >
+            <input
+              id={idPrefix + "-rate-" + item.key}
+              className={"ctl amt-input" + (item.unitRate !== "" && !isMoneyText(item.unitRate) ? " is-invalid" : "")}
+              inputMode="decimal"
+              dir="ltr"
+              autoComplete="off"
+              aria-invalid={item.unitRate !== "" && !isMoneyText(item.unitRate)}
+              value={item.unitRate}
+              onChange={(e) => patch(item.key, { unitRate: e.target.value })}
+              placeholder="0.0000"
+            />
+          </Field>
+          <div className="con-line__wide inline-group">
+            <Button
+              label={t("contracting.common.removeLine")}
+              kind="danger"
+              size="sm"
+              disabled={items.length <= 1}
+              onClick={() => onChange(items.filter((x) => x.key !== item.key))}
+            />
+          </div>
+        </fieldset>
+      ))}
+      <button
+        type="button"
+        className="addline"
+        data-testid={idPrefix + "-add-line"}
+        onClick={() => onChange([...items, newItem()])}
+      >
+        {t("contracting.common.addLine")}
+      </button>
+      {/* الشرحُ الطويل تحت الصفّ لا داخل خليّة منه: خمسُ خلايا في صفٍّ واحد
+          وأحدُ أوصافها ثلاثةُ أضعاف جيرانه يترك قاعَ حبرٍ متعرّجاً — والعلاج
+          تحريريٌّ لا بنيويّ (ADR-0077 · ما قِيس). */}
+      <p className="muted">{t("contracting.boq.unitHint")}</p>
+    </div>
+  );
 }

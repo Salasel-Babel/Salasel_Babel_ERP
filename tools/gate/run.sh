@@ -159,7 +159,7 @@ if command -v node >/dev/null 2>&1; then
     ( cd web && node scripts/generate-client.mjs --check ) || fail "العميل المُولَّد يخالف العقد المنشور (web: gen:check)"
     ( cd web && node scripts/audit.mjs )                   || fail "فحص التدويل والاتجاه (web: audit:i18n)"
     ( cd web && node scripts/contrast.mjs --quiet )        || fail "عتبة التباين WCAG AA (web: contrast)"
-    ( cd web && node scripts/numerals.mjs >/dev/null )     || fail "رسم الأرقام ووجه المِحرف (web: numerals)"
+    ( cd web && node scripts/numerals.mjs )                || fail "رسم الأرقام ووجه المِحرف (web: numerals)"
 else
     printf '── node غير موجود: فحوص الواجهة الساكنة لم تُشغَّل. وهذا نقصُ تغطية لا نجاح.\n'
 fi

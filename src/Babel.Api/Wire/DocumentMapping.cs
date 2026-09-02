@@ -592,6 +592,82 @@ internal static class DocumentMapping
             balance.HasCostBasis);
     }
 
+    /// <summary>يقرأ طلب تسجيل وحدة قياس من السلك.</summary>
+    /// <param name="dto">الحمولة.</param>
+    public static InventoryUnitRequest ToUnitRequest(UnitOfMeasureRequestDto dto)
+    {
+        ArgumentNullException.ThrowIfNull(dto);
+
+        return new InventoryUnitRequest(
+            WireMapping.ReadRequiredText(dto.Code, "code", UnitLength),
+            WireMapping.ReadLocalized(dto.Name, "name"),
+            WireMapping.ReadRequiredText(dto.QuantityClass, "quantityClass", ClassificationLength));
+    }
+
+    /// <summary>يقرأ طلب تسجيل معامل تحويل من السلك.</summary>
+    /// <param name="dto">الحمولة.</param>
+    public static InventoryUnitConversionRequest ToUnitConversionRequest(UnitConversionRequestDto dto)
+    {
+        ArgumentNullException.ThrowIfNull(dto);
+
+        return new InventoryUnitConversionRequest(
+            WireMapping.ReadRequiredText(dto.FromUnit, "fromUnit", UnitLength),
+            WireMapping.ReadRequiredText(dto.ToUnit, "toUnit", UnitLength),
+            ReadFactor(dto.Numerator, "numerator"),
+            ReadFactor(dto.Denominator, "denominator"));
+    }
+
+    /// <summary>يقرأ طلب تجربة تحويل من السلك.</summary>
+    /// <param name="dto">الحمولة.</param>
+    public static InventoryConversionTrialRequest ToConversionTrialRequest(ConversionTrialRequestDto dto)
+    {
+        ArgumentNullException.ThrowIfNull(dto);
+        ArgumentNullException.ThrowIfNull(dto.Quantity);
+
+        return new InventoryConversionTrialRequest(
+            new InventoryMeasure(
+                WireNumbers.ParseStrict(dto.Quantity.Magnitude.Raw, WireNumbers.QuantityScale, "quantity.magnitude"),
+                WireMapping.ReadRequiredText(dto.Quantity.Unit, "quantity.unit", UnitLength)),
+            WireMapping.ReadRequiredText(dto.ToUnit, "toUnit", UnitLength));
+    }
+
+    /// <summary>ينقل وحدة قياس إلى السلك.</summary>
+    /// <param name="unit">الوحدة.</param>
+    public static UnitOfMeasureDto ToDto(InventoryUnit unit)
+    {
+        ArgumentNullException.ThrowIfNull(unit);
+        return new UnitOfMeasureDto(Id(unit.Id), unit.Code, Text(unit.Name), unit.QuantityClass, unit.IsActive);
+    }
+
+    /// <summary>ينقل معامل تحويل إلى السلك.</summary>
+    /// <param name="conversion">المعامل.</param>
+    public static UnitConversionDto ToDto(InventoryUnitConversion conversion)
+    {
+        ArgumentNullException.ThrowIfNull(conversion);
+
+        return new UnitConversionDto(
+            Id(conversion.Id),
+            conversion.FromUnit,
+            conversion.ToUnit,
+            conversion.QuantityClass,
+            conversion.Numerator,
+            conversion.Denominator);
+    }
+
+    /// <summary>ينقل نتيجة تحويل إلى السلك.</summary>
+    /// <param name="result">النتيجة.</param>
+    public static ConversionResultDto ToDto(InventoryConversionResult result)
+    {
+        ArgumentNullException.ThrowIfNull(result);
+
+        return new ConversionResultDto(
+            Measure(result.From),
+            Measure(result.To),
+            result.Numerator,
+            result.Denominator,
+            result.QuantityClass);
+    }
+
     private static MeasureDto Measure(InventoryMeasure measure) =>
         new(WireNumbers.FormatQuantity(measure.Magnitude), measure.Unit);
 

@@ -120,6 +120,110 @@ internal static class InventoryErrors
         FormattableString.Invariant(
             $"Converting magnitude {magnitude} by factor {ratio} does not divide exactly, so the result is a rounded fraction. Rounding a quantity that is multiplied by a unit cost reaches the money and accumulates on every movement. Send a magnitude divisible by the factor's denominator, or send it in the base unit."));
 
+    /// <summary>
+    /// تحويلٌ يتجاوز مدى العدد العشري — <b>يُمسَك ويُسمّى ولا يُترك يرمي</b>.
+    /// <para>
+    /// المقدار يعبر السلك بعشرين خانة صحيحة والبسط يبلغ ملياراً، وحاصلُهما يتجاوز مدى
+    /// <c>decimal</c>. واستثناءٌ غير مُمسَك يخرج خطأَ خادم 500 — أي «عطلٌ عندنا» — وهو
+    /// في الحقيقة مُدخَل مرفوض له علاجٌ يُقال.
+    /// </para>
+    /// </summary>
+    public static Error ConversionOverflows(decimal magnitude, string ratio) => new(
+        "inventory.unit_conversion_overflow",
+        FormattableString.Invariant(
+            $"تحويل المقدار {magnitude} بالمعامل {ratio} يتجاوز مدى العدد العشري المخزَّن. والرقم الذي لا يُمثَّل لا يُقرَّب ولا يُقتطع: أرسل مقداراً أصغر، أو أرسله بوحدةٍ أكبر."),
+        FormattableString.Invariant(
+            $"Converting magnitude {magnitude} by factor {ratio} exceeds the range of the stored decimal. A number that cannot be represented is neither rounded nor truncated: send a smaller magnitude, or send it in a larger unit."));
+
+    /// <summary>
+    /// تحويل بين صنفَي كمّية مختلفين — <b>وهذا ليس تحويلاً بل كثافة</b>.
+    /// </summary>
+    public static Error UnitClassMismatch(
+        string fromUnit, string fromClass, string toUnit, string toClass) => new(
+        "inventory.unit_class_mismatch",
+        $"لا تحويل بين «{fromUnit}» وهي {ClassAr(fromClass)} و«{toUnit}» وهي {ClassAr(toClass)}. "
+        + "والمعامل بين وحدتين من صنفٍ واحد واقعةٌ فيزيائية — الكيلوغرام ألف غرام دائماً — أمّا بين "
+        + "صنفين مختلفين فهو **كثافةُ مادّة** لا معامل: «كم كيلوغراماً في اللتر؟» جوابه يختلف بين "
+        + "الماء والزيت والرصاص، ويختلف للمادّة الواحدة بالحرارة. فلا يُسجَّل معاملٌ يبدو ثابتاً وهو "
+        + "خاصّيةُ مادّة، ولا يُقرَّب.",
+        $"There is no conversion between '{fromUnit}' ({ClassEn(fromClass)}) and '{toUnit}' ({ClassEn(toClass)}). "
+        + "A factor between two units of one class is a physical fact — a kilogram is a thousand grams, always — "
+        + "whereas between two classes it is a **material density**, not a factor: 'how many kilograms in a litre?' "
+        + "is answered differently for water, oil and lead, and differently for one material at different "
+        + "temperatures. A factor that looks constant but is a property of a substance is not recorded, and not rounded.");
+
+    /// <summary>وحدة قياس غير مسجَّلة في سجلّ المنشأة.</summary>
+    public static Error UnitNotRegistered(string unitCode) => new(
+        "inventory.unit_not_registered",
+        $"لا وحدة قياس بالرمز «{unitCode}» في سجلّ هذه المنشأة. "
+        + "وسجلّ الوحدات يصف ولا يُبطل — فالحركة برمزٍ غير مسجَّل تمرّ — لكن **معامل التحويل لا "
+        + "يُسجَّل بين رمزين لا يُعرَف صنف كمّيتهما**: التحويل بلا صنفٍ معلوم تقديرٌ لا حساب.",
+        $"No unit of measure with code '{unitCode}' exists in this company's register. "
+        + "The unit register describes rather than invalidates — a movement under an unregistered code still works — "
+        + "but **a conversion factor is not recorded between two codes whose quantity class is unknown**: converting "
+        + "without a known class is an estimate, not a computation.");
+
+    /// <summary>وحدة قياس مُعطَّلة.</summary>
+    public static Error UnitInactive(string unitCode) => new(
+        "inventory.unit_inactive",
+        $"وحدة القياس «{unitCode}» مُعطَّلة، فلا يُسجَّل عليها معامل جديد.",
+        $"The unit of measure '{unitCode}' is deactivated, so no new factor is recorded on it.");
+
+    /// <summary>رمز وحدة قياس مكرّر.</summary>
+    public static Error DuplicateUnitCode(string code) => new(
+        "inventory.duplicate_unit_code",
+        $"رمز وحدة القياس «{code}» مستعمَل في هذه المنشأة. والرمز هوية تحملها كل حركة، فلا يتكرّر.",
+        $"Unit of measure code '{code}' is already used in this company. The code is an identity carried by every movement, so it is never duplicated.");
+
+    /// <summary>صنف كمّية خارج الأصناف المعلَنة.</summary>
+    public static Error UnknownQuantityClass(string quantityClass, IReadOnlyList<string> known) => new(
+        "inventory.unknown_quantity_class",
+        $"صنف الكمّية «{quantityClass}» ليس من الأصناف المعلَنة: {string.Join(" · ", known)}. "
+        + "والقائمة مغلقة عمداً: صنفان مكتوبان بحرفين مختلفين يبدوان مختلفين وهما واحد، فيُرفض تحويلٌ مشروع أو يُقبل تحويلٌ مستحيل.",
+        $"Quantity class '{quantityClass}' is not one of the declared classes: {string.Join(" · ", known)}. "
+        + "The list is closed on purpose: two classes spelled differently look different while being the same, so a legitimate conversion gets refused or an impossible one accepted.");
+
+    /// <summary>معامل تحويل مكرّر بين الوحدتين نفسيهما.</summary>
+    public static Error DuplicateUnitConversion(string fromUnit, string toUnit) => new(
+        "inventory.duplicate_unit_conversion",
+        $"يوجد معامل تحويل من «{fromUnit}» إلى «{toUnit}» في هذه المنشأة. "
+        + "ومعاملان لزوجٍ واحد تعريفان متناقضان لواقعةٍ فيزيائية واحدة، ولا يُقرَّر أيّهما يُقرأ.",
+        $"A conversion factor from '{fromUnit}' to '{toUnit}' already exists in this company. "
+        + "Two factors for one pair are two contradictory definitions of one physical fact, and nothing decides which is read.");
+
+    /// <summary>لا معامل مسجَّل بين الوحدتين.</summary>
+    public static Error NoConversionBetween(string fromUnit, string toUnit) => new(
+        "inventory.no_conversion_between_units",
+        $"لا معامل تحويل مسجَّل من «{fromUnit}» إلى «{toUnit}» في هذه المنشأة. "
+        + "ولا يُشتقّ معاملٌ بسلسلةٍ من معاملين: السلسلة تُنتج تحويلاً لم يقرّه أحد، وكسرُها الوسيط "
+        + "يُقرَّب قبل أن يُضرب في الثاني. سجّل المعامل صراحةً.",
+        $"No conversion factor from '{fromUnit}' to '{toUnit}' is registered in this company. "
+        + "A factor is not derived by chaining two others: a chain produces a conversion nobody approved, and its "
+        + "intermediate fraction gets rounded before it is multiplied by the second. Register the factor explicitly.");
+
+    /// <summary>صنف كمّية بالعربية للرسائل.</summary>
+    private static string ClassAr(string quantityClass) => quantityClass switch
+    {
+        "COUNT" => "عدد",
+        "WEIGHT" => "وزن",
+        "VOLUME" => "حجم",
+        "LENGTH" => "طول",
+        _ => "مساحة",
+    };
+
+    /// <summary>
+    /// صنف كمّية بالإنجليزية — <b>نصّ تشخيصي يصحب رمزاً ثابتاً</b> لا نصّ عرض
+    /// (‏ADR-0021 §6.2): قارئه مطوّرٌ يُصلح، والرمز المعروض هو <c>Class</c> نفسه.
+    /// </summary>
+    private static string ClassEn(string quantityClass) => quantityClass switch
+    {
+        "COUNT" => "count",
+        "WEIGHT" => "weight",
+        "VOLUME" => "volume",
+        "LENGTH" => "length",
+        _ => "area",
+    };
+
     /// <summary>معامل تحويل غير موجب.</summary>
     public static Error UnitRatioNotPositive(string ratio) => new(
         "inventory.unit_ratio_not_positive",

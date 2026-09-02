@@ -37,6 +37,12 @@ internal sealed class InventoryDbContext(DbContextOptions<InventoryDbContext> op
 
     public DbSet<StockTransferRow> Transfers => Set<StockTransferRow>();
 
+    public DbSet<UnitOfMeasureRow> Units => Set<UnitOfMeasureRow>();
+
+    public DbSet<UnitOfMeasureTranslationRow> UnitNames => Set<UnitOfMeasureTranslationRow>();
+
+    public DbSet<UnitConversionRow> UnitConversions => Set<UnitConversionRow>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);
@@ -248,6 +254,54 @@ internal sealed class InventoryDbContext(DbContextOptions<InventoryDbContext> op
             entity.ToTable(table => table.HasCheckConstraint(
                 "ck_inventory_stock_transfer_distinct",
                 """ ("FromWarehouseId", "FromLocationId") <> ("ToWarehouseId", "ToLocationId") """));
+        });
+
+        modelBuilder.Entity<UnitOfMeasureRow>(entity =>
+        {
+            entity.ToTable("unit_of_measure");
+            entity.HasKey(row => row.Id);
+            entity.Property(row => row.Code).HasMaxLength(32).IsRequired();
+            entity.Property(row => row.NameAr).HasMaxLength(256).IsRequired();
+            entity.Property(row => row.Class).HasMaxLength(16).IsRequired();
+            entity.HasIndex(row => new { row.TenantId, row.Code })
+                  .IsUnique().HasDatabaseName("uq_inventory_unit_of_measure");
+
+            // ‏**صنف الكمّية مغلق**: قيمةٌ حرّة فيه تجعل «هل يجوز التحويل؟» سؤالاً
+            // بلا جواب — صنفان مكتوبان بحرفين مختلفين يبدوان مختلفين وهما واحد.
+            entity.ToTable(table => table.HasCheckConstraint(
+                "ck_inventory_unit_class",
+                """ "Class" in ('COUNT','WEIGHT','VOLUME','LENGTH','AREA') """));
+        });
+
+        modelBuilder.Entity<UnitOfMeasureTranslationRow>(entity =>
+        {
+            entity.ToTable("unit_of_measure_name_translation");
+            entity.HasKey(row => row.Id);
+            entity.Property(row => row.UnitCode).HasMaxLength(32).IsRequired();
+            entity.Property(row => row.Locale).HasMaxLength(16).IsRequired();
+            entity.Property(row => row.Text).HasMaxLength(256).IsRequired();
+            entity.HasIndex(row => new { row.TenantId, row.UnitCode, row.Locale })
+                  .IsUnique().HasDatabaseName("uq_inventory_unit_of_measure_name_translation");
+        });
+
+        modelBuilder.Entity<UnitConversionRow>(entity =>
+        {
+            entity.ToTable("unit_conversion");
+            entity.HasKey(row => row.Id);
+            entity.Property(row => row.FromUnit).HasMaxLength(32).IsRequired();
+            entity.Property(row => row.ToUnit).HasMaxLength(32).IsRequired();
+            entity.HasIndex(row => new { row.TenantId, row.FromUnit, row.ToUnit })
+                  .IsUnique().HasDatabaseName("uq_inventory_unit_conversion");
+
+            entity.ToTable(table => table.HasCheckConstraint(
+                "ck_inventory_unit_conversion_ratio_positive",
+                """ "Numerator" > 0 and "Denominator" > 0 """));
+
+            // وحدةٌ إلى نفسها معاملُها واحدٌ على واحد بالتعريف، وصفٌّ يقول غير ذلك
+            // تعريفان متناقضان لشيء واحد.
+            entity.ToTable(table => table.HasCheckConstraint(
+                "ck_inventory_unit_conversion_distinct",
+                """ "FromUnit" <> "ToUnit" """));
         });
 
         modelBuilder.Entity<InventoryPostingRow>(entity =>

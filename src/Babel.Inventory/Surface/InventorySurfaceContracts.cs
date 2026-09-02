@@ -255,3 +255,66 @@ public sealed record InventoryPlacementBalance(
     decimal Value,
     decimal UnitCost,
     bool HasCostBasis);
+
+/// <summary>طلب تسجيل وحدة قياس.</summary>
+/// <param name="Code">رمز الوحدة — هوية تحملها كل حركة، لا نصّاً معروضاً.</param>
+/// <param name="Name">الاسم ثنائي اللغة.</param>
+/// <param name="QuantityClass">صنف الكمّية: عدد · وزن · حجم · طول · مساحة.</param>
+public sealed record InventoryUnitRequest(string Code, LocalizedName Name, string QuantityClass);
+
+/// <summary>وحدة قياس كما تخرج من السطح.</summary>
+/// <param name="Id">المعرّف.</param>
+/// <param name="Code">الرمز.</param>
+/// <param name="Name">الاسم ثنائي اللغة.</param>
+/// <param name="QuantityClass">صنف الكمّية.</param>
+/// <param name="IsActive">هل هي عاملة؟</param>
+public sealed record InventoryUnit(
+    Guid Id,
+    string Code,
+    LocalizedName Name,
+    string QuantityClass,
+    bool IsActive);
+
+/// <summary>طلب تسجيل معامل تحويل بين وحدتين على مستوى المنشأة.</summary>
+/// <param name="FromUnit">الوحدة المُحوَّل منها.</param>
+/// <param name="ToUnit">الوحدة المُحوَّل إليها.</param>
+/// <param name="Numerator">البسط.</param>
+/// <param name="Denominator">المقام.</param>
+public sealed record InventoryUnitConversionRequest(
+    string FromUnit,
+    string ToUnit,
+    long Numerator,
+    long Denominator);
+
+/// <summary>معامل تحويل كما يخرج من السطح.</summary>
+/// <param name="Id">المعرّف.</param>
+/// <param name="FromUnit">الوحدة المُحوَّل منها.</param>
+/// <param name="ToUnit">الوحدة المُحوَّل إليها.</param>
+/// <param name="QuantityClass">صنف الكمّية المشترك.</param>
+/// <param name="Numerator">البسط.</param>
+/// <param name="Denominator">المقام.</param>
+public sealed record InventoryUnitConversion(
+    Guid Id,
+    string FromUnit,
+    string ToUnit,
+    string QuantityClass,
+    long Numerator,
+    long Denominator);
+
+/// <summary>طلب تجربة تحويل — <b>مسبارٌ لا يكتب شيئاً</b>.</summary>
+/// <param name="Quantity">الكمّية بوحدتها.</param>
+/// <param name="ToUnit">الوحدة المطلوب التحويل إليها.</param>
+public sealed record InventoryConversionTrialRequest(InventoryMeasure Quantity, string ToUnit);
+
+/// <summary>نتيجة تحويلٍ وقع بلا باقٍ.</summary>
+/// <param name="From">الكمّية كما سُلّمت.</param>
+/// <param name="To">الكمّية بعد التحويل — دقيقةً لا مقرَّبة.</param>
+/// <param name="Numerator">بسط المعامل المُستعمَل.</param>
+/// <param name="Denominator">مقام المعامل المُستعمَل.</param>
+/// <param name="QuantityClass">صنف الكمّية المشترك.</param>
+public sealed record InventoryConversionResult(
+    InventoryMeasure From,
+    InventoryMeasure To,
+    long Numerator,
+    long Denominator,
+    string QuantityClass);

@@ -226,3 +226,70 @@ public sealed record PlacementBalanceView(
     Money Value,
     decimal UnitCost,
     bool HasCostBasis);
+
+/// <summary>مسوّدة تسجيل وحدة قياس.</summary>
+/// <param name="Code">رمز الوحدة — هوية تحملها كل حركة، لا نصّاً معروضاً.</param>
+/// <param name="Name">الاسم ثنائي اللغة.</param>
+/// <param name="QuantityClass">صنف الكمّية: <c>COUNT</c> · <c>WEIGHT</c> · <c>VOLUME</c> · <c>LENGTH</c> · <c>AREA</c>.</param>
+public sealed record UnitOfMeasureDraft(string Code, LocalizedName Name, string QuantityClass);
+
+/// <summary>وحدة قياس كما تخرج من الوحدة.</summary>
+/// <param name="Id">المعرّف.</param>
+/// <param name="Code">الرمز.</param>
+/// <param name="Name">الاسم ثنائي اللغة.</param>
+/// <param name="QuantityClass">صنف الكمّية.</param>
+/// <param name="IsActive">هل هي عاملة؟</param>
+public sealed record UnitOfMeasureView(
+    Guid Id,
+    string Code,
+    LocalizedName Name,
+    string QuantityClass,
+    bool IsActive);
+
+/// <summary>
+/// مسوّدة معامل تحويل بين وحدتين على مستوى المنشأة.
+/// </summary>
+/// <param name="FromUnit">الوحدة المُحوَّل منها.</param>
+/// <param name="ToUnit">الوحدة المُحوَّل إليها.</param>
+/// <param name="Numerator">البسط: كم وحدةً من <paramref name="ToUnit"/> في <paramref name="Denominator"/> من <paramref name="FromUnit"/>.</param>
+/// <param name="Denominator">المقام — موجب.</param>
+public sealed record UnitConversionDraft(string FromUnit, string ToUnit, long Numerator, long Denominator);
+
+/// <summary>معامل تحويل كما يخرج من الوحدة.</summary>
+/// <param name="Id">المعرّف.</param>
+/// <param name="FromUnit">الوحدة المُحوَّل منها.</param>
+/// <param name="ToUnit">الوحدة المُحوَّل إليها.</param>
+/// <param name="QuantityClass">صنف الكمّية المشترك بين الوحدتين.</param>
+/// <param name="Numerator">البسط.</param>
+/// <param name="Denominator">المقام.</param>
+public sealed record UnitConversionView(
+    Guid Id,
+    string FromUnit,
+    string ToUnit,
+    string QuantityClass,
+    long Numerator,
+    long Denominator);
+
+/// <summary>
+/// طلب تحويل كمّيةٍ من وحدةٍ إلى أخرى — <b>مسبارٌ لا يكتب شيئاً</b>.
+/// <para>
+/// وُجد كي يُجرَّب التحويل <b>قبل</b> أن يُبنى عليه مستند: يُجيب بالناتج الدقيق أو
+/// <b>بالرفض المُسمّى</b>، ولا يُقرّب في الحالتين.
+/// </para>
+/// </summary>
+/// <param name="Quantity">الكمّية بوحدتها.</param>
+/// <param name="ToUnit">الوحدة المطلوب التحويل إليها.</param>
+public sealed record UnitConversionTrial(InventoryQuantity Quantity, string ToUnit);
+
+/// <summary>نتيجة تحويلٍ وقع بلا باقٍ.</summary>
+/// <param name="From">الكمّية كما سُلّمت.</param>
+/// <param name="To">الكمّية بعد التحويل — <b>دقيقةً لا مقرَّبة</b>.</param>
+/// <param name="Numerator">بسط المعامل المُستعمَل.</param>
+/// <param name="Denominator">مقام المعامل المُستعمَل.</param>
+/// <param name="QuantityClass">صنف الكمّية المشترك.</param>
+public sealed record UnitConversionResult(
+    InventoryQuantity From,
+    InventoryQuantity To,
+    long Numerator,
+    long Denominator,
+    string QuantityClass);

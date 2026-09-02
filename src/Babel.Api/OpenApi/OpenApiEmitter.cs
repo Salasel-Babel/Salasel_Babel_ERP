@@ -1369,6 +1369,145 @@ internal static class OpenApiEmitter
                 + "readStockBalances is unchanged: this endpoint **adds** placement names rather than replacing it. A read point.",
                 Body: null, Response: "PlacementBalanceList", Success: 200, Query: []),
 
+            // ── وحدات القياس ─────────────────────────────────────────────────
+            // **والمورد `units-of-measure` لا `units`**: المسار
+            // ‏`/properties/{propertyId}/units` منشورٌ اليوم ووحداته **عقارية**،
+            // ومَورِدٌ ثانٍ باسم `units` كان سيجعل الكلمة تحمل معنيين في عقدٍ واحد.
+
+            new(ApiRoutes.UnitsOfMeasure, "post", "addUnitOfMeasure",
+                "تسجيل وحدة قياس", "Register a unit of measure",
+                "يسجّل وحدة قياس: رمزها، واسمها ثنائي اللغة، و**صنف كمّيتها**.\n\n"
+                + "**وصنف الكمّية هو الحقل الذي يبرّر وجود هذا المورد كلّه.** معامل التحويل بين وحدتين من صنفٍ "
+                + "واحد **واقعةٌ فيزيائية**: الكيلوغرام ألف غرام دائماً وفي كل مكان. وبين صنفين مختلفين **ليس "
+                + "معاملاً بل كثافة**: «كم كيلوغراماً في اللتر؟» جوابه يختلف بين الماء والزيت والرصاص، ويختلف "
+                + "للمادّة الواحدة بالحرارة. فبلا هذا الحقل لا يملك النظام ما يفرّق به بين الاثنين، ويصير "
+                + "«كجم ← م» معاملاً يكتبه أحدهم بحسن نيّة ولا يعترض عليه شيء.\n\n"
+                + "**والقائمة مغلقة عمداً** — عدد · وزن · حجم · طول · مساحة: قيمةٌ حرّة تجعل صنفين مكتوبين "
+                + "بحرفين مختلفين يبدوان مختلفين وهما واحد، فيُرفض تحويلٌ مشروع أو يُقبل تحويلٌ مستحيل. وصنفٌ "
+                + "سادس يدخل بهجرة لا بقيمة.\n\n"
+                + "**وهذا سجلٌّ يصف ولا يُبطل**: الحركات القائمة تحمل رموز وحدات كُتبت قبل وجوده، ولا مفتاح "
+                + "خارجي منها إليه، ورمزٌ غير مسجَّل **يبقى عاملاً في draftStockMovement**. لكن **معامل التحويل "
+                + "لا يُسجَّل بين رمزين لا يُعرَف صنف كمّيتهما**: التحويل بلا صنفٍ معلوم تقديرٌ لا حساب.",
+                "Registers a unit of measure: its code, its bilingual name, and **its quantity class**.\n\n"
+                + "**The quantity class is the field that justifies this whole resource.** A conversion factor between "
+                + "two units of one class is a **physical fact**: a kilogram is a thousand grams, always and everywhere. "
+                + "Between two classes it is **not a factor but a density**: 'how many kilograms in a litre?' is answered "
+                + "differently for water, oil and lead, and differently for one material at different temperatures. "
+                + "Without this field the system has nothing to tell the two apart, and 'kg to m' becomes a factor "
+                + "somebody writes in good faith with nothing to object.\n\n"
+                + "**The list is closed on purpose** — count, weight, volume, length, area: a free value makes two "
+                + "classes spelled differently look different while being the same, so a legitimate conversion gets "
+                + "refused or an impossible one accepted. A sixth class arrives by migration, not by value.\n\n"
+                + "**This register describes rather than invalidates**: existing movements carry unit codes written "
+                + "before it existed, no foreign key points from them to it, and an unregistered code **keeps working in "
+                + "draftStockMovement**. But **a conversion factor is not recorded between two codes whose class is "
+                + "unknown**: converting without a known class is an estimate, not a computation.",
+                Body: "UnitOfMeasureRequest", Response: "UnitOfMeasure", Success: 201, Query: [],
+                ProblemStatuses: [409, 422]),
+
+            new(ApiRoutes.UnitsOfMeasure, "get", "listUnitsOfMeasure",
+                "قراءة وحدات القياس", "List the units of measure",
+                "يقرأ وحدات قياس المنشأة مرتَّبةً بالرمز **ترتيباً حرفياً ثابتاً**. والمُعطَّلة تخرج في القائمة "
+                + "بـ‏isActive = false ولا تُحذف منها. نقطة قراءة.",
+                "Lists the company's units of measure ordered by code in a **stable ordinal order**. A deactivated unit "
+                + "appears with isActive = false rather than being dropped. A read point.",
+                Body: null, Response: "UnitOfMeasureList", Success: 200, Query: []),
+
+            new(ApiRoutes.UnitOfMeasure, "get", "readUnitOfMeasure",
+                "قراءة وحدة قياس", "Read one unit of measure",
+                "يقرأ وحدة قياس واحدة بصنف كمّيتها.",
+                "Reads a single unit of measure with its quantity class.",
+                Body: null, Response: "UnitOfMeasure", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.UnitOfMeasureDeactivation, "post", "deactivateUnitOfMeasure",
+                "تعطيل وحدة قياس", "Deactivate a unit of measure",
+                "يعطّل وحدة قياس — **ولا يحذفها**: الرمز محمولٌ على حركات مضت.\n\n"
+                + "**ولا فحص رصيدٍ هنا** — بخلاف تعطيل موضع التسكين: الوحدة ليست بُعداً في مفتاح الرصيد بل "
+                + "**مقياسُ ما فيه**. وتعطيلُها لا يحبس بضاعة: الرصيد المُمسَك بها يبقى مقروءاً ومصروفاً، لأنه "
+                + "مُمسَك بوحدة أساسٍ ثُبِّتت بأول حركة ولا تتغيّر. والتعطيل يمنع **تسجيل معاملٍ جديد** عليها "
+                + "لا أكثر.\n\n"
+                + "**وإعادة تعطيل مُعطَّلةٍ تنجح ولا تفشل.**",
+                "Deactivates a unit of measure — **it does not delete it**: the code is carried by past movements.\n\n"
+                + "**No balance check here** — unlike deactivating a placement: a unit is not a dimension in the balance "
+                + "key but **the measure of what is in it**. Deactivating it strands no goods: a balance held in it stays "
+                + "readable and issuable, because it is held in a base unit fixed by the first movement and never changed. "
+                + "Deactivation only prevents **recording a new factor** on it.\n\n"
+                + "**Deactivating an already deactivated unit succeeds.**",
+                Body: null, Response: "UnitOfMeasure", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.UnitConversions, "post", "addUnitConversion",
+                "تسجيل معامل تحويل بين وحدتين", "Register a conversion factor between two units",
+                "يسجّل معامل تحويل بين وحدتين **على مستوى المنشأة** — و**يرفض ما بين صنفَي كمّية مختلفين** "
+                + "برمز inventory.unit_class_mismatch. فـ«كجم ← م» ليس معاملاً ناقصاً بل **خطأ**، ولا يُقرَّب.\n\n"
+                + "**وهو غير ItemRequest.units**، والفرق مقصود ولا يُدمَجان: «الكيلوغرام ألف غرام» واقعةٌ لا "
+                + "تخصّ صنفاً، تُكتب مرّةً وتصلح للجميع؛ أمّا «الكرتون اثنتا عشرة حبّة» فهي **خاصّية تعبئةٍ "
+                + "لصنفٍ بعينه** — كرتون هذا الصنف اثنتا عشرة وكرتون ذاك أربع وعشرون. ودمجُهما يعني إمّا تكرار "
+                + "الواقعة الفيزيائية على كل صنف، أو تعميم خاصّية التعبئة على الأصناف كلّها.\n\n"
+                + "**والمعامل بسطٌ ومقام صحيحان لا عددٌ عشري**: «الحبّة ثلث علبة» هو 1/3 ولا يُكتب عشرياً بلا "
+                + "خسارة، والخسارة في كمّيةٍ تُضرب في تكلفة الوحدة تصل إلى المال.\n\n"
+                + "**ويُسجَّل في اتجاهه المُسلَّم وحده ولا يُقلَب تلقائياً**: القلبُ يُنتج معاملات لا يقرؤها "
+                + "أحد ولا يُراجعها، ويجعل القائمة ضعف طولها الحقيقي.\n\n"
+                + "**ولا اشتقاق بسلسلة**: «غرام ← كجم» و«كجم ← طنّ» لا يُنتجان «غرام ← طنّ» — السلسلة تُنتج "
+                + "تحويلاً لم يقرّه أحد، وكسرُها الوسيط يُقرَّب قبل أن يُضرب في الثاني.",
+                "Registers a conversion factor between two units **at company level** — and **refuses one across two "
+                + "quantity classes** with code inventory.unit_class_mismatch. 'kg to m' is not an incomplete factor but "
+                + "an **error**, and it is not rounded.\n\n"
+                + "**This is not ItemRequest.units**, and the two are deliberately never merged: 'a kilogram is a thousand "
+                + "grams' is a fact that belongs to no item, written once and true for all; 'a carton is twelve pieces' is "
+                + "**a packing property of one item** — this item's carton is twelve and that one's is twenty-four. Merging "
+                + "them means either repeating the physical fact on every item, or generalising a packing property across "
+                + "all of them.\n\n"
+                + "**A factor is an integer numerator and denominator, not a decimal**: 'a piece is a third of a box' is "
+                + "1/3 and cannot be written decimally without loss, and loss in a quantity multiplied by a unit cost "
+                + "reaches the money.\n\n"
+                + "**It is recorded in the direction supplied and never inverted automatically**: inverting produces "
+                + "factors nobody reads or reviews, and doubles the list's apparent length.\n\n"
+                + "**And no chaining**: 'g to kg' plus 'kg to t' does not yield 'g to t' — a chain produces a conversion "
+                + "nobody approved, and its intermediate fraction is rounded before it is multiplied by the second.",
+                Body: "UnitConversionRequest", Response: "UnitConversion", Success: 201, Query: [],
+                ProblemStatuses: [404, 409, 422]),
+
+            new(ApiRoutes.UnitConversions, "get", "listUnitConversions",
+                "قراءة معاملات التحويل", "List the conversion factors",
+                "يقرأ معاملات التحويل مرتَّبةً بالوحدة المُحوَّل منها ثم إليها ترتيباً حرفياً ثابتاً. نقطة قراءة.",
+                "Lists the conversion factors ordered by source unit then destination unit in a stable ordinal order. A read point.",
+                Body: null, Response: "UnitConversionList", Success: 200, Query: []),
+
+            new(ApiRoutes.UnitConversionTrials, "post", "convertQuantity",
+                "تجربة تحويل كمّية", "Try converting a quantity",
+                "**مسبارٌ يحوّل كمّيةً ولا يكتب شيئاً.** وُجد كي يُجرَّب التحويل **قبل** أن يُبنى عليه مستند، "
+                + "وكي يكون «سبع حبّات ← كرتون مرفوض» **جواباً يُقرأ على السلك** لا سلوكاً يُستنتَج من فشل "
+                + "مستند.\n\n"
+                + "**والقاعدة الحاكمة: يقع بلا باقٍ أو يُرفض باسمه — ولا تقريب في الحالتين.** «١٢ حبّة ← "
+                + "كرتون» يُجيب \"1\"؛ و«٧ حبّات ← كرتون» يُرفض بـ inventory.unit_conversion_not_exact ولا "
+                + "يُجيب \"0.583333\". والسبب أن الكمّية تُضرب في تكلفة الوحدة، فالتقريب فيها يدخل **المال** "
+                + "ويتراكم على كل حركة حتى يصير الرصيد لا يساوي مجموع حركاته.\n\n"
+                + "**وثلاثة رفضٍ مُسمّاة**: صنفا كمّية مختلفان (inventory.unit_class_mismatch) · لا معامل "
+                + "مسجَّل (inventory.no_conversion_between_units) · تحويلٌ يتجاوز مدى العدد العشري "
+                + "(inventory.unit_conversion_overflow).\n\n"
+                + "**و POST على مورد «محاولات» لا GET باستعلام**: الكمّية تعبر السلك **نصّاً**، ونصٌّ عشري في "
+                + "سلسلة الاستعلام يمرّ على ترميزٍ وتحليلٍ لا يحرسهما محوّل الحقول المالية — وهو بالضبط قناة "
+                + "فقدان الدقّة التي أُغلقت في الجسم. **والجواب 200 لا 201**: لا مورد يُنشأ، ورمزُ إنشاء كان "
+                + "سيَعِد بموردٍ يُقرأ لاحقاً ولا مورد.",
+                "**A probe that converts a quantity and writes nothing.** It exists so a conversion can be tried "
+                + "**before** a document is built on it, and so that 'seven pieces to a carton is refused' is **an answer "
+                + "read off the wire** rather than behaviour inferred from a failing document.\n\n"
+                + "**The governing rule: it divides exactly or it is refused by name — and never rounds either way.** "
+                + "'12 pieces to a carton' answers \"1\"; '7 pieces to a carton' is refused with "
+                + "inventory.unit_conversion_not_exact and does not answer \"0.583333\". Because a quantity gets "
+                + "multiplied by a unit cost, rounding it reaches the **money** and accumulates on every movement until "
+                + "the balance no longer equals the sum of its own movements.\n\n"
+                + "**Three named refusals**: two different quantity classes (inventory.unit_class_mismatch), no registered "
+                + "factor (inventory.no_conversion_between_units), and a conversion exceeding the decimal range "
+                + "(inventory.unit_conversion_overflow).\n\n"
+                + "**A POST on a 'trials' resource, not a GET with query parameters**: quantities cross the wire as "
+                + "**strings**, and a decimal string in a query string passes through encoding and parsing that the "
+                + "monetary-field converter does not guard — precisely the precision-loss channel closed in the body. "
+                + "**And the answer is 200, not 201**: no resource is created, and a creation code would promise a "
+                + "resource to read later where there is none.",
+                Body: "ConversionTrialRequest", Response: "ConversionResult", Success: 200, Query: [],
+                ProblemStatuses: [404, 422]),
+
             new(ApiRoutes.DocumentAdmission, "post", "admitDocument",
                 "عرض مستند على الملفّ", "Present a document against the profile",
                 "يعرض **أسماء حقول** مستند على ملفّ الشركة فيقبله أو يرفضه. لا قيم ولا مبالغ ولا أثر: هذا حكمٌ لا كتابة. "
@@ -3422,6 +3561,13 @@ internal static class OpenApiEmitter
     /// «صار له قيد»، والنقل لا يُرحَّل.
     /// </summary>
     private static IReadOnlyList<string> TransferStates { get; } = ["DRAFT", "MOVED"];
+
+    /// <summary>
+    /// أصناف الكمّية — <b>قائمة مغلقة</b>. وهي ما يجعل التحويل بين وحدتين ممكناً أو
+    /// مستحيلاً: بين صنفٍ واحد معاملٌ فيزيائي، وبين صنفين <b>كثافةُ مادّة</b> لا معامل.
+    /// </summary>
+    private static IReadOnlyList<string> QuantityClasses { get; } =
+        ["COUNT", "WEIGHT", "VOLUME", "LENGTH", "AREA"];
 
     /// <summary>
     /// نماذج ملكية العقار — <b>مجموعة مغلقة يفرضها قيد تحقّق في قاعدة بيانات الدفتر</b>،
@@ -7066,6 +7212,154 @@ internal static class OpenApiEmitter
             WriteArrayRefProperty(w, "balances", "PlacementBalance", "الأرصدة.", "The balances.");
             w.WriteEndObject();
             WriteRequired(w, "balanceCount", "balances");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("UnitOfMeasureRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب تسجيل وحدة قياس. **وصنف الكمّية إلزاميّ**: هو الحقل الوحيد الذي يجعل «كجم ← م» خطأً "
+                + "يُرفض بدل أن يكون معاملاً يكتبه أحدهم بحسن نيّة. / "
+                + "A request to register a unit of measure. **The quantity class is required**: it is the only field "
+                + "that makes 'kg to m' a refused error rather than a factor somebody writes in good faith.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "code",
+                "رمز الوحدة — **هوية تحملها كل حركة، لا نصّاً معروضاً**. لا يُترجَم ولا يُطابَق بلا حساسية حالة.",
+                "The unit code — **an identity carried by every movement, not displayed text**. Never translated and never matched case-insensitively.",
+                32);
+            WriteRefProperty(w, "name", "LocalizedText");
+            WriteEnumProperty(w, "quantityClass",
+                "صنف الكمّية. **والقائمة مغلقة**: صنفٌ سادس يدخل بهجرة لا بقيمةٍ حرّة.",
+                "The quantity class. **The list is closed**: a sixth class arrives by migration, not by a free value.",
+                QuantityClasses);
+            w.WriteEndObject();
+            WriteRequired(w, "code", "name", "quantityClass");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("UnitOfMeasure", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "وحدة قياس كما تخرج على السلك. / A unit of measure as it leaves on the wire.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "code", "الرمز.", "The code.", 32);
+            WriteStringProperty(w, "id", "المعرّف الذي تُبنى عليه القراءة.", "The identifier reads are built on.", 36);
+            WriteBooleanProperty(
+                w,
+                "isActive",
+                "هل هي عاملة؟ **والتعطيل حالةٌ تُقرأ لا غياب**: المُعطَّلة تبقى في القوائم بهذا الحقل false، لأن رمزها محمولٌ على حركات مضت.",
+                "Is it active? **Deactivation is a readable state, not an absence**: a deactivated unit stays in the lists with this field false, because its code is carried by past movements.");
+            WriteRefProperty(w, "name", "LocalizedText");
+            WriteEnumProperty(w, "quantityClass", "صنف الكمّية.", "The quantity class.", QuantityClasses);
+            w.WriteEndObject();
+            WriteRequired(w, "code", "id", "isActive", "name", "quantityClass");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("UnitOfMeasureList", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "وحدات قياس المنشأة، مرتَّبة بالرمز ترتيباً حرفياً ثابتاً. **وغلافٌ لا مصفوفة عارية.** / "
+                + "The company's units of measure, ordered by code in a stable ordinal order. **An envelope, not a bare array.**");
+            w.WriteStartObject("properties");
+            WriteIntegerProperty(w, "unitCount", 0, int.MaxValue, "عدد الوحدات.", "The number of units.");
+            WriteArrayRefProperty(w, "units", "UnitOfMeasure", "الوحدات.", "The units.");
+            w.WriteEndObject();
+            WriteRequired(w, "unitCount", "units");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("UnitConversionRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب تسجيل معامل تحويل بين وحدتين **على مستوى المنشأة** — وهو غير ItemRequest.units: ذاك "
+                + "خاصّية تعبئةٍ لصنف، وهذا واقعةٌ فيزيائية تصلح للجميع. **ويُرفض ما بين صنفَي كمّية مختلفين.** / "
+                + "A request to register a conversion factor between two units **at company level** — not the same as "
+                + "ItemRequest.units, which is a packing property of one item, while this is a physical fact true for "
+                + "all. **One across two quantity classes is refused.**");
+            w.WriteStartObject("properties");
+            WriteIntegerProperty(w, "denominator", 1, 1_000_000_000, "المقام — موجب.", "The denominator; positive.");
+            WriteStringProperty(w, "fromUnit", "الوحدة المُحوَّل منها — يجب أن تكون مسجَّلة وعاملة.", "The source unit; it must be registered and active.", 32);
+            WriteIntegerProperty(w, "numerator", 1, 1_000_000_000,
+                "البسط: كم وحدةً من toUnit في «المقام» من fromUnit.",
+                "The numerator: how many toUnit are in 'denominator' of fromUnit.");
+            WriteStringProperty(w, "toUnit", "الوحدة المُحوَّل إليها — يجب أن تكون مسجَّلة وعاملة ومن صنف الكمّية نفسه.", "The destination unit; it must be registered, active, and of the same quantity class.", 32);
+            w.WriteEndObject();
+            WriteRequired(w, "denominator", "fromUnit", "numerator", "toUnit");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("UnitConversion", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "معامل تحويل بين وحدتين كما يخرج على السلك. / A conversion factor between two units as it leaves on the wire.");
+            w.WriteStartObject("properties");
+            WriteIntegerProperty(w, "denominator", 1, 1_000_000_000, "المقام.", "The denominator.");
+            WriteStringProperty(w, "fromUnit", "الوحدة المُحوَّل منها.", "The source unit.", 32);
+            WriteStringProperty(w, "id", "المعرّف.", "The identifier.", 36);
+            WriteIntegerProperty(w, "numerator", 1, 1_000_000_000, "البسط.", "The numerator.");
+            WriteEnumProperty(w, "quantityClass",
+                "صنف الكمّية المشترك بين الوحدتين — ولا معامل بين صنفين.",
+                "The quantity class shared by both units — there is no factor across two classes.",
+                QuantityClasses);
+            WriteStringProperty(w, "toUnit", "الوحدة المُحوَّل إليها.", "The destination unit.", 32);
+            w.WriteEndObject();
+            WriteRequired(w, "denominator", "fromUnit", "id", "numerator", "quantityClass", "toUnit");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("UnitConversionList", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "معاملات التحويل، مرتَّبة بالوحدة المُحوَّل منها ثم إليها. / "
+                + "The conversion factors, ordered by source unit then destination unit.");
+            w.WriteStartObject("properties");
+            WriteIntegerProperty(w, "conversionCount", 0, int.MaxValue, "عدد المعاملات.", "The number of factors.");
+            WriteArrayRefProperty(w, "conversions", "UnitConversion", "المعاملات.", "The factors.");
+            w.WriteEndObject();
+            WriteRequired(w, "conversionCount", "conversions");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("ConversionTrialRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب تجربة تحويل — **مسبارٌ لا يكتب شيئاً**. يُجيب بالناتج الدقيق أو بالرفض المُسمّى، ولا "
+                + "يُقرّب في الحالتين. / "
+                + "A conversion trial request — **a probe that writes nothing**. It answers with the exact result or "
+                + "with a named refusal, and rounds in neither case.");
+            w.WriteStartObject("properties");
+            WriteRefProperty(w, "quantity", "Measure");
+            WriteStringProperty(w, "toUnit", "الوحدة المطلوب التحويل إليها.", "The unit to convert into.", 32);
+            w.WriteEndObject();
+            WriteRequired(w, "quantity", "toUnit");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("ConversionResult", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "نتيجة تحويلٍ **وقع بلا باقٍ**. والمعامل يخرج معها بسطاً ومقاماً كي يُراجَع الناتج بلا "
+                + "استعلامٍ ثانٍ، ولا يُقرأ رقمٌ بلا الطريق الذي أنتجه. / "
+                + "The result of a conversion **that divided exactly**. The factor comes back with it as numerator and "
+                + "denominator so the result can be checked without a second call, and no number is read without the "
+                + "route that produced it.");
+            w.WriteStartObject("properties");
+            WriteIntegerProperty(w, "denominator", 1, 1_000_000_000, "مقام المعامل المُستعمَل.", "The denominator of the factor used.");
+            WriteRefProperty(w, "from", "Measure");
+            WriteIntegerProperty(w, "numerator", 1, 1_000_000_000, "بسط المعامل المُستعمَل.", "The numerator of the factor used.");
+            WriteEnumProperty(w, "quantityClass", "صنف الكمّية المشترك.", "The shared quantity class.", QuantityClasses);
+            WriteRefProperty(w, "to", "Measure");
+            w.WriteEndObject();
+            WriteRequired(w, "denominator", "from", "numerator", "quantityClass", "to");
             w.WriteBoolean("additionalProperties", false);
         });
 

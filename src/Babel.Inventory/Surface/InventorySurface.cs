@@ -34,6 +34,7 @@ public sealed class InventorySurface
     private readonly InventoryValuationService _valuation;
     private readonly StoragePlaceService _places;
     private readonly StockTransferService _transfers;
+    private readonly UnitOfMeasureService _units;
     private readonly CurrencyCode _currency;
 
     /// <summary>ينشئ السطح فوق خدمات الوحدة.</summary>
@@ -43,6 +44,7 @@ public sealed class InventorySurface
     /// <param name="valuation">المطابقة وجاهزية الإقفال.</param>
     /// <param name="places">سجلّ التسكين — المستودع والموقع والرفّ.</param>
     /// <param name="transfers">النقل بين موقعين.</param>
+    /// <param name="units">سجلّ وحدات القياس ومعاملات التحويل.</param>
     /// <param name="options">إعدادات الوحدة — ومنها عملة المنشأة.</param>
     public InventorySurface(
         ItemCatalogueService items,
@@ -51,6 +53,7 @@ public sealed class InventorySurface
         InventoryValuationService valuation,
         StoragePlaceService places,
         StockTransferService transfers,
+        UnitOfMeasureService units,
         InventoryOptions options)
     {
         ArgumentNullException.ThrowIfNull(items);
@@ -59,6 +62,7 @@ public sealed class InventorySurface
         ArgumentNullException.ThrowIfNull(valuation);
         ArgumentNullException.ThrowIfNull(places);
         ArgumentNullException.ThrowIfNull(transfers);
+        ArgumentNullException.ThrowIfNull(units);
         ArgumentNullException.ThrowIfNull(options);
 
         _items = items;
@@ -67,6 +71,7 @@ public sealed class InventorySurface
         _valuation = valuation;
         _places = places;
         _transfers = transfers;
+        _units = units;
         _currency = CurrencyCode.FromString(options.CompanyCurrency);
     }
 
@@ -699,6 +704,171 @@ public sealed class InventorySurface
         view.Value.Amount,
         view.OccurredOn,
         view.AlreadyMoved);
+
+    // ── وحدات القياس ومعاملات التحويل ────────────────────────────────────────
+
+    /// <summary>يسجّل وحدة قياس بصنف كمّيتها.</summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="request">الطلب.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    public async ValueTask<Result<InventoryUnit>> AddUnitAsync(
+        TenantId tenant,
+        UserId actor,
+        InventoryUnitRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        Result<UnitOfMeasureView> result = await _units
+            .CreateAsync(
+                tenant,
+                actor,
+                new UnitOfMeasureDraft(request.Code, request.Name, request.QuantityClass),
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        return Unit(result);
+    }
+
+    /// <summary>يقرأ وحدة قياس واحدة.</summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="unitId">المعرّف.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    public async ValueTask<Result<InventoryUnit>> ReadUnitAsync(
+        TenantId tenant,
+        UserId actor,
+        Guid unitId,
+        CancellationToken cancellationToken = default)
+    {
+        Result<UnitOfMeasureView> result = await _units
+            .GetAsync(tenant, actor, unitId, cancellationToken).ConfigureAwait(false);
+
+        return Unit(result);
+    }
+
+    /// <summary>يقرأ وحدات المنشأة مرتَّبةً بالرمز.</summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    public async ValueTask<Result<IReadOnlyList<InventoryUnit>>> ListUnitsAsync(
+        TenantId tenant,
+        UserId actor,
+        CancellationToken cancellationToken = default)
+    {
+        Result<IReadOnlyList<UnitOfMeasureView>> result = await _units
+            .ListAsync(tenant, actor, cancellationToken).ConfigureAwait(false);
+
+        return result.IsFailure
+            ? Result<IReadOnlyList<InventoryUnit>>.Failure(result.Errors)
+            : Result<IReadOnlyList<InventoryUnit>>.Success([.. result.Value.Select(Unit)]);
+    }
+
+    /// <summary>يعطّل وحدة قياس — ولا يحذفها.</summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="unitId">المعرّف.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    public async ValueTask<Result<InventoryUnit>> DeactivateUnitAsync(
+        TenantId tenant,
+        UserId actor,
+        Guid unitId,
+        CancellationToken cancellationToken = default)
+    {
+        Result<UnitOfMeasureView> result = await _units
+            .DeactivateAsync(tenant, actor, unitId, cancellationToken).ConfigureAwait(false);
+
+        return Unit(result);
+    }
+
+    /// <summary>يسجّل معامل تحويل بين وحدتين — ويرفض ما بين صنفين مختلفين.</summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="request">الطلب.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    public async ValueTask<Result<InventoryUnitConversion>> AddUnitConversionAsync(
+        TenantId tenant,
+        UserId actor,
+        InventoryUnitConversionRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        Result<UnitConversionView> result = await _units
+            .CreateConversionAsync(
+                tenant,
+                actor,
+                new UnitConversionDraft(request.FromUnit, request.ToUnit, request.Numerator, request.Denominator),
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        return result.IsFailure
+            ? Result<InventoryUnitConversion>.Failure(result.Errors)
+            : Result<InventoryUnitConversion>.Success(Conversion(result.Value));
+    }
+
+    /// <summary>يقرأ معاملات التحويل مرتَّبةً بالوحدتين.</summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    public async ValueTask<Result<IReadOnlyList<InventoryUnitConversion>>> ListUnitConversionsAsync(
+        TenantId tenant,
+        UserId actor,
+        CancellationToken cancellationToken = default)
+    {
+        Result<IReadOnlyList<UnitConversionView>> result = await _units
+            .ListConversionsAsync(tenant, actor, cancellationToken).ConfigureAwait(false);
+
+        return result.IsFailure
+            ? Result<IReadOnlyList<InventoryUnitConversion>>.Failure(result.Errors)
+            : Result<IReadOnlyList<InventoryUnitConversion>>.Success([.. result.Value.Select(Conversion)]);
+    }
+
+    /// <summary>
+    /// <b>مسبار التحويل</b>: يحوّل كمّيةً ولا يكتب شيئاً — الناتج الدقيق أو الرفض المُسمّى.
+    /// </summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="request">الطلب.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    public async ValueTask<Result<InventoryConversionResult>> ConvertQuantityAsync(
+        TenantId tenant,
+        UserId actor,
+        InventoryConversionTrialRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        Result<UnitConversionResult> result = await _units
+            .ConvertAsync(
+                tenant,
+                actor,
+                new UnitConversionTrial(
+                    new InventoryQuantity(request.Quantity.Magnitude, request.Quantity.Unit), request.ToUnit),
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        return result.IsFailure
+            ? Result<InventoryConversionResult>.Failure(result.Errors)
+            : Result<InventoryConversionResult>.Success(new InventoryConversionResult(
+                new InventoryMeasure(result.Value.From.Magnitude, result.Value.From.Unit),
+                new InventoryMeasure(result.Value.To.Magnitude, result.Value.To.Unit),
+                result.Value.Numerator,
+                result.Value.Denominator,
+                result.Value.QuantityClass));
+    }
+
+    private static Result<InventoryUnit> Unit(Result<UnitOfMeasureView> result)
+        => result.IsFailure
+            ? Result<InventoryUnit>.Failure(result.Errors)
+            : Result<InventoryUnit>.Success(Unit(result.Value));
+
+    private static InventoryUnit Unit(UnitOfMeasureView view) =>
+        new(view.Id, view.Code, view.Name, view.QuantityClass, view.IsActive);
+
+    private static InventoryUnitConversion Conversion(UnitConversionView view) =>
+        new(view.Id, view.FromUnit, view.ToUnit, view.QuantityClass, view.Numerator, view.Denominator);
 
     private static InventoryItem Item(ItemView view) => new(
         view.Id,

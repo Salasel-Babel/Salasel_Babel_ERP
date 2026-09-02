@@ -26,16 +26,22 @@ public sealed class ItemCatalogueService : IApplicationService
 
     private readonly IEntitlementEnforcer _enforcer;
     private readonly InventoryDbContext _database;
+    private readonly UnitOfMeasureService _units;
 
     /// <summary>ينشئ الخدمة.</summary>
     /// <param name="enforcer">منفِّذ الاستحقاق.</param>
     /// <param name="runtime">موارد الوحدة.</param>
-    public ItemCatalogueService(IEntitlementEnforcer enforcer, InventoryRuntime runtime)
+    /// <param name="units">
+    /// سجلّ وحدات القياس — يُسأل عن <b>صنف كمّية</b> وحدتَي الصنف عند تسجيله.
+    /// </param>
+    public ItemCatalogueService(IEntitlementEnforcer enforcer, InventoryRuntime runtime, UnitOfMeasureService units)
     {
         ArgumentNullException.ThrowIfNull(enforcer);
         ArgumentNullException.ThrowIfNull(runtime);
+        ArgumentNullException.ThrowIfNull(units);
         _enforcer = enforcer;
         _database = runtime.Database;
+        _units = units;
     }
 
     /// <summary>يسجّل صنفاً جديداً بوحداته.</summary>
@@ -80,6 +86,19 @@ public sealed class ItemCatalogueService : IApplicationService
             {
                 return Result<ItemView>.Failure(
                     InventoryErrors.UnitNotConvertible(draft.Code, unit.UnitCode, draft.BaseUnit));
+            }
+
+            // ── صنف الكمّية: يُفحَص **إن كانت الوحدتان مسجَّلتين** ─────────────
+            // «كيلوغرام ← متر» ليس معاملاً بل كثافة، ويُرفض باسمه. والفحص مشروطٌ
+            // بالتسجيل لأن سجلّ الوحدات **يصف ولا يُبطل**: أصنافٌ سُجّلت قبل وجوده
+            // تحمل رموز وحدات لا صفَّ لها، وإلزامُها بأثر رجعي يُوقف مستأجراً عاملاً.
+            // فما لا يُعرَف صنفه لا يُرفض — **ويبقى عليه أن التحويل بلا معامل مرفوض**.
+            Result classes = await SameQuantityClassAsync(
+                tenant, draft.BaseUnit, unit.UnitCode, cancellationToken).ConfigureAwait(false);
+
+            if (classes.IsFailure)
+            {
+                return Result<ItemView>.Failure(classes.Errors);
             }
         }
 
@@ -227,6 +246,39 @@ public sealed class ItemCatalogueService : IApplicationService
         ];
 
         return Result<IReadOnlyList<ItemView>>.Success(views);
+    }
+
+    /// <summary>
+    /// يتحقّق أن وحدتين من صنف كمّيةٍ واحد — <b>حين تكون كلتاهما مسجَّلة</b>.
+    /// <para>
+    /// وحين لا تكون إحداهما مسجَّلة <b>يمرّ</b>: سجلّ الوحدات يصف ولا يُبطل، وصنفٌ
+    /// سُجّل قبل وجوده يحمل رموزاً لا صفَّ لها. والتساهل هنا ثمنُ التوافق مع ما مضى،
+    /// <b>ولا يُدفع على التحويل نفسه</b>: خلطُ وحدتين بلا معامل يبقى رفضاً في كل حال.
+    /// </para>
+    /// </summary>
+    private async ValueTask<Result> SameQuantityClassAsync(
+        TenantId tenant, string baseUnit, string otherUnit, CancellationToken cancellationToken)
+    {
+        UnitOfMeasureRow? registeredBase = await _units
+            .RegisteredAsync(tenant, baseUnit, cancellationToken).ConfigureAwait(false);
+
+        if (registeredBase is null)
+        {
+            return Result.Success();
+        }
+
+        UnitOfMeasureRow? registeredOther = await _units
+            .RegisteredAsync(tenant, otherUnit, cancellationToken).ConfigureAwait(false);
+
+        if (registeredOther is null)
+        {
+            return Result.Success();
+        }
+
+        return string.Equals(registeredBase.Class, registeredOther.Class, StringComparison.Ordinal)
+            ? Result.Success()
+            : Result.Failure(InventoryErrors.UnitClassMismatch(
+                otherUnit, registeredOther.Class, baseUnit, registeredBase.Class));
     }
 
     private async Task<ItemView> ViewOfAsync(TenantId tenant, ItemRow row, CancellationToken cancellationToken)

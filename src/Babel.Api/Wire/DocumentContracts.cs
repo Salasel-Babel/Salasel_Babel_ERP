@@ -783,3 +783,93 @@ internal sealed record PlacementBalanceDto(
 /// <param name="BalanceCount">عدد الأرصدة.</param>
 /// <param name="Balances">الأرصدة.</param>
 internal sealed record PlacementBalanceListDto(int BalanceCount, IReadOnlyList<PlacementBalanceDto> Balances);
+
+/// <summary>طلب تسجيل وحدة قياس.</summary>
+internal sealed record UnitOfMeasureRequestDto
+{
+    /// <summary>رمز الوحدة — هوية تحملها كل حركة، لا نصّاً معروضاً.</summary>
+    public required string Code { get; init; }
+
+    /// <summary>الاسم ثنائي اللغة.</summary>
+    public required LocalizedTextDto Name { get; init; }
+
+    /// <summary>صنف الكمّية: <c>COUNT</c> · <c>WEIGHT</c> · <c>VOLUME</c> · <c>LENGTH</c> · <c>AREA</c>.</summary>
+    public required string QuantityClass { get; init; }
+}
+
+/// <summary>وحدة قياس كما تخرج على السلك.</summary>
+/// <param name="Id">المعرّف.</param>
+/// <param name="Code">الرمز.</param>
+/// <param name="Name">الاسم ثنائي اللغة.</param>
+/// <param name="QuantityClass">صنف الكمّية.</param>
+/// <param name="IsActive">هل هي عاملة؟</param>
+internal sealed record UnitOfMeasureDto(
+    string Id,
+    string Code,
+    LocalizedTextDto Name,
+    string QuantityClass,
+    bool IsActive);
+
+/// <summary>وحدات قياس المنشأة، مرتَّبة بالرمز.</summary>
+/// <param name="UnitCount">عدد الوحدات.</param>
+/// <param name="Units">الوحدات.</param>
+internal sealed record UnitOfMeasureListDto(int UnitCount, IReadOnlyList<UnitOfMeasureDto> Units);
+
+/// <summary>طلب تسجيل معامل تحويل بين وحدتين.</summary>
+internal sealed record UnitConversionRequestDto
+{
+    /// <summary>الوحدة المُحوَّل منها.</summary>
+    public required string FromUnit { get; init; }
+
+    /// <summary>الوحدة المُحوَّل إليها.</summary>
+    public required string ToUnit { get; init; }
+
+    /// <summary>البسط.</summary>
+    public required long Numerator { get; init; }
+
+    /// <summary>المقام.</summary>
+    public required long Denominator { get; init; }
+}
+
+/// <summary>معامل تحويل كما يخرج على السلك.</summary>
+/// <param name="Id">المعرّف.</param>
+/// <param name="FromUnit">الوحدة المُحوَّل منها.</param>
+/// <param name="ToUnit">الوحدة المُحوَّل إليها.</param>
+/// <param name="QuantityClass">صنف الكمّية المشترك.</param>
+/// <param name="Numerator">البسط.</param>
+/// <param name="Denominator">المقام.</param>
+internal sealed record UnitConversionDto(
+    string Id,
+    string FromUnit,
+    string ToUnit,
+    string QuantityClass,
+    long Numerator,
+    long Denominator);
+
+/// <summary>معاملات التحويل، مرتَّبة بالوحدتين.</summary>
+/// <param name="ConversionCount">عدد المعاملات.</param>
+/// <param name="Conversions">المعاملات.</param>
+internal sealed record UnitConversionListDto(int ConversionCount, IReadOnlyList<UnitConversionDto> Conversions);
+
+/// <summary>طلب تجربة تحويل — مسبارٌ لا يكتب شيئاً.</summary>
+internal sealed record ConversionTrialRequestDto
+{
+    /// <summary>الكمّية بوحدتها.</summary>
+    public required MeasureRequestDto Quantity { get; init; }
+
+    /// <summary>الوحدة المطلوب التحويل إليها.</summary>
+    public required string ToUnit { get; init; }
+}
+
+/// <summary>نتيجة تحويلٍ وقع بلا باقٍ.</summary>
+/// <param name="From">الكمّية كما سُلّمت.</param>
+/// <param name="To">الكمّية بعد التحويل — <b>دقيقةً لا مقرَّبة</b>.</param>
+/// <param name="Numerator">بسط المعامل المُستعمَل.</param>
+/// <param name="Denominator">مقام المعامل المُستعمَل.</param>
+/// <param name="QuantityClass">صنف الكمّية المشترك.</param>
+internal sealed record ConversionResultDto(
+    MeasureDto From,
+    MeasureDto To,
+    long Numerator,
+    long Denominator,
+    string QuantityClass);

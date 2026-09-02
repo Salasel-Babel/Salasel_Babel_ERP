@@ -32,6 +32,7 @@ public static class InventoryModuleRegistration
         services.AddScoped<InventoryRuntime>();
         services.AddScoped<StockMovementService>();
         services.AddScoped<InventoryValuationService>();
+        services.AddScoped<UnitOfMeasureService>();
         services.AddScoped<ItemCatalogueService>();
         services.AddScoped<StockDocumentService>();
         services.AddScoped<StoragePlaceService>();

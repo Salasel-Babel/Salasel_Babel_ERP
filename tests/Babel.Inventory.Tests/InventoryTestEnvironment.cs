@@ -133,8 +133,18 @@ internal static class InventoryTestEnvironment
     /// </summary>
     public static TenantId PlacementTenant { get; } = new(new Guid("7b1e0c33-0000-4000-8000-000000000005"));
 
+    /// <summary>
+    /// منشأة سجلّ الوحدات: تُسجَّل عليها وحدات قياس بأصناف كمّية ومعاملات تحويل، ويُجرَّب
+    /// المسبار.
+    /// <para>
+    /// <b>ومعزولة لأن رمز الوحدة فريدٌ في المنشأة</b>: إثباتان يسجّلان «‏KG» على منشأةٍ
+    /// واحدة يُفشل ثانيهما الأولَ برفض التكرار — وهو «أحمر بترتيب التشغيل لا ببنائه».
+    /// </para>
+    /// </summary>
+    public static TenantId UnitRegisterTenant { get; } = new(new Guid("7b1e0c33-0000-4000-8000-000000000006"));
+
     public static TenantId[] AllTenants { get; } =
-        [Tenant, NegativeStockTenant, ValuationTenant, UnitsTenant, PlacementTenant];
+        [Tenant, NegativeStockTenant, ValuationTenant, UnitsTenant, PlacementTenant, UnitRegisterTenant];
 
     /// <summary>عدد محاولات الحذف قبل اللجوء إلى الإنهاء القسري.</summary>
     private const int DropAttempts = 40;

@@ -547,3 +547,116 @@ internal static class StockTransferState
     /// </summary>
     public const string Moved = "MOVED";
 }
+
+/// <summary>
+/// أصناف الكمّية — <b>وهي ما يجعل التحويل ممكناً أو مستحيلاً</b>.
+/// <para>
+/// معامل التحويل بين وحدتين من صنفٍ واحد <b>واقعةٌ فيزيائية</b>: الكيلوغرام ألف غرام
+/// دائماً وفي كل مكان. وبين صنفين مختلفين <b>ليس معاملاً بل كثافة</b>: «كم كيلوغراماً في
+/// اللتر؟» سؤالٌ جوابه يختلف بين الماء والزيت والرصاص، ويختلف للمادّة الواحدة بالحرارة.
+/// فالتحويل بين صنفين <b>يُرفض باسمه</b>، ولا يُقبل بمعاملٍ يبدو ثابتاً وهو خاصّيةُ مادّة.
+/// </para>
+/// </summary>
+internal static class QuantityClass
+{
+    /// <summary>عدد: حبّة · علبة · كرتون · طبلية.</summary>
+    public const string Count = "COUNT";
+
+    /// <summary>وزن: غرام · كيلوغرام · طنّ.</summary>
+    public const string Weight = "WEIGHT";
+
+    /// <summary>حجم: مليلتر · لتر · متر مكعّب.</summary>
+    public const string Volume = "VOLUME";
+
+    /// <summary>طول: مليمتر · متر · كيلومتر.</summary>
+    public const string Length = "LENGTH";
+
+    /// <summary>مساحة: متر مربّع.</summary>
+    public const string Area = "AREA";
+
+    /// <summary>الأصناف الخمسة — <b>مغلقة</b>: صنفٌ سادس يدخل بهجرة لا بقيمةٍ حرّة.</summary>
+    public static IReadOnlyList<string> All { get; } = [Count, Weight, Volume, Length, Area];
+}
+
+/// <summary>
+/// <b>وحدة قياس مسجَّلة</b>: رمزها، واسمها، و<b>صنف كمّيتها</b>.
+/// <para>
+/// <b>ولماذا صنف الكمّية عمودٌ إلزاميّ لا وصفٌ اختياري:</b> هو الحقل الوحيد الذي يجعل
+/// «كيلوغرام ← متر» <b>خطأً يُرفض</b> بدل أن يكون معاملاً يكتبه أحدهم بحسن نيّة. وبدونه
+/// لا يملك النظام ما يفرّق به بين تحويلٍ فيزيائي وتقديرٍ مادّي.
+/// </para>
+/// <para>
+/// <b>وهذا سجلٌّ يصف ولا يُبطل</b>، كسجلّ التسكين حرفاً بحرف: الحركات القائمة تحمل رموز
+/// وحدات كُتبت قبل وجوده (‏<c>EACH</c> وغيرها، هجرة 001)، ولا مفتاح خارجي منها إليه.
+/// فرمزٌ غير مسجَّل يبقى عاملاً — <b>ويبقى معه أنّ خلط وحدتين بلا معامل يُرفض</b>.
+/// </para>
+/// </summary>
+internal sealed class UnitOfMeasureRow
+{
+    public Guid Id { get; set; }
+
+    public Guid TenantId { get; set; }
+
+    /// <summary>رمز الوحدة — <b>هوية تحملها كل حركة</b>، لا نصّاً معروضاً.</summary>
+    public string Code { get; set; } = string.Empty;
+
+    /// <summary>الاسم العربي — <b>وهو السجلّ</b> (‏ADR-0021 · القاعدة 14).</summary>
+    public string NameAr { get; set; } = string.Empty;
+
+    /// <summary>صنف الكمّية: عدد · وزن · حجم · طول · مساحة.</summary>
+    public string Class { get; set; } = QuantityClass.Count;
+
+    /// <summary>هل هي عاملة؟ والتعطيل حالةٌ لا حذف: الرمز محمولٌ على حركات مضت.</summary>
+    public bool IsActive { get; set; } = true;
+
+    public DateTime CreatedAt { get; set; }
+}
+
+/// <summary>ترجمة اسم وحدة قياس — <b>صفٌّ لا عمود</b> (‏ADR-0021 · القاعدة 14).</summary>
+internal sealed class UnitOfMeasureTranslationRow
+{
+    public Guid Id { get; set; }
+
+    public Guid TenantId { get; set; }
+
+    public string UnitCode { get; set; } = string.Empty;
+
+    public string Locale { get; set; } = string.Empty;
+
+    public string Text { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// معامل تحويل بين وحدتين <b>على مستوى المنشأة</b> — لا على مستوى الصنف.
+/// <para>
+/// <b>والفرق بينه وبين <see cref="ItemUnitRow"/> مقصود، ولا يُدمَجان:</b>
+/// «الكيلوغرام ألف غرام» واقعةٌ لا تخصّ صنفاً، تُكتب مرّةً وتصلح للجميع. أمّا «الكرتون
+/// اثنتا عشرة حبّة» فهي <b>خاصّية تعبئةٍ لصنفٍ بعينه</b> — كرتون هذا الصنف اثنتا عشرة
+/// وكرتون ذاك أربع وعشرون. ودمجُهما في جدولٍ واحد يعني إمّا أن تُكرَّر الواقعة الفيزيائية
+/// على كل صنف، أو أن تُعمَّم خاصّية التعبئة على الأصناف كلّها.
+/// </para>
+/// <para>
+/// <b>والمعامل بسطٌ ومقام</b> للسبب نفسه الذي جعله كذلك على الصنف: «الحبّة ثلث علبة» لا
+/// يُكتب عشرياً بلا خسارة، والخسارة في كمّيةٍ تُضرب في تكلفة الوحدة تصل إلى المال.
+/// </para>
+/// </summary>
+internal sealed class UnitConversionRow
+{
+    public Guid Id { get; set; }
+
+    public Guid TenantId { get; set; }
+
+    /// <summary>الوحدة المُحوَّل منها.</summary>
+    public string FromUnit { get; set; } = string.Empty;
+
+    /// <summary>الوحدة المُحوَّل إليها.</summary>
+    public string ToUnit { get; set; } = string.Empty;
+
+    /// <summary>البسط: كم وحدةً من <see cref="ToUnit"/> في <see cref="Denominator"/> من <see cref="FromUnit"/>.</summary>
+    public long Numerator { get; set; }
+
+    /// <summary>المقام — موجب دائماً.</summary>
+    public long Denominator { get; set; } = 1;
+
+    public DateTime CreatedAt { get; set; }
+}

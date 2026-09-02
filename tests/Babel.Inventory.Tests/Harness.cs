@@ -51,7 +51,8 @@ internal sealed class Harness : IDisposable
         Profiles = new InMemoryCapabilityProfileStore();
 
         Stock = new StockMovementService(enforcer, inventory);
-        Items = new ItemCatalogueService(enforcer, inventory);
+        Units = new UnitOfMeasureService(enforcer, inventory);
+        Items = new ItemCatalogueService(enforcer, inventory, Units);
         StockDocuments = new StockDocumentService(enforcer, inventory, Posting, Stock);
         Places = new StoragePlaceService(enforcer, inventory);
         Transfers = new StockTransferService(enforcer, inventory, Stock);
@@ -89,6 +90,9 @@ internal sealed class Harness : IDisposable
 
     /// <summary>كتالوج الأصناف — وحدة الأساس ومعاملات التحويل.</summary>
     public ItemCatalogueService Items { get; }
+
+    /// <summary>سجلّ وحدات القياس — <b>وصنفُ الكمّية هو ما يجعل التحويل ممكناً أو مستحيلاً</b>.</summary>
+    public UnitOfMeasureService Units { get; }
 
     /// <summary>مستندات حركة المخزون القائمة بذاتها: تسوية الجرد والرصيد الافتتاحي.</summary>
     public StockDocumentService StockDocuments { get; }

@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     0229f4a0df345dae90832ad0ae10d4959e31e839c0fe1c495ab9a8fe5d48af7a
+     7b90504c45b6de73c7e22968c45c4a12386eca079c9ac57a6f8ad36c5c2405b8
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -450,6 +450,25 @@ export interface ContractPosition {
   /** عدد المستخلصات المُرحَّلة على هذا العقد. / The number of posted certificates on this contract. */
   postedCertificateCount: number;
   retentionOutstanding: Money;
+}
+
+/** نتيجة تحويلٍ **وقع بلا باقٍ**. والمعامل يخرج معها بسطاً ومقاماً كي يُراجَع الناتج بلا استعلامٍ ثانٍ، ولا يُقرأ رقمٌ بلا الطريق الذي أنتجه. / The result of a conversion **that divided exactly**. The factor comes back with it as numerator and denominator so the result can be checked without a second call, and no number is read without the route that produced it. */
+export interface ConversionResult {
+  /** مقام المعامل المُستعمَل. / The denominator of the factor used. */
+  denominator: number;
+  from: Measure;
+  /** بسط المعامل المُستعمَل. / The numerator of the factor used. */
+  numerator: number;
+  /** صنف الكمّية المشترك. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The shared quantity class. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  quantityClass: "COUNT" | "WEIGHT" | "VOLUME" | "LENGTH" | "AREA";
+  to: Measure;
+}
+
+/** طلب تجربة تحويل — **مسبارٌ لا يكتب شيئاً**. يُجيب بالناتج الدقيق أو بالرفض المُسمّى، ولا يُقرّب في الحالتين. / A conversion trial request — **a probe that writes nothing**. It answers with the exact result or with a named refusal, and rounds in neither case. */
+export interface ConversionTrialRequest {
+  quantity: Measure;
+  /** الوحدة المطلوب التحويل إليها. / The unit to convert into. */
+  toUnit: string;
 }
 
 export interface CostCenter {
@@ -2783,6 +2802,42 @@ export interface Unit {
   vatTreatment: "exempt" | "standard";
 }
 
+/** معامل تحويل بين وحدتين كما يخرج على السلك. / A conversion factor between two units as it leaves on the wire. */
+export interface UnitConversion {
+  /** المقام. / The denominator. */
+  denominator: number;
+  /** الوحدة المُحوَّل منها. / The source unit. */
+  fromUnit: string;
+  /** المعرّف. / The identifier. */
+  id: string;
+  /** البسط. / The numerator. */
+  numerator: number;
+  /** صنف الكمّية المشترك بين الوحدتين — ولا معامل بين صنفين. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The quantity class shared by both units — there is no factor across two classes. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  quantityClass: "COUNT" | "WEIGHT" | "VOLUME" | "LENGTH" | "AREA";
+  /** الوحدة المُحوَّل إليها. / The destination unit. */
+  toUnit: string;
+}
+
+/** معاملات التحويل، مرتَّبة بالوحدة المُحوَّل منها ثم إليها. / The conversion factors, ordered by source unit then destination unit. */
+export interface UnitConversionList {
+  /** عدد المعاملات. / The number of factors. */
+  conversionCount: number;
+  /** المعاملات. / The factors. */
+  conversions: UnitConversion[];
+}
+
+/** طلب تسجيل معامل تحويل بين وحدتين **على مستوى المنشأة** — وهو غير ItemRequest.units: ذاك خاصّية تعبئةٍ لصنف، وهذا واقعةٌ فيزيائية تصلح للجميع. **ويُرفض ما بين صنفَي كمّية مختلفين.** / A request to register a conversion factor between two units **at company level** — not the same as ItemRequest.units, which is a packing property of one item, while this is a physical fact true for all. **One across two quantity classes is refused.** */
+export interface UnitConversionRequest {
+  /** المقام — موجب. / The denominator; positive. */
+  denominator: number;
+  /** الوحدة المُحوَّل منها — يجب أن تكون مسجَّلة وعاملة. / The source unit; it must be registered and active. */
+  fromUnit: string;
+  /** البسط: كم وحدةً من toUnit في «المقام» من fromUnit. / The numerator: how many toUnit are in 'denominator' of fromUnit. */
+  numerator: number;
+  /** الوحدة المُحوَّل إليها — يجب أن تكون مسجَّلة وعاملة ومن صنف الكمّية نفسه. / The destination unit; it must be registered, active, and of the same quantity class. */
+  toUnit: string;
+}
+
 /** متوسط تكلفة الوحدة نصّاً بمقياس **ستّ خانات لا أربع**: صنفٌ يُشترى بألف حبّة بمئة ريال تكلفة وحدته 0.100000، وبمقياس أربعة تصير 0.1000 والفرق لا يظهر — لكنه يتراكم على كل صرف حتى ينحرف رصيد القيمة عن مجموع حركاته. / The moving average unit cost as a string with **six** decimal places rather than four: an item bought at a thousand pieces for a hundred riyals has a unit cost of 0.100000, which at scale four becomes 0.1000 and the difference disappears — yet it accumulates on every issue until the value balance no longer equals the sum of its movements. */
 /* UnitCost مُعرَّف في ../money كنوع محتجز وقت التشغيل. */
 
@@ -2794,6 +2849,36 @@ export interface UnitFactor {
   numerator: number;
   /** رمز الوحدة الأكبر. / The larger unit's code. */
   unitCode: string;
+}
+
+/** وحدة قياس كما تخرج على السلك. / A unit of measure as it leaves on the wire. */
+export interface UnitOfMeasure {
+  /** الرمز. / The code. */
+  code: string;
+  /** المعرّف الذي تُبنى عليه القراءة. / The identifier reads are built on. */
+  id: string;
+  /** هل هي عاملة؟ **والتعطيل حالةٌ تُقرأ لا غياب**: المُعطَّلة تبقى في القوائم بهذا الحقل false، لأن رمزها محمولٌ على حركات مضت. / Is it active? **Deactivation is a readable state, not an absence**: a deactivated unit stays in the lists with this field false, because its code is carried by past movements. */
+  isActive: boolean;
+  name: LocalizedText;
+  /** صنف الكمّية. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The quantity class. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  quantityClass: "COUNT" | "WEIGHT" | "VOLUME" | "LENGTH" | "AREA";
+}
+
+/** وحدات قياس المنشأة، مرتَّبة بالرمز ترتيباً حرفياً ثابتاً. **وغلافٌ لا مصفوفة عارية.** / The company's units of measure, ordered by code in a stable ordinal order. **An envelope, not a bare array.** */
+export interface UnitOfMeasureList {
+  /** عدد الوحدات. / The number of units. */
+  unitCount: number;
+  /** الوحدات. / The units. */
+  units: UnitOfMeasure[];
+}
+
+/** طلب تسجيل وحدة قياس. **وصنف الكمّية إلزاميّ**: هو الحقل الوحيد الذي يجعل «كجم ← م» خطأً يُرفض بدل أن يكون معاملاً يكتبه أحدهم بحسن نيّة. / A request to register a unit of measure. **The quantity class is required**: it is the only field that makes 'kg to m' a refused error rather than a factor somebody writes in good faith. */
+export interface UnitOfMeasureRequest {
+  /** رمز الوحدة — **هوية تحملها كل حركة، لا نصّاً معروضاً**. لا يُترجَم ولا يُطابَق بلا حساسية حالة. / The unit code — **an identity carried by every movement, not displayed text**. Never translated and never matched case-insensitively. */
+  code: string;
+  name: LocalizedText;
+  /** صنف الكمّية. **والقائمة مغلقة**: صنفٌ سادس يدخل بهجرة لا بقيمةٍ حرّة. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The quantity class. **The list is closed**: a sixth class arrives by migration, not by a free value. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  quantityClass: "COUNT" | "WEIGHT" | "VOLUME" | "LENGTH" | "AREA";
 }
 
 /** طلب تسجيل وحدة داخل عقار. **وusage وvatTreatment حقلان صريحان لا يُشتقّ أحدهما من الآخر ولا من نوع العقار**: العقار المختلط يولّد توريداً خاضعاً ومعفى معاً. / A unit registration request within a property. **usage and vatTreatment are explicit fields, neither derived from the other nor from the property type**: a mixed-use property produces taxable and exempt supplies at once. */

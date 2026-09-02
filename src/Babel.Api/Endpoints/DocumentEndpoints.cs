@@ -124,6 +124,15 @@ internal static class DocumentEndpoints
         app.MapPost(ApiRoutes.StockTransferMovement, MoveStockTransferAsync);
 
         app.MapGet(ApiRoutes.PlacementBalances, ReadPlacementBalancesAsync);
+
+        // ── وحدات القياس ─────────────────────────────────────────────────────
+        app.MapPost(ApiRoutes.UnitsOfMeasure, AddUnitOfMeasureAsync);
+        app.MapGet(ApiRoutes.UnitsOfMeasure, ListUnitsOfMeasureAsync);
+        app.MapGet(ApiRoutes.UnitOfMeasure, ReadUnitOfMeasureAsync);
+        app.MapPost(ApiRoutes.UnitOfMeasureDeactivation, DeactivateUnitOfMeasureAsync);
+        app.MapPost(ApiRoutes.UnitConversions, AddUnitConversionAsync);
+        app.MapGet(ApiRoutes.UnitConversions, ListUnitConversionsAsync);
+        app.MapPost(ApiRoutes.UnitConversionTrials, ConvertQuantityAsync);
     }
 
     // ── المبيعات ─────────────────────────────────────────────────────────────
@@ -1911,6 +1920,218 @@ internal static class DocumentEndpoints
 
         List<StoragePlaceDto> places = [.. result.Value.Select(DocumentMapping.ToDto)];
         return Results.Json(new StoragePlaceListDto(places.Count, places), ApiJson.Options);
+    }
+
+    // ── وحدات القياس ─────────────────────────────────────────────────────────
+
+    private static async Task<IResult> AddUnitOfMeasureAsync(
+        HttpContext context,
+        InventorySurface inventory,
+        CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        (UnitOfMeasureRequestDto? dto, IResult? refused) =
+            await BodyAsync<UnitOfMeasureRequestDto>(context, cancellationToken).ConfigureAwait(false);
+
+        if (dto is null)
+        {
+            return refused!;
+        }
+
+        InventoryUnitRequest request;
+        try
+        {
+            request = DocumentMapping.ToUnitRequest(dto);
+        }
+        catch (WireFormatException wire)
+        {
+            return HttpProblemResults.Wire(context, wire);
+        }
+
+        Result<InventoryUnit> result = await inventory
+            .AddUnitAsync(new TenantId(companyId), Actor(context), request, cancellationToken)
+            .ConfigureAwait(false);
+
+        return result.IsFailure
+            ? HttpProblemResults.Domain(context, result.Errors)
+            : Created(
+                context,
+                DocumentMapping.ToDto(result.Value),
+                Location(ApiRoutes.UnitOfMeasure, companyId, "unitId", result.Value.Id));
+    }
+
+    private static async Task<IResult> ListUnitsOfMeasureAsync(
+        HttpContext context,
+        InventorySurface inventory,
+        CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        Result<IReadOnlyList<InventoryUnit>> result = await inventory
+            .ListUnitsAsync(new TenantId(companyId), Actor(context), cancellationToken)
+            .ConfigureAwait(false);
+
+        if (result.IsFailure)
+        {
+            return HttpProblemResults.Domain(context, result.Errors);
+        }
+
+        List<UnitOfMeasureDto> units = [.. result.Value.Select(DocumentMapping.ToDto)];
+        return Results.Json(new UnitOfMeasureListDto(units.Count, units), ApiJson.Options);
+    }
+
+    private static async Task<IResult> ReadUnitOfMeasureAsync(
+        HttpContext context,
+        InventorySurface inventory,
+        CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        if (!Scope.TryRouteId(context, "unitId", out Guid unitId, out IResult? malformed))
+        {
+            return malformed!;
+        }
+
+        Result<InventoryUnit> result = await inventory
+            .ReadUnitAsync(new TenantId(companyId), Actor(context), unitId, cancellationToken)
+            .ConfigureAwait(false);
+
+        return result.IsFailure
+            ? HttpProblemResults.Domain(context, result.Errors)
+            : Results.Json(DocumentMapping.ToDto(result.Value), ApiJson.Options);
+    }
+
+    private static async Task<IResult> DeactivateUnitOfMeasureAsync(
+        HttpContext context,
+        InventorySurface inventory,
+        CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        if (!Scope.TryRouteId(context, "unitId", out Guid unitId, out IResult? malformed))
+        {
+            return malformed!;
+        }
+
+        Result<InventoryUnit> result = await inventory
+            .DeactivateUnitAsync(new TenantId(companyId), Actor(context), unitId, cancellationToken)
+            .ConfigureAwait(false);
+
+        return result.IsFailure
+            ? HttpProblemResults.Domain(context, result.Errors)
+            : Results.Json(DocumentMapping.ToDto(result.Value), ApiJson.Options);
+    }
+
+    private static async Task<IResult> AddUnitConversionAsync(
+        HttpContext context,
+        InventorySurface inventory,
+        CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        (UnitConversionRequestDto? dto, IResult? refused) =
+            await BodyAsync<UnitConversionRequestDto>(context, cancellationToken).ConfigureAwait(false);
+
+        if (dto is null)
+        {
+            return refused!;
+        }
+
+        InventoryUnitConversionRequest request;
+        try
+        {
+            request = DocumentMapping.ToUnitConversionRequest(dto);
+        }
+        catch (WireFormatException wire)
+        {
+            return HttpProblemResults.Wire(context, wire);
+        }
+
+        Result<InventoryUnitConversion> result = await inventory
+            .AddUnitConversionAsync(new TenantId(companyId), Actor(context), request, cancellationToken)
+            .ConfigureAwait(false);
+
+        return result.IsFailure
+            ? HttpProblemResults.Domain(context, result.Errors)
+            : Created(context, DocumentMapping.ToDto(result.Value), null);
+    }
+
+    private static async Task<IResult> ListUnitConversionsAsync(
+        HttpContext context,
+        InventorySurface inventory,
+        CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        Result<IReadOnlyList<InventoryUnitConversion>> result = await inventory
+            .ListUnitConversionsAsync(new TenantId(companyId), Actor(context), cancellationToken)
+            .ConfigureAwait(false);
+
+        if (result.IsFailure)
+        {
+            return HttpProblemResults.Domain(context, result.Errors);
+        }
+
+        List<UnitConversionDto> conversions = [.. result.Value.Select(DocumentMapping.ToDto)];
+        return Results.Json(new UnitConversionListDto(conversions.Count, conversions), ApiJson.Options);
+    }
+
+    private static async Task<IResult> ConvertQuantityAsync(
+        HttpContext context,
+        InventorySurface inventory,
+        CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        (ConversionTrialRequestDto? dto, IResult? refused) =
+            await BodyAsync<ConversionTrialRequestDto>(context, cancellationToken).ConfigureAwait(false);
+
+        if (dto is null)
+        {
+            return refused!;
+        }
+
+        InventoryConversionTrialRequest request;
+        try
+        {
+            request = DocumentMapping.ToConversionTrialRequest(dto);
+        }
+        catch (WireFormatException wire)
+        {
+            return HttpProblemResults.Wire(context, wire);
+        }
+
+        Result<InventoryConversionResult> result = await inventory
+            .ConvertQuantityAsync(new TenantId(companyId), Actor(context), request, cancellationToken)
+            .ConfigureAwait(false);
+
+        // ‏**والمسبار لا يكتب شيئاً، فجوابه 200 لا 201.** ورمزُ إنشاءٍ على مورد
+        // ‏«محاولات» كان سيَعِد بموردٍ يُقرأ لاحقاً، ولا مورد.
+        return result.IsFailure
+            ? HttpProblemResults.Domain(context, result.Errors)
+            : Results.Json(DocumentMapping.ToDto(result.Value), ApiJson.Options);
     }
 
     private static IResult Created(HttpContext context, object dto, string? location)

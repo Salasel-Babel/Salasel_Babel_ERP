@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     0229f4a0df345dae90832ad0ae10d4959e31e839c0fe1c495ab9a8fe5d48af7a
+     7b90504c45b6de73c7e22968c45c4a12386eca079c9ac57a6f8ad36c5c2405b8
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -450,6 +450,80 @@ export async function addSupplier(transport: Transport, args: AddSupplierArgs, s
   return decodeSchema(SCHEMAS, "Party", response.json) as T.Party;
 }
 
+export interface AddUnitConversionArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.UnitConversionRequest;
+}
+
+/**
+ * تسجيل معامل تحويل بين وحدتين / Register a conversion factor between two units
+ * 
+ * يسجّل معامل تحويل بين وحدتين **على مستوى المنشأة** — و**يرفض ما بين صنفَي كمّية مختلفين** برمز inventory.unit_class_mismatch. فـ«كجم ← م» ليس معاملاً ناقصاً بل **خطأ**، ولا يُقرَّب.
+ * 
+ * **وهو غير ItemRequest.units**، والفرق مقصود ولا يُدمَجان: «الكيلوغرام ألف غرام» واقعةٌ لا تخصّ صنفاً، تُكتب مرّةً وتصلح للجميع؛ أمّا «الكرتون اثنتا عشرة حبّة» فهي **خاصّية تعبئةٍ لصنفٍ بعينه** — كرتون هذا الصنف اثنتا عشرة وكرتون ذاك أربع وعشرون. ودمجُهما يعني إمّا تكرار الواقعة الفيزيائية على كل صنف، أو تعميم خاصّية التعبئة على الأصناف كلّها.
+ * 
+ * **والمعامل بسطٌ ومقام صحيحان لا عددٌ عشري**: «الحبّة ثلث علبة» هو 1/3 ولا يُكتب عشرياً بلا خسارة، والخسارة في كمّيةٍ تُضرب في تكلفة الوحدة تصل إلى المال.
+ * 
+ * **ويُسجَّل في اتجاهه المُسلَّم وحده ولا يُقلَب تلقائياً**: القلبُ يُنتج معاملات لا يقرؤها أحد ولا يُراجعها، ويجعل القائمة ضعف طولها الحقيقي.
+ * 
+ * **ولا اشتقاق بسلسلة**: «غرام ← كجم» و«كجم ← طنّ» لا يُنتجان «غرام ← طنّ» — السلسلة تُنتج تحويلاً لم يقرّه أحد، وكسرُها الوسيط يُقرَّب قبل أن يُضرب في الثاني.
+ * 
+ * Registers a conversion factor between two units **at company level** — and **refuses one across two quantity classes** with code inventory.unit_class_mismatch. 'kg to m' is not an incomplete factor but an **error**, and it is not rounded.
+ * 
+ * **This is not ItemRequest.units**, and the two are deliberately never merged: 'a kilogram is a thousand grams' is a fact that belongs to no item, written once and true for all; 'a carton is twelve pieces' is **a packing property of one item** — this item's carton is twelve and that one's is twenty-four. Merging them means either repeating the physical fact on every item, or generalising a packing property across all of them.
+ * 
+ * **A factor is an integer numerator and denominator, not a decimal**: 'a piece is a third of a box' is 1/3 and cannot be written decimally without loss, and loss in a quantity multiplied by a unit cost reaches the money.
+ * 
+ * **It is recorded in the direction supplied and never inverted automatically**: inverting produces factors nobody reads or reviews, and doubles the list's apparent length.
+ * 
+ * **And no chaining**: 'g to kg' plus 'kg to t' does not yield 'g to t' — a chain produces a conversion nobody approved, and its intermediate fraction is rounded before it is multiplied by the second.
+ */
+export async function addUnitConversion(transport: Transport, args: AddUnitConversionArgs, signal?: AbortSignal): Promise<T.UnitConversion> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/unit-conversions";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "UnitConversionRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "UnitConversion", response.json) as T.UnitConversion;
+}
+
+export interface AddUnitOfMeasureArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.UnitOfMeasureRequest;
+}
+
+/**
+ * تسجيل وحدة قياس / Register a unit of measure
+ * 
+ * يسجّل وحدة قياس: رمزها، واسمها ثنائي اللغة، و**صنف كمّيتها**.
+ * 
+ * **وصنف الكمّية هو الحقل الذي يبرّر وجود هذا المورد كلّه.** معامل التحويل بين وحدتين من صنفٍ واحد **واقعةٌ فيزيائية**: الكيلوغرام ألف غرام دائماً وفي كل مكان. وبين صنفين مختلفين **ليس معاملاً بل كثافة**: «كم كيلوغراماً في اللتر؟» جوابه يختلف بين الماء والزيت والرصاص، ويختلف للمادّة الواحدة بالحرارة. فبلا هذا الحقل لا يملك النظام ما يفرّق به بين الاثنين، ويصير «كجم ← م» معاملاً يكتبه أحدهم بحسن نيّة ولا يعترض عليه شيء.
+ * 
+ * **والقائمة مغلقة عمداً** — عدد · وزن · حجم · طول · مساحة: قيمةٌ حرّة تجعل صنفين مكتوبين بحرفين مختلفين يبدوان مختلفين وهما واحد، فيُرفض تحويلٌ مشروع أو يُقبل تحويلٌ مستحيل. وصنفٌ سادس يدخل بهجرة لا بقيمة.
+ * 
+ * **وهذا سجلٌّ يصف ولا يُبطل**: الحركات القائمة تحمل رموز وحدات كُتبت قبل وجوده، ولا مفتاح خارجي منها إليه، ورمزٌ غير مسجَّل **يبقى عاملاً في draftStockMovement**. لكن **معامل التحويل لا يُسجَّل بين رمزين لا يُعرَف صنف كمّيتهما**: التحويل بلا صنفٍ معلوم تقديرٌ لا حساب.
+ * 
+ * Registers a unit of measure: its code, its bilingual name, and **its quantity class**.
+ * 
+ * **The quantity class is the field that justifies this whole resource.** A conversion factor between two units of one class is a **physical fact**: a kilogram is a thousand grams, always and everywhere. Between two classes it is **not a factor but a density**: 'how many kilograms in a litre?' is answered differently for water, oil and lead, and differently for one material at different temperatures. Without this field the system has nothing to tell the two apart, and 'kg to m' becomes a factor somebody writes in good faith with nothing to object.
+ * 
+ * **The list is closed on purpose** — count, weight, volume, length, area: a free value makes two classes spelled differently look different while being the same, so a legitimate conversion gets refused or an impossible one accepted. A sixth class arrives by migration, not by value.
+ * 
+ * **This register describes rather than invalidates**: existing movements carry unit codes written before it existed, no foreign key points from them to it, and an unregistered code **keeps working in draftStockMovement**. But **a conversion factor is not recorded between two codes whose class is unknown**: converting without a known class is an estimate, not a computation.
+ */
+export async function addUnitOfMeasure(transport: Transport, args: AddUnitOfMeasureArgs, signal?: AbortSignal): Promise<T.UnitOfMeasure> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/units-of-measure";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "UnitOfMeasureRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "UnitOfMeasure", response.json) as T.UnitOfMeasure;
+}
+
 export interface AddWarehouseArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
@@ -609,6 +683,41 @@ export async function changeSubscriptionPlan(transport: Transport, args: ChangeS
   const response = await transport({ method: "POST", url, body, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "Subscription", response.json) as T.Subscription;
+}
+
+export interface ConvertQuantityArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.ConversionTrialRequest;
+}
+
+/**
+ * تجربة تحويل كمّية / Try converting a quantity
+ * 
+ * **مسبارٌ يحوّل كمّيةً ولا يكتب شيئاً.** وُجد كي يُجرَّب التحويل **قبل** أن يُبنى عليه مستند، وكي يكون «سبع حبّات ← كرتون مرفوض» **جواباً يُقرأ على السلك** لا سلوكاً يُستنتَج من فشل مستند.
+ * 
+ * **والقاعدة الحاكمة: يقع بلا باقٍ أو يُرفض باسمه — ولا تقريب في الحالتين.** «١٢ حبّة ← كرتون» يُجيب "1"؛ و«٧ حبّات ← كرتون» يُرفض بـ inventory.unit_conversion_not_exact ولا يُجيب "0.583333". والسبب أن الكمّية تُضرب في تكلفة الوحدة، فالتقريب فيها يدخل **المال** ويتراكم على كل حركة حتى يصير الرصيد لا يساوي مجموع حركاته.
+ * 
+ * **وثلاثة رفضٍ مُسمّاة**: صنفا كمّية مختلفان (inventory.unit_class_mismatch) · لا معامل مسجَّل (inventory.no_conversion_between_units) · تحويلٌ يتجاوز مدى العدد العشري (inventory.unit_conversion_overflow).
+ * 
+ * **و POST على مورد «محاولات» لا GET باستعلام**: الكمّية تعبر السلك **نصّاً**، ونصٌّ عشري في سلسلة الاستعلام يمرّ على ترميزٍ وتحليلٍ لا يحرسهما محوّل الحقول المالية — وهو بالضبط قناة فقدان الدقّة التي أُغلقت في الجسم. **والجواب 200 لا 201**: لا مورد يُنشأ، ورمزُ إنشاء كان سيَعِد بموردٍ يُقرأ لاحقاً ولا مورد.
+ * 
+ * **A probe that converts a quantity and writes nothing.** It exists so a conversion can be tried **before** a document is built on it, and so that 'seven pieces to a carton is refused' is **an answer read off the wire** rather than behaviour inferred from a failing document.
+ * 
+ * **The governing rule: it divides exactly or it is refused by name — and never rounds either way.** '12 pieces to a carton' answers "1"; '7 pieces to a carton' is refused with inventory.unit_conversion_not_exact and does not answer "0.583333". Because a quantity gets multiplied by a unit cost, rounding it reaches the **money** and accumulates on every movement until the balance no longer equals the sum of its own movements.
+ * 
+ * **Three named refusals**: two different quantity classes (inventory.unit_class_mismatch), no registered factor (inventory.no_conversion_between_units), and a conversion exceeding the decimal range (inventory.unit_conversion_overflow).
+ * 
+ * **A POST on a 'trials' resource, not a GET with query parameters**: quantities cross the wire as **strings**, and a decimal string in a query string passes through encoding and parsing that the monetary-field converter does not guard — precisely the precision-loss channel closed in the body. **And the answer is 200, not 201**: no resource is created, and a creation code would promise a resource to read later where there is none.
+ */
+export async function convertQuantity(transport: Transport, args: ConvertQuantityArgs, signal?: AbortSignal): Promise<T.ConversionResult> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/unit-conversions/trials";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "ConversionTrialRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "ConversionResult", response.json) as T.ConversionResult;
 }
 
 export interface CreateLesseeArgs {
@@ -802,6 +911,34 @@ export async function deactivateStorageLocation(transport: Transport, args: Deac
   const response = await transport({ method: "POST", url, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "StoragePlace", response.json) as T.StoragePlace;
+}
+
+export interface DeactivateUnitOfMeasureArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+}
+
+/**
+ * تعطيل وحدة قياس / Deactivate a unit of measure
+ * 
+ * يعطّل وحدة قياس — **ولا يحذفها**: الرمز محمولٌ على حركات مضت.
+ * 
+ * **ولا فحص رصيدٍ هنا** — بخلاف تعطيل موضع التسكين: الوحدة ليست بُعداً في مفتاح الرصيد بل **مقياسُ ما فيه**. وتعطيلُها لا يحبس بضاعة: الرصيد المُمسَك بها يبقى مقروءاً ومصروفاً، لأنه مُمسَك بوحدة أساسٍ ثُبِّتت بأول حركة ولا تتغيّر. والتعطيل يمنع **تسجيل معاملٍ جديد** عليها لا أكثر.
+ * 
+ * **وإعادة تعطيل مُعطَّلةٍ تنجح ولا تفشل.**
+ * 
+ * Deactivates a unit of measure — **it does not delete it**: the code is carried by past movements.
+ * 
+ * **No balance check here** — unlike deactivating a placement: a unit is not a dimension in the balance key but **the measure of what is in it**. Deactivating it strands no goods: a balance held in it stays readable and issuable, because it is held in a base unit fixed by the first movement and never changed. Deactivation only prevents **recording a new factor** on it.
+ * 
+ * **Deactivating an already deactivated unit succeeds.**
+ */
+export async function deactivateUnitOfMeasure(transport: Transport, args: DeactivateUnitOfMeasureArgs, signal?: AbortSignal): Promise<T.UnitOfMeasure> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/units-of-measure/{unitId}/deactivation";
+  const url = path;
+  const response = await transport({ method: "POST", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "UnitOfMeasure", response.json) as T.UnitOfMeasure;
 }
 
 export interface DeactivateWarehouseArgs {
@@ -2091,6 +2228,46 @@ export async function listStorageLocations(transport: Transport, args: ListStora
   const response = await transport({ method: "GET", url, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "StoragePlaceList", response.json) as T.StoragePlaceList;
+}
+
+export interface ListUnitConversionsArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+}
+
+/**
+ * قراءة معاملات التحويل / List the conversion factors
+ * 
+ * يقرأ معاملات التحويل مرتَّبةً بالوحدة المُحوَّل منها ثم إليها ترتيباً حرفياً ثابتاً. نقطة قراءة.
+ * 
+ * Lists the conversion factors ordered by source unit then destination unit in a stable ordinal order. A read point.
+ */
+export async function listUnitConversions(transport: Transport, args: ListUnitConversionsArgs, signal?: AbortSignal): Promise<T.UnitConversionList> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/unit-conversions";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "UnitConversionList", response.json) as T.UnitConversionList;
+}
+
+export interface ListUnitsOfMeasureArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+}
+
+/**
+ * قراءة وحدات القياس / List the units of measure
+ * 
+ * يقرأ وحدات قياس المنشأة مرتَّبةً بالرمز **ترتيباً حرفياً ثابتاً**. والمُعطَّلة تخرج في القائمة بـisActive = false ولا تُحذف منها. نقطة قراءة.
+ * 
+ * Lists the company's units of measure ordered by code in a **stable ordinal order**. A deactivated unit appears with isActive = false rather than being dropped. A read point.
+ */
+export async function listUnitsOfMeasure(transport: Transport, args: ListUnitsOfMeasureArgs, signal?: AbortSignal): Promise<T.UnitOfMeasureList> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/units-of-measure";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "UnitOfMeasureList", response.json) as T.UnitOfMeasureList;
 }
 
 export interface ListWarehousesArgs {
@@ -4368,6 +4545,26 @@ export async function readUnit(transport: Transport, args: ReadUnitArgs, signal?
   const response = await transport({ method: "GET", url, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "Unit", response.json) as T.Unit;
+}
+
+export interface ReadUnitOfMeasureArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+}
+
+/**
+ * قراءة وحدة قياس / Read one unit of measure
+ * 
+ * يقرأ وحدة قياس واحدة بصنف كمّيتها.
+ * 
+ * Reads a single unit of measure with its quantity class.
+ */
+export async function readUnitOfMeasure(transport: Transport, args: ReadUnitOfMeasureArgs, signal?: AbortSignal): Promise<T.UnitOfMeasure> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/units-of-measure/{unitId}";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "UnitOfMeasure", response.json) as T.UnitOfMeasure;
 }
 
 export interface ReadWarehouseArgs {

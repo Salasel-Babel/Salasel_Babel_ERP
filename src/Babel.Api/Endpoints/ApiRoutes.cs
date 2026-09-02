@@ -428,6 +428,41 @@ internal static class ApiRoutes
     /// </summary>
     public const string PlacementBalances = Company + "/placement-balances";
 
+    // ── وحدات القياس ─────────────────────────────────────────────────────────
+    // ‏**والاسم `units-of-measure` لا `units`** — وذلك ليس ذوقاً: المسار
+    // ‏`/properties/{propertyId}/units` منشورٌ اليوم و**وحداته عقارية**. ومَورِدٌ باسم
+    // ‏`units` تحت الشركة كان سيجعل الكلمة تحمل معنيين في عقدٍ واحد، فيقرأ المطوّر
+    // «‏unit» في مخطّطٍ ولا يعرف أيَّهما — وهو فخُّ تسميةٍ يسبق أي تصادم توجيه.
+
+    /// <summary>وحدات القياس: التسجيل والقائمة.</summary>
+    public const string UnitsOfMeasure = Company + "/units-of-measure";
+
+    /// <summary>وحدة قياس واحدة: القراءة.</summary>
+    public const string UnitOfMeasure = UnitsOfMeasure + "/{unitId}";
+
+    /// <summary>تعطيل وحدة قياس — <b>ولا فحص رصيد</b>: الوحدة مقياسُ ما في الموضع لا الموضع.</summary>
+    public const string UnitOfMeasureDeactivation = UnitOfMeasure + "/deactivation";
+
+    /// <summary>
+    /// معاملات التحويل بين وحدتين <b>على مستوى المنشأة</b>: التسجيل والقائمة.
+    /// <para>
+    /// وهي غير معاملات <c>ItemRequest.units</c>: تلك <b>خاصّية تعبئةٍ لصنف</b> — كرتون
+    /// هذا الصنف اثنتا عشرة وكرتون ذاك أربع وعشرون — وهذه <b>واقعةٌ فيزيائية</b> تُكتب
+    /// مرّةً وتصلح للجميع.
+    /// </para>
+    /// </summary>
+    public const string UnitConversions = Company + "/unit-conversions";
+
+    /// <summary>
+    /// <b>مسبار التحويل</b>: يحوّل كمّيةً ولا يكتب شيئاً.
+    /// <para>
+    /// ‏<c>POST</c> على مورد <b>محاولات</b> لا <c>GET</c> باستعلام: الكمّية تعبر السلك
+    /// <b>نصّاً</b>، ونصٌّ عشري في سلسلة الاستعلام يمرّ على ترميزٍ وتحليلٍ لا يحرسهما
+    /// محوّل <c>WireDecimal</c> — وهو بالضبط قناة فقدان الدقّة التي أُغلقت في الجسم.
+    /// </para>
+    /// </summary>
+    public const string UnitConversionTrials = UnitConversions + "/trials";
+
     // ── العقارات ─────────────────────────────────────────────────────────────
     // والشكل هو الشكل نفسه: **إنشاء مسوّدة · قراءة · فعلٌ على مورد فرعي**. ولا `PUT`
     // ولا `PATCH` ولا `DELETE` على عقارٍ ولا وحدةٍ ولا عقدٍ ولا فاتورةٍ ولا سند.

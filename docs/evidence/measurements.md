@@ -1268,7 +1268,8 @@ git ls-files -- 'data/*.json' 'data/**/*.json' \
 | منها في `data/posting-matrix/` | **890** | مقيس |
 | منها **بلا شقيقٍ عربي** | **صفر** | مقيس (‏`EveryEnglishGlossHasItsArabicRecordBesideIt`) |
 | أحداثُ الترحيل | **89** | مقيس — `jq -s '[.[].events|length]|add' data/posting-matrix/events/*.json` |
-| مفاتيح `*_en` **مكتوبةً فارغةً** (‏`note_en: ""` وأخواتها) | **642** | مقيس — ولذلك «الفراغ = الغياب» في قاعدة الاتّساق، وإلا لأحمرَّ الحارس 642 مرّة على شجرة سليمة |
+| مفاتيح `*_en` **مكتوبةً فارغةً** (‏`note_en: ""` وأخواتها) | **214** | مقيس — الأمر نفسه بـ`length==0` |
+| المخالفات التي كانت ستُرفع لو عُدّ الفراغ نقصاً | **642** | مقيس — ولذلك «الفراغ = الغياب» في قاعدة الاتّساق: وإلا لأحمرَّ الحارس **642** مرّة على شجرة سليمة، وحارسٌ يحمرّ لما ليس عطلاً يُدرَّب الناس على تجاهله |
 
 #### د) تجربة النموّ — حدثٌ جديد يمرّ، ثم يُنزع
 
@@ -1301,7 +1302,7 @@ git ls-files -- 'data/*.json' 'data/**/*.json' \
 | `TheSchemaNeverMakesAnEnglishGlossMandatory` | المخطّط قبل تعديله | **ثمانيةُ مواضع مُسمّاة**: `$defs/bilingual` · `$defs/event` · `caveats/text_en` · `amounts` (‏`name_en` و`derivation_en`) · `conditions` · `scenarios` · `line/sweep` | **6/6 أخضر** |
 | `ArabicAloneIsLegalSoANewEventIsNeverBlocked` | إعادةُ «الزوج إلزامي» إلى الكاشف | «الكاشف رفض وثيقةً سليمة، فهو يمنع النموّ» | **6/6 أخضر** |
 | `TheScanReadsTheRealDesignDocuments` | تضييقُ النطاق إلى `data/capability-profiles` | `Assert.Contains() Failure: Filter not matched in collection` | **6/6 أخضر** |
-| `V06_stays_silent_when_an_event_carries_no_english_gloss_at_all` | القاعدة قبل تعديلها | V06 تُطلق على حدثٍ بلا `name_en` | **42/42 أخضر** |
+| `V06_stays_silent_when_an_event_carries_no_english_gloss_at_all` | إعادةُ «الزوج إلزامي» إلى `RequireArabicRecord` | «expected a clean run, got: **V06** sales.json (sales.invoice.posted) \| **V06** … trigger \| **V06** … reversal» | **42/42 أخضر** |
 
 #### و) العطل الصامت الذي اكتُشف في الطريق — مُجرِّدُ التعليقات يبتلع الملفّ
 

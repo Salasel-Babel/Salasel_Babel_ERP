@@ -182,7 +182,7 @@ git ls-files -- 'data/*.json' 'data/**/*.json' \
 | `TheSchemaNeverMakesAnEnglishGlossMandatory` | المخطّط لا يوجب الإنجليزية | المخطّط قبل تعديله ⇒ **ثمانية مواضع مُسمّاة** |
 | `ArabicAloneIsLegalSoANewEventIsNeverBlocked` | النموّ مفتوح | إعادةُ «الزوج إلزامي» ⇒ «الكاشف رفض وثيقةً سليمة، فهو يمنع النموّ» |
 | `TheScanReadsTheRealDesignDocuments` | النطاق يقرأ المصفوفة | تضييقُ النطاق إلى `data/capability-profiles` ⇒ `Assert.Contains Failure` |
-| `V06_stays_silent_when_an_event_carries_no_english_gloss_at_all` | حدثٌ عربيٌّ وحده يمرّ | القاعدة قبل تعديلها ⇒ V06 تُطلق |
+| `V06_stays_silent_when_an_event_carries_no_english_gloss_at_all` | حدثٌ عربيٌّ وحده يمرّ | إعادةُ «الزوج إلزامي» ⇒ **V06** تُطلق ثلاث مرّات على `sales.invoice.posted` ومُطلِقه وعكسه |
 
 **ولا سقفَ على الشرح — مُثبَتاً بالقياس لا بغياب سطر.** «لا سقف» دعوى سالبة، فتُطعَم القاعدةُ
 وثيقةً فيها **خمسة آلاف** حدثٍ بشرحٍ متّسق — أحدَ عشر ضعف كل شروح المستودع — فتمرّ خضراء.

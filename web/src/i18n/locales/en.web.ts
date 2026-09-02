@@ -410,6 +410,7 @@ export const messages: MessageTree = {
         transcriptTooLong: "That is longer than the limit. Say one command per sentence.",
         slotMissing: "I am missing {slot} — and it is not invented.",
         unitMissing: "I am missing the unit of measure. One item can have several units, so say the unit.",
+        nameNotBounded: "I heard a span whose end I cannot justify as a name, and I will not truncate it — a truncated name books a document against a different party. Say the name alone, then continue.",
         confirmationRequired: "This operation needs confirmation. Read or hear the summary, then confirm.",
         confirmationMismatch: "The confirmation does not match the command that was read back — the command changed after it was read.",
         notPermitted: "I do not have permission for this operation in this company.",

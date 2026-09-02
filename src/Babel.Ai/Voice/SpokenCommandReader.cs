@@ -31,8 +31,38 @@ public static class SpokenCommandReader
     /// <summary>أقصى عدد شرائح في أمرٍ واحد.</summary>
     public const int SlotLimit = 12;
 
-    /// <summary>أقصى عدد كلماتٍ في رمزٍ منطوق.</summary>
-    private const int CodeWordLimit = 4;
+    /// <summary>
+    /// أقصى عدد كلماتٍ في اسمٍ منطوق — <b>مشتقٌّ من ملفّ المتجهات لا مختار</b>.
+    /// <para>
+    /// يقيسه إثباتٌ يعيد حسابه من <c>voice-intents.v1.json</c> ويحمرّ إن خالف الثابتُ
+    /// العدّ. فالرقم <b>بياناتٌ مملوكة</b> لا عدداً سحرياً: يتحرّك حين يُضاف متجهٌ
+    /// يحتاجه، <b>وذلك فرقٌ يُراجَع</b> لا سطرٌ يُبدَّل بلا أثر.
+    /// </para>
+    /// </summary>
+    public const int NameWordLimit = 3;
+
+    /// <summary>أقصى عدد كلماتٍ في رمزٍ منطوق — مشتقٌّ من المتجهات كذلك.</summary>
+    public const int CodeWordLimit = 2;
+
+    /// <summary>
+    /// الضمائر المتّصلة متعدّدة الحروف — <b>المجموعة النحوية كاملةً لا عيّنةً منها</b>.
+    /// <para>
+    /// والاسم العلم لا يحمل ضميراً متّصلاً؛ والفعلُ بمفعوله يحمله. فهذا يلتقط أسرة
+    /// «فعل + مفعول» كلَّها <b>بالشكل لا بالقائمة</b>: «سجلها» و«لقيتها» و«وحولها»
+    /// و«راجعهم» — ومنها صيغٌ مصرَّفة لا تُطابقها قائمةُ كلماتٍ كاملةٍ أبداً.
+    /// </para>
+    /// <para>
+    /// <b>وما أُخرج عمداً</b>: الهاء المفردة (تصطدم بـ«وجه» و«فقه» وبالتاء المربوطة
+    /// المطويّة)، والكاف المفردة، و«نا» (تصطدم بأسماء حقيقية: رنا، دينا، لينا، سنا).
+    /// </para>
+    /// </summary>
+    private static readonly string[] ObjectClitics = ["هما", "كما", "ها", "هم", "هن", "كم", "كن"];
+
+    /// <summary>أقلّ جذعٍ يبقى بعد نزع الضمير. دونه تُصاب أسماءٌ حقيقية: «مها» و«سها» و«سهم».</summary>
+    private const int CliticStemFloor = 3;
+
+    /// <summary>سوابق تسبق أداة التعريف: و ف ب ك ل.</summary>
+    private const string Proclitics = "وفبكل";
 
     /// <summary>كلماتٌ موصِّلة تُتخطّى قبل الرمز: «الوحدة <b>رقم</b> اثنتي عشرة».</summary>
     private static readonly HashSet<string> Connectors = new(
@@ -130,7 +160,7 @@ public static class SpokenCommandReader
             }
         }
 
-        string? company = ReadCompany(words);
+        string? company = ReadCompany(words, faults);
 
         string readbackAr = VoiceReadback.Arabic(intent, values);
 
@@ -236,8 +266,8 @@ public static class SpokenCommandReader
             VoiceSlotKind.Quantity => ReadQuantity(slot, words, faults),
             VoiceSlotKind.Date => ReadDate(slot, words, options),
             VoiceSlotKind.Choice => ReadChoice(slot, words),
-            VoiceSlotKind.Code => ReadCode(slot, words, boundaries),
-            _ => ReadText(slot, words, boundaries),
+            VoiceSlotKind.Code => ReadCode(slot, words, boundaries, faults),
+            _ => ReadText(slot, words, boundaries, faults),
         };
 
     /// <summary>
@@ -459,9 +489,20 @@ public static class SpokenCommandReader
     /// <summary>
     /// رمزٌ أو رقمُ مستندٍ أو موقعٍ في رفّ: <b>يقبل العدد داخله</b> — «رف ثلاثة» و«شقة
     /// اثنتي عشرة» رمزان لا نصّان ولا عددان. ويتخطّى «رقم» الموصِّلة قبل القيمة.
+    /// <para>
+    /// <b>ولا بترَ عند الحدّ.</b> كان المشي يتوقّف عند أربع كلمات فيُسلّم أربعاً منها
+    /// رمزَ مستندٍ — و«ض-4410 ينتهي 2027-03-31» رقمُ ضمانٍ صحيح الشكل لضمانٍ لا وجود
+    /// له. صار المشي يبلغ حدَّه الطبيعي ثم يُحكَم على المقطع كلِّه.
+    /// </para>
     /// </summary>
-    private static SpokenSlotValue? ReadCode(VoiceSlot slot, IReadOnlyList<string> words, HashSet<string> boundaries)
+    private static SpokenSlotValue? ReadCode(
+        VoiceSlot slot,
+        IReadOnlyList<string> words,
+        HashSet<string> boundaries,
+        List<Error> faults)
     {
+        string? refused = null;
+
         foreach (int start in CuePositions(slot, words))
         {
             int at = start;
@@ -473,7 +514,7 @@ public static class SpokenCommandReader
 
             List<string> parts = [];
 
-            for (int index = at; index < words.Count && parts.Count < CodeWordLimit; index++)
+            for (int index = at; index < words.Count; index++)
             {
                 string word = words[index];
 
@@ -485,19 +526,41 @@ public static class SpokenCommandReader
                 parts.Add(word);
             }
 
-            if (parts.Count > 0)
+            if (parts.Count == 0)
             {
-                string text = string.Join(' ', parts);
-                return new SpokenSlotValue(slot.Name, text, null, text, FieldProvenance.Spoken);
+                continue;
             }
+
+            if (Adjudicate(parts, CodeWordLimit) != SpanVerdict.Admitted)
+            {
+                refused ??= string.Join(' ', parts);
+                continue;
+            }
+
+            string text = string.Join(' ', parts);
+            return new SpokenSlotValue(slot.Name, text, null, text, FieldProvenance.Spoken);
+        }
+
+        if (refused is not null)
+        {
+            faults.Add(VoiceRefusals.NameNotBounded(slot.NameAr, refused));
         }
 
         return null;
     }
 
-    /// <summary>نصٌّ حرّ: ما بين الدليل وأول حدّ — كلمةِ إيقاف، أو دليلِ شريحةٍ أخرى، أو عدد.</summary>
-    private static SpokenSlotValue? ReadText(VoiceSlot slot, IReadOnlyList<string> words, HashSet<string> boundaries)
+    /// <summary>
+    /// نصٌّ حرّ: ما بين الدليل وأول حدّ — كلمةِ إيقاف، أو دليلِ شريحةٍ أخرى، أو عدد.
+    /// <b>ثم يُحكَم على المقطع كلِّه</b>: ما لا يُبرَّر يُرفض باسمه وتبقى الشريحة فارغة.
+    /// </summary>
+    private static SpokenSlotValue? ReadText(
+        VoiceSlot slot,
+        IReadOnlyList<string> words,
+        HashSet<string> boundaries,
+        List<Error> faults)
     {
+        string? refused = null;
+
         foreach (int at in CuePositions(slot, words))
         {
             List<string> parts = [];
@@ -514,11 +577,24 @@ public static class SpokenCommandReader
                 parts.Add(word);
             }
 
-            if (parts.Count > 0)
+            if (parts.Count == 0)
             {
-                string text = string.Join(' ', parts);
-                return new SpokenSlotValue(slot.Name, text, null, text, FieldProvenance.Spoken);
+                continue;
             }
+
+            if (Adjudicate(parts, NameWordLimit) != SpanVerdict.Admitted)
+            {
+                refused ??= string.Join(' ', parts);
+                continue;
+            }
+
+            string text = string.Join(' ', parts);
+            return new SpokenSlotValue(slot.Name, text, null, text, FieldProvenance.Spoken);
+        }
+
+        if (refused is not null)
+        {
+            faults.Add(VoiceRefusals.NameNotBounded(slot.NameAr, refused));
         }
 
         return null;
@@ -528,8 +604,10 @@ public static class SpokenCommandReader
     /// اسم شركةٍ نُطق داخل الأمر. <b>الدليل مركّب عمداً</b> («في شركة» لا «شركة»)،
     /// كي لا يُقرأ اسمُ موردٍ يبدأ بكلمة «شركة» انتقالاً بين المنشآت.
     /// </summary>
-    private static string? ReadCompany(IReadOnlyList<string> words)
+    private static string? ReadCompany(IReadOnlyList<string> words, List<Error> faults)
     {
+        string? refused = null;
+
         foreach (string cue in CompanyCues)
         {
             IReadOnlyList<string> parts = VoiceText.Words(cue);
@@ -564,13 +642,121 @@ public static class SpokenCommandReader
                     name.Add(words[at]);
                 }
 
-                if (name.Count > 0)
+                if (name.Count == 0)
                 {
-                    return string.Join(' ', name);
+                    continue;
                 }
+
+                // ‏**والحكم نفسه هنا**: مشيٌ بلا سقف كان يضع جملةً كاملة داخل رسالة
+                // «الشركة المنطوقة غير المفتوحة»، فتُقرأ الرسالة ولا يُفهم منها شيء.
+                if (Adjudicate(name, NameWordLimit) != SpanVerdict.Admitted)
+                {
+                    refused ??= string.Join(' ', name);
+                    continue;
+                }
+
+                return string.Join(' ', name);
             }
+        }
+
+        if (refused is not null)
+        {
+            faults.Add(VoiceRefusals.NameNotBounded("اسم المنشأة المنطوق", refused));
         }
 
         return null;
     }
+
+    /* ── الحكم على المقطع: يُقبل كاملاً أو يُرفض باسمه — ولا يُبتَر ───────────── */
+
+    /// <summary>حكمُ المقطع: مقبولٌ، أو مرفوضٌ بسببٍ مُسمّى.</summary>
+    private enum SpanVerdict
+    {
+        /// <summary>المقطع مُبرَّر كلُّه.</summary>
+        Admitted,
+
+        /// <summary>كلماتٌ أكثر من الحدّ المشتقّ من المتجهات.</summary>
+        TooManyWords,
+
+        /// <summary>ذيلُ إسنادٍ: كلمةٌ تحمل ضميراً متّصلاً مفعولاً.</summary>
+        PredicationTail,
+    }
+
+    /// <summary>
+    /// <b>القاعدة</b>: مقطعُ نصٍّ أو رمزٍ لا يُسلَّم إلى مستند إلا إذا استطاع القارئ أن
+    /// <b>يبرّره كلَّه</b>. وما لا يُبرَّر <b>يُرفض برمزٍ مُسمّى، ولا يُقصّ إلى الجزء
+    /// الذي يعجبه</b>.
+    /// <para>
+    /// وبترُ «شركة المسار الامثل وانشئ لها حسابا» إلى «شركة المسار» يُنتج <b>عميلاً
+    /// خاطئاً معقولاً</b> — وهو بالضبط الضرر الذي وُجد هذا المستودع ليمنعه. والرفض
+    /// يكلّف دورةً واحدة.
+    /// </para>
+    /// <para>
+    /// <b>ولماذا حكمان مغلقان لا قائمةُ كلماتٍ فاصلة:</b> قائمةُ الفواصل <b>مفتوحة</b>
+    /// يهزمها أوّل بندٍ لم يخطر لكاتبها
+    /// (‏docs/evidence/traps.md#fakh-a-remedy-that-is-a-list-is-not-a-remedy).
+    /// وهذان يقيسان <b>المقطع نفسه</b>: عددَ كلماته مقابل حدٍّ مشتقٍّ من المتجهات،
+    /// وشكلَ كلماته مقابل <b>المجموعة النحوية الكاملة</b> للضمائر المتّصلة.
+    /// </para>
+    /// <para>
+    /// <b>ولا يُقسّم هذا الحكمُ الجملةَ ولا يُضيف حدّاً</b>: المقطع كما أنتجه المشي
+    /// نفسه، فالفاصلة تبقى مُهمَلة كما كانت، ولا يعود انحدارُ الترقيم.
+    /// </para>
+    /// </summary>
+    private static SpanVerdict Adjudicate(List<string> parts, int limit)
+    {
+        if (parts.Count > limit)
+        {
+            return SpanVerdict.TooManyWords;
+        }
+
+        if (parts.Count >= 2 && parts.Any(BearsObjectClitic))
+        {
+            return SpanVerdict.PredicationTail;
+        }
+
+        return SpanVerdict.Admitted;
+    }
+
+    /// <summary>هل تحمل الكلمة ضميراً متّصلاً مفعولاً؟ يُقاس على <b>المجرَّد الأمين</b>.</summary>
+    private static bool BearsObjectClitic(string word)
+    {
+        string token = VoiceText.Strip(word);
+
+        if (CarriesDefiniteArticle(token))
+        {
+            return false;
+        }
+
+        foreach (string clitic in ObjectClitics)
+        {
+            if (token.Length - clitic.Length >= CliticStemFloor
+                && token.EndsWith(clitic, StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// هل يحمل الرمز أداة التعريف؟ <b>والأداة لا تجتمع مع فعلٍ تامّ</b> — فوجودُها
+    /// يُبرّئ «الركن» و«المساكن» و«الأسهم» من أن تُقرأ أفعالاً بمفعول.
+    /// </summary>
+    private static bool CarriesDefiniteArticle(string token)
+    {
+        if (StartsWithArticle(token))
+        {
+            return true;
+        }
+
+        return token.Length > 3
+            && Proclitics.Contains(token[0], StringComparison.Ordinal)
+            && StartsWithArticle(token[1..]);
+    }
+
+    private static bool StartsWithArticle(string token) =>
+        token.StartsWith("ال", StringComparison.Ordinal)
+        || token.StartsWith("لل", StringComparison.Ordinal);
 }

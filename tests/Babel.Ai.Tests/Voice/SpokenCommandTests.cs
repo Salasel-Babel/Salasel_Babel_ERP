@@ -284,6 +284,210 @@ public sealed class SpokenCommandTests
         Assert.Equal(first.ConfirmationToken, again.ConfirmationToken);
     }
 
+    /// <summary>
+    /// <b>الحدّان مُشتقّان من المتجهات لا مكتوبان بيد.</b>
+    /// <para>
+    /// رقمٌ يختاره كاتبٌ سحرٌ؛ ورقمٌ يُعاد حسابه من الملفّ الذي يصف المنتج <b>بياناتٌ
+    /// مملوكة</b>. فإن احتاج متجهٌ جديد اسماً أطول، حمرّ هذا الإثبات وطلب تعديل الثابت —
+    /// <b>وذلك فرقٌ يُراجَع</b>، لا سطرٌ يتحرّك بلا أن يراه أحد.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void حدّا_الاسم_والرمز_يُعاد_حسابهما_من_المتجهات()
+    {
+        Dictionary<(string Intent, string Slot), string> kinds = [];
+        foreach (VectorIntent intent in VoiceVectors.File.Intents)
+        {
+            foreach (VectorSlot slot in intent.Slots)
+            {
+                kinds[(intent.Id, slot.Name)] = slot.Kind;
+            }
+        }
+
+        int longestName = 0;
+        int longestCode = 0;
+
+        foreach (VectorUtterance vector in VoiceVectors.File.Utterances)
+        {
+            foreach ((string name, string value) in vector.Slots)
+            {
+                if (!kinds.TryGetValue((vector.Intent, name), out string? kind))
+                {
+                    continue;
+                }
+
+                int count = value.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
+
+                if (string.Equals(kind, "Text", StringComparison.Ordinal))
+                {
+                    longestName = Math.Max(longestName, count);
+                }
+                else if (string.Equals(kind, "Code", StringComparison.Ordinal))
+                {
+                    longestCode = Math.Max(longestCode, count);
+                }
+            }
+        }
+
+        // حارس لا فراغ: صفرٌ هنا يعني أن المُحلِّل لم يقرأ شيئاً فمرّ (فخ-43).
+        Assert.True(longestName > 0 && longestCode > 0);
+
+        Assert.Equal(SpokenCommandReader.NameWordLimit, longestName);
+        Assert.Equal(SpokenCommandReader.CodeWordLimit, longestCode);
+    }
+
+    /// <summary>
+    /// <b>وحدّا المتصفّح هما حدّا الخادم حرفاً.</b> تنفيذان بحدَّين مختلفين ينحرفان،
+    /// ولا يُكتشف انحرافهما إلا على شاشة صاحب المصلحة (‏ADR-0030 خامساً): يقبل المتصفّح
+    /// اسماً ويرفضه الخادم، فيُقرأ الرفض عطلاً في الشبكة.
+    /// </summary>
+    [Fact]
+    public void حدّا_المتصفّح_هما_حدّا_الخادم()
+    {
+        string browser = File.ReadAllText(RepositoryRoot.At("web/src/voice/command.ts"));
+
+        Assert.Contains(
+            "export const NAME_WORD_LIMIT = "
+            + SpokenCommandReader.NameWordLimit.ToString(CultureInfo.InvariantCulture) + ";",
+            browser,
+            StringComparison.Ordinal);
+
+        Assert.Contains(
+            "export const CODE_WORD_LIMIT = "
+            + SpokenCommandReader.CodeWordLimit.ToString(CultureInfo.InvariantCulture) + ";",
+            browser,
+            StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// <b>الفاصلة لا تُغيّر شيئاً — خاصّيةً لا قيمةً واحدة.</b>
+    /// <para>
+    /// حكمُ المقطع <b>لا يُقسّم الجملة ولا يُضيف حدّاً</b>: هو رأيٌ في مقطعٍ أنتجه
+    /// المشيُ نفسه. وهذا الإثبات يقيس ذلك على المتجهات كلّها: توأمٌ بفاصلةٍ قبل كل
+    /// قيمةٍ متوقّعة يجب أن يُنتج <b>قراءةً مطابقة حرفاً بحرف</b> — الشرائح، وما سُمع،
+    /// والملخّص، ورمز التأكيد. فانحدارُ الترقيم الذي هزم محاولةً سابقة لا يعود صامتاً.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void الفاصلة_قبل_القيمة_لا_تُغيّر_القراءة_في_أي_متجه()
+    {
+        int measured = 0;
+
+        foreach (VectorUtterance vector in VoiceVectors.File.Utterances)
+        {
+            VoiceResolution plain = SpokenCommandReader
+                .Read(vector.Transcript, VoiceHarness.Registry, VoiceHarness.Options).Value;
+
+            foreach ((string _, string value) in vector.Slots)
+            {
+                string needle = " " + value;
+                if (!vector.Transcript.Contains(needle, StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                int at = vector.Transcript.IndexOf(needle, StringComparison.Ordinal);
+                string twin = string.Concat(
+                    vector.Transcript.AsSpan(0, at),
+                    "، ",
+                    vector.Transcript.AsSpan(at + 1));
+
+                Result<VoiceResolution> read = SpokenCommandReader
+                    .Read(twin, VoiceHarness.Registry, VoiceHarness.Options);
+
+                Assert.True(read.IsSuccess, twin);
+                VoiceResolution comma = read.Value;
+                measured++;
+
+                Assert.Equal(plain.Intent.Id, comma.Intent.Id);
+                Assert.Equal(plain.ReadbackAr, comma.ReadbackAr);
+                Assert.Equal(plain.ConfirmationToken, comma.ConfirmationToken);
+                Assert.Equal(plain.SpokenCompany, comma.SpokenCompany);
+                Assert.Equal(plain.MissingSlots, comma.MissingSlots);
+                Assert.Equal(
+                    plain.Faults.Select(static fault => fault.Code),
+                    comma.Faults.Select(static fault => fault.Code));
+                Assert.Equal(
+                    plain.Slots.Select(static slot => (slot.Name, slot.Text, slot.Unit, slot.Heard, slot.Provenance)),
+                    comma.Slots.Select(static slot => (slot.Name, slot.Text, slot.Unit, slot.Heard, slot.Provenance)));
+            }
+        }
+
+        Assert.True(measured >= 40, measured.ToString(CultureInfo.InvariantCulture));
+    }
+
+    /// <summary>
+    /// <b>الثقب المُعلَن — يُكتب هنا قبل أن يجده أحد.</b>
+    /// <para>
+    /// حكمُ المقطع مرشّحٌ رخيص، <b>وله ثقبان لا يُسدّان بلا معجم</b>، وكلاهما مقيسٌ
+    /// في هذا الإثبات لا موصوفٌ في تعليق:
+    /// </para>
+    /// <list type="number">
+    ///   <item>
+    ///     <b>فعلٌ بمفعوله يبدأ بشكل أداة التعريف</b> — «التقطها»، و«ألغها» بعد التجريد
+    ///     «الغها». والأداة تُبرّئ «الركن» و«المساكن» من أن تُقرأ أفعالاً، <b>ولا قاعدة
+    ///     إملائية</b> تفصل «التقطها» عن «التجارة» — ثالثُ حرفهما تاء في الاثنتين.
+    ///   </item>
+    ///   <item>
+    ///     <b>ذيلُ إسنادٍ بلا ضمير متّصل داخل الحدّ</b> — «النور وحول المبلغ» ثلاث كلمات
+    ///     كاسمٍ من ثلاث كلمات، ولا فرق في الرسم بينهما.
+    ///   </item>
+    ///   <item>
+    ///     <b>الهاء المفردة مفعولاً</b> — «وسجله» و«قيده». وهي مُخرَجة <b>عمداً</b>: محرّك
+    ///     التفريغ يكتب التاء المربوطة هاءً بلا قاعدة، فمنعُها يرفض «شركة صيانه» و«مؤسسة
+    ///     تجاره» — <b>ورفضُ اسمٍ حقيقي عطلٌ آخر لا عطلٌ أصغر</b>.
+    ///   </item>
+    /// </list>
+    /// <para>
+    /// والجواب على الاثنين ليس بنداً يُضاف إلى قائمة — <b>فذلك بالضبط ما هُزم ثلاث مرّات
+    /// في يومٍ واحد</b> (‏docs/evidence/traps.md#fakh-a-remedy-that-is-a-list-is-not-a-remedy) —
+    /// بل <b>الطبقةُ الثانية</b>: الاسم لا يغادر شاشة المسوّدة إلا معرّفَ صفٍّ واحد،
+    /// ويحرسه <see cref="VoiceNamesNeverReachTheDoor"/>: لا باب منشور يقبل اسماً منطوقاً.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void الثقب_المُعلَن_في_الطبقة_الأولى_مقيس_لا_موصوف()
+    {
+        // ١ · فعلٌ بمفعوله يبدأ بشكل الأداة — يمرّ من الطبقة الأولى، وهذا مُعلَن.
+        VoiceResolution article = SpokenCommandReader.Read(
+            "سجل سند قبض من العميل مؤسسة الرياض التقطها بمبلغ الف ريال نقد اليوم",
+            VoiceHarness.Registry, VoiceHarness.Options).Value;
+
+        Assert.Equal(
+            "مؤسسة الرياض التقطها",
+            Assert.Single(article.Slots, slot => slot.Name == "customer").Text);
+
+        // ٢ · ذيلُ إسنادٍ بلا ضمير متّصل داخل الحدّ — يمرّ كذلك، وهذا مُعلَن.
+        VoiceResolution tail = SpokenCommandReader.Read(
+            "سجل سند قبض من العميل النور وحول المبلغ بمبلغ الف ريال نقد اليوم",
+            VoiceHarness.Registry, VoiceHarness.Options).Value;
+
+        Assert.Equal(
+            "النور وحول المبلغ",
+            Assert.Single(tail.Slots, slot => slot.Name == "customer").Text);
+
+        // ٣ · الهاء المفردة مفعولاً — تمرّ كذلك، وثمنُ منعها أغلى من ثمن إقرارها.
+        VoiceResolution he = SpokenCommandReader.Read(
+            "سجل جرد الصنف اسمنت مقاوم وسجله كمية عشرين كيس المستودع الرئيسي اليوم",
+            VoiceHarness.Registry, VoiceHarness.Options).Value;
+
+        Assert.Equal(
+            "اسمنت مقاوم وسجله",
+            Assert.Single(he.Slots, slot => slot.Name == "item").Text);
+
+        // ٤ · وثمنُ الحدّ مُعلَن كذلك: اسمٌ حقيقيّ من أربع كلمات **يُرفض ولا يُبتَر**.
+        VoiceResolution long_ = SpokenCommandReader.Read(
+            "سجل سند قبض من العميل شركة النور الأولى للمقاولات بمبلغ الف ريال نقد اليوم",
+            VoiceHarness.Registry, VoiceHarness.Options).Value;
+
+        Assert.Contains("customer", long_.MissingSlots);
+        Assert.Contains(long_.Faults, fault => fault.Code == "ai.voice.name_not_bounded");
+
+        // والثلاثة الأولى تقف عند الطبقة الثانية: الأبواب لا تقبل اسماً أصلاً.
+        Assert.Equal("draftCustomerReceipt", article.Intent.OperationId);
+        Assert.Equal(article.Intent.OperationId, tail.Intent.OperationId);
+    }
+
     [Fact]
     public void معجم_الوحدات_ليس_ضامراً_ويرفض_ما_ليس_فيه()
     {

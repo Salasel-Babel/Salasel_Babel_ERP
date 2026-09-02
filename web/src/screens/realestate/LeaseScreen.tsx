@@ -823,7 +823,7 @@ function Schedule(props: {
               <thead>
                 <tr>
                   <th scope="col">{t("realestate.lease.pick")}</th>
-                  <th scope="col">{t("realestate.lease.seq")}</th>
+                  <th scope="col" className="n">{t("realestate.lease.seq")}</th>
                   <th scope="col">{t("realestate.lease.period")}</th>
                   <th scope="col">{t("realestate.lease.dueOn")}</th>
                   <th scope="col" className="n">
@@ -845,7 +845,7 @@ function Schedule(props: {
                         onChange={() => toggle(line.id)}
                       />
                     </td>
-                    <td>
+                    <td className="n">
                       <Num value={line.seq} />
                     </td>
                     <td className="code">{line.periodFrom + " → " + line.periodTo}</td>

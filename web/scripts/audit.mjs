@@ -7,15 +7,20 @@
        node scripts/audit.mjs --quiet    الأخطاء فقط
    يخرج بالرمز 1 عند أي مخالفة حاكمة، فيصلح بوّابةً في خطّ التكامل.
 
-   يفحص ثمانية أشياء لا تستطيع عينٌ بشرية أن تتعقّبها:
+   يفحص ثلاثة عشر شيئاً لا تستطيع عينٌ بشرية أن تتعقّبها:
      ١ · مفاتيح ناقصة في أي لغة        (تسقط إلى العربية بصمت — سلامةٌ لا صحّة)
-     ٢ · مفاتيح يتيمة                   (ترجمة تُدفَع ثمنها ولا تُعرَض أبداً)
-     ٣ · فئات جمع ناقصة أو ميتة         (zero في الإنجليزية صيغة لا تُختار أبداً)
-     ٤ · تطابق معاملات الاستبدال مع المصدر
-     ٥ · اصطلاح تسمية المفاتيح
-     ٦ · مفتاح تطلبه الشاشات وغير معرَّف
-     ٧ · نصّ مرئي مكتوب في الشيفرة
-     ٨ · مخالفات اتجاه في CSS، ومحارف تحكّم غير مرئية في المصدر
+     ٢ · فئات جمع ناقصة أو ميتة         (zero في الإنجليزية صيغة لا تُختار أبداً)
+     ٣ · تطابق معاملات الاستبدال مع المصدر
+     ٤ · اصطلاح تسمية المفاتيح
+     ٥ · مفتاح تطلبه الشاشات وغير معرَّف
+     ٦ · نصّ مرئي مكتوب في الشيفرة
+     ٧ · مخالفات اتجاه في CSS
+     ٨ · محارف تحكّم غير مرئية في المصدر
+     ٩ · صفحة العقد قائمة بذاتها وتُحلَّل
+     ١٠ · سلّم المسافات — كل قيمةٍ عليه أو مبرَّرةٌ بجانبها
+     ١١ · عمود الأرقام — خانةٌ رقمية بلا صنفٍ رقمي، ووجهان للرقم الواحد
+     ١٢ · قياس اللمس ورجعُ الضغط ومؤشّر التركيز
+     ١٣ · فهرس الأوّليّات — أوّليّةٌ مُصدَّرة بلا مدخلٍ في ‎/design
 
    ⚠ وكل فحص هنا يُعلن **حجم ما فحصه**، ويفشل إن كان صفراً. مسحٌ لا يقرأ شيئاً
    يمرّ دائماً، وهو بالضبط عطل فخ-43 في هذا المستودع.
@@ -48,7 +53,9 @@ const out = [];
    حتى يُنزَّل السقف معه. وهذا هو الحارس ضدّ فخ-43 بعينه: كاشفٌ عمي، أو مجلّدٌ
    حُذف، يُظهر نفسه بانخفاضٍ عن السقف بدل أن يمرّ صامتاً.
 
-   ‏**ونطاقه ضيّق مرّتين**: مسارٌ واحد مسمّى، وفحصٌ واحد من ثمانية. وما عداه —
+   ‏**ونطاقه ضيّق مرّتين**: مسارٌ واحد مسمّى، وفحصٌ واحد من ثلاثة عشر. (كان «واحد من
+   ثمانية» يوم ADR-0037؛ نما عددُ الفحوص ولم ينمُ الدين — وهو شرطُ ذلك القرار
+   بنصّه: الدين لا يتّسع إلى مسارٍ ثانٍ ولا فحصٍ ثانٍ.) وما عداه —
    بما فيه فحوص الاتجاه ومحارف التحكّم داخل المسار نفسه — يبقى حاكماً بصفر.
 
    ‏Declared debt — not an exemption and not a path skip. The violations are
@@ -434,12 +441,23 @@ walk(SRC, (f) => {
 mustScan("ملفات CSS ممسوحة · stylesheets scanned", cssFiles.length, 4);
 const dirProblems = [];
 let declarations = 0;
-const PHYSICAL = /(^|[^-\w])(margin|padding|border|inset|float|clear|text-align)-(left|right)\s*:/;
+/* ‏**النمط كان يشترط شرطةً** (`-left:`/`-right:`)، فكان `text-align:left`
+   و`float:right` و`clear:left` و`left:0` المجرّدة تمرّ **كلّها صامتة** — وهي
+   الصيغ التي تكسر LTR بلا صوت. مقيس على `ad2ff14`: تصريحان فيزيائيان قائمان
+   في `demo/demo.css:121,140` والفحص يقول «لا خاصية فيزيائية». والثلاثة أنماط
+   الآن لأن الصيغ ثلاث: لاحقةٌ، وقيمةٌ، وإزاحةٌ مجرّدة. */
+const PHYSICAL = /(^|[^-\w])(margin|padding|border|inset|scroll-margin|scroll-padding)-(left|right)\s*:/;
+/** ‏`text-align:left` · `float:right` · `clear:left` — الاتجاه في **القيمة**. */
+const PHYSICAL_VALUE = /(^|[^-\w])(text-align|float|clear)\s*:\s*(left|right)(\s|;|}|$)/;
+/** ‏`left:0` · `right:auto` — إزاحةٌ مجرّدة، ولا تنقلب مع اللغة. */
+const PHYSICAL_OFFSET = /(^|[^-\w])(left|right)\s*:\s*[^;}]/;
 const HARD_DIRECTION = /(^|[^-\w])direction\s*:\s*(rtl|ltr)/;
 
 /** يفحص سطر CSS واحداً ويعيد وصف المخالفة أو null. */
 function cssLineProblem(code, neighbourhood) {
   if (PHYSICAL.test(code)) return "خاصية فيزيائية: " + code.trim();
+  if (PHYSICAL_VALUE.test(code)) return "قيمة اتجاهية فيزيائية: " + code.trim();
+  if (PHYSICAL_OFFSET.test(code)) return "إزاحة فيزيائية: " + code.trim();
   /* الاتجاه على html المجرّد هو العطل الحاكم: يفوز على [dir] بترتيب الأسلوب،
      فتبقى الصفحة معكوسة مهما قالت السمة (design/README §٧٫٢-١).
      والاحتياط المسموح وحده html:not([dir]) — يعمل قبل تحميل اللغة فقط. */
@@ -469,6 +487,12 @@ for (const f of cssFiles) {
   });
 }
 selfTest("خاصية فيزيائية", cssLineProblem(".x{margin-left:8px}", "") !== null);
+selfTest("قيمة اتجاهية فيزيائية", cssLineProblem(".x{text-align:right}", "") !== null);
+selfTest("عوم فيزيائي", cssLineProblem(".x{float:left}", "") !== null);
+selfTest("إزاحة فيزيائية", cssLineProblem(".x{position:absolute;left:0}", "") !== null);
+selfTest("لا يبلّغ عن اللاحقة المنطقية", cssLineProblem(".x{inset-inline-start:0}", "") === null);
+selfTest("لا يبلّغ عن border-inline-start", cssLineProblem(".x{border-inline-start:3px solid red}", "") === null);
+selfTest("لا يبلّغ عن text-align:start", cssLineProblem(".x{text-align:start}", "") === null);
 selfTest("direction على html", cssLineProblem("html{direction:rtl}", "") !== null);
 selfTest("translateX بلا flip-x", cssLineProblem(".d{transform:translateX(100%)}", "") !== null);
 selfTest(
@@ -558,6 +582,354 @@ if (!fs.existsSync(DOCS_PAGE)) {
     }
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   قارئُ قواعد CSS — يُستعمل في الفحوص ١٠..١٢
+   ───────────────────────────────────────────────────────────────────────────
+   الفحوص أعلاه سطريّة، وهي تكفي لمخالفةٍ تعيش في سطر. وما دونها — «هل لهذا
+   المحدِّد قاعدةٌ تحت `pointer:coarse`؟» — سؤالٌ عن **قاعدة** لا عن سطر، فلا
+   يُجاب بمسحٍ سطري. والقارئ هنا صغيرٌ ومحدَّد: يوازن الأقواس، ويحمل شروط
+   ‏`@media` معه، ويُبقي رقم السطر — فلا مخالفة بلا موضع.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/** يُخرج قواعد ملفٍّ مسطّحةً: المحدِّد، والجسم، وشروط @ فوقه، ورقم سطره. */
+function cssRules(text) {
+  const clean = stripComments(text);
+  const out = [];
+  const walk = (from, to, conditions) => {
+    let i = from;
+    let start = from;
+    while (i < to) {
+      const ch = clean[i];
+      if (ch === "{") {
+        const prelude = clean.slice(start, i).trim().replace(/\s+/g, " ");
+        let depth = 1;
+        let j = i + 1;
+        while (j < to && depth > 0) {
+          if (clean[j] === "{") depth++;
+          else if (clean[j] === "}") depth--;
+          j++;
+        }
+        const line = clean.slice(0, start).split("\n").length;
+        if (prelude.startsWith("@")) walk(i + 1, j - 1, [...conditions, prelude]);
+        else out.push({ selector: prelude, body: clean.slice(i + 1, j - 1), conditions, line });
+        i = j;
+        start = j;
+        continue;
+      }
+      if (ch === "}") {
+        i++;
+        start = i;
+        continue;
+      }
+      i++;
+    }
+  };
+  walk(0, clean.length, []);
+  return out;
+}
+
+/** يُفكّك قائمة محدِّدات إلى ذرّاتها، وينزع الأصناف الزائفة — فالذرّة هي المُطابَق. */
+function selectorAtoms(selector) {
+  return selector
+    .split(",")
+    .map((one) =>
+      one
+        .replace(/::[a-z-]+/g, "")
+        .replace(/:not\([^)]*\)/g, "")
+        .replace(/:[a-z-]+(\([^)]*\))?/g, "")
+        .trim()
+        .replace(/\s+/g, " ")
+    )
+    .filter(Boolean);
+}
+
+/* الملفّات التي تستهلك سلّم المسافات — وهي نطاق الفحوص ١٠ و١٢.
+   ‏**والنطاق مشتقٌّ لا مكتوب:** ملفٌّ فيه `var(--space-` أعلن أنه على سلّم
+   المنتج، فيلزمه. وملفٌّ ليس فيه واحدةٌ منها ليس عليه أصلاً — مِنصّة العرض
+   (`demo/demo.css`) لها لوحتها ووحداتها، وورقة الطباعة مقاسها بالملّيمتر،
+   وملفّات السمة والحركة لا تحمل تخطيطاً. وأوّلُ `var(--space-` تُكتب في
+   أيٍّ منها **تُدخله النطاق من نفسه** — فلا مسار مُعفى، ولا قائمةَ استثناءات
+   تشيخ (‏فخ-43). */
+const scaleFiles = cssFiles.filter((f) => fs.readFileSync(f, "utf8").includes("var(--space-"));
+
+/* ═════════════ ١٠ · سلّم المسافات ══════════════════════════════════════ */
+head("١٠ · سلّم المسافات · the spacing scale");
+/* السلّم **يُقرأ من `tokens.css`** ولا يُنسَخ هنا: خطوةٌ تُضاف هناك تصير
+   مسموحةً هنا في اللحظة نفسها، ولا يبقى رقمان لسلّمٍ واحد. */
+const tokensText = fs.readFileSync(path.join(SRC, "styles/tokens.css"), "utf8");
+const SCALE = new Set(
+  [...tokensText.matchAll(/--space-\d+\s*:\s*(\d+)(?:px)?\s*;/g)].map((m) => Number(m[1]))
+);
+mustScan("خطوات السلّم المقروءة من tokens.css · scale steps read", SCALE.size, 10);
+
+/* خصائص **الإيقاع** وحدها. والقياس (`width`/`height`/`border-radius`) ليس
+   إيقاعاً بل حجمُ مكوّنٍ يُقاس بمحتواه، فلا يُطلب منه أن يقع على سلّم المسافة. */
+const SPACING_PROP =
+  /(^|[;{\s])(margin|padding|gap|row-gap|column-gap|inset|top|right|bottom|left)(-(?:block|inline)(?:-(?:start|end))?|-(?:top|right|bottom|left))?\s*:([^;}]*)/g;
+/** العلامة التي تُجيز قيمةً خارج السلّم — وهي **تعليقٌ بجانبها**، لا قائمة. */
+const OFF_SCALE_MARK = "خارج السلّم عمداً";
+const OFF_SCALE_WINDOW = 8;
+
+/** يُخرج قيم البكسل الخارجة عن السلّم في سطر تصريحٍ واحد. */
+function offScaleIn(line) {
+  const found = [];
+  SPACING_PROP.lastIndex = 0;
+  let m;
+  while ((m = SPACING_PROP.exec(line))) {
+    for (const px of m[4].matchAll(/(-?\d+(?:\.\d+)?)px/g)) {
+      const n = Math.abs(Number(px[1]));
+      if (!SCALE.has(n)) found.push(m[2] + (m[3] ?? "") + ":" + m[4].trim());
+    }
+  }
+  return found;
+}
+
+const scaleProblems = [];
+let spacingDeclarations = 0;
+for (const f of scaleFiles) {
+  const raw = fs.readFileSync(f, "utf8").split("\n");
+  const lines = stripComments(raw.join("\n")).split("\n");
+  lines.forEach((code, i) => {
+    SPACING_PROP.lastIndex = 0;
+    if (SPACING_PROP.test(code)) spacingDeclarations++;
+    const hits = offScaleIn(code);
+    if (!hits.length) return;
+    const justified = raw
+      .slice(Math.max(0, i - OFF_SCALE_WINDOW), i + 1)
+      .join("\n")
+      .includes(OFF_SCALE_MARK);
+    if (justified) return;
+    for (const hit of hits) scaleProblems.push(rel(f) + ":" + (i + 1) + " " + hit);
+  });
+}
+selfTest("قيمة خارج السلّم", offScaleIn("  padding:13px var(--space-8);").length === 1);
+selfTest("لا يبلّغ عن قيمة على السلّم", offScaleIn("  padding:12px var(--space-8);").length === 0);
+selfTest("لا يبلّغ عن رمز", offScaleIn("  gap:var(--space-14);").length === 0);
+selfTest("لا يبلّغ عن قياسٍ ليس إيقاعاً", offScaleIn("  width:17px;height:17px;").length === 0);
+info("ملفّات على السلّم · stylesheets on the scale: " + scaleFiles.map(rel).join(" · "));
+mustScan("تصريحات إيقاع مفحوصة · rhythm declarations inspected", spacingDeclarations, 300);
+if (scaleProblems.length) {
+  bad(
+    "قيمة مسافةٍ خارج السلّم بلا تبرير — ضَعها على السلّم أو اكتب «" +
+      OFF_SCALE_MARK + "» بتعليقٍ بجانبها",
+    scaleProblems,
+    true
+  );
+} else ok("كل قيمة إيقاعٍ على السلّم أو مبرَّرةٌ بتعليقٍ بجانبها");
+
+/* ═════════════ ١١ · عمود الأرقام ═══════════════════════════════════════ */
+head("١١ · عمود الأرقام · the numeric column");
+/* ‏**لماذا فحصٌ لا مراجعة:** المحاسب يقرأ العمود لا الخليّة. وفاصلةٌ عشرية لا
+   تقع تحت أختها تُقرأ **خطأً في الرقم** لا خطأً في الرسم. والعطل يدخل بسطر
+   واحد: `<td>` جديدة تعرض مبلغاً وتنسى صنفها، فتُحاذى إلى بداية السطر ويصير
+   العمود مسنّناً — ولا اختبارَ يسقط ولا لونَ يتغيّر. */
+
+/* الأصناف الرقمية **مشتقّة من CSS** لا مكتوبة: كل صنفٍ في محدِّد قاعدةٍ
+   تُعلن `tabular-nums` صنفٌ رقمي. فمن يعرّف صنفاً رقمياً جديداً يُدخله السجل
+   من نفسه، ولا تشيخ قائمة. */
+const tabularRules = [];
+for (const f of cssFiles) {
+  for (const r of cssRules(fs.readFileSync(f, "utf8"))) {
+    if (/font-variant-numeric\s*:[^;]*tabular-nums/.test(r.body)) {
+      tabularRules.push({ file: rel(f), ...r });
+    }
+  }
+}
+const NUMERIC_CLASSES = new Set();
+for (const r of tabularRules) {
+  for (const cls of r.selector.matchAll(/\.([a-zA-Z][\w-]*)/g)) NUMERIC_CLASSES.add(cls[1]);
+}
+mustScan("قواعد تُعلن tabular-nums · rules declaring tabular-nums", tabularRules.length, 20);
+mustScan("أصنافٌ رقمية مشتقّة · numeric classes derived", NUMERIC_CLASSES.size, 12);
+
+/* ‏(أ) **وجهٌ واحد للرقم.** ‏`tabular-nums` يُسوّي الأرقام داخل الوجه الواحد
+   ولا يُسوّي بين وجهين: عشرة أرقام عند 14px/600 قاست 98.81 بكسل بـ
+   `--font-sans` و84.30 بـ`--font-mono` — 14.7٪ فرقاً بين عمودَين متجاورين.
+   فمن يُعلن `tabular-nums` ويختار وجهاً يختار `--font-numeric`. */
+const faceProblems = [];
+for (const r of tabularRules) {
+  const face = /(^|[;\s])font-family\s*:([^;]+)/.exec(r.body)?.[2]?.trim();
+  if (face && !face.includes("--font-numeric")) {
+    faceProblems.push(r.file + ":" + r.line + " " + r.selector + " ← font-family:" + face);
+  }
+}
+if (faceProblems.length) {
+  bad("وجهٌ ثانٍ للرقم — الأرقام الجدولية تتطلّب var(--font-numeric)", faceProblems, true);
+} else ok("كل قاعدةٍ تُعلن أرقاماً جدولية تستعمل وجه الأرقام الواحد");
+
+/* ‏(ب) **الخانة التي تعرض رقماً تحمل صنفاً رقمياً.** */
+const NUMERIC_TAG = /<Amount\b|<Decimal\b|<Num\b|<RateValue\b|<QuantityValue\b/;
+const CELL_ELEMENT = /<(td|th)\b([^>]*)>([\s\S]*?)<\/\1>/g;
+const CLASS_ATTR = /\bclassName\s*=\s*(?:"([^"]*)"|\{`([^`]*)`|\{([^}]*)\})/;
+/** يُخرج المخالفة إن كانت الخانة تعرض رقماً بلا صنفٍ رقمي. */
+function cellProblem(tag, attrs, inner) {
+  if (!NUMERIC_TAG.test(inner)) return null;
+  const m = CLASS_ATTR.exec(attrs);
+  const classes = m ? (m[1] ?? m[2] ?? m[3] ?? "") : "";
+  const tokens = classes.match(/[a-zA-Z][\w-]*/g) ?? [];
+  if (tokens.some((t) => NUMERIC_CLASSES.has(t))) return null;
+  return "<" + tag + " " + attrs.trim().slice(0, 60) + "> ← " + inner.trim().replace(/\s+/g, " ").slice(0, 60);
+}
+const cellProblems = [];
+let cellsScanned = 0;
+let numericCells = 0;
+for (const f of tsFiles.filter((x) => x.endsWith(".tsx"))) {
+  const text = stripComments(fs.readFileSync(f, "utf8"));
+  let m;
+  CELL_ELEMENT.lastIndex = 0;
+  while ((m = CELL_ELEMENT.exec(text))) {
+    cellsScanned++;
+    const problem = cellProblem(m[1], m[2], m[3]);
+    if (NUMERIC_TAG.test(m[3])) numericCells++;
+    if (problem) cellProblems.push(rel(f) + ":" + text.slice(0, m.index).split("\n").length + " " + problem);
+  }
+}
+selfTest("خانة رقمية بلا صنف", cellProblem("td", "", "<Amount value={x} />") !== null);
+selfTest("لا يبلّغ عن خانةٍ تحمل الصنف", cellProblem("td", ' className="n"', "<Amount value={x} />") === null);
+selfTest("لا يبلّغ عن خانةٍ نصّية", cellProblem("td", "", "{name}") === null);
+selfTest(
+  "يقرأ الصنف من تعبير",
+  cellProblem("td", ' className={"n " + tone}', "<Num value={i} />") === null
+);
+mustScan("خانات جدولٍ ممسوحة · table cells scanned", cellsScanned, 200);
+info("خاناتٌ تعرض رقماً · cells rendering a number: " + numericCells);
+if (cellProblems.length) {
+  bad("خانةُ جدولٍ تعرض رقماً بلا صنفٍ رقمي — العمود يصير مسنّناً", cellProblems, true);
+} else ok("كل خانةٍ تعرض رقماً تحمل صنفاً رقمياً");
+
+/* ‏(ج) **المكوّنات نفسها تُصدر الصنف.** حارسٌ على الطرف الآخر: خانةٌ صحيحة
+   حول مكوّنٍ توقّف عن إصدار صنفه تبقى خضراء وهي عمياء. */
+const reactText = fs.readFileSync(path.join(SRC, "i18n/react.tsx"), "utf8");
+const emitProblems = [];
+for (const [component, cls] of [["Amount", '"amt"'], ["Decimal", '"num"'], ["Num", '" num"']]) {
+  if (!reactText.includes(cls)) emitProblems.push(component + " لم يعد يُصدر الصنف " + cls);
+}
+if (emitProblems.length) bad("مكوّن رقمٍ لا يُصدر صنفه", emitProblems, true);
+else ok("‏<Amount> و<Decimal> و<Num> تُصدر أصنافها الرقمية");
+
+/* ═════════════ ١٢ · اللمس والضغط والتركيز ══════════════════════════════ */
+head("١٢ · قياس اللمس ورجعُ الضغط ومؤشّر التركيز · targets, press, focus");
+/* ‏**السجلّ مشتقٌّ من `cursor:pointer`.** ما يُعلن أنه يُنقر يدخل السجل من
+   نفسه، فمكوّنٌ جديد يهبط بلا قياسٍ للمس يُحمِّر البوّابة في اللحظة نفسها —
+   وهو ما لا تفعله قائمةٌ تُحدَّث باليد. */
+const POINTER_EXTRA = [
+  { atom: ".ctl", why: "حقل إدخالٍ نصّي: يُنقر ولا يُعلن `cursor:pointer` لأن مؤشّره حرفُ الإدخال." },
+  { atom: ".ctl-sm", why: "حقلٌ مصغَّر: يُصغِّر ما يُكبِّره `.ctl`، فيُذكر صراحةً وإلّا فاز بترتيب المصدر." },
+  { atom: ".cell", why: "خليّة جدولٍ قابلة للتحرير — حقل إدخال داخل صفّ." },
+];
+/** ما هدفُه غيرُه، أو ما يرسم المتصفّح ضغطَه — مستثنى **بالاسم ومعه سببه**. */
+const TOUCH_EXEMPT = [
+  {
+    atom: ".check input",
+    why: "هدفُه هو `.check` المحيط به: النقر على التسمية يبدّل الخانة. وتكبير المرسوم نفسه يجعل خانة الاختيار لوحاً.",
+  },
+];
+const PRESS_EXEMPT = [
+  { atom: "select.ctl", why: "عنصر نموذجٍ أصليّ — المتصفّح يرسم ضغطه ويفتح قائمته." },
+  { atom: "select.cell", why: "عنصر نموذجٍ أصليّ داخل خليّة." },
+  { atom: ".pager .sizepick select", why: "عنصر نموذجٍ أصليّ." },
+  { atom: ".check input", why: "خانة اختيارٍ أصليّة — للمتصفّح رجعُها." },
+  { atom: ".ctl", why: "حقل نصّ: إزاحته تحت المؤشّر تُقرأ عطلاً لا رجعاً، ورجعُه هو مؤشّر التركيز." },
+  { atom: ".ctl-sm", why: "حقل نصّ مصغَّر — السبب نفسه." },
+  { atom: ".cell", why: "حقل نصّ داخل خليّة — السبب نفسه." },
+];
+const exemptAtoms = (list) => new Set(list.map((e) => e.atom));
+
+const touchRegister = new Map();
+const coarseCovered = new Set();
+const pressCovered = new Set();
+const outlineProblems = [];
+let interactiveRules = 0;
+/* ‏**ونطاق هذا الفحص كل CSS في `src/`** لا الملفّات التي على سلّم المسافات
+   وحدها: `cursor:pointer` إعلانُ تفاعلٍ لا إعلانُ إيقاع، و`styles/touch.css`
+   نفسه لا يحمل مسافةً واحدة — فلو ورث نطاق الفحص ١٠ لَما رأى الفحصُ إجاباتِه
+   وأعلن أن **كل** عنصرٍ بلا قياس. (وقع فعلاً في أول تشغيل: 32 من 33.) */
+for (const f of cssFiles) {
+  const text = fs.readFileSync(f, "utf8");
+  for (const r of cssRules(text)) {
+    const coarse = r.conditions.some((c) => /pointer\s*:\s*coarse/.test(c));
+    const atoms = selectorAtoms(r.selector);
+    if (/cursor\s*:\s*pointer/.test(r.body) && !coarse) {
+      interactiveRules++;
+      for (const a of atoms) if (!touchRegister.has(a)) touchRegister.set(a, rel(f) + ":" + r.line);
+    }
+    if (coarse && /(^|[;\s])min-(?:block-size|height|inline-size|width)\s*:/.test(r.body)) {
+      for (const a of atoms) coarseCovered.add(a);
+    }
+    if (/:active/.test(r.selector)) for (const a of atoms) pressCovered.add(a);
+    /* نزعُ مؤشّر التركيز بلا بديل: من يتنقّل بلوحة المفاتيح يفقد موضعه. */
+    if (/(^|[;\s])outline\s*:\s*(0|none)(\s|;|$)/.test(r.body)) {
+      const scoped = /:focus:not\(\s*:focus-visible\s*\)/.test(r.selector);
+      const substitute = /(^|[;\s])(box-shadow|border-color|border)\s*:/.test(r.body);
+      if (!scoped && !substitute) outlineProblems.push(rel(f) + ":" + r.line + " " + r.selector);
+    }
+  }
+}
+for (const e of POINTER_EXTRA) if (!touchRegister.has(e.atom)) touchRegister.set(e.atom, "سجلٌّ مُصرَّح · declared");
+mustScan("قواعد تُعلن أنها تُنقر · rules declaring cursor:pointer", interactiveRules, 20);
+mustScan("سجلّ اللمس · touch register", touchRegister.size, 25);
+info("مستثنى من القياس بالاسم · size-exempt: " + TOUCH_EXEMPT.map((e) => e.atom).join(" · "));
+info("مستثنى من الرجع بالاسم · press-exempt: " + PRESS_EXEMPT.map((e) => e.atom).join(" · "));
+
+const touchMissing = [];
+const pressMissing = [];
+const sizeExempt = exemptAtoms(TOUCH_EXEMPT);
+const pressExempt = exemptAtoms(PRESS_EXEMPT);
+for (const [atom, where] of touchRegister) {
+  if (!sizeExempt.has(atom) && !coarseCovered.has(atom)) touchMissing.push(atom + "  ← " + where);
+  if (!pressExempt.has(atom) && !pressCovered.has(atom)) pressMissing.push(atom + "  ← " + where);
+}
+selfTest("يشتقّ الذرّة من محدِّدٍ مركّب", selectorAtoms(".pager .pagebtn:hover:not(:disabled)")[0] === ".pager .pagebtn");
+selfTest("يفكّ قائمة المحدِّدات", selectorAtoms(".menu button,.menu a").length === 2);
+selfTest(
+  "يلتقط نزع الإطار بلا بديل",
+  cssRules(".x:focus{outline:0}").some((r) => /outline\s*:\s*0/.test(r.body))
+);
+if (touchMissing.length) {
+  bad(
+    "عنصرٌ يُنقر بلا قياسٍ للمس تحت (pointer:coarse) — أضِفه في styles/touch.css §٢",
+    touchMissing,
+    true
+  );
+} else ok("كل عنصرٍ يُنقر يبلغ " + "44px" + " تحت المؤشّر الخشن (styles/touch.css §٢)");
+if (pressMissing.length) {
+  bad("عنصرٌ يُنقر بلا رجعِ ضغط (:active) — أضِفه في styles/touch.css §٣", pressMissing, true);
+} else ok("كل عنصرٍ يُنقر له رجعُ ضغطٍ مرئي");
+if (outlineProblems.length) {
+  bad("نزعُ مؤشّر التركيز بلا بديل — استعمل :focus:not(:focus-visible) أو أعطِ بديلاً", outlineProblems, true);
+} else ok("لا قاعدةَ تنزع مؤشّر التركيز بلا بديلٍ في القاعدة نفسها");
+
+/* ═════════════ ١٣ · فهرس الأوّليّات ════════════════════════════════════ */
+head("١٣ · فهرس الأوّليّات · the primitive catalogue");
+/* ‏**أوّليّةٌ بلا مدخلٍ في `/design` تُقرأ غير موجودة، فيخترع من يحتاجها
+   بديلاً لها.** وهذا وقع مقيساً: `RefusalPanel` بلا مدخل ومعه `Refusal`
+   موازٍ في شاشات العقارات. والحدُّ المُعلَن هو `ui/index.ts`، فما صُدِّر منه
+   وُعد به — والوعد يُعرَض أو لا يُقطَع. */
+const indexText = fs.readFileSync(path.join(SRC, "ui/index.ts"), "utf8");
+/* كتلُ `export { … }` وحدها — و`export type { … }` تُستبعَد لأن النوع لا يُرسم. */
+const exportedValues = new Set();
+for (const block of indexText.matchAll(/export\s+(type\s+)?\{([^}]*)\}/g)) {
+  if (block[1]) continue;
+  for (const name of block[2].split(",")) {
+    const clean = name.split(" as ").pop().trim();
+    if (/^[A-Z][a-z]/.test(clean)) exportedValues.add(clean);
+  }
+}
+const designText = fs.readFileSync(path.join(SRC, "screens/design/DesignScreen.tsx"), "utf8");
+/** أوّليّةٌ مرسومة في الفهرس: تُستعمل وسماً `<Name` لا مجرّد مستوردة. */
+const rendered = (name) => new RegExp("<" + name + "([^A-Za-z0-9]|$)").test(designText);
+mustScan("أوّليّات قابلة للرسم مُصدَّرة · renderable exports", exportedValues.size, 15);
+const catalogueMissing = [...exportedValues].filter((n) => !rendered(n)).sort();
+selfTest("يعرف أوّليّةً غير معروضة", !new RegExp("<NotAPrimitive([^A-Za-z0-9]|$)").test(designText));
+selfTest("لا يخلط الاستيراد بالعرض", rendered("Panel"));
+if (catalogueMissing.length) {
+  bad(
+    "أوّليّةٌ مُصدَّرة من ui/index.ts بلا مدخلٍ في /design — ستُخترع من جديد",
+    catalogueMissing,
+    true
+  );
+} else ok("كل أوّليّةٍ مُصدَّرة معروضةٌ في /design (" + exportedValues.size + ")");
 
 /* ═════════════════════════════ الخلاصة ═════════════════════════════════ */
 head("الخلاصة · summary");

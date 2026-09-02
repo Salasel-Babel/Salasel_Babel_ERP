@@ -63,13 +63,13 @@ export function TimeTravelScene(): ReactNode {
                   <td>
                     <span className="demo-code">{row.accountCode}</span> {row.nameAr}
                   </td>
-                  <td className={row.debit === 0n ? "demo-zero" : "demo-debit"}>
+                  <td className={"n " + (row.debit === 0n ? "demo-zero" : "demo-debit")}>
                     <Amount value={money(row.debit)} />
                   </td>
                   <td>
                     <div className="demo-bar" style={{ width: width(row.debit) }} />
                   </td>
-                  <td className={row.credit === 0n ? "demo-zero" : "demo-credit"}>
+                  <td className={"n " + (row.credit === 0n ? "demo-zero" : "demo-credit")}>
                     <Amount value={money(row.credit)} />
                   </td>
                   <td>

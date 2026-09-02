@@ -118,7 +118,9 @@
 /* ── الطرفية ──────────────────────────────────────────────────────────── */
 .demo-term{
   /* الطرفية إطارٌ لاتيني داخل صفحة عربية: العزل يمنع تسرّب اتجاه ما حوله إليه. */
-  direction:ltr; unicode-bidi:isolate; text-align:left;
+  /* `start` لا `left`: داخل صندوقٍ اتجاهُه ltr هما الشيء نفسه، والفرق أن
+     `left` تُنسَخ يوماً إلى صندوقٍ لا اتجاه له فتنكسر بصمت. */
+  direction:ltr; unicode-bidi:isolate; text-align:start;
   font-family:var(--stage-mono); font-size:16.5px; line-height:1.65;
   background:#070d18; border:1px solid var(--stage-line); border-radius:14px;
   padding:16px 18px; height:100%; overflow:hidden;
@@ -137,7 +139,7 @@
    تناثرت المقاطع وصار «الجملة.» في أوّلها. */
 .demo-term__line[data-kind="note"]{
   /* سطر شرحٍ عربي داخل الطرفية اللاتينية — يُعزل عمّا قبله وما بعده. */
-  color:#8ba3c7; direction:rtl; unicode-bidi:isolate; text-align:right; font-style:normal;
+  color:#8ba3c7; direction:rtl; unicode-bidi:isolate; text-align:start; font-style:normal;
   border-inline-start:3px solid #2f4a75; padding-inline-start:10px;
   margin:6px 0; line-height:1.75;
 }

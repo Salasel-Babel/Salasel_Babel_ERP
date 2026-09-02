@@ -155,7 +155,7 @@
 .inferred{
   border-block-end:var(--border-width-strong) dashed
     color-mix(in srgb, var(--color-ai) 66%, transparent);
-  padding-block-end:1px;
+  padding-block-end:var(--space-2);
 }
 .inferred-cell{ background:color-mix(in srgb, var(--color-ai) 9%, transparent) }
 

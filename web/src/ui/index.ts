@@ -5,6 +5,9 @@ import "../styles/motion.css";
 import "../styles/primitives.css";
 import "../styles/presence.css";
 import "../styles/shell.css";
+/* **آخراً عمداً:** قياسُ اللمس ورجعُ الضغط يفوزان بترتيب المصدر على ما
+   قبلهما، فلا يُصغِّر `.ctl-sm` ما كبّره `.ctl` تحت الإصبع. */
+import "../styles/touch.css";
 
 export { MOTION, MOTION_DWELL_MS, useMoment, revealAt } from "./motion";
 export type { MotionName } from "./motion";

@@ -402,6 +402,52 @@ public sealed class Rule20_EveryJobIsClassifiedForTests
         Assert.True(ghosts.Count == 0, "تصريحٌ لإعدادٍ لا وجود له: " + string.Join("، ", ghosts));
     }
 
+    /// <summary>
+    /// <b>الثقب الذي لا يُغلقه هذا الحارس — مُعلَناً ومحدوداً.</b>
+    /// <para>
+    /// <b>مقيس على هذا الفرع:</b> إن غُيّر تصنيفُ وظيفةٍ إلى <c>untallied</c>، <b>و</b>نُزعت
+    /// منها خطوةُ الحصيلة والختم، <b>و</b>نُزعت رايات <c>--minimum-expected-tests</c> و
+    /// <c>--report-xunit-trx</c>، <b>و</b>بُني مسارُ المشروع من متغيّر صَدَفة فلم يعد يطابق
+    /// <c>invokedBy</c> نصّاً — فإن القاعدة 20 تبقى <b>خضراء</b> (‏12 من 12). جُرّب فمرّ.
+    /// وهذا حدٌّ بنيويّ لا سهو: التحقّق من المُخرَج يُثبت أنّ ما أُعلن قد جرى، ولا يستطيع
+    /// أن يُثبت أنّ ما لم يُعلن لم يجرِ — لأن التشغيل الذي لا يُبلّغ لا يترك مُخرَجاً يُسأل.
+    /// </para>
+    /// <para>
+    /// <b>وهذا الاختبار يحدّ الضرر بدل أن يدّعي إغلاقه.</b> الثقب يبقى ثقباً في
+    /// <b>مراقبة نداءٍ مكرّر</b>، لا في <b>تغطية سطح</b> — بشرطٍ واحد يُنفَّذ هنا: أن تكون
+    /// هناك وظيفةٌ <c>tallied</c> واحدة تُشغّل <b>الحلّ كلّه</b> وتدّعي <b>كلّ</b> أسطح
+    /// .NET. فما دام ذلك قائماً، لا يُخفي أيُّ تنزيلِ تصنيفٍ اختباراً عن الإحصاء: يُخفي
+    /// نسخةً ثانيةً من تشغيلٍ محسوبٍ أصلاً. وإن سقط هذا الشرط، صار الثقب ثقباً في التغطية
+    /// نفسها — فيسقط هذا الاختبار عندها، لا بعدها.
+    /// (‏docs/evidence/traps.md#fakh-a-remedy-that-is-a-list-is-not-a-remedy)
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void TheHoleThisGuardDoesNotCloseIsBoundedByOneSolutionWideTalliedJob()
+    {
+        const string SolutionWide = "--solution Babel.slnx";
+
+        var dotnetSurfaces = Loaded.Value.Surfaces
+            .Where(static surface => surface.Runner == "dotnet")
+            .Select(static surface => surface.Id)
+            .ToHashSet(StringComparer.Ordinal);
+
+        var covering = Loaded.Value.Jobs
+            .Where(static job => job.Classification == "tallied")
+            .Where(job => JobBody(job.Workflow, job.Name).Contains(SolutionWide, StringComparison.Ordinal))
+            .Where(job => dotnetSurfaces.IsSubsetOf(job.Surfaces.ToHashSet(StringComparer.Ordinal)))
+            .ToList();
+
+        Assert.True(
+            covering.Count >= 1,
+            "لا وظيفةَ `tallied` واحدة تُشغّل `" + SolutionWide + "` وتدّعي كلَّ أسطح .NET الـ"
+                + dotnetSurfaces.Count + ". وهذه هي الدعامة التي تجعل ثقبَ «تنزيل التصنيف» ثقباً "
+                + "في مراقبة نداءٍ مكرّر لا في التغطية: بدونها يستطيع تنزيلُ تصنيفٍ أن يُخفي "
+                + "اختبارات لا نسخةً ثانية منها. · Without one solution-wide tallied job claiming "
+                + "every .NET surface, declassifying a job hides tests rather than a duplicate run."
+        );
+    }
+
     // ── ٣ · الشاهد الإيجابي ───────────────────────────────────────────────────
 
     /// <summary>
@@ -448,8 +494,8 @@ public sealed class Rule20_EveryJobIsClassifiedForTests
         // تُعلنه البوّابة، فلا تنحدر الأرضيات واحدةً واحدةً بلا أن يلاحظ أحد المجموع.
         var total = manifest.Surfaces.Where(static s => s.Runner == "dotnet").Sum(static s => s.MinimumExecuted);
         Assert.True(
-            total >= 1630,
-            "مجموع أرضيات أسطح .NET صار " + total + " بعد أن كان 1630 — انحدارٌ في الأرضيات نفسها. "
+            total >= 1631,
+            "مجموع أرضيات أسطح .NET صار " + total + " بعد أن كان 1631 — انحدارٌ في الأرضيات نفسها. "
                 + "إن حُذفت اختبارات عمداً فاخفض الرقم هنا صراحةً. · The floors themselves regressed."
         );
     }

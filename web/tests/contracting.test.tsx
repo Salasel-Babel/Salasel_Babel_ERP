@@ -401,15 +401,20 @@ describe("سجلّ المحتجزات", () => {
 /* ═══════════════════════ ٦ · الاتجاه والملاحة والعقد ═══════════════════ */
 
 describe("القسم في هيكل التطبيق", () => {
-  it("قسم المقاولات مبنيٌّ ومساره مسجَّل، وشاشاته الأربع في الفهرس", () => {
+  it("قسم المقاولات مبنيٌّ ومساره مسجَّل، وشاشاته السبع في الفهرس بترتيب العمل", () => {
     const section = SECTIONS.find((s) => s.id === "contracting");
     expect(section?.built).toBe(true);
     expect(section?.path).toBe("/contracting");
     const paths = SCREENS.filter((s) => s.section === "contracting").map((s) => s.path);
+    /* والترتيب ترتيبُ العمل لا ترتيبُ الحروف (ADR-0078): المشروع وعقده ← ما
+       يغيّر نطاقه ← ما يُوثَّق عليه ← المستخلص ← الباطن ← دفعته ← المحتجزات. */
     expect(paths).toEqual([
       "/contracting",
+      "/contracting/change-orders",
+      "/contracting/guarantees",
       "/contracting/certificate",
       "/contracting/subcontracting",
+      "/contracting/advances",
       "/contracting/retention",
     ]);
   });

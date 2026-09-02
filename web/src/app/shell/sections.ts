@@ -117,12 +117,23 @@ export const SCREENS: readonly ScreenEntry[] = [
   { path: "/sign-in", labelKey: "app.nav.signIn", section: "accounting" },
   { path: "/contract", labelKey: "app.nav.contract", section: "accounting" },
   { path: "/design", labelKey: "app.nav.design", section: "accounting" },
+  /* ── العقارات — أربعٌ **بترتيب العمل لا بترتيب الحروف**: العقارُ ووحداته
+     يُعرَّفان مرّةً ← ثم طرفا العقد (المالك الذي نُحصّل له والمستأجر الذي
+     نُحصّل منه) ← ثم العقد وجدوله ← ثم ما تأخّر وما قُبض. والترتيب هنا هو
+     ترتيب الشريط داخل القسم في `screens/realestate/parts.tsx` نفسه. */
   { path: "/realestate", labelKey: "realestate.nav.register", section: "realestate" },
+  { path: "/realestate/parties", labelKey: "realestate.nav.parties", section: "realestate" },
   { path: "/realestate/lease", labelKey: "realestate.nav.lease", section: "realestate" },
   { path: "/realestate/arrears", labelKey: "realestate.nav.arrears", section: "realestate" },
+  /* ── المقاولات — سبعٌ **بترتيب العمل**: المشروع وعقده يُسجَّلان ← ما يغيّر
+     نطاق العقد ← ما يُوثَّق عليه قبل أن يتحرّك مال ← المستخلص ← الباطن ←
+     دفعته المقدمة ← ما يُحتجز ويُطابَق عند الإقفال. */
   { path: "/contracting", labelKey: "contracting.nav.register", section: "contracting" },
+  { path: "/contracting/change-orders", labelKey: "contracting.nav.changeOrders", section: "contracting" },
+  { path: "/contracting/guarantees", labelKey: "contracting.nav.guarantees", section: "contracting" },
   { path: "/contracting/certificate", labelKey: "contracting.nav.certificate", section: "contracting" },
   { path: "/contracting/subcontracting", labelKey: "contracting.nav.subcontracting", section: "contracting" },
+  { path: "/contracting/advances", labelKey: "contracting.nav.advances", section: "contracting" },
   { path: "/contracting/retention", labelKey: "contracting.nav.retention", section: "contracting" },
   { path: "/inventory/stock", labelKey: "inventory.nav.stock", section: "inventory" },
   { path: "/inventory/items", labelKey: "inventory.nav.items", section: "inventory" },

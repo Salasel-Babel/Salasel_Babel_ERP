@@ -156,6 +156,43 @@ export function AppShell(): ReactNode {
         <Link to="/hr/subledger-reconciliation" className="navitem" data-testid="nav-hr-reconciliation">
           {t("hr.nav.reconciliation")}
         </Link>
+        {/* ── المقاولات والعقارات: إحدى عشرة شاشةً بترتيب العمل. وهي **كتلةٌ
+            واحدة متّصلة** كي يندمج جانباها آلياً حين يلمس أسطولٌ آخر هذه
+            القائمة. وكانت السبعُ القائمة منها غائبةً عن هذه القائمة كلَّها —
+            تُفتح بـCtrl+K ولا يراها من يقرأ الملاحة (ADR-0078). */}
+        <Link to="/contracting" className="navitem" data-testid="nav-contracting-register">
+          {t("contracting.nav.register")}
+        </Link>
+        <Link to="/contracting/change-orders" className="navitem" data-testid="nav-contracting-change-orders">
+          {t("contracting.nav.changeOrders")}
+        </Link>
+        <Link to="/contracting/guarantees" className="navitem" data-testid="nav-contracting-guarantees">
+          {t("contracting.nav.guarantees")}
+        </Link>
+        <Link to="/contracting/certificate" className="navitem" data-testid="nav-contracting-certificate">
+          {t("contracting.nav.certificate")}
+        </Link>
+        <Link to="/contracting/subcontracting" className="navitem" data-testid="nav-contracting-subcontracting">
+          {t("contracting.nav.subcontracting")}
+        </Link>
+        <Link to="/contracting/advances" className="navitem" data-testid="nav-contracting-advances">
+          {t("contracting.nav.advances")}
+        </Link>
+        <Link to="/contracting/retention" className="navitem" data-testid="nav-contracting-retention">
+          {t("contracting.nav.retention")}
+        </Link>
+        <Link to="/realestate" className="navitem" data-testid="nav-realestate-register">
+          {t("realestate.nav.register")}
+        </Link>
+        <Link to="/realestate/parties" className="navitem" data-testid="nav-realestate-parties">
+          {t("realestate.nav.parties")}
+        </Link>
+        <Link to="/realestate/lease" className="navitem" data-testid="nav-realestate-lease">
+          {t("realestate.nav.lease")}
+        </Link>
+        <Link to="/realestate/arrears" className="navitem" data-testid="nav-realestate-arrears">
+          {t("realestate.nav.arrears")}
+        </Link>
       </nav>
 
       <div className="app-main">

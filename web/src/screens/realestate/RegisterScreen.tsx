@@ -17,28 +17,12 @@
        مفتوح (ق-ع-18)**: لا يُرحَّل بقسمةٍ يخترعها النظام.
    ═══════════════════════════════════════════════════════════════════════════ */
 import { useCallback, useState, type ReactNode } from "react";
-import {
-  createLessee,
-  createProperty,
-  createPropertyOwner,
-  createUnit,
-  readLessee,
-  readProperty,
-  readPropertyOwner,
-  readUnit,
-} from "../../api/generated/client";
-import type {
-  Property,
-  PropertyRequest,
-  RealEstateParty,
-  RealEstatePartyRequest,
-  Unit,
-  UnitRequest,
-} from "../../api/generated/types";
+import { createProperty, createUnit, readProperty, readUnit } from "../../api/generated/client";
+import type { Property, PropertyRequest, Unit, UnitRequest } from "../../api/generated/types";
 import { useApi } from "../../app/api-context";
 import { useT } from "../../i18n/react";
 import { Num } from "../../i18n/react";
-import { Panel, StatusBadge } from "../../ui";
+import { Panel } from "../../ui";
 import {
   MANAGED_FOR_OTHERS,
   NeedsCompany,
@@ -47,9 +31,7 @@ import {
   Refusal,
   SectionHead,
   ownershipLabelKey,
-  residencyLabelKey,
   SessionLog,
-  TAX_RESIDENCIES,
   TranslatedName,
   TranslationEditor,
   UNIT_USAGES,
@@ -60,16 +42,16 @@ import {
   type TranslationRow,
 } from "./parts";
 
-/** ما يُقرأ بمعرّف — وهي الأبواب الأربعة التي ينشرها العقد للقراءة. */
-const LOOKUPS = ["property", "unit", "owner", "lessee"] as const;
+/** ما يُقرأ بمعرّف في هذه الشاشة — بابا العقار ووحدته. والطرفان لهما شاشتهما
+    (`/realestate/parties`) منذ ADR-0078: أربعةُ نماذج كتابةٍ في صفحةٍ واحدة
+    ضِعفُ الحدّ الذي وضعه ADR-0077، والوحدةُ تُنشأ **تحت** عقار والطرفُ لا. */
+const LOOKUPS = ["property", "unit"] as const;
 type Lookup = (typeof LOOKUPS)[number];
 
 /** الأبواب التي **لا يحملها العقد** وتحتاجها قائمةٌ حقيقية. */
 const MISSING_LIST_OPERATIONS = [
   "GET /api/v1/companies/{companyId}/properties",
   "GET /api/v1/companies/{companyId}/properties/{propertyId}/units",
-  "GET /api/v1/companies/{companyId}/property-owners",
-  "GET /api/v1/companies/{companyId}/lessees",
 ];
 
 /** حصّةٌ كاملة: المقام واحد. وما زاد عليه يعني ملكيةً مشتركة. */
@@ -124,21 +106,6 @@ export function RegisterScreen(): ReactNode {
         <UnitForm companyId={config.companyId} transport={transport} onCreated={remember} />
       </div>
 
-      <div className="re-two">
-        <PartyForm
-          companyId={config.companyId}
-          transport={transport}
-          onCreated={remember}
-          role="owner"
-        />
-        <PartyForm
-          companyId={config.companyId}
-          transport={transport}
-          onCreated={remember}
-          role="lessee"
-        />
-      </div>
-
       <Panel
         title={t("realestate.common.sessionOnly")}
         note={t("realestate.common.sessionOnlyBody")}
@@ -159,15 +126,13 @@ function LookupPanel(props: { companyId: string; transport: Transport }): ReactN
   const { t } = useT();
   const [kind, setKind] = useState<Lookup>("property");
   const [id, setId] = useState("");
-  const read = useWrite<Property | Unit | RealEstateParty>("arrive");
+  const read = useWrite<Property | Unit>("arrive");
 
   const submit = useCallback(() => {
     const { companyId, transport } = props;
     void read.run(() => {
       if (kind === "property") return readProperty(transport, { companyId, propertyId: id });
-      if (kind === "unit") return readUnit(transport, { companyId, unitId: id });
-      if (kind === "owner") return readPropertyOwner(transport, { companyId, ownerId: id });
-      return readLessee(transport, { companyId, lesseeId: id });
+      return readUnit(transport, { companyId, unitId: id });
     });
   }, [id, kind, props, read]);
 
@@ -230,7 +195,6 @@ function LookupPanel(props: { companyId: string; transport: Transport }): ReactN
         <div className={"card card-pad " + read.moment} data-testid="re-lookup-result">
           {"ownershipModel" in found ? <PropertyCard property={found} /> : null}
           {"usage" in found ? <UnitCard unit={found} /> : null}
-          {"role" in found ? <PartyCard party={found} /> : null}
         </div>
       ) : null}
     </Panel>
@@ -328,46 +292,6 @@ function UnitCard(props: { unit: Unit }): ReactNode {
 }
 
 /** بطاقة طرف — مالكاً كان أو مستأجراً؛ والدور يصل من الخادم لا من الطلب. */
-function PartyCard(props: { party: RealEstateParty }): ReactNode {
-  const { t } = useT();
-  const { party } = props;
-  return (
-    <>
-      <div className="kv">
-        <div>
-          <div className="k">{t("realestate.common.code")}</div>
-          <div className="v code" data-testid="re-party-code">
-            {party.code}
-          </div>
-        </div>
-        <div>
-          <div className="k">{t("realestate.common.nameAr")}</div>
-          <div className="v">
-            <TranslatedName nameAr={party.nameAr} translations={party.nameTranslations} />
-          </div>
-        </div>
-        <div>
-          <div className="k">{t("realestate.party.role")}</div>
-          <div className="v" data-testid="re-party-role">
-            {t("realestate.kind." + party.role)}
-          </div>
-        </div>
-        <div>
-          <div className="k">{t("realestate.residency.label")}</div>
-          <div className="v">{t(residencyLabelKey(party.taxResidency))}</div>
-        </div>
-      </div>
-      <div className="row">
-        <span className="k">{t("realestate.party.vatNumber")}</span>
-        <span className="mono" dir="ltr" data-testid="re-party-vat">
-          {party.vatNumber === "" ? t("common.label.dash") : party.vatNumber}
-        </span>
-      </div>
-      <p className="re-id">{party.id}</p>
-    </>
-  );
-}
-
 /* ═══════════════════════════════════════════════════ تسجيل عقار ═════ */
 
 function PropertyForm(props: {
@@ -674,149 +598,6 @@ function UnitForm(props: {
       {write.error ? <Refusal error={write.error} testId="re-unit-refusal" /> : null}
       {write.value ? (
         <p className={"alert alert--success " + write.moment} role="status" data-testid="re-unit-created">
-          {t("realestate.common.created")}
-          {" · "}
-          <span className="mono" dir="ltr">
-            {write.value.id}
-          </span>
-        </p>
-      ) : null}
-    </Panel>
-  );
-}
-
-/* ═══════════════════════════════════════════════════ تسجيل طرف ══════ */
-
-function PartyForm(props: {
-  companyId: string;
-  transport: Transport;
-  role: "owner" | "lessee";
-  onCreated: (entry: SessionEntry) => void;
-}): ReactNode {
-  const { t } = useT();
-  const { role } = props;
-  const [code, setCode] = useState("");
-  const [nameAr, setNameAr] = useState("");
-  const [residency, setResidency] = useState<string>(TAX_RESIDENCIES[0] as string);
-  const [vatNumber, setVatNumber] = useState("");
-  const [rows, setRows] = useState<readonly TranslationRow[]>([]);
-  const write = useWrite<RealEstateParty>("arrive");
-
-  const submit = useCallback(() => {
-    void write.run(async () => {
-      const body = {
-        code,
-        nameAr,
-        taxResidency: residency,
-        vatNumber,
-        ...(rows.length > 0 ? { nameTranslations: wireTranslations(rows) } : {}),
-      } as RealEstatePartyRequest;
-      const created =
-        role === "owner"
-          ? await createPropertyOwner(props.transport, { companyId: props.companyId, body })
-          : await createLessee(props.transport, { companyId: props.companyId, body });
-      props.onCreated({
-        id: created.id,
-        kind: created.role,
-        code: created.code,
-        nameAr: created.nameAr,
-        translations: created.nameTranslations,
-      });
-      return created;
-    });
-  }, [code, nameAr, props, residency, role, rows, vatNumber, write]);
-
-  return (
-    <Panel
-      title={t("realestate.register.createParty." + role)}
-      note={t("realestate.register.createPartyNote")}
-      aside={<StatusBadge state="info" label={t("realestate.kind." + role)} />}
-      testId={"realestate-party-form-" + role}
-    >
-      <div className="grid fields-half">
-        <div className="field">
-          <label htmlFor={"re-party-code-" + role}>
-            {t("realestate.common.code")}
-            <span className="req" aria-hidden="true">{"*"}</span>
-          </label>
-          <input
-            id={"re-party-code-" + role}
-            className="ctl mono"
-            dir="ltr"
-            autoComplete="off"
-            data-testid={"re-party-code-" + role}
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-          />
-        </div>
-        <div className="field">
-          <label htmlFor={"re-party-name-" + role}>
-            {t("realestate.common.nameAr")}
-            <span className="req" aria-hidden="true">{"*"}</span>
-          </label>
-          <input
-            id={"re-party-name-" + role}
-            className="ctl"
-            lang="ar"
-            data-testid={"re-party-name-" + role}
-            value={nameAr}
-            onChange={(e) => setNameAr(e.target.value)}
-          />
-        </div>
-        <div className="field">
-          <label htmlFor={"re-party-res-" + role}>{t("realestate.residency.label")}</label>
-          <select
-            id={"re-party-res-" + role}
-            className="ctl"
-            data-testid={"re-party-res-" + role}
-            value={residency}
-            onChange={(e) => setResidency(e.target.value)}
-          >
-            {TAX_RESIDENCIES.map((one) => (
-              <option key={one} value={one}>
-                {t(residencyLabelKey(one))}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="field">
-          <label htmlFor={"re-party-vat-" + role}>{t("realestate.party.vatNumber")}</label>
-          <input
-            id={"re-party-vat-" + role}
-            className="ctl mono"
-            dir="ltr"
-            inputMode="numeric"
-            autoComplete="off"
-            data-testid={"re-party-vat-" + role}
-            value={vatNumber}
-            onChange={(e) => setVatNumber(e.target.value)}
-          />
-          <span className="hint">{t("realestate.party.vatNumberHint")}</span>
-        </div>
-      </div>
-
-      <h3 className="k">{t("realestate.common.translations")}</h3>
-      <TranslationEditor idPrefix={"re-party-" + role} rows={rows} onChange={setRows} />
-
-      <div className="inline-group">
-        <button
-          type="button"
-          className="btn btn-primary"
-          data-testid={"re-party-save-" + role}
-          disabled={code === "" || nameAr === "" || write.busy}
-          onClick={submit}
-        >
-          {write.busy ? t("common.state.loading") : t("realestate.common.create")}
-        </button>
-      </div>
-
-      {write.error ? <Refusal error={write.error} testId={"re-party-refusal-" + role} /> : null}
-      {write.value ? (
-        <p
-          className={"alert alert--success " + write.moment}
-          role="status"
-          data-testid={"re-party-created-" + role}
-        >
           {t("realestate.common.created")}
           {" · "}
           <span className="mono" dir="ltr">

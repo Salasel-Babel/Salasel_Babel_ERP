@@ -75,6 +75,19 @@ public sealed class StockMovementService : IApplicationService, IInventoryValuat
             return Result<InventoryMovementCost>.Failure(quantity.Errors);
         }
 
+        // ── الصنف المُعطَّل لا يُستلَم منه جديد ────────────────────────────────
+        // **والفحص هنا وحده، لا في <c>WriteAsync</c>** — وهو أدقّ بند في هذا المسار.
+        // ‏<c>WriteAsync</c> طريقُ **كل** الحركات، ومنها عكسُ صرفٍ مضى ومرتجعٌ عليه.
+        // وعكسُ واقعةٍ وقعت على صنفٍ عُطّل بعدها **يجب أن يعمل**: التصحيح لا يُمنع
+        // بحالةٍ وُلدت بعد الواقعة، وإلّا صار الإيقاف يُجمّد أخطاءً لا يمكن ردّها.
+        // فالمنع على **الوارد الجديد** وحده، وهو معنى إيقاف الصنف حرفياً.
+        if (await ItemIsDeactivatedAsync(receipt.Tenant, receipt.Location.ItemId, cancellationToken)
+                .ConfigureAwait(false))
+        {
+            return Result<InventoryMovementCost>.Failure(
+                InventoryErrors.ItemInactive(receipt.Location.ItemId));
+        }
+
         return await WriteAsync(
             receipt.Tenant,
             receipt.Actor,
@@ -421,6 +434,53 @@ public sealed class StockMovementService : IApplicationService, IInventoryValuat
     }
 
     /// <summary>
+    /// يحلّ كمّيةً إلى <b>وحدة أساس رصيد موضعٍ بعينه</b> — قراءةٌ بحتة بلا كتابة.
+    /// <para>
+    /// <b>ولماذا تُكشف داخل الوحدة:</b> مستند النقل يحتاج أن يقارن ما يُنقَل برصيد
+    /// المصدر <b>قبل</b> أن يكتب حركة، والمقارنة لا تصحّ إلا بعد التحويل إلى وحدة
+    /// واحدة. ونسخةٌ ثانية من قاعدة التحويل في خدمة النقل كانت ستنحرف عن هذه عند أول
+    /// تعديل — وهي القاعدة التي يقع فيها المال (‏ADR وحدات القياس).
+    /// </para>
+    /// <para>
+    /// <c>internal</c> لا <c>public</c>: هي طريقٌ داخلُ الوحدة بين خدمتين، والاستحقاق
+    /// مفروضٌ عند نقطة الدخول التي تناديها لا هنا (القاعدة 6).
+    /// </para>
+    /// </summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="itemId">الصنف.</param>
+    /// <param name="warehouseId">المستودع.</param>
+    /// <param name="locationId">الموقع.</param>
+    /// <param name="entered">الكمّية كما سُلّمت بوحدتها.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    internal async ValueTask<Result<InventoryQuantity>> ResolveToBaseAsync(
+        TenantId tenant,
+        string itemId,
+        string warehouseId,
+        string locationId,
+        InventoryQuantity entered,
+        CancellationToken cancellationToken)
+    {
+        Result valid = UnitConversion.Validate(entered);
+        if (valid.IsFailure)
+        {
+            return Result<InventoryQuantity>.Failure(valid.Errors);
+        }
+
+        await OpenAsync(cancellationToken).ConfigureAwait(false);
+
+        StockPosition position = await ReadPositionAsync(
+            tenant, itemId, warehouseId, locationId, forUpdate: false, null, cancellationToken).ConfigureAwait(false);
+
+        Result<ResolvedQuantity> resolved = await ResolveAsync(
+            tenant, itemId, entered, position.BaseUnit, null, cancellationToken).ConfigureAwait(false);
+
+        return resolved.IsFailure
+            ? Result<InventoryQuantity>.Failure(resolved.Errors)
+            : Result<InventoryQuantity>.Success(
+                new InventoryQuantity(resolved.Value.Magnitude, resolved.Value.BaseUnit));
+    }
+
+    /// <summary>
     /// يقرأ أرصدة المنشأة كلّها، مرتَّبةً بالصنف ثم المستودع ثم الموقع.
     /// <para>
     /// <b>وترتيبٌ حرفي معلَن لا ترتيبُ إدخال</b>: قائمةٌ يتغيّر ترتيبها بين نداءين تجعل
@@ -716,6 +776,30 @@ public sealed class StockMovementService : IApplicationService, IInventoryValuat
         return converted.IsFailure
             ? Result<ResolvedQuantity>.Failure(converted.Errors)
             : Result<ResolvedQuantity>.Success(new ResolvedQuantity(baseUnit, converted.Value));
+    }
+
+    /// <summary>
+    /// هل الصنف مُسجَّل في الكتالوج و<b>مُعطَّل</b>؟
+    /// <para>
+    /// <b>وصنفٌ غير مسجَّل ليس مُعطَّلاً</b>: يُرجع <c>false</c> فيمرّ. والمخزون كان
+    /// يعمل قبل الكتالوج، وإلزامُ التسجيل بأثر رجعي يُوقف مستأجراً عاملاً — وهي
+    /// القاعدة نفسها التي تحكم <see cref="ResolveAsync"/>.
+    /// </para>
+    /// </summary>
+    private async ValueTask<bool> ItemIsDeactivatedAsync(
+        TenantId tenant, string itemId, CancellationToken cancellationToken)
+    {
+        await OpenAsync(cancellationToken).ConfigureAwait(false);
+
+        await using NpgsqlCommand command = new(
+            """ select "IsActive" from inventory.item where "TenantId" = $1 and "Code" = $2 """,
+            Connection);
+
+        command.Parameters.AddWithValue(tenant.Value);
+        command.Parameters.AddWithValue(itemId);
+
+        object? found = await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
+        return found is bool active && !active;
     }
 
     private async ValueTask<string> ItemBaseUnitAsync(

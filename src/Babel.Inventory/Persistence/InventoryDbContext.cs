@@ -31,6 +31,18 @@ internal sealed class InventoryDbContext(DbContextOptions<InventoryDbContext> op
 
     public DbSet<InventoryPostingRow> Postings => Set<InventoryPostingRow>();
 
+    public DbSet<StoragePlaceRow> Places => Set<StoragePlaceRow>();
+
+    public DbSet<StoragePlaceTranslationRow> PlaceNames => Set<StoragePlaceTranslationRow>();
+
+    public DbSet<StockTransferRow> Transfers => Set<StockTransferRow>();
+
+    public DbSet<UnitOfMeasureRow> Units => Set<UnitOfMeasureRow>();
+
+    public DbSet<UnitOfMeasureTranslationRow> UnitNames => Set<UnitOfMeasureTranslationRow>();
+
+    public DbSet<UnitConversionRow> UnitConversions => Set<UnitConversionRow>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);
@@ -124,6 +136,10 @@ internal sealed class InventoryDbContext(DbContextOptions<InventoryDbContext> op
             entity.Property(row => row.BaseUnit).HasMaxLength(32).IsRequired();
             entity.HasIndex(row => new { row.TenantId, row.Code })
                   .IsUnique().HasDatabaseName("uq_inventory_item_code");
+
+            // ‏**الصنف يولد متداوَلاً**: قاعدةٌ قائمة تُرقّى بعمودٍ افتراضُه `true`،
+            // فلا يُعطَّل صنفٌ واحد بأثرٍ رجعي لأن العمود أُضيف.
+            entity.Property(row => row.IsActive).HasDefaultValue(true);
         });
 
         modelBuilder.Entity<ItemTranslationRow>(entity =>
@@ -172,6 +188,124 @@ internal sealed class InventoryDbContext(DbContextOptions<InventoryDbContext> op
             entity.ToTable(table => table.HasCheckConstraint(
                 "ck_inventory_stock_document_magnitude_positive",
                 """ "Magnitude" > 0 """));
+        });
+
+        modelBuilder.Entity<StoragePlaceRow>(entity =>
+        {
+            entity.ToTable("storage_place");
+            entity.HasKey(row => row.Id);
+            entity.Property(row => row.Level).HasMaxLength(16).IsRequired();
+            entity.Property(row => row.Code).HasMaxLength(64).IsRequired();
+            entity.Property(row => row.ParentCode).HasMaxLength(64).IsRequired();
+            entity.Property(row => row.NameAr).HasMaxLength(256).IsRequired();
+
+            // ‏**المستوى في المفتاح**: رمز «A1» يجوز أن يكون مستودعاً ورفّاً معاً في
+            // منشأة واحدة، وهما شيئان لا يتصادمان إلا إن أُسقط المستوى من المفتاح.
+            entity.HasIndex(row => new { row.TenantId, row.Level, row.Code })
+                  .IsUnique().HasDatabaseName("uq_inventory_storage_place");
+
+            entity.HasIndex(row => new { row.TenantId, row.Level, row.ParentCode })
+                  .HasDatabaseName("ix_inventory_storage_place_parent");
+
+            // مستوىً خارج الثلاثة يجعل «أب هذا الصفّ» سؤالاً بلا جواب.
+            entity.ToTable(table => table.HasCheckConstraint(
+                "ck_inventory_storage_place_level",
+                """ "Level" in ('WAREHOUSE','LOCATION','BIN') """));
+
+            // ‏**المستودع بلا أب، وما دونه بأب**: صفٌّ يخالف ذلك هرمٌ مكسور، ولا
+            // يُترك ليُكتشف عند القراءة.
+            entity.ToTable(table => table.HasCheckConstraint(
+                "ck_inventory_storage_place_parent",
+                """ ("Level" = 'WAREHOUSE') = (btrim("ParentCode") = '') """));
+        });
+
+        modelBuilder.Entity<StoragePlaceTranslationRow>(entity =>
+        {
+            entity.ToTable("storage_place_name_translation");
+            entity.HasKey(row => row.Id);
+            entity.Property(row => row.Level).HasMaxLength(16).IsRequired();
+            entity.Property(row => row.Code).HasMaxLength(64).IsRequired();
+            entity.Property(row => row.Locale).HasMaxLength(16).IsRequired();
+            entity.Property(row => row.Text).HasMaxLength(256).IsRequired();
+            entity.HasIndex(row => new { row.TenantId, row.Level, row.Code, row.Locale })
+                  .IsUnique().HasDatabaseName("uq_inventory_storage_place_name_translation");
+        });
+
+        modelBuilder.Entity<StockTransferRow>(entity =>
+        {
+            entity.ToTable("stock_transfer");
+            entity.HasKey(row => row.Id);
+            entity.Property(row => row.Number).HasMaxLength(64).IsRequired();
+            entity.Property(row => row.ItemCode).HasMaxLength(64).IsRequired();
+            entity.Property(row => row.ItemGroup).HasMaxLength(64).IsRequired();
+            entity.Property(row => row.FromWarehouseId).HasMaxLength(64).IsRequired();
+            entity.Property(row => row.FromLocationId).HasMaxLength(64).IsRequired();
+            entity.Property(row => row.ToWarehouseId).HasMaxLength(64).IsRequired();
+            entity.Property(row => row.ToLocationId).HasMaxLength(64).IsRequired();
+            entity.Property(row => row.UnitCode).HasMaxLength(32).IsRequired();
+            entity.Property(row => row.State).HasMaxLength(16).IsRequired();
+            entity.Property(row => row.Magnitude).HasColumnType(Quantity);
+            entity.Property(row => row.ValueAmount).HasColumnType(Money);
+            entity.HasIndex(row => new { row.TenantId, row.Number })
+                  .IsUnique().HasDatabaseName("uq_inventory_stock_transfer_number");
+
+            entity.ToTable(table => table.HasCheckConstraint(
+                "ck_inventory_stock_transfer_magnitude_positive",
+                """ "Magnitude" > 0 """));
+
+            // ‏**نقلٌ إلى الموضع نفسه ليس نقلاً**: حركتان تُلغيان بعضهما وتُحدّثان صفّ
+            // رصيدٍ واحد مرّتين — ورقمٌ يمرّ بحالتين ليعود إلى نفسه في معاملة واحدة.
+            entity.ToTable(table => table.HasCheckConstraint(
+                "ck_inventory_stock_transfer_distinct",
+                """ ("FromWarehouseId", "FromLocationId") <> ("ToWarehouseId", "ToLocationId") """));
+        });
+
+        modelBuilder.Entity<UnitOfMeasureRow>(entity =>
+        {
+            entity.ToTable("unit_of_measure");
+            entity.HasKey(row => row.Id);
+            entity.Property(row => row.Code).HasMaxLength(32).IsRequired();
+            entity.Property(row => row.NameAr).HasMaxLength(256).IsRequired();
+            entity.Property(row => row.Class).HasMaxLength(16).IsRequired();
+            entity.HasIndex(row => new { row.TenantId, row.Code })
+                  .IsUnique().HasDatabaseName("uq_inventory_unit_of_measure");
+
+            // ‏**صنف الكمّية مغلق**: قيمةٌ حرّة فيه تجعل «هل يجوز التحويل؟» سؤالاً
+            // بلا جواب — صنفان مكتوبان بحرفين مختلفين يبدوان مختلفين وهما واحد.
+            entity.ToTable(table => table.HasCheckConstraint(
+                "ck_inventory_unit_class",
+                """ "Class" in ('COUNT','WEIGHT','VOLUME','LENGTH','AREA') """));
+        });
+
+        modelBuilder.Entity<UnitOfMeasureTranslationRow>(entity =>
+        {
+            entity.ToTable("unit_of_measure_name_translation");
+            entity.HasKey(row => row.Id);
+            entity.Property(row => row.UnitCode).HasMaxLength(32).IsRequired();
+            entity.Property(row => row.Locale).HasMaxLength(16).IsRequired();
+            entity.Property(row => row.Text).HasMaxLength(256).IsRequired();
+            entity.HasIndex(row => new { row.TenantId, row.UnitCode, row.Locale })
+                  .IsUnique().HasDatabaseName("uq_inventory_unit_of_measure_name_translation");
+        });
+
+        modelBuilder.Entity<UnitConversionRow>(entity =>
+        {
+            entity.ToTable("unit_conversion");
+            entity.HasKey(row => row.Id);
+            entity.Property(row => row.FromUnit).HasMaxLength(32).IsRequired();
+            entity.Property(row => row.ToUnit).HasMaxLength(32).IsRequired();
+            entity.HasIndex(row => new { row.TenantId, row.FromUnit, row.ToUnit })
+                  .IsUnique().HasDatabaseName("uq_inventory_unit_conversion");
+
+            entity.ToTable(table => table.HasCheckConstraint(
+                "ck_inventory_unit_conversion_ratio_positive",
+                """ "Numerator" > 0 and "Denominator" > 0 """));
+
+            // وحدةٌ إلى نفسها معاملُها واحدٌ على واحد بالتعريف، وصفٌّ يقول غير ذلك
+            // تعريفان متناقضان لشيء واحد.
+            entity.ToTable(table => table.HasCheckConstraint(
+                "ck_inventory_unit_conversion_distinct",
+                """ "FromUnit" <> "ToUnit" """));
         });
 
         modelBuilder.Entity<InventoryPostingRow>(entity =>

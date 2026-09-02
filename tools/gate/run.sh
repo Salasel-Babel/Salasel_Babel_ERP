@@ -102,7 +102,7 @@ tools/test-tally/run.sh --begin || fail "ختم مجلّد التقارير"
 dotnet test --project tests/Babel.ArchitectureTests/Babel.ArchitectureTests.csproj \
     -c "$configuration" --no-build \
     --report-xunit-trx --results-directory artifacts/test-reports \
-    --minimum-expected-tests 205 --zero-tests-policy strict || fail "اختبارات المعمارية"
+    --minimum-expected-tests 259 --zero-tests-policy strict || fail "اختبارات المعمارية"
 
 # ── ٤ · كل الاختبارات ─────────────────────────────────────────────────────────
 # ‏`--no-build` ليس تسريعاً فحسب: الخطوة ١ هي التي بنت، وبدونها كانت هذه الخطوة
@@ -114,7 +114,7 @@ dotnet test --project tests/Babel.ArchitectureTests/Babel.ArchitectureTests.cspr
 step "٤ · كل الاختبارات"
 dotnet test --solution Babel.slnx -c "$configuration" --no-build \
     --report-xunit-trx --results-directory artifacts/test-reports \
-    --minimum-expected-tests 1631 --zero-tests-policy strict || fail "مجموعة الاختبارات"
+    --minimum-expected-tests 2033 --zero-tests-policy strict || fail "مجموعة الاختبارات"
 
 # ── ٤-ب · الحصيلة — ما نُفِّذ فعلاً ────────────────────────────────────────────
 # ‏**لا تقرأ خياراً ولا سطر أمر.** تسأل مُخرَج التشغيل: لكل سطحٍ يعلنه
@@ -140,10 +140,17 @@ fi
 # نصف المستودع. (‏traps.md#fakh-a-two-sided-contract-guarded-on-one-side-only)
 #
 # ‏**ولماذا هذه الفحوص بالذات افتراضياً:** `generate-client.mjs` و`audit.mjs`
-# و`contrast.mjs` لا تستورد إلا وحدات Node المدمجة — **مقيس أنها تنجح بلا
-# `node_modules` إطلاقاً**. و`contrast.mjs` يقيس عتبة WCAG AA على ملفّات السمة
-# نفسها (‏78 زوجاً × لوحتين × سمتين)، فالحدّ الأدنى للتباين **مُنفَّذ لا موصى به**
-# (‏ADR-0059 · contrast-floor-is-enforced).
+# و`contrast.mjs` و`numerals.mjs` لا تستورد إلا وحدات Node المدمجة — **مقيس أنها
+# تنجح بلا `node_modules` إطلاقاً**. و`contrast.mjs` يقيس عتبة WCAG AA على ملفّات
+# السمة نفسها (‏78 زوجاً × لوحتين × سمتين)، فالحدّ الأدنى للتباين **مُنفَّذ لا
+# موصى به** (‏ADR-0059 · contrast-floor-is-enforced).
+#
+# ‏**و`numerals.mjs` أُضيف هنا لأنه لم يكن يُشغَّل في موضعٍ واحد من المستودع:**
+# لا في هذه البوّابة ولا في أي سير — `grep -rn "numerals" .github/ tools/` كان
+# يعود فارغاً — بينما `web/e2e/numerals.spec.ts` وحده يراه، وهذه البوّابة لا
+# تشغّل إلا `alignment.spec.ts`. فكان حكمُ وجه المِحرف (`auditFaceToken`) شيفرةً
+# صحيحةً **لا ينفّذها أحد**: قاعدةٌ من سطرٍ واحد تُبدّل `--font-numeric-face`
+# على الصفوف الزوجية تمرّ من البوّابة كلِّها بالرمز صفر. مقيس.
 # فثمنهما ثوانٍ ولا يحتاجان `npm ci`. وما عداهما يحتاج التثبيت، فهو خلف `--with-frontend`
 # لئلّا تدفع كل بوّابة ثمن دقيقتين. وما لا يُشغَّل هنا **مُصرَّح به** في القاعدة 19،
 # لا متروكاً ليفترض القارئ أنه مُغطّى.
@@ -152,6 +159,7 @@ if command -v node >/dev/null 2>&1; then
     ( cd web && node scripts/generate-client.mjs --check ) || fail "العميل المُولَّد يخالف العقد المنشور (web: gen:check)"
     ( cd web && node scripts/audit.mjs )                   || fail "فحص التدويل والاتجاه (web: audit:i18n)"
     ( cd web && node scripts/contrast.mjs --quiet )        || fail "عتبة التباين WCAG AA (web: contrast)"
+    ( cd web && node scripts/numerals.mjs >/dev/null )     || fail "رسم الأرقام ووجه المِحرف (web: numerals)"
 else
     printf '── node غير موجود: فحوص الواجهة الساكنة لم تُشغَّل. وهذا نقصُ تغطية لا نجاح.\n'
 fi

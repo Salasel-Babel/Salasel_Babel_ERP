@@ -8,7 +8,7 @@
 > فأضِفه هنا بالشروط نفسها بعد قياسه — سجلٌّ ناقص يعني عملاً مُكرَّراً بعد سنتين.
 >
 > **الوثائق الشقيقة:** [`README.md`](README.md) فهرس قاعدة الأدلة وترتيب القراءة ·
-> [`traps.md`](traps.md) **الأعطال** (‏167 فخّاً، و§8 قائمة ما قبل الدمج) ·
+> [`traps.md`](traps.md) **الأعطال** (‏174 فخّاً، و§8 قائمة ما قبل الدمج) ·
 > [`refuted.md`](refuted.md) **ما دُحض** (‏16 ادّعاءً، وما بقي من كلٍّ منها) ·
 > [`verification-debt.md`](verification-debt.md) **ما لا نعرفه** (‏47 مجهولاً لا يُبنى عليها) ·
 > [`../decisions/README.md`](../decisions/README.md) **القرارات** المبنية على كل ما سبق.
@@ -1226,7 +1226,7 @@ node scripts/align-audit.mjs --no-build --no-shots \
 
 ### 3-ك · استقامة الصفّ في شاشات الموارد البشرية الأربع الجديدة — 2026-09-02
 
-> القرار: [ADR-جديد: شاشةٌ لكلّ يدٍ تعمل، لا لكلّ بابٍ منشور](../decisions/ADR-0077-one-screen-per-hand-not-per-door.md)
+> القرار: [ADR-0077: شاشةٌ لكلّ يدٍ تعمل، لا لكلّ بابٍ منشور](../decisions/ADR-0077-one-screen-per-hand-not-per-door.md)
 > · والأساس البنيوي: [ADR-0067: الصفُّ يملك المسارات](../decisions/ADR-0067-the-row-owns-the-tracks.md).
 
 أربعُ شاشاتٍ جديدة (`/hr/pay-components` · `/hr/advances-deductions` ·
@@ -1559,7 +1559,7 @@ MSBUILDDISABLENODEREUSE=1 DOTNET_CLI_USE_MSBUILD_SERVER=0 \
 
 **البيئة:** هذا الجهاز، `dotnet 10.0.111`، الفرع `claude/gloss-is-not-debt` فوق
 `origin/develop` عند `0c3dc20`. القرار المستهلِك:
-[ADR-جديد](../decisions/ADR-0076-gloss-is-not-column-debt.md) · ويُصحِّح
+[ADR-0076](../decisions/ADR-0076-gloss-is-not-column-debt.md) · ويُصحِّح
 [ADR-0021 §4-ب](../decisions/ADR-0021-arabic-is-the-record-translation-is-presentation.md)
 و[ADR-0027 §3-ب](../decisions/ADR-0027-the-translation-table-is-rows-and-the-record-is-a-column.md).
 
@@ -1704,8 +1704,8 @@ git ls-files -- 'data/*.json' 'data/**/*.json' \
 
 ### 3.‏N · سطح الوكيل ولوحُه الجانبي، وثلاثةُ حرّاس رُئيت ساقطةً قبل أن تُرى مارّة — 2026-09-02
 
-> القراران: [ADR-جديد: مساحة عمل الوكيل سطحٌ واحد منشور، وأحداثُ دوره تُقرأ بمؤشّر](../decisions/ADR-0074-the-agent-workspace-is-one-surface-read-by-cursor.md) ·
-> [ADR-جديد: التأكيد يعني شكل البيانات — مفروضاً بالبناء](../decisions/ADR-0075-confirmation-is-the-shape-and-the-key-stays-on-the-server.md).
+> القراران: [ADR-0074: مساحة عمل الوكيل سطحٌ واحد منشور، وأحداثُ دوره تُقرأ بمؤشّر](../decisions/ADR-0074-the-agent-workspace-is-one-surface-read-by-cursor.md) ·
+> [ADR-0075: التأكيد يعني شكل البيانات — مفروضاً بالبناء](../decisions/ADR-0075-confirmation-is-the-shape-and-the-key-stays-on-the-server.md).
 > بيئة القياس هي المُعلنة في §1. والأساس `origin/develop@a26ab90`.
 
 | ما قيس | الرقم | أمر القياس | الوسم |
@@ -1784,7 +1784,7 @@ node scripts/align-audit.mjs --no-build --no-shots --locales ar,en --widths 1024
 وأسوأ صفٍّ قبل الإصلاح **«تسجيل وحدة قياس»**: أربعة حقول، ثلاثةٌ أوصافها من سطرٍ إلى
 ثلاثة، ورابعٌ — الاسم اللاتيني — **بلا وصف إطلاقاً**؛ فالفارق بين قاع حبره وقاع جاره
 **61.17px**. والإصلاح **محتوىً لا أنماط**: تلميحٌ صادق لكل حقل، وتقصيرُ التلميحات الطويلة
-ونقلُ شرحها إلى `note` اللوح. (‏ADR-جديد · `every-field-in-a-row-carries-a-description`)
+ونقلُ شرحها إلى `note` اللوح. (‏ADR-0078 · `every-field-in-a-row-carries-a-description`)
 
 #### ب) الشاهد السلبي — لأن فحصاً لا يُرى ساقطاً لا يُثبت أنه يقيس شيئاً
 
@@ -1823,7 +1823,7 @@ node scripts/align-audit.mjs --no-build --no-shots --locales ar,en --widths 1024
 | قيمٌ أردية تطابق العربية حرفاً بحرف | **9** (كانت 6؛ الثلاثة الجديدة «وزن» و«حجم» و«طول» كلماتٌ أردية صحيحة) | `npm test` — `tests/locale-script.test.ts` | مقيس |
 ### ي) منفّذ المسوّدات — الباب المنشور نفسه، هويّةُ إنسانه، ومرّةً واحدة
 
-**القرار:** [ADR-جديد](../decisions/ADR-0079-the-draft-lands-on-its-humans-identity-once.md)
+**القرار:** [ADR-0079](../decisions/ADR-0079-the-draft-lands-on-its-humans-identity-once.md)
 (`the-draft-lands-on-its-humans-identity-once`). **والفجوة التي أُغلقت** مكتوبةٌ في §3-ط
 أعلاه بنصّها: «هبوطُ مسوّدةٍ في وحدةٍ مالكة — **لا يقع**».
 

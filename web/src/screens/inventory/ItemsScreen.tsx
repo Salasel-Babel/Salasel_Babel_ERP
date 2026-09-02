@@ -26,7 +26,7 @@
        ومع ذلك يُتحقَّق من شكلهما بنمطٍ نصّي **قبل** أي تحويل، فلا يمرّ
        «12.5» ولا «1e3» ولا فراغ.
    ═══════════════════════════════════════════════════════════════════════════ */
-import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { addItem, listItems } from "../../api/generated/client";
 import type { Item, ItemRequest, UnitFactor } from "../../api/generated/types";
@@ -465,7 +465,7 @@ export function InventoryItemsScreen(): ReactNode {
           </div>
         </div>
 
-        <div className="grid fields-half" style={{ marginTop: "var(--space-12)" }}>
+        <div className="grid fields-half" style={{ "--grid-lead": "var(--space-12)" } as CSSProperties}>
           <div className="field">
             <label htmlFor="inv-name-ar">{t("inventory.items.arabicName")}</label>
             <input

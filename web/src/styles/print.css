@@ -36,7 +36,11 @@
   html,body{
     background:var(--print-paper)!important;
     color:var(--print-ink)!important;
-    font-family:var(--font-sans,'IBM Plex Sans Arabic','Segoe UI',Tahoma,serif);
+    /* **ولا سلسلة احتياطٍ هنا.** كانت مكتوبة، وهي نسخةٌ ثانيةٌ من قائمةٍ
+       تعيش في `tokens.css` — فاختلفت عن `--font-numeric-face` (وهو
+       `var(--font-sans)` بلا احتياط)، وصار للورق وجهان: ما يرثه النثر وما
+       يختاره السطح الرقميّ. والاحتياطُ محلُّه تعريفُ الرمز لا مستهلِكُه. */
+    font-family:var(--font-sans);
     font-size:10.5pt;
     line-height:1.55;
   }

@@ -252,6 +252,38 @@ function PrimitivesSection(): ReactNode {
         <StatCard label={t("acct.accountCount")} count={11} />
       </div>
 
+      {/* **صفُّ الحقول هو المرجع، لا الحقلُ وحده.** كان الكتالوج يعرض ثلاثة
+          حقولٍ مرصوصةً عمودياً، فلا يقول شيئاً عمّا يحدث حين تقف جنباً إلى
+          جنب — وهو بالضبط الموضع الذي كان ينكسر. هذا اللوح يعرض الصفّ
+          بأوصافٍ مختلفة الأطوال عمداً: بلا وصف · سطرٌ واحد · ثلاثة أسطر. */}
+      <Panel title={t("screen.design.prim.row")} note={t("screen.design.prim.rowNote")} testId="design-fieldrow">
+        <div className="grid fields-3">
+          <Field id="d-row-book" label={t("screen.design.prim.rowNoDesc")} source="typed">
+            <input id="d-row-book" className="ctl mono" defaultValue="MAIN" dir="ltr" readOnly />
+          </Field>
+          <Field
+            id="d-row-period"
+            label={t("screen.design.prim.rowOneDesc")}
+            hint={t("screen.design.prim.rowOneDescHint")}
+            source="typed"
+          >
+            <input id="d-row-period" className="ctl mono" defaultValue="2026-05" dir="ltr" readOnly />
+          </Field>
+          <Field
+            id="d-row-rate"
+            label={t("screen.design.prim.rowLongDesc")}
+            hint={t("screen.design.prim.rowLongDescHint")}
+            source="typed"
+            required
+          >
+            <input id="d-row-rate" className="ctl amt-input" defaultValue="0.1000" dir="ltr" readOnly />
+          </Field>
+        </div>
+        <p className="muted" data-testid="design-fieldrow-rule">
+          {t("screen.design.prim.rowRule")}
+        </p>
+      </Panel>
+
       <div className="grid2">
         <Panel title={t("screen.design.prim.field")} note={t("screen.design.prim.fieldNote")}>
           <Field id="d-typed" label={t("field.book.label")} hint={t("field.book.hint")} source="typed">

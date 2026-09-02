@@ -125,21 +125,34 @@ body {
 }
 
 /* ── شريط المرشّحات ───────────────────────────────────────────────────── */
+/* **كان `align-items: flex-end`**، وهو ما جعل حقلاً تحته تلميحٌ من سطرين
+   يرفع عنصر تحكّمه فوق جيرانه بارتفاع التلميح كاملاً: 42.78px مقيسة في شريط
+   مرشّحات ميزان المراجعة، في اللغات الأربع وفي كل عرضٍ من الخمسة. الشريط الآن
+   شبكةٌ تملك مسارات الصفّ الثلاثة، والحقول تستعيرها (components.css · «الصفُّ
+   يملك المسارات»). */
 .filterbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: var(--space-10);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  column-gap: var(--space-10);
+  row-gap: var(--space-10);
 }
 .filterbar .field {
-  flex: 0 1 190px;
-  min-width: 130px;
+  min-width: 0;
 }
-.filterbar .field.wide {
-  flex: 1 1 260px;
+/* حقلُ البحث أعرض — **وعند عمودين فأكثر فقط**. عند عمودٍ واحد (هاتف) يُنشئ
+   `span 2` عموداً ضمنياً يخرج بالصفحة عن عرضها، وهو انزلاقٌ أفقي يحرسه
+   `e2e/matrix.spec.ts` عند 360px. و620px هو أضيق عرضٍ فيه عمودان مؤكّدان. */
+@media (min-width: 620px) {
+  .filterbar > .field.wide {
+    grid-column: span 2;
+  }
 }
-.filterbar .grow {
-  flex: 1 1 auto;
+.filterbar .grow,
+/* مجموعةُ الأفعال سطرٌ خاصّ بها. عمودٌ واحد بعرض 190px يطوي أربعة أزرارٍ
+   على سطرين، وهو أقبح من سطرٍ مستقلّ — وطيُّها كان أوّل ما ظهر في لقطة
+   «بعد» حين صار الشريط شبكة. */
+.filterbar > .rowctl {
+  grid-column: 1 / -1;
 }
 
 /* ── الجدول: الكثافة والانتقال بلوحة المفاتيح ───────────────────────── */

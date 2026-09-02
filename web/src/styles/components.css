@@ -327,7 +327,7 @@ h1,h2,.gal-hero h1,.page-title h1,.drawer-hd h2,.empty h3{
 
 /* ══════════════════════════════════════════════ 3 · الحقول والنماذج */
 
-.grid{display:grid;gap:var(--space-14) var(--space-16)}
+.grid{display:grid;column-gap:var(--space-16);row-gap:var(--space-14)}
 .fields-1{grid-template-columns:repeat(5,minmax(0,1fr))}
 .fields-2{grid-template-columns:minmax(0,3fr) minmax(0,1fr)}
 .fields-3{grid-template-columns:repeat(3,minmax(0,1fr))}
@@ -344,6 +344,62 @@ h1,h2,.gal-hero h1,.page-title h1,.drawer-hd h2,.empty h3{
 }
 .col-span-all{grid-column:1/-1}
 
+/* ══════════ الصفُّ يملك المسارات، لا الحقل ══════════════════════════════════
+   the row owns the tracks — the field only borrows them
+   ───────────────────────────────────────────────────────────────────────────
+   **العطل الذي أُصلح هنا.** كان `.field` صندوقاً عمودياً (flex) يحسب موضع
+   عنصر تحكّمه من **تسميته وحدها**: «أعلى الصندوق + ارتفاع التسمية + 6». فحقلٌ
+   التفّت تسميته سطرين ينزل عنصر تحكّمه وحده، وحقلٌ تحته وصفٌ من سطرين يرتفع
+   عنصر تحكّمه وحده في صفٍّ محاذاته `end`. **لا شيء في البنية يجعل الصفّ يتّفق**:
+   كل حقلٍ يقيس نفسه منفرداً. مقيسٌ على develop@ad2ff14 بمقياس
+   `scripts/align-audit.mjs`: 99.30px بين «Period share» و«Employment
+   identifier» في `/hr/end-of-service` عند en-1024، و42.78px في شريط مرشّحات
+   ميزان المراجعة — في اللغات الأربع وفي كل العروض — و31 صفّاً من 37 قاعُ حبرها
+   مسنَّن عند ar-1440.
+
+   **والإصلاح بنيويّ لا موضعيّ:** الوعاء — لا الحقل — هو من يملك المسارات
+   الثلاثة (تسمية · تحكّم · وصف)، والحقل يستعيرها بـ`grid-template-rows:subgrid`.
+   فارتفاع مسار التسمية يصير أطولَ تسميةٍ **في الصفّ**، ومسار التحكّم واحداً
+   للصفّ كلّه. تسميةٌ تلتفّ سطرين تُكبّر المسار للجميع ولا تُنزل عنصر تحكّمها
+   وحده؛ ووصفٌ من ثلاثة أسطر يُكبّر مسار الوصف للصفّ **ولا يُقصّ ولا يُخفى**،
+   وثمنه بياضٌ تحت الأوصاف القصيرة — تحت **أقلّ** الأسطر أهمية، لا فوقه.
+   والمسارات تُقاس **لكل صفٍّ على حدة** لا للنموذج كلّه: وصفٌ طويل في الصفّ
+   الأول لا يُنفخ الصفّ الثاني.
+
+   **والفجوة بين الصفوف تبقى 14px كما كانت:** الشبكة الأمّ فجوتُها
+   `--space-14`، والحقل — وهو شبكةٌ فرعية — **يُعلن فجوته الخاصّة** 6px،
+   وهي تُستعمل بين مساراته الثلاثة وحدها. مقيسٌ في Chromium: تسمية→تحكّم 6px،
+   تحكّم→وصف 6px، وصف→تسمية الصفّ التالي 14px.
+
+   **والارتداد مقصود:** متصفّحٌ بلا `subgrid` يبقى على سلوك اليوم بالضبط —
+   حقلٌ عموديٌّ مرن — لا أسوأ منه. (ADR-0065-the-row-owns-the-tracks) */
+
+/* ١ · كلُّ خليّةٍ في وعاء حقولٍ تشغل مسارات الصفّ الثلاثة. وهذا يسري حتى بلا
+   `subgrid`، فلا يتغيّر شيء عمّا كان: الخليّة كانت تتمدّد على ارتفاع الصفّ. */
+:is(.grid,.filterbar,.toolbar,.hr-line,.con-line) > *{grid-row:span 3}
+
+@supports (grid-template-rows:subgrid){
+  /* ٢ · الحقل يستعير مسارات الصفّ، ويُعلن فجوته الداخلية. */
+  :is(.grid,.filterbar,.toolbar,.hr-line,.con-line) > :is(.field,.rowctl):not(.field--inline){
+    display:grid;
+    grid-template-rows:subgrid;
+    row-gap:var(--space-6);
+  }
+  /* ٣ · وإسنادُ المسارات **بالدور لا بالترتيب**: حقلٌ بلا تسمية يبقى عنصر
+     تحكّمه على سطر التحكّم، لا يصعد إلى سطر التسمية. */
+  :is(.grid,.filterbar,.toolbar,.hr-line,.con-line) > :is(.field,.rowctl):not(.field--inline) > *{grid-row:2}
+  :is(.grid,.filterbar,.toolbar,.hr-line,.con-line) > .field:not(.field--inline) > label{grid-row:1}
+  :is(.grid,.filterbar,.toolbar,.hr-line,.con-line) > .field:not(.field--inline)
+    > :is(.field__desc,.hint,.field-error,.field-ok,.dateline){grid-row:3}
+}
+
+/* خليّةٌ ليست حقلاً وتقف مع ذلك على **سطر عناصر التحكّم**: مجموعةُ أزرارٍ في
+   شريط مرشّحات، أو زرُّ فعلٍ في شبكة حقول. ابنُها الواحد هو ما يُوضَع على
+   السطر — فتبقى المجموعة نفسها مرنةً تلتفّ كما كانت. */
+.rowctl{display:flex;flex-direction:column;justify-content:flex-end;min-width:0}
+
+/* الحقل **خارج** صفٍّ (في كومةٍ عمودية) يبقى صندوقاً مرناً — وهو أيضاً
+   ارتدادُ المتصفّح الذي لا يعرف `subgrid`. */
 .field{display:flex;flex-direction:column;gap:var(--space-6);min-width:0}
 .field > label{
   font-size:var(--font-size-label);font-weight:var(--font-weight-semibold);
@@ -362,6 +418,10 @@ h1,h2,.gal-hero h1,.page-title h1,.drawer-hd h2,.empty h3{
 }
 .req{color:var(--color-required);margin-inline-start:2px}
 .hint{font-size:var(--font-size-hint);color:var(--color-text-subtle)}
+/* خانةُ الوصف: تلميحٌ ورسالةُ رفضٍ معاً في **صندوقٍ واحد**، كي يبقى عدد
+   خانات الحقل ثلاثاً سواءٌ ظهرت رسالة الرفض أو لم تظهر. بلا هذا يصير
+   للحقل أربعة أبناء عند الرفض فتنزاح خاناته عن خانات جيرانه. */
+.field__desc{display:flex;flex-direction:column;gap:var(--space-4);min-width:0}
 
 .ctl{
   width:100%;min-height:var(--control-h);
@@ -1200,12 +1260,16 @@ table.data .skel-row td{padding:var(--space-10)}
 .state[data-ok="false"] .k,.state[data-ok="false"] .v{color:var(--color-unbalanced)}
 
 /* شريط أدوات فوق جدول (بحث + مرشّحات + أزرار) */
+/* **ولا `align-items:flex-end` هنا بعد اليوم.** كانت محاذاةُ النهاية هي ما
+   يرفع عنصر تحكّمٍ فوق جاره بمقدار ارتفاع وصفه كاملاً — وهي أعلى قراءات
+   الانحراف كلّها. الشريط الآن وعاءُ حقولٍ يملك مساراته الثلاثة كالشبكة. */
 .toolbar{
-  display:flex;align-items:flex-end;gap:var(--space-12);flex-wrap:wrap;
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+  column-gap:var(--space-12);row-gap:var(--space-12);
   padding:var(--space-12) var(--space-16);
 }
-.toolbar .grow{flex:1 1 220px;min-width:0}
-.toolbar .end{margin-inline-start:auto;display:flex;gap:var(--space-8);flex-wrap:wrap;align-items:center}
+.toolbar .grow{min-width:0}
+.toolbar .end{justify-self:end;display:flex;gap:var(--space-8);flex-wrap:wrap;align-items:center}
 
 /* ═══════════════════════════════════════ 14 · الإشعارات العابرة */
 /* التوسيط بلا transform: inset-inline:0 + margin-inline:auto يعمل في الاتجاهين.

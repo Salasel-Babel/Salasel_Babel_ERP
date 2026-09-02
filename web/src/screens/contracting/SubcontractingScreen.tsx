@@ -770,13 +770,15 @@ export function SubcontractingScreen(): ReactNode {
               placeholder="00000000-0000-0000-0000-000000000000"
             />
           </Field>
-          <div className="inline-group">
-            <Button
-              label={t("contracting.subcontract.read")}
-              disabled={subcontractInput === ""}
-              onClick={() => selectContracting({ subcontractId: subcontractInput, subcontractNumber: "" })}
-              testId="subcontract-read"
-            />
+          <div className="rowctl">
+            <div className="inline-group">
+              <Button
+                label={t("contracting.subcontract.read")}
+                disabled={subcontractInput === ""}
+                onClick={() => selectContracting({ subcontractId: subcontractInput, subcontractNumber: "" })}
+                testId="subcontract-read"
+              />
+            </div>
           </div>
         </div>
 

@@ -138,6 +138,13 @@ export type Provenance = "attested" | "read" | "spoken" | "inferred" | "defaulte
 
 /**
  * حقلٌ بتسمية وتلميح ورسالة رفض، ويحمل أثر مصدره على بدايته.
+ *
+ * **ثلاث خانات لا أربع.** التلميح ورسالة الرفض يخرجان في صندوقٍ واحد
+ * (`field__desc`) لا كأخوين مستقلّين، كي يبقى عدد خانات الحقل ثلاثاً —
+ * تسمية · تحكّم · وصف — سواءٌ ظهرت رسالة الرفض أو لم تظهر. الصفّ هو من يملك
+ * هذه المسارات الثلاثة والحقل يستعيرها (`components.css` · «الصفُّ يملك
+ * المسارات»)، وحقلٌ بأربعة أبناء يُزيح خاناته عن خانات جيرانه فينكسر الصفّ
+ * **عند الرفض وحده** — وهو أسوأ وقتٍ ينكسر فيه.
  * @param props المعرّف والتسمية والمحتوى.
  */
 export function Field(props: FieldProps): ReactNode {
@@ -151,11 +158,15 @@ export function Field(props: FieldProps): ReactNode {
         {props.required ? <span className="req" aria-hidden="true">{"*"}</span> : null}
       </label>
       {props.children}
-      {props.hint ? <span className="hint">{props.hint}</span> : null}
-      {props.error ? (
-        <span className="field-error" role="alert">
-          {props.error}
-        </span>
+      {props.hint || props.error ? (
+        <div className="field__desc">
+          {props.hint ? <span className="hint">{props.hint}</span> : null}
+          {props.error ? (
+            <span className="field-error" role="alert">
+              {props.error}
+            </span>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );

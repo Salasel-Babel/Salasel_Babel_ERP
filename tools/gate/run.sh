@@ -170,6 +170,16 @@ if [ "$frontend" = "full" ]; then
         || fail "اختبارات وحدة الواجهة"
     tools/test-tally/run.sh --job web.yml:static-checks \
         || fail "الحصيلة: وحدة الواجهة لم تبلغ أرضيتها"
+
+    # حارس استقامة الصفوف — **في متصفّح حقيقي، لأن لا شيء آخر يرى بكسلاً**.
+    # `jsdom` لا يخطّط: `getBoundingClientRect` فيه أصفار، فاختبارُ وحدةٍ لا
+    # يستطيع أن يقول «هذان الحقلان على خطٍّ واحد». والعطل الذي يحرسه هذا
+    # الحارس (انحرافُ الحقول عن سطرٍ واحد) عاش على develop حتى مشى المالك
+    # على النظام ورآه بعينه: 99.30px على /hr/end-of-service بالإنجليزية عند
+    # 1024px. يفتح 21 شاشة × 8 ممرّات (لغتان اتّجاهاً · سمتان · 1440 و1024
+    # و390) ويقيس كل صفّ، ويسقط باسم الشاشة والفرق بالبكسل.
+    # (ADR-0065-the-row-owns-the-tracks · traps.md#fakh-every-field-measures-itself-alone)
+    ( cd web && npm run align ) || fail "حارس استقامة الصفوف (web: alignment)"
 else
     printf '\n── فحوص الواجهة التي تحتاج npm ci مُتخطّاة. أضف --with-frontend لتشغيلها.\n'
 fi

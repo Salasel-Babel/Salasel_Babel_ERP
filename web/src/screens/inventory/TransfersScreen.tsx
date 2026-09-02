@@ -29,7 +29,7 @@
        هذا الملفّ: الشكل يُفحص بنمط العقد النصّي، ثم يُحتجَز بـ`asMagnitude`،
        ثم يعبر السلك كما كُتب.
    ═══════════════════════════════════════════════════════════════════════════ */
-import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   draftStockTransfer,
@@ -515,7 +515,7 @@ export function InventoryTransfersScreen(): ReactNode {
           </Field>
         </div>
 
-        <div className="grid fields-3" style={{ marginTop: "var(--space-12)" }}>
+        <div className="grid fields-3" style={{ "--grid-lead": "var(--space-12)" } as CSSProperties}>
           <Field
             id="tr-group"
             label={t("inventory.movements.group")}
@@ -578,7 +578,7 @@ export function InventoryTransfersScreen(): ReactNode {
           </Field>
         </div>
 
-        <div className="grid fields-half" style={{ marginTop: "var(--space-12)" }}>
+        <div className="grid fields-half" style={{ "--grid-lead": "var(--space-12)" } as CSSProperties}>
           <Field
             id="tr-from-wh"
             label={t("inventory.transfers.fromWarehouse")}
@@ -631,7 +631,7 @@ export function InventoryTransfersScreen(): ReactNode {
           </Field>
         </div>
 
-        <div className="grid fields-half" style={{ marginTop: "var(--space-12)" }}>
+        <div className="grid fields-half" style={{ "--grid-lead": "var(--space-12)" } as CSSProperties}>
           <Field
             id="tr-to-wh"
             label={t("inventory.transfers.toWarehouse")}

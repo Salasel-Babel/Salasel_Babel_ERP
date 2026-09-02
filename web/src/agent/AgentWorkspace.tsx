@@ -522,16 +522,23 @@ function Line(props: {
 
     case "landed":
       /* ⚠ زرٌّ يفتح الشاشة — **ولا زرّ ترحيلٍ هنا ولا في هذا الملفّ كلّه**.
-         الترحيل زرُّ الشاشة نفسها: فعلٌ بصريّ يدويّ على مستندٍ قُرئ. */
+         الترحيل زرُّ الشاشة نفسها: فعلٌ بصريّ يدويّ على مستندٍ قُرئ.
+
+         **والزرُّ لا يُعرض بلا مسار.** حدثُ الهبوط يحمل `screenRoute` نصّاً، وفراغُه
+         حالٌ ممكنة على السلك (خادمٌ أقدم، أو عمليةٌ بلا شاشةٍ مُعلَنة). وزرٌّ يقود
+         إلى `""` يفتح لا شيء — وهو أسوأ من غيابه: يُعلّم المستخدم ألّا يثق باللوح.
+         والجملة تبقى: المسوّدة هبطت، وهي مسوّدةٌ بعد. */
       return (
         <p className="agw__landed" data-testid={"agent-line-" + String(props.index)}>
           <span>{t("agent.workspace.landed")}</span>
-          <Button
-            label={t("agent.workspace.openScreen")}
-            size="sm"
-            onClick={() => props.onOpenScreen?.(line.screenRoute)}
-            testId={"agent-open-" + String(props.index)}
-          />
+          {line.screenRoute === "" ? null : (
+            <Button
+              label={t("agent.workspace.openScreen")}
+              size="sm"
+              onClick={() => props.onOpenScreen?.(line.screenRoute)}
+              testId={"agent-open-" + String(props.index)}
+            />
+          )}
           <span className="agw__stilldraft">{t("agent.workspace.stillDraft")}</span>
         </p>
       );

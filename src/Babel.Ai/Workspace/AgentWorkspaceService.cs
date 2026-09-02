@@ -113,10 +113,13 @@ public sealed class AgentWorkspaceService
             return begun;
         }
 
+        // ‏**والمتكلّم يحمل إنسانه.** المسوّدة تُنسب إلى صاحب الجلسة لا إلى الوكيل،
+        // والفاعل يُقرأ من هنا حتى نهاية المسار — لا يُخترع عند الباب ولا يُقرأ من جسم.
         AgentCaller caller = new(
             session.Tenant,
             session.CompanyId,
             session.SessionId,
+            session.User,
             session.CompanyNameAr,
             permittedOperationIds);
 

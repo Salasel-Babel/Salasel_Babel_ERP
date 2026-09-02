@@ -109,7 +109,20 @@ public sealed class AgentDraftConfirmationGate : IAgentDraftSubmitter
             return Result<AgentDraftLanding>.Failure(AgentWorkspaceErrors.SessionNotFound);
         }
 
-        // ── ٢ · التأكيد: «أقبل شكل هذه البيانات» ─────────────────────────────
+        // ── ٢ · الحصانة: هويّةُ المسوّدة تُقرأ **قبل** أن يُسأل إنسان ──────────
+        //
+        // ‏**ونظيرُ هويّة الترحيل حرفاً**: القاعدة 4 تجعل إعادةَ الترحيل بالمفتاح نفسه
+        // تُعيد الإيصال نفسه ولا تكتب قيداً ثانياً؛ وهذا يجعل إعادةَ التأكيد على الشكل
+        // نفسه تُعيد **المسوّدة نفسها** ولا تُنشئ ثانية. وموضعُه قبل السؤال مقصود:
+        // سؤالُ الإنسان مرّةً ثانية عن شكلٍ قَبِله سلفاً ضجيجٌ، والإنشاء بعده ازدواج.
+        string identity = AgentDraftIdentity.Of(dispatch);
+
+        if (session.LandingOf(identity) is { } already)
+        {
+            return Result<AgentDraftLanding>.Success(already);
+        }
+
+        // ── ٣ · التأكيد: «أقبل شكل هذه البيانات» ─────────────────────────────
         AgentWorkspaceStep step = session.OpenStep(dispatch.Tool.Name);
 
         AgentWorkspaceConfirmation card = new(
@@ -133,8 +146,20 @@ public sealed class AgentDraftConfirmationGate : IAgentDraftSubmitter
             return Result<AgentDraftLanding>.Failure(accepted.Errors);
         }
 
-        // ── ٣ · وبعد كل ذلك: مسوّدة ──────────────────────────────────────────
-        return await _destination.SubmitAsync(dispatch, cancellationToken).ConfigureAwait(false);
+        // ── ٤ · وبعد كل ذلك: مسوّدة ──────────────────────────────────────────
+        Result<AgentDraftLanding> landed = await _destination
+            .SubmitAsync(dispatch, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (landed.IsFailure)
+        {
+            // ‏**ولا يُقيَّد سقوطٌ في دفتر الهبوط**: خطوةٌ سقطت لحقلٍ ناقص يجب أن
+            // تُعاد بعد تصحيحه، لا أن تُعيد سقوطها المحفوظ إلى الأبد.
+            return landed;
+        }
+
+        return Result<AgentDraftLanding>.Success(
+            session.RecordLanding(identity, step.StepId, landed.Value));
     }
 
     /// <summary>

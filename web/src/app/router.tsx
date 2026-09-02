@@ -25,6 +25,15 @@ import { InventoryItemsScreen } from "../screens/inventory/ItemsScreen";
 import { InventoryStockScreen } from "../screens/inventory/StockScreen";
 import { InventoryMovementsScreen } from "../screens/inventory/MovementsScreen";
 import { InventoryValuationScreen } from "../screens/inventory/ValuationScreen";
+/* دورة المستندات المحاسبية — سبعُ شاشاتٍ على مجموعتين: المبيعات والمشتريات.
+   وهي الدورة التي وصفها صاحب المصلحة — فاتورة، سند قبض — ولم تكن لها شاشة. */
+import { SalesInvoiceScreen } from "../screens/accounting/SalesInvoiceScreen";
+import { CustomerReceiptScreen } from "../screens/accounting/CustomerReceiptScreen";
+import { ReceivablesAgingScreen } from "../screens/accounting/ReceivablesAgingScreen";
+import { PurchaseOrderScreen } from "../screens/accounting/PurchaseOrderScreen";
+import { GoodsReceiptScreen } from "../screens/accounting/GoodsReceiptScreen";
+import { SupplierBillScreen } from "../screens/accounting/SupplierBillScreen";
+import { SupplierPaymentScreen } from "../screens/accounting/SupplierPaymentScreen";
 /* الموارد البشرية — أربع شاشات: السجلّ، والمسيّر، والقسيمة، ونهاية الخدمة. */
 import { EmployeeRegisterScreen } from "../screens/hr/EmployeeRegisterScreen";
 import { PayrollRunScreen } from "../screens/hr/PayrollRunScreen";
@@ -172,6 +181,52 @@ const hrEndOfServiceRoute = createRoute({
   component: EndOfServiceScreen,
 });
 
+/* ── دورة المستندات: المبيعات ──────────────────────────────────────────── */
+const salesInvoiceRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/sales/invoice",
+  component: SalesInvoiceScreen,
+});
+
+const salesReceiptRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/sales/receipt",
+  component: CustomerReceiptScreen,
+});
+
+const salesReceivablesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/sales/receivables",
+  component: ReceivablesAgingScreen,
+});
+
+/* ── دورة المستندات: المشتريات — بترتيب الدورة لا بترتيب الحروف ────────
+   أمرٌ ← استلام ← فاتورة ← صرف. وأمر الشراء **لا يُرحَّل**: لا مورد
+   `…/posting` له في العقد، والشاشة تقول ذلك نصّاً لا بزرٍّ غائب. */
+const purchasingOrderRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/purchasing/order",
+  component: PurchaseOrderScreen,
+});
+
+const purchasingGoodsReceiptRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/purchasing/goods-receipt",
+  component: GoodsReceiptScreen,
+});
+
+const purchasingBillRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/purchasing/bill",
+  component: SupplierBillScreen,
+});
+
+const purchasingPaymentRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/purchasing/payment",
+  component: SupplierPaymentScreen,
+});
+
 const routeTree = rootRoute.addChildren([
   trialBalanceRoute,
   signInRoute,
@@ -195,6 +250,13 @@ const routeTree = rootRoute.addChildren([
   hrPayrollRoute,
   hrPayslipRoute,
   hrEndOfServiceRoute,
+  salesInvoiceRoute,
+  salesReceiptRoute,
+  salesReceivablesRoute,
+  purchasingOrderRoute,
+  purchasingGoodsReceiptRoute,
+  purchasingBillRoute,
+  purchasingPaymentRoute,
 ]);
 
 /** ينشئ موجّهاً. الاختبارات تمرّر تاريخاً في الذاكرة فلا تحتاج متصفّحاً. */

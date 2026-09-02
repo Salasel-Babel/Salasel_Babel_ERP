@@ -16,10 +16,49 @@
 
 /**
  * النيّة ← مسار شاشة مستندها. **والغائب غائبٌ بقصد**: النيّات التي لا مفتاح لها
- * هنا لا شاشة لمستندها اليوم في أي فرع — وأكثرها في قسم المحاسبة، وهو ما يدين به
- * مالك المنتج (خطة الصوت §9).
+ * هنا لا شاشة لمستندها اليوم في أي فرع.
+ * <p>
+ * وقد كانت ثلاثَ عشرةَ نيّةً محاسبيةً بلا وجهة؛ فلمّا هبطت شاشات دورة المستندات
+ * صار لتسعٍ منها وجهة، **وبقيت أربع** لأن مستنداتها الأربعة لم تُبنَ لها شاشة —
+ * وأبوابها منشورةٌ في العقد:
+ * </p>
+ * <ul>
+ *   <li>{@code accounting.credit_note.draft} — الإشعار الدائن
+ *       ({@code draftCreditNote} · {@code …/credit-notes}).</li>
+ *   <li>{@code accounting.purchase_return.draft} — مرتجع المشتريات
+ *       ({@code draftPurchaseReturn}).</li>
+ *   <li>{@code accounting.stock_bill.capture} — الفاتورة المخزنية
+ *       ({@code draftStockBill}) — وهي **مستندٌ آخر** لا فاتورة المصروف.</li>
+ *   <li>{@code accounting.payables_aging.query} — أعمار الذمم الدائنة
+ *       ({@code readPayablesAging}) — بالشكل نفسه الذي تُقرأ به المدينة.</li>
+ * </ul>
+ * <p>
+ * وهذه الأربع تُترك {@code null} **عمداً**: مسارٌ يقود إلى شاشةٍ لا تخدم
+ * المستند المنطوق أسوأ من لا شيء، لأن اللوحة تقول حينئذ «مسوّدتك وصلت» وهي
+ * لم تصل. واللوحة تعرض غيابَ الوجهة نصّاً على الشاشة.
+ * </p>
  */
 export const VOICE_DESTINATIONS: Readonly<Record<string, string>> = {
+  /* ── المحاسبة — دورة المستندات ───────────────────────────────────────────
+     كانت هذه النيّات كلّها بلا وجهة، وهي أكثر ما يدين به مالك المنتج (خطة
+     الصوت §9). وقد هبطت شاشاتها، فصارت لها وجهات.
+
+     **والوجهة تتبع `operationId` المنشور في الكتالوج لا تشابه الأسماء**:
+     `accounting.customer_balance.query` عمليتُه `readReceivablesAging`
+     بنصّ العقد، فوجهتُه شاشةُ ذلك التقرير — لا شاشةٌ أخرى تشبه اسمَه. */
+  "accounting.sales_invoice.draft": "/sales/invoice",
+  "accounting.customer_receipt.record": "/sales/receipt",
+  "accounting.receivables_aging.query": "/sales/receivables",
+  "accounting.customer_balance.query": "/sales/receivables",
+  "accounting.purchase_order.draft": "/purchasing/order",
+  "accounting.goods_receipt.draft": "/purchasing/goods-receipt",
+  "accounting.supplier_bill.capture": "/purchasing/bill",
+  "accounting.supplier_payment.record": "/purchasing/payment",
+  /* وقيدُ اليومية اليدوي شاشتُه قائمةٌ منذ أول يوم (`/voucher`) ولم يكن
+     موصولاً بها — والنيّة `AwaitingOwnerDecision` بلا `operationId`، فالوجهة
+     تُوصلها إلى الشاشة التي تكتب القيد بيد، ولا تُنشئ شيئاً بنفسها. */
+  "accounting.journal_entry.draft": "/voucher",
+
   /* المقاولات */
   "contracting.client_certificate.measure": "/contracting/certificate",
   "contracting.subcontractor_certificate.measure": "/contracting/certificate",

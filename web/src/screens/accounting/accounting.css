@@ -1,0 +1,194 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   دورة المستندات المحاسبية — ما يضيفه القسم فوق الطبقة السينمائية
+   ───────────────────────────────────────────────────────────────────────────
+   **لا لونَ جديد ولا مدّةَ حركةٍ جديدة هنا.** كل قيمةٍ أدناه رمزٌ من
+   `tokens.css` أو `cinematic.css`. وكل خاصية اتجاهية منطقية.
+
+   ── ولماذا صفٌّ خاصّ بهذا القسم؟ ─────────────────────────────────────────
+   الحقلُ في `ui/primitives.tsx` يُرسَم أربعةَ أشقّاء في عمودٍ مرن: التسمية،
+   ثم عنصر التحكّم، ثم الوصف، ثم الخطأ. فارتفاعُ ما فوق عنصر التحكّم مشتقٌّ
+   من **طول تسميته وحدها**، وارتفاعُ ما تحته من **طول وصفه وحده**. ونتيجتُه
+   المقيسة في هذا المستودع:
+
+     · حافّة أعلى الحقل تنزل أو تصعد بمقدار سطرِ تسميةٍ ملتفّة، و
+     · **قاعُ الحبر يتعرّج** — وهو العيب الأشدّ انتشاراً (٣١ صفّاً من ٣٧،
+       أي ٨٤٪) وأسوأ انحرافٍ فيه ٩٩٫٣٠ بكسل عند `en-1024`.
+
+   والعلاج هنا **بنيويّ لا تجميليّ**: الصفّ يملك ثلاثة مساراتٍ رأسية —
+   تسمية · تحكّم · وصف — و**كلُّ حقلٍ فيه يستعير مسارات الصفّ نفسها**
+   بـ`grid-template-rows:subgrid`. فتصير أعلى المسار الثاني واحدةً لكل
+   الحقول مهما التفّت تسمياتها، ويصير قاعُ المسار الثالث واحداً مهما التفّت
+   أوصافها — والوصف يُلصَق بقاع مساره (`align-self:end`) فيستوي **قاعُ الحبر
+   نفسه** لا قاعُ الصندوق وحده.
+
+   وشرطان يحفظان هذا، ويفرضهما `parts.tsx` لا هذا الملفّ:
+     ١ · **لكل حقلٍ في الصفّ وصفٌ واحد** — لا صفر ولا اثنان. فحقلٌ بلا وصف
+         قاعُ حبره قاعُ عنصر تحكّمه، فينكسر الصفّ من طرفه هو.
+     ٢ · **الخطأ يحلّ محلّ الوصف ولا يُضاف إليه** — فيبقى العدد ثلاثة.
+
+   وعلى الهاتف ينهار الصفّ إلى عمودٍ واحد فلا يبقى ما يستوي — وهو الصحيح:
+   حقلٌ وحده ليس صفّاً.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ═════════════════════════════════════ ١ · الصفّ المستوي · the level row */
+
+.acc-row{
+  display:grid;
+  gap:var(--space-14) var(--space-16);
+  grid-template-columns:repeat(var(--acc-cols, 3), minmax(0, 1fr));
+  align-content:start;
+}
+.acc-row--2{ --acc-cols:2 }
+.acc-row--3{ --acc-cols:3 }
+.acc-row--4{ --acc-cols:4 }
+
+/* ثلاثةُ مساراتٍ يستعيرها كل حقل: تسمية · تحكّم · وصف. */
+.acc-row > .field{
+  display:grid;
+  grid-template-rows:subgrid;
+  grid-row:span 3;
+  row-gap:var(--space-6);
+  min-inline-size:0;
+}
+/* التسمية إلى رأس مسارها: خطوطُ قاعدة السطر الأول تستوي ولو التفّ سطرٌ ثانٍ. */
+.acc-row > .field > label{ align-self:start }
+/* والوصف إلى قاع مساره: هنا يستوي قاعُ الحبر — وهو ما تراه العين. */
+.acc-row > .field > .hint,
+.acc-row > .field > .field-error{ align-self:end; margin-block:0 }
+
+/* خليّةُ فعلٍ داخل صفّ حقول: الزرّ يقف على خطّ عناصر التحكّم — أي على قاع
+   المسار الثاني — لا على قاع الصفّ كلّه ولا على رأسه. */
+.acc-act{
+  display:grid;
+  grid-template-rows:subgrid;
+  grid-row:span 3;
+  row-gap:var(--space-6);
+}
+.acc-act > .btn{ grid-row:2; align-self:end; inline-size:auto; justify-self:start }
+
+@media (max-width:1180px){
+  .acc-row--4{ --acc-cols:2 }
+}
+@media (max-width:980px){
+  .acc-row--3{ --acc-cols:2 }
+}
+@media (max-width:720px){
+  .acc-row{ --acc-cols:1 }
+  /* بعمودٍ واحد لا صفَّ يستوي، فتُترك المسارات للحقل نفسه. */
+  .acc-row > .field,
+  .acc-act{ grid-row:auto; grid-template-rows:none; display:flex; flex-direction:column }
+  .acc-act > .btn{ align-self:start }
+}
+
+/* ═════════════════════════ ٢ · صفُّ بطاقات الإحصاء · the stat-card row
+   العائلة الثانية من العيب نفسه: مفتاحٌ فوق قيمةٍ فوق شرح. ومفتاحٌ يلتفّ
+   سطرين يُنزل **قيمته وحدها** فتتعرّج أرقام الصفّ. والعلاج هو العلاج. */
+.acc-stats{
+  display:grid;
+  gap:var(--space-12);
+  grid-template-columns:repeat(var(--acc-stat-cols, 4), minmax(0, 1fr));
+  align-content:start;
+}
+.acc-stats--3{ --acc-stat-cols:3 }
+.acc-stats > .stat{
+  display:grid;
+  grid-template-rows:subgrid;
+  grid-row:span 3;
+}
+.acc-stats > .stat > .s{ align-self:end }
+@media (max-width:1180px){ .acc-stats{ --acc-stat-cols:2 } }
+@media (max-width:720px){
+  .acc-stats{ --acc-stat-cols:1 }
+  .acc-stats > .stat{ grid-row:auto; grid-template-rows:none; display:block }
+}
+
+/* ═══════════════════════════════════════════ ٣ · رأس الصفحة وتخطيطها */
+
+.acc-lede{
+  margin:0; max-inline-size:78ch;
+  color:var(--color-text-muted); font-size:var(--font-size-sm);
+  line-height:var(--line-relaxed, 1.7);
+}
+.acc-grid2{
+  display:grid; gap:var(--space-16);
+  grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));
+  align-items:start;
+}
+.acc-split{ display:flex; align-items:center; gap:var(--space-8); flex-wrap:wrap }
+.acc-split .spacer{ margin-inline-start:auto }
+
+/* شريط شاشات القسم — كشريط الموارد البشرية شكلاً، ورموزُه رموزُه. */
+.acc-tabs{
+  display:flex; gap:var(--space-4); flex-wrap:wrap;
+  border-block-end:var(--border-width) solid var(--color-border);
+  padding-block-end:var(--space-8);
+}
+.acc-tab{
+  padding:var(--space-6) var(--space-12);
+  border-radius:var(--radius-md);
+  color:var(--color-text-muted); text-decoration:none;
+  font-size:var(--font-size-sm); white-space:nowrap;
+}
+.acc-tab:hover{ background:var(--color-surface-sunken); color:var(--color-text) }
+.acc-tab[aria-current="page"]{
+  background:var(--color-surface-sunken);
+  color:var(--color-text); font-weight:var(--font-weight-semibold);
+  box-shadow:inset 0 -2px 0 0 var(--section-accounting);
+}
+
+/* ═════════════════════════════════ ٤ · جدول السطور · the document lines */
+
+.acc-table{ overflow-x:auto }
+.acc-table table{ inline-size:100%; border-collapse:collapse }
+.acc-table th,.acc-table td{
+  padding:var(--space-8) var(--space-10);
+  border-block-end:var(--border-width) solid var(--color-border);
+  text-align:start; vertical-align:top;
+}
+.acc-table th{
+  font-size:var(--font-size-2xs); color:var(--color-text-subtle);
+  font-weight:var(--font-weight-semibold); white-space:nowrap;
+}
+/* الأرقام تصطفّ في عمود: خاناتٌ متساوية العرض، واتجاهٌ معزول. */
+.acc-table .n{
+  text-align:end; font-variant-numeric:tabular-nums;
+  direction:ltr; unicode-bidi:isolate;
+}
+.acc-table tbody tr:last-child td{ border-block-end:0 }
+.acc-line-drop{ inline-size:auto }
+
+/* ═════════════════════════════ ٥ · إيصال الترحيل · the posting receipt
+   **الترحيل الثاني ليس خطأً ولا نجاحاً ثانياً.** هوية الإحكام تُعيد الإيصال
+   نفسه و`alreadyPosted = true`، فيُقال ذلك نصّاً بلوحٍ يُميَّز عن لوح
+   الترحيل الأول — ولا يُبتلع في رسالة نجاح واحدة تُقرأ «رُحِّل مرّتين». */
+.acc-receipt{
+  border:var(--border-width) solid var(--color-border);
+  border-radius:var(--radius-panel);
+  background:var(--color-surface-sunken);
+  padding:var(--space-14);
+  display:flex; flex-direction:column; gap:var(--space-8);
+}
+.acc-receipt--again{
+  border-color:var(--color-ai-line);
+  background:linear-gradient(180deg, var(--color-ai-soft), var(--color-surface-sunken) 72%);
+}
+.acc-receipt__head{
+  display:flex; align-items:center; gap:var(--space-8); flex-wrap:wrap;
+  font-weight:var(--font-weight-semibold);
+}
+.acc-receipt__head .pill{ margin-inline-start:auto }
+.acc-receipt .kv{ margin-bottom:0 }
+.acc-receipt p{ margin:0 }
+/* المعرّفات الآلية: اتجاهٌ مثبّت **مع عزلٍ صريح** فلا تنزلق في جملة عربية. */
+.acc-id{ direction:ltr; unicode-bidi:isolate; font-variant-numeric:tabular-nums }
+
+/* ══════════════════════════════════ ٦ · ما لم يُنشَر بابه — مُعلَناً */
+.acc-gap{
+  border:var(--border-width) dashed var(--color-ai-line);
+  border-radius:var(--radius-panel);
+  padding:var(--space-14);
+  display:flex; flex-direction:column; gap:var(--space-8);
+}
+.acc-gap__head{ display:flex; align-items:center; gap:var(--space-8); flex-wrap:wrap }
+.acc-gap p{ margin:0 }
+.acc-gap__owed{ color:var(--color-ai); font-weight:var(--font-weight-semibold) }

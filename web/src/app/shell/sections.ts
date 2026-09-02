@@ -71,7 +71,44 @@ export interface ScreenEntry {
   readonly path: string;
   readonly labelKey: string;
   readonly section: Section["id"];
+  /**
+   * مجموعةٌ **داخل** القسم — لا قسمٌ سادس.
+   * <p>
+   * دورة المستندات تنقسم مجموعتين: ما يخرج إلى العميل («المبيعات») وما يدخل
+   * من المورّد («المشتريات»). وكلتاهما **في القسم المحاسبي** — وهو ما يقوله
+   * العقد المنشور نفسه: نيّاتُهما كلّها `"section": "Accounting"` وإنّما
+   * `"module"` فيها Sales أو Purchasing. فلو صارتا صفّين في {@link SECTIONS}
+   * لصارت الأقسام سبعةً وانكسر عقدُ الملاحة الخماسي بلا حاجة.
+   * </p>
+   * <p>وغيابُها يعني أن الشاشة لا تنتمي إلى مجموعةٍ مُسمّاة داخل قسمها.</p>
+   */
+  readonly group?: "sales" | "purchasing";
 }
+
+/** مجموعةٌ مُسمّاة داخل قسم، بمفتاح اسمها وأولى شاشاتها. */
+export interface ScreenGroup {
+  readonly id: NonNullable<ScreenEntry["group"]>;
+  readonly labelKey: string;
+  readonly section: Section["id"];
+  /** أول شاشةٍ في المجموعة — وهي ما يُفتح حين تُختار المجموعة. */
+  readonly path: string;
+}
+
+/** المجموعتان المُسمّاتان داخل القسم المحاسبي، بترتيب الدورة. */
+export const SCREEN_GROUPS: readonly ScreenGroup[] = [
+  {
+    id: "sales",
+    labelKey: "accounting.group.sales",
+    section: "accounting",
+    path: "/sales/invoice",
+  },
+  {
+    id: "purchasing",
+    labelKey: "accounting.group.purchasing",
+    section: "accounting",
+    path: "/purchasing/order",
+  },
+];
 
 /** كل شاشةٍ مبنيّة، بمسارها ومفتاح اسمها. */
 export const SCREENS: readonly ScreenEntry[] = [
@@ -101,6 +138,18 @@ export const SCREENS: readonly ScreenEntry[] = [
      كلّها مبنيّةً عند إنزال شاشاتها، فالنيّةُ المؤكَّدة تجد اليوم شاشةً تقودها
      إليها.) */
   { path: "/voice", labelKey: "app.nav.voice", section: "accounting" },
+  /* ── دورة المستندات المحاسبية: المبيعات ─────────────────────────────────
+     الدورة التي وصفها صاحب المصلحة — فاتورة، ثم سند قبض — ثم ما تُقرأ به
+     ذمّة العميل. وهي في القسم المحاسبي كما ينصّ العقد، ومجموعتُها مُسمّاة. */
+  { path: "/sales/invoice", labelKey: "accounting.nav.salesInvoice", section: "accounting", group: "sales" },
+  { path: "/sales/receipt", labelKey: "accounting.nav.customerReceipt", section: "accounting", group: "sales" },
+  { path: "/sales/receivables", labelKey: "accounting.nav.receivables", section: "accounting", group: "sales" },
+  /* ── والمشتريات، **بترتيب الدورة لا بترتيب الحروف**: أمرٌ ← استلام ←
+     فاتورة ← صرف. وترتيبٌ أبجدي هنا كان سيُخفي أن الأربع سلسلةٌ مرتَّبة. */
+  { path: "/purchasing/order", labelKey: "accounting.nav.purchaseOrder", section: "accounting", group: "purchasing" },
+  { path: "/purchasing/goods-receipt", labelKey: "accounting.nav.goodsReceipt", section: "accounting", group: "purchasing" },
+  { path: "/purchasing/bill", labelKey: "accounting.nav.supplierBill", section: "accounting", group: "purchasing" },
+  { path: "/purchasing/payment", labelKey: "accounting.nav.supplierPayment", section: "accounting", group: "purchasing" },
 ];
 
 /**

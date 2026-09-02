@@ -438,6 +438,69 @@ public sealed partial class AdrRegisterIsSelfConsistent
     /// وإمّا وسّعها <b>في فرقٍ يُراجَع</b>. ولا تمرّ وثيقةٌ بلا القسم بحالٍ من الأحوال.
     /// </para>
     /// </summary>
+    /// <summary>
+    /// <b>نصُّ الرابط يوافق هدفه — وإلا فأحدهما بائت.</b>
+    /// <para>
+    /// <b>العطل، وقد وقع مني:</b> عند إعادة الترقيم يُغيَّر اسمُ الملفّ فيتبعه الهدفُ
+    /// آلياً، ويبقى <b>نصُّ الرابط</b> على رقمه القديم. فيقرأ القارئ
+    /// رابطاً نصُّه يحمل رقماً وهدفُه ملفٌّ برقمٍ آخر — والهدف صحيح والنصّ كاذب.
+    /// (‏<b>ولا يُكتب المثال هنا حرفاً</b>: مثالٌ حرفيّ يصير هو نفسه المخالفةَ التي
+    /// يمسكها هذا الحارس — فخ-158.) ولا يمسك ذلك
+    /// <see cref="EveryAdrReferenceInTheRepositoryResolves"/> لأن
+    /// كلا الرقمين موجودٌ في السجلّ، فالإشارتان تنحلّان.
+    /// </para>
+    /// <para>
+    /// <b>والقاعدة بنيويّة لا قائمة:</b> لا تُعدَّد المواضع ولا الصيغ — يُقاس
+    /// <b>التناقض نفسه</b> بين رقمٍ في نصّ الرابط ورقمٍ في مساره. ولا يهزمها موضعٌ
+    /// جديد، لأن الحكم على الشكل لا على المكان.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void EveryAdrLinkTextAgreesWithItsTarget()
+    {
+        List<string> mismatched = [];
+        int filesScanned = 0;
+        int linksSeen = 0;
+
+        foreach (string path in TextFiles())
+        {
+            filesScanned++;
+            string relative = Path.GetRelativePath(RepositoryLayout.Root, path).Replace('\\', '/');
+
+            foreach (Match match in AdrLinkWithNumberedText().Matches(File.ReadAllText(path)))
+            {
+                linksSeen++;
+                string text = match.Groups["text"].Value;
+                string target = match.Groups["target"].Value;
+                if (!string.Equals(text, target, StringComparison.Ordinal))
+                {
+                    mismatched.Add(FormattableString.Invariant(
+                        $"{relative}: نصُّ الرابط ADR-{text} وهدفُه ADR-{target}"));
+                }
+            }
+        }
+
+        Assert.True(
+            mismatched.Count == 0,
+            "روابطُ نصُّها يخالف هدفها — أحدُهما بائت:\n" + string.Join('\n', mismatched)
+                + "\nوالهدف هو المرجع: اسمُ الملفّ يتبع إعادة التسمية، والنصُّ لا يتبعها.");
+
+        // حارسا لافراغ: نطاقٌ انكسر أو نمطٌ توقّف عن المطابقة يجعلان الفحص يمرّ على لا شيء.
+        Assert.True(filesScanned >= 200, FormattableString.Invariant($"مُسح {filesScanned} ملفّاً فقط — النطاق انكسر"));
+        Assert.True(linksSeen >= 20, FormattableString.Invariant($"وُجد {linksSeen} رابطاً فقط — النمط انكسر"));
+
+        // الشواهد تُركَّب ولا تُكتب حرفاً — للسبب نفسه (فخ-158): رابطٌ مكتوبٌ في مصدرٍ
+        // يمسحه هذا الحارس يصير هو نفسه ما يفحصه.
+        const string sample = "sample-key.md";
+        Assert.Matches(AdrLinkWithNumberedText(), "[ADR-" + "0067](x/ADR-" + "0067-" + sample + ")");
+        Assert.DoesNotMatch(AdrLinkWithNumberedText(), "[عنوانٌ بلا رقم](x/ADR-" + "0067-" + sample + ")");
+        Assert.Matches(AdrLinkWithNumberedText(), "[ADR-" + "0065](x/ADR-" + "0067-" + sample + ")");
+    }
+
+    /// <summary>رابطٌ نصُّه يحمل رقم قرارٍ وهدفُه ملفُّ قرار — الرقمان يُقارَنان.</summary>
+    [GeneratedRegex(@"\[[^\]\n]*ADR-(?<text>[0-9]{4})[^\]\n]*\]\([^)\n]*ADR-(?<target>[0-9]{4})-[^)\n]*\)", RegexOptions.CultureInvariant)]
+    private static partial Regex AdrLinkWithNumberedText();
+
     [Fact]
     public void EveryAdrCarriesTheSectionThatCouldFalsifyIt()
     {
@@ -537,6 +600,11 @@ public sealed partial class AdrRegisterIsSelfConsistent
         [
             ".md", ".cs", ".csproj", ".props", ".slnx", ".yml", ".yaml",
             ".json", ".html", ".css", ".js", ".sql", ".txt", ".sh",
+            // ‏**والواجهة تستشهد بالقرارات كما يستشهد بها الخادم.** غيابُ `.ts`/`.tsx`
+            // من هذه القائمة جعل ثماني إشاراتٍ نائبة (`ADR-جديد`) تعيش في
+            // ‏`web/src/**` و`web/tests/**` **والحارس أخضر** — لأنه لا يقرؤها أصلاً.
+            // ونطاقٌ لا يشمل حيث تُكتب الإشارة يُنيم الانتباه عمّا لا يراه.
+            ".ts", ".tsx", ".mjs",
         ];
 
         return Directory

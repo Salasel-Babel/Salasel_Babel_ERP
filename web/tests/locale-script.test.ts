@@ -16,6 +16,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   census,
+  corroborates,
   foreignRuns,
   hasOwnScript,
   isDiagnostic,
@@ -38,7 +39,11 @@ const witnesses = witnessesOf as (code: string, codes: readonly string[]) => str
 const mangled = mangle as (text: string) => string;
 const runs = mojibakeRuns as (text: string) => { run: string; decoded: string }[];
 const ownScript = hasOwnScript as (text: string, code: string) => boolean;
-const letters = census as (text: string, code: string) => { letters: number; inScript: number; foreign: number };
+const letters = census as (
+  text: string,
+  code: string
+) => { letters: number; inScript: number; foreign: number; machine: number };
+const corroborated = corroborates as (run: string, otherCode: string, otherTexts: readonly string[]) => boolean;
 const words = proseWords as (text: string) => number;
 const stripped = prose as (text: string) => string;
 const textsOf = valueTexts as (value: unknown) => string[];
@@ -91,9 +96,11 @@ function probe(code: string): string {
  * 60 و120 محرفاً.
  */
 function longestProseKey(codes: readonly string[], minLength = 140): string {
+  const first = codes[0];
+  if (first === undefined) throw new Error("لا لغةَ مطلوبة");
   let best = "";
   let bestLength = 0;
-  for (const v of ALL[codes[0]] ?? []) {
+  for (const v of ALL[first] ?? []) {
     const lengths = codes.map((c) => {
       const found = (ALL[c] ?? []).find((o) => o.key === v.key);
       /* والعيّنة **نظيفة**: بلا مقطعٍ أجنبيّ أصلاً. وإلّا صارت الأجنبيةُ
@@ -173,8 +180,13 @@ describe("التشويه يُكشف بفكّ الترميز، لا بمعرفة 
   it("يلتقط الجزء المشوَّه من قيمةٍ سليمة بقيّتها — لا يشترط أن تكون كلُّها فاسدة", () => {
     const hindi = probe("hi");
     const half = hindi.slice(0, 10) + mangled(hindi.slice(10));
-    expect(ownScript(half, "hi")).toBe(true); /* القاعدة (ب) لا تراها */
-    expect(runs(half).length).toBeGreaterThan(0); /* والقاعدة (أ) تراها */
+    expect(runs(half).length).toBeGreaterThan(0); /* القاعدة (أ) تراها */
+    /* ‏**وصارت القاعدة (ب) تراها كذلك** بعد أن صار الحكم بالأغلبية: عشرةُ
+       محارفَ سليمة أمام بقيّةٍ مشوَّهة ليست «مكتوبةً بخطّ لغتها». وكان هذا
+       السطر يوثّق عماها — والتوثيق صار خطأً، فالقاعدتان تلتقيان هنا. */
+    expect(ownScript(half, "hi")).toBe(false);
+    /* والعشرةُ الأولى وحدها — بلا بقيّة — ما تزال بخطّ لغتها. */
+    expect(ownScript(hindi.slice(0, 10), "hi")).toBe(true);
   });
 
   it("ولا يُنذَر على نصّ سليم: ASCII، ولا على · و« »", () => {
@@ -236,7 +248,10 @@ describe("كل قيمة نثرٍ بخطّ لغتها — بشهادة لغةٍ �
       if (!diagnostic(scriptFor(code))) continue;
       const withToken = probe(code) + " BANK-0001 PDF {currency}";
       expect(ownScript(withToken, code)).toBe(true);
-      expect(letters(withToken, code).foreign).toBeGreaterThan(0);
+      /* ‏**الرمز الآليّ خانةٌ ثالثة، لا أجنبيّ.** وإلّا قلبت أغلبيةَ «ملف PDF»
+         وأسقطت قيمةً عربيةً سليمة. و`{currency}` بنيةٌ تُنزَع قبل العدّ. */
+      expect(letters(withToken, code).machine).toBeGreaterThan(0);
+      expect(letters(withToken, code).foreign).toBe(0);
     }
   });
 
@@ -316,12 +331,16 @@ describe("ما يهزم فكَّ الترميز لا يهزم الإذن الم�
     }
   });
 
-  it("‏والتشويه **الجزئي** بأيٍّ من الترميزين يفلت من القاعدة (ب) ويسقط في (د)", () => {
+  it("‏والتشويه **الجزئي** بأيٍّ من الترميزين يسقط في (ب) و(د) معاً بعد الأغلبية", () => {
     for (const label of ["koi8-r", "windows-1252"]) {
       const half = hindi.slice(0, 60) + mangledAs(label, hindi.slice(60));
-      expect(ownScript(half, "hi")).toBe(true); /* (ب) عمياء: بقيت ديفاناغارية */
+      /* ‏كان هذا السطر يوثّق عمى (ب): «بقيت ديفاناغارية» كان يكفيه حرفٌ واحد.
+         وبالأغلبية صار الجزء المشوَّه — وهو الأكثر — هو من يحكم. */
+      expect(ownScript(half, "hi")).toBe(false);
       expect(foreign(half, "hi").length).toBeGreaterThan(0);
     }
+    /* وحارسُ اللافراغ: الجزء السليم وحده يبقى بخطّ لغته، فالحكم ليس «كلُّ شيء أحمر». */
+    expect(ownScript(hindi.slice(0, 60), "hi")).toBe(true);
   });
 
   it("‏وبايتات UTF-16 تُنتج محارف تحكّم لا حروفاً، فتفلت من (أ) و(د) وتسقط في (هـ)", () => {
@@ -343,14 +362,26 @@ describe("ما يهزم فكَّ الترميز لا يهزم الإذن الم�
       for (const { key, text } of ALL[code] ?? []) {
         for (const run of foreign(text, code)) {
           seen++;
+          /* ‏**الإذن نفسه المستعمل في `audit.mjs`** — دالّةٌ واحدة لا نسختان:
+             لا يُصدِّق المقطعَ إلّا من هو أجنبيٌّ عنده أيضاً. */
           const elsewhere = CODES.some(
-            (o) => o !== code && (ALL[o] ?? []).some((v) => v.key === key && v.text.includes(run))
+            (o) =>
+              o !== code &&
+              corroborated(
+                run,
+                o,
+                (ALL[o] ?? []).filter((v) => v.key === key).map((v) => v.text)
+              )
           );
           if (!elsewhere) unlicensed.push(code + " ← " + key + " «" + run + "»");
         }
       }
     }
-    expect(seen).toBe(6);
+    /* العدد مثبَّتٌ بالتساوي لا بحدٍّ أعلى: كل مقطعٍ أجنبيّ جديد يُحمِّر حتى
+       يُقَرّ هنا بالرقم. وثمانيةٌ اليوم — ستّةٌ كانت، وزادت اثنتان حين صار
+       النصّ الإنجليزي يقتبس رمزَي التأكيد والإلغاء **بحرفهما العربي**، وهو
+       ما يقبله القارئ فعلاً (`CONFIRM_WORDS_AR`) لا ترجمتُهما. */
+    expect(seen).toBe(8);
     expect(unlicensed).toEqual([]);
   });
 

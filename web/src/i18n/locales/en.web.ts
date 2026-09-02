@@ -469,7 +469,7 @@ export const messages: MessageTree = {
         intentsLabel: "What you can say in this section",
         gateConfirm: "Needs confirmation",
         gateDirect: "Goes straight through",
-        transcriptLabel: "Type what you would have said (a declared fallback when audio fails; it also accepts 'confirm' and 'cancel')",
+        transcriptLabel: "Type what you would have said (a declared fallback when audio fails; it also accepts «تأكيد» and «إلغاء» — the reader takes those words, not their translations)",
         apply: "Read the command",
         readbackTitle: "Read this before you confirm",
         confirm: "Confirm and run",

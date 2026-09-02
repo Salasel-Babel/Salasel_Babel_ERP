@@ -32,7 +32,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { NUMERAL_FACE_PROPERTY, scanRepository } from "./numerals.mjs";
 import {
+  carriesOwnScript,
   census,
+  corroborates,
   foreignRuns,
   hasOwnScript,
   isDiagnostic,
@@ -1099,10 +1101,14 @@ for (const code of CODES) {
         );
       }
 
-      /* الإذن المغلق: مقطعٌ أجنبيّ غير آليّ يُصدَّق بلغةٍ أخرى، أو يسقط. */
+      /* الإذن المغلق: مقطعٌ أجنبيّ غير آليّ يُصدَّق بلغةٍ أخرى **هو أجنبيٌّ
+         عندها أيضاً**، أو يسقط. والقيد الأخير هو ما كان ناقصاً: قيمةٌ لم
+         تُترجَم هي نصُّ العربية حرفاً بحرف، فمقاطعها العربية تظهر في
+         `ar.web.ts` تحت المفتاح نفسه دائماً — فكان الإذن يُصدِّق العطل الذي
+         وُضع له. (القاعدة الواحدة في locale-script.mjs · `corroborates`) */
       for (const run of foreignRuns(text, code)) {
         const seenElsewhere = CODES.some(
-          (other) => other !== code && valueTexts(messages[other][key]).some((t) => t.includes(run))
+          (other) => other !== code && corroborates(run, other, valueTexts(messages[other][key]))
         );
         foreignRunsSeen++;
         if (!seenElsewhere) {
@@ -1116,9 +1122,13 @@ for (const code of CODES) {
       if (census(text, code).letters === 0) continue;
       witnessedComparisons++;
       if (!hasOwnScript(text, code)) {
+        /* الرسالة تحمل **العدد الذي حُكم به**: «ليس فيه حرف واحد» كانت تكذب
+           على القيمة التي فيها حرفٌ واحد وتسعةٌ وستّون أجنبياً. */
+        const c = census(text, code);
         wrongScript.push(
-          where + " ← " + key + "  ليس فيه حرف واحد بخطّ " + scripts[code] +
-            " (شاهده " + witness + ") · «" + text.slice(0, 46) + "»"
+          where + " ← " + key + "  أغلبُ حروفه ليست بخطّ " + scripts[code] +
+            " (بخطّه " + c.inScript + " · أجنبيّ " + c.foreign + " · آليّ " + c.machine +
+            "، شاهده " + witness + ") · «" + text.slice(0, 46) + "»"
         );
       }
     }
@@ -1140,7 +1150,8 @@ for (const code of CODES) {
 const probeOf = (code) => {
   for (const v of Object.values(messages[code])) {
     for (const t of valueTexts(v)) {
-      if (hasOwnScript(t, code) && census(t, code).letters >= 6) return t;
+      /* انتقاءُ عيّنةٍ لا حكم: القاعدة الضعيفة هي الصحيحة هنا باسمها. */
+      if (carriesOwnScript(t, code) && census(t, code).letters >= 6) return t;
     }
   }
   return null;
@@ -1156,6 +1167,37 @@ for (const code of CODES) {
   selfTest(code + ": والسليم لا يفقده", probe !== null && hasOwnScript(probe, code));
 }
 selfTest("لا إنذار على نصّ سليم", mojibakeRuns("Journal Voucher \u00b7 \u00abPDF\u00bb \u2014 1,250.00").length === 0);
+
+/* ══ شواهد القاعدة (ب) بعد أن صارت أغلبيةً — والعطل الذي أُغلق مقيسٌ هنا ══
+   ‏كانت القاعدة `inScript > 0`: حرفٌ واحد بخطّ اللغة يُرخّص للقيمة كلَّها.
+   والشاهدان أدناه يزرعان الشكلين اللذين مرّا: حرفٌ واحد مُلصَق بنثرٍ أجنبيّ،
+   والكلمةُ الأولى وحدها مترجَمة. وكلاهما **يمرّ** بالقاعدة الضعيفة —
+   وهي مُبقاةٌ باسمها `carriesOwnScript` — و**يسقط** بالحكم. */
+{
+  const foreignProse = probeOf(SOURCE) ?? "";
+  const nativeLetter = [...(probeOf("hi") ?? "")].find((ch) => /\p{L}/u.test(ch)) ?? "";
+  const oneLetter = nativeLetter + foreignProse;
+  const words = foreignProse.split(/\s+/u);
+  const firstTranslated = [(probeOf("hi") ?? "").split(/\s+/u)[0], ...words.slice(1)].join(" ");
+  const enough = census(foreignProse, "hi").foreign >= 12;
+
+  selfTest("حرفٌ واحد بخطّ اللغة لا يُرخّص القيمة", enough && carriesOwnScript(oneLetter, "hi") && !hasOwnScript(oneLetter, "hi"));
+  selfTest("والكلمةُ الأولى وحدها مترجَمة تسقط كذلك", enough && !hasOwnScript(firstTranslated, "hi"));
+  selfTest("والقيمة المترجَمة فعلاً تمرّ", hasOwnScript(probeOf("hi") ?? "", "hi"));
+  /* والرمز الآليّ ASCII لا يُحسب أجنبياً، وإلّا أسقط «ملف PDF» وهي عربيةٌ سليمة. */
+  selfTest("والرمز الآليّ لا يقلب الأغلبية", hasOwnScript("\u0645\u0644\u0641 PDF", "ar") && census("\u0645\u0644\u0641 PDF", "ar").machine === 3);
+}
+
+/* ══ شواهد القاعدة (د) بعد أن صار الإذن يشترط الغربة عند المُصدِّق ══════════
+   ‏قيمةٌ **لم تُترجَم** هي نصُّ العربية حرفاً بحرف، فمقاطعها تظهر في `ar` تحت
+   المفتاح نفسه دائماً. فكان «ظهر في لغةٍ أخرى» يُصدِّق العطل الذي وُضع له. */
+{
+  const arabicRun = foreignRuns(probeOf(SOURCE) ?? "", "hi")[0] ?? "";
+  const arabicText = probeOf(SOURCE) ?? "";
+  selfTest("المقطع الأجنبيّ يظهر عند مصدره", arabicRun.length > 0 && arabicText.includes(arabicRun));
+  selfTest("ولا يُصدِّقه من هو خطُّه", arabicRun.length > 0 && !corroborates(arabicRun, SOURCE, [arabicText]));
+  selfTest("ويُصدِّقه من هو أجنبيٌّ عنده", arabicRun.length > 0 && corroborates(arabicRun, "en", [arabicText]));
+}
 /* أن **يُستبعَد** خطُّ المعرّفات من الشهادة يُقاس على اللغات الحقيقية، لا يُدَّعى. */
 const identifierLocales = CODES.filter((c) => !isDiagnostic(scripts[c]));
 selfTest(

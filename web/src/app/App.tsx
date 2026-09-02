@@ -155,6 +155,9 @@ export function AppShell(): ReactNode {
         </Link>
         <Link to="/hr/subledger-reconciliation" className="navitem" data-testid="nav-hr-reconciliation">
           {t("hr.nav.reconciliation")}
+        </Link>
+
+        {/* ── التسكين ووحداته — كتلةٌ واحدة متّصلة كي يندمج جانباها آلياً. */}
         <Link to="/inventory/warehouses" className="navitem" data-testid="nav-inventory-warehouses">
           {t("inventory.nav.warehouses")}
         </Link>

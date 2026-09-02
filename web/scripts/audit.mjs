@@ -28,9 +28,12 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   census,
+  foreignRuns,
   hasOwnScript,
   isDiagnostic,
+  junkChars,
   mangle,
+  mangleUnder,
   mojibakeRuns,
   proseWords,
   scriptOf,
@@ -590,7 +593,8 @@ if (!fs.existsSync(DOCS_PAGE)) {
    ‏**ولماذا ليس جدول محارف مسموحة.** لأن ذلك قائمة، والقائمة تُهزَم بأول
    محرفٍ لم يُكتب — ثلاث مرّات في يومٍ واحد في هذا المستودع
    (‏`docs/evidence/traps.md#fakh-a-remedy-that-is-a-list-is-not-a-remedy`).
-   فالقواعد الثلاث هنا كلُّها **مقاييس على النتيجة**:
+   فالقواعد الخمس هنا كلُّها **مقاييس على النتيجة**، وكلٌّ منها أُطلقت عليها
+   طفرةٌ حقيقية وقِيس ما تلتقطه وما يفلت منها:
 
      ‏أ · **التشويه يُكشف بفكّ الترميز فعلاً**، لا بمعرفة أشكال المحارف.
           مقطعٌ كلُّه ≤ U+00FF، رموزُه بايتاتٌ تفكّ UTF-8 صارمةً إلى نصٍّ
@@ -604,6 +608,16 @@ if (!fs.existsSync(DOCS_PAGE)) {
           شاهد — والحالةُ الأخيرة **حمراء** لا صامتة (انظر `noWitness`).
      ‏ج · **نصٌّ يطابق المصدر حرفاً بحرف ليس ترجمة** — غطاءٌ جزئي على ما لا
           يستطيع الخطُّ أن يراه.
+     ‏د · **إذنٌ مغلق للحرف الأجنبي.** القاعدة (أ) تفكّ البايتات، فيفلت منها ما
+          قُرئ بترميزٍ يرفع بعضها فوق U+00FF (`koi8-r`, `macintosh`,
+          `iso-8859-7`) — **مقيس**. فتُصنَّف حروف كل قيمة ثلاثة أقسام: بخطّ
+          لغتها، أو ASCII (أبجدية المعرّفات بحكم العقد المنشور)، أو **أجنبيّ
+          غير آليّ** — وهذا الأخير مسموحٌ بشرطٍ واحد: أن يظهر المقطع نفسه في
+          قيمة المفتاح نفسه في **لغةٍ أخرى**. إذنٌ مغلق لا منعٌ مفتوح، فترميزٌ
+          لم يخطر لأحد يسقط فيه بلا أن يعرفه الحارس.
+     ‏هـ · **محارف لا تُرسم ولا تعني** — تحكّم C0/C1، وبديل، واستعمال خاصّ، وغير
+          مخصَّص. فئةُ يونيكود لا قائمة، وهي ما تُنتجه بايتات UTF-16 المقروءة
+          نصّاً — وهو ما يفلت من (أ) و(د) معاً. **مقيس.**
 
    ‏**والثقب مُعلَن، لا مسكوتٌ عنه.** خطّ الأردية هو خطّ العربية، فالقاعدة (ب)
    تلتقط قيمةً أرديةً **فقدت** خطَّها ولا تلتقط قيمةً أرديةً كُتبت بالعربية.
@@ -618,6 +632,36 @@ if (!fs.existsSync(DOCS_PAGE)) {
    يقرأ المعنى.
    ═══════════════════════════════════════════════════════════════════════ */
 head("١٠ · خطّ اللغة والترميز · script and encoding");
+
+/* ‏**نطاق الفحص يُقرأ من القرص لا من `CODES`.** ملفّ لغةٍ خامسة يُودَع ولا يُكتب
+   رمزُه في هذا الملفّ **يخرج من الفحوص العشرة كلِّها بصمت** — وهو حارسٌ يُصدَّق
+   وهو لا يحرس. فالمجموعة المغلقة هنا هي **المجلّد**: كل `<code>.base.ts` يقابله
+   `<code>.web.ts` ورمزُه صالح، ويجب أن يطابق `CODES` مطابقةً تامّة في الاتجاهين. */
+const onDisk = fs
+  .readdirSync(path.join(SRC, "i18n/locales"))
+  .filter((n) => n.endsWith(".base.ts"))
+  .map((n) => n.slice(0, -".base.ts".length))
+  .filter((code) => {
+    if (!fs.existsSync(path.join(SRC, "i18n/locales", code + ".web.ts"))) return false;
+    try {
+      return Boolean(new Intl.Locale(code).language);
+    } catch {
+      return false;
+    }
+  });
+const scopeGap = [
+  ...onDisk.filter((c) => !CODES.includes(c)).map((c) => "على القرص ولا يفحصه أحد · on disk, unchecked: " + c),
+  ...CODES.filter((c) => !onDisk.includes(c)).map((c) => "في CODES ولا ملفّ له · in CODES, no file: " + c),
+];
+info("ملفّات لغة على القرص · locale files on disk: " + onDisk.join(",") + " ← CODES: " + CODES.join(","));
+if (scopeGap.length) {
+  bad(
+    "نطاق الفحص لا يطابق المجلّد — لغةٌ خارج CODES تخرج من الفحوص العشرة كلّها · " +
+      "the checked set does not match the directory",
+    scopeGap,
+    true
+  );
+} else ok("نطاق الفحص هو المجلّد بعينه · the checked set is exactly the directory");
 
 const scripts = {};
 for (const code of CODES) scripts[code] = scriptOf(code);
@@ -643,8 +687,11 @@ if (noWitness.length) {
 const mojibake = [];
 const wrongScript = [];
 const copiedSource = [];
+const unlicensedForeign = [];
+const junk = [];
 let valuesInspected = 0;
 let witnessedComparisons = 0;
+let foreignRunsSeen = 0;
 
 for (const code of CODES) {
   for (const [key, value] of Object.entries(messages[code])) {
@@ -662,6 +709,26 @@ for (const code of CODES) {
         mojibake.push(
           where + " ← " + key + "  «" + hit.run.slice(0, 34) + "» = بايتات · bytes of «" + hit.decoded.slice(0, 34) + "»"
         );
+      }
+
+      for (const ch of junkChars(text)) {
+        junk.push(
+          where + " ← " + key + "  U+" + ch.code.toString(16).toUpperCase().padStart(4, "0") +
+            " عند المحرف · at offset " + ch.at
+        );
+      }
+
+      /* الإذن المغلق: مقطعٌ أجنبيّ غير آليّ يُصدَّق بلغةٍ أخرى، أو يسقط. */
+      for (const run of foreignRuns(text, code)) {
+        const seenElsewhere = CODES.some(
+          (other) => other !== code && valueTexts(messages[other][key]).some((t) => t.includes(run))
+        );
+        foreignRunsSeen++;
+        if (!seenElsewhere) {
+          unlicensedForeign.push(
+            where + " ← " + key + "  مقطع «" + run.slice(0, 30) + "» لا يظهر في أي لغة أخرى تحت المفتاح نفسه"
+          );
+        }
       }
 
       if (!witness) continue;
@@ -715,9 +782,22 @@ selfTest(
   identifierLocales.length > 0 &&
     identifierLocales.every((c) => CODES.every((other) => !witnesses[other].includes(c)))
 );
+/* والشاهد الحاسم على القاعدة (د): تشويهٌ بترميزٍ **لا تعرفه** القاعدة (أ).
+   ‏`koi8-r` يرفع بايتات فوق U+00FF فينكسر مقطع الفكّ ويفلت من (أ) — مقيس —
+   ولا يفلت من (د) لأنها لا تسأل عن الترميز بل عن التصديق. */
+const koi8 = mangleUnder("koi8-r", probeOf("hi") ?? "");
+selfTest("تشويهٌ بترميزٍ آخر يفلت من فكّ الترميز", mojibakeRuns(koi8).length === 0);
+selfTest("ولا يفلت من الإذن المغلق", foreignRuns(koi8, "hi").length > 0);
+selfTest("والنصّ السليم لا مقطع أجنبيّ فيه", foreignRuns(probeOf("hi") ?? "", "hi").length === 0);
+selfTest("والرمز الآلي ASCII لا يُعدّ أجنبياً", foreignRuns("PDF SAR BANK-0001 INV-2026-0587", "hi").length === 0);
+/* وبايتات UTF-16 تُنتج محارف تحكّم لا حروفاً، فتلتقطها (هـ) وحدها. */
+const utf16 = [...(probeOf("hi") ?? "")].map((c) => String.fromCharCode(c.charCodeAt(0) & 0xff, c.charCodeAt(0) >> 8)).join("");
+selfTest("بايتات UTF-16 تُلتقَط بفئة المحرف", junkChars(utf16).length > 0);
+selfTest("ولا محرف حشوٍ في نصّ سليم", junkChars(probeOf("ar") ?? "").length === 0);
 
 mustScan("نصوص مفحوصة · values inspected", valuesInspected, 4000);
 mustScan("مقارنات بشاهد · witnessed comparisons", witnessedComparisons, 3000);
+info("مقاطع أجنبية غير آلية · non-machine foreign runs: " + foreignRunsSeen);
 
 if (mojibake.length) {
   bad(
@@ -736,6 +816,24 @@ if (wrongScript.length) {
     true
   );
 } else ok("كل قيمة نثرٍ مكتوبة بخطّ لغتها · every prose value is written in its locale's script");
+
+if (junk.length) {
+  bad(
+    "محرف لا يُرسم ولا يعني داخل قيمة — تحكّمٌ أو بديلٌ أو غير مخصَّص · " +
+      "a control, surrogate, private-use or unassigned character inside a value",
+    junk,
+    true
+  );
+} else ok("لا محرف حشوٍ في أي قيمة · no junk character in any value");
+
+if (unlicensedForeign.length) {
+  bad(
+    "مقطع أجنبيّ غير آليّ لا تصدّقه لغةٌ أخرى — والإذن مغلق: اكتب المقطع في " +
+      "المصدر إن كان رمزاً مقصوداً · an unlicensed non-machine foreign run",
+    unlicensedForeign,
+    true
+  );
+} else ok("كل مقطع أجنبيّ غير آليّ مصدَّقٌ بلغةٍ أخرى · every non-machine foreign run is corroborated");
 
 if (copiedSource.length) {
   bad(

@@ -128,9 +128,13 @@ export function InventoryPlacementScreen(): ReactNode {
   const { t } = useT();
   const { transport, config } = useApi();
 
-  const [warehouse, setWarehouse] = useState<StoragePlace | null>(null);
-  const [location, setLocation] = useState<StoragePlace | null>(null);
-  const [bin, setBin] = useState<StoragePlace | null>(null);
+  /* **المُنتقى معرّفٌ لا كائن.** لو حُفظ الكائنُ نفسه لبقي على قيمته لحظةَ النقر:
+     يُعطَّل الموضع فيُعاد قراءة الدرج ويظهر «مُعطَّل» في القائمة، بينما لوحُ التعديل
+     يقرأ من نسخةٍ قديمة `isActive=true` فيعرض زرّ تعطيلٍ لموضعٍ عُطّل للتوّ. فالمعرّف
+     يُحفَظ، والكائن يُشتقّ من آخر قراءة. */
+  const [warehouseId, setWarehouseId] = useState<string | null>(null);
+  const [locationId, setLocationId] = useState<string | null>(null);
+  const [binId, setBinId] = useState<string | null>(null);
 
   const [arabicRename, setArabicRename] = useState("");
   const [latinRename, setLatinRename] = useState("");
@@ -156,41 +160,56 @@ export function InventoryPlacementScreen(): ReactNode {
   });
 
   const locations = useQuery({
-    queryKey: ["inventory-placement-locations", ...scope, warehouse?.id ?? ""],
-    enabled: config.companyId !== "" && warehouse !== null,
+    queryKey: ["inventory-placement-locations", ...scope, warehouseId ?? ""],
+    enabled: config.companyId !== "" && warehouseId !== null,
     retry: false,
     queryFn: ({ signal }) =>
       listStorageLocations(
         transport,
-        { companyId: config.companyId, warehouseId: warehouse?.id ?? "" },
+        { companyId: config.companyId, warehouseId: warehouseId ?? "" },
         signal
       ),
   });
 
   const bins = useQuery({
-    queryKey: ["inventory-placement-bins", ...scope, warehouse?.id ?? "", location?.id ?? ""],
-    enabled: config.companyId !== "" && warehouse !== null && location !== null,
+    queryKey: ["inventory-placement-bins", ...scope, warehouseId ?? "", locationId ?? ""],
+    enabled: config.companyId !== "" && warehouseId !== null && locationId !== null,
     retry: false,
     queryFn: ({ signal }) =>
       listStorageBins(
         transport,
         {
           companyId: config.companyId,
-          warehouseId: warehouse?.id ?? "",
-          locationId: location?.id ?? "",
+          warehouseId: warehouseId ?? "",
+          locationId: locationId ?? "",
         },
         signal
       ),
   });
+
+  const warehousePlaces = useMemo(() => warehouses.data?.places ?? [], [warehouses.data]);
+  const locationPlaces = useMemo(() => locations.data?.places ?? [], [locations.data]);
+  const binPlaces = useMemo(() => bins.data?.places ?? [], [bins.data]);
+
+  /* الكائنات مشتقّةٌ من آخر قراءةٍ لا محفوظةٌ من لحظة النقر — انظر تعليق الحالة أعلاه. */
+  const warehouse = useMemo(
+    () => warehousePlaces.find((one) => one.id === warehouseId) ?? null,
+    [warehousePlaces, warehouseId]
+  );
+  const location = useMemo(
+    () => locationPlaces.find((one) => one.id === locationId) ?? null,
+    [locationPlaces, locationId]
+  );
+  const bin = useMemo(() => binPlaces.find((one) => one.id === binId) ?? null, [binPlaces, binId]);
 
   /* المختار هو **أعمق** ما انتُقي: الرفّ إن وُجد، وإلّا الموقع، وإلّا المستودع.
      ولا مختارَ ضمنيّ: من لم ينتقِ شيئاً لا يُفتح له لوحُ تعديل. */
   const chosen: StoragePlace | null = bin ?? location ?? warehouse;
 
   const pickWarehouse = useCallback((place: StoragePlace) => {
-    setWarehouse(place);
-    setLocation(null);
-    setBin(null);
+    setWarehouseId(place.id);
+    setLocationId(null);
+    setBinId(null);
     setArabicRename(place.name.ar);
     setLatinRename(place.name.en);
     setPendingOff(false);
@@ -198,8 +217,8 @@ export function InventoryPlacementScreen(): ReactNode {
   }, []);
 
   const pickLocation = useCallback((place: StoragePlace) => {
-    setLocation(place);
-    setBin(null);
+    setLocationId(place.id);
+    setBinId(null);
     setArabicRename(place.name.ar);
     setLatinRename(place.name.en);
     setPendingOff(false);
@@ -207,7 +226,7 @@ export function InventoryPlacementScreen(): ReactNode {
   }, []);
 
   const pickBin = useCallback((place: StoragePlace) => {
-    setBin(place);
+    setBinId(place.id);
     setArabicRename(place.name.ar);
     setLatinRename(place.name.en);
     setPendingOff(false);
@@ -216,9 +235,9 @@ export function InventoryPlacementScreen(): ReactNode {
 
   const reload = useCallback(async () => {
     await warehouses.refetch();
-    if (warehouse) await locations.refetch();
-    if (location) await bins.refetch();
-  }, [bins, location, locations, warehouse, warehouses]);
+    if (warehouseId !== null) await locations.refetch();
+    if (locationId !== null) await bins.refetch();
+  }, [bins, locationId, locations, warehouseId, warehouses]);
 
   const rename = useCallback(async () => {
     if (!chosen) return;
@@ -332,10 +351,6 @@ export function InventoryPlacementScreen(): ReactNode {
     }
   }, [binAr, binCode, binEn, bins, config.companyId, location, transport, warehouse]);
 
-  const warehousePlaces = useMemo(() => warehouses.data?.places ?? [], [warehouses.data]);
-  const locationPlaces = useMemo(() => locations.data?.places ?? [], [locations.data]);
-  const binPlaces = useMemo(() => bins.data?.places ?? [], [bins.data]);
-
   if (config.companyId === "") return <ChooseCompanyFirst />;
 
   return (
@@ -403,7 +418,7 @@ export function InventoryPlacementScreen(): ReactNode {
             <Rung
               level="WAREHOUSE"
               places={warehousePlaces}
-              picked={warehouse?.id ?? null}
+              picked={warehouseId}
               onPick={pickWarehouse}
               waiting={null}
               empty={t("inventory.placement.emptyTitle")}
@@ -412,7 +427,7 @@ export function InventoryPlacementScreen(): ReactNode {
             <Rung
               level="LOCATION"
               places={locationPlaces}
-              picked={location?.id ?? null}
+              picked={locationId}
               onPick={pickLocation}
               waiting={warehouse === null ? t("inventory.placement.needWarehouse") : null}
               empty={t("inventory.placement.emptyLocations")}
@@ -421,7 +436,7 @@ export function InventoryPlacementScreen(): ReactNode {
             <Rung
               level="BIN"
               places={binPlaces}
-              picked={bin?.id ?? null}
+              picked={binId}
               onPick={pickBin}
               waiting={location === null ? t("inventory.placement.needLocation") : null}
               empty={t("inventory.placement.emptyBins")}

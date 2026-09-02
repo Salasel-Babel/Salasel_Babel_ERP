@@ -79,7 +79,7 @@ function Leg(props: { warehouse: string; location: string }): ReactNode {
   return (
     <span className="inv-leg">
       <span>{props.warehouse}</span>
-      <span className="inv-leg__arrow" aria-hidden="true">{"·"}</span>
+      <span className="inv-leg__sep" aria-hidden="true">{"·"}</span>
       <span>{props.location}</span>
     </span>
   );

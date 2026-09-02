@@ -372,7 +372,7 @@ export function InventoryUnitsScreen(): ReactNode {
               unit={answer.from.unit}
               testId="probe-from-value"
             />
-            <span className="inv-leg__arrow" aria-hidden="true">{"="}</span>
+            <span className="inv-leg__sep" aria-hidden="true">{"="}</span>
             <QuantityValue
               magnitude={answer.to.magnitude}
               unit={answer.to.unit}

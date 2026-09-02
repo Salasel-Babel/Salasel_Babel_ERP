@@ -170,14 +170,16 @@
 .inv-place[data-active="false"] .inv-place__code{ color:var(--color-text-subtle) }
 
 /* ── طرفا النقل ─────────────────────────────────────────────────────────
-   من ← إلى. والسهم محرفٌ منطقيّ يُرسم بـ`content` من الرمز، ولا يُكتب في
-   الوسم: نصٌّ مرئي في الشيفرة يرفضه `scripts/audit.mjs`، والاتجاه يقلبه
-   `scaleX` تحت `[dir="rtl"]` وحده. */
+   «مستودع · موقع» في خليّةٍ واحدة، معزولةً اتّجاهياً وبخطٍّ أحادي: الرمزان
+   معرّفان لاتينيان يُقرآن من اليسار في اللغات الأربع. والفاصل بينهما **نقطةٌ
+   لا سهم**، عمداً: السهم يحمل اتّجاهاً، وطرفا النقل في هذه الخليّة **ليسا
+   مصدراً ووجهة** — العمودان المجاوران هما من يقول ذلك. وهو `aria-hidden`
+   فلا يُنطَق «نقطة» بين رمزين. */
 .inv-leg{
   display:flex; align-items:center; gap:var(--space-8); flex-wrap:wrap;
   font-family:var(--font-mono); unicode-bidi:isolate;
 }
-.inv-leg__arrow{ color:var(--section-inventory); font-weight:var(--font-weight-bold) }
+.inv-leg__sep{ color:var(--section-inventory); font-weight:var(--font-weight-bold) }
 
 /* ── لوح جواب المسبار ────────────────────────────────────────────────────
    جوابٌ واحد لا جدول: كمّيةٌ داخلة وكمّيةٌ خارجة والمعامل بينهما. وحدُّه لون

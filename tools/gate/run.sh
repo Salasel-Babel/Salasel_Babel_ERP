@@ -90,15 +90,39 @@ done
 
 # ── ٣ · الحدود المعمارية منفصلةً ──────────────────────────────────────────────
 # أولاً ووحدها كما في ci.yml: إن انكسر حدّ، تُقرأ رسالته فوراً لا بين مئات الأسطر.
+#
+# ‏**ولماذا الأرضية والتقرير على كل نداء اختبار هنا:** كي تسقط البوّابة وci.yml
+# **سقوطاً واحداً** على العطل نفسه. `--minimum-expected-tests` تُحوّل الانكماش الصامت
+# إلى خروجٍ بالرمز 9 يسمّي ما نُفِّذ وما كان مُنتظَراً؛ و`--zero-tests-policy strict`
+# تجعل مجموعةً كلُّ اختباراتها متخطّاة سقوطاً (رمز 8) لا نجاحاً؛ و`--report-xunit-trx`
+# هو ما تقرأه الحصيلة في الخطوة ٤-ب. والختم قبلها يمنع بقايا تشغيلٍ سابق من أن تُرضيها.
+# (‏docs/evidence/traps.md#fakh-a-remedy-that-is-a-list-is-not-a-remedy)
 step "٣ · الحدود المعمارية"
+tools/test-tally/run.sh --begin || fail "ختم مجلّد التقارير"
 dotnet test --project tests/Babel.ArchitectureTests/Babel.ArchitectureTests.csproj \
-    -c "$configuration" --no-build || fail "اختبارات المعمارية"
+    -c "$configuration" --no-build \
+    --report-xunit-trx --results-directory artifacts/test-reports \
+    --minimum-expected-tests 205 --zero-tests-policy strict || fail "اختبارات المعمارية"
 
 # ── ٤ · كل الاختبارات ─────────────────────────────────────────────────────────
 # ‏`--no-build` ليس تسريعاً فحسب: الخطوة ١ هي التي بنت، وبدونها كانت هذه الخطوة
 # ستمرّ على مشاريع لا تشير إليها الاختبارات **دون أن تبنيها** — وهو العطل نفسه.
+#
+# ومقيس على هذا المستودع أن `--minimum-expected-tests` **تراكمية على الحلّ كلّه**:
+# ‏99999 على `--solution Babel.slnx` أعطت الرمز 9 عند 1587. فهي تلتقط اختفاء مشروعٍ
+# كامل من الحلّ — وهو العطل الذي وقع عند ed02df2 والمشروح في رأس هذا الملفّ.
 step "٤ · كل الاختبارات"
-dotnet test --solution Babel.slnx -c "$configuration" --no-build || fail "مجموعة الاختبارات"
+dotnet test --solution Babel.slnx -c "$configuration" --no-build \
+    --report-xunit-trx --results-directory artifacts/test-reports \
+    --minimum-expected-tests 1631 --zero-tests-policy strict || fail "مجموعة الاختبارات"
+
+# ── ٤-ب · الحصيلة — ما نُفِّذ فعلاً ────────────────────────────────────────────
+# ‏**لا تقرأ خياراً ولا سطر أمر.** تسأل مُخرَج التشغيل: لكل سطحٍ يعلنه
+# ‏`tests/test-surfaces.json` تقريرٌ موجود، وعددُ ما نُفِّذ عند الأرضية أو فوقها، وصفرُ
+# إخفاق — وتسقط أيضاً على تقريرٍ لا يدّعيه سطح (مجموعةُ اختباراتٍ دخلت بلا إعلان).
+# وهي جوابٌ واحد عن `--nologo` و`--diag` وسطرِ الاستمرار والمُغلِّف والمتغيّر معاً.
+step "٤-ب · الحصيلة — ما نُفِّذ فعلاً"
+tools/test-tally/run.sh --job ci.yml:build-and-enforce || fail "الحصيلة: سطحٌ لم يُنفَّذ أو لم يبلغ أرضيته"
 
 # ── ٥ · مسح العزل ─────────────────────────────────────────────────────────────
 if [ "$isolation" = "yes" ]; then
@@ -138,7 +162,14 @@ if [ "$frontend" = "full" ]; then
     ( cd web && npm ci )        || fail "npm ci"
     ( cd web && npm run build ) || fail "بناء الواجهة"
     ( cd web && npm run lint )  || fail "قواعد الحدّ (ESLint)"
-    ( cd web && npm test )      || fail "اختبارات وحدة الواجهة"
+    # نفس ما يفعله web.yml حرفاً بحرف: مُبلِّغ JSON تقرأه الحصيلة، ثم الحصيلة.
+    # ‏`passWithNoTests: false` يمنع الصفر ولا يمنع الانكماش؛ الأرضية تمنعه.
+    ( cd web && npm test -- --reporter=default --reporter=json \
+        --outputFile.json="$root/artifacts/test-reports/web-unit.json" ) \
+        || fail "اختبارات وحدة الواجهة"
+    tools/test-tally/run.sh --job web.yml:static-checks \
+        || fail "الحصيلة: وحدة الواجهة لم تبلغ أرضيتها"
+
     # حارس استقامة الصفوف — **في متصفّح حقيقي، لأن لا شيء آخر يرى بكسلاً**.
     # `jsdom` لا يخطّط: `getBoundingClientRect` فيه أصفار، فاختبارُ وحدةٍ لا
     # يستطيع أن يقول «هذان الحقلان على خطٍّ واحد». والعطل الذي يحرسه هذا

@@ -7,15 +7,18 @@
        node scripts/audit.mjs --quiet    الأخطاء فقط
    يخرج بالرمز 1 عند أي مخالفة حاكمة، فيصلح بوّابةً في خطّ التكامل.
 
-   يفحص ثمانية أشياء لا تستطيع عينٌ بشرية أن تتعقّبها:
-     ١ · مفاتيح ناقصة في أي لغة        (تسقط إلى العربية بصمت — سلامةٌ لا صحّة)
-     ٢ · مفاتيح يتيمة                   (ترجمة تُدفَع ثمنها ولا تُعرَض أبداً)
-     ٣ · فئات جمع ناقصة أو ميتة         (zero في الإنجليزية صيغة لا تُختار أبداً)
-     ٤ · تطابق معاملات الاستبدال مع المصدر
-     ٥ · اصطلاح تسمية المفاتيح
-     ٦ · مفتاح تطلبه الشاشات وغير معرَّف
-     ٧ · نصّ مرئي مكتوب في الشيفرة
-     ٨ · مخالفات اتجاه في CSS، ومحارف تحكّم غير مرئية في المصدر
+   يفحص عشرة أشياء لا تستطيع عينٌ بشرية أن تتعقّبها:
+     ١ · مفاتيح ناقصة في أي لغة، ومفاتيح يتيمة (تسقط إلى العربية بصمت)
+     ٢ · فئات جمع ناقصة أو ميتة         (zero في الإنجليزية صيغة لا تُختار أبداً)
+     ٣ · تطابق معاملات الاستبدال مع المصدر
+     ٤ · اصطلاح تسمية المفاتيح
+     ٥ · مفتاح تطلبه الشاشات وغير معرَّف
+     ٦ · نصّ مرئي مكتوب في الشيفرة
+     ٧ · مخالفات اتجاه في CSS
+     ٨ · محارف تحكّم غير مرئية في المصدر
+     ٩ · صفحة العقد قائمة بذاتها ويُحلَّل نصُّها البرمجي
+     ‏١٠ · خطّ كل لغة وترميزها — لأن الفحص ١ **يرضى بالقمامة**: تكافؤ المفاتيح
+          يقول «موجود» ويُقرأ «مترجَم»، وبينهما قيمةٌ مشوّهة الترميز تصل قارئاً
 
    ⚠ وكل فحص هنا يُعلن **حجم ما فحصه**، ويفشل إن كان صفراً. مسحٌ لا يقرأ شيئاً
    يمرّ دائماً، وهو بالضبط عطل فخ-43 في هذا المستودع.
@@ -23,6 +26,20 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  census,
+  foreignRuns,
+  hasOwnScript,
+  isDiagnostic,
+  junkChars,
+  mangle,
+  mangleUnder,
+  mojibakeRuns,
+  proseWords,
+  scriptOf,
+  valueTexts,
+  witnessesOf,
+} from "./locale-script.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const WEB = path.resolve(HERE, "..");
@@ -195,11 +212,18 @@ function mergeTree(base, extra) {
 
 const messages = {};
 const metas = {};
+/* أي ملفّ جاء منه كل مفتاح — كي يسمّي الرفضُ الملفَّ والمفتاح معاً لا المفتاح وحده. */
+const origin = {};
 for (const code of CODES) {
-  const base = loadObject(path.join(SRC, "i18n/locales", code + ".base.ts"), "messages");
-  const web = loadObject(path.join(SRC, "i18n/locales", code + ".web.ts"), "messages");
-  metas[code] = loadObject(path.join(SRC, "i18n/locales", code + ".base.ts"), "meta");
+  const baseFile = path.join(SRC, "i18n/locales", code + ".base.ts");
+  const webFile = path.join(SRC, "i18n/locales", code + ".web.ts");
+  const base = loadObject(baseFile, "messages");
+  const web = loadObject(webFile, "messages");
+  metas[code] = loadObject(baseFile, "meta");
   messages[code] = flatten(mergeTree(base, web));
+  origin[code] = {};
+  for (const k of Object.keys(flatten(base))) origin[code][k] = rel(baseFile);
+  for (const k of Object.keys(flatten(web))) origin[code][k] = rel(webFile);
 }
 
 head("١ · تغطية المفاتيح · key coverage");
@@ -558,6 +582,268 @@ if (!fs.existsSync(DOCS_PAGE)) {
     }
   }
 }
+
+/* ═════════════ ١٠ · خطّ اللغة والترميز ══════════════════════════════════
+   ‏**العطل الذي يجعله مستحيلاً.** الفحص ١ يقول «كل مفتاح موجود في اللغات
+   الأربع»، ويُقرأ — من الجميع، ومن هذا الملفّ نفسه حتى اليوم — «اللغات
+   الأربع مترجَمة». وهما ليسا الشيء نفسه: **تكافؤ المفاتيح يرضى بالقمامة.**
+   وقد وقع: قيمةُ رفضٍ في الهندية والأردية رُمِّزت UTF-8 وقُرئت Latin-1،
+   فصارت 444 من 488 محرفاً هنديّاً في كتلة لاتينية — والمسح كلُّه أخضر،
+   ‏والقيمة تصل قارئاً هنديّاً حقيقياً لأن الشاشة تحلّ المفتاح وقت التشغيل.
+
+   ‏**ولماذا ليس جدول محارف مسموحة.** لأن ذلك قائمة، والقائمة تُهزَم بأول
+   محرفٍ لم يُكتب — ثلاث مرّات في يومٍ واحد في هذا المستودع
+   (‏`docs/evidence/traps.md#fakh-a-remedy-that-is-a-list-is-not-a-remedy`).
+   فالقواعد الخمس هنا كلُّها **مقاييس على النتيجة**، وكلٌّ منها أُطلقت عليها
+   طفرةٌ حقيقية وقِيس ما تلتقطه وما يفلت منها:
+
+     ‏أ · **التشويه يُكشف بفكّ الترميز فعلاً**، لا بمعرفة أشكال المحارف.
+          مقطعٌ كلُّه ≤ U+00FF، رموزُه بايتاتٌ تفكّ UTF-8 صارمةً إلى نصٍّ
+          **مختلف** ⇐ ليس نصّاً، بل بايتاتُ نصٍّ آخر. يُصيب أي لغةِ مصدر،
+          وأي جزءٍ مشوَّهٍ من قيمةٍ سليمة بقيّتها، بلا ذكر محرفٍ واحد.
+     ‏ب · **خطُّ اللغة يُشتقّ من رمزها** عبر `Intl.Locale.maximize()` وخصائص
+          يونيكود، لا من جدولٍ هنا. ومن يشهد أن المفتاح مفتاحُ نثرٍ لا رمزٍ
+          آلي؟ **لغةٌ خطُّها دليل** — أي خطٌّ لا يحوي الحرف اللاتيني `A`،
+          لأن خطّ `A` هو خطّ المعرّفات الآلية (`PDF`, `SAR`, `BANK-0001`)
+          ويظهر داخل كل لغة. فلكلِّ لغةٍ هنا شاهدان على الأقلّ، ولا لغةَ بلا
+          شاهد — والحالةُ الأخيرة **حمراء** لا صامتة (انظر `noWitness`).
+     ‏ج · **نصٌّ يطابق المصدر حرفاً بحرف ليس ترجمة** — غطاءٌ جزئي على ما لا
+          يستطيع الخطُّ أن يراه.
+     ‏د · **إذنٌ مغلق للحرف الأجنبي.** القاعدة (أ) تفكّ البايتات، فيفلت منها ما
+          قُرئ بترميزٍ يرفع بعضها فوق U+00FF (`koi8-r`, `macintosh`,
+          `iso-8859-7`) — **مقيس**. فتُصنَّف حروف كل قيمة ثلاثة أقسام: بخطّ
+          لغتها، أو ASCII (أبجدية المعرّفات بحكم العقد المنشور)، أو **أجنبيّ
+          غير آليّ** — وهذا الأخير مسموحٌ بشرطٍ واحد: أن يظهر المقطع نفسه في
+          قيمة المفتاح نفسه في **لغةٍ أخرى**. إذنٌ مغلق لا منعٌ مفتوح، فترميزٌ
+          لم يخطر لأحد يسقط فيه بلا أن يعرفه الحارس.
+     ‏هـ · **محارف لا تُرسم ولا تعني** — تحكّم C0/C1، وبديل، واستعمال خاصّ، وغير
+          مخصَّص. فئةُ يونيكود لا قائمة، وهي ما تُنتجه بايتات UTF-16 المقروءة
+          نصّاً — وهو ما يفلت من (أ) و(د) معاً. **مقيس.**
+
+   ‏**والثقب مُعلَن، لا مسكوتٌ عنه.** خطّ الأردية هو خطّ العربية، فالقاعدة (ب)
+   تلتقط قيمةً أرديةً **فقدت** خطَّها ولا تلتقط قيمةً أرديةً كُتبت بالعربية.
+   ونصٌّ عربيٌّ يُنسخ حرفاً بحرف في `ur.web.ts` تلتقطه (ج) بشرطها: **ثلاث كلمات
+   فأكثر**. فيبقى ما يهزم الفحص كلَّه: **عبارةٌ عربية في الأردية إمّا أقصر من
+   ثلاث كلمات، وإمّا مُعادةُ الصياغة فلا تطابق المصدر حرفاً بحرف.** وشرطُ
+   الثلاث مقيسٌ لا مُختار: ستّ قيم أردية اليوم تطابق العربية حرفاً بحرف وكلّها
+   مصطلحٌ واحد أو اسمُ عَلَم (`سلاسل بابل`، `متوازن`، `صفر`، `مطابق`،
+   `استحقاق`، `مظ`) — فتضييقه إلى كلمة يُنتج ستّ حمراوات كاذبة. ويوثّق الثقبَ
+   اختبارٌ **سلوكيّ** في `tests/locale-script.test.ts` لا تعليقٌ هنا.
+   **وما لا يلتقطه أي شيء**: نصٌّ بخطّ لغته الصحيح ومعناه خطأ — ولا حارس آليّ
+   يقرأ المعنى.
+   ═══════════════════════════════════════════════════════════════════════ */
+head("١٠ · خطّ اللغة والترميز · script and encoding");
+
+/* ‏**نطاق الفحص يُقرأ من القرص لا من `CODES`.** ملفّ لغةٍ خامسة يُودَع ولا يُكتب
+   رمزُه في هذا الملفّ **يخرج من الفحوص العشرة كلِّها بصمت** — وهو حارسٌ يُصدَّق
+   وهو لا يحرس. فالمجموعة المغلقة هنا هي **المجلّد**: كل `<code>.base.ts` يقابله
+   `<code>.web.ts` ورمزُه صالح، ويجب أن يطابق `CODES` مطابقةً تامّة في الاتجاهين. */
+const onDisk = fs
+  .readdirSync(path.join(SRC, "i18n/locales"))
+  .filter((n) => n.endsWith(".base.ts"))
+  .map((n) => n.slice(0, -".base.ts".length))
+  .filter((code) => {
+    if (!fs.existsSync(path.join(SRC, "i18n/locales", code + ".web.ts"))) return false;
+    try {
+      return Boolean(new Intl.Locale(code).language);
+    } catch {
+      return false;
+    }
+  });
+const scopeGap = [
+  ...onDisk.filter((c) => !CODES.includes(c)).map((c) => "على القرص ولا يفحصه أحد · on disk, unchecked: " + c),
+  ...CODES.filter((c) => !onDisk.includes(c)).map((c) => "في CODES ولا ملفّ له · in CODES, no file: " + c),
+];
+info("ملفّات لغة على القرص · locale files on disk: " + onDisk.join(",") + " ← CODES: " + CODES.join(","));
+if (scopeGap.length) {
+  bad(
+    "نطاق الفحص لا يطابق المجلّد — لغةٌ خارج CODES تخرج من الفحوص العشرة كلّها · " +
+      "the checked set does not match the directory",
+    scopeGap,
+    true
+  );
+} else ok("نطاق الفحص هو المجلّد بعينه · the checked set is exactly the directory");
+
+const scripts = {};
+for (const code of CODES) scripts[code] = scriptOf(code);
+info("خطوط مشتقّة من رموز اللغات · scripts derived from the locale tags: " +
+  CODES.map((c) => c + "=" + scripts[c] + (isDiagnostic(scripts[c]) ? " (شاهد)" : " (خطّ المعرّفات)")).join(" · "));
+
+const witnesses = {};
+const noWitness = [];
+for (const code of CODES) {
+  witnesses[code] = witnessesOf(code, CODES);
+  info("  شاهد " + code + " · witness: " + (witnesses[code].join(",") || "—"));
+  if (witnesses[code].length === 0) noWitness.push(code);
+}
+if (noWitness.length) {
+  bad(
+    "لغة بلا شاهد — القاعدة (ب) لا تراها إطلاقاً، ولا تمرّ صامتة · " +
+      "a locale with no witness is invisible to rule (b) and must not pass in silence",
+    noWitness,
+    true
+  );
+}
+
+const mojibake = [];
+const wrongScript = [];
+const copiedSource = [];
+const unlicensedForeign = [];
+const junk = [];
+let valuesInspected = 0;
+let witnessedComparisons = 0;
+let foreignRunsSeen = 0;
+
+for (const code of CODES) {
+  for (const [key, value] of Object.entries(messages[code])) {
+    const where = origin[code][key] ?? "?";
+    const texts = valueTexts(value);
+    const witness = witnesses[code].find((w) => {
+      const wv = messages[w][key];
+      return wv !== undefined && valueTexts(wv).some((t) => hasOwnScript(t, w));
+    });
+
+    for (const text of texts) {
+      valuesInspected++;
+
+      for (const hit of mojibakeRuns(text)) {
+        mojibake.push(
+          where + " ← " + key + "  «" + hit.run.slice(0, 34) + "» = بايتات · bytes of «" + hit.decoded.slice(0, 34) + "»"
+        );
+      }
+
+      for (const ch of junkChars(text)) {
+        junk.push(
+          where + " ← " + key + "  U+" + ch.code.toString(16).toUpperCase().padStart(4, "0") +
+            " عند المحرف · at offset " + ch.at
+        );
+      }
+
+      /* الإذن المغلق: مقطعٌ أجنبيّ غير آليّ يُصدَّق بلغةٍ أخرى، أو يسقط. */
+      for (const run of foreignRuns(text, code)) {
+        const seenElsewhere = CODES.some(
+          (other) => other !== code && valueTexts(messages[other][key]).some((t) => t.includes(run))
+        );
+        foreignRunsSeen++;
+        if (!seenElsewhere) {
+          unlicensedForeign.push(
+            where + " ← " + key + "  مقطع «" + run.slice(0, 30) + "» لا يظهر في أي لغة أخرى تحت المفتاح نفسه"
+          );
+        }
+      }
+
+      if (!witness) continue;
+      if (census(text, code).letters === 0) continue;
+      witnessedComparisons++;
+      if (!hasOwnScript(text, code)) {
+        wrongScript.push(
+          where + " ← " + key + "  ليس فيه حرف واحد بخطّ " + scripts[code] +
+            " (شاهده " + witness + ") · «" + text.slice(0, 46) + "»"
+        );
+      }
+    }
+
+    if (code === SOURCE) continue;
+    const src = messages[SOURCE][key];
+    if (typeof value !== "string" || typeof src !== "string") continue;
+    if (value !== src) continue;
+    if (!hasOwnScript(src, SOURCE) || proseWords(src) < 3) continue;
+    copiedSource.push(where + " ← " + key + "  يطابق العربية حرفاً بحرف · «" + src.slice(0, 46) + "»");
+  }
+}
+
+/* ═══ شواهد إيجابية · positive controls (ADR-0056) ══════════════════════
+   ‏كلُّ شاهدٍ هنا يزرع العطل **بآليّته نفسها** — `mangle` هو الترميز UTF-8 ثم
+   القراءة Latin-1 حرفياً — لا بنصٍّ مشوَّهٍ منسوخ. فلو تغيّر شكل التشويه غداً
+   تغيّرت الشواهد معه، ولا يبقى شاهدٌ يصدّق كاشفاً عمي. والنصّ المزروع يُؤخَذ
+   **من ملفّات اللغة نفسها** فلا يُكتب في هذا الملفّ حرفُ لغةٍ واحد. */
+const probeOf = (code) => {
+  for (const v of Object.values(messages[code])) {
+    for (const t of valueTexts(v)) {
+      if (hasOwnScript(t, code) && census(t, code).letters >= 6) return t;
+    }
+  }
+  return null;
+};
+for (const code of CODES) {
+  if (!isDiagnostic(scripts[code])) continue; /* خطّ المعرّفات ASCII، ولا يتشوّه شكلُه */
+  const probe = probeOf(code);
+  selfTest(
+    code + ": التشويه يُكشف ويُفكّ إلى أصله",
+    probe !== null && mojibakeRuns(mangle(probe)).some((h) => h.decoded === probe)
+  );
+  selfTest(code + ": المشوَّه يفقد خطّ لغته", probe !== null && !hasOwnScript(mangle(probe), code));
+  selfTest(code + ": والسليم لا يفقده", probe !== null && hasOwnScript(probe, code));
+}
+selfTest("لا إنذار على نصّ سليم", mojibakeRuns("Journal Voucher \u00b7 \u00abPDF\u00bb \u2014 1,250.00").length === 0);
+/* أن **يُستبعَد** خطُّ المعرّفات من الشهادة يُقاس على اللغات الحقيقية، لا يُدَّعى. */
+const identifierLocales = CODES.filter((c) => !isDiagnostic(scripts[c]));
+selfTest(
+  "خطّ المعرّفات مُستبعَد من شهادة كل لغة",
+  identifierLocales.length > 0 &&
+    identifierLocales.every((c) => CODES.every((other) => !witnesses[other].includes(c)))
+);
+/* والشاهد الحاسم على القاعدة (د): تشويهٌ بترميزٍ **لا تعرفه** القاعدة (أ).
+   ‏`koi8-r` يرفع بايتات فوق U+00FF فينكسر مقطع الفكّ ويفلت من (أ) — مقيس —
+   ولا يفلت من (د) لأنها لا تسأل عن الترميز بل عن التصديق. */
+const koi8 = mangleUnder("koi8-r", probeOf("hi") ?? "");
+selfTest("تشويهٌ بترميزٍ آخر يفلت من فكّ الترميز", mojibakeRuns(koi8).length === 0);
+selfTest("ولا يفلت من الإذن المغلق", foreignRuns(koi8, "hi").length > 0);
+selfTest("والنصّ السليم لا مقطع أجنبيّ فيه", foreignRuns(probeOf("hi") ?? "", "hi").length === 0);
+selfTest("والرمز الآلي ASCII لا يُعدّ أجنبياً", foreignRuns("PDF SAR BANK-0001 INV-2026-0587", "hi").length === 0);
+/* وبايتات UTF-16 تُنتج محارف تحكّم لا حروفاً، فتلتقطها (هـ) وحدها. */
+const utf16 = [...(probeOf("hi") ?? "")].map((c) => String.fromCharCode(c.charCodeAt(0) & 0xff, c.charCodeAt(0) >> 8)).join("");
+selfTest("بايتات UTF-16 تُلتقَط بفئة المحرف", junkChars(utf16).length > 0);
+selfTest("ولا محرف حشوٍ في نصّ سليم", junkChars(probeOf("ar") ?? "").length === 0);
+
+mustScan("نصوص مفحوصة · values inspected", valuesInspected, 4000);
+mustScan("مقارنات بشاهد · witnessed comparisons", witnessedComparisons, 3000);
+info("مقاطع أجنبية غير آلية · non-machine foreign runs: " + foreignRunsSeen);
+
+if (mojibake.length) {
+  bad(
+    "قيمة مشوّهة الترميز — رُمِّزت UTF-8 وقُرئت Latin-1 · " +
+      "a value that is UTF-8 bytes read as Latin-1",
+    mojibake,
+    true
+  );
+} else ok("لا قيمة مشوّهة الترميز في أي لغة · no value is another text's bytes");
+
+if (wrongScript.length) {
+  bad(
+    "قيمة ليست بخطّ لغتها — والمفتاح مفتاح نثر بشهادة لغة أخرى · " +
+      "a value not in its locale's script, where a witness locale proves the key is prose",
+    wrongScript,
+    true
+  );
+} else ok("كل قيمة نثرٍ مكتوبة بخطّ لغتها · every prose value is written in its locale's script");
+
+if (junk.length) {
+  bad(
+    "محرف لا يُرسم ولا يعني داخل قيمة — تحكّمٌ أو بديلٌ أو غير مخصَّص · " +
+      "a control, surrogate, private-use or unassigned character inside a value",
+    junk,
+    true
+  );
+} else ok("لا محرف حشوٍ في أي قيمة · no junk character in any value");
+
+if (unlicensedForeign.length) {
+  bad(
+    "مقطع أجنبيّ غير آليّ لا تصدّقه لغةٌ أخرى — والإذن مغلق: اكتب المقطع في " +
+      "المصدر إن كان رمزاً مقصوداً · an unlicensed non-machine foreign run",
+    unlicensedForeign,
+    true
+  );
+} else ok("كل مقطع أجنبيّ غير آليّ مصدَّقٌ بلغةٍ أخرى · every non-machine foreign run is corroborated");
+
+if (copiedSource.length) {
+  bad(
+    "قيمة منسوخة عن المصدر حرفاً بحرف — نسخٌ لا ترجمة · " +
+      "a value copied verbatim from the source is not a translation",
+    copiedSource,
+    true
+  );
+} else ok("لا عبارة (ثلاث كلمات فأكثر) منسوخة عن العربية · no phrase copied verbatim from Arabic");
 
 /* ═════════════════════════════ الخلاصة ═════════════════════════════════ */
 head("الخلاصة · summary");

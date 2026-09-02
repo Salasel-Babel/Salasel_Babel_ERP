@@ -32,10 +32,29 @@ jobs:
       - name: التحقق من البيانات التأسيسية / validate the seed data
         run: dotnet run --project tools/matrix-validator -- --data data
 
+      # ‏**هنا قِيس العطل.** كان هذا السطر يحمل `--nologo`، و`global.json` يُدخل المستودع
+      # كلَّه في `Microsoft.Testing.Platform` الذي يرفض خيارات حقبة VSTest. فكانت الخطوة
+      # تُشغّل **صفر اختبارات** كل يوم على `develop`:
+      #   ‏`Zero tests ran · Exit code: 5 · total: 0 · non-success exit code: 1`
+      # وحارسٌ بُني على **قائمة الخيارات المرفوضة** هُزم مرّتين في يوم واحد — بنقل
+      # ‏`--nologo` إلى سطر استمرارٍ داخل `run: |` فلم يعد السطر يحوي `dotnet test`،
+      # وبـ`--diag` الذي يُنتج فشلاً مطابقاً وليس في القائمة. فالقائمة ذهبت، وحلّ محلّها
+      # سؤالٌ عن **النتيجة**: تقريرٌ موجود، وعددُ ما نُفِّذ عند الأرضية أو فوقها.
+      # (‏docs/evidence/traps.md#fakh-a-remedy-that-is-a-list-is-not-a-remedy)
+      - name: ختم مجلّد التقارير / stamp the report directory
+        run: tools/test-tally/run.sh --begin
+
       # ‏dotnet test لا يقبل مجلداً: يجب --project أو --solution. كان السطر السابق يفشل
       # فوراً، ولم يُلاحَظ لأن الخطوة التي قبله كانت حمراء أصلاً (المشروع لا يُبنى).
       - name: اختبارات أداة التحقق / validator tests
-        run: dotnet test --project tools/matrix-validator/tests/MatrixValidator.Tests.csproj --nologo
+        run: >-
+          dotnet test --project tools/matrix-validator/tests/MatrixValidator.Tests.csproj
+          --report-xunit-trx --results-directory artifacts/test-reports
+          --minimum-expected-tests 40 --zero-tests-policy strict
+
+      - name: الحصيلة — هل نُفِّذ ما يدّعي هذا السير تنفيذه
+        if: always()
+        run: tools/test-tally/run.sh --job data-validation.yml:validate
 
       - name: تقرير JSON للمرفقات / JSON report artefact
         if: always()

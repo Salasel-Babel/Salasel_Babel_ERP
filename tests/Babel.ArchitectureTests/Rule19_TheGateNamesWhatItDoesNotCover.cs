@@ -46,12 +46,19 @@ public sealed partial class Rule19_TheGateNamesWhatItDoesNotCover
             "يحتاج node_modules — خلف --with-frontend"),
         ("npm run lint",
             "يحتاج node_modules — خلف --with-frontend"),
-        ("npm test",
-            "يحتاج node_modules — خلف --with-frontend"),
+        // ‏**والمُبلِّغان ليسا زينة:** الافتراضي لقارئ السجلّ، وJSON لتقرأه الحصيلة —
+        // ‏`tools/test-tally/run.sh` تسأل مُخرَج التشغيل لا نصّ الأمر، فتلتقط أي خيارٍ
+        // أو مُغلِّفٍ أو سطر استمرارٍ يجعل المجموعة تُنفّذ صفراً أو تنكمش، بلا قائمةِ
+        // خياراتٍ تُهزَم بأوّل بندٍ لم يخطر لكاتبها.
+        // (‏docs/evidence/traps.md#fakh-a-remedy-that-is-a-list-is-not-a-remedy)
+        ("npm test -- --reporter=default --reporter=json --outputFile.json=\"$GITHUB_WORKSPACE/artifacts/test-reports/web-unit.json\"",
+            "يحتاج node_modules — خلف --with-frontend، وتُشغّله البوّابة بالصيغة نفسها بمسار جذرها"),
         ("npx playwright install --with-deps chromium",
             "تنزيل متصفّح — لا يُدفع محلياً، ولا يُقاس إلا في التكامل المستمر"),
-        ("npx playwright test",
+        ("npx playwright test --reporter=list,json,html",
             "مصفوفة العرض تحتاج متصفّحاً و`dist/` — التكامل المستمر وحده"),
+        ("tools/test-tally/run.sh --job web.yml:rendering-matrix",
+            "حصيلة المصفوفة — لا معنى لها محلياً لأن المصفوفة نفسها لا تُشغَّل في البوّابة"),
     ];
 
     /// <summary>

@@ -40,7 +40,7 @@ jobs:
       # ‏`--nologo` إلى سطر استمرارٍ داخل `run: |` فلم يعد السطر يحوي `dotnet test`،
       # وبـ`--diag` الذي يُنتج فشلاً مطابقاً وليس في القائمة. فالقائمة ذهبت، وحلّ محلّها
       # سؤالٌ عن **النتيجة**: تقريرٌ موجود، وعددُ ما نُفِّذ عند الأرضية أو فوقها.
-      # (‏docs/evidence/traps.md#fakh-the-remedy-was-a-list-and-the-list-was-short)
+      # (‏docs/evidence/traps.md#fakh-a-remedy-that-is-a-list-is-not-a-remedy)
       - name: ختم مجلّد التقارير / stamp the report directory
         run: tools/test-tally/run.sh --begin
 

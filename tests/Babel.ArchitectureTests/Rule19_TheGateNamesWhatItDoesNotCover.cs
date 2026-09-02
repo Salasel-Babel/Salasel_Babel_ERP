@@ -50,7 +50,7 @@ public sealed partial class Rule19_TheGateNamesWhatItDoesNotCover
         // ‏`tools/test-tally/run.sh` تسأل مُخرَج التشغيل لا نصّ الأمر، فتلتقط أي خيارٍ
         // أو مُغلِّفٍ أو سطر استمرارٍ يجعل المجموعة تُنفّذ صفراً أو تنكمش، بلا قائمةِ
         // خياراتٍ تُهزَم بأوّل بندٍ لم يخطر لكاتبها.
-        // (‏docs/evidence/traps.md#fakh-the-remedy-was-a-list-and-the-list-was-short)
+        // (‏docs/evidence/traps.md#fakh-a-remedy-that-is-a-list-is-not-a-remedy)
         ("npm test -- --reporter=default --reporter=json --outputFile.json=\"$GITHUB_WORKSPACE/artifacts/test-reports/web-unit.json\"",
             "يحتاج node_modules — خلف --with-frontend، وتُشغّله البوّابة بالصيغة نفسها بمسار جذرها"),
         ("npx playwright install --with-deps chromium",

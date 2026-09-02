@@ -40,7 +40,7 @@ namespace Babel.ArchitectureTests;
 /// الاختبارات <b>نُفِّذت فعلاً</b> فليس هنا أصلاً: هو في <c>tools/test-tally/run.sh</c>،
 /// الذي يقرأ <b>ما أنتجه التشغيل</b> — تقريرٌ موجود، وعددُ ما نُفِّذ عند الأرضية أو
 /// فوقها، وصفرُ إخفاق — ولا يبالي بأيّ خيارٍ سبّب النقص.
-/// (‏<c>docs/evidence/traps.md#fakh-the-remedy-was-a-list-and-the-list-was-short</c>)
+/// (‏<c>docs/evidence/traps.md#fakh-a-remedy-that-is-a-list-is-not-a-remedy</c>)
 /// </para>
 /// </summary>
 public sealed class Rule20_EveryJobIsClassifiedForTests

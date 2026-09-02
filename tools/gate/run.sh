@@ -96,7 +96,7 @@ done
 # إلى خروجٍ بالرمز 9 يسمّي ما نُفِّذ وما كان مُنتظَراً؛ و`--zero-tests-policy strict`
 # تجعل مجموعةً كلُّ اختباراتها متخطّاة سقوطاً (رمز 8) لا نجاحاً؛ و`--report-xunit-trx`
 # هو ما تقرأه الحصيلة في الخطوة ٤-ب. والختم قبلها يمنع بقايا تشغيلٍ سابق من أن تُرضيها.
-# (‏docs/evidence/traps.md#fakh-the-remedy-was-a-list-and-the-list-was-short)
+# (‏docs/evidence/traps.md#fakh-a-remedy-that-is-a-list-is-not-a-remedy)
 step "٣ · الحدود المعمارية"
 tools/test-tally/run.sh --begin || fail "ختم مجلّد التقارير"
 dotnet test --project tests/Babel.ArchitectureTests/Babel.ArchitectureTests.csproj \

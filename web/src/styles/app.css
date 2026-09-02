@@ -194,7 +194,19 @@ table.tb thead th {
   font-weight: var(--font-weight-semibold);
   white-space: nowrap;
   text-align: center;
+  /* الحشوة صفرٌ **لأن الزرّ داخلها يملأ الخليّة ويحملها** — وهو الترتيب الذي
+     يجعل كامل الرأس منطقةَ فرزٍ قابلة للنقر (القاعدة التالية). */
   padding: 0;
+}
+/* ورأسٌ **بلا زرّ** لا يحمل حشوةً من أحد، فينهار.
+   مقيس على ad2ff14: `ContractScreen` يعرض ثلاثة رؤوسٍ بلا أزرار، فقاس صفُّ
+   الرأس 20.19 بكسل تحت صفوفٍ قياسها 35.39 — نسبةُ رأسٍ إلى جسمٍ 0.57، أي
+   رأسٌ أنحف من سطره. والعلاج يستعيد الحشوة نفسها التي يعطيها الزرّ، لا حشوةً
+   ثانية، فيتساوى الرأسان مهما اختلف محتواهما.
+   و`:has()` مدعومة في المتصفّحات الأربعة منذ 2023؛ وحيث لا تُدعَم تُهمَل
+   القاعدة كاملةً فيعود السلوك إلى ما هو عليه اليوم بالضبط — تدهورٌ لطيف. */
+table.tb thead th:not(:has(button)) {
+  padding: var(--space-8) var(--space-10);
 }
 table.tb thead th button {
   display: flex;
@@ -353,7 +365,7 @@ kbd {
   direction: ltr;
   unicode-bidi: isolate;
   min-inline-size: 1.6em;
-  padding: 1px var(--space-6);
+  padding: var(--space-2) var(--space-6);
   border: var(--border-width) solid var(--color-border-strong);
   border-radius: var(--radius-xs);
   background: var(--color-surface-sunken);

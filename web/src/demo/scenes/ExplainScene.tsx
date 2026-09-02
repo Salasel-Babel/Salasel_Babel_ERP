@@ -91,10 +91,10 @@ export function ExplainScene(): ReactNode {
                         <td>
                           <span className="demo-code">{code}</span> {row.nameAr}
                         </td>
-                        <td className={row.debit === 0n ? "demo-zero" : "demo-debit"}>
+                        <td className={"n " + (row.debit === 0n ? "demo-zero" : "demo-debit")}>
                           <Amount value={money(row.debit)} />
                         </td>
-                        <td className={row.credit === 0n ? "demo-zero" : "demo-credit"}>
+                        <td className={"n " + (row.credit === 0n ? "demo-zero" : "demo-credit")}>
                           <Amount value={money(row.credit)} />
                         </td>
                       </tr>
@@ -129,7 +129,7 @@ export function ExplainScene(): ReactNode {
                         <td className="demo-code">#{c.entry.entryNo}</td>
                         <td className="demo-code">{c.entry.entryDate}</td>
                         <td>{c.entry.memoAr}</td>
-                        <td className="demo-debit">
+                        <td className="n demo-debit">
                           <Amount value={money(c.amount)} />
                         </td>
                       </tr>
@@ -168,10 +168,10 @@ export function ExplainScene(): ReactNode {
                           <span className="demo-code">{line.accountCode}</span> {line.accountName}
                         </td>
                         <td className="demo-code">{line.roleCode}</td>
-                        <td className={line.debit === "0.0000" ? "demo-zero" : "demo-debit"}>
+                        <td className={"n " + (line.debit === "0.0000" ? "demo-zero" : "demo-debit")}>
                           <Amount value={wire(line.debit)} />
                         </td>
-                        <td className={line.credit === "0.0000" ? "demo-zero" : "demo-credit"}>
+                        <td className={"n " + (line.credit === "0.0000" ? "demo-zero" : "demo-credit")}>
                           <Amount value={wire(line.credit)} />
                         </td>
                       </tr>

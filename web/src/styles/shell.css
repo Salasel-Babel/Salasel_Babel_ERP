@@ -74,7 +74,7 @@
   margin-inline-start:auto; flex:none;
   font-size:var(--font-size-3xs); font-weight:var(--font-weight-semibold);
   color:var(--color-text-subtle);
-  padding:1px var(--space-6); border-radius:var(--radius-pill);
+  padding:var(--space-2) var(--space-6); border-radius:var(--radius-pill);
   border:var(--border-width) solid var(--edge-line);
 }
 
@@ -124,7 +124,15 @@
 .cmdk__search input{
   flex:1 1 auto; min-inline-size:0;
   border:0; background:transparent; color:var(--color-text);
-  font-size:var(--font-size-2xl); outline:0;
+  font-size:var(--font-size-2xl);
+  /* **ولا `outline:0` مطلقة هنا.** كانت تنزع مؤشّر التركيز عن الحقل الذي
+     تفتح عليه اللوحة **بلا بديل** — فمن يتنقّل بلوحة المفاتيح لا يرى أين هو.
+     والنزع الآن مشروطٌ بأن يكون التركيز **غير مرئي** (فأرة)، ويبقى الإطار
+     لمن يستحقّه؛ ومقلوبٌ إلى الداخل لأن الحقل ملاصقٌ لحافّة اللوحة. */
+}
+.cmdk__search input:focus:not(:focus-visible){ outline:0 }
+.cmdk__search input:focus-visible{
+  outline:var(--border-width-accent) solid var(--color-focus); outline-offset:-2px;
 }
 .cmdk__list{ overflow:auto; overscroll-behavior:contain; padding:var(--space-6) }
 .cmdk__group{

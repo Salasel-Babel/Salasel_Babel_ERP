@@ -1,0 +1,135 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   قياسُ اللمس ورجعُ الضغط  ·  Touch targets and press feedback
+   ───────────────────────────────────────────────────────────────────────────
+   **لماذا ملفٌّ مستقلّ لا سطورٌ موزّعة:** القياس عقدٌ واحد على كل ما يُنقر،
+   وموزَّعاً على ثلاثين قاعدةً في أربعة ملفّات لا يستطيع أحد أن يقرأه ولا أن
+   يفرضه. وهنا يُقرأ في نظرة، ويفرضه `scripts/audit.mjs` §١٢ **بسجلٍّ مشتقٍّ
+   من `cursor:pointer` نفسه**: أي مكوّنٍ جديد يُعلن أنه يُنقر يدخل السجل من
+   نفسه، فيحمرّ الفحص حتى يُعطى قياسه. سطرٌ منسيٌّ هنا ليس نقصاً صامتاً.
+
+   **ولماذا القياس مشروطٌ بخشونة المؤشّر:**
+     · قِيس على `origin/develop@ad2ff14`: **لا عنصر تفاعلي واحد** يبلغ 44
+       بكسل في بُعده الأصغر، و**صفر** استعلام `pointer:coarse` في المستودع
+       كلّه (`artifacts/polish/rig.mjs`، كروميوم، RTL).
+     · ورفعُ `--control-h` من 38 إلى 44 يُعيد تدفّق **كل نموذجٍ وكل جدول**
+       في المنتج — وهو ثمنٌ لا يدفعه مستخدمُ فأرةٍ يُصيب 30 بكسل بلا خطأ.
+   فالقياس يُرفَع **حيث تُستعمل الإصبع**، ويبقى سطح المكتب كما اعتمده المالك:
+     · كل مؤشّر (WCAG 2.5.8 AA): لا هدف أصغر من `--touch-target-min` = 24.
+     · المؤشّر الخشن (WCAG 2.5.5): لا هدف أصغر من `--touch-target` = 44.
+
+   **ولا لونَ في هذا الملفّ.** عتبةُ التباين مقيسةٌ ومفروضة عند AA في
+   `scripts/contrast.mjs` (ADR-0059)، وهذا الملفّ مذكورٌ في `COMPONENT_FILES`
+   هناك فيمسحه حارسُ التغطية — ولو دخله لونٌ يوماً لَقيس نفسَه.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root{
+  /* 24 هو حدّ 2.5.8 (AA) لكل مؤشّر، و44 حدّ 2.5.5 للإصبع. والاثنان رمزان
+     لأن الحدّ عقدٌ يُقاس لا رقمٌ يُنسَخ. */
+  --touch-target-min:24px;
+}
+
+/* ═════════════════════ ١ · الحدّ الأدنى لكل مؤشّر — 24 بكسل (2.5.8 AA)
+   ما دون هذا كان يُقاس: مسارُ المفتاح 22 وخانةُ الاختيار 17. والمرسوم يبقى
+   كما هو — **الهدف يكبر لا الرسم**: التسمية هي ما يُنقر في كليهما. */
+.switch,
+.check{ min-block-size:var(--touch-target-min); align-items:center }
+
+/* ══════════════════════════ ٢ · المؤشّر الخشن — 44 بكسل (2.5.5)
+   السجلّ كاملاً، بالترتيب نفسه الذي يشتقّه الفحص من `cursor:pointer`. */
+@media (pointer:coarse){
+  /* الأزرار والرقاقات والتبويبات */
+  .btn,
+  .addline,
+  .chip,
+  .tab,
+  .seg button,
+  .iconbtn,
+  .orgpick,
+  .rowmenu > button,
+  th.sortable > button,
+  table.tb thead th button,
+  .pager .pagebtn,
+  .aq__opt,
+  .pager .sizepick select{ min-block-size:var(--touch-target) }
+
+  /* ما هو مربّعٌ بطبعه يكبر في البُعدين معاً، وإلّا صار شريطاً */
+  .iconbtn,
+  .rowmenu > button,
+  .pager .pagebtn{ min-inline-size:var(--touch-target) }
+
+  /* الحقول والخلايا — `.ctl-sm` مذكورٌ صراحةً لأنه يُصغِّر ما يُكبِّره هذا */
+  .ctl,
+  .ctl-sm,
+  select.ctl,
+  .cell,
+  select.cell{ min-block-size:var(--touch-target) }
+
+  /* التنقّل والقوائم */
+  .navitem,
+  .subitem,
+  .menu button,
+  .menu a,
+  .picker-opt,
+  .cmdk__item{ min-block-size:var(--touch-target) }
+
+  /* المفتاح وخانة الاختيار: التسمية هي الهدف، والمرسوم يبقى بقياسه */
+  .switch,
+  .check{ min-block-size:var(--touch-target) }
+
+  /* أقسامٌ تُنقر في الشاشات */
+  .con-card,
+  .hr-open,
+  .voicedock,
+  .vc-hold,
+  .vc-manual-apply,
+  .vcx-section{ min-block-size:var(--touch-target) }
+
+  /* صفُّ دفترٍ يُختار باللمس — الخليّة الأولى تحمل ارتفاع الصفّ */
+  .ledger tbody tr[aria-selected] td:first-child{ min-block-size:var(--touch-target) }
+}
+
+/* ═══════════════════════════════ ٣ · رجعُ الضغط · press feedback
+   كان `:active` معرَّفاً **لمحدِّدٍ واحد** في النظام كلّه (`.btn`). وما لا
+   يتحرّك تحت الإصبع يُقرأ «لم يصل الضغط»، فيُضغط ثانيةً — وفي منتجٍ محاسبي
+   الضغطة الثانية قد تكون ترحيلاً ثانياً.
+
+   **والإزاحةُ بكسلٌ واحد ولا لون فيها**: عتبة التباين مقيسةٌ ومفروضة، ورجعٌ
+   يُغيّر لوناً يُدخل زوجاً غير مقيس. و`translateY` عموديّة فلا تعرف اتجاهاً،
+   ولا تحتاج `--flip-x`.
+
+   **وما لا رجعَ له هنا** — `select` و`input[type=checkbox]` و`.ctl` و`.cell` —
+   عناصرُ نموذجٍ أصليّة يرسم المتصفّح ضغطها بنفسه، وإزاحةُ حقلِ نصٍّ تحت
+   المؤشّر تُقرأ عطلاً لا رجعاً. وهي مستثناةٌ **بالاسم ومعها سببها** في
+   `scripts/audit.mjs` §١٢. */
+.btn:active,
+.addline:active,
+.chip:active:not([data-used="true"]),
+.tab:active,
+.seg button:active,
+.iconbtn:active,
+.orgpick:active,
+.rowmenu > button:active,
+th.sortable > button:active,
+table.tb thead th button:active,
+.pager .pagebtn:active:not(:disabled),
+.navitem:active,
+.subitem:active,
+.menu button:active,
+.menu a:active,
+.picker-opt:active,
+.cmdk__item:active:not([aria-disabled="true"]),
+.switch:active,
+.check:active,
+.con-card:active,
+.hr-open:active,
+.voicedock:active,
+.vc-hold:active,
+.vc-manual-apply:active,
+.vcx-section:active,
+.aq__opt:active,
+.ledger tbody tr[aria-selected] td:first-child:active{ transform:translateY(1px) }
+
+/* المعطَّل لا يرتدّ: رجعٌ على زرٍّ لا يعمل وعدٌ كاذب. */
+.btn:disabled:active,
+.btn[aria-disabled="true"]:active,
+.iconbtn:disabled:active{ transform:none }

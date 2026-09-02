@@ -1,3 +1,4 @@
+using System.Globalization;
 using Babel.SharedKernel;
 
 namespace Babel.Ai.Workspace;
@@ -90,6 +91,68 @@ public static class AgentWorkspaceErrors
         CodePrefix + "human_did_not_answer",
         "انقضى انتظار جواب المستخدم فتوقّفت الخطوة. وهذا توقّفٌ لا سقوط: أعِد الطلب حين تكون حاضراً.",
         "the wait for the user's answer elapsed and the step stopped.");
+
+    /// <summary>
+    /// لا شاشةَ مُعلَنة لهذه العملية — <b>ولا يُخترع مسار</b>.
+    /// <para>
+    /// وحارسُ <c>EveryDraftOperationHasAScreenToLandOn</c> يجعل هذا الرفض غير قابلٍ
+    /// للوقوع في بناءٍ أخضر: عمليةٌ تُنشر بلا صفٍّ في الخريطة تُحمِّر البناء قبل أن
+    /// تصل إلى مستخدم. وبقاؤه هنا لأن الشيفرة لا تعتمد على حارسٍ لتكون صحيحة.
+    /// </para>
+    /// </summary>
+    /// <param name="operationId">معرّف العملية.</param>
+    public static Error DraftHasNoScreenToLandOn(string operationId) => new(
+        CodePrefix + "draft_has_no_screen",
+        "المسوّدة «" + operationId + "» لا شاشةَ مُعلَنة لها في هذا الإصدار، فلا يُفتح لها زرّ. "
+        + "وهذا نقصُ خريطةٍ مُعلَن لا عطل: أنشئ المستند من شاشته.",
+        "the draft '" + operationId + "' has no declared screen in this build, so no button opens it.");
+
+    /// <summary>مسارُ الباب فيه وسيطٌ لا يملك مسارُ الوكيل ما يملؤه به.</summary>
+    /// <param name="operationId">معرّف العملية.</param>
+    /// <param name="path">المسار المنشور.</param>
+    /// <param name="parameter">اسم الوسيط الذي بقي فارغاً.</param>
+    public static Error DraftPathParameterIsUnfilled(string operationId, string path, string parameter) => new(
+        CodePrefix + "draft_path_parameter_unfilled",
+        "مسارُ «" + operationId + "» — " + path + " — يحتاج وسيط «" + parameter
+        + "» ولا يملك مسار الوكيل ما يملؤه به. والوكيل لا يخترع معرّفاً في مسار.",
+        "the path of '" + operationId + "' needs the '" + parameter
+        + "' parameter, which the agent's path cannot fill.");
+
+    /// <summary>لا بابَ منشوراً بهذا المسار وهذا الفعل في جدول مسارات هذا الخادم.</summary>
+    /// <param name="operationId">معرّف العملية.</param>
+    /// <param name="path">المسار المنشور.</param>
+    public static Error DraftDoorIsNotOnThisServer(string operationId, string path) => new(
+        CodePrefix + "draft_door_not_on_this_server",
+        "لا بابَ مسجَّلاً على هذا الخادم بمسار «" + path + "» لعملية «" + operationId
+        + "». وهذا انحرافُ تركيبٍ بين العقد المنشور وما رُكِّب فعلاً، لا خطأٌ في طلبك.",
+        "no endpoint is mapped on this server at '" + path + "' for '" + operationId + "'.");
+
+    /// <summary>ردّ الباب برمز حالةٍ رافض وجسمُه لا يحمل رفضاً مُسمّى.</summary>
+    /// <param name="operationId">معرّف العملية.</param>
+    /// <param name="status">رمز الحالة.</param>
+    public static Error DraftRefusalIsUnreadable(string operationId, int status) => new(
+        CodePrefix + "draft_refusal_unreadable",
+        "ردّ بابُ «" + operationId + "» بالحالة " + status.ToString(CultureInfo.InvariantCulture)
+        + " وجسمُه لا يحمل رفضاً مُسمّى. ولم تهبط مسوّدة.",
+        "the door of '" + operationId + "' answered with status "
+        + status.ToString(CultureInfo.InvariantCulture) + " and a body that carries no named refusal.");
+
+    /// <summary>انقطع نداءُ الباب بعطلٍ برمجي — ولا مسوّدة.</summary>
+    /// <param name="operationId">معرّف العملية.</param>
+    /// <param name="fault">اسم نوع العطل — <b>ولا نصّه</b>: نصُّ استثناءٍ يسرّب داخل الخادم.</param>
+    public static Error DraftCallBroke(string operationId, string fault) => new(
+        CodePrefix + "draft_call_broke",
+        "انقطع نداءُ «" + operationId + "» بعطلٍ في الخادم: " + fault + ". ولم تهبط مسوّدة. "
+        + "أعِد المحاولة، وإن تكرّر فالعطل ليس في طلبك.",
+        "the call to '" + operationId + "' broke with a server fault: " + fault + "; no draft landed.");
+
+    /// <summary>لا هويّةَ إنسانٍ محفوظة لهذه الجلسة، فلا يُنسب إليها مستند.</summary>
+    public static Error DraftHasNoHumanToAttributeTo { get; } = new(
+        CodePrefix + "draft_has_no_human",
+        "لا هويّةَ إنسانٍ محفوظة لهذه الجلسة على هذا الخادم، والمسوّدة تُنسب إلى إنسانٍ لا إلى وكيل. "
+        + "أعِد فتح مساحة العمل وأرسل طلبك من جديد.",
+        "no human identity is held for this session on this server, and a draft is attributed to a human, "
+        + "never to an agent.");
 
     /// <summary>لا منفّذ مسوّداتٍ مركَّب على هذا الخادم.</summary>
     public static Error DraftDestinationUnavailable { get; } = new(

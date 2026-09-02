@@ -172,6 +172,20 @@ internal static class BabelApiHost
             // تسمّي `INameCandidateSheetSource` بحرفٍ واحد، فحقنُ منفذ الجَرد في مسار
             // النموذج لا يقع سهواً في سطر: لا يوجد هناك ملفٌّ يستطيع أن يكتبه.
             builder.Services.AddScoped<IAgentQuestionSheets, AgentQuestionSheetDesk>();
+
+            // ── ومنفّذ المسوّدات: **الباب المنشور نفسه، لا مسارٌ جانبي** ───────────
+            //
+            // ‏`AddBabelAgentWorkspace` تلفّ `IAgentPublishedSurface` إن وُجد، وتردّ
+            // بالرفض المُسمّى إن لم يوجد. وهو يُسجَّل هنا لا هناك لأن جدول المسارات
+            // يعيش في هذا المشروع، والقاعدة 3 تمنع `Babel.Ai` من أن تراه.
+            //
+            // ‏**ولا مفتاح ولا مضيف ولا منفذ في هذا السطر ولا في تنفيذه**: النداء يقع
+            // على `RequestDelegate` الطرف نفسه في هذه العملية، بهوية إنسان الجلسة كما
+            // حلّها وسيط المصادقة من اعتماده — لا باعتمادٍ ثانٍ يُصدَّر ويُحمل.
+            builder.Services.AddSingleton<AgentSessionHumans>();
+            builder.Services.AddSingleton<PublishedEndpointAgentSurface>();
+            builder.Services.AddSingleton<IAgentPublishedSurface>(
+                static provider => provider.GetRequiredService<PublishedEndpointAgentSurface>());
         }
 
         // ── حدّ المعدّل على الأبواب المفتوحة ─────────────────────────────────────
@@ -204,6 +218,12 @@ internal static class BabelApiHost
         app.MapAttachmentApi();
         app.MapAgentApi();
         app.MapDocsApi();
+
+        // ── جدول المسارات يُسلَّم إلى سطح الوكيل **بعد أن يكتمل** ────────────────
+        // وموضعُ هذا السطر هو الشرط: منفّذُ المسوّدات ينادي أطرافاً سُجّلت أعلاه، ولو
+        // قرأ الجدولَ قبل اكتماله لوجد أبواباً ناقصة فردّ «لا بابَ على هذا الخادم» على
+        // عمليةٍ منشورة موجودة.
+        app.Services.GetService<PublishedEndpointAgentSurface>()?.Attach(app);
 
         return app;
     }

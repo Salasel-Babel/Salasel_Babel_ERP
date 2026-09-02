@@ -18,6 +18,7 @@
    بالعقد المنشور: اسمُ عمليةٍ تبدأ بـ`post` — أو توقيعٌ أو اعتماد — يُحمِّر بوّابة.
    ═══════════════════════════════════════════════════════════════════════════ */
 import type { VoiceDispatch, SpokenSlotValue } from "./command";
+import type { VoiceSlot } from "./catalogue";
 
 /** حقلٌ في المسوّدة كما وصل من الكلام: اسمُه العربي، وقيمتُه، **ومصدرُه**. */
 export interface VoiceDraftField {
@@ -33,6 +34,40 @@ export interface VoiceDraftField {
   readonly provenance: string;
   /** المقطع من الكلام الذي أنتج القيمة — يُعرض كي يرى الإنسان **لماذا**. */
   readonly heard: string;
+  /**
+   * **هل يجب أن تُحلّ هذه القيمة إلى معرّف صفٍّ واحد قبل أن تغادر الشاشة؟**
+   *
+   * الطبقة الأولى (حكمُ المقطع في القارئ) مرشّحٌ رخيص يحوّل أعلى الضجيج إلى رفضٍ
+   * عند الميكروفون، **وله ثقبٌ لا يُسدّ بلا معجم**: ثلاث كلمات عربية غير مشكولة
+   * لا يفصل بينها اسماً وبين اسمٍ يتبعه ذيلُ إسنادٍ قصيرٍ أيُّ قاعدةٍ إملائية.
+   *
+   * وهذه الطبقة هي المناعة **البنيوية**: القيمة المنطوقة **اسم**، والشاشة تملك
+   * القوائم والمُنتقِيات فتحلّه إلى **معرّف** أمام عين الإنسان. و«شركة المسار
+   * الامثل وانشئ لها حسابا» **لا يطابق صفّاً واحداً**، و«مؤسسة الرياض» يطابق
+   * واحداً بعينه. فالمجموعةُ المغلقة التي لا يُتحايَل عليها بتسميةِ ما لم يخطر
+   * لأحد هي **صفوف المنشأة نفسها** لا قائمةُ كلماتٍ في شيفرة.
+   *
+   * وصفرُ مطابقاتٍ أو أكثرُ من واحدة **رفضٌ مُسمّى** — لا طرفٌ نصّيّ حرّ، ولا
+   * «أنشئ جديداً» مملوءاً سلفاً بما نُطق.
+   */
+  readonly requiresResolution: boolean;
+}
+
+/**
+ * **شرائح النصّ الحرّ — القائمة المغلقة الوحيدة هنا، وقطبُها آمن.**
+ *
+ * ما ليس فيها من شرائح `Text` **يلزمه حلٌّ إلى معرّف**. أي أن شريحةً جديدة تُضاف
+ * غداً تبدأ **مطلوبةَ الحلّ افتراضاً**: النسيان يُنتج تشدّداً لا تساهلاً — وذلك
+ * قطبُ القائمة الصحيح، وهو ما يفرق بين مجموعةٍ مغلقة تملكها وقائمةِ محظوراتٍ تعدّها.
+ */
+export const FREE_TEXT_SLOTS: readonly string[] = ["description", "reason"];
+
+/**
+ * هل تلزم هذه الشريحة حلّاً إلى معرّف صفّ؟
+ * @param slot الشريحة كما أعلنتها الوحدة المالكة.
+ */
+export function requiresResolution(slot: VoiceSlot): boolean {
+  return slot.kind === "Text" && !FREE_TEXT_SLOTS.includes(slot.name);
 }
 
 /** مسوّدةٌ مؤكَّدة، جاهزةٌ لتُسلَّم إلى شاشة مستندها. */
@@ -53,7 +88,7 @@ export interface VoiceDraftHandoff {
   readonly fields: readonly VoiceDraftField[];
 }
 
-function fieldOf(value: SpokenSlotValue, nameAr: string): VoiceDraftField {
+function fieldOf(value: SpokenSlotValue, nameAr: string, needsResolution: boolean): VoiceDraftField {
   return {
     name: value.name,
     nameAr,
@@ -61,6 +96,7 @@ function fieldOf(value: SpokenSlotValue, nameAr: string): VoiceDraftField {
     unit: value.unit ?? null,
     provenance: value.provenance,
     heard: value.heard ?? "",
+    requiresResolution: needsResolution,
   };
 }
 
@@ -73,8 +109,8 @@ export function handoffOf(dispatch: VoiceDispatch): VoiceDraftHandoff | null {
   const operationId = dispatch.intent.operationId;
   if (operationId === null) return null;
 
-  const nameOf = (name: string): string =>
-    dispatch.intent.slots.find((slot) => slot.name === name)?.nameAr ?? name;
+  const slotOf = (name: string): VoiceSlot | undefined =>
+    dispatch.intent.slots.find((slot) => slot.name === name);
 
   return {
     intentId: dispatch.intent.id,
@@ -82,8 +118,21 @@ export function handoffOf(dispatch: VoiceDispatch): VoiceDraftHandoff | null {
     section: dispatch.intent.section,
     operationId,
     companyId: dispatch.companyId,
-    fields: dispatch.slots.map((value) => fieldOf(value, nameOf(value.name))),
+    /* شريحةٌ لا يعرفها السجلّ **تلزمها الحلّ**: النسيان يُنتج تشدّداً لا تساهلاً. */
+    fields: dispatch.slots.map((value) => {
+      const slot = slotOf(value.name);
+      return fieldOf(value, slot?.nameAr ?? value.name, slot ? requiresResolution(slot) : true);
+    }),
   };
+}
+
+/**
+ * الحقول التي **لا يجوز أن تغادر الشاشة نصّاً**: على الشاشة أن تحلّ كلاً منها إلى
+ * معرّف صفٍّ واحد بمُنتقٍ أمام الإنسان، وأن ترفض باسمه عند صفر مطابقاتٍ أو أكثر من واحدة.
+ * @param handoff التسليم.
+ */
+export function fieldsAwaitingResolution(handoff: VoiceDraftHandoff): readonly VoiceDraftField[] {
+  return handoff.fields.filter((field) => field.requiresResolution);
 }
 
 /* ── الحافظة بين الشاشتين ──────────────────────────────────────────────────

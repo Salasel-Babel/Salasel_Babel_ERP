@@ -114,7 +114,7 @@ dotnet test --project tests/Babel.ArchitectureTests/Babel.ArchitectureTests.cspr
 step "٤ · كل الاختبارات"
 dotnet test --solution Babel.slnx -c "$configuration" --no-build \
     --report-xunit-trx --results-directory artifacts/test-reports \
-    --minimum-expected-tests 1935 --zero-tests-policy strict || fail "مجموعة الاختبارات"
+    --minimum-expected-tests 1967 --zero-tests-policy strict || fail "مجموعة الاختبارات"
 
 # ── ٤-ب · الحصيلة — ما نُفِّذ فعلاً ────────────────────────────────────────────
 # ‏**لا تقرأ خياراً ولا سطر أمر.** تسأل مُخرَج التشغيل: لكل سطحٍ يعلنه
@@ -162,6 +162,7 @@ if [ "$frontend" = "full" ]; then
     ( cd web && npm ci )        || fail "npm ci"
     ( cd web && npm run build ) || fail "بناء الواجهة"
     ( cd web && npm run lint )  || fail "قواعد الحدّ (ESLint)"
+
     # نفس ما يفعله web.yml حرفاً بحرف: مُبلِّغ JSON تقرأه الحصيلة، ثم الحصيلة.
     # ‏`passWithNoTests: false` يمنع الصفر ولا يمنع الانكماش؛ الأرضية تمنعه.
     ( cd web && npm test -- --reporter=default --reporter=json \
@@ -177,7 +178,7 @@ if [ "$frontend" = "full" ]; then
     # على النظام ورآه بعينه: 99.30px على /hr/end-of-service بالإنجليزية عند
     # 1024px. يفتح 21 شاشة × 8 ممرّات (لغتان اتّجاهاً · سمتان · 1440 و1024
     # و390) ويقيس كل صفّ، ويسقط باسم الشاشة والفرق بالبكسل.
-    # (ADR-جديد-the-row-owns-the-tracks · traps.md#fakh-every-field-measures-itself-alone)
+    # (ADR-0067-the-row-owns-the-tracks · traps.md#fakh-every-field-measures-itself-alone)
     ( cd web && npm run align ) || fail "حارس استقامة الصفوف (web: alignment)"
 else
     printf '\n── فحوص الواجهة التي تحتاج npm ci مُتخطّاة. أضف --with-frontend لتشغيلها.\n'

@@ -202,10 +202,7 @@
      في `.amt`، فقاس العشرة أرقام نفسها 84.30 مقابل 98.81 بكسل — 14.7٪ فرقاً
      بين عمود كمّيةٍ وعمود مبلغٍ في **دفترٍ واحد**. و`tabular-nums` يُسوّي
      داخل الوجه ولا يُسوّي بين وجهين. (tokens.css §الخط · مقيس)
-     والرمزان اثنان لأنهما شيئان: `--font-numeric-face` **المِحرف**،
-     و`--font-numeric` **الطلب**. وقد كانا اسماً واحداً في فرعين، فكان
-     `font-family:var(--font-numeric)` يُحلّ إلى `tabular-nums` — أي وجهٌ
-     لا وجود له فيسقط إلى الموروث بصمت (فخ-135). */
+     والصيغة تبقى **رمزاً** لا قيمةً حرفية، فيبقى `numerals.mjs` حارساً. */
   font-family:var(--font-numeric-face); font-variant-numeric:var(--font-numeric);
   letter-spacing:var(--tracking-num);
   font-weight:var(--font-weight-semibold);

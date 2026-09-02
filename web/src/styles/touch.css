@@ -49,6 +49,7 @@
   th.sortable > button,
   table.tb thead th button,
   .pager .pagebtn,
+  .aq__opt,
   .pager .sizepick select{ min-block-size:var(--touch-target) }
 
   /* ما هو مربّعٌ بطبعه يكبر في البُعدين معاً، وإلّا صار شريطاً */

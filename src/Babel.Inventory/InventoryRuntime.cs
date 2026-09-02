@@ -67,6 +67,7 @@ public static class InventorySchemaDeployer
     private static readonly string[] Migrations =
     [
         "001_LocationAndUnitEnterTheKey.sql",
+        "002_ThePlacementRegisterIsBornDescribing.sql",
     ];
 
     /// <summary>ينشئ مخطّط <c>inventory</c> وجداوله إن لم توجد، ثم يُطبّق نصوص الترقية.</summary>

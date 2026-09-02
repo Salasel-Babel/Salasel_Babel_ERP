@@ -156,3 +156,102 @@ public sealed record InventoryValuationReport(
     decimal Divergence,
     bool IsReconciled,
     IReadOnlyList<InventoryDivergence> Divergences);
+
+/// <summary>طلب تسجيل موضعٍ في هرم التسكين — مستودعاً أو موقعاً أو رفّاً.</summary>
+/// <param name="Code">رمز الموضع داخل مستواه — هوية تحملها الحركات، لا نصّاً معروضاً.</param>
+/// <param name="Name">الاسم ثنائي اللغة.</param>
+public sealed record InventoryStoragePlaceRequest(string Code, LocalizedName Name);
+
+/// <summary>طلب إعادة تسمية موضع — <b>الاسم وحده، ولا رمز فيه</b>.</summary>
+/// <param name="Name">الاسم الجديد.</param>
+public sealed record InventoryPlaceNameRequest(LocalizedName Name);
+
+/// <summary>موضعٌ في هرم التسكين كما يخرج من السطح.</summary>
+/// <param name="Id">المعرّف.</param>
+/// <param name="Level">المستوى: <c>WAREHOUSE</c> · <c>LOCATION</c> · <c>BIN</c>.</param>
+/// <param name="Code">الرمز.</param>
+/// <param name="Name">الاسم ثنائي اللغة.</param>
+/// <param name="ParentCode">رمز الأب — نصّ فارغ للمستودع.</param>
+/// <param name="IsActive">هل هو عامل؟</param>
+public sealed record InventoryStoragePlace(
+    Guid Id,
+    string Level,
+    string Code,
+    LocalizedName Name,
+    string ParentCode,
+    bool IsActive);
+
+/// <summary>طلب إنشاء مستند نقلٍ بين موقعين <b>مسوّدة</b>.</summary>
+/// <param name="Number">رقم المستند.</param>
+/// <param name="ItemId">رمز الصنف — واحدٌ على الطرفين.</param>
+/// <param name="ItemGroup">مجموعة الصنف — مؤهّل الدور.</param>
+/// <param name="FromWarehouseId">مستودع المصدر.</param>
+/// <param name="FromLocationId">موقع المصدر.</param>
+/// <param name="ToWarehouseId">مستودع الوجهة.</param>
+/// <param name="ToLocationId">موقع الوجهة.</param>
+/// <param name="Quantity">الكمّية بوحدتها.</param>
+/// <param name="OccurredOn">تاريخ النقل الميلادي.</param>
+public sealed record InventoryStockTransferRequest(
+    string Number,
+    string ItemId,
+    string ItemGroup,
+    string FromWarehouseId,
+    string FromLocationId,
+    string ToWarehouseId,
+    string ToLocationId,
+    InventoryMeasure Quantity,
+    DateOnly OccurredOn);
+
+/// <summary>مستند نقلٍ كما يخرج من السطح.</summary>
+/// <param name="Id">المعرّف.</param>
+/// <param name="Number">الرقم.</param>
+/// <param name="State">الحالة: <c>DRAFT</c> · <c>MOVED</c>.</param>
+/// <param name="ItemId">الصنف.</param>
+/// <param name="ItemGroup">مجموعة الصنف.</param>
+/// <param name="FromWarehouseId">مستودع المصدر.</param>
+/// <param name="FromLocationId">موقع المصدر.</param>
+/// <param name="ToWarehouseId">مستودع الوجهة.</param>
+/// <param name="ToLocationId">موقع الوجهة.</param>
+/// <param name="Quantity">الكمّية بوحدتها كما سُلّمت.</param>
+/// <param name="Value">قيمة المنقول بعد التنفيذ — <b>محسوبةٌ لا مُملاة، ولا تصل الدفتر</b>.</param>
+/// <param name="OccurredOn">تاريخ النقل.</param>
+/// <param name="AlreadyMoved">هل كانت هذه الهوية مُنفَّذة قبل هذا النداء؟</param>
+public sealed record InventoryStockTransfer(
+    Guid Id,
+    string Number,
+    string State,
+    string ItemId,
+    string ItemGroup,
+    string FromWarehouseId,
+    string FromLocationId,
+    string ToWarehouseId,
+    string ToLocationId,
+    InventoryMeasure Quantity,
+    decimal Value,
+    DateOnly OccurredOn,
+    bool AlreadyMoved);
+
+/// <summary>رصيدٌ مقروءٌ بتسكينه — ومعه اسم مستودعه واسم موقعه من السجلّ.</summary>
+/// <param name="ItemId">الصنف.</param>
+/// <param name="WarehouseId">رمز المستودع.</param>
+/// <param name="WarehouseName">اسم المستودع — أو رمزه إن لم يكن مسجَّلاً.</param>
+/// <param name="WarehouseRegistered">هل رمز المستودع مسجَّل في سجلّ التسكين؟</param>
+/// <param name="LocationId">رمز الموقع.</param>
+/// <param name="LocationName">اسم الموقع — أو رمزه إن لم يكن مسجَّلاً.</param>
+/// <param name="LocationRegistered">هل رمز الموقع مسجَّل في سجلّ التسكين؟</param>
+/// <param name="Quantity">الكمّية بوحدة أساسها — قد تكون سالبة.</param>
+/// <param name="Value">القيمة.</param>
+/// <param name="UnitCost">متوسط تكلفة الوحدة المتحرّك.</param>
+/// <param name="HasCostBasis">هل ورد هذا الصنف إلى هذا الموضع مرّةً بتكلفة؟</param>
+public sealed record InventoryPlacementBalance(
+    string ItemId,
+    string WarehouseId,
+    LocalizedName WarehouseName,
+    bool WarehouseRegistered,
+    string LocationId,
+    LocalizedName LocationName,
+    bool LocationRegistered,
+    InventoryMeasure Quantity,
+    decimal Value,
+    decimal UnitCost,
+    bool HasCostBasis);

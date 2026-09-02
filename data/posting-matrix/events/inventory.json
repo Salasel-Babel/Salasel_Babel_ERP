@@ -139,6 +139,40 @@
       ]
     },
     {
+      "event_code": "inventory.transfer.between_locations",
+      "name_ar": "نقل مخزني بين موقعين داخل المنشأة نفسها",
+      "name_en": "Stock transfer between two locations inside the same company",
+      "module": "inventory",
+      "status": "drafted",
+      "source_ref": "posting-matrix.md §3.2",
+      "trigger": {
+        "name_ar": "عند تنفيذ مستند النقل — ولا قيد إطلاقاً: النقل داخل المنشأة نفسها لا يغيّر قيمة المخزون",
+        "name_en": "On executing the transfer document — and no entry at all: a transfer inside the same company does not change the value of inventory"
+      },
+      "posts_entry": false,
+      "precondition": {
+        "name_ar": "الصنف واحد على الطرفين فمجموعته واحدة، ومؤهّل دور inventory_control هو مجموعة الصنف — فالحساب المدين هو الحساب الدائن بالمبلغ نفسه. وهذا هو الوجه الآخر لشرط inventory.transfer.between_warehouses حرفياً: «وإلا فلا قيد مالي إطلاقاً»",
+        "name_en": "The item is the same on both sides so its group is the same, and the qualifier for the inventory_control role is the item group — so the debited account is the credited account for the same amount. This is literally the other face of the precondition on inventory.transfer.between_warehouses: 'otherwise no financial entry is produced at all'"
+      },
+      "reversal": {
+        "name_ar": "نقل عكسي مستقل بمستند جديد — ولا شيء يُعكس في الدفتر لأنه لا قيد أصلاً",
+        "name_en": "A separate reverse transfer on a new document — and nothing to reverse in the ledger because there is no entry at all"
+      },
+      "caveats": [
+        {
+          "ref": "posting-matrix.md §3.2",
+          "text_ar": "ما يُولَّد بدل القيد: حركتان في دفتر المخزون المساعد — صادر برمز الحدث inventory.transfer.between_locations.issued ووارد برمز inventory.transfer.between_locations.received، بالقيمة نفسها التي خرجت. ورمزان لا رمز واحد لأن هوية الحركة سداسية ورمز الحدث فيها، وحركتان بالهوية نفسها تعني ابتلاع الثانية بصمت",
+          "text_en": "What is generated instead of an entry: two inventory subledger movements — an issue under event code inventory.transfer.between_locations.issued and a receipt under inventory.transfer.between_locations.received, at the very same value that left. Two codes and not one because movement identity is a sextuple with the event code in it, and two movements under one identity means the second is silently swallowed"
+        },
+        {
+          "ref": "posting-matrix.md بند مفتوح 7",
+          "text_ar": "⚠️ النقل بين مستودعين يظلّ محكوماً بـ inventory.transfer.between_warehouses وبنده المفتوح: هل لكل مستودع حساب مخزون مستقل؟ وهذا الحدث لا يحسم ذلك — هو للنقل الذي لا يتغيّر فيه مؤهّل الدور، وذلك محسوم بأن الصنف واحد",
+          "text_en": "WARNING: a transfer between two warehouses remains governed by inventory.transfer.between_warehouses and its open question: does each warehouse get its own inventory account? This event does not settle that — it covers the transfer in which the role qualifier does not change, which is settled by the item being the same"
+        }
+      ],
+      "lines": []
+    },
+    {
       "event_code": "inventory.count_adjustment.posted",
       "name_ar": "تسوية جرد — عجز أو زيادة",
       "name_en": "Inventory count adjustment — shortage or surplus",

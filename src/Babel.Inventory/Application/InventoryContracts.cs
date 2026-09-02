@@ -106,3 +106,123 @@ public sealed record StockDocumentView(
     DateOnly OccurredOn,
     Guid? EntryId,
     bool AlreadyPosted = false);
+
+/// <summary>
+/// مسوّدة تسجيل موضعٍ في هرم التسكين.
+/// <para>
+/// <b>ولا رمز أبٍ فيها:</b> الأب يُسلَّم <b>بمعرّفه</b> إلى الخدمة، وتترجمه هي إلى
+/// رمزه بعد أن تتحقّق من وجوده. ورمزُ أبٍ في المسوّدة كان سيقبل رمزاً لا صفَّ له
+/// فيُنشئ ابناً معلّقاً تحت أبٍ لا وجود له.
+/// </para>
+/// </summary>
+/// <param name="Code">رمز الموضع داخل مستواه — هوية تحملها الحركات، لا نصّاً معروضاً.</param>
+/// <param name="Name">الاسم ثنائي اللغة.</param>
+public sealed record StoragePlaceDraft(string Code, LocalizedName Name);
+
+/// <summary>موضعٌ في هرم التسكين كما يخرج من الوحدة.</summary>
+/// <param name="Id">المعرّف.</param>
+/// <param name="Level">المستوى: <c>WAREHOUSE</c> · <c>LOCATION</c> · <c>BIN</c>.</param>
+/// <param name="Code">الرمز.</param>
+/// <param name="Name">الاسم ثنائي اللغة.</param>
+/// <param name="ParentCode">رمز الأب — نصّ فارغ للمستودع.</param>
+/// <param name="IsActive">هل هو عامل؟</param>
+public sealed record StoragePlaceView(
+    Guid Id,
+    string Level,
+    string Code,
+    LocalizedName Name,
+    string ParentCode,
+    bool IsActive);
+
+/// <summary>
+/// مسوّدة نقلٍ بين موقعين.
+/// <para>
+/// <b>ولا تكلفة فيها:</b> المنقول يخرج بتكلفة مصدره لحظة النقل، وتُحسب في الدفتر
+/// المساعد ولا تُملى (‏ADR-0039). وحقلُ تكلفةٍ هنا كان سيسمح بنقلٍ «يُعيد تسعير»
+/// البضاعة وهو ينقلها — أي بجعل حركة مكانٍ حركةَ قيمة.
+/// </para>
+/// </summary>
+/// <param name="Number">رقم المستند — فريد داخل المنشأة.</param>
+/// <param name="ItemId">رمز الصنف — <b>واحدٌ على الطرفين</b>.</param>
+/// <param name="ItemGroup">مجموعة الصنف — مؤهّل الدور.</param>
+/// <param name="FromWarehouseId">مستودع المصدر.</param>
+/// <param name="FromLocationId">موقع المصدر.</param>
+/// <param name="ToWarehouseId">مستودع الوجهة.</param>
+/// <param name="ToLocationId">موقع الوجهة.</param>
+/// <param name="Quantity">الكمّية بوحدتها.</param>
+/// <param name="OccurredOn">تاريخ النقل الميلادي.</param>
+public sealed record StockTransferDraft(
+    string Number,
+    string ItemId,
+    string ItemGroup,
+    string FromWarehouseId,
+    string FromLocationId,
+    string ToWarehouseId,
+    string ToLocationId,
+    InventoryQuantity Quantity,
+    DateOnly OccurredOn);
+
+/// <summary>مستند نقلٍ كما يخرج من الوحدة.</summary>
+/// <param name="Id">المعرّف.</param>
+/// <param name="Number">الرقم.</param>
+/// <param name="State">الحالة: <c>DRAFT</c> أو <c>MOVED</c>.</param>
+/// <param name="ItemId">الصنف.</param>
+/// <param name="ItemGroup">مجموعة الصنف.</param>
+/// <param name="FromWarehouseId">مستودع المصدر.</param>
+/// <param name="FromLocationId">موقع المصدر.</param>
+/// <param name="ToWarehouseId">مستودع الوجهة.</param>
+/// <param name="ToLocationId">موقع الوجهة.</param>
+/// <param name="Quantity">الكمّية بوحدتها كما سُلّمت.</param>
+/// <param name="Value">
+/// قيمة المنقول كما حسبها الدفتر المساعد بعد التنفيذ — <b>وهي تُقرأ ولا تُملى، ولا
+/// تصل إلى دفتر الأستاذ</b>.
+/// </param>
+/// <param name="OccurredOn">تاريخ النقل.</param>
+/// <param name="AlreadyMoved">هل كانت هذه الهوية مُنفَّذة <b>قبل</b> هذا النداء؟</param>
+public sealed record StockTransferView(
+    Guid Id,
+    string Number,
+    string State,
+    string ItemId,
+    string ItemGroup,
+    string FromWarehouseId,
+    string FromLocationId,
+    string ToWarehouseId,
+    string ToLocationId,
+    InventoryQuantity Quantity,
+    Money Value,
+    DateOnly OccurredOn,
+    bool AlreadyMoved = false);
+
+/// <summary>
+/// رصيدٌ مقروءٌ <b>بتسكينه</b>: الرصيد نفسه، ومعه اسم مستودعه واسم موقعه من السجلّ.
+/// <para>
+/// <b>و«غير مسجَّل» حالةٌ تُقال لا تُخفى:</b> الحركات القائمة تحمل رموزاً كُتبت قبل
+/// وجود السجلّ، فرمزٌ لا صفَّ له يخرج باسمه هو و<see cref="WarehouseRegistered"/>
+/// كاذبة. وإخفاؤه — بحذفه من القائمة أو باختراع اسمٍ له — كان سيجعل مجموع الأرصدة
+/// المقروءة أقلّ من مجموع الأرصدة الفعلي، وهو انحرافٌ لا يُظهره أي فحص توازن.
+/// </para>
+/// </summary>
+/// <param name="ItemId">الصنف.</param>
+/// <param name="WarehouseId">رمز المستودع.</param>
+/// <param name="WarehouseName">اسم المستودع من السجلّ — أو رمزه إن لم يكن مسجَّلاً.</param>
+/// <param name="WarehouseRegistered">هل رمز المستودع مسجَّل في سجلّ التسكين؟</param>
+/// <param name="LocationId">رمز الموقع.</param>
+/// <param name="LocationName">اسم الموقع من السجلّ — أو رمزه إن لم يكن مسجَّلاً.</param>
+/// <param name="LocationRegistered">هل رمز الموقع مسجَّل في سجلّ التسكين؟</param>
+/// <param name="Quantity">الكمّية بوحدة أساسها — قد تكون سالبة.</param>
+/// <param name="Value">القيمة.</param>
+/// <param name="UnitCost">متوسط تكلفة الوحدة المتحرّك.</param>
+/// <param name="HasCostBasis">هل ورد هذا الصنف إلى هذا الموضع مرّةً بتكلفة؟</param>
+public sealed record PlacementBalanceView(
+    string ItemId,
+    string WarehouseId,
+    LocalizedName WarehouseName,
+    bool WarehouseRegistered,
+    string LocationId,
+    LocalizedName LocationName,
+    bool LocationRegistered,
+    InventoryQuantity Quantity,
+    Money Value,
+    decimal UnitCost,
+    bool HasCostBasis);

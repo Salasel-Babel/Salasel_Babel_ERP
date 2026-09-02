@@ -365,3 +365,185 @@ internal sealed class ItemTranslationRow
     /// <summary>النصّ المُترجَم.</summary>
     public string Text { get; set; } = string.Empty;
 }
+
+/// <summary>
+/// مستويات هرم التسكين — <b>ثلاثة لا تزيد، وكلٌّ يعرف أباه بمستواه</b>.
+/// <para>
+/// والمستوى عمودٌ صريح لا استنتاجٌ من وجود الأب: صفٌّ بلا أب قد يكون مستودعاً، وقد
+/// يكون موقعاً فقد أباه بخطأ كتابة. والعمود يجعل الفرق بينهما مقروءاً في الصفّ نفسه.
+/// </para>
+/// <para>
+/// <b>ولا دورات ممكنة بالبناء:</b> أب الصفّ مستواه <b>المستوى السابق حتماً</b>، فلا
+/// موقع يصير أباً لمستودع، ولا رفٌّ يصير أباً لنفسه. وشجرةٌ حرّة المستويات كانت
+/// ستحتاج فحص دورات على كل كتابة — وفحصٌ يُنسى مرّةً يُنتج سجلّاً لا يُجتاز.
+/// </para>
+/// </summary>
+internal static class PlacementLevel
+{
+    /// <summary>المستودع — أعلى الهرم، ولا أب له.</summary>
+    public const string Warehouse = "WAREHOUSE";
+
+    /// <summary>الموقع داخل المستودع — <b>وهو مستوى الرصيد المُقيَّم</b> (‏ADR تسكين المخزون).</summary>
+    public const string Location = "LOCATION";
+
+    /// <summary>الرفّ أو الحاوية داخل الموقع — بُعد تسكينٍ لا بُعد تقييم.</summary>
+    public const string Bin = "BIN";
+
+    /// <summary>المستوى الأب لمستوىً معلوم — نصٌّ فارغ للمستودع.</summary>
+    /// <param name="level">المستوى.</param>
+    public static string ParentOf(string level) => level switch
+    {
+        Location => Warehouse,
+        Bin => Location,
+        _ => string.Empty,
+    };
+}
+
+/// <summary>
+/// موضعٌ في هرم التسكين: مستودعٌ أو موقعٌ أو رفّ — <b>جدولٌ واحد بمستوىً صريح</b>.
+/// <para>
+/// <b>ولماذا جدولٌ واحد لا ثلاثة:</b> المستويات الثلاثة تحمل الصفات نفسها حرفاً بحرف
+/// — رمزٌ واسمٌ وأبٌ وحالةُ عمل — وتخضع للعمليات نفسها. وثلاثة جداول كانت ستكون ثلاث
+/// نسخ من خمسة أعمدة وخمس عمليات، تنحرف إحداها عن أختيها عند أول تعديل. والمستوى
+/// عمودٌ في المفتاح الفريد، فرمزُ «A1» يجوز أن يكون مستودعاً وموقعاً معاً بلا تصادم.
+/// </para>
+/// <para>
+/// <b>ولا مفتاح خارجي إلى الأب:</b> الأب يُقرأ برمزه ومستواه، والتحقّق في الخدمة.
+/// ومفتاحٌ خارجي كان سيمنع تسجيل موقعٍ قبل مستودعه — وهو ترتيبٌ لا يفرضه العمل —
+/// ولم يكن ليمنع الحالة الوحيدة التي تهمّ: أبٌ مُعطَّل.
+/// </para>
+/// </summary>
+internal sealed class StoragePlaceRow
+{
+    public Guid Id { get; set; }
+
+    public Guid TenantId { get; set; }
+
+    /// <summary>المستوى: <c>WAREHOUSE</c> · <c>LOCATION</c> · <c>BIN</c>.</summary>
+    public string Level { get; set; } = string.Empty;
+
+    /// <summary>
+    /// رمز الموضع داخل مستواه — <b>وهو ما تحمله الحركة والرصيد</b>، لا المعرّف.
+    /// <para>
+    /// والحركات القائمة تحمل رموزاً حرّة كُتبت قبل وجود هذا السجلّ (‏<c>DEFAULT</c>
+    /// وغيره)، فالسجلّ <b>يصف</b> ولا يُبطل: رمزٌ غير مسجَّل يبقى عاملاً ويُوسَم عند
+    /// القراءة، ولا تُعاد كتابة حركةٍ مضت لتوافق سجلّاً وُلد بعدها.
+    /// </para>
+    /// </summary>
+    public string Code { get; set; } = string.Empty;
+
+    /// <summary>رمز الأب — نصّ فارغ للمستودع، ورمز المستودع للموقع، ورمز الموقع للرفّ.</summary>
+    public string ParentCode { get; set; } = string.Empty;
+
+    /// <summary>الاسم العربي — <b>وهو السجلّ لا ترجمةٌ ثانية</b> (‏ADR-0021 · القاعدة 14).</summary>
+    public string NameAr { get; set; } = string.Empty;
+
+    /// <summary>
+    /// هل الموضع عامل؟ <b>والتعطيل حالةٌ لا حذف</b>: الرمز محمولٌ على حركات مضت،
+    /// وحذفُه يجعل كل حركة عليه بلا موضع يُقرأ.
+    /// </summary>
+    public bool IsActive { get; set; } = true;
+
+    public DateTime CreatedAt { get; set; }
+}
+
+/// <summary>ترجمة اسم موضعٍ في هرم التسكين — <b>صفٌّ لا عمود</b> (‏ADR-0021 · القاعدة 14).</summary>
+internal sealed class StoragePlaceTranslationRow
+{
+    public Guid Id { get; set; }
+
+    public Guid TenantId { get; set; }
+
+    /// <summary>مستوى الموضع المُترجَم اسمه — في المفتاح لأن الرمز وحده لا يميّز.</summary>
+    public string Level { get; set; } = string.Empty;
+
+    /// <summary>رمز الموضع.</summary>
+    public string Code { get; set; } = string.Empty;
+
+    /// <summary>رمز اللغة بصيغة BCP-47 المختصرة.</summary>
+    public string Locale { get; set; } = string.Empty;
+
+    /// <summary>النصّ المُترجَم.</summary>
+    public string Text { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// <b>مستند نقلٍ بين موقعين</b> — يُنشأ مسوّدةً ثم يُنفَّذ، كأي مستند في هذا المستودع.
+/// <para>
+/// <b>ولا يُرحَّل إلى دفتر الأستاذ إطلاقاً:</b> النقل داخل المنشأة نفسها لا يُغيّر
+/// قيمة المخزون، والصنف واحدٌ على الطرفين فمجموعته واحدة، فمؤهّل دور
+/// <c>inventory_control</c> واحدٌ على الطرفين، فالقيد الذي كان سيُكتب مدينٌ ودائنٌ على
+/// <b>الحساب نفسه بالمبلغ نفسه</b> — أي لا شيء، مكتوباً في دفترٍ يُضاف إليه ولا
+/// يُحذف منه. والمصفوفة نفسها تقول هذا في شرط
+/// <c>inventory.transfer.between_warehouses</c>: «وإلا فلا قيد مالي إطلاقاً».
+/// </para>
+/// <para>
+/// <b>وحركتان لا حركة واحدة:</b> صادرٌ من المصدر ووارد إلى الوجهة. ورصيدُ الموقع
+/// مفتاحٌ مستقلّ، فحركةٌ واحدة «تنقل» كانت ستحتاج أن تُنقص مفتاحاً وتزيد آخر في صفٍّ
+/// واحد — وهو ما لا يصفه عمود <c>Direction</c> ولا يُجمَع في تقرير حركة.
+/// </para>
+/// </summary>
+internal sealed class StockTransferRow
+{
+    public Guid Id { get; set; }
+
+    public Guid TenantId { get; set; }
+
+    /// <summary>رقم المستند — فريد داخل المستأجر.</summary>
+    public string Number { get; set; } = string.Empty;
+
+    public string ItemCode { get; set; } = string.Empty;
+
+    /// <summary>مجموعة الصنف — مؤهّل الدور، وهي <b>واحدة على الطرفين</b> لأن الصنف واحد.</summary>
+    public string ItemGroup { get; set; } = string.Empty;
+
+    public string FromWarehouseId { get; set; } = string.Empty;
+
+    public string FromLocationId { get; set; } = string.Empty;
+
+    public string ToWarehouseId { get; set; } = string.Empty;
+
+    public string ToLocationId { get; set; } = string.Empty;
+
+    /// <summary>المقدار كما سُلّم، بوحدته.</summary>
+    public decimal Magnitude { get; set; }
+
+    /// <summary>وحدة المقدار المُسلَّم — <b>تُحفظ كما وردت</b> ولا تُنسى بالتحويل.</summary>
+    public string UnitCode { get; set; } = string.Empty;
+
+    /// <summary>
+    /// قيمة المنقول كما حسبها الدفتر المساعد بتكلفة المصدر لحظة النقل.
+    /// <para>
+    /// <b>وهي تُقرأ ولا تُملى</b>، ولا تصل إلى دفتر الأستاذ: وجودها هنا كي يُقرأ
+    /// المستند بقيمته، لا كي يُبنى عليها قيد.
+    /// </para>
+    /// </summary>
+    public decimal ValueAmount { get; set; }
+
+    public DateOnly OccurredOn { get; set; }
+
+    /// <summary>الحالة: <c>DRAFT</c> أو <c>MOVED</c>.</summary>
+    public string State { get; set; } = StockTransferState.Draft;
+
+    /// <summary>جيل التنفيذ — يدخل هوية الحركة كما يدخلها في كل مستند.</summary>
+    public int MovementGeneration { get; set; } = 1;
+
+    public DateTime CreatedAt { get; set; }
+}
+
+/// <summary>حالات مستند النقل.</summary>
+internal static class StockTransferState
+{
+    /// <summary>مسوّدة: لا حركة.</summary>
+    public const string Draft = "DRAFT";
+
+    /// <summary>
+    /// مُنفَّذ: حركتان في الدفتر المساعد <b>ولا قيد</b>.
+    /// <para>
+    /// والاسم <c>MOVED</c> لا <c>POSTED</c> عمداً: <c>POSTED</c> في هذا المستودع تعني
+    /// «صار له قيدٌ في الدفتر»، وحالةٌ تحمل الاسم بلا قيد كانت ستجعل كل قارئ يبحث عن
+    /// قيدٍ لا وجود له.
+    /// </para>
+    /// </summary>
+    public const string Moved = "MOVED";
+}

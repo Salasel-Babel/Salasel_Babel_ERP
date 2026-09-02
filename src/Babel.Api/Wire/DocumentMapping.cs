@@ -495,6 +495,103 @@ internal static class DocumentMapping
             ]);
     }
 
+    /// <summary>يقرأ طلب تسجيل موضعٍ في هرم التسكين من السلك.</summary>
+    /// <param name="dto">الحمولة.</param>
+    public static InventoryStoragePlaceRequest ToStoragePlaceRequest(StoragePlaceRequestDto dto)
+    {
+        ArgumentNullException.ThrowIfNull(dto);
+
+        return new InventoryStoragePlaceRequest(
+            WireMapping.ReadRequiredText(dto.Code, "code", CodeLength),
+            WireMapping.ReadLocalized(dto.Name, "name"));
+    }
+
+    /// <summary>يقرأ طلب إعادة تسمية موضع من السلك.</summary>
+    /// <param name="dto">الحمولة.</param>
+    public static InventoryPlaceNameRequest ToPlaceNameRequest(PlaceNameRequestDto dto)
+    {
+        ArgumentNullException.ThrowIfNull(dto);
+        return new InventoryPlaceNameRequest(WireMapping.ReadLocalized(dto.Name, "name"));
+    }
+
+    /// <summary>يقرأ طلب مستند نقلٍ بين موقعين من السلك.</summary>
+    /// <param name="dto">الحمولة.</param>
+    public static InventoryStockTransferRequest ToStockTransferRequest(StockTransferRequestDto dto)
+    {
+        ArgumentNullException.ThrowIfNull(dto);
+        ArgumentNullException.ThrowIfNull(dto.Quantity);
+
+        return new InventoryStockTransferRequest(
+            WireMapping.ReadRequiredText(dto.Number, "number", CodeLength),
+            WireMapping.ReadRequiredText(dto.ItemId, "itemId", CodeLength),
+            WireMapping.ReadRequiredText(dto.ItemGroup, "itemGroup", CodeLength),
+            WireMapping.ReadRequiredText(dto.FromWarehouseId, "fromWarehouseId", CodeLength),
+            WireMapping.ReadRequiredText(dto.FromLocationId, "fromLocationId", CodeLength),
+            WireMapping.ReadRequiredText(dto.ToWarehouseId, "toWarehouseId", CodeLength),
+            WireMapping.ReadRequiredText(dto.ToLocationId, "toLocationId", CodeLength),
+            new InventoryMeasure(
+                WireNumbers.ParseStrict(dto.Quantity.Magnitude.Raw, WireNumbers.QuantityScale, "quantity.magnitude"),
+                WireMapping.ReadRequiredText(dto.Quantity.Unit, "quantity.unit", UnitLength)),
+            WireMapping.ReadDate(dto.OccurredOn, "occurredOn"));
+    }
+
+    /// <summary>ينقل موضعاً في هرم التسكين إلى السلك.</summary>
+    /// <param name="place">الموضع.</param>
+    public static StoragePlaceDto ToDto(InventoryStoragePlace place)
+    {
+        ArgumentNullException.ThrowIfNull(place);
+
+        return new StoragePlaceDto(
+            Id(place.Id),
+            place.Level,
+            place.Code,
+            Text(place.Name),
+            place.ParentCode,
+            place.IsActive);
+    }
+
+    /// <summary>ينقل مستند نقلٍ إلى السلك.</summary>
+    /// <param name="transfer">المستند.</param>
+    public static StockTransferDto ToDto(InventoryStockTransfer transfer)
+    {
+        ArgumentNullException.ThrowIfNull(transfer);
+
+        return new StockTransferDto(
+            Id(transfer.Id),
+            transfer.Number,
+            transfer.State,
+            transfer.ItemId,
+            transfer.ItemGroup,
+            transfer.FromWarehouseId,
+            transfer.FromLocationId,
+            transfer.ToWarehouseId,
+            transfer.ToLocationId,
+            Measure(transfer.Quantity),
+            WireNumbers.FormatMoney(transfer.Value),
+            Date(transfer.OccurredOn),
+            transfer.AlreadyMoved);
+    }
+
+    /// <summary>ينقل رصيداً بتسكينه إلى السلك.</summary>
+    /// <param name="balance">الرصيد.</param>
+    public static PlacementBalanceDto ToDto(InventoryPlacementBalance balance)
+    {
+        ArgumentNullException.ThrowIfNull(balance);
+
+        return new PlacementBalanceDto(
+            balance.ItemId,
+            balance.WarehouseId,
+            Text(balance.WarehouseName),
+            balance.WarehouseRegistered,
+            balance.LocationId,
+            Text(balance.LocationName),
+            balance.LocationRegistered,
+            Measure(balance.Quantity),
+            WireNumbers.FormatMoney(balance.Value),
+            WireNumbers.FormatQuantity(balance.UnitCost),
+            balance.HasCostBasis);
+    }
+
     private static MeasureDto Measure(InventoryMeasure measure) =>
         new(WireNumbers.FormatQuantity(measure.Magnitude), measure.Unit);
 

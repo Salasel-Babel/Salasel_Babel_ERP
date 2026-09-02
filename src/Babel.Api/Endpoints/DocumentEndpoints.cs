@@ -95,6 +95,35 @@ internal static class DocumentEndpoints
         app.MapPost(ApiRoutes.StockMovementPosting, PostStockMovementAsync);
         app.MapGet(ApiRoutes.StockBalances, ReadStockBalancesAsync);
         app.MapGet(ApiRoutes.InventoryValuation, ReadInventoryValuationAsync);
+
+        // ── تسكين المخزون ────────────────────────────────────────────────────
+        // خمس عمليات لكل مستوى من الهرم الثلاثي، **والشكل واحد**: تسجيل · قائمة ·
+        // قراءة · إعادة تسمية · تعطيل. ولا `PUT` ولا `PATCH` ولا `DELETE` على موضع:
+        // الرمز هوية تحملها حركات مضت.
+        app.MapPost(ApiRoutes.Warehouses, AddWarehouseAsync);
+        app.MapGet(ApiRoutes.Warehouses, ListWarehousesAsync);
+        app.MapGet(ApiRoutes.Warehouse, ReadWarehouseAsync);
+        app.MapPost(ApiRoutes.WarehouseName, RenameWarehouseAsync);
+        app.MapPost(ApiRoutes.WarehouseDeactivation, DeactivateWarehouseAsync);
+
+        app.MapPost(ApiRoutes.StorageLocations, AddStorageLocationAsync);
+        app.MapGet(ApiRoutes.StorageLocations, ListStorageLocationsAsync);
+        app.MapGet(ApiRoutes.StorageLocation, ReadStorageLocationAsync);
+        app.MapPost(ApiRoutes.StorageLocationName, RenameStorageLocationAsync);
+        app.MapPost(ApiRoutes.StorageLocationDeactivation, DeactivateStorageLocationAsync);
+
+        app.MapPost(ApiRoutes.StorageBins, AddStorageBinAsync);
+        app.MapGet(ApiRoutes.StorageBins, ListStorageBinsAsync);
+        app.MapGet(ApiRoutes.StorageBin, ReadStorageBinAsync);
+        app.MapPost(ApiRoutes.StorageBinName, RenameStorageBinAsync);
+        app.MapPost(ApiRoutes.StorageBinDeactivation, DeactivateStorageBinAsync);
+
+        app.MapPost(ApiRoutes.StockTransfers, DraftStockTransferAsync);
+        app.MapGet(ApiRoutes.StockTransfers, ListStockTransfersAsync);
+        app.MapGet(ApiRoutes.StockTransfer, ReadStockTransferAsync);
+        app.MapPost(ApiRoutes.StockTransferMovement, MoveStockTransferAsync);
+
+        app.MapGet(ApiRoutes.PlacementBalances, ReadPlacementBalancesAsync);
     }
 
     // ── المبيعات ─────────────────────────────────────────────────────────────
@@ -1230,6 +1259,660 @@ internal static class DocumentEndpoints
             : (dto, null);
     }
 
+    // ── تسكين المخزون ────────────────────────────────────────────────────────
+    // وكل معالج هنا يفعل الشيء نفسه بالترتيب نفسه: نطاقُ الشركة · معرّفات المسار ·
+    // الجسم بالقواعد الصارمة · نداءُ السطح المنشور · ترجمةُ النتيجة. **ولا قرار
+    // واحد يقع هنا**: الهرم والانتماء والرصيد المتبقّي كلّها أحكام الوحدة.
+
+    private static async Task<IResult> AddWarehouseAsync(
+        HttpContext context,
+        InventorySurface inventory,
+        CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        (StoragePlaceRequestDto? dto, IResult? refused) =
+            await BodyAsync<StoragePlaceRequestDto>(context, cancellationToken).ConfigureAwait(false);
+
+        if (dto is null)
+        {
+            return refused!;
+        }
+
+        InventoryStoragePlaceRequest request;
+        try
+        {
+            request = DocumentMapping.ToStoragePlaceRequest(dto);
+        }
+        catch (WireFormatException wire)
+        {
+            return HttpProblemResults.Wire(context, wire);
+        }
+
+        Result<InventoryStoragePlace> result = await inventory
+            .AddWarehouseAsync(new TenantId(companyId), Actor(context), request, cancellationToken)
+            .ConfigureAwait(false);
+
+        return result.IsFailure
+            ? HttpProblemResults.Domain(context, result.Errors)
+            : Created(
+                context,
+                DocumentMapping.ToDto(result.Value),
+                Location(ApiRoutes.Warehouse, companyId, "warehouseId", result.Value.Id));
+    }
+
+    private static async Task<IResult> ListWarehousesAsync(
+        HttpContext context,
+        InventorySurface inventory,
+        CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        Result<IReadOnlyList<InventoryStoragePlace>> result = await inventory
+            .ListWarehousesAsync(new TenantId(companyId), Actor(context), cancellationToken)
+            .ConfigureAwait(false);
+
+        return PlaceList(context, result);
+    }
+
+    private static async Task<IResult> ReadWarehouseAsync(
+        HttpContext context,
+        InventorySurface inventory,
+        CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        if (!Scope.TryRouteId(context, "warehouseId", out Guid warehouseId, out IResult? malformed))
+        {
+            return malformed!;
+        }
+
+        Result<InventoryStoragePlace> result = await inventory
+            .ReadWarehouseAsync(new TenantId(companyId), Actor(context), warehouseId, cancellationToken)
+            .ConfigureAwait(false);
+
+        return Place(context, result);
+    }
+
+    private static async Task<IResult> RenameWarehouseAsync(
+        HttpContext context,
+        InventorySurface inventory,
+        CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        if (!Scope.TryRouteId(context, "warehouseId", out Guid warehouseId, out IResult? malformed))
+        {
+            return malformed!;
+        }
+
+        (InventoryPlaceNameRequest? request, IResult? refused) =
+            await NameAsync(context, cancellationToken).ConfigureAwait(false);
+
+        if (request is null)
+        {
+            return refused!;
+        }
+
+        Result<InventoryStoragePlace> result = await inventory
+            .RenameWarehouseAsync(new TenantId(companyId), Actor(context), warehouseId, request, cancellationToken)
+            .ConfigureAwait(false);
+
+        return Place(context, result);
+    }
+
+    private static async Task<IResult> DeactivateWarehouseAsync(
+        HttpContext context,
+        InventorySurface inventory,
+        CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        if (!Scope.TryRouteId(context, "warehouseId", out Guid warehouseId, out IResult? malformed))
+        {
+            return malformed!;
+        }
+
+        Result<InventoryStoragePlace> result = await inventory
+            .DeactivateWarehouseAsync(new TenantId(companyId), Actor(context), warehouseId, cancellationToken)
+            .ConfigureAwait(false);
+
+        return Place(context, result);
+    }
+
+    private static async Task<IResult> AddStorageLocationAsync(
+        HttpContext context,
+        InventorySurface inventory,
+        CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        if (!Scope.TryRouteId(context, "warehouseId", out Guid warehouseId, out IResult? malformed))
+        {
+            return malformed!;
+        }
+
+        (StoragePlaceRequestDto? dto, IResult? refused) =
+            await BodyAsync<StoragePlaceRequestDto>(context, cancellationToken).ConfigureAwait(false);
+
+        if (dto is null)
+        {
+            return refused!;
+        }
+
+        InventoryStoragePlaceRequest request;
+        try
+        {
+            request = DocumentMapping.ToStoragePlaceRequest(dto);
+        }
+        catch (WireFormatException wire)
+        {
+            return HttpProblemResults.Wire(context, wire);
+        }
+
+        Result<InventoryStoragePlace> result = await inventory
+            .AddStorageLocationAsync(new TenantId(companyId), Actor(context), warehouseId, request, cancellationToken)
+            .ConfigureAwait(false);
+
+        return result.IsFailure
+            ? HttpProblemResults.Domain(context, result.Errors)
+            : Created(
+                context,
+                DocumentMapping.ToDto(result.Value),
+                Location(ApiRoutes.StorageLocation, companyId, "warehouseId", warehouseId, "locationId", result.Value.Id));
+    }
+
+    private static async Task<IResult> ListStorageLocationsAsync(
+        HttpContext context,
+        InventorySurface inventory,
+        CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        if (!Scope.TryRouteId(context, "warehouseId", out Guid warehouseId, out IResult? malformed))
+        {
+            return malformed!;
+        }
+
+        Result<IReadOnlyList<InventoryStoragePlace>> result = await inventory
+            .ListStorageLocationsAsync(new TenantId(companyId), Actor(context), warehouseId, cancellationToken)
+            .ConfigureAwait(false);
+
+        return PlaceList(context, result);
+    }
+
+    private static async Task<IResult> ReadStorageLocationAsync(
+        HttpContext context,
+        InventorySurface inventory,
+        CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        if (!Scope.TryRouteId(context, "warehouseId", out Guid warehouseId, out IResult? malformed))
+        {
+            return malformed!;
+        }
+
+        if (!Scope.TryRouteId(context, "locationId", out Guid locationId, out IResult? badLocation))
+        {
+            return badLocation!;
+        }
+
+        Result<InventoryStoragePlace> result = await inventory
+            .ReadStorageLocationAsync(new TenantId(companyId), Actor(context), warehouseId, locationId, cancellationToken)
+            .ConfigureAwait(false);
+
+        return Place(context, result);
+    }
+
+    private static async Task<IResult> RenameStorageLocationAsync(
+        HttpContext context,
+        InventorySurface inventory,
+        CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        if (!Scope.TryRouteId(context, "warehouseId", out Guid warehouseId, out IResult? malformed))
+        {
+            return malformed!;
+        }
+
+        if (!Scope.TryRouteId(context, "locationId", out Guid locationId, out IResult? badLocation))
+        {
+            return badLocation!;
+        }
+
+        (InventoryPlaceNameRequest? request, IResult? refused) =
+            await NameAsync(context, cancellationToken).ConfigureAwait(false);
+
+        if (request is null)
+        {
+            return refused!;
+        }
+
+        Result<InventoryStoragePlace> result = await inventory
+            .RenameStorageLocationAsync(
+                new TenantId(companyId), Actor(context), warehouseId, locationId, request, cancellationToken)
+            .ConfigureAwait(false);
+
+        return Place(context, result);
+    }
+
+    private static async Task<IResult> DeactivateStorageLocationAsync(
+        HttpContext context,
+        InventorySurface inventory,
+        CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        if (!Scope.TryRouteId(context, "warehouseId", out Guid warehouseId, out IResult? malformed))
+        {
+            return malformed!;
+        }
+
+        if (!Scope.TryRouteId(context, "locationId", out Guid locationId, out IResult? badLocation))
+        {
+            return badLocation!;
+        }
+
+        Result<InventoryStoragePlace> result = await inventory
+            .DeactivateStorageLocationAsync(
+                new TenantId(companyId), Actor(context), warehouseId, locationId, cancellationToken)
+            .ConfigureAwait(false);
+
+        return Place(context, result);
+    }
+
+    private static async Task<IResult> AddStorageBinAsync(
+        HttpContext context,
+        InventorySurface inventory,
+        CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        if (!Scope.TryRouteId(context, "warehouseId", out Guid warehouseId, out IResult? malformed))
+        {
+            return malformed!;
+        }
+
+        if (!Scope.TryRouteId(context, "locationId", out Guid locationId, out IResult? badLocation))
+        {
+            return badLocation!;
+        }
+
+        (StoragePlaceRequestDto? dto, IResult? refused) =
+            await BodyAsync<StoragePlaceRequestDto>(context, cancellationToken).ConfigureAwait(false);
+
+        if (dto is null)
+        {
+            return refused!;
+        }
+
+        InventoryStoragePlaceRequest request;
+        try
+        {
+            request = DocumentMapping.ToStoragePlaceRequest(dto);
+        }
+        catch (WireFormatException wire)
+        {
+            return HttpProblemResults.Wire(context, wire);
+        }
+
+        Result<InventoryStoragePlace> result = await inventory
+            .AddStorageBinAsync(new TenantId(companyId), Actor(context), warehouseId, locationId, request, cancellationToken)
+            .ConfigureAwait(false);
+
+        return result.IsFailure
+            ? HttpProblemResults.Domain(context, result.Errors)
+            : Created(
+                context,
+                DocumentMapping.ToDto(result.Value),
+                Location(
+                    ApiRoutes.StorageBin, companyId, "warehouseId", warehouseId, "locationId", locationId, "binId", result.Value.Id));
+    }
+
+    private static async Task<IResult> ListStorageBinsAsync(
+        HttpContext context,
+        InventorySurface inventory,
+        CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        if (!Scope.TryRouteId(context, "warehouseId", out Guid warehouseId, out IResult? malformed))
+        {
+            return malformed!;
+        }
+
+        if (!Scope.TryRouteId(context, "locationId", out Guid locationId, out IResult? badLocation))
+        {
+            return badLocation!;
+        }
+
+        Result<IReadOnlyList<InventoryStoragePlace>> result = await inventory
+            .ListStorageBinsAsync(new TenantId(companyId), Actor(context), warehouseId, locationId, cancellationToken)
+            .ConfigureAwait(false);
+
+        return PlaceList(context, result);
+    }
+
+    private static async Task<IResult> ReadStorageBinAsync(
+        HttpContext context,
+        InventorySurface inventory,
+        CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        if (!Scope.TryRouteId(context, "warehouseId", out Guid warehouseId, out IResult? malformed))
+        {
+            return malformed!;
+        }
+
+        if (!Scope.TryRouteId(context, "locationId", out Guid locationId, out IResult? badLocation))
+        {
+            return badLocation!;
+        }
+
+        if (!Scope.TryRouteId(context, "binId", out Guid binId, out IResult? badBin))
+        {
+            return badBin!;
+        }
+
+        Result<InventoryStoragePlace> result = await inventory
+            .ReadStorageBinAsync(new TenantId(companyId), Actor(context), warehouseId, locationId, binId, cancellationToken)
+            .ConfigureAwait(false);
+
+        return Place(context, result);
+    }
+
+    private static async Task<IResult> RenameStorageBinAsync(
+        HttpContext context,
+        InventorySurface inventory,
+        CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        if (!Scope.TryRouteId(context, "warehouseId", out Guid warehouseId, out IResult? malformed))
+        {
+            return malformed!;
+        }
+
+        if (!Scope.TryRouteId(context, "locationId", out Guid locationId, out IResult? badLocation))
+        {
+            return badLocation!;
+        }
+
+        if (!Scope.TryRouteId(context, "binId", out Guid binId, out IResult? badBin))
+        {
+            return badBin!;
+        }
+
+        (InventoryPlaceNameRequest? request, IResult? refused) =
+            await NameAsync(context, cancellationToken).ConfigureAwait(false);
+
+        if (request is null)
+        {
+            return refused!;
+        }
+
+        Result<InventoryStoragePlace> result = await inventory
+            .RenameStorageBinAsync(
+                new TenantId(companyId), Actor(context), warehouseId, locationId, binId, request, cancellationToken)
+            .ConfigureAwait(false);
+
+        return Place(context, result);
+    }
+
+    private static async Task<IResult> DeactivateStorageBinAsync(
+        HttpContext context,
+        InventorySurface inventory,
+        CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        if (!Scope.TryRouteId(context, "warehouseId", out Guid warehouseId, out IResult? malformed))
+        {
+            return malformed!;
+        }
+
+        if (!Scope.TryRouteId(context, "locationId", out Guid locationId, out IResult? badLocation))
+        {
+            return badLocation!;
+        }
+
+        if (!Scope.TryRouteId(context, "binId", out Guid binId, out IResult? badBin))
+        {
+            return badBin!;
+        }
+
+        Result<InventoryStoragePlace> result = await inventory
+            .DeactivateStorageBinAsync(
+                new TenantId(companyId), Actor(context), warehouseId, locationId, binId, cancellationToken)
+            .ConfigureAwait(false);
+
+        return Place(context, result);
+    }
+
+    private static async Task<IResult> DraftStockTransferAsync(
+        HttpContext context,
+        InventorySurface inventory,
+        CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        (StockTransferRequestDto? dto, IResult? refused) =
+            await BodyAsync<StockTransferRequestDto>(context, cancellationToken).ConfigureAwait(false);
+
+        if (dto is null)
+        {
+            return refused!;
+        }
+
+        InventoryStockTransferRequest request;
+        try
+        {
+            request = DocumentMapping.ToStockTransferRequest(dto);
+        }
+        catch (WireFormatException wire)
+        {
+            return HttpProblemResults.Wire(context, wire);
+        }
+
+        Result<InventoryStockTransfer> result = await inventory
+            .DraftTransferAsync(new TenantId(companyId), Actor(context), request, cancellationToken)
+            .ConfigureAwait(false);
+
+        return result.IsFailure
+            ? HttpProblemResults.Domain(context, result.Errors)
+            : Created(
+                context,
+                DocumentMapping.ToDto(result.Value),
+                Location(ApiRoutes.StockTransfer, companyId, "transferId", result.Value.Id));
+    }
+
+    private static async Task<IResult> ListStockTransfersAsync(
+        HttpContext context,
+        InventorySurface inventory,
+        CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        Result<IReadOnlyList<InventoryStockTransfer>> result = await inventory
+            .ListTransfersAsync(new TenantId(companyId), Actor(context), cancellationToken)
+            .ConfigureAwait(false);
+
+        if (result.IsFailure)
+        {
+            return HttpProblemResults.Domain(context, result.Errors);
+        }
+
+        List<StockTransferDto> transfers = [.. result.Value.Select(DocumentMapping.ToDto)];
+        return Results.Json(new StockTransferListDto(transfers.Count, transfers), ApiJson.Options);
+    }
+
+    private static async Task<IResult> ReadStockTransferAsync(
+        HttpContext context,
+        InventorySurface inventory,
+        CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        if (!Scope.TryRouteId(context, "transferId", out Guid transferId, out IResult? malformed))
+        {
+            return malformed!;
+        }
+
+        Result<InventoryStockTransfer> result = await inventory
+            .ReadTransferAsync(new TenantId(companyId), Actor(context), transferId, cancellationToken)
+            .ConfigureAwait(false);
+
+        return result.IsFailure
+            ? HttpProblemResults.Domain(context, result.Errors)
+            : Results.Json(DocumentMapping.ToDto(result.Value), ApiJson.Options);
+    }
+
+    private static async Task<IResult> MoveStockTransferAsync(
+        HttpContext context,
+        InventorySurface inventory,
+        CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        if (!Scope.TryRouteId(context, "transferId", out Guid transferId, out IResult? malformed))
+        {
+            return malformed!;
+        }
+
+        Result<InventoryStockTransfer> result = await inventory
+            .MoveTransferAsync(new TenantId(companyId), Actor(context), transferId, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (result.IsFailure)
+        {
+            return HttpProblemResults.Domain(context, result.Errors);
+        }
+
+        StockTransferDto dto = DocumentMapping.ToDto(result.Value);
+        return Moved(context, dto, Location(ApiRoutes.StockTransfer, companyId, "transferId", result.Value.Id));
+    }
+
+    private static async Task<IResult> ReadPlacementBalancesAsync(
+        HttpContext context,
+        InventorySurface inventory,
+        CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        Result<IReadOnlyList<InventoryPlacementBalance>> result = await inventory
+            .ReadPlacementBalancesAsync(new TenantId(companyId), Actor(context), cancellationToken)
+            .ConfigureAwait(false);
+
+        if (result.IsFailure)
+        {
+            return HttpProblemResults.Domain(context, result.Errors);
+        }
+
+        List<PlacementBalanceDto> balances = [.. result.Value.Select(DocumentMapping.ToDto)];
+        return Results.Json(new PlacementBalanceListDto(balances.Count, balances), ApiJson.Options);
+    }
+
+    /// <summary>يقرأ جسم إعادة التسمية — <b>الاسم وحده</b> — أو يُرجع رفضه.</summary>
+    private static async Task<(InventoryPlaceNameRequest? Request, IResult? Refused)> NameAsync(
+        HttpContext context, CancellationToken cancellationToken)
+    {
+        (PlaceNameRequestDto? dto, IResult? refused) =
+            await BodyAsync<PlaceNameRequestDto>(context, cancellationToken).ConfigureAwait(false);
+
+        if (dto is null)
+        {
+            return (null, refused!);
+        }
+
+        try
+        {
+            return (DocumentMapping.ToPlaceNameRequest(dto), null);
+        }
+        catch (WireFormatException wire)
+        {
+            return (null, HttpProblemResults.Wire(context, wire));
+        }
+    }
+
+    private static IResult Place(HttpContext context, Result<InventoryStoragePlace> result)
+        => result.IsFailure
+            ? HttpProblemResults.Domain(context, result.Errors)
+            : Results.Json(DocumentMapping.ToDto(result.Value), ApiJson.Options);
+
+    private static IResult PlaceList(HttpContext context, Result<IReadOnlyList<InventoryStoragePlace>> result)
+    {
+        if (result.IsFailure)
+        {
+            return HttpProblemResults.Domain(context, result.Errors);
+        }
+
+        List<StoragePlaceDto> places = [.. result.Value.Select(DocumentMapping.ToDto)];
+        return Results.Json(new StoragePlaceListDto(places.Count, places), ApiJson.Options);
+    }
+
     private static IResult Created(HttpContext context, object dto, string? location)
     {
         if (location is not null)
@@ -1264,4 +1947,40 @@ internal static class DocumentEndpoints
     private static string Location(string template, Guid companyId, string idName, Guid id) => template
         .Replace("{companyId}", companyId.ToString("D", CultureInfo.InvariantCulture), StringComparison.Ordinal)
         .Replace("{" + idName + "}", id.ToString("D", CultureInfo.InvariantCulture), StringComparison.Ordinal);
+
+    /// <summary>عنوان مورد متداخل — أبٌ ومولود، وكلاهما في المسار.</summary>
+    private static string Location(
+        string template, Guid companyId, string parentName, Guid parentId, string idName, Guid id)
+        => Location(template, companyId, parentName, parentId)
+            .Replace("{" + idName + "}", id.ToString("D", CultureInfo.InvariantCulture), StringComparison.Ordinal);
+
+    /// <summary>عنوان مورد متداخل بمستويين — جدٌّ وأبٌ ومولود.</summary>
+    private static string Location(
+        string template,
+        Guid companyId,
+        string grandparentName,
+        Guid grandparentId,
+        string parentName,
+        Guid parentId,
+        string idName,
+        Guid id)
+        => Location(template, companyId, grandparentName, grandparentId, parentName, parentId)
+            .Replace("{" + idName + "}", id.ToString("D", CultureInfo.InvariantCulture), StringComparison.Ordinal);
+
+    /// <summary>
+    /// ‏201 للتنفيذ الأول و200 للوصول الثاني بالهوية نفسها — <b>والفارق في الجسم أيضاً</b>
+    /// بـ<c>alreadyMoved</c>. ورمز الحالة وحده يضيع خلف أي وسيط يعيد التوجيه.
+    /// </summary>
+    private static IResult Moved(HttpContext context, StockTransferDto dto, string? location)
+    {
+        if (location is not null)
+        {
+            context.Response.Headers.Location = location;
+        }
+
+        return Results.Json(
+            dto,
+            ApiJson.Options,
+            statusCode: dto.AlreadyMoved ? StatusCodes.Status200OK : StatusCodes.Status201Created);
+    }
 }

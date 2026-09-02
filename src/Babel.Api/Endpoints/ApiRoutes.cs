@@ -340,6 +340,94 @@ internal static class ApiRoutes
     /// </summary>
     public const string InventoryValuation = Company + "/inventory-valuation";
 
+    // ── تسكين المخزون: مستودع ← موقع ← رفّ ───────────────────────────────────
+    // **هرمٌ في العنوان لا شرطٌ في الجسم**: الموقع مورد فرعي للمستودع، والرفّ مورد
+    // فرعي للموقع — فالانتماء بنيةٌ يقرأها كل عميل، لا حقلٌ يُتحقَّق منه بعد الوصول.
+    // وهو الشكل نفسه الذي جعل وحدات العقار `properties/{propertyId}/units`.
+    //
+    // **وإعادة التسمية والتعطيل موردان فرعيان، لا `PUT` ولا `PATCH` ولا `DELETE`.**
+    // ‏`PUT` على موضعٍ كان سيقبل رمزاً جديداً في الجسم — والرمز هوية تحملها حركات
+    // مضت، وتغييرُه يقطع كل حركة عن موضعها. والاسم وحده هو ما يُغيَّر، فالمورد الفرعي
+    // ‏`/name` يقول ذلك في العنوان بدل أن يقوله في تعليق.
+
+    /// <summary>المستودعات: التسجيل والقائمة.</summary>
+    public const string Warehouses = Company + "/warehouses";
+
+    /// <summary>مستودع واحد: القراءة.</summary>
+    public const string Warehouse = Warehouses + "/{warehouseId}";
+
+    /// <summary>إعادة تسمية مستودع — <b>الاسم وحده، ولا رمز</b>.</summary>
+    public const string WarehouseName = Warehouse + "/name";
+
+    /// <summary>
+    /// تعطيل مستودع. <b>ويُرفض إن بقي فيه رصيد</b>: المستودع المُعطَّل لا يُنقَل منه
+    /// ولا يُصرف، فتبقى البضاعة بقيمتها في الحساب الضابط بلا بابٍ تخرج منه.
+    /// </summary>
+    public const string WarehouseDeactivation = Warehouse + "/deactivation";
+
+    /// <summary>مواقع مستودع: التسجيل والقائمة. <b>مورد فرعي لا مورد رئيسي</b>.</summary>
+    public const string StorageLocations = Warehouse + "/locations";
+
+    /// <summary>موقع واحد: القراءة.</summary>
+    public const string StorageLocation = StorageLocations + "/{locationId}";
+
+    /// <summary>إعادة تسمية موقع.</summary>
+    public const string StorageLocationName = StorageLocation + "/name";
+
+    /// <summary>تعطيل موقع — ويُرفض إن بقي فيه رصيد أو رفٌّ عامل.</summary>
+    public const string StorageLocationDeactivation = StorageLocation + "/deactivation";
+
+    /// <summary>
+    /// أرفف موقع: التسجيل والقائمة.
+    /// <para>
+    /// <b>ويتفرّع عن الموقع في مسار الموقع نفسه</b>، لا عن عنوانٍ ثانٍ له. وعنوانان
+    /// للموقع الواحد — أحدهما تحت مستودعه وآخر تحت الشركة — كانا سيجعلان «أيّهما
+    /// الصحيح؟» سؤالاً على كل عميل، ويجعلان الانتماء يُتحقَّق منه في أحد المسارين
+    /// دون الآخر.
+    /// </para>
+    /// </summary>
+    public const string StorageBins = StorageLocation + "/bins";
+
+    /// <summary>رفّ واحد: القراءة.</summary>
+    public const string StorageBin = StorageBins + "/{binId}";
+
+    /// <summary>إعادة تسمية رفّ.</summary>
+    public const string StorageBinName = StorageBin + "/name";
+
+    /// <summary>
+    /// تعطيل رفّ. <b>ولا فحص رصيدٍ عليه</b>: الرفّ ليس بُعداً في مفتاح الرصيد، فلا
+    /// صفَّ رصيدٍ يُقرأ عنه.
+    /// </summary>
+    public const string StorageBinDeactivation = StorageBin + "/deactivation";
+
+
+    /// <summary>
+    /// النقل بين موقعين: إنشاء <b>مسوّدة</b> والقائمة.
+    /// <para>
+    /// <b>ولا ترحيل على هذا المستند إطلاقاً</b>: النقل داخل المنشأة نفسها لا يُغيّر
+    /// قيمة المخزون، والصنف واحدٌ على الطرفين فمؤهّل دوره واحد، فالقيد الذي كان
+    /// سيُكتب مدينٌ ودائنٌ على الحساب نفسه بالمبلغ نفسه — أي لا شيء، في دفترٍ يُضاف
+    /// إليه ولا يُحذف منه.
+    /// </para>
+    /// </summary>
+    public const string StockTransfers = Company + "/stock-transfers";
+
+    /// <summary>مستند نقل واحد: القراءة.</summary>
+    public const string StockTransfer = StockTransfers + "/{transferId}";
+
+    /// <summary>
+    /// تنفيذ النقل: <b>حركتان في الدفتر المساعد ولا قيد</b>. والمورد الفرعي
+    /// <c>movement</c> لا <c>posting</c>: الثاني يعني في هذا العقد «صار له قيد»،
+    /// ومسارٌ يحمل الاسم بلا قيد كان سيُرسل كل قارئ يبحث عن قيدٍ لا وجود له.
+    /// </summary>
+    public const string StockTransferMovement = StockTransfer + "/movement";
+
+    /// <summary>
+    /// الأرصدة <b>بتسكينها</b>: الرصيد ومعه اسم مستودعه واسم موقعه من سجلّ التسكين،
+    /// ووسمُ ما ليس مسجَّلاً فيه.
+    /// </summary>
+    public const string PlacementBalances = Company + "/placement-balances";
+
     // ── العقارات ─────────────────────────────────────────────────────────────
     // والشكل هو الشكل نفسه: **إنشاء مسوّدة · قراءة · فعلٌ على مورد فرعي**. ولا `PUT`
     // ولا `PATCH` ولا `DELETE` على عقارٍ ولا وحدةٍ ولا عقدٍ ولا فاتورةٍ ولا سند.

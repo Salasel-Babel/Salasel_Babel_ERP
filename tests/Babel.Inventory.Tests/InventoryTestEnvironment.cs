@@ -121,7 +121,20 @@ internal static class InventoryTestEnvironment
     /// </summary>
     public static TenantId UnitsTenant { get; } = new(new Guid("7b1e0c33-0000-4000-8000-000000000004"));
 
-    public static TenantId[] AllTenants { get; } = [Tenant, NegativeStockTenant, ValuationTenant, UnitsTenant];
+    /// <summary>
+    /// منشأة التسكين: يُسجَّل عليها هرم المستودع والموقع والرفّ، ويُنقَل بين موقعين،
+    /// وتُعطَّل مواضع.
+    /// <para>
+    /// <b>ومعزولة لأن ما تتركه هو بالضبط ما يفحصه إثباتٌ آخر</b>: مواضع مُعطَّلة
+    /// وأرصدة موزَّعة على موقعين بعد نقل. وخلطُها بمنشأة الوحدات كان سيجعل «هل يُرفض
+    /// تعطيل موضعٍ فيه رصيد؟» سؤالاً جوابه يعتمد على ترتيب تشغيل الإثباتات — وهو
+    /// «أخضر بترتيب التشغيل لا ببنائه».
+    /// </para>
+    /// </summary>
+    public static TenantId PlacementTenant { get; } = new(new Guid("7b1e0c33-0000-4000-8000-000000000005"));
+
+    public static TenantId[] AllTenants { get; } =
+        [Tenant, NegativeStockTenant, ValuationTenant, UnitsTenant, PlacementTenant];
 
     /// <summary>عدد محاولات الحذف قبل اللجوء إلى الإنهاء القسري.</summary>
     private const int DropAttempts = 40;

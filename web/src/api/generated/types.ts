@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     bd9a3ec99569ae7bbe8a4def9a1e5d52942ab4732289f7897df7762912d72d02
+     0229f4a0df345dae90832ad0ae10d4959e31e839c0fe1c495ab9a8fe5d48af7a
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -1580,6 +1580,40 @@ export interface PendingPolicyItem {
   titleEn: string;
 }
 
+/** طلب إعادة تسمية موضع — **الاسم وحده، ولا رمز فيه**. والرمز محمولٌ على كل حركة ورصيد، وتغييرُه يقطع كل حركة مضت عن موضعها. / A request to rename a place — **the name only, with no code in it**. The code is carried on every movement and balance, and changing it severs every past movement from its place. */
+export interface PlaceNameRequest {
+  name: LocalizedText;
+}
+
+/** رصيدٌ بتسكينه: الرصيد نفسه ومعه اسما مستودعه وموقعه من سجلّ التسكين. **ورمزٌ غير مسجَّل يخرج ويُوسَم** بـ warehouseRegistered أو locationRegistered كاذبة، ويخرج اسمه مساوياً لرمزه — لا يُحذف من القائمة ولا يُخترَع له اسم. / A balance with its placement: the balance itself plus its warehouse and location names from the placement register. **An unregistered code is returned and flagged** with warehouseRegistered or locationRegistered false, and its name comes back equal to its code — never dropped from the list and never given an invented name. */
+export interface PlacementBalance {
+  /** هل ورد هذا الصنف إلى هذا الموضع مرّةً بتكلفة؟ / Has this item ever been received into this place with a cost? */
+  hasCostBasis: boolean;
+  /** الصنف. / The item. */
+  itemId: string;
+  /** رمز الموقع. / The location code. */
+  locationId: string;
+  locationName: LocalizedText;
+  /** هل رمز الموقع مسجَّل في سجلّ التسكين؟ فإن كان false فاسمه مساوٍ لرمزه، وهو رمزٌ كُتب على حركة قبل أن يوجد السجلّ. / Is the location code registered in the placement register? When false its name equals its code — a code written onto a movement before the register existed. */
+  locationRegistered: boolean;
+  quantity: Measure;
+  unitCost: UnitCost;
+  value: Money;
+  /** رمز المستودع. / The warehouse code. */
+  warehouseId: string;
+  warehouseName: LocalizedText;
+  /** هل رمز المستودع مسجَّل في سجلّ التسكين؟ / Is the warehouse code registered in the placement register? */
+  warehouseRegistered: boolean;
+}
+
+/** الأرصدة بتسكينها، مرتَّبة بالصنف ثم المستودع ثم الموقع. / The balances with their placement, ordered by item then warehouse then location. */
+export interface PlacementBalanceList {
+  /** عدد الأرصدة. / The number of balances. */
+  balanceCount: number;
+  /** الأرصدة. / The balances. */
+  balances: PlacementBalance[];
+}
+
 /** طلب ترحيل. ولاحظ ما ليس فيه: لا حقل مستأجر ولا حقل شركة — النطاق من الاعتماد ومن المسار. وأي حقل غير معروف يُرفض الطلب كلّه بسببه. / A posting request. Note what is absent: no tenant field and no company field — scope comes from the credential and the path. Any unknown field fails the whole request. */
 export interface PostJournalEntryRequest {
   /** مفردات المبالغ التي يقرؤها قالب الحدث. / The amount vocabulary the event template reads. */
@@ -2320,6 +2354,93 @@ export interface StockMovementRequest {
   quantity: Measure;
   /** المستودع. / The warehouse. */
   warehouseId: string;
+}
+
+/** مستند نقلٍ بين موقعين كما يخرج على السلك. **ولا حقل entryId فيه** — بخلاف StockMovement: هذا المستند لا يُرحَّل إلى دفتر الأستاذ أبداً، وحقلٌ لمعرّف قيدٍ لا يُملأ قطّ يجعل كل قارئ يسأل متى يُملأ. / A transfer document between two locations as it leaves on the wire. **It has no entryId field** — unlike StockMovement: this document is never posted to the general ledger, and a field for an entry identifier that is never filled makes every reader ask when it would be. */
+export interface StockTransfer {
+  /** هل كانت هذه الهوية مُنفَّذة **قبل** هذا الطلب؟ ولا تُشتقّ من state: المستند بعد أي تنفيذ ناجح حالته MOVED — الأول والثاني سواء. / Was this identity already executed **before** this request? It is not derivable from state: after any successful execution the document is MOVED, first arrival and second alike. */
+  alreadyMoved: boolean;
+  /** موقع المصدر. / The source location. */
+  fromLocationId: string;
+  /** مستودع المصدر. / The source warehouse. */
+  fromWarehouseId: string;
+  /** المعرّف. / The identifier. */
+  id: string;
+  /** مجموعة الصنف. / The item group. */
+  itemGroup: string;
+  /** الصنف. / The item. */
+  itemId: string;
+  /** الرقم. / The number. */
+  number: string;
+  /** تاريخ النقل. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The transfer date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  occurredOn: string;
+  quantity: Measure;
+  /** الحالة: DRAFT مسوّدة · MOVED مُنفَّذ. **و MOVED لا POSTED عمداً**: الثانية تعني في هذا العقد «صار له قيد»، وحالةٌ تحمل الاسم بلا قيد كانت ستجعل كل قارئ يبحث عن قيدٍ لا وجود له. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The state: DRAFT or MOVED. **MOVED, not POSTED, deliberately**: POSTED means 'it has an entry' in this contract, and a state carrying that name with no entry would send every reader hunting for one that does not exist. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  state: "DRAFT" | "MOVED";
+  /** موقع الوجهة. / The destination location. */
+  toLocationId: string;
+  /** مستودع الوجهة. / The destination warehouse. */
+  toWarehouseId: string;
+  value: Money;
+}
+
+/** مستندات النقل، مرتَّبة بالتاريخ ثم بالرقم. / The transfer documents, ordered by date then by number. */
+export interface StockTransferList {
+  /** عدد المستندات. / The number of documents. */
+  transferCount: number;
+  /** المستندات. / The documents. */
+  transfers: StockTransfer[];
+}
+
+/** طلب إنشاء مستند نقلٍ بين موقعين **مسوّدة**. **ولا حقل تكلفة فيه**: المنقول يخرج بتكلفة مصدره المتحرّكة لحظة النقل، وتُحسب في وحدة المخزون ولا تُملى (ADR-0039). وحقلُ تكلفةٍ هنا كان سيسمح بنقلٍ يُعيد تسعير البضاعة وهو ينقلها — أي بجعل حركة مكانٍ حركةَ قيمة. / A request to create a **draft** transfer document between two locations. **It carries no cost field**: what moves leaves at its source's moving average cost at the moment of transfer, computed by the inventory module and never dictated (ADR-0039). A cost field here would allow a transfer to reprice goods while relocating them — turning a movement of place into a movement of value. */
+export interface StockTransferRequest {
+  /** موقع المصدر. / The source location. */
+  fromLocationId: string;
+  /** مستودع المصدر. / The source warehouse. */
+  fromWarehouseId: string;
+  /** مجموعة الصنف — مؤهّل الدور، وهي **واحدة على الطرفين** لأن الصنف واحد. / The item group — a role qualifier, and **the same on both sides** because the item is the same. */
+  itemGroup: string;
+  /** رمز الصنف — **واحدٌ على الطرفين**: النقل يحرّك صنفاً لا يبدّله. / The item code — **the same on both sides**: a transfer relocates an item, it does not substitute it. */
+  itemId: string;
+  /** رقم المستند — فريد داخل المنشأة. / The document number — unique within the company. */
+  number: string;
+  /** تاريخ النقل الميلادي. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The Gregorian transfer date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  occurredOn: string;
+  quantity: Measure;
+  /** موقع الوجهة. / The destination location. */
+  toLocationId: string;
+  /** مستودع الوجهة. / The destination warehouse. */
+  toWarehouseId: string;
+}
+
+/** موضعٌ في هرم التسكين كما يخرج على السلك. / A place in the placement hierarchy as it leaves on the wire. */
+export interface StoragePlace {
+  /** الرمز. / The code. */
+  code: string;
+  /** المعرّف الذي تُبنى عليه القراءة. / The identifier reads are built on. */
+  id: string;
+  /** هل هو عامل؟ **والتعطيل حالةٌ تُقرأ لا غياب**: المُعطَّل يبقى في القوائم بهذا الحقل false، لأن رمزه محمولٌ على حركات مضت ولا يُحذف. / Is it active? **Deactivation is a readable state, not an absence**: a deactivated place stays in the lists with this field false, because its code is carried by past movements and is never deleted. */
+  isActive: boolean;
+  /** المستوى في الهرم. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The level in the hierarchy. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  level: "WAREHOUSE" | "LOCATION" | "BIN";
+  name: LocalizedText;
+  /** رمز الأب — **نصّ فارغ للمستودع** لأنه أعلى الهرم. ورمز المستودع للموقع، ورمز الموقع للرفّ. / The parent's code — **an empty string for a warehouse**, which is the top of the hierarchy. The warehouse code for a location, and the location code for a bin. */
+  parentCode: string;
+}
+
+/** مواضع مستوىً، مرتَّبة بالرمز ترتيباً حرفياً ثابتاً. **وغلافٌ لا مصفوفة عارية.** / The places of one level, ordered by code in a stable ordinal order. **An envelope, not a bare array.** */
+export interface StoragePlaceList {
+  /** عدد المواضع. / The number of places. */
+  placeCount: number;
+  /** المواضع. / The places. */
+  places: StoragePlace[];
+}
+
+/** طلب تسجيل موضعٍ في هرم التسكين — مستودعاً أو موقعاً أو رفّاً. **ولا مستوى فيه ولا رمز أب**: المستوى يقرأه المسار الذي وصل الطلب إليه، والأب معرّفٌ في المسار. وحقلٌ للأب في الجسم كان سيقبل رمزاً يخالف المسار، فيصير للمولود أبوان مُعلَنان. / A request to register a place in the placement hierarchy — a warehouse, a location, or a bin. **It carries neither a level nor a parent code**: the level is read from the path the request arrived on, and the parent is an identifier in that path. A parent field in the body would accept a code contradicting the path, giving the child two declared parents. */
+export interface StoragePlaceRequest {
+  /** رمز الموضع داخل مستواه — **هوية تحملها الحركات والأرصدة، لا نصّاً معروضاً**. لا يُترجَم ولا يُطابَق بلا حساسية حالة، ولا يتغيّر بعد التسجيل. / The place code within its level — **an identity carried by movements and balances, not displayed text**. Never translated, never matched case-insensitively, and never changed after registration. */
+  code: string;
+  name: LocalizedText;
 }
 
 /** عقد باطن ومعه بنوده المعلَّقة. / A subcontract together with its pending items. */

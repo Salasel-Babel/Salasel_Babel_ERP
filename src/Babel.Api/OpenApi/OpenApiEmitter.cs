@@ -1072,6 +1072,303 @@ internal static class OpenApiEmitter
                     new QueryParameter("asOf", true, "تاريخ التقييم الميلادي.", "The Gregorian valuation date.", "date"),
                 ]),
 
+            // ── تسكين المخزون: مستودع ← موقع ← رفّ ───────────────────────────
+            // **وخمس عمليات لكل مستوى بالشكل نفسه.** ولا PUT ولا PATCH ولا DELETE
+            // على موضع: الرمز هوية تحملها حركات مضت، وتغييرُه يقطعها عن موضعها،
+            // وحذفُه يجعل كل حركة عليه بلا موضع يُقرأ. فالاسم وحده يُغيَّر، ومورده
+            // الفرعي /name يقول ذلك في العنوان.
+
+            new(ApiRoutes.Warehouses, "post", "addWarehouse",
+                "تسجيل مستودع", "Register a warehouse",
+                "يسجّل مستودعاً في سجلّ التسكين: رمزه واسمه ثنائي اللغة.\n\n"
+                + "**والسجلّ يصف ولا يُبطل.** حركات المخزون وأرصدته القائمة تحمل رموز مواضع كُتبت قبل أن يوجد هذا "
+                + "السجلّ — DEFAULT وما شابهه — ولا مفتاح خارجي منها إليه. فرمزٌ غير مسجَّل **يبقى عاملاً في "
+                + "draftStockMovement ويُوسَم عند القراءة في readPlacementBalances**، ولا تُعاد كتابة حركةٍ مضت "
+                + "لتوافق سجلّاً وُلد بعدها.\n\n"
+                + "**والرمز هوية لا نصّ عرض**: هو ما يُكتب على كل حركة ورصيد، ولا يُغيَّر بعدها أبداً — ولذلك لا "
+                + "‏PUT على هذا المورد، والاسم وحده يُغيَّر عبر renameWarehouse.",
+                "Registers a warehouse in the placement register: its code and its bilingual name.\n\n"
+                + "**The register describes; it does not invalidate.** Existing stock movements and balances carry place "
+                + "codes written before this register existed — DEFAULT and the like — and no foreign key points from them "
+                + "to it. An unregistered code **keeps working in draftStockMovement and is flagged on read in "
+                + "readPlacementBalances**; no past movement is rewritten to match a register born after it.\n\n"
+                + "**The code is an identity, not display text**: it is what gets written onto every movement and balance, "
+                + "and it never changes afterwards — hence no PUT on this resource; only the name changes, via renameWarehouse.",
+                Body: "StoragePlaceRequest", Response: "StoragePlace", Success: 201, Query: [],
+                ProblemStatuses: [409]),
+
+            new(ApiRoutes.Warehouses, "get", "listWarehouses",
+                "قراءة المستودعات", "List the warehouses",
+                "يقرأ مستودعات المنشأة مرتَّبةً بالرمز **ترتيباً حرفياً ثابتاً**. والمُعطَّل يخرج في القائمة "
+                + "بـ‏isActive = false ولا يُحذف منها: التعطيل حالةٌ تُقرأ لا غياب. نقطة قراءة.",
+                "Lists the company's warehouses ordered by code in a **stable ordinal order**. A deactivated warehouse "
+                + "appears in the list with isActive = false rather than being dropped from it: deactivation is a readable "
+                + "state, not an absence. A read point.",
+                Body: null, Response: "StoragePlaceList", Success: 200, Query: []),
+
+            new(ApiRoutes.Warehouse, "get", "readWarehouse",
+                "قراءة مستودع", "Read one warehouse",
+                "يقرأ مستودعاً واحداً بمعرّفه.",
+                "Reads a single warehouse by its identifier.",
+                Body: null, Response: "StoragePlace", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.WarehouseName, "post", "renameWarehouse",
+                "إعادة تسمية مستودع", "Rename a warehouse",
+                "يغيّر **اسم** المستودع ولا يمسّ رمزه.\n\n"
+                + "**ومورد فرعي لا PUT على المستودع نفسه**: ‏PUT كان سيقبل رمزاً جديداً في الجسم، والرمز محمولٌ على "
+                + "كل حركة ورصيد — وتغييرُه يقطع كل حركة مضت عن موضعها. والاسم نصّ عرضٍ لا هوية، فتغييره لا يمسّ رقماً.",
+                "Changes the warehouse **name** and never touches its code.\n\n"
+                + "**A sub-resource, not a PUT on the warehouse**: a PUT would have accepted a new code in the body, and the "
+                + "code is carried on every movement and balance — changing it severs every past movement from its place. "
+                + "The name is display text, not identity, so changing it touches no number.",
+                Body: "PlaceNameRequest", Response: "StoragePlace", Success: 200, Query: [],
+                ProblemStatuses: [404]),
+
+            new(ApiRoutes.WarehouseDeactivation, "post", "deactivateWarehouse",
+                "تعطيل مستودع", "Deactivate a warehouse",
+                "يعطّل مستودعاً — **ولا يحذفه**: الرمز محمولٌ على حركات مضت.\n\n"
+                + "**ويُرفض التعطيل إن بقي في المستودع رصيدٌ غير صفري** برمز "
+                + "inventory.storage_place_still_holds_stock، والرسالة تُسمّي الصنف وكمّيته. والسبب أن الموضع "
+                + "المُعطَّل لا يُنقَل منه ولا يُصرف، فتبقى البضاعة فيه بقيمتها في الحساب الضابط **بلا بابٍ تخرج "
+                + "منه** — رقمٌ في الميزانية لا يقابله واقعٌ يُبلغ. والعلاج نقلٌ بمستند أو إخراجٌ بمستند، ثم "
+                + "التعطيل.\n\n"
+                + "**ويُرفض أيضاً إن بقي تحته موقعٌ عامل**: ولا تعطيل متسلسل، لأن التسلسل يُخفي ما عُطّل تبعاً عمّن "
+                + "عطّله فلا يُعرف عند التراجع ما كان مُعطَّلاً أصلاً.\n\n"
+                + "**وإعادة تعطيل مُعطَّل تنجح ولا تفشل**: الحالة المطلوبة قائمة، والفشل عليها يجعل كل مستدعٍ يقرأ "
+                + "قبل أن يكتب لينجو من خطأ لا يصف عطلاً.",
+                "Deactivates a warehouse — **it does not delete it**: the code is carried by past movements.\n\n"
+                + "**Deactivation is refused while the warehouse still holds a non-zero balance**, with code "
+                + "inventory.storage_place_still_holds_stock, and the message names the item and its quantity. A deactivated "
+                + "place can neither be transferred from nor issued from, so the goods stay there at their value in the "
+                + "control account **with no door out** — a balance-sheet figure with no reachable reality. The remedy is a "
+                + "transfer document or an issue document, then deactivation.\n\n"
+                + "**It is also refused while an active location sits under it**: no cascade, because a cascade hides what "
+                + "was deactivated by consequence from whoever deactivated it, so a rollback cannot tell them apart.\n\n"
+                + "**Deactivating an already deactivated warehouse succeeds**: the requested state holds, and failing on it "
+                + "would force every caller to read before writing to dodge an error that describes no fault.",
+                Body: null, Response: "StoragePlace", Success: 200, Query: [],
+                ProblemStatuses: [404, 409]),
+
+            new(ApiRoutes.StorageLocations, "post", "addStorageLocation",
+                "تسجيل موقع في مستودع", "Register a location in a warehouse",
+                "يسجّل موقعاً داخل مستودع. **مورد فرعي لا مورد رئيسي**: الانتماء بنيةٌ في العنوان يقرأها كل عميل، "
+                + "لا حقلٌ في الجسم يُتحقَّق منه بعد الوصول.\n\n"
+                + "**والموقع هو مستوى الرصيد المُقيَّم**: مفتاح الرصيد (منشأة × صنف × مستودع × موقع)، والرفّ تحته "
+                + "ليس بُعد تقييم.\n\n"
+                + "**والأب يُتحقَّق أنه عامل**: تسجيل موقعٍ تحت مستودعٍ مُعطَّل إحياءٌ له من الباب الخلفي — يصير فيه "
+                + "ما يُسكَّن وهو مُعلَنٌ خارج الخدمة.\n\n"
+                + "**ورمز الموقع فريدٌ داخل مستواه لا داخل مستودعه**: «‏A1» موقعاً واحداً في المنشأة كلّها. وهو "
+                + "تضييقٌ مقصود — رمز الموقع يُكتب وحده على الحركة والرصيد بلا مستودعه، فرمزان متطابقان في مستودعين "
+                + "كانا سيجعلان قراءة الرصيد تسأل «أيّ ‏A1؟» على كل صفّ.",
+                "Registers a location inside a warehouse. **A sub-resource, not a top-level one**: the parentage is structure "
+                + "in the URL that every client reads, not a body field checked after arrival.\n\n"
+                + "**The location is the level of the valued balance**: the balance key is (company x item x warehouse x "
+                + "location), and the bin below it is not a valuation dimension.\n\n"
+                + "**The parent is checked for being active**: registering a location under a deactivated warehouse revives "
+                + "it through the back door — things get placed in it while it is declared out of service.\n\n"
+                + "**A location code is unique within its level, not within its warehouse**: 'A1' is one location in the "
+                + "whole company. That is a deliberate narrowing — a location code is written onto movements and balances "
+                + "without its warehouse, so two identical codes in two warehouses would make every balance row ask 'which A1?'.",
+                Body: "StoragePlaceRequest", Response: "StoragePlace", Success: 201, Query: [],
+                ProblemStatuses: [404, 409]),
+
+            new(ApiRoutes.StorageLocations, "get", "listStorageLocations",
+                "قراءة مواقع مستودع", "List a warehouse's locations",
+                "يقرأ مواقع مستودعٍ مرتَّبةً بالرمز ترتيباً حرفياً ثابتاً. ومستودعٌ لا وجود له يُرفض بـ404 ولا "
+                + "يُرَدّ عليه بقائمة فارغة: «لا مواقع فيه» و«لا مستودع بهذا المعرّف» جوابان مختلفان، وردُّ الأول "
+                + "على الثاني يُرسل قارئه يبحث عن بيانات مفقودة بدل عنوانٍ خاطئ. نقطة قراءة.",
+                "Lists a warehouse's locations ordered by code in a stable ordinal order. A warehouse that does not exist is "
+                + "refused with 404 rather than answered with an empty list: 'it has no locations' and 'no warehouse with "
+                + "that id' are different answers, and giving the first for the second sends the reader hunting for missing "
+                + "data instead of a wrong URL. A read point.",
+                Body: null, Response: "StoragePlaceList", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.StorageLocation, "get", "readStorageLocation",
+                "قراءة موقع", "Read one location",
+                "يقرأ موقعاً واحداً، **ويتحقّق أنه يقع في المستودع المذكور في المسار**. وموقعٌ في مستودع آخر يُرفض "
+                + "بـ‏inventory.storage_place_not_under_parent ولا يخرج وكأنه فيه: المسار إفادةٌ تُصدَّق لا زينة.",
+                "Reads a single location and **verifies it sits in the warehouse named in the path**. A location in another "
+                + "warehouse is refused with inventory.storage_place_not_under_parent rather than returned as if it belonged: "
+                + "the path is an assertion that must hold, not decoration.",
+                Body: null, Response: "StoragePlace", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.StorageLocationName, "post", "renameStorageLocation",
+                "إعادة تسمية موقع", "Rename a location",
+                "يغيّر **اسم** الموقع ولا يمسّ رمزه — بالحدّ نفسه الذي يحكم المستودع.",
+                "Changes the location **name** and never its code — under the same rule that governs a warehouse.",
+                Body: "PlaceNameRequest", Response: "StoragePlace", Success: 200, Query: [],
+                ProblemStatuses: [404]),
+
+            new(ApiRoutes.StorageLocationDeactivation, "post", "deactivateStorageLocation",
+                "تعطيل موقع", "Deactivate a location",
+                "يعطّل موقعاً. **ويُرفض إن بقي فيه رصيدٌ غير صفري** — بما فيه الرصيد **السالب**: تعطيلُ موضعٍ عليه "
+                + "عجزٌ يُغلق الباب الذي يُصحَّح منه، فيبقى العجز مفتوحاً بلا طريق إلى إقفال الفترة. **ويُرفض إن "
+                + "بقي تحته رفٌّ عامل**.",
+                "Deactivates a location. **Refused while it still holds a non-zero balance** — including a **negative** one: "
+                + "deactivating a place that carries a shortage closes the door the shortage is corrected through, leaving it "
+                + "open with no route to a period close. **Also refused while an active bin sits under it.**",
+                Body: null, Response: "StoragePlace", Success: 200, Query: [],
+                ProblemStatuses: [404, 409]),
+
+            new(ApiRoutes.StorageBins, "post", "addStorageBin",
+                "تسجيل رفّ في موقع", "Register a bin in a location",
+                "يسجّل رفّاً أو حاويةً داخل موقع — أدنى مستويات هرم التسكين.\n\n"
+                + "**والرفّ بُعد تسكينٍ لا بُعد تقييم**، وهو أهمّ ما يُقال عنه: مفتاح الرصيد يقف عند الموقع ولا "
+                + "يمتدّ إلى الرفّ. والسبب في وجهين — المتوسط المرجّح المتحرّك مثبَّتٌ عند (منشأة × صنف × مستودع) "
+                + "بـ‏ADR-0039، فتفريعُ القيمة على الأرفف يجعل نقل كرتونٍ بين رفّين حدثاً ذا قيمة ومجموعَ متوسطات "
+                + "الأرفف لا يساوي متوسط المستودع؛ وتوسيعُ مفتاح الرصيد ببُعدٍ خامس يقتضي إعادة توزيع كل رصيد قائم "
+                + "على أرففٍ لا يعرفها أحد — وهو ثمنٌ دُفع مرّةً حين دخل الموقع المفتاح، ولا يُدفع ثانيةً لبُعدٍ بلا "
+                + "معنىً محاسبي.\n\n"
+                + "**فما فائدته إذن:** يُجيب «في أي ممرّ أجدها» لا «بكم هي في الميزانية». وذلك **نقص سطحٍ مُعلَن**: "
+                + "لا يوجد اليوم بابٌ يقرأ كمّية رفٍّ بعينه.",
+                "Registers a bin or container inside a location — the lowest level of the placement hierarchy.\n\n"
+                + "**A bin is a placement dimension, not a valuation dimension**, which is the most important thing to say "
+                + "about it: the balance key stops at the location and does not extend to the bin. Two reasons — the moving "
+                + "weighted average is fixed at (company x item x warehouse) by ADR-0039, so splitting value across bins "
+                + "makes moving a carton between two shelves a value-bearing event and makes the sum of bin averages differ "
+                + "from the warehouse average; and widening the balance key by a fifth dimension would require redistributing "
+                + "every existing balance across bins nobody knows — a price paid once when the location entered the key, and "
+                + "not paid again for a dimension carrying no accounting meaning.\n\n"
+                + "**So what is it for:** it answers 'which aisle do I find it in', not 'what is it worth on the balance "
+                + "sheet'. That is a **declared surface gap**: there is no endpoint today that reads one bin's quantity.",
+                Body: "StoragePlaceRequest", Response: "StoragePlace", Success: 201, Query: [],
+                ProblemStatuses: [404, 409]),
+
+            new(ApiRoutes.StorageBins, "get", "listStorageBins",
+                "قراءة أرفف موقع", "List a location's bins",
+                "يقرأ أرفف موقعٍ مرتَّبةً بالرمز ترتيباً حرفياً ثابتاً. نقطة قراءة.",
+                "Lists a location's bins ordered by code in a stable ordinal order. A read point.",
+                Body: null, Response: "StoragePlaceList", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.StorageBin, "get", "readStorageBin",
+                "قراءة رفّ", "Read one bin",
+                "يقرأ رفّاً واحداً، **ويتحقّق من ضلعَي المسار كليهما**: أن الموقع في مستودعه، وأن الرفّ في موقعه. "
+                + "وبدون الفحص الأول يُقرأ رفّ الموقع «‏A» عبر مسارٍ يذكر المستودع «‏B» فيخرج وكأنه فيه.",
+                "Reads a single bin and **verifies both links in the path**: that the location sits in its warehouse and that "
+                + "the bin sits in its location. Without the first check, a bin of location 'A' would be readable through a "
+                + "path naming warehouse 'B' and come back as if it belonged there.",
+                Body: null, Response: "StoragePlace", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.StorageBinName, "post", "renameStorageBin",
+                "إعادة تسمية رفّ", "Rename a bin",
+                "يغيّر **اسم** الرفّ ولا يمسّ رمزه.",
+                "Changes the bin **name** and never its code.",
+                Body: "PlaceNameRequest", Response: "StoragePlace", Success: 200, Query: [],
+                ProblemStatuses: [404]),
+
+            new(ApiRoutes.StorageBinDeactivation, "post", "deactivateStorageBin",
+                "تعطيل رفّ", "Deactivate a bin",
+                "يعطّل رفّاً. **ولا فحص رصيدٍ هنا** — بخلاف المستودع والموقع: الرفّ ليس بُعداً في مفتاح الرصيد، فلا "
+                + "صفَّ رصيدٍ يُقرأ عنه، وفحصٌ يبحث عنه كان يُرجع «لا رصيد» دائماً ويبدو حارساً وهو لا يحرس شيئاً.",
+                "Deactivates a bin. **No balance check here** — unlike a warehouse or a location: a bin is not a dimension in "
+                + "the balance key, so no balance row exists to read, and a check looking for one would always return 'no "
+                + "stock' and look like a guard while guarding nothing.",
+                Body: null, Response: "StoragePlace", Success: 200, Query: [],
+                ProblemStatuses: [404]),
+
+            new(ApiRoutes.StockTransfers, "post", "draftStockTransfer",
+                "إنشاء نقلٍ بين موقعين مسوّدة", "Draft a transfer between two locations",
+                "يُنشئ مستند نقلٍ بين موقعين في حالة **DRAFT**. لا حركة ولا رصيد يتغيّر: التنفيذ مورد فرعي مستقلّ.\n\n"
+                + "**ولا حقل تكلفة في هذا الطلب**، وهو مقصود: المنقول يخرج بتكلفة مصدره المتحرّكة لحظة النقل، "
+                + "وتُحسب في وحدة المخزون ولا تُملى (ADR-0039). وحقلُ تكلفةٍ هنا كان سيسمح بنقلٍ «يُعيد تسعير» "
+                + "البضاعة وهو ينقلها — أي بجعل حركة مكانٍ حركةَ قيمة.\n\n"
+                + "**وموضعا النقل يجب أن يكونا مسجَّلين وعاملين** — بخلاف draftStockMovement الذي يقبل رمزاً غير "
+                + "مسجَّل. والفرق مقصود: ذاك بابٌ قائم منذ ما قبل سجلّ التسكين ويحمل رموزاً كُتبت قبله، وإلزامُه "
+                + "بالتسجيل بأثر رجعي يُوقف مستأجراً عاملاً؛ وهذا بابٌ جديد لا حركة سابقة عليه، فيُولد مُلزماً.\n\n"
+                + "**والنقل إلى الموضع نفسه يُرفض**: حركتان تُلغيان بعضهما وتُحدّثان صفّ رصيدٍ واحد مرّتين في "
+                + "معاملة واحدة.",
+                "Creates a transfer document between two locations in state **DRAFT**. No movement and no balance change: "
+                + "execution is a separate sub-resource.\n\n"
+                + "**There is no cost field in this request**, deliberately: what moves leaves at its source's moving average "
+                + "cost at the moment of transfer, computed by the inventory module and never dictated (ADR-0039). A cost "
+                + "field here would allow a transfer to 'reprice' goods while relocating them — turning a movement of place "
+                + "into a movement of value.\n\n"
+                + "**Both places must be registered and active** — unlike draftStockMovement, which accepts an unregistered "
+                + "code. The difference is deliberate: that door predates the placement register and carries codes written "
+                + "before it, and demanding retroactive registration would stop a working tenant; this door is new, with no "
+                + "movement preceding it, so it is born strict.\n\n"
+                + "**A transfer to the same place is refused**: two movements cancelling each other and updating one balance "
+                + "row twice inside a single transaction.",
+                Body: "StockTransferRequest", Response: "StockTransfer", Success: 201, Query: [],
+                ProblemStatuses: [404, 409, 422]),
+
+            new(ApiRoutes.StockTransfers, "get", "listStockTransfers",
+                "قراءة مستندات النقل", "List the transfer documents",
+                "يقرأ مستندات النقل مرتَّبةً بالتاريخ ثم بالرقم ترتيباً حرفياً ثابتاً. نقطة قراءة.",
+                "Lists the transfer documents ordered by date then by number in a stable ordinal order. A read point.",
+                Body: null, Response: "StockTransferList", Success: 200, Query: []),
+
+            new(ApiRoutes.StockTransfer, "get", "readStockTransfer",
+                "قراءة مستند نقل", "Read one transfer document",
+                "يقرأ مستند نقلٍ واحداً بقيمته المحسوبة إن نُفّذ.",
+                "Reads a single transfer document, with its computed value if it has been executed.",
+                Body: null, Response: "StockTransfer", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.StockTransferMovement, "post", "moveStockTransfer",
+                "تنفيذ النقل بين موقعين", "Execute a transfer between two locations",
+                "ينفّذ النقل: **حركتان في دفتر المخزون المساعد — صادرٌ من المصدر ثم واردٌ إلى الوجهة بالقيمة "
+                + "نفسها — ولا قيدٌ في دفتر الأستاذ إطلاقاً**.\n\n"
+                + "**ولماذا لا قيد:** النقل داخل المنشأة نفسها لا يُغيّر قيمة المخزون. والصنف واحدٌ على الطرفين "
+                + "فمجموعته واحدة، ومؤهّل دور inventory_control في المصفوفة هو مجموعة الصنف — فالحساب الذي كان "
+                + "سيُجعل مديناً هو الحساب الذي كان سيُجعل دائناً **بالمبلغ نفسه**. أي أن القيد لا شيء، مكتوباً في "
+                + "دفترٍ يُضاف إليه ولا يُحذف منه، وله رقمٌ متسلسل ويدخل سلسلة البصمات ويُقرأ في كل تقرير حركة إلى "
+                + "الأبد. والمصفوفة نفسها تقول هذا في شرط inventory.transfer.between_warehouses: «وإلا فلا قيد مالي "
+                + "إطلاقاً» — والحدث inventory.transfer.between_locations مُودَعٌ فيها بـ posts_entry: false وبلا "
+                + "سطور، كي لا يبقى «لا قيد» قراراً في شيفرة.\n\n"
+                + "**والمورد الفرعي movement لا posting** لهذا السبب حرفياً: posting في هذا العقد تعني «صار له قيد».\n\n"
+                + "**وحركتان برمزَي حدث مختلفين** — issued و received: هوية الحركة سداسية ورمز الحدث فيها، وحركتان "
+                + "بالهوية نفسها تعني أن الثانية تُبتلع بصمت، فيخرج المنقول من المصدر ولا يدخل الوجهة أبداً.\n\n"
+                + "**ويُرفض النقل بكمّية تتجاوز رصيد المصدر** — بخلاف الصرف الذي يقبل الرصيد السالب ويَسِمه: الصرف "
+                + "قبل إدخال استلامه واقعةٌ يومية، أمّا النقل فيُحرّك بضاعةً بين رفّين فعلياً، ولا يُحمَل من رفٍّ ما "
+                + "ليس عليه.\n\n"
+                + "**وحصين ضد التكرار**: الوصول الثاني بالهوية نفسها يُرجع المستند ذاته و‏alreadyMoved = true ورمز "
+                + "200 بدل 201، بلا حركة ثالثة. والحكم حكمُ الحركة لا حالةَ الصفّ: نداءان متزامنان يجتازان فحص "
+                + "«مسوّدة» معاً ويلتقيان عند الفهرس الفريد على الهوية.",
+                "Executes the transfer: **two movements in the inventory subledger — an issue from the source, then a receipt "
+                + "into the destination at the very same value — and no general-ledger entry at all**.\n\n"
+                + "**Why no entry:** a transfer inside the same company does not change the value of inventory. The item is "
+                + "the same on both sides, so its group is the same, and the matrix qualifier for inventory_control is the "
+                + "item group — so the account that would be debited is the account that would be credited, **for the same "
+                + "amount**. That entry is nothing, written into a ledger that is appended to and never deleted from, "
+                + "carrying a sequence number, entering the hash chain, and read in every movement report forever. The matrix "
+                + "says as much in the precondition of inventory.transfer.between_warehouses: 'otherwise no financial entry "
+                + "is produced at all' — and the event inventory.transfer.between_locations is committed there with "
+                + "posts_entry: false and no lines, so that 'no entry' is not a decision living in code.\n\n"
+                + "**The sub-resource is movement, not posting**, for exactly that reason: posting means 'it has an entry' in "
+                + "this contract.\n\n"
+                + "**Two movements under two different event codes** — issued and received: movement identity is a sextuple "
+                + "with the event code in it, and two movements under one identity would mean the second is silently "
+                + "swallowed, so the goods would leave the source and never arrive at the destination.\n\n"
+                + "**A transfer exceeding the source balance is refused** — unlike an issue, which accepts a negative balance "
+                + "and flags it: issuing before the receipt is entered is a daily occurrence, whereas a transfer physically "
+                + "moves goods between two shelves, and what is not on a shelf is not carried off it.\n\n"
+                + "**Idempotent**: a second arrival under the same identity returns the same document with alreadyMoved = "
+                + "true and status 200 instead of 201, with no third movement. The verdict is the movement's, not the row's "
+                + "state: two concurrent calls both pass the 'is it a draft' check and meet at the unique index on identity.",
+                Body: null, Response: "StockTransfer", Success: 201, Query: [],
+                ProblemStatuses: [404, 409, 422]),
+
+            new(ApiRoutes.PlacementBalances, "get", "readPlacementBalances",
+                "الأرصدة بتسكينها", "Balances with their placement",
+                "يقرأ أرصدة المخزون **ومعها أسماء مواضعها من سجلّ التسكين**: اسم المستودع واسم الموقع بلغتيهما.\n\n"
+                + "**والرمز غير المسجَّل يخرج ويُوسَم، ولا يُحذف من القائمة ولا يُخترَع له اسم**: "
+                + "‏warehouseRegistered و locationRegistered تقولان ذلك صراحةً، ويخرج الاسم مساوياً للرمز. وحذفُه من "
+                + "القائمة كان سيجعل مجموع الأرصدة المقروءة أقلّ من مجموعها الفعلي — انحرافٌ لا يُظهره أي فحص "
+                + "توازن — واختراعُ اسمٍ له كان سيجعل السجلّ يبدو أشمل ممّا هو.\n\n"
+                + "**ومستوى القراءة هو مستوى الرصيد: الموقع.** ولا رصيد رفٍّ يُقرأ من هنا لأنه لا يُمسَك أصلاً، "
+                + "وقائمةٌ تُرجع صفراً عن رفٍّ فيه بضاعة أسوأ من قائمة لا تذكره.\n\n"
+                + "و‏readStockBalances يبقى كما هو: هذا الباب **يزيد** أسماء التسكين ولا يستبدله. نقطة قراءة.",
+                "Reads the stock balances **together with their place names from the placement register**: the warehouse name "
+                + "and the location name, both bilingual.\n\n"
+                + "**An unregistered code is returned and flagged, never dropped from the list and never given an invented "
+                + "name**: warehouseRegistered and locationRegistered say so explicitly, and the name comes back equal to the "
+                + "code. Dropping it would make the summed balances read smaller than they actually are — a divergence no "
+                + "balance check reveals — and inventing a name would make the register look more complete than it is.\n\n"
+                + "**The read level is the balance level: the location.** No bin balance is read here because none is held, "
+                + "and a list returning zero for a bin that holds goods is worse than a list that does not mention it.\n\n"
+                + "readStockBalances is unchanged: this endpoint **adds** placement names rather than replacing it. A read point.",
+                Body: null, Response: "PlacementBalanceList", Success: 200, Query: []),
+
             new(ApiRoutes.DocumentAdmission, "post", "admitDocument",
                 "عرض مستند على الملفّ", "Present a document against the profile",
                 "يعرض **أسماء حقول** مستند على ملفّ الشركة فيقبله أو يرفضه. لا قيم ولا مبالغ ولا أثر: هذا حكمٌ لا كتابة. "
@@ -3113,6 +3410,18 @@ internal static class OpenApiEmitter
     /// المخطّط لا يقبل غيرهما، والوحدة ترفض ثالثاً باسمه. ولذلك تُنشر <c>enum</c>.
     /// </summary>
     private static IReadOnlyList<string> MovementDirections { get; } = ["IN", "OUT"];
+
+    /// <summary>
+    /// مستويات هرم التسكين — <b>ثلاثة لا تزيد</b>، وكلٌّ يعرف أباه بمستواه فلا دورات
+    /// ممكنة بالبناء.
+    /// </summary>
+    private static IReadOnlyList<string> PlacementLevels { get; } = ["WAREHOUSE", "LOCATION", "BIN"];
+
+    /// <summary>
+    /// حالات مستند النقل — <c>MOVED</c> لا <c>POSTED</c>: الثانية تعني في هذا العقد
+    /// «صار له قيد»، والنقل لا يُرحَّل.
+    /// </summary>
+    private static IReadOnlyList<string> TransferStates { get; } = ["DRAFT", "MOVED"];
 
     /// <summary>
     /// نماذج ملكية العقار — <b>مجموعة مغلقة يفرضها قيد تحقّق في قاعدة بيانات الدفتر</b>،
@@ -6545,6 +6854,216 @@ internal static class OpenApiEmitter
             w.WriteStartObject("properties");
             WriteIntegerProperty(w, "balanceCount", 0, int.MaxValue, "عدد الأرصدة.", "The number of balances.");
             WriteArrayRefProperty(w, "balances", "StockBalance", "الأرصدة.", "The balances.");
+            w.WriteEndObject();
+            WriteRequired(w, "balanceCount", "balances");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("StoragePlaceRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب تسجيل موضعٍ في هرم التسكين — مستودعاً أو موقعاً أو رفّاً. **ولا مستوى فيه ولا رمز أب**: "
+                + "المستوى يقرأه المسار الذي وصل الطلب إليه، والأب معرّفٌ في المسار. وحقلٌ للأب في الجسم كان "
+                + "سيقبل رمزاً يخالف المسار، فيصير للمولود أبوان مُعلَنان. / "
+                + "A request to register a place in the placement hierarchy — a warehouse, a location, or a bin. **It "
+                + "carries neither a level nor a parent code**: the level is read from the path the request arrived on, "
+                + "and the parent is an identifier in that path. A parent field in the body would accept a code "
+                + "contradicting the path, giving the child two declared parents.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "code",
+                "رمز الموضع داخل مستواه — **هوية تحملها الحركات والأرصدة، لا نصّاً معروضاً**. لا يُترجَم ولا يُطابَق بلا حساسية حالة، ولا يتغيّر بعد التسجيل.",
+                "The place code within its level — **an identity carried by movements and balances, not displayed text**. Never translated, never matched case-insensitively, and never changed after registration.",
+                64);
+            WriteRefProperty(w, "name", "LocalizedText");
+            w.WriteEndObject();
+            WriteRequired(w, "code", "name");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("PlaceNameRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب إعادة تسمية موضع — **الاسم وحده، ولا رمز فيه**. والرمز محمولٌ على كل حركة ورصيد، وتغييرُه "
+                + "يقطع كل حركة مضت عن موضعها. / "
+                + "A request to rename a place — **the name only, with no code in it**. The code is carried on every "
+                + "movement and balance, and changing it severs every past movement from its place.");
+            w.WriteStartObject("properties");
+            WriteRefProperty(w, "name", "LocalizedText");
+            w.WriteEndObject();
+            WriteRequired(w, "name");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("StoragePlace", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "موضعٌ في هرم التسكين كما يخرج على السلك. / A place in the placement hierarchy as it leaves on the wire.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "code", "الرمز.", "The code.", 64);
+            WriteStringProperty(w, "id", "المعرّف الذي تُبنى عليه القراءة.", "The identifier reads are built on.", 36);
+            WriteBooleanProperty(
+                w,
+                "isActive",
+                "هل هو عامل؟ **والتعطيل حالةٌ تُقرأ لا غياب**: المُعطَّل يبقى في القوائم بهذا الحقل false، لأن رمزه محمولٌ على حركات مضت ولا يُحذف.",
+                "Is it active? **Deactivation is a readable state, not an absence**: a deactivated place stays in the lists with this field false, because its code is carried by past movements and is never deleted.");
+            WriteEnumProperty(w, "level",
+                "المستوى في الهرم.",
+                "The level in the hierarchy.",
+                PlacementLevels);
+            WriteRefProperty(w, "name", "LocalizedText");
+            WriteStringProperty(w, "parentCode",
+                "رمز الأب — **نصّ فارغ للمستودع** لأنه أعلى الهرم. ورمز المستودع للموقع، ورمز الموقع للرفّ.",
+                "The parent's code — **an empty string for a warehouse**, which is the top of the hierarchy. The warehouse code for a location, and the location code for a bin.",
+                64);
+            w.WriteEndObject();
+            WriteRequired(w, "code", "id", "isActive", "level", "name", "parentCode");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("StoragePlaceList", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "مواضع مستوىً، مرتَّبة بالرمز ترتيباً حرفياً ثابتاً. **وغلافٌ لا مصفوفة عارية.** / "
+                + "The places of one level, ordered by code in a stable ordinal order. **An envelope, not a bare array.**");
+            w.WriteStartObject("properties");
+            WriteIntegerProperty(w, "placeCount", 0, int.MaxValue, "عدد المواضع.", "The number of places.");
+            WriteArrayRefProperty(w, "places", "StoragePlace", "المواضع.", "The places.");
+            w.WriteEndObject();
+            WriteRequired(w, "placeCount", "places");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("StockTransferRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب إنشاء مستند نقلٍ بين موقعين **مسوّدة**. **ولا حقل تكلفة فيه**: المنقول يخرج بتكلفة مصدره "
+                + "المتحرّكة لحظة النقل، وتُحسب في وحدة المخزون ولا تُملى (ADR-0039). وحقلُ تكلفةٍ هنا كان سيسمح "
+                + "بنقلٍ يُعيد تسعير البضاعة وهو ينقلها — أي بجعل حركة مكانٍ حركةَ قيمة. / "
+                + "A request to create a **draft** transfer document between two locations. **It carries no cost field**: "
+                + "what moves leaves at its source's moving average cost at the moment of transfer, computed by the "
+                + "inventory module and never dictated (ADR-0039). A cost field here would allow a transfer to reprice "
+                + "goods while relocating them — turning a movement of place into a movement of value.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "fromLocationId", "موقع المصدر.", "The source location.", 64);
+            WriteStringProperty(w, "fromWarehouseId", "مستودع المصدر.", "The source warehouse.", 64);
+            WriteStringProperty(w, "itemGroup", "مجموعة الصنف — مؤهّل الدور، وهي **واحدة على الطرفين** لأن الصنف واحد.", "The item group — a role qualifier, and **the same on both sides** because the item is the same.", 64);
+            WriteStringProperty(w, "itemId", "رمز الصنف — **واحدٌ على الطرفين**: النقل يحرّك صنفاً لا يبدّله.", "The item code — **the same on both sides**: a transfer relocates an item, it does not substitute it.", 64);
+            WriteStringProperty(w, "number", "رقم المستند — فريد داخل المنشأة.", "The document number — unique within the company.", 64);
+            WriteDateProperty(w, "occurredOn", "تاريخ النقل الميلادي.", "The Gregorian transfer date.");
+            WriteRefProperty(w, "quantity", "Measure");
+            WriteStringProperty(w, "toLocationId", "موقع الوجهة.", "The destination location.", 64);
+            WriteStringProperty(w, "toWarehouseId", "مستودع الوجهة.", "The destination warehouse.", 64);
+            w.WriteEndObject();
+            WriteRequired(w, "fromLocationId", "fromWarehouseId", "itemGroup", "itemId", "number", "occurredOn",
+                "quantity", "toLocationId", "toWarehouseId");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("StockTransfer", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "مستند نقلٍ بين موقعين كما يخرج على السلك. **ولا حقل entryId فيه** — بخلاف StockMovement: هذا "
+                + "المستند لا يُرحَّل إلى دفتر الأستاذ أبداً، وحقلٌ لمعرّف قيدٍ لا يُملأ قطّ يجعل كل قارئ يسأل متى "
+                + "يُملأ. / "
+                + "A transfer document between two locations as it leaves on the wire. **It has no entryId field** — unlike "
+                + "StockMovement: this document is never posted to the general ledger, and a field for an entry identifier "
+                + "that is never filled makes every reader ask when it would be.");
+            w.WriteStartObject("properties");
+            WriteBooleanProperty(
+                w,
+                "alreadyMoved",
+                "هل كانت هذه الهوية مُنفَّذة **قبل** هذا الطلب؟ ولا تُشتقّ من state: المستند بعد أي تنفيذ ناجح حالته MOVED — الأول والثاني سواء.",
+                "Was this identity already executed **before** this request? It is not derivable from state: after any successful execution the document is MOVED, first arrival and second alike.");
+            WriteStringProperty(w, "fromLocationId", "موقع المصدر.", "The source location.", 64);
+            WriteStringProperty(w, "fromWarehouseId", "مستودع المصدر.", "The source warehouse.", 64);
+            WriteStringProperty(w, "id", "المعرّف.", "The identifier.", 36);
+            WriteStringProperty(w, "itemGroup", "مجموعة الصنف.", "The item group.", 64);
+            WriteStringProperty(w, "itemId", "الصنف.", "The item.", 64);
+            WriteStringProperty(w, "number", "الرقم.", "The number.", 64);
+            WriteDateProperty(w, "occurredOn", "تاريخ النقل.", "The transfer date.");
+            WriteRefProperty(w, "quantity", "Measure");
+            WriteEnumProperty(w, "state",
+                "الحالة: DRAFT مسوّدة · MOVED مُنفَّذ. **و MOVED لا POSTED عمداً**: الثانية تعني في هذا العقد «صار له قيد»، وحالةٌ تحمل الاسم بلا قيد كانت ستجعل كل قارئ يبحث عن قيدٍ لا وجود له.",
+                "The state: DRAFT or MOVED. **MOVED, not POSTED, deliberately**: POSTED means 'it has an entry' in this contract, and a state carrying that name with no entry would send every reader hunting for one that does not exist.",
+                TransferStates);
+            WriteStringProperty(w, "toLocationId", "موقع الوجهة.", "The destination location.", 64);
+            WriteStringProperty(w, "toWarehouseId", "مستودع الوجهة.", "The destination warehouse.", 64);
+            WriteRefProperty(w, "value", "Money");
+            w.WriteEndObject();
+            WriteRequired(w, "alreadyMoved", "fromLocationId", "fromWarehouseId", "id", "itemGroup", "itemId",
+                "number", "occurredOn", "quantity", "state", "toLocationId", "toWarehouseId", "value");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("StockTransferList", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "مستندات النقل، مرتَّبة بالتاريخ ثم بالرقم. / The transfer documents, ordered by date then by number.");
+            w.WriteStartObject("properties");
+            WriteIntegerProperty(w, "transferCount", 0, int.MaxValue, "عدد المستندات.", "The number of documents.");
+            WriteArrayRefProperty(w, "transfers", "StockTransfer", "المستندات.", "The documents.");
+            w.WriteEndObject();
+            WriteRequired(w, "transferCount", "transfers");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("PlacementBalance", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "رصيدٌ بتسكينه: الرصيد نفسه ومعه اسما مستودعه وموقعه من سجلّ التسكين. **ورمزٌ غير مسجَّل يخرج "
+                + "ويُوسَم** بـ warehouseRegistered أو locationRegistered كاذبة، ويخرج اسمه مساوياً لرمزه — لا "
+                + "يُحذف من القائمة ولا يُخترَع له اسم. / "
+                + "A balance with its placement: the balance itself plus its warehouse and location names from the "
+                + "placement register. **An unregistered code is returned and flagged** with warehouseRegistered or "
+                + "locationRegistered false, and its name comes back equal to its code — never dropped from the list and "
+                + "never given an invented name.");
+            w.WriteStartObject("properties");
+            WriteBooleanProperty(
+                w,
+                "hasCostBasis",
+                "هل ورد هذا الصنف إلى هذا الموضع مرّةً بتكلفة؟",
+                "Has this item ever been received into this place with a cost?");
+            WriteStringProperty(w, "itemId", "الصنف.", "The item.", 64);
+            WriteStringProperty(w, "locationId", "رمز الموقع.", "The location code.", 64);
+            WriteRefProperty(w, "locationName", "LocalizedText");
+            WriteBooleanProperty(
+                w,
+                "locationRegistered",
+                "هل رمز الموقع مسجَّل في سجلّ التسكين؟ فإن كان false فاسمه مساوٍ لرمزه، وهو رمزٌ كُتب على حركة قبل أن يوجد السجلّ.",
+                "Is the location code registered in the placement register? When false its name equals its code — a code written onto a movement before the register existed.");
+            WriteRefProperty(w, "quantity", "Measure");
+            WriteRefProperty(w, "unitCost", "UnitCost");
+            WriteRefProperty(w, "value", "Money");
+            WriteStringProperty(w, "warehouseId", "رمز المستودع.", "The warehouse code.", 64);
+            WriteRefProperty(w, "warehouseName", "LocalizedText");
+            WriteBooleanProperty(
+                w,
+                "warehouseRegistered",
+                "هل رمز المستودع مسجَّل في سجلّ التسكين؟",
+                "Is the warehouse code registered in the placement register?");
+            w.WriteEndObject();
+            WriteRequired(w, "hasCostBasis", "itemId", "locationId", "locationName", "locationRegistered",
+                "quantity", "unitCost", "value", "warehouseId", "warehouseName", "warehouseRegistered");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("PlacementBalanceList", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "الأرصدة بتسكينها، مرتَّبة بالصنف ثم المستودع ثم الموقع. / "
+                + "The balances with their placement, ordered by item then warehouse then location.");
+            w.WriteStartObject("properties");
+            WriteIntegerProperty(w, "balanceCount", 0, int.MaxValue, "عدد الأرصدة.", "The number of balances.");
+            WriteArrayRefProperty(w, "balances", "PlacementBalance", "الأرصدة.", "The balances.");
             w.WriteEndObject();
             WriteRequired(w, "balanceCount", "balances");
             w.WriteBoolean("additionalProperties", false);

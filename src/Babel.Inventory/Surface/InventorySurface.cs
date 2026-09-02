@@ -1,5 +1,6 @@
 using Babel.Contracts.Inventory;
 using Babel.Inventory.Application;
+using Babel.Inventory.Persistence;
 using Babel.Inventory.Subledger;
 using Babel.SharedKernel;
 
@@ -31,6 +32,8 @@ public sealed class InventorySurface
     private readonly StockDocumentService _documents;
     private readonly StockMovementService _stock;
     private readonly InventoryValuationService _valuation;
+    private readonly StoragePlaceService _places;
+    private readonly StockTransferService _transfers;
     private readonly CurrencyCode _currency;
 
     /// <summary>ينشئ السطح فوق خدمات الوحدة.</summary>
@@ -38,24 +41,32 @@ public sealed class InventorySurface
     /// <param name="documents">مستندات حركة المخزون.</param>
     /// <param name="stock">دفتر المخزون المساعد — الأرصدة.</param>
     /// <param name="valuation">المطابقة وجاهزية الإقفال.</param>
+    /// <param name="places">سجلّ التسكين — المستودع والموقع والرفّ.</param>
+    /// <param name="transfers">النقل بين موقعين.</param>
     /// <param name="options">إعدادات الوحدة — ومنها عملة المنشأة.</param>
     public InventorySurface(
         ItemCatalogueService items,
         StockDocumentService documents,
         StockMovementService stock,
         InventoryValuationService valuation,
+        StoragePlaceService places,
+        StockTransferService transfers,
         InventoryOptions options)
     {
         ArgumentNullException.ThrowIfNull(items);
         ArgumentNullException.ThrowIfNull(documents);
         ArgumentNullException.ThrowIfNull(stock);
         ArgumentNullException.ThrowIfNull(valuation);
+        ArgumentNullException.ThrowIfNull(places);
+        ArgumentNullException.ThrowIfNull(transfers);
         ArgumentNullException.ThrowIfNull(options);
 
         _items = items;
         _documents = documents;
         _stock = stock;
         _valuation = valuation;
+        _places = places;
+        _transfers = transfers;
         _currency = CurrencyCode.FromString(options.CompanyCurrency);
     }
 
@@ -272,6 +283,422 @@ public sealed class InventorySurface
                     divergence.ReasonCode)),
             ]));
     }
+
+    // ── التسكين: مستودع ← موقع ← رفّ ─────────────────────────────────────────
+    // و**الثلاثة شكلٌ واحد بخمس عمليات**: تسجيل · قراءة · سرد · إعادة تسمية · تعطيل.
+    // ولا `PUT` ولا `DELETE` على أيٍّ منها: الرمز محمولٌ على حركات مضت، وحذفُه يجعل
+    // كل حركة عليه بلا موضع يُقرأ. والتعطيل حالةٌ تُقرأ، لا غياب.
+
+    /// <summary>يسجّل مستودعاً.</summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="request">الطلب.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    public ValueTask<Result<InventoryStoragePlace>> AddWarehouseAsync(
+        TenantId tenant, UserId actor, InventoryStoragePlaceRequest request, CancellationToken cancellationToken = default)
+        => AddPlaceAsync(tenant, actor, PlacementLevel.Warehouse, null, request, cancellationToken);
+
+    /// <summary>يقرأ مستودعاً واحداً.</summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="warehouseId">المستودع.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    public ValueTask<Result<InventoryStoragePlace>> ReadWarehouseAsync(
+        TenantId tenant, UserId actor, Guid warehouseId, CancellationToken cancellationToken = default)
+        => ReadPlaceAsync(tenant, actor, PlacementLevel.Warehouse, null, warehouseId, cancellationToken);
+
+    /// <summary>يقرأ مستودعات المنشأة مرتَّبةً بالرمز.</summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    public ValueTask<Result<IReadOnlyList<InventoryStoragePlace>>> ListWarehousesAsync(
+        TenantId tenant, UserId actor, CancellationToken cancellationToken = default)
+        => ListPlacesAsync(tenant, actor, PlacementLevel.Warehouse, null, cancellationToken);
+
+    /// <summary>يعيد تسمية مستودع — الاسم وحده، ولا رمز.</summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="warehouseId">المستودع.</param>
+    /// <param name="request">الاسم الجديد.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    public ValueTask<Result<InventoryStoragePlace>> RenameWarehouseAsync(
+        TenantId tenant, UserId actor, Guid warehouseId, InventoryPlaceNameRequest request, CancellationToken cancellationToken = default)
+        => RenamePlaceAsync(tenant, actor, PlacementLevel.Warehouse, null, warehouseId, request, cancellationToken);
+
+    /// <summary>يعطّل مستودعاً — ويُرفض التعطيل إن بقي فيه رصيد أو موقعٌ عامل.</summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="warehouseId">المستودع.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    public ValueTask<Result<InventoryStoragePlace>> DeactivateWarehouseAsync(
+        TenantId tenant, UserId actor, Guid warehouseId, CancellationToken cancellationToken = default)
+        => DeactivatePlaceAsync(tenant, actor, PlacementLevel.Warehouse, null, warehouseId, cancellationToken);
+
+    /// <summary>يسجّل موقعاً داخل مستودع.</summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="warehouseId">المستودع الأب.</param>
+    /// <param name="request">الطلب.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    public ValueTask<Result<InventoryStoragePlace>> AddStorageLocationAsync(
+        TenantId tenant, UserId actor, Guid warehouseId, InventoryStoragePlaceRequest request, CancellationToken cancellationToken = default)
+        => AddPlaceAsync(tenant, actor, PlacementLevel.Location, warehouseId, request, cancellationToken);
+
+    /// <summary>يقرأ موقعاً واحداً — ويُتحقَّق أنه يقع في المستودع المذكور.</summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="warehouseId">المستودع الأب.</param>
+    /// <param name="locationId">الموقع.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    public ValueTask<Result<InventoryStoragePlace>> ReadStorageLocationAsync(
+        TenantId tenant, UserId actor, Guid warehouseId, Guid locationId, CancellationToken cancellationToken = default)
+        => ReadPlaceAsync(tenant, actor, PlacementLevel.Location, warehouseId, locationId, cancellationToken);
+
+    /// <summary>يقرأ مواقع مستودع مرتَّبةً بالرمز.</summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="warehouseId">المستودع الأب.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    public ValueTask<Result<IReadOnlyList<InventoryStoragePlace>>> ListStorageLocationsAsync(
+        TenantId tenant, UserId actor, Guid warehouseId, CancellationToken cancellationToken = default)
+        => ListPlacesAsync(tenant, actor, PlacementLevel.Location, warehouseId, cancellationToken);
+
+    /// <summary>يعيد تسمية موقع.</summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="warehouseId">المستودع الأب.</param>
+    /// <param name="locationId">الموقع.</param>
+    /// <param name="request">الاسم الجديد.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    public ValueTask<Result<InventoryStoragePlace>> RenameStorageLocationAsync(
+        TenantId tenant, UserId actor, Guid warehouseId, Guid locationId, InventoryPlaceNameRequest request, CancellationToken cancellationToken = default)
+        => RenamePlaceAsync(tenant, actor, PlacementLevel.Location, warehouseId, locationId, request, cancellationToken);
+
+    /// <summary>يعطّل موقعاً — ويُرفض التعطيل إن بقي فيه رصيد أو رفٌّ عامل.</summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="warehouseId">المستودع الأب.</param>
+    /// <param name="locationId">الموقع.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    public ValueTask<Result<InventoryStoragePlace>> DeactivateStorageLocationAsync(
+        TenantId tenant, UserId actor, Guid warehouseId, Guid locationId, CancellationToken cancellationToken = default)
+        => DeactivatePlaceAsync(tenant, actor, PlacementLevel.Location, warehouseId, locationId, cancellationToken);
+
+    // ── الأرفف: ثلاثة أضلاع في المسار، **وثلاثتها تُتحقَّق** ──────────────────
+    // مسار الرفّ يذكر المستودع والموقع والرفّ. والتحقّق من الضلعين الأولين معاً ليس
+    // ترفاً: بدونه يُقرأ رفٌّ من الموقع «‏A» عبر مسارٍ يذكر المستودع «‏B» فيخرج وكأنه
+    // فيه. ولذلك يُتحقَّق أوّلاً أن الموقع في مستودعه، ثم يُعمَل على الرفّ تحت موقعه.
+
+    /// <summary>يسجّل رفّاً داخل موقع.</summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="warehouseId">المستودع الجدّ — يُتحقَّق أن الموقع فيه.</param>
+    /// <param name="locationId">الموقع الأب.</param>
+    /// <param name="request">الطلب.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    public async ValueTask<Result<InventoryStoragePlace>> AddStorageBinAsync(
+        TenantId tenant, UserId actor, Guid warehouseId, Guid locationId, InventoryStoragePlaceRequest request, CancellationToken cancellationToken = default)
+    {
+        Result chain = await InLocationAsync(tenant, actor, warehouseId, locationId, cancellationToken).ConfigureAwait(false);
+        return chain.IsFailure
+            ? Result<InventoryStoragePlace>.Failure(chain.Errors)
+            : await AddPlaceAsync(tenant, actor, PlacementLevel.Bin, locationId, request, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>يقرأ رفّاً واحداً — ويُتحقَّق من سلسلة مستودعه وموقعه.</summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="warehouseId">المستودع الجدّ.</param>
+    /// <param name="locationId">الموقع الأب.</param>
+    /// <param name="binId">الرفّ.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    public async ValueTask<Result<InventoryStoragePlace>> ReadStorageBinAsync(
+        TenantId tenant, UserId actor, Guid warehouseId, Guid locationId, Guid binId, CancellationToken cancellationToken = default)
+    {
+        Result chain = await InLocationAsync(tenant, actor, warehouseId, locationId, cancellationToken).ConfigureAwait(false);
+        return chain.IsFailure
+            ? Result<InventoryStoragePlace>.Failure(chain.Errors)
+            : await ReadPlaceAsync(tenant, actor, PlacementLevel.Bin, locationId, binId, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>يقرأ أرفف موقعٍ مرتَّبةً بالرمز.</summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="warehouseId">المستودع الجدّ.</param>
+    /// <param name="locationId">الموقع الأب.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    public async ValueTask<Result<IReadOnlyList<InventoryStoragePlace>>> ListStorageBinsAsync(
+        TenantId tenant, UserId actor, Guid warehouseId, Guid locationId, CancellationToken cancellationToken = default)
+    {
+        Result chain = await InLocationAsync(tenant, actor, warehouseId, locationId, cancellationToken).ConfigureAwait(false);
+        return chain.IsFailure
+            ? Result<IReadOnlyList<InventoryStoragePlace>>.Failure(chain.Errors)
+            : await ListPlacesAsync(tenant, actor, PlacementLevel.Bin, locationId, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>يعيد تسمية رفّاً.</summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="warehouseId">المستودع الجدّ.</param>
+    /// <param name="locationId">الموقع الأب.</param>
+    /// <param name="binId">الرفّ.</param>
+    /// <param name="request">الاسم الجديد.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    public async ValueTask<Result<InventoryStoragePlace>> RenameStorageBinAsync(
+        TenantId tenant, UserId actor, Guid warehouseId, Guid locationId, Guid binId, InventoryPlaceNameRequest request, CancellationToken cancellationToken = default)
+    {
+        Result chain = await InLocationAsync(tenant, actor, warehouseId, locationId, cancellationToken).ConfigureAwait(false);
+        return chain.IsFailure
+            ? Result<InventoryStoragePlace>.Failure(chain.Errors)
+            : await RenamePlaceAsync(tenant, actor, PlacementLevel.Bin, locationId, binId, request, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// يعطّل رفّاً.
+    /// <para>
+    /// <b>ولا فحص رصيدٍ عليه</b>: الرفّ ليس بُعداً في مفتاح الرصيد (‏ADR تسكين
+    /// المخزون)، فلا صفَّ رصيدٍ يُقرأ عنه. وفحصٌ يبحث عنه كان يُرجع «لا رصيد» دائماً
+    /// ويبدو حارساً وهو لا يحرس شيئاً.
+    /// </para>
+    /// </summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="warehouseId">المستودع الجدّ.</param>
+    /// <param name="locationId">الموقع الأب.</param>
+    /// <param name="binId">الرفّ.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    public async ValueTask<Result<InventoryStoragePlace>> DeactivateStorageBinAsync(
+        TenantId tenant, UserId actor, Guid warehouseId, Guid locationId, Guid binId, CancellationToken cancellationToken = default)
+    {
+        Result chain = await InLocationAsync(tenant, actor, warehouseId, locationId, cancellationToken).ConfigureAwait(false);
+        return chain.IsFailure
+            ? Result<InventoryStoragePlace>.Failure(chain.Errors)
+            : await DeactivatePlaceAsync(tenant, actor, PlacementLevel.Bin, locationId, binId, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>يتحقّق أن الموقع المذكور في المسار يقع في المستودع المذكور فيه.</summary>
+    private async ValueTask<Result> InLocationAsync(
+        TenantId tenant, UserId actor, Guid warehouseId, Guid locationId, CancellationToken cancellationToken)
+    {
+        Result<StoragePlaceView> location = await _places
+            .GetAsync(tenant, actor, PlacementLevel.Location, warehouseId, locationId, cancellationToken)
+            .ConfigureAwait(false);
+
+        return location.IsFailure ? Result.Failure(location.Errors) : Result.Success();
+    }
+
+    /// <summary>
+    /// يقرأ الأرصدة <b>بتسكينها</b>: الرصيد ومعه اسم مستودعه واسم موقعه من السجلّ،
+    /// ووسمُ ما ليس مسجَّلاً.
+    /// </summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    public async ValueTask<Result<IReadOnlyList<InventoryPlacementBalance>>> ReadPlacementBalancesAsync(
+        TenantId tenant,
+        UserId actor,
+        CancellationToken cancellationToken = default)
+    {
+        Result<IReadOnlyList<PlacementBalanceView>> result = await _places
+            .ListPlacementBalancesAsync(tenant, actor, cancellationToken).ConfigureAwait(false);
+
+        return result.IsFailure
+            ? Result<IReadOnlyList<InventoryPlacementBalance>>.Failure(result.Errors)
+            : Result<IReadOnlyList<InventoryPlacementBalance>>.Success(
+                [
+                    .. result.Value.Select(static balance => new InventoryPlacementBalance(
+                        balance.ItemId,
+                        balance.WarehouseId,
+                        balance.WarehouseName,
+                        balance.WarehouseRegistered,
+                        balance.LocationId,
+                        balance.LocationName,
+                        balance.LocationRegistered,
+                        new InventoryMeasure(balance.Quantity.Magnitude, balance.Quantity.Unit),
+                        balance.Value.Amount,
+                        balance.UnitCost,
+                        balance.HasCostBasis)),
+                ]);
+    }
+
+    /// <summary>يُنشئ مستند نقلٍ بين موقعين <b>مسوّدة</b>. لا حركة ولا رصيد يتغيّر.</summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="request">الطلب.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    public async ValueTask<Result<InventoryStockTransfer>> DraftTransferAsync(
+        TenantId tenant,
+        UserId actor,
+        InventoryStockTransferRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        Result<StockTransferView> result = await _transfers
+            .CreateAsync(
+                tenant,
+                actor,
+                new StockTransferDraft(
+                    request.Number,
+                    request.ItemId,
+                    request.ItemGroup,
+                    request.FromWarehouseId,
+                    request.FromLocationId,
+                    request.ToWarehouseId,
+                    request.ToLocationId,
+                    new InventoryQuantity(request.Quantity.Magnitude, request.Quantity.Unit),
+                    request.OccurredOn),
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        return Transfer(result);
+    }
+
+    /// <summary>يقرأ مستند نقلٍ واحداً.</summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="transferId">المستند.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    public async ValueTask<Result<InventoryStockTransfer>> ReadTransferAsync(
+        TenantId tenant,
+        UserId actor,
+        Guid transferId,
+        CancellationToken cancellationToken = default)
+    {
+        Result<StockTransferView> result = await _transfers
+            .GetAsync(tenant, actor, transferId, cancellationToken).ConfigureAwait(false);
+
+        return Transfer(result);
+    }
+
+    /// <summary>يقرأ مستندات النقل مرتَّبةً بالتاريخ ثم بالرقم.</summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    public async ValueTask<Result<IReadOnlyList<InventoryStockTransfer>>> ListTransfersAsync(
+        TenantId tenant,
+        UserId actor,
+        CancellationToken cancellationToken = default)
+    {
+        Result<IReadOnlyList<StockTransferView>> result = await _transfers
+            .ListAsync(tenant, actor, cancellationToken).ConfigureAwait(false);
+
+        return result.IsFailure
+            ? Result<IReadOnlyList<InventoryStockTransfer>>.Failure(result.Errors)
+            : Result<IReadOnlyList<InventoryStockTransfer>>.Success([.. result.Value.Select(Transfer)]);
+    }
+
+    /// <summary>
+    /// ينفّذ النقل: صادرٌ من المصدر ثم واردٌ إلى الوجهة بالقيمة نفسها — <b>ولا قيد</b>.
+    /// حصينٌ ضد التكرار: الوصول الثاني بالهوية نفسها يُعيد المستند ذاته و<c>AlreadyMoved = true</c>.
+    /// </summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="transferId">المستند.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    public async ValueTask<Result<InventoryStockTransfer>> MoveTransferAsync(
+        TenantId tenant,
+        UserId actor,
+        Guid transferId,
+        CancellationToken cancellationToken = default)
+    {
+        Result<StockTransferView> result = await _transfers
+            .MoveAsync(tenant, actor, transferId, cancellationToken).ConfigureAwait(false);
+
+        return Transfer(result);
+    }
+
+    private async ValueTask<Result<InventoryStoragePlace>> AddPlaceAsync(
+        TenantId tenant,
+        UserId actor,
+        string level,
+        Guid? parentId,
+        InventoryStoragePlaceRequest request,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        Result<StoragePlaceView> result = await _places
+            .CreateAsync(tenant, actor, level, parentId, new StoragePlaceDraft(request.Code, request.Name), cancellationToken)
+            .ConfigureAwait(false);
+
+        return Place(result);
+    }
+
+    private async ValueTask<Result<InventoryStoragePlace>> ReadPlaceAsync(
+        TenantId tenant, UserId actor, string level, Guid? parentId, Guid placeId, CancellationToken cancellationToken)
+    {
+        Result<StoragePlaceView> result = await _places
+            .GetAsync(tenant, actor, level, parentId, placeId, cancellationToken).ConfigureAwait(false);
+
+        return Place(result);
+    }
+
+    private async ValueTask<Result<IReadOnlyList<InventoryStoragePlace>>> ListPlacesAsync(
+        TenantId tenant, UserId actor, string level, Guid? parentId, CancellationToken cancellationToken)
+    {
+        Result<IReadOnlyList<StoragePlaceView>> result = await _places
+            .ListAsync(tenant, actor, level, parentId, cancellationToken).ConfigureAwait(false);
+
+        return result.IsFailure
+            ? Result<IReadOnlyList<InventoryStoragePlace>>.Failure(result.Errors)
+            : Result<IReadOnlyList<InventoryStoragePlace>>.Success([.. result.Value.Select(Place)]);
+    }
+
+    private async ValueTask<Result<InventoryStoragePlace>> RenamePlaceAsync(
+        TenantId tenant,
+        UserId actor,
+        string level,
+        Guid? parentId,
+        Guid placeId,
+        InventoryPlaceNameRequest request,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        Result<StoragePlaceView> result = await _places
+            .RenameAsync(tenant, actor, level, parentId, placeId, request.Name, cancellationToken)
+            .ConfigureAwait(false);
+
+        return Place(result);
+    }
+
+    private async ValueTask<Result<InventoryStoragePlace>> DeactivatePlaceAsync(
+        TenantId tenant, UserId actor, string level, Guid? parentId, Guid placeId, CancellationToken cancellationToken)
+    {
+        Result<StoragePlaceView> result = await _places
+            .DeactivateAsync(tenant, actor, level, parentId, placeId, cancellationToken).ConfigureAwait(false);
+
+        return Place(result);
+    }
+
+    private static Result<InventoryStoragePlace> Place(Result<StoragePlaceView> result)
+        => result.IsFailure
+            ? Result<InventoryStoragePlace>.Failure(result.Errors)
+            : Result<InventoryStoragePlace>.Success(Place(result.Value));
+
+    private static InventoryStoragePlace Place(StoragePlaceView view) => new(
+        view.Id, view.Level, view.Code, view.Name, view.ParentCode, view.IsActive);
+
+    private static Result<InventoryStockTransfer> Transfer(Result<StockTransferView> result)
+        => result.IsFailure
+            ? Result<InventoryStockTransfer>.Failure(result.Errors)
+            : Result<InventoryStockTransfer>.Success(Transfer(result.Value));
+
+    private static InventoryStockTransfer Transfer(StockTransferView view) => new(
+        view.Id,
+        view.Number,
+        view.State,
+        view.ItemId,
+        view.ItemGroup,
+        view.FromWarehouseId,
+        view.FromLocationId,
+        view.ToWarehouseId,
+        view.ToLocationId,
+        new InventoryMeasure(view.Quantity.Magnitude, view.Quantity.Unit),
+        view.Value.Amount,
+        view.OccurredOn,
+        view.AlreadyMoved);
 
     private static InventoryItem Item(ItemView view) => new(
         view.Id,

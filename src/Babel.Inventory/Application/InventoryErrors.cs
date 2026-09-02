@@ -213,6 +213,138 @@ internal static class InventoryErrors
         "The inventory control account could not be read, so no reconciliation is possible: "
         + string.Join(" · ", causes.Select(static e => e.Code)));
 
+    // ── التسكين ──────────────────────────────────────────────────────────────
+
+    /// <summary>موضع تسكين غير موجود في السجلّ.</summary>
+    public static Error PlaceNotFound(string level, string code) => new(
+        "inventory.storage_place_not_found",
+        $"لا {LevelAr(level)} بالرمز «{code}» في سجلّ تسكين هذه المنشأة.",
+        $"No {LevelEn(level)} with code '{code}' exists in this company's placement register.");
+
+    /// <summary>موضع تسكين غير موجود، مطلوبٌ بمعرّفه.</summary>
+    public static Error PlaceIdNotFound(string level, Guid id) => new(
+        "inventory.storage_place_not_found",
+        FormattableString.Invariant($"لا {LevelAr(level)} بالمعرّف {id} في سجلّ تسكين هذه المنشأة."),
+        FormattableString.Invariant($"No {LevelEn(level)} with id {id} exists in this company's placement register."));
+
+    /// <summary>رمز موضع مكرّر داخل مستواه.</summary>
+    public static Error DuplicatePlaceCode(string level, string code) => new(
+        "inventory.duplicate_storage_place_code",
+        $"رمز {LevelAr(level)} «{code}» مستعمَل في هذه المنشأة. والرمز هوية تحملها حركات المخزون، فلا يتكرّر داخل مستواه.",
+        $"The {LevelEn(level)} code '{code}' is already used in this company. The code is an identity carried by stock movements, so it is never duplicated within its level.");
+
+    /// <summary>
+    /// أبٌ مُعطَّل: موضعٌ يُسجَّل تحت موضعٍ لا يعمل.
+    /// <para>
+    /// والرفض هنا لا التعطيل المتسلسل: تعطيلُ الأب لا يجوز أصلاً وفيه رصيد، فإن عُطّل
+    /// فقد خلا — وإضافةُ ابنٍ جديد تحت خالٍ مُعطَّل إحياءٌ من الباب الخلفي.
+    /// </para>
+    /// </summary>
+    public static Error ParentPlaceInactive(string level, string code) => new(
+        "inventory.storage_place_parent_inactive",
+        $"{LevelArDefinite(level)} «{code}» مُعطَّل، فلا يُسجَّل تحته موضعٌ جديد. أعِد تفعيله أو اختر أباً عاملاً.",
+        $"The {LevelEn(level)} '{code}' is deactivated, so no new place is registered under it. Reactivate it or choose an active parent.");
+
+    /// <summary>
+    /// تعطيل موضعٍ فيه رصيد — <b>يُمنع</b>.
+    /// <para>
+    /// <b>ولماذا يُمنع هنا ويُسمح على الصنف:</b> الموضع المُعطَّل لا يُنقَل منه ولا
+    /// يُصرف، فالبضاعة تبقى فيه بقيمتها في الحساب الضابط <b>بلا بابٍ تخرج منه</b> —
+    /// رقمٌ في الميزانية لا يقابله واقعٌ يُبلغ. والصنف المُعطَّل بخلافه يُصرف حتى ينفد.
+    /// </para>
+    /// </summary>
+    public static Error PlaceStillHoldsStock(
+        string level, string code, string itemId, decimal quantity, string unit) => new(
+        "inventory.storage_place_still_holds_stock",
+        FormattableString.Invariant(
+            $"لا يُعطَّل {LevelAr(level)} «{code}» وفيه رصيد: الصنف «{itemId}» فيه {quantity} {unit}. والموضع المُعطَّل لا يُنقَل منه ولا يُصرف، فتبقى البضاعة بقيمتها في الحساب الضابط بلا بابٍ تخرج منه. انقل ما فيه إلى موضع آخر — أو أخرِجه بمستند — ثم عطّله."),
+        FormattableString.Invariant(
+            $"The {LevelEn(level)} '{code}' cannot be deactivated while it holds stock: item '{itemId}' has {quantity} {unit} in it. A deactivated place can neither be transferred from nor issued from, so the goods stay there at their value in the control account with no door out. Transfer its contents elsewhere — or issue them out on a document — then deactivate it."));
+
+    /// <summary>تعطيل موضعٍ تحته مواضع عاملة.</summary>
+    public static Error PlaceStillHasActiveChildren(string level, string code, int children) => new(
+        "inventory.storage_place_has_active_children",
+        FormattableString.Invariant(
+            $"لا يُعطَّل {LevelAr(level)} «{code}» وتحته {children} موضعاً عاملاً. والتعطيل المتسلسل يُخفي ما عُطّل تبعاً عمّن عطّله، فلا يُعرف بعدها ما يُعاد تفعيله عند التراجع. عطّل ما تحته أولاً."),
+        FormattableString.Invariant(
+            $"The {LevelEn(level)} '{code}' cannot be deactivated while {children} active places sit under it. A cascading deactivation hides what was deactivated by consequence from whoever deactivated it, so nobody knows what to reactivate on a rollback. Deactivate its children first."));
+
+    /// <summary>موضع مُعطَّل يُستعمل في حركة.</summary>
+    public static Error PlaceInactive(string level, string code) => new(
+        "inventory.storage_place_inactive",
+        $"{LevelArDefinite(level)} «{code}» مُعطَّل، فلا تُسكَّن فيه بضاعة ولا تُنقَل إليه.",
+        $"The {LevelEn(level)} '{code}' is deactivated, so no goods are placed in it and nothing is transferred into it.");
+
+    /// <summary>
+    /// موضعٌ لا يقع تحت الأب المذكور — <b>والمسار إفادةٌ تُصدَّق لا زينة</b>.
+    /// <para>
+    /// موضعان بالرمز نفسه تحت أبوين شيئان مختلفان. وقبولُ «‏A1» بلا سؤالٍ عن أبيه كان
+    /// يُخرج الرفّ الصحيح من المبنى الخطأ، ويجعل العنوان يحمل معنىً لا يصدق.
+    /// </para>
+    /// </summary>
+    public static Error PlaceNotUnderParent(string code, string actualParent, string expectedParent) => new(
+        "inventory.storage_place_not_under_parent",
+        $"الموضع «{code}» يقع تحت «{actualParent}» لا تحت «{expectedParent}». "
+        + "والموضع يُقرأ بأبيه لا بمفرده: موضعان بالرمز نفسه تحت أبوين شيئان مختلفان.",
+        $"Place '{code}' sits under '{actualParent}', not under '{expectedParent}'. "
+        + "A place is read together with its parent: two places with the same code under two parents are two different things.");
+
+    /// <summary>الاسم فارغ.</summary>
+    public static Error NameMissing() => new(
+        "inventory.name_missing",
+        "الاسم فارغ. والاسم العربي هو السجلّ لا ترجمةٌ ثانية (‏ADR-0021)، فلا يُترك فارغاً.",
+        "The name is empty. The Arabic name is the record, not a second translation (ADR-0021), so it is never left empty.");
+
+    /// <summary>رقم نقل مكرّر.</summary>
+    public static Error DuplicateTransferNumber(string number) => new(
+        "inventory.duplicate_transfer_number",
+        $"رقم مستند النقل «{number}» مستعمَل في هذه المنشأة.",
+        $"Transfer document number '{number}' is already used in this company.");
+
+    /// <summary>نقل إلى الموضع نفسه.</summary>
+    public static Error TransferToSamePlace(string warehouseId, string locationId) => new(
+        "inventory.transfer_to_same_place",
+        $"المصدر والوجهة موضعٌ واحد: «{warehouseId}/{locationId}». والنقل إلى الموضع نفسه ليس نقلاً — "
+        + "حركتان تُلغيان بعضهما وتُحدّثان صفّ رصيدٍ واحد مرّتين في معاملة واحدة.",
+        $"Source and destination are one place: '{warehouseId}/{locationId}'. A transfer to the same place is not a transfer — "
+        + "two movements that cancel each other and update one balance row twice inside a single transaction.");
+
+    /// <summary>نقل بكمّية تتجاوز رصيد المصدر.</summary>
+    public static Error TransferExceedsBalance(
+        string itemId, string warehouseId, string locationId, decimal available, decimal requested, string unit) => new(
+        "inventory.transfer_exceeds_balance",
+        FormattableString.Invariant(
+            $"النقل {requested} {unit} يتجاوز رصيد الصنف «{itemId}» في «{warehouseId}/{locationId}» وهو {available} {unit}. والصرف على رصيد سالب واقعةٌ تُوسَم وتُقبل لأن البيع قبل إدخال الاستلام يقع؛ أمّا **النقل** فيُحرّك بضاعةً بين رفّين فعلياً، ولا يُنقَل ما ليس موجوداً. سجّل الاستلام الناقص أولاً."),
+        FormattableString.Invariant(
+            $"Transferring {requested} {unit} exceeds the balance of item '{itemId}' at '{warehouseId}/{locationId}', which is {available} {unit}. Issuing against a negative balance is flagged and accepted because selling before the receipt is entered does happen; a **transfer**, though, physically moves goods between two shelves, and what does not exist is not moved. Record the missing receipt first."));
+
+    /// <summary>اسم المستوى بالعربية للرسائل.</summary>
+    private static string LevelAr(string level) => level switch
+    {
+        "WAREHOUSE" => "مستودع",
+        "LOCATION" => "موقع",
+        _ => "رفّ",
+    };
+
+    /// <summary>اسم المستوى بالعربية معرّفاً.</summary>
+    private static string LevelArDefinite(string level) => level switch
+    {
+        "WAREHOUSE" => "المستودع",
+        "LOCATION" => "الموقع",
+        _ => "الرفّ",
+    };
+
+    /// <summary>
+    /// اسم المستوى بالإنجليزية — <b>نصّ تشخيصي يصحب رمزاً ثابتاً</b>، لا نصّ عرض
+    /// (‏ADR-0021 §6.2): قارئه مطوّرٌ يُصلح، والرمز <c>Code</c> هو ما تفرزه الواجهة.
+    /// </summary>
+    private static string LevelEn(string level) => level switch
+    {
+        "WAREHOUSE" => "warehouse",
+        "LOCATION" => "location",
+        _ => "bin",
+    };
+
     /// <summary>تنسيق رقم للعرض داخل رسالة — ثابت الثقافة دائماً (‏فخ-38 · فخ-75).</summary>
     public static string Number(decimal value) => value.ToString("0.0000", CultureInfo.InvariantCulture);
 }

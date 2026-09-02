@@ -8,7 +8,7 @@
 > فأضِفه هنا بالشروط نفسها بعد قياسه — سجلٌّ ناقص يعني عملاً مُكرَّراً بعد سنتين.
 >
 > **الوثائق الشقيقة:** [`README.md`](README.md) فهرس قاعدة الأدلة وترتيب القراءة ·
-> [`traps.md`](traps.md) **الأعطال** (‏150 فخّاً، و§8 قائمة ما قبل الدمج) ·
+> [`traps.md`](traps.md) **الأعطال** (‏151 فخّاً، و§8 قائمة ما قبل الدمج) ·
 > [`refuted.md`](refuted.md) **ما دُحض** (‏16 ادّعاءً، وما بقي من كلٍّ منها) ·
 > [`verification-debt.md`](verification-debt.md) **ما لا نعرفه** (‏47 مجهولاً لا يُبنى عليها) ·
 > [`../decisions/README.md`](../decisions/README.md) **القرارات** المبنية على كل ما سبق.
@@ -1053,6 +1053,93 @@ Release، قاعدة اختبار حقيقية بدور تطبيق **غير ما
 | القيد يلزم الكتابة الجديدة رغم عدم المصادقة | **`23514`** على `null` وعلى نصٍّ من مسافات، كلاهما باسم `ck_journal_line_cost_center_present` | ‏`psql` بإدراج خام على القاعدة نفسها بعد الهجرة | مقيس |
 | أثر تعبئة عمود داخل البايتات المُجزَّأة | `CHAIN-OK` ⇒ **`CHAIN-CONTENT-TAMPERED`** عند أول تسلسل | كتابة `cost_center_id` بدور المالك على قيد مُرحَّل ثم `VerifyChainAsync` | مقيس |
 
+### 3.‏P · طبقة المخزون التشغيلية — التسكين والوحدات (2026-09-02)
+
+**البيئة:** §1.3 نفسها · PostgreSQL على `127.0.0.1` · `dotnet` من `/usr/lib/dotnet` ·
+البناء `Release`. وكل أمر أدناه يُنفَّذ **من جذر المستودع**، والبوّابة والاختبارات تحت
+`flock -o /tmp/babel-gate.lock` لأن أربعة أساطيل تشترك في القاعدة نفسها.
+
+| البند | القيمة | كيف تُعاد | الوسم |
+|---|---|---|---|
+| المقيس الذي فرض العمل: عمليات المخزون قبل الفرع | **10** ولا واحدة منها للتسكين ولا لوحدة القياس | الأمر ‏(‏أ‏) أدناه على `origin/develop` | مقيس |
+| ‏`grep` على «وحدة قياس» ككيان أوّل قبل الفرع | **0 ملفّات** | الأمر ‏(‏ب‏) | مقيس |
+| ملفّات `src/Babel.Inventory` قبل الفرع | **20 ملفّ C#** خارج `obj/` (‏و26 بحسابها) | الأمر ‏(‏ج‏) | مقيس |
+| عمليات العقد المنشور: قبل ⇒ بعد شريحة التسكين | **162 ⇒ 182** | الأمر ‏(‏د‏) | مقيس |
+| مسارات العقد: قبل ⇒ بعد | **152 ⇒ 168** | الأمر ‏(‏د‏) | مقيس |
+| مخطّطات العقد: قبل ⇒ بعد | **199 ⇒ 208** | الأمر ‏(‏د‏) | مقيس |
+| عمليات **محذوفة** أو مُعاد تسميتها | **صفر** — النموّ إضافةٌ محضة | الأمر ‏(‏هـ‏) | مقيس |
+| انحراف العميل المُولَّد عن العقد | **صفر** · بصمة العقد `0229f4a0df345dae90832ad0ae10d4959e31e839c0fe1c495ab9a8fe5d48af7a` | الأمر ‏(‏و‏) | مقيس |
+| إثباتات وحدة المخزون بعد شريحة التسكين | **28 من 28** خضراء على PostgreSQL حقيقية ودفتر أستاذ منشور | الأمر ‏(‏ز‏) | مقيس |
+| **قيود دفتر الأستاذ التي يكتبها النقل بين موقعين** | **صفر** — العدّ على المنشأة كلّها قبل وبعد متساويان | الإثبات `النقل_بين_موقعين_ينقل_الكمّية_وقيمتها_ولا_يكتب_قيداً` | مقيس |
+| مجموع قيمة المخزون قبل النقل وبعده | **`100.0000` ⇒ `60.0000 + 40.0000`** — واحدٌ بالضبط | الإثبات نفسه | مقيس |
+| تحويل الوحدة الأكبر في النقل | كرتونٌ واحد ⇒ **12** حبّة بـ`120.0000`، بمعامل `12/1` لا بتقريب | الإثبات `النقل_يقبل_وحدةً_أكبر_ويرفض_ما_يتجاوز_رصيد_المصدر` | مقيس |
+| رفضٌ مُسمّىً على التعطيل فوق رصيد | `inventory.storage_place_still_holds_stock` والرسالة تحوي رمز الصنف | الإثبات `تعطيل_موضعٍ_فيه_رصيد_يُرفض_ويُسمّي_الصنف_وكمّيته` | مقيس |
+| مفتاح `uq_inventory_item_balance` بعد الهجرة 002 | **لم يتغيّر** — الهجرة لا تذكره | ‏`grep -c item_balance src/Babel.Inventory/Persistence/Migrations/002_*.sql` ⇒ `0` | مقيس |
+| أحداث المصفوفة بلا قيد بالتصميم | **3** بعد الإضافة (اثنان للعقارات وواحد للنقل) | الأمر ‏(‏ح‏) | مقيس |
+
+**الأوامر — حرفياً، من جذر المستودع:**
+
+```bash
+export PATH=$PATH:/usr/lib/dotnet
+
+# (أ) عمليات المخزون في العقد
+python3 -c "
+import json,sys
+d=json.load(open('contracts/openapi/v1.json'))
+ops=[o['operationId'] for p,pi in d['paths'].items() for m,o in pi.items() if m in ('get','post')]
+inv=[o for o in ops if any(k in o for k in ('Item','Stock','Inventory','Warehouse','Placement','Transfer','Unit'))]
+print(len(inv)); print('\n'.join(sorted(inv)))"
+
+# (ب) وحدة القياس ككيان أوّل — صفر قبل الفرع
+grep -rIl "UnitOfMeasure\|unit_of_measure" src tests contracts | grep -v /obj/ | wc -l
+
+# (ج) حجم الوحدة
+find src/Babel.Inventory -name '*.cs' -not -path '*/obj/*' | wc -l
+find src/Babel.Inventory -name '*.cs' | wc -l
+
+# (د) عدّ العقد
+python3 -c "
+import json
+d=json.load(open('contracts/openapi/v1.json'))
+ops=[(p,m) for p,pi in d['paths'].items() for m,o in pi.items() if m in ('get','post','put','patch','delete')]
+print('operations:',len(ops)); print('paths:',len(d['paths'])); print('schemas:',len(d['components']['schemas']))"
+
+# (هـ) لا عملية محذوفة ولا مُعاد تسميتها — المقارنة بالعقد على develop
+python3 -c "
+import json,subprocess
+old=json.loads(subprocess.run(['git','show','origin/develop:contracts/openapi/v1.json'],capture_output=True,text=True).stdout)
+new=json.load(open('contracts/openapi/v1.json'))
+o={(p,m):x['operationId'] for p,pi in old['paths'].items() for m,x in pi.items() if m in ('get','post','put','patch','delete')}
+n={(p,m):x['operationId'] for p,pi in new['paths'].items() for m,x in pi.items() if m in ('get','post','put','patch','delete')}
+print('removed:',[k for k in o if k not in n])
+print('renamed:',[(k,o[k],n[k]) for k in o if k in n and o[k]!=n[k]])
+print('added:',len([k for k in n if k not in o]))"
+
+# (و) العقد يُعاد توليده بايتاً، والعميل المُولَّد لا ينحرف
+dotnet build -c Release src/Babel.Api/Babel.Api.csproj
+dotnet src/Babel.Api/bin/Release/net10.0/Babel.Api.dll --emit-openapi contracts/openapi/v1.json
+node web/scripts/generate-client.mjs
+node web/scripts/generate-client.mjs --check
+
+# (ز) إثباتات وحدة المخزون
+MSBUILDDISABLENODEREUSE=1 DOTNET_CLI_USE_MSBUILD_SERVER=0 \
+  flock -o /tmp/babel-gate.lock \
+  dotnet test --project tests/Babel.Inventory.Tests/Babel.Inventory.Tests.csproj -c Release
+
+# (ح) أحداث المصفوفة التي لا تُنتج قيداً بالتصميم
+python3 -c "
+import json,glob
+n=[e['event_code'] for f in glob.glob('data/posting-matrix/events/*.json')
+   for e in json.load(open(f))['events'] if not e['posts_entry']]
+print(len(n)); print('\n'.join(sorted(n)))"
+```
+
+> **وما لم يُقَس في هذه الشريحة، ويُقال:** لا قياس أداءٍ واحد عليها — كل الأرقام أعلاه
+> أرقام **صحّة** لا **إنتاجية**. ولا قياس لكلفة الانضمام بين `item_balance` و`storage_place`
+> في `readPlacementBalances` على سجلٍّ كبير: القراءة تجلب الجدولين كاملَين إلى الذاكرة
+> وتُطابق فيها، وهو مقبولٌ على أحجام اليوم و**غير مقيس** على غيرها. ‏(‏مُدرَج في §7.‏)
+
+
 ---
 
 ## 4 · الأرقام التي تقرر
@@ -1179,6 +1266,8 @@ Release، قاعدة اختبار حقيقية بدور تطبيق **غير ما
 | **كلفة تمرير الفاعل الحقيقي إلى منفِّذ الاستحقاق** | **غير مقيسة** | نفس عدد الصفوف بنفس الحجم في مخزن القياس، ولا يُتوقَّع أثر — **والمتوقَّع ليس مقيساً** ([`traps.md` فخ-58](traps.md)) |
 | **كلفة جدول الترجمات على شاشة كثيفة** (آلاف الحسابات × عشر لغات × مئات المستأجرين) | **غير مقيسة** | المقيس في §3-ط هو **1.20×** على بيانات مجموعة الاختبار وحدها، وهو لا يُقتبَس لهذا السيناريو. والقياس مطلوب **قبل** تعميم الجدول على الوحدات الأفقية |
 | **حجم `ledger.name_translation` وأثره على النسخ الاحتياطي** | **غير مقيس** | الصفوف تتضاعف بعدد اللغات؛ ولا رقم أساس |
+| **كلفة `readPlacementBalances` على سجلّ كبير** | **غير مقيسة** | القراءة تجلب `item_balance` و`storage_place` كاملَين وتُطابق في الذاكرة. مقبولٌ على أحجام اليوم، و**غير مقيس** على مستأجرٍ بعشرات الآلاف من الأرصدة. القياس مطلوب **قبل** أي وعدٍ بزمن استجابة |
+| **نافذة السباق بين فحص رصيد النقل وكتابة حركته** | **غير مقيسة** — لا يُعرف هل تقع فعلاً | فحص «هل يغطّي رصيد المصدر ما يُنقَل؟» سابقٌ لا ذرّي (‏ADR النقل بين موقعين §5). الأثر في أسوأ الحالات رصيدٌ سالب — وهو ما يقبله الصرف ويَسِمه — لكن **تكراره غير معروف**، وإغلاقُه يقتضي تمرير المعاملة إلى الفحص |
 
 > **لا تملأ أي خانة في هذا الجدول بتقدير.** الخانة الفارغة أمينة؛ الخانة المملوءة بتقدير موسوم
 > **مقيس** تُفسد الوثيقة كلها وتُبطل الغرض منها.

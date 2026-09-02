@@ -421,6 +421,53 @@ public sealed class StockMovementService : IApplicationService, IInventoryValuat
     }
 
     /// <summary>
+    /// يحلّ كمّيةً إلى <b>وحدة أساس رصيد موضعٍ بعينه</b> — قراءةٌ بحتة بلا كتابة.
+    /// <para>
+    /// <b>ولماذا تُكشف داخل الوحدة:</b> مستند النقل يحتاج أن يقارن ما يُنقَل برصيد
+    /// المصدر <b>قبل</b> أن يكتب حركة، والمقارنة لا تصحّ إلا بعد التحويل إلى وحدة
+    /// واحدة. ونسخةٌ ثانية من قاعدة التحويل في خدمة النقل كانت ستنحرف عن هذه عند أول
+    /// تعديل — وهي القاعدة التي يقع فيها المال (‏ADR وحدات القياس).
+    /// </para>
+    /// <para>
+    /// <c>internal</c> لا <c>public</c>: هي طريقٌ داخلُ الوحدة بين خدمتين، والاستحقاق
+    /// مفروضٌ عند نقطة الدخول التي تناديها لا هنا (القاعدة 6).
+    /// </para>
+    /// </summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="itemId">الصنف.</param>
+    /// <param name="warehouseId">المستودع.</param>
+    /// <param name="locationId">الموقع.</param>
+    /// <param name="entered">الكمّية كما سُلّمت بوحدتها.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    internal async ValueTask<Result<InventoryQuantity>> ResolveToBaseAsync(
+        TenantId tenant,
+        string itemId,
+        string warehouseId,
+        string locationId,
+        InventoryQuantity entered,
+        CancellationToken cancellationToken)
+    {
+        Result valid = UnitConversion.Validate(entered);
+        if (valid.IsFailure)
+        {
+            return Result<InventoryQuantity>.Failure(valid.Errors);
+        }
+
+        await OpenAsync(cancellationToken).ConfigureAwait(false);
+
+        StockPosition position = await ReadPositionAsync(
+            tenant, itemId, warehouseId, locationId, forUpdate: false, null, cancellationToken).ConfigureAwait(false);
+
+        Result<ResolvedQuantity> resolved = await ResolveAsync(
+            tenant, itemId, entered, position.BaseUnit, null, cancellationToken).ConfigureAwait(false);
+
+        return resolved.IsFailure
+            ? Result<InventoryQuantity>.Failure(resolved.Errors)
+            : Result<InventoryQuantity>.Success(
+                new InventoryQuantity(resolved.Value.Magnitude, resolved.Value.BaseUnit));
+    }
+
+    /// <summary>
     /// يقرأ أرصدة المنشأة كلّها، مرتَّبةً بالصنف ثم المستودع ثم الموقع.
     /// <para>
     /// <b>وترتيبٌ حرفي معلَن لا ترتيبُ إدخال</b>: قائمةٌ يتغيّر ترتيبها بين نداءين تجعل

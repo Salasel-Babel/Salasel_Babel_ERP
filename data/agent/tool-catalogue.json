@@ -1,0 +1,2073 @@
+{
+  "contractSha256": "bd9a3ec99569ae7bbe8a4def9a1e5d52942ab4732289f7897df7762912d72d02",
+  "generatedFrom": "contracts/openapi/v1.json",
+  "generator": "tools/agent/build-tool-catalogue.mjs",
+  "registerKeys": [
+    "customer",
+    "employee",
+    "inventory_item",
+    "project",
+    "property_unit",
+    "supplier"
+  ],
+  "tools": [
+    {
+      "name": "ask_question",
+      "operationId": null,
+      "path": null,
+      "method": null,
+      "idFields": [],
+      "description": "يعرض على المستخدم ورقةَ السؤال التي رسمها الخادم من بياناته المحلّية، ويعود بمِقبضٍ واحد. ولا تُسهم هذه الأداة بعنوانٍ ولا بخيارٍ ولا باسم حقل — معرّف الورقة وحده.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "questionId": {
+            "description": "معرّف الورقة كما عاد من lookup_entity، حرفاً بحرف.",
+            "maxLength": 200,
+            "type": "string"
+          }
+        },
+        "required": [
+          "questionId"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "draftClientCertificate",
+      "operationId": "draftClientCertificate",
+      "path": "/api/v1/companies/{companyId}/client-certificates",
+      "method": "post",
+      "idFields": [
+        "lines.[].itemId",
+        "ownerId"
+      ],
+      "description": "إنشاء مستخلص عميل مسوّدة",
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "طلب إنشاء مستخلص **مسوّدة** — عميلٍ كان أو باطن. ورقمه المرئي يرسله العميل ويُتحقَّق من تفرّده؛ **ولا SEQUENCE ولا IDENTITY لأي رقم يراه مستخدم أو مدقّق**. / A request to create a **draft** certificate, client or subcontractor. Its visible number is sent by the client and checked for uniqueness; **no SEQUENCE and no IDENTITY backs any number a user or auditor reads**.",
+        "properties": {
+          "lines": {
+            "description": "سطور المستخلص. / The certificate's lines.",
+            "items": {
+              "additionalProperties": false,
+              "description": "سطر مستخلص في طلب. **والكمّية تراكمية**: ما نُفِّذ حتى نهاية الفترة لا ما نُفِّذ فيها، وقيمة الفترة تُشتقّ طرحاً من آخر مستخلصٍ **مُرحَّل**. وسطر الغرامة أو الخصم يحمل مبلغه وحده بلا بند وبلا كمّية. / A certificate line in a request. **The quantity is cumulative**: what has been executed to the end of the period, not what was executed within it, and the period's value is derived by subtracting the last **posted** certificate. A penalty or deduction line carries only its amount, with no item and no quantity.",
+              "properties": {
+                "amount": {
+                  "description": "مبلغ نصّاً، بمقياس لا يتجاوز أربع خانات عشرية. النحو المقبول كاملاً: -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — فتُرفض الصيغة الأسّية، والصفر البادئ، والإشارة الموجبة الصريحة، والفراغ، والأرقام العربية-الهندية والديفاناغارية، وكل ما زاد على أربع خانات. ورمزٌ رقمي في هذا الحقل يُرفض الطلب بسببه: JSON لا يملك نوعاً عشرياً، وأغلب العملاء يمرّرون الرمز الرقمي على فاصلة عائمة ثنائية فيقع فقدان الدقّة قبل أن يصل الطلب. / An amount as a string with at most four decimal places. The full accepted grammar is -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — exponent notation, leading zeros, an explicit plus sign, whitespace, Arabic-Indic and Devanagari digits, and any fifth decimal are all refused. A JSON number token in this field fails the request: JSON has no decimal type, and most clients route a number token through a binary double, so precision is lost before the request arrives.",
+                  "examples": [
+                    "0.4013",
+                    "-1250.0000",
+                    "100"
+                  ],
+                  "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$",
+                  "type": "string"
+                },
+                "cumulativeQuantity": {
+                  "additionalProperties": false,
+                  "description": "كمّية **بوحدتها** — ولا كمّية مجرّدة تعبر هذا السطح. و«عشرة» ليست معلومة: عشر حبّات أم عشر كراتين؟ والفرق بينهما في دفترٍ يمسك قيمةً هو الفرق بين رقمٍ صحيح ورقمٍ أكبر منه اثني عشر ضعفاً، **ولا يُظهره توازنٌ ولا سلسلة** لأن القيد المبنيّ عليه متوازن تماماً. / A quantity **with its unit** — no bare quantity crosses this surface. 'Ten' is not information: ten pieces or ten cartons? In a ledger that holds value the difference between them is the difference between a correct number and one twelve times larger, and **no balance check and no hash chain reveals it**, because the entry built on it balances perfectly.",
+                  "properties": {
+                    "magnitude": {
+                      "description": "مقدار كمّية نصّاً بمقياس لا يتجاوز **ستّاً**. والكمّية ليست مبلغاً — ولذلك لها مقياسها — لكنها تُضرب في تكلفة الوحدة، فأي دقّة تُفقد فيها تصل إلى المال. والكيلوغرامات واللترات والأمتار تُكسَر إلى ما دون الهللة، ومقياسٌ مالي عليها يُنتج تقريباً صامتاً يتراكم على كل حركة. / A quantity magnitude as a string with at most **six** decimal places. A quantity is not an amount — hence its own scale — but it is multiplied by a unit cost, so any precision lost in it reaches the money. Kilograms, litres, and metres divide below the halala, and a money scale over them produces a silent rounding that accumulates on every movement.",
+                      "examples": [
+                        "100.000000",
+                        "-5.500000"
+                      ],
+                      "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,6})?$",
+                      "type": "string"
+                    },
+                    "unit": {
+                      "description": "رمز وحدة القياس كما سجّله المستأجر. معرّف لا نصّ معروض: لا يُترجَم ولا يُطابَق بلا حساسية حالة. / The unit-of-measure code as the tenant registered it. An identifier, not displayed text: never translated and never matched case-insensitively.",
+                      "maxLength": 32,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "magnitude",
+                    "unit"
+                  ],
+                  "type": "object"
+                },
+                "descriptionAr": {
+                  "description": "بيان السطر بالعربية. / The line's Arabic description.",
+                  "maxLength": 400,
+                  "type": "string"
+                },
+                "itemId": {
+                  "description": "مِقبضٌ معتِم من lookup_entity أو ask_question. ولا يُكتب هنا معرّفٌ خام ولا اسم — يُرفض قبل التنفيذ.",
+                  "maxLength": 36,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "lineKind": {
+                  "description": "صنف السطر: WORK عملٌ منفَّذ · PENALTY غرامة تأخير · DEDUCTION خصم آخر. والغرامة سطرٌ مستقلّ لا خصمٌ من قيمة الأعمال. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The line kind: WORK for executed work, PENALTY for a delay penalty, DEDUCTION for another deduction. A penalty is an independent line, never netted against the works value. Matched literally and case-sensitively; a number is never accepted in place of a name.",
+                  "enum": [
+                    "WORK",
+                    "PENALTY",
+                    "DEDUCTION"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "amount",
+                "cumulativeQuantity",
+                "descriptionAr",
+                "itemId",
+                "lineKind"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "number": {
+            "description": "الرقم المرئي. / The visible number.",
+            "maxLength": 64,
+            "type": "string"
+          },
+          "ownerId": {
+            "description": "مِقبضٌ معتِم من lookup_entity أو ask_question. ولا يُكتب هنا معرّفٌ خام ولا اسم — يُرفض قبل التنفيذ.",
+            "maxLength": 36,
+            "type": "string"
+          },
+          "periodFrom": {
+            "description": "بداية فترة المستخلص ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The certificate period's start. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period.",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+            "type": "string"
+          },
+          "periodTo": {
+            "description": "نهاية فترة المستخلص ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The certificate period's end. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period.",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+            "type": "string"
+          },
+          "sequenceNo": {
+            "description": "تسلسل المستخلص داخل عقده — وهو التفرّد الذي يقوم عليه الاشتقاق التراكمي. / The certificate's sequence within its contract — the uniqueness the cumulative derivation rests on.",
+            "maximum": 2147483647,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "lines",
+          "number",
+          "ownerId",
+          "periodFrom",
+          "periodTo",
+          "sequenceNo"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "draftCreditNote",
+      "operationId": "draftCreditNote",
+      "path": "/api/v1/companies/{companyId}/credit-notes",
+      "method": "post",
+      "idFields": [
+        "invoiceId",
+        "lines.[].originalInvoiceLineId"
+      ],
+      "description": "إنشاء إشعار دائن مسوّدة",
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "طلب إنشاء إشعار دائن مسوّدة. **ولا عميل فيه**: عميله عميل الفاتورة الأصلية، وإعادةُ ذكره تفتح باباً لإشعارٍ على عميل غير عميل فاتورته. / A request to draft a credit note. **It carries no customer**: the customer is the original invoice's customer, and repeating it would open a door to a note against a customer other than its invoice's.",
+        "properties": {
+          "invoiceId": {
+            "description": "مِقبضٌ معتِم من lookup_entity أو ask_question. ولا يُكتب هنا معرّفٌ خام ولا اسم — يُرفض قبل التنفيذ.",
+            "maxLength": 36,
+            "type": "string"
+          },
+          "issuedOn": {
+            "description": "تاريخ الإصدار. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The issue date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period.",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+            "type": "string"
+          },
+          "lines": {
+            "description": "سطور المرتجع أو التخفيض. / The return or reduction lines.",
+            "items": {
+              "additionalProperties": false,
+              "description": "سطر مستند مبيعات. **ولا حساب فيه ولا رمز حساب**: يحمل itemGroup — مؤهّل دور — والمصفوفة وحدها تُحوّله إلى حساب (القاعدة 2 ممتدّةً إلى السلك). / A sales document line. **No account and no account code**: it carries an itemGroup — a role qualifier — and the matrix alone turns it into an account (Rule 2 extended to the wire).",
+              "properties": {
+                "description": {
+                  "additionalProperties": false,
+                  "description": "نصّ ثنائي اللغة. الطرفان إلزاميان — العربية أساسية لا ترجمة ثانية. / Bilingual text; both sides are mandatory.",
+                  "properties": {
+                    "ar": {
+                      "description": "النصّ العربي. / The Arabic text.",
+                      "maxLength": 512,
+                      "type": "string"
+                    },
+                    "en": {
+                      "description": "النصّ الإنجليزي. / The English text.",
+                      "maxLength": 512,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "ar",
+                    "en"
+                  ],
+                  "type": "object"
+                },
+                "discount": {
+                  "description": "مبلغ نصّاً، بمقياس لا يتجاوز أربع خانات عشرية. النحو المقبول كاملاً: -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — فتُرفض الصيغة الأسّية، والصفر البادئ، والإشارة الموجبة الصريحة، والفراغ، والأرقام العربية-الهندية والديفاناغارية، وكل ما زاد على أربع خانات. ورمزٌ رقمي في هذا الحقل يُرفض الطلب بسببه: JSON لا يملك نوعاً عشرياً، وأغلب العملاء يمرّرون الرمز الرقمي على فاصلة عائمة ثنائية فيقع فقدان الدقّة قبل أن يصل الطلب. / An amount as a string with at most four decimal places. The full accepted grammar is -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — exponent notation, leading zeros, an explicit plus sign, whitespace, Arabic-Indic and Devanagari digits, and any fifth decimal are all refused. A JSON number token in this field fails the request: JSON has no decimal type, and most clients route a number token through a binary double, so precision is lost before the request arrives.",
+                  "examples": [
+                    "0.4013",
+                    "-1250.0000",
+                    "100"
+                  ],
+                  "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$",
+                  "type": "string"
+                },
+                "itemGroup": {
+                  "description": "مجموعة الصنف — مؤهّل الدور. / The item group — the role qualifier.",
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                "originalInvoiceLineId": {
+                  "description": "مِقبضٌ معتِم من lookup_entity أو ask_question. ولا يُكتب هنا معرّفٌ خام ولا اسم — يُرفض قبل التنفيذ.",
+                  "maxLength": 36,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "quantity": {
+                  "description": "كمّية نصّاً بمقياس لا يتجاوز أربعاً، بالنحو الذي تخضع له المبالغ. وهي ليست مبلغاً — ولذلك لها مخطّطها — لكنها تُضرب في مبلغ، فأي فقدان دقّة فيها يصل إلى المال. / A quantity as a string with at most four decimal places, under the grammar that governs amounts. It is not an amount — hence its own schema — but it is multiplied by one, so any precision lost in it reaches the money.",
+                  "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$",
+                  "type": "string"
+                },
+                "taxClassification": {
+                  "description": "التصنيف الضريبي. المستعمَل اليوم: standard · zero · exempt — ويُنشر نصّاً لا مجموعةً مغلقة، فلا قيد تحقّق واحد يُغلقه، وتضييقُه بعد نشره يفرض v2. / The tax classification. In use today: standard, zero, exempt — published as text rather than a closed set, since no check constraint closes it, and narrowing it after publication would force v2.",
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                "taxRate": {
+                  "description": "نسبة الضريبة **كسراً عشرياً لا نسبة مئوية**: خمسة عشر بالمئة تُكتب 0.15 لا 15. والمقياس ثمانٍ لا أربع: النسبة ليست مبلغاً ولا تُقرَّب إلى الهللة. / The tax rate as a **decimal fraction, not a percentage**: fifteen percent is written 0.15, never 15. The scale is eight, not four: a rate is not an amount and is not rounded to the halala.",
+                  "examples": [
+                    "0.15",
+                    "0"
+                  ],
+                  "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,8})?$",
+                  "type": "string"
+                },
+                "unitPrice": {
+                  "description": "مبلغ نصّاً، بمقياس لا يتجاوز أربع خانات عشرية. النحو المقبول كاملاً: -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — فتُرفض الصيغة الأسّية، والصفر البادئ، والإشارة الموجبة الصريحة، والفراغ، والأرقام العربية-الهندية والديفاناغارية، وكل ما زاد على أربع خانات. ورمزٌ رقمي في هذا الحقل يُرفض الطلب بسببه: JSON لا يملك نوعاً عشرياً، وأغلب العملاء يمرّرون الرمز الرقمي على فاصلة عائمة ثنائية فيقع فقدان الدقّة قبل أن يصل الطلب. / An amount as a string with at most four decimal places. The full accepted grammar is -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — exponent notation, leading zeros, an explicit plus sign, whitespace, Arabic-Indic and Devanagari digits, and any fifth decimal are all refused. A JSON number token in this field fails the request: JSON has no decimal type, and most clients route a number token through a binary double, so precision is lost before the request arrives.",
+                  "examples": [
+                    "0.4013",
+                    "-1250.0000",
+                    "100"
+                  ],
+                  "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "description",
+                "discount",
+                "itemGroup",
+                "quantity",
+                "taxClassification",
+                "taxRate",
+                "unitPrice"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "number": {
+            "description": "رقم الإشعار — فريد داخل المستأجر. / The note number — unique within the tenant.",
+            "maxLength": 64,
+            "type": "string"
+          }
+        },
+        "required": [
+          "invoiceId",
+          "issuedOn",
+          "lines",
+          "number"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "draftCustomerReceipt",
+      "operationId": "draftCustomerReceipt",
+      "path": "/api/v1/companies/{companyId}/customer-receipts",
+      "method": "post",
+      "idFields": [
+        "allocations.[].invoiceId",
+        "customerId",
+        "treasuryPartyId"
+      ],
+      "description": "تسجيل سند قبض مسوّدة",
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "طلب تسجيل سند قبض مسوّدة. ولا مجاميع فيه: المجموع هو received + settlementDiscount وتحسبه الوحدة. **ولا حساب ولا رمز حساب**: settlementMethod مؤهّل دور تحلّه المصفوفة إلى حساب خزينة أو بنك، وtreasuryPartyId طرفٌ في دفتره المساعد لا رقم حساب. / A request to draft a customer receipt. It carries no totals: the total is received + settlementDiscount and the module computes it. **No account and no account code**: settlementMethod is a role qualifier the matrix resolves into a cash or bank account, and treasuryPartyId is a party in its subledger, not an account number.",
+        "properties": {
+          "allocations": {
+            "description": "التخصيصات على فواتير مُرحَّلة لهذا العميل. وقائمةٌ فارغة مقبولة شكلاً — سندٌ يُقبض على الحساب — ومجموعها لا يتجاوز received + settlementDiscount. / Allocations against this customer's posted invoices. An empty list is structurally accepted — a receipt on account — and their sum may not exceed received + settlementDiscount.",
+            "items": {
+              "additionalProperties": false,
+              "description": "تخصيص مبلغ من سند قبض على فاتورة مبيعات **مُرحَّلة**. ولا عميل فيه: عميلُه عميل السند، والفاتورة تُفحص أنها له — وإعادة ذكره كانت ستفتح باباً لتخصيصٍ على فاتورة عميل آخر. / An allocation of part of a receipt against a **posted** sales invoice. It carries no customer: the customer is the receipt's, and the invoice is checked to be theirs — repeating it would open a door to allocating against another customer's invoice.",
+              "properties": {
+                "amount": {
+                  "description": "مبلغ نصّاً، بمقياس لا يتجاوز أربع خانات عشرية. النحو المقبول كاملاً: -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — فتُرفض الصيغة الأسّية، والصفر البادئ، والإشارة الموجبة الصريحة، والفراغ، والأرقام العربية-الهندية والديفاناغارية، وكل ما زاد على أربع خانات. ورمزٌ رقمي في هذا الحقل يُرفض الطلب بسببه: JSON لا يملك نوعاً عشرياً، وأغلب العملاء يمرّرون الرمز الرقمي على فاصلة عائمة ثنائية فيقع فقدان الدقّة قبل أن يصل الطلب. / An amount as a string with at most four decimal places. The full accepted grammar is -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — exponent notation, leading zeros, an explicit plus sign, whitespace, Arabic-Indic and Devanagari digits, and any fifth decimal are all refused. A JSON number token in this field fails the request: JSON has no decimal type, and most clients route a number token through a binary double, so precision is lost before the request arrives.",
+                  "examples": [
+                    "0.4013",
+                    "-1250.0000",
+                    "100"
+                  ],
+                  "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$",
+                  "type": "string"
+                },
+                "invoiceId": {
+                  "description": "مِقبضٌ معتِم من lookup_entity أو ask_question. ولا يُكتب هنا معرّفٌ خام ولا اسم — يُرفض قبل التنفيذ.",
+                  "maxLength": 36,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "amount",
+                "invoiceId"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "customerId": {
+            "description": "مِقبضٌ معتِم من lookup_entity أو ask_question. ولا يُكتب هنا معرّفٌ خام ولا اسم — يُرفض قبل التنفيذ.",
+            "maxLength": 36,
+            "type": "string"
+          },
+          "number": {
+            "description": "رقم السند — فريد داخل المستأجر. / The receipt number — unique within the tenant.",
+            "maxLength": 64,
+            "type": "string"
+          },
+          "received": {
+            "description": "مبلغ نصّاً، بمقياس لا يتجاوز أربع خانات عشرية. النحو المقبول كاملاً: -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — فتُرفض الصيغة الأسّية، والصفر البادئ، والإشارة الموجبة الصريحة، والفراغ، والأرقام العربية-الهندية والديفاناغارية، وكل ما زاد على أربع خانات. ورمزٌ رقمي في هذا الحقل يُرفض الطلب بسببه: JSON لا يملك نوعاً عشرياً، وأغلب العملاء يمرّرون الرمز الرقمي على فاصلة عائمة ثنائية فيقع فقدان الدقّة قبل أن يصل الطلب. / An amount as a string with at most four decimal places. The full accepted grammar is -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — exponent notation, leading zeros, an explicit plus sign, whitespace, Arabic-Indic and Devanagari digits, and any fifth decimal are all refused. A JSON number token in this field fails the request: JSON has no decimal type, and most clients route a number token through a binary double, so precision is lost before the request arrives.",
+            "examples": [
+              "0.4013",
+              "-1250.0000",
+              "100"
+            ],
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$",
+            "type": "string"
+          },
+          "receivedOn": {
+            "description": "تاريخ القبض. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The collection date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period.",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+            "type": "string"
+          },
+          "settlementDiscount": {
+            "description": "مبلغ نصّاً، بمقياس لا يتجاوز أربع خانات عشرية. النحو المقبول كاملاً: -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — فتُرفض الصيغة الأسّية، والصفر البادئ، والإشارة الموجبة الصريحة، والفراغ، والأرقام العربية-الهندية والديفاناغارية، وكل ما زاد على أربع خانات. ورمزٌ رقمي في هذا الحقل يُرفض الطلب بسببه: JSON لا يملك نوعاً عشرياً، وأغلب العملاء يمرّرون الرمز الرقمي على فاصلة عائمة ثنائية فيقع فقدان الدقّة قبل أن يصل الطلب. / An amount as a string with at most four decimal places. The full accepted grammar is -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — exponent notation, leading zeros, an explicit plus sign, whitespace, Arabic-Indic and Devanagari digits, and any fifth decimal are all refused. A JSON number token in this field fails the request: JSON has no decimal type, and most clients route a number token through a binary double, so precision is lost before the request arrives.",
+            "examples": [
+              "0.4013",
+              "-1250.0000",
+              "100"
+            ],
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$",
+            "type": "string"
+          },
+          "settlementMethod": {
+            "description": "طريقة التسوية — مؤهّل دور تحلّه المصفوفة إلى حساب. المستعمَل اليوم: cash · bank · card_clearing، ويُنشر نصّاً لا مجموعةً مغلقة كما يُنشر التصنيف الضريبي وللسبب نفسه. / The settlement method — a role qualifier the matrix resolves into an account. In use today: cash, bank, card_clearing; published as text rather than a closed set, as the tax classification is and for the same reason.",
+            "maxLength": 32,
+            "type": "string"
+          },
+          "treasuryPartyId": {
+            "description": "مِقبضٌ معتِم من lookup_entity أو ask_question. ولا يُكتب هنا معرّفٌ خام ولا اسم — يُرفض قبل التنفيذ.",
+            "maxLength": 64,
+            "type": "string"
+          }
+        },
+        "required": [
+          "allocations",
+          "customerId",
+          "number",
+          "received",
+          "receivedOn",
+          "settlementDiscount",
+          "settlementMethod",
+          "treasuryPartyId"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "draftEmployeeAdvance",
+      "operationId": "draftEmployeeAdvance",
+      "path": "/api/v1/companies/{companyId}/employee-advances",
+      "method": "post",
+      "idFields": [
+        "employeeId",
+        "treasuryPartyId"
+      ],
+      "description": "إنشاء سلفة موظف مسوّدة",
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "طلب إنشاء سلفة مسوّدة بجدول أقساطها، **ومجموع الأقساط يساوي المبلغ بالضبط** — والفارق لا يُسوَّى ضمناً: قسطٌ يُخترع أو يُقصّ يجعل رصيد السلفة رقماً لا يقابله جدول. / An advance draft request with its instalment schedule, **whose instalments sum exactly to the amount** — the difference is never settled implicitly: an invented or truncated instalment makes the advance balance a number with no schedule behind it.",
+        "properties": {
+          "amount": {
+            "description": "مبلغ نصّاً، بمقياس لا يتجاوز أربع خانات عشرية. النحو المقبول كاملاً: -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — فتُرفض الصيغة الأسّية، والصفر البادئ، والإشارة الموجبة الصريحة، والفراغ، والأرقام العربية-الهندية والديفاناغارية، وكل ما زاد على أربع خانات. ورمزٌ رقمي في هذا الحقل يُرفض الطلب بسببه: JSON لا يملك نوعاً عشرياً، وأغلب العملاء يمرّرون الرمز الرقمي على فاصلة عائمة ثنائية فيقع فقدان الدقّة قبل أن يصل الطلب. / An amount as a string with at most four decimal places. The full accepted grammar is -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — exponent notation, leading zeros, an explicit plus sign, whitespace, Arabic-Indic and Devanagari digits, and any fifth decimal are all refused. A JSON number token in this field fails the request: JSON has no decimal type, and most clients route a number token through a binary double, so precision is lost before the request arrives.",
+            "examples": [
+              "0.4013",
+              "-1250.0000",
+              "100"
+            ],
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$",
+            "type": "string"
+          },
+          "employeeId": {
+            "description": "مِقبضٌ معتِم من lookup_entity أو ask_question. ولا يُكتب هنا معرّفٌ خام ولا اسم — يُرفض قبل التنفيذ.",
+            "maxLength": 36,
+            "type": "string"
+          },
+          "instalments": {
+            "description": "جدول الأقساط. / The instalment schedule.",
+            "items": {
+              "additionalProperties": false,
+              "description": "قسط سداد سلفة في الطلب: فترته ومبلغه. / An advance repayment instalment in the request: its period and its amount.",
+              "properties": {
+                "amount": {
+                  "description": "مبلغ نصّاً، بمقياس لا يتجاوز أربع خانات عشرية. النحو المقبول كاملاً: -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — فتُرفض الصيغة الأسّية، والصفر البادئ، والإشارة الموجبة الصريحة، والفراغ، والأرقام العربية-الهندية والديفاناغارية، وكل ما زاد على أربع خانات. ورمزٌ رقمي في هذا الحقل يُرفض الطلب بسببه: JSON لا يملك نوعاً عشرياً، وأغلب العملاء يمرّرون الرمز الرقمي على فاصلة عائمة ثنائية فيقع فقدان الدقّة قبل أن يصل الطلب. / An amount as a string with at most four decimal places. The full accepted grammar is -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — exponent notation, leading zeros, an explicit plus sign, whitespace, Arabic-Indic and Devanagari digits, and any fifth decimal are all refused. A JSON number token in this field fails the request: JSON has no decimal type, and most clients route a number token through a binary double, so precision is lost before the request arrives.",
+                  "examples": [
+                    "0.4013",
+                    "-1250.0000",
+                    "100"
+                  ],
+                  "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$",
+                  "type": "string"
+                },
+                "periodCode": {
+                  "description": "رمز الفترة المالية yyyy-MM ميلادياً دائماً — لا يتغيّر بثقافة الخادم ولا بثقافة العميل. / The fiscal period code yyyy-MM, always Gregorian — unaffected by server or client culture.",
+                  "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "amount",
+                "periodCode"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "issuedOn": {
+            "description": "تاريخ منح السلفة ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The date the advance was granted. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period.",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+            "type": "string"
+          },
+          "number": {
+            "description": "رقم السلفة. / The advance number.",
+            "maxLength": 64,
+            "type": "string"
+          },
+          "settlementMethod": {
+            "description": "طريقة الصرف — مؤهّل دور. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The disbursement method — a role qualifier. Matched literally and case-sensitively; a number is never accepted in place of a name.",
+            "enum": [
+              "bank",
+              "cash"
+            ],
+            "type": "string"
+          },
+          "treasuryPartyId": {
+            "description": "مِقبضٌ معتِم من lookup_entity أو ask_question. ولا يُكتب هنا معرّفٌ خام ولا اسم — يُرفض قبل التنفيذ.",
+            "maxLength": 64,
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount",
+          "employeeId",
+          "instalments",
+          "issuedOn",
+          "number",
+          "settlementMethod",
+          "treasuryPartyId"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "draftEndOfServiceProvision",
+      "operationId": "draftEndOfServiceProvision",
+      "path": "/api/v1/companies/{companyId}/end-of-service-provisions",
+      "method": "post",
+      "idFields": [
+        "shares.[].employmentId"
+      ],
+      "description": "إنشاء استحقاق مخصص نهاية الخدمة مسوّدة",
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "طلب إنشاء مستند استحقاق مخصص نهاية الخدمة. و`measurementRef` **غير فارغ بقيدٍ في قاعدة البيانات**: مبلغٌ بلا أساسٍ مكتوب تقديرٌ بلا مصدر. **ومستندٌ يُنشئه نداءٌ صريح لا مهمّة مجدولة**: لا مُشغّل دوري في هذه الوحدة، والنمط محجوزٌ للانتزاع ولا يُخترع مرّتين. / A request to create an end-of-service provision accrual document. `measurementRef` is **non-empty by a database constraint**: an amount with no written basis is an estimate with no source. **It is a document created by an explicit call, not a scheduled job**: there is no periodic runner in this module, and the pattern is reserved for extraction rather than invented twice.",
+        "properties": {
+          "accruedOn": {
+            "description": "تاريخ الاستحقاق ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The accrual date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period.",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+            "type": "string"
+          },
+          "approvedBy": {
+            "description": "المعتمِد. / The approver.",
+            "maxLength": 64,
+            "type": "string"
+          },
+          "measurementRef": {
+            "description": "مرجع أساس القياس المعتمد — نصٌّ يقرؤه مراجع، وغير فارغ. / The reference to the approved measurement basis — text a reviewer reads, and non-empty.",
+            "maxLength": 400,
+            "type": "string"
+          },
+          "number": {
+            "description": "رقم المستند. / The document number.",
+            "maxLength": 64,
+            "type": "string"
+          },
+          "periodCode": {
+            "description": "رمز الفترة المالية yyyy-MM ميلادياً دائماً — لا يتغيّر بثقافة الخادم ولا بثقافة العميل. / The fiscal period code yyyy-MM, always Gregorian — unaffected by server or client culture.",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$",
+            "type": "string"
+          },
+          "shares": {
+            "description": "حصص علاقات العمل. / The per-employment shares.",
+            "items": {
+              "additionalProperties": false,
+              "description": "حصّة علاقة عمل من مخصص الفترة — **مبلغٌ يُدخله معتمِد المستند، والوحدة لا تقيسه**. طريقة قياس المخصص ومدخلاتها تحتاج اعتماد المحاسب القانوني، ونصّ المصفوفة صريح: «بطريقة القياس المعتمدة — لا تُخترع في هذا التسليم». / One employment's share of the period provision — **an amount the document's approver enters; the module does not measure it**. The provision's measurement method and inputs require a chartered accountant's approval, and the matrix text is explicit: 'by the approved measurement method — not invented in this deliverable'.",
+              "properties": {
+                "employmentId": {
+                  "description": "مِقبضٌ معتِم من lookup_entity أو ask_question. ولا يُكتب هنا معرّفٌ خام ولا اسم — يُرفض قبل التنفيذ.",
+                  "maxLength": 36,
+                  "type": "string"
+                },
+                "periodShare": {
+                  "description": "مبلغ نصّاً، بمقياس لا يتجاوز أربع خانات عشرية. النحو المقبول كاملاً: -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — فتُرفض الصيغة الأسّية، والصفر البادئ، والإشارة الموجبة الصريحة، والفراغ، والأرقام العربية-الهندية والديفاناغارية، وكل ما زاد على أربع خانات. ورمزٌ رقمي في هذا الحقل يُرفض الطلب بسببه: JSON لا يملك نوعاً عشرياً، وأغلب العملاء يمرّرون الرمز الرقمي على فاصلة عائمة ثنائية فيقع فقدان الدقّة قبل أن يصل الطلب. / An amount as a string with at most four decimal places. The full accepted grammar is -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — exponent notation, leading zeros, an explicit plus sign, whitespace, Arabic-Indic and Devanagari digits, and any fifth decimal are all refused. A JSON number token in this field fails the request: JSON has no decimal type, and most clients route a number token through a binary double, so precision is lost before the request arrives.",
+                  "examples": [
+                    "0.4013",
+                    "-1250.0000",
+                    "100"
+                  ],
+                  "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "employmentId",
+                "periodShare"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "accruedOn",
+          "approvedBy",
+          "measurementRef",
+          "number",
+          "periodCode",
+          "shares"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "draftEndOfServiceSettlement",
+      "operationId": "draftEndOfServiceSettlement",
+      "path": "/api/v1/companies/{companyId}/end-of-service-settlements",
+      "method": "post",
+      "idFields": [
+        "employmentId",
+        "treasuryPartyId"
+      ],
+      "description": "إنشاء مخالصة نهاية خدمة مسوّدة",
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "طلب إنشاء مخالصة نهاية خدمة على علاقة عمل منتهية. **والمستحقّ يصل من معتمِد المستند**: معادلة المكافأة وشرائحها غير متحقَّق منها ولا تُخترع هنا. وما تحسبه الوحدة هو رصيد المخصص وحده ثم العجز والزيادة، وكلاهما اشتقاقٌ حسابي من رقمين. / A final settlement draft request against a terminated employment. **The amount due arrives from the document's approver**: the benefit formula and its bands are unverified and are not invented here. What the module computes is the provision balance alone, and then the shortfall and the excess — both arithmetic derivations from two numbers.",
+        "properties": {
+          "employmentId": {
+            "description": "مِقبضٌ معتِم من lookup_entity أو ask_question. ولا يُكتب هنا معرّفٌ خام ولا اسم — يُرفض قبل التنفيذ.",
+            "maxLength": 36,
+            "type": "string"
+          },
+          "measurementRef": {
+            "description": "مرجع أساس الحساب المعتمد. / The approved calculation basis reference.",
+            "maxLength": 400,
+            "type": "string"
+          },
+          "number": {
+            "description": "رقم المخالصة. / The settlement number.",
+            "maxLength": 64,
+            "type": "string"
+          },
+          "settledOn": {
+            "description": "تاريخ المخالصة ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The settlement date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period.",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+            "type": "string"
+          },
+          "settlementDue": {
+            "description": "مبلغ نصّاً، بمقياس لا يتجاوز أربع خانات عشرية. النحو المقبول كاملاً: -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — فتُرفض الصيغة الأسّية، والصفر البادئ، والإشارة الموجبة الصريحة، والفراغ، والأرقام العربية-الهندية والديفاناغارية، وكل ما زاد على أربع خانات. ورمزٌ رقمي في هذا الحقل يُرفض الطلب بسببه: JSON لا يملك نوعاً عشرياً، وأغلب العملاء يمرّرون الرمز الرقمي على فاصلة عائمة ثنائية فيقع فقدان الدقّة قبل أن يصل الطلب. / An amount as a string with at most four decimal places. The full accepted grammar is -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — exponent notation, leading zeros, an explicit plus sign, whitespace, Arabic-Indic and Devanagari digits, and any fifth decimal are all refused. A JSON number token in this field fails the request: JSON has no decimal type, and most clients route a number token through a binary double, so precision is lost before the request arrives.",
+            "examples": [
+              "0.4013",
+              "-1250.0000",
+              "100"
+            ],
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$",
+            "type": "string"
+          },
+          "settlementMethod": {
+            "description": "طريقة الصرف. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The disbursement method. Matched literally and case-sensitively; a number is never accepted in place of a name.",
+            "enum": [
+              "bank",
+              "cash"
+            ],
+            "type": "string"
+          },
+          "treasuryPartyId": {
+            "description": "مِقبضٌ معتِم من lookup_entity أو ask_question. ولا يُكتب هنا معرّفٌ خام ولا اسم — يُرفض قبل التنفيذ.",
+            "maxLength": 64,
+            "type": "string"
+          }
+        },
+        "required": [
+          "employmentId",
+          "measurementRef",
+          "number",
+          "settledOn",
+          "settlementDue",
+          "settlementMethod",
+          "treasuryPartyId"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "draftExpenseBill",
+      "operationId": "draftExpenseBill",
+      "path": "/api/v1/companies/{companyId}/supplier-bills",
+      "method": "post",
+      "idFields": [
+        "costCenterId",
+        "lines.[].itemId",
+        "supplierId"
+      ],
+      "description": "إنشاء فاتورة مصروف مسوّدة",
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "طلب إنشاء فاتورة مصروف مسوّدة — بلا مخزون ولا مطابقة ثلاثية. / A request to draft an expense bill — no stock, no three-way match.",
+        "properties": {
+          "costCenterId": {
+            "description": "مِقبضٌ معتِم من lookup_entity أو ask_question. ولا يُكتب هنا معرّفٌ خام ولا اسم — يُرفض قبل التنفيذ.",
+            "maxLength": 64,
+            "type": "string"
+          },
+          "expenseCategory": {
+            "description": "تصنيف المصروف — مؤهّل الدور. / The expense category — the role qualifier.",
+            "maxLength": 64,
+            "type": "string"
+          },
+          "issuedOn": {
+            "description": "تاريخ الفاتورة. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The bill date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period.",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+            "type": "string"
+          },
+          "lines": {
+            "description": "السطور. / The lines.",
+            "items": {
+              "additionalProperties": false,
+              "description": "سطر فاتورة مصروف. ولا حساب فيه ولا رمز حساب، كسطر المبيعات وللسبب نفسه. / An expense bill line. No account and no account code, as on a sales line and for the same reason.",
+              "properties": {
+                "description": {
+                  "additionalProperties": false,
+                  "description": "نصّ ثنائي اللغة. الطرفان إلزاميان — العربية أساسية لا ترجمة ثانية. / Bilingual text; both sides are mandatory.",
+                  "properties": {
+                    "ar": {
+                      "description": "النصّ العربي. / The Arabic text.",
+                      "maxLength": 512,
+                      "type": "string"
+                    },
+                    "en": {
+                      "description": "النصّ الإنجليزي. / The English text.",
+                      "maxLength": 512,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "ar",
+                    "en"
+                  ],
+                  "type": "object"
+                },
+                "itemGroup": {
+                  "description": "مجموعة الصنف — مؤهّل الدور. / The item group — the role qualifier.",
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                "itemId": {
+                  "description": "مِقبضٌ معتِم من lookup_entity أو ask_question. ولا يُكتب هنا معرّفٌ خام ولا اسم — يُرفض قبل التنفيذ.",
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                "quantity": {
+                  "description": "كمّية نصّاً بمقياس لا يتجاوز أربعاً، بالنحو الذي تخضع له المبالغ. وهي ليست مبلغاً — ولذلك لها مخطّطها — لكنها تُضرب في مبلغ، فأي فقدان دقّة فيها يصل إلى المال. / A quantity as a string with at most four decimal places, under the grammar that governs amounts. It is not an amount — hence its own schema — but it is multiplied by one, so any precision lost in it reaches the money.",
+                  "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$",
+                  "type": "string"
+                },
+                "taxClassification": {
+                  "description": "التصنيف الضريبي. المستعمَل اليوم: standard · zero · exempt. / The tax classification. In use today: standard, zero, exempt.",
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                "taxRate": {
+                  "description": "نسبة الضريبة **كسراً عشرياً لا نسبة مئوية**: خمسة عشر بالمئة تُكتب 0.15 لا 15. والمقياس ثمانٍ لا أربع: النسبة ليست مبلغاً ولا تُقرَّب إلى الهللة. / The tax rate as a **decimal fraction, not a percentage**: fifteen percent is written 0.15, never 15. The scale is eight, not four: a rate is not an amount and is not rounded to the halala.",
+                  "examples": [
+                    "0.15",
+                    "0"
+                  ],
+                  "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,8})?$",
+                  "type": "string"
+                },
+                "taxRecoverable": {
+                  "description": "هل ضريبة هذا السطر قابلة للاسترداد؟ وهي واقعة ضريبية عن السطر لا تُشتقّ من التصنيف. / Is this line's tax recoverable? A tax fact about the line, not derived from its classification.",
+                  "type": "boolean"
+                },
+                "unitPrice": {
+                  "description": "مبلغ نصّاً، بمقياس لا يتجاوز أربع خانات عشرية. النحو المقبول كاملاً: -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — فتُرفض الصيغة الأسّية، والصفر البادئ، والإشارة الموجبة الصريحة، والفراغ، والأرقام العربية-الهندية والديفاناغارية، وكل ما زاد على أربع خانات. ورمزٌ رقمي في هذا الحقل يُرفض الطلب بسببه: JSON لا يملك نوعاً عشرياً، وأغلب العملاء يمرّرون الرمز الرقمي على فاصلة عائمة ثنائية فيقع فقدان الدقّة قبل أن يصل الطلب. / An amount as a string with at most four decimal places. The full accepted grammar is -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — exponent notation, leading zeros, an explicit plus sign, whitespace, Arabic-Indic and Devanagari digits, and any fifth decimal are all refused. A JSON number token in this field fails the request: JSON has no decimal type, and most clients route a number token through a binary double, so precision is lost before the request arrives.",
+                  "examples": [
+                    "0.4013",
+                    "-1250.0000",
+                    "100"
+                  ],
+                  "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "description",
+                "itemGroup",
+                "itemId",
+                "quantity",
+                "taxClassification",
+                "taxRate",
+                "taxRecoverable",
+                "unitPrice"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "number": {
+            "description": "رقم الفاتورة — فريد داخل المستأجر. / The bill number — unique within the tenant.",
+            "maxLength": 64,
+            "type": "string"
+          },
+          "supplierId": {
+            "description": "مِقبضٌ معتِم من lookup_entity أو ask_question. ولا يُكتب هنا معرّفٌ خام ولا اسم — يُرفض قبل التنفيذ.",
+            "maxLength": 36,
+            "type": "string"
+          }
+        },
+        "required": [
+          "costCenterId",
+          "expenseCategory",
+          "issuedOn",
+          "lines",
+          "number",
+          "supplierId"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "draftGoodsReceipt",
+      "operationId": "draftGoodsReceipt",
+      "path": "/api/v1/companies/{companyId}/goods-receipts",
+      "method": "post",
+      "idFields": [
+        "lines.[].orderLineId",
+        "orderId"
+      ],
+      "description": "تسجيل استلام بضاعة مسوّدة",
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "طلب تسجيل استلام بضاعة مسوّدة على أمر شراء. ولا مورد فيه: مورده مورد الأمر، ولا مستودع: مستودعه مستودع الأمر — وإعادة ذكرهما تفتح باب انحراف عن الأمر الذي يُطابَق به لاحقاً. / A request to draft a goods receipt against a purchase order. It carries no supplier — its supplier is the order's — and no warehouse — its warehouse is the order's; repeating either would open a door to drifting from the very order it is later matched against.",
+        "properties": {
+          "lines": {
+            "description": "السطور. استلامٌ بلا سطر يُرفض في الوحدة برمزه. / The lines. A receipt with no line is refused in the module under its own code.",
+            "items": {
+              "additionalProperties": false,
+              "description": "سطر استلام: أي سطر أمر، وبأي كمية. **ولا سعر فيه**: التكلفة تُحسب في الوحدة بسعر أمر الشراء للكمية المستلمة، وسعرٌ يرسله العميل كان سيصير مصدر حقيقة ثانياً ينحرف عن الأمر. / A goods receipt line: which order line, and how much. **It carries no price**: the cost is computed in the module at the purchase-order price for the quantity received, and a price sent by the client would be a second source of truth able to diverge from the order.",
+              "properties": {
+                "orderLineId": {
+                  "description": "مِقبضٌ معتِم من lookup_entity أو ask_question. ولا يُكتب هنا معرّفٌ خام ولا اسم — يُرفض قبل التنفيذ.",
+                  "maxLength": 36,
+                  "type": "string"
+                },
+                "quantity": {
+                  "description": "كمّية نصّاً بمقياس لا يتجاوز أربعاً، بالنحو الذي تخضع له المبالغ. وهي ليست مبلغاً — ولذلك لها مخطّطها — لكنها تُضرب في مبلغ، فأي فقدان دقّة فيها يصل إلى المال. / A quantity as a string with at most four decimal places, under the grammar that governs amounts. It is not an amount — hence its own schema — but it is multiplied by one, so any precision lost in it reaches the money.",
+                  "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "orderLineId",
+                "quantity"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "number": {
+            "description": "رقم الاستلام — فريد داخل المستأجر. / The receipt number — unique within the tenant.",
+            "maxLength": 64,
+            "type": "string"
+          },
+          "orderId": {
+            "description": "مِقبضٌ معتِم من lookup_entity أو ask_question. ولا يُكتب هنا معرّفٌ خام ولا اسم — يُرفض قبل التنفيذ.",
+            "maxLength": 36,
+            "type": "string"
+          },
+          "receivedOn": {
+            "description": "تاريخ الاستلام. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The receipt date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period.",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "lines",
+          "number",
+          "orderId",
+          "receivedOn"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "draftLeaseContract",
+      "operationId": "draftLeaseContract",
+      "path": "/api/v1/companies/{companyId}/lease-contracts",
+      "method": "post",
+      "idFields": [
+        "lesseeId",
+        "unitId"
+      ],
+      "description": "إنشاء عقد إيجار مسوّدة",
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "طلب إنشاء عقد إيجار مسوّدة. **وقيمة العقد والأقساط تُصرَّحان معاً**: النظام لا يوزّع القيمة على الأقساط — التوزيع يستلزم سياسة تقريب هي قرار مالك مفتوح — بل **يفحص** أن مجموع الأقساط يساوي قيمة العقد بالضبط ويرفض بخلافه. ولو اشتُقّت القيمة من الأقساط لصارت الثابتة صحيحةً بحكم البناء ولم تمسك توزيعاً خاطئاً. / A request to draft a lease contract. **The contract value and the instalments are both declared**: the system does not spread the value across the instalments — spreading requires a rounding policy that is an open owner decision — it **checks** that the instalments sum exactly to the contract value and refuses otherwise. Had the value been derived from the instalments the invariant would hold by construction and would catch no wrong split.",
+        "properties": {
+          "contractNo": {
+            "description": "رقم العقد — فريد داخل المنشأة. / The contract number — unique within the company.",
+            "maxLength": 64,
+            "type": "string"
+          },
+          "endsOn": {
+            "description": "نهاية المدّة — داخلة في المدى. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The end of the term — inclusive. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period.",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+            "type": "string"
+          },
+          "instalments": {
+            "description": "الأقساط بفتراتها ومبالغها. ومجموعها يُفحص عند التفعيل ولا يُصلَح. / The instalments with their periods and amounts. Their sum is checked on activation and never corrected.",
+            "items": {
+              "additionalProperties": false,
+              "description": "قسطٌ مُصرَّح به. **وحقلا الفترة قبل تاريخ الاستحقاق**: أساس الاعتراف مدى الفترة لا يوم السداد، وقسطٌ بلا فترته لا يُنسب إلى شهرٍ في قائمة دخل. / A declared instalment. **The period fields come before the due date**: recognition rests on the period range, not the payment day, and an instalment without its period belongs to no month in an income statement.",
+              "properties": {
+                "amount": {
+                  "description": "مبلغ نصّاً، بمقياس لا يتجاوز أربع خانات عشرية. النحو المقبول كاملاً: -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — فتُرفض الصيغة الأسّية، والصفر البادئ، والإشارة الموجبة الصريحة، والفراغ، والأرقام العربية-الهندية والديفاناغارية، وكل ما زاد على أربع خانات. ورمزٌ رقمي في هذا الحقل يُرفض الطلب بسببه: JSON لا يملك نوعاً عشرياً، وأغلب العملاء يمرّرون الرمز الرقمي على فاصلة عائمة ثنائية فيقع فقدان الدقّة قبل أن يصل الطلب. / An amount as a string with at most four decimal places. The full accepted grammar is -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — exponent notation, leading zeros, an explicit plus sign, whitespace, Arabic-Indic and Devanagari digits, and any fifth decimal are all refused. A JSON number token in this field fails the request: JSON has no decimal type, and most clients route a number token through a binary double, so precision is lost before the request arrives.",
+                  "examples": [
+                    "0.4013",
+                    "-1250.0000",
+                    "100"
+                  ],
+                  "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$",
+                  "type": "string"
+                },
+                "dueOn": {
+                  "description": "تاريخ استحقاق القسط. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The instalment's due date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period.",
+                  "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+                  "type": "string"
+                },
+                "periodFrom": {
+                  "description": "بداية الفترة المستحقّة. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The start of the period covered. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period.",
+                  "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+                  "type": "string"
+                },
+                "periodTo": {
+                  "description": "نهاية الفترة المستحقّة. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The end of the period covered. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period.",
+                  "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "amount",
+                "dueOn",
+                "periodFrom",
+                "periodTo"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "lesseeId": {
+            "description": "مِقبضٌ معتِم من lookup_entity أو ask_question. ولا يُكتب هنا معرّفٌ خام ولا اسم — يُرفض قبل التنفيذ.",
+            "maxLength": 36,
+            "type": "string"
+          },
+          "startsOn": {
+            "description": "بداية المدّة. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The start of the term. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period.",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+            "type": "string"
+          },
+          "totalRent": {
+            "description": "مبلغ نصّاً، بمقياس لا يتجاوز أربع خانات عشرية. النحو المقبول كاملاً: -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — فتُرفض الصيغة الأسّية، والصفر البادئ، والإشارة الموجبة الصريحة، والفراغ، والأرقام العربية-الهندية والديفاناغارية، وكل ما زاد على أربع خانات. ورمزٌ رقمي في هذا الحقل يُرفض الطلب بسببه: JSON لا يملك نوعاً عشرياً، وأغلب العملاء يمرّرون الرمز الرقمي على فاصلة عائمة ثنائية فيقع فقدان الدقّة قبل أن يصل الطلب. / An amount as a string with at most four decimal places. The full accepted grammar is -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — exponent notation, leading zeros, an explicit plus sign, whitespace, Arabic-Indic and Devanagari digits, and any fifth decimal are all refused. A JSON number token in this field fails the request: JSON has no decimal type, and most clients route a number token through a binary double, so precision is lost before the request arrives.",
+            "examples": [
+              "0.4013",
+              "-1250.0000",
+              "100"
+            ],
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$",
+            "type": "string"
+          },
+          "unitId": {
+            "description": "مِقبضٌ معتِم من lookup_entity أو ask_question. ولا يُكتب هنا معرّفٌ خام ولا اسم — يُرفض قبل التنفيذ.",
+            "maxLength": 36,
+            "type": "string"
+          }
+        },
+        "required": [
+          "contractNo",
+          "endsOn",
+          "instalments",
+          "lesseeId",
+          "startsOn",
+          "totalRent",
+          "unitId"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "draftPayrollPayment",
+      "operationId": "draftPayrollPayment",
+      "path": "/api/v1/companies/{companyId}/payroll-payments",
+      "method": "post",
+      "idFields": [
+        "runId",
+        "treasuryPartyId"
+      ],
+      "description": "إنشاء سند صرف رواتب مسوّدة",
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "طلب إنشاء سند صرف رواتب مسوّدة على مسيّر مُرحَّل. و`treasuryPartyId` **إلزامي**: سطر التسوية معلَنٌ في المصفوفة subledger: \"resolved\"، والمحرك يطويه إلى النوع none ثم يبحث عن الواقعة subledger.none — وحسابُ التسوية الافتراضي حسابٌ ضابط، فبلا الطرف يُرفض الترحيل كلّه. / A payroll payment draft request against a posted run. `treasuryPartyId` is **mandatory**: the settlement line is declared in the matrix as subledger: \"resolved\", the engine folds that to kind none and then looks for the subledger.none fact — and the default settlement account is a control account, so without the party the whole posting is refused.",
+        "properties": {
+          "number": {
+            "description": "رقم السند — فريد داخل المنشأة. / The document number — unique within the company.",
+            "maxLength": 64,
+            "type": "string"
+          },
+          "paidOn": {
+            "description": "تاريخ الصرف ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The payment date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period.",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+            "type": "string"
+          },
+          "runId": {
+            "description": "مِقبضٌ معتِم من lookup_entity أو ask_question. ولا يُكتب هنا معرّفٌ خام ولا اسم — يُرفض قبل التنفيذ.",
+            "maxLength": 36,
+            "type": "string"
+          },
+          "settlementMethod": {
+            "description": "طريقة التسوية — **مؤهّل دور لا رمز حساب**. والمجموعة ضيّقة عمداً: قبولُ حساب وسيط يفترض جواب سؤال مفتوح عن لحظة وقوع قيد الصرف. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The settlement method — **a role qualifier, not an account code**. The set is deliberately narrow: accepting a clearing account would assume the answer to an open question about when the payment entry falls. Matched literally and case-sensitively; a number is never accepted in place of a name.",
+            "enum": [
+              "bank",
+              "cash"
+            ],
+            "type": "string"
+          },
+          "treasuryPartyId": {
+            "description": "مِقبضٌ معتِم من lookup_entity أو ask_question. ولا يُكتب هنا معرّفٌ خام ولا اسم — يُرفض قبل التنفيذ.",
+            "maxLength": 64,
+            "type": "string"
+          }
+        },
+        "required": [
+          "number",
+          "paidOn",
+          "runId",
+          "settlementMethod",
+          "treasuryPartyId"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "draftPayrollRun",
+      "operationId": "draftPayrollRun",
+      "path": "/api/v1/companies/{companyId}/payroll-runs",
+      "method": "post",
+      "idFields": [],
+      "description": "إنشاء مسيّر رواتب مسوّدة",
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "طلب إنشاء مسيّر رواتب مسوّدة. **ولا مجاميع فيه**: مجموعٌ يرسله العميل مصدرُ حقيقةٍ ثانٍ ينحرف عن الأول ولا يُظهره شيء. / A payroll run draft request. **It carries no totals**: a total sent by a client is a second source of truth that drifts from the first with nothing to reveal it.",
+        "properties": {
+          "number": {
+            "description": "رقم المسيّر — فريد داخل المنشأة. / The run number — unique within the company.",
+            "maxLength": 64,
+            "type": "string"
+          },
+          "periodCode": {
+            "description": "رمز الفترة المالية yyyy-MM ميلادياً دائماً — لا يتغيّر بثقافة الخادم ولا بثقافة العميل. / The fiscal period code yyyy-MM, always Gregorian — unaffected by server or client culture.",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$",
+            "type": "string"
+          },
+          "periodEnd": {
+            "description": "نهاية الفترة — وهي تاريخ قيد الاستحقاق ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The period end — the accrual entry's date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period.",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+            "type": "string"
+          },
+          "periodStart": {
+            "description": "بداية الفترة ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The period start. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period.",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "number",
+          "periodCode",
+          "periodEnd",
+          "periodStart"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "draftPurchaseReturn",
+      "operationId": "draftPurchaseReturn",
+      "path": "/api/v1/companies/{companyId}/purchase-returns",
+      "method": "post",
+      "idFields": [
+        "billId",
+        "receiptLineId"
+      ],
+      "description": "إنشاء مرتجع مشتريات مسوّدة",
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "طلب إنشاء **مرتجع مشتريات** مسوّدة. **ولا صافي فيه**: المصفوفة تقول إن صافي المرتجع «بتكلفة الاستلام الأصلي لا بتكلفة اليوم»، وتلك التكلفة يملكها دفتر المخزون وحده — فيُسلَّم ما يملكه المستدعي: الكمّية وسطر الاستلام والضريبة. / A **purchase return** draft request. **It carries no net**: the matrix says the return net is 'at the original receipt cost, not today's cost', and only the inventory subledger owns that cost — so what the caller owns is what is sent: the quantity, the receipt line, and the tax.",
+        "properties": {
+          "billId": {
+            "description": "مِقبضٌ معتِم من lookup_entity أو ask_question. ولا يُكتب هنا معرّفٌ خام ولا اسم — يُرفض قبل التنفيذ.",
+            "maxLength": 36,
+            "type": "string"
+          },
+          "issuedOn": {
+            "description": "تاريخ المرتجع الميلادي. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The Gregorian return date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period.",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+            "type": "string"
+          },
+          "number": {
+            "description": "رقم المرتجع. / The return number.",
+            "maxLength": 64,
+            "type": "string"
+          },
+          "quantity": {
+            "description": "كمّية نصّاً بمقياس لا يتجاوز أربعاً، بالنحو الذي تخضع له المبالغ. وهي ليست مبلغاً — ولذلك لها مخطّطها — لكنها تُضرب في مبلغ، فأي فقدان دقّة فيها يصل إلى المال. / A quantity as a string with at most four decimal places, under the grammar that governs amounts. It is not an amount — hence its own schema — but it is multiplied by one, so any precision lost in it reaches the money.",
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$",
+            "type": "string"
+          },
+          "receiptLineId": {
+            "description": "مِقبضٌ معتِم من lookup_entity أو ask_question. ولا يُكتب هنا معرّفٌ خام ولا اسم — يُرفض قبل التنفيذ.",
+            "maxLength": 36,
+            "type": "string"
+          },
+          "tax": {
+            "description": "مبلغ نصّاً، بمقياس لا يتجاوز أربع خانات عشرية. النحو المقبول كاملاً: -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — فتُرفض الصيغة الأسّية، والصفر البادئ، والإشارة الموجبة الصريحة، والفراغ، والأرقام العربية-الهندية والديفاناغارية، وكل ما زاد على أربع خانات. ورمزٌ رقمي في هذا الحقل يُرفض الطلب بسببه: JSON لا يملك نوعاً عشرياً، وأغلب العملاء يمرّرون الرمز الرقمي على فاصلة عائمة ثنائية فيقع فقدان الدقّة قبل أن يصل الطلب. / An amount as a string with at most four decimal places. The full accepted grammar is -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — exponent notation, leading zeros, an explicit plus sign, whitespace, Arabic-Indic and Devanagari digits, and any fifth decimal are all refused. A JSON number token in this field fails the request: JSON has no decimal type, and most clients route a number token through a binary double, so precision is lost before the request arrives.",
+            "examples": [
+              "0.4013",
+              "-1250.0000",
+              "100"
+            ],
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "billId",
+          "issuedOn",
+          "number",
+          "quantity",
+          "receiptLineId",
+          "tax"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "draftRentInvoice",
+      "operationId": "draftRentInvoice",
+      "path": "/api/v1/companies/{companyId}/rent-invoices",
+      "method": "post",
+      "idFields": [
+        "leaseId"
+      ],
+      "description": "إنشاء فاتورة إيجار مسوّدة",
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "طلب إنشاء فاتورة إيجار مسوّدة. **ولا رمز حدث فيه ولا نموذج ملكية ولا مبالغ سطور**: المبالغ من جدول الدفعات، والحدث من نموذج الملكية المُسجَّل في الدفتر. وtaxRate تصل مع الطلب ولا تُكتب في شيفرة، ولا تُطبَّق إلا على وحدةٍ معاملتها standard. / A request to draft a rent invoice. **It carries no event code, no ownership model, and no line amounts**: amounts come from the payment schedule and the event from the ownership model registered in the ledger. taxRate arrives with the request rather than being written in code, and applies only to a unit whose treatment is standard.",
+        "properties": {
+          "issuedOn": {
+            "description": "تاريخ الإصدار الميلادي. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The issue date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period.",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+            "type": "string"
+          },
+          "leaseId": {
+            "description": "مِقبضٌ معتِم من lookup_entity أو ask_question. ولا يُكتب هنا معرّفٌ خام ولا اسم — يُرفض قبل التنفيذ.",
+            "maxLength": 36,
+            "type": "string"
+          },
+          "number": {
+            "description": "رقم الفاتورة — فريد داخل المنشأة. / The invoice number — unique within the company.",
+            "maxLength": 64,
+            "type": "string"
+          },
+          "scheduleLineIds": {
+            "description": "معرّفات الأقساط المفوترة كما نشرها مورد جدول الدفعات. / The identifiers of the instalments being billed, as published by the schedule resource.",
+            "items": {
+              "maxLength": 36,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "taxRate": {
+            "description": "مبلغ نصّاً، بمقياس لا يتجاوز أربع خانات عشرية. النحو المقبول كاملاً: -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — فتُرفض الصيغة الأسّية، والصفر البادئ، والإشارة الموجبة الصريحة، والفراغ، والأرقام العربية-الهندية والديفاناغارية، وكل ما زاد على أربع خانات. ورمزٌ رقمي في هذا الحقل يُرفض الطلب بسببه: JSON لا يملك نوعاً عشرياً، وأغلب العملاء يمرّرون الرمز الرقمي على فاصلة عائمة ثنائية فيقع فقدان الدقّة قبل أن يصل الطلب. / An amount as a string with at most four decimal places. The full accepted grammar is -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — exponent notation, leading zeros, an explicit plus sign, whitespace, Arabic-Indic and Devanagari digits, and any fifth decimal are all refused. A JSON number token in this field fails the request: JSON has no decimal type, and most clients route a number token through a binary double, so precision is lost before the request arrives.",
+            "examples": [
+              "0.4013",
+              "-1250.0000",
+              "100"
+            ],
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "issuedOn",
+          "leaseId",
+          "number",
+          "scheduleLineIds",
+          "taxRate"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "draftRetentionCollection",
+      "operationId": "draftRetentionCollection",
+      "path": "/api/v1/companies/{companyId}/retention-collections",
+      "method": "post",
+      "idFields": [
+        "retentionMovementId",
+        "treasuryPartyId"
+      ],
+      "description": "إنشاء تحصيل محتجز مسوّدة",
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "طلب تحصيل محتجزٍ مدين من العميل. / A request to collect debit retention from the client.",
+        "properties": {
+          "amount": {
+            "description": "مبلغ نصّاً، بمقياس لا يتجاوز أربع خانات عشرية. النحو المقبول كاملاً: -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — فتُرفض الصيغة الأسّية، والصفر البادئ، والإشارة الموجبة الصريحة، والفراغ، والأرقام العربية-الهندية والديفاناغارية، وكل ما زاد على أربع خانات. ورمزٌ رقمي في هذا الحقل يُرفض الطلب بسببه: JSON لا يملك نوعاً عشرياً، وأغلب العملاء يمرّرون الرمز الرقمي على فاصلة عائمة ثنائية فيقع فقدان الدقّة قبل أن يصل الطلب. / An amount as a string with at most four decimal places. The full accepted grammar is -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — exponent notation, leading zeros, an explicit plus sign, whitespace, Arabic-Indic and Devanagari digits, and any fifth decimal are all refused. A JSON number token in this field fails the request: JSON has no decimal type, and most clients route a number token through a binary double, so precision is lost before the request arrives.",
+            "examples": [
+              "0.4013",
+              "-1250.0000",
+              "100"
+            ],
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$",
+            "type": "string"
+          },
+          "collectedOn": {
+            "description": "تاريخ التحصيل ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The collection date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period.",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+            "type": "string"
+          },
+          "number": {
+            "description": "رقم المستند. / The document number.",
+            "maxLength": 64,
+            "type": "string"
+          },
+          "retentionMovementId": {
+            "description": "مِقبضٌ معتِم من lookup_entity أو ask_question. ولا يُكتب هنا معرّفٌ خام ولا اسم — يُرفض قبل التنفيذ.",
+            "maxLength": 36,
+            "type": "string"
+          },
+          "settlementMethod": {
+            "description": "طريقة التسوية — مؤهّل دور لا حساب. / The settlement method — a role qualifier, not an account.",
+            "maxLength": 32,
+            "type": "string"
+          },
+          "treasuryPartyId": {
+            "description": "مِقبضٌ معتِم من lookup_entity أو ask_question. ولا يُكتب هنا معرّفٌ خام ولا اسم — يُرفض قبل التنفيذ.",
+            "maxLength": 64,
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount",
+          "collectedOn",
+          "number",
+          "retentionMovementId",
+          "settlementMethod",
+          "treasuryPartyId"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "draftRetentionRelease",
+      "operationId": "draftRetentionRelease",
+      "path": "/api/v1/companies/{companyId}/retention-releases",
+      "method": "post",
+      "idFields": [
+        "retentionMovementId"
+      ],
+      "description": "إنشاء إفراج عن محتجز مسوّدة",
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "طلب إفراج عن محتجزٍ دائن على **دفعة محتجزٍ مُسمّاة** لا على رصيد، باعتمادٍ صريح يشترطه نصّ الإطلاق. / A request to release credit retention against **a named retention movement** rather than a balance, with the explicit approval the trigger text requires.",
+        "properties": {
+          "amount": {
+            "description": "مبلغ نصّاً، بمقياس لا يتجاوز أربع خانات عشرية. النحو المقبول كاملاً: -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — فتُرفض الصيغة الأسّية، والصفر البادئ، والإشارة الموجبة الصريحة، والفراغ، والأرقام العربية-الهندية والديفاناغارية، وكل ما زاد على أربع خانات. ورمزٌ رقمي في هذا الحقل يُرفض الطلب بسببه: JSON لا يملك نوعاً عشرياً، وأغلب العملاء يمرّرون الرمز الرقمي على فاصلة عائمة ثنائية فيقع فقدان الدقّة قبل أن يصل الطلب. / An amount as a string with at most four decimal places. The full accepted grammar is -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — exponent notation, leading zeros, an explicit plus sign, whitespace, Arabic-Indic and Devanagari digits, and any fifth decimal are all refused. A JSON number token in this field fails the request: JSON has no decimal type, and most clients route a number token through a binary double, so precision is lost before the request arrives.",
+            "examples": [
+              "0.4013",
+              "-1250.0000",
+              "100"
+            ],
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$",
+            "type": "string"
+          },
+          "approvedBy": {
+            "description": "المعتمِد — وقيدُ تحقّق في قاعدة البيانات يرفض اعتماداً فارغاً. / The approver — a database check constraint refuses an empty approver.",
+            "maxLength": 200,
+            "type": "string"
+          },
+          "number": {
+            "description": "رقم المستند. / The document number.",
+            "maxLength": 64,
+            "type": "string"
+          },
+          "releasedOn": {
+            "description": "تاريخ الإفراج ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The release date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period.",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+            "type": "string"
+          },
+          "retentionMovementId": {
+            "description": "مِقبضٌ معتِم من lookup_entity أو ask_question. ولا يُكتب هنا معرّفٌ خام ولا اسم — يُرفض قبل التنفيذ.",
+            "maxLength": 36,
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount",
+          "approvedBy",
+          "number",
+          "releasedOn",
+          "retentionMovementId"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "draftSalesInvoice",
+      "operationId": "draftSalesInvoice",
+      "path": "/api/v1/companies/{companyId}/sales-invoices",
+      "method": "post",
+      "idFields": [
+        "branchId",
+        "customerId",
+        "lines.[].originalInvoiceLineId"
+      ],
+      "description": "إنشاء فاتورة مبيعات مسوّدة",
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "طلب إنشاء فاتورة مبيعات مسوّدة. ولا مجاميع فيه: المجاميع تُحسب في الوحدة على السطر ثم تُجمع، ومجموعٌ يرسله العميل كان سيصير مصدر حقيقة ثانياً يستطيع أن ينحرف. / A request to draft a sales invoice. It carries no totals: totals are computed in the module per line and then summed, and a total sent by the client would be a second source of truth able to diverge.",
+        "properties": {
+          "branchId": {
+            "description": "مِقبضٌ معتِم من lookup_entity أو ask_question. ولا يُكتب هنا معرّفٌ خام ولا اسم — يُرفض قبل التنفيذ.",
+            "maxLength": 64,
+            "type": "string"
+          },
+          "customerId": {
+            "description": "مِقبضٌ معتِم من lookup_entity أو ask_question. ولا يُكتب هنا معرّفٌ خام ولا اسم — يُرفض قبل التنفيذ.",
+            "maxLength": 36,
+            "type": "string"
+          },
+          "issuedOn": {
+            "description": "تاريخ الإصدار. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The issue date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period.",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+            "type": "string"
+          },
+          "lines": {
+            "description": "السطور. فاتورة بلا سطر تُرفض في الوحدة برمزها. / The lines. An invoice with no line is refused in the module under its own code.",
+            "items": {
+              "additionalProperties": false,
+              "description": "سطر مستند مبيعات. **ولا حساب فيه ولا رمز حساب**: يحمل itemGroup — مؤهّل دور — والمصفوفة وحدها تُحوّله إلى حساب (القاعدة 2 ممتدّةً إلى السلك). / A sales document line. **No account and no account code**: it carries an itemGroup — a role qualifier — and the matrix alone turns it into an account (Rule 2 extended to the wire).",
+              "properties": {
+                "description": {
+                  "additionalProperties": false,
+                  "description": "نصّ ثنائي اللغة. الطرفان إلزاميان — العربية أساسية لا ترجمة ثانية. / Bilingual text; both sides are mandatory.",
+                  "properties": {
+                    "ar": {
+                      "description": "النصّ العربي. / The Arabic text.",
+                      "maxLength": 512,
+                      "type": "string"
+                    },
+                    "en": {
+                      "description": "النصّ الإنجليزي. / The English text.",
+                      "maxLength": 512,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "ar",
+                    "en"
+                  ],
+                  "type": "object"
+                },
+                "discount": {
+                  "description": "مبلغ نصّاً، بمقياس لا يتجاوز أربع خانات عشرية. النحو المقبول كاملاً: -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — فتُرفض الصيغة الأسّية، والصفر البادئ، والإشارة الموجبة الصريحة، والفراغ، والأرقام العربية-الهندية والديفاناغارية، وكل ما زاد على أربع خانات. ورمزٌ رقمي في هذا الحقل يُرفض الطلب بسببه: JSON لا يملك نوعاً عشرياً، وأغلب العملاء يمرّرون الرمز الرقمي على فاصلة عائمة ثنائية فيقع فقدان الدقّة قبل أن يصل الطلب. / An amount as a string with at most four decimal places. The full accepted grammar is -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — exponent notation, leading zeros, an explicit plus sign, whitespace, Arabic-Indic and Devanagari digits, and any fifth decimal are all refused. A JSON number token in this field fails the request: JSON has no decimal type, and most clients route a number token through a binary double, so precision is lost before the request arrives.",
+                  "examples": [
+                    "0.4013",
+                    "-1250.0000",
+                    "100"
+                  ],
+                  "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$",
+                  "type": "string"
+                },
+                "itemGroup": {
+                  "description": "مجموعة الصنف — مؤهّل الدور. / The item group — the role qualifier.",
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                "originalInvoiceLineId": {
+                  "description": "مِقبضٌ معتِم من lookup_entity أو ask_question. ولا يُكتب هنا معرّفٌ خام ولا اسم — يُرفض قبل التنفيذ.",
+                  "maxLength": 36,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "quantity": {
+                  "description": "كمّية نصّاً بمقياس لا يتجاوز أربعاً، بالنحو الذي تخضع له المبالغ. وهي ليست مبلغاً — ولذلك لها مخطّطها — لكنها تُضرب في مبلغ، فأي فقدان دقّة فيها يصل إلى المال. / A quantity as a string with at most four decimal places, under the grammar that governs amounts. It is not an amount — hence its own schema — but it is multiplied by one, so any precision lost in it reaches the money.",
+                  "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$",
+                  "type": "string"
+                },
+                "taxClassification": {
+                  "description": "التصنيف الضريبي. المستعمَل اليوم: standard · zero · exempt — ويُنشر نصّاً لا مجموعةً مغلقة، فلا قيد تحقّق واحد يُغلقه، وتضييقُه بعد نشره يفرض v2. / The tax classification. In use today: standard, zero, exempt — published as text rather than a closed set, since no check constraint closes it, and narrowing it after publication would force v2.",
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                "taxRate": {
+                  "description": "نسبة الضريبة **كسراً عشرياً لا نسبة مئوية**: خمسة عشر بالمئة تُكتب 0.15 لا 15. والمقياس ثمانٍ لا أربع: النسبة ليست مبلغاً ولا تُقرَّب إلى الهللة. / The tax rate as a **decimal fraction, not a percentage**: fifteen percent is written 0.15, never 15. The scale is eight, not four: a rate is not an amount and is not rounded to the halala.",
+                  "examples": [
+                    "0.15",
+                    "0"
+                  ],
+                  "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,8})?$",
+                  "type": "string"
+                },
+                "unitPrice": {
+                  "description": "مبلغ نصّاً، بمقياس لا يتجاوز أربع خانات عشرية. النحو المقبول كاملاً: -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — فتُرفض الصيغة الأسّية، والصفر البادئ، والإشارة الموجبة الصريحة، والفراغ، والأرقام العربية-الهندية والديفاناغارية، وكل ما زاد على أربع خانات. ورمزٌ رقمي في هذا الحقل يُرفض الطلب بسببه: JSON لا يملك نوعاً عشرياً، وأغلب العملاء يمرّرون الرمز الرقمي على فاصلة عائمة ثنائية فيقع فقدان الدقّة قبل أن يصل الطلب. / An amount as a string with at most four decimal places. The full accepted grammar is -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — exponent notation, leading zeros, an explicit plus sign, whitespace, Arabic-Indic and Devanagari digits, and any fifth decimal are all refused. A JSON number token in this field fails the request: JSON has no decimal type, and most clients route a number token through a binary double, so precision is lost before the request arrives.",
+                  "examples": [
+                    "0.4013",
+                    "-1250.0000",
+                    "100"
+                  ],
+                  "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "description",
+                "discount",
+                "itemGroup",
+                "quantity",
+                "taxClassification",
+                "taxRate",
+                "unitPrice"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "number": {
+            "description": "رقم الفاتورة — فريد داخل المستأجر. / The invoice number — unique within the tenant.",
+            "maxLength": 64,
+            "type": "string"
+          }
+        },
+        "required": [
+          "branchId",
+          "customerId",
+          "issuedOn",
+          "lines",
+          "number"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "draftSocialInsurancePayment",
+      "operationId": "draftSocialInsurancePayment",
+      "path": "/api/v1/companies/{companyId}/social-insurance-payments",
+      "method": "post",
+      "idFields": [
+        "treasuryPartyId"
+      ],
+      "description": "إنشاء سند سداد تأمينات مسوّدة",
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "طلب إنشاء سند سداد اشتراك التأمينات لفترة. **والمبلغ يصل من المستدعي ولا تُمليه الوحدة**: فاتورة الجهة قد تخالف ما استحقّته المسيّرات لأسباب مشروعة. / A social insurance settlement draft request for a period. **The amount comes from the caller; the module does not dictate it**: the authority's invoice may legitimately differ from what the runs accrued.",
+        "properties": {
+          "amount": {
+            "description": "مبلغ نصّاً، بمقياس لا يتجاوز أربع خانات عشرية. النحو المقبول كاملاً: -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — فتُرفض الصيغة الأسّية، والصفر البادئ، والإشارة الموجبة الصريحة، والفراغ، والأرقام العربية-الهندية والديفاناغارية، وكل ما زاد على أربع خانات. ورمزٌ رقمي في هذا الحقل يُرفض الطلب بسببه: JSON لا يملك نوعاً عشرياً، وأغلب العملاء يمرّرون الرمز الرقمي على فاصلة عائمة ثنائية فيقع فقدان الدقّة قبل أن يصل الطلب. / An amount as a string with at most four decimal places. The full accepted grammar is -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — exponent notation, leading zeros, an explicit plus sign, whitespace, Arabic-Indic and Devanagari digits, and any fifth decimal are all refused. A JSON number token in this field fails the request: JSON has no decimal type, and most clients route a number token through a binary double, so precision is lost before the request arrives.",
+            "examples": [
+              "0.4013",
+              "-1250.0000",
+              "100"
+            ],
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$",
+            "type": "string"
+          },
+          "number": {
+            "description": "رقم السند. / The document number.",
+            "maxLength": 64,
+            "type": "string"
+          },
+          "paidOn": {
+            "description": "تاريخ السداد ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The settlement date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period.",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+            "type": "string"
+          },
+          "periodCode": {
+            "description": "رمز الفترة المالية yyyy-MM ميلادياً دائماً — لا يتغيّر بثقافة الخادم ولا بثقافة العميل. / The fiscal period code yyyy-MM, always Gregorian — unaffected by server or client culture.",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$",
+            "type": "string"
+          },
+          "settlementMethod": {
+            "description": "طريقة التسوية — مؤهّل دور. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The settlement method — a role qualifier. Matched literally and case-sensitively; a number is never accepted in place of a name.",
+            "enum": [
+              "bank",
+              "cash"
+            ],
+            "type": "string"
+          },
+          "treasuryPartyId": {
+            "description": "مِقبضٌ معتِم من lookup_entity أو ask_question. ولا يُكتب هنا معرّفٌ خام ولا اسم — يُرفض قبل التنفيذ.",
+            "maxLength": 64,
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount",
+          "number",
+          "paidOn",
+          "periodCode",
+          "settlementMethod",
+          "treasuryPartyId"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "draftStockBill",
+      "operationId": "draftStockBill",
+      "path": "/api/v1/companies/{companyId}/stock-bills",
+      "method": "post",
+      "idFields": [
+        "lines.[].receiptLineId",
+        "receiptId"
+      ],
+      "description": "إنشاء فاتورة مورد مخزنية مسوّدة",
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "طلب إنشاء فاتورة مورد **مخزنية** مسوّدة تُطابَق ثلاثياً. / A **stock** supplier bill draft request, three-way matched.",
+        "properties": {
+          "issuedOn": {
+            "description": "تاريخ الفاتورة الميلادي. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The Gregorian bill date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period.",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+            "type": "string"
+          },
+          "lines": {
+            "description": "السطور. / The lines.",
+            "items": {
+              "additionalProperties": false,
+              "description": "سطر فاتورة مورد مخزنية — يرجع إلى سطر استلام بعينه، وهو ضلع المطابقة الثالث. / A stock supplier bill line — it refers to a specific goods receipt line, the third side of the match.",
+              "properties": {
+                "quantity": {
+                  "description": "كمّية نصّاً بمقياس لا يتجاوز أربعاً، بالنحو الذي تخضع له المبالغ. وهي ليست مبلغاً — ولذلك لها مخطّطها — لكنها تُضرب في مبلغ، فأي فقدان دقّة فيها يصل إلى المال. / A quantity as a string with at most four decimal places, under the grammar that governs amounts. It is not an amount — hence its own schema — but it is multiplied by one, so any precision lost in it reaches the money.",
+                  "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$",
+                  "type": "string"
+                },
+                "receiptLineId": {
+                  "description": "مِقبضٌ معتِم من lookup_entity أو ask_question. ولا يُكتب هنا معرّفٌ خام ولا اسم — يُرفض قبل التنفيذ.",
+                  "maxLength": 36,
+                  "type": "string"
+                },
+                "taxClassification": {
+                  "description": "التصنيف الضريبي. / The tax classification.",
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                "taxRate": {
+                  "description": "نسبة الضريبة **كسراً عشرياً لا نسبة مئوية**: خمسة عشر بالمئة تُكتب 0.15 لا 15. والمقياس ثمانٍ لا أربع: النسبة ليست مبلغاً ولا تُقرَّب إلى الهللة. / The tax rate as a **decimal fraction, not a percentage**: fifteen percent is written 0.15, never 15. The scale is eight, not four: a rate is not an amount and is not rounded to the halala.",
+                  "examples": [
+                    "0.15",
+                    "0"
+                  ],
+                  "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,8})?$",
+                  "type": "string"
+                },
+                "unitPrice": {
+                  "description": "مبلغ نصّاً، بمقياس لا يتجاوز أربع خانات عشرية. النحو المقبول كاملاً: -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — فتُرفض الصيغة الأسّية، والصفر البادئ، والإشارة الموجبة الصريحة، والفراغ، والأرقام العربية-الهندية والديفاناغارية، وكل ما زاد على أربع خانات. ورمزٌ رقمي في هذا الحقل يُرفض الطلب بسببه: JSON لا يملك نوعاً عشرياً، وأغلب العملاء يمرّرون الرمز الرقمي على فاصلة عائمة ثنائية فيقع فقدان الدقّة قبل أن يصل الطلب. / An amount as a string with at most four decimal places. The full accepted grammar is -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — exponent notation, leading zeros, an explicit plus sign, whitespace, Arabic-Indic and Devanagari digits, and any fifth decimal are all refused. A JSON number token in this field fails the request: JSON has no decimal type, and most clients route a number token through a binary double, so precision is lost before the request arrives.",
+                  "examples": [
+                    "0.4013",
+                    "-1250.0000",
+                    "100"
+                  ],
+                  "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "quantity",
+                "receiptLineId",
+                "taxClassification",
+                "taxRate",
+                "unitPrice"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "number": {
+            "description": "رقم الفاتورة. / The bill number.",
+            "maxLength": 64,
+            "type": "string"
+          },
+          "receiptId": {
+            "description": "مِقبضٌ معتِم من lookup_entity أو ask_question. ولا يُكتب هنا معرّفٌ خام ولا اسم — يُرفض قبل التنفيذ.",
+            "maxLength": 36,
+            "type": "string"
+          }
+        },
+        "required": [
+          "issuedOn",
+          "lines",
+          "number",
+          "receiptId"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "draftStockMovement",
+      "operationId": "draftStockMovement",
+      "path": "/api/v1/companies/{companyId}/stock-movements",
+      "method": "post",
+      "idFields": [
+        "itemId",
+        "locationId",
+        "warehouseId"
+      ],
+      "description": "إنشاء حركة مخزون مسوّدة",
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "طلب إنشاء مستند حركة مخزون **مسوّدة**: تسوية جرد، أو رصيد افتتاحي، أو إعدام. والتكلفة **على الوارد وحده** — الصادر تُحسب تكلفته في وحدة المخزون ولا تُملى، فتُرسَل عليه \"0\". / A request to create a **draft** stock movement document: a count adjustment, an opening balance, or a write-off. Cost is **for inbound only** — an outbound movement is valued by the inventory module and never dictated, so send \"0\" for it.",
+        "properties": {
+          "cost": {
+            "description": "مبلغ نصّاً، بمقياس لا يتجاوز أربع خانات عشرية. النحو المقبول كاملاً: -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — فتُرفض الصيغة الأسّية، والصفر البادئ، والإشارة الموجبة الصريحة، والفراغ، والأرقام العربية-الهندية والديفاناغارية، وكل ما زاد على أربع خانات. ورمزٌ رقمي في هذا الحقل يُرفض الطلب بسببه: JSON لا يملك نوعاً عشرياً، وأغلب العملاء يمرّرون الرمز الرقمي على فاصلة عائمة ثنائية فيقع فقدان الدقّة قبل أن يصل الطلب. / An amount as a string with at most four decimal places. The full accepted grammar is -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — exponent notation, leading zeros, an explicit plus sign, whitespace, Arabic-Indic and Devanagari digits, and any fifth decimal are all refused. A JSON number token in this field fails the request: JSON has no decimal type, and most clients route a number token through a binary double, so precision is lost before the request arrives.",
+            "examples": [
+              "0.4013",
+              "-1250.0000",
+              "100"
+            ],
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$",
+            "type": "string"
+          },
+          "direction": {
+            "description": "‏IN زيادة جرد أو رصيد افتتاحي · OUT عجز أو إعدام. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / IN for a count surplus or opening balance; OUT for a shortage or write-off. Matched literally and case-sensitively; a number is never accepted in place of a name.",
+            "enum": [
+              "IN",
+              "OUT"
+            ],
+            "type": "string"
+          },
+          "itemGroup": {
+            "description": "مجموعة الصنف — مؤهّل الدور. / The item group — a role qualifier.",
+            "maxLength": 64,
+            "type": "string"
+          },
+          "itemId": {
+            "description": "مِقبضٌ معتِم من lookup_entity أو ask_question. ولا يُكتب هنا معرّفٌ خام ولا اسم — يُرفض قبل التنفيذ.",
+            "maxLength": 64,
+            "type": "string"
+          },
+          "locationId": {
+            "description": "مِقبضٌ معتِم من lookup_entity أو ask_question. ولا يُكتب هنا معرّفٌ خام ولا اسم — يُرفض قبل التنفيذ.",
+            "maxLength": 64,
+            "type": "string"
+          },
+          "number": {
+            "description": "رقم المستند — فريد داخل المنشأة. / The document number — unique within the company.",
+            "maxLength": 64,
+            "type": "string"
+          },
+          "occurredOn": {
+            "description": "تاريخ الحركة الميلادي. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The Gregorian movement date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period.",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+            "type": "string"
+          },
+          "quantity": {
+            "additionalProperties": false,
+            "description": "كمّية **بوحدتها** — ولا كمّية مجرّدة تعبر هذا السطح. و«عشرة» ليست معلومة: عشر حبّات أم عشر كراتين؟ والفرق بينهما في دفترٍ يمسك قيمةً هو الفرق بين رقمٍ صحيح ورقمٍ أكبر منه اثني عشر ضعفاً، **ولا يُظهره توازنٌ ولا سلسلة** لأن القيد المبنيّ عليه متوازن تماماً. / A quantity **with its unit** — no bare quantity crosses this surface. 'Ten' is not information: ten pieces or ten cartons? In a ledger that holds value the difference between them is the difference between a correct number and one twelve times larger, and **no balance check and no hash chain reveals it**, because the entry built on it balances perfectly.",
+            "properties": {
+              "magnitude": {
+                "description": "مقدار كمّية نصّاً بمقياس لا يتجاوز **ستّاً**. والكمّية ليست مبلغاً — ولذلك لها مقياسها — لكنها تُضرب في تكلفة الوحدة، فأي دقّة تُفقد فيها تصل إلى المال. والكيلوغرامات واللترات والأمتار تُكسَر إلى ما دون الهللة، ومقياسٌ مالي عليها يُنتج تقريباً صامتاً يتراكم على كل حركة. / A quantity magnitude as a string with at most **six** decimal places. A quantity is not an amount — hence its own scale — but it is multiplied by a unit cost, so any precision lost in it reaches the money. Kilograms, litres, and metres divide below the halala, and a money scale over them produces a silent rounding that accumulates on every movement.",
+                "examples": [
+                  "100.000000",
+                  "-5.500000"
+                ],
+                "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,6})?$",
+                "type": "string"
+              },
+              "unit": {
+                "description": "رمز وحدة القياس كما سجّله المستأجر. معرّف لا نصّ معروض: لا يُترجَم ولا يُطابَق بلا حساسية حالة. / The unit-of-measure code as the tenant registered it. An identifier, not displayed text: never translated and never matched case-insensitively.",
+                "maxLength": 32,
+                "type": "string"
+              }
+            },
+            "required": [
+              "magnitude",
+              "unit"
+            ],
+            "type": "object"
+          },
+          "warehouseId": {
+            "description": "مِقبضٌ معتِم من lookup_entity أو ask_question. ولا يُكتب هنا معرّفٌ خام ولا اسم — يُرفض قبل التنفيذ.",
+            "maxLength": 64,
+            "type": "string"
+          }
+        },
+        "required": [
+          "cost",
+          "direction",
+          "itemGroup",
+          "itemId",
+          "locationId",
+          "number",
+          "occurredOn",
+          "quantity",
+          "warehouseId"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "draftSubcontractorAdvance",
+      "operationId": "draftSubcontractorAdvance",
+      "path": "/api/v1/companies/{companyId}/subcontractor-advances",
+      "method": "post",
+      "idFields": [
+        "guaranteeId",
+        "subcontractId",
+        "treasuryPartyId"
+      ],
+      "description": "إنشاء صرف دفعة مقدمة لمقاول",
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "طلب صرف دفعة مقدمة لمقاول من الباطن. **ومبلغه واقعةٌ يُدخلها المستخدم** — ما صُرف — لا رقمٌ يشتقّه حاسبٌ من نسبةٍ ووعاءٍ وقاعدةِ تقريب، ولذلك يُرحَّل هذا المستند اليوم بينما يُرفض المستخلص. / A request to pay a subcontractor advance. **Its amount is a fact the user enters** — what was paid — not a figure a calculator derives from a rate, a base, and a rounding rule, which is why this document posts today while the certificate is refused.",
+        "properties": {
+          "amount": {
+            "description": "مبلغ نصّاً، بمقياس لا يتجاوز أربع خانات عشرية. النحو المقبول كاملاً: -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — فتُرفض الصيغة الأسّية، والصفر البادئ، والإشارة الموجبة الصريحة، والفراغ، والأرقام العربية-الهندية والديفاناغارية، وكل ما زاد على أربع خانات. ورمزٌ رقمي في هذا الحقل يُرفض الطلب بسببه: JSON لا يملك نوعاً عشرياً، وأغلب العملاء يمرّرون الرمز الرقمي على فاصلة عائمة ثنائية فيقع فقدان الدقّة قبل أن يصل الطلب. / An amount as a string with at most four decimal places. The full accepted grammar is -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — exponent notation, leading zeros, an explicit plus sign, whitespace, Arabic-Indic and Devanagari digits, and any fifth decimal are all refused. A JSON number token in this field fails the request: JSON has no decimal type, and most clients route a number token through a binary double, so precision is lost before the request arrives.",
+            "examples": [
+              "0.4013",
+              "-1250.0000",
+              "100"
+            ],
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$",
+            "type": "string"
+          },
+          "guaranteeId": {
+            "description": "مِقبضٌ معتِم من lookup_entity أو ask_question. ولا يُكتب هنا معرّفٌ خام ولا اسم — يُرفض قبل التنفيذ.",
+            "maxLength": 36,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "number": {
+            "description": "رقم المستند. / The document number.",
+            "maxLength": 64,
+            "type": "string"
+          },
+          "paidOn": {
+            "description": "تاريخ الصرف ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The payment date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period.",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+            "type": "string"
+          },
+          "settlementMethod": {
+            "description": "طريقة التسوية — مؤهّل دور لا حساب. والمصفوفة وحدها تُحوّلها إلى حساب. / The settlement method — a role qualifier, not an account. The matrix alone turns it into an account.",
+            "maxLength": 32,
+            "type": "string"
+          },
+          "subcontractId": {
+            "description": "مِقبضٌ معتِم من lookup_entity أو ask_question. ولا يُكتب هنا معرّفٌ خام ولا اسم — يُرفض قبل التنفيذ.",
+            "maxLength": 36,
+            "type": "string"
+          },
+          "treasuryPartyId": {
+            "description": "مِقبضٌ معتِم من lookup_entity أو ask_question. ولا يُكتب هنا معرّفٌ خام ولا اسم — يُرفض قبل التنفيذ.",
+            "maxLength": 64,
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount",
+          "guaranteeId",
+          "number",
+          "paidOn",
+          "settlementMethod",
+          "subcontractId",
+          "treasuryPartyId"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "draftSubcontractorCertificate",
+      "operationId": "draftSubcontractorCertificate",
+      "path": "/api/v1/companies/{companyId}/subcontractor-certificates",
+      "method": "post",
+      "idFields": [
+        "lines.[].itemId",
+        "ownerId"
+      ],
+      "description": "إنشاء مستخلص باطن مسوّدة",
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "طلب إنشاء مستخلص **مسوّدة** — عميلٍ كان أو باطن. ورقمه المرئي يرسله العميل ويُتحقَّق من تفرّده؛ **ولا SEQUENCE ولا IDENTITY لأي رقم يراه مستخدم أو مدقّق**. / A request to create a **draft** certificate, client or subcontractor. Its visible number is sent by the client and checked for uniqueness; **no SEQUENCE and no IDENTITY backs any number a user or auditor reads**.",
+        "properties": {
+          "lines": {
+            "description": "سطور المستخلص. / The certificate's lines.",
+            "items": {
+              "additionalProperties": false,
+              "description": "سطر مستخلص في طلب. **والكمّية تراكمية**: ما نُفِّذ حتى نهاية الفترة لا ما نُفِّذ فيها، وقيمة الفترة تُشتقّ طرحاً من آخر مستخلصٍ **مُرحَّل**. وسطر الغرامة أو الخصم يحمل مبلغه وحده بلا بند وبلا كمّية. / A certificate line in a request. **The quantity is cumulative**: what has been executed to the end of the period, not what was executed within it, and the period's value is derived by subtracting the last **posted** certificate. A penalty or deduction line carries only its amount, with no item and no quantity.",
+              "properties": {
+                "amount": {
+                  "description": "مبلغ نصّاً، بمقياس لا يتجاوز أربع خانات عشرية. النحو المقبول كاملاً: -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — فتُرفض الصيغة الأسّية، والصفر البادئ، والإشارة الموجبة الصريحة، والفراغ، والأرقام العربية-الهندية والديفاناغارية، وكل ما زاد على أربع خانات. ورمزٌ رقمي في هذا الحقل يُرفض الطلب بسببه: JSON لا يملك نوعاً عشرياً، وأغلب العملاء يمرّرون الرمز الرقمي على فاصلة عائمة ثنائية فيقع فقدان الدقّة قبل أن يصل الطلب. / An amount as a string with at most four decimal places. The full accepted grammar is -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — exponent notation, leading zeros, an explicit plus sign, whitespace, Arabic-Indic and Devanagari digits, and any fifth decimal are all refused. A JSON number token in this field fails the request: JSON has no decimal type, and most clients route a number token through a binary double, so precision is lost before the request arrives.",
+                  "examples": [
+                    "0.4013",
+                    "-1250.0000",
+                    "100"
+                  ],
+                  "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$",
+                  "type": "string"
+                },
+                "cumulativeQuantity": {
+                  "additionalProperties": false,
+                  "description": "كمّية **بوحدتها** — ولا كمّية مجرّدة تعبر هذا السطح. و«عشرة» ليست معلومة: عشر حبّات أم عشر كراتين؟ والفرق بينهما في دفترٍ يمسك قيمةً هو الفرق بين رقمٍ صحيح ورقمٍ أكبر منه اثني عشر ضعفاً، **ولا يُظهره توازنٌ ولا سلسلة** لأن القيد المبنيّ عليه متوازن تماماً. / A quantity **with its unit** — no bare quantity crosses this surface. 'Ten' is not information: ten pieces or ten cartons? In a ledger that holds value the difference between them is the difference between a correct number and one twelve times larger, and **no balance check and no hash chain reveals it**, because the entry built on it balances perfectly.",
+                  "properties": {
+                    "magnitude": {
+                      "description": "مقدار كمّية نصّاً بمقياس لا يتجاوز **ستّاً**. والكمّية ليست مبلغاً — ولذلك لها مقياسها — لكنها تُضرب في تكلفة الوحدة، فأي دقّة تُفقد فيها تصل إلى المال. والكيلوغرامات واللترات والأمتار تُكسَر إلى ما دون الهللة، ومقياسٌ مالي عليها يُنتج تقريباً صامتاً يتراكم على كل حركة. / A quantity magnitude as a string with at most **six** decimal places. A quantity is not an amount — hence its own scale — but it is multiplied by a unit cost, so any precision lost in it reaches the money. Kilograms, litres, and metres divide below the halala, and a money scale over them produces a silent rounding that accumulates on every movement.",
+                      "examples": [
+                        "100.000000",
+                        "-5.500000"
+                      ],
+                      "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,6})?$",
+                      "type": "string"
+                    },
+                    "unit": {
+                      "description": "رمز وحدة القياس كما سجّله المستأجر. معرّف لا نصّ معروض: لا يُترجَم ولا يُطابَق بلا حساسية حالة. / The unit-of-measure code as the tenant registered it. An identifier, not displayed text: never translated and never matched case-insensitively.",
+                      "maxLength": 32,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "magnitude",
+                    "unit"
+                  ],
+                  "type": "object"
+                },
+                "descriptionAr": {
+                  "description": "بيان السطر بالعربية. / The line's Arabic description.",
+                  "maxLength": 400,
+                  "type": "string"
+                },
+                "itemId": {
+                  "description": "مِقبضٌ معتِم من lookup_entity أو ask_question. ولا يُكتب هنا معرّفٌ خام ولا اسم — يُرفض قبل التنفيذ.",
+                  "maxLength": 36,
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "lineKind": {
+                  "description": "صنف السطر: WORK عملٌ منفَّذ · PENALTY غرامة تأخير · DEDUCTION خصم آخر. والغرامة سطرٌ مستقلّ لا خصمٌ من قيمة الأعمال. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The line kind: WORK for executed work, PENALTY for a delay penalty, DEDUCTION for another deduction. A penalty is an independent line, never netted against the works value. Matched literally and case-sensitively; a number is never accepted in place of a name.",
+                  "enum": [
+                    "WORK",
+                    "PENALTY",
+                    "DEDUCTION"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "amount",
+                "cumulativeQuantity",
+                "descriptionAr",
+                "itemId",
+                "lineKind"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "number": {
+            "description": "الرقم المرئي. / The visible number.",
+            "maxLength": 64,
+            "type": "string"
+          },
+          "ownerId": {
+            "description": "مِقبضٌ معتِم من lookup_entity أو ask_question. ولا يُكتب هنا معرّفٌ خام ولا اسم — يُرفض قبل التنفيذ.",
+            "maxLength": 36,
+            "type": "string"
+          },
+          "periodFrom": {
+            "description": "بداية فترة المستخلص ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The certificate period's start. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period.",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+            "type": "string"
+          },
+          "periodTo": {
+            "description": "نهاية فترة المستخلص ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The certificate period's end. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period.",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+            "type": "string"
+          },
+          "sequenceNo": {
+            "description": "تسلسل المستخلص داخل عقده — وهو التفرّد الذي يقوم عليه الاشتقاق التراكمي. / The certificate's sequence within its contract — the uniqueness the cumulative derivation rests on.",
+            "maximum": 2147483647,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "lines",
+          "number",
+          "ownerId",
+          "periodFrom",
+          "periodTo",
+          "sequenceNo"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "draftSupplierPayment",
+      "operationId": "draftSupplierPayment",
+      "path": "/api/v1/companies/{companyId}/supplier-payments",
+      "method": "post",
+      "idFields": [
+        "allocations.[].billId",
+        "supplierId",
+        "treasuryPartyId"
+      ],
+      "description": "تسجيل سند صرف مسوّدة",
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "طلب تسجيل سند صرف مسوّدة. و**bankFee ليست ذمّة مورد**: يخرج من الخزينة paid + bankFee وينقص من ذمّة المورد paid وحده، ومجموع التخصيصات يُقاس على paid لا على مجموعهما. / A request to draft a supplier payment. **bankFee is not a supplier balance**: paid + bankFee leaves the treasury while only paid comes off the supplier's balance, and the sum of allocations is measured against paid rather than against their total.",
+        "properties": {
+          "allocations": {
+            "description": "التخصيصات على فواتير هذا المورد المُرحَّلة. ومجموعها لا يتجاوز paid. / Allocations against this supplier's posted bills. Their sum may not exceed paid.",
+            "items": {
+              "additionalProperties": false,
+              "description": "تخصيص مبلغ من سند صرف على فاتورة مورد **مُرحَّلة**. / An allocation of part of a payment against a **posted** supplier bill.",
+              "properties": {
+                "amount": {
+                  "description": "مبلغ نصّاً، بمقياس لا يتجاوز أربع خانات عشرية. النحو المقبول كاملاً: -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — فتُرفض الصيغة الأسّية، والصفر البادئ، والإشارة الموجبة الصريحة، والفراغ، والأرقام العربية-الهندية والديفاناغارية، وكل ما زاد على أربع خانات. ورمزٌ رقمي في هذا الحقل يُرفض الطلب بسببه: JSON لا يملك نوعاً عشرياً، وأغلب العملاء يمرّرون الرمز الرقمي على فاصلة عائمة ثنائية فيقع فقدان الدقّة قبل أن يصل الطلب. / An amount as a string with at most four decimal places. The full accepted grammar is -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — exponent notation, leading zeros, an explicit plus sign, whitespace, Arabic-Indic and Devanagari digits, and any fifth decimal are all refused. A JSON number token in this field fails the request: JSON has no decimal type, and most clients route a number token through a binary double, so precision is lost before the request arrives.",
+                  "examples": [
+                    "0.4013",
+                    "-1250.0000",
+                    "100"
+                  ],
+                  "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$",
+                  "type": "string"
+                },
+                "billId": {
+                  "description": "مِقبضٌ معتِم من lookup_entity أو ask_question. ولا يُكتب هنا معرّفٌ خام ولا اسم — يُرفض قبل التنفيذ.",
+                  "maxLength": 36,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "amount",
+                "billId"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "bankFee": {
+            "description": "مبلغ نصّاً، بمقياس لا يتجاوز أربع خانات عشرية. النحو المقبول كاملاً: -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — فتُرفض الصيغة الأسّية، والصفر البادئ، والإشارة الموجبة الصريحة، والفراغ، والأرقام العربية-الهندية والديفاناغارية، وكل ما زاد على أربع خانات. ورمزٌ رقمي في هذا الحقل يُرفض الطلب بسببه: JSON لا يملك نوعاً عشرياً، وأغلب العملاء يمرّرون الرمز الرقمي على فاصلة عائمة ثنائية فيقع فقدان الدقّة قبل أن يصل الطلب. / An amount as a string with at most four decimal places. The full accepted grammar is -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — exponent notation, leading zeros, an explicit plus sign, whitespace, Arabic-Indic and Devanagari digits, and any fifth decimal are all refused. A JSON number token in this field fails the request: JSON has no decimal type, and most clients route a number token through a binary double, so precision is lost before the request arrives.",
+            "examples": [
+              "0.4013",
+              "-1250.0000",
+              "100"
+            ],
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$",
+            "type": "string"
+          },
+          "number": {
+            "description": "رقم السند — فريد داخل المستأجر. / The payment number — unique within the tenant.",
+            "maxLength": 64,
+            "type": "string"
+          },
+          "paid": {
+            "description": "مبلغ نصّاً، بمقياس لا يتجاوز أربع خانات عشرية. النحو المقبول كاملاً: -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — فتُرفض الصيغة الأسّية، والصفر البادئ، والإشارة الموجبة الصريحة، والفراغ، والأرقام العربية-الهندية والديفاناغارية، وكل ما زاد على أربع خانات. ورمزٌ رقمي في هذا الحقل يُرفض الطلب بسببه: JSON لا يملك نوعاً عشرياً، وأغلب العملاء يمرّرون الرمز الرقمي على فاصلة عائمة ثنائية فيقع فقدان الدقّة قبل أن يصل الطلب. / An amount as a string with at most four decimal places. The full accepted grammar is -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — exponent notation, leading zeros, an explicit plus sign, whitespace, Arabic-Indic and Devanagari digits, and any fifth decimal are all refused. A JSON number token in this field fails the request: JSON has no decimal type, and most clients route a number token through a binary double, so precision is lost before the request arrives.",
+            "examples": [
+              "0.4013",
+              "-1250.0000",
+              "100"
+            ],
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$",
+            "type": "string"
+          },
+          "paidOn": {
+            "description": "تاريخ الصرف. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The payment date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period.",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+            "type": "string"
+          },
+          "settlementMethod": {
+            "description": "طريقة التسوية — مؤهّل دور. المستعمَل اليوم: cash · bank · card_clearing. / The settlement method — a role qualifier. In use today: cash, bank, card_clearing.",
+            "maxLength": 32,
+            "type": "string"
+          },
+          "supplierId": {
+            "description": "مِقبضٌ معتِم من lookup_entity أو ask_question. ولا يُكتب هنا معرّفٌ خام ولا اسم — يُرفض قبل التنفيذ.",
+            "maxLength": 36,
+            "type": "string"
+          },
+          "treasuryPartyId": {
+            "description": "مِقبضٌ معتِم من lookup_entity أو ask_question. ولا يُكتب هنا معرّفٌ خام ولا اسم — يُرفض قبل التنفيذ.",
+            "maxLength": 64,
+            "type": "string"
+          }
+        },
+        "required": [
+          "allocations",
+          "bankFee",
+          "number",
+          "paid",
+          "paidOn",
+          "settlementMethod",
+          "supplierId",
+          "treasuryPartyId"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "draftTenantReceipt",
+      "operationId": "draftTenantReceipt",
+      "path": "/api/v1/companies/{companyId}/tenant-receipts",
+      "method": "post",
+      "idFields": [
+        "lesseeId",
+        "treasuryPartyId"
+      ],
+      "description": "تسجيل سند قبض من مستأجر",
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "طلب تسجيل سند قبض من مستأجر. **وغياب lesseeId ليس نقصاً بل واقعة**: مبلغٌ ورد بلا مرجع يُرحَّل إلى حساب التحصيلات غير المخصَّصة ولا يُنسب إلى أحد بالتخمين، ثم يُخصَّص بقيدٍ مستقل حين يُعرف صاحبه. / A tenant receipt request. **A missing lesseeId is a fact, not a gap**: an amount that arrived without a reference posts to the unallocated collections account and is never attributed by guesswork, then is allocated by a separate entry once its owner is known.",
+        "properties": {
+          "lesseeId": {
+            "description": "مِقبضٌ معتِم من lookup_entity أو ask_question. ولا يُكتب هنا معرّفٌ خام ولا اسم — يُرفض قبل التنفيذ.",
+            "maxLength": 36,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "number": {
+            "description": "رقم السند — فريد داخل المنشأة. / The receipt number — unique within the company.",
+            "maxLength": 64,
+            "type": "string"
+          },
+          "received": {
+            "description": "مبلغ نصّاً، بمقياس لا يتجاوز أربع خانات عشرية. النحو المقبول كاملاً: -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — فتُرفض الصيغة الأسّية، والصفر البادئ، والإشارة الموجبة الصريحة، والفراغ، والأرقام العربية-الهندية والديفاناغارية، وكل ما زاد على أربع خانات. ورمزٌ رقمي في هذا الحقل يُرفض الطلب بسببه: JSON لا يملك نوعاً عشرياً، وأغلب العملاء يمرّرون الرمز الرقمي على فاصلة عائمة ثنائية فيقع فقدان الدقّة قبل أن يصل الطلب. / An amount as a string with at most four decimal places. The full accepted grammar is -?(0|[1-9][0-9]*)(\\.[0-9]{1,4})? — exponent notation, leading zeros, an explicit plus sign, whitespace, Arabic-Indic and Devanagari digits, and any fifth decimal are all refused. A JSON number token in this field fails the request: JSON has no decimal type, and most clients route a number token through a binary double, so precision is lost before the request arrives.",
+            "examples": [
+              "0.4013",
+              "-1250.0000",
+              "100"
+            ],
+            "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$",
+            "type": "string"
+          },
+          "receivedOn": {
+            "description": "تاريخ القبض الميلادي. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The collection date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period.",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+            "type": "string"
+          },
+          "settlementMethod": {
+            "description": "طريقة التسوية — مؤهّل دور تقرؤه المصفوفة. المستعمَل اليوم: cash · bank · card_clearing. / The settlement method — a role qualifier the matrix reads. In use today: cash, bank, card_clearing.",
+            "maxLength": 32,
+            "type": "string"
+          },
+          "treasuryPartyId": {
+            "description": "مِقبضٌ معتِم من lookup_entity أو ask_question. ولا يُكتب هنا معرّفٌ خام ولا اسم — يُرفض قبل التنفيذ.",
+            "maxLength": 64,
+            "type": "string"
+          }
+        },
+        "required": [
+          "number",
+          "received",
+          "receivedOn",
+          "settlementMethod",
+          "treasuryPartyId"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "lookup_entity",
+      "operationId": null,
+      "path": null,
+      "method": null,
+      "idFields": [],
+      "description": "يسأل الخادم: هل في سجلّ هذه المنشأة اسمٌ كهذا؟ ويعود بأحد ثلاثة: none · resolved ومعه مِقبض · needs_question ومعه معرّف ورقة. ولا يعود باسمٍ ولا بصفٍّ ولا بعددِ مرشّحين.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "description": "أي سجلّ يُسأل. مفردةٌ مغلقة.",
+            "enum": [
+              "customer",
+              "employee",
+              "inventory_item",
+              "project",
+              "property_unit",
+              "supplier"
+            ],
+            "type": "string"
+          },
+          "text": {
+            "description": "كلام المستخدم نفسه بأسمائه، لا معرّفاً ولا رمزاً.",
+            "maxLength": 200,
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "text"
+        ],
+        "type": "object"
+      }
+    }
+  ]
+}

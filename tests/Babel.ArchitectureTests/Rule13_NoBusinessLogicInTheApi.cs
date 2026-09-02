@@ -207,6 +207,17 @@ public sealed class Rule13_NoBusinessLogicInTheApi
         "Babel.Ai.Workspace.AgentWorkspaceStep",
         "Babel.Ai.Workspace.IAgentWorkspaceStore",
 
+        // ‏**ومنفذُ السطح المنشور — قرارٌ صريح لا تسرّب.** منفّذُ المسوّدات يعيش في
+        // `Babel.Ai` ولا يستطيع أن يرى جدول مسارات هذا المشروع (القاعدة 3)، فالمنفذ
+        // هو الحدّ: `Babel.Ai` تقول «هذه العملية بهذا القالب وهذا الجسم»، والجذر
+        // التركيبي وحده يعرف كيف يُنفَّذ ذلك على الطرف المسجَّل نفسه.
+        //
+        // ‏**وهذه الثلاثة لا تحمل منطق وحدةٍ ولا تُدخله إلى السطح**: فعلٌ وقالبُ مسارٍ
+        // ومسارٌ وجسمٌ نصّاً، ورمزُ حالةٍ وجسمُ جوابٍ نصّاً. ولا نوعَ مجاليّ فيها ولا قرار.
+        "Babel.Ai.Workspace.AgentSurfaceAnswer",
+        "Babel.Ai.Workspace.AgentSurfaceCall",
+        "Babel.Ai.Workspace.IAgentPublishedSurface",
+
         // ‏**وطرفُ الإنسان من حدّ الأسماء يعيش هنا بالإكراه لا بالذوق.** حارسُ
         // `TheNameSheetIsNeverReachableFromTheAgent` يمنع `src/Babel.Ai/` من أن تسمّي
         // منفذ جَرد الأسماء بحرفٍ واحد — فحقنُه في مسار النموذج لا يقع سهواً في سطر.

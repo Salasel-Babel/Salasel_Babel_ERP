@@ -171,12 +171,15 @@ internal static class AgentHarness
         return options;
     }
 
+    /// <summary>الإنسان الذي تُنسب إليه كل مسوّدة في هذه الإثباتات.</summary>
+    public static UserId Human { get; } = new(new Guid("11111111-1111-4111-8111-111111111111"));
+
     public static AgentCaller Caller(
         TenantId tenant,
         Guid companyId,
         Guid sessionId,
         params string[] permitted) =>
-        new(tenant, companyId, sessionId, "شركة سلاسل بابل",
+        new(tenant, companyId, sessionId, Human, "شركة سلاسل بابل",
             new HashSet<string>(permitted, StringComparer.Ordinal));
 
     public static NameRegisterLookup Lookup(TimeProvider clock, params INameCandidateSource[] sources) =>

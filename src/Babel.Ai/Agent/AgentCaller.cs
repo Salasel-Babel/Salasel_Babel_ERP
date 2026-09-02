@@ -13,6 +13,15 @@ namespace Babel.Ai.Agent;
 /// <param name="Tenant">المنشأة.</param>
 /// <param name="CompanyId">الشركة المفتوحة.</param>
 /// <param name="SessionId">الجلسة — داخل بايتات كل مِقبض، فلا يُفكّ مِقبضُ محادثةٍ في أخرى.</param>
+/// <param name="User">
+/// <b>الإنسان الذي فُتحت الجلسة باعتماده — وهو الفاعل الذي تُنسب إليه كل مسوّدة.</b>
+/// <para>
+/// والوكيل ليس فاعلاً في هذا النظام ولا يملك اعتماداً ولا صفّاً في دليل المستخدمين:
+/// ما يفعله يقع باسم هذا الإنسان وبصلاحياته، ويبقى في سجلّ التدقيق أثرٌ أنّه
+/// <b>نشأ باقتراح وكيل</b>. ونسبةٌ إلى فاعلٍ اصطناعي كانت ستُخرج المستند من مسؤولية
+/// من قَبِل شكله، وهي بالضبط ما لا يجوز أن يقع في نظامٍ محاسبي.
+/// </para>
+/// </param>
 /// <param name="CompanyNameAr">
 /// اسم الشركة بالعربية — يُرسَل رسالةَ نظامٍ <b>في وسط الرسائل</b> لا في نصّ النظام العلوي،
 /// كي يبقى النصّ العلوي واحداً بايتاً ببايت لكل منشأة.
@@ -25,5 +34,6 @@ public sealed record AgentCaller(
     TenantId Tenant,
     Guid CompanyId,
     Guid SessionId,
+    UserId User,
     string CompanyNameAr,
     IReadOnlySet<string> PermittedOperationIds);

@@ -120,6 +120,110 @@ internal static class InventoryErrors
         FormattableString.Invariant(
             $"Converting magnitude {magnitude} by factor {ratio} does not divide exactly, so the result is a rounded fraction. Rounding a quantity that is multiplied by a unit cost reaches the money and accumulates on every movement. Send a magnitude divisible by the factor's denominator, or send it in the base unit."));
 
+    /// <summary>
+    /// تحويلٌ يتجاوز مدى العدد العشري — <b>يُمسَك ويُسمّى ولا يُترك يرمي</b>.
+    /// <para>
+    /// المقدار يعبر السلك بعشرين خانة صحيحة والبسط يبلغ ملياراً، وحاصلُهما يتجاوز مدى
+    /// <c>decimal</c>. واستثناءٌ غير مُمسَك يخرج خطأَ خادم 500 — أي «عطلٌ عندنا» — وهو
+    /// في الحقيقة مُدخَل مرفوض له علاجٌ يُقال.
+    /// </para>
+    /// </summary>
+    public static Error ConversionOverflows(decimal magnitude, string ratio) => new(
+        "inventory.unit_conversion_overflow",
+        FormattableString.Invariant(
+            $"تحويل المقدار {magnitude} بالمعامل {ratio} يتجاوز مدى العدد العشري المخزَّن. والرقم الذي لا يُمثَّل لا يُقرَّب ولا يُقتطع: أرسل مقداراً أصغر، أو أرسله بوحدةٍ أكبر."),
+        FormattableString.Invariant(
+            $"Converting magnitude {magnitude} by factor {ratio} exceeds the range of the stored decimal. A number that cannot be represented is neither rounded nor truncated: send a smaller magnitude, or send it in a larger unit."));
+
+    /// <summary>
+    /// تحويل بين صنفَي كمّية مختلفين — <b>وهذا ليس تحويلاً بل كثافة</b>.
+    /// </summary>
+    public static Error UnitClassMismatch(
+        string fromUnit, string fromClass, string toUnit, string toClass) => new(
+        "inventory.unit_class_mismatch",
+        $"لا تحويل بين «{fromUnit}» وهي {ClassAr(fromClass)} و«{toUnit}» وهي {ClassAr(toClass)}. "
+        + "والمعامل بين وحدتين من صنفٍ واحد واقعةٌ فيزيائية — الكيلوغرام ألف غرام دائماً — أمّا بين "
+        + "صنفين مختلفين فهو **كثافةُ مادّة** لا معامل: «كم كيلوغراماً في اللتر؟» جوابه يختلف بين "
+        + "الماء والزيت والرصاص، ويختلف للمادّة الواحدة بالحرارة. فلا يُسجَّل معاملٌ يبدو ثابتاً وهو "
+        + "خاصّيةُ مادّة، ولا يُقرَّب.",
+        $"There is no conversion between '{fromUnit}' ({ClassEn(fromClass)}) and '{toUnit}' ({ClassEn(toClass)}). "
+        + "A factor between two units of one class is a physical fact — a kilogram is a thousand grams, always — "
+        + "whereas between two classes it is a **material density**, not a factor: 'how many kilograms in a litre?' "
+        + "is answered differently for water, oil and lead, and differently for one material at different "
+        + "temperatures. A factor that looks constant but is a property of a substance is not recorded, and not rounded.");
+
+    /// <summary>وحدة قياس غير مسجَّلة في سجلّ المنشأة.</summary>
+    public static Error UnitNotRegistered(string unitCode) => new(
+        "inventory.unit_not_registered",
+        $"لا وحدة قياس بالرمز «{unitCode}» في سجلّ هذه المنشأة. "
+        + "وسجلّ الوحدات يصف ولا يُبطل — فالحركة برمزٍ غير مسجَّل تمرّ — لكن **معامل التحويل لا "
+        + "يُسجَّل بين رمزين لا يُعرَف صنف كمّيتهما**: التحويل بلا صنفٍ معلوم تقديرٌ لا حساب.",
+        $"No unit of measure with code '{unitCode}' exists in this company's register. "
+        + "The unit register describes rather than invalidates — a movement under an unregistered code still works — "
+        + "but **a conversion factor is not recorded between two codes whose quantity class is unknown**: converting "
+        + "without a known class is an estimate, not a computation.");
+
+    /// <summary>وحدة قياس مُعطَّلة.</summary>
+    public static Error UnitInactive(string unitCode) => new(
+        "inventory.unit_inactive",
+        $"وحدة القياس «{unitCode}» مُعطَّلة، فلا يُسجَّل عليها معامل جديد.",
+        $"The unit of measure '{unitCode}' is deactivated, so no new factor is recorded on it.");
+
+    /// <summary>رمز وحدة قياس مكرّر.</summary>
+    public static Error DuplicateUnitCode(string code) => new(
+        "inventory.duplicate_unit_code",
+        $"رمز وحدة القياس «{code}» مستعمَل في هذه المنشأة. والرمز هوية تحملها كل حركة، فلا يتكرّر.",
+        $"Unit of measure code '{code}' is already used in this company. The code is an identity carried by every movement, so it is never duplicated.");
+
+    /// <summary>صنف كمّية خارج الأصناف المعلَنة.</summary>
+    public static Error UnknownQuantityClass(string quantityClass, IReadOnlyList<string> known) => new(
+        "inventory.unknown_quantity_class",
+        $"صنف الكمّية «{quantityClass}» ليس من الأصناف المعلَنة: {string.Join(" · ", known)}. "
+        + "والقائمة مغلقة عمداً: صنفان مكتوبان بحرفين مختلفين يبدوان مختلفين وهما واحد، فيُرفض تحويلٌ مشروع أو يُقبل تحويلٌ مستحيل.",
+        $"Quantity class '{quantityClass}' is not one of the declared classes: {string.Join(" · ", known)}. "
+        + "The list is closed on purpose: two classes spelled differently look different while being the same, so a legitimate conversion gets refused or an impossible one accepted.");
+
+    /// <summary>معامل تحويل مكرّر بين الوحدتين نفسيهما.</summary>
+    public static Error DuplicateUnitConversion(string fromUnit, string toUnit) => new(
+        "inventory.duplicate_unit_conversion",
+        $"يوجد معامل تحويل من «{fromUnit}» إلى «{toUnit}» في هذه المنشأة. "
+        + "ومعاملان لزوجٍ واحد تعريفان متناقضان لواقعةٍ فيزيائية واحدة، ولا يُقرَّر أيّهما يُقرأ.",
+        $"A conversion factor from '{fromUnit}' to '{toUnit}' already exists in this company. "
+        + "Two factors for one pair are two contradictory definitions of one physical fact, and nothing decides which is read.");
+
+    /// <summary>لا معامل مسجَّل بين الوحدتين.</summary>
+    public static Error NoConversionBetween(string fromUnit, string toUnit) => new(
+        "inventory.no_conversion_between_units",
+        $"لا معامل تحويل مسجَّل من «{fromUnit}» إلى «{toUnit}» في هذه المنشأة. "
+        + "ولا يُشتقّ معاملٌ بسلسلةٍ من معاملين: السلسلة تُنتج تحويلاً لم يقرّه أحد، وكسرُها الوسيط "
+        + "يُقرَّب قبل أن يُضرب في الثاني. سجّل المعامل صراحةً.",
+        $"No conversion factor from '{fromUnit}' to '{toUnit}' is registered in this company. "
+        + "A factor is not derived by chaining two others: a chain produces a conversion nobody approved, and its "
+        + "intermediate fraction gets rounded before it is multiplied by the second. Register the factor explicitly.");
+
+    /// <summary>صنف كمّية بالعربية للرسائل.</summary>
+    private static string ClassAr(string quantityClass) => quantityClass switch
+    {
+        "COUNT" => "عدد",
+        "WEIGHT" => "وزن",
+        "VOLUME" => "حجم",
+        "LENGTH" => "طول",
+        _ => "مساحة",
+    };
+
+    /// <summary>
+    /// صنف كمّية بالإنجليزية — <b>نصّ تشخيصي يصحب رمزاً ثابتاً</b> لا نصّ عرض
+    /// (‏ADR-0021 §6.2): قارئه مطوّرٌ يُصلح، والرمز المعروض هو <c>Class</c> نفسه.
+    /// </summary>
+    private static string ClassEn(string quantityClass) => quantityClass switch
+    {
+        "COUNT" => "count",
+        "WEIGHT" => "weight",
+        "VOLUME" => "volume",
+        "LENGTH" => "length",
+        _ => "area",
+    };
+
     /// <summary>معامل تحويل غير موجب.</summary>
     public static Error UnitRatioNotPositive(string ratio) => new(
         "inventory.unit_ratio_not_positive",
@@ -142,6 +246,34 @@ internal static class InventoryErrors
         "inventory.item_not_found",
         $"لا صنف بالرمز «{itemId}» في كتالوج هذه المنشأة.",
         $"No item with code '{itemId}' exists in this company's catalogue.");
+
+    /// <summary>
+    /// تغيير وحدة أساس صنفٍ كُتبت عليه حركات — <b>يُرفض</b>.
+    /// <para>
+    /// ورصيدٌ يتغيّر أساسه بعد أن كُتبت عليه حركات لا يُجمَع: مجموع حركاته جمعُ أعدادٍ
+    /// بمقاييس مختلفة. والتصحيح بإفراغ الرصيد بمستند ثم إعادة إدخاله بالأساس الجديد.
+    /// </para>
+    /// </summary>
+    public static Error BaseUnitLockedByHistory(string itemId, string baseUnit, long movements) => new(
+        "inventory.base_unit_locked_by_history",
+        FormattableString.Invariant(
+            $"لا تتغيّر وحدة أساس الصنف «{itemId}» وهي «{baseUnit}»: كُتبت عليه {movements} حركة. ومجموعُ حركاته بعد التغيير جمعُ أعدادٍ بمقاييس مختلفة — رقمٌ صحيحٌ حسابياً وبلا معنىً. أفرِغ رصيده بمستند ثم أعِد إدخاله بالأساس الجديد، أو سجّل صنفاً جديداً."),
+        FormattableString.Invariant(
+            $"The base unit of item '{itemId}', which is '{baseUnit}', cannot be changed: {movements} movements have been written against it. After the change the sum of its movements would add numbers on different scales — arithmetically valid and meaningless. Empty its balance with a document and re-enter it on the new base, or register a new item."));
+
+    /// <summary>
+    /// وارد على صنفٍ مُعطَّل — <b>يُرفض، والصادر لا يُرفض</b>.
+    /// <para>
+    /// وذلك هو معنى إيقاف الصنف حرفياً: توقّف عن شرائه، وبِع ما بقي منه.
+    /// </para>
+    /// </summary>
+    public static Error ItemInactive(string itemId) => new(
+        "inventory.item_inactive",
+        $"الصنف «{itemId}» مُعطَّل، فلا يُستلَم منه جديد. والصادر منه يبقى مسموحاً حتى ينفد رصيده — "
+        + "وذلك معنى إيقافه: توقّف عن شرائه، وبِع ما بقي. أعِد تفعيله إن كان الإيقاف خطأً.",
+        $"Item '{itemId}' is deactivated, so no new stock is received for it. Issuing it remains allowed until its "
+        + "balance runs out — that is what deactivating an item means: stop buying it and sell the rest. Reactivate it "
+        + "if the deactivation was a mistake.");
 
     /// <summary>رمز صنف مكرّر.</summary>
     public static Error DuplicateItemCode(string code) => new(
@@ -212,6 +344,138 @@ internal static class InventoryErrors
         "تعذّرت قراءة الحساب الضابط للمخزون، فلا مطابقة: " + string.Join(" · ", causes.Select(static e => e.Code)),
         "The inventory control account could not be read, so no reconciliation is possible: "
         + string.Join(" · ", causes.Select(static e => e.Code)));
+
+    // ── التسكين ──────────────────────────────────────────────────────────────
+
+    /// <summary>موضع تسكين غير موجود في السجلّ.</summary>
+    public static Error PlaceNotFound(string level, string code) => new(
+        "inventory.storage_place_not_found",
+        $"لا {LevelAr(level)} بالرمز «{code}» في سجلّ تسكين هذه المنشأة.",
+        $"No {LevelEn(level)} with code '{code}' exists in this company's placement register.");
+
+    /// <summary>موضع تسكين غير موجود، مطلوبٌ بمعرّفه.</summary>
+    public static Error PlaceIdNotFound(string level, Guid id) => new(
+        "inventory.storage_place_not_found",
+        FormattableString.Invariant($"لا {LevelAr(level)} بالمعرّف {id} في سجلّ تسكين هذه المنشأة."),
+        FormattableString.Invariant($"No {LevelEn(level)} with id {id} exists in this company's placement register."));
+
+    /// <summary>رمز موضع مكرّر داخل مستواه.</summary>
+    public static Error DuplicatePlaceCode(string level, string code) => new(
+        "inventory.duplicate_storage_place_code",
+        $"رمز {LevelAr(level)} «{code}» مستعمَل في هذه المنشأة. والرمز هوية تحملها حركات المخزون، فلا يتكرّر داخل مستواه.",
+        $"The {LevelEn(level)} code '{code}' is already used in this company. The code is an identity carried by stock movements, so it is never duplicated within its level.");
+
+    /// <summary>
+    /// أبٌ مُعطَّل: موضعٌ يُسجَّل تحت موضعٍ لا يعمل.
+    /// <para>
+    /// والرفض هنا لا التعطيل المتسلسل: تعطيلُ الأب لا يجوز أصلاً وفيه رصيد، فإن عُطّل
+    /// فقد خلا — وإضافةُ ابنٍ جديد تحت خالٍ مُعطَّل إحياءٌ من الباب الخلفي.
+    /// </para>
+    /// </summary>
+    public static Error ParentPlaceInactive(string level, string code) => new(
+        "inventory.storage_place_parent_inactive",
+        $"{LevelArDefinite(level)} «{code}» مُعطَّل، فلا يُسجَّل تحته موضعٌ جديد. أعِد تفعيله أو اختر أباً عاملاً.",
+        $"The {LevelEn(level)} '{code}' is deactivated, so no new place is registered under it. Reactivate it or choose an active parent.");
+
+    /// <summary>
+    /// تعطيل موضعٍ فيه رصيد — <b>يُمنع</b>.
+    /// <para>
+    /// <b>ولماذا يُمنع هنا ويُسمح على الصنف:</b> الموضع المُعطَّل لا يُنقَل منه ولا
+    /// يُصرف، فالبضاعة تبقى فيه بقيمتها في الحساب الضابط <b>بلا بابٍ تخرج منه</b> —
+    /// رقمٌ في الميزانية لا يقابله واقعٌ يُبلغ. والصنف المُعطَّل بخلافه يُصرف حتى ينفد.
+    /// </para>
+    /// </summary>
+    public static Error PlaceStillHoldsStock(
+        string level, string code, string itemId, decimal quantity, string unit) => new(
+        "inventory.storage_place_still_holds_stock",
+        FormattableString.Invariant(
+            $"لا يُعطَّل {LevelAr(level)} «{code}» وفيه رصيد: الصنف «{itemId}» فيه {quantity} {unit}. والموضع المُعطَّل لا يُنقَل منه ولا يُصرف، فتبقى البضاعة بقيمتها في الحساب الضابط بلا بابٍ تخرج منه. انقل ما فيه إلى موضع آخر — أو أخرِجه بمستند — ثم عطّله."),
+        FormattableString.Invariant(
+            $"The {LevelEn(level)} '{code}' cannot be deactivated while it holds stock: item '{itemId}' has {quantity} {unit} in it. A deactivated place can neither be transferred from nor issued from, so the goods stay there at their value in the control account with no door out. Transfer its contents elsewhere — or issue them out on a document — then deactivate it."));
+
+    /// <summary>تعطيل موضعٍ تحته مواضع عاملة.</summary>
+    public static Error PlaceStillHasActiveChildren(string level, string code, int children) => new(
+        "inventory.storage_place_has_active_children",
+        FormattableString.Invariant(
+            $"لا يُعطَّل {LevelAr(level)} «{code}» وتحته {children} موضعاً عاملاً. والتعطيل المتسلسل يُخفي ما عُطّل تبعاً عمّن عطّله، فلا يُعرف بعدها ما يُعاد تفعيله عند التراجع. عطّل ما تحته أولاً."),
+        FormattableString.Invariant(
+            $"The {LevelEn(level)} '{code}' cannot be deactivated while {children} active places sit under it. A cascading deactivation hides what was deactivated by consequence from whoever deactivated it, so nobody knows what to reactivate on a rollback. Deactivate its children first."));
+
+    /// <summary>موضع مُعطَّل يُستعمل في حركة.</summary>
+    public static Error PlaceInactive(string level, string code) => new(
+        "inventory.storage_place_inactive",
+        $"{LevelArDefinite(level)} «{code}» مُعطَّل، فلا تُسكَّن فيه بضاعة ولا تُنقَل إليه.",
+        $"The {LevelEn(level)} '{code}' is deactivated, so no goods are placed in it and nothing is transferred into it.");
+
+    /// <summary>
+    /// موضعٌ لا يقع تحت الأب المذكور — <b>والمسار إفادةٌ تُصدَّق لا زينة</b>.
+    /// <para>
+    /// موضعان بالرمز نفسه تحت أبوين شيئان مختلفان. وقبولُ «‏A1» بلا سؤالٍ عن أبيه كان
+    /// يُخرج الرفّ الصحيح من المبنى الخطأ، ويجعل العنوان يحمل معنىً لا يصدق.
+    /// </para>
+    /// </summary>
+    public static Error PlaceNotUnderParent(string code, string actualParent, string expectedParent) => new(
+        "inventory.storage_place_not_under_parent",
+        $"الموضع «{code}» يقع تحت «{actualParent}» لا تحت «{expectedParent}». "
+        + "والموضع يُقرأ بأبيه لا بمفرده: موضعان بالرمز نفسه تحت أبوين شيئان مختلفان.",
+        $"Place '{code}' sits under '{actualParent}', not under '{expectedParent}'. "
+        + "A place is read together with its parent: two places with the same code under two parents are two different things.");
+
+    /// <summary>الاسم فارغ.</summary>
+    public static Error NameMissing() => new(
+        "inventory.name_missing",
+        "الاسم فارغ. والاسم العربي هو السجلّ لا ترجمةٌ ثانية (‏ADR-0021)، فلا يُترك فارغاً.",
+        "The name is empty. The Arabic name is the record, not a second translation (ADR-0021), so it is never left empty.");
+
+    /// <summary>رقم نقل مكرّر.</summary>
+    public static Error DuplicateTransferNumber(string number) => new(
+        "inventory.duplicate_transfer_number",
+        $"رقم مستند النقل «{number}» مستعمَل في هذه المنشأة.",
+        $"Transfer document number '{number}' is already used in this company.");
+
+    /// <summary>نقل إلى الموضع نفسه.</summary>
+    public static Error TransferToSamePlace(string warehouseId, string locationId) => new(
+        "inventory.transfer_to_same_place",
+        $"المصدر والوجهة موضعٌ واحد: «{warehouseId}/{locationId}». والنقل إلى الموضع نفسه ليس نقلاً — "
+        + "حركتان تُلغيان بعضهما وتُحدّثان صفّ رصيدٍ واحد مرّتين في معاملة واحدة.",
+        $"Source and destination are one place: '{warehouseId}/{locationId}'. A transfer to the same place is not a transfer — "
+        + "two movements that cancel each other and update one balance row twice inside a single transaction.");
+
+    /// <summary>نقل بكمّية تتجاوز رصيد المصدر.</summary>
+    public static Error TransferExceedsBalance(
+        string itemId, string warehouseId, string locationId, decimal available, decimal requested, string unit) => new(
+        "inventory.transfer_exceeds_balance",
+        FormattableString.Invariant(
+            $"النقل {requested} {unit} يتجاوز رصيد الصنف «{itemId}» في «{warehouseId}/{locationId}» وهو {available} {unit}. والصرف على رصيد سالب واقعةٌ تُوسَم وتُقبل لأن البيع قبل إدخال الاستلام يقع؛ أمّا **النقل** فيُحرّك بضاعةً بين رفّين فعلياً، ولا يُنقَل ما ليس موجوداً. سجّل الاستلام الناقص أولاً."),
+        FormattableString.Invariant(
+            $"Transferring {requested} {unit} exceeds the balance of item '{itemId}' at '{warehouseId}/{locationId}', which is {available} {unit}. Issuing against a negative balance is flagged and accepted because selling before the receipt is entered does happen; a **transfer**, though, physically moves goods between two shelves, and what does not exist is not moved. Record the missing receipt first."));
+
+    /// <summary>اسم المستوى بالعربية للرسائل.</summary>
+    private static string LevelAr(string level) => level switch
+    {
+        "WAREHOUSE" => "مستودع",
+        "LOCATION" => "موقع",
+        _ => "رفّ",
+    };
+
+    /// <summary>اسم المستوى بالعربية معرّفاً.</summary>
+    private static string LevelArDefinite(string level) => level switch
+    {
+        "WAREHOUSE" => "المستودع",
+        "LOCATION" => "الموقع",
+        _ => "الرفّ",
+    };
+
+    /// <summary>
+    /// اسم المستوى بالإنجليزية — <b>نصّ تشخيصي يصحب رمزاً ثابتاً</b>، لا نصّ عرض
+    /// (‏ADR-0021 §6.2): قارئه مطوّرٌ يُصلح، والرمز <c>Code</c> هو ما تفرزه الواجهة.
+    /// </summary>
+    private static string LevelEn(string level) => level switch
+    {
+        "WAREHOUSE" => "warehouse",
+        "LOCATION" => "location",
+        _ => "bin",
+    };
 
     /// <summary>تنسيق رقم للعرض داخل رسالة — ثابت الثقافة دائماً (‏فخ-38 · فخ-75).</summary>
     public static string Number(decimal value) => value.ToString("0.0000", CultureInfo.InvariantCulture);

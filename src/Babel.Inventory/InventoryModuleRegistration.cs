@@ -32,8 +32,11 @@ public static class InventoryModuleRegistration
         services.AddScoped<InventoryRuntime>();
         services.AddScoped<StockMovementService>();
         services.AddScoped<InventoryValuationService>();
+        services.AddScoped<UnitOfMeasureService>();
         services.AddScoped<ItemCatalogueService>();
         services.AddScoped<StockDocumentService>();
+        services.AddScoped<StoragePlaceService>();
+        services.AddScoped<StockTransferService>();
 
         // السطح المنشور: النوع الوحيد من هذه الوحدة الذي يجوز لسطح HTTP أن يسمّيه
         // (القاعدة 13 البند ب). ونطاقُه نطاق الخدمات التي يلفّها — سياق واحد للطلب.

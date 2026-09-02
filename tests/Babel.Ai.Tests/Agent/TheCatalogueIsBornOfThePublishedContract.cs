@@ -83,7 +83,11 @@ public sealed class TheCatalogueIsBornOfThePublishedContract
 
         string[] actual = [.. Catalogue.Tools.Select(static tool => tool.Name)];
         Assert.Equal<string>(expected, actual);
-        Assert.Equal(23, drafts.Length);
+        // ‏**23 ⇒ 24** بنشر `draftStockTransfer` — نقلٌ بين موقعين، مسوّدة لا تُحرّك
+        // رصيداً ولا تكتب قيداً. **وتنفيذُه `moveStockTransfer` ليس هنا** ولا يجوز أن
+        // يكون: المولّد يقبل الفعل `draft…` وحده، فبابُ التنفيذ — وهو يكتب حركتين في
+        // الدفتر المساعد لا تُحذفان — خارجٌ بالبناء.
+        Assert.Equal(24, drafts.Length);
     }
 
     /// <summary>ولا اسم عمليةِ ترحيلٍ واحد في الكتالوج — شاهدٌ سلبي على الإغلاق.</summary>
@@ -116,7 +120,7 @@ public sealed class TheCatalogueIsBornOfThePublishedContract
             Assert.Null(VoiceOperationGuard.Refuse(tool.OperationId));
         }
 
-        Assert.Equal(23, measured);
+        Assert.Equal(24, measured);
     }
 
     /// <summary>ولا مسارَ أداةٍ ينتهي بمقطعٍ لا يُعكَس — يُقرأ من المسار لا من الاسم.</summary>

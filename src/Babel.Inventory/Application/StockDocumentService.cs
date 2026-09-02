@@ -22,6 +22,22 @@ namespace Babel.Inventory.Application;
 /// اختُرع، و<c>PostingPlanner</c> يرفض رمزاً ليس في المصفوفة وهو محقّ.
 /// </para>
 /// <para>
+/// <b>والموضع المُعطَّل يُرفض عند الإنشاء <u>وعند الترحيل</u> كليهما.</b> ونداءان لا
+/// نداءٌ واحد، لأن بينهما زمناً: مسوّدةٌ أُنشئت والموضع عامل تُرحَّل بعد تعطيله، فتدخل
+/// البضاعةُ مكاناً أُعلن خارج الخدمة — <b>مقيس على قاعدةٍ حقيقية</b> قبل هذا الإصلاح:
+/// مسوّدة ثم تعطيل ثم ترحيل ⇐ <c>POSTED</c>، ومسوّدةٌ جديدة على الموضع المُعطَّل ⇐
+/// تُقبل وتُرحَّل، والرصيد <c>19</c> بقيمة <c>1900.0000</c> في موقعٍ <c>IsActive=false</c>.
+/// و<c>InventoryErrors.PlaceInactive</c> يقول بنصّه «فلا تُسكَّن فيه بضاعة ولا تُنقَل
+/// إليه» — وكان النصفُ الأول منه غيرَ مُنفَّذ: <c>StockTransferService</c> وحده يفرضه،
+/// وهو لا يُسكِّن بل ينقل.
+/// </para>
+/// <para>
+/// <b>ولا يُفرَض التسجيل، إنّما تُفرَض الحالة.</b> رمزٌ لا صفَّ له في السجلّ يمرّ كما
+/// كان يمرّ — «السجلّ يصف ولا يُبطل»، وإلزامُ التسجيل بأثر رجعي يوقف مستأجراً عاملاً،
+/// وذلك إثباتٌ قائم في <c>PlacementIsAHierarchyAndTransferIsNotAnEntryTests</c>. أمّا
+/// صفٌّ <b>موجود</b> ومكتوبٌ عليه «مُعطَّل» فهو قرارٌ اتّخذه إنسان، ولا يُتجاوز بصمت.
+/// </para>
+/// <para>
 /// <b>والترحيل يكتب الدفتر المساعد أوّلاً ثم القيد</b> (‏ADR-0041): رفضٌ من المخزون —
 /// كصرفٍ بلا أساس تكلفة — يترك الدفتر نظيفاً؛ ولو وقع القيد أوّلاً لترك حساباً ضابطاً
 /// تحرّك بلا حركةٍ تقابله، وهو انحرافٌ صامت.
@@ -110,6 +126,14 @@ public sealed class StockDocumentService : IApplicationService
         if (inbound && draft.Cost.Amount <= 0m)
         {
             return Result<StockDocumentView>.Failure(InventoryErrors.ReceiptCostNotPositive(draft.Cost.Amount));
+        }
+
+        Result place = await EnsurePlaceIsNotDeactivatedAsync(
+            tenant, draft.WarehouseId, draft.LocationId, cancellationToken).ConfigureAwait(false);
+
+        if (place.IsFailure)
+        {
+            return Result<StockDocumentView>.Failure(place.Errors);
         }
 
         if (await _database.Documents
@@ -250,6 +274,18 @@ public sealed class StockDocumentService : IApplicationService
             return Result<StockDocumentView>.Failure(InventoryErrors.DocumentNotFound(StockDocument, documentId));
         }
 
+        // ‏**والموضع يُسأل عنه هنا أيضاً، لا عند الإنشاء وحده.** بين الإنشاء والترحيل
+        // زمنٌ يتّسع لقرار تعطيل، والترحيل هو اللحظة التي تدخل فيها البضاعة فعلاً:
+        // ‏`item_balance` يُكتب عند الترحيل لا عند الإنشاء. فحارسٌ عند الإنشاء وحده
+        // يَعِد بما لا يملك — **مقيس**: مسوّدة، ثم تعطيل، ثم ترحيل ⇐ `POSTED`.
+        Result place = await EnsurePlaceIsNotDeactivatedAsync(
+            tenant, row.WarehouseId, row.LocationId, cancellationToken).ConfigureAwait(false);
+
+        if (place.IsFailure)
+        {
+            return Result<StockDocumentView>.Failure(place.Errors);
+        }
+
         bool inbound = string.Equals(row.Direction, MovementDirection.In, StringComparison.Ordinal);
 
         InventoryMovementSource source = new(
@@ -331,6 +367,59 @@ public sealed class StockDocumentService : IApplicationService
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         return Result<StockDocumentView>.Success(ViewOf(row) with { AlreadyPosted = posted.Value.WasAlreadyPosted });
+    }
+
+    /// <summary>
+    /// <b>أموضعُ هذا المستند مُعلَنٌ خارج الخدمة؟</b> — سؤالٌ عن <b>الحالة</b> لا عن الوجود.
+    /// <para>
+    /// <b>ورمزٌ لا صفَّ له يمرّ.</b> السجلّ في هذه الوحدة <b>يصف ولا يُبطل</b>: حركاتٌ
+    /// كُتبت قبل وجوده تحمل رموزاً بلا صفوف، وقراءةُ الأرصدة تُخرجها موسومةً
+    /// <c>WarehouseRegistered=false</c> ولا تحذفها. فاشتراطُ التسجيل هنا كان سيوقف
+    /// مستأجراً عاملاً بأثرٍ رجعيّ، وهو انقلابٌ على قرارٍ قائم لا إغلاقُ ثغرة.
+    /// </para>
+    /// <para>
+    /// <b>أمّا صفٌّ موجودٌ عليه «مُعطَّل» فقرارُ إنسان</b>، و<c>PlaceInactive</c> يقول
+    /// بنصّه «فلا تُسكَّن فيه بضاعة». وتجاوزُه هنا كان يجعل ذلك النصَّ كاذباً: البضاعة
+    /// تُسكَّن، والرصيد يظهر في موضعٍ الشاشةُ تعرضه خارج الخدمة، ولا فحصَ توازنٍ يراه
+    /// لأنه يتوازن مع نفسه.
+    /// </para>
+    /// <para>
+    /// <b>والرفّ (<c>BIN</c>) ليس هنا</b>: المستند يحمل مستودعاً وموقعاً لا غير، وهو
+    /// مستوى الرصيد المُقيَّم (‏ADR-0070). فلا يُسأل عن مستوىً لا يذكره المستند.
+    /// </para>
+    /// </summary>
+    private async ValueTask<Result> EnsurePlaceIsNotDeactivatedAsync(
+        TenantId tenant,
+        string warehouseCode,
+        string locationCode,
+        CancellationToken cancellationToken)
+    {
+        StoragePlaceRow? warehouse = await _database.Places
+            .AsNoTracking()
+            .FirstOrDefaultAsync(
+                row => row.TenantId == tenant.Value
+                       && row.Level == PlacementLevel.Warehouse
+                       && row.Code == warehouseCode,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        if (warehouse is not null && !warehouse.IsActive)
+        {
+            return Result.Failure(InventoryErrors.PlaceInactive(PlacementLevel.Warehouse, warehouseCode));
+        }
+
+        StoragePlaceRow? location = await _database.Places
+            .AsNoTracking()
+            .FirstOrDefaultAsync(
+                row => row.TenantId == tenant.Value
+                       && row.Level == PlacementLevel.Location
+                       && row.Code == locationCode,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        return location is null || location.IsActive
+            ? Result.Success()
+            : Result.Failure(InventoryErrors.PlaceInactive(PlacementLevel.Location, locationCode));
     }
 
     private StockDocumentView ViewOf(StockDocumentRow row) => new(

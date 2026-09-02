@@ -111,7 +111,10 @@ internal static class AgentBoundaryText
     /// <param name="rune">نقطة الترميز.</param>
     public static bool IsStripped(Rune rune)
     {
-        if (rune.Value == Tatweel)
+        // ‏**ومحرف الإبدال معه**: البديل المفرد لا يبلغ هنا سليماً — يستبدله تعداد
+        // النقاط بـU+FFFD — فلو بقي لصار فاصلاً بين خانتين لا يُلَمّ. وهو محرفٌ لا يكتبه
+        // أحد قصداً في نصّ محاسبة، ونزعُه يزيد ما يُلتقط ولا ينقصه.
+        if (rune.Value == Tatweel || rune == Rune.ReplacementChar)
         {
             return true;
         }

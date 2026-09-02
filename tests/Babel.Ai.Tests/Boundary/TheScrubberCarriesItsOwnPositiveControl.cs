@@ -119,19 +119,37 @@ public sealed class TheScrubberCarriesItsOwnPositiveControl
     }
 
     /// <summary>
-    /// <b>الطيّ يعمل فعلاً.</b> تحت التدويل الثابت تصير <c>Normalize</c> عمليةَ لا شيء
-    /// بصمت (‏<c>Directory.Build.props</c> يشرحها)، وهذا يقيس أن الطيّ ينقل الأنظمة
-    /// الأربعة كلّها إلى اللاتينية — فلا يكون «لا مخالفة» ناتج طيٍّ لم يحدث.
+    /// <b>الطيّ يعمل فعلاً — والصياغة الأولى كانت تدّعي حراسةَ ما لا تمسّه.</b>
+    /// <para>
+    /// كان نصّها يقول إنها تحرس صيرورة <c>Normalize</c> عمليةَ لا شيء تحت التدويل الثابت.
+    /// <b>ولا شيء في كشف المعرّفات يعتمد على <c>Normalize</c>:</b> ردُّ الأرقام حسابٌ يدويّ
+    /// على فئة يونيكود، ولا نمطَ يحتاج تركيباً قانونياً. فكان الاختبار يبقى أخضر خلال
+    /// الانحدار الذي يسمّيه بعينه — وهو أخطر أشكال الحارس: اسمٌ يَعِد بحراسةٍ لا تقع.
+    /// </para>
+    /// <para>
+    /// فصار يقيس ما يقع فعلاً: أنّ <b>ردّ الأرقام</b> يعمل على الأنظمة التي يسمّيها
+    /// <c>ArabicNumerals</c> وعلى ما هو أوسع منها، وأنّ الطيّ ليس عمليةَ لا شيء —
+    /// والمسحُ الكامل على كل نظامٍ عشريّ في يونيكود في
+    /// <c>TheFoldCarriesAPositiveControlPerClass</c>.
+    /// </para>
     /// </summary>
     [Fact]
-    public void TheFoldItselfIsMeasuredNotAssumed()
+    public void TheDigitFoldIsMeasuredNotAssumed()
     {
         Assert.False(
             AgentOutboundScrubber.Inspect("١٠٩٢٨٣٧٤٦٥").IsClean,
-            "الأرقام العربية-الهندية لم تُطوَ — والطيّ الصامت الذي لا يفعل شيئاً هو فخّ التدويل الثابت بعينه");
+            "الأرقام العربية-الهندية لم تُطوَ — وطيٌّ لا يفعل شيئاً يُنتج «لا مخالفة» على كل نصّ");
 
         Assert.False(AgentOutboundScrubber.Inspect("۱۰۹۲۸۳۷۴۶۵").IsClean);
         Assert.False(AgentOutboundScrubber.Inspect("१०९२८३७४६५").IsClean);
+
+        // وأوسع من الأربعة: عريضةٌ وبنغالية — وهما خارج ما يعرفه ArabicNumerals.
+        Assert.False(AgentOutboundScrubber.Inspect("１０９２８３７４６５").IsClean);
+        Assert.False(AgentOutboundScrubber.Inspect("১০৯২৮৩৭৪৬৫").IsClean);
+
+        // ‏**والشاهد على أن الطيّ نفسه ليس لا-عملية**: نصٌّ لا رقم فيه يبقى كما هو،
+        // ونصٌّ فيه غير مرئيّ يفقده — فلو صار الطيّ لا-عملية لتساوى الاثنان.
+        Assert.NotEqual("1092\u00AD837465", AgentBoundaryText.Fold("1092\u00AD837465"));
     }
 
     /// <summary>

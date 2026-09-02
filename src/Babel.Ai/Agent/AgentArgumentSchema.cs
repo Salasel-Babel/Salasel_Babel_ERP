@@ -140,7 +140,12 @@ internal static class AgentArgumentSchema
                 continue;
             }
 
-            if (!entry.TryGetPropertyValue(key, out JsonNode? value) || value is null)
+            // ‏**«إلزاميّ» يعني أنّ المفتاح موجود، لا أنّ قيمته ليست `null`.** والعقد
+            // ينشر ثلاثة حقولٍ إلزامية نوعُها ‎["string","null"] — `guaranteeId` و
+            // ‏`lines.[].itemId` في مستخلصَين — فربطُ الإلزام بعدم الفراغ كان سيرفض
+            // نداءً سليماً. وحين يكون الحقل حاضراً فارغاً ولا يقبل نوعُه الفراغ يتكفّل
+            // فحصُ الشكل برفضه، فلا ازدواج ولا ثغرة.
+            if (!entry.ContainsKey(key))
             {
                 errors.Add(AgentErrors.ArgumentRequiredMissing(
                     tool.Name, Name(path.Length == 0 ? key : path + "." + key)));

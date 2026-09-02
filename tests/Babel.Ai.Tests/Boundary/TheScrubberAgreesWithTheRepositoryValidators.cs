@@ -62,6 +62,35 @@ public sealed class TheScrubberAgreesWithTheRepositoryValidators
     }
 
     /// <summary>
+    /// <b>والاتّفاق أعلاه محدودٌ بجدوله، والاتّجاه الذي يتجاوزه مُعلَن ومقصود.</b>
+    /// <para>
+    /// المِصفاة <b>أوسع</b> من المُتحقِّق المالك عمداً: هي تطوي قبل أن تطابق، فترى رقماً
+    /// ضريبياً مكتوباً بأرقامٍ عربية-هندية أو مقطوعاً بشرطةٍ أو نقطة، والمُتحقِّق لا يراه.
+    /// <b>وهذا هو الاتّجاه الآمن</b>: الكاشف يلتقط ما لا يقبله المُتحقِّق، والعكس هو
+    /// التسريب. فالجدول أعلاه يقيس <b>الاتّفاق على الصورة اللاتينية المتّصلة</b>، وهذا
+    /// يقيس أنّ ما يتجاوزه إنما يتجاوزه في الاتّجاه المُعلَن — فلا يُقرأ الاتّفاق أوسع
+    /// ممّا هو، ولا يُقرأ الاختلاف انحرافاً.
+    /// </para>
+    /// </summary>
+    [Theory]
+    [InlineData("٣٠٠١٢٣٤٥٦٧٨٩٠٠٣")]
+    [InlineData("3001 2345 6789 003")]
+    [InlineData("3001-2345-6789-003")]
+    [InlineData("300.123.456.789.003")]
+    public void TheScrubberIsDeliberatelyWiderThanTheValidatorAndNeverNarrower(string spelling)
+    {
+        MethodInfo validate = SaudiVatNumber.GetMethod("Validate", BindingFlags.Public | BindingFlags.Static)!;
+
+        Assert.True(
+            AgentIdentifierShapes.Vat.Matches(spelling),
+            "المِصفاة لا ترى «" + spelling + "» رقماً ضريبياً — والكاشف لا يجوز أن يكون أضيق");
+
+        Assert.True(
+            ((Result<string>)validate.Invoke(null, [spelling])!).IsFailure,
+            "المُتحقِّق المالك يقبل «" + spelling + "» — فالاتّجاه انقلب ويجب إعادة قراءة الاتّفاق");
+    }
+
+    /// <summary>
     /// مجموعة المحارف غير المرئية هي المجموعة نفسها، محرفاً بمحرف — لا «قريبة منها».
     /// </summary>
     [Fact]

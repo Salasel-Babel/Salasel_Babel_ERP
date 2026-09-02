@@ -129,6 +129,18 @@ public sealed class TheFoldCarriesAPositiveControlPerClass
     }
 
     /// <summary>
+    /// <b>والبديل المفرد لا يفصل خانتين.</b> تعدادُ النقاط يستبدله بـ<c>U+FFFD</c>، ولو
+    /// بقي لصار فاصلاً لا يُلَمّ — وهو المدخل الوحيد الذي لا يبلغه مسحُ المستوى الأساسي
+    /// أعلاه، لأنه ليس نقطةَ ترميزٍ صالحة أصلاً.
+    /// </summary>
+    [Fact]
+    public void ALoneSurrogateBetweenTwoDigitGroupsIsStillCaught()
+    {
+        Assert.True(AgentOutboundScrubber.Inspect("رقم الهوية 1092\uD800837465").IsRefused);
+        Assert.True(AgentOutboundScrubber.Inspect("رقم الهوية 1092\uFFFD837465").IsRefused);
+    }
+
+    /// <summary>
     /// <b>النقطة والفاصلة والمائلة تُلمّ للأشكال المُرتكِزة</b> — ولا يُخترع بذلك مبلغٌ
     /// ولا تاريخ، لأن الشكل المُرتكِز يحمل ارتكازه معه.
     /// </summary>

@@ -96,9 +96,9 @@ internal static class NameRegisterSql
     }
 
     /// <summary>
-    /// يربط الوسائط. <b>وأعمدة النطاق مرتّبة: المنشأة أوّلاً والشركة ثانياً</b> — وهو
-    /// عقدُ <see cref="NameRegisterTable"/> ومفروضٌ عنده، فلا يُربط هنا عمودٌ بموضعه
-    /// ويُقارَن بقيمةٍ من غير جنسه صامتاً.
+    /// يربط الوسائط. <b>والترتيب مشتقٌّ لا مُمرَّر</b>: <see cref="NameRegisterTable"/>
+    /// يبني <c>ScopeColumns</c> من عمودَيه المُسمّيَين، فلا يوجد ترتيبٌ يُخطئ أحدٌ في
+    /// كتابته ولا يُربط هنا عمودٌ بموضعه ويُقارَن بقيمةٍ من غير جنسه صامتاً.
     /// </summary>
     /// <param name="command">الأمر.</param>
     /// <param name="table">وصف الجدول.</param>
@@ -114,7 +114,7 @@ internal static class NameRegisterSql
         command.Parameters.AddWithValue("threshold", (float)threshold);
         command.Parameters.AddWithValue("scope0", request.Tenant.Value);
 
-        if (table.ScopeColumns.Count > 1)
+        if (table.CompanyColumn is not null)
         {
             command.Parameters.AddWithValue("scope1", request.CompanyId);
         }

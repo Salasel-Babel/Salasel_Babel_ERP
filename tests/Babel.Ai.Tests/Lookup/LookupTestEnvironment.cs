@@ -113,7 +113,7 @@ internal static class LookupTestEnvironment
         table: "customer",
         idColumn: "Id",
         nameColumn: "NameAr",
-        scopeColumns: ["TenantId"],
+        tenantColumn: "TenantId",
         activeColumn: "IsActive",
         subtitleColumn: "Code");
 

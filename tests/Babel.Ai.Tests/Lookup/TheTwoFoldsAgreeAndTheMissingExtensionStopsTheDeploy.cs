@@ -140,7 +140,8 @@ public sealed class TheTwoFoldsAgreeAndTheMissingExtensionStopsTheDeploy
     }
 
     /// <summary>
-    /// عمودٌ غائب في وصف الجدول يُرفَع بصوته ولا يُتخطّى — ووصفٌ بلا عمود نطاق لا يُبنى أصلاً.
+    /// عمودٌ غائب في وصف الجدول يُرفَع بصوته ولا يُتخطّى — و<b>النطاق صار وسيطين مُسمّيَين
+    /// لا قائمةً تُربَط بالموضع</b>، فوصفٌ بلا منشأة أو بعمودٍ ثالث لا يُكتَب أصلاً.
     /// </summary>
     [Fact]
     public async Task AnAbsentColumnIsRefusedAndAScopelessRegisterCannotBeDescribed()
@@ -149,7 +150,8 @@ public sealed class TheTwoFoldsAgreeAndTheMissingExtensionStopsTheDeploy
 
         // ‏`sales.customer` لا يحمل `CompanyId` — مقيس على هذه الشجرة.
         NameRegisterTable withCompany = new(
-            "customer_with_company", "sales", "customer", "Id", "NameAr", ["TenantId", "CompanyId"]);
+            "customer_with_company", "sales", "customer", "Id", "NameAr",
+            tenantColumn: "TenantId", companyColumn: "CompanyId");
 
         PostgresException refusal = await Assert.ThrowsAsync<PostgresException>(
             async () => await NameRegisterSchema.AttachAsync(
@@ -159,12 +161,19 @@ public sealed class TheTwoFoldsAgreeAndTheMissingExtensionStopsTheDeploy
         Assert.Equal("42703", refusal.SqlState);
         Assert.Contains("CompanyId", refusal.MessageText, StringComparison.Ordinal);
 
+        // ‏**وسجلٌّ بلا منشأة لا يُوصَف**: الوسيط إلزاميّ، وفارغُه يُرفض عند التركيب.
         Assert.Throws<ArgumentException>(
-            static () => new NameRegisterTable("x", "sales", "customer", "Id", "NameAr", []));
+            static () => new NameRegisterTable("x", "sales", "customer", "Id", "NameAr", tenantColumn: " "));
+
+        // وترتيبُ العمودين مشتقٌّ لا مُمرَّر: المنشأة أوّلاً دائماً، والشركة ثانيةً إن وُجدت.
+        Assert.Equal(["TenantId", "CompanyId"], withCompany.ScopeColumns);
+        Assert.Equal(
+            ["TenantId"],
+            new NameRegisterTable("x", "sales", "customer", "Id", "NameAr", tenantColumn: "TenantId").ScopeColumns);
 
         // ومعرّفٌ فيه علامة اقتباس لا يمرّ إلى نصّ استعلام بحال.
         Assert.Throws<ArgumentException>(
-            static () => new NameRegisterTable("x", "sales", "customer\"; drop table sales.customer; --", "Id", "NameAr", ["TenantId"]));
+            static () => new NameRegisterTable("x", "sales", "customer\"; drop table sales.customer; --", "Id", "NameAr", tenantColumn: "TenantId"));
     }
 
     /// <summary>

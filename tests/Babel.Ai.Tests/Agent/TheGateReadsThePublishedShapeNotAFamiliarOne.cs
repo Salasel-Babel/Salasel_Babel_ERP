@@ -145,6 +145,45 @@ public sealed class TheGateReadsThePublishedShapeNotAFamiliarOne
         Assert.Equal("ai.agent.argument_key_duplicated", Assert.Single(gated.Errors).Code);
     }
 
+    /// <summary>
+    /// <b>و«إلزاميّ» يعني أنّ المفتاح موجود، لا أنّ قيمته ليست فارغة.</b> العقد ينشر
+    /// ثلاثة حقولٍ إلزامية نوعُها <c>["string","null"]</c>، فربطُ الإلزام بعدم الفراغ
+    /// كان سيرفض نداءً سليماً — والحاضرُ الفارغُ في حقلٍ لا يقبل الفراغ يسقط بفحص الشكل.
+    /// </summary>
+    [Fact]
+    public void ARequiredFieldThatThePublishedSchemaAllowsToBeNullIsAccepted()
+    {
+        AgentTool tool = Catalogue.Resolve("draftSubcontractorAdvance")!;
+
+        using JsonDocument schema = JsonDocument.Parse(tool.InputSchemaJson);
+
+        JsonElement declared = schema.RootElement
+            .GetProperty("properties").GetProperty("guaranteeId").GetProperty("type");
+
+        Assert.Contains(
+            "null",
+            declared.EnumerateArray().Select(static value => value.GetString()));
+
+        Assert.Contains(
+            "guaranteeId",
+            schema.RootElement.GetProperty("required")
+                .EnumerateArray().Select(static value => value.GetString()));
+
+        // فارغاً صراحةً: لا يُبلَّغ عنه غائباً ولا مخالفاً للشكل — والمخطّط يعلنه كذلك.
+        // (وبقيّةُ الإلزاميات تبقى مُبلَّغاً عنها، وهي ليست موضوع هذا القياس.)
+        Assert.DoesNotContain(
+            AgentArgumentSchema.Violations(
+                (JsonObject)JsonNode.Parse("""{"guaranteeId":null}""")!, tool),
+            static error => error.MessageAr.Contains("guaranteeId", StringComparison.Ordinal));
+
+        // وغائباً: يُرفض باسمه.
+        Assert.Contains(
+            AgentArgumentSchema.Violations((JsonObject)JsonNode.Parse("{}")!, tool),
+            static error => string.Equals(
+                error.Code, "ai.agent.argument_required_missing", StringComparison.Ordinal)
+                && error.MessageAr.Contains("guaranteeId", StringComparison.Ordinal));
+    }
+
     /// <summary>وسائطٌ فارغة تُرفض بأسماء الحقول الإلزامية لا تمرّ.</summary>
     [Fact]
     public void AnEmptyBodyIsRefusedByNameNotAccepted()

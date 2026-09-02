@@ -24,10 +24,13 @@ public sealed partial record NameRegisterTable
     /// <param name="table">اسم الجدول.</param>
     /// <param name="idColumn">عمود المعرّف.</param>
     /// <param name="nameColumn">العمود العربيّ الذي يُطوى.</param>
-    /// <param name="scopeColumns">
-    /// أعمدة النطاق بالترتيب — <b>المنشأة أوّلاً والشركة ثانياً، وعمودان على الأكثر</b>.
-    /// والترتيب عقدٌ لا اصطلاح: الربط بالموضع، وعكسُ الاثنين يقارن منشأة الجلسة بعمود
-    /// الشركة — وكلاهما <c>uuid</c>، فلا شيء يلتقطه.
+    /// <param name="tenantColumn">عمود المنشأة — <b>إلزاميّ</b>، فلا سجلّ يُطابَق عبر المنشآت.</param>
+    /// <param name="companyColumn">
+    /// عمود الشركة إن وُجد. <b>ويُسمّى ولا يُوضَع في قائمة</b>: كان النطاق قائمةً تُربَط
+    /// <b>بالموضع</b>، فكان وصفٌ يعكس العمودين يقارن منشأة الجلسة بعمود الشركة — وكلاهما
+    /// <c>uuid</c>، فلا شيء يلتقطه؛ وكان وصفٌ بثلاثة أعمدة يبني نصّاً يسمّي وسيطاً لا يربطه
+    /// أحد فيسقط أوّل سبرٍ <b>وقت التشغيل</b>. والوسيطان المُسمّيان يجعلان الحالتين
+    /// <b>غير قابلتين للتعبير</b>.
     /// </param>
     /// <param name="activeColumn">عمود «سارٍ» إن وُجد، فلا يُقترح طرفٌ مُوقَف.</param>
     /// <param name="subtitleColumn">عمود تمييزٍ يُعرض على الشاشة — رمز الطرف مثلاً.</param>
@@ -37,42 +40,24 @@ public sealed partial record NameRegisterTable
         string table,
         string idColumn,
         string nameColumn,
-        IReadOnlyList<string> scopeColumns,
+        string tenantColumn,
+        string? companyColumn = null,
         string? activeColumn = null,
         string? subtitleColumn = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(registerKey);
-        ArgumentNullException.ThrowIfNull(scopeColumns);
-
-        if (scopeColumns.Count == 0)
-        {
-            throw new ArgumentException(
-                "سجلّ أسماء بلا عمود نطاق واحد يُطابق عبر المنشآت. "
-                + "/ a name register with no scope column matches across tenants.",
-                nameof(scopeColumns));
-        }
-
-        // ‏**والقيمتان المتاحتان للربط اثنتان — المنشأة والشركة — فلا يُوصَف ثالث.**
-        // كان الوصف يقبل ثلاثة أعمدة فأكثر ويبني نصّاً يسمّي ‎`@scope2` لا يربطه أحد،
-        // فيسقط أوّل سبرٍ **وقت التشغيل** بدل أن يسقط الوصف **وقت التركيب**. وعطلٌ
-        // يُعلَن عند التركيب أرخص من عطلٍ يُعلَن عند أوّل مستخدم.
-        if (scopeColumns.Count > 2)
-        {
-            throw new ArgumentException(
-                "عمودا النطاق المتاحان اثنان: المنشأة ثم الشركة. ووصفٌ بثلاثة أعمدة فأكثر "
-                + "يبني نصّاً يسمّي وسيطاً لا يُربط. / at most two scope columns are bindable: "
-                + "the tenant then the company.",
-                nameof(scopeColumns));
-        }
 
         RegisterKey = registerKey;
         Schema = Identifier(schema, nameof(schema));
         Table = Identifier(table, nameof(table));
         IdColumn = Identifier(idColumn, nameof(idColumn));
         NameColumn = Identifier(nameColumn, nameof(nameColumn));
-        ScopeColumns = [.. scopeColumns.Select(column => Identifier(column, nameof(scopeColumns)))];
+        TenantColumn = Identifier(tenantColumn, nameof(tenantColumn));
+        CompanyColumn = companyColumn is null ? null : Identifier(companyColumn, nameof(companyColumn));
         ActiveColumn = activeColumn is null ? null : Identifier(activeColumn, nameof(activeColumn));
         SubtitleColumn = subtitleColumn is null ? null : Identifier(subtitleColumn, nameof(subtitleColumn));
+
+        ScopeColumns = CompanyColumn is null ? [TenantColumn] : [TenantColumn, CompanyColumn];
     }
 
     /// <summary>مفتاح السجلّ.</summary>
@@ -90,7 +75,16 @@ public sealed partial record NameRegisterTable
     /// <summary>العمود الذي يُطوى.</summary>
     public string NameColumn { get; }
 
-    /// <summary>أعمدة النطاق بالترتيب.</summary>
+    /// <summary>عمود المنشأة.</summary>
+    public string TenantColumn { get; }
+
+    /// <summary>عمود الشركة أو <c>null</c>.</summary>
+    public string? CompanyColumn { get; }
+
+    /// <summary>
+    /// أعمدة النطاق بترتيبها — <b>مشتقّةٌ من العمودين المُسمّيَين لا مُمرَّرة</b>، فلا
+    /// يوجد ترتيبٌ يُخطئ أحدٌ في كتابته.
+    /// </summary>
     public IReadOnlyList<string> ScopeColumns { get; }
 
     /// <summary>عمود «سارٍ» أو <c>null</c>.</summary>

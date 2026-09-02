@@ -1226,7 +1226,7 @@ node scripts/align-audit.mjs --no-build --no-shots \
 
 ### 3-ك · استقامة الصفّ في شاشات الموارد البشرية الأربع الجديدة — 2026-09-02
 
-> القرار: [ADR-جديد: شاشةٌ لكلّ يدٍ تعمل، لا لكلّ بابٍ منشور](../decisions/ADR-0077-one-screen-per-hand-not-per-door.md)
+> القرار: [ADR-0077: شاشةٌ لكلّ يدٍ تعمل، لا لكلّ بابٍ منشور](../decisions/ADR-0077-one-screen-per-hand-not-per-door.md)
 > · والأساس البنيوي: [ADR-0067: الصفُّ يملك المسارات](../decisions/ADR-0067-the-row-owns-the-tracks.md).
 
 أربعُ شاشاتٍ جديدة (`/hr/pay-components` · `/hr/advances-deductions` ·
@@ -1607,7 +1607,7 @@ node scripts/align-audit.mjs --no-build --no-shots --locales ar,en --widths 1024
 وأسوأ صفٍّ قبل الإصلاح **«تسجيل وحدة قياس»**: أربعة حقول، ثلاثةٌ أوصافها من سطرٍ إلى
 ثلاثة، ورابعٌ — الاسم اللاتيني — **بلا وصف إطلاقاً**؛ فالفارق بين قاع حبره وقاع جاره
 **61.17px**. والإصلاح **محتوىً لا أنماط**: تلميحٌ صادق لكل حقل، وتقصيرُ التلميحات الطويلة
-ونقلُ شرحها إلى `note` اللوح. (‏ADR-جديد · `every-field-in-a-row-carries-a-description`)
+ونقلُ شرحها إلى `note` اللوح. (‏ADR-0078 · `every-field-in-a-row-carries-a-description`)
 
 #### ب) الشاهد السلبي — لأن فحصاً لا يُرى ساقطاً لا يُثبت أنه يقيس شيئاً
 
@@ -1646,7 +1646,7 @@ node scripts/align-audit.mjs --no-build --no-shots --locales ar,en --widths 1024
 | قيمٌ أردية تطابق العربية حرفاً بحرف | **9** (كانت 6؛ الثلاثة الجديدة «وزن» و«حجم» و«طول» كلماتٌ أردية صحيحة) | `npm test` — `tests/locale-script.test.ts` | مقيس |
 ### ي) منفّذ المسوّدات — الباب المنشور نفسه، هويّةُ إنسانه، ومرّةً واحدة
 
-**القرار:** [ADR-جديد](../decisions/ADR-0079-the-draft-lands-on-its-humans-identity-once.md)
+**القرار:** [ADR-0079](../decisions/ADR-0079-the-draft-lands-on-its-humans-identity-once.md)
 (`the-draft-lands-on-its-humans-identity-once`). **والفجوة التي أُغلقت** مكتوبةٌ في §3-ط
 أعلاه بنصّها: «هبوطُ مسوّدةٍ في وحدةٍ مالكة — **لا يقع**».
 

@@ -21,33 +21,33 @@ internal sealed partial class Validator
         if (!_seenEventCodes.Add(ev.EventCode))
             Add("V10", Severity.Error, w, $"رمز الحدث {ev.EventCode} مكرر", $"Duplicate event code {ev.EventCode}");
 
-        RequireBilingual("V06", w, ev.NameAr, ev.NameEn, "الحدث", "the event");
+        RequireArabicRecord("V06", w, ev.NameAr, ev.NameEn, "الحدث", "the event");
         if (ev.Trigger is null) Add("V06", Severity.Error, w, "الحدث بلا وصف إطلاق", "The event has no trigger description");
-        else RequireBilingual("V06", w + " trigger", ev.Trigger.NameAr, ev.Trigger.NameEn, "إطلاق الحدث", "the event trigger");
+        else RequireArabicRecord("V06", w + " trigger", ev.Trigger.NameAr, ev.Trigger.NameEn, "إطلاق الحدث", "the event trigger");
         if (ev.Reversal is not null)
-            RequireBilingual("V06", w + " reversal", ev.Reversal.NameAr, ev.Reversal.NameEn, "طريقة العكس", "the reversal method");
+            RequireArabicRecord("V06", w + " reversal", ev.Reversal.NameAr, ev.Reversal.NameEn, "طريقة العكس", "the reversal method");
         if (ev.Precondition is not null)
-            RequireBilingual("V06", w + " precondition", ev.Precondition.NameAr, ev.Precondition.NameEn, "الشرط المسبق", "the precondition");
+            RequireArabicRecord("V06", w + " precondition", ev.Precondition.NameAr, ev.Precondition.NameEn, "الشرط المسبق", "the precondition");
         foreach (var c in ev.Caveats)
-            RequireBilingual("V06", w + " caveat " + c.Ref, c.TextAr, c.TextEn, "التحفّظ", "the caveat");
+            RequireArabicRecord("V06", w + " caveat " + c.Ref, c.TextAr, c.TextEn, "التحفّظ", "the caveat");
 
         if (!EventStatuses.Contains(ev.Status))
             Add("V16", Severity.Error, w, $"حالة حدث غير مسموحة: {ev.Status}", $"Illegal event status: {ev.Status}");
 
         foreach (var (name, a) in ev.Amounts)
         {
-            RequireBilingual("V06", $"{w} amount {name}", a.NameAr, a.NameEn, "متغير المبلغ", "the amount variable");
-            RequireBilingual("V06", $"{w} amount {name} derivation", a.DerivationAr, a.DerivationEn,
+            RequireArabicRecord("V06", $"{w} amount {name}", a.NameAr, a.NameEn, "متغير المبلغ", "the amount variable");
+            RequireArabicRecord("V06", $"{w} amount {name} derivation", a.DerivationAr, a.DerivationEn,
                 "طريقة اشتقاق المبلغ", "the amount derivation");
         }
         foreach (var (name, c) in ev.Conditions)
         {
-            RequireBilingual("V06", $"{w} condition {name}", c.NameAr, c.NameEn, "الشرط", "the condition");
+            RequireArabicRecord("V06", $"{w} condition {name}", c.NameAr, c.NameEn, "الشرط", "the condition");
             if (string.IsNullOrWhiteSpace(c.Expression))
                 Add("V06", Severity.Error, $"{w} condition {name}", "الشرط بلا تعبير", "The condition has no expression");
         }
         foreach (var s in ev.Scenarios)
-            RequireBilingual("V06", $"{w} scenario {s.Code}", s.NameAr, s.NameEn, "السيناريو", "the scenario");
+            RequireArabicRecord("V06", $"{w} scenario {s.Code}", s.NameAr, s.NameEn, "السيناريو", "the scenario");
 
         // An event that deliberately posts nothing is a first-class statement of accounting policy
         // (07-real-estate.md §14.1 and §14.3-b). It must be explicit and it must carry no lines.
@@ -82,7 +82,7 @@ internal sealed partial class Validator
     /// </summary>
     private void CheckProseAccountReferences(PostingEvent ev, string w)
     {
-        var prose = new List<(string field, string text)>();
+        var prose = new List<(string field, string? text)>();
         if (ev.Trigger is not null) { prose.Add(("trigger", ev.Trigger.NameAr)); prose.Add(("trigger", ev.Trigger.NameEn)); }
         if (ev.Precondition is not null) { prose.Add(("precondition", ev.Precondition.NameAr)); prose.Add(("precondition", ev.Precondition.NameEn)); }
         if (ev.Reversal is not null) { prose.Add(("reversal", ev.Reversal.NameAr)); prose.Add(("reversal", ev.Reversal.NameEn)); }
@@ -237,7 +237,7 @@ internal sealed partial class Validator
                     Add("V19", Severity.Error, lw,
                         "المحدِّد لا يقصر الاختيار على الحسابات القابلة للترحيل",
                         "The selector does not restrict itself to postable accounts");
-                RequireBilingual("V06", lw + " selector", line.Sweep.NameAr, line.Sweep.NameEn,
+                RequireArabicRecord("V06", lw + " selector", line.Sweep.NameAr, line.Sweep.NameEn,
                     "محدِّد السطر التجميعي", "the sweep selector");
                 if (line.Sweep.Selector == "account_class" && line.Sweep.Classes.Count == 0)
                     Add("V19", Severity.Error, lw, "محدِّد بالتصنيف بلا تصنيفات", "A class selector with no classes");
@@ -406,11 +406,38 @@ internal sealed partial class Validator
     private void Add(string ruleId, Severity sev, string where, string ar, string en) =>
         _findings.Add(new Finding(ruleId, sev, where, ar, en));
 
-    private void RequireBilingual(string ruleId, string where, string ar, string en, string whatAr, string whatEn)
+    /// <summary>
+    /// <b>الزوج إلزامي — لصفٍّ يُخزَّن في عمودين.</b> يُستعمل لبيانات CSV التي يحمّلها
+    /// <c>\copy</c> إلى أعمدة <c>name_ar</c>/<c>name_en</c> المُصرَّح بها <c>not null</c>،
+    /// ولقواعد الحجب التي رسالتها <b>تشخيصية</b> بحكم ADR-0021 §6.2 فتبقى ثنائية.
+    /// </summary>
+    private void RequireBilingual(string ruleId, string where, string ar, string? en, string whatAr, string whatEn)
     {
         if (string.IsNullOrWhiteSpace(ar))
             Add(ruleId, Severity.Error, where, $"{whatAr} بلا name_ar", $"{whatEn} is missing name_ar / the Arabic text");
         if (string.IsNullOrWhiteSpace(en))
             Add(ruleId, Severity.Error, where, $"{whatAr} بلا name_en", $"{whatEn} is missing name_en / the English text");
+    }
+
+    /// <summary>
+    /// <b>العربية سجلٌّ إلزامي، والإنجليزية شرحٌ اختياري — لوثيقة تصميم لا لعمود.</b>
+    /// <para>
+    /// ‏ADR-0021 بند 2: العربية هي السجلّ وكلُّ لغةٍ أخرى عرض. ووثيقةٌ <b>توجب</b>
+    /// الإنجليزية تمنح الإنجليزية امتيازاً بنيوياً ينفيه القرار، وتجعل كلَّ حدث ترحيلٍ
+    /// جديد يضيف زوجاً ثابتاً جديداً. فحدثٌ بعربيّةٍ وحدها <b>مقبول</b>.
+    /// </para>
+    /// <para>
+    /// <b>والفرق بين الغائب والفارغ محفوظ:</b> <c>null</c> يعني «لم يُكتب» فيُقبل؛
+    /// و<c>""</c> يعني «كُتب فارغاً» فيُرفض — لأن مفتاحاً موجوداً بلا قيمة نصفُ ترجمةٍ
+    /// لا اختيارٌ. وهذا ما يجعل الشاهد السالب القديم (‏<c>name_en = ""</c>) يبقى أحمر.
+    /// </para>
+    /// </summary>
+    private void RequireArabicRecord(string ruleId, string where, string ar, string? en, string whatAr, string whatEn)
+    {
+        if (string.IsNullOrWhiteSpace(ar))
+            Add(ruleId, Severity.Error, where, $"{whatAr} بلا name_ar", $"{whatEn} is missing name_ar / the Arabic text");
+        if (en is not null && string.IsNullOrWhiteSpace(en))
+            Add(ruleId, Severity.Error, where, $"{whatAr} كُتب فيه name_en فارغاً — احذف المفتاح أو اكتبه",
+                $"{whatEn} has an empty name_en — remove the key or write it");
     }
 }

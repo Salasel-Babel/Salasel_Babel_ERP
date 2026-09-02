@@ -1316,7 +1316,7 @@ node scripts/align-audit.mjs --no-build --no-shots \
 
 ### 3-ل · المقاولات والعقارات: الفجوة المقيسة، واستقامةُ الصفّ في الشاشات الأربع الجديدة — 2026-09-02
 
-> القرار: [ADR-جديد: عددُ نماذج الكتابة هو ما يقسّم الشاشة](../decisions/ADR-0080-the-write-form-count-splits-the-screen.md)
+> القرار: [ADR-0080: عددُ نماذج الكتابة هو ما يقسّم الشاشة](../decisions/ADR-0080-the-write-form-count-splits-the-screen.md)
 > · والقاعدة التي يطبّقها: [ADR-0077](../decisions/ADR-0077-one-screen-per-hand-not-per-door.md)
 > · والأساس البنيوي: [ADR-0067: الصفُّ يملك المسارات](../decisions/ADR-0067-the-row-owns-the-tracks.md).
 
@@ -1494,7 +1494,7 @@ MSBUILDDISABLENODEREUSE=1 DOTNET_CLI_USE_MSBUILD_SERVER=0 \
 ### 3.‏N · مناوبة الشهادة، ومسار `http-01`، وفحصُ الحياة الذي كان خاوياً — 2026-09-02
 
 > القرارات: [ADR-0065: المناوبة تُركَّب بالنشر](../decisions/ADR-0065-certificate-rotation-is-installed-by-the-deployment.md) ·
-> [ADR-0065: حدّ الإنذار ربعُ العمر](../decisions/ADR-0066-the-expiry-alarm-threshold-is-a-quarter-of-the-certificate-lifetime.md).
+> [ADR-0066: حدّ الإنذار ربعُ العمر](../decisions/ADR-0066-the-expiry-alarm-threshold-is-a-quarter-of-the-certificate-lifetime.md).
 > **العتاد هو المُعلن في §1، وبلا خادم ولا شبكة إلى سلطة شهادات** — البروكسي هنا يردّ 403
 > على `acme-v02.api.letsencrypt.org`، فما قِيس هو سلوك Caddy المحلّي وسلوك السكربتات، لا
 > إصدارُ شهادة حقيقية. وثنائيّة Caddy المستعملة هي **الوسم المثبَّت في `deploy/compose.yml`**

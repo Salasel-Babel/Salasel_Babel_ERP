@@ -206,7 +206,7 @@ export function AppShell(): ReactNode {
         {/* ── المقاولات والعقارات: إحدى عشرة شاشةً بترتيب العمل. وهي **كتلةٌ
             واحدة متّصلة** كي يندمج جانباها آلياً حين يلمس أسطولٌ آخر هذه
             القائمة. وكانت السبعُ القائمة منها غائبةً عن هذه القائمة كلَّها —
-            تُفتح بـCtrl+K ولا يراها من يقرأ الملاحة (ADR-جديد). */}
+            تُفتح بـCtrl+K ولا يراها من يقرأ الملاحة (ADR-0080). */}
         <Link to="/contracting" className="navitem" data-testid="nav-contracting-register">
           {t("contracting.nav.register")}
         </Link>

@@ -115,7 +115,7 @@ describe("عقد الأقسام", () => {
     expect(section?.built).toBe(true);
     expect(section?.path).toBe("/realestate");
     const paths = SCREENS.filter((s) => s.section === "realestate").map((s) => s.path);
-    /* والترتيب ترتيبُ العمل (ADR-جديد): العقارُ ووحداته ← طرفا العقد ← العقد
+    /* والترتيب ترتيبُ العمل (ADR-0080): العقارُ ووحداته ← طرفا العقد ← العقد
        وجدوله ← ما تأخّر وما قُبض. */
     expect(paths).toEqual([
       "/realestate",

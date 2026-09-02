@@ -156,7 +156,7 @@ Number(row.debit)    // TypeError
 
 كلٌّ منها فحصٌ في `scripts/audit.mjs` **سجلُّه مشتقٌّ من الشيفرة لا مكتوبٌ بيد**، فمكوّنٌ
 جديد يدخل السجل من نفسه ويُحمِّر البوّابة حتى يُعطى ما ينقصه. والقرار الحاكم
-[`ADR-0066 · design-invariants-are-enforced-not-reviewed`](../docs/decisions/ADR-0068-design-invariants-are-enforced-not-reviewed.md).
+[`ADR-0068 · design-invariants-are-enforced-not-reviewed`](../docs/decisions/ADR-0068-design-invariants-are-enforced-not-reviewed.md).
 
 | الفحص | القاعدة | من أين يُشتقّ سجلّه | أين تُضيف |
 |---|---|---|---|

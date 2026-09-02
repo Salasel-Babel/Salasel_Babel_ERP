@@ -43,7 +43,7 @@ import {
 } from "./parts";
 
 /** ما يُقرأ بمعرّف في هذه الشاشة — بابا العقار ووحدته. والطرفان لهما شاشتهما
-    (`/realestate/parties`) منذ ADR-جديد: أربعةُ نماذج كتابةٍ في صفحةٍ واحدة
+    (`/realestate/parties`) منذ ADR-0080: أربعةُ نماذج كتابةٍ في صفحةٍ واحدة
     ضِعفُ الحدّ الذي وضعه ADR-0077، والوحدةُ تُنشأ **تحت** عقار والطرفُ لا. */
 const LOOKUPS = ["property", "unit"] as const;
 type Lookup = (typeof LOOKUPS)[number];

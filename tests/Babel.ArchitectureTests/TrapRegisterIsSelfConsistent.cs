@@ -351,6 +351,81 @@ public sealed partial class TrapRegisterIsSelfConsistent
     }
 
     /// <summary>
+    /// <b>نائبٌ يشير إلى مرساةٍ مرقَّمة هو بائتٌ بالبناء.</b>
+    /// <para>
+    /// <b>العطل:</b> نجا في <c>traps.md</c> سطرُ نثرٍ يقول
+    /// نصُّ رابطٍ يقول «فخ-جديد» وهدفُه مرساةُ المفتاح <c>a-remedy-that-is-a-list-is-not-a-remedy</c>
+    /// بينما الفخّ نفسه صار <b>فخ-151</b> منذ إنزاله. فالقارئ يقرأ «جديد» عن فخٍّ مرقَّم
+    /// من أسابيع.
+    /// </para>
+    /// <para>
+    /// <b>ولماذا لم يره حارس:</b> الفحوص القائمة — هنا وفي <c>ci.yml</c> — تفحص
+    /// <b>العنوان</b> (<c>### فخ-جديد — …</c>) و<b>صفّ الفهرس</b>
+    /// (صفٌّ نصُّه النائبُ وهدفُه مرساة) وحدهما، لأن التخصيص يقع فيهما. والإشارة النثرية
+    /// ليست عنواناً ولا صفّاً، فلا يراها شيء. و<see cref="EveryTrapReferenceInTheRepositoryResolves"/>
+    /// يشترط أرقاماً في نمطه فلا يلتقط النائب أصلاً.
+    /// </para>
+    /// <para>
+    /// <b>والقاعدة هنا بنيويّة لا قائمة:</b> لا تُعدَّد المواضع التي قد يظهر فيها النائب —
+    /// وهي غير محصورة — بل يُقاس <b>التناقض نفسه</b>: نصُّ الرابط يقول «بلا رقم» وهدفُه
+    /// مفتاحٌ <b>له رقمٌ في السجلّ</b>. والحكم يعمل في أيّ ملفّ وأيّ سياق، ولا يهزمه موضعٌ
+    /// لم يخطر لأحد.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void NoPlaceholderPointsAtAnAlreadyNumberedTrap()
+    {
+        Register register = Parsed.Value;
+        Dictionary<string, int> numbered = register.Traps
+            .Where(static trap => trap.Number is not null)
+            .ToDictionary(static trap => trap.Slug, static trap => trap.Number!.Value, StringComparer.Ordinal);
+
+        List<string> stale = [];
+        int filesScanned = 0;
+
+        foreach (string path in TextFiles())
+        {
+            filesScanned++;
+            string relative = Path.GetRelativePath(RepositoryLayout.Root, path).Replace('\\', '/');
+
+            foreach (Match match in PlaceholderPointingAtAnAnchor().Matches(File.ReadAllText(path)))
+            {
+                string slug = match.Groups["slug"].Value;
+                if (numbered.TryGetValue(slug, out int number))
+                {
+                    stale.Add(FormattableString.Invariant(
+                        $"{relative}: «فخ-جديد» يشير إلى `{slug}` وهو فخ-{number:00} منذ إنزاله"));
+                }
+            }
+        }
+
+        Assert.True(
+            stale.Count == 0,
+            "إشاراتٌ بائتة — النائب باقٍ والمفتاح مرقَّم: " + string.Join(" · ", stale)
+                + " — استبدل «فخ-جديد» برقمه (docs/evidence/traps.md §0.0).");
+
+        // حارسا لافراغ: نطاقٌ انكسر، أو سجلٌّ ضامر، يجعلان الفحص أعلاه يمرّ على لا شيء.
+        Assert.True(filesScanned >= 50, FormattableString.Invariant($"مُسح {filesScanned} ملفّاً فقط — النطاق انكسر"));
+        Assert.True(numbered.Count >= MinimumTrapCount, FormattableString.Invariant($"قُرئ {numbered.Count} فخّاً مرقَّماً فقط — المُحلِّل ضامر"));
+
+        // الأمثلة تُركَّب ولا تُكتب حرفاً: مرساةٌ مكتوبةٌ في مصدرٍ يمسحه
+        // EveryTrapReferenceInTheRepositoryResolves تصير هي نفسها إشارةً معلّقة — ومسحُه
+        // يشمل ملفّات الاختبار، فحارسٌ يُثبت نفسه بمثالٍ حرفيّ يكسر حارساً آخر.
+        const string anchor = "(#" + "fakh-" + "sample-key)";
+        Assert.Matches(PlaceholderPointingAtAnAnchor(), "([فخ-جديد · `sample-key`]" + anchor + ")");
+        Assert.Matches(PlaceholderPointingAtAnAnchor(), "| [فخ-جديد]" + anchor + " |");
+        Assert.DoesNotMatch(PlaceholderPointingAtAnAnchor(), "[فخ-151]" + anchor);
+        Assert.DoesNotMatch(PlaceholderPointingAtAnAnchor(), "### فخ-جديد — عنوان · `sample-key`");
+    }
+
+    /// <summary>
+    /// نائبٌ داخل نصّ رابطٍ هدفُه مرساةُ فخّ. التقاطُه لا يعني عطلاً بذاته — العطل أن
+    /// يكون المفتاح <b>مرقَّماً</b>، وذلك يُقرَّر من السجلّ لا من النمط.
+    /// </summary>
+    [GeneratedRegex(@"\[[^\]\n]*فخ-جديد[^\]\n]*\]\(#fakh-(?<slug>[a-z0-9][a-z0-9-]*)\)", RegexOptions.CultureInvariant)]
+    private static partial Regex PlaceholderPointingAtAnAnchor();
+
+    /// <summary>
     /// حارس لافراغ الأنماط نفسها: يُثبت أن الصيغ الثلاث تُلتقَط فعلاً، وأن
     /// <c>فخ-9f3a1c</c> لا يُقرأ رقماً. نمطٌ توقّف عن المطابقة يجعل كل ما فوقه يمرّ فارغاً.
     /// </summary>

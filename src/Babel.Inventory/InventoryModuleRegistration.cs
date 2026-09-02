@@ -33,6 +33,7 @@ public static class InventoryModuleRegistration
         services.AddScoped<StockMovementService>();
         services.AddScoped<InventoryValuationService>();
         services.AddScoped<ItemCatalogueService>();
+        services.AddScoped<WarehouseCatalogueService>();
         services.AddScoped<StockDocumentService>();
 
         // السطح المنشور: النوع الوحيد من هذه الوحدة الذي يجوز لسطح HTTP أن يسمّيه

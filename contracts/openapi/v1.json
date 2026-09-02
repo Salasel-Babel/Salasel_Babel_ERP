@@ -14263,6 +14263,777 @@
         }
       }
     },
+    "/api/v1/companies/{companyId}/warehouses": {
+      "parameters": [
+        {
+          "name": "companyId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "listWarehouses",
+        "summary": "قراءة المستودعات / List the warehouses",
+        "description": "يقرأ مستودعات المنشأة مرتَّبةً بالرمز **ترتيباً حرفياً ثابتاً** — لا ثقافياً يختلف بين tr-TR و en-US على الحروف نفسها.\n\n**والمعطَّل يخرج في القائمة موسوماً بـisActive = false، ولا يُخفى**: إخفاؤه يترك رصيداً قائماً بلا مستودعٍ يفسّره في الشاشة، وهو أسوأ من صفٍّ مكتوب عليه «معطَّل». نقطة قراءة: تعمل والاشتراك للقراءة فقط.\n\nLists the company's warehouses ordered by code in a **stable ordinal order** — not a cultural one that differs between tr-TR and en-US on the same letters.\n\n**A deactivated warehouse appears in the list flagged isActive = false and is never hidden**: hiding it leaves a standing balance with no warehouse to explain it on the screen, which is worse than a row marked 'deactivated'. A read point: it works while the subscription is read-only.",
+        "responses": {
+          "200": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WarehouseList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "addWarehouse",
+        "summary": "تسجيل مستودع / Register a warehouse",
+        "description": "يسجّل مستودعاً: رمزه، واسمه العربي سجلّاً وترجماته صفوفاً، و**مؤهّل دوره**.\n\n**والرمز هو النصّ الذي تحمله كل حركةٍ ورصيد** في هذه المنشأة، حرفاً بحرف. وقبل هذا المورد كان `warehouseId` عمود نصٍّ حرّ بلا كتالوج ولا تحقّق: خطأ إملائي واحد — WH-O1 بحرف O مكان الصفر — يفتح **رصيداً خامساً** يُطابَق تماماً ويحمل قيمةً حقيقية لا يعرف أحدٌ أين هي، لأن المطابقة تجمع الحركات والأرصدة على المفتاح نفسه فيتوازن الخطأ مع نفسه.\n\n**ولا رمز حساب هنا**: qualifier مؤهّل دور — «صنف المستودع» في مصفوفة الترحيل — وخريطة الأدوار وحدها تُحوّله إلى حساب. ويُقبل فارغاً: مستودعٌ بلا صنفٍ خاص واقعةٌ شائعة، وإلزامه كان سيدفع من لا صنف عنده إلى اختراع واحد.\n\n**ولاحظ ما ليس على هذا المورد: لا تعديل ولا حذف.** تغييرُ الرمز يُيتّم كل صفٍّ تاريخي يحمله على جدولٍ لا مسار UPDATE إليه، والانصراف عن مستودع يكون بتعطيله. **وتعديل الاسم والمؤهّل نقصُ سطحٍ مُعلَن** في هذه الدفعة، لا قرار منع.\n\nو`origin` يخرج DECLARED على ما يُسجَّل من هنا: ما رُصد نصّاً في بياناتٍ سابقة يخرج OBSERVED واسمه رمزُه، والشاشة تعرف الفرق فتسأل عن اسمٍ حقيقي بدل أن تبدو ككتالوجٍ مكتوب.\n\nRegisters a warehouse: its code, its Arabic name as the record with translations as rows, and **its role qualifier**.\n\n**The code is the text every movement and balance in this company carries**, character for character. Before this resource, `warehouseId` was a free-text column with no catalogue and no check: one typo — WH-O1 with a letter O instead of a zero — opens a **fifth balance bucket** that reconciles perfectly and holds real value nobody can locate, because reconciliation sums movements and balances on the same key, so the mistake balances against itself.\n\n**No account code appears here**: qualifier is a role qualifier — the posting matrix's 'warehouse class' — and the role map alone turns it into an account. It is accepted empty: a warehouse with no particular class is common, and requiring one would push whoever has none into inventing one.\n\n**Note what this resource does not carry: no update and no delete.** Changing the code orphans every historical row that carries it on a table with no UPDATE path, and retiring a warehouse is done by deactivating it. **Editing the name and the qualifier is a declared surface gap** in this batch, not a prohibition.\n\n`origin` comes back DECLARED for anything registered here; what was observed as text in earlier data comes back OBSERVED with its code as its name, and the screen knows the difference so it asks for a real name instead of looking like a catalogue somebody wrote.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WarehouseRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Warehouse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "الجسم لا يطابق العقد: حقل غير معروف، أو مبلغ وصل رمزاً رقمياً، أو صيغة مرفوضة. / The body does not match the contract: an unknown field, an amount that arrived as a number token, or a refused spelling.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "تعارض مع حالة قائمة: فترة مقفلة، أو قيد معكوس من قبل. / Conflict with existing state: a closed period, or an already-reversed entry.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "الطلب مفهوم ومرفوض محاسبياً: قيد غير متوازن، أو دور لا يُحلّ إلى حساب. / Understood and refused on accounting grounds: an unbalanced entry, or a role that resolves to no account.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/companies/{companyId}/warehouses/{warehouseId}": {
+      "parameters": [
+        {
+          "name": "companyId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "warehouseId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف المستودع — **وهو غير رمزه**: الرمز هو ما تحمله كل حركةٍ ورصيد، والمعرّف عنوانٌ على هذا السطح. / The warehouse identifier — **it is not its code**: the code is what every movement and balance carries, while the identifier is an address on this surface.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "readWarehouse",
+        "summary": "قراءة مستودع / Read one warehouse",
+        "description": "يقرأ مستودعاً واحداً بمؤهّل دوره وحالته ومنشأ اسمه.\n\nReads a single warehouse with its role qualifier, its state, and the origin of its name.",
+        "responses": {
+          "200": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Warehouse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "المورد غير موجود داخل نطاق هذه الشركة. / The resource does not exist within this company's scope.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/companies/{companyId}/warehouses/{warehouseId}/activation": {
+      "parameters": [
+        {
+          "name": "companyId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "warehouseId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف المستودع — **وهو غير رمزه**: الرمز هو ما تحمله كل حركةٍ ورصيد، والمعرّف عنوانٌ على هذا السطح. / The warehouse identifier — **it is not its code**: the code is what every movement and balance carries, while the identifier is an address on this surface.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "activateWarehouse",
+        "summary": "إعادة تفعيل مستودع / Reactivate a warehouse",
+        "description": "يُعيد تفعيل مستودع معطَّل فتُقبل عليه المسوّدات من جديد. ولا أثر لهذا الباب على رصيد ولا حركة: التعطيل لم يمسّهما أصلاً.\n\nReactivates a deactivated warehouse so drafts are accepted against it again. This door has no effect on any balance or movement: deactivation never touched them.",
+        "responses": {
+          "200": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Warehouse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "المورد غير موجود داخل نطاق هذه الشركة. / The resource does not exist within this company's scope.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/companies/{companyId}/warehouses/{warehouseId}/deactivation": {
+      "parameters": [
+        {
+          "name": "companyId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "warehouseId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف المستودع — **وهو غير رمزه**: الرمز هو ما تحمله كل حركةٍ ورصيد، والمعرّف عنوانٌ على هذا السطح. / The warehouse identifier — **it is not its code**: the code is what every movement and balance carries, while the identifier is an address on this surface.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "deactivateWarehouse",
+        "summary": "تعطيل مستودع / Deactivate a warehouse",
+        "description": "يُعطّل مستودعاً: **يمنع المسوّدات الجديدة عليه، ولا يمسّ رصيداً ولا حركةً ولا تاريخاً**. أرصدته تُقرأ وتُطابَق وتُقفَل كما كانت، وحركاته المُرحَّلة تبقى في المطابقة الثلاثية بلا فرق.\n\n**ويُرفض ما دامت فيه بضاعة، والرفض يُسمّي الصفوف التي تحملها** بالشكل نفسه الذي يطبعه رفض إقفال الفترة — `صنف @ مستودع/موقع` — لأن التعطيل يغلق كل باب مستندٍ يُخرجها، فتبقى قيمةٌ في الميزانية بلا مخرج. والشرط «كمّية أو قيمة» لا «كمّية وقيمة»: رصيدٌ بكمّية صفر وقيمةٍ غير صفرية واقعةٌ مسجّلة، وإخفاء مكانه يُخفي رقماً في الميزانية.\n\n**ولا حذف على هذا المورد بأي حال**: الرمز هوية تحملها حركات سنةٍ مضت.\n\nDeactivates a warehouse: **it blocks new drafts against it and touches no balance, no movement and no history**. Its balances are still read, reconciled and closed, and its posted movements stay in the three-way reconciliation unchanged.\n\n**It is refused while the warehouse holds stock, and the refusal names the rows that hold it** in the same shape the period-close refusal prints — `item @ warehouse/location` — because deactivation closes every document path that could empty it, leaving a balance-sheet figure with no way out. The condition is 'quantity or value', not 'quantity and value': a balance with zero quantity and non-zero value is a recorded fact, and hiding its place hides a figure on the balance sheet.\n\n**There is no delete on this resource under any circumstances**: the code is an identity carried by last year's movements.",
+        "responses": {
+          "200": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Warehouse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "المورد غير موجود داخل نطاق هذه الشركة. / The resource does not exist within this company's scope.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "تعارض مع حالة قائمة: المستند ليس في الحالة التي يقبلها هذا الفعل، أو الفترة مقفلة. / Conflict with existing state: the document is not in a state this act accepts, or the period is closed.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/companies/{companyId}/warehouses/{warehouseId}/locations": {
+      "parameters": [
+        {
+          "name": "companyId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "warehouseId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف المستودع — **وهو غير رمزه**: الرمز هو ما تحمله كل حركةٍ ورصيد، والمعرّف عنوانٌ على هذا السطح. / The warehouse identifier — **it is not its code**: the code is what every movement and balance carries, while the identifier is an address on this surface.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "listLocations",
+        "summary": "قراءة مواقع مستودع / List a warehouse's locations",
+        "description": "يقرأ مواقع مستودعٍ واحد مرتَّبةً بالرمز ترتيباً حرفياً ثابتاً — العاملة والمعطَّلة معاً.\n\nو**DEFAULT موقعٌ مسجَّل في كل مستودع** لا اصطلاحاً في الشيفرة: هجرة المخزون 001 كتبته في كل حركةٍ ورصيدٍ سابق، وهذه الدفعة تجعله شيئاً موجوداً يُقرأ ويُسمّى ويُعطَّل.\n\nLists a single warehouse's locations ordered by code in a stable ordinal order — active and deactivated alike.\n\n**DEFAULT is a registered location in every warehouse**, not a convention in code: inventory migration 001 wrote it into every earlier movement and balance, and this batch makes it a thing that exists — one that can be read, named and deactivated.",
+        "responses": {
+          "200": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocationList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "المورد غير موجود داخل نطاق هذه الشركة. / The resource does not exist within this company's scope.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "addLocation",
+        "summary": "تسجيل موقع في مستودع / Register a location within a warehouse",
+        "description": "يسجّل موقعاً داخل مستودع. **مورد فرعي لا مورد رئيسي**: رمزُ موقعٍ بلا مستودعه ليس هوية، و«A-01» في مستودعين موقعان لا موقع — وهو ما يقوله مفتاح الرصيد الرباعي (منشأة · صنف · مستودع · موقع) حرفياً. فالاشتراط بنيةٌ في العنوان لا تحقّقٌ في الجسم، ولا مسار تحقّقٍ يمكن أن يتخطّاه.\n\n**ومستوى واحد لا شجرة**: `locationId` في مفتاح الرصيد عمودٌ مفرد، فمستوىً واحد هو ما يحمله المفتاح. وسؤال «أمستوى واحد أم شجرة؟» سؤالٌ مفتوح على المالك، ولا يُجاب هنا باختراع أب.\n\nويُرفض على مستودعٍ معطَّل: موقعٌ جديد في مكانٍ لا يُقبل عليه مستند لا يُستعمل أبداً.\n\nRegisters a location within a warehouse. **A sub-resource, not a top-level one**: a location code without its warehouse is not an identity, and 'A-01' in two warehouses is two locations, not one — which is exactly what the four-part balance key (company, item, warehouse, location) says. The requirement is structural in the address rather than a check in the body, so no validation path can skip it.\n\n**One level, not a tree**: `locationId` is a single column in the balance key, so one level is what the key holds. Whether binning is one level or a tree is an open question for the owner, and it is not answered here by inventing a parent.\n\nIt is refused against a deactivated warehouse: a new location in a place that accepts no document would never be used.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Location"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "الجسم لا يطابق العقد: حقل غير معروف، أو مبلغ وصل رمزاً رقمياً، أو صيغة مرفوضة. / The body does not match the contract: an unknown field, an amount that arrived as a number token, or a refused spelling.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "تعارض مع حالة قائمة: فترة مقفلة، أو قيد معكوس من قبل. / Conflict with existing state: a closed period, or an already-reversed entry.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "الطلب مفهوم ومرفوض محاسبياً: قيد غير متوازن، أو دور لا يُحلّ إلى حساب. / Understood and refused on accounting grounds: an unbalanced entry, or a role that resolves to no account.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "المورد غير موجود داخل نطاق هذه الشركة. / The resource does not exist within this company's scope.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/companies/{companyId}/warehouses/{warehouseId}/locations/{locationId}/activation": {
+      "parameters": [
+        {
+          "name": "companyId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "warehouseId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف المستودع — **وهو غير رمزه**: الرمز هو ما تحمله كل حركةٍ ورصيد، والمعرّف عنوانٌ على هذا السطح. / The warehouse identifier — **it is not its code**: the code is what every movement and balance carries, while the identifier is an address on this surface.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "locationId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الموقع. وهويّته زوجٌ — المستودع ورمزُه — فمعرّفٌ في مستودعٍ آخر لا يُقبل على هذا المسار. / The location identifier. Its identity is a pair — its warehouse and its code — so an identifier belonging to another warehouse is refused on this path.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "activateLocation",
+        "summary": "إعادة تفعيل موقع / Reactivate a location",
+        "description": "يُعيد تفعيل موقع معطَّل داخل مستودعه فتُقبل عليه المسوّدات من جديد.\n\nReactivates a deactivated location within its warehouse so drafts are accepted against it again.",
+        "responses": {
+          "200": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Location"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "المورد غير موجود داخل نطاق هذه الشركة. / The resource does not exist within this company's scope.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/companies/{companyId}/warehouses/{warehouseId}/locations/{locationId}/deactivation": {
+      "parameters": [
+        {
+          "name": "companyId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "warehouseId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف المستودع — **وهو غير رمزه**: الرمز هو ما تحمله كل حركةٍ ورصيد، والمعرّف عنوانٌ على هذا السطح. / The warehouse identifier — **it is not its code**: the code is what every movement and balance carries, while the identifier is an address on this surface.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "locationId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الموقع. وهويّته زوجٌ — المستودع ورمزُه — فمعرّفٌ في مستودعٍ آخر لا يُقبل على هذا المسار. / The location identifier. Its identity is a pair — its warehouse and its code — so an identifier belonging to another warehouse is refused on this path.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "deactivateLocation",
+        "summary": "تعطيل موقع / Deactivate a location",
+        "description": "يُعطّل موقعاً داخل مستودعه: يمنع المسوّدات الجديدة عليه ولا يمسّ رصيده. ويُرفض ما دامت فيه بضاعة، والرفض يُسمّي الأصناف التي تحملها.\n\n**والزوج هو الهوية**: موقعٌ بهذا المعرّف في مستودعٍ آخر ليس موقع هذا المسار، ويُرفض بـ`inventory.location_not_in_warehouse` بدل أن يُعمَل على الصفّ الخطأ.\n\nDeactivates a location within its warehouse: it blocks new drafts against it and touches no balance. It is refused while the location holds stock, and the refusal names the items that hold it.\n\n**The pair is the identity**: a location with this identifier in another warehouse is not this path's location, and it is refused with `inventory.location_not_in_warehouse` rather than acted on by mistake.",
+        "responses": {
+          "200": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Location"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "المورد غير موجود داخل نطاق هذه الشركة. / The resource does not exist within this company's scope.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "تعارض مع حالة قائمة: المستند ليس في الحالة التي يقبلها هذا الفعل، أو الفترة مقفلة. / Conflict with existing state: the document is not in a state this act accepts, or the period is closed.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/session": {
       "get": {
         "operationId": "readSession",
@@ -19415,6 +20186,113 @@
         ],
         "additionalProperties": false
       },
+      "Location": {
+        "type": "object",
+        "description": "موقعٌ داخل مستودع — **مستوى واحد لا شجرة**، لأن locationId في مفتاح الرصيد عمودٌ مفرد. / A location within a warehouse — **one level, not a tree**, because locationId is a single column in the balance key.",
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "رمز الموقع. / The location code."
+          },
+          "id": {
+            "type": "string",
+            "maxLength": 36,
+            "description": "المعرّف. / The identifier."
+          },
+          "isActive": {
+            "type": "boolean",
+            "description": "هل يُقبل موقعاً لمسوّدةٍ جديدة؟ / Whether new drafts are accepted against it."
+          },
+          "nameAr": {
+            "type": "string",
+            "maxLength": 256,
+            "description": "الاسم العربي. / The Arabic name."
+          },
+          "nameTranslations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NameValue"
+            },
+            "description": "ترجمات الاسم. / The name's translations."
+          },
+          "origin": {
+            "type": "string",
+            "enum": [
+              "DECLARED",
+              "OBSERVED"
+            ],
+            "description": "من أين جاء هذا الاسم — DECLARED أو OBSERVED. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / Where this name came from — DECLARED or OBSERVED. Matched literally and case-sensitively; a number is never accepted in place of a name."
+          },
+          "warehouseCode": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "رمز المستودع المالك — **وهوية الموقع هي الزوج**: «A-01» في مستودعين موقعان لا موقع. / The owning warehouse's code — **the location's identity is the pair**: 'A-01' in two warehouses is two locations, not one."
+          }
+        },
+        "required": [
+          "code",
+          "id",
+          "isActive",
+          "nameAr",
+          "nameTranslations",
+          "origin",
+          "warehouseCode"
+        ],
+        "additionalProperties": false
+      },
+      "LocationList": {
+        "type": "object",
+        "description": "مواقع مستودعٍ واحد مرتَّبة بالرمز — العاملة والمعطَّلة معاً. / One warehouse's locations ordered by code — active and deactivated alike.",
+        "properties": {
+          "locationCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2147483647,
+            "description": "عددها. / How many there are."
+          },
+          "locations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Location"
+            },
+            "description": "المواقع. / The locations."
+          }
+        },
+        "required": [
+          "locationCount",
+          "locations"
+        ],
+        "additionalProperties": false
+      },
+      "LocationRequest": {
+        "type": "object",
+        "description": "طلب تسجيل موقع داخل مستودع. **ولا حقل مستودع في الجسم**: المستودع في المسار، لأن رمز موقعٍ بلا مستودعه ليس هوية. / A location registration request within a warehouse. **No warehouse field in the body**: the warehouse is in the path, because a location code without its warehouse is not an identity.",
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "رمز الموقع — فريدٌ **داخل مستودعه** لا عبر المنشأة، وهو النصّ الذي تحمله الحركة في locationId. / The location code — unique **within its warehouse**, not across the company; it is the text a movement carries in locationId."
+          },
+          "nameAr": {
+            "type": "string",
+            "maxLength": 256,
+            "description": "اسم الموقع بالعربية — السجلّ. / The location's Arabic name — the record."
+          },
+          "nameTranslations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NameValue"
+            },
+            "description": "ترجمات الاسم. / The name's translations."
+          }
+        },
+        "required": [
+          "code",
+          "nameAr"
+        ],
+        "additionalProperties": false
+      },
       "Magnitude": {
         "type": "string",
         "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,6})?$",
@@ -23177,6 +24055,119 @@
           "nameAr",
           "usage",
           "vatTreatment"
+        ],
+        "additionalProperties": false
+      },
+      "Warehouse": {
+        "type": "object",
+        "description": "مستودعٌ كما يخرج على السلك، بحالته ومنشأ اسمه. / A warehouse as it leaves on the wire, with its state and the origin of its name.",
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "الرمز — وهو ما تحمله الحركات والأرصدة. / The code — what movements and balances carry."
+          },
+          "id": {
+            "type": "string",
+            "maxLength": 36,
+            "description": "المعرّف الذي تُبنى عليه القراءة. / The identifier reads are built on."
+          },
+          "isActive": {
+            "type": "boolean",
+            "description": "هل يُقبل مستودعاً لمسوّدةٍ جديدة؟ والمعطَّل يبقى في القائمة موسوماً، وأرصدته تُقرأ وتُطابَق وتُقفَل كما هي. / Whether new drafts are accepted against it. A deactivated warehouse stays in the list flagged, and its balances are still read, reconciled and closed."
+          },
+          "nameAr": {
+            "type": "string",
+            "maxLength": 256,
+            "description": "الاسم العربي — السجلّ. / The Arabic name — the record."
+          },
+          "nameTranslations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NameValue"
+            },
+            "description": "ترجمات الاسم. / The name's translations."
+          },
+          "origin": {
+            "type": "string",
+            "enum": [
+              "DECLARED",
+              "OBSERVED"
+            ],
+            "description": "من أين جاء هذا الاسم: DECLARED كتبه إنسان · OBSERVED رُصد نصّاً في حركةٍ أو رصيدٍ مضى واسمُه رمزُه. والفرق ليس زينة: شاشةٌ تعرض الثاني بلا وسمٍ تبدو ككتالوجٍ مكتوب وهي صدى نصٍّ وُجد في البيانات. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / Where this name came from: DECLARED means a person wrote it; OBSERVED means it was found as text in an earlier movement or balance and its name is its code. The distinction is not decoration: a screen that shows the second unflagged looks like a catalogue somebody wrote when it is an echo of text found in the data. Matched literally and case-sensitively; a number is never accepted in place of a name."
+          },
+          "qualifier": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "مؤهّل الدور — لا رقم حساب. / The role qualifier — not an account code."
+          }
+        },
+        "required": [
+          "code",
+          "id",
+          "isActive",
+          "nameAr",
+          "nameTranslations",
+          "origin",
+          "qualifier"
+        ],
+        "additionalProperties": false
+      },
+      "WarehouseList": {
+        "type": "object",
+        "description": "مستودعات المنشأة — العاملة والمعطَّلة معاً — مرتَّبة بالرمز ترتيباً حرفياً ثابتاً. **وغلافٌ لا مصفوفة عارية**. / The company's warehouses — active and deactivated alike — ordered by code in a stable ordinal order. **An envelope, not a bare array.**",
+        "properties": {
+          "warehouses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Warehouse"
+            },
+            "description": "المستودعات. / The warehouses."
+          },
+          "warehouseCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2147483647,
+            "description": "عددها. / How many there are."
+          }
+        },
+        "required": [
+          "warehouseCount",
+          "warehouses"
+        ],
+        "additionalProperties": false
+      },
+      "WarehouseRequest": {
+        "type": "object",
+        "description": "طلب تسجيل مستودع. **ولا رقم حساب فيه**: qualifier مؤهّل دور تقرؤه خريطة الأدوار في مصفوفة الترحيل، والوحدة لا تعرف حساباً ولا تذكره. / A warehouse registration request. **No account code appears in it**: qualifier is a role qualifier read by the posting matrix's role map, and the module neither knows nor names an account.",
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "رمز المستودع — **وهو النصّ الذي تحمله كل حركةٍ ورصيد** حرفاً بحرف، فلا يُغيَّر بعد أول حركة. / The warehouse code — **the text every movement and balance carries**, character for character, so it is never changed after the first movement."
+          },
+          "nameAr": {
+            "type": "string",
+            "maxLength": 256,
+            "description": "اسم المستودع بالعربية — السجلّ. / The warehouse's Arabic name — the record."
+          },
+          "nameTranslations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NameValue"
+            },
+            "description": "ترجمات الاسم. / The name's translations."
+          },
+          "qualifier": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "صنف المستودع — مؤهّل دور لا رقم حساب، ونصٌّ فارغ لمن لا صنف له. / The warehouse class — a role qualifier, not an account code; an empty string for a warehouse with none."
+          }
+        },
+        "required": [
+          "code",
+          "nameAr",
+          "qualifier"
         ],
         "additionalProperties": false
       },

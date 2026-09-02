@@ -651,33 +651,7 @@ internal static class RealEstateMapping
     /// الإنجليزية واحدة من N (ADR-0021).
     /// </summary>
     private static TranslatedName Name(string arabic, IReadOnlyList<NameValueDto>? translations)
-    {
-        string record = WireMapping.ReadRequiredText(arabic, "nameAr", NameLength);
-        Dictionary<string, string> map = new(StringComparer.Ordinal);
-
-        foreach (NameValueDto entry in translations ?? [])
-        {
-            if (map.ContainsKey(entry.Name))
-            {
-                throw WireNumbers.Reject(
-                    "wire.body.repeated",
-                    "nameTranslations",
-                    "ترجمة مكرَّرة للوسم «" + entry.Name + "».",
-                    "A repeated translation for the tag '" + entry.Name + "'.");
-            }
-
-            map[entry.Name] = WireMapping.ReadRequiredText(entry.Value, "nameTranslations", NameLength);
-        }
-
-        try
-        {
-            return new TranslatedName(record, map);
-        }
-        catch (ArgumentException exception)
-        {
-            throw WireNumbers.Reject("wire.body.malformed", "nameTranslations", exception.Message, exception.Message);
-        }
-    }
+        => WireMapping.ReadTranslated(arabic, translations, "nameAr", "nameTranslations", NameLength);
 
     private static string Field(string collection, int index)
         => string.Create(CultureInfo.InvariantCulture, $"{collection}[{index}]");

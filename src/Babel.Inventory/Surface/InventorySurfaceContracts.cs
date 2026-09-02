@@ -156,3 +156,54 @@ public sealed record InventoryValuationReport(
     decimal Divergence,
     bool IsReconciled,
     IReadOnlyList<InventoryDivergence> Divergences);
+
+/// <summary>
+/// طلب تسجيل مستودع.
+/// <para>
+/// <b>و<paramref name="Qualifier"/> مؤهّل دور لا رقم حساب</b> (القاعدة 3): مصفوفة
+/// الترحيل تعرّف مؤهّل <c>inventory_control</c> بأنه «مجموعة الصنف أو صنف المستودع»،
+/// وخريطة الأدوار وحدها تُحوّله إلى حساب.
+/// </para>
+/// </summary>
+/// <param name="Code">رمز المستودع — <b>هو النصّ الذي تحمله كل حركةٍ ورصيد</b>، ولا يُغيَّر.</param>
+/// <param name="Name">الاسم العربي سجلّاً وترجماته صفوفاً.</param>
+/// <param name="Qualifier">صنف المستودع — مؤهّل دور، وفراغُه مشروع.</param>
+public sealed record InventoryWarehouseRequest(string Code, TranslatedName Name, string Qualifier);
+
+/// <summary>مستودع كما يخرج من السطح.</summary>
+/// <param name="Id">المعرّف.</param>
+/// <param name="Code">الرمز.</param>
+/// <param name="Name">الاسم وترجماته.</param>
+/// <param name="Qualifier">مؤهّل الدور.</param>
+/// <param name="Origin">
+/// ‏<c>DECLARED</c> كتبه إنسان · <c>OBSERVED</c> رُصد نصّاً في حركةٍ أو رصيدٍ مضى واسمه
+/// رمزُه. والفرق ليس زينة: شاشةٌ تعرض الثاني بلا وسمٍ تبدو ككتالوجٍ مكتوب وهي صدى.
+/// </param>
+/// <param name="IsActive">هل يُقبل مستودعاً لمسوّدةٍ جديدة؟</param>
+public sealed record InventoryWarehouse(
+    Guid Id,
+    string Code,
+    TranslatedName Name,
+    string Qualifier,
+    string Origin,
+    bool IsActive);
+
+/// <summary>طلب تسجيل موقع داخل مستودع.</summary>
+/// <param name="Code">رمز الموقع — فريدٌ <b>داخل مستودعه</b> لا عبر المنشأة.</param>
+/// <param name="Name">الاسم العربي سجلّاً وترجماته صفوفاً.</param>
+public sealed record InventoryLocationRequest(string Code, TranslatedName Name);
+
+/// <summary>موقع كما يخرج من السطح.</summary>
+/// <param name="Id">المعرّف.</param>
+/// <param name="WarehouseCode">رمز المستودع المالك — <b>وهوية الموقع هي الزوج</b>.</param>
+/// <param name="Code">رمز الموقع.</param>
+/// <param name="Name">الاسم وترجماته.</param>
+/// <param name="Origin">‏<c>DECLARED</c> أو <c>OBSERVED</c>.</param>
+/// <param name="IsActive">هل يُقبل موقعاً لمسوّدةٍ جديدة؟</param>
+public sealed record InventoryLocation(
+    Guid Id,
+    string WarehouseCode,
+    string Code,
+    TranslatedName Name,
+    string Origin,
+    bool IsActive);

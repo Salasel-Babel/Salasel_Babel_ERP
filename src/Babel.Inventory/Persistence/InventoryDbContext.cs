@@ -31,6 +31,14 @@ internal sealed class InventoryDbContext(DbContextOptions<InventoryDbContext> op
 
     public DbSet<InventoryPostingRow> Postings => Set<InventoryPostingRow>();
 
+    public DbSet<WarehouseRow> Warehouses => Set<WarehouseRow>();
+
+    public DbSet<LocationRow> Locations => Set<LocationRow>();
+
+    public DbSet<WarehouseTranslationRow> WarehouseNames => Set<WarehouseTranslationRow>();
+
+    public DbSet<LocationTranslationRow> LocationNames => Set<LocationTranslationRow>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);
@@ -172,6 +180,63 @@ internal sealed class InventoryDbContext(DbContextOptions<InventoryDbContext> op
             entity.ToTable(table => table.HasCheckConstraint(
                 "ck_inventory_stock_document_magnitude_positive",
                 """ "Magnitude" > 0 """));
+        });
+
+        // ── كتالوج المستودعات والمواقع ───────────────────────────────────────
+        // ‏**ولا مفتاح خارجي منهما ولا إليهما.** عمودا `WarehouseId` و`LocationId` في
+        // الحركة والرصيد نصّان حرّان مُلئا قبل وجود هذا الكتالوج، ومفتاحٌ خارجي
+        // يُصادق الجدول كلّه لحظة إنشائه فيُحوّل خطأً إملائياً تاريخياً إلى هجرةٍ
+        // ساقطة لا شيء يُصلحها على دفترٍ يُضاف إليه فقط. الوجود يُفرَض عند إنشاء
+        // المسوّدة، لا في القاعدة.
+        modelBuilder.Entity<WarehouseRow>(entity =>
+        {
+            entity.ToTable("warehouse");
+            entity.HasKey(row => row.Id);
+            entity.Property(row => row.Code).HasMaxLength(64).IsRequired();
+            entity.Property(row => row.NameAr).HasMaxLength(256).IsRequired();
+            entity.Property(row => row.Qualifier).HasMaxLength(64).IsRequired().HasDefaultValue(string.Empty);
+            entity.Property(row => row.Origin).HasMaxLength(16).IsRequired();
+            entity.Property(row => row.IsActive).HasDefaultValue(true);
+            entity.HasIndex(row => new { row.TenantId, row.Code })
+                  .IsUnique().HasDatabaseName("uq_inventory_warehouse_code");
+        });
+
+        modelBuilder.Entity<LocationRow>(entity =>
+        {
+            entity.ToTable("location");
+            entity.HasKey(row => row.Id);
+            entity.Property(row => row.WarehouseCode).HasMaxLength(64).IsRequired();
+            entity.Property(row => row.Code).HasMaxLength(64).IsRequired();
+            entity.Property(row => row.NameAr).HasMaxLength(256).IsRequired();
+            entity.Property(row => row.Origin).HasMaxLength(16).IsRequired();
+            entity.Property(row => row.IsActive).HasDefaultValue(true);
+
+            // **الزوج هو المفتاح** — رمز موقعٍ واحد في مستودعين موقعان لا موقع.
+            entity.HasIndex(row => new { row.TenantId, row.WarehouseCode, row.Code })
+                  .IsUnique().HasDatabaseName("uq_inventory_location");
+        });
+
+        modelBuilder.Entity<WarehouseTranslationRow>(entity =>
+        {
+            entity.ToTable("warehouse_name_translation");
+            entity.HasKey(row => row.Id);
+            entity.Property(row => row.WarehouseCode).HasMaxLength(64).IsRequired();
+            entity.Property(row => row.LanguageTag).HasMaxLength(35).IsRequired();
+            entity.Property(row => row.Text).HasMaxLength(256).IsRequired();
+            entity.HasIndex(row => new { row.TenantId, row.WarehouseCode, row.LanguageTag })
+                  .IsUnique().HasDatabaseName("uq_inventory_warehouse_name_translation");
+        });
+
+        modelBuilder.Entity<LocationTranslationRow>(entity =>
+        {
+            entity.ToTable("location_name_translation");
+            entity.HasKey(row => row.Id);
+            entity.Property(row => row.WarehouseCode).HasMaxLength(64).IsRequired();
+            entity.Property(row => row.LocationCode).HasMaxLength(64).IsRequired();
+            entity.Property(row => row.LanguageTag).HasMaxLength(35).IsRequired();
+            entity.Property(row => row.Text).HasMaxLength(256).IsRequired();
+            entity.HasIndex(row => new { row.TenantId, row.WarehouseCode, row.LocationCode, row.LanguageTag })
+                  .IsUnique().HasDatabaseName("uq_inventory_location_name_translation");
         });
 
         modelBuilder.Entity<InventoryPostingRow>(entity =>

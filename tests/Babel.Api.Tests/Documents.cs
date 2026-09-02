@@ -287,6 +287,42 @@ internal static class Documents
     public static string StockMovementPosting(Guid company, string movementId) =>
         StockMovements(company) + "/" + movementId + "/posting";
 
+    /// <summary>مسار المستودعات.</summary>
+    /// <param name="company">الشركة.</param>
+    public static string Warehouses(Guid company) =>
+        string.Create(CultureInfo.InvariantCulture, $"/api/v1/companies/{company:D}/warehouses");
+
+    /// <summary>مسار مستودع واحد.</summary>
+    /// <param name="company">الشركة.</param>
+    /// <param name="warehouseId">المستودع.</param>
+    public static string Warehouse(Guid company, string warehouseId) =>
+        Warehouses(company) + "/" + warehouseId;
+
+    /// <summary>مسار تعطيل مستودع.</summary>
+    /// <param name="company">الشركة.</param>
+    /// <param name="warehouseId">المستودع.</param>
+    public static string WarehouseDeactivation(Guid company, string warehouseId) =>
+        Warehouse(company, warehouseId) + "/deactivation";
+
+    /// <summary>مسار إعادة تفعيل مستودع.</summary>
+    /// <param name="company">الشركة.</param>
+    /// <param name="warehouseId">المستودع.</param>
+    public static string WarehouseActivation(Guid company, string warehouseId) =>
+        Warehouse(company, warehouseId) + "/activation";
+
+    /// <summary>مسار مواقع مستودع — <b>مورد فرعي</b>: رمز الموقع بلا مستودعه ليس هوية.</summary>
+    /// <param name="company">الشركة.</param>
+    /// <param name="warehouseId">المستودع.</param>
+    public static string WarehouseLocations(Guid company, string warehouseId) =>
+        Warehouse(company, warehouseId) + "/locations";
+
+    /// <summary>مسار تعطيل موقع.</summary>
+    /// <param name="company">الشركة.</param>
+    /// <param name="warehouseId">المستودع.</param>
+    /// <param name="locationId">الموقع.</param>
+    public static string WarehouseLocationDeactivation(Guid company, string warehouseId, string locationId) =>
+        WarehouseLocations(company, warehouseId) + "/" + locationId + "/deactivation";
+
     /// <summary>مسار أرصدة المخزون.</summary>
     /// <param name="company">الشركة.</param>
     public static string StockBalances(Guid company) =>
@@ -412,6 +448,77 @@ internal static class Documents
         (string text, JsonElement body) = await Http.BodyAsync(response);
         Assert.True(response.StatusCode == HttpStatusCode.Created, "تسجيل الصنف: " + text);
         return (code, body.GetProperty("id").GetString()!);
+    }
+
+    /// <summary>حمولة تسجيل مستودع — والمؤهّل مؤهّل دور لا رقم حساب.</summary>
+    /// <param name="code">الرمز.</param>
+    /// <param name="qualifier">مؤهّل الدور.</param>
+    public static string WarehouseBody(string code, string qualifier = "") => $$"""
+        {"code":"{{code}}","nameAr":"مستودع {{code}}",
+         "nameTranslations":[{"name":"en","value":"Warehouse {{code}}"}],
+         "qualifier":"{{qualifier}}"}
+        """;
+
+    /// <summary>حمولة تسجيل موقع — ولا حقل مستودع فيها: المستودع في المسار.</summary>
+    /// <param name="code">الرمز.</param>
+    public static string LocationBody(string code) => $$"""
+        {"code":"{{code}}","nameAr":"موقع {{code}}",
+         "nameTranslations":[{"name":"en","value":"Location {{code}}"}]}
+        """;
+
+    /// <summary>
+    /// يضمن وجود مستودع <c>WH-01</c> وموقعه <c>DEFAULT</c> في هذه الشركة، ويُعيد معرّف
+    /// المستودع.
+    /// <para>
+    /// <b>ولماذا صار هذا لازماً:</b> مسوّدة حركة المخزون لم تعد تُقبل على مكانٍ لا يعرفه
+    /// كتالوج الوحدة — فرمزٌ يُكتب بخطأ إملائي كان يفتح رصيداً خامساً يُطابَق تماماً.
+    /// </para>
+    /// <para>
+    /// <b>وهو مُحصَّن ضدّ التكرار</b>: 409 على الرمز المكرّر يُقرأ «موجود سلفاً»، فمجموعتان
+    /// تتقاسمان الشركة نفسها لا تُفسد إحداهما الأخرى.
+    /// </para>
+    /// </summary>
+    /// <param name="api">الخادم.</param>
+    /// <param name="company">الشركة.</param>
+    /// <param name="credential">الاعتماد.</param>
+    /// <param name="code">رمز المستودع.</param>
+    /// <param name="location">رمز الموقع.</param>
+    public static async Task<string> EnsurePlaceAsync(
+        ApiProcess api,
+        Guid company,
+        TestCredential credential,
+        string code = "WH-01",
+        string location = "DEFAULT")
+    {
+        using HttpResponseMessage created = await api.Call(
+            Http.Request(HttpMethod.Post, Warehouses(company), credential, WarehouseBody(code)));
+
+        (string createdText, _) = await Http.BodyAsync(created);
+
+        Assert.True(
+            created.StatusCode is HttpStatusCode.Created or HttpStatusCode.Conflict,
+            "تسجيل المستودع: " + createdText);
+
+        using HttpResponseMessage listed = await api.Call(
+            Http.Request(HttpMethod.Get, Warehouses(company), credential));
+
+        (string listText, JsonElement list) = await Http.BodyAsync(listed);
+        Assert.True(listed.StatusCode == HttpStatusCode.OK, "قراءة المستودعات: " + listText);
+
+        string warehouseId = list.GetProperty("warehouses").EnumerateArray()
+            .Single(entry => string.Equals(entry.GetProperty("code").GetString(), code, StringComparison.Ordinal))
+            .GetProperty("id").GetString()!;
+
+        using HttpResponseMessage placed = await api.Call(Http.Request(
+            HttpMethod.Post, WarehouseLocations(company, warehouseId), credential, LocationBody(location)));
+
+        (string placedText, _) = await Http.BodyAsync(placed);
+
+        Assert.True(
+            placed.StatusCode is HttpStatusCode.Created or HttpStatusCode.Conflict,
+            "تسجيل الموقع: " + placedText);
+
+        return warehouseId;
     }
 
     /// <summary>يقرأ رصيد صنف من قائمة الأرصدة، أو يرمي إن لم يوجد.</summary>

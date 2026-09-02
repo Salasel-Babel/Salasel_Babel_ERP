@@ -66,6 +66,13 @@ internal static class InventoryTestEnvironment
     public const string InventoryDatabaseStem = "babel_inv_stock";
 
     /// <summary>
+    /// الجذع الثابت لقاعدة <b>الشكل القديم المبذور</b> — قاعدةٌ تُبنى بيدٍ على شكل ما
+    /// قبل الهجرة 002 <b>وفيها بيانات</b>، ثم يُشغَّل عليها الناشر. وهي جواب ت-7:
+    /// «الهجرة لم تُشغَّل قطّ على قاعدةٍ فيها بيانات».
+    /// </summary>
+    public const string SeededDatabaseStem = "babel_inv_seeded";
+
+    /// <summary>
     /// قاعدة الدفتر <b>لهذه العملية وحدها</b>.
     /// <para>
     /// الاسم كان ثابتاً، وكانت التهيئة تبدأ بـ<c>drop database … with (force)</c>.
@@ -84,6 +91,9 @@ internal static class InventoryTestEnvironment
 
     /// <summary>قاعدة المخزون لهذه العملية وحدها.</summary>
     public static string InventoryDatabase { get; } = TestRunScope.Name(InventoryDatabaseStem);
+
+    /// <summary>قاعدة الشكل القديم المبذور لهذه العملية وحدها.</summary>
+    public static string SeededDatabase { get; } = TestRunScope.Name(SeededDatabaseStem);
 
     /// <summary>
     /// دور التطبيق — اسمه <b>مشترك عمداً</b>: الأدوار عامّة على مستوى العنقود، ولا
@@ -121,7 +131,36 @@ internal static class InventoryTestEnvironment
     /// </summary>
     public static TenantId UnitsTenant { get; } = new(new Guid("7b1e0c33-0000-4000-8000-000000000004"));
 
-    public static TenantId[] AllTenants { get; } = [Tenant, NegativeStockTenant, ValuationTenant, UnitsTenant];
+    /// <summary>
+    /// منشأة كتالوج المستودعات: تُسجَّل عليها مستودعات ومواقع ويُقاس تفرّد رموزها.
+    /// ولا حركة عليها ولا رصيد، فلا تمسّ إقفالاً ولا مطابقة.
+    /// </summary>
+    public static TenantId WarehouseCatalogueTenant { get; } = new(new Guid("7b1e0c33-0000-4000-8000-000000000005"));
+
+    /// <summary>
+    /// منشأة بوّابة المكان عند الإنشاء: تُقاس عليها الرفوض الأربعة — مستودع مجهول،
+    /// وموقع ليس في مستودعه، ومستودع معطَّل، وموقع معطَّل — وأنّ الرفض <b>قبل الكتابة</b>.
+    /// </summary>
+    public static TenantId PlaceGateTenant { get; } = new(new Guid("7b1e0c33-0000-4000-8000-000000000006"));
+
+    /// <summary>
+    /// منشأة تعطيل المكان: يُملأ عليها رصيدٌ حقيقي ثم يُحاوَل التعطيل، فيُرفض مُسمّياً
+    /// الصفوف. ومعزولة لأن رصيدها المتعمَّد هو بالضبط ما تفحصه منشأة أخرى بغيابه.
+    /// </summary>
+    public static TenantId DeactivationTenant { get; } = new(new Guid("7b1e0c33-0000-4000-8000-000000000007"));
+
+    /// <summary>
+    /// منشأة الشاهد السلبي: تُكتب عليها حركةٌ في دفترٍ مساعد <b>بمستودعٍ ليس في
+    /// الكتالوج</b> — وهو ما يقع فعلاً من المشتريات — ثم يُثبَت أن الرصيد يُقرأ
+    /// والمطابقة تصحّ والفترة تُقفل. شاهدٌ على <b>غياب المفتاح الخارجي</b> لا على وجوده.
+    /// </summary>
+    public static TenantId UncataloguedTenant { get; } = new(new Guid("7b1e0c33-0000-4000-8000-000000000008"));
+
+    public static TenantId[] AllTenants { get; } =
+    [
+        Tenant, NegativeStockTenant, ValuationTenant, UnitsTenant,
+        WarehouseCatalogueTenant, PlaceGateTenant, DeactivationTenant, UncataloguedTenant,
+    ];
 
     /// <summary>عدد محاولات الحذف قبل اللجوء إلى الإنهاء القسري.</summary>
     private const int DropAttempts = 40;
@@ -295,6 +334,7 @@ internal static class InventoryTestEnvironment
             DropOne(admin, SalesDatabase);
             DropOne(admin, InventoryDatabase);
             DropOne(admin, LedgerDatabase);
+            DropOne(admin, SeededDatabase);
         }
         catch (NpgsqlException exception)
         {
@@ -354,7 +394,11 @@ internal static class InventoryTestEnvironment
     /// </summary>
     private static async Task SweepAbandonedAsync(NpgsqlConnection admin, CancellationToken cancellationToken)
     {
-        foreach (string stem in new[] { PurchasingDatabaseStem, SalesDatabaseStem, InventoryDatabaseStem, LedgerDatabaseStem })
+        foreach (string stem in new[]
+                 {
+                     PurchasingDatabaseStem, SalesDatabaseStem, InventoryDatabaseStem,
+                     LedgerDatabaseStem, SeededDatabaseStem,
+                 })
         {
             List<string> candidates = [];
 

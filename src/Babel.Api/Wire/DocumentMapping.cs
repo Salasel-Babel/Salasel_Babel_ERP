@@ -33,6 +33,7 @@ internal static class DocumentMapping
     private const int CodeLength = 64;
     private const int ClassificationLength = 32;
     private const int UnitLength = 32;
+    private const int NameLength = 256;
 
     /// <summary>يقرأ طلب عميل من السلك.</summary>
     /// <param name="dto">الحمولة.</param>
@@ -377,6 +378,32 @@ internal static class DocumentMapping
             units);
     }
 
+    /// <summary>يقرأ طلب تسجيل مستودع من السلك.</summary>
+    /// <param name="dto">الحمولة.</param>
+    public static InventoryWarehouseRequest ToWarehouseRequest(WarehouseRequestDto dto)
+    {
+        ArgumentNullException.ThrowIfNull(dto);
+
+        return new InventoryWarehouseRequest(
+            WireMapping.ReadRequiredText(dto.Code, "code", CodeLength),
+            WireMapping.ReadTranslated(dto.NameAr, dto.NameTranslations, "nameAr", "nameTranslations", NameLength),
+
+            // ‏**والمؤهّل يُقبل فارغاً**: مستودعٌ بلا صنفٍ خاص واقعةٌ شائعة، وإلزامُه
+            // كان سيدفع من لا صنف عنده إلى اختراع واحد — وهو أسوأ من فراغٍ صريح.
+            WireMapping.ReadText(dto.Qualifier ?? string.Empty, "qualifier", CodeLength));
+    }
+
+    /// <summary>يقرأ طلب تسجيل موقع من السلك — ومستودعه في المسار لا هنا.</summary>
+    /// <param name="dto">الحمولة.</param>
+    public static InventoryLocationRequest ToLocationRequest(LocationRequestDto dto)
+    {
+        ArgumentNullException.ThrowIfNull(dto);
+
+        return new InventoryLocationRequest(
+            WireMapping.ReadRequiredText(dto.Code, "code", CodeLength),
+            WireMapping.ReadTranslated(dto.NameAr, dto.NameTranslations, "nameAr", "nameTranslations", NameLength));
+    }
+
     /// <summary>يقرأ طلب مستند حركة مخزون من السلك.</summary>
     /// <param name="dto">الحمولة.</param>
     public static InventoryStockMovementRequest ToStockMovementRequest(StockMovementRequestDto dto)
@@ -430,6 +457,38 @@ internal static class DocumentMapping
             item.ItemGroup,
             item.BaseUnit,
             [.. item.Units.Select(static unit => new UnitFactorDto(unit.UnitCode, unit.Numerator, unit.Denominator))]);
+    }
+
+    /// <summary>ينقل مستودعاً إلى السلك.</summary>
+    /// <param name="warehouse">المستودع.</param>
+    public static WarehouseDto ToDto(InventoryWarehouse warehouse)
+    {
+        ArgumentNullException.ThrowIfNull(warehouse);
+
+        return new WarehouseDto(
+            Id(warehouse.Id),
+            warehouse.Code,
+            warehouse.Name.Arabic,
+            Translations(warehouse.Name),
+            warehouse.Qualifier,
+            warehouse.Origin,
+            warehouse.IsActive);
+    }
+
+    /// <summary>ينقل موقعاً إلى السلك.</summary>
+    /// <param name="location">الموقع.</param>
+    public static LocationDto ToDto(InventoryLocation location)
+    {
+        ArgumentNullException.ThrowIfNull(location);
+
+        return new LocationDto(
+            Id(location.Id),
+            location.WarehouseCode,
+            location.Code,
+            location.Name.Arabic,
+            Translations(location.Name),
+            location.Origin,
+            location.IsActive);
     }
 
     /// <summary>ينقل مستند حركة مخزون إلى السلك.</summary>
@@ -705,4 +764,8 @@ internal static class DocumentMapping
     private static string Date(DateOnly value) => value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
     private static LocalizedTextDto Text(LocalizedName name) => new(name.Arabic, name.English);
+
+    /// <summary>الترجمات صفوفاً مرتَّبةً بوسمها — والترتيب من النوع نفسه لا من هنا.</summary>
+    private static IReadOnlyList<NameValueDto> Translations(TranslatedName name)
+        => [.. name.Translations.Select(static entry => new NameValueDto(entry.Key, entry.Value))];
 }

@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     bd9a3ec99569ae7bbe8a4def9a1e5d52942ab4732289f7897df7762912d72d02
+     3a7663a236ff736af8d27bc583e2e8d62701c5b7108da8ed25d82522511cec3d
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -1473,6 +1473,42 @@ export interface LocalizedText {
   en: string;
 }
 
+/** موقعٌ داخل مستودع — **مستوى واحد لا شجرة**، لأن locationId في مفتاح الرصيد عمودٌ مفرد. / A location within a warehouse — **one level, not a tree**, because locationId is a single column in the balance key. */
+export interface Location {
+  /** رمز الموقع. / The location code. */
+  code: string;
+  /** المعرّف. / The identifier. */
+  id: string;
+  /** هل يُقبل موقعاً لمسوّدةٍ جديدة؟ / Whether new drafts are accepted against it. */
+  isActive: boolean;
+  /** الاسم العربي. / The Arabic name. */
+  nameAr: string;
+  /** ترجمات الاسم. / The name's translations. */
+  nameTranslations: NameValue[];
+  /** من أين جاء هذا الاسم — DECLARED أو OBSERVED. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / Where this name came from — DECLARED or OBSERVED. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  origin: "DECLARED" | "OBSERVED";
+  /** رمز المستودع المالك — **وهوية الموقع هي الزوج**: «A-01» في مستودعين موقعان لا موقع. / The owning warehouse's code — **the location's identity is the pair**: 'A-01' in two warehouses is two locations, not one. */
+  warehouseCode: string;
+}
+
+/** مواقع مستودعٍ واحد مرتَّبة بالرمز — العاملة والمعطَّلة معاً. / One warehouse's locations ordered by code — active and deactivated alike. */
+export interface LocationList {
+  /** عددها. / How many there are. */
+  locationCount: number;
+  /** المواقع. / The locations. */
+  locations: Location[];
+}
+
+/** طلب تسجيل موقع داخل مستودع. **ولا حقل مستودع في الجسم**: المستودع في المسار، لأن رمز موقعٍ بلا مستودعه ليس هوية. / A location registration request within a warehouse. **No warehouse field in the body**: the warehouse is in the path, because a location code without its warehouse is not an identity. */
+export interface LocationRequest {
+  /** رمز الموقع — فريدٌ **داخل مستودعه** لا عبر المنشأة، وهو النصّ الذي تحمله الحركة في locationId. / The location code — unique **within its warehouse**, not across the company; it is the text a movement carries in locationId. */
+  code: string;
+  /** اسم الموقع بالعربية — السجلّ. / The location's Arabic name — the record. */
+  nameAr: string;
+  /** ترجمات الاسم. / The name's translations. */
+  nameTranslations?: NameValue[];
+}
+
 /** مقدار كمّية نصّاً بمقياس لا يتجاوز **ستّاً**. والكمّية ليست مبلغاً — ولذلك لها مقياسها — لكنها تُضرب في تكلفة الوحدة، فأي دقّة تُفقد فيها تصل إلى المال. والكيلوغرامات واللترات والأمتار تُكسَر إلى ما دون الهللة، ومقياسٌ مالي عليها يُنتج تقريباً صامتاً يتراكم على كل حركة. / A quantity magnitude as a string with at most **six** decimal places. A quantity is not an amount — hence its own scale — but it is multiplied by a unit cost, so any precision lost in it reaches the money. Kilograms, litres, and metres divide below the halala, and a money scale over them produces a silent rounding that accumulates on every movement. */
 /* Magnitude مُعرَّف في ../money كنوع محتجز وقت التشغيل. */
 
@@ -2687,6 +2723,44 @@ export interface UnitRequest {
   usage: "commercial" | "residential";
   /** المعاملة الضريبية للوحدة، تُدخَل ولا تُشتقّ. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The unit's VAT treatment, entered and never derived. Matched literally and case-sensitively; a number is never accepted in place of a name. */
   vatTreatment: "exempt" | "standard";
+}
+
+/** مستودعٌ كما يخرج على السلك، بحالته ومنشأ اسمه. / A warehouse as it leaves on the wire, with its state and the origin of its name. */
+export interface Warehouse {
+  /** الرمز — وهو ما تحمله الحركات والأرصدة. / The code — what movements and balances carry. */
+  code: string;
+  /** المعرّف الذي تُبنى عليه القراءة. / The identifier reads are built on. */
+  id: string;
+  /** هل يُقبل مستودعاً لمسوّدةٍ جديدة؟ والمعطَّل يبقى في القائمة موسوماً، وأرصدته تُقرأ وتُطابَق وتُقفَل كما هي. / Whether new drafts are accepted against it. A deactivated warehouse stays in the list flagged, and its balances are still read, reconciled and closed. */
+  isActive: boolean;
+  /** الاسم العربي — السجلّ. / The Arabic name — the record. */
+  nameAr: string;
+  /** ترجمات الاسم. / The name's translations. */
+  nameTranslations: NameValue[];
+  /** من أين جاء هذا الاسم: DECLARED كتبه إنسان · OBSERVED رُصد نصّاً في حركةٍ أو رصيدٍ مضى واسمُه رمزُه. والفرق ليس زينة: شاشةٌ تعرض الثاني بلا وسمٍ تبدو ككتالوجٍ مكتوب وهي صدى نصٍّ وُجد في البيانات. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / Where this name came from: DECLARED means a person wrote it; OBSERVED means it was found as text in an earlier movement or balance and its name is its code. The distinction is not decoration: a screen that shows the second unflagged looks like a catalogue somebody wrote when it is an echo of text found in the data. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  origin: "DECLARED" | "OBSERVED";
+  /** مؤهّل الدور — لا رقم حساب. / The role qualifier — not an account code. */
+  qualifier: string;
+}
+
+/** مستودعات المنشأة — العاملة والمعطَّلة معاً — مرتَّبة بالرمز ترتيباً حرفياً ثابتاً. **وغلافٌ لا مصفوفة عارية**. / The company's warehouses — active and deactivated alike — ordered by code in a stable ordinal order. **An envelope, not a bare array.** */
+export interface WarehouseList {
+  /** عددها. / How many there are. */
+  warehouseCount: number;
+  /** المستودعات. / The warehouses. */
+  warehouses: Warehouse[];
+}
+
+/** طلب تسجيل مستودع. **ولا رقم حساب فيه**: qualifier مؤهّل دور تقرؤه خريطة الأدوار في مصفوفة الترحيل، والوحدة لا تعرف حساباً ولا تذكره. / A warehouse registration request. **No account code appears in it**: qualifier is a role qualifier read by the posting matrix's role map, and the module neither knows nor names an account. */
+export interface WarehouseRequest {
+  /** رمز المستودع — **وهو النصّ الذي تحمله كل حركةٍ ورصيد** حرفاً بحرف، فلا يُغيَّر بعد أول حركة. / The warehouse code — **the text every movement and balance carries**, character for character, so it is never changed after the first movement. */
+  code: string;
+  /** اسم المستودع بالعربية — السجلّ. / The warehouse's Arabic name — the record. */
+  nameAr: string;
+  /** ترجمات الاسم. / The name's translations. */
+  nameTranslations?: NameValue[];
+  /** صنف المستودع — مؤهّل دور لا رقم حساب، ونصٌّ فارغ لمن لا صنف له. / The warehouse class — a role qualifier, not an account code; an empty string for a warehouse with none. */
+  qualifier: string;
 }
 
 /** طلب سحب مرفق. والسبب مفتاحٌ من مجموعة يملكها المستدعي لا نصّ حرّ: نصٌّ حرّ يُكتب بلغة كاتبه ثم يُقرأ في تقرير بلغة أخرى، ولا يُرشَّح عليه ولا يُترجَم. / A request to withdraw an attachment. The reason is a key from a set the caller owns, not free text: free text is written in its author's language and read in a report in another, is never filtered on, and is never translated. */

@@ -29,6 +29,7 @@ import { InventoryItemsScreen } from "../src/screens/inventory/ItemsScreen";
 import { InventoryStockScreen } from "../src/screens/inventory/StockScreen";
 import { InventoryMovementsScreen } from "../src/screens/inventory/MovementsScreen";
 import { InventoryValuationScreen } from "../src/screens/inventory/ValuationScreen";
+import { InventoryWarehousesScreen } from "../src/screens/inventory/WarehousesScreen";
 import { INVENTORY_NEXT_STEP } from "../src/screens/inventory/shared";
 import { SCREENS, SECTIONS } from "../src/app/shell/sections";
 import { DesignScreen } from "../src/screens/design/DesignScreen";
@@ -199,6 +200,63 @@ const VALUATION_OFF = {
   ],
 };
 
+const WAREHOUSE_ID = "44444444-4444-4444-8444-444444444444";
+
+/* مستودعٌ كتبه إنسان، وآخرُ اسمُه صدى نصٍّ وُجد في البيانات ومعطَّل. والفرق
+   بينهما هو ما يجب أن تقوله الشاشة، لا ما يجب أن تُخفيه. */
+const WAREHOUSES = {
+  warehouseCount: 2,
+  warehouses: [
+    {
+      id: WAREHOUSE_ID,
+      code: "WH-RIYADH",
+      nameAr: "مستودع الرياض",
+      nameTranslations: [{ name: "en", value: "Riyadh warehouse" }],
+      qualifier: "dry_goods",
+      origin: "DECLARED",
+      isActive: true,
+    },
+    {
+      id: "55555555-5555-4555-8555-555555555555",
+      code: "WH-JEDDAH",
+      nameAr: "WH-JEDDAH",
+      nameTranslations: [],
+      qualifier: "",
+      origin: "OBSERVED",
+      isActive: false,
+    },
+  ],
+};
+
+const LOCATIONS = {
+  locationCount: 2,
+  locations: [
+    {
+      id: "66666666-6666-4666-8666-666666666666",
+      warehouseCode: "WH-RIYADH",
+      code: "A-01",
+      nameAr: "الرفّ الأول",
+      nameTranslations: [{ name: "en", value: "First rack" }],
+      origin: "DECLARED",
+      isActive: true,
+    },
+    {
+      id: "77777777-7777-4777-8777-777777777777",
+      warehouseCode: "WH-RIYADH",
+      code: "DEFAULT",
+      nameAr: "DEFAULT",
+      nameTranslations: [],
+      origin: "OBSERVED",
+      isActive: true,
+    },
+  ],
+};
+
+const WAREHOUSES_URL = "GET /api/v1/companies/" + COMPANY + "/warehouses";
+const LOCATIONS_URL =
+  "GET /api/v1/companies/" + COMPANY + "/warehouses/" + WAREHOUSE_ID + "/locations";
+const ADD_WAREHOUSE_URL = "POST /api/v1/companies/" + COMPANY + "/warehouses";
+
 const ITEMS_URL = "GET /api/v1/companies/" + COMPANY + "/items";
 const BALANCES_URL = "GET /api/v1/companies/" + COMPANY + "/stock-balances";
 const MOVEMENTS_URL = "GET /api/v1/companies/" + COMPANY + "/stock-movements";
@@ -254,7 +312,7 @@ describe("الكمّية نصٌّ بوحدتها — ولا `number` في الط
   });
 
   it("لا `parseFloat` ولا `parseInt` ولا `toFixed` في شاشات القسم", () => {
-    const files = ["ItemsScreen", "StockScreen", "MovementsScreen", "ValuationScreen", "shared"];
+    const files = ["ItemsScreen", "StockScreen", "MovementsScreen", "ValuationScreen", "WarehousesScreen", "shared"];
     for (const name of files) {
       const source = read("screens/inventory/" + name + (name === "shared" ? ".tsx" : ".tsx"));
       expect(source, name).not.toMatch(/parseFloat|parseInt|\.toFixed\(/);
@@ -262,7 +320,7 @@ describe("الكمّية نصٌّ بوحدتها — ولا `number` في الط
   });
 
   it("الاستعمال الوحيد لـ`Number` في القسم هو البسط والمقام — وهما `integer` في العقد", () => {
-    const files = ["ItemsScreen", "StockScreen", "MovementsScreen", "ValuationScreen", "shared"];
+    const files = ["ItemsScreen", "StockScreen", "MovementsScreen", "ValuationScreen", "WarehousesScreen", "shared"];
     const calls: string[] = [];
     for (const name of files) {
       for (const line of read("screens/inventory/" + name + ".tsx").split("\n")) {
@@ -756,7 +814,7 @@ describe("عقد الملاحة", () => {
     expect(inventory?.path).toBe("/inventory/stock");
     const paths = SCREENS.filter((s) => s.section === "inventory").map((s) => s.path);
     expect(paths).toContain(inventory?.path);
-    expect(paths).toHaveLength(4);
+    expect(paths).toHaveLength(5);
   });
 
   /*
@@ -781,7 +839,7 @@ describe("عقد الملاحة", () => {
     await screen.findByTestId("inventory-stock-screen");
 
     const wanted = SCREENS.filter((s) => s.section === "inventory").map((s) => s.path);
-    expect(wanted).toHaveLength(4);
+    expect(wanted).toHaveLength(5);
     const reachable = [...document.querySelectorAll('nav [data-testid^="nav-inventory-"]')].map(
       (a) => a.getAttribute("href")
     );
@@ -800,5 +858,88 @@ describe("عقد الملاحة", () => {
         expect(i18n.t(entry.labelKey), code + " ← " + entry.labelKey).not.toBe(entry.labelKey);
       }
     }
+  });
+});
+
+/* ══════════════════════════════ ٩ · المستودعات: منشأ الاسم يُقال لا يُخفى */
+
+describe("كتالوج المستودعات والمواقع", () => {
+  it("المعطَّل يبقى معروضاً موسوماً، ومنشأ الاسم يُعرض — ولا رقم حساب في الشاشة", async () => {
+    withCompany();
+    render(
+      <Wrap transport={stubTransport({ [WAREHOUSES_URL]: WAREHOUSES })}>
+        <InventoryWarehousesScreen />
+      </Wrap>
+    );
+
+    await screen.findByTestId("warehouses-table");
+    const rows = screen.getAllByTestId("warehouse-row");
+
+    /* ‏**الاثنان معاً**: إخفاء المعطَّل يترك رصيداً قائماً بلا مستودعٍ يفسّره
+       في شاشة الأرصدة، وهو أسوأ من صفٍّ مكتوب عليه «معطَّل». */
+    expect(rows).toHaveLength(2);
+
+    const first = rows[0] as HTMLElement;
+    const second = rows[1] as HTMLElement;
+
+    expect(within(first).getByTestId("place-origin").getAttribute("data-origin")).toBe("DECLARED");
+    expect(within(second).getByTestId("place-origin").getAttribute("data-origin")).toBe("OBSERVED");
+
+    expect(within(first).getByTestId("place-state").getAttribute("data-active")).toBe("true");
+    expect(within(second).getByTestId("place-state").getAttribute("data-active")).toBe("false");
+
+    /* والشاشة **تسأل** عن الأسماء التي لم يكتبها أحد بدل أن تدّعي أنّ عندها أسماء. */
+    expect(screen.getByTestId("warehouses-observed").textContent ?? "").not.toBe("");
+  });
+
+  it("المواقع مورد فرعي: لا تُقرأ إلا بعد اختيار مستودعها", async () => {
+    withCompany();
+    render(
+      <Wrap transport={stubTransport({ [WAREHOUSES_URL]: WAREHOUSES, [LOCATIONS_URL]: LOCATIONS })}>
+        <InventoryWarehousesScreen />
+      </Wrap>
+    );
+
+    await screen.findByTestId("warehouses-table");
+
+    /* قبل الاختيار: لا لوح مواقع أصلاً — لأن «A-01» بلا مستودعه ليس هوية. */
+    expect(screen.queryByTestId("locations-panel")).toBeNull();
+
+    fireEvent.click(screen.getAllByTestId("warehouse-pick")[0] as HTMLElement);
+
+    await screen.findByTestId("locations-table");
+    expect(screen.getAllByTestId("location-row")).toHaveLength(2);
+  });
+
+  it("رفض تسجيل مستودع يُعرض برمزه ورسالة الخادم، ولا يختفي", async () => {
+    withCompany();
+    const transport = stubTransport(
+      { [WAREHOUSES_URL]: WAREHOUSES },
+      {
+        [ADD_WAREHOUSE_URL]: problem(
+          "inventory.duplicate_warehouse_code",
+          "رمز المستودع «WH-RIYADH» مستعمَل في هذه المنشأة.",
+          "Warehouse code 'WH-RIYADH' is already used in this company."
+        ),
+      }
+    );
+
+    render(
+      <Wrap transport={transport}>
+        <InventoryWarehousesScreen />
+      </Wrap>
+    );
+
+    await screen.findByTestId("warehouses-table");
+
+    fireEvent.change(screen.getByTestId("warehouse-code"), { target: { value: "WH-RIYADH" } });
+    fireEvent.change(screen.getByTestId("warehouse-name-ar"), { target: { value: "مستودع" } });
+    fireEvent.click(screen.getByTestId("warehouse-submit"));
+
+    const panel = await screen.findByTestId("problem-panel");
+    expect(panel.textContent ?? "").toContain("WH-RIYADH");
+
+    /* والرفض حالةٌ أولى تبقى: لا يختفي بعد لحظة ولا يُستبدل بجدولٍ فارغ. */
+    await waitFor(() => expect(screen.getByTestId("problem-panel")).toBeTruthy());
   });
 });

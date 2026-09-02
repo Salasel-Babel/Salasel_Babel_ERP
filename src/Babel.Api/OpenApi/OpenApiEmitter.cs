@@ -996,7 +996,7 @@ internal static class OpenApiEmitter
                 + "The matrix event is inventory.count_adjustment.posted with its two scenarios — shortage and surplus — which "
                 + "are exactly this document's two directions. No new event was invented.",
                 Body: "StockMovementRequest", Response: "StockMovement", Success: 201, Query: [],
-                ProblemStatuses: [404]),
+                ProblemStatuses: [404, 409]),
 
             new(ApiRoutes.StockMovements, "get", "listStockMovements",
                 "قراءة حركات المخزون", "List the stock movements",
@@ -1071,6 +1071,142 @@ internal static class OpenApiEmitter
                 [
                     new QueryParameter("asOf", true, "تاريخ التقييم الميلادي.", "The Gregorian valuation date.", "date"),
                 ]),
+
+            new(ApiRoutes.Warehouses, "post", "addWarehouse",
+                "تسجيل مستودع", "Register a warehouse",
+                "يسجّل مستودعاً: رمزه، واسمه العربي سجلّاً وترجماته صفوفاً، و**مؤهّل دوره**.\n\n"
+                + "**والرمز هو النصّ الذي تحمله كل حركةٍ ورصيد** في هذه المنشأة، حرفاً بحرف. وقبل هذا المورد "
+                + "كان `warehouseId` عمود نصٍّ حرّ بلا كتالوج ولا تحقّق: خطأ إملائي واحد — WH-O1 بحرف O مكان "
+                + "الصفر — يفتح **رصيداً خامساً** يُطابَق تماماً ويحمل قيمةً حقيقية لا يعرف أحدٌ أين هي، لأن "
+                + "المطابقة تجمع الحركات والأرصدة على المفتاح نفسه فيتوازن الخطأ مع نفسه.\n\n"
+                + "**ولا رمز حساب هنا**: qualifier مؤهّل دور — «صنف المستودع» في مصفوفة الترحيل — وخريطة "
+                + "الأدوار وحدها تُحوّله إلى حساب. ويُقبل فارغاً: مستودعٌ بلا صنفٍ خاص واقعةٌ شائعة، وإلزامه كان "
+                + "سيدفع من لا صنف عنده إلى اختراع واحد.\n\n"
+                + "**ولاحظ ما ليس على هذا المورد: لا تعديل ولا حذف.** تغييرُ الرمز يُيتّم كل صفٍّ تاريخي يحمله "
+                + "على جدولٍ لا مسار UPDATE إليه، والانصراف عن مستودع يكون بتعطيله. **وتعديل الاسم والمؤهّل "
+                + "نقصُ سطحٍ مُعلَن** في هذه الدفعة، لا قرار منع.\n\n"
+                + "و`origin` يخرج DECLARED على ما يُسجَّل من هنا: ما رُصد نصّاً في بياناتٍ سابقة يخرج OBSERVED "
+                + "واسمه رمزُه، والشاشة تعرف الفرق فتسأل عن اسمٍ حقيقي بدل أن تبدو ككتالوجٍ مكتوب.",
+                "Registers a warehouse: its code, its Arabic name as the record with translations as rows, and **its "
+                + "role qualifier**.\n\n"
+                + "**The code is the text every movement and balance in this company carries**, character for character. "
+                + "Before this resource, `warehouseId` was a free-text column with no catalogue and no check: one typo — "
+                + "WH-O1 with a letter O instead of a zero — opens a **fifth balance bucket** that reconciles perfectly "
+                + "and holds real value nobody can locate, because reconciliation sums movements and balances on the same "
+                + "key, so the mistake balances against itself.\n\n"
+                + "**No account code appears here**: qualifier is a role qualifier — the posting matrix's 'warehouse class' "
+                + "— and the role map alone turns it into an account. It is accepted empty: a warehouse with no particular "
+                + "class is common, and requiring one would push whoever has none into inventing one.\n\n"
+                + "**Note what this resource does not carry: no update and no delete.** Changing the code orphans every "
+                + "historical row that carries it on a table with no UPDATE path, and retiring a warehouse is done by "
+                + "deactivating it. **Editing the name and the qualifier is a declared surface gap** in this batch, not a "
+                + "prohibition.\n\n"
+                + "`origin` comes back DECLARED for anything registered here; what was observed as text in earlier data "
+                + "comes back OBSERVED with its code as its name, and the screen knows the difference so it asks for a real "
+                + "name instead of looking like a catalogue somebody wrote.",
+                Body: "WarehouseRequest", Response: "Warehouse", Success: 201, Query: [],
+                ProblemStatuses: [409]),
+
+            new(ApiRoutes.Warehouses, "get", "listWarehouses",
+                "قراءة المستودعات", "List the warehouses",
+                "يقرأ مستودعات المنشأة مرتَّبةً بالرمز **ترتيباً حرفياً ثابتاً** — لا ثقافياً يختلف بين tr-TR "
+                + "و en-US على الحروف نفسها.\n\n"
+                + "**والمعطَّل يخرج في القائمة موسوماً بـisActive = false، ولا يُخفى**: إخفاؤه يترك رصيداً قائماً "
+                + "بلا مستودعٍ يفسّره في الشاشة، وهو أسوأ من صفٍّ مكتوب عليه «معطَّل». نقطة قراءة: تعمل والاشتراك "
+                + "للقراءة فقط.",
+                "Lists the company's warehouses ordered by code in a **stable ordinal order** — not a cultural one that "
+                + "differs between tr-TR and en-US on the same letters.\n\n"
+                + "**A deactivated warehouse appears in the list flagged isActive = false and is never hidden**: hiding it "
+                + "leaves a standing balance with no warehouse to explain it on the screen, which is worse than a row "
+                + "marked 'deactivated'. A read point: it works while the subscription is read-only.",
+                Body: null, Response: "WarehouseList", Success: 200, Query: []),
+
+            new(ApiRoutes.Warehouse, "get", "readWarehouse",
+                "قراءة مستودع", "Read one warehouse",
+                "يقرأ مستودعاً واحداً بمؤهّل دوره وحالته ومنشأ اسمه.",
+                "Reads a single warehouse with its role qualifier, its state, and the origin of its name.",
+                Body: null, Response: "Warehouse", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.WarehouseDeactivation, "post", "deactivateWarehouse",
+                "تعطيل مستودع", "Deactivate a warehouse",
+                "يُعطّل مستودعاً: **يمنع المسوّدات الجديدة عليه، ولا يمسّ رصيداً ولا حركةً ولا تاريخاً**. "
+                + "أرصدته تُقرأ وتُطابَق وتُقفَل كما كانت، وحركاته المُرحَّلة تبقى في المطابقة الثلاثية بلا فرق.\n\n"
+                + "**ويُرفض ما دامت فيه بضاعة، والرفض يُسمّي الصفوف التي تحملها** بالشكل نفسه الذي يطبعه رفض "
+                + "إقفال الفترة — `صنف @ مستودع/موقع` — لأن التعطيل يغلق كل باب مستندٍ يُخرجها، فتبقى قيمةٌ في "
+                + "الميزانية بلا مخرج. والشرط «كمّية أو قيمة» لا «كمّية وقيمة»: رصيدٌ بكمّية صفر وقيمةٍ غير صفرية "
+                + "واقعةٌ مسجّلة، وإخفاء مكانه يُخفي رقماً في الميزانية.\n\n"
+                + "**ولا حذف على هذا المورد بأي حال**: الرمز هوية تحملها حركات سنةٍ مضت.",
+                "Deactivates a warehouse: **it blocks new drafts against it and touches no balance, no movement and no "
+                + "history**. Its balances are still read, reconciled and closed, and its posted movements stay in the "
+                + "three-way reconciliation unchanged.\n\n"
+                + "**It is refused while the warehouse holds stock, and the refusal names the rows that hold it** in the "
+                + "same shape the period-close refusal prints — `item @ warehouse/location` — because deactivation closes "
+                + "every document path that could empty it, leaving a balance-sheet figure with no way out. The condition is "
+                + "'quantity or value', not 'quantity and value': a balance with zero quantity and non-zero value is a "
+                + "recorded fact, and hiding its place hides a figure on the balance sheet.\n\n"
+                + "**There is no delete on this resource under any circumstances**: the code is an identity carried by last "
+                + "year's movements.",
+                Body: null, Response: "Warehouse", Success: 200, Query: [],
+                ProblemStatuses: [404, 409]),
+
+            new(ApiRoutes.WarehouseActivation, "post", "activateWarehouse",
+                "إعادة تفعيل مستودع", "Reactivate a warehouse",
+                "يُعيد تفعيل مستودع معطَّل فتُقبل عليه المسوّدات من جديد. ولا أثر لهذا الباب على رصيد ولا حركة: "
+                + "التعطيل لم يمسّهما أصلاً.",
+                "Reactivates a deactivated warehouse so drafts are accepted against it again. This door has no effect on "
+                + "any balance or movement: deactivation never touched them.",
+                Body: null, Response: "Warehouse", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.WarehouseLocations, "post", "addLocation",
+                "تسجيل موقع في مستودع", "Register a location within a warehouse",
+                "يسجّل موقعاً داخل مستودع. **مورد فرعي لا مورد رئيسي**: رمزُ موقعٍ بلا مستودعه ليس هوية، و«A-01» "
+                + "في مستودعين موقعان لا موقع — وهو ما يقوله مفتاح الرصيد الرباعي (منشأة · صنف · مستودع · موقع) "
+                + "حرفياً. فالاشتراط بنيةٌ في العنوان لا تحقّقٌ في الجسم، ولا مسار تحقّقٍ يمكن أن يتخطّاه.\n\n"
+                + "**ومستوى واحد لا شجرة**: `locationId` في مفتاح الرصيد عمودٌ مفرد، فمستوىً واحد هو ما يحمله "
+                + "المفتاح. وسؤال «أمستوى واحد أم شجرة؟» سؤالٌ مفتوح على المالك، ولا يُجاب هنا باختراع أب.\n\n"
+                + "ويُرفض على مستودعٍ معطَّل: موقعٌ جديد في مكانٍ لا يُقبل عليه مستند لا يُستعمل أبداً.",
+                "Registers a location within a warehouse. **A sub-resource, not a top-level one**: a location code without "
+                + "its warehouse is not an identity, and 'A-01' in two warehouses is two locations, not one — which is "
+                + "exactly what the four-part balance key (company, item, warehouse, location) says. The requirement is "
+                + "structural in the address rather than a check in the body, so no validation path can skip it.\n\n"
+                + "**One level, not a tree**: `locationId` is a single column in the balance key, so one level is what the "
+                + "key holds. Whether binning is one level or a tree is an open question for the owner, and it is not "
+                + "answered here by inventing a parent.\n\n"
+                + "It is refused against a deactivated warehouse: a new location in a place that accepts no document would "
+                + "never be used.",
+                Body: "LocationRequest", Response: "Location", Success: 201, Query: [],
+                ProblemStatuses: [404, 409]),
+
+            new(ApiRoutes.WarehouseLocations, "get", "listLocations",
+                "قراءة مواقع مستودع", "List a warehouse's locations",
+                "يقرأ مواقع مستودعٍ واحد مرتَّبةً بالرمز ترتيباً حرفياً ثابتاً — العاملة والمعطَّلة معاً.\n\n"
+                + "و**DEFAULT موقعٌ مسجَّل في كل مستودع** لا اصطلاحاً في الشيفرة: هجرة المخزون 001 كتبته في كل "
+                + "حركةٍ ورصيدٍ سابق، وهذه الدفعة تجعله شيئاً موجوداً يُقرأ ويُسمّى ويُعطَّل.",
+                "Lists a single warehouse's locations ordered by code in a stable ordinal order — active and deactivated "
+                + "alike.\n\n"
+                + "**DEFAULT is a registered location in every warehouse**, not a convention in code: inventory migration "
+                + "001 wrote it into every earlier movement and balance, and this batch makes it a thing that exists — one "
+                + "that can be read, named and deactivated.",
+                Body: null, Response: "LocationList", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.WarehouseLocationDeactivation, "post", "deactivateLocation",
+                "تعطيل موقع", "Deactivate a location",
+                "يُعطّل موقعاً داخل مستودعه: يمنع المسوّدات الجديدة عليه ولا يمسّ رصيده. ويُرفض ما دامت فيه بضاعة، "
+                + "والرفض يُسمّي الأصناف التي تحملها.\n\n"
+                + "**والزوج هو الهوية**: موقعٌ بهذا المعرّف في مستودعٍ آخر ليس موقع هذا المسار، ويُرفض بـ"
+                + "`inventory.location_not_in_warehouse` بدل أن يُعمَل على الصفّ الخطأ.",
+                "Deactivates a location within its warehouse: it blocks new drafts against it and touches no balance. It is "
+                + "refused while the location holds stock, and the refusal names the items that hold it.\n\n"
+                + "**The pair is the identity**: a location with this identifier in another warehouse is not this path's "
+                + "location, and it is refused with `inventory.location_not_in_warehouse` rather than acted on by mistake.",
+                Body: null, Response: "Location", Success: 200, Query: [],
+                ProblemStatuses: [404, 409]),
+
+            new(ApiRoutes.WarehouseLocationActivation, "post", "activateLocation",
+                "إعادة تفعيل موقع", "Reactivate a location",
+                "يُعيد تفعيل موقع معطَّل داخل مستودعه فتُقبل عليه المسوّدات من جديد.",
+                "Reactivates a deactivated location within its warehouse so drafts are accepted against it again.",
+                Body: null, Response: "Location", Success: 200, Query: [], ProblemStatuses: [404]),
 
             new(ApiRoutes.DocumentAdmission, "post", "admitDocument",
                 "عرض مستند على الملفّ", "Present a document against the profile",
@@ -3038,6 +3174,10 @@ internal static class OpenApiEmitter
         ("suppliers", "supplierId", "معرّف المورد.", "The supplier identifier."),
         ("tenant-receipts", "receiptId", "معرّف سند القبض من المستأجر.", "The tenant receipt identifier."),
         ("units", "unitId", "معرّف الوحدة.", "The unit identifier."),
+        ("warehouses", "warehouseId", "معرّف المستودع — **وهو غير رمزه**: الرمز هو ما تحمله كل حركةٍ ورصيد، والمعرّف عنوانٌ على هذا السطح.",
+            "The warehouse identifier — **it is not its code**: the code is what every movement and balance carries, while the identifier is an address on this surface."),
+        ("locations", "locationId", "معرّف الموقع. وهويّته زوجٌ — المستودع ورمزُه — فمعرّفٌ في مستودعٍ آخر لا يُقبل على هذا المسار.",
+            "The location identifier. Its identity is a pair — its warehouse and its code — so an identifier belonging to another warehouse is refused on this path."),
     ];
 
     /// <summary>
@@ -6441,6 +6581,132 @@ internal static class OpenApiEmitter
             w.WriteBoolean("additionalProperties", false);
         });
 
+        yield return ("WarehouseRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب تسجيل مستودع. **ولا رقم حساب فيه**: qualifier مؤهّل دور تقرؤه خريطة الأدوار في مصفوفة "
+                + "الترحيل، والوحدة لا تعرف حساباً ولا تذكره. / "
+                + "A warehouse registration request. **No account code appears in it**: qualifier is a role qualifier read by "
+                + "the posting matrix's role map, and the module neither knows nor names an account.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "code",
+                "رمز المستودع — **وهو النصّ الذي تحمله كل حركةٍ ورصيد** حرفاً بحرف، فلا يُغيَّر بعد أول حركة.",
+                "The warehouse code — **the text every movement and balance carries**, character for character, so it is never changed after the first movement.",
+                64);
+            WriteStringProperty(w, "nameAr", "اسم المستودع بالعربية — السجلّ.", "The warehouse's Arabic name — the record.", 256);
+            WriteArrayRefProperty(w, "nameTranslations", "NameValue", "ترجمات الاسم.", "The name's translations.");
+            WriteStringProperty(w, "qualifier",
+                "صنف المستودع — مؤهّل دور لا رقم حساب، ونصٌّ فارغ لمن لا صنف له.",
+                "The warehouse class — a role qualifier, not an account code; an empty string for a warehouse with none.",
+                64);
+            w.WriteEndObject();
+            WriteRequired(w, "code", "nameAr", "qualifier");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("Warehouse", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "مستودعٌ كما يخرج على السلك، بحالته ومنشأ اسمه. / "
+                + "A warehouse as it leaves on the wire, with its state and the origin of its name.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "code", "الرمز — وهو ما تحمله الحركات والأرصدة.", "The code — what movements and balances carry.", 64);
+            WriteStringProperty(w, "id", "المعرّف الذي تُبنى عليه القراءة.", "The identifier reads are built on.", 36);
+            WriteBooleanProperty(w, "isActive",
+                "هل يُقبل مستودعاً لمسوّدةٍ جديدة؟ والمعطَّل يبقى في القائمة موسوماً، وأرصدته تُقرأ وتُطابَق وتُقفَل كما هي.",
+                "Whether new drafts are accepted against it. A deactivated warehouse stays in the list flagged, and its balances are still read, reconciled and closed.");
+            WriteStringProperty(w, "nameAr", "الاسم العربي — السجلّ.", "The Arabic name — the record.", 256);
+            WriteArrayRefProperty(w, "nameTranslations", "NameValue", "ترجمات الاسم.", "The name's translations.");
+            WriteEnumProperty(w, "origin",
+                "من أين جاء هذا الاسم: DECLARED كتبه إنسان · OBSERVED رُصد نصّاً في حركةٍ أو رصيدٍ مضى واسمُه رمزُه. والفرق ليس زينة: شاشةٌ تعرض الثاني بلا وسمٍ تبدو ككتالوجٍ مكتوب وهي صدى نصٍّ وُجد في البيانات.",
+                "Where this name came from: DECLARED means a person wrote it; OBSERVED means it was found as text in an earlier movement or balance and its name is its code. The distinction is not decoration: a screen that shows the second unflagged looks like a catalogue somebody wrote when it is an echo of text found in the data.",
+                CatalogueOrigins);
+            WriteStringProperty(w, "qualifier", "مؤهّل الدور — لا رقم حساب.", "The role qualifier — not an account code.", 64);
+            w.WriteEndObject();
+            WriteRequired(w, "code", "id", "isActive", "nameAr", "nameTranslations", "origin", "qualifier");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("WarehouseList", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "مستودعات المنشأة — العاملة والمعطَّلة معاً — مرتَّبة بالرمز ترتيباً حرفياً ثابتاً. **وغلافٌ لا "
+                + "مصفوفة عارية**. / "
+                + "The company's warehouses — active and deactivated alike — ordered by code in a stable ordinal order. "
+                + "**An envelope, not a bare array.**");
+            w.WriteStartObject("properties");
+            WriteArrayRefProperty(w, "warehouses", "Warehouse", "المستودعات.", "The warehouses.");
+            WriteIntegerProperty(w, "warehouseCount", 0, int.MaxValue, "عددها.", "How many there are.");
+            w.WriteEndObject();
+            WriteRequired(w, "warehouseCount", "warehouses");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("LocationRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب تسجيل موقع داخل مستودع. **ولا حقل مستودع في الجسم**: المستودع في المسار، لأن رمز موقعٍ بلا "
+                + "مستودعه ليس هوية. / "
+                + "A location registration request within a warehouse. **No warehouse field in the body**: the warehouse is in "
+                + "the path, because a location code without its warehouse is not an identity.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "code",
+                "رمز الموقع — فريدٌ **داخل مستودعه** لا عبر المنشأة، وهو النصّ الذي تحمله الحركة في locationId.",
+                "The location code — unique **within its warehouse**, not across the company; it is the text a movement carries in locationId.",
+                64);
+            WriteStringProperty(w, "nameAr", "اسم الموقع بالعربية — السجلّ.", "The location's Arabic name — the record.", 256);
+            WriteArrayRefProperty(w, "nameTranslations", "NameValue", "ترجمات الاسم.", "The name's translations.");
+            w.WriteEndObject();
+            WriteRequired(w, "code", "nameAr");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("Location", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "موقعٌ داخل مستودع — **مستوى واحد لا شجرة**، لأن locationId في مفتاح الرصيد عمودٌ مفرد. / "
+                + "A location within a warehouse — **one level, not a tree**, because locationId is a single column in the "
+                + "balance key.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "code", "رمز الموقع.", "The location code.", 64);
+            WriteStringProperty(w, "id", "المعرّف.", "The identifier.", 36);
+            WriteBooleanProperty(w, "isActive",
+                "هل يُقبل موقعاً لمسوّدةٍ جديدة؟",
+                "Whether new drafts are accepted against it.");
+            WriteStringProperty(w, "nameAr", "الاسم العربي.", "The Arabic name.", 256);
+            WriteArrayRefProperty(w, "nameTranslations", "NameValue", "ترجمات الاسم.", "The name's translations.");
+            WriteEnumProperty(w, "origin",
+                "من أين جاء هذا الاسم — DECLARED أو OBSERVED.",
+                "Where this name came from — DECLARED or OBSERVED.",
+                CatalogueOrigins);
+            WriteStringProperty(w, "warehouseCode",
+                "رمز المستودع المالك — **وهوية الموقع هي الزوج**: «A-01» في مستودعين موقعان لا موقع.",
+                "The owning warehouse's code — **the location's identity is the pair**: 'A-01' in two warehouses is two locations, not one.",
+                64);
+            w.WriteEndObject();
+            WriteRequired(w, "code", "id", "isActive", "nameAr", "nameTranslations", "origin", "warehouseCode");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("LocationList", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "مواقع مستودعٍ واحد مرتَّبة بالرمز — العاملة والمعطَّلة معاً. / "
+                + "One warehouse's locations ordered by code — active and deactivated alike.");
+            w.WriteStartObject("properties");
+            WriteIntegerProperty(w, "locationCount", 0, int.MaxValue, "عددها.", "How many there are.");
+            WriteArrayRefProperty(w, "locations", "Location", "المواقع.", "The locations.");
+            w.WriteEndObject();
+            WriteRequired(w, "locationCount", "locations");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
         yield return ("StockMovementRequest", static w =>
         {
             w.WriteString("type", "object");
@@ -7808,6 +8074,13 @@ internal static class OpenApiEmitter
     /// أنواع مكوّنات الأجر — <b>مجموعة مغلقة منشورة</b>: المكوّن إمّا يزيد الأجر وإمّا
     /// ينقصه، ولا ثالث يُحتسب في مسيّر.
     /// </summary>
+    /// <summary>
+    /// منشأ اسم المستودع أو الموقع — <b>مجموعة مغلقة فعلاً</b>: الصفّ إمّا كتبه إنسان
+    /// على هذا السطح وإمّا رُصد نصّاً في بياناتٍ مضت، ولا ثالث يكتب صفّاً في هذين
+    /// الجدولين.
+    /// </summary>
+    private static readonly string[] CatalogueOrigins = ["DECLARED", "OBSERVED"];
+
     private static readonly string[] PayComponentKinds = ["deduction", "earning"];
 
     /// <summary>

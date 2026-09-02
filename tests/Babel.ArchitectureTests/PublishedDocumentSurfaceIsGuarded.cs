@@ -91,6 +91,7 @@ public sealed class PublishedDocumentSurfaceIsGuarded
         "/supplier-bills",
         "/supplier-payments",
         "/suppliers",
+        "/warehouses",
     ];
 
     /// <summary>الأفعال التي تُعدّل مورداً قائماً أو تُزيله.</summary>

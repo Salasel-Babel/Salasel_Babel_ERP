@@ -66,6 +66,13 @@ export const INVENTORY_NEXT_STEP: Readonly<Record<string, string>> = {
   "inventory.posting_refused": "inventory.movements.nextPostingRefused",
   "inventory.duplicate_item_code": "inventory.items.nextDuplicate",
   "inventory.unit_ratio_not_positive": "inventory.items.nextRatio",
+
+  /* المكان صار كياناً: هذه الأربعة تُترجَم إلى «سجّله في شاشة المستودعات» أو
+     «أعِد تفعيله»، وهو ما لا يعرفه الخادم لأنه لا يعرف هذه الواجهة. */
+  "inventory.warehouse_not_found": "inventory.movements.nextWarehouseNotFound",
+  "inventory.location_not_in_warehouse": "inventory.movements.nextLocationNotInWarehouse",
+  "inventory.warehouse_inactive": "inventory.movements.nextPlaceInactive",
+  "inventory.location_inactive": "inventory.movements.nextPlaceInactive",
 };
 
 /**

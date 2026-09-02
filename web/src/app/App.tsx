@@ -115,6 +115,9 @@ export function AppShell(): ReactNode {
         <Link to="/design" className="navitem" data-testid="nav-design">
           {t("app.nav.design")}
         </Link>
+        <Link to="/inventory/warehouses" className="navitem" data-testid="nav-inventory-warehouses">
+          {t("inventory.nav.warehouses")}
+        </Link>
         <Link to="/inventory/stock" className="navitem" data-testid="nav-inventory-stock">
           {t("inventory.nav.stock")}
         </Link>

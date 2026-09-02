@@ -213,6 +213,117 @@ internal static class InventoryErrors
         "The inventory control account could not be read, so no reconciliation is possible: "
         + string.Join(" · ", causes.Select(static e => e.Code)));
 
+    // ── كتالوج المستودعات والمواقع ───────────────────────────────────────────
+    // ‏**وكلّها تُفحص عند إنشاء المسوّدة لا عند الترحيل ولا في القاعدة.** المفتاح
+    // الخارجي كان سيُصادق تاريخاً حرّاً مكتوباً قبل وجود الكتالوج، والترحيل كان
+    // سيرفض مستنداً كُتب سلفاً فيتركه عالقاً بلا مخرج.
+
+    /// <summary>
+    /// رمزٌ فارغ حيث تُطلب هوية.
+    /// <para>
+    /// <b>ورمزٌ فارغ ليس «افتراضياً»:</b> يُكتب نصّاً فارغاً في <c>WarehouseId</c> أو
+    /// <c>LocationId</c> على كل حركةٍ تليه، فيصير رصيدٌ كامل في مكانٍ اسمه لا شيء —
+    /// ولا فحصٌ يقارن طرفين يراه، لأنه يتوازن مع نفسه.
+    /// </para>
+    /// </summary>
+    public static Error CodeMissing(string field) => new(
+        "inventory.code_missing",
+        $"الحقل «{field}» فارغ، وهو هوية لا وصف. والرمز الفارغ يُكتب في كل حركةٍ تليه فيصير "
+        + "رصيداً كاملاً في مكانٍ اسمه لا شيء. أرسل رمزاً غير فارغ.",
+        $"The field '{field}' is blank, and it is an identity rather than a description. A blank code is "
+        + "written into every movement that follows it, producing a whole balance in a place named nothing. "
+        + "Send a non-blank code.");
+
+    /// <summary>رمز مستودع مكرّر.</summary>    /// <summary>رمز مستودع مكرّر.</summary>
+    public static Error DuplicateWarehouseCode(string code) => new(
+        "inventory.duplicate_warehouse_code",
+        $"رمز المستودع «{code}» مستعمَل في هذه المنشأة. والرمز هوية تحملها كل حركةٍ ورصيد، "
+        + "فلا يتكرّر ولا يُغيَّر بعد أول حركة. سجّل رمزاً آخر، أو عدّل اسم المستودع القائم.",
+        $"Warehouse code '{code}' is already used in this company. The code is an identity carried by every "
+        + "movement and balance, so it is never duplicated and never changed after the first movement. "
+        + "Register a different code, or rename the existing warehouse.");
+
+    /// <summary>مستودع غير مسجَّل في الكتالوج.</summary>
+    public static Error WarehouseNotFound(string code) => new(
+        "inventory.warehouse_not_found",
+        $"لا مستودع بالرمز «{code}» في كتالوج هذه المنشأة. ورمزٌ لا يعرفه الكتالوج يفتح رصيداً "
+        + "خامساً يُطابَق تماماً ويحمل قيمةً حقيقية لا يعرف أحدٌ أين هي. سجّل المستودع أولاً، "
+        + "أو صحّح الرمز.",
+        $"No warehouse with code '{code}' exists in this company's catalogue. A code the catalogue does not "
+        + "know opens a fifth balance bucket that reconciles perfectly and holds real value nobody can locate. "
+        + "Register the warehouse first, or correct the code.");
+
+    /// <summary>مستودع معطَّل — لا مسوّدة جديدة عليه، وتاريخُه سليمٌ يُقرأ ويُطابَق.</summary>
+    public static Error WarehouseInactive(string code) => new(
+        "inventory.warehouse_inactive",
+        $"المستودع «{code}» معطَّل، فلا تُنشأ عليه مسوّدة جديدة. وأرصدته وحركاته السابقة سليمة "
+        + "تُقرأ وتُطابَق وتُقفَل كما هي — التعطيل يمنع الجديد ولا يمسّ ما مضى. فعّله إن عاد "
+        + "للعمل، أو اختر مستودعاً آخر.",
+        $"Warehouse '{code}' is deactivated, so no new draft is created against it. Its existing balances and "
+        + "movements stand and are still read, reconciled and closed — deactivation blocks what is new and "
+        + "never touches what has passed. Reactivate it if it is back in service, or choose another warehouse.");
+
+    /// <summary>تعطيل مستودعٍ فيه بضاعة — والرفض يُسمّي الصفوف التي تحملها.</summary>
+    public static Error WarehouseHasStock(string code, IReadOnlyList<string> holdings) => new(
+        "inventory.warehouse_has_stock",
+        $"لا يُعطَّل المستودع «{code}» وفيه بضاعة:\n" + string.Join('\n', holdings)
+        + "\nوالتعطيل يمنع أي مستند جديد عليه، فبضاعةٌ تبقى فيه لا يوجد بعدها مستندٌ يُخرجها. "
+        + "أفرغه بمستند — نقلٌ أو صرفٌ أو إعدام — ثم عطّله.",
+        $"Warehouse '{code}' cannot be deactivated while it holds stock:\n" + string.Join('\n', holdings)
+        + "\nDeactivation blocks every new document against it, so stock left inside would have no document "
+        + "that empties it. Empty it with a document — a transfer, an issue, or a write-off — then deactivate.");
+
+    /// <summary>رمز موقع مكرّر داخل مستودعه.</summary>
+    public static Error DuplicateLocationCode(string warehouseCode, string code) => new(
+        "inventory.duplicate_location_code",
+        $"رمز الموقع «{code}» مستعمَل في المستودع «{warehouseCode}». والرمز في مستودعٍ آخر موقعٌ "
+        + "آخر تماماً، فالتكرار داخل المستودع الواحد وحده هو الممنوع.",
+        $"Location code '{code}' is already used in warehouse '{warehouseCode}'. The same code in another "
+        + "warehouse is an entirely different location; only duplication within one warehouse is refused.");
+
+    /// <summary>موقع لا وجود له في هذا المستودع — <b>والزوج هو المفتاح لا الرمز</b>.</summary>
+    public static Error LocationNotInWarehouse(string warehouseCode, string code) => new(
+        "inventory.location_not_in_warehouse",
+        $"لا موقع بالرمز «{code}» في المستودع «{warehouseCode}». وهوية الموقع زوجٌ — المستودع "
+        + "ورمزه — لا رمزٌ مفرد، فوجود «{code}» في مستودعٍ آخر لا يجعله موجوداً هنا. سجّل الموقع "
+        + "في هذا المستودع، أو أرسل موقعاً مسجَّلاً فيه.",
+        $"No location with code '{code}' exists in warehouse '{warehouseCode}'. A location's identity is a "
+        + $"pair — its warehouse and its code — not a bare code, so '{code}' existing in another warehouse "
+        + "does not make it exist here. Register the location in this warehouse, or send one registered in it.");
+
+    /// <summary>موقع معطَّل.</summary>
+    public static Error LocationInactive(string warehouseCode, string code) => new(
+        "inventory.location_inactive",
+        $"الموقع «{code}» في المستودع «{warehouseCode}» معطَّل، فلا تُنشأ عليه مسوّدة جديدة. "
+        + "ورصيده السابق يُقرأ ويُطابَق كما هو. فعّله، أو اختر موقعاً آخر في المستودع نفسه.",
+        $"Location '{code}' in warehouse '{warehouseCode}' is deactivated, so no new draft is created against "
+        + "it. Its existing balance is still read and reconciled. Reactivate it, or choose another location "
+        + "in the same warehouse.");
+
+    /// <summary>تعطيل موقعٍ فيه بضاعة — والرفض يُسمّي الأصناف التي تحملها.</summary>
+    public static Error LocationHasStock(string warehouseCode, string code, IReadOnlyList<string> holdings) => new(
+        "inventory.location_has_stock",
+        $"لا يُعطَّل الموقع «{code}» في المستودع «{warehouseCode}» وفيه بضاعة:\n"
+        + string.Join('\n', holdings)
+        + "\nأفرغه بمستند ثم عطّله — والتعطيل لا يُخرج بضاعةً ولا يُصفّر قيمة.",
+        $"Location '{code}' in warehouse '{warehouseCode}' cannot be deactivated while it holds stock:\n"
+        + string.Join('\n', holdings)
+        + "\nEmpty it with a document, then deactivate — deactivation moves no goods and zeroes no value.");
+
+    /// <summary>
+    /// وصفُ صفٍّ يحمل بضاعة، بالشكل نفسه الذي يطبعه <see cref="PeriodNotCloseable"/>:
+    /// <c>صنف @ مستودع/موقع</c>. وشكلٌ واحد يعني أن من قرأ رفض الإقفال يقرأ هذا بلا تعلّم.
+    /// </summary>
+    /// <param name="itemId">الصنف.</param>
+    /// <param name="warehouseId">المستودع.</param>
+    /// <param name="locationId">الموقع.</param>
+    /// <param name="quantity">الكمّية المُمسَكة.</param>
+    /// <param name="value">القيمة المُمسَكة.</param>
+    public static string Holding(
+        string itemId, string warehouseId, string locationId, decimal quantity, decimal value)
+        => FormattableString.Invariant(
+            $"  - {itemId} @ {warehouseId}/{locationId}: quantity {Number(quantity)} / value {Number(value)}");
+
     /// <summary>تنسيق رقم للعرض داخل رسالة — ثابت الثقافة دائماً (‏فخ-38 · فخ-75).</summary>
     public static string Number(decimal value) => value.ToString("0.0000", CultureInfo.InvariantCulture);
 }

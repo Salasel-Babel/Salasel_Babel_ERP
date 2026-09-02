@@ -28,6 +28,7 @@ namespace Babel.Inventory.Surface;
 public sealed class InventorySurface
 {
     private readonly ItemCatalogueService _items;
+    private readonly WarehouseCatalogueService _places;
     private readonly StockDocumentService _documents;
     private readonly StockMovementService _stock;
     private readonly InventoryValuationService _valuation;
@@ -35,24 +36,28 @@ public sealed class InventorySurface
 
     /// <summary>ينشئ السطح فوق خدمات الوحدة.</summary>
     /// <param name="items">كتالوج الأصناف.</param>
+    /// <param name="places">كتالوج المستودعات والمواقع.</param>
     /// <param name="documents">مستندات حركة المخزون.</param>
     /// <param name="stock">دفتر المخزون المساعد — الأرصدة.</param>
     /// <param name="valuation">المطابقة وجاهزية الإقفال.</param>
     /// <param name="options">إعدادات الوحدة — ومنها عملة المنشأة.</param>
     public InventorySurface(
         ItemCatalogueService items,
+        WarehouseCatalogueService places,
         StockDocumentService documents,
         StockMovementService stock,
         InventoryValuationService valuation,
         InventoryOptions options)
     {
         ArgumentNullException.ThrowIfNull(items);
+        ArgumentNullException.ThrowIfNull(places);
         ArgumentNullException.ThrowIfNull(documents);
         ArgumentNullException.ThrowIfNull(stock);
         ArgumentNullException.ThrowIfNull(valuation);
         ArgumentNullException.ThrowIfNull(options);
 
         _items = items;
+        _places = places;
         _documents = documents;
         _stock = stock;
         _valuation = valuation;
@@ -117,6 +122,156 @@ public sealed class InventorySurface
         return result.IsFailure
             ? Result<IReadOnlyList<InventoryItem>>.Failure(result.Errors)
             : Result<IReadOnlyList<InventoryItem>>.Success([.. result.Value.Select(Item)]);
+    }
+
+    // ── كتالوج المستودعات والمواقع ───────────────────────────────────────────
+
+    /// <summary>يسجّل مستودعاً جديداً بمؤهّل دوره.</summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="request">الطلب.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    public async ValueTask<Result<InventoryWarehouse>> AddWarehouseAsync(
+        TenantId tenant,
+        UserId actor,
+        InventoryWarehouseRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        Result<WarehouseView> result = await _places
+            .CreateWarehouseAsync(
+                tenant, actor, new WarehouseDraft(request.Code, request.Name, request.Qualifier), cancellationToken)
+            .ConfigureAwait(false);
+
+        return result.IsFailure
+            ? Result<InventoryWarehouse>.Failure(result.Errors)
+            : Result<InventoryWarehouse>.Success(Warehouse(result.Value));
+    }
+
+    /// <summary>يقرأ مستودعاً واحداً.</summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="warehouseId">معرّف المستودع.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    public async ValueTask<Result<InventoryWarehouse>> ReadWarehouseAsync(
+        TenantId tenant,
+        UserId actor,
+        Guid warehouseId,
+        CancellationToken cancellationToken = default)
+    {
+        Result<WarehouseView> result = await _places
+            .GetWarehouseAsync(tenant, actor, warehouseId, cancellationToken).ConfigureAwait(false);
+
+        return result.IsFailure
+            ? Result<InventoryWarehouse>.Failure(result.Errors)
+            : Result<InventoryWarehouse>.Success(Warehouse(result.Value));
+    }
+
+    /// <summary>يقرأ مستودعات المنشأة — العاملة والمعطَّلة — مرتَّبةً بالرمز.</summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    public async ValueTask<Result<IReadOnlyList<InventoryWarehouse>>> ListWarehousesAsync(
+        TenantId tenant,
+        UserId actor,
+        CancellationToken cancellationToken = default)
+    {
+        Result<IReadOnlyList<WarehouseView>> result = await _places
+            .ListWarehousesAsync(tenant, actor, cancellationToken).ConfigureAwait(false);
+
+        return result.IsFailure
+            ? Result<IReadOnlyList<InventoryWarehouse>>.Failure(result.Errors)
+            : Result<IReadOnlyList<InventoryWarehouse>>.Success([.. result.Value.Select(Warehouse)]);
+    }
+
+    /// <summary>يُعطّل مستودعاً أو يُعيد تفعيله — ولا يمسّ رصيداً ولا تاريخاً.</summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="warehouseId">معرّف المستودع.</param>
+    /// <param name="active">الحالة المطلوبة.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    public async ValueTask<Result<InventoryWarehouse>> SetWarehouseActiveAsync(
+        TenantId tenant,
+        UserId actor,
+        Guid warehouseId,
+        bool active,
+        CancellationToken cancellationToken = default)
+    {
+        Result<WarehouseView> result = await _places
+            .SetWarehouseActiveAsync(tenant, actor, warehouseId, active, cancellationToken).ConfigureAwait(false);
+
+        return result.IsFailure
+            ? Result<InventoryWarehouse>.Failure(result.Errors)
+            : Result<InventoryWarehouse>.Success(Warehouse(result.Value));
+    }
+
+    /// <summary>يسجّل موقعاً داخل مستودع.</summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="warehouseId">معرّف المستودع المالك.</param>
+    /// <param name="request">الطلب.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    public async ValueTask<Result<InventoryLocation>> AddLocationAsync(
+        TenantId tenant,
+        UserId actor,
+        Guid warehouseId,
+        InventoryLocationRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        Result<LocationView> result = await _places
+            .CreateLocationAsync(
+                tenant, actor, warehouseId, new LocationDraft(request.Code, request.Name), cancellationToken)
+            .ConfigureAwait(false);
+
+        return result.IsFailure
+            ? Result<InventoryLocation>.Failure(result.Errors)
+            : Result<InventoryLocation>.Success(Location(result.Value));
+    }
+
+    /// <summary>يقرأ مواقع مستودعٍ واحد مرتَّبةً بالرمز.</summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="warehouseId">معرّف المستودع.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    public async ValueTask<Result<IReadOnlyList<InventoryLocation>>> ListLocationsAsync(
+        TenantId tenant,
+        UserId actor,
+        Guid warehouseId,
+        CancellationToken cancellationToken = default)
+    {
+        Result<IReadOnlyList<LocationView>> result = await _places
+            .ListLocationsAsync(tenant, actor, warehouseId, cancellationToken).ConfigureAwait(false);
+
+        return result.IsFailure
+            ? Result<IReadOnlyList<InventoryLocation>>.Failure(result.Errors)
+            : Result<IReadOnlyList<InventoryLocation>>.Success([.. result.Value.Select(Location)]);
+    }
+
+    /// <summary>يُعطّل موقعاً داخل مستودعه أو يُعيد تفعيله.</summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="warehouseId">معرّف المستودع المالك.</param>
+    /// <param name="locationId">معرّف الموقع.</param>
+    /// <param name="active">الحالة المطلوبة.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    public async ValueTask<Result<InventoryLocation>> SetLocationActiveAsync(
+        TenantId tenant,
+        UserId actor,
+        Guid warehouseId,
+        Guid locationId,
+        bool active,
+        CancellationToken cancellationToken = default)
+    {
+        Result<LocationView> result = await _places
+            .SetLocationActiveAsync(tenant, actor, warehouseId, locationId, active, cancellationToken)
+            .ConfigureAwait(false);
+
+        return result.IsFailure
+            ? Result<InventoryLocation>.Failure(result.Errors)
+            : Result<InventoryLocation>.Success(Location(result.Value));
     }
 
     /// <summary>يُنشئ مستند حركة مخزون <b>مسوّدة</b>. لا حركة ولا قيد.</summary>
@@ -272,6 +427,12 @@ public sealed class InventorySurface
                     divergence.ReasonCode)),
             ]));
     }
+
+    private static InventoryWarehouse Warehouse(WarehouseView view) => new(
+        view.Id, view.Code, view.Name, view.Qualifier, view.Origin, view.IsActive);
+
+    private static InventoryLocation Location(LocationView view) => new(
+        view.Id, view.WarehouseCode, view.Code, view.Name, view.Origin, view.IsActive);
 
     private static InventoryItem Item(ItemView view) => new(
         view.Id,

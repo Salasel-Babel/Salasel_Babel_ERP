@@ -52,7 +52,8 @@ internal sealed class Harness : IDisposable
 
         Stock = new StockMovementService(enforcer, inventory);
         Items = new ItemCatalogueService(enforcer, inventory);
-        StockDocuments = new StockDocumentService(enforcer, inventory, Posting, Stock);
+        Places = new WarehouseCatalogueService(enforcer, inventory);
+        StockDocuments = new StockDocumentService(enforcer, inventory, Posting, Stock, Places);
         Valuation = new InventoryValuationService(
             enforcer,
             inventory,
@@ -87,6 +88,9 @@ internal sealed class Harness : IDisposable
 
     /// <summary>كتالوج الأصناف — وحدة الأساس ومعاملات التحويل.</summary>
     public ItemCatalogueService Items { get; }
+
+    /// <summary>كتالوج المستودعات والمواقع — المكان شيءٌ موجود لا نصٌّ حرّ.</summary>
+    public WarehouseCatalogueService Places { get; }
 
     /// <summary>مستندات حركة المخزون القائمة بذاتها: تسوية الجرد والرصيد الافتتاحي.</summary>
     public StockDocumentService StockDocuments { get; }
@@ -354,6 +358,37 @@ internal sealed class Harness : IDisposable
 
         Require(created);
         return created.Value.Id;
+    }
+
+    /// <summary>
+    /// يسجّل مستودعاً وموقعاً فيه ويُعيد رمزيهما — <b>لأن المسوّدة لم تعد تُقبل على مكانٍ
+    /// لا يعرفه الكتالوج</b>. والاسم يُكتب هنا صراحةً: الملء بالملاحظة لا يبلغ قاعدةً
+    /// تُنشأ من الصفر بـ<c>EnsureCreated</c>.
+    /// </summary>
+    /// <param name="tenant">المنشأة.</param>
+    /// <param name="warehouse">رمز المستودع.</param>
+    /// <param name="location">رمز الموقع.</param>
+    /// <param name="token">رمز الإلغاء.</param>
+    public async Task<Guid> RegisterPlaceAsync(
+        TenantId tenant, string warehouse, string location, CancellationToken token)
+    {
+        Result<WarehouseView> registered = await Places.CreateWarehouseAsync(
+            tenant,
+            Actor,
+            new WarehouseDraft(warehouse, new TranslatedName("مستودع " + warehouse), string.Empty),
+            token);
+
+        Require(registered);
+
+        Result<LocationView> placed = await Places.CreateLocationAsync(
+            tenant,
+            Actor,
+            registered.Value.Id,
+            new LocationDraft(location, new TranslatedName("موقع " + location)),
+            token);
+
+        Require(placed);
+        return registered.Value.Id;
     }
 
     public static Money Sar(decimal value) => Money.Of(value, CurrencyCode.Sar);

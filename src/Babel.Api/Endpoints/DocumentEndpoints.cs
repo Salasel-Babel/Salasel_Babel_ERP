@@ -95,6 +95,15 @@ internal static class DocumentEndpoints
         app.MapPost(ApiRoutes.StockMovementPosting, PostStockMovementAsync);
         app.MapGet(ApiRoutes.StockBalances, ReadStockBalancesAsync);
         app.MapGet(ApiRoutes.InventoryValuation, ReadInventoryValuationAsync);
+        app.MapPost(ApiRoutes.Warehouses, AddWarehouseAsync);
+        app.MapGet(ApiRoutes.Warehouses, ListWarehousesAsync);
+        app.MapGet(ApiRoutes.Warehouse, ReadWarehouseAsync);
+        app.MapPost(ApiRoutes.WarehouseDeactivation, DeactivateWarehouseAsync);
+        app.MapPost(ApiRoutes.WarehouseActivation, ActivateWarehouseAsync);
+        app.MapPost(ApiRoutes.WarehouseLocations, AddLocationAsync);
+        app.MapGet(ApiRoutes.WarehouseLocations, ListLocationsAsync);
+        app.MapPost(ApiRoutes.WarehouseLocationDeactivation, DeactivateLocationAsync);
+        app.MapPost(ApiRoutes.WarehouseLocationActivation, ActivateLocationAsync);
     }
 
     // ── المبيعات ─────────────────────────────────────────────────────────────
@@ -1195,6 +1204,239 @@ internal static class DocumentEndpoints
 
         Result<InventoryValuationReport> result = await inventory
             .ReadValuationAsync(new TenantId(companyId), Actor(context), asOf, cancellationToken)
+            .ConfigureAwait(false);
+
+        return result.IsFailure
+            ? HttpProblemResults.Domain(context, result.Errors)
+            : Results.Json(DocumentMapping.ToDto(result.Value), ApiJson.Options);
+    }
+
+    // ── كتالوج المستودعات والمواقع ───────────────────────────────────────────
+
+    private static async Task<IResult> AddWarehouseAsync(
+        HttpContext context,
+        InventorySurface inventory,
+        CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        (WarehouseRequestDto? dto, IResult? refused) =
+            await BodyAsync<WarehouseRequestDto>(context, cancellationToken).ConfigureAwait(false);
+
+        if (dto is null)
+        {
+            return refused!;
+        }
+
+        InventoryWarehouseRequest request;
+        try
+        {
+            request = DocumentMapping.ToWarehouseRequest(dto);
+        }
+        catch (WireFormatException wire)
+        {
+            return HttpProblemResults.Wire(context, wire);
+        }
+
+        Result<InventoryWarehouse> result = await inventory
+            .AddWarehouseAsync(new TenantId(companyId), Actor(context), request, cancellationToken)
+            .ConfigureAwait(false);
+
+        return result.IsFailure
+            ? HttpProblemResults.Domain(context, result.Errors)
+            : Created(
+                context,
+                DocumentMapping.ToDto(result.Value),
+                Location(ApiRoutes.Warehouse, companyId, "warehouseId", result.Value.Id));
+    }
+
+    private static async Task<IResult> ReadWarehouseAsync(
+        HttpContext context,
+        InventorySurface inventory,
+        CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        if (!Scope.TryRouteId(context, "warehouseId", out Guid warehouseId, out IResult? malformed))
+        {
+            return malformed!;
+        }
+
+        Result<InventoryWarehouse> result = await inventory
+            .ReadWarehouseAsync(new TenantId(companyId), Actor(context), warehouseId, cancellationToken)
+            .ConfigureAwait(false);
+
+        return result.IsFailure
+            ? HttpProblemResults.Domain(context, result.Errors)
+            : Results.Json(DocumentMapping.ToDto(result.Value), ApiJson.Options);
+    }
+
+    private static async Task<IResult> ListWarehousesAsync(
+        HttpContext context,
+        InventorySurface inventory,
+        CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        Result<IReadOnlyList<InventoryWarehouse>> result = await inventory
+            .ListWarehousesAsync(new TenantId(companyId), Actor(context), cancellationToken)
+            .ConfigureAwait(false);
+
+        if (result.IsFailure)
+        {
+            return HttpProblemResults.Domain(context, result.Errors);
+        }
+
+        List<WarehouseDto> warehouses = [.. result.Value.Select(DocumentMapping.ToDto)];
+        return Results.Json(new WarehouseListDto(warehouses.Count, warehouses), ApiJson.Options);
+    }
+
+    private static Task<IResult> DeactivateWarehouseAsync(
+        HttpContext context, InventorySurface inventory, CancellationToken cancellationToken)
+        => SetWarehouseActiveAsync(context, inventory, active: false, cancellationToken);
+
+    private static Task<IResult> ActivateWarehouseAsync(
+        HttpContext context, InventorySurface inventory, CancellationToken cancellationToken)
+        => SetWarehouseActiveAsync(context, inventory, active: true, cancellationToken);
+
+    private static async Task<IResult> SetWarehouseActiveAsync(
+        HttpContext context,
+        InventorySurface inventory,
+        bool active,
+        CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        if (!Scope.TryRouteId(context, "warehouseId", out Guid warehouseId, out IResult? malformed))
+        {
+            return malformed!;
+        }
+
+        Result<InventoryWarehouse> result = await inventory
+            .SetWarehouseActiveAsync(new TenantId(companyId), Actor(context), warehouseId, active, cancellationToken)
+            .ConfigureAwait(false);
+
+        return result.IsFailure
+            ? HttpProblemResults.Domain(context, result.Errors)
+            : Results.Json(DocumentMapping.ToDto(result.Value), ApiJson.Options);
+    }
+
+    private static async Task<IResult> AddLocationAsync(
+        HttpContext context,
+        InventorySurface inventory,
+        CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        if (!Scope.TryRouteId(context, "warehouseId", out Guid warehouseId, out IResult? malformed))
+        {
+            return malformed!;
+        }
+
+        (LocationRequestDto? dto, IResult? refused) =
+            await BodyAsync<LocationRequestDto>(context, cancellationToken).ConfigureAwait(false);
+
+        if (dto is null)
+        {
+            return refused!;
+        }
+
+        InventoryLocationRequest request;
+        try
+        {
+            request = DocumentMapping.ToLocationRequest(dto);
+        }
+        catch (WireFormatException wire)
+        {
+            return HttpProblemResults.Wire(context, wire);
+        }
+
+        Result<InventoryLocation> result = await inventory
+            .AddLocationAsync(new TenantId(companyId), Actor(context), warehouseId, request, cancellationToken)
+            .ConfigureAwait(false);
+
+        // ‏**ولا ترويسة موضع**: الموقع لا مورد قراءةٍ مفرد له على هذا السطح — يُقرأ في
+        // قائمة مستودعه. وترويسةٌ توجّه إلى عنوان لا يردّ أسوأ من غيابها.
+        return result.IsFailure
+            ? HttpProblemResults.Domain(context, result.Errors)
+            : Created(context, DocumentMapping.ToDto(result.Value), location: null);
+    }
+
+    private static async Task<IResult> ListLocationsAsync(
+        HttpContext context,
+        InventorySurface inventory,
+        CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        if (!Scope.TryRouteId(context, "warehouseId", out Guid warehouseId, out IResult? malformed))
+        {
+            return malformed!;
+        }
+
+        Result<IReadOnlyList<InventoryLocation>> result = await inventory
+            .ListLocationsAsync(new TenantId(companyId), Actor(context), warehouseId, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (result.IsFailure)
+        {
+            return HttpProblemResults.Domain(context, result.Errors);
+        }
+
+        List<LocationDto> locations = [.. result.Value.Select(DocumentMapping.ToDto)];
+        return Results.Json(new LocationListDto(locations.Count, locations), ApiJson.Options);
+    }
+
+    private static Task<IResult> DeactivateLocationAsync(
+        HttpContext context, InventorySurface inventory, CancellationToken cancellationToken)
+        => SetLocationActiveAsync(context, inventory, active: false, cancellationToken);
+
+    private static Task<IResult> ActivateLocationAsync(
+        HttpContext context, InventorySurface inventory, CancellationToken cancellationToken)
+        => SetLocationActiveAsync(context, inventory, active: true, cancellationToken);
+
+    private static async Task<IResult> SetLocationActiveAsync(
+        HttpContext context,
+        InventorySurface inventory,
+        bool active,
+        CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        if (!Scope.TryRouteId(context, "warehouseId", out Guid warehouseId, out IResult? malformedWarehouse))
+        {
+            return malformedWarehouse!;
+        }
+
+        if (!Scope.TryRouteId(context, "locationId", out Guid locationId, out IResult? malformedLocation))
+        {
+            return malformedLocation!;
+        }
+
+        Result<InventoryLocation> result = await inventory
+            .SetLocationActiveAsync(
+                new TenantId(companyId), Actor(context), warehouseId, locationId, active, cancellationToken)
             .ConfigureAwait(false);
 
         return result.IsFailure

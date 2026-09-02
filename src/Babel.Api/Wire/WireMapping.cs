@@ -520,6 +520,54 @@ internal static class WireMapping
             ReadRequiredText(dto.En, field + ".en", 512));
     }
 
+    /// <summary>
+    /// يقرأ اسماً <b>سجلُّه عربي وترجماته صفوف</b> (‏ADR-0021 · القاعدة 14).
+    /// <para>
+    /// <b>وهو ماسحٌ واحد لا نسخة ثانية</b> (‏فخ-40): كل سطحٍ ينشر <c>nameAr</c> و
+    /// <c>nameTranslations</c> يمرّ من هنا، فوسمٌ مُشوَّه أو ترجمةٌ فارغة أو محرف تحكّم
+    /// اتجاهي يُرفض بالرمز نفسه على كل باب — لا بحسب أيّ نسخةٍ من الماسح صادفها.
+    /// </para>
+    /// </summary>
+    /// <param name="arabic">الاسم العربي — السجلّ، إلزامي غير فارغ.</param>
+    /// <param name="translations">الترجمات بأوسمة BCP-47، أو <c>null</c>.</param>
+    /// <param name="arabicField">اسم حقل السجلّ في الرفض.</param>
+    /// <param name="translationsField">اسم حقل الترجمات في الرفض.</param>
+    /// <param name="maxLength">أقصى طول لكل نصّ.</param>
+    internal static TranslatedName ReadTranslated(
+        string? arabic,
+        IReadOnlyList<NameValueDto>? translations,
+        string arabicField,
+        string translationsField,
+        int maxLength)
+    {
+        string record = ReadRequiredText(arabic, arabicField, maxLength);
+        Dictionary<string, string> map = new(StringComparer.Ordinal);
+
+        foreach (NameValueDto entry in translations ?? [])
+        {
+            if (map.ContainsKey(entry.Name))
+            {
+                throw WireNumbers.Reject(
+                    "wire.body.repeated",
+                    translationsField,
+                    "ترجمة مكرَّرة للوسم «" + entry.Name + "».",
+                    "A repeated translation for the tag '" + entry.Name + "'.");
+            }
+
+            map[entry.Name] = ReadRequiredText(entry.Value, translationsField, maxLength);
+        }
+
+        try
+        {
+            return new TranslatedName(record, map);
+        }
+        catch (ArgumentException exception)
+        {
+            throw WireNumbers.Reject(
+                "wire.body.malformed", translationsField, exception.Message, exception.Message);
+        }
+    }
+
     internal static string ReadRequiredText(string? value, string field, int maxLength)
     {
         if (string.IsNullOrWhiteSpace(value))

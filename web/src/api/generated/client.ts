@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     bd9a3ec99569ae7bbe8a4def9a1e5d52942ab4732289f7897df7762912d72d02
+     3a7663a236ff736af8d27bc583e2e8d62701c5b7108da8ed25d82522511cec3d
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -48,6 +48,52 @@ export async function activateLeaseContract(transport: Transport, args: Activate
   const response = await transport({ method: "POST", url, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "Lease", response.json) as T.Lease;
+}
+
+export interface ActivateLocationArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف الموقع. وهويّته زوجٌ — المستودع ورمزُه — فمعرّفٌ في مستودعٍ آخر لا يُقبل على هذا المسار. / The location identifier. Its identity is a pair — its warehouse and its code — so an identifier belonging to another warehouse is refused on this path. */
+  locationId: string;
+  /** معرّف المستودع — **وهو غير رمزه**: الرمز هو ما تحمله كل حركةٍ ورصيد، والمعرّف عنوانٌ على هذا السطح. / The warehouse identifier — **it is not its code**: the code is what every movement and balance carries, while the identifier is an address on this surface. */
+  warehouseId: string;
+}
+
+/**
+ * إعادة تفعيل موقع / Reactivate a location
+ * 
+ * يُعيد تفعيل موقع معطَّل داخل مستودعه فتُقبل عليه المسوّدات من جديد.
+ * 
+ * Reactivates a deactivated location within its warehouse so drafts are accepted against it again.
+ */
+export async function activateLocation(transport: Transport, args: ActivateLocationArgs, signal?: AbortSignal): Promise<T.Location> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/warehouses/" + encodeURIComponent(args.warehouseId) + "/locations/" + encodeURIComponent(args.locationId) + "/activation";
+  const url = path;
+  const response = await transport({ method: "POST", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "Location", response.json) as T.Location;
+}
+
+export interface ActivateWarehouseArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف المستودع — **وهو غير رمزه**: الرمز هو ما تحمله كل حركةٍ ورصيد، والمعرّف عنوانٌ على هذا السطح. / The warehouse identifier — **it is not its code**: the code is what every movement and balance carries, while the identifier is an address on this surface. */
+  warehouseId: string;
+}
+
+/**
+ * إعادة تفعيل مستودع / Reactivate a warehouse
+ * 
+ * يُعيد تفعيل مستودع معطَّل فتُقبل عليه المسوّدات من جديد. ولا أثر لهذا الباب على رصيد ولا حركة: التعطيل لم يمسّهما أصلاً.
+ * 
+ * Reactivates a deactivated warehouse so drafts are accepted against it again. This door has no effect on any balance or movement: deactivation never touched them.
+ */
+export async function activateWarehouse(transport: Transport, args: ActivateWarehouseArgs, signal?: AbortSignal): Promise<T.Warehouse> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/warehouses/" + encodeURIComponent(args.warehouseId) + "/activation";
+  const url = path;
+  const response = await transport({ method: "POST", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "Warehouse", response.json) as T.Warehouse;
 }
 
 export interface AddChangeOrderArgs {
@@ -191,6 +237,39 @@ export async function addItem(transport: Transport, args: AddItemArgs, signal?: 
   const response = await transport({ method: "POST", url, body, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "Item", response.json) as T.Item;
+}
+
+export interface AddLocationArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف المستودع — **وهو غير رمزه**: الرمز هو ما تحمله كل حركةٍ ورصيد، والمعرّف عنوانٌ على هذا السطح. / The warehouse identifier — **it is not its code**: the code is what every movement and balance carries, while the identifier is an address on this surface. */
+  warehouseId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.LocationRequest;
+}
+
+/**
+ * تسجيل موقع في مستودع / Register a location within a warehouse
+ * 
+ * يسجّل موقعاً داخل مستودع. **مورد فرعي لا مورد رئيسي**: رمزُ موقعٍ بلا مستودعه ليس هوية، و«A-01» في مستودعين موقعان لا موقع — وهو ما يقوله مفتاح الرصيد الرباعي (منشأة · صنف · مستودع · موقع) حرفياً. فالاشتراط بنيةٌ في العنوان لا تحقّقٌ في الجسم، ولا مسار تحقّقٍ يمكن أن يتخطّاه.
+ * 
+ * **ومستوى واحد لا شجرة**: `locationId` في مفتاح الرصيد عمودٌ مفرد، فمستوىً واحد هو ما يحمله المفتاح. وسؤال «أمستوى واحد أم شجرة؟» سؤالٌ مفتوح على المالك، ولا يُجاب هنا باختراع أب.
+ * 
+ * ويُرفض على مستودعٍ معطَّل: موقعٌ جديد في مكانٍ لا يُقبل عليه مستند لا يُستعمل أبداً.
+ * 
+ * Registers a location within a warehouse. **A sub-resource, not a top-level one**: a location code without its warehouse is not an identity, and 'A-01' in two warehouses is two locations, not one — which is exactly what the four-part balance key (company, item, warehouse, location) says. The requirement is structural in the address rather than a check in the body, so no validation path can skip it.
+ * 
+ * **One level, not a tree**: `locationId` is a single column in the balance key, so one level is what the key holds. Whether binning is one level or a tree is an open question for the owner, and it is not answered here by inventing a parent.
+ * 
+ * It is refused against a deactivated warehouse: a new location in a place that accepts no document would never be used.
+ */
+export async function addLocation(transport: Transport, args: AddLocationArgs, signal?: AbortSignal): Promise<T.Location> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/warehouses/" + encodeURIComponent(args.warehouseId) + "/locations";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "LocationRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "Location", response.json) as T.Location;
 }
 
 export interface AddPayComponentArgs {
@@ -382,6 +461,45 @@ export async function addSupplier(transport: Transport, args: AddSupplierArgs, s
   const response = await transport({ method: "POST", url, body, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "Party", response.json) as T.Party;
+}
+
+export interface AddWarehouseArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.WarehouseRequest;
+}
+
+/**
+ * تسجيل مستودع / Register a warehouse
+ * 
+ * يسجّل مستودعاً: رمزه، واسمه العربي سجلّاً وترجماته صفوفاً، و**مؤهّل دوره**.
+ * 
+ * **والرمز هو النصّ الذي تحمله كل حركةٍ ورصيد** في هذه المنشأة، حرفاً بحرف. وقبل هذا المورد كان `warehouseId` عمود نصٍّ حرّ بلا كتالوج ولا تحقّق: خطأ إملائي واحد — WH-O1 بحرف O مكان الصفر — يفتح **رصيداً خامساً** يُطابَق تماماً ويحمل قيمةً حقيقية لا يعرف أحدٌ أين هي، لأن المطابقة تجمع الحركات والأرصدة على المفتاح نفسه فيتوازن الخطأ مع نفسه.
+ * 
+ * **ولا رمز حساب هنا**: qualifier مؤهّل دور — «صنف المستودع» في مصفوفة الترحيل — وخريطة الأدوار وحدها تُحوّله إلى حساب. ويُقبل فارغاً: مستودعٌ بلا صنفٍ خاص واقعةٌ شائعة، وإلزامه كان سيدفع من لا صنف عنده إلى اختراع واحد.
+ * 
+ * **ولاحظ ما ليس على هذا المورد: لا تعديل ولا حذف.** تغييرُ الرمز يُيتّم كل صفٍّ تاريخي يحمله على جدولٍ لا مسار UPDATE إليه، والانصراف عن مستودع يكون بتعطيله. **وتعديل الاسم والمؤهّل نقصُ سطحٍ مُعلَن** في هذه الدفعة، لا قرار منع.
+ * 
+ * و`origin` يخرج DECLARED على ما يُسجَّل من هنا: ما رُصد نصّاً في بياناتٍ سابقة يخرج OBSERVED واسمه رمزُه، والشاشة تعرف الفرق فتسأل عن اسمٍ حقيقي بدل أن تبدو ككتالوجٍ مكتوب.
+ * 
+ * Registers a warehouse: its code, its Arabic name as the record with translations as rows, and **its role qualifier**.
+ * 
+ * **The code is the text every movement and balance in this company carries**, character for character. Before this resource, `warehouseId` was a free-text column with no catalogue and no check: one typo — WH-O1 with a letter O instead of a zero — opens a **fifth balance bucket** that reconciles perfectly and holds real value nobody can locate, because reconciliation sums movements and balances on the same key, so the mistake balances against itself.
+ * 
+ * **No account code appears here**: qualifier is a role qualifier — the posting matrix's 'warehouse class' — and the role map alone turns it into an account. It is accepted empty: a warehouse with no particular class is common, and requiring one would push whoever has none into inventing one.
+ * 
+ * **Note what this resource does not carry: no update and no delete.** Changing the code orphans every historical row that carries it on a table with no UPDATE path, and retiring a warehouse is done by deactivating it. **Editing the name and the qualifier is a declared surface gap** in this batch, not a prohibition.
+ * 
+ * `origin` comes back DECLARED for anything registered here; what was observed as text in earlier data comes back OBSERVED with its code as its name, and the screen knows the difference so it asks for a real name instead of looking like a catalogue somebody wrote.
+ */
+export async function addWarehouse(transport: Transport, args: AddWarehouseArgs, signal?: AbortSignal): Promise<T.Warehouse> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/warehouses";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "WarehouseRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "Warehouse", response.json) as T.Warehouse;
 }
 
 export interface AdmitDocumentArgs {
@@ -665,6 +783,64 @@ export async function createUnit(transport: Transport, args: CreateUnitArgs, sig
   const response = await transport({ method: "POST", url, body, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "Unit", response.json) as T.Unit;
+}
+
+export interface DeactivateLocationArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف الموقع. وهويّته زوجٌ — المستودع ورمزُه — فمعرّفٌ في مستودعٍ آخر لا يُقبل على هذا المسار. / The location identifier. Its identity is a pair — its warehouse and its code — so an identifier belonging to another warehouse is refused on this path. */
+  locationId: string;
+  /** معرّف المستودع — **وهو غير رمزه**: الرمز هو ما تحمله كل حركةٍ ورصيد، والمعرّف عنوانٌ على هذا السطح. / The warehouse identifier — **it is not its code**: the code is what every movement and balance carries, while the identifier is an address on this surface. */
+  warehouseId: string;
+}
+
+/**
+ * تعطيل موقع / Deactivate a location
+ * 
+ * يُعطّل موقعاً داخل مستودعه: يمنع المسوّدات الجديدة عليه ولا يمسّ رصيده. ويُرفض ما دامت فيه بضاعة، والرفض يُسمّي الأصناف التي تحملها.
+ * 
+ * **والزوج هو الهوية**: موقعٌ بهذا المعرّف في مستودعٍ آخر ليس موقع هذا المسار، ويُرفض بـ`inventory.location_not_in_warehouse` بدل أن يُعمَل على الصفّ الخطأ.
+ * 
+ * Deactivates a location within its warehouse: it blocks new drafts against it and touches no balance. It is refused while the location holds stock, and the refusal names the items that hold it.
+ * 
+ * **The pair is the identity**: a location with this identifier in another warehouse is not this path's location, and it is refused with `inventory.location_not_in_warehouse` rather than acted on by mistake.
+ */
+export async function deactivateLocation(transport: Transport, args: DeactivateLocationArgs, signal?: AbortSignal): Promise<T.Location> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/warehouses/" + encodeURIComponent(args.warehouseId) + "/locations/" + encodeURIComponent(args.locationId) + "/deactivation";
+  const url = path;
+  const response = await transport({ method: "POST", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "Location", response.json) as T.Location;
+}
+
+export interface DeactivateWarehouseArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف المستودع — **وهو غير رمزه**: الرمز هو ما تحمله كل حركةٍ ورصيد، والمعرّف عنوانٌ على هذا السطح. / The warehouse identifier — **it is not its code**: the code is what every movement and balance carries, while the identifier is an address on this surface. */
+  warehouseId: string;
+}
+
+/**
+ * تعطيل مستودع / Deactivate a warehouse
+ * 
+ * يُعطّل مستودعاً: **يمنع المسوّدات الجديدة عليه، ولا يمسّ رصيداً ولا حركةً ولا تاريخاً**. أرصدته تُقرأ وتُطابَق وتُقفَل كما كانت، وحركاته المُرحَّلة تبقى في المطابقة الثلاثية بلا فرق.
+ * 
+ * **ويُرفض ما دامت فيه بضاعة، والرفض يُسمّي الصفوف التي تحملها** بالشكل نفسه الذي يطبعه رفض إقفال الفترة — `صنف @ مستودع/موقع` — لأن التعطيل يغلق كل باب مستندٍ يُخرجها، فتبقى قيمةٌ في الميزانية بلا مخرج. والشرط «كمّية أو قيمة» لا «كمّية وقيمة»: رصيدٌ بكمّية صفر وقيمةٍ غير صفرية واقعةٌ مسجّلة، وإخفاء مكانه يُخفي رقماً في الميزانية.
+ * 
+ * **ولا حذف على هذا المورد بأي حال**: الرمز هوية تحملها حركات سنةٍ مضت.
+ * 
+ * Deactivates a warehouse: **it blocks new drafts against it and touches no balance, no movement and no history**. Its balances are still read, reconciled and closed, and its posted movements stay in the three-way reconciliation unchanged.
+ * 
+ * **It is refused while the warehouse holds stock, and the refusal names the rows that hold it** in the same shape the period-close refusal prints — `item @ warehouse/location` — because deactivation closes every document path that could empty it, leaving a balance-sheet figure with no way out. The condition is 'quantity or value', not 'quantity and value': a balance with zero quantity and non-zero value is a recorded fact, and hiding its place hides a figure on the balance sheet.
+ * 
+ * **There is no delete on this resource under any circumstances**: the code is an identity carried by last year's movements.
+ */
+export async function deactivateWarehouse(transport: Transport, args: DeactivateWarehouseArgs, signal?: AbortSignal): Promise<T.Warehouse> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/warehouses/" + encodeURIComponent(args.warehouseId) + "/deactivation";
+  const url = path;
+  const response = await transport({ method: "POST", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "Warehouse", response.json) as T.Warehouse;
 }
 
 export interface DepositAttachmentArgs {
@@ -1701,6 +1877,32 @@ export async function listItems(transport: Transport, args: ListItemsArgs, signa
   return decodeSchema(SCHEMAS, "ItemList", response.json) as T.ItemList;
 }
 
+export interface ListLocationsArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف المستودع — **وهو غير رمزه**: الرمز هو ما تحمله كل حركةٍ ورصيد، والمعرّف عنوانٌ على هذا السطح. / The warehouse identifier — **it is not its code**: the code is what every movement and balance carries, while the identifier is an address on this surface. */
+  warehouseId: string;
+}
+
+/**
+ * قراءة مواقع مستودع / List a warehouse's locations
+ * 
+ * يقرأ مواقع مستودعٍ واحد مرتَّبةً بالرمز ترتيباً حرفياً ثابتاً — العاملة والمعطَّلة معاً.
+ * 
+ * و**DEFAULT موقعٌ مسجَّل في كل مستودع** لا اصطلاحاً في الشيفرة: هجرة المخزون 001 كتبته في كل حركةٍ ورصيدٍ سابق، وهذه الدفعة تجعله شيئاً موجوداً يُقرأ ويُسمّى ويُعطَّل.
+ * 
+ * Lists a single warehouse's locations ordered by code in a stable ordinal order — active and deactivated alike.
+ * 
+ * **DEFAULT is a registered location in every warehouse**, not a convention in code: inventory migration 001 wrote it into every earlier movement and balance, and this batch makes it a thing that exists — one that can be read, named and deactivated.
+ */
+export async function listLocations(transport: Transport, args: ListLocationsArgs, signal?: AbortSignal): Promise<T.LocationList> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/warehouses/" + encodeURIComponent(args.warehouseId) + "/locations";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "LocationList", response.json) as T.LocationList;
+}
+
 export interface ListPayComponentsArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
@@ -1827,6 +2029,30 @@ export async function listStockMovements(transport: Transport, args: ListStockMo
   const response = await transport({ method: "GET", url, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "StockMovementList", response.json) as T.StockMovementList;
+}
+
+export interface ListWarehousesArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+}
+
+/**
+ * قراءة المستودعات / List the warehouses
+ * 
+ * يقرأ مستودعات المنشأة مرتَّبةً بالرمز **ترتيباً حرفياً ثابتاً** — لا ثقافياً يختلف بين tr-TR و en-US على الحروف نفسها.
+ * 
+ * **والمعطَّل يخرج في القائمة موسوماً بـisActive = false، ولا يُخفى**: إخفاؤه يترك رصيداً قائماً بلا مستودعٍ يفسّره في الشاشة، وهو أسوأ من صفٍّ مكتوب عليه «معطَّل». نقطة قراءة: تعمل والاشتراك للقراءة فقط.
+ * 
+ * Lists the company's warehouses ordered by code in a **stable ordinal order** — not a cultural one that differs between tr-TR and en-US on the same letters.
+ * 
+ * **A deactivated warehouse appears in the list flagged isActive = false and is never hidden**: hiding it leaves a standing balance with no warehouse to explain it on the screen, which is worse than a row marked 'deactivated'. A read point: it works while the subscription is read-only.
+ */
+export async function listWarehouses(transport: Transport, args: ListWarehousesArgs, signal?: AbortSignal): Promise<T.WarehouseList> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/warehouses";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "WarehouseList", response.json) as T.WarehouseList;
 }
 
 export interface OpenSessionArgs {
@@ -3952,6 +4178,28 @@ export async function readUnit(transport: Transport, args: ReadUnitArgs, signal?
   const response = await transport({ method: "GET", url, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "Unit", response.json) as T.Unit;
+}
+
+export interface ReadWarehouseArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف المستودع — **وهو غير رمزه**: الرمز هو ما تحمله كل حركةٍ ورصيد، والمعرّف عنوانٌ على هذا السطح. / The warehouse identifier — **it is not its code**: the code is what every movement and balance carries, while the identifier is an address on this surface. */
+  warehouseId: string;
+}
+
+/**
+ * قراءة مستودع / Read one warehouse
+ * 
+ * يقرأ مستودعاً واحداً بمؤهّل دوره وحالته ومنشأ اسمه.
+ * 
+ * Reads a single warehouse with its role qualifier, its state, and the origin of its name.
+ */
+export async function readWarehouse(transport: Transport, args: ReadWarehouseArgs, signal?: AbortSignal): Promise<T.Warehouse> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/warehouses/" + encodeURIComponent(args.warehouseId) + "";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "Warehouse", response.json) as T.Warehouse;
 }
 
 export interface ReconcileEmployeeSubledgerArgs {

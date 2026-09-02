@@ -285,6 +285,13 @@ public sealed class Rule13_NoBusinessLogicInTheApi
         "Babel.Inventory.Surface.InventoryBalance",
         "Babel.Inventory.Surface.InventoryDivergence",
         "Babel.Inventory.Surface.InventoryValuationReport",
+
+        // كتالوج المستودعات والمواقع — أنواع نقلٍ خالصة على السطح نفسه: لا سياق قاعدة
+        // ولا صفّ استمرارية ولا رمز حساب. والمستودع يحمل **مؤهّل دور** لا رقم حساب.
+        "Babel.Inventory.Surface.InventoryWarehouseRequest",
+        "Babel.Inventory.Surface.InventoryWarehouse",
+        "Babel.Inventory.Surface.InventoryLocationRequest",
+        "Babel.Inventory.Surface.InventoryLocation",
         "Babel.Inventory.InventoryOptions",
 
         // ── سندات الصرف وأوامر الشراء والاستلام ──────────────────────────────

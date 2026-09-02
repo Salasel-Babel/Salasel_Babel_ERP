@@ -91,6 +91,10 @@ public sealed class InventorySurfaceTests
 
         (string code, _) = await Documents.AddItemAsync(api, company, ApiFixture.TokenB);
 
+        // ‏**والمكان يُسجَّل قبل المسوّدة**: مستودعٌ لا يعرفه الكتالوج يُرفض عند
+        // الإنشاء، فلا يفتح رصيداً خامساً يُطابَق تماماً على خطأٍ إملائي.
+        await Documents.EnsurePlaceAsync(api, company, ApiFixture.TokenB);
+
         // ── ١ · مسوّدة: كرتونان بـ240 — ولا قيد ولا رصيد بعد ────────────────
         using HttpResponseMessage drafted = await api.Call(Http.Request(
             HttpMethod.Post, Documents.StockMovements(company), ApiFixture.TokenB,
@@ -170,6 +174,7 @@ public sealed class InventorySurfaceTests
         Guid company = ApiTestDatabase.CompanyB;
 
         (string code, _) = await Documents.AddItemAsync(api, company, ApiFixture.TokenB);
+        await Documents.EnsurePlaceAsync(api, company, ApiFixture.TokenB);
 
         using HttpResponseMessage drafted = await api.Call(Http.Request(
             HttpMethod.Post, Documents.StockMovements(company), ApiFixture.TokenB,
@@ -355,6 +360,132 @@ public sealed class InventorySurfaceTests
         Assert.True(valued.StatusCode == HttpStatusCode.OK, valuedText);
         Assert.Equal("0.0000", valuation.GetProperty("divergence").GetString());
         Assert.True(valuation.GetProperty("isReconciled").GetBoolean(), valuedText);
+    }
+
+    /// <summary>
+    /// <b>كتالوج المستودعات عبر السلك</b>: يُسجَّل، ويُقرأ، ويُعطَّل، ويُرفض تعطيله وفيه
+    /// بضاعة — <b>مُسمّياً الصفوف</b>.
+    /// <para>
+    /// و<b>الترجمة صفٌّ لا عمود</b> على السلك أيضاً: <c>nameAr</c> سجلٌّ و
+    /// <c>nameTranslations</c> ترجماته أيّاً كان عددها، ولا حقل إنجليزي ثابت.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task المستودع_يُسجَّل_من_الشبكة_ثم_يُقرأ_ولا_يُعطَّل_وفيه_بضاعة()
+    {
+        ApiProcess api = await ApiFixture.DefaultAsync();
+        Guid company = ApiTestDatabase.CompanyB;
+        string code = Documents.Number("WH");
+
+        // ── ١ · التسجيل: 201 وعنوانٌ يوجّه إلى مورد القراءة ─────────────────
+        using HttpResponseMessage created = await api.Call(Http.Request(
+            HttpMethod.Post, Documents.Warehouses(company), ApiFixture.TokenB,
+            Documents.WarehouseBody(code, "dry_goods")));
+
+        (string createdText, JsonElement warehouse) = await Http.BodyAsync(created);
+        Console.WriteLine("المستودع: " + createdText);
+
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        Assert.Equal(code, warehouse.GetProperty("code").GetString());
+        Assert.Equal("DECLARED", warehouse.GetProperty("origin").GetString());
+        Assert.Equal("dry_goods", warehouse.GetProperty("qualifier").GetString());
+        Assert.True(warehouse.GetProperty("isActive").GetBoolean());
+
+        // والترجمة صفٌّ: العربية سجلٌّ، والإنجليزية واحدة من N.
+        JsonElement translation = Assert.Single(
+            warehouse.GetProperty("nameTranslations").EnumerateArray().ToList());
+        Assert.Equal("en", translation.GetProperty("name").GetString());
+
+        string warehouseId = warehouse.GetProperty("id").GetString()!;
+        Assert.Equal(Documents.Warehouse(company, warehouseId), created.Headers.Location?.OriginalString);
+
+        // ورمزٌ مكرّر يُرفض برمز ثابت لا بانفجار فهرسٍ فريد.
+        using HttpResponseMessage duplicate = await api.Call(Http.Request(
+            HttpMethod.Post, Documents.Warehouses(company), ApiFixture.TokenB, Documents.WarehouseBody(code)));
+
+        (_, JsonElement duplicateProblem) = await Http.BodyAsync(duplicate);
+        Assert.Equal(HttpStatusCode.Conflict, duplicate.StatusCode);
+        Assert.Equal("inventory.duplicate_warehouse_code", Http.CodeOf(duplicateProblem));
+
+        // ── ٢ · القراءة بالمعرّف، والموقع مورد فرعي ─────────────────────────
+        using HttpResponseMessage read = await api.Call(Http.Request(
+            HttpMethod.Get, Documents.Warehouse(company, warehouseId), ApiFixture.TokenB));
+
+        (string readText, JsonElement readBody) = await Http.BodyAsync(read);
+        Assert.True(read.StatusCode == HttpStatusCode.OK, readText);
+        Assert.Equal(code, readBody.GetProperty("code").GetString());
+
+        using HttpResponseMessage placed = await api.Call(Http.Request(
+            HttpMethod.Post, Documents.WarehouseLocations(company, warehouseId), ApiFixture.TokenB,
+            Documents.LocationBody("DEFAULT")));
+
+        (string placedText, JsonElement location) = await Http.BodyAsync(placed);
+        Assert.True(placed.StatusCode == HttpStatusCode.Created, placedText);
+        Assert.Equal(code, location.GetProperty("warehouseCode").GetString());
+
+        using HttpResponseMessage locations = await api.Call(Http.Request(
+            HttpMethod.Get, Documents.WarehouseLocations(company, warehouseId), ApiFixture.TokenB));
+
+        (string locationsText, JsonElement locationList) = await Http.BodyAsync(locations);
+        Assert.True(locations.StatusCode == HttpStatusCode.OK, locationsText);
+        Assert.Equal(1, locationList.GetProperty("locationCount").GetInt32());
+
+        // ── ٣ · مسوّدة على مستودعٍ لا يعرفه الكتالوج تُرفض بـ404 ────────────
+        using HttpResponseMessage ghost = await api.Call(Http.Request(
+            HttpMethod.Post, Documents.StockMovements(company), ApiFixture.TokenB,
+            Documents.StockMovementIn(Documents.Number("STK"), "ITEM-NONE").Replace(
+                "\"warehouseId\":\"WH-01\"", "\"warehouseId\":\"" + code + "-TYPO\"", StringComparison.Ordinal)));
+
+        (string ghostText, JsonElement ghostProblem) = await Http.BodyAsync(ghost);
+        Assert.True(ghost.StatusCode == HttpStatusCode.NotFound, ghostText);
+        Assert.Equal("inventory.warehouse_not_found", Http.CodeOf(ghostProblem));
+
+        // ── ٤ · تعطيلٌ يمرّ ما دام فارغاً، ثم يُعاد التفعيل ─────────────────
+        using HttpResponseMessage off = await api.Call(Http.Request(
+            HttpMethod.Post, Documents.WarehouseDeactivation(company, warehouseId), ApiFixture.TokenB));
+
+        (string offText, JsonElement offBody) = await Http.BodyAsync(off);
+        Assert.True(off.StatusCode == HttpStatusCode.OK, offText);
+        Assert.False(offBody.GetProperty("isActive").GetBoolean());
+
+        using HttpResponseMessage on = await api.Call(Http.Request(
+            HttpMethod.Post, Documents.WarehouseActivation(company, warehouseId), ApiFixture.TokenB));
+
+        (string onText, JsonElement onBody) = await Http.BodyAsync(on);
+        Assert.True(on.StatusCode == HttpStatusCode.OK, onText);
+        Assert.True(onBody.GetProperty("isActive").GetBoolean());
+
+        // ── ٥ · ثم تُوضَع فيه بضاعة، فيُرفض تعطيله **مُسمّياً الصفّ** ────────
+        (string item, _) = await Documents.AddItemAsync(api, company, ApiFixture.TokenB);
+
+        using HttpResponseMessage drafted = await api.Call(Http.Request(
+            HttpMethod.Post, Documents.StockMovements(company), ApiFixture.TokenB,
+            Documents.StockMovementIn(Documents.Number("STK"), item).Replace(
+                "\"warehouseId\":\"WH-01\"", "\"warehouseId\":\"" + code + "\"", StringComparison.Ordinal)));
+
+        (string draftText, JsonElement draft) = await Http.BodyAsync(drafted);
+        Assert.True(drafted.StatusCode == HttpStatusCode.Created, draftText);
+
+        using HttpResponseMessage postedMovement = await api.Call(Http.Request(
+            HttpMethod.Post,
+            Documents.StockMovementPosting(company, draft.GetProperty("id").GetString()!),
+            ApiFixture.TokenB));
+
+        (string postedText, _) = await Http.BodyAsync(postedMovement);
+        Assert.True(postedMovement.StatusCode == HttpStatusCode.Created, postedText);
+
+        using HttpResponseMessage refused = await api.Call(Http.Request(
+            HttpMethod.Post, Documents.WarehouseDeactivation(company, warehouseId), ApiFixture.TokenB));
+
+        (string refusedText, JsonElement refusedProblem) = await Http.BodyAsync(refused);
+        Console.WriteLine("رفض التعطيل: " + refusedText);
+
+        Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
+        Assert.Equal("inventory.warehouse_has_stock", Http.CodeOf(refusedProblem));
+
+        // والرفض يُسمّي الصفّ الذي يحمل البضاعة — لا «مرفوض» وحدها.
+        Assert.Contains(item, refusedProblem.GetProperty("detailAr").GetString()!, StringComparison.Ordinal);
+        Assert.Contains(code + "/DEFAULT", refusedProblem.GetProperty("detailAr").GetString()!, StringComparison.Ordinal);
     }
 
     /// <summary>

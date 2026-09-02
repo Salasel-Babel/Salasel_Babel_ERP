@@ -340,6 +340,38 @@ internal static class ApiRoutes
     /// </summary>
     public const string InventoryValuation = Company + "/inventory-valuation";
 
+    /// <summary>
+    /// المستودعات: التسجيل والقائمة.
+    /// <para>
+    /// <b>والرمز هو ما تحمله كل حركةٍ ورصيد</b>، فلا <c>PUT</c> عليه ولا <c>DELETE</c>:
+    /// تغييرُه يُيتّم كل صفٍّ تاريخي يحمله على جدولٍ لا مسار <c>UPDATE</c> إليه.
+    /// والانصراف عن مستودعٍ يكون بتعطيله — مورد فرعي — لا بحذفه.
+    /// </para>
+    /// </summary>
+    public const string Warehouses = Company + "/warehouses";
+
+    /// <summary>مستودع واحد: القراءة بمؤهّل دوره وحالته ومنشأ اسمه.</summary>
+    public const string Warehouse = Warehouses + "/{warehouseId}";
+
+    /// <summary>تعطيل مستودع — يمنع المسوّدات الجديدة ولا يمسّ رصيداً ولا تاريخاً.</summary>
+    public const string WarehouseDeactivation = Warehouse + "/deactivation";
+
+    /// <summary>إعادة تفعيل مستودع معطَّل.</summary>
+    public const string WarehouseActivation = Warehouse + "/activation";
+
+    /// <summary>
+    /// مواقع مستودع: التسجيل والقائمة. <b>مورد فرعي لا مورد رئيسي</b> — رمز الموقع
+    /// بلا مستودعه ليس هوية، و«A-01» في مستودعين موقعان لا موقع. فالاشتراط بنيةٌ في
+    /// العنوان لا تحقّقٌ في الجسم — الشكل نفسه الذي تقف عليه وحدات العقار.
+    /// </summary>
+    public const string WarehouseLocations = Warehouse + "/locations";
+
+    /// <summary>تعطيل موقع داخل مستودعه.</summary>
+    public const string WarehouseLocationDeactivation = WarehouseLocations + "/{locationId}/deactivation";
+
+    /// <summary>إعادة تفعيل موقع معطَّل.</summary>
+    public const string WarehouseLocationActivation = WarehouseLocations + "/{locationId}/activation";
+
     // ── العقارات ─────────────────────────────────────────────────────────────
     // والشكل هو الشكل نفسه: **إنشاء مسوّدة · قراءة · فعلٌ على مورد فرعي**. ولا `PUT`
     // ولا `PATCH` ولا `DELETE` على عقارٍ ولا وحدةٍ ولا عقدٍ ولا فاتورةٍ ولا سند.

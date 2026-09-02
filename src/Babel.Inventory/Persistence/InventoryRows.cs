@@ -365,3 +365,133 @@ internal sealed class ItemTranslationRow
     /// <summary>النصّ المُترجَم.</summary>
     public string Text { get; set; } = string.Empty;
 }
+
+/// <summary>
+/// من أين جاء اسم المستودع أو الموقع — <b>واقعةٌ تُقال للشاشة لا زينة</b>.
+/// <para>
+/// الملء بالملاحظة يكتب الرمز اسماً (‏«WH-01» اسماً لـ«WH-01»)، وشاشةٌ تعرض ذلك بلا
+/// وسمٍ تبدو ككتالوجٍ مكتوب وهي صدى نصٍّ وُجد في البيانات. والوسم هو ما يجعل الشاشة
+/// تسأل: «هذا الاسم لم يكتبه أحد — ما اسمه عندكم؟»
+/// </para>
+/// </summary>
+internal static class CatalogueOrigin
+{
+    /// <summary>كتبه إنسان على هذا السطح.</summary>
+    public const string Declared = "DECLARED";
+
+    /// <summary>رُصد نصّاً في حركةٍ أو رصيدٍ مضى، واسمه رمزُه حتى يُسمّيه إنسان.</summary>
+    public const string Observed = "OBSERVED";
+}
+
+/// <summary>
+/// مستودعٌ في كتالوج المنشأة — <b>الرمز هو ما تحمله كل حركة مضت</b>.
+/// <para>
+/// <b>ولا تعديل على <see cref="Code"/> أبداً ولا حذف للصفّ:</b> الرمز يعبر إلى
+/// <c>stock_movement.WarehouseId</c> و<c>item_balance.WarehouseId</c> نصّاً، وتغييرُه
+/// يُيتّم كل صفٍّ تاريخي يحمله على جدولٍ لا مسار <c>UPDATE</c> إليه. الاسم يُعدَّل،
+/// والمؤهّل يُعدَّل، والرمز لا.
+/// </para>
+/// <para>
+/// <b>و<see cref="Qualifier"/> مؤهّل دور لا رقم حساب</b> (القاعدة 3):
+/// <c>account-roles.csv</c> يعرّف مؤهّل <c>inventory_control</c> بأنه «مجموعة الصنف أو
+/// صنف المستودع»، و<c>role-map.default.csv</c> وحدها تُحوّله إلى حساب.
+/// </para>
+/// </summary>
+internal sealed class WarehouseRow
+{
+    public Guid Id { get; set; }
+
+    public Guid TenantId { get; set; }
+
+    /// <summary>رمز المستودع — <b>هو النصّ المكتوب في كل حركةٍ ورصيد</b>، حرفاً بحرف.</summary>
+    public string Code { get; set; } = string.Empty;
+
+    /// <summary>الاسم العربي — السجلّ. والترجمات صفوف في <see cref="WarehouseTranslationRow"/>.</summary>
+    public string NameAr { get; set; } = string.Empty;
+
+    /// <summary>صنف المستودع — مؤهّل دور عند المصفوفة، لا رقم حساب.</summary>
+    public string Qualifier { get; set; } = string.Empty;
+
+    /// <summary>‏<c>DECLARED</c> أو <c>OBSERVED</c> — انظر <see cref="CatalogueOrigin"/>.</summary>
+    public string Origin { get; set; } = CatalogueOrigin.Declared;
+
+    /// <summary>
+    /// هل يُقبل مستودعاً لمسوّدةٍ جديدة؟ <b>والتعطيل لا يمسّ رصيداً ولا تاريخاً</b>:
+    /// الأرصدة تُقرأ وتُطابَق وتُقفَل كما كانت.
+    /// </summary>
+    public bool IsActive { get; set; } = true;
+
+    public DateTime CreatedAt { get; set; }
+}
+
+/// <summary>
+/// موقعٌ داخل مستودع — <b>مستوى واحد لا شجرة</b>.
+/// <para>
+/// و<c>LocationId</c> في مفتاح الرصيد عمودٌ مفرد، فمستوىً واحد هو ما يحمله المفتاح.
+/// وسؤال «أمستوى واحد أم شجرة؟» سؤالٌ مفتوح على المالك، ولا يُجاب هنا باختراع أب.
+/// </para>
+/// <para>
+/// <b>والمفتاح زوجٌ:</b> (المستودع، الرمز). فرمز «A-01» في مستودعين موقعان لا موقع،
+/// وهو ما يقوله مفتاح الرصيد الرباعي حرفياً.
+/// </para>
+/// </summary>
+internal sealed class LocationRow
+{
+    public Guid Id { get; set; }
+
+    public Guid TenantId { get; set; }
+
+    /// <summary>رمز المستودع المالك — <b>الرمز لا المعرّف</b>: هو ما تحمله الحركة.</summary>
+    public string WarehouseCode { get; set; } = string.Empty;
+
+    /// <summary>رمز الموقع — هو النصّ المكتوب في <c>LocationId</c> على كل حركةٍ ورصيد.</summary>
+    public string Code { get; set; } = string.Empty;
+
+    /// <summary>الاسم العربي — السجلّ.</summary>
+    public string NameAr { get; set; } = string.Empty;
+
+    /// <summary>‏<c>DECLARED</c> أو <c>OBSERVED</c>.</summary>
+    public string Origin { get; set; } = CatalogueOrigin.Declared;
+
+    /// <summary>هل يُقبل موقعاً لمسوّدةٍ جديدة؟</summary>
+    public bool IsActive { get; set; } = true;
+
+    public DateTime CreatedAt { get; set; }
+}
+
+/// <summary>ترجمة اسم مستودع — <b>صفٌّ لا عمود</b> (‏ADR-0021 · القاعدة 14).</summary>
+internal sealed class WarehouseTranslationRow
+{
+    public Guid Id { get; set; }
+
+    public Guid TenantId { get; set; }
+
+    /// <summary>رمز المستودع المُترجَم اسمه.</summary>
+    public string WarehouseCode { get; set; } = string.Empty;
+
+    /// <summary>وسم اللغة بصيغة BCP-47: <c>en</c>، <c>ur</c>، <c>hi</c>…</summary>
+    public string LanguageTag { get; set; } = string.Empty;
+
+    /// <summary>النصّ المُترجَم.</summary>
+    public string Text { get; set; } = string.Empty;
+}
+
+/// <summary>ترجمة اسم موقع — صفٌّ لا عمود، ومفتاحه يحمل مستودعه.</summary>
+internal sealed class LocationTranslationRow
+{
+    public Guid Id { get; set; }
+
+    public Guid TenantId { get; set; }
+
+    /// <summary>رمز المستودع المالك.</summary>
+    public string WarehouseCode { get; set; } = string.Empty;
+
+    /// <summary>رمز الموقع المُترجَم اسمه.</summary>
+    public string LocationCode { get; set; } = string.Empty;
+
+    /// <summary>وسم اللغة بصيغة BCP-47.</summary>
+    public string LanguageTag { get; set; } = string.Empty;
+
+    /// <summary>النصّ المُترجَم.</summary>
+    public string Text { get; set; } = string.Empty;
+}

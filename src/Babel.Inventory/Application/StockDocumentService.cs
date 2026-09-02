@@ -22,6 +22,11 @@ namespace Babel.Inventory.Application;
 /// اختُرع، و<c>PostingPlanner</c> يرفض رمزاً ليس في المصفوفة وهو محقّ.
 /// </para>
 /// <para>
+/// <b>والمكان يُتحقَّق منه عند الإنشاء لا عند الترحيل</b>: (مستودع، موقع) زوجٌ مسجَّل في
+/// كتالوج الوحدة وعامل، وإلّا فلا صفّ يُكتب. ورمزٌ لا يعرفه الكتالوج كان يفتح <b>رصيداً
+/// خامساً</b> يُطابَق تماماً ويحمل قيمةً حقيقية لا يعرف أحدٌ أين هي.
+/// </para>
+/// <para>
 /// <b>والترحيل يكتب الدفتر المساعد أوّلاً ثم القيد</b> (‏ADR-0041): رفضٌ من المخزون —
 /// كصرفٍ بلا أساس تكلفة — يترك الدفتر نظيفاً؛ ولو وقع القيد أوّلاً لترك حساباً ضابطاً
 /// تحرّك بلا حركةٍ تقابله، وهو انحرافٌ صامت.
@@ -38,6 +43,7 @@ public sealed class StockDocumentService : IApplicationService
     private readonly IEntitlementEnforcer _enforcer;
     private readonly InventoryDbContext _database;
     private readonly StockMovementService _stock;
+    private readonly WarehouseCatalogueService _places;
     private readonly InventoryPostingGateway _gateway;
     private readonly CurrencyCode _currency;
 
@@ -49,20 +55,27 @@ public sealed class StockDocumentService : IApplicationService
     /// دفتر المخزون المساعد — <b>وهو من يحسب تكلفة الصادر</b>. ولا تُملى عليه قيمة صرف
     /// من هنا ولا من غيره (‏ADR-0039).
     /// </param>
+    /// <param name="places">
+    /// كتالوج المستودعات والمواقع — <b>يُسأل عند إنشاء المسوّدة وحده</b>. ومستودعٌ ليس
+    /// فيه يُرفض قبل أن يُكتب صفّ، فلا يُفتح رصيدٌ خامس على خطأ إملائي.
+    /// </param>
     public StockDocumentService(
         IEntitlementEnforcer enforcer,
         InventoryRuntime runtime,
         IPostingService posting,
-        StockMovementService stock)
+        StockMovementService stock,
+        WarehouseCatalogueService places)
     {
         ArgumentNullException.ThrowIfNull(enforcer);
         ArgumentNullException.ThrowIfNull(runtime);
         ArgumentNullException.ThrowIfNull(posting);
         ArgumentNullException.ThrowIfNull(stock);
+        ArgumentNullException.ThrowIfNull(places);
 
         _enforcer = enforcer;
         _database = runtime.Database;
         _stock = stock;
+        _places = places;
         _currency = CurrencyCode.FromString(runtime.Options.CompanyCurrency);
         _gateway = new InventoryPostingGateway(_database, posting, runtime.CostCenters);
     }
@@ -110,6 +123,20 @@ public sealed class StockDocumentService : IApplicationService
         if (inbound && draft.Cost.Amount <= 0m)
         {
             return Result<StockDocumentView>.Failure(InventoryErrors.ReceiptCostNotPositive(draft.Cost.Amount));
+        }
+
+        // ‏**المكان يُتحقَّق منه هنا — عند إنشاء المسوّدة، لا عند الترحيل ولا في القاعدة.**
+        // مستودعٌ لا يعرفه الكتالوج يفتح رصيداً خامساً يُطابَق تماماً ويحمل قيمةً حقيقية
+        // لا يعرف أحدٌ أين هي: المطابقة تجمع الحركات والأرصدة على المفتاح نفسه، فيتوازن
+        // الخطأ مع نفسه ولا يُظهره فحصٌ يقارن طرفين. والرفض قبل الكتابة لا بعدها: مستندٌ
+        // كُتب ثم رُفض ترحيله يبقى عالقاً بلا مخرج.
+        Result place = await _places
+            .EnsurePlaceIsRegisteredAsync(tenant, draft.WarehouseId, draft.LocationId, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (place.IsFailure)
+        {
+            return Result<StockDocumentView>.Failure(place.Errors);
         }
 
         if (await _database.Documents

@@ -118,11 +118,19 @@ internal static class ApiProblems
             //   · «عبارة أصابت عدداً غير متوقَّع من الصفوف» **500**: خرقُ ثابتةٍ
             //     داخلية لا يُصلحه العميل بإعادة صياغة، وإخراجه 422 يُغري بمحاولة
             //     ثانية على قاعدةٍ حالتها غير معروفة.
+            //   · و«مستودعٌ لا يعرفه الكتالوج» و«موقعٌ ليس في هذا المستودع» **404**:
+            //     المورد المُشار إليه غير موجود، والعميل يعرف أن يتوقّف ويسجّله بدل
+            //     أن يعيد صياغة الطلب. و«معطَّل» و«فيه بضاعة» **409**: الطلب سليم
+            //     تماماً ويصطدم بحالةٍ قائمة يقرؤها العميل ثم يقرّر.
             "inventory.item_not_found" or "inventory.document_not_found"
-                or "inventory.original_movement_not_found" or "inventory.original_issue_not_found" => 404,
+                or "inventory.original_movement_not_found" or "inventory.original_issue_not_found"
+                or "inventory.warehouse_not_found" or "inventory.location_not_in_warehouse" => 404,
             "inventory.duplicate_item_code" or "inventory.duplicate_document_number"
                 or "inventory.wrong_state" or "inventory.movement_already_returned"
-                or "inventory.movement_identity_conflict" or "inventory.movement_quantity_conflict" => 409,
+                or "inventory.movement_identity_conflict" or "inventory.movement_quantity_conflict"
+                or "inventory.duplicate_warehouse_code" or "inventory.duplicate_location_code"
+                or "inventory.warehouse_inactive" or "inventory.location_inactive"
+                or "inventory.warehouse_has_stock" or "inventory.location_has_stock" => 409,
             "inventory.unexpected_row_count" => 500,
 
             // ── مستندات المقاولات ────────────────────────────────────────────

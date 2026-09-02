@@ -22,6 +22,7 @@ import { SubcontractingScreen } from "../screens/contracting/SubcontractingScree
 import { RetentionScreen } from "../screens/contracting/RetentionScreen";
 /* القسم المخزني. */
 import { InventoryItemsScreen } from "../screens/inventory/ItemsScreen";
+import { InventoryWarehousesScreen } from "../screens/inventory/WarehousesScreen";
 import { InventoryStockScreen } from "../screens/inventory/StockScreen";
 import { InventoryMovementsScreen } from "../screens/inventory/MovementsScreen";
 import { InventoryValuationScreen } from "../screens/inventory/ValuationScreen";
@@ -120,9 +121,16 @@ const contractingRetentionRoute = createRoute({
   component: RetentionScreen,
 });
 
-/* ── القسم المخزني — أربع شاشات على أبوابٍ قائمة في العقد وحدها ────────────
-   ولا خامسة: النقل بين موقعين وقائمة المستودعات لا بابَ لهما اليوم، فهما
-   لوحا «نقصٍ مُعلَن» داخل الشاشتين لا مسارَين يقودان إلى بياناتٍ مُختلَقة. */
+/* ── القسم المخزني — خمس شاشات على أبوابٍ قائمة في العقد وحدها ─────────────
+   وصارت قائمة المستودعات باباً منشوراً، فصارت شاشة: تُسجَّل المستودعات
+   ومواقعها وتُعطَّل وتُفعَّل. **والنقل بين موقعين ما زال بلا باب**، فيبقى
+   لوحَ «نقصٍ مُعلَن» داخل الشاشة لا مساراً يقود إلى بياناتٍ مُختلَقة. */
+const inventoryWarehousesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/inventory/warehouses",
+  component: InventoryWarehousesScreen,
+});
+
 const inventoryStockRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/inventory/stock",
@@ -187,6 +195,7 @@ const routeTree = rootRoute.addChildren([
   contractingCertificateRoute,
   contractingSubcontractingRoute,
   contractingRetentionRoute,
+  inventoryWarehousesRoute,
   inventoryStockRoute,
   inventoryItemsRoute,
   inventoryMovementsRoute,

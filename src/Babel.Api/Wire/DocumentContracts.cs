@@ -651,3 +651,82 @@ internal sealed record StockMovementListDto(int MovementCount, IReadOnlyList<Sto
 /// <param name="BalanceCount">عدد الأرصدة.</param>
 /// <param name="Balances">الأرصدة.</param>
 internal sealed record StockBalanceListDto(int BalanceCount, IReadOnlyList<StockBalanceDto> Balances);
+
+/// <summary>
+/// طلب تسجيل مستودع.
+/// <para>
+/// <b>ولا رقم حساب فيه:</b> <c>qualifier</c> مؤهّل دور تقرؤه خريطة الأدوار في مصفوفة
+/// الترحيل، والوحدة لا تعرف حساباً ولا تذكره (القاعدة 3).
+/// </para>
+/// </summary>
+internal sealed record WarehouseRequestDto
+{
+    /// <summary>رمز المستودع — <b>وهو النصّ الذي تحمله كل حركةٍ ورصيد</b>.</summary>
+    public required string Code { get; init; }
+
+    /// <summary>الاسم العربي — السجلّ.</summary>
+    public required string NameAr { get; init; }
+
+    /// <summary>ترجمات الاسم بأوسمة BCP-47. ولا حقل إنجليزي ثابت: الإنجليزية واحدة من N.</summary>
+    public IReadOnlyList<NameValueDto>? NameTranslations { get; init; }
+
+    /// <summary>صنف المستودع — مؤهّل دور، ونصٌّ فارغ لمن لا صنف له.</summary>
+    public required string Qualifier { get; init; }
+}
+
+/// <summary>مستودعٌ كما يخرج على السلك.</summary>
+/// <param name="Id">المعرّف.</param>
+/// <param name="Code">الرمز.</param>
+/// <param name="NameAr">الاسم العربي — السجلّ.</param>
+/// <param name="NameTranslations">ترجماته.</param>
+/// <param name="Qualifier">مؤهّل الدور.</param>
+/// <param name="Origin">‏<c>DECLARED</c> أو <c>OBSERVED</c>.</param>
+/// <param name="IsActive">هل يُقبل مستودعاً لمسوّدةٍ جديدة؟</param>
+internal sealed record WarehouseDto(
+    string Id,
+    string Code,
+    string NameAr,
+    IReadOnlyList<NameValueDto> NameTranslations,
+    string Qualifier,
+    string Origin,
+    bool IsActive);
+
+/// <summary>مستودعات المنشأة — العاملة والمعطَّلة — مرتَّبة بالرمز.</summary>
+/// <param name="WarehouseCount">عددها.</param>
+/// <param name="Warehouses">المستودعات.</param>
+internal sealed record WarehouseListDto(int WarehouseCount, IReadOnlyList<WarehouseDto> Warehouses);
+
+/// <summary>طلب تسجيل موقع داخل مستودع — والمستودع في المسار لا في الجسم.</summary>
+internal sealed record LocationRequestDto
+{
+    /// <summary>رمز الموقع — فريدٌ داخل مستودعه لا عبر المنشأة.</summary>
+    public required string Code { get; init; }
+
+    /// <summary>الاسم العربي — السجلّ.</summary>
+    public required string NameAr { get; init; }
+
+    /// <summary>ترجمات الاسم.</summary>
+    public IReadOnlyList<NameValueDto>? NameTranslations { get; init; }
+}
+
+/// <summary>موقعٌ كما يخرج على السلك.</summary>
+/// <param name="Id">المعرّف.</param>
+/// <param name="WarehouseCode">رمز المستودع المالك — وهوية الموقع هي الزوج.</param>
+/// <param name="Code">رمز الموقع.</param>
+/// <param name="NameAr">الاسم العربي.</param>
+/// <param name="NameTranslations">ترجماته.</param>
+/// <param name="Origin">‏<c>DECLARED</c> أو <c>OBSERVED</c>.</param>
+/// <param name="IsActive">هل يُقبل موقعاً لمسوّدةٍ جديدة؟</param>
+internal sealed record LocationDto(
+    string Id,
+    string WarehouseCode,
+    string Code,
+    string NameAr,
+    IReadOnlyList<NameValueDto> NameTranslations,
+    string Origin,
+    bool IsActive);
+
+/// <summary>مواقع مستودعٍ واحد مرتَّبة بالرمز.</summary>
+/// <param name="LocationCount">عددها.</param>
+/// <param name="Locations">المواقع.</param>
+internal sealed record LocationListDto(int LocationCount, IReadOnlyList<LocationDto> Locations);

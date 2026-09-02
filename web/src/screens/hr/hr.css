@@ -24,12 +24,17 @@
 }
 /* خليّةُ فعلٍ داخل شبكة حقول: الزرّ يقف على خطّ الحقول ولا يتمدّد بعرض
    العمود — زرٌّ بعرض العمود يُقرأ لوحاً لا فعلاً. */
+/* **كان `padding-block-start:var(--space-24)`** يُنزل الزرّ إلى سطر الحقول
+   بالتخمين: أربعٌ وعشرون بكسلاً هي ارتفاع تسميةٍ من سطرٍ واحد وفجوتها، فإن
+   التفّت التسمية سطرين انكسر التخمين. الآن الزرّ يقف على **مسار التحكّم** نفسه
+   الذي تقف عليه حقول الصفّ (`rowctl` في components.css)، فلا تخمين ولا بكسلات
+   مكتوبة بيد. */
 .hr-act{
-  display:flex; align-items:flex-end; justify-content:flex-start;
-  padding-block-start:var(--space-24);
+  /* `align-items`/`justify-items` مكتوبتان معاً عمداً: الأولى تخدم الارتداد
+     المرن (محورٌ متقاطع = المحور السطري)، والثانية تخدم الشبكة الفرعية. */
+  align-items:start; justify-items:start;
 }
 .hr-act .btn{ inline-size:auto }
-@media (max-width:720px){ .hr-act{ padding-block-start:0 } }
 .hr-split{
   display:flex; align-items:center; gap:var(--space-8); flex-wrap:wrap;
 }
@@ -54,20 +59,20 @@
 /* القناع نصٌّ آليّ: اتجاهٌ مثبّت **مع عزلٍ صريح** فلا ينزلق داخل جملة عربية. */
 .hr-mask__value{
   direction:ltr; unicode-bidi:isolate;
-  letter-spacing:.08em; font-variant-numeric:tabular-nums;
+  letter-spacing:.08em; font-variant-numeric:var(--font-numeric);
 }
 .hr-mask .hint{ margin:0 }
 
 /* ═════════════════════════════════════════════ ٣ · الرمز المعتم والاسم */
 .hr-code{
   display:inline-block;
-  padding:1px var(--space-8); border-radius:var(--radius-mark);
+  padding:var(--space-2) var(--space-8); border-radius:var(--radius-mark);
   background:var(--color-surface-sunken);
   border:var(--border-width) solid var(--edge-faint);
   font-size:.92em; color:var(--color-text-muted);
   direction:ltr; unicode-bidi:isolate;
 }
-.hr-name{ display:inline-flex; flex-direction:column; gap:1px; min-inline-size:0 }
+.hr-name{ display:inline-flex; flex-direction:column; gap:var(--space-2); min-inline-size:0 }
 .hr-name .alt{
   unicode-bidi:isolate;
   font-size:var(--font-size-3xs); color:var(--color-text-subtle); line-height:1.4;
@@ -138,10 +143,13 @@
 
 /* ═════════════════════════════════════ ٦ · سطور تُضاف وتُحذف (الحصص) */
 .hr-lines{ display:flex; flex-direction:column; gap:var(--space-10) }
+/* **كان `align-items:end` هنا**، وهو أعلى انحرافٍ قِيس في المنتج كلّه:
+   99.30px عند en-1024 بين «Period share» (تلميحُه خمسة أسطر بالإنجليزية)
+   و«Employment identifier» (بلا تلميح)، و44.13px بالعربية عند 1440. المحاذاة
+   الآن `stretch` الافتراضية، والحقول تستعير مسارات الصفّ الثلاثة. */
 .hr-line{
-  display:grid; gap:var(--space-10);
+  display:grid; column-gap:var(--space-10); row-gap:var(--space-10);
   grid-template-columns:minmax(0,3fr) minmax(0,1fr) auto;
-  align-items:end;
   padding:var(--space-12);
   border:var(--border-width) solid var(--edge-line);
   border-radius:var(--radius-well);

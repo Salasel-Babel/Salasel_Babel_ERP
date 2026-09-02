@@ -102,7 +102,7 @@
   }
   .doc-kv .k{font-size:8pt;color:var(--print-ink-4);font-weight:600}
   .doc-kv .v{font-size:10pt;font-weight:600;margin-top:.5mm}
-  .doc-kv .v.num{direction:ltr;unicode-bidi:isolate;display:inline-block;font-variant-numeric:tabular-nums}
+  .doc-kv .v.num{direction:ltr;unicode-bidi:isolate;display:inline-block;font-variant-numeric:var(--font-numeric)}
 
   /* ── الجداول ─────────────────────────────────────────────────────── */
   .tablewrap{
@@ -151,7 +151,7 @@
 
   /* الأرقام: معزولة، متساوية العرض، محاذاة ثابتة */
   .n,.num,.amt,.taxval,td.n,th.n{
-    font-variant-numeric:tabular-nums;
+    font-variant-numeric:var(--font-numeric);
     text-align:start;
     white-space:nowrap;
   }

@@ -25,9 +25,23 @@
    والتقدّم يُقرأ بالطول وحده فيحتاج سُمكاً يُرى. */
 .confidence--progress .confidence__rail{ block-size:9px }
 
+/* صفُّ بطاقات الإحصاء — **نفس القرار، بلا عنصر تحكّم**: البطاقة كومةٌ من
+   ثلاث خانات (مفتاح · قيمة · شرح)، وكانت كلٌّ تقيس نفسها وحدها، فمفتاحٌ يلتفّ
+   سطرين يُنزل قيمته وحدها. مقيسٌ على develop@ad2ff14: تسعُ صفوفٍ من أربعة عشر
+   قيمتُها على ارتفاعات مختلفة عند ar-1440، وأقصاها 41.59px. فالصفّ يملك
+   المسارات الثلاثة والبطاقة تستعيرها — كما في `components.css`.
+   والفجوةُ الداخلية صفر لأن `.v` و`.s` تحملان هوامشهما (5px و3px)، فالإيقاع
+   يبقى كما كان بالبكسل. */
 .stats-row{
-  display:grid; gap:var(--space-12);
+  display:grid; column-gap:var(--space-12); row-gap:var(--space-12);
   grid-template-columns:repeat(auto-fit, minmax(160px, 1fr));
+}
+.stats-row > *{ grid-row:span 3 }
+@supports (grid-template-rows:subgrid){
+  .stats-row > .stat{ display:grid; grid-template-rows:subgrid; row-gap:0 }
+  .stats-row > .stat > *{ grid-row:2 }
+  .stats-row > .stat > .k{ grid-row:1 }
+  .stats-row > .stat > .s{ grid-row:3 }
 }
 
 /* ── الجدول المالي داخل لوح ──────────────────────────────────────────── */
@@ -179,7 +193,13 @@
   white-space:nowrap; unicode-bidi:isolate;
 }
 .qty__n{
-  font-family:var(--font-mono); font-variant-numeric:tabular-nums;
+  /* **وجه الأرقام لا الوجه الأحادي.** كانت `--font-mono` هنا و`--font-sans`
+     في `.amt`، فقاس العشرة أرقام نفسها 84.30 مقابل 98.81 بكسل — 14.7٪ فرقاً
+     بين عمود كمّيةٍ وعمود مبلغٍ في **دفترٍ واحد**. و`tabular-nums` يُسوّي
+     داخل الوجه ولا يُسوّي بين وجهين. (tokens.css §الخط · مقيس)
+     والصيغة تبقى **رمزاً** لا قيمةً حرفية، فيبقى `numerals.mjs` حارساً. */
+  font-family:var(--font-numeric-face); font-variant-numeric:var(--font-numeric);
+  letter-spacing:var(--tracking-num);
   font-weight:var(--font-weight-semibold);
   unicode-bidi:isolate;
 }
@@ -190,7 +210,7 @@
 }
 .qty[data-negative="true"] .qty__n{ color:var(--color-danger) }
 /* النسبة كسرٌ عشري: تُعرض كما وصلت بلا علامة مئوية وبلا ضربٍ في مئة. */
-.rate{ font-variant-numeric:tabular-nums; unicode-bidi:isolate }
+.rate{ font-variant-numeric:var(--font-numeric); letter-spacing:var(--tracking-num); unicode-bidi:isolate }
 
 /* ── البنود المعلَّقة داخل لوحة الرفض ───────────────────────────────────
    بندٌ في كل صفّ: رمزُه ثابتٌ يُنسَخ، وعنوانُه بلغتين، وموضعُ سؤاله كاملاً.

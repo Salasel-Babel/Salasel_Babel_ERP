@@ -289,7 +289,7 @@ export function EmployeeRegisterScreen(): ReactNode {
               placeholder="00000000-0000-0000-0000-000000000000"
             />
           </Field>
-          <div className="hr-act">
+          <div className="rowctl hr-act">
             <Button
               label={t("hr.act.read")}
               kind="primary"
@@ -485,7 +485,7 @@ export function EmployeeRegisterScreen(): ReactNode {
                   placeholder="0.0000"
                 />
               </Field>
-              <div className="hr-act">
+              <div className="rowctl hr-act">
                 <Button
                   label={t("hr.act.addElement")}
                   kind="primary"
@@ -539,7 +539,7 @@ export function EmployeeRegisterScreen(): ReactNode {
                   placeholder="resignation"
                 />
               </Field>
-              <div className="hr-act">
+              <div className="rowctl hr-act">
                 <Button
                   label={t("hr.act.terminate")}
                   kind="danger"

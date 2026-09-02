@@ -8,7 +8,7 @@
 > فأضِفه هنا بالشروط نفسها بعد قياسه — سجلٌّ ناقص يعني عملاً مُكرَّراً بعد سنتين.
 >
 > **الوثائق الشقيقة:** [`README.md`](README.md) فهرس قاعدة الأدلة وترتيب القراءة ·
-> [`traps.md`](traps.md) **الأعطال** (‏145 فخّاً، و§8 قائمة ما قبل الدمج) ·
+> [`traps.md`](traps.md) **الأعطال** (‏150 فخّاً، و§8 قائمة ما قبل الدمج) ·
 > [`refuted.md`](refuted.md) **ما دُحض** (‏16 ادّعاءً، وما بقي من كلٍّ منها) ·
 > [`verification-debt.md`](verification-debt.md) **ما لا نعرفه** (‏47 مجهولاً لا يُبنى عليها) ·
 > [`../decisions/README.md`](../decisions/README.md) **القرارات** المبنية على كل ما سبق.
@@ -88,6 +88,14 @@
 | NetTopologySuite | 2.5.0 | **لا — `netstandard2.0`** | غير مباشرة |
 | Newtonsoft.Json | 13.0.3 | **لا — `net6.0`** | غير مباشرة |
 | NewId | 4.0.1 | **لا — `net6.0`** | غير مباشرة |
+| **Anthropic** | **12.45.0** | نعم (`net9.0` · `net8.0` · `netstandard2.0`) | `Babel.Ai` وحدها — حلقة الوكيل |
+| Microsoft.Extensions.AI.Abstractions | 10.5.1 | نعم | غير مباشرة — **الاعتمادية الوحيدة** التي تجرّها `Anthropic` |
+
+> **حزمة المزوّد — مقروءة من `obj/project.assets.json` لا من وثيقة.** `Anthropic 12.45.0` تجرّ
+> **اعتمادية واحدة** (`Microsoft.Extensions.AI.Abstractions 10.5.1`) ولا شيء غيرها؛ وأعلى
+> إطارٍ تشحنه هو `net9.0`، فهي تُحلّ على .NET 10 عبر التوافق لا أصلاً. ولا تصل هذه الحزمة إلا
+> `Babel.Ai`، ولا يعرفها من داخلها إلا ملفٌّ واحد
+> (`Agent/Anthropic/AnthropicAgentGateway.cs`) — يحرسه اختبارٌ يقرأ المصدر.
 
 > **أمانةً:** كل حزم Wolverine و EF Core و Npgsql و Weasel و JasperFx تشحن تجميعات `net10.0`
 > أصلية. الحزم غير المباشرة المتبقية (`net6.0` / `net8.0` / `net9.0` / `netstandard2.0`) مدعومة

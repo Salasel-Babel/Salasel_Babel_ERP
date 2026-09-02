@@ -23,6 +23,28 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+
+    <!--
+      حزمة المزوّد — ولا يعرفها من هذه الوحدة إلا ملفّ واحد:
+      ‏Agent/Anthropic/AnthropicAgentGateway.cs. وكل ما عداه مكتوب على أنواعٍ محايدة
+      خلف IAgentModelGateway، وحارسٌ معماري يفرض ذلك. والثمنُ سطورُ ترجمة، وثمنُ
+      غيابه أن تنفق كل مجموعة اختباراتٍ مالاً على كل تشغيل — فتُطفأ خلال شهر.
+    -->
+    <PackageReference Include="Anthropic" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      ‏**لماذا يرى مشروعُ الاختبار داخلَ الوحدة هنا:** حدُّ الوكيل يحمل نسخةً ثانية
+      **مفروضة بالمعمارية** من شيئين مكتوبين أصلاً في وحدتين أخريين — شكلِ رقم التسجيل
+      الضريبي (‏`SaudiVatNumber` في `Babel.Purchasing`، وهو `internal` فوق ذلك) ومجموعةِ
+      المحارف غير المرئية (‏`ComplianceText` في `Babel.Compliance`) — والقاعدة 3 تمنع
+      الإشارة إلى أيٍّ منهما من هنا. فالثمن أن **يُثبَت الاتّفاق** لا أن يُدَّعى:
+      `TheScrubberAgreesWithTheRepositoryValidators` يقرأ التعريفين بالانعكاس ويطابقهما
+      بجدولٍ من الحالات — ولا يُقرأ التعريف المحلّي إلا من داخل التجميعة.
+      وهو الشكل نفسه في Babel.Core و Babel.Hr و Babel.Inventory و Babel.Storage.
+    -->
+    <InternalsVisibleTo Include="Babel.Ai.Tests" />
   </ItemGroup>
 
   <!--
@@ -30,6 +52,18 @@
     ولا تُضمَّن role-map.default.csv ولا أي خريطة مستأجر — فهي وحدها التي تحمل أرقام
     الحسابات. أي أن هذه التجميعة لا تملك ما تُسمّي به حساباً حتى لو أرادت (القاعدة 2).
   -->
+  <!--
+    كتالوج أدوات الوكيل — **مُولَّد** من contracts/openapi/v1.json بـ
+    ‏tools/agent/build-tool-catalogue.mjs، ويحمل في ترويسته بصمة العقد. وحارسٌ في
+    مجموعة الاختبارات يقارن البصمة بالعقد على القرص، فانحرافُ الاثنين يُحمِّر البناء
+    لا الشاشة — تقنيةُ القاعدة 18 نفسها.
+  -->
+  <ItemGroup>
+    <EmbeddedResource Include="../../data/agent/tool-catalogue.json">
+      <LogicalName>Babel.Ai.Agent.tool-catalogue.json</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
   <ItemGroup>
     <EmbeddedResource Include="../../data/posting-matrix/events/*.json">
       <LogicalName>Babel.Ai.Matrix.Events.%(Filename).json</LogicalName>

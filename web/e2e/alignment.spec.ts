@@ -151,9 +151,6 @@ for (const pass of PASSES) {
     let pageUnits = 0;
     let pageRows = 0;
     let worstControl = 0;
-    let agentUnits = 0;
-    let agentRows = 0;
-    let agentCardFields = 0;
 
     for (const p of PATHS) {
       await page.goto(urlOf(p, pass.locale));
@@ -261,10 +258,10 @@ for (const pass of PASSES) {
 
     /* **والعدّ داخل اللوح لا في الصفحة كلّها**: اللوح يعلو شاشةً لها حقولها،
        فعددٌ يجمعهما يقول عن اللوح ما لم يُقَس فيه. */
-    agentUnits = await page.evaluate(
+    const agentUnits = await page.evaluate(
       () => document.querySelectorAll("[data-testid='agent-workspace'] .field").length
     );
-    agentRows = panel.rows.filter(
+    const agentRows = panel.rows.filter(
       (r) => r.scope === "page" && r.parentClass.includes("agw")
     ).length;
 
@@ -299,8 +296,6 @@ for (const pass of PASSES) {
       `${tag}: قيمُ بطاقة التأكيد على ${cardTracks.tracks} مسارات لا مسارٍ واحد`
     ).toBe(1);
 
-    agentCardFields = cardTracks.fields;
-
     for (const row of panel.rows.filter((r) => r.scope === "page")) {
       if (row.controlTop) worstControl = Math.max(worstControl, row.controlTop.max);
       if (row.controlTop && row.controlTop.max > CONTROL_TOLERANCE_PX) {
@@ -328,7 +323,7 @@ for (const pass of PASSES) {
       `${tag}: أقصى انحرافٍ في حافّة التحكّم ${worstControl.toFixed(2)}px — ` +
         `${pageUnits} حقلاً في ${pageRows} صفّاً على الشاشات، ` +
         `و${agentUnits} حقلاً في ${agentRows} صفّاً على لوح الوكيل، ` +
-        `و${agentCardFields} حقلاً في بطاقة التأكيد على مسارٍ واحد`
+        `و${cardTracks.fields} حقلاً في بطاقة التأكيد على مسارٍ واحد`
     ).toBe("");
   });
 }

@@ -318,3 +318,29 @@ public sealed record InventoryConversionResult(
     long Numerator,
     long Denominator,
     string QuantityClass);
+
+/// <summary>
+/// طلب تعديل صنف — <b>ولا رمز فيه</b>: الرمز هوية تحملها قيود سنةٍ مضت، ويُقرأ من المسار.
+/// </summary>
+/// <param name="Name">الاسم ثنائي اللغة.</param>
+/// <param name="ItemGroup">مجموعة الصنف — مؤهّل الدور.</param>
+/// <param name="BaseUnit">وحدة الأساس — لا تتغيّر بعد أن تُكتب على الصنف حركة.</param>
+/// <param name="Units">الوحدات الأكبر ومعاملاتها — تحلّ محلّ القائمة السابقة كلّها.</param>
+public sealed record InventoryItemRevisionRequest(
+    LocalizedName Name,
+    string ItemGroup,
+    string BaseUnit,
+    IReadOnlyList<InventoryUnitFactor> Units);
+
+/// <summary>حالة صنفٍ في دورة حياته ورصيده المتبقّي.</summary>
+/// <param name="Id">معرّف الصنف.</param>
+/// <param name="Code">رمز الصنف.</param>
+/// <param name="IsActive">هل هو متداوَل؟</param>
+/// <param name="HoldsStock">هل بقي له رصيد غير صفري في أي موضع؟</param>
+/// <param name="PlacementsWithStock">عدد المواضع التي بقي فيها رصيد غير صفري.</param>
+public sealed record InventoryItemLifecycle(
+    Guid Id,
+    string Code,
+    bool IsActive,
+    bool HoldsStock,
+    int PlacementsWithStock);

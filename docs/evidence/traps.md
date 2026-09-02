@@ -5989,6 +5989,7 @@ Not found:  "ai.agent.identifier_refused.iban"
 على منوال `DeployEnvironmentIsWiredEndToEnd` الذي يفرض اتّجاهات النصوص الأربعة بلا خادم.
 وهو بندٌ في تقرير هذا الإنزال ولم يُودَع.
 
+<a id="fakh-a-shared-worktree-lets-another-branch-checkout-orphan-uncommitted-work"></a>
 ### فخ-جديد — شجرةُ عملٍ واحدة لأكثر من عامل: `checkout` من غيرك ينقل عملك غير المُودَع إلى فرعه · `a-shared-worktree-lets-another-branch-checkout-orphan-uncommitted-work`
 
 **الأثر** — **عملُ ساعاتٍ يصير في فرعٍ لا يخصّه، ولا شيء يقول.** عاملان أو أكثر على الآلة

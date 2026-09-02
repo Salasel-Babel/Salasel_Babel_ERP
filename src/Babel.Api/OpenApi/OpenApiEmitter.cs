@@ -975,6 +975,100 @@ internal static class OpenApiEmitter
                 "Reads a single item with its base unit and its conversion factors.",
                 Body: null, Response: "Item", Success: 200, Query: [], ProblemStatuses: [404]),
 
+            new(ApiRoutes.ItemRevision, "post", "updateItem",
+                "تعديل صنف", "Update an item",
+                "يعدّل صنفاً: اسمه ومجموعته ووحداته الأكبر — **ولا رمزه**.\n\n"
+                + "**ومورد فرعي revision لا PUT على الصنف**: ‏PUT كان سيقبل رمزاً جديداً في الجسم بحكم شكله، "
+                + "والرمز هوية تحملها قيود سنةٍ مضت وتغييرُه يقطعها عنه. فالرمز يُقرأ من المسار ولا يُقبل في "
+                + "الجسم.\n\n"
+                + "**ووحدة الأساس تتغيّر ما لم تُكتب على الصنف حركة أو يُمسَك له رصيد**، وإلا رُفضت بـ"
+                + "inventory.base_unit_locked_by_history والرسالة تُسمّي عدد الحركات. والشرط ليس تشدّداً: رصيدٌ "
+                + "يتغيّر أساسه بعد أن كُتبت عليه حركات لا يُجمَع — مجموعُ حركاته جمعُ أعدادٍ بمقاييس مختلفة. "
+                + "أمّا صنفٌ سُجّل قبل قليل بخطأ كتابة ولم يتحرّك بعد فتصحيحُه تصحيحُ تعريفٍ لا إعادةُ كتابة "
+                + "واقعة، ومنعُه كان **يُلزم المستخدم بتسجيل صنفٍ ثانٍ برمزٍ ثانٍ ليصحّح حرفاً**.\n\n"
+                + "**ومجموعة الصنف تتغيّر بلا شرط ولا تمسّ ما مضى**: كل حركة تحمل مجموعتها على صفّها هي، "
+                + "فالقيود المُرحَّلة تبقى على حسابها الضابط والحركات التالية تذهب إلى ما تقرّره المصفوفة "
+                + "للمجموعة الجديدة.\n\n"
+                + "**والوحدات الأكبر تحلّ محلّ القائمة السابقة كلّها** — ولا يمسّ ذلك حركةً مضت: كل حركة "
+                + "تحمل مقدارها المُسلَّم ومقدارها بوحدة الأساس **معاً** على صفّها، فلا شيء فيها يُعاد حسابه "
+                + "بمعاملٍ تغيّر بعدها.",
+                "Updates an item: its name, its group, and its larger units — **but not its code**.\n\n"
+                + "**A revision sub-resource, not a PUT on the item**: a PUT would accept a new code in the body by the "
+                + "shape of it, and the code is an identity carried by last year's entries that changing severs. The "
+                + "code is read from the path and never accepted in the body.\n\n"
+                + "**The base unit changes only while no movement has been written against the item and no balance is "
+                + "held for it**; otherwise it is refused with inventory.base_unit_locked_by_history and the message "
+                + "names the movement count. The condition is not strictness: a balance whose base changes after "
+                + "movements have been written against it cannot be summed — the sum would add numbers on different "
+                + "scales. An item registered moments ago with a typo and never moved is a definition being corrected, "
+                + "not a fact being rewritten, and refusing it would **force the user to register a second item under a "
+                + "second code to fix one letter**.\n\n"
+                + "**The item group changes unconditionally and touches nothing past**: every movement carries its own "
+                + "group on its own row, so posted entries stay on their control account and later movements go wherever "
+                + "the matrix sends the new group.\n\n"
+                + "**The larger units replace the previous list entirely** — and that touches no past movement: every "
+                + "movement carries both its supplied magnitude and its base-unit magnitude on its own row, so nothing "
+                + "in it is recomputed by a factor that changed afterwards.",
+                Body: "ItemRevisionRequest", Response: "Item", Success: 200, Query: [],
+                ProblemStatuses: [404, 409, 422]),
+
+            new(ApiRoutes.ItemDeactivation, "post", "deactivateItem",
+                "تعطيل صنف", "Deactivate an item",
+                "يعطّل صنفاً — **ولا يحذفه**: رمزُ الصنف هوية تحملها قيود سنةٍ مضت، وحذفُه يكسر كل تقرير "
+                + "مُرحَّل.\n\n"
+                + "**ويُقبل التعطيل وللصنف رصيد** — وهذا يخالف عمداً حكمَ deactivateWarehouse و"
+                + "deactivateStorageLocation، اللذين يُرفضان فوق رصيد. والفرق أن إيقاف صنفٍ عن التداول **يعني "
+                + "بالضبط**: توقّف عن شرائه وبِع ما بقي. ورفضُه فوق رصيدٍ يصنع **دائرةً مغلقة** — لا يُعطَّل "
+                + "حتى ينفد، ولا ينفد إلا ببيعٍ يقتضي أن يكون عاملاً — فلا يُوقَف صنفٌ أبداً ما دامت منه حبّة "
+                + "في مستودعٍ منسيّ، ويلتفّ عليه المستخدم بإعدامٍ مخترَع يدخل مصروفَ عجزٍ لواقعةٍ لم تقع.\n\n"
+                + "**وأثرُه بعد ذلك: الوارد الجديد يُرفض بـ inventory.item_inactive، والصادر يبقى مسموحاً حتى "
+                + "ينفد الرصيد.** والفحص على الوارد وحده لا على كل حركة: **عكسُ صرفٍ مضى ومرتجعُه يجب أن "
+                + "يعملا**، لأن التصحيح لا يُمنع بحالةٍ وُلدت بعد الواقعة — وإلّا صار الإيقاف يُجمّد أخطاءً لا "
+                + "يمكن ردّها.\n\n"
+                + "**وليس صامتاً**: الجواب يحمل holdsStock و placementsWithStock، فلا يظنّ أحدٌ أن البضاعة ذهبت "
+                + "مع الإيقاف.\n\n"
+                + "**وإعادة تعطيل مُعطَّلٍ تنجح ولا تفشل.**",
+                "Deactivates an item — **it does not delete it**: an item code is an identity carried by last year's "
+                + "entries, and deleting it breaks every posted report.\n\n"
+                + "**Deactivation is accepted while the item still holds stock** — deliberately unlike "
+                + "deactivateWarehouse and deactivateStorageLocation, which refuse over a balance. The difference is "
+                + "that discontinuing an item **means exactly**: stop buying it and sell the rest. Refusing over a "
+                + "balance creates a **closed loop** — it cannot be deactivated until it runs out, and it cannot run out "
+                + "except by a sale that requires it to be active — so no item is ever discontinued while one piece of "
+                + "it sits in a forgotten warehouse, and the user works around it with an invented write-off that books "
+                + "a shortage expense for something that never happened.\n\n"
+                + "**The effect afterwards: new inbound stock is refused with inventory.item_inactive, and issuing "
+                + "stays allowed until the balance runs out.** The check is on inbound only, not on every movement: "
+                + "**reversing a past issue and returning against it must keep working**, because a correction is not "
+                + "blocked by a state born after the fact it corrects — otherwise deactivation would freeze errors that "
+                + "cannot be undone.\n\n"
+                + "**And it is not silent**: the response carries holdsStock and placementsWithStock, so nobody assumes "
+                + "the goods left with the discontinuation.\n\n"
+                + "**Deactivating an already deactivated item succeeds.**",
+                Body: null, Response: "ItemLifecycle", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.ItemLifecycle, "get", "readItemLifecycle",
+                "حالة الصنف ورصيده المتبقّي", "An item's lifecycle state and remaining stock",
+                "يقرأ حالة الصنف — متداوَلٌ أم مُوقَف — ومعها **هل بقي له رصيد وفي كم موضع**.\n\n"
+                + "**ومورد فرعي مستقلّ لا حقلٌ على Item**: إضافةُ isActive إلى شكل الصنف كانت ستُغيّر استجابة "
+                + "**ثلاث عمليات منشورة** — addItem و listItems و readItem — يستهلكها عملاء اليوم. فالحالة "
+                + "تُقرأ من هنا، والشكل القائم لا يُمَسّ. **وذلك نقصُ سطحٍ مُعلَن**: listItems لا يقول أيّ "
+                + "أصنافه مُوقَف، ومن أراد ذلك يقرأ هذا المورد لكل صنف.\n\n"
+                + "و‏holdsStock تعني **رصيداً غير صفري**، لا موجباً: رصيدٌ سالب واقعةٌ تقع — بيعٌ قبل إدخال "
+                + "استلامه — وإخفاؤها هنا يجعل الجواب يقول «لا رصيد» على صنفٍ عليه عجزٌ مفتوح يمنع إقفال "
+                + "الفترة. نقطة قراءة.",
+                "Reads an item's state — in circulation or discontinued — together with **whether it still holds stock "
+                + "and in how many places**.\n\n"
+                + "**A separate sub-resource, not a field on Item**: adding isActive to the item shape would change the "
+                + "response of **three published operations** — addItem, listItems and readItem — that today's clients "
+                + "consume. The state is read here and the existing shape is untouched. **That is a declared surface "
+                + "gap**: listItems does not say which of its items are discontinued, and whoever needs that reads this "
+                + "resource per item.\n\n"
+                + "holdsStock means a **non-zero** balance, not a positive one: a negative balance is a real occurrence "
+                + "— a sale entered before its receipt — and hiding it here would make the answer say 'no stock' about "
+                + "an item carrying an open shortage that blocks the period close. A read point.",
+                Body: null, Response: "ItemLifecycle", Success: 200, Query: [], ProblemStatuses: [404]),
+
             new(ApiRoutes.StockMovements, "post", "draftStockMovement",
                 "إنشاء حركة مخزون مسوّدة", "Draft a stock movement",
                 "يُنشئ مستند حركة مخزون في حالة **DRAFT**: تسوية جرد، أو رصيد افتتاحي، أو إعدام. ولا حركة ولا قيد: "
@@ -1313,8 +1407,12 @@ internal static class OpenApiEmitter
                 + "سيُجعل مديناً هو الحساب الذي كان سيُجعل دائناً **بالمبلغ نفسه**. أي أن القيد لا شيء، مكتوباً في "
                 + "دفترٍ يُضاف إليه ولا يُحذف منه، وله رقمٌ متسلسل ويدخل سلسلة البصمات ويُقرأ في كل تقرير حركة إلى "
                 + "الأبد. والمصفوفة نفسها تقول هذا في شرط inventory.transfer.between_warehouses: «وإلا فلا قيد مالي "
-                + "إطلاقاً» — والحدث inventory.transfer.between_locations مُودَعٌ فيها بـ posts_entry: false وبلا "
-                + "سطور، كي لا يبقى «لا قيد» قراراً في شيفرة.\n\n"
+                + "إطلاقاً» — والنقل بين موقعين لا يبلغ ذلك الشرط أبداً، لأن المؤهّل مجموعةُ الصنف وهي لا تتغيّر "
+                + "بنقل مكان.\n\n"
+                + "**ولا حدث لهذا المستند في مصفوفة الترحيل، ولا يحتاج واحداً**: المصفوفة تُجيب «أيّ حسابٍ لأيّ "
+                + "حدث»، وحدثٌ لا يُنتج قيداً لا حساب له فلا جواب لها فيه. و«لا قيد» مفروضٌ **بالبناء لا بالوصف**: "
+                + "خدمة النقل لا تحمل مرجعاً واحداً إلى بوّابة الترحيل، فلا طريق منها إلى الدفتر أصلاً — ويُثبته "
+                + "إثباتٌ يَعُدّ قيود المنشأة قبل النقل وبعده فيجدهما سواء.\n\n"
                 + "**والمورد الفرعي movement لا posting** لهذا السبب حرفياً: posting في هذا العقد تعني «صار له قيد».\n\n"
                 + "**وحركتان برمزَي حدث مختلفين** — issued و received: هوية الحركة سداسية ورمز الحدث فيها، وحركتان "
                 + "بالهوية نفسها تعني أن الثانية تُبتلع بصمت، فيخرج المنقول من المصدر ولا يدخل الوجهة أبداً.\n\n"
@@ -1332,8 +1430,13 @@ internal static class OpenApiEmitter
                 + "amount**. That entry is nothing, written into a ledger that is appended to and never deleted from, "
                 + "carrying a sequence number, entering the hash chain, and read in every movement report forever. The matrix "
                 + "says as much in the precondition of inventory.transfer.between_warehouses: 'otherwise no financial entry "
-                + "is produced at all' — and the event inventory.transfer.between_locations is committed there with "
-                + "posts_entry: false and no lines, so that 'no entry' is not a decision living in code.\n\n"
+                + "is produced at all' — and a transfer between two locations never meets that precondition, because the "
+                + "qualifier is the item group and relocating goods does not change it.\n\n"
+                + "**There is no matrix event for this document, and none is needed**: the matrix answers 'which account for "
+                + "which event', and an event that produces no entry has no account for it to answer about. 'No entry' is "
+                + "enforced **by construction, not by description**: the transfer service holds not one reference to the "
+                + "posting gateway, so no route to the ledger exists — and a proof counts the company's ledger entries "
+                + "before and after and finds them equal.\n\n"
                 + "**The sub-resource is movement, not posting**, for exactly that reason: posting means 'it has an entry' in "
                 + "this contract.\n\n"
                 + "**Two movements under two different event codes** — issued and received: movement identity is a sextuple "
@@ -3366,7 +3469,12 @@ internal static class OpenApiEmitter
                         "uuid");
                 }
 
-                // معرّفات موارد المستندات — بترتيب معلن، ولا مسار يحمل أكثر من واحد منها.
+                // معرّفات موارد المستندات — بترتيب معلن.
+                //
+                // ‏**وكان هنا «ولا مسار يحمل أكثر من واحد منها»، وقد سقط ذلك بالتسكين:**
+                // مسار الرفّ `/warehouses/{warehouseId}/locations/{locationId}/bins/{binId}`
+                // يحمل **ثلاثة**. والحلقة تكتبها كلّها بترتيبها المعلَن هنا، فالمُخرَج
+                // حتميّ — وهو الشرط الوحيد الذي كان ذلك الافتراض يخدمه.
                 foreach ((string resource, string token, string ar, string en) in DocumentPathParameters)
                 {
                     if (byPath.Key.Contains("/" + resource + "/{" + token + "}", StringComparison.Ordinal))
@@ -3427,6 +3535,7 @@ internal static class OpenApiEmitter
     /// </summary>
     private static IReadOnlyList<(string Resource, string Token, string Ar, string En)> DocumentPathParameters { get; } =
     [
+        ("bins", "binId", "معرّف الرفّ أو الحاوية داخل الموقع.", "The bin identifier within its location."),
         ("attachments", "attachmentId",
             "معرّف المرفق — غامضٌ عمداً: لا يُشتقّ من اسم ملفّ ولا من مسار، ولا يُقرأ منه شيء عن صاحبه.",
             "The attachment identifier — deliberately opaque: derived from no file name and no path, and telling nothing about its owner."),
@@ -3446,6 +3555,8 @@ internal static class OpenApiEmitter
         ("guarantees", "guaranteeId", "معرّف خطاب الضمان.", "The guarantee identifier."),
         ("items", "itemId", "معرّف الصنف.", "The item identifier."),
         ("lease-contracts", "leaseId", "معرّف عقد الإيجار.", "The lease contract identifier."),
+        ("locations", "locationId", "معرّف الموقع داخل المستودع — **وهو مستوى الرصيد المُقيَّم**.",
+            "The location identifier within its warehouse — **the level at which the valued balance is held**."),
         ("lessees", "lesseeId", "معرّف المستأجر العقاري — **لا مستأجر النظام**: هذا مورد داخل نطاق منشأة.",
             "The lessee identifier — **not the system tenant**: this resource lives inside a company scope."),
         ("payroll-payments", "paymentId", "معرّف سند صرف الرواتب.", "The payroll payment identifier."),
@@ -3465,6 +3576,7 @@ internal static class OpenApiEmitter
         ("sales-invoices", "invoiceId", "معرّف فاتورة المبيعات.", "The sales invoice identifier."),
         ("social-insurance-payments", "paymentId", "معرّف سند سداد التأمينات.", "The social insurance payment identifier."),
         ("stock-movements", "movementId", "معرّف مستند حركة المخزون.", "The stock movement document identifier."),
+        ("stock-transfers", "transferId", "معرّف مستند النقل بين موقعين.", "The between-locations transfer document identifier."),
         ("subcontractor-advances", "advanceId", "معرّف مستند صرف الدفعة المقدمة للمقاول.", "The subcontractor advance identifier."),
         ("subcontractor-certificates", "certificateId", "معرّف مستخلص المقاول من الباطن.", "The subcontractor certificate identifier."),
         ("subcontractors", "subcontractorId", "معرّف المقاول من الباطن.", "The subcontractor identifier."),
@@ -3473,7 +3585,9 @@ internal static class OpenApiEmitter
         ("supplier-payments", "paymentId", "معرّف سند الصرف.", "The supplier payment identifier."),
         ("suppliers", "supplierId", "معرّف المورد.", "The supplier identifier."),
         ("tenant-receipts", "receiptId", "معرّف سند القبض من المستأجر.", "The tenant receipt identifier."),
-        ("units", "unitId", "معرّف الوحدة.", "The unit identifier."),
+        ("units", "unitId", "معرّف الوحدة **العقارية** — لا وحدة القياس.", "The **real-estate** unit identifier — not a unit of measure."),
+        ("units-of-measure", "unitId", "معرّف وحدة القياس.", "The unit-of-measure identifier."),
+        ("warehouses", "warehouseId", "معرّف المستودع.", "The warehouse identifier."),
     ];
 
     /// <summary>
@@ -6893,6 +7007,62 @@ internal static class OpenApiEmitter
             WriteArrayRefProperty(w, "items", "Item", "الأصناف.", "The items.");
             w.WriteEndObject();
             WriteRequired(w, "itemCount", "items");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("ItemRevisionRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب تعديل صنف. **ولا رمز فيه**: الرمز هوية تحملها قيود سنةٍ مضت، ويُقرأ من المسار ولا يُقبل "
+                + "في الجسم. / "
+                + "An item update request. **It carries no code**: the code is an identity carried by last year's "
+                + "entries; it is read from the path and never accepted in the body.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "baseUnit",
+                "وحدة الأساس. **ولا تتغيّر بعد أن تُكتب على الصنف حركة أو يُمسَك له رصيد** — وإلا رُفضت بـ inventory.base_unit_locked_by_history.",
+                "The base unit. **It does not change once a movement has been written against the item or a balance is held for it** — otherwise it is refused with inventory.base_unit_locked_by_history.",
+                32);
+            WriteStringProperty(w, "itemGroup",
+                "مجموعة الصنف — مؤهّل الدور. **وتغييرها لا يمسّ ما مضى**: كل حركة تحمل مجموعتها على صفّها هي.",
+                "The item group — a role qualifier. **Changing it touches nothing past**: every movement carries its own group on its own row.",
+                64);
+            WriteRefProperty(w, "name", "LocalizedText");
+            WriteArrayRefProperty(w, "units", "UnitFactor",
+                "الوحدات الأكبر ومعاملاتها — **تحلّ محلّ القائمة السابقة كلّها**، ولا تمسّ حركةً مضت.",
+                "The larger units and their factors — **they replace the previous list entirely**, and touch no past movement.");
+            w.WriteEndObject();
+            WriteRequired(w, "baseUnit", "itemGroup", "name", "units");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("ItemLifecycle", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "حالة صنفٍ في دورة حياته ورصيده المتبقّي. **ونوعٌ مستقلّ لا حقلٌ على Item**: إضافةُ isActive "
+                + "إلى شكل الصنف كانت ستُغيّر استجابة ثلاث عمليات منشورة يستهلكها عملاء اليوم. / "
+                + "An item's lifecycle state and remaining stock. **A separate type, not a field on Item**: adding "
+                + "isActive to the item shape would change the response of three published operations that today's "
+                + "clients consume.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "code", "رمز الصنف.", "The item code.", 64);
+            WriteBooleanProperty(
+                w,
+                "holdsStock",
+                "هل بقي للصنف رصيد **غير صفري** في أي موضع؟ و«غير صفري» لا «موجب»: رصيدٌ سالب واقعةٌ تقع، وإخفاؤها يجعل الجواب يقول «لا رصيد» على صنفٍ عليه عجزٌ مفتوح.",
+                "Does the item still hold a **non-zero** balance anywhere? Non-zero, not positive: a negative balance is a real occurrence, and hiding it would make the answer say 'no stock' about an item carrying an open shortage.");
+            WriteStringProperty(w, "id", "معرّف الصنف.", "The item identifier.", 36);
+            WriteBooleanProperty(
+                w,
+                "isActive",
+                "هل الصنف متداوَل؟ **والتعطيل حالةٌ لا حذف**: الرمز محمولٌ على قيود سنةٍ مضت. والمُعطَّل يُرفض عليه الوارد الجديد ويبقى الصادر حتى ينفد.",
+                "Is the item in circulation? **Deactivation is a state, not a deletion**: the code is carried by last year's entries. A deactivated item refuses new inbound stock and keeps issuing until it runs out.");
+            WriteIntegerProperty(w, "placementsWithStock", 0, int.MaxValue,
+                "عدد المواضع التي بقي فيها رصيد غير صفري — فلا يُقال «بقي رصيد» بلا «أين».",
+                "The number of places still holding a non-zero balance — so the answer never says 'stock remains' without saying where.");
+            w.WriteEndObject();
+            WriteRequired(w, "code", "holdsStock", "id", "isActive", "placementsWithStock");
             w.WriteBoolean("additionalProperties", false);
         });
 

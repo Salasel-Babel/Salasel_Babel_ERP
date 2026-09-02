@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     7b90504c45b6de73c7e22968c45c4a12386eca079c9ac57a6f8ad36c5c2405b8
+     d062eb84c06a9c54af3e0825393b27d2fecfb2120c09734d57b14b0e5120a5b5
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -314,6 +314,10 @@ export async function addProjectContract(transport: Transport, args: AddProjectC
 export interface AddStorageBinArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
+  /** معرّف الموقع داخل المستودع — **وهو مستوى الرصيد المُقيَّم**. / The location identifier within its warehouse — **the level at which the valued balance is held**. */
+  locationId: string;
+  /** معرّف المستودع. / The warehouse identifier. */
+  warehouseId: string;
   /** جسم الطلب. / The request body. */
   body: T.StoragePlaceRequest;
 }
@@ -334,7 +338,7 @@ export interface AddStorageBinArgs {
  * **So what is it for:** it answers 'which aisle do I find it in', not 'what is it worth on the balance sheet'. That is a **declared surface gap**: there is no endpoint today that reads one bin's quantity.
  */
 export async function addStorageBin(transport: Transport, args: AddStorageBinArgs, signal?: AbortSignal): Promise<T.StoragePlace> {
-  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/warehouses/{warehouseId}/locations/{locationId}/bins";
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/warehouses/" + encodeURIComponent(args.warehouseId) + "/locations/" + encodeURIComponent(args.locationId) + "/bins";
   const url = path;
   const body = encodeSchema(SCHEMAS, "StoragePlaceRequest", args.body as unknown);
   const response = await transport({ method: "POST", url, body, signal });
@@ -345,6 +349,8 @@ export async function addStorageBin(transport: Transport, args: AddStorageBinArg
 export interface AddStorageLocationArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
+  /** معرّف المستودع. / The warehouse identifier. */
+  warehouseId: string;
   /** جسم الطلب. / The request body. */
   body: T.StoragePlaceRequest;
 }
@@ -369,7 +375,7 @@ export interface AddStorageLocationArgs {
  * **A location code is unique within its level, not within its warehouse**: 'A1' is one location in the whole company. That is a deliberate narrowing — a location code is written onto movements and balances without its warehouse, so two identical codes in two warehouses would make every balance row ask 'which A1?'.
  */
 export async function addStorageLocation(transport: Transport, args: AddStorageLocationArgs, signal?: AbortSignal): Promise<T.StoragePlace> {
-  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/warehouses/{warehouseId}/locations";
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/warehouses/" + encodeURIComponent(args.warehouseId) + "/locations";
   const url = path;
   const body = encodeSchema(SCHEMAS, "StoragePlaceRequest", args.body as unknown);
   const response = await transport({ method: "POST", url, body, signal });
@@ -873,9 +879,53 @@ export async function createUnit(transport: Transport, args: CreateUnitArgs, sig
   return decodeSchema(SCHEMAS, "Unit", response.json) as T.Unit;
 }
 
-export interface DeactivateStorageBinArgs {
+export interface DeactivateItemArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
+  /** معرّف الصنف. / The item identifier. */
+  itemId: string;
+}
+
+/**
+ * تعطيل صنف / Deactivate an item
+ * 
+ * يعطّل صنفاً — **ولا يحذفه**: رمزُ الصنف هوية تحملها قيود سنةٍ مضت، وحذفُه يكسر كل تقرير مُرحَّل.
+ * 
+ * **ويُقبل التعطيل وللصنف رصيد** — وهذا يخالف عمداً حكمَ deactivateWarehouse وdeactivateStorageLocation، اللذين يُرفضان فوق رصيد. والفرق أن إيقاف صنفٍ عن التداول **يعني بالضبط**: توقّف عن شرائه وبِع ما بقي. ورفضُه فوق رصيدٍ يصنع **دائرةً مغلقة** — لا يُعطَّل حتى ينفد، ولا ينفد إلا ببيعٍ يقتضي أن يكون عاملاً — فلا يُوقَف صنفٌ أبداً ما دامت منه حبّة في مستودعٍ منسيّ، ويلتفّ عليه المستخدم بإعدامٍ مخترَع يدخل مصروفَ عجزٍ لواقعةٍ لم تقع.
+ * 
+ * **وأثرُه بعد ذلك: الوارد الجديد يُرفض بـ inventory.item_inactive، والصادر يبقى مسموحاً حتى ينفد الرصيد.** والفحص على الوارد وحده لا على كل حركة: **عكسُ صرفٍ مضى ومرتجعُه يجب أن يعملا**، لأن التصحيح لا يُمنع بحالةٍ وُلدت بعد الواقعة — وإلّا صار الإيقاف يُجمّد أخطاءً لا يمكن ردّها.
+ * 
+ * **وليس صامتاً**: الجواب يحمل holdsStock و placementsWithStock، فلا يظنّ أحدٌ أن البضاعة ذهبت مع الإيقاف.
+ * 
+ * **وإعادة تعطيل مُعطَّلٍ تنجح ولا تفشل.**
+ * 
+ * Deactivates an item — **it does not delete it**: an item code is an identity carried by last year's entries, and deleting it breaks every posted report.
+ * 
+ * **Deactivation is accepted while the item still holds stock** — deliberately unlike deactivateWarehouse and deactivateStorageLocation, which refuse over a balance. The difference is that discontinuing an item **means exactly**: stop buying it and sell the rest. Refusing over a balance creates a **closed loop** — it cannot be deactivated until it runs out, and it cannot run out except by a sale that requires it to be active — so no item is ever discontinued while one piece of it sits in a forgotten warehouse, and the user works around it with an invented write-off that books a shortage expense for something that never happened.
+ * 
+ * **The effect afterwards: new inbound stock is refused with inventory.item_inactive, and issuing stays allowed until the balance runs out.** The check is on inbound only, not on every movement: **reversing a past issue and returning against it must keep working**, because a correction is not blocked by a state born after the fact it corrects — otherwise deactivation would freeze errors that cannot be undone.
+ * 
+ * **And it is not silent**: the response carries holdsStock and placementsWithStock, so nobody assumes the goods left with the discontinuation.
+ * 
+ * **Deactivating an already deactivated item succeeds.**
+ */
+export async function deactivateItem(transport: Transport, args: DeactivateItemArgs, signal?: AbortSignal): Promise<T.ItemLifecycle> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/items/" + encodeURIComponent(args.itemId) + "/deactivation";
+  const url = path;
+  const response = await transport({ method: "POST", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "ItemLifecycle", response.json) as T.ItemLifecycle;
+}
+
+export interface DeactivateStorageBinArgs {
+  /** معرّف الرفّ أو الحاوية داخل الموقع. / The bin identifier within its location. */
+  binId: string;
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف الموقع داخل المستودع — **وهو مستوى الرصيد المُقيَّم**. / The location identifier within its warehouse — **the level at which the valued balance is held**. */
+  locationId: string;
+  /** معرّف المستودع. / The warehouse identifier. */
+  warehouseId: string;
 }
 
 /**
@@ -886,7 +936,7 @@ export interface DeactivateStorageBinArgs {
  * Deactivates a bin. **No balance check here** — unlike a warehouse or a location: a bin is not a dimension in the balance key, so no balance row exists to read, and a check looking for one would always return 'no stock' and look like a guard while guarding nothing.
  */
 export async function deactivateStorageBin(transport: Transport, args: DeactivateStorageBinArgs, signal?: AbortSignal): Promise<T.StoragePlace> {
-  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/warehouses/{warehouseId}/locations/{locationId}/bins/{binId}/deactivation";
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/warehouses/" + encodeURIComponent(args.warehouseId) + "/locations/" + encodeURIComponent(args.locationId) + "/bins/" + encodeURIComponent(args.binId) + "/deactivation";
   const url = path;
   const response = await transport({ method: "POST", url, signal });
   if (!response.ok) throw ProblemError.from(response);
@@ -896,6 +946,10 @@ export async function deactivateStorageBin(transport: Transport, args: Deactivat
 export interface DeactivateStorageLocationArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
+  /** معرّف الموقع داخل المستودع — **وهو مستوى الرصيد المُقيَّم**. / The location identifier within its warehouse — **the level at which the valued balance is held**. */
+  locationId: string;
+  /** معرّف المستودع. / The warehouse identifier. */
+  warehouseId: string;
 }
 
 /**
@@ -906,7 +960,7 @@ export interface DeactivateStorageLocationArgs {
  * Deactivates a location. **Refused while it still holds a non-zero balance** — including a **negative** one: deactivating a place that carries a shortage closes the door the shortage is corrected through, leaving it open with no route to a period close. **Also refused while an active bin sits under it.**
  */
 export async function deactivateStorageLocation(transport: Transport, args: DeactivateStorageLocationArgs, signal?: AbortSignal): Promise<T.StoragePlace> {
-  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/warehouses/{warehouseId}/locations/{locationId}/deactivation";
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/warehouses/" + encodeURIComponent(args.warehouseId) + "/locations/" + encodeURIComponent(args.locationId) + "/deactivation";
   const url = path;
   const response = await transport({ method: "POST", url, signal });
   if (!response.ok) throw ProblemError.from(response);
@@ -916,6 +970,8 @@ export async function deactivateStorageLocation(transport: Transport, args: Deac
 export interface DeactivateUnitOfMeasureArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
+  /** معرّف وحدة القياس. / The unit-of-measure identifier. */
+  unitId: string;
 }
 
 /**
@@ -934,7 +990,7 @@ export interface DeactivateUnitOfMeasureArgs {
  * **Deactivating an already deactivated unit succeeds.**
  */
 export async function deactivateUnitOfMeasure(transport: Transport, args: DeactivateUnitOfMeasureArgs, signal?: AbortSignal): Promise<T.UnitOfMeasure> {
-  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/units-of-measure/{unitId}/deactivation";
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/units-of-measure/" + encodeURIComponent(args.unitId) + "/deactivation";
   const url = path;
   const response = await transport({ method: "POST", url, signal });
   if (!response.ok) throw ProblemError.from(response);
@@ -944,6 +1000,8 @@ export async function deactivateUnitOfMeasure(transport: Transport, args: Deacti
 export interface DeactivateWarehouseArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
+  /** معرّف المستودع. / The warehouse identifier. */
+  warehouseId: string;
 }
 
 /**
@@ -966,7 +1024,7 @@ export interface DeactivateWarehouseArgs {
  * **Deactivating an already deactivated warehouse succeeds**: the requested state holds, and failing on it would force every caller to read before writing to dodge an error that describes no fault.
  */
 export async function deactivateWarehouse(transport: Transport, args: DeactivateWarehouseArgs, signal?: AbortSignal): Promise<T.StoragePlace> {
-  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/warehouses/{warehouseId}/deactivation";
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/warehouses/" + encodeURIComponent(args.warehouseId) + "/deactivation";
   const url = path;
   const response = await transport({ method: "POST", url, signal });
   if (!response.ok) throw ProblemError.from(response);
@@ -2193,6 +2251,10 @@ export async function listStockTransfers(transport: Transport, args: ListStockTr
 export interface ListStorageBinsArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
+  /** معرّف الموقع داخل المستودع — **وهو مستوى الرصيد المُقيَّم**. / The location identifier within its warehouse — **the level at which the valued balance is held**. */
+  locationId: string;
+  /** معرّف المستودع. / The warehouse identifier. */
+  warehouseId: string;
 }
 
 /**
@@ -2203,7 +2265,7 @@ export interface ListStorageBinsArgs {
  * Lists a location's bins ordered by code in a stable ordinal order. A read point.
  */
 export async function listStorageBins(transport: Transport, args: ListStorageBinsArgs, signal?: AbortSignal): Promise<T.StoragePlaceList> {
-  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/warehouses/{warehouseId}/locations/{locationId}/bins";
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/warehouses/" + encodeURIComponent(args.warehouseId) + "/locations/" + encodeURIComponent(args.locationId) + "/bins";
   const url = path;
   const response = await transport({ method: "GET", url, signal });
   if (!response.ok) throw ProblemError.from(response);
@@ -2213,6 +2275,8 @@ export async function listStorageBins(transport: Transport, args: ListStorageBin
 export interface ListStorageLocationsArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
+  /** معرّف المستودع. / The warehouse identifier. */
+  warehouseId: string;
 }
 
 /**
@@ -2223,7 +2287,7 @@ export interface ListStorageLocationsArgs {
  * Lists a warehouse's locations ordered by code in a stable ordinal order. A warehouse that does not exist is refused with 404 rather than answered with an empty list: 'it has no locations' and 'no warehouse with that id' are different answers, and giving the first for the second sends the reader hunting for missing data instead of a wrong URL. A read point.
  */
 export async function listStorageLocations(transport: Transport, args: ListStorageLocationsArgs, signal?: AbortSignal): Promise<T.StoragePlaceList> {
-  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/warehouses/{warehouseId}/locations";
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/warehouses/" + encodeURIComponent(args.warehouseId) + "/locations";
   const url = path;
   const response = await transport({ method: "GET", url, signal });
   if (!response.ok) throw ProblemError.from(response);
@@ -2293,6 +2357,8 @@ export async function listWarehouses(transport: Transport, args: ListWarehousesA
 export interface MoveStockTransferArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
+  /** معرّف مستند النقل بين موقعين. / The between-locations transfer document identifier. */
+  transferId: string;
 }
 
 /**
@@ -2300,7 +2366,9 @@ export interface MoveStockTransferArgs {
  * 
  * ينفّذ النقل: **حركتان في دفتر المخزون المساعد — صادرٌ من المصدر ثم واردٌ إلى الوجهة بالقيمة نفسها — ولا قيدٌ في دفتر الأستاذ إطلاقاً**.
  * 
- * **ولماذا لا قيد:** النقل داخل المنشأة نفسها لا يُغيّر قيمة المخزون. والصنف واحدٌ على الطرفين فمجموعته واحدة، ومؤهّل دور inventory_control في المصفوفة هو مجموعة الصنف — فالحساب الذي كان سيُجعل مديناً هو الحساب الذي كان سيُجعل دائناً **بالمبلغ نفسه**. أي أن القيد لا شيء، مكتوباً في دفترٍ يُضاف إليه ولا يُحذف منه، وله رقمٌ متسلسل ويدخل سلسلة البصمات ويُقرأ في كل تقرير حركة إلى الأبد. والمصفوفة نفسها تقول هذا في شرط inventory.transfer.between_warehouses: «وإلا فلا قيد مالي إطلاقاً» — والحدث inventory.transfer.between_locations مُودَعٌ فيها بـ posts_entry: false وبلا سطور، كي لا يبقى «لا قيد» قراراً في شيفرة.
+ * **ولماذا لا قيد:** النقل داخل المنشأة نفسها لا يُغيّر قيمة المخزون. والصنف واحدٌ على الطرفين فمجموعته واحدة، ومؤهّل دور inventory_control في المصفوفة هو مجموعة الصنف — فالحساب الذي كان سيُجعل مديناً هو الحساب الذي كان سيُجعل دائناً **بالمبلغ نفسه**. أي أن القيد لا شيء، مكتوباً في دفترٍ يُضاف إليه ولا يُحذف منه، وله رقمٌ متسلسل ويدخل سلسلة البصمات ويُقرأ في كل تقرير حركة إلى الأبد. والمصفوفة نفسها تقول هذا في شرط inventory.transfer.between_warehouses: «وإلا فلا قيد مالي إطلاقاً» — والنقل بين موقعين لا يبلغ ذلك الشرط أبداً، لأن المؤهّل مجموعةُ الصنف وهي لا تتغيّر بنقل مكان.
+ * 
+ * **ولا حدث لهذا المستند في مصفوفة الترحيل، ولا يحتاج واحداً**: المصفوفة تُجيب «أيّ حسابٍ لأيّ حدث»، وحدثٌ لا يُنتج قيداً لا حساب له فلا جواب لها فيه. و«لا قيد» مفروضٌ **بالبناء لا بالوصف**: خدمة النقل لا تحمل مرجعاً واحداً إلى بوّابة الترحيل، فلا طريق منها إلى الدفتر أصلاً — ويُثبته إثباتٌ يَعُدّ قيود المنشأة قبل النقل وبعده فيجدهما سواء.
  * 
  * **والمورد الفرعي movement لا posting** لهذا السبب حرفياً: posting في هذا العقد تعني «صار له قيد».
  * 
@@ -2312,7 +2380,9 @@ export interface MoveStockTransferArgs {
  * 
  * Executes the transfer: **two movements in the inventory subledger — an issue from the source, then a receipt into the destination at the very same value — and no general-ledger entry at all**.
  * 
- * **Why no entry:** a transfer inside the same company does not change the value of inventory. The item is the same on both sides, so its group is the same, and the matrix qualifier for inventory_control is the item group — so the account that would be debited is the account that would be credited, **for the same amount**. That entry is nothing, written into a ledger that is appended to and never deleted from, carrying a sequence number, entering the hash chain, and read in every movement report forever. The matrix says as much in the precondition of inventory.transfer.between_warehouses: 'otherwise no financial entry is produced at all' — and the event inventory.transfer.between_locations is committed there with posts_entry: false and no lines, so that 'no entry' is not a decision living in code.
+ * **Why no entry:** a transfer inside the same company does not change the value of inventory. The item is the same on both sides, so its group is the same, and the matrix qualifier for inventory_control is the item group — so the account that would be debited is the account that would be credited, **for the same amount**. That entry is nothing, written into a ledger that is appended to and never deleted from, carrying a sequence number, entering the hash chain, and read in every movement report forever. The matrix says as much in the precondition of inventory.transfer.between_warehouses: 'otherwise no financial entry is produced at all' — and a transfer between two locations never meets that precondition, because the qualifier is the item group and relocating goods does not change it.
+ * 
+ * **There is no matrix event for this document, and none is needed**: the matrix answers 'which account for which event', and an event that produces no entry has no account for it to answer about. 'No entry' is enforced **by construction, not by description**: the transfer service holds not one reference to the posting gateway, so no route to the ledger exists — and a proof counts the company's ledger entries before and after and finds them equal.
  * 
  * **The sub-resource is movement, not posting**, for exactly that reason: posting means 'it has an entry' in this contract.
  * 
@@ -2323,7 +2393,7 @@ export interface MoveStockTransferArgs {
  * **Idempotent**: a second arrival under the same identity returns the same document with alreadyMoved = true and status 200 instead of 201, with no third movement. The verdict is the movement's, not the row's state: two concurrent calls both pass the 'is it a draft' check and meet at the unique index on identity.
  */
 export async function moveStockTransfer(transport: Transport, args: MoveStockTransferArgs, signal?: AbortSignal): Promise<T.StockTransfer> {
-  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/stock-transfers/{transferId}/movement";
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/stock-transfers/" + encodeURIComponent(args.transferId) + "/movement";
   const url = path;
   const response = await transport({ method: "POST", url, signal });
   if (!response.ok) throw ProblemError.from(response);
@@ -3522,6 +3592,36 @@ export async function readItem(transport: Transport, args: ReadItemArgs, signal?
   return decodeSchema(SCHEMAS, "Item", response.json) as T.Item;
 }
 
+export interface ReadItemLifecycleArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف الصنف. / The item identifier. */
+  itemId: string;
+}
+
+/**
+ * حالة الصنف ورصيده المتبقّي / An item's lifecycle state and remaining stock
+ * 
+ * يقرأ حالة الصنف — متداوَلٌ أم مُوقَف — ومعها **هل بقي له رصيد وفي كم موضع**.
+ * 
+ * **ومورد فرعي مستقلّ لا حقلٌ على Item**: إضافةُ isActive إلى شكل الصنف كانت ستُغيّر استجابة **ثلاث عمليات منشورة** — addItem و listItems و readItem — يستهلكها عملاء اليوم. فالحالة تُقرأ من هنا، والشكل القائم لا يُمَسّ. **وذلك نقصُ سطحٍ مُعلَن**: listItems لا يقول أيّ أصنافه مُوقَف، ومن أراد ذلك يقرأ هذا المورد لكل صنف.
+ * 
+ * وholdsStock تعني **رصيداً غير صفري**، لا موجباً: رصيدٌ سالب واقعةٌ تقع — بيعٌ قبل إدخال استلامه — وإخفاؤها هنا يجعل الجواب يقول «لا رصيد» على صنفٍ عليه عجزٌ مفتوح يمنع إقفال الفترة. نقطة قراءة.
+ * 
+ * Reads an item's state — in circulation or discontinued — together with **whether it still holds stock and in how many places**.
+ * 
+ * **A separate sub-resource, not a field on Item**: adding isActive to the item shape would change the response of **three published operations** — addItem, listItems and readItem — that today's clients consume. The state is read here and the existing shape is untouched. **That is a declared surface gap**: listItems does not say which of its items are discontinued, and whoever needs that reads this resource per item.
+ * 
+ * holdsStock means a **non-zero** balance, not a positive one: a negative balance is a real occurrence — a sale entered before its receipt — and hiding it here would make the answer say 'no stock' about an item carrying an open shortage that blocks the period close. A read point.
+ */
+export async function readItemLifecycle(transport: Transport, args: ReadItemLifecycleArgs, signal?: AbortSignal): Promise<T.ItemLifecycle> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/items/" + encodeURIComponent(args.itemId) + "/lifecycle";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "ItemLifecycle", response.json) as T.ItemLifecycle;
+}
+
 export interface ReadJournalEntryArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
@@ -4143,6 +4243,8 @@ export async function readStockBalances(transport: Transport, args: ReadStockBal
 export interface ReadStockTransferArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
+  /** معرّف مستند النقل بين موقعين. / The between-locations transfer document identifier. */
+  transferId: string;
 }
 
 /**
@@ -4153,7 +4255,7 @@ export interface ReadStockTransferArgs {
  * Reads a single transfer document, with its computed value if it has been executed.
  */
 export async function readStockTransfer(transport: Transport, args: ReadStockTransferArgs, signal?: AbortSignal): Promise<T.StockTransfer> {
-  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/stock-transfers/{transferId}";
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/stock-transfers/" + encodeURIComponent(args.transferId) + "";
   const url = path;
   const response = await transport({ method: "GET", url, signal });
   if (!response.ok) throw ProblemError.from(response);
@@ -4161,8 +4263,14 @@ export async function readStockTransfer(transport: Transport, args: ReadStockTra
 }
 
 export interface ReadStorageBinArgs {
+  /** معرّف الرفّ أو الحاوية داخل الموقع. / The bin identifier within its location. */
+  binId: string;
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
+  /** معرّف الموقع داخل المستودع — **وهو مستوى الرصيد المُقيَّم**. / The location identifier within its warehouse — **the level at which the valued balance is held**. */
+  locationId: string;
+  /** معرّف المستودع. / The warehouse identifier. */
+  warehouseId: string;
 }
 
 /**
@@ -4173,7 +4281,7 @@ export interface ReadStorageBinArgs {
  * Reads a single bin and **verifies both links in the path**: that the location sits in its warehouse and that the bin sits in its location. Without the first check, a bin of location 'A' would be readable through a path naming warehouse 'B' and come back as if it belonged there.
  */
 export async function readStorageBin(transport: Transport, args: ReadStorageBinArgs, signal?: AbortSignal): Promise<T.StoragePlace> {
-  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/warehouses/{warehouseId}/locations/{locationId}/bins/{binId}";
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/warehouses/" + encodeURIComponent(args.warehouseId) + "/locations/" + encodeURIComponent(args.locationId) + "/bins/" + encodeURIComponent(args.binId) + "";
   const url = path;
   const response = await transport({ method: "GET", url, signal });
   if (!response.ok) throw ProblemError.from(response);
@@ -4183,6 +4291,10 @@ export async function readStorageBin(transport: Transport, args: ReadStorageBinA
 export interface ReadStorageLocationArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
+  /** معرّف الموقع داخل المستودع — **وهو مستوى الرصيد المُقيَّم**. / The location identifier within its warehouse — **the level at which the valued balance is held**. */
+  locationId: string;
+  /** معرّف المستودع. / The warehouse identifier. */
+  warehouseId: string;
 }
 
 /**
@@ -4193,7 +4305,7 @@ export interface ReadStorageLocationArgs {
  * Reads a single location and **verifies it sits in the warehouse named in the path**. A location in another warehouse is refused with inventory.storage_place_not_under_parent rather than returned as if it belonged: the path is an assertion that must hold, not decoration.
  */
 export async function readStorageLocation(transport: Transport, args: ReadStorageLocationArgs, signal?: AbortSignal): Promise<T.StoragePlace> {
-  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/warehouses/{warehouseId}/locations/{locationId}";
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/warehouses/" + encodeURIComponent(args.warehouseId) + "/locations/" + encodeURIComponent(args.locationId) + "";
   const url = path;
   const response = await transport({ method: "GET", url, signal });
   if (!response.ok) throw ProblemError.from(response);
@@ -4528,7 +4640,7 @@ export async function readTrialBalance(transport: Transport, args: ReadTrialBala
 export interface ReadUnitArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
-  /** معرّف الوحدة. / The unit identifier. */
+  /** معرّف الوحدة **العقارية** — لا وحدة القياس. / The **real-estate** unit identifier — not a unit of measure. */
   unitId: string;
 }
 
@@ -4550,6 +4662,8 @@ export async function readUnit(transport: Transport, args: ReadUnitArgs, signal?
 export interface ReadUnitOfMeasureArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
+  /** معرّف وحدة القياس. / The unit-of-measure identifier. */
+  unitId: string;
 }
 
 /**
@@ -4560,7 +4674,7 @@ export interface ReadUnitOfMeasureArgs {
  * Reads a single unit of measure with its quantity class.
  */
 export async function readUnitOfMeasure(transport: Transport, args: ReadUnitOfMeasureArgs, signal?: AbortSignal): Promise<T.UnitOfMeasure> {
-  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/units-of-measure/{unitId}";
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/units-of-measure/" + encodeURIComponent(args.unitId) + "";
   const url = path;
   const response = await transport({ method: "GET", url, signal });
   if (!response.ok) throw ProblemError.from(response);
@@ -4570,6 +4684,8 @@ export async function readUnitOfMeasure(transport: Transport, args: ReadUnitOfMe
 export interface ReadWarehouseArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
+  /** معرّف المستودع. / The warehouse identifier. */
+  warehouseId: string;
 }
 
 /**
@@ -4580,7 +4696,7 @@ export interface ReadWarehouseArgs {
  * Reads a single warehouse by its identifier.
  */
 export async function readWarehouse(transport: Transport, args: ReadWarehouseArgs, signal?: AbortSignal): Promise<T.StoragePlace> {
-  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/warehouses/{warehouseId}";
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/warehouses/" + encodeURIComponent(args.warehouseId) + "";
   const url = path;
   const response = await transport({ method: "GET", url, signal });
   if (!response.ok) throw ProblemError.from(response);
@@ -4752,8 +4868,14 @@ export async function renameCostCenter(transport: Transport, args: RenameCostCen
 }
 
 export interface RenameStorageBinArgs {
+  /** معرّف الرفّ أو الحاوية داخل الموقع. / The bin identifier within its location. */
+  binId: string;
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
+  /** معرّف الموقع داخل المستودع — **وهو مستوى الرصيد المُقيَّم**. / The location identifier within its warehouse — **the level at which the valued balance is held**. */
+  locationId: string;
+  /** معرّف المستودع. / The warehouse identifier. */
+  warehouseId: string;
   /** جسم الطلب. / The request body. */
   body: T.PlaceNameRequest;
 }
@@ -4766,7 +4888,7 @@ export interface RenameStorageBinArgs {
  * Changes the bin **name** and never its code.
  */
 export async function renameStorageBin(transport: Transport, args: RenameStorageBinArgs, signal?: AbortSignal): Promise<T.StoragePlace> {
-  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/warehouses/{warehouseId}/locations/{locationId}/bins/{binId}/name";
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/warehouses/" + encodeURIComponent(args.warehouseId) + "/locations/" + encodeURIComponent(args.locationId) + "/bins/" + encodeURIComponent(args.binId) + "/name";
   const url = path;
   const body = encodeSchema(SCHEMAS, "PlaceNameRequest", args.body as unknown);
   const response = await transport({ method: "POST", url, body, signal });
@@ -4777,6 +4899,10 @@ export async function renameStorageBin(transport: Transport, args: RenameStorage
 export interface RenameStorageLocationArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
+  /** معرّف الموقع داخل المستودع — **وهو مستوى الرصيد المُقيَّم**. / The location identifier within its warehouse — **the level at which the valued balance is held**. */
+  locationId: string;
+  /** معرّف المستودع. / The warehouse identifier. */
+  warehouseId: string;
   /** جسم الطلب. / The request body. */
   body: T.PlaceNameRequest;
 }
@@ -4789,7 +4915,7 @@ export interface RenameStorageLocationArgs {
  * Changes the location **name** and never its code — under the same rule that governs a warehouse.
  */
 export async function renameStorageLocation(transport: Transport, args: RenameStorageLocationArgs, signal?: AbortSignal): Promise<T.StoragePlace> {
-  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/warehouses/{warehouseId}/locations/{locationId}/name";
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/warehouses/" + encodeURIComponent(args.warehouseId) + "/locations/" + encodeURIComponent(args.locationId) + "/name";
   const url = path;
   const body = encodeSchema(SCHEMAS, "PlaceNameRequest", args.body as unknown);
   const response = await transport({ method: "POST", url, body, signal });
@@ -4800,6 +4926,8 @@ export async function renameStorageLocation(transport: Transport, args: RenameSt
 export interface RenameWarehouseArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
+  /** معرّف المستودع. / The warehouse identifier. */
+  warehouseId: string;
   /** جسم الطلب. / The request body. */
   body: T.PlaceNameRequest;
 }
@@ -4816,7 +4944,7 @@ export interface RenameWarehouseArgs {
  * **A sub-resource, not a PUT on the warehouse**: a PUT would have accepted a new code in the body, and the code is carried on every movement and balance — changing it severs every past movement from its place. The name is display text, not identity, so changing it touches no number.
  */
 export async function renameWarehouse(transport: Transport, args: RenameWarehouseArgs, signal?: AbortSignal): Promise<T.StoragePlace> {
-  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/warehouses/{warehouseId}/name";
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/warehouses/" + encodeURIComponent(args.warehouseId) + "/name";
   const url = path;
   const body = encodeSchema(SCHEMAS, "PlaceNameRequest", args.body as unknown);
   const response = await transport({ method: "POST", url, body, signal });
@@ -5071,6 +5199,47 @@ export async function terminateEmployee(transport: Transport, args: TerminateEmp
   const response = await transport({ method: "POST", url, body, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "HrEmployee", response.json) as T.HrEmployee;
+}
+
+export interface UpdateItemArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف الصنف. / The item identifier. */
+  itemId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.ItemRevisionRequest;
+}
+
+/**
+ * تعديل صنف / Update an item
+ * 
+ * يعدّل صنفاً: اسمه ومجموعته ووحداته الأكبر — **ولا رمزه**.
+ * 
+ * **ومورد فرعي revision لا PUT على الصنف**: PUT كان سيقبل رمزاً جديداً في الجسم بحكم شكله، والرمز هوية تحملها قيود سنةٍ مضت وتغييرُه يقطعها عنه. فالرمز يُقرأ من المسار ولا يُقبل في الجسم.
+ * 
+ * **ووحدة الأساس تتغيّر ما لم تُكتب على الصنف حركة أو يُمسَك له رصيد**، وإلا رُفضت بـinventory.base_unit_locked_by_history والرسالة تُسمّي عدد الحركات. والشرط ليس تشدّداً: رصيدٌ يتغيّر أساسه بعد أن كُتبت عليه حركات لا يُجمَع — مجموعُ حركاته جمعُ أعدادٍ بمقاييس مختلفة. أمّا صنفٌ سُجّل قبل قليل بخطأ كتابة ولم يتحرّك بعد فتصحيحُه تصحيحُ تعريفٍ لا إعادةُ كتابة واقعة، ومنعُه كان **يُلزم المستخدم بتسجيل صنفٍ ثانٍ برمزٍ ثانٍ ليصحّح حرفاً**.
+ * 
+ * **ومجموعة الصنف تتغيّر بلا شرط ولا تمسّ ما مضى**: كل حركة تحمل مجموعتها على صفّها هي، فالقيود المُرحَّلة تبقى على حسابها الضابط والحركات التالية تذهب إلى ما تقرّره المصفوفة للمجموعة الجديدة.
+ * 
+ * **والوحدات الأكبر تحلّ محلّ القائمة السابقة كلّها** — ولا يمسّ ذلك حركةً مضت: كل حركة تحمل مقدارها المُسلَّم ومقدارها بوحدة الأساس **معاً** على صفّها، فلا شيء فيها يُعاد حسابه بمعاملٍ تغيّر بعدها.
+ * 
+ * Updates an item: its name, its group, and its larger units — **but not its code**.
+ * 
+ * **A revision sub-resource, not a PUT on the item**: a PUT would accept a new code in the body by the shape of it, and the code is an identity carried by last year's entries that changing severs. The code is read from the path and never accepted in the body.
+ * 
+ * **The base unit changes only while no movement has been written against the item and no balance is held for it**; otherwise it is refused with inventory.base_unit_locked_by_history and the message names the movement count. The condition is not strictness: a balance whose base changes after movements have been written against it cannot be summed — the sum would add numbers on different scales. An item registered moments ago with a typo and never moved is a definition being corrected, not a fact being rewritten, and refusing it would **force the user to register a second item under a second code to fix one letter**.
+ * 
+ * **The item group changes unconditionally and touches nothing past**: every movement carries its own group on its own row, so posted entries stay on their control account and later movements go wherever the matrix sends the new group.
+ * 
+ * **The larger units replace the previous list entirely** — and that touches no past movement: every movement carries both its supplied magnitude and its base-unit magnitude on its own row, so nothing in it is recomputed by a factor that changed afterwards.
+ */
+export async function updateItem(transport: Transport, args: UpdateItemArgs, signal?: AbortSignal): Promise<T.Item> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/items/" + encodeURIComponent(args.itemId) + "/revision";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "ItemRevisionRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "Item", response.json) as T.Item;
 }
 
 export interface VerifyLedgerChainArgs {

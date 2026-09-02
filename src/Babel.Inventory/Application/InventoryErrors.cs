@@ -247,6 +247,34 @@ internal static class InventoryErrors
         $"لا صنف بالرمز «{itemId}» في كتالوج هذه المنشأة.",
         $"No item with code '{itemId}' exists in this company's catalogue.");
 
+    /// <summary>
+    /// تغيير وحدة أساس صنفٍ كُتبت عليه حركات — <b>يُرفض</b>.
+    /// <para>
+    /// ورصيدٌ يتغيّر أساسه بعد أن كُتبت عليه حركات لا يُجمَع: مجموع حركاته جمعُ أعدادٍ
+    /// بمقاييس مختلفة. والتصحيح بإفراغ الرصيد بمستند ثم إعادة إدخاله بالأساس الجديد.
+    /// </para>
+    /// </summary>
+    public static Error BaseUnitLockedByHistory(string itemId, string baseUnit, long movements) => new(
+        "inventory.base_unit_locked_by_history",
+        FormattableString.Invariant(
+            $"لا تتغيّر وحدة أساس الصنف «{itemId}» وهي «{baseUnit}»: كُتبت عليه {movements} حركة. ومجموعُ حركاته بعد التغيير جمعُ أعدادٍ بمقاييس مختلفة — رقمٌ صحيحٌ حسابياً وبلا معنىً. أفرِغ رصيده بمستند ثم أعِد إدخاله بالأساس الجديد، أو سجّل صنفاً جديداً."),
+        FormattableString.Invariant(
+            $"The base unit of item '{itemId}', which is '{baseUnit}', cannot be changed: {movements} movements have been written against it. After the change the sum of its movements would add numbers on different scales — arithmetically valid and meaningless. Empty its balance with a document and re-enter it on the new base, or register a new item."));
+
+    /// <summary>
+    /// وارد على صنفٍ مُعطَّل — <b>يُرفض، والصادر لا يُرفض</b>.
+    /// <para>
+    /// وذلك هو معنى إيقاف الصنف حرفياً: توقّف عن شرائه، وبِع ما بقي منه.
+    /// </para>
+    /// </summary>
+    public static Error ItemInactive(string itemId) => new(
+        "inventory.item_inactive",
+        $"الصنف «{itemId}» مُعطَّل، فلا يُستلَم منه جديد. والصادر منه يبقى مسموحاً حتى ينفد رصيده — "
+        + "وذلك معنى إيقافه: توقّف عن شرائه، وبِع ما بقي. أعِد تفعيله إن كان الإيقاف خطأً.",
+        $"Item '{itemId}' is deactivated, so no new stock is received for it. Issuing it remains allowed until its "
+        + "balance runs out — that is what deactivating an item means: stop buying it and sell the rest. Reactivate it "
+        + "if the deactivation was a mistake.");
+
     /// <summary>رمز صنف مكرّر.</summary>
     public static Error DuplicateItemCode(string code) => new(
         "inventory.duplicate_item_code",

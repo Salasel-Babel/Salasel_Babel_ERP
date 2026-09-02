@@ -592,6 +592,60 @@ internal static class DocumentMapping
             balance.HasCostBasis);
     }
 
+    /// <summary>يقرأ طلب تعديل صنف من السلك.</summary>
+    /// <param name="dto">الحمولة.</param>
+    public static InventoryItemRevisionRequest ToItemRevisionRequest(ItemRevisionRequestDto dto)
+    {
+        ArgumentNullException.ThrowIfNull(dto);
+
+        if (dto.Units is null)
+        {
+            throw WireNumbers.Reject("wire.text.missing", "units", "الوحدات مفقودة.", "The units are missing.");
+        }
+
+        if (dto.Units.Count > MaxLines)
+        {
+            throw WireNumbers.Reject(
+                "wire.list.too_long",
+                "units",
+                FormattableString.Invariant($"عدد الوحدات يتجاوز الحدّ المعلن {MaxLines}."),
+                FormattableString.Invariant($"The number of units exceeds the published limit of {MaxLines}."));
+        }
+
+        List<InventoryUnitFactor> units = [];
+
+        for (int index = 0; index < dto.Units.Count; index++)
+        {
+            UnitFactorDto unit = dto.Units[index];
+            string at = string.Create(CultureInfo.InvariantCulture, $"units[{index}]");
+
+            units.Add(new InventoryUnitFactor(
+                WireMapping.ReadRequiredText(unit.UnitCode, at + ".unitCode", UnitLength),
+                ReadFactor(unit.Numerator, at + ".numerator"),
+                ReadFactor(unit.Denominator, at + ".denominator")));
+        }
+
+        return new InventoryItemRevisionRequest(
+            WireMapping.ReadLocalized(dto.Name, "name"),
+            WireMapping.ReadRequiredText(dto.ItemGroup, "itemGroup", CodeLength),
+            WireMapping.ReadRequiredText(dto.BaseUnit, "baseUnit", UnitLength),
+            units);
+    }
+
+    /// <summary>ينقل حالة صنفٍ إلى السلك.</summary>
+    /// <param name="lifecycle">الحالة.</param>
+    public static ItemLifecycleDto ToDto(InventoryItemLifecycle lifecycle)
+    {
+        ArgumentNullException.ThrowIfNull(lifecycle);
+
+        return new ItemLifecycleDto(
+            Id(lifecycle.Id),
+            lifecycle.Code,
+            lifecycle.IsActive,
+            lifecycle.HoldsStock,
+            lifecycle.PlacementsWithStock);
+    }
+
     /// <summary>يقرأ طلب تسجيل وحدة قياس من السلك.</summary>
     /// <param name="dto">الحمولة.</param>
     public static InventoryUnitRequest ToUnitRequest(UnitOfMeasureRequestDto dto)

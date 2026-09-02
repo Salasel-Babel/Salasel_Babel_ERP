@@ -1,5 +1,5 @@
 {
-  "contractSha256": "bd9a3ec99569ae7bbe8a4def9a1e5d52942ab4732289f7897df7762912d72d02",
+  "contractSha256": "d062eb84c06a9c54af3e0825393b27d2fecfb2120c09734d57b14b0e5120a5b5",
   "generatedFrom": "contracts/openapi/v1.json",
   "generator": "tools/agent/build-tool-catalogue.mjs",
   "registerKeys": [
@@ -1665,6 +1665,103 @@
           "occurredOn",
           "quantity",
           "warehouseId"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "draftStockTransfer",
+      "operationId": "draftStockTransfer",
+      "path": "/api/v1/companies/{companyId}/stock-transfers",
+      "method": "post",
+      "idFields": [
+        "fromLocationId",
+        "fromWarehouseId",
+        "itemId",
+        "toLocationId",
+        "toWarehouseId"
+      ],
+      "description": "إنشاء نقلٍ بين موقعين مسوّدة",
+      "inputSchema": {
+        "additionalProperties": false,
+        "description": "طلب إنشاء مستند نقلٍ بين موقعين **مسوّدة**. **ولا حقل تكلفة فيه**: المنقول يخرج بتكلفة مصدره المتحرّكة لحظة النقل، وتُحسب في وحدة المخزون ولا تُملى (ADR-0039). وحقلُ تكلفةٍ هنا كان سيسمح بنقلٍ يُعيد تسعير البضاعة وهو ينقلها — أي بجعل حركة مكانٍ حركةَ قيمة. / A request to create a **draft** transfer document between two locations. **It carries no cost field**: what moves leaves at its source's moving average cost at the moment of transfer, computed by the inventory module and never dictated (ADR-0039). A cost field here would allow a transfer to reprice goods while relocating them — turning a movement of place into a movement of value.",
+        "properties": {
+          "fromLocationId": {
+            "description": "مِقبضٌ معتِم من lookup_entity أو ask_question. ولا يُكتب هنا معرّفٌ خام ولا اسم — يُرفض قبل التنفيذ.",
+            "maxLength": 64,
+            "type": "string"
+          },
+          "fromWarehouseId": {
+            "description": "مِقبضٌ معتِم من lookup_entity أو ask_question. ولا يُكتب هنا معرّفٌ خام ولا اسم — يُرفض قبل التنفيذ.",
+            "maxLength": 64,
+            "type": "string"
+          },
+          "itemGroup": {
+            "description": "مجموعة الصنف — مؤهّل الدور، وهي **واحدة على الطرفين** لأن الصنف واحد. / The item group — a role qualifier, and **the same on both sides** because the item is the same.",
+            "maxLength": 64,
+            "type": "string"
+          },
+          "itemId": {
+            "description": "مِقبضٌ معتِم من lookup_entity أو ask_question. ولا يُكتب هنا معرّفٌ خام ولا اسم — يُرفض قبل التنفيذ.",
+            "maxLength": 64,
+            "type": "string"
+          },
+          "number": {
+            "description": "رقم المستند — فريد داخل المنشأة. / The document number — unique within the company.",
+            "maxLength": 64,
+            "type": "string"
+          },
+          "occurredOn": {
+            "description": "تاريخ النقل الميلادي. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The Gregorian transfer date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period.",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+            "type": "string"
+          },
+          "quantity": {
+            "additionalProperties": false,
+            "description": "كمّية **بوحدتها** — ولا كمّية مجرّدة تعبر هذا السطح. و«عشرة» ليست معلومة: عشر حبّات أم عشر كراتين؟ والفرق بينهما في دفترٍ يمسك قيمةً هو الفرق بين رقمٍ صحيح ورقمٍ أكبر منه اثني عشر ضعفاً، **ولا يُظهره توازنٌ ولا سلسلة** لأن القيد المبنيّ عليه متوازن تماماً. / A quantity **with its unit** — no bare quantity crosses this surface. 'Ten' is not information: ten pieces or ten cartons? In a ledger that holds value the difference between them is the difference between a correct number and one twelve times larger, and **no balance check and no hash chain reveals it**, because the entry built on it balances perfectly.",
+            "properties": {
+              "magnitude": {
+                "description": "مقدار كمّية نصّاً بمقياس لا يتجاوز **ستّاً**. والكمّية ليست مبلغاً — ولذلك لها مقياسها — لكنها تُضرب في تكلفة الوحدة، فأي دقّة تُفقد فيها تصل إلى المال. والكيلوغرامات واللترات والأمتار تُكسَر إلى ما دون الهللة، ومقياسٌ مالي عليها يُنتج تقريباً صامتاً يتراكم على كل حركة. / A quantity magnitude as a string with at most **six** decimal places. A quantity is not an amount — hence its own scale — but it is multiplied by a unit cost, so any precision lost in it reaches the money. Kilograms, litres, and metres divide below the halala, and a money scale over them produces a silent rounding that accumulates on every movement.",
+                "examples": [
+                  "100.000000",
+                  "-5.500000"
+                ],
+                "pattern": "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,6})?$",
+                "type": "string"
+              },
+              "unit": {
+                "description": "رمز وحدة القياس كما سجّله المستأجر. معرّف لا نصّ معروض: لا يُترجَم ولا يُطابَق بلا حساسية حالة. / The unit-of-measure code as the tenant registered it. An identifier, not displayed text: never translated and never matched case-insensitively.",
+                "maxLength": 32,
+                "type": "string"
+              }
+            },
+            "required": [
+              "magnitude",
+              "unit"
+            ],
+            "type": "object"
+          },
+          "toLocationId": {
+            "description": "مِقبضٌ معتِم من lookup_entity أو ask_question. ولا يُكتب هنا معرّفٌ خام ولا اسم — يُرفض قبل التنفيذ.",
+            "maxLength": 64,
+            "type": "string"
+          },
+          "toWarehouseId": {
+            "description": "مِقبضٌ معتِم من lookup_entity أو ask_question. ولا يُكتب هنا معرّفٌ خام ولا اسم — يُرفض قبل التنفيذ.",
+            "maxLength": 64,
+            "type": "string"
+          }
+        },
+        "required": [
+          "fromLocationId",
+          "fromWarehouseId",
+          "itemGroup",
+          "itemId",
+          "number",
+          "occurredOn",
+          "quantity",
+          "toLocationId",
+          "toWarehouseId"
         ],
         "type": "object"
       }

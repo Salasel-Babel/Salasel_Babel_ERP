@@ -75,6 +75,19 @@ public sealed class StockMovementService : IApplicationService, IInventoryValuat
             return Result<InventoryMovementCost>.Failure(quantity.Errors);
         }
 
+        // ── الصنف المُعطَّل لا يُستلَم منه جديد ────────────────────────────────
+        // **والفحص هنا وحده، لا في <c>WriteAsync</c>** — وهو أدقّ بند في هذا المسار.
+        // ‏<c>WriteAsync</c> طريقُ **كل** الحركات، ومنها عكسُ صرفٍ مضى ومرتجعٌ عليه.
+        // وعكسُ واقعةٍ وقعت على صنفٍ عُطّل بعدها **يجب أن يعمل**: التصحيح لا يُمنع
+        // بحالةٍ وُلدت بعد الواقعة، وإلّا صار الإيقاف يُجمّد أخطاءً لا يمكن ردّها.
+        // فالمنع على **الوارد الجديد** وحده، وهو معنى إيقاف الصنف حرفياً.
+        if (await ItemIsDeactivatedAsync(receipt.Tenant, receipt.Location.ItemId, cancellationToken)
+                .ConfigureAwait(false))
+        {
+            return Result<InventoryMovementCost>.Failure(
+                InventoryErrors.ItemInactive(receipt.Location.ItemId));
+        }
+
         return await WriteAsync(
             receipt.Tenant,
             receipt.Actor,
@@ -763,6 +776,30 @@ public sealed class StockMovementService : IApplicationService, IInventoryValuat
         return converted.IsFailure
             ? Result<ResolvedQuantity>.Failure(converted.Errors)
             : Result<ResolvedQuantity>.Success(new ResolvedQuantity(baseUnit, converted.Value));
+    }
+
+    /// <summary>
+    /// هل الصنف مُسجَّل في الكتالوج و<b>مُعطَّل</b>؟
+    /// <para>
+    /// <b>وصنفٌ غير مسجَّل ليس مُعطَّلاً</b>: يُرجع <c>false</c> فيمرّ. والمخزون كان
+    /// يعمل قبل الكتالوج، وإلزامُ التسجيل بأثر رجعي يُوقف مستأجراً عاملاً — وهي
+    /// القاعدة نفسها التي تحكم <see cref="ResolveAsync"/>.
+    /// </para>
+    /// </summary>
+    private async ValueTask<bool> ItemIsDeactivatedAsync(
+        TenantId tenant, string itemId, CancellationToken cancellationToken)
+    {
+        await OpenAsync(cancellationToken).ConfigureAwait(false);
+
+        await using NpgsqlCommand command = new(
+            """ select "IsActive" from inventory.item where "TenantId" = $1 and "Code" = $2 """,
+            Connection);
+
+        command.Parameters.AddWithValue(tenant.Value);
+        command.Parameters.AddWithValue(itemId);
+
+        object? found = await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
+        return found is bool active && !active;
     }
 
     private async ValueTask<string> ItemBaseUnitAsync(

@@ -5316,6 +5316,289 @@
         }
       }
     },
+    "/api/v1/companies/{companyId}/items/{itemId}/deactivation": {
+      "parameters": [
+        {
+          "name": "companyId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "itemId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الصنف. / The item identifier.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "deactivateItem",
+        "summary": "تعطيل صنف / Deactivate an item",
+        "description": "يعطّل صنفاً — **ولا يحذفه**: رمزُ الصنف هوية تحملها قيود سنةٍ مضت، وحذفُه يكسر كل تقرير مُرحَّل.\n\n**ويُقبل التعطيل وللصنف رصيد** — وهذا يخالف عمداً حكمَ deactivateWarehouse وdeactivateStorageLocation، اللذين يُرفضان فوق رصيد. والفرق أن إيقاف صنفٍ عن التداول **يعني بالضبط**: توقّف عن شرائه وبِع ما بقي. ورفضُه فوق رصيدٍ يصنع **دائرةً مغلقة** — لا يُعطَّل حتى ينفد، ولا ينفد إلا ببيعٍ يقتضي أن يكون عاملاً — فلا يُوقَف صنفٌ أبداً ما دامت منه حبّة في مستودعٍ منسيّ، ويلتفّ عليه المستخدم بإعدامٍ مخترَع يدخل مصروفَ عجزٍ لواقعةٍ لم تقع.\n\n**وأثرُه بعد ذلك: الوارد الجديد يُرفض بـ inventory.item_inactive، والصادر يبقى مسموحاً حتى ينفد الرصيد.** والفحص على الوارد وحده لا على كل حركة: **عكسُ صرفٍ مضى ومرتجعُه يجب أن يعملا**، لأن التصحيح لا يُمنع بحالةٍ وُلدت بعد الواقعة — وإلّا صار الإيقاف يُجمّد أخطاءً لا يمكن ردّها.\n\n**وليس صامتاً**: الجواب يحمل holdsStock و placementsWithStock، فلا يظنّ أحدٌ أن البضاعة ذهبت مع الإيقاف.\n\n**وإعادة تعطيل مُعطَّلٍ تنجح ولا تفشل.**\n\nDeactivates an item — **it does not delete it**: an item code is an identity carried by last year's entries, and deleting it breaks every posted report.\n\n**Deactivation is accepted while the item still holds stock** — deliberately unlike deactivateWarehouse and deactivateStorageLocation, which refuse over a balance. The difference is that discontinuing an item **means exactly**: stop buying it and sell the rest. Refusing over a balance creates a **closed loop** — it cannot be deactivated until it runs out, and it cannot run out except by a sale that requires it to be active — so no item is ever discontinued while one piece of it sits in a forgotten warehouse, and the user works around it with an invented write-off that books a shortage expense for something that never happened.\n\n**The effect afterwards: new inbound stock is refused with inventory.item_inactive, and issuing stays allowed until the balance runs out.** The check is on inbound only, not on every movement: **reversing a past issue and returning against it must keep working**, because a correction is not blocked by a state born after the fact it corrects — otherwise deactivation would freeze errors that cannot be undone.\n\n**And it is not silent**: the response carries holdsStock and placementsWithStock, so nobody assumes the goods left with the discontinuation.\n\n**Deactivating an already deactivated item succeeds.**",
+        "responses": {
+          "200": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemLifecycle"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "المورد غير موجود داخل نطاق هذه الشركة. / The resource does not exist within this company's scope.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/companies/{companyId}/items/{itemId}/lifecycle": {
+      "parameters": [
+        {
+          "name": "companyId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "itemId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الصنف. / The item identifier.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "readItemLifecycle",
+        "summary": "حالة الصنف ورصيده المتبقّي / An item's lifecycle state and remaining stock",
+        "description": "يقرأ حالة الصنف — متداوَلٌ أم مُوقَف — ومعها **هل بقي له رصيد وفي كم موضع**.\n\n**ومورد فرعي مستقلّ لا حقلٌ على Item**: إضافةُ isActive إلى شكل الصنف كانت ستُغيّر استجابة **ثلاث عمليات منشورة** — addItem و listItems و readItem — يستهلكها عملاء اليوم. فالحالة تُقرأ من هنا، والشكل القائم لا يُمَسّ. **وذلك نقصُ سطحٍ مُعلَن**: listItems لا يقول أيّ أصنافه مُوقَف، ومن أراد ذلك يقرأ هذا المورد لكل صنف.\n\nو‏holdsStock تعني **رصيداً غير صفري**، لا موجباً: رصيدٌ سالب واقعةٌ تقع — بيعٌ قبل إدخال استلامه — وإخفاؤها هنا يجعل الجواب يقول «لا رصيد» على صنفٍ عليه عجزٌ مفتوح يمنع إقفال الفترة. نقطة قراءة.\n\nReads an item's state — in circulation or discontinued — together with **whether it still holds stock and in how many places**.\n\n**A separate sub-resource, not a field on Item**: adding isActive to the item shape would change the response of **three published operations** — addItem, listItems and readItem — that today's clients consume. The state is read here and the existing shape is untouched. **That is a declared surface gap**: listItems does not say which of its items are discontinued, and whoever needs that reads this resource per item.\n\nholdsStock means a **non-zero** balance, not a positive one: a negative balance is a real occurrence — a sale entered before its receipt — and hiding it here would make the answer say 'no stock' about an item carrying an open shortage that blocks the period close. A read point.",
+        "responses": {
+          "200": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemLifecycle"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "المورد غير موجود داخل نطاق هذه الشركة. / The resource does not exist within this company's scope.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/companies/{companyId}/items/{itemId}/revision": {
+      "parameters": [
+        {
+          "name": "companyId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "itemId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الصنف. / The item identifier.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "updateItem",
+        "summary": "تعديل صنف / Update an item",
+        "description": "يعدّل صنفاً: اسمه ومجموعته ووحداته الأكبر — **ولا رمزه**.\n\n**ومورد فرعي revision لا PUT على الصنف**: ‏PUT كان سيقبل رمزاً جديداً في الجسم بحكم شكله، والرمز هوية تحملها قيود سنةٍ مضت وتغييرُه يقطعها عنه. فالرمز يُقرأ من المسار ولا يُقبل في الجسم.\n\n**ووحدة الأساس تتغيّر ما لم تُكتب على الصنف حركة أو يُمسَك له رصيد**، وإلا رُفضت بـinventory.base_unit_locked_by_history والرسالة تُسمّي عدد الحركات. والشرط ليس تشدّداً: رصيدٌ يتغيّر أساسه بعد أن كُتبت عليه حركات لا يُجمَع — مجموعُ حركاته جمعُ أعدادٍ بمقاييس مختلفة. أمّا صنفٌ سُجّل قبل قليل بخطأ كتابة ولم يتحرّك بعد فتصحيحُه تصحيحُ تعريفٍ لا إعادةُ كتابة واقعة، ومنعُه كان **يُلزم المستخدم بتسجيل صنفٍ ثانٍ برمزٍ ثانٍ ليصحّح حرفاً**.\n\n**ومجموعة الصنف تتغيّر بلا شرط ولا تمسّ ما مضى**: كل حركة تحمل مجموعتها على صفّها هي، فالقيود المُرحَّلة تبقى على حسابها الضابط والحركات التالية تذهب إلى ما تقرّره المصفوفة للمجموعة الجديدة.\n\n**والوحدات الأكبر تحلّ محلّ القائمة السابقة كلّها** — ولا يمسّ ذلك حركةً مضت: كل حركة تحمل مقدارها المُسلَّم ومقدارها بوحدة الأساس **معاً** على صفّها، فلا شيء فيها يُعاد حسابه بمعاملٍ تغيّر بعدها.\n\nUpdates an item: its name, its group, and its larger units — **but not its code**.\n\n**A revision sub-resource, not a PUT on the item**: a PUT would accept a new code in the body by the shape of it, and the code is an identity carried by last year's entries that changing severs. The code is read from the path and never accepted in the body.\n\n**The base unit changes only while no movement has been written against the item and no balance is held for it**; otherwise it is refused with inventory.base_unit_locked_by_history and the message names the movement count. The condition is not strictness: a balance whose base changes after movements have been written against it cannot be summed — the sum would add numbers on different scales. An item registered moments ago with a typo and never moved is a definition being corrected, not a fact being rewritten, and refusing it would **force the user to register a second item under a second code to fix one letter**.\n\n**The item group changes unconditionally and touches nothing past**: every movement carries its own group on its own row, so posted entries stay on their control account and later movements go wherever the matrix sends the new group.\n\n**The larger units replace the previous list entirely** — and that touches no past movement: every movement carries both its supplied magnitude and its base-unit magnitude on its own row, so nothing in it is recomputed by a factor that changed afterwards.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ItemRevisionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Item"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "الجسم لا يطابق العقد: حقل غير معروف، أو مبلغ وصل رمزاً رقمياً، أو صيغة مرفوضة. / The body does not match the contract: an unknown field, an amount that arrived as a number token, or a refused spelling.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "تعارض مع حالة قائمة: فترة مقفلة، أو قيد معكوس من قبل. / Conflict with existing state: a closed period, or an already-reversed entry.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "الطلب مفهوم ومرفوض محاسبياً: قيد غير متوازن، أو دور لا يُحلّ إلى حساب. / Understood and refused on accounting grounds: an unbalanced entry, or a role that resolves to no account.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "المورد غير موجود داخل نطاق هذه الشركة. / The resource does not exist within this company's scope.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/companies/{companyId}/journal-entries": {
       "parameters": [
         {
@@ -11920,6 +12203,16 @@
             "type": "string",
             "format": "uuid"
           }
+        },
+        {
+          "name": "transferId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف مستند النقل بين موقعين. / The between-locations transfer document identifier.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
         }
       ],
       "get": {
@@ -11991,12 +12284,22 @@
             "type": "string",
             "format": "uuid"
           }
+        },
+        {
+          "name": "transferId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف مستند النقل بين موقعين. / The between-locations transfer document identifier.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
         }
       ],
       "post": {
         "operationId": "moveStockTransfer",
         "summary": "تنفيذ النقل بين موقعين / Execute a transfer between two locations",
-        "description": "ينفّذ النقل: **حركتان في دفتر المخزون المساعد — صادرٌ من المصدر ثم واردٌ إلى الوجهة بالقيمة نفسها — ولا قيدٌ في دفتر الأستاذ إطلاقاً**.\n\n**ولماذا لا قيد:** النقل داخل المنشأة نفسها لا يُغيّر قيمة المخزون. والصنف واحدٌ على الطرفين فمجموعته واحدة، ومؤهّل دور inventory_control في المصفوفة هو مجموعة الصنف — فالحساب الذي كان سيُجعل مديناً هو الحساب الذي كان سيُجعل دائناً **بالمبلغ نفسه**. أي أن القيد لا شيء، مكتوباً في دفترٍ يُضاف إليه ولا يُحذف منه، وله رقمٌ متسلسل ويدخل سلسلة البصمات ويُقرأ في كل تقرير حركة إلى الأبد. والمصفوفة نفسها تقول هذا في شرط inventory.transfer.between_warehouses: «وإلا فلا قيد مالي إطلاقاً» — والحدث inventory.transfer.between_locations مُودَعٌ فيها بـ posts_entry: false وبلا سطور، كي لا يبقى «لا قيد» قراراً في شيفرة.\n\n**والمورد الفرعي movement لا posting** لهذا السبب حرفياً: posting في هذا العقد تعني «صار له قيد».\n\n**وحركتان برمزَي حدث مختلفين** — issued و received: هوية الحركة سداسية ورمز الحدث فيها، وحركتان بالهوية نفسها تعني أن الثانية تُبتلع بصمت، فيخرج المنقول من المصدر ولا يدخل الوجهة أبداً.\n\n**ويُرفض النقل بكمّية تتجاوز رصيد المصدر** — بخلاف الصرف الذي يقبل الرصيد السالب ويَسِمه: الصرف قبل إدخال استلامه واقعةٌ يومية، أمّا النقل فيُحرّك بضاعةً بين رفّين فعلياً، ولا يُحمَل من رفٍّ ما ليس عليه.\n\n**وحصين ضد التكرار**: الوصول الثاني بالهوية نفسها يُرجع المستند ذاته و‏alreadyMoved = true ورمز 200 بدل 201، بلا حركة ثالثة. والحكم حكمُ الحركة لا حالةَ الصفّ: نداءان متزامنان يجتازان فحص «مسوّدة» معاً ويلتقيان عند الفهرس الفريد على الهوية.\n\nExecutes the transfer: **two movements in the inventory subledger — an issue from the source, then a receipt into the destination at the very same value — and no general-ledger entry at all**.\n\n**Why no entry:** a transfer inside the same company does not change the value of inventory. The item is the same on both sides, so its group is the same, and the matrix qualifier for inventory_control is the item group — so the account that would be debited is the account that would be credited, **for the same amount**. That entry is nothing, written into a ledger that is appended to and never deleted from, carrying a sequence number, entering the hash chain, and read in every movement report forever. The matrix says as much in the precondition of inventory.transfer.between_warehouses: 'otherwise no financial entry is produced at all' — and the event inventory.transfer.between_locations is committed there with posts_entry: false and no lines, so that 'no entry' is not a decision living in code.\n\n**The sub-resource is movement, not posting**, for exactly that reason: posting means 'it has an entry' in this contract.\n\n**Two movements under two different event codes** — issued and received: movement identity is a sextuple with the event code in it, and two movements under one identity would mean the second is silently swallowed, so the goods would leave the source and never arrive at the destination.\n\n**A transfer exceeding the source balance is refused** — unlike an issue, which accepts a negative balance and flags it: issuing before the receipt is entered is a daily occurrence, whereas a transfer physically moves goods between two shelves, and what is not on a shelf is not carried off it.\n\n**Idempotent**: a second arrival under the same identity returns the same document with alreadyMoved = true and status 200 instead of 201, with no third movement. The verdict is the movement's, not the row's state: two concurrent calls both pass the 'is it a draft' check and meet at the unique index on identity.",
+        "description": "ينفّذ النقل: **حركتان في دفتر المخزون المساعد — صادرٌ من المصدر ثم واردٌ إلى الوجهة بالقيمة نفسها — ولا قيدٌ في دفتر الأستاذ إطلاقاً**.\n\n**ولماذا لا قيد:** النقل داخل المنشأة نفسها لا يُغيّر قيمة المخزون. والصنف واحدٌ على الطرفين فمجموعته واحدة، ومؤهّل دور inventory_control في المصفوفة هو مجموعة الصنف — فالحساب الذي كان سيُجعل مديناً هو الحساب الذي كان سيُجعل دائناً **بالمبلغ نفسه**. أي أن القيد لا شيء، مكتوباً في دفترٍ يُضاف إليه ولا يُحذف منه، وله رقمٌ متسلسل ويدخل سلسلة البصمات ويُقرأ في كل تقرير حركة إلى الأبد. والمصفوفة نفسها تقول هذا في شرط inventory.transfer.between_warehouses: «وإلا فلا قيد مالي إطلاقاً» — والنقل بين موقعين لا يبلغ ذلك الشرط أبداً، لأن المؤهّل مجموعةُ الصنف وهي لا تتغيّر بنقل مكان.\n\n**ولا حدث لهذا المستند في مصفوفة الترحيل، ولا يحتاج واحداً**: المصفوفة تُجيب «أيّ حسابٍ لأيّ حدث»، وحدثٌ لا يُنتج قيداً لا حساب له فلا جواب لها فيه. و«لا قيد» مفروضٌ **بالبناء لا بالوصف**: خدمة النقل لا تحمل مرجعاً واحداً إلى بوّابة الترحيل، فلا طريق منها إلى الدفتر أصلاً — ويُثبته إثباتٌ يَعُدّ قيود المنشأة قبل النقل وبعده فيجدهما سواء.\n\n**والمورد الفرعي movement لا posting** لهذا السبب حرفياً: posting في هذا العقد تعني «صار له قيد».\n\n**وحركتان برمزَي حدث مختلفين** — issued و received: هوية الحركة سداسية ورمز الحدث فيها، وحركتان بالهوية نفسها تعني أن الثانية تُبتلع بصمت، فيخرج المنقول من المصدر ولا يدخل الوجهة أبداً.\n\n**ويُرفض النقل بكمّية تتجاوز رصيد المصدر** — بخلاف الصرف الذي يقبل الرصيد السالب ويَسِمه: الصرف قبل إدخال استلامه واقعةٌ يومية، أمّا النقل فيُحرّك بضاعةً بين رفّين فعلياً، ولا يُحمَل من رفٍّ ما ليس عليه.\n\n**وحصين ضد التكرار**: الوصول الثاني بالهوية نفسها يُرجع المستند ذاته و‏alreadyMoved = true ورمز 200 بدل 201، بلا حركة ثالثة. والحكم حكمُ الحركة لا حالةَ الصفّ: نداءان متزامنان يجتازان فحص «مسوّدة» معاً ويلتقيان عند الفهرس الفريد على الهوية.\n\nExecutes the transfer: **two movements in the inventory subledger — an issue from the source, then a receipt into the destination at the very same value — and no general-ledger entry at all**.\n\n**Why no entry:** a transfer inside the same company does not change the value of inventory. The item is the same on both sides, so its group is the same, and the matrix qualifier for inventory_control is the item group — so the account that would be debited is the account that would be credited, **for the same amount**. That entry is nothing, written into a ledger that is appended to and never deleted from, carrying a sequence number, entering the hash chain, and read in every movement report forever. The matrix says as much in the precondition of inventory.transfer.between_warehouses: 'otherwise no financial entry is produced at all' — and a transfer between two locations never meets that precondition, because the qualifier is the item group and relocating goods does not change it.\n\n**There is no matrix event for this document, and none is needed**: the matrix answers 'which account for which event', and an event that produces no entry has no account for it to answer about. 'No entry' is enforced **by construction, not by description**: the transfer service holds not one reference to the posting gateway, so no route to the ledger exists — and a proof counts the company's ledger entries before and after and finds them equal.\n\n**The sub-resource is movement, not posting**, for exactly that reason: posting means 'it has an entry' in this contract.\n\n**Two movements under two different event codes** — issued and received: movement identity is a sextuple with the event code in it, and two movements under one identity would mean the second is silently swallowed, so the goods would leave the source and never arrive at the destination.\n\n**A transfer exceeding the source balance is refused** — unlike an issue, which accepts a negative balance and flags it: issuing before the receipt is entered is a daily occurrence, whereas a transfer physically moves goods between two shelves, and what is not on a shelf is not carried off it.\n\n**Idempotent**: a second arrival under the same identity returns the same document with alreadyMoved = true and status 200 instead of 201, with no third movement. The verdict is the movement's, not the row's state: two concurrent calls both pass the 'is it a draft' check and meet at the unique index on identity.",
         "responses": {
           "201": {
             "description": "استجابة ناجحة. / Successful response.",
@@ -14991,6 +15294,16 @@
             "type": "string",
             "format": "uuid"
           }
+        },
+        {
+          "name": "unitId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف وحدة القياس. / The unit-of-measure identifier.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
         }
       ],
       "get": {
@@ -15058,6 +15371,16 @@
           "in": "path",
           "required": true,
           "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "unitId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف وحدة القياس. / The unit-of-measure identifier.",
           "schema": {
             "type": "string",
             "format": "uuid"
@@ -15138,7 +15461,7 @@
           "name": "unitId",
           "in": "path",
           "required": true,
-          "description": "معرّف الوحدة. / The unit identifier.",
+          "description": "معرّف الوحدة **العقارية** — لا وحدة القياس. / The **real-estate** unit identifier — not a unit of measure.",
           "schema": {
             "type": "string",
             "format": "uuid"
@@ -15362,6 +15685,16 @@
             "type": "string",
             "format": "uuid"
           }
+        },
+        {
+          "name": "warehouseId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف المستودع. / The warehouse identifier.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
         }
       ],
       "get": {
@@ -15429,6 +15762,16 @@
           "in": "path",
           "required": true,
           "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "warehouseId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف المستودع. / The warehouse identifier.",
           "schema": {
             "type": "string",
             "format": "uuid"
@@ -15510,6 +15853,16 @@
           "in": "path",
           "required": true,
           "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "warehouseId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف المستودع. / The warehouse identifier.",
           "schema": {
             "type": "string",
             "format": "uuid"
@@ -15682,6 +16035,26 @@
             "type": "string",
             "format": "uuid"
           }
+        },
+        {
+          "name": "locationId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الموقع داخل المستودع — **وهو مستوى الرصيد المُقيَّم**. / The location identifier within its warehouse — **the level at which the valued balance is held**.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "warehouseId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف المستودع. / The warehouse identifier.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
         }
       ],
       "get": {
@@ -15749,6 +16122,26 @@
           "in": "path",
           "required": true,
           "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "locationId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الموقع داخل المستودع — **وهو مستوى الرصيد المُقيَّم**. / The location identifier within its warehouse — **the level at which the valued balance is held**.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "warehouseId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف المستودع. / The warehouse identifier.",
           "schema": {
             "type": "string",
             "format": "uuid"
@@ -15921,6 +16314,36 @@
             "type": "string",
             "format": "uuid"
           }
+        },
+        {
+          "name": "binId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الرفّ أو الحاوية داخل الموقع. / The bin identifier within its location.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "locationId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الموقع داخل المستودع — **وهو مستوى الرصيد المُقيَّم**. / The location identifier within its warehouse — **the level at which the valued balance is held**.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "warehouseId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف المستودع. / The warehouse identifier.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
         }
       ],
       "get": {
@@ -15992,6 +16415,36 @@
             "type": "string",
             "format": "uuid"
           }
+        },
+        {
+          "name": "binId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الرفّ أو الحاوية داخل الموقع. / The bin identifier within its location.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "locationId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الموقع داخل المستودع — **وهو مستوى الرصيد المُقيَّم**. / The location identifier within its warehouse — **the level at which the valued balance is held**.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "warehouseId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف المستودع. / The warehouse identifier.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
         }
       ],
       "post": {
@@ -16059,6 +16512,36 @@
           "in": "path",
           "required": true,
           "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "binId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الرفّ أو الحاوية داخل الموقع. / The bin identifier within its location.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "locationId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الموقع داخل المستودع — **وهو مستوى الرصيد المُقيَّم**. / The location identifier within its warehouse — **the level at which the valued balance is held**.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "warehouseId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف المستودع. / The warehouse identifier.",
           "schema": {
             "type": "string",
             "format": "uuid"
@@ -16174,6 +16657,26 @@
             "type": "string",
             "format": "uuid"
           }
+        },
+        {
+          "name": "locationId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الموقع داخل المستودع — **وهو مستوى الرصيد المُقيَّم**. / The location identifier within its warehouse — **the level at which the valued balance is held**.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "warehouseId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف المستودع. / The warehouse identifier.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
         }
       ],
       "post": {
@@ -16251,6 +16754,26 @@
           "in": "path",
           "required": true,
           "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "locationId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الموقع داخل المستودع — **وهو مستوى الرصيد المُقيَّم**. / The location identifier within its warehouse — **the level at which the valued balance is held**.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "warehouseId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف المستودع. / The warehouse identifier.",
           "schema": {
             "type": "string",
             "format": "uuid"
@@ -16362,6 +16885,16 @@
           "in": "path",
           "required": true,
           "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "warehouseId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف المستودع. / The warehouse identifier.",
           "schema": {
             "type": "string",
             "format": "uuid"
@@ -21269,6 +21802,44 @@
         ],
         "additionalProperties": false
       },
+      "ItemLifecycle": {
+        "type": "object",
+        "description": "حالة صنفٍ في دورة حياته ورصيده المتبقّي. **ونوعٌ مستقلّ لا حقلٌ على Item**: إضافةُ isActive إلى شكل الصنف كانت ستُغيّر استجابة ثلاث عمليات منشورة يستهلكها عملاء اليوم. / An item's lifecycle state and remaining stock. **A separate type, not a field on Item**: adding isActive to the item shape would change the response of three published operations that today's clients consume.",
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "رمز الصنف. / The item code."
+          },
+          "holdsStock": {
+            "type": "boolean",
+            "description": "هل بقي للصنف رصيد **غير صفري** في أي موضع؟ و«غير صفري» لا «موجب»: رصيدٌ سالب واقعةٌ تقع، وإخفاؤها يجعل الجواب يقول «لا رصيد» على صنفٍ عليه عجزٌ مفتوح. / Does the item still hold a **non-zero** balance anywhere? Non-zero, not positive: a negative balance is a real occurrence, and hiding it would make the answer say 'no stock' about an item carrying an open shortage."
+          },
+          "id": {
+            "type": "string",
+            "maxLength": 36,
+            "description": "معرّف الصنف. / The item identifier."
+          },
+          "isActive": {
+            "type": "boolean",
+            "description": "هل الصنف متداوَل؟ **والتعطيل حالةٌ لا حذف**: الرمز محمولٌ على قيود سنةٍ مضت. والمُعطَّل يُرفض عليه الوارد الجديد ويبقى الصادر حتى ينفد. / Is the item in circulation? **Deactivation is a state, not a deletion**: the code is carried by last year's entries. A deactivated item refuses new inbound stock and keeps issuing until it runs out."
+          },
+          "placementsWithStock": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2147483647,
+            "description": "عدد المواضع التي بقي فيها رصيد غير صفري — فلا يُقال «بقي رصيد» بلا «أين». / The number of places still holding a non-zero balance — so the answer never says 'stock remains' without saying where."
+          }
+        },
+        "required": [
+          "code",
+          "holdsStock",
+          "id",
+          "isActive",
+          "placementsWithStock"
+        ],
+        "additionalProperties": false
+      },
       "ItemList": {
         "type": "object",
         "description": "أصناف المنشأة، مرتَّبة بالرمز ترتيباً حرفياً ثابتاً. **وغلافٌ لا مصفوفة عارية**: مصفوفةٌ في جذر الاستجابة لا موضع فيها لعدّاد ولا لصفحة، فأول حاجة إليهما تكسر العقد. / The company's items, ordered by code in a stable ordinal order. **An envelope, not a bare array**: an array at the response root has no place for a count or a page, so the first need for either breaks the contract.",
@@ -21326,6 +21897,39 @@
         "required": [
           "baseUnit",
           "code",
+          "itemGroup",
+          "name",
+          "units"
+        ],
+        "additionalProperties": false
+      },
+      "ItemRevisionRequest": {
+        "type": "object",
+        "description": "طلب تعديل صنف. **ولا رمز فيه**: الرمز هوية تحملها قيود سنةٍ مضت، ويُقرأ من المسار ولا يُقبل في الجسم. / An item update request. **It carries no code**: the code is an identity carried by last year's entries; it is read from the path and never accepted in the body.",
+        "properties": {
+          "baseUnit": {
+            "type": "string",
+            "maxLength": 32,
+            "description": "وحدة الأساس. **ولا تتغيّر بعد أن تُكتب على الصنف حركة أو يُمسَك له رصيد** — وإلا رُفضت بـ inventory.base_unit_locked_by_history. / The base unit. **It does not change once a movement has been written against the item or a balance is held for it** — otherwise it is refused with inventory.base_unit_locked_by_history."
+          },
+          "itemGroup": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "مجموعة الصنف — مؤهّل الدور. **وتغييرها لا يمسّ ما مضى**: كل حركة تحمل مجموعتها على صفّها هي. / The item group — a role qualifier. **Changing it touches nothing past**: every movement carries its own group on its own row."
+          },
+          "name": {
+            "$ref": "#/components/schemas/LocalizedText"
+          },
+          "units": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UnitFactor"
+            },
+            "description": "الوحدات الأكبر ومعاملاتها — **تحلّ محلّ القائمة السابقة كلّها**، ولا تمسّ حركةً مضت. / The larger units and their factors — **they replace the previous list entirely**, and touch no past movement."
+          }
+        },
+        "required": [
+          "baseUnit",
           "itemGroup",
           "name",
           "units"

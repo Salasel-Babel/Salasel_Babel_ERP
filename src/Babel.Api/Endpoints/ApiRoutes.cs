@@ -320,6 +320,30 @@ internal static class ApiRoutes
     public const string Item = Items + "/{itemId}";
 
     /// <summary>
+    /// تعديل صنف: الاسم والمجموعة والوحدات — <b>ولا الرمز</b>.
+    /// <para>
+    /// <b>ومورد فرعي <c>revision</c> لا <c>PUT</c> على الصنف</b>: ‏<c>PUT</c> كان
+    /// سيقبل رمزاً جديداً في الجسم بحكم شكله، والرمز هوية تحملها قيود سنةٍ مضت.
+    /// </para>
+    /// </summary>
+    public const string ItemRevision = Item + "/revision";
+
+    /// <summary>
+    /// تعطيل صنف. <b>ويُقبل وله رصيد</b> — بخلاف تعطيل موضع التسكين: إيقافُ الصنف
+    /// يعني «توقّف عن شرائه وبِع ما بقي»، ورفضُه فوق رصيدٍ يصنع دائرةً مغلقة.
+    /// </summary>
+    public const string ItemDeactivation = Item + "/deactivation";
+
+    /// <summary>
+    /// حالة الصنف في دورة حياته ورصيده المتبقّي.
+    /// <para>
+    /// <b>ومورد فرعي لا حقلٌ على <c>Item</c></b>: إضافةُ حقلٍ إلى شكل الصنف كانت
+    /// ستُغيّر استجابة ثلاث عمليات منشورة يستهلكها عملاء اليوم.
+    /// </para>
+    /// </summary>
+    public const string ItemLifecycle = Item + "/lifecycle";
+
+    /// <summary>
     /// حركات المخزون القائمة بذاتها: إنشاء <b>مسوّدة</b> والقائمة.
     /// <para>
     /// وهي تسوية الجرد والرصيد الافتتاحي والإعدام — <b>لا استلام المشتريات ولا صرف

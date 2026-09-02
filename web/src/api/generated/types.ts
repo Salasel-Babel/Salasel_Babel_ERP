@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     7b90504c45b6de73c7e22968c45c4a12386eca079c9ac57a6f8ad36c5c2405b8
+     d062eb84c06a9c54af3e0825393b27d2fecfb2120c09734d57b14b0e5120a5b5
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -1356,6 +1356,20 @@ export interface Item {
   units: UnitFactor[];
 }
 
+/** حالة صنفٍ في دورة حياته ورصيده المتبقّي. **ونوعٌ مستقلّ لا حقلٌ على Item**: إضافةُ isActive إلى شكل الصنف كانت ستُغيّر استجابة ثلاث عمليات منشورة يستهلكها عملاء اليوم. / An item's lifecycle state and remaining stock. **A separate type, not a field on Item**: adding isActive to the item shape would change the response of three published operations that today's clients consume. */
+export interface ItemLifecycle {
+  /** رمز الصنف. / The item code. */
+  code: string;
+  /** هل بقي للصنف رصيد **غير صفري** في أي موضع؟ و«غير صفري» لا «موجب»: رصيدٌ سالب واقعةٌ تقع، وإخفاؤها يجعل الجواب يقول «لا رصيد» على صنفٍ عليه عجزٌ مفتوح. / Does the item still hold a **non-zero** balance anywhere? Non-zero, not positive: a negative balance is a real occurrence, and hiding it would make the answer say 'no stock' about an item carrying an open shortage. */
+  holdsStock: boolean;
+  /** معرّف الصنف. / The item identifier. */
+  id: string;
+  /** هل الصنف متداوَل؟ **والتعطيل حالةٌ لا حذف**: الرمز محمولٌ على قيود سنةٍ مضت. والمُعطَّل يُرفض عليه الوارد الجديد ويبقى الصادر حتى ينفد. / Is the item in circulation? **Deactivation is a state, not a deletion**: the code is carried by last year's entries. A deactivated item refuses new inbound stock and keeps issuing until it runs out. */
+  isActive: boolean;
+  /** عدد المواضع التي بقي فيها رصيد غير صفري — فلا يُقال «بقي رصيد» بلا «أين». / The number of places still holding a non-zero balance — so the answer never says 'stock remains' without saying where. */
+  placementsWithStock: number;
+}
+
 /** أصناف المنشأة، مرتَّبة بالرمز ترتيباً حرفياً ثابتاً. **وغلافٌ لا مصفوفة عارية**: مصفوفةٌ في جذر الاستجابة لا موضع فيها لعدّاد ولا لصفحة، فأول حاجة إليهما تكسر العقد. / The company's items, ordered by code in a stable ordinal order. **An envelope, not a bare array**: an array at the response root has no place for a count or a page, so the first need for either breaks the contract. */
 export interface ItemList {
   /** عدد الأصناف. / The number of items. */
@@ -1374,6 +1388,17 @@ export interface ItemRequest {
   itemGroup: string;
   name: LocalizedText;
   /** الوحدات الأكبر ومعاملاتها — قائمة فارغة إن كان الصنف يُمسَك بوحدة أساسه وحدها. / The larger units and their factors — an empty list if the item is held in its base unit alone. */
+  units: UnitFactor[];
+}
+
+/** طلب تعديل صنف. **ولا رمز فيه**: الرمز هوية تحملها قيود سنةٍ مضت، ويُقرأ من المسار ولا يُقبل في الجسم. / An item update request. **It carries no code**: the code is an identity carried by last year's entries; it is read from the path and never accepted in the body. */
+export interface ItemRevisionRequest {
+  /** وحدة الأساس. **ولا تتغيّر بعد أن تُكتب على الصنف حركة أو يُمسَك له رصيد** — وإلا رُفضت بـ inventory.base_unit_locked_by_history. / The base unit. **It does not change once a movement has been written against the item or a balance is held for it** — otherwise it is refused with inventory.base_unit_locked_by_history. */
+  baseUnit: string;
+  /** مجموعة الصنف — مؤهّل الدور. **وتغييرها لا يمسّ ما مضى**: كل حركة تحمل مجموعتها على صفّها هي. / The item group — a role qualifier. **Changing it touches nothing past**: every movement carries its own group on its own row. */
+  itemGroup: string;
+  name: LocalizedText;
+  /** الوحدات الأكبر ومعاملاتها — **تحلّ محلّ القائمة السابقة كلّها**، ولا تمسّ حركةً مضت. / The larger units and their factors — **they replace the previous list entirely**, and touch no past movement. */
   units: UnitFactor[];
 }
 

@@ -90,6 +90,9 @@ internal static class DocumentEndpoints
         app.MapPost(ApiRoutes.Items, AddItemAsync);
         app.MapGet(ApiRoutes.Items, ListItemsAsync);
         app.MapGet(ApiRoutes.Item, ReadItemAsync);
+        app.MapPost(ApiRoutes.ItemRevision, ReviseItemAsync);
+        app.MapPost(ApiRoutes.ItemDeactivation, DeactivateItemAsync);
+        app.MapGet(ApiRoutes.ItemLifecycle, ReadItemLifecycleAsync);
         app.MapPost(ApiRoutes.StockMovements, DraftStockMovementAsync);
         app.MapGet(ApiRoutes.StockMovements, ListStockMovementsAsync);
         app.MapPost(ApiRoutes.StockMovementPosting, PostStockMovementAsync);
@@ -1920,6 +1923,98 @@ internal static class DocumentEndpoints
 
         List<StoragePlaceDto> places = [.. result.Value.Select(DocumentMapping.ToDto)];
         return Results.Json(new StoragePlaceListDto(places.Count, places), ApiJson.Options);
+    }
+
+    // ── دورة حياة الصنف ──────────────────────────────────────────────────────
+
+    private static async Task<IResult> ReviseItemAsync(
+        HttpContext context,
+        InventorySurface inventory,
+        CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        if (!Scope.TryRouteId(context, "itemId", out Guid itemId, out IResult? malformed))
+        {
+            return malformed!;
+        }
+
+        (ItemRevisionRequestDto? dto, IResult? refused) =
+            await BodyAsync<ItemRevisionRequestDto>(context, cancellationToken).ConfigureAwait(false);
+
+        if (dto is null)
+        {
+            return refused!;
+        }
+
+        InventoryItemRevisionRequest request;
+        try
+        {
+            request = DocumentMapping.ToItemRevisionRequest(dto);
+        }
+        catch (WireFormatException wire)
+        {
+            return HttpProblemResults.Wire(context, wire);
+        }
+
+        Result<InventoryItem> result = await inventory
+            .ReviseItemAsync(new TenantId(companyId), Actor(context), itemId, request, cancellationToken)
+            .ConfigureAwait(false);
+
+        return result.IsFailure
+            ? HttpProblemResults.Domain(context, result.Errors)
+            : Results.Json(DocumentMapping.ToDto(result.Value), ApiJson.Options);
+    }
+
+    private static async Task<IResult> DeactivateItemAsync(
+        HttpContext context,
+        InventorySurface inventory,
+        CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        if (!Scope.TryRouteId(context, "itemId", out Guid itemId, out IResult? malformed))
+        {
+            return malformed!;
+        }
+
+        Result<InventoryItemLifecycle> result = await inventory
+            .DeactivateItemAsync(new TenantId(companyId), Actor(context), itemId, cancellationToken)
+            .ConfigureAwait(false);
+
+        return result.IsFailure
+            ? HttpProblemResults.Domain(context, result.Errors)
+            : Results.Json(DocumentMapping.ToDto(result.Value), ApiJson.Options);
+    }
+
+    private static async Task<IResult> ReadItemLifecycleAsync(
+        HttpContext context,
+        InventorySurface inventory,
+        CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        if (!Scope.TryRouteId(context, "itemId", out Guid itemId, out IResult? malformed))
+        {
+            return malformed!;
+        }
+
+        Result<InventoryItemLifecycle> result = await inventory
+            .ReadItemLifecycleAsync(new TenantId(companyId), Actor(context), itemId, cancellationToken)
+            .ConfigureAwait(false);
+
+        return result.IsFailure
+            ? HttpProblemResults.Domain(context, result.Errors)
+            : Results.Json(DocumentMapping.ToDto(result.Value), ApiJson.Options);
     }
 
     // ── وحدات القياس ─────────────────────────────────────────────────────────

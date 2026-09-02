@@ -293,3 +293,46 @@ public sealed record UnitConversionResult(
     long Numerator,
     long Denominator,
     string QuantityClass);
+
+/// <summary>
+/// مسوّدة تعديل صنف — <b>ولا رمز فيها</b>.
+/// <para>
+/// رمزُ الصنف هوية تحملها حركاته وقيوده وقيودُ سنةٍ مضت، وتغييرُه يقطعها عنه. فالرمز
+/// يُقرأ من المسار ولا يُقبل في الجسم، ولذلك <b>مورد فرعي لا <c>PUT</c></b>:
+/// ‏<c>PUT</c> على الصنف كان سيقبل رمزاً جديداً في الجسم بحكم شكله.
+/// </para>
+/// </summary>
+/// <param name="Name">الاسم ثنائي اللغة.</param>
+/// <param name="ItemGroup">
+/// مجموعة الصنف — مؤهّل الدور. <b>وتغييرُها لا يمسّ ما مضى</b>: كل حركة تحمل مجموعتها
+/// على صفّها، فالقيود المُرحَّلة تبقى على حسابها، والحركات التالية تذهب إلى الجديد.
+/// </param>
+/// <param name="BaseUnit">
+/// وحدة الأساس. <b>ولا تتغيّر بعد أن تُكتب على الصنف حركة أو يُمسَك له رصيد</b>: مجموع
+/// حركاته يصير جمعَ أعدادٍ بمقاييس مختلفة.
+/// </param>
+/// <param name="Units">الوحدات الأكبر ومعاملاتها — <b>تحلّ محلّ القائمة السابقة كلّها</b>.</param>
+public sealed record ItemRevisionDraft(
+    LocalizedName Name,
+    string ItemGroup,
+    string BaseUnit,
+    IReadOnlyList<ItemUnitDraft> Units);
+
+/// <summary>
+/// حالة صنفٍ في دورة حياته — <b>نوعٌ مستقلّ لا حقلٌ يُضاف إلى <see cref="ItemView"/></b>.
+/// <para>
+/// وإضافةُ حقلٍ إلى شكل الصنف كانت ستُغيّر استجابة ثلاث عمليات منشورة يستهلكها عملاء
+/// اليوم. فالحالة تُقرأ من موردٍ فرعي مستقلّ، والشكل القائم لا يُمَسّ.
+/// </para>
+/// </summary>
+/// <param name="Id">معرّف الصنف.</param>
+/// <param name="Code">رمز الصنف.</param>
+/// <param name="IsActive">هل هو متداوَل؟</param>
+/// <param name="HoldsStock">هل بقي له رصيد غير صفري في أي موضع؟</param>
+/// <param name="PlacementsWithStock">عدد المواضع التي بقي فيها رصيد غير صفري.</param>
+public sealed record ItemLifecycleView(
+    Guid Id,
+    string Code,
+    bool IsActive,
+    bool HoldsStock,
+    int PlacementsWithStock);

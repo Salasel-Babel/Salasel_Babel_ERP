@@ -705,6 +705,86 @@ public sealed class InventorySurface
         view.OccurredOn,
         view.AlreadyMoved);
 
+    // ── دورة حياة الصنف ──────────────────────────────────────────────────────
+
+    /// <summary>
+    /// يعدّل صنفاً: اسمه ومجموعته ووحداته — <b>ولا رمزه</b>. ووحدة الأساس تتغيّر ما لم
+    /// تُكتب على الصنف حركة.
+    /// </summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="itemId">معرّف الصنف.</param>
+    /// <param name="request">الطلب.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    public async ValueTask<Result<InventoryItem>> ReviseItemAsync(
+        TenantId tenant,
+        UserId actor,
+        Guid itemId,
+        InventoryItemRevisionRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        Result<ItemView> result = await _items
+            .ReviseAsync(
+                tenant,
+                actor,
+                itemId,
+                new ItemRevisionDraft(
+                    request.Name,
+                    request.ItemGroup,
+                    request.BaseUnit,
+                    [.. request.Units.Select(static unit => new ItemUnitDraft(unit.UnitCode, unit.Numerator, unit.Denominator))]),
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        return result.IsFailure ? Result<InventoryItem>.Failure(result.Errors) : Result<InventoryItem>.Success(Item(result.Value));
+    }
+
+    /// <summary>يعطّل صنفاً — ويُقبل التعطيل وله رصيد، والجواب يحمل ما بقي منه.</summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="itemId">معرّف الصنف.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    public async ValueTask<Result<InventoryItemLifecycle>> DeactivateItemAsync(
+        TenantId tenant,
+        UserId actor,
+        Guid itemId,
+        CancellationToken cancellationToken = default)
+    {
+        Result<ItemLifecycleView> result = await _items
+            .DeactivateAsync(tenant, actor, itemId, cancellationToken).ConfigureAwait(false);
+
+        return Lifecycle(result);
+    }
+
+    /// <summary>يقرأ حالة صنفٍ في دورة حياته ورصيده المتبقّي.</summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="itemId">معرّف الصنف.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    public async ValueTask<Result<InventoryItemLifecycle>> ReadItemLifecycleAsync(
+        TenantId tenant,
+        UserId actor,
+        Guid itemId,
+        CancellationToken cancellationToken = default)
+    {
+        Result<ItemLifecycleView> result = await _items
+            .LifecycleAsync(tenant, actor, itemId, cancellationToken).ConfigureAwait(false);
+
+        return Lifecycle(result);
+    }
+
+    private static Result<InventoryItemLifecycle> Lifecycle(Result<ItemLifecycleView> result)
+        => result.IsFailure
+            ? Result<InventoryItemLifecycle>.Failure(result.Errors)
+            : Result<InventoryItemLifecycle>.Success(new InventoryItemLifecycle(
+                result.Value.Id,
+                result.Value.Code,
+                result.Value.IsActive,
+                result.Value.HoldsStock,
+                result.Value.PlacementsWithStock));
+
     // ── وحدات القياس ومعاملات التحويل ────────────────────────────────────────
 
     /// <summary>يسجّل وحدة قياس بصنف كمّيتها.</summary>

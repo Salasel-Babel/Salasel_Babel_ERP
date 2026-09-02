@@ -873,3 +873,32 @@ internal sealed record ConversionResultDto(
     long Numerator,
     long Denominator,
     string QuantityClass);
+
+/// <summary>طلب تعديل صنف — <b>ولا رمز فيه</b>: الرمز يُقرأ من المسار.</summary>
+internal sealed record ItemRevisionRequestDto
+{
+    /// <summary>الاسم ثنائي اللغة.</summary>
+    public required LocalizedTextDto Name { get; init; }
+
+    /// <summary>مجموعة الصنف — مؤهّل الدور.</summary>
+    public required string ItemGroup { get; init; }
+
+    /// <summary>وحدة الأساس — لا تتغيّر بعد أن تُكتب على الصنف حركة.</summary>
+    public required string BaseUnit { get; init; }
+
+    /// <summary>الوحدات الأكبر ومعاملاتها — تحلّ محلّ القائمة السابقة كلّها.</summary>
+    public required IReadOnlyList<UnitFactorDto> Units { get; init; }
+}
+
+/// <summary>حالة صنفٍ في دورة حياته ورصيده المتبقّي.</summary>
+/// <param name="Id">معرّف الصنف.</param>
+/// <param name="Code">رمز الصنف.</param>
+/// <param name="IsActive">هل هو متداوَل؟</param>
+/// <param name="HoldsStock">هل بقي له رصيد غير صفري في أي موضع؟</param>
+/// <param name="PlacementsWithStock">عدد المواضع التي بقي فيها رصيد غير صفري.</param>
+internal sealed record ItemLifecycleDto(
+    string Id,
+    string Code,
+    bool IsActive,
+    bool HoldsStock,
+    int PlacementsWithStock);

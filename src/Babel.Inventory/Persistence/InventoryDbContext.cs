@@ -136,6 +136,10 @@ internal sealed class InventoryDbContext(DbContextOptions<InventoryDbContext> op
             entity.Property(row => row.BaseUnit).HasMaxLength(32).IsRequired();
             entity.HasIndex(row => new { row.TenantId, row.Code })
                   .IsUnique().HasDatabaseName("uq_inventory_item_code");
+
+            // ‏**الصنف يولد متداوَلاً**: قاعدةٌ قائمة تُرقّى بعمودٍ افتراضُه `true`،
+            // فلا يُعطَّل صنفٌ واحد بأثرٍ رجعي لأن العمود أُضيف.
+            entity.Property(row => row.IsActive).HasDefaultValue(true);
         });
 
         modelBuilder.Entity<ItemTranslationRow>(entity =>

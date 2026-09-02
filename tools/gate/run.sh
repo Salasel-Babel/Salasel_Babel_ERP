@@ -178,7 +178,7 @@ if [ "$frontend" = "full" ]; then
     # على النظام ورآه بعينه: 99.30px على /hr/end-of-service بالإنجليزية عند
     # 1024px. يفتح 21 شاشة × 8 ممرّات (لغتان اتّجاهاً · سمتان · 1440 و1024
     # و390) ويقيس كل صفّ، ويسقط باسم الشاشة والفرق بالبكسل.
-    # (ADR-0065-the-row-owns-the-tracks · traps.md#fakh-every-field-measures-itself-alone)
+    # (ADR-0067-the-row-owns-the-tracks · traps.md#fakh-every-field-measures-itself-alone)
     ( cd web && npm run align ) || fail "حارس استقامة الصفوف (web: alignment)"
 else
     printf '\n── فحوص الواجهة التي تحتاج npm ci مُتخطّاة. أضف --with-frontend لتشغيلها.\n'

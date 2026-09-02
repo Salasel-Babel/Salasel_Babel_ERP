@@ -1,0 +1,89 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# مناوبة الشهادة — **العين الخارجية**.
+#
+# **لماذا يوجد هذا الملف، وهو السؤال الوحيد المهمّ فيه:** المؤقّت على الخادم
+# (‏`remote.sh rotation`) يفحص الشهادة كل أربع ساعات ويكتب النتيجة ويصرخ في
+# سجلّ النظام. **ولا أحد يقرأ سجلّ نظام.** وLet's Encrypt أوقفت رسائل انتهاء
+# الصلاحية كلّها في 2025-06-04، فلا إنذار خارجيّ البتّة. وشهادة عمرها 160 ساعة
+# تعني أن الصمت لا يُكتشف إلا حين يفتح ضيفٌ الرابط فلا يُفتح.
+#
+# فهذا السير هو القناة الوحيدة التي **تصل إنساناً بلا أن يفتح هو شيئاً**:
+# إخفاق سير عمل مجدول يُرسل GitHub به بريداً إلى صاحب المستودع.
+#
+# **وهو لا يكرّر الفحص، بل يسأل عن نتيجته**: `remote.sh rotation-status` يجيب عن
+# ثلاثة أسئلة لا يستطيع فحصٌ من الخارج أن يجيب عن ثانيها: هل المناوبة مسجَّلة؟
+# **وهل عملت مؤخّراً؟** وماذا قالت آخر مرّة؟ — ومؤقّتٌ توقّف لا يُبلّغ عن نفسه.
+# وهو كذلك يكشف ما لا يكشفه المؤقّت: أن الخادم نفسه لا يُجيب.
+#
+# **حدّان يُقالان صراحةً، فمن يقرأ لا يظنّ ما ليس كذلك:**
+#   ١ · جدول `schedule` لا يعمل إلا من الفرع الافتراضي، ولا يبدأ قبل الدمج.
+#   ٢ · GitHub **يُعطّل السيَر المجدولة** في مستودع بلا نشاط ستّين يوماً، ويرسل
+#       بذلك إشعاراً. وتشغيلة يدوية واحدة (`workflow_dispatch`) تُعيدها.
+# وإن كانت بيئة `demo` تشترط موافقة مُراجِع، فالتشغيلة المجدولة **تنتظر** ولا
+# تُنذر — وحينها تُنقل أسرار SSH إلى بيئة بلا شرط موافقة، أو إلى مستوى المستودع.
+# ═══════════════════════════════════════════════════════════════════════════
+
+name: مناوبة الشهادة
+
+on:
+  schedule:
+    # كل ستّ ساعات، ودقيقة 17 كي لا تزدحم مع رأس الساعة. والمهلة بعد أول إنذار
+    # أربعون ساعة (‏deploy/README.md §3.4)، أي ستّ فرص إنذار على الأقل.
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: certs-watch
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    name: حالة مناوبة الشهادة على الخادم
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: demo
+
+    steps:
+      # سرٌّ ناقص يجب أن يُقرأ «هذا السير غير مضبوط»، لا «الشهادة بخير».
+      # وحارسٌ أحمر لسببٍ لا يخصّ ما يحرسه يُدرّب الناس على تجاهله — فيُسمّى السبب.
+      - name: تهيئة SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_SSH_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          if [ -z "${DEPLOY_SSH_KEY:-}" ] || [ -z "${DEPLOY_SSH_KNOWN_HOSTS:-}" ]; then
+            echo "::error::‏هذا السير غير مضبوط: DEPLOY_SSH_KEY أو DEPLOY_SSH_KNOWN_HOSTS ناقص — وليست هذه حالة الشهادة. جدول الأسرار في deploy/README.md."
+            exit 1
+          fi
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          printf '%s\n' "$DEPLOY_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: سؤال الخادم عن حالة المناوبة
+        env:
+          HOST: ${{ secrets.DEPLOY_SSH_HOST }}
+          USER_NAME: ${{ secrets.DEPLOY_SSH_USER }}
+          PORT: ${{ secrets.DEPLOY_SSH_PORT || '22' }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH || '/opt/babel-demo' }}
+        run: |
+          set -euo pipefail
+          set +e
+          ssh -o ConnectTimeout=20 -i ~/.ssh/id_deploy -p "$PORT" "$USER_NAME@$HOST" \
+            "cd '$DEPLOY_PATH' && ./remote.sh rotation-status"
+          status=$?
+          set -e
+          if [ "$status" != "0" ]; then
+            echo "::error::‏مناوبة شهادة العرض معتلّة (رمز $status). الشهادة عمرها 160 ساعة ولا بريد انتهاء من Let's Encrypt — راجع deploy/README.md §3.4، وابدأ بـ: ./remote.sh certs ثم ./remote.sh logs edge 200"
+            exit "$status"
+          fi
+          echo "::notice::مناوبة الشهادة سليمة."
+
+      - name: محو المفتاح
+        if: always()
+        run: rm -f ~/.ssh/id_deploy

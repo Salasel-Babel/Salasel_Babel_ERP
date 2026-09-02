@@ -22,6 +22,13 @@ namespace Babel.Ai.Workspace;
 /// منفّذاً حقيقياً يأخذ <see cref="UnavailableAgentDraftSubmitter"/> الذي يرفض بجملةٍ
 /// تسمّي ما ينقص، ولا يبتلع الخطوة بصمت.
 /// </para>
+/// <para>
+/// <b>وما يجعل المنفّذ حقيقياً سطرٌ واحد في الجذر التركيبي:</b> تسجيلُ
+/// <see cref="IAgentPublishedSurface"/>. فحين يوجد، تُلَفّ
+/// <see cref="PublishedSurfaceAgentDraftSubmitter"/> — وهي التي تنادي الباب المنشور
+/// نفسه الذي يفتحه المتصفّح؛ وحين لا يوجد يبقى الرفض المُسمّى. <b>ولا شرطَ ثالث</b>:
+/// خادمٌ ركّب الوكيل ولم يركّب السطح يقول ذلك بجملته بدل أن يُعلّق الخطوة.
+/// </para>
 /// </summary>
 public static class AgentWorkspaceRegistration
 {
@@ -51,7 +58,7 @@ public static class AgentWorkspaceRegistration
         services.AddSingleton<UnavailableAgentDraftSubmitter>();
 
         services.AddScoped<IAgentDraftSubmitter>(provider => new AgentDraftConfirmationGate(
-            provider.GetService<UnavailableAgentDraftSubmitter>()!,
+            Destination(provider),
             provider.GetRequiredService<IAgentWorkspaceStore>(),
             provider.GetRequiredService<AgentWorkspaceOptions>(),
             provider.GetRequiredService<TimeProvider>()));
@@ -70,5 +77,26 @@ public static class AgentWorkspaceRegistration
             provider.GetRequiredService<TimeProvider>()));
 
         return services;
+    }
+
+    /// <summary>
+    /// <b>الوجهة خلف الباب: السطح المنشور إن رُكِّب، وإلّا الرفض المُسمّى.</b>
+    /// <para>
+    /// و<c>GetService</c> لا <c>GetRequiredService</c> عمداً: غيابُ السطح حالُ نشرٍ
+    /// تُقال في اللوح، لا استثناءُ تركيبٍ يُسقط حلّ الخدمة كلّها فيردّ السطح 500 على
+    /// جلسةٍ كانت ستعمل لولا المسوّدات.
+    /// </para>
+    /// </summary>
+    /// <param name="provider">مزوّد الخدمات.</param>
+    private static IAgentDraftSubmitter Destination(IServiceProvider provider)
+    {
+        IAgentPublishedSurface? surface = provider.GetService<IAgentPublishedSurface>();
+
+        return surface is null
+            ? provider.GetRequiredService<UnavailableAgentDraftSubmitter>()
+            : new PublishedSurfaceAgentDraftSubmitter(
+                surface,
+                provider.GetService<Babel.Core.Audit.IAuditLog>(),
+                provider.GetRequiredService<TimeProvider>());
     }
 }

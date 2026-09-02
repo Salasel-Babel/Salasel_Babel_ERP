@@ -143,6 +143,18 @@ internal static class AgentEndpoints
                 StatusCodes.Status400BadRequest);
         }
 
+        // ── هويّة الإنسان تُحفظ **قبل** أن يبدأ الدور ────────────────────────────
+        //
+        // والدور يمضي خلف الطلب، فلا اعتماد ولا سياق في اللحظة التي تُنشأ فيها
+        // المسوّدة. <b>والمسوّدة تُنسب إلى إنسان</b> — إلى صاحب هذه الجلسة بهويّته
+        // المحلولة من اعتماده الآن، لا إلى وكيل ولا إلى فاعل نظام.
+        //
+        // ‏**ولا تُبنى هذه الهوية من معرّفين**: الهوية المحلولة تحمل «قراءةٌ فقط في هذه
+        // المنشأة»، وبناؤها من جديد كان سيُسقط ذلك فيصير مسار الوكيل أوسع من الباب الذي
+        // يفتحه المتصفّح للإنسان نفسه.
+        context.RequestServices.GetService<Babel.Api.Agent.AgentSessionHumans>()
+            ?.Hold(session.SessionId, RequestPrincipal.Of(context));
+
         Result<Guid> begun = workspace!.Send(
             session,
             dto.Text,

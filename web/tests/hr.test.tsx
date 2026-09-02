@@ -585,13 +585,25 @@ describe("الإحكام", () => {
    ٧ · عقد الملاحة
    ═══════════════════════════════════════════════════════════════════════ */
 describe("الملاحة", () => {
-  it("قسم الموارد البشرية صار مبنيّاً، وشاشاته الأربع مُعلَنة في عقد الملاحة", () => {
+  it("قسم الموارد البشرية مبنيٌّ، وشاشاته الثماني مُعلَنة في عقد الملاحة بترتيب العمل", () => {
     const hr = SECTIONS.find((s) => s.id === "hr");
     expect(hr?.built).toBe(true);
     expect(hr?.path).toBe("/hr");
     expect(hr?.tint).toBe("var(--section-hr)");
+    /* والترتيب جزءٌ من العقد لا زينة: ما يُعرَّف مرّةً، ثم من يُسجَّل، ثم ما
+       يُقيَّد عليه قبل الشهر، ثم المسيّر وقسيمته، ثم ما يُسدَّد إلى الجهة، ثم
+       ما يُنهي العلاقة، ثم ما يُطابَق عند الإقفال. */
     const paths = SCREENS.filter((s) => s.section === "hr").map((s) => s.path);
-    expect(paths).toEqual(["/hr", "/hr/payroll", "/hr/payslip", "/hr/end-of-service"]);
+    expect(paths).toEqual([
+      "/hr/pay-components",
+      "/hr",
+      "/hr/advances-deductions",
+      "/hr/payroll",
+      "/hr/payslip",
+      "/hr/social-insurance",
+      "/hr/end-of-service",
+      "/hr/subledger-reconciliation",
+    ]);
     for (const path of paths) expect(sectionOf(path).id).toBe("hr");
   });
 

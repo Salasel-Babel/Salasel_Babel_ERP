@@ -28,6 +28,26 @@ internal static class RequestPrincipal
                 "قراءة هوية الطلب قبل المصادقة. / Reading the request principal before authentication.");
     }
 
+    /// <summary>
+    /// <b>يثبّت هوية على سياقٍ — موضعٌ واحد لمفتاح البند، لا نصٌّ يُكتب في ملفَّين.</b>
+    /// <para>
+    /// ويناديه اثنان لا ثالث لهما: وسيطُ المصادقة بعد أن يحلّ اعتماداً مُقدَّماً، وسطحُ
+    /// الوكيل حين ينادي باباً منشوراً <b>بهوية إنسان الجلسة</b> التي حُلّت من اعتماده هو
+    /// في الطلب الذي بدأ الدور. <b>ولا ثالثَ يخترع هوية</b>: هذا النوع لا يبني
+    /// <see cref="ApiPrincipal"/> من عدم، ولا يقبل واحداً من جسم طلبٍ ولا من ترويسة.
+    /// </para>
+    /// </summary>
+    /// <param name="context">السياق.</param>
+    /// <param name="principal">الهوية المحلولة.</param>
+    public static void Bind(HttpContext context, ApiPrincipal principal)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(principal);
+
+        context.Items[ItemKey] = principal;
+        context.RequestServices.GetRequiredService<RequestTenantContext>().Bind(principal);
+    }
+
     /// <summary>يضيف وسيط المصادقة إلى خط المعالجة.</summary>
     /// <param name="app">التطبيق.</param>
     public static void UseBabelAuthentication(this IApplicationBuilder app)
@@ -131,8 +151,7 @@ internal static class RequestPrincipal
                 return;
             }
 
-            context.Items["babel.principal"] = principal;
-            context.RequestServices.GetRequiredService<RequestTenantContext>().Bind(principal);
+            Bind(context, principal);
 
             await next(context).ConfigureAwait(false);
         });

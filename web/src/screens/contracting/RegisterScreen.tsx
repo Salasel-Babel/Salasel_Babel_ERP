@@ -29,7 +29,6 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import {
-  addChangeOrder,
   addProject,
   addProjectContract,
   readBoqItems,
@@ -38,9 +37,8 @@ import {
   readContractPosition,
   readProjectContract,
 } from "../../api/generated/client";
-import { asMagnitude, asRate } from "../../api/generated/brands";
-import { Money } from "../../api/money";
-import type { BoqItemRequest, NameValue } from "../../api/generated/types";
+import { asRate } from "../../api/generated/brands";
+import type { NameValue } from "../../api/generated/types";
 import { useApi } from "../../app/api-context";
 import { useT } from "../../i18n/react";
 import { Amount, Num } from "../../i18n/react";
@@ -56,13 +54,14 @@ import {
   useMoment,
 } from "../../ui";
 import {
+  BoqEditor,
   ContractingHead,
   ExplainedEmpty,
   Foldable,
   isCountText,
-  isMagnitudeText,
-  isMoneyText,
   isRateText,
+  itemReady,
+  newItem,
   countOf,
   LoadingPanel,
   NeedsCompany,
@@ -70,181 +69,12 @@ import {
   PolicySettledNote as SettledNote,
   ReadProblem,
   todayIso,
+  toBoqRequest,
   TranslatedName,
   useProjects,
+  type DraftItem,
 } from "./shared";
 import { selectContracting, useContractingSelection } from "./selection";
-
-/* ═════════════════════════════════════════════ محرّر بنود جدول الكميات */
-
-/** بندٌ كما يُحرَّر — كل قيمةٍ نصٌّ حتى لحظة الإرسال. */
-interface DraftItem {
-  key: string;
-  code: string;
-  descriptionAr: string;
-  magnitude: string;
-  unit: string;
-  unitRate: string;
-}
-
-let itemSequence = 0;
-function newItem(): DraftItem {
-  itemSequence += 1;
-  return { key: "b" + String(itemSequence), code: "", descriptionAr: "", magnitude: "", unit: "", unitRate: "" };
-}
-
-/** هل البند مكتمل بالنحو المنشور؟ */
-function itemReady(item: DraftItem): boolean {
-  return (
-    item.code !== "" &&
-    item.descriptionAr !== "" &&
-    isMagnitudeText(item.magnitude) &&
-    item.unit !== "" &&
-    isMoneyText(item.unitRate)
-  );
-}
-
-/** يرمّز بنداً محرَّراً إلى شكله في العقد المنشور. */
-function toBoqRequest(item: DraftItem): BoqItemRequest {
-  return {
-    code: item.code,
-    descriptionAr: item.descriptionAr,
-    contractQuantity: { magnitude: asMagnitude(item.magnitude), unit: item.unit },
-    unitRate: Money.wire(item.unitRate),
-  };
-}
-
-/**
- * محرّر بنود — يُستعمل في تسجيل العقد وفي الأمر التغييري بلا نسخة ثانية.
- * @param props البنود وما يغيّرها.
- */
-function BoqEditor(props: {
-  readonly items: readonly DraftItem[];
-  readonly onChange: (next: DraftItem[]) => void;
-  readonly idPrefix: string;
-}): ReactNode {
-  const { t } = useT();
-  const { items, onChange, idPrefix } = props;
-
-  const patch = useCallback(
-    (key: string, change: Partial<DraftItem>) => {
-      onChange(items.map((item) => (item.key === key ? { ...item, ...change } : item)));
-    },
-    [items, onChange]
-  );
-
-  return (
-    <div className="con-lines" data-testid={idPrefix + "-lines"}>
-      {items.map((item, index) => (
-        <fieldset key={item.key} className="con-line" data-testid={idPrefix + "-line"}>
-          <legend className="k">
-            <Num value={index + 1} />
-          </legend>
-          <Field id={idPrefix + "-code-" + item.key} label={t("contracting.boq.code")} required>
-            <input
-              id={idPrefix + "-code-" + item.key}
-              className="ctl mono"
-              dir="ltr"
-              autoComplete="off"
-              value={item.code}
-              onChange={(e) => patch(item.key, { code: e.target.value })}
-            />
-          </Field>
-          <Field
-            id={idPrefix + "-desc-" + item.key}
-            label={t("contracting.boq.description")}
-            required
-          >
-            <input
-              id={idPrefix + "-desc-" + item.key}
-              className="ctl"
-              lang="ar"
-              value={item.descriptionAr}
-              onChange={(e) => patch(item.key, { descriptionAr: e.target.value })}
-            />
-          </Field>
-          <Field
-            id={idPrefix + "-qty-" + item.key}
-            label={t("contracting.boq.contractQuantity")}
-            hint={
-              item.magnitude === "" || isMagnitudeText(item.magnitude)
-                ? t("contracting.common.quantityHint")
-                : t("contracting.common.quantityBad")
-            }
-            required
-          >
-            <input
-              id={idPrefix + "-qty-" + item.key}
-              className={"ctl amt-input" + (item.magnitude !== "" && !isMagnitudeText(item.magnitude) ? " is-invalid" : "")}
-              inputMode="decimal"
-              dir="ltr"
-              autoComplete="off"
-              aria-invalid={item.magnitude !== "" && !isMagnitudeText(item.magnitude)}
-              value={item.magnitude}
-              onChange={(e) => patch(item.key, { magnitude: e.target.value })}
-              placeholder="0.000000"
-            />
-          </Field>
-          <Field
-            id={idPrefix + "-unit-" + item.key}
-            label={t("contracting.common.unit")}
-            hint={t("contracting.boq.unitHint")}
-            required
-          >
-            <input
-              id={idPrefix + "-unit-" + item.key}
-              className="ctl mono"
-              dir="ltr"
-              autoComplete="off"
-              value={item.unit}
-              onChange={(e) => patch(item.key, { unit: e.target.value })}
-              placeholder="M3"
-            />
-          </Field>
-          <Field
-            id={idPrefix + "-rate-" + item.key}
-            label={t("contracting.boq.unitRate")}
-            hint={
-              item.unitRate === "" || isMoneyText(item.unitRate)
-                ? t("contracting.common.moneyHint")
-                : t("contracting.common.moneyBad")
-            }
-            required
-          >
-            <input
-              id={idPrefix + "-rate-" + item.key}
-              className={"ctl amt-input" + (item.unitRate !== "" && !isMoneyText(item.unitRate) ? " is-invalid" : "")}
-              inputMode="decimal"
-              dir="ltr"
-              autoComplete="off"
-              aria-invalid={item.unitRate !== "" && !isMoneyText(item.unitRate)}
-              value={item.unitRate}
-              onChange={(e) => patch(item.key, { unitRate: e.target.value })}
-              placeholder="0.0000"
-            />
-          </Field>
-          <div className="con-line__wide inline-group">
-            <Button
-              label={t("contracting.common.removeLine")}
-              kind="danger"
-              size="sm"
-              disabled={items.length <= 1}
-              onClick={() => onChange(items.filter((x) => x.key !== item.key))}
-            />
-          </div>
-        </fieldset>
-      ))}
-      <button
-        type="button"
-        className="addline"
-        data-testid={idPrefix + "-add-line"}
-        onClick={() => onChange([...items, newItem()])}
-      >
-        {t("contracting.common.addLine")}
-      </button>
-    </div>
-  );
-}
 
 /* ═══════════════════════════════════════════════ نموذج تسجيل مشروع */
 
@@ -472,102 +302,6 @@ function NewContractForm(props: {
         />
         {done ? (
           <span className="pill pill--posted" data-testid="new-contract-done">
-            {done}
-          </span>
-        ) : null}
-      </div>
-      {error ? <ReadProblem error={error} /> : null}
-    </div>
-  );
-}
-
-/* ═════════════════════════════════════════════ نموذج أمر تغييري */
-
-function NewChangeOrderForm(props: {
-  readonly contractId: string;
-  readonly onDone: () => void;
-}): ReactNode {
-  const { t } = useT();
-  const { transport, config } = useApi();
-  const [number, setNumber] = useState("");
-  const [issuedOn, setIssuedOn] = useState(todayIso);
-  const [reasonAr, setReasonAr] = useState("");
-  const [approvedBy, setApprovedBy] = useState("");
-  const [items, setItems] = useState<DraftItem[]>(() => [newItem()]);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<unknown>(null);
-  const [done, setDone] = useState<string | null>(null);
-
-  const ready =
-    number !== "" && issuedOn !== "" && reasonAr !== "" && approvedBy !== "" && items.every(itemReady);
-
-  const submit = useCallback(async () => {
-    setBusy(true);
-    setError(null);
-    try {
-      const created = await addChangeOrder(transport, {
-        companyId: config.companyId,
-        body: {
-          number,
-          contractId: props.contractId,
-          issuedOn,
-          reasonAr,
-          approvedBy,
-          addedItems: items.map(toBoqRequest),
-        },
-      });
-      setDone(created.number);
-      props.onDone();
-      setNumber("");
-      setReasonAr("");
-      setItems([newItem()]);
-    } catch (failure) {
-      setError(failure);
-    } finally {
-      setBusy(false);
-    }
-  }, [approvedBy, config.companyId, issuedOn, items, number, props, reasonAr, transport]);
-
-  return (
-    <div className="stack">
-      <p className="muted">{t("contracting.changeOrder.lede")}</p>
-      <div className="grid fields-4">
-        <Field id="co-number" label={t("contracting.common.number")} required>
-          <input id="co-number" className="ctl mono" dir="ltr" value={number} onChange={(e) => setNumber(e.target.value)} />
-        </Field>
-        <Field id="co-issued" label={t("contracting.changeOrder.issuedOn")} required>
-          <input
-            id="co-issued"
-            className="ctl mono"
-            type="date"
-            dir="ltr"
-            value={issuedOn}
-            onChange={(e) => setIssuedOn(e.target.value)}
-          />
-        </Field>
-        <Field
-          id="co-approver"
-          label={t("contracting.changeOrder.approvedBy")}
-          hint={t("contracting.changeOrder.approvedByHint")}
-          required
-        >
-          <input id="co-approver" className="ctl" value={approvedBy} onChange={(e) => setApprovedBy(e.target.value)} />
-        </Field>
-        <Field id="co-reason" label={t("contracting.changeOrder.reason")} required>
-          <input id="co-reason" className="ctl" lang="ar" value={reasonAr} onChange={(e) => setReasonAr(e.target.value)} />
-        </Field>
-      </div>
-      <BoqEditor items={items} onChange={setItems} idPrefix="co" />
-      <div className="inline-group">
-        <Button
-          label={busy ? t("contracting.common.loading") : t("contracting.changeOrder.save")}
-          kind="primary"
-          disabled={!ready || busy}
-          onClick={() => void submit()}
-          testId="new-change-order-save"
-        />
-        {done ? (
-          <span className="pill pill--posted" data-testid="new-change-order-done">
             {done}
           </span>
         ) : null}
@@ -928,15 +662,21 @@ function ContractDossier(props: { readonly contractId: string }): ReactNode {
         </TabPanel>
       </Panel>
 
-      <Foldable
+      {/* الأمر التغييري **شاشتُه غير هذه** منذ ADR-جديد: هذه الشاشة تسجّل مشروعاً
+          وعقداً — نموذجا كتابةٍ اثنان — ونموذجٌ ثالثٌ فيها يُسقط قاعدة «سؤالٌ
+          واحد لكلّ شاشة». وما يبقى هنا طريقٌ إليها، لا نموذجُها. */}
+      <Panel
         title={t("contracting.changeOrder.title")}
-        note={t("contracting.changeOrder.note")}
-        openLabel={t("contracting.common.open")}
-        closeLabel={t("contracting.common.close")}
-        testId="fold-change-order"
+        note={t("contracting.changeOrder.movedNote")}
+        testId="dossier-change-orders-link"
       >
-        <NewChangeOrderForm contractId={props.contractId} onDone={reloadAll} />
-      </Foldable>
+        <Button
+          label={t("contracting.changeOrder.openScreen")}
+          kind="primary"
+          onClick={() => void navigate({ to: "/contracting/change-orders" })}
+          testId="go-change-orders"
+        />
+      </Panel>
     </div>
   );
 }

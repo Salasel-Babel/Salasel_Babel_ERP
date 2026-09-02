@@ -11,20 +11,30 @@ import { VoiceScreen } from "../screens/voice/VoiceScreen";
 import { DemoStage } from "../demo/DemoStage";
 /* صفحة العرض الحيّة لنظام التصميم — هي عقد الطبقة البصرية مع من يبني الأقسام. */
 import { DesignScreen } from "../screens/design/DesignScreen";
-/* قسم العقارات — السجلّ، والعقد وجدوله، والمتأخرات وسندات القبض. */
+/* قسم العقارات — العقارُ ووحداته، وطرفا العقد، والعقد وجدوله، والمتأخرات. */
 import { RegisterScreen } from "../screens/realestate/RegisterScreen";
+import { PartiesScreen } from "../screens/realestate/PartiesScreen";
 import { LeaseScreen } from "../screens/realestate/LeaseScreen";
 import { ArrearsScreen } from "../screens/realestate/ArrearsScreen";
-/* المقاولات — أربع شاشات: السجلّ والمستخلص والباطن والمحتجزات. */
+/* المقاولات — سبع شاشات بترتيب العمل: السجلّ، وأوامر التغيير، وخطابات الضمان،
+   والمستخلص، والباطن، ودفعته المقدمة، والمحتجزات. */
 import { ContractingRegisterScreen } from "../screens/contracting/RegisterScreen";
+import { ChangeOrdersScreen } from "../screens/contracting/ChangeOrdersScreen";
+import { GuaranteesScreen } from "../screens/contracting/GuaranteesScreen";
 import { CertificateScreen } from "../screens/contracting/CertificateScreen";
 import { SubcontractingScreen } from "../screens/contracting/SubcontractingScreen";
+import { SubcontractorAdvancesScreen } from "../screens/contracting/SubcontractorAdvancesScreen";
 import { RetentionScreen } from "../screens/contracting/RetentionScreen";
 /* القسم المخزني. */
 import { InventoryItemsScreen } from "../screens/inventory/ItemsScreen";
 import { InventoryStockScreen } from "../screens/inventory/StockScreen";
 import { InventoryMovementsScreen } from "../screens/inventory/MovementsScreen";
 import { InventoryValuationScreen } from "../screens/inventory/ValuationScreen";
+import { InventoryWarehousesScreen } from "../screens/inventory/WarehousesScreen";
+import { InventoryPlacementScreen } from "../screens/inventory/PlacementScreen";
+import { InventoryTransfersScreen } from "../screens/inventory/TransfersScreen";
+import { InventoryUnitsScreen } from "../screens/inventory/UnitsScreen";
+import { InventoryPlacementBalancesScreen } from "../screens/inventory/PlacementBalancesScreen";
 /* دورة المستندات المحاسبية — سبعُ شاشاتٍ على مجموعتين: المبيعات والمشتريات.
    وهي الدورة التي وصفها صاحب المصلحة — فاتورة، سند قبض — ولم تكن لها شاشة. */
 import { SalesInvoiceScreen } from "../screens/accounting/SalesInvoiceScreen";
@@ -34,11 +44,17 @@ import { PurchaseOrderScreen } from "../screens/accounting/PurchaseOrderScreen";
 import { GoodsReceiptScreen } from "../screens/accounting/GoodsReceiptScreen";
 import { SupplierBillScreen } from "../screens/accounting/SupplierBillScreen";
 import { SupplierPaymentScreen } from "../screens/accounting/SupplierPaymentScreen";
-/* الموارد البشرية — أربع شاشات: السجلّ، والمسيّر، والقسيمة، ونهاية الخدمة. */
+/* الموارد البشرية — ثماني شاشات بترتيب العمل: مكوّنات الأجر تُعرَّف مرّةً،
+   ثم السجلّ، ثم ما يُقيَّد على الموظف قبل الشهر، ثم المسيّر وقسيمته، ثم سداد
+   التأمينات، ثم نهاية الخدمة، ثم المطابقة عند الإقفال. */
 import { EmployeeRegisterScreen } from "../screens/hr/EmployeeRegisterScreen";
 import { PayrollRunScreen } from "../screens/hr/PayrollRunScreen";
 import { PayslipScreen } from "../screens/hr/PayslipScreen";
 import { EndOfServiceScreen } from "../screens/hr/EndOfServiceScreen";
+import { PayComponentsScreen } from "../screens/hr/PayComponentsScreen";
+import { AdvancesDeductionsScreen } from "../screens/hr/AdvancesDeductionsScreen";
+import { SocialInsuranceScreen } from "../screens/hr/SocialInsuranceScreen";
+import { SubledgerReconciliationScreen } from "../screens/hr/SubledgerReconciliationScreen";
 
 const rootRoute = createRootRoute({ component: AppShell });
 
@@ -92,6 +108,12 @@ const realEstateRegisterRoute = createRoute({
   component: RegisterScreen,
 });
 
+const realEstatePartiesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/realestate/parties",
+  component: PartiesScreen,
+});
+
 const realEstateLeaseRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/realestate/lease",
@@ -111,6 +133,18 @@ const contractingRegisterRoute = createRoute({
   component: ContractingRegisterScreen,
 });
 
+const contractingChangeOrdersRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/contracting/change-orders",
+  component: ChangeOrdersScreen,
+});
+
+const contractingGuaranteesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/contracting/guarantees",
+  component: GuaranteesScreen,
+});
+
 const contractingCertificateRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/contracting/certificate",
@@ -123,15 +157,23 @@ const contractingSubcontractingRoute = createRoute({
   component: SubcontractingScreen,
 });
 
+const contractingAdvancesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/contracting/advances",
+  component: SubcontractorAdvancesScreen,
+});
+
 const contractingRetentionRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/contracting/retention",
   component: RetentionScreen,
 });
 
-/* ── القسم المخزني — أربع شاشات على أبوابٍ قائمة في العقد وحدها ────────────
-   ولا خامسة: النقل بين موقعين وقائمة المستودعات لا بابَ لهما اليوم، فهما
-   لوحا «نقصٍ مُعلَن» داخل الشاشتين لا مسارَين يقودان إلى بياناتٍ مُختلَقة. */
+/* ── القسم المخزني — تسعُ شاشات على أبوابٍ قائمة في العقد وحدها ────────────
+   وكانت أربعاً حين كان «النقل بين موقعين» و«سجلّ المستودعات» لوحَي نقصٍ
+   مُعلَن لا بابَ لهما. ثم نزلت أبوابهما — التسكين ثلاثة مستويات، والنقل
+   مسوّدةً وتنفيذاً، ووحدات القياس ومعاملاتها ومسبار تحويلها، والأرصدة
+   بأسماء مواضعها — فصار النقص المُعلَن **شاشاتٍ تُفتح**، لا نصّاً يعتذر. */
 const inventoryStockRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/inventory/stock",
@@ -154,6 +196,36 @@ const inventoryValuationRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/inventory/valuation",
   component: InventoryValuationScreen,
+});
+
+const inventoryWarehousesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/inventory/warehouses",
+  component: InventoryWarehousesScreen,
+});
+
+const inventoryPlacementRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/inventory/placement",
+  component: InventoryPlacementScreen,
+});
+
+const inventoryTransfersRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/inventory/transfers",
+  component: InventoryTransfersScreen,
+});
+
+const inventoryUnitsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/inventory/units",
+  component: InventoryUnitsScreen,
+});
+
+const inventoryPlacementBalancesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/inventory/placement-balances",
+  component: InventoryPlacementBalancesScreen,
 });
 
 /* ── الموارد البشرية ──────────────────────────────────────────────────── */
@@ -179,6 +251,30 @@ const hrEndOfServiceRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/hr/end-of-service",
   component: EndOfServiceScreen,
+});
+
+const hrPayComponentsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/hr/pay-components",
+  component: PayComponentsScreen,
+});
+
+const hrAdvancesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/hr/advances-deductions",
+  component: AdvancesDeductionsScreen,
+});
+
+const hrSocialInsuranceRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/hr/social-insurance",
+  component: SocialInsuranceScreen,
+});
+
+const hrReconciliationRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/hr/subledger-reconciliation",
+  component: SubledgerReconciliationScreen,
 });
 
 /* ── دورة المستندات: المبيعات ──────────────────────────────────────────── */
@@ -236,20 +332,33 @@ const routeTree = rootRoute.addChildren([
   designRoute,
   demoRoute,
   realEstateRegisterRoute,
+  realEstatePartiesRoute,
   realEstateLeaseRoute,
   realEstateArrearsRoute,
   contractingRegisterRoute,
+  contractingChangeOrdersRoute,
+  contractingGuaranteesRoute,
   contractingCertificateRoute,
   contractingSubcontractingRoute,
+  contractingAdvancesRoute,
   contractingRetentionRoute,
   inventoryStockRoute,
   inventoryItemsRoute,
   inventoryMovementsRoute,
   inventoryValuationRoute,
+  inventoryWarehousesRoute,
+  inventoryPlacementRoute,
+  inventoryTransfersRoute,
+  inventoryUnitsRoute,
+  inventoryPlacementBalancesRoute,
   hrRegisterRoute,
   hrPayrollRoute,
   hrPayslipRoute,
   hrEndOfServiceRoute,
+  hrPayComponentsRoute,
+  hrAdvancesRoute,
+  hrSocialInsuranceRoute,
+  hrReconciliationRoute,
   salesInvoiceRoute,
   salesReceiptRoute,
   salesReceivablesRoute,

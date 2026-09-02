@@ -177,11 +177,27 @@ export function NeedsCompany(): ReactNode {
 
 /* ═══════════════════════════════════════ ٤ · رأس شاشةٍ في هذا القسم ═══ */
 
-/** رأس الشاشة: العنوان، والمقدّمة، والملاحة بين شاشات القسم الثلاث. */
+/** أين نحن من شاشات القسم — والقائمة تُقرأ من موضعٍ واحد. */
+export type RealEstateHere = "register" | "parties" | "lease" | "arrears";
+
+/**
+ * شاشات القسم الأربع بمساراتها، **بترتيب العمل لا بترتيب الحروف**: العقار
+ * ووحداته يُعرَّفان مرّةً ← ثم طرفا العقد ← ثم العقد وجدوله ← ثم ما يُحصَّل
+ * وما تأخّر. وهذا الترتيب **واحدٌ في ثلاثة مواضع**: `SCREENS`، وهذا الشريط،
+ * وقائمة الملاحة اليدوية في `App.tsx` — وعليه حارس.
+ */
+const REALESTATE_SCREENS: readonly { readonly here: RealEstateHere; readonly path: string; readonly key: string }[] = [
+  { here: "register", path: "/realestate", key: "realestate.nav.register" },
+  { here: "parties", path: "/realestate/parties", key: "realestate.nav.parties" },
+  { here: "lease", path: "/realestate/lease", key: "realestate.nav.lease" },
+  { here: "arrears", path: "/realestate/arrears", key: "realestate.nav.arrears" },
+];
+
+/** رأس الشاشة: العنوان، والمقدّمة، والملاحة بين شاشات القسم الأربع. */
 export function SectionHead(props: {
   readonly title: string;
   readonly lede: string;
-  readonly here: "register" | "lease" | "arrears";
+  readonly here: RealEstateHere;
   readonly aside?: ReactNode;
 }): ReactNode {
   const { t } = useT();
@@ -195,30 +211,17 @@ export function SectionHead(props: {
         {props.aside ? <div className="actions">{props.aside}</div> : null}
       </div>
       <nav className="re-tabs" aria-label={t("realestate.common.sectionNav")}>
-        <Link
-          to="/realestate"
-          className="btn btn-sm"
-          aria-current={props.here === "register" ? "page" : undefined}
-          data-testid="re-tab-register"
-        >
-          {t("realestate.nav.register")}
-        </Link>
-        <Link
-          to="/realestate/lease"
-          className="btn btn-sm"
-          aria-current={props.here === "lease" ? "page" : undefined}
-          data-testid="re-tab-lease"
-        >
-          {t("realestate.nav.lease")}
-        </Link>
-        <Link
-          to="/realestate/arrears"
-          className="btn btn-sm"
-          aria-current={props.here === "arrears" ? "page" : undefined}
-          data-testid="re-tab-arrears"
-        >
-          {t("realestate.nav.arrears")}
-        </Link>
+        {REALESTATE_SCREENS.map((screen) => (
+          <Link
+            key={screen.path}
+            to={screen.path}
+            className="btn btn-sm"
+            aria-current={props.here === screen.here ? "page" : undefined}
+            data-testid={"re-tab-" + screen.here}
+          >
+            {t(screen.key)}
+          </Link>
+        ))}
       </nav>
     </header>
   );

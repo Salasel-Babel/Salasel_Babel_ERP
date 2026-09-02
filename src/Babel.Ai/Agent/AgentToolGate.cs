@@ -83,8 +83,7 @@ public static class AgentToolGate
             }
             else
             {
-                string? irreversible = AgentToolCatalogue.IrreversibleSegments.FirstOrDefault(
-                    segment => tool.Path.EndsWith(segment, StringComparison.Ordinal));
+                string? irreversible = AgentToolCatalogue.IrreversibleSegmentIn(tool.Path);
 
                 if (irreversible is not null)
                 {
@@ -100,6 +99,15 @@ public static class AgentToolGate
                 errors.Add(AgentErrors.NotEntitled(tool.OperationId));
             }
         }
+        else if (!catalogue.EntitlesAnyHandleConsumer(caller.PermittedOperationIds))
+        {
+            // ‏**والاستحقاق كان يُفحص داخل «إن كان لها معرّف عملية» وحدها** — فكانت
+            // ‏`lookup_entity` و`ask_question` تسقطان من الفحص كلّه. مقيس: متكلّمٌ بمجموعة
+            // صلاحيات **فارغة** كان يسبر كل سجلّات الأسماء. وسكُّ مِقبضٍ لمن لا يستهلكه
+            // ليس فعلاً بلا أثر: جوابُه «نعم/لا» على وجود اسمٍ في منشأة، وهو الشيء عينه
+            // الذي بُني هذا المسار كلّه لمنعه.
+            errors.Add(AgentErrors.NotEntitledToProbe(tool.Name));
+        }
 
         if (errors.Count > 0)
         {
@@ -107,9 +115,24 @@ public static class AgentToolGate
         }
 
         // ── وسائطٌ تُفكّ JSON لا تُقرأ نصّاً ──────────────────────────────────
+        //
+        // ‏**والمفتاح المكرَّر يُرفض هنا لا يُرمى استثناءً بعد حين:** `JsonNode.Parse`
+        // يقبل ‎{"a":1,"a":2} ثم يرمي `ArgumentException` عند أوّل `TryGetPropertyValue`.
+        // وذلك الرمي كان يخرج من `Authorise` إلى `IAsyncEnumerable` فيقتل الدور كلّه —
+        // وهو ما تمنعه قاعدة هذه الوحدة نصّاً: «الرفض `tool_result` لا استثناءٌ يقتل الدور».
         JsonNode? body;
         try
         {
+            using (JsonDocument reading = JsonDocument.Parse(call.ArgumentsJson))
+            {
+                string? duplicated = FirstDuplicatedKey(reading.RootElement, 0);
+                if (duplicated is not null)
+                {
+                    return Result<AgentDispatch>.Failure(
+                        AgentErrors.ArgumentKeyDuplicated(tool.Name, duplicated));
+                }
+            }
+
             body = JsonNode.Parse(call.ArgumentsJson);
         }
         catch (JsonException)
@@ -120,6 +143,16 @@ public static class AgentToolGate
         if (body is not JsonObject arguments)
         {
             return Result<AgentDispatch>.Failure(AgentErrors.ToolArgumentsNotAnObject(tool.Name));
+        }
+
+        // ── ٤أ · الجسم على شكله المنشور، وإلا لم يجد المُحدِّد مواضع المقابض ─────
+        // ‏**قبل الخطوة الرابعة لا بعدها:** حقلٌ غير معلَن أو مصفوفةٌ كُتبت كائناً
+        // يُخفيان معرّفاً خاماً عن الفكّ وعن الرفض معاً.
+        errors.AddRange(AgentArgumentSchema.Violations(arguments, tool));
+
+        if (errors.Count > 0)
+        {
+            return Result<AgentDispatch>.Failure(errors);
         }
 
         // ── ٤ · المِصفاة الخارجة على كل وسيطٍ نصّي ────────────────────────────
@@ -348,6 +381,56 @@ public static class AgentToolGate
         }
     }
 
+    /// <summary>
+    /// أوّل مفتاحٍ مكرَّر في أي كائنٍ في الشجرة، أو <c>null</c>. <b>يُقرأ على
+    /// <see cref="JsonDocument"/> لأنه وحده يحفظ التكرار</b> — و<see cref="JsonObject"/>
+    /// يحفظه كذلك لكنه يرمي عند القراءة بدل أن يُخبر.
+    /// </summary>
+    private static string? FirstDuplicatedKey(JsonElement element, int depth)
+    {
+        if (depth > 32)
+        {
+            return null;
+        }
+
+        switch (element.ValueKind)
+        {
+            case JsonValueKind.Object:
+                HashSet<string> seen = new(StringComparer.Ordinal);
+
+                foreach (JsonProperty property in element.EnumerateObject())
+                {
+                    if (!seen.Add(property.Name))
+                    {
+                        return property.Name;
+                    }
+
+                    string? nested = FirstDuplicatedKey(property.Value, depth + 1);
+                    if (nested is not null)
+                    {
+                        return nested;
+                    }
+                }
+
+                return null;
+
+            case JsonValueKind.Array:
+                foreach (JsonElement item in element.EnumerateArray())
+                {
+                    string? nested = FirstDuplicatedKey(item, depth + 1);
+                    if (nested is not null)
+                    {
+                        return nested;
+                    }
+                }
+
+                return null;
+
+            default:
+                return null;
+        }
+    }
+
     /// <summary>كل قيمةٍ نصّية في الشجرة بأي عمق، عدا مواضع المقابض.</summary>
     private static IEnumerable<string> Strings(JsonNode? node, HashSet<JsonNode> exempt)
     {
@@ -361,6 +444,10 @@ public static class AgentToolGate
             case JsonObject entry:
                 foreach (KeyValuePair<string, JsonNode?> property in entry)
                 {
+                    // ‏**واسمُ المفتاح نصٌّ يعبر كما تعبر قيمته.** كان الفحص على القيم
+                    // وحدها، فكان ‎{"1092837465":"x"} يبلغ جسم المسوّدة سالماً.
+                    yield return property.Key;
+
                     foreach (string text in Strings(property.Value, exempt))
                     {
                         yield return text;

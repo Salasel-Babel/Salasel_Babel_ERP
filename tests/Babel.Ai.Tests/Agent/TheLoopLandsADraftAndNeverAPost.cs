@@ -49,7 +49,7 @@ public sealed class TheLoopLandsADraftAndNeverAPost
         branchId = branch,
         customerId = customer,
         issuedOn = "2026-03-01",
-        lines = new[] { new { itemGroup = "GOODS", quantity = "1", unitPrice = "1500", taxCode = "S15" } },
+        lines = new[] { new { description = new { ar = "بند", en = "line" }, discount = "0", itemGroup = "GOODS", quantity = "1", taxClassification = "standard", taxRate = "0.15", unitPrice = "1500" } },
         number = "INV-1",
     };
 

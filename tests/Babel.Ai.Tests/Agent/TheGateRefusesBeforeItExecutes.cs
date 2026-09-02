@@ -45,7 +45,7 @@ public sealed class TheGateRefusesBeforeItExecutes
         branchId,
         customerId,
         issuedOn = "2026-03-01",
-        lines = new[] { new { description = new { ar = "بند", en = "line" }, itemGroup = "GOODS", quantity = "1", unitPrice = "100", taxCode = "S15" } },
+        lines = new[] { new { description = new { ar = "بند", en = "line" }, discount = "0", itemGroup = "GOODS", quantity = "1", taxClassification = "standard", taxRate = "0.15", unitPrice = "100" } },
         number = "INV-1",
     };
 
@@ -238,12 +238,15 @@ public sealed class TheGateRefusesBeforeItExecutes
 
         AgentToolCall call = new("tu_1", "draftStockMovement", JsonSerializer.Serialize(new
         {
+            cost = "10",
+            direction = "IN",
+            itemGroup = "GOODS",
             itemId = item,
             locationId = item,
+            number = "MV-1",
+            occurredOn = "2026-03-01",
+            quantity = new { magnitude = "3", unit = "EA" },
             warehouseId = item,
-            movedOn = "2026-03-01",
-            quantity = "3",
-            reference = "MV-1",
         }));
 
         Result<AgentDispatch> gated = AgentToolGate.Authorise(
@@ -271,16 +274,38 @@ public sealed class TheGateRefusesBeforeItExecutes
         Assert.Equal("ai.agent.tool_arguments_malformed", Assert.Single(gated.Errors).Code);
     }
 
-    /// <summary>وسجلٌّ خارج المفردة المغلقة يُرفض ولا يُبحَث في سجلٍّ غيره.</summary>
+    /// <summary>
+    /// وسجلٌّ خارج المفردة المغلقة يُرفض ولا يُبحَث في سجلٍّ غيره — <b>ويسقط عند
+    /// المخطّط المنشور قبل أن يبلغ حارس السجلّ</b>، لأن المفردة مكتوبةٌ في المخطّط
+    /// كذلك. والحارسان يقولان الشيء نفسه، ويُقاس اتّفاقُهما أدناه.
+    /// </summary>
     [Fact]
     public void سجلٌّ_خارج_المفردة_يُرفض()
     {
         Result<AgentDispatch> gated = AgentToolGate.Authorise(
             new AgentToolCall("tu_1", AgentProtocolTools.LookupEntity,
                 JsonSerializer.Serialize(new { kind = "bank_account", text = "الراجحي" })),
-            Caller(), State(), Catalogue, Handles);
+            Caller("draftSalesInvoice"), State(), Catalogue, Handles);
 
         Assert.True(gated.IsFailure);
-        Assert.Equal("ai.lookup.register_not_registered", Assert.Single(gated.Errors).Code);
+        Assert.Equal("ai.agent.argument_shape_mismatch", Assert.Single(gated.Errors).Code);
+    }
+
+    /// <summary>
+    /// <b>ومفردةُ السجلّات واحدةٌ في الموضعين</b>: ما يعلنه مخطّط <c>lookup_entity</c>
+    /// هو <c>RegisterKeys</c> نفسه. ولو انحرفا لصار أحد الحارسين يقبل ما يرفضه الآخر.
+    /// </summary>
+    [Fact]
+    public void مفردةُ_السجلّات_في_المخطّط_هي_مفردةُ_الكتالوج()
+    {
+        AgentTool lookup = Catalogue.Resolve(AgentProtocolTools.LookupEntity)!;
+
+        using JsonDocument schema = JsonDocument.Parse(lookup.InputSchemaJson);
+
+        IEnumerable<string> declared = schema.RootElement
+            .GetProperty("properties").GetProperty("kind").GetProperty("enum")
+            .EnumerateArray().Select(static value => value.GetString()!);
+
+        Assert.Equal(Catalogue.RegisterKeys.Order(StringComparer.Ordinal), declared.Order(StringComparer.Ordinal));
     }
 }

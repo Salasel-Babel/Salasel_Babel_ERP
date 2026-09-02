@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
@@ -96,6 +97,34 @@ public sealed class TheBoundaryIsCalibratedForProseNotForTokens
     }
 
     /// <summary>
+    /// جسمُ حركة مخزونٍ <b>على شكله المنشور</b> — وما عداه يسقط عند مطابقة المخطّط
+    /// قبل أن يبلغ فكَّ المِقبض، وهو الصواب.
+    /// </summary>
+    /// <param name="itemId">موضع المِقبض المفحوص.</param>
+    /// <param name="number">رقم الحركة — حقلٌ ليس موضع مِقبض.</param>
+    /// <param name="sound">مِقبضٌ سليم لموضعَي المخزن والموقع، كي يبقى المقيس واحداً.</param>
+    private static string StockMovement(string itemId, string number, string sound) =>
+        JsonSerializer.Serialize(new
+        {
+            cost = "10",
+            direction = "IN",
+            itemGroup = "GOODS",
+            itemId,
+            locationId = sound,
+            number,
+            occurredOn = "2026-03-01",
+            quantity = new { magnitude = "1", unit = "EA" },
+            warehouseId = sound,
+        });
+
+    /// <summary>مِقبضٌ سليم لهذه الجلسة.</summary>
+    private static string SoundHandle(SignedLookupHandles handles) => handles
+        .Issue(
+            LookupHandlePurpose.Entity, Tenant, Company, Session,
+            new Guid("a9e70000-0000-4000-8000-0000000000e1"), TimeSpan.FromMinutes(10))
+        .Value;
+
+    /// <summary>
     /// <b>وبناءً على القياس: موضع المِقبض مُستثنى من فحص الشكل داخل البوّابة</b> —
     /// وبفحصٍ أقوى لا أضعف. وهذا الإثبات يقيس الاستثناء على قيمةٍ <b>يستحيل</b> أن
     /// تُسَكّ صدفةً: مِقبضٌ يُصنع ثم تُبدَّل خاناتُه.
@@ -109,8 +138,10 @@ public sealed class TheBoundaryIsCalibratedForProseNotForTokens
         // قيمةٌ تحمل شكل «سلسلة رقمية طويلة» في موضع مِقبض: تسقط عند **التوقيع**،
         // ‏ورمزُ الرفض يقول ذلك — لا رمز الشكل.
         Result<AgentDispatch> gated = AgentToolGate.Authorise(
-            new AgentToolCall("tu_1", "draftStockMovement",
-                """{"itemId":"123456789012345678901234567890","movedOn":"2026-03-01","quantity":"1"}"""),
+            new AgentToolCall("tu_1", "draftStockMovement", StockMovement(
+                itemId: "123456789012345678901234567890",
+                number: "MV-1",
+                sound: SoundHandle(handles))),
             AgentHarness.Caller(Tenant, Company, Session, "draftStockMovement"),
             new AgentTurnState(4),
             AgentToolCatalogue.Embedded,
@@ -127,14 +158,17 @@ public sealed class TheBoundaryIsCalibratedForProseNotForTokens
     public void حقلٌ_ليس_موضع_مِقبضٍ_يبقى_تحت_فحص_الشكل()
     {
         MovableClock clock = new();
+        SignedLookupHandles handles = AgentHarness.Handles(clock);
 
         Result<AgentDispatch> gated = AgentToolGate.Authorise(
-            new AgentToolCall("tu_1", "draftStockMovement",
-                """{"reference":"123456789012345678901234567890","movedOn":"2026-03-01","quantity":"1"}"""),
+            new AgentToolCall("tu_1", "draftStockMovement", StockMovement(
+                itemId: SoundHandle(handles),
+                number: "123456789012345678901234567890",
+                sound: SoundHandle(handles))),
             AgentHarness.Caller(Tenant, Company, Session, "draftStockMovement"),
             new AgentTurnState(4),
             AgentToolCatalogue.Embedded,
-            AgentHarness.Handles(clock));
+            handles);
 
         Assert.True(gated.IsFailure);
         Assert.Contains(gated.Errors, static error => error.Code.StartsWith(

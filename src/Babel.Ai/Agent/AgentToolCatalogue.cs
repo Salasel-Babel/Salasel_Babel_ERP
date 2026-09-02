@@ -35,6 +35,35 @@ public sealed class AgentToolCatalogue
         "/posting", "/activation", "/approval", "/termination", "/revocation", "/reversal", "/lapse",
     ];
 
+    /// <summary>
+    /// <b>هل يحمل هذا المسار مقطعاً لا يُعكَس؟</b> — <b>بالمقاطع لا بالنهاية</b>.
+    /// <para>
+    /// كان الفحص <c>EndsWith</c>، فكان مسارٌ مثل <c>…/sales-invoices/posting/confirm</c>
+    /// يمرّ من المولّد ومن التركيب ومن البوّابة معاً. والعقد اليوم <b>لا يحمل</b> مقطعاً
+    /// غير طرفيّ من هذه الستّة — مقيس — فالتغيير <b>لا يُغيّر كتالوج اليوم</b>؛ لكنه
+    /// يُعيد للجملة المكتوبة معناها: «يُقرأ من المسار، فعمليةٌ تُسمّى غداً بأي اسم
+    /// ومسارُها يمرّ بـ‎posting تبقى ممنوعة».
+    /// </para>
+    /// </summary>
+    /// <param name="path">المسار المنشور.</param>
+    public static string? IrreversibleSegmentIn(string path)
+    {
+        ArgumentNullException.ThrowIfNull(path);
+
+        foreach (string segment in path.Split('/', StringSplitOptions.RemoveEmptyEntries))
+        {
+            foreach (string irreversible in IrreversibleSegments)
+            {
+                if (string.Equals(segment, irreversible[1..], StringComparison.Ordinal))
+                {
+                    return irreversible;
+                }
+            }
+        }
+
+        return null;
+    }
+
     private readonly Dictionary<string, AgentTool> _byName;
 
     private AgentToolCatalogue(
@@ -59,6 +88,32 @@ public sealed class AgentToolCatalogue
 
     /// <summary>الأدوات، مرتّبةً ترتيباً <b>ثابتاً</b> (‏<see cref="StringComparer.Ordinal"/>).</summary>
     public IReadOnlyList<AgentTool> Tools { get; }
+
+    /// <summary>
+    /// <b>هل يستطيع هذا المتكلّم أن يستهلك مِقبضاً أصلاً؟</b> — أي هل يبلغ استحقاقُه
+    /// عمليةً واحدة تعلن حقلاً شكلُه معرّف.
+    /// <para>
+    /// وهو شرط أدوات البروتوكول: المِقبض سلطةُ <b>تسمية</b> لا سلطةُ فعل، ولا معنى
+    /// لسكّه لمن لا يملك ما يسكبه فيه. وسكُّه مع ذلك ليس فعلاً بلا أثر: جوابُه «نعم/لا»
+    /// على وجود اسمٍ في سجلّ المنشأة، وهو التسريب الذي بُني هذا المسار كلّه لمنعه.
+    /// </para>
+    /// <para>
+    /// <b>وما يبقى مُعلَناً لا مُغطّى:</b> هذا يمنع <b>من لا يستهلك شيئاً</b> ولا يقصر
+    /// كلَّ متكلّمٍ على السجلّات التي تخصّ وحداته. الأدقّ يحتاج خريطة «سجلّ ⇐ عملية»،
+    /// والعقد المنشور لا يحملها اليوم: من خمسة وعشرين اسمَ حقلٍ معرّف في الكتالوج
+    /// ستّةٌ فقط تقابل سجلّاً. وهو مذكورٌ في «ما ينقض هذا القرار».
+    /// </para>
+    /// </summary>
+    /// <param name="permittedOperationIds">العمليات المسموح بها لهذا المتكلّم.</param>
+    public bool EntitlesAnyHandleConsumer(IReadOnlySet<string> permittedOperationIds)
+    {
+        ArgumentNullException.ThrowIfNull(permittedOperationIds);
+
+        return Tools.Any(tool =>
+            tool.OperationId is not null
+            && tool.IdFields.Count > 0
+            && permittedOperationIds.Contains(tool.OperationId));
+    }
 
     /// <summary>يحلّ اسماً إلى أداة، أو <c>null</c> — والكتالوج مغلق فلا مقاربة بأقرب شبيه.</summary>
     /// <param name="name">الاسم كما ورد من النموذج.</param>
@@ -128,12 +183,11 @@ public sealed class AgentToolCatalogue
                     continue;
                 }
 
-                string? irreversible = IrreversibleSegments.FirstOrDefault(
-                    segment => path.EndsWith(segment, StringComparison.Ordinal));
+                string? irreversible = IrreversibleSegmentIn(path);
 
                 if (irreversible is not null)
                 {
-                    refused.Add(operationId + " — مسارُه ينتهي بـ" + irreversible);
+                    refused.Add(operationId + " — مسارُه يمرّ بـ" + irreversible);
                     continue;
                 }
             }

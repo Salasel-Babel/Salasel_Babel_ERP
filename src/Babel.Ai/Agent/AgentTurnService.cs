@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Runtime.CompilerServices;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using Babel.Ai.Lookup;
 using Babel.SharedKernel;
@@ -237,8 +238,7 @@ public sealed class AgentTurnService
             {
                 yield return AgentTurnEvent.ToolStarted(call.Name);
 
-                Result<AgentDispatch> authorised =
-                    AgentToolGate.Authorise(call, caller, state, _catalogue, _handles);
+                Result<AgentDispatch> authorised = Authorise(call, caller, state);
 
                 if (authorised.IsFailure)
                 {
@@ -353,6 +353,33 @@ public sealed class AgentTurnService
             "{\"state\":\"draft\"}",
             ToolUseId: dispatch.CallId,
             ToolName: dispatch.Tool.Name), AgentTurnEvent.DraftLanded(landed.Value.ScreenRoute));
+    }
+
+    /// <summary>
+    /// <b>البوّابة، وشبكةٌ تحتها تحوّل أي عطلٍ برمجي إلى رفضٍ يُقرأ.</b>
+    /// <para>
+    /// قاعدة هذه الوحدة مكتوبة: «الرفض يعود إلى النموذج <c>tool_result</c> بنصّه العربي
+    /// ولا يُرمى استثناءً يقتل الدور». وكانت جملةً بلا شبكة: وسائطٌ بمفتاحٍ مكرَّر كانت
+    /// تُخرج <c>ArgumentException</c> من <c>Authorise</c> إلى <c>IAsyncEnumerable</c>
+    /// فتقتل الدور كلّه — مقيس. والسبب المباشر أُغلق في البوّابة نفسها، <b>وهذه الشبكة
+    /// تُغلق الصنف</b>: نداءٌ يكتبه نموذجٌ احتماليّ لا يجوز أن يُسقط الحلقة بأي شكل.
+    /// </para>
+    /// <para>
+    /// ولا تلتقط ما ليس من هذا الصنف: <see cref="OperationCanceledException"/> إلغاءٌ
+    /// مطلوب، و<see cref="OutOfMemoryException"/> ليست حالة تشغيلٍ تُصحَّح برسالة.
+    /// </para>
+    /// </summary>
+    private Result<AgentDispatch> Authorise(AgentToolCall call, AgentCaller caller, AgentTurnState state)
+    {
+        try
+        {
+            return AgentToolGate.Authorise(call, caller, state, _catalogue, _handles);
+        }
+        catch (Exception fault) when (fault is ArgumentException or FormatException
+            or InvalidOperationException or JsonException or NotSupportedException)
+        {
+            return Result<AgentDispatch>.Failure(AgentErrors.ToolArgumentsNotAnObject(call.Name));
+        }
     }
 
     private static AgentTranscriptEntry Refusal(AgentToolCall call, IReadOnlyList<Error> errors) =>

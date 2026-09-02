@@ -6,11 +6,21 @@ namespace Babel.Ai.Lookup;
 /// <summary>أخطاء البحث المحلّي ومقابضه. الرمز نقطة الاعتماد، والعربية هي السجلّ.</summary>
 public static class LookupErrors
 {
-    /// <summary>مِقبض غير موقَّع، أو مبتور، أو من نسخةٍ أخرى.</summary>
+    /// <summary>
+    /// مِقبض غير موثَّق، أو مبتور، أو مكتوبٌ بكتابةٍ أخرى، أو من نسخةٍ أخرى.
+    /// <b>والرمز واحد للأربعة عمداً</b>: رسالةٌ تفرّق بينها تُخبر من يجرّب أين أصاب.
+    /// </summary>
     public static Error HandleNotSigned => new(
         "ai.lookup.handle_not_signed",
-        "المِقبض غير موقَّع أو تالف — ولا يُقرأ منه حقلٌ واحد قبل التحقّق من توقيعه.",
-        "the handle is unsigned or malformed; no field is read before the signature verifies.");
+        "المِقبض غير موثَّق أو تالف — ولا يُقرأ منه حقلٌ واحد قبل أن تصحّ علامته.",
+        "the handle is unauthenticated or malformed; no field is read before its tag verifies.");
+
+    /// <summary>غرضٌ خارج المفردة المغلقة عند الإصدار — يُرفض ولا يُسكّ.</summary>
+    public static Error HandlePurposeUndefined => new(
+        "ai.lookup.handle_purpose_undefined",
+        "غرضُ المِقبض خارج المفردة المغلقة. وغرضٌ لا اسم له لا يُقارَن بشيءٍ عند الاسترداد، "
+        + "فيصير المِقبض صالحاً لكل باب.",
+        "the handle purpose is outside the closed vocabulary; an unnamed purpose compares to nothing on redemption.");
 
     /// <summary>انتهت مدّة المِقبض.</summary>
     public static Error HandleExpired => new(

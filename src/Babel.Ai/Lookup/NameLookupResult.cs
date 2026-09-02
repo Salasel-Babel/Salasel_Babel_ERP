@@ -104,7 +104,10 @@ public static class NameLookupWire
         _ => throw new ArgumentOutOfRangeException(nameof(outcome), outcome, "حالة بحثٍ خارج المفردات المغلقة."),
     };
 
-    /// <summary>المقابض base64url فلا محرف فيها يحتاج هرباً — ومع ذلك تُرفض ما ليس كذلك.</summary>
+    /// <summary>
+    /// المقابض base64url مجموعةً بـ<see cref="SignedLookupHandles.GroupSeparator"/>، فلا
+    /// محرف فيها يحتاج هرباً — ومع ذلك تُرفض ما ليس كذلك.
+    /// </summary>
     private static string Quoted(string? value)
     {
         if (value is null)
@@ -114,7 +117,9 @@ public static class NameLookupWire
 
         foreach (char character in value)
         {
-            if (!char.IsAsciiLetterOrDigit(character) && character is not ('-' or '_'))
+            if (!char.IsAsciiLetterOrDigit(character)
+                && character is not ('-' or '_')
+                && character != SignedLookupHandles.GroupSeparator)
             {
                 throw new ArgumentException(
                     "المِقبض يحمل محرفاً خارج base64url فلا يُكتب في الشكل السلكيّ. "

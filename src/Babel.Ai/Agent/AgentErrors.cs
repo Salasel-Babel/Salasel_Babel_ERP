@@ -127,6 +127,67 @@ public static class AgentErrors
         "لا مفتاح للنموذج في «" + variable + "». والمفتاح يُقرأ من البيئة عند النداء ولا يُكتب في إعدادٍ ولا في سجلّ.",
         "no model key in '" + variable + "'.");
 
+    /// <summary>حقلٌ لا يعلنه المخطّط المنشور — يُرفض ولا يُتجاهَل.</summary>
+    /// <param name="name">اسم الأداة.</param>
+    /// <param name="field">مسار الحقل.</param>
+    public static Error ArgumentNotInSchema(string name, string field) => new(
+        CodePrefix + "argument_not_in_schema",
+        "الحقل «" + field + "» ليس في مخطّط «" + name + "» المنشور. وحقلٌ لا يعلنه المخطّط "
+        + "يُرفض ولا يُتجاهَل: المُتجاهَل يعبر إلى جسم المسوّدة بلا أن يمرّ بفكّ مِقبض.",
+        "the field '" + field + "' is not in the published schema of '" + name + "'.");
+
+    /// <summary>حقلٌ إلزاميّ غائب — والمخطّط يسمّيه.</summary>
+    /// <param name="name">اسم الأداة.</param>
+    /// <param name="field">مسار الحقل.</param>
+    public static Error ArgumentRequiredMissing(string name, string field) => new(
+        CodePrefix + "argument_required_missing",
+        "الحقل «" + field + "» إلزاميّ في مخطّط «" + name + "» المنشور وهو غائب. "
+        + "ولا يُملأ بقيمةٍ افتراضية: قيمةٌ مخمَّنة في مستندٍ يُرحَّل أسوأ من حقلٍ فارغ.",
+        "the field '" + field + "' is required by the published schema of '" + name + "' and is absent.");
+
+    /// <summary>حقلٌ بشكلٍ غير الذي ينشره المخطّط — مصفوفةٌ كُتبت كائناً مثلاً.</summary>
+    /// <param name="name">اسم الأداة.</param>
+    /// <param name="field">مسار الحقل.</param>
+    /// <param name="declared">النوع كما ينشره المخطّط.</param>
+    public static Error ArgumentShapeMismatch(string name, string field, string declared) => new(
+        CodePrefix + "argument_shape_mismatch",
+        "الحقل «" + field + "» في «" + name + "» شكلُه غير ما ينشره العقد (" + declared + "). "
+        + "ومصفوفةٌ تُكتب كائناً تُخفي مواضع المقابض داخلها فلا تُفكّ ولا تُرفض.",
+        "the field '" + field + "' of '" + name + "' does not have its published shape (" + declared + ").");
+
+    /// <summary>جسمٌ أعمق ممّا ينشره أي عقد — يُرفض ولا يُمسح.</summary>
+    /// <param name="name">اسم الأداة.</param>
+    /// <param name="ceiling">سقف العمق.</param>
+    public static Error ArgumentTooDeep(string name, int ceiling) => new(
+        CodePrefix + "argument_too_deep",
+        "جسم «" + name + "» أعمق من " + ceiling.ToString(CultureInfo.InvariantCulture)
+        + " مستوى، وهو أعمق ممّا ينشره أي عقد في هذا المستودع.",
+        "the body of '" + name + "' nests deeper than " + ceiling.ToString(CultureInfo.InvariantCulture) + " levels.");
+
+    /// <summary>
+    /// مفتاحٌ مكرَّر في كائن JSON واحد. <b>يُرفض ولا يُقرأ أحدهما</b>: أيُّهما يفوز
+    /// اختيارُ مكتبةٍ لا اختيارُ عقد، وحارسٌ يقرأ الأوّل ومنفّذٌ يقرأ الآخر بابٌ كامل.
+    /// </summary>
+    /// <param name="name">اسم الأداة.</param>
+    /// <param name="key">المفتاح المكرَّر.</param>
+    public static Error ArgumentKeyDuplicated(string name, string key) => new(
+        CodePrefix + "argument_key_duplicated",
+        "المفتاح «" + key + "» مكرَّر في وسائط «" + name + "». ولا يُقرأ أحدهما: "
+        + "أيّهما يفوز اختيارُ مكتبةٍ لا اختيارُ عقد.",
+        "the key '" + key + "' is duplicated in the arguments of '" + name + "'.");
+
+    /// <summary>
+    /// أداةُ بروتوكولٍ ينادِيها متكلّمٌ لا يستطيع أن يستهلك مِقبضاً. <b>وسكّ مِقبضٍ لمن
+    /// لا يستهلكه هو التسريبُ نفسه</b>: نعم/لا على وجود اسمٍ في سجلّ منشأة.
+    /// </summary>
+    /// <param name="name">اسم الأداة.</param>
+    public static Error NotEntitledToProbe(string name) => new(
+        CodePrefix + "not_entitled_to_probe",
+        "الأداة «" + name + "» لا يبلغها هذا المستخدم: استحقاقُه لا يشمل عمليةً واحدة "
+        + "تستهلك مِقبضاً. والبحث في سجلّ الأسماء جوابُه «نعم أو لا» على وجود اسم — "
+        + "فمن لا يملك ما يملؤه بالمِقبض لا يسأل عنه.",
+        "'" + name + "' is out of reach: this caller is entitled to no operation that consumes a handle.");
+
     /// <summary>نصّ المستخدم رُفض عند الحدّ الخارج، فلم يُرسَل شيء.</summary>
     public static Error TurnRefusedAtTheBoundary => new(
         CodePrefix + "turn_refused_at_boundary",

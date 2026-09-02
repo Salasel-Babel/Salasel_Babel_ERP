@@ -165,8 +165,12 @@ for (const [routePath, item] of Object.entries(contract.paths)) {
     if (verb !== "draft") continue;
 
     if (forbiddenVerbs.includes(verb)) throw new Error("فعلٌ ممنوع مرّ التصفية: " + operationId);
-    for (const segment of irreversibleSegments) {
-      if (routePath.endsWith(segment)) throw new Error("مسارٌ لا يُعكَس مرّ التصفية: " + routePath);
+    /* **بالمقاطع لا بالنهاية** — وهي القراءة نفسها في AgentToolCatalogue.IrreversibleSegmentIn.
+       كان `endsWith` يُمرّر «…/sales-invoices/posting/confirm» من هنا ومن التركيب معاً. */
+    for (const part of routePath.split("/")) {
+      if (part && irreversibleSegments.includes("/" + part)) {
+        throw new Error("مسارٌ لا يُعكَس مرّ التصفية: " + routePath);
+      }
     }
 
     const body = operation.requestBody?.content?.["application/json"]?.schema;

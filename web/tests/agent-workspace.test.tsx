@@ -19,7 +19,7 @@ import path from "node:path";
 import type { ReactNode } from "react";
 import { LocaleProvider } from "../src/i18n/react";
 import { createI18n } from "../src/i18n/setup";
-import { EMPTY_THREAD, foldAgentEvents, withUtterance } from "../src/agent";
+import { AgentWorkspace, EMPTY_THREAD, foldAgentEvents, withUtterance } from "../src/agent";
 import type { AgentTurnEvent } from "../src/api/generated/types";
 
 afterEach(cleanup);
@@ -166,6 +166,9 @@ describe("مفاتيح الحالات معرَّفةٌ في اللغات الأ�
       "agent.workspace.blocked.gone",
       "agent.workspace.blocked.ceiling",
       "agent.workspace.blocked.offline",
+      "agent.workspace.blocked.noCompany",
+      "agent.workspace.blockedTitle.noCompany",
+      "agent.workspace.chooseCompany",
     ];
 
     for (const code of codes) {
@@ -177,6 +180,70 @@ describe("مفاتيح الحالات معرَّفةٌ في اللغات الأ�
         expect(text.length, code + " · " + key).toBeGreaterThan(1);
       }
     }
+  });
+});
+
+/* ═══════════════════════════════ ٣-ب · الزرّ الذي لا يصمت */
+
+describe("لوحٌ بلا شركة يقول سببه ولا يصمت", () => {
+  /* ‏`jsdom` لا يُنفّذ `Element.scrollTo` — وهي ثغرةُ بيئةٍ لا عطلُ منتج، فتُسدّ
+     هنا ولا يُغيَّر المكوّن لأجل بيئة اختبار. وهذا **أوّل موضعٍ يُرسَم فيه اللوح
+     فعلاً** في اختبارات الوحدة: ما كان اسمه «اللوح مرسوماً» يرسم بديلاً عنه. */
+  const noScroll = (): void => {};
+  if (typeof Element.prototype.scrollTo !== "function") {
+    Object.defineProperty(Element.prototype, "scrollTo", { value: noScroll, writable: true });
+  }
+
+  /* **العطل الذي يمنعه هذا الإثبات:** كان موضعُ التركيب مشروطاً بـ
+     `config.companyId !== ""`، فمن يفتح الموقع أوّل مرّة يضغط زرّ «الوكيل»
+     ولا يقع شيء — بلا رسالة ولا تعطيل ولا سبب. وضابطٌ يبدو صالحاً ولا يفعل
+     شيئاً أسوأ من ضابطٍ غائب، لأنه يُنكر وجودَ الميزة لا وجودَ الإذن. */
+  it("يُرسَم اللوح، ويُعلن أن لا شركةَ مفتوحة، ويعطي الخطوة التالية", () => {
+    render(
+      <Wrap>
+        <AgentWorkspace
+          transport={{ baseUrl: "", token: "", book: "MAIN", period: "" }}
+          companyId=""
+          onClose={() => {}}
+        />
+      </Wrap>,
+    );
+
+    const panel = screen.getByTestId("agent-workspace");
+    expect(panel.getAttribute("data-blocked")).toBe("noCompany");
+    expect(screen.getByTestId("agent-blocked-noCompany")).toBeTruthy();
+    expect(screen.getByTestId("agent-choose-company")).toBeTruthy();
+
+    /* حارس لا فراغ: لا يمرّ الإثبات لأن كل شيء غاب. */
+    expect(screen.queryByTestId("agent-reconnect")).toBeNull();
+  });
+
+  /* **وهذا يحرس الموضع الذي وقع فيه العطل فعلاً.** الإثباتان أعلاه يرسمان
+     المكوّن مباشرةً، فيبقيان خضراوين لو عاد الشرط إلى `App.tsx` — والعطل كان
+     هناك لا في المكوّن. فيُقرأ موضعُ التركيب نفسه: `agentOpen` وحدها تفتح
+     اللوح، ولا شرطَ شركةٍ معها. */
+  it("وموضعُ التركيب في الهيكل لا يشترط شركةً — وإلا عاد الزرّ صامتاً", () => {
+    const app = readFileSync(path.resolve(WEB, "src/app/App.tsx"), "utf8");
+    const mount = /\{agentOpen[^}]*\?\s*\(/.exec(app);
+
+    expect(mount, "لم يُعثر على موضع تركيب اللوح في App.tsx").not.toBeNull();
+    expect(mount![0], "شرطُ شركةٍ عاد إلى موضع التركيب").not.toContain("companyId");
+    expect(app).toContain("<AgentWorkspace");
+  });
+
+  it("وبشركةٍ مفتوحة لا يُعلَن هذا الحاجز", () => {
+    render(
+      <Wrap>
+        <AgentWorkspace
+          transport={{ baseUrl: "", token: "", book: "MAIN", period: "" }}
+          companyId="d3305e1e-0000-4000-8000-000000000001"
+          onClose={() => {}}
+        />
+      </Wrap>,
+    );
+
+    expect(screen.getByTestId("agent-workspace").getAttribute("data-blocked")).not.toBe("noCompany");
+    expect(screen.queryByTestId("agent-blocked-noCompany")).toBeNull();
   });
 });
 

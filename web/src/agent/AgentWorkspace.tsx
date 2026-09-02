@@ -59,7 +59,14 @@ type Blocked =
   /** بلغت المنشأة سقف إنفاقها — لا يُرفع بإعادة المحاولة. */
   | { readonly kind: "ceiling"; readonly refusals: readonly ApiError[] }
   /** انقطاعُ شبكةٍ أو عطلُ خادم — يُعاد الوصل بضغطة. */
-  | { readonly kind: "offline"; readonly detail: string };
+  | { readonly kind: "offline"; readonly detail: string }
+  /**
+   * لا شركةَ مفتوحة بعد — والوكيل يعمل **داخل شركة** لا خارجها.
+   * <p>وهذا ليس عطلاً بل ترتيبُ خطوات؛ وإعلانُه هنا مقصود: كان اللوح لا يُرسَم
+   * إطلاقاً في هذه الحال، فيضغط المستخدم الزرّ ولا يقع شيء — **بلا رسالة ولا
+   * تعطيل ولا سبب**. وضابطٌ يبدو صالحاً ولا يفعل شيئاً أسوأ من ضابطٍ غائب.</p>
+   */
+  | { readonly kind: "noCompany" };
 
 /** خصائص اللوح. */
 export interface AgentWorkspaceProps {
@@ -86,7 +93,10 @@ export function AgentWorkspace(props: AgentWorkspaceProps): ReactNode {
   const [session, setSession] = useState<AgentSession | null>(null);
   const [thread, setThread] = useState<AgentThread>(EMPTY_THREAD);
   const [spend, setSpend] = useState<AgentSpend | null>(null);
-  const [blocked, setBlocked] = useState<Blocked>({ kind: "none" });
+  /* الحاجزُ يُشتقّ من الشركة عند التركيب: لوحٌ بلا شركةٍ يُعلن سببه ولا يفتح جلسة. */
+  const [blocked, setBlocked] = useState<Blocked>(() =>
+    props.companyId === "" ? { kind: "noCompany" } : { kind: "none" },
+  );
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [attempt, setAttempt] = useState(0);
@@ -318,6 +328,7 @@ export function AgentWorkspace(props: AgentWorkspaceProps): ReactNode {
       {blocked.kind === "none" ? null : (
         <BlockedNotice
           blocked={blocked}
+          onOpenScreen={props.onOpenScreen}
           onRetry={() => {
             cursor.current = 0;
             setThread(EMPTY_THREAD);
@@ -559,6 +570,7 @@ function Line(props: {
 function BlockedNotice(props: {
   readonly blocked: Exclude<Blocked, { kind: "none" }>;
   readonly onRetry: () => void;
+  readonly onOpenScreen?: (route: string) => void;
 }): ReactNode {
   const { t } = useT();
   const { blocked } = props;
@@ -574,7 +586,15 @@ function BlockedNotice(props: {
     <div className="agw__blocked" role="alert" data-testid={"agent-blocked-" + blocked.kind}>
       <p className="agw__blockedhd">{t("agent.workspace.blockedTitle." + blocked.kind)}</p>
       <p>{body}</p>
-      {blocked.kind === "disabled" || blocked.kind === "ceiling" ? (
+      {blocked.kind === "noCompany" ? (
+        <Button
+          label={t("agent.workspace.chooseCompany")}
+          kind="primary"
+          size="sm"
+          onClick={() => props.onOpenScreen?.("/sign-in")}
+          testId="agent-choose-company"
+        />
+      ) : blocked.kind === "disabled" || blocked.kind === "ceiling" ? (
         <p className="muted">{t("agent.workspace.blockedNoRetry")}</p>
       ) : (
         <Button

@@ -80,8 +80,15 @@ export type VoiceAuthorisation =
 /** أقصى طول تفريغ يُقبل — نفس حدّ الخادم. */
 export const TRANSCRIPT_LIMIT = 600;
 
-/** أقصى عدد كلماتٍ في رمزٍ منطوق. */
-const CODE_WORD_LIMIT = 4;
+/**
+ * أقصى عدد كلماتٍ في اسمٍ منطوق — **مشتقٌّ من ملفّ المتجهات لا مختار**.
+ * يقيسه اختبارٌ يعيد حسابه من `voice-intents.v1.json` ويحمرّ إن خالف. فالرقم
+ * **بيانات مملوكة** لا عدداً سحرياً: يتحرّك حين يُضاف متجهٌ يحتاجه، وذلك فرقٌ يُراجَع.
+ */
+export const NAME_WORD_LIMIT = 3;
+
+/** أقصى عدد كلماتٍ في رمزٍ منطوق — مشتقٌّ من المتجهات كذلك. */
+export const CODE_WORD_LIMIT = 2;
 
 /** ما يُقال بعد الملخّص لكل عمليةٍ تُغيّر الحال — نفس نصّ الخادم حرفاً. */
 export const CONFIRM_CALL_AR = "قل «تأكيد» أو اضغط زرّ التأكيد.";
@@ -159,6 +166,67 @@ export function unitCodeOf(word: string): string | null {
 /** رمز وحدةٍ من كلمتين — «متر مكعب» تبدأ بـ«متر»، وأخذُ الأولى وحدها يخسر مرتبتين. */
 function unitCodeOfPair(first: string, second: string): string | null {
   return UNIT_LEXICON.get(fold(first ?? "") + " " + fold(second ?? "")) ?? null;
+}
+
+/* ── حكمٌ على المقطع: يُقبل كاملاً أو يُرفض باسمه — ولا يُبتَر ─────────────
+   **القاعدة**: مقطعُ نصٍّ أو رمزٍ لا يُسلَّم إلى مستند إلا إذا استطاع القارئ أن
+   **يبرّره كلَّه**. وما لا يُبرَّر **يُرفض برمزٍ مُسمّى، ولا يُقصّ إلى الجزء الذي
+   يعجبه**. وبترُ «شركة المسار الامثل وانشئ لها حسابا» إلى «شركة المسار» يُنتج
+   **عميلاً خاطئاً معقولاً** — وهو بالضبط الضرر الذي وُجد هذا المستودع ليمنعه.
+   والرفض يكلّف دورةً واحدة.
+
+   ولماذا **حكمان مغلقان** لا قائمةُ كلماتٍ فاصلة: قائمةُ الفواصل قائمةٌ **مفتوحة**
+   يهزمها أول بندٍ لم يخطر لكاتبها
+   (docs/evidence/traps.md#fakh-a-remedy-that-is-a-list-is-not-a-remedy).
+   وهذان الحكمان يقيسان **المقطع نفسه**: عددَ كلماته مقابل حدٍّ مشتقٍّ من المتجهات،
+   وشكلَ كلماته مقابل **المجموعة النحوية الكاملة** للضمائر المتّصلة. */
+
+/**
+ * الضمائر المتّصلة متعدّدة الحروف — **المجموعة النحوية كاملةً لا عيّنةً منها**.
+ * والاسم العلم لا يحمل ضميراً متّصلاً؛ والفعلُ بمفعوله يحمله. فهذا يلتقط أسرة
+ * «فعل + مفعول» كلَّها **بالشكل لا بالقائمة**: «سجلها» و«لقيتها» و«وحولها»
+ * و«راجعهم» — ومنها صيغٌ لا تُطابقها قائمةُ كلماتٍ كاملةٍ أبداً.
+ *
+ * **وما أُخرج عمداً**: الهاء المفردة (تصطدم بـ«وجه» و«فقه» وبالتاء المربوطة
+ * المطويّة)، والكاف المفردة، و«نا» (تصطدم بأسماء حقيقية: رنا، دينا، لينا، سنا).
+ */
+const OBJECT_CLITICS: readonly string[] = ["هما", "كما", "ها", "هم", "هن", "كم", "كن"];
+
+/** أقلّ جذعٍ يبقى بعد نزع الضمير. دونه تُصاب أسماءٌ حقيقية: «مها» و«سها» و«سهم». */
+const CLITIC_STEM_FLOOR = 3;
+
+/** سوابق تسبق أداة التعريف: و ف ب ك ل. */
+const PROCLITICS = "وفبكل";
+
+/** هل يحمل الرمز أداة التعريف؟ **والأداة لا تجتمع مع فعلٍ تامّ** — فهي تُبرّئ الاسم. */
+function carriesDefiniteArticle(token: string): boolean {
+  const article = (text: string): boolean => text.startsWith("ال") || text.startsWith("لل");
+  if (article(token)) return true;
+  return token.length > 3 && PROCLITICS.includes(token.charAt(0)) && article(token.slice(1));
+}
+
+/** هل تحمل الكلمة ضميراً متّصلاً مفعولاً؟ يُقاس على **المجرَّد الأمين** لا المطويّ. */
+function bearsObjectClitic(word: string): boolean {
+  const token = strip(word ?? "");
+  if (carriesDefiniteArticle(token)) return false;
+  return OBJECT_CLITICS.some(
+    (clitic) => token.length - clitic.length >= CLITIC_STEM_FLOOR && token.endsWith(clitic)
+  );
+}
+
+/** حكمُ المقطع: مقبولٌ، أو مرفوضٌ بسببٍ مُسمّى. */
+export type SpanVerdict = "admitted" | "tooManyWords" | "predicationTail";
+
+/**
+ * يحكم على مقطعٍ أنتجه القارئ. **لا يُقطّع ولا يُزيح حدّاً**: المقطع كما هو،
+ * والحكم عليه كاملاً.
+ * @param parts كلمات المقطع.
+ * @param limit أقصى عدد كلماتٍ مسموح — مشتقٌّ من المتجهات.
+ */
+export function adjudicateSpan(parts: readonly string[], limit: number): SpanVerdict {
+  if (parts.length > limit) return "tooManyWords";
+  if (parts.length >= 2 && parts.some((word) => bearsObjectClitic(word))) return "predicationTail";
+  return "admitted";
 }
 
 /* ── المطابقة ───────────────────────────────────────────────────────────── */
@@ -336,26 +404,54 @@ function readChoice(slot: VoiceSlot, tokens: readonly string[]): SpokenSlotValue
   return null;
 }
 
-function readCode(slot: VoiceSlot, tokens: readonly string[], boundaries: Set<string>): SpokenSlotValue | null {
+/**
+ * رمزٌ أو رقمُ مستندٍ أو موقعٍ في رفّ. **ولا بترَ عند الحدّ**: المشي يبلغ الحدّ
+ * الطبيعي، ثم يُحكَم على المقطع كلِّه — فبترُ رمزٍ إلى أوّل كلمتين كان يُنتج **رمزاً
+ * صحيح الشكل لمستندٍ آخر**، وهو الصورة نفسها من الفساد الصامت.
+ */
+function readCode(
+  slot: VoiceSlot,
+  tokens: readonly string[],
+  boundaries: Set<string>,
+  faults: string[]
+): SpokenSlotValue | null {
   for (const start of cuePositions(slot, tokens)) {
     let at = start;
     while (at < tokens.length && CONNECTORS.has(fold(tokens[at] ?? ""))) at++;
 
     const parts: string[] = [];
-    for (let index = at; index < tokens.length && parts.length < CODE_WORD_LIMIT; index++) {
+    for (let index = at; index < tokens.length; index++) {
       const word = tokens[index] ?? "";
       if (boundaries.has(fold(word)) || unitCodeOf(word)) break;
       parts.push(word);
     }
-    if (parts.length > 0) {
-      const text = parts.join(" ");
-      return { name: slot.name, text, heard: text, provenance: "spoken" };
+    if (parts.length === 0) continue;
+
+    if (adjudicateSpan(parts, CODE_WORD_LIMIT) !== "admitted") {
+      // **والرفض يُلزِم** — نظيرُ الخادم حرفاً. تخزينُ الرفض والمضيّ إلى الدليل
+      // التالي كان يُعيد **طرفاً آخر** بلا عطل: انظر
+      // SpokenCommandReader.ReadText و«فخ · الرفض المخزَّن يُستبدَل بطرفٍ آخر».
+      faults.push("ai.voice.name_not_bounded");
+      return null;
     }
+
+    const text = parts.join(" ");
+    return { name: slot.name, text, heard: text, provenance: "spoken" };
   }
+
   return null;
 }
 
-function readText(slot: VoiceSlot, tokens: readonly string[], boundaries: Set<string>): SpokenSlotValue | null {
+/**
+ * نصٌّ حرّ: ما بين الدليل وأول حدّ. **ثم يُحكَم على المقطع كلِّه**: ما لا يُبرَّر
+ * يُرفض باسمه وتبقى الشريحة فارغة، ولا يُقصّ إلى الجزء الذي يعجب القارئ.
+ */
+function readText(
+  slot: VoiceSlot,
+  tokens: readonly string[],
+  boundaries: Set<string>,
+  faults: string[]
+): SpokenSlotValue | null {
   for (const at of cuePositions(slot, tokens)) {
     const parts: string[] = [];
     for (let index = at; index < tokens.length; index++) {
@@ -363,15 +459,28 @@ function readText(slot: VoiceSlot, tokens: readonly string[], boundaries: Set<st
       if (boundaries.has(fold(word)) || unitCodeOf(word) || isNumberish(word)) break;
       parts.push(word);
     }
-    if (parts.length > 0) {
-      const text = parts.join(" ");
-      return { name: slot.name, text, heard: text, provenance: "spoken" };
+    if (parts.length === 0) continue;
+
+    if (adjudicateSpan(parts, NAME_WORD_LIMIT) !== "admitted") {
+      // **والرفض يُلزِم** — نظيرُ الخادم حرفاً. تخزينُ الرفض والمضيّ إلى الدليل
+      // التالي كان يُعيد **طرفاً آخر** بلا عطل: انظر
+      // SpokenCommandReader.ReadText و«فخ · الرفض المخزَّن يُستبدَل بطرفٍ آخر».
+      faults.push("ai.voice.name_not_bounded");
+      return null;
     }
+
+    const text = parts.join(" ");
+    return { name: slot.name, text, heard: text, provenance: "spoken" };
   }
+
   return null;
 }
 
-function readCompany(tokens: readonly string[]): string | null {
+/**
+ * اسم شركةٍ نُطق داخل الأمر — **ويخضع للحكم نفسه**. ومشيٌ بلا سقف كان يضع كلاماً
+ * كاملاً داخل رسالة «الشركة المنطوقة غير المفتوحة»، فتُقرأ الرسالة ولا تُفهَم.
+ */
+function readCompany(tokens: readonly string[], faults: string[]): string | null {
   for (const cue of COMPANY_CUES) {
     const parts = words(cue);
     for (let index = 0; index + parts.length <= tokens.length; index++) {
@@ -390,9 +499,18 @@ function readCompany(tokens: readonly string[]): string | null {
         if (STOP_WORDS.has(fold(word)) || isNumberish(word)) break;
         name.push(word);
       }
-      if (name.length > 0) return name.join(" ");
+      if (name.length === 0) continue;
+
+      if (adjudicateSpan(name, NAME_WORD_LIMIT) !== "admitted") {
+        // والرفض يُلزِم هنا كذلك — للسبب نفسه.
+        faults.push("ai.voice.name_not_bounded");
+        return null;
+      }
+
+      return name.join(" ");
     }
   }
+
   return null;
 }
 
@@ -476,10 +594,10 @@ export function readCommand(transcript: string, options: VoiceReadingOptions = {
         value = readChoice(slot, tokens);
         break;
       case "Code":
-        value = readCode(slot, tokens, boundaries);
+        value = readCode(slot, tokens, boundaries, faults);
         break;
       default:
-        value = readText(slot, tokens, boundaries);
+        value = readText(slot, tokens, boundaries, faults);
         break;
     }
 
@@ -498,7 +616,7 @@ export function readCommand(transcript: string, options: VoiceReadingOptions = {
       slots,
       missingSlots,
       faults,
-      spokenCompany: readCompany(tokens),
+      spokenCompany: readCompany(tokens, faults),
       readbackAr,
       confirmationToken: confirmationToken(intent, slots),
     },

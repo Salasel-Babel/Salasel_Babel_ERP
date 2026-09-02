@@ -56,6 +56,12 @@ body{
   font-size:var(--font-size-body);
   line-height:var(--line-base);
   -webkit-font-smoothing:antialiased;
+  /* **هنا يصير الوعد بنيةً.** `font-variant-numeric` خاصّيةٌ موروثة، فتصريحٌ
+     واحد على الجسم يحكم كل عقدةٍ تحته — لا الأصناف التي خطرت لكاتب الورقة.
+     والصنف الذي يُضاف الشهر القادم يولد محكوماً بلا أن يذكره أحد. وما تحته
+     من تصريحات ليست تكراراً بلا فائدة: هي تُعيد التأكيد حيث قد يقطع الوراثة
+     `font:` مختصرٌ أو محتوى يُحقَن. (tokens.css §3 · الأرقام) */
+  font-variant-numeric:var(--font-numeric);
 }
 
 button,input,select,textarea{font:inherit;color:inherit}
@@ -86,7 +92,7 @@ h1,h2,.gal-hero h1,.page-title h1,.drawer-hd h2,.empty h3{
    ⚠ الترميز dir="ltr" على العنصر الحامل للرقم إلزامي، وإلا انقلبت
    الإشارة السالبة إلى يمين الرقم داخل فقرة عربية. راجع design/README.md §3. */
 .num{
-  font-variant-numeric:tabular-nums;
+  font-variant-numeric:var(--font-numeric);
   letter-spacing:var(--tracking-num);
   unicode-bidi:isolate;
 }
@@ -100,6 +106,9 @@ h1,h2,.gal-hero h1,.page-title h1,.drawer-hd h2,.empty h3{
 .bidi-plain{unicode-bidi:isolate;text-align:start}
 
 .visually-hidden{
+  /* خارج السلّم عمداً · off-scale by design: الـ1px هنا ليست خطوةَ مسافة بل
+     مستطيلُ القصّ الاصطلاحي — صندوقٌ بمساحة بكسلٍ واحد يبقى مقروءاً لقارئ
+     الشاشة. وقيمةٌ من السلّم تجعله مرئياً. */
   position:absolute;width:1px;height:1px;margin:-1px;padding:0;
   overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0;
 }
@@ -109,7 +118,7 @@ h1,h2,.gal-hero h1,.page-title h1,.drawer-hd h2,.empty h3{
 
 /* رابط تخطّي إلى المحتوى — أول عنصر في الصفحة */
 .skiplink{
-  position:absolute;inset-inline-start:var(--space-8);top:-60px;z-index:calc(var(--z-toast) + 1);
+  position:absolute;inset-inline-start:var(--space-8);top:calc(-1 * var(--space-64));z-index:calc(var(--z-toast) + 1);
   padding:var(--space-10) var(--space-16);border-radius:var(--radius-sm);
   background:var(--color-primary);color:var(--on-brand);font-weight:var(--font-weight-semibold);
   text-decoration:none;transition:top var(--motion-base) var(--ease);
@@ -189,7 +198,7 @@ h1,h2,.gal-hero h1,.page-title h1,.drawer-hd h2,.empty h3{
   color:var(--color-text-subtle);letter-spacing:.02em;
 }
 .navitem{
-  display:flex;align-items:center;gap:11px;width:100%;
+  display:flex;align-items:center;gap:var(--space-12);width:100%;
   padding:var(--space-8) var(--control-pad-x);margin-bottom:var(--space-2);
   border:0;border-radius:var(--radius-md);background:transparent;color:var(--color-text-muted);
   font-size:var(--font-size-control);font-weight:var(--font-weight-medium);
@@ -204,11 +213,11 @@ h1,h2,.gal-hero h1,.page-title h1,.drawer-hd h2,.empty h3{
 .navitem .caret{margin-inline-start:auto;transition:transform var(--motion-slow)}
 .navitem[aria-expanded="true"] .caret{transform:rotate(180deg)}
 
-.subnav{display:flex;flex-direction:column;gap:1px;padding:var(--space-4) 0 var(--space-6)}
+.subnav{display:flex;flex-direction:column;gap:var(--space-2);padding:var(--space-4) 0 var(--space-6)}
 .subnav[hidden]{display:none}
 .subitem{
   display:flex;align-items:center;gap:var(--space-8);
-  padding:7px var(--control-pad-x);margin-inline-start:var(--space-14);
+  padding:var(--space-8) var(--control-pad-x);margin-inline-start:var(--space-14);
   border:0;border-radius:var(--radius-sm);background:transparent;color:var(--color-text-muted);
   font-size:var(--font-size-sm);cursor:pointer;text-align:start;text-decoration:none;
   width:calc(100% - var(--space-14));
@@ -225,7 +234,7 @@ h1,h2,.gal-hero h1,.page-title h1,.drawer-hd h2,.empty h3{
 
 .main{
   flex:1;min-width:0;
-  padding:var(--space-18) var(--page-pad-x) 116px;
+  padding:var(--space-18) var(--page-pad-x) calc(var(--actionbar-h) + var(--space-48));
   display:flex;flex-direction:column;gap:var(--space-16);
 }
 .main.main--plain{padding-bottom:var(--space-48)}
@@ -258,7 +267,7 @@ h1,h2,.gal-hero h1,.page-title h1,.drawer-hd h2,.empty h3{
   }
   .sidenav[data-open="true"]{transform:translateX(0)}
   .navscrim{top:var(--topbar-h)}
-  .main{padding:var(--space-16) var(--page-pad-x-sm) 116px}
+  .main{padding:var(--space-16) var(--page-pad-x-sm) calc(var(--actionbar-h) + var(--space-48))}
   .actionbar{padding-inline-end:var(--page-pad-x-sm);padding-inline-start:var(--page-pad-x-sm)}
 }
 @media (min-width:861px){
@@ -321,7 +330,7 @@ h1,h2,.gal-hero h1,.page-title h1,.drawer-hd h2,.empty h3{
 
 /* ══════════════════════════════════════════════ 3 · الحقول والنماذج */
 
-.grid{display:grid;gap:var(--space-14) var(--space-16)}
+.grid{display:grid;column-gap:var(--space-16);row-gap:var(--space-14)}
 .fields-1{grid-template-columns:repeat(5,minmax(0,1fr))}
 .fields-2{grid-template-columns:minmax(0,3fr) minmax(0,1fr)}
 .fields-3{grid-template-columns:repeat(3,minmax(0,1fr))}
@@ -338,6 +347,62 @@ h1,h2,.gal-hero h1,.page-title h1,.drawer-hd h2,.empty h3{
 }
 .col-span-all{grid-column:1/-1}
 
+/* ══════════ الصفُّ يملك المسارات، لا الحقل ══════════════════════════════════
+   the row owns the tracks — the field only borrows them
+   ───────────────────────────────────────────────────────────────────────────
+   **العطل الذي أُصلح هنا.** كان `.field` صندوقاً عمودياً (flex) يحسب موضع
+   عنصر تحكّمه من **تسميته وحدها**: «أعلى الصندوق + ارتفاع التسمية + 6». فحقلٌ
+   التفّت تسميته سطرين ينزل عنصر تحكّمه وحده، وحقلٌ تحته وصفٌ من سطرين يرتفع
+   عنصر تحكّمه وحده في صفٍّ محاذاته `end`. **لا شيء في البنية يجعل الصفّ يتّفق**:
+   كل حقلٍ يقيس نفسه منفرداً. مقيسٌ على develop@ad2ff14 بمقياس
+   `scripts/align-audit.mjs`: 99.30px بين «Period share» و«Employment
+   identifier» في `/hr/end-of-service` عند en-1024، و42.78px في شريط مرشّحات
+   ميزان المراجعة — في اللغات الأربع وفي كل العروض — و31 صفّاً من 37 قاعُ حبرها
+   مسنَّن عند ar-1440.
+
+   **والإصلاح بنيويّ لا موضعيّ:** الوعاء — لا الحقل — هو من يملك المسارات
+   الثلاثة (تسمية · تحكّم · وصف)، والحقل يستعيرها بـ`grid-template-rows:subgrid`.
+   فارتفاع مسار التسمية يصير أطولَ تسميةٍ **في الصفّ**، ومسار التحكّم واحداً
+   للصفّ كلّه. تسميةٌ تلتفّ سطرين تُكبّر المسار للجميع ولا تُنزل عنصر تحكّمها
+   وحده؛ ووصفٌ من ثلاثة أسطر يُكبّر مسار الوصف للصفّ **ولا يُقصّ ولا يُخفى**،
+   وثمنه بياضٌ تحت الأوصاف القصيرة — تحت **أقلّ** الأسطر أهمية، لا فوقه.
+   والمسارات تُقاس **لكل صفٍّ على حدة** لا للنموذج كلّه: وصفٌ طويل في الصفّ
+   الأول لا يُنفخ الصفّ الثاني.
+
+   **والفجوة بين الصفوف تبقى 14px كما كانت:** الشبكة الأمّ فجوتُها
+   `--space-14`، والحقل — وهو شبكةٌ فرعية — **يُعلن فجوته الخاصّة** 6px،
+   وهي تُستعمل بين مساراته الثلاثة وحدها. مقيسٌ في Chromium: تسمية→تحكّم 6px،
+   تحكّم→وصف 6px، وصف→تسمية الصفّ التالي 14px.
+
+   **والارتداد مقصود:** متصفّحٌ بلا `subgrid` يبقى على سلوك اليوم بالضبط —
+   حقلٌ عموديٌّ مرن — لا أسوأ منه. (ADR-0067-the-row-owns-the-tracks) */
+
+/* ١ · كلُّ خليّةٍ في وعاء حقولٍ تشغل مسارات الصفّ الثلاثة. وهذا يسري حتى بلا
+   `subgrid`، فلا يتغيّر شيء عمّا كان: الخليّة كانت تتمدّد على ارتفاع الصفّ. */
+:is(.grid,.filterbar,.toolbar,.hr-line,.con-line) > *{grid-row:span 3}
+
+@supports (grid-template-rows:subgrid){
+  /* ٢ · الحقل يستعير مسارات الصفّ، ويُعلن فجوته الداخلية. */
+  :is(.grid,.filterbar,.toolbar,.hr-line,.con-line) > :is(.field,.rowctl):not(.field--inline){
+    display:grid;
+    grid-template-rows:subgrid;
+    row-gap:var(--space-6);
+  }
+  /* ٣ · وإسنادُ المسارات **بالدور لا بالترتيب**: حقلٌ بلا تسمية يبقى عنصر
+     تحكّمه على سطر التحكّم، لا يصعد إلى سطر التسمية. */
+  :is(.grid,.filterbar,.toolbar,.hr-line,.con-line) > :is(.field,.rowctl):not(.field--inline) > *{grid-row:2}
+  :is(.grid,.filterbar,.toolbar,.hr-line,.con-line) > .field:not(.field--inline) > label{grid-row:1}
+  :is(.grid,.filterbar,.toolbar,.hr-line,.con-line) > .field:not(.field--inline)
+    > :is(.field__desc,.hint,.field-error,.field-ok,.dateline){grid-row:3}
+}
+
+/* خليّةٌ ليست حقلاً وتقف مع ذلك على **سطر عناصر التحكّم**: مجموعةُ أزرارٍ في
+   شريط مرشّحات، أو زرُّ فعلٍ في شبكة حقول. ابنُها الواحد هو ما يُوضَع على
+   السطر — فتبقى المجموعة نفسها مرنةً تلتفّ كما كانت. */
+.rowctl{display:flex;flex-direction:column;justify-content:flex-end;min-width:0}
+
+/* الحقل **خارج** صفٍّ (في كومةٍ عمودية) يبقى صندوقاً مرناً — وهو أيضاً
+   ارتدادُ المتصفّح الذي لا يعرف `subgrid`. */
 .field{display:flex;flex-direction:column;gap:var(--space-6);min-width:0}
 .field > label{
   font-size:var(--font-size-label);font-weight:var(--font-weight-semibold);
@@ -356,6 +421,10 @@ h1,h2,.gal-hero h1,.page-title h1,.drawer-hd h2,.empty h3{
 }
 .req{color:var(--color-required);margin-inline-start:2px}
 .hint{font-size:var(--font-size-hint);color:var(--color-text-subtle)}
+/* خانةُ الوصف: تلميحٌ ورسالةُ رفضٍ معاً في **صندوقٍ واحد**، كي يبقى عدد
+   خانات الحقل ثلاثاً سواءٌ ظهرت رسالة الرفض أو لم تظهر. بلا هذا يصير
+   للحقل أربعة أبناء عند الرفض فتنزاح خاناته عن خانات جيرانه. */
+.field__desc{display:flex;flex-direction:column;gap:var(--space-4);min-width:0}
 
 .ctl{
   width:100%;min-height:var(--control-h);
@@ -386,7 +455,7 @@ select.ctl-sm{padding-inline-end:var(--space-8)}
    كل خيار يحمل lang وdir الخاصّين به فيُرسَم اسم اللغة بخطّها وباتجاهها،
    لا باتجاه الصفحة الحالية: «العربية» و«اردو» و«हिन्दी» في قائمة واحدة. */
 .localepick{display:inline-flex;align-items:center;gap:var(--space-6);min-width:0}
-.localepick select{font-variant-numeric:normal;max-width:12ch;text-overflow:ellipsis}
+.localepick select{font-variant-numeric:var(--font-numeric-off);max-width:12ch;text-overflow:ellipsis}
 
 /* ⚠ الشريط العلوي عند 360px: مبدّلا اللغة واللوحة يضيفان عرضاً حقيقياً،
    ولا مجال لإخفائهما — تبديل اللغة هو الميزة. فيُطوى ما هو أقلّ أهمية:
@@ -426,8 +495,8 @@ select.ctl-sm{padding-inline-end:var(--space-8)}
   display:grid;place-items:center;color:var(--color-text-subtle);pointer-events:none;
 }
 .ctl-wrap .adorn-start{inset-inline-end:auto;inset-inline-start:var(--space-10)}
-.ctl.has-start{padding-inline-start:34px}
-.ctl.has-end{padding-inline-end:34px}
+.ctl.has-start{padding-inline-start:var(--control-adorn-clear)}
+.ctl.has-end{padding-inline-end:var(--control-adorn-clear)}
 /* لاحقة نصّية (رمز العملة، النسبة المئوية) — تبقى ملتصقة بطرف الحقل */
 .ctl-wrap .suffix{
   position:absolute;inset-block:0;inset-inline-start:var(--space-10);
@@ -437,20 +506,20 @@ select.ctl-sm{padding-inline-end:var(--space-8)}
 }
 
 /* — حقل التاريخ: ميلادي مخزَّن، وعرض عربي طويل تحته — */
-.datefield .ctl{font-variant-numeric:tabular-nums}
+.datefield .ctl{font-variant-numeric:var(--font-numeric)}
 .datefield .dateline{
   display:flex;align-items:center;gap:var(--space-8);flex-wrap:wrap;
   font-size:var(--font-size-hint);color:var(--color-text-subtle);
 }
 .datefield .dateline .greg{color:var(--color-text-muted);font-weight:var(--font-weight-medium)}
 .datefield .dateline .hijri{
-  padding:1px var(--space-6);border-radius:var(--radius-xs);
+  padding:var(--space-2) var(--space-6);border-radius:var(--radius-xs);
   background:var(--color-surface-sunken);color:var(--color-text-muted);
 }
 
 /* — منتقي الحساب / قائمة قابلة للبحث — */
 .picker{position:relative}
-.picker .ctl{padding-inline-end:34px}
+.picker .ctl{padding-inline-end:var(--control-adorn-clear)}
 .picker-list{
   position:absolute;z-index:var(--z-menu);inset-inline:0;top:calc(100% + 4px);
   max-height:260px;overflow-y:auto;padding:var(--space-4);
@@ -469,7 +538,7 @@ select.ctl-sm{padding-inline-end:var(--space-8)}
 .picker-opt:hover,.picker-opt[aria-selected="true"]{background:var(--color-primary-soft);color:var(--brand-ink)}
 .picker-opt .code{
   flex:none;min-width:74px;direction:ltr;unicode-bidi:isolate;
-  font-variant-numeric:tabular-nums;font-weight:var(--font-weight-semibold);
+  font-variant-numeric:var(--font-numeric);font-weight:var(--font-weight-semibold);
   color:var(--color-text-subtle);
 }
 .picker-opt[aria-selected="true"] .code{color:var(--brand-ink)}
@@ -494,6 +563,8 @@ select.ctl-sm{padding-inline-end:var(--space-8)}
   transition:background var(--motion-base);
 }
 .switch .track::after{
+  /* خارج السلّم عمداً · off-scale by design: 3 = (22 − 16) ÷ 2 — توسيطُ قرصٍ
+     قياسه 16 داخل مسارٍ قياسه 22. قيمةٌ من السلّم تُخرجه عن مركزه. */
   content:"";position:absolute;top:3px;inset-inline-start:3px;
   width:16px;height:16px;border-radius:var(--radius-circle);background:var(--on-accent-fixed);
   transition:transform var(--motion-base);
@@ -519,7 +590,7 @@ select.ctl-sm{padding-inline-end:var(--space-8)}
    القاعدة الحاكمة لكل رقم مالي في هذا النظام:
      • dir="ltr" على العنصر الحامل للرقم  → الإشارة السالبة تبقى يسار الرقم
      • unicode-bidi:isolate               → لا يسحب ما حوله من نصّ عربي
-     • font-variant-numeric:tabular-nums  → الأعمدة تصطفّ عمودياً
+     • font-variant-numeric:var(--font-numeric)  → الأعمدة تصطفّ عمودياً
      • text-align:end داخل صندوق ltr = محاذاة إلى اليمين بصرياً = بداية السطر
        في تخطيط عربي. الخانة نفسها تبقى rtl و text-align:start.
      • المقياس ثابت: منزلتان دائماً في العرض، ولا تُحذف الأصفار.
@@ -528,7 +599,7 @@ select.ctl-sm{padding-inline-end:var(--space-8)}
 .amt{
   direction:ltr;unicode-bidi:isolate;
   display:inline-block;
-  font-variant-numeric:tabular-nums;
+  font-variant-numeric:var(--font-numeric);
   letter-spacing:var(--tracking-num);
   font-weight:var(--font-weight-semibold);
   color:var(--color-amount);
@@ -556,7 +627,10 @@ select.ctl-sm{padding-inline-end:var(--space-8)}
    في كل اللغات، وهو نفس المظهر المعتمد بالضبط في العربية. */
 .n{
   direction:ltr;unicode-bidi:isolate;text-align:end;
-  font-variant-numeric:tabular-nums;white-space:nowrap;
+  /* التتبّع جزءٌ من إيقاع الرقم لا زينة: كان على `.amt` و`.num` وحدهما،
+     فقاس العشرة أرقام 98.81 بكسل فيهما و97.42 في بقيّة الأصناف الرقمية —
+     1.39 بكسل فرقاً بين نصٍّ خام في خانةٍ رقمية ومبلغٍ في التي تجاورها. */
+  font-variant-numeric:var(--font-numeric);letter-spacing:var(--tracking-num);white-space:nowrap;
 }
 
 /* مُدخَل مبلغ — نفس مظهر .ctl مع تصحيح الاتجاه */
@@ -565,7 +639,7 @@ select.ctl-sm{padding-inline-end:var(--space-8)}
   /* end داخل صندوق ltr = اليمين في كل اللغات. القيمة الفيزيائية right كانت
      تعطي النتيجة نفسها هنا، لكنها تُغري بنسخها إلى صندوق غير ltr. */
   text-align:end;
-  font-variant-numeric:tabular-nums;
+  font-variant-numeric:var(--font-numeric);letter-spacing:var(--tracking-num);
   font-weight:var(--font-weight-semibold);
 }
 .amt-input::placeholder{font-weight:var(--font-weight-regular);color:var(--color-text-subtle)}
@@ -608,14 +682,18 @@ select.ctl-sm{padding-inline-end:var(--space-8)}
              color var(--motion-base),box-shadow var(--motion-base);
 }
 .btn:hover{border-color:var(--color-text-subtle);color:var(--color-text)}
-.btn:active{transform:translateY(1px)}
+/* `:active` لكل ما يُنقر — بما فيه هذا الزرّ — في `styles/touch.css` §٣. */
 .btn:disabled,.btn[aria-disabled="true"]{opacity:.45;cursor:not-allowed;box-shadow:none;transform:none}
 .btn:disabled:hover{border-color:var(--color-border-control);color:var(--color-text-muted)}
 .btn svg{flex:none}
 
 .btn-primary{
+  /* **ولا حشوةَ أفقيةً خاصّة.** كانت هنا `padding-inline:22px` بلا رمز ولا
+     سبب مكتوب، فكان الزرّ الأساسي **أعرض من جاره بثمانية بكسلات** لا يبرّرها
+     نصُّه — وصفٌّ من زرّين بحشوتين مختلفتين يُقرأ غير مقصود. والتمييز يحمله
+     اللون والظلّ، وهما يحملانه أصلاً. */
   background:var(--color-primary);border-color:var(--color-primary);color:var(--on-brand);
-  padding-inline:22px;box-shadow:var(--shadow-brand);
+  box-shadow:var(--shadow-brand);
 }
 .btn-primary:hover{background:var(--color-primary-hover);border-color:var(--color-primary-hover);color:var(--on-brand)}
 .btn-primary:disabled:hover{background:var(--color-primary);border-color:var(--color-primary)}
@@ -683,7 +761,7 @@ select.ctl-sm{padding-inline-end:var(--space-8)}
   /* الشارة تحمل أكثر من عنصر (اسم المنشأة ومقدّمة معرّفها)، فبلا فجوة يلتصق
      الاسم بالمعرّف ويُقرآن كلمة واحدة: «مؤسسة بابل للتجارة11111111». */
   display:inline-flex;align-items:center;gap:var(--space-6);
-  padding:7px var(--space-12);border-radius:var(--radius-pill);
+  padding:var(--space-8) var(--space-12);border-radius:var(--radius-pill);
   border:var(--border-width) solid var(--color-ai-line);
   background:var(--color-surface);color:var(--color-text-muted);
   font-size:var(--font-size-xs);font-weight:var(--font-weight-medium);cursor:pointer;
@@ -699,7 +777,7 @@ select.ctl-sm{padding-inline-end:var(--space-8)}
   overflow-x:auto;scrollbar-width:thin;
 }
 .tab{
-  border:0;background:transparent;padding:11px var(--space-14);
+  border:0;background:transparent;padding:var(--space-12) var(--space-14);
   border-bottom:var(--border-width-accent) solid transparent;
   color:var(--color-text-muted);font-size:var(--font-size-control);
   font-weight:var(--font-weight-semibold);cursor:pointer;white-space:nowrap;
@@ -709,7 +787,7 @@ select.ctl-sm{padding-inline-end:var(--space-8)}
 .tab .count{
   margin-inline-start:var(--space-6);padding:0 var(--space-6);border-radius:var(--radius-pill);
   background:var(--color-surface-sunken);color:var(--color-text-subtle);
-  font-size:var(--font-size-3xs);font-variant-numeric:tabular-nums;
+  font-size:var(--font-size-3xs);font-variant-numeric:var(--font-numeric);
 }
 .tabpanel{padding:var(--space-14) var(--space-12) var(--space-16)}
 .tabpanel[hidden]{display:none}
@@ -748,7 +826,7 @@ table.lines tbody tr:last-child td{border-bottom:0}
 
 table.lines thead th,table.data thead th{
   position:sticky;top:0;z-index:var(--z-table-head);
-  padding:11px var(--space-10);background:var(--color-surface-sunken);
+  padding:var(--space-12) var(--space-10);background:var(--color-surface-sunken);
   font-size:var(--font-size-2xs);font-weight:var(--font-weight-semibold);
   color:var(--color-text-muted);white-space:nowrap;text-align:center;
 }
@@ -760,7 +838,7 @@ table.lines tbody tr:hover td,table.data tbody tr:hover td{background:var(--colo
 table.data tbody td{padding:var(--space-8) var(--space-10);font-size:var(--font-size-sm)}
 table.data thead th.start,table.data tbody td.start{text-align:start}
 table.data tbody td.n,table.data thead th.n{
-  direction:ltr;unicode-bidi:isolate;text-align:end;font-variant-numeric:tabular-nums;
+  direction:ltr;unicode-bidi:isolate;text-align:end;font-variant-numeric:var(--font-numeric);
 }
 table.data tbody tr[aria-selected="true"] td{background:var(--color-primary-soft)}
 
@@ -768,7 +846,7 @@ table.data tbody tr[aria-selected="true"] td{background:var(--color-primary-soft
 th.sortable{padding:0!important}
 th.sortable > button{
   display:flex;align-items:center;justify-content:center;gap:var(--space-6);
-  width:100%;height:100%;padding:11px var(--space-10);
+  width:100%;height:100%;padding:var(--space-12) var(--space-10);
   border:0;background:transparent;color:inherit;font:inherit;font-weight:inherit;
   cursor:pointer;white-space:nowrap;
 }
@@ -789,7 +867,7 @@ table.data tfoot td,table.lines tfoot td{
   font-weight:var(--font-weight-bold);font-size:var(--font-size-sm);
 }
 table.data tfoot td.n,table.lines tfoot td.n{
-  direction:ltr;unicode-bidi:isolate;text-align:end;font-variant-numeric:tabular-nums;
+  direction:ltr;unicode-bidi:isolate;text-align:end;font-variant-numeric:var(--font-numeric);
 }
 table.data tfoot tr.grand td{background:var(--color-surface-sunken);font-size:var(--font-size-base)}
 table.data tfoot td.d{color:var(--color-debit)}
@@ -811,21 +889,21 @@ tr.is-subtotal > td{
 }
 .acct-code{
   display:inline-block;direction:ltr;unicode-bidi:isolate;
-  font-variant-numeric:tabular-nums;font-weight:var(--font-weight-semibold);
+  font-variant-numeric:var(--font-numeric);letter-spacing:var(--tracking-num);font-weight:var(--font-weight-semibold);
   color:var(--color-text-subtle);margin-inline-end:var(--space-8);
 }
 tr.is-group .acct-code{color:var(--color-text-muted)}
 
 /* — خلية قابلة للتحرير داخل جدول سطور القيد — */
 .cell{
-  width:100%;min-height:var(--cell-h);padding:5px var(--space-8);
+  width:100%;min-height:var(--cell-h);padding:var(--space-4) var(--space-8);
   border:0;background:transparent;color:inherit;
 }
 .cell:focus{outline:0;background:var(--color-primary-soft);box-shadow:var(--ring-inset)}
-select.cell{appearance:none;cursor:pointer;padding-inline-end:22px}
+select.cell{appearance:none;cursor:pointer;padding-inline-end:var(--space-24)}
 .cell.amount{
   direction:ltr;unicode-bidi:isolate;text-align:end;
-  font-variant-numeric:tabular-nums;font-weight:var(--font-weight-semibold);
+  font-variant-numeric:var(--font-numeric);letter-spacing:var(--tracking-num);font-weight:var(--font-weight-semibold);
 }
 .cell.amount.debit:not(:placeholder-shown){color:var(--color-debit)}
 .cell.amount.credit:not(:placeholder-shown){color:var(--color-credit)}
@@ -834,8 +912,8 @@ select.cell{appearance:none;cursor:pointer;padding-inline-end:22px}
 
 /* قيمة محسوبة داخل الجدول (لا تُحرَّر) */
 .taxval{
-  display:block;padding:5px var(--space-10);
-  font-variant-numeric:tabular-nums;color:var(--color-text-muted);
+  display:block;padding:var(--space-4) var(--space-10);
+  font-variant-numeric:var(--font-numeric);letter-spacing:var(--tracking-num);color:var(--color-text-muted);
   font-weight:var(--font-weight-medium);
   direction:ltr;unicode-bidi:isolate;text-align:end;
 }
@@ -859,7 +937,7 @@ select.cell{appearance:none;cursor:pointer;padding-inline-end:22px}
 */
 .pill{
   display:inline-flex;align-items:center;gap:var(--space-6);
-  padding:3px var(--space-10);border-radius:var(--radius-pill);
+  padding:var(--space-4) var(--space-10);border-radius:var(--radius-pill);
   border:var(--border-width) solid transparent;
   font-size:var(--font-size-3xs);font-weight:var(--font-weight-semibold);
   white-space:nowrap;line-height:1.7;
@@ -880,7 +958,7 @@ select.cell{appearance:none;cursor:pointer;padding-inline-end:22px}
 .pill--debit{background:var(--color-debit-soft);border-color:color-mix(in srgb,var(--color-debit) 30%,transparent);color:var(--color-debit)}
 .pill--credit{background:var(--color-credit-soft);border-color:color-mix(in srgb,var(--color-credit) 30%,transparent);color:var(--color-credit)}
 .pill--info{background:var(--color-info-soft);border-color:color-mix(in srgb,var(--color-info) 30%,transparent);color:var(--brand-ink)}
-.pill-lg{font-size:var(--font-size-xs);padding:5px var(--space-12)}
+.pill-lg{font-size:var(--font-size-xs);padding:var(--space-6) var(--space-12)}
 
 /* ═══════════════════════════════════════ 9 · التنبيهات والتحقق الحيّ */
 
@@ -1013,8 +1091,9 @@ select.cell{appearance:none;cursor:pointer;padding-inline-end:22px}
 
 /* قائمة منسدلة */
 .menu{
-  position:absolute;top:34px;inset-inline-end:0;z-index:var(--z-menu);
-  min-width:150px;padding:5px;background:var(--color-surface);
+  /* تنفتح تحت زرِّها، فموضعها **ارتفاعُ الزرّ** لا رقمٌ يساويه صدفةً. */
+  position:absolute;top:var(--control-h-sm);inset-inline-end:0;z-index:var(--z-menu);
+  min-width:150px;padding:var(--space-4);background:var(--color-surface);
   border:var(--border-width) solid var(--color-border);border-radius:var(--radius-lg);
   box-shadow:var(--shadow-2);display:none;
 }
@@ -1027,7 +1106,7 @@ select.cell{appearance:none;cursor:pointer;padding-inline-end:22px}
 }
 .menu button:hover,.menu a:hover{background:var(--color-surface-sunken);color:var(--color-text)}
 .menu button.danger:hover{background:color-mix(in srgb,var(--color-danger) 12%,transparent);color:var(--color-danger)}
-.menu hr{margin:5px 0;border:0;border-top:var(--border-width) solid var(--color-border)}
+.menu hr{margin:var(--space-4) 0;border:0;border-top:var(--border-width) solid var(--color-border)}
 
 /* جدول مفاتيح/قيم داخل نافذة */
 .kv{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--space-12) var(--space-16);margin-bottom:var(--space-18)}
@@ -1044,7 +1123,7 @@ table.pv th{
   border-bottom:var(--border-width) solid var(--color-border);
 }
 table.pv th.n,table.pv td.n{
-  direction:ltr;unicode-bidi:isolate;text-align:end;font-variant-numeric:tabular-nums;
+  direction:ltr;unicode-bidi:isolate;text-align:end;font-variant-numeric:var(--font-numeric);
 }
 table.pv td{padding:var(--space-8) var(--space-10);border-bottom:var(--border-width) solid var(--color-border)}
 table.pv tfoot td{font-weight:var(--font-weight-bold);background:var(--color-surface-raised);border-bottom:0}
@@ -1057,7 +1136,7 @@ table.pv .c{color:var(--color-credit)}
   padding:var(--space-10) var(--space-12);
   font-size:var(--font-size-sm);color:var(--color-text-muted);
 }
-.pager .count{font-variant-numeric:tabular-nums}
+.pager .count{font-variant-numeric:var(--font-numeric)}
 .pager .count .n{direction:ltr;unicode-bidi:isolate;display:inline-block;font-weight:var(--font-weight-semibold)}
 .pager .pages{display:flex;align-items:center;gap:var(--space-4);margin-inline-start:auto}
 .pager .pagebtn{
@@ -1065,7 +1144,7 @@ table.pv .c{color:var(--color-credit)}
   border:var(--border-width) solid var(--color-border-control);border-radius:var(--radius-sm);
   background:var(--color-surface);color:var(--color-text-muted);
   font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);
-  font-variant-numeric:tabular-nums;cursor:pointer;
+  font-variant-numeric:var(--font-numeric);cursor:pointer;
   display:inline-grid;place-items:center;
   transition:border-color var(--motion-base),background var(--motion-base),color var(--motion-base);
 }
@@ -1161,19 +1240,19 @@ table.data .skel-row td{padding:var(--space-10)}
 }
 .stat .k{font-size:var(--font-size-2xs);font-weight:var(--font-weight-semibold);color:var(--color-text-subtle)}
 .stat .v{
-  margin-top:5px;font-size:var(--font-size-stat);font-weight:var(--font-weight-bold);
-  font-variant-numeric:tabular-nums;letter-spacing:var(--tracking-stat);
+  margin-top:var(--space-6);font-size:var(--font-size-stat);font-weight:var(--font-weight-bold);
+  font-variant-numeric:var(--font-numeric);letter-spacing:var(--tracking-stat);
   /* الصندوق ltr ليصحّ ترتيب الرقم، و text-align:end يُبقيه عند اليمين
      كما في النموذج المعتمد (اليمين = بداية السطر في العربية). */
   direction:ltr;unicode-bidi:isolate;text-align:end;
   overflow-x:auto;overflow-y:hidden;
 }
-.stat .s{margin-top:3px;font-size:var(--font-size-3xs);color:var(--color-text-subtle);line-height:var(--line-snug)}
+.stat .s{margin-top:var(--space-4);font-size:var(--font-size-3xs);color:var(--color-text-subtle);line-height:var(--line-snug)}
 .stat.v-debit .v{color:var(--color-debit)}
 .stat.v-credit .v{color:var(--color-credit)}
 .stat.v-tax .v{color:var(--color-text-muted)}
-.stat .s.ok{color:var(--color-success);font-weight:var(--font-weight-semibold);display:inline-flex;align-items:center;gap:5px}
-.stat .s.bad{color:var(--color-warning);font-weight:var(--font-weight-semibold);display:inline-flex;align-items:center;gap:5px}
+.stat .s.ok{color:var(--color-success);font-weight:var(--font-weight-semibold);display:inline-flex;align-items:center;gap:var(--space-6)}
+.stat .s.bad{color:var(--color-warning);font-weight:var(--font-weight-semibold);display:inline-flex;align-items:center;gap:var(--space-6)}
 .stat.v-diff.off .v{color:var(--color-unbalanced)}
 
 /* بطاقة حالة التوازن */
@@ -1194,19 +1273,23 @@ table.data .skel-row td{padding:var(--space-10)}
 .state[data-ok="false"] .k,.state[data-ok="false"] .v{color:var(--color-unbalanced)}
 
 /* شريط أدوات فوق جدول (بحث + مرشّحات + أزرار) */
+/* **ولا `align-items:flex-end` هنا بعد اليوم.** كانت محاذاةُ النهاية هي ما
+   يرفع عنصر تحكّمٍ فوق جاره بمقدار ارتفاع وصفه كاملاً — وهي أعلى قراءات
+   الانحراف كلّها. الشريط الآن وعاءُ حقولٍ يملك مساراته الثلاثة كالشبكة. */
 .toolbar{
-  display:flex;align-items:flex-end;gap:var(--space-12);flex-wrap:wrap;
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+  column-gap:var(--space-12);row-gap:var(--space-12);
   padding:var(--space-12) var(--space-16);
 }
-.toolbar .grow{flex:1 1 220px;min-width:0}
-.toolbar .end{margin-inline-start:auto;display:flex;gap:var(--space-8);flex-wrap:wrap;align-items:center}
+.toolbar .grow{min-width:0}
+.toolbar .end{justify-self:end;display:flex;gap:var(--space-8);flex-wrap:wrap;align-items:center}
 
 /* ═══════════════════════════════════════ 14 · الإشعارات العابرة */
 /* التوسيط بلا transform: inset-inline:0 + margin-inline:auto يعمل في الاتجاهين.
    الصيغة السابقة (inset-inline-start:50% + translateX(50%)) كانت صحيحة في RTL
    وحدها، وتخرج الإشعار خارج الشاشة في LTR. */
 .toasts{
-  position:fixed;bottom:82px;inset-inline:0;margin-inline:auto;
+  position:fixed;bottom:calc(var(--actionbar-h) + var(--space-14));inset-inline:0;margin-inline:auto;
   z-index:var(--z-toast);display:flex;flex-direction:column-reverse;
   gap:var(--space-8);align-items:center;pointer-events:none;
   width:max-content;max-width:min(92vw,520px);
@@ -1227,7 +1310,7 @@ table.data .skel-row td{padding:var(--space-10)}
 .toast--warning{background:var(--color-warning);color:var(--on-warning)}
 /* توست منفرد خارج المكدّس (سلوك النموذج المعتمد) */
 .toast.standalone{
-  position:fixed;bottom:82px;inset-inline:0;margin-inline:auto;width:max-content;
+  position:fixed;bottom:calc(var(--actionbar-h) + var(--space-14));inset-inline:0;margin-inline:auto;width:max-content;
   z-index:var(--z-toast);transform:translateY(14px);
 }
 .toast.standalone[data-show="true"]{transform:translateY(0)}
@@ -1255,5 +1338,5 @@ table.data .skel-row td{padding:var(--space-10)}
 .show-alt .alt-lbl,.show-alt .en-lbl,.show-en .en-lbl,.show-en .alt-lbl{display:inline-block}
 
 /* رأس جدول بصفّين لاصقين (ميزان المراجعة) — الصف الثاني يلتصق تحت الأول */
-table.grouped-head thead tr:first-child th{padding-block:7px;line-height:18px;height:32px;top:0}
+table.grouped-head thead tr:first-child th{padding-block:var(--space-8);line-height:18px;height:32px;top:0}
 table.grouped-head thead tr:nth-child(2) th{top:32px}

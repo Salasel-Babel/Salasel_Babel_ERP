@@ -48,5 +48,15 @@ export { canSpeak, hush, speak } from "./speak";
 export type { SpeakOutcome, SpeakRefusal } from "./speak";
 export { VoiceConsole } from "./VoiceConsole";
 export type { VoiceConsoleProps } from "./VoiceConsole";
-export { handoffOf, stashVoiceDraft, takeVoiceDraft, peekVoiceDraft, dropVoiceDraft, subscribeVoiceDraft } from "./handoff";
+export {
+  handoffOf,
+  stashVoiceDraft,
+  takeVoiceDraft,
+  peekVoiceDraft,
+  dropVoiceDraft,
+  subscribeVoiceDraft,
+  fieldsAwaitingResolution,
+  requiresResolution,
+  FREE_TEXT_SLOTS,
+} from "./handoff";
 export type { VoiceDraftHandoff, VoiceDraftField } from "./handoff";

@@ -85,10 +85,12 @@
 .con-lines{
   display:flex; flex-direction:column; gap:var(--space-10);
 }
+/* **كان `align-items:end`** — وهو نفس عطل `.hr-line`: صندوقُ الحقل يتساوى
+   قاعُه مع جيرانه، فيرتفع عنصر تحكّمه بارتفاع وصفه. الحقول هنا تستعير مسارات
+   الصفّ الثلاثة كما في كل وعاء حقول. */
 .con-line{
-  display:grid; gap:var(--space-8);
+  display:grid; column-gap:var(--space-8); row-gap:var(--space-8);
   grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));
-  align-items:end;
   padding:var(--space-12);
   border:var(--border-width) solid var(--edge-faint);
   border-radius:var(--radius-well);

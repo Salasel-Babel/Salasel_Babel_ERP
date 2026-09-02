@@ -77,10 +77,10 @@ export function TamperScene(): ReactNode {
                     </td>
                     <td className="demo-code">{line.roleCode}</td>
                     <td className="demo-code">{cc}</td>
-                    <td className="demo-debit">
+                    <td className="n demo-debit">
                       <Amount value={wire(debit)} />
                     </td>
-                    <td className="demo-credit">
+                    <td className="n demo-credit">
                       <Amount value={wire(credit)} />
                     </td>
                   </tr>

@@ -355,8 +355,10 @@ export function ProjectContractPicker(props: {
         </div>
       ) : null}
 
-      <div className="inline-group">
-        <Button label={t("contracting.common.refresh")} onClick={feed.reload} testId="picker-reload" />
+      <div className="rowctl">
+        <div className="inline-group">
+          <Button label={t("contracting.common.refresh")} onClick={feed.reload} testId="picker-reload" />
+        </div>
       </div>
     </div>
   );

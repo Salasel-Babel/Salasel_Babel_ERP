@@ -111,7 +111,7 @@
   background:currentColor;
 }
 .confidence__value{
-  font-variant-numeric:tabular-nums; font-size:var(--font-size-3xs);
+  font-variant-numeric:var(--font-numeric); font-size:var(--font-size-3xs);
   font-weight:var(--font-weight-bold); flex:none;
 }
 .confidence[data-band="high"]{ color:var(--color-success) }
@@ -155,7 +155,7 @@
 .inferred{
   border-block-end:var(--border-width-strong) dashed
     color-mix(in srgb, var(--color-ai) 66%, transparent);
-  padding-block-end:1px;
+  padding-block-end:var(--space-2);
 }
 .inferred-cell{ background:color-mix(in srgb, var(--color-ai) 9%, transparent) }
 

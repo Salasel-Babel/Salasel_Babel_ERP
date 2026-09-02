@@ -17,6 +17,13 @@ import { MOTIONS, PALETTE, PROVENANCES } from "../src/screens/design/catalogue";
 import { SCREENS, SECTIONS, sectionOf } from "../src/app/shell/sections";
 import { DesignScreen } from "../src/screens/design/DesignScreen";
 import { demoRows, DEMO_TOTAL_CREDIT, DEMO_TOTAL_DEBIT } from "../src/screens/design/data";
+/* حارس الأرقام الجدولية يقع في `scripts/numerals.mjs` لا هنا، للسبب نفسه الذي
+   وضع قياس التباين هناك: البوّابة تشغّله بلا `npm ci`، والاختبار يستهلكه فلا
+   يوجد منطقان يفترقان. */
+import {
+  scanRepository, scanCssText, scanCodeText, auditTokens, offTokenUses,
+  repositoryRoot, DECLARATION_FLOOR, OFF_TOKEN_USES, NUMERAL_PROPERTIES,
+} from "../scripts/numerals.mjs";
 
 /* الجذر من `process.cwd()` كما في `voice-number.test.ts` — وأنواع Node
    مقصورةٌ على `tests/node-shims.d.ts` عمداً، فلا يستدعي مكوّنٌ `fs`. */
@@ -252,5 +259,116 @@ describe("صفحة العرض /design", () => {
       expect(text, locale).not.toMatch(/app\.section\./);
       view.unmount();
     }
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   الأرقام الجدولية — الوعد يصير خاصّيةً تُفحَص، لا دعوى تُقال
+   ───────────────────────────────────────────────────────────────────────────
+   ملفّ اللغة يَعِد: «كل رقم في الواجهة يحمل tabular-nums بلا استثناء». وقِيس
+   أن الوعد كان دعوى: القيمة مكتوبةً حرفيةً في خمسين تصريحاً، فتبديلُ رمزٍ
+   وقت التشغيل حرّك صنفاً واحداً وترك سبعة.
+   ‏(traps.md#fakh-a-remedy-that-is-a-list-is-not-a-remedy)
+
+   ‏**والفحص هنا معكوسُ القطب.** لا قائمةَ أصنافٍ تحمل أرقاماً — تلك مجموعة
+   **مفتوحة** يكبرها كلُّ سباق. بل مجموعةُ **الخصائص** التي تحكم رسم الأرقام،
+   وهي **مغلقة** ولا تكبر: `font-variant-numeric` و`font-variant`
+   و`font-feature-settings`، ومعها المختصر `font` لأنه يُصفّرها بصمت. فما وُجد
+   بمسح أسماء الخصائص وقيمتُه ليست الرمز — **يسقط باسم ملفّه وسطره**.
+   ═══════════════════════════════════════════════════════════════════════════ */
+describe("الأرقام الجدولية", () => {
+  const scan = scanRepository(repositoryRoot());
+
+  it("لا تصريحَ يرسم رقماً إلا عبر الرمز — ولا استثناءَ يُكتب بقيمته", () => {
+    const lines = scan.violations.map(
+      (v) => `${v.file}:${v.line} · ${v.property}: ${v.value}  [${v.kind}]`
+    );
+    expect(lines, "مخالفات رسم الأرقام:\n" + lines.join("\n")).toEqual([]);
+  });
+
+  it("حارس اللافراغ: حذفُ القواعد لا يجعل الفحص يمرّ", () => {
+    expect(scan.declarations.length).toBeGreaterThanOrEqual(DECLARATION_FLOOR);
+  });
+
+  it("الرمزان معرَّفان في ملفّ رموز وبقيمتهما — وفي الشجرتين معاً", () => {
+    expect(auditTokens(scan.tokenDefinitions)).toEqual([]);
+    /* شجرة التطبيق وشجرة المعرض: المعرض هو ما يثق به الناس، فانحرافه انحراف. */
+    const trees = new Set(
+      scan.tokenDefinitions
+        .filter((d) => d.token === "--font-numeric")
+        .map((d) => d.file.split("/")[0])
+    );
+    expect([...trees].sort()).toEqual(["design", "web"]);
+  });
+
+  it("مواضع الخروج مثبَّتة بالتساوي — وكلُّ خروجٍ جديد يُقَرّ بالاسم", () => {
+    /* ‏**الثقب المُعلَن.** `--font-numeric-off` بابٌ شرعيّ (قائمة اللغات تعرض
+       أسماءً لا أعمدة)، وهو أيضاً الطريق الوحيد الباقي لإطفاء الأرقام الجدولية
+       على عمودٍ ماليّ بلا أن يحمرّ شيء. فيُثبَّت عدده **بالتساوي لا بحدٍّ
+       أعلى**: من يفتح باباً تاسعاً يُفشل البوّابة حتى يرفع الرقم عمداً. */
+    expect(offTokenUses(scan.declarations)).toBe(OFF_TOKEN_USES);
+  });
+
+  it("مجموعة الخصائص المفحوصة مغلقة ومكتوبة كاملةً — فلا تُقلَّم صامتةً", () => {
+    expect([...NUMERAL_PROPERTIES].sort()).toEqual(
+      ["font", "font-feature-settings", "font-variant", "font-variant-numeric"]
+    );
+  });
+
+  /* ── حراسة الحارس ────────────────────────────────────────────────────────
+     هذه القائمة ليست منطقَ الفحص — منطقُه اسمُ الخاصّية وحده. هي **إطلاقُ نارٍ
+     عليه**: كلُّ بندٍ التفافٌ حقيقي جُرّب على الشجرة الحيّة وحمّرها، ومُثبَّت
+     هنا كي لا يُضعَّف الفحص صامتاً في جولةٍ قادمة. حارسٌ بلا إطلاقٍ عليه هو
+     بالضبط ما أنزل ثلاثة علاجاتٍ معطوبة في يوم. */
+  describe("الحارس نفسه يُطلَق عليه", () => {
+    const bypasses: readonly [string, string][] = [
+      ["صنفٌ جديد يكتب القيمة حرفيةً", ".running{font-variant-numeric:tabular-nums}"],
+      ["احتياطٌ داخل var()", ".x{font-variant-numeric:var(--font-numeric,tabular-nums)}"],
+      ["وسم OpenType بدل الكلمة", '.x{font-feature-settings:"tnum" 1}'],
+      ["المختصر font يُصفّر الخاصّية", ".x{font:700 14px/1.2 sans-serif}"],
+      ["رمزٌ ثالث يحمل القيمة", ".x{--mine:tabular-nums;font-variant-numeric:var(--mine)}"],
+      ["الاختصار عبر font-variant", ".x{font-variant:tabular-nums}"],
+      ["إطفاءٌ صريح بلا الرمز", ".x{font-variant-numeric:normal}"],
+      ["القيمة داخل استعلام وسائط", "@media print{.x{font-variant-numeric:lining-nums}}"],
+    ];
+    for (const [name, css] of bypasses) {
+      it(`يُمسك: ${name}`, () => {
+        const found = scanCssText(css, { file: "هجوم.css" }).violations;
+        expect(found.length, `مرّ بلا مخالفة: ${css}`).toBeGreaterThan(0);
+      });
+    }
+
+    it("ولا يُحمِّر السليم: الرمز، والرمز المُطفَأ، وfont:inherit، وصنفٌ اسمه zero", () => {
+      const clean =
+        ".a{font-variant-numeric:var(--font-numeric)}" +
+        ".b{font-variant-numeric:var(--font-numeric-off)}" +
+        "button{font:inherit}" +
+        ".taxval.zero{color:var(--color-amount-zero)}";
+      expect(scanCssText(clean, { file: "سليم.css" }).violations).toEqual([]);
+    });
+
+    it("يُمسك الضبط السطريّ من الشيفرة، ولا يُحمِّر قراءةَ القيمة", () => {
+      const written = scanCodeText('const s = { fontVariantNumeric: "tabular-nums" };', {
+        file: "هجوم.ts",
+      });
+      expect(written.violations.length).toBeGreaterThan(0);
+      const readOnly = scanCodeText(
+        "const v = getComputedStyle(el).fontVariantNumeric;\nexpect(v).toContain('x');",
+        { file: "قراءة.ts" }
+      );
+      expect(readOnly.violations).toEqual([]);
+    });
+
+    it("يُمسك النصّ المُركَّب الذي يهرب من مطابقة أسماء الخصائص", () => {
+      /* هذا هو الالتفاف الذي **لا** تراه مطابقةُ `fontVariantNumeric:` — القيمة
+         تُبنى نصّاً ثم تُسنَد إلى سمة `style`. فمنعُ القيمة الحرفية في الشيفرة
+         المشحونة كلِّها هو ما يسدّه، لا اسمٌ خامس يُضاف إلى المجموعة. */
+      const built = scanCodeText(
+        'const s = "font-variant-numeric:" + "tabular-nums";\nel.setAttribute("style", s);',
+        { file: "هجوم.ts" }
+      );
+      expect(built.violations.length).toBeGreaterThan(0);
+      expect(built.violations[0]?.kind).toBe("numeral-literal-in-shipped-code");
+    });
   });
 });

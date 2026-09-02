@@ -131,29 +131,31 @@ export function TrialBalanceScreen(): ReactNode {
           />
           <span className="hint">{t("common.keys.hint")}</span>
         </div>
-        <div className="inline-group" role="group" aria-label={t("common.label.type")}>
-          {(["all", "debit", "credit"] as const).map((v) => (
-            <button
-              key={v}
-              type="button"
-              className={"btn" + (view === v ? " btn-primary" : "")}
-              data-view={v}
-              data-testid={"view-" + v}
-              aria-pressed={view === v}
-              onClick={() => setView(v)}
-            >
-              {t(
-                v === "all"
-                  ? "screen.trialBalance.viewAll"
-                  : v === "debit"
-                    ? "screen.trialBalance.viewDebit"
-                    : "screen.trialBalance.viewCredit"
-              )}
+        <div className="rowctl">
+          <div className="inline-group" role="group" aria-label={t("common.label.type")}>
+            {(["all", "debit", "credit"] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                className={"btn" + (view === v ? " btn-primary" : "")}
+                data-view={v}
+                data-testid={"view-" + v}
+                aria-pressed={view === v}
+                onClick={() => setView(v)}
+              >
+                {t(
+                  v === "all"
+                    ? "screen.trialBalance.viewAll"
+                    : v === "debit"
+                      ? "screen.trialBalance.viewDebit"
+                      : "screen.trialBalance.viewCredit"
+                )}
+              </button>
+            ))}
+            <button type="button" className="btn" data-testid="reload" onClick={reload}>
+              {t("common.action.refresh")}
             </button>
-          ))}
-          <button type="button" className="btn" data-testid="reload" onClick={reload}>
-            {t("common.action.refresh")}
-          </button>
+          </div>
         </div>
       </div>
 

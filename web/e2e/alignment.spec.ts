@@ -229,13 +229,22 @@ for (const pass of PASSES) {
       for (const mk of measure.mechanisms) {
         if (mk.scope !== "page") continue;
         pageMechanisms += 1;
-        if (Math.abs(mk.marginTop - mk.expected) > 0.5) {
+        /* ‏**والمقيس هو الفراغ الذي يملكه الوعاء، لا الهامشُ وحده.** الوعاء
+           الذي لا يرسم لا حدَّ له بالتعريف (‏`paints` تُقاس بالحدّ والخلفية)،
+           فما يملكه فوق أوّل أبنائه هامشُه وحشوتُه لا غير — وهما معاً يجب أن
+           يساويا `--grid-lead − --row-rhythm`. وقراءةُ الهامش وحده كانت تُبقي
+           `padding-block-start:14px` غيرَ مرئيّةٍ للحارس وهي تُعيد الفراغ
+           الميتَ كلَّه. أمّا الوعاء الذي يرسم فيبتلع في حشوته، فحشوتُه ملكُ
+           التصميم ويبقى الحكمُ على هامشه وحده. */
+        const owned = mk.paints ? mk.marginTop : mk.ownedLead;
+        if (Math.abs(owned - mk.expected) > 0.5) {
           faults.push(
-            `${p} · [${mk.cls}] · آليّةُ الإيقاع مُعطَّلة: الهامش العلويّ ` +
-              `${mk.marginTop}px والمتوقّع ${mk.expected}px ` +
-              `(الإيقاع ${mk.rhythm}px · الإزاحة ${mk.lead}px · ` +
+            `${p} · [${mk.cls}] · آليّةُ الإيقاع مُعطَّلة: الفراغ الذي يملكه الوعاء ` +
+              `${owned}px والمتوقّع ${mk.expected}px ` +
+              `(هامش ${mk.marginTop}px + حشوة ${mk.padTop}px · ` +
+              `الإيقاع ${mk.rhythm}px · الإزاحة ${mk.lead}px · ` +
               `${mk.paints ? "وعاءٌ يرسم فيبتلع في حشوته" : "وعاءٌ لا يرسم فيبتلع في هامشه"}) — ` +
-              `الفراغ فوق شبكةٍ يُكتب --grid-lead لا margin-top`
+              `الفراغ فوق شبكةٍ يُكتب --grid-lead لا margin-top ولا padding-block-start`
           );
         }
       }

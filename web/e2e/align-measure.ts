@@ -97,7 +97,11 @@ export interface MeasuredRhythmMechanism {
   readonly rhythm: number;
   readonly lead: number;
   readonly marginTop: number;
-  /** ما ينبغي أن يكون عليه الهامش: `lead − rhythm` لمن لا يرسم، وصفرٌ لمن يرسم. */
+  /** حشوةُ الوعاء العليا — تُقاس لأن الفراغ فراغٌ بأيّ خاصّيةٍ كُتب. */
+  readonly padTop: number;
+  /** ‏**الفراغُ الذي يملكه الوعاء فوق أوّل أبنائه**: هامشُه + حشوتُه العليا. */
+  readonly ownedLead: number;
+  /** ما ينبغي أن يكون عليه ذلك الفراغ: `lead − rhythm` لمن لا يرسم. */
   readonly expected: number;
 }
 
@@ -466,22 +470,40 @@ export function measureAlignment(): PageMeasure {
     const n = Number(v.trim().replace(/px$/, ""));
     return Number.isFinite(n) ? n : 0;
   };
-  for (const c of document.querySelectorAll(".grid, .filterbar, .toolbar, .hr-line, .con-line")) {
+  /* ‏**ونطاقُ هذا الحكم مشتقٌّ من البناء المحروس نفسه، لا من قائمة أسماء.**
+     كان هنا `querySelectorAll(".grid, .filterbar, .toolbar, .hr-line, .con-line")` —
+     نسخةٌ ثانية من قائمة `:is(…)` في `components.css`، تنحرف عنها عند أوّل وعاءٍ
+     يُضاف هناك ولا يُضاف هنا. و«وعاءُ إيقاع» خاصّيةٌ تُقاس: `--row-rhythm`
+     **يورَّث**، فمن يحمل قيمةً موجبة **تخالف قيمة أبيه** هو من أعلنها — وهو
+     الوعاء. فيدخل كلُّ وعاءٍ جديد هذا الحكمَ بلا سطرٍ يُكتب هنا. */
+  for (const c of document.querySelectorAll<HTMLElement>("*")) {
     if (!visible(c)) continue;
     const cs = getComputedStyle(c);
     const rhythm = px(cs.getPropertyValue("--row-rhythm"));
     if (rhythm <= 0) continue; /* وعاءٌ لم يُعلن إيقاعه بعد — لا حكم عليه هنا. */
+    const parent = c.parentElement;
+    const inherited = parent === null ? 0 : px(getComputedStyle(parent).getPropertyValue("--row-rhythm"));
+    if (inherited === rhythm) continue; /* وارثٌ لا مُعلِن — الحكم على من أعلن. */
     const lead = px(cs.getPropertyValue("--grid-lead"));
     const bw = px(cs.borderTopWidth) + px(cs.borderBottomWidth);
     const bg = cs.backgroundColor;
     const paints = bw > 0 || (bg !== "transparent" && !/^rgba\(0, 0, 0, 0\)$/.test(bg));
+    const marginTop = Math.round(px(cs.marginBlockStart) * 100) / 100;
+    const padTop = Math.round(px(cs.paddingBlockStart) * 100) / 100;
     mechanisms.push({
       cls: c.getAttribute("class") ?? c.tagName.toLowerCase(),
       scope: scopeOf(c),
       paints,
       rhythm,
       lead,
-      marginTop: Math.round(px(cs.marginBlockStart) * 100) / 100,
+      marginTop,
+      padTop,
+      /* ‏**الفراغُ فراغٌ بأيّ خاصّيةٍ كُتب.** قراءةُ الهامش وحده كانت تجعل
+         `padding-block-start:14px` على `.grid` يُعيد الفراغَ الميت كلَّه —
+         مقيس: ارتفاعُ /voucher 3650⇐3734 و/hr 3215⇐3271 و/realestate
+         4722⇐4792، أي 14px فوق كل شبكة، والحارس أخضر 8/8. فيُجمع ما يملكه
+         الوعاء فوق أوّل أبنائه: هامشُه وحشوتُه معاً. */
+      ownedLead: Math.round((marginTop + padTop) * 100) / 100,
       expected: paints ? 0 : Math.round((lead - rhythm) * 100) / 100,
     });
   }

@@ -763,12 +763,18 @@ for (const code of CODES) {
       }
 
       if (!witness) continue;
-      if (census(text, code).letters === 0) continue;
+      /* ‏**ونصُّ المصدر يُسلَّم إلى العدّاد** — لا ليُرخّص، بل ليفصل بين رمزٍ
+         حملته العربيةُ نفسها ونثرٍ لم يُترجَم. `standard` و`zero` و`exempt`
+         قيمُ سلكٍ صغرى الحروف تكتبها `ar.web.ts` تحت المفتاح نفسه، فليست
+         نثراً إنجليزياً؛ و«Speak as you speak at work…» لا يظهر في العربية
+         بحرفٍ واحد، فيبقى نثراً أجنبياً ويُحمِّر. (‏قاعدةُ `sourceCarries`) */
+      const carriedBySource = code === SOURCE ? null : valueTexts(messages[SOURCE][key]);
+      if (census(text, code, carriedBySource).letters === 0) continue;
       witnessedComparisons++;
-      if (!hasOwnScript(text, code)) {
+      if (!hasOwnScript(text, code, carriedBySource)) {
         /* الرسالة تحمل **العدد الذي حُكم به**: «ليس فيه حرف واحد» كانت تكذب
            على القيمة التي فيها حرفٌ واحد وتسعةٌ وستّون أجنبياً. */
-        const c = census(text, code);
+        const c = census(text, code, carriedBySource);
         wrongScript.push(
           where + " ← " + key + "  أغلبُ حروفه ليست بخطّ " + scripts[code] +
             " (بخطّه " + c.inScript + " · أجنبيّ " + c.foreign + " · آليّ " + c.machine +

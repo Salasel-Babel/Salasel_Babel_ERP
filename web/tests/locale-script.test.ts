@@ -38,10 +38,15 @@ const diagnostic = isDiagnostic as (script: string) => boolean;
 const witnesses = witnessesOf as (code: string, codes: readonly string[]) => string[];
 const mangled = mangle as (text: string) => string;
 const runs = mojibakeRuns as (text: string) => { run: string; decoded: string }[];
-const ownScript = hasOwnScript as (text: string, code: string) => boolean;
+const ownScript = hasOwnScript as (
+  text: string,
+  code: string,
+  sourceTexts?: readonly string[] | null
+) => boolean;
 const letters = census as (
   text: string,
-  code: string
+  code: string,
+  sourceTexts?: readonly string[] | null
 ) => { letters: number; inScript: number; foreign: number; machine: number };
 const corroborated = corroborates as (run: string, otherCode: string, otherTexts: readonly string[]) => boolean;
 const words = proseWords as (text: string) => number;
@@ -218,13 +223,20 @@ describe("كل قيمة نثرٍ بخطّ لغتها — بشهادة لغةٍ �
     for (const code of CODES) {
       const w = witnesses(code, CODES);
       const byKey = new Map(ALL[code]?.map((v) => [v.key, v.text]) ?? []);
+      /* ‏**ونصُّ المصدر يُسلَّم كما يسلّمه `audit.mjs`** — القاعدة واحدة في
+         الموضعين، فلا تنحرف نسختان. ورمزُ سلكٍ كتبته العربية تحت المفتاح نفسه
+         ليس نثراً لم يُترجَم. */
+      const sourceByKey = new Map((ALL[SOURCE] ?? []).map((v) => [v.key, v.text]));
       for (const [key, text] of byKey) {
+        const src = code === SOURCE ? null : [sourceByKey.get(key) ?? ""];
         const witnessed = w.some((other) =>
-          (ALL[other] ?? []).some((v) => v.key === key && ownScript(v.text, other))
+          (ALL[other] ?? []).some(
+            (v) => v.key === key && ownScript(v.text, other, other === SOURCE ? null : src)
+          )
         );
-        if (!witnessed || letters(text, code).letters === 0) continue;
+        if (!witnessed || letters(text, code, src).letters === 0) continue;
         compared++;
-        if (!ownScript(text, code)) wrong.push(code + " ← " + key + " : " + text.slice(0, 40));
+        if (!ownScript(text, code, src)) wrong.push(code + " ← " + key + " : " + text.slice(0, 40));
       }
     }
     expect(compared).toBeGreaterThan(1500);
@@ -253,6 +265,59 @@ describe("كل قيمة نثرٍ بخطّ لغتها — بشهادة لغةٍ �
       expect(letters(withToken, code).machine).toBeGreaterThan(0);
       expect(letters(withToken, code).foreign).toBe(0);
     }
+  });
+
+  /* ‏**والشاهد المقابل — وهو الذي كان ناقصاً، وغيابُه هو الثغرة نفسها.**
+     الإثبات أعلاه يقول «الرمز الآليّ ليس أجنبياً»، ولو وقفنا عنده لكان صحيحاً
+     ومُرضياً عن قاعدةٍ تجعل **كلَّ** لاتينيٍّ آلياً — وهي القاعدة التي كانت
+     قائمة: `foreign` صفرٌ أبداً في وجه النثر الإنجليزيّ، فتنحلّ
+     `inScript > foreign` إلى `inScript > 0`. **مقيس** أنّ نثراً إنجليزياً
+     كاملاً مسبوقاً بحرفٍ ديفاناغاريٍّ واحد كان يمرّ بالرمز صفر.
+     فالخاصّية تُقاس من الطرفين: الرمزُ الآليّ آليٌّ، **والنثرُ الأجنبيّ
+     أجنبيّ** — ولا يُرخّصه حرفٌ واحد. */
+  it("‏والنثر اللاتينيّ أجنبيٌّ لا آليّ — فحرفٌ واحدٌ بخطّ اللغة لا يُرخّصه", () => {
+    const english = ALL.en?.find((v) => words(v.text) >= 12)?.text;
+    expect(english, "لا نثرَ إنجليزيٌّ طويلٌ في en").toBeTruthy();
+
+    for (const code of CODES) {
+      if (code === "en" || !diagnostic(scriptFor(code))) continue;
+      /* حرفٌ واحدٌ بخطّ اللغة أمام النثر الإنجليزيّ كلِّه — الشكل المقيس بعينه. */
+      const oneLetter = probe(code).slice(0, 1) + " " + (english as string);
+      const c = letters(oneLetter, code);
+
+      expect(c.foreign, code + ": النثر الإنجليزيّ عُدّ آلياً — الخانة الثالثة تبتلع كل لاتينيّ")
+        .toBeGreaterThan(0);
+      expect(c.machine, code + ": نثرٌ إنجليزيٌّ صِرف عُدّ رموزاً آلية").toBe(0);
+      expect(c.inScript, code + ": الشكل المقيس حرفٌ واحد بخطّ اللغة").toBe(1);
+      expect(ownScript(oneLetter, code), code + ": حرفٌ واحد رخّص للقيمة كلَّها").toBe(false);
+    }
+  });
+
+  /* ‏**ورمزُ السلك الصغيرُ حروفه لا يُحمِّر — ولا بقاعدة الحالة، بل بنصّ المصدر.**
+     ‏`standard` و`zero` و`exempt` قيمُ تصنيفٍ ضريبيّ تكتبها العربيةُ نفسها تحت
+     المفتاح نفسه؛ فحكمُ الحالة وحده (كبرى الحروف أو فيها رقم) كان يعدّها نثراً
+     أجنبياً ويُسقط قيمةً هنديّةً مترجَمةً ترجمةً صحيحة — **مقيس**: `بخطّه 17 ·
+     أجنبيّ 18`. والفصلُ الصحيح ليس قائمةَ أسماء بل سؤالاً واحداً: **أكتبه
+     المصدر؟** */
+  it("‏وما حمله نصُّ المصدر ليس نثر المترجم — ولو كان صغير الحروف", () => {
+    const key = "accounting.field.taxClassificationHint";
+    const source = (ALL[SOURCE] ?? []).find((v) => v.key === key)?.text;
+    const hindi = (ALL.hi ?? []).find((v) => v.key === key)?.text;
+    expect(source, key + " غير موجود في " + SOURCE).toBeTruthy();
+    expect(hindi, key + " غير موجود في hi").toBeTruthy();
+
+    /* بلا نصّ المصدر: القيمة المترجَمة تسقط ظلماً — وهذا هو الشاهد على أنّ
+       المعامل ليس زينة. */
+    expect(ownScript(hindi as string, "hi")).toBe(false);
+    /* ومعه: تمرّ، لأن المقاطع الثلاثة كتبتها العربية. */
+    expect(ownScript(hindi as string, "hi", [source as string])).toBe(true);
+    expect(letters(hindi as string, "hi", [source as string]).foreign).toBe(0);
+
+    /* **ولا يُرخّص نصُّ المصدر ما لم يكتبه**: النثرُ الإنجليزيّ تحت مفتاحٍ
+       عربيُّ المصدر يبقى أجنبياً ولو سُلّم المصدرُ إلى العدّاد. */
+    const englishProse = (ALL.en ?? []).find((v) => words(v.text) >= 12)?.text as string;
+    const arabicProse = (ALL[SOURCE] ?? []).find((v) => words(v.text) >= 12)?.text as string;
+    expect(ownScript("\u0915 " + englishProse, "hi", [arabicProse])).toBe(false);
   });
 
   it("المعاملات والوسوم تُنزَع قبل القياس، فلا تُحسَب حروفاً أجنبية", () => {

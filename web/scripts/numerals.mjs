@@ -512,19 +512,49 @@ export function scanRepository(root) {
   };
 }
 
+/**
+ * ‏**أسماءُ الأصناف التي يذكرها مُحدِّد — بالنقطة وبسمة `class` معاً.**
+ *
+ * ‏**العطل الذي أغلقه الشقّ الثاني، مقيساً:** كانت القراءة `\.(اسم)` وحدها،
+ * وCSS تبلغ الصنف نفسه بلا نقطةٍ إطلاقاً: `[class~="acct-code"]` مُحدِّدٌ
+ * مكافئٌ لـ`.acct-code` حرفاً بحرف في الأثر، ولا نقطة فيه. فقاعدةٌ تُبدّل وجه
+ * الصفوف الزوجية كُتبت بهذا الشكل **مرّت من `numerals.mjs` ومن `audit.mjs`
+ * معاً بالرمز صفر**. والمُعامِلات الخمسة (`~=` `*=` `^=` `$=` `=`) نحوُ CSS
+ * نفسُه، مجموعةٌ مغلقة يعرفها المواصفة — لا قائمةَ أسماءٍ يفتحها كلُّ صنفٍ جديد.
+ *
+ * Class names a selector mentions — through the dot **and** through `[class…]`
+ * attribute selectors, which reach the same element with no dot at all.
+ */
+const CLASS_MENTION =
+  /\.(-?[A-Za-z_][\w-]*)|\[\s*class\s*[~^$*|]?=\s*("([^"]*)"|'([^']*)'|([^\]\s]+))/g;
+
+/** كلُّ اسمِ صنفٍ يذكره مُحدِّدٌ واحد. */
+function* classMentions(selector) {
+  for (const m of selector.matchAll(CLASS_MENTION)) {
+    if (m[1] !== undefined) {
+      yield m[1];
+      continue;
+    }
+    /* قيمةُ السمة قد تكون قائمةَ أصناف (`class="a b"`) أو جزءاً منها — وكلُّ
+       كلمةٍ فيها اسمُ صنفٍ محتمل، فتُقرأ كلُّها. */
+    const value = m[3] ?? m[4] ?? m[5] ?? "";
+    for (const word of value.split(/\s+/)) if (word.length > 0) yield word;
+  }
+}
+
 /** الأصنافُ المذكورة في مجموعة مُحدِّدات — مشتقّةٌ بالمطابقة لا مكتوبة. */
 export function classesOf(selectors) {
   const classes = new Set();
   for (const selector of selectors) {
-    for (const m of selector.matchAll(/\.(-?[A-Za-z_][\w-]*)/g)) classes.add(m[1]);
+    for (const name of classMentions(selector)) classes.add(name);
   }
   return classes;
 }
 
 /** هل يبلغ هذا المُحدِّد سطحاً رقمياً؟ — أي هل يذكر صنفاً رقمياً واحداً على الأقلّ. */
 export function reachesNumericSurface(selector, numericClasses) {
-  for (const m of selector.matchAll(/\.(-?[A-Za-z_][\w-]*)/g)) {
-    if (numericClasses.has(m[1])) return m[1];
+  for (const name of classMentions(selector)) {
+    if (numericClasses.has(name)) return name;
   }
   return null;
 }

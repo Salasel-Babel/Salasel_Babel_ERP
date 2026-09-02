@@ -203,9 +203,13 @@ public sealed class Rule20_EveryJobIsClassifiedForTests
             Assert.True(
                 StatusReachesTheJob(step, invocation),
                 "حالةُ خروج الحصيلة في " + job.Workflow + ":" + job.Name + " **لا تصل الوظيفة**. "
-                    + "آخرُ أمرٍ في `run` هو «" + step.LastCommand + "»، والمنتظَر أن يكون "
-                    + "«" + invocation + "» وحدَه بلا `||` ولا `;` ولا `&` ولا أنبوب. "
-                    + "· The tally's exit status never reaches the job."
+                    + "‏`run` فيها " + step.Commands.Count + " أمراً — "
+                    + string.Join(" ⏎ ", step.Commands.Select(static c => "«" + c + "»"))
+                    + " — والمنتظَر أمرٌ واحد هو «" + invocation + "» وحدَه، بلا سطرٍ قبله "
+                    + "وبلا `||` ولا `;` ولا `&` ولا أنبوب. وأيُّ سطرٍ سابق يستطيع أن يُلغي "
+                    + "حالةَ الخروج (شرَك) أو أن يُبدّل ما يُستدعى (كتابةٌ فوق السكربت، دالّةٌ، "
+                    + "`PATH`) — ولا تُعدّ الطرق فتُعدّ الأسطر. "
+                    + "· The tally step must be one command and nothing else."
             );
 
             var body = JobBody(job.Workflow, job.Name);
@@ -258,12 +262,37 @@ public sealed class Rule20_EveryJobIsClassifiedForTests
         );
         Assert.False(StatusReachesTheJob(loosened, Invocation));
 
-        // ④ والاستدعاء آخرَ أمرٍ في كتلةٍ حرفية يمرّ، ولو سبقته أوامر.
-        var literal = ParseStep(
-            "      - name: الحصيلة\n        if: always()\n        run: |\n"
-            + "          echo before\n          " + Invocation
-        );
-        Assert.True(StatusReachesTheJob(literal, Invocation));
+        // ④ **والاستدعاء آخرَ أمرٍ في كتلةٍ حرفية لا يكفي** — وهذا الشاهد كان مقلوباً،
+        //    يؤكّد الثغرةَ بدل أن يمسكها. والشكلان أدناه مأخوذان حرفيّاً من قياس
+        //    المُحقِّق على `ci.yml:345-346`، وكلاهما أعطى القاعدة 20 خضراءَ 15/15:
+        //      · شرَكٌ يُلغي حالة الخروج بعد وقوعها — والصَّدَفة `bash -e`؛
+        //      · كتابةٌ فوق السكربت المُستدعى — فالحالةُ تصل الوظيفة وهي حالةُ نصٍّ آخر.
+        //    ومعهما ثالثٌ ورابع من الجنس نفسه (دالّةُ صَدَفةٍ باسم السكربت، و`PATH`)
+        //    ليُقرأ أن هذه **ليست قائمةَ أشكال**: الحكم لا يقرؤها، إنّما يرفض كلَّ كتلةٍ
+        //    فيها أكثر من أمرٍ واحد.
+        string[] precededByOneLine =
+        [
+            "trap 'exit 0' EXIT",
+            "echo \"exit 0\" > tools/test-tally/run.sh",
+            "run() { return 0; }",
+            "export PATH=/tmp/shim:$PATH",
+            "echo before",
+        ];
+
+        foreach (var prelude in precededByOneLine)
+        {
+            var literal = ParseStep(
+                "      - name: الحصيلة\n        if: always()\n        run: |\n"
+                + "          " + prelude + "\n          " + Invocation
+            );
+
+            Assert.Equal(2, literal.Commands.Count);
+            Assert.False(
+                StatusReachesTheJob(literal, Invocation),
+                "سطرٌ سابق «" + prelude + "» في كتلة الحصيلة نفسها والحكم لم يمسكه — "
+                    + "وحالةُ الخروج التي تصل الوظيفة لم تعد حالةَ الحصيلة. · a preceding line passed."
+            );
+        }
 
         // ⑤ و`if` تُطابَق تامّةً: ما يحوي `always()` وليس إيّاها يسقط.
         Assert.NotEqual("always()", Step("always() && github.event_name == 'schedule'", Invocation).If);
@@ -900,16 +929,43 @@ public sealed class Rule20_EveryJobIsClassifiedForTests
     /// <summary>
     /// <b>هل تصل حالةُ خروج هذا الاستدعاء إلى الوظيفة؟</b>
     /// <para>
-    /// الشرط الوحيد الكافي: الاستدعاء هو <b>آخر أمرٍ</b> في <c>run</c>، و<b>لا عاملَ
-    /// صَدَفةٍ بعده ولا حوله</b>. فما بعد الأمر الأخير هو ما تقرأه الوظيفة: ‏<c>|| true</c>
-    /// تجعل الأخيرَ <c>true</c>، و<c>; true</c> كذلك، و<c>|| echo skip</c> كذلك، و<c>&amp;</c>
-    /// تُلقي الأمر في الخلفية فتُصفّر حالته، و<c>|</c> تُسلّم الحالة لآخر حلقةٍ في الأنبوب.
-    /// و<c>set +e</c> لا تُغيّر شيئاً <b>ما دام الأخيرُ هو الاستدعاء</b> — فلا حاجة إلى
-    /// تعدادها، وهذا هو الفرق بين قاعدةٍ وقائمة.
+    /// الشرط: <c>run</c> فيها <b>أمرٌ واحد لا غير</b>، وهو الاستدعاء، <b>ولا عاملَ صَدَفةٍ
+    /// حوله</b>. فما بعد الأمر الأخير هو ما تقرأه الوظيفة: ‏<c>|| true</c> تجعل الأخيرَ
+    /// <c>true</c>، و<c>; true</c> كذلك، و<c>|| echo skip</c> كذلك، و<c>&amp;</c> تُلقي
+    /// الأمر في الخلفية فتُصفّر حالته، و<c>|</c> تُسلّم الحالة لآخر حلقةٍ في الأنبوب.
+    /// </para>
+    /// <para>
+    /// <b>والعطل الذي أغلقه شرطُ «أمرٌ واحد»، مقيساً:</b> كان الحكم يقرأ <b>آخر أمرٍ</b>
+    /// وحده، فيمرّ كلُّ ما يسبقه في الكتلة نفسها. وذلك ليس فراغاً نظرياً — سطرٌ واحد
+    /// قبل الاستدعاء يكفي، بطريقتين مختلفتين جذرياً:
+    /// <list type="number">
+    ///   <item><b>يُلغي حالة الخروج بعد وقوعها:</b> ‏<c>trap 'exit 0' EXIT</c> ثم
+    ///         الاستدعاء. الصَّدَفة الافتراضية على GitHub هي <c>bash -e</c>، فتسقط عند
+    ///         الاستدعاء الفاشل ثم <b>يُشغَّل الشرَك فيخرج بصفر</b>. مقيس: القاعدة 20
+    ///         <c>total 15 · failed 0</c> وحصيلةٌ ساقطة.</item>
+    ///   <item><b>يُتلف الشيءَ المُستدعى قبل استدعائه:</b> ‏<c>echo "exit 0" &gt;
+    ///         tools/test-tally/run.sh</c> ثم الاستدعاء. الاستدعاء نفسه سليمُ الشكل تماماً
+    ///         وحالتُه تصل الوظيفة فعلاً — لكنها حالةُ نصٍّ آخر. مقيس: <c>15/15</c> خضراء.</item>
+    /// </list>
+    /// <b>ولا تُعدّ هاتان في قائمةٍ</b>: بينهما وحدهما شرَكٌ ودالّةٌ وملفّ، وما بعدهما
+    /// <c>PATH</c> ودالّةُ صَدَفةٍ تحمل اسم السكربت ومتغيّرُ بيئةٍ يقرؤه. القائمة مفتوحة
+    /// أبداً؛ والخاصّية المغلقة واحدة: <b>الخطوة لا تفعل شيئاً سوى الاستدعاء</b>. فما لا
+    /// يوجد لا يُخصي، و<c>set +e</c> تسقط من الحساب لأنها لا يجوز أن توجد أصلاً.
+    /// </para>
+    /// <para>
+    /// <b>وثمنُه مقيس ومدفوع:</b> خطواتُ الحصيلة الثلاث في المستودع — <c>ci.yml</c>
+    /// و<c>data-validation.yml</c> و<c>web.yml</c> — كلُّها <c>run:</c> بسطرٍ واحد، فلا
+    /// تدفع هذه القاعدة شيئاً اليوم. ومن احتاج غداً تهيئةً قبل الحصيلة يكتبها
+    /// <b>في خطوةٍ سابقة</b>، وهو ما يجعل حالتَها تصل الوظيفة هي الأخرى.
     /// </para>
     /// </summary>
     private static bool StatusReachesTheJob(ShellStep step, string invocation)
     {
+        // ‏**أمرٌ واحد لا غير.** أيُّ أمرٍ سابقٍ في الكتلة نفسها يستطيع أن يُلغي حالة
+        // الخروج (شرَك) أو أن يُبدّل ما يُستدعى (كتابةٌ فوق السكربت، دالّة، PATH) —
+        // ولا يُعرف عددُ الطرق فتُعدّ، فتُمنع الكتلةُ متعدّدةُ الأوامر من أصلها.
+        if (step.Commands.Count != 1) return false;
+
         var last = step.LastCommand.Trim();
         if (!last.Contains(invocation, StringComparison.Ordinal)) return false;
 

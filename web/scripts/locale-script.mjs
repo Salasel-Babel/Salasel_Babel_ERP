@@ -83,21 +83,62 @@ export function prose(text) {
 
 const LETTER = /\p{L}/u;
 
-/** إحصاء الحروف: كم منها بخطّ اللغة، وكم بغيره. Letter census by script. */
+/**
+ * ‏**إحصاء الحروف بثلاث خانات**: بخطّ اللغة، وبخطٍّ أجنبيّ، و**آليّ**.
+ *
+ * ‏والخانة الثالثة ليست تلطيفاً: «‏PDF» و«‏LTR» ليستا نثرَ لغةٍ أخرى بل رمزاً
+ * آلياً، والمستودع يقول ذلك في موضعٍ آخر أصلاً — `foreignRuns` تشترط
+ * `>= 0x80`، و`isDiagnostic` تُخرج اللاتينية من الشهادة لأنها خطّ المعرّفات.
+ * فلمّا صار الحكم بالأغلبية ظهر أن الخانتين لا تكفيان: «ملف PDF» ثلاثةُ حروفٍ
+ * عربية وثلاثةٌ لاتينية، فتعادلٌ يُسقط قيمةً عربيةً سليمة. والحلّ ليس عتبةً
+ * أرحم بل **مفهوماً واحداً للأجنبيّ** في كل مواضع هذا الملفّ.
+ *
+ * Three buckets, not two: own-script, foreign prose, and machine (ASCII) —
+ * the last is what `foreignRuns` already excluded and what makes Latin the
+ * identifier script everywhere else in this guard.
+ */
 export function census(text, code) {
   const own = scriptMatcher(scriptOf(code));
   let inScript = 0;
   let foreign = 0;
+  let machine = 0;
   for (const ch of prose(text)) {
     if (!LETTER.test(ch)) continue;
     if (own.test(ch)) inScript++;
+    else if (ch.codePointAt(0) < 0x80) machine++;
     else foreign++;
   }
-  return { letters: inScript + foreign, inScript, foreign };
+  return { letters: inScript + foreign + machine, inScript, foreign, machine };
 }
 
-/** أفي النصّ حرفٌ واحد بخطّ لغته؟ Does the value carry one letter of its own script? */
+/**
+ * ‏**أهذه القيمة مكتوبةٌ بخطّ لغتها؟** — بالأغلبية، لا بحرفٍ واحد.
+ *
+ * ‏**العطل الذي أُغلق هنا:** كانت القاعدة `census(text, code).inScript > 0`،
+ * أي أن **حرفاً واحداً** يُرخّص للقيمة كلَّها. مقيس: بإلصاق حرفٍ ديفاناغاريٍّ
+ * واحد بنثرٍ عربيّ في قيمةٍ هندية تصير الحصيلة `letters=83 · inScript=1 ·
+ * foreign=82` ويخرج `audit.mjs` بالرمز **صفر**. والصورة الواقعية — أن تُترجَم
+ * الكلمة الأولى وحدها ويبقى الباقي عربياً — تمرّ كذلك. أي أن القاعدة **حسبت
+ * العدد ثم رمته**.
+ *
+ * ‏**والأغلبية ليست عتبةً مختارة**: هي السؤال نفسه معكوساً — «بأيّ خطٍّ كُتبت
+ * هذه القيمة؟» يُجاب بأكثر حروفها، لا بأقلّها. ولا رقمَ يُعايَر: `inScript >
+ * foreign` وحدها، والتعادلُ يسقط لأن قيمةً نصفُها بخطٍّ آخر ليست مكتوبةً بخطّ
+ * لغتها بأي معنى مفيد.
+ *
+ * The value must be *written in* its locale's script — decided by the majority
+ * of its letters, not by the existence of one.
+ */
 export function hasOwnScript(text, code) {
+  const { inScript, foreign } = census(text, code);
+  return inScript > foreign;
+}
+
+/**
+ * ‏أفي النصّ حرفٌ واحد بخطّ لغته؟ — القاعدة الضعيفة، تبقى **مسمّاةً** لأنها
+ * تصلح لغرضٍ واحد: انتقاءُ عيّنةٍ للشواهد. ولا تصلح حكماً، وهذا سبب اسمها.
+ */
+export function carriesOwnScript(text, code) {
   return census(text, code).inScript > 0;
 }
 
@@ -207,6 +248,23 @@ export function foreignRuns(text, code) {
   }
   if (run) runs.push(run);
   return runs;
+}
+
+/**
+ * ‏**هل يُصدِّق هذا المقطعَ الأجنبيَّ نصٌّ من لغةٍ أخرى؟**
+ *
+ * ‏**العطل الذي أُغلق هنا:** كان التصديق «ظهر المقطع تحت المفتاح نفسه في لغةٍ
+ * أخرى». وقيمةٌ **لم تُترجَم** هي نصُّ العربية حرفاً بحرف — فمقاطعها العربية
+ * تظهر في `ar.web.ts` تحت المفتاح نفسه **دائماً**، فيُصدَّق كلُّ مقطعٍ فيها.
+ * أي أن قاعدة الإذن كانت تُصدِّق العطلَ نفسه الذي وُضعت له.
+ *
+ * ‏**والقاعدة الصحيحة:** لا يُصدِّق المقطعَ إلّا من هو **أجنبيٌّ عنده أيضاً**.
+ * فاسمُ علامةٍ لاتينيٌّ في قيمةٍ هندية يظهر في العربية وهو أجنبيٌّ فيها ⇒
+ * مُصدَّق؛ ومقطعٌ عربيٌّ في قيمةٍ هندية يظهر في العربية وهو **خطّها** ⇒ غير
+ * مُصدَّق، وهو بالضبط النصّ غير المترجَم.
+ */
+export function corroborates(run, otherCode, otherTexts) {
+  return otherTexts.some((t) => t.includes(run)) && foreignRuns(run, otherCode).length > 0;
 }
 
 /* ══════════ محارف لا تُرسم ولا تعني · characters that render nothing ═══════

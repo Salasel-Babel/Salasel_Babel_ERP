@@ -330,7 +330,7 @@ h1,h2,.gal-hero h1,.page-title h1,.drawer-hd h2,.empty h3{
 
 /* ══════════════════════════════════════════════ 3 · الحقول والنماذج */
 
-.grid{display:grid;column-gap:var(--space-16);row-gap:var(--space-14)}
+.grid{display:grid;column-gap:var(--space-16);--row-rhythm:var(--space-14)}
 .fields-1{grid-template-columns:repeat(5,minmax(0,1fr))}
 .fields-2{grid-template-columns:minmax(0,3fr) minmax(0,1fr)}
 .fields-3{grid-template-columns:repeat(3,minmax(0,1fr))}
@@ -381,19 +381,75 @@ h1,h2,.gal-hero h1,.page-title h1,.drawer-hd h2,.empty h3{
    `subgrid`، فلا يتغيّر شيء عمّا كان: الخليّة كانت تتمدّد على ارتفاع الصفّ. */
 :is(.grid,.filterbar,.toolbar,.hr-line,.con-line) > *{grid-row:span 3}
 
+/* ══════════ الإيقاع الرأسيّ يسكن العنصر، لا الفاصلة ═════════════════════════
+   the vertical rhythm lives on the element, never in the gutter
+   ───────────────────────────────────────────────────────────────────────────
+   **العطل الذي أُصلح هنا — وهو انحدارٌ أدخله «الصفُّ يملك المسارات» نفسه.**
+   الصفّ صار ثلاثة مسارات، وكلُّ خليّةٍ تشغلها. وعند 390px تنهار كلُّ شبكةٍ
+   إلى عمودٍ واحد، فيصير كلُّ حقلٍ **صفّاً بذاته** — ومع ذلك يستأجر ثلاثة
+   مسارات ويدفع فاصلتَي الوعاء بينها. مقيسٌ في Chromium على `/realestate`
+   عند 390px: حقلٌ بلا وصفٍ صندوقُه أطول من حبره **10px**، والإيقاع الرأسيّ
+   صار ذا قيمتين — **24px بعد حقلٍ بلا وصف و14px بعد حقلٍ بوصف** — والصفحة
+   4822px بدل 4722، أي **+100px** من فراغٍ لا يراه أحد ولا يُفسَّر.
+
+   **ولماذا لم يره الحارس:** لأنه كان يقيس **صناديق** الخلايا، وصناديقُها
+   متساوية الفواصل تماماً (14px بين كل صندوقين). الفراغُ الميت **داخل**
+   الصندوق، تحت آخر حبرٍ فيه. فصار الحارس يقيس **الحبر إلى الحبر** لا
+   الصندوق إلى الصندوق، ويقيس ذيلَ كل خليّة على حدة.
+
+   **والقاعدة:** الفاصلة (`row-gap`) تُدفع لأن **المسار موجود**؛ والهامش يُدفع
+   لأن **العنصر موجود**. فما كان فاصلةً صار هامشاً:
+     · فاصلة الوعاء بين الصفوف ⇒ `margin-block-start` على كل خليّة.
+     · الفجوة تحت التسمية ⇒ `margin-block-end` على التسمية (لا تسميةَ ⇒ لا فجوة).
+     · الفجوة فوق الوصف ⇒ `margin-block-start` على الوصف (لا وصفَ ⇒ لا مسار
+       ولا فجوة).
+   والمحاذاة لا تتأثّر: الهامش يسكن **داخل** المسار فيُكبّره للصفّ كلّه تماماً
+   كما كانت الفاصلة تفعل.
+
+   **وإزاحةُ الصفّ الأول يبتلعها الوعاء مرّةً واحدة** — إذ لا صفَّ قبله:
+   الوعاء الذي **يرسم** (حدّ أو خلفية) يبتلعها في حشوته العليا فلا يتحرّك
+   صندوقُه المرسوم قيد بكسل؛ والوعاء الذي **لا يرسم** يبتلعها بهامشٍ سالب
+   مساوٍ. وهما تطبيقان لقاعدةٍ واحدة على الخاصّية التي يملكها كلُّ نوع، لا
+   قاعدتان. (ADR-جديد-the-row-owns-the-tracks · القياس أعلاه) */
+/* الرمزان **مُسجَّلان** بـ`@property` كي يكونا طولاً مقيساً لا نصّاً: الحارس
+   يقرأ قيمتَيهما من `getComputedStyle` بالبكسل ويطابق الآلية نفسها، فلا يكفي
+   أن «تبدو» الصفحة سليمة. و`--row-rhythm` يورَّث لأن الخلايا هي من تستعمله؛
+   و`--grid-lead` لا يورَّث لأنه خاصٌّ بالوعاء الذي كُتب عليه. */
+@property --row-rhythm{syntax:"<length>";inherits:true;initial-value:0px}
+@property --grid-lead{syntax:"<length>";inherits:false;initial-value:0px}
+
+:is(.grid,.filterbar,.toolbar,.hr-line,.con-line){row-gap:0}
+:is(.grid,.filterbar,.toolbar,.hr-line,.con-line) > *{margin-block-start:var(--row-rhythm)}
+
+/* **الوعاء الذي لا يرسم يبتلع إزاحة الصفّ الأول بهامشه** — ولذلك صار الهامش
+   العلويّ لهذه الأوعية **مملوكاً للإيقاع**: من أراد فراغاً فوق شبكةٍ يكتب
+   `--grid-lead` لا `margin-top`. وليس هذا اصطلاحاً يُقال: `margin-top` مكتوباً
+   في سمة `style` يغلب هذه القاعدة **بصمت** فيعود الفراغ الميت — وقد كان
+   مكتوباً في خمسة مواضع، ومقيسٌ أنه كان يضيف 14px فوق كلٍّ منها. فصار
+   `alignment.spec.ts` يقرأ الرمزين المسجَّلين ويطابق الهامش المحسوب بهما،
+   ويسقط باسم الوعاء إن خالف. */
+:is(.grid,.filterbar){margin-block-start:calc(var(--grid-lead) - var(--row-rhythm))}
+
 @supports (grid-template-rows:subgrid){
   /* ٢ · الحقل يستعير مسارات الصفّ، ويُعلن فجوته الداخلية. */
   :is(.grid,.filterbar,.toolbar,.hr-line,.con-line) > :is(.field,.rowctl):not(.field--inline){
     display:grid;
     grid-template-rows:subgrid;
-    row-gap:var(--space-6);
+    /* صفر — والإيقاع الداخلي على التسمية والوصف بهامشيهما (انظر أعلاه). */
+    row-gap:0;
   }
   /* ٣ · وإسنادُ المسارات **بالدور لا بالترتيب**: حقلٌ بلا تسمية يبقى عنصر
      تحكّمه على سطر التحكّم، لا يصعد إلى سطر التسمية. */
   :is(.grid,.filterbar,.toolbar,.hr-line,.con-line) > :is(.field,.rowctl):not(.field--inline) > *{grid-row:2}
-  :is(.grid,.filterbar,.toolbar,.hr-line,.con-line) > .field:not(.field--inline) > label{grid-row:1}
+  :is(.grid,.filterbar,.toolbar,.hr-line,.con-line) > .field:not(.field--inline) > label{
+    grid-row:1;
+    margin-block-end:var(--space-6);
+  }
   :is(.grid,.filterbar,.toolbar,.hr-line,.con-line) > .field:not(.field--inline)
-    > :is(.field__desc,.hint,.field-error,.field-ok,.dateline){grid-row:3}
+    > :is(.field__desc,.hint,.field-error,.field-ok,.dateline){
+    grid-row:3;
+    margin-block-start:var(--space-6);
+  }
 }
 
 /* خليّةٌ ليست حقلاً وتقف مع ذلك على **سطر عناصر التحكّم**: مجموعةُ أزرارٍ في
@@ -1184,7 +1240,9 @@ table.pv .c{color:var(--color-credit)}
 .errstate .ico{background:var(--color-danger-soft);color:var(--color-danger)}
 .errstate h3{color:var(--color-danger)}
 .errstate .code{
-  font-family:var(--font-mono);font-size:var(--font-size-hint);
+  /* الصنف `.code` سطحٌ رقميّ (`.picker-opt .code` تُعلن الأرقام عليه)، فوجهُه
+     واحدٌ أينما وقع — ورمزُ العطل يحمل أرقاماً كرمز الحساب تماماً. */
+  font-family:var(--font-numeric-face);font-size:var(--font-size-hint);
   color:var(--color-text-subtle);direction:ltr;unicode-bidi:isolate;
 }
 
@@ -1278,8 +1336,10 @@ table.data .skel-row td{padding:var(--space-10)}
    الانحراف كلّها. الشريط الآن وعاءُ حقولٍ يملك مساراته الثلاثة كالشبكة. */
 .toolbar{
   display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
-  column-gap:var(--space-12);row-gap:var(--space-12);
-  padding:var(--space-12) var(--space-16);
+  column-gap:var(--space-12);--row-rhythm:var(--space-12);
+  /* يرسم خلفيةً وحدّاً، فيبتلع إزاحة الصفّ الأول في حشوته: المجموع 12px
+     كما كان، والصندوق المرسوم لا يتحرّك. */
+  padding:calc(var(--space-12) - var(--row-rhythm)) var(--space-16) var(--space-12);
 }
 .toolbar .grow{min-width:0}
 .toolbar .end{justify-self:end;display:flex;gap:var(--space-8);flex-wrap:wrap;align-items:center}

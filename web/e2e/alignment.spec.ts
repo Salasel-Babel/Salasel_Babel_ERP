@@ -48,9 +48,19 @@ const OUT_DIR = path.resolve(WEB_ROOT, "..", "artifacts", "align");
 const MOCK = "http://127.0.0.1:5099";
 const COMPANY = "11111111-1111-4111-8111-111111111111";
 
-/* ── السماحيتان ─────────────────────────────────────────────────────────── */
+/* ── السماحيات ──────────────────────────────────────────────────────────── */
 const CONTROL_TOLERANCE_PX = 0.5;
 const TEXT_TOLERANCE_PX = 1;
+
+/**
+ * ‏**سماحيةُ الذيل الميت.** الفراغ الذي لا يملؤه أحدٌ تحت **كل** أعضاء الصفّ.
+ *
+ * ‏ولماذا 1.0px لا 0: قاعُ الحبر يُقرأ من `getBoundingClientRect` لعنصرِ تحكّمٍ
+ * أو وصف، وحدودُه كسريّة (‏`1fr` لا يقسم على عددٍ صحيح، وارتفاعُ صندوق السطر
+ * كسريّ). والعطلُ الذي يحرسه هذا الرقم قِيس **10.00px** لكل حقلٍ بلا وصف —
+ * فالهامش عشرة أضعاف.
+ */
+const TAIL_TOLERANCE_PX = 1;
 
 const SHOTS = process.env.ALIGN_SHOTS === "1";
 const FULL = process.env.ALIGN_FULL === "1";
@@ -150,7 +160,10 @@ for (const pass of PASSES) {
     const report: { path: string; measure: PageMeasure }[] = [];
     let pageUnits = 0;
     let pageRows = 0;
+    let pageTails = 0;
+    let pageMechanisms = 0;
     let worstControl = 0;
+    let worstTail = 0;
 
     for (const p of PATHS) {
       await page.goto(urlOf(p, pass.locale));
@@ -188,13 +201,57 @@ for (const pass of PASSES) {
       }
 
       /* الهاتف: لا صفوف أصلاً (كل شبكةٍ تنهار إلى عمود واحد دون 520px)، فما
-         يُحرَس هناك هو **إيقاع العمود**: فجوةٌ واحدة بين كل حقلٍ وتاليه. */
+         يُحرَس هناك هو **إيقاع العمود**: فجوةٌ واحدة بين كل حقلٍ وتاليه.
+         ‏**والحكم على فجوة الحبر لا فجوة الصندوق** — وهذا هو ما لم يكن يُقاس:
+         الصناديق كانت متساوية تماماً (‏`spread = 0.00`) بينما الحبر يقفز بين
+         ‏24px و14px، لأن الفراغ الميت يعيش **داخل** الصندوق. */
       for (const r of measure.rhythms) {
         if (r.scope !== "page") continue;
         if (r.spread > TEXT_TOLERANCE_PX) {
           faults.push(
-            `${p} · [${r.parentClass}] · إيقاعٌ رأسي متفاوت ${r.spread.toFixed(2)}px — ` +
-              `الفجوات بين حقولٍ متجاورة: ${r.gaps.map((g) => g.toFixed(1)).join(" · ")}px`
+            `${p} · [${r.parentClass}] · إيقاعٌ رأسي متفاوت (صناديق) ${r.spread.toFixed(2)}px — ` +
+              `الفجوات: ${r.gaps.map((g) => g.toFixed(1)).join(" · ")}px`
+          );
+        }
+        if (r.inkSpread > TEXT_TOLERANCE_PX) {
+          faults.push(
+            `${p} · [${r.parentClass}] · إيقاعٌ رأسي متفاوت **بالحبر** ${r.inkSpread.toFixed(2)}px — ` +
+              `فجوات الحبر: ${r.inkGaps.map((g) => g.toFixed(1)).join(" · ")}px ` +
+              `(وفجوات الصناديق ${r.gaps.map((g) => g.toFixed(1)).join(" · ")}px — ` +
+              `تساويها مع تفاوت الحبر هو توقيعُ مسارٍ مستأجَرٍ لا يملؤه أحد)`
+          );
+        }
+      }
+
+      /* ‏**آليّةُ الإيقاع** — السبب لا النتيجة. الفراغ الميت يُقاس فوق، وهذا
+         يُمسك من عطّل الآلية قبل أن يظهر أثرُها في شاشةٍ بعينها: هامشٌ علويّ
+         مكتوبٌ في سمة `style` يغلب قاعدة الابتلاع بصمت. */
+      for (const mk of measure.mechanisms) {
+        if (mk.scope !== "page") continue;
+        pageMechanisms += 1;
+        if (Math.abs(mk.marginTop - mk.expected) > 0.5) {
+          faults.push(
+            `${p} · [${mk.cls}] · آليّةُ الإيقاع مُعطَّلة: الهامش العلويّ ` +
+              `${mk.marginTop}px والمتوقّع ${mk.expected}px ` +
+              `(الإيقاع ${mk.rhythm}px · الإزاحة ${mk.lead}px · ` +
+              `${mk.paints ? "وعاءٌ يرسم فيبتلع في حشوته" : "وعاءٌ لا يرسم فيبتلع في هامشه"}) — ` +
+              `الفراغ فوق شبكةٍ يُكتب --grid-lead لا margin-top`
+          );
+        }
+      }
+
+      /* ‏**الذيلُ الميت**: صفٌّ يترك **كلُّ** أعضائه فراغاً تحت حبرهم استأجر
+         مساراً لا يملؤه أحد ودفع فاصلته. وهذا هو الحكم الذي يرى انحدار
+         الهاتف مباشرةً: عند 390px لكلّ حقلٍ صفُّه، فـ«أقلُّ الأعضاء» هو الحقل
+         نفسه. ويعمل عند 1440 كذلك بلا فرعٍ ولا عرضٍ مكتوب في الشيفرة. */
+      for (const tl of measure.tails) {
+        if (tl.scope !== "page") continue;
+        pageTails += 1;
+        worstTail = Math.max(worstTail, tl.dead);
+        if (tl.dead > TAIL_TOLERANCE_PX) {
+          faults.push(
+            `${p} · [${tl.parentClass}] · ذيلٌ ميت ${tl.dead.toFixed(2)}px تحت كل أعضاء الصفّ ` +
+              `(${tl.members} خليّة، أقلُّها «${tl.label}») — مسارٌ مستأجَرٌ لا يملؤه أحد`
           );
         }
       }
@@ -312,16 +369,23 @@ for (const pass of PASSES) {
     if (pass.width >= 1024) {
       expect(pageRows, `${tag}: لا صفوف متعدّدة الحقول عند ${pass.width}px — المقياس أعمى`).toBeGreaterThan(0);
     }
-    /* واللوح نفسه لا يمرّ على لا شيء: حقلٌ واحد على الأقل مقيسٌ فيه. */
+    /* واللوح نفسه لا يمرّ على لا شيء: حقلٌ واحد على الأقل مقيسٌ فيه.
+       ‏**وحارسُ لافراغٍ للذيل وللآليّة كذلك**: عند 390px لا صفَّ متعدّد الحقول،
+       فكل حكمٍ مشروطٍ بالصفوف يمرّ على لا شيء. والذيل يُقاس لكل صفّ **بما فيه
+       صفُّ الحقل الواحد**، فله عددٌ موجب في كل ممرّ؛ والآليّة تُقرأ من الرمزين
+       المسجَّلين، فصفرُها معناه أنهما لم يُقرآ لا أنهما سليمان. */
     expect(
       agentUnits,
       `${tag}: لوح الوكيل لم يقس حقلاً واحداً — المقياس أعمى لا ناجح`
     ).toBeGreaterThan(0);
+    expect(pageTails, `${tag}: لم يُقَس ذيلُ أي صفّ — حكمُ الذيل نائم`).toBeGreaterThan(0);
+    expect(pageMechanisms, `${tag}: لم تُقرأ آليّةُ إيقاعٍ واحدة — الرمزان غير مسجَّلين أو لم يُقرآ`).toBeGreaterThan(0);
 
     expect(
       faults.join("\n"),
-      `${tag}: أقصى انحرافٍ في حافّة التحكّم ${worstControl.toFixed(2)}px — ` +
-        `${pageUnits} حقلاً في ${pageRows} صفّاً على الشاشات، ` +
+      `${tag}: أقصى انحرافٍ في حافّة التحكّم ${worstControl.toFixed(2)}px · ` +
+        `أقصى ذيلٍ ميت ${worstTail.toFixed(2)}px عبر ${pageTails} صفّاً، ` +
+        `و${pageUnits} حقلاً في ${pageRows} صفّاً على الشاشات، ` +
         `و${agentUnits} حقلاً في ${agentRows} صفّاً على لوح الوكيل، ` +
         `و${cardTracks.fields} حقلاً في بطاقة التأكيد على مسارٍ واحد`
     ).toBe("");

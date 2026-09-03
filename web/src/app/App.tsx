@@ -240,6 +240,19 @@ export function AppShell(): ReactNode {
         <Link to="/realestate/arrears" className="navitem" data-testid="nav-realestate-arrears">
           {t("realestate.nav.arrears")}
         </Link>
+
+        {/* ── سجلّ المرفقات وعهدةُ سنده، وحالُ الصنف — **كتلةٌ واحدة متّصلة**
+            كي يندمج جانباها آلياً حين يلمس أسطولٌ آخر هذه القائمة. والعشرُ
+            عملياتٍ تحتها كانت بلا مستهلكٍ في الواجهة كلّها قبل هذا الإنزال. */}
+        <Link to="/attachments" className="navitem" data-testid="nav-attachments">
+          {t("accounting.nav.attachments")}
+        </Link>
+        <Link to="/attachments/custody" className="navitem" data-testid="nav-attachment-custody">
+          {t("accounting.nav.attachmentCustody")}
+        </Link>
+        <Link to="/inventory/item-lifecycle" className="navitem" data-testid="nav-inventory-item-lifecycle">
+          {t("inventory.nav.itemLifecycle")}
+        </Link>
       </nav>
 
       <div className="app-main">

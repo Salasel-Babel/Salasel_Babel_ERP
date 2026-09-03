@@ -55,6 +55,13 @@ import { PayComponentsScreen } from "../screens/hr/PayComponentsScreen";
 import { AdvancesDeductionsScreen } from "../screens/hr/AdvancesDeductionsScreen";
 import { SocialInsuranceScreen } from "../screens/hr/SocialInsuranceScreen";
 import { SubledgerReconciliationScreen } from "../screens/hr/SubledgerReconciliationScreen";
+/* ── سجلّ المرفقات وعهدةُ سنده، وحالُ الصنف — كتلةٌ واحدة متّصلة ────────────
+   شاشتان للمرفقات لأن أبواب الكتابة فيها ثلاثة والحدّ اثنان (ADR-0080)،
+   وشاشةٌ واحدة للصنف لأن أبواب الكتابة فيه اثنان بالضبط. والتبرير كاملاً في
+   `ADR-جديد-attachments-split-by-hand-items-do-not`. */
+import { AttachmentRegisterScreen } from "../screens/attachments/AttachmentRegisterScreen";
+import { AttachmentCustodyScreen } from "../screens/attachments/AttachmentCustodyScreen";
+import { InventoryItemLifecycleScreen } from "../screens/inventory/ItemLifecycleScreen";
 
 const rootRoute = createRootRoute({ component: AppShell });
 
@@ -323,6 +330,25 @@ const purchasingPaymentRoute = createRoute({
   component: SupplierPaymentScreen,
 });
 
+/* ── المرفقات وحالُ الصنف — كتلةٌ واحدة متّصلة. */
+const attachmentsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/attachments",
+  component: AttachmentRegisterScreen,
+});
+
+const attachmentCustodyRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/attachments/custody",
+  component: AttachmentCustodyScreen,
+});
+
+const inventoryItemLifecycleRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/inventory/item-lifecycle",
+  component: InventoryItemLifecycleScreen,
+});
+
 const routeTree = rootRoute.addChildren([
   trialBalanceRoute,
   signInRoute,
@@ -366,6 +392,9 @@ const routeTree = rootRoute.addChildren([
   purchasingGoodsReceiptRoute,
   purchasingBillRoute,
   purchasingPaymentRoute,
+  attachmentsRoute,
+  attachmentCustodyRoute,
+  inventoryItemLifecycleRoute,
 ]);
 
 /** ينشئ موجّهاً. الاختبارات تمرّر تاريخاً في الذاكرة فلا تحتاج متصفّحاً. */

@@ -134,7 +134,10 @@ body {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
   column-gap: var(--space-10);
-  row-gap: var(--space-10);
+  /* الإيقاع الرأسي هامشٌ على الخلايا لا فاصلةً بين المسارات — components.css
+     «الإيقاع الرأسيّ يسكن العنصر». والشريط لا يرسم، فيبتلع إزاحة الصفّ
+     الأول بهامشٍ سالب (القاعدة هناك). */
+  --row-rhythm: var(--space-10);
 }
 .filterbar .field {
   min-width: 0;

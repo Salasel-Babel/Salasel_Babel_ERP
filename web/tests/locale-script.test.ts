@@ -16,6 +16,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   census,
+  corroborates,
   foreignRuns,
   hasOwnScript,
   isDiagnostic,
@@ -37,8 +38,17 @@ const diagnostic = isDiagnostic as (script: string) => boolean;
 const witnesses = witnessesOf as (code: string, codes: readonly string[]) => string[];
 const mangled = mangle as (text: string) => string;
 const runs = mojibakeRuns as (text: string) => { run: string; decoded: string }[];
-const ownScript = hasOwnScript as (text: string, code: string) => boolean;
-const letters = census as (text: string, code: string) => { letters: number; inScript: number; foreign: number };
+const ownScript = hasOwnScript as (
+  text: string,
+  code: string,
+  sourceTexts?: readonly string[] | null
+) => boolean;
+const letters = census as (
+  text: string,
+  code: string,
+  sourceTexts?: readonly string[] | null
+) => { letters: number; inScript: number; foreign: number; machine: number };
+const corroborated = corroborates as (run: string, otherCode: string, otherTexts: readonly string[]) => boolean;
 const words = proseWords as (text: string) => number;
 const stripped = prose as (text: string) => string;
 const textsOf = valueTexts as (value: unknown) => string[];
@@ -78,6 +88,50 @@ const ALL: Record<string, { key: string; text: string }[]> = Object.fromEntries(
 function probe(code: string): string {
   const found = ALL[code]?.find((v) => ownScript(v.text, code) && letters(v.text, code).letters >= 12);
   if (!found) throw new Error("لا نصّ نثريّ في " + code);
+  return found.text;
+}
+
+/**
+ * ‏**أطولُ مفتاحِ نثرٍ موجودٍ في اللغات المطلوبة كلِّها وبخطّ كلٍّ منها.**
+ *
+ * ‏وكان هنا مفتاحٌ **مكتوبٌ بيده** (`screen.voice.refusal.nameNotBounded`)،
+ * فمات الاختبار يوم لم تهبط الميزة التي أضافته: ثلاثةُ إثباتاتٍ سقطت برسالة
+ * «غير موجود» لا علاقة لها بما تحرسه. والعيّنة تُشتقّ لأن الحارس يحرس
+ * **خاصّية اللغة** لا مفتاحاً بعينه؛ والطول شرطٌ لأن الهجمات أدناه تقصّ عند
+ * 60 و120 محرفاً.
+ */
+function longestProseKey(codes: readonly string[], minLength = 140): string {
+  const first = codes[0];
+  if (first === undefined) throw new Error("لا لغةَ مطلوبة");
+  let best = "";
+  let bestLength = 0;
+  for (const v of ALL[first] ?? []) {
+    const lengths = codes.map((c) => {
+      const found = (ALL[c] ?? []).find((o) => o.key === v.key);
+      /* والعيّنة **نظيفة**: بلا مقطعٍ أجنبيّ أصلاً. وإلّا صارت الأجنبيةُ
+         المشروعة فيها (مثل «ΔE») مخالفةً في الإثبات الذي يفحص الإذن المغلق. */
+      if (!found || !ownScript(found.text, c) || foreign(found.text, c).length > 0) return -1;
+      return found.text.length;
+    });
+    if (lengths.some((l) => l < 0)) continue;
+    const shortest = Math.min(...lengths);
+    if (shortest > bestLength) {
+      bestLength = shortest;
+      best = v.key;
+    }
+  }
+  if (bestLength < minLength) {
+    throw new Error(
+      "لا قيمةَ نثرٍ بطول " + minLength + " محرفاً في " + codes.join("/") + " — أطولُ ما وُجد " + bestLength
+    );
+  }
+  return best;
+}
+
+/** نصُّ مفتاحٍ في لغةٍ ما. */
+function textOf(code: string, key: string): string {
+  const found = (ALL[code] ?? []).find((v) => v.key === key);
+  if (!found) throw new Error(key + " غير موجود في " + code);
   return found.text;
 }
 
@@ -131,8 +185,13 @@ describe("التشويه يُكشف بفكّ الترميز، لا بمعرفة 
   it("يلتقط الجزء المشوَّه من قيمةٍ سليمة بقيّتها — لا يشترط أن تكون كلُّها فاسدة", () => {
     const hindi = probe("hi");
     const half = hindi.slice(0, 10) + mangled(hindi.slice(10));
-    expect(ownScript(half, "hi")).toBe(true); /* القاعدة (ب) لا تراها */
-    expect(runs(half).length).toBeGreaterThan(0); /* والقاعدة (أ) تراها */
+    expect(runs(half).length).toBeGreaterThan(0); /* القاعدة (أ) تراها */
+    /* ‏**وصارت القاعدة (ب) تراها كذلك** بعد أن صار الحكم بالأغلبية: عشرةُ
+       محارفَ سليمة أمام بقيّةٍ مشوَّهة ليست «مكتوبةً بخطّ لغتها». وكان هذا
+       السطر يوثّق عماها — والتوثيق صار خطأً، فالقاعدتان تلتقيان هنا. */
+    expect(ownScript(half, "hi")).toBe(false);
+    /* والعشرةُ الأولى وحدها — بلا بقيّة — ما تزال بخطّ لغتها. */
+    expect(ownScript(hindi.slice(0, 10), "hi")).toBe(true);
   });
 
   it("ولا يُنذَر على نصّ سليم: ASCII، ولا على · و« »", () => {
@@ -164,13 +223,20 @@ describe("كل قيمة نثرٍ بخطّ لغتها — بشهادة لغةٍ �
     for (const code of CODES) {
       const w = witnesses(code, CODES);
       const byKey = new Map(ALL[code]?.map((v) => [v.key, v.text]) ?? []);
+      /* ‏**ونصُّ المصدر يُسلَّم كما يسلّمه `audit.mjs`** — القاعدة واحدة في
+         الموضعين، فلا تنحرف نسختان. ورمزُ سلكٍ كتبته العربية تحت المفتاح نفسه
+         ليس نثراً لم يُترجَم. */
+      const sourceByKey = new Map((ALL[SOURCE] ?? []).map((v) => [v.key, v.text]));
       for (const [key, text] of byKey) {
+        const src = code === SOURCE ? null : [sourceByKey.get(key) ?? ""];
         const witnessed = w.some((other) =>
-          (ALL[other] ?? []).some((v) => v.key === key && ownScript(v.text, other))
+          (ALL[other] ?? []).some(
+            (v) => v.key === key && ownScript(v.text, other, other === SOURCE ? null : src)
+          )
         );
-        if (!witnessed || letters(text, code).letters === 0) continue;
+        if (!witnessed || letters(text, code, src).letters === 0) continue;
         compared++;
-        if (!ownScript(text, code)) wrong.push(code + " ← " + key + " : " + text.slice(0, 40));
+        if (!ownScript(text, code, src)) wrong.push(code + " ← " + key + " : " + text.slice(0, 40));
       }
     }
     expect(compared).toBeGreaterThan(1500);
@@ -178,7 +244,7 @@ describe("كل قيمة نثرٍ بخطّ لغتها — بشهادة لغةٍ �
   });
 
   it("‏والقاعدة تحمرّ على المفتاح الذي انكسر فعلاً — طفرةً على قيمته الحيّة", () => {
-    const key = "screen.voice.refusal.nameNotBounded";
+    const key = longestProseKey(["hi", "ur"]);
     for (const code of ["hi", "ur"]) {
       const value = ALL[code]?.find((v) => v.key === key)?.text;
       expect(value, key + " غير موجود في " + code).toBeTruthy();
@@ -194,8 +260,64 @@ describe("كل قيمة نثرٍ بخطّ لغتها — بشهادة لغةٍ �
       if (!diagnostic(scriptFor(code))) continue;
       const withToken = probe(code) + " BANK-0001 PDF {currency}";
       expect(ownScript(withToken, code)).toBe(true);
-      expect(letters(withToken, code).foreign).toBeGreaterThan(0);
+      /* ‏**الرمز الآليّ خانةٌ ثالثة، لا أجنبيّ.** وإلّا قلبت أغلبيةَ «ملف PDF»
+         وأسقطت قيمةً عربيةً سليمة. و`{currency}` بنيةٌ تُنزَع قبل العدّ. */
+      expect(letters(withToken, code).machine).toBeGreaterThan(0);
+      expect(letters(withToken, code).foreign).toBe(0);
     }
+  });
+
+  /* ‏**والشاهد المقابل — وهو الذي كان ناقصاً، وغيابُه هو الثغرة نفسها.**
+     الإثبات أعلاه يقول «الرمز الآليّ ليس أجنبياً»، ولو وقفنا عنده لكان صحيحاً
+     ومُرضياً عن قاعدةٍ تجعل **كلَّ** لاتينيٍّ آلياً — وهي القاعدة التي كانت
+     قائمة: `foreign` صفرٌ أبداً في وجه النثر الإنجليزيّ، فتنحلّ
+     `inScript > foreign` إلى `inScript > 0`. **مقيس** أنّ نثراً إنجليزياً
+     كاملاً مسبوقاً بحرفٍ ديفاناغاريٍّ واحد كان يمرّ بالرمز صفر.
+     فالخاصّية تُقاس من الطرفين: الرمزُ الآليّ آليٌّ، **والنثرُ الأجنبيّ
+     أجنبيّ** — ولا يُرخّصه حرفٌ واحد. */
+  it("‏والنثر اللاتينيّ أجنبيٌّ لا آليّ — فحرفٌ واحدٌ بخطّ اللغة لا يُرخّصه", () => {
+    const english = ALL.en?.find((v) => words(v.text) >= 12)?.text;
+    expect(english, "لا نثرَ إنجليزيٌّ طويلٌ في en").toBeTruthy();
+
+    for (const code of CODES) {
+      if (code === "en" || !diagnostic(scriptFor(code))) continue;
+      /* حرفٌ واحدٌ بخطّ اللغة أمام النثر الإنجليزيّ كلِّه — الشكل المقيس بعينه. */
+      const oneLetter = probe(code).slice(0, 1) + " " + (english as string);
+      const c = letters(oneLetter, code);
+
+      expect(c.foreign, code + ": النثر الإنجليزيّ عُدّ آلياً — الخانة الثالثة تبتلع كل لاتينيّ")
+        .toBeGreaterThan(0);
+      expect(c.machine, code + ": نثرٌ إنجليزيٌّ صِرف عُدّ رموزاً آلية").toBe(0);
+      expect(c.inScript, code + ": الشكل المقيس حرفٌ واحد بخطّ اللغة").toBe(1);
+      expect(ownScript(oneLetter, code), code + ": حرفٌ واحد رخّص للقيمة كلَّها").toBe(false);
+    }
+  });
+
+  /* ‏**ورمزُ السلك الصغيرُ حروفه لا يُحمِّر — ولا بقاعدة الحالة، بل بنصّ المصدر.**
+     ‏`standard` و`zero` و`exempt` قيمُ تصنيفٍ ضريبيّ تكتبها العربيةُ نفسها تحت
+     المفتاح نفسه؛ فحكمُ الحالة وحده (كبرى الحروف أو فيها رقم) كان يعدّها نثراً
+     أجنبياً ويُسقط قيمةً هنديّةً مترجَمةً ترجمةً صحيحة — **مقيس**: `بخطّه 17 ·
+     أجنبيّ 18`. والفصلُ الصحيح ليس قائمةَ أسماء بل سؤالاً واحداً: **أكتبه
+     المصدر؟** */
+  it("‏وما حمله نصُّ المصدر ليس نثر المترجم — ولو كان صغير الحروف", () => {
+    const key = "accounting.field.taxClassificationHint";
+    const source = (ALL[SOURCE] ?? []).find((v) => v.key === key)?.text;
+    const hindi = (ALL.hi ?? []).find((v) => v.key === key)?.text;
+    expect(source, key + " غير موجود في " + SOURCE).toBeTruthy();
+    expect(hindi, key + " غير موجود في hi").toBeTruthy();
+
+    /* بلا نصّ المصدر: القيمة المترجَمة تسقط ظلماً — وهذا هو الشاهد على أنّ
+       المعامل ليس زينة. */
+    expect(ownScript(hindi as string, "hi")).toBe(false);
+    /* ومعه: تمرّ، لأن المقاطع الثلاثة كتبتها العربية. */
+    expect(ownScript(hindi as string, "hi", [source as string])).toBe(true);
+    expect(letters(hindi as string, "hi", [source as string]).foreign).toBe(0);
+
+    /* **ولا يُرخّص نصُّ المصدر ما لم يكتبه**: النثرُ الإنجليزيّ تحت مفتاحٍ
+       عربيُّ المصدر يبقى أجنبياً ولو سُلّم المصدرُ إلى العدّاد. */
+    const englishProse = (ALL.en ?? []).find((v) => words(v.text) >= 12)?.text as string;
+    const arabicProse = (ALL[SOURCE] ?? []).find((v) => words(v.text) >= 12)?.text as string;
+    expect(ownScript("\u0915 " + englishProse, "hi", [arabicProse])).toBe(false);
   });
 
   it("المعاملات والوسوم تُنزَع قبل القياس، فلا تُحسَب حروفاً أجنبية", () => {
@@ -230,9 +352,14 @@ describe("النسخ عن المصدر ليس ترجمة — والثقب الب
       if (src === undefined || src !== text || !ownScript(src, SOURCE)) continue;
       identical.push(key);
     }
-    /* ستّ قيم أردية تطابق العربية حرفاً بحرف، وكلُّها مصطلحٌ واحد أو اسمُ عَلَم:
-       فالتضييق إلى كلمةٍ واحدة يرفض ترجماتٍ صحيحة. العدد مقيسٌ لا مفترَض. */
-    expect(identical.length).toBe(6);
+    /* تسعُ قيمٍ أردية تطابق العربية حرفاً بحرف، وكلُّها مصطلحٌ واحد أو اسمُ
+       عَلَم: فالتضييق إلى كلمةٍ واحدة يرفض ترجماتٍ صحيحة. العدد مقيسٌ لا
+       مفترَض، **ويرتفع بنزول مصطلحاتٍ مشتركة بين اللغتين**: أضافت شاشةُ
+       وحدات القياس «وزن» و«حجم» و«طول» — وهي كلماتٌ أردية صحيحة تقع
+       بحروفها العربية نفسها، وتغييرُها إلى غيرها يُفسد الترجمة كي يُرضي
+       عدّاداً. والشرط الحاكم تحته — أن يكون المصطلح أقلّ من ثلاث كلمات —
+       هو ما يبقى حاكماً. */
+    expect(identical.length).toBe(9);
     for (const key of identical) {
       expect(words(arabicByKey.get(key) as string)).toBeLessThan(3);
     }
@@ -262,7 +389,7 @@ describe("النسخ عن المصدر ليس ترجمة — والثقب الب
    Attacks on the guard: each class below defeated an earlier rule, measured.
    ═══════════════════════════════════════════════════════════════════════════ */
 describe("ما يهزم فكَّ الترميز لا يهزم الإذن المغلق", () => {
-  const hindi = ALL["hi"]?.find((v) => v.key === "screen.voice.refusal.nameNotBounded")?.text as string;
+  const hindi = textOf("hi", longestProseKey(["hi"]));
 
   it("‏تشويهٌ بترميزٍ يرفع بايتاتٍ فوق U+00FF **يفلت** من القاعدة (أ) — مقيس، لا مفترَض", () => {
     for (const label of ["koi8-r", "macintosh", "iso-8859-7", "windows-1251"]) {
@@ -274,12 +401,16 @@ describe("ما يهزم فكَّ الترميز لا يهزم الإذن الم�
     }
   });
 
-  it("‏والتشويه **الجزئي** بأيٍّ من الترميزين يفلت من القاعدة (ب) ويسقط في (د)", () => {
+  it("‏والتشويه **الجزئي** بأيٍّ من الترميزين يسقط في (ب) و(د) معاً بعد الأغلبية", () => {
     for (const label of ["koi8-r", "windows-1252"]) {
       const half = hindi.slice(0, 60) + mangledAs(label, hindi.slice(60));
-      expect(ownScript(half, "hi")).toBe(true); /* (ب) عمياء: بقيت ديفاناغارية */
+      /* ‏كان هذا السطر يوثّق عمى (ب): «بقيت ديفاناغارية» كان يكفيه حرفٌ واحد.
+         وبالأغلبية صار الجزء المشوَّه — وهو الأكثر — هو من يحكم. */
+      expect(ownScript(half, "hi")).toBe(false);
       expect(foreign(half, "hi").length).toBeGreaterThan(0);
     }
+    /* وحارسُ اللافراغ: الجزء السليم وحده يبقى بخطّ لغته، فالحكم ليس «كلُّ شيء أحمر». */
+    expect(ownScript(hindi.slice(0, 60), "hi")).toBe(true);
   });
 
   it("‏وبايتات UTF-16 تُنتج محارف تحكّم لا حروفاً، فتفلت من (أ) و(د) وتسقط في (هـ)", () => {
@@ -301,14 +432,26 @@ describe("ما يهزم فكَّ الترميز لا يهزم الإذن الم�
       for (const { key, text } of ALL[code] ?? []) {
         for (const run of foreign(text, code)) {
           seen++;
+          /* ‏**الإذن نفسه المستعمل في `audit.mjs`** — دالّةٌ واحدة لا نسختان:
+             لا يُصدِّق المقطعَ إلّا من هو أجنبيٌّ عنده أيضاً. */
           const elsewhere = CODES.some(
-            (o) => o !== code && (ALL[o] ?? []).some((v) => v.key === key && v.text.includes(run))
+            (o) =>
+              o !== code &&
+              corroborated(
+                run,
+                o,
+                (ALL[o] ?? []).filter((v) => v.key === key).map((v) => v.text)
+              )
           );
           if (!elsewhere) unlicensed.push(code + " ← " + key + " «" + run + "»");
         }
       }
     }
-    expect(seen).toBe(6);
+    /* العدد مثبَّتٌ بالتساوي لا بحدٍّ أعلى: كل مقطعٍ أجنبيّ جديد يُحمِّر حتى
+       يُقَرّ هنا بالرقم. وثمانيةٌ اليوم — ستّةٌ كانت، وزادت اثنتان حين صار
+       النصّ الإنجليزي يقتبس رمزَي التأكيد والإلغاء **بحرفهما العربي**، وهو
+       ما يقبله القارئ فعلاً (`CONFIRM_WORDS_AR`) لا ترجمتُهما. */
+    expect(seen).toBe(8);
     expect(unlicensed).toEqual([]);
   });
 

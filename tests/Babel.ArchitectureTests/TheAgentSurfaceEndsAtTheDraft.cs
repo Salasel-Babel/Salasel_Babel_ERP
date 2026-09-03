@@ -194,13 +194,22 @@ public sealed partial class TheAgentSurfaceEndsAtTheDraft
 
         Assert.True(posting.Length >= 20, "أسماء الترحيل المقروءة: " + Count(posting.Length));
 
+        // ‏**والمجلّد يُعدّ لا يُسمّى ملفّاً ملفّاً.** كانت هنا أربعةُ مسارات مكتوبة
+        // بيد، وأحدُها في `src/Babel.Api/Agent/`؛ فملفٌّ خامس يُضاف إلى ذلك المجلّد —
+        // وهو حيث نزل منفّذُ المسوّدات وجدولُ هويّات أصحاب الجلسات — كان يخرج من هذا
+        // الفحص بلا أن يقول أحدٌ شيئاً. والمجلّد كلّه يُعدّ الآن، ويُتبَع بشاهدٍ موجب
+        // على أنّ العدّ وجد ما يعدّه.
+        string desk = Path.Combine(RepositoryLayout.Root, "src", "Babel.Api", "Agent");
+
         string[] files =
         [
             Path.Combine(RepositoryLayout.Root, "src", "Babel.Api", "Endpoints", "AgentEndpoints.cs"),
             Path.Combine(RepositoryLayout.Root, "src", "Babel.Api", "Endpoints", "AgentRoutes.cs"),
             Path.Combine(RepositoryLayout.Root, "src", "Babel.Api", "Wire", "AgentContracts.cs"),
-            Path.Combine(RepositoryLayout.Root, "src", "Babel.Api", "Agent", "AgentQuestionSheetDesk.cs"),
+            .. Directory.EnumerateFiles(desk, "*.cs", SearchOption.AllDirectories).Order(StringComparer.Ordinal),
         ];
+
+        Assert.True(files.Length >= 6, "ملفّات سطح الوكيل المفحوصة: " + Count(files.Length));
 
         foreach (string file in files)
         {

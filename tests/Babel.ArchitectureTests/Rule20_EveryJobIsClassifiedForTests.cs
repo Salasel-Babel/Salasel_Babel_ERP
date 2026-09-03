@@ -141,38 +141,172 @@ public sealed class Rule20_EveryJobIsClassifiedForTests
             var body = JobBody(job.Workflow, job.Name);
             var selector = "--job " + Path.GetFileName(job.Workflow) + ":" + job.Name;
 
+            // ‏**والبحث في أوامرَ مقروءة لا في نصّ الوظيفة.** كان `body.Contains(…)` —
+            // فسطرُ تعليقٍ يحمل نصّ الأمر كان يُرضيه **بعد حذف الخطوة نفسها**.
             Assert.True(
-                body.Contains(TallyScript + " --begin", StringComparison.Ordinal),
+                StepsOf(job.Workflow, job.Name).Any(s => s.Commands.Any(c => c.Contains(TallyScript + " --begin", StringComparison.Ordinal))),
                 "الوظيفة " + job.Workflow + ":" + job.Name + " مصنَّفة `tallied` ولا تختم مجلّد "
                     + "التقارير قبل الاختبارات (`" + TallyScript + " --begin`) — فتقريرٌ من تشغيلٍ "
                     + "سابق قد يُرضي الحصيلة بلا أن يُنفَّذ شيء. · A tallied job that does not stamp "
                     + "the report directory first."
             );
 
-            Assert.True(
-                body.Contains(TallyScript + " " + selector, StringComparison.Ordinal),
-                "الوظيفة " + job.Workflow + ":" + job.Name + " مصنَّفة `tallied` ولا خطوةَ حصيلةٍ "
-                    + "فيها تسمّيها: المنتظَر `" + TallyScript + " " + selector + "`. · The tallied job "
-                    + "does not run the tally against its own surfaces."
-            );
-
-            var step = StepContaining(job.Workflow, job.Name, selector);
+            var step = TallyStepOf(job.Workflow, job.Name, selector);
 
             Assert.True(
-                step.Contains("if: always()", StringComparison.Ordinal),
-                "خطوة الحصيلة في " + job.Workflow + ":" + job.Name + " بلا `if: always()` — فسقوطُ "
-                    + "خطوة اختبارٍ قبلها يُعلّمها `skipped`، والحصيلة التي لا تُنفَّذ لا تقول شيئاً "
-                    + "(فخ-80). · The tally step without always(): an earlier failure silences the "
-                    + "very step that reports what ran."
+                string.Equals(step.If, "always()", StringComparison.Ordinal),
+                "شرطُ خطوة الحصيلة في " + job.Workflow + ":" + job.Name + " هو «" + (step.If ?? "لا شرط")
+                    + "» والمنتظَر `always()` **وحدها**. والمطابقة تامّةٌ لا احتواء: "
+                    + "`always() && github.event_name == 'schedule'` يحوي `always()` ويُسكِت الخطوة "
+                    + "في كل دفعةٍ عادية (فخ-80). · The tally step's condition must be exactly always()."
             );
 
             Assert.False(
-                step.Contains("continue-on-error", StringComparison.Ordinal),
+                step.ContinueOnError,
                 "خطوة الحصيلة في " + job.Workflow + ":" + job.Name + " تحمل `continue-on-error` — "
                     + "أي أن سقوطها لا يُحمِّر شيئاً، وهي الخطوة الوحيدة التي تعرف ما نُفِّذ. · The tally "
                     + "step is allowed to fail without failing the job."
             );
         }
+    }
+
+    /// <summary>
+    /// <b>والحصيلة لا تُخصى بالصَّدَفة.</b> الحارس السابق كان يسأل «هل فيها
+    /// <c>continue-on-error</c>؟» ولا يسأل <b>ما الأمر الذي تصل حالتُه إلى الوظيفة</b>.
+    /// فكان <c>run: tools/test-tally/run.sh --job ci.yml:build-and-enforce || true</c>
+    /// يُبقي 205/205 والقاعدة 20 خضراوين والحصيلةُ عاجزةً عن إسقاط شيء أبداً — و
+    /// <c>|| true</c> مستعملةٌ في هذا المستودع نفسه (<c>data-validation.yml</c>) فلا
+    /// تلفت نظر مراجع.
+    /// <para>
+    /// <b>والقاعدة ليست تعداد ما يُخصي</b> (<c>|| true</c> · <c>&amp;</c> · <c>; true</c> ·
+    /// <c>|| echo skip</c> · <c>set +e</c> · أنبوب): تلك قائمةٌ مفتوحة يهزمها أوّل شكلٍ
+    /// لم يخطر. بل خاصّيةٌ واحدة: <b>الاستدعاء هو آخر أمرٍ في <c>run</c>، وحدَه، بلا عامل
+    /// صَدَفةٍ حوله</b> — فحالةُ خروج الخطوة هي حالتُه بالبناء. و<c>set +e</c> تسقط من
+    /// الحساب لأنها لا تُغيّر حالةَ الأمر الأخير.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void TheTallyStepCannotBeNeuteredByTheShell()
+    {
+        foreach (var job in Loaded.Value.Jobs.Where(static j => j.Classification == "tallied"))
+        {
+            var selector = "--job " + Path.GetFileName(job.Workflow) + ":" + job.Name;
+            var invocation = TallyScript + " " + selector;
+            var step = TallyStepOf(job.Workflow, job.Name, selector);
+
+            Assert.True(
+                step.Shell is null || step.Shell.StartsWith("bash", StringComparison.Ordinal),
+                "خطوة الحصيلة في " + job.Workflow + ":" + job.Name + " تُبدّل صَدَفتها إلى «"
+                    + step.Shell + "» — وصَدَفةٌ أخرى قد تُغيّر معنى حالة الخروج. · unexpected shell."
+            );
+
+            Assert.True(
+                StatusReachesTheJob(step, invocation),
+                "حالةُ خروج الحصيلة في " + job.Workflow + ":" + job.Name + " **لا تصل الوظيفة**. "
+                    + "‏`run` فيها " + step.Commands.Count + " أمراً — "
+                    + string.Join(" ⏎ ", step.Commands.Select(static c => "«" + c + "»"))
+                    + " — والمنتظَر أمرٌ واحد هو «" + invocation + "» وحدَه، بلا سطرٍ قبله "
+                    + "وبلا `||` ولا `;` ولا `&` ولا أنبوب. وأيُّ سطرٍ سابق يستطيع أن يُلغي "
+                    + "حالةَ الخروج (شرَك) أو أن يُبدّل ما يُستدعى (كتابةٌ فوق السكربت، دالّةٌ، "
+                    + "`PATH`) — ولا تُعدّ الطرق فتُعدّ الأسطر. "
+                    + "· The tally step must be one command and nothing else."
+            );
+
+            var body = JobBody(job.Workflow, job.Name);
+            Assert.DoesNotContain("continue-on-error: true", body, StringComparison.Ordinal);
+        }
+    }
+
+    /// <summary>
+    /// <b>شاهدٌ موجب لكل شكلٍ يُخصي — وعددُها يساوي عدد ما يزعم الحكم أنه يمنعه.</b>
+    /// الحكمُ أعلاه خاصّيةٌ لا قائمة، لكنه يبقى دعوى حتى يُقاس على الأشكال التي هزمت
+    /// سابقَه. وكلُّ شكلٍ هنا مأخوذٌ حرفيّاً من قياس المُحقِّق.
+    /// </summary>
+    [Fact]
+    public void TheStepReaderIsProvenOnTheShapesThatDefeatedItsPredecessor()
+    {
+        const string Invocation = TallyScript + " --job ci.yml:build-and-enforce";
+
+        static ShellStep Step(string ifExpr, string run) =>
+            ParseStep("      - name: الحصيلة\n        if: " + ifExpr + "\n        run: " + run);
+
+        // ① الشكل السليم يمرّ — وإلّا كان الحكم يمنع كل شيء ولا يُثبت شيئاً.
+        var good = Step("always()", Invocation);
+        Assert.Equal("always()", good.If);
+        Assert.True(StatusReachesTheJob(good, Invocation));
+
+        // ② وكلُّ شكلٍ يُخصي يسقط.
+        string[] neutered =
+        [
+            Invocation + " || true",
+            Invocation + " &",
+            Invocation + " ; true",
+            Invocation + " || echo skip",
+            Invocation + " | cat",
+            Invocation + " && true",
+            "true || " + Invocation,
+        ];
+
+        foreach (var run in neutered)
+        {
+            Assert.False(
+                StatusReachesTheJob(Step("always()", run), Invocation),
+                "الشكل «" + run + "» يُخصي الحصيلة والحكم لم يمسكه. · a neutering shape passed."
+            );
+        }
+
+        // ③ و`set +e` مع أمرٍ بعده: الأخيرُ ليس الاستدعاء، فتسقط.
+        var loosened = ParseStep(
+            "      - name: الحصيلة\n        if: always()\n        run: |\n"
+            + "          set +e\n          " + Invocation + "\n          echo done"
+        );
+        Assert.False(StatusReachesTheJob(loosened, Invocation));
+
+        // ④ **والاستدعاء آخرَ أمرٍ في كتلةٍ حرفية لا يكفي** — وهذا الشاهد كان مقلوباً،
+        //    يؤكّد الثغرةَ بدل أن يمسكها. والشكلان أدناه مأخوذان حرفيّاً من قياس
+        //    المُحقِّق على `ci.yml:345-346`، وكلاهما أعطى القاعدة 20 خضراءَ 15/15:
+        //      · شرَكٌ يُلغي حالة الخروج بعد وقوعها — والصَّدَفة `bash -e`؛
+        //      · كتابةٌ فوق السكربت المُستدعى — فالحالةُ تصل الوظيفة وهي حالةُ نصٍّ آخر.
+        //    ومعهما ثالثٌ ورابع من الجنس نفسه (دالّةُ صَدَفةٍ باسم السكربت، و`PATH`)
+        //    ليُقرأ أن هذه **ليست قائمةَ أشكال**: الحكم لا يقرؤها، إنّما يرفض كلَّ كتلةٍ
+        //    فيها أكثر من أمرٍ واحد.
+        string[] precededByOneLine =
+        [
+            "trap 'exit 0' EXIT",
+            "echo \"exit 0\" > tools/test-tally/run.sh",
+            "run() { return 0; }",
+            "export PATH=/tmp/shim:$PATH",
+            "echo before",
+        ];
+
+        foreach (var prelude in precededByOneLine)
+        {
+            var literal = ParseStep(
+                "      - name: الحصيلة\n        if: always()\n        run: |\n"
+                + "          " + prelude + "\n          " + Invocation
+            );
+
+            Assert.Equal(2, literal.Commands.Count);
+            Assert.False(
+                StatusReachesTheJob(literal, Invocation),
+                "سطرٌ سابق «" + prelude + "» في كتلة الحصيلة نفسها والحكم لم يمسكه — "
+                    + "وحالةُ الخروج التي تصل الوظيفة لم تعد حالةَ الحصيلة. · a preceding line passed."
+            );
+        }
+
+        // ⑤ و`if` تُطابَق تامّةً: ما يحوي `always()` وليس إيّاها يسقط.
+        Assert.NotEqual("always()", Step("always() && github.event_name == 'schedule'", Invocation).If);
+
+        // ⑥ والتعليق ليس أمراً: خطوةٌ حُذف أمرُها وبقي وصفُه لا تُقرأ حصيلة.
+        var commented = ParseStep(
+            "      - name: الحصيلة\n        if: always()\n        run: |\n"
+            + "          # " + Invocation + "\n          echo nothing"
+        );
+        Assert.DoesNotContain(commented.Commands, c => c.Contains(TallyScript, StringComparison.Ordinal));
+
+        // ⑦ و`continue-on-error` تُقرأ مفتاحاً لا نصّاً.
+        Assert.True(ParseStep("      - name: x\n        continue-on-error: true\n        run: echo").ContinueOnError);
+        Assert.False(ParseStep("      - name: x\n        continue-on-error: false\n        run: echo").ContinueOnError);
     }
 
     /// <summary>
@@ -665,8 +799,186 @@ public sealed class Rule20_EveryJobIsClassifiedForTests
         return string.Join("\n", body);
     }
 
-    /// <summary>نصُّ الخطوة التي تحوي علامةً بعينها — من «‏- » إلى «‏- » التالية.</summary>
-    private static string StepContaining(string workflow, string job, string marker)
+    // ── ٦ · الحصيلة لا تُخصى بالصَّدَفة ────────────────────────────────────────
+
+    /// <summary>
+    /// <b>خطوةٌ مقروءةٌ بنيةً لا نصّاً.</b> ما يهمّ في خطوة الحصيلة أربعة أشياء لا خامس
+    /// لها: شرطُها، وصَدَفتُها، وهل يُسمح لها بالسقوط، و<b>ما الأمر الذي يُنهي تنفيذها</b>
+    /// — لأن حالةَ الخروج التي تصل الوظيفة هي حالةُ آخر أمرٍ في <c>run</c>، لا حالةُ
+    /// الأمر الذي كتبه المؤلّف في ذهنه.
+    /// </summary>
+    private sealed record ShellStep(
+        string Text,
+        string? If,
+        string? Shell,
+        bool ContinueOnError,
+        IReadOnlyList<string> Commands)
+    {
+        /// <summary>آخر أمرٍ فعليّ — وهو وحده من تصل حالتُه إلى الوظيفة.</summary>
+        public string LastCommand => Commands.Count == 0 ? string.Empty : Commands[^1];
+    }
+
+    /// <summary>
+    /// يقرأ خطوةً واحدة من نصّها: المفاتيح عند العمق 8، و<c>run</c> قد تكون قيمةً في
+    /// السطر نفسه أو كتلةً <c>|</c> أو مطويّة <c>&gt;-</c>. والتعليقات تُحذف قبل الحكم،
+    /// لأن سطرَ تعليقٍ يحمل نصّ الأمر كان يُرضي بحثاً نصّياً بعد <b>حذف الخطوة نفسها</b>.
+    /// </summary>
+    private static ShellStep ParseStep(string stepText)
+    {
+        var raw = stepText.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n').ToList();
+        if (raw.Count > 0)
+        {
+            // «      - name: x» ⇒ «        name: x»: أوّلُ مفتاحٍ يعيش على شرطة القائمة.
+            var head = raw[0];
+            var dash = head.IndexOf("- ", StringComparison.Ordinal);
+            if (dash >= 0) raw[0] = new string(' ', dash + 2) + head[(dash + 2)..];
+        }
+
+        string? ifExpr = null;
+        string? shell = null;
+        var continueOnError = false;
+        var commands = new List<string>();
+
+        for (var i = 0; i < raw.Count; i++)
+        {
+            var line = raw[i];
+            if (line.Trim().Length == 0) continue;
+
+            var indent = line.Length - line.TrimStart().Length;
+            if (indent != 8) continue;
+
+            var key = Regex.Match(line.Trim(), @"^([A-Za-z][A-Za-z0-9_-]*):\s*(.*)$", RegexOptions.None, TimeSpan.FromSeconds(5));
+            if (!key.Success) continue;
+
+            var name = key.Groups[1].Value;
+            var inline = key.Groups[2].Value.Trim();
+
+            switch (name)
+            {
+                case "if":
+                    ifExpr = inline;
+                    break;
+                case "shell":
+                    shell = inline;
+                    break;
+                case "continue-on-error":
+                    continueOnError = !string.Equals(inline, "false", StringComparison.OrdinalIgnoreCase);
+                    break;
+                case "run":
+                    commands.AddRange(ReadRun(raw, i, inline));
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        return new ShellStep(stepText, ifExpr, shell, continueOnError, commands);
+    }
+
+    /// <summary>
+    /// يقرأ قيمة <c>run</c>: قيمةٌ في السطر نفسه، أو كتلةٌ حرفية <c>|</c> (كل سطرٍ أمر)،
+    /// أو مطويّة <c>&gt;</c> (‏الأسطر تُوصَل أمراً واحداً). ويُخرج <b>الأوامر</b> بلا
+    /// تعليقات وبلا أسطر فارغة، وبعد وصل أسطر الاستمرار <c>\</c>.
+    /// </summary>
+    private static List<string> ReadRun(List<string> raw, int at, string inline)
+    {
+        var folded = inline.StartsWith('>');
+        var literal = inline.StartsWith('|');
+        var body = new List<string>();
+
+        if (!folded && !literal && inline.Length > 0) body.Add(inline);
+
+        for (var i = at + 1; i < raw.Count; i++)
+        {
+            var line = raw[i];
+            if (line.Trim().Length == 0) { body.Add(string.Empty); continue; }
+            var indent = line.Length - line.TrimStart().Length;
+            if (indent <= 8) break;
+            body.Add(line.Trim());
+        }
+
+        // التعليقات تُحذف: سطرُ تعليقٍ يحمل نصّ الأمر ليس أمراً.
+        var cleaned = body.Where(static l => !l.StartsWith('#')).ToList();
+
+        // وصلُ أسطر الاستمرار: «foo \» ثم «--bar» أمرٌ واحد.
+        var joined = new List<string>();
+        var buffer = string.Empty;
+        foreach (var line in cleaned)
+        {
+            var piece = line;
+            var continues = piece.EndsWith('\\');
+            if (continues) piece = piece[..^1].TrimEnd();
+            buffer = buffer.Length == 0 ? piece : buffer + " " + piece;
+            if (continues) continue;
+            joined.Add(buffer);
+            buffer = string.Empty;
+        }
+
+        if (buffer.Length > 0) joined.Add(buffer);
+
+        // المطويّة والقيمة السطرية أمرٌ واحد مهما تعدّدت أسطرها.
+        if (folded || (!literal && inline.Length > 0))
+        {
+            var one = string.Join(" ", joined.Where(static l => l.Length > 0));
+            return one.Length == 0 ? [] : [one];
+        }
+
+        return [.. joined.Where(static l => l.Length > 0)];
+    }
+
+    /// <summary>
+    /// <b>هل تصل حالةُ خروج هذا الاستدعاء إلى الوظيفة؟</b>
+    /// <para>
+    /// الشرط: <c>run</c> فيها <b>أمرٌ واحد لا غير</b>، وهو الاستدعاء، <b>ولا عاملَ صَدَفةٍ
+    /// حوله</b>. فما بعد الأمر الأخير هو ما تقرأه الوظيفة: ‏<c>|| true</c> تجعل الأخيرَ
+    /// <c>true</c>، و<c>; true</c> كذلك، و<c>|| echo skip</c> كذلك، و<c>&amp;</c> تُلقي
+    /// الأمر في الخلفية فتُصفّر حالته، و<c>|</c> تُسلّم الحالة لآخر حلقةٍ في الأنبوب.
+    /// </para>
+    /// <para>
+    /// <b>والعطل الذي أغلقه شرطُ «أمرٌ واحد»، مقيساً:</b> كان الحكم يقرأ <b>آخر أمرٍ</b>
+    /// وحده، فيمرّ كلُّ ما يسبقه في الكتلة نفسها. وذلك ليس فراغاً نظرياً — سطرٌ واحد
+    /// قبل الاستدعاء يكفي، بطريقتين مختلفتين جذرياً:
+    /// <list type="number">
+    ///   <item><b>يُلغي حالة الخروج بعد وقوعها:</b> ‏<c>trap 'exit 0' EXIT</c> ثم
+    ///         الاستدعاء. الصَّدَفة الافتراضية على GitHub هي <c>bash -e</c>، فتسقط عند
+    ///         الاستدعاء الفاشل ثم <b>يُشغَّل الشرَك فيخرج بصفر</b>. مقيس: القاعدة 20
+    ///         <c>total 15 · failed 0</c> وحصيلةٌ ساقطة.</item>
+    ///   <item><b>يُتلف الشيءَ المُستدعى قبل استدعائه:</b> ‏<c>echo "exit 0" &gt;
+    ///         tools/test-tally/run.sh</c> ثم الاستدعاء. الاستدعاء نفسه سليمُ الشكل تماماً
+    ///         وحالتُه تصل الوظيفة فعلاً — لكنها حالةُ نصٍّ آخر. مقيس: <c>15/15</c> خضراء.</item>
+    /// </list>
+    /// <b>ولا تُعدّ هاتان في قائمةٍ</b>: بينهما وحدهما شرَكٌ ودالّةٌ وملفّ، وما بعدهما
+    /// <c>PATH</c> ودالّةُ صَدَفةٍ تحمل اسم السكربت ومتغيّرُ بيئةٍ يقرؤه. القائمة مفتوحة
+    /// أبداً؛ والخاصّية المغلقة واحدة: <b>الخطوة لا تفعل شيئاً سوى الاستدعاء</b>. فما لا
+    /// يوجد لا يُخصي، و<c>set +e</c> تسقط من الحساب لأنها لا يجوز أن توجد أصلاً.
+    /// </para>
+    /// <para>
+    /// <b>وثمنُه مقيس ومدفوع:</b> خطواتُ الحصيلة الثلاث في المستودع — <c>ci.yml</c>
+    /// و<c>data-validation.yml</c> و<c>web.yml</c> — كلُّها <c>run:</c> بسطرٍ واحد، فلا
+    /// تدفع هذه القاعدة شيئاً اليوم. ومن احتاج غداً تهيئةً قبل الحصيلة يكتبها
+    /// <b>في خطوةٍ سابقة</b>، وهو ما يجعل حالتَها تصل الوظيفة هي الأخرى.
+    /// </para>
+    /// </summary>
+    private static bool StatusReachesTheJob(ShellStep step, string invocation)
+    {
+        // ‏**أمرٌ واحد لا غير.** أيُّ أمرٍ سابقٍ في الكتلة نفسها يستطيع أن يُلغي حالة
+        // الخروج (شرَك) أو أن يُبدّل ما يُستدعى (كتابةٌ فوق السكربت، دالّة، PATH) —
+        // ولا يُعرف عددُ الطرق فتُعدّ، فتُمنع الكتلةُ متعدّدةُ الأوامر من أصلها.
+        if (step.Commands.Count != 1) return false;
+
+        var last = step.LastCommand.Trim();
+        if (!last.Contains(invocation, StringComparison.Ordinal)) return false;
+
+        // لا عامل صَدَفةٍ في الأمر الأخير: لا وصلَ ولا فصلَ ولا أنبوبَ ولا خلفيةَ ولا
+        // استبدالَ أمر. والاستدعاء يبدأ السطر، فلا شيء قبله يُلغي تشغيله.
+        if (!last.StartsWith(invocation, StringComparison.Ordinal)) return false;
+
+        return last.IndexOfAny(['|', '&', ';', '`', '(', ')', '\n']) < 0
+            && !last.Contains("$(", StringComparison.Ordinal);
+    }
+
+    /// <summary>كل خطوات وظيفةٍ، مقروءةً بنيةً.</summary>
+    private static IReadOnlyList<ShellStep> StepsOf(string workflow, string job)
     {
         var blocks = new List<List<string>>();
         List<string>? block = null;
@@ -684,18 +996,24 @@ public sealed class Rule20_EveryJobIsClassifiedForTests
         }
 
         if (block is not null) blocks.Add(block);
+        return [.. blocks.Select(b => ParseStep(string.Join("\n", b)))];
+    }
 
-        var found = blocks
-            .Select(static b => string.Join("\n", b))
-            .FirstOrDefault(b => b.Contains(marker, StringComparison.Ordinal));
+    /// <summary>خطوةُ الحصيلة — تُعرَف بأمرٍ **مقروء** يحمل مُحدِّد وظيفتها، لا بنصٍّ في الملفّ.</summary>
+    private static ShellStep TallyStepOf(string workflow, string job, string selector)
+    {
+        var found = StepsOf(workflow, job)
+            .FirstOrDefault(s => s.Commands.Any(c => c.Contains(TallyScript + " " + selector, StringComparison.Ordinal)));
 
         Assert.True(
             found is not null,
-            "لم تُعثر خطوةٌ تحوي «" + marker + "» في " + workflow + ":" + job + ". · step not found."
+            "لا خطوةَ حصيلةٍ **مُنفَّذة** في " + workflow + ":" + job + " تحمل «" + TallyScript + " "
+                + selector + "». وسطرُ تعليقٍ يحمل النصّ ليس خطوة. · no executed tally step."
         );
 
         return found!;
     }
+
 
     /// <summary>
     /// مشاريع الاختبار على القرص — <b>مشتقّةً من شرط البناء نفسه</b>، لا من قائمة.

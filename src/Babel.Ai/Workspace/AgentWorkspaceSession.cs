@@ -1,3 +1,4 @@
+using Babel.Ai.Agent;
 using Babel.SharedKernel;
 
 namespace Babel.Ai.Workspace;
@@ -23,6 +24,19 @@ public sealed class AgentWorkspaceSession
     private readonly List<TaskCompletionSource<bool>> _waiters = [];
 
     private readonly Dictionary<Guid, (string Token, string RegisterKey, string SubjectText)> _raised = [];
+
+    /// <summary>
+    /// <b>دفترُ ما هبط في هذه الجلسة: هويّةُ المسوّدة ← مسارُ شاشتها.</b>
+    /// <para>
+    /// وهو نظير دفتر هويّات الترحيل بحرفه: مفتاحٌ يُحسب من الشكل نفسه، والوصول الثاني
+    /// به <b>يُعيد ما هبط</b> ولا يُنشئ ثانياً. ولولاه لكان تأكيدان على الخطوة نفسها —
+    /// أو نداءان متطابقان من نموذجٍ احتماليّ — فاتورتين لعميلٍ واحد.
+    /// </para>
+    /// </summary>
+    private readonly Dictionary<string, AgentDraftLanding> _landed = new(StringComparer.Ordinal);
+
+    /// <summary>وأيُّ خطوةٍ هبطت مسوّدتها — كي يكون تأكيدٌ مكرَّرٌ عليها نجاحاً لا رفضاً.</summary>
+    private readonly Dictionary<Guid, AgentDraftLanding> _landedSteps = [];
 
     private AgentWorkspaceConfirmation? _confirmation;
     private TaskCompletionSource<Result>? _confirmationAnswer;
@@ -349,6 +363,47 @@ public sealed class AgentWorkspaceSession
         }
     }
 
+    /// <summary>
+    /// <b>يقرأ ما هبط بهذه الهويّة، أو <c>null</c>.</b> والوصول الثاني بالهويّة نفسها
+    /// يُعيد المسوّدة التي هبطت — ولا تهبط ثانية.
+    /// </summary>
+    /// <param name="identity">هويّة المسوّدة كما يحسبها <see cref="AgentDraftIdentity"/>.</param>
+    public AgentDraftLanding? LandingOf(string identity)
+    {
+        ArgumentNullException.ThrowIfNull(identity);
+
+        lock (_gate)
+        {
+            return _landed.TryGetValue(identity, out AgentDraftLanding? found) ? found : null;
+        }
+    }
+
+    /// <summary>
+    /// يقيّد أنّ مسوّدةً هبطت بهذه الهويّة على هذه الخطوة.
+    /// <b>ويُقيَّد أوّلُ هبوطٍ وحده</b>: تسجيلٌ ثانٍ لا يُبدّل ما قُيّد، فلا يتغيّر جوابُ
+    /// إعادةٍ بحسب من سبق.
+    /// </summary>
+    /// <param name="identity">هويّة المسوّدة.</param>
+    /// <param name="stepId">الخطوة التي هبطت عليها.</param>
+    /// <param name="landing">ما هبط.</param>
+    public AgentDraftLanding RecordLanding(string identity, Guid stepId, AgentDraftLanding landing)
+    {
+        ArgumentNullException.ThrowIfNull(identity);
+        ArgumentNullException.ThrowIfNull(landing);
+
+        lock (_gate)
+        {
+            if (_landed.TryGetValue(identity, out AgentDraftLanding? already))
+            {
+                return already;
+            }
+
+            _landed[identity] = landing;
+            _landedSteps[stepId] = landing;
+            return landing;
+        }
+    }
+
     /// <summary>يقبل تأكيداً من إنسان أو يرفضه.</summary>
     /// <param name="stepId">الخطوة المقصودة — <b>ولا يُقبل تأكيدٌ لغيرها</b>.</param>
     /// <param name="accepted">هل قَبِل شكل البيانات؟</param>
@@ -358,6 +413,15 @@ public sealed class AgentWorkspaceSession
 
         lock (_gate)
         {
+            // ‏**تأكيدٌ ثانٍ على خطوةٍ هبطت مسوّدتها ليس خطأ — وليس مسوّدةً ثانية.**
+            // ضغطةٌ مكرَّرة، أو نقرةٌ بعد انقطاع شبكة، تُعيد الحال كما هي: المسوّدة
+            // التي هبطت ومسارُ شاشتها. و«لا شيء ينتظر تأكيدك» على خطوةٍ يراها المستخدم
+            // «هبطت» جملةٌ تُقرأ عطلاً وليست عطلاً.
+            if (_landedSteps.ContainsKey(stepId))
+            {
+                return Result.Success();
+            }
+
             if (_confirmation is null || _confirmation.StepId != stepId || _confirmationAnswer is null)
             {
                 return Result.Failure(AgentWorkspaceErrors.NothingAwaitsConfirmation);

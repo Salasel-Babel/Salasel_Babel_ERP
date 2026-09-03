@@ -32,7 +32,7 @@
        يُعيد الإيصال ذاته وalreadyPosted = true ورمز 200 — والشاشة تقول ذلك
        صراحةً بدل أن تُظهر نجاحاً ثانياً يُقرأ «رُحِّل مرّتين».
    ═══════════════════════════════════════════════════════════════════════════ */
-import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { postJournalEntry, readCompanySetup } from "../../api/generated/client";
 import { useQuery } from "@tanstack/react-query";
@@ -350,7 +350,7 @@ export function JournalVoucherScreen(): ReactNode {
           </div>
         </div>
 
-        <div className="grid fields-half" style={{ marginTop: "var(--space-12)" }}>
+        <div className="grid fields-half" style={{ "--grid-lead": "var(--space-12)" } as CSSProperties}>
           <div className="field">
             <label htmlFor="jv-memo-ar">{t("screen.voucher.narrationAr")}</label>
             <input
@@ -468,7 +468,7 @@ export function JournalVoucherScreen(): ReactNode {
               </div>
             </div>
 
-            <div className="grid fields-4" style={{ marginTop: "var(--space-10)" }}>
+            <div className="grid fields-4" style={{ "--grid-lead": "var(--space-10)" } as CSSProperties}>
               <div className="field">
                 <label htmlFor={"jv-branch-" + line.key}>{t("field.branch.label")}</label>
                 <input

@@ -30,8 +30,11 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { NUMERAL_FACE_PROPERTY, scanRepository } from "./numerals.mjs";
 import {
+  carriesOwnScript,
   census,
+  corroborates,
   foreignRuns,
   hasOwnScript,
   isDiagnostic,
@@ -86,8 +89,8 @@ const DECLARED_DEBT = {
      ‏146 نصّاً فريداً، 82 منها شظايا جملةٍ مقطوعةٍ حول وسمٍ داخلي لا تصلح
      مفاتيح. ونقلُها إلى ملفّات اللغة يوجب — بحكم الفحص ١ نفسه — اختلاق نحو
      400 ترجمة أردية وهندية وإنجليزية لسردٍ لن يُقرأ إلا بالعربية، فيدخل
-     السجلَّ نصٌّ مُختلَق لا يُميَّز عن الترجمة الحقيقية. ADR-جديد
-     «طبقة العرض دينٌ معلَن لا مسارٌ مُعفى». */
+     السجلَّ نصٌّ مُختلَق لا يُميَّز عن الترجمة الحقيقية. ADR-0037
+     «طبقة العرض دينٌ معلَن بسقف، لا مسارٌ مُعفى». */
 };
 const debtScopeFiles = [];
 const head = (t) => out.push("", "─".repeat(74), t, "─".repeat(74));
@@ -742,10 +745,14 @@ for (const code of CODES) {
         );
       }
 
-      /* الإذن المغلق: مقطعٌ أجنبيّ غير آليّ يُصدَّق بلغةٍ أخرى، أو يسقط. */
+      /* الإذن المغلق: مقطعٌ أجنبيّ غير آليّ يُصدَّق بلغةٍ أخرى **هو أجنبيٌّ
+         عندها أيضاً**، أو يسقط. والقيد الأخير هو ما كان ناقصاً: قيمةٌ لم
+         تُترجَم هي نصُّ العربية حرفاً بحرف، فمقاطعها العربية تظهر في
+         `ar.web.ts` تحت المفتاح نفسه دائماً — فكان الإذن يُصدِّق العطل الذي
+         وُضع له. (القاعدة الواحدة في locale-script.mjs · `corroborates`) */
       for (const run of foreignRuns(text, code)) {
         const seenElsewhere = CODES.some(
-          (other) => other !== code && valueTexts(messages[other][key]).some((t) => t.includes(run))
+          (other) => other !== code && corroborates(run, other, valueTexts(messages[other][key]))
         );
         foreignRunsSeen++;
         if (!seenElsewhere) {
@@ -756,12 +763,22 @@ for (const code of CODES) {
       }
 
       if (!witness) continue;
-      if (census(text, code).letters === 0) continue;
+      /* ‏**ونصُّ المصدر يُسلَّم إلى العدّاد** — لا ليُرخّص، بل ليفصل بين رمزٍ
+         حملته العربيةُ نفسها ونثرٍ لم يُترجَم. `standard` و`zero` و`exempt`
+         قيمُ سلكٍ صغرى الحروف تكتبها `ar.web.ts` تحت المفتاح نفسه، فليست
+         نثراً إنجليزياً؛ و«Speak as you speak at work…» لا يظهر في العربية
+         بحرفٍ واحد، فيبقى نثراً أجنبياً ويُحمِّر. (‏قاعدةُ `sourceCarries`) */
+      const carriedBySource = code === SOURCE ? null : valueTexts(messages[SOURCE][key]);
+      if (census(text, code, carriedBySource).letters === 0) continue;
       witnessedComparisons++;
-      if (!hasOwnScript(text, code)) {
+      if (!hasOwnScript(text, code, carriedBySource)) {
+        /* الرسالة تحمل **العدد الذي حُكم به**: «ليس فيه حرف واحد» كانت تكذب
+           على القيمة التي فيها حرفٌ واحد وتسعةٌ وستّون أجنبياً. */
+        const c = census(text, code, carriedBySource);
         wrongScript.push(
-          where + " ← " + key + "  ليس فيه حرف واحد بخطّ " + scripts[code] +
-            " (شاهده " + witness + ") · «" + text.slice(0, 46) + "»"
+          where + " ← " + key + "  أغلبُ حروفه ليست بخطّ " + scripts[code] +
+            " (بخطّه " + c.inScript + " · أجنبيّ " + c.foreign + " · آليّ " + c.machine +
+            "، شاهده " + witness + ") · «" + text.slice(0, 46) + "»"
         );
       }
     }
@@ -783,7 +800,8 @@ for (const code of CODES) {
 const probeOf = (code) => {
   for (const v of Object.values(messages[code])) {
     for (const t of valueTexts(v)) {
-      if (hasOwnScript(t, code) && census(t, code).letters >= 6) return t;
+      /* انتقاءُ عيّنةٍ لا حكم: القاعدة الضعيفة هي الصحيحة هنا باسمها. */
+      if (carriesOwnScript(t, code) && census(t, code).letters >= 6) return t;
     }
   }
   return null;
@@ -799,6 +817,37 @@ for (const code of CODES) {
   selfTest(code + ": والسليم لا يفقده", probe !== null && hasOwnScript(probe, code));
 }
 selfTest("لا إنذار على نصّ سليم", mojibakeRuns("Journal Voucher \u00b7 \u00abPDF\u00bb \u2014 1,250.00").length === 0);
+
+/* ══ شواهد القاعدة (ب) بعد أن صارت أغلبيةً — والعطل الذي أُغلق مقيسٌ هنا ══
+   ‏كانت القاعدة `inScript > 0`: حرفٌ واحد بخطّ اللغة يُرخّص للقيمة كلَّها.
+   والشاهدان أدناه يزرعان الشكلين اللذين مرّا: حرفٌ واحد مُلصَق بنثرٍ أجنبيّ،
+   والكلمةُ الأولى وحدها مترجَمة. وكلاهما **يمرّ** بالقاعدة الضعيفة —
+   وهي مُبقاةٌ باسمها `carriesOwnScript` — و**يسقط** بالحكم. */
+{
+  const foreignProse = probeOf(SOURCE) ?? "";
+  const nativeLetter = [...(probeOf("hi") ?? "")].find((ch) => /\p{L}/u.test(ch)) ?? "";
+  const oneLetter = nativeLetter + foreignProse;
+  const words = foreignProse.split(/\s+/u);
+  const firstTranslated = [(probeOf("hi") ?? "").split(/\s+/u)[0], ...words.slice(1)].join(" ");
+  const enough = census(foreignProse, "hi").foreign >= 12;
+
+  selfTest("حرفٌ واحد بخطّ اللغة لا يُرخّص القيمة", enough && carriesOwnScript(oneLetter, "hi") && !hasOwnScript(oneLetter, "hi"));
+  selfTest("والكلمةُ الأولى وحدها مترجَمة تسقط كذلك", enough && !hasOwnScript(firstTranslated, "hi"));
+  selfTest("والقيمة المترجَمة فعلاً تمرّ", hasOwnScript(probeOf("hi") ?? "", "hi"));
+  /* والرمز الآليّ ASCII لا يُحسب أجنبياً، وإلّا أسقط «ملف PDF» وهي عربيةٌ سليمة. */
+  selfTest("والرمز الآليّ لا يقلب الأغلبية", hasOwnScript("\u0645\u0644\u0641 PDF", "ar") && census("\u0645\u0644\u0641 PDF", "ar").machine === 3);
+}
+
+/* ══ شواهد القاعدة (د) بعد أن صار الإذن يشترط الغربة عند المُصدِّق ══════════
+   ‏قيمةٌ **لم تُترجَم** هي نصُّ العربية حرفاً بحرف، فمقاطعها تظهر في `ar` تحت
+   المفتاح نفسه دائماً. فكان «ظهر في لغةٍ أخرى» يُصدِّق العطل الذي وُضع له. */
+{
+  const arabicRun = foreignRuns(probeOf(SOURCE) ?? "", "hi")[0] ?? "";
+  const arabicText = probeOf(SOURCE) ?? "";
+  selfTest("المقطع الأجنبيّ يظهر عند مصدره", arabicRun.length > 0 && arabicText.includes(arabicRun));
+  selfTest("ولا يُصدِّقه من هو خطُّه", arabicRun.length > 0 && !corroborates(arabicRun, SOURCE, [arabicText]));
+  selfTest("ويُصدِّقه من هو أجنبيٌّ عنده", arabicRun.length > 0 && corroborates(arabicRun, "en", [arabicText]));
+}
 /* أن **يُستبعَد** خطُّ المعرّفات من الشهادة يُقاس على اللغات الحقيقية، لا يُدَّعى. */
 const identifierLocales = CODES.filter((c) => !isDiagnostic(scripts[c]));
 selfTest(
@@ -1044,24 +1093,25 @@ mustScan("أصنافٌ رقمية مشتقّة · numeric classes derived", NUME
    فالقاعدة التي تكتب ذلك الرمز تكتب **الوجه نفسه** لا وجهاً ثانياً. ولو
    قُورن بالنصّ لَاتُّهم `body` — وهو الموضع الذي تُكتب فيه الصيغة **مرّةً
    واحدة كي تُورَّث** — بأنه يُدخل وجهاً ثانياً وهو يُدخل الوجه عينه. */
-const FACE_TOKEN = "--font-numeric-face";
-const faceAlias = new Set([FACE_TOKEN]);
-{
-  const decl = new RegExp(FACE_TOKEN + "\\s*:\\s*var\\(\\s*(--[\\w-]+)\\s*\\)").exec(tokensText);
-  if (decl) faceAlias.add(decl[1]);
-}
-mustScan("مرادفات وجه الأرقام المقروءة من tokens.css · numeric-face aliases", faceAlias.size, 2);
-
-const faceProblems = [];
-for (const r of tabularRules) {
-  const face = /(^|[;\s])font-family\s*:([^;]+)/.exec(r.body)?.[2]?.trim();
-  if (face && ![...faceAlias].some((token) => face.includes(token))) {
-    faceProblems.push(r.file + ":" + r.line + " " + r.selector + " ← font-family:" + face);
-  }
-}
+/* ‏**والحكم لا يُكتب هنا مرّتين، ولا يُقصَر على قاعدةٍ تُعلن أرقامها.**
+   النسخة السابقة كانت تقرأ `font-family` من **جسم قاعدةٍ تُعلن `tabular-nums`
+   بنفسها**، فكانت عمياء عن الشكل الذي يهزمها: قاعدةٌ **أخرى** تختار وجهاً
+   لصنفٍ رقميّ ولا تُعلن أرقاماً. مقيس: إلحاق
+   `tbody tr:nth-child(2n) .acct-code{font-family:"DejaVu Sans",sans-serif}`
+   كان يُبقي هذا الفحص أخضر ورمزُ الحساب السباعيّ نفسه يُرسم 59.78px و69.17px.
+   فصار الحكم واحداً في `numerals.mjs` — مِلكيّتُه الخاصّية، والصنفُ الرقميّ
+   **مشتقٌّ** من مُحدِّدات القواعد التي تُعلن الأرقام، وجذرُ الوراثة يُحكَم
+   بمساواة وجهه لتعريف `--font-numeric-face` حرفاً بحرف — ويُستدعى من هنا.
+   وحكمان بنصّين لبناءٍ واحد هو فخ-135 بعينه. */
+const faceScan = scanRepository(REPO);
+const faceProblems = faceScan.violations
+  .filter((v) => v.property === NUMERAL_FACE_PROPERTY || v.kind.includes("face"))
+  .map((v) => v.file + ":" + v.line + " ← font-family:" + v.value + " · " + v.why);
+mustScan("تصريحات المِحرف المفحوصة · face declarations judged", faceScan.faceDeclarations.length, 20);
+mustScan("أصنافٌ رقمية للمِحرف · numeric classes for the face", faceScan.numericClasses.length, 30);
 if (faceProblems.length) {
-  bad("وجهٌ ثانٍ للرقم — الأرقام الجدولية تتطلّب وجه الأرقام الواحد", faceProblems, true);
-} else ok("كل قاعدةٍ تُعلن أرقاماً جدولية تستعمل وجه الأرقام الواحد");
+  bad("وجهٌ ثانٍ للرقم — الأرقام الجدولية تتطلّب var(--font-numeric-face)", faceProblems, true);
+} else ok("كل سطحٍ رقميّ يُرسم بوجهٍ واحد — والحكم من numerals.mjs لا نسخةٌ ثانية منه");
 
 /* ‏(ب) **الخانة التي تعرض رقماً تحمل صنفاً رقمياً.** */
 const NUMERIC_TAG = /<Amount\b|<Decimal\b|<Num\b|<RateValue\b|<QuantityValue\b/;

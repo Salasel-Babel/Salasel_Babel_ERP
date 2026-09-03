@@ -18,25 +18,22 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 import { useCallback, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 import {
   addSubcontract,
   addSubcontractor,
-  draftSubcontractorAdvance,
-  postSubcontractorAdvance,
-  readGuarantee,
   readSubcontract,
   readSubcontractLines,
   readSubcontractor,
 } from "../../api/generated/client";
 import { asMagnitude, asRate } from "../../api/generated/brands";
 import { Money } from "../../api/money";
-import type { NameValue, ProjectsDocument, SubcontractLineRequest } from "../../api/generated/types";
+import type { NameValue, SubcontractLineRequest } from "../../api/generated/types";
 import { useApi } from "../../app/api-context";
 import { Amount, Num, useT } from "../../i18n/react";
 import { Button, Field, MOTION, Panel, QuantityValue, RateValue, StatusBadge } from "../../ui";
 import {
   ContractingHead,
-  DocumentReceipt,
   ExplainedEmpty,
   Foldable,
   isCountText,
@@ -401,230 +398,13 @@ function NewSubcontractForm(props: {
   );
 }
 
-/* ═══════════════════════════════════════════════ الدفعة المقدمة */
-
-function AdvanceForm(props: { readonly subcontractId: string }): ReactNode {
-  const { t } = useT();
-  const { transport, config } = useApi();
-  const [number, setNumber] = useState("");
-  const [paidOn, setPaidOn] = useState(todayIso);
-  const [amount, setAmount] = useState("");
-  const [settlementMethod, setSettlementMethod] = useState("");
-  const [treasuryPartyId, setTreasuryPartyId] = useState("");
-  const [guaranteeId, setGuaranteeId] = useState("");
-  const [document, setDocument] = useState<ProjectsDocument | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<unknown>(null);
-
-  const guarantee = useQuery({
-    queryKey: ["contracting", "guarantee", config.baseUrl, config.token, config.companyId, guaranteeId],
-    enabled: guaranteeId !== "",
-    retry: false,
-    queryFn: ({ signal }) => readGuarantee(transport, { companyId: config.companyId, guaranteeId }, signal),
-  });
-
-  const ready =
-    number !== "" && paidOn !== "" && isMoneyText(amount) && settlementMethod !== "" && treasuryPartyId !== "";
-
-  const draft = useCallback(async () => {
-    setBusy(true);
-    setError(null);
-    try {
-      const created = await draftSubcontractorAdvance(transport, {
-        companyId: config.companyId,
-        body: {
-          number,
-          subcontractId: props.subcontractId,
-          paidOn,
-          amount: Money.wire(amount),
-          settlementMethod,
-          treasuryPartyId,
-          guaranteeId: guaranteeId === "" ? null : guaranteeId,
-        },
-      });
-      setDocument(created);
-    } catch (failure) {
-      setError(failure);
-    } finally {
-      setBusy(false);
-    }
-  }, [amount, config.companyId, guaranteeId, number, paidOn, props.subcontractId, settlementMethod, transport, treasuryPartyId]);
-
-  const post = useCallback(async () => {
-    if (!document) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const receipt = await postSubcontractorAdvance(transport, {
-        companyId: config.companyId,
-        advanceId: document.id,
-      });
-      setDocument(receipt);
-    } catch (failure) {
-      setError(failure);
-    } finally {
-      setBusy(false);
-    }
-  }, [config.companyId, document, transport]);
-
-  return (
-    <div className="stack">
-      <div className="grid fields-3">
-        <Field id="ad-number" label={t("contracting.common.number")} required>
-          <input id="ad-number" data-testid="ad-number" className="ctl mono" dir="ltr" value={number} onChange={(e) => setNumber(e.target.value)} />
-        </Field>
-        <Field id="ad-paid" label={t("contracting.advance.paidOn")} required>
-          <input
-            id="ad-paid"
-            className="ctl mono"
-            type="date"
-            dir="ltr"
-            value={paidOn}
-            onChange={(e) => setPaidOn(e.target.value)}
-          />
-        </Field>
-        <Field
-          id="ad-amount"
-          label={t("contracting.advance.amount")}
-          hint={amount === "" || isMoneyText(amount) ? t("contracting.advance.amountHint") : t("contracting.common.moneyBad")}
-          source="typed"
-          required
-        >
-          <input
-            id="ad-amount"
-            data-testid="ad-amount"
-            className={"ctl amt-input" + (amount !== "" && !isMoneyText(amount) ? " is-invalid" : "")}
-            inputMode="decimal"
-            dir="ltr"
-            aria-invalid={amount !== "" && !isMoneyText(amount)}
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            placeholder="0.0000"
-          />
-        </Field>
-        <Field
-          id="ad-method"
-          label={t("contracting.advance.settlementMethod")}
-          hint={t("contracting.advance.settlementHint")}
-          required
-        >
-          <input
-            id="ad-method"
-            data-testid="ad-method"
-            className="ctl mono"
-            dir="ltr"
-            value={settlementMethod}
-            onChange={(e) => setSettlementMethod(e.target.value)}
-          />
-        </Field>
-        <Field
-          id="ad-treasury"
-          label={t("contracting.advance.treasury")}
-          hint={t("contracting.advance.treasuryHint")}
-          required
-        >
-          <input
-            id="ad-treasury"
-            data-testid="ad-treasury"
-            className="ctl mono"
-            dir="ltr"
-            value={treasuryPartyId}
-            onChange={(e) => setTreasuryPartyId(e.target.value)}
-          />
-        </Field>
-        <Field
-          id="ad-guarantee"
-          label={t("contracting.guarantee.idLabel")}
-          hint={t("contracting.guarantee.idHint")}
-        >
-          <input
-            id="ad-guarantee"
-            className="ctl mono"
-            dir="ltr"
-            value={guaranteeId}
-            onChange={(e) => setGuaranteeId(e.target.value)}
-          />
-        </Field>
-      </div>
-
-      {guaranteeId !== "" ? (
-        guarantee.isError ? (
-          <ReadProblem error={guarantee.error} />
-        ) : guarantee.data ? (
-          <div className="kv" data-testid="guarantee-read">
-            <div>
-              <div className="k">{t("contracting.common.number")}</div>
-              <div className="v mono" dir="ltr">
-                {guarantee.data.number}
-              </div>
-            </div>
-            <div>
-              <div className="k">{t("contracting.guarantee.kind")}</div>
-              <div className="v mono" dir="ltr">
-                {guarantee.data.kind}
-              </div>
-            </div>
-            <div>
-              <div className="k">{t("contracting.guarantee.issuer")}</div>
-              <div className="v">{guarantee.data.issuerNameAr}</div>
-            </div>
-            <div>
-              <div className="k">{t("contracting.advance.amount")}</div>
-              <div className="v">
-                <Amount value={guarantee.data.amount} />
-              </div>
-            </div>
-            <div>
-              <div className="k">{t("contracting.guarantee.expires")}</div>
-              <div className="v mono" dir="ltr">
-                {guarantee.data.expiresOn}
-              </div>
-            </div>
-          </div>
-        ) : (
-          <LoadingPanel what={t("contracting.guarantee.title")} />
-        )
-      ) : null}
-
-      <div className="inline-group">
-        <Button
-          label={busy ? t("contracting.common.loading") : t("contracting.advance.saveDraft")}
-          kind="primary"
-          disabled={!ready || busy}
-          onClick={() => void draft()}
-          testId="advance-draft"
-        />
-        {document ? (
-          <Button
-            label={t("contracting.posting.post")}
-            kind="primary"
-            disabled={busy}
-            onClick={() => void post()}
-            testId="advance-post"
-          />
-        ) : null}
-      </div>
-
-      {document ? (
-        <DocumentReceipt
-          document={document}
-          onRepeat={document.state === "POSTED" ? () => void post() : undefined}
-          busy={busy}
-          testId="advance-receipt"
-        />
-      ) : null}
-      {error ? <ReadProblem error={error} /> : null}
-      <p className="muted">{t("contracting.advance.whyItPosts")}</p>
-    </div>
-  );
-}
-
 /* ═══════════════════════════════════════════════════ الشاشة كاملةً */
 
 /** شاشة المقاولين من الباطن وعقودهم ودفعتهم المقدمة. */
 export function SubcontractingScreen(): ReactNode {
   const { t, tp } = useT();
   const { transport, config } = useApi();
+  const navigate = useNavigate();
   const feed = useProjects();
   const selection = useContractingSelection();
   const [subcontractorId, setSubcontractorId] = useState("");
@@ -922,20 +702,21 @@ export function SubcontractingScreen(): ReactNode {
         )}
       </Panel>
 
+      {/* الدفعة المقدمة **شاشتُها غير هذه** منذ ADR-0080: هذه الشاشة تُعرِّف
+          مقاولاً وعقده — نموذجا كتابةٍ اثنان — والدفعةُ مستندٌ مالي يتكرّر
+          ويدخل الدفتر، فنموذجٌ ثالثٌ هنا يُسقط قاعدة «سؤالٌ واحد لكلّ شاشة».
+          وما يبقى طريقٌ إليها يحمل معه عقدَ الباطن المختار. */}
       <Panel
         title={t("contracting.advance.title")}
-        note={t("contracting.advance.note")}
+        note={t("contracting.advance.movedNote")}
         testId="advance-panel"
       >
-        {selection.subcontractId === "" ? (
-          <ExplainedEmpty
-            title={t("contracting.advance.needSubcontractTitle")}
-            body={t("contracting.advance.needSubcontractBody")}
-            testId="advance-needs-subcontract"
-          />
-        ) : (
-          <AdvanceForm subcontractId={selection.subcontractId} />
-        )}
+        <Button
+          label={t("contracting.advance.openScreen")}
+          kind="primary"
+          onClick={() => void navigate({ to: "/contracting/advances" })}
+          testId="go-advances"
+        />
       </Panel>
     </section>
   );

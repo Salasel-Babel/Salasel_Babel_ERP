@@ -119,3 +119,76 @@
 .inv-route:last-child{ border-block-end:none }
 .inv-route__k{ flex:1 1 auto; color:var(--color-text-muted); font-size:var(--font-size-sm) }
 .inv-route__v{ font-weight:var(--font-weight-semibold) }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   الشاشات الخمس التالية — التسكين والنقل والوحدات
+   the next five screens — placement, transfer, units
+   ───────────────────────────────────────────────────────────────────────────
+   **ولا لونَ جديد هنا ولا مدّةَ حركةٍ جديدة** كما في صدر هذا الملفّ: كل قيمة
+   رمزٌ من `tokens.css`، وكل حركةٍ مفردةٌ من `motion.css`، وكل بادئةٍ `inv-`.
+   وما أُضيف تخطيطٌ لا يحمله وعاءٌ عامّ: درج الشجرة الثلاثي، وسهم النقل الذي
+   ينقلب مع الاتجاه وحده، ولوحُ جواب المسبار.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── درج التسكين: ثلاثة أعمدة تنهار إلى عمود ─────────────────────────────
+   مستودع ← موقع ← رفّ. و`minmax(0,…)` لا `1fr` وحدها للسبب نفسه في §١ أعلاه:
+   عمودٌ يحمل قائمةً طويلة الرموز يتمدّد على جاره بلا حدٍّ أدنى. */
+.inv-tree{
+  display:grid; gap:var(--space-12);
+  grid-template-columns:repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  align-items:start;
+}
+
+/* ── عمودٌ من الدرج ──────────────────────────────────────────────────────
+   الحدّ على البداية خاصّيةٌ منطقية فينقلب وحده في اللغات الأربع، ولونه لون
+   القسم حين يكون العمود **مختاراً** — فيُعرف أي فرعٍ يُقرأ منه ما تحته. */
+.inv-rung{
+  border-inline-start:var(--border-width-accent) solid var(--edge-faint);
+  padding-inline-start:var(--space-10);
+  min-width:0;
+}
+.inv-rung[data-picked="true"]{ border-inline-start-color:var(--section-inventory) }
+.inv-rung__hd{
+  display:flex; align-items:baseline; gap:var(--space-8); flex-wrap:wrap;
+  margin-block-end:var(--space-8);
+}
+.inv-rung__k{ color:var(--color-text-muted); font-size:var(--font-size-sm) }
+
+/* ── صفُّ موضعٍ في الدرج ─────────────────────────────────────────────────
+   زرُّ الاختيار يملأ عرض الصفّ فيصير الرمز كلّه هدفَ لمس، ولا يبقى الهدف
+   حرفين. والمُعطَّل يبقى مقروءاً — التعطيل حالةٌ تُقرأ لا غياب — فيُخفت ولا
+   يُخفى. */
+.inv-place{
+  display:flex; align-items:center; gap:var(--space-8);
+  padding-block:var(--space-4);
+  border-block-end:var(--border-width) solid var(--edge-faint);
+  min-width:0;
+}
+.inv-place:last-child{ border-block-end:none }
+.inv-place__pick{ flex:1 1 auto; justify-content:flex-start; min-width:0; text-align:start }
+.inv-place__code{ font-family:var(--font-mono); unicode-bidi:isolate }
+.inv-place[data-active="false"] .inv-place__code{ color:var(--color-text-subtle) }
+
+/* ── طرفا النقل ─────────────────────────────────────────────────────────
+   «مستودع · موقع» في خليّةٍ واحدة، معزولةً اتّجاهياً وبخطٍّ أحادي: الرمزان
+   معرّفان لاتينيان يُقرآن من اليسار في اللغات الأربع. والفاصل بينهما **نقطةٌ
+   لا سهم**، عمداً: السهم يحمل اتّجاهاً، وطرفا النقل في هذه الخليّة **ليسا
+   مصدراً ووجهة** — العمودان المجاوران هما من يقول ذلك. وهو `aria-hidden`
+   فلا يُنطَق «نقطة» بين رمزين. */
+.inv-leg{
+  display:flex; align-items:center; gap:var(--space-8); flex-wrap:wrap;
+  font-family:var(--font-mono); unicode-bidi:isolate;
+}
+.inv-leg__sep{ color:var(--section-inventory); font-weight:var(--font-weight-bold) }
+
+/* ── لوح جواب المسبار ────────────────────────────────────────────────────
+   جوابٌ واحد لا جدول: كمّيةٌ داخلة وكمّيةٌ خارجة والمعامل بينهما. وحدُّه لون
+   القسم حين يقع، ولون الرفض حين يُرفض — واللونان رمزان قائمان. */
+.inv-probe{
+  display:flex; align-items:baseline; gap:var(--space-12); flex-wrap:wrap;
+  padding:var(--space-12);
+  border:var(--border-width) solid var(--section-inventory);
+  border-radius:var(--radius-panel);
+  background:var(--color-surface-sunken);
+}
+.inv-probe__ratio{ font-family:var(--font-mono); unicode-bidi:isolate; color:var(--color-text-subtle) }

@@ -100,6 +100,15 @@ jobs:
         if: always() && steps.install.outcome == 'success'
         run: npm run audit:i18n
 
+      # ‏**رسم الأرقام ووجه المِحرف.** كان `numerals.mjs` بلا مُشغِّل في المستودع
+      # كلِّه — لا هنا ولا في `tools/gate/run.sh` — فكان حكمُ الوجه شيفرةً صحيحة
+      # لا ينفّذها أحد. و`web/e2e/numerals.spec.ts` وحده كان يراه، والبوّابة لا
+      # تشغّل من Playwright إلا `alignment.spec.ts`.
+      - name: رسم الأرقام ووجه المِحرف
+        id: numerals
+        if: always() && steps.install.outcome == 'success'
+        run: npm run numerals
+
       - name: التحقق من الأنواع والبناء
         id: build
         if: always() && steps.install.outcome == 'success'
@@ -136,6 +145,7 @@ jobs:
             echo "|---|---|"
             echo "| العقد · gen:check | ${{ steps.contract.outcome }} |"
             echo "| التدويل · audit:i18n | ${{ steps.i18n.outcome }} |"
+            echo "| الأرقام · numerals | ${{ steps.numerals.outcome }} |"
             echo "| الأنواع والبناء · build | ${{ steps.build.outcome }} |"
             echo "| الحدّ · lint | ${{ steps.lint.outcome }} |"
             echo "| الوحدة · unit tests | ${{ steps.unit.outcome }} |"

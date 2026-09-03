@@ -117,21 +117,48 @@ export const SCREENS: readonly ScreenEntry[] = [
   { path: "/sign-in", labelKey: "app.nav.signIn", section: "accounting" },
   { path: "/contract", labelKey: "app.nav.contract", section: "accounting" },
   { path: "/design", labelKey: "app.nav.design", section: "accounting" },
+  /* ── العقارات — أربعٌ **بترتيب العمل لا بترتيب الحروف**: العقارُ ووحداته
+     يُعرَّفان مرّةً ← ثم طرفا العقد (المالك الذي نُحصّل له والمستأجر الذي
+     نُحصّل منه) ← ثم العقد وجدوله ← ثم ما تأخّر وما قُبض. والترتيب هنا هو
+     ترتيب الشريط داخل القسم في `screens/realestate/parts.tsx` نفسه. */
   { path: "/realestate", labelKey: "realestate.nav.register", section: "realestate" },
+  { path: "/realestate/parties", labelKey: "realestate.nav.parties", section: "realestate" },
   { path: "/realestate/lease", labelKey: "realestate.nav.lease", section: "realestate" },
   { path: "/realestate/arrears", labelKey: "realestate.nav.arrears", section: "realestate" },
+  /* ── المقاولات — سبعٌ **بترتيب العمل**: المشروع وعقده يُسجَّلان ← ما يغيّر
+     نطاق العقد ← ما يُوثَّق عليه قبل أن يتحرّك مال ← المستخلص ← الباطن ←
+     دفعته المقدمة ← ما يُحتجز ويُطابَق عند الإقفال. */
   { path: "/contracting", labelKey: "contracting.nav.register", section: "contracting" },
+  { path: "/contracting/change-orders", labelKey: "contracting.nav.changeOrders", section: "contracting" },
+  { path: "/contracting/guarantees", labelKey: "contracting.nav.guarantees", section: "contracting" },
   { path: "/contracting/certificate", labelKey: "contracting.nav.certificate", section: "contracting" },
   { path: "/contracting/subcontracting", labelKey: "contracting.nav.subcontracting", section: "contracting" },
+  { path: "/contracting/advances", labelKey: "contracting.nav.advances", section: "contracting" },
   { path: "/contracting/retention", labelKey: "contracting.nav.retention", section: "contracting" },
   { path: "/inventory/stock", labelKey: "inventory.nav.stock", section: "inventory" },
   { path: "/inventory/items", labelKey: "inventory.nav.items", section: "inventory" },
   { path: "/inventory/movements", labelKey: "inventory.nav.movements", section: "inventory" },
   { path: "/inventory/valuation", labelKey: "inventory.nav.valuation", section: "inventory" },
+  /* ── الموارد البشرية — ثمانٍ **بترتيب العمل لا بترتيب الحروف**: ما يُعرَّف
+     مرّةً (مكوّنات الأجر) ← من يُسجَّل ← ما يُقيَّد عليه قبل الشهر (السلف
+     والاستقطاعات) ← المسيّر ← قسيمته ← ما يُسدَّد عن الشهر إلى الجهة ← ما
+     يُنهي العلاقة ← ما يُطابَق عند الإقفال. والترتيب هنا هو ترتيب الشريط
+     داخل القسم في `screens/hr/parts.tsx` نفسه. */
+  { path: "/hr/pay-components", labelKey: "hr.nav.payComponents", section: "hr" },
+  /* ── التسكين ووحداته — الشاشات الخمس التي جاءت بعد نزول أبوابها ─────────
+     إضافةٌ في موضعٍ واحد متّصل، فتندمج مع من يعمل على هذا الملفّ بلا تعارض. */
+  { path: "/inventory/warehouses", labelKey: "inventory.nav.warehouses", section: "inventory" },
+  { path: "/inventory/placement", labelKey: "inventory.nav.placement", section: "inventory" },
+  { path: "/inventory/placement-balances", labelKey: "inventory.nav.placementBalances", section: "inventory" },
+  { path: "/inventory/transfers", labelKey: "inventory.nav.transfers", section: "inventory" },
+  { path: "/inventory/units", labelKey: "inventory.nav.units", section: "inventory" },
   { path: "/hr", labelKey: "hr.nav.register", section: "hr" },
+  { path: "/hr/advances-deductions", labelKey: "hr.nav.advances", section: "hr" },
   { path: "/hr/payroll", labelKey: "hr.nav.payroll", section: "hr" },
   { path: "/hr/payslip", labelKey: "hr.nav.payslip", section: "hr" },
+  { path: "/hr/social-insurance", labelKey: "hr.nav.socialInsurance", section: "hr" },
   { path: "/hr/end-of-service", labelKey: "hr.nav.endOfService", section: "hr" },
+  { path: "/hr/subledger-reconciliation", labelKey: "hr.nav.reconciliation", section: "hr" },
   /* الأمر المنطوق يعبر الأقسام الخمسة كلّها، ولا قسمَ واحداً يملكه. وهو مُدرَجٌ
      هنا تحت المحاسبة **لأجل لونه وحده** — وهو اللون المرجعي حين لا يُعرَف القسم.
      (وكُتب هذا الصفّ حين كانت الأقسام الأربعة الأخرى `built: false`؛ وقد صارت

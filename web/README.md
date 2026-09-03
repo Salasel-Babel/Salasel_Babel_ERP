@@ -156,14 +156,14 @@ Number(row.debit)    // TypeError
 
 كلٌّ منها فحصٌ في `scripts/audit.mjs` **سجلُّه مشتقٌّ من الشيفرة لا مكتوبٌ بيد**، فمكوّنٌ
 جديد يدخل السجل من نفسه ويُحمِّر البوّابة حتى يُعطى ما ينقصه. والقرار الحاكم
-[`ADR-0066 · design-invariants-are-enforced-not-reviewed`](../docs/decisions/ADR-0068-design-invariants-are-enforced-not-reviewed.md).
+[`ADR-0068 · design-invariants-are-enforced-not-reviewed`](../docs/decisions/ADR-0068-design-invariants-are-enforced-not-reviewed.md).
 
 | الفحص | القاعدة | من أين يُشتقّ سجلّه | أين تُضيف |
 |---|---|---|---|
-| **§١٠ سلّم المسافات** | كل قيمة إيقاعٍ على `--space-*`، أو مبرَّرةٌ بتعليقٍ ملاصقٍ فيه «خارج السلّم عمداً» | خطواتُ السلّم من `tokens.css`، ونطاقُه كلُّ ملفٍّ فيه `var(--space-` | الملفّ نفسه |
-| **§١١ عمود الأرقام** | خانةُ `<td>`/`<th>` تعرض `<Amount>`/`<Num>`/`<Decimal>`/`<RateValue>`/`<QuantityValue>` تحمل صنفاً رقمياً؛ وكلُّ قاعدةٍ جدوليّة تختار وجهاً تختار `--font-numeric` | الأصنافُ الرقمية من كل قاعدةٍ تُعلن `tabular-nums` | صنف الخانة في الشاشة |
-| **§١٢ اللمس والضغط والتركيز** | ‏44 بكسل تحت `pointer:coarse`، ورجعُ `:active`، ولا نزعَ لمؤشّر التركيز بلا بديل | السجلُّ من كل قاعدةٍ تُعلن `cursor:pointer` | [`src/styles/touch.css`](src/styles/touch.css) §٢ و§٣ |
-| **§١٣ فهرس الأوّليّات** | كلُّ أوّليّةٍ مُصدَّرة من `ui/index.ts` معروضةٌ في `/design` | كتلُ `export {}` في `ui/index.ts` | `screens/design/DesignScreen.tsx` |
+| **§١١ سلّم المسافات** | كل قيمة إيقاعٍ على `--space-*`، أو مبرَّرةٌ بتعليقٍ ملاصقٍ فيه «خارج السلّم عمداً» | خطواتُ السلّم من `tokens.css`، ونطاقُه كلُّ ملفٍّ فيه `var(--space-` | الملفّ نفسه |
+| **§١٢ عمود الأرقام** | خانةُ `<td>`/`<th>` تعرض `<Amount>`/`<Num>`/`<Decimal>`/`<RateValue>`/`<QuantityValue>` تحمل صنفاً رقمياً؛ وكلُّ قاعدةٍ جدوليّة تختار وجهاً تختار `--font-numeric-face` | الأصنافُ الرقمية من كل قاعدةٍ تُعلن `tabular-nums` | صنف الخانة في الشاشة |
+| **§١٣ اللمس والضغط والتركيز** | ‏44 بكسل تحت `pointer:coarse`، ورجعُ `:active`، ولا نزعَ لمؤشّر التركيز بلا بديل | السجلُّ من كل قاعدةٍ تُعلن `cursor:pointer` | [`src/styles/touch.css`](src/styles/touch.css) §٢ و§٣ |
+| **§١٤ فهرس الأوّليّات** | كلُّ أوّليّةٍ مُصدَّرة من `ui/index.ts` معروضةٌ في `/design` | كتلُ `export {}` في `ui/index.ts` | `screens/design/DesignScreen.tsx` |
 
 > **والقياس الحيّ دليلٌ لا حارس:** `artifacts/polish/rig.mjs` يقيس في كروميوم — قياسَ اللمس
 > والضغط وعرضَ الأرقام ونسبةَ رأس الجدول — ويقارن الشجرة بمرجعٍ من git. لا يعمل في البوّابة

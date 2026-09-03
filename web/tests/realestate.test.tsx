@@ -109,13 +109,20 @@ afterEach(() => {
 /* ═══════════════════════════════════ ١ · عقد الملاحة والمسارات ══════ */
 
 describe("عقد الأقسام", () => {
-  it("العقارات قسمٌ مبنيّ بمسارٍ يعمل، وشاشاته الثلاث مسجَّلة", () => {
+  it("العقارات قسمٌ مبنيّ بمسارٍ يعمل، وشاشاته الأربع مسجَّلة", () => {
     const section = SECTIONS.find((s) => s.id === "realestate");
     expect(section).toBeDefined();
     expect(section?.built).toBe(true);
     expect(section?.path).toBe("/realestate");
     const paths = SCREENS.filter((s) => s.section === "realestate").map((s) => s.path);
-    expect(paths).toEqual(["/realestate", "/realestate/lease", "/realestate/arrears"]);
+    /* والترتيب ترتيبُ العمل (ADR-0080): العقارُ ووحداته ← طرفا العقد ← العقد
+       وجدوله ← ما تأخّر وما قُبض. */
+    expect(paths).toEqual([
+      "/realestate",
+      "/realestate/parties",
+      "/realestate/lease",
+      "/realestate/arrears",
+    ]);
     /* لا شاشة عقارية تُنسَب إلى قسمٍ آخر — واللون يتبع القسم في الهيكل. */
     for (const path of paths) expect(sectionOf(path).id).toBe("realestate");
   });

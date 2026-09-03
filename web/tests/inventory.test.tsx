@@ -756,7 +756,12 @@ describe("عقد الملاحة", () => {
     expect(inventory?.path).toBe("/inventory/stock");
     const paths = SCREENS.filter((s) => s.section === "inventory").map((s) => s.path);
     expect(paths).toContain(inventory?.path);
-    expect(paths).toHaveLength(4);
+    /* ‏**العدد مقيسٌ لا مفترَض، ويتحرّك بنزول أبوابٍ جديدة.** كان أربعاً حين
+       كانت أبواب التسكين والنقل والوحدات غير منشورة؛ وصار تسعاً حين نزلت
+       فصارت لها شاشات. وحارسُ العدد باقٍ لأنه ما يمنع **الحذف الصامت**:
+       شاشةٌ تختفي من `SCREENS` تُخرِج نفسها من لوحة الأوامر ومن حارس
+       الاستقامة معاً بلا أن يحمرّ شيء. */
+    expect(paths).toHaveLength(9);
   });
 
   /*
@@ -781,7 +786,7 @@ describe("عقد الملاحة", () => {
     await screen.findByTestId("inventory-stock-screen");
 
     const wanted = SCREENS.filter((s) => s.section === "inventory").map((s) => s.path);
-    expect(wanted).toHaveLength(4);
+    expect(wanted).toHaveLength(9);
     const reachable = [...document.querySelectorAll('nav [data-testid^="nav-inventory-"]')].map(
       (a) => a.getAttribute("href")
     );

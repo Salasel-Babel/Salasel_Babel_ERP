@@ -240,6 +240,28 @@ export function AppShell(): ReactNode {
         <Link to="/realestate/arrears" className="navitem" data-testid="nav-realestate-arrears">
           {t("realestate.nav.arrears")}
         </Link>
+
+        {/* ── الإدارة والاشتراك — **عنوانٌ ثانٍ لا صفٌّ سادس** ───────────────
+            خلف هذه الأربع مالكُ اشتراكٍ أو مسؤول، لا محاسبٌ يكتب مستنداً: من
+            يدخل النظام وبأي دور، وماذا اشتُرك، وماذا يتوقّف. وخلطُها بشاشات
+            العمل اليومي يجعل «سحب عضوية» و«انقطاع اشتراك» جيرانَ «سند قبض»
+            في القائمة نفسها — وهي أفعالٌ لا يفتحها من يفتح تلك. فُصلت
+            بعنوانها ولم تُخرَج من `SCREENS`، لأن عقد الملاحة خماسيّ مقفل
+            (ADR-0069) والفصلُ هنا فصلُ قراءةٍ لا قسمٌ سادس.
+            وهي **كتلةٌ واحدة متّصلة** كي يندمج جانباها آلياً. */}
+        <p className="sections__label">{t("app.nav.administration")}</p>
+        <Link to="/admin/enrolment" className="navitem" data-testid="nav-admin-enrolment">
+          {t("app.nav.enrolment")}
+        </Link>
+        <Link to="/admin/session" className="navitem" data-testid="nav-admin-session">
+          {t("app.nav.mySession")}
+        </Link>
+        <Link to="/admin/members" className="navitem" data-testid="nav-admin-members">
+          {t("app.nav.members")}
+        </Link>
+        <Link to="/admin/subscription" className="navitem" data-testid="nav-admin-subscription">
+          {t("app.nav.subscription")}
+        </Link>
       </nav>
 
       <div className="app-main">

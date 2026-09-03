@@ -112,6 +112,30 @@ begin
                                      core.access_session,
                                      core.access_credential from %I', v_role);
 
+    -- ── الأثر والقياس: **يُقرآن ويُلحَق بهما، ولا شيء غير ذلك** ────────────
+    -- وهذا هو موضع الفرق عن بقية هذا المخطّط، والفرق مُعلَن: ما فوق بياناتُ إعدادٍ
+    -- يحرّرها إنسان بصلاحية، وهذه **شهادة**. سجلُّ التدقيق يجيب «من فعل ماذا ومتى»
+    -- في نظامٍ محاسبي، وسجلّا القياس هما محورا التسعير اللذان تُبنى عليهما فاتورة.
+    --
+    --   · لا UPDATE — قيدٌ يُعدَّل يجعل الشهادة روايةً. ودورُ تطبيقٍ يملك UPDATE على
+    --     ‏core.audit_entry يستطيع أن يُعيد كتابة من فعل ماذا بجملة واحدة، فتصير كل
+    --     طبقة التدقيق زينةً في نظامٍ يُدقَّق عليه.
+    --
+    --   · لا DELETE ولا TRUNCATE — والحذف هنا **ليس** كحذف العضوية: العضوية صلاحيةُ
+    --     وصولٍ جارية وأثرُها التاريخي في هذا السجلّ بعينه؛ فلو حُذف هذا السجلّ لما
+    --     بقي للعضوية المسحوبة أثرٌ في مكان. وحذفُ صفّ قياسٍ إنقاصٌ لفاتورة، وهو
+    --     بالضبط الفعل الذي لا يجوز أن يملكه خادمٌ يخدم طلبات إنترنت.
+    --
+    -- وتقادمُ الصفوف — إن لزم يوماً — نقلٌ إلى أرشيفٍ يملكه المالك في نافذة صيانة،
+    -- لا صلاحيةٌ دائمة. ويُسنده مشغّلا CoreAppendOnlyTriggers.sql اللذان يرفضان
+    -- الثلاثة **ولو كان الفاعل هو المالك** (ADR-0002 · ADR-0003).
+    execute format('grant select, insert on core.audit_entry,
+                                     core.module_usage,
+                                     core.user_activity to %I', v_role);
+    execute format('revoke update, delete, truncate on core.audit_entry,
+                                     core.module_usage,
+                                     core.user_activity from %I', v_role);
+
     -- ── وجدول تاريخ الهجرات يُقرأ ولا يُكتب: الهجرة ملك المالك ────────────
     execute format('grant select on core."__EFMigrationsHistory" to %I', v_role);
     execute format('revoke insert, update, delete, truncate on core."__EFMigrationsHistory" from %I', v_role);

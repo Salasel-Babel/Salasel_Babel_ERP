@@ -35,7 +35,7 @@ import { useCallback, useState, useSyncExternalStore, type ReactNode } from "rea
 import { useQuery } from "@tanstack/react-query";
 import { readSession, renewSession, revokeSession } from "../../api/generated/client";
 import type { AccessSession, SessionRevocation } from "../../api/generated/types";
-import { fetchTransport, ProblemError } from "../../api/transport";
+import { ProblemError } from "../../api/transport";
 import { useApi } from "../../app/api-context";
 import { ProblemPanel } from "../../app/shell/ProblemPanel";
 import { Num, useT } from "../../i18n/react";
@@ -86,10 +86,11 @@ export function SessionScreen(): ReactNode {
   const [revokeBusy, setRevokeBusy] = useState(false);
   const [revokeFailure, setRevokeFailure] = useState<unknown>(null);
 
-  /* التجديد بابٌ بلا مصادقة (`security: []`)، فاعتماد التجديد وحده يسمّي
-     العائلة. وإرسال الاعتماد الفاعل معه لا يضيف شيئاً ويجعل رفضاً واحداً
-     يُقرأ رفضين. */
-  const anonymous = fetchTransport({ baseUrl: config.baseUrl });
+  /* والتجديد بابٌ بلا مصادقة (`security: []`) واعتماد التجديد وحده يسمّي
+     العائلة — ومع ذلك يمرّ بنقل التطبيق نفسه: نقلٌ ثانٍ يُبنى في شاشةٍ
+     يتجاوز نقطة الحقن التي يقوم عليها كلّ فحصٍ هنا، فيصير هذا الباب بلا
+     حارس. والاعتماد الفاعل إن رافقه لا يُستشار على بابٍ بلا مصادقة. */
+  const anonymous = transport;
 
   const doRenew = useCallback(
     async (credential: string) => {

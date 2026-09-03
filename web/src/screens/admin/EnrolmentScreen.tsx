@@ -35,7 +35,7 @@
 import { useCallback, useRef, useState, type ReactNode } from "react";
 import { openSession, registerTenant } from "../../api/generated/client";
 import type { AccessSession, RegisteredTenant } from "../../api/generated/types";
-import { fetchTransport, ProblemError } from "../../api/transport";
+import { ProblemError } from "../../api/transport";
 import { useApi } from "../../app/api-context";
 import { ProblemPanel } from "../../app/shell/ProblemPanel";
 import { RECORD_TAG } from "../../app/translated-name";
@@ -79,7 +79,7 @@ function freshRequestKey(): string {
 /** الشاشة كاملةً. */
 export function EnrolmentScreen(): ReactNode {
   const { t } = useT();
-  const { config, setConfig } = useApi();
+  const { transport, config, setConfig } = useApi();
   const [arriveCls, fireArrive] = useMoment("arrive");
 
   /* ── لوح التسجيل ───────────────────────────────────────────────────── */
@@ -105,9 +105,14 @@ export function EnrolmentScreen(): ReactNode {
   const [openBusy, setOpenBusy] = useState(false);
   const [openFailure, setOpenFailure] = useState<unknown>(null);
 
-  /* النقل هنا **بلا اعتماد** عمداً: البابان يُخدمان بلا ترويسة تفويض، وإرسال
-     اعتمادٍ قديم معهما يجعل الرفض يُقرأ رفضَ الاعتماد القديم لا رفضَ الطلب. */
-  const anonymous = fetchTransport({ baseUrl: config.baseUrl });
+  /* والنقل هو نقلُ التطبيق نفسه لا نقلٌ ثانٍ يُبنى هنا.
+     ولماذا لا نقلٌ **بلا اعتماد** رغم أنّ البابين `security: []`: بناءُ نقلٍ
+     ثانٍ داخل شاشةٍ يتجاوز نقطةَ الحقن التي يقوم عليها كلّ فحصٍ في هذا
+     المستودع — فيصير البابان الوحيدين اللذين لا يستطيع اختبارٌ أن يقيسهما.
+     والاعتماد إن وُجد لا يُستشار على بابٍ بلا مصادقة، والزائرُ الأول لا
+     اعتماد له أصلاً؛ ومن أبطل جلسته يُمسح اعتماده من الإعداد في الشاشة
+     الثانية فلا يبقى معلَّقاً هنا. */
+  const anonymous = transport;
 
   const nameOk = companyNameAr.trim() !== "" && ownerNameAr.trim() !== "";
 

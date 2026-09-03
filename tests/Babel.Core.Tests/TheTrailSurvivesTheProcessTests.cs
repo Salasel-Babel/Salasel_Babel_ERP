@@ -245,6 +245,38 @@ public sealed class TheTrailSurvivesTheProcessTests
         CoreTestEnvironment.Note("مشغّلات الإلحاق الحيّة: " + triggers.ToString(CultureInfo.InvariantCulture));
     }
 
+    [Theory]
+    [InlineData("audit_entry")]
+    [InlineData("module_usage")]
+    [InlineData("user_activity")]
+    public async Task صلاحياتُ_دور_التطبيق_على_السجلّات_الثلاثة_هي_القراءة_والإلحاق_فقط(string table)
+    {
+        await CoreTestEnvironment.EnsureAsync(TestContext.Current.CancellationToken);
+
+        // ‏**المنحة تُقرأ من الكتالوج لا من ملفّ النصّ.** ملفُّ `CoreGrants.sql` يقول ما
+        // نوى كاتبُه؛ و`information_schema.table_privileges` يقول ما هو قائمٌ فعلاً.
+        // وإثباتُ الرفض أعلاه يمسك المنحة الزائدة، وهذا يمسك **النقصان**: منحةٌ سقطت
+        // فصار الإلحاق نفسه ممنوعاً تمرّ من كل إثبات رفضٍ خضراء.
+        await using NpgsqlConnection owner = new(CoreTestEnvironment.Options.OwnerConnectionString);
+        await owner.OpenAsync(TestContext.Current.CancellationToken);
+        await using NpgsqlCommand command = new(
+            """
+            select coalesce(string_agg(privilege_type, ',' order by privilege_type), '')
+            from information_schema.table_privileges
+            where table_schema = 'core' and table_name = $1 and grantee = $2
+            """,
+            owner);
+
+        command.Parameters.Add(new NpgsqlParameter { Value = table });
+        command.Parameters.Add(new NpgsqlParameter { Value = CoreTestEnvironment.AppRole });
+
+        object? value = await command.ExecuteScalarAsync(TestContext.Current.CancellationToken);
+        string granted = value as string ?? string.Empty;
+
+        Assert.Equal("INSERT,SELECT", granted);
+        CoreTestEnvironment.Note("صلاحيات دور التطبيق على core." + table + ": " + granted);
+    }
+
     // ═══════════════════════════════════════════════════════════════════════
     // ٤ · قياس الاستخدام — المحوران معاً ينجوان، ومحصوران بالمستأجر وبالشهر
     // ═══════════════════════════════════════════════════════════════════════

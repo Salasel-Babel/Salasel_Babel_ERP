@@ -47,6 +47,15 @@ internal sealed class CoreDbContext(DbContextOptions<CoreDbContext> options) : D
     /// <summary>الاعتمادات المُصدَرة داخل العائلات، مبصومةً لا مكتوبة.</summary>
     public DbSet<AccessCredentialRow> Credentials => Set<AccessCredentialRow>();
 
+    /// <summary>قيود التدقيق — تُلحَق ولا تُعدَّل ولا تُحذف.</summary>
+    public DbSet<AuditEntryRow> AuditEntries => Set<AuditEntryRow>();
+
+    /// <summary>أحداث الاستخدام على محور الوحدة — سجلٌّ مُلحَق لا عدّاد.</summary>
+    public DbSet<ModuleUsageRow> ModuleUsage => Set<ModuleUsageRow>();
+
+    /// <summary>أحداث النشاط على محور المستخدم.</summary>
+    public DbSet<UserActivityRow> UserActivity => Set<UserActivityRow>();
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -229,6 +238,86 @@ internal sealed class CoreDbContext(DbContextOptions<CoreDbContext> options) : D
             entity.Property(row => row.ConsumedAt).HasColumnName("consumed_at");
 
             entity.HasIndex(row => row.SessionId).HasDatabaseName("ix_access_credential_session");
+        });
+
+        // ── الأثر والقياس: ثلاثة سجلّات تُلحَق ولا تُمسّ ──────────────────────
+        // والحصانة **ليست** في هذا النموذج: هي في `CoreGrants.sql` (لا UPDATE ولا DELETE
+        // لدور التطبيق) وفي `CoreAppendOnlyTriggers.sql` (رفضٌ ولو كان الفاعل المالك).
+        // وما هنا وصفُ الأعمدة والفهارس وحدها (ADR-0003).
+
+        modelBuilder.Entity<AuditEntryRow>(entity =>
+        {
+            entity.ToTable("audit_entry", t =>
+                // الشكل مفروضٌ على **رمز الإجراء وحده**: قيمه ثوابتُ مصدرٍ مغلقة، فقيدٌ
+                // عليها يمسك خطأً برمجياً. ولا قيد على الموضوع ولا على التفصيل — انظر
+                // AuditEntryRow.Subject: رفضُ التقاطِ قيدٍ أسوأ من قبول نصٍّ فارغ.
+                t.HasCheckConstraint("ck_audit_entry_action_shape", "action ~ '^[a-z][a-z0-9_.]{0,63}$'"));
+
+            entity.HasKey(row => row.SequenceNo).HasName("pk_audit_entry");
+            entity.Property(row => row.SequenceNo).HasColumnName("sequence_no").ValueGeneratedOnAdd();
+            entity.Property(row => row.TenantId).HasColumnName("tenant_id");
+            entity.Property(row => row.ActorId).HasColumnName("actor_id");
+            entity.Property(row => row.OccurredAt).HasColumnName("occurred_at");
+            entity.Property(row => row.Action).HasColumnName("action").HasMaxLength(64).IsRequired();
+            entity.Property(row => row.Subject).HasColumnName("subject").IsRequired();
+            entity.Property(row => row.Details).HasColumnName("details");
+
+            // الفهرس على (المستأجر، اللحظة، التسلسل): هو **الاستعلام الوحيد** على هذا
+            // الجدول — «أثرُ هذا المستأجر بترتيب وقوعه» — والمستأجر أوّلَ العمدة لأن
+            // نطاقه شرطُ مساواةٍ يسبق مدى الزمن. وبلا فهرسٍ عليه يصير كلُّ عرضِ أثرٍ
+            // مسحاً كاملاً على جدولٍ لا يُحذف منه صفٌّ أبداً — أي ينمو ولا ينكمش.
+            entity.HasIndex(row => new { row.TenantId, row.OccurredAt, row.SequenceNo })
+                  .HasDatabaseName("ix_audit_entry_tenant_occurred");
+        });
+
+        modelBuilder.Entity<ModuleUsageRow>(entity =>
+        {
+            entity.ToTable("module_usage", t =>
+            {
+                // ‏`module >= 1` لا `between 1 and 13`: عضوٌ جديد في BabelModule يجعل
+                // الحدّ الأعلى المُثبَّت يرفض قياس وحدةٍ حقيقية — أي يُسقط بيانات فوترة
+                // بسبب هجرةٍ لم تُكتب. والتحقّق من كون القيمة معرَّفة يقع عند **القراءة**.
+                t.HasCheckConstraint("ck_module_usage_module", "module >= 1");
+                t.HasCheckConstraint("ck_module_usage_quantity", "quantity >= 0");
+                t.HasCheckConstraint("ck_module_usage_operation_not_blank", "length(btrim(operation)) > 0");
+            });
+
+            entity.HasKey(row => row.SequenceNo).HasName("pk_module_usage");
+            entity.Property(row => row.SequenceNo).HasColumnName("sequence_no").ValueGeneratedOnAdd();
+            entity.Property(row => row.TenantId).HasColumnName("tenant_id");
+            entity.Property(row => row.Module).HasColumnName("module");
+            entity.Property(row => row.Operation).HasColumnName("operation").HasMaxLength(200).IsRequired();
+            entity.Property(row => row.ActorId).HasColumnName("actor_id");
+            entity.Property(row => row.OccurredAt).HasColumnName("occurred_at");
+            entity.Property(row => row.Quantity).HasColumnName("quantity");
+
+            entity.HasIndex(row => new { row.TenantId, row.OccurredAt })
+                  .HasDatabaseName("ix_module_usage_tenant_occurred");
+        });
+
+        modelBuilder.Entity<UserActivityRow>(entity =>
+        {
+            entity.ToTable("user_activity", t =>
+            {
+                t.HasCheckConstraint("ck_user_activity_module", "module >= 1");
+                t.HasCheckConstraint("ck_user_activity_activity_not_blank", "length(btrim(activity)) > 0");
+                t.HasCheckConstraint(
+                    "ck_user_activity_entitlement_state",
+                    "entitlement_state in ('not_entitled','read_only','entitled')");
+            });
+
+            entity.HasKey(row => row.SequenceNo).HasName("pk_user_activity");
+            entity.Property(row => row.SequenceNo).HasColumnName("sequence_no").ValueGeneratedOnAdd();
+            entity.Property(row => row.TenantId).HasColumnName("tenant_id");
+            entity.Property(row => row.UserId).HasColumnName("user_id");
+            entity.Property(row => row.Module).HasColumnName("module");
+            entity.Property(row => row.Activity).HasColumnName("activity").HasMaxLength(200).IsRequired();
+            entity.Property(row => row.OccurredAt).HasColumnName("occurred_at");
+            entity.Property(row => row.EntitlementState)
+                  .HasColumnName("entitlement_state").HasMaxLength(16).IsRequired();
+
+            entity.HasIndex(row => new { row.TenantId, row.OccurredAt })
+                  .HasDatabaseName("ix_user_activity_tenant_occurred");
         });
 
         modelBuilder.Entity<CapabilityProfileDefaultRow>(entity =>

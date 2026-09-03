@@ -122,7 +122,7 @@ internal sealed class PostgresUsageStore : IUsageStore, IUsageReader, IUsageMete
         insert.Parameters.Add(Array(NpgsqlDbType.Integer, [.. batch.Select(static e => (int)e.Module)]));
         insert.Parameters.Add(Array(NpgsqlDbType.Varchar, [.. batch.Select(static e => e.Activity)]));
         insert.Parameters.Add(Array(NpgsqlDbType.TimestampTz, [.. batch.Select(static e => e.OccurredAt.ToUniversalTime())]));
-        insert.Parameters.Add(Array(NpgsqlDbType.Varchar, [.. batch.Select(static e => EntitlementStates.ToColumn(e.State))]));
+        insert.Parameters.Add(Array(NpgsqlDbType.Varchar, [.. batch.Select(static e => e.State.ToString())]));
 
         await insert.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
     }

@@ -117,39 +117,26 @@ internal sealed class UserActivityRow
     /// <summary>لحظة الوقوع بتوقيت UTC.</summary>
     public DateTimeOffset OccurredAt { get; set; }
 
-    /// <summary>حالة الاستحقاق التي وقع النشاط تحتها، من المجموعة المغلقة الثلاثية.</summary>
+    /// <summary>
+    /// حالة الاستحقاق التي وقع النشاط تحتها، <b>باسمها لا برمزها</b>.
+    /// <para>
+    /// والاسم لأن هذا العمود <b>شهادةُ فوترة يقرؤها إنسان</b>: صفٌّ متنازَعٌ عليه يُفتح
+    /// بـ<c>psql</c> بعد شهور، و<c>ReadOnly</c> تُقرأ حيث <c>1</c> تحتاج من يفسّرها.
+    /// </para>
+    /// <para>
+    /// <b>ولا قيد تحقّقٍ بمجموعة مغلقة عليه، ولا تحويلَ يفرّع على قيمها هنا</b> — وهما
+    /// قرارٌ واحد. أمّا القيد فلأن حالةً رابعة تُضاف يوماً كانت ستجعل <c>INSERT</c> يرمي
+    /// ‏23514 فيُسقط صفَّ قياسٍ لا يُستعاد؛ وأمّا التفريع فلأن جدول قرار الاستحقاق
+    /// <b>موضعٌ واحد</b> ونسخته الثانية هي الطريقة الباقية لإسقاط <c>ReadOnly</c> صامتاً
+    /// (القاعدة 6). فالكتابة اسمُ العضو كما هو.
+    /// </para>
+    /// <para>
+    /// <b>ولا قارئ لهذا العمود اليوم</b>: <c>GetActiveUsersAsync</c> يعيد كلَّ من عمل
+    /// شيئاً ولا يسأل عن الحالة، لأن «هل يُعدّ من يقرأ فقط مستخدماً قابلاً للفوترة؟»
+    /// سؤالٌ تجاريّ غير محسوم. فالعمود <b>مُلتقَطٌ لا مقروء</b>، وأوّلُ قارئٍ يُضاف عليه
+    /// أن يحلّل الاسم تحليلاً صارماً يرفض ما لا يعرفه النوع — كما يفعل قارئ عمود
+    /// الوحدة — لا أن يقرأ افتراضاً صامتاً.
+    /// </para>
+    /// </summary>
     public string EntitlementState { get; set; } = string.Empty;
-}
-
-/// <summary>حالات الاستحقاق كما تُكتب في المخطّط. مجموعة مغلقة يقابلها قيد تحقّق.</summary>
-internal static class EntitlementStates
-{
-    /// <summary>لم تُشترَ الوحدة قط.</summary>
-    public const string NotEntitled = "not_entitled";
-
-    /// <summary>اشتُريت ثم انقضى الاشتراك.</summary>
-    public const string ReadOnly = "read_only";
-
-    /// <summary>مشتراة وفاعلة.</summary>
-    public const string Entitled = "entitled";
-
-    /// <summary>يحوّل الحالة إلى نصّ العمود.</summary>
-    /// <param name="state">الحالة.</param>
-    public static string ToColumn(Babel.Core.Entitlement.EntitlementState state) => state switch
-    {
-        Babel.Core.Entitlement.EntitlementState.NotEntitled => NotEntitled,
-        Babel.Core.Entitlement.EntitlementState.ReadOnly => ReadOnly,
-        Babel.Core.Entitlement.EntitlementState.Entitled => Entitled,
-        _ => throw new ArgumentOutOfRangeException(nameof(state), state, "حالة استحقاق خارج المجموعة المغلقة."),
-    };
-
-    /// <summary>يقرأ نصّ العمود حالةً — ونصٌّ مجهول يُرفض ولا يُقرأ افتراضاً.</summary>
-    /// <param name="column">نصّ العمود.</param>
-    public static Babel.Core.Entitlement.EntitlementState FromColumn(string column) => column switch
-    {
-        NotEntitled => Babel.Core.Entitlement.EntitlementState.NotEntitled,
-        ReadOnly => Babel.Core.Entitlement.EntitlementState.ReadOnly,
-        Entitled => Babel.Core.Entitlement.EntitlementState.Entitled,
-        _ => throw new InvalidOperationException("حالة استحقاق مخزَّنة لا يعرفها النوع: «" + column + "»."),
-    };
 }

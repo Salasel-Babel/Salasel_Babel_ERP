@@ -301,9 +301,11 @@ internal sealed class CoreDbContext(DbContextOptions<CoreDbContext> options) : D
             {
                 t.HasCheckConstraint("ck_user_activity_module", "module >= 1");
                 t.HasCheckConstraint("ck_user_activity_activity_not_blank", "length(btrim(activity)) > 0");
+                // شكلٌ لا مجموعة مغلقة: حالةٌ رابعة تُضاف يوماً كانت ستجعل الإدخال
+                // يرمي 23514 فيُسقط صفَّ قياسٍ لا يُستعاد. والمجموعة تُفحَص عند القراءة.
                 t.HasCheckConstraint(
-                    "ck_user_activity_entitlement_state",
-                    "entitlement_state in ('not_entitled','read_only','entitled')");
+                    "ck_user_activity_entitlement_state_shape",
+                    "entitlement_state ~ '^[A-Za-z][A-Za-z0-9]{0,31}$'");
             });
 
             entity.HasKey(row => row.SequenceNo).HasName("pk_user_activity");
@@ -314,7 +316,7 @@ internal sealed class CoreDbContext(DbContextOptions<CoreDbContext> options) : D
             entity.Property(row => row.Activity).HasColumnName("activity").HasMaxLength(200).IsRequired();
             entity.Property(row => row.OccurredAt).HasColumnName("occurred_at");
             entity.Property(row => row.EntitlementState)
-                  .HasColumnName("entitlement_state").HasMaxLength(16).IsRequired();
+                  .HasColumnName("entitlement_state").HasMaxLength(32).IsRequired();
 
             entity.HasIndex(row => new { row.TenantId, row.OccurredAt })
                   .HasDatabaseName("ix_user_activity_tenant_occurred");

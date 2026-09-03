@@ -66,13 +66,13 @@ namespace Babel.Core.Persistence.Migrations
                     module = table.Column<int>(type: "integer", nullable: false),
                     activity = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
                     occurred_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
-                    entitlement_state = table.Column<string>(type: "character varying(16)", maxLength: 16, nullable: false)
+                    entitlement_state = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("pk_user_activity", x => x.sequence_no);
                     table.CheckConstraint("ck_user_activity_activity_not_blank", "length(btrim(activity)) > 0");
-                    table.CheckConstraint("ck_user_activity_entitlement_state", "entitlement_state in ('not_entitled','read_only','entitled')");
+                    table.CheckConstraint("ck_user_activity_entitlement_state_shape", "entitlement_state ~ '^[A-Za-z][A-Za-z0-9]{0,31}$'");
                     table.CheckConstraint("ck_user_activity_module", "module >= 1");
                 });
 

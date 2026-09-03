@@ -521,8 +521,8 @@ namespace Babel.Core.Persistence.Migrations
 
                     b.Property<string>("EntitlementState")
                         .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("character varying(16)")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
                         .HasColumnName("entitlement_state");
 
                     b.Property<int>("Module")
@@ -551,7 +551,7 @@ namespace Babel.Core.Persistence.Migrations
                         {
                             t.HasCheckConstraint("ck_user_activity_activity_not_blank", "length(btrim(activity)) > 0");
 
-                            t.HasCheckConstraint("ck_user_activity_entitlement_state", "entitlement_state in ('not_entitled','read_only','entitled')");
+                            t.HasCheckConstraint("ck_user_activity_entitlement_state_shape", "entitlement_state ~ '^[A-Za-z][A-Za-z0-9]{0,31}$'");
 
                             t.HasCheckConstraint("ck_user_activity_module", "module >= 1");
                         });

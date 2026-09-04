@@ -62,6 +62,16 @@ import { SubledgerReconciliationScreen } from "../screens/hr/SubledgerReconcilia
 import { AttachmentRegisterScreen } from "../screens/attachments/AttachmentRegisterScreen";
 import { AttachmentCustodyScreen } from "../screens/attachments/AttachmentCustodyScreen";
 import { InventoryItemLifecycleScreen } from "../screens/inventory/ItemLifecycleScreen";
+/* ── ما بعد الترحيل — أربعُ شاشاتٍ كتلةً واحدة متّصلة ──────────────────────
+   «ما رُحّل خطأً، كيف يُصحَّح، وكيف نُثبت أنه لم يُعدَّل؟» أربعُ أيدٍ يجيب
+   كلٌّ منها سؤالاً واحداً: القيدُ يُعكَس بقيدٍ مضادّ، والمستندُ التجاري
+   يُصحَّح بمرتجعٍ إلى المورّد أو بإشعارٍ دائن إلى العميل، ثم يُحكَم على
+   سلامة السلسلة. والتبرير كاملاً في
+   `ADR-after-posting-is-a-group-and-a-reversal-is-not-a-delete`. */
+import { JournalEntryScreen } from "../screens/ledger/JournalEntryScreen";
+import { PurchaseReturnScreen } from "../screens/ledger/PurchaseReturnScreen";
+import { CreditNoteScreen } from "../screens/ledger/CreditNoteScreen";
+import { LedgerChainScreen } from "../screens/ledger/LedgerChainScreen";
 /* ── الإدارة والاشتراك — أربعُ شاشاتٍ بترتيب العمل: كيف أدخل أوّل مرّة ← ما
    الذي بيدي الآن ← من يدخل معي ← ماذا اشتريتُ وما الذي يعمل. وهي **مجموعةٌ
    إدارية** لا قسمٌ سادس: عقدُ الملاحة خماسيّ، وهذه الأربع خلفها مالكُ اشتراكٍ
@@ -357,6 +367,31 @@ const inventoryItemLifecycleRoute = createRoute({
   component: InventoryItemLifecycleScreen,
 });
 
+/* ── ما بعد الترحيل — كتلةٌ واحدة متّصلة ──────────────────────────────── */
+const ledgerEntryRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/ledger/entry",
+  component: JournalEntryScreen,
+});
+
+const ledgerPurchaseReturnRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/ledger/purchase-return",
+  component: PurchaseReturnScreen,
+});
+
+const ledgerCreditNoteRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/ledger/credit-note",
+  component: CreditNoteScreen,
+});
+
+const ledgerChainRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/ledger/chain",
+  component: LedgerChainScreen,
+});
+
 /* ── الإدارة والاشتراك ─────────────────────────────────────────────────── */
 const adminEnrolmentRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -428,6 +463,10 @@ const routeTree = rootRoute.addChildren([
   attachmentsRoute,
   attachmentCustodyRoute,
   inventoryItemLifecycleRoute,
+  ledgerEntryRoute,
+  ledgerPurchaseReturnRoute,
+  ledgerCreditNoteRoute,
+  ledgerChainRoute,
   adminEnrolmentRoute,
   adminSessionRoute,
   adminMembersRoute,

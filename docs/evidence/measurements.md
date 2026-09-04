@@ -8,7 +8,7 @@
 > فأضِفه هنا بالشروط نفسها بعد قياسه — سجلٌّ ناقص يعني عملاً مُكرَّراً بعد سنتين.
 >
 > **الوثائق الشقيقة:** [`README.md`](README.md) فهرس قاعدة الأدلة وترتيب القراءة ·
-> [`traps.md`](traps.md) **الأعطال** (‏182 فخّاً، و§8 قائمة ما قبل الدمج) ·
+> [`traps.md`](traps.md) **الأعطال** (‏184 فخّاً، و§8 قائمة ما قبل الدمج) ·
 > [`refuted.md`](refuted.md) **ما دُحض** (‏16 ادّعاءً، وما بقي من كلٍّ منها) ·
 > [`verification-debt.md`](verification-debt.md) **ما لا نعرفه** (‏47 مجهولاً لا يُبنى عليها) ·
 > [`../decisions/README.md`](../decisions/README.md) **القرارات** المبنية على كل ما سبق.
@@ -2289,6 +2289,24 @@ for fn in readJournalEntry reverseJournalEntry verifyLedgerChain \
           draftPurchaseReturn readPurchaseReturn postPurchaseReturn \
           draftCreditNote postCreditNote readCreditNote; do
   printf '%-24s %s\n' "$fn" "$(grep -rl "\b$fn\b" --include=*.tsx --include=*.ts src \
+### 3-ن · شاشاتُ التأسيس الأربع: الفجوة المقيسة، واستقامةُ الصفّ وشاهدُها السلبي — 2026-09-04
+
+**القرار الذي تسنده هذه الأرقام:** [`ADR-جديد`](../decisions/ADR-0085-setup-is-a-group-and-a-verdict-is-not-a-write.md)
+(`setup-is-a-group-and-a-verdict-is-not-a-write`).
+
+**البيئة:** §1.3 · Chromium من `@playwright/test` · `deviceScaleFactor=2` · السمة الداكنة ·
+`reducedMotion=reduce`. والبناء **يُتحقَّق من رمز خروجه قبل أي قياس** (فخ-164).
+
+#### أ) الفجوة — تسعُ عملياتٍ منشورة لا يستدعيها شيء في العميل
+
+**أمر القياس** (من `web/`، ويُشغَّل على `origin/develop` ثم على الفرع):
+
+```bash
+for fn in addCostCenter renameCostCenter suspendCostCenter \
+          readCapabilityProfile writeCapabilityProfile \
+          readDocumentShape admitDocument \
+          initialiseCompanySetup readChartOfAccounts readCompanySetup; do
+  printf '%-26s %s\n' "$fn" "$(grep -rl "\b$fn\b" --include=*.tsx --include=*.ts src \
       | grep -v 'api/generated' | tr '\n' ' ')"
 done
 ```
@@ -2377,6 +2395,143 @@ node tests/align-probe-ledger.mjs --web-port 5497 --mock-port 5498
 | **البوّابة** | **`GATE_EXIT=0`** · `web-unit vitest` نُفِّذ **642** والأرضية **607** · حارس استقامة الصفوف **8/8 خضراء** | مقيس |
 
 **أمر البوّابة، كما نُفِّذ:**
+| | على `origin/develop@6a4d6b3` | على الفرع |
+|---|---|---|
+| تسعُ عملياتِ التأسيس بلا مستهلك | **9** | **0** |
+| `readCompanySetup` | مستهلكٌ واحد (`screens/voucher/JournalVoucherScreen.tsx`) | ثلاثة |
+| عملياتُ العقد المنشور | **199** | **199** — لا عملية أُضيفت ولا حُذفت |
+
+**وعدُّ العمليات يُعاد بأمرٍ واحد:**
+
+```bash
+python3 -c "
+import json
+d=json.load(open('contracts/openapi/v1.json'))
+print(len([1 for p,m in d['paths'].items() for v,o in m.items()
+           if isinstance(o,dict) and 'operationId' in o]))"
+# 199
+```
+
+#### ب) أبوابٌ يسمّيها الخادم علاجاً ولا طريق إليها — مقيسة لا مُدّعاة
+
+```bash
+# النواة تحمل إعادة التشغيل، والسطح المنشور لا يبلغها:
+grep -rn "ReinstateCostCenterAsync" src/Babel.Core/     # موجودة
+python3 -c "
+import json
+d=json.load(open('contracts/openapi/v1.json'))
+ids=[o['operationId'] for p,m in d['paths'].items() for v,o in m.items()
+     if isinstance(o,dict) and 'operationId' in o]
+print([i for i in ids if 'ost' in i or 'efault' in i])"
+# ['postClientCertificate', 'addCostCenter', 'renameCostCenter', 'suspendCostCenter', …]
+# ولا reinstateCostCenter ولا moveDefaultCostCenter
+```
+
+| الباب | في النواة | في العقد المنشور |
+|---|---|---|
+| إعادةُ تشغيل مركزٍ موقوف | `CompanySetupService.ReinstateCostCenterAsync` **موجودة** ومعها `cost_center.already_active` | **غير منشور** |
+| نقلُ المركز الافتراضي | — | **غير منشور**، ورسالةُ `cost_center.default_cannot_be_suspended` **تسمّيه علاجاً** |
+
+#### ج) استقامةُ الصفّ — المقياس الحاكم
+
+```bash
+cd web
+npm run build; rc=$?; test $rc -eq 0 || { echo "البناء سقط"; exit 1; }
+node scripts/align-audit.mjs --no-build --no-shots --locales ar,en --widths 1024,1440 \
+     --web-port 5491 --mock-port 5492
+```
+
+> **ومنافذ غير الافتراضية عمداً** — فخ-174: خادمُ معاينةٍ لأسطولٍ آخر يُعاد استعماله فيُقاس
+> بناؤه هو. **وفخ-جديد**: منفذٌ يحجزه تشغيلٌ سابق لك يجعل `waitForPort` ينجح على خادم
+> غيرِك، والقياسُ يقرأ صفحةً لا اعتراضَ شبكةٍ عليها.
+
+| المسار | صفوفُ الصفحة (لكل ممرّ) | منكسرة |
+|---|---|---|
+| `/setup` | 2 | **0** |
+| `/setup/cost-centers` | 1 | **0** |
+| `/setup/document-shapes` | 2 | **0** |
+| `/setup/chart-of-accounts` | 1 | **0** |
+| **المجموع على الشاشات الأربع** | **6 صفوف · 19 وحدةَ حقل** | **0** في `ar-1440` و`ar-1024` و`en-1440` و`en-1024` |
+
+**وعلى المنتج كلّه في الممرّات الأربعة:** حافّةُ أعلى التحكّم **0/98–100**؛ وخطُّ قاعدة
+التسمية وكتلةُ الوصف وقاعُ الحقل **1/98–100 بأقصى 0.67px** (خلطُ عائلتَي خطّ، وهو ضمن
+سماحية ADR-0067)؛ **وقاعُ الحبر المسنَّن 13** في الممرّات الأربعة كلّها بأقصى **79.56px**
+عند `en-1024` — **ولا صفَّ واحد من هذه الثلاثة عشر على شاشةٍ من هذا التسليم**، وأسوأُها
+على `/design` و`/realestate/lease` كما كان. ويُعاد التحقّق من ذلك بأمرٍ واحد:
+
+```bash
+python3 - <<'PY'
+import json
+d = json.load(open('artifacts/align/align-report.json'))
+for p in d['passes']:
+    bad = [(s['path'], round(r['inkBottom']['max'], 2))
+           for s in p['screens'] for r in s.get('rows', [])
+           if r.get('scope') == 'page' and r.get('inkBottom')
+           and r['inkBottom']['max'] > 0.5]
+    print(p['tag'], len(bad), [b for b in bad if b[0].startswith('/setup')])
+PY
+# ar-1440 13 []   ·   ar-1024 13 []   ·   en-1440 13 []   ·   en-1024 13 []
+```
+
+#### د) المسبار — ما لا يبلغه المسحُ الساكن
+
+نموذجُ التأسيس لا يُرسم إلا لمنشأةٍ **لم تُؤسَّس**، ولوحا التسمية والإيقاف خلف اختيار مركز،
+ولوحُ الحكم خلف اختيار نوع. فالمسحُ الحاكم يقرأ **6 صفوف**، والمسبار يبلغ **40**:
+
+```bash
+cd web && node tests/align-probe-setup.mjs --web-port 5481 --mock-port 5482
+```
+
+| الممرّ | صفوف | وحدات | قاعُ الحبر منكسر |
+|---|---|---|---|
+| `ar-1440` · `ar-1024` · `en-1440` · `en-1024` | **40** (10 لكل ممرّ) | **112** | **0 · 0.00px** |
+
+#### ه) الشاهد السلبي — **بصيغته الصحيحة** (فخ-179)
+
+نزعُ الأوصاف **كلِّها** يُبقي الصفّ مستوياً فيُخرج 0.00px ويُقرأ «المقياسُ أعمى» وهو سليم.
+والعطلُ الذي وصفه ADR-0078 **فرقٌ داخل الصفّ لا غيابٌ منه** — فيُنزَع وصفُ **أوّلِ حقلٍ في
+كلّ صفّ** وحده، في المتصفّح بعد الرسم، بلا تعديل ملفٍّ ولا بناءٍ ثانٍ:
+
+```bash
+cd web && node tests/align-probe-setup.mjs --strip-hints --web-port 5481 --mock-port 5482
+```
+
+| الممرّ | قاعُ الحبر منكسر — **الأوصاف قائمة** | **الأوصاف منزوعة (الأول في كل صفّ)** | أقصى |
+|---|---|---|---|
+| `ar-1440` | 0/10 | **8/10** | 24.39px |
+| `ar-1024` | 0/10 | **8/10** | 42.78px |
+| `en-1440` | 0/10 | **8/10** | 42.78px |
+| `en-1024` | 0/10 | **8/10** | **61.17px** |
+| **المجموع** | **0/40 · 0.00px** | **32/40** | **61.17px** |
+
+> **والأقصى رقمٌ يتحرّك بطول الأوصاف، والحركةُ تُقال:** قِيس **79.56px** قبل
+> قصِّ وصفِ مرشّح «ما يقبل الترحيل» إلى رتبة طول جيرانه (‏ADR-0078 §2)،
+> و**61.17px** بعده. **وعددُ المنكسر لم يتغيّر — 32 من 40 في الحالين** —
+> لأنه يقيس **وجود** الفرق لا مقداره. والرقمان من التشغيلة نفسها لا من
+> تقديرَين.
+
+**والصفوفُ الثمانية التي لم تنكسر تُقال ولا تُخفى:** هي صفّا `/setup/document-shapes` في
+الممرّات الأربعة، وجارُ الحقل فيهما `.rowctl` — **خليّةُ فعلٍ لا صندوقَ وصفٍ لها أصلاً**
+بحكم [ADR-0067](../decisions/ADR-0067-the-row-owns-the-tracks.md) §5. فنزعُ وصف الحقل
+يجعل الطرفين متساويين لا مختلفين، وهذه **قراءةٌ صحيحة للبنية لا نقصٌ في المقياس**
+([`traps.md` فخ-جديد](traps.md#fakh-an-action-cell-neighbour-absorbs-the-negative-control)).
+
+#### و) الملاحة والاختبارات وفحص الواجهة
+
+```bash
+cd web
+npx vitest run tests/setup-screens.test.tsx     # 26 اختباراً
+node scripts/audit.mjs                          # 0 مخالفة حاكمة
+```
+
+| المقياس | القيمة |
+|---|---|
+| اختباراتُ هذا التسليم | **26 خضراء** |
+| شاشاتٌ في `SCREENS` بلا رابطٍ في الملاحة اليدوية | **0 من 52** |
+| مخالفاتٌ حاكمة في `scripts/audit.mjs` | **0** · الدَّين المُعلَن **147** عند سقفه بلا تغيير |
+| مفاتيحُ لغةٍ مضافة | **في اللغات الأربع جميعاً** — يفرضه الفحص ٥ في `audit.mjs` |
+
+#### و-٢) البوّابة — الأمر والرمز والمُخرَج
 
 ```bash
 export PATH=$PATH:/usr/lib/dotnet
@@ -2393,6 +2548,40 @@ MSBUILDDISABLENODEREUSE=1 DOTNET_CLI_USE_MSBUILD_SERVER=0 NPM_CONFIG_PREFER_OFFL
 يشغل المنفذ نفسه في تلك اللحظة. وأُعيد التشغيل بعد أن خلا المنفذ فخرجت **`GATE_EXIT=0`**
 بلا تغييرِ سطرٍ واحد. وهو من عائلة [فخ-174](traps.md#fakh-174) — منافذُ ثابتة مشتركة بين
 أساطيل — بوجهه الآخر: هناك **إعادةُ استعمال** خادمِ غيرك، وهنا **منعُك من الإقلاع**.
+  > /tmp/gate-setup3.log 2>&1; echo "GATE_EXIT=$?"
+# GATE_EXIT=0
+```
+
+```text
+══ الحصيلة — ما نُفِّذ فعلاً · what actually ran
+   ✔ web-unit  vitest       نُفِّذ   633  الأرضية   607
+✔ 1 سطحاً أنتج تقريراً عند أرضيته أو فوقها، بصفر إخفاق.
+  ✓  1..8 [chromium] › e2e/alignment.spec.ts › استقامةُ الصفوف — ثمانيةُ ممرّات
+  8 passed (2.5m)
+✔ البوّابة المحلية خضراء: بناء الحلّ كلّه + المسابر + الحدود + الاختبارات + الواجهة الساكنة
+```
+
+> **ورمزُ الخروج يُلتقَط من البوّابة نفسها لا من آخر أمرٍ في السطر** (فخ-164)،
+> **ويُكتَب في ملفٍّ تنتظره الحلقة** لا يُبحث عنه باسم العملية (فخ-181).
+>
+> **وسقطت البوّابة مرّتين قبل هذه، وتُقال المرّتان:**
+> ١ · `react-hooks/set-state-in-effect` على بذرِ مفاتيح القدرات داخل `useEffect` —
+> والعلاجُ حالةٌ مشتقّة في زمن الرسم، لا استثناءُ قاعدة.
+> ٢ · `locale-script.test.ts`: عدّادُ المصطلحات المطابقة بين العربية والأردية
+> ارتفع بـ`screen.coa.contra` («مقابل» — كلمةٌ صحيحة في اللغتين). ونصُّ الحارس
+> نفسه يوجب رفعَ العدّاد لا إفسادَ الترجمة، ففُعل **في إيداعٍ مستقلّ** لأن الملفّ
+> خارج ملكيّة هذا الفرع.
+
+#### ز) وما **لم** يُقَس في هذا العمل — ويُعلَن
+
+| البند | الحال |
+|---|---|
+| سلوكُ الشاشات على **خادمٍ حقيقي** لا وهميّ | **غير مقيس** — كلُّ أرقام هذا القسم على `scripts/mock-api.mjs` وعلى اعتراضِ شبكةٍ في المسبار. والتكاملُ الحيّ يُثبَت في `tests/live-api` ولم يُمدّ إلى هذه الأبواب |
+| زمنُ رسم دليل حساباتٍ حقيقي (‏180 حساباً فأكثر) | **غير مقيس** — الدليلُ في الوهمي **ثلاثةُ حسابات**، والشجرةُ تُرسم صفّاً صفّاً بلا تقطيع |
+| سلوكُ `writeCapabilityProfile` حين يرفض الخادمُ قدرةً لا تخدمها المصفوفة | **غير مقيس على السلك** — الرمز مُعلَنٌ على الشاشة، والرفضُ نفسه لم يُستدعَ من خادمٍ حقيقي |
+| الأردية والهندية في مقياس المحاذاة | **غير مقيستين هنا** — الممرّات أربعة (`ar`/`en` × 1024/1440). والمفاتيحُ موجودة في اللغات الأربع، **ووجودُ المفتاح ليس قياسَ استقامة** |
+
+---
 
 ## 4 · الأرقام التي تقرر
 

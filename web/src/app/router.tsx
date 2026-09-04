@@ -80,6 +80,14 @@ import { EnrolmentScreen } from "../screens/admin/EnrolmentScreen";
 import { SessionScreen } from "../screens/admin/SessionScreen";
 import { MembersScreen } from "../screens/admin/MembersScreen";
 import { SubscriptionScreen } from "../screens/admin/SubscriptionScreen";
+/* ── التأسيس والثوابت — أربعُ شاشاتٍ بترتيب العمل: ما يقع مرّةً فيؤسّس
+   المنشأة ← ما يُبوَّب عليه كلُّ سطرٍ بعده ← ما يُرخَّص من حقول المستندات ←
+   ما يقبل السطر أصلاً. والتبرير كاملاً في
+   `ADR-0085-setup-is-a-group-and-a-verdict-is-not-a-write`. */
+import { CompanySetupScreen } from "../screens/setup/CompanySetupScreen";
+import { CostCentersScreen } from "../screens/setup/CostCentersScreen";
+import { DocumentShapesScreen } from "../screens/setup/DocumentShapesScreen";
+import { ChartOfAccountsScreen } from "../screens/setup/ChartOfAccountsScreen";
 
 const rootRoute = createRootRoute({ component: AppShell });
 
@@ -417,6 +425,31 @@ const adminSubscriptionRoute = createRoute({
   component: SubscriptionScreen,
 });
 
+/* ── التأسيس والثوابت ──────────────────────────────────────────────────── */
+const setupCompanyRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/setup",
+  component: CompanySetupScreen,
+});
+
+const setupCostCentersRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/setup/cost-centers",
+  component: CostCentersScreen,
+});
+
+const setupDocumentShapesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/setup/document-shapes",
+  component: DocumentShapesScreen,
+});
+
+const setupChartRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/setup/chart-of-accounts",
+  component: ChartOfAccountsScreen,
+});
+
 const routeTree = rootRoute.addChildren([
   trialBalanceRoute,
   signInRoute,
@@ -471,6 +504,10 @@ const routeTree = rootRoute.addChildren([
   adminSessionRoute,
   adminMembersRoute,
   adminSubscriptionRoute,
+  setupCompanyRoute,
+  setupCostCentersRoute,
+  setupDocumentShapesRoute,
+  setupChartRoute,
 ]);
 
 /** ينشئ موجّهاً. الاختبارات تمرّر تاريخاً في الذاكرة فلا تحتاج متصفّحاً. */

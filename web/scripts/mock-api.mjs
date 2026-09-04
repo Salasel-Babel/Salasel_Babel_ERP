@@ -270,6 +270,65 @@ const SETUP = {
   ],
 };
 
+/* ══════════ ملفّ القدرات وأشكال مستنداته، ودليل الحسابات ══════════════════
+   كتلةٌ واحدة متّصلة تُضاف كي تُرسَم شاشاتُ التأسيس على المقياس الحاكم: مسارٌ
+   لا يردّ شيئاً يُقرأ **صفر صفوف**، وصفرٌ من صفرٍ ليس دليلاً (فخ-43). */
+
+/** شكلا مستندين مُشتقّان — أحدهما بقدرتين مُطفأتين كي يُرى الإطفاء لا يُفترض. */
+const DOCUMENT_SHAPES = [
+  {
+    documentType: "purchasing.supplier_bill",
+    nameAr: "فاتورة المورّد",
+    nameKey: "document.purchasing.supplier_bill",
+    module: "Purchasing",
+    availableCapabilities: ["landed_cost", "retention", "three_way_match"],
+    enabledCapabilities: ["three_way_match"],
+    fields: ["costCenter", "currency", "issuedOn", "matchedReceipt", "supplier"],
+    defaults: [{ name: "currency", value: "SAR" }],
+  },
+  {
+    documentType: "sales.invoice",
+    nameAr: "فاتورة المبيعات",
+    nameKey: "document.sales.invoice",
+    module: "Sales",
+    availableCapabilities: ["advance", "cost_of_sales"],
+    enabledCapabilities: ["cost_of_sales"],
+    fields: ["costOfSales", "customer", "issuedOn"],
+    defaults: [],
+  },
+];
+
+const CAPABILITY_PROFILE = { documents: DOCUMENT_SHAPES };
+
+/** دليلُ حساباتٍ صغير بأبٍ تجميعيّ وورقتين — وشروطُ الترحيل على كلٍّ منها. */
+const POSTING_CHART = {
+  accountCount: 3,
+  postableCount: 2,
+  accounts: [
+    {
+      accountCode: "AR", accountType: "asset", active: true, contra: false,
+      currencyCode: null, currencyMode: "any", level: 1,
+      nameAr: "الذمم المدينة", nameTranslations: [{ name: "en", value: "Receivables" }],
+      naturalSide: "debit", parentCode: null, postable: false,
+      requiredDimensions: [], subledgerType: "none",
+    },
+    {
+      accountCode: "AR-TRADE", accountType: "asset", active: true, contra: false,
+      currencyCode: "SAR", currencyMode: "fixed", level: 4,
+      nameAr: "ذمم العملاء التجارية", nameTranslations: [{ name: "en", value: "Trade receivables" }],
+      naturalSide: "debit", parentCode: "AR", postable: true,
+      requiredDimensions: ["cost_center"], subledgerType: "customer",
+    },
+    {
+      accountCode: "AR-DOUBT", accountType: "asset", active: false, contra: true,
+      currencyCode: null, currencyMode: "company_only", level: 4,
+      nameAr: "مخصص الديون المشكوك فيها", nameTranslations: [],
+      naturalSide: "credit", parentCode: "AR", postable: true,
+      requiredDimensions: ["branch", "cost_center"], subledgerType: "customer",
+    },
+  ],
+};
+
 /** ما رُحِّل بالفعل، بمفتاح الحصانة — فالإرسال الثاني لا يُنشئ قيداً ثانياً. */
 const posted = new Map();
 let entrySequence = 0;
@@ -543,6 +602,31 @@ export function createMockServer() {
       /^\/api\/v1\/companies\/([^/]+)\/agent\/sessions\/([^/]+)$/.exec(url.pathname);
     if (agentSession && req.method === "GET") {
       send(res, 200, AGENT_SESSION, "application/json");
+      return;
+    }
+
+    /* ── ملفّ القدرات وشكلُ نوعٍ واحد ودليلُ الحسابات — كتلةٌ واحدة ────── */
+    const profileMatch = /^\/api\/v1\/companies\/([^/]+)\/capability-profile$/.exec(url.pathname);
+    if (profileMatch && req.method === "GET") {
+      send(res, 200, CAPABILITY_PROFILE, "application/json");
+      return;
+    }
+
+    const shapeMatch = /^\/api\/v1\/companies\/([^/]+)\/document-shapes\/([^/]+)$/.exec(url.pathname);
+    if (shapeMatch && req.method === "GET") {
+      const wanted = decodeURIComponent(shapeMatch[2]);
+      const shape = DOCUMENT_SHAPES.find((one) => one.documentType === wanted);
+      if (!shape) {
+        send(res, 404, problem(404, "document_shape.not_found", url.pathname), "application/problem+json");
+        return;
+      }
+      send(res, 200, shape, "application/json");
+      return;
+    }
+
+    const chartMatch = /^\/api\/v1\/companies\/([^/]+)\/chart-of-accounts$/.exec(url.pathname);
+    if (chartMatch && req.method === "GET") {
+      send(res, 200, POSTING_CHART, "application/json");
       return;
     }
 

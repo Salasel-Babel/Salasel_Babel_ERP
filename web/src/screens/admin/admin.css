@@ -1,0 +1,52 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   شاشات الإدارة — ما تضيفه فوق الطبقة السينمائية
+   The admin screens — what they add on top of the cinematic layer
+   ───────────────────────────────────────────────────────────────────────────
+   **لا لونَ جديد ولا مقاسَ جديد ولا مدّةَ حركةٍ جديدة هنا.** كل قيمةٍ أدناه
+   رمزٌ من `tokens.css` أو `cinematic.css`، وكل خاصّية اتجاهية منطقية.
+
+   **ولا صفَّ حقولٍ في هذا الملفّ.** صفوف هذا القسم كلّها في الوعاء المُسجَّل
+   `.grid` من `styles/components.css` — «الصفُّ يملك المسارات» (ADR-0067) —
+   فلا يخترع هذا القسم وعاءً ثانياً يعود بحقوله إلى «كلٌّ يقيس نفسه منفرداً».
+   وما هنا ثلاثةٌ لا رابع: شريطُ الشاشات، ولوحُ النقص المُعلَن، وبئرُ الأثر.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════ ١ · شريط شاشات المجموعة */
+
+.adm-tabs{
+  display:flex; gap:var(--space-4); flex-wrap:wrap;
+  border-block-end:var(--border-width) solid var(--color-border);
+  padding-block-end:var(--space-8);
+}
+.adm-tab{
+  padding:var(--space-6) var(--space-12);
+  border-radius:var(--radius-md);
+  color:var(--color-text-muted); text-decoration:none;
+  font-size:var(--font-size-sm); white-space:nowrap;
+}
+.adm-tab:hover{ background:var(--color-surface-sunken); color:var(--color-text) }
+.adm-tab[aria-current="page"]{
+  background:var(--color-surface-sunken);
+  color:var(--color-text); font-weight:var(--font-weight-semibold);
+  box-shadow:inset 0 -2px 0 0 var(--section-accounting);
+}
+
+/* ═══════════════════════════ ٢ · النقص المُعلَن — يُرى ولا يُخفى */
+
+.adm-gap{
+  border:var(--border-width) dashed var(--color-ai-line);
+  border-radius:var(--radius-panel);
+  padding:var(--space-14);
+  display:flex; flex-direction:column; gap:var(--space-8);
+}
+.adm-gap__head{ display:flex; align-items:center; gap:var(--space-8); flex-wrap:wrap }
+.adm-gap p{ margin:0 }
+.adm-gap__owed{ color:var(--color-ai); font-weight:var(--font-weight-semibold) }
+
+/* ═════════════ ٣ · بئرُ الأثر: ما يقع قبل الضغط، بنوداً لا جملةً */
+
+.adm-effects{
+  margin:0; padding-inline-start:var(--space-18);
+  display:flex; flex-direction:column; gap:var(--space-6);
+}
+.adm-effects li{ font-size:var(--font-size-sm) }

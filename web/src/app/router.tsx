@@ -62,6 +62,14 @@ import { SubledgerReconciliationScreen } from "../screens/hr/SubledgerReconcilia
 import { AttachmentRegisterScreen } from "../screens/attachments/AttachmentRegisterScreen";
 import { AttachmentCustodyScreen } from "../screens/attachments/AttachmentCustodyScreen";
 import { InventoryItemLifecycleScreen } from "../screens/inventory/ItemLifecycleScreen";
+/* ── الإدارة والاشتراك — أربعُ شاشاتٍ بترتيب العمل: كيف أدخل أوّل مرّة ← ما
+   الذي بيدي الآن ← من يدخل معي ← ماذا اشتريتُ وما الذي يعمل. وهي **مجموعةٌ
+   إدارية** لا قسمٌ سادس: عقدُ الملاحة خماسيّ، وهذه الأربع خلفها مالكُ اشتراكٍ
+   أو مسؤول لا محاسبٌ يكتب مستنداً — فلها عنوانها الخاصّ في الملاحة. */
+import { EnrolmentScreen } from "../screens/admin/EnrolmentScreen";
+import { SessionScreen } from "../screens/admin/SessionScreen";
+import { MembersScreen } from "../screens/admin/MembersScreen";
+import { SubscriptionScreen } from "../screens/admin/SubscriptionScreen";
 
 const rootRoute = createRootRoute({ component: AppShell });
 
@@ -349,6 +357,31 @@ const inventoryItemLifecycleRoute = createRoute({
   component: InventoryItemLifecycleScreen,
 });
 
+/* ── الإدارة والاشتراك ─────────────────────────────────────────────────── */
+const adminEnrolmentRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/enrolment",
+  component: EnrolmentScreen,
+});
+
+const adminSessionRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/session",
+  component: SessionScreen,
+});
+
+const adminMembersRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/members",
+  component: MembersScreen,
+});
+
+const adminSubscriptionRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/subscription",
+  component: SubscriptionScreen,
+});
+
 const routeTree = rootRoute.addChildren([
   trialBalanceRoute,
   signInRoute,
@@ -395,6 +428,10 @@ const routeTree = rootRoute.addChildren([
   attachmentsRoute,
   attachmentCustodyRoute,
   inventoryItemLifecycleRoute,
+  adminEnrolmentRoute,
+  adminSessionRoute,
+  adminMembersRoute,
+  adminSubscriptionRoute,
 ]);
 
 /** ينشئ موجّهاً. الاختبارات تمرّر تاريخاً في الذاكرة فلا تحتاج متصفّحاً. */

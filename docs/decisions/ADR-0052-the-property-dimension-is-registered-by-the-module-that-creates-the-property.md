@@ -74,7 +74,7 @@
 | `…/properties/{propertyId}/units` · `…/units/{unitId}` | إنشاء · قراءة | لا |
 | `…/lessees` · `…/lessees/{lesseeId}` | إنشاء · قراءة | لا |
 | `…/property-owners` · `…/property-owners/{ownerId}` | إنشاء · قراءة | لا |
-| `…/lease-contracts` · `…/{leaseId}` · `…/{leaseId}/schedule` · `…/{leaseId}/activation` | إنشاء · قراءة · جدول الدفعات بمعرّفاته · تفعيل | **لا — ولا يجوز** |
+| `…/lease-registrations` · `…/{leaseId}` · `…/{leaseId}/schedule` · `…/{leaseId}/billing-approval` | تسجيل · قراءة · جدول الدفعات بمعرّفاته · اعتماد للفوترة | **لا — ولا يجوز** |
 | `…/rent-invoices` · `…/{invoiceId}` · `…/{invoiceId}/posting` | إنشاء · قراءة · ترحيل | نعم |
 | `…/tenant-receipts` · `…/{receiptId}` · `…/{receiptId}/posting` · `…/{receiptId}/allocation` | إنشاء · قراءة · ترحيل · تخصيص | نعم — بقيدين مستقلّين |
 | `…/tenant-arrears-aging` | قراءة | لا — ومعها المطابقة في الجواب نفسه |

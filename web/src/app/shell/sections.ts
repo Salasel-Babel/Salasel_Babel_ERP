@@ -177,6 +177,23 @@ export const SCREENS: readonly ScreenEntry[] = [
   { path: "/purchasing/goods-receipt", labelKey: "accounting.nav.goodsReceipt", section: "accounting", group: "purchasing" },
   { path: "/purchasing/bill", labelKey: "accounting.nav.supplierBill", section: "accounting", group: "purchasing" },
   { path: "/purchasing/payment", labelKey: "accounting.nav.supplierPayment", section: "accounting", group: "purchasing" },
+  /* ── سجلُّ المرفقات وعهدةُ سنده، وحالُ الصنف — **كتلةٌ واحدة متّصلة** كي
+     يندمج جانباها آلياً حين يلمس أسطولٌ آخر هذا الملفّ.
+
+     والمرفقات في القسم **المحاسبي لأجل لونه** لا لأنها تخصّه: السند يعبر
+     الأقسام الخمسة كلَّها — خطابُ ضمانٍ في المقاولات، وعقدُ إيجارٍ في
+     العقارات، وفاتورةٌ في المبيعات — ولا قسمَ واحداً يملكه. وهو الحكم نفسه
+     المكتوب للأمر المنطوق أعلاه، والقسم المحاسبي هو اللون المرجعي حين لا
+     يُعرَف القسم. وسندُ القيد أقربُ ما يكون إلى الدفتر على أي حال (ADR-0046:
+     «المرفق دليلٌ فيخضع لانضباط الدفتر»).
+
+     وشاشتان للمرفقات لا واحدة: أبوابُ الكتابة فيها **ثلاثة** — إيداعٌ
+     وتصحيحٌ وسحب — وحدُّ ADR-0080 اثنان. وشاشةٌ واحدة للصنف: أبوابُ الكتابة
+     فيه **اثنان** بالضبط. والترتيب ترتيبُ العمل: ما يُودَع ويُستخرَج ← ما
+     يُحكَم عليه بعد إيداعه. */
+  { path: "/attachments", labelKey: "accounting.nav.attachments", section: "accounting" },
+  { path: "/attachments/custody", labelKey: "accounting.nav.attachmentCustody", section: "accounting" },
+  { path: "/inventory/item-lifecycle", labelKey: "inventory.nav.itemLifecycle", section: "inventory" },
 ];
 
 /**

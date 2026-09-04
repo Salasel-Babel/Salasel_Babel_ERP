@@ -760,8 +760,13 @@ describe("عقد الملاحة", () => {
        كانت أبواب التسكين والنقل والوحدات غير منشورة؛ وصار تسعاً حين نزلت
        فصارت لها شاشات. وحارسُ العدد باقٍ لأنه ما يمنع **الحذف الصامت**:
        شاشةٌ تختفي من `SCREENS` تُخرِج نفسها من لوحة الأوامر ومن حارس
-       الاستقامة معاً بلا أن يحمرّ شيء. */
-    expect(paths).toHaveLength(9);
+       الاستقامة معاً بلا أن يحمرّ شيء.
+
+       وصار عشراً بنزول `/inventory/item-lifecycle` — الشاشة التي تستهلك
+       `readItem` و`readItemLifecycle` و`updateItem` و`deactivateItem`، وكانت
+       الأربعةُ بلا مستهلكٍ في الواجهة كلّها. والعدّاد يُبَدَّل ولا يُحذف:
+       بديلُه — إسقاطُ الحارس — هو بالضبط الحذفُ الصامت الذي وُجد ليمنعه. */
+    expect(paths).toHaveLength(10);
   });
 
   /*
@@ -786,7 +791,7 @@ describe("عقد الملاحة", () => {
     await screen.findByTestId("inventory-stock-screen");
 
     const wanted = SCREENS.filter((s) => s.section === "inventory").map((s) => s.path);
-    expect(wanted).toHaveLength(9);
+    expect(wanted).toHaveLength(10);
     const reachable = [...document.querySelectorAll('nav [data-testid^="nav-inventory-"]')].map(
       (a) => a.getAttribute("href")
     );

@@ -51,7 +51,7 @@
     { "id": "dotnet-storage",          "runner": "dotnet", "project": "tests/Babel.Storage.Tests/Babel.Storage.Tests.csproj",             "assembly": "Babel.Storage.Tests.dll",          "invokedBy": ["tests/Babel.Storage.Tests/Babel.Storage.Tests.csproj", "--solution Babel.slnx"], "minimumExecuted": 59 },
     { "id": "dotnet-matrix-validator", "runner": "dotnet", "project": "tools/matrix-validator/tests/MatrixValidator.Tests.csproj",        "assembly": "MatrixValidator.Tests.dll",        "invokedBy": ["tools/matrix-validator/tests/MatrixValidator.Tests.csproj", "--solution Babel.slnx"], "minimumExecuted": 42 },
 
-    { "id": "web-unit",   "runner": "vitest",     "config": "web/vitest.config.ts",     "report": "web-unit.json",   "invokedBy": ["vitest"], "minimumExecuted": 562 },
+    { "id": "web-unit",   "runner": "vitest",     "config": "web/vitest.config.ts",     "report": "web-unit.json",   "invokedBy": ["vitest"], "minimumExecuted": 583 },
     { "id": "web-matrix", "runner": "playwright", "config": "web/playwright.config.ts", "report": "web-matrix.json", "invokedBy": ["playwright test"], "minimumExecuted": 107 }
   ],
 

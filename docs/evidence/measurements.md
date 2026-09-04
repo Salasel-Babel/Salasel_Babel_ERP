@@ -2728,7 +2728,35 @@ node scripts/align-audit.mjs --no-build --no-shots --locales ar,en --widths 1024
 | ‏`npm run lint` | **0 خطأ** (وتحذيرٌ واحد سابقٌ في `TrialBalanceTable.tsx`) | مقيس |
 | ‏`node scripts/generate-client.mjs --check` | **لا انحراف** · بصمة العقد `48db5a1817e2b9c6…` | مقيس |
 | ‏`node tools/agent/build-tool-catalogue.mjs --check` | **يطابق العقد** · 27 أداة | مقيس |
-| **البوّابة** | __PLACEHOLDER__ | مقيس |
+| **البوّابة** | **`GATE_EXIT=0`** · حزمة التطوير **10.0.111** · مجموعُ اختبارات .NET **2061 · 0 فشل** · **21 سطحاً** كلٌّ عند أرضيته أو فوقها · `web-unit` **668** والأرضية **668** · حارس استقامة الصفوف **8/8 خضراء (2.7 دقيقة)** | مقيس |
+
+**أمر البوّابة، كما نُفِّذ — ورمزُ خروجها يُلتقط منها هي لا من آخر أمرٍ في السطر**
+(‏[فخ-164](traps.md#fakh-164)):
+
+```bash
+export PATH=$PATH:/usr/lib/dotnet
+pg_isready >/dev/null 2>&1 || pg_ctlcluster 16 main start
+MSBUILDDISABLENODEREUSE=1 DOTNET_CLI_USE_MSBUILD_SERVER=0 NPM_CONFIG_PREFER_OFFLINE=true \
+  flock -o /tmp/babel-gate.lock tools/gate/run.sh --no-isolation --with-frontend \
+  > /tmp/gate-ejar.log 2>&1; rc=$?; echo "GATE_EXIT=$rc"
+```
+
+**ومُخرَجها الأخير حرفاً:**
+
+```text
+══ الحصيلة — ما نُفِّذ فعلاً · what actually ran
+   ✔ web-unit  vitest       نُفِّذ   668  الأرضية   668
+✔ 1 سطحاً أنتج تقريراً عند أرضيته أو فوقها، بصفر إخفاق.
+  ✓  8 [chromium] › e2e/alignment.spec.ts:143:3 › استقامةُ الصفوف · hi-1024-dark (ltr) (19.9s)
+  8 passed (2.7m)
+── الشركة التجريبية لم تُبنَ من الصفر. أضف --with-demo (وهي تُسقط قواعد العرض).
+✔ البوّابة المحلية خضراء: بناء الحلّ كلّه + المسابر + الحدود + الاختبارات + الواجهة الساكنة
+GATE_EXIT=0
+```
+
+> **وما لم تُشغّله هذه البوّابة مُصرَّحٌ به لا مفترَض**: **مسحُ العزل** مُتخطّى بـ`--no-isolation`،
+> **والشركة التجريبية** لم تُبنَ من الصفر (‏`--with-demo`) — وهي الخطوة الوحيدة التي كانت
+> ستُشغّل نصّ الترقية `002` على قاعدةٍ تُنشأ ثم تُهاجَر. وهذا هو سببُ أوّل سطرٍ في §و أدناه.
 
 #### و) ما **لم** يُقَس في هذا العمل — ويُعلَن
 

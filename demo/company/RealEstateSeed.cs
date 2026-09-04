@@ -49,7 +49,7 @@ internal sealed class RealEstateSeed : IDisposable
 
     private readonly PropertyService _properties;
     private readonly PartyService _parties;
-    private readonly LeaseContractService _leases;
+    private readonly LeaseRegistrationService _leases;
     private readonly RentInvoiceService _invoices;
     private readonly TenantReceiptService _receipts;
     private readonly TenantArrearsService _arrears;
@@ -94,7 +94,7 @@ internal sealed class RealEstateSeed : IDisposable
         IServiceProvider scoped = _scope.ServiceProvider;
         _properties = scoped.GetRequiredService<PropertyService>();
         _parties = scoped.GetRequiredService<PartyService>();
-        _leases = scoped.GetRequiredService<LeaseContractService>();
+        _leases = scoped.GetRequiredService<LeaseRegistrationService>();
         _invoices = scoped.GetRequiredService<RentInvoiceService>();
         _receipts = scoped.GetRequiredService<TenantReceiptService>();
         _arrears = scoped.GetRequiredService<TenantArrearsService>();

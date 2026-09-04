@@ -39,7 +39,7 @@ internal sealed class Harness : IDisposable
         Registrar = new Babel.Ledger.RealEstate.PropertyDimensionRegistrar(enforcer, ledger);
         Properties = new PropertyService(enforcer, runtime, Registrar);
         Parties = new PartyService(enforcer, runtime);
-        Leases = new LeaseContractService(enforcer, runtime);
+        Leases = new LeaseRegistrationService(enforcer, runtime);
         Invoices = new RentInvoiceService(enforcer, runtime, Posting);
         Receipts = new TenantReceiptService(enforcer, runtime, Posting);
         Arrears = new TenantArrearsService(
@@ -59,7 +59,7 @@ internal sealed class Harness : IDisposable
 
     public PartyService Parties { get; }
 
-    public LeaseContractService Leases { get; }
+    public LeaseRegistrationService Leases { get; }
 
     public RentInvoiceService Invoices { get; }
 

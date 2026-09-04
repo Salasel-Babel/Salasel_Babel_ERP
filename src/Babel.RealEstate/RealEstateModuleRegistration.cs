@@ -31,7 +31,7 @@ public static class RealEstateModuleRegistration
         services.AddScoped<RealEstateRuntime>();
         services.AddScoped<PropertyService>();
         services.AddScoped<PartyService>();
-        services.AddScoped<LeaseContractService>();
+        services.AddScoped<LeaseRegistrationService>();
         services.AddScoped<RentInvoiceService>();
         services.AddScoped<TenantReceiptService>();
         services.AddScoped<TenantArrearsService>();

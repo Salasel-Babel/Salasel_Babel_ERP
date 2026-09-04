@@ -7,14 +7,21 @@ internal static class RealEstateDocumentState
     public const string Posted = "POSTED";
 }
 
-/// <summary>حالة عقد الإيجار.</summary>
+/// <summary>
+/// حالة <b>قيد تسجيل</b> عقد الإيجار — لا حالة العقد نفسه.
+/// <para>
+/// العقد يُحرَّر في منصّة إيجار ولا يُحرَّر هنا، وما يحمل حالةً هنا هو <b>القيد
+/// الأرشيفي</b> عندنا: مسوّدةٌ حتى يُعتمد، ثم مُعتمَدٌ للفوترة. <b>ولا قيمة هنا تقول
+/// «سارٍ»</b>: النفاذ النظامي ليس ملكاً لهذا الجدول.
+/// </para>
+/// </summary>
 internal static class LeaseState
 {
-    /// <summary>مسوّدة: لا جدول دفعات ولا أثر.</summary>
+    /// <summary>مسوّدة قيد: مُدخَلٌ ولم يُعتمد للفوترة بعد.</summary>
     public const string Draft = "DRAFT";
 
-    /// <summary>سارٍ: جدول الدفعات مولَّد، والمدّة تدخل قيد الاستبعاد الزمني.</summary>
-    public const string Active = "ACTIVE";
+    /// <summary>مُعتمَدٌ للفوترة: تُبنى فواتير الإيجار على هذا القيد، ومدّته تدخل قيد الاستبعاد الزمني.</summary>
+    public const string Billable = "BILLABLE";
 }
 
 /// <summary>حالة محاولة ترحيل مستند — منسوخة عن وحدة المبيعات لأن العقد واحد.</summary>
@@ -190,7 +197,7 @@ internal sealed class PartyTranslationRow
     public string Text { get; set; } = string.Empty;
 }
 
-/// <summary>عقد إيجار.</summary>
+/// <summary>قيدُ تسجيلِ عقد إيجار مُحرَّر في منصّة إيجار — أرشيفٌ لا تحرير.</summary>
 internal sealed class LeaseContractRow
 {
     public Guid Id { get; set; }
@@ -199,7 +206,8 @@ internal sealed class LeaseContractRow
 
     public Guid CompanyId { get; set; }
 
-    public string ContractNo { get; set; } = string.Empty;
+    /// <summary>رقم عقد إيجار — مرجعُ العقد المُحرَّر في المنصّة، لا رقمٌ يولّده هذا النظام.</summary>
+    public string EjarContractNumber { get; set; } = string.Empty;
 
     public Guid PropertyId { get; set; }
 

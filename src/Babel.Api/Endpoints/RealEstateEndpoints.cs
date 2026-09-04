@@ -45,10 +45,10 @@ internal static class RealEstateEndpoints
         app.MapGet(ApiRoutes.PropertyOwner, ReadOwnerAsync);
 
         // ‏**عقد الإيجار ثلاثة أبواب لا أربعة**: لا `…/posting` عليه ولا يجوز أن يوجد.
-        app.MapPost(ApiRoutes.LeaseContracts, DraftLeaseAsync);
-        app.MapGet(ApiRoutes.LeaseContract, ReadLeaseAsync);
-        app.MapGet(ApiRoutes.LeaseContractSchedule, ReadScheduleAsync);
-        app.MapPost(ApiRoutes.LeaseContractActivation, ActivateLeaseAsync);
+        app.MapPost(ApiRoutes.LeaseRegistrations, DraftLeaseRegistrationAsync);
+        app.MapGet(ApiRoutes.LeaseRegistration, ReadLeaseRegistrationAsync);
+        app.MapGet(ApiRoutes.LeaseRegistrationSchedule, ReadScheduleAsync);
+        app.MapPost(ApiRoutes.LeaseRegistrationBillingApproval, ApproveLeaseForBillingAsync);
 
         app.MapPost(ApiRoutes.RentInvoices, DraftRentInvoiceAsync);
         app.MapGet(ApiRoutes.RentInvoice, ReadRentInvoiceAsync);
@@ -288,7 +288,7 @@ internal static class RealEstateEndpoints
             : Results.Json(RealEstateMapping.ToDto(result.Value), ApiJson.Options);
     }
 
-    private static async Task<IResult> DraftLeaseAsync(
+    private static async Task<IResult> DraftLeaseRegistrationAsync(
         HttpContext context,
         RealEstateSurface realEstate,
         CancellationToken cancellationToken)
@@ -298,8 +298,8 @@ internal static class RealEstateEndpoints
             return denied!;
         }
 
-        (LeaseRequestDto? dto, IResult? refused) =
-            await BodyAsync<LeaseRequestDto>(context, cancellationToken).ConfigureAwait(false);
+        (LeaseRegistrationRequestDto? dto, IResult? refused) =
+            await BodyAsync<LeaseRegistrationRequestDto>(context, cancellationToken).ConfigureAwait(false);
 
         if (dto is null)
         {
@@ -309,7 +309,7 @@ internal static class RealEstateEndpoints
         RealEstateLeaseRequest request;
         try
         {
-            request = RealEstateMapping.ToLeaseRequest(dto);
+            request = RealEstateMapping.ToLeaseRegistrationRequest(dto);
         }
         catch (WireFormatException wire)
         {
@@ -317,16 +317,16 @@ internal static class RealEstateEndpoints
         }
 
         Result<RealEstateLease> result = await realEstate
-            .DraftLeaseAsync(new TenantId(companyId), Actor(context), companyId, request, cancellationToken)
+            .DraftLeaseRegistrationAsync(new TenantId(companyId), Actor(context), companyId, request, cancellationToken)
             .ConfigureAwait(false);
 
         return result.IsFailure
             ? HttpProblemResults.Domain(context, result.Errors)
             : Created(context, RealEstateMapping.ToDto(result.Value),
-                Location(ApiRoutes.LeaseContract, companyId, "leaseId", result.Value.Id));
+                Location(ApiRoutes.LeaseRegistration, companyId, "leaseId", result.Value.Id));
     }
 
-    private static async Task<IResult> ReadLeaseAsync(
+    private static async Task<IResult> ReadLeaseRegistrationAsync(
         HttpContext context,
         RealEstateSurface realEstate,
         CancellationToken cancellationToken)
@@ -374,7 +374,7 @@ internal static class RealEstateEndpoints
             : Results.Json(RealEstateMapping.ToDto(leaseId, result.Value), ApiJson.Options);
     }
 
-    private static async Task<IResult> ActivateLeaseAsync(
+    private static async Task<IResult> ApproveLeaseForBillingAsync(
         HttpContext context,
         RealEstateSurface realEstate,
         CancellationToken cancellationToken)
@@ -390,12 +390,16 @@ internal static class RealEstateEndpoints
         }
 
         Result<RealEstateLease> result = await realEstate
-            .ActivateLeaseAsync(new TenantId(companyId), Actor(context), companyId, leaseId, cancellationToken)
+            .ApproveLeaseForBillingAsync(new TenantId(companyId), Actor(context), companyId, leaseId, cancellationToken)
             .ConfigureAwait(false);
 
+        // ‏**200 لا 201، وإعادةُ النداء تُعيد الجواب نفسه.** الاعتماد لا يُنشئ مورداً
+        // على عنوانٍ جديد — ولذلك كان 201 يخرج بلا ترويسة Location أصلاً — ولا يُنشئ
+        // قيداً محاسبياً ولا هويةً تُتكرَّر. فالنداء الثاني على قيدٍ معتمَد يقرأ ما
+        // قرأه الأول ويعيده بالرمز نفسه (ق-٣).
         return result.IsFailure
             ? HttpProblemResults.Domain(context, result.Errors)
-            : Created(context, RealEstateMapping.ToDto(result.Value), location: null);
+            : Results.Json(RealEstateMapping.ToDto(result.Value), ApiJson.Options);
     }
 
     private static async Task<IResult> DraftRentInvoiceAsync(

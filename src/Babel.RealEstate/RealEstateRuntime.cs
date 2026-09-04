@@ -70,6 +70,7 @@ public static class RealEstateSchemaDeployer
     private static readonly string[] Migrations =
     [
         "001_OneLiveTermPerUnitIsADatabaseConstraint.sql",
+        "002_TheBillingApprovalReplacesActivation.sql",
     ];
 
     /// <summary>ينشئ مخطّط <c>realestate</c> وجداوله إن لم توجد، ثم يُطبّق نصوص الترقية.</summary>

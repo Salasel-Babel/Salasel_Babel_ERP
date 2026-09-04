@@ -80,13 +80,17 @@ public sealed record RealEstateParty(
 public sealed record RealEstateInstalmentRequest(DateOnly PeriodFrom, DateOnly PeriodTo, DateOnly DueOn, decimal Amount);
 
 /// <summary>
-/// طلب إنشاء عقد إيجار <b>مسوّدة</b>.
+/// طلب <b>تسجيل</b> عقد إيجار مُحرَّر في منصّة إيجار — <b>مسوّدة قيد أرشيفي</b>.
+/// <para>
+/// <b>ولا يُحرَّر العقد هنا</b>: منصّة إيجار الحكومية هي الطرف المخوَّل بتحريره، وما
+/// يُنشئه هذا الطلب قيدٌ عندنا مرجعُه رقمُ عقد إيجار. ولا تكامل مع المنصّة.
+/// </para>
 /// <para>
 /// <b>والأقساط تصل مصرَّحاً بها ولا تُوزَّع من قيمة العقد:</b> التوزيع يستلزم سياسة
 /// تقريب لم يحسمها المالك بعد، والنظام يفحص أن مجموعها يساوي قيمة العقد بالضبط.
 /// </para>
 /// </summary>
-/// <param name="ContractNo">رقم العقد.</param>
+/// <param name="EjarContractNumber">رقم عقد إيجار — مرجع العقد المُحرَّر في المنصّة، ولا يولّده هذا النظام.</param>
 /// <param name="UnitId">الوحدة المؤجَّرة — ومنها يُشتقّ العقار.</param>
 /// <param name="LesseeId">المستأجر.</param>
 /// <param name="StartsOn">بداية المدّة.</param>
@@ -94,7 +98,7 @@ public sealed record RealEstateInstalmentRequest(DateOnly PeriodFrom, DateOnly P
 /// <param name="TotalRent">قيمة العقد المتَّفق عليها — تُصرَّح مستقلّةً كي يبقى فحص المجموع فحصاً.</param>
 /// <param name="Instalments">الأقساط بفتراتها ومبالغها.</param>
 public sealed record RealEstateLeaseRequest(
-    string ContractNo,
+    string EjarContractNumber,
     Guid UnitId,
     Guid LesseeId,
     DateOnly StartsOn,
@@ -102,19 +106,19 @@ public sealed record RealEstateLeaseRequest(
     decimal TotalRent,
     IReadOnlyList<RealEstateInstalmentRequest> Instalments);
 
-/// <summary>عقدٌ كما يخرج من السطح.</summary>
+/// <summary>قيدُ تسجيلِ عقدٍ كما يخرج من السطح.</summary>
 /// <param name="Id">المعرّف.</param>
-/// <param name="ContractNo">رقم العقد.</param>
+/// <param name="EjarContractNumber">رقم عقد إيجار — مرجع العقد المُحرَّر في المنصّة.</param>
 /// <param name="PropertyId">العقار.</param>
 /// <param name="UnitId">الوحدة.</param>
 /// <param name="LesseeId">المستأجر.</param>
 /// <param name="StartsOn">بداية المدّة.</param>
 /// <param name="EndsOn">نهايتها.</param>
 /// <param name="TotalRent">قيمة العقد.</param>
-/// <param name="State">‏<c>DRAFT</c> أو <c>ACTIVE</c>.</param>
+/// <param name="State">‏<c>DRAFT</c> أو <c>BILLABLE</c> — حالة القيد لا حالة العقد.</param>
 public sealed record RealEstateLease(
     Guid Id,
-    string ContractNo,
+    string EjarContractNumber,
     Guid PropertyId,
     Guid UnitId,
     Guid LesseeId,

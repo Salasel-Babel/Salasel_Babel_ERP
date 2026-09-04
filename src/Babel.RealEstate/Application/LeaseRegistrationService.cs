@@ -8,21 +8,28 @@ using Npgsql;
 namespace Babel.RealEstate.Application;
 
 /// <summary>
-/// عقد الإيجار وجدول دفعاته.
+/// <b>قيدُ تسجيلِ عقد إيجار وجدولُ دفعاته — أرشفةٌ وفوترة، لا تحرير.</b>
+/// <para>
+/// <b>العقد يُحرَّر في منصّة إيجار ولا يُحرَّر هنا.</b> منصّة إيجار الحكومية هي الطرف
+/// المخوَّل بتحرير عقود الإيجار؛ وما تحمله هذه الخدمة <b>قيدٌ أرشيفي</b> لعقدٍ حُرِّر
+/// هناك، ومرجعُه الموثوق <b>رقم عقد إيجار</b>. ولا تكامل مع المنصّة في هذه الوحدة:
+/// الرقم يُقيَّد كما يُدخله المُسجِّل ولا يُتحقَّق منه.
+/// </para>
 /// <para>
 /// <b>ولا بوّابة ترحيل على هذا المستند إطلاقاً</b>، وغيابها ليس نقصاً: الحدث
 /// <c>realestate.lease.signed</c> مُعلَنٌ في المصفوفة بـ<c>posts_entry=false</c> —
-/// «العقد التزام متبادل مستقبلي لم ينفّذه أي طرف بعد». وغيابُ الباب هو ما يجعل «العقد
+/// «العقد التزام متبادل مستقبلي لم ينفّذه أي طرف بعد». وغيابُ الباب هو ما يجعل «القيد
 /// لا يُرحّل» <b>مقروءاً من شكل السطح</b> لا من تعليق.
 /// </para>
 /// <para>
-/// <b>والتفعيل فعلٌ يولّد جدول الدفعات لا حقلٌ يُعدَّل</b>: مورد فرعي مستقلّ بشكل
-/// <c>…/reversal</c> و<c>…/suspension</c> المنشورَين. وهو أيضاً اللحظة التي تدخل فيها
-/// مدّة العقد <b>قيد الاستبعاد الزمني</b> في قاعدة البيانات، فمدّتان ساريتان متداخلتان
-/// على وحدة واحدة تُرفضان من القاعدة لا من الواجهة.
+/// <b>والاعتماد للفوترة ليس نفاذاً نظامياً</b>: هو إذنٌ داخلي يقول «من هذه اللحظة
+/// تُبنى فواتير الإيجار على هذا القيد». مورد فرعي مستقلّ لا حقلٌ يُعدَّل، وهو أيضاً
+/// اللحظة التي تدخل فيها مدّة القيد <b>قيد الاستبعاد الزمني</b> في قاعدة البيانات،
+/// فقيدان معتمَدان بمدّتين متداخلتين على وحدة واحدة يُرفضان من القاعدة لا من الواجهة.
+/// <b>وإعادةُ الاعتماد آمنة وتُعيد النتيجة نفسها.</b>
 /// </para>
 /// </summary>
-public sealed class LeaseContractService : IApplicationService
+public sealed class LeaseRegistrationService : IApplicationService
 {
     private readonly IEntitlementEnforcer _enforcer;
     private readonly RealEstateDbContext _database;
@@ -31,7 +38,7 @@ public sealed class LeaseContractService : IApplicationService
     /// <summary>ينشئ الخدمة.</summary>
     /// <param name="enforcer">منفِّذ الاستحقاق.</param>
     /// <param name="runtime">موارد الوحدة.</param>
-    public LeaseContractService(IEntitlementEnforcer enforcer, RealEstateRuntime runtime)
+    public LeaseRegistrationService(IEntitlementEnforcer enforcer, RealEstateRuntime runtime)
     {
         ArgumentNullException.ThrowIfNull(enforcer);
         ArgumentNullException.ThrowIfNull(runtime);
@@ -40,7 +47,10 @@ public sealed class LeaseContractService : IApplicationService
         _currency = CurrencyCode.FromString(runtime.Options.CompanyCurrency);
     }
 
-    /// <summary>ينشئ عقداً <b>مسوّدة</b>. لا قيد ولا جدول دفعات: التفعيل خطوة مستقلّة.</summary>
+    /// <summary>
+    /// يُسجّل عقداً مُحرَّراً في منصّة إيجار بوصفه <b>مسوّدة قيد</b>. ولا قيد محاسبي:
+    /// الاعتماد للفوترة خطوة مستقلّة.
+    /// </summary>
     /// <param name="tenant">المستأجر.</param>
     /// <param name="actor">الفاعل.</param>
     /// <param name="companyId">المنشأة.</param>
@@ -93,16 +103,17 @@ public sealed class LeaseContractService : IApplicationService
 
         if (await _database.Leases
                 .AnyAsync(
-                    row => row.TenantId == tenant.Value && row.CompanyId == companyId && row.ContractNo == draft.ContractNo,
+                    row => row.TenantId == tenant.Value && row.CompanyId == companyId
+                           && row.EjarContractNumber == draft.EjarContractNumber,
                     cancellationToken)
                 .ConfigureAwait(false))
         {
-            return Result<LeaseView>.Failure(RealEstateErrors.DuplicateCode(draft.ContractNo));
+            return Result<LeaseView>.Failure(RealEstateErrors.DuplicateCode(draft.EjarContractNumber));
         }
 
-        // ── الثابتة تُفحص عند الإنشاء أيضاً، لا عند التفعيل وحده ────────────────
+        // ── الثابتة تُفحص عند التسجيل أيضاً، لا عند الاعتماد وحده ──────────────
         // ‏«مجموع الأقساط = قيمة العقد بالضبط دون هللات ضائعة» نصُّ المصفوفة. والرفض
-        // هنا أرحم: مسوّدةٌ تُحفظ بأقساطٍ لا تجمع قيمتها تبقى قنبلةً تنفجر عند التفعيل.
+        // هنا أرحم: مسوّدةٌ تُحفظ بأقساطٍ لا تجمع قيمتها تبقى قنبلةً تنفجر عند الاعتماد.
         // **والنظام لا يوزّع الفرق من عنده**: أين يقع فائض الهللات سياسةُ تقريبٍ يملكها
         // المالك، واختيارُها هنا يجعل كشف حساب مستأجرٍ حقيقي يخالف ما اتُّفق عليه.
         decimal total = draft.Instalments.Sum(instalment => instalment.Amount.Amount);
@@ -118,7 +129,7 @@ public sealed class LeaseContractService : IApplicationService
             Id = Guid.CreateVersion7(),
             TenantId = tenant.Value,
             CompanyId = companyId,
-            ContractNo = draft.ContractNo,
+            EjarContractNumber = draft.EjarContractNumber,
             PropertyId = unit.PropertyId,
             UnitId = unit.Id,
             LesseeId = draft.LesseeId,
@@ -130,8 +141,8 @@ public sealed class LeaseContractService : IApplicationService
 
         _database.Leases.Add(row);
 
-        // ‏**الأقساط تُحفظ مع المسوّدة ولا تُنشَر بعد**: التفعيل هو ما يجعلها جدول
-        // دفعات يُفوتَر منه. وحفظها هنا يجعل «ما الذي سيُفعَّل؟» سؤالاً له جواب واحد.
+        // ‏**الأقساط تُحفظ مع المسوّدة ولا تُفوتَر بعد**: الاعتماد للفوترة هو ما يجعلها
+        // جدول دفعات يُفوتَر منه. وحفظها هنا يجعل «ما الذي سيُعتمَد؟» سؤالاً له جواب واحد.
         int seq = 1;
         foreach (InstalmentDraft instalment in draft.Instalments)
         {
@@ -153,7 +164,7 @@ public sealed class LeaseContractService : IApplicationService
         return Result<LeaseView>.Success(View(row));
     }
 
-    /// <summary>يقرأ عقداً بحالته.</summary>
+    /// <summary>يقرأ قيد التسجيل بحالته.</summary>
     /// <param name="tenant">المستأجر.</param>
     /// <param name="actor">الفاعل.</param>
     /// <param name="companyId">المنشأة.</param>
@@ -240,8 +251,13 @@ public sealed class LeaseContractService : IApplicationService
     }
 
     /// <summary>
-    /// يُفعّل العقد: يفحص الثابتة، ويُدخل المدّة قيد الاستبعاد الزمني، ويُتيح الفوترة.
-    /// <b>ولا يُرحّل قيداً</b> ومخطّط جوابه بلا معرّف قيد.
+    /// <b>يعتمد القيد للفوترة</b>: يفحص الثابتة، ويُدخل المدّة قيد الاستبعاد الزمني،
+    /// ويُتيح بناء فواتير الإيجار عليه. <b>ولا يُرحّل قيداً محاسبياً</b> ومخطّط جوابه
+    /// بلا معرّف قيد، <b>ولا يُنفِّذ عقداً</b>: النفاذ من المنصّة لا من هذا الباب.
+    /// <para>
+    /// <b>وإعادةُ الاعتماد آمنة</b>: نداءٌ ثانٍ على قيدٍ معتمَد يُعيد الجواب نفسه ولا
+    /// يكتب شيئاً. والجدول مكتوبٌ عند التسجيل لا هنا، فلا شيء يُضاعَف بنداءٍ ثانٍ.
+    /// </para>
     /// </summary>
     /// <param name="tenant">المستأجر.</param>
     /// <param name="actor">الفاعل.</param>
@@ -249,7 +265,7 @@ public sealed class LeaseContractService : IApplicationService
     /// <param name="leaseId">العقد.</param>
     /// <param name="cancellationToken">رمز الإلغاء.</param>
     [RequiresEntitlement(BabelModule.RealEstate, EntitlementAccess.Write)]
-    public async ValueTask<Result<LeaseView>> ActivateAsync(
+    public async ValueTask<Result<LeaseView>> ApproveForBillingAsync(
         TenantId tenant,
         UserId actor,
         Guid companyId,
@@ -257,7 +273,7 @@ public sealed class LeaseContractService : IApplicationService
         CancellationToken cancellationToken = default)
     {
         Result gate = await _enforcer
-            .EnsureAsync(tenant, actor, BabelModule.RealEstate, EntitlementAccess.Write, "RealEstate.Lease.Activate", cancellationToken)
+            .EnsureAsync(tenant, actor, BabelModule.RealEstate, EntitlementAccess.Write, "RealEstate.Lease.ApproveForBilling", cancellationToken)
             .ConfigureAwait(false);
 
         if (gate.IsFailure)
@@ -276,9 +292,14 @@ public sealed class LeaseContractService : IApplicationService
             return Result<LeaseView>.Failure(RealEstateErrors.LeaseNotFound(leaseId));
         }
 
-        if (string.Equals(row.State, LeaseState.Active, StringComparison.Ordinal))
+        // ── إعادة الاعتماد تُعيد النتيجة نفسها ولا تُرفض ───────────────────────
+        // ‏**والرفض الذي كان هنا كان يستند إلى دعوى غير صحيحة**: «إعادته تولّد جدول
+        // دفعات ثانياً». والجدول يُكتب عند **التسجيل** لا هنا — فلا شيء يتضاعف بنداءٍ
+        // ثانٍ. والاعتماد إذنُ فوترةٍ لا حدثٌ يقع مرّة، فالنداء الثاني يقرأ ما قرأه
+        // الأول ويعيده. (‏ق-٣: المسوّدة ثمّ الاعتماد خطوتان، وإعادةُ الاعتماد آمنة.)
+        if (string.Equals(row.State, LeaseState.Billable, StringComparison.Ordinal))
         {
-            return Result<LeaseView>.Failure(RealEstateErrors.LeaseIsAlreadyActive(leaseId));
+            return Result<LeaseView>.Success(View(row));
         }
 
         List<PaymentScheduleLineRow> schedule = await _database.ScheduleLines
@@ -302,7 +323,7 @@ public sealed class LeaseContractService : IApplicationService
                 RealEstateErrors.InstalmentsDoNotSumToTheContract(instalments, row.TotalRent));
         }
 
-        row.State = LeaseState.Active;
+        row.State = LeaseState.Billable;
 
         try
         {
@@ -316,7 +337,7 @@ public sealed class LeaseContractService : IApplicationService
             // القاعدة هو الحكم، وهذا السطر يترجم حكمه إلى رمز ثابت ورسالتين بدل خطأ
             // ‏23P01 خامّ يسمّي قيداً ولا يسمّي وحدةً ولا مدّة.
             _database.ChangeTracker.Clear();
-            return Result<LeaseView>.Failure(RealEstateErrors.LeaseTermOverlaps(row.ContractNo));
+            return Result<LeaseView>.Failure(RealEstateErrors.LeaseTermOverlaps(row.EjarContractNumber));
         }
 
         return Result<LeaseView>.Success(View(row));
@@ -329,7 +350,7 @@ public sealed class LeaseContractService : IApplicationService
 
     private LeaseView View(LeaseContractRow row) => new(
         row.Id,
-        row.ContractNo,
+        row.EjarContractNumber,
         row.PropertyId,
         row.UnitId,
         row.LesseeId,

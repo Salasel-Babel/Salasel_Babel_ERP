@@ -2248,7 +2248,7 @@ failed Babel.Core.Tests.TheTrailSurvivesTheProcessTests.مستأجرٌ_لا_يق
 
 ### 3-ن · ما بعد الترحيل: الفجوة المقيسة، واستقامةُ الصفّ وشاهدُها السلبي — 2026-09-04
 
-**القرار الذي تسنده هذه الأرقام:** [`ADR-جديد`](../decisions/ADR-جديد-after-posting-is-a-group-and-a-reversal-is-not-a-delete.md)
+**القرار الذي تسنده هذه الأرقام:** [`ADR-جديد`](../decisions/ADR-0084-after-posting-is-a-group-and-a-reversal-is-not-a-delete.md)
 (`after-posting-is-a-group-and-a-reversal-is-not-a-delete`).
 
 **العتاد والبيئة:** الحاوية نفسها الموصوفة في §0 · Node 22.22.2 · Chromium من

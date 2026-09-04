@@ -77,9 +77,12 @@ function NextStep(props: { readonly error: unknown; readonly testId: string }): 
   const key = code ? NEXT_STEP[code] : undefined;
   if (!key) return null;
   return (
-    <p className="alert alert--info" role="status" data-testid={props.testId} data-code={code}>
-      {t(key)}
-    </p>
+    <div className="alert alert--info" role="status" data-testid={props.testId} data-code={code}>
+      <div className="body">
+        <p>
+      {t(key)}</p>
+      </div>
+    </div>
   );
 }
 
@@ -223,10 +226,13 @@ export function MembersScreen(): ReactNode {
       <ReadOnlyNotice role={myRole} testId="admin-members-read-only" />
 
       {myRole !== "" && myRole !== "Owner" ? (
-        <p className="alert alert--info" role="status" data-testid="admin-members-not-owner">
+        <div className="alert alert--info" role="status" data-testid="admin-members-not-owner">
+          <div className="body">
+            <p>
           {t("screen.members.notOwnerNotice")}{" "}
-          <span className="mono" dir="ltr">{NOT_OWNER_CODE}</span>
-        </p>
+          <span className="mono" dir="ltr">{NOT_OWNER_CODE}</span></p>
+          </div>
+        </div>
       ) : null}
 
       {/* ═══════════════════════════ ١ · الأعضاء ══════════════════════ */}
@@ -428,27 +434,27 @@ export function MembersScreen(): ReactNode {
 
         {granted ? (
           <div className="alert alert--info" data-testid="admin-members-granted">
-            <p>
-              <strong>{t("screen.members.grantedTitle")}</strong>
-            </p>
-            <p>
-              <span lang={RECORD_TAG} dir="rtl" data-testid="admin-members-granted-name">
-                {granted.member.displayNameAr}
-              </span>{" "}
-              · <RoleBadge role={granted.member.role} testId="admin-members-granted-role" />
-            </p>
-            <p>{t("screen.members.grantedBody")}</p>
-            <p className="hint">
-              {t("screen.members.grantedExpires")}{" "}
-              <Instant value={granted.enrolmentExpiresAt} testId="admin-members-granted-expires" />
-            </p>
-            <div className="inline-group">
-              <Button
-                label={copied ? t("screen.members.copied") : t("screen.members.copy")}
-                onClick={copyMinted}
-                testId="admin-members-copy"
-              />
-              <span className="hint">{t("screen.members.copyHint")}</span>
+            <div className="body">
+              <span className="title">{t("screen.members.grantedTitle")}</span>
+              <p>
+                <span lang={RECORD_TAG} dir="rtl" data-testid="admin-members-granted-name">
+                  {granted.member.displayNameAr}
+                </span>{" "}
+                · <RoleBadge role={granted.member.role} testId="admin-members-granted-role" />
+              </p>
+              <p>{t("screen.members.grantedBody")}</p>
+              <p className="hint">
+                {t("screen.members.grantedExpires")}{" "}
+                <Instant value={granted.enrolmentExpiresAt} testId="admin-members-granted-expires" />
+              </p>
+              <div className="actions">
+                <Button
+                  label={copied ? t("screen.members.copied") : t("screen.members.copy")}
+                  onClick={copyMinted}
+                  testId="admin-members-copy"
+                />
+              </div>
+              <p className="hint">{t("screen.members.copyHint")}</p>
             </div>
           </div>
         ) : null}

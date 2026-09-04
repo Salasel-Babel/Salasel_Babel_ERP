@@ -146,11 +146,15 @@ export function ReadOnlyNotice(props: { readonly role: string; readonly testId: 
   const { t } = useT();
   if (props.role !== READER) return null;
   return (
-    <p className="alert alert--info" role="status" data-testid={props.testId} data-role={props.role}>
-      <strong>{t("screen.admin.readOnlyTitle")}</strong>{" "}
-      {t("screen.admin.readOnlyBody")}{" "}
-      <span className="mono" dir="ltr">{READ_ONLY_CODE}</span>
-    </p>
+    <div className="alert alert--info" role="status" data-testid={props.testId} data-role={props.role}>
+      <div className="body">
+        <span className="title">{t("screen.admin.readOnlyTitle")}</span>
+        <p>
+          {t("screen.admin.readOnlyBody")}{" "}
+          <span className="mono" dir="ltr">{READ_ONLY_CODE}</span>
+        </p>
+      </div>
+    </div>
   );
 }
 
@@ -189,37 +193,37 @@ export function Irreversible(props: IrreversibleProps): ReactNode {
   const [acked, setAcked] = useState(false);
   const id = props.testId + "-ack";
   return (
-    <div className="alert alert--warn" data-testid={props.testId}>
-      <p>
-        <strong>{props.title}</strong>
-      </p>
-      <p data-testid={props.testId + "-effect"}>{props.effect}</p>
-      {props.children}
-      <label className="check" htmlFor={id}>
-        <input
-          id={id}
-          type="checkbox"
-          checked={acked}
-          data-testid={id}
-          onChange={(e) => setAcked(e.target.checked)}
-        />
-        <span>{props.acknowledge}</span>
-      </label>
-      {props.blocked ? (
-        <p className="hint" data-testid={props.testId + "-blocked"}>
-          {props.blocked}
-        </p>
-      ) : null}
-      <div className="inline-group">
-        <Button
-          label={props.action}
-          kind="danger"
-          loading={props.busy}
-          disabled={!acked || props.busy === true || props.blocked !== undefined}
-          onClick={props.onConfirm}
-          testId={props.testId + "-go"}
-        />
-        <span className="hint">{acked ? t("screen.admin.ackDone") : t("screen.admin.ackFirst")}</span>
+    <div className="alert alert--warning" data-testid={props.testId}>
+      <div className="body">
+        <span className="title">{props.title}</span>
+        <p data-testid={props.testId + "-effect"}>{props.effect}</p>
+        {props.children}
+        <label className="check" htmlFor={id}>
+          <input
+            id={id}
+            type="checkbox"
+            checked={acked}
+            data-testid={id}
+            onChange={(e) => setAcked(e.target.checked)}
+          />
+          <span>{props.acknowledge}</span>
+        </label>
+        {props.blocked ? (
+          <p className="hint" data-testid={props.testId + "-blocked"}>
+            {props.blocked}
+          </p>
+        ) : null}
+        <div className="actions">
+          <Button
+            label={props.action}
+            kind="danger"
+            loading={props.busy}
+            disabled={!acked || props.busy === true || props.blocked !== undefined}
+            onClick={props.onConfirm}
+            testId={props.testId + "-go"}
+          />
+        </div>
+        <p className="hint">{acked ? t("screen.admin.ackDone") : t("screen.admin.ackFirst")}</p>
       </div>
     </div>
   );

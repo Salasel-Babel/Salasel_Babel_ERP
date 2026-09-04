@@ -229,9 +229,12 @@ export function SessionScreen(): ReactNode {
         note={t("screen.session.renewNote")}
         testId="admin-session-renew"
       >
-        <p className="alert alert--warn" role="note" data-testid="admin-session-replay-warning">
-          {t("screen.session.replayWarning")}
-        </p>
+        <div className="alert alert--warning" role="note" data-testid="admin-session-replay-warning">
+          <div className="body">
+            <p>
+          {t("screen.session.replayWarning")}</p>
+          </div>
+        </div>
 
         {hold.present ? (
           <div className="stack" data-testid="admin-session-hold">
@@ -343,9 +346,12 @@ export function SessionScreen(): ReactNode {
       >
         {revocation ? (
           <div className="stack" data-testid="admin-session-revoked">
-            <p className="alert alert--danger" role="status">
-              {t("screen.session.revokedBody")}
-            </p>
+            <div className="alert alert--danger" role="status">
+              <div className="body">
+                <p>
+              {t("screen.session.revokedBody")}</p>
+              </div>
+            </div>
             <div className="kv">
               <div>
                 <div className="k">{t("screen.admin.sessionId")}</div>
@@ -391,9 +397,12 @@ export function SessionScreen(): ReactNode {
           <>
             <ProblemPanel error={revokeFailure} />
             {revokeCode === NOT_ISSUED_HERE ? (
-              <p className="alert alert--info" role="status" data-testid="admin-session-provisioning">
-                {t("screen.session.provisioningCredential")}
-              </p>
+              <div className="alert alert--info" role="status" data-testid="admin-session-provisioning">
+                <div className="body">
+                  <p>
+                {t("screen.session.provisioningCredential")}</p>
+                </div>
+              </div>
             ) : null}
           </>
         ) : null}

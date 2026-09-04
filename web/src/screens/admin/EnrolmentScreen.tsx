@@ -193,9 +193,12 @@ export function EnrolmentScreen(): ReactNode {
 
       <AdminSectionNav current="/admin/enrolment" />
 
-      <p className="alert alert--info" role="note" data-testid="admin-enrolment-unauthenticated">
-        {t("screen.enrolment.unauthenticated")}
-      </p>
+      <div className="alert alert--info" role="note" data-testid="admin-enrolment-unauthenticated">
+        <div className="body">
+          <p>
+        {t("screen.enrolment.unauthenticated")}</p>
+        </div>
+      </div>
 
       {/* ═══════════════════════════ ١ · تسجيل منشأة جديدة ═════════════ */}
       <StatePanel
@@ -322,42 +325,45 @@ export function EnrolmentScreen(): ReactNode {
         ) : null}
 
         {registered && registered.alreadyRegistered ? (
-          <p className="alert alert--warn" role="status" data-testid="admin-enrolment-already">
-            {t("screen.enrolment.alreadyRegistered")}
-          </p>
+          <div className="alert alert--warning" role="status" data-testid="admin-enrolment-already">
+            <div className="body">
+              <p>
+            {t("screen.enrolment.alreadyRegistered")}</p>
+            </div>
+          </div>
         ) : null}
 
         {registered && mintedPresent ? (
           <div className="alert alert--info" data-testid="admin-enrolment-minted">
-            <p>
-              <strong>{t("screen.enrolment.mintedTitle")}</strong>
-            </p>
-            <p>{t("screen.enrolment.mintedBody")}</p>
-            <p className="hint">
-              {t("screen.enrolment.mintedExpires")}{" "}
-              <Instant
-                value={registered.enrolmentExpiresAt ?? ""}
-                testId="admin-enrolment-minted-expires"
-              />
-            </p>
-            <div className="inline-group">
-              <Button
-                label={t("screen.enrolment.useNow")}
-                kind="primary"
-                loading={openBusy}
-                disabled={openBusy}
-                onClick={() => {
-                  const credential = minted.current;
-                  if (credential !== null) void doOpen(credential);
-                }}
-                testId="admin-enrolment-use-now"
-              />
-              <Button
-                label={copied ? t("screen.enrolment.copied") : t("screen.enrolment.copy")}
-                onClick={copyMinted}
-                testId="admin-enrolment-copy"
-              />
-              <span className="hint">{t("screen.enrolment.copyHint")}</span>
+            <div className="body">
+              <span className="title">{t("screen.enrolment.mintedTitle")}</span>
+              <p>{t("screen.enrolment.mintedBody")}</p>
+              <p className="hint">
+                {t("screen.enrolment.mintedExpires")}{" "}
+                <Instant
+                  value={registered.enrolmentExpiresAt ?? ""}
+                  testId="admin-enrolment-minted-expires"
+                />
+              </p>
+              <div className="actions">
+                <Button
+                  label={t("screen.enrolment.useNow")}
+                  kind="primary"
+                  loading={openBusy}
+                  disabled={openBusy}
+                  onClick={() => {
+                    const credential = minted.current;
+                    if (credential !== null) void doOpen(credential);
+                  }}
+                  testId="admin-enrolment-use-now"
+                />
+                <Button
+                  label={copied ? t("screen.enrolment.copied") : t("screen.enrolment.copy")}
+                  onClick={copyMinted}
+                  testId="admin-enrolment-copy"
+                />
+              </div>
+              <p className="hint">{t("screen.enrolment.copyHint")}</p>
             </div>
           </div>
         ) : null}
@@ -406,9 +412,12 @@ export function EnrolmentScreen(): ReactNode {
           <>
             <ProblemPanel error={openFailure} />
             {nextStepKey ? (
-              <p className="alert alert--info" role="status" data-testid="admin-enrolment-next-step">
-                {t(nextStepKey)}
-              </p>
+              <div className="alert alert--info" role="status" data-testid="admin-enrolment-next-step">
+                <div className="body">
+                  <p>
+                {t(nextStepKey)}</p>
+                </div>
+              </div>
             ) : null}
           </>
         ) : null}
@@ -450,13 +459,15 @@ export function EnrolmentScreen(): ReactNode {
             </div>
 
             {session.writeReachesNothing ? (
-              <p
+              <div
                 className="alert alert--info"
                 role="status"
                 data-testid="admin-enrolment-write-reaches-nothing"
               >
-                {t("screen.enrolment.writeReachesNothing")}
-              </p>
+                <div className="body">
+                  <p>{t("screen.enrolment.writeReachesNothing")}</p>
+                </div>
+              </div>
             ) : null}
 
             <div className="tablewrap" data-testid="admin-enrolment-memberships">

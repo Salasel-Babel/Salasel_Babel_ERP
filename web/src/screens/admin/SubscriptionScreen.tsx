@@ -91,9 +91,12 @@ function NextStep(props: { readonly error: unknown; readonly testId: string }): 
   const key = code ? NEXT_STEP[code] : undefined;
   if (!key) return null;
   return (
-    <p className="alert alert--info" role="status" data-testid={props.testId} data-code={code}>
-      {t(key)}
-    </p>
+    <div className="alert alert--info" role="status" data-testid={props.testId} data-code={code}>
+      <div className="body">
+        <p>
+      {t(key)}</p>
+      </div>
+    </div>
   );
 }
 
@@ -209,10 +212,13 @@ export function SubscriptionScreen(): ReactNode {
 
       <AdminSectionNav current="/admin/subscription" />
 
-      <p className="alert alert--info" role="note" data-testid="admin-subscription-operator">
+      <div className="alert alert--info" role="note" data-testid="admin-subscription-operator">
+        <div className="body">
+          <p>
         {t("screen.subscription.operatorNotice")}{" "}
-        <span className="mono" dir="ltr">{OPERATOR_CODE}</span>
-      </p>
+        <span className="mono" dir="ltr">{OPERATOR_CODE}</span></p>
+        </div>
+      </div>
 
       {/* ═══════════════════════════ ١ · الحال الآن ═══════════════════ */}
       <StatePanel
@@ -522,9 +528,12 @@ export function SubscriptionScreen(): ReactNode {
         ) : null}
 
         {after ? (
-          <p className="alert alert--info" role="status" data-testid="admin-subscription-applied">
-            {t("screen.subscription.applied")}
-          </p>
+          <div className="alert alert--info" role="status" data-testid="admin-subscription-applied">
+            <div className="body">
+              <p>
+            {t("screen.subscription.applied")}</p>
+            </div>
+          </div>
         ) : null}
       </StatePanel>
 

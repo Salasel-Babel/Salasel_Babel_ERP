@@ -2658,7 +2658,7 @@ dotnet test --project tests/Babel.ArchitectureTests/Babel.ArchitectureTests.cspr
 > `create a lease contract` لا تطابق شاهدها `Creates a lease contract in state DRAFT`
 > (فرقُ حرفٍ واحد)، فسقط الفحص الخامس **على الشجرتين معاً** حتى انقسمت العبارة إلى اثنتين.
 > ولولاه لعاشت في القائمة عبارةٌ ميتة تُعطي «لم يُعثر على شيء» بوصفها براءة
-> (‏[فخ-185](traps.md#fakh-185)).
+> (‏[فخ-جديد](traps.md#fakh-a-word-list-cannot-tell-a-claim-from-its-denial)).
 
 #### ج) استقامةُ الصفّ على `/realestate/lease` — والشاهد السلبي بصيغته الصحيحة
 

@@ -480,7 +480,7 @@ export const messages: MessageTree = {
       filterLabel: "Filter by text",
       filterHint: "Narrows the rows by code, name, or one of its translations, and does not touch the counts above.",
       postableOnlyLabel: "Postable accounts",
-      postableOnlyHint: "Off by default: the chart is shown with its parents, and a list of leaves alone pushes the reader into inventing a grouping from code prefixes.",
+      postableOnlyHint: "Off by default: the chart is shown with its summary parents, so no grouping is invented from code prefixes.",
       activeOnlyLabel: "In use only",
       activeOnlyHint: "Off by default too: a deactivated account stays readable, and hiding it makes it look deleted.",
       showAll: "Show everything",

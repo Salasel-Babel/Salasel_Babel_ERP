@@ -208,13 +208,8 @@ export const TRANSLATION_EMPTY_CODE = "company_setup.translation_empty";
  * @param tag الوسم كما كُتب.
  */
 export function isWellFormedTag(tag: string): boolean {
-  return (
-    tag.length > 0 &&
-    tag.length <= MAXIMUM_TAG_LENGTH &&
-    /^[A-Za-z][A-Za-z0-9-]*$/.test(tag) &&
-    !tag.endsWith("-") &&
-    !tag.includes("--")
-  );
+  if (tag.length === 0 || tag.length > MAXIMUM_TAG_LENGTH) return false;
+  return /^[A-Za-z][A-Za-z0-9-]*$/.test(tag) && !tag.endsWith("-") && !tag.includes("--");
 }
 
 /** هل الوسم هو وسم السجلّ نفسه (أو فرعٌ منه)؟ العربية سجلٌّ لا ترجمة. */

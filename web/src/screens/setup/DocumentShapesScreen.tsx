@@ -14,7 +14,7 @@
        القائمة، وحقلٌ خارج الشكل يُقال عنه ذلك **قبل الضغط** ومعه أن المُطفأة
        أحدُ سببيه المحتملين.
 
-   ٣ · **والكتابة تستبدل الملفّ كلَّه.** ‏`PUT` يستبدل، فما لا يُرسَل يسقط —
+   ٣ · **والكتابة تستبدل الملفّ كلَّه.** `PUT` يستبدل، فما لا يُرسَل يسقط —
        ولذلك تُعاد **كلُّ** أنواع المستندات في الجسم، **وقيمُها الافتراضية
        كما وصلت** حرفاً بحرف. وإسقاطُها هنا كان سيمسحها بلا أن يطلب أحدٌ ذلك.
 
@@ -23,7 +23,7 @@
        مكتوب. فالشاشة **تحسب المسحوبات بالفرق** بين ما قُرئ وما سيُرسَل،
        وتسمّيها، وتفتح حقل السبب عندها وحدها.
 
-   ٥ · **وشكلُ نوعٍ واحد يُقرأ من بابه.** ‏`readDocumentShape` هو مصدر اللوح
+   ٥ · **وشكلُ نوعٍ واحد يُقرأ من بابه.** `readDocumentShape` هو مصدر اللوح
        الذي يُحكَم عليه: الملفّ كلُّه يعطي القائمة والمفاتيح، وشكلُ النوع
        المختار يأتي من بابه بعد كلّ كتابة — فما يُعرَض هو ما يشتقّه الخادم
        الآن، لا نسخةٌ في الذاكرة قد تكون سبقت آخر استبدال.
@@ -149,8 +149,15 @@ export function DocumentShapesScreen(): ReactNode {
   }, [read, switches]);
 
   const reasonNeeded = withdrawn.length > 0;
-  const reasonShort = reasonNeeded && withdrawalReason.trim().length < MINIMUM_REASON;
-  const writeReady = read !== null && !reasonShort;
+  /* **النقص والقِصَر ليسا شيئاً واحداً.** حقلٌ لم يُكتب بعدُ ليس «أقصر من
+     ثمانية»، فالرسالة لا تظهر قبل أوّل حرف — والزرُّ مُقفَلٌ في الحالين لأن
+     المُدخَل ناقص، لا لأن الشاشة تمنع فعلاً يسمح به الخادم. */
+  const reasonShort =
+    reasonNeeded &&
+    withdrawalReason.trim() !== "" &&
+    withdrawalReason.trim().length < MINIMUM_REASON;
+  const writeReady =
+    read !== null && (!reasonNeeded || withdrawalReason.trim().length >= MINIMUM_REASON);
 
   const currentShape: DocumentShape | null = shape.data ?? null;
 

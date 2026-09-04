@@ -4,7 +4,7 @@
    ───────────────────────────────────────────────────────────────────────────
    عشرةُ أشياء تُفحص هنا، وكلٌّ منها ينكسر بصمت لو لم يُفحص:
 
-     ١ · القوائم الثلاث تتّفق. ‏`SCREENS` والموجّه وقائمةُ الملاحة اليدوية في
+     ١ · القوائم الثلاث تتّفق. `SCREENS` والموجّه وقائمةُ الملاحة اليدوية في
          `App.tsx` ثلاثُ نسخٍ ولا شيء يقارنها، فشاشةٌ في واحدةٍ دون الأخرى
          تُفتح بلوحة الأوامر ولا يراها من يقرأ الملاحة.
      ٢ · **`admitDocument` حكمٌ لا كتابة**: الضغط يُصدر طلباً واحداً إلى مسار
@@ -677,7 +677,8 @@ describe("كتابةُ الملفّ استبدالٌ كلّي", () => {
     await click(await screen.findByTestId("setup-shape-switch-" + key));
     const panel = await screen.findByTestId("setup-shape-withdrawals");
     expect(panel.textContent).toContain(key);
-    expect(button("setup-shape-save").disabled).toBe(false);
+    /* السحبُ مُعلَنٌ والسببُ لم يُكتب بعد — فالزرّ مُقفَلٌ لنقص المُدخَل. */
+    expect(button("setup-shape-save").disabled).toBe(true);
     await type(input("setup-shape-reason"), "قصير");
     expect(button("setup-shape-save").disabled).toBe(true);
     await type(input("setup-shape-reason"), "أُوقفت المطابقة الثلاثية بقرار الإقفال");
@@ -730,7 +731,9 @@ describe("حرّاسٌ على شيفرة القسم", () => {
     const problems: string[] = [];
     for (const file of SCREEN_FILES) {
       const text = stripComments(sourceOf(file));
-      const fields = text.match(/<(SetupField|Field)\b[\s\S]*?>/g) ?? [];
+      /* `SetupField` وحده: الأوّليّة `Field` تُلَفّ في `parts.tsx` بنشرٍ
+         يمرّر `hint` أو `error`، فمطابقتُها هناك تقيس اللفّافة لا الحقل. */
+      const fields = text.match(/<SetupField\b[\s\S]*?>/g) ?? [];
       fields.forEach((one, index) => {
         if (!/\bhint=/.test(one) && !/\berror=/.test(one)) {
           problems.push(file + " · حقل رقم " + String(index + 1));
@@ -770,16 +773,22 @@ describe("حرّاسٌ على شيفرة القسم", () => {
   });
 
   it("ولا رقمَ حسابٍ مكتوبٍ في شيفرة هذا القسم", () => {
-    /* رمزُ الحساب يأتي من الخادم، ومصفوفةُ الترحيل هي التي تقرّر. ونصٌّ حرفيّ
-       من ثلاثة أرقام فأكثر في هذه الملفّات هو بالضبط شكلُ رقم الحساب. */
+    /* رمزُ الحساب يأتي من الخادم، ومصفوفةُ الترحيل هي التي تقرّر. وشكلُ رقم
+       الحساب نصٌّ **كلُّه أرقامٌ وفواصل** وفيه ثلاثة أرقام فأكثر — ورمزُ
+       حارسٍ مثل `guard.GR-COA-002` ليس منه لأنه يحمل حروفاً. */
+    const looksLikeAccountCode = (literal: string): boolean =>
+      /^[0-9.\-]+$/.test(literal) && (literal.match(/[0-9]/g) ?? []).length >= 3;
     const problems: string[] = [];
     for (const file of SCREEN_FILES) {
       const text = stripComments(sourceOf(file));
       for (const m of text.matchAll(/"([^"]*)"/g)) {
         const literal = m[1] ?? "";
-        if (/(^|[^0-9])[0-9]{3,}([^0-9]|$)/.test(literal)) problems.push(file + " · " + literal);
+        if (looksLikeAccountCode(literal)) problems.push(file + " · " + literal);
       }
     }
+    /* شاهدٌ إيجابي: الكاشف يلتقط شكلَ رقم الحساب حين يُعرَض عليه. */
+    expect(looksLikeAccountCode("1302")).toBe(true);
+    expect(looksLikeAccountCode("guard.GR-COA-002")).toBe(false);
     expect(problems).toEqual([]);
   });
 });

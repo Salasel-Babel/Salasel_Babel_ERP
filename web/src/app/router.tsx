@@ -73,7 +73,7 @@ import { SubscriptionScreen } from "../screens/admin/SubscriptionScreen";
 /* ── التأسيس والثوابت — أربعُ شاشاتٍ بترتيب العمل: ما يقع مرّةً فيؤسّس
    المنشأة ← ما يُبوَّب عليه كلُّ سطرٍ بعده ← ما يُرخَّص من حقول المستندات ←
    ما يقبل السطر أصلاً. والتبرير كاملاً في
-   `ADR-0084-setup-is-a-group-and-a-verdict-is-not-a-write`. */
+   `ADR-جديد-setup-is-a-group-and-a-verdict-is-not-a-write`. */
 import { CompanySetupScreen } from "../screens/setup/CompanySetupScreen";
 import { CostCentersScreen } from "../screens/setup/CostCentersScreen";
 import { DocumentShapesScreen } from "../screens/setup/DocumentShapesScreen";

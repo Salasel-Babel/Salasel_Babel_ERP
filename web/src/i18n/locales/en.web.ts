@@ -339,7 +339,7 @@ export const messages: MessageTree = {
       registerTitle: "The register — active and suspended together",
       registerNote: "A suspended centre stays in this table with its state and is not hidden behind a filter: what disappears is taken for deleted, and there is no delete in this contract at all.",
       unfoundedTitle: "This company has not been set up yet",
-      unfoundedBody: "Cost centres live inside the company setup, so there is no register before it. Setup has its own screen.",
+      unfoundedBody: "Cost centres live inside the company setup, so there is no register before it and no add form: adding before setup is refused with company_setup.not_found. Setup has its own screen.",
       activeCount: "Active centres",
       activeCountHint: "Selectable on a new document, and exactly one of them is always the default.",
       suspendedCount: "Suspended centres",

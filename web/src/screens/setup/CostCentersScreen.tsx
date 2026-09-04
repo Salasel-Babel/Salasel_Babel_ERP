@@ -399,6 +399,11 @@ export function CostCentersScreen(): ReactNode {
         )}
       </StatePanel>
 
+      {/* **ولا نموذجَ كتابةٍ يُرسم لمنشأةٍ لم تُؤسَّس.** المراكز تعيش داخل
+          التأسيس، فإضافةٌ قبله تُرفض بـ`company_setup.not_found` — ويُقال ذلك
+          بغياب النموذج وبنصّ اللوح أعلاه، لا برفضٍ بعد ضغطة. */}
+      {notFound ? null : (
+      <>
       {/* ══════════════════════════════ ٢ · إضافة مركز ═══════════════════ */}
       <StatePanel
         title={t("screen.costCenter.addTitle")}
@@ -576,6 +581,9 @@ export function CostCentersScreen(): ReactNode {
           </div>
         )}
       </StatePanel>
+
+      </>
+      )}
 
       {/* ═════════════════ ٤ · بابان ينقصان — مُعلَنان لا مسكوتٌ عنهما ═══ */}
       <DeclaredGap

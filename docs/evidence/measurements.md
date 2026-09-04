@@ -2374,6 +2374,25 @@ node tests/align-probe-ledger.mjs --web-port 5497 --mock-port 5498
 | منها على شاشات هذا التسليم | **35** | مقيس |
 | ‏`npm run audit:i18n` | **0 مخالفة حاكمة**، والدَّين المُعلَن **147 على سقفه 147** | مقيس |
 | ‏`npm run lint` | **0 خطأ** (‏وتحذيرٌ واحد سابقٌ في `TrialBalanceTable.tsx`) | مقيس |
+| **البوّابة** | **`GATE_EXIT=0`** · `web-unit vitest` نُفِّذ **642** والأرضية **607** · حارس استقامة الصفوف **8/8 خضراء** | مقيس |
+
+**أمر البوّابة، كما نُفِّذ:**
+
+```bash
+export PATH=$PATH:/usr/lib/dotnet
+pg_isready >/dev/null 2>&1 || pg_ctlcluster 16 main start
+MSBUILDDISABLENODEREUSE=1 DOTNET_CLI_USE_MSBUILD_SERVER=0 NPM_CONFIG_PREFER_OFFLINE=true \
+  flock -o /tmp/babel-gate.lock tools/gate/run.sh --no-isolation --with-frontend \
+  > /tmp/gate-ledger.log 2>&1; rc=$?; echo "GATE_EXIT=$rc"
+```
+
+**وتُسجَّل التشغيلة الأولى كما وقعت لا كما نُريدها:** سقطت بـ`GATE_EXIT=1` عند حارس
+استقامة الصفوف بثمانِ حالاتٍ كلُّها `net::ERR_CONNECTION_REFUSED` على
+`http://127.0.0.1:5174` — أي أن **خادم العرض لم يُقلع أصلاً**، لا أن صفّاً انكسر.
+والمنفذ 5174 مثبَّتٌ في `web/playwright.config.ts` مع `--strictPort`، وأسطولٌ آخر كان
+يشغل المنفذ نفسه في تلك اللحظة. وأُعيد التشغيل بعد أن خلا المنفذ فخرجت **`GATE_EXIT=0`**
+بلا تغييرِ سطرٍ واحد. وهو من عائلة [فخ-174](traps.md#fakh-174) — منافذُ ثابتة مشتركة بين
+أساطيل — بوجهه الآخر: هناك **إعادةُ استعمال** خادمِ غيرك، وهنا **منعُك من الإقلاع**.
 
 ## 4 · الأرقام التي تقرر
 

@@ -194,6 +194,22 @@ export const SCREENS: readonly ScreenEntry[] = [
   { path: "/attachments", labelKey: "accounting.nav.attachments", section: "accounting" },
   { path: "/attachments/custody", labelKey: "accounting.nav.attachmentCustody", section: "accounting" },
   { path: "/inventory/item-lifecycle", labelKey: "inventory.nav.itemLifecycle", section: "inventory" },
+  /* ── الإدارة والاشتراك — أربعٌ **بترتيب العمل لا بترتيب الحروف**: كيف
+     أدخل أوّل مرّة ← ما الذي بيدي الآن ← من يدخل معي ← ماذا اشتريتُ وما
+     الذي يعمل. وهي **كتلةٌ واحدة متّصلة** كي يندمج جانباها آلياً حين يلمس
+     أسطولٌ آخر هذا الملفّ.
+
+     **ولا قسمٌ سادس، ولا مجموعةٌ ثالثة.** عقد الملاحة خماسيّ وهو مقفل
+     (ADR-0069)، والمجموعتان المُسمّاتان مبرَّرتان بأن العقد المنشور يضع
+     نيّاتهما في `"section": "Accounting"` — ولا نيّة واحدة لهذه الأربع
+     أصلاً، فليس لها في العقد قسمٌ تُنسب إليه. فهي هنا تحت المحاسبة **لأجل
+     لونها وحده** — وهو اللون المرجعي حين لا يُعرف القسم — كما `/sign-in`
+     و`/design` و`/voice` قبلها. **وفصلُها عن العمل اليومي يقع في الملاحة
+     نفسها**: عنوانٌ ثانٍ في `App.tsx` وشريطٌ خاصّ بها، لا صفٌّ سادس هنا. */
+  { path: "/admin/enrolment", labelKey: "app.nav.enrolment", section: "accounting" },
+  { path: "/admin/session", labelKey: "app.nav.mySession", section: "accounting" },
+  { path: "/admin/members", labelKey: "app.nav.members", section: "accounting" },
+  { path: "/admin/subscription", labelKey: "app.nav.subscription", section: "accounting" },
 ];
 
 /**

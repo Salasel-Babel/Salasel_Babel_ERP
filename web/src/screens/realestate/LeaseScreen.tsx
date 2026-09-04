@@ -447,6 +447,7 @@ function DraftLease(props: {
                   value={row.periodFrom}
                   onChange={(e) => update(row.key, { periodFrom: e.target.value })}
                 />
+                <span className="hint">{t("realestate.lease.periodFromHint")}</span>
               </div>
               <div className="field">
                 <label htmlFor={"re-inst-to-" + row.key}>{t("realestate.lease.periodTo")}</label>
@@ -459,6 +460,7 @@ function DraftLease(props: {
                   value={row.periodTo}
                   onChange={(e) => update(row.key, { periodTo: e.target.value })}
                 />
+                <span className="hint">{t("realestate.lease.periodToHint")}</span>
               </div>
               <div className="field">
                 <label htmlFor={"re-inst-due-" + row.key}>{t("realestate.lease.dueOn")}</label>
@@ -491,6 +493,11 @@ function DraftLease(props: {
                   onChange={(e) => update(row.key, { amount: e.target.value })}
                   placeholder="0.0000"
                 />
+                <span className="hint">
+                  {row.amount !== "" && !isMoneyText(row.amount)
+                    ? t("realestate.common.moneyBad")
+                    : t("realestate.common.moneyHint")}
+                </span>
               </div>
             </div>
             <div className="inline-group">

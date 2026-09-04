@@ -275,6 +275,28 @@ export function AppShell(): ReactNode {
         <Link to="/admin/subscription" className="navitem" data-testid="nav-admin-subscription">
           {t("app.nav.subscription")}
         </Link>
+
+        {/* ── التأسيس والثوابت — **عنوانٌ ثالثٌ لا قسمٌ سادس** ───────────────
+            خلف هذه الأربع من يجهّز المنشأة قبل أوّل مستند: من يؤسّسها مرّةً،
+            ومن يعرّف بُعد التبويب الذي يحمله كلُّ سطرٍ بعدها، ومن يقرّر أيّ
+            قدرةٍ تُرخّص أيّ حقل، ومن يقرأ ما يقبله كلُّ حساب. وهي محاسبيّةٌ
+            بموضوعها لا بلونها وحده — ومع ذلك لا يفتحها من يكتب سند قبضٍ في
+            يومه، فلها عنوانها كما للإدارة عنوانها (ADR-0069: عقدُ الملاحة
+            خماسيٌّ مقفل، والفصلُ هنا فصلُ قراءةٍ لا قسمٌ سادس).
+            وهي **كتلةٌ واحدة متّصلة** كي يندمج جانباها آلياً. */}
+        <p className="sections__label">{t("app.nav.setupGroup")}</p>
+        <Link to="/setup" className="navitem" data-testid="nav-setup-company">
+          {t("app.nav.companySetup")}
+        </Link>
+        <Link to="/setup/cost-centers" className="navitem" data-testid="nav-setup-cost-centers">
+          {t("app.nav.costCenters")}
+        </Link>
+        <Link to="/setup/document-shapes" className="navitem" data-testid="nav-setup-document-shapes">
+          {t("app.nav.documentShapes")}
+        </Link>
+        <Link to="/setup/chart-of-accounts" className="navitem" data-testid="nav-setup-chart">
+          {t("app.nav.chartOfAccounts")}
+        </Link>
       </nav>
 
       <div className="app-main">

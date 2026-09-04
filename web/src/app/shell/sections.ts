@@ -210,6 +210,25 @@ export const SCREENS: readonly ScreenEntry[] = [
   { path: "/admin/session", labelKey: "app.nav.mySession", section: "accounting" },
   { path: "/admin/members", labelKey: "app.nav.members", section: "accounting" },
   { path: "/admin/subscription", labelKey: "app.nav.subscription", section: "accounting" },
+  /* ── التأسيس والثوابت — أربعٌ **بترتيب العمل لا بترتيب الحروف**: ما يقع
+     مرّةً فيؤسّس المنشأة ← ما يُبوَّب عليه كلُّ سطرٍ بعده ← ما يُرخَّص من حقول
+     المستندات ← ما يقبل السطر أصلاً. وهي **كتلةٌ واحدة متّصلة** كي يندمج
+     جانباها آلياً حين يلمس أسطولٌ آخر هذا الملفّ.
+
+     **وهي في القسم المحاسبي لأنها محاسبية لا لأجل لونه وحده**: مركز التكلفة
+     بُعدُ تبويبٍ على سطر القيد، ودليلُ الحسابات دليلُ الدفتر، وشكلُ المستند
+     ما يقبله الدفتر منه. و`CostCenter` يعيش في `CompanySetup` في العقد
+     المنشور، ولا مخطّط في المقاولات ولا في العقارات يحمل حقل مركز تكلفة —
+     فبيتُها شاشةُ تأسيسٍ محاسبيّة (ADR-0080 §7، ثمّ ADR-0084).
+
+     **ولا مجموعةٌ ثالثة ولا قسمٌ سادس**: `group` مقصورةٌ على المبيعات
+     والمشتريات لأن العقد يضع نيّاتهما في `"section": "Accounting"`، ولا
+     نيّة لهذه الأربع أصلاً. وفصلُها عن العمل اليومي يقع في الملاحة نفسها:
+     عنوانٌ ثانٍ في `App.tsx` وشريطٌ خاصّ بها. */
+  { path: "/setup", labelKey: "app.nav.companySetup", section: "accounting" },
+  { path: "/setup/cost-centers", labelKey: "app.nav.costCenters", section: "accounting" },
+  { path: "/setup/document-shapes", labelKey: "app.nav.documentShapes", section: "accounting" },
+  { path: "/setup/chart-of-accounts", labelKey: "app.nav.chartOfAccounts", section: "accounting" },
 ];
 
 /**

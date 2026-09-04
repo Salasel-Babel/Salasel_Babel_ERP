@@ -1,0 +1,62 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   شاشات التأسيس — ما تضيفه فوق الطبقة السينمائية
+   The setup screens — what they add on top of the cinematic layer
+   ───────────────────────────────────────────────────────────────────────────
+   **لا لونَ جديد ولا مقاسَ جديد ولا مدّةَ حركةٍ جديدة هنا.** كل قيمةٍ أدناه
+   رمزٌ من `tokens.css` أو `cinematic.css`، وكل خاصّية اتجاهية منطقية.
+
+   **ولا صفَّ حقولٍ في هذا الملفّ.** صفوف هذا القسم كلّها في الوعاء المُسجَّل
+   `.grid` من `styles/components.css` — «الصفُّ يملك المسارات» (ADR-0067) —
+   فلا يخترع هذا القسم وعاءً ثانياً يعود بحقوله إلى «كلٌّ يقيس نفسه منفرداً».
+   وما هنا أربعةٌ لا خامس: شريطُ الشاشات، ولوحُ النقص المُعلَن، وقائمةُ
+   الترجمات، وصفُّ القدرات. **وشجرةُ الدليل تستعمل `td.tree .indent` القائم
+   في `components.css`** ولا تخترع إزاحةً ثانية.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════ ١ · شريط شاشات المجموعة */
+
+.stp-tabs{
+  display:flex; gap:var(--space-4); flex-wrap:wrap;
+  border-block-end:var(--border-width) solid var(--color-border);
+  padding-block-end:var(--space-8);
+}
+.stp-tab{
+  padding:var(--space-6) var(--space-12);
+  border-radius:var(--radius-md);
+  color:var(--color-text-muted); text-decoration:none;
+  font-size:var(--font-size-sm); white-space:nowrap;
+}
+.stp-tab:hover{ background:var(--color-surface-sunken); color:var(--color-text) }
+.stp-tab[aria-current="page"]{
+  background:var(--color-surface-sunken);
+  color:var(--color-text); font-weight:var(--font-weight-semibold);
+  box-shadow:inset 0 -2px 0 0 var(--section-accounting);
+}
+
+/* ═══════════════════════════ ٢ · النقص المُعلَن — يُرى ولا يُخفى */
+
+.stp-gap{
+  border:var(--border-width) dashed var(--color-ai-line);
+  border-radius:var(--radius-panel);
+  padding:var(--space-14);
+  display:flex; flex-direction:column; gap:var(--space-8);
+}
+.stp-gap__head{ display:flex; align-items:center; gap:var(--space-8); flex-wrap:wrap }
+.stp-gap p{ margin:0 }
+.stp-gap__owed{ color:var(--color-ai); font-weight:var(--font-weight-semibold) }
+
+/* ═════════════════ ٣ · الترجمات المضافة — صفوفٌ لا أعمدة (ADR-0021) */
+
+.stp-tags{
+  margin:0; padding:0; list-style:none;
+  display:flex; flex-direction:column; gap:var(--space-6);
+}
+.stp-tags li{
+  display:flex; align-items:center; gap:var(--space-8); flex-wrap:wrap;
+  font-size:var(--font-size-sm);
+}
+
+/* ═══════════ ٤ · القدرات: ما هو مُشغَّل وما هو مُطفأ — بلا لونٍ جديد */
+
+.stp-caps{ display:flex; flex-wrap:wrap; gap:var(--space-8) }
+.stp-caps > *{ display:inline-flex; align-items:center; gap:var(--space-6) }

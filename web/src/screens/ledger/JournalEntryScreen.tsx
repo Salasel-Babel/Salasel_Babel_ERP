@@ -394,7 +394,7 @@ export function JournalEntryScreen(): ReactNode {
             </div>
             <div>
               <div className="k">{t("accounting.ledger.rev.fallsOnDate")}</div>
-              <div className="v mono acc-id" data-testid="ledger-rev-date">
+              <div className="v mono acc-id" data-testid="ledger-rev-effective-date">
                 {effectiveDate}
               </div>
             </div>

@@ -257,7 +257,7 @@ function DraftLease(props: {
   onDrafted: (lease: LeaseRegistration) => void;
 }): ReactNode {
   const { t } = useT();
-  const [contractNo, setContractNo] = useState("");
+  const [ejarContractNumber, setEjarContractNumber] = useState("");
   const [unitId, setUnitId] = useState("");
   const [lesseeId, setLesseeId] = useState("");
   const [startsOn, setStartsOn] = useState(todayIso);
@@ -302,7 +302,7 @@ function DraftLease(props: {
       const created = await draftLeaseRegistration(props.transport, {
         companyId: props.companyId,
         body: {
-          ejarContractNumber: contractNo,
+          ejarContractNumber,
           unitId,
           lesseeId,
           startsOn,
@@ -319,7 +319,7 @@ function DraftLease(props: {
       props.onDrafted(created);
       return created;
     });
-  }, [contractNo, endsOn, lesseeId, props, rows, startsOn, totalRent, unitId, write]);
+  }, [ejarContractNumber, endsOn, lesseeId, props, rows, startsOn, totalRent, unitId, write]);
 
   return (
     <Panel
@@ -339,8 +339,8 @@ function DraftLease(props: {
             dir="ltr"
             autoComplete="off"
             data-testid="re-lease-no"
-            value={contractNo}
-            onChange={(e) => setContractNo(e.target.value)}
+            value={ejarContractNumber}
+            onChange={(e) => setEjarContractNumber(e.target.value)}
             placeholder="EJR-2026-000001"
           />
           <span className="hint">{t("realestate.lease.ejarContractNumberHint")}</span>
@@ -556,7 +556,7 @@ function DraftLease(props: {
           className="btn btn-primary"
           data-testid="re-lease-save"
           disabled={
-            contractNo === "" ||
+            ejarContractNumber === "" ||
             unitId === "" ||
             lesseeId === "" ||
             !termKnown ||

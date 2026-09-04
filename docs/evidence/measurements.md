@@ -8,7 +8,7 @@
 > فأضِفه هنا بالشروط نفسها بعد قياسه — سجلٌّ ناقص يعني عملاً مُكرَّراً بعد سنتين.
 >
 > **الوثائق الشقيقة:** [`README.md`](README.md) فهرس قاعدة الأدلة وترتيب القراءة ·
-> [`traps.md`](traps.md) **الأعطال** (‏181 فخّاً، و§8 قائمة ما قبل الدمج) ·
+> [`traps.md`](traps.md) **الأعطال** (‏182 فخّاً، و§8 قائمة ما قبل الدمج) ·
 > [`refuted.md`](refuted.md) **ما دُحض** (‏16 ادّعاءً، وما بقي من كلٍّ منها) ·
 > [`verification-debt.md`](verification-debt.md) **ما لا نعرفه** (‏47 مجهولاً لا يُبنى عليها) ·
 > [`../decisions/README.md`](../decisions/README.md) **القرارات** المبنية على كل ما سبق.
@@ -2245,6 +2245,154 @@ failed Babel.Core.Tests.TheTrailSurvivesTheProcessTests.مستأجرٌ_لا_يق
 | نجاةُ الأثر عبر **عمليتين حقيقيتين** لا حاويتين في عملية واحدة | **غير مقيسة** — الهدم هنا هدمُ حاوية وتجمّعات اتصال، وهو ما يُسقط تنفيذ الذاكرة؛ وعمليةٌ ثانية لم تُشغَّل |
 
 ---
+
+### 3-ن · ما بعد الترحيل: الفجوة المقيسة، واستقامةُ الصفّ وشاهدُها السلبي — 2026-09-04
+
+**القرار الذي تسنده هذه الأرقام:** [`ADR-جديد`](../decisions/ADR-0084-after-posting-is-a-group-and-a-reversal-is-not-a-delete.md)
+(`after-posting-is-a-group-and-a-reversal-is-not-a-delete`).
+
+**العتاد والبيئة:** الحاوية نفسها الموصوفة في §0 · Node 22.22.2 · Chromium من
+`/opt/pw-browsers/chromium` بـ`--font-render-hinting=none` · `deviceScaleFactor: 2` ·
+`colorScheme: dark` · `reducedMotion: reduce`.
+
+#### أ) الفجوة — عملياتٌ منشورة لا يستدعيها شيء في العميل
+
+**أمر القياس** (من `web/`، ويُشغَّل مرّتين: على `origin/develop` وعلى الفرع):
+
+```bash
+python3 - <<'PY'
+import json, re, os
+d = json.load(open('../contracts/openapi/v1.json'))
+ops = [o.get('operationId') for p, mm in d['paths'].items()
+       for m, o in mm.items() if m in ('get','post','put','patch','delete')]
+used = set()
+for root, dirs, files in os.walk('src'):
+    if 'generated' in root: continue
+    for f in files:
+        if f.endswith(('.ts', '.tsx')):
+            used |= set(re.findall(r'\b[a-zA-Z][a-zA-Z0-9]*\b',
+                                   open(os.path.join(root, f), encoding='utf8').read()))
+print(len(ops), len([o for o in ops if o and o not in used]))
+PY
+```
+
+| ما قيس | على `origin/develop` | على الفرع | الوسم |
+|---|---|---|---|
+| عملياتٌ في العقد المنشور | **199** | **199** | مقيس |
+| منها **بلا مستهلكٍ في `web/src`** | **30** | **24** | مقيس |
+| من الستّ المقصودة: بلا مستهلك | **6** | **0** | مقيس |
+
+**وأين كانت المسوّدتان.** أمرُ المسح الثاني، من `web/`:
+
+```bash
+for fn in readJournalEntry reverseJournalEntry verifyLedgerChain \
+          draftPurchaseReturn readPurchaseReturn postPurchaseReturn \
+          draftCreditNote postCreditNote readCreditNote; do
+  printf '%-24s %s\n' "$fn" "$(grep -rl "\b$fn\b" --include=*.tsx --include=*.ts src \
+      | grep -v 'api/generated' | tr '\n' ' ')"
+done
+```
+
+على `origin/develop` يُخرج: الستُّ الأولى **بلا موضع**؛ و`draftPurchaseReturn` و
+`draftCreditNote` موضعُهما `src/voice/catalogue.ts` و`src/app/voice-destinations.ts`
+**وحدهما** — كتالوجٌ مُولَّد لا شاشة؛ و`readCreditNote` **بلا موضع لأنه ليس في العقد**
+(‏`grep -c '"readCreditNote"' ../contracts/openapi/v1.json` ⇐ **0**). فالفرضيةُ القائلة
+إن للمستندين شاشاتٍ قائمةً تنقصها خطوةُ الترحيل **مدحوضةٌ بالقياس**.
+
+#### ب) الملاحة — والقوائم الثلاث
+
+**أمر القياس** (من `web/`):
+
+```bash
+python3 - <<'PY'
+import re
+s = open('src/app/shell/sections.ts').read()
+paths = re.findall(r'\{\s*path:\s*"([^"]+)"', s[s.index('export const SCREENS'):])
+links = set(re.findall(r'<Link\s+to="([^"]+)"', open('src/app/App.tsx').read()))
+print(len(paths), len([p for p in paths if p not in links]))
+PY
+```
+
+| ما قيس | قبل | بعد | الوسم |
+|---|---|---|---|
+| صفوف `SCREENS` | **48** | **52** | مقيس |
+| منها **بلا رابطٍ في الملاحة اليدوية** | **0** | **0** | مقيس |
+
+#### ج) استقامةُ الصفّ — المسحُ الحاكم، ثم المسبار
+
+**أمرا القياس، من `web/`** (‏ومنافذ غير الافتراضية عمداً — [فخ-174](traps.md#fakh-174)):
+
+```
+npm run build; rc=$?; test $rc -eq 0 || { echo "البناء سقط"; exit 1; }
+node scripts/align-audit.mjs --no-build --no-shots --locales ar,en --widths 1024,1440 \
+     --web-port 5495 --mock-port 5496
+node tests/align-probe-ledger.mjs --web-port 5497 --mock-port 5498
+```
+
+**ولماذا مسبارٌ إلى جانب المقياس الحاكم:** `/ledger/entry` عند زائرٍ أول تُظهر **حقلاً
+واحداً** — معرّف القيد — فيقرأها المسح `pageUnits=1 rows=0 broken=0`، وذلك يُقرأ خُضرةً
+وهو **صفرٌ من صفر** ([فخ-43](traps.md#fakh-43)). ونموذجُ العكس لا يُرسَم إلا بعد قراءة
+قيدٍ **عمداً**: لا نموذجَ عكسٍ لقيدٍ لم يُعرَض.
+
+| الممرّ | المسح الحاكم: صفوف · قاعُ الحبر | المسبار: صفوف · قاعُ الحبر | الوسم |
+|---|---|---|---|
+| `ar-1440` | **7** · **0/7** | **2** · **0/2** | مقيس |
+| `ar-1024` | **9** · **0/9** | **3** · **0/3** | مقيس |
+| `en-1440` | **7** · **0/7** | **2** · **0/2** | مقيس |
+| `en-1024` | **9** · **0/9** | **3** · **0/3** | مقيس |
+
+وحافّةُ أعلى التحكّم وخطُّ قاعدة التسمية وكتلةُ الوصف **صفرٌ في الممرّات الأربعة** في
+الاثنين. وتوزيعُ صفوف المسح الحاكم: `/ledger/purchase-return` **2** ·
+`/ledger/credit-note` **4** (1440) و**6** (1024) · `/ledger/chain` **1** ·
+`/ledger/entry` **0** (وهو سببُ المسبار).
+
+#### د) الشاهد السلبي — **بصيغته الصحيحة، لا بنزع الأوصاف كلِّها**
+
+نزعُ الأوصاف **كلِّها** يُبقي الصفَّ مستقيماً فيُخرج صفراً ويُقرأ «المقياس أعمى» وهو سليم
+([فخ-179](traps.md#fakh-179)). **والعطلُ فرقٌ داخل الصفّ**، فنُزع وصفُ **أوّلِ حقلٍ في كل
+صفّ** وحده في الشاشات الأربع — سبعةُ مواضع: `reasonArHint` · `authorisedByHint` ·
+`bookHint` · `returnNumberHint` · `receiptLineIdHint` · `noteNumberHint` · `lineKindHint`
+— ثم أُعيد البناء وأُعيد القياس بالأمرين نفسيهما.
+
+| الممرّ | المسح الحاكم: قاعُ الحبر · أقصى | المسبار: قاعُ الحبر · أقصى | الوسم |
+|---|---|---|---|
+| `ar-1440` | **5/7** · **42.78px** | **2/2** · **42.78px** | مقيس |
+| `ar-1024` | **5/9** · **42.78px** | **2/3** · **42.78px** | مقيس |
+| `en-1440` | **5/7** · **61.17px** | **2/2** · **61.17px** | مقيس |
+| `en-1024` | **5/9** · **79.56px** | **2/3** · **61.17px** | مقيس |
+
+**ثم أُعيدت الأوصاف السبعة فعاد الصفر في الاثنين** — وهو ما تقوله الجداول في §ج أعلاه.
+وحافّةُ أعلى التحكّم بقيت **صفراً** في الشاهد السلبي أيضاً، وذلك صحيح: العطل في **قاع
+الحبر** لا في رأس الحقل، وحقلٌ بلا وصفٍ يبقى رأسه على الخطّ.
+
+#### هـ) البوّابة والفحوص
+
+| ما قيس | النتيجة | الوسم |
+|---|---|---|
+| ‏`npm run build` | **رمز الخروج 0** | مقيس |
+| ‏`npm test` (‏من 607) | **642 اختباراً · 25 ملفّاً · كلُّها خضراء** | مقيس |
+| منها على شاشات هذا التسليم | **35** | مقيس |
+| ‏`npm run audit:i18n` | **0 مخالفة حاكمة**، والدَّين المُعلَن **147 على سقفه 147** | مقيس |
+| ‏`npm run lint` | **0 خطأ** (‏وتحذيرٌ واحد سابقٌ في `TrialBalanceTable.tsx`) | مقيس |
+| **البوّابة** | **`GATE_EXIT=0`** · `web-unit vitest` نُفِّذ **642** والأرضية **607** · حارس استقامة الصفوف **8/8 خضراء** | مقيس |
+
+**أمر البوّابة، كما نُفِّذ:**
+
+```bash
+export PATH=$PATH:/usr/lib/dotnet
+pg_isready >/dev/null 2>&1 || pg_ctlcluster 16 main start
+MSBUILDDISABLENODEREUSE=1 DOTNET_CLI_USE_MSBUILD_SERVER=0 NPM_CONFIG_PREFER_OFFLINE=true \
+  flock -o /tmp/babel-gate.lock tools/gate/run.sh --no-isolation --with-frontend \
+  > /tmp/gate-ledger.log 2>&1; rc=$?; echo "GATE_EXIT=$rc"
+```
+
+**وتُسجَّل التشغيلة الأولى كما وقعت لا كما نُريدها:** سقطت بـ`GATE_EXIT=1` عند حارس
+استقامة الصفوف بثمانِ حالاتٍ كلُّها `net::ERR_CONNECTION_REFUSED` على
+`http://127.0.0.1:5174` — أي أن **خادم العرض لم يُقلع أصلاً**، لا أن صفّاً انكسر.
+والمنفذ 5174 مثبَّتٌ في `web/playwright.config.ts` مع `--strictPort`، وأسطولٌ آخر كان
+يشغل المنفذ نفسه في تلك اللحظة. وأُعيد التشغيل بعد أن خلا المنفذ فخرجت **`GATE_EXIT=0`**
+بلا تغييرِ سطرٍ واحد. وهو من عائلة [فخ-174](traps.md#fakh-174) — منافذُ ثابتة مشتركة بين
+أساطيل — بوجهه الآخر: هناك **إعادةُ استعمال** خادمِ غيرك، وهنا **منعُك من الإقلاع**.
 
 ## 4 · الأرقام التي تقرر
 

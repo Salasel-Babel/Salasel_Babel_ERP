@@ -194,6 +194,25 @@ export const SCREENS: readonly ScreenEntry[] = [
   { path: "/attachments", labelKey: "accounting.nav.attachments", section: "accounting" },
   { path: "/attachments/custody", labelKey: "accounting.nav.attachmentCustody", section: "accounting" },
   { path: "/inventory/item-lifecycle", labelKey: "inventory.nav.itemLifecycle", section: "inventory" },
+  /* ── ما بعد الترحيل — أربعٌ **بترتيب العمل لا بترتيب الحروف**، و**كتلةٌ
+     واحدة متّصلة** كي يندمج جانباها آلياً حين يلمس أسطولٌ آخر هذا الملفّ.
+
+     والسؤال الذي تجيبه المجموعة واحد: **ما رُحّل خطأً، كيف يُصحَّح، وكيف
+     نُثبت أنه لم يُعدَّل؟** فالقيدُ يُعكَس بقيدٍ مضادّ على الدفتر نفسه ←
+     ثم المستندُ التجاري يُصحَّح تجاه المورّد ← ثم تجاه العميل ← ثم يُحكَم
+     على سلامة السلسلة بعد ذلك كلّه.
+
+     **ولا مجموعةٌ ثالثة ولا قسمٌ سادس**: عقد الملاحة خماسيّ مقفل (ADR-0069)،
+     والمجموعتان المُسمّاتان `sales` و`purchasing` **سلسلتان مرتَّبتان** —
+     أمرٌ ← استلام ← فاتورة ← صرف، وفاتورة ← قبض ← ذمم. والمرتجعُ والإشعار
+     **فرعان عن السلسلتين لا خطوتان فيهما**: لا يُبلَغان إلا بمستندٍ
+     مُرحَّلٍ سبقهما، وإقحامُهما خامسةً في الشريط يُعلّم أن كل شراءٍ ينتهي
+     بمرتجع. والتبرير كاملاً في
+     `ADR-after-posting-is-a-group-and-a-reversal-is-not-a-delete`. */
+  { path: "/ledger/entry", labelKey: "accounting.ledger.nav.entry", section: "accounting" },
+  { path: "/ledger/purchase-return", labelKey: "accounting.ledger.nav.purchaseReturn", section: "accounting" },
+  { path: "/ledger/credit-note", labelKey: "accounting.ledger.nav.creditNote", section: "accounting" },
+  { path: "/ledger/chain", labelKey: "accounting.ledger.nav.chain", section: "accounting" },
   /* ── الإدارة والاشتراك — أربعٌ **بترتيب العمل لا بترتيب الحروف**: كيف
      أدخل أوّل مرّة ← ما الذي بيدي الآن ← من يدخل معي ← ماذا اشتريتُ وما
      الذي يعمل. وهي **كتلةٌ واحدة متّصلة** كي يندمج جانباها آلياً حين يلمس

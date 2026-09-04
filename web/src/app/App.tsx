@@ -254,6 +254,23 @@ export function AppShell(): ReactNode {
           {t("inventory.nav.itemLifecycle")}
         </Link>
 
+        {/* ── ما بعد الترحيل: القيدُ وعكسه، والمستندان المصحِّحان، وحكمُ
+            السلسلة — **كتلةٌ واحدة متّصلة** كي يندمج جانباها آلياً حين يلمس
+            أسطولٌ آخر هذه القائمة. والستُّ عملياتٍ تحتها كانت بلا مستهلكٍ في
+            الواجهة كلّها قبل هذا الإنزال. */}
+        <Link to="/ledger/entry" className="navitem" data-testid="nav-ledger-entry">
+          {t("accounting.ledger.nav.entry")}
+        </Link>
+        <Link to="/ledger/purchase-return" className="navitem" data-testid="nav-ledger-purchase-return">
+          {t("accounting.ledger.nav.purchaseReturn")}
+        </Link>
+        <Link to="/ledger/credit-note" className="navitem" data-testid="nav-ledger-credit-note">
+          {t("accounting.ledger.nav.creditNote")}
+        </Link>
+        <Link to="/ledger/chain" className="navitem" data-testid="nav-ledger-chain">
+          {t("accounting.ledger.nav.chain")}
+        </Link>
+
         {/* ── الإدارة والاشتراك — **عنوانٌ ثانٍ لا صفٌّ سادس** ───────────────
             خلف هذه الأربع مالكُ اشتراكٍ أو مسؤول، لا محاسبٌ يكتب مستنداً: من
             يدخل النظام وبأي دور، وماذا اشتُرك، وماذا يتوقّف. وخلطُها بشاشات

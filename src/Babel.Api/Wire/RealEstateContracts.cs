@@ -136,11 +136,11 @@ internal sealed record InstalmentDto
     public required WireDecimal Amount { get; init; }
 }
 
-/// <summary>طلب إنشاء عقد إيجار <b>مسوّدة</b>.</summary>
-internal sealed record LeaseRequestDto
+/// <summary>طلب <b>تسجيل</b> عقد إيجار مُحرَّر في منصّة إيجار — مسوّدة قيد.</summary>
+internal sealed record LeaseRegistrationRequestDto
 {
-    /// <summary>رقم العقد.</summary>
-    public required string ContractNo { get; init; }
+    /// <summary>رقم عقد إيجار — مرجع العقد المُحرَّر في المنصّة، ولا يولّده هذا النظام.</summary>
+    public required string EjarContractNumber { get; init; }
 
     /// <summary>الوحدة المؤجَّرة — ومنها يُشتقّ العقار.</summary>
     public required string UnitId { get; init; }
@@ -161,19 +161,19 @@ internal sealed record LeaseRequestDto
     public required IReadOnlyList<InstalmentDto> Instalments { get; init; }
 }
 
-/// <summary>عقدٌ كما يخرج على السلك.</summary>
+/// <summary>قيدُ تسجيلِ عقدٍ كما يخرج على السلك.</summary>
 /// <param name="Id">المعرّف.</param>
-/// <param name="ContractNo">رقم العقد.</param>
+/// <param name="EjarContractNumber">رقم عقد إيجار — مرجع العقد المُحرَّر في المنصّة.</param>
 /// <param name="PropertyId">العقار.</param>
 /// <param name="UnitId">الوحدة.</param>
 /// <param name="LesseeId">المستأجر.</param>
 /// <param name="StartsOn">بداية المدّة.</param>
 /// <param name="EndsOn">نهايتها.</param>
 /// <param name="TotalRent">قيمة العقد نصّاً.</param>
-/// <param name="State">‏<c>DRAFT</c> أو <c>ACTIVE</c>.</param>
-internal sealed record LeaseDto(
+/// <param name="State">‏<c>DRAFT</c> أو <c>BILLABLE</c> — حالة القيد لا حالة العقد.</param>
+internal sealed record LeaseRegistrationDto(
     string Id,
-    string ContractNo,
+    string EjarContractNumber,
     string PropertyId,
     string UnitId,
     string LesseeId,
@@ -453,9 +453,9 @@ internal static class RealEstateMapping
             party.TaxResidency);
     }
 
-    /// <summary>يقرأ طلب عقد إيجار.</summary>
+    /// <summary>يقرأ طلب تسجيل عقد إيجار.</summary>
     /// <param name="dto">الحمولة.</param>
-    public static RealEstateLeaseRequest ToLeaseRequest(LeaseRequestDto dto)
+    public static RealEstateLeaseRequest ToLeaseRegistrationRequest(LeaseRegistrationRequestDto dto)
     {
         ArgumentNullException.ThrowIfNull(dto);
 
@@ -472,7 +472,7 @@ internal static class RealEstateMapping
         }
 
         return new RealEstateLeaseRequest(
-            WireMapping.ReadRequiredText(dto.ContractNo, "contractNo", CodeLength),
+            WireMapping.ReadRequiredText(dto.EjarContractNumber, "ejarContractNumber", CodeLength),
             RequiredId(dto.UnitId, "unitId"),
             RequiredId(dto.LesseeId, "lesseeId"),
             WireMapping.ReadDate(dto.StartsOn, "startsOn"),
@@ -488,15 +488,15 @@ internal static class RealEstateMapping
             ]);
     }
 
-    /// <summary>ينقل عقداً إلى شكله على السلك.</summary>
-    /// <param name="lease">العقد.</param>
-    public static LeaseDto ToDto(RealEstateLease lease)
+    /// <summary>ينقل قيد تسجيلٍ إلى شكله على السلك.</summary>
+    /// <param name="lease">قيد التسجيل.</param>
+    public static LeaseRegistrationDto ToDto(RealEstateLease lease)
     {
         ArgumentNullException.ThrowIfNull(lease);
 
-        return new LeaseDto(
+        return new LeaseRegistrationDto(
             Id(lease.Id),
-            lease.ContractNo,
+            lease.EjarContractNumber,
             Id(lease.PropertyId),
             Id(lease.UnitId),
             Id(lease.LesseeId),

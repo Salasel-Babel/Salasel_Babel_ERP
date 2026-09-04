@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     2a0636027db4df0aab9564094aa09d3b85c383c420890403cbbde693383e5645
+     48db5a1817e2b9c661acd08d337e1185199319ea29f25b749dbbce3f00386290
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -1626,10 +1626,10 @@ export interface JournalLine {
   role: string;
 }
 
-/** عقد إيجار بحالته. **ولا معرّف قيد فيه**: توقيع العقد لا يُنشئ قيداً، ولا مورد ترحيل عليه. / A lease contract with its state. **It carries no entry identifier**: signing a lease creates no entry, and the resource has no posting sub-resource. */
-export interface Lease {
-  /** رقم العقد. / The contract number. */
-  contractNo: string;
+/** **قيدُ تسجيلِ** عقد إيجار مُحرَّر في منصّة إيجار، بحالة القيد. **والحالة حالةُ القيد لا حالةُ العقد**: نفاذ العقد يُقرَّر في المنصّة لا هنا. **ولا معرّف قيد محاسبي فيه**: توقيع العقد لا يُنشئ قيداً، ولا مورد ترحيل على هذا المستند. / The **registration record** of a lease contract issued on the Ejar platform, with the record's state. **The state is the record's, not the contract's**: whether the contract is in force is settled on the platform, not here. **It carries no accounting entry identifier**: signing a lease creates no entry, and the resource has no posting sub-resource. */
+export interface LeaseRegistration {
+  /** رقم عقد إيجار — مرجع العقد المُحرَّر في المنصّة. / The Ejar contract number — the reference to the contract issued on the platform. */
+  ejarContractNumber: string;
   /** نهاية المدّة. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The end of the term. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
   endsOn: string;
   /** المعرّف. / The identifier. */
@@ -1640,20 +1640,26 @@ export interface Lease {
   propertyId: string;
   /** بداية المدّة. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The start of the term. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
   startsOn: string;
-  /** حالة العقد. وACTIVE وحدها تدخل قيد الاستبعاد الزمني وتُتيح الفوترة. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The lease state. Only ACTIVE enters the temporal exclusion constraint and permits invoicing. Matched literally and case-sensitively; a number is never accepted in place of a name. */
-  state: "ACTIVE" | "DRAFT";
+  /** حالة **القيد** لا حالة العقد. وBILLABLE وحدها تدخل قيد الاستبعاد الزمني وتُتيح الفوترة، ومعناها «معتمَدٌ للفوترة» لا «سارٍ»: النفاذ من المنصّة. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The state of the **record**, not of the contract. Only BILLABLE enters the temporal exclusion constraint and permits invoicing; it means 'approved for billing', never 'in force' — force comes from the platform. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  state: "BILLABLE" | "DRAFT";
   totalRent: Money;
   /** الوحدة. / The unit. */
   unitId: string;
 }
 
-/** طلب إنشاء عقد إيجار مسوّدة. **وقيمة العقد والأقساط تُصرَّحان معاً**: النظام لا يوزّع القيمة على الأقساط — التوزيع يستلزم سياسة تقريب هي قرار مالك مفتوح — بل **يفحص** أن مجموع الأقساط يساوي قيمة العقد بالضبط ويرفض بخلافه. ولو اشتُقّت القيمة من الأقساط لصارت الثابتة صحيحةً بحكم البناء ولم تمسك توزيعاً خاطئاً. / A request to draft a lease contract. **The contract value and the instalments are both declared**: the system does not spread the value across the instalments — spreading requires a rounding policy that is an open owner decision — it **checks** that the instalments sum exactly to the contract value and refuses otherwise. Had the value been derived from the instalments the invariant would hold by construction and would catch no wrong split. */
-export interface LeaseRequest {
-  /** رقم العقد — فريد داخل المنشأة. / The contract number — unique within the company. */
-  contractNo: string;
+/**
+ * طلب **تسجيل** عقد إيجار مُحرَّر في منصّة إيجار — مسوّدة قيد أرشيفي لا عقد. **والنظام لا يُحرّر عقداً ولا يُعدّله ولا يُنهيه**: منصّة إيجار الحكومية هي الطرف المخوَّل بذلك، وما يُنشَأ هنا قيدٌ مرجعُه رقم عقد إيجار. **ولا تكامل مع المنصّة**: الرقم يُقيَّد كما يصل ولا يُتحقَّق منه.
+ * 
+ * **وقيمة العقد والأقساط تُصرَّحان معاً**: النظام لا يوزّع القيمة على الأقساط — التوزيع يستلزم سياسة تقريب هي قرار مالك مفتوح — بل **يفحص** أن مجموع الأقساط يساوي قيمة العقد بالضبط ويرفض بخلافه. ولو اشتُقّت القيمة من الأقساط لصارت الثابتة صحيحةً بحكم البناء ولم تمسك توزيعاً خاطئاً. / A request to **register** a lease contract issued on the Ejar platform — a draft archival record, not a contract. **The system issues no contract, amends none, and terminates none**: the government Ejar platform is the party authorised to do that, and what is created here is a record whose reference is the Ejar contract number. **There is no integration with the platform**: the number is recorded as received and never verified.
+ * 
+ * **The contract value and the instalments are both declared**: the system does not spread the value across the instalments — spreading requires a rounding policy that is an open owner decision — it **checks** that the instalments sum exactly to the contract value and refuses otherwise. Had the value been derived from the instalments the invariant would hold by construction and would catch no wrong split.
+ */
+export interface LeaseRegistrationRequest {
+  /** رقم عقد إيجار — مرجع العقد المُحرَّر في المنصّة، ولا يولّده هذا النظام. وتفرّده مفروضٌ داخل المنشأة وحدها. / The Ejar contract number — the reference to the contract issued on the platform; this system does not mint it. Its uniqueness is enforced within the company alone. */
+  ejarContractNumber: string;
   /** نهاية المدّة — داخلة في المدى. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The end of the term — inclusive. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
   endsOn: string;
-  /** الأقساط بفتراتها ومبالغها. ومجموعها يُفحص عند التفعيل ولا يُصلَح. / The instalments with their periods and amounts. Their sum is checked on activation and never corrected. */
+  /** الأقساط بفتراتها ومبالغها. ومجموعها يُفحص عند الاعتماد للفوترة ولا يُصلَح. / The instalments with their periods and amounts. Their sum is checked at billing approval and never corrected. */
   instalments: Instalment[];
   /** المستأجر. / The lessee. */
   lesseeId: string;
@@ -1664,9 +1670,9 @@ export interface LeaseRequest {
   unitId: string;
 }
 
-/** جدول دفعات عقد بمعرّفات سطوره. / A lease payment schedule with its line identifiers. */
+/** جدول دفعات قيدٍ بمعرّفات سطوره. / A lease registration's payment schedule with its line identifiers. */
 export interface LeaseSchedule {
-  /** العقد. / The lease. */
+  /** قيد التسجيل. / The lease registration. */
   leaseId: string;
   /** السطور بترتيب تسلسلها. / The lines in sequence order. */
   lines: LeaseScheduleLine[];
@@ -1685,7 +1691,7 @@ export interface LeaseScheduleLine {
   periodFrom: string;
   /** نهاية الفترة. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The end of the period. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
   periodTo: string;
-  /** تسلسل القسط في العقد. / The instalment's sequence within the lease. */
+  /** تسلسل القسط في القيد. / The instalment's sequence within the registration. */
   seq: number;
 }
 

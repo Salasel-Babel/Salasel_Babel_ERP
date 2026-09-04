@@ -149,10 +149,10 @@ internal sealed class RealEstateDbContext(DbContextOptions<RealEstateDbContext> 
         {
             entity.ToTable("lease_contract");
             entity.HasKey(row => row.Id);
-            entity.Property(row => row.ContractNo).HasMaxLength(64).IsRequired();
+            entity.Property(row => row.EjarContractNumber).HasMaxLength(64).IsRequired();
             entity.Property(row => row.State).HasMaxLength(16).IsRequired();
             entity.Property(row => row.TotalRent).HasColumnType(Money);
-            entity.HasIndex(row => new { row.TenantId, row.CompanyId, row.ContractNo })
+            entity.HasIndex(row => new { row.TenantId, row.CompanyId, row.EjarContractNumber })
                   .IsUnique().HasDatabaseName("uq_realestate_lease_contract_no");
             entity.HasIndex(row => new { row.TenantId, row.CompanyId, row.UnitId })
                   .HasDatabaseName("ix_realestate_lease_unit");

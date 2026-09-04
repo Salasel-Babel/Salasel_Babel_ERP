@@ -26,7 +26,7 @@ public sealed class RealEstateSurface
 {
     private readonly PropertyService _properties;
     private readonly PartyService _parties;
-    private readonly LeaseContractService _leases;
+    private readonly LeaseRegistrationService _leases;
     private readonly RentInvoiceService _invoices;
     private readonly TenantReceiptService _receipts;
     private readonly TenantArrearsService _arrears;
@@ -35,7 +35,7 @@ public sealed class RealEstateSurface
     /// <summary>ينشئ السطح فوق خدمات الوحدة.</summary>
     /// <param name="properties">خدمة العقارات والوحدات.</param>
     /// <param name="parties">خدمة الأطراف.</param>
-    /// <param name="leases">خدمة العقود.</param>
+    /// <param name="leases">خدمة قيود تسجيل العقود.</param>
     /// <param name="invoices">خدمة فواتير الإيجار.</param>
     /// <param name="receipts">خدمة التحصيل.</param>
     /// <param name="arrears">خدمة المتأخرات ومطابقتها.</param>
@@ -43,7 +43,7 @@ public sealed class RealEstateSurface
     public RealEstateSurface(
         PropertyService properties,
         PartyService parties,
-        LeaseContractService leases,
+        LeaseRegistrationService leases,
         RentInvoiceService invoices,
         TenantReceiptService receipts,
         TenantArrearsService arrears,
@@ -234,13 +234,16 @@ public sealed class RealEstateSurface
         CancellationToken cancellationToken = default)
         => Party(await _parties.ReadOwnerAsync(tenant, actor, companyId, ownerId, cancellationToken).ConfigureAwait(false));
 
-    /// <summary>ينشئ عقد إيجار <b>مسوّدة</b>. ولا بوّابة ترحيل عليه إطلاقاً.</summary>
+    /// <summary>
+    /// يُسجّل عقد إيجار مُحرَّراً في منصّة إيجار بوصفه <b>مسوّدة قيد</b>. ولا بوّابة
+    /// ترحيل عليه إطلاقاً، <b>ولا يُحرَّر العقد هنا</b>.
+    /// </summary>
     /// <param name="tenant">المستأجر.</param>
     /// <param name="actor">الفاعل.</param>
     /// <param name="companyId">المنشأة.</param>
     /// <param name="request">الطلب.</param>
     /// <param name="cancellationToken">رمز الإلغاء.</param>
-    public async ValueTask<Result<RealEstateLease>> DraftLeaseAsync(
+    public async ValueTask<Result<RealEstateLease>> DraftLeaseRegistrationAsync(
         TenantId tenant,
         UserId actor,
         Guid companyId,
@@ -262,7 +265,7 @@ public sealed class RealEstateSurface
             .DraftAsync(
                 tenant, actor, companyId,
                 new LeaseDraft(
-                    request.ContractNo,
+                    request.EjarContractNumber,
                     request.UnitId,
                     request.LesseeId,
                     request.StartsOn,
@@ -275,7 +278,7 @@ public sealed class RealEstateSurface
         return Lease(result);
     }
 
-    /// <summary>يقرأ عقداً بحالته.</summary>
+    /// <summary>يقرأ قيد تسجيل عقدٍ بحالته.</summary>
     /// <param name="tenant">المستأجر.</param>
     /// <param name="actor">الفاعل.</param>
     /// <param name="companyId">المنشأة.</param>
@@ -319,19 +322,22 @@ public sealed class RealEstateSurface
         return Result<IReadOnlyList<RealEstateScheduleLine>>.Success(lines);
     }
 
-    /// <summary>يُفعّل العقد فيولّد جدول دفعاته. ولا يُرحّل قيداً.</summary>
+    /// <summary>
+    /// يعتمد القيد <b>للفوترة</b> فتُبنى فواتير الإيجار عليه. ولا يُرحّل قيداً محاسبياً،
+    /// ولا يُنفِّذ عقداً. <b>وإعادةُ الاعتماد آمنة وتُعيد النتيجة نفسها.</b>
+    /// </summary>
     /// <param name="tenant">المستأجر.</param>
     /// <param name="actor">الفاعل.</param>
     /// <param name="companyId">المنشأة.</param>
-    /// <param name="leaseId">العقد.</param>
+    /// <param name="leaseId">قيد التسجيل.</param>
     /// <param name="cancellationToken">رمز الإلغاء.</param>
-    public async ValueTask<Result<RealEstateLease>> ActivateLeaseAsync(
+    public async ValueTask<Result<RealEstateLease>> ApproveLeaseForBillingAsync(
         TenantId tenant,
         UserId actor,
         Guid companyId,
         Guid leaseId,
         CancellationToken cancellationToken = default)
-        => Lease(await _leases.ActivateAsync(tenant, actor, companyId, leaseId, cancellationToken).ConfigureAwait(false));
+        => Lease(await _leases.ApproveForBillingAsync(tenant, actor, companyId, leaseId, cancellationToken).ConfigureAwait(false));
 
     /// <summary>ينشئ فاتورة إيجار <b>مسوّدة</b>.</summary>
     /// <param name="tenant">المستأجر.</param>
@@ -534,7 +540,7 @@ public sealed class RealEstateSurface
         => result.IsFailure
             ? Result<RealEstateLease>.Failure(result.Errors)
             : Result<RealEstateLease>.Success(new RealEstateLease(
-                result.Value.Id, result.Value.ContractNo, result.Value.PropertyId, result.Value.UnitId,
+                result.Value.Id, result.Value.EjarContractNumber, result.Value.PropertyId, result.Value.UnitId,
                 result.Value.LesseeId, result.Value.StartsOn, result.Value.EndsOn,
                 result.Value.TotalRent.Amount, result.Value.State));
 

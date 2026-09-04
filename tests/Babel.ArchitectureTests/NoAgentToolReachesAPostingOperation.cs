@@ -181,7 +181,7 @@ public sealed partial class NoAgentToolReachesAPostingOperation
         string[] posting =
         [
             .. operations.Keys.Where(static name => name.StartsWith("post", StringComparison.Ordinal)),
-            "activateLeaseContract",
+            "approveLeaseRegistrationForBilling",
             "terminateEmployee",
             "reverseJournalEntry",
             "revokeMembership",

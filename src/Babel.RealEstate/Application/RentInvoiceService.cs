@@ -95,9 +95,9 @@ public sealed class RentInvoiceService : IApplicationService
             return Result<RentInvoiceView>.Failure(RealEstateErrors.LeaseNotFound(draft.LeaseId));
         }
 
-        if (!string.Equals(lease.State, LeaseState.Active, StringComparison.Ordinal))
+        if (!string.Equals(lease.State, LeaseState.Billable, StringComparison.Ordinal))
         {
-            return Result<RentInvoiceView>.Failure(RealEstateErrors.LeaseIsNotActive(lease.Id));
+            return Result<RentInvoiceView>.Failure(RealEstateErrors.LeaseIsNotApprovedForBilling(lease.Id));
         }
 
         UnitRow? unit = await _database.Units

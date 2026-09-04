@@ -140,20 +140,20 @@ internal static class ApiProblems
                 or "projects.contract_policy.resolution_not_implemented" => 409,
             // ── مستندات العقارات ─────────────────────────────────────────────
             // ‏**ولم يكن لهذا السطح تصنيفٌ واحد**: عشرون باباً منشوراً، وكل رفضٍ مجالي
-            // فيها يسقط إلى `_ => 500` — أي أن «الوحدة مؤجَّرة سلفاً» و«العقد ليس
+            // فيها يسقط إلى `_ => 500` — أي أن «الوحدة مؤجَّرة سلفاً» و«المستند ليس
             // مسوّدة» و«العقار غير موجود» كانت تُقرأ كلها **«عطل في الخادم»**. والعقد
             // المنشور يُعلن لهذه المسارات 404 و409 و422 صراحةً، فكان الخادم يخالف عقده.
-            // واكتُشف بنداءٍ حقيقي: تفعيلُ مدّةٍ متداخلة ردّ **500** ورمزه
+            // واكتُشف بنداءٍ حقيقي: اعتمادُ مدّةٍ متداخلة للفوترة ردّ **500** ورمزه
             // `realestate.lease_term_overlaps` — وهو **رفضٌ صحيح** يقرؤه العميل عطلاً.
             //
             // و**قيد الاستبعاد الزمني 409 بعينه**: الطلب سليم تماماً، ويصطدم بحالةٍ
-            // قائمة على الوحدة. والعميل الذي يقرأ 409 يقرأ العقد الساري ثم يقرّر؛ ولو
+            // قائمة على الوحدة. والعميل الذي يقرأ 409 يقرأ القيد المعتمَد للفوترة ثم يقرّر؛ ولو
             // قرأ 422 لظنّ أن إعادة الصياغة تُجدي، ولو قرأ 500 لأعاد المحاولة.
             "realestate.property_not_found" or "realestate.unit_not_found"
                 or "realestate.party_not_found" or "realestate.lease_not_found"
                 or "realestate.document_not_found" or "realestate.schedule_line_not_found" => 404,
             "realestate.duplicate_code" or "realestate.lease_term_overlaps"
-                or "realestate.lease_is_already_active" or "realestate.lease_is_not_active"
+                or "realestate.lease_is_not_approved_for_billing"
                 or "realestate.document_is_not_a_draft" or "realestate.schedule_line_already_invoiced"
                 or "realestate.receipt_is_already_allocated" or "realestate.receipt_is_not_posted"
                 or "realestate.receipt_was_not_unallocated" => 409,

@@ -12,10 +12,12 @@ namespace Babel.RealEstate.Voice;
 /// </para>
 /// <para>
 /// <b>وما تغيّر — مكتوباً لا مطموساً:</b> كان <b>عقد الإيجار</b> ممنوعاً من الصوت جملةً.
-/// والفرق الذي أضاعه المنع: <b>كتابةُ العقد شيء وتوقيعُه شيء آخر</b>. فمسوّدةُ العقد
-/// تُملى الآن (‏<c>draftLeaseContract</c>)، <b>والتوقيع لا يُبلَغ أبداً</b> —
-/// <c>activateLeaseContract</c> فعلٌ يمنعه حارسُ الأفعال بالبناء. وقراءةُ العقد على
-/// الطرفين قبل التوقيع تبقى كما هي: <b>وجودُها هو الغرض</b>.
+/// والفرق الذي أضاعه المنع: <b>تسجيلُ عقدٍ مُحرَّر شيء واعتمادُه للفوترة شيء آخر</b>.
+/// فمسوّدةُ <b>قيد التسجيل</b> تُملى الآن (‏<c>draftLeaseRegistration</c>) — وهي إدخالُ
+/// مرجعٍ لعقدٍ حُرِّر في منصّة إيجار، لا تحريرُ عقد — <b>والاعتماد للفوترة لا يُبلَغ
+/// أبداً</b>: <c>approveLeaseRegistrationForBilling</c> فعلُه <c>approve</c> يمنعه حارسُ
+/// الأفعال بالبناء، لأن الاعتماد قرارُ إنسانٍ يُتَّخذ بالعين واليد. وقراءةُ القيد على
+/// الطرفين تبقى كما هي: <b>وجودُها هو الغرض</b>.
 /// </para>
 /// <para>
 /// <b>وما لا يُبلَغ لأنه لا بابَ له في العقد المنشور:</b> سلسلةُ الشيكات الآجلة،
@@ -33,17 +35,17 @@ public sealed class RealEstateVoiceIntents : IVoiceIntentCatalogue
     public IReadOnlyList<VoiceIntent> Intents { get; } =
     [
         new VoiceIntent(
-            "realestate.lease_contract.draft",
+            "realestate.lease_registration.draft",
             VoiceSection.RealEstate,
             BabelModule.RealEstate,
             VoiceIntentKind.StateChange,
             VoiceIntentStatus.Published,
             VoiceLedgerEffect.None,
             null,
-            "draftLeaseContract",
-            "مسودة عقد إيجار",
+            "draftLeaseRegistration",
+            "مسودة قيد تسجيل عقد إيجار",
             [
-                "سجل عقد ايجار", "عقد ايجار جديد", "افتح عقد ايجار", "مسودة عقد ايجار",
+                "سجل عقد ايجار", "قيد عقد ايجار", "ارشف عقد ايجار", "مسودة تسجيل عقد ايجار",
             ],
             [
                 new VoiceSlot("lessee", VoiceSlotKind.Text, "المستأجر", true,

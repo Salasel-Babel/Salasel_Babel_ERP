@@ -2189,35 +2189,51 @@ internal static class OpenApiEmitter
                 "Reads an owner with its VAT registration and tax residency.",
                 Body: null, Response: "RealEstateParty", Success: 200, Query: [], ProblemStatuses: [404]),
 
-            new(ApiRoutes.LeaseContracts, "post", "draftLeaseContract",
-                "إنشاء عقد إيجار مسوّدة", "Draft a lease contract",
-                "يُنشئ عقد إيجار في حالة **DRAFT**.\n\n"
+            new(ApiRoutes.LeaseRegistrations, "post", "draftLeaseRegistration",
+                "تسجيل عقد إيجار مُحرَّر في منصّة إيجار — مسوّدة قيد",
+                "Register a lease contract issued on the Ejar platform — as a draft record",
+                "يُنشئ **قيد تسجيل** لعقد إيجار في حالة **DRAFT**.\n\n"
+                + "**والعقد لا يُحرَّر هنا.** منصّة إيجار الحكومية هي الطرف المخوَّل بتحرير عقود الإيجار، وما "
+                + "يُنشئه هذا الباب **قيدٌ أرشيفي** لعقدٍ حُرِّر هناك — مرجعُه الموثوق **رقم عقد إيجار**. "
+                + "ولا يُنشئ هذا النظام رقم عقد ولا يُعدّل عقداً ولا يُنهيه ولا يُجدّده: **أرشفةٌ وفوترة**.\n\n"
+                + "**ولا تكامل مع منصّة إيجار في هذا السطح**: لا عنوان ولا مفتاح ولا نداء. الرقم يُقيَّد كما "
+                + "يُدخله المُسجِّل ولا يُتحقَّق منه لدى المنصّة، وتفرّده مفروضٌ داخل المنشأة وحدها.\n\n"
                 + "**ولاحظ ما ليس على هذا المورد ولا يجوز أن يوجد: لا مورد posting.** حدث توقيع العقد مُعلَنٌ في "
                 + "مصفوفة الترحيل بأنه **لا يُنشئ قيداً**: العقد التزام متبادل مستقبلي لم ينفّذه أي طرف بعد. "
-                + "وغيابُ الباب هو ما يجعل «العقد لا يُرحّل» مقروءاً من شكل السطح لا من تعليق.\n\n"
+                + "وغيابُ الباب هو ما يجعل «القيد لا يُرحّل» مقروءاً من شكل السطح لا من تعليق.\n\n"
                 + "**والأقساط تصل مصرَّحاً بها ولا تُوزَّع من قيمة العقد**: التوزيع يستلزم سياسة تقريب — أين يقع "
-                + "فائض الهللات — وهي **قرار مالك مفتوح** لا يُحسم في شيفرة. والنظام يفحص عند التفعيل أن مجموع "
-                + "الأقساط يساوي قيمة العقد بالضبط، ويرفض بخلاف ذلك برمزٍ يسمّي البند المعلَّق.",
-                "Creates a lease contract in state **DRAFT**.\n\n"
+                + "فائض الهللات — وهي **قرار مالك مفتوح** لا يُحسم في شيفرة. والنظام يفحص عند الاعتماد للفوترة أن "
+                + "مجموع الأقساط يساوي قيمة العقد بالضبط، ويرفض بخلاف ذلك برمزٍ يسمّي البند المعلَّق.",
+                "Creates a **registration record** for a lease contract, in state **DRAFT**.\n\n"
+                + "**The contract is not issued here.** The government Ejar platform is the party authorised to issue lease "
+                + "contracts; what this door creates is an **archival record** of a contract issued there, whose authoritative "
+                + "reference is the **Ejar contract number**. This system does not mint a contract number, and it does not amend, "
+                + "terminate, or renew a contract: **archiving and billing**.\n\n"
+                + "**There is no integration with the Ejar platform on this surface**: no address, no key, no call. The number is "
+                + "recorded exactly as the registrar enters it and is never verified against the platform; its uniqueness is "
+                + "enforced within the company alone.\n\n"
                 + "**Note what this resource does not carry and must never carry: no posting sub-resource.** The lease-signature "
                 + "event is declared in the posting matrix as posting **no entry**: the contract is a future mutual obligation "
-                + "neither party has yet performed. The absence of the door is what makes 'a lease posts nothing' readable from "
-                + "the shape of the surface rather than from a comment.\n\n"
+                + "neither party has yet performed. The absence of the door is what makes 'this record posts nothing' readable "
+                + "from the shape of the surface rather than from a comment.\n\n"
                 + "**Instalments arrive declared and are never spread from a contract value**: spreading requires a rounding "
                 + "policy — where the halala surplus lands — which is an **open owner decision**, not something settled in code. "
-                + "On activation the system checks that the instalments sum exactly to the contract value and refuses otherwise "
-                + "under a code that names the pending item.",
-                Body: "LeaseRequest", Response: "Lease", Success: 201, Query: [],
+                + "At billing approval the system checks that the instalments sum exactly to the contract value and refuses "
+                + "otherwise under a code that names the pending item.",
+                Body: "LeaseRegistrationRequest", Response: "LeaseRegistration", Success: 201, Query: [],
                 ProblemStatuses: [404]),
 
-            new(ApiRoutes.LeaseContract, "get", "readLeaseContract",
-                "قراءة عقد إيجار", "Read one lease contract",
-                "يقرأ العقد بحالته ومدّته وقيمته.",
-                "Reads the contract with its state, its term, and its value.",
-                Body: null, Response: "Lease", Success: 200, Query: [], ProblemStatuses: [404]),
+            new(ApiRoutes.LeaseRegistration, "get", "readLeaseRegistration",
+                "قراءة قيد تسجيل عقد إيجار", "Read one lease registration",
+                "يقرأ القيد بحالته ومدّته وقيمته ورقم عقد إيجار الذي يشير إليه. "
+                + "**والحالة حالةُ القيد لا حالةُ العقد**: نفاذ العقد يُقرَّر في منصّة إيجار لا هنا.",
+                "Reads the registration with its state, its term, its value, and the Ejar contract number it references. "
+                + "**The state is the record's state, not the contract's**: whether the contract is in force is settled on the "
+                + "Ejar platform, not here.",
+                Body: null, Response: "LeaseRegistration", Success: 200, Query: [], ProblemStatuses: [404]),
 
-            new(ApiRoutes.LeaseContractSchedule, "get", "readLeaseSchedule",
-                "قراءة جدول دفعات العقد بمعرّفات سطوره", "Read the lease payment schedule with its line identifiers",
+            new(ApiRoutes.LeaseRegistrationSchedule, "get", "readLeaseSchedule",
+                "قراءة جدول دفعات القيد بمعرّفات سطوره", "Read the registration payment schedule with its line identifiers",
                 "يُرجع جدول الدفعات **بمعرّفات سطوره** — وهي مدخل الفوترة: طلب الفاتورة يحمل معرّفات الأقساط "
                 + "المفوترة ولا يحمل مبالغ.\n\n"
                 + "**وبلا نشر هذه المعرّفات يصير باب الفوترة باباً لا يوصل إليه بابٌ آخر على هذا السطح** — وهو "
@@ -2228,27 +2244,39 @@ internal static class OpenApiEmitter
                 + "reach** — the objection written literally in the cash-documents publication decision.",
                 Body: null, Response: "LeaseSchedule", Success: 200, Query: [], ProblemStatuses: [404]),
 
-            new(ApiRoutes.LeaseContractActivation, "post", "activateLeaseContract",
-                "تفعيل عقد إيجار", "Activate a lease contract",
-                "يُفعّل العقد: يفحص أن مجموع الأقساط يساوي قيمة العقد بالضبط، ثم يجعل جدول الدفعات قابلاً "
-                + "للفوترة، ويُدخل المدّة **قيد الاستبعاد الزمني** في قاعدة البيانات.\n\n"
-                + "**والقيد في القاعدة لا في الواجهة**: «مدّة سارية واحدة لكل وحدة» شرط **تقاطع مدى** لا شرط "
+            new(ApiRoutes.LeaseRegistrationBillingApproval, "post", "approveLeaseRegistrationForBilling",
+                "اعتماد قيد التسجيل للفوترة", "Approve a lease registration for billing",
+                "يعتمد القيد **للفوترة**: يفحص أن مجموع الأقساط يساوي قيمة العقد بالضبط، ثم يجعل جدول الدفعات "
+                + "قابلاً للفوترة، ويُدخل المدّة **قيد الاستبعاد الزمني** في قاعدة البيانات.\n\n"
+                + "**وهذا ليس تفعيلاً ولا نفاذاً نظامياً.** نفاذ عقد الإيجار يُقرَّر في منصّة إيجار الحكومية، "
+                + "ولا يملك هذا الباب أن يجعل عقداً سارياً ولا أن يوقفه. وما يقع هنا **إذنٌ داخلي**: من هذه "
+                + "اللحظة تُبنى فواتير الإيجار على هذا القيد المؤرشف.\n\n"
+                + "**والقيد في القاعدة لا في الواجهة**: «مدّة معتمَدة واحدة لكل وحدة» شرط **تقاطع مدى** لا شرط "
                 + "تساوٍ، فلا يعبّر عنه فهرس فريد مهما اتّسع؛ وفحصٌ في الخدمة يقرأ ثم يكتب، وبين القراءة والكتابة "
-                + "يمرّ نداءٌ آخر فتُؤجَّر الوحدة مرّتين.\n\n"
-                + "**ولا يُرحّل قيداً**، ومخطّط جوابه بلا معرّف قيد.",
-                "Activates the contract: it checks that the instalments sum exactly to the contract value, makes the payment "
-                + "schedule billable, and enters the term into a **temporal exclusion constraint** in the database.\n\n"
-                + "**The constraint is in the database, not the interface**: 'one live term per unit' is a **range-overlap** "
+                + "يمرّ نداءٌ آخر فتُفوتَر الوحدة مرّتين.\n\n"
+                + "**وإعادةُ النداء آمنة وتُعيد الجواب نفسه**: القيد المعتمَد سلفاً يُقرأ ويُعاد بالرمز 200 نفسه، "
+                + "ولا شيء يُكتب ثانيةً — جدول الدفعات مكتوبٌ عند التسجيل لا هنا.\n\n"
+                + "**ولا يُرحّل قيداً محاسبياً**، ومخطّط جوابه بلا معرّف قيد.",
+                "Approves the registration **for billing**: it checks that the instalments sum exactly to the contract value, "
+                + "makes the payment schedule billable, and enters the term into a **temporal exclusion constraint** in the "
+                + "database.\n\n"
+                + "**This is not an activation and confers no legal effect.** Whether a lease is in force is settled on the "
+                + "government Ejar platform; this door can neither put a contract in force nor suspend it. What happens here is "
+                + "an **internal permission**: from this moment rent invoices are built on this archived record.\n\n"
+                + "**The constraint is in the database, not the interface**: 'one approved term per unit' is a **range-overlap** "
                 + "condition, not an equality condition, so no unique index however wide can express it; and a check in the "
-                + "service reads then writes, and between the read and the write another call slips through and the unit is let "
-                + "twice.\n\n"
-                + "**It posts no entry**, and its response schema carries no entry identifier.",
-                Body: null, Response: "Lease", Success: 201, Query: [],
+                + "service reads then writes, and between the read and the write another call slips through and the unit is "
+                + "billed twice.\n\n"
+                + "**Repeating the call is safe and returns the same answer**: an already-approved registration is read back and "
+                + "returned under the same status 200, and nothing is written a second time — the payment schedule is written at "
+                + "registration, not here.\n\n"
+                + "**It posts no accounting entry**, and its response schema carries no entry identifier.",
+                Body: null, Response: "LeaseRegistration", Success: 200, Query: [],
                 ProblemStatuses: [404, 409, 422]),
 
             new(ApiRoutes.RentInvoices, "post", "draftRentInvoice",
                 "إنشاء فاتورة إيجار مسوّدة", "Draft a rent invoice",
-                "يُنشئ فاتورة إيجار في حالة **DRAFT** على أقساط مُسمّاة من جدول دفعات عقدٍ سارٍ.\n\n"
+                "يُنشئ فاتورة إيجار في حالة **DRAFT** على أقساط مُسمّاة من جدول دفعات **قيدٍ معتمَدٍ للفوترة**.\n\n"
                 + "**ولا رمز حدث في الحمولة ولا نموذج ملكية**: الوحدة تقرأ نموذج ملكية العقار **المُسجَّل في الدفتر** "
                 + "وتختار الحدث منه — فلا يستطيع عميل HTTP أن يطلب «فاتورة ملكية ذاتية» على عقارٍ مُدار. والفرق يظهر "
                 + "في **دائن الفاتورة**: إيرادُ إيجار مؤجَّل للشركة في الملكية الذاتية، وأماناتُ مالكٍ في الإدارة.\n\n"
@@ -2256,7 +2284,8 @@ internal static class OpenApiEmitter
                 + "وحدةٍ معاملتها standard. وعلى الوحدة المعفاة يبقى exemptionReasonCode **فارغاً بعلامة ظاهرة** "
                 + "حتى يُعرف الرمز من القائمة الرسمية السارية — وحقلٌ إلزامي بقيمة مُختلَقة أسوأ من حقلٍ فارغ.\n\n"
                 + "**والقسط لا يُفوتَر مرّتين**: فهرس فريد على (المستأجر، القسط) لا فحصٌ في الخدمة.",
-                "Creates a rent invoice in state **DRAFT** over named instalments from an active lease's payment schedule.\n\n"
+                "Creates a rent invoice in state **DRAFT** over named instalments from the payment schedule of a registration "
+                + "**approved for billing**.\n\n"
                 + "**No event code and no ownership model appear in the payload**: the module reads the property's ownership "
                 + "model **as registered in the ledger** and selects the event from it — so an HTTP client cannot request an "
                 + "'own-property invoice' against a managed property. The difference shows in the **credit of the invoice**: "
@@ -3772,7 +3801,7 @@ internal static class OpenApiEmitter
         ("goods-receipts", "receiptId", "معرّف استلام البضاعة.", "The goods receipt identifier."),
         ("guarantees", "guaranteeId", "معرّف خطاب الضمان.", "The guarantee identifier."),
         ("items", "itemId", "معرّف الصنف.", "The item identifier."),
-        ("lease-contracts", "leaseId", "معرّف عقد الإيجار.", "The lease contract identifier."),
+        ("lease-registrations", "leaseId", "معرّف قيد تسجيل عقد الإيجار.", "The lease registration identifier."),
         ("locations", "locationId", "معرّف الموقع داخل المستودع — **وهو مستوى الرصيد المُقيَّم**.",
             "The location identifier within its warehouse — **the level at which the valued balance is held**."),
         ("lessees", "lesseeId", "معرّف المستأجر العقاري — **لا مستأجر النظام**: هذا مورد داخل نطاق منشأة.",
@@ -3920,8 +3949,11 @@ internal static class OpenApiEmitter
     /// <summary>الإقامة الضريبية — بلا افتراضي، وعليها يتوقّف سطر الاستقطاع.</summary>
     private static IReadOnlyList<string> TaxResidencies { get; } = ["non_resident", "resident"];
 
-    /// <summary>حالات عقد الإيجار.</summary>
-    private static IReadOnlyList<string> LeaseStates { get; } = ["ACTIVE", "DRAFT"];
+    /// <summary>
+    /// حالات <b>قيد تسجيل</b> عقد الإيجار — لا حالات العقد.
+    /// <para>ولا قيمة هنا تقول «سارٍ»: نفاذ العقد يُقرَّر في منصّة إيجار لا في هذا الجدول.</para>
+    /// </summary>
+    private static IReadOnlyList<string> LeaseStates { get; } = ["BILLABLE", "DRAFT"];
 
     /// <summary>حالات المستند العقاري. ولا حالة «ملغى»: التصحيح إشعارٌ أو عكس.</summary>
     private static IReadOnlyList<string> DocumentStates { get; } = ["DRAFT", "POSTED"];
@@ -5896,53 +5928,73 @@ internal static class OpenApiEmitter
             w.WriteBoolean("additionalProperties", false);
         });
 
-        yield return ("LeaseRequest", static w =>
+        yield return ("LeaseRegistrationRequest", static w =>
         {
             w.WriteString("type", "object");
             w.WriteString("description",
-                "طلب إنشاء عقد إيجار مسوّدة. **وقيمة العقد والأقساط تُصرَّحان معاً**: النظام لا يوزّع القيمة على "
-                + "الأقساط — التوزيع يستلزم سياسة تقريب هي قرار مالك مفتوح — بل **يفحص** أن مجموع الأقساط يساوي "
-                + "قيمة العقد بالضبط ويرفض بخلافه. ولو اشتُقّت القيمة من الأقساط لصارت الثابتة صحيحةً بحكم البناء "
-                + "ولم تمسك توزيعاً خاطئاً. / "
-                + "A request to draft a lease contract. **The contract value and the instalments are both declared**: the "
+                "طلب **تسجيل** عقد إيجار مُحرَّر في منصّة إيجار — مسوّدة قيد أرشيفي لا عقد. **والنظام لا يُحرّر "
+                + "عقداً ولا يُعدّله ولا يُنهيه**: منصّة إيجار الحكومية هي الطرف المخوَّل بذلك، وما يُنشَأ هنا قيدٌ "
+                + "مرجعُه رقم عقد إيجار. **ولا تكامل مع المنصّة**: الرقم يُقيَّد كما يصل ولا يُتحقَّق منه.\n\n"
+                + "**وقيمة العقد والأقساط تُصرَّحان معاً**: النظام لا يوزّع القيمة على الأقساط — التوزيع يستلزم "
+                + "سياسة تقريب هي قرار مالك مفتوح — بل **يفحص** أن مجموع الأقساط يساوي قيمة العقد بالضبط ويرفض "
+                + "بخلافه. ولو اشتُقّت القيمة من الأقساط لصارت الثابتة صحيحةً بحكم البناء ولم تمسك توزيعاً خاطئاً. / "
+                + "A request to **register** a lease contract issued on the Ejar platform — a draft archival record, not a "
+                + "contract. **The system issues no contract, amends none, and terminates none**: the government Ejar platform "
+                + "is the party authorised to do that, and what is created here is a record whose reference is the Ejar contract "
+                + "number. **There is no integration with the platform**: the number is recorded as received and never verified.\n\n"
+                + "**The contract value and the instalments are both declared**: the "
                 + "system does not spread the value across the instalments — spreading requires a rounding policy that is an "
                 + "open owner decision — it **checks** that the instalments sum exactly to the contract value and refuses "
                 + "otherwise. Had the value been derived from the instalments the invariant would hold by construction and "
                 + "would catch no wrong split.");
             w.WriteStartObject("properties");
-            WriteStringProperty(w, "contractNo", "رقم العقد — فريد داخل المنشأة.", "The contract number — unique within the company.", 64);
+            WriteStringProperty(w, "ejarContractNumber",
+                "رقم عقد إيجار — مرجع العقد المُحرَّر في المنصّة، ولا يولّده هذا النظام. وتفرّده مفروضٌ داخل المنشأة وحدها.",
+                "The Ejar contract number — the reference to the contract issued on the platform; this system does not mint it. "
+                + "Its uniqueness is enforced within the company alone.", 64);
             WriteDateProperty(w, "endsOn", "نهاية المدّة — داخلة في المدى.", "The end of the term — inclusive.");
             WriteArrayRefProperty(w, "instalments", "Instalment",
-                "الأقساط بفتراتها ومبالغها. ومجموعها يُفحص عند التفعيل ولا يُصلَح.",
-                "The instalments with their periods and amounts. Their sum is checked on activation and never corrected.");
+                "الأقساط بفتراتها ومبالغها. ومجموعها يُفحص عند الاعتماد للفوترة ولا يُصلَح.",
+                "The instalments with their periods and amounts. Their sum is checked at billing approval and never corrected.");
             WriteStringProperty(w, "lesseeId", "المستأجر.", "The lessee.", 36);
             WriteDateProperty(w, "startsOn", "بداية المدّة.", "The start of the term.");
             WriteRefProperty(w, "totalRent", "Money");
             WriteStringProperty(w, "unitId", "الوحدة المؤجَّرة — ومنها يُشتقّ العقار، فلا يُذكر العقار مرّتين فينحرف.", "The unit being let — the property is derived from it, so the property is never stated twice and cannot drift.", 36);
             w.WriteEndObject();
-            WriteRequired(w, "contractNo", "endsOn", "instalments", "lesseeId", "startsOn", "totalRent", "unitId");
+            WriteRequired(w, "ejarContractNumber", "endsOn", "instalments", "lesseeId", "startsOn", "totalRent", "unitId");
             w.WriteBoolean("additionalProperties", false);
         });
 
-        yield return ("Lease", static w =>
+        yield return ("LeaseRegistration", static w =>
         {
             w.WriteString("type", "object");
             w.WriteString("description",
-                "عقد إيجار بحالته. **ولا معرّف قيد فيه**: توقيع العقد لا يُنشئ قيداً، ولا مورد ترحيل عليه. / "
-                + "A lease contract with its state. **It carries no entry identifier**: signing a lease creates no entry, and "
+                "**قيدُ تسجيلِ** عقد إيجار مُحرَّر في منصّة إيجار، بحالة القيد. **والحالة حالةُ القيد لا حالةُ "
+                + "العقد**: نفاذ العقد يُقرَّر في المنصّة لا هنا. **ولا معرّف قيد محاسبي فيه**: توقيع العقد لا "
+                + "يُنشئ قيداً، ولا مورد ترحيل على هذا المستند. / "
+                + "The **registration record** of a lease contract issued on the Ejar platform, with the record's state. "
+                + "**The state is the record's, not the contract's**: whether the contract is in force is settled on the "
+                + "platform, not here. **It carries no accounting entry identifier**: signing a lease creates no entry, and "
                 + "the resource has no posting sub-resource.");
             w.WriteStartObject("properties");
-            WriteStringProperty(w, "contractNo", "رقم العقد.", "The contract number.", 64);
+            WriteStringProperty(w, "ejarContractNumber",
+                "رقم عقد إيجار — مرجع العقد المُحرَّر في المنصّة.",
+                "The Ejar contract number — the reference to the contract issued on the platform.", 64);
             WriteDateProperty(w, "endsOn", "نهاية المدّة.", "The end of the term.");
             WriteStringProperty(w, "id", "المعرّف.", "The identifier.", 36);
             WriteStringProperty(w, "lesseeId", "المستأجر.", "The lessee.", 36);
             WriteStringProperty(w, "propertyId", "العقار المشتقّ من الوحدة.", "The property derived from the unit.", 36);
             WriteDateProperty(w, "startsOn", "بداية المدّة.", "The start of the term.");
-            WriteEnumProperty(w, "state", "حالة العقد. وACTIVE وحدها تدخل قيد الاستبعاد الزمني وتُتيح الفوترة.", "The lease state. Only ACTIVE enters the temporal exclusion constraint and permits invoicing.", LeaseStates);
+            WriteEnumProperty(w, "state",
+                "حالة **القيد** لا حالة العقد. وBILLABLE وحدها تدخل قيد الاستبعاد الزمني وتُتيح الفوترة، ومعناها "
+                + "«معتمَدٌ للفوترة» لا «سارٍ»: النفاذ من المنصّة.",
+                "The state of the **record**, not of the contract. Only BILLABLE enters the temporal exclusion constraint and "
+                + "permits invoicing; it means 'approved for billing', never 'in force' — force comes from the platform.",
+                LeaseStates);
             WriteRefProperty(w, "totalRent", "Money");
             WriteStringProperty(w, "unitId", "الوحدة.", "The unit.", 36);
             w.WriteEndObject();
-            WriteRequired(w, "contractNo", "endsOn", "id", "lesseeId", "propertyId", "startsOn", "state", "totalRent", "unitId");
+            WriteRequired(w, "ejarContractNumber", "endsOn", "id", "lesseeId", "propertyId", "startsOn", "state", "totalRent", "unitId");
             w.WriteBoolean("additionalProperties", false);
         });
 
@@ -5959,7 +6011,7 @@ internal static class OpenApiEmitter
             WriteBooleanProperty(w, "isInvoiced", "هل فُوتر هذا القسط؟ والقسط لا يُفوتَر مرّتين.", "Has this instalment been invoiced? An instalment is never invoiced twice.");
             WriteDateProperty(w, "periodFrom", "بداية الفترة.", "The start of the period.");
             WriteDateProperty(w, "periodTo", "نهاية الفترة.", "The end of the period.");
-            WriteIntegerProperty(w, "seq", 1, 100000, "تسلسل القسط في العقد.", "The instalment's sequence within the lease.");
+            WriteIntegerProperty(w, "seq", 1, 100000, "تسلسل القسط في القيد.", "The instalment's sequence within the registration.");
             w.WriteEndObject();
             WriteRequired(w, "amount", "dueOn", "id", "isInvoiced", "periodFrom", "periodTo", "seq");
             w.WriteBoolean("additionalProperties", false);
@@ -5969,9 +6021,9 @@ internal static class OpenApiEmitter
         {
             w.WriteString("type", "object");
             w.WriteString("description",
-                "جدول دفعات عقد بمعرّفات سطوره. / A lease payment schedule with its line identifiers.");
+                "جدول دفعات قيدٍ بمعرّفات سطوره. / A lease registration's payment schedule with its line identifiers.");
             w.WriteStartObject("properties");
-            WriteStringProperty(w, "leaseId", "العقد.", "The lease.", 36);
+            WriteStringProperty(w, "leaseId", "قيد التسجيل.", "The lease registration.", 36);
             WriteArrayRefProperty(w, "lines", "LeaseScheduleLine", "السطور بترتيب تسلسلها.", "The lines in sequence order.");
             w.WriteEndObject();
             WriteRequired(w, "leaseId", "lines");
@@ -9560,7 +9612,17 @@ internal static class OpenApiEmitter
         + "يفرض v2 بنصّ السياسة، ونُفِّذ في v1 في مكانه للسبب نفسه: لا مستهلك ولا عميل مطابق. الحقل يبقى "
         + "**اختيارياً** — حذفه يعني المركز الافتراضي للمنشأة — لكن القيمة null لا معنى لها: لكل منشأة مركز "
         + "تكلفة واحد على الأقل ولا سطر بلا مركز، فـnull كان يقول «بلا مركز» وهي حالة لا وجود لها. "
-        + "والقيد ck_journal_line_cost_center_present يفرض ذلك في قاعدة البيانات نفسها (ADR-0026 · ADR-0018).\n\n"
+        + "والقيد ck_journal_line_cost_center_present يفرض ذلك في قاعدة البيانات نفسها (ADR-0026 · ADR-0018).\n"
+        + "• تعديل مُسجَّل — 2026-09-04: سطح عقود الإيجار صار سطح **قيود تسجيل**. تغيّر المسار من "
+        + "/lease-contracts إلى /lease-registrations، والمورد الفرعي من /activation إلى /billing-approval، "
+        + "ومعرّفات العمليات الثلاثة (draftLeaseRegistration · readLeaseRegistration · "
+        + "approveLeaseRegistrationForBilling)، واسما المخطّطين (LeaseRegistrationRequest · LeaseRegistration)، "
+        + "والحقل contractNo صار ejarContractNumber، وعضو التعداد ACTIVE صار BILLABLE، ورمز نجاح الاعتماد صار "
+        + "200 بدل 201 لأنه صار حصيناً ضد التكرار. وكلّها تفرض v2 بنصّ السياسة، ونُفِّذت في v1 في مكانها للسبب "
+        + "نفسه: لا مستهلك ولا عميل مطابق. السبب: **عقد الإيجار لا يُحرّره هذا النظام** — منصّة إيجار الحكومية هي "
+        + "الطرف المخوَّل بتحريره — وكان العقد المنشور يقول «إنشاء عقد إيجار» و«تفعيل عقد إيجار» ويسمّي رقم العقد "
+        + "«رقمنا الفريد داخل المنشأة»، فيصف النظام محرِّراً للعقد ومُنفِّذاً له وهو أرشيفٌ وفوترة. ولا تكامل مع "
+        + "منصّة إيجار في هذا الإصدار: لا عنوان ولا مفتاح ولا نداء (ADR-the-lease-is-registered-not-issued · ADR-0018).\n\n"
         + "Total isolation between front end and back end: this document is everything a front-end team needs; it reads no back-end code.\n\n"
         + "Versioning policy — what stays in v1 and what forces v2:\n"
         + "• Stays in v1: adding an endpoint; adding an optional response field; adding an optional request field with a published default; "
@@ -9586,7 +9648,18 @@ internal static class OpenApiEmitter
         + "change the policy text forces to v2, and it was made in v1 in place for the same reason: no consumer and no conforming client. "
         + "The field stays **optional** — omitting it means the company's default centre — but the value null has no meaning: every company "
         + "has at least one cost centre and no line is without one, so null said 'no centre', a state that does not exist. The constraint "
-        + "ck_journal_line_cost_center_present enforces this in the database itself (ADR-0026, ADR-0018).";
+        + "ck_journal_line_cost_center_present enforces this in the database itself (ADR-0026, ADR-0018).\n"
+        + "• Recorded amendment — 2026-09-04: the lease-contract surface became a **lease-registration** surface. The path moved "
+        + "from /lease-contracts to /lease-registrations, the sub-resource from /activation to /billing-approval, three operation "
+        + "ids changed (draftLeaseRegistration, readLeaseRegistration, approveLeaseRegistrationForBilling), two schema names "
+        + "changed (LeaseRegistrationRequest, LeaseRegistration), the field contractNo became ejarContractNumber, the enum member "
+        + "ACTIVE became BILLABLE, and the approval's success status became 200 instead of 201 now that it is idempotent. Each of "
+        + "these is a change the policy text forces to v2, and each was made in v1 in place for the same reason: no consumer and "
+        + "no conforming client. Reason: **this system does not issue lease contracts** — the government Ejar platform is the "
+        + "party authorised to issue them — yet the published contract said 'draft a lease contract' and 'activate a lease "
+        + "contract' and called the contract number our own number unique within the company, presenting the system as the "
+        + "issuer and enforcer of a contract when it is an archive and a biller. There is no integration with the Ejar platform "
+        + "in this release: no address, no key, no call (ADR-the-lease-is-registered-not-issued, ADR-0018).";
 
     private sealed record Operation(
         string Path,

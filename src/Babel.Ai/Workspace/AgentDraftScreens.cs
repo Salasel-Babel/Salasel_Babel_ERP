@@ -69,7 +69,7 @@ public static class AgentDraftScreens
             ["draftRetentionRelease"] = "/contracting/retention",
 
             // ── العقارات ──────────────────────────────────────────────────────
-            ["draftLeaseContract"] = "/realestate/lease",
+            ["draftLeaseRegistration"] = "/realestate/lease",
             ["draftRentInvoice"] = "/realestate/arrears",
             ["draftTenantReceipt"] = "/realestate/arrears",
         };

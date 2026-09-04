@@ -1,11 +1,16 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   عقد الإيجار — مدّته، وأقساطه، وتفعيله، وفاتورة أجرته
-   The lease — its term, its instalments, its activation and its rent invoice
+   قيد تسجيل عقد الإيجار — مدّته، وأقساطه، واعتماده للفوترة، وفاتورة أجرته
+   The lease registration — its term, its instalments, its billing approval,
+   and its rent invoice
    ───────────────────────────────────────────────────────────────────────────
-   هذه الشاشة عمود القسم، وسبع قراراتٍ تحكمها وكلّها مقيسة لا مفترَضة:
+   **والعقد لا يُحرَّر هنا.** منصّة إيجار الحكومية هي الطرف المخوَّل بتحرير عقود
+   الإيجار؛ وهذه الشاشة تُدخل **قيداً أرشيفياً** لعقدٍ حُرِّر هناك، مرجعُه رقم
+   عقد إيجار، ثمّ تعتمده **للفوترة**. ولا تكامل مع المنصّة: لا نداء ولا تحقّق.
+
+   هذه الشاشة عمود القسم، وثمانية قراراتٍ تحكمها وكلّها مقيسة لا مفترَضة:
 
    ١ · **لا مجموع للأقساط هنا.** «مجموع الأقساط = قيمة العقد بالضبط» ثابتةٌ
-       مكتوبة في مصفوفة الترحيل، والحكم فيها للخادم عند التفعيل ويصل برمز
+       مكتوبة في مصفوفة الترحيل، والحكم فيها للخادم عند الاعتماد ويصل برمز
        `realestate.instalments_do_not_sum_to_the_contract`. وجمعُها في المتصفّح
        يوجب حساباً عشرياً على المال — وهو ممنوع — ثم يوهم المستخدم أن الفرق
        يُصلَح بينما **سياسة التقريب قرارُ مالكٍ مفتوح (ق-ع-3)**.
@@ -21,8 +26,9 @@
    ٤ · **التداخل يُرى قبل أن يُرفَض، ويُرفَض من قاعدة البيانات.** شريط المدّة
        يضع كل قسطٍ في موضعه، ويرفع المتقاطعين إلى مسارين ويصبغهما بلون الرفض.
        والحكم النهائي ليس هنا: قيد استبعادٍ زمني في القاعدة يمنع مدّتين
-       ساريتين على وحدةٍ واحدة، ويصل رفضه برمز `realestate.lease_term_overlaps`.
-       وفحصٌ في الواجهة يقرأ ثم يكتب يمرّ بينه وبين الكتابة نداءٌ آخر.
+       معتمَدتين للفوترة على وحدةٍ واحدة، ويصل رفضه برمز
+       `realestate.lease_term_overlaps`. وفحصٌ في الواجهة يقرأ ثم يكتب يمرّ
+       بينه وبين الكتابة نداءٌ آخر.
 
    ٥ · **رمز الحدث يصل من الخادم.** الوحدة تختاره من **نموذج الملكية المسجَّل**
        لا من الطلب، والشاشة تعرضه ولا تخترعه ولا تسمّي حساباً واحداً.
@@ -32,18 +38,21 @@
 
    ٧ · **الإعفاء بلا سببٍ علامةٌ ظاهرة.** `exemptionReasonPending` حقلٌ في العقد
        لا تعليقٌ في شيفرة، فيُعرَض تنبيهاً قائماً على الفاتورة.
+
+   ٨ · **الاعتماد للفوترة يُعاد بلا ضرر.** الخادم يُعيد الجواب نفسه على النداء
+       الثاني ولا يكتب شيئاً، فالزرّ لا يحمل تحذيراً كاذباً عن «فعلٍ يقع مرّة».
    ═══════════════════════════════════════════════════════════════════════════ */
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 import {
-  activateLeaseContract,
-  draftLeaseContract,
+  approveLeaseRegistrationForBilling,
+  draftLeaseRegistration,
   draftRentInvoice,
   postRentInvoice,
-  readLeaseContract,
+  readLeaseRegistration,
   readRentInvoice,
   readLeaseSchedule,
 } from "../../api/generated/client";
-import type { Lease, LeaseSchedule, RentInvoice } from "../../api/generated/types";
+import type { LeaseRegistration, LeaseSchedule, RentInvoice } from "../../api/generated/types";
 import { Money } from "../../api/money";
 import { useApi } from "../../app/api-context";
 import { Amount, Num, useT } from "../../i18n/react";
@@ -73,8 +82,11 @@ import {
   useWrite,
 } from "./parts";
 
-/** حالة العقد السارية — بالاسم الذي ينشره العقد لا بترتيبه فيه. */
-const ACTIVE = "ACTIVE";
+/**
+ * حالة القيد **المعتمَد للفوترة** — بالاسم الذي ينشره العقد لا بترتيبه فيه.
+ * وهي إذنُ فوترةٍ داخلي لا حكمٌ على سريان العقد: النفاذ يُقرَّر في منصّة إيجار لا هنا.
+ */
+const BILLABLE = "BILLABLE";
 
 /** حالة المستند المُرحَّل. */
 const POSTED = "POSTED";
@@ -103,7 +115,7 @@ function newInstalment(): DraftInstalment {
 export function LeaseScreen(): ReactNode {
   const { t } = useT();
   const { transport, config } = useApi();
-  const [lease, setLease] = useState<Lease | null>(null);
+  const [lease, setLease] = useState<LeaseRegistration | null>(null);
   const [schedule, setSchedule] = useState<LeaseSchedule | null>(null);
 
   if (config.companyId === "") return <NeedsCompany />;
@@ -117,7 +129,7 @@ export function LeaseScreen(): ReactNode {
         aside={
           lease ? (
             <StatusBadge
-              state={lease.state === ACTIVE ? "posted" : "draft"}
+              state={lease.state === BILLABLE ? "posted" : "draft"}
               label={t("realestate.docState." + lease.state)}
               testId="re-lease-state"
             />
@@ -154,11 +166,11 @@ export function LeaseScreen(): ReactNode {
       {lease ? (
         <>
           <LeaseHeader lease={lease} />
-          <Activation
+          <BillingApproval
             companyId={config.companyId}
             transport={transport}
             lease={lease}
-            onActivated={(next) => {
+            onApproved={(next) => {
               setLease(next);
               setSchedule(null);
             }}
@@ -178,20 +190,20 @@ export function LeaseScreen(): ReactNode {
 
 type Transport = ReturnType<typeof useApi>["transport"];
 
-/* ═══════════════════════════════════════════════ فتح عقدٍ بمعرّفه ════ */
+/* ══════════════════════════════════════════ فتح قيدٍ بمعرّفه ═════════ */
 
 function OpenLease(props: {
   companyId: string;
   transport: Transport;
-  onOpen: (lease: Lease) => void;
+  onOpen: (lease: LeaseRegistration) => void;
 }): ReactNode {
   const { t } = useT();
   const [id, setId] = useState("");
-  const read = useWrite<Lease>("arrive");
+  const read = useWrite<LeaseRegistration>("arrive");
 
   const submit = useCallback(() => {
     void read.run(async () => {
-      const found = await readLeaseContract(props.transport, {
+      const found = await readLeaseRegistration(props.transport, {
         companyId: props.companyId,
         leaseId: id,
       });
@@ -237,22 +249,22 @@ function OpenLease(props: {
   );
 }
 
-/* ════════════════════════════════════════════════ مسوّدة عقد جديد ═══ */
+/* ═══════════════════════════════════ مسوّدة قيد تسجيلٍ جديد ═════════ */
 
 function DraftLease(props: {
   companyId: string;
   transport: Transport;
-  onDrafted: (lease: Lease) => void;
+  onDrafted: (lease: LeaseRegistration) => void;
 }): ReactNode {
   const { t } = useT();
-  const [contractNo, setContractNo] = useState("");
+  const [ejarContractNumber, setEjarContractNumber] = useState("");
   const [unitId, setUnitId] = useState("");
   const [lesseeId, setLesseeId] = useState("");
   const [startsOn, setStartsOn] = useState(todayIso);
   const [endsOn, setEndsOn] = useState("");
   const [totalRent, setTotalRent] = useState("");
   const [rows, setRows] = useState<readonly DraftInstalment[]>(() => [newInstalment()]);
-  const write = useWrite<Lease>("arrive");
+  const write = useWrite<LeaseRegistration>("arrive");
 
   const update = useCallback((key: string, patch: Partial<DraftInstalment>) => {
     setRows((current) => current.map((row) => (row.key === key ? { ...row, ...patch } : row)));
@@ -287,10 +299,10 @@ function DraftLease(props: {
 
   const submit = useCallback(() => {
     void write.run(async () => {
-      const created = await draftLeaseContract(props.transport, {
+      const created = await draftLeaseRegistration(props.transport, {
         companyId: props.companyId,
         body: {
-          contractNo,
+          ejarContractNumber,
           unitId,
           lesseeId,
           startsOn,
@@ -307,7 +319,7 @@ function DraftLease(props: {
       props.onDrafted(created);
       return created;
     });
-  }, [contractNo, endsOn, lesseeId, props, rows, startsOn, totalRent, unitId, write]);
+  }, [ejarContractNumber, endsOn, lesseeId, props, rows, startsOn, totalRent, unitId, write]);
 
   return (
     <Panel
@@ -318,7 +330,7 @@ function DraftLease(props: {
       <div className="grid fields-3">
         <div className="field">
           <label htmlFor="re-lease-no">
-            {t("realestate.lease.contractNo")}
+            {t("realestate.lease.ejarContractNumber")}
             <span className="req" aria-hidden="true">{"*"}</span>
           </label>
           <input
@@ -327,10 +339,11 @@ function DraftLease(props: {
             dir="ltr"
             autoComplete="off"
             data-testid="re-lease-no"
-            value={contractNo}
-            onChange={(e) => setContractNo(e.target.value)}
-            placeholder="LSE-2026-001"
+            value={ejarContractNumber}
+            onChange={(e) => setEjarContractNumber(e.target.value)}
+            placeholder="EJR-2026-000001"
           />
+          <span className="hint">{t("realestate.lease.ejarContractNumberHint")}</span>
         </div>
         <div className="field">
           <label htmlFor="re-lease-unit">
@@ -362,6 +375,7 @@ function DraftLease(props: {
             value={lesseeId}
             onChange={(e) => setLesseeId(e.target.value)}
           />
+          <span className="hint">{t("realestate.lease.lesseeIdHint")}</span>
         </div>
         <div className="field">
           <label htmlFor="re-lease-from">{t("realestate.lease.startsOn")}</label>
@@ -374,6 +388,7 @@ function DraftLease(props: {
             value={startsOn}
             onChange={(e) => setStartsOn(e.target.value)}
           />
+          <span className="hint">{t("realestate.lease.startsOnHint")}</span>
         </div>
         <div className="field">
           <label htmlFor="re-lease-to">{t("realestate.lease.endsOn")}</label>
@@ -432,6 +447,7 @@ function DraftLease(props: {
                   value={row.periodFrom}
                   onChange={(e) => update(row.key, { periodFrom: e.target.value })}
                 />
+                <span className="hint">{t("realestate.lease.periodFromHint")}</span>
               </div>
               <div className="field">
                 <label htmlFor={"re-inst-to-" + row.key}>{t("realestate.lease.periodTo")}</label>
@@ -444,6 +460,7 @@ function DraftLease(props: {
                   value={row.periodTo}
                   onChange={(e) => update(row.key, { periodTo: e.target.value })}
                 />
+                <span className="hint">{t("realestate.lease.periodToHint")}</span>
               </div>
               <div className="field">
                 <label htmlFor={"re-inst-due-" + row.key}>{t("realestate.lease.dueOn")}</label>
@@ -476,6 +493,11 @@ function DraftLease(props: {
                   onChange={(e) => update(row.key, { amount: e.target.value })}
                   placeholder="0.0000"
                 />
+                <span className="hint">
+                  {row.amount !== "" && !isMoneyText(row.amount)
+                    ? t("realestate.common.moneyBad")
+                    : t("realestate.common.moneyHint")}
+                </span>
               </div>
             </div>
             <div className="inline-group">
@@ -534,7 +556,7 @@ function DraftLease(props: {
           className="btn btn-primary"
           data-testid="re-lease-save"
           disabled={
-            contractNo === "" ||
+            ejarContractNumber === "" ||
             unitId === "" ||
             lesseeId === "" ||
             !termKnown ||
@@ -572,7 +594,7 @@ function BandKey(): ReactNode {
 
 /* ═══════════════════════════════════════════════════ رأس العقد ══════ */
 
-function LeaseHeader(props: { lease: Lease }): ReactNode {
+function LeaseHeader(props: { lease: LeaseRegistration }): ReactNode {
   const { t } = useT();
   const { lease } = props;
   return (
@@ -580,7 +602,7 @@ function LeaseHeader(props: { lease: Lease }): ReactNode {
       title={t("realestate.lease.summary")}
       aside={
         <StatusBadge
-          state={lease.state === ACTIVE ? "posted" : "draft"}
+          state={lease.state === BILLABLE ? "posted" : "draft"}
           label={t("realestate.docState." + lease.state)}
         />
       }
@@ -591,9 +613,9 @@ function LeaseHeader(props: { lease: Lease }): ReactNode {
       </div>
       <div className="kv">
         <div>
-          <div className="k">{t("realestate.lease.contractNo")}</div>
+          <div className="k">{t("realestate.lease.ejarContractNumber")}</div>
           <div className="v code" data-testid="re-lease-contract-no">
-            {lease.contractNo}
+            {lease.ejarContractNumber}
           </div>
         </div>
         <div>
@@ -624,44 +646,44 @@ function LeaseHeader(props: { lease: Lease }): ReactNode {
   );
 }
 
-/* ══════════════════════════════════════════════════ التفعيل ═════════ */
+/* ═══════════════════════════════════════ الاعتماد للفوترة ═══════════ */
 
-function Activation(props: {
+function BillingApproval(props: {
   companyId: string;
   transport: Transport;
-  lease: Lease;
-  onActivated: (lease: Lease) => void;
+  lease: LeaseRegistration;
+  onApproved: (lease: LeaseRegistration) => void;
 }): ReactNode {
   const { t } = useT();
-  const write = useWrite<Lease>("post");
-  const active = props.lease.state === ACTIVE;
+  const write = useWrite<LeaseRegistration>("post");
+  const approved = props.lease.state === BILLABLE;
   const overlapped = refusalCode(write.error) === OVERLAP_CODE;
 
   const submit = useCallback(() => {
     void write.run(async () => {
-      const next = await activateLeaseContract(props.transport, {
+      const next = await approveLeaseRegistrationForBilling(props.transport, {
         companyId: props.companyId,
         leaseId: props.lease.id,
       });
-      props.onActivated(next);
+      props.onApproved(next);
       return next;
     });
   }, [props, write]);
 
   return (
     <Panel
-      title={t("realestate.lease.activation")}
-      note={t("realestate.lease.activationNote")}
-      testId="re-lease-activation"
+      title={t("realestate.lease.approval")}
+      note={t("realestate.lease.approvalNote")}
+      testId="re-lease-approval"
     >
-      <div className={"re-steps " + (active ? write.moment : "")}>
-        <span className="re-step" data-state={active ? "done" : "active"}>
+      <div className={"re-steps " + (approved ? write.moment : "")}>
+        <span className="re-step" data-state={approved ? "done" : "active"}>
           <span className="re-step__dot" aria-hidden="true" />
           {t("realestate.docState.DRAFT")}
         </span>
-        <span className="re-step" data-state={active ? "done" : undefined}>
+        <span className="re-step" data-state={approved ? "done" : undefined}>
           <span className="re-step__dot" aria-hidden="true" />
-          {t("realestate.docState.ACTIVE")}
+          {t("realestate.docState.BILLABLE")}
         </span>
       </div>
 
@@ -669,23 +691,23 @@ function Activation(props: {
         <button
           type="button"
           className="btn btn-primary"
-          data-testid="re-lease-activate"
-          disabled={active || write.busy}
+          data-testid="re-lease-approve"
+          disabled={approved || write.busy}
           onClick={submit}
         >
-          {write.busy ? t("common.state.loading") : t("realestate.lease.activate")}
+          {write.busy ? t("common.state.loading") : t("realestate.lease.approve")}
         </button>
       </div>
 
-      {active ? (
-        <p className="alert alert--success" role="status" data-testid="re-lease-active">
-          {t("realestate.lease.activated")}
+      {approved ? (
+        <p className="alert alert--success" role="status" data-testid="re-lease-approved">
+          {t("realestate.lease.approved")}
         </p>
       ) : null}
 
       {write.error ? (
         <>
-          <Refusal error={write.error} testId="re-lease-activation-refusal" />
+          <Refusal error={write.error} testId="re-lease-approval-refusal" />
           {overlapped ? (
             <div className="problem" role="alert" data-testid="re-lease-overlap">
               <h2>{t("realestate.lease.overlapTitle")}</h2>
@@ -704,7 +726,7 @@ function Activation(props: {
 function Schedule(props: {
   companyId: string;
   transport: Transport;
-  lease: Lease;
+  lease: LeaseRegistration;
   schedule: LeaseSchedule | null;
   onLoaded: (schedule: LeaseSchedule) => void;
 }): ReactNode {
@@ -972,7 +994,7 @@ function Readings(props: {
 function Invoicing(props: {
   companyId: string;
   transport: Transport;
-  lease: Lease;
+  lease: LeaseRegistration;
   picked: readonly string[];
   onInvoiced: () => void;
 }): ReactNode {

@@ -170,11 +170,11 @@ describe("الرفض حالةٌ أولى مقيمة", () => {
     const transport = fakeTransport(
       [
         {
-          match: /\/lease-contracts\/[^/]+$/,
+          match: /\/lease-registrations\/[^/]+$/,
           method: "GET",
           json: {
             id: "L1",
-            contractNo: "LSE-1",
+            ejarContractNumber: "EJR-2026-000001",
             propertyId: "P1",
             unitId: "U1",
             lesseeId: "T1",
@@ -185,14 +185,14 @@ describe("الرفض حالةٌ أولى مقيمة", () => {
           },
         },
         {
-          match: /\/activation$/,
+          match: /\/billing-approval$/,
           method: "POST",
           status: 409,
           json: problem(
             409,
             "realestate.lease_term_overlaps",
-            "مدّة العقد «LSE-1» تتداخل مع مدّة عقدٍ سارٍ آخر على الوحدة نفسها.",
-            "The term of lease 'LSE-1' overlaps a live lease on the same unit."
+            "مدّة عقد إيجار «EJR-2026-000001» تتداخل مع مدّة قيدٍ آخر معتمَدٍ للفوترة على الوحدة نفسها.",
+            "The term of Ejar contract 'EJR-2026-000001' overlaps another registration approved for billing on the same unit."
           ),
         },
       ],
@@ -206,15 +206,15 @@ describe("الرفض حالةٌ أولى مقيمة", () => {
     fireEvent.change(input, { target: { value: "L1" } });
     fireEvent.click(screen.getByTestId("re-lease-open-go"));
 
-    await screen.findByTestId("re-lease-activation");
-    fireEvent.click(screen.getByTestId("re-lease-activate"));
+    await screen.findByTestId("re-lease-approval");
+    fireEvent.click(screen.getByTestId("re-lease-approve"));
 
-    const panel = await screen.findByTestId("re-lease-activation-refusal");
+    const panel = await screen.findByTestId("re-lease-approval-refusal");
     expect(within(panel).getByTestId("problem-code").textContent).toBe(
       "realestate.lease_term_overlaps"
     );
-    expect(panel.textContent).toContain("تتداخل مع مدّة عقدٍ سارٍ");
-    expect(panel.textContent).toContain("overlaps a live lease on the same unit");
+    expect(panel.textContent).toContain("تتداخل مع مدّة قيدٍ آخر معتمَدٍ للفوترة");
+    expect(panel.textContent).toContain("overlaps another registration approved for billing");
 
     /* والخطوة التالية تُقال — فاللوحة لا تكون شكوى. */
     expect(screen.getByTestId("realestate-next-step").textContent).toContain("الخطوة التالية");
@@ -225,7 +225,7 @@ describe("الرفض حالةٌ أولى مقيمة", () => {
 
     /* تبقى: لا مؤقّت يرفعها، ولا إعادة رسمٍ تُسقطها. */
     await new Promise((resolve) => setTimeout(resolve, 1400));
-    expect(screen.getByTestId("re-lease-activation-refusal")).toBeTruthy();
+    expect(screen.getByTestId("re-lease-approval-refusal")).toBeTruthy();
     expect(screen.getByTestId("re-lease-overlap")).toBeTruthy();
     view.unmount();
   });
@@ -351,8 +351,8 @@ describe("المال نصّ في الاتجاهين", () => {
 
   it("المبلغ يصعد إلى السلك نصّاً بايتاً ببايت، ولا يقبل المُرمِّز رقماً", () => {
     const exact = "1000000000000.4013";
-    const encoded = encodeSchema(SCHEMAS, "LeaseRequest", {
-      contractNo: "LSE-1",
+    const encoded = encodeSchema(SCHEMAS, "LeaseRegistrationRequest", {
+      ejarContractNumber: "EJR-2026-000001",
       unitId: "U1",
       lesseeId: "T1",
       startsOn: "2026-01-01",
@@ -374,7 +374,7 @@ describe("المال نصّ في الاتجاهين", () => {
        الخانة قبل أن يبدأ الاختبار، وهو العطل نفسه الذي يقيسه. */
     const asNumber = JSON.parse(exact) as unknown;
     expect(typeof asNumber).toBe("number");
-    expect(() => encodeSchema(SCHEMAS, "LeaseRequest", { totalRent: asNumber })).toThrow(TypeError);
+    expect(() => encodeSchema(SCHEMAS, "LeaseRegistrationRequest", { totalRent: asNumber })).toThrow(TypeError);
     expect(() => Money.wire(asNumber as string)).toThrow(TypeError);
   });
 

@@ -64,7 +64,7 @@ export const OWNERSHIP_MODELS = closedSet("PropertyRequest", "ownershipModel");
 export const UNIT_USAGES = closedSet("UnitRequest", "usage");
 export const VAT_TREATMENTS = closedSet("UnitRequest", "vatTreatment");
 export const TAX_RESIDENCIES = closedSet("RealEstatePartyRequest", "taxResidency");
-export const LEASE_STATES = closedSet("Lease", "state");
+export const LEASE_STATES = closedSet("LeaseRegistration", "state");
 export const INVOICE_STATES = closedSet("RentInvoice", "state");
 
 /**
@@ -104,7 +104,7 @@ requireLabels(OWNERSHIP_MODELS, "ownershipModel", Object.keys(OWNERSHIP_LABEL));
 requireLabels(TAX_RESIDENCIES, "taxResidency", Object.keys(RESIDENCY_LABEL));
 requireLabels(UNIT_USAGES, "usage", ["residential", "commercial"]);
 requireLabels(VAT_TREATMENTS, "vatTreatment", ["standard", "exempt"]);
-requireLabels(LEASE_STATES, "leaseState", ["DRAFT", "ACTIVE"]);
+requireLabels(LEASE_STATES, "leaseState", ["DRAFT", "BILLABLE"]);
 requireLabels(INVOICE_STATES, "invoiceState", ["DRAFT", "POSTED"]);
 
 /**

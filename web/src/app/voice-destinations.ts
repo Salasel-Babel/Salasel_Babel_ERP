@@ -90,7 +90,7 @@ export const VOICE_DESTINATIONS: Readonly<Record<string, string>> = {
   "inventory.valuation.query": "/inventory/valuation",
 
   /* العقارات */
-  "realestate.lease_contract.draft": "/realestate/lease",
+  "realestate.lease_registration.draft": "/realestate/lease",
   "realestate.tenant_arrears.query": "/realestate/arrears",
   "realestate.tenant_receipt.record": "/realestate",
   "realestate.rent_invoice.draft": "/realestate",

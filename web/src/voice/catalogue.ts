@@ -2370,22 +2370,22 @@ export const VOICE_INTENTS: readonly VoiceIntent[] = [
       ]
     },
     {
-      "id": "realestate.lease_contract.draft",
+      "id": "realestate.lease_registration.draft",
       "section": "RealEstate",
       "module": "RealEstate",
       "kind": "StateChange",
       "status": "Published",
       "ledgerEffect": "None",
       "eventCode": null,
-      "operationId": "draftLeaseContract",
+      "operationId": "draftLeaseRegistration",
       "requiresConfirmation": true,
       "readsPersonalData": false,
-      "nameAr": "مسودة عقد إيجار",
+      "nameAr": "مسودة قيد تسجيل عقد إيجار",
       "phrases": [
         "سجل عقد ايجار",
-        "عقد ايجار جديد",
-        "افتح عقد ايجار",
-        "مسودة عقد ايجار"
+        "قيد عقد ايجار",
+        "ارشف عقد ايجار",
+        "مسودة تسجيل عقد ايجار"
       ],
       "slots": [
         {

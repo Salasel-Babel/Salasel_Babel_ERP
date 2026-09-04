@@ -3,7 +3,7 @@
   "info": {
     "title": "سلاسل بابل — سطح دفتر الأستاذ / Salasel Babel — Ledger API",
     "summary": "العقد المنشور بين الواجهات والخلفية. لا يقرأ فريق الواجهة شيفرة خلفية ليبني عليه.",
-    "description": "العزل التام بين الواجهات والخلفية: هذه الوثيقة هي كل ما يحتاجه فريق الواجهة، ولا يقرأ شيفرة خلفية.\n\nسياسة الإصدار — ما يبقى في v1 وما يفرض v2:\n• يبقى في v1: إضافة نقطة نهاية · إضافة حقل اختياري في استجابة · إضافة حقل اختياري في طلب له افتراض معلن · إضافة عضو إلى تعداد يُقرأ من الخادم إلى العميل · إضافة رمز خطأ جديد · توسيع مدى مسموح · تحسين نصّ وصف أو رسالة.\n• يفرض v2: حذف حقل أو نقطة نهاية · إعادة تسمية أي منهما · تضييق نوع أو مدى أو نمط · جعل حقل اختياري إلزامياً · تغيير معنى رمز خطأ قائم أو رمز الحالة الذي يصحبه · إزالة عضو من تعداد يُرسله العميل · تغيير الافتراض المعلن لحقل.\n• والقاعدة الحاكمة: تغييرٌ يجعل عميلاً مطابقاً للعقد القديم يعمل خطأً — لا يفشل، بل يعمل خطأً — هو v2 دائماً.\n• ونطاق هذه السياسة: **تلزم من أول نشر للعقد فصاعداً**. غرضها حماية عميل مطابق قائم، فحيث لا عميل لا شيء تحميه — ويبقى تعديل v1 في مكانه جائزاً ما دامت الوثيقة لم تُنشر لأي مستهلك، بشرط أن يُسجَّل التعديل بتاريخه وسببه في سجل القرارات لا أن يمرّ صامتاً.\n• تعديل مُسجَّل — 2026-08-24: صار الحقل event إلزامياً في PostJournalEntryRequest. وهو تضييق يفرض v2 بنصّ السياسة، ونُفِّذ في v1 في مكانه لأن العقد لم يُنشر بعد لأي مستهلك ولا يوجد عميل مطابق واحد. السبب: رمز الحدث جزء من هوية الترحيل، وغيابه يبتلع حدثاً محاسبياً بصمت (ADR-0016 · ADR-0018).\n• تعديل مُسجَّل — 2026-08-26: حُذف الحقل nameEn من TrialBalanceRow. وهو حذف حقل يفرض v2 بنصّ السياسة، ونُفِّذ في v1 في مكانه للسبب نفسه: لا مستهلك ولا عميل مطابق. السبب: تعدّد اللغات قابلية الترجمة إلى أيّ عدد من اللغات، والإنجليزية واحدة من N لا نصف الاثنين — وحقلٌ ثابت لها على السلك يمنحها امتيازاً بنيوياً ينفيه القرار، ويجعل المحاسب الأردي أو الهندي يقرأ إنجليزيةً بدل لغته. وnameTranslations يحمل كل لغة بما فيها الإنجليزية (ADR-0021 بند 2 · ADR-0018).\n• تعديل مُسجَّل — 2026-08-26: ضاق نوع Scope.costCenterId من [string, null] إلى string. وهو تضييق نوع يفرض v2 بنصّ السياسة، ونُفِّذ في v1 في مكانه للسبب نفسه: لا مستهلك ولا عميل مطابق. الحقل يبقى **اختيارياً** — حذفه يعني المركز الافتراضي للمنشأة — لكن القيمة null لا معنى لها: لكل منشأة مركز تكلفة واحد على الأقل ولا سطر بلا مركز، فـnull كان يقول «بلا مركز» وهي حالة لا وجود لها. والقيد ck_journal_line_cost_center_present يفرض ذلك في قاعدة البيانات نفسها (ADR-0026 · ADR-0018).\n\nTotal isolation between front end and back end: this document is everything a front-end team needs; it reads no back-end code.\n\nVersioning policy — what stays in v1 and what forces v2:\n• Stays in v1: adding an endpoint; adding an optional response field; adding an optional request field with a published default; adding a member to a server-to-client enum; adding a new error code; widening an allowed range; improving a description or message.\n• Forces v2: removing a field or endpoint; renaming either; narrowing a type, range, or pattern; making an optional field required; changing the meaning of an existing error code or the status that accompanies it; removing a member from a client-to-server enum; changing a field's published default.\n• The governing rule: a change that makes a client conforming to the old contract behave wrongly — not fail, but behave wrongly — is always v2.\n• Scope of this policy: **it binds from the contract's first publication onward**. Its purpose is to protect an existing conforming client, so where there is no client there is nothing to protect — and amending v1 in place remains legitimate while the document has not been published to any consumer, provided the amendment is recorded with its date and reason in the decision record rather than passing silently.\n• Recorded amendment — 2026-08-24: the event field became required on PostJournalEntryRequest. That is a narrowing which the policy text forces to v2, and it was made in v1 in place because the contract has not yet been published to any consumer and no conforming client exists. Reason: the event code is part of the posting identity, and its absence swallows an accounting event silently (ADR-0016, ADR-0018).\n• Recorded amendment — 2026-08-26: the nameEn field was removed from TrialBalanceRow. Removing a field is a change the policy text forces to v2, and it was made in v1 in place for the same reason: no consumer and no conforming client. Reason: multilingualism means translatability into any number of languages, and English is one of N rather than half of two — a fixed field for it on the wire grants it a structural privilege the decision denies, and leaves an Urdu or Hindi accountant reading English instead of their own language. nameTranslations carries every language, English included (ADR-0021 clause 2, ADR-0018).\n• Recorded amendment — 2026-08-26: the type of Scope.costCenterId narrowed from [string, null] to string. Narrowing a type is a change the policy text forces to v2, and it was made in v1 in place for the same reason: no consumer and no conforming client. The field stays **optional** — omitting it means the company's default centre — but the value null has no meaning: every company has at least one cost centre and no line is without one, so null said 'no centre', a state that does not exist. The constraint ck_journal_line_cost_center_present enforces this in the database itself (ADR-0026, ADR-0018).",
+    "description": "العزل التام بين الواجهات والخلفية: هذه الوثيقة هي كل ما يحتاجه فريق الواجهة، ولا يقرأ شيفرة خلفية.\n\nسياسة الإصدار — ما يبقى في v1 وما يفرض v2:\n• يبقى في v1: إضافة نقطة نهاية · إضافة حقل اختياري في استجابة · إضافة حقل اختياري في طلب له افتراض معلن · إضافة عضو إلى تعداد يُقرأ من الخادم إلى العميل · إضافة رمز خطأ جديد · توسيع مدى مسموح · تحسين نصّ وصف أو رسالة.\n• يفرض v2: حذف حقل أو نقطة نهاية · إعادة تسمية أي منهما · تضييق نوع أو مدى أو نمط · جعل حقل اختياري إلزامياً · تغيير معنى رمز خطأ قائم أو رمز الحالة الذي يصحبه · إزالة عضو من تعداد يُرسله العميل · تغيير الافتراض المعلن لحقل.\n• والقاعدة الحاكمة: تغييرٌ يجعل عميلاً مطابقاً للعقد القديم يعمل خطأً — لا يفشل، بل يعمل خطأً — هو v2 دائماً.\n• ونطاق هذه السياسة: **تلزم من أول نشر للعقد فصاعداً**. غرضها حماية عميل مطابق قائم، فحيث لا عميل لا شيء تحميه — ويبقى تعديل v1 في مكانه جائزاً ما دامت الوثيقة لم تُنشر لأي مستهلك، بشرط أن يُسجَّل التعديل بتاريخه وسببه في سجل القرارات لا أن يمرّ صامتاً.\n• تعديل مُسجَّل — 2026-08-24: صار الحقل event إلزامياً في PostJournalEntryRequest. وهو تضييق يفرض v2 بنصّ السياسة، ونُفِّذ في v1 في مكانه لأن العقد لم يُنشر بعد لأي مستهلك ولا يوجد عميل مطابق واحد. السبب: رمز الحدث جزء من هوية الترحيل، وغيابه يبتلع حدثاً محاسبياً بصمت (ADR-0016 · ADR-0018).\n• تعديل مُسجَّل — 2026-08-26: حُذف الحقل nameEn من TrialBalanceRow. وهو حذف حقل يفرض v2 بنصّ السياسة، ونُفِّذ في v1 في مكانه للسبب نفسه: لا مستهلك ولا عميل مطابق. السبب: تعدّد اللغات قابلية الترجمة إلى أيّ عدد من اللغات، والإنجليزية واحدة من N لا نصف الاثنين — وحقلٌ ثابت لها على السلك يمنحها امتيازاً بنيوياً ينفيه القرار، ويجعل المحاسب الأردي أو الهندي يقرأ إنجليزيةً بدل لغته. وnameTranslations يحمل كل لغة بما فيها الإنجليزية (ADR-0021 بند 2 · ADR-0018).\n• تعديل مُسجَّل — 2026-08-26: ضاق نوع Scope.costCenterId من [string, null] إلى string. وهو تضييق نوع يفرض v2 بنصّ السياسة، ونُفِّذ في v1 في مكانه للسبب نفسه: لا مستهلك ولا عميل مطابق. الحقل يبقى **اختيارياً** — حذفه يعني المركز الافتراضي للمنشأة — لكن القيمة null لا معنى لها: لكل منشأة مركز تكلفة واحد على الأقل ولا سطر بلا مركز، فـnull كان يقول «بلا مركز» وهي حالة لا وجود لها. والقيد ck_journal_line_cost_center_present يفرض ذلك في قاعدة البيانات نفسها (ADR-0026 · ADR-0018).\n• تعديل مُسجَّل — 2026-09-04: سطح عقود الإيجار صار سطح **قيود تسجيل**. تغيّر المسار من /lease-contracts إلى /lease-registrations، والمورد الفرعي من /activation إلى /billing-approval، ومعرّفات العمليات الثلاثة (draftLeaseRegistration · readLeaseRegistration · approveLeaseRegistrationForBilling)، واسما المخطّطين (LeaseRegistrationRequest · LeaseRegistration)، والحقل contractNo صار ejarContractNumber، وعضو التعداد ACTIVE صار BILLABLE، ورمز نجاح الاعتماد صار 200 بدل 201 لأنه صار حصيناً ضد التكرار. وكلّها تفرض v2 بنصّ السياسة، ونُفِّذت في v1 في مكانها للسبب نفسه: لا مستهلك ولا عميل مطابق. السبب: **عقد الإيجار لا يُحرّره هذا النظام** — منصّة إيجار الحكومية هي الطرف المخوَّل بتحريره — وكان العقد المنشور يقول «إنشاء عقد إيجار» و«تفعيل عقد إيجار» ويسمّي رقم العقد «رقمنا الفريد داخل المنشأة»، فيصف النظام محرِّراً للعقد ومُنفِّذاً له وهو أرشيفٌ وفوترة. ولا تكامل مع منصّة إيجار في هذا الإصدار: لا عنوان ولا مفتاح ولا نداء (ADR-the-lease-is-registered-not-issued · ADR-0018).\n\nTotal isolation between front end and back end: this document is everything a front-end team needs; it reads no back-end code.\n\nVersioning policy — what stays in v1 and what forces v2:\n• Stays in v1: adding an endpoint; adding an optional response field; adding an optional request field with a published default; adding a member to a server-to-client enum; adding a new error code; widening an allowed range; improving a description or message.\n• Forces v2: removing a field or endpoint; renaming either; narrowing a type, range, or pattern; making an optional field required; changing the meaning of an existing error code or the status that accompanies it; removing a member from a client-to-server enum; changing a field's published default.\n• The governing rule: a change that makes a client conforming to the old contract behave wrongly — not fail, but behave wrongly — is always v2.\n• Scope of this policy: **it binds from the contract's first publication onward**. Its purpose is to protect an existing conforming client, so where there is no client there is nothing to protect — and amending v1 in place remains legitimate while the document has not been published to any consumer, provided the amendment is recorded with its date and reason in the decision record rather than passing silently.\n• Recorded amendment — 2026-08-24: the event field became required on PostJournalEntryRequest. That is a narrowing which the policy text forces to v2, and it was made in v1 in place because the contract has not yet been published to any consumer and no conforming client exists. Reason: the event code is part of the posting identity, and its absence swallows an accounting event silently (ADR-0016, ADR-0018).\n• Recorded amendment — 2026-08-26: the nameEn field was removed from TrialBalanceRow. Removing a field is a change the policy text forces to v2, and it was made in v1 in place for the same reason: no consumer and no conforming client. Reason: multilingualism means translatability into any number of languages, and English is one of N rather than half of two — a fixed field for it on the wire grants it a structural privilege the decision denies, and leaves an Urdu or Hindi accountant reading English instead of their own language. nameTranslations carries every language, English included (ADR-0021 clause 2, ADR-0018).\n• Recorded amendment — 2026-08-26: the type of Scope.costCenterId narrowed from [string, null] to string. Narrowing a type is a change the policy text forces to v2, and it was made in v1 in place for the same reason: no consumer and no conforming client. The field stays **optional** — omitting it means the company's default centre — but the value null has no meaning: every company has at least one cost centre and no line is without one, so null said 'no centre', a state that does not exist. The constraint ck_journal_line_cost_center_present enforces this in the database itself (ADR-0026, ADR-0018).\n• Recorded amendment — 2026-09-04: the lease-contract surface became a **lease-registration** surface. The path moved from /lease-contracts to /lease-registrations, the sub-resource from /activation to /billing-approval, three operation ids changed (draftLeaseRegistration, readLeaseRegistration, approveLeaseRegistrationForBilling), two schema names changed (LeaseRegistrationRequest, LeaseRegistration), the field contractNo became ejarContractNumber, the enum member ACTIVE became BILLABLE, and the approval's success status became 200 instead of 201 now that it is idempotent. Each of these is a change the policy text forces to v2, and each was made in v1 in place for the same reason: no consumer and no conforming client. Reason: **this system does not issue lease contracts** — the government Ejar platform is the party authorised to issue them — yet the published contract said 'draft a lease contract' and 'activate a lease contract' and called the contract number our own number unique within the company, presenting the system as the issuer and enforcer of a contract when it is an archive and a biller. There is no integration with the Ejar platform in this release: no address, no key, no call (ADR-the-lease-is-registered-not-issued, ADR-0018).",
     "version": "v1"
   },
   "servers": [
@@ -6611,7 +6611,7 @@
         }
       }
     },
-    "/api/v1/companies/{companyId}/lease-contracts": {
+    "/api/v1/companies/{companyId}/lease-registrations": {
       "parameters": [
         {
           "name": "companyId",
@@ -6625,15 +6625,15 @@
         }
       ],
       "post": {
-        "operationId": "draftLeaseContract",
-        "summary": "إنشاء عقد إيجار مسوّدة / Draft a lease contract",
-        "description": "يُنشئ عقد إيجار في حالة **DRAFT**.\n\n**ولاحظ ما ليس على هذا المورد ولا يجوز أن يوجد: لا مورد posting.** حدث توقيع العقد مُعلَنٌ في مصفوفة الترحيل بأنه **لا يُنشئ قيداً**: العقد التزام متبادل مستقبلي لم ينفّذه أي طرف بعد. وغيابُ الباب هو ما يجعل «العقد لا يُرحّل» مقروءاً من شكل السطح لا من تعليق.\n\n**والأقساط تصل مصرَّحاً بها ولا تُوزَّع من قيمة العقد**: التوزيع يستلزم سياسة تقريب — أين يقع فائض الهللات — وهي **قرار مالك مفتوح** لا يُحسم في شيفرة. والنظام يفحص عند التفعيل أن مجموع الأقساط يساوي قيمة العقد بالضبط، ويرفض بخلاف ذلك برمزٍ يسمّي البند المعلَّق.\n\nCreates a lease contract in state **DRAFT**.\n\n**Note what this resource does not carry and must never carry: no posting sub-resource.** The lease-signature event is declared in the posting matrix as posting **no entry**: the contract is a future mutual obligation neither party has yet performed. The absence of the door is what makes 'a lease posts nothing' readable from the shape of the surface rather than from a comment.\n\n**Instalments arrive declared and are never spread from a contract value**: spreading requires a rounding policy — where the halala surplus lands — which is an **open owner decision**, not something settled in code. On activation the system checks that the instalments sum exactly to the contract value and refuses otherwise under a code that names the pending item.",
+        "operationId": "draftLeaseRegistration",
+        "summary": "تسجيل عقد إيجار مُحرَّر في منصّة إيجار — مسوّدة قيد / Register a lease contract issued on the Ejar platform — as a draft record",
+        "description": "يُنشئ **قيد تسجيل** لعقد إيجار في حالة **DRAFT**.\n\n**والعقد لا يُحرَّر هنا.** منصّة إيجار الحكومية هي الطرف المخوَّل بتحرير عقود الإيجار، وما يُنشئه هذا الباب **قيدٌ أرشيفي** لعقدٍ حُرِّر هناك — مرجعُه الموثوق **رقم عقد إيجار**. ولا يُنشئ هذا النظام رقم عقد ولا يُعدّل عقداً ولا يُنهيه ولا يُجدّده: **أرشفةٌ وفوترة**.\n\n**ولا تكامل مع منصّة إيجار في هذا السطح**: لا عنوان ولا مفتاح ولا نداء. الرقم يُقيَّد كما يُدخله المُسجِّل ولا يُتحقَّق منه لدى المنصّة، وتفرّده مفروضٌ داخل المنشأة وحدها.\n\n**ولاحظ ما ليس على هذا المورد ولا يجوز أن يوجد: لا مورد posting.** حدث توقيع العقد مُعلَنٌ في مصفوفة الترحيل بأنه **لا يُنشئ قيداً**: العقد التزام متبادل مستقبلي لم ينفّذه أي طرف بعد. وغيابُ الباب هو ما يجعل «القيد لا يُرحّل» مقروءاً من شكل السطح لا من تعليق.\n\n**والأقساط تصل مصرَّحاً بها ولا تُوزَّع من قيمة العقد**: التوزيع يستلزم سياسة تقريب — أين يقع فائض الهللات — وهي **قرار مالك مفتوح** لا يُحسم في شيفرة. والنظام يفحص عند الاعتماد للفوترة أن مجموع الأقساط يساوي قيمة العقد بالضبط، ويرفض بخلاف ذلك برمزٍ يسمّي البند المعلَّق.\n\nCreates a **registration record** for a lease contract, in state **DRAFT**.\n\n**The contract is not issued here.** The government Ejar platform is the party authorised to issue lease contracts; what this door creates is an **archival record** of a contract issued there, whose authoritative reference is the **Ejar contract number**. This system does not mint a contract number, and it does not amend, terminate, or renew a contract: **archiving and billing**.\n\n**There is no integration with the Ejar platform on this surface**: no address, no key, no call. The number is recorded exactly as the registrar enters it and is never verified against the platform; its uniqueness is enforced within the company alone.\n\n**Note what this resource does not carry and must never carry: no posting sub-resource.** The lease-signature event is declared in the posting matrix as posting **no entry**: the contract is a future mutual obligation neither party has yet performed. The absence of the door is what makes 'this record posts nothing' readable from the shape of the surface rather than from a comment.\n\n**Instalments arrive declared and are never spread from a contract value**: spreading requires a rounding policy — where the halala surplus lands — which is an **open owner decision**, not something settled in code. At billing approval the system checks that the instalments sum exactly to the contract value and refuses otherwise under a code that names the pending item.",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/LeaseRequest"
+                "$ref": "#/components/schemas/LeaseRegistrationRequest"
               }
             }
           }
@@ -6644,7 +6644,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Lease"
+                  "$ref": "#/components/schemas/LeaseRegistration"
                 }
               }
             }
@@ -6722,7 +6722,7 @@
         }
       }
     },
-    "/api/v1/companies/{companyId}/lease-contracts/{leaseId}": {
+    "/api/v1/companies/{companyId}/lease-registrations/{leaseId}": {
       "parameters": [
         {
           "name": "companyId",
@@ -6738,7 +6738,7 @@
           "name": "leaseId",
           "in": "path",
           "required": true,
-          "description": "معرّف عقد الإيجار. / The lease contract identifier.",
+          "description": "معرّف قيد تسجيل عقد الإيجار. / The lease registration identifier.",
           "schema": {
             "type": "string",
             "format": "uuid"
@@ -6746,16 +6746,16 @@
         }
       ],
       "get": {
-        "operationId": "readLeaseContract",
-        "summary": "قراءة عقد إيجار / Read one lease contract",
-        "description": "يقرأ العقد بحالته ومدّته وقيمته.\n\nReads the contract with its state, its term, and its value.",
+        "operationId": "readLeaseRegistration",
+        "summary": "قراءة قيد تسجيل عقد إيجار / Read one lease registration",
+        "description": "يقرأ القيد بحالته ومدّته وقيمته ورقم عقد إيجار الذي يشير إليه. **والحالة حالةُ القيد لا حالةُ العقد**: نفاذ العقد يُقرَّر في منصّة إيجار لا هنا.\n\nReads the registration with its state, its term, its value, and the Ejar contract number it references. **The state is the record's state, not the contract's**: whether the contract is in force is settled on the Ejar platform, not here.",
         "responses": {
           "200": {
             "description": "استجابة ناجحة. / Successful response.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Lease"
+                  "$ref": "#/components/schemas/LeaseRegistration"
                 }
               }
             }
@@ -6803,7 +6803,7 @@
         }
       }
     },
-    "/api/v1/companies/{companyId}/lease-contracts/{leaseId}/activation": {
+    "/api/v1/companies/{companyId}/lease-registrations/{leaseId}/billing-approval": {
       "parameters": [
         {
           "name": "companyId",
@@ -6819,7 +6819,7 @@
           "name": "leaseId",
           "in": "path",
           "required": true,
-          "description": "معرّف عقد الإيجار. / The lease contract identifier.",
+          "description": "معرّف قيد تسجيل عقد الإيجار. / The lease registration identifier.",
           "schema": {
             "type": "string",
             "format": "uuid"
@@ -6827,16 +6827,16 @@
         }
       ],
       "post": {
-        "operationId": "activateLeaseContract",
-        "summary": "تفعيل عقد إيجار / Activate a lease contract",
-        "description": "يُفعّل العقد: يفحص أن مجموع الأقساط يساوي قيمة العقد بالضبط، ثم يجعل جدول الدفعات قابلاً للفوترة، ويُدخل المدّة **قيد الاستبعاد الزمني** في قاعدة البيانات.\n\n**والقيد في القاعدة لا في الواجهة**: «مدّة سارية واحدة لكل وحدة» شرط **تقاطع مدى** لا شرط تساوٍ، فلا يعبّر عنه فهرس فريد مهما اتّسع؛ وفحصٌ في الخدمة يقرأ ثم يكتب، وبين القراءة والكتابة يمرّ نداءٌ آخر فتُؤجَّر الوحدة مرّتين.\n\n**ولا يُرحّل قيداً**، ومخطّط جوابه بلا معرّف قيد.\n\nActivates the contract: it checks that the instalments sum exactly to the contract value, makes the payment schedule billable, and enters the term into a **temporal exclusion constraint** in the database.\n\n**The constraint is in the database, not the interface**: 'one live term per unit' is a **range-overlap** condition, not an equality condition, so no unique index however wide can express it; and a check in the service reads then writes, and between the read and the write another call slips through and the unit is let twice.\n\n**It posts no entry**, and its response schema carries no entry identifier.",
+        "operationId": "approveLeaseRegistrationForBilling",
+        "summary": "اعتماد قيد التسجيل للفوترة / Approve a lease registration for billing",
+        "description": "يعتمد القيد **للفوترة**: يفحص أن مجموع الأقساط يساوي قيمة العقد بالضبط، ثم يجعل جدول الدفعات قابلاً للفوترة، ويُدخل المدّة **قيد الاستبعاد الزمني** في قاعدة البيانات.\n\n**وهذا ليس تفعيلاً ولا نفاذاً نظامياً.** نفاذ عقد الإيجار يُقرَّر في منصّة إيجار الحكومية، ولا يملك هذا الباب أن يجعل عقداً سارياً ولا أن يوقفه. وما يقع هنا **إذنٌ داخلي**: من هذه اللحظة تُبنى فواتير الإيجار على هذا القيد المؤرشف.\n\n**والقيد في القاعدة لا في الواجهة**: «مدّة معتمَدة واحدة لكل وحدة» شرط **تقاطع مدى** لا شرط تساوٍ، فلا يعبّر عنه فهرس فريد مهما اتّسع؛ وفحصٌ في الخدمة يقرأ ثم يكتب، وبين القراءة والكتابة يمرّ نداءٌ آخر فتُفوتَر الوحدة مرّتين.\n\n**وإعادةُ النداء آمنة وتُعيد الجواب نفسه**: القيد المعتمَد سلفاً يُقرأ ويُعاد بالرمز 200 نفسه، ولا شيء يُكتب ثانيةً — جدول الدفعات مكتوبٌ عند التسجيل لا هنا.\n\n**ولا يُرحّل قيداً محاسبياً**، ومخطّط جوابه بلا معرّف قيد.\n\nApproves the registration **for billing**: it checks that the instalments sum exactly to the contract value, makes the payment schedule billable, and enters the term into a **temporal exclusion constraint** in the database.\n\n**This is not an activation and confers no legal effect.** Whether a lease is in force is settled on the government Ejar platform; this door can neither put a contract in force nor suspend it. What happens here is an **internal permission**: from this moment rent invoices are built on this archived record.\n\n**The constraint is in the database, not the interface**: 'one approved term per unit' is a **range-overlap** condition, not an equality condition, so no unique index however wide can express it; and a check in the service reads then writes, and between the read and the write another call slips through and the unit is billed twice.\n\n**Repeating the call is safe and returns the same answer**: an already-approved registration is read back and returned under the same status 200, and nothing is written a second time — the payment schedule is written at registration, not here.\n\n**It posts no accounting entry**, and its response schema carries no entry identifier.",
         "responses": {
-          "201": {
+          "200": {
             "description": "استجابة ناجحة. / Successful response.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Lease"
+                  "$ref": "#/components/schemas/LeaseRegistration"
                 }
               }
             }
@@ -6904,7 +6904,7 @@
         }
       }
     },
-    "/api/v1/companies/{companyId}/lease-contracts/{leaseId}/schedule": {
+    "/api/v1/companies/{companyId}/lease-registrations/{leaseId}/schedule": {
       "parameters": [
         {
           "name": "companyId",
@@ -6920,7 +6920,7 @@
           "name": "leaseId",
           "in": "path",
           "required": true,
-          "description": "معرّف عقد الإيجار. / The lease contract identifier.",
+          "description": "معرّف قيد تسجيل عقد الإيجار. / The lease registration identifier.",
           "schema": {
             "type": "string",
             "format": "uuid"
@@ -6929,7 +6929,7 @@
       ],
       "get": {
         "operationId": "readLeaseSchedule",
-        "summary": "قراءة جدول دفعات العقد بمعرّفات سطوره / Read the lease payment schedule with its line identifiers",
+        "summary": "قراءة جدول دفعات القيد بمعرّفات سطوره / Read the registration payment schedule with its line identifiers",
         "description": "يُرجع جدول الدفعات **بمعرّفات سطوره** — وهي مدخل الفوترة: طلب الفاتورة يحمل معرّفات الأقساط المفوترة ولا يحمل مبالغ.\n\n**وبلا نشر هذه المعرّفات يصير باب الفوترة باباً لا يوصل إليه بابٌ آخر على هذا السطح** — وهو الاعتراض المكتوب حرفياً في قرار نشر المستندات النقدية.\n\nReturns the payment schedule **with its line identifiers** — the entry point to invoicing: the invoice request carries the identifiers of the instalments being billed and carries no amounts.\n\n**Without publishing these identifiers the invoicing door becomes a door no other door on this surface can reach** — the objection written literally in the cash-documents publication decision.",
         "responses": {
           "200": {
@@ -10622,7 +10622,7 @@
       "post": {
         "operationId": "draftRentInvoice",
         "summary": "إنشاء فاتورة إيجار مسوّدة / Draft a rent invoice",
-        "description": "يُنشئ فاتورة إيجار في حالة **DRAFT** على أقساط مُسمّاة من جدول دفعات عقدٍ سارٍ.\n\n**ولا رمز حدث في الحمولة ولا نموذج ملكية**: الوحدة تقرأ نموذج ملكية العقار **المُسجَّل في الدفتر** وتختار الحدث منه — فلا يستطيع عميل HTTP أن يطلب «فاتورة ملكية ذاتية» على عقارٍ مُدار. والفرق يظهر في **دائن الفاتورة**: إيرادُ إيجار مؤجَّل للشركة في الملكية الذاتية، وأماناتُ مالكٍ في الإدارة.\n\n**وtaxRate تصل مع الطلب ولا تُكتب في شيفرة** (لا نسبة نظامية في هذا المنتج)، ولا تُطبَّق إلا على وحدةٍ معاملتها standard. وعلى الوحدة المعفاة يبقى exemptionReasonCode **فارغاً بعلامة ظاهرة** حتى يُعرف الرمز من القائمة الرسمية السارية — وحقلٌ إلزامي بقيمة مُختلَقة أسوأ من حقلٍ فارغ.\n\n**والقسط لا يُفوتَر مرّتين**: فهرس فريد على (المستأجر، القسط) لا فحصٌ في الخدمة.\n\nCreates a rent invoice in state **DRAFT** over named instalments from an active lease's payment schedule.\n\n**No event code and no ownership model appear in the payload**: the module reads the property's ownership model **as registered in the ledger** and selects the event from it — so an HTTP client cannot request an 'own-property invoice' against a managed property. The difference shows in the **credit of the invoice**: deferred rental income of the company under own property, and owner trust under management.\n\n**taxRate arrives with the request and is never written in code** (no regulatory rate lives in this product), and it applies only to a unit whose treatment is standard. On an exempt unit exemptionReasonCode stays **empty with a visible flag** until the code is known from the official list in force — a mandatory field holding an invented value is worse than an empty one.\n\n**An instalment is never invoiced twice**: a unique index on (tenant, instalment), not a check in the service.",
+        "description": "يُنشئ فاتورة إيجار في حالة **DRAFT** على أقساط مُسمّاة من جدول دفعات **قيدٍ معتمَدٍ للفوترة**.\n\n**ولا رمز حدث في الحمولة ولا نموذج ملكية**: الوحدة تقرأ نموذج ملكية العقار **المُسجَّل في الدفتر** وتختار الحدث منه — فلا يستطيع عميل HTTP أن يطلب «فاتورة ملكية ذاتية» على عقارٍ مُدار. والفرق يظهر في **دائن الفاتورة**: إيرادُ إيجار مؤجَّل للشركة في الملكية الذاتية، وأماناتُ مالكٍ في الإدارة.\n\n**وtaxRate تصل مع الطلب ولا تُكتب في شيفرة** (لا نسبة نظامية في هذا المنتج)، ولا تُطبَّق إلا على وحدةٍ معاملتها standard. وعلى الوحدة المعفاة يبقى exemptionReasonCode **فارغاً بعلامة ظاهرة** حتى يُعرف الرمز من القائمة الرسمية السارية — وحقلٌ إلزامي بقيمة مُختلَقة أسوأ من حقلٍ فارغ.\n\n**والقسط لا يُفوتَر مرّتين**: فهرس فريد على (المستأجر، القسط) لا فحصٌ في الخدمة.\n\nCreates a rent invoice in state **DRAFT** over named instalments from the payment schedule of a registration **approved for billing**.\n\n**No event code and no ownership model appear in the payload**: the module reads the property's ownership model **as registered in the ledger** and selects the event from it — so an HTTP client cannot request an 'own-property invoice' against a managed property. The difference shows in the **credit of the invoice**: deferred rental income of the company under own property, and owner trust under management.\n\n**taxRate arrives with the request and is never written in code** (no regulatory rate lives in this product), and it applies only to a unit whose treatment is standard. On an exempt unit exemptionReasonCode stays **empty with a visible flag** until the code is known from the official list in force — a mandatory field holding an invented value is worse than an empty one.\n\n**An instalment is never invoiced twice**: a unique index on (tenant, instalment), not a check in the service.",
         "requestBody": {
           "required": true,
           "content": {
@@ -23319,14 +23319,14 @@
         ],
         "additionalProperties": false
       },
-      "Lease": {
+      "LeaseRegistration": {
         "type": "object",
-        "description": "عقد إيجار بحالته. **ولا معرّف قيد فيه**: توقيع العقد لا يُنشئ قيداً، ولا مورد ترحيل عليه. / A lease contract with its state. **It carries no entry identifier**: signing a lease creates no entry, and the resource has no posting sub-resource.",
+        "description": "**قيدُ تسجيلِ** عقد إيجار مُحرَّر في منصّة إيجار، بحالة القيد. **والحالة حالةُ القيد لا حالةُ العقد**: نفاذ العقد يُقرَّر في المنصّة لا هنا. **ولا معرّف قيد محاسبي فيه**: توقيع العقد لا يُنشئ قيداً، ولا مورد ترحيل على هذا المستند. / The **registration record** of a lease contract issued on the Ejar platform, with the record's state. **The state is the record's, not the contract's**: whether the contract is in force is settled on the platform, not here. **It carries no accounting entry identifier**: signing a lease creates no entry, and the resource has no posting sub-resource.",
         "properties": {
-          "contractNo": {
+          "ejarContractNumber": {
             "type": "string",
             "maxLength": 64,
-            "description": "رقم العقد. / The contract number."
+            "description": "رقم عقد إيجار — مرجع العقد المُحرَّر في المنصّة. / The Ejar contract number — the reference to the contract issued on the platform."
           },
           "endsOn": {
             "type": "string",
@@ -23356,10 +23356,10 @@
           "state": {
             "type": "string",
             "enum": [
-              "ACTIVE",
+              "BILLABLE",
               "DRAFT"
             ],
-            "description": "حالة العقد. وACTIVE وحدها تدخل قيد الاستبعاد الزمني وتُتيح الفوترة. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The lease state. Only ACTIVE enters the temporal exclusion constraint and permits invoicing. Matched literally and case-sensitively; a number is never accepted in place of a name."
+            "description": "حالة **القيد** لا حالة العقد. وBILLABLE وحدها تدخل قيد الاستبعاد الزمني وتُتيح الفوترة، ومعناها «معتمَدٌ للفوترة» لا «سارٍ»: النفاذ من المنصّة. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The state of the **record**, not of the contract. Only BILLABLE enters the temporal exclusion constraint and permits invoicing; it means 'approved for billing', never 'in force' — force comes from the platform. Matched literally and case-sensitively; a number is never accepted in place of a name."
           },
           "totalRent": {
             "$ref": "#/components/schemas/Money"
@@ -23371,7 +23371,7 @@
           }
         },
         "required": [
-          "contractNo",
+          "ejarContractNumber",
           "endsOn",
           "id",
           "lesseeId",
@@ -23383,14 +23383,14 @@
         ],
         "additionalProperties": false
       },
-      "LeaseRequest": {
+      "LeaseRegistrationRequest": {
         "type": "object",
-        "description": "طلب إنشاء عقد إيجار مسوّدة. **وقيمة العقد والأقساط تُصرَّحان معاً**: النظام لا يوزّع القيمة على الأقساط — التوزيع يستلزم سياسة تقريب هي قرار مالك مفتوح — بل **يفحص** أن مجموع الأقساط يساوي قيمة العقد بالضبط ويرفض بخلافه. ولو اشتُقّت القيمة من الأقساط لصارت الثابتة صحيحةً بحكم البناء ولم تمسك توزيعاً خاطئاً. / A request to draft a lease contract. **The contract value and the instalments are both declared**: the system does not spread the value across the instalments — spreading requires a rounding policy that is an open owner decision — it **checks** that the instalments sum exactly to the contract value and refuses otherwise. Had the value been derived from the instalments the invariant would hold by construction and would catch no wrong split.",
+        "description": "طلب **تسجيل** عقد إيجار مُحرَّر في منصّة إيجار — مسوّدة قيد أرشيفي لا عقد. **والنظام لا يُحرّر عقداً ولا يُعدّله ولا يُنهيه**: منصّة إيجار الحكومية هي الطرف المخوَّل بذلك، وما يُنشَأ هنا قيدٌ مرجعُه رقم عقد إيجار. **ولا تكامل مع المنصّة**: الرقم يُقيَّد كما يصل ولا يُتحقَّق منه.\n\n**وقيمة العقد والأقساط تُصرَّحان معاً**: النظام لا يوزّع القيمة على الأقساط — التوزيع يستلزم سياسة تقريب هي قرار مالك مفتوح — بل **يفحص** أن مجموع الأقساط يساوي قيمة العقد بالضبط ويرفض بخلافه. ولو اشتُقّت القيمة من الأقساط لصارت الثابتة صحيحةً بحكم البناء ولم تمسك توزيعاً خاطئاً. / A request to **register** a lease contract issued on the Ejar platform — a draft archival record, not a contract. **The system issues no contract, amends none, and terminates none**: the government Ejar platform is the party authorised to do that, and what is created here is a record whose reference is the Ejar contract number. **There is no integration with the platform**: the number is recorded as received and never verified.\n\n**The contract value and the instalments are both declared**: the system does not spread the value across the instalments — spreading requires a rounding policy that is an open owner decision — it **checks** that the instalments sum exactly to the contract value and refuses otherwise. Had the value been derived from the instalments the invariant would hold by construction and would catch no wrong split.",
         "properties": {
-          "contractNo": {
+          "ejarContractNumber": {
             "type": "string",
             "maxLength": 64,
-            "description": "رقم العقد — فريد داخل المنشأة. / The contract number — unique within the company."
+            "description": "رقم عقد إيجار — مرجع العقد المُحرَّر في المنصّة، ولا يولّده هذا النظام. وتفرّده مفروضٌ داخل المنشأة وحدها. / The Ejar contract number — the reference to the contract issued on the platform; this system does not mint it. Its uniqueness is enforced within the company alone."
           },
           "endsOn": {
             "type": "string",
@@ -23402,7 +23402,7 @@
             "items": {
               "$ref": "#/components/schemas/Instalment"
             },
-            "description": "الأقساط بفتراتها ومبالغها. ومجموعها يُفحص عند التفعيل ولا يُصلَح. / The instalments with their periods and amounts. Their sum is checked on activation and never corrected."
+            "description": "الأقساط بفتراتها ومبالغها. ومجموعها يُفحص عند الاعتماد للفوترة ولا يُصلَح. / The instalments with their periods and amounts. Their sum is checked at billing approval and never corrected."
           },
           "lesseeId": {
             "type": "string",
@@ -23424,7 +23424,7 @@
           }
         },
         "required": [
-          "contractNo",
+          "ejarContractNumber",
           "endsOn",
           "instalments",
           "lesseeId",
@@ -23436,12 +23436,12 @@
       },
       "LeaseSchedule": {
         "type": "object",
-        "description": "جدول دفعات عقد بمعرّفات سطوره. / A lease payment schedule with its line identifiers.",
+        "description": "جدول دفعات قيدٍ بمعرّفات سطوره. / A lease registration's payment schedule with its line identifiers.",
         "properties": {
           "leaseId": {
             "type": "string",
             "maxLength": 36,
-            "description": "العقد. / The lease."
+            "description": "قيد التسجيل. / The lease registration."
           },
           "lines": {
             "type": "array",
@@ -23492,7 +23492,7 @@
             "type": "integer",
             "minimum": 1,
             "maximum": 100000,
-            "description": "تسلسل القسط في العقد. / The instalment's sequence within the lease."
+            "description": "تسلسل القسط في القيد. / The instalment's sequence within the registration."
           }
         },
         "required": [

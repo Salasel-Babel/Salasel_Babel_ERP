@@ -458,6 +458,8 @@ export const messages: MessageTree = {
       admitButtonHint: "A verdict, not a write: no effect lands in the ledger or in any record.",
       verdictTitle: "The document was admitted",
       verdictBody: "The profile accepts these names, and these are the admitted ones ordered as the server returns them.",
+      verdictOffContract: "A verdict that departs from the contract",
+      verdictOffContractBody: "The admitted field arrived false, and the contract states that a refusal leaves as a 422 problem rather than as a verdict in this field. This is a server departure, said rather than read as an admission.",
       gapDefaultsTitle: "No editor for the defaults on this screen",
       gapDefaultsBody: "Defaults are part of the write body and the replacement is total — so they are sent back here exactly as they arrived so they are not wiped. There is no form to edit them on this screen: today they are read and never written from the interface.",
       gapDefaultsOwed: "An owner decision: are defaults edited from this screen, or do they stay provisioning data deposited by another route?",

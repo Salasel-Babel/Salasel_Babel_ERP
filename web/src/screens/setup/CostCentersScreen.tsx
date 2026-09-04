@@ -109,7 +109,10 @@ export function CostCentersScreen(): ReactNode {
   const notFound =
     setup.isError && setup.error instanceof ProblemError && setup.error.code === NOT_FOUND_CODE;
   const current: CompanySetup | null = setup.data ?? null;
-  const centres: readonly CostCenter[] = current?.costCenters ?? [];
+  const centres: readonly CostCenter[] = useMemo(
+    () => current?.costCenters ?? [],
+    [current]
+  );
 
   /* ــ المِصفاة على النصّ وحده، **ولا مرشّح حالةٍ افتراضي**: الموقوف يبقى
        ظاهراً بحالته، وما يختفي يُظنّ محذوفاً (القاعدة ٣ أعلاه). ــــــــــ */

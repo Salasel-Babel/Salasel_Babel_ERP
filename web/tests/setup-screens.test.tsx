@@ -777,7 +777,7 @@ describe("حرّاسٌ على شيفرة القسم", () => {
        الحساب نصٌّ **كلُّه أرقامٌ وفواصل** وفيه ثلاثة أرقام فأكثر — ورمزُ
        حارسٍ مثل `guard.GR-COA-002` ليس منه لأنه يحمل حروفاً. */
     const looksLikeAccountCode = (literal: string): boolean =>
-      /^[0-9.\-]+$/.test(literal) && (literal.match(/[0-9]/g) ?? []).length >= 3;
+      /^[0-9.-]+$/.test(literal) && (literal.match(/[0-9]/g) ?? []).length >= 3;
     const problems: string[] = [];
     for (const file of SCREEN_FILES) {
       const text = stripComments(sourceOf(file));

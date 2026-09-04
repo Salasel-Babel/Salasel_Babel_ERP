@@ -87,7 +87,7 @@ export function ChartOfAccountsScreen(): ReactNode {
   });
 
   const data = chart.data ?? null;
-  const accounts: readonly PostingChartEntry[] = data?.accounts ?? [];
+  const accounts: readonly PostingChartEntry[] = useMemo(() => data?.accounts ?? [], [data]);
 
   /* ــ النقص يُرى لأن العدّاد وصل محسوباً ــــــــــــــــــــــــــــــــ */
   const short = data !== null && data.accountCount !== data.accounts.length;

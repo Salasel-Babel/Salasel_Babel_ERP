@@ -128,6 +128,9 @@ export function CompanySetupScreen(): ReactNode {
         },
       });
       setFounded(done);
+      /* والذاكرة الوسيطة تُحدَّث كذلك: شاشةُ المراكز تقرأ **المفتاح نفسه**،
+         وتركُ رفضِ «لم تُؤسَّس» فيها يجعلها تُظهر حالةً بائتة بعد التأسيس. */
+      await setup.refetch();
       fireArrive();
     } catch (refused) {
       setFailure(refused);
@@ -145,6 +148,7 @@ export function CompanySetupScreen(): ReactNode {
     fireArrive,
     fireRefuse,
     places,
+    setup,
     transport,
   ]);
 

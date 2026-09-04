@@ -28,7 +28,7 @@
        المختار يأتي من بابه بعد كلّ كتابة — فما يُعرَض هو ما يشتقّه الخادم
        الآن، لا نسخةٌ في الذاكرة قد تكون سبقت آخر استبدال.
    ═══════════════════════════════════════════════════════════════════════════ */
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   admitDocument,
@@ -76,9 +76,11 @@ export function DocumentShapesScreen(): ReactNode {
   const [, fireRefuse] = useMoment("refuse");
 
   const [chosen, setChosen] = useState<DocumentType | "">("");
-  /* مفاتيح القدرات كما هي في النموذج: نوعُ المستند ← القدرة ← مُشغَّلة؟ */
-  const [switches, setSwitches] = useState<Readonly<Record<string, boolean>>>({});
-  const [touched, setTouched] = useState(false);
+  /* **مفاتيح القدرات تُشتقّ من الملفّ المقروء ولا تُبذَر بأثرٍ جانبي.**
+     `null` تعني «لم تلمسها يدٌ بعد»، فتُقرأ من الملفّ في زمن الرسم؛ وأوّلُ
+     نقرةٍ تُثبّتها. وبذرُها داخل `useEffect` كان يستدعي `setState` في جسم
+     الأثر — رسمٌ متتالٍ يرفضه حارس القواعد، **والحالة المشتقّة لا تحتاجه**. */
+  const [switches, setSwitches] = useState<Readonly<Record<string, boolean>> | null>(null);
   const [withdrawalReason, setWithdrawalReason] = useState("");
   const [writeBusy, setWriteBusy] = useState(false);
   const [writeFailure, setWriteFailure] = useState<unknown>(null);
@@ -119,20 +121,20 @@ export function DocumentShapesScreen(): ReactNode {
 
   const read: CapabilityProfile | null = profile.data ?? null;
 
-  /* ــ المفاتيح تُبذَر من الملفّ المقروء مرّةً، ثم تملكها اليد ــــــــــــ */
-  useEffect(() => {
-    if (!read || touched) return;
-    const seeded: Record<string, boolean> = {};
-    for (const document of read.documents) {
+  /* ــ المفاتيح كما يقولها الملفّ المقروء، قبل أن تلمسها يد ــــــــــــــ */
+  const seeded = useMemo(() => {
+    const out: Record<string, boolean> = {};
+    for (const document of read?.documents ?? []) {
       for (const capability of document.availableCapabilities) {
-        seeded[document.documentType + "/" + capability] =
+        out[document.documentType + "/" + capability] =
           document.enabledCapabilities.includes(capability);
       }
     }
-    setSwitches(seeded);
-    const first = read.documents[0];
-    if (chosen === "" && first) setChosen(first.documentType);
-  }, [chosen, read, touched]);
+    return out;
+  }, [read]);
+
+  /** المفاتيح المعروضة: ما لمسته اليد، وإلّا فما قاله الملفّ. */
+  const state: Readonly<Record<string, boolean>> = switches ?? seeded;
 
   /* ــ **المسحوبات بالفرق لا بالظنّ**: مُشغَّلةٌ في المقروء ومُطفأةٌ في
        المُرسَل. وهي وحدها ما يوجب سبباً مكتوباً. ــــــــــــــــــــــــ */
@@ -142,11 +144,11 @@ export function DocumentShapesScreen(): ReactNode {
     for (const document of read.documents) {
       for (const capability of document.enabledCapabilities) {
         const key = document.documentType + "/" + capability;
-        if (switches[key] === false) out.push(key);
+        if (state[key] === false) out.push(key);
       }
     }
     return out;
-  }, [read, switches]);
+  }, [read, state]);
 
   const reasonNeeded = withdrawn.length > 0;
   /* **النقص والقِصَر ليسا شيئاً واحداً.** حقلٌ لم يُكتب بعدُ ليس «أقصر من
@@ -186,7 +188,7 @@ export function DocumentShapesScreen(): ReactNode {
             documentType: document.documentType,
             capabilities: document.availableCapabilities.map((capability) => ({
               capability,
-              enabled: switches[document.documentType + "/" + capability] ?? false,
+              enabled: state[document.documentType + "/" + capability] ?? false,
             })),
             /* **القيم الافتراضية تُعاد كما وصلت**: الاستبدال كلّي، وإسقاطُها
                هنا يمسحها بلا أن يطلب أحدٌ ذلك. */
@@ -198,7 +200,8 @@ export function DocumentShapesScreen(): ReactNode {
       await profile.refetch();
       if (chosen !== "") await shape.refetch();
       setWithdrawalReason("");
-      setTouched(false);
+      /* والمفاتيح تعود مشتقّةً من الملفّ الذي رُدّ للتوّ، لا من نسخةٍ في اليد. */
+      setSwitches(null);
       fireArrive();
     } catch (refused) {
       setWriteFailure(refused);
@@ -215,7 +218,7 @@ export function DocumentShapesScreen(): ReactNode {
     read,
     reasonNeeded,
     shape,
-    switches,
+    state,
     transport,
     withdrawalReason,
   ]);
@@ -282,7 +285,7 @@ export function DocumentShapesScreen(): ReactNode {
                 <div className="stp-caps">
                   {document.availableCapabilities.map((capability) => {
                     const key = document.documentType + "/" + capability;
-                    const on = switches[key] ?? false;
+                    const on = state[key] ?? false;
                     const wasOn = document.enabledCapabilities.includes(capability);
                     return (
                       <label key={key} className="check" htmlFor={"stp-cap-" + key}>
@@ -291,10 +294,9 @@ export function DocumentShapesScreen(): ReactNode {
                           type="checkbox"
                           checked={on}
                           data-testid={"setup-shape-switch-" + key}
-                          onChange={(e) => {
-                            setTouched(true);
-                            setSwitches((prior) => ({ ...prior, [key]: e.target.checked }));
-                          }}
+                          onChange={(e) =>
+                            setSwitches({ ...state, [key]: e.target.checked })
+                          }
                         />
                         <span className="mono" dir="ltr">{capability}</span>
                         {wasOn && !on ? (
@@ -648,8 +650,19 @@ export function DocumentShapesScreen(): ReactNode {
               data-admitted={verdict.admitted ? "true" : "false"}
             >
               <div className="body">
-                <span className="title">{t("screen.docShape.verdictTitle")}</span>
-                <p>{t("screen.docShape.verdictBody")}</p>
+                {/* **والعقد يقول إن الرفض يخرج 422 لا حكماً في هذا الحقل.**
+                    فحكمٌ يصل `admitted = false` مخالفةٌ للعقد لا رفضاً عادياً —
+                    ويُقال كذلك بدل أن يُقرأ «قُبل» أو أن يُبتلع. */}
+                <span className="title">
+                  {verdict.admitted
+                    ? t("screen.docShape.verdictTitle")
+                    : t("screen.docShape.verdictOffContract")}
+                </span>
+                <p>
+                  {verdict.admitted
+                    ? t("screen.docShape.verdictBody")
+                    : t("screen.docShape.verdictOffContractBody")}
+                </p>
                 <ul className="stp-tags">
                   {verdict.fields.map((name) => (
                     <li key={name}>

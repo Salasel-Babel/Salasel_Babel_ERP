@@ -1,3 +1,5 @@
+using Babel.SharedKernel;
+
 namespace Babel.Core;
 
 /// <summary>
@@ -30,17 +32,72 @@ public sealed class CoreOptions
     /// <summary>اسم دور التطبيق الافتراضي.</summary>
     public const string DefaultAppRole = "babel_core_app";
 
-    /// <summary>اتصال دور التطبيق — الأقل امتيازاً، وهو وحده ما يستعمله الخادم.</summary>
-    public string AppConnectionString { get; set; } =
-        Environment.GetEnvironmentVariable("BABEL_CORE_APP_DB")
-        ?? $"Host=127.0.0.1;Port=5432;Database={DefaultDatabase};Username={DefaultAppRole};Include Error Detail=true";
+    /// <summary>اسم متغيّر اتصال دور التطبيق.</summary>
+    public const string AppConnectionVariable = "BABEL_CORE_APP_DB";
 
-    /// <summary>اتصال المالك — الهجرات والصلاحيات وحدها.</summary>
+    /// <summary>اسم متغيّر اتصال المالك.</summary>
+    public const string OwnerConnectionVariable = "BABEL_CORE_OWNER_DB";
+
+    /// <summary>مفتاح إعداد اتصال دور التطبيق.</summary>
+    public const string AppConfigurationKey = "Babel:Core:AppConnectionString";
+
+    /// <summary>مفتاح إعداد اتصال المالك — <b>لا يقرؤه الخادم ولا يجوز أن يقرأه</b>.</summary>
+    public const string OwnerConfigurationKey = "Babel:Core:OwnerConnectionString";
+
+    /// <summary>
+    /// اتصال دور التطبيق — الأقل امتيازاً، وهو وحده ما يستعمله الخادم.
+    /// <b>فارغٌ يعني «لم يُضبط»</b>، و<see cref="EnsureAppConfigured"/> يرفضه بالاسم.
+    /// </summary>
+    public string AppConnectionString { get; set; } =
+        DeploymentSetting.Connection(AppConnectionVariable, DefaultDatabase, DefaultAppRole);
+
+    /// <summary>
+    /// اتصال المالك — الهجرات والصلاحيات وحدها.
+    /// <para>
+    /// <b>وكان له ارتدادٌ صامت إلى المستخدم الفائق</b>: حاويةُ ترحيلٍ ينقصها المتغيّر
+    /// كانت تعمل بامتيازٍ كامل على العنقود بلا سطرٍ يقول ذلك. فصار الغياب فراغاً،
+    /// و<see cref="EnsureOwnerConfigured"/> يرفضه بالاسم.
+    /// </para>
+    /// </summary>
     public string OwnerConnectionString { get; set; } =
-        Environment.GetEnvironmentVariable("BABEL_CORE_OWNER_DB")
-        ?? $"Host=127.0.0.1;Port=5432;Database={DefaultDatabase};Username=postgres;Include Error Detail=true";
+        DeploymentSetting.Connection(OwnerConnectionVariable, DefaultDatabase);
 
     /// <summary>اسم دور التطبيق في PostgreSQL.</summary>
     public string AppRole { get; set; } =
         Environment.GetEnvironmentVariable("BABEL_CORE_APP_ROLE") ?? DefaultAppRole;
+
+    /// <summary>
+    /// يرفض غياب اتصال دور التطبيق برسالةٍ تسمّي المتغيّر — <b>عند التركيب</b>.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">إن كان الاتصال غائباً أو فارغاً.</exception>
+    public void EnsureAppConfigured()
+    {
+        if (string.IsNullOrWhiteSpace(AppConnectionString))
+        {
+            throw DeploymentSetting.Missing(
+                "core.app_connection_not_configured",
+                AppConnectionVariable,
+                AppConfigurationKey,
+                "اتصال دور التطبيق على قاعدة النواة",
+                "the Core application-role database connection");
+        }
+    }
+
+    /// <summary>
+    /// يرفض غياب اتصال المالك برسالةٍ تسمّي المتغيّر. <b>يناديه مسار النشر وحده</b> —
+    /// والخادم لا يحمل هذا الاتصال أصلاً (ADR-0003).
+    /// </summary>
+    /// <exception cref="InvalidOperationException">إن كان الاتصال غائباً أو فارغاً.</exception>
+    public void EnsureOwnerConfigured()
+    {
+        if (string.IsNullOrWhiteSpace(OwnerConnectionString))
+        {
+            throw DeploymentSetting.Missing(
+                "core.owner_connection_not_configured",
+                OwnerConnectionVariable,
+                OwnerConfigurationKey,
+                "اتصال مالك قاعدة النواة",
+                "the Core owner database connection");
+        }
+    }
 }

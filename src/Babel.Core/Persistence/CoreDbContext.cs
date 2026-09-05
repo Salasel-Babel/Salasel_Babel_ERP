@@ -47,6 +47,24 @@ internal sealed class CoreDbContext(DbContextOptions<CoreDbContext> options) : D
     /// <summary>الاعتمادات المُصدَرة داخل العائلات، مبصومةً لا مكتوبة.</summary>
     public DbSet<AccessCredentialRow> Credentials => Set<AccessCredentialRow>();
 
+    /// <summary>قيود التدقيق — تُلحَق ولا تُعدَّل ولا تُحذف.</summary>
+    public DbSet<AuditEntryRow> AuditEntries => Set<AuditEntryRow>();
+
+    /// <summary>أحداث الاستخدام على محور الوحدة — سجلٌّ مُلحَق لا عدّاد.</summary>
+    public DbSet<ModuleUsageRow> ModuleUsage => Set<ModuleUsageRow>();
+
+    /// <summary>أحداث النشاط على محور المستخدم.</summary>
+    public DbSet<UserActivityRow> UserActivity => Set<UserActivityRow>();
+
+    /// <summary>ترويسات إصدارات المعامِلات — تُضاف ولا تُعدَّل.</summary>
+    public DbSet<ParameterVersionRow> ParameterVersions => Set<ParameterVersionRow>();
+
+    /// <summary>قيم الإصدارات — وحدة الإصدار المجموعة لا القيمة المفردة.</summary>
+    public DbSet<ParameterValueRow> ParameterValues => Set<ParameterValueRow>();
+
+    /// <summary>سجلّ استعمال الإصدارات في المستندات المُرحَّلة.</summary>
+    public DbSet<ParameterUsageRow> ParameterUsage => Set<ParameterUsageRow>();
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -229,6 +247,212 @@ internal sealed class CoreDbContext(DbContextOptions<CoreDbContext> options) : D
             entity.Property(row => row.ConsumedAt).HasColumnName("consumed_at");
 
             entity.HasIndex(row => row.SessionId).HasDatabaseName("ix_access_credential_session");
+        });
+
+        // ── الأثر والقياس: ثلاثة سجلّات تُلحَق ولا تُمسّ ──────────────────────
+        // والحصانة **ليست** في هذا النموذج: هي في `CoreGrants.sql` (لا UPDATE ولا DELETE
+        // لدور التطبيق) وفي `CoreAppendOnlyTriggers.sql` (رفضٌ ولو كان الفاعل المالك).
+        // وما هنا وصفُ الأعمدة والفهارس وحدها (ADR-0003).
+
+        modelBuilder.Entity<AuditEntryRow>(entity =>
+        {
+            entity.ToTable("audit_entry", t =>
+                // الشكل مفروضٌ على **رمز الإجراء وحده**: قيمه ثوابتُ مصدرٍ مغلقة، فقيدٌ
+                // عليها يمسك خطأً برمجياً. ولا قيد على الموضوع ولا على التفصيل — انظر
+                // AuditEntryRow.Subject: رفضُ التقاطِ قيدٍ أسوأ من قبول نصٍّ فارغ.
+                t.HasCheckConstraint("ck_audit_entry_action_shape", "action ~ '^[a-z][a-z0-9_.]{0,63}$'"));
+
+            entity.HasKey(row => row.SequenceNo).HasName("pk_audit_entry");
+            entity.Property(row => row.SequenceNo).HasColumnName("sequence_no").ValueGeneratedOnAdd();
+            entity.Property(row => row.TenantId).HasColumnName("tenant_id");
+            entity.Property(row => row.ActorId).HasColumnName("actor_id");
+            entity.Property(row => row.OccurredAt).HasColumnName("occurred_at");
+            entity.Property(row => row.Action).HasColumnName("action").HasMaxLength(64).IsRequired();
+            entity.Property(row => row.Subject).HasColumnName("subject").IsRequired();
+            entity.Property(row => row.Details).HasColumnName("details");
+
+            // الفهرس على (المستأجر، اللحظة، التسلسل): هو **الاستعلام الوحيد** على هذا
+            // الجدول — «أثرُ هذا المستأجر بترتيب وقوعه» — والمستأجر أوّلَ العمدة لأن
+            // نطاقه شرطُ مساواةٍ يسبق مدى الزمن. وبلا فهرسٍ عليه يصير كلُّ عرضِ أثرٍ
+            // مسحاً كاملاً على جدولٍ لا يُحذف منه صفٌّ أبداً — أي ينمو ولا ينكمش.
+            entity.HasIndex(row => new { row.TenantId, row.OccurredAt, row.SequenceNo })
+                  .HasDatabaseName("ix_audit_entry_tenant_occurred");
+        });
+
+        modelBuilder.Entity<ModuleUsageRow>(entity =>
+        {
+            entity.ToTable("module_usage", t =>
+            {
+                // ‏`module >= 1` لا `between 1 and 13`: عضوٌ جديد في BabelModule يجعل
+                // الحدّ الأعلى المُثبَّت يرفض قياس وحدةٍ حقيقية — أي يُسقط بيانات فوترة
+                // بسبب هجرةٍ لم تُكتب. والتحقّق من كون القيمة معرَّفة يقع عند **القراءة**.
+                t.HasCheckConstraint("ck_module_usage_module", "module >= 1");
+                t.HasCheckConstraint("ck_module_usage_quantity", "quantity >= 0");
+                t.HasCheckConstraint("ck_module_usage_operation_not_blank", "length(btrim(operation)) > 0");
+            });
+
+            entity.HasKey(row => row.SequenceNo).HasName("pk_module_usage");
+            entity.Property(row => row.SequenceNo).HasColumnName("sequence_no").ValueGeneratedOnAdd();
+            entity.Property(row => row.TenantId).HasColumnName("tenant_id");
+            entity.Property(row => row.Module).HasColumnName("module");
+            entity.Property(row => row.Operation).HasColumnName("operation").HasMaxLength(200).IsRequired();
+            entity.Property(row => row.ActorId).HasColumnName("actor_id");
+            entity.Property(row => row.OccurredAt).HasColumnName("occurred_at");
+            entity.Property(row => row.Quantity).HasColumnName("quantity");
+
+            entity.HasIndex(row => new { row.TenantId, row.OccurredAt })
+                  .HasDatabaseName("ix_module_usage_tenant_occurred");
+        });
+
+        modelBuilder.Entity<UserActivityRow>(entity =>
+        {
+            entity.ToTable("user_activity", t =>
+            {
+                t.HasCheckConstraint("ck_user_activity_module", "module >= 1");
+                t.HasCheckConstraint("ck_user_activity_activity_not_blank", "length(btrim(activity)) > 0");
+                // شكلٌ لا مجموعة مغلقة: حالةٌ رابعة تُضاف يوماً كانت ستجعل الإدخال
+                // يرمي 23514 فيُسقط صفَّ قياسٍ لا يُستعاد. والمجموعة تُفحَص عند القراءة.
+                t.HasCheckConstraint(
+                    "ck_user_activity_entitlement_state_shape",
+                    "entitlement_state ~ '^[A-Za-z][A-Za-z0-9]{0,31}$'");
+            });
+
+            entity.HasKey(row => row.SequenceNo).HasName("pk_user_activity");
+            entity.Property(row => row.SequenceNo).HasColumnName("sequence_no").ValueGeneratedOnAdd();
+            entity.Property(row => row.TenantId).HasColumnName("tenant_id");
+            entity.Property(row => row.UserId).HasColumnName("user_id");
+            entity.Property(row => row.Module).HasColumnName("module");
+            entity.Property(row => row.Activity).HasColumnName("activity").HasMaxLength(200).IsRequired();
+            entity.Property(row => row.OccurredAt).HasColumnName("occurred_at");
+            entity.Property(row => row.EntitlementState)
+                  .HasColumnName("entitlement_state").HasMaxLength(32).IsRequired();
+
+            entity.HasIndex(row => new { row.TenantId, row.OccurredAt })
+                  .HasDatabaseName("ix_user_activity_tenant_occurred");
+        });
+
+        // ── المعامِلات: إصدارٌ مؤرَّخُ السريان، وقيمُه، ومن استعمله ─────────────
+        // ثلاثةُ جداولٍ في قاعدةٍ **واحدة**، فالمفتاح الأجنبي بينها ممكنٌ ومستعمَل.
+        // وما ليس ممكناً هو مفتاحٌ من مستندٍ في `babel_purchasing` إلى إصدارٍ هنا —
+        // ولذلك يحمل المستند **لقطته** لا مفتاحاً (ADR الجديد §3).
+
+        modelBuilder.Entity<ParameterVersionRow>(entity =>
+        {
+            entity.ToTable("parameter_version", t =>
+            {
+                t.HasCheckConstraint("ck_parameter_version_scope", "scope in ('platform','tenant')");
+                t.HasCheckConstraint(
+                    "ck_parameter_version_approval",
+                    "approval in ('platform_default','tenant_approved','auditor_signed')");
+                t.HasCheckConstraint("ck_parameter_version_set_shape", "set_code ~ '^[a-z][a-z0-9_.]{0,63}$'");
+                t.HasCheckConstraint("ck_parameter_version_source_not_blank", "length(btrim(source_ref)) > 0");
+
+                // ‏**افتراضُ المنصّة لا يكون معتمَداً، والمعتمَدُ لا يكون افتراضَ منصّة.**
+                // وهو القيد الذي يجعل «لا يُشحن شيءٌ بتوقيع محاسب» ثابتةً في المخطّط:
+                // الصفّ المشحون مستواه `platform`، وحالتُه لا تكون إلّا `platform_default`.
+                t.HasCheckConstraint(
+                    "ck_parameter_version_scope_matches_approval",
+                    "(scope = 'platform') = (approval = 'platform_default')");
+
+                // وصفّ المنصّة يحمل المعرّف الصفري، وصفّ المنشأة يحمل معرّفها.
+                t.HasCheckConstraint(
+                    "ck_parameter_version_tenant_matches_scope",
+                    "(scope = 'tenant') = (tenant_id <> '00000000-0000-0000-0000-000000000000')");
+
+                // ‏**«من اعتمد الصفّ — إنسان، لا نظام»** (‏HrRows.cs). فالاسم مكتوبٌ
+                // بالضبط حين يوجد اعتماد، وفارغٌ بالضبط حين لا يوجد — وهو شكل قيد
+                // `ck_cost_center_reason_matches_state` نفسه لا نمطٌ ثانٍ.
+                t.HasCheckConstraint(
+                    "ck_parameter_version_approver_matches_approval",
+                    "(approval <> 'platform_default') = (length(btrim(approved_by)) > 0)");
+                t.HasCheckConstraint(
+                    "ck_parameter_version_approved_on_matches_approval",
+                    "(approval <> 'platform_default') = (approved_on is not null)");
+            });
+
+            entity.HasKey(row => row.Id).HasName("pk_parameter_version");
+            entity.Property(row => row.Id).HasColumnName("version_id");
+            entity.Property(row => row.TenantId).HasColumnName("tenant_id");
+            entity.Property(row => row.SetCode).HasColumnName("set_code").HasMaxLength(64).IsRequired();
+            entity.Property(row => row.Scope).HasColumnName("scope").HasMaxLength(16).IsRequired();
+            entity.Property(row => row.EffectiveFrom).HasColumnName("effective_from");
+            entity.Property(row => row.Approval).HasColumnName("approval").HasMaxLength(32).IsRequired();
+            entity.Property(row => row.ApprovedBy)
+                  .HasColumnName("approved_by").HasMaxLength(200).IsRequired().HasDefaultValue(string.Empty);
+            entity.Property(row => row.ApprovedOn).HasColumnName("approved_on");
+            entity.Property(row => row.SourceRef).HasColumnName("source_ref").HasMaxLength(600).IsRequired();
+            entity.Property(row => row.DepositedAt).HasColumnName("deposited_at");
+
+            // ‏**الإيداع يرفض التكرار على (المستوى · المفتاح · تاريخ السريان).** والذرّية
+            // فهرسٌ فريد في PostgreSQL لا فحصٌ يسبق كتابةً — والفحص السابق سباقٌ لا حارس.
+            entity.HasIndex(row => new { row.Scope, row.TenantId, row.SetCode, row.EffectiveFrom })
+                  .IsUnique()
+                  .HasDatabaseName("ux_parameter_version_level_set_effective");
+
+            // واستعلامُ «ما السارِي لهذه المجموعة في هذا التاريخ؟» هو استعلامُ كل التقاط.
+            entity.HasIndex(row => new { row.TenantId, row.SetCode, row.EffectiveFrom })
+                  .HasDatabaseName("ix_parameter_version_tenant_set_effective");
+        });
+
+        modelBuilder.Entity<ParameterValueRow>(entity =>
+        {
+            entity.ToTable("parameter_value", t =>
+            {
+                t.HasCheckConstraint("ck_parameter_value_kind", "kind in ('rate','money','count')");
+                t.HasCheckConstraint("ck_parameter_value_key_shape", "key ~ '^[a-z][a-z0-9_]{0,63}$'");
+                t.HasCheckConstraint("ck_parameter_value_not_negative", "value >= 0");
+
+                // ‏**النسبة كسرٌ عشري لا مئوية** — والحارس في المخطّط لا في الخدمة وحدها.
+                // قيمةٌ تُكتب 15 بدل 0.15 تضاعف الوعاء خمس عشرة مرّة، ولا يمسكها توازنٌ
+                // ولا سلسلةُ إحكام: القيد الناتج متوازن تماماً.
+                t.HasCheckConstraint(
+                    "ck_parameter_value_rate_is_a_fraction",
+                    "kind <> 'rate' or value <= 1");
+            });
+
+            entity.HasKey(row => new { row.VersionId, row.Key }).HasName("pk_parameter_value");
+            entity.Property(row => row.VersionId).HasColumnName("version_id");
+            entity.Property(row => row.Key).HasColumnName("key").HasMaxLength(64).IsRequired();
+            entity.Property(row => row.Kind).HasColumnName("kind").HasMaxLength(16).IsRequired();
+            entity.Property(row => row.Value).HasColumnName("value").HasColumnType("numeric(28,10)");
+
+            entity.HasOne<ParameterVersionRow>()
+                  .WithMany()
+                  .HasForeignKey(row => row.VersionId)
+                  .HasConstraintName("fk_parameter_value_version")
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<ParameterUsageRow>(entity =>
+        {
+            entity.ToTable("parameter_usage", t =>
+            {
+                t.HasCheckConstraint("ck_parameter_usage_module", "module >= 1");
+                t.HasCheckConstraint(
+                    "ck_parameter_usage_document_type_shape",
+                    "document_type ~ '^[A-Z][A-Z0-9_]{0,31}$'");
+            });
+
+            entity.HasKey(row => row.SequenceNo).HasName("pk_parameter_usage");
+            entity.Property(row => row.SequenceNo).HasColumnName("sequence_no").ValueGeneratedOnAdd();
+            entity.Property(row => row.TenantId).HasColumnName("tenant_id");
+            entity.Property(row => row.VersionId).HasColumnName("version_id");
+            entity.Property(row => row.Module).HasColumnName("module");
+            entity.Property(row => row.DocumentType).HasColumnName("document_type").HasMaxLength(32).IsRequired();
+            entity.Property(row => row.DocumentId).HasColumnName("document_id");
+            entity.Property(row => row.PostedOn).HasColumnName("posted_on");
+            entity.Property(row => row.RecordedAt).HasColumnName("recorded_at");
+
+            // ‏**الترحيل آمنُ التكرار**: ترحيلٌ ثانٍ للمستند نفسه لا يكتب صفّاً ثانياً.
+            entity.HasIndex(row => new { row.TenantId, row.VersionId, row.Module, row.DocumentType, row.DocumentId })
+                  .IsUnique()
+                  .HasDatabaseName("ux_parameter_usage_document");
+
+            entity.HasOne<ParameterVersionRow>()
+                  .WithMany()
+                  .HasForeignKey(row => row.VersionId)
+                  .HasConstraintName("fk_parameter_usage_version")
+                  .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<CapabilityProfileDefaultRow>(entity =>

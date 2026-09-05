@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     2a0636027db4df0aab9564094aa09d3b85c383c420890403cbbde693383e5645
+     737b917c13090a000fc6b02c0fbe830a49b0e4dc254eb04a9d55ec4f64b1ba6d
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -19,36 +19,6 @@ import { SCHEMAS } from "./runtime-schema";
 import { decodeSchema, encodeSchema, type Transport, ProblemError } from "../transport";
 
 export type { Transport } from "../transport";
-
-export interface ActivateLeaseContractArgs {
-  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
-  companyId: string;
-  /** معرّف عقد الإيجار. / The lease contract identifier. */
-  leaseId: string;
-}
-
-/**
- * تفعيل عقد إيجار / Activate a lease contract
- * 
- * يُفعّل العقد: يفحص أن مجموع الأقساط يساوي قيمة العقد بالضبط، ثم يجعل جدول الدفعات قابلاً للفوترة، ويُدخل المدّة **قيد الاستبعاد الزمني** في قاعدة البيانات.
- * 
- * **والقيد في القاعدة لا في الواجهة**: «مدّة سارية واحدة لكل وحدة» شرط **تقاطع مدى** لا شرط تساوٍ، فلا يعبّر عنه فهرس فريد مهما اتّسع؛ وفحصٌ في الخدمة يقرأ ثم يكتب، وبين القراءة والكتابة يمرّ نداءٌ آخر فتُؤجَّر الوحدة مرّتين.
- * 
- * **ولا يُرحّل قيداً**، ومخطّط جوابه بلا معرّف قيد.
- * 
- * Activates the contract: it checks that the instalments sum exactly to the contract value, makes the payment schedule billable, and enters the term into a **temporal exclusion constraint** in the database.
- * 
- * **The constraint is in the database, not the interface**: 'one live term per unit' is a **range-overlap** condition, not an equality condition, so no unique index however wide can express it; and a check in the service reads then writes, and between the read and the write another call slips through and the unit is let twice.
- * 
- * **It posts no entry**, and its response schema carries no entry identifier.
- */
-export async function activateLeaseContract(transport: Transport, args: ActivateLeaseContractArgs, signal?: AbortSignal): Promise<T.Lease> {
-  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/lease-contracts/" + encodeURIComponent(args.leaseId) + "/activation";
-  const url = path;
-  const response = await transport({ method: "POST", url, signal });
-  if (!response.ok) throw ProblemError.from(response);
-  return decodeSchema(SCHEMAS, "Lease", response.json) as T.Lease;
-}
 
 export interface AddChangeOrderArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
@@ -656,6 +626,44 @@ export async function answerAgentQuestion(transport: Transport, args: AnswerAgen
   return decodeSchema(SCHEMAS, "AgentSession", response.json) as T.AgentSession;
 }
 
+export interface ApproveLeaseRegistrationForBillingArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** معرّف قيد تسجيل عقد الإيجار. / The lease registration identifier. */
+  leaseId: string;
+}
+
+/**
+ * اعتماد قيد التسجيل للفوترة / Approve a lease registration for billing
+ * 
+ * يعتمد القيد **للفوترة**: يفحص أن مجموع الأقساط يساوي قيمة العقد بالضبط، ثم يجعل جدول الدفعات قابلاً للفوترة، ويُدخل المدّة **قيد الاستبعاد الزمني** في قاعدة البيانات.
+ * 
+ * **وهذا ليس تفعيلاً ولا نفاذاً نظامياً.** نفاذ عقد الإيجار يُقرَّر في منصّة إيجار الحكومية، ولا يملك هذا الباب أن يجعل عقداً سارياً ولا أن يوقفه. وما يقع هنا **إذنٌ داخلي**: من هذه اللحظة تُبنى فواتير الإيجار على هذا القيد المؤرشف.
+ * 
+ * **والقيد في القاعدة لا في الواجهة**: «مدّة معتمَدة واحدة لكل وحدة» شرط **تقاطع مدى** لا شرط تساوٍ، فلا يعبّر عنه فهرس فريد مهما اتّسع؛ وفحصٌ في الخدمة يقرأ ثم يكتب، وبين القراءة والكتابة يمرّ نداءٌ آخر فتُفوتَر الوحدة مرّتين.
+ * 
+ * **وإعادةُ النداء آمنة وتُعيد الجواب نفسه**: القيد المعتمَد سلفاً يُقرأ ويُعاد بالرمز 200 نفسه، ولا شيء يُكتب ثانيةً — جدول الدفعات مكتوبٌ عند التسجيل لا هنا.
+ * 
+ * **ولا يُرحّل قيداً محاسبياً**، ومخطّط جوابه بلا معرّف قيد.
+ * 
+ * Approves the registration **for billing**: it checks that the instalments sum exactly to the contract value, makes the payment schedule billable, and enters the term into a **temporal exclusion constraint** in the database.
+ * 
+ * **This is not an activation and confers no legal effect.** Whether a lease is in force is settled on the government Ejar platform; this door can neither put a contract in force nor suspend it. What happens here is an **internal permission**: from this moment rent invoices are built on this archived record.
+ * 
+ * **The constraint is in the database, not the interface**: 'one approved term per unit' is a **range-overlap** condition, not an equality condition, so no unique index however wide can express it; and a check in the service reads then writes, and between the read and the write another call slips through and the unit is billed twice.
+ * 
+ * **Repeating the call is safe and returns the same answer**: an already-approved registration is read back and returned under the same status 200, and nothing is written a second time — the payment schedule is written at registration, not here.
+ * 
+ * **It posts no accounting entry**, and its response schema carries no entry identifier.
+ */
+export async function approveLeaseRegistrationForBilling(transport: Transport, args: ApproveLeaseRegistrationForBillingArgs, signal?: AbortSignal): Promise<T.LeaseRegistration> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/lease-registrations/" + encodeURIComponent(args.leaseId) + "/billing-approval";
+  const url = path;
+  const response = await transport({ method: "POST", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "LeaseRegistration", response.json) as T.LeaseRegistration;
+}
+
 export interface ChangeMembershipRoleArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
@@ -1146,6 +1154,41 @@ export async function depositAttachment(transport: Transport, args: DepositAttac
   return decodeSchema(SCHEMAS, "Attachment", response.json) as T.Attachment;
 }
 
+export interface DepositParameterVersionArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.ParameterVersionRequest;
+}
+
+/**
+ * إيداع إصدار جديد من مجموعة معامِلات / Deposit a new version of a parameter set
+ * 
+ * يودِع إصداراً جديداً على مستوى هذه المنشأة. **POST لا PUT، والصفّ يُضاف ولا يُعدَّل**: قيمةُ فترةٍ ماضية لا تُغيَّر، والتغييرُ إصدارٌ جديد بتاريخ سريانه — ومستندٌ رُحِّل بإصدارٍ يبقى عليه لأنه يحمل **لقطته** لا مفتاحاً إلى صفّ يتغيّر.
+ * 
+ * **والمجموعة تُودَع كاملةً**: قيمُ المجموعة الواحدة يسري بعضها ببعض، وإيداعٌ جزئي يُنتج خليطاً من إصدارين لم يعتمده أحد. ومفتاحٌ ناقص أو زائد يُرفض بـcore.parameter_keys_incomplete مسمّياً الناقص والزائد.
+ * 
+ * **والنسبة كسرٌ عشري لا مئوية**: خمسة عشر بالمئة `0.15` لا `15`. وقيمةٌ تُكتب `15` تُرفض بالرمز core.parameter_rate_looks_like_a_percentage — **ولا تُصحَّح صامتةً**، لأن التصحيح الصامت يترك من كتبها يظنّ أنه أودع ما لم يُودِع. والقيد مفروضٌ في قاعدة البيانات أيضاً، فتجاوزُ الخدمة لا يُمرّره.
+ * 
+ * **وإصدارٌ ثانٍ على (المستوى · المجموعة · تاريخ السريان) نفسها يُرفض** بـ409 وcore.parameter_version_duplicate. **و«افتراضُ المنصّة» ليس خياراً هنا**: يُشحن مع المنتج ولا يُكتب من مسار طلب، فحالةُ الاعتماد المقبولة `tenant_approved` أو `auditor_signed` لا غير.
+ * 
+ * Deposits a new version at this company's level. **POST, not PUT, and the row is appended, never edited**: a past period's value is never changed; a change is a new version with its own effective date — and a document posted under a version stays on it because it carries **its snapshot**, not a key into a row that moves.
+ * 
+ * **A set is deposited whole**: the values of one set take effect together, and a partial deposit produces a mixture of two versions nobody approved. A missing or extra key is refused with core.parameter_keys_incomplete, naming both.
+ * 
+ * **A rate is a decimal fraction, not a percentage**: fifteen percent is `0.15`, never `15`. A value written `15` is refused with core.parameter_rate_looks_like_a_percentage — **and never silently corrected**, because a silent correction leaves the depositor believing they deposited what they did not. The constraint is enforced in the database too, so bypassing the service does not get it through.
+ * 
+ * **A second version on the same (level, set, effective date) is refused** with 409 and core.parameter_version_duplicate. **'Platform default' is not a choice here**: it ships with the product and is never written from a request path, so the accepted approval states are `tenant_approved` and `auditor_signed` only.
+ */
+export async function depositParameterVersion(transport: Transport, args: DepositParameterVersionArgs, signal?: AbortSignal): Promise<T.ParameterVersion> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/parameters";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "ParameterVersionRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "ParameterVersion", response.json) as T.ParameterVersion;
+}
+
 export interface DepositPayrollSettingsArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
@@ -1474,35 +1517,43 @@ export async function draftGoodsReceipt(transport: Transport, args: DraftGoodsRe
   return decodeSchema(SCHEMAS, "CommercialDocument", response.json) as T.CommercialDocument;
 }
 
-export interface DraftLeaseContractArgs {
+export interface DraftLeaseRegistrationArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
   /** جسم الطلب. / The request body. */
-  body: T.LeaseRequest;
+  body: T.LeaseRegistrationRequest;
 }
 
 /**
- * إنشاء عقد إيجار مسوّدة / Draft a lease contract
+ * تسجيل عقد إيجار مُحرَّر في منصّة إيجار — مسوّدة قيد / Register a lease contract issued on the Ejar platform — as a draft record
  * 
- * يُنشئ عقد إيجار في حالة **DRAFT**.
+ * يُنشئ **قيد تسجيل** لعقد إيجار في حالة **DRAFT**.
  * 
- * **ولاحظ ما ليس على هذا المورد ولا يجوز أن يوجد: لا مورد posting.** حدث توقيع العقد مُعلَنٌ في مصفوفة الترحيل بأنه **لا يُنشئ قيداً**: العقد التزام متبادل مستقبلي لم ينفّذه أي طرف بعد. وغيابُ الباب هو ما يجعل «العقد لا يُرحّل» مقروءاً من شكل السطح لا من تعليق.
+ * **والعقد لا يُحرَّر هنا.** منصّة إيجار الحكومية هي الطرف المخوَّل بتحرير عقود الإيجار، وما يُنشئه هذا الباب **قيدٌ أرشيفي** لعقدٍ حُرِّر هناك — مرجعُه الموثوق **رقم عقد إيجار**. ولا يُنشئ هذا النظام رقم عقد ولا يُعدّل عقداً ولا يُنهيه ولا يُجدّده: **أرشفةٌ وفوترة**.
  * 
- * **والأقساط تصل مصرَّحاً بها ولا تُوزَّع من قيمة العقد**: التوزيع يستلزم سياسة تقريب — أين يقع فائض الهللات — وهي **قرار مالك مفتوح** لا يُحسم في شيفرة. والنظام يفحص عند التفعيل أن مجموع الأقساط يساوي قيمة العقد بالضبط، ويرفض بخلاف ذلك برمزٍ يسمّي البند المعلَّق.
+ * **ولا تكامل مع منصّة إيجار في هذا السطح**: لا عنوان ولا مفتاح ولا نداء. الرقم يُقيَّد كما يُدخله المُسجِّل ولا يُتحقَّق منه لدى المنصّة، وتفرّده مفروضٌ داخل المنشأة وحدها.
  * 
- * Creates a lease contract in state **DRAFT**.
+ * **ولاحظ ما ليس على هذا المورد ولا يجوز أن يوجد: لا مورد posting.** حدث توقيع العقد مُعلَنٌ في مصفوفة الترحيل بأنه **لا يُنشئ قيداً**: العقد التزام متبادل مستقبلي لم ينفّذه أي طرف بعد. وغيابُ الباب هو ما يجعل «القيد لا يُرحّل» مقروءاً من شكل السطح لا من تعليق.
  * 
- * **Note what this resource does not carry and must never carry: no posting sub-resource.** The lease-signature event is declared in the posting matrix as posting **no entry**: the contract is a future mutual obligation neither party has yet performed. The absence of the door is what makes 'a lease posts nothing' readable from the shape of the surface rather than from a comment.
+ * **والأقساط تصل مصرَّحاً بها ولا تُوزَّع من قيمة العقد**: التوزيع يستلزم سياسة تقريب — أين يقع فائض الهللات — وهي **قرار مالك مفتوح** لا يُحسم في شيفرة. والنظام يفحص عند الاعتماد للفوترة أن مجموع الأقساط يساوي قيمة العقد بالضبط، ويرفض بخلاف ذلك برمزٍ يسمّي البند المعلَّق.
  * 
- * **Instalments arrive declared and are never spread from a contract value**: spreading requires a rounding policy — where the halala surplus lands — which is an **open owner decision**, not something settled in code. On activation the system checks that the instalments sum exactly to the contract value and refuses otherwise under a code that names the pending item.
+ * Creates a **registration record** for a lease contract, in state **DRAFT**.
+ * 
+ * **The contract is not issued here.** The government Ejar platform is the party authorised to issue lease contracts; what this door creates is an **archival record** of a contract issued there, whose authoritative reference is the **Ejar contract number**. This system does not mint a contract number, and it does not amend, terminate, or renew a contract: **archiving and billing**.
+ * 
+ * **There is no integration with the Ejar platform on this surface**: no address, no key, no call. The number is recorded exactly as the registrar enters it and is never verified against the platform; its uniqueness is enforced within the company alone.
+ * 
+ * **Note what this resource does not carry and must never carry: no posting sub-resource.** The lease-signature event is declared in the posting matrix as posting **no entry**: the contract is a future mutual obligation neither party has yet performed. The absence of the door is what makes 'this record posts nothing' readable from the shape of the surface rather than from a comment.
+ * 
+ * **Instalments arrive declared and are never spread from a contract value**: spreading requires a rounding policy — where the halala surplus lands — which is an **open owner decision**, not something settled in code. At billing approval the system checks that the instalments sum exactly to the contract value and refuses otherwise under a code that names the pending item.
  */
-export async function draftLeaseContract(transport: Transport, args: DraftLeaseContractArgs, signal?: AbortSignal): Promise<T.Lease> {
-  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/lease-contracts";
+export async function draftLeaseRegistration(transport: Transport, args: DraftLeaseRegistrationArgs, signal?: AbortSignal): Promise<T.LeaseRegistration> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/lease-registrations";
   const url = path;
-  const body = encodeSchema(SCHEMAS, "LeaseRequest", args.body as unknown);
+  const body = encodeSchema(SCHEMAS, "LeaseRegistrationRequest", args.body as unknown);
   const response = await transport({ method: "POST", url, body, signal });
   if (!response.ok) throw ProblemError.from(response);
-  return decodeSchema(SCHEMAS, "Lease", response.json) as T.Lease;
+  return decodeSchema(SCHEMAS, "LeaseRegistration", response.json) as T.LeaseRegistration;
 }
 
 export interface DraftPayrollPaymentArgs {
@@ -1616,7 +1667,7 @@ export interface DraftRentInvoiceArgs {
 /**
  * إنشاء فاتورة إيجار مسوّدة / Draft a rent invoice
  * 
- * يُنشئ فاتورة إيجار في حالة **DRAFT** على أقساط مُسمّاة من جدول دفعات عقدٍ سارٍ.
+ * يُنشئ فاتورة إيجار في حالة **DRAFT** على أقساط مُسمّاة من جدول دفعات **قيدٍ معتمَدٍ للفوترة**.
  * 
  * **ولا رمز حدث في الحمولة ولا نموذج ملكية**: الوحدة تقرأ نموذج ملكية العقار **المُسجَّل في الدفتر** وتختار الحدث منه — فلا يستطيع عميل HTTP أن يطلب «فاتورة ملكية ذاتية» على عقارٍ مُدار. والفرق يظهر في **دائن الفاتورة**: إيرادُ إيجار مؤجَّل للشركة في الملكية الذاتية، وأماناتُ مالكٍ في الإدارة.
  * 
@@ -1624,7 +1675,7 @@ export interface DraftRentInvoiceArgs {
  * 
  * **والقسط لا يُفوتَر مرّتين**: فهرس فريد على (المستأجر، القسط) لا فحصٌ في الخدمة.
  * 
- * Creates a rent invoice in state **DRAFT** over named instalments from an active lease's payment schedule.
+ * Creates a rent invoice in state **DRAFT** over named instalments from the payment schedule of a registration **approved for billing**.
  * 
  * **No event code and no ownership model appear in the payload**: the module reads the property's ownership model **as registered in the ledger** and selects the event from it — so an HTTP client cannot request an 'own-property invoice' against a managed property. The difference shows in the **credit of the invoice**: deferred rental income of the company under own property, and owner trust under management.
  * 
@@ -2174,6 +2225,34 @@ export async function listItems(transport: Transport, args: ListItemsArgs, signa
   const response = await transport({ method: "GET", url, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "ItemList", response.json) as T.ItemList;
+}
+
+export interface ListParameterVersionsArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+}
+
+/**
+ * إصدارات المعامِلات بسريانها / The parameter versions by effective date
+ * 
+ * يقرأ **كلَّ** ما تراه هذه المنشأة من إصدارات المعامِلات: افتراضاتِ المنصّة المشحونة وتجاوزاتِها هي وحدها. ولكلّ إصدارٍ تاريخُ سريانه، و**حالةُ اعتماده**، ومعتمِدُه، ومرجعُ مصدره، وقيمُه كلّها.
+ * 
+ * **وحالةُ الاعتماد ثلاثية لا ثنائية**: `platform_default` افتراضٌ يشحنه المنتج **ولم يعتمده إنسان**، و`tenant_approved` أودعه صاحب المنشأة باسمه، و`auditor_signed` وقّعه محاسب قانوني. والثنائيّ يخلط مسؤولية صاحب المنشأة بمسؤولية المحاسب، فتصير قائمةُ المراجعة فارغةً وهي لم تُراجَع.
+ * 
+ * **وقيمةٌ غير معتمَدة تُعرض موسومةً لا مخفيّة**: إخفاؤها يجعل النظام يعمل برقمٍ لا يعرف أحدٌ أنه مفترَض. و`approvedBy` و`approvedOn` **فارغان بالضبط** في صفّ المنصّة — فهو لم يعتمده إنسان، وكتابةُ اسمٍ فيه ادّعاءُ اعتمادٍ لم يقع.
+ * 
+ * Reads **everything** this company sees of the parameter versions: the shipped platform defaults and its own overrides alone. Each version carries its effective date, its **approval state**, its approver, its source reference, and all of its values.
+ * 
+ * **The approval state is ternary, not binary**: `platform_default` is a default the product ships and **no human approved**, `tenant_approved` was deposited by the company under a named person, and `auditor_signed` was signed by a chartered accountant. A binary flag conflates the owner's responsibility with the accountant's, so the review list reads empty while nothing has been reviewed.
+ * 
+ * **An unapproved value is shown tagged, never hidden**: hiding it makes the system run on a number nobody knows is assumed. `approvedBy` and `approvedOn` are **exactly empty** on a platform row — no human approved it, and writing a name there would assert an approval that never happened.
+ */
+export async function listParameterVersions(transport: Transport, args: ListParameterVersionsArgs, signal?: AbortSignal): Promise<T.ParameterVersionList> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/parameters";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "ParameterVersionList", response.json) as T.ParameterVersionList;
 }
 
 export interface ListPayComponentsArgs {
@@ -3858,37 +3937,37 @@ export async function readJournalEntry(transport: Transport, args: ReadJournalEn
   return decodeSchema(SCHEMAS, "JournalEntry", response.json) as T.JournalEntry;
 }
 
-export interface ReadLeaseContractArgs {
+export interface ReadLeaseRegistrationArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
-  /** معرّف عقد الإيجار. / The lease contract identifier. */
+  /** معرّف قيد تسجيل عقد الإيجار. / The lease registration identifier. */
   leaseId: string;
 }
 
 /**
- * قراءة عقد إيجار / Read one lease contract
+ * قراءة قيد تسجيل عقد إيجار / Read one lease registration
  * 
- * يقرأ العقد بحالته ومدّته وقيمته.
+ * يقرأ القيد بحالته ومدّته وقيمته ورقم عقد إيجار الذي يشير إليه. **والحالة حالةُ القيد لا حالةُ العقد**: نفاذ العقد يُقرَّر في منصّة إيجار لا هنا.
  * 
- * Reads the contract with its state, its term, and its value.
+ * Reads the registration with its state, its term, its value, and the Ejar contract number it references. **The state is the record's state, not the contract's**: whether the contract is in force is settled on the Ejar platform, not here.
  */
-export async function readLeaseContract(transport: Transport, args: ReadLeaseContractArgs, signal?: AbortSignal): Promise<T.Lease> {
-  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/lease-contracts/" + encodeURIComponent(args.leaseId) + "";
+export async function readLeaseRegistration(transport: Transport, args: ReadLeaseRegistrationArgs, signal?: AbortSignal): Promise<T.LeaseRegistration> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/lease-registrations/" + encodeURIComponent(args.leaseId) + "";
   const url = path;
   const response = await transport({ method: "GET", url, signal });
   if (!response.ok) throw ProblemError.from(response);
-  return decodeSchema(SCHEMAS, "Lease", response.json) as T.Lease;
+  return decodeSchema(SCHEMAS, "LeaseRegistration", response.json) as T.LeaseRegistration;
 }
 
 export interface ReadLeaseScheduleArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
-  /** معرّف عقد الإيجار. / The lease contract identifier. */
+  /** معرّف قيد تسجيل عقد الإيجار. / The lease registration identifier. */
   leaseId: string;
 }
 
 /**
- * قراءة جدول دفعات العقد بمعرّفات سطوره / Read the lease payment schedule with its line identifiers
+ * قراءة جدول دفعات القيد بمعرّفات سطوره / Read the registration payment schedule with its line identifiers
  * 
  * يُرجع جدول الدفعات **بمعرّفات سطوره** — وهي مدخل الفوترة: طلب الفاتورة يحمل معرّفات الأقساط المفوترة ولا يحمل مبالغ.
  * 
@@ -3899,7 +3978,7 @@ export interface ReadLeaseScheduleArgs {
  * **Without publishing these identifiers the invoicing door becomes a door no other door on this surface can reach** — the objection written literally in the cash-documents publication decision.
  */
 export async function readLeaseSchedule(transport: Transport, args: ReadLeaseScheduleArgs, signal?: AbortSignal): Promise<T.LeaseSchedule> {
-  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/lease-contracts/" + encodeURIComponent(args.leaseId) + "/schedule";
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/lease-registrations/" + encodeURIComponent(args.leaseId) + "/schedule";
   const url = path;
   const response = await transport({ method: "GET", url, signal });
   if (!response.ok) throw ProblemError.from(response);
@@ -3950,6 +4029,34 @@ export async function readMemberships(transport: Transport, args: ReadMembership
   const response = await transport({ method: "GET", url, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "MembershipList", response.json) as T.MembershipList;
+}
+
+export interface ReadParameterReviewArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+}
+
+/**
+ * قائمة مراجعة المحاسب القانوني / The chartered accountant's review list
+ * 
+ * **استعلامٌ واحد يُخرج القائمة المحصورة**: كلُّ إصدارٍ لم يُوقَّع بعد، ومعه كلُّ مستندٍ **مُرحَّلٍ** استعمله. وهي بعينها القائمةُ التي تُعرض على المحاسب القانوني في الخطوة الأخيرة — ولذلك هي **بابُ قراءةٍ منشور** لا تقريرٌ تحسبه شاشة: تقريرٌ في شاشة يعني أن كل شاشةٍ تحسبه بطريقتها.
+ * 
+ * **والإصدارُ الموقَّع يخرج من القائمة**، وذلك هو معنى التوقيع. **والإصدارُ الذي لم يستعمله مستندٌ بعد يبقى فيها** بقائمةِ مستنداتٍ فارغة — فحاجتُه إلى التوقيع لا تسقط بعدم استعماله.
+ * 
+ * **ومن أين يُعرف المستند:** الوحدةُ المالكة تسجّل استعمالها لحظة الترحيل. والمستند نفسه — في قاعدة وحدته — يحمل **لقطة** الإصدار وقيمَه، فقارئُه بعد سنتين يقرؤه وحده. والسجلّان ليسا تكراراً: اللقطةُ سجلّ، وهذا فهرس؛ ولو ضاع الفهرس لبقيت المستندات مقروءة.
+ * 
+ * **One query returns the bounded list**: every version not yet signed, together with every **posted** document that used it. This is precisely the list put in front of the chartered accountant in the final step — which is why it is a **published read door** and not a report a screen computes: a report in a screen means every screen computes it its own way.
+ * 
+ * **A signed version leaves the list**, which is what signing means. **A version no document has used yet stays in it** with an empty document list — its need for a signature does not lapse because it went unused.
+ * 
+ * **Where the document comes from:** the owning module records its usage at posting time. The document itself — in its own module's database — carries the version's **snapshot** and its values, so its reader two years later reads it alone. The two records are not a duplication: the snapshot is the record, this is the index; if the index were lost the documents would still be readable.
+ */
+export async function readParameterReview(transport: Transport, args: ReadParameterReviewArgs, signal?: AbortSignal): Promise<T.ParameterReviewList> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/parameter-review";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "ParameterReviewList", response.json) as T.ParameterReviewList;
 }
 
 export interface ReadPayablesAgingArgs {

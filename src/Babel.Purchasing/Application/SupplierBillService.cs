@@ -1,5 +1,6 @@
 using System.Globalization;
 using Babel.Contracts.Inventory;
+using Babel.Contracts.Parameters;
 using Babel.Contracts.Posting;
 using Babel.Core.Application;
 using Babel.Core.CapabilityProfile;
@@ -34,6 +35,7 @@ public sealed class SupplierBillService : IApplicationService
     private readonly SubledgerPostingGateway _gateway;
     private readonly PurchasingAdmission _admission;
     private readonly IInventoryValuation _valuation;
+    private readonly IParameterUsageRecorder _parameterUsage;
     private readonly CurrencyCode _currency;
 
     /// <summary>ينشئ الخدمة.</summary>
@@ -48,19 +50,27 @@ public sealed class SupplierBillService : IApplicationService
     /// <b>ولا يكتب حركة واحدة في الدفتر المساعد</b> — أي حسابٌ ضابط يتحرّك ودفترٌ
     /// مساعد ساكن، وهو الانحراف الذي أُنشئت له المطابقة (‏ADR-0041).
     /// </param>
+    /// <param name="parameterUsage">
+    /// مسجّل استعمال المعامِلات — <b>يُنادى لحظة الترحيل</b> فيصير «أيُّ مستندٍ استعمل
+    /// هذا الإصدار؟» استعلاماً واحداً في قاعدة النواة بدل مسحٍ على تسع قواعد. وهو
+    /// <b>فهرسٌ لا سجلّ</b>: السجلّ لقطةٌ على الفاتورة نفسها.
+    /// </param>
     public SupplierBillService(
         IEntitlementEnforcer enforcer,
         PurchasingRuntime runtime,
         IPostingService posting,
         ICapabilityProfileStore profiles,
-        IInventoryValuation valuation)
+        IInventoryValuation valuation,
+        IParameterUsageRecorder parameterUsage)
     {
         ArgumentNullException.ThrowIfNull(enforcer);
         ArgumentNullException.ThrowIfNull(runtime);
         ArgumentNullException.ThrowIfNull(posting);
         ArgumentNullException.ThrowIfNull(profiles);
         ArgumentNullException.ThrowIfNull(valuation);
+        ArgumentNullException.ThrowIfNull(parameterUsage);
         _valuation = valuation;
+        _parameterUsage = parameterUsage;
         _enforcer = enforcer;
         _database = runtime.Database;
         _currency = CurrencyCode.FromString(runtime.Options.CompanyCurrency);
@@ -383,6 +393,10 @@ public sealed class SupplierBillService : IApplicationService
             RecoverableTax = recoverable,
             NonRecoverableTax = nonRecoverable,
             GrossTotal = net + recoverable + nonRecoverable,
+
+            // ‏**اللقطة تُكتب مع الفاتورة لا عند ترحيلها**: ما دخل الحساب دخله لحظة
+            // الإنشاء، وفاتورةٌ مسوّدة تُقرأ بعد شهر يجب أن تقول بأي رقمٍ حُسبت.
+            ParameterSnapshot = draft.Parameters?.Canonical() ?? string.Empty,
         };
 
         _database.Bills.Add(bill);
@@ -425,6 +439,11 @@ public sealed class SupplierBillService : IApplicationService
         {
             // وصولٌ ثانٍ بعد أن اكتمل الأول: لا يُمسّ شيء، والحقيقة تُقال صراحةً
             // بدل أن تُترك لتُشتقّ من حالةٍ لا تفرّق بين النداءين.
+            //
+            // ‏**ويُعاد تسجيل الاستعمال هنا عمداً**: السجلّ آمنُ التكرار، والنداء الثاني
+            // هو ما يُبرئ فهرسَ المراجعة إن سقط تسجيلُ النداء الأول بعطلٍ عابر. وهو
+            // فهرسٌ لا سجلّ، فترميمُه بإعادة نداءٍ لا يمسّ رقماً محاسبياً.
+            await RecordParameterUsageAsync(tenant, bill, cancellationToken).ConfigureAwait(false);
             return Result<PurchasingDocumentView>.Success(ViewOf(bill) with { AlreadyPosted = true });
         }
 
@@ -475,6 +494,8 @@ public sealed class SupplierBillService : IApplicationService
         bill.State = PurchasingDocumentState.Posted;
         bill.PostedEntryId = posted.Value.JournalEntryId;
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        await RecordParameterUsageAsync(tenant, bill, cancellationToken).ConfigureAwait(false);
 
         // حكم البوّابة لا حكمنا: نداءان متزامنان يجتازان فحص الحالة معاً ويلتقيان عند
         // هوية إحكام واحدة، فأحدهما يكتب والآخر يعود بإيصاله موسوماً.
@@ -975,6 +996,70 @@ public sealed class SupplierBillService : IApplicationService
         return note is null
             ? Result<PurchasingDocumentView>.Failure(PurchasingErrors.DocumentNotFound(DebitNoteDocument, debitNoteId))
             : Result<PurchasingDocumentView>.Success(ViewOfNote(note));
+    }
+
+    /// <summary>
+    /// <b>ما تتذكّره الفاتورة من معامِلات — أو غيابُه.</b>
+    /// <para>
+    /// وهذه هي الإجابة على «بأي رقمٍ حُسب هذا؟» بعد سنتين: تُقرأ من الفاتورة نفسها،
+    /// في قاعدة وحدتها، <b>بلا نداءٍ إلى قاعدةٍ أخرى</b> ولو تغيّر الإصدار الجاري
+    /// عشر مرّات بعدها.
+    /// </para>
+    /// </summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="billId">الفاتورة.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    [RequiresEntitlement(BabelModule.Purchasing, EntitlementAccess.Read)]
+    public async ValueTask<Result<ParameterSnapshot?>> ReadBillParametersAsync(
+        TenantId tenant,
+        UserId actor,
+        Guid billId,
+        CancellationToken cancellationToken = default)
+    {
+        Result gate = await _enforcer
+            .EnsureAsync(tenant, actor, BabelModule.Purchasing, EntitlementAccess.Read, "Purchasing.Bill.ReadParameters", cancellationToken)
+            .ConfigureAwait(false);
+
+        if (gate.IsFailure)
+        {
+            return Result<ParameterSnapshot?>.Failure(gate.Errors);
+        }
+
+        SupplierBillRow? bill = await _database.Bills
+            .FirstOrDefaultAsync(row => row.TenantId == tenant.Value && row.Id == billId, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (bill is null)
+        {
+            return Result<ParameterSnapshot?>.Failure(PurchasingErrors.DocumentNotFound(BillDocument, billId));
+        }
+
+        return Result<ParameterSnapshot?>.Success(
+            bill.ParameterSnapshot.Length == 0 ? null : Babel.Contracts.Parameters.ParameterSnapshot.Parse(bill.ParameterSnapshot));
+    }
+
+    /// <summary>
+    /// يسجّل أن هذه الفاتورة استعملت إصدار المعامِلات المحفوظ عليها. آمنُ التكرار،
+    /// و<b>لا يفعل شيئاً</b> حين لا لقطة على الفاتورة — فما لم يُستعمل لا يُسجَّل.
+    /// </summary>
+    private async Task RecordParameterUsageAsync(
+        TenantId tenant, SupplierBillRow bill, CancellationToken cancellationToken)
+    {
+        if (bill.ParameterSnapshot.Length == 0)
+        {
+            return;
+        }
+
+        ParameterSnapshot snapshot = Babel.Contracts.Parameters.ParameterSnapshot.Parse(bill.ParameterSnapshot);
+
+        await _parameterUsage
+            .RecordAsync(
+                tenant,
+                new ParameterUsage(
+                    snapshot.VersionId, BabelModule.Purchasing, "SUPPLIER_BILL", bill.Id, bill.IssuedOn),
+                cancellationToken)
+            .ConfigureAwait(false);
     }
 
     private PurchasingDocumentView ViewOf(SupplierBillRow bill) => new(

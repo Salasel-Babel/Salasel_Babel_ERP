@@ -377,6 +377,80 @@ internal static class OpenApiEmitter
                 "One document type's shape derived from the profile. Derived, never authored: no layout, no visual order, no condition, no expression.",
                 Body: null, Response: "DocumentShape", Success: 200, Query: []),
 
+            // ── المعامِلات: لوحةُ تحكّمٍ لا شيفرة ────────────────────────────────
+            new(ApiRoutes.Parameters, "get", "listParameterVersions",
+                "إصدارات المعامِلات بسريانها", "The parameter versions by effective date",
+                "يقرأ **كلَّ** ما تراه هذه المنشأة من إصدارات المعامِلات: افتراضاتِ المنصّة المشحونة وتجاوزاتِها هي "
+                + "وحدها. ولكلّ إصدارٍ تاريخُ سريانه، و**حالةُ اعتماده**، ومعتمِدُه، ومرجعُ مصدره، وقيمُه كلّها.\n\n"
+                + "**وحالةُ الاعتماد ثلاثية لا ثنائية**: `platform_default` افتراضٌ يشحنه المنتج **ولم يعتمده إنسان**، "
+                + "و`tenant_approved` أودعه صاحب المنشأة باسمه، و`auditor_signed` وقّعه محاسب قانوني. والثنائيّ يخلط "
+                + "مسؤولية صاحب المنشأة بمسؤولية المحاسب، فتصير قائمةُ المراجعة فارغةً وهي لم تُراجَع.\n\n"
+                + "**وقيمةٌ غير معتمَدة تُعرض موسومةً لا مخفيّة**: إخفاؤها يجعل النظام يعمل برقمٍ لا يعرف أحدٌ أنه "
+                + "مفترَض. و`approvedBy` و`approvedOn` **فارغان بالضبط** في صفّ المنصّة — فهو لم يعتمده إنسان، "
+                + "وكتابةُ اسمٍ فيه ادّعاءُ اعتمادٍ لم يقع.",
+                "Reads **everything** this company sees of the parameter versions: the shipped platform defaults and its own "
+                + "overrides alone. Each version carries its effective date, its **approval state**, its approver, its source "
+                + "reference, and all of its values.\n\n"
+                + "**The approval state is ternary, not binary**: `platform_default` is a default the product ships and **no human "
+                + "approved**, `tenant_approved` was deposited by the company under a named person, and `auditor_signed` was signed "
+                + "by a chartered accountant. A binary flag conflates the owner's responsibility with the accountant's, so the "
+                + "review list reads empty while nothing has been reviewed.\n\n"
+                + "**An unapproved value is shown tagged, never hidden**: hiding it makes the system run on a number nobody knows is "
+                + "assumed. `approvedBy` and `approvedOn` are **exactly empty** on a platform row — no human approved it, and writing "
+                + "a name there would assert an approval that never happened.",
+                Body: null, Response: "ParameterVersionList", Success: 200, Query: []),
+
+            new(ApiRoutes.Parameters, "post", "depositParameterVersion",
+                "إيداع إصدار جديد من مجموعة معامِلات", "Deposit a new version of a parameter set",
+                "يودِع إصداراً جديداً على مستوى هذه المنشأة. **POST لا PUT، والصفّ يُضاف ولا يُعدَّل**: قيمةُ فترةٍ "
+                + "ماضية لا تُغيَّر، والتغييرُ إصدارٌ جديد بتاريخ سريانه — ومستندٌ رُحِّل بإصدارٍ يبقى عليه لأنه يحمل "
+                + "**لقطته** لا مفتاحاً إلى صفّ يتغيّر.\n\n"
+                + "**والمجموعة تُودَع كاملةً**: قيمُ المجموعة الواحدة يسري بعضها ببعض، وإيداعٌ جزئي يُنتج خليطاً من "
+                + "إصدارين لم يعتمده أحد. ومفتاحٌ ناقص أو زائد يُرفض بـcore.parameter_keys_incomplete مسمّياً الناقص "
+                + "والزائد.\n\n"
+                + "**والنسبة كسرٌ عشري لا مئوية**: خمسة عشر بالمئة `0.15` لا `15`. وقيمةٌ تُكتب `15` تُرفض بالرمز "
+                + "core.parameter_rate_looks_like_a_percentage — **ولا تُصحَّح صامتةً**، لأن التصحيح الصامت يترك من "
+                + "كتبها يظنّ أنه أودع ما لم يُودِع. والقيد مفروضٌ في قاعدة البيانات أيضاً، فتجاوزُ الخدمة لا يُمرّره.\n\n"
+                + "**وإصدارٌ ثانٍ على (المستوى · المجموعة · تاريخ السريان) نفسها يُرفض** بـ409 و"
+                + "core.parameter_version_duplicate. **و«افتراضُ المنصّة» ليس خياراً هنا**: يُشحن مع المنتج ولا يُكتب "
+                + "من مسار طلب، فحالةُ الاعتماد المقبولة `tenant_approved` أو `auditor_signed` لا غير.",
+                "Deposits a new version at this company's level. **POST, not PUT, and the row is appended, never edited**: a past "
+                + "period's value is never changed; a change is a new version with its own effective date — and a document posted "
+                + "under a version stays on it because it carries **its snapshot**, not a key into a row that moves.\n\n"
+                + "**A set is deposited whole**: the values of one set take effect together, and a partial deposit produces a mixture "
+                + "of two versions nobody approved. A missing or extra key is refused with core.parameter_keys_incomplete, naming "
+                + "both.\n\n"
+                + "**A rate is a decimal fraction, not a percentage**: fifteen percent is `0.15`, never `15`. A value written `15` is "
+                + "refused with core.parameter_rate_looks_like_a_percentage — **and never silently corrected**, because a silent "
+                + "correction leaves the depositor believing they deposited what they did not. The constraint is enforced in the "
+                + "database too, so bypassing the service does not get it through.\n\n"
+                + "**A second version on the same (level, set, effective date) is refused** with 409 and "
+                + "core.parameter_version_duplicate. **'Platform default' is not a choice here**: it ships with the product and is "
+                + "never written from a request path, so the accepted approval states are `tenant_approved` and `auditor_signed` only.",
+                Body: "ParameterVersionRequest", Response: "ParameterVersion", Success: 201, Query: []),
+
+            new(ApiRoutes.ParameterReview, "get", "readParameterReview",
+                "قائمة مراجعة المحاسب القانوني", "The chartered accountant's review list",
+                "**استعلامٌ واحد يُخرج القائمة المحصورة**: كلُّ إصدارٍ لم يُوقَّع بعد، ومعه كلُّ مستندٍ **مُرحَّلٍ** "
+                + "استعمله. وهي بعينها القائمةُ التي تُعرض على المحاسب القانوني في الخطوة الأخيرة — ولذلك هي **بابُ "
+                + "قراءةٍ منشور** لا تقريرٌ تحسبه شاشة: تقريرٌ في شاشة يعني أن كل شاشةٍ تحسبه بطريقتها.\n\n"
+                + "**والإصدارُ الموقَّع يخرج من القائمة**، وذلك هو معنى التوقيع. **والإصدارُ الذي لم يستعمله مستندٌ "
+                + "بعد يبقى فيها** بقائمةِ مستنداتٍ فارغة — فحاجتُه إلى التوقيع لا تسقط بعدم استعماله.\n\n"
+                + "**ومن أين يُعرف المستند:** الوحدةُ المالكة تسجّل استعمالها لحظة الترحيل. والمستند نفسه — في قاعدة "
+                + "وحدته — يحمل **لقطة** الإصدار وقيمَه، فقارئُه بعد سنتين يقرؤه وحده. والسجلّان ليسا تكراراً: "
+                + "اللقطةُ سجلّ، وهذا فهرس؛ ولو ضاع الفهرس لبقيت المستندات مقروءة.",
+                "**One query returns the bounded list**: every version not yet signed, together with every **posted** document that "
+                + "used it. This is precisely the list put in front of the chartered accountant in the final step — which is why it "
+                + "is a **published read door** and not a report a screen computes: a report in a screen means every screen computes "
+                + "it its own way.\n\n"
+                + "**A signed version leaves the list**, which is what signing means. **A version no document has used yet stays in "
+                + "it** with an empty document list — its need for a signature does not lapse because it went unused.\n\n"
+                + "**Where the document comes from:** the owning module records its usage at posting time. The document itself — in "
+                + "its own module's database — carries the version's **snapshot** and its values, so its reader two years later "
+                + "reads it alone. The two records are not a duplication: the snapshot is the record, this is the index; if the "
+                + "index were lost the documents would still be readable.",
+                Body: null, Response: "ParameterReviewList", Success: 200, Query: []),
+
             new(ApiRoutes.CompanySetup, "get", "readCompanySetup",
                 "تأسيس المنشأة", "The company setup",
                 "يقرأ تأسيس المنشأة: اسمها، و**عدد الخانات العشرية المعروضة**، و**مراكز تكلفتها كلّها** — العاملة والموقوفة معاً. "
@@ -2189,35 +2263,51 @@ internal static class OpenApiEmitter
                 "Reads an owner with its VAT registration and tax residency.",
                 Body: null, Response: "RealEstateParty", Success: 200, Query: [], ProblemStatuses: [404]),
 
-            new(ApiRoutes.LeaseContracts, "post", "draftLeaseContract",
-                "إنشاء عقد إيجار مسوّدة", "Draft a lease contract",
-                "يُنشئ عقد إيجار في حالة **DRAFT**.\n\n"
+            new(ApiRoutes.LeaseRegistrations, "post", "draftLeaseRegistration",
+                "تسجيل عقد إيجار مُحرَّر في منصّة إيجار — مسوّدة قيد",
+                "Register a lease contract issued on the Ejar platform — as a draft record",
+                "يُنشئ **قيد تسجيل** لعقد إيجار في حالة **DRAFT**.\n\n"
+                + "**والعقد لا يُحرَّر هنا.** منصّة إيجار الحكومية هي الطرف المخوَّل بتحرير عقود الإيجار، وما "
+                + "يُنشئه هذا الباب **قيدٌ أرشيفي** لعقدٍ حُرِّر هناك — مرجعُه الموثوق **رقم عقد إيجار**. "
+                + "ولا يُنشئ هذا النظام رقم عقد ولا يُعدّل عقداً ولا يُنهيه ولا يُجدّده: **أرشفةٌ وفوترة**.\n\n"
+                + "**ولا تكامل مع منصّة إيجار في هذا السطح**: لا عنوان ولا مفتاح ولا نداء. الرقم يُقيَّد كما "
+                + "يُدخله المُسجِّل ولا يُتحقَّق منه لدى المنصّة، وتفرّده مفروضٌ داخل المنشأة وحدها.\n\n"
                 + "**ولاحظ ما ليس على هذا المورد ولا يجوز أن يوجد: لا مورد posting.** حدث توقيع العقد مُعلَنٌ في "
                 + "مصفوفة الترحيل بأنه **لا يُنشئ قيداً**: العقد التزام متبادل مستقبلي لم ينفّذه أي طرف بعد. "
-                + "وغيابُ الباب هو ما يجعل «العقد لا يُرحّل» مقروءاً من شكل السطح لا من تعليق.\n\n"
+                + "وغيابُ الباب هو ما يجعل «القيد لا يُرحّل» مقروءاً من شكل السطح لا من تعليق.\n\n"
                 + "**والأقساط تصل مصرَّحاً بها ولا تُوزَّع من قيمة العقد**: التوزيع يستلزم سياسة تقريب — أين يقع "
-                + "فائض الهللات — وهي **قرار مالك مفتوح** لا يُحسم في شيفرة. والنظام يفحص عند التفعيل أن مجموع "
-                + "الأقساط يساوي قيمة العقد بالضبط، ويرفض بخلاف ذلك برمزٍ يسمّي البند المعلَّق.",
-                "Creates a lease contract in state **DRAFT**.\n\n"
+                + "فائض الهللات — وهي **قرار مالك مفتوح** لا يُحسم في شيفرة. والنظام يفحص عند الاعتماد للفوترة أن "
+                + "مجموع الأقساط يساوي قيمة العقد بالضبط، ويرفض بخلاف ذلك برمزٍ يسمّي البند المعلَّق.",
+                "Creates a **registration record** for a lease contract, in state **DRAFT**.\n\n"
+                + "**The contract is not issued here.** The government Ejar platform is the party authorised to issue lease "
+                + "contracts; what this door creates is an **archival record** of a contract issued there, whose authoritative "
+                + "reference is the **Ejar contract number**. This system does not mint a contract number, and it does not amend, "
+                + "terminate, or renew a contract: **archiving and billing**.\n\n"
+                + "**There is no integration with the Ejar platform on this surface**: no address, no key, no call. The number is "
+                + "recorded exactly as the registrar enters it and is never verified against the platform; its uniqueness is "
+                + "enforced within the company alone.\n\n"
                 + "**Note what this resource does not carry and must never carry: no posting sub-resource.** The lease-signature "
                 + "event is declared in the posting matrix as posting **no entry**: the contract is a future mutual obligation "
-                + "neither party has yet performed. The absence of the door is what makes 'a lease posts nothing' readable from "
-                + "the shape of the surface rather than from a comment.\n\n"
+                + "neither party has yet performed. The absence of the door is what makes 'this record posts nothing' readable "
+                + "from the shape of the surface rather than from a comment.\n\n"
                 + "**Instalments arrive declared and are never spread from a contract value**: spreading requires a rounding "
                 + "policy — where the halala surplus lands — which is an **open owner decision**, not something settled in code. "
-                + "On activation the system checks that the instalments sum exactly to the contract value and refuses otherwise "
-                + "under a code that names the pending item.",
-                Body: "LeaseRequest", Response: "Lease", Success: 201, Query: [],
+                + "At billing approval the system checks that the instalments sum exactly to the contract value and refuses "
+                + "otherwise under a code that names the pending item.",
+                Body: "LeaseRegistrationRequest", Response: "LeaseRegistration", Success: 201, Query: [],
                 ProblemStatuses: [404]),
 
-            new(ApiRoutes.LeaseContract, "get", "readLeaseContract",
-                "قراءة عقد إيجار", "Read one lease contract",
-                "يقرأ العقد بحالته ومدّته وقيمته.",
-                "Reads the contract with its state, its term, and its value.",
-                Body: null, Response: "Lease", Success: 200, Query: [], ProblemStatuses: [404]),
+            new(ApiRoutes.LeaseRegistration, "get", "readLeaseRegistration",
+                "قراءة قيد تسجيل عقد إيجار", "Read one lease registration",
+                "يقرأ القيد بحالته ومدّته وقيمته ورقم عقد إيجار الذي يشير إليه. "
+                + "**والحالة حالةُ القيد لا حالةُ العقد**: نفاذ العقد يُقرَّر في منصّة إيجار لا هنا.",
+                "Reads the registration with its state, its term, its value, and the Ejar contract number it references. "
+                + "**The state is the record's state, not the contract's**: whether the contract is in force is settled on the "
+                + "Ejar platform, not here.",
+                Body: null, Response: "LeaseRegistration", Success: 200, Query: [], ProblemStatuses: [404]),
 
-            new(ApiRoutes.LeaseContractSchedule, "get", "readLeaseSchedule",
-                "قراءة جدول دفعات العقد بمعرّفات سطوره", "Read the lease payment schedule with its line identifiers",
+            new(ApiRoutes.LeaseRegistrationSchedule, "get", "readLeaseSchedule",
+                "قراءة جدول دفعات القيد بمعرّفات سطوره", "Read the registration payment schedule with its line identifiers",
                 "يُرجع جدول الدفعات **بمعرّفات سطوره** — وهي مدخل الفوترة: طلب الفاتورة يحمل معرّفات الأقساط "
                 + "المفوترة ولا يحمل مبالغ.\n\n"
                 + "**وبلا نشر هذه المعرّفات يصير باب الفوترة باباً لا يوصل إليه بابٌ آخر على هذا السطح** — وهو "
@@ -2228,27 +2318,39 @@ internal static class OpenApiEmitter
                 + "reach** — the objection written literally in the cash-documents publication decision.",
                 Body: null, Response: "LeaseSchedule", Success: 200, Query: [], ProblemStatuses: [404]),
 
-            new(ApiRoutes.LeaseContractActivation, "post", "activateLeaseContract",
-                "تفعيل عقد إيجار", "Activate a lease contract",
-                "يُفعّل العقد: يفحص أن مجموع الأقساط يساوي قيمة العقد بالضبط، ثم يجعل جدول الدفعات قابلاً "
-                + "للفوترة، ويُدخل المدّة **قيد الاستبعاد الزمني** في قاعدة البيانات.\n\n"
-                + "**والقيد في القاعدة لا في الواجهة**: «مدّة سارية واحدة لكل وحدة» شرط **تقاطع مدى** لا شرط "
+            new(ApiRoutes.LeaseRegistrationBillingApproval, "post", "approveLeaseRegistrationForBilling",
+                "اعتماد قيد التسجيل للفوترة", "Approve a lease registration for billing",
+                "يعتمد القيد **للفوترة**: يفحص أن مجموع الأقساط يساوي قيمة العقد بالضبط، ثم يجعل جدول الدفعات "
+                + "قابلاً للفوترة، ويُدخل المدّة **قيد الاستبعاد الزمني** في قاعدة البيانات.\n\n"
+                + "**وهذا ليس تفعيلاً ولا نفاذاً نظامياً.** نفاذ عقد الإيجار يُقرَّر في منصّة إيجار الحكومية، "
+                + "ولا يملك هذا الباب أن يجعل عقداً سارياً ولا أن يوقفه. وما يقع هنا **إذنٌ داخلي**: من هذه "
+                + "اللحظة تُبنى فواتير الإيجار على هذا القيد المؤرشف.\n\n"
+                + "**والقيد في القاعدة لا في الواجهة**: «مدّة معتمَدة واحدة لكل وحدة» شرط **تقاطع مدى** لا شرط "
                 + "تساوٍ، فلا يعبّر عنه فهرس فريد مهما اتّسع؛ وفحصٌ في الخدمة يقرأ ثم يكتب، وبين القراءة والكتابة "
-                + "يمرّ نداءٌ آخر فتُؤجَّر الوحدة مرّتين.\n\n"
-                + "**ولا يُرحّل قيداً**، ومخطّط جوابه بلا معرّف قيد.",
-                "Activates the contract: it checks that the instalments sum exactly to the contract value, makes the payment "
-                + "schedule billable, and enters the term into a **temporal exclusion constraint** in the database.\n\n"
-                + "**The constraint is in the database, not the interface**: 'one live term per unit' is a **range-overlap** "
+                + "يمرّ نداءٌ آخر فتُفوتَر الوحدة مرّتين.\n\n"
+                + "**وإعادةُ النداء آمنة وتُعيد الجواب نفسه**: القيد المعتمَد سلفاً يُقرأ ويُعاد بالرمز 200 نفسه، "
+                + "ولا شيء يُكتب ثانيةً — جدول الدفعات مكتوبٌ عند التسجيل لا هنا.\n\n"
+                + "**ولا يُرحّل قيداً محاسبياً**، ومخطّط جوابه بلا معرّف قيد.",
+                "Approves the registration **for billing**: it checks that the instalments sum exactly to the contract value, "
+                + "makes the payment schedule billable, and enters the term into a **temporal exclusion constraint** in the "
+                + "database.\n\n"
+                + "**This is not an activation and confers no legal effect.** Whether a lease is in force is settled on the "
+                + "government Ejar platform; this door can neither put a contract in force nor suspend it. What happens here is "
+                + "an **internal permission**: from this moment rent invoices are built on this archived record.\n\n"
+                + "**The constraint is in the database, not the interface**: 'one approved term per unit' is a **range-overlap** "
                 + "condition, not an equality condition, so no unique index however wide can express it; and a check in the "
-                + "service reads then writes, and between the read and the write another call slips through and the unit is let "
-                + "twice.\n\n"
-                + "**It posts no entry**, and its response schema carries no entry identifier.",
-                Body: null, Response: "Lease", Success: 201, Query: [],
+                + "service reads then writes, and between the read and the write another call slips through and the unit is "
+                + "billed twice.\n\n"
+                + "**Repeating the call is safe and returns the same answer**: an already-approved registration is read back and "
+                + "returned under the same status 200, and nothing is written a second time — the payment schedule is written at "
+                + "registration, not here.\n\n"
+                + "**It posts no accounting entry**, and its response schema carries no entry identifier.",
+                Body: null, Response: "LeaseRegistration", Success: 200, Query: [],
                 ProblemStatuses: [404, 409, 422]),
 
             new(ApiRoutes.RentInvoices, "post", "draftRentInvoice",
                 "إنشاء فاتورة إيجار مسوّدة", "Draft a rent invoice",
-                "يُنشئ فاتورة إيجار في حالة **DRAFT** على أقساط مُسمّاة من جدول دفعات عقدٍ سارٍ.\n\n"
+                "يُنشئ فاتورة إيجار في حالة **DRAFT** على أقساط مُسمّاة من جدول دفعات **قيدٍ معتمَدٍ للفوترة**.\n\n"
                 + "**ولا رمز حدث في الحمولة ولا نموذج ملكية**: الوحدة تقرأ نموذج ملكية العقار **المُسجَّل في الدفتر** "
                 + "وتختار الحدث منه — فلا يستطيع عميل HTTP أن يطلب «فاتورة ملكية ذاتية» على عقارٍ مُدار. والفرق يظهر "
                 + "في **دائن الفاتورة**: إيرادُ إيجار مؤجَّل للشركة في الملكية الذاتية، وأماناتُ مالكٍ في الإدارة.\n\n"
@@ -2256,7 +2358,8 @@ internal static class OpenApiEmitter
                 + "وحدةٍ معاملتها standard. وعلى الوحدة المعفاة يبقى exemptionReasonCode **فارغاً بعلامة ظاهرة** "
                 + "حتى يُعرف الرمز من القائمة الرسمية السارية — وحقلٌ إلزامي بقيمة مُختلَقة أسوأ من حقلٍ فارغ.\n\n"
                 + "**والقسط لا يُفوتَر مرّتين**: فهرس فريد على (المستأجر، القسط) لا فحصٌ في الخدمة.",
-                "Creates a rent invoice in state **DRAFT** over named instalments from an active lease's payment schedule.\n\n"
+                "Creates a rent invoice in state **DRAFT** over named instalments from the payment schedule of a registration "
+                + "**approved for billing**.\n\n"
                 + "**No event code and no ownership model appear in the payload**: the module reads the property's ownership "
                 + "model **as registered in the ledger** and selects the event from it — so an HTTP client cannot request an "
                 + "'own-property invoice' against a managed property. The difference shows in the **credit of the invoice**: "
@@ -3772,7 +3875,7 @@ internal static class OpenApiEmitter
         ("goods-receipts", "receiptId", "معرّف استلام البضاعة.", "The goods receipt identifier."),
         ("guarantees", "guaranteeId", "معرّف خطاب الضمان.", "The guarantee identifier."),
         ("items", "itemId", "معرّف الصنف.", "The item identifier."),
-        ("lease-contracts", "leaseId", "معرّف عقد الإيجار.", "The lease contract identifier."),
+        ("lease-registrations", "leaseId", "معرّف قيد تسجيل عقد الإيجار.", "The lease registration identifier."),
         ("locations", "locationId", "معرّف الموقع داخل المستودع — **وهو مستوى الرصيد المُقيَّم**.",
             "The location identifier within its warehouse — **the level at which the valued balance is held**."),
         ("lessees", "lesseeId", "معرّف المستأجر العقاري — **لا مستأجر النظام**: هذا مورد داخل نطاق منشأة.",
@@ -3920,8 +4023,11 @@ internal static class OpenApiEmitter
     /// <summary>الإقامة الضريبية — بلا افتراضي، وعليها يتوقّف سطر الاستقطاع.</summary>
     private static IReadOnlyList<string> TaxResidencies { get; } = ["non_resident", "resident"];
 
-    /// <summary>حالات عقد الإيجار.</summary>
-    private static IReadOnlyList<string> LeaseStates { get; } = ["ACTIVE", "DRAFT"];
+    /// <summary>
+    /// حالات <b>قيد تسجيل</b> عقد الإيجار — لا حالات العقد.
+    /// <para>ولا قيمة هنا تقول «سارٍ»: نفاذ العقد يُقرَّر في منصّة إيجار لا في هذا الجدول.</para>
+    /// </summary>
+    private static IReadOnlyList<string> LeaseStates { get; } = ["BILLABLE", "DRAFT"];
 
     /// <summary>حالات المستند العقاري. ولا حالة «ملغى»: التصحيح إشعارٌ أو عكس.</summary>
     private static IReadOnlyList<string> DocumentStates { get; } = ["DRAFT", "POSTED"];
@@ -5748,6 +5854,198 @@ internal static class OpenApiEmitter
             w.WriteEndArray();
         });
 
+        // ── المعامِلات: قيمةٌ واحدة تسع النسبة والمبلغ والعدد ──────────────────
+        yield return ("ParameterAmount", static w =>
+        {
+            w.WriteString("type", "string");
+            w.WriteString("pattern", @"^(0|[1-9][0-9]*)(\.[0-9]{1,8})?$");
+            w.WriteString("description",
+                "قيمةُ معامِل **نصّاً وغيرَ سالبة**، بمقياس ثمانٍ يسع النسبة والمبلغ والعدد معاً. "
+                + "و**النسبة كسرٌ عشري لا مئوية**: خمسة عشر بالمئة تُكتب 0.15 لا 15 — وقيمةٌ تُكتب 15 في مفتاحٍ صنفُه "
+                + "نسبة تُرفض باسمها ولا تُصحَّح صامتةً. والصنف يقوله الحقل `kind` لا شكلُ الرقم. / "
+                + "A parameter value as a **non-negative string** at scale eight, wide enough for a rate, an amount and a count "
+                + "alike. A **rate is a decimal fraction, not a percentage**: fifteen percent is 0.15, never 15 — a value written 15 "
+                + "under a key whose kind is a rate is refused by name and never silently corrected. The kind is stated by the "
+                + "`kind` field, not by the shape of the number.");
+            w.WriteStartArray("examples");
+            w.WriteStringValue("0.15");
+            w.WriteStringValue("0");
+            w.WriteStringValue("5000.0000");
+            w.WriteEndArray();
+        });
+
+        yield return ("ParameterValueRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "قيمةٌ واحدة في إيداع: مفتاحُها من مفاتيح المجموعة المعلَنة، وقيمتُها نصّاً. / "
+                + "One value in a deposit: its key from the declared set's keys, and its value as a string.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "key", "المفتاح داخل المجموعة.", "The key within the set.", 64);
+            WriteRefProperty(w, "value", "ParameterAmount");
+            w.WriteEndObject();
+            WriteRequired(w, "key", "value");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("ParameterVersionRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "إيداعُ إصدارٍ جديد من مجموعة معامِلات على مستوى المنشأة. **المجموعة كاملةً لا بعضها**: قيمُها يسري "
+                + "بعضها ببعض، وإيداعٌ جزئي يُنتج خليطاً من إصدارين لم يعتمده أحد. و`approvedBy` **إنسانٌ لا نظام**، "
+                + "و`sourceRef` غير فارغ بقيدٍ في قاعدة البيانات. / "
+                + "Depositing a new version of a parameter set at the company's level. **The whole set, not part of it**: its values "
+                + "take effect together, and a partial deposit yields a mixture of two versions nobody approved. `approvedBy` is a "
+                + "**human, never the system**, and `sourceRef` is non-empty by a database constraint.");
+            w.WriteStartObject("properties");
+            WriteEnumProperty(w, "approval",
+                "حالةُ الاعتماد. و«افتراضُ منصّة» ليس خياراً هنا: يُشحن مع المنتج ولا يُكتب من مسار طلب.",
+                "The approval state. 'Platform default' is not a choice here: it ships with the product and is never written "
+                + "from a request path.",
+                DepositableApprovalNames);
+            WriteStringProperty(w, "approvedBy", "من اعتمد الإصدار — إنسان، لا نظام.", "Who approved the version — a human, not the system.", 200);
+            WriteDateProperty(w, "approvedOn", "تاريخ الاعتماد", "The approval date.");
+            WriteDateProperty(w, "effectiveFrom", "تاريخ سريان الإصدار", "The date the version takes effect.");
+            WriteStringProperty(w, "setCode", "رمز مجموعة المعامِلات.", "The parameter set's code.", 64);
+            WriteStringProperty(w, "sourceRef",
+                "مرجعُ المصدر الذي أُخذت منه القيم — نصٌّ يقرؤه مراجع، وغير فارغ.",
+                "The reference to the source the values came from — text a reviewer reads, and non-empty.", 600);
+            WriteArrayRefProperty(w, "values", "ParameterValueRequest",
+                "قيمُ المجموعة — كلُّها لا بعضها.", "The set's values — all of them, not some.");
+            w.WriteEndObject();
+            WriteRequired(w, "approval", "approvedBy", "approvedOn", "effectiveFrom", "setCode", "sourceRef", "values");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("ParameterValue", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "قيمةٌ في إصدار، بصنفها كما أُودعت. / A value in a version, with its kind as deposited.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "key", "المفتاح.", "The key.", 64);
+            WriteEnumProperty(w, "kind",
+                "صنفُ القيمة — وهو ما يقرّر حارسها: `rate` كسرٌ عشري بين صفر وواحد، و`money` مبلغٌ بمقياس أربع، و`count` "
+                + "عددٌ صحيح.",
+                "The value's kind, which decides its guard: `rate` is a decimal fraction between zero and one, `money` is an "
+                + "amount at scale four, and `count` is a whole number.",
+                ParameterValueKindNames);
+            WriteRefProperty(w, "value", "ParameterAmount");
+            w.WriteEndObject();
+            WriteRequired(w, "key", "kind", "value");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("ParameterVersion", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "إصدارُ معامِلاتٍ كما يخرج من السطح: مستواه، وسريانه، و**حالةُ اعتماده**، ومعتمِده، ومصدره، وقيمُه. "
+                + "و`approvedBy` و`approvedOn` **فارغان بالضبط** في صفّ المنصّة — لم يعتمده إنسان. / "
+                + "A parameter version as the surface returns it: its level, its effective date, its **approval state**, its "
+                + "approver, its source, and its values. `approvedBy` and `approvedOn` are **exactly empty** on a platform row — no "
+                + "human approved it.");
+            w.WriteStartObject("properties");
+            WriteEnumProperty(w, "approval",
+                "**حالةُ الاعتماد — ثلاثية لا ثنائية.** `platform_default` افتراضٌ يشحنه المنتج ولم يعتمده إنسان ولا يحمل "
+                + "اسمَ معتمِد؛ و`tenant_approved` أودعه صاحب المنشأة باسمه وتاريخه ومصدره؛ و`auditor_signed` وقّعه محاسبٌ "
+                + "قانوني. ولا يُشحن شيءٌ بالحالة الثالثة أبداً، والقيد مفروضٌ في المخطّط.",
+                "**The approval state — ternary, not binary.** `platform_default` is a default the product ships that no human "
+                + "approved and that carries no approver name; `tenant_approved` was deposited by the company under a name, a "
+                + "date and a source; `auditor_signed` was signed by a chartered accountant. Nothing ever ships in the third "
+                + "state, and the constraint is enforced in the schema.",
+                ParameterApprovalNames);
+            WriteStringProperty(w, "approvedBy", "المعتمِد — فارغٌ لافتراض المنصّة وحده.", "The approver — empty for the platform default alone.", 200);
+            WriteStringProperty(w, "approvedOn", "تاريخ الاعتماد بصيغة yyyy-MM-dd، أو فراغٌ لافتراض المنصّة.", "The approval date as yyyy-MM-dd, or empty for the platform default.", 10);
+            WriteDateProperty(w, "effectiveFrom", "تاريخ السريان", "The effective date.");
+            WriteStringProperty(w, "id", "المعرّف.", "The identifier.", 36);
+            WriteEnumProperty(w, "scope",
+                "المستوى الذي قُرِّرت عنده القيمة: `platform` يُشحن مع المنتج، و`tenant` أودعته المنشأة — وتجاوزُ المنشأة "
+                + "يسبق افتراضَ المنصّة عند الحلّ.",
+                "The level the value was decided at: `platform` ships with the product, `tenant` was deposited by the company — "
+                + "and a tenant override wins over the platform default at resolution time.",
+                ParameterScopeNames);
+            WriteStringProperty(w, "setCode", "رمز المجموعة.", "The set's code.", 64);
+            WriteStringProperty(w, "sourceRef", "مرجع المصدر.", "The source reference.", 600);
+            WriteArrayRefProperty(w, "values", "ParameterValue", "القيم، مرتَّبةً بمفاتيحها.", "The values, ordered by key.");
+            w.WriteEndObject();
+            WriteRequired(w, "approval", "approvedBy", "approvedOn", "effectiveFrom", "id", "scope", "setCode", "sourceRef", "values");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("ParameterVersionList", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "الإصدارات التي تراها المنشأة: افتراضاتُ المنصّة وتجاوزاتُها هي وحدها. / "
+                + "The versions this company sees: the platform defaults and its own overrides alone.");
+            w.WriteStartObject("properties");
+            WriteIntegerProperty(w, "itemCount", 0, int.MaxValue, "عدد الإصدارات.", "The number of versions.");
+            WriteArrayRefProperty(w, "items", "ParameterVersion",
+                "الإصدارات، مرتَّبةً بالمجموعة ثمّ بتاريخ السريان.",
+                "The versions, ordered by set then by effective date.");
+            w.WriteEndObject();
+            WriteRequired(w, "itemCount", "items");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("ParameterUsage", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "مستندٌ **مُرحَّل** استعمل هذا الإصدار. والمستند نفسه يحمل لقطةَ الإصدار وقيمَه في قاعدة وحدته، "
+                + "وهذا الصفّ فهرسٌ يجمع المتفرّق في قاعدةٍ واحدة. / "
+                + "A **posted** document that used this version. The document itself carries the version's snapshot and values in "
+                + "its own module's database; this row is an index that gathers the scattered into one database.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "documentId", "معرّف المستند داخل وحدته.", "The document's identifier within its module.", 36);
+            WriteStringProperty(w, "documentType", "نوع المستند داخل وحدته.", "The document's type within its module.", 32);
+            WriteStringProperty(w, "module", "الوحدة المالكة للمستند.", "The module that owns the document.", 32);
+            WriteDateProperty(w, "postedOn", "تاريخ الترحيل", "The posting date.");
+            w.WriteEndObject();
+            WriteRequired(w, "documentId", "documentType", "module", "postedOn");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("ParameterReviewEntry", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "صفٌّ في قائمة المراجعة: إصدارٌ لم يُوقَّع بعد ومعه المستندات المُرحَّلة التي استعملته. "
+                + "**وقائمةُ مستنداتٍ فارغة ليست عطلاً**: إصدارٌ لم يُستعمل بعد يبقى محتاجاً إلى التوقيع. / "
+                + "A row in the review list: a version not yet signed together with the posted documents that used it. "
+                + "**An empty document list is not a fault**: a version that has not been used yet still needs a signature.");
+            w.WriteStartObject("properties");
+            WriteIntegerProperty(w, "usageCount", 0, int.MaxValue, "عدد المستندات التي استعملته.", "The number of documents that used it.");
+            WriteArrayRefProperty(w, "usages", "ParameterUsage",
+                "المستندات المُرحَّلة، مرتَّبةً بتاريخ الترحيل.", "The posted documents, ordered by posting date.");
+            WriteRefProperty(w, "version", "ParameterVersion");
+            w.WriteEndObject();
+            WriteRequired(w, "usageCount", "usages", "version");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("ParameterReviewList", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "**القائمةُ المحصورة**: كلُّ إصدارٍ غير موقَّع تراه المنشأة، ومعه كلُّ مستندٍ مُرحَّلٍ استعمله. "
+                + "وهي قائمةُ مراجعة المحاسب القانوني في الخطوة الأخيرة. **وقائمةٌ فارغة تعني أن كلَّ إصدارٍ موقَّع** "
+                + "— وهي حالٌ لا تقع قبل أن يوقّع المحاسب على افتراضات المنصّة نفسها. / "
+                + "**The bounded list**: every unsigned version this company sees, together with every posted document that used it. "
+                + "It is the chartered accountant's review list in the final step. **An empty list means every version is signed** — "
+                + "a state that does not occur before the accountant signs the platform defaults themselves.");
+            w.WriteStartObject("properties");
+            WriteIntegerProperty(w, "itemCount", 0, int.MaxValue, "عدد الإصدارات غير الموقَّعة.", "The number of unsigned versions.");
+            WriteArrayRefProperty(w, "items", "ParameterReviewEntry",
+                "الصفوف، مرتَّبةً بالمجموعة ثمّ بتاريخ السريان.",
+                "The rows, ordered by set then by effective date.");
+            w.WriteEndObject();
+            WriteRequired(w, "itemCount", "items");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
         // ── العقارات ─────────────────────────────────────────────────────────
         // ولا مخطّط منها يحمل رقم حساب ولا رمز حدث في **طلب**: الوحدة تختار الحدث من
         // سجلّ الدفتر، والمصفوفة تختار الحساب. والاسم سجلٌّ عربي وترجماتٌ صفوف — لا
@@ -5896,53 +6194,73 @@ internal static class OpenApiEmitter
             w.WriteBoolean("additionalProperties", false);
         });
 
-        yield return ("LeaseRequest", static w =>
+        yield return ("LeaseRegistrationRequest", static w =>
         {
             w.WriteString("type", "object");
             w.WriteString("description",
-                "طلب إنشاء عقد إيجار مسوّدة. **وقيمة العقد والأقساط تُصرَّحان معاً**: النظام لا يوزّع القيمة على "
-                + "الأقساط — التوزيع يستلزم سياسة تقريب هي قرار مالك مفتوح — بل **يفحص** أن مجموع الأقساط يساوي "
-                + "قيمة العقد بالضبط ويرفض بخلافه. ولو اشتُقّت القيمة من الأقساط لصارت الثابتة صحيحةً بحكم البناء "
-                + "ولم تمسك توزيعاً خاطئاً. / "
-                + "A request to draft a lease contract. **The contract value and the instalments are both declared**: the "
+                "طلب **تسجيل** عقد إيجار مُحرَّر في منصّة إيجار — مسوّدة قيد أرشيفي لا عقد. **والنظام لا يُحرّر "
+                + "عقداً ولا يُعدّله ولا يُنهيه**: منصّة إيجار الحكومية هي الطرف المخوَّل بذلك، وما يُنشَأ هنا قيدٌ "
+                + "مرجعُه رقم عقد إيجار. **ولا تكامل مع المنصّة**: الرقم يُقيَّد كما يصل ولا يُتحقَّق منه.\n\n"
+                + "**وقيمة العقد والأقساط تُصرَّحان معاً**: النظام لا يوزّع القيمة على الأقساط — التوزيع يستلزم "
+                + "سياسة تقريب هي قرار مالك مفتوح — بل **يفحص** أن مجموع الأقساط يساوي قيمة العقد بالضبط ويرفض "
+                + "بخلافه. ولو اشتُقّت القيمة من الأقساط لصارت الثابتة صحيحةً بحكم البناء ولم تمسك توزيعاً خاطئاً. / "
+                + "A request to **register** a lease contract issued on the Ejar platform — a draft archival record, not a "
+                + "contract. **The system issues no contract, amends none, and terminates none**: the government Ejar platform "
+                + "is the party authorised to do that, and what is created here is a record whose reference is the Ejar contract "
+                + "number. **There is no integration with the platform**: the number is recorded as received and never verified.\n\n"
+                + "**The contract value and the instalments are both declared**: the "
                 + "system does not spread the value across the instalments — spreading requires a rounding policy that is an "
                 + "open owner decision — it **checks** that the instalments sum exactly to the contract value and refuses "
                 + "otherwise. Had the value been derived from the instalments the invariant would hold by construction and "
                 + "would catch no wrong split.");
             w.WriteStartObject("properties");
-            WriteStringProperty(w, "contractNo", "رقم العقد — فريد داخل المنشأة.", "The contract number — unique within the company.", 64);
+            WriteStringProperty(w, "ejarContractNumber",
+                "رقم عقد إيجار — مرجع العقد المُحرَّر في المنصّة، ولا يولّده هذا النظام. وتفرّده مفروضٌ داخل المنشأة وحدها.",
+                "The Ejar contract number — the reference to the contract issued on the platform; this system does not mint it. "
+                + "Its uniqueness is enforced within the company alone.", 64);
             WriteDateProperty(w, "endsOn", "نهاية المدّة — داخلة في المدى.", "The end of the term — inclusive.");
             WriteArrayRefProperty(w, "instalments", "Instalment",
-                "الأقساط بفتراتها ومبالغها. ومجموعها يُفحص عند التفعيل ولا يُصلَح.",
-                "The instalments with their periods and amounts. Their sum is checked on activation and never corrected.");
+                "الأقساط بفتراتها ومبالغها. ومجموعها يُفحص عند الاعتماد للفوترة ولا يُصلَح.",
+                "The instalments with their periods and amounts. Their sum is checked at billing approval and never corrected.");
             WriteStringProperty(w, "lesseeId", "المستأجر.", "The lessee.", 36);
             WriteDateProperty(w, "startsOn", "بداية المدّة.", "The start of the term.");
             WriteRefProperty(w, "totalRent", "Money");
             WriteStringProperty(w, "unitId", "الوحدة المؤجَّرة — ومنها يُشتقّ العقار، فلا يُذكر العقار مرّتين فينحرف.", "The unit being let — the property is derived from it, so the property is never stated twice and cannot drift.", 36);
             w.WriteEndObject();
-            WriteRequired(w, "contractNo", "endsOn", "instalments", "lesseeId", "startsOn", "totalRent", "unitId");
+            WriteRequired(w, "ejarContractNumber", "endsOn", "instalments", "lesseeId", "startsOn", "totalRent", "unitId");
             w.WriteBoolean("additionalProperties", false);
         });
 
-        yield return ("Lease", static w =>
+        yield return ("LeaseRegistration", static w =>
         {
             w.WriteString("type", "object");
             w.WriteString("description",
-                "عقد إيجار بحالته. **ولا معرّف قيد فيه**: توقيع العقد لا يُنشئ قيداً، ولا مورد ترحيل عليه. / "
-                + "A lease contract with its state. **It carries no entry identifier**: signing a lease creates no entry, and "
+                "**قيدُ تسجيلِ** عقد إيجار مُحرَّر في منصّة إيجار، بحالة القيد. **والحالة حالةُ القيد لا حالةُ "
+                + "العقد**: نفاذ العقد يُقرَّر في المنصّة لا هنا. **ولا معرّف قيد محاسبي فيه**: توقيع العقد لا "
+                + "يُنشئ قيداً، ولا مورد ترحيل على هذا المستند. / "
+                + "The **registration record** of a lease contract issued on the Ejar platform, with the record's state. "
+                + "**The state is the record's, not the contract's**: whether the contract is in force is settled on the "
+                + "platform, not here. **It carries no accounting entry identifier**: signing a lease creates no entry, and "
                 + "the resource has no posting sub-resource.");
             w.WriteStartObject("properties");
-            WriteStringProperty(w, "contractNo", "رقم العقد.", "The contract number.", 64);
+            WriteStringProperty(w, "ejarContractNumber",
+                "رقم عقد إيجار — مرجع العقد المُحرَّر في المنصّة.",
+                "The Ejar contract number — the reference to the contract issued on the platform.", 64);
             WriteDateProperty(w, "endsOn", "نهاية المدّة.", "The end of the term.");
             WriteStringProperty(w, "id", "المعرّف.", "The identifier.", 36);
             WriteStringProperty(w, "lesseeId", "المستأجر.", "The lessee.", 36);
             WriteStringProperty(w, "propertyId", "العقار المشتقّ من الوحدة.", "The property derived from the unit.", 36);
             WriteDateProperty(w, "startsOn", "بداية المدّة.", "The start of the term.");
-            WriteEnumProperty(w, "state", "حالة العقد. وACTIVE وحدها تدخل قيد الاستبعاد الزمني وتُتيح الفوترة.", "The lease state. Only ACTIVE enters the temporal exclusion constraint and permits invoicing.", LeaseStates);
+            WriteEnumProperty(w, "state",
+                "حالة **القيد** لا حالة العقد. وBILLABLE وحدها تدخل قيد الاستبعاد الزمني وتُتيح الفوترة، ومعناها "
+                + "«معتمَدٌ للفوترة» لا «سارٍ»: النفاذ من المنصّة.",
+                "The state of the **record**, not of the contract. Only BILLABLE enters the temporal exclusion constraint and "
+                + "permits invoicing; it means 'approved for billing', never 'in force' — force comes from the platform.",
+                LeaseStates);
             WriteRefProperty(w, "totalRent", "Money");
             WriteStringProperty(w, "unitId", "الوحدة.", "The unit.", 36);
             w.WriteEndObject();
-            WriteRequired(w, "contractNo", "endsOn", "id", "lesseeId", "propertyId", "startsOn", "state", "totalRent", "unitId");
+            WriteRequired(w, "ejarContractNumber", "endsOn", "id", "lesseeId", "propertyId", "startsOn", "state", "totalRent", "unitId");
             w.WriteBoolean("additionalProperties", false);
         });
 
@@ -5959,7 +6277,7 @@ internal static class OpenApiEmitter
             WriteBooleanProperty(w, "isInvoiced", "هل فُوتر هذا القسط؟ والقسط لا يُفوتَر مرّتين.", "Has this instalment been invoiced? An instalment is never invoiced twice.");
             WriteDateProperty(w, "periodFrom", "بداية الفترة.", "The start of the period.");
             WriteDateProperty(w, "periodTo", "نهاية الفترة.", "The end of the period.");
-            WriteIntegerProperty(w, "seq", 1, 100000, "تسلسل القسط في العقد.", "The instalment's sequence within the lease.");
+            WriteIntegerProperty(w, "seq", 1, 100000, "تسلسل القسط في القيد.", "The instalment's sequence within the registration.");
             w.WriteEndObject();
             WriteRequired(w, "amount", "dueOn", "id", "isInvoiced", "periodFrom", "periodTo", "seq");
             w.WriteBoolean("additionalProperties", false);
@@ -5969,9 +6287,9 @@ internal static class OpenApiEmitter
         {
             w.WriteString("type", "object");
             w.WriteString("description",
-                "جدول دفعات عقد بمعرّفات سطوره. / A lease payment schedule with its line identifiers.");
+                "جدول دفعات قيدٍ بمعرّفات سطوره. / A lease registration's payment schedule with its line identifiers.");
             w.WriteStartObject("properties");
-            WriteStringProperty(w, "leaseId", "العقد.", "The lease.", 36);
+            WriteStringProperty(w, "leaseId", "قيد التسجيل.", "The lease registration.", 36);
             WriteArrayRefProperty(w, "lines", "LeaseScheduleLine", "السطور بترتيب تسلسلها.", "The lines in sequence order.");
             w.WriteEndObject();
             WriteRequired(w, "leaseId", "lines");
@@ -9187,6 +9505,21 @@ internal static class OpenApiEmitter
     private static string Wire(string member) =>
         char.ToLowerInvariant(member[0]) + member[1..];
 
+    /// <summary>
+    /// حالاتُ اعتماد المعامِل — <b>ثلاثٌ لا اثنتان</b>، كما يقيّدها
+    /// <c>ck_parameter_version_approval</c> في مخطّط النواة.
+    /// </summary>
+    private static readonly string[] ParameterApprovalNames = ["platform_default", "tenant_approved", "auditor_signed"];
+
+    /// <summary>الحالتان اللتان يقبلهما بابُ الإيداع — و«افتراضُ منصّة» ليس منهما.</summary>
+    private static readonly string[] DepositableApprovalNames = ["tenant_approved", "auditor_signed"];
+
+    /// <summary>مستويا تقرير المعامِل.</summary>
+    private static readonly string[] ParameterScopeNames = ["platform", "tenant"];
+
+    /// <summary>أصنافُ قيمة المعامِل — وهي ما يقرّر حارسها.</summary>
+    private static readonly string[] ParameterValueKindNames = ["rate", "money", "count"];
+
     /// <summary>حالات الاشتراك كما يقيّدها <c>ck_sub_state</c> في مخطّط مستوى التحكّم.</summary>
     private static readonly string[] SubscriptionStateNames = ["Active", "Lapsed", "Cancelled"];
 
@@ -9560,7 +9893,17 @@ internal static class OpenApiEmitter
         + "يفرض v2 بنصّ السياسة، ونُفِّذ في v1 في مكانه للسبب نفسه: لا مستهلك ولا عميل مطابق. الحقل يبقى "
         + "**اختيارياً** — حذفه يعني المركز الافتراضي للمنشأة — لكن القيمة null لا معنى لها: لكل منشأة مركز "
         + "تكلفة واحد على الأقل ولا سطر بلا مركز، فـnull كان يقول «بلا مركز» وهي حالة لا وجود لها. "
-        + "والقيد ck_journal_line_cost_center_present يفرض ذلك في قاعدة البيانات نفسها (ADR-0026 · ADR-0018).\n\n"
+        + "والقيد ck_journal_line_cost_center_present يفرض ذلك في قاعدة البيانات نفسها (ADR-0026 · ADR-0018).\n"
+        + "• تعديل مُسجَّل — 2026-09-04: سطح عقود الإيجار صار سطح **قيود تسجيل**. تغيّر المسار من "
+        + "/lease-contracts إلى /lease-registrations، والمورد الفرعي من /activation إلى /billing-approval، "
+        + "ومعرّفات العمليات الثلاثة (draftLeaseRegistration · readLeaseRegistration · "
+        + "approveLeaseRegistrationForBilling)، واسما المخطّطين (LeaseRegistrationRequest · LeaseRegistration)، "
+        + "والحقل contractNo صار ejarContractNumber، وعضو التعداد ACTIVE صار BILLABLE، ورمز نجاح الاعتماد صار "
+        + "200 بدل 201 لأنه صار حصيناً ضد التكرار. وكلّها تفرض v2 بنصّ السياسة، ونُفِّذت في v1 في مكانها للسبب "
+        + "نفسه: لا مستهلك ولا عميل مطابق. السبب: **عقد الإيجار لا يُحرّره هذا النظام** — منصّة إيجار الحكومية هي "
+        + "الطرف المخوَّل بتحريره — وكان العقد المنشور يقول «إنشاء عقد إيجار» و«تفعيل عقد إيجار» ويسمّي رقم العقد "
+        + "«رقمنا الفريد داخل المنشأة»، فيصف النظام محرِّراً للعقد ومُنفِّذاً له وهو أرشيفٌ وفوترة. ولا تكامل مع "
+        + "منصّة إيجار في هذا الإصدار: لا عنوان ولا مفتاح ولا نداء (ADR-the-lease-is-registered-not-issued · ADR-0018).\n\n"
         + "Total isolation between front end and back end: this document is everything a front-end team needs; it reads no back-end code.\n\n"
         + "Versioning policy — what stays in v1 and what forces v2:\n"
         + "• Stays in v1: adding an endpoint; adding an optional response field; adding an optional request field with a published default; "
@@ -9586,7 +9929,18 @@ internal static class OpenApiEmitter
         + "change the policy text forces to v2, and it was made in v1 in place for the same reason: no consumer and no conforming client. "
         + "The field stays **optional** — omitting it means the company's default centre — but the value null has no meaning: every company "
         + "has at least one cost centre and no line is without one, so null said 'no centre', a state that does not exist. The constraint "
-        + "ck_journal_line_cost_center_present enforces this in the database itself (ADR-0026, ADR-0018).";
+        + "ck_journal_line_cost_center_present enforces this in the database itself (ADR-0026, ADR-0018).\n"
+        + "• Recorded amendment — 2026-09-04: the lease-contract surface became a **lease-registration** surface. The path moved "
+        + "from /lease-contracts to /lease-registrations, the sub-resource from /activation to /billing-approval, three operation "
+        + "ids changed (draftLeaseRegistration, readLeaseRegistration, approveLeaseRegistrationForBilling), two schema names "
+        + "changed (LeaseRegistrationRequest, LeaseRegistration), the field contractNo became ejarContractNumber, the enum member "
+        + "ACTIVE became BILLABLE, and the approval's success status became 200 instead of 201 now that it is idempotent. Each of "
+        + "these is a change the policy text forces to v2, and each was made in v1 in place for the same reason: no consumer and "
+        + "no conforming client. Reason: **this system does not issue lease contracts** — the government Ejar platform is the "
+        + "party authorised to issue them — yet the published contract said 'draft a lease contract' and 'activate a lease "
+        + "contract' and called the contract number our own number unique within the company, presenting the system as the "
+        + "issuer and enforcer of a contract when it is an archive and a biller. There is no integration with the Ejar platform "
+        + "in this release: no address, no key, no call (ADR-the-lease-is-registered-not-issued, ADR-0018).";
 
     private sealed record Operation(
         string Path,

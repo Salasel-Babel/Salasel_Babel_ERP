@@ -107,7 +107,7 @@ public sealed class RealEstateCycleIntegrationTests
                 token)
             .ConfigureAwait(true);
 
-        Proof.Require(lease.IsSuccess, "إنشاء العقد مسوّدةً ينجح", Describe(lease));
+        Proof.Require(lease.IsSuccess, "تسجيل عقدٍ مُحرَّر في منصّة إيجار مسوّدةَ قيدٍ ينجح", Describe(lease));
 
         Result<IReadOnlyList<ScheduleLineView>> schedule = await harness.Leases
             .ReadScheduleAsync(tenant, Harness.Actor, tenant.Value, lease.Value.Id, token).ConfigureAwait(true);
@@ -126,17 +126,38 @@ public sealed class RealEstateCycleIntegrationTests
             .ConfigureAwait(true);
 
         Proof.Require(
-            beforeActivation.IsFailure && beforeActivation.Errors[0].Code == "realestate.lease_is_not_active",
-            "الفوترة على عقدٍ لم يُفعَّل تُرفض",
+            beforeActivation.IsFailure
+                && beforeActivation.Errors[0].Code == "realestate.lease_is_not_approved_for_billing",
+            "الفوترة على قيدٍ لم يُعتمد للفوترة تُرفض",
             Describe(beforeActivation));
 
-        Result<LeaseView> activated = await harness.Leases
-            .ActivateAsync(tenant, Harness.Actor, tenant.Value, lease.Value.Id, token).ConfigureAwait(true);
+        Result<LeaseView> approved = await harness.Leases
+            .ApproveForBillingAsync(tenant, Harness.Actor, tenant.Value, lease.Value.Id, token).ConfigureAwait(true);
 
         Proof.Require(
-            activated.IsSuccess && activated.Value.State == "ACTIVE",
-            "التفعيل فعلٌ مستقلّ يجعل الجدول قابلاً للفوترة ولا يُرحّل قيداً",
-            Describe(activated));
+            approved.IsSuccess && approved.Value.State == "BILLABLE",
+            "الاعتماد للفوترة فعلٌ مستقلّ يجعل الجدول قابلاً للفوترة ولا يُرحّل قيداً محاسبياً",
+            Describe(approved));
+
+        // ── إعادةُ الاعتماد آمنة وتُعيد النتيجة نفسها ─────────────────────────
+        Result<LeaseView> approvedAgain = await harness.Leases
+            .ApproveForBillingAsync(tenant, Harness.Actor, tenant.Value, lease.Value.Id, token).ConfigureAwait(true);
+
+        Proof.Require(
+            approvedAgain.IsSuccess
+                && approvedAgain.Value.State == "BILLABLE"
+                && approvedAgain.Value.Id == approved.Value.Id
+                && approvedAgain.Value.EjarContractNumber == approved.Value.EjarContractNumber,
+            "إعادةُ الاعتماد آمنة وتُعيد الجواب نفسه — ولا جدول دفعاتٍ ثانٍ",
+            Describe(approvedAgain));
+
+        Result<IReadOnlyList<ScheduleLineView>> scheduleAfterSecondApproval = await harness.Leases
+            .ReadScheduleAsync(tenant, Harness.Actor, tenant.Value, lease.Value.Id, token).ConfigureAwait(true);
+
+        Proof.Require(
+            scheduleAfterSecondApproval.IsSuccess && scheduleAfterSecondApproval.Value.Count == 2,
+            "جدول الدفعات بعد الاعتماد الثاني كما هو — عددُ سطوره لم يتضاعف",
+            "عدد الأقساط = " + scheduleAfterSecondApproval.Value.Count.ToString(CultureInfo.InvariantCulture));
 
         // ── ٣ · الفاتورة وترحيلها ─────────────────────────────────────────────
         Result<RentInvoiceView> invoice = await harness.Invoices
@@ -316,9 +337,9 @@ public sealed class RealEstateCycleIntegrationTests
                 token)
             .ConfigureAwait(true);
 
-        Proof.Require(lease.IsSuccess, "إنشاء العقد ينجح", Describe(lease));
+        Proof.Require(lease.IsSuccess, "تسجيل العقد قيداً ينجح", Describe(lease));
 
-        await harness.Leases.ActivateAsync(tenant, Harness.Actor, tenant.Value, lease.Value.Id, token).ConfigureAwait(true);
+        await harness.Leases.ApproveForBillingAsync(tenant, Harness.Actor, tenant.Value, lease.Value.Id, token).ConfigureAwait(true);
 
         Result<IReadOnlyList<ScheduleLineView>> schedule = await harness.Leases
             .ReadScheduleAsync(tenant, Harness.Actor, tenant.Value, lease.Value.Id, token).ConfigureAwait(true);
@@ -494,7 +515,7 @@ public sealed class RealEstateCycleIntegrationTests
                 token)
             .ConfigureAwait(true);
 
-        await harness.Leases.ActivateAsync(tenant, Harness.Actor, tenant.Value, first.Value.Id, token).ConfigureAwait(true);
+        await harness.Leases.ApproveForBillingAsync(tenant, Harness.Actor, tenant.Value, first.Value.Id, token).ConfigureAwait(true);
 
         Result<LeaseView> overlapping = await harness.Leases
             .DraftAsync(
@@ -508,7 +529,7 @@ public sealed class RealEstateCycleIntegrationTests
         Proof.Require(overlapping.IsSuccess, "المسوّدة المتداخلة تُقبل — القيد على المدّة السارية وحدها", Describe(overlapping));
 
         Result<LeaseView> refused = await harness.Leases
-            .ActivateAsync(tenant, Harness.Actor, tenant.Value, overlapping.Value.Id, token).ConfigureAwait(true);
+            .ApproveForBillingAsync(tenant, Harness.Actor, tenant.Value, overlapping.Value.Id, token).ConfigureAwait(true);
 
         Proof.Require(
             refused.IsFailure && refused.Errors[0].Code == "realestate.lease_term_overlaps",

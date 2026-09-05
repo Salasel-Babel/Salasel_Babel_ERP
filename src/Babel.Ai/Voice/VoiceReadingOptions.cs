@@ -8,5 +8,12 @@ namespace Babel.Ai.Voice;
 /// <param name="Today">تاريخ اليوم بصيغة ISO الميلادية، أو لا شيء فلا يُملأ تاريخ إطلاقاً.</param>
 /// <param name="StatutoryTaxRate">
 /// النسبة النظامية حين لا تُنطق — <b>نصّ لا عدد عائم</b>، وتُوسَم «من الإعدادات» لا «منطوق».
+/// <para>
+/// <b>ومن أين تأتي حين يُوصَل هذا المسار بمسار طلب:</b> من خدمة المعامِلات
+/// (‏<c>tax.value_added</c> · <c>standard_rate</c>) عبر <c>IParameterSource</c>، لا من
+/// رقمٍ في شيفرة ولا من إعدادٍ ثابت. وهي اليوم <b>مُحقَنةٌ من المتجهات في الاختبار
+/// وحده</b> — لا مُركِّب لها في مسار طلب بعد — والحقل يقول ذلك بدل أن يترك القارئ
+/// يفترض أن الوصلة قائمة.
+/// </para>
 /// </param>
 public sealed record VoiceReadingOptions(string? Today = null, string? StatutoryTaxRate = null);

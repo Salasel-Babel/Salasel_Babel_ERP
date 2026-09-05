@@ -107,15 +107,17 @@ internal static class RealEstateErrors
         + "and an instalment count: the split requires a rounding policy the owner has not settled (Q-RE-3), so instalments "
         + "arrive declared with their periods.");
 
-    public static Error LeaseIsNotActive(Guid id) => new(
-        "realestate.lease_is_not_active",
-        "العقد " + Id(id) + " ليس سارياً. والفوترة على عقدٍ لم يُفعَّل تُنشئ ذمّةً بلا مدّة يستند إليها الاعتراف.",
-        "Lease " + Id(id) + " is not active. Invoicing an unactivated lease creates a receivable with no term to recognise against.");
-
-    public static Error LeaseIsAlreadyActive(Guid id) => new(
-        "realestate.lease_is_already_active",
-        "العقد " + Id(id) + " مُفعَّل سلفاً، والتفعيل فعلٌ يقع مرّة: إعادته تولّد جدول دفعات ثانياً.",
-        "Lease " + Id(id) + " is already active; activation happens once — repeating it would generate a second schedule.");
+    /// <summary>
+    /// قيدٌ لم يُعتمد للفوترة بعد. <b>ولا يقول هذا الرفض شيئاً عن نفاذ العقد</b>:
+    /// النفاذ من منصّة إيجار، والاعتماد إذنُ فوترةٍ داخلي.
+    /// </summary>
+    public static Error LeaseIsNotApprovedForBilling(Guid id) => new(
+        "realestate.lease_is_not_approved_for_billing",
+        "قيد العقد " + Id(id) + " لم يُعتمد للفوترة. والفوترة على قيدٍ غير معتمَد تُنشئ ذمّةً "
+        + "بلا مدّة يستند إليها الاعتراف. والاعتماد إذنُ فوترةٍ داخلي لا حكمٌ على نفاذ العقد.",
+        "The registration of lease " + Id(id) + " is not approved for billing. Billing against an unapproved "
+        + "registration creates a receivable with no term to recognise against. The approval is an internal "
+        + "billing permission, not a verdict on whether the contract is in force.");
 
     /// <summary>
     /// مدّتان ساريتان متداخلتان على وحدة واحدة — <b>الحكم من قاعدة البيانات</b>.
@@ -124,14 +126,14 @@ internal static class RealEstateErrors
     /// اتّسع؛ وفحصٌ في الخدمة يقرأ ثم يكتب فيمرّ بينهما نداءٌ آخر.
     /// </para>
     /// </summary>
-    public static Error LeaseTermOverlaps(string contractNo) => new(
+    public static Error LeaseTermOverlaps(string ejarContractNumber) => new(
         "realestate.lease_term_overlaps",
-        "مدّة العقد «" + contractNo + "» تتداخل مع مدّة عقدٍ سارٍ آخر على الوحدة نفسها. "
-        + "والوحدة لا تُؤجَّر مرّتين في يوم واحد، والحكم من قيد الاستبعاد الزمني في قاعدة البيانات "
+        "مدّة عقد إيجار «" + ejarContractNumber + "» تتداخل مع مدّة قيدٍ آخر معتمَدٍ للفوترة على الوحدة نفسها. "
+        + "ووحدةٌ واحدة لا تُفوتَر مرّتين في يوم واحد، والحكم من قيد الاستبعاد الزمني في قاعدة البيانات "
         + "لا من فحصٍ في الخدمة يمرّ بينه وبين الكتابة نداءٌ آخر.",
-        "The term of lease '" + contractNo + "' overlaps a live lease on the same unit. A unit is not let twice on the "
-        + "same day, and the verdict comes from a temporal exclusion constraint in the database rather than from a service "
-        + "check with a window between it and the write.");
+        "The term of Ejar contract '" + ejarContractNumber + "' overlaps another registration approved for billing on the "
+        + "same unit. One unit is not billed twice for the same day, and the verdict comes from a temporal exclusion "
+        + "constraint in the database rather than from a service check with a window between it and the write.");
 
     public static Error ScheduleLineNotFound(Guid leaseId, Guid lineId) => new(
         "realestate.schedule_line_not_found",

@@ -193,7 +193,7 @@ internal static class BabelApiHost
         // خلف بوّابة تتقاسم عنواناً، أو مباشرةً على الإنترنت — لا على ما يفعله الباب.
         builder.Services.AddSingleton(provider => new OpenDoorRateGuard(
             provider.GetRequiredService<TimeProvider>(),
-            builder.Configuration.GetValue("Babel:RateLimit:PerMinute", OpenDoorRateGuard.DefaultPerMinute)));
+            ReadOpenDoorRateLimit(builder.Configuration)));
 
         WebApplication app = builder.Build();
 
@@ -211,6 +211,7 @@ internal static class BabelApiHost
         app.MapLedgerApi();
         app.MapCapabilityProfileApi();
         app.MapCompanySetupApi();
+        app.MapParameterApi();
         app.MapDocumentApi();
         app.MapRealEstateApi();
         app.MapPayrollApi();
@@ -287,6 +288,85 @@ internal static class BabelApiHost
                     "رُفض استحقاق الإقلاع: " + string.Join(" · ", applied.Errors.Select(static e => e.ToString())));
             }
         }
+    }
+
+    /// <summary>
+    /// يقرأ حدّ المعدّل على الأبواب المفتوحة.
+    /// <para>
+    /// <b>ولماذا لا <c>GetValue&lt;int&gt;(key, default)</c>:</b> تلك الصيغة تُفرّق بين
+    /// «غائب» و«فارغ»: الغائب يأخذ الافتراض، و<b>الفارغ يرمي</b> — ونصُّ الحزمة يمرّر
+    /// المفاتيح الاختيارية فارغةً بصيغة <c>${…:-}</c>. فيُقرأ النصّ هنا صراحةً: الغياب
+    /// <b>والفراغ</b> يعنيان «الحدّ المُعلَن»، وقيمةٌ لا تُقرأ عدداً أو دون الواحد
+    /// <b>تُرفض باسم مفتاحها</b> ولا تُبتلع إلى الافتراض — فمن وسّع الحدّ أو ضيّقه يعرف
+    /// أنه فعل، ومن أخطأ في كتابته يُقال له أين.
+    /// </para>
+    /// </summary>
+    /// <param name="configuration">الإعداد.</param>
+    private static int ReadOpenDoorRateLimit(ConfigurationManager configuration)
+    {
+        const string key = "Babel:RateLimit:PerMinute";
+        string? raw = configuration[key];
+
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return OpenDoorRateGuard.DefaultPerMinute;
+        }
+
+        if (!int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out int perMinute)
+            || perMinute < 1)
+        {
+            throw new InvalidOperationException(
+                "rate.limit_not_a_positive_number — " + key + " مضبوطٌ بقيمةٍ ليست عدداً صحيحاً موجباً. "
+                + "ولا تُبتلع إلى الافتراض: هذه أبوابٌ تُخدَم بلا اعتماد، ومن ضبط حدّها يجب أن يعرف "
+                + "أنّ ضبطه وقع. / rate.limit_not_a_positive_number — " + key
+                + " is not a positive integer, and it is not silently replaced by the declared default.");
+        }
+
+        return perMinute;
+    }
+
+    /// <summary>
+    /// <b>بوّابةُ الإقلاع: كلُّ اتصالٍ يحتاجه هذا الخادم مضبوطٌ، أو لا يقلع.</b>
+    /// <para>
+    /// <b>لماذا هنا لا عند أول نداء:</b> تسجيلُ الوحدات مصانعُ كسولة، فخادمٌ ينقصه
+    /// اتصالٌ يقلع سليم الظاهر ويردّ <c>/health</c> بنجاح، ثم يفشل أول طلب برسالة
+    /// اتصال تُقرأ <b>عطلَ شبكةٍ في قاعدة البيانات</b> لا إعداداً ناقصاً — فتُرسل من
+    /// يبحث إلى المكان الخطأ. وقبل هذا السطر كان الأسوأ ممكناً: الوحدات تحمل نصّ اتصالٍ
+    /// افتراضياً بالمستخدم الفائق، فالنقص لا يُعطِّل شيئاً بل <b>يعمل بامتيازٍ كامل على
+    /// قاعدةٍ لم يقصدها أحد</b>.
+    /// </para>
+    /// <para>
+    /// <b>ولا يُنادى من <see cref="Build"/>:</b> ‏<c>--emit-openapi</c> يبني التطبيق كي
+    /// يقرأ جدول مساراته ولا يتّصل بقاعدةٍ واحدة، فربطُ الرفض بالبناء كان يجعل توليد
+    /// العقد يحتاج قاعدة بيانات.
+    /// </para>
+    /// </summary>
+    /// <param name="app">التطبيق المبنيّ.</param>
+    /// <exception cref="InvalidOperationException">إن غاب اتصالُ وحدةٍ واحدة — والرسالة تسمّي متغيّرها.</exception>
+    public static void EnsureDeploymentConfigured(WebApplication app)
+    {
+        ArgumentNullException.ThrowIfNull(app);
+
+        app.Services.GetRequiredService<LedgerOptions>().EnsureAppConfigured();
+        app.Services.GetRequiredService<CoreOptions>().EnsureAppConfigured();
+        app.Services.GetRequiredService<SalesOptions>().EnsureConfigured();
+        app.Services.GetRequiredService<PurchasingOptions>().EnsureConfigured();
+        app.Services.GetRequiredService<InventoryOptions>().EnsureConfigured();
+        app.Services.GetRequiredService<RealEstateOptions>().EnsureConfigured();
+        app.Services.GetRequiredService<ProjectsOptions>().EnsureConfigured();
+        app.Services.GetRequiredService<HrOptions>().EnsureConfigured();
+        app.Services.GetRequiredService<StorageOptions>().EnsureAppConfigured();
+
+        // ‏**وسياسةُ مُدَد الاعتمادات تُفحَص هنا كذلك.** مدّةٌ خارج سقفها — أو متغيّرٌ
+        // فيه خطأ مطبعي — كان يُكتشف عند أوّل جلسة لا عند الإقلاع، ومن ضبطها يظنّ أنه
+        // شدّد السياسة وهي على حالها. والقيمة الخارجة عن السقف **تُرفض ولا تُقصّ**.
+        app.Services.GetRequiredService<AccessPolicy>().EnsureWithinCeiling();
+
+        // ‏**وحدُّ المعدّل على الأبواب المفتوحة يُبنى هنا لا عند أوّل طارق.** التسجيل
+        // مصنعٌ كسول، فقيمةٌ لا تُقرأ عدداً — أو عددٌ دون الواحد — كانت تُسقط أوّل طلبٍ
+        // على `POST /api/v1/access/sessions` بـ500 بدل أن توقف الإقلاع برسالتها.
+        // وهي أبوابٌ **تُخدَم بلا اعتماد**، فعطلٌ فيها عطلٌ في الباب الأمامي.
+        _ = app.Services.GetRequiredService<OpenDoorRateGuard>();
     }
 
     /// <summary>

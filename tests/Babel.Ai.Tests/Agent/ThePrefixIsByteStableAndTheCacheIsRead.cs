@@ -69,7 +69,7 @@ public sealed class ThePrefixIsByteStableAndTheCacheIsRead
 
         await AgentHarness.RunAsync(Service(clock, wide), new AgentTurnRequest(
             AgentHarness.Caller(Tenant, Company, Session,
-                "draftSalesInvoice", "draftCreditNote", "draftPayrollRun", "draftLeaseContract"),
+                "draftSalesInvoice", "draftCreditNote", "draftPayrollRun", "draftLeaseRegistration"),
             "اعرض ما تستطيع", "2026-03-01"));
 
         await AgentHarness.RunAsync(Service(clock, narrow), new AgentTurnRequest(

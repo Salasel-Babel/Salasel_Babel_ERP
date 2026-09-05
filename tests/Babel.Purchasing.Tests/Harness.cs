@@ -2,11 +2,14 @@ using Babel.Tests.Shared;
 using System.Collections.Immutable;
 using Babel.Contracts.Capture;
 using Babel.Contracts.Posting;
+using Babel.Core;
 using Babel.Core.CapabilityProfile;
+using Babel.Core.Parameters;
 using Babel.Ledger;
 using Babel.Ledger.Posting;
 using Babel.Purchasing.Application;
 using Babel.SharedKernel;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace Babel.Purchasing.Tests;
@@ -25,6 +28,8 @@ internal sealed class Harness : IDisposable
     private static LedgerRuntime? _ledger;
     private static readonly Lock LedgerGate = new();
 
+    private readonly ServiceProvider _core;
+
     private Harness(PurchasingRuntime runtime, LedgerRuntime ledger)
     {
         Runtime = runtime;
@@ -36,7 +41,25 @@ internal sealed class Harness : IDisposable
         Suppliers = new SupplierService(enforcer, runtime);
         Orders = new PurchaseOrderService(enforcer, runtime);
         Receipts = new GoodsReceiptService(enforcer, runtime, Posting, Profiles, Valuation);
-        Bills = new SupplierBillService(enforcer, runtime, Posting, Profiles, Valuation);
+
+        // ‏**خدمة المعامِلات على قاعدةٍ حقيقية ثالثة، بالباب المعلَن نفسه.**
+        // ‏`PostgresParameterStore` نوع `internal` بحكم القاعدة 5، وبابه هو
+        // `AddBabelCore` — فالتجهيزة تسلكه بدل أن تخترع التفافاً بالانعكاس.
+        // والمثيل **واحد** يقرأ منه الالتقاط ويكتب فيه الترحيل: مثيلان يجعلان
+        // الإثبات يقيس نفسه لا النظام.
+        _core = new ServiceCollection()
+            .AddBabelCore(options =>
+            {
+                options.AppConnectionString = PurchasingTestEnvironment.Core.AppConnectionString;
+                options.OwnerConnectionString = PurchasingTestEnvironment.Core.OwnerConnectionString;
+                options.AppRole = PurchasingTestEnvironment.Core.AppRole;
+            })
+            .BuildServiceProvider();
+
+        IParameterStore parameters = _core.GetRequiredService<IParameterStore>();
+        Parameters = new ParameterDirectory(parameters);
+        ParameterSettings = new ParameterSettingsService(enforcer, parameters, TimeProvider.System);
+        Bills = new SupplierBillService(enforcer, runtime, Posting, Profiles, Valuation, Parameters);
         Payments = new SupplierPaymentService(enforcer, runtime, Posting, Profiles);
         Promotion = new PurchasingCapturedInvoiceReceiver(Suppliers, Bills);
         Payables = new PayablesService(
@@ -45,6 +68,12 @@ internal sealed class Harness : IDisposable
     }
 
     public PurchasingRuntime Runtime { get; }
+
+    /// <summary>دليل المعامِلات — مصدرُ القيمة ومسجّلُ الاستعمال في مثيلٍ واحد.</summary>
+    public ParameterDirectory Parameters { get; }
+
+    /// <summary>لوحةُ تحكّم المعامِلات — الإيداع والقراءة وقائمة المراجعة.</summary>
+    public ParameterSettingsService ParameterSettings { get; }
 
     /// <summary>مخزن ملفّات القدرات — بوابة القبول تقرأ منه (‏ADR-0023).</summary>
     /// <summary>
@@ -215,5 +244,10 @@ internal sealed class Harness : IDisposable
 
     public static Money Sar(decimal value) => Money.Of(value, CurrencyCode.Sar);
 
-    public void Dispose() => Runtime.Dispose();
+    /// <summary>يُغلق موارد الوحدة وحاويةَ النواة معاً — وحاويةٌ لا تُغلق تُبقي تجمّع اتصالٍ حيّاً على قاعدةٍ تُسقَط عند الخروج.</summary>
+    public void Dispose()
+    {
+        Runtime.Dispose();
+        _core.Dispose();
+    }
 }

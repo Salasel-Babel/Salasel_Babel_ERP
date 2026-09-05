@@ -1,3 +1,4 @@
+using Babel.Contracts.Parameters;
 using Babel.SharedKernel;
 
 namespace Babel.Contracts.Capture;
@@ -139,6 +140,17 @@ public sealed record PromotionOrder
 
     /// <summary>السطور.</summary>
     public required IReadOnlyList<PromotionLine> Lines { get; init; }
+
+    /// <summary>
+    /// <b>لقطةُ المعامِلات التي مُلئ منها رقمٌ في هذا الأمر</b> — أو غيابُها.
+    /// <para>
+    /// وهي تعبر الحدّ لأن <b>الوحدة المالكة للمستند هي التي تخزّنها</b>: المستند
+    /// المُرحَّل يتذكّر بأي إصدارٍ وبأي قيمةٍ حُسب، فلا يحتاج قارئُ القيد بعد سنتين
+    /// وصولاً إلى جدولٍ في قاعدةٍ أخرى — ومفتاحٌ أجنبيّ عابرٌ للقواعد غير ممكن أصلاً
+    /// (‏<c>deploy/compose.yml</c>: قاعدةٌ لكل وحدة).
+    /// </para>
+    /// </summary>
+    public ParameterSnapshot? Parameters { get; init; }
 
     /// <summary>مصدر كل حقل، بمفاتيح <see cref="PromotionFields"/>.</summary>
     public required IReadOnlyDictionary<string, FieldProvenance> Provenance { get; init; }

@@ -70,6 +70,22 @@ internal static class ApiRoutes
     /// </summary>
     public const string CapabilityProfile = Company + "/capability-profile";
 
+    /// <summary>
+    /// معامِلاتُ المنشأة: قراءةُ الإصدارات وإيداعُ إصدارٍ جديد.
+    /// <para>
+    /// <b>مسارٌ واحد بفعلين لا مسارَي «تعديل» و«حذف»:</b> الإصدار يُضاف ولا يُعدَّل،
+    /// فالتغيير <c>POST</c> بتاريخ سريان جديد. ولا <c>PUT</c> ولا <c>DELETE</c> على
+    /// هذا السطح أصلاً — والثابتة مفروضة <b>بغياب العملية</b> لا بفحصٍ عند مستدعٍ.
+    /// </para>
+    /// </summary>
+    public const string Parameters = Company + "/parameters";
+
+    /// <summary>
+    /// قائمةُ مراجعة المحاسب القانوني: كلُّ إصدارٍ غير موقَّع ومعه كلُّ مستندٍ مُرحَّلٍ
+    /// استعمله — <b>بابُ قراءةٍ حقيقي لا تقريرٌ تحسبه شاشة</b>.
+    /// </summary>
+    public const string ParameterReview = Company + "/parameter-review";
+
     /// <summary>شكل مستند مُشتقّاً من (العقد المنشور × ملفّ القدرات) — مقروء لا مؤلَّف.</summary>
     public const string DocumentShape = Company + "/document-shapes/{documentType}";
 
@@ -523,30 +539,40 @@ internal static class ApiRoutes
     public const string PropertyOwner = PropertyOwners + "/{ownerId}";
 
     /// <summary>
-    /// عقود الإيجار: إنشاء <b>مسوّدة</b>.
+    /// <b>قيود تسجيل عقود الإيجار</b>: إنشاء <b>مسوّدة قيد</b>.
+    /// <para>
+    /// <b>والاسم مقصود:</b> ما يُنشئه هذا الباب ليس عقداً بل <b>قيداً أرشيفياً</b> لعقدٍ
+    /// حُرِّر في منصّة إيجار الحكومية — وهي الطرف المخوَّل بتحرير عقود الإيجار.
+    /// و<c>POST /lease-contracts</c> كان يقول «أنشئ عقد إيجار»، وهو ادّعاءٌ لا يملكه
+    /// هذا النظام؛ و<c>POST /lease-registrations</c> يقول «أنشئ قيد تسجيل»، وهو ما يقع.
+    /// </para>
     /// <para>
     /// <b>ولا مورد <c>…/posting</c> عليه إطلاقاً ولا يجوز أن يوجد:</b> الحدث
     /// <c>realestate.lease.signed</c> مُعلَنٌ في المصفوفة بـ<c>posts_entry=false</c> —
-    /// العقد التزام متبادل مستقبلي لم ينفّذه أي طرف. وغيابُ الباب هو ما يجعل «العقد
+    /// العقد التزام متبادل مستقبلي لم ينفّذه أي طرف. وغيابُ الباب هو ما يجعل «القيد
     /// لا يُرحّل» مقروءاً من شكل السطح لا من تعليق.
     /// </para>
     /// </summary>
-    public const string LeaseContracts = Company + "/lease-contracts";
+    public const string LeaseRegistrations = Company + "/lease-registrations";
 
-    /// <summary>عقد واحد: القراءة بحالته.</summary>
-    public const string LeaseContract = LeaseContracts + "/{leaseId}";
+    /// <summary>قيدٌ واحد: القراءة بحالته.</summary>
+    public const string LeaseRegistration = LeaseRegistrations + "/{leaseId}";
 
     /// <summary>
-    /// جدول دفعات العقد <b>بمعرّفات سطوره</b> — وهي مدخل الفوترة. وبلا نشرها يصير باب
+    /// جدول دفعات القيد <b>بمعرّفات سطوره</b> — وهي مدخل الفوترة. وبلا نشرها يصير باب
     /// الفوترة باباً لا يوصل إليه بابٌ آخر (ADR-0047).
     /// </summary>
-    public const string LeaseContractSchedule = LeaseContract + "/schedule";
+    public const string LeaseRegistrationSchedule = LeaseRegistration + "/schedule";
 
     /// <summary>
-    /// تفعيل العقد. مورد فرعي مستقلّ: التفعيل <b>فعلٌ يولّد جدول الدفعات</b> ويُدخل
-    /// المدّة قيد الاستبعاد الزمني، لا حقلٌ يُعدَّل. <b>ولا يُرحّل قيداً.</b>
+    /// <b>اعتماد القيد للفوترة.</b> مورد فرعي مستقلّ لا حقلٌ يُعدَّل.
+    /// <para>
+    /// <b>وليس تفعيلاً:</b> نفاذُ عقد الإيجار من منصّة إيجار لا من هذا الباب. وما يقع
+    /// هنا إذنٌ داخلي: من هذه اللحظة تُبنى فواتير الإيجار على هذا القيد، وتدخل مدّته
+    /// قيد الاستبعاد الزمني. <b>ولا يُرحّل قيداً محاسبياً، وإعادةُ النداء آمنة.</b>
+    /// </para>
     /// </summary>
-    public const string LeaseContractActivation = LeaseContract + "/activation";
+    public const string LeaseRegistrationBillingApproval = LeaseRegistration + "/billing-approval";
 
     /// <summary>فواتير الإيجار: إنشاء <b>مسوّدة</b>. والوحدة تختار الحدث من السجلّ لا من الطلب.</summary>
     public const string RentInvoices = Company + "/rent-invoices";

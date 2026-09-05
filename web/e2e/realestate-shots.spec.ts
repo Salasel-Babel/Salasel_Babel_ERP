@@ -26,13 +26,13 @@ const PROPERTY = {
 
 const LEASE = {
   id: "33333333-3333-4333-8333-333333333333",
-  contractNo: "LSE-2026-0007",
+  ejarContractNumber: "EJR-2026-0000007",
   propertyId: PROPERTY.id,
   unitId: "44444444-4444-4444-8444-444444444444",
   lesseeId: "55555555-5555-4555-8555-555555555555",
   startsOn: "2026-01-01",
   endsOn: "2026-12-31",
-  state: "ACTIVE",
+  state: "BILLABLE",
   totalRent: "240000.0000",
 };
 
@@ -143,8 +143,8 @@ async function stub(page: Page): Promise<void> {
     const json = (body: unknown) =>
       route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
     if (/\/properties\/[^/]+$/.test(url)) return json(PROPERTY);
-    if (/\/lease-contracts\/[^/]+\/schedule$/.test(url)) return json(SCHEDULE);
-    if (/\/lease-contracts\/[^/]+$/.test(url)) return json(LEASE);
+    if (/\/lease-registrations\/[^/]+\/schedule$/.test(url)) return json(SCHEDULE);
+    if (/\/lease-registrations\/[^/]+$/.test(url)) return json(LEASE);
     if (/tenant-arrears-aging/.test(url)) return json(ARREARS);
     if (/\/tenant-receipts(\?|$)/.test(url)) return json(RECEIPT);
     if (/\/rent-invoices(\?|$)/.test(url)) return json(INVOICE);

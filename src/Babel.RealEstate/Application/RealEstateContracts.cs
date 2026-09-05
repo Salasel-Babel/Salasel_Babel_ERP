@@ -79,8 +79,11 @@ public sealed record PartyView(Guid Id, string Role, string Code, TranslatedName
 /// <param name="Amount">مبلغ القسط.</param>
 public sealed record InstalmentDraft(DateOnly PeriodFrom, DateOnly PeriodTo, DateOnly DueOn, Money Amount);
 
-/// <summary>مسوّدة عقد إيجار.</summary>
-/// <param name="ContractNo">رقم العقد داخل المنشأة.</param>
+/// <summary>مسوّدة <b>قيد تسجيل</b> لعقد إيجار مُحرَّر في منصّة إيجار.</summary>
+/// <param name="EjarContractNumber">
+/// رقم عقد إيجار — المرجع الموثوق للعقد المُحرَّر في المنصّة. <b>ولا يولّده هذا النظام</b>،
+/// ولا يتحقّق منه لدى المنصّة: لا تكامل. وتفرّده مفروضٌ داخل المنشأة وحدها.
+/// </param>
 /// <param name="UnitId">الوحدة المؤجَّرة.</param>
 /// <param name="LesseeId">المستأجر.</param>
 /// <param name="StartsOn">بداية المدّة.</param>
@@ -93,7 +96,7 @@ public sealed record InstalmentDraft(DateOnly PeriodFrom, DateOnly PeriodTo, Dat
 /// </param>
 /// <param name="Instalments">الأقساط بفتراتها ومبالغها.</param>
 public sealed record LeaseDraft(
-    string ContractNo,
+    string EjarContractNumber,
     Guid UnitId,
     Guid LesseeId,
     DateOnly StartsOn,
@@ -101,19 +104,19 @@ public sealed record LeaseDraft(
     Money TotalRent,
     IReadOnlyList<InstalmentDraft> Instalments);
 
-/// <summary>عقدٌ كما تراه الوحدة.</summary>
+/// <summary>قيدُ تسجيلِ عقدٍ كما تراه الوحدة.</summary>
 /// <param name="Id">المعرّف.</param>
-/// <param name="ContractNo">رقم العقد.</param>
+/// <param name="EjarContractNumber">رقم عقد إيجار — مرجع العقد المُحرَّر في المنصّة.</param>
 /// <param name="PropertyId">العقار.</param>
 /// <param name="UnitId">الوحدة.</param>
 /// <param name="LesseeId">المستأجر.</param>
 /// <param name="StartsOn">بداية المدّة.</param>
 /// <param name="EndsOn">نهايتها.</param>
 /// <param name="TotalRent">قيمة العقد.</param>
-/// <param name="State">‏<c>DRAFT</c> أو <c>ACTIVE</c>.</param>
+/// <param name="State">‏<c>DRAFT</c> أو <c>BILLABLE</c> — حالة القيد لا حالة العقد.</param>
 public sealed record LeaseView(
     Guid Id,
-    string ContractNo,
+    string EjarContractNumber,
     Guid PropertyId,
     Guid UnitId,
     Guid LesseeId,

@@ -189,7 +189,7 @@ public sealed class VoiceIntentRegistryTests
     [Fact]
     public void نية_توصَل_بتوقيع_او_اعتماد_او_انهاء_تُسقط_البناء()
     {
-        foreach (string forbidden in new[] { "activateLeaseContract", "terminateEmployee", "revokeMembership", "reverseJournalEntry" })
+        foreach (string forbidden in new[] { "approveLeaseRegistrationForBilling", "terminateEmployee", "revokeMembership", "reverseJournalEntry" })
         {
             Result<VoiceIntentRegistry> built = BuildWith(Probe("probe.signs", operationId: forbidden));
 

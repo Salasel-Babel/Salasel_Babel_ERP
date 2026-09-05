@@ -156,6 +156,19 @@ services:
       # دفتر مساعد (إضافةٌ وقراءة بلا تعديل)، ويفرضها `StorageGrants.sql`.
       - "BABEL_STORAGE_APP_DB=Host=db;Port=5432;Database=babel_storage;Username=${BABEL_LEDGER_APP_ROLE:-babel_ledger_app};Password=${BABEL_LEDGER_APP_PASSWORD};Maximum Pool Size=10"
       - "BABEL_STORAGE_APP_ROLE=${BABEL_LEDGER_APP_ROLE:-babel_ledger_app}"
+      # ── سياسةُ مُدَد الاعتمادات وحدُّ الأبواب المفتوحة ────────────────────
+      # ‏**ثلاثةُ مُدَدٍ وحدٌّ واحد، وكلّها تُشدَّد لحظةَ حادثة.** ومدّةُ اعتماد
+      # التجديد بالذات هي **المدّة التي يبقى فيها اعتمادٌ مسروق صالحاً**؛ وكانت
+      # مكتوبةً في شيفرة، فالردّ على تسريبٍ كان يمرّ ببناءٍ ونشرةٍ كاملة.
+      #
+      # ‏**والفراغُ هنا يعني «أبقِ السياسة المعلَنة» لا «خمِّن»**: القيم المُعلَنة
+      # منشورةٌ في `docs/decisions/ADR-…` وفي الشيفرة، ولها **سقفٌ يُرفض تجاوزه
+      # ولا يُقصّ** — فالخادم يتوقّف عند الإقلاع على قيمةٍ خارجةٍ عن مداها أو على
+      # خطأٍ مطبعي، بدل أن يُبتلع الخطأ ويظنّ من شدّد السياسة أنه شدّدها.
+      - "BABEL_ACCESS_LIFETIME_MINUTES=${BABEL_ACCESS_LIFETIME_MINUTES:-}"
+      - "BABEL_ACCESS_REFRESH_HOURS=${BABEL_ACCESS_REFRESH_HOURS:-}"
+      - "BABEL_ACCESS_ENROLMENT_HOURS=${BABEL_ACCESS_ENROLMENT_HOURS:-}"
+      - "Babel__RateLimit__PerMinute=${BABEL_RATE_LIMIT_PER_MINUTE:-}"
       - "Logging__LogLevel__Default=${BABEL_LOG_LEVEL:-Information}"
     volumes:
       # البايتات على حجم دائم لا في طبقة الحاوية: حاويةٌ تُستبدَل تأخذ معها كل

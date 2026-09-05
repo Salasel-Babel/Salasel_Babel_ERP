@@ -121,7 +121,13 @@ public sealed class PurchasingCapturedInvoiceReceiver : ICapturedInvoiceReceiver
             order.IssuedOn,
             category.Value,
             string.Empty,
-            [.. order.Lines.OrderBy(static line => line.LineNo).Select(line => LineOf(order, line))]);
+            [.. order.Lines.OrderBy(static line => line.LineNo).Select(line => LineOf(order, line))])
+        {
+            // ‏**واللقطة تنزل على المستند الحقيقي**: أمرُ الترقية يصف ما قرأناه،
+            // والفاتورة هي التي تتذكّر بأي إصدارٍ حُسبت. وهي غائبةٌ حين طُبعت النسبة
+            // على المستند — فلا معامِلَ استُعمل، ولا يُدَّعى.
+            Parameters = order.Parameters,
+        };
 
         Result<PurchasingDocumentView> created = await _bills
             .CreateExpenseBillAsync(order.Tenant, order.PromotedBy, draft, cancellationToken)

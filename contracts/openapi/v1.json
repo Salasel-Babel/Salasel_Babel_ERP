@@ -3,7 +3,7 @@
   "info": {
     "title": "سلاسل بابل — سطح دفتر الأستاذ / Salasel Babel — Ledger API",
     "summary": "العقد المنشور بين الواجهات والخلفية. لا يقرأ فريق الواجهة شيفرة خلفية ليبني عليه.",
-    "description": "العزل التام بين الواجهات والخلفية: هذه الوثيقة هي كل ما يحتاجه فريق الواجهة، ولا يقرأ شيفرة خلفية.\n\nسياسة الإصدار — ما يبقى في v1 وما يفرض v2:\n• يبقى في v1: إضافة نقطة نهاية · إضافة حقل اختياري في استجابة · إضافة حقل اختياري في طلب له افتراض معلن · إضافة عضو إلى تعداد يُقرأ من الخادم إلى العميل · إضافة رمز خطأ جديد · توسيع مدى مسموح · تحسين نصّ وصف أو رسالة.\n• يفرض v2: حذف حقل أو نقطة نهاية · إعادة تسمية أي منهما · تضييق نوع أو مدى أو نمط · جعل حقل اختياري إلزامياً · تغيير معنى رمز خطأ قائم أو رمز الحالة الذي يصحبه · إزالة عضو من تعداد يُرسله العميل · تغيير الافتراض المعلن لحقل.\n• والقاعدة الحاكمة: تغييرٌ يجعل عميلاً مطابقاً للعقد القديم يعمل خطأً — لا يفشل، بل يعمل خطأً — هو v2 دائماً.\n• ونطاق هذه السياسة: **تلزم من أول نشر للعقد فصاعداً**. غرضها حماية عميل مطابق قائم، فحيث لا عميل لا شيء تحميه — ويبقى تعديل v1 في مكانه جائزاً ما دامت الوثيقة لم تُنشر لأي مستهلك، بشرط أن يُسجَّل التعديل بتاريخه وسببه في سجل القرارات لا أن يمرّ صامتاً.\n• تعديل مُسجَّل — 2026-08-24: صار الحقل event إلزامياً في PostJournalEntryRequest. وهو تضييق يفرض v2 بنصّ السياسة، ونُفِّذ في v1 في مكانه لأن العقد لم يُنشر بعد لأي مستهلك ولا يوجد عميل مطابق واحد. السبب: رمز الحدث جزء من هوية الترحيل، وغيابه يبتلع حدثاً محاسبياً بصمت (ADR-0016 · ADR-0018).\n• تعديل مُسجَّل — 2026-08-26: حُذف الحقل nameEn من TrialBalanceRow. وهو حذف حقل يفرض v2 بنصّ السياسة، ونُفِّذ في v1 في مكانه للسبب نفسه: لا مستهلك ولا عميل مطابق. السبب: تعدّد اللغات قابلية الترجمة إلى أيّ عدد من اللغات، والإنجليزية واحدة من N لا نصف الاثنين — وحقلٌ ثابت لها على السلك يمنحها امتيازاً بنيوياً ينفيه القرار، ويجعل المحاسب الأردي أو الهندي يقرأ إنجليزيةً بدل لغته. وnameTranslations يحمل كل لغة بما فيها الإنجليزية (ADR-0021 بند 2 · ADR-0018).\n• تعديل مُسجَّل — 2026-08-26: ضاق نوع Scope.costCenterId من [string, null] إلى string. وهو تضييق نوع يفرض v2 بنصّ السياسة، ونُفِّذ في v1 في مكانه للسبب نفسه: لا مستهلك ولا عميل مطابق. الحقل يبقى **اختيارياً** — حذفه يعني المركز الافتراضي للمنشأة — لكن القيمة null لا معنى لها: لكل منشأة مركز تكلفة واحد على الأقل ولا سطر بلا مركز، فـnull كان يقول «بلا مركز» وهي حالة لا وجود لها. والقيد ck_journal_line_cost_center_present يفرض ذلك في قاعدة البيانات نفسها (ADR-0026 · ADR-0018).\n\nTotal isolation between front end and back end: this document is everything a front-end team needs; it reads no back-end code.\n\nVersioning policy — what stays in v1 and what forces v2:\n• Stays in v1: adding an endpoint; adding an optional response field; adding an optional request field with a published default; adding a member to a server-to-client enum; adding a new error code; widening an allowed range; improving a description or message.\n• Forces v2: removing a field or endpoint; renaming either; narrowing a type, range, or pattern; making an optional field required; changing the meaning of an existing error code or the status that accompanies it; removing a member from a client-to-server enum; changing a field's published default.\n• The governing rule: a change that makes a client conforming to the old contract behave wrongly — not fail, but behave wrongly — is always v2.\n• Scope of this policy: **it binds from the contract's first publication onward**. Its purpose is to protect an existing conforming client, so where there is no client there is nothing to protect — and amending v1 in place remains legitimate while the document has not been published to any consumer, provided the amendment is recorded with its date and reason in the decision record rather than passing silently.\n• Recorded amendment — 2026-08-24: the event field became required on PostJournalEntryRequest. That is a narrowing which the policy text forces to v2, and it was made in v1 in place because the contract has not yet been published to any consumer and no conforming client exists. Reason: the event code is part of the posting identity, and its absence swallows an accounting event silently (ADR-0016, ADR-0018).\n• Recorded amendment — 2026-08-26: the nameEn field was removed from TrialBalanceRow. Removing a field is a change the policy text forces to v2, and it was made in v1 in place for the same reason: no consumer and no conforming client. Reason: multilingualism means translatability into any number of languages, and English is one of N rather than half of two — a fixed field for it on the wire grants it a structural privilege the decision denies, and leaves an Urdu or Hindi accountant reading English instead of their own language. nameTranslations carries every language, English included (ADR-0021 clause 2, ADR-0018).\n• Recorded amendment — 2026-08-26: the type of Scope.costCenterId narrowed from [string, null] to string. Narrowing a type is a change the policy text forces to v2, and it was made in v1 in place for the same reason: no consumer and no conforming client. The field stays **optional** — omitting it means the company's default centre — but the value null has no meaning: every company has at least one cost centre and no line is without one, so null said 'no centre', a state that does not exist. The constraint ck_journal_line_cost_center_present enforces this in the database itself (ADR-0026, ADR-0018).",
+    "description": "العزل التام بين الواجهات والخلفية: هذه الوثيقة هي كل ما يحتاجه فريق الواجهة، ولا يقرأ شيفرة خلفية.\n\nسياسة الإصدار — ما يبقى في v1 وما يفرض v2:\n• يبقى في v1: إضافة نقطة نهاية · إضافة حقل اختياري في استجابة · إضافة حقل اختياري في طلب له افتراض معلن · إضافة عضو إلى تعداد يُقرأ من الخادم إلى العميل · إضافة رمز خطأ جديد · توسيع مدى مسموح · تحسين نصّ وصف أو رسالة.\n• يفرض v2: حذف حقل أو نقطة نهاية · إعادة تسمية أي منهما · تضييق نوع أو مدى أو نمط · جعل حقل اختياري إلزامياً · تغيير معنى رمز خطأ قائم أو رمز الحالة الذي يصحبه · إزالة عضو من تعداد يُرسله العميل · تغيير الافتراض المعلن لحقل.\n• والقاعدة الحاكمة: تغييرٌ يجعل عميلاً مطابقاً للعقد القديم يعمل خطأً — لا يفشل، بل يعمل خطأً — هو v2 دائماً.\n• ونطاق هذه السياسة: **تلزم من أول نشر للعقد فصاعداً**. غرضها حماية عميل مطابق قائم، فحيث لا عميل لا شيء تحميه — ويبقى تعديل v1 في مكانه جائزاً ما دامت الوثيقة لم تُنشر لأي مستهلك، بشرط أن يُسجَّل التعديل بتاريخه وسببه في سجل القرارات لا أن يمرّ صامتاً.\n• تعديل مُسجَّل — 2026-08-24: صار الحقل event إلزامياً في PostJournalEntryRequest. وهو تضييق يفرض v2 بنصّ السياسة، ونُفِّذ في v1 في مكانه لأن العقد لم يُنشر بعد لأي مستهلك ولا يوجد عميل مطابق واحد. السبب: رمز الحدث جزء من هوية الترحيل، وغيابه يبتلع حدثاً محاسبياً بصمت (ADR-0016 · ADR-0018).\n• تعديل مُسجَّل — 2026-08-26: حُذف الحقل nameEn من TrialBalanceRow. وهو حذف حقل يفرض v2 بنصّ السياسة، ونُفِّذ في v1 في مكانه للسبب نفسه: لا مستهلك ولا عميل مطابق. السبب: تعدّد اللغات قابلية الترجمة إلى أيّ عدد من اللغات، والإنجليزية واحدة من N لا نصف الاثنين — وحقلٌ ثابت لها على السلك يمنحها امتيازاً بنيوياً ينفيه القرار، ويجعل المحاسب الأردي أو الهندي يقرأ إنجليزيةً بدل لغته. وnameTranslations يحمل كل لغة بما فيها الإنجليزية (ADR-0021 بند 2 · ADR-0018).\n• تعديل مُسجَّل — 2026-08-26: ضاق نوع Scope.costCenterId من [string, null] إلى string. وهو تضييق نوع يفرض v2 بنصّ السياسة، ونُفِّذ في v1 في مكانه للسبب نفسه: لا مستهلك ولا عميل مطابق. الحقل يبقى **اختيارياً** — حذفه يعني المركز الافتراضي للمنشأة — لكن القيمة null لا معنى لها: لكل منشأة مركز تكلفة واحد على الأقل ولا سطر بلا مركز، فـnull كان يقول «بلا مركز» وهي حالة لا وجود لها. والقيد ck_journal_line_cost_center_present يفرض ذلك في قاعدة البيانات نفسها (ADR-0026 · ADR-0018).\n• تعديل مُسجَّل — 2026-09-04: سطح عقود الإيجار صار سطح **قيود تسجيل**. تغيّر المسار من /lease-contracts إلى /lease-registrations، والمورد الفرعي من /activation إلى /billing-approval، ومعرّفات العمليات الثلاثة (draftLeaseRegistration · readLeaseRegistration · approveLeaseRegistrationForBilling)، واسما المخطّطين (LeaseRegistrationRequest · LeaseRegistration)، والحقل contractNo صار ejarContractNumber، وعضو التعداد ACTIVE صار BILLABLE، ورمز نجاح الاعتماد صار 200 بدل 201 لأنه صار حصيناً ضد التكرار. وكلّها تفرض v2 بنصّ السياسة، ونُفِّذت في v1 في مكانها للسبب نفسه: لا مستهلك ولا عميل مطابق. السبب: **عقد الإيجار لا يُحرّره هذا النظام** — منصّة إيجار الحكومية هي الطرف المخوَّل بتحريره — وكان العقد المنشور يقول «إنشاء عقد إيجار» و«تفعيل عقد إيجار» ويسمّي رقم العقد «رقمنا الفريد داخل المنشأة»، فيصف النظام محرِّراً للعقد ومُنفِّذاً له وهو أرشيفٌ وفوترة. ولا تكامل مع منصّة إيجار في هذا الإصدار: لا عنوان ولا مفتاح ولا نداء (ADR-the-lease-is-registered-not-issued · ADR-0018).\n\nTotal isolation between front end and back end: this document is everything a front-end team needs; it reads no back-end code.\n\nVersioning policy — what stays in v1 and what forces v2:\n• Stays in v1: adding an endpoint; adding an optional response field; adding an optional request field with a published default; adding a member to a server-to-client enum; adding a new error code; widening an allowed range; improving a description or message.\n• Forces v2: removing a field or endpoint; renaming either; narrowing a type, range, or pattern; making an optional field required; changing the meaning of an existing error code or the status that accompanies it; removing a member from a client-to-server enum; changing a field's published default.\n• The governing rule: a change that makes a client conforming to the old contract behave wrongly — not fail, but behave wrongly — is always v2.\n• Scope of this policy: **it binds from the contract's first publication onward**. Its purpose is to protect an existing conforming client, so where there is no client there is nothing to protect — and amending v1 in place remains legitimate while the document has not been published to any consumer, provided the amendment is recorded with its date and reason in the decision record rather than passing silently.\n• Recorded amendment — 2026-08-24: the event field became required on PostJournalEntryRequest. That is a narrowing which the policy text forces to v2, and it was made in v1 in place because the contract has not yet been published to any consumer and no conforming client exists. Reason: the event code is part of the posting identity, and its absence swallows an accounting event silently (ADR-0016, ADR-0018).\n• Recorded amendment — 2026-08-26: the nameEn field was removed from TrialBalanceRow. Removing a field is a change the policy text forces to v2, and it was made in v1 in place for the same reason: no consumer and no conforming client. Reason: multilingualism means translatability into any number of languages, and English is one of N rather than half of two — a fixed field for it on the wire grants it a structural privilege the decision denies, and leaves an Urdu or Hindi accountant reading English instead of their own language. nameTranslations carries every language, English included (ADR-0021 clause 2, ADR-0018).\n• Recorded amendment — 2026-08-26: the type of Scope.costCenterId narrowed from [string, null] to string. Narrowing a type is a change the policy text forces to v2, and it was made in v1 in place for the same reason: no consumer and no conforming client. The field stays **optional** — omitting it means the company's default centre — but the value null has no meaning: every company has at least one cost centre and no line is without one, so null said 'no centre', a state that does not exist. The constraint ck_journal_line_cost_center_present enforces this in the database itself (ADR-0026, ADR-0018).\n• Recorded amendment — 2026-09-04: the lease-contract surface became a **lease-registration** surface. The path moved from /lease-contracts to /lease-registrations, the sub-resource from /activation to /billing-approval, three operation ids changed (draftLeaseRegistration, readLeaseRegistration, approveLeaseRegistrationForBilling), two schema names changed (LeaseRegistrationRequest, LeaseRegistration), the field contractNo became ejarContractNumber, the enum member ACTIVE became BILLABLE, and the approval's success status became 200 instead of 201 now that it is idempotent. Each of these is a change the policy text forces to v2, and each was made in v1 in place for the same reason: no consumer and no conforming client. Reason: **this system does not issue lease contracts** — the government Ejar platform is the party authorised to issue them — yet the published contract said 'draft a lease contract' and 'activate a lease contract' and called the contract number our own number unique within the company, presenting the system as the issuer and enforcer of a contract when it is an archive and a biller. There is no integration with the Ejar platform in this release: no address, no key, no call (ADR-the-lease-is-registered-not-issued, ADR-0018).",
     "version": "v1"
   },
   "servers": [
@@ -6611,7 +6611,7 @@
         }
       }
     },
-    "/api/v1/companies/{companyId}/lease-contracts": {
+    "/api/v1/companies/{companyId}/lease-registrations": {
       "parameters": [
         {
           "name": "companyId",
@@ -6625,15 +6625,15 @@
         }
       ],
       "post": {
-        "operationId": "draftLeaseContract",
-        "summary": "إنشاء عقد إيجار مسوّدة / Draft a lease contract",
-        "description": "يُنشئ عقد إيجار في حالة **DRAFT**.\n\n**ولاحظ ما ليس على هذا المورد ولا يجوز أن يوجد: لا مورد posting.** حدث توقيع العقد مُعلَنٌ في مصفوفة الترحيل بأنه **لا يُنشئ قيداً**: العقد التزام متبادل مستقبلي لم ينفّذه أي طرف بعد. وغيابُ الباب هو ما يجعل «العقد لا يُرحّل» مقروءاً من شكل السطح لا من تعليق.\n\n**والأقساط تصل مصرَّحاً بها ولا تُوزَّع من قيمة العقد**: التوزيع يستلزم سياسة تقريب — أين يقع فائض الهللات — وهي **قرار مالك مفتوح** لا يُحسم في شيفرة. والنظام يفحص عند التفعيل أن مجموع الأقساط يساوي قيمة العقد بالضبط، ويرفض بخلاف ذلك برمزٍ يسمّي البند المعلَّق.\n\nCreates a lease contract in state **DRAFT**.\n\n**Note what this resource does not carry and must never carry: no posting sub-resource.** The lease-signature event is declared in the posting matrix as posting **no entry**: the contract is a future mutual obligation neither party has yet performed. The absence of the door is what makes 'a lease posts nothing' readable from the shape of the surface rather than from a comment.\n\n**Instalments arrive declared and are never spread from a contract value**: spreading requires a rounding policy — where the halala surplus lands — which is an **open owner decision**, not something settled in code. On activation the system checks that the instalments sum exactly to the contract value and refuses otherwise under a code that names the pending item.",
+        "operationId": "draftLeaseRegistration",
+        "summary": "تسجيل عقد إيجار مُحرَّر في منصّة إيجار — مسوّدة قيد / Register a lease contract issued on the Ejar platform — as a draft record",
+        "description": "يُنشئ **قيد تسجيل** لعقد إيجار في حالة **DRAFT**.\n\n**والعقد لا يُحرَّر هنا.** منصّة إيجار الحكومية هي الطرف المخوَّل بتحرير عقود الإيجار، وما يُنشئه هذا الباب **قيدٌ أرشيفي** لعقدٍ حُرِّر هناك — مرجعُه الموثوق **رقم عقد إيجار**. ولا يُنشئ هذا النظام رقم عقد ولا يُعدّل عقداً ولا يُنهيه ولا يُجدّده: **أرشفةٌ وفوترة**.\n\n**ولا تكامل مع منصّة إيجار في هذا السطح**: لا عنوان ولا مفتاح ولا نداء. الرقم يُقيَّد كما يُدخله المُسجِّل ولا يُتحقَّق منه لدى المنصّة، وتفرّده مفروضٌ داخل المنشأة وحدها.\n\n**ولاحظ ما ليس على هذا المورد ولا يجوز أن يوجد: لا مورد posting.** حدث توقيع العقد مُعلَنٌ في مصفوفة الترحيل بأنه **لا يُنشئ قيداً**: العقد التزام متبادل مستقبلي لم ينفّذه أي طرف بعد. وغيابُ الباب هو ما يجعل «القيد لا يُرحّل» مقروءاً من شكل السطح لا من تعليق.\n\n**والأقساط تصل مصرَّحاً بها ولا تُوزَّع من قيمة العقد**: التوزيع يستلزم سياسة تقريب — أين يقع فائض الهللات — وهي **قرار مالك مفتوح** لا يُحسم في شيفرة. والنظام يفحص عند الاعتماد للفوترة أن مجموع الأقساط يساوي قيمة العقد بالضبط، ويرفض بخلاف ذلك برمزٍ يسمّي البند المعلَّق.\n\nCreates a **registration record** for a lease contract, in state **DRAFT**.\n\n**The contract is not issued here.** The government Ejar platform is the party authorised to issue lease contracts; what this door creates is an **archival record** of a contract issued there, whose authoritative reference is the **Ejar contract number**. This system does not mint a contract number, and it does not amend, terminate, or renew a contract: **archiving and billing**.\n\n**There is no integration with the Ejar platform on this surface**: no address, no key, no call. The number is recorded exactly as the registrar enters it and is never verified against the platform; its uniqueness is enforced within the company alone.\n\n**Note what this resource does not carry and must never carry: no posting sub-resource.** The lease-signature event is declared in the posting matrix as posting **no entry**: the contract is a future mutual obligation neither party has yet performed. The absence of the door is what makes 'this record posts nothing' readable from the shape of the surface rather than from a comment.\n\n**Instalments arrive declared and are never spread from a contract value**: spreading requires a rounding policy — where the halala surplus lands — which is an **open owner decision**, not something settled in code. At billing approval the system checks that the instalments sum exactly to the contract value and refuses otherwise under a code that names the pending item.",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/LeaseRequest"
+                "$ref": "#/components/schemas/LeaseRegistrationRequest"
               }
             }
           }
@@ -6644,7 +6644,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Lease"
+                  "$ref": "#/components/schemas/LeaseRegistration"
                 }
               }
             }
@@ -6722,7 +6722,7 @@
         }
       }
     },
-    "/api/v1/companies/{companyId}/lease-contracts/{leaseId}": {
+    "/api/v1/companies/{companyId}/lease-registrations/{leaseId}": {
       "parameters": [
         {
           "name": "companyId",
@@ -6738,7 +6738,7 @@
           "name": "leaseId",
           "in": "path",
           "required": true,
-          "description": "معرّف عقد الإيجار. / The lease contract identifier.",
+          "description": "معرّف قيد تسجيل عقد الإيجار. / The lease registration identifier.",
           "schema": {
             "type": "string",
             "format": "uuid"
@@ -6746,16 +6746,16 @@
         }
       ],
       "get": {
-        "operationId": "readLeaseContract",
-        "summary": "قراءة عقد إيجار / Read one lease contract",
-        "description": "يقرأ العقد بحالته ومدّته وقيمته.\n\nReads the contract with its state, its term, and its value.",
+        "operationId": "readLeaseRegistration",
+        "summary": "قراءة قيد تسجيل عقد إيجار / Read one lease registration",
+        "description": "يقرأ القيد بحالته ومدّته وقيمته ورقم عقد إيجار الذي يشير إليه. **والحالة حالةُ القيد لا حالةُ العقد**: نفاذ العقد يُقرَّر في منصّة إيجار لا هنا.\n\nReads the registration with its state, its term, its value, and the Ejar contract number it references. **The state is the record's state, not the contract's**: whether the contract is in force is settled on the Ejar platform, not here.",
         "responses": {
           "200": {
             "description": "استجابة ناجحة. / Successful response.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Lease"
+                  "$ref": "#/components/schemas/LeaseRegistration"
                 }
               }
             }
@@ -6803,7 +6803,7 @@
         }
       }
     },
-    "/api/v1/companies/{companyId}/lease-contracts/{leaseId}/activation": {
+    "/api/v1/companies/{companyId}/lease-registrations/{leaseId}/billing-approval": {
       "parameters": [
         {
           "name": "companyId",
@@ -6819,7 +6819,7 @@
           "name": "leaseId",
           "in": "path",
           "required": true,
-          "description": "معرّف عقد الإيجار. / The lease contract identifier.",
+          "description": "معرّف قيد تسجيل عقد الإيجار. / The lease registration identifier.",
           "schema": {
             "type": "string",
             "format": "uuid"
@@ -6827,16 +6827,16 @@
         }
       ],
       "post": {
-        "operationId": "activateLeaseContract",
-        "summary": "تفعيل عقد إيجار / Activate a lease contract",
-        "description": "يُفعّل العقد: يفحص أن مجموع الأقساط يساوي قيمة العقد بالضبط، ثم يجعل جدول الدفعات قابلاً للفوترة، ويُدخل المدّة **قيد الاستبعاد الزمني** في قاعدة البيانات.\n\n**والقيد في القاعدة لا في الواجهة**: «مدّة سارية واحدة لكل وحدة» شرط **تقاطع مدى** لا شرط تساوٍ، فلا يعبّر عنه فهرس فريد مهما اتّسع؛ وفحصٌ في الخدمة يقرأ ثم يكتب، وبين القراءة والكتابة يمرّ نداءٌ آخر فتُؤجَّر الوحدة مرّتين.\n\n**ولا يُرحّل قيداً**، ومخطّط جوابه بلا معرّف قيد.\n\nActivates the contract: it checks that the instalments sum exactly to the contract value, makes the payment schedule billable, and enters the term into a **temporal exclusion constraint** in the database.\n\n**The constraint is in the database, not the interface**: 'one live term per unit' is a **range-overlap** condition, not an equality condition, so no unique index however wide can express it; and a check in the service reads then writes, and between the read and the write another call slips through and the unit is let twice.\n\n**It posts no entry**, and its response schema carries no entry identifier.",
+        "operationId": "approveLeaseRegistrationForBilling",
+        "summary": "اعتماد قيد التسجيل للفوترة / Approve a lease registration for billing",
+        "description": "يعتمد القيد **للفوترة**: يفحص أن مجموع الأقساط يساوي قيمة العقد بالضبط، ثم يجعل جدول الدفعات قابلاً للفوترة، ويُدخل المدّة **قيد الاستبعاد الزمني** في قاعدة البيانات.\n\n**وهذا ليس تفعيلاً ولا نفاذاً نظامياً.** نفاذ عقد الإيجار يُقرَّر في منصّة إيجار الحكومية، ولا يملك هذا الباب أن يجعل عقداً سارياً ولا أن يوقفه. وما يقع هنا **إذنٌ داخلي**: من هذه اللحظة تُبنى فواتير الإيجار على هذا القيد المؤرشف.\n\n**والقيد في القاعدة لا في الواجهة**: «مدّة معتمَدة واحدة لكل وحدة» شرط **تقاطع مدى** لا شرط تساوٍ، فلا يعبّر عنه فهرس فريد مهما اتّسع؛ وفحصٌ في الخدمة يقرأ ثم يكتب، وبين القراءة والكتابة يمرّ نداءٌ آخر فتُفوتَر الوحدة مرّتين.\n\n**وإعادةُ النداء آمنة وتُعيد الجواب نفسه**: القيد المعتمَد سلفاً يُقرأ ويُعاد بالرمز 200 نفسه، ولا شيء يُكتب ثانيةً — جدول الدفعات مكتوبٌ عند التسجيل لا هنا.\n\n**ولا يُرحّل قيداً محاسبياً**، ومخطّط جوابه بلا معرّف قيد.\n\nApproves the registration **for billing**: it checks that the instalments sum exactly to the contract value, makes the payment schedule billable, and enters the term into a **temporal exclusion constraint** in the database.\n\n**This is not an activation and confers no legal effect.** Whether a lease is in force is settled on the government Ejar platform; this door can neither put a contract in force nor suspend it. What happens here is an **internal permission**: from this moment rent invoices are built on this archived record.\n\n**The constraint is in the database, not the interface**: 'one approved term per unit' is a **range-overlap** condition, not an equality condition, so no unique index however wide can express it; and a check in the service reads then writes, and between the read and the write another call slips through and the unit is billed twice.\n\n**Repeating the call is safe and returns the same answer**: an already-approved registration is read back and returned under the same status 200, and nothing is written a second time — the payment schedule is written at registration, not here.\n\n**It posts no accounting entry**, and its response schema carries no entry identifier.",
         "responses": {
-          "201": {
+          "200": {
             "description": "استجابة ناجحة. / Successful response.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Lease"
+                  "$ref": "#/components/schemas/LeaseRegistration"
                 }
               }
             }
@@ -6904,7 +6904,7 @@
         }
       }
     },
-    "/api/v1/companies/{companyId}/lease-contracts/{leaseId}/schedule": {
+    "/api/v1/companies/{companyId}/lease-registrations/{leaseId}/schedule": {
       "parameters": [
         {
           "name": "companyId",
@@ -6920,7 +6920,7 @@
           "name": "leaseId",
           "in": "path",
           "required": true,
-          "description": "معرّف عقد الإيجار. / The lease contract identifier.",
+          "description": "معرّف قيد تسجيل عقد الإيجار. / The lease registration identifier.",
           "schema": {
             "type": "string",
             "format": "uuid"
@@ -6929,7 +6929,7 @@
       ],
       "get": {
         "operationId": "readLeaseSchedule",
-        "summary": "قراءة جدول دفعات العقد بمعرّفات سطوره / Read the lease payment schedule with its line identifiers",
+        "summary": "قراءة جدول دفعات القيد بمعرّفات سطوره / Read the registration payment schedule with its line identifiers",
         "description": "يُرجع جدول الدفعات **بمعرّفات سطوره** — وهي مدخل الفوترة: طلب الفاتورة يحمل معرّفات الأقساط المفوترة ولا يحمل مبالغ.\n\n**وبلا نشر هذه المعرّفات يصير باب الفوترة باباً لا يوصل إليه بابٌ آخر على هذا السطح** — وهو الاعتراض المكتوب حرفياً في قرار نشر المستندات النقدية.\n\nReturns the payment schedule **with its line identifiers** — the entry point to invoicing: the invoice request carries the identifiers of the instalments being billed and carries no amounts.\n\n**Without publishing these identifiers the invoicing door becomes a door no other door on this surface can reach** — the objection written literally in the cash-documents publication decision.",
         "responses": {
           "200": {
@@ -7599,6 +7599,215 @@
           },
           "422": {
             "description": "دور غير معروف. الرمز الثابت: membership.role_unknown. / An unknown role. Stable code: membership.role_unknown.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/companies/{companyId}/parameter-review": {
+      "parameters": [
+        {
+          "name": "companyId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "readParameterReview",
+        "summary": "قائمة مراجعة المحاسب القانوني / The chartered accountant's review list",
+        "description": "**استعلامٌ واحد يُخرج القائمة المحصورة**: كلُّ إصدارٍ لم يُوقَّع بعد، ومعه كلُّ مستندٍ **مُرحَّلٍ** استعمله. وهي بعينها القائمةُ التي تُعرض على المحاسب القانوني في الخطوة الأخيرة — ولذلك هي **بابُ قراءةٍ منشور** لا تقريرٌ تحسبه شاشة: تقريرٌ في شاشة يعني أن كل شاشةٍ تحسبه بطريقتها.\n\n**والإصدارُ الموقَّع يخرج من القائمة**، وذلك هو معنى التوقيع. **والإصدارُ الذي لم يستعمله مستندٌ بعد يبقى فيها** بقائمةِ مستنداتٍ فارغة — فحاجتُه إلى التوقيع لا تسقط بعدم استعماله.\n\n**ومن أين يُعرف المستند:** الوحدةُ المالكة تسجّل استعمالها لحظة الترحيل. والمستند نفسه — في قاعدة وحدته — يحمل **لقطة** الإصدار وقيمَه، فقارئُه بعد سنتين يقرؤه وحده. والسجلّان ليسا تكراراً: اللقطةُ سجلّ، وهذا فهرس؛ ولو ضاع الفهرس لبقيت المستندات مقروءة.\n\n**One query returns the bounded list**: every version not yet signed, together with every **posted** document that used it. This is precisely the list put in front of the chartered accountant in the final step — which is why it is a **published read door** and not a report a screen computes: a report in a screen means every screen computes it its own way.\n\n**A signed version leaves the list**, which is what signing means. **A version no document has used yet stays in it** with an empty document list — its need for a signature does not lapse because it went unused.\n\n**Where the document comes from:** the owning module records its usage at posting time. The document itself — in its own module's database — carries the version's **snapshot** and its values, so its reader two years later reads it alone. The two records are not a duplication: the snapshot is the record, this is the index; if the index were lost the documents would still be readable.",
+        "responses": {
+          "200": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParameterReviewList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/companies/{companyId}/parameters": {
+      "parameters": [
+        {
+          "name": "companyId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "listParameterVersions",
+        "summary": "إصدارات المعامِلات بسريانها / The parameter versions by effective date",
+        "description": "يقرأ **كلَّ** ما تراه هذه المنشأة من إصدارات المعامِلات: افتراضاتِ المنصّة المشحونة وتجاوزاتِها هي وحدها. ولكلّ إصدارٍ تاريخُ سريانه، و**حالةُ اعتماده**، ومعتمِدُه، ومرجعُ مصدره، وقيمُه كلّها.\n\n**وحالةُ الاعتماد ثلاثية لا ثنائية**: `platform_default` افتراضٌ يشحنه المنتج **ولم يعتمده إنسان**، و`tenant_approved` أودعه صاحب المنشأة باسمه، و`auditor_signed` وقّعه محاسب قانوني. والثنائيّ يخلط مسؤولية صاحب المنشأة بمسؤولية المحاسب، فتصير قائمةُ المراجعة فارغةً وهي لم تُراجَع.\n\n**وقيمةٌ غير معتمَدة تُعرض موسومةً لا مخفيّة**: إخفاؤها يجعل النظام يعمل برقمٍ لا يعرف أحدٌ أنه مفترَض. و`approvedBy` و`approvedOn` **فارغان بالضبط** في صفّ المنصّة — فهو لم يعتمده إنسان، وكتابةُ اسمٍ فيه ادّعاءُ اعتمادٍ لم يقع.\n\nReads **everything** this company sees of the parameter versions: the shipped platform defaults and its own overrides alone. Each version carries its effective date, its **approval state**, its approver, its source reference, and all of its values.\n\n**The approval state is ternary, not binary**: `platform_default` is a default the product ships and **no human approved**, `tenant_approved` was deposited by the company under a named person, and `auditor_signed` was signed by a chartered accountant. A binary flag conflates the owner's responsibility with the accountant's, so the review list reads empty while nothing has been reviewed.\n\n**An unapproved value is shown tagged, never hidden**: hiding it makes the system run on a number nobody knows is assumed. `approvedBy` and `approvedOn` are **exactly empty** on a platform row — no human approved it, and writing a name there would assert an approval that never happened.",
+        "responses": {
+          "200": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParameterVersionList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "depositParameterVersion",
+        "summary": "إيداع إصدار جديد من مجموعة معامِلات / Deposit a new version of a parameter set",
+        "description": "يودِع إصداراً جديداً على مستوى هذه المنشأة. **POST لا PUT، والصفّ يُضاف ولا يُعدَّل**: قيمةُ فترةٍ ماضية لا تُغيَّر، والتغييرُ إصدارٌ جديد بتاريخ سريانه — ومستندٌ رُحِّل بإصدارٍ يبقى عليه لأنه يحمل **لقطته** لا مفتاحاً إلى صفّ يتغيّر.\n\n**والمجموعة تُودَع كاملةً**: قيمُ المجموعة الواحدة يسري بعضها ببعض، وإيداعٌ جزئي يُنتج خليطاً من إصدارين لم يعتمده أحد. ومفتاحٌ ناقص أو زائد يُرفض بـcore.parameter_keys_incomplete مسمّياً الناقص والزائد.\n\n**والنسبة كسرٌ عشري لا مئوية**: خمسة عشر بالمئة `0.15` لا `15`. وقيمةٌ تُكتب `15` تُرفض بالرمز core.parameter_rate_looks_like_a_percentage — **ولا تُصحَّح صامتةً**، لأن التصحيح الصامت يترك من كتبها يظنّ أنه أودع ما لم يُودِع. والقيد مفروضٌ في قاعدة البيانات أيضاً، فتجاوزُ الخدمة لا يُمرّره.\n\n**وإصدارٌ ثانٍ على (المستوى · المجموعة · تاريخ السريان) نفسها يُرفض** بـ409 وcore.parameter_version_duplicate. **و«افتراضُ المنصّة» ليس خياراً هنا**: يُشحن مع المنتج ولا يُكتب من مسار طلب، فحالةُ الاعتماد المقبولة `tenant_approved` أو `auditor_signed` لا غير.\n\nDeposits a new version at this company's level. **POST, not PUT, and the row is appended, never edited**: a past period's value is never changed; a change is a new version with its own effective date — and a document posted under a version stays on it because it carries **its snapshot**, not a key into a row that moves.\n\n**A set is deposited whole**: the values of one set take effect together, and a partial deposit produces a mixture of two versions nobody approved. A missing or extra key is refused with core.parameter_keys_incomplete, naming both.\n\n**A rate is a decimal fraction, not a percentage**: fifteen percent is `0.15`, never `15`. A value written `15` is refused with core.parameter_rate_looks_like_a_percentage — **and never silently corrected**, because a silent correction leaves the depositor believing they deposited what they did not. The constraint is enforced in the database too, so bypassing the service does not get it through.\n\n**A second version on the same (level, set, effective date) is refused** with 409 and core.parameter_version_duplicate. **'Platform default' is not a choice here**: it ships with the product and is never written from a request path, so the accepted approval states are `tenant_approved` and `auditor_signed` only.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ParameterVersionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParameterVersion"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "الجسم لا يطابق العقد: حقل غير معروف، أو مبلغ وصل رمزاً رقمياً، أو صيغة مرفوضة. / The body does not match the contract: an unknown field, an amount that arrived as a number token, or a refused spelling.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "تعارض مع حالة قائمة: فترة مقفلة، أو قيد معكوس من قبل. / Conflict with existing state: a closed period, or an already-reversed entry.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "الطلب مفهوم ومرفوض محاسبياً: قيد غير متوازن، أو دور لا يُحلّ إلى حساب. / Understood and refused on accounting grounds: an unbalanced entry, or a role that resolves to no account.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -10622,7 +10831,7 @@
       "post": {
         "operationId": "draftRentInvoice",
         "summary": "إنشاء فاتورة إيجار مسوّدة / Draft a rent invoice",
-        "description": "يُنشئ فاتورة إيجار في حالة **DRAFT** على أقساط مُسمّاة من جدول دفعات عقدٍ سارٍ.\n\n**ولا رمز حدث في الحمولة ولا نموذج ملكية**: الوحدة تقرأ نموذج ملكية العقار **المُسجَّل في الدفتر** وتختار الحدث منه — فلا يستطيع عميل HTTP أن يطلب «فاتورة ملكية ذاتية» على عقارٍ مُدار. والفرق يظهر في **دائن الفاتورة**: إيرادُ إيجار مؤجَّل للشركة في الملكية الذاتية، وأماناتُ مالكٍ في الإدارة.\n\n**وtaxRate تصل مع الطلب ولا تُكتب في شيفرة** (لا نسبة نظامية في هذا المنتج)، ولا تُطبَّق إلا على وحدةٍ معاملتها standard. وعلى الوحدة المعفاة يبقى exemptionReasonCode **فارغاً بعلامة ظاهرة** حتى يُعرف الرمز من القائمة الرسمية السارية — وحقلٌ إلزامي بقيمة مُختلَقة أسوأ من حقلٍ فارغ.\n\n**والقسط لا يُفوتَر مرّتين**: فهرس فريد على (المستأجر، القسط) لا فحصٌ في الخدمة.\n\nCreates a rent invoice in state **DRAFT** over named instalments from an active lease's payment schedule.\n\n**No event code and no ownership model appear in the payload**: the module reads the property's ownership model **as registered in the ledger** and selects the event from it — so an HTTP client cannot request an 'own-property invoice' against a managed property. The difference shows in the **credit of the invoice**: deferred rental income of the company under own property, and owner trust under management.\n\n**taxRate arrives with the request and is never written in code** (no regulatory rate lives in this product), and it applies only to a unit whose treatment is standard. On an exempt unit exemptionReasonCode stays **empty with a visible flag** until the code is known from the official list in force — a mandatory field holding an invented value is worse than an empty one.\n\n**An instalment is never invoiced twice**: a unique index on (tenant, instalment), not a check in the service.",
+        "description": "يُنشئ فاتورة إيجار في حالة **DRAFT** على أقساط مُسمّاة من جدول دفعات **قيدٍ معتمَدٍ للفوترة**.\n\n**ولا رمز حدث في الحمولة ولا نموذج ملكية**: الوحدة تقرأ نموذج ملكية العقار **المُسجَّل في الدفتر** وتختار الحدث منه — فلا يستطيع عميل HTTP أن يطلب «فاتورة ملكية ذاتية» على عقارٍ مُدار. والفرق يظهر في **دائن الفاتورة**: إيرادُ إيجار مؤجَّل للشركة في الملكية الذاتية، وأماناتُ مالكٍ في الإدارة.\n\n**وtaxRate تصل مع الطلب ولا تُكتب في شيفرة** (لا نسبة نظامية في هذا المنتج)، ولا تُطبَّق إلا على وحدةٍ معاملتها standard. وعلى الوحدة المعفاة يبقى exemptionReasonCode **فارغاً بعلامة ظاهرة** حتى يُعرف الرمز من القائمة الرسمية السارية — وحقلٌ إلزامي بقيمة مُختلَقة أسوأ من حقلٍ فارغ.\n\n**والقسط لا يُفوتَر مرّتين**: فهرس فريد على (المستأجر، القسط) لا فحصٌ في الخدمة.\n\nCreates a rent invoice in state **DRAFT** over named instalments from the payment schedule of a registration **approved for billing**.\n\n**No event code and no ownership model appear in the payload**: the module reads the property's ownership model **as registered in the ledger** and selects the event from it — so an HTTP client cannot request an 'own-property invoice' against a managed property. The difference shows in the **credit of the invoice**: deferred rental income of the company under own property, and owner trust under management.\n\n**taxRate arrives with the request and is never written in code** (no regulatory rate lives in this product), and it applies only to a unit whose treatment is standard. On an exempt unit exemptionReasonCode stays **empty with a visible flag** until the code is known from the official list in force — a mandatory field holding an invented value is worse than an empty one.\n\n**An instalment is never invoiced twice**: a unique index on (tenant, instalment), not a check in the service.",
         "requestBody": {
           "required": true,
           "content": {
@@ -23319,14 +23528,14 @@
         ],
         "additionalProperties": false
       },
-      "Lease": {
+      "LeaseRegistration": {
         "type": "object",
-        "description": "عقد إيجار بحالته. **ولا معرّف قيد فيه**: توقيع العقد لا يُنشئ قيداً، ولا مورد ترحيل عليه. / A lease contract with its state. **It carries no entry identifier**: signing a lease creates no entry, and the resource has no posting sub-resource.",
+        "description": "**قيدُ تسجيلِ** عقد إيجار مُحرَّر في منصّة إيجار، بحالة القيد. **والحالة حالةُ القيد لا حالةُ العقد**: نفاذ العقد يُقرَّر في المنصّة لا هنا. **ولا معرّف قيد محاسبي فيه**: توقيع العقد لا يُنشئ قيداً، ولا مورد ترحيل على هذا المستند. / The **registration record** of a lease contract issued on the Ejar platform, with the record's state. **The state is the record's, not the contract's**: whether the contract is in force is settled on the platform, not here. **It carries no accounting entry identifier**: signing a lease creates no entry, and the resource has no posting sub-resource.",
         "properties": {
-          "contractNo": {
+          "ejarContractNumber": {
             "type": "string",
             "maxLength": 64,
-            "description": "رقم العقد. / The contract number."
+            "description": "رقم عقد إيجار — مرجع العقد المُحرَّر في المنصّة. / The Ejar contract number — the reference to the contract issued on the platform."
           },
           "endsOn": {
             "type": "string",
@@ -23356,10 +23565,10 @@
           "state": {
             "type": "string",
             "enum": [
-              "ACTIVE",
+              "BILLABLE",
               "DRAFT"
             ],
-            "description": "حالة العقد. وACTIVE وحدها تدخل قيد الاستبعاد الزمني وتُتيح الفوترة. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The lease state. Only ACTIVE enters the temporal exclusion constraint and permits invoicing. Matched literally and case-sensitively; a number is never accepted in place of a name."
+            "description": "حالة **القيد** لا حالة العقد. وBILLABLE وحدها تدخل قيد الاستبعاد الزمني وتُتيح الفوترة، ومعناها «معتمَدٌ للفوترة» لا «سارٍ»: النفاذ من المنصّة. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The state of the **record**, not of the contract. Only BILLABLE enters the temporal exclusion constraint and permits invoicing; it means 'approved for billing', never 'in force' — force comes from the platform. Matched literally and case-sensitively; a number is never accepted in place of a name."
           },
           "totalRent": {
             "$ref": "#/components/schemas/Money"
@@ -23371,7 +23580,7 @@
           }
         },
         "required": [
-          "contractNo",
+          "ejarContractNumber",
           "endsOn",
           "id",
           "lesseeId",
@@ -23383,14 +23592,14 @@
         ],
         "additionalProperties": false
       },
-      "LeaseRequest": {
+      "LeaseRegistrationRequest": {
         "type": "object",
-        "description": "طلب إنشاء عقد إيجار مسوّدة. **وقيمة العقد والأقساط تُصرَّحان معاً**: النظام لا يوزّع القيمة على الأقساط — التوزيع يستلزم سياسة تقريب هي قرار مالك مفتوح — بل **يفحص** أن مجموع الأقساط يساوي قيمة العقد بالضبط ويرفض بخلافه. ولو اشتُقّت القيمة من الأقساط لصارت الثابتة صحيحةً بحكم البناء ولم تمسك توزيعاً خاطئاً. / A request to draft a lease contract. **The contract value and the instalments are both declared**: the system does not spread the value across the instalments — spreading requires a rounding policy that is an open owner decision — it **checks** that the instalments sum exactly to the contract value and refuses otherwise. Had the value been derived from the instalments the invariant would hold by construction and would catch no wrong split.",
+        "description": "طلب **تسجيل** عقد إيجار مُحرَّر في منصّة إيجار — مسوّدة قيد أرشيفي لا عقد. **والنظام لا يُحرّر عقداً ولا يُعدّله ولا يُنهيه**: منصّة إيجار الحكومية هي الطرف المخوَّل بذلك، وما يُنشَأ هنا قيدٌ مرجعُه رقم عقد إيجار. **ولا تكامل مع المنصّة**: الرقم يُقيَّد كما يصل ولا يُتحقَّق منه.\n\n**وقيمة العقد والأقساط تُصرَّحان معاً**: النظام لا يوزّع القيمة على الأقساط — التوزيع يستلزم سياسة تقريب هي قرار مالك مفتوح — بل **يفحص** أن مجموع الأقساط يساوي قيمة العقد بالضبط ويرفض بخلافه. ولو اشتُقّت القيمة من الأقساط لصارت الثابتة صحيحةً بحكم البناء ولم تمسك توزيعاً خاطئاً. / A request to **register** a lease contract issued on the Ejar platform — a draft archival record, not a contract. **The system issues no contract, amends none, and terminates none**: the government Ejar platform is the party authorised to do that, and what is created here is a record whose reference is the Ejar contract number. **There is no integration with the platform**: the number is recorded as received and never verified.\n\n**The contract value and the instalments are both declared**: the system does not spread the value across the instalments — spreading requires a rounding policy that is an open owner decision — it **checks** that the instalments sum exactly to the contract value and refuses otherwise. Had the value been derived from the instalments the invariant would hold by construction and would catch no wrong split.",
         "properties": {
-          "contractNo": {
+          "ejarContractNumber": {
             "type": "string",
             "maxLength": 64,
-            "description": "رقم العقد — فريد داخل المنشأة. / The contract number — unique within the company."
+            "description": "رقم عقد إيجار — مرجع العقد المُحرَّر في المنصّة، ولا يولّده هذا النظام. وتفرّده مفروضٌ داخل المنشأة وحدها. / The Ejar contract number — the reference to the contract issued on the platform; this system does not mint it. Its uniqueness is enforced within the company alone."
           },
           "endsOn": {
             "type": "string",
@@ -23402,7 +23611,7 @@
             "items": {
               "$ref": "#/components/schemas/Instalment"
             },
-            "description": "الأقساط بفتراتها ومبالغها. ومجموعها يُفحص عند التفعيل ولا يُصلَح. / The instalments with their periods and amounts. Their sum is checked on activation and never corrected."
+            "description": "الأقساط بفتراتها ومبالغها. ومجموعها يُفحص عند الاعتماد للفوترة ولا يُصلَح. / The instalments with their periods and amounts. Their sum is checked at billing approval and never corrected."
           },
           "lesseeId": {
             "type": "string",
@@ -23424,7 +23633,7 @@
           }
         },
         "required": [
-          "contractNo",
+          "ejarContractNumber",
           "endsOn",
           "instalments",
           "lesseeId",
@@ -23436,12 +23645,12 @@
       },
       "LeaseSchedule": {
         "type": "object",
-        "description": "جدول دفعات عقد بمعرّفات سطوره. / A lease payment schedule with its line identifiers.",
+        "description": "جدول دفعات قيدٍ بمعرّفات سطوره. / A lease registration's payment schedule with its line identifiers.",
         "properties": {
           "leaseId": {
             "type": "string",
             "maxLength": 36,
-            "description": "العقد. / The lease."
+            "description": "قيد التسجيل. / The lease registration."
           },
           "lines": {
             "type": "array",
@@ -23492,7 +23701,7 @@
             "type": "integer",
             "minimum": 1,
             "maximum": 100000,
-            "description": "تسلسل القسط في العقد. / The instalment's sequence within the lease."
+            "description": "تسلسل القسط في القيد. / The instalment's sequence within the registration."
           }
         },
         "required": [
@@ -23743,6 +23952,301 @@
         },
         "required": [
           "enrolmentCredential"
+        ],
+        "additionalProperties": false
+      },
+      "ParameterAmount": {
+        "type": "string",
+        "pattern": "^(0|[1-9][0-9]*)(\\.[0-9]{1,8})?$",
+        "description": "قيمةُ معامِل **نصّاً وغيرَ سالبة**، بمقياس ثمانٍ يسع النسبة والمبلغ والعدد معاً. و**النسبة كسرٌ عشري لا مئوية**: خمسة عشر بالمئة تُكتب 0.15 لا 15 — وقيمةٌ تُكتب 15 في مفتاحٍ صنفُه نسبة تُرفض باسمها ولا تُصحَّح صامتةً. والصنف يقوله الحقل `kind` لا شكلُ الرقم. / A parameter value as a **non-negative string** at scale eight, wide enough for a rate, an amount and a count alike. A **rate is a decimal fraction, not a percentage**: fifteen percent is 0.15, never 15 — a value written 15 under a key whose kind is a rate is refused by name and never silently corrected. The kind is stated by the `kind` field, not by the shape of the number.",
+        "examples": [
+          "0.15",
+          "0",
+          "5000.0000"
+        ]
+      },
+      "ParameterReviewEntry": {
+        "type": "object",
+        "description": "صفٌّ في قائمة المراجعة: إصدارٌ لم يُوقَّع بعد ومعه المستندات المُرحَّلة التي استعملته. **وقائمةُ مستنداتٍ فارغة ليست عطلاً**: إصدارٌ لم يُستعمل بعد يبقى محتاجاً إلى التوقيع. / A row in the review list: a version not yet signed together with the posted documents that used it. **An empty document list is not a fault**: a version that has not been used yet still needs a signature.",
+        "properties": {
+          "usageCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2147483647,
+            "description": "عدد المستندات التي استعملته. / The number of documents that used it."
+          },
+          "usages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ParameterUsage"
+            },
+            "description": "المستندات المُرحَّلة، مرتَّبةً بتاريخ الترحيل. / The posted documents, ordered by posting date."
+          },
+          "version": {
+            "$ref": "#/components/schemas/ParameterVersion"
+          }
+        },
+        "required": [
+          "usageCount",
+          "usages",
+          "version"
+        ],
+        "additionalProperties": false
+      },
+      "ParameterReviewList": {
+        "type": "object",
+        "description": "**القائمةُ المحصورة**: كلُّ إصدارٍ غير موقَّع تراه المنشأة، ومعه كلُّ مستندٍ مُرحَّلٍ استعمله. وهي قائمةُ مراجعة المحاسب القانوني في الخطوة الأخيرة. **وقائمةٌ فارغة تعني أن كلَّ إصدارٍ موقَّع** — وهي حالٌ لا تقع قبل أن يوقّع المحاسب على افتراضات المنصّة نفسها. / **The bounded list**: every unsigned version this company sees, together with every posted document that used it. It is the chartered accountant's review list in the final step. **An empty list means every version is signed** — a state that does not occur before the accountant signs the platform defaults themselves.",
+        "properties": {
+          "itemCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2147483647,
+            "description": "عدد الإصدارات غير الموقَّعة. / The number of unsigned versions."
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ParameterReviewEntry"
+            },
+            "description": "الصفوف، مرتَّبةً بالمجموعة ثمّ بتاريخ السريان. / The rows, ordered by set then by effective date."
+          }
+        },
+        "required": [
+          "itemCount",
+          "items"
+        ],
+        "additionalProperties": false
+      },
+      "ParameterUsage": {
+        "type": "object",
+        "description": "مستندٌ **مُرحَّل** استعمل هذا الإصدار. والمستند نفسه يحمل لقطةَ الإصدار وقيمَه في قاعدة وحدته، وهذا الصفّ فهرسٌ يجمع المتفرّق في قاعدةٍ واحدة. / A **posted** document that used this version. The document itself carries the version's snapshot and values in its own module's database; this row is an index that gathers the scattered into one database.",
+        "properties": {
+          "documentId": {
+            "type": "string",
+            "maxLength": 36,
+            "description": "معرّف المستند داخل وحدته. / The document's identifier within its module."
+          },
+          "documentType": {
+            "type": "string",
+            "maxLength": 32,
+            "description": "نوع المستند داخل وحدته. / The document's type within its module."
+          },
+          "module": {
+            "type": "string",
+            "maxLength": 32,
+            "description": "الوحدة المالكة للمستند. / The module that owns the document."
+          },
+          "postedOn": {
+            "type": "string",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+            "description": "تاريخ الترحيل ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The posting date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period."
+          }
+        },
+        "required": [
+          "documentId",
+          "documentType",
+          "module",
+          "postedOn"
+        ],
+        "additionalProperties": false
+      },
+      "ParameterValue": {
+        "type": "object",
+        "description": "قيمةٌ في إصدار، بصنفها كما أُودعت. / A value in a version, with its kind as deposited.",
+        "properties": {
+          "key": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "المفتاح. / The key."
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "rate",
+              "money",
+              "count"
+            ],
+            "description": "صنفُ القيمة — وهو ما يقرّر حارسها: `rate` كسرٌ عشري بين صفر وواحد، و`money` مبلغٌ بمقياس أربع، و`count` عددٌ صحيح. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The value's kind, which decides its guard: `rate` is a decimal fraction between zero and one, `money` is an amount at scale four, and `count` is a whole number. Matched literally and case-sensitively; a number is never accepted in place of a name."
+          },
+          "value": {
+            "$ref": "#/components/schemas/ParameterAmount"
+          }
+        },
+        "required": [
+          "key",
+          "kind",
+          "value"
+        ],
+        "additionalProperties": false
+      },
+      "ParameterValueRequest": {
+        "type": "object",
+        "description": "قيمةٌ واحدة في إيداع: مفتاحُها من مفاتيح المجموعة المعلَنة، وقيمتُها نصّاً. / One value in a deposit: its key from the declared set's keys, and its value as a string.",
+        "properties": {
+          "key": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "المفتاح داخل المجموعة. / The key within the set."
+          },
+          "value": {
+            "$ref": "#/components/schemas/ParameterAmount"
+          }
+        },
+        "required": [
+          "key",
+          "value"
+        ],
+        "additionalProperties": false
+      },
+      "ParameterVersion": {
+        "type": "object",
+        "description": "إصدارُ معامِلاتٍ كما يخرج من السطح: مستواه، وسريانه، و**حالةُ اعتماده**، ومعتمِده، ومصدره، وقيمُه. و`approvedBy` و`approvedOn` **فارغان بالضبط** في صفّ المنصّة — لم يعتمده إنسان. / A parameter version as the surface returns it: its level, its effective date, its **approval state**, its approver, its source, and its values. `approvedBy` and `approvedOn` are **exactly empty** on a platform row — no human approved it.",
+        "properties": {
+          "approval": {
+            "type": "string",
+            "enum": [
+              "platform_default",
+              "tenant_approved",
+              "auditor_signed"
+            ],
+            "description": "**حالةُ الاعتماد — ثلاثية لا ثنائية.** `platform_default` افتراضٌ يشحنه المنتج ولم يعتمده إنسان ولا يحمل اسمَ معتمِد؛ و`tenant_approved` أودعه صاحب المنشأة باسمه وتاريخه ومصدره؛ و`auditor_signed` وقّعه محاسبٌ قانوني. ولا يُشحن شيءٌ بالحالة الثالثة أبداً، والقيد مفروضٌ في المخطّط. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / **The approval state — ternary, not binary.** `platform_default` is a default the product ships that no human approved and that carries no approver name; `tenant_approved` was deposited by the company under a name, a date and a source; `auditor_signed` was signed by a chartered accountant. Nothing ever ships in the third state, and the constraint is enforced in the schema. Matched literally and case-sensitively; a number is never accepted in place of a name."
+          },
+          "approvedBy": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "المعتمِد — فارغٌ لافتراض المنصّة وحده. / The approver — empty for the platform default alone."
+          },
+          "approvedOn": {
+            "type": "string",
+            "maxLength": 10,
+            "description": "تاريخ الاعتماد بصيغة yyyy-MM-dd، أو فراغٌ لافتراض المنصّة. / The approval date as yyyy-MM-dd, or empty for the platform default."
+          },
+          "effectiveFrom": {
+            "type": "string",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+            "description": "تاريخ السريان ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The effective date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period."
+          },
+          "id": {
+            "type": "string",
+            "maxLength": 36,
+            "description": "المعرّف. / The identifier."
+          },
+          "scope": {
+            "type": "string",
+            "enum": [
+              "platform",
+              "tenant"
+            ],
+            "description": "المستوى الذي قُرِّرت عنده القيمة: `platform` يُشحن مع المنتج، و`tenant` أودعته المنشأة — وتجاوزُ المنشأة يسبق افتراضَ المنصّة عند الحلّ. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The level the value was decided at: `platform` ships with the product, `tenant` was deposited by the company — and a tenant override wins over the platform default at resolution time. Matched literally and case-sensitively; a number is never accepted in place of a name."
+          },
+          "setCode": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "رمز المجموعة. / The set's code."
+          },
+          "sourceRef": {
+            "type": "string",
+            "maxLength": 600,
+            "description": "مرجع المصدر. / The source reference."
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ParameterValue"
+            },
+            "description": "القيم، مرتَّبةً بمفاتيحها. / The values, ordered by key."
+          }
+        },
+        "required": [
+          "approval",
+          "approvedBy",
+          "approvedOn",
+          "effectiveFrom",
+          "id",
+          "scope",
+          "setCode",
+          "sourceRef",
+          "values"
+        ],
+        "additionalProperties": false
+      },
+      "ParameterVersionList": {
+        "type": "object",
+        "description": "الإصدارات التي تراها المنشأة: افتراضاتُ المنصّة وتجاوزاتُها هي وحدها. / The versions this company sees: the platform defaults and its own overrides alone.",
+        "properties": {
+          "itemCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2147483647,
+            "description": "عدد الإصدارات. / The number of versions."
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ParameterVersion"
+            },
+            "description": "الإصدارات، مرتَّبةً بالمجموعة ثمّ بتاريخ السريان. / The versions, ordered by set then by effective date."
+          }
+        },
+        "required": [
+          "itemCount",
+          "items"
+        ],
+        "additionalProperties": false
+      },
+      "ParameterVersionRequest": {
+        "type": "object",
+        "description": "إيداعُ إصدارٍ جديد من مجموعة معامِلات على مستوى المنشأة. **المجموعة كاملةً لا بعضها**: قيمُها يسري بعضها ببعض، وإيداعٌ جزئي يُنتج خليطاً من إصدارين لم يعتمده أحد. و`approvedBy` **إنسانٌ لا نظام**، و`sourceRef` غير فارغ بقيدٍ في قاعدة البيانات. / Depositing a new version of a parameter set at the company's level. **The whole set, not part of it**: its values take effect together, and a partial deposit yields a mixture of two versions nobody approved. `approvedBy` is a **human, never the system**, and `sourceRef` is non-empty by a database constraint.",
+        "properties": {
+          "approval": {
+            "type": "string",
+            "enum": [
+              "tenant_approved",
+              "auditor_signed"
+            ],
+            "description": "حالةُ الاعتماد. و«افتراضُ منصّة» ليس خياراً هنا: يُشحن مع المنتج ولا يُكتب من مسار طلب. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The approval state. 'Platform default' is not a choice here: it ships with the product and is never written from a request path. Matched literally and case-sensitively; a number is never accepted in place of a name."
+          },
+          "approvedBy": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "من اعتمد الإصدار — إنسان، لا نظام. / Who approved the version — a human, not the system."
+          },
+          "approvedOn": {
+            "type": "string",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+            "description": "تاريخ الاعتماد ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The approval date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period."
+          },
+          "effectiveFrom": {
+            "type": "string",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+            "description": "تاريخ سريان الإصدار ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The date the version takes effect. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period."
+          },
+          "setCode": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "رمز مجموعة المعامِلات. / The parameter set's code."
+          },
+          "sourceRef": {
+            "type": "string",
+            "maxLength": 600,
+            "description": "مرجعُ المصدر الذي أُخذت منه القيم — نصٌّ يقرؤه مراجع، وغير فارغ. / The reference to the source the values came from — text a reviewer reads, and non-empty."
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ParameterValueRequest"
+            },
+            "description": "قيمُ المجموعة — كلُّها لا بعضها. / The set's values — all of them, not some."
+          }
+        },
+        "required": [
+          "approval",
+          "approvedBy",
+          "approvedOn",
+          "effectiveFrom",
+          "setCode",
+          "sourceRef",
+          "values"
         ],
         "additionalProperties": false
       },

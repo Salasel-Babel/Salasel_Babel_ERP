@@ -66,11 +66,26 @@ jobs:
           # اسم المالك يُخفَّض: أسماء الصور في OCI لا تقبل حرفاً كبيراً.
           echo "registry=ghcr.io/$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
 
+      # ── إجراءات طرفٍ ثالث: **مثبَّتة على بصمة التزام لا على وسمٍ متحرّك** ──────
+      #
+      # هذه الوظيفة تحمل ‏`secrets.GITHUB_TOKEN` بصلاحية `packages: write`، وتدفع
+      # ثلاث صورٍ إلى السجلّ الذي يُسحب منه الخادم. و‏`@v3` و`@v6` **وسومٌ متحرّكة**
+      # يملك مالكُ الإجراء أن يُعيد توجيهها إلى أي التزام في أي لحظة — فمن يملك ذلك
+      # الحساب يُشغّل شيفرته داخل وظيفةٍ تحمل رمزاً يدفع صوراً، بلا سطرٍ يتغيّر في
+      # هذا المستودع وبلا مراجعةٍ واحدة. والبصمة تُثبّت البايتات: تحديثُ الإجراء يصير
+      # **إيداعاً يُقرأ**، لا سحباً لا يقرّره أحد. والوسم بجانب البصمة تعليقٌ للقارئ،
+      # ولا يقرؤه المُشغِّل.
+      #
+      # ‏**و‏`actions/*` بقيت على وسومها عن قصد**، لا سهواً: مالكها هو GitHub نفسه —
+      # صاحبُ العدّاء ومُصدِرُ الرمز وحالُّ البصمة معاً. فتثبيتُها لا يزيد حدّ ثقةٍ
+      # جديداً: من يستطيع تبديل `actions/checkout` يستطيع تبديل العدّاء تحته. والحدّ
+      # الحقيقي هنا هو **منظمة `docker`** — مالكٌ آخر، وهي وحدها ما ثُبِّت. ويفرض ذلك
+      # ‏`ThirdPartyActionsArePinnedToACommit` بقائمة **مالكين** لا قائمة إجراءات.
       - name: تهيئة Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f  # v3.12.0
 
       - name: الدخول إلى سجلّ الصور
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9  # v3.7.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -79,7 +94,7 @@ jobs:
       # ثلاث صور لا واحدة، وهو الفصل نفسه الذي يفرضه ADR-0003 مطبَّقاً على
       # النشر: صورة الترحيل وحدها تحمل اتصال المالك، وصورة الخادم لا تحمله.
       - name: صورة الخادم
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8  # v6.19.2
         with:
           context: .
           file: deploy/Dockerfile.api
@@ -90,7 +105,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=api
 
       - name: صورة الترحيل والبذر
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8  # v6.19.2
         with:
           context: .
           file: deploy/Dockerfile.migrator
@@ -101,7 +116,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=migrator
 
       - name: صورة الواجهة
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8  # v6.19.2
         with:
           context: .
           file: deploy/Dockerfile.web

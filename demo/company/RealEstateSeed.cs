@@ -49,7 +49,7 @@ internal sealed class RealEstateSeed : IDisposable
 
     private readonly PropertyService _properties;
     private readonly PartyService _parties;
-    private readonly LeaseContractService _leases;
+    private readonly LeaseRegistrationService _leases;
     private readonly RentInvoiceService _invoices;
     private readonly TenantReceiptService _receipts;
     private readonly TenantArrearsService _arrears;
@@ -94,7 +94,7 @@ internal sealed class RealEstateSeed : IDisposable
         IServiceProvider scoped = _scope.ServiceProvider;
         _properties = scoped.GetRequiredService<PropertyService>();
         _parties = scoped.GetRequiredService<PartyService>();
-        _leases = scoped.GetRequiredService<LeaseContractService>();
+        _leases = scoped.GetRequiredService<LeaseRegistrationService>();
         _invoices = scoped.GetRequiredService<RentInvoiceService>();
         _receipts = scoped.GetRequiredService<TenantReceiptService>();
         _arrears = scoped.GetRequiredService<TenantArrearsService>();
@@ -210,15 +210,15 @@ internal sealed class RealEstateSeed : IDisposable
 
         Say.Detail("عقاران وأربع وحدات — والتصنيف الضريبي والاستعمال **مُدخَلان لا مشتقّان** (م-3).");
 
-        // ── ٣ · عقدان يُفعَّلان، وجدولاهما مصرَّحان لا موزَّعان ─────────────────
+        // ── ٣ · قيدا تسجيلٍ يُعتمدان للفوترة، وجدولاهما مصرَّحان لا موزَّعان ─────
         // ‏**والأقساط تصل مصرَّحةً**: توزيع قيمة العقد يستلزم سياسة تقريب هي قرار مالك
         // مفتوح، والوحدة تفحص أن مجموعها يساوي القيمة بالضبط وترفض بخلافه.
-        Guid firstLease = await ActivateLeaseAsync(
+        Guid firstLease = await RegisterAndApproveLeaseAsync(
             "LSE-CT-2026-01", officeOne, firstLessee,
             new DateOnly(_settings.FiscalYear, 3, 1), new DateOnly(_settings.FiscalYear, 8, 31),
             15_000m, 6, cancellationToken).ConfigureAwait(false);
 
-        Guid secondLease = await ActivateLeaseAsync(
+        Guid secondLease = await RegisterAndApproveLeaseAsync(
             "LSE-CT-2026-02", officeTwo, secondLessee,
             new DateOnly(_settings.FiscalYear, 5, 1), new DateOnly(_settings.FiscalYear, 10, 31),
             7_000m, 6, cancellationToken).ConfigureAwait(false);
@@ -323,9 +323,12 @@ internal sealed class RealEstateSeed : IDisposable
         return created.Value;
     }
 
-    /// <summary>ينشئ عقداً بأقساطٍ شهرية متساوية ثم يُفعّله — والتفعيل لا يُرحّل قيداً.</summary>
-    private async Task<Guid> ActivateLeaseAsync(
-        string contractNo,
+    /// <summary>
+    /// يسجّل عقداً مُحرَّراً في منصّة إيجار بأقساطٍ شهرية متساوية ثم يعتمده للفوترة —
+    /// والاعتماد لا يُرحّل قيداً محاسبياً ولا يجعل عقداً نافذاً.
+    /// </summary>
+    private async Task<Guid> RegisterAndApproveLeaseAsync(
+        string ejarContractNumber,
         Guid unitId,
         Guid lesseeId,
         DateOnly startsOn,
@@ -346,26 +349,26 @@ internal sealed class RealEstateSeed : IDisposable
             .DraftAsync(
                 Tenant, Seed.Actor, _settings.Company,
                 new LeaseDraft(
-                    contractNo, unitId, lesseeId, startsOn, endsOn,
+                    ejarContractNumber, unitId, lesseeId, startsOn, endsOn,
                     Money.Of(monthlyRent * months, Currency), instalments),
                 cancellationToken)
             .ConfigureAwait(false);
 
-        Ok(lease, "إنشاء العقد " + contractNo);
+        Ok(lease, "تسجيل عقد إيجار " + ejarContractNumber);
 
-        Result<LeaseView> activated = await _leases
-            .ActivateAsync(Tenant, Seed.Actor, _settings.Company, lease.Value.Id, cancellationToken)
+        Result<LeaseView> approved = await _leases
+            .ApproveForBillingAsync(Tenant, Seed.Actor, _settings.Company, lease.Value.Id, cancellationToken)
             .ConfigureAwait(false);
 
-        Ok(activated, "تفعيل العقد " + contractNo);
+        Ok(approved, "اعتماد قيد عقد إيجار " + ejarContractNumber + " للفوترة");
         Say.Detail(
-            "عقد " + contractNo + ": " + Say.Count(months) + " قسطاً × " + Say.Money(monthlyRent)
+            "قيد عقد إيجار " + ejarContractNumber + ": " + Say.Count(months) + " قسطاً × " + Say.Money(monthlyRent)
             + " = " + Say.Money(monthlyRent * months) + " — والمجموع يساوي قيمة العقد بالضبط");
 
         return lease.Value.Id;
     }
 
-    /// <summary>يُصدر فواتير لأوائل أقساط العقد ويُرحّلها، فاتورةً لكل قسط.</summary>
+    /// <summary>يُصدر فواتير لأوائل أقساط القيد ويُرحّلها، فاتورةً لكل قسط.</summary>
     private async Task InvoiceAsync(
         Guid leaseId, string firstNumber, int count, CancellationToken cancellationToken)
     {

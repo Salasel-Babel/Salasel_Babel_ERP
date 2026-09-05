@@ -177,6 +177,78 @@ export const SCREENS: readonly ScreenEntry[] = [
   { path: "/purchasing/goods-receipt", labelKey: "accounting.nav.goodsReceipt", section: "accounting", group: "purchasing" },
   { path: "/purchasing/bill", labelKey: "accounting.nav.supplierBill", section: "accounting", group: "purchasing" },
   { path: "/purchasing/payment", labelKey: "accounting.nav.supplierPayment", section: "accounting", group: "purchasing" },
+  /* ── سجلُّ المرفقات وعهدةُ سنده، وحالُ الصنف — **كتلةٌ واحدة متّصلة** كي
+     يندمج جانباها آلياً حين يلمس أسطولٌ آخر هذا الملفّ.
+
+     والمرفقات في القسم **المحاسبي لأجل لونه** لا لأنها تخصّه: السند يعبر
+     الأقسام الخمسة كلَّها — خطابُ ضمانٍ في المقاولات، وعقدُ إيجارٍ في
+     العقارات، وفاتورةٌ في المبيعات — ولا قسمَ واحداً يملكه. وهو الحكم نفسه
+     المكتوب للأمر المنطوق أعلاه، والقسم المحاسبي هو اللون المرجعي حين لا
+     يُعرَف القسم. وسندُ القيد أقربُ ما يكون إلى الدفتر على أي حال (ADR-0046:
+     «المرفق دليلٌ فيخضع لانضباط الدفتر»).
+
+     وشاشتان للمرفقات لا واحدة: أبوابُ الكتابة فيها **ثلاثة** — إيداعٌ
+     وتصحيحٌ وسحب — وحدُّ ADR-0080 اثنان. وشاشةٌ واحدة للصنف: أبوابُ الكتابة
+     فيه **اثنان** بالضبط. والترتيب ترتيبُ العمل: ما يُودَع ويُستخرَج ← ما
+     يُحكَم عليه بعد إيداعه. */
+  { path: "/attachments", labelKey: "accounting.nav.attachments", section: "accounting" },
+  { path: "/attachments/custody", labelKey: "accounting.nav.attachmentCustody", section: "accounting" },
+  { path: "/inventory/item-lifecycle", labelKey: "inventory.nav.itemLifecycle", section: "inventory" },
+  /* ── ما بعد الترحيل — أربعٌ **بترتيب العمل لا بترتيب الحروف**، و**كتلةٌ
+     واحدة متّصلة** كي يندمج جانباها آلياً حين يلمس أسطولٌ آخر هذا الملفّ.
+
+     والسؤال الذي تجيبه المجموعة واحد: **ما رُحّل خطأً، كيف يُصحَّح، وكيف
+     نُثبت أنه لم يُعدَّل؟** فالقيدُ يُعكَس بقيدٍ مضادّ على الدفتر نفسه ←
+     ثم المستندُ التجاري يُصحَّح تجاه المورّد ← ثم تجاه العميل ← ثم يُحكَم
+     على سلامة السلسلة بعد ذلك كلّه.
+
+     **ولا مجموعةٌ ثالثة ولا قسمٌ سادس**: عقد الملاحة خماسيّ مقفل (ADR-0069)،
+     والمجموعتان المُسمّاتان `sales` و`purchasing` **سلسلتان مرتَّبتان** —
+     أمرٌ ← استلام ← فاتورة ← صرف، وفاتورة ← قبض ← ذمم. والمرتجعُ والإشعار
+     **فرعان عن السلسلتين لا خطوتان فيهما**: لا يُبلَغان إلا بمستندٍ
+     مُرحَّلٍ سبقهما، وإقحامُهما خامسةً في الشريط يُعلّم أن كل شراءٍ ينتهي
+     بمرتجع. والتبرير كاملاً في
+     `ADR-after-posting-is-a-group-and-a-reversal-is-not-a-delete`. */
+  { path: "/ledger/entry", labelKey: "accounting.ledger.nav.entry", section: "accounting" },
+  { path: "/ledger/purchase-return", labelKey: "accounting.ledger.nav.purchaseReturn", section: "accounting" },
+  { path: "/ledger/credit-note", labelKey: "accounting.ledger.nav.creditNote", section: "accounting" },
+  { path: "/ledger/chain", labelKey: "accounting.ledger.nav.chain", section: "accounting" },
+  /* ── الإدارة والاشتراك — أربعٌ **بترتيب العمل لا بترتيب الحروف**: كيف
+     أدخل أوّل مرّة ← ما الذي بيدي الآن ← من يدخل معي ← ماذا اشتريتُ وما
+     الذي يعمل. وهي **كتلةٌ واحدة متّصلة** كي يندمج جانباها آلياً حين يلمس
+     أسطولٌ آخر هذا الملفّ.
+
+     **ولا قسمٌ سادس، ولا مجموعةٌ ثالثة.** عقد الملاحة خماسيّ وهو مقفل
+     (ADR-0069)، والمجموعتان المُسمّاتان مبرَّرتان بأن العقد المنشور يضع
+     نيّاتهما في `"section": "Accounting"` — ولا نيّة واحدة لهذه الأربع
+     أصلاً، فليس لها في العقد قسمٌ تُنسب إليه. فهي هنا تحت المحاسبة **لأجل
+     لونها وحده** — وهو اللون المرجعي حين لا يُعرف القسم — كما `/sign-in`
+     و`/design` و`/voice` قبلها. **وفصلُها عن العمل اليومي يقع في الملاحة
+     نفسها**: عنوانٌ ثانٍ في `App.tsx` وشريطٌ خاصّ بها، لا صفٌّ سادس هنا. */
+  { path: "/admin/enrolment", labelKey: "app.nav.enrolment", section: "accounting" },
+  { path: "/admin/session", labelKey: "app.nav.mySession", section: "accounting" },
+  { path: "/admin/members", labelKey: "app.nav.members", section: "accounting" },
+  { path: "/admin/subscription", labelKey: "app.nav.subscription", section: "accounting" },
+  /* ── التأسيس والثوابت — أربعٌ **بترتيب العمل لا بترتيب الحروف**: ما يقع
+     مرّةً فيؤسّس المنشأة ← ما يُبوَّب عليه كلُّ سطرٍ بعده ← ما يُرخَّص من حقول
+     المستندات ← ما يقبل السطر أصلاً. وهي **كتلةٌ واحدة متّصلة** كي يندمج
+     جانباها آلياً حين يلمس أسطولٌ آخر هذا الملفّ.
+
+     **وهي في القسم المحاسبي لأنها محاسبية لا لأجل لونه وحده**: مركز التكلفة
+     بُعدُ تبويبٍ على سطر القيد، ودليلُ الحسابات دليلُ الدفتر، وشكلُ المستند
+     ما يقبله الدفتر منه. و`CostCenter` يعيش في `CompanySetup` في العقد
+     المنشور، ولا مخطّط في المقاولات ولا في العقارات يحمل حقل مركز تكلفة —
+     فبيتُها شاشةُ تأسيسٍ محاسبيّة (ADR-0080 §7، ثمّ ADR-جديد).
+
+     **ولا مجموعةٌ ثالثة ولا قسمٌ سادس**: `group` مقصورةٌ على المبيعات
+     والمشتريات لأن العقد يضع نيّاتهما في `"section": "Accounting"`، ولا
+     نيّة لهذه الأربع أصلاً. وفصلُها عن العمل اليومي يقع في الملاحة نفسها:
+     عنوانٌ ثانٍ في `App.tsx` وشريطٌ خاصّ بها. */
+  { path: "/setup", labelKey: "app.nav.companySetup", section: "accounting" },
+  { path: "/setup/cost-centers", labelKey: "app.nav.costCenters", section: "accounting" },
+  { path: "/setup/document-shapes", labelKey: "app.nav.documentShapes", section: "accounting" },
+  { path: "/setup/chart-of-accounts", labelKey: "app.nav.chartOfAccounts", section: "accounting" },
+  { path: "/setup/parameters", labelKey: "app.nav.parameters", section: "accounting" },
 ];
 
 /**

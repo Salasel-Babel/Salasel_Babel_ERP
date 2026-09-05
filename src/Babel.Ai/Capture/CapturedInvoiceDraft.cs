@@ -1,6 +1,7 @@
 using Babel.Ai.Reconciliation;
 using Babel.Ai.Suggestions;
 using Babel.Contracts.Capture;
+using Babel.Contracts.Parameters;
 using Babel.Contracts.Storage;
 using Babel.SharedKernel;
 
@@ -187,6 +188,18 @@ public sealed record CapturedInvoiceDraft
 
     /// <summary>الحدث المقترح — دور أو رمز حدث من مفردات مغلقة، ولا رمز حساب أبداً.</summary>
     public PostingSuggestion? Suggestion { get; init; }
+
+    /// <summary>
+    /// <b>لقطةُ المعامِلات التي مُلئ منها حقلٌ في هذه المسوّدة</b> — أو غيابُها إن لم
+    /// يُملأ منها شيء.
+    /// <para>
+    /// وهي <b>غائبةٌ عمداً</b> حين تكون النسبة مطبوعةً على المستند: لم يُستعمل معامِل،
+    /// فادّعاءُ استعماله في السجلّ كذبٌ صغير يُقرأ حقيقةً بعد سنتين. وحين تُملأ النسبة
+    /// من الخدمة تحمل اللقطة <b>معرّف الإصدار والقيم المستعمَلة معاً</b>، فتعبر مع أمر
+    /// الترقية إلى المستند الحقيقي ولا تبقى في مسوّدة.
+    /// </para>
+    /// </summary>
+    public ParameterSnapshot? Parameters { get; init; }
 
     /// <summary>
     /// الحقول التي <b>لا تكفي فيها اللمحة</b>: كل حقل واجبه مراجعة أو قرار.

@@ -64,7 +64,7 @@ export const OWNERSHIP_MODELS = closedSet("PropertyRequest", "ownershipModel");
 export const UNIT_USAGES = closedSet("UnitRequest", "usage");
 export const VAT_TREATMENTS = closedSet("UnitRequest", "vatTreatment");
 export const TAX_RESIDENCIES = closedSet("RealEstatePartyRequest", "taxResidency");
-export const LEASE_STATES = closedSet("Lease", "state");
+export const LEASE_STATES = closedSet("LeaseRegistration", "state");
 export const INVOICE_STATES = closedSet("RentInvoice", "state");
 
 /**
@@ -104,7 +104,7 @@ requireLabels(OWNERSHIP_MODELS, "ownershipModel", Object.keys(OWNERSHIP_LABEL));
 requireLabels(TAX_RESIDENCIES, "taxResidency", Object.keys(RESIDENCY_LABEL));
 requireLabels(UNIT_USAGES, "usage", ["residential", "commercial"]);
 requireLabels(VAT_TREATMENTS, "vatTreatment", ["standard", "exempt"]);
-requireLabels(LEASE_STATES, "leaseState", ["DRAFT", "ACTIVE"]);
+requireLabels(LEASE_STATES, "leaseState", ["DRAFT", "BILLABLE"]);
 requireLabels(INVOICE_STATES, "invoiceState", ["DRAFT", "POSTED"]);
 
 /**
@@ -241,8 +241,7 @@ const NEXT_STEP: Readonly<Record<string, string>> = {
   "realestate.schedule_is_not_generated": "realestate.next.noSchedule",
   "realestate.instalments_do_not_sum_to_the_contract": "realestate.next.instalmentSum",
   "realestate.lease_term_overlaps": "realestate.next.overlap",
-  "realestate.lease_is_not_active": "realestate.next.notActive",
-  "realestate.lease_is_already_active": "realestate.next.alreadyActive",
+  "realestate.lease_is_not_approved_for_billing": "realestate.next.notApprovedForBilling",
   "realestate.schedule_line_already_invoiced": "realestate.next.alreadyInvoiced",
   "realestate.invoice_has_no_lines": "realestate.next.noLines",
   "realestate.document_is_not_a_draft": "realestate.next.notADraft",

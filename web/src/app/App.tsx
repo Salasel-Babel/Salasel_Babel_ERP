@@ -240,6 +240,83 @@ export function AppShell(): ReactNode {
         <Link to="/realestate/arrears" className="navitem" data-testid="nav-realestate-arrears">
           {t("realestate.nav.arrears")}
         </Link>
+
+        {/* ── سجلّ المرفقات وعهدةُ سنده، وحالُ الصنف — **كتلةٌ واحدة متّصلة**
+            كي يندمج جانباها آلياً حين يلمس أسطولٌ آخر هذه القائمة. والعشرُ
+            عملياتٍ تحتها كانت بلا مستهلكٍ في الواجهة كلّها قبل هذا الإنزال. */}
+        <Link to="/attachments" className="navitem" data-testid="nav-attachments">
+          {t("accounting.nav.attachments")}
+        </Link>
+        <Link to="/attachments/custody" className="navitem" data-testid="nav-attachment-custody">
+          {t("accounting.nav.attachmentCustody")}
+        </Link>
+        <Link to="/inventory/item-lifecycle" className="navitem" data-testid="nav-inventory-item-lifecycle">
+          {t("inventory.nav.itemLifecycle")}
+        </Link>
+
+        {/* ── ما بعد الترحيل: القيدُ وعكسه، والمستندان المصحِّحان، وحكمُ
+            السلسلة — **كتلةٌ واحدة متّصلة** كي يندمج جانباها آلياً حين يلمس
+            أسطولٌ آخر هذه القائمة. والستُّ عملياتٍ تحتها كانت بلا مستهلكٍ في
+            الواجهة كلّها قبل هذا الإنزال. */}
+        <Link to="/ledger/entry" className="navitem" data-testid="nav-ledger-entry">
+          {t("accounting.ledger.nav.entry")}
+        </Link>
+        <Link to="/ledger/purchase-return" className="navitem" data-testid="nav-ledger-purchase-return">
+          {t("accounting.ledger.nav.purchaseReturn")}
+        </Link>
+        <Link to="/ledger/credit-note" className="navitem" data-testid="nav-ledger-credit-note">
+          {t("accounting.ledger.nav.creditNote")}
+        </Link>
+        <Link to="/ledger/chain" className="navitem" data-testid="nav-ledger-chain">
+          {t("accounting.ledger.nav.chain")}
+        </Link>
+
+        {/* ── الإدارة والاشتراك — **عنوانٌ ثانٍ لا صفٌّ سادس** ───────────────
+            خلف هذه الأربع مالكُ اشتراكٍ أو مسؤول، لا محاسبٌ يكتب مستنداً: من
+            يدخل النظام وبأي دور، وماذا اشتُرك، وماذا يتوقّف. وخلطُها بشاشات
+            العمل اليومي يجعل «سحب عضوية» و«انقطاع اشتراك» جيرانَ «سند قبض»
+            في القائمة نفسها — وهي أفعالٌ لا يفتحها من يفتح تلك. فُصلت
+            بعنوانها ولم تُخرَج من `SCREENS`، لأن عقد الملاحة خماسيّ مقفل
+            (ADR-0069) والفصلُ هنا فصلُ قراءةٍ لا قسمٌ سادس.
+            وهي **كتلةٌ واحدة متّصلة** كي يندمج جانباها آلياً. */}
+        <p className="sections__label">{t("app.nav.administration")}</p>
+        <Link to="/admin/enrolment" className="navitem" data-testid="nav-admin-enrolment">
+          {t("app.nav.enrolment")}
+        </Link>
+        <Link to="/admin/session" className="navitem" data-testid="nav-admin-session">
+          {t("app.nav.mySession")}
+        </Link>
+        <Link to="/admin/members" className="navitem" data-testid="nav-admin-members">
+          {t("app.nav.members")}
+        </Link>
+        <Link to="/admin/subscription" className="navitem" data-testid="nav-admin-subscription">
+          {t("app.nav.subscription")}
+        </Link>
+
+        {/* ── التأسيس والثوابت — **عنوانٌ ثالثٌ لا قسمٌ سادس** ───────────────
+            خلف هذه الخمس من يجهّز المنشأة قبل أوّل مستند: من يؤسّسها مرّةً،
+            ومن يعرّف بُعد التبويب الذي يحمله كلُّ سطرٍ بعدها، ومن يقرّر أيّ
+            قدرةٍ تُرخّص أيّ حقل، ومن يقرأ ما يقبله كلُّ حساب. وهي محاسبيّةٌ
+            بموضوعها لا بلونها وحده — ومع ذلك لا يفتحها من يكتب سند قبضٍ في
+            يومه، فلها عنوانها كما للإدارة عنوانها (ADR-0069: عقدُ الملاحة
+            خماسيٌّ مقفل، والفصلُ هنا فصلُ قراءةٍ لا قسمٌ سادس).
+            وهي **كتلةٌ واحدة متّصلة** كي يندمج جانباها آلياً. */}
+        <p className="sections__label">{t("app.nav.setupGroup")}</p>
+        <Link to="/setup" className="navitem" data-testid="nav-setup-company">
+          {t("app.nav.companySetup")}
+        </Link>
+        <Link to="/setup/cost-centers" className="navitem" data-testid="nav-setup-cost-centers">
+          {t("app.nav.costCenters")}
+        </Link>
+        <Link to="/setup/document-shapes" className="navitem" data-testid="nav-setup-document-shapes">
+          {t("app.nav.documentShapes")}
+        </Link>
+        <Link to="/setup/chart-of-accounts" className="navitem" data-testid="nav-setup-chart">
+          {t("app.nav.chartOfAccounts")}
+        </Link>
+        <Link to="/setup/parameters" className="navitem" data-testid="nav-setup-parameters">
+          {t("app.nav.parameters")}
+        </Link>
       </nav>
 
       <div className="app-main">

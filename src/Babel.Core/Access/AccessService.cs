@@ -65,27 +65,35 @@ public sealed class AccessService : IApplicationService
     private readonly IEntitlementEnforcer _enforcer;
     private readonly IAuditLog _audit;
     private readonly TimeProvider _clock;
+    private readonly AccessPolicy _policy;
 
     /// <summary>ينشئ الخدمة.</summary>
     /// <param name="directory">دليل المصادقة.</param>
     /// <param name="enforcer">منفِّذ الاستحقاق.</param>
     /// <param name="audit">سجلّ التدقيق.</param>
     /// <param name="clock">مصدر الوقت.</param>
+    /// <param name="policy">
+    /// مُدَد الاعتمادات. <b>مُعامِلٌ إلزامي لا ثابتٌ ساكن</b>: هذه سياسةُ أمنٍ تُشدَّد
+    /// لحظةَ حادثة، ولا تُقرأ من صنفٍ لا يقبل ضبطاً.
+    /// </param>
     public AccessService(
         IAccessDirectory directory,
         IEntitlementEnforcer enforcer,
         IAuditLog audit,
-        TimeProvider clock)
+        TimeProvider clock,
+        AccessPolicy policy)
     {
         ArgumentNullException.ThrowIfNull(directory);
         ArgumentNullException.ThrowIfNull(enforcer);
         ArgumentNullException.ThrowIfNull(audit);
         ArgumentNullException.ThrowIfNull(clock);
+        ArgumentNullException.ThrowIfNull(policy);
 
         _directory = directory;
         _enforcer = enforcer;
         _audit = audit;
         _clock = clock;
+        _policy = policy;
     }
 
     /// <summary>
@@ -133,8 +141,8 @@ public sealed class AccessService : IApplicationService
         }
 
         Guid sessionId = Guid.CreateVersion7();
-        Minted access = Mint(now, AccessLimits.AccessLifetime);
-        Minted refresh = Mint(now, AccessLimits.RefreshLifetime);
+        Minted access = Mint(now, _policy.AccessLifetime);
+        Minted refresh = Mint(now, _policy.RefreshLifetime);
 
         await _directory
             .OpenSessionAsync(
@@ -167,8 +175,8 @@ public sealed class AccessService : IApplicationService
         }
 
         DateTimeOffset now = _clock.GetUtcNow();
-        Minted access = Mint(now, AccessLimits.AccessLifetime);
-        Minted refresh = Mint(now, AccessLimits.RefreshLifetime);
+        Minted access = Mint(now, _policy.AccessLifetime);
+        Minted refresh = Mint(now, _policy.RefreshLifetime);
 
         // التدوير **قبل** الاستحقاق: كشفُ إعادة الاستعمال إجراءُ أمنٍ لا امتيازُ اشتراك،
         // ويجب أن يقع ولو كان المستأجر منقطعاً — بل لا سيّما حينئذ.
@@ -305,7 +313,7 @@ public sealed class AccessService : IApplicationService
         DateTimeOffset now = _clock.GetUtcNow();
         Membership membership = new(
             request.Company, request.Member ?? new UserId(Guid.CreateVersion7()), request.Role, name, now);
-        Minted enrolment = Mint(now, AccessLimits.EnrolmentLifetime);
+        Minted enrolment = Mint(now, _policy.EnrolmentLifetime);
 
         bool granted = await _directory
             .TryGrantAsync(request.Tenant, membership, request.Inviter, enrolment.Digest, enrolment.ExpiresAt, cancellationToken)

@@ -63,6 +63,16 @@ internal static class ApiProblems
             "company_setup.not_found" => 404,
             "company_setup.already_initialised" => 409,
 
+            // ── المعامِلات ───────────────────────────────────────────────────────
+            // ‏**والتصنيف يتبع من يُصلح العطل.** «مجموعة غير معروفة» و«مفاتيح ناقصة أو
+            // زائدة» و«نسبة تبدو مئوية» و«حالة اعتماد لا تُودَع» كلّها **طلبٌ مفهوم
+            // ومرفوض** — يُصلحها من أرسله بتعديل حمولته: 422. و«إصدارٌ قائم على تاريخ
+            // السريان نفسه» **تعارضٌ مع حالة قائمة** لا خطأ في الحمولة: 409، لأن
+            // الحمولة نفسها كانت ستُقبل بتاريخ آخر. و«لا إصدار يغطّي هذا التاريخ»
+            // **مورد غائب**: 404 — ولا يُصلحه تعديل الطلب بل إيداعُ إصدار.
+            "core.parameters_missing" => 404,
+            "core.parameter_version_duplicate" => 409,
+
             "cost_center.not_found" => 404,
             "cost_center.default_cannot_be_suspended" => 409,
             "cost_center.already_suspended" or "cost_center.already_active" => 409,
@@ -140,20 +150,20 @@ internal static class ApiProblems
                 or "projects.contract_policy.resolution_not_implemented" => 409,
             // ── مستندات العقارات ─────────────────────────────────────────────
             // ‏**ولم يكن لهذا السطح تصنيفٌ واحد**: عشرون باباً منشوراً، وكل رفضٍ مجالي
-            // فيها يسقط إلى `_ => 500` — أي أن «الوحدة مؤجَّرة سلفاً» و«العقد ليس
+            // فيها يسقط إلى `_ => 500` — أي أن «الوحدة مؤجَّرة سلفاً» و«المستند ليس
             // مسوّدة» و«العقار غير موجود» كانت تُقرأ كلها **«عطل في الخادم»**. والعقد
             // المنشور يُعلن لهذه المسارات 404 و409 و422 صراحةً، فكان الخادم يخالف عقده.
-            // واكتُشف بنداءٍ حقيقي: تفعيلُ مدّةٍ متداخلة ردّ **500** ورمزه
+            // واكتُشف بنداءٍ حقيقي: اعتمادُ مدّةٍ متداخلة للفوترة ردّ **500** ورمزه
             // `realestate.lease_term_overlaps` — وهو **رفضٌ صحيح** يقرؤه العميل عطلاً.
             //
             // و**قيد الاستبعاد الزمني 409 بعينه**: الطلب سليم تماماً، ويصطدم بحالةٍ
-            // قائمة على الوحدة. والعميل الذي يقرأ 409 يقرأ العقد الساري ثم يقرّر؛ ولو
+            // قائمة على الوحدة. والعميل الذي يقرأ 409 يقرأ القيد المعتمَد للفوترة ثم يقرّر؛ ولو
             // قرأ 422 لظنّ أن إعادة الصياغة تُجدي، ولو قرأ 500 لأعاد المحاولة.
             "realestate.property_not_found" or "realestate.unit_not_found"
                 or "realestate.party_not_found" or "realestate.lease_not_found"
                 or "realestate.document_not_found" or "realestate.schedule_line_not_found" => 404,
             "realestate.duplicate_code" or "realestate.lease_term_overlaps"
-                or "realestate.lease_is_already_active" or "realestate.lease_is_not_active"
+                or "realestate.lease_is_not_approved_for_billing"
                 or "realestate.document_is_not_a_draft" or "realestate.schedule_line_already_invoiced"
                 or "realestate.receipt_is_already_allocated" or "realestate.receipt_is_not_posted"
                 or "realestate.receipt_was_not_unallocated" => 409,
@@ -193,6 +203,9 @@ internal static class ApiProblems
             // يحوّلها إلى attachment_not_found — و**404 لا 403 عمداً**، لأن «ممنوع»
             // تُثبت وجود الملفّ عند غيرك.
             "storage.ticket_signature_invalid" or "storage.ticket_expired" => 401,
+
+            // وبقيّةُ رفوض المعامِلات طلبٌ مفهوم ومرفوض: يُصلحه من أرسله بتعديل حمولته.
+            _ when code.StartsWith("core.parameter", StringComparison.Ordinal) => 422,
 
             _ when code.StartsWith("company_setup.", StringComparison.Ordinal) => 422,
             _ when code.StartsWith("cost_center.", StringComparison.Ordinal) => 422,

@@ -55,6 +55,40 @@ import { PayComponentsScreen } from "../screens/hr/PayComponentsScreen";
 import { AdvancesDeductionsScreen } from "../screens/hr/AdvancesDeductionsScreen";
 import { SocialInsuranceScreen } from "../screens/hr/SocialInsuranceScreen";
 import { SubledgerReconciliationScreen } from "../screens/hr/SubledgerReconciliationScreen";
+/* ── سجلّ المرفقات وعهدةُ سنده، وحالُ الصنف — كتلةٌ واحدة متّصلة ────────────
+   شاشتان للمرفقات لأن أبواب الكتابة فيها ثلاثة والحدّ اثنان (ADR-0080)،
+   وشاشةٌ واحدة للصنف لأن أبواب الكتابة فيه اثنان بالضبط. والتبرير كاملاً في
+   `ADR-0082-attachments-split-by-hand-items-do-not`. */
+import { AttachmentRegisterScreen } from "../screens/attachments/AttachmentRegisterScreen";
+import { AttachmentCustodyScreen } from "../screens/attachments/AttachmentCustodyScreen";
+import { InventoryItemLifecycleScreen } from "../screens/inventory/ItemLifecycleScreen";
+/* ── ما بعد الترحيل — أربعُ شاشاتٍ كتلةً واحدة متّصلة ──────────────────────
+   «ما رُحّل خطأً، كيف يُصحَّح، وكيف نُثبت أنه لم يُعدَّل؟» أربعُ أيدٍ يجيب
+   كلٌّ منها سؤالاً واحداً: القيدُ يُعكَس بقيدٍ مضادّ، والمستندُ التجاري
+   يُصحَّح بمرتجعٍ إلى المورّد أو بإشعارٍ دائن إلى العميل، ثم يُحكَم على
+   سلامة السلسلة. والتبرير كاملاً في
+   `ADR-after-posting-is-a-group-and-a-reversal-is-not-a-delete`. */
+import { JournalEntryScreen } from "../screens/ledger/JournalEntryScreen";
+import { PurchaseReturnScreen } from "../screens/ledger/PurchaseReturnScreen";
+import { CreditNoteScreen } from "../screens/ledger/CreditNoteScreen";
+import { LedgerChainScreen } from "../screens/ledger/LedgerChainScreen";
+/* ── الإدارة والاشتراك — أربعُ شاشاتٍ بترتيب العمل: كيف أدخل أوّل مرّة ← ما
+   الذي بيدي الآن ← من يدخل معي ← ماذا اشتريتُ وما الذي يعمل. وهي **مجموعةٌ
+   إدارية** لا قسمٌ سادس: عقدُ الملاحة خماسيّ، وهذه الأربع خلفها مالكُ اشتراكٍ
+   أو مسؤول لا محاسبٌ يكتب مستنداً — فلها عنوانها الخاصّ في الملاحة. */
+import { EnrolmentScreen } from "../screens/admin/EnrolmentScreen";
+import { SessionScreen } from "../screens/admin/SessionScreen";
+import { MembersScreen } from "../screens/admin/MembersScreen";
+import { SubscriptionScreen } from "../screens/admin/SubscriptionScreen";
+/* ── التأسيس والثوابت — أربعُ شاشاتٍ بترتيب العمل: ما يقع مرّةً فيؤسّس
+   المنشأة ← ما يُبوَّب عليه كلُّ سطرٍ بعده ← ما يُرخَّص من حقول المستندات ←
+   ما يقبل السطر أصلاً. والتبرير كاملاً في
+   `ADR-0085-setup-is-a-group-and-a-verdict-is-not-a-write`. */
+import { CompanySetupScreen } from "../screens/setup/CompanySetupScreen";
+import { CostCentersScreen } from "../screens/setup/CostCentersScreen";
+import { DocumentShapesScreen } from "../screens/setup/DocumentShapesScreen";
+import { ChartOfAccountsScreen } from "../screens/setup/ChartOfAccountsScreen";
+import { ParametersScreen } from "../screens/setup/ParametersScreen";
 
 const rootRoute = createRootRoute({ component: AppShell });
 
@@ -323,6 +357,106 @@ const purchasingPaymentRoute = createRoute({
   component: SupplierPaymentScreen,
 });
 
+/* ── المرفقات وحالُ الصنف — كتلةٌ واحدة متّصلة. */
+const attachmentsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/attachments",
+  component: AttachmentRegisterScreen,
+});
+
+const attachmentCustodyRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/attachments/custody",
+  component: AttachmentCustodyScreen,
+});
+
+const inventoryItemLifecycleRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/inventory/item-lifecycle",
+  component: InventoryItemLifecycleScreen,
+});
+
+/* ── ما بعد الترحيل — كتلةٌ واحدة متّصلة ──────────────────────────────── */
+const ledgerEntryRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/ledger/entry",
+  component: JournalEntryScreen,
+});
+
+const ledgerPurchaseReturnRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/ledger/purchase-return",
+  component: PurchaseReturnScreen,
+});
+
+const ledgerCreditNoteRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/ledger/credit-note",
+  component: CreditNoteScreen,
+});
+
+const ledgerChainRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/ledger/chain",
+  component: LedgerChainScreen,
+});
+
+/* ── الإدارة والاشتراك ─────────────────────────────────────────────────── */
+const adminEnrolmentRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/enrolment",
+  component: EnrolmentScreen,
+});
+
+const adminSessionRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/session",
+  component: SessionScreen,
+});
+
+const adminMembersRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/members",
+  component: MembersScreen,
+});
+
+const adminSubscriptionRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/subscription",
+  component: SubscriptionScreen,
+});
+
+/* ── التأسيس والثوابت ──────────────────────────────────────────────────── */
+const setupCompanyRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/setup",
+  component: CompanySetupScreen,
+});
+
+const setupCostCentersRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/setup/cost-centers",
+  component: CostCentersScreen,
+});
+
+const setupDocumentShapesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/setup/document-shapes",
+  component: DocumentShapesScreen,
+});
+
+const setupChartRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/setup/chart-of-accounts",
+  component: ChartOfAccountsScreen,
+});
+
+const setupParametersRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/setup/parameters",
+  component: ParametersScreen,
+});
+
 const routeTree = rootRoute.addChildren([
   trialBalanceRoute,
   signInRoute,
@@ -366,6 +500,22 @@ const routeTree = rootRoute.addChildren([
   purchasingGoodsReceiptRoute,
   purchasingBillRoute,
   purchasingPaymentRoute,
+  attachmentsRoute,
+  attachmentCustodyRoute,
+  inventoryItemLifecycleRoute,
+  ledgerEntryRoute,
+  ledgerPurchaseReturnRoute,
+  ledgerCreditNoteRoute,
+  ledgerChainRoute,
+  adminEnrolmentRoute,
+  adminSessionRoute,
+  adminMembersRoute,
+  adminSubscriptionRoute,
+  setupCompanyRoute,
+  setupCostCentersRoute,
+  setupDocumentShapesRoute,
+  setupChartRoute,
+  setupParametersRoute,
 ]);
 
 /** ينشئ موجّهاً. الاختبارات تمرّر تاريخاً في الذاكرة فلا تحتاج متصفّحاً. */

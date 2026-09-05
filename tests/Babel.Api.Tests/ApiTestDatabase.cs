@@ -9,6 +9,7 @@ using Babel.Inventory;
 using Babel.Projects;
 using Babel.Ledger;
 using Babel.Purchasing;
+using Babel.RealEstate;
 using Babel.Sales;
 using Babel.Storage;
 using Npgsql;
@@ -67,6 +68,19 @@ internal static class ApiTestDatabase
     public const string ProjectsStem = "babel_api_tests_projects";
 
     /// <summary>
+    /// الجذع الثابت لاسم <b>قاعدة العقارات</b> لهذه العملية.
+    /// <para>
+    /// <b>ولماذا وُجدت الآن:</b> كانت هذه المجموعة <b>لا تمرّر اتصال العقارات أصلاً</b>،
+    /// فكان خادم الاختبار يقرؤه من ارتدادٍ صامت في الشيفرة يشير إلى <c>babel_realestate</c>
+    /// بالمستخدم الفائق — أي إلى قاعدةٍ <b>خارج هذا التشغيل</b> لا يملكها ولا يكنسها أحد.
+    /// ولم يظهر ذلك لأن لا اختبار هنا يطرق باباً عقارياً؛ و<b>مسارٌ لا يُسلَك لا يُظهر
+    /// إعداداً خاطئاً</b> (‏<c>traps.md#fakh-one-module-connection-still-read-from-a-default-after-its-siblings-were-fixed</c>).
+    /// فلمّا صار الغياب رفضاً، صار للوحدة قاعدةٌ باسم هذا التشغيل كسائر أخواتها.
+    /// </para>
+    /// </summary>
+    public const string RealEstateStem = "babel_api_tests_realestate";
+
+    /// <summary>
     /// الجذع الثابت لاسم <b>قاعدة الموارد البشرية</b> لهذه العملية.
     /// <para>
     /// <b>وهي الوحدة الوحيدة التي يرفض الخادم الإقلاع بلا اتصالها</b> — لا افتراضي لها
@@ -110,6 +124,9 @@ internal static class ApiTestDatabase
     public static string HrDatabase { get; } = TestRunScope.Name(HrStem);
     /// <summary>قاعدة المقاولات <b>لهذه العملية وحدها</b>.</summary>
     public static string ProjectsDatabase { get; } = TestRunScope.Name(ProjectsStem);
+
+    /// <summary>قاعدة العقارات <b>لهذه العملية وحدها</b>.</summary>
+    public static string RealEstateDatabase { get; } = TestRunScope.Name(RealEstateStem);
     /// <summary>الجذع الثابت لاسم قاعدة المرفقات — منفصلة، وللسبب نفسه.</summary>
     public const string StorageStem = "babel_api_tests_storage";
 
@@ -284,6 +301,16 @@ internal static class ApiTestDatabase
     };
 
     /// <summary>
+    /// إعدادات العقارات لهذه المجموعة — قاعدة مستقلّة، وبالمستخدم الفائق لأن مخطّطها
+    /// يركّب امتداد <c>btree_gist</c> ويبني عليه قيد الاستبعاد الزمني، وذلك فعلُ مالك.
+    /// </summary>
+    public static RealEstateOptions RealEstate { get; } = new()
+    {
+        ConnectionString = $"Host=127.0.0.1;Port=5432;Database={RealEstateDatabase};Username=postgres;Include Error Detail=true;Maximum Pool Size=5;Minimum Pool Size=0",
+        CompanyCurrency = "SAR",
+    };
+
+    /// <summary>
     /// إعدادات مخزن المرفقات لهذه المجموعة — <b>قاعدة مستقلّة، ودور تطبيق غير مالك</b>.
     /// <para>
     /// <b>وبدور التطبيق لا بالمالك، بخلاف المبيعات والمشتريات:</b> مخطّط المخزن ينزع
@@ -381,6 +408,11 @@ internal static class ApiTestDatabase
         // بلا صفّ سارٍ يُرفض هنا بالرمز نفسه الذي يُرفض به هناك.
         await HrSchemaDeployer.DeployAsync(Hr, cancellationToken).ConfigureAwait(false);
         await ProjectsSchemaDeployer.DeployAsync(Projects, cancellationToken).ConfigureAwait(false);
+
+        // والعقارات: مخطّطها يركّب `btree_gist` ويبني قيد الاستبعاد الزمني — ولذلك
+        // يُنشر بالمالك. ولا اختبار هنا يطرق باباً عقارياً بعد؛ ووجودُ القاعدة هو ما
+        // يجعل اتصال الوحدة **مضبوطاً باسم هذا التشغيل** بدل أن يُقرأ من ارتدادٍ صامت.
+        await RealEstateSchemaDeployer.DeployAsync(RealEstate, cancellationToken).ConfigureAwait(false);
         // ── مستوى التحكّم: قاعدته ومخطّطه وكتالوجه ─────────────────────────────
         // بالناشر نفسه الذي يستعمله الأسطول (‏ControlSchema.EnsureAsync)، لا بنسخة
         // ثانية من نصوص المخطّط. والكتالوج والخطط مبذوران لأن سطح الاشتراك يقرؤهما:
@@ -418,6 +450,7 @@ internal static class ApiTestDatabase
         await ExecAsync(admin, $"create database {InventoryDatabase}", cancellationToken).ConfigureAwait(false);
         await ExecAsync(admin, $"create database {HrDatabase}", cancellationToken).ConfigureAwait(false);
         await ExecAsync(admin, $"create database {ProjectsDatabase}", cancellationToken).ConfigureAwait(false);
+        await ExecAsync(admin, $"create database {RealEstateDatabase}", cancellationToken).ConfigureAwait(false);
         await ExecAsync(admin, $"create database {StorageDatabase}", cancellationToken).ConfigureAwait(false);
 
         // ‏nosuperuser ليست تفصيلاً: بدونها تسقط كل طبقات الحصانة معاً (فخ-30 · ADR-0003).
@@ -506,6 +539,7 @@ internal static class ApiTestDatabase
             DropOne(admin, InventoryDatabase);
             DropOne(admin, HrDatabase);
             DropOne(admin, ProjectsDatabase);
+            DropOne(admin, RealEstateDatabase);
             DropOne(admin, ControlDatabase);
             DropOne(admin, StorageDatabase);
 
@@ -591,7 +625,7 @@ internal static class ApiTestDatabase
             foreach (string stem in new[]
                      {
                          DatabaseStem, SalesStem, PurchasingStem, InventoryStem, HrStem, ProjectsStem,
-                         ControlStem,
+                         RealEstateStem, ControlStem,
                      })
             {
                 owner = TestRunScope.OwnerProcessId(database, stem);

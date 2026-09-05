@@ -204,6 +204,54 @@ namespace Babel.Core.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Babel.Core.Persistence.AuditEntryRow", b =>
+                {
+                    b.Property<long>("SequenceNo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("sequence_no");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("SequenceNo"));
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("action");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_id");
+
+                    b.Property<string>("Details")
+                        .HasColumnType("text")
+                        .HasColumnName("details");
+
+                    b.Property<DateTimeOffset>("OccurredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("occurred_at");
+
+                    b.Property<string>("Subject")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("subject");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("SequenceNo")
+                        .HasName("pk_audit_entry");
+
+                    b.HasIndex("TenantId", "OccurredAt", "SequenceNo")
+                        .HasDatabaseName("ix_audit_entry_tenant_occurred");
+
+                    b.ToTable("audit_entry", "core", t =>
+                        {
+                            t.HasCheckConstraint("ck_audit_entry_action_shape", "action ~ '^[a-z][a-z0-9_.]{0,63}$'");
+                        });
+                });
+
             modelBuilder.Entity("Babel.Core.Persistence.CapabilityProfileCapabilityRow", b =>
                 {
                     b.Property<Guid>("CompanyId")
@@ -403,6 +451,307 @@ namespace Babel.Core.Persistence.Migrations
 
                             t.HasCheckConstraint("ck_cost_center_state", "state in ('active','suspended')");
                         });
+                });
+
+            modelBuilder.Entity("Babel.Core.Persistence.ModuleUsageRow", b =>
+                {
+                    b.Property<long>("SequenceNo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("sequence_no");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("SequenceNo"));
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_id");
+
+                    b.Property<int>("Module")
+                        .HasColumnType("integer")
+                        .HasColumnName("module");
+
+                    b.Property<DateTimeOffset>("OccurredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("occurred_at");
+
+                    b.Property<string>("Operation")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("operation");
+
+                    b.Property<long>("Quantity")
+                        .HasColumnType("bigint")
+                        .HasColumnName("quantity");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("SequenceNo")
+                        .HasName("pk_module_usage");
+
+                    b.HasIndex("TenantId", "OccurredAt")
+                        .HasDatabaseName("ix_module_usage_tenant_occurred");
+
+                    b.ToTable("module_usage", "core", t =>
+                        {
+                            t.HasCheckConstraint("ck_module_usage_module", "module >= 1");
+
+                            t.HasCheckConstraint("ck_module_usage_operation_not_blank", "length(btrim(operation)) > 0");
+
+                            t.HasCheckConstraint("ck_module_usage_quantity", "quantity >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("Babel.Core.Persistence.ParameterUsageRow", b =>
+                {
+                    b.Property<long>("SequenceNo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("sequence_no");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("SequenceNo"));
+
+                    b.Property<Guid>("DocumentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("document_id");
+
+                    b.Property<string>("DocumentType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("document_type");
+
+                    b.Property<int>("Module")
+                        .HasColumnType("integer")
+                        .HasColumnName("module");
+
+                    b.Property<DateOnly>("PostedOn")
+                        .HasColumnType("date")
+                        .HasColumnName("posted_on");
+
+                    b.Property<DateTimeOffset>("RecordedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("recorded_at");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<Guid>("VersionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("version_id");
+
+                    b.HasKey("SequenceNo")
+                        .HasName("pk_parameter_usage");
+
+                    b.HasIndex("VersionId");
+
+                    b.HasIndex("TenantId", "VersionId", "Module", "DocumentType", "DocumentId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_parameter_usage_document");
+
+                    b.ToTable("parameter_usage", "core", t =>
+                        {
+                            t.HasCheckConstraint("ck_parameter_usage_document_type_shape", "document_type ~ '^[A-Z][A-Z0-9_]{0,31}$'");
+
+                            t.HasCheckConstraint("ck_parameter_usage_module", "module >= 1");
+                        });
+                });
+
+            modelBuilder.Entity("Babel.Core.Persistence.ParameterValueRow", b =>
+                {
+                    b.Property<Guid>("VersionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("version_id");
+
+                    b.Property<string>("Key")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("key");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("kind");
+
+                    b.Property<decimal>("Value")
+                        .HasColumnType("numeric(28,10)")
+                        .HasColumnName("value");
+
+                    b.HasKey("VersionId", "Key")
+                        .HasName("pk_parameter_value");
+
+                    b.ToTable("parameter_value", "core", t =>
+                        {
+                            t.HasCheckConstraint("ck_parameter_value_key_shape", "key ~ '^[a-z][a-z0-9_]{0,63}$'");
+
+                            t.HasCheckConstraint("ck_parameter_value_kind", "kind in ('rate','money','count')");
+
+                            t.HasCheckConstraint("ck_parameter_value_not_negative", "value >= 0");
+
+                            t.HasCheckConstraint("ck_parameter_value_rate_is_a_fraction", "kind <> 'rate' or value <= 1");
+                        });
+                });
+
+            modelBuilder.Entity("Babel.Core.Persistence.ParameterVersionRow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("version_id");
+
+                    b.Property<string>("Approval")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("approval");
+
+                    b.Property<string>("ApprovedBy")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasDefaultValue("")
+                        .HasColumnName("approved_by");
+
+                    b.Property<DateOnly?>("ApprovedOn")
+                        .HasColumnType("date")
+                        .HasColumnName("approved_on");
+
+                    b.Property<DateTimeOffset>("DepositedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deposited_at");
+
+                    b.Property<DateOnly>("EffectiveFrom")
+                        .HasColumnType("date")
+                        .HasColumnName("effective_from");
+
+                    b.Property<string>("Scope")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("scope");
+
+                    b.Property<string>("SetCode")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("set_code");
+
+                    b.Property<string>("SourceRef")
+                        .IsRequired()
+                        .HasMaxLength(600)
+                        .HasColumnType("character varying(600)")
+                        .HasColumnName("source_ref");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_parameter_version");
+
+                    b.HasIndex("TenantId", "SetCode", "EffectiveFrom")
+                        .HasDatabaseName("ix_parameter_version_tenant_set_effective");
+
+                    b.HasIndex("Scope", "TenantId", "SetCode", "EffectiveFrom")
+                        .IsUnique()
+                        .HasDatabaseName("ux_parameter_version_level_set_effective");
+
+                    b.ToTable("parameter_version", "core", t =>
+                        {
+                            t.HasCheckConstraint("ck_parameter_version_approval", "approval in ('platform_default','tenant_approved','auditor_signed')");
+
+                            t.HasCheckConstraint("ck_parameter_version_approved_on_matches_approval", "(approval <> 'platform_default') = (approved_on is not null)");
+
+                            t.HasCheckConstraint("ck_parameter_version_approver_matches_approval", "(approval <> 'platform_default') = (length(btrim(approved_by)) > 0)");
+
+                            t.HasCheckConstraint("ck_parameter_version_scope", "scope in ('platform','tenant')");
+
+                            t.HasCheckConstraint("ck_parameter_version_scope_matches_approval", "(scope = 'platform') = (approval = 'platform_default')");
+
+                            t.HasCheckConstraint("ck_parameter_version_set_shape", "set_code ~ '^[a-z][a-z0-9_.]{0,63}$'");
+
+                            t.HasCheckConstraint("ck_parameter_version_source_not_blank", "length(btrim(source_ref)) > 0");
+
+                            t.HasCheckConstraint("ck_parameter_version_tenant_matches_scope", "(scope = 'tenant') = (tenant_id <> '00000000-0000-0000-0000-000000000000')");
+                        });
+                });
+
+            modelBuilder.Entity("Babel.Core.Persistence.UserActivityRow", b =>
+                {
+                    b.Property<long>("SequenceNo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("sequence_no");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("SequenceNo"));
+
+                    b.Property<string>("Activity")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("activity");
+
+                    b.Property<string>("EntitlementState")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("entitlement_state");
+
+                    b.Property<int>("Module")
+                        .HasColumnType("integer")
+                        .HasColumnName("module");
+
+                    b.Property<DateTimeOffset>("OccurredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("occurred_at");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("SequenceNo")
+                        .HasName("pk_user_activity");
+
+                    b.HasIndex("TenantId", "OccurredAt")
+                        .HasDatabaseName("ix_user_activity_tenant_occurred");
+
+                    b.ToTable("user_activity", "core", t =>
+                        {
+                            t.HasCheckConstraint("ck_user_activity_activity_not_blank", "length(btrim(activity)) > 0");
+
+                            t.HasCheckConstraint("ck_user_activity_entitlement_state_shape", "entitlement_state ~ '^[A-Za-z][A-Za-z0-9]{0,31}$'");
+
+                            t.HasCheckConstraint("ck_user_activity_module", "module >= 1");
+                        });
+                });
+
+            modelBuilder.Entity("Babel.Core.Persistence.ParameterUsageRow", b =>
+                {
+                    b.HasOne("Babel.Core.Persistence.ParameterVersionRow", null)
+                        .WithMany()
+                        .HasForeignKey("VersionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_parameter_usage_version");
+                });
+
+            modelBuilder.Entity("Babel.Core.Persistence.ParameterValueRow", b =>
+                {
+                    b.HasOne("Babel.Core.Persistence.ParameterVersionRow", null)
+                        .WithMany()
+                        .HasForeignKey("VersionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_parameter_value_version");
                 });
 #pragma warning restore 612, 618
         }

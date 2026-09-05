@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     2a0636027db4df0aab9564094aa09d3b85c383c420890403cbbde693383e5645
+     737b917c13090a000fc6b02c0fbe830a49b0e4dc254eb04a9d55ec4f64b1ba6d
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -14,10 +14,10 @@
    ═══════════════════════════════════════════════════════════════════════ */
 
 import type { Money } from "../money";
-import type { ExchangeRate, Int64String, Magnitude, Quantity, Rate, TaxRate, UnitCost } from "./brands";
+import type { ExchangeRate, Int64String, Magnitude, ParameterAmount, Quantity, Rate, TaxRate, UnitCost } from "./brands";
 
 /* المال يصل هنا **مغلّفاً**: Money كائن يرمي عند أي تحويل ضمني إلى نصّ أو رقم.
-   وبقيّة الصيغ النصّية المنشورة أنواع محتجزة (ExchangeRate · Int64String · Magnitude · Quantity · Rate · TaxRate · UnitCost).
+   وبقيّة الصيغ النصّية المنشورة أنواع محتجزة (ExchangeRate · Int64String · Magnitude · ParameterAmount · Quantity · Rate · TaxRate · UnitCost).
    ولا حقل مالي واحد نوعه number — لا هنا ولا في أي ملف مكتوب بيد.
    Money is an object whose implicit coercions throw; the other published string
    formats are branded types. No monetary field is ever typed `number`. */
@@ -1626,10 +1626,10 @@ export interface JournalLine {
   role: string;
 }
 
-/** عقد إيجار بحالته. **ولا معرّف قيد فيه**: توقيع العقد لا يُنشئ قيداً، ولا مورد ترحيل عليه. / A lease contract with its state. **It carries no entry identifier**: signing a lease creates no entry, and the resource has no posting sub-resource. */
-export interface Lease {
-  /** رقم العقد. / The contract number. */
-  contractNo: string;
+/** **قيدُ تسجيلِ** عقد إيجار مُحرَّر في منصّة إيجار، بحالة القيد. **والحالة حالةُ القيد لا حالةُ العقد**: نفاذ العقد يُقرَّر في المنصّة لا هنا. **ولا معرّف قيد محاسبي فيه**: توقيع العقد لا يُنشئ قيداً، ولا مورد ترحيل على هذا المستند. / The **registration record** of a lease contract issued on the Ejar platform, with the record's state. **The state is the record's, not the contract's**: whether the contract is in force is settled on the platform, not here. **It carries no accounting entry identifier**: signing a lease creates no entry, and the resource has no posting sub-resource. */
+export interface LeaseRegistration {
+  /** رقم عقد إيجار — مرجع العقد المُحرَّر في المنصّة. / The Ejar contract number — the reference to the contract issued on the platform. */
+  ejarContractNumber: string;
   /** نهاية المدّة. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The end of the term. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
   endsOn: string;
   /** المعرّف. / The identifier. */
@@ -1640,20 +1640,26 @@ export interface Lease {
   propertyId: string;
   /** بداية المدّة. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The start of the term. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
   startsOn: string;
-  /** حالة العقد. وACTIVE وحدها تدخل قيد الاستبعاد الزمني وتُتيح الفوترة. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The lease state. Only ACTIVE enters the temporal exclusion constraint and permits invoicing. Matched literally and case-sensitively; a number is never accepted in place of a name. */
-  state: "ACTIVE" | "DRAFT";
+  /** حالة **القيد** لا حالة العقد. وBILLABLE وحدها تدخل قيد الاستبعاد الزمني وتُتيح الفوترة، ومعناها «معتمَدٌ للفوترة» لا «سارٍ»: النفاذ من المنصّة. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The state of the **record**, not of the contract. Only BILLABLE enters the temporal exclusion constraint and permits invoicing; it means 'approved for billing', never 'in force' — force comes from the platform. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  state: "BILLABLE" | "DRAFT";
   totalRent: Money;
   /** الوحدة. / The unit. */
   unitId: string;
 }
 
-/** طلب إنشاء عقد إيجار مسوّدة. **وقيمة العقد والأقساط تُصرَّحان معاً**: النظام لا يوزّع القيمة على الأقساط — التوزيع يستلزم سياسة تقريب هي قرار مالك مفتوح — بل **يفحص** أن مجموع الأقساط يساوي قيمة العقد بالضبط ويرفض بخلافه. ولو اشتُقّت القيمة من الأقساط لصارت الثابتة صحيحةً بحكم البناء ولم تمسك توزيعاً خاطئاً. / A request to draft a lease contract. **The contract value and the instalments are both declared**: the system does not spread the value across the instalments — spreading requires a rounding policy that is an open owner decision — it **checks** that the instalments sum exactly to the contract value and refuses otherwise. Had the value been derived from the instalments the invariant would hold by construction and would catch no wrong split. */
-export interface LeaseRequest {
-  /** رقم العقد — فريد داخل المنشأة. / The contract number — unique within the company. */
-  contractNo: string;
+/**
+ * طلب **تسجيل** عقد إيجار مُحرَّر في منصّة إيجار — مسوّدة قيد أرشيفي لا عقد. **والنظام لا يُحرّر عقداً ولا يُعدّله ولا يُنهيه**: منصّة إيجار الحكومية هي الطرف المخوَّل بذلك، وما يُنشَأ هنا قيدٌ مرجعُه رقم عقد إيجار. **ولا تكامل مع المنصّة**: الرقم يُقيَّد كما يصل ولا يُتحقَّق منه.
+ * 
+ * **وقيمة العقد والأقساط تُصرَّحان معاً**: النظام لا يوزّع القيمة على الأقساط — التوزيع يستلزم سياسة تقريب هي قرار مالك مفتوح — بل **يفحص** أن مجموع الأقساط يساوي قيمة العقد بالضبط ويرفض بخلافه. ولو اشتُقّت القيمة من الأقساط لصارت الثابتة صحيحةً بحكم البناء ولم تمسك توزيعاً خاطئاً. / A request to **register** a lease contract issued on the Ejar platform — a draft archival record, not a contract. **The system issues no contract, amends none, and terminates none**: the government Ejar platform is the party authorised to do that, and what is created here is a record whose reference is the Ejar contract number. **There is no integration with the platform**: the number is recorded as received and never verified.
+ * 
+ * **The contract value and the instalments are both declared**: the system does not spread the value across the instalments — spreading requires a rounding policy that is an open owner decision — it **checks** that the instalments sum exactly to the contract value and refuses otherwise. Had the value been derived from the instalments the invariant would hold by construction and would catch no wrong split.
+ */
+export interface LeaseRegistrationRequest {
+  /** رقم عقد إيجار — مرجع العقد المُحرَّر في المنصّة، ولا يولّده هذا النظام. وتفرّده مفروضٌ داخل المنشأة وحدها. / The Ejar contract number — the reference to the contract issued on the platform; this system does not mint it. Its uniqueness is enforced within the company alone. */
+  ejarContractNumber: string;
   /** نهاية المدّة — داخلة في المدى. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The end of the term — inclusive. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
   endsOn: string;
-  /** الأقساط بفتراتها ومبالغها. ومجموعها يُفحص عند التفعيل ولا يُصلَح. / The instalments with their periods and amounts. Their sum is checked on activation and never corrected. */
+  /** الأقساط بفتراتها ومبالغها. ومجموعها يُفحص عند الاعتماد للفوترة ولا يُصلَح. / The instalments with their periods and amounts. Their sum is checked at billing approval and never corrected. */
   instalments: Instalment[];
   /** المستأجر. / The lessee. */
   lesseeId: string;
@@ -1664,9 +1670,9 @@ export interface LeaseRequest {
   unitId: string;
 }
 
-/** جدول دفعات عقد بمعرّفات سطوره. / A lease payment schedule with its line identifiers. */
+/** جدول دفعات قيدٍ بمعرّفات سطوره. / A lease registration's payment schedule with its line identifiers. */
 export interface LeaseSchedule {
-  /** العقد. / The lease. */
+  /** قيد التسجيل. / The lease registration. */
   leaseId: string;
   /** السطور بترتيب تسلسلها. / The lines in sequence order. */
   lines: LeaseScheduleLine[];
@@ -1685,7 +1691,7 @@ export interface LeaseScheduleLine {
   periodFrom: string;
   /** نهاية الفترة. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The end of the period. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
   periodTo: string;
-  /** تسلسل القسط في العقد. / The instalment's sequence within the lease. */
+  /** تسلسل القسط في القيد. / The instalment's sequence within the registration. */
   seq: number;
 }
 
@@ -1769,6 +1775,102 @@ export interface NamedAmount {
 export interface OpenSessionRequest {
   /** اعتماد الانتساب كما سُلِّم مرّة واحدة عند الدعوة. نصٌّ مبهم لا بنية فيه: لا يُحلَّل ولا يُشتقّ منه شيء، ويُقدَّم كما وصل. / The enrolment credential exactly as handed over once at invitation. An opaque string with no structure: never parsed, nothing derived from it, presented exactly as received. */
   enrolmentCredential: string;
+}
+
+/** قيمةُ معامِل **نصّاً وغيرَ سالبة**، بمقياس ثمانٍ يسع النسبة والمبلغ والعدد معاً. و**النسبة كسرٌ عشري لا مئوية**: خمسة عشر بالمئة تُكتب 0.15 لا 15 — وقيمةٌ تُكتب 15 في مفتاحٍ صنفُه نسبة تُرفض باسمها ولا تُصحَّح صامتةً. والصنف يقوله الحقل `kind` لا شكلُ الرقم. / A parameter value as a **non-negative string** at scale eight, wide enough for a rate, an amount and a count alike. A **rate is a decimal fraction, not a percentage**: fifteen percent is 0.15, never 15 — a value written 15 under a key whose kind is a rate is refused by name and never silently corrected. The kind is stated by the `kind` field, not by the shape of the number. */
+/* ParameterAmount مُعرَّف في ../money كنوع محتجز وقت التشغيل. */
+
+/** صفٌّ في قائمة المراجعة: إصدارٌ لم يُوقَّع بعد ومعه المستندات المُرحَّلة التي استعملته. **وقائمةُ مستنداتٍ فارغة ليست عطلاً**: إصدارٌ لم يُستعمل بعد يبقى محتاجاً إلى التوقيع. / A row in the review list: a version not yet signed together with the posted documents that used it. **An empty document list is not a fault**: a version that has not been used yet still needs a signature. */
+export interface ParameterReviewEntry {
+  /** عدد المستندات التي استعملته. / The number of documents that used it. */
+  usageCount: number;
+  /** المستندات المُرحَّلة، مرتَّبةً بتاريخ الترحيل. / The posted documents, ordered by posting date. */
+  usages: ParameterUsage[];
+  version: ParameterVersion;
+}
+
+/** **القائمةُ المحصورة**: كلُّ إصدارٍ غير موقَّع تراه المنشأة، ومعه كلُّ مستندٍ مُرحَّلٍ استعمله. وهي قائمةُ مراجعة المحاسب القانوني في الخطوة الأخيرة. **وقائمةٌ فارغة تعني أن كلَّ إصدارٍ موقَّع** — وهي حالٌ لا تقع قبل أن يوقّع المحاسب على افتراضات المنصّة نفسها. / **The bounded list**: every unsigned version this company sees, together with every posted document that used it. It is the chartered accountant's review list in the final step. **An empty list means every version is signed** — a state that does not occur before the accountant signs the platform defaults themselves. */
+export interface ParameterReviewList {
+  /** عدد الإصدارات غير الموقَّعة. / The number of unsigned versions. */
+  itemCount: number;
+  /** الصفوف، مرتَّبةً بالمجموعة ثمّ بتاريخ السريان. / The rows, ordered by set then by effective date. */
+  items: ParameterReviewEntry[];
+}
+
+/** مستندٌ **مُرحَّل** استعمل هذا الإصدار. والمستند نفسه يحمل لقطةَ الإصدار وقيمَه في قاعدة وحدته، وهذا الصفّ فهرسٌ يجمع المتفرّق في قاعدةٍ واحدة. / A **posted** document that used this version. The document itself carries the version's snapshot and values in its own module's database; this row is an index that gathers the scattered into one database. */
+export interface ParameterUsage {
+  /** معرّف المستند داخل وحدته. / The document's identifier within its module. */
+  documentId: string;
+  /** نوع المستند داخل وحدته. / The document's type within its module. */
+  documentType: string;
+  /** الوحدة المالكة للمستند. / The module that owns the document. */
+  module: string;
+  /** تاريخ الترحيل ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The posting date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  postedOn: string;
+}
+
+/** قيمةٌ في إصدار، بصنفها كما أُودعت. / A value in a version, with its kind as deposited. */
+export interface ParameterValue {
+  /** المفتاح. / The key. */
+  key: string;
+  /** صنفُ القيمة — وهو ما يقرّر حارسها: `rate` كسرٌ عشري بين صفر وواحد، و`money` مبلغٌ بمقياس أربع، و`count` عددٌ صحيح. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The value's kind, which decides its guard: `rate` is a decimal fraction between zero and one, `money` is an amount at scale four, and `count` is a whole number. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  kind: "rate" | "money" | "count";
+  value: ParameterAmount;
+}
+
+/** قيمةٌ واحدة في إيداع: مفتاحُها من مفاتيح المجموعة المعلَنة، وقيمتُها نصّاً. / One value in a deposit: its key from the declared set's keys, and its value as a string. */
+export interface ParameterValueRequest {
+  /** المفتاح داخل المجموعة. / The key within the set. */
+  key: string;
+  value: ParameterAmount;
+}
+
+/** إصدارُ معامِلاتٍ كما يخرج من السطح: مستواه، وسريانه، و**حالةُ اعتماده**، ومعتمِده، ومصدره، وقيمُه. و`approvedBy` و`approvedOn` **فارغان بالضبط** في صفّ المنصّة — لم يعتمده إنسان. / A parameter version as the surface returns it: its level, its effective date, its **approval state**, its approver, its source, and its values. `approvedBy` and `approvedOn` are **exactly empty** on a platform row — no human approved it. */
+export interface ParameterVersion {
+  /** **حالةُ الاعتماد — ثلاثية لا ثنائية.** `platform_default` افتراضٌ يشحنه المنتج ولم يعتمده إنسان ولا يحمل اسمَ معتمِد؛ و`tenant_approved` أودعه صاحب المنشأة باسمه وتاريخه ومصدره؛ و`auditor_signed` وقّعه محاسبٌ قانوني. ولا يُشحن شيءٌ بالحالة الثالثة أبداً، والقيد مفروضٌ في المخطّط. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / **The approval state — ternary, not binary.** `platform_default` is a default the product ships that no human approved and that carries no approver name; `tenant_approved` was deposited by the company under a name, a date and a source; `auditor_signed` was signed by a chartered accountant. Nothing ever ships in the third state, and the constraint is enforced in the schema. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  approval: "platform_default" | "tenant_approved" | "auditor_signed";
+  /** المعتمِد — فارغٌ لافتراض المنصّة وحده. / The approver — empty for the platform default alone. */
+  approvedBy: string;
+  /** تاريخ الاعتماد بصيغة yyyy-MM-dd، أو فراغٌ لافتراض المنصّة. / The approval date as yyyy-MM-dd, or empty for the platform default. */
+  approvedOn: string;
+  /** تاريخ السريان ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The effective date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  effectiveFrom: string;
+  /** المعرّف. / The identifier. */
+  id: string;
+  /** المستوى الذي قُرِّرت عنده القيمة: `platform` يُشحن مع المنتج، و`tenant` أودعته المنشأة — وتجاوزُ المنشأة يسبق افتراضَ المنصّة عند الحلّ. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The level the value was decided at: `platform` ships with the product, `tenant` was deposited by the company — and a tenant override wins over the platform default at resolution time. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  scope: "platform" | "tenant";
+  /** رمز المجموعة. / The set's code. */
+  setCode: string;
+  /** مرجع المصدر. / The source reference. */
+  sourceRef: string;
+  /** القيم، مرتَّبةً بمفاتيحها. / The values, ordered by key. */
+  values: ParameterValue[];
+}
+
+/** الإصدارات التي تراها المنشأة: افتراضاتُ المنصّة وتجاوزاتُها هي وحدها. / The versions this company sees: the platform defaults and its own overrides alone. */
+export interface ParameterVersionList {
+  /** عدد الإصدارات. / The number of versions. */
+  itemCount: number;
+  /** الإصدارات، مرتَّبةً بالمجموعة ثمّ بتاريخ السريان. / The versions, ordered by set then by effective date. */
+  items: ParameterVersion[];
+}
+
+/** إيداعُ إصدارٍ جديد من مجموعة معامِلات على مستوى المنشأة. **المجموعة كاملةً لا بعضها**: قيمُها يسري بعضها ببعض، وإيداعٌ جزئي يُنتج خليطاً من إصدارين لم يعتمده أحد. و`approvedBy` **إنسانٌ لا نظام**، و`sourceRef` غير فارغ بقيدٍ في قاعدة البيانات. / Depositing a new version of a parameter set at the company's level. **The whole set, not part of it**: its values take effect together, and a partial deposit yields a mixture of two versions nobody approved. `approvedBy` is a **human, never the system**, and `sourceRef` is non-empty by a database constraint. */
+export interface ParameterVersionRequest {
+  /** حالةُ الاعتماد. و«افتراضُ منصّة» ليس خياراً هنا: يُشحن مع المنتج ولا يُكتب من مسار طلب. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The approval state. 'Platform default' is not a choice here: it ships with the product and is never written from a request path. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  approval: "tenant_approved" | "auditor_signed";
+  /** من اعتمد الإصدار — إنسان، لا نظام. / Who approved the version — a human, not the system. */
+  approvedBy: string;
+  /** تاريخ الاعتماد ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The approval date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  approvedOn: string;
+  /** تاريخ سريان الإصدار ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The date the version takes effect. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  effectiveFrom: string;
+  /** رمز مجموعة المعامِلات. / The parameter set's code. */
+  setCode: string;
+  /** مرجعُ المصدر الذي أُخذت منه القيم — نصٌّ يقرؤه مراجع، وغير فارغ. / The reference to the source the values came from — text a reviewer reads, and non-empty. */
+  sourceRef: string;
+  /** قيمُ المجموعة — كلُّها لا بعضها. / The set's values — all of them, not some. */
+  values: ParameterValueRequest[];
 }
 
 /** طرف كما يخرج على السلك — عميل أو مورد. / A party as it leaves on the wire — a customer or a supplier. */

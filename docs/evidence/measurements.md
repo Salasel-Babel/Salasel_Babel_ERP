@@ -2586,7 +2586,7 @@ MSBUILDDISABLENODEREUSE=1 DOTNET_CLI_USE_MSBUILD_SERVER=0 NPM_CONFIG_PREFER_OFFL
 ### 3-س · عقد الإيجار يُسجَّل ولا يُحرَّر: العقد المنشور، والحارس ساقطاً ثمّ مارّاً، واستقامةُ الصفّ — 2026-09-04
 
 **القرار الذي تسنده هذه الأرقام:**
-[`ADR-جديد`](../decisions/ADR-جديد-the-lease-is-registered-not-issued.md)
+[`ADR-جديد`](../decisions/ADR-0087-the-lease-is-registered-not-issued.md)
 (`the-lease-is-registered-not-issued`).
 
 **البيئة:** §1.3 · `dotnet --version` كما تطبعه البوّابة · Chromium من `@playwright/test` ·

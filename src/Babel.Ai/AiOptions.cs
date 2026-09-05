@@ -14,7 +14,7 @@ public sealed class AiOptions
     // مُسمّى، وبلا سبيلٍ لصاحب المصلحة أن يغيّره. وموضعُه الصحيح صفٌّ في خدمة المعامِلات
     // — `tax.value_added` · `standard_rate` — بتاريخ سريانه وحالة اعتماده ومصدره،
     // وبتجاوزٍ لكلّ منشأة. ووحدةُ الالتقاط تقرؤه عبر `IParameterSource`.
-    // (‏docs/decisions/ADR-جديد-a-parameter-is-a-dated-version-of-a-whole-set.md)
+    // (‏docs/decisions/ADR-0086-a-parameter-is-a-dated-version-of-a-whole-set.md)
 
     /// <summary>
     /// أدنى ثقة يُقبل عندها اقتراح النموذج أصلاً. ما دونها لا يُعرض اقتراح —

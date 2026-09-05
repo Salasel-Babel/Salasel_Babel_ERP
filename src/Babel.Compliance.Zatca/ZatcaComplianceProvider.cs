@@ -51,24 +51,68 @@ public sealed record ZatcaSettings(
 ///   </item>
 /// </list>
 /// </summary>
-public sealed class ZatcaComplianceProvider : IComplianceProvider, IDisposable
+public sealed class ZatcaComplianceProvider : IComplianceProvider
 {
-    private readonly EphemeralZatcaKeyStore? _ownedKeys;
+    /// <summary>الرمز الثابت لرفض تركيبِ مزوّدٍ بلا مخزن مفاتيح.</summary>
+    public const string NoKeyStoreCode = "zatca.key_store_not_configured";
 
+    /// <summary>الرمز الثابت لرفض المخزن العابر في بيئة الإنتاج.</summary>
+    public const string EphemeralInProductionCode = "zatca.ephemeral_key_store_in_production";
+
+    /// <summary>ينشئ المزوّد. <b>ومخزن المفاتيح مُعامِلٌ إلزامي لا اختياري.</b></summary>
+    /// <param name="settings">إعداد المزوّد — مقابض وعناوين ومهل، ولا سرّ فيه.</param>
+    /// <param name="wire">السلك.</param>
+    /// <param name="secrets">حالُّ الأسرار.</param>
+    /// <param name="credentials">مُشتقّ الاعتماد من مقبضه.</param>
+    /// <param name="clock">الساعة.</param>
+    /// <param name="keys">
+    /// مخزن المفاتيح. <b>لا افتراضي له</b>: كان هذا المُعامِل اختيارياً وكان غيابه
+    /// يُركّب <see cref="EphemeralZatcaKeyStore"/> صمتاً.
+    /// </param>
+    /// <param name="onboardingState">حالة التسجيل — في الذاكرة إن لم تُمرَّر.</param>
+    /// <exception cref="InvalidOperationException">
+    /// إن غاب مخزن المفاتيح، أو كان عابراً وبيئةُ الإعداد <c>Production</c>.
+    /// </exception>
     public ZatcaComplianceProvider(
         ZatcaSettings settings,
         IZatcaWire wire,
         IZatcaSecretResolver secrets,
         Func<CredentialRef, ZatcaCredential> credentials,
         TimeProvider clock,
-        IZatcaKeyStore? keys = null,
+        IZatcaKeyStore keys,
         IZatcaOnboardingState? onboardingState = null)
     {
         ArgumentNullException.ThrowIfNull(settings);
 
+        if (keys is null)
+        {
+            throw new InvalidOperationException(
+                NoKeyStoreCode + " — رُكّب مزوّد الهيئة بلا مخزن مفاتيح. ولا مخزنَ يُخترع: "
+                + "مخزنٌ في الذاكرة يموت مع العملية يجعل كل فاتورة نظامية موقَّعةً بمفتاحٍ "
+                + "عابر، وشهادةَ الوحدة تسقط عند أول إعادة تشغيل — والفشل يُقرأ «الاعتماد "
+                + "منتهٍ» لا «لا مفتاح». مرّر تنفيذاً لـIZatcaKeyStore يقرأ من خزينة الأسرار، "
+                + "أو — للمحاكاة وحدها — EphemeralZatcaKeyStore بالاسم. / "
+                + NoKeyStoreCode + " — the ZATCA provider was composed without a key store, and "
+                + "none is invented: pass an IZatcaKeyStore backed by your secret vault, or — for "
+                + "simulation only — an EphemeralZatcaKeyStore by name.");
+        }
+
+        // ‏**والعابر ممنوعٌ في الإنتاج بالبناء لا بالانضباط.** الوضع مشروعٌ وله اسم
+        // (‏EphemeralZatcaKeyStore) ولا يُبلَغ إلا بذكره؛ وهذا السطر يمنع أن يُذكر في
+        // إعدادٍ بيئتُه Production — فلا تُوقَّع فاتورةٌ نظامية بمفتاحٍ عمرُه عمرُ العملية.
+        if (keys is EphemeralZatcaKeyStore && settings.Environment == ComplianceEnvironment.Production)
+        {
+            throw new InvalidOperationException(
+                EphemeralInProductionCode + " — مخزن المفاتيح العابر مخزنُ محاكاةٍ واختبار، "
+                + "وهذا الإعداد بيئتُه Production. والمفتاح فيه يُولَّد عند الإقلاع ويموت مع "
+                + "العملية، فالتوقيع عليه توقيعٌ يتحقّق محلياً ويسقط عند الجهة بعد أول إعادة "
+                + "تشغيل. اضبط ComplianceEnvironment.Simulation، أو مرّر مخزناً يقرأ من خزينة "
+                + "الأسرار. / " + EphemeralInProductionCode + " — the ephemeral key store is for "
+                + "simulation and tests; this settings object declares the Production environment.");
+        }
+
         Settings = settings;
-        _ownedKeys = keys is null ? new EphemeralZatcaKeyStore() : null;
-        Keys = keys ?? _ownedKeys!;
+        Keys = keys;
 
         ZatcaEndpoints endpoints = new(settings.BaseAddress);
 
@@ -126,6 +170,4 @@ public sealed class ZatcaComplianceProvider : IComplianceProvider, IDisposable
 
     /// <summary>لا استعلام حالة. الغياب مُصرَّح به في القدرات، ومسار الحسم مبنيّ عليه.</summary>
     public IComplianceStatusQuery? StatusQuery => null;
-
-    public void Dispose() => _ownedKeys?.Dispose();
 }

@@ -193,7 +193,7 @@ internal static class BabelApiHost
         // خلف بوّابة تتقاسم عنواناً، أو مباشرةً على الإنترنت — لا على ما يفعله الباب.
         builder.Services.AddSingleton(provider => new OpenDoorRateGuard(
             provider.GetRequiredService<TimeProvider>(),
-            builder.Configuration.GetValue("Babel:RateLimit:PerMinute", OpenDoorRateGuard.DefaultPerMinute)));
+            ReadOpenDoorRateLimit(builder.Configuration)));
 
         WebApplication app = builder.Build();
 
@@ -290,6 +290,41 @@ internal static class BabelApiHost
     }
 
     /// <summary>
+    /// يقرأ حدّ المعدّل على الأبواب المفتوحة.
+    /// <para>
+    /// <b>ولماذا لا <c>GetValue&lt;int&gt;(key, default)</c>:</b> تلك الصيغة تُفرّق بين
+    /// «غائب» و«فارغ»: الغائب يأخذ الافتراض، و<b>الفارغ يرمي</b> — ونصُّ الحزمة يمرّر
+    /// المفاتيح الاختيارية فارغةً بصيغة <c>${…:-}</c>. فيُقرأ النصّ هنا صراحةً: الغياب
+    /// <b>والفراغ</b> يعنيان «الحدّ المُعلَن»، وقيمةٌ لا تُقرأ عدداً أو دون الواحد
+    /// <b>تُرفض باسم مفتاحها</b> ولا تُبتلع إلى الافتراض — فمن وسّع الحدّ أو ضيّقه يعرف
+    /// أنه فعل، ومن أخطأ في كتابته يُقال له أين.
+    /// </para>
+    /// </summary>
+    /// <param name="configuration">الإعداد.</param>
+    private static int ReadOpenDoorRateLimit(ConfigurationManager configuration)
+    {
+        const string key = "Babel:RateLimit:PerMinute";
+        string? raw = configuration[key];
+
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return OpenDoorRateGuard.DefaultPerMinute;
+        }
+
+        if (!int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out int perMinute)
+            || perMinute < 1)
+        {
+            throw new InvalidOperationException(
+                "rate.limit_not_a_positive_number — " + key + " مضبوطٌ بقيمةٍ ليست عدداً صحيحاً موجباً. "
+                + "ولا تُبتلع إلى الافتراض: هذه أبوابٌ تُخدَم بلا اعتماد، ومن ضبط حدّها يجب أن يعرف "
+                + "أنّ ضبطه وقع. / rate.limit_not_a_positive_number — " + key
+                + " is not a positive integer, and it is not silently replaced by the declared default.");
+        }
+
+        return perMinute;
+    }
+
+    /// <summary>
     /// <b>بوّابةُ الإقلاع: كلُّ اتصالٍ يحتاجه هذا الخادم مضبوطٌ، أو لا يقلع.</b>
     /// <para>
     /// <b>لماذا هنا لا عند أول نداء:</b> تسجيلُ الوحدات مصانعُ كسولة، فخادمٌ ينقصه
@@ -320,6 +355,17 @@ internal static class BabelApiHost
         app.Services.GetRequiredService<ProjectsOptions>().EnsureConfigured();
         app.Services.GetRequiredService<HrOptions>().EnsureConfigured();
         app.Services.GetRequiredService<StorageOptions>().EnsureAppConfigured();
+
+        // ‏**وسياسةُ مُدَد الاعتمادات تُفحَص هنا كذلك.** مدّةٌ خارج سقفها — أو متغيّرٌ
+        // فيه خطأ مطبعي — كان يُكتشف عند أوّل جلسة لا عند الإقلاع، ومن ضبطها يظنّ أنه
+        // شدّد السياسة وهي على حالها. والقيمة الخارجة عن السقف **تُرفض ولا تُقصّ**.
+        app.Services.GetRequiredService<AccessPolicy>().EnsureWithinCeiling();
+
+        // ‏**وحدُّ المعدّل على الأبواب المفتوحة يُبنى هنا لا عند أوّل طارق.** التسجيل
+        // مصنعٌ كسول، فقيمةٌ لا تُقرأ عدداً — أو عددٌ دون الواحد — كانت تُسقط أوّل طلبٍ
+        // على `POST /api/v1/access/sessions` بـ500 بدل أن توقف الإقلاع برسالتها.
+        // وهي أبوابٌ **تُخدَم بلا اعتماد**، فعطلٌ فيها عطلٌ في الباب الأمامي.
+        _ = app.Services.GetRequiredService<OpenDoorRateGuard>();
     }
 
     /// <summary>

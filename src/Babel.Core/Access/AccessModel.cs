@@ -20,14 +20,11 @@ public static class AccessLimits
     /// <summary>أقصى طول لاسم عربي على عضوية.</summary>
     public const int MaximumNameLength = 200;
 
-    /// <summary>عمر الاعتماد الفاعل. قصيرٌ عمداً: هو ما يُحمل في كل طلب فهو الأكثر تعرّضاً.</summary>
-    public static TimeSpan AccessLifetime { get; } = TimeSpan.FromMinutes(15);
-
-    /// <summary>عمر اعتماد التجديد. طويلٌ لأنه لا يُحمل إلا مرّة كل دورة، ويدور في كل مرّة.</summary>
-    public static TimeSpan RefreshLifetime { get; } = TimeSpan.FromDays(14);
-
-    /// <summary>عمر اعتماد الانتساب — مهلة قبول دعوة، لا اعتماد استعمال.</summary>
-    public static TimeSpan EnrolmentLifetime { get; } = TimeSpan.FromDays(7);
+    // ‏**والمُدَد الثلاث ليست هنا** — وكانت. عمرُ الاعتماد الفاعل، وعمرُ اعتماد
+    // التجديد (وهي المدّة التي يبقى فيها اعتمادٌ مسروق صالحاً)، ومهلةُ الدعوة:
+    // ثلاثتها **سياسةُ أمنٍ تُشدَّد لحظةَ حادثة**، ورقمٌ في شيفرة يجعل الردّ على
+    // حادثةٍ يمرّ ببناءٍ ونشرةٍ كاملة. فانتقلت إلى `AccessPolicy` — تُضبَط من البيئة،
+    // ولها سقفٌ يُرفض تجاوزه ولا يُقصّ.
 }
 
 /// <summary>

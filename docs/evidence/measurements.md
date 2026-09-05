@@ -8,7 +8,7 @@
 > فأضِفه هنا بالشروط نفسها بعد قياسه — سجلٌّ ناقص يعني عملاً مُكرَّراً بعد سنتين.
 >
 > **الوثائق الشقيقة:** [`README.md`](README.md) فهرس قاعدة الأدلة وترتيب القراءة ·
-> [`traps.md`](traps.md) **الأعطال** (‏186 فخّاً، و§8 قائمة ما قبل الدمج) ·
+> [`traps.md`](traps.md) **الأعطال** (‏187 فخّاً، و§8 قائمة ما قبل الدمج) ·
 > [`refuted.md`](refuted.md) **ما دُحض** (‏16 ادّعاءً، وما بقي من كلٍّ منها) ·
 > [`verification-debt.md`](verification-debt.md) **ما لا نعرفه** (‏47 مجهولاً لا يُبنى عليها) ·
 > [`../decisions/README.md`](../decisions/README.md) **القرارات** المبنية على كل ما سبق.
@@ -2984,6 +2984,125 @@ GATE_EXIT=0
 | بذرُ افتراضات المنصّة على قاعدةٍ **مُهاجَرة لا مُنشأة** | **غير مقيس** — والبذر آمنُ التكرار بمعرّفاتٍ ثابتة، لكنّه لم يُشغَّل على قاعدةٍ سبقت الجدول |
 | سلوكُ الشاشة على **خادمٍ حقيقي** | **غير مقيس** — أربعةُ إثباتاتها على خادمٍ مُحاكى، وأرقامُ الخادم مقيسةٌ في `Babel.Api.Tests` وحدها |
 | أداءُ الاستعلام الواحد على سجلِّ استعمالٍ كبير | **غير مقيس** — لا فهرس على `(tenant_id, version_id)` غير الفريد، ولم يُقَس حجمٌ يوجبه |
+
+---
+
+### 3-ع · الارتدادُ الصامت في الإعداد: الجرد، والحارس ساقطاً ثمّ مارّاً بمُخرَجه — 2026-09-05
+
+**البيئة**: هذا الجهاز · `dotnet --version` ⇒ `10.0.111` · الفرع `claude/no-silent-fallbacks`.
+والجردُ أدناه **أُعيد تشغيله بعد دمج `origin/develop` عند `e10b647`** — أي بعد نزول خدمة
+المعامِلات — **وأعطى الأرقام نفسها**: تلك الدفعة لم تمسّ ملفّاً من التسعة.
+
+#### أ) الجرد — كم موضعاً، وكم منها بالمستخدم الفائق
+
+| ما قِيس | النتيجة | الأمر |
+|---|---|---|
+| ملفّات تحت `src/` و`demo/company/` تكتب نصّ اتصالٍ افتراضياً بالشكل `المتغيّر ?? نصّ` | **9** | `git grep -lE '\?\? .*Host=' origin/develop -- 'src/*.cs' 'src/**/*.cs' 'demo/company/*.cs' \| wc -l` |
+| أسطرُ ذلك الشكل | **20** | الأمر نفسه بـ`-E` بدل `-lE` |
+| منها ما يحمل `Username=postgres` — **المستخدم الفائق للعنقود** | **17** | `git grep -E '\?\? .*Username=postgres' origin/develop -- 'src/*.cs' 'src/**/*.cs' 'demo/company/*.cs' \| wc -l` |
+| الأسطر نفسها بعد الإصلاح | **0** | الأمران نفساهما بـ`HEAD` بدل `origin/develop` |
+| نصُّ اتصالٍ كامل باقٍ في النطاق | **1** — وهو الموضع المُعلَن `DeploymentSetting` | `git grep -cE '"[^"]*Host=[^"]*Username=[^"]*"' HEAD -- 'src/*.cs' 'src/**/*.cs' 'demo/company/*.cs'` |
+
+> **وملفّان من التسعة لم يذكرهما المسح الذي طلب الإصلاح**: `src/Babel.Ledger/LedgerOptions.cs`
+> (اتصال المالك)، و`demo/company/Settings.cs` — **وهي حاوية الترحيل في النشر**
+> (`deploy/Dockerfile.migrator`) لا أداةَ مطوّر.
+>
+> **و`demo/vertical-slice/Support/Config.cs` خارج النطاق بقرارٍ مكتوب لا بسهو**: دَينٌ
+> مُعلَن بـ[ADR-0037](../decisions/ADR-0037-demo-layer-is-declared-debt-not-an-exempted-path.md)،
+> ولا يُشحن في صورةٍ واحدة. وسطراه لا يزالان يحملان الشكل، **ويُقال ذلك**.
+
+#### ب) الحارس ساقطاً ثمّ مارّاً — **بمُخرَجه حرفاً**
+
+**١ · بإعادة الارتداد سطراً واحداً** إلى `src/Babel.Sales/SalesOptions.cs`:
+
+```
+$ ./tests/Babel.ArchitectureTests/bin/Release/net10.0/Babel.ArchitectureTests \
+    --filter-class "Babel.ArchitectureTests.NoDeploymentValueIsGuessed"
+
+failed Babel.ArchitectureTests.NoDeploymentValueIsGuessed.NoModuleWritesAConnectionStringLiteralOfItsOwn (96ms)
+  ‏2 نصَّ اتصالٍ مكتوبٌ في شيفرة:
+  src/Babel.Sales/SalesOptions.cs: المستخدم الفائق داخل نصّ اتصال — Username=postgres
+  src/Babel.Sales/SalesOptions.cs: نصّ اتصالٍ مكتوبٌ حرفاً — "Host=127.0.0.1;Port=5432;Database=babel_sales;Username=postgres;Include Error Detail=true…
+
+Test run summary: Failed! - .../Babel.ArchitectureTests.dll (net10.0|x64)
+  total: 6
+  failed: 1
+  succeeded: 5
+RED_EXIT=2
+```
+
+**٢ · وبحذف سطرٍ واحد** — `SalesOptions.EnsureConfigured()` — من بوّابة الإقلاع، **والارتدادُ
+ما زال قائماً**، فيسقط فحصان لا واحد:
+
+```
+failed Babel.ArchitectureTests.NoDeploymentValueIsGuessed.TheBootGateNamesEveryOptionsTypeThatCanRefuse (0ms)
+  بوّابة الإقلاع لا تسمّي: SalesOptions
+
+Test run summary: Failed! - .../Babel.ArchitectureTests.dll (net10.0|x64)
+  total: 6
+  failed: 2
+  succeeded: 4
+RED2_EXIT=2
+```
+
+**٣ · وبردّ السطرين**:
+
+```
+Test run summary: Passed! - .../Babel.ArchitectureTests.dll (net10.0|x64)
+  total: 6
+  failed: 0
+  succeeded: 6
+  skipped: 0
+  duration: 674ms
+GREEN_EXIT=0
+```
+
+#### ج) حارس تثبيت الإجراءات — ساقطاً ثمّ مارّاً
+
+بإعادة `@v6` إلى أسطر `docker/build-push-action` الثلاثة في `.github/workflows/deploy.yml`:
+
+```
+failed Babel.ArchitectureTests.ThirdPartyActionsArePinnedToACommit.EveryActionFromAnotherOwnerIsPinnedToAFullCommitSha (35ms)
+  إجراءُ طرفٍ ثالث على وسمٍ متحرّك:
+  .github/workflows/deploy.yml: docker/build-push-action@v6 — وسمٌ متحرّك من مالكٍ آخر
+  .github/workflows/deploy.yml: docker/build-push-action@v6 — وسمٌ متحرّك من مالكٍ آخر
+  .github/workflows/deploy.yml: docker/build-push-action@v6 — وسمٌ متحرّك من مالكٍ آخر
+
+  total: 2 · failed: 1 · PIN_RED_EXIT=2
+```
+
+وبعد ردّ البصمات: `total: 2 · failed: 0 · PIN_GREEN_EXIT=0`.
+
+#### د) البصمات المُثبَّتة — وكيف حُلَّت
+
+| الإجراء | الوسم الذي كان | البصمة | الوسم المقابل لها |
+|---|---|---|---|
+| `docker/setup-buildx-action` | `@v3` | `8d2750c68a42422c14e847fe6c8ac0403b4cbd6f` | `v3.12.0` |
+| `docker/login-action` | `@v3` | `c94ce9fb468520275223c153574b00df6fe4bcc9` | `v3.7.0` |
+| `docker/build-push-action` | `@v6` | `10e90e3645eae34f1e60eeb005ba3a3d33f178e8` | `v6.19.2` |
+
+بـ`git ls-remote https://github.com/docker/<الإجراء>.git 'refs/tags/v*'` — **ولا وسمَ
+معلَّق (`^{}`) لأيٍّ منها**، فالبصمة بصمةُ التزامٍ لا كائنَ وسم. **ولم تُرفع نسخةُ أيّ
+إجراء**: البصمة هي ما كان الوسمُ المستعمَل يحلّه إليه لحظةَ القياس، لا الأحدث.
+
+#### هـ) أعدادُ الفحوص المُضافة
+
+| المجموعة | العدد | الأمر |
+|---|---|---|
+| `NoDeploymentValueIsGuessed` | **6/6** | `--filter-class "Babel.ArchitectureTests.NoDeploymentValueIsGuessed"` |
+| `ThirdPartyActionsArePinnedToACommit` | **2/2** | `--filter-class "…ThirdPartyActionsArePinnedToACommit"` |
+| `DeploymentSettingTests` | **16/16** | `Babel.SharedKernel.Tests --filter-class "…DeploymentSettingTests"` |
+| `TheCredentialLifetimesAreAPolicyNotAConstantTests` | **12/12** | `Babel.Core.Tests --filter-class "…TheCredentialLifetimesAreAPolicyNotAConstantTests"` |
+| `TheKeyStoreIsNeverInventedTests` | **4/4** | `Babel.Compliance.Tests --filter-class "…TheKeyStoreIsNeverInventedTests"` |
+
+#### و) ما **لم** يُقَس في هذا العمل — ويُعلَن
+
+| البند | الحال |
+|---|---|
+| رفضُ الإقلاع **على خادمٍ حقيقي** بمتغيّرٍ ناقص | **غير مقيس** — المقيس هو الرفض عند التركيب بالانعكاس وبالوحدة، لا إقلاعُ عمليةٍ كاملة بمتغيّرٍ محذوف. والفحصُ الأقرب موجود في `Babel.Api.Tests` لكن لا اختبار فيه يحذف متغيّراً ويقرأ رمز الخروج |
+| أثرُ الرفض على زمن الإقلاع | **غير مقيس** — تسعةُ فحوصٍ في الذاكرة، والمتوقَّع مهمَل — **والمتوقَّع ليس مقيساً** |
+| `ControlPlaneOptions` | **لم يُغيَّر، ولم يُقَس** — يحمل `Env("BABEL_CP_HOST", "127.0.0.1")` و`Env("BABEL_CP_ADMIN_USER", "postgres")`. وهما **ليسا نصَّ اتصال** فلا يلتقطهما الحارس، **وهذا حدٌّ مُعلَن**: مستوى التحكّم مستوٍ آخر، ومستخدمُ إدارته هو المُزوِّد بحكم عمله لا امتيازاً زائداً، وسطحُه لا يُفتح إلا بـ`Babel:Fleet:Enabled`. **والغيابُ عن الحارس قرارٌ يُقرأ لا سهو** |
+| مدى تجاوز الحدّ الفعلي لمعدّل الأبواب المفتوحة خلف موزّع حِمل | **غير مقيس** — الحدّ في ذاكرة العملية، فهو مضروبٌ في عدد الخوادم، وذلك **مُعلَنٌ سلفاً** في `OpenDoorRateGuard` ولم يتغيّر بهذا العمل |
 
 ---
 

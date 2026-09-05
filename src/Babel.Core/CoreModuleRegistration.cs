@@ -142,6 +142,9 @@ public static class CoreModuleRegistration
 
         // المصادقة: الخدمة نطاق طلب كسائر خدمات التطبيق، والحالّ مفردة لأنه يقرأ ولا يحمل
         // حالة — وهو يُنادى **قبل** المصادقة في كل طلب، فلا يجوز أن يعتمد على نطاقها.
+        // ‏**سياسةُ مُدَد الاعتمادات مفردة تُقرأ من البيئة** — لا ثوابتُ شيفرة. وهي
+        // أوّل ما يُشدَّد لحظةَ حادثة، والسقفُ يُفحص عند الإقلاع لا عند أوّل جلسة.
+        services.AddSingleton<AccessPolicy>();
         services.AddScoped<AccessService>();
         services.AddSingleton<AccessResolver>();
 

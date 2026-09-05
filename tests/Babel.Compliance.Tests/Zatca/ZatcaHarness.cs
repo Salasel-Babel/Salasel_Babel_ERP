@@ -122,7 +122,8 @@ public sealed class ZatcaHarness : IDisposable
 
     public void Dispose()
     {
-        Provider.Dispose();
+        // ‏**والمزوّد لم يعد يملك مخزناً فيتخلّص منه**: صار المخزن مُعامِلاً إلزامياً
+        // يمرّره من يركّب، فمن ملَكه يتخلّص منه — وهو هذا المِرقاب.
         Keys.Dispose();
     }
 }

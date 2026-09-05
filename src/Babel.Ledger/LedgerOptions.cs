@@ -1,3 +1,5 @@
+using Babel.SharedKernel;
+
 namespace Babel.Ledger;
 
 /// <summary>
@@ -32,15 +34,35 @@ public sealed class LedgerOptions
     /// <summary>اسم دور التطبيق الافتراضي.</summary>
     public const string DefaultAppRole = "babel_ledger_app";
 
-    /// <summary>اتصال دور التطبيق — الأقل امتيازاً.</summary>
-    public string AppConnectionString { get; set; } =
-        Environment.GetEnvironmentVariable("BABEL_LEDGER_APP_DB")
-        ?? $"Host=127.0.0.1;Port=5432;Database={DefaultDatabase};Username={DefaultAppRole};Include Error Detail=true";
+    /// <summary>اسم متغيّر اتصال دور التطبيق.</summary>
+    public const string AppConnectionVariable = "BABEL_LEDGER_APP_DB";
 
-    /// <summary>اتصال المالك — الهجرات والبذر وحدها.</summary>
+    /// <summary>اسم متغيّر اتصال المالك.</summary>
+    public const string OwnerConnectionVariable = "BABEL_LEDGER_OWNER_DB";
+
+    /// <summary>مفتاح إعداد اتصال دور التطبيق.</summary>
+    public const string AppConfigurationKey = "Babel:Ledger:AppConnectionString";
+
+    /// <summary>مفتاح إعداد اتصال المالك — <b>لا يقرؤه الخادم ولا يجوز أن يقرأه</b>.</summary>
+    public const string OwnerConfigurationKey = "Babel:Ledger:OwnerConnectionString";
+
+    /// <summary>
+    /// اتصال دور التطبيق — الأقل امتيازاً.
+    /// <b>فارغٌ يعني «لم يُضبط»</b>، و<see cref="EnsureAppConfigured"/> يرفضه بالاسم.
+    /// </summary>
+    public string AppConnectionString { get; set; } =
+        DeploymentSetting.Connection(AppConnectionVariable, DefaultDatabase, DefaultAppRole);
+
+    /// <summary>
+    /// اتصال المالك — الهجرات والبذر وحدها.
+    /// <para>
+    /// <b>وكان له ارتدادٌ صامت إلى المستخدم الفائق</b> على المِعوَد — وهو نظيرُ ما وُجد
+    /// في الوحدات السبع، ولم يذكره المسح. فصار الغياب فراغاً،
+    /// و<see cref="EnsureOwnerConfigured"/> يرفضه بالاسم.
+    /// </para>
+    /// </summary>
     public string OwnerConnectionString { get; set; } =
-        Environment.GetEnvironmentVariable("BABEL_LEDGER_OWNER_DB")
-        ?? $"Host=127.0.0.1;Port=5432;Database={DefaultDatabase};Username=postgres;Include Error Detail=true";
+        DeploymentSetting.Connection(OwnerConnectionVariable, DefaultDatabase);
 
     /// <summary>اسم دور التطبيق في PostgreSQL.</summary>
     public string AppRole { get; set; } =
@@ -65,4 +87,39 @@ public sealed class LedgerOptions
     /// </para>
     /// </summary>
     public string CanonVersion { get; set; } = Canonicalization.CanonicalV2.Version;
+
+    /// <summary>
+    /// يرفض غياب اتصال دور التطبيق برسالةٍ تسمّي المتغيّر — <b>عند التركيب</b>.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">إن كان الاتصال غائباً أو فارغاً.</exception>
+    public void EnsureAppConfigured()
+    {
+        if (string.IsNullOrWhiteSpace(AppConnectionString))
+        {
+            throw DeploymentSetting.Missing(
+                "ledger.app_connection_not_configured",
+                AppConnectionVariable,
+                AppConfigurationKey,
+                "اتصال دور التطبيق على قاعدة الدفتر",
+                "the Ledger application-role database connection");
+        }
+    }
+
+    /// <summary>
+    /// يرفض غياب اتصال المالك برسالةٍ تسمّي المتغيّر. <b>يناديه مسار النشر وحده</b> —
+    /// والخادم لا يحمل هذا الاتصال ولا يجوز أن يحمله (ADR-0003).
+    /// </summary>
+    /// <exception cref="InvalidOperationException">إن كان الاتصال غائباً أو فارغاً.</exception>
+    public void EnsureOwnerConfigured()
+    {
+        if (string.IsNullOrWhiteSpace(OwnerConnectionString))
+        {
+            throw DeploymentSetting.Missing(
+                "ledger.owner_connection_not_configured",
+                OwnerConnectionVariable,
+                OwnerConfigurationKey,
+                "اتصال مالك قاعدة الدفتر",
+                "the Ledger owner database connection");
+        }
+    }
 }

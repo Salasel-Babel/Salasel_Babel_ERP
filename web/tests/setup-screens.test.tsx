@@ -49,6 +49,7 @@ const SETUP_PATHS = [
   "/setup/cost-centers",
   "/setup/document-shapes",
   "/setup/chart-of-accounts",
+  "/setup/parameters",
 ];
 
 const SETUP = {
@@ -219,6 +220,56 @@ function stub(options: {
 
 const AT = "/api/v1/companies/" + COMPANY;
 
+/* ── المعامِلات: افتراضُ منصّةٍ غير معتمَد، وتجاوزٌ للمنشأة ────────────────
+   والقيم هنا **متجهات اختبار** لا إفادةٌ عن نظام: الشاشة لا تكتب رقماً ولا
+   رمزَ مجموعة، فما يُبذر هنا هو ما يردّه خادمٌ مُحاكى. */
+const PARAMETERS = {
+  itemCount: 2,
+  items: [
+    {
+      id: "0f6a1d00-0000-4000-8000-000000000001",
+      setCode: "tax.value_added",
+      scope: "platform",
+      effectiveFrom: "0001-01-01",
+      approval: "platform_default",
+      approvedBy: "",
+      approvedOn: "",
+      sourceRef: "افتراضُ منصّة غير مُعتمَد — لا مصدرَ نظاميّاً مُسمّى له.",
+      values: [{ key: "standard_rate", kind: "rate", value: "0.15" }],
+    },
+    {
+      id: "019de28d-0000-7000-8000-000000000002",
+      setCode: "tax.value_added",
+      scope: "tenant",
+      effectiveFrom: "2026-06-01",
+      approval: "tenant_approved",
+      approvedBy: "مديرة المالية",
+      approvedOn: "2026-05-20",
+      sourceRef: "قرار مجلس الإدارة رقم 12",
+      values: [{ key: "standard_rate", kind: "rate", value: "0.10" }],
+    },
+  ],
+};
+
+const REVIEW = {
+  itemCount: 2,
+  items: [
+    { version: PARAMETERS.items[0], usageCount: 0, usages: [] },
+    {
+      version: PARAMETERS.items[1],
+      usageCount: 1,
+      usages: [
+        {
+          module: "Purchasing",
+          documentType: "SUPPLIER_BILL",
+          documentId: "019de28d-0000-7000-8000-0000000000aa",
+          postedOn: "2026-06-09",
+        },
+      ],
+    },
+  ],
+};
+
 function fullRoutes(): Record<string, unknown> {
   return {
     ["GET " + AT + "/setup"]: SETUP,
@@ -226,6 +277,8 @@ function fullRoutes(): Record<string, unknown> {
     ["GET " + AT + "/chart-of-accounts"]: CHART,
     ["GET " + AT + "/document-shapes/purchasing.supplier_bill"]: BILL_SHAPE,
     ["GET " + AT + "/document-shapes/sales.invoice"]: INVOICE_SHAPE,
+    ["GET " + AT + "/parameters"]: PARAMETERS,
+    ["GET " + AT + "/parameter-review"]: REVIEW,
   };
 }
 
@@ -342,19 +395,20 @@ describe("الملاحة اليدوية ونسختها في العقد", () => {
     for (const target of declared) expect(hrefs).toContain(target);
   });
 
-  it("والشريط داخل المجموعة يحمل الأربع نفسها — لا ثالثةً ولا خامسة", async () => {
+  it("والشريط داخل المجموعة يحمل الخمس نفسها — لا رابعةً ولا سادسة", async () => {
     await mount({ path: "/setup/cost-centers", transport: stub({ routes: fullRoutes() }) });
     const tabs = await screen.findByTestId("setup-tabs");
     const inside = [...tabs.querySelectorAll("a[href]")].map((a) => a.getAttribute("href"));
     expect(inside).toEqual(SETUP_PATHS);
   });
 
-  it("وكل مسارٍ من الأربعة يفتح شاشته في الموجّه", async () => {
+  it("وكل مسارٍ من الخمسة يفتح شاشته في الموجّه", async () => {
     const expected = [
       "setup-company-screen",
       "setup-cost-centers-screen",
       "setup-document-shapes-screen",
       "setup-chart-screen",
+      "setup-parameters-screen",
     ];
     for (let i = 0; i < SETUP_PATHS.length; i += 1) {
       const at = SETUP_PATHS[i] as string;
@@ -790,5 +844,93 @@ describe("حرّاسٌ على شيفرة القسم", () => {
     expect(looksLikeAccountCode("1302")).toBe(true);
     expect(looksLikeAccountCode("guard.GR-COA-002")).toBe(false);
     expect(problems).toEqual([]);
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════
+   ٦ · المعامِلات: الحالةُ تُرى، والإيداعُ يُرسل المجموعة كاملةً
+   ═══════════════════════════════════════════════════════════════════════ */
+describe("شاشة المعامِلات", () => {
+  it("افتراضُ المنصّة يُعرض موسوماً «غير مُعتمَد» ولا يُخفى، وبلا معتمِد", async () => {
+    await mount({ path: "/setup/parameters", transport: stub({ routes: fullRoutes() }) });
+
+    const platform = await screen.findByTestId(
+      "setup-parameters-approval-0f6a1d00-0000-4000-8000-000000000001"
+    );
+    expect(platform.textContent).toContain("غير مُعتمَد");
+
+    /* ‏**والصفّ موجودٌ في الجدول لا محذوفٌ منه** — وهذا هو الفرق كلّه: قيمةٌ
+       تعمل ولا تُرى تُرحَّل بها المنشأة وهي لا تعرف أنها مفترَضة. */
+    expect(
+      screen.getByTestId("setup-parameters-noapprover-0f6a1d00-0000-4000-8000-000000000001")
+    ).toBeTruthy();
+
+    /* والعدّاد يقول العدد نفسه، فلا يقرأ أحدٌ الجدول ليعدّ. */
+    expect(screen.getByTestId("setup-parameters-count-unapproved").textContent).toContain("1");
+  });
+
+  it("والقيمة تُعرض كما وصلت — كسراً لا مئوية، وبلا ضربٍ في مئة", async () => {
+    await mount({ path: "/setup/parameters", transport: stub({ routes: fullRoutes() }) });
+
+    const cell = await screen.findByTestId(
+      "setup-parameters-value-0f6a1d00-0000-4000-8000-000000000001-standard_rate"
+    );
+
+    /* ‏٠٫١٥ بأرقام اللغة، **ولا علامة ٪**: علامةٌ على كسرٍ تجعل «0.15» تُقرأ
+       خمس عشرة بالمئة من واحد. */
+    expect(cell.textContent).not.toContain("%");
+    expect(cell.getAttribute("data-rate") ?? cell.textContent).toBeTruthy();
+  });
+
+  it("والإيداع يُرسل مجموعةً كاملةً إلى بابها، ولا يرسل حالةَ «افتراضُ منصّة»", async () => {
+    const sent: Recorded[] = [];
+    await mount({
+      path: "/setup/parameters",
+      transport: stub({
+        routes: {
+          ...fullRoutes(),
+          ["POST " + AT + "/parameters"]: PARAMETERS.items[1],
+        },
+        sent,
+      }),
+    });
+
+    await waitFor(() => expect(screen.getByTestId("setup-parameters-set")).toBeTruthy());
+    await pick(select("setup-parameters-set"), "tax.value_added");
+
+    await waitFor(() => expect(screen.getByTestId("setup-parameters-input-standard_rate")).toBeTruthy());
+
+    await type(input("setup-parameters-effective"), "2026-07-01");
+    await type(input("setup-parameters-approved-by"), "مديرة المالية");
+    await type(input("setup-parameters-approved-on"), "2026-06-20");
+    await type(input("setup-parameters-source"), "قرار مجلس الإدارة رقم 13");
+    await type(input("setup-parameters-input-standard_rate"), "0.12");
+
+    const before = sent.length;
+    await click(button("setup-parameters-submit"));
+
+    await waitFor(() => expect(sent.length).toBeGreaterThan(before));
+    const writes = sent.slice(before).filter((r) => r.method !== "GET");
+    expect(writes).toHaveLength(1);
+
+    const body = writes[0]?.body as Record<string, unknown>;
+    expect(body["setCode"]).toBe("tax.value_added");
+    expect(body["approval"]).toBe("tenant_approved");
+    expect((body["values"] as unknown[]).length).toBe(1);
+  });
+
+  it("وقائمةُ المراجعة تُقرأ من بابها، وتُسمّي المستند المُرحَّل الذي استعمل الإصدار", async () => {
+    await mount({ path: "/setup/parameters", transport: stub({ routes: fullRoutes() }) });
+
+    /* الإصدارُ الذي لم يستعمله مستندٌ بعد يبقى في القائمة — وحاجتُه إلى
+       التوقيع لا تسقط بعدم استعماله. */
+    expect(
+      await screen.findByTestId("setup-parameters-unused-0f6a1d00-0000-4000-8000-000000000001")
+    ).toBeTruthy();
+
+    const used = await screen.findByTestId(
+      "setup-parameters-review-row-019de28d-0000-7000-8000-000000000002"
+    );
+    expect(used.textContent).toContain("SUPPLIER_BILL");
   });
 });

@@ -63,6 +63,16 @@ internal static class ApiProblems
             "company_setup.not_found" => 404,
             "company_setup.already_initialised" => 409,
 
+            // ── المعامِلات ───────────────────────────────────────────────────────
+            // ‏**والتصنيف يتبع من يُصلح العطل.** «مجموعة غير معروفة» و«مفاتيح ناقصة أو
+            // زائدة» و«نسبة تبدو مئوية» و«حالة اعتماد لا تُودَع» كلّها **طلبٌ مفهوم
+            // ومرفوض** — يُصلحها من أرسله بتعديل حمولته: 422. و«إصدارٌ قائم على تاريخ
+            // السريان نفسه» **تعارضٌ مع حالة قائمة** لا خطأ في الحمولة: 409، لأن
+            // الحمولة نفسها كانت ستُقبل بتاريخ آخر. و«لا إصدار يغطّي هذا التاريخ»
+            // **مورد غائب**: 404 — ولا يُصلحه تعديل الطلب بل إيداعُ إصدار.
+            "core.parameters_missing" => 404,
+            "core.parameter_version_duplicate" => 409,
+
             "cost_center.not_found" => 404,
             "cost_center.default_cannot_be_suspended" => 409,
             "cost_center.already_suspended" or "cost_center.already_active" => 409,
@@ -193,6 +203,9 @@ internal static class ApiProblems
             // يحوّلها إلى attachment_not_found — و**404 لا 403 عمداً**، لأن «ممنوع»
             // تُثبت وجود الملفّ عند غيرك.
             "storage.ticket_signature_invalid" or "storage.ticket_expired" => 401,
+
+            // وبقيّةُ رفوض المعامِلات طلبٌ مفهوم ومرفوض: يُصلحه من أرسله بتعديل حمولته.
+            _ when code.StartsWith("core.parameter", StringComparison.Ordinal) => 422,
 
             _ when code.StartsWith("company_setup.", StringComparison.Ordinal) => 422,
             _ when code.StartsWith("cost_center.", StringComparison.Ordinal) => 422,

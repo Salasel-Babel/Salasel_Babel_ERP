@@ -9,12 +9,12 @@ public sealed class AiOptions
     /// <summary>عملة الشركة حين لا تُطبع العملة على المستند.</summary>
     public string CompanyCurrency { get; set; } = "SAR";
 
-    /// <summary>
-    /// النسبة النظامية لضريبة القيمة المضافة حين لا تُطبع على المستند.
-    /// <c>decimal</c> لا <c>double</c>: قيس في هذا المستودع انحراف ضريبة عند الخانة
-    /// العشرية الرابعة من <c>double</c> واحد.
-    /// </summary>
-    public decimal StatutoryTaxRate { get; set; } = 0.15m;
+    // ‏**والنسبة النظامية لم تعد هنا.** كانت `StatutoryTaxRate = 0.15m` قيمةً ابتدائية
+    // في هذا النوع: رقمٌ من جهةٍ خارجية يعيش في شيفرة، بلا تاريخ سريان، وبلا مصدرٍ
+    // مُسمّى، وبلا سبيلٍ لصاحب المصلحة أن يغيّره. وموضعُه الصحيح صفٌّ في خدمة المعامِلات
+    // — `tax.value_added` · `standard_rate` — بتاريخ سريانه وحالة اعتماده ومصدره،
+    // وبتجاوزٍ لكلّ منشأة. ووحدةُ الالتقاط تقرؤه عبر `IParameterSource`.
+    // (‏docs/decisions/ADR-0086-a-parameter-is-a-dated-version-of-a-whole-set.md)
 
     /// <summary>
     /// أدنى ثقة يُقبل عندها اقتراح النموذج أصلاً. ما دونها لا يُعرض اقتراح —

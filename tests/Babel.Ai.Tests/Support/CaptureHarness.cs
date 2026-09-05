@@ -7,6 +7,7 @@ using Babel.Contracts.Capture;
 using Babel.Contracts.Storage;
 using Babel.Storage;
 using Babel.Core.Entitlement;
+using Babel.Core.Parameters;
 using Babel.SharedKernel;
 
 namespace Babel.Ai.Tests.Support;
@@ -141,6 +142,10 @@ internal sealed class CaptureHarness
             store,
             attachments,
             receiver ?? recording,
+            // ‏**منفذ المعامِلات حقيقيّ لا نائب**: `ParameterDirectory` فوق مخزنٍ في
+            // الذاكرة يقرأ **ملفّ افتراضات المنصّة نفسه** الذي يُشحن. فالنسبة التي
+            // يقرأها هذا الاختبار هي المشحونة، ولا رقم مكتوب هنا.
+            new ParameterDirectory(new InMemoryParameterStore(new FixedClock(IssuedAt))),
             new AiOptions(),
             new FixedClock(IssuedAt));
 

@@ -60,6 +60,17 @@
     (data/posting-matrix/events) ويقرؤه الدفتر أيضاً — ولا تستطيع النواة أن تسأل الدفتر
     لأن اتجاه الاعتماد إلى الأسفل (Rule03).
   -->
+  <!--
+    افتراضات المنصّة — **بياناتٌ تُشحن لا أرقامٌ في شيفرة**. مضمَّنة كي لا يعتمد بذرُ
+    قاعدة النواة على وجود شجرة المستودع على القرص، وكي يقرأ المخزنُ في الذاكرة
+    والمخزنُ فوق PostgreSQL **الملفَّ نفسه** فلا يكون في المستودع افتراضيّان.
+  -->
+  <ItemGroup>
+    <EmbeddedResource Include="../../data/parameters/platform-defaults.json">
+      <LogicalName>Babel.Core.Parameters.platform-defaults.json</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
   <ItemGroup>
     <EmbeddedResource Include="../../data/posting-matrix/events/*.json">
       <LogicalName>Babel.Core.Matrix.Events.%(Filename).json</LogicalName>

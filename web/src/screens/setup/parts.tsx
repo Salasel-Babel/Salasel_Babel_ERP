@@ -36,12 +36,19 @@ import "./setup.css";
    ما يُبوَّب عليه كلُّ سطرٍ بعده ← ما يُرخَّص من حقول المستندات ← ما يقبل
    السطر أصلاً. */
 
-/** شاشات التأسيس الأربع بمساراتها — والترتيب هو ترتيب الشريط والملاحة. */
+/**
+ * شاشات التأسيس الخمس بمساراتها — والترتيب هو ترتيب الشريط والملاحة.
+ * <p>
+ * و«المعامِلات» آخرها عمداً: ما قبلها يُعرَّف مرّةً عند التأسيس، وهي وحدها
+ * <b>تُراجَع دورياً</b> — كلّما تغيّرت نسبةٌ أو حدّ، وفي كل مراجعةِ محاسب.
+ * </p>
+ */
 export const SETUP_SCREENS = [
   { to: "/setup", key: "app.nav.companySetup" },
   { to: "/setup/cost-centers", key: "app.nav.costCenters" },
   { to: "/setup/document-shapes", key: "app.nav.documentShapes" },
   { to: "/setup/chart-of-accounts", key: "app.nav.chartOfAccounts" },
+  { to: "/setup/parameters", key: "app.nav.parameters" },
 ] as const;
 
 /**

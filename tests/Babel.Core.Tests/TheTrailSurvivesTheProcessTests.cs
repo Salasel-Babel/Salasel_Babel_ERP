@@ -237,11 +237,17 @@ public sealed class TheTrailSurvivesTheProcessTests
             await CoreTestEnvironment.CountAsync(
                 $"select count(*) from core.audit_entry where tenant_id = '{tenant.Value:D}'"));
 
-        // والمشغّلات الستّة حيّة — مقروءةً من pg_trigger لا من ملفّ هجرة.
+        // والمشغّلات الاثنا عشر حيّة — مقروءةً من pg_trigger لا من ملفّ هجرة.
+        //
+        // ‏**وكانت ستّة، فصارت اثني عشر حين انضمّت جداول المعامِلات الثلاثة إلى
+        // الانضباط نفسه** (‏parameter_version · parameter_value · parameter_usage،
+        // مشغّلان لكلٍّ منها في `CoreParameterAppendOnly.sql`). والرقم مكتوبٌ هنا
+        // صراحةً لا محسوباً من قائمة: قائمةٌ تُحسب من الواقع تمرّ خضراء حين يسقط
+        // مشغّلٌ كلَّه، وهذا الرقم يُحمِّر البناء عند أول سقوط.
         long triggers = await CoreTestEnvironment.CountAsync(
             "select count(*) from pg_trigger where not tgisinternal and tgname like '%_append_only' or "
             + "(not tgisinternal and tgname like '%_no_truncate')");
-        Assert.Equal(6, triggers);
+        Assert.Equal(12, triggers);
         CoreTestEnvironment.Note("مشغّلات الإلحاق الحيّة: " + triggers.ToString(CultureInfo.InvariantCulture));
     }
 

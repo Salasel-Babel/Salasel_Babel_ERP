@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     48db5a1817e2b9c661acd08d337e1185199319ea29f25b749dbbce3f00386290
+     737b917c13090a000fc6b02c0fbe830a49b0e4dc254eb04a9d55ec4f64b1ba6d
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -1154,6 +1154,41 @@ export async function depositAttachment(transport: Transport, args: DepositAttac
   return decodeSchema(SCHEMAS, "Attachment", response.json) as T.Attachment;
 }
 
+export interface DepositParameterVersionArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.ParameterVersionRequest;
+}
+
+/**
+ * إيداع إصدار جديد من مجموعة معامِلات / Deposit a new version of a parameter set
+ * 
+ * يودِع إصداراً جديداً على مستوى هذه المنشأة. **POST لا PUT، والصفّ يُضاف ولا يُعدَّل**: قيمةُ فترةٍ ماضية لا تُغيَّر، والتغييرُ إصدارٌ جديد بتاريخ سريانه — ومستندٌ رُحِّل بإصدارٍ يبقى عليه لأنه يحمل **لقطته** لا مفتاحاً إلى صفّ يتغيّر.
+ * 
+ * **والمجموعة تُودَع كاملةً**: قيمُ المجموعة الواحدة يسري بعضها ببعض، وإيداعٌ جزئي يُنتج خليطاً من إصدارين لم يعتمده أحد. ومفتاحٌ ناقص أو زائد يُرفض بـcore.parameter_keys_incomplete مسمّياً الناقص والزائد.
+ * 
+ * **والنسبة كسرٌ عشري لا مئوية**: خمسة عشر بالمئة `0.15` لا `15`. وقيمةٌ تُكتب `15` تُرفض بالرمز core.parameter_rate_looks_like_a_percentage — **ولا تُصحَّح صامتةً**، لأن التصحيح الصامت يترك من كتبها يظنّ أنه أودع ما لم يُودِع. والقيد مفروضٌ في قاعدة البيانات أيضاً، فتجاوزُ الخدمة لا يُمرّره.
+ * 
+ * **وإصدارٌ ثانٍ على (المستوى · المجموعة · تاريخ السريان) نفسها يُرفض** بـ409 وcore.parameter_version_duplicate. **و«افتراضُ المنصّة» ليس خياراً هنا**: يُشحن مع المنتج ولا يُكتب من مسار طلب، فحالةُ الاعتماد المقبولة `tenant_approved` أو `auditor_signed` لا غير.
+ * 
+ * Deposits a new version at this company's level. **POST, not PUT, and the row is appended, never edited**: a past period's value is never changed; a change is a new version with its own effective date — and a document posted under a version stays on it because it carries **its snapshot**, not a key into a row that moves.
+ * 
+ * **A set is deposited whole**: the values of one set take effect together, and a partial deposit produces a mixture of two versions nobody approved. A missing or extra key is refused with core.parameter_keys_incomplete, naming both.
+ * 
+ * **A rate is a decimal fraction, not a percentage**: fifteen percent is `0.15`, never `15`. A value written `15` is refused with core.parameter_rate_looks_like_a_percentage — **and never silently corrected**, because a silent correction leaves the depositor believing they deposited what they did not. The constraint is enforced in the database too, so bypassing the service does not get it through.
+ * 
+ * **A second version on the same (level, set, effective date) is refused** with 409 and core.parameter_version_duplicate. **'Platform default' is not a choice here**: it ships with the product and is never written from a request path, so the accepted approval states are `tenant_approved` and `auditor_signed` only.
+ */
+export async function depositParameterVersion(transport: Transport, args: DepositParameterVersionArgs, signal?: AbortSignal): Promise<T.ParameterVersion> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/parameters";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "ParameterVersionRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "ParameterVersion", response.json) as T.ParameterVersion;
+}
+
 export interface DepositPayrollSettingsArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
@@ -2190,6 +2225,34 @@ export async function listItems(transport: Transport, args: ListItemsArgs, signa
   const response = await transport({ method: "GET", url, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "ItemList", response.json) as T.ItemList;
+}
+
+export interface ListParameterVersionsArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+}
+
+/**
+ * إصدارات المعامِلات بسريانها / The parameter versions by effective date
+ * 
+ * يقرأ **كلَّ** ما تراه هذه المنشأة من إصدارات المعامِلات: افتراضاتِ المنصّة المشحونة وتجاوزاتِها هي وحدها. ولكلّ إصدارٍ تاريخُ سريانه، و**حالةُ اعتماده**، ومعتمِدُه، ومرجعُ مصدره، وقيمُه كلّها.
+ * 
+ * **وحالةُ الاعتماد ثلاثية لا ثنائية**: `platform_default` افتراضٌ يشحنه المنتج **ولم يعتمده إنسان**، و`tenant_approved` أودعه صاحب المنشأة باسمه، و`auditor_signed` وقّعه محاسب قانوني. والثنائيّ يخلط مسؤولية صاحب المنشأة بمسؤولية المحاسب، فتصير قائمةُ المراجعة فارغةً وهي لم تُراجَع.
+ * 
+ * **وقيمةٌ غير معتمَدة تُعرض موسومةً لا مخفيّة**: إخفاؤها يجعل النظام يعمل برقمٍ لا يعرف أحدٌ أنه مفترَض. و`approvedBy` و`approvedOn` **فارغان بالضبط** في صفّ المنصّة — فهو لم يعتمده إنسان، وكتابةُ اسمٍ فيه ادّعاءُ اعتمادٍ لم يقع.
+ * 
+ * Reads **everything** this company sees of the parameter versions: the shipped platform defaults and its own overrides alone. Each version carries its effective date, its **approval state**, its approver, its source reference, and all of its values.
+ * 
+ * **The approval state is ternary, not binary**: `platform_default` is a default the product ships and **no human approved**, `tenant_approved` was deposited by the company under a named person, and `auditor_signed` was signed by a chartered accountant. A binary flag conflates the owner's responsibility with the accountant's, so the review list reads empty while nothing has been reviewed.
+ * 
+ * **An unapproved value is shown tagged, never hidden**: hiding it makes the system run on a number nobody knows is assumed. `approvedBy` and `approvedOn` are **exactly empty** on a platform row — no human approved it, and writing a name there would assert an approval that never happened.
+ */
+export async function listParameterVersions(transport: Transport, args: ListParameterVersionsArgs, signal?: AbortSignal): Promise<T.ParameterVersionList> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/parameters";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "ParameterVersionList", response.json) as T.ParameterVersionList;
 }
 
 export interface ListPayComponentsArgs {
@@ -3966,6 +4029,34 @@ export async function readMemberships(transport: Transport, args: ReadMembership
   const response = await transport({ method: "GET", url, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "MembershipList", response.json) as T.MembershipList;
+}
+
+export interface ReadParameterReviewArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+}
+
+/**
+ * قائمة مراجعة المحاسب القانوني / The chartered accountant's review list
+ * 
+ * **استعلامٌ واحد يُخرج القائمة المحصورة**: كلُّ إصدارٍ لم يُوقَّع بعد، ومعه كلُّ مستندٍ **مُرحَّلٍ** استعمله. وهي بعينها القائمةُ التي تُعرض على المحاسب القانوني في الخطوة الأخيرة — ولذلك هي **بابُ قراءةٍ منشور** لا تقريرٌ تحسبه شاشة: تقريرٌ في شاشة يعني أن كل شاشةٍ تحسبه بطريقتها.
+ * 
+ * **والإصدارُ الموقَّع يخرج من القائمة**، وذلك هو معنى التوقيع. **والإصدارُ الذي لم يستعمله مستندٌ بعد يبقى فيها** بقائمةِ مستنداتٍ فارغة — فحاجتُه إلى التوقيع لا تسقط بعدم استعماله.
+ * 
+ * **ومن أين يُعرف المستند:** الوحدةُ المالكة تسجّل استعمالها لحظة الترحيل. والمستند نفسه — في قاعدة وحدته — يحمل **لقطة** الإصدار وقيمَه، فقارئُه بعد سنتين يقرؤه وحده. والسجلّان ليسا تكراراً: اللقطةُ سجلّ، وهذا فهرس؛ ولو ضاع الفهرس لبقيت المستندات مقروءة.
+ * 
+ * **One query returns the bounded list**: every version not yet signed, together with every **posted** document that used it. This is precisely the list put in front of the chartered accountant in the final step — which is why it is a **published read door** and not a report a screen computes: a report in a screen means every screen computes it its own way.
+ * 
+ * **A signed version leaves the list**, which is what signing means. **A version no document has used yet stays in it** with an empty document list — its need for a signature does not lapse because it went unused.
+ * 
+ * **Where the document comes from:** the owning module records its usage at posting time. The document itself — in its own module's database — carries the version's **snapshot** and its values, so its reader two years later reads it alone. The two records are not a duplication: the snapshot is the record, this is the index; if the index were lost the documents would still be readable.
+ */
+export async function readParameterReview(transport: Transport, args: ReadParameterReviewArgs, signal?: AbortSignal): Promise<T.ParameterReviewList> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/parameter-review";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "ParameterReviewList", response.json) as T.ParameterReviewList;
 }
 
 export interface ReadPayablesAgingArgs {

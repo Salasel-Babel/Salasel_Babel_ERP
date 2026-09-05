@@ -64,6 +64,7 @@ public static class PurchasingSchemaDeployer
         "001_PostingIdentityIncludesEventCode.sql",
         "002_SupplierCarriesVatNumber.sql",
         "003_PurchaseLineCarriesUnit.sql",
+        "004_TheBillRemembersTheParametersItUsed.sql",
     ];
 
     /// <summary>ينشئ مخطّط <c>purchasing</c> وجداوله إن لم توجد، ثم يُطبّق نصوص الترقية.</summary>

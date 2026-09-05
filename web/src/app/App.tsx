@@ -294,7 +294,7 @@ export function AppShell(): ReactNode {
         </Link>
 
         {/* ── التأسيس والثوابت — **عنوانٌ ثالثٌ لا قسمٌ سادس** ───────────────
-            خلف هذه الأربع من يجهّز المنشأة قبل أوّل مستند: من يؤسّسها مرّةً،
+            خلف هذه الخمس من يجهّز المنشأة قبل أوّل مستند: من يؤسّسها مرّةً،
             ومن يعرّف بُعد التبويب الذي يحمله كلُّ سطرٍ بعدها، ومن يقرّر أيّ
             قدرةٍ تُرخّص أيّ حقل، ومن يقرأ ما يقبله كلُّ حساب. وهي محاسبيّةٌ
             بموضوعها لا بلونها وحده — ومع ذلك لا يفتحها من يكتب سند قبضٍ في
@@ -313,6 +313,9 @@ export function AppShell(): ReactNode {
         </Link>
         <Link to="/setup/chart-of-accounts" className="navitem" data-testid="nav-setup-chart">
           {t("app.nav.chartOfAccounts")}
+        </Link>
+        <Link to="/setup/parameters" className="navitem" data-testid="nav-setup-parameters">
+          {t("app.nav.parameters")}
         </Link>
       </nav>
 

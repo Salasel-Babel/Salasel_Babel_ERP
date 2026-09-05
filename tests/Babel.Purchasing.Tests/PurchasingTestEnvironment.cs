@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Reflection;
 using System.Text;
 using Babel.Canonicalization;
+using Babel.Core;
 using Babel.Core.Entitlement;
 using Babel.Ledger;
 using Babel.SharedKernel;
@@ -58,6 +59,16 @@ internal static class PurchasingTestEnvironment
     public const string ModuleDatabaseStem = "babel_arap_purchasing";
 
     /// <summary>
+    /// الجذع الثابت لقاعدة النواة — <b>وهي حيث تعيش إصدارات المعامِلات</b>.
+    /// <para>
+    /// وقاعدةٌ ثالثة لأن ذلك هو الواقع الذي يُثبَت: <c>deploy/compose.yml</c> يعطي كل
+    /// وحدةٍ قاعدةً منفصلة، فالفاتورة في قاعدةٍ والإصدارُ في أخرى، ولا مفتاح أجنبيّ
+    /// بينهما. وقاعدةٌ واحدة تجمعهما كانت ستُثبت شيئاً لا يقع في الإنتاج.
+    /// </para>
+    /// </summary>
+    public const string CoreDatabaseStem = "babel_arap_purchasing_core";
+
+    /// <summary>
     /// قاعدة الدفتر <b>لهذه العملية وحدها</b>.
     /// <para>
     /// الاسم كان ثابتاً، وكانت التهيئة تبدأ بـ<c>drop database … with (force)</c>.
@@ -93,6 +104,9 @@ internal static class PurchasingTestEnvironment
     /// <summary>قاعدة وحدة المشتريات <b>لهذه العملية وحدها</b>.</summary>
     public static string ModuleDatabase { get; } = TestRunScope.Name(ModuleDatabaseStem);
 
+    /// <summary>قاعدة النواة <b>لهذه العملية وحدها</b>.</summary>
+    public static string CoreDatabase { get; } = TestRunScope.Name(CoreDatabaseStem);
+
     /// <summary>
     /// دور التطبيق — اسمه <b>مشترك عمداً</b>: الأدوار عامّة على مستوى العنقود، ولا
     /// يحذفها أحد ولا يملك أي منها كائناً، فلا شيء فيها يُدمَّر. الشيء الوحيد الذي
@@ -121,8 +135,22 @@ internal static class PurchasingTestEnvironment
     /// </summary>
     public static TenantId GatewayTenant { get; } = new(new Guid("40c4a51e-0000-4000-8000-000000000003"));
 
+    /// <summary>
+    /// منشأةٌ رابعة معزولة يُثبَت فيها أنّ <b>تغيير نسبةٍ لا يُعيد كتابة الماضي</b>.
+    /// <para>
+    /// وعزلُها شرطُ الإثبات لا ترفٌ: هذا الإثبات <b>يودِع إصداراً ثانياً بنسبة مختلفة</b>
+    /// على مستوى المنشأة. ومنشأةٌ يتقاسمها إثباتٌ آخر يقرأ النسبة السارية كان سيقرأ
+    /// نسبةً غيّرها جارُه، فيصير سقوطُه خبراً عن التقاسم لا عن النظام (‏فخ-132).
+    /// </para>
+    /// </summary>
+    public static TenantId ParameterHistoryTenant { get; } = new(new Guid("40c4a51e-0000-4000-8000-000000000004"));
+
+    /// <summary>منشأةٌ خامسة معزولة لقائمة مراجعة المحاسب — وتودِع إصداراتها هي أيضاً.</summary>
+    public static TenantId ParameterReviewTenant { get; } = new(new Guid("40c4a51e-0000-4000-8000-000000000005"));
+
     /// <summary>كل منشآت هذه المجموعة — مُعلنةً مرّة، فلا تُنسى واحدة عند التأسيس.</summary>
-    public static TenantId[] AllTenants { get; } = [Tenant, InjectedTenant, GatewayTenant];
+    public static TenantId[] AllTenants { get; } =
+        [Tenant, InjectedTenant, GatewayTenant, ParameterHistoryTenant, ParameterReviewTenant];
 
     /// <summary>عدد محاولات الحذف قبل اللجوء إلى الإنهاء القسري.</summary>
     private const int DropAttempts = 40;
@@ -142,6 +170,14 @@ internal static class PurchasingTestEnvironment
         AppConnectionString = $"Host=127.0.0.1;Port=5432;Database={LedgerDatabase};Username={AppRole};Include Error Detail=true;Maximum Pool Size=40",
         AppRole = AppRole,
         CompanyCurrency = "SAR",
+    };
+
+    /// <summary>إعدادات النواة — ومنها يُنشر مخطّط المعامِلات وتُبذر افتراضات المنصّة.</summary>
+    public static CoreOptions Core { get; } = new()
+    {
+        OwnerConnectionString = $"Host=127.0.0.1;Port=5432;Database={CoreDatabase};Username=postgres;Include Error Detail=true",
+        AppConnectionString = $"Host=127.0.0.1;Port=5432;Database={CoreDatabase};Username={AppRole};Include Error Detail=true;Maximum Pool Size=10",
+        AppRole = AppRole,
     };
 
     public static PurchasingOptions Purchasing { get; } = new()
@@ -190,6 +226,7 @@ internal static class PurchasingTestEnvironment
                 await DeployLedgerAsync(cancellationToken).ConfigureAwait(false);
                 await SeedAsync(cancellationToken).ConfigureAwait(false);
                 await PurchasingSchemaDeployer.DeployAsync(Purchasing, cancellationToken).ConfigureAwait(false);
+                await CoreSchema.DeployAsync(Core, cancellationToken).ConfigureAwait(false);
                 _ready = true;
             }
             catch (Exception failure)
@@ -216,6 +253,7 @@ internal static class PurchasingTestEnvironment
         // فذلك خلل حقيقي يُرفع بصوته (‏42P04)، لا يُبتلع بإسقاط قاعدة غريبة.
         await ExecAsync(admin, $"create database {ModuleDatabase}", cancellationToken).ConfigureAwait(false);
         await ExecAsync(admin, $"create database {LedgerDatabase}", cancellationToken).ConfigureAwait(false);
+        await ExecAsync(admin, $"create database {CoreDatabase}", cancellationToken).ConfigureAwait(false);
 
         // الدور التطبيقي: يدخل، ولا يملك شيئاً، وليس superuser — الطبقة الأولى (فخ-30).
         //
@@ -243,6 +281,7 @@ internal static class PurchasingTestEnvironment
             cancellationToken).ConfigureAwait(false);
 
         await ExecAsync(admin, $"grant connect on database {LedgerDatabase} to {AppRole}", cancellationToken).ConfigureAwait(false);
+        await ExecAsync(admin, $"grant connect on database {CoreDatabase} to {AppRole}", cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -278,6 +317,7 @@ internal static class PurchasingTestEnvironment
             admin.Open();
             DropOne(admin, ModuleDatabase);
             DropOne(admin, LedgerDatabase);
+            DropOne(admin, CoreDatabase);
         }
         catch (NpgsqlException exception)
         {
@@ -337,7 +377,11 @@ internal static class PurchasingTestEnvironment
     /// </summary>
     private static async Task SweepAbandonedAsync(NpgsqlConnection admin, CancellationToken cancellationToken)
     {
-        foreach (string stem in new[] { ModuleDatabaseStem, LedgerDatabaseStem, UpgradeProbeDatabaseStem, VatProbeDatabaseStem })
+        foreach (string stem in new[]
+                 {
+                     ModuleDatabaseStem, LedgerDatabaseStem, CoreDatabaseStem,
+                     UpgradeProbeDatabaseStem, VatProbeDatabaseStem,
+                 })
         {
             List<string> candidates = [];
 
@@ -459,7 +503,10 @@ internal static class PurchasingTestEnvironment
         List<Dictionary<string, string>> accounts =
             [.. Csv(Path.Combine(RepositoryRoot, "data", "chart-of-accounts", "accounts.csv"))];
 
-        foreach (TenantId company in new[] { Tenant, InjectedTenant, GatewayTenant })
+        // ‏**`AllTenants` لا قائمةٌ ثانية**: كانت هنا ثلاثُ منشآتٍ مكتوبةً بالاسم،
+        // فمنشأةٌ تُضاف إلى `AllTenants` تُؤسَّس ولا تُبذَر — فترحيلها يُردّ بـ«لا فترة
+        // مالية تحوي التاريخ»، وهي رسالةٌ تُقرأ عطلاً في الترحيل والجاني قائمةُ البذر.
+        foreach (TenantId company in AllTenants)
         {
             foreach (Dictionary<string, string> row in accounts
                          .OrderBy(static a => a["code"].Length).ThenBy(static a => a["code"], StringComparer.Ordinal))

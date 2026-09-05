@@ -41,6 +41,12 @@
     <PackageReference Include="Npgsql" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <!--
+      حاويةُ اعتمادياتٍ صغيرة تُبنى في التجهيزة لسببٍ واحد: `PostgresParameterStore`
+      نوع `internal` بحكم القاعدة 5، وبابُه المعلَن هو `AddBabelCore`. فالتجهيزة
+      تسلك البابَ المعلَن نفسه الذي يسلكه الخادم بدل أن تخترع التفافاً بالانعكاس.
+    -->
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
   </ItemGroup>
 
   <ItemGroup>

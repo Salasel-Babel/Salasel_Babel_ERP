@@ -1,3 +1,4 @@
+using Babel.Contracts.Parameters;
 using Babel.SharedKernel;
 
 namespace Babel.Purchasing.Application;
@@ -138,7 +139,18 @@ public sealed record ExpenseBillDraft(
     DateOnly IssuedOn,
     string ExpenseCategory,
     string CostCenterId,
-    IReadOnlyList<PurchaseLineDraft> Lines);
+    IReadOnlyList<PurchaseLineDraft> Lines)
+{
+    /// <summary>
+    /// <b>لقطةُ المعامِلات التي مُلئ منها رقمٌ في هذه الفاتورة</b> — أو غيابُها.
+    /// <para>
+    /// وهي خاصّيةٌ لا مُعامِلٌ في الترويسة عمداً: أغلب مسارات إنشاء فاتورة المصروف
+    /// <b>لا تستعمل معامِلاً</b> — النسبة تصل مع الطلب — فإلزامُها في الترويسة كان
+    /// سيجعل كل مستدعٍ يكتب <c>null</c> ويقرأ القارئ أنّ ثمّة شيئاً يُملأ عادةً.
+    /// </para>
+    /// </summary>
+    public ParameterSnapshot? Parameters { get; init; }
+}
 
 /// <summary>
 /// مسوّدة إشعار مدين — <b>مرتجع مشتريات</b>.

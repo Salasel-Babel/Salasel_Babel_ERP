@@ -5,8 +5,10 @@ using Babel.Ai.Promotion;
 using Babel.Ai.Reconciliation;
 using Babel.Ai.Suggestions;
 using Babel.Contracts.Capture;
+using Babel.Contracts.Parameters;
 using Babel.Contracts.Storage;
 using Babel.Core.Application;
+using Babel.Core.Parameters;
 using Babel.Core.Entitlement;
 using Babel.SharedKernel;
 
@@ -35,6 +37,7 @@ public sealed class InvoiceCaptureService : IApplicationService
     private readonly ICapturedDraftStore _store;
     private readonly IAttachmentStore _attachments;
     private readonly ICapturedInvoiceReceiver _receiver;
+    private readonly IParameterSource _parameters;
     private readonly AiOptions _options;
     private readonly TimeProvider _clock;
 
@@ -46,6 +49,10 @@ public sealed class InvoiceCaptureService : IApplicationService
     /// <param name="store">مخزن المسوّدات.</param>
     /// <param name="attachments">مخزن المرفقات — <b>منفذٌ في العقد</b>، ومحوّله يركّبه الجذر.</param>
     /// <param name="receiver">منفذ الترقية إلى الوحدة المالكة.</param>
+    /// <param name="parameters">
+    /// منفذ المعامِلات — <b>ومنه تأتي النسبة حين لا تُطبع على المستند</b>، لا من رقمٍ
+    /// في هذه الوحدة.
+    /// </param>
     /// <param name="options">إعدادات الوحدة.</param>
     /// <param name="clock">مصدر الوقت.</param>
     public InvoiceCaptureService(
@@ -56,6 +63,7 @@ public sealed class InvoiceCaptureService : IApplicationService
         ICapturedDraftStore store,
         IAttachmentStore attachments,
         ICapturedInvoiceReceiver receiver,
+        IParameterSource parameters,
         AiOptions options,
         TimeProvider clock)
     {
@@ -66,6 +74,7 @@ public sealed class InvoiceCaptureService : IApplicationService
         ArgumentNullException.ThrowIfNull(store);
         ArgumentNullException.ThrowIfNull(attachments);
         ArgumentNullException.ThrowIfNull(receiver);
+        ArgumentNullException.ThrowIfNull(parameters);
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(clock);
 
@@ -76,6 +85,7 @@ public sealed class InvoiceCaptureService : IApplicationService
         _store = store;
         _attachments = attachments;
         _receiver = receiver;
+        _parameters = parameters;
         _options = options;
         _clock = clock;
     }
@@ -183,7 +193,32 @@ public sealed class InvoiceCaptureService : IApplicationService
             suggestion = candidate.Confidence >= _options.MinimumSuggestionConfidence ? candidate : null;
         }
 
-        CapturedInvoiceDraft draft = Build(tenant, request, source, output.Value.ProviderId, extracted, attested, suggestion);
+        // ── 4 · النسبة حين لا تُطبع: من خدمة المعامِلات، لا من رقمٍ في هذه الوحدة ──
+        // ‏**ولا تُطلب إلّا حين تلزم.** فاتورةٌ طُبعت عليها النسبة لا تستعمل معامِلاً،
+        // فلا لقطةَ لها — وادّعاءُ استعمالٍ لم يقع يُقرأ حقيقةً في مراجعةٍ بعد سنتين.
+        // وحين تلزم ولا تُوجد، **تُرفض المسوّدة برمزٍ مُسمّى** ولا يُخترع رقم.
+        ParameterSnapshot? parameters = null;
+
+        if (extracted.TaxRate is null)
+        {
+            DateOnly issuedOn = attested is null
+                ? extracted.IssuedOn.Value
+                : DateOnly.FromDateTime(attested.IssuedAt.UtcDateTime);
+
+            Result<ParameterSnapshot> resolved = await _parameters
+                .ResolveAsync(tenant, ParameterCatalogue.ValueAddedTax, issuedOn, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (resolved.IsFailure)
+            {
+                return Result<CapturedInvoiceDraft>.Failure(resolved.Errors);
+            }
+
+            parameters = resolved.Value;
+        }
+
+        CapturedInvoiceDraft draft = Build(
+            tenant, request, source, output.Value.ProviderId, extracted, attested, suggestion, parameters);
         draft = Settle(draft);
 
         await _store.SaveAsync(draft, cancellationToken).ConfigureAwait(false);
@@ -406,6 +441,9 @@ public sealed class InvoiceCaptureService : IApplicationService
             Lines = [.. draft.Lines.Select(static line => new PromotionLine(
                 line.LineNo, line.Description.Value, line.Quantity.Value, line.UnitPrice.Value, line.LineNet.Value))],
             Provenance = ProvenanceOf(draft, confirmation),
+
+            // واللقطة تعبر كما هي: الوحدة المالكة هي التي تخزّنها على مستندها.
+            Parameters = draft.Parameters,
         };
 
         Result<PromotedDocumentReference> received = await _receiver.ReceiveAsync(order, cancellationToken).ConfigureAwait(false);
@@ -427,7 +465,8 @@ public sealed class InvoiceCaptureService : IApplicationService
         string providerId,
         ExtractedInvoice extracted,
         AttestedInvoiceFacts? attested,
-        PostingSuggestion? suggestion)
+        PostingSuggestion? suggestion,
+        ParameterSnapshot? parameters)
     {
         string originKey = attested is { CarriesSignature: true } ? CaptureOriginKeys.SignedQr : CaptureOriginKeys.UnsignedQr;
 
@@ -455,9 +494,16 @@ public sealed class InvoiceCaptureService : IApplicationService
             ? CapturedField<CurrencyCode>.Read(read.Value, read.Confidence)
             : CapturedField<CurrencyCode>.Defaulted(CurrencyCode.FromString(_options.CompanyCurrency));
 
+        // ‏**المصدر يبقى `Defaulted` كما كان** — «من إعدادات المستأجر، والإنسان يلمح».
+        // ما تغيّر ليس المصدر بل **من أين جاءت القيمة**: كانت رقماً في `AiOptions`،
+        // وصارت إصداراً بتاريخ سريان وحالة اعتماد ومصدر. ولا تعداد مصادرَ رابع يُخترع.
         CapturedField<decimal> taxRate = extracted.TaxRate is { } rate
             ? CapturedField<decimal>.Read(rate.Value, rate.Confidence)
-            : CapturedField<decimal>.Defaulted(_options.StatutoryTaxRate);
+            : CapturedField<decimal>.Defaulted(
+                parameters?.Find(ParameterCatalogue.ValueAddedTaxStandardRate)
+                ?? throw new InvalidOperationException(
+                    "لقطةُ معامِلاتٍ بلا مفتاح النسبة — خللٌ برمجي لا رفضٌ مجالي / "
+                    + "a parameter snapshot without the rate key is a programming defect, not a domain refusal"));
 
         return new CapturedInvoiceDraft
         {
@@ -487,6 +533,7 @@ public sealed class InvoiceCaptureService : IApplicationService
             })],
             State = DraftState.Captured,
             Suggestion = suggestion,
+            Parameters = parameters,
         };
     }
 

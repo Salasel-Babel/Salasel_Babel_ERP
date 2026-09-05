@@ -5,6 +5,8 @@ using Babel.Core.CapabilityProfile;
 using Babel.Core.CompanySetup;
 using Babel.Core.Entitlement;
 using Babel.Core.Metering;
+using Babel.Core.Parameters;
+using Babel.Contracts.Parameters;
 using Babel.Core.Persistence;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -42,6 +44,11 @@ public static class CoreModuleRegistration
         services.AddSingleton<IUsageMeter>(provider => provider.GetRequiredService<InMemoryUsageStore>());
         services.AddSingleton<IUsageReader>(provider => provider.GetRequiredService<InMemoryUsageStore>());
         services.AddSingleton<IAuditLog, InMemoryAuditLog>();
+
+        // ومخزن المعامِلات كذلك: افتراضات المنصّة تُقرأ من الملفّ المضمَّن نفسه، فلا
+        // يختلف جوابُ «ما النسبة السارية؟» بين اختبار وحدةٍ وخادمٍ إلّا في الاستمرارية.
+        services.AddSingleton<IParameterStore>(provider =>
+            new InMemoryParameterStore(provider.GetRequiredService<TimeProvider>()));
 
         return services.AddBabelCoreShared();
     }
@@ -92,6 +99,13 @@ public static class CoreModuleRegistration
         services.AddSingleton<IUsageMeter>(provider => provider.GetRequiredService<PostgresUsageStore>());
         services.AddSingleton<IUsageReader>(provider => provider.GetRequiredService<PostgresUsageStore>());
 
+        // ومخزن المعامِلات فوق PostgreSQL: نسبةٌ في ذاكرة العملية تعني أن كل نشرة تُرجع
+        // كل منشأةٍ إلى افتراض المنصّة، وأن مستنداً رُحِّل بإصدارٍ لا يجد سجلَّ استعماله
+        // بعد ساعة. وهي علّةُ سجلّ التدقيق نفسها لا علّةٌ ثانية.
+        services.AddSingleton<IParameterStore>(provider => new PostgresParameterStore(
+            provider.GetRequiredService<CoreOptions>(),
+            provider.GetRequiredService<TimeProvider>()));
+
         return services.AddBabelCoreShared();
     }
 
@@ -133,6 +147,15 @@ public static class CoreModuleRegistration
         services.AddSingleton<AccessPolicy>();
         services.AddScoped<AccessService>();
         services.AddSingleton<AccessResolver>();
+
+        // المعامِلات: لوحةُ التحكّم خدمةُ تطبيقٍ بنطاق طلب، والدليلُ مفردةٌ تقرأ ولا
+        // تحمل حالة — وهو يُنادى **داخل** عمليةٍ فحصَت استحقاقها، كحالّ مركز التكلفة
+        // تماماً. والمنفذان في العقود يُشيران إلى المثيل نفسه: مصدرُ القيمة ومسجّلُ
+        // الاستعمال شيءٌ واحد، وفصلُهما مثيلين يجعل اختباراً يُبدّل أحدهما ويقرأ الآخر.
+        services.AddScoped<ParameterSettingsService>();
+        services.AddSingleton<ParameterDirectory>();
+        services.AddSingleton<IParameterSource>(provider => provider.GetRequiredService<ParameterDirectory>());
+        services.AddSingleton<IParameterUsageRecorder>(provider => provider.GetRequiredService<ParameterDirectory>());
 
         // حلّ مركز التكلفة: يقرأ المخزن ولا يحمل حالة، فهو مفردة واحدة تكفي الجميع.
         // وهو ما تسأله كل بوّابة ترحيل قبل أن تبني طلباً (ADR-0026).

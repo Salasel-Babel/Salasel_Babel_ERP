@@ -88,6 +88,7 @@ import { CompanySetupScreen } from "../screens/setup/CompanySetupScreen";
 import { CostCentersScreen } from "../screens/setup/CostCentersScreen";
 import { DocumentShapesScreen } from "../screens/setup/DocumentShapesScreen";
 import { ChartOfAccountsScreen } from "../screens/setup/ChartOfAccountsScreen";
+import { ParametersScreen } from "../screens/setup/ParametersScreen";
 
 const rootRoute = createRootRoute({ component: AppShell });
 
@@ -450,6 +451,12 @@ const setupChartRoute = createRoute({
   component: ChartOfAccountsScreen,
 });
 
+const setupParametersRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/setup/parameters",
+  component: ParametersScreen,
+});
+
 const routeTree = rootRoute.addChildren([
   trialBalanceRoute,
   signInRoute,
@@ -508,6 +515,7 @@ const routeTree = rootRoute.addChildren([
   setupCostCentersRoute,
   setupDocumentShapesRoute,
   setupChartRoute,
+  setupParametersRoute,
 ]);
 
 /** ينشئ موجّهاً. الاختبارات تمرّر تاريخاً في الذاكرة فلا تحتاج متصفّحاً. */

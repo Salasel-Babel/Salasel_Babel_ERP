@@ -134,6 +134,12 @@ internal sealed class PurchasingDbContext(DbContextOptions<PurchasingDbContext> 
             entity.Property(row => row.NonRecoverableTax).HasColumnType(Money);
             entity.Property(row => row.GrossTotal).HasColumnType(Money);
             entity.Property(row => row.AllocatedAmount).HasColumnType(Money);
+
+            // ‏**اللقطة نصّ**: الفاتورة تتذكّر بأي إصدارٍ وبأي قيمةٍ حُسبت، ولا تحتاج
+            // قارئَها إلى قاعدةٍ أخرى. والفراغ يعني «لم يُستعمل معامِل» لا «نُسي».
+            entity.Property(row => row.ParameterSnapshot)
+                  .HasColumnName("parameter_snapshot").HasMaxLength(2000).IsRequired().HasDefaultValue(string.Empty);
+
             entity.HasIndex(row => new { row.TenantId, row.Number }).IsUnique().HasDatabaseName("uq_purchasing_bill_number");
         });
 

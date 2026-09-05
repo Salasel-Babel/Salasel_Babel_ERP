@@ -70,6 +70,22 @@ internal static class ApiRoutes
     /// </summary>
     public const string CapabilityProfile = Company + "/capability-profile";
 
+    /// <summary>
+    /// معامِلاتُ المنشأة: قراءةُ الإصدارات وإيداعُ إصدارٍ جديد.
+    /// <para>
+    /// <b>مسارٌ واحد بفعلين لا مسارَي «تعديل» و«حذف»:</b> الإصدار يُضاف ولا يُعدَّل،
+    /// فالتغيير <c>POST</c> بتاريخ سريان جديد. ولا <c>PUT</c> ولا <c>DELETE</c> على
+    /// هذا السطح أصلاً — والثابتة مفروضة <b>بغياب العملية</b> لا بفحصٍ عند مستدعٍ.
+    /// </para>
+    /// </summary>
+    public const string Parameters = Company + "/parameters";
+
+    /// <summary>
+    /// قائمةُ مراجعة المحاسب القانوني: كلُّ إصدارٍ غير موقَّع ومعه كلُّ مستندٍ مُرحَّلٍ
+    /// استعمله — <b>بابُ قراءةٍ حقيقي لا تقريرٌ تحسبه شاشة</b>.
+    /// </summary>
+    public const string ParameterReview = Company + "/parameter-review";
+
     /// <summary>شكل مستند مُشتقّاً من (العقد المنشور × ملفّ القدرات) — مقروء لا مؤلَّف.</summary>
     public const string DocumentShape = Company + "/document-shapes/{documentType}";
 

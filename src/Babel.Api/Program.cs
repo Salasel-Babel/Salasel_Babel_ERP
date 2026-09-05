@@ -86,13 +86,17 @@ WebApplication app = BabelApiHost.Build(args);
 // بـ32 بايتاً فأكثر — ولا مفتاح في هذا المستودع ولا في أي ملفّ إعداد مُودَع فيه.
 _ = app.Services.GetRequiredService<Babel.Contracts.Storage.IAttachmentTickets>();
 
-// ‏**واتصال قاعدة الموارد البشرية يُطلب هنا كذلك — عند الإقلاع لا عند أول قسيمة.**
-// وهو الوحيد بين الوحدات الذي **لا افتراضي له**: المبيعات والمشتريات والمخزون تحمل
-// نصّاً افتراضياً يشير إلى المضيف المحلي، فكان كل خادم يشير إليه مهما كان النشر —
-// عطلٌ لم يظهر إلا حين نُشر لها سطح HTTP، لأن مسارًا لا يُسلَك لا يُظهر إعداداً خاطئاً.
-// وهذه الوحدة أثقل جدول بيانات شخصية في المنتج، فخادمٌ يشير بها إلى قاعدة أخرى بصمت
-// ليس عطلَ إعدادٍ بل حادثة بيانات. ويُضبط بـBABEL_HR_DB أو Babel__Hr__ConnectionString.
-app.Services.GetRequiredService<Babel.Hr.HrOptions>().EnsureConfigured();
+// ‏**واتصالُ كلّ وحدةٍ يُطلب هنا — عند الإقلاع لا عند أوّل نداء.**
+//
+// وكان هذا السطر يخصّ الموارد البشرية وحدها: بقيّة الوحدات كانت تحمل في شيفرتها نصّ
+// اتصالٍ افتراضياً على المضيف المحلي **بالمستخدم الفائق للعنقود**، فنشرةٌ ينقصها
+// المتغيّر لم تكن تتعطّل بل **تعمل بصلاحيةٍ كاملة على قاعدةٍ لم يقصدها أحد، بصمت**.
+// فصار الغياب فراغاً، وصار الفراغ **وقفةً برسالةٍ تسمّي المتغيّر** — كما يفعل
+// `deploy/compose.yml` بصيغة ‎${VAR:?رسالة}‎ بالضبط.
+//
+// وللتطوير على جهازٍ محلّي متغيّرٌ واحد يقول ذلك صراحةً: ‏`BABEL_LOCAL_DEV=1`.
+// (‏ADR-جديد · docs/evidence/traps.md#fakh-a-missing-connection-variable-silently-grants-the-cluster-superuser)
+BabelApiHost.EnsureDeploymentConfigured(app);
 
 await BabelApiHost.SeedEntitlementsAsync(app).ConfigureAwait(false);
 await app.RunAsync().ConfigureAwait(false);

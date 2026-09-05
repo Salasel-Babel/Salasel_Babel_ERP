@@ -7,6 +7,7 @@ using Babel.Projects;
 using Babel.Purchasing;
 using Babel.RealEstate;
 using Babel.Sales;
+using Babel.SharedKernel;
 using Babel.Storage;
 using Npgsql;
 
@@ -15,10 +16,12 @@ namespace BabelDemoCompany;
 /// <summary>
 /// إعدادات الأداة، مقروءةً من البيئة وحدها.
 /// <para>
-/// <b>ولا كلمة مرور واحدة مكتوبة هنا ولا في أي ملف في هذا المستودع</b>: كل اتصال يصل
-/// كاملاً من متغيّر بيئة، وللتشغيل المحلي افتراضٌ بلا كلمة مرور يعمل مع
-/// <c>pg_hba: trust</c> على 127.0.0.1. القيمة على الخادم تُبنى من سرّ في مخزن الأسرار
-/// عند لحظة النشر ولا تمرّ بـgit.
+/// <b>ولا كلمة مرور ولا نصّ اتصال مكتوبٌ هنا ولا في أي ملف في هذا المستودع</b>: كل
+/// اتصال يصل كاملاً من متغيّر بيئة، و<b>غيابُه يوقف الأداة برسالةٍ تسمّي المتغيّر</b>.
+/// القيمة على الخادم تُبنى من سرّ في مخزن الأسرار عند لحظة النشر ولا تمرّ بـgit.
+/// <b>وللتطوير على جهازٍ محلّي متغيّرٌ واحد يقول ذلك:</b> <c>BABEL_LOCAL_DEV=1</c>،
+/// وحينها تُبنى اتصالاتٌ محلّية بلا كلمة مرور تعمل مع <c>pg_hba: trust</c> على المِعوَد
+/// (‏ADR-جديد).
 /// </para>
 /// </summary>
 internal sealed class Settings
@@ -140,47 +143,49 @@ internal sealed class Settings
     {
         LedgerOptions ledger = new();
 
-        string salesOwner = Env("BABEL_SALES_OWNER_DB")
-            ?? Env("BABEL_SALES_DB")
-            ?? "Host=127.0.0.1;Port=5432;Database=babel_sales;Username=postgres;Include Error Detail=true";
+        // ‏**والدفتر يُرفض غيابُ اتصاليه هنا** — لا عند أول `DatabaseOf` فيُقرأ العطل
+        // «اتصالٌ بلا اسم قاعدة». الاثنان مطلوبان: المالك ينشر المخطّط، ودور التطبيق
+        // يبذر ويُثبت — وهو ما يجعل البذر عاجزاً بنيوياً عن الكتابة خارج المسار المُعلَن.
+        ledger.EnsureOwnerConfigured();
+        ledger.EnsureAppConfigured();
 
-        string purchasingOwner = Env("BABEL_PURCHASING_OWNER_DB")
-            ?? Env("BABEL_PURCHASING_DB")
-            ?? "Host=127.0.0.1;Port=5432;Database=babel_purchasing;Username=postgres;Include Error Detail=true";
+        string salesOwner = Owner("BABEL_SALES_OWNER_DB", Env("BABEL_SALES_DB"), SalesOptions.DefaultDatabase);
 
-        string inventoryOwner = Env("BABEL_INVENTORY_OWNER_DB")
-            ?? Env("BABEL_INVENTORY_DB")
-            ?? "Host=127.0.0.1;Port=5432;Database=babel_inventory;Username=postgres;Include Error Detail=true";
+        string purchasingOwner = Owner(
+            "BABEL_PURCHASING_OWNER_DB", Env("BABEL_PURCHASING_DB"), PurchasingOptions.DefaultDatabase);
+
+        string inventoryOwner = Owner(
+            "BABEL_INVENTORY_OWNER_DB", Env("BABEL_INVENTORY_DB"), InventoryOptions.DefaultDatabase);
 
         // ‏**اسمٌ مستقلّ للمالك، ولا ارتداد إلى `BABEL_REALESTATE_DB`**: ذلك المتغيّر
         // هو اتصال **الخادم** (يقرأه RealEstateOptions افتراضياً)، وارتدادٌ إليه هنا كان
         // يجعل حاويةً تحمل الاثنين تنشر المخطّط بدور التطبيق فتفشل — أو أسوأ: تنجح لأن
         // أحدهم منح الدور ما لا يستحقّه. الفصل يبقى بالاسم لا بالانضباط (ADR-0003).
-        string realEstateOwner = Env("BABEL_REALESTATE_OWNER_DB")
-            ?? "Host=127.0.0.1;Port=5432;Database=babel_realestate;Username=postgres;Include Error Detail=true";
+        string realEstateOwner = Owner("BABEL_REALESTATE_OWNER_DB", null, RealEstateOptions.DefaultDatabase);
 
-        string projectsOwner = Env("BABEL_PROJECTS_OWNER_DB")
-            ?? "Host=127.0.0.1;Port=5432;Database=babel_projects;Username=postgres;Include Error Detail=true";
+        string projectsOwner = Owner("BABEL_PROJECTS_OWNER_DB", null, ProjectsOptions.DefaultDatabase);
 
         // ‏**ولا ارتداد إلى `BABEL_HR_DB` هنا** رغم أن `HrOptions` تقرؤه افتراضياً:
         // ذلك اتصال **الخادم** بدور التطبيق، وهذه الأداة تنشر بدور المالك. والارتداد
         // إليه كان يجعل حاويةً تحمل الاثنين تحاول نشر مخطّطٍ بدورٍ لا يملك DDL.
-        string hrOwner = Env("BABEL_HR_OWNER_DB")
-            ?? "Host=127.0.0.1;Port=5432;Database=babel_hr;Username=postgres;Include Error Detail=true";
+        string hrOwner = Owner("BABEL_HR_OWNER_DB", null, HrDefaultDatabase);
 
-        string storageOwner = Env("BABEL_STORAGE_OWNER_DB")
-            ?? $"Host=127.0.0.1;Port=5432;Database={StorageOptions.DefaultDatabase};Username=postgres;Include Error Detail=true";
+        string storageOwner = Owner("BABEL_STORAGE_OWNER_DB", null, StorageOptions.DefaultDatabase);
 
-        string coreOwner = Env("BABEL_CORE_OWNER_DB")
-            ?? $"Host=127.0.0.1;Port=5432;Database={CoreOptions.DefaultDatabase};Username=postgres;Include Error Detail=true";
+        string coreOwner = Owner("BABEL_CORE_OWNER_DB", null, CoreOptions.DefaultDatabase);
 
-        string coreApp = Env("BABEL_CORE_APP_DB")
-            ?? FormattableString.Invariant(
-                $"Host=127.0.0.1;Port=5432;Database={CoreOptions.DefaultDatabase};Username={ledger.AppRole};Include Error Detail=true");
+        string coreApp = Required(
+            "BABEL_CORE_APP_DB",
+            DeploymentSetting.Resolve(
+                Env("BABEL_CORE_APP_DB"),
+                DeploymentSetting.LocalDevelopmentDeclared(),
+                CoreOptions.DefaultDatabase,
+                ledger.AppRole),
+            "اتصال دور التطبيق على قاعدة النواة",
+            "the Core application-role connection");
 
         return new Settings(
-            Env("BABEL_ADMIN_DB")
-                ?? "Host=127.0.0.1;Port=5432;Database=postgres;Username=postgres;Include Error Detail=true",
+            Owner("BABEL_ADMIN_DB", null, MaintenanceDatabase),
             ledger,
             new CoreOptions
             {
@@ -202,6 +207,44 @@ internal sealed class Settings
                 ? year
                 : 2026);
     }
+
+    /// <summary>اسم قاعدة الصيانة — القاعدة التي يُتّصل بها كي تُنشأ بقيّة القواعد.</summary>
+    private const string MaintenanceDatabase = "postgres";
+
+    /// <summary>اسم قاعدة الموارد البشرية للتطوير المحلّي.</summary>
+    private const string HrDefaultDatabase = "babel_hr";
+
+    /// <summary>
+    /// اتصالُ مالكٍ من البيئة. <b>الغياب يُرفض ولا يُخمَّن</b> — إلا في وضع تطويرٍ
+    /// مُعلَن باسمه (<c>BABEL_LOCAL_DEV</c>)، وحينها يُبنى اتصالٌ محلّي على المِعوَد.
+    /// <para>
+    /// <b>وهذه الأداة هي حاوية الترحيل في النشر</b> (<c>deploy/Dockerfile.migrator</c>)،
+    /// فارتدادُها الصامت لم يكن ارتداداً على جهاز مطوّر بل <b>على خادم</b>: متغيّرٌ ناقص
+    /// كان يجعلها تنشر مخطّطاً — أو تحاول — على <c>127.0.0.1</c> <b>داخل الحاوية نفسها</b>
+    /// بالمستخدم الفائق، فيُقرأ العطلُ «‏Connection refused» أي عطلَ شبكةٍ لا إعداداً ناقصاً.
+    /// وهو مكتوب بنصّه في تعليق <c>deploy/compose.yml</c> فوق سطر المخزون.
+    /// </para>
+    /// </summary>
+    /// <param name="variable">اسم متغيّر اتصال المالك.</param>
+    /// <param name="alternative">بديلٌ مقبول من البيئة، أو <c>null</c> إن لم يكن له بديل.</param>
+    /// <param name="database">اسم القاعدة في وضع التطوير المُعلَن.</param>
+    private static string Owner(string variable, string? alternative, string database)
+    {
+        string resolved = DeploymentSetting.Resolve(
+            Env(variable) ?? alternative,
+            DeploymentSetting.LocalDevelopmentDeclared(),
+            database,
+            DeploymentSetting.LocalDevelopmentOwnerRole);
+
+        return Required(variable, resolved, "اتصال المالك على قاعدة " + database, "the owner connection for " + database);
+    }
+
+    /// <summary>يرفع عطلاً يسمّي المتغيّر إن كانت القيمة المحسومة فارغة.</summary>
+    private static string Required(string variable, string resolved, string subjectAr, string subjectEn) =>
+        string.IsNullOrWhiteSpace(resolved)
+            ? throw DeploymentSetting.Missing(
+                "demo.connection_not_configured", variable, variable, subjectAr, subjectEn)
+            : resolved;
 
     private static string? Env(string name)
     {

@@ -290,6 +290,39 @@ internal static class BabelApiHost
     }
 
     /// <summary>
+    /// <b>بوّابةُ الإقلاع: كلُّ اتصالٍ يحتاجه هذا الخادم مضبوطٌ، أو لا يقلع.</b>
+    /// <para>
+    /// <b>لماذا هنا لا عند أول نداء:</b> تسجيلُ الوحدات مصانعُ كسولة، فخادمٌ ينقصه
+    /// اتصالٌ يقلع سليم الظاهر ويردّ <c>/health</c> بنجاح، ثم يفشل أول طلب برسالة
+    /// اتصال تُقرأ <b>عطلَ شبكةٍ في قاعدة البيانات</b> لا إعداداً ناقصاً — فتُرسل من
+    /// يبحث إلى المكان الخطأ. وقبل هذا السطر كان الأسوأ ممكناً: الوحدات تحمل نصّ اتصالٍ
+    /// افتراضياً بالمستخدم الفائق، فالنقص لا يُعطِّل شيئاً بل <b>يعمل بامتيازٍ كامل على
+    /// قاعدةٍ لم يقصدها أحد</b>.
+    /// </para>
+    /// <para>
+    /// <b>ولا يُنادى من <see cref="Build"/>:</b> ‏<c>--emit-openapi</c> يبني التطبيق كي
+    /// يقرأ جدول مساراته ولا يتّصل بقاعدةٍ واحدة، فربطُ الرفض بالبناء كان يجعل توليد
+    /// العقد يحتاج قاعدة بيانات.
+    /// </para>
+    /// </summary>
+    /// <param name="app">التطبيق المبنيّ.</param>
+    /// <exception cref="InvalidOperationException">إن غاب اتصالُ وحدةٍ واحدة — والرسالة تسمّي متغيّرها.</exception>
+    public static void EnsureDeploymentConfigured(WebApplication app)
+    {
+        ArgumentNullException.ThrowIfNull(app);
+
+        app.Services.GetRequiredService<LedgerOptions>().EnsureAppConfigured();
+        app.Services.GetRequiredService<CoreOptions>().EnsureAppConfigured();
+        app.Services.GetRequiredService<SalesOptions>().EnsureConfigured();
+        app.Services.GetRequiredService<PurchasingOptions>().EnsureConfigured();
+        app.Services.GetRequiredService<InventoryOptions>().EnsureConfigured();
+        app.Services.GetRequiredService<RealEstateOptions>().EnsureConfigured();
+        app.Services.GetRequiredService<ProjectsOptions>().EnsureConfigured();
+        app.Services.GetRequiredService<HrOptions>().EnsureConfigured();
+        app.Services.GetRequiredService<StorageOptions>().EnsureAppConfigured();
+    }
+
+    /// <summary>
     /// يقرأ إعداد النواة. <b>ولا يقرأ اتصال المالك ولا يوجد له مفتاح</b>: خادمٌ يحمل
     /// اتصال المالك يستطيع أن يُسقط مشغّل ثبات المقياس ثم يكتب ما شاء (ADR-0003).
     /// </summary>

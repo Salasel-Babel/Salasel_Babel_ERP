@@ -211,6 +211,7 @@ internal static class BabelApiHost
         app.MapLedgerApi();
         app.MapCapabilityProfileApi();
         app.MapCompanySetupApi();
+        app.MapParameterApi();
         app.MapDocumentApi();
         app.MapRealEstateApi();
         app.MapPayrollApi();

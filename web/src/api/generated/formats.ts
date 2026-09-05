@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     48db5a1817e2b9c661acd08d337e1185199319ea29f25b749dbbce3f00386290
+     0ae33e60822b221da4794853fdc700e8c934d98f8307213f09f71f968e735c32
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -53,6 +53,8 @@ export const SCHEMA_Magnitude = "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,6})?$";
 export const SCHEMA_Magnitude_RE = new RegExp("^-?(0|[1-9][0-9]*)(\\.[0-9]{1,6})?$");
 export const SCHEMA_Money = "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$";
 export const SCHEMA_Money_RE = new RegExp("^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$");
+export const SCHEMA_ParameterAmount = "^(0|[1-9][0-9]*)(\\.[0-9]{1,8})?$";
+export const SCHEMA_ParameterAmount_RE = new RegExp("^(0|[1-9][0-9]*)(\\.[0-9]{1,8})?$");
 export const SCHEMA_Quantity = "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$";
 export const SCHEMA_Quantity_RE = new RegExp("^-?(0|[1-9][0-9]*)(\\.[0-9]{1,4})?$");
 export const SCHEMA_Rate = "^-?(0|[1-9][0-9]*)(\\.[0-9]{1,8})?$";

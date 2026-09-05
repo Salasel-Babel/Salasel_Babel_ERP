@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Globalization;
 using Babel.Contracts.Parameters;
 using Babel.SharedKernel;
 
@@ -129,12 +130,12 @@ public sealed class InMemoryParameterStore : IParameterStore
             .FirstOrDefault();
 
     private static string LevelKey(Guid owner, ParameterScope scope, string setCode, DateOnly effectiveFrom)
-        => owner.ToString("D") + "|" + ParameterApprovalInfo.TokenOf(scope) + "|" + setCode + "|"
-           + effectiveFrom.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+        => owner.ToString("D", CultureInfo.InvariantCulture) + "|" + ParameterApprovalInfo.TokenOf(scope) + "|" + setCode + "|"
+           + effectiveFrom.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
     private static string UsageKey(Guid tenant, ParameterUsage usage)
-        => tenant.ToString("D") + "|" + usage.VersionId.ToString("D") + "|" + (int)usage.Module + "|"
-           + usage.DocumentType + "|" + usage.DocumentId.ToString("D");
+        => tenant.ToString("D", CultureInfo.InvariantCulture) + "|" + usage.VersionId.ToString("D", CultureInfo.InvariantCulture) + "|" + (int)usage.Module + "|"
+           + usage.DocumentType + "|" + usage.DocumentId.ToString("D", CultureInfo.InvariantCulture);
 
     private sealed record ParameterUsageEntry(Guid Tenant, ParameterUsage Usage, DateTimeOffset RecordedAt);
 }

@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     48db5a1817e2b9c661acd08d337e1185199319ea29f25b749dbbce3f00386290
+     0ae33e60822b221da4794853fdc700e8c934d98f8307213f09f71f968e735c32
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -62,6 +62,22 @@ export function asMagnitude(text: unknown): Magnitude {
     );
   }
   return text as Magnitude;
+}
+
+/** قيمةُ معامِل **نصّاً وغيرَ سالبة**، بمقياس ثمانٍ يسع النسبة والمبلغ والعدد معاً. و**النسبة كسرٌ عشري لا مئوية**: خمسة عشر بالمئة تُكتب 0.15 لا 15 — وقيمةٌ تُكتب 15 في مفتاحٍ صنفُه نسبة تُرفض باسمها ولا تُصحَّح صامتةً. والصنف يقوله الحقل `kind` لا شكلُ الرقم. / A parameter value as a **non-negative string** at scale eight, wide enough for a rate, an amount and a count alike. A **rate is a decimal fraction, not a percentage**: fifteen percent is 0.15, never 15 — a value written 15 under a key whose kind is a rate is refused by name and never silently corrected. The kind is stated by the `kind` field, not by the shape of the number. */
+export type ParameterAmount = string & { readonly __ParameterAmount: unique symbol };
+
+/**
+ * يتحقّق من النمط المنشور ثم يحتجز النوع. / Validates then brands.
+ * @param text النصّ كما ورد. / the text as received.
+ */
+export function asParameterAmount(text: unknown): ParameterAmount {
+  if (typeof text !== "string" || !F.SCHEMA_ParameterAmount_RE.test(text)) {
+    throw new TypeError(
+      "asParameterAmount: نصّ لا يطابق النمط المنشور " + F.SCHEMA_ParameterAmount + " — «" + String(text) + "». / does not match the published pattern."
+    );
+  }
+  return text as ParameterAmount;
 }
 
 /** كمّية نصّاً بمقياس لا يتجاوز أربعاً، بالنحو الذي تخضع له المبالغ. وهي ليست مبلغاً — ولذلك لها مخطّطها — لكنها تُضرب في مبلغ، فأي فقدان دقّة فيها يصل إلى المال. / A quantity as a string with at most four decimal places, under the grammar that governs amounts. It is not an amount — hence its own schema — but it is multiplied by one, so any precision lost in it reaches the money. */
@@ -133,6 +149,7 @@ export const BRANDS: Readonly<Record<string, (text: unknown) => string>> = {
   ExchangeRate: asExchangeRate,
   Int64String: asInt64String,
   Magnitude: asMagnitude,
+  ParameterAmount: asParameterAmount,
   Quantity: asQuantity,
   Rate: asRate,
   TaxRate: asTaxRate,

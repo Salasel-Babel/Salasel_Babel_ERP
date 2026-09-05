@@ -377,6 +377,80 @@ internal static class OpenApiEmitter
                 "One document type's shape derived from the profile. Derived, never authored: no layout, no visual order, no condition, no expression.",
                 Body: null, Response: "DocumentShape", Success: 200, Query: []),
 
+            // ── المعامِلات: لوحةُ تحكّمٍ لا شيفرة ────────────────────────────────
+            new(ApiRoutes.Parameters, "get", "listParameterVersions",
+                "إصدارات المعامِلات بسريانها", "The parameter versions by effective date",
+                "يقرأ **كلَّ** ما تراه هذه المنشأة من إصدارات المعامِلات: افتراضاتِ المنصّة المشحونة وتجاوزاتِها هي "
+                + "وحدها. ولكلّ إصدارٍ تاريخُ سريانه، و**حالةُ اعتماده**، ومعتمِدُه، ومرجعُ مصدره، وقيمُه كلّها.\n\n"
+                + "**وحالةُ الاعتماد ثلاثية لا ثنائية**: `platform_default` افتراضٌ يشحنه المنتج **ولم يعتمده إنسان**، "
+                + "و`tenant_approved` أودعه صاحب المنشأة باسمه، و`auditor_signed` وقّعه محاسب قانوني. والثنائيّ يخلط "
+                + "مسؤولية صاحب المنشأة بمسؤولية المحاسب، فتصير قائمةُ المراجعة فارغةً وهي لم تُراجَع.\n\n"
+                + "**وقيمةٌ غير معتمَدة تُعرض موسومةً لا مخفيّة**: إخفاؤها يجعل النظام يعمل برقمٍ لا يعرف أحدٌ أنه "
+                + "مفترَض. و`approvedBy` و`approvedOn` **فارغان بالضبط** في صفّ المنصّة — فهو لم يعتمده إنسان، "
+                + "وكتابةُ اسمٍ فيه ادّعاءُ اعتمادٍ لم يقع.",
+                "Reads **everything** this company sees of the parameter versions: the shipped platform defaults and its own "
+                + "overrides alone. Each version carries its effective date, its **approval state**, its approver, its source "
+                + "reference, and all of its values.\n\n"
+                + "**The approval state is ternary, not binary**: `platform_default` is a default the product ships and **no human "
+                + "approved**, `tenant_approved` was deposited by the company under a named person, and `auditor_signed` was signed "
+                + "by a chartered accountant. A binary flag conflates the owner's responsibility with the accountant's, so the "
+                + "review list reads empty while nothing has been reviewed.\n\n"
+                + "**An unapproved value is shown tagged, never hidden**: hiding it makes the system run on a number nobody knows is "
+                + "assumed. `approvedBy` and `approvedOn` are **exactly empty** on a platform row — no human approved it, and writing "
+                + "a name there would assert an approval that never happened.",
+                Body: null, Response: "ParameterVersionList", Success: 200, Query: []),
+
+            new(ApiRoutes.Parameters, "post", "depositParameterVersion",
+                "إيداع إصدار جديد من مجموعة معامِلات", "Deposit a new version of a parameter set",
+                "يودِع إصداراً جديداً على مستوى هذه المنشأة. **POST لا PUT، والصفّ يُضاف ولا يُعدَّل**: قيمةُ فترةٍ "
+                + "ماضية لا تُغيَّر، والتغييرُ إصدارٌ جديد بتاريخ سريانه — ومستندٌ رُحِّل بإصدارٍ يبقى عليه لأنه يحمل "
+                + "**لقطته** لا مفتاحاً إلى صفّ يتغيّر.\n\n"
+                + "**والمجموعة تُودَع كاملةً**: قيمُ المجموعة الواحدة يسري بعضها ببعض، وإيداعٌ جزئي يُنتج خليطاً من "
+                + "إصدارين لم يعتمده أحد. ومفتاحٌ ناقص أو زائد يُرفض بـcore.parameter_keys_incomplete مسمّياً الناقص "
+                + "والزائد.\n\n"
+                + "**والنسبة كسرٌ عشري لا مئوية**: خمسة عشر بالمئة `0.15` لا `15`. وقيمةٌ تُكتب `15` تُرفض بالرمز "
+                + "core.parameter_rate_looks_like_a_percentage — **ولا تُصحَّح صامتةً**، لأن التصحيح الصامت يترك من "
+                + "كتبها يظنّ أنه أودع ما لم يُودِع. والقيد مفروضٌ في قاعدة البيانات أيضاً، فتجاوزُ الخدمة لا يُمرّره.\n\n"
+                + "**وإصدارٌ ثانٍ على (المستوى · المجموعة · تاريخ السريان) نفسها يُرفض** بـ409 و"
+                + "core.parameter_version_duplicate. **و«افتراضُ المنصّة» ليس خياراً هنا**: يُشحن مع المنتج ولا يُكتب "
+                + "من مسار طلب، فحالةُ الاعتماد المقبولة `tenant_approved` أو `auditor_signed` لا غير.",
+                "Deposits a new version at this company's level. **POST, not PUT, and the row is appended, never edited**: a past "
+                + "period's value is never changed; a change is a new version with its own effective date — and a document posted "
+                + "under a version stays on it because it carries **its snapshot**, not a key into a row that moves.\n\n"
+                + "**A set is deposited whole**: the values of one set take effect together, and a partial deposit produces a mixture "
+                + "of two versions nobody approved. A missing or extra key is refused with core.parameter_keys_incomplete, naming "
+                + "both.\n\n"
+                + "**A rate is a decimal fraction, not a percentage**: fifteen percent is `0.15`, never `15`. A value written `15` is "
+                + "refused with core.parameter_rate_looks_like_a_percentage — **and never silently corrected**, because a silent "
+                + "correction leaves the depositor believing they deposited what they did not. The constraint is enforced in the "
+                + "database too, so bypassing the service does not get it through.\n\n"
+                + "**A second version on the same (level, set, effective date) is refused** with 409 and "
+                + "core.parameter_version_duplicate. **'Platform default' is not a choice here**: it ships with the product and is "
+                + "never written from a request path, so the accepted approval states are `tenant_approved` and `auditor_signed` only.",
+                Body: "ParameterVersionRequest", Response: "ParameterVersion", Success: 201, Query: []),
+
+            new(ApiRoutes.ParameterReview, "get", "readParameterReview",
+                "قائمة مراجعة المحاسب القانوني", "The chartered accountant's review list",
+                "**استعلامٌ واحد يُخرج القائمة المحصورة**: كلُّ إصدارٍ لم يُوقَّع بعد، ومعه كلُّ مستندٍ **مُرحَّلٍ** "
+                + "استعمله. وهي بعينها القائمةُ التي تُعرض على المحاسب القانوني في الخطوة الأخيرة — ولذلك هي **بابُ "
+                + "قراءةٍ منشور** لا تقريرٌ تحسبه شاشة: تقريرٌ في شاشة يعني أن كل شاشةٍ تحسبه بطريقتها.\n\n"
+                + "**والإصدارُ الموقَّع يخرج من القائمة**، وذلك هو معنى التوقيع. **والإصدارُ الذي لم يستعمله مستندٌ "
+                + "بعد يبقى فيها** بقائمةِ مستنداتٍ فارغة — فحاجتُه إلى التوقيع لا تسقط بعدم استعماله.\n\n"
+                + "**ومن أين يُعرف المستند:** الوحدةُ المالكة تسجّل استعمالها لحظة الترحيل. والمستند نفسه — في قاعدة "
+                + "وحدته — يحمل **لقطة** الإصدار وقيمَه، فقارئُه بعد سنتين يقرؤه وحده. والسجلّان ليسا تكراراً: "
+                + "اللقطةُ سجلّ، وهذا فهرس؛ ولو ضاع الفهرس لبقيت المستندات مقروءة.",
+                "**One query returns the bounded list**: every version not yet signed, together with every **posted** document that "
+                + "used it. This is precisely the list put in front of the chartered accountant in the final step — which is why it "
+                + "is a **published read door** and not a report a screen computes: a report in a screen means every screen computes "
+                + "it its own way.\n\n"
+                + "**A signed version leaves the list**, which is what signing means. **A version no document has used yet stays in "
+                + "it** with an empty document list — its need for a signature does not lapse because it went unused.\n\n"
+                + "**Where the document comes from:** the owning module records its usage at posting time. The document itself — in "
+                + "its own module's database — carries the version's **snapshot** and its values, so its reader two years later "
+                + "reads it alone. The two records are not a duplication: the snapshot is the record, this is the index; if the "
+                + "index were lost the documents would still be readable.",
+                Body: null, Response: "ParameterReviewList", Success: 200, Query: []),
+
             new(ApiRoutes.CompanySetup, "get", "readCompanySetup",
                 "تأسيس المنشأة", "The company setup",
                 "يقرأ تأسيس المنشأة: اسمها، و**عدد الخانات العشرية المعروضة**، و**مراكز تكلفتها كلّها** — العاملة والموقوفة معاً. "
@@ -5778,6 +5852,223 @@ internal static class OpenApiEmitter
             w.WriteStringValue("0.15");
             w.WriteStringValue("0");
             w.WriteEndArray();
+        });
+
+        // ── المعامِلات: قيمةٌ واحدة تسع النسبة والمبلغ والعدد ──────────────────
+        yield return ("ParameterAmount", static w =>
+        {
+            w.WriteString("type", "string");
+            w.WriteString("pattern", @"^(0|[1-9][0-9]*)(\.[0-9]{1,8})?$");
+            w.WriteString("description",
+                "قيمةُ معامِل **نصّاً وغيرَ سالبة**، بمقياس ثمانٍ يسع النسبة والمبلغ والعدد معاً. "
+                + "و**النسبة كسرٌ عشري لا مئوية**: خمسة عشر بالمئة تُكتب 0.15 لا 15 — وقيمةٌ تُكتب 15 في مفتاحٍ صنفُه "
+                + "نسبة تُرفض باسمها ولا تُصحَّح صامتةً. والصنف يقوله الحقل `kind` لا شكلُ الرقم. / "
+                + "A parameter value as a **non-negative string** at scale eight, wide enough for a rate, an amount and a count "
+                + "alike. A **rate is a decimal fraction, not a percentage**: fifteen percent is 0.15, never 15 — a value written 15 "
+                + "under a key whose kind is a rate is refused by name and never silently corrected. The kind is stated by the "
+                + "`kind` field, not by the shape of the number.");
+            w.WriteStartArray("examples");
+            w.WriteStringValue("0.15");
+            w.WriteStringValue("0");
+            w.WriteStringValue("5000.0000");
+            w.WriteEndArray();
+        });
+
+        yield return ("ParameterValueKind", static w =>
+        {
+            w.WriteString("type", "string");
+            w.WriteStartArray("enum");
+            w.WriteStringValue("rate");
+            w.WriteStringValue("money");
+            w.WriteStringValue("count");
+            w.WriteEndArray();
+            w.WriteString("description",
+                "صنفُ القيمة — وهو ما يقرّر حارسها: `rate` كسرٌ عشري بين صفر وواحد، و`money` مبلغٌ بمقياس أربع، "
+                + "و`count` عددٌ صحيح. / "
+                + "The value's kind, which decides its guard: `rate` is a decimal fraction between zero and one, `money` is an "
+                + "amount at scale four, and `count` is a whole number.");
+        });
+
+        yield return ("ParameterApproval", static w =>
+        {
+            w.WriteString("type", "string");
+            w.WriteStartArray("enum");
+            w.WriteStringValue("platform_default");
+            w.WriteStringValue("tenant_approved");
+            w.WriteStringValue("auditor_signed");
+            w.WriteEndArray();
+            w.WriteString("description",
+                "**حالةُ الاعتماد — ثلاثية لا ثنائية.** `platform_default` افتراضٌ يشحنه المنتج **ولم يعتمده إنسان** "
+                + "ولا يحمل اسم معتمِد؛ و`tenant_approved` أودعه صاحب المنشأة باسمه وتاريخه ومصدره؛ و`auditor_signed` "
+                + "وقّعه محاسبٌ قانوني. **ولا يُشحن شيءٌ بالحالة الثالثة أبداً**، والقيد مفروضٌ في المخطّط. / "
+                + "**The approval state — ternary, not binary.** `platform_default` is a default the product ships that **no human "
+                + "approved** and that carries no approver name; `tenant_approved` was deposited by the company under a name, a date "
+                + "and a source; `auditor_signed` was signed by a chartered accountant. **Nothing ever ships in the third state**, "
+                + "and the constraint is enforced in the schema.");
+        });
+
+        yield return ("ParameterScope", static w =>
+        {
+            w.WriteString("type", "string");
+            w.WriteStartArray("enum");
+            w.WriteStringValue("platform");
+            w.WriteStringValue("tenant");
+            w.WriteEndArray();
+            w.WriteString("description",
+                "المستوى الذي قُرِّرت عنده القيمة: `platform` يُشحن مع المنتج، و`tenant` أودعته المنشأة. "
+                + "وتجاوزُ المنشأة يسبق افتراضَ المنصّة عند الحلّ. / "
+                + "The level the value was decided at: `platform` ships with the product, `tenant` was deposited by the company. "
+                + "A tenant override wins over the platform default at resolution time.");
+        });
+
+        yield return ("ParameterValueRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "قيمةٌ واحدة في إيداع: مفتاحُها من مفاتيح المجموعة المعلَنة، وقيمتُها نصّاً. / "
+                + "One value in a deposit: its key from the declared set's keys, and its value as a string.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "key", "المفتاح داخل المجموعة.", "The key within the set.", 64);
+            WriteRefProperty(w, "value", "ParameterAmount");
+            w.WriteEndObject();
+            WriteRequired(w, "key", "value");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("ParameterVersionRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "إيداعُ إصدارٍ جديد من مجموعة معامِلات على مستوى المنشأة. **المجموعة كاملةً لا بعضها**: قيمُها يسري "
+                + "بعضها ببعض، وإيداعٌ جزئي يُنتج خليطاً من إصدارين لم يعتمده أحد. و`approvedBy` **إنسانٌ لا نظام**، "
+                + "و`sourceRef` غير فارغ بقيدٍ في قاعدة البيانات. / "
+                + "Depositing a new version of a parameter set at the company's level. **The whole set, not part of it**: its values "
+                + "take effect together, and a partial deposit yields a mixture of two versions nobody approved. `approvedBy` is a "
+                + "**human, never the system**, and `sourceRef` is non-empty by a database constraint.");
+            w.WriteStartObject("properties");
+            WriteRefProperty(w, "approval", "ParameterApproval");
+            WriteStringProperty(w, "approvedBy", "من اعتمد الإصدار — إنسان، لا نظام.", "Who approved the version — a human, not the system.", 200);
+            WriteDateProperty(w, "approvedOn", "تاريخ الاعتماد", "The approval date.");
+            WriteDateProperty(w, "effectiveFrom", "تاريخ سريان الإصدار", "The date the version takes effect.");
+            WriteStringProperty(w, "setCode", "رمز مجموعة المعامِلات.", "The parameter set's code.", 64);
+            WriteStringProperty(w, "sourceRef",
+                "مرجعُ المصدر الذي أُخذت منه القيم — نصٌّ يقرؤه مراجع، وغير فارغ.",
+                "The reference to the source the values came from — text a reviewer reads, and non-empty.", 600);
+            WriteArrayRefProperty(w, "values", "ParameterValueRequest",
+                "قيمُ المجموعة — كلُّها لا بعضها.", "The set's values — all of them, not some.");
+            w.WriteEndObject();
+            WriteRequired(w, "approval", "approvedBy", "approvedOn", "effectiveFrom", "setCode", "sourceRef", "values");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("ParameterValue", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "قيمةٌ في إصدار، بصنفها كما أُودعت. / A value in a version, with its kind as deposited.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "key", "المفتاح.", "The key.", 64);
+            WriteRefProperty(w, "kind", "ParameterValueKind");
+            WriteRefProperty(w, "value", "ParameterAmount");
+            w.WriteEndObject();
+            WriteRequired(w, "key", "kind", "value");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("ParameterVersion", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "إصدارُ معامِلاتٍ كما يخرج من السطح: مستواه، وسريانه، و**حالةُ اعتماده**، ومعتمِده، ومصدره، وقيمُه. "
+                + "و`approvedBy` و`approvedOn` **فارغان بالضبط** في صفّ المنصّة — لم يعتمده إنسان. / "
+                + "A parameter version as the surface returns it: its level, its effective date, its **approval state**, its "
+                + "approver, its source, and its values. `approvedBy` and `approvedOn` are **exactly empty** on a platform row — no "
+                + "human approved it.");
+            w.WriteStartObject("properties");
+            WriteRefProperty(w, "approval", "ParameterApproval");
+            WriteStringProperty(w, "approvedBy", "المعتمِد — فارغٌ لافتراض المنصّة وحده.", "The approver — empty for the platform default alone.", 200);
+            WriteStringProperty(w, "approvedOn", "تاريخ الاعتماد بصيغة yyyy-MM-dd، أو فراغٌ لافتراض المنصّة.", "The approval date as yyyy-MM-dd, or empty for the platform default.", 10);
+            WriteDateProperty(w, "effectiveFrom", "تاريخ السريان", "The effective date.");
+            WriteStringProperty(w, "id", "المعرّف.", "The identifier.", 36);
+            WriteRefProperty(w, "scope", "ParameterScope");
+            WriteStringProperty(w, "setCode", "رمز المجموعة.", "The set's code.", 64);
+            WriteStringProperty(w, "sourceRef", "مرجع المصدر.", "The source reference.", 600);
+            WriteArrayRefProperty(w, "values", "ParameterValue", "القيم، مرتَّبةً بمفاتيحها.", "The values, ordered by key.");
+            w.WriteEndObject();
+            WriteRequired(w, "approval", "approvedBy", "approvedOn", "effectiveFrom", "id", "scope", "setCode", "sourceRef", "values");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("ParameterVersionList", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "الإصدارات التي تراها المنشأة: افتراضاتُ المنصّة وتجاوزاتُها هي وحدها. / "
+                + "The versions this company sees: the platform defaults and its own overrides alone.");
+            w.WriteStartObject("properties");
+            WriteIntegerProperty(w, "itemCount", 0, int.MaxValue, "عدد الإصدارات.", "The number of versions.");
+            WriteArrayRefProperty(w, "items", "ParameterVersion",
+                "الإصدارات، مرتَّبةً بالمجموعة ثمّ بتاريخ السريان.",
+                "The versions, ordered by set then by effective date.");
+            w.WriteEndObject();
+            WriteRequired(w, "itemCount", "items");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("ParameterUsage", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "مستندٌ **مُرحَّل** استعمل هذا الإصدار. والمستند نفسه يحمل لقطةَ الإصدار وقيمَه في قاعدة وحدته، "
+                + "وهذا الصفّ فهرسٌ يجمع المتفرّق في قاعدةٍ واحدة. / "
+                + "A **posted** document that used this version. The document itself carries the version's snapshot and values in "
+                + "its own module's database; this row is an index that gathers the scattered into one database.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "documentId", "معرّف المستند داخل وحدته.", "The document's identifier within its module.", 36);
+            WriteStringProperty(w, "documentType", "نوع المستند داخل وحدته.", "The document's type within its module.", 32);
+            WriteStringProperty(w, "module", "الوحدة المالكة للمستند.", "The module that owns the document.", 32);
+            WriteDateProperty(w, "postedOn", "تاريخ الترحيل", "The posting date.");
+            w.WriteEndObject();
+            WriteRequired(w, "documentId", "documentType", "module", "postedOn");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("ParameterReviewEntry", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "صفٌّ في قائمة المراجعة: إصدارٌ لم يُوقَّع بعد ومعه المستندات المُرحَّلة التي استعملته. "
+                + "**وقائمةُ مستنداتٍ فارغة ليست عطلاً**: إصدارٌ لم يُستعمل بعد يبقى محتاجاً إلى التوقيع. / "
+                + "A row in the review list: a version not yet signed together with the posted documents that used it. "
+                + "**An empty document list is not a fault**: a version that has not been used yet still needs a signature.");
+            w.WriteStartObject("properties");
+            WriteIntegerProperty(w, "usageCount", 0, int.MaxValue, "عدد المستندات التي استعملته.", "The number of documents that used it.");
+            WriteArrayRefProperty(w, "usages", "ParameterUsage",
+                "المستندات المُرحَّلة، مرتَّبةً بتاريخ الترحيل.", "The posted documents, ordered by posting date.");
+            WriteRefProperty(w, "version", "ParameterVersion");
+            w.WriteEndObject();
+            WriteRequired(w, "usageCount", "usages", "version");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("ParameterReviewList", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "**القائمةُ المحصورة**: كلُّ إصدارٍ غير موقَّع تراه المنشأة، ومعه كلُّ مستندٍ مُرحَّلٍ استعمله. "
+                + "وهي قائمةُ مراجعة المحاسب القانوني في الخطوة الأخيرة. **وقائمةٌ فارغة تعني أن كلَّ إصدارٍ موقَّع** "
+                + "— وهي حالٌ لا تقع قبل أن يوقّع المحاسب على افتراضات المنصّة نفسها. / "
+                + "**The bounded list**: every unsigned version this company sees, together with every posted document that used it. "
+                + "It is the chartered accountant's review list in the final step. **An empty list means every version is signed** — "
+                + "a state that does not occur before the accountant signs the platform defaults themselves.");
+            w.WriteStartObject("properties");
+            WriteIntegerProperty(w, "itemCount", 0, int.MaxValue, "عدد الإصدارات غير الموقَّعة.", "The number of unsigned versions.");
+            WriteArrayRefProperty(w, "items", "ParameterReviewEntry",
+                "الصفوف، مرتَّبةً بالمجموعة ثمّ بتاريخ السريان.",
+                "The rows, ordered by set then by effective date.");
+            w.WriteEndObject();
+            WriteRequired(w, "itemCount", "items");
+            w.WriteBoolean("additionalProperties", false);
         });
 
         // ── العقارات ─────────────────────────────────────────────────────────

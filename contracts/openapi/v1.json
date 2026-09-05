@@ -23965,15 +23965,6 @@
           "5000.0000"
         ]
       },
-      "ParameterApproval": {
-        "type": "string",
-        "enum": [
-          "platform_default",
-          "tenant_approved",
-          "auditor_signed"
-        ],
-        "description": "**حالةُ الاعتماد — ثلاثية لا ثنائية.** `platform_default` افتراضٌ يشحنه المنتج **ولم يعتمده إنسان** ولا يحمل اسم معتمِد؛ و`tenant_approved` أودعه صاحب المنشأة باسمه وتاريخه ومصدره؛ و`auditor_signed` وقّعه محاسبٌ قانوني. **ولا يُشحن شيءٌ بالحالة الثالثة أبداً**، والقيد مفروضٌ في المخطّط. / **The approval state — ternary, not binary.** `platform_default` is a default the product ships that **no human approved** and that carries no approver name; `tenant_approved` was deposited by the company under a name, a date and a source; `auditor_signed` was signed by a chartered accountant. **Nothing ever ships in the third state**, and the constraint is enforced in the schema."
-      },
       "ParameterReviewEntry": {
         "type": "object",
         "description": "صفٌّ في قائمة المراجعة: إصدارٌ لم يُوقَّع بعد ومعه المستندات المُرحَّلة التي استعملته. **وقائمةُ مستنداتٍ فارغة ليست عطلاً**: إصدارٌ لم يُستعمل بعد يبقى محتاجاً إلى التوقيع. / A row in the review list: a version not yet signed together with the posted documents that used it. **An empty document list is not a fault**: a version that has not been used yet still needs a signature.",
@@ -24026,14 +24017,6 @@
         ],
         "additionalProperties": false
       },
-      "ParameterScope": {
-        "type": "string",
-        "enum": [
-          "platform",
-          "tenant"
-        ],
-        "description": "المستوى الذي قُرِّرت عنده القيمة: `platform` يُشحن مع المنتج، و`tenant` أودعته المنشأة. وتجاوزُ المنشأة يسبق افتراضَ المنصّة عند الحلّ. / The level the value was decided at: `platform` ships with the product, `tenant` was deposited by the company. A tenant override wins over the platform default at resolution time."
-      },
       "ParameterUsage": {
         "type": "object",
         "description": "مستندٌ **مُرحَّل** استعمل هذا الإصدار. والمستند نفسه يحمل لقطةَ الإصدار وقيمَه في قاعدة وحدته، وهذا الصفّ فهرسٌ يجمع المتفرّق في قاعدةٍ واحدة. / A **posted** document that used this version. The document itself carries the version's snapshot and values in its own module's database; this row is an index that gathers the scattered into one database.",
@@ -24077,7 +24060,13 @@
             "description": "المفتاح. / The key."
           },
           "kind": {
-            "$ref": "#/components/schemas/ParameterValueKind"
+            "type": "string",
+            "enum": [
+              "rate",
+              "money",
+              "count"
+            ],
+            "description": "صنفُ القيمة — وهو ما يقرّر حارسها: `rate` كسرٌ عشري بين صفر وواحد، و`money` مبلغٌ بمقياس أربع، و`count` عددٌ صحيح. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The value's kind, which decides its guard: `rate` is a decimal fraction between zero and one, `money` is an amount at scale four, and `count` is a whole number. Matched literally and case-sensitively; a number is never accepted in place of a name."
           },
           "value": {
             "$ref": "#/components/schemas/ParameterAmount"
@@ -24089,15 +24078,6 @@
           "value"
         ],
         "additionalProperties": false
-      },
-      "ParameterValueKind": {
-        "type": "string",
-        "enum": [
-          "rate",
-          "money",
-          "count"
-        ],
-        "description": "صنفُ القيمة — وهو ما يقرّر حارسها: `rate` كسرٌ عشري بين صفر وواحد، و`money` مبلغٌ بمقياس أربع، و`count` عددٌ صحيح. / The value's kind, which decides its guard: `rate` is a decimal fraction between zero and one, `money` is an amount at scale four, and `count` is a whole number."
       },
       "ParameterValueRequest": {
         "type": "object",
@@ -24123,7 +24103,13 @@
         "description": "إصدارُ معامِلاتٍ كما يخرج من السطح: مستواه، وسريانه، و**حالةُ اعتماده**، ومعتمِده، ومصدره، وقيمُه. و`approvedBy` و`approvedOn` **فارغان بالضبط** في صفّ المنصّة — لم يعتمده إنسان. / A parameter version as the surface returns it: its level, its effective date, its **approval state**, its approver, its source, and its values. `approvedBy` and `approvedOn` are **exactly empty** on a platform row — no human approved it.",
         "properties": {
           "approval": {
-            "$ref": "#/components/schemas/ParameterApproval"
+            "type": "string",
+            "enum": [
+              "platform_default",
+              "tenant_approved",
+              "auditor_signed"
+            ],
+            "description": "**حالةُ الاعتماد — ثلاثية لا ثنائية.** `platform_default` افتراضٌ يشحنه المنتج ولم يعتمده إنسان ولا يحمل اسمَ معتمِد؛ و`tenant_approved` أودعه صاحب المنشأة باسمه وتاريخه ومصدره؛ و`auditor_signed` وقّعه محاسبٌ قانوني. ولا يُشحن شيءٌ بالحالة الثالثة أبداً، والقيد مفروضٌ في المخطّط. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / **The approval state — ternary, not binary.** `platform_default` is a default the product ships that no human approved and that carries no approver name; `tenant_approved` was deposited by the company under a name, a date and a source; `auditor_signed` was signed by a chartered accountant. Nothing ever ships in the third state, and the constraint is enforced in the schema. Matched literally and case-sensitively; a number is never accepted in place of a name."
           },
           "approvedBy": {
             "type": "string",
@@ -24146,7 +24132,12 @@
             "description": "المعرّف. / The identifier."
           },
           "scope": {
-            "$ref": "#/components/schemas/ParameterScope"
+            "type": "string",
+            "enum": [
+              "platform",
+              "tenant"
+            ],
+            "description": "المستوى الذي قُرِّرت عنده القيمة: `platform` يُشحن مع المنتج، و`tenant` أودعته المنشأة — وتجاوزُ المنشأة يسبق افتراضَ المنصّة عند الحلّ. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The level the value was decided at: `platform` ships with the product, `tenant` was deposited by the company — and a tenant override wins over the platform default at resolution time. Matched literally and case-sensitively; a number is never accepted in place of a name."
           },
           "setCode": {
             "type": "string",
@@ -24208,7 +24199,12 @@
         "description": "إيداعُ إصدارٍ جديد من مجموعة معامِلات على مستوى المنشأة. **المجموعة كاملةً لا بعضها**: قيمُها يسري بعضها ببعض، وإيداعٌ جزئي يُنتج خليطاً من إصدارين لم يعتمده أحد. و`approvedBy` **إنسانٌ لا نظام**، و`sourceRef` غير فارغ بقيدٍ في قاعدة البيانات. / Depositing a new version of a parameter set at the company's level. **The whole set, not part of it**: its values take effect together, and a partial deposit yields a mixture of two versions nobody approved. `approvedBy` is a **human, never the system**, and `sourceRef` is non-empty by a database constraint.",
         "properties": {
           "approval": {
-            "$ref": "#/components/schemas/ParameterApproval"
+            "type": "string",
+            "enum": [
+              "tenant_approved",
+              "auditor_signed"
+            ],
+            "description": "حالةُ الاعتماد. و«افتراضُ منصّة» ليس خياراً هنا: يُشحن مع المنتج ولا يُكتب من مسار طلب. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The approval state. 'Platform default' is not a choice here: it ships with the product and is never written from a request path. Matched literally and case-sensitively; a number is never accepted in place of a name."
           },
           "approvedBy": {
             "type": "string",

@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     0ae33e60822b221da4794853fdc700e8c934d98f8307213f09f71f968e735c32
+     737b917c13090a000fc6b02c0fbe830a49b0e4dc254eb04a9d55ec4f64b1ba6d
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -1780,9 +1780,6 @@ export interface OpenSessionRequest {
 /** قيمةُ معامِل **نصّاً وغيرَ سالبة**، بمقياس ثمانٍ يسع النسبة والمبلغ والعدد معاً. و**النسبة كسرٌ عشري لا مئوية**: خمسة عشر بالمئة تُكتب 0.15 لا 15 — وقيمةٌ تُكتب 15 في مفتاحٍ صنفُه نسبة تُرفض باسمها ولا تُصحَّح صامتةً. والصنف يقوله الحقل `kind` لا شكلُ الرقم. / A parameter value as a **non-negative string** at scale eight, wide enough for a rate, an amount and a count alike. A **rate is a decimal fraction, not a percentage**: fifteen percent is 0.15, never 15 — a value written 15 under a key whose kind is a rate is refused by name and never silently corrected. The kind is stated by the `kind` field, not by the shape of the number. */
 /* ParameterAmount مُعرَّف في ../money كنوع محتجز وقت التشغيل. */
 
-/** **حالةُ الاعتماد — ثلاثية لا ثنائية.** `platform_default` افتراضٌ يشحنه المنتج **ولم يعتمده إنسان** ولا يحمل اسم معتمِد؛ و`tenant_approved` أودعه صاحب المنشأة باسمه وتاريخه ومصدره؛ و`auditor_signed` وقّعه محاسبٌ قانوني. **ولا يُشحن شيءٌ بالحالة الثالثة أبداً**، والقيد مفروضٌ في المخطّط. / **The approval state — ternary, not binary.** `platform_default` is a default the product ships that **no human approved** and that carries no approver name; `tenant_approved` was deposited by the company under a name, a date and a source; `auditor_signed` was signed by a chartered accountant. **Nothing ever ships in the third state**, and the constraint is enforced in the schema. */
-export type ParameterApproval = "platform_default" | "tenant_approved" | "auditor_signed";
-
 /** صفٌّ في قائمة المراجعة: إصدارٌ لم يُوقَّع بعد ومعه المستندات المُرحَّلة التي استعملته. **وقائمةُ مستنداتٍ فارغة ليست عطلاً**: إصدارٌ لم يُستعمل بعد يبقى محتاجاً إلى التوقيع. / A row in the review list: a version not yet signed together with the posted documents that used it. **An empty document list is not a fault**: a version that has not been used yet still needs a signature. */
 export interface ParameterReviewEntry {
   /** عدد المستندات التي استعملته. / The number of documents that used it. */
@@ -1800,9 +1797,6 @@ export interface ParameterReviewList {
   items: ParameterReviewEntry[];
 }
 
-/** المستوى الذي قُرِّرت عنده القيمة: `platform` يُشحن مع المنتج، و`tenant` أودعته المنشأة. وتجاوزُ المنشأة يسبق افتراضَ المنصّة عند الحلّ. / The level the value was decided at: `platform` ships with the product, `tenant` was deposited by the company. A tenant override wins over the platform default at resolution time. */
-export type ParameterScope = "platform" | "tenant";
-
 /** مستندٌ **مُرحَّل** استعمل هذا الإصدار. والمستند نفسه يحمل لقطةَ الإصدار وقيمَه في قاعدة وحدته، وهذا الصفّ فهرسٌ يجمع المتفرّق في قاعدةٍ واحدة. / A **posted** document that used this version. The document itself carries the version's snapshot and values in its own module's database; this row is an index that gathers the scattered into one database. */
 export interface ParameterUsage {
   /** معرّف المستند داخل وحدته. / The document's identifier within its module. */
@@ -1819,12 +1813,10 @@ export interface ParameterUsage {
 export interface ParameterValue {
   /** المفتاح. / The key. */
   key: string;
-  kind: ParameterValueKind;
+  /** صنفُ القيمة — وهو ما يقرّر حارسها: `rate` كسرٌ عشري بين صفر وواحد، و`money` مبلغٌ بمقياس أربع، و`count` عددٌ صحيح. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The value's kind, which decides its guard: `rate` is a decimal fraction between zero and one, `money` is an amount at scale four, and `count` is a whole number. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  kind: "rate" | "money" | "count";
   value: ParameterAmount;
 }
-
-/** صنفُ القيمة — وهو ما يقرّر حارسها: `rate` كسرٌ عشري بين صفر وواحد، و`money` مبلغٌ بمقياس أربع، و`count` عددٌ صحيح. / The value's kind, which decides its guard: `rate` is a decimal fraction between zero and one, `money` is an amount at scale four, and `count` is a whole number. */
-export type ParameterValueKind = "rate" | "money" | "count";
 
 /** قيمةٌ واحدة في إيداع: مفتاحُها من مفاتيح المجموعة المعلَنة، وقيمتُها نصّاً. / One value in a deposit: its key from the declared set's keys, and its value as a string. */
 export interface ParameterValueRequest {
@@ -1835,7 +1827,8 @@ export interface ParameterValueRequest {
 
 /** إصدارُ معامِلاتٍ كما يخرج من السطح: مستواه، وسريانه، و**حالةُ اعتماده**، ومعتمِده، ومصدره، وقيمُه. و`approvedBy` و`approvedOn` **فارغان بالضبط** في صفّ المنصّة — لم يعتمده إنسان. / A parameter version as the surface returns it: its level, its effective date, its **approval state**, its approver, its source, and its values. `approvedBy` and `approvedOn` are **exactly empty** on a platform row — no human approved it. */
 export interface ParameterVersion {
-  approval: ParameterApproval;
+  /** **حالةُ الاعتماد — ثلاثية لا ثنائية.** `platform_default` افتراضٌ يشحنه المنتج ولم يعتمده إنسان ولا يحمل اسمَ معتمِد؛ و`tenant_approved` أودعه صاحب المنشأة باسمه وتاريخه ومصدره؛ و`auditor_signed` وقّعه محاسبٌ قانوني. ولا يُشحن شيءٌ بالحالة الثالثة أبداً، والقيد مفروضٌ في المخطّط. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / **The approval state — ternary, not binary.** `platform_default` is a default the product ships that no human approved and that carries no approver name; `tenant_approved` was deposited by the company under a name, a date and a source; `auditor_signed` was signed by a chartered accountant. Nothing ever ships in the third state, and the constraint is enforced in the schema. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  approval: "platform_default" | "tenant_approved" | "auditor_signed";
   /** المعتمِد — فارغٌ لافتراض المنصّة وحده. / The approver — empty for the platform default alone. */
   approvedBy: string;
   /** تاريخ الاعتماد بصيغة yyyy-MM-dd، أو فراغٌ لافتراض المنصّة. / The approval date as yyyy-MM-dd, or empty for the platform default. */
@@ -1844,7 +1837,8 @@ export interface ParameterVersion {
   effectiveFrom: string;
   /** المعرّف. / The identifier. */
   id: string;
-  scope: ParameterScope;
+  /** المستوى الذي قُرِّرت عنده القيمة: `platform` يُشحن مع المنتج، و`tenant` أودعته المنشأة — وتجاوزُ المنشأة يسبق افتراضَ المنصّة عند الحلّ. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The level the value was decided at: `platform` ships with the product, `tenant` was deposited by the company — and a tenant override wins over the platform default at resolution time. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  scope: "platform" | "tenant";
   /** رمز المجموعة. / The set's code. */
   setCode: string;
   /** مرجع المصدر. / The source reference. */
@@ -1863,7 +1857,8 @@ export interface ParameterVersionList {
 
 /** إيداعُ إصدارٍ جديد من مجموعة معامِلات على مستوى المنشأة. **المجموعة كاملةً لا بعضها**: قيمُها يسري بعضها ببعض، وإيداعٌ جزئي يُنتج خليطاً من إصدارين لم يعتمده أحد. و`approvedBy` **إنسانٌ لا نظام**، و`sourceRef` غير فارغ بقيدٍ في قاعدة البيانات. / Depositing a new version of a parameter set at the company's level. **The whole set, not part of it**: its values take effect together, and a partial deposit yields a mixture of two versions nobody approved. `approvedBy` is a **human, never the system**, and `sourceRef` is non-empty by a database constraint. */
 export interface ParameterVersionRequest {
-  approval: ParameterApproval;
+  /** حالةُ الاعتماد. و«افتراضُ منصّة» ليس خياراً هنا: يُشحن مع المنتج ولا يُكتب من مسار طلب. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The approval state. 'Platform default' is not a choice here: it ships with the product and is never written from a request path. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  approval: "tenant_approved" | "auditor_signed";
   /** من اعتمد الإصدار — إنسان، لا نظام. / Who approved the version — a human, not the system. */
   approvedBy: string;
   /** تاريخ الاعتماد ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The approval date. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */

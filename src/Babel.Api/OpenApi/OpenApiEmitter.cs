@@ -5874,53 +5874,6 @@ internal static class OpenApiEmitter
             w.WriteEndArray();
         });
 
-        yield return ("ParameterValueKind", static w =>
-        {
-            w.WriteString("type", "string");
-            w.WriteStartArray("enum");
-            w.WriteStringValue("rate");
-            w.WriteStringValue("money");
-            w.WriteStringValue("count");
-            w.WriteEndArray();
-            w.WriteString("description",
-                "صنفُ القيمة — وهو ما يقرّر حارسها: `rate` كسرٌ عشري بين صفر وواحد، و`money` مبلغٌ بمقياس أربع، "
-                + "و`count` عددٌ صحيح. / "
-                + "The value's kind, which decides its guard: `rate` is a decimal fraction between zero and one, `money` is an "
-                + "amount at scale four, and `count` is a whole number.");
-        });
-
-        yield return ("ParameterApproval", static w =>
-        {
-            w.WriteString("type", "string");
-            w.WriteStartArray("enum");
-            w.WriteStringValue("platform_default");
-            w.WriteStringValue("tenant_approved");
-            w.WriteStringValue("auditor_signed");
-            w.WriteEndArray();
-            w.WriteString("description",
-                "**حالةُ الاعتماد — ثلاثية لا ثنائية.** `platform_default` افتراضٌ يشحنه المنتج **ولم يعتمده إنسان** "
-                + "ولا يحمل اسم معتمِد؛ و`tenant_approved` أودعه صاحب المنشأة باسمه وتاريخه ومصدره؛ و`auditor_signed` "
-                + "وقّعه محاسبٌ قانوني. **ولا يُشحن شيءٌ بالحالة الثالثة أبداً**، والقيد مفروضٌ في المخطّط. / "
-                + "**The approval state — ternary, not binary.** `platform_default` is a default the product ships that **no human "
-                + "approved** and that carries no approver name; `tenant_approved` was deposited by the company under a name, a date "
-                + "and a source; `auditor_signed` was signed by a chartered accountant. **Nothing ever ships in the third state**, "
-                + "and the constraint is enforced in the schema.");
-        });
-
-        yield return ("ParameterScope", static w =>
-        {
-            w.WriteString("type", "string");
-            w.WriteStartArray("enum");
-            w.WriteStringValue("platform");
-            w.WriteStringValue("tenant");
-            w.WriteEndArray();
-            w.WriteString("description",
-                "المستوى الذي قُرِّرت عنده القيمة: `platform` يُشحن مع المنتج، و`tenant` أودعته المنشأة. "
-                + "وتجاوزُ المنشأة يسبق افتراضَ المنصّة عند الحلّ. / "
-                + "The level the value was decided at: `platform` ships with the product, `tenant` was deposited by the company. "
-                + "A tenant override wins over the platform default at resolution time.");
-        });
-
         yield return ("ParameterValueRequest", static w =>
         {
             w.WriteString("type", "object");
@@ -5946,7 +5899,11 @@ internal static class OpenApiEmitter
                 + "take effect together, and a partial deposit yields a mixture of two versions nobody approved. `approvedBy` is a "
                 + "**human, never the system**, and `sourceRef` is non-empty by a database constraint.");
             w.WriteStartObject("properties");
-            WriteRefProperty(w, "approval", "ParameterApproval");
+            WriteEnumProperty(w, "approval",
+                "حالةُ الاعتماد. و«افتراضُ منصّة» ليس خياراً هنا: يُشحن مع المنتج ولا يُكتب من مسار طلب.",
+                "The approval state. 'Platform default' is not a choice here: it ships with the product and is never written "
+                + "from a request path.",
+                DepositableApprovalNames);
             WriteStringProperty(w, "approvedBy", "من اعتمد الإصدار — إنسان، لا نظام.", "Who approved the version — a human, not the system.", 200);
             WriteDateProperty(w, "approvedOn", "تاريخ الاعتماد", "The approval date.");
             WriteDateProperty(w, "effectiveFrom", "تاريخ سريان الإصدار", "The date the version takes effect.");
@@ -5968,7 +5925,12 @@ internal static class OpenApiEmitter
                 "قيمةٌ في إصدار، بصنفها كما أُودعت. / A value in a version, with its kind as deposited.");
             w.WriteStartObject("properties");
             WriteStringProperty(w, "key", "المفتاح.", "The key.", 64);
-            WriteRefProperty(w, "kind", "ParameterValueKind");
+            WriteEnumProperty(w, "kind",
+                "صنفُ القيمة — وهو ما يقرّر حارسها: `rate` كسرٌ عشري بين صفر وواحد، و`money` مبلغٌ بمقياس أربع، و`count` "
+                + "عددٌ صحيح.",
+                "The value's kind, which decides its guard: `rate` is a decimal fraction between zero and one, `money` is an "
+                + "amount at scale four, and `count` is a whole number.",
+                ParameterValueKindNames);
             WriteRefProperty(w, "value", "ParameterAmount");
             w.WriteEndObject();
             WriteRequired(w, "key", "kind", "value");
@@ -5985,12 +5947,25 @@ internal static class OpenApiEmitter
                 + "approver, its source, and its values. `approvedBy` and `approvedOn` are **exactly empty** on a platform row — no "
                 + "human approved it.");
             w.WriteStartObject("properties");
-            WriteRefProperty(w, "approval", "ParameterApproval");
+            WriteEnumProperty(w, "approval",
+                "**حالةُ الاعتماد — ثلاثية لا ثنائية.** `platform_default` افتراضٌ يشحنه المنتج ولم يعتمده إنسان ولا يحمل "
+                + "اسمَ معتمِد؛ و`tenant_approved` أودعه صاحب المنشأة باسمه وتاريخه ومصدره؛ و`auditor_signed` وقّعه محاسبٌ "
+                + "قانوني. ولا يُشحن شيءٌ بالحالة الثالثة أبداً، والقيد مفروضٌ في المخطّط.",
+                "**The approval state — ternary, not binary.** `platform_default` is a default the product ships that no human "
+                + "approved and that carries no approver name; `tenant_approved` was deposited by the company under a name, a "
+                + "date and a source; `auditor_signed` was signed by a chartered accountant. Nothing ever ships in the third "
+                + "state, and the constraint is enforced in the schema.",
+                ParameterApprovalNames);
             WriteStringProperty(w, "approvedBy", "المعتمِد — فارغٌ لافتراض المنصّة وحده.", "The approver — empty for the platform default alone.", 200);
             WriteStringProperty(w, "approvedOn", "تاريخ الاعتماد بصيغة yyyy-MM-dd، أو فراغٌ لافتراض المنصّة.", "The approval date as yyyy-MM-dd, or empty for the platform default.", 10);
             WriteDateProperty(w, "effectiveFrom", "تاريخ السريان", "The effective date.");
             WriteStringProperty(w, "id", "المعرّف.", "The identifier.", 36);
-            WriteRefProperty(w, "scope", "ParameterScope");
+            WriteEnumProperty(w, "scope",
+                "المستوى الذي قُرِّرت عنده القيمة: `platform` يُشحن مع المنتج، و`tenant` أودعته المنشأة — وتجاوزُ المنشأة "
+                + "يسبق افتراضَ المنصّة عند الحلّ.",
+                "The level the value was decided at: `platform` ships with the product, `tenant` was deposited by the company — "
+                + "and a tenant override wins over the platform default at resolution time.",
+                ParameterScopeNames);
             WriteStringProperty(w, "setCode", "رمز المجموعة.", "The set's code.", 64);
             WriteStringProperty(w, "sourceRef", "مرجع المصدر.", "The source reference.", 600);
             WriteArrayRefProperty(w, "values", "ParameterValue", "القيم، مرتَّبةً بمفاتيحها.", "The values, ordered by key.");
@@ -9529,6 +9504,21 @@ internal static class OpenApiEmitter
     /// <summary>اسمُ عضوٍ على السلك: أوّلُه صغير وما بعده كما هو.</summary>
     private static string Wire(string member) =>
         char.ToLowerInvariant(member[0]) + member[1..];
+
+    /// <summary>
+    /// حالاتُ اعتماد المعامِل — <b>ثلاثٌ لا اثنتان</b>، كما يقيّدها
+    /// <c>ck_parameter_version_approval</c> في مخطّط النواة.
+    /// </summary>
+    private static readonly string[] ParameterApprovalNames = ["platform_default", "tenant_approved", "auditor_signed"];
+
+    /// <summary>الحالتان اللتان يقبلهما بابُ الإيداع — و«افتراضُ منصّة» ليس منهما.</summary>
+    private static readonly string[] DepositableApprovalNames = ["tenant_approved", "auditor_signed"];
+
+    /// <summary>مستويا تقرير المعامِل.</summary>
+    private static readonly string[] ParameterScopeNames = ["platform", "tenant"];
+
+    /// <summary>أصنافُ قيمة المعامِل — وهي ما يقرّر حارسها.</summary>
+    private static readonly string[] ParameterValueKindNames = ["rate", "money", "count"];
 
     /// <summary>حالات الاشتراك كما يقيّدها <c>ck_sub_state</c> في مخطّط مستوى التحكّم.</summary>
     private static readonly string[] SubscriptionStateNames = ["Active", "Lapsed", "Cancelled"];

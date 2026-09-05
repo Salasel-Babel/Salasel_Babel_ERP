@@ -248,6 +248,7 @@ export const SCREENS: readonly ScreenEntry[] = [
   { path: "/setup/cost-centers", labelKey: "app.nav.costCenters", section: "accounting" },
   { path: "/setup/document-shapes", labelKey: "app.nav.documentShapes", section: "accounting" },
   { path: "/setup/chart-of-accounts", labelKey: "app.nav.chartOfAccounts", section: "accounting" },
+  { path: "/setup/parameters", labelKey: "app.nav.parameters", section: "accounting" },
 ];
 
 /**

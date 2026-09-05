@@ -14,7 +14,7 @@ namespace Babel.Inventory;
 /// </para>
 /// <para>
 /// وللتطوير على جهازٍ محلّي: <c>BABEL_LOCAL_DEV=1</c> — <b>وضعٌ صريحٌ باسمه لا ارتداد</b>
-/// (‏<c>ADR-جديد-the-absent-deployment-value-is-refused-not-guessed</c>).
+/// (‏<c>ADR-0088-the-absent-deployment-value-is-refused-not-guessed</c>).
 /// </para>
 /// </summary>
 public sealed class InventoryOptions

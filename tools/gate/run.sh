@@ -102,7 +102,7 @@ tools/test-tally/run.sh --begin || fail "ختم مجلّد التقارير"
 dotnet test --project tests/Babel.ArchitectureTests/Babel.ArchitectureTests.csproj \
     -c "$configuration" --no-build \
     --report-xunit-trx --results-directory artifacts/test-reports \
-    --minimum-expected-tests 259 --zero-tests-policy strict || fail "اختبارات المعمارية"
+    --minimum-expected-tests 273 --zero-tests-policy strict || fail "اختبارات المعمارية"
 
 # ── ٤ · كل الاختبارات ─────────────────────────────────────────────────────────
 # ‏`--no-build` ليس تسريعاً فحسب: الخطوة ١ هي التي بنت، وبدونها كانت هذه الخطوة
@@ -125,7 +125,7 @@ fi
 step "٤ · كل الاختبارات"
 dotnet test --solution Babel.slnx -c "$configuration" --no-build \
     --report-xunit-trx --results-directory artifacts/test-reports \
-    --minimum-expected-tests 2066 --zero-tests-policy strict || fail "مجموعة الاختبارات"
+    --minimum-expected-tests 2080 --zero-tests-policy strict || fail "مجموعة الاختبارات"
 
 # ── ٤-ب · الحصيلة — ما نُفِّذ فعلاً ────────────────────────────────────────────
 # ‏**لا تقرأ خياراً ولا سطر أمر.** تسأل مُخرَج التشغيل: لكل سطحٍ يعلنه

@@ -1,4 +1,6 @@
 using System.Reflection;
+using Babel.Contracts.Parameters;
+using Babel.Core.Parameters;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 using Npgsql;
@@ -65,8 +67,68 @@ internal static class CoreSchemaDeployer
             await carry.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
         }
 
-        await using NpgsqlCommand grants = new(Script("CoreGrants.sql"), connection);
-        await grants.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+        await using (NpgsqlCommand grants = new(Script("CoreGrants.sql"), connection))
+        {
+            await grants.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        await SeedPlatformDefaultsAsync(connection, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// يبذر افتراضات المنصّة — <b>بدور المالك، وبعد الصلاحيات، وآمنَ التكرار</b>.
+    /// <para>
+    /// <b>ولماذا هنا لا في الهجرة:</b> الهجرة تصف <b>الشكل</b>، وهذه <b>بيانات</b>.
+    /// وافتراضٌ جديد يُشحن غداً لمجموعةٍ جديدة يجب أن يبلغ نسخةً قائمة <b>بلا هجرة
+    /// مخطّط</b> — فالنشر هو ما يحمله، لا تغييرُ جدول. والمعرّفات ثابتة في ملفّ
+    /// البيانات، فنشرٌ ثانٍ لا يكتب صفّاً ثانياً.
+    /// </para>
+    /// <para>
+    /// <b>ولماذا بدور المالك:</b> صفُّ المنصّة هو الصفّ الوحيد الذي لا يحمل اسم
+    /// معتمِد. ولو كتبه دورُ التطبيق لصار بوسع مسار طلبٍ أن يخلق «افتراضَ منصّة»
+    /// لم تشحنه المنصّة.
+    /// </para>
+    /// </summary>
+    /// <param name="connection">اتصال المالك، مفتوحاً.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    private static async Task SeedPlatformDefaultsAsync(
+        NpgsqlConnection connection, CancellationToken cancellationToken)
+    {
+        const string HeaderSql = @"
+            insert into core.parameter_version
+                (version_id, tenant_id, set_code, scope, effective_from,
+                 approval, approved_by, approved_on, source_ref, deposited_at)
+            values ($1, $2, $3, 'platform', $4, 'platform_default', '', null, $5, now())
+            on conflict do nothing";
+
+        const string ValueSql = @"
+            insert into core.parameter_value (version_id, key, kind, value)
+            values ($1, $2, $3, $4)
+            on conflict do nothing";
+
+        foreach (ParameterVersionView version in PlatformDefaults.All)
+        {
+            await using (NpgsqlCommand header = new(HeaderSql, connection))
+            {
+                header.Parameters.AddWithValue(version.Id);
+                header.Parameters.AddWithValue(PlatformDefaults.PlatformTenant);
+                header.Parameters.AddWithValue(version.SetCode);
+                header.Parameters.AddWithValue(version.EffectiveFrom);
+                header.Parameters.AddWithValue(version.SourceRef);
+                await header.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+            }
+
+            foreach (ParameterValueView value in version.Values)
+            {
+                await using NpgsqlCommand row = new(ValueSql, connection);
+
+                row.Parameters.AddWithValue(version.Id);
+                row.Parameters.AddWithValue(value.Key);
+                row.Parameters.AddWithValue(ParameterApprovalInfo.TokenOf(value.Kind));
+                row.Parameters.AddWithValue(value.Value);
+                await row.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+            }
+        }
     }
 
     /// <summary>

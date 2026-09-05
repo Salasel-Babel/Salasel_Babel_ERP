@@ -56,6 +56,15 @@ internal sealed class CoreDbContext(DbContextOptions<CoreDbContext> options) : D
     /// <summary>أحداث النشاط على محور المستخدم.</summary>
     public DbSet<UserActivityRow> UserActivity => Set<UserActivityRow>();
 
+    /// <summary>ترويسات إصدارات المعامِلات — تُضاف ولا تُعدَّل.</summary>
+    public DbSet<ParameterVersionRow> ParameterVersions => Set<ParameterVersionRow>();
+
+    /// <summary>قيم الإصدارات — وحدة الإصدار المجموعة لا القيمة المفردة.</summary>
+    public DbSet<ParameterValueRow> ParameterValues => Set<ParameterValueRow>();
+
+    /// <summary>سجلّ استعمال الإصدارات في المستندات المُرحَّلة.</summary>
+    public DbSet<ParameterUsageRow> ParameterUsage => Set<ParameterUsageRow>();
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -320,6 +329,130 @@ internal sealed class CoreDbContext(DbContextOptions<CoreDbContext> options) : D
 
             entity.HasIndex(row => new { row.TenantId, row.OccurredAt })
                   .HasDatabaseName("ix_user_activity_tenant_occurred");
+        });
+
+        // ── المعامِلات: إصدارٌ مؤرَّخُ السريان، وقيمُه، ومن استعمله ─────────────
+        // ثلاثةُ جداولٍ في قاعدةٍ **واحدة**، فالمفتاح الأجنبي بينها ممكنٌ ومستعمَل.
+        // وما ليس ممكناً هو مفتاحٌ من مستندٍ في `babel_purchasing` إلى إصدارٍ هنا —
+        // ولذلك يحمل المستند **لقطته** لا مفتاحاً (ADR الجديد §3).
+
+        modelBuilder.Entity<ParameterVersionRow>(entity =>
+        {
+            entity.ToTable("parameter_version", t =>
+            {
+                t.HasCheckConstraint("ck_parameter_version_scope", "scope in ('platform','tenant')");
+                t.HasCheckConstraint(
+                    "ck_parameter_version_approval",
+                    "approval in ('platform_default','tenant_approved','auditor_signed')");
+                t.HasCheckConstraint("ck_parameter_version_set_shape", "set_code ~ '^[a-z][a-z0-9_.]{0,63}$'");
+                t.HasCheckConstraint("ck_parameter_version_source_not_blank", "length(btrim(source_ref)) > 0");
+
+                // ‏**افتراضُ المنصّة لا يكون معتمَداً، والمعتمَدُ لا يكون افتراضَ منصّة.**
+                // وهو القيد الذي يجعل «لا يُشحن شيءٌ بتوقيع محاسب» ثابتةً في المخطّط:
+                // الصفّ المشحون مستواه `platform`، وحالتُه لا تكون إلّا `platform_default`.
+                t.HasCheckConstraint(
+                    "ck_parameter_version_scope_matches_approval",
+                    "(scope = 'platform') = (approval = 'platform_default')");
+
+                // وصفّ المنصّة يحمل المعرّف الصفري، وصفّ المنشأة يحمل معرّفها.
+                t.HasCheckConstraint(
+                    "ck_parameter_version_tenant_matches_scope",
+                    "(scope = 'tenant') = (tenant_id <> '00000000-0000-0000-0000-000000000000')");
+
+                // ‏**«من اعتمد الصفّ — إنسان، لا نظام»** (‏HrRows.cs). فالاسم مكتوبٌ
+                // بالضبط حين يوجد اعتماد، وفارغٌ بالضبط حين لا يوجد — وهو شكل قيد
+                // `ck_cost_center_reason_matches_state` نفسه لا نمطٌ ثانٍ.
+                t.HasCheckConstraint(
+                    "ck_parameter_version_approver_matches_approval",
+                    "(approval <> 'platform_default') = (length(btrim(approved_by)) > 0)");
+                t.HasCheckConstraint(
+                    "ck_parameter_version_approved_on_matches_approval",
+                    "(approval <> 'platform_default') = (approved_on is not null)");
+            });
+
+            entity.HasKey(row => row.Id).HasName("pk_parameter_version");
+            entity.Property(row => row.Id).HasColumnName("version_id");
+            entity.Property(row => row.TenantId).HasColumnName("tenant_id");
+            entity.Property(row => row.SetCode).HasColumnName("set_code").HasMaxLength(64).IsRequired();
+            entity.Property(row => row.Scope).HasColumnName("scope").HasMaxLength(16).IsRequired();
+            entity.Property(row => row.EffectiveFrom).HasColumnName("effective_from");
+            entity.Property(row => row.Approval).HasColumnName("approval").HasMaxLength(32).IsRequired();
+            entity.Property(row => row.ApprovedBy)
+                  .HasColumnName("approved_by").HasMaxLength(200).IsRequired().HasDefaultValue(string.Empty);
+            entity.Property(row => row.ApprovedOn).HasColumnName("approved_on");
+            entity.Property(row => row.SourceRef).HasColumnName("source_ref").HasMaxLength(600).IsRequired();
+            entity.Property(row => row.DepositedAt).HasColumnName("deposited_at");
+
+            // ‏**الإيداع يرفض التكرار على (المستوى · المفتاح · تاريخ السريان).** والذرّية
+            // فهرسٌ فريد في PostgreSQL لا فحصٌ يسبق كتابةً — والفحص السابق سباقٌ لا حارس.
+            entity.HasIndex(row => new { row.Scope, row.TenantId, row.SetCode, row.EffectiveFrom })
+                  .IsUnique()
+                  .HasDatabaseName("ux_parameter_version_level_set_effective");
+
+            // واستعلامُ «ما السارِي لهذه المجموعة في هذا التاريخ؟» هو استعلامُ كل التقاط.
+            entity.HasIndex(row => new { row.TenantId, row.SetCode, row.EffectiveFrom })
+                  .HasDatabaseName("ix_parameter_version_tenant_set_effective");
+        });
+
+        modelBuilder.Entity<ParameterValueRow>(entity =>
+        {
+            entity.ToTable("parameter_value", t =>
+            {
+                t.HasCheckConstraint("ck_parameter_value_kind", "kind in ('rate','money','count')");
+                t.HasCheckConstraint("ck_parameter_value_key_shape", "key ~ '^[a-z][a-z0-9_]{0,63}$'");
+                t.HasCheckConstraint("ck_parameter_value_not_negative", "value >= 0");
+
+                // ‏**النسبة كسرٌ عشري لا مئوية** — والحارس في المخطّط لا في الخدمة وحدها.
+                // قيمةٌ تُكتب 15 بدل 0.15 تضاعف الوعاء خمس عشرة مرّة، ولا يمسكها توازنٌ
+                // ولا سلسلةُ إحكام: القيد الناتج متوازن تماماً.
+                t.HasCheckConstraint(
+                    "ck_parameter_value_rate_is_a_fraction",
+                    "kind <> 'rate' or value <= 1");
+            });
+
+            entity.HasKey(row => new { row.VersionId, row.Key }).HasName("pk_parameter_value");
+            entity.Property(row => row.VersionId).HasColumnName("version_id");
+            entity.Property(row => row.Key).HasColumnName("key").HasMaxLength(64).IsRequired();
+            entity.Property(row => row.Kind).HasColumnName("kind").HasMaxLength(16).IsRequired();
+            entity.Property(row => row.Value).HasColumnName("value").HasColumnType("numeric(28,10)");
+
+            entity.HasOne<ParameterVersionRow>()
+                  .WithMany()
+                  .HasForeignKey(row => row.VersionId)
+                  .HasConstraintName("fk_parameter_value_version")
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<ParameterUsageRow>(entity =>
+        {
+            entity.ToTable("parameter_usage", t =>
+            {
+                t.HasCheckConstraint("ck_parameter_usage_module", "module >= 1");
+                t.HasCheckConstraint(
+                    "ck_parameter_usage_document_type_shape",
+                    "document_type ~ '^[A-Z][A-Z0-9_]{0,31}$'");
+            });
+
+            entity.HasKey(row => row.SequenceNo).HasName("pk_parameter_usage");
+            entity.Property(row => row.SequenceNo).HasColumnName("sequence_no").ValueGeneratedOnAdd();
+            entity.Property(row => row.TenantId).HasColumnName("tenant_id");
+            entity.Property(row => row.VersionId).HasColumnName("version_id");
+            entity.Property(row => row.Module).HasColumnName("module");
+            entity.Property(row => row.DocumentType).HasColumnName("document_type").HasMaxLength(32).IsRequired();
+            entity.Property(row => row.DocumentId).HasColumnName("document_id");
+            entity.Property(row => row.PostedOn).HasColumnName("posted_on");
+            entity.Property(row => row.RecordedAt).HasColumnName("recorded_at");
+
+            // ‏**الترحيل آمنُ التكرار**: ترحيلٌ ثانٍ للمستند نفسه لا يكتب صفّاً ثانياً.
+            entity.HasIndex(row => new { row.TenantId, row.VersionId, row.Module, row.DocumentType, row.DocumentId })
+                  .IsUnique()
+                  .HasDatabaseName("ux_parameter_usage_document");
+
+            entity.HasOne<ParameterVersionRow>()
+                  .WithMany()
+                  .HasForeignKey(row => row.VersionId)
+                  .HasConstraintName("fk_parameter_usage_version")
+                  .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<CapabilityProfileDefaultRow>(entity =>

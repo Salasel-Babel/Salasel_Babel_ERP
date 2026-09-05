@@ -136,6 +136,29 @@ begin
                                      core.module_usage,
                                      core.user_activity from %I', v_role);
 
+    -- ── المعامِلات: **تُقرأ ويُلحَق بها، ولا شيء غير ذلك** ─────────────────
+    -- وهي كسجلّ التدقيق لا كمركز التكلفة، والفرق مُعلَن: مركزُ التكلفة إعدادٌ جارٍ
+    -- يُحرَّر، وإصدارُ المعامِل **شهادةٌ على ما كان سارياً** حين رُحِّل مستند.
+    --
+    --   · لا UPDATE — تغييرُ نسبةٍ في صفٍّ قديم يُعيد كتابة الماضي في كل مستندٍ
+    --     يقرأ الجدول بدل لقطته. وهو العطل الذي وُجدت هذه الخدمة كلُّها لمنعه.
+    --
+    --   · لا DELETE ولا TRUNCATE — وصفُّ الاستعمال **هو** الشاهد على أن مستنداً
+    --     مُرحَّلاً استعمل إصداراً؛ حذفُه إتلافُ الشاهد وحده، فيبقى الإصدار يبدو
+    --     غير مستعمَل وقد بُني عليه قيد.
+    --
+    -- ‏**وافتراضُ المنصّة لا يُكتب من هنا أصلاً**: يبذره ناشر المخطّط بدور المالك من
+    -- ‏`data/parameters/platform-defaults.json`. ودورُ التطبيق يملك INSERT، لكن الخدمة
+    -- هي بابُه الوحيد وهي تكتب مستوى المستأجر حصراً — والمخطّط يُسند ذلك بقيدٍ يمنع
+    -- صفَّ منصّةٍ يحمل معرّف منشأة (‏ck_parameter_version_tenant_matches_scope).
+    execute format('grant select, insert on core.parameter_version,
+                                     core.parameter_value,
+                                     core.parameter_usage to %I', v_role);
+    execute format('revoke update, delete, truncate on core.parameter_version,
+                                     core.parameter_value,
+                                     core.parameter_usage from %I', v_role);
+
+
     -- ── وجدول تاريخ الهجرات يُقرأ ولا يُكتب: الهجرة ملك المالك ────────────
     execute format('grant select on core."__EFMigrationsHistory" to %I', v_role);
     execute format('revoke insert, update, delete, truncate on core."__EFMigrationsHistory" from %I', v_role);

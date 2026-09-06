@@ -1,6 +1,7 @@
 using Babel.Core.Application;
 using Babel.Core.Entitlement;
 using Babel.Purchasing.Persistence;
+using Babel.Core.CompanySetup;
 using Babel.SharedKernel;
 using Microsoft.EntityFrameworkCore;
 
@@ -17,7 +18,7 @@ public sealed class PurchaseOrderService : IApplicationService
 
     private readonly IEntitlementEnforcer _enforcer;
     private readonly PurchasingDbContext _database;
-    private readonly CurrencyCode _currency;
+    private readonly ICompanyMoneyResolver _company;
 
     /// <summary>ينشئ الخدمة.</summary>
     /// <param name="enforcer">منفِّذ الاستحقاق.</param>
@@ -28,7 +29,7 @@ public sealed class PurchaseOrderService : IApplicationService
         ArgumentNullException.ThrowIfNull(runtime);
         _enforcer = enforcer;
         _database = runtime.Database;
-        _currency = CurrencyCode.FromString(runtime.Options.CompanyCurrency);
+        _company = runtime.Company;
     }
 
     /// <summary>يُنشئ طلب شراء داخلياً.</summary>
@@ -54,6 +55,12 @@ public sealed class PurchaseOrderService : IApplicationService
             return Result<PurchasingDocumentView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<PurchasingDocumentView>.Failure(money.Errors);
+        }
+
         if (draft.Lines.Count == 0)
         {
             return Result<PurchasingDocumentView>.Failure(PurchasingErrors.NoLines);
@@ -66,7 +73,7 @@ public sealed class PurchaseOrderService : IApplicationService
             return Result<PurchasingDocumentView>.Failure(PurchasingErrors.DuplicateNumber(draft.Number));
         }
 
-        (decimal net, decimal tax) = Totals(draft.Lines);
+        (decimal net, decimal tax) = Totals(draft.Lines, money.Value);
 
         PurchaseRequestRow row = new()
         {
@@ -80,10 +87,10 @@ public sealed class PurchaseOrderService : IApplicationService
         };
 
         _database.Requests.Add(row);
-        AddLines(tenant, LineOwner.Request, row.Id, draft.Lines);
+        AddLines(tenant, LineOwner.Request, row.Id, draft.Lines, money.Value);
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        return Result<PurchasingDocumentView>.Success(View(row.Id, row.Number, row.State, net, tax));
+        return Result<PurchasingDocumentView>.Success(View(row.Id, row.Number, row.State, net, tax, money.Value));
     }
 
     /// <summary>يعتمد طلب شراء.</summary>
@@ -107,6 +114,12 @@ public sealed class PurchaseOrderService : IApplicationService
             return Result<PurchasingDocumentView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<PurchasingDocumentView>.Failure(money.Errors);
+        }
+
         PurchaseRequestRow? row = await _database.Requests
             .FirstOrDefaultAsync(entity => entity.TenantId == tenant.Value && entity.Id == requestId, cancellationToken)
             .ConfigureAwait(false);
@@ -126,7 +139,7 @@ public sealed class PurchaseOrderService : IApplicationService
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         return Result<PurchasingDocumentView>.Success(
-            View(row.Id, row.Number, row.State, row.EstimatedTotal, 0m));
+            View(row.Id, row.Number, row.State, row.EstimatedTotal, 0m, money.Value));
     }
 
     /// <summary>يُنشئ أمر شراء، اختيارياً من طلب معتمد.</summary>
@@ -154,13 +167,19 @@ public sealed class PurchaseOrderService : IApplicationService
             return Result<PurchasingDocumentView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<PurchasingDocumentView>.Failure(money.Errors);
+        }
+
         if (draft.Lines.Count == 0)
         {
             return Result<PurchasingDocumentView>.Failure(PurchasingErrors.NoLines);
         }
 
         // سعر الوحدة يحمل عملته، وكان يُقرأ رقماً وتُكتب عملة المنشأة فوقه.
-        Result uniform = EnsureCompanyCurrency(draft.Lines);
+        Result uniform = EnsureCompanyCurrency(draft.Lines, money.Value);
         if (uniform.IsFailure)
         {
             return Result<PurchasingDocumentView>.Failure(uniform.Errors);
@@ -198,7 +217,7 @@ public sealed class PurchaseOrderService : IApplicationService
             return Result<PurchasingDocumentView>.Failure(PurchasingErrors.DuplicateNumber(draft.Number));
         }
 
-        (decimal net, decimal tax) = Totals(draft.Lines);
+        (decimal net, decimal tax) = Totals(draft.Lines, money.Value);
 
         PurchaseOrderRow row = new()
         {
@@ -209,7 +228,7 @@ public sealed class PurchaseOrderService : IApplicationService
             RequestId = requestId,
             OrderedOn = draft.OrderedOn,
             State = PurchasingDocumentState.Approved,
-            CurrencyCode = _currency.Value,
+            CurrencyCode = money.Value.Currency.Value,
             WarehouseId = draft.WarehouseId,
             CostCenterId = draft.CostCenterId,
             NetTotal = net,
@@ -218,10 +237,10 @@ public sealed class PurchaseOrderService : IApplicationService
         };
 
         _database.Orders.Add(row);
-        AddLines(tenant, LineOwner.Order, row.Id, draft.Lines);
+        AddLines(tenant, LineOwner.Order, row.Id, draft.Lines, money.Value);
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        return Result<PurchasingDocumentView>.Success(View(row.Id, row.Number, row.State, net, tax));
+        return Result<PurchasingDocumentView>.Success(View(row.Id, row.Number, row.State, net, tax, money.Value));
     }
 
     /// <summary>
@@ -252,6 +271,12 @@ public sealed class PurchaseOrderService : IApplicationService
             return Result<PurchasingDocumentView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<PurchasingDocumentView>.Failure(money.Errors);
+        }
+
         PurchaseOrderRow? order = await _database.Orders
             .AsNoTracking()
             .FirstOrDefaultAsync(row => row.TenantId == tenant.Value && row.Id == orderId, cancellationToken)
@@ -260,7 +285,7 @@ public sealed class PurchaseOrderService : IApplicationService
         return order is null
             ? Result<PurchasingDocumentView>.Failure(PurchasingErrors.DocumentNotFound(OrderDocument, orderId))
             : Result<PurchasingDocumentView>.Success(
-                View(order.Id, order.Number, order.State, order.NetTotal, order.TaxTotal));
+                View(order.Id, order.Number, order.State, order.NetTotal, order.TaxTotal, money.Value));
     }
 
     /// <summary>يقرأ سطور أمر شراء — معرّفات السطور هي مدخل المطابقة الثلاثية.</summary>
@@ -284,6 +309,12 @@ public sealed class PurchaseOrderService : IApplicationService
             return Result<IReadOnlyList<PurchaseLineView>>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<IReadOnlyList<PurchaseLineView>>.Failure(money.Errors);
+        }
+
         List<PurchaseLineRow> lines = await _database.Lines
             .AsNoTracking()
             .Where(row => row.TenantId == tenant.Value && row.OwnerType == LineOwner.Order && row.OwnerId == orderId)
@@ -293,10 +324,10 @@ public sealed class PurchaseOrderService : IApplicationService
 
         return Result<IReadOnlyList<PurchaseLineView>>.Success(
             [.. lines.Select(line => new PurchaseLineView(
-                line.Id, line.LineNo, line.ItemId, line.Quantity, line.Unit, Money.Of(line.UnitPrice, _currency)))]);
+                line.Id, line.LineNo, line.ItemId, line.Quantity, line.Unit, Money.Of(line.UnitPrice, money.Value.Currency)))]);
     }
 
-    internal static (decimal Net, decimal Tax) Totals(IReadOnlyList<PurchaseLineDraft> lines)
+    internal static (decimal Net, decimal Tax) Totals(IReadOnlyList<PurchaseLineDraft> lines, CompanyMoney money)
     {
         decimal net = 0m;
         decimal tax = 0m;
@@ -304,7 +335,7 @@ public sealed class PurchaseOrderService : IApplicationService
         foreach (PurchaseLineDraft line in lines)
         {
             (decimal lineNet, decimal lineTax) = LineMath.Line(
-                line.Quantity, line.UnitPrice.Amount, 0m, line.TaxRate, line.TaxClassification);
+                line.Quantity, line.UnitPrice.Amount, 0m, line.TaxRate, line.TaxClassification, money);
             net += lineNet;
             tax += lineTax;
         }
@@ -312,13 +343,13 @@ public sealed class PurchaseOrderService : IApplicationService
         return (net, tax);
     }
 
-    internal void AddLines(TenantId tenant, string ownerType, Guid ownerId, IReadOnlyList<PurchaseLineDraft> lines)
+    internal void AddLines(TenantId tenant, string ownerType, Guid ownerId, IReadOnlyList<PurchaseLineDraft> lines, CompanyMoney money)
     {
         for (int index = 0; index < lines.Count; index++)
         {
             PurchaseLineDraft line = lines[index];
             (decimal lineNet, decimal lineTax) = LineMath.Line(
-                line.Quantity, line.UnitPrice.Amount, 0m, line.TaxRate, line.TaxClassification);
+                line.Quantity, line.UnitPrice.Amount, 0m, line.TaxRate, line.TaxClassification, money);
 
             _database.Lines.Add(new PurchaseLineRow
             {
@@ -345,27 +376,28 @@ public sealed class PurchaseOrderService : IApplicationService
 
     /// <summary>كل سعر وحدة بعملة المنشأة، والخلط مرفوض برسالة تُسمّي العملتين.</summary>
     /// <param name="lines">السطور.</param>
-    private Result EnsureCompanyCurrency(IReadOnlyList<PurchaseLineDraft> lines)
+    /// <param name="money">عملة المنشأة ووحدتها الصغرى (ADR-0089).</param>
+    private static Result EnsureCompanyCurrency(IReadOnlyList<PurchaseLineDraft> lines, CompanyMoney money)
     {
         foreach (PurchaseLineDraft line in lines)
         {
-            if (!line.UnitPrice.Currency.Equals(_currency))
+            if (!line.UnitPrice.Currency.Equals(money.Currency))
             {
                 return Result.Failure(
-                    PurchasingErrors.CurrencyMismatch(_currency, line.UnitPrice.Currency, "lines.unitPrice"));
+                    PurchasingErrors.CurrencyMismatch(money.Currency, line.UnitPrice.Currency, "lines.unitPrice"));
             }
         }
 
         return Result.Success();
     }
 
-    private PurchasingDocumentView View(Guid id, string number, string state, decimal net, decimal tax) => new(
+    private static PurchasingDocumentView View(Guid id, string number, string state, decimal net, decimal tax, CompanyMoney money) => new(
         id,
         number,
         state,
         new DocumentTotals(
-            Money.Of(net, _currency),
-            Money.Of(tax, _currency),
-            Money.Of(net + tax, _currency)),
+            Money.Of(net, money.Currency),
+            Money.Of(tax, money.Currency),
+            Money.Of(net + tax, money.Currency)),
         null);
 }

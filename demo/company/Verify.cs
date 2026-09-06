@@ -130,9 +130,10 @@ internal static class Verify
         // الحالّ نفسه للوحدتين: قاعدة الحلّ واحدة في النواة، ونسخةٌ ثانية منها هي
         // الشيء الذي وُجدت ICostCenterResolver لمنعه (ADR-0026).
         CostCenterResolver costCentres = new(setupStore);
+        CompanyMoneyResolver companyMoney = new(setupStore);
 
-        using SalesRuntime sales = new(settings.SalesOwner, costCentres);
-        using PurchasingRuntime purchasing = new(settings.PurchasingOwner, costCentres);
+        using SalesRuntime sales = new(settings.SalesOwner, costCentres, companyMoney);
+        using PurchasingRuntime purchasing = new(settings.PurchasingOwner, costCentres, companyMoney);
 
         DateOnly asOf = new(settings.FiscalYear, 8, 31);
 
@@ -179,7 +180,7 @@ internal static class Verify
 
         Say.Require(bought.IsSuccess, "شراء وحدة العقارات للإثبات", Describe(bought));
 
-        using RealEstateRuntime realEstate = new(settings.RealEstateOwner, costCentres);
+        using RealEstateRuntime realEstate = new(settings.RealEstateOwner, costCentres, companyMoney);
         TenantArrearsService tenantArrears = new(
             enforcer, realEstate, new ControlPoint(settings.Ledger.AppConnectionString));
 

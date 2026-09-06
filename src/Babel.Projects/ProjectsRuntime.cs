@@ -19,16 +19,19 @@ public sealed class ProjectsRuntime : IDisposable
     /// <summary>ينشئ الموارد من الإعدادات.</summary>
     /// <param name="options">إعدادات الوحدة.</param>
     /// <param name="costCenters">
+    /// <param name="company">عملة المنشأة ووحدتها الصغرى — من صفّ التأسيس (ADR-0089).</param>
     /// حالُّ مركز التكلفة من النواة. <b>بوّابة الترحيل تسأله قبل أن تبني طلباً</b>
     /// (‏ADR-0026): بلا حقن المركز يرفض المُخطِّط <b>كل</b> سطر، ويرفض قيدُ قاعدة
     /// البيانات ما نجا منه.
     /// </param>
-    public ProjectsRuntime(ProjectsOptions options, ICostCenterResolver costCenters)
+    public ProjectsRuntime(ProjectsOptions options, ICostCenterResolver costCenters, ICompanyMoneyResolver company)
     {
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(costCenters);
+        ArgumentNullException.ThrowIfNull(company);
         Options = options;
         CostCenters = costCenters;
+        Company = company;
         _database = Build(options);
     }
 
@@ -36,6 +39,9 @@ public sealed class ProjectsRuntime : IDisposable
 
     /// <summary>حالُّ مركز التكلفة — يُمرَّر إلى بوّابة الترحيل ولا يُقرأ في مكان آخر.</summary>
     internal ICostCenterResolver CostCenters { get; }
+
+    /// <summary>عملة المنشأة ووحدتها الصغرى — من صفّ التأسيس، لكلّ نداء (ADR-0089).</summary>
+    internal ICompanyMoneyResolver Company { get; }
 
     internal ProjectsDbContext Database => _database;
 

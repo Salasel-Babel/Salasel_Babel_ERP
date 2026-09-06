@@ -34,7 +34,8 @@ internal static class FoundedTenants
                 CostCenters: CostCenterPlan.One,
                 FirstCostCenterNameAr: null,
                 FirstCostCenterTranslations: null,
-                DecimalPlaces: 2);
+                DecimalPlaces: 2,
+                CurrencyCode: "SAR");
 
             Result<FoundedCompany> founded = FoundedCompany.Found(tenant, draft);
 
@@ -57,6 +58,10 @@ internal static class FoundedTenants
     /// <param name="tenants">المنشآت.</param>
     public static ICostCenterResolver ResolverFor(params TenantId[] tenants)
         => new CostCenterResolver(StoreFor(tenants));
+
+    /// <summary>عملة منشآت الاختبار — من صفّ تأسيسها لا من إعداد (ADR-0089).</summary>
+    public static ICompanyMoneyResolver MoneyFor(params TenantId[] tenants)
+        => new CompanyMoneyResolver(StoreFor(tenants));
 
     /// <summary>
     /// رمز المركز الافتراضي لأول مركز في أي منشأة — <c>cc.001</c>.

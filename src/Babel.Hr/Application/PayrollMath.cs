@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using Babel.SharedKernel;
 
 namespace Babel.Hr.Application;
 
@@ -13,7 +14,7 @@ namespace Babel.Hr.Application;
 internal static class PayrollMath
 {
     /// <summary>المقياس القانوني للمبالغ في كل النطاق — أربع خانات.</summary>
-    public const int MoneyScale = 4;
+    public const int MoneyScale = Money.CanonicalScale;
 
     /// <summary>
     /// يخفض ناتج <c>وعاء × نسبة</c> إلى المقياس القانوني.

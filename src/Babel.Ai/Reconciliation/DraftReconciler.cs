@@ -1,6 +1,7 @@
 using System.Globalization;
 using Babel.Ai.Capture;
 using Babel.Contracts.Capture;
+using Babel.Core.CompanySetup;
 using Babel.SharedKernel;
 
 namespace Babel.Ai.Reconciliation;
@@ -20,11 +21,13 @@ namespace Babel.Ai.Reconciliation;
 /// </summary>
 public static class DraftReconciler
 {
-    /// <summary>خانتان: الهللة أصغر وحدة نقدية، والتقريب سياسة معلنة لا صدفة.</summary>
-    public const int Halalas = 2;
-
-    /// <summary>يقرّب إلى الهللة، والنصف يبتعد عن الصفر — نفس سياسة وحدة المشتريات.</summary>
-    public static decimal Round(decimal value) => decimal.Round(value, Halalas, MidpointRounding.AwayFromZero);
+    /// <summary>
+    /// يقرّب إلى الوحدة الصغرى لعملة المنشأة، والنصف يبتعد عن الصفر — نفس سياسة وحدة
+    /// المشتريات. ولا «هللة» مكتوبة هنا: عددُ الخانات من صفّ التأسيس (ADR-0089).
+    /// </summary>
+    /// <param name="value">القيمة.</param>
+    /// <param name="money">عملة المنشأة.</param>
+    public static decimal Round(decimal value, CompanyMoney money) => money.Round(value);
 
     /// <summary>
     /// رتبة الثقة بالمصدر. تُستعمل لتسمية <b>المشتبه به</b> حين يختلف رقمان:
@@ -50,7 +53,8 @@ public static class DraftReconciler
     /// يطابق المسوّدة حسابياً ويعيد ملاحظاتها مرتَّبة. القائمة الفارغة تعني: الحساب متّسق.
     /// </summary>
     /// <param name="draft">المسوّدة.</param>
-    public static IReadOnlyList<ReconciliationFinding> Reconcile(CapturedInvoiceDraft draft)
+    /// <param name="money">عملة المنشأة ووحدتها الصغرى (ADR-0089).</param>
+    public static IReadOnlyList<ReconciliationFinding> Reconcile(CapturedInvoiceDraft draft, CompanyMoney money)
     {
         ArgumentNullException.ThrowIfNull(draft);
 
@@ -59,7 +63,7 @@ public static class DraftReconciler
         // ── 1 · كل سطر: الكمية × السعر مقابل صافي السطر المقروء ────────────────
         foreach (CapturedInvoiceLine line in draft.Lines)
         {
-            decimal extension = Round(line.Quantity.Value * line.UnitPrice.Value);
+            decimal extension = Round(line.Quantity.Value * line.UnitPrice.Value, money);
             if (extension != line.LineNet.Value)
             {
                 findings.Add(LineExtension(line, extension));
@@ -67,7 +71,7 @@ public static class DraftReconciler
         }
 
         // ── 2 · مجموع السطور مقابل الصافي ──────────────────────────────────────
-        decimal lineSum = Round(draft.Lines.Sum(static line => line.LineNet.Value));
+        decimal lineSum = Round(draft.Lines.Sum(static line => line.LineNet.Value), money);
         if (draft.Lines.Count > 0 && lineSum != draft.Net.Value)
         {
             string suspect = Weakest(
@@ -89,7 +93,7 @@ public static class DraftReconciler
         }
 
         // ── 3 · الضريبة عند النسبة المُعلنة ────────────────────────────────────
-        decimal taxAtRate = Round(draft.Net.Value * draft.TaxRate.Value);
+        decimal taxAtRate = Round(draft.Net.Value * draft.TaxRate.Value, money);
         if (taxAtRate != draft.TaxTotal.Value)
         {
             string suspect = Weakest(
@@ -114,7 +118,7 @@ public static class DraftReconciler
         }
 
         // ── 4 · الصافي + الضريبة مقابل الإجمالي ────────────────────────────────
-        decimal computedGross = Round(draft.Net.Value + draft.TaxTotal.Value);
+        decimal computedGross = Round(draft.Net.Value + draft.TaxTotal.Value, money);
         if (computedGross != draft.GrossTotal.Value)
         {
             string suspect = Weakest(

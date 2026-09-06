@@ -82,24 +82,20 @@ internal sealed class Seed : IDisposable
             options.AppConnectionString = settings.Ledger.AppConnectionString;
             options.OwnerConnectionString = settings.Ledger.OwnerConnectionString;
             options.AppRole = settings.Ledger.AppRole;
-            options.CompanyCurrency = settings.Ledger.CompanyCurrency;
         });
         services.AddBabelSales(options =>
         {
             options.ConnectionString = settings.SalesOwner.ConnectionString;
-            options.CompanyCurrency = settings.Ledger.CompanyCurrency;
         });
         services.AddBabelPurchasing(options =>
         {
             options.ConnectionString = settings.PurchasingOwner.ConnectionString;
-            options.CompanyCurrency = settings.Ledger.CompanyCurrency;
         });
         // ‏SalesInvoiceService تطلب IInventoryValuation منذ ADR-0039، ولا يسجّلها إلا
         // AddBabelInventory. وغيابها هنا لا يُكتشف بالبناء بل عند أول تركيب حقيقي.
         services.AddBabelInventory(options =>
         {
             options.ConnectionString = settings.InventoryOwner.ConnectionString;
-            options.CompanyCurrency = settings.Ledger.CompanyCurrency;
         });
 
         _provider = services.BuildServiceProvider();
@@ -124,7 +120,12 @@ internal sealed class Seed : IDisposable
 
     private TenantId Tenant => new(_settings.Company);
 
-    private CurrencyCode Currency => CurrencyCode.FromString(_settings.Ledger.CompanyCurrency);
+    private CompanyMoney _money;
+
+    /// <summary>عملة المنشأة — من صفّ تأسيسها لا من إعداد (ADR-0089)، ولا تُقرأ قبل التأسيس.</summary>
+    private CurrencyCode Currency => _money.IsAssigned
+        ? _money.Currency
+        : throw new InvalidOperationException("عملة المنشأة تُقرأ بعد التأسيس لا قبله.");
 
     /// <summary>يبذر نشاط المنشأة إن لم يكن مبذوراً، ثم يُرجع عدد القيود التي رُحّلت.</summary>
     /// <param name="settings">الإعدادات.</param>
@@ -182,10 +183,11 @@ internal sealed class Seed : IDisposable
             .ConfigureAwait(false);
 
         _costCentre = founded.CostCenters.Default.Value!;
+        _money = founded.Money;
 
         Say.Detail(
             "تأسيس المنشأة: «" + founded.NameAr + "» · مقياس العرض " + founded.DisplayScale
-            + " · المركز الافتراضي " + _costCentre + " («" + founded.CostCenters.DefaultCenter.NameAr + "»)");
+            + " · العملة " + founded.Money + " · المركز الافتراضي " + _costCentre + " («" + founded.CostCenters.DefaultCenter.NameAr + "»)");
     }
 
     private async Task SaveProfileAsync(CancellationToken cancellationToken)

@@ -37,7 +37,7 @@ internal sealed class Harness : IDisposable
         AlwaysEntitled enforcer = new();
         Profiles = new InMemoryCapabilityProfileStore();
         Valuation = new UnitCostOfOne();
-        Posting = new PostingService(enforcer, ledger);
+        Posting = new PostingService(enforcer, ledger, FoundedTenants.MoneyFor(PurchasingTestEnvironment.AllTenants));
         Suppliers = new SupplierService(enforcer, runtime);
         Orders = new PurchaseOrderService(enforcer, runtime);
         Receipts = new GoodsReceiptService(enforcer, runtime, Posting, Profiles, Valuation);
@@ -61,7 +61,7 @@ internal sealed class Harness : IDisposable
         ParameterSettings = new ParameterSettingsService(enforcer, parameters, TimeProvider.System);
         Bills = new SupplierBillService(enforcer, runtime, Posting, Profiles, Valuation, Parameters);
         Payments = new SupplierPaymentService(enforcer, runtime, Posting, Profiles);
-        Promotion = new PurchasingCapturedInvoiceReceiver(Suppliers, Bills);
+        Promotion = new PurchasingCapturedInvoiceReceiver(Suppliers, Bills, runtime);
         Payables = new PayablesService(
             enforcer, runtime, new LedgerControlPointReader(PurchasingTestEnvironment.Ledger.AppConnectionString));
         Gateway = new SubledgerPostingGateway(runtime.Database, Posting, runtime.CostCenters);
@@ -152,7 +152,8 @@ internal sealed class Harness : IDisposable
         Harness harness = new(
             new PurchasingRuntime(
                 PurchasingTestEnvironment.Purchasing,
-                FoundedTenants.ResolverFor(PurchasingTestEnvironment.AllTenants)),
+                FoundedTenants.ResolverFor(PurchasingTestEnvironment.AllTenants),
+                FoundedTenants.MoneyFor(PurchasingTestEnvironment.AllTenants)),
             _ledger!);
 
         // المستأجرون القدماء بكل القدرات مُشغَّلة: هذه التجهيزة تُعيد إنتاج ما كان قائماً

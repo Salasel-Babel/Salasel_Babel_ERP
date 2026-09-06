@@ -1,4 +1,5 @@
 using Babel.Sales.Application;
+using Babel.Core.CompanySetup;
 using Babel.SharedKernel;
 
 namespace Babel.Sales.Surface;
@@ -34,7 +35,7 @@ public sealed class SalesSurface
     private readonly CreditNoteService _creditNotes;
     private readonly CustomerReceiptService _receipts;
     private readonly ReceivablesService _receivables;
-    private readonly CurrencyCode _currency;
+    private readonly CompanySetupService _setups;
 
     /// <summary>ينشئ السطح فوق خدمات الوحدة.</summary>
     /// <param name="customers">خدمة العملاء.</param>
@@ -42,28 +43,28 @@ public sealed class SalesSurface
     /// <param name="creditNotes">خدمة الإشعارات الدائنة.</param>
     /// <param name="receipts">خدمة سندات القبض.</param>
     /// <param name="receivables">خدمة الذمم المدينة.</param>
-    /// <param name="options">إعدادات الوحدة — ومنها عملة المنشأة.</param>
+    /// <param name="setups">خدمة التأسيس — خدمةُ تطبيقٍ مُستحَقّة تُقرأ منها عملةُ المنشأة (ADR-0089).</param>
     public SalesSurface(
         CustomerService customers,
         SalesInvoiceService invoices,
         CreditNoteService creditNotes,
         CustomerReceiptService receipts,
         ReceivablesService receivables,
-        SalesOptions options)
+        CompanySetupService setups)
     {
         ArgumentNullException.ThrowIfNull(customers);
         ArgumentNullException.ThrowIfNull(invoices);
         ArgumentNullException.ThrowIfNull(creditNotes);
         ArgumentNullException.ThrowIfNull(receipts);
         ArgumentNullException.ThrowIfNull(receivables);
-        ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(setups);
 
         _customers = customers;
         _invoices = invoices;
         _creditNotes = creditNotes;
         _receipts = receipts;
         _receivables = receivables;
-        _currency = CurrencyCode.FromString(options.CompanyCurrency);
+        _setups = setups;
     }
 
     /// <summary>يسجّل عميلاً جديداً. بيانات أساسية، لا مستند ولا ترحيل.</summary>
@@ -79,11 +80,20 @@ public sealed class SalesSurface
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        // ‏عملةُ المنشأة من التأسيس عبر خدمةِ تطبيقٍ مُستحَقّة — لا متعاونَ يفتح الوحدة بلا استحقاق.
+        Result<FoundedCompany> setup = await _setups.GetAsync(tenant, actor, cancellationToken).ConfigureAwait(false);
+        if (setup.IsFailure)
+        {
+            return Result<SalesParty>.Failure(setup.Errors);
+        }
+
+        CompanyMoney money = setup.Value.Money;
+
         Result<CustomerView> result = await _customers
             .CreateAsync(
                 tenant,
                 actor,
-                new CustomerDraft(request.Code, request.Name, Money.Of(request.CreditLimit, _currency), request.PaymentTermsDays),
+                new CustomerDraft(request.Code, request.Name, Money.Of(request.CreditLimit, money.Currency), request.PaymentTermsDays),
                 cancellationToken)
             .ConfigureAwait(false);
 
@@ -122,11 +132,20 @@ public sealed class SalesSurface
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        // ‏عملةُ المنشأة من التأسيس عبر خدمةِ تطبيقٍ مُستحَقّة — لا متعاونَ يفتح الوحدة بلا استحقاق.
+        Result<FoundedCompany> setup = await _setups.GetAsync(tenant, actor, cancellationToken).ConfigureAwait(false);
+        if (setup.IsFailure)
+        {
+            return Result<SalesDocument>.Failure(setup.Errors);
+        }
+
+        CompanyMoney money = setup.Value.Money;
+
         Result<SalesDocumentView> result = await _invoices
             .CreateInvoiceAsync(
                 tenant,
                 actor,
-                new SalesDocumentDraft(request.Number, request.CustomerId, request.IssuedOn, request.BranchId, Lines(request.Lines)),
+                new SalesDocumentDraft(request.Number, request.CustomerId, request.IssuedOn, request.BranchId, Lines(request.Lines, money)),
                 orderId: null,
                 cancellationToken)
             .ConfigureAwait(false);
@@ -190,11 +209,20 @@ public sealed class SalesSurface
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        // ‏عملةُ المنشأة من التأسيس عبر خدمةِ تطبيقٍ مُستحَقّة — لا متعاونَ يفتح الوحدة بلا استحقاق.
+        Result<FoundedCompany> setup = await _setups.GetAsync(tenant, actor, cancellationToken).ConfigureAwait(false);
+        if (setup.IsFailure)
+        {
+            return Result<SalesDocument>.Failure(setup.Errors);
+        }
+
+        CompanyMoney money = setup.Value.Money;
+
         Result<SalesDocumentView> result = await _creditNotes
             .CreateAsync(
                 tenant,
                 actor,
-                new CreditNoteDraft(request.Number, request.InvoiceId, request.IssuedOn, Lines(request.Lines)),
+                new CreditNoteDraft(request.Number, request.InvoiceId, request.IssuedOn, Lines(request.Lines, money)),
                 cancellationToken)
             .ConfigureAwait(false);
 
@@ -234,6 +262,15 @@ public sealed class SalesSurface
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        // ‏عملةُ المنشأة من التأسيس عبر خدمةِ تطبيقٍ مُستحَقّة — لا متعاونَ يفتح الوحدة بلا استحقاق.
+        Result<FoundedCompany> setup = await _setups.GetAsync(tenant, actor, cancellationToken).ConfigureAwait(false);
+        if (setup.IsFailure)
+        {
+            return Result<SalesDocument>.Failure(setup.Errors);
+        }
+
+        CompanyMoney money = setup.Value.Money;
+
         Result<SalesDocumentView> result = await _receipts
             .RecordReceiptAsync(
                 tenant,
@@ -244,9 +281,9 @@ public sealed class SalesSurface
                     request.ReceivedOn,
                     request.SettlementMethod,
                     request.TreasuryPartyId,
-                    Money.Of(request.Received, _currency),
-                    Money.Of(request.SettlementDiscount, _currency),
-                    Allocations(request.Allocations)),
+                    Money.Of(request.Received, money.Currency),
+                    Money.Of(request.SettlementDiscount, money.Currency),
+                    Allocations(request.Allocations, money)),
                 cancellationToken)
             .ConfigureAwait(false);
 
@@ -349,20 +386,20 @@ public sealed class SalesSurface
         buckets.Over90.Amount,
         buckets.Total.Amount);
 
-    private List<AllocationDraft> Allocations(IReadOnlyList<SalesReceiptAllocationRequest> allocations) =>
+    private static List<AllocationDraft> Allocations(IReadOnlyList<SalesReceiptAllocationRequest> allocations, CompanyMoney money) =>
     [
         .. allocations.Select(allocation =>
-            new AllocationDraft(allocation.InvoiceId, Money.Of(allocation.Amount, _currency))),
+            new AllocationDraft(allocation.InvoiceId, Money.Of(allocation.Amount, money.Currency))),
     ];
 
-    private List<SalesLineDraft> Lines(IReadOnlyList<SalesLineRequest> lines) =>
+    private static List<SalesLineDraft> Lines(IReadOnlyList<SalesLineRequest> lines, CompanyMoney money) =>
     [
         .. lines.Select(line => new SalesLineDraft(
             line.ItemGroup,
             line.Description,
             line.Quantity,
-            Money.Of(line.UnitPrice, _currency),
-            Money.Of(line.Discount, _currency),
+            Money.Of(line.UnitPrice, money.Currency),
+            Money.Of(line.Discount, money.Currency),
             line.TaxClassification,
             line.TaxRate,
             line.OriginalInvoiceLineId)),

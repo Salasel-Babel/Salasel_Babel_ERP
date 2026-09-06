@@ -3,6 +3,7 @@ using Babel.Contracts.Inventory;
 using Babel.Core.Application;
 using Babel.Core.Entitlement;
 using Babel.Inventory.Persistence;
+using Babel.Core.CompanySetup;
 using Babel.SharedKernel;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -37,7 +38,7 @@ public sealed class StockMovementService : IApplicationService, IInventoryValuat
 {
     private readonly IEntitlementEnforcer _enforcer;
     private readonly InventoryDbContext _database;
-    private readonly CurrencyCode _currency;
+    private readonly ICompanyMoneyResolver _company;
 
     /// <summary>ينشئ الخدمة.</summary>
     /// <param name="enforcer">منفِّذ الاستحقاق.</param>
@@ -48,7 +49,7 @@ public sealed class StockMovementService : IApplicationService, IInventoryValuat
         ArgumentNullException.ThrowIfNull(runtime);
         _enforcer = enforcer;
         _database = runtime.Database;
-        _currency = CurrencyCode.FromString(runtime.Options.CompanyCurrency);
+        _company = runtime.Company;
     }
 
     /// <summary>يسجّل وارداً بتكلفته الفعلية.</summary>
@@ -370,6 +371,12 @@ public sealed class StockMovementService : IApplicationService, IInventoryValuat
             return Result<InventoryMovementCost>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<InventoryMovementCost>.Failure(money.Errors);
+        }
+
         await OpenAsync(cancellationToken).ConfigureAwait(false);
 
         Result<RecordedMovement> found = await ReadMovementAsync(tenant, source, null, cancellationToken)
@@ -384,12 +391,12 @@ public sealed class StockMovementService : IApplicationService, IInventoryValuat
         RecordedMovement movement = found.Value;
 
         return Result<InventoryMovementCost>.Success(new InventoryMovementCost(
-            Money.Of(movement.ValueAmount, _currency),
+            Money.Of(movement.ValueAmount, money.Value.Currency),
             movement.Method,
             new InventoryItemLocation(movement.ItemId, movement.WarehouseId, movement.LocationId, movement.ItemGroup),
             new InventoryQuantity(movement.Quantity, movement.BaseUnit),
             new InventoryQuantity(movement.QuantityAfter, movement.BaseUnit),
-            Money.Of(movement.ValueAfter, _currency),
+            Money.Of(movement.ValueAfter, money.Value.Currency),
             movement.DrewOnNegativeStock,
             WasAlreadyRecorded: true));
     }
@@ -419,6 +426,12 @@ public sealed class StockMovementService : IApplicationService, IInventoryValuat
             return Result<StockBalanceView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<StockBalanceView>.Failure(money.Errors);
+        }
+
         await OpenAsync(cancellationToken).ConfigureAwait(false);
         StockPosition position = await ReadPositionAsync(
             tenant, itemId, warehouseId, locationId, forUpdate: false, null, cancellationToken).ConfigureAwait(false);
@@ -428,7 +441,7 @@ public sealed class StockMovementService : IApplicationService, IInventoryValuat
             warehouseId,
             locationId,
             new InventoryQuantity(position.Quantity, position.BaseUnit),
-            Money.Of(position.Value, _currency),
+            Money.Of(position.Value, money.Value.Currency),
             position.UnitCost,
             position.HasCostBasis));
     }
@@ -505,6 +518,12 @@ public sealed class StockMovementService : IApplicationService, IInventoryValuat
             return Result<IReadOnlyList<StockBalanceView>>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<IReadOnlyList<StockBalanceView>>.Failure(money.Errors);
+        }
+
         await OpenAsync(cancellationToken).ConfigureAwait(false);
 
         List<StockBalanceView> balances = [];
@@ -527,7 +546,7 @@ public sealed class StockMovementService : IApplicationService, IInventoryValuat
                 reader.GetString(1),
                 reader.GetString(2),
                 new InventoryQuantity(reader.GetDecimal(4), reader.GetString(3)),
-                Money.Of(reader.GetDecimal(5), _currency),
+                Money.Of(reader.GetDecimal(5), money.Value.Currency),
                 reader.GetDecimal(6),
                 reader.GetBoolean(7)));
         }
@@ -551,6 +570,12 @@ public sealed class StockMovementService : IApplicationService, IInventoryValuat
         string againstKey,
         CancellationToken cancellationToken)
     {
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<InventoryMovementCost>.Failure(money.Errors);
+        }
         await OpenAsync(cancellationToken).ConfigureAwait(false);
 
         await using NpgsqlTransaction transaction = await Connection
@@ -587,12 +612,12 @@ public sealed class StockMovementService : IApplicationService, IInventoryValuat
             }
 
             return Result<InventoryMovementCost>.Success(new InventoryMovementCost(
-                Money.Of(recorded.ValueAmount, _currency),
+                Money.Of(recorded.ValueAmount, money.Value.Currency),
                 recorded.Method,
                 new InventoryItemLocation(recorded.ItemId, recorded.WarehouseId, recorded.LocationId, recorded.ItemGroup),
                 new InventoryQuantity(recorded.Quantity, recorded.BaseUnit),
                 new InventoryQuantity(recorded.QuantityAfter, recorded.BaseUnit),
-                Money.Of(recorded.ValueAfter, _currency),
+                Money.Of(recorded.ValueAfter, money.Value.Currency),
                 recorded.DrewOnNegativeStock,
                 WasAlreadyRecorded: true));
         }
@@ -713,12 +738,12 @@ public sealed class StockMovementService : IApplicationService, IInventoryValuat
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
 
         return Result<InventoryMovementCost>.Success(new InventoryMovementCost(
-            Money.Of(effect.Value, _currency),
+            Money.Of(effect.Value, money.Value.Currency),
             WeightedAverageCost.MethodCode,
             location,
             new InventoryQuantity(magnitude, baseUnit),
             new InventoryQuantity(effect.After.Quantity, baseUnit),
-            Money.Of(effect.After.Value, _currency),
+            Money.Of(effect.After.Value, money.Value.Currency),
             effect.DrewOnNegativeStock,
             WasAlreadyRecorded: false));
     }

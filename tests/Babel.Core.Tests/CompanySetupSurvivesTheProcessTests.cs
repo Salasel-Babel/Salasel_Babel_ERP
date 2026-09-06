@@ -276,6 +276,40 @@ public sealed class CompanySetupSurvivesTheProcessTests
                 $"select count(*) from core.company_setup where company_id = '{company:D}' and decimal_places = 2"));
     }
 
+    [Fact]
+    public async Task عملةُ_المنشأة_ووحدتُها_الصغرى_لا_تتغيّران_ولو_كان_الفاعل_هو_المالك()
+    {
+        await CoreTestEnvironment.EnsureAsync(TestContext.Current.CancellationToken);
+        Guid company = CoreTestEnvironment.NewCompany();
+
+        Assert.True(await NewStore().TryFoundAsync(
+            Found(company, "منشأة بالريال", 2), TestContext.Current.CancellationToken));
+
+        PostgresException currency = await Assert.ThrowsAsync<PostgresException>(
+            async () => await CoreTestEnvironment.OwnerAsync(
+                $"update core.company_setup set currency_code = 'KWD', minor_units = 3 where company_id = '{company:D}'"));
+        Assert.Contains("COMPANY_CURRENCY_IMMUTABLE", currency.MessageText, StringComparison.Ordinal);
+        CoreTestEnvironment.Note("رفض المشغّل: " + currency.MessageText);
+
+        // والوحدةُ الصغرى وحدها كذلك — الصفُّ يصف نفسه ولا يُعاد وصفه.
+        PostgresException units = await Assert.ThrowsAsync<PostgresException>(
+            async () => await CoreTestEnvironment.OwnerAsync(
+                $"update core.company_setup set minor_units = 3 where company_id = '{company:D}'"));
+        Assert.Contains("COMPANY_CURRENCY_IMMUTABLE", units.MessageText, StringComparison.Ordinal);
+
+        // ولا صفَّ بلا عملة: القيدُ في المخطّط لا في الانضباط.
+        PostgresException shape = await Assert.ThrowsAsync<PostgresException>(
+            async () => await CoreTestEnvironment.OwnerAsync(
+                $"insert into core.company_setup (company_id, name_ar, decimal_places, default_cost_center, currency_code, minor_units, founded_at) "
+                + $"values ('{Guid.NewGuid():D}', 'بلا عملة', 2, 'cc.001', '', 2, now())"));
+        Assert.Equal(PostgresErrorCodes.CheckViolation, shape.SqlState);
+
+        Assert.Equal(
+            1,
+            await CoreTestEnvironment.CountAsync(
+                $"select count(*) from core.company_setup where company_id = '{company:D}' and currency_code = 'SAR' and minor_units = 2"));
+    }
+
     // ═══════════════════════════════════════════════════════════════════════
     // ٤ · ملفّ القدرات كذلك: يُحفظ ويُقرأ، ويُطابَق بالمصفوفة عند كل قراءة
     // ═══════════════════════════════════════════════════════════════════════
@@ -343,7 +377,7 @@ public sealed class CompanySetupSurvivesTheProcessTests
     {
         Result<FoundedCompany> founded = FoundedCompany.Found(
             new TenantId(company),
-            new CompanySetupDraft(nameAr, null, CostCenterPlan.One, null, null, places));
+            new CompanySetupDraft(nameAr, null, CostCenterPlan.One, null, null, places, "SAR"));
 
         Assert.True(founded.IsSuccess, string.Join(" | ", founded.Errors.Select(static e => e.ToString())));
         return founded.Value;

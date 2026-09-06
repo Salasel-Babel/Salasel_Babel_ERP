@@ -1,4 +1,3 @@
-using Babel.SharedKernel;
 
 namespace Babel.Hr;
 
@@ -26,14 +25,10 @@ public sealed class HrOptions
     public string ConnectionString { get; set; } =
         Environment.GetEnvironmentVariable(ConnectionVariable) ?? string.Empty;
 
-    /// <summary>
-    /// عملة المنشأة. <b>والرواتب تُرحَّل بالريال السعودي حصراً</b> بحكم البيانات لا
-    /// بحكم هذا الحقل: حساب التأمينات المستحقة معلَنٌ في دليل الحسابات
-    /// <c>currency_mode=company_only</c> بعملة <c>SAR</c>، فأي عملة أخرى يرفضها
-    /// المخطِّط بـ<c>ledger.posting.currency_not_allowed</c>. والحقل هنا كي يُقرأ
-    /// القيد من الإعداد لا كي يُفتح.
-    /// </summary>
-    public string CompanyCurrency { get; set; } = "SAR";
+    // ‏**ولا عملةَ هنا.** كانت `CompanyCurrency = "SAR"` قيمةً ابتدائية في هذا النوع؛ وموضعُها
+    // الصحيح صفُّ التأسيس، وتصل الوحدةَ عبر `ICompanyMoneyResolver` في كلّ نداء (ADR-0089).
+    // وأمّا حصرُ ترحيل الرواتب في عملة حساب التأمينات فبحكم دليل الحسابات
+    // (`currency_mode=company_only`) لا بحكم حقلٍ هنا.
 
     /// <summary>
     /// يرفع عطلاً مقروءاً إن لم يُضبط نصّ الاتصال — <b>عند التركيب لا عند أول نداء</b>.
@@ -52,16 +47,5 @@ public sealed class HrOptions
                 + " environment variable; no default is invented for a module that holds personal data.");
         }
 
-        try
-        {
-            _ = CurrencyCode.FromString(CompanyCurrency);
-        }
-        catch (ArgumentException reason)
-        {
-            throw new InvalidOperationException(
-                "hr.currency_not_configured — عملة المنشأة غير مضبوطة أو غير صالحة. / "
-                + "hr.currency_not_configured — the company currency is unset or invalid.",
-                reason);
-        }
     }
 }

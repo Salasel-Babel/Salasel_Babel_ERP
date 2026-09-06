@@ -68,12 +68,9 @@ public sealed class LedgerOptions
     public string AppRole { get; set; } =
         Environment.GetEnvironmentVariable("BABEL_LEDGER_APP_ROLE") ?? DefaultAppRole;
 
-    /// <summary>
-    /// عملة الشركة — العملة التي يُفحص بها التوازن عند COMMIT.
-    /// ⚠️ ثابت هذا التسليم إلى أن يوجد جدول إعدادات الشركة؛ لا تُقرأ نسبة ولا عملة
-    /// من الكود في التصميم النهائي (CONTRIBUTING §3.6).
-    /// </summary>
-    public string CompanyCurrency { get; set; } = "SAR";
+    // ‏**ولا عملةَ هنا.** العملةُ التي يُفحص بها التوازن عند COMMIT هي عملةُ المنشأة
+    // من صفّ التأسيس، يجيب عنها `ICompanyMoneyResolver` في كلّ ترحيل (ADR-0089) —
+    // لا `"SAR"` في نوعِ إعدادات، وهو ما كان موسوماً ⚠️ منذ التسليم الأول.
 
     /// <summary>
     /// إصدار الشكل القانوني الذي تُكتب به <b>القيود الجديدة</b>. الافتراضي

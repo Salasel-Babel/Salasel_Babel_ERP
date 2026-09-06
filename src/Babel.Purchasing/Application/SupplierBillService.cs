@@ -6,6 +6,7 @@ using Babel.Core.Application;
 using Babel.Core.CapabilityProfile;
 using Babel.Core.Entitlement;
 using Babel.Purchasing.Persistence;
+using Babel.Core.CompanySetup;
 using Babel.SharedKernel;
 using Microsoft.EntityFrameworkCore;
 
@@ -36,7 +37,7 @@ public sealed class SupplierBillService : IApplicationService
     private readonly PurchasingAdmission _admission;
     private readonly IInventoryValuation _valuation;
     private readonly IParameterUsageRecorder _parameterUsage;
-    private readonly CurrencyCode _currency;
+    private readonly ICompanyMoneyResolver _company;
 
     /// <summary>ينشئ الخدمة.</summary>
     /// <param name="enforcer">منفِّذ الاستحقاق.</param>
@@ -73,7 +74,7 @@ public sealed class SupplierBillService : IApplicationService
         _parameterUsage = parameterUsage;
         _enforcer = enforcer;
         _database = runtime.Database;
-        _currency = CurrencyCode.FromString(runtime.Options.CompanyCurrency);
+        _company = runtime.Company;
         _gateway = new SubledgerPostingGateway(_database, posting, runtime.CostCenters);
         _admission = new PurchasingAdmission(profiles);
     }
@@ -140,6 +141,12 @@ public sealed class SupplierBillService : IApplicationService
         StockBillDraft draft,
         CancellationToken cancellationToken)
     {
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<PurchasingDocumentView>.Failure(money.Errors);
+        }
         Result covers = PurchasingAdmission.EnsureCovers(admitted, PurchasingAdmission.ReceiptField);
         if (covers.IsFailure)
         {
@@ -208,9 +215,9 @@ public sealed class SupplierBillService : IApplicationService
                     PurchasingErrors.BillExceedsReceipt(receiptLine.ItemId, line.Quantity, available));
             }
 
-            decimal lineReceiptValue = LineMath.Round(line.Quantity * receiptLine.UnitPrice);
+            decimal lineReceiptValue = LineMath.Round(line.Quantity * receiptLine.UnitPrice, money.Value);
             (decimal lineNet, decimal lineTax) = LineMath.Line(
-                line.Quantity, line.UnitPrice.Amount, 0m, line.TaxRate, line.TaxClassification);
+                line.Quantity, line.UnitPrice.Amount, 0m, line.TaxRate, line.TaxClassification, money.Value);
 
             receiptValue += lineReceiptValue;
             net += lineNet;
@@ -283,7 +290,7 @@ public sealed class SupplierBillService : IApplicationService
             IssuedOn = draft.IssuedOn,
             DueOn = draft.IssuedOn.AddDays(supplier.PaymentTermsDays),
             State = PurchasingDocumentState.Draft,
-            CurrencyCode = _currency.Value,
+            CurrencyCode = money.Value.Currency.Value,
             WarehouseId = receipt.WarehouseId,
             ItemGroup = itemGroup,
             BillKind = "STOCK",
@@ -301,7 +308,7 @@ public sealed class SupplierBillService : IApplicationService
         receipt.BilledValue += receiptValue;
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        return Result<PurchasingDocumentView>.Success(ViewOf(bill));
+        return Result<PurchasingDocumentView>.Success(ViewOf(bill, money.Value));
     }
 
     /// <summary>يسجّل فاتورة مصروف مباشر بلا مخزون ولا مطابقة.</summary>
@@ -325,6 +332,12 @@ public sealed class SupplierBillService : IApplicationService
         if (gate.IsFailure)
         {
             return Result<PurchasingDocumentView>.Failure(gate.Errors);
+        }
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<PurchasingDocumentView>.Failure(money.Errors);
         }
 
         if (draft.Lines.Count == 0)
@@ -356,7 +369,7 @@ public sealed class SupplierBillService : IApplicationService
         foreach (PurchaseLineDraft line in draft.Lines)
         {
             (decimal lineNet, decimal lineTax) = LineMath.Line(
-                line.Quantity, line.UnitPrice.Amount, 0m, line.TaxRate, line.TaxClassification);
+                line.Quantity, line.UnitPrice.Amount, 0m, line.TaxRate, line.TaxClassification, money.Value);
             net += lineNet;
 
             // نسبة الاسترداد قرار سطر لا مستند: خلطهما يجعل ضريبة غير مستردة تُطالَب بها.
@@ -383,7 +396,7 @@ public sealed class SupplierBillService : IApplicationService
             IssuedOn = draft.IssuedOn,
             DueOn = draft.IssuedOn.AddDays(supplier.PaymentTermsDays),
             State = PurchasingDocumentState.Draft,
-            CurrencyCode = _currency.Value,
+            CurrencyCode = money.Value.Currency.Value,
             CostCenterId = draft.CostCenterId,
             ExpenseCategory = draft.ExpenseCategory,
             BillKind = "EXPENSE",
@@ -402,7 +415,7 @@ public sealed class SupplierBillService : IApplicationService
         _database.Bills.Add(bill);
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        return Result<PurchasingDocumentView>.Success(ViewOf(bill));
+        return Result<PurchasingDocumentView>.Success(ViewOf(bill, money.Value));
     }
 
     /// <summary>يرحّل فاتورة المورد — المخزنية عبر قالبها والمصروفية عبر قالبه.</summary>
@@ -426,6 +439,12 @@ public sealed class SupplierBillService : IApplicationService
             return Result<PurchasingDocumentView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<PurchasingDocumentView>.Failure(money.Errors);
+        }
+
         SupplierBillRow? bill = await _database.Bills
             .FirstOrDefaultAsync(row => row.TenantId == tenant.Value && row.Id == billId, cancellationToken)
             .ConfigureAwait(false);
@@ -444,7 +463,7 @@ public sealed class SupplierBillService : IApplicationService
             // هو ما يُبرئ فهرسَ المراجعة إن سقط تسجيلُ النداء الأول بعطلٍ عابر. وهو
             // فهرسٌ لا سجلّ، فترميمُه بإعادة نداءٍ لا يمسّ رقماً محاسبياً.
             await RecordParameterUsageAsync(tenant, bill, cancellationToken).ConfigureAwait(false);
-            return Result<PurchasingDocumentView>.Success(ViewOf(bill) with { AlreadyPosted = true });
+            return Result<PurchasingDocumentView>.Success(ViewOf(bill, money.Value) with { AlreadyPosted = true });
         }
 
         SupplierRow supplier = await _database.Suppliers
@@ -482,7 +501,7 @@ public sealed class SupplierBillService : IApplicationService
         }
         else
         {
-            intent = ExpenseIntent(tenant, actor, bill, supplier);
+            intent = ExpenseIntent(tenant, actor, bill, supplier, money.Value);
         }
 
         Result<PostingReceipt> posted = await _gateway.PostAsync(intent, cancellationToken).ConfigureAwait(false);
@@ -500,7 +519,7 @@ public sealed class SupplierBillService : IApplicationService
         // حكم البوّابة لا حكمنا: نداءان متزامنان يجتازان فحص الحالة معاً ويلتقيان عند
         // هوية إحكام واحدة، فأحدهما يكتب والآخر يعود بإيصاله موسوماً.
         return Result<PurchasingDocumentView>.Success(
-            ViewOf(bill) with { AlreadyPosted = posted.Value.WasAlreadyPosted });
+            ViewOf(bill, money.Value) with { AlreadyPosted = posted.Value.WasAlreadyPosted });
     }
 
     /// <summary>يسجّل إشعاراً مديناً على فاتورة مُرحَّلة.</summary>
@@ -524,6 +543,12 @@ public sealed class SupplierBillService : IApplicationService
         if (gate.IsFailure)
         {
             return Result<PurchasingDocumentView>.Failure(gate.Errors);
+        }
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<PurchasingDocumentView>.Failure(money.Errors);
         }
 
         SupplierBillRow? bill = await _database.Bills
@@ -594,7 +619,7 @@ public sealed class SupplierBillService : IApplicationService
             BillId = bill.Id,
             IssuedOn = draft.IssuedOn,
             State = PurchasingDocumentState.Draft,
-            CurrencyCode = _currency.Value,
+            CurrencyCode = money.Value.Currency.Value,
             WarehouseId = bill.WarehouseId,
             ItemGroup = billLine.ItemGroup,
             ItemId = billLine.ItemId,
@@ -616,9 +641,9 @@ public sealed class SupplierBillService : IApplicationService
             note.Number,
             note.State,
             new DocumentTotals(
-                Money.Of(note.NetTotal, _currency),
-                Money.Of(note.TaxTotal, _currency),
-                Money.Of(note.GrossTotal, _currency)),
+                Money.Of(note.NetTotal, money.Value.Currency),
+                Money.Of(note.TaxTotal, money.Value.Currency),
+                Money.Of(note.GrossTotal, money.Value.Currency)),
             null));
     }
 
@@ -641,6 +666,12 @@ public sealed class SupplierBillService : IApplicationService
         if (gate.IsFailure)
         {
             return Result<PurchasingDocumentView>.Failure(gate.Errors);
+        }
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<PurchasingDocumentView>.Failure(money.Errors);
         }
 
         // ── القبول: المرتجع يمارس قدرة المطابقة الثلاثية نفسها ─────────────────
@@ -676,7 +707,7 @@ public sealed class SupplierBillService : IApplicationService
 
         if (note.State == PurchasingDocumentState.Posted)
         {
-            return Result<PurchasingDocumentView>.Success(ViewOfNote(note) with { AlreadyPosted = true });
+            return Result<PurchasingDocumentView>.Success(ViewOfNote(note, money.Value) with { AlreadyPosted = true });
         }
 
         SupplierRow supplier = await _database.Suppliers
@@ -775,8 +806,8 @@ public sealed class SupplierBillService : IApplicationService
             Narration = new LocalizedName("إشعار مدين " + note.Number, "Debit note " + note.Number),
             Amounts =
             [
-                new PostingAmount("net", Money.Of(note.NetTotal, _currency)),
-                new PostingAmount("tax", Money.Of(note.TaxTotal, _currency)),
+                new PostingAmount("net", Money.Of(note.NetTotal, money.Value.Currency)),
+                new PostingAmount("tax", Money.Of(note.TaxTotal, money.Value.Currency)),
             ],
             Facts =
             [
@@ -789,7 +820,7 @@ public sealed class SupplierBillService : IApplicationService
             Dimensions = [new PostingDimension("warehouse", note.WarehouseId)],
             PartyId = supplier.Code,
             ControlEffect = -note.GrossTotal,
-            Currency = _currency,
+            Currency = money.Value.Currency,
             Actor = actor,
             Generation = note.PostingGeneration,
         };
@@ -818,7 +849,7 @@ public sealed class SupplierBillService : IApplicationService
         });
 
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        return Result<PurchasingDocumentView>.Success(ViewOfNote(note));
+        return Result<PurchasingDocumentView>.Success(ViewOfNote(note, money.Value));
     }
 
     /// <summary>سطر فاتورة مُتحقَّق منه ولم يُكتب بعد.</summary>
@@ -843,6 +874,12 @@ public sealed class SupplierBillService : IApplicationService
         SupplierRow supplier,
         CancellationToken cancellationToken)
     {
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<PostingIntent>.Failure(money.Errors);
+        }
         Result covers = PurchasingAdmission.EnsureCovers(admitted, PurchasingAdmission.ReceiptField);
         if (covers.IsFailure)
         {
@@ -867,9 +904,9 @@ public sealed class SupplierBillService : IApplicationService
             Narration = new LocalizedName("فاتورة مورد " + bill.Number, "Supplier bill " + bill.Number),
             Amounts =
             [
-                new PostingAmount("receipt_value", Money.Of(bill.ReceiptValue, _currency)),
-                new PostingAmount("price_variance", Money.Of(bill.PriceVariance, _currency)),
-                new PostingAmount("tax", Money.Of(bill.TaxTotal, _currency)),
+                new PostingAmount("receipt_value", Money.Of(bill.ReceiptValue, money.Value.Currency)),
+                new PostingAmount("price_variance", Money.Of(bill.PriceVariance, money.Value.Currency)),
+                new PostingAmount("tax", Money.Of(bill.TaxTotal, money.Value.Currency)),
             ],
             Facts =
             [
@@ -887,13 +924,13 @@ public sealed class SupplierBillService : IApplicationService
             // الفاتورة تستهلك رصيد البضاعة المستلمة غير المفوترة وتُنشئ ذمة كاملة:
             // صافي أثرها على نقطة ضبط الموردين هو الفرق والضريبة.
             ControlEffect = bill.GrossTotal - bill.ReceiptValue,
-            Currency = _currency,
+            Currency = money.Value.Currency,
             Actor = actor,
             Generation = bill.PostingGeneration,
         });
     }
 
-    private PostingIntent ExpenseIntent(TenantId tenant, UserId actor, SupplierBillRow bill, SupplierRow supplier) => new()
+    private static PostingIntent ExpenseIntent(TenantId tenant, UserId actor, SupplierBillRow bill, SupplierRow supplier, CompanyMoney money) => new()
     {
         Tenant = tenant,
         DocumentType = BillDocument,
@@ -904,9 +941,9 @@ public sealed class SupplierBillService : IApplicationService
         Narration = new LocalizedName("فاتورة مصروف " + bill.Number, "Expense bill " + bill.Number),
         Amounts =
         [
-            new PostingAmount("net", Money.Of(bill.NetTotal, _currency)),
-            new PostingAmount("recoverable_tax", Money.Of(bill.RecoverableTax, _currency)),
-            new PostingAmount("non_recoverable_tax", Money.Of(bill.NonRecoverableTax, _currency)),
+            new PostingAmount("net", Money.Of(bill.NetTotal, money.Currency)),
+            new PostingAmount("recoverable_tax", Money.Of(bill.RecoverableTax, money.Currency)),
+            new PostingAmount("non_recoverable_tax", Money.Of(bill.NonRecoverableTax, money.Currency)),
         ],
         Facts =
         [
@@ -916,7 +953,7 @@ public sealed class SupplierBillService : IApplicationService
         Dimensions = [new PostingDimension("cost_center", bill.CostCenterId)],
         PartyId = supplier.Code,
         ControlEffect = bill.GrossTotal,
-        Currency = _currency,
+        Currency = money.Currency,
         Actor = actor,
         Generation = bill.PostingGeneration,
     };
@@ -950,6 +987,12 @@ public sealed class SupplierBillService : IApplicationService
             return Result<PurchasingDocumentView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<PurchasingDocumentView>.Failure(money.Errors);
+        }
+
         SupplierBillRow? bill = await _database.Bills
             .AsNoTracking()
             .FirstOrDefaultAsync(row => row.TenantId == tenant.Value && row.Id == billId, cancellationToken)
@@ -957,7 +1000,7 @@ public sealed class SupplierBillService : IApplicationService
 
         return bill is null
             ? Result<PurchasingDocumentView>.Failure(PurchasingErrors.DocumentNotFound(BillDocument, billId))
-            : Result<PurchasingDocumentView>.Success(ViewOf(bill));
+            : Result<PurchasingDocumentView>.Success(ViewOf(bill, money.Value));
     }
 
     /// <summary>
@@ -988,6 +1031,12 @@ public sealed class SupplierBillService : IApplicationService
             return Result<PurchasingDocumentView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<PurchasingDocumentView>.Failure(money.Errors);
+        }
+
         DebitNoteRow? note = await _database.DebitNotes
             .AsNoTracking()
             .FirstOrDefaultAsync(row => row.TenantId == tenant.Value && row.Id == debitNoteId, cancellationToken)
@@ -995,7 +1044,7 @@ public sealed class SupplierBillService : IApplicationService
 
         return note is null
             ? Result<PurchasingDocumentView>.Failure(PurchasingErrors.DocumentNotFound(DebitNoteDocument, debitNoteId))
-            : Result<PurchasingDocumentView>.Success(ViewOfNote(note));
+            : Result<PurchasingDocumentView>.Success(ViewOfNote(note, money.Value));
     }
 
     /// <summary>
@@ -1062,23 +1111,23 @@ public sealed class SupplierBillService : IApplicationService
             .ConfigureAwait(false);
     }
 
-    private PurchasingDocumentView ViewOf(SupplierBillRow bill) => new(
+    private static PurchasingDocumentView ViewOf(SupplierBillRow bill, CompanyMoney money) => new(
         bill.Id,
         bill.Number,
         bill.State,
         new DocumentTotals(
-            Money.Of(bill.NetTotal, _currency),
-            Money.Of(bill.TaxTotal, _currency),
-            Money.Of(bill.GrossTotal, _currency)),
+            Money.Of(bill.NetTotal, money.Currency),
+            Money.Of(bill.TaxTotal, money.Currency),
+            Money.Of(bill.GrossTotal, money.Currency)),
         bill.PostedEntryId);
 
-    private PurchasingDocumentView ViewOfNote(DebitNoteRow note) => new(
+    private static PurchasingDocumentView ViewOfNote(DebitNoteRow note, CompanyMoney money) => new(
         note.Id,
         note.Number,
         note.State,
         new DocumentTotals(
-            Money.Of(note.NetTotal, _currency),
-            Money.Of(note.TaxTotal, _currency),
-            Money.Of(note.GrossTotal, _currency)),
+            Money.Of(note.NetTotal, money.Currency),
+            Money.Of(note.TaxTotal, money.Currency),
+            Money.Of(note.GrossTotal, money.Currency)),
         note.PostedEntryId);
 }

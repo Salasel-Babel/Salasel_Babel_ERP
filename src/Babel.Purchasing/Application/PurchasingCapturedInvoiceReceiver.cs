@@ -1,6 +1,7 @@
 using System.Globalization;
 using Babel.Contracts.Capture;
 using Babel.Core.Application;
+using Babel.Core.CompanySetup;
 using Babel.Core.Entitlement;
 using Babel.SharedKernel;
 
@@ -44,16 +45,20 @@ public sealed class PurchasingCapturedInvoiceReceiver : ICapturedInvoiceReceiver
 
     private readonly SupplierService _suppliers;
     private readonly SupplierBillService _bills;
+    private readonly ICompanyMoneyResolver _company;
 
     /// <summary>ينشئ المستقبِل.</summary>
     /// <param name="suppliers">خدمة الموردين — بها يُحلّ الرقم الضريبي إلى مورد.</param>
     /// <param name="bills">خدمة فواتير الموردين — بها تُنشأ الفاتورة، ولا سبيل غيرها.</param>
-    public PurchasingCapturedInvoiceReceiver(SupplierService suppliers, SupplierBillService bills)
+    /// <param name="runtime">موارد الوحدة — ومنها عملة المنشأة (ADR-0089).</param>
+    public PurchasingCapturedInvoiceReceiver(SupplierService suppliers, SupplierBillService bills, PurchasingRuntime runtime)
     {
         ArgumentNullException.ThrowIfNull(suppliers);
         ArgumentNullException.ThrowIfNull(bills);
+        ArgumentNullException.ThrowIfNull(runtime);
         _suppliers = suppliers;
         _bills = bills;
+        _company = runtime.Company;
     }
 
     /// <inheritdoc />
@@ -63,6 +68,12 @@ public sealed class PurchasingCapturedInvoiceReceiver : ICapturedInvoiceReceiver
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(order);
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(order.Tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<PromotedDocumentReference>.Failure(money.Errors);
+        }
 
         // ── 1 · الحدث: فاتورة مصروف لا غير ────────────────────────────────────
         if (!string.Equals(order.EventCode, ExpenseBillEvent, StringComparison.Ordinal))
@@ -105,7 +116,7 @@ public sealed class PurchasingCapturedInvoiceReceiver : ICapturedInvoiceReceiver
         // المُصدِر. فإن اختلفا — ولو بهللة — **يُرفض ولا يُكتب فوق رقم مُصدَّق**: كتابةُ
         // رقم محسوب مكان رقم موقَّع تُنتج فاتورة تخالف ما وقّعه المورد، ولا يظهر ذلك
         // إلا عند المطابقة معه بعد أشهر.
-        Result computed = EnsureComputationMatchesAttested(order);
+        Result computed = EnsureComputationMatchesAttested(order, money.Value);
         if (computed.IsFailure)
         {
             return Result<PromotedDocumentReference>.Failure(computed.Errors);
@@ -165,7 +176,7 @@ public sealed class PurchasingCapturedInvoiceReceiver : ICapturedInvoiceReceiver
     /// <summary>
     /// يتحقّق أن ما تحسبه الوحدة من السطور يساوي ما يحمله الأمر — صافياً وضريبةً وإجمالياً.
     /// </summary>
-    private static Result EnsureComputationMatchesAttested(PromotionOrder order)
+    private static Result EnsureComputationMatchesAttested(PromotionOrder order, CompanyMoney money)
     {
         decimal net = 0m;
         decimal tax = 0m;
@@ -173,7 +184,7 @@ public sealed class PurchasingCapturedInvoiceReceiver : ICapturedInvoiceReceiver
         foreach (PromotionLine line in order.Lines)
         {
             (decimal lineNet, decimal lineTax) = LineMath.Line(
-                line.Quantity, line.UnitPrice, 0m, order.TaxRate, ClassificationOf(order));
+                line.Quantity, line.UnitPrice, 0m, order.TaxRate, ClassificationOf(order), money);
             net += lineNet;
             tax += lineTax;
         }

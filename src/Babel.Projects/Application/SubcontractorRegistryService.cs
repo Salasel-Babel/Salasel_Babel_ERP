@@ -1,6 +1,7 @@
 using Babel.Core.Application;
 using Babel.Core.Entitlement;
 using Babel.Projects.Persistence;
+using Babel.Core.CompanySetup;
 using Babel.SharedKernel;
 using Microsoft.EntityFrameworkCore;
 
@@ -26,7 +27,7 @@ public sealed class SubcontractorRegistryService : IApplicationService
 
     private readonly IEntitlementEnforcer _enforcer;
     private readonly ProjectsDbContext _database;
-    private readonly CurrencyCode _currency;
+    private readonly ICompanyMoneyResolver _company;
 
     /// <summary>ينشئ الخدمة.</summary>
     /// <param name="enforcer">منفِّذ الاستحقاق.</param>
@@ -37,7 +38,7 @@ public sealed class SubcontractorRegistryService : IApplicationService
         ArgumentNullException.ThrowIfNull(runtime);
         _enforcer = enforcer;
         _database = runtime.Database;
-        _currency = CurrencyCode.FromString(runtime.Options.CompanyCurrency);
+        _company = runtime.Company;
     }
 
     /// <summary>يسجّل مقاولاً من الباطن — طرفاً في دفتره المساعد.</summary>
@@ -161,6 +162,12 @@ public sealed class SubcontractorRegistryService : IApplicationService
             return Result<SubcontractView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<SubcontractView>.Failure(money.Errors);
+        }
+
         if (draft.RetentionRate < 0m)
         {
             return Result<SubcontractView>.Failure(ProjectsErrors.NegativeAmount(nameof(draft.RetentionRate)));
@@ -199,7 +206,7 @@ public sealed class SubcontractorRegistryService : IApplicationService
             ProjectId = draft.ProjectId,
             SubcontractorId = draft.SubcontractorId,
             Number = draft.Number,
-            CurrencyCode = _currency.Value,
+            CurrencyCode = money.Value.Currency.Value,
             SignedOn = draft.SignedOn,
             RetentionRate = draft.RetentionRate,
             GuaranteeMonths = draft.GuaranteeMonths,
@@ -298,6 +305,12 @@ public sealed class SubcontractorRegistryService : IApplicationService
             return Result<IReadOnlyList<SubcontractLineView>>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<IReadOnlyList<SubcontractLineView>>.Failure(money.Errors);
+        }
+
         if (!await _database.Subcontracts
                 .AnyAsync(row => row.TenantId == tenant.Value && row.Id == subcontractId, cancellationToken)
                 .ConfigureAwait(false))
@@ -321,7 +334,7 @@ public sealed class SubcontractorRegistryService : IApplicationService
                 row.LineNo,
                 row.DescriptionAr,
                 new ProjectQuantity(row.ContractQuantity, row.Unit),
-                Money.Of(row.UnitRate, _currency))),
+                Money.Of(row.UnitRate, money.Value.Currency))),
         ]);
     }
 

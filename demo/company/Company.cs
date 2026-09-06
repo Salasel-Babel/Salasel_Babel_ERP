@@ -58,7 +58,8 @@ internal static class Company
         CostCenters: CostCenterPlan.One,
         FirstCostCenterNameAr: null,
         FirstCostCenterTranslations: null,
-        DecimalPlaces: 2);
+        DecimalPlaces: 2,
+        CurrencyCode: "SAR");
 
     /// <summary>حساب البنك في دفتر الخزينة المساعد.</summary>
     public const string Bank = "BANK-01";

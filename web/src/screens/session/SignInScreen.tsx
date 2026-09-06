@@ -304,6 +304,10 @@ function CompanyRow(props: {
           {t("screen.signIn.defaultCostCenter")}
           {": "}
           <span className="mono">{company.defaultCostCenter}</span>
+          {" · "}
+          {t("screen.signIn.currency")}
+          {": "}
+          <span className="mono" dir="ltr">{company.currencyCode}</span>
         </div>
       ) : (
         <p className="hint" data-testid="company-not-set-up">

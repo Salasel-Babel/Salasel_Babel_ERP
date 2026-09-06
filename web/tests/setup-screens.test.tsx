@@ -80,9 +80,20 @@ const SETUP = {
     },
   ],
   decimalPlaces: 2,
+  currencyCode: "SAR",
+  minorUnits: 2,
   defaultCostCenter: "cc.main",
   nameAr: "منشأةُ قياس",
   nameTranslations: [{ name: "en", value: "A measured entity" }],
+};
+
+/* العملات التي يقبلها التأسيس — كما يُرجعها الجدول المرجعي، لا قائمةٌ في الواجهة. */
+const CURRENCIES = {
+  currencies: [
+    { code: "JPY", minorUnits: 0 },
+    { code: "KWD", minorUnits: 3 },
+    { code: "SAR", minorUnits: 2 },
+  ],
 };
 
 const BILL_SHAPE = {
@@ -273,6 +284,7 @@ const REVIEW = {
 function fullRoutes(): Record<string, unknown> {
   return {
     ["GET " + AT + "/setup"]: SETUP,
+    ["GET " + AT + "/setup/currencies"]: CURRENCIES,
     ["GET " + AT + "/capability-profile"]: PROFILE,
     ["GET " + AT + "/chart-of-accounts"]: CHART,
     ["GET " + AT + "/document-shapes/purchasing.supplier_bill"]: BILL_SHAPE,
@@ -662,7 +674,7 @@ describe("التأسيس مرّةً واحدة", () => {
     await mount({
       path: "/setup",
       transport: stub({
-        routes: { ["PUT " + AT + "/setup"]: SETUP },
+        routes: { ["PUT " + AT + "/setup"]: SETUP, ["GET " + AT + "/setup/currencies"]: CURRENCIES },
         refuse: { ["GET " + AT + "/setup"]: { status: 404, code: "company_setup.not_found" } },
         sent,
       }),
@@ -674,6 +686,18 @@ describe("التأسيس مرّةً واحدة", () => {
     expect(screen.getByTestId("setup-company-first-absent").textContent).toContain(
       "company_setup.first_cost_center_name_not_expected"
     );
+
+    /* **ولا عملةَ مُسبَقة**: الاسم وحده لا يكفي، والزرُّ مُقفَل حتى تُختار عملةٌ من
+       قائمة الخادم — لا ريالٌ يُخترَع نيابةً عن أحد (ADR-0089). */
+    expect(button("setup-company-found").disabled).toBe(true);
+    await waitFor(() => expect(screen.getByTestId("setup-company-currency-input")).toBeTruthy());
+    await waitFor(() =>
+      expect(select("setup-company-currency-input").querySelectorAll("option").length).toBe(
+        CURRENCIES.currencies.length + 1
+      )
+    );
+    await pick(select("setup-company-currency-input"), "SAR");
+    expect(button("setup-company-found").disabled).toBe(false);
 
     await pick(select("setup-company-answer"), "Multiple");
     expect(button("setup-company-found").disabled).toBe(true);
@@ -687,6 +711,9 @@ describe("التأسيس مرّةً واحدة", () => {
     expect(wrote.firstCostCenterNameAr).toBe("أوّلُ مركزٍ للقياس");
     /* وعددُ الخانات صحيحٌ لا نصّ: العقد يُعلنه integer. */
     expect(typeof wrote.decimalPlaces).toBe("number");
+    /* والعملةُ رمزٌ كما اختير من الجدول المرجعي، لا وحدةٌ صغرى تُرسَل معه. */
+    expect(wrote.currencyCode).toBe("SAR");
+    expect("minorUnits" in wrote).toBe(false);
   });
 });
 

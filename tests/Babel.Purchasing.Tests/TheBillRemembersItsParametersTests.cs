@@ -331,6 +331,7 @@ public sealed class TheBillRemembersItsParametersTests : IAsyncLifetime
 
             // ‏**المثيل نفسه الذي تكتب فيه الفاتورة استعمالَها** — لا مثيلٌ ثانٍ.
             _harness.Parameters,
+            new RiyalForEveryTenant(),
             new AiOptions(),
             new FixedClock(IssuedAt));
 

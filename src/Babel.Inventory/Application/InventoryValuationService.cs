@@ -4,6 +4,7 @@ using Babel.Core.Application;
 using Babel.Core.Entitlement;
 using Babel.Inventory.Persistence;
 using Babel.Inventory.Subledger;
+using Babel.Core.CompanySetup;
 using Babel.SharedKernel;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -31,7 +32,7 @@ public sealed class InventoryValuationService : IApplicationService
     private readonly IEntitlementEnforcer _enforcer;
     private readonly InventoryDbContext _database;
     private readonly IControlPointReader _controlPoint;
-    private readonly CurrencyCode _currency;
+    private readonly ICompanyMoneyResolver _company;
 
     /// <summary>ينشئ الخدمة.</summary>
     /// <param name="enforcer">منفِّذ الاستحقاق.</param>
@@ -46,7 +47,7 @@ public sealed class InventoryValuationService : IApplicationService
         _enforcer = enforcer;
         _database = runtime.Database;
         _controlPoint = controlPoint;
-        _currency = CurrencyCode.FromString(runtime.Options.CompanyCurrency);
+        _company = runtime.Company;
     }
 
     /// <summary>
@@ -75,6 +76,12 @@ public sealed class InventoryValuationService : IApplicationService
         if (gate.IsFailure)
         {
             return Result<ControlReconciliationReport>.Failure(gate.Errors);
+        }
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<ControlReconciliationReport>.Failure(money.Errors);
         }
 
         Result<ControlPointSnapshot> control = await _controlPoint
@@ -119,9 +126,9 @@ public sealed class InventoryValuationService : IApplicationService
                 key.DocumentType,
                 key.DocumentId,
                 key.ItemId,
-                Money.Of(mine, _currency),
-                Money.Of(theirs, _currency),
-                Money.Of(mine - theirs, _currency),
+                Money.Of(mine, money.Value.Currency),
+                Money.Of(theirs, money.Value.Currency),
+                Money.Of(mine - theirs, money.Value.Currency),
                 reason));
         }
 
@@ -130,10 +137,10 @@ public sealed class InventoryValuationService : IApplicationService
 
         return Result<ControlReconciliationReport>.Success(new ControlReconciliationReport(
             asOf,
-            Money.Of(subledgerTotal, _currency),
-            Money.Of(control.Value.Net, _currency),
-            Money.Of(balanceTotal, _currency),
-            Money.Of(subledgerTotal - control.Value.Net, _currency),
+            Money.Of(subledgerTotal, money.Value.Currency),
+            Money.Of(control.Value.Net, money.Value.Currency),
+            Money.Of(balanceTotal, money.Value.Currency),
+            Money.Of(subledgerTotal - control.Value.Net, money.Value.Currency),
             subledgerTotal == control.Value.Net && divergences.Count == 0,
             divergences));
     }
@@ -166,6 +173,12 @@ public sealed class InventoryValuationService : IApplicationService
             return Result<IReadOnlyList<CloseObstacle>>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<IReadOnlyList<CloseObstacle>>.Failure(money.Errors);
+        }
+
         await OpenAsync(cancellationToken).ConfigureAwait(false);
 
         List<CloseObstacle> obstacles = [];
@@ -191,7 +204,7 @@ public sealed class InventoryValuationService : IApplicationService
                     reader.GetString(1),
                     reader.GetString(2),
                     new Babel.Contracts.Inventory.InventoryQuantity(quantity, reader.GetString(3)),
-                    Money.Of(value, _currency),
+                    Money.Of(value, money.Value.Currency),
                     quantity < 0m ? CloseObstacleReason.NegativeQuantity : CloseObstacleReason.ValueWithoutQuantity));
             }
         }

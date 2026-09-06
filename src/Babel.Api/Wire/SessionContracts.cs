@@ -19,13 +19,17 @@ namespace Babel.Api.Wire;
 /// <param name="NameTranslations">ترجمات الاسم بوسم اللغة BCP-47، مرتَّبة، وفارغة حين لا تأسيس.</param>
 /// <param name="DecimalPlaces">عدد الخانات العشرية المعروضة. <c>null</c> حين لا تأسيس.</param>
 /// <param name="DefaultCostCenter">رمز مركز التكلفة الافتراضي. <c>null</c> حين لا تأسيس.</param>
+/// <param name="CurrencyCode">عملة المنشأة — رمز ISO 4217. <c>null</c> حين لا تأسيس.</param>
+/// <param name="MinorUnits">عدد خانات الوحدة الصغرى. <c>null</c> حين لا تأسيس.</param>
 internal sealed record SessionCompanyDto(
     string CompanyId,
     string State,
     string? NameAr,
     IReadOnlyList<NameValueDto> NameTranslations,
     int? DecimalPlaces,
-    string? DefaultCostCenter);
+    string? DefaultCostCenter,
+    string? CurrencyCode,
+    int? MinorUnits);
 
 /// <summary>
 /// الهوية خلف الاعتماد، والشركات التي يبلغها — <b>أول ما يحتاجه مستخدم حقيقي</b>.

@@ -12096,7 +12096,7 @@
       "get": {
         "operationId": "readCompanySetup",
         "summary": "تأسيس المنشأة / The company setup",
-        "description": "يقرأ تأسيس المنشأة: اسمها، و**عدد الخانات العشرية المعروضة**، و**مراكز تكلفتها كلّها** — العاملة والموقوفة معاً. والموقوف يبقى في القائمة عمداً: تقاريرُ الفترات السابقة تُبوَّب عليه، والدفتر إضافي لا يُحذف منه شيء.\n\nReads the company setup: its name, the **number of displayed decimal places**, and **all of its cost centres** — active and suspended alike. A suspended centre stays in the list on purpose: earlier periods are still grouped by it, and the ledger is append-only.",
+        "description": "يقرأ تأسيس المنشأة: اسمها، و**عدد الخانات العشرية المعروضة**، و**عملتها ووحدتها الصغرى**، و**مراكز تكلفتها كلّها** — العاملة والموقوفة معاً. والموقوف يبقى في القائمة عمداً: تقاريرُ الفترات السابقة تُبوَّب عليه، والدفتر إضافي لا يُحذف منه شيء.\n\nReads the company setup: its name, the **number of displayed decimal places**, **its currency and minor unit**, and **all of its cost centres** — active and suspended alike. A suspended centre stays in the list on purpose: earlier periods are still grouped by it, and the ledger is append-only.",
         "responses": {
           "200": {
             "description": "استجابة ناجحة. / Successful response.",
@@ -12143,7 +12143,7 @@
       "put": {
         "operationId": "initialiseCompanySetup",
         "summary": "تأسيس المنشأة مرّة واحدة / Set the company up, once",
-        "description": "يؤسّس المنشأة. **يُقبل مرّة واحدة فقط**: الوصول الثاني يُرفض بـ409 و‏company_setup.already_initialised مهما تغيّرت حمولته — وبالأخصّ decimalPlaces، فعدد الخانات يُسنَد عند أول تأسيس ولا يُعدَّل بعده، وتوحيده داخل دفاتر المنشأة الواحدة أهمّ من أي قيمة بعينها.\n\nوسؤال مراكز التكلفة يُطرح هنا وحده: costCenters = One يجعل **اسم المنشأة نفسه** هو المركز الافتراضي فلا يرى صاحبُ هذا الجواب المفهوم أبداً؛ وcostCenters = Multiple يجعل firstCostCenterNameAr **إلزامياً** — من أعلن أن لديه أكثر من واحد لا يُخترَع له اسم نيابةً عنه. وفي الحالتين تخرج المنشأة من هنا وبها مركز تكلفة واحد على الأقل.\n\nوdecimalPlaces يحكم **العرض والإدخال البشري وحدهما**: التخزين يبقى بأربع خانات، والمبالغ المحسوبة (ضريبة 15٪ على صافٍ فردي مثلاً) لا يقيّدها هذا العدد ولا تُقرَّب عنده — وإلا لصارت الفاتورة العادية مستحيلة.\n\nSets the company up. **Accepted exactly once**: a second arrival is refused with 409 and company_setup.already_initialised whatever its payload — decimalPlaces above all, since the number of places is assigned at first setup and is never editable afterwards; its consistency inside one entity's books matters more than any particular value.\n\nThe cost-centre question is asked here and only here: costCenters = One makes **the company's own name** the default centre, so whoever answers that never sees the concept again; costCenters = Multiple makes firstCostCenterNameAr **mandatory** — no name is invented on behalf of someone who declared they have more than one. Either way the company leaves this call with at least one cost centre.\n\ndecimalPlaces governs **display and human input only**: storage stays at four places, and computed amounts (15% VAT on an odd net, say) are neither constrained nor rounded by it — otherwise an ordinary invoice would be impossible.",
+        "description": "يؤسّس المنشأة. **يُقبل مرّة واحدة فقط**: الوصول الثاني يُرفض بـ409 و‏company_setup.already_initialised مهما تغيّرت حمولته — وبالأخصّ decimalPlaces، فعدد الخانات يُسنَد عند أول تأسيس ولا يُعدَّل بعده، وتوحيده داخل دفاتر المنشأة الواحدة أهمّ من أي قيمة بعينها.\n\nوسؤال مراكز التكلفة يُطرح هنا وحده: costCenters = One يجعل **اسم المنشأة نفسه** هو المركز الافتراضي فلا يرى صاحبُ هذا الجواب المفهوم أبداً؛ وcostCenters = Multiple يجعل firstCostCenterNameAr **إلزامياً** — من أعلن أن لديه أكثر من واحد لا يُخترَع له اسم نيابةً عنه. وفي الحالتين تخرج المنشأة من هنا وبها مركز تكلفة واحد على الأقل.\n\nوdecimalPlaces يحكم **العرض والإدخال البشري وحدهما**: التخزين يبقى بأربع خانات، والمبالغ المحسوبة (ضريبة 15٪ على صافٍ فردي مثلاً) لا يقيّدها هذا العدد ولا تُقرَّب عنده — وإلا لصارت الفاتورة العادية مستحيلة.\n\nوcurrencyCode **عملة المنشأة**، تُسنَد هنا ولا تُعدَّل بعدها بالحصانة نفسها: تغييرُ العملة الوظيفية حدثٌ محاسبي يُطبَّق مستقبلاً على دفاترَ تُفتح من جديد لا تعديلُ إعداد. ووحدتُها الصغرى تُشتقّ من ISO 4217 ولا تُرسَل — وهي ما يُقرَّب عنده كلُّ سطر مستند، لا decimalPlaces (ADR-0089).\n\nSets the company up. **Accepted exactly once**: a second arrival is refused with 409 and company_setup.already_initialised whatever its payload — decimalPlaces above all, since the number of places is assigned at first setup and is never editable afterwards; its consistency inside one entity's books matters more than any particular value.\n\nThe cost-centre question is asked here and only here: costCenters = One makes **the company's own name** the default centre, so whoever answers that never sees the concept again; costCenters = Multiple makes firstCostCenterNameAr **mandatory** — no name is invented on behalf of someone who declared they have more than one. Either way the company leaves this call with at least one cost centre.\n\ndecimalPlaces governs **display and human input only**: storage stays at four places, and computed amounts (15% VAT on an odd net, say) are neither constrained nor rounded by it — otherwise an ordinary invoice would be impossible.\n\ncurrencyCode is **the company's currency**, assigned here and never editable afterwards under the same immutability: changing the functional currency is an accounting event applied prospectively to books opened anew, not a settings edit. Its minor unit is derived from ISO 4217 and is not sent — and it, not decimalPlaces, is what every document line is rounded to (ADR-0089).",
         "requestBody": {
           "required": true,
           "content": {
@@ -12207,6 +12207,67 @@
           },
           "422": {
             "description": "الطلب مفهوم ومرفوض محاسبياً: قيد غير متوازن، أو دور لا يُحلّ إلى حساب. / Understood and refused on accounting grounds: an unbalanced entry, or a role that resolves to no account.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/companies/{companyId}/setup/currencies": {
+      "parameters": [
+        {
+          "name": "companyId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "readSetupCurrencies",
+        "summary": "العملات التي يقبلها التأسيس / The currencies setup accepts",
+        "description": "يُرجع الجدول المرجعي للعملات كما شُحن من ISO 4217: رمز كلّ عملة و**عدد خانات وحدتها الصغرى** — الهللة خانتان، والفلس الكويتي ثلاث، ولا خانة للين. يُقرأ **قبل** التأسيس كي تختار الشاشة من قائمةٍ لا تكتبها، وعملةٌ ليست فيه تُرفض عند التأسيس بـcompany_setup.currency_not_in_reference_table ولا يُخمَّن لها عددُ خانات (ADR-0089).\n\nReturns the currency reference table as shipped from ISO 4217: each currency's code and **its minor unit's number of places** — the halala is two, the Kuwaiti fils three, the yen none. Read **before** setup so the screen picks from a list it does not write; a currency outside it is refused at setup with company_setup.currency_not_in_reference_table and no number of places is guessed (ADR-0089).",
+        "responses": {
+          "200": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrencyList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -20388,6 +20449,11 @@
             },
             "description": "مراكز التكلفة كلّها — العاملة والموقوفة — مرتَّبة برمزها. / All cost centres — active and suspended — ordered by code."
           },
+          "currencyCode": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$",
+            "description": "عملة المنشأة — رمز ISO 4217. مُسنَدة عند التأسيس ولا تتغيّر بعده. / The company's currency — an ISO 4217 code. Assigned at setup and never changes afterwards."
+          },
           "decimalPlaces": {
             "type": "integer",
             "minimum": 0,
@@ -20398,6 +20464,12 @@
             "type": "string",
             "maxLength": 32,
             "description": "رمز المركز الافتراضي. / The default centre's code."
+          },
+          "minorUnits": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4,
+            "description": "عدد خانات الوحدة الصغرى للعملة كما في ISO 4217 — وهو ما يُقرَّب عنده كلُّ سطر مستند. مخزَّنٌ بجوار العملة عند التأسيس. / The currency's minor-unit places as in ISO 4217 — what every document line is rounded to. Stored beside the currency at setup."
           },
           "nameAr": {
             "type": "string",
@@ -20414,8 +20486,10 @@
         },
         "required": [
           "costCenters",
+          "currencyCode",
           "decimalPlaces",
           "defaultCostCenter",
+          "minorUnits",
           "nameAr",
           "nameTranslations"
         ],
@@ -20629,6 +20703,45 @@
           "issuedOn",
           "lines",
           "number"
+        ],
+        "additionalProperties": false
+      },
+      "CurrencyList": {
+        "type": "object",
+        "description": "العملات التي يقبلها التأسيس، مرتَّبةً برمزها. القائمة هي الجدول المرجعي نفسه لا قائمةٌ تُكتب في واجهة. / The currencies setup accepts, ordered by code. The list is the reference table itself, not one written in a front end.",
+        "properties": {
+          "currencies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CurrencyOption"
+            },
+            "description": "العملات. / The currencies."
+          }
+        },
+        "required": [
+          "currencies"
+        ],
+        "additionalProperties": false
+      },
+      "CurrencyOption": {
+        "type": "object",
+        "description": "عملةٌ يقبلها التأسيس: رمزها ووحدتها الصغرى كما في الجدول المرجعي المشحون من ISO 4217. / A currency setup accepts: its code and minor unit as in the shipped ISO 4217 reference table.",
+        "properties": {
+          "code": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$",
+            "description": "رمز ISO 4217. / The ISO 4217 code."
+          },
+          "minorUnits": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4,
+            "description": "عدد خانات الوحدة الصغرى — الهللة خانتان، والفلس الكويتي ثلاث، ولا خانة للين. / The minor unit's number of places — the halala is two, the Kuwaiti fils three, the yen none."
+          }
+        },
+        "required": [
+          "code",
+          "minorUnits"
         ],
         "additionalProperties": false
       },
@@ -23041,6 +23154,11 @@
             "maximum": 4,
             "description": "عدد الخانات العشرية المعروضة. يُسنَد هنا ولا يُعدَّل بعدها. ويحكم العرض والإدخال البشري وحدهما — لا التخزين ولا الحساب. / The number of displayed decimal places. Assigned here and never editable afterwards. It governs display and human input only — never storage and never arithmetic."
           },
+          "currencyCode": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$",
+            "description": "عملة المنشأة — رمز ISO 4217 من القائمة التي يُرجعها readSetupCurrencies. تُسنَد هنا ولا تُعدَّل بعدها، **ولا تُخترَع**: غيابها يُرفض بـcompany_setup.currency_missing. / The company's currency — an ISO 4217 code from the list readSetupCurrencies returns. Assigned here and never editable afterwards, **and never invented**: its absence is refused with company_setup.currency_missing."
+          },
           "firstCostCenterNameAr": {
             "type": [
               "string",
@@ -23060,6 +23178,7 @@
         "required": [
           "companyNameAr",
           "costCenters",
+          "currencyCode",
           "decimalPlaces"
         ],
         "additionalProperties": false
@@ -26338,6 +26457,14 @@
             "maxLength": 36,
             "description": "معرّف الشركة كما يُكتب في المسار. / The company identifier as written in the path."
           },
+          "currencyCode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 3,
+            "description": "عملة المنشأة — رمز ISO 4217. / The company's currency — an ISO 4217 code."
+          },
           "defaultCostCenter": {
             "type": [
               "string",
@@ -26354,6 +26481,15 @@
             "minimum": 0,
             "maximum": 4,
             "description": "عدد الخانات العشرية المعروضة لهذه المنشأة. / This company's displayed decimal places."
+          },
+          "minorUnits": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 4,
+            "description": "عدد خانات الوحدة الصغرى لعملة المنشأة. / The minor-unit places of the company's currency."
           },
           "nameAr": {
             "type": [
@@ -26381,8 +26517,10 @@
         },
         "required": [
           "companyId",
+          "currencyCode",
           "decimalPlaces",
           "defaultCostCenter",
+          "minorUnits",
           "nameAr",
           "nameTranslations",
           "state"

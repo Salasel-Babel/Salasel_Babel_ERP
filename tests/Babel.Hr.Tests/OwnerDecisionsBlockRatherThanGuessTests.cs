@@ -70,7 +70,7 @@ public sealed class OwnerDecisionsBlockRatherThanGuessTests
         using Harness harness = await Harness.CreateAsync(token).ConfigureAwait(true);
 
         Result<IReadOnlyList<PayrollSettingsView>> versions = await harness.Settings
-            .ListAsync(HrTestEnvironment.EmptyRatesTenant, Harness.Actor, Harness.Currency, token)
+            .ListAsync(HrTestEnvironment.EmptyRatesTenant, Harness.Actor, token)
             .ConfigureAwait(true);
 
         Assert.True(versions.IsSuccess, Harness.Reason(versions));

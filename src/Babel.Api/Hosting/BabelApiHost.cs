@@ -400,11 +400,6 @@ internal static class BabelApiHost
             options.ConnectionString = connection;
         }
 
-        string? currency = configuration["Babel:Sales:CompanyCurrency"];
-        if (!string.IsNullOrWhiteSpace(currency))
-        {
-            options.CompanyCurrency = currency;
-        }
     }
 
     /// <summary>
@@ -462,11 +457,6 @@ internal static class BabelApiHost
             options.ConnectionString = connection;
         }
 
-        string? currency = configuration["Babel:Purchasing:CompanyCurrency"];
-        if (!string.IsNullOrWhiteSpace(currency))
-        {
-            options.CompanyCurrency = currency;
-        }
     }
 
     /// <summary>
@@ -483,11 +473,6 @@ internal static class BabelApiHost
             options.ConnectionString = connection;
         }
 
-        string? currency = configuration["Babel:Inventory:CompanyCurrency"];
-        if (!string.IsNullOrWhiteSpace(currency))
-        {
-            options.CompanyCurrency = currency;
-        }
     }
 
     /// <summary>
@@ -505,11 +490,6 @@ internal static class BabelApiHost
             options.ConnectionString = connection;
         }
 
-        string? realEstateCurrency = configuration["Babel:RealEstate:CompanyCurrency"];
-        if (!string.IsNullOrWhiteSpace(realEstateCurrency))
-        {
-            options.CompanyCurrency = realEstateCurrency;
-        }
     }
 
     /// <summary>
@@ -526,11 +506,6 @@ internal static class BabelApiHost
             options.ConnectionString = connection;
         }
 
-        string? currency = configuration["Babel:Hr:CompanyCurrency"];
-        if (!string.IsNullOrWhiteSpace(currency))
-        {
-            options.CompanyCurrency = currency;
-        }
     }
 
     /// <summary>
@@ -546,11 +521,6 @@ internal static class BabelApiHost
             options.ConnectionString = connection;
         }
 
-        string? currency = configuration["Babel:Projects:CompanyCurrency"];
-        if (!string.IsNullOrWhiteSpace(currency))
-        {
-            options.CompanyCurrency = currency;
-        }
     }
 
     private static void ApplyLedgerConfiguration(ConfigurationManager configuration, LedgerOptions options)
@@ -567,11 +537,6 @@ internal static class BabelApiHost
             options.OwnerConnectionString = owner;
         }
 
-        string? currency = configuration["Babel:Ledger:CompanyCurrency"];
-        if (!string.IsNullOrWhiteSpace(currency))
-        {
-            options.CompanyCurrency = currency;
-        }
     }
 
     /// <summary>

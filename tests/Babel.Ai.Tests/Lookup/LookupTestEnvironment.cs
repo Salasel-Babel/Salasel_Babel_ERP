@@ -156,7 +156,7 @@ internal static class LookupTestEnvironment
                 await CreateDatabaseAsync(cancellationToken).ConfigureAwait(false);
 
                 await SalesSchemaDeployer.DeployAsync(
-                    new SalesOptions { ConnectionString = ConnectionString, CompanyCurrency = "SAR" },
+                    new SalesOptions { ConnectionString = ConnectionString },
                     cancellationToken).ConfigureAwait(false);
 
                 await NameRegisterSchema.DeployAsync(ConnectionString, cancellationToken).ConfigureAwait(false);
@@ -212,8 +212,9 @@ internal static class LookupTestEnvironment
         CancellationToken cancellationToken = default)
     {
         using SalesRuntime runtime = new(
-            new SalesOptions { ConnectionString = ConnectionString, CompanyCurrency = "SAR" },
-            DefaultCostCenter.Instance);
+            new SalesOptions { ConnectionString = ConnectionString },
+            DefaultCostCenter.Instance,
+            RiyalForEveryTenant.Instance);
 
         CustomerService customers = new(AlwaysEntitled.Instance, runtime);
 
@@ -412,6 +413,17 @@ internal sealed class AlwaysEntitled : IEntitlementEnforcer
 /// <summary>
 /// حالُّ مركز تكلفة يعيد الافتراضي — ولا يُقرأ في هذا المسار إطلاقاً: تسجيل عميل لا يُرحَّل.
 /// </summary>
+/// <summary>عملةٌ ثابتة لكلّ منشأة — معطى اختبار لا افتراض منتج (ADR-0089).</summary>
+internal sealed class RiyalForEveryTenant : ICompanyMoneyResolver
+{
+    /// <summary>النسخة الوحيدة.</summary>
+    public static RiyalForEveryTenant Instance { get; } = new();
+
+    /// <inheritdoc />
+    public ValueTask<Result<CompanyMoney>> ResolveAsync(TenantId company, CancellationToken cancellationToken = default)
+        => ValueTask.FromResult(CompanyMoney.Of("SAR"));
+}
+
 internal sealed class DefaultCostCenter : ICostCenterResolver
 {
     /// <summary>النسخة الوحيدة.</summary>

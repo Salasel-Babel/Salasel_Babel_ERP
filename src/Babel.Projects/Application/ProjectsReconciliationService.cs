@@ -3,6 +3,7 @@ using Babel.Contracts.Subledger;
 using Babel.Core.Application;
 using Babel.Core.Entitlement;
 using Babel.Projects.Persistence;
+using Babel.Core.CompanySetup;
 using Babel.SharedKernel;
 using Microsoft.EntityFrameworkCore;
 
@@ -38,7 +39,7 @@ public sealed class ProjectsReconciliationService : IApplicationService
     private readonly IEntitlementEnforcer _enforcer;
     private readonly ProjectsDbContext _database;
     private readonly IControlPointReader _controlPoint;
-    private readonly CurrencyCode _currency;
+    private readonly ICompanyMoneyResolver _company;
 
     /// <summary>ينشئ الخدمة.</summary>
     /// <param name="enforcer">منفِّذ الاستحقاق.</param>
@@ -55,7 +56,7 @@ public sealed class ProjectsReconciliationService : IApplicationService
         _enforcer = enforcer;
         _database = runtime.Database;
         _controlPoint = controlPoint;
-        _currency = CurrencyCode.FromString(runtime.Options.CompanyCurrency);
+        _company = runtime.Company;
     }
 
     /// <summary>
@@ -79,6 +80,12 @@ public sealed class ProjectsReconciliationService : IApplicationService
         if (gate.IsFailure)
         {
             return Result<SubcontractorStatement>.Failure(gate.Errors);
+        }
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<SubcontractorStatement>.Failure(money.Errors);
         }
 
         Result<ControlPointSnapshot> snapshot = await _controlPoint
@@ -137,7 +144,7 @@ public sealed class ProjectsReconciliationService : IApplicationService
                     .Where(row => row.EntityId == party.Id)
                     .ToDictionary(static row => row.LanguageTag, static row => row.Name, StringComparer.Ordinal));
 
-            rows.Add(new SubcontractorStatementRow(party.Id, party.Code, name, Money.Of(effect, _currency)));
+            rows.Add(new SubcontractorStatementRow(party.Id, party.Code, name, Money.Of(effect, money.Value.Currency)));
         }
 
         decimal subledgerTotal = postings.Sum(static row => row.ControlEffect);
@@ -147,9 +154,9 @@ public sealed class ProjectsReconciliationService : IApplicationService
         return Result<SubcontractorStatement>.Success(new SubcontractorStatement(
             asOf,
             rows,
-            Money.Of(subledgerTotal, _currency),
-            Money.Of(controlTotal, _currency),
-            Money.Of(divergence, _currency),
+            Money.Of(subledgerTotal, money.Value.Currency),
+            Money.Of(controlTotal, money.Value.Currency),
+            Money.Of(divergence, money.Value.Currency),
 
             // صفرٌ بالضبط لا «قريب من الصفر»: الفارق بريال واحد فارقٌ يُسمّى.
             divergence == 0m));

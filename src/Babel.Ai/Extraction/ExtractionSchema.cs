@@ -325,7 +325,9 @@ public static class ExtractionSchema
         if (text.Length != 3 || text.Any(static c => c is < 'A' or > 'Z'))
         {
             errors.Add(CaptureErrors.CurrencyNotAcceptable(text));
-            return new ExtractedCurrency(CurrencyCode.Sar, confidence);
+
+            // ‏عنصرٌ نائب لا عملة: الخطأ سُجّل أعلاه والنتيجةُ رفضٌ، فلا يُخترَع ريالٌ ليملأ الفراغ.
+            return new ExtractedCurrency(default, confidence);
         }
 
         return new ExtractedCurrency(CurrencyCode.FromString(text), confidence);

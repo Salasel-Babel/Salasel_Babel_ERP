@@ -2,6 +2,7 @@ using Babel.Contracts.Posting;
 using Babel.Core.Application;
 using Babel.Core.Entitlement;
 using Babel.Hr.Persistence;
+using Babel.Core.CompanySetup;
 using Babel.SharedKernel;
 using Microsoft.EntityFrameworkCore;
 
@@ -54,7 +55,7 @@ public sealed class EndOfServiceService : IApplicationService
     private readonly IEntitlementEnforcer _enforcer;
     private readonly HrDbContext _database;
     private readonly SubledgerPostingGateway _gateway;
-    private readonly CurrencyCode _currency;
+    private readonly ICompanyMoneyResolver _company;
 
     /// <summary>ينشئ الخدمة.</summary>
     /// <param name="enforcer">منفِّذ الاستحقاق.</param>
@@ -68,7 +69,7 @@ public sealed class EndOfServiceService : IApplicationService
         _enforcer = enforcer;
         _database = runtime.Database;
         _gateway = new SubledgerPostingGateway(runtime.Database, posting, runtime.CostCenters);
-        _currency = CurrencyCode.FromString(runtime.Options.CompanyCurrency);
+        _company = runtime.Company;
     }
 
     /// <summary>
@@ -95,6 +96,12 @@ public sealed class EndOfServiceService : IApplicationService
         if (gate.IsFailure)
         {
             return Result<EndOfServiceProvisionView>.Failure(gate.Errors);
+        }
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<EndOfServiceProvisionView>.Failure(money.Errors);
         }
 
         if (draft.Shares.Count == 0)
@@ -162,7 +169,7 @@ public sealed class EndOfServiceService : IApplicationService
         _database.ProvisionMovements.AddRange(movements);
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        return Result<EndOfServiceProvisionView>.Success(View(provision, movements, alreadyPosted: false));
+        return Result<EndOfServiceProvisionView>.Success(View(provision, movements, alreadyPosted: false, money.Value));
     }
 
     /// <summary>يقرأ مستند الاستحقاق بحركاته.</summary>
@@ -186,6 +193,12 @@ public sealed class EndOfServiceService : IApplicationService
             return Result<EndOfServiceProvisionView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<EndOfServiceProvisionView>.Failure(money.Errors);
+        }
+
         EndOfServiceProvisionRow? provision = await _database.Provisions
             .FirstOrDefaultAsync(row => row.TenantId == tenant.Value && row.Id == provisionId, cancellationToken)
             .ConfigureAwait(false);
@@ -199,7 +212,7 @@ public sealed class EndOfServiceService : IApplicationService
         List<EndOfServiceMovementRow> movements = await MovementsAsync(provisionId, cancellationToken)
             .ConfigureAwait(false);
 
-        return Result<EndOfServiceProvisionView>.Success(View(provision, movements, alreadyPosted: false));
+        return Result<EndOfServiceProvisionView>.Success(View(provision, movements, alreadyPosted: false, money.Value));
     }
 
     /// <summary>
@@ -224,6 +237,12 @@ public sealed class EndOfServiceService : IApplicationService
         if (gate.IsFailure)
         {
             return Result<EndOfServiceProvisionView>.Failure(gate.Errors);
+        }
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<EndOfServiceProvisionView>.Failure(money.Errors);
         }
 
         EndOfServiceProvisionRow? provision = await _database.Provisions
@@ -265,14 +284,14 @@ public sealed class EndOfServiceService : IApplicationService
                 Narration = new LocalizedName(
                     "استحقاق مخصص نهاية الخدمة " + provision.PeriodCode + " · " + movement.EmployeeCode,
                     "End-of-service provision accrual " + provision.PeriodCode + " · " + movement.EmployeeCode),
-                Amounts = [new PostingAmount("period_share", Money.Of(movement.PeriodShare, _currency))],
+                Amounts = [new PostingAmount("period_share", Money.Of(movement.PeriodShare, money.Value.Currency))],
                 Facts = [new PostingFact("subledger.employee", movement.EmployeeCode)],
                 Dimensions = [new PostingDimension("cost_center", movement.CostCenterId)],
                 PartyId = movement.EmployeeCode,
 
                 // سطرٌ واحد على دفتر الموظف، دائن: المخصص يتكوّن.
                 ControlEffect = -movement.PeriodShare,
-                Currency = _currency,
+                Currency = money.Value.Currency,
                 Actor = actor,
                 Generation = 1,
             };
@@ -291,7 +310,7 @@ public sealed class EndOfServiceService : IApplicationService
         provision.State = HrDocumentState.Posted;
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        return Result<EndOfServiceProvisionView>.Success(View(provision, movements, everyMovementWasAlreadyPosted));
+        return Result<EndOfServiceProvisionView>.Success(View(provision, movements, everyMovementWasAlreadyPosted, money.Value));
     }
 
     /// <summary>
@@ -320,15 +339,21 @@ public sealed class EndOfServiceService : IApplicationService
             return Result<EndOfServiceSettlementView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<EndOfServiceSettlementView>.Failure(money.Errors);
+        }
+
         if (draft.SettlementDue.Amount < 0m)
         {
             return Result<EndOfServiceSettlementView>.Failure(HrErrors.NegativeAmount);
         }
 
-        if (draft.SettlementDue.Currency != _currency)
+        if (draft.SettlementDue.Currency != money.Value.Currency)
         {
             return Result<EndOfServiceSettlementView>.Failure(
-                HrErrors.CurrencyMismatch(_currency, draft.SettlementDue.Currency, "settlementDue"));
+                HrErrors.CurrencyMismatch(money.Value.Currency, draft.SettlementDue.Currency, "settlementDue"));
         }
 
         if (string.IsNullOrWhiteSpace(draft.TreasuryPartyId))
@@ -399,7 +424,7 @@ public sealed class EndOfServiceService : IApplicationService
         _database.Settlements.Add(row);
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        return Result<EndOfServiceSettlementView>.Success(View(row, alreadyPosted: false));
+        return Result<EndOfServiceSettlementView>.Success(View(row, alreadyPosted: false, money.Value));
     }
 
     /// <summary>يقرأ المخالصة — وهي أكثر مستند في الوحدة عرضةً للنزاع.</summary>
@@ -423,6 +448,12 @@ public sealed class EndOfServiceService : IApplicationService
             return Result<EndOfServiceSettlementView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<EndOfServiceSettlementView>.Failure(money.Errors);
+        }
+
         EndOfServiceSettlementRow? row = await _database.Settlements
             .FirstOrDefaultAsync(entity => entity.TenantId == tenant.Value && entity.Id == settlementId, cancellationToken)
             .ConfigureAwait(false);
@@ -430,7 +461,7 @@ public sealed class EndOfServiceService : IApplicationService
         return row is null
             ? Result<EndOfServiceSettlementView>.Failure(
                 HrErrors.DocumentNotFound("EndOfServiceSettlement", settlementId))
-            : Result<EndOfServiceSettlementView>.Success(View(row, alreadyPosted: false));
+            : Result<EndOfServiceSettlementView>.Success(View(row, alreadyPosted: false, money.Value));
     }
 
     /// <summary>
@@ -462,6 +493,12 @@ public sealed class EndOfServiceService : IApplicationService
             return Result<EndOfServiceSettlementView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<EndOfServiceSettlementView>.Failure(money.Errors);
+        }
+
         EndOfServiceSettlementRow? row = await _database.Settlements
             .FirstOrDefaultAsync(entity => entity.TenantId == tenant.Value && entity.Id == settlementId, cancellationToken)
             .ConfigureAwait(false);
@@ -485,15 +522,15 @@ public sealed class EndOfServiceService : IApplicationService
                 "End-of-service settlement · " + row.EmployeeCode),
             Amounts =
             [
-                new PostingAmount("amount_paid", Money.Of(row.AmountPaid, _currency)),
-                new PostingAmount("provision_utilised", Money.Of(row.ProvisionUtilised, _currency)),
-                new PostingAmount("shortfall", Money.Of(row.Shortfall, _currency)),
-                new PostingAmount("excess", Money.Of(row.Excess, _currency)),
+                new PostingAmount("amount_paid", Money.Of(row.AmountPaid, money.Value.Currency)),
+                new PostingAmount("provision_utilised", Money.Of(row.ProvisionUtilised, money.Value.Currency)),
+                new PostingAmount("shortfall", Money.Of(row.Shortfall, money.Value.Currency)),
+                new PostingAmount("excess", Money.Of(row.Excess, money.Value.Currency)),
 
                 // ‏**المفردتان اللتان لا تظهران في كتلة amounts على الحدث** ويستعملهما
                 // تعبيرا الشرط. وبدونهما: UndecidableCondition.
-                new PostingAmount("provision_balance", Money.Of(row.ProvisionBalance, _currency)),
-                new PostingAmount("settlement_due", Money.Of(row.SettlementDue, _currency)),
+                new PostingAmount("provision_balance", Money.Of(row.ProvisionBalance, money.Value.Currency)),
+                new PostingAmount("settlement_due", Money.Of(row.SettlementDue, money.Value.Currency)),
             ],
             Facts =
             [
@@ -506,7 +543,7 @@ public sealed class EndOfServiceService : IApplicationService
 
             // سطرٌ واحد على دفتر الموظف، مدين: المخصص يُستنفد.
             ControlEffect = row.ProvisionUtilised,
-            Currency = _currency,
+            Currency = money.Value.Currency,
             Actor = actor,
             Generation = row.PostingGeneration,
         };
@@ -522,7 +559,7 @@ public sealed class EndOfServiceService : IApplicationService
         row.PostedEntryId = posted.Value.JournalEntryId;
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        return Result<EndOfServiceSettlementView>.Success(View(row, posted.Value.WasAlreadyPosted));
+        return Result<EndOfServiceSettlementView>.Success(View(row, posted.Value.WasAlreadyPosted, money.Value));
     }
 
     /// <summary>
@@ -554,38 +591,39 @@ public sealed class EndOfServiceService : IApplicationService
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-    private EndOfServiceProvisionView View(
-        EndOfServiceProvisionRow provision, IReadOnlyList<EndOfServiceMovementRow> movements, bool alreadyPosted) => new(
+    private static EndOfServiceProvisionView View(
+        EndOfServiceProvisionRow provision, IReadOnlyList<EndOfServiceMovementRow> movements, bool alreadyPosted,
+        CompanyMoney money) => new(
         provision.Id,
         provision.Number,
         provision.PeriodCode,
         provision.AccruedOn,
         provision.MeasurementRef,
         provision.ApprovedBy,
-        Money.Of(provision.PeriodShare, _currency),
+        Money.Of(provision.PeriodShare, money.Currency),
         provision.State,
         [
             .. movements.Select(movement => new ProvisionMovementView(
                 movement.Id,
                 movement.EmploymentId,
                 movement.EmployeeCode,
-                Money.Of(movement.PeriodShare, _currency),
+                Money.Of(movement.PeriodShare, money.Currency),
                 movement.PostedEntryId)),
         ],
         alreadyPosted);
 
-    private EndOfServiceSettlementView View(EndOfServiceSettlementRow row, bool alreadyPosted) => new(
+    private static EndOfServiceSettlementView View(EndOfServiceSettlementRow row, bool alreadyPosted, CompanyMoney money) => new(
         row.Id,
         row.Number,
         row.EmploymentId,
         row.EmployeeCode,
         row.SettledOn,
-        Money.Of(row.SettlementDue, _currency),
-        Money.Of(row.ProvisionBalance, _currency),
-        Money.Of(row.AmountPaid, _currency),
-        Money.Of(row.Shortfall, _currency),
-        Money.Of(row.Excess, _currency),
-        Money.Of(row.ProvisionUtilised, _currency),
+        Money.Of(row.SettlementDue, money.Currency),
+        Money.Of(row.ProvisionBalance, money.Currency),
+        Money.Of(row.AmountPaid, money.Currency),
+        Money.Of(row.Shortfall, money.Currency),
+        Money.Of(row.Excess, money.Currency),
+        Money.Of(row.ProvisionUtilised, money.Currency),
         row.ScenarioCode,
         row.MeasurementRef,
         row.SettlementMethod,

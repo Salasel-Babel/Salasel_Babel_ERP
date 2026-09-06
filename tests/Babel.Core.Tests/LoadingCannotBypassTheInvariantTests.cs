@@ -81,7 +81,7 @@ public sealed class LoadingCannotBypassTheInvariantTests
             [Active("cc.001", "المركز الرئيس")], new CostCenterCode("cc.001"));
 
         InvalidOperationException refused = Assert.Throws<InvalidOperationException>(
-            () => FoundedCompany.Rehydrate(Tenant, new TranslatedName("منشأة"), 9, register));
+            () => FoundedCompany.Rehydrate(Tenant, new TranslatedName("منشأة"), 9, "SAR", 2, register));
 
         Assert.Contains("مقياس عرض", refused.Message, StringComparison.Ordinal);
     }
@@ -97,7 +97,7 @@ public sealed class LoadingCannotBypassTheInvariantTests
             [Active("cc.002", "فرع الدمام"), Active("cc.001", "المركز الرئيس")],
             new CostCenterCode("cc.001"));
 
-        FoundedCompany company = FoundedCompany.Rehydrate(Tenant, new TranslatedName("منشأة نخيل"), 2, register);
+        FoundedCompany company = FoundedCompany.Rehydrate(Tenant, new TranslatedName("منشأة نخيل"), 2, "SAR", 2, register);
 
         Assert.Equal("منشأة نخيل", company.NameAr);
         Assert.Equal(2, company.DisplayScale.Places);

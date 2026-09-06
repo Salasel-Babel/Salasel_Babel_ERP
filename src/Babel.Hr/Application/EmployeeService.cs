@@ -1,6 +1,7 @@
 using Babel.Core.Application;
 using Babel.Core.Entitlement;
 using Babel.Hr.Persistence;
+using Babel.Core.CompanySetup;
 using Babel.SharedKernel;
 using Microsoft.EntityFrameworkCore;
 
@@ -16,6 +17,7 @@ namespace Babel.Hr.Application;
 public sealed class EmployeeService : IApplicationService
 {
     private readonly IEntitlementEnforcer _enforcer;
+    private readonly ICompanyMoneyResolver _company;
     private readonly HrDbContext _database;
 
     /// <summary>ينشئ الخدمة.</summary>
@@ -27,6 +29,7 @@ public sealed class EmployeeService : IApplicationService
         ArgumentNullException.ThrowIfNull(runtime);
         _enforcer = enforcer;
         _database = runtime.Database;
+        _company = runtime.Company;
     }
 
     /// <summary>
@@ -359,14 +362,12 @@ public sealed class EmployeeService : IApplicationService
     /// <param name="tenant">المستأجر.</param>
     /// <param name="actor">الفاعل.</param>
     /// <param name="employeeId">الموظف.</param>
-    /// <param name="currency">عملة المنشأة.</param>
     /// <param name="cancellationToken">رمز الإلغاء.</param>
     [RequiresEntitlement(BabelModule.Hr, EntitlementAccess.Read)]
     public async ValueTask<Result<IReadOnlyList<PayElementView>>> ListPayElementsAsync(
         TenantId tenant,
         UserId actor,
         Guid employeeId,
-        CurrencyCode currency,
         CancellationToken cancellationToken = default)
     {
         Result gate = await _enforcer
@@ -377,6 +378,14 @@ public sealed class EmployeeService : IApplicationService
         {
             return Result<IReadOnlyList<PayElementView>>.Failure(gate.Errors);
         }
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<IReadOnlyList<PayElementView>>.Failure(money.Errors);
+        }
+
+        CurrencyCode currency = money.Value.Currency;
 
         List<Guid> employments = await _database.Employments
             .Where(row => row.TenantId == tenant.Value && row.EmployeeId == employeeId)

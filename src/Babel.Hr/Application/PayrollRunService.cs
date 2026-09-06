@@ -2,6 +2,7 @@ using Babel.Contracts.Posting;
 using Babel.Core.Application;
 using Babel.Core.Entitlement;
 using Babel.Hr.Persistence;
+using Babel.Core.CompanySetup;
 using Babel.SharedKernel;
 using Microsoft.EntityFrameworkCore;
 
@@ -27,7 +28,7 @@ public sealed class PayrollRunService : IApplicationService
     private readonly HrDbContext _database;
     private readonly PayrollSettingsService _settings;
     private readonly SubledgerPostingGateway _gateway;
-    private readonly CurrencyCode _currency;
+    private readonly ICompanyMoneyResolver _company;
 
     /// <summary>ينشئ الخدمة.</summary>
     /// <param name="enforcer">منفِّذ الاستحقاق.</param>
@@ -48,7 +49,7 @@ public sealed class PayrollRunService : IApplicationService
         _database = runtime.Database;
         _settings = settings;
         _gateway = new SubledgerPostingGateway(runtime.Database, posting, runtime.CostCenters);
-        _currency = CurrencyCode.FromString(runtime.Options.CompanyCurrency);
+        _company = runtime.Company;
     }
 
     /// <summary>
@@ -75,6 +76,12 @@ public sealed class PayrollRunService : IApplicationService
         if (gate.IsFailure)
         {
             return Result<PayrollRunView>.Failure(gate.Errors);
+        }
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<PayrollRunView>.Failure(money.Errors);
         }
 
         if (await _database.PayrollRuns
@@ -283,7 +290,7 @@ public sealed class PayrollRunService : IApplicationService
         _database.PayslipComponents.AddRange(lines);
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        return Result<PayrollRunView>.Success(View(run, payslips.Count));
+        return Result<PayrollRunView>.Success(View(run, payslips.Count, money.Value));
     }
 
     /// <summary>يقرأ المسيّر بحالته ومجاميعه.</summary>
@@ -307,6 +314,12 @@ public sealed class PayrollRunService : IApplicationService
             return Result<PayrollRunView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<PayrollRunView>.Failure(money.Errors);
+        }
+
         PayrollRunRow? run = await _database.PayrollRuns
             .FirstOrDefaultAsync(row => row.TenantId == tenant.Value && row.Id == runId, cancellationToken)
             .ConfigureAwait(false);
@@ -320,7 +333,7 @@ public sealed class PayrollRunService : IApplicationService
             .CountAsync(row => row.TenantId == tenant.Value && row.RunId == runId, cancellationToken)
             .ConfigureAwait(false);
 
-        return Result<PayrollRunView>.Success(View(run, count));
+        return Result<PayrollRunView>.Success(View(run, count, money.Value));
     }
 
     /// <summary>
@@ -347,6 +360,12 @@ public sealed class PayrollRunService : IApplicationService
             return Result<IReadOnlyList<PayslipView>>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<IReadOnlyList<PayslipView>>.Failure(money.Errors);
+        }
+
         if (!await _database.PayrollRuns
                 .AnyAsync(row => row.TenantId == tenant.Value && row.Id == runId, cancellationToken)
                 .ConfigureAwait(false))
@@ -360,7 +379,7 @@ public sealed class PayrollRunService : IApplicationService
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        return Result<IReadOnlyList<PayslipView>>.Success([.. rows.Select(row => Slip(row, []))]);
+        return Result<IReadOnlyList<PayslipView>>.Success([.. rows.Select(row => Slip(row, [], money.Value))]);
     }
 
     /// <summary>يقرأ قسيمة واحدة بمكوّناتها ومعرّف قيدها — <b>وهي مستند الترحيل</b>.</summary>
@@ -384,6 +403,12 @@ public sealed class PayrollRunService : IApplicationService
             return Result<PayslipView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<PayslipView>.Failure(money.Errors);
+        }
+
         PayslipRow? payslip = await _database.Payslips
             .FirstOrDefaultAsync(row => row.TenantId == tenant.Value && row.Id == payslipId, cancellationToken)
             .ConfigureAwait(false);
@@ -399,7 +424,7 @@ public sealed class PayrollRunService : IApplicationService
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        return Result<PayslipView>.Success(Slip(payslip, components));
+        return Result<PayslipView>.Success(Slip(payslip, components, money.Value));
     }
 
     /// <summary>
@@ -430,6 +455,12 @@ public sealed class PayrollRunService : IApplicationService
         if (gate.IsFailure)
         {
             return Result<IReadOnlyList<PayslipView>>.Failure(gate.Errors);
+        }
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<IReadOnlyList<PayslipView>>.Failure(money.Errors);
         }
 
         PayrollRunRow? run = await _database.PayrollRuns
@@ -469,12 +500,12 @@ public sealed class PayrollRunService : IApplicationService
                 Narration = Narration(run.PeriodCode, payslip.EmployeeCode),
                 Amounts =
                 [
-                    new PostingAmount("gross_entitlements", Money.Of(payslip.GrossEntitlements, _currency)),
-                    new PostingAmount("employer_social_insurance", Money.Of(payslip.EmployerSocialInsurance, _currency)),
-                    new PostingAmount("employee_social_insurance", Money.Of(payslip.EmployeeSocialInsurance, _currency)),
-                    new PostingAmount("advance_installment", Money.Of(payslip.AdvanceInstalment, _currency)),
-                    new PostingAmount("deductions", Money.Of(payslip.Deductions, _currency)),
-                    new PostingAmount("net_payable", Money.Of(payslip.NetPayable, _currency)),
+                    new PostingAmount("gross_entitlements", Money.Of(payslip.GrossEntitlements, money.Value.Currency)),
+                    new PostingAmount("employer_social_insurance", Money.Of(payslip.EmployerSocialInsurance, money.Value.Currency)),
+                    new PostingAmount("employee_social_insurance", Money.Of(payslip.EmployeeSocialInsurance, money.Value.Currency)),
+                    new PostingAmount("advance_installment", Money.Of(payslip.AdvanceInstalment, money.Value.Currency)),
+                    new PostingAmount("deductions", Money.Of(payslip.Deductions, money.Value.Currency)),
+                    new PostingAmount("net_payable", Money.Of(payslip.NetPayable, money.Value.Currency)),
                 ],
                 Facts = [new PostingFact("subledger.employee", payslip.EmployeeCode)],
                 Dimensions = [new PostingDimension("cost_center", payslip.CostCenterId)],
@@ -482,7 +513,7 @@ public sealed class PayrollRunService : IApplicationService
 
                 // أثر سطور دفتر الموظف وحدها بمنطق «مدين ناقص دائن»: ثلاثة سطور دائنة.
                 ControlEffect = -(payslip.NetPayable + payslip.AdvanceInstalment + payslip.Deductions),
-                Currency = _currency,
+                Currency = money.Value.Currency,
                 Actor = actor,
                 Generation = payslip.PostingGeneration,
             };
@@ -496,7 +527,7 @@ public sealed class PayrollRunService : IApplicationService
 
             payslip.State = HrDocumentState.Posted;
             payslip.PostedEntryId = posted.Value.JournalEntryId;
-            results.Add(Slip(payslip, []) with { AlreadyPosted = posted.Value.WasAlreadyPosted });
+            results.Add(Slip(payslip, [], money.Value) with { AlreadyPosted = posted.Value.WasAlreadyPosted });
         }
 
         run.State = HrDocumentState.Posted;
@@ -514,17 +545,18 @@ public sealed class PayrollRunService : IApplicationService
             "استحقاق رواتب " + periodCode + " · " + employeeCode,
             "Payroll accrual " + periodCode + " · " + employeeCode);
 
-    private PayrollAmounts Amounts(
-        decimal gross, decimal employer, decimal employee, decimal advance, decimal deductions, decimal net)
+    private static PayrollAmounts Amounts(
+        decimal gross, decimal employer, decimal employee, decimal advance, decimal deductions, decimal net,
+        CompanyMoney money)
         => new(
-            Money.Of(gross, _currency),
-            Money.Of(employer, _currency),
-            Money.Of(employee, _currency),
-            Money.Of(advance, _currency),
-            Money.Of(deductions, _currency),
-            Money.Of(net, _currency));
+            Money.Of(gross, money.Currency),
+            Money.Of(employer, money.Currency),
+            Money.Of(employee, money.Currency),
+            Money.Of(advance, money.Currency),
+            Money.Of(deductions, money.Currency),
+            Money.Of(net, money.Currency));
 
-    private PayrollRunView View(PayrollRunRow run, int payslipCount) => new(
+    private static PayrollRunView View(PayrollRunRow run, int payslipCount, CompanyMoney money) => new(
         run.Id,
         run.Number,
         run.PeriodCode,
@@ -537,31 +569,31 @@ public sealed class PayrollRunService : IApplicationService
             run.EmployeeSocialInsurance,
             run.AdvanceInstalment,
             run.Deductions,
-            run.NetPayable),
+            run.NetPayable, money),
         payslipCount);
 
-    private PayslipView Slip(PayslipRow row, IReadOnlyList<PayslipComponentRow> components) => new(
+    private static PayslipView Slip(PayslipRow row, IReadOnlyList<PayslipComponentRow> components, CompanyMoney money) => new(
         row.Id,
         row.RunId,
         row.EmployeeId,
         row.EmploymentId,
         row.EmployeeCode,
         row.CostCenterId,
-        Money.Of(row.ContributoryWage, _currency),
+        Money.Of(row.ContributoryWage, money.Currency),
         Amounts(
             row.GrossEntitlements,
             row.EmployerSocialInsurance,
             row.EmployeeSocialInsurance,
             row.AdvanceInstalment,
             row.Deductions,
-            row.NetPayable),
+            row.NetPayable, money),
         [
             .. components.Select(component => new PayslipComponentView(
                 component.LineNo,
                 component.ComponentCode,
                 component.Kind,
                 component.EntersContributoryWage,
-                Money.Of(component.Amount, _currency))),
+                Money.Of(component.Amount, money.Currency))),
         ],
         row.State,
         row.PostedEntryId,

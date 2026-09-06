@@ -3,6 +3,7 @@ using Babel.Core.Application;
 using Babel.Core.CapabilityProfile;
 using Babel.Core.Entitlement;
 using Babel.Purchasing.Persistence;
+using Babel.Core.CompanySetup;
 using Babel.SharedKernel;
 using Microsoft.EntityFrameworkCore;
 
@@ -28,7 +29,7 @@ public sealed class SupplierPaymentService : IApplicationService
     private readonly PurchasingDbContext _database;
     private readonly SubledgerPostingGateway _gateway;
     private readonly PurchasingAdmission _admission;
-    private readonly CurrencyCode _currency;
+    private readonly ICompanyMoneyResolver _company;
 
     /// <summary>ينشئ الخدمة.</summary>
     /// <param name="enforcer">منفِّذ الاستحقاق.</param>
@@ -47,7 +48,7 @@ public sealed class SupplierPaymentService : IApplicationService
         ArgumentNullException.ThrowIfNull(profiles);
         _enforcer = enforcer;
         _database = runtime.Database;
-        _currency = CurrencyCode.FromString(runtime.Options.CompanyCurrency);
+        _company = runtime.Company;
         _gateway = new SubledgerPostingGateway(_database, posting, runtime.CostCenters);
         _admission = new PurchasingAdmission(profiles);
     }
@@ -75,6 +76,12 @@ public sealed class SupplierPaymentService : IApplicationService
             return Result<PurchasingDocumentView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<PurchasingDocumentView>.Failure(money.Errors);
+        }
+
         if (draft.Paid.Amount < 0m || draft.BankFee.Amount < 0m)
         {
             return Result<PurchasingDocumentView>.Failure(PurchasingErrors.NegativeAmount);
@@ -83,7 +90,7 @@ public sealed class SupplierPaymentService : IApplicationService
         // ── العملة تُقرأ، لا تُهمل ────────────────────────────────────────────
         // كل مبلغ داخلٍ هنا يحمل عملته، وكان المسار يقرأ `.Amount` ويكتب عملة المنشأة
         // فوقه: سندٌ بالدولار يُسجَّل بالريال بالرقم نفسه، بلا خطأ ولا سطر سجلّ.
-        Result uniform = EnsureCompanyCurrency(draft);
+        Result uniform = EnsureCompanyCurrency(draft, money.Value);
         if (uniform.IsFailure)
         {
             return Result<PurchasingDocumentView>.Failure(uniform.Errors);
@@ -161,7 +168,7 @@ public sealed class SupplierPaymentService : IApplicationService
             SupplierId = draft.SupplierId,
             PaidOn = draft.PaidOn,
             State = PurchasingDocumentState.Draft,
-            CurrencyCode = _currency.Value,
+            CurrencyCode = money.Value.Currency.Value,
             SettlementMethod = draft.SettlementMethod,
             TreasuryPartyId = draft.TreasuryPartyId,
             PaidAmount = draft.Paid.Amount,
@@ -172,7 +179,7 @@ public sealed class SupplierPaymentService : IApplicationService
         _database.Payments.Add(payment);
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        return Result<PurchasingDocumentView>.Success(ViewOfPayment(payment));
+        return Result<PurchasingDocumentView>.Success(ViewOfPayment(payment, money.Value));
     }
 
     /// <summary>يرحّل سند الصرف ويُنزل تخصيصاته.</summary>
@@ -196,6 +203,12 @@ public sealed class SupplierPaymentService : IApplicationService
             return Result<PurchasingDocumentView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<PurchasingDocumentView>.Failure(money.Errors);
+        }
+
         SupplierPaymentRow? payment = await _database.Payments
             .FirstOrDefaultAsync(row => row.TenantId == tenant.Value && row.Id == paymentId, cancellationToken)
             .ConfigureAwait(false);
@@ -208,7 +221,7 @@ public sealed class SupplierPaymentService : IApplicationService
         if (payment.State == PurchasingDocumentState.Posted)
         {
             // وصولٌ ثانٍ بعد أن اكتمل الأول: السند لا يُمسّ، والحقيقة تُقال صراحةً.
-            return Result<PurchasingDocumentView>.Success(ViewOfPayment(payment) with { AlreadyPosted = true });
+            return Result<PurchasingDocumentView>.Success(ViewOfPayment(payment, money.Value) with { AlreadyPosted = true });
         }
 
         SupplierRow supplier = await _database.Suppliers
@@ -226,8 +239,8 @@ public sealed class SupplierPaymentService : IApplicationService
             Narration = new LocalizedName("سند صرف " + payment.Number, "Supplier payment " + payment.Number),
             Amounts =
             [
-                new PostingAmount("paid", Money.Of(payment.PaidAmount, _currency)),
-                new PostingAmount("fee", Money.Of(payment.BankFee, _currency)),
+                new PostingAmount("paid", Money.Of(payment.PaidAmount, money.Value.Currency)),
+                new PostingAmount("fee", Money.Of(payment.BankFee, money.Value.Currency)),
             ],
             Facts =
             [
@@ -238,7 +251,7 @@ public sealed class SupplierPaymentService : IApplicationService
             ],
             PartyId = supplier.Code,
             ControlEffect = -payment.PaidAmount,
-            Currency = _currency,
+            Currency = money.Value.Currency,
             Actor = actor,
             Generation = payment.PostingGeneration,
         };
@@ -277,7 +290,7 @@ public sealed class SupplierPaymentService : IApplicationService
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         return Result<PurchasingDocumentView>.Success(
-            ViewOfPayment(payment) with { AlreadyPosted = posted.Value.WasAlreadyPosted });
+            ViewOfPayment(payment, money.Value) with { AlreadyPosted = posted.Value.WasAlreadyPosted });
     }
 
     /// <summary>يسجّل تكلفة استيراد مُحمَّلة على استلام.</summary>
@@ -301,6 +314,12 @@ public sealed class SupplierPaymentService : IApplicationService
         if (gate.IsFailure)
         {
             return Result<PurchasingDocumentView>.Failure(gate.Errors);
+        }
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<PurchasingDocumentView>.Failure(money.Errors);
         }
 
         GoodsReceiptRow? receipt = await _database.Receipts
@@ -328,7 +347,7 @@ public sealed class SupplierPaymentService : IApplicationService
             ReceiptId = receipt.Id,
             IncurredOn = draft.IncurredOn,
             State = PurchasingDocumentState.Draft,
-            CurrencyCode = _currency.Value,
+            CurrencyCode = money.Value.Currency.Value,
             WarehouseId = receipt.WarehouseId,
             ItemGroup = draft.ItemGroup,
             ItemId = draft.ItemId,
@@ -341,7 +360,7 @@ public sealed class SupplierPaymentService : IApplicationService
         _database.LandedCosts.Add(row);
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        return Result<PurchasingDocumentView>.Success(ViewOfLandedCost(row));
+        return Result<PurchasingDocumentView>.Success(ViewOfLandedCost(row, money.Value));
     }
 
     /// <summary>يرحّل تكلفة الاستيراد عبر <c>purchasing.landed_cost.allocated</c>.</summary>
@@ -392,6 +411,12 @@ public sealed class SupplierPaymentService : IApplicationService
         Guid landedCostId,
         CancellationToken cancellationToken)
     {
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<PurchasingDocumentView>.Failure(money.Errors);
+        }
         Result covers = PurchasingAdmission.EnsureCovers(admitted, PurchasingAdmission.LandedCostField);
         if (covers.IsFailure)
         {
@@ -409,7 +434,7 @@ public sealed class SupplierPaymentService : IApplicationService
 
         if (cost.State == PurchasingDocumentState.Posted)
         {
-            return Result<PurchasingDocumentView>.Success(ViewOfLandedCost(cost) with { AlreadyPosted = true });
+            return Result<PurchasingDocumentView>.Success(ViewOfLandedCost(cost, money.Value) with { AlreadyPosted = true });
         }
 
         SupplierRow supplier = await _database.Suppliers
@@ -427,7 +452,7 @@ public sealed class SupplierPaymentService : IApplicationService
             Event = new PostingEventCode("purchasing.landed_cost.allocated"),
             DocumentDate = cost.IncurredOn,
             Narration = new LocalizedName("تكلفة استيراد " + cost.Number, "Landed cost " + cost.Number),
-            Amounts = [new PostingAmount("landed_cost", Money.Of(cost.CostAmount, _currency))],
+            Amounts = [new PostingAmount("landed_cost", Money.Of(cost.CostAmount, money.Value.Currency))],
             Facts =
             [
                 new PostingFact("document.landed_cost_source", cost.Source),
@@ -440,7 +465,7 @@ public sealed class SupplierPaymentService : IApplicationService
             Dimensions = [new PostingDimension("warehouse", cost.WarehouseId)],
             PartyId = supplier.Code,
             ControlEffect = billed ? cost.CostAmount : 0m,
-            Currency = _currency,
+            Currency = money.Value.Currency,
             Actor = actor,
             Generation = cost.PostingGeneration,
         };
@@ -456,7 +481,7 @@ public sealed class SupplierPaymentService : IApplicationService
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         return Result<PurchasingDocumentView>.Success(
-            ViewOfLandedCost(cost) with { AlreadyPosted = posted.Value.WasAlreadyPosted });
+            ViewOfLandedCost(cost, money.Value) with { AlreadyPosted = posted.Value.WasAlreadyPosted });
     }
 
     /// <summary>
@@ -487,6 +512,12 @@ public sealed class SupplierPaymentService : IApplicationService
             return Result<PurchasingDocumentView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<PurchasingDocumentView>.Failure(money.Errors);
+        }
+
         SupplierPaymentRow? payment = await _database.Payments
             .AsNoTracking()
             .FirstOrDefaultAsync(row => row.TenantId == tenant.Value && row.Id == paymentId, cancellationToken)
@@ -494,20 +525,21 @@ public sealed class SupplierPaymentService : IApplicationService
 
         return payment is null
             ? Result<PurchasingDocumentView>.Failure(PurchasingErrors.DocumentNotFound(PaymentDocument, paymentId))
-            : Result<PurchasingDocumentView>.Success(ViewOfPayment(payment));
+            : Result<PurchasingDocumentView>.Success(ViewOfPayment(payment, money.Value));
     }
 
     /// <summary>كل مبلغ على السند بعملة المنشأة، والخلط مرفوض برسالة تُسمّي العملتين.</summary>
     /// <param name="draft">المسوّدة.</param>
-    private Result EnsureCompanyCurrency(SupplierPaymentDraft draft)
+    /// <param name="money">عملة المنشأة ووحدتها الصغرى (ADR-0089).</param>
+    private static Result EnsureCompanyCurrency(SupplierPaymentDraft draft, CompanyMoney money)
     {
-        Result paid = Same(draft.Paid, "paid");
+        Result paid = Same(draft.Paid, "paid", money);
         if (paid.IsFailure)
         {
             return paid;
         }
 
-        Result fee = Same(draft.BankFee, "bankFee");
+        Result fee = Same(draft.BankFee, "bankFee", money);
         if (fee.IsFailure)
         {
             return fee;
@@ -515,7 +547,7 @@ public sealed class SupplierPaymentService : IApplicationService
 
         foreach (PayableAllocationDraft allocation in draft.Allocations)
         {
-            Result line = Same(allocation.Amount, "allocations.amount");
+            Result line = Same(allocation.Amount, "allocations.amount", money);
             if (line.IsFailure)
             {
                 return line;
@@ -525,28 +557,28 @@ public sealed class SupplierPaymentService : IApplicationService
         return Result.Success();
     }
 
-    private Result Same(Money amount, string field) =>
-        amount.Currency.Equals(_currency)
+    private static Result Same(Money amount, string field, CompanyMoney money) =>
+        amount.Currency.Equals(money.Currency)
             ? Result.Success()
-            : Result.Failure(PurchasingErrors.CurrencyMismatch(_currency, amount.Currency, field));
+            : Result.Failure(PurchasingErrors.CurrencyMismatch(money.Currency, amount.Currency, field));
 
-    private PurchasingDocumentView ViewOfPayment(SupplierPaymentRow payment) => new(
+    private static PurchasingDocumentView ViewOfPayment(SupplierPaymentRow payment, CompanyMoney money) => new(
         payment.Id,
         payment.Number,
         payment.State,
         new DocumentTotals(
-            Money.Of(payment.PaidAmount, _currency),
-            Money.Of(payment.BankFee, _currency),
-            Money.Of(payment.PaidAmount + payment.BankFee, _currency)),
+            Money.Of(payment.PaidAmount, money.Currency),
+            Money.Of(payment.BankFee, money.Currency),
+            Money.Of(payment.PaidAmount + payment.BankFee, money.Currency)),
         payment.PostedEntryId);
 
-    private PurchasingDocumentView ViewOfLandedCost(LandedCostRow cost) => new(
+    private static PurchasingDocumentView ViewOfLandedCost(LandedCostRow cost, CompanyMoney money) => new(
         cost.Id,
         cost.Number,
         cost.State,
         new DocumentTotals(
-            Money.Of(cost.CostAmount, _currency),
-            Money.Of(0m, _currency),
-            Money.Of(cost.CostAmount, _currency)),
+            Money.Of(cost.CostAmount, money.Currency),
+            Money.Of(0m, money.Currency),
+            Money.Of(cost.CostAmount, money.Currency)),
         cost.PostedEntryId);
 }

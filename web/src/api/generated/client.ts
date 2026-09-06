@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     737b917c13090a000fc6b02c0fbe830a49b0e4dc254eb04a9d55ec4f64b1ba6d
+     24dfbfea90aef65ff1e1d1d26e47033e7d23a0afd7ade5c2d56249cc4cdd52bd
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -2083,11 +2083,15 @@ export interface InitialiseCompanySetupArgs {
  * 
  * وdecimalPlaces يحكم **العرض والإدخال البشري وحدهما**: التخزين يبقى بأربع خانات، والمبالغ المحسوبة (ضريبة 15٪ على صافٍ فردي مثلاً) لا يقيّدها هذا العدد ولا تُقرَّب عنده — وإلا لصارت الفاتورة العادية مستحيلة.
  * 
+ * وcurrencyCode **عملة المنشأة**، تُسنَد هنا ولا تُعدَّل بعدها بالحصانة نفسها: تغييرُ العملة الوظيفية حدثٌ محاسبي يُطبَّق مستقبلاً على دفاترَ تُفتح من جديد لا تعديلُ إعداد. ووحدتُها الصغرى تُشتقّ من ISO 4217 ولا تُرسَل — وهي ما يُقرَّب عنده كلُّ سطر مستند، لا decimalPlaces (ADR-0089).
+ * 
  * Sets the company up. **Accepted exactly once**: a second arrival is refused with 409 and company_setup.already_initialised whatever its payload — decimalPlaces above all, since the number of places is assigned at first setup and is never editable afterwards; its consistency inside one entity's books matters more than any particular value.
  * 
  * The cost-centre question is asked here and only here: costCenters = One makes **the company's own name** the default centre, so whoever answers that never sees the concept again; costCenters = Multiple makes firstCostCenterNameAr **mandatory** — no name is invented on behalf of someone who declared they have more than one. Either way the company leaves this call with at least one cost centre.
  * 
  * decimalPlaces governs **display and human input only**: storage stays at four places, and computed amounts (15% VAT on an odd net, say) are neither constrained nor rounded by it — otherwise an ordinary invoice would be impossible.
+ * 
+ * currencyCode is **the company's currency**, assigned here and never editable afterwards under the same immutability: changing the functional currency is an accounting event applied prospectively to books opened anew, not a settings edit. Its minor unit is derived from ISO 4217 and is not sent — and it, not decimalPlaces, is what every document line is rounded to (ADR-0089).
  */
 export async function initialiseCompanySetup(transport: Transport, args: InitialiseCompanySetupArgs, signal?: AbortSignal): Promise<T.CompanySetup> {
   const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/setup";
@@ -3473,9 +3477,9 @@ export interface ReadCompanySetupArgs {
 /**
  * تأسيس المنشأة / The company setup
  * 
- * يقرأ تأسيس المنشأة: اسمها، و**عدد الخانات العشرية المعروضة**، و**مراكز تكلفتها كلّها** — العاملة والموقوفة معاً. والموقوف يبقى في القائمة عمداً: تقاريرُ الفترات السابقة تُبوَّب عليه، والدفتر إضافي لا يُحذف منه شيء.
+ * يقرأ تأسيس المنشأة: اسمها، و**عدد الخانات العشرية المعروضة**، و**عملتها ووحدتها الصغرى**، و**مراكز تكلفتها كلّها** — العاملة والموقوفة معاً. والموقوف يبقى في القائمة عمداً: تقاريرُ الفترات السابقة تُبوَّب عليه، والدفتر إضافي لا يُحذف منه شيء.
  * 
- * Reads the company setup: its name, the **number of displayed decimal places**, and **all of its cost centres** — active and suspended alike. A suspended centre stays in the list on purpose: earlier periods are still grouped by it, and the ledger is append-only.
+ * Reads the company setup: its name, the **number of displayed decimal places**, **its currency and minor unit**, and **all of its cost centres** — active and suspended alike. A suspended centre stays in the list on purpose: earlier periods are still grouped by it, and the ledger is append-only.
  */
 export async function readCompanySetup(transport: Transport, args: ReadCompanySetupArgs, signal?: AbortSignal): Promise<T.CompanySetup> {
   const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/setup";
@@ -4505,6 +4509,26 @@ export async function readSession(transport: Transport, signal?: AbortSignal): P
   const response = await transport({ method: "GET", url, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "Session", response.json) as T.Session;
+}
+
+export interface ReadSetupCurrenciesArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+}
+
+/**
+ * العملات التي يقبلها التأسيس / The currencies setup accepts
+ * 
+ * يُرجع الجدول المرجعي للعملات كما شُحن من ISO 4217: رمز كلّ عملة و**عدد خانات وحدتها الصغرى** — الهللة خانتان، والفلس الكويتي ثلاث، ولا خانة للين. يُقرأ **قبل** التأسيس كي تختار الشاشة من قائمةٍ لا تكتبها، وعملةٌ ليست فيه تُرفض عند التأسيس بـcompany_setup.currency_not_in_reference_table ولا يُخمَّن لها عددُ خانات (ADR-0089).
+ * 
+ * Returns the currency reference table as shipped from ISO 4217: each currency's code and **its minor unit's number of places** — the halala is two, the Kuwaiti fils three, the yen none. Read **before** setup so the screen picks from a list it does not write; a currency outside it is refused at setup with company_setup.currency_not_in_reference_table and no number of places is guessed (ADR-0089).
+ */
+export async function readSetupCurrencies(transport: Transport, args: ReadSetupCurrenciesArgs, signal?: AbortSignal): Promise<T.CurrencyList> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/setup/currencies";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "CurrencyList", response.json) as T.CurrencyList;
 }
 
 export interface ReadSocialInsurancePaymentArgs {

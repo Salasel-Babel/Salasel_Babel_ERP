@@ -2,6 +2,7 @@ using Babel.Contracts.Posting;
 using Babel.Core.Application;
 using Babel.Core.Entitlement;
 using Babel.RealEstate.Persistence;
+using Babel.Core.CompanySetup;
 using Babel.SharedKernel;
 using Microsoft.EntityFrameworkCore;
 
@@ -33,7 +34,7 @@ public sealed class TenantReceiptService : IApplicationService
     private readonly IEntitlementEnforcer _enforcer;
     private readonly RealEstateDbContext _database;
     private readonly RealEstatePostingGateway _gateway;
-    private readonly CurrencyCode _currency;
+    private readonly ICompanyMoneyResolver _company;
 
     /// <summary>ينشئ الخدمة.</summary>
     /// <param name="enforcer">منفِّذ الاستحقاق.</param>
@@ -47,7 +48,7 @@ public sealed class TenantReceiptService : IApplicationService
         _enforcer = enforcer;
         _database = runtime.Database;
         _gateway = new RealEstatePostingGateway(runtime.Database, posting, runtime.CostCenters);
-        _currency = CurrencyCode.FromString(runtime.Options.CompanyCurrency);
+        _company = runtime.Company;
     }
 
     /// <summary>ينشئ سند قبض <b>مسوّدة</b>.</summary>
@@ -73,6 +74,12 @@ public sealed class TenantReceiptService : IApplicationService
         if (gate.IsFailure)
         {
             return Result<TenantReceiptView>.Failure(gate.Errors);
+        }
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<TenantReceiptView>.Failure(money.Errors);
         }
 
         if (draft.LesseeId is { } lesseeId
@@ -115,7 +122,7 @@ public sealed class TenantReceiptService : IApplicationService
         _database.TenantReceipts.Add(row);
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        return Result<TenantReceiptView>.Success(View(row, alreadyPosted: false));
+        return Result<TenantReceiptView>.Success(View(row, alreadyPosted: false, money.Value));
     }
 
     /// <summary>يقرأ سند قبض.</summary>
@@ -141,6 +148,12 @@ public sealed class TenantReceiptService : IApplicationService
             return Result<TenantReceiptView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<TenantReceiptView>.Failure(money.Errors);
+        }
+
         TenantReceiptRow? row = await _database.TenantReceipts
             .FirstOrDefaultAsync(
                 entity => entity.TenantId == tenant.Value && entity.CompanyId == companyId && entity.Id == receiptId,
@@ -149,7 +162,7 @@ public sealed class TenantReceiptService : IApplicationService
 
         return row is null
             ? Result<TenantReceiptView>.Failure(RealEstateErrors.DocumentNotFound(DocumentType, receiptId))
-            : Result<TenantReceiptView>.Success(View(row, alreadyPosted: false));
+            : Result<TenantReceiptView>.Success(View(row, alreadyPosted: false, money.Value));
     }
 
     /// <summary>يُرحّل سند القبض بالحدث الذي اختاره غيابُ المرجع أو حضوره.</summary>
@@ -173,6 +186,12 @@ public sealed class TenantReceiptService : IApplicationService
         if (gate.IsFailure)
         {
             return Result<TenantReceiptView>.Failure(gate.Errors);
+        }
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<TenantReceiptView>.Failure(money.Errors);
         }
 
         TenantReceiptRow? receipt = await _database.TenantReceipts
@@ -234,11 +253,11 @@ public sealed class TenantReceiptService : IApplicationService
             Narration = new LocalizedName(
                 "سند قبض " + receipt.Number,
                 "Tenant receipt " + receipt.Number),
-            Amounts = [new PostingAmount(amountName, Money.Of(receipt.Received, _currency))],
+            Amounts = [new PostingAmount(amountName, Money.Of(receipt.Received, money.Value.Currency))],
             Facts = facts,
             PartyId = lesseeCode,
             ControlEffect = allocatedToATenant ? -receipt.Received : 0m,
-            Currency = _currency,
+            Currency = money.Value.Currency,
             Actor = actor,
         };
 
@@ -253,7 +272,7 @@ public sealed class TenantReceiptService : IApplicationService
         receipt.EntryId = posted.Value.JournalEntryId;
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        return Result<TenantReceiptView>.Success(View(receipt, posted.Value.WasAlreadyPosted));
+        return Result<TenantReceiptView>.Success(View(receipt, posted.Value.WasAlreadyPosted, money.Value));
     }
 
     /// <summary>
@@ -285,6 +304,12 @@ public sealed class TenantReceiptService : IApplicationService
         if (gate.IsFailure)
         {
             return Result<TenantReceiptView>.Failure(gate.Errors);
+        }
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<TenantReceiptView>.Failure(money.Errors);
         }
 
         TenantReceiptRow? receipt = await _database.TenantReceipts
@@ -341,11 +366,11 @@ public sealed class TenantReceiptService : IApplicationService
             Narration = new LocalizedName(
                 "تخصيص سند قبض " + receipt.Number,
                 "Allocation of tenant receipt " + receipt.Number),
-            Amounts = [new PostingAmount("amount", Money.Of(receipt.Received, _currency))],
+            Amounts = [new PostingAmount("amount", Money.Of(receipt.Received, money.Value.Currency))],
             Facts = [new PostingFact("subledger.tenant", lessee.Code)],
             PartyId = lessee.Code,
             ControlEffect = -receipt.Received,
-            Currency = _currency,
+            Currency = money.Value.Currency,
             Actor = actor,
         };
 
@@ -361,14 +386,14 @@ public sealed class TenantReceiptService : IApplicationService
         receipt.AllocationEntryId = posted.Value.JournalEntryId;
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        return Result<TenantReceiptView>.Success(View(receipt, posted.Value.WasAlreadyPosted));
+        return Result<TenantReceiptView>.Success(View(receipt, posted.Value.WasAlreadyPosted, money.Value));
     }
 
-    private TenantReceiptView View(TenantReceiptRow row, bool alreadyPosted) => new(
+    private static TenantReceiptView View(TenantReceiptRow row, bool alreadyPosted, CompanyMoney money) => new(
         row.Id,
         row.Number,
         row.State,
-        Money.Of(row.Received, _currency),
+        Money.Of(row.Received, money.Currency),
         row.EventCode,
         row.EntryId,
         row.IsAllocated,

@@ -2,6 +2,7 @@ using System.Globalization;
 using Babel.Core.Application;
 using Babel.Core.Entitlement;
 using Babel.Hr.Persistence;
+using Babel.Core.CompanySetup;
 using Babel.SharedKernel;
 using Microsoft.EntityFrameworkCore;
 
@@ -23,6 +24,7 @@ namespace Babel.Hr.Application;
 public sealed class PayrollSettingsService : IApplicationService
 {
     private readonly IEntitlementEnforcer _enforcer;
+    private readonly ICompanyMoneyResolver _company;
     private readonly HrDbContext _database;
 
     /// <summary>ينشئ الخدمة.</summary>
@@ -34,6 +36,7 @@ public sealed class PayrollSettingsService : IApplicationService
         ArgumentNullException.ThrowIfNull(runtime);
         _enforcer = enforcer;
         _database = runtime.Database;
+        _company = runtime.Company;
     }
 
     /// <summary>يودِع إصداراً جديداً من النِّسَب وحدودها.</summary>
@@ -104,13 +107,11 @@ public sealed class PayrollSettingsService : IApplicationService
     /// </summary>
     /// <param name="tenant">المستأجر.</param>
     /// <param name="actor">الفاعل.</param>
-    /// <param name="currency">عملة المنشأة.</param>
     /// <param name="cancellationToken">رمز الإلغاء.</param>
     [RequiresEntitlement(BabelModule.Hr, EntitlementAccess.Read)]
     public async ValueTask<Result<IReadOnlyList<PayrollSettingsView>>> ListAsync(
         TenantId tenant,
         UserId actor,
-        CurrencyCode currency,
         CancellationToken cancellationToken = default)
     {
         Result gate = await _enforcer
@@ -121,6 +122,14 @@ public sealed class PayrollSettingsService : IApplicationService
         {
             return Result<IReadOnlyList<PayrollSettingsView>>.Failure(gate.Errors);
         }
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<IReadOnlyList<PayrollSettingsView>>.Failure(money.Errors);
+        }
+
+        CurrencyCode currency = money.Value.Currency;
 
         List<PayrollSettingsRow> rows = await _database.PayrollSettings
             .Where(row => row.TenantId == tenant.Value)

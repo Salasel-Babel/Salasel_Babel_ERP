@@ -3,6 +3,7 @@ using Babel.Core.Application;
 using Babel.Core.Entitlement;
 using Babel.Hr.Application;
 using Babel.Hr.Persistence;
+using Babel.Core.CompanySetup;
 using Babel.SharedKernel;
 using Microsoft.EntityFrameworkCore;
 
@@ -32,7 +33,7 @@ public sealed class EmployeeReconciliationService : IApplicationService
     private readonly IEntitlementEnforcer _enforcer;
     private readonly HrDbContext _database;
     private readonly IControlPointReader _control;
-    private readonly CurrencyCode _currency;
+    private readonly ICompanyMoneyResolver _company;
 
     /// <summary>ينشئ الخدمة.</summary>
     /// <param name="enforcer">منفِّذ الاستحقاق.</param>
@@ -47,7 +48,7 @@ public sealed class EmployeeReconciliationService : IApplicationService
         _enforcer = enforcer;
         _database = runtime.Database;
         _control = control;
-        _currency = CurrencyCode.FromString(runtime.Options.CompanyCurrency);
+        _company = runtime.Company;
     }
 
     /// <summary>يطابق الدفترين حتى تاريخ.</summary>
@@ -69,6 +70,12 @@ public sealed class EmployeeReconciliationService : IApplicationService
         if (gate.IsFailure)
         {
             return Result<EmployeeReconciliationReport>.Failure(gate.Errors);
+        }
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<EmployeeReconciliationReport>.Failure(money.Errors);
         }
 
         Result<ControlPointSnapshot> snapshot = await _control
@@ -106,7 +113,7 @@ public sealed class EmployeeReconciliationService : IApplicationService
 
             if (string.Equals(attempt.State, PostingAttemptState.Attempting, StringComparison.Ordinal))
             {
-                divergences.Add(Divergence(attempt, 0m, DivergenceReason.PostingUnresolved));
+                divergences.Add(Divergence(attempt, 0m, DivergenceReason.PostingUnresolved, money.Value));
                 continue;
             }
 
@@ -127,7 +134,7 @@ public sealed class EmployeeReconciliationService : IApplicationService
             divergences.Add(Divergence(
                 attempt,
                 actual,
-                actual == 0m ? DivergenceReason.MissingInControl : DivergenceReason.AmountMismatch));
+                actual == 0m ? DivergenceReason.MissingInControl : DivergenceReason.AmountMismatch, money.Value));
         }
 
         foreach (KeyValuePair<string, decimal> movement in control
@@ -140,9 +147,9 @@ public sealed class EmployeeReconciliationService : IApplicationService
                 parts[0],
                 parts[1],
                 parts[2],
-                Money.Zero(_currency),
-                Money.Of(movement.Value, _currency),
-                Money.Of(-movement.Value, _currency),
+                Money.Zero(money.Value.Currency),
+                Money.Of(movement.Value, money.Value.Currency),
+                Money.Of(-movement.Value, money.Value.Currency),
                 DivergenceReason.MissingInSubledger));
         }
 
@@ -150,14 +157,14 @@ public sealed class EmployeeReconciliationService : IApplicationService
             asOf, matched, divergences.Count == 0, divergences));
     }
 
-    private EmployeeReconciliationDivergence Divergence(DocumentPostingRow attempt, decimal actual, string reason)
+    private static EmployeeReconciliationDivergence Divergence(DocumentPostingRow attempt, decimal actual, string reason, CompanyMoney money)
         => new(
             attempt.DocumentType,
             attempt.DocumentId,
             attempt.PartyId,
-            Money.Of(attempt.ControlEffect, _currency),
-            Money.Of(actual, _currency),
-            Money.Of(attempt.ControlEffect - actual, _currency),
+            Money.Of(attempt.ControlEffect, money.Currency),
+            Money.Of(actual, money.Currency),
+            Money.Of(attempt.ControlEffect - actual, money.Currency),
             reason);
 
     /// <summary>مفتاح المطابقة: النوع والمعرّف والطرف، مفصولةً بمحرف لا يظهر في أيٍّ منها.</summary>

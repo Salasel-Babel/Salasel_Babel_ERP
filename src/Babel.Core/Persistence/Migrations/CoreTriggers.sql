@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════════════
--- ما لا يعبّر عنه نموذج EF: ثباتُ مقياس العرض، ورابطُ المركز بمنشأته.
+-- ما لا يعبّر عنه نموذج EF: ثباتُ مقياس العرض والعملة، ورابطُ المركز بمنشأته.
 --
 -- **لماذا مشغّل لا اتفاق في الكود.** ثبات مقياس العرض اليوم «غيابُ باب»: لا يوجد
 -- في الشجرة توقيعٌ واحد يحمل DisplayScale إلى منشأة قائمة (ADR-0026 · انظر
@@ -26,6 +26,15 @@ begin
         raise exception
             'DISPLAY_SCALE_IMMUTABLE company=% from=% to=% : مقياس العرض يُسنَد عند التأسيس ولا يُعدَّل بعده / the display scale is assigned at founding and never changes',
             old.company_id, old.decimal_places, new.decimal_places;
+    end if;
+
+    -- ‏العملةُ ووحدتُها الصغرى بالحصانة نفسها (ADR-0089): تغييرُ العملة الوظيفية حدثٌ
+    -- محاسبي يُطبَّق مستقبلاً على دفاترَ تُفتح من جديد، لا تعديلُ صفّ.
+    if new.currency_code is distinct from old.currency_code
+       or new.minor_units is distinct from old.minor_units then
+        raise exception
+            'COMPANY_CURRENCY_IMMUTABLE company=% from=%(%) to=%(%) : عملة المنشأة تُسنَد عند التأسيس ولا تُعدَّل بعده / the company currency is assigned at founding and never changes',
+            old.company_id, old.currency_code, old.minor_units, new.currency_code, new.minor_units;
     end if;
 
     if new.founded_at is distinct from old.founded_at then

@@ -5,6 +5,7 @@ using Babel.Core.Application;
 using Babel.Core.CapabilityProfile;
 using Babel.Core.Entitlement;
 using Babel.Sales.Persistence;
+using Babel.Core.CompanySetup;
 using Babel.SharedKernel;
 using Microsoft.EntityFrameworkCore;
 
@@ -58,7 +59,7 @@ public sealed class CreditNoteService : IApplicationService
     private readonly SubledgerPostingGateway _gateway;
     private readonly SalesAdmission _admission;
     private readonly IInventoryValuation _valuation;
-    private readonly CurrencyCode _currency;
+    private readonly ICompanyMoneyResolver _company;
 
     /// <summary>ينشئ الخدمة.</summary>
     /// <param name="enforcer">منفِّذ الاستحقاق.</param>
@@ -86,7 +87,7 @@ public sealed class CreditNoteService : IApplicationService
         _database = runtime.Database;
         _admission = new SalesAdmission(profiles);
         _valuation = valuation;
-        _currency = CurrencyCode.FromString(runtime.Options.CompanyCurrency);
+        _company = runtime.Company;
         _gateway = new SubledgerPostingGateway(_database, posting, runtime.CostCenters);
     }
 
@@ -113,6 +114,12 @@ public sealed class CreditNoteService : IApplicationService
             return Result<SalesDocumentView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<SalesDocumentView>.Failure(money.Errors);
+        }
+
         SalesInvoiceRow? invoice = await _database.Invoices
             .FirstOrDefaultAsync(row => row.TenantId == tenant.Value && row.Id == draft.InvoiceId, cancellationToken)
             .ConfigureAwait(false);
@@ -130,7 +137,7 @@ public sealed class CreditNoteService : IApplicationService
         }
 
         Result<SalesInvoiceService.Totals> totals = SalesInvoiceService.Validate(
-            new SalesDocumentDraft(draft.Number, invoice.CustomerId, draft.IssuedOn, invoice.BranchId, draft.Lines));
+            new SalesDocumentDraft(draft.Number, invoice.CustomerId, draft.IssuedOn, invoice.BranchId, draft.Lines), money.Value);
 
         if (totals.IsFailure)
         {
@@ -187,7 +194,7 @@ public sealed class CreditNoteService : IApplicationService
             InvoiceId = invoice.Id,
             IssuedOn = draft.IssuedOn,
             State = SalesDocumentState.Draft,
-            CurrencyCode = _currency.Value,
+            CurrencyCode = money.Value.Currency.Value,
             BranchId = invoice.BranchId,
             OriginalWasTaxable = invoice.HasTaxableLine,
             NetTotal = totals.Value.Net,
@@ -199,7 +206,7 @@ public sealed class CreditNoteService : IApplicationService
 
         // ‏**وسطور الإشعار تُكتب.** كانت تُحسب مجاميعها ثم تُرمى، فلم يكن للسطر معرّف
         // ولا موضع. وقيد تكلفة المرتجع يُرحَّل بمعرّف سطره، فالسطر صار كياناً.
-        SalesInvoiceService.AddLines(_database, tenant, LineOwner.CreditNote, row.Id, draft.Lines);
+        SalesInvoiceService.AddLines(_database, tenant, LineOwner.CreditNote, row.Id, draft.Lines, money.Value);
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         return Result<SalesDocumentView>.Success(new SalesDocumentView(
@@ -207,9 +214,9 @@ public sealed class CreditNoteService : IApplicationService
             row.Number,
             row.State,
             new DocumentTotals(
-                Money.Of(row.NetTotal, _currency),
-                Money.Of(row.TaxTotal, _currency),
-                Money.Of(row.GrossTotal, _currency)),
+                Money.Of(row.NetTotal, money.Value.Currency),
+                Money.Of(row.TaxTotal, money.Value.Currency),
+                Money.Of(row.GrossTotal, money.Value.Currency)),
             null));
     }
 
@@ -234,6 +241,12 @@ public sealed class CreditNoteService : IApplicationService
             return Result<SalesDocumentView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<SalesDocumentView>.Failure(money.Errors);
+        }
+
         CreditNoteRow? note = await _database.CreditNotes
             .FirstOrDefaultAsync(row => row.TenantId == tenant.Value && row.Id == creditNoteId, cancellationToken)
             .ConfigureAwait(false);
@@ -246,7 +259,7 @@ public sealed class CreditNoteService : IApplicationService
         if (note.State == SalesDocumentState.Posted)
         {
             // كالفاتورة: الوصول الثاني لا يفعل شيئاً، ويقول ذلك بدل أن يُترك ليُخمَّن.
-            return Result<SalesDocumentView>.Success(ViewOf(note) with { AlreadyPosted = true });
+            return Result<SalesDocumentView>.Success(ViewOf(note, money.Value) with { AlreadyPosted = true });
         }
 
         if (note.State != SalesDocumentState.Draft)
@@ -293,8 +306,8 @@ public sealed class CreditNoteService : IApplicationService
             Narration = new LocalizedName("إشعار دائن " + note.Number, "Credit note " + note.Number),
             Amounts =
             [
-                new PostingAmount("net", Money.Of(note.NetTotal, _currency)),
-                new PostingAmount("tax", Money.Of(note.TaxTotal, _currency)),
+                new PostingAmount("net", Money.Of(note.NetTotal, money.Value.Currency)),
+                new PostingAmount("tax", Money.Of(note.TaxTotal, money.Value.Currency)),
             ],
             Facts =
             [
@@ -305,7 +318,7 @@ public sealed class CreditNoteService : IApplicationService
             Dimensions = [new PostingDimension("branch", note.BranchId)],
             PartyId = customer.Code,
             ControlEffect = -note.GrossTotal,
-            Currency = _currency,
+            Currency = money.Value.Currency,
             Actor = actor,
             Generation = note.PostingGeneration,
         };
@@ -336,7 +349,7 @@ public sealed class CreditNoteService : IApplicationService
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         // حكم البوّابة لا حكمنا — كما في الفاتورة، وللسبب نفسه.
-        return Result<SalesDocumentView>.Success(ViewOf(note) with { AlreadyPosted = posted.Value.WasAlreadyPosted });
+        return Result<SalesDocumentView>.Success(ViewOf(note, money.Value) with { AlreadyPosted = posted.Value.WasAlreadyPosted });
     }
 
 
@@ -354,6 +367,12 @@ public sealed class CreditNoteService : IApplicationService
         CreditNoteRow note,
         CancellationToken cancellationToken)
     {
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result.Failure(money.Errors);
+        }
         List<SalesLineRow> lines = await _database.Lines
             .Where(row => row.TenantId == tenant.Value
                           && row.OwnerType == LineOwner.CreditNote
@@ -490,7 +509,7 @@ public sealed class CreditNoteService : IApplicationService
                 // قيد تكلفة المرتجع لا يمسّ نقطة ضبط العملاء إطلاقاً — أثره صفر عليها.
                 PartyId = cost.Value.Location.ItemId,
                 ControlEffect = 0m,
-                Currency = _currency,
+                Currency = money.Value.Currency,
                 Actor = actor,
                 Generation = note.PostingGeneration,
             };
@@ -505,13 +524,13 @@ public sealed class CreditNoteService : IApplicationService
         return Result.Success();
     }
 
-    private SalesDocumentView ViewOf(CreditNoteRow note) => new(
+    private static SalesDocumentView ViewOf(CreditNoteRow note, CompanyMoney money) => new(
         note.Id,
         note.Number,
         note.State,
         new DocumentTotals(
-            Money.Of(note.NetTotal, _currency),
-            Money.Of(note.TaxTotal, _currency),
-            Money.Of(note.GrossTotal, _currency)),
+            Money.Of(note.NetTotal, money.Currency),
+            Money.Of(note.TaxTotal, money.Currency),
+            Money.Of(note.GrossTotal, money.Currency)),
         note.PostedEntryId);
 }

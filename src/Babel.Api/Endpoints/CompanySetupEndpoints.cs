@@ -28,6 +28,7 @@ internal static class CompanySetupEndpoints
         ArgumentNullException.ThrowIfNull(app);
 
         app.MapGet(ApiRoutes.CompanySetup, ReadAsync);
+        app.MapGet(ApiRoutes.SetupCurrencies, ReadCurrencies);
         app.MapPut(ApiRoutes.CompanySetup, InitialiseAsync);
         app.MapPost(ApiRoutes.CostCenters, AddCostCenterAsync);
         app.MapPut(ApiRoutes.CostCenter, RenameCostCenterAsync);
@@ -49,6 +50,20 @@ internal static class CompanySetupEndpoints
             .ConfigureAwait(false);
 
         return Translate(context, result, StatusCodes.Status200OK);
+    }
+
+    /// <summary>
+    /// العملات التي يقبلها التأسيس. لا يحتاج منشأةً مؤسَّسة — بل هو ما يُقرأ قبلها —
+    /// لكنه داخل نطاق الشركة والاعتماد كأي مسار آخر.
+    /// </summary>
+    private static IResult ReadCurrencies(HttpContext context)
+    {
+        if (!Scope.TryCompany(context, out _, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        return Results.Json(CompanySetupWire.Currencies(), ApiJson.Options);
     }
 
     private static async Task<IResult> InitialiseAsync(

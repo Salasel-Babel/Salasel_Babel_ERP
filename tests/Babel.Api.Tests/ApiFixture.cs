@@ -270,7 +270,7 @@ internal static class ApiFixture
                 HttpMethod.Put,
                 string.Create(CultureInfo.InvariantCulture, $"/api/v1/companies/{company:D}/setup"),
                 credential,
-                """{"companyNameAr":"منشأة اختبار سطح HTTP","costCenters":"One","decimalPlaces":2}"""))
+                """{"companyNameAr":"منشأة اختبار سطح HTTP","costCenters":"One","decimalPlaces":2,"currencyCode":"SAR"}"""))
                 .ConfigureAwait(false);
 
             // ‏201 أول مرّة، و409 إن كان خادمٌ آخر أسّسها في القاعدة نفسها. وما عداهما
@@ -295,7 +295,6 @@ internal static class ApiFixture
         {
             ["Babel__Ledger__AppConnectionString"] = ledgerConnection,
             ["Babel__Ledger__OwnerConnectionString"] = ApiTestDatabase.Options.OwnerConnectionString,
-            ["Babel__Ledger__CompanyCurrency"] = "SAR",
 
             // النواة: **اتصال دور التطبيق وحده**. ولا مفتاح لاتصال المالك هنا ولا في
             // الخادم أصلاً — خادمٌ يحمله يستطيع إسقاط مشغّل ثبات المقياس (ADR-0003).

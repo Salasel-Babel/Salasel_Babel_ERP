@@ -32,7 +32,7 @@ internal sealed class Harness : IDisposable
         Runtime = runtime;
         LedgerRuntime = ledger;
         AlwaysEntitled enforcer = new();
-        Posting = new PostingService(enforcer, ledger);
+        Posting = new PostingService(enforcer, ledger, FoundedTenants.MoneyFor(SalesTestEnvironment.AllTenants));
         Profiles = new InMemoryCapabilityProfileStore();
         Customers = new CustomerService(enforcer, runtime);
         Valuation = new UnitCostOfOne();
@@ -100,7 +100,8 @@ internal sealed class Harness : IDisposable
         // المنشآت مؤسَّسة قبل أول ترحيل: البوّابة تسأل النواة عن مركز التكلفة، ومنشأةٌ
         // لم تُؤسَّس لا مركز لها أصلاً (ADR-0026).
         Harness harness = new(
-            new SalesRuntime(SalesTestEnvironment.Sales, FoundedTenants.ResolverFor(SalesTestEnvironment.AllTenants)),
+            new SalesRuntime(SalesTestEnvironment.Sales, FoundedTenants.ResolverFor(SalesTestEnvironment.AllTenants),
+                FoundedTenants.MoneyFor(SalesTestEnvironment.AllTenants)),
             _ledger);
 
         // المستأجرون الثلاثة القدماء بكل القدرات مُشغَّلة: هذه التجهيزة تُعيد إنتاج

@@ -47,7 +47,7 @@ internal sealed class Harness : IDisposable
         LedgerRuntime = ledger;
 
         AlwaysEntitled enforcer = new();
-        Posting = new PostingService(enforcer, ledger);
+        Posting = new PostingService(enforcer, ledger, FoundedTenants.MoneyFor(InventoryTestEnvironment.AllTenants));
         Profiles = new InMemoryCapabilityProfileStore();
 
         Stock = new StockMovementService(enforcer, inventory);
@@ -133,13 +133,16 @@ internal sealed class Harness : IDisposable
         Harness harness = new(
             new InventoryRuntime(
                 InventoryTestEnvironment.Inventory,
-                FoundedTenants.ResolverFor(InventoryTestEnvironment.AllTenants)),
+                FoundedTenants.ResolverFor(InventoryTestEnvironment.AllTenants),
+                FoundedTenants.MoneyFor(InventoryTestEnvironment.AllTenants)),
             new PurchasingRuntime(
                 InventoryTestEnvironment.Purchasing,
-                FoundedTenants.ResolverFor(InventoryTestEnvironment.AllTenants)),
+                FoundedTenants.ResolverFor(InventoryTestEnvironment.AllTenants),
+                FoundedTenants.MoneyFor(InventoryTestEnvironment.AllTenants)),
             new SalesRuntime(
                 InventoryTestEnvironment.Sales,
-                FoundedTenants.ResolverFor(InventoryTestEnvironment.AllTenants)),
+                FoundedTenants.ResolverFor(InventoryTestEnvironment.AllTenants),
+                FoundedTenants.MoneyFor(InventoryTestEnvironment.AllTenants)),
             _ledger!);
 
         foreach (TenantId tenant in InventoryTestEnvironment.AllTenants)

@@ -80,6 +80,8 @@ internal sealed class CoreDbContext(DbContextOptions<CoreDbContext> options) : D
                 t.HasCheckConstraint(
                     "ck_company_setup_default_shape",
                     "default_cost_center ~ '^[a-z0-9._]{1,32}$'");
+                t.HasCheckConstraint("ck_company_setup_currency_shape", "currency_code ~ '^[A-Z]{3}$'");
+                t.HasCheckConstraint("ck_company_setup_minor_units_range", "minor_units between 0 and 4");
             });
 
             entity.HasKey(row => row.CompanyId).HasName("pk_company_setup");
@@ -87,6 +89,8 @@ internal sealed class CoreDbContext(DbContextOptions<CoreDbContext> options) : D
             entity.Property(row => row.NameAr).HasColumnName("name_ar").HasMaxLength(200).IsRequired();
             entity.Property(row => row.DecimalPlaces).HasColumnName("decimal_places");
             entity.Property(row => row.DefaultCostCenter).HasColumnName("default_cost_center").HasMaxLength(32).IsRequired();
+            entity.Property(row => row.CurrencyCode).HasColumnName("currency_code").HasColumnType("character(3)").IsRequired();
+            entity.Property(row => row.MinorUnits).HasColumnName("minor_units");
             entity.Property(row => row.FoundedAt).HasColumnName("founded_at");
         });
 

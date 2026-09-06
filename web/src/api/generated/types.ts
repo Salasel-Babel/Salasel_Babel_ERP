@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     737b917c13090a000fc6b02c0fbe830a49b0e4dc254eb04a9d55ec4f64b1ba6d
+     24dfbfea90aef65ff1e1d1d26e47033e7d23a0afd7ade5c2d56249cc4cdd52bd
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -608,10 +608,14 @@ export interface CommercialDocument {
 export interface CompanySetup {
   /** مراكز التكلفة كلّها — العاملة والموقوفة — مرتَّبة برمزها. / All cost centres — active and suspended — ordered by code. */
   costCenters: CostCenter[];
+  /** عملة المنشأة — رمز ISO 4217. مُسنَدة عند التأسيس ولا تتغيّر بعده. / The company's currency — an ISO 4217 code. Assigned at setup and never changes afterwards. */
+  currencyCode: string;
   /** عدد الخانات العشرية المعروضة. عرضٌ وإدخالٌ بشري فقط: المبالغ على السلك تبقى بمقياس Money، والتخزين بأربع خانات. / The number of displayed decimal places. Display and human input only: amounts on the wire keep the Money scale, and storage stays at four places. */
   decimalPlaces: number;
   /** رمز المركز الافتراضي. / The default centre's code. */
   defaultCostCenter: string;
+  /** عدد خانات الوحدة الصغرى للعملة كما في ISO 4217 — وهو ما يُقرَّب عنده كلُّ سطر مستند. مخزَّنٌ بجوار العملة عند التأسيس. / The currency's minor-unit places as in ISO 4217 — what every document line is rounded to. Stored beside the currency at setup. */
+  minorUnits: number;
   /** اسم المنشأة بالعربية. / The company's Arabic name. */
   nameAr: string;
   /** ترجمات اسم المنشأة. / The company name's translations. */
@@ -684,6 +688,20 @@ export interface CreditNoteRequest {
   lines: SalesLine[];
   /** رقم الإشعار — فريد داخل المستأجر. / The note number — unique within the tenant. */
   number: string;
+}
+
+/** العملات التي يقبلها التأسيس، مرتَّبةً برمزها. القائمة هي الجدول المرجعي نفسه لا قائمةٌ تُكتب في واجهة. / The currencies setup accepts, ordered by code. The list is the reference table itself, not one written in a front end. */
+export interface CurrencyList {
+  /** العملات. / The currencies. */
+  currencies: CurrencyOption[];
+}
+
+/** عملةٌ يقبلها التأسيس: رمزها ووحدتها الصغرى كما في الجدول المرجعي المشحون من ISO 4217. / A currency setup accepts: its code and minor unit as in the shipped ISO 4217 reference table. */
+export interface CurrencyOption {
+  /** رمز ISO 4217. / The ISO 4217 code. */
+  code: string;
+  /** عدد خانات الوحدة الصغرى — الهللة خانتان، والفلس الكويتي ثلاث، ولا خانة للين. / The minor unit's number of places — the halala is two, the Kuwaiti fils three, the yen none. */
+  minorUnits: number;
 }
 
 /** طلب تسجيل سند قبض مسوّدة. ولا مجاميع فيه: المجموع هو received + settlementDiscount وتحسبه الوحدة. **ولا حساب ولا رمز حساب**: settlementMethod مؤهّل دور تحلّه المصفوفة إلى حساب خزينة أو بنك، وtreasuryPartyId طرفٌ في دفتره المساعد لا رقم حساب. / A request to draft a customer receipt. It carries no totals: the total is received + settlementDiscount and the module computes it. **No account and no account code**: settlementMethod is a role qualifier the matrix resolves into a cash or bank account, and treasuryPartyId is a party in its subledger, not an account number. */
@@ -1464,6 +1482,8 @@ export interface InitialiseCompanySetupRequest {
   companyNameTranslations?: NameValue[];
   /** الجواب عن سؤال مراكز التكلفة: One = مركز واحد يحمل اسم المنشأة · Multiple = عدّة، واسم الأول إلزامي. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The answer to the cost-centre question: One = a single centre carrying the company name; Multiple = several, and the first one's name is mandatory. Matched literally and case-sensitively; a number is never accepted in place of a name. */
   costCenters: "One" | "Multiple";
+  /** عملة المنشأة — رمز ISO 4217 من القائمة التي يُرجعها readSetupCurrencies. تُسنَد هنا ولا تُعدَّل بعدها، **ولا تُخترَع**: غيابها يُرفض بـcompany_setup.currency_missing. / The company's currency — an ISO 4217 code from the list readSetupCurrencies returns. Assigned here and never editable afterwards, **and never invented**: its absence is refused with company_setup.currency_missing. */
+  currencyCode: string;
   /** عدد الخانات العشرية المعروضة. يُسنَد هنا ولا يُعدَّل بعدها. ويحكم العرض والإدخال البشري وحدهما — لا التخزين ولا الحساب. / The number of displayed decimal places. Assigned here and never editable afterwards. It governs display and human input only — never storage and never arithmetic. */
   decimalPlaces: number;
   /** اسم أول مركز تكلفة بالعربية. إلزامي مع Multiple، ومرفوض مع One لأن اسمه هناك اسم المنشأة بعينه. / The first cost centre's Arabic name. Required with Multiple, refused with One because its name there is the company's own. */
@@ -2549,10 +2569,14 @@ export interface Session {
 export interface SessionCompany {
   /** معرّف الشركة كما يُكتب في المسار. / The company identifier as written in the path. */
   companyId: string;
+  /** عملة المنشأة — رمز ISO 4217. / The company's currency — an ISO 4217 code. */
+  currencyCode: string | null;
   /** عدد الخانات العشرية المعروضة لهذه المنشأة. / This company's displayed decimal places. */
   decimalPlaces: number | null;
   /** رمز مركز التكلفة الافتراضي. / The default cost centre code. */
   defaultCostCenter: string | null;
+  /** عدد خانات الوحدة الصغرى لعملة المنشأة. / The minor-unit places of the company's currency. */
+  minorUnits: number | null;
   /** الاسم العربي — السجلّ، لا ترجمةً أولى. / The Arabic name — the record, not a first translation. */
   nameAr: string | null;
   /** ترجمات الاسم بوسم اللغة BCP-47، مرتَّبة ترتيباً حرفياً ثابتاً. / The name's translations by BCP-47 language tag, in a stable ordinal order. */

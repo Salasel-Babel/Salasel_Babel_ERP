@@ -94,7 +94,6 @@ internal static class LedgerTestEnvironment
         AppConnectionString =
             $"Host=127.0.0.1;Port=5432;Database={Database};Username={AppRole};Include Error Detail=true;Maximum Pool Size=40",
         AppRole = AppRole,
-        CompanyCurrency = "SAR",
     };
 
     /// <summary>جذر المستودع — تُقرأ منه بيانات دليل الحسابات والمصفوفة.</summary>

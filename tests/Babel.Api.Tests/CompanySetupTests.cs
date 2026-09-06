@@ -24,7 +24,7 @@ public sealed class CompanySetupTests
             HttpMethod.Put,
             Setup(company),
             ApiFixture.TokenS,
-            """{"companyNameAr":"بوفيه الفرات","costCenters":"One","decimalPlaces":2}"""));
+            """{"companyNameAr":"بوفيه الفرات","costCenters":"One","decimalPlaces":2,"currencyCode":"SAR"}"""));
 
         Assert.Equal(HttpStatusCode.Created, created.StatusCode);
         (_, JsonElement body) = await Http.BodyAsync(created);
@@ -48,13 +48,13 @@ public sealed class CompanySetupTests
 
         using HttpResponseMessage first = await api.Call(Http.Request(
             HttpMethod.Put, Setup(company), ApiFixture.TokenS,
-            """{"companyNameAr":"مؤسسة الرافدين","costCenters":"One","decimalPlaces":2}"""));
+            """{"companyNameAr":"مؤسسة الرافدين","costCenters":"One","decimalPlaces":2,"currencyCode":"SAR"}"""));
 
         Assert.Equal(HttpStatusCode.Created, first.StatusCode);
 
         using HttpResponseMessage second = await api.Call(Http.Request(
             HttpMethod.Put, Setup(company), ApiFixture.TokenS,
-            """{"companyNameAr":"مؤسسة الرافدين","costCenters":"One","decimalPlaces":4}"""));
+            """{"companyNameAr":"مؤسسة الرافدين","costCenters":"One","decimalPlaces":4,"currencyCode":"SAR"}"""));
 
         Assert.Equal(HttpStatusCode.Conflict, second.StatusCode);
         (_, JsonElement problem) = await Http.BodyAsync(second);
@@ -75,7 +75,7 @@ public sealed class CompanySetupTests
 
         using HttpResponseMessage response = await api.Call(Http.Request(
             HttpMethod.Put, Setup(Company(2)), ApiFixture.TokenS,
-            """{"companyNameAr":"شركة المقاولات","costCenters":"Multiple","decimalPlaces":2}"""));
+            """{"companyNameAr":"شركة المقاولات","costCenters":"Multiple","decimalPlaces":2,"currencyCode":"SAR"}"""));
 
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
         (_, JsonElement problem) = await Http.BodyAsync(response);
@@ -89,7 +89,7 @@ public sealed class CompanySetupTests
 
         using HttpResponseMessage response = await api.Call(Http.Request(
             HttpMethod.Put, Setup(Company(3)), ApiFixture.TokenS,
-            """{"companyNameAr":"شركة ما","costCenters":"One","decimalPlaces":7}"""));
+            """{"companyNameAr":"شركة ما","costCenters":"One","decimalPlaces":7,"currencyCode":"SAR"}"""));
 
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
         (string text, JsonElement problem) = await Http.BodyAsync(response);
@@ -104,7 +104,7 @@ public sealed class CompanySetupTests
 
         using HttpResponseMessage response = await api.Call(Http.Request(
             HttpMethod.Put, Setup(Company(4)), ApiFixture.TokenS,
-            """{"companyNameAr":"شركة ما","costCenters":"maybe","decimalPlaces":2}"""));
+            """{"companyNameAr":"شركة ما","costCenters":"maybe","decimalPlaces":2,"currencyCode":"SAR"}"""));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         (_, JsonElement problem) = await Http.BodyAsync(response);
@@ -117,7 +117,7 @@ public sealed class CompanySetupTests
         ApiProcess api = await ApiFixture.DefaultAsync();
         Guid company = Company(5);
 
-        await FoundAsync(api, company, """{"companyNameAr":"شركة الفروع","costCenters":"Multiple","firstCostCenterNameAr":"الإدارة العامة","decimalPlaces":2}""");
+        await FoundAsync(api, company, """{"companyNameAr":"شركة الفروع","costCenters":"Multiple","firstCostCenterNameAr":"الإدارة العامة","decimalPlaces":2,"currencyCode":"SAR"}""");
 
         using HttpResponseMessage added = await api.Call(Http.Request(
             HttpMethod.Post, CostCenters(company), ApiFixture.TokenS, """{"nameAr":"فرع جدة"}"""));
@@ -154,7 +154,7 @@ public sealed class CompanySetupTests
         ApiProcess api = await ApiFixture.DefaultAsync();
         Guid company = Company(6);
 
-        await FoundAsync(api, company, """{"companyNameAr":"شركة الفروع","costCenters":"Multiple","firstCostCenterNameAr":"الإدارة","decimalPlaces":2}""");
+        await FoundAsync(api, company, """{"companyNameAr":"شركة الفروع","costCenters":"Multiple","firstCostCenterNameAr":"الإدارة","decimalPlaces":2,"currencyCode":"SAR"}""");
         using (await api.Call(Http.Request(HttpMethod.Post, CostCenters(company), ApiFixture.TokenS, """{"nameAr":"فرع جدة"}""")))
         {
         }
@@ -173,7 +173,7 @@ public sealed class CompanySetupTests
         ApiProcess api = await ApiFixture.DefaultAsync();
         Guid company = Company(7);
 
-        await FoundAsync(api, company, """{"companyNameAr":"مؤسسة النخيل","costCenters":"One","decimalPlaces":3}""");
+        await FoundAsync(api, company, """{"companyNameAr":"مؤسسة النخيل","costCenters":"One","decimalPlaces":3,"currencyCode":"SAR"}""");
 
         using HttpResponseMessage renamed = await api.Call(Http.Request(
             HttpMethod.Put, CostCenter(company, "cc.001"), ApiFixture.TokenS,
@@ -196,7 +196,7 @@ public sealed class CompanySetupTests
         ApiProcess api = await ApiFixture.DefaultAsync();
         Guid company = Company(8);
 
-        await FoundAsync(api, company, """{"companyNameAr":"مؤسسة ما","costCenters":"One","decimalPlaces":2}""");
+        await FoundAsync(api, company, """{"companyNameAr":"مؤسسة ما","costCenters":"One","decimalPlaces":2,"currencyCode":"SAR"}""");
 
         using HttpResponseMessage missing = await api.Call(Http.Request(
             HttpMethod.Post, Suspension(company, "cc.999"), ApiFixture.TokenS, """{"reason":"سبب مكتوب كافٍ"}"""));
@@ -211,6 +211,85 @@ public sealed class CompanySetupTests
         Assert.Equal(HttpStatusCode.BadRequest, malformed.StatusCode);
         (_, JsonElement bad) = await Http.BodyAsync(malformed);
         Assert.Equal("wire.path.malformed", Http.CodeOf(bad));
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // العملة تتبع المنشأة لا الشيفرة (ADR-0089)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public async Task التأسيس_بلا_عملة_يُرفض_باسمه_ولا_يُخترَع_ريال()
+    {
+        ApiProcess api = await ApiFixture.DefaultAsync();
+        Guid company = Company(11);
+
+        using HttpResponseMessage refused = await api.Call(Http.Request(
+            HttpMethod.Put, Setup(company), ApiFixture.TokenS,
+            """{"companyNameAr":"منشأة بلا عملة","costCenters":"One","decimalPlaces":2}"""));
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, refused.StatusCode);
+        (_, JsonElement problem) = await Http.BodyAsync(refused);
+        Assert.Equal("company_setup.currency_missing", Http.CodeOf(problem));
+
+        // ولم يُؤسَّس شيء: القراءة بعده 404 لا منشأةٌ بريالٍ مُخترَع.
+        using HttpResponseMessage after = await api.Call(Http.Request(HttpMethod.Get, Setup(company), ApiFixture.TokenS));
+        Assert.Equal(HttpStatusCode.NotFound, after.StatusCode);
+    }
+
+    [Fact]
+    public async Task عملةٌ_خارج_الجدول_المرجعي_تُرفض_ولا_يُخمَّن_لها_عددُ_خانات()
+    {
+        ApiProcess api = await ApiFixture.DefaultAsync();
+        Guid company = Company(12);
+
+        using HttpResponseMessage refused = await api.Call(Http.Request(
+            HttpMethod.Put, Setup(company), ApiFixture.TokenS,
+            """{"companyNameAr":"منشأة بعملة مجهولة","costCenters":"One","decimalPlaces":2,"currencyCode":"XXX"}"""));
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, refused.StatusCode);
+        (_, JsonElement problem) = await Http.BodyAsync(refused);
+        Assert.Equal("company_setup.currency_not_in_reference_table", Http.CodeOf(problem));
+    }
+
+    [Fact]
+    public async Task العملةُ_ووحدتُها_الصغرى_تُقرآن_من_التأسيس_ومن_الجلسة_وقائمةُ_الجدول_تسبق_التأسيس()
+    {
+        ApiProcess api = await ApiFixture.DefaultAsync();
+        Guid company = Company(13);
+
+        // القائمة تُقرأ قبل التأسيس — وهي الجدول المرجعي نفسه، فيها الهللة والفلس والين.
+        using HttpResponseMessage list = await api.Call(
+            Http.Request(HttpMethod.Get, Setup(company) + "/currencies", ApiFixture.TokenS));
+        Assert.Equal(HttpStatusCode.OK, list.StatusCode);
+        (_, JsonElement currencies) = await Http.BodyAsync(list);
+        Dictionary<string, int> table = currencies.GetProperty("currencies").EnumerateArray()
+            .ToDictionary(c => c.GetProperty("code").GetString()!, c => c.GetProperty("minorUnits").GetInt32(), StringComparer.Ordinal);
+        Assert.Equal(2, table["SAR"]);
+        Assert.Equal(3, table["KWD"]);
+        Assert.Equal(0, table["JPY"]);
+        Assert.Equal(table.Keys.Order(StringComparer.Ordinal), table.Keys);
+
+        // منشأةٌ كويتية: ثلاث خانات لا اثنتان — من الجدول لا من الشيفرة.
+        using HttpResponseMessage created = await api.Call(Http.Request(
+            HttpMethod.Put, Setup(company), ApiFixture.TokenS,
+            """{"companyNameAr":"شركة الخليج","costCenters":"One","decimalPlaces":3,"currencyCode":"KWD"}"""));
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        (_, JsonElement body) = await Http.BodyAsync(created);
+        Assert.Equal("KWD", body.GetProperty("currencyCode").GetString());
+        Assert.Equal(3, body.GetProperty("minorUnits").GetInt32());
+
+        using HttpResponseMessage read = await api.Call(Http.Request(HttpMethod.Get, Setup(company), ApiFixture.TokenS));
+        (_, JsonElement again) = await Http.BodyAsync(read);
+        Assert.Equal("KWD", again.GetProperty("currencyCode").GetString());
+        Assert.Equal(3, again.GetProperty("minorUnits").GetInt32());
+
+        // والجلسة تحملهما للمنشأة نفسها.
+        using HttpResponseMessage session = await api.Call(Http.Request(HttpMethod.Get, Http.Session, ApiFixture.TokenS));
+        (_, JsonElement sessionBody) = await Http.BodyAsync(session);
+        JsonElement mine = sessionBody.GetProperty("companies").EnumerateArray()
+            .Single(c => c.GetProperty("companyId").GetString() == company.ToString("D"));
+        Assert.Equal("KWD", mine.GetProperty("currencyCode").GetString());
+        Assert.Equal(3, mine.GetProperty("minorUnits").GetInt32());
     }
 
     [Fact]
@@ -240,7 +319,7 @@ public sealed class CompanySetupTests
 
         using HttpResponseMessage response = await api.Call(Http.Request(
             HttpMethod.Put, Setup(ApiTestDatabase.CompanyA), ApiFixture.TokenS,
-            """{"companyNameAr":"اختطاف","costCenters":"One","decimalPlaces":2}"""));
+            """{"companyNameAr":"اختطاف","costCenters":"One","decimalPlaces":2,"currencyCode":"SAR"}"""));
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
         (_, JsonElement problem) = await Http.BodyAsync(response);
@@ -254,7 +333,7 @@ public sealed class CompanySetupTests
         ApiProcess api = await ApiFixture.DefaultAsync();
         Guid company = Company(10);
 
-        await FoundAsync(api, company, """{"companyNameAr":"مؤسسة الخانتين","costCenters":"One","decimalPlaces":2}""");
+        await FoundAsync(api, company, """{"companyNameAr":"مؤسسة الخانتين","costCenters":"One","decimalPlaces":2,"currencyCode":"SAR"}""");
 
         using HttpResponseMessage read = await api.Call(
             Http.Request(HttpMethod.Get, Setup(company), ApiFixture.TokenS));

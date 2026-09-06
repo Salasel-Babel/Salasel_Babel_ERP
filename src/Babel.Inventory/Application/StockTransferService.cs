@@ -4,6 +4,7 @@ using Babel.Contracts.Posting;
 using Babel.Core.Application;
 using Babel.Core.Entitlement;
 using Babel.Inventory.Persistence;
+using Babel.Core.CompanySetup;
 using Babel.SharedKernel;
 using Microsoft.EntityFrameworkCore;
 
@@ -66,7 +67,7 @@ public sealed class StockTransferService : IApplicationService
     private readonly IEntitlementEnforcer _enforcer;
     private readonly InventoryDbContext _database;
     private readonly StockMovementService _stock;
-    private readonly CurrencyCode _currency;
+    private readonly ICompanyMoneyResolver _company;
 
     /// <summary>ينشئ الخدمة.</summary>
     /// <param name="enforcer">منفِّذ الاستحقاق.</param>
@@ -81,7 +82,7 @@ public sealed class StockTransferService : IApplicationService
         _enforcer = enforcer;
         _database = runtime.Database;
         _stock = stock;
-        _currency = CurrencyCode.FromString(runtime.Options.CompanyCurrency);
+        _company = runtime.Company;
     }
 
     /// <summary>
@@ -113,6 +114,12 @@ public sealed class StockTransferService : IApplicationService
         if (gate.IsFailure)
         {
             return Result<StockTransferView>.Failure(gate.Errors);
+        }
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<StockTransferView>.Failure(money.Errors);
         }
 
         Result quantity = UnitConversion.Validate(draft.Quantity);
@@ -174,7 +181,7 @@ public sealed class StockTransferService : IApplicationService
         _database.Transfers.Add(row);
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        return Result<StockTransferView>.Success(ViewOf(row));
+        return Result<StockTransferView>.Success(ViewOf(row, money.Value));
     }
 
     /// <summary>يقرأ مستند نقلٍ واحداً. نقطة قراءة: تعمل عند «للقراءة فقط» أيضاً.</summary>
@@ -198,6 +205,12 @@ public sealed class StockTransferService : IApplicationService
             return Result<StockTransferView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<StockTransferView>.Failure(money.Errors);
+        }
+
         StockTransferRow? row = await _database.Transfers
             .AsNoTracking()
             .FirstOrDefaultAsync(entity => entity.TenantId == tenant.Value && entity.Id == transferId, cancellationToken)
@@ -205,7 +218,7 @@ public sealed class StockTransferService : IApplicationService
 
         return row is null
             ? Result<StockTransferView>.Failure(InventoryErrors.DocumentNotFound(TransferDocument, transferId))
-            : Result<StockTransferView>.Success(ViewOf(row));
+            : Result<StockTransferView>.Success(ViewOf(row, money.Value));
     }
 
     /// <summary>
@@ -229,6 +242,12 @@ public sealed class StockTransferService : IApplicationService
             return Result<IReadOnlyList<StockTransferView>>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<IReadOnlyList<StockTransferView>>.Failure(money.Errors);
+        }
+
         List<StockTransferRow> rows = await _database.Transfers
             .AsNoTracking()
             .Where(row => row.TenantId == tenant.Value)
@@ -240,7 +259,7 @@ public sealed class StockTransferService : IApplicationService
             .. rows
                 .OrderBy(static row => row.OccurredOn)
                 .ThenBy(static row => row.Number, StringComparer.Ordinal)
-                .Select(ViewOf),
+                .Select(row => ViewOf(row, money.Value)),
         ];
 
         return Result<IReadOnlyList<StockTransferView>>.Success(views);
@@ -278,6 +297,12 @@ public sealed class StockTransferService : IApplicationService
         if (gate.IsFailure)
         {
             return Result<StockTransferView>.Failure(gate.Errors);
+        }
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<StockTransferView>.Failure(money.Errors);
         }
 
         StockTransferRow? row = await _database.Transfers
@@ -378,7 +403,7 @@ public sealed class StockTransferService : IApplicationService
         // ‏**و«نُفّذ سلفاً» حكمُ الحركة لا حكمُ حالة الصفّ**: الحالة تصير `MOVED` بعد
         // أي تنفيذ ناجح — الأول والثاني سواء — والفرق بينهما لا يُقرأ إلا من الحركة.
         return Result<StockTransferView>.Success(
-            ViewOf(row) with { AlreadyMoved = issued.Value.WasAlreadyRecorded });
+            ViewOf(row, money.Value) with { AlreadyMoved = issued.Value.WasAlreadyRecorded });
     }
 
     private static InventoryMovementSource SourceOf(string documentId, int generation, string eventCode) => new(
@@ -444,7 +469,7 @@ public sealed class StockTransferService : IApplicationService
             : Result.Failure(InventoryErrors.PlaceInactive(PlacementLevel.Location, locationCode));
     }
 
-    private StockTransferView ViewOf(StockTransferRow row) => new(
+    private static StockTransferView ViewOf(StockTransferRow row, CompanyMoney money) => new(
         row.Id,
         row.Number,
         row.State,
@@ -455,6 +480,6 @@ public sealed class StockTransferService : IApplicationService
         row.ToWarehouseId,
         row.ToLocationId,
         new InventoryQuantity(row.Magnitude, row.UnitCode),
-        Money.Of(row.ValueAmount, _currency),
+        Money.Of(row.ValueAmount, money.Currency),
         row.OccurredOn);
 }

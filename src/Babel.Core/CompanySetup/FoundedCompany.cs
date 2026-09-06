@@ -35,13 +35,18 @@ public enum CostCenterPlan
 /// </param>
 /// <param name="FirstCostCenterTranslations">ترجمات اسم أول مركز، إن وُجدت.</param>
 /// <param name="DecimalPlaces">عدد الخانات العشرية المعروضة. يُسنَد هنا ولا يُعدَّل بعدها أبداً.</param>
+/// <param name="CurrencyCode">
+/// عملة المنشأة — رمز ISO 4217. تُسنَد هنا ولا تُعدَّل بعدها أبداً، ووحدتُها الصغرى
+/// تُشتقّ من الجدول المرجعي لا تُكتب (<see cref="CompanyMoney"/> · ADR-0089).
+/// </param>
 public sealed record CompanySetupDraft(
     string CompanyNameAr,
     IReadOnlyDictionary<string, string>? CompanyNameTranslations,
     CostCenterPlan CostCenters,
     string? FirstCostCenterNameAr,
     IReadOnlyDictionary<string, string>? FirstCostCenterTranslations,
-    int DecimalPlaces);
+    int DecimalPlaces,
+    string? CurrencyCode);
 
 /// <summary>
 /// <b>منشأة مؤسَّسة، صالحةً بحكم وجودها.</b>
@@ -64,11 +69,13 @@ public sealed class FoundedCompany
         TenantId company,
         TranslatedName name,
         DisplayScale displayScale,
+        CompanyMoney money,
         CostCenterRegister costCenters)
     {
         Company = company;
         Name = name;
         DisplayScale = displayScale;
+        Money = money;
         CostCenters = costCenters;
     }
 
@@ -89,6 +96,13 @@ public sealed class FoundedCompany
 
     /// <summary>مقياس العرض. مُسنَد عند التأسيس، ولا يتغيّر بعده.</summary>
     public DisplayScale DisplayScale { get; }
+
+    /// <summary>
+    /// عملة المنشأة ووحدتها الصغرى. مُسنَدة عند التأسيس، ولا تتغيّر بعده — بالحصانة
+    /// نفسها التي لمقياس العرض: لا توقيع في الشجرة يحملها إلى منشأة قائمة، والمشغّل
+    /// يقفل باب القاعدة (ADR-0089).
+    /// </summary>
+    public CompanyMoney Money { get; }
 
     /// <summary>سجلّ مراكز التكلفة. غير فارغ بحكم بنائه.</summary>
     public CostCenterRegister CostCenters { get; }
@@ -143,6 +157,20 @@ public sealed class FoundedCompany
 
         Result<DisplayScale> scale = DisplayScale.Of(draft.DecimalPlaces);
 
+
+        // ── العملة: رمزٌ من ISO 4217 ووحدةٌ صغرى من جدولها — لا «SAR» من الشيفرة ─────
+
+        Result<CompanyMoney> money = CompanyMoney.Of(draft.CurrencyCode);
+
+
+        if (money.IsFailure)
+
+        {
+
+            errors.AddRange(money.Errors);
+
+        }
+
         if (scale.IsFailure)
         {
             errors.AddRange(scale.Errors);
@@ -165,7 +193,7 @@ public sealed class FoundedCompany
         return errors.Count > 0
             ? Result<FoundedCompany>.Failure(errors)
             : Result<FoundedCompany>.Success(
-                new FoundedCompany(company, new TranslatedName(nameAr, translations), scale.Value, register.Value));
+                new FoundedCompany(company, new TranslatedName(nameAr, translations), scale.Value, money.Value, register.Value));
     }
 
     /// <summary>
@@ -182,12 +210,16 @@ public sealed class FoundedCompany
     /// <param name="company">المنشأة.</param>
     /// <param name="name">الاسم كما قُرئ.</param>
     /// <param name="decimalPlaces">عدد الخانات كما قُرئ — يُصدَّق هنا لا يُصدَّق عند الكاتب.</param>
+    /// <param name="currencyCode">رمز العملة المخزَّن.</param>
+    /// <param name="minorUnits">عدد خانات الوحدة الصغرى المخزَّن.</param>
     /// <param name="costCenters">سجلّ المراكز المُعاد بناؤه.</param>
     /// <exception cref="InvalidOperationException">مقياس عرض مخزَّن خارج المدى المقبول.</exception>
     internal static FoundedCompany Rehydrate(
         TenantId company,
         TranslatedName name,
         int decimalPlaces,
+        string currencyCode,
+        int minorUnits,
         CostCenterRegister costCenters)
     {
         ArgumentNullException.ThrowIfNull(name);
@@ -202,7 +234,7 @@ public sealed class FoundedCompany
                 + string.Join(" | ", scale.Errors.Select(static error => error.ToString())));
         }
 
-        return new FoundedCompany(company, name, scale.Value, costCenters);
+        return new FoundedCompany(company, name, scale.Value, CompanyMoney.Rehydrate(currencyCode, minorUnits), costCenters);
     }
 
     /// <summary>
@@ -213,7 +245,7 @@ public sealed class FoundedCompany
     public FoundedCompany WithCostCenters(CostCenterRegister costCenters)
     {
         ArgumentNullException.ThrowIfNull(costCenters);
-        return new FoundedCompany(Company, Name, DisplayScale, costCenters);
+        return new FoundedCompany(Company, Name, DisplayScale, Money, costCenters);
     }
 
     /// <summary>اسم المنشأة بلغة العرض، مرتدّاً إلى العربية (ADR-0021).</summary>

@@ -72,6 +72,8 @@ const SESSION = {
       nameTranslations: [],
       decimalPlaces: 2,
       defaultCostCenter: "cc.main",
+      currencyCode: "SAR",
+      minorUnits: 2,
     },
   ],
 };

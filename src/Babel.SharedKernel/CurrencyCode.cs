@@ -31,7 +31,11 @@ public readonly record struct CurrencyCode
         _code = code;
     }
 
-    /// <summary>الريال السعودي — عملة الشركة الافتراضية.</summary>
+    /// <summary>
+    /// الريال السعودي — <b>رمزٌ مسمّى لا افتراض</b>: تستعمله الاختباراتُ والبياناتُ التجريبية
+    /// حين تكون العملةُ معطىً معلناً، ولا يقرؤه أيُّ مسارٍ إنتاجي عملةً للمنشأة؛ تلك تُحلّ
+    /// من صفّ التأسيس (ADR-0089).
+    /// </summary>
     public static CurrencyCode Sar => new("SAR");
 
     /// <summary>القيمة النصية للرمز.</summary>

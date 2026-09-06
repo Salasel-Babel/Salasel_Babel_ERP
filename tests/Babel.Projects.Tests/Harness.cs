@@ -32,7 +32,7 @@ internal sealed class Harness : IDisposable
         Runtime = runtime;
         LedgerRuntime = ledger;
         AlwaysEntitled enforcer = new();
-        Posting = new PostingService(enforcer, ledger);
+        Posting = new PostingService(enforcer, ledger, FoundedTenants.MoneyFor(ProjectsTestEnvironment.AllTenants));
         Profiles = new InMemoryCapabilityProfileStore();
         Registry = new ProjectRegistryService(enforcer, runtime);
         Subcontractors = new SubcontractorRegistryService(enforcer, runtime);
@@ -100,7 +100,8 @@ internal sealed class Harness : IDisposable
         Harness harness = new(
             new ProjectsRuntime(
                 ProjectsTestEnvironment.Projects,
-                FoundedTenants.ResolverFor(ProjectsTestEnvironment.AllTenants)),
+                FoundedTenants.ResolverFor(ProjectsTestEnvironment.AllTenants),
+                FoundedTenants.MoneyFor(ProjectsTestEnvironment.AllTenants)),
             _ledger);
 
         if (seedProfiles)

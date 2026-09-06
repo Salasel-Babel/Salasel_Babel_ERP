@@ -2,6 +2,7 @@ using Babel.Contracts.Posting;
 using Babel.Core.Application;
 using Babel.Core.Entitlement;
 using Babel.Hr.Persistence;
+using Babel.Core.CompanySetup;
 using Babel.SharedKernel;
 using Microsoft.EntityFrameworkCore;
 
@@ -26,7 +27,7 @@ public sealed class PayrollPaymentService : IApplicationService
     private readonly IEntitlementEnforcer _enforcer;
     private readonly HrDbContext _database;
     private readonly SubledgerPostingGateway _gateway;
-    private readonly CurrencyCode _currency;
+    private readonly ICompanyMoneyResolver _company;
 
     /// <summary>ينشئ الخدمة.</summary>
     /// <param name="enforcer">منفِّذ الاستحقاق.</param>
@@ -40,7 +41,7 @@ public sealed class PayrollPaymentService : IApplicationService
         _enforcer = enforcer;
         _database = runtime.Database;
         _gateway = new SubledgerPostingGateway(runtime.Database, posting, runtime.CostCenters);
-        _currency = CurrencyCode.FromString(runtime.Options.CompanyCurrency);
+        _company = runtime.Company;
     }
 
     /// <summary>يُنشئ سند صرف <b>مسوّدة</b> على مسيّر مُرحَّل، بسطرٍ لكل قسيمة.</summary>
@@ -64,6 +65,12 @@ public sealed class PayrollPaymentService : IApplicationService
         if (gate.IsFailure)
         {
             return Result<PayrollPaymentView>.Failure(gate.Errors);
+        }
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<PayrollPaymentView>.Failure(money.Errors);
         }
 
         if (string.IsNullOrWhiteSpace(draft.TreasuryPartyId))
@@ -145,7 +152,7 @@ public sealed class PayrollPaymentService : IApplicationService
         _database.PayrollPaymentLines.AddRange(lines);
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        return Result<PayrollPaymentView>.Success(View(payment, lines, alreadyPosted: false));
+        return Result<PayrollPaymentView>.Success(View(payment, lines, alreadyPosted: false, money.Value));
     }
 
     /// <summary>يقرأ السند وسطوره ومعرّفات قيودها.</summary>
@@ -169,6 +176,12 @@ public sealed class PayrollPaymentService : IApplicationService
             return Result<PayrollPaymentView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<PayrollPaymentView>.Failure(money.Errors);
+        }
+
         PayrollPaymentRow? payment = await _database.PayrollPayments
             .FirstOrDefaultAsync(row => row.TenantId == tenant.Value && row.Id == paymentId, cancellationToken)
             .ConfigureAwait(false);
@@ -179,7 +192,7 @@ public sealed class PayrollPaymentService : IApplicationService
         }
 
         List<PayrollPaymentLineRow> lines = await LinesAsync(paymentId, cancellationToken).ConfigureAwait(false);
-        return Result<PayrollPaymentView>.Success(View(payment, lines, alreadyPosted: false));
+        return Result<PayrollPaymentView>.Success(View(payment, lines, alreadyPosted: false, money.Value));
     }
 
     /// <summary>
@@ -204,6 +217,12 @@ public sealed class PayrollPaymentService : IApplicationService
         if (gate.IsFailure)
         {
             return Result<PayrollPaymentView>.Failure(gate.Errors);
+        }
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<PayrollPaymentView>.Failure(money.Errors);
         }
 
         PayrollPaymentRow? payment = await _database.PayrollPayments
@@ -241,7 +260,7 @@ public sealed class PayrollPaymentService : IApplicationService
                 Narration = new LocalizedName(
                     "صرف رواتب " + run.PeriodCode + " · " + line.EmployeeCode,
                     "Payroll payment " + run.PeriodCode + " · " + line.EmployeeCode),
-                Amounts = [new PostingAmount("net_payable", Money.Of(line.Amount, _currency))],
+                Amounts = [new PostingAmount("net_payable", Money.Of(line.Amount, money.Value.Currency))],
                 Facts =
                 [
                     new PostingFact("document.settlement_method", payment.SettlementMethod),
@@ -257,7 +276,7 @@ public sealed class PayrollPaymentService : IApplicationService
 
                 // سطرٌ واحد على دفتر الموظف، مدين: الالتزام يُطفأ.
                 ControlEffect = line.Amount,
-                Currency = _currency,
+                Currency = money.Value.Currency,
                 Actor = actor,
                 Generation = 1,
             };
@@ -276,7 +295,7 @@ public sealed class PayrollPaymentService : IApplicationService
         payment.State = HrDocumentState.Posted;
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        return Result<PayrollPaymentView>.Success(View(payment, lines, everyLineWasAlreadyPosted));
+        return Result<PayrollPaymentView>.Success(View(payment, lines, everyLineWasAlreadyPosted, money.Value));
     }
 
     private async Task<List<PayrollPaymentLineRow>> LinesAsync(Guid paymentId, CancellationToken cancellationToken)
@@ -286,19 +305,20 @@ public sealed class PayrollPaymentService : IApplicationService
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-    private PayrollPaymentView View(
-        PayrollPaymentRow payment, IReadOnlyList<PayrollPaymentLineRow> lines, bool alreadyPosted) => new(
+    private static PayrollPaymentView View(
+        PayrollPaymentRow payment, IReadOnlyList<PayrollPaymentLineRow> lines, bool alreadyPosted,
+        CompanyMoney money) => new(
         payment.Id,
         payment.Number,
         payment.RunId,
         payment.PaidOn,
         payment.SettlementMethod,
         payment.TreasuryPartyId,
-        Money.Of(payment.NetPayable, _currency),
+        Money.Of(payment.NetPayable, money.Currency),
         payment.State,
         [
             .. lines.Select(line => new PayrollPaymentLineView(
-                line.LineNo, line.PayslipId, line.EmployeeCode, Money.Of(line.Amount, _currency), line.PostedEntryId)),
+                line.LineNo, line.PayslipId, line.EmployeeCode, Money.Of(line.Amount, money.Currency), line.PostedEntryId)),
         ],
         alreadyPosted);
 }

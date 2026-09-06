@@ -54,7 +54,8 @@ public sealed class MeteringActorTests : IAsyncLifetime
         InMemoryUsageStore usage = new();
         PostingService posting = new(
             new EntitlementEnforcer(new AlwaysEntitledService(), usage, TimeProvider.System),
-            _harness.Runtime);
+            _harness.Runtime,
+            new RiyalForEveryTenant());
 
         Result<PostingReceipt> first = await posting.PostAsync(Entry(Sara, "SARA"), token);
         Result<PostingReceipt> second = await posting.PostAsync(Entry(Khalid, "KHALID"), token);
@@ -96,7 +97,8 @@ public sealed class MeteringActorTests : IAsyncLifetime
         InMemoryUsageStore usage = new();
         PostingService posting = new(
             new EntitlementEnforcer(new ReadOnlyService(), usage, TimeProvider.System),
-            _harness.Runtime);
+            _harness.Runtime,
+            new RiyalForEveryTenant());
 
         Result<PostingReceipt> byPerson = await posting.PostAsync(Entry(Sara, "RO-SARA"), token);
         Result<PostingReceipt> bySystem = await posting.PostAsync(

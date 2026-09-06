@@ -21,17 +21,20 @@ public sealed class RealEstateRuntime : IDisposable
     /// <summary>ينشئ الموارد من الإعدادات.</summary>
     /// <param name="options">إعدادات الوحدة.</param>
     /// <param name="costCenters">
+    /// <param name="company">عملة المنشأة ووحدتها الصغرى — من صفّ التأسيس (ADR-0089).</param>
     /// حالُّ مركز التكلفة من النواة. <b>بوّابة الترحيل تسأله قبل أن تبني طلباً</b>
     /// (‏ADR-0026). والعقار والوحدة <b>بُعدان لا مركزا تكلفة</b>: البيانات المشحونة
     /// تُعلن <c>required_dimensions=property</c> على كل حساب عقاري ولا تُعلن
     /// <c>cost_center</c> على واحد منها، فيحمل كل سطر مركزاً <b>إدارياً</b> واحداً.
     /// </param>
-    public RealEstateRuntime(RealEstateOptions options, ICostCenterResolver costCenters)
+    public RealEstateRuntime(RealEstateOptions options, ICostCenterResolver costCenters, ICompanyMoneyResolver company)
     {
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(costCenters);
+        ArgumentNullException.ThrowIfNull(company);
         Options = options;
         CostCenters = costCenters;
+        Company = company;
         _database = Build(options);
     }
 
@@ -39,6 +42,9 @@ public sealed class RealEstateRuntime : IDisposable
 
     /// <summary>حالُّ مركز التكلفة — يُمرَّر إلى بوّابة الترحيل ولا يُقرأ في مكان آخر.</summary>
     internal ICostCenterResolver CostCenters { get; }
+
+    /// <summary>عملة المنشأة ووحدتها الصغرى — من صفّ التأسيس، لكلّ نداء (ADR-0089).</summary>
+    internal ICompanyMoneyResolver Company { get; }
 
     internal RealEstateDbContext Database => _database;
 

@@ -7,6 +7,7 @@ namespace Babel.Api.Wire;
 /// <param name="CompanyNameAr">اسم المنشأة بالعربية. إلزامي وهو السجلّ (ADR-0021).</param>
 /// <param name="CostCenters">الجواب عن سؤال مراكز التكلفة: <c>One</c> أو <c>Multiple</c>.</param>
 /// <param name="DecimalPlaces">عدد الخانات العشرية المعروضة. يُسنَد هنا ولا يُعدَّل بعدها.</param>
+/// <param name="CurrencyCode">عملة المنشأة — رمز ISO 4217. تُسنَد هنا ولا تُعدَّل بعدها (ADR-0089).</param>
 /// <param name="CompanyNameTranslations">ترجمات اسم المنشأة بوسم اللغة.</param>
 /// <param name="FirstCostCenterNameAr">اسم أول مركز تكلفة. إلزامي مع <c>Multiple</c>، ومرفوض مع <c>One</c>.</param>
 /// <param name="FirstCostCenterTranslations">ترجمات اسم أول مركز.</param>
@@ -14,6 +15,7 @@ internal sealed record InitialiseCompanySetupRequestDto(
     string CompanyNameAr,
     string CostCenters,
     int DecimalPlaces,
+    string CurrencyCode,
     IReadOnlyList<NameValueDto>? CompanyNameTranslations = null,
     string? FirstCostCenterNameAr = null,
     IReadOnlyList<NameValueDto>? FirstCostCenterTranslations = null);
@@ -46,14 +48,27 @@ internal sealed record CostCenterDto(
 /// <param name="NameAr">اسم المنشأة بالعربية.</param>
 /// <param name="NameTranslations">ترجمات الاسم.</param>
 /// <param name="DecimalPlaces">عدد الخانات المعروضة — مُسنَد مرّة، غير قابل للتعديل.</param>
+/// <param name="CurrencyCode">عملة المنشأة — رمز ISO 4217.</param>
+/// <param name="MinorUnits">عدد خانات الوحدة الصغرى — الهللة خانتان.</param>
 /// <param name="DefaultCostCenter">رمز المركز الافتراضي. غير فارغ أبداً.</param>
 /// <param name="CostCenters">مراكز التكلفة كلّها — العاملة والموقوفة — مرتَّبة برمزها.</param>
 internal sealed record CompanySetupDto(
     string NameAr,
     IReadOnlyList<NameValueDto> NameTranslations,
     int DecimalPlaces,
+    string CurrencyCode,
+    int MinorUnits,
     string DefaultCostCenter,
     IReadOnlyList<CostCenterDto> CostCenters);
+
+/// <summary>عملةٌ يقبلها التأسيس: رمزها ووحدتها الصغرى كما في الجدول المرجعي (ISO 4217).</summary>
+/// <param name="Code">رمز ISO 4217.</param>
+/// <param name="MinorUnits">عدد خانات الوحدة الصغرى.</param>
+internal sealed record CurrencyOptionDto(string Code, int MinorUnits);
+
+/// <summary>العملات التي يقبلها التأسيس — الجدول المرجعي كما شُحن، لا قائمةٌ تُكتب في الواجهة.</summary>
+/// <param name="Currencies">العملات مرتَّبةً برمزها.</param>
+internal sealed record CurrencyListDto(IReadOnlyList<CurrencyOptionDto> Currencies);
 
 /// <summary>
 /// النقل بين السلك ونواة التأسيس — <b>نقلٌ لا قرار</b>.
@@ -77,7 +92,8 @@ internal static class CompanySetupWire
             ToPlan(dto.CostCenters),
             dto.FirstCostCenterNameAr,
             ToTranslations(dto.FirstCostCenterTranslations, "firstCostCenterTranslations"),
-            dto.DecimalPlaces);
+            dto.DecimalPlaces,
+            dto.CurrencyCode);
     }
 
     /// <summary>يقرأ ترجمات اسم مركز تكلفة من طلب إضافة أو إعادة تسمية.</summary>
@@ -98,6 +114,8 @@ internal static class CompanySetupWire
             setup.NameAr,
             [.. setup.Translations.Select(static entry => new NameValueDto(entry.Key, entry.Value))],
             setup.DisplayScale.Places,
+            setup.Money.Currency.Value,
+            setup.Money.MinorUnits,
             setup.CostCenters.Default.Value,
             [.. setup.CostCenters.All.Select(center => new CostCenterDto(
                 center.Code.Value,
@@ -107,6 +125,10 @@ internal static class CompanySetupWire
                 center.Code == setup.CostCenters.Default,
                 center.SuspensionReason))]);
     }
+
+    public static CurrencyListDto Currencies()
+        => new([.. Babel.SharedKernel.Iso4217.KnownCodes.Select(static code
+            => new CurrencyOptionDto(code, Babel.SharedKernel.Iso4217.MinorUnitsOf(Babel.SharedKernel.CurrencyCode.FromString(code)) ?? 0))]);
 
     private static CostCenterPlan ToPlan(string? answer)
         => Enum.TryParse(answer, ignoreCase: false, out CostCenterPlan plan) && Enum.IsDefined(plan)

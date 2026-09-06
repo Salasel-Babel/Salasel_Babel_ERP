@@ -27,8 +27,8 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 import { useCallback, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { initialiseCompanySetup, readCompanySetup } from "../../api/generated/client";
-import type { CompanySetup, NameValue } from "../../api/generated/types";
+import { initialiseCompanySetup, readCompanySetup, readSetupCurrencies } from "../../api/generated/client";
+import type { CompanySetup, CurrencyOption, NameValue } from "../../api/generated/types";
 import { ProblemError } from "../../api/transport";
 import { useApi } from "../../app/api-context";
 import { ProblemPanel } from "../../app/shell/ProblemPanel";
@@ -81,6 +81,9 @@ export function CompanySetupScreen(): ReactNode {
   const [companyTranslations, setCompanyTranslations] = useState<readonly NameValue[]>([]);
   const [answer, setAnswer] = useState<(typeof ANSWERS)[number]>("One");
   const [places, setPlaces] = useState<(typeof PLACES)[number]>(2);
+  /* **ولا عملةَ مختارة سلفاً**: العملة تُسنَد مرّة ولا تُعدَّل، فلا يُخترَع لها ريالٌ
+     نيابةً عن أحد — الفراغ يعني «لم يُختَر بعد» ويُرفض قبل الضغط (ADR-0089). */
+  const [currency, setCurrency] = useState("");
   const [firstNameAr, setFirstNameAr] = useState("");
   const [firstTranslations, setFirstTranslations] = useState<readonly NameValue[]>([]);
 
@@ -95,6 +98,15 @@ export function CompanySetupScreen(): ReactNode {
     queryFn: ({ signal }) => readCompanySetup(transport, { companyId: config.companyId }, signal),
   });
 
+  /* ــ العملات التي يقبلها التأسيس: الجدول المرجعي من الخادم لا قائمةٌ تُكتب هنا ــ */
+  const currencies = useQuery({
+    queryKey: ["setup", "currencies", config.baseUrl, config.token, config.companyId],
+    enabled: config.companyId !== "",
+    retry: false,
+    queryFn: ({ signal }) => readSetupCurrencies(transport, { companyId: config.companyId }, signal),
+  });
+  const currencyOptions: readonly CurrencyOption[] = currencies.data?.currencies ?? [];
+
   /* ــ الحالة الثالثة: «لم تُؤسَّس بعد» ليست عطلاً ولا تُعرض عطلاً ــــــــ */
   const notFound =
     setup.isError && setup.error instanceof ProblemError && setup.error.code === NOT_FOUND_CODE;
@@ -104,7 +116,7 @@ export function CompanySetupScreen(): ReactNode {
   /* ــ الرفض يُقال قبل الضغط، وباسمه ــــــــــــــــــــــــــــــــــــــ */
   const firstNameRefusal =
     answer === "Multiple" && firstNameAr.trim() === "" ? NAME_REQUIRED_CODE : null;
-  const ready = companyNameAr.trim() !== "" && firstNameRefusal === null;
+  const ready = companyNameAr.trim() !== "" && currency !== "" && firstNameRefusal === null;
 
   const submit = useCallback(async () => {
     setBusy(true);
@@ -117,6 +129,7 @@ export function CompanySetupScreen(): ReactNode {
           companyNameTranslations: [...companyTranslations],
           costCenters: answer,
           decimalPlaces: places,
+          currencyCode: currency,
           /* **ولا اسمَ أوّلَ مع الجواب «واحد»**: اسمه هناك اسم المنشأة بعينه،
              وإرساله يُرفض بـ`first_cost_center_name_not_expected`. */
           ...(answer === "Multiple"
@@ -143,6 +156,7 @@ export function CompanySetupScreen(): ReactNode {
     companyNameAr,
     companyTranslations,
     config.companyId,
+    currency,
     firstNameAr,
     firstTranslations,
     fireArrive,
@@ -205,6 +219,12 @@ export function CompanySetupScreen(): ReactNode {
                 testId="setup-company-places"
               />
               <StatCard
+                label={t("screen.setup.minorUnits")}
+                count={current.minorUnits}
+                hint={t("screen.setup.minorUnitsHint")}
+                testId="setup-company-minor-units"
+              />
+              <StatCard
                 label={t("screen.setup.centreCount")}
                 count={current.costCenters.length}
                 hint={t("screen.setup.centreCountHint")}
@@ -226,6 +246,12 @@ export function CompanySetupScreen(): ReactNode {
                     translations={current.nameTranslations}
                     locale={locale}
                   />
+                </div>
+              </div>
+              <div>
+                <div className="k">{t("screen.setup.currency")}</div>
+                <div className="v mono" dir="ltr" data-testid="setup-company-currency">
+                  {current.currencyCode}
                 </div>
               </div>
               <div>
@@ -303,6 +329,32 @@ export function CompanySetupScreen(): ReactNode {
                        `i18n/locales/*.base.ts`، فلا فرق بين الشكلين. */
                     <option key={p} value={String(p)}>
                       {i18n.integer(p).machine}
+                    </option>
+                  ))}
+                </select>
+              </SetupField>
+              <SetupField
+                id="stp-company-currency"
+                label={t("screen.setup.currencyLabel")}
+                hint={t("screen.setup.currencyFieldHint")}
+                source="typed"
+                required
+              >
+                <select
+                  id="stp-company-currency"
+                  className="ctl mono"
+                  dir="ltr"
+                  data-testid="setup-company-currency-input"
+                  value={currency}
+                  onChange={(e) => setCurrency(e.target.value)}
+                >
+                  {/* **الخيار الفارغ أوّلاً** — «اختر» لا عملةٌ مُسبَقة. */}
+                  <option value="">{t("screen.setup.currencyPick")}</option>
+                  {currencyOptions.map((c) => (
+                    /* الرمز والوحدة الصغرى كما يُرجعهما الجدول المرجعي (ISO 4217):
+                       `SAR · 2`، `KWD · 3`، `JPY · 0`. */
+                    <option key={c.code} value={c.code}>
+                      {c.code + " · " + i18n.integer(c.minorUnits).machine}
                     </option>
                   ))}
                 </select>

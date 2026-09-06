@@ -39,7 +39,7 @@ internal sealed class Harness : IDisposable
         LedgerRuntime = ledger;
 
         AlwaysEntitled enforcer = new();
-        Posting = new PostingService(enforcer, ledger);
+        Posting = new PostingService(enforcer, ledger, FoundedTenants.MoneyFor(HrTestEnvironment.AllTenants));
 
         Employees = new EmployeeService(enforcer, hr);
         Settings = new PayrollSettingsService(enforcer, hr);
@@ -95,7 +95,7 @@ internal sealed class Harness : IDisposable
         }
 
         ICostCenterResolver centres = FoundedTenants.ResolverFor(HrTestEnvironment.AllTenants);
-        return new Harness(new HrRuntime(HrTestEnvironment.Hr, centres), _ledger!);
+        return new Harness(new HrRuntime(HrTestEnvironment.Hr, centres, FoundedTenants.MoneyFor(HrTestEnvironment.AllTenants)), _ledger!);
     }
 
     /// <summary>

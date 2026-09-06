@@ -107,6 +107,13 @@ internal static class ApiRoutes
     public const string CompanySetup = Company + "/setup";
 
     /// <summary>
+    /// العملات التي يقبلها التأسيس — الجدول المرجعي (ISO 4217) كما شُحن، برمز كلّ عملة
+    /// ووحدتها الصغرى. يُقرأ <b>قبل</b> التأسيس كي تختار الشاشةُ من قائمةٍ لا تكتبها،
+    /// وهو داخل نطاق الشركة كأي مسار آخر (ADR-0089).
+    /// </summary>
+    public const string SetupCurrencies = CompanySetup + "/currencies";
+
+    /// <summary>
     /// مراكز التكلفة: القائمة والإضافة.
     /// <para>
     /// <b>ولاحظ ما ليس هنا: مسار حذف.</b> غيابه بنيوي كغيابه على القيود — لا دالة حذف على

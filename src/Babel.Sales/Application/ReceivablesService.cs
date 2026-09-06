@@ -4,6 +4,7 @@ using Babel.Core.Application;
 using Babel.Core.Entitlement;
 using Babel.Sales.Persistence;
 using Babel.Sales.Subledger;
+using Babel.Core.CompanySetup;
 using Babel.SharedKernel;
 using Microsoft.EntityFrameworkCore;
 
@@ -51,7 +52,7 @@ public sealed class ReceivablesService : IApplicationService
     private readonly IEntitlementEnforcer _enforcer;
     private readonly SalesDbContext _database;
     private readonly IControlPointReader _controlPoint;
-    private readonly CurrencyCode _currency;
+    private readonly ICompanyMoneyResolver _company;
 
     /// <summary>ينشئ الخدمة.</summary>
     /// <param name="enforcer">منفِّذ الاستحقاق.</param>
@@ -65,7 +66,7 @@ public sealed class ReceivablesService : IApplicationService
         _enforcer = enforcer;
         _database = runtime.Database;
         _controlPoint = controlPoint;
-        _currency = CurrencyCode.FromString(runtime.Options.CompanyCurrency);
+        _company = runtime.Company;
     }
 
     /// <summary>أعمار ديون العملاء حتى تاريخ.</summary>
@@ -80,13 +81,19 @@ public sealed class ReceivablesService : IApplicationService
         DateOnly asOf,
         CancellationToken cancellationToken = default)
     {
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<AgingReport>.Failure(money.Errors);
+        }
         Result gate = await _enforcer
             .EnsureAsync(tenant, actor, BabelModule.Sales, EntitlementAccess.Read, "Sales.Receivables.Aging", cancellationToken)
             .ConfigureAwait(false);
 
         return gate.IsFailure
             ? Result<AgingReport>.Failure(gate.Errors)
-            : Result<AgingReport>.Success(await BuildAgingAsync(tenant, asOf, cancellationToken).ConfigureAwait(false));
+            : Result<AgingReport>.Success(await BuildAgingAsync(tenant, asOf, money.Value, cancellationToken).ConfigureAwait(false));
     }
 
     /// <summary>كشف حساب عميل بين تاريخين.</summary>
@@ -114,6 +121,12 @@ public sealed class ReceivablesService : IApplicationService
             return Result<PartyStatement>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<PartyStatement>.Failure(money.Errors);
+        }
+
         if (!await _database.Customers
                 .AnyAsync(row => row.TenantId == tenant.Value && row.Id == customerId, cancellationToken)
                 .ConfigureAwait(false))
@@ -139,13 +152,13 @@ public sealed class ReceivablesService : IApplicationService
                 item.DocumentType,
                 item.Number,
                 item.Description,
-                Money.Of(item.Effect > 0m ? item.Effect : 0m, _currency),
-                Money.Of(item.Effect < 0m ? -item.Effect : 0m, _currency),
-                Money.Of(running, _currency)));
+                Money.Of(item.Effect > 0m ? item.Effect : 0m, money.Value.Currency),
+                Money.Of(item.Effect < 0m ? -item.Effect : 0m, money.Value.Currency),
+                Money.Of(running, money.Value.Currency)));
         }
 
         return Result<PartyStatement>.Success(new PartyStatement(
-            customerId, from, to, Money.Of(opening, _currency), lines, Money.Of(running, _currency)));
+            customerId, from, to, Money.Of(opening, money.Value.Currency), lines, Money.Of(running, money.Value.Currency)));
     }
 
     /// <summary>
@@ -172,6 +185,12 @@ public sealed class ReceivablesService : IApplicationService
             return Result<ControlReconciliationReport>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<ControlReconciliationReport>.Failure(money.Errors);
+        }
+
         Result<ControlPointSnapshot> snapshot = await _controlPoint
             .ReadAsync(tenant, SubledgerKindCode, asOf, OwningModule, cancellationToken)
             .ConfigureAwait(false);
@@ -181,7 +200,7 @@ public sealed class ReceivablesService : IApplicationService
             return Result<ControlReconciliationReport>.Failure(SalesErrors.ControlPointUnavailable(snapshot.Errors));
         }
 
-        AgingReport aging = await BuildAgingAsync(tenant, asOf, cancellationToken).ConfigureAwait(false);
+        AgingReport aging = await BuildAgingAsync(tenant, asOf, money.Value, cancellationToken).ConfigureAwait(false);
         decimal subledgerTotal = aging.Totals.Total.Amount;
         decimal controlTotal = snapshot.Value.Net;
 
@@ -225,9 +244,9 @@ public sealed class ReceivablesService : IApplicationService
                         pending.DocumentType,
                         pending.DocumentId,
                         pending.PartyId,
-                        Money.Of(pending.ControlEffect, _currency),
-                        Money.Of(0m, _currency),
-                        Money.Of(pending.ControlEffect, _currency),
+                        Money.Of(pending.ControlEffect, money.Value.Currency),
+                        Money.Of(0m, money.Value.Currency),
+                        Money.Of(pending.ControlEffect, money.Value.Currency),
                         DivergenceReason.PostingUnresolved));
                 }
 
@@ -256,9 +275,9 @@ public sealed class ReceivablesService : IApplicationService
                     witness.DocumentType,
                     witness.DocumentId,
                     witness.PartyId,
-                    Money.Of(effect, _currency),
-                    Money.Of(0m, _currency),
-                    Money.Of(effect, _currency),
+                    Money.Of(effect, money.Value.Currency),
+                    Money.Of(0m, money.Value.Currency),
+                    Money.Of(effect, money.Value.Currency),
                     DivergenceReason.MissingInControl));
                 continue;
             }
@@ -269,9 +288,9 @@ public sealed class ReceivablesService : IApplicationService
                     witness.DocumentType,
                     witness.DocumentId,
                     witness.PartyId,
-                    Money.Of(effect, _currency),
-                    Money.Of(ledgerNet, _currency),
-                    Money.Of(effect - ledgerNet, _currency),
+                    Money.Of(effect, money.Value.Currency),
+                    Money.Of(ledgerNet, money.Value.Currency),
+                    Money.Of(effect - ledgerNet, money.Value.Currency),
                     DivergenceReason.AmountMismatch));
             }
         }
@@ -287,9 +306,9 @@ public sealed class ReceivablesService : IApplicationService
                 movement.DocumentType,
                 movement.DocumentId,
                 movement.PartyId,
-                Money.Of(0m, _currency),
-                Money.Of(movement.Net, _currency),
-                Money.Of(-movement.Net, _currency),
+                Money.Of(0m, money.Value.Currency),
+                Money.Of(movement.Net, money.Value.Currency),
+                Money.Of(-movement.Net, money.Value.Currency),
                 DivergenceReason.MissingInSubledger));
         }
 
@@ -297,9 +316,9 @@ public sealed class ReceivablesService : IApplicationService
 
         return Result<ControlReconciliationReport>.Success(new ControlReconciliationReport(
             asOf,
-            Money.Of(subledgerTotal, _currency),
-            Money.Of(controlTotal, _currency),
-            Money.Of(divergence, _currency),
+            Money.Of(subledgerTotal, money.Value.Currency),
+            Money.Of(controlTotal, money.Value.Currency),
+            Money.Of(divergence, money.Value.Currency),
             divergence == 0m && divergences.Count == 0,
             [.. divergences.OrderBy(static d => d.DocumentType, StringComparer.Ordinal)
                            .ThenBy(static d => d.DocumentId, StringComparer.Ordinal)]));
@@ -314,7 +333,7 @@ public sealed class ReceivablesService : IApplicationService
         => documentType.Length.ToString(CultureInfo.InvariantCulture) + ":" + documentType
            + documentId.Length.ToString(CultureInfo.InvariantCulture) + ":" + documentId;
 
-    private async Task<AgingReport> BuildAgingAsync(TenantId tenant, DateOnly asOf, CancellationToken cancellationToken)
+    private async Task<AgingReport> BuildAgingAsync(TenantId tenant, DateOnly asOf, CompanyMoney money, CancellationToken cancellationToken)
     {
         List<OpenItem> items = await OpenItemsAsync(tenant, asOf, cancellationToken).ConfigureAwait(false);
 
@@ -355,20 +374,20 @@ public sealed class ReceivablesService : IApplicationService
                     customer.Id,
                     customer.Code,
                     new LocalizedName(customer.NameAr, customer.NameEn),
-                    Buckets(buckets)));
+                    Buckets(buckets, money)));
             }
         }
 
-        return new AgingReport(asOf, parties, Buckets(totals));
+        return new AgingReport(asOf, parties, Buckets(totals, money));
     }
 
-    private AgingBuckets Buckets(decimal[] values) => new(
-        Money.Of(values[0], _currency),
-        Money.Of(values[1], _currency),
-        Money.Of(values[2], _currency),
-        Money.Of(values[3], _currency),
-        Money.Of(values[4], _currency),
-        Money.Of(values.Sum(), _currency));
+    private static AgingBuckets Buckets(decimal[] values, CompanyMoney money) => new(
+        Money.Of(values[0], money.Currency),
+        Money.Of(values[1], money.Currency),
+        Money.Of(values[2], money.Currency),
+        Money.Of(values[3], money.Currency),
+        Money.Of(values[4], money.Currency),
+        Money.Of(values.Sum(), money.Currency));
 
     /// <summary>
     /// البنود المفتوحة حتى تاريخ: الفواتير بما تبقّى عليها، والمستندات الدائنة بما لم

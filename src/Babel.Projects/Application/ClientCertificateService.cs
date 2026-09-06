@@ -2,6 +2,7 @@ using Babel.Core.Application;
 using Babel.Core.CapabilityProfile;
 using Babel.Core.Entitlement;
 using Babel.Projects.Persistence;
+using Babel.Core.CompanySetup;
 using Babel.SharedKernel;
 using Microsoft.EntityFrameworkCore;
 
@@ -32,7 +33,7 @@ public sealed class ClientCertificateService : IApplicationService
     private readonly IEntitlementEnforcer _enforcer;
     private readonly ProjectsDbContext _database;
     private readonly ProjectsAdmission _admission;
-    private readonly CurrencyCode _currency;
+    private readonly ICompanyMoneyResolver _company;
 
     /// <summary>ينشئ الخدمة.</summary>
     /// <param name="enforcer">منفِّذ الاستحقاق.</param>
@@ -53,7 +54,7 @@ public sealed class ClientCertificateService : IApplicationService
         _enforcer = enforcer;
         _database = runtime.Database;
         _admission = new ProjectsAdmission(profiles);
-        _currency = CurrencyCode.FromString(runtime.Options.CompanyCurrency);
+        _company = runtime.Company;
     }
 
     /// <summary>
@@ -79,6 +80,12 @@ public sealed class ClientCertificateService : IApplicationService
         if (gate.IsFailure)
         {
             return Result<CertificateView>.Failure(gate.Errors);
+        }
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<CertificateView>.Failure(money.Errors);
         }
 
         // ‏**القبول أوّلاً، وغياب الملفّ رفضٌ لا فتح** (ADR-0023 · ADR-0025). والحقلان
@@ -192,7 +199,7 @@ public sealed class ClientCertificateService : IApplicationService
             .ConfigureAwait(false);
 
         return Result<CertificateView>.Success(
-            View(certificate, lines.Value, items, pending, alreadyPosted: false));
+            View(certificate, lines.Value, items, pending, alreadyPosted: false, money.Value));
     }
 
     /// <summary>يقرأ مستخلصاً بحالته وسطوره وبنوده المعلَّقة ومعرّف قيده إن رُحّل.</summary>
@@ -216,6 +223,12 @@ public sealed class ClientCertificateService : IApplicationService
             return Result<CertificateView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<CertificateView>.Failure(money.Errors);
+        }
+
         ClientCertificateRow? certificate = await _database.ClientCertificates
             .AsNoTracking()
             .FirstOrDefaultAsync(row => row.TenantId == tenant.Value && row.Id == certificateId, cancellationToken)
@@ -227,7 +240,7 @@ public sealed class ClientCertificateService : IApplicationService
         }
 
         return Result<CertificateView>.Success(
-            await ReadAsync(tenant, certificate, alreadyPosted: false, cancellationToken).ConfigureAwait(false));
+            await ReadAsync(tenant, certificate, alreadyPosted: false, money.Value, cancellationToken).ConfigureAwait(false));
     }
 
     /// <summary>
@@ -254,6 +267,12 @@ public sealed class ClientCertificateService : IApplicationService
             return Result<IReadOnlyList<CertificateView>>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<IReadOnlyList<CertificateView>>.Failure(money.Errors);
+        }
+
         if (!await _database.Contracts
                 .AnyAsync(row => row.TenantId == tenant.Value && row.Id == contractId, cancellationToken)
                 .ConfigureAwait(false))
@@ -273,7 +292,7 @@ public sealed class ClientCertificateService : IApplicationService
 
         foreach (ClientCertificateRow row in rows)
         {
-            views.Add(await ReadAsync(tenant, row, alreadyPosted: false, cancellationToken).ConfigureAwait(false));
+            views.Add(await ReadAsync(tenant, row, alreadyPosted: false, money.Value, cancellationToken).ConfigureAwait(false));
         }
 
         return Result<IReadOnlyList<CertificateView>>.Success(views);
@@ -326,10 +345,10 @@ public sealed class ClientCertificateService : IApplicationService
 
     // ── مشترك ────────────────────────────────────────────────────────────────
 
-    private async Task<CertificateView> ReadAsync(
-        TenantId tenant,
+    private async Task<CertificateView> ReadAsync(TenantId tenant,
         ClientCertificateRow certificate,
         bool alreadyPosted,
+        CompanyMoney money,
         CancellationToken cancellationToken)
     {
         List<CertificateLineRow> lines = await _database.CertificateLines
@@ -352,15 +371,16 @@ public sealed class ClientCertificateService : IApplicationService
             .PendingAsync(_database, tenant.Value, certificate.ContractId, cancellationToken)
             .ConfigureAwait(false);
 
-        return View(certificate, lines, items, pending, alreadyPosted);
+        return View(certificate, lines, items, pending, alreadyPosted, money);
     }
 
-    private CertificateView View(
+    private static CertificateView View(
         ClientCertificateRow certificate,
         IReadOnlyList<CertificateLineRow> lines,
         IReadOnlyDictionary<Guid, MeasuredItem> items,
         IReadOnlyList<PendingPolicyItem> pending,
-        bool alreadyPosted) => new(
+        bool alreadyPosted,
+        CompanyMoney money) => new(
         certificate.Id,
         certificate.Number,
         certificate.ContractId,
@@ -369,7 +389,7 @@ public sealed class ClientCertificateService : IApplicationService
         certificate.PeriodTo,
         certificate.State,
         certificate.FrozenRetentionRate,
-        [.. lines.Select(line => Line(line, items, _currency))],
+        [.. lines.Select(line => Line(line, items, money.Currency))],
         pending,
         certificate.PostedEntryId,
         alreadyPosted);

@@ -2,6 +2,7 @@ using Babel.Contracts.Posting;
 using Babel.Core.Application;
 using Babel.Core.Entitlement;
 using Babel.Hr.Persistence;
+using Babel.Core.CompanySetup;
 using Babel.SharedKernel;
 using Microsoft.EntityFrameworkCore;
 
@@ -32,7 +33,7 @@ public sealed class SocialInsurancePaymentService : IApplicationService
     private readonly IEntitlementEnforcer _enforcer;
     private readonly HrDbContext _database;
     private readonly SubledgerPostingGateway _gateway;
-    private readonly CurrencyCode _currency;
+    private readonly ICompanyMoneyResolver _company;
 
     /// <summary>ينشئ الخدمة.</summary>
     /// <param name="enforcer">منفِّذ الاستحقاق.</param>
@@ -46,7 +47,7 @@ public sealed class SocialInsurancePaymentService : IApplicationService
         _enforcer = enforcer;
         _database = runtime.Database;
         _gateway = new SubledgerPostingGateway(runtime.Database, posting, runtime.CostCenters);
-        _currency = CurrencyCode.FromString(runtime.Options.CompanyCurrency);
+        _company = runtime.Company;
     }
 
     /// <summary>يُنشئ سند سداد <b>مسوّدة</b> للفترة.</summary>
@@ -72,10 +73,16 @@ public sealed class SocialInsurancePaymentService : IApplicationService
             return Result<SocialInsurancePaymentView>.Failure(gate.Errors);
         }
 
-        if (draft.Amount.Currency != _currency)
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<SocialInsurancePaymentView>.Failure(money.Errors);
+        }
+
+        if (draft.Amount.Currency != money.Value.Currency)
         {
             return Result<SocialInsurancePaymentView>.Failure(
-                HrErrors.CurrencyMismatch(_currency, draft.Amount.Currency, "amount"));
+                HrErrors.CurrencyMismatch(money.Value.Currency, draft.Amount.Currency, "amount"));
         }
 
         if (draft.Amount.Amount < 0m)
@@ -118,7 +125,7 @@ public sealed class SocialInsurancePaymentService : IApplicationService
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         decimal accrued = await AccruedAsync(tenant, draft.PeriodCode, cancellationToken).ConfigureAwait(false);
-        return Result<SocialInsurancePaymentView>.Success(View(row, accrued, alreadyPosted: false));
+        return Result<SocialInsurancePaymentView>.Success(View(row, accrued, alreadyPosted: false, money.Value));
     }
 
     /// <summary>يقرأ السند ومعه ما استُحقّ في فترته من مسيّرات مُرحَّلة.</summary>
@@ -142,6 +149,12 @@ public sealed class SocialInsurancePaymentService : IApplicationService
             return Result<SocialInsurancePaymentView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<SocialInsurancePaymentView>.Failure(money.Errors);
+        }
+
         SocialInsurancePaymentRow? row = await _database.SocialInsurancePayments
             .FirstOrDefaultAsync(entity => entity.TenantId == tenant.Value && entity.Id == paymentId, cancellationToken)
             .ConfigureAwait(false);
@@ -153,7 +166,7 @@ public sealed class SocialInsurancePaymentService : IApplicationService
         }
 
         decimal accrued = await AccruedAsync(tenant, row.PeriodCode, cancellationToken).ConfigureAwait(false);
-        return Result<SocialInsurancePaymentView>.Success(View(row, accrued, alreadyPosted: false));
+        return Result<SocialInsurancePaymentView>.Success(View(row, accrued, alreadyPosted: false, money.Value));
     }
 
     /// <summary>يرحّل السداد — <b>قيدٌ واحد للفترة</b>.</summary>
@@ -177,6 +190,12 @@ public sealed class SocialInsurancePaymentService : IApplicationService
             return Result<SocialInsurancePaymentView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<SocialInsurancePaymentView>.Failure(money.Errors);
+        }
+
         SocialInsurancePaymentRow? row = await _database.SocialInsurancePayments
             .FirstOrDefaultAsync(entity => entity.TenantId == tenant.Value && entity.Id == paymentId, cancellationToken)
             .ConfigureAwait(false);
@@ -198,7 +217,7 @@ public sealed class SocialInsurancePaymentService : IApplicationService
             Narration = new LocalizedName(
                 "سداد تأمينات " + row.PeriodCode,
                 "Social insurance payment " + row.PeriodCode),
-            Amounts = [new PostingAmount("amount", Money.Of(row.Amount, _currency))],
+            Amounts = [new PostingAmount("amount", Money.Of(row.Amount, money.Value.Currency))],
             Facts =
             [
                 new PostingFact("document.settlement_method", row.SettlementMethod),
@@ -211,7 +230,7 @@ public sealed class SocialInsurancePaymentService : IApplicationService
             // لا طرف موظف على هذا المستند: سطره الأول بلا دفتر مساعد.
             PartyId = string.Empty,
             ControlEffect = 0m,
-            Currency = _currency,
+            Currency = money.Value.Currency,
             Actor = actor,
             Generation = row.PostingGeneration,
         };
@@ -228,7 +247,7 @@ public sealed class SocialInsurancePaymentService : IApplicationService
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         decimal accrued = await AccruedAsync(tenant, row.PeriodCode, cancellationToken).ConfigureAwait(false);
-        return Result<SocialInsurancePaymentView>.Success(View(row, accrued, posted.Value.WasAlreadyPosted));
+        return Result<SocialInsurancePaymentView>.Success(View(row, accrued, posted.Value.WasAlreadyPosted, money.Value));
     }
 
     /// <summary>ما استُحقّ من اشتراك في فترة من مسيّرات <b>مُرحَّلة</b> وحدها.</summary>
@@ -253,13 +272,13 @@ public sealed class SocialInsurancePaymentService : IApplicationService
             .ConfigureAwait(false);
     }
 
-    private SocialInsurancePaymentView View(SocialInsurancePaymentRow row, decimal accrued, bool alreadyPosted) => new(
+    private static SocialInsurancePaymentView View(SocialInsurancePaymentRow row, decimal accrued, bool alreadyPosted, CompanyMoney money) => new(
         row.Id,
         row.Number,
         row.PeriodCode,
         row.PaidOn,
-        Money.Of(row.Amount, _currency),
-        Money.Of(accrued, _currency),
+        Money.Of(row.Amount, money.Currency),
+        Money.Of(accrued, money.Currency),
         row.SettlementMethod,
         row.TreasuryPartyId,
         row.State,

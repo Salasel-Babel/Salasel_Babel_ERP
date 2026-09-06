@@ -32,8 +32,9 @@ public sealed class SalesOptions
     public string ConnectionString { get; set; } =
         DeploymentSetting.Connection(ConnectionVariable, DefaultDatabase);
 
-    /// <summary>عملة الشركة. ⚠️ مكانها الطبيعي جدول إعدادات الشركة، لا ثابت.</summary>
-    public string CompanyCurrency { get; set; } = "SAR";
+    // ‏**ولا عملةَ هنا.** كانت `CompanyCurrency = "SAR"` قيمةً ابتدائية في هذا النوع، فصارت
+    // المنشأةُ الكويتية تُقرَّب فواتيرُها إلى الهللة. وموضعُها الصحيح صفُّ التأسيس — تُسنَد
+    // مرّة ولا تُعدَّل — وتصل الوحدةَ عبر `ICompanyMoneyResolver` في كلّ نداء (ADR-0089).
 
     /// <summary>
     /// يرفع عطلاً مقروءاً إن لم يُضبط نصّ الاتصال — <b>عند التركيب لا عند أول نداء</b>.

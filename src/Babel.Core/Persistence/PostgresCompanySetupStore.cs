@@ -71,6 +71,8 @@ internal sealed class PostgresCompanySetupStore : ICompanySetupStore
             NameAr = setup.NameAr,
             DecimalPlaces = setup.DisplayScale.Places,
             DefaultCostCenter = setup.CostCenters.Default.Value ?? string.Empty,
+            CurrencyCode = setup.Money.Currency.Value,
+            MinorUnits = setup.Money.MinorUnits,
             FoundedAt = _clock.GetUtcNow(),
         });
 
@@ -212,6 +214,8 @@ internal sealed class PostgresCompanySetupStore : ICompanySetupStore
                 setup.NameAr,
                 TranslationsOf(translations, CoreTranslationKinds.Company, KeyOf(setup.CompanyId))),
             setup.DecimalPlaces,
+            setup.CurrencyCode,
+            setup.MinorUnits,
             register);
     }
 

@@ -1,6 +1,7 @@
 using Babel.Core.Application;
 using Babel.Core.Entitlement;
 using Babel.Hr.Persistence;
+using Babel.Core.CompanySetup;
 using Babel.SharedKernel;
 using Microsoft.EntityFrameworkCore;
 
@@ -24,7 +25,7 @@ public sealed class EmployeeLedgerService : IApplicationService
 {
     private readonly IEntitlementEnforcer _enforcer;
     private readonly HrDbContext _database;
-    private readonly CurrencyCode _currency;
+    private readonly ICompanyMoneyResolver _company;
 
     /// <summary>ينشئ الخدمة.</summary>
     /// <param name="enforcer">منفِّذ الاستحقاق.</param>
@@ -35,7 +36,7 @@ public sealed class EmployeeLedgerService : IApplicationService
         ArgumentNullException.ThrowIfNull(runtime);
         _enforcer = enforcer;
         _database = runtime.Database;
-        _currency = CurrencyCode.FromString(runtime.Options.CompanyCurrency);
+        _company = runtime.Company;
     }
 
     /// <summary>يقيّد جزاءً معتمداً بفئة سببه.</summary>
@@ -61,15 +62,21 @@ public sealed class EmployeeLedgerService : IApplicationService
             return Result<EmployeeDeductionView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<EmployeeDeductionView>.Failure(money.Errors);
+        }
+
         if (draft.Amount.Amount < 0m)
         {
             return Result<EmployeeDeductionView>.Failure(HrErrors.NegativeAmount);
         }
 
-        if (draft.Amount.Currency != _currency)
+        if (draft.Amount.Currency != money.Value.Currency)
         {
             return Result<EmployeeDeductionView>.Failure(
-                HrErrors.CurrencyMismatch(_currency, draft.Amount.Currency, "amount"));
+                HrErrors.CurrencyMismatch(money.Value.Currency, draft.Amount.Currency, "amount"));
         }
 
         EmployeeRow? employee = await _database.Employees
@@ -99,7 +106,7 @@ public sealed class EmployeeLedgerService : IApplicationService
         _database.Deductions.Add(row);
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        return Result<EmployeeDeductionView>.Success(View(row, employee.Code));
+        return Result<EmployeeDeductionView>.Success(View(row, employee.Code, money.Value));
     }
 
     /// <summary>يقرأ جزاءً واحداً.</summary>
@@ -123,6 +130,12 @@ public sealed class EmployeeLedgerService : IApplicationService
             return Result<EmployeeDeductionView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<EmployeeDeductionView>.Failure(money.Errors);
+        }
+
         EmployeeDeductionRow? row = await _database.Deductions
             .FirstOrDefaultAsync(entity => entity.TenantId == tenant.Value && entity.Id == deductionId, cancellationToken)
             .ConfigureAwait(false);
@@ -136,7 +149,7 @@ public sealed class EmployeeLedgerService : IApplicationService
             .FirstAsync(entity => entity.TenantId == tenant.Value && entity.Id == row.EmployeeId, cancellationToken)
             .ConfigureAwait(false);
 
-        return Result<EmployeeDeductionView>.Success(View(row, employee.Code));
+        return Result<EmployeeDeductionView>.Success(View(row, employee.Code, money.Value));
     }
 
     /// <summary>يُنشئ سلفة <b>مسوّدة</b> بجدول أقساطها.</summary>
@@ -160,6 +173,12 @@ public sealed class EmployeeLedgerService : IApplicationService
         if (gate.IsFailure)
         {
             return Result<EmployeeAdvanceView>.Failure(gate.Errors);
+        }
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<EmployeeAdvanceView>.Failure(money.Errors);
         }
 
         if (draft.Instalments.Count == 0)
@@ -239,7 +258,7 @@ public sealed class EmployeeLedgerService : IApplicationService
         _database.AdvanceInstalments.AddRange(instalments);
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        return Result<EmployeeAdvanceView>.Success(View(advance, employee.Code, instalments));
+        return Result<EmployeeAdvanceView>.Success(View(advance, employee.Code, instalments, money.Value));
     }
 
     /// <summary>
@@ -266,6 +285,12 @@ public sealed class EmployeeLedgerService : IApplicationService
             return Result<EmployeeAdvanceView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<EmployeeAdvanceView>.Failure(money.Errors);
+        }
+
         EmployeeAdvanceRow? advance = await _database.Advances
             .FirstOrDefaultAsync(row => row.TenantId == tenant.Value && row.Id == advanceId, cancellationToken)
             .ConfigureAwait(false);
@@ -285,22 +310,23 @@ public sealed class EmployeeLedgerService : IApplicationService
             .FirstAsync(row => row.TenantId == tenant.Value && row.Id == advance.EmployeeId, cancellationToken)
             .ConfigureAwait(false);
 
-        return Result<EmployeeAdvanceView>.Success(View(advance, employee.Code, instalments));
+        return Result<EmployeeAdvanceView>.Success(View(advance, employee.Code, instalments, money.Value));
     }
 
-    private EmployeeDeductionView View(EmployeeDeductionRow row, string employeeCode) => new(
+    private static EmployeeDeductionView View(EmployeeDeductionRow row, string employeeCode, CompanyMoney money) => new(
         row.Id,
         row.EmployeeId,
         employeeCode,
         row.PeriodCode,
         row.CategoryKey,
-        Money.Of(row.Amount, _currency),
+        Money.Of(row.Amount, money.Currency),
         row.ApprovedBy,
         row.ApprovedOn,
         row.ConsumedByPayslipId);
 
-    private EmployeeAdvanceView View(
-        EmployeeAdvanceRow advance, string employeeCode, IReadOnlyList<AdvanceInstalmentRow> instalments)
+    private static EmployeeAdvanceView View(
+        EmployeeAdvanceRow advance, string employeeCode, IReadOnlyList<AdvanceInstalmentRow> instalments,
+        CompanyMoney money)
     {
         decimal repaid = instalments.Where(static row => row.ConsumedByPayslipId is not null).Sum(static row => row.Amount);
 
@@ -310,14 +336,14 @@ public sealed class EmployeeLedgerService : IApplicationService
             advance.EmployeeId,
             employeeCode,
             advance.IssuedOn,
-            Money.Of(advance.Amount, _currency),
+            Money.Of(advance.Amount, money.Currency),
             advance.SettlementMethod,
             advance.TreasuryPartyId,
-            Money.Of(advance.Amount - repaid, _currency),
+            Money.Of(advance.Amount - repaid, money.Currency),
             advance.State,
             [
                 .. instalments.Select(row => new AdvanceInstalmentView(
-                    row.LineNo, row.PeriodCode, Money.Of(row.Amount, _currency), row.ConsumedByPayslipId)),
+                    row.LineNo, row.PeriodCode, Money.Of(row.Amount, money.Currency), row.ConsumedByPayslipId)),
             ]);
     }
 }

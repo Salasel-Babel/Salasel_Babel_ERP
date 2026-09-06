@@ -175,25 +175,21 @@ internal static class InventoryTestEnvironment
         OwnerConnectionString = $"Host=127.0.0.1;Port=5432;Database={LedgerDatabase};Username=postgres;Include Error Detail=true",
         AppConnectionString = $"Host=127.0.0.1;Port=5432;Database={LedgerDatabase};Username={AppRole};Include Error Detail=true;Maximum Pool Size=40",
         AppRole = AppRole,
-        CompanyCurrency = "SAR",
     };
 
     public static PurchasingOptions Purchasing { get; } = new()
     {
         ConnectionString = $"Host=127.0.0.1;Port=5432;Database={PurchasingDatabase};Username=postgres;Include Error Detail=true",
-        CompanyCurrency = "SAR",
     };
 
     public static SalesOptions Sales { get; } = new()
     {
         ConnectionString = $"Host=127.0.0.1;Port=5432;Database={SalesDatabase};Username=postgres;Include Error Detail=true",
-        CompanyCurrency = "SAR",
     };
 
     public static InventoryOptions Inventory { get; } = new()
     {
         ConnectionString = $"Host=127.0.0.1;Port=5432;Database={InventoryDatabase};Username=postgres;Include Error Detail=true",
-        CompanyCurrency = "SAR",
     };
 
     public static string RepositoryRoot { get; } = FindRoot();

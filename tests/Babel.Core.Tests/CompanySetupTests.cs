@@ -72,7 +72,8 @@ public sealed class CompanySetupTests
                 CostCenters: CostCenterPlan.Multiple,
                 FirstCostCenterNameAr: null,
                 FirstCostCenterTranslations: null,
-                DecimalPlaces: 9));
+                DecimalPlaces: 9,
+                CurrencyCode: "SAR"));
 
         Assert.True(refused.IsFailure);
         Assert.Equal(
@@ -626,7 +627,8 @@ public sealed class CompanySetupTests
             CostCenters: plan,
             FirstCostCenterNameAr: firstCostCenter,
             FirstCostCenterTranslations: null,
-            DecimalPlaces: places);
+            DecimalPlaces: places,
+            CurrencyCode: "SAR");
 
     private static FoundedCompany Founded(CostCenterPlan plan, string? firstCostCenter)
         => FoundedCompany.Found(Company, Draft(plan, firstCostCenter)).Value;

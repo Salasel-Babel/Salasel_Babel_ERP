@@ -453,9 +453,9 @@ internal static class OpenApiEmitter
 
             new(ApiRoutes.CompanySetup, "get", "readCompanySetup",
                 "تأسيس المنشأة", "The company setup",
-                "يقرأ تأسيس المنشأة: اسمها، و**عدد الخانات العشرية المعروضة**، و**مراكز تكلفتها كلّها** — العاملة والموقوفة معاً. "
+                "يقرأ تأسيس المنشأة: اسمها، و**عدد الخانات العشرية المعروضة**، و**عملتها ووحدتها الصغرى**، و**مراكز تكلفتها كلّها** — العاملة والموقوفة معاً. "
                 + "والموقوف يبقى في القائمة عمداً: تقاريرُ الفترات السابقة تُبوَّب عليه، والدفتر إضافي لا يُحذف منه شيء.",
-                "Reads the company setup: its name, the **number of displayed decimal places**, and **all of its cost centres** — "
+                "Reads the company setup: its name, the **number of displayed decimal places**, **its currency and minor unit**, and **all of its cost centres** — "
                 + "active and suspended alike. A suspended centre stays in the list on purpose: earlier periods are still grouped by it, "
                 + "and the ledger is append-only.",
                 Body: null, Response: "CompanySetup", Success: 200, Query: []),
@@ -469,7 +469,10 @@ internal static class OpenApiEmitter
                 + "صاحبُ هذا الجواب المفهوم أبداً؛ وcostCenters = Multiple يجعل firstCostCenterNameAr **إلزامياً** — من أعلن أن "
                 + "لديه أكثر من واحد لا يُخترَع له اسم نيابةً عنه. وفي الحالتين تخرج المنشأة من هنا وبها مركز تكلفة واحد على الأقل.\n\n"
                 + "وdecimalPlaces يحكم **العرض والإدخال البشري وحدهما**: التخزين يبقى بأربع خانات، والمبالغ المحسوبة "
-                + "(ضريبة 15٪ على صافٍ فردي مثلاً) لا يقيّدها هذا العدد ولا تُقرَّب عنده — وإلا لصارت الفاتورة العادية مستحيلة.",
+                + "(ضريبة 15٪ على صافٍ فردي مثلاً) لا يقيّدها هذا العدد ولا تُقرَّب عنده — وإلا لصارت الفاتورة العادية مستحيلة.\n\n"
+                + "وcurrencyCode **عملة المنشأة**، تُسنَد هنا ولا تُعدَّل بعدها بالحصانة نفسها: تغييرُ العملة الوظيفية حدثٌ محاسبي "
+                + "يُطبَّق مستقبلاً على دفاترَ تُفتح من جديد لا تعديلُ إعداد. ووحدتُها الصغرى تُشتقّ من ISO 4217 ولا تُرسَل — وهي ما يُقرَّب "
+                + "عنده كلُّ سطر مستند، لا decimalPlaces (ADR-0089).",
                 "Sets the company up. **Accepted exactly once**: a second arrival is refused with 409 and company_setup.already_initialised "
                 + "whatever its payload — decimalPlaces above all, since the number of places is assigned at first setup and is never editable "
                 + "afterwards; its consistency inside one entity's books matters more than any particular value.\n\n"
@@ -477,8 +480,21 @@ internal static class OpenApiEmitter
                 + "so whoever answers that never sees the concept again; costCenters = Multiple makes firstCostCenterNameAr **mandatory** — no name "
                 + "is invented on behalf of someone who declared they have more than one. Either way the company leaves this call with at least one cost centre.\n\n"
                 + "decimalPlaces governs **display and human input only**: storage stays at four places, and computed amounts (15% VAT on an odd net, "
-                + "say) are neither constrained nor rounded by it — otherwise an ordinary invoice would be impossible.",
+                + "say) are neither constrained nor rounded by it — otherwise an ordinary invoice would be impossible.\n\n"
+                + "currencyCode is **the company's currency**, assigned here and never editable afterwards under the same immutability: changing "
+                + "the functional currency is an accounting event applied prospectively to books opened anew, not a settings edit. Its minor unit "
+                + "is derived from ISO 4217 and is not sent — and it, not decimalPlaces, is what every document line is rounded to (ADR-0089).",
                 Body: "InitialiseCompanySetupRequest", Response: "CompanySetup", Success: 201, Query: []),
+
+            new(ApiRoutes.SetupCurrencies, "get", "readSetupCurrencies",
+                "العملات التي يقبلها التأسيس", "The currencies setup accepts",
+                "يُرجع الجدول المرجعي للعملات كما شُحن من ISO 4217: رمز كلّ عملة و**عدد خانات وحدتها الصغرى** — الهللة خانتان، "
+                + "والفلس الكويتي ثلاث، ولا خانة للين. يُقرأ **قبل** التأسيس كي تختار الشاشة من قائمةٍ لا تكتبها، وعملةٌ ليست فيه "
+                + "تُرفض عند التأسيس بـcompany_setup.currency_not_in_reference_table ولا يُخمَّن لها عددُ خانات (ADR-0089).",
+                "Returns the currency reference table as shipped from ISO 4217: each currency's code and **its minor unit's number of places** — "
+                + "the halala is two, the Kuwaiti fils three, the yen none. Read **before** setup so the screen picks from a list it does not write; "
+                + "a currency outside it is refused at setup with company_setup.currency_not_in_reference_table and no number of places is guessed (ADR-0089).",
+                Body: null, Response: "CurrencyList", Success: 200, Query: []),
 
             new(ApiRoutes.CostCenters, "post", "addCostCenter",
                 "إضافة مركز تكلفة", "Add a cost centre",
@@ -5288,6 +5304,9 @@ internal static class OpenApiEmitter
             WriteIntegerProperty(w, "decimalPlaces", DisplayScale.Minimum, DisplayScale.Maximum,
                 "عدد الخانات العشرية المعروضة. يُسنَد هنا ولا يُعدَّل بعدها. ويحكم العرض والإدخال البشري وحدهما — لا التخزين ولا الحساب.",
                 "The number of displayed decimal places. Assigned here and never editable afterwards. It governs display and human input only — never storage and never arithmetic.");
+            WriteCurrencyCodeProperty(w, "currencyCode",
+                "عملة المنشأة — رمز ISO 4217 من القائمة التي يُرجعها readSetupCurrencies. تُسنَد هنا ولا تُعدَّل بعدها، **ولا تُخترَع**: غيابها يُرفض بـcompany_setup.currency_missing.",
+                "The company's currency — an ISO 4217 code from the list readSetupCurrencies returns. Assigned here and never editable afterwards, **and never invented**: its absence is refused with company_setup.currency_missing.");
             WriteNullableStringProperty(w, "firstCostCenterNameAr",
                 "اسم أول مركز تكلفة بالعربية. إلزامي مع Multiple، ومرفوض مع One لأن اسمه هناك اسم المنشأة بعينه.",
                 "The first cost centre's Arabic name. Required with Multiple, refused with One because its name there is the company's own.",
@@ -5295,7 +5314,7 @@ internal static class OpenApiEmitter
             WriteArrayRefProperty(w, "firstCostCenterTranslations", "NameValue",
                 "ترجمات اسم أول مركز.", "The first centre name's translations.");
             w.WriteEndObject();
-            WriteRequired(w, "companyNameAr", "costCenters", "decimalPlaces");
+            WriteRequired(w, "companyNameAr", "costCenters", "currencyCode", "decimalPlaces");
             w.WriteBoolean("additionalProperties", false);
         });
 
@@ -5363,14 +5382,20 @@ internal static class OpenApiEmitter
                 + "core by the absence of any delete operation, not by a caller-side check.");
             w.WriteStartObject("properties");
             WriteArrayRefProperty(w, "costCenters", "CostCenter", "مراكز التكلفة كلّها — العاملة والموقوفة — مرتَّبة برمزها.", "All cost centres — active and suspended — ordered by code.");
+            WriteCurrencyCodeProperty(w, "currencyCode",
+                "عملة المنشأة — رمز ISO 4217. مُسنَدة عند التأسيس ولا تتغيّر بعده.",
+                "The company's currency — an ISO 4217 code. Assigned at setup and never changes afterwards.");
             WriteIntegerProperty(w, "decimalPlaces", DisplayScale.Minimum, DisplayScale.Maximum,
                 "عدد الخانات العشرية المعروضة. عرضٌ وإدخالٌ بشري فقط: المبالغ على السلك تبقى بمقياس Money، والتخزين بأربع خانات.",
                 "The number of displayed decimal places. Display and human input only: amounts on the wire keep the Money scale, and storage stays at four places.");
             WriteStringProperty(w, "defaultCostCenter", "رمز المركز الافتراضي.", "The default centre's code.", CostCenterCode.MaximumLength);
+            WriteIntegerProperty(w, "minorUnits", 0, Iso4217.MaximumMinorUnits,
+                "عدد خانات الوحدة الصغرى للعملة كما في ISO 4217 — وهو ما يُقرَّب عنده كلُّ سطر مستند. مخزَّنٌ بجوار العملة عند التأسيس.",
+                "The currency's minor-unit places as in ISO 4217 — what every document line is rounded to. Stored beside the currency at setup.");
             WriteStringProperty(w, "nameAr", "اسم المنشأة بالعربية.", "The company's Arabic name.", CompanySetupLimits.MaximumNameLength);
             WriteArrayRefProperty(w, "nameTranslations", "NameValue", "ترجمات اسم المنشأة.", "The company name's translations.");
             w.WriteEndObject();
-            WriteRequired(w, "costCenters", "decimalPlaces", "defaultCostCenter", "nameAr", "nameTranslations");
+            WriteRequired(w, "costCenters", "currencyCode", "decimalPlaces", "defaultCostCenter", "minorUnits", "nameAr", "nameTranslations");
             w.WriteBoolean("additionalProperties", false);
         });
 
@@ -5387,9 +5412,12 @@ internal static class OpenApiEmitter
                 + "value is invented before it.");
             w.WriteStartObject("properties");
             WriteStringProperty(w, "companyId", "معرّف الشركة كما يُكتب في المسار.", "The company identifier as written in the path.", 36);
+            WriteNullableStringProperty(w, "currencyCode", "عملة المنشأة — رمز ISO 4217.", "The company's currency — an ISO 4217 code.", 3);
             WriteNullableStringProperty(w, "defaultCostCenter", "رمز مركز التكلفة الافتراضي.", "The default cost centre code.", 32);
             WriteNullableIntegerProperty(w, "decimalPlaces", DisplayScale.Minimum, DisplayScale.Maximum,
                 "عدد الخانات العشرية المعروضة لهذه المنشأة.", "This company's displayed decimal places.");
+            WriteNullableIntegerProperty(w, "minorUnits", 0, Iso4217.MaximumMinorUnits,
+                "عدد خانات الوحدة الصغرى لعملة المنشأة.", "The minor-unit places of the company's currency.");
             WriteNullableStringProperty(w, "nameAr",
                 "الاسم العربي — السجلّ، لا ترجمةً أولى.",
                 "The Arabic name — the record, not a first translation.",
@@ -5402,7 +5430,7 @@ internal static class OpenApiEmitter
                 "Ready for a company that is set up, NotSetUp for one the credential reaches that has not been set up yet.",
                 ["NotSetUp", "Ready"]);
             w.WriteEndObject();
-            WriteRequired(w, "companyId", "decimalPlaces", "defaultCostCenter", "nameAr", "nameTranslations", "state");
+            WriteRequired(w, "companyId", "currencyCode", "decimalPlaces", "defaultCostCenter", "minorUnits", "nameAr", "nameTranslations", "state");
             w.WriteBoolean("additionalProperties", false);
         });
 
@@ -5473,6 +5501,35 @@ internal static class OpenApiEmitter
             WriteStringProperty(w, "partyId", "معرّف الطرف داخل الوحدة المالكة له.", "The party identifier within its owning module.", 128);
             w.WriteEndObject();
             WriteRequired(w, "kind", "partyId");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("CurrencyOption", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "عملةٌ يقبلها التأسيس: رمزها ووحدتها الصغرى كما في الجدول المرجعي المشحون من ISO 4217. / "
+                + "A currency setup accepts: its code and minor unit as in the shipped ISO 4217 reference table.");
+            w.WriteStartObject("properties");
+            WriteCurrencyCodeProperty(w, "code", "رمز ISO 4217.", "The ISO 4217 code.");
+            WriteIntegerProperty(w, "minorUnits", 0, Iso4217.MaximumMinorUnits,
+                "عدد خانات الوحدة الصغرى — الهللة خانتان، والفلس الكويتي ثلاث، ولا خانة للين.",
+                "The minor unit's number of places — the halala is two, the Kuwaiti fils three, the yen none.");
+            w.WriteEndObject();
+            WriteRequired(w, "code", "minorUnits");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("CurrencyList", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "العملات التي يقبلها التأسيس، مرتَّبةً برمزها. القائمة هي الجدول المرجعي نفسه لا قائمةٌ تُكتب في واجهة. / "
+                + "The currencies setup accepts, ordered by code. The list is the reference table itself, not one written in a front end.");
+            w.WriteStartObject("properties");
+            WriteArrayRefProperty(w, "currencies", "CurrencyOption", "العملات.", "The currencies.");
+            w.WriteEndObject();
+            WriteRequired(w, "currencies");
             w.WriteBoolean("additionalProperties", false);
         });
 
@@ -9675,6 +9732,15 @@ internal static class OpenApiEmitter
         w.WriteStartObject(name);
         w.WriteString("type", "array");
         WriteRef(w, "items", schema);
+        w.WriteString("description", ar + " / " + en);
+        w.WriteEndObject();
+    }
+
+    private static void WriteCurrencyCodeProperty(Utf8JsonWriter w, string name, string ar, string en)
+    {
+        w.WriteStartObject(name);
+        w.WriteString("type", "string");
+        w.WriteString("pattern", "^[A-Z]{3}$");
         w.WriteString("description", ar + " / " + en);
         w.WriteEndObject();
     }

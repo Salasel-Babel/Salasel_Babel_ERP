@@ -10,6 +10,7 @@ using Babel.Contracts.Storage;
 using Babel.Core.Application;
 using Babel.Core.Parameters;
 using Babel.Core.Entitlement;
+using Babel.Core.CompanySetup;
 using Babel.SharedKernel;
 
 namespace Babel.Ai.Capture;
@@ -38,6 +39,7 @@ public sealed class InvoiceCaptureService : IApplicationService
     private readonly IAttachmentStore _attachments;
     private readonly ICapturedInvoiceReceiver _receiver;
     private readonly IParameterSource _parameters;
+    private readonly ICompanyMoneyResolver _company;
     private readonly AiOptions _options;
     private readonly TimeProvider _clock;
 
@@ -55,6 +57,7 @@ public sealed class InvoiceCaptureService : IApplicationService
     /// </param>
     /// <param name="options">إعدادات الوحدة.</param>
     /// <param name="clock">مصدر الوقت.</param>
+    /// <param name="company">عملة المنشأة ووحدتها الصغرى — من صفّ التأسيس (ADR-0089).</param>
     public InvoiceCaptureService(
         IEntitlementEnforcer enforcer,
         IInvoiceExtractionProvider extractor,
@@ -64,6 +67,7 @@ public sealed class InvoiceCaptureService : IApplicationService
         IAttachmentStore attachments,
         ICapturedInvoiceReceiver receiver,
         IParameterSource parameters,
+        ICompanyMoneyResolver company,
         AiOptions options,
         TimeProvider clock)
     {
@@ -75,6 +79,7 @@ public sealed class InvoiceCaptureService : IApplicationService
         ArgumentNullException.ThrowIfNull(attachments);
         ArgumentNullException.ThrowIfNull(receiver);
         ArgumentNullException.ThrowIfNull(parameters);
+        ArgumentNullException.ThrowIfNull(company);
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(clock);
 
@@ -86,6 +91,7 @@ public sealed class InvoiceCaptureService : IApplicationService
         _attachments = attachments;
         _receiver = receiver;
         _parameters = parameters;
+        _company = company;
         _options = options;
         _clock = clock;
     }
@@ -117,6 +123,12 @@ public sealed class InvoiceCaptureService : IApplicationService
         if (gate.IsFailure)
         {
             return Result<CapturedInvoiceDraft>.Failure(gate.Errors);
+        }
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<CapturedInvoiceDraft>.Failure(money.Errors);
         }
 
         // ── 0 · البايتات تُقرأ من المخزن **بمستأجر هذا النداء** ─────────────────
@@ -218,8 +230,8 @@ public sealed class InvoiceCaptureService : IApplicationService
         }
 
         CapturedInvoiceDraft draft = Build(
-            tenant, request, source, output.Value.ProviderId, extracted, attested, suggestion, parameters);
-        draft = Settle(draft);
+            tenant, request, source, output.Value.ProviderId, extracted, attested, suggestion, parameters, money.Value);
+        draft = Settle(draft, money.Value);
 
         await _store.SaveAsync(draft, cancellationToken).ConfigureAwait(false);
         return Result<CapturedInvoiceDraft>.Success(draft);
@@ -303,6 +315,12 @@ public sealed class InvoiceCaptureService : IApplicationService
             return Result<CapturedInvoiceDraft>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<CapturedInvoiceDraft>.Failure(money.Errors);
+        }
+
         CapturedInvoiceDraft? found = await _store.FindAsync(tenant, draftId, cancellationToken).ConfigureAwait(false);
         if (found is null)
         {
@@ -322,7 +340,7 @@ public sealed class InvoiceCaptureService : IApplicationService
             return Result<CapturedInvoiceDraft>.Failure(errors);
         }
 
-        draft = Settle(draft);
+        draft = Settle(draft, money.Value);
         await _store.SaveAsync(draft, cancellationToken).ConfigureAwait(false);
         return Result<CapturedInvoiceDraft>.Success(draft);
     }
@@ -466,7 +484,8 @@ public sealed class InvoiceCaptureService : IApplicationService
         ExtractedInvoice extracted,
         AttestedInvoiceFacts? attested,
         PostingSuggestion? suggestion,
-        ParameterSnapshot? parameters)
+        ParameterSnapshot? parameters,
+        CompanyMoney money)
     {
         string originKey = attested is { CarriesSignature: true } ? CaptureOriginKeys.SignedQr : CaptureOriginKeys.UnsignedQr;
 
@@ -492,7 +511,7 @@ public sealed class InvoiceCaptureService : IApplicationService
 
         CapturedField<CurrencyCode> currency = extracted.Currency is { } read
             ? CapturedField<CurrencyCode>.Read(read.Value, read.Confidence)
-            : CapturedField<CurrencyCode>.Defaulted(CurrencyCode.FromString(_options.CompanyCurrency));
+            : CapturedField<CurrencyCode>.Defaulted(money.Currency);
 
         // ‏**المصدر يبقى `Defaulted` كما كان** — «من إعدادات المستأجر، والإنسان يلمح».
         // ما تغيّر ليس المصدر بل **من أين جاءت القيمة**: كانت رقماً في `AiOptions`،
@@ -538,9 +557,9 @@ public sealed class InvoiceCaptureService : IApplicationService
     }
 
     /// <summary>يُعيد المطابقة ويشتقّ الحالة منها. الحالة نتيجة لا إعلان.</summary>
-    private static CapturedInvoiceDraft Settle(CapturedInvoiceDraft draft)
+    private static CapturedInvoiceDraft Settle(CapturedInvoiceDraft draft, CompanyMoney money)
     {
-        IReadOnlyList<ReconciliationFinding> findings = DraftReconciler.Reconcile(draft);
+        IReadOnlyList<ReconciliationFinding> findings = DraftReconciler.Reconcile(draft, money);
 
         return draft with
         {

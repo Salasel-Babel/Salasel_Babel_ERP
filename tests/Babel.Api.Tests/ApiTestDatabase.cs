@@ -206,7 +206,6 @@ internal static class ApiTestDatabase
         AppConnectionString =
             $"Host=127.0.0.1;Port=5432;Database={Database};Username={AppRole};Include Error Detail=true;Maximum Pool Size=5;Minimum Pool Size=0",
         AppRole = AppRole,
-        CompanyCurrency = "SAR",
     };
 
     /// <summary>
@@ -247,7 +246,6 @@ internal static class ApiTestDatabase
     public static SalesOptions Sales { get; } = new()
     {
         ConnectionString = $"Host=127.0.0.1;Port=5432;Database={SalesDatabase};Username=postgres;Include Error Detail=true;Maximum Pool Size=5;Minimum Pool Size=0",
-        CompanyCurrency = "SAR",
     };
 
     /// <summary>
@@ -269,21 +267,18 @@ internal static class ApiTestDatabase
     public static PurchasingOptions Purchasing { get; } = new()
     {
         ConnectionString = $"Host=127.0.0.1;Port=5432;Database={PurchasingDatabase};Username=postgres;Include Error Detail=true;Maximum Pool Size=5;Minimum Pool Size=0",
-        CompanyCurrency = "SAR",
     };
 
     /// <summary>إعدادات المخزون لهذه المجموعة — قاعدة مستقلّة، وللأسباب نفسها.</summary>
     public static InventoryOptions Inventory { get; } = new()
     {
         ConnectionString = $"Host=127.0.0.1;Port=5432;Database={InventoryDatabase};Username=postgres;Include Error Detail=true;Maximum Pool Size=5;Minimum Pool Size=0",
-        CompanyCurrency = "SAR",
     };
 
     /// <summary>إعدادات الموارد البشرية لهذه المجموعة — قاعدة مستقلّة، وللأسباب نفسها.</summary>
     public static HrOptions Hr { get; } = new()
     {
         ConnectionString = $"Host=127.0.0.1;Port=5432;Database={HrDatabase};Username=postgres;Include Error Detail=true;Maximum Pool Size=5;Minimum Pool Size=0",
-        CompanyCurrency = "SAR",
     };
 
     /// <summary>
@@ -297,7 +292,6 @@ internal static class ApiTestDatabase
     public static ProjectsOptions Projects { get; } = new()
     {
         ConnectionString = $"Host=127.0.0.1;Port=5432;Database={ProjectsDatabase};Username=postgres;Include Error Detail=true;Maximum Pool Size=5;Minimum Pool Size=0",
-        CompanyCurrency = "SAR",
     };
 
     /// <summary>
@@ -307,7 +301,6 @@ internal static class ApiTestDatabase
     public static RealEstateOptions RealEstate { get; } = new()
     {
         ConnectionString = $"Host=127.0.0.1;Port=5432;Database={RealEstateDatabase};Username=postgres;Include Error Detail=true;Maximum Pool Size=5;Minimum Pool Size=0",
-        CompanyCurrency = "SAR",
     };
 
     /// <summary>

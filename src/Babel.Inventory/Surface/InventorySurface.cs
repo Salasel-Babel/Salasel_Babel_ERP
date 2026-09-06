@@ -2,6 +2,7 @@ using Babel.Contracts.Inventory;
 using Babel.Inventory.Application;
 using Babel.Inventory.Persistence;
 using Babel.Inventory.Subledger;
+using Babel.Core.CompanySetup;
 using Babel.SharedKernel;
 
 namespace Babel.Inventory.Surface;
@@ -35,7 +36,7 @@ public sealed class InventorySurface
     private readonly StoragePlaceService _places;
     private readonly StockTransferService _transfers;
     private readonly UnitOfMeasureService _units;
-    private readonly CurrencyCode _currency;
+    private readonly CompanySetupService _setups;
 
     /// <summary>ينشئ السطح فوق خدمات الوحدة.</summary>
     /// <param name="items">كتالوج الأصناف.</param>
@@ -45,7 +46,7 @@ public sealed class InventorySurface
     /// <param name="places">سجلّ التسكين — المستودع والموقع والرفّ.</param>
     /// <param name="transfers">النقل بين موقعين.</param>
     /// <param name="units">سجلّ وحدات القياس ومعاملات التحويل.</param>
-    /// <param name="options">إعدادات الوحدة — ومنها عملة المنشأة.</param>
+    /// <param name="setups">خدمة التأسيس — خدمةُ تطبيقٍ مُستحَقّة تُقرأ منها عملةُ المنشأة (ADR-0089).</param>
     public InventorySurface(
         ItemCatalogueService items,
         StockDocumentService documents,
@@ -54,7 +55,7 @@ public sealed class InventorySurface
         StoragePlaceService places,
         StockTransferService transfers,
         UnitOfMeasureService units,
-        InventoryOptions options)
+        CompanySetupService setups)
     {
         ArgumentNullException.ThrowIfNull(items);
         ArgumentNullException.ThrowIfNull(documents);
@@ -63,7 +64,7 @@ public sealed class InventorySurface
         ArgumentNullException.ThrowIfNull(places);
         ArgumentNullException.ThrowIfNull(transfers);
         ArgumentNullException.ThrowIfNull(units);
-        ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(setups);
 
         _items = items;
         _documents = documents;
@@ -72,7 +73,7 @@ public sealed class InventorySurface
         _places = places;
         _transfers = transfers;
         _units = units;
-        _currency = CurrencyCode.FromString(options.CompanyCurrency);
+        _setups = setups;
     }
 
     /// <summary>يسجّل صنفاً جديداً بوحدة أساسه ومعاملات تحويله.</summary>
@@ -148,6 +149,15 @@ public sealed class InventorySurface
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        // ‏عملةُ المنشأة من التأسيس عبر خدمةِ تطبيقٍ مُستحَقّة — لا متعاونَ يفتح الوحدة بلا استحقاق.
+        Result<FoundedCompany> setup = await _setups.GetAsync(tenant, actor, cancellationToken).ConfigureAwait(false);
+        if (setup.IsFailure)
+        {
+            return Result<InventoryStockMovement>.Failure(setup.Errors);
+        }
+
+        CompanyMoney money = setup.Value.Money;
+
         Result<StockDocumentView> result = await _documents
             .CreateAsync(
                 tenant,
@@ -160,7 +170,7 @@ public sealed class InventorySurface
                     request.LocationId,
                     request.ItemGroup,
                     new InventoryQuantity(request.Quantity.Magnitude, request.Quantity.Unit),
-                    Money.Of(request.Cost, _currency),
+                    Money.Of(request.Cost, money.Currency),
                     request.OccurredOn),
                 cancellationToken)
             .ConfigureAwait(false);

@@ -1,6 +1,7 @@
 using Babel.Core.Application;
 using Babel.Core.Entitlement;
 using Babel.Purchasing.Persistence;
+using Babel.Core.CompanySetup;
 using Babel.SharedKernel;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,6 +11,7 @@ namespace Babel.Purchasing.Application;
 public sealed class SupplierService : IApplicationService
 {
     private readonly IEntitlementEnforcer _enforcer;
+    private readonly ICompanyMoneyResolver _company;
     private readonly PurchasingDbContext _database;
 
     /// <summary>ينشئ الخدمة.</summary>
@@ -21,6 +23,7 @@ public sealed class SupplierService : IApplicationService
         ArgumentNullException.ThrowIfNull(runtime);
         _enforcer = enforcer;
         _database = runtime.Database;
+        _company = runtime.Company;
     }
 
     /// <summary>يسجّل مورداً جديداً.</summary>
@@ -102,6 +105,12 @@ public sealed class SupplierService : IApplicationService
             return Result<SupplierView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<SupplierView>.Failure(money.Errors);
+        }
+
         SupplierRow? row = await _database.Suppliers
             .AsNoTracking()
             .FirstOrDefaultAsync(entity => entity.TenantId == tenant.Value && entity.Id == supplierId, cancellationToken)
@@ -109,7 +118,7 @@ public sealed class SupplierService : IApplicationService
 
         return row is null
             ? Result<SupplierView>.Failure(PurchasingErrors.SupplierNotFound(supplierId))
-            : Result<SupplierView>.Success(ViewOf(row));
+            : Result<SupplierView>.Success(ViewOf(row, money.Value));
     }
 
     /// <summary>
@@ -152,6 +161,12 @@ public sealed class SupplierService : IApplicationService
             return Result<SupplierView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<SupplierView>.Failure(money.Errors);
+        }
+
         // المطلوب يُتحقّق من شكله أيضاً: بحثٌ برقم مشوَّه يُرجع «غير موجود» فيبدو أن
         // المورد ناقص وهو موجود، فيُنشأ ثانٍ بالرقم نفسه.
         Result<string> requested = SaudiVatNumber.Validate(vatNumber);
@@ -173,7 +188,7 @@ public sealed class SupplierService : IApplicationService
 
         if (active.Count == 1)
         {
-            return Result<SupplierView>.Success(ViewOf(active[0]));
+            return Result<SupplierView>.Success(ViewOf(active[0], money.Value));
         }
 
         if (active.Count > 1)
@@ -217,6 +232,12 @@ public sealed class SupplierService : IApplicationService
             return Result<SupplierView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<SupplierView>.Failure(money.Errors);
+        }
+
         Result<string> validated = Vat(vatNumber);
         if (validated.IsFailure)
         {
@@ -235,7 +256,7 @@ public sealed class SupplierService : IApplicationService
         row.VatNumber = validated.Value;
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        return Result<SupplierView>.Success(ViewOf(row));
+        return Result<SupplierView>.Success(ViewOf(row, money.Value));
     }
 
     /// <summary>الفراغ يمرّ بلا فحص — «لم يُسجَّل» حالة مشروعة؛ وما عداه يُفحص كاملاً.</summary>
@@ -244,11 +265,11 @@ public sealed class SupplierService : IApplicationService
             ? Result<string>.Success(SaudiVatNumber.Unrecorded)
             : SaudiVatNumber.Validate(value);
 
-    private static SupplierView ViewOf(SupplierRow row) => new(
+    private static SupplierView ViewOf(SupplierRow row, CompanyMoney money) => new(
         row.Id,
         row.Code,
         new LocalizedName(row.NameAr, row.NameEn),
-        Money.Of(row.CreditLimit, CurrencyCode.Sar),
+        Money.Of(row.CreditLimit, money.Currency),
         row.PaymentTermsDays,
         row.VatNumber);
 }

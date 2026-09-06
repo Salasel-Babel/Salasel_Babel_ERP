@@ -2,6 +2,7 @@ using Babel.Contracts.Inventory;
 using Babel.Core.Application;
 using Babel.Core.Entitlement;
 using Babel.Inventory.Persistence;
+using Babel.Core.CompanySetup;
 using Babel.SharedKernel;
 using Microsoft.EntityFrameworkCore;
 
@@ -34,7 +35,7 @@ public sealed class StoragePlaceService : IApplicationService
 
     private readonly IEntitlementEnforcer _enforcer;
     private readonly InventoryDbContext _database;
-    private readonly CurrencyCode _currency;
+    private readonly ICompanyMoneyResolver _company;
 
     /// <summary>ينشئ الخدمة.</summary>
     /// <param name="enforcer">منفِّذ الاستحقاق.</param>
@@ -45,7 +46,7 @@ public sealed class StoragePlaceService : IApplicationService
         ArgumentNullException.ThrowIfNull(runtime);
         _enforcer = enforcer;
         _database = runtime.Database;
-        _currency = CurrencyCode.FromString(runtime.Options.CompanyCurrency);
+        _company = runtime.Company;
     }
 
     /// <summary>
@@ -463,6 +464,12 @@ public sealed class StoragePlaceService : IApplicationService
             return Result<IReadOnlyList<PlacementBalanceView>>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<IReadOnlyList<PlacementBalanceView>>.Failure(money.Errors);
+        }
+
         List<ItemBalanceRow> balances = await _database.Balances
             .AsNoTracking()
             .Where(row => row.TenantId == tenant.Value)
@@ -512,7 +519,7 @@ public sealed class StoragePlaceService : IApplicationService
                     : Named(location, names),
                 location is not null,
                 new InventoryQuantity(balance.Quantity, balance.BaseUnit),
-                Money.Of(balance.ValueAmount, _currency),
+                Money.Of(balance.ValueAmount, money.Value.Currency),
                 balance.UnitCost,
                 balance.HasCostBasis));
         }

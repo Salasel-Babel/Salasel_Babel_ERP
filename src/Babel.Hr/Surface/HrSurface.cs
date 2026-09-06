@@ -1,5 +1,6 @@
 using Babel.Hr.Application;
 using Babel.Hr.Subledger;
+using Babel.Core.CompanySetup;
 using Babel.SharedKernel;
 
 namespace Babel.Hr.Surface;
@@ -58,7 +59,7 @@ public sealed class HrSurface
     private readonly EmployeeLedgerService _register;
     private readonly EndOfServiceService _endOfService;
     private readonly EmployeeReconciliationService _reconciliation;
-    private readonly CurrencyCode _currency;
+    private readonly CompanySetupService _setups;
 
     /// <summary>ينشئ السطح فوق خدمات الوحدة.</summary>
     /// <param name="employees">البيانات الأساسية.</param>
@@ -69,7 +70,7 @@ public sealed class HrSurface
     /// <param name="register">الجزاءات والسلف.</param>
     /// <param name="endOfService">مخصص نهاية الخدمة ومخالصته.</param>
     /// <param name="reconciliation">مطابقة دفتر الموظف.</param>
-    /// <param name="options">إعدادات الوحدة — ومنها عملة المنشأة.</param>
+    /// <param name="setups">خدمة التأسيس — خدمةُ تطبيقٍ مُستحَقّة تُقرأ منها عملةُ المنشأة (ADR-0089).</param>
     public HrSurface(
         EmployeeService employees,
         PayrollSettingsService settings,
@@ -79,7 +80,7 @@ public sealed class HrSurface
         EmployeeLedgerService register,
         EndOfServiceService endOfService,
         EmployeeReconciliationService reconciliation,
-        HrOptions options)
+        CompanySetupService setups)
     {
         ArgumentNullException.ThrowIfNull(employees);
         ArgumentNullException.ThrowIfNull(settings);
@@ -89,7 +90,7 @@ public sealed class HrSurface
         ArgumentNullException.ThrowIfNull(register);
         ArgumentNullException.ThrowIfNull(endOfService);
         ArgumentNullException.ThrowIfNull(reconciliation);
-        ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(setups);
 
         _employees = employees;
         _settings = settings;
@@ -99,7 +100,7 @@ public sealed class HrSurface
         _register = register;
         _endOfService = endOfService;
         _reconciliation = reconciliation;
-        _currency = CurrencyCode.FromString(options.CompanyCurrency);
+        _setups = setups;
     }
 
     // ── الموظفون والبيانات الأساسية ──────────────────────────────────────────
@@ -226,12 +227,21 @@ public sealed class HrSurface
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        // ‏عملةُ المنشأة من التأسيس عبر خدمةِ تطبيقٍ مُستحَقّة — لا متعاونَ يفتح الوحدة بلا استحقاق.
+        Result<FoundedCompany> setup = await _setups.GetAsync(tenant, actor, cancellationToken).ConfigureAwait(false);
+        if (setup.IsFailure)
+        {
+            return Result<HrPayElement>.Failure(setup.Errors);
+        }
+
+        CompanyMoney money = setup.Value.Money;
+
         Result<PayElementView> result = await _employees
             .AddPayElementAsync(
                 tenant,
                 actor,
                 employeeId,
-                new PayElementDraft(request.ComponentCode, request.EffectiveFrom, Money.Of(request.Amount, _currency)),
+                new PayElementDraft(request.ComponentCode, request.EffectiveFrom, Money.Of(request.Amount, money.Currency)),
                 cancellationToken)
             .ConfigureAwait(false);
 
@@ -250,7 +260,7 @@ public sealed class HrSurface
         CancellationToken cancellationToken = default)
         => MapMany(
             await _employees
-                .ListPayElementsAsync(tenant, actor, employeeId, _currency, cancellationToken)
+                .ListPayElementsAsync(tenant, actor, employeeId, cancellationToken)
                 .ConfigureAwait(false),
             Element);
 
@@ -269,6 +279,15 @@ public sealed class HrSurface
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        // ‏عملةُ المنشأة من التأسيس عبر خدمةِ تطبيقٍ مُستحَقّة — لا متعاونَ يفتح الوحدة بلا استحقاق.
+        Result<FoundedCompany> setup = await _setups.GetAsync(tenant, actor, cancellationToken).ConfigureAwait(false);
+        if (setup.IsFailure)
+        {
+            return Result<HrPayrollSettings>.Failure(setup.Errors);
+        }
+
+        CompanyMoney money = setup.Value.Money;
+
         Result<PayrollSettingsView> result = await _settings
             .DepositAsync(
                 tenant,
@@ -278,8 +297,8 @@ public sealed class HrSurface
                     request.EffectiveFrom,
                     request.EmployerRate,
                     request.EmployeeRate,
-                    Money.Of(request.MinimumContributoryWage, _currency),
-                    Money.Of(request.MaximumContributoryWage, _currency),
+                    Money.Of(request.MinimumContributoryWage, money.Currency),
+                    Money.Of(request.MaximumContributoryWage, money.Currency),
                     request.ApprovedBy,
                     request.ApprovedOn,
                     request.SourceRef),
@@ -298,7 +317,7 @@ public sealed class HrSurface
         UserId actor,
         CancellationToken cancellationToken = default)
         => MapMany(
-            await _settings.ListAsync(tenant, actor, _currency, cancellationToken).ConfigureAwait(false),
+            await _settings.ListAsync(tenant, actor, cancellationToken).ConfigureAwait(false),
             Settings);
 
     // ── المسيّر والقسائم ─────────────────────────────────────────────────────
@@ -441,6 +460,15 @@ public sealed class HrSurface
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        // ‏عملةُ المنشأة من التأسيس عبر خدمةِ تطبيقٍ مُستحَقّة — لا متعاونَ يفتح الوحدة بلا استحقاق.
+        Result<FoundedCompany> setup = await _setups.GetAsync(tenant, actor, cancellationToken).ConfigureAwait(false);
+        if (setup.IsFailure)
+        {
+            return Result<HrSocialInsurancePayment>.Failure(setup.Errors);
+        }
+
+        CompanyMoney money = setup.Value.Money;
+
         Result<SocialInsurancePaymentView> result = await _socialInsurance
             .DraftAsync(
                 tenant,
@@ -449,7 +477,7 @@ public sealed class HrSurface
                     request.Number,
                     request.PeriodCode,
                     request.PaidOn,
-                    Money.Of(request.Amount, _currency),
+                    Money.Of(request.Amount, money.Currency),
                     request.SettlementMethod,
                     request.TreasuryPartyId),
                 cancellationToken)
@@ -501,6 +529,15 @@ public sealed class HrSurface
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        // ‏عملةُ المنشأة من التأسيس عبر خدمةِ تطبيقٍ مُستحَقّة — لا متعاونَ يفتح الوحدة بلا استحقاق.
+        Result<FoundedCompany> setup = await _setups.GetAsync(tenant, actor, cancellationToken).ConfigureAwait(false);
+        if (setup.IsFailure)
+        {
+            return Result<HrDeduction>.Failure(setup.Errors);
+        }
+
+        CompanyMoney money = setup.Value.Money;
+
         Result<EmployeeDeductionView> result = await _register
             .RecordDeductionAsync(
                 tenant,
@@ -509,7 +546,7 @@ public sealed class HrSurface
                     request.EmployeeId,
                     request.PeriodCode,
                     request.CategoryKey,
-                    Money.Of(request.Amount, _currency),
+                    Money.Of(request.Amount, money.Currency),
                     request.ApprovedBy,
                     request.ApprovedOn),
                 cancellationToken)
@@ -545,6 +582,15 @@ public sealed class HrSurface
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        // ‏عملةُ المنشأة من التأسيس عبر خدمةِ تطبيقٍ مُستحَقّة — لا متعاونَ يفتح الوحدة بلا استحقاق.
+        Result<FoundedCompany> setup = await _setups.GetAsync(tenant, actor, cancellationToken).ConfigureAwait(false);
+        if (setup.IsFailure)
+        {
+            return Result<HrAdvance>.Failure(setup.Errors);
+        }
+
+        CompanyMoney money = setup.Value.Money;
+
         Result<EmployeeAdvanceView> result = await _register
             .DraftAdvanceAsync(
                 tenant,
@@ -553,12 +599,12 @@ public sealed class HrSurface
                     request.Number,
                     request.EmployeeId,
                     request.IssuedOn,
-                    Money.Of(request.Amount, _currency),
+                    Money.Of(request.Amount, money.Currency),
                     request.SettlementMethod,
                     request.TreasuryPartyId,
                     [
                         .. request.Instalments.Select(line =>
-                            new AdvanceInstalmentDraft(line.PeriodCode, Money.Of(line.Amount, _currency))),
+                            new AdvanceInstalmentDraft(line.PeriodCode, Money.Of(line.Amount, money.Currency))),
                     ]),
                 cancellationToken)
             .ConfigureAwait(false);
@@ -595,6 +641,15 @@ public sealed class HrSurface
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        // ‏عملةُ المنشأة من التأسيس عبر خدمةِ تطبيقٍ مُستحَقّة — لا متعاونَ يفتح الوحدة بلا استحقاق.
+        Result<FoundedCompany> setup = await _setups.GetAsync(tenant, actor, cancellationToken).ConfigureAwait(false);
+        if (setup.IsFailure)
+        {
+            return Result<HrProvision>.Failure(setup.Errors);
+        }
+
+        CompanyMoney money = setup.Value.Money;
+
         Result<EndOfServiceProvisionView> result = await _endOfService
             .DraftProvisionAsync(
                 tenant,
@@ -607,7 +662,7 @@ public sealed class HrSurface
                     request.ApprovedBy,
                     [
                         .. request.Shares.Select(share =>
-                            new ProvisionShareDraft(share.EmploymentId, Money.Of(share.PeriodShare, _currency))),
+                            new ProvisionShareDraft(share.EmploymentId, Money.Of(share.PeriodShare, money.Currency))),
                     ]),
                 cancellationToken)
             .ConfigureAwait(false);
@@ -656,6 +711,15 @@ public sealed class HrSurface
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        // ‏عملةُ المنشأة من التأسيس عبر خدمةِ تطبيقٍ مُستحَقّة — لا متعاونَ يفتح الوحدة بلا استحقاق.
+        Result<FoundedCompany> setup = await _setups.GetAsync(tenant, actor, cancellationToken).ConfigureAwait(false);
+        if (setup.IsFailure)
+        {
+            return Result<HrSettlement>.Failure(setup.Errors);
+        }
+
+        CompanyMoney money = setup.Value.Money;
+
         Result<EndOfServiceSettlementView> result = await _endOfService
             .DraftSettlementAsync(
                 tenant,
@@ -664,7 +728,7 @@ public sealed class HrSurface
                     request.Number,
                     request.EmploymentId,
                     request.SettledOn,
-                    Money.Of(request.SettlementDue, _currency),
+                    Money.Of(request.SettlementDue, money.Currency),
                     request.MeasurementRef,
                     request.SettlementMethod,
                     request.TreasuryPartyId),

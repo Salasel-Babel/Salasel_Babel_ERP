@@ -5,6 +5,7 @@ using Babel.Core.Entitlement;
 using Babel.Ledger;
 using Babel.RealEstate;
 using Babel.RealEstate.Application;
+using Babel.Core.CompanySetup;
 using Babel.SharedKernel;
 using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
@@ -79,13 +80,11 @@ internal sealed class RealEstateSeed : IDisposable
             options.AppConnectionString = settings.Ledger.AppConnectionString;
             options.OwnerConnectionString = settings.Ledger.OwnerConnectionString;
             options.AppRole = settings.Ledger.AppRole;
-            options.CompanyCurrency = settings.Ledger.CompanyCurrency;
         });
 
         services.AddBabelRealEstate(options =>
         {
             options.ConnectionString = settings.RealEstateOwner.ConnectionString;
-            options.CompanyCurrency = settings.Ledger.CompanyCurrency;
         });
 
         _provider = services.BuildServiceProvider();
@@ -99,11 +98,25 @@ internal sealed class RealEstateSeed : IDisposable
         _receipts = scoped.GetRequiredService<TenantReceiptService>();
         _arrears = scoped.GetRequiredService<TenantArrearsService>();
         _entitlements = scoped.GetRequiredService<IEntitlementService>();
+        _companyMoney = scoped.GetRequiredService<ICompanyMoneyResolver>();
     }
 
     private TenantId Tenant => new(_settings.Company);
 
-    private CurrencyCode Currency => CurrencyCode.FromString(_settings.Ledger.CompanyCurrency);
+    private readonly ICompanyMoneyResolver _companyMoney;
+    private CompanyMoney _money;
+
+    /// <summary>عملة المنشأة — من صفّ تأسيسها (ADR-0089)، تُحلّ مرّة في أول الدورة.</summary>
+    private CurrencyCode Currency => _money.IsAssigned
+        ? _money.Currency
+        : throw new InvalidOperationException("عملة المنشأة تُحلّ في أول الدورة قبل أي مستند.");
+
+    private async Task ResolveMoneyAsync(CancellationToken cancellationToken)
+    {
+        Result<CompanyMoney> money = await _companyMoney.ResolveAsync(Tenant, cancellationToken).ConfigureAwait(false);
+        Say.Require(money.IsSuccess, "عملة المنشأة من صفّ التأسيس", string.Join(" | ", money.Errors.Select(static e => e.ToString())));
+        _money = money.Value;
+    }
 
     /// <summary>يبذر دورة العقارات إن لم تكن مبذورة، ويُرجع عدد القيود التي رُحّلت.</summary>
     /// <param name="settings">الإعدادات.</param>
@@ -165,6 +178,8 @@ internal sealed class RealEstateSeed : IDisposable
 
     private async Task CycleAsync(CancellationToken cancellationToken)
     {
+        await ResolveMoneyAsync(cancellationToken).ConfigureAwait(false);
+
         // ── ١ · الأطراف: مالكٌ ومستأجران ───────────────────────────────────────
         Guid owner = (await CreateOwnerAsync(
             "OWN-01", "ورثة عبدالله الراجحي", "Abdullah Al-Rajhi Estate", "300000000000003", cancellationToken)

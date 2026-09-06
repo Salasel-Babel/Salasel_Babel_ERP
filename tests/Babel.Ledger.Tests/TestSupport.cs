@@ -3,6 +3,7 @@ using Babel.Contracts.Posting;
 using Babel.Core.Entitlement;
 using Babel.Ledger.Audit;
 using Babel.Ledger.Posting;
+using Babel.Core.CompanySetup;
 using Babel.SharedKernel;
 using Npgsql;
 
@@ -12,6 +13,17 @@ namespace Babel.Ledger.Tests;
 /// منفِّذ استحقاق يسمح دائماً. الاستحقاق نفسه مُختبَر في <c>Babel.Core.Tests</c>؛
 /// هذه الاختبارات تفحص الدفتر، وخلط الاثنين يجعل فشل أحدهما يُقرأ فشلاً للآخر.
 /// </summary>
+/// <summary>
+/// عملةٌ ثابتة لكلّ منشأة في اختبارات الدفتر: قاعدةُ الدفتر لا تحمل صفَّ تأسيس، والدفتر
+/// يسأل النواةَ عنها في الإنتاج (ADR-0089). والريالُ هنا <b>معطى اختبار</b> لا افتراض منتج.
+/// </summary>
+internal sealed class RiyalForEveryTenant : ICompanyMoneyResolver
+{
+    /// <inheritdoc />
+    public ValueTask<Result<CompanyMoney>> ResolveAsync(TenantId company, CancellationToken cancellationToken = default)
+        => ValueTask.FromResult(CompanyMoney.Of("SAR"));
+}
+
 internal sealed class AlwaysEntitled : IEntitlementEnforcer
 {
     public ValueTask<Result> EnsureAsync(
@@ -145,7 +157,7 @@ internal sealed class LedgerHarness
     private LedgerHarness(LedgerRuntime runtime)
     {
         Runtime = runtime;
-        Posting = new PostingService(new AlwaysEntitled(), runtime);
+        Posting = new PostingService(new AlwaysEntitled(), runtime, new RiyalForEveryTenant());
         Auditing = new LedgerAuditService(new AlwaysEntitled(), runtime);
     }
 
@@ -213,7 +225,6 @@ internal sealed class LedgerHarness
                     OwnerConnectionString = LedgerTestEnvironment.Options.OwnerConnectionString,
                     AppConnectionString = LedgerTestEnvironment.Options.AppConnectionString + ";Maximum Pool Size=5",
                     AppRole = LedgerTestEnvironment.Options.AppRole,
-                    CompanyCurrency = LedgerTestEnvironment.Options.CompanyCurrency,
                     CanonVersion = "v1",
                 }));
             }

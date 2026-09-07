@@ -7,7 +7,7 @@ namespace Babel.Core.CompanySetup;
 public static class CompanySetupLimits
 {
     /// <summary>أقصى طول لاسم منشأة أو مركز تكلفة.</summary>
-    public const int MaximumNameLength = 200;
+    public const int MaximumNameLength = InputLimits.MaximumNameLength;
 
     /// <summary>أقصى طول لوسم لغة BCP-47.</summary>
     public const int MaximumLanguageTagLength = 16;
@@ -19,10 +19,10 @@ public static class CompanySetupLimits
     public const int MaximumCostCenters = 1000;
 
     /// <summary>أدنى طول لسبب الإيقاف — «لا سبب» ليس سبباً.</summary>
-    public const int MinimumReasonLength = 8;
+    public const int MinimumReasonLength = InputLimits.MinimumReasonLength;
 
     /// <summary>أقصى طول لسبب الإيقاف.</summary>
-    public const int MaximumReasonLength = 512;
+    public const int MaximumReasonLength = InputLimits.MaximumReasonLength;
 }
 
 /// <summary>

@@ -4,6 +4,7 @@ using Babel.Api.Endpoints;
 using Babel.Contracts.Posting;
 using Babel.Core.CapabilityProfile;
 using Babel.Core.Access;
+using Babel.Core;
 using Babel.Core.CompanySetup;
 using Babel.SharedKernel;
 
@@ -5209,10 +5210,12 @@ internal static class OpenApiEmitter
             w.WriteString("type", "object");
             w.WriteStartObject("properties");
             WriteArrayRefProperty(w, "documents", "DocumentProfile", "أنواع المستندات.", "The document types.");
-            WriteNullableStringProperty(w, "withdrawalReason",
-                "سبب سحب قدرة. إلزامي متى أطفأ الطلب قدرةً كانت مُشغَّلة، ومهمَل فيما عدا ذلك؛ وثمانية محارف على الأقل — «لا سبب» ليس سبباً.",
-                "The reason for withdrawing a capability. Required whenever the request disables a previously enabled capability, ignored otherwise; at least eight characters — 'no reason' is not a reason.",
-                ProfileLimits.MaximumReasonLength);
+            WriteBoundedStringProperty(w, "withdrawalReason",
+                "سبب سحب قدرة. إلزامي متى أطفأ الطلب قدرةً كانت مُشغَّلة، ومهمَل فيما عدا ذلك؛ وبحدٍّ أدنى يُعلنه minLength هنا — «لا سبب» ليس سبباً.",
+                "The reason for withdrawing a capability. Required whenever the request disables a previously enabled capability, ignored otherwise; with the minimum declared by minLength here — 'no reason' is not a reason.",
+                ProfileLimits.MinimumReasonLength,
+                ProfileLimits.MaximumReasonLength,
+                nullable: true);
             w.WriteEndObject();
             WriteRequired(w, "documents");
             w.WriteBoolean("additionalProperties", false);
@@ -5340,9 +5343,10 @@ internal static class OpenApiEmitter
         {
             w.WriteString("type", "object");
             w.WriteStartObject("properties");
-            WriteStringProperty(w, "reason",
-                "السبب المكتوب للإيقاف — ثمانية محارف على الأقل. «لا سبب» ليس سبباً، والإيقاف حالة عملٍ يضبطها إنسان ويُسجَّل بمن فعلها.",
-                "The written reason for the suspension — at least eight characters. 'No reason' is not a reason; suspension is a business state a person sets and it is recorded with its actor.",
+            WriteBoundedStringProperty(w, "reason",
+                "السبب المكتوب للإيقاف — بحدٍّ أدنى يُعلنه minLength هنا لا يُكتب في الواجهة. «لا سبب» ليس سبباً، والإيقاف حالة عملٍ يضبطها إنسان ويُسجَّل بمن فعلها.",
+                "The written reason for the suspension — with the minimum declared by minLength here, never retyped in a front end. 'No reason' is not a reason; suspension is a business state a person sets and it is recorded with its actor.",
+                CompanySetupLimits.MinimumReasonLength,
                 CompanySetupLimits.MaximumReasonLength);
             w.WriteEndObject();
             WriteRequired(w, "reason");
@@ -9613,6 +9617,28 @@ internal static class OpenApiEmitter
             + "The authority: a contract number, a payment event, a support ticket, or a documented decision. **No "
             + "entitlement change without authority**: entitlement governs which financial data may be created, so "
             + "changing it is an audit event.");
+        w.WriteEndObject();
+    }
+
+    /// <summary>نصٌّ يكتبه إنسان بحدٍّ أدنى وأقصى — كلاهما من <see cref="InputLimits"/> لا من هنا (ADR-0091).</summary>
+    private static void WriteBoundedStringProperty(Utf8JsonWriter w, string name, string ar, string en, int minLength, int maxLength, bool nullable = false)
+    {
+        w.WriteStartObject(name);
+        if (nullable)
+        {
+            w.WriteStartArray("type");
+            w.WriteStringValue("string");
+            w.WriteStringValue("null");
+            w.WriteEndArray();
+        }
+        else
+        {
+            w.WriteString("type", "string");
+        }
+
+        w.WriteNumber("minLength", minLength);
+        w.WriteNumber("maxLength", maxLength);
+        w.WriteString("description", ar + " / " + en);
         w.WriteEndObject();
     }
 

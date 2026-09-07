@@ -176,8 +176,8 @@ public static class ProfileLimits
     public const int MaximumDefaultLength = 64;
 
     /// <summary>أقصى طول لسبب سحب قدرة.</summary>
-    public const int MaximumReasonLength = 512;
+    public const int MaximumReasonLength = InputLimits.MaximumReasonLength;
 
     /// <summary>أدنى طول لسبب سحب قدرة — «لا سبب» ليس سبباً.</summary>
-    public const int MinimumReasonLength = 8;
+    public const int MinimumReasonLength = InputLimits.MinimumReasonLength;
 }

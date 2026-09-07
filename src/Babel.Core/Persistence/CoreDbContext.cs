@@ -100,7 +100,7 @@ internal sealed class CoreDbContext(DbContextOptions<CoreDbContext> options) : D
             {
                 t.HasCheckConstraint("ck_cost_center_name_not_blank", "length(btrim(name_ar)) > 0");
                 t.HasCheckConstraint("ck_cost_center_code_shape", "code ~ '^[a-z0-9._]{1,32}$'");
-                t.HasCheckConstraint("ck_cost_center_state", "state in ('active','suspended')");
+                t.HasCheckConstraint("ck_cost_center_state", "state in ('" + CostCenterStates.Active + "','" + CostCenterStates.Suspended + "')");
 
                 // سبب الإيقاف مكتوبٌ **بالضبط** حين تكون الحالة موقوفة: إيقافٌ بلا سبب
                 // يجعل من يقرأ التقرير بعد سنة لا يعرف لماذا اختفى المركز، وسببٌ على
@@ -116,7 +116,7 @@ internal sealed class CoreDbContext(DbContextOptions<CoreDbContext> options) : D
             entity.Property(row => row.NameAr).HasColumnName("name_ar").HasMaxLength(200).IsRequired();
             entity.Property(row => row.State).HasColumnName("state").HasMaxLength(16).IsRequired();
             entity.Property(row => row.SuspensionReason)
-                  .HasColumnName("suspension_reason").HasMaxLength(400).IsRequired().HasDefaultValue(string.Empty);
+                  .HasColumnName("suspension_reason").HasMaxLength(CompanySetup.CompanySetupLimits.MaximumReasonLength).IsRequired().HasDefaultValue(string.Empty);
         });
 
         modelBuilder.Entity<CoreNameTranslationRow>(entity =>
@@ -218,7 +218,7 @@ internal sealed class CoreDbContext(DbContextOptions<CoreDbContext> options) : D
                     "(revoked_at is not null) = (length(btrim(revoked_reason)) > 0)");
                 t.HasCheckConstraint(
                     "ck_access_session_reason_closed",
-                    "revoked_reason in ('', 'signed_out', 'refresh_replayed')");
+                    Access.RevocationReasons.CheckSql);
             });
 
             entity.HasKey(row => row.SessionId).HasName("pk_access_session");

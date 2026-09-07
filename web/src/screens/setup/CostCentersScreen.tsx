@@ -36,6 +36,7 @@ import {
   suspendCostCenter,
 } from "../../api/generated/client";
 import type { CompanySetup, CostCenter, NameValue } from "../../api/generated/types";
+import { minLengthOf } from "../../api/bounds";
 import { ProblemError } from "../../api/transport";
 import { useApi } from "../../app/api-context";
 import { ProblemPanel } from "../../app/shell/ProblemPanel";
@@ -69,7 +70,8 @@ const NAME_REPEATED_CODE = "cost_center.name_repeated";
 const REASON_REQUIRED_CODE = "cost_center.suspension_reason_required";
 
 /** أدنى طول لسبب الإيقاف كما تعلنه النواة — «لا سبب» ليس سبباً. */
-const MINIMUM_REASON = 8;
+/** أدنى طول السبب — من العقد (`SuspendCostCenterRequest.reason.minLength`) لا من هنا (ADR-0091). */
+const MINIMUM_REASON = minLengthOf("SuspendCostCenterRequest", "reason");
 
 /** الشاشة كاملةً. */
 export function CostCentersScreen(): ReactNode {

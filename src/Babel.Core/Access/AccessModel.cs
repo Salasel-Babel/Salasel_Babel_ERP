@@ -18,7 +18,7 @@ public static class AccessLimits
     public const int MaximumPresentedLength = 512;
 
     /// <summary>أقصى طول لاسم عربي على عضوية.</summary>
-    public const int MaximumNameLength = 200;
+    public const int MaximumNameLength = InputLimits.MaximumNameLength;
 
     // ‏**والمُدَد الثلاث ليست هنا** — وكانت. عمرُ الاعتماد الفاعل، وعمرُ اعتماد
     // التجديد (وهي المدّة التي يبقى فيها اعتمادٌ مسروق صالحاً)، ومهلةُ الدعوة:
@@ -122,6 +122,12 @@ public static class RevocationReasons
 {
     /// <summary>طلبه صاحب الجلسة صراحةً.</summary>
     public const string SignedOut = "signed_out";
+
+    /// <summary>
+    /// قيدُ القاعدة على عمود السبب — مبنيٌّ من الرمزين لا مكتوبٌ بجوارهما، فلا تفترق
+    /// نسخةُ المخطّط عن نسخة النوع (ADR-0091).
+    /// </summary>
+    public const string CheckSql = "revoked_reason in ('', '" + SignedOut + "', '" + RefreshReplayed + "')";
 
     /// <summary>‏<b>اعتماد تجديد قُدِّم مرّتين</b> — والعائلة كلّها تسقط، لا الطلب الثاني وحده.</summary>
     public const string RefreshReplayed = "refresh_replayed";

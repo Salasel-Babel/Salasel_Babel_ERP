@@ -197,6 +197,7 @@ jobs:
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           BABEL_LEDGER_APP_PASSWORD: ${{ secrets.BABEL_LEDGER_APP_PASSWORD }}
           BABEL_DEMO_TOKEN_SHA256: ${{ secrets.BABEL_DEMO_TOKEN_SHA256 }}
+          BABEL_PLATFORM_TOKEN_SHA256: ${{ secrets.BABEL_PLATFORM_TOKEN_SHA256 }}
           BABEL_STORAGE_TICKET_KEY: ${{ secrets.BABEL_STORAGE_TICKET_KEY }}
           BABEL_SITE: ${{ secrets.BABEL_SITE }}
           BABEL_TLS_MODE: ${{ vars.BABEL_TLS_MODE || 'auto' }}
@@ -208,7 +209,7 @@ jobs:
 
           missing=""
           for name in POSTGRES_PASSWORD BABEL_LEDGER_APP_PASSWORD BABEL_DEMO_TOKEN_SHA256 \
-                      BABEL_STORAGE_TICKET_KEY BABEL_SITE; do
+                      BABEL_PLATFORM_TOKEN_SHA256 BABEL_STORAGE_TICKET_KEY BABEL_SITE; do
             if [ -z "${!name:-}" ]; then missing="$missing $name"; fi
           done
           if [ -n "$missing" ]; then
@@ -241,6 +242,18 @@ jobs:
             exit 1
           fi
 
+          # ‏**واعتماد مشغّل المنصّة بصمةٌ ثانية بالشكل نفسه — ومختلفةٌ عن الأولى** (ADR-0092):
+          # بصمةٌ واحدة للاثنين تجعل كلَّ من سُلِّم رمزَ العرض مسعِّراً لكتالوج المنصّة.
+          if ! printf '%s' "$BABEL_PLATFORM_TOKEN_SHA256" | grep -qE '^[0-9a-f]{64}$'; then
+            echo "::error::‏BABEL_PLATFORM_TOKEN_SHA256 ليس بصمة SHA-256 سداسية صغيرة بأربعة وستين محرفاً."
+            echo "::error::احسبها هكذا: printf '%s' \"<اعتماد المشغّل>\" | sha256sum | cut -d' ' -f1"
+            exit 1
+          fi
+          if [ "$BABEL_PLATFORM_TOKEN_SHA256" = "$BABEL_DEMO_TOKEN_SHA256" ]; then
+            echo "::error::‏BABEL_PLATFORM_TOKEN_SHA256 تساوي BABEL_DEMO_TOKEN_SHA256 — رمزُ العرض لا يكون اعتمادَ مشغّل المنصّة."
+            exit 1
+          fi
+
           # ‏**والمفتاح يُفحص شكلاً هنا لا على الخادم.** `Convert.FromHexString` يرمي
           # على محرفٍ غير سداسي وعلى طولٍ فردي، و`SignedAttachmentTickets` يرفض ما
           # دون 32 بايتاً — والثلاثة تقع **بعد** أن تُسحب الصور وتُقام الحاويات، فيُقرأ
@@ -260,6 +273,7 @@ jobs:
             echo "BABEL_LEDGER_APP_PASSWORD=$BABEL_LEDGER_APP_PASSWORD"
             echo "BABEL_LEDGER_APP_ROLE=babel_ledger_app"
             echo "BABEL_DEMO_TOKEN_SHA256=$BABEL_DEMO_TOKEN_SHA256"
+            echo "BABEL_PLATFORM_TOKEN_SHA256=$BABEL_PLATFORM_TOKEN_SHA256"
             echo "BABEL_STORAGE_TICKET_KEY=$BABEL_STORAGE_TICKET_KEY"
             echo "BABEL_SITE=$BABEL_SITE"
             echo "BABEL_TLS_MODE=$BABEL_TLS_MODE"

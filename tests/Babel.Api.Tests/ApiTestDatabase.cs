@@ -416,7 +416,7 @@ internal static class ApiTestDatabase
         await using NpgsqlConnection control =
             await Db.OpenAsync(Control.ControlConnectionString, cancellationToken).ConfigureAwait(false);
         await ModuleCatalog.SeedAsync(control, cancellationToken).ConfigureAwait(false);
-        await PlanCatalog.SeedAsync(control, cancellationToken).ConfigureAwait(false);
+        await PlanCatalog.SeedAsync(control, publish: true, cancellationToken).ConfigureAwait(false);
 
         // والمنح يُعاد بعد البذر: الجداول التي بُذرت للتوّ موجودة سلفاً، لكن إعادة
         // المنح تجعل الخطوة **مُحكَمة** على قاعدة أُنشئت في تشغيل سابق للعملية نفسها.

@@ -66,6 +66,14 @@ internal static class ApiFixture
     /// <summary>لحظة انقضاء الاعتماد المنقضي، بصيغة ISO 8601 الدوّارة كما يقرؤها الخادم.</summary>
     public const string ExpiredAt = "2020-01-01T00:00:00.0000000+00:00";
 
+    /// <summary>
+    /// اعتماد <b>مشغّل المنصّة</b> — يُعلَن في الإعداد (<c>Platform=true</c>) ولا يبلغ شركةً
+    /// واحدة: سطحُ الخطط يبلغه وحده، ودفاترُ المنشآت لا يبلغها (ADR-0092).
+    /// </summary>
+    public static TestCredential TokenPlatform { get; } = TestCredential.Create(
+        new Guid("99999999-9999-4999-8999-999999999999"),
+        new Guid("99999999-9999-4999-8999-9999999999b1"));
+
     private static readonly SemaphoreSlim Gate = new(1, 1);
     private static readonly Dictionary<string, ApiProcess> ByCulture = new(StringComparer.Ordinal);
     private static readonly Dictionary<string, ApiProcess> ByRateLimit = new(StringComparer.Ordinal);
@@ -354,7 +362,7 @@ internal static class ApiFixture
         };
 
         int index = 0;
-        foreach (TestCredential credential in new[] { TokenA, TokenB, TokenC, TokenS, TokenNoCompany, TokenExpired })
+        foreach (TestCredential credential in new[] { TokenA, TokenB, TokenC, TokenS, TokenNoCompany, TokenExpired, TokenPlatform })
         {
             string prefix = string.Create(CultureInfo.InvariantCulture, $"Babel__Api__Tokens__{index}__");
             environment[prefix + "Sha256"] = credential.Digest;
@@ -370,6 +378,11 @@ internal static class ApiFixture
             if (credential == TokenExpired)
             {
                 environment[prefix + "NotAfter"] = ExpiredAt;
+            }
+
+            if (credential == TokenPlatform)
+            {
+                environment[prefix + "Platform"] = "true";
             }
 
             index++;

@@ -211,6 +211,7 @@ internal static class BabelApiHost
         app.MapSessionApi();
         app.MapAccessApi();
         app.MapTenantApi();
+        app.MapPlatformApi();
         app.MapLedgerApi();
         app.MapCapabilityProfileApi();
         app.MapCompanySetupApi();
@@ -676,7 +677,11 @@ internal static class BabelApiHost
                 notAfter = parsed;
             }
 
-            byDigest[digest] = new ApiPrincipal(new TenantId(tenant), new UserId(user), companies, notAfter);
+            // ‏**مشغّلُ المنصّة** اعتمادٌ يُعلَن في الإعداد لا يُستنتج: `Platform=true` على المدخل
+            // نفسه، فيبلغ سطحَ المنصّة (الخطط) وحده — ولا يبلغ به منشأةً لم تُكتب في قائمته.
+            bool platform = string.Equals(entry["Platform"], "true", StringComparison.OrdinalIgnoreCase);
+
+            byDigest[digest] = new ApiPrincipal(new TenantId(tenant), new UserId(user), companies, notAfter, IsPlatformOperator: platform);
         }
 
         return byDigest;

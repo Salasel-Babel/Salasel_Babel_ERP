@@ -149,7 +149,7 @@ public class EntitlementFloorTests
     public void خفض_الحزمة_يُبقي_المخرَج_من_الحزمة_مقروءاً()
     {
         var current = All(EntitlementState.Entitled);
-        var essential = PlanCatalog.Require("ESSENTIAL");
+        var essential = PlanCatalog.Structural.Single(p => p.Code == "ESSENTIAL");
         var covered = new HashSet<string>(essential.Modules, StringComparer.Ordinal);
         foreach (var m in essential.Modules)
             foreach (var d in ModuleCatalog.TransitiveDependencies(m)) covered.Add(d);

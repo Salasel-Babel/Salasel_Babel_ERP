@@ -80,6 +80,7 @@ import { EnrolmentScreen } from "../screens/admin/EnrolmentScreen";
 import { SessionScreen } from "../screens/admin/SessionScreen";
 import { MembersScreen } from "../screens/admin/MembersScreen";
 import { SubscriptionScreen } from "../screens/admin/SubscriptionScreen";
+import { PlansScreen } from "../screens/admin/PlansScreen";
 /* ── التأسيس والثوابت — أربعُ شاشاتٍ بترتيب العمل: ما يقع مرّةً فيؤسّس
    المنشأة ← ما يُبوَّب عليه كلُّ سطرٍ بعده ← ما يُرخَّص من حقول المستندات ←
    ما يقبل السطر أصلاً. والتبرير كاملاً في
@@ -426,6 +427,12 @@ const adminSubscriptionRoute = createRoute({
   component: SubscriptionScreen,
 });
 
+const adminPlansRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/plans",
+  component: PlansScreen,
+});
+
 /* ── التأسيس والثوابت ──────────────────────────────────────────────────── */
 const setupCompanyRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -511,6 +518,7 @@ const routeTree = rootRoute.addChildren([
   adminSessionRoute,
   adminMembersRoute,
   adminSubscriptionRoute,
+  adminPlansRoute,
   setupCompanyRoute,
   setupCostCentersRoute,
   setupDocumentShapesRoute,

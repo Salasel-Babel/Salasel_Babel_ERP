@@ -121,6 +121,52 @@ internal sealed record RegisteredTenantDto(
 /// <param name="ReasonAr">السبب بالعربية — يُكتب في سجلّ تدقيق الاستحقاق.</param>
 internal sealed record ChangePlanRequestDto(string PlanCode, string Authority, string ReasonAr);
 
+/// <summary>خطّةٌ على السلك — الأسعارُ نصّاً بأربع خانات (القاعدة 4).</summary>
+/// <param name="Code">رمز الخطّة.</param>
+/// <param name="NameAr">الاسم بالعربية — وهو السجلّ.</param>
+/// <param name="NameTranslations">ترجماتُ الاسم مرتَّبةً بالوسم (ADR-0021) — لا حقلَ إنجليزيٍّ ثابت.</param>
+/// <param name="MonthlyPrice">السعر الشهري.</param>
+/// <param name="PerUserPrice">سعر المستخدم الزائد عن المُضمَّن.</param>
+/// <param name="Currency">عملة الأسعار.</param>
+/// <param name="IncludedUsers">المستخدمون المُضمَّنون في السعر الشهري.</param>
+/// <param name="Modules">حزمة الوحدات.</param>
+/// <param name="Published">هل نُشرت بسعرها؟ غيرُ المنشورة لا تُباع.</param>
+internal sealed record PlanDto(
+    string Code,
+    string NameAr,
+    IReadOnlyList<NameValueDto> NameTranslations,
+    string MonthlyPrice,
+    string PerUserPrice,
+    string Currency,
+    int IncludedUsers,
+    IReadOnlyList<string> Modules,
+    bool Published);
+
+/// <summary>قائمة خطط.</summary>
+/// <param name="Plans">الخطط مرتَّبةً برمزها.</param>
+internal sealed record PlanListDto(IReadOnlyList<PlanDto> Plans);
+
+/// <summary>طلبُ إنشاء خطّة أو تعديلها من سطح المنصّة — بسندٍ وسبب.</summary>
+/// <param name="NameAr">الاسم بالعربية — وهو السجلّ.</param>
+/// <param name="MonthlyPrice">السعر الشهري نصّاً.</param>
+/// <param name="PerUserPrice">سعر المستخدم الزائد نصّاً.</param>
+/// <param name="IncludedUsers">المستخدمون المُضمَّنون.</param>
+/// <param name="Modules">حزمة الوحدات برموزها.</param>
+/// <param name="Published">نشرُ الخطّة — يجعلها قابلةً للبيع.</param>
+/// <param name="Authority">السند.</param>
+/// <param name="ReasonAr">السبب بالعربية.</param>
+/// <param name="NameTranslations">ترجماتُ الاسم بالوسم (ADR-0021)؛ وقد تغيب.</param>
+internal sealed record PutPlanRequestDto(
+    string NameAr,
+    string MonthlyPrice,
+    string PerUserPrice,
+    int IncludedUsers,
+    IReadOnlyList<string> Modules,
+    bool Published,
+    string Authority,
+    string ReasonAr,
+    IReadOnlyList<NameValueDto>? NameTranslations = null);
+
 /// <summary>طلب انقطاع أو استئناف — بالسند نفسه وللسبب نفسه.</summary>
 /// <param name="Authority">السند. إلزامي.</param>
 /// <param name="ReasonAr">السبب بالعربية.</param>

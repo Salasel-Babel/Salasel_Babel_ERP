@@ -33,13 +33,15 @@ namespace Babel.Api.Security;
 /// الشركات التي دور صاحب هذا الاعتماد فيها <b>قراءةٌ فقط</b>. و<c>null</c> تعني «لا واحدة» —
 /// وهي حال اعتماد التزويد، فسلوكه لا يتغيّر بوجود هذا الحقل.
 /// </param>
+/// <param name="IsPlatformOperator">هل هذا اعتمادُ مشغّل المنصّة؟ يُعلَن في الإعداد (Platform=true) ويبلغ سطحَ المنصّة وحده (ADR-0092).</param>
 internal sealed record ApiPrincipal(
     TenantId Tenant,
     UserId User,
     IReadOnlySet<Guid> Companies,
     DateTimeOffset? NotAfter = null,
     Guid? Session = null,
-    IReadOnlySet<Guid>? ReadOnlyCompanies = null)
+    IReadOnlySet<Guid>? ReadOnlyCompanies = null,
+    bool IsPlatformOperator = false)
 {
     /// <summary>هل يبلغ هذا الاعتماد الشركة المطلوبة؟</summary>
     /// <param name="companyId">معرّف الشركة من المسار.</param>

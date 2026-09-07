@@ -74,6 +74,29 @@ internal sealed record FleetSubscription(
 /// (<c>PlaneTranslation</c>)، لا في كل مستدعٍ.
 /// </para>
 /// </summary>
+/// <summary>خطّةٌ كما يراها سطحُ المنصّة — الأسعارُ نصّاً بأربع خانات (القاعدة 4).</summary>
+internal sealed record FleetPlan(
+    string Code,
+    string NameAr,
+    IReadOnlyList<FleetNameTranslation> Translations,
+    string MonthlyPrice,
+    string PerUserPrice,
+    string Currency,
+    int IncludedUsers,
+    IReadOnlyList<string> Modules,
+    bool Published);
+
+/// <summary>طلبُ إنشاء خطّة أو تعديلها — بسندٍ وسبب، كسائر تغييرات الاستحقاق.</summary>
+internal sealed record FleetPlanRequest(
+    string Code,
+    string NameAr,
+    IReadOnlyList<FleetNameTranslation> Translations,
+    decimal MonthlyPrice,
+    decimal PerUserPrice,
+    int IncludedUsers,
+    IReadOnlyList<string> Modules,
+    bool Published);
+
 internal interface IFleetDirectory
 {
     /// <summary>
@@ -86,7 +109,15 @@ internal interface IFleetDirectory
     bool IsAvailable { get; }
 
     /// <summary>رموز الخطط المعروفة، مرتَّبةً — تُقرأ من الكتالوج فلا تُكتب قائمةً ثانية.</summary>
-    IReadOnlyList<string> KnownPlans { get; }
+    /// <summary>رموزُ الخطط المنشورة — من القاعدة، فلا تُكتب قائمةً ثانية (ADR-0092).</summary>
+    Task<IReadOnlyList<string>> KnownPlansAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>الخطط: المنشورةُ وحدها لكلّ مصادَق، وكلُّها لمشغّل المنصّة.</summary>
+    Task<IReadOnlyList<FleetPlan>> PlansAsync(bool includeUnpublished, CancellationToken cancellationToken = default);
+
+    /// <summary>ينشئ خطّةً أو يعدّلها بسندٍ وسبب ويُلحق التغيير بالسجلّ.</summary>
+    Task<FleetPlan> PutPlanAsync(
+        FleetPlanRequest plan, string actor, string authority, string reasonAr, CancellationToken cancellationToken = default);
 
     /// <summary>يقرأ اشتراك مستأجر، أو <c>null</c> إن لم يكن في سجل الأسطول.</summary>
     /// <param name="tenantId">معرّف المستأجر.</param>

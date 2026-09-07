@@ -31,15 +31,17 @@ import { Button, Field, Panel, StatusBadge, type DocState, type Provenance } fro
 import "./admin.css";
 
 /* ═══════════════════════════════ ١ · الملاحة داخل مجموعة الإدارة ══════════
-   أربعُ شاشاتٍ بترتيب العمل لا بترتيب الحروف: كيف أدخل أوّل مرّة ← ما الذي
-   بيدي الآن ← من يدخل معي ← ماذا اشتريتُ وما الذي يعمل. */
+   خمسُ شاشاتٍ بترتيب العمل لا بترتيب الحروف: كيف أدخل أوّل مرّة ← ما الذي
+   بيدي الآن ← من يدخل معي ← ماذا اشتريتُ وما الذي يعمل ← ما الذي تبيعه
+   المنصّة وبكم (وهذه الأخيرة لمشغّل المنصّة، والمنشورُ منها لكلّ مصادَق). */
 
-/** شاشات الإدارة الأربع بمساراتها — والترتيب هو ترتيب الشريط والملاحة. */
+/** شاشات الإدارة الخمس بمساراتها — والترتيب هو ترتيب الشريط والملاحة. */
 export const ADMIN_SCREENS = [
   { to: "/admin/enrolment", key: "app.nav.enrolment" },
   { to: "/admin/session", key: "app.nav.mySession" },
   { to: "/admin/members", key: "app.nav.members" },
   { to: "/admin/subscription", key: "app.nav.subscription" },
+  { to: "/admin/plans", key: "app.nav.plans" },
 ] as const;
 
 /**

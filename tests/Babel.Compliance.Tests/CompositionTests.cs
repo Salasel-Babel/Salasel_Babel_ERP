@@ -31,6 +31,7 @@ public sealed class CompositionTests
         services.AddBabelCompliance();
         services.AddInMemoryComplianceStore();
         services.AddComplianceFlowPolicy<ZatcaFlowPolicy>();
+        services.AddCompliancePolicySource(new FixedCompliancePolicy(FixedCompliancePolicy.Shipped));
         services.AddSingleton<IEntitlementEnforcer, RefusingEnforcer>();
 
         if (withProvider)
@@ -83,6 +84,28 @@ public sealed class CompositionTests
         Assert.Contains("مزوّد الالتزام", message, StringComparison.Ordinal);
         Assert.Contains("AddComplianceProvider<T>()", message, StringComparison.Ordinal);
         Assert.Contains("is not composed", message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_missing_parameter_source_refuses_by_name_and_names_the_composition_call()
+    {
+        ServiceCollection services = new();
+        services.AddBabelCompliance();
+        services.AddInMemoryComplianceStore();
+        services.AddComplianceFlowPolicy<ZatcaFlowPolicy>();
+        services.AddSingleton<IEntitlementEnforcer, RefusingEnforcer>();
+        services.AddComplianceProvider(new FakeComplianceProvider(KeyCustody.SelfHeld, new FakeAuthority(), TimeProvider.System));
+
+        using ServiceProvider sp = services.BuildServiceProvider();
+        using IServiceScope scope = sp.CreateScope();
+
+        // بلا خدمة معامِلات ولا مصدرٍ صريح: سياسةُ الإبلاغ لا تُخترع — الرفضُ يسمّي النداءين (ADR-0090).
+        var thrown = Assert.Throws<InvalidOperationException>(
+            () => scope.ServiceProvider.GetRequiredService<ICompliancePolicySource>());
+        string message = Flatten(thrown);
+        Assert.Contains("مصدر المعامِلات", message, StringComparison.Ordinal);
+        Assert.Contains("AddCompliancePolicySource", message, StringComparison.Ordinal);
+        Assert.Contains("AddBabelCore()", message, StringComparison.Ordinal);
     }
 
     private static string Flatten(Exception ex)

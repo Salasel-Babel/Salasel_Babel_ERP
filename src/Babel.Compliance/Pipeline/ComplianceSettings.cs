@@ -1,5 +1,3 @@
-using Babel.Compliance.Abstractions;
-
 namespace Babel.Compliance.Pipeline;
 
 /// <summary>
@@ -21,27 +19,14 @@ public sealed record ComplianceSettings
     /// </summary>
     public TimeSpan AttemptLease { get; init; } = TimeSpan.FromMinutes(5);
 
-    /// <summary>
-    /// النافذة التي يجب أن يتم فيها الإبلاغ. <b>القيمة الافتراضية هنا ليست القيمة النظامية</b>؛
-    /// هي مجرد قيمة تشغيلية حتى تُثبَّت من الوثيقة الرسمية، وتُضبط لكل مستأجر.
-    /// </summary>
-    [Provisional("نافذة الإبلاغ النظامية ومتى تبدأ ومتى تنتهي",
-        DerivedFrom = "docs/analysis/04-zatca-integration.md §3 يذكر ٢٤ ساعة، وهي وثيقة تخطيط داخلية لا مصدر رسمي",
-        Risk = ProvisionalRisk.Structural,
-        VerifyBy = "اللائحة السارية ومواصفة الإبلاغ المنشورة")]
-    public TimeSpan ReportingWindow { get; init; } = TimeSpan.FromHours(24);
-
-    /// <summary>متى يصير التأخير في الطابور نتيجة مطابقة يراها المدير المالي.</summary>
-    public TimeSpan QueueAgeAlarm { get; init; } = TimeSpan.FromHours(4);
+    // ‏**ولا نافذةَ إبلاغٍ هنا ولا عتبةَ إنذارٍ ولا سقفَ حسم.** كانت الثلاثةُ خصائصَ في هذا
+    // النوع مسجَّلةً مفردةً للعملية كلّها وموصوفةً «لكل مستأجر» — والنافذةُ النظامية منها
+    // موسومةً [Provisional] بمصدرٍ داخلي. فصارت المجموعةَ `compliance.reporting` في خدمة
+    // المعامِلات: افتراضُ منصّةٍ بمصدرٍ مكتوب، وتجاوزٌ لكلّ منشأة، وتُقرأ عبر
+    // `ICompliancePolicySource` (ADR-0090). وما بقي هنا تقنيٌّ محض يُضبط من البيئة.
 
     /// <summary>سياسة إعادة المحاولة للأعطال التي لم يغادر فيها الطلب.</summary>
     public RetryPolicy Retry { get; init; } = RetryPolicy.Default;
-
-    /// <summary>
-    /// <b>سقف محاولات الحسم بعد الغموض.</b> تجاوزه يعني الطابور البشري، لا محاولة إضافية.
-    /// الرقم صغير عمداً: كل محاولة حسم بإعادة إرسال تحمل خطر إنشاء تكرار حقيقي.
-    /// </summary>
-    public int MaxResolutionAttempts { get; init; } = 3;
 
     /// <summary>
     /// هل يُسمح بإعادة إرسال ببايتات مطابقة كوسيلة حسم حين لا يوجد استعلام حالة؟

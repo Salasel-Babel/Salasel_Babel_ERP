@@ -97,7 +97,7 @@ public class ReconciliationTests
             var live = (await uow.GetAsync(second.DocumentId, ct))!;
             var tampered = new ComplianceRecord
             {
-                DocumentId = live.DocumentId, DocumentUuid = live.DocumentUuid, Tenant = live.Tenant,
+                DocumentId = live.DocumentId, DocumentUuid = live.DocumentUuid, Tenant = live.Tenant, CurrencyCode = live.CurrencyCode,
                 IssuingUnit = live.IssuingUnit, Environment = live.Environment, Kind = live.Kind, Flow = live.Flow,
                 DocumentNumber = live.DocumentNumber, JournalEntry = live.JournalEntry, IssuedAt = live.IssuedAt,
                 Counter = live.Counter, PreviousHash = new byte[32], DocumentHash = live.DocumentHash,

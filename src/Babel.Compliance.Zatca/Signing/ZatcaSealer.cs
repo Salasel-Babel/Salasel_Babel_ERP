@@ -128,8 +128,12 @@ public sealed class ZatcaSealer(
 
     private static DateTimeOffset ReadIssuedAt(XElement tree)
     {
-        string date = tree.Element(ZatcaProfile.Cbc + "IssueDate")?.Value ?? string.Empty;
-        string time = tree.Element(ZatcaProfile.Cbc + "IssueTime")?.Value ?? "00:00:00";
+        // ‏غيابُ أيٍّ منهما رفضٌ لا منتصفُ ليلٍ يُملأ صمتاً: القيمة تدخل الطابع الزمني في رمز
+        // QR المُصدَّق تشفيرياً، ووقتٌ مُخترَع وقتٌ موقَّع.
+        string date = tree.Element(ZatcaProfile.Cbc + "IssueDate")?.Value
+            ?? throw new InvalidOperationException("cbc:IssueDate غائب من المستند فلا يُختم. / cbc:IssueDate is absent, so the document is not sealed.");
+        string time = tree.Element(ZatcaProfile.Cbc + "IssueTime")?.Value
+            ?? throw new InvalidOperationException("cbc:IssueTime غائب من المستند فلا يُختم — ولا يُملأ بمنتصف الليل. / cbc:IssueTime is absent, so the document is not sealed — midnight is never assumed.");
         return DateTimeOffset.ParseExact(
             date + "T" + time + "Z", "yyyy-MM-ddTHH:mm:ssZ",
             CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal);

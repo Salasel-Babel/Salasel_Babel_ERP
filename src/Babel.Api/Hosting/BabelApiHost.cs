@@ -74,6 +74,9 @@ internal static class BabelApiHost
         // **لا باب HTTP واحداً كان يبلغ الوحدتين**: مسارٌ لا يُسلَك لا يُظهر إعداداً خاطئاً.
         builder.Services.AddBabelSales(options => ApplySalesConfiguration(builder.Configuration, options));
         builder.Services.AddBabelPurchasing(options => ApplyPurchasingConfiguration(builder.Configuration, options));
+        // ‏مُهَلُ وحدة الالتزام التقنية سياسةٌ مُعلَنة تُضبط من البيئة (ADR-0090)، وتُسجَّل
+        // **قبل** الوحدة كي لا يُسجّل `TryAddSingleton` فيها الافتراضَ المكتوب.
+        builder.Services.AddSingleton(ReadComplianceSettings(builder.Configuration));
         builder.Services.AddBabelCompliance();
 
         // ── والمخزون كذلك يُقرأ اتصاله من الإعداد ─────────────────────────────
@@ -164,7 +167,7 @@ internal static class BabelApiHost
         // وتردّ 503 بـ`ai.workspace.agent_disabled`. واللوحة تعرض ذلك حالاً من حالاتها.
         if (builder.Configuration.GetValue<bool>("Babel:Agent:Enabled"))
         {
-            builder.Services.AddBabelAgentLoop();
+            builder.Services.AddBabelAgentLoop(options => ApplyAgentConfiguration(builder.Configuration, options));
             builder.Services.AddBabelAgentWorkspace();
 
             // ‏**راسم أوراق السؤال يُسجَّل هنا لا في الوحدة** — وهو حارسٌ قائم لا ذوق:
@@ -289,6 +292,75 @@ internal static class BabelApiHost
             }
         }
     }
+
+    /// <summary>
+    /// مُهَلُ وحدة الالتزام التقنية — مهلةُ المقاصة وإيجارُ المحاولة — <b>سياسةٌ مُعلَنة</b>:
+    /// الفراغ يُبقي المُعلَن، والقيمةُ المعتلّة توقف الإقلاع باسم مفتاحها ولا تُبتلع.
+    /// وأمّا نافذةُ الإبلاغ وعتبةُ الإنذار وسقفُ الحسم فليست هنا: هي معامِلاتٌ لكلّ منشأة
+    /// (‏<c>compliance.reporting</c> · ADR-0090).
+    /// </summary>
+    /// <param name="configuration">الإعداد.</param>
+    private static Babel.Compliance.Pipeline.ComplianceSettings ReadComplianceSettings(ConfigurationManager configuration)
+    {
+        Babel.Compliance.Pipeline.ComplianceSettings declared = new();
+
+        return declared with
+        {
+            ClearanceTimeout = TimeSpan.FromSeconds(ReadDeclaredInteger(
+                configuration, "Babel:Compliance:ClearanceTimeoutSeconds", (int)declared.ClearanceTimeout.TotalSeconds)),
+            AttemptLease = TimeSpan.FromMinutes(ReadDeclaredInteger(
+                configuration, "Babel:Compliance:AttemptLeaseMinutes", (int)declared.AttemptLease.TotalMinutes)),
+        };
+    }
+
+    /// <summary>
+    /// ميزانيّاتُ الوكيل ونموذجُه — سياسةٌ مُعلَنة تُضبط من البيئة (ADR-0090). وسقفُ الرموز
+    /// هنا هو <b>افتراضُ</b> منشأةٍ لم يُضبط لها سقفٌ في المنصّة؛ والمنشأةُ المضبوطة تقرأ سقفَها
+    /// من <c>IAgentTenantBillingSource</c> لا من هنا.
+    /// </summary>
+    /// <param name="configuration">الإعداد.</param>
+    /// <param name="options">إعدادات الوكيل.</param>
+    private static void ApplyAgentConfiguration(ConfigurationManager configuration, AgentOptions options)
+    {
+        string? model = configuration["Babel:Agent:ModelId"];
+        if (!string.IsNullOrWhiteSpace(model))
+        {
+            options.ModelId = model.Trim();
+        }
+
+        options.LookupBudgetPerTurn = ReadDeclaredInteger(configuration, "Babel:Agent:LookupBudgetPerTurn", options.LookupBudgetPerTurn);
+        options.DefaultTenantTokenCeiling = ReadDeclaredInteger(
+            configuration, "Babel:Agent:TokensPerTenantPerDay", options.DefaultTenantTokenCeiling);
+    }
+
+    /// <summary>
+    /// يقرأ عدداً صحيحاً موجباً مُعلَناً: الفراغُ يُبقي المُعلَن، وما ليس عدداً موجباً يوقف الإقلاع
+    /// باسم مفتاحه — <b>ولا يُقصّ ولا يُبتلع</b>، فمن ضبط قيمةً يجب أن يعرف أن ضبطه وقع.
+    /// </summary>
+    /// <param name="configuration">الإعداد.</param>
+    /// <param name="key">المفتاح.</param>
+    /// <param name="declared">القيمة المُعلَنة.</param>
+    private static long ReadDeclaredInteger(ConfigurationManager configuration, string key, long declared)
+    {
+        string? raw = configuration[key];
+
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return declared;
+        }
+
+        if (!long.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out long value) || value < 1)
+        {
+            throw new InvalidOperationException(
+                "config.not_a_positive_number — " + key + " مضبوطٌ بقيمةٍ ليست عدداً صحيحاً موجباً، ولا تُبتلع إلى المُعلَن. / "
+                + "config.not_a_positive_number — " + key + " is not a positive integer, and it is not silently replaced by the declared value.");
+        }
+
+        return value;
+    }
+
+    private static int ReadDeclaredInteger(ConfigurationManager configuration, string key, int declared)
+        => checked((int)ReadDeclaredInteger(configuration, key, (long)declared));
 
     /// <summary>
     /// يقرأ حدّ المعدّل على الأبواب المفتوحة.

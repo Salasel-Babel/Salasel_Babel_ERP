@@ -26,6 +26,7 @@ public sealed class ComplianceService(
     ReportingWorker reporting,
     IComplianceStore store,
     ComplianceSettings settings,
+    ICompliancePolicySource policies,
     TimeProvider clock)
 {
     /// <summary>
@@ -40,6 +41,12 @@ public sealed class ComplianceService(
                 "هذا المستند في مسار المقاصة: يُستدعى ClearAsync وهي حاجزة. " +
                 "المساران لا يتقاسمان آلية واحدة. / this document is on the clearance flow; call ClearAsync (blocking).");
 
+        // ‏نافذةُ الإبلاغ من سياسة المنشأة (ADR-0090) — وتُقرأ **قبل** الإدراج: مستندٌ يدخل
+        // الطابور بلا موعدٍ نهائي مستندٌ لا يعرف أحدٌ متى يتأخّر.
+        var policy = await policies.ResolveAsync(document.Tenant, ct);
+        if (policy.IsFailure)
+            throw CompliancePolicyRefusal.Of(policy.Errors);
+
         var record = await factory.BuildAndQueueAsync(document, ct);
         var now = ComplianceCanonical.PgInstant(clock.GetUtcNow());
 
@@ -48,7 +55,7 @@ public sealed class ComplianceService(
             record.Counter,
             Convert.ToHexString(record.DocumentHash).ToLowerInvariant(),
             now,
-            now + settings.ReportingWindow,
+            now + policy.Value.ReportingWindow,
             "أُدرج المستند في طابور الإبلاغ. لا حاجة لانتظار الجهة — المستند صادر ويُسلَّم للعميل الآن.",
             "queued for reporting. No need to wait for the authority — the document is issued and may be handed to the customer now.");
     }

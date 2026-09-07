@@ -235,6 +235,10 @@ public sealed class Rule13_NoBusinessLogicInTheApi
         "Babel.Ai.Lookup.LookupOptions",
         "Babel.Ai.Lookup.RedeemedLookupHandle",
 
+        // إعدادُ حلقة الوكيل — سطحُ تركيبٍ كسائر أنواع الإعدادات: الجذر يقرأ فيه سياساتِ
+        // البيئة المُعلَنة (النموذج، والبحثات في الدور، وسقفُ الرموز) ولا يلمس الحلقة (ADR-0090).
+        "Babel.Ai.Agent.AgentOptions",
+
         // نقطة تركيب الدفتر وإعداده وسطح تدقيقه — ولا شيء من استمراريته ولا من محرّكه.
         "Babel.Ledger.LedgerModuleRegistration",
         "Babel.Ledger.LedgerOptions",
@@ -276,6 +280,10 @@ public sealed class Rule13_NoBusinessLogicInTheApi
         "Babel.Sales.SalesModuleRegistration",
         "Babel.Purchasing.PurchasingModuleRegistration",
         "Babel.Compliance.ComplianceModuleRegistration",
+
+        // إعدادُ وحدة الالتزام التقني — مُهَلُ النداء وإيجارُ المحاولة — يُقرأ من البيئة في
+        // الجذر ويُسجَّل قبل الوحدة؛ وأمّا سياسةُ الإبلاغ فمعامِلٌ لا يمرّ من هنا (ADR-0090).
+        "Babel.Compliance.Pipeline.ComplianceSettings",
         "Babel.Inventory.InventoryModuleRegistration",
         "Babel.RealEstate.RealEstateModuleRegistration",
         "Babel.Projects.ProjectsModuleRegistration",

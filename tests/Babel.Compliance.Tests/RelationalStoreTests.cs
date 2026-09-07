@@ -74,11 +74,12 @@ public class RelationalStoreTests
             KeyCustody.SelfHeld, authority, clock, StatusProbeSupport.ByDocumentIdentity);
         var registry = new InMemoryIssuingUnitRegistry();
         var settings = new ComplianceSettings();
+        var policies = new FixedCompliancePolicy(FixedCompliancePolicy.Shipped);
         var renderer = new Babel.Compliance.Canonical.ProvisionalDocumentRenderer();
         var factory = new ComplianceDocumentFactory(store, renderer, provider, registry, clock);
-        var clearance = new ClearanceCoordinator(store, provider, registry, settings, clock);
-        var reporting = new ReportingWorker(store, provider, registry, settings, clock);
-        var service = new ComplianceService(factory, clearance, reporting, store, settings, clock);
+        var clearance = new ClearanceCoordinator(store, provider, registry, settings, policies, clock);
+        var reporting = new ReportingWorker(store, provider, registry, settings, policies, clock);
+        var service = new ComplianceService(factory, clearance, reporting, store, settings, policies, clock);
 
         var csr = await provider.Onboarding.CreateSigningRequestAsync(
             new CsrRequest(Harness.Tenant, Harness.Unit, ComplianceEnvironment.Simulation,

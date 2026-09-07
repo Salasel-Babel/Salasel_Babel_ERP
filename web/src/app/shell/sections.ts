@@ -229,6 +229,7 @@ export const SCREENS: readonly ScreenEntry[] = [
   { path: "/admin/session", labelKey: "app.nav.mySession", section: "accounting" },
   { path: "/admin/members", labelKey: "app.nav.members", section: "accounting" },
   { path: "/admin/subscription", labelKey: "app.nav.subscription", section: "accounting" },
+  { path: "/admin/plans", labelKey: "app.nav.plans", section: "accounting" },
   /* ── التأسيس والثوابت — أربعٌ **بترتيب العمل لا بترتيب الحروف**: ما يقع
      مرّةً فيؤسّس المنشأة ← ما يُبوَّب عليه كلُّ سطرٍ بعده ← ما يُرخَّص من حقول
      المستندات ← ما يقبل السطر أصلاً. وهي **كتلةٌ واحدة متّصلة** كي يندمج

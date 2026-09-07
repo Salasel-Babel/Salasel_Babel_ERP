@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     e491db042a1f4fb532c935c939671dc397b375d66e08055c4394d10ec4dc06fe
+     d9ed690c2c2d6377fabb6bb515d9d2bc26577030635593c2d1d10e892c805782
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -1960,6 +1960,31 @@ export interface PlacementBalanceList {
   balances: PlacementBalance[];
 }
 
+/** خطّةٌ من كتالوج المنصّة: رمزها واسمها العربيّ وترجماتُه وسعراها نصّاً وحزمة وحداتها وهل نُشرت. / A plan from the platform catalogue: code, Arabic name and its translations, prices as text, module bundle, and whether it is published. */
+export interface Plan {
+  /** رمز الخطّة — حروفٌ لاتينية كبيرة وأرقام وشرطة سفلية. / The plan code — upper-case ASCII letters, digits and underscore. */
+  code: string;
+  /** عملة الأسعار — رمز ISO 4217. / The prices' currency — an ISO 4217 code. */
+  currency: string;
+  /** عدد المستخدمين المُضمَّنين في السعر الشهري. / The number of users included in the monthly price. */
+  includedUsers: number;
+  /** حزمة الوحدات برموزها، مرتَّبةً. / The module bundle by code, ordered. */
+  modules: string[];
+  monthlyPrice: Money;
+  /** الاسم بالعربية — وهو السجلّ. / The Arabic name — the record. */
+  nameAr: string;
+  /** ترجماتُ الاسم مرتَّبةً بالوسم (ADR-0021)؛ ولا حقلَ إنجليزيٍّ ثابت. / The name's translations ordered by tag (ADR-0021); there is no fixed English field. */
+  nameTranslations: NameValue[];
+  perUserPrice: Money;
+  /** هل نُشرت الخطّة بسعرها؟ غيرُ المنشورة لا تُباع ولا يُفتح عليها اشتراك. / Is the plan published with its price? An unpublished plan is not sold and no subscription opens on it. */
+  published: boolean;
+}
+
+export interface PlanList {
+  /** الخطط مرتَّبةً برمزها. / The plans ordered by code. */
+  plans: Plan[];
+}
+
 /** طلب ترحيل. ولاحظ ما ليس فيه: لا حقل مستأجر ولا حقل شركة — النطاق من الاعتماد ومن المسار. وأي حقل غير معروف يُرفض الطلب كلّه بسببه. / A posting request. Note what is absent: no tenant field and no company field — scope comes from the credential and the path. Any unknown field fails the whole request. */
 export interface PostJournalEntryRequest {
   /** مفردات المبالغ التي يقرؤها قالب الحدث. / The amount vocabulary the event template reads. */
@@ -2324,6 +2349,26 @@ export interface PutCapabilityProfileRequest {
   documents: DocumentProfile[];
   /** سبب سحب قدرة. إلزامي متى أطفأ الطلب قدرةً كانت مُشغَّلة، ومهمَل فيما عدا ذلك؛ وبحدٍّ أدنى يُعلنه minLength هنا — «لا سبب» ليس سبباً. / The reason for withdrawing a capability. Required whenever the request disables a previously enabled capability, ignored otherwise; with the minimum declared by minLength here — 'no reason' is not a reason. */
   withdrawalReason?: string | null;
+}
+
+/** طلبُ إنشاء خطّة أو تعديلها ونشرها — بسندٍ وسبب، كسائر ما يحكم الاستحقاق. / A request to create, change or publish a plan — with authority and reason, like everything that governs entitlement. */
+export interface PutPlanRequest {
+  /** السند: رقم عقد، أو حدث سداد، أو تذكرة دعم، أو قرار مُوثَّق. **ولا تغيير استحقاق بلا سند**: الاستحقاق يحكم أي بيانات مالية يجوز إنشاؤها، فتغييره حدث تدقيقي. / The authority: a contract number, a payment event, a support ticket, or a documented decision. **No entitlement change without authority**: entitlement governs which financial data may be created, so changing it is an audit event. */
+  authority: string;
+  /** عدد المستخدمين المُضمَّنين في السعر الشهري. / The number of users included in the monthly price. */
+  includedUsers: number;
+  /** حزمة الوحدات برموزها من كتالوج الوحدات؛ ورمزٌ مجهول يُرفض باسمه. / The module bundle by code from the module catalogue; an unknown code is refused by name. */
+  modules: string[];
+  monthlyPrice: Money;
+  /** الاسم بالعربية — وهو السجلّ. / The Arabic name — the record. */
+  nameAr: string;
+  /** ترجماتُ الاسم بالوسم (ADR-0021)؛ وقد تغيب فيبقى العربيّ وحده. / The name's translations by tag (ADR-0021); may be absent, leaving the Arabic alone. */
+  nameTranslations?: NameValue[];
+  perUserPrice: Money;
+  /** نشرُ الخطّة يجعلها قابلةً للبيع؛ وإلغاءُ النشر يُخرجها من البيع ويُبقيها صفّاً. / Publishing makes the plan sellable; unpublishing withdraws it from sale and keeps its row. */
+  published: boolean;
+  /** سبب التغيير بالعربية — يُكتب في سجلّ تغييرات الخطط. / The change's reason in Arabic — written to the plan change log. */
+  reasonAr: string;
 }
 
 /** كمّية نصّاً بمقياس لا يتجاوز أربعاً، بالنحو الذي تخضع له المبالغ. وهي ليست مبلغاً — ولذلك لها مخطّطها — لكنها تُضرب في مبلغ، فأي فقدان دقّة فيها يصل إلى المال. / A quantity as a string with at most four decimal places, under the grammar that governs amounts. It is not an amount — hence its own schema — but it is multiplied by one, so any precision lost in it reaches the money. */

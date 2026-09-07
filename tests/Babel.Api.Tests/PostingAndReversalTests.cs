@@ -149,13 +149,15 @@ public sealed class PostingAndReversalTests
             }
         }
 
-        // والقائمة **محصورة في موارد إعداد المستأجر**: ملفّ القدرات، وتأسيس المنشأة،
-        // واسم مركز التكلفة. ولا واحد منها مورد دفتر.
+        // والقائمة **محصورة في موارد الإعداد**: ملفّ القدرات، وتأسيس المنشأة، واسم مركز
+        // التكلفة — وخطّةٌ في كتالوج المنصّة تُستبدل برمزها (ADR-0092). ولا واحد منها
+        // مورد دفتر.
         Assert.Equal(
             [
                 "put /api/v1/companies/{companyId}/capability-profile",
                 "put /api/v1/companies/{companyId}/cost-centers/{costCenterCode}",
                 "put /api/v1/companies/{companyId}/setup",
+                "put /api/v1/platform/plans/{planCode}",
             ],
             mutable);
 

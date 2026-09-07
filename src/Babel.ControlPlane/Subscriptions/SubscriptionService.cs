@@ -172,7 +172,14 @@ public sealed class SubscriptionService(
         Guid tenantId, string planCode, ChangeAuthority authority, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(authority);
-        PlanCatalog.Require(planCode);
+
+        await using (var c = await Db.OpenAsync(Options.ControlConnectionString, ct))
+        {
+            // الخطّةُ من القاعدة لا من الشيفرة، ولا يُغيَّر إلى خطّةٍ لم تُنشر (ADR-0092).
+            var target = await PlanDirectory.RequireAsync(c, planCode, ct);
+            if (!target.Published)
+                throw new PlanNotPublishedException(planCode);
+        }
 
         var current = await RequireAsync(tenantId, ct);
         var on = DateOnly.FromDateTime(Canon.Now().UtcDateTime);
@@ -302,10 +309,11 @@ public sealed class SubscriptionService(
         }
 
         var row = rows[0];
-        var plan = PlanCatalog.Require(row.Plan);
+        var plan = await PlanDirectory.RequireAsync(c, row.Plan, ct);
         var currency = await Db.ScalarAsync<string>(c,
             "select currency from control.plan where plan_code = @p",
-            p => p.AddWithValue("p", row.Plan), null, ct) ?? "SAR";
+            p => p.AddWithValue("p", row.Plan), null, ct)
+            ?? throw new InvalidOperationException($"الخطّة «{row.Plan}» بلا عملة في control.plan.");
 
         var set = await entitlements.GetSetAsync(tenantId, ct);
 
@@ -380,11 +388,14 @@ public sealed class SubscriptionService(
     /// </para>
     /// </summary>
     /// <returns>رموز الخطط مرتّبةً ترتيباً حرفياً ثابتاً.</returns>
-    public static IReadOnlyList<string> PlanCodes() =>
-        [.. PlanCatalog.All.Select(p => p.Code).OrderBy(c => c, StringComparer.Ordinal)];
+    public async Task<IReadOnlyList<string>> PlanCodesAsync(CancellationToken ct = default)
+    {
+        await using var c = await Db.OpenAsync(Options.ControlConnectionString, ct);
+        return [.. (await PlanDirectory.PublishedAsync(c, ct)).Select(p => p.Code)];
+    }
 
     /// <summary>رموز الخطط المعروفة مفصولةً — تُقرأ من الكتالوج فلا تُكتب قائمةً ثانية.</summary>
     /// <returns>الرموز مرتّبةً ومفصولةً بنقطة وسطى.</returns>
-    public static string KnownPlans() =>
-        string.Join(" · ", PlanCatalog.All.Select(p => p.Code).OrderBy(c => c, StringComparer.Ordinal));
+    public async Task<string> KnownPlansAsync(CancellationToken ct = default) =>
+        string.Join(" · ", await PlanCodesAsync(ct));
 }

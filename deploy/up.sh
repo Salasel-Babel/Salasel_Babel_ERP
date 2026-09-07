@@ -54,6 +54,9 @@ fi
 if [ -z "${BABEL_DEMO_TOKEN:-}" ]; then
   BABEL_DEMO_TOKEN="demo-$(head -c 18 /dev/urandom | od -An -tx1 | tr -d ' \n')"
   BABEL_DEMO_TOKEN_SHA256="$(printf '%s' "$BABEL_DEMO_TOKEN" | sha256sum | cut -d' ' -f1)"
+  # اعتماد مشغّل المنصّة — رمزٌ ثانٍ يبلغ كتالوج الخطط وحده (ADR-0092)، وبصمتُه غير بصمة رمز العرض.
+  BABEL_PLATFORM_TOKEN="platform-$(head -c 18 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+  BABEL_PLATFORM_TOKEN_SHA256="$(printf '%s' "$BABEL_PLATFORM_TOKEN" | sha256sum | cut -d' ' -f1)"
   BABEL_LEDGER_APP_PASSWORD="$(head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n')"
   POSTGRES_PASSWORD="$(head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n')"
   # مفتاح توقيع تذاكر تنزيل المرفقات — 32 بايتاً، **يُولَّد هنا ويُكتب في ملفّ
@@ -67,6 +70,8 @@ if [ -z "${BABEL_DEMO_TOKEN:-}" ]; then
 # مُولَّد محلياً بـdeploy/up.sh — لا يُودَع في git (.gitignore: .env.*)
 BABEL_DEMO_TOKEN=$BABEL_DEMO_TOKEN
 BABEL_DEMO_TOKEN_SHA256=$BABEL_DEMO_TOKEN_SHA256
+BABEL_PLATFORM_TOKEN=$BABEL_PLATFORM_TOKEN
+BABEL_PLATFORM_TOKEN_SHA256=$BABEL_PLATFORM_TOKEN_SHA256
 BABEL_LEDGER_APP_PASSWORD=$BABEL_LEDGER_APP_PASSWORD
 POSTGRES_PASSWORD=$POSTGRES_PASSWORD
 BABEL_STORAGE_TICKET_KEY=$BABEL_STORAGE_TICKET_KEY
@@ -86,8 +91,17 @@ if [ -z "${BABEL_STORAGE_TICKET_KEY:-}" ]; then
   echo "── أُلحق مفتاح توقيع التذاكر بملفّ قديم: $env_file"
 fi
 
+# ‏**ورفدٌ ثانٍ لملفّ قديم**: اعتماد مشغّل المنصّة جاء بعد مفتاح التذاكر (ADR-0092)، فملفٌّ
+# وُلِّد قبله لا يحمله، وبلا هذين السطرين يسقط `compose up` بـ`:?` على جهازٍ قديم وحده.
+if [ -z "${BABEL_PLATFORM_TOKEN:-}" ]; then
+  BABEL_PLATFORM_TOKEN="platform-$(head -c 18 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+  BABEL_PLATFORM_TOKEN_SHA256="$(printf '%s' "$BABEL_PLATFORM_TOKEN" | sha256sum | cut -d' ' -f1)"
+  ( umask 077; printf 'BABEL_PLATFORM_TOKEN=%s\nBABEL_PLATFORM_TOKEN_SHA256=%s\n' "$BABEL_PLATFORM_TOKEN" "$BABEL_PLATFORM_TOKEN_SHA256" >> "$env_file" )
+  echo "── أُلحق اعتماد مشغّل المنصّة بملفّ قديم: $env_file"
+fi
+
 export BABEL_DEMO_TOKEN BABEL_DEMO_TOKEN_SHA256 BABEL_LEDGER_APP_PASSWORD POSTGRES_PASSWORD
-export BABEL_STORAGE_TICKET_KEY
+export BABEL_STORAGE_TICKET_KEY BABEL_PLATFORM_TOKEN BABEL_PLATFORM_TOKEN_SHA256
 
 banner() {
   echo
@@ -95,6 +109,7 @@ banner() {
   echo "  الواجهة : http://127.0.0.1:$1/?token=$BABEL_DEMO_TOKEN&companyId=$company&book=MAIN"
   echo "  الخادم  : http://127.0.0.1:$2/health"
   echo "  الرمز   : $BABEL_DEMO_TOKEN"
+  echo "  المشغّل : $BABEL_PLATFORM_TOKEN   (كتالوج الخطط وحده: /admin/plans)"
   echo "════════════════════════════════════════════════════════════════"
 }
 
@@ -121,6 +136,7 @@ POSTGRES_PASSWORD=$POSTGRES_PASSWORD
 BABEL_LEDGER_APP_PASSWORD=$BABEL_LEDGER_APP_PASSWORD
 BABEL_STORAGE_TICKET_KEY=$BABEL_STORAGE_TICKET_KEY
 BABEL_DEMO_TOKEN_SHA256=$BABEL_DEMO_TOKEN_SHA256
+BABEL_PLATFORM_TOKEN_SHA256=$BABEL_PLATFORM_TOKEN_SHA256
 BABEL_STORAGE_TICKET_KEY=$BABEL_STORAGE_TICKET_KEY
 BABEL_DEMO_COMPANY_ID=$company
 BABEL_DEMO_USER_ID=$user_id
@@ -247,6 +263,10 @@ env "Babel__Entitlements__${company}__RealEstate=Entitled" \
   Babel__Api__Tokens__0__Tenant="$company" \
   Babel__Api__Tokens__0__User="$user_id" \
   Babel__Api__Tokens__0__Companies__0="$company" \
+  Babel__Api__Tokens__1__Sha256="$BABEL_PLATFORM_TOKEN_SHA256" \
+  Babel__Api__Tokens__1__Tenant="$company" \
+  Babel__Api__Tokens__1__User="d3305e1e-0000-4000-8000-0000000000b1" \
+  Babel__Api__Tokens__1__Platform="true" \
   dotnet src/Babel.Api/bin/Release/net10.0/Babel.Api.dll > "$here/.api.log" 2>&1 &
 api_pid=$!
 echo "$api_pid" > "$here/.api.pid"

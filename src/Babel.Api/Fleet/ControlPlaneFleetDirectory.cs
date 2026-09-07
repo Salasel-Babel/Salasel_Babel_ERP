@@ -4,6 +4,7 @@ using Babel.ControlPlane.Entitlement;
 using Babel.ControlPlane.Registry;
 using Babel.ControlPlane.Subscriptions;
 using Babel.ControlPlane.Support;
+using Npgsql;
 
 namespace Babel.Api.Fleet;
 
@@ -31,6 +32,7 @@ namespace Babel.Api.Fleet;
 internal sealed class ControlPlaneFleetDirectory : IFleetDirectory
 {
     private readonly SubscriptionService _subscriptions;
+    private readonly ControlPlaneOptions _options;
 
     /// <summary>ينشئ المحوّل فوق إعدادات مستوى التحكّم المقروءة من البيئة.</summary>
     /// <param name="options">إعدادات مستوى التحكّم — كل قيمة فيها من متغيّر بيئة.</param>
@@ -39,6 +41,7 @@ internal sealed class ControlPlaneFleetDirectory : IFleetDirectory
         ArgumentNullException.ThrowIfNull(options);
 
         TenantRegistry registry = new(options);
+        _options = options;
         _subscriptions = new SubscriptionService(options, registry, new EntitlementService(options, registry));
     }
 
@@ -46,7 +49,45 @@ internal sealed class ControlPlaneFleetDirectory : IFleetDirectory
     public bool IsAvailable => true;
 
     /// <inheritdoc />
-    public IReadOnlyList<string> KnownPlans { get; } = SubscriptionService.PlanCodes();
+    public Task<IReadOnlyList<string>> KnownPlansAsync(CancellationToken cancellationToken = default) =>
+        _subscriptions.PlanCodesAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<FleetPlan>> PlansAsync(bool includeUnpublished, CancellationToken cancellationToken = default)
+    {
+        await using NpgsqlConnection c = await Db.OpenAsync(_options.ControlConnectionString, cancellationToken).ConfigureAwait(false);
+        IReadOnlyList<PlanDefinition> plans = includeUnpublished
+            ? await PlanDirectory.AllAsync(c, cancellationToken).ConfigureAwait(false)
+            : await PlanDirectory.PublishedAsync(c, cancellationToken).ConfigureAwait(false);
+        return [.. plans.Select(ProjectPlan)];
+    }
+
+    public async Task<FleetPlan> PutPlanAsync(
+        FleetPlanRequest plan, string actor, string authority, string reasonAr, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(plan);
+        await using NpgsqlConnection c = await Db.OpenAsync(_options.ControlConnectionString, cancellationToken).ConfigureAwait(false);
+        PlanDefinition written = await PlanDirectory.UpsertAsync(
+            c,
+            new PlanDefinition(plan.Code, plan.NameAr, Latin(plan.Translations, plan.NameAr), plan.MonthlyPrice, plan.PerUserPrice, plan.IncludedUsers, plan.Modules, plan.Published),
+            new ChangeAuthority(actor, authority, reasonAr),
+            Canon.Now(),
+            cancellationToken).ConfigureAwait(false);
+        return ProjectPlan(written);
+    }
+
+    private static FleetPlan ProjectPlan(PlanDefinition plan) => new(
+        plan.Code, plan.NameAr, TranslationsOf(plan),
+        Canon.Amount(plan.MonthlyPrice), Canon.Amount(plan.PerUserPrice), "SAR",
+        plan.IncludedUsers, plan.Modules, plan.Published);
+
+    /// <summary>
+    /// العمودُ اللاتيني في مستوى التحكّم يحمل الاسمَ العربيّ حين لا ترجمة (كما يُخزَّن اسمُ
+    /// المستأجر)؛ فلا يُعرض ترجمةً إلا ما كان ترجمةً فعلاً.
+    /// </summary>
+    private static IReadOnlyList<FleetNameTranslation> TranslationsOf(PlanDefinition plan) =>
+        string.IsNullOrWhiteSpace(plan.NameEn) || string.Equals(plan.NameEn, plan.NameAr, StringComparison.Ordinal)
+            ? []
+            : [new FleetNameTranslation(LatinTag, plan.NameEn)];
 
     /// <inheritdoc />
     public async Task<FleetSubscription?> FindAsync(Guid tenantId, CancellationToken cancellationToken = default)
@@ -167,7 +208,17 @@ internal sealed class UnavailableFleetDirectory : IFleetDirectory
     public bool IsAvailable => false;
 
     /// <inheritdoc />
-    public IReadOnlyList<string> KnownPlans { get; } = [];
+    public Task<IReadOnlyList<string>> KnownPlansAsync(CancellationToken cancellationToken = default) =>
+        throw Unavailable();
+
+    /// <inheritdoc />
+    public Task<IReadOnlyList<FleetPlan>> PlansAsync(bool includeUnpublished, CancellationToken cancellationToken = default) =>
+        throw Unavailable();
+
+    /// <inheritdoc />
+    public Task<FleetPlan> PutPlanAsync(
+        FleetPlanRequest plan, string actor, string authority, string reasonAr, CancellationToken cancellationToken = default) =>
+        throw Unavailable();
 
     /// <inheritdoc />
     public Task<FleetSubscription?> FindAsync(Guid tenantId, CancellationToken cancellationToken = default) =>

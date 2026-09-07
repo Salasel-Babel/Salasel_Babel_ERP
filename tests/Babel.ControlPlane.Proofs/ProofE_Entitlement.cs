@@ -119,6 +119,67 @@ public static class ProofE_Entitlement
                 + $"بواسطة {a.Actor} بسند «{a.Authority}»")));
 
         await ArchiveRefusalAsync(o, registry, entitlements, rec);
+        await PlanCatalogueAsync(o, rec);
+    }
+
+    // =======================================================================
+
+    /// <summary>
+    /// (ADR-0092) <b>كتالوجُ الخطط بياناتُ المنصّة لا شيفرتُها</b>: البذرةُ البنيوية لا تكتب
+    /// فوق سعرٍ غيّره مشغّل، وغيرُ المنشور لا يُباع، وكلُّ تغييرٍ يُلحَق بسجلّه، والوحدةُ
+    /// المجهولة تُرفض قبل أن يُكتب شيء.
+    /// </summary>
+    private static async Task PlanCatalogueAsync(ControlPlaneOptions o, Recorder rec)
+    {
+        Recorder.Section("(هـ) كتالوج الخطط — بياناتُ المنصّة لا شيفرتُها");
+
+        await using var c = await Db.OpenAsync(o.ControlConnectionString);
+        var authority = new ChangeAuthority("platform.ops", "PRICE-2026-01", "تسعيرٌ من سطح المنصّة في الإثبات");
+
+        // ---- البذرة لا تكتب فوق سعرٍ غيّره مشغّل -------------------------------
+        var growth = await PlanDirectory.RequireAsync(c, "GROWTH");
+        var repriced = await PlanDirectory.UpsertAsync(c, growth with { MonthlyPrice = growth.MonthlyPrice + 100m },
+            authority, Canon.Now());
+        await PlanCatalog.SeedAsync(c, publish: true);
+        var afterSeed = await PlanDirectory.RequireAsync(c, "GROWTH");
+        rec.Check("E16", "بذرةُ الخطط البنيوية لا تكتب فوق سعرٍ غيّره مشغّلُ المنصّة",
+            afterSeed.MonthlyPrice == repriced.MonthlyPrice && afterSeed.MonthlyPrice != growth.MonthlyPrice,
+            $"قبل التغيير {Canon.Amount(growth.MonthlyPrice)} · بعده {Canon.Amount(repriced.MonthlyPrice)} · بعد البذرة {Canon.Amount(afterSeed.MonthlyPrice)}");
+        // ويُعاد السعرُ البنيوي كي لا يقرأ إثباتٌ لاحق رقماً غيّره هذا الإثبات.
+        await PlanDirectory.UpsertAsync(c, growth, authority, Canon.Now());
+
+        // ---- غيرُ المنشور لا يُباع ولا يظهر في المنشور ---------------------------
+        var draft = new PlanDefinition("PROOF_DRAFT", "مسودّةُ إثبات", "Proof draft",
+            1000.0000m, 10.0000m, 1, ["CORE", "AR"]);
+        await PlanDirectory.UpsertAsync(c, draft, authority, Canon.Now());
+        var refused = false;
+        try
+        {
+            await PlanCatalog.SubscribeAsync(c, Guid.CreateVersion7(), "PROOF_DRAFT", new DateOnly(2026, 1, 1));
+        }
+        catch (PlanNotPublishedException) { refused = true; }
+        var published = await PlanDirectory.PublishedAsync(c);
+        var all = await PlanDirectory.AllAsync(c);
+        rec.Check("E17", "خطّةٌ غير منشورة صفٌّ في الكتالوج، ولا تُباع ولا تظهر في المنشور",
+            refused && published.All(p => p.Code != "PROOF_DRAFT") && all.Any(p => p.Code == "PROOF_DRAFT"),
+            $"منشور = {published.Count} · الكلّ = {all.Count}");
+
+        // ---- كلُّ تغييرٍ في سجلّه ------------------------------------------------
+        var changes = await PlanDirectory.ChangesAsync(c, "GROWTH");
+        rec.Check("E18", "كلُّ تغييرٍ في الكتالوج يُلحَق بسجلّه بفاعله وسنده وسببه",
+            changes.Count >= 2 && changes.All(ch => ch.Authority == "PRICE-2026-01" && ch.Actor == "platform.ops"),
+            string.Join("\n", changes.Select(ch => $"  {ch.ChangedAt:yyyy-MM-dd HH:mm:ss} {ch.Actor} بسند «{ch.Authority}»: {ch.ReasonAr}")));
+
+        // ---- وحدةٌ مجهولة تُرفض قبل أن يُكتب شيء ---------------------------------
+        var unknownRefused = false;
+        try
+        {
+            await PlanDirectory.UpsertAsync(c, draft with { Code = "PROOF_BAD", Modules = ["CORE", "XYZ"] },
+                authority, Canon.Now());
+        }
+        catch (ArgumentException) { unknownRefused = true; }
+        rec.Check("E19", "وحدةٌ ليست في الكتالوج تُرفض باسمها، ولا صفَّ يُكتب",
+            unknownRefused && await PlanDirectory.FindAsync(c, "PROOF_BAD") is null);
     }
 
     // =======================================================================

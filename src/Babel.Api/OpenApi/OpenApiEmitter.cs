@@ -1793,6 +1793,60 @@ internal static class OpenApiEmitter
                         "The control plane is not configured for this server. Stable code: fleet.unavailable."),
                 ]),
 
+            new(TenantRoutes.Plans, "get", "readPlans",
+                "الخطط المنشورة", "The published plans",
+                "يُرجع الخطط **المنشورة** — ما يجوز أن يُباع — برمزها واسمها وسعرها نصّاً وحزمة وحداتها. "
+                + "وشاشةُ الاشتراك تختار منها ولا تكتب رمزاً بيدها: الكتالوج بياناتُ المنصّة في `control.plan` لا قائمةٌ في شيفرة، "
+                + "وغيرُ المنشور لا يظهر هنا (ADR-0092). **يبلغه كلُّ مصادَق.**",
+                "Returns the **published** plans — what may be sold — with code, names, prices as text and module bundle. "
+                + "The subscription screen picks from it rather than typing a code: the catalogue is platform data in `control.plan`, "
+                + "not a list in code, and unpublished plans do not appear here (ADR-0092). **Any authenticated credential reaches it.**",
+                Body: null, Response: "PlanList", Success: 200, Query: [],
+                Refusals:
+                [
+                    new(503, "مستوى التحكّم غير مُهيَّأ لهذا الخادم. الرمز الثابت: fleet.unavailable.",
+                        "The control plane is not configured for this server. Stable code: fleet.unavailable."),
+                ]),
+
+            new(TenantRoutes.PlatformPlans, "get", "readPlatformPlans",
+                "كتالوج الخطط كلّه — لمشغّل المنصّة", "The whole plan catalogue — platform operator",
+                "الكتالوج كلّه، المنشورُ وغيرُ المنشور. **لمشغّل المنصّة وحده**: اعتمادٌ مُعلَنٌ مشغّلاً في الإعداد "
+                + "(`Babel:Api:Tokens:N:Platform=true`)، واعتمادُ منشأةٍ يُرفض بـplatform.operator_required مهما اتّسع.",
+                "The whole catalogue, published or not. **Platform operator only**: a credential declared as operator in configuration "
+                + "(`Babel:Api:Tokens:N:Platform=true`); a company credential is refused with platform.operator_required however wide it is.",
+                Body: null, Response: "PlanList", Success: 200, Query: [],
+                Refusals:
+                [
+                    new(403, "الاعتماد ليس اعتمادَ مشغّل المنصّة. الرمز الثابت: platform.operator_required.",
+                        "The credential is not the platform operator's. Stable code: platform.operator_required."),
+                    new(503, "مستوى التحكّم غير مُهيَّأ لهذا الخادم. الرمز الثابت: fleet.unavailable.",
+                        "The control plane is not configured for this server. Stable code: fleet.unavailable."),
+                ]),
+
+            new(TenantRoutes.PlatformPlan, "put", "putPlatformPlan",
+                "إنشاء خطّة أو تعديلها ونشرها", "Create, change or publish a plan",
+                "ينشئ الخطّة إن لم توجد أو يعدّلها: الأسماء، والسعر الشهري، وسعر المستخدم الزائد، والمستخدمون المُضمَّنون، "
+                + "وحزمة الوحدات، **والنشر** — فالخطّة لا تُباع ولا يُفتح عليها اشتراك حتى تُنشر بسعرها. والسند والسبب إلزامان، "
+                + "وكلُّ تغييرٍ يُلحَق بسجلّ `control.plan_change` بفاعله وما قبله وما بعده. ووحدةٌ ليست في كتالوج الوحدات تُرفض "
+                + "باسمها قبل أن يُكتب شيء. **ولا بابَ حذف**: الخطّة التي تخرج من البيع تُلغى نشرُها وتبقى صفّاً لأن اشتراكاتٍ ماضية تشير إليها.",
+                "Creates the plan if absent or changes it: names, monthly price, extra-user price, included users, module bundle, "
+                + "**and publication** — a plan is not sold and no subscription opens on it until it is published with its price. Authority and "
+                + "reason are mandatory, and every change is appended to `control.plan_change` with actor, before and after. A module outside "
+                + "the module catalogue is refused by name before anything is written. **No delete**: a plan withdrawn from sale is unpublished "
+                + "and stays a row, because past subscriptions point at it.",
+                Body: "PutPlanRequest", Response: "Plan", Success: 200, Query: [],
+                Refusals:
+                [
+                    new(400, "رمز الخطّة في المسار ليس من الشكل A-Z0-9_، أو الجسم مشوَّه، أو سعرٌ ليس نصّاً بأربع خانات.",
+                        "The plan code in the path is not A-Z0-9_, the body is malformed, or a price is not four-place text."),
+                    new(403, "الاعتماد ليس اعتمادَ مشغّل المنصّة. الرمز الثابت: platform.operator_required.",
+                        "The credential is not the platform operator's. Stable code: platform.operator_required."),
+                    new(422, "السند أو السبب غائب (platform.plan_authority_missing)، أو الخطّة مرفوضة باسم علّتها (platform.plan_refused): وحدةٌ مجهولة، أو بلا وحدات، أو سعرٌ سالب.",
+                        "Authority or reason missing (platform.plan_authority_missing), or the plan refused by name (platform.plan_refused): unknown module, no modules, or a negative price."),
+                    new(503, "مستوى التحكّم غير مُهيَّأ لهذا الخادم. الرمز الثابت: fleet.unavailable.",
+                        "The control plane is not configured for this server. Stable code: fleet.unavailable."),
+                ]),
+
             new(TenantRoutes.SubscriptionPlanChanges, "post", "changeSubscriptionPlan",
                 "تغيير الخطّة", "Change the plan",
                 "مورد فرعي مستقلّ لا PUT على الاشتراك: تغيير الخطّة **حدثٌ** له سندٌ وفاعلٌ ولحظة، ويُغلق صفّ "
@@ -3770,6 +3824,17 @@ internal static class OpenApiEmitter
                 w.WriteEndArray();
             }
 
+            // نطاق المنصّة — كتالوج الخطط: رمزُ الخطّة نصٌّ مقيَّد الشكل لا معرّفاً (ADR-0092).
+            if (byPath.Key.Contains("{planCode}", StringComparison.Ordinal))
+            {
+                w.WriteStartArray("parameters");
+                WritePathParameter(w, "planCode",
+                    "رمز الخطّة: حروفٌ لاتينية كبيرة وأرقام وشرطة سفلية، حتى 32 محرفاً. ورمزٌ على غير هذا الشكل يُردّ بـwire.path.malformed قبل أن يُقرأ الجسم.",
+                    "The plan code: upper-case ASCII letters, digits and underscore, up to 32 characters. A code of any other shape is refused with wire.path.malformed before the body is read.",
+                    "plan-code");
+                w.WriteEndArray();
+            }
+
             if (byPath.Key.Contains("{companyId}", StringComparison.Ordinal))
             {
                 w.WriteStartArray("parameters");
@@ -4858,6 +4923,68 @@ internal static class OpenApiEmitter
             WriteRequired(w, "currency", "endsOn", "includedUsers", "modules", "monthlyPrice", "nameAr",
                 "perUserPrice", "planCode", "planNameAr", "renewsOn", "startedOn", "state", "subscriptionId",
                 "tenantCode", "tenantId", "tenantStatus");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("Plan", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "خطّةٌ من كتالوج المنصّة: رمزها واسمها العربيّ وترجماتُه وسعراها نصّاً وحزمة وحداتها وهل نُشرت. / "
+                + "A plan from the platform catalogue: code, Arabic name and its translations, prices as text, module bundle, and whether it is published.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "code", "رمز الخطّة — حروفٌ لاتينية كبيرة وأرقام وشرطة سفلية.", "The plan code — upper-case ASCII letters, digits and underscore.", 32);
+            WriteStringProperty(w, "currency", "عملة الأسعار — رمز ISO 4217.", "The prices' currency — an ISO 4217 code.", 3);
+            WriteIntegerProperty(w, "includedUsers", 0, 100000,
+                "عدد المستخدمين المُضمَّنين في السعر الشهري.", "The number of users included in the monthly price.");
+            WriteStringArrayProperty(w, "modules", "حزمة الوحدات برموزها، مرتَّبةً.", "The module bundle by code, ordered.", 16);
+            WriteRefProperty(w, "monthlyPrice", "Money");
+            WriteStringProperty(w, "nameAr", "الاسم بالعربية — وهو السجلّ.", "The Arabic name — the record.", 200);
+            WriteArrayRefProperty(w, "nameTranslations", "NameValue",
+                "ترجماتُ الاسم مرتَّبةً بالوسم (ADR-0021)؛ ولا حقلَ إنجليزيٍّ ثابت.",
+                "The name's translations ordered by tag (ADR-0021); there is no fixed English field.");
+            WriteRefProperty(w, "perUserPrice", "Money");
+            WriteBooleanProperty(w, "published",
+                "هل نُشرت الخطّة بسعرها؟ غيرُ المنشورة لا تُباع ولا يُفتح عليها اشتراك.",
+                "Is the plan published with its price? An unpublished plan is not sold and no subscription opens on it.");
+            w.WriteEndObject();
+            WriteRequired(w, "code", "currency", "includedUsers", "modules", "monthlyPrice", "nameAr", "nameTranslations", "perUserPrice", "published");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("PlanList", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteStartObject("properties");
+            WriteArrayRefProperty(w, "plans", "Plan", "الخطط مرتَّبةً برمزها.", "The plans ordered by code.");
+            w.WriteEndObject();
+            WriteRequired(w, "plans");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("PutPlanRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلبُ إنشاء خطّة أو تعديلها ونشرها — بسندٍ وسبب، كسائر ما يحكم الاستحقاق. / "
+                + "A request to create, change or publish a plan — with authority and reason, like everything that governs entitlement.");
+            w.WriteStartObject("properties");
+            WriteAuthorityProperty(w);
+            WriteIntegerProperty(w, "includedUsers", 0, 100000,
+                "عدد المستخدمين المُضمَّنين في السعر الشهري.", "The number of users included in the monthly price.");
+            WriteStringArrayProperty(w, "modules", "حزمة الوحدات برموزها من كتالوج الوحدات؛ ورمزٌ مجهول يُرفض باسمه.", "The module bundle by code from the module catalogue; an unknown code is refused by name.", 16);
+            WriteRefProperty(w, "monthlyPrice", "Money");
+            WriteStringProperty(w, "nameAr", "الاسم بالعربية — وهو السجلّ.", "The Arabic name — the record.", 200);
+            WriteArrayRefProperty(w, "nameTranslations", "NameValue",
+                "ترجماتُ الاسم بالوسم (ADR-0021)؛ وقد تغيب فيبقى العربيّ وحده.",
+                "The name's translations by tag (ADR-0021); may be absent, leaving the Arabic alone.");
+            WriteRefProperty(w, "perUserPrice", "Money");
+            WriteBooleanProperty(w, "published",
+                "نشرُ الخطّة يجعلها قابلةً للبيع؛ وإلغاءُ النشر يُخرجها من البيع ويُبقيها صفّاً.",
+                "Publishing makes the plan sellable; unpublishing withdraws it from sale and keeps its row.");
+            WriteStringProperty(w, "reasonAr", "سبب التغيير بالعربية — يُكتب في سجلّ تغييرات الخطط.", "The change's reason in Arabic — written to the plan change log.", 500);
+            w.WriteEndObject();
+            WriteRequired(w, "authority", "includedUsers", "modules", "monthlyPrice", "nameAr", "perUserPrice", "published", "reasonAr");
             w.WriteBoolean("additionalProperties", false);
         });
 

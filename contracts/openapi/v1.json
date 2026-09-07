@@ -17978,6 +17978,245 @@
         }
       }
     },
+    "/api/v1/plans": {
+      "get": {
+        "operationId": "readPlans",
+        "summary": "الخطط المنشورة / The published plans",
+        "description": "يُرجع الخطط **المنشورة** — ما يجوز أن يُباع — برمزها واسمها وسعرها نصّاً وحزمة وحداتها. وشاشةُ الاشتراك تختار منها ولا تكتب رمزاً بيدها: الكتالوج بياناتُ المنصّة في `control.plan` لا قائمةٌ في شيفرة، وغيرُ المنشور لا يظهر هنا (ADR-0092). **يبلغه كلُّ مصادَق.**\n\nReturns the **published** plans — what may be sold — with code, names, prices as text and module bundle. The subscription screen picks from it rather than typing a code: the catalogue is platform data in `control.plan`, not a list in code, and unpublished plans do not appear here (ADR-0092). **Any authenticated credential reaches it.**",
+        "responses": {
+          "200": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "مستوى التحكّم غير مُهيَّأ لهذا الخادم. الرمز الثابت: fleet.unavailable. / The control plane is not configured for this server. Stable code: fleet.unavailable.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/platform/plans": {
+      "get": {
+        "operationId": "readPlatformPlans",
+        "summary": "كتالوج الخطط كلّه — لمشغّل المنصّة / The whole plan catalogue — platform operator",
+        "description": "الكتالوج كلّه، المنشورُ وغيرُ المنشور. **لمشغّل المنصّة وحده**: اعتمادٌ مُعلَنٌ مشغّلاً في الإعداد (`Babel:Api:Tokens:N:Platform=true`)، واعتمادُ منشأةٍ يُرفض بـplatform.operator_required مهما اتّسع.\n\nThe whole catalogue, published or not. **Platform operator only**: a credential declared as operator in configuration (`Babel:Api:Tokens:N:Platform=true`); a company credential is refused with platform.operator_required however wide it is.",
+        "responses": {
+          "200": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد ليس اعتمادَ مشغّل المنصّة. الرمز الثابت: platform.operator_required. / The credential is not the platform operator's. Stable code: platform.operator_required.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "مستوى التحكّم غير مُهيَّأ لهذا الخادم. الرمز الثابت: fleet.unavailable. / The control plane is not configured for this server. Stable code: fleet.unavailable.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/platform/plans/{planCode}": {
+      "parameters": [
+        {
+          "name": "planCode",
+          "in": "path",
+          "required": true,
+          "description": "رمز الخطّة: حروفٌ لاتينية كبيرة وأرقام وشرطة سفلية، حتى 32 محرفاً. ورمزٌ على غير هذا الشكل يُردّ بـwire.path.malformed قبل أن يُقرأ الجسم. / The plan code: upper-case ASCII letters, digits and underscore, up to 32 characters. A code of any other shape is refused with wire.path.malformed before the body is read.",
+          "schema": {
+            "type": "string",
+            "format": "plan-code"
+          }
+        }
+      ],
+      "put": {
+        "operationId": "putPlatformPlan",
+        "summary": "إنشاء خطّة أو تعديلها ونشرها / Create, change or publish a plan",
+        "description": "ينشئ الخطّة إن لم توجد أو يعدّلها: الأسماء، والسعر الشهري، وسعر المستخدم الزائد، والمستخدمون المُضمَّنون، وحزمة الوحدات، **والنشر** — فالخطّة لا تُباع ولا يُفتح عليها اشتراك حتى تُنشر بسعرها. والسند والسبب إلزامان، وكلُّ تغييرٍ يُلحَق بسجلّ `control.plan_change` بفاعله وما قبله وما بعده. ووحدةٌ ليست في كتالوج الوحدات تُرفض باسمها قبل أن يُكتب شيء. **ولا بابَ حذف**: الخطّة التي تخرج من البيع تُلغى نشرُها وتبقى صفّاً لأن اشتراكاتٍ ماضية تشير إليها.\n\nCreates the plan if absent or changes it: names, monthly price, extra-user price, included users, module bundle, **and publication** — a plan is not sold and no subscription opens on it until it is published with its price. Authority and reason are mandatory, and every change is appended to `control.plan_change` with actor, before and after. A module outside the module catalogue is refused by name before anything is written. **No delete**: a plan withdrawn from sale is unpublished and stays a row, because past subscriptions point at it.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutPlanRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Plan"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "رمز الخطّة في المسار ليس من الشكل A-Z0-9_، أو الجسم مشوَّه، أو سعرٌ ليس نصّاً بأربع خانات. / The plan code in the path is not A-Z0-9_, the body is malformed, or a price is not four-place text.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد ليس اعتمادَ مشغّل المنصّة. الرمز الثابت: platform.operator_required. / The credential is not the platform operator's. Stable code: platform.operator_required.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "السند أو السبب غائب (platform.plan_authority_missing)، أو الخطّة مرفوضة باسم علّتها (platform.plan_refused): وحدةٌ مجهولة، أو بلا وحدات، أو سعرٌ سالب. / Authority or reason missing (platform.plan_authority_missing), or the plan refused by name (platform.plan_refused): unknown module, no modules, or a negative price.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "مستوى التحكّم غير مُهيَّأ لهذا الخادم. الرمز الثابت: fleet.unavailable. / The control plane is not configured for this server. Stable code: fleet.unavailable.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/session": {
       "get": {
         "operationId": "readSession",
@@ -24565,6 +24804,86 @@
         ],
         "additionalProperties": false
       },
+      "Plan": {
+        "type": "object",
+        "description": "خطّةٌ من كتالوج المنصّة: رمزها واسمها العربيّ وترجماتُه وسعراها نصّاً وحزمة وحداتها وهل نُشرت. / A plan from the platform catalogue: code, Arabic name and its translations, prices as text, module bundle, and whether it is published.",
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 32,
+            "description": "رمز الخطّة — حروفٌ لاتينية كبيرة وأرقام وشرطة سفلية. / The plan code — upper-case ASCII letters, digits and underscore."
+          },
+          "currency": {
+            "type": "string",
+            "maxLength": 3,
+            "description": "عملة الأسعار — رمز ISO 4217. / The prices' currency — an ISO 4217 code."
+          },
+          "includedUsers": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100000,
+            "description": "عدد المستخدمين المُضمَّنين في السعر الشهري. / The number of users included in the monthly price."
+          },
+          "modules": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 16
+            },
+            "description": "حزمة الوحدات برموزها، مرتَّبةً. / The module bundle by code, ordered."
+          },
+          "monthlyPrice": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "nameAr": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "الاسم بالعربية — وهو السجلّ. / The Arabic name — the record."
+          },
+          "nameTranslations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NameValue"
+            },
+            "description": "ترجماتُ الاسم مرتَّبةً بالوسم (ADR-0021)؛ ولا حقلَ إنجليزيٍّ ثابت. / The name's translations ordered by tag (ADR-0021); there is no fixed English field."
+          },
+          "perUserPrice": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "published": {
+            "type": "boolean",
+            "description": "هل نُشرت الخطّة بسعرها؟ غيرُ المنشورة لا تُباع ولا يُفتح عليها اشتراك. / Is the plan published with its price? An unpublished plan is not sold and no subscription opens on it."
+          }
+        },
+        "required": [
+          "code",
+          "currency",
+          "includedUsers",
+          "modules",
+          "monthlyPrice",
+          "nameAr",
+          "nameTranslations",
+          "perUserPrice",
+          "published"
+        ],
+        "additionalProperties": false
+      },
+      "PlanList": {
+        "type": "object",
+        "properties": {
+          "plans": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Plan"
+            },
+            "description": "الخطط مرتَّبةً برمزها. / The plans ordered by code."
+          }
+        },
+        "required": [
+          "plans"
+        ],
+        "additionalProperties": false
+      },
       "PostJournalEntryRequest": {
         "type": "object",
         "description": "طلب ترحيل. ولاحظ ما ليس فيه: لا حقل مستأجر ولا حقل شركة — النطاق من الاعتماد ومن المسار. وأي حقل غير معروف يُرفض الطلب كلّه بسببه. / A posting request. Note what is absent: no tenant field and no company field — scope comes from the credential and the path. Any unknown field fails the whole request.",
@@ -25720,6 +26039,70 @@
         },
         "required": [
           "documents"
+        ],
+        "additionalProperties": false
+      },
+      "PutPlanRequest": {
+        "type": "object",
+        "description": "طلبُ إنشاء خطّة أو تعديلها ونشرها — بسندٍ وسبب، كسائر ما يحكم الاستحقاق. / A request to create, change or publish a plan — with authority and reason, like everything that governs entitlement.",
+        "properties": {
+          "authority": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "السند: رقم عقد، أو حدث سداد، أو تذكرة دعم، أو قرار مُوثَّق. **ولا تغيير استحقاق بلا سند**: الاستحقاق يحكم أي بيانات مالية يجوز إنشاؤها، فتغييره حدث تدقيقي. / The authority: a contract number, a payment event, a support ticket, or a documented decision. **No entitlement change without authority**: entitlement governs which financial data may be created, so changing it is an audit event."
+          },
+          "includedUsers": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100000,
+            "description": "عدد المستخدمين المُضمَّنين في السعر الشهري. / The number of users included in the monthly price."
+          },
+          "modules": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 16
+            },
+            "description": "حزمة الوحدات برموزها من كتالوج الوحدات؛ ورمزٌ مجهول يُرفض باسمه. / The module bundle by code from the module catalogue; an unknown code is refused by name."
+          },
+          "monthlyPrice": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "nameAr": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "الاسم بالعربية — وهو السجلّ. / The Arabic name — the record."
+          },
+          "nameTranslations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NameValue"
+            },
+            "description": "ترجماتُ الاسم بالوسم (ADR-0021)؛ وقد تغيب فيبقى العربيّ وحده. / The name's translations by tag (ADR-0021); may be absent, leaving the Arabic alone."
+          },
+          "perUserPrice": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "published": {
+            "type": "boolean",
+            "description": "نشرُ الخطّة يجعلها قابلةً للبيع؛ وإلغاءُ النشر يُخرجها من البيع ويُبقيها صفّاً. / Publishing makes the plan sellable; unpublishing withdraws it from sale and keeps its row."
+          },
+          "reasonAr": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "سبب التغيير بالعربية — يُكتب في سجلّ تغييرات الخطط. / The change's reason in Arabic — written to the plan change log."
+          }
+        },
+        "required": [
+          "authority",
+          "includedUsers",
+          "modules",
+          "monthlyPrice",
+          "nameAr",
+          "perUserPrice",
+          "published",
+          "reasonAr"
         ],
         "additionalProperties": false
       },

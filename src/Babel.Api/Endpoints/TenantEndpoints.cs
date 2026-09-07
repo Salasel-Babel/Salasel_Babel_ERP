@@ -267,13 +267,15 @@ internal static class TenantEndpoints
 
         string plan = (dto.PlanCode ?? string.Empty).Trim();
 
-        if (!fleet.KnownPlans.Contains(plan, StringComparer.Ordinal))
+        // الخططُ المنشورة من القاعدة — لا من قائمةٍ في الشيفرة (ADR-0092).
+        IReadOnlyList<string> known = await fleet.KnownPlansAsync(cancellationToken).ConfigureAwait(false);
+        if (!known.Contains(plan, StringComparer.Ordinal))
         {
             return HttpProblemResults.Code(
                 context,
                 "subscription.plan_unknown",
-                $"الخطّة «{plan}» ليست من الخطط المعروفة. المعروف: {string.Join(" · ", fleet.KnownPlans)}.",
-                $"The plan '{plan}' is not one of the known plans. Known: {string.Join(", ", fleet.KnownPlans)}.",
+                $"الخطّة «{plan}» ليست من الخطط المنشورة. المنشور: {string.Join(" · ", known)}.",
+                $"The plan '{plan}' is not one of the published plans. Published: {string.Join(", ", known)}.",
                 "planCode");
         }
 

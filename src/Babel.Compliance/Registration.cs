@@ -35,6 +35,14 @@ public static class ComplianceModuleRegistration
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton(new ComplianceSettings());
 
+        // ‏سياسةُ الإبلاغ لكلّ منشأة من خدمة المعامِلات (ADR-0090) — لا من الإعداد المفرد أعلاه.
+        // ومصدرُ المعامِلات يأتي من التركيب (`AddBabelCore`)؛ وغيابُه رفضٌ يسمّي النداء الذي
+        // كان يجب أن يقع، كسائر ما لا تملكه الوحدة أدناه.
+        services.TryAddScoped<ICompliancePolicySource>(static sp =>
+            sp.GetService<Babel.Contracts.Parameters.IParameterSource>() is { } parameters
+                ? new ParameterCompliancePolicySource(parameters, sp.GetRequiredService<TimeProvider>())
+                : throw NotComposed("مصدر المعامِلات", "the parameter source", "AddBabelCore() أو AddCompliancePolicySource(…)"));
+
         services.TryAddSingleton<IXmlCanonicaliser, DeterministicXmlSerialiser>();
         services.TryAddSingleton<IDocumentRenderer>(sp =>
             new ProvisionalDocumentRenderer(sp.GetRequiredService<IXmlCanonicaliser>()));
@@ -76,6 +84,16 @@ public static class ComplianceModuleRegistration
     /// خاصية مزوّد ومواصفة، وكتابة نسخة افتراضية منه في هذا المشروع تُنشئ مصدر حقيقة
     /// ثانياً للمسار — وهو بالضبط ما تمنعه بنية المسارين.
     /// </summary>
+    /// <summary>يركّب مصدرَ سياسة الإبلاغ صراحةً — لتركيبٍ بلا خدمة معامِلات، كالاختبارات.</summary>
+    /// <param name="services">الخدمات.</param>
+    /// <param name="policies">المصدر.</param>
+    public static IServiceCollection AddCompliancePolicySource(this IServiceCollection services, ICompliancePolicySource policies)
+    {
+        ArgumentNullException.ThrowIfNull(policies);
+        services.AddSingleton(policies);
+        return services;
+    }
+
     public static IServiceCollection AddComplianceFlowPolicy<TPolicy>(this IServiceCollection services)
         where TPolicy : class, IFlowPolicy
     {

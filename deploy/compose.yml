@@ -169,6 +169,15 @@ services:
       - "BABEL_ACCESS_REFRESH_HOURS=${BABEL_ACCESS_REFRESH_HOURS:-}"
       - "BABEL_ACCESS_ENROLMENT_HOURS=${BABEL_ACCESS_ENROLMENT_HOURS:-}"
       - "Babel__RateLimit__PerMinute=${BABEL_RATE_LIMIT_PER_MINUTE:-}"
+      # ‏**سياساتُ تشغيلٍ مُعلَنة** (ADR-0090): مُهَلُ وحدة الالتزام التقنية وميزانيّاتُ
+      # الوكيل. الفراغُ يُبقي المُعلَن، والمعتلّ يوقف الإقلاع باسم مفتاحه. وأمّا ما يختلف
+      # بين منشأةٍ وأخرى — نافذةُ الإبلاغ، عتبةُ الإنذار، سقفُ الحسم — فمعامِلاتٌ من
+      # لوحة التحكّم لا متغيّراتُ بيئة.
+      - "Babel__Compliance__ClearanceTimeoutSeconds=${BABEL_COMPLIANCE_CLEARANCE_TIMEOUT_SECONDS:-}"
+      - "Babel__Compliance__AttemptLeaseMinutes=${BABEL_COMPLIANCE_ATTEMPT_LEASE_MINUTES:-}"
+      - "Babel__Agent__ModelId=${BABEL_AGENT_MODEL:-}"
+      - "Babel__Agent__LookupBudgetPerTurn=${BABEL_AGENT_LOOKUPS_PER_TURN:-}"
+      - "Babel__Agent__TokensPerTenantPerDay=${BABEL_AGENT_TOKENS_PER_TENANT_PER_DAY:-}"
       - "Logging__LogLevel__Default=${BABEL_LOG_LEVEL:-Information}"
     volumes:
       # البايتات على حجم دائم لا في طبقة الحاوية: حاويةٌ تُستبدَل تأخذ معها كل

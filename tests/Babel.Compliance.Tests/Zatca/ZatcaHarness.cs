@@ -16,7 +16,7 @@ namespace Babel.Compliance.Tests.Zatca;
 /// </summary>
 public sealed class ZatcaHarness : IDisposable
 {
-    public ZatcaHarness(DateTimeOffset? start = null, ComplianceSettings? settings = null)
+    public ZatcaHarness(DateTimeOffset? start = null, ComplianceSettings? settings = null, CompliancePolicy? policy = null)
     {
         Clock = new ManualClock(start ?? ZatcaFixtures.IssuedAt);
         Wire = new FakeZatcaWire(Clock);
@@ -24,6 +24,7 @@ public sealed class ZatcaHarness : IDisposable
         Secrets = new DictionarySecretResolver { ["vault://zatca/secret"] = "test-secret-not-a-credential" };
 
         Settings = settings ?? new ComplianceSettings();
+        Policies = new FixedCompliancePolicy(policy ?? FixedCompliancePolicy.Shipped);
 
         Provider = new ZatcaComplianceProvider(
             new ZatcaSettings(
@@ -43,9 +44,9 @@ public sealed class ZatcaHarness : IDisposable
         Ledger = new FakeLedger();
 
         Factory = new ComplianceDocumentFactory(Store, Provider.Renderer, Provider, Registry, Clock);
-        Clearance = new ClearanceCoordinator(Store, Provider, Registry, Settings, Clock);
-        Reporting = new ReportingWorker(Store, Provider, Registry, Settings, Clock);
-        Service = new ComplianceService(Factory, Clearance, Reporting, Store, Settings, Clock);
+        Clearance = new ClearanceCoordinator(Store, Provider, Registry, Settings, Policies, Clock);
+        Reporting = new ReportingWorker(Store, Provider, Registry, Settings, Policies, Clock);
+        Service = new ComplianceService(Factory, Clearance, Reporting, Store, Settings, Policies, Clock);
     }
 
     public ManualClock Clock { get; }
@@ -53,6 +54,9 @@ public sealed class ZatcaHarness : IDisposable
     public EphemeralZatcaKeyStore Keys { get; }
     public DictionarySecretResolver Secrets { get; }
     public ComplianceSettings Settings { get; }
+
+    /// <summary>سياسةُ الإبلاغ الثابتة لهذه التجهيزة.</summary>
+    public FixedCompliancePolicy Policies { get; }
     public ZatcaComplianceProvider Provider { get; }
     public InMemoryComplianceStore Store { get; }
     public InMemoryIssuingUnitRegistry Registry { get; }

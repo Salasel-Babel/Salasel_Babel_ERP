@@ -74,25 +74,34 @@ public sealed class Harness : IDisposable
         StatusProbeSupport statusQuery = StatusProbeSupport.NotSupported,
         bool deduplicates = false,
         ComplianceSettings? settings = null,
-        DateTimeOffset? start = null)
+        DateTimeOffset? start = null,
+        CompliancePolicy? policy = null)
     {
         Clock = new ManualClock(start ?? new DateTimeOffset(2026, 3, 1, 9, 0, 0, TimeSpan.Zero));
         Authority = new FakeAuthority();
         Provider = new FakeComplianceProvider(custody, Authority, Clock, statusQuery, deduplicates: deduplicates);
         Settings = settings ?? new ComplianceSettings();
+        Policy = policy ?? FixedCompliancePolicy.Shipped;
+        Policies = new FixedCompliancePolicy(Policy);
         Store = new InMemoryComplianceStore { Clock = Clock };
         Registry = new InMemoryIssuingUnitRegistry();
         Ledger = new FakeLedger();
 
         Renderer = new ProvisionalDocumentRenderer();
         Factory = new ComplianceDocumentFactory(Store, Renderer, Provider, Registry, Clock);
-        Clearance = new ClearanceCoordinator(Store, Provider, Registry, Settings, Clock);
-        Reporting = new ReportingWorker(Store, Provider, Registry, Settings, Clock);
-        Service = new ComplianceService(Factory, Clearance, Reporting, Store, Settings, Clock);
-        Reconciler = new Reconciler(Store, Ledger, Settings, Clock);
+        Clearance = new ClearanceCoordinator(Store, Provider, Registry, Settings, Policies, Clock);
+        Reporting = new ReportingWorker(Store, Provider, Registry, Settings, Policies, Clock);
+        Service = new ComplianceService(Factory, Clearance, Reporting, Store, Settings, Policies, Clock);
+        Reconciler = new Reconciler(Store, Ledger, Policies, Clock);
     }
 
     public ManualClock Clock { get; }
+
+    /// <summary>سياسةُ الإبلاغ الثابتة لهذه التجهيزة.</summary>
+    public CompliancePolicy Policy { get; }
+
+    /// <summary>مصدرُها كما تراه الوحدة.</summary>
+    public FixedCompliancePolicy Policies { get; }
     public FakeAuthority Authority { get; }
     public FakeComplianceProvider Provider { get; }
     public ComplianceSettings Settings { get; }

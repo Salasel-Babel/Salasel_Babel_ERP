@@ -23,6 +23,45 @@ public sealed class ParameterVersionsTests
     private static readonly DateTimeOffset At = new(2026, 5, 1, 8, 0, 0, TimeSpan.Zero);
 
     // ═══════════════════════════════════════════════════════════════════════
+    // ٠ · مجموعةُ الإبلاغ الضريبي مشحونةٌ كاملةً، وأعدادها أعدادٌ (ADR-0090)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public async Task مجموعةُ_الإبلاغ_تُقرأ_من_الافتراض_المشحون_بمفاتيحها_الثلاثة_أعداداً()
+    {
+        await CoreTestEnvironment.EnsureAsync(TestContext.Current.CancellationToken);
+        TenantId tenant = new(CoreTestEnvironment.NewCompany());
+
+        await using ServiceProvider provider = NewComposition();
+        IParameterSource source = provider.GetRequiredService<IParameterSource>();
+
+        Result<ParameterSnapshot> read = await source.ResolveAsync(
+            tenant, ParameterCatalogue.ComplianceReporting, new DateOnly(2026, 9, 6), TestContext.Current.CancellationToken);
+
+        Assert.True(read.IsSuccess, Because(read));
+        Assert.Equal(ParameterApproval.PlatformDefault, read.Value.Approval);
+
+        ParameterVersionView shipped = PlatformDefaults.All.Single(v => v.SetCode == ParameterCatalogue.ComplianceReporting);
+        foreach (string key in new[]
+                 {
+                     ParameterCatalogue.ComplianceReportingWindowHours,
+                     ParameterCatalogue.ComplianceQueueAgeAlarmHours,
+                     ParameterCatalogue.ComplianceMaxResolutionAttempts,
+                 })
+        {
+            decimal value = shipped.Values.Single(v => v.Key == key).Value;
+            Assert.Equal(value, read.Value.Find(key));
+            Assert.Equal(ParameterValueKind.Count, ParameterCatalogue.KindOf(ParameterCatalogue.ComplianceReporting, key));
+            Assert.Equal(decimal.Truncate(value), value);
+            Assert.True(value > 0m, key);
+        }
+
+        // والمصدرُ يقول بنصّه إنه غيرُ مُعتمَد ويُحيل إلى بند الدَّين — لا يدّعي نصّاً نظامياً.
+        Assert.Contains("غير مُعتمَد", shipped.SourceRef, StringComparison.Ordinal);
+        Assert.Contains("م-31", shipped.SourceRef, StringComparison.Ordinal);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
     // ١ · الافتراض المشحون يعمل — وهو موسومٌ «غير مُعتمَد» ولا يحمل اسم إنسان
     // ═══════════════════════════════════════════════════════════════════════
 

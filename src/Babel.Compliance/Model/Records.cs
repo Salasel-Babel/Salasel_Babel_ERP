@@ -40,7 +40,7 @@ public sealed class ComplianceRecord
     public decimal NetTotal { get; init; }
     public decimal TaxTotal { get; init; }
     public decimal GrossTotal { get; init; }
-    public string CurrencyCode { get; init; } = "SAR";
+    public required string CurrencyCode { get; init; }
 
     public ComplianceStatus Status { get; set; } = ComplianceStatus.Built;
     public int AttemptCount { get; set; }

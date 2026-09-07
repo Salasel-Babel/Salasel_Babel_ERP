@@ -150,13 +150,13 @@ public class IdempotencyTests
         // داخل مهلة الإيجار: لا شيء يُفعل — لا إرسال موازٍ.
         var guard = new SubmissionGuard(settings, h.Clock);
         var inside = guard.Decide(h.Record(doc.DocumentId), h.Store.PeekAttempts(doc.DocumentId),
-            h.Provider.Capabilities);
+            h.Provider.Capabilities, h.Policy);
         Assert.Equal(SubmissionAction.Stop, inside.Action);
 
         // بعد انقضائها: غموض ⇒ حسم، لا إرسال.
         h.Clock.Advance(TimeSpan.FromMinutes(6));
         var after = guard.Decide(h.Record(doc.DocumentId), h.Store.PeekAttempts(doc.DocumentId),
-            h.Provider.Capabilities);
+            h.Provider.Capabilities, h.Policy);
         Assert.Equal(SubmissionAction.ResolveByProbe, after.Action);
 
         var resolved = await h.Service.ContinueClearanceAsync(doc.DocumentId, TestContext.Current.CancellationToken);

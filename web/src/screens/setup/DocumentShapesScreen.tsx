@@ -41,6 +41,7 @@ import type {
   DocumentAdmission,
   DocumentShape,
 } from "../../api/generated/types";
+import { minLengthOf } from "../../api/bounds";
 import { useApi } from "../../app/api-context";
 import { ProblemPanel } from "../../app/shell/ProblemPanel";
 import { useT } from "../../i18n/react";
@@ -66,7 +67,8 @@ type Capability = DocumentShape["availableCapabilities"][number];
 const NOT_SERVED_CODE = "capability_profile.capability_not_served_by_matrix";
 
 /** أدنى طول لسبب السحب — «لا سبب» ليس سبباً. */
-const MINIMUM_REASON = 8;
+/** أدنى طول سبب السحب — من العقد (`PutCapabilityProfileRequest.withdrawalReason.minLength`) لا من هنا (ADR-0091). */
+const MINIMUM_REASON = minLengthOf("PutCapabilityProfileRequest", "withdrawalReason");
 
 /** الشاشة كاملةً. */
 export function DocumentShapesScreen(): ReactNode {

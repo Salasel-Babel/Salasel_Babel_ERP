@@ -25713,8 +25713,9 @@
               "string",
               "null"
             ],
+            "minLength": 8,
             "maxLength": 512,
-            "description": "سبب سحب قدرة. إلزامي متى أطفأ الطلب قدرةً كانت مُشغَّلة، ومهمَل فيما عدا ذلك؛ وثمانية محارف على الأقل — «لا سبب» ليس سبباً. / The reason for withdrawing a capability. Required whenever the request disables a previously enabled capability, ignored otherwise; at least eight characters — 'no reason' is not a reason."
+            "description": "سبب سحب قدرة. إلزامي متى أطفأ الطلب قدرةً كانت مُشغَّلة، ومهمَل فيما عدا ذلك؛ وبحدٍّ أدنى يُعلنه minLength هنا — «لا سبب» ليس سبباً. / The reason for withdrawing a capability. Required whenever the request disables a previously enabled capability, ignored otherwise; with the minimum declared by minLength here — 'no reason' is not a reason."
           }
         },
         "required": [
@@ -27894,8 +27895,9 @@
         "properties": {
           "reason": {
             "type": "string",
+            "minLength": 8,
             "maxLength": 512,
-            "description": "السبب المكتوب للإيقاف — ثمانية محارف على الأقل. «لا سبب» ليس سبباً، والإيقاف حالة عملٍ يضبطها إنسان ويُسجَّل بمن فعلها. / The written reason for the suspension — at least eight characters. 'No reason' is not a reason; suspension is a business state a person sets and it is recorded with its actor."
+            "description": "السبب المكتوب للإيقاف — بحدٍّ أدنى يُعلنه minLength هنا لا يُكتب في الواجهة. «لا سبب» ليس سبباً، والإيقاف حالة عملٍ يضبطها إنسان ويُسجَّل بمن فعلها. / The written reason for the suspension — with the minimum declared by minLength here, never retyped in a front end. 'No reason' is not a reason; suspension is a business state a person sets and it is recorded with its actor."
           }
         },
         "required": [

@@ -217,7 +217,12 @@ function fieldDescriptor(schema) {
   if (t[0] === "string" && Array.isArray(schema.enum)) {
     return nullable ? { k: "plain", e: schema.enum, n: true } : { k: "plain", e: schema.enum };
   }
-  return nullable ? { k: "plain", n: true } : { k: "plain" };
+  /* حدودُ النصّ المكتوب تعبر إلى وقت التشغيل: الواجهة تقرأ أدنى طول السبب من
+     العقد ولا تكتبه بيدها ثانيةً — فرقمٌ في شاشةٍ يفترق عن رقم الخادم يوماً (ADR-0091). */
+  const bounds = {};
+  if (t[0] === "string" && Number.isInteger(schema.minLength)) bounds.mn = schema.minLength;
+  if (t[0] === "string" && Number.isInteger(schema.maxLength)) bounds.mx = schema.maxLength;
+  return nullable ? { k: "plain", n: true, ...bounds } : { k: "plain", ...bounds };
 }
 function stable(value) {
   if (Array.isArray(value)) return "[" + value.map(stable).join(",") + "]";
@@ -249,6 +254,8 @@ function emitRuntimeSchema() {
   out.push("  /** شكل العنصر عند k===\"array\" · item shape */ i?: FieldShape;");
   out.push("  /** أعضاء المجموعة المغلقة حين يكون الحقل تعداداً · closed-set members */ e?: readonly string[];");
   out.push("  /** يقبل null · nullable */ n?: boolean;");
+  out.push("  /** أدنى طول النصّ حين يعلنه العقد · minLength */ mn?: number;");
+  out.push("  /** أقصى طول النصّ حين يعلنه العقد · maxLength */ mx?: number;");
   out.push("}");
   out.push("");
   out.push("export interface SchemaShape {");

@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     24dfbfea90aef65ff1e1d1d26e47033e7d23a0afd7ade5c2d56249cc4cdd52bd
+     e491db042a1f4fb532c935c939671dc397b375d66e08055c4394d10ec4dc06fe
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -2322,7 +2322,7 @@ export interface PurchaseReturnRequest {
 export interface PutCapabilityProfileRequest {
   /** أنواع المستندات. / The document types. */
   documents: DocumentProfile[];
-  /** سبب سحب قدرة. إلزامي متى أطفأ الطلب قدرةً كانت مُشغَّلة، ومهمَل فيما عدا ذلك؛ وثمانية محارف على الأقل — «لا سبب» ليس سبباً. / The reason for withdrawing a capability. Required whenever the request disables a previously enabled capability, ignored otherwise; at least eight characters — 'no reason' is not a reason. */
+  /** سبب سحب قدرة. إلزامي متى أطفأ الطلب قدرةً كانت مُشغَّلة، ومهمَل فيما عدا ذلك؛ وبحدٍّ أدنى يُعلنه minLength هنا — «لا سبب» ليس سبباً. / The reason for withdrawing a capability. Required whenever the request disables a previously enabled capability, ignored otherwise; with the minimum declared by minLength here — 'no reason' is not a reason. */
   withdrawalReason?: string | null;
 }
 
@@ -3032,7 +3032,7 @@ export interface SupplierRequest {
 }
 
 export interface SuspendCostCenterRequest {
-  /** السبب المكتوب للإيقاف — ثمانية محارف على الأقل. «لا سبب» ليس سبباً، والإيقاف حالة عملٍ يضبطها إنسان ويُسجَّل بمن فعلها. / The written reason for the suspension — at least eight characters. 'No reason' is not a reason; suspension is a business state a person sets and it is recorded with its actor. */
+  /** السبب المكتوب للإيقاف — بحدٍّ أدنى يُعلنه minLength هنا لا يُكتب في الواجهة. «لا سبب» ليس سبباً، والإيقاف حالة عملٍ يضبطها إنسان ويُسجَّل بمن فعلها. / The written reason for the suspension — with the minimum declared by minLength here, never retyped in a front end. 'No reason' is not a reason; suspension is a business state a person sets and it is recorded with its actor. */
   reason: string;
 }
 

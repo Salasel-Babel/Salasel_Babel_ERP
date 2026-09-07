@@ -21,7 +21,7 @@
     "حزمةِ تطويرٍ سبّب النقص. (‏docs/evidence/traps.md · a-remedy-that-is-a-list-is-not-a-remedy)",
     "",
     "والأرضيات أدناه **مقيسة على هذا الفرع بعد الدمج**، لا موروثة: مجموع أسطح .NET",
-    "الواحد والعشرين 2140، ومنها اختبارات المعمارية 277؛ ووحدة الواجهة 672.",
+    "الواحد والعشرين 2144، ومنها اختبارات المعمارية 280؛ ووحدة الواجهة 674.",
     "وأرضيةُ مصفوفة العرض 107 **مشتقّة اشتقاقاً آخر**: هي ما يكتبه `--list` متخطّىً",
     "(‏skipped=107) — فهي تحرس صيغة الإفراغ لا حجم المجموعة، ولا تُشدّ مع الباقي."
   ],
@@ -29,7 +29,7 @@
   "reportDirectory": "artifacts/test-reports",
 
   "surfaces": [
-    { "id": "dotnet-architecture",     "runner": "dotnet", "project": "tests/Babel.ArchitectureTests/Babel.ArchitectureTests.csproj",     "assembly": "Babel.ArchitectureTests.dll",     "invokedBy": ["tests/Babel.ArchitectureTests/Babel.ArchitectureTests.csproj", "--solution Babel.slnx"], "minimumExecuted": 277 },
+    { "id": "dotnet-architecture",     "runner": "dotnet", "project": "tests/Babel.ArchitectureTests/Babel.ArchitectureTests.csproj",     "assembly": "Babel.ArchitectureTests.dll",     "invokedBy": ["tests/Babel.ArchitectureTests/Babel.ArchitectureTests.csproj", "--solution Babel.slnx"], "minimumExecuted": 280 },
     { "id": "dotnet-ai",               "runner": "dotnet", "project": "tests/Babel.Ai.Tests/Babel.Ai.Tests.csproj",                       "assembly": "Babel.Ai.Tests.dll",               "invokedBy": ["tests/Babel.Ai.Tests/Babel.Ai.Tests.csproj", "--solution Babel.slnx"], "minimumExecuted": 736 },
     { "id": "dotnet-api",              "runner": "dotnet", "project": "tests/Babel.Api.Tests/Babel.Api.Tests.csproj",                     "assembly": "Babel.Api.Tests.dll",              "invokedBy": ["tests/Babel.Api.Tests/Babel.Api.Tests.csproj", "--solution Babel.slnx"], "minimumExecuted": 221 },
     { "id": "dotnet-assets",           "runner": "dotnet", "project": "tests/Babel.Assets.Tests/Babel.Assets.Tests.csproj",               "assembly": "Babel.Assets.Tests.dll",           "invokedBy": ["tests/Babel.Assets.Tests/Babel.Assets.Tests.csproj", "--solution Babel.slnx"], "minimumExecuted": 1 },
@@ -37,7 +37,7 @@
     { "id": "dotnet-compliance",       "runner": "dotnet", "project": "tests/Babel.Compliance.Tests/Babel.Compliance.Tests.csproj",       "assembly": "Babel.Compliance.Tests.dll",       "invokedBy": ["tests/Babel.Compliance.Tests/Babel.Compliance.Tests.csproj", "--solution Babel.slnx"], "minimumExecuted": 149 },
     { "id": "dotnet-contracts",        "runner": "dotnet", "project": "tests/Babel.Contracts.Tests/Babel.Contracts.Tests.csproj",         "assembly": "Babel.Contracts.Tests.dll",        "invokedBy": ["tests/Babel.Contracts.Tests/Babel.Contracts.Tests.csproj", "--solution Babel.slnx"], "minimumExecuted": 6 },
     { "id": "dotnet-controlplane",     "runner": "dotnet", "project": "tests/Babel.ControlPlane.Tests/Babel.ControlPlane.Tests.csproj",   "assembly": "Babel.ControlPlane.Tests.dll",     "invokedBy": ["tests/Babel.ControlPlane.Tests/Babel.ControlPlane.Tests.csproj", "--solution Babel.slnx"], "minimumExecuted": 80 },
-    { "id": "dotnet-core",             "runner": "dotnet", "project": "tests/Babel.Core.Tests/Babel.Core.Tests.csproj",                   "assembly": "Babel.Core.Tests.dll",             "invokedBy": ["tests/Babel.Core.Tests/Babel.Core.Tests.csproj", "--solution Babel.slnx"], "minimumExecuted": 139 },
+    { "id": "dotnet-core",             "runner": "dotnet", "project": "tests/Babel.Core.Tests/Babel.Core.Tests.csproj",                   "assembly": "Babel.Core.Tests.dll",             "invokedBy": ["tests/Babel.Core.Tests/Babel.Core.Tests.csproj", "--solution Babel.slnx"], "minimumExecuted": 140 },
     { "id": "dotnet-hr",               "runner": "dotnet", "project": "tests/Babel.Hr.Tests/Babel.Hr.Tests.csproj",                       "assembly": "Babel.Hr.Tests.dll",               "invokedBy": ["tests/Babel.Hr.Tests/Babel.Hr.Tests.csproj", "--solution Babel.slnx"], "minimumExecuted": 16 },
     { "id": "dotnet-inventory",        "runner": "dotnet", "project": "tests/Babel.Inventory.Tests/Babel.Inventory.Tests.csproj",         "assembly": "Babel.Inventory.Tests.dll",        "invokedBy": ["tests/Babel.Inventory.Tests/Babel.Inventory.Tests.csproj", "--solution Babel.slnx"], "minimumExecuted": 37 },
     { "id": "dotnet-ledger",           "runner": "dotnet", "project": "tests/Babel.Ledger.Tests/Babel.Ledger.Tests.csproj",               "assembly": "Babel.Ledger.Tests.dll",           "invokedBy": ["tests/Babel.Ledger.Tests/Babel.Ledger.Tests.csproj", "--solution Babel.slnx"], "minimumExecuted": 85 },
@@ -51,7 +51,7 @@
     { "id": "dotnet-storage",          "runner": "dotnet", "project": "tests/Babel.Storage.Tests/Babel.Storage.Tests.csproj",             "assembly": "Babel.Storage.Tests.dll",          "invokedBy": ["tests/Babel.Storage.Tests/Babel.Storage.Tests.csproj", "--solution Babel.slnx"], "minimumExecuted": 59 },
     { "id": "dotnet-matrix-validator", "runner": "dotnet", "project": "tools/matrix-validator/tests/MatrixValidator.Tests.csproj",        "assembly": "MatrixValidator.Tests.dll",        "invokedBy": ["tools/matrix-validator/tests/MatrixValidator.Tests.csproj", "--solution Babel.slnx"], "minimumExecuted": 42 },
 
-    { "id": "web-unit",   "runner": "vitest",     "config": "web/vitest.config.ts",     "report": "web-unit.json",   "invokedBy": ["vitest"], "minimumExecuted": 672 },
+    { "id": "web-unit",   "runner": "vitest",     "config": "web/vitest.config.ts",     "report": "web-unit.json",   "invokedBy": ["vitest"], "minimumExecuted": 674 },
     { "id": "web-matrix", "runner": "playwright", "config": "web/playwright.config.ts", "report": "web-matrix.json", "invokedBy": ["playwright test"], "minimumExecuted": 107 }
   ],
 

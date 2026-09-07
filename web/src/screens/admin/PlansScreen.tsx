@@ -502,6 +502,22 @@ export function PlansScreen(): ReactNode {
               ))}
             </div>
           )}
+        </fieldset>
+
+        {/* خانةُ النشر خارج صفّ الحقول عمداً: عضوُ الصفّ يحمل مساراته الثلاثة —
+            تسمية · تحكّم · وصف (ADR-0067) — وخانةٌ بلا وصفٍ تكسر إيقاعه. */}
+        <label className="check" htmlFor="adm-pl-publish" data-testid="admin-plans-publish-row">
+          <input
+            id="adm-pl-publish"
+            type="checkbox"
+            checked={publish}
+            data-testid="admin-plans-publish"
+            onChange={(e) => setPublish(e.target.checked)}
+          />
+          <span>{t("screen.plans.publishLabel")}</span>
+        </label>
+
+        <div className="grid fields-3">
           <AdminField
             id="adm-pl-other-modules"
             label={t("screen.plans.otherModules")}
@@ -518,19 +534,6 @@ export function PlansScreen(): ReactNode {
               onChange={(e) => setOtherModules(e.target.value)}
             />
           </AdminField>
-        </fieldset>
-
-        <div className="grid fields-3">
-          <label className="check" htmlFor="adm-pl-publish">
-            <input
-              id="adm-pl-publish"
-              type="checkbox"
-              checked={publish}
-              data-testid="admin-plans-publish"
-              onChange={(e) => setPublish(e.target.checked)}
-            />
-            <span>{t("screen.plans.publishLabel")}</span>
-          </label>
           <AdminField
             id="adm-pl-authority"
             label={t("screen.plans.authority")}

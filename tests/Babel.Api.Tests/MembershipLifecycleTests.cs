@@ -207,7 +207,7 @@ public sealed class MembershipLifecycleTests
             HttpMethod.Put,
             string.Create(CultureInfo.InvariantCulture, $"/api/v1/companies/{companyId:D}/setup"),
             owner,
-            """{"companyNameAr":"منشأة دورة حياة العضوية","costCenters":"One","decimalPlaces":2}"""));
+            """{"companyNameAr":"منشأة دورة حياة العضوية","costCenters":"One","decimalPlaces":2,"currencyCode":"SAR"}"""));
 
         (string text, _) = await Http.BodyAsync(founded);
         Console.WriteLine(text);

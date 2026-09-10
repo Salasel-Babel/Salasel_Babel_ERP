@@ -12,26 +12,27 @@ namespace Babel.ControlPlane.Entitlement;
 /// <param name="PerUserPrice">سعر المستخدم الواحد بعد المُضمَّن — محور المستخدم.</param>
 /// <param name="IncludedUsers">عدد المستخدمين المُضمَّنين في السعر الشهري.</param>
 /// <param name="Modules">الوحدات التي تمنحها الخطة — تُقاس على رسم الاعتماديات قبل التطبيق.</param>
+/// <param name="Published">هل نُشرت الخطّة بسعرها؟ غيرُ المنشورة لا تُباع (ADR-0092).</param>
 public sealed record PlanDefinition(
     string Code, string NameAr, string NameEn,
     decimal MonthlyPrice, decimal PerUserPrice, int IncludedUsers,
-    IReadOnlyList<string> Modules);
+    IReadOnlyList<string> Modules,
+    bool Published = false);
 
 /// <summary>
-/// الخطط. التسعير على <b>المحورين</b>: سعر شهري للحزمة + سعر لكل مستخدم بعد
-/// المُضمَّن.
-///
-/// <para><b>⚠️ الأسعار هنا قيم بنيوية للاختبار، لا قائمة أسعار.</b> السعر
-/// الشهري المستهدف وعدد المستأجرين سؤالان مفتوحان على المالك
-/// (<c>docs/decisions/README.md</c> — «أسئلة على المالك»)، وكل مبلغ في هذا
-/// الملف يُستبدل قبل أول عرض سعر. لا التزام تعاقدي يُبنى على رقم هنا.</para>
-///
+/// <b>القيم البنيوية للخطط — للاختبار والإثبات، لا كتالوجاً يُباع منه (ADR-0092).</b>
+/// <para>
+/// مصدرُ الكتالوج هو <c>control.plan</c> عبر <see cref="PlanDirectory"/>: يُنشئه مشغّلُ المنصّة
+/// ويُسعّره وينشره من سطح الخطط، وكلُّ تغييرٍ يُلحَق بسجلّ <c>control.plan_change</c>. وما هنا
+/// أربعُ خططٍ بأرقامٍ بنيوية تُبذَر في قواعد الاختبار وحدها — <b>ولا تكتب فوق صفٍّ قائم</b>:
+/// سعرٌ غيّره مشغّلٌ لا يعود إلى رقم الاختبار مع أوّل بذرة.
+/// </para>
 /// <para>كل المبالغ <c>decimal</c> ⇄ <c>numeric(19,4)</c>. لا عائم.</para>
 /// </summary>
 public static class PlanCatalog
 {
-    /// <summary>كل الخطط المعرَّفة.</summary>
-    public static readonly IReadOnlyList<PlanDefinition> All =
+    /// <summary>الخططُ البنيوية الأربع — قيمُ اختبارٍ لا قائمةَ أسعار.</summary>
+    public static readonly IReadOnlyList<PlanDefinition> Structural =
     [
         new("ESSENTIAL", "الأساسية", "Essential", 900.0000m, 60.0000m, 3,
             ["CORE", "AR", "AP"]),
@@ -43,34 +44,33 @@ public static class PlanCatalog
             ["CORE", "AR", "AP", "INV", "POS", "PRJ", "PAY", "FA", "REP"]),
     ];
 
-    /// <summary>يُرجِع خطة برمزها، ويرمي على رمز غير معروف بدل أن يُرجِع افتراضاً صامتاً.</summary>
-    /// <param name="code">رمز الخطة.</param>
-    /// <returns>تعريف الخطة.</returns>
-    /// <exception cref="ArgumentException">الرمز غير معروف.</exception>
-    public static PlanDefinition Require(string code) =>
-        All.FirstOrDefault(p => p.Code == code)
-        ?? throw new ArgumentException($"خطة غير معروفة: «{code}»", nameof(code));
-
-    /// <summary>يبذر الخطط في قاعدة التحكّم. مُحكَم وقابل لإعادة التشغيل.</summary>
+    /// <summary>
+    /// يبذر الخططَ البنيوية في قاعدة التحكّم <b>حيث لا صفَّ لها</b> — مُحكَم وقابل لإعادة
+    /// التشغيل، ولا يكتب فوق خطّةٍ قائمة: القاعدةُ هي المصدر (ADR-0092).
+    /// </summary>
     /// <param name="c">اتصال مفتوح بقاعدة التحكّم.</param>
+    /// <param name="publish">
+    /// هل تُبذَر منشورةً؟ <c>true</c> في بيئات الاختبار التي تشترك عليها فوراً؛ والافتراض
+    /// <c>false</c> لأن النشرَ بسعره فعلُ مشغّلٍ بسندٍ لا فعلُ بذرة.
+    /// </param>
     /// <param name="ct">رمز الإلغاء.</param>
-    public static async Task SeedAsync(NpgsqlConnection c, CancellationToken ct = default)
+    public static async Task SeedAsync(NpgsqlConnection c, bool publish = false, CancellationToken ct = default)
     {
-        var plans = All.OrderBy(p => p.Code, StringComparer.Ordinal).ToList();
+        var plans = Structural.OrderBy(p => p.Code, StringComparer.Ordinal).ToList();
         var values = string.Join(", ",
-            plans.Select((_, i) => $"(@c{i}, @ar{i}, @en{i}, @m{i}, @u{i}, @n{i}, 'SAR')"));
+            plans.Select((_, i) => $"(@c{i}, @ar{i}, @en{i}, @m{i}, @u{i}, @n{i}, 'SAR', @pub, @pat, @pby)"));
 
-        await Db.WriteAsync(c, $"""
+        await Db.WriteIdempotentManyAsync(c, $"""
             insert into control.plan
-                (plan_code, name_ar, name_en, monthly_price, per_user_price, included_users, currency)
+                (plan_code, name_ar, name_en, monthly_price, per_user_price, included_users, currency,
+                 published, published_at, published_by)
             values {values}
-            on conflict (plan_code) do update
-               set name_ar = excluded.name_ar, name_en = excluded.name_en,
-                   monthly_price = excluded.monthly_price,
-                   per_user_price = excluded.per_user_price,
-                   included_users = excluded.included_users
+            on conflict (plan_code) do nothing
             """, plans.Count, p =>
             {
+                p.AddWithValue("pub", publish);
+                p.Add(Db.P("pat", publish ? Canon.Now() : DBNull.Value, NpgsqlDbType.TimestampTz));
+                p.AddWithValue("pby", publish ? "seed:structural" : string.Empty);
                 for (var i = 0; i < plans.Count; i++)
                 {
                     p.AddWithValue($"c{i}", plans[i].Code);
@@ -112,6 +112,11 @@ public static class PlanCatalog
     public static async Task<Guid> SubscribeAsync(NpgsqlConnection c, Guid tenantId, string planCode,
         DateOnly startedOn, CancellationToken ct = default)
     {
+        // ‏لا اشتراكَ على خطّةٍ لم تُنشر: الخطّةُ غيرُ المنشورة لا سعرَ لها يُحتجّ به.
+        var plan = await PlanDirectory.RequireAsync(c, planCode, ct);
+        if (!plan.Published)
+            throw new PlanNotPublishedException(planCode);
+
         var existing = await Db.QueryAsync(c, """
             select subscription_id from control.subscription
              where tenant_id = @t and plan_code = @p and started_on = @s

@@ -52,8 +52,14 @@ const TENANT = "11111111-1111-4111-8111-111111111110";
 const ME = "11111111-1111-4111-8111-11111111110a";
 const OTHER = "11111111-1111-4111-8111-11111111110b";
 
-/** المسارات الأربع بترتيب العمل — والترتيب نفسه في الملاحة وفي SCREENS. */
-const ADMIN_PATHS = ["/admin/enrolment", "/admin/session", "/admin/members", "/admin/subscription"];
+/** المسارات الخمسة بترتيب العمل — والترتيب نفسه في الملاحة وفي SCREENS. */
+const ADMIN_PATHS = [
+  "/admin/enrolment",
+  "/admin/session",
+  "/admin/members",
+  "/admin/subscription",
+  "/admin/plans",
+];
 
 /** قيمُ اختبارٍ مُعلَنة لا أسرار: أطوالها تطابق أدنى ما يقبله العقد. */
 const FAKE_ENROLMENT = "enrolment-value-for-the-test-only";
@@ -72,6 +78,8 @@ const SESSION = {
       nameTranslations: [],
       decimalPlaces: 2,
       defaultCostCenter: "cc.main",
+      currencyCode: "SAR",
+      minorUnits: 2,
     },
   ],
 };
@@ -119,6 +127,40 @@ const SUBSCRIPTION = {
   tenantCode: "T-0001",
   tenantId: TENANT,
   tenantStatus: "Active",
+};
+
+/** خطّتان من كتالوج المنصّة (ADR-0092): منشورةٌ ومسودّة — والمال نصٌّ على السلك. */
+const PLAN_ESSENTIAL = {
+  code: "ESSENTIAL",
+  nameAr: "الأساسية",
+  nameTranslations: [{ name: "en", value: "Essential" }],
+  monthlyPrice: "900.0000",
+  perUserPrice: "60.0000",
+  currency: "SAR",
+  includedUsers: 3,
+  modules: ["AP", "AR", "CORE"],
+  published: true,
+};
+const PLAN_FULL = {
+  ...PLAN_ESSENTIAL,
+  code: "FULL",
+  nameAr: "الشاملة",
+  nameTranslations: [{ name: "en", value: "Full" }],
+  monthlyPrice: "3600.0000",
+  perUserPrice: "45.0000",
+  includedUsers: 20,
+  modules: ["AP", "AR", "CORE", "INV", "POS", "REP"],
+};
+const PLAN_DRAFT = {
+  ...PLAN_ESSENTIAL,
+  code: "TRIAL",
+  nameAr: "تجربة",
+  nameTranslations: [{ name: "en", value: "Trial" }],
+  monthlyPrice: "0.0000",
+  perUserPrice: "0.0000",
+  includedUsers: 1,
+  modules: ["CORE", "INV"],
+  published: false,
 };
 
 /* ══════════════════════════════════════════════════════════ أدوات ═════ */
@@ -215,6 +257,26 @@ async function type(element: HTMLInputElement, value: string): Promise<void> {
   });
 }
 
+/** يختار قيمةً في قائمةٍ منسدلة — React يستمع إلى change على select. */
+async function choose(element: HTMLSelectElement, value: string): Promise<void> {
+  await act(async () => {
+    const proto = Object.getPrototypeOf(element) as object;
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    const setter = Object.getOwnPropertyDescriptor(proto, "value")?.set;
+    if (setter) setter.call(element, value);
+    else element.value = value;
+    element.dispatchEvent(new Event("change", { bubbles: true }));
+    await Promise.resolve();
+  });
+}
+
+/** يقرأ حقلَ إدخالٍ بمعرّفه — ويرمي إن لم يكن حقلاً. */
+function input(testId: string): HTMLInputElement {
+  const found = screen.getByTestId(testId);
+  if (!(found instanceof HTMLInputElement)) throw new Error("ليس حقلاً: " + testId);
+  return found;
+}
+
 /** كلُّ نصٍّ في الصفحة وكلُّ قيمة سمة وكلُّ قيمة حقل — فالبحث يشمل `value`. */
 function everythingOnThePage(): string {
   const parts: string[] = [document.body.innerHTML];
@@ -246,6 +308,7 @@ const SCREEN_FILES = [
   "SessionScreen.tsx",
   "MembersScreen.tsx",
   "SubscriptionScreen.tsx",
+  "PlansScreen.tsx",
   "parts.tsx",
 ];
 
@@ -579,11 +642,32 @@ describe("الاشتراك", () => {
         routes: {
           "GET /api/v1/session": SESSION,
           ["GET /api/v1/tenants/" + TENANT + "/subscription"]: { ...SUBSCRIPTION, ...over },
+          "GET /api/v1/plans": { plans: [PLAN_ESSENTIAL, PLAN_FULL] },
         },
       }),
     });
     await screen.findByTestId("admin-subscription-modules-table");
   }
+
+  it("الخطّةُ الجديدة تُختار من المنشور الذي قرأه الخادم، ووحداتُها تُعرض قبل التنفيذ", async () => {
+    await mountSubscription();
+    const select = screen.getByTestId("admin-subscription-plan-input");
+    if (!(select instanceof HTMLSelectElement)) throw new Error("ليس قائمةً منسدلة");
+    await waitFor(() =>
+      expect(screen.getAllByTestId("admin-subscription-plan-option").length).toBe(2)
+    );
+    const options = screen
+      .getAllByTestId("admin-subscription-plan-option")
+      .map((o) => (o as HTMLOptionElement).value);
+    expect(options).toEqual(["ESSENTIAL", "FULL"]);
+    /* قبل الاختيار: لا ادّعاء بما تغطّيه. */
+    expect(screen.getByTestId("admin-subscription-plan-unchosen")).toBeTruthy();
+    await choose(select, "FULL");
+    expect(screen.getByTestId("admin-subscription-plan-modules").textContent).toBe(
+      "AP · AR · CORE · INV · POS · REP"
+    );
+    expect(screen.queryByTestId("admin-subscription-plan-unchosen")).toBeNull();
+  });
 
   it("جدولُ الوحدات هو الجواب على «ماذا يتوقّف؟» — وحالةُ كلٍّ كما وصلت", async () => {
     await mountSubscription();
@@ -680,5 +764,136 @@ describe("استقامةُ الصفّ — الشرط البنيوي", () => {
       expect(/className="[^"]*\badm-row\b/.test(text), file).toBe(false);
     }
     expect(rows).toBeGreaterThanOrEqual(5);
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════
+   ٨ · كتالوج الخطط — بياناتُ المنصّة لا شيفرتُها (ADR-0092)
+   ═══════════════════════════════════════════════════════════════════════ */
+describe("كتالوج الخطط", () => {
+  it("مشغّلُ المنصّة يرى الكتالوج كلّه، والمسودّةُ موسومة، والوحداتُ المعروفة من الخطط نفسها", async () => {
+    await mount({
+      path: "/admin/plans",
+      transport: stub({
+        routes: {
+          "GET /api/v1/platform/plans": { plans: [PLAN_ESSENTIAL, PLAN_DRAFT] },
+          "GET /api/v1/plans": { plans: [PLAN_ESSENTIAL] },
+        },
+      }),
+    });
+    await screen.findByTestId("admin-plans-table");
+    const rows = screen.getAllByTestId("admin-plans-row");
+    expect(rows.map((r) => r.getAttribute("data-plan"))).toEqual(["ESSENTIAL", "TRIAL"]);
+    expect(rows.map((r) => r.getAttribute("data-published"))).toEqual(["true", "false"]);
+    /* الخانات اتّحادُ وحدات الخطط المقروءة — لا كتالوجٌ مكتوبٌ في الشاشة. */
+    for (const module of ["AP", "AR", "CORE", "INV"]) {
+      expect(screen.getByTestId("admin-plans-module-" + module)).toBeTruthy();
+    }
+    expect(screen.queryByTestId("admin-plans-module-POS")).toBeNull();
+  });
+
+  it("اعتمادُ منشأةٍ يُردّ باسمه ويبقى المنشورُ مقروءاً — والنموذج ظاهرٌ لأن المنع في الخادم", async () => {
+    await mount({
+      path: "/admin/plans",
+      transport: stub({
+        routes: { "GET /api/v1/plans": { plans: [PLAN_ESSENTIAL] } },
+        refuse: {
+          "GET /api/v1/platform/plans": { status: 403, code: "platform.operator_required" },
+        },
+      }),
+    });
+    const next = await screen.findByTestId("admin-plans-list-next");
+    expect(next.getAttribute("data-code")).toBe("platform.operator_required");
+    await screen.findByTestId("admin-plans-table");
+    expect(
+      screen.getAllByTestId("admin-plans-row").map((r) => r.getAttribute("data-plan"))
+    ).toEqual(["ESSENTIAL"]);
+    expect(screen.getByTestId("admin-plans-form")).toBeTruthy();
+  });
+
+  it("تعديلُ صفٍّ يملأ النموذج، والكتابةُ تُرسل الجسم كما كُتب إلى مسار الرمز وتقرأ الجواب", async () => {
+    const sent: Recorded[] = [];
+    const written = { ...PLAN_DRAFT, monthlyPrice: "1234.5000", published: true };
+    await mount({
+      path: "/admin/plans",
+      transport: stub({
+        routes: {
+          "GET /api/v1/platform/plans": { plans: [PLAN_ESSENTIAL, PLAN_DRAFT] },
+          "GET /api/v1/plans": { plans: [PLAN_ESSENTIAL] },
+          "PUT /api/v1/platform/plans/TRIAL": written,
+        },
+        sent,
+      }),
+    });
+    await screen.findByTestId("admin-plans-table");
+
+    /* الزرّ مقفلٌ لأن المُدخَل ناقص — لا لأن الشاشة تمنع. */
+    expect(screen.getByTestId("admin-plans-confirm-blocked").textContent).toBeTruthy();
+
+    await click(screen.getByTestId("admin-plans-edit-TRIAL"));
+    expect(input("admin-plans-code").value).toBe("TRIAL");
+    expect(input("admin-plans-monthly").value).toBe("0.0000");
+    expect(input("admin-plans-module-INV").checked).toBe(true);
+    expect(input("admin-plans-module-AP").checked).toBe(false);
+
+    await type(input("admin-plans-monthly"), "1234.5000");
+    await click(input("admin-plans-publish"));
+    await type(input("admin-plans-authority"), "PRICE-2026-01");
+    await type(input("admin-plans-reason"), "تسعيرُ خطّة التجربة");
+    expect(screen.queryByTestId("admin-plans-confirm-blocked")).toBeNull();
+
+    await click(screen.getByTestId("admin-plans-confirm-ack"));
+    await click(screen.getByTestId("admin-plans-confirm-go"));
+    await waitFor(() =>
+      expect(screen.getByTestId("admin-plans-written-code").textContent).toBe("TRIAL")
+    );
+
+    const put = sent.find((s) => s.method === "PUT");
+    expect(put?.url).toBe("/api/v1/platform/plans/TRIAL");
+    expect(put?.body).toMatchObject({
+      nameAr: "تجربة",
+      nameTranslations: [{ name: "en", value: "Trial" }],
+      monthlyPrice: "1234.5000",
+      perUserPrice: "0.0000",
+      includedUsers: 1,
+      modules: ["CORE", "INV"],
+      published: true,
+      authority: "PRICE-2026-01",
+      reasonAr: "تسعيرُ خطّة التجربة",
+    });
+  });
+
+  it("الرفضُ باسم علّته يُعرض كما ورد وفوقه الخطوةُ التالية", async () => {
+    await mount({
+      path: "/admin/plans",
+      transport: stub({
+        routes: {
+          "GET /api/v1/platform/plans": { plans: [PLAN_ESSENTIAL] },
+          "GET /api/v1/plans": { plans: [PLAN_ESSENTIAL] },
+        },
+        refuse: {
+          "PUT /api/v1/platform/plans/NEWPLAN": { status: 422, code: "platform.plan_refused" },
+        },
+      }),
+    });
+    await screen.findByTestId("admin-plans-table");
+    await type(input("admin-plans-code"), "NEWPLAN");
+    await type(input("admin-plans-name-ar"), "جديدة");
+    await type(input("admin-plans-name-en"), "New");
+    await type(input("admin-plans-monthly"), "100.0000");
+    await type(input("admin-plans-per-user"), "1.0000");
+    await type(input("admin-plans-included"), "2");
+    await type(input("admin-plans-other-modules"), "core, xyz");
+    expect(screen.getByTestId("admin-plans-effect-modules").textContent).toBe("CORE · XYZ");
+    await type(input("admin-plans-authority"), "PRICE-2026-02");
+    await type(input("admin-plans-reason"), "سبب");
+    await click(screen.getByTestId("admin-plans-confirm-ack"));
+    await click(screen.getByTestId("admin-plans-confirm-go"));
+    await waitFor(() =>
+      expect(screen.getByTestId("problem-code").textContent).toBe("platform.plan_refused")
+    );
+    expect(screen.getByTestId("admin-plans-next").getAttribute("data-code")).toBe(
+      "platform.plan_refused"
+    );
   });
 });

@@ -1,4 +1,5 @@
 using Babel.Projects.Application;
+using Babel.Core.CompanySetup;
 using Babel.SharedKernel;
 
 namespace Babel.Projects.Surface;
@@ -31,7 +32,7 @@ public sealed class ProjectsSurface
     private readonly SubcontractorAdvanceService _advances;
     private readonly RetentionService _retention;
     private readonly ProjectsReconciliationService _reconciliation;
-    private readonly CurrencyCode _currency;
+    private readonly CompanySetupService _setups;
 
     /// <summary>ينشئ السطح فوق خدمات الوحدة.</summary>
     /// <param name="registry">سجلّ المشاريع والعقود.</param>
@@ -41,7 +42,7 @@ public sealed class ProjectsSurface
     /// <param name="advances">دفعات المقاولين المقدمة.</param>
     /// <param name="retention">المحتجزات.</param>
     /// <param name="reconciliation">كشف المقاولين ومطابقته.</param>
-    /// <param name="options">إعدادات الوحدة — ومنها عملة المنشأة.</param>
+    /// <param name="setups">خدمة التأسيس — خدمةُ تطبيقٍ مُستحَقّة تُقرأ منها عملةُ المنشأة (ADR-0089).</param>
     public ProjectsSurface(
         ProjectRegistryService registry,
         SubcontractorRegistryService subcontractors,
@@ -50,7 +51,7 @@ public sealed class ProjectsSurface
         SubcontractorAdvanceService advances,
         RetentionService retention,
         ProjectsReconciliationService reconciliation,
-        ProjectsOptions options)
+        CompanySetupService setups)
     {
         ArgumentNullException.ThrowIfNull(registry);
         ArgumentNullException.ThrowIfNull(subcontractors);
@@ -59,7 +60,7 @@ public sealed class ProjectsSurface
         ArgumentNullException.ThrowIfNull(advances);
         ArgumentNullException.ThrowIfNull(retention);
         ArgumentNullException.ThrowIfNull(reconciliation);
-        ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(setups);
 
         _registry = registry;
         _subcontractors = subcontractors;
@@ -68,7 +69,7 @@ public sealed class ProjectsSurface
         _advances = advances;
         _retention = retention;
         _reconciliation = reconciliation;
-        _currency = CurrencyCode.FromString(options.CompanyCurrency);
+        _setups = setups;
     }
 
     /// <summary>يسجّل مشروعاً.</summary>
@@ -146,6 +147,15 @@ public sealed class ProjectsSurface
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        // ‏عملةُ المنشأة من التأسيس عبر خدمةِ تطبيقٍ مُستحَقّة — لا متعاونَ يفتح الوحدة بلا استحقاق.
+        Result<FoundedCompany> setup = await _setups.GetAsync(tenant, actor, cancellationToken).ConfigureAwait(false);
+        if (setup.IsFailure)
+        {
+            return Result<ProjectsContract>.Failure(setup.Errors);
+        }
+
+        CompanyMoney money = setup.Value.Money;
+
         Result<ContractView> result = await _registry
             .CreateContractAsync(
                 tenant,
@@ -157,7 +167,7 @@ public sealed class ProjectsSurface
                     request.SignedOn,
                     request.RetentionRate,
                     request.GuaranteeMonths,
-                    [.. request.Items.Select(BoqDraft)]),
+                    [.. request.Items.Select(item => BoqDraft(item, money))]),
                 cancellationToken)
             .ConfigureAwait(false);
 
@@ -217,6 +227,15 @@ public sealed class ProjectsSurface
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        // ‏عملةُ المنشأة من التأسيس عبر خدمةِ تطبيقٍ مُستحَقّة — لا متعاونَ يفتح الوحدة بلا استحقاق.
+        Result<FoundedCompany> setup = await _setups.GetAsync(tenant, actor, cancellationToken).ConfigureAwait(false);
+        if (setup.IsFailure)
+        {
+            return Result<ProjectsChangeOrder>.Failure(setup.Errors);
+        }
+
+        CompanyMoney money = setup.Value.Money;
+
         Result<ChangeOrderView> result = await _registry
             .CreateChangeOrderAsync(
                 tenant,
@@ -227,7 +246,7 @@ public sealed class ProjectsSurface
                     request.IssuedOn,
                     request.ReasonAr,
                     request.ApprovedBy,
-                    [.. request.AddedItems.Select(BoqDraft)]),
+                    [.. request.AddedItems.Select(item => BoqDraft(item, money))]),
                 cancellationToken)
             .ConfigureAwait(false);
 
@@ -333,6 +352,15 @@ public sealed class ProjectsSurface
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        // ‏عملةُ المنشأة من التأسيس عبر خدمةِ تطبيقٍ مُستحَقّة — لا متعاونَ يفتح الوحدة بلا استحقاق.
+        Result<FoundedCompany> setup = await _setups.GetAsync(tenant, actor, cancellationToken).ConfigureAwait(false);
+        if (setup.IsFailure)
+        {
+            return Result<ProjectsSubcontract>.Failure(setup.Errors);
+        }
+
+        CompanyMoney money = setup.Value.Money;
+
         Result<SubcontractView> result = await _subcontractors
             .CreateSubcontractAsync(
                 tenant,
@@ -349,7 +377,7 @@ public sealed class ProjectsSurface
                             line.Code,
                             line.DescriptionAr,
                             new ProjectQuantity(line.ContractQuantity.Magnitude, line.ContractQuantity.Unit),
-                            Money.Of(line.UnitRate, _currency))),
+                            Money.Of(line.UnitRate, money.Currency))),
                     ]),
                 cancellationToken)
             .ConfigureAwait(false);
@@ -419,8 +447,17 @@ public sealed class ProjectsSurface
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        // ‏عملةُ المنشأة من التأسيس عبر خدمةِ تطبيقٍ مُستحَقّة — لا متعاونَ يفتح الوحدة بلا استحقاق.
+        Result<FoundedCompany> setup = await _setups.GetAsync(tenant, actor, cancellationToken).ConfigureAwait(false);
+        if (setup.IsFailure)
+        {
+            return Result<ProjectsCertificate>.Failure(setup.Errors);
+        }
+
+        CompanyMoney money = setup.Value.Money;
+
         Result<CertificateView> result = await _clientCertificates
-            .DraftAsync(tenant, actor, CertificateDraftOf(request), cancellationToken).ConfigureAwait(false);
+            .DraftAsync(tenant, actor, CertificateDraftOf(request, money), cancellationToken).ConfigureAwait(false);
 
         return Certificate(result);
     }
@@ -483,8 +520,17 @@ public sealed class ProjectsSurface
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        // ‏عملةُ المنشأة من التأسيس عبر خدمةِ تطبيقٍ مُستحَقّة — لا متعاونَ يفتح الوحدة بلا استحقاق.
+        Result<FoundedCompany> setup = await _setups.GetAsync(tenant, actor, cancellationToken).ConfigureAwait(false);
+        if (setup.IsFailure)
+        {
+            return Result<ProjectsCertificate>.Failure(setup.Errors);
+        }
+
+        CompanyMoney money = setup.Value.Money;
+
         return Certificate(await _subcontractorCertificates
-            .DraftAsync(tenant, actor, CertificateDraftOf(request), cancellationToken).ConfigureAwait(false));
+            .DraftAsync(tenant, actor, CertificateDraftOf(request, money), cancellationToken).ConfigureAwait(false));
     }
 
     /// <summary>يقرأ مستخلص باطن.</summary>
@@ -526,6 +572,15 @@ public sealed class ProjectsSurface
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        // ‏عملةُ المنشأة من التأسيس عبر خدمةِ تطبيقٍ مُستحَقّة — لا متعاونَ يفتح الوحدة بلا استحقاق.
+        Result<FoundedCompany> setup = await _setups.GetAsync(tenant, actor, cancellationToken).ConfigureAwait(false);
+        if (setup.IsFailure)
+        {
+            return Result<ProjectsDocument>.Failure(setup.Errors);
+        }
+
+        CompanyMoney money = setup.Value.Money;
+
         return Document(await _advances
             .DraftAsync(
                 tenant,
@@ -534,7 +589,7 @@ public sealed class ProjectsSurface
                     request.Number,
                     request.SubcontractId,
                     request.PaidOn,
-                    Money.Of(request.Amount, _currency),
+                    Money.Of(request.Amount, money.Currency),
                     request.SettlementMethod,
                     request.TreasuryPartyId,
                     request.GuaranteeId),
@@ -579,6 +634,15 @@ public sealed class ProjectsSurface
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        // ‏عملةُ المنشأة من التأسيس عبر خدمةِ تطبيقٍ مُستحَقّة — لا متعاونَ يفتح الوحدة بلا استحقاق.
+        Result<FoundedCompany> setup = await _setups.GetAsync(tenant, actor, cancellationToken).ConfigureAwait(false);
+        if (setup.IsFailure)
+        {
+            return Result<ProjectsDocument>.Failure(setup.Errors);
+        }
+
+        CompanyMoney money = setup.Value.Money;
+
         return Document(await _retention
             .DraftReleaseAsync(
                 tenant,
@@ -587,7 +651,7 @@ public sealed class ProjectsSurface
                     request.Number,
                     request.RetentionMovementId,
                     request.ReleasedOn,
-                    Money.Of(request.Amount, _currency),
+                    Money.Of(request.Amount, money.Currency),
                     request.ApprovedBy),
                 cancellationToken)
             .ConfigureAwait(false));
@@ -630,6 +694,15 @@ public sealed class ProjectsSurface
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        // ‏عملةُ المنشأة من التأسيس عبر خدمةِ تطبيقٍ مُستحَقّة — لا متعاونَ يفتح الوحدة بلا استحقاق.
+        Result<FoundedCompany> setup = await _setups.GetAsync(tenant, actor, cancellationToken).ConfigureAwait(false);
+        if (setup.IsFailure)
+        {
+            return Result<ProjectsDocument>.Failure(setup.Errors);
+        }
+
+        CompanyMoney money = setup.Value.Money;
+
         return Document(await _retention
             .DraftCollectionAsync(
                 tenant,
@@ -638,7 +711,7 @@ public sealed class ProjectsSurface
                     request.Number,
                     request.RetentionMovementId,
                     request.CollectedOn,
-                    Money.Of(request.Amount, _currency),
+                    Money.Of(request.Amount, money.Currency),
                     request.SettlementMethod,
                     request.TreasuryPartyId),
                 cancellationToken)
@@ -682,6 +755,15 @@ public sealed class ProjectsSurface
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        // ‏عملةُ المنشأة من التأسيس عبر خدمةِ تطبيقٍ مُستحَقّة — لا متعاونَ يفتح الوحدة بلا استحقاق.
+        Result<FoundedCompany> setup = await _setups.GetAsync(tenant, actor, cancellationToken).ConfigureAwait(false);
+        if (setup.IsFailure)
+        {
+            return Result<ProjectsGuarantee>.Failure(setup.Errors);
+        }
+
+        CompanyMoney money = setup.Value.Money;
+
         Result<GuaranteeView> result = await _registry
             .CreateGuaranteeAsync(
                 tenant,
@@ -692,7 +774,7 @@ public sealed class ProjectsSurface
                     request.ContractId,
                     request.SubcontractId,
                     request.IssuerNameAr,
-                    Money.Of(request.Amount, _currency),
+                    Money.Of(request.Amount, money.Currency),
                     request.EffectiveFrom,
                     request.ExpiresOn,
                     request.AttachmentId),
@@ -949,13 +1031,13 @@ public sealed class ProjectsSurface
                 result.Value.EntryId,
                 result.Value.AlreadyPosted));
 
-    private BoqItemDraft BoqDraft(ProjectsBoqItemRequest request) => new(
+    private static BoqItemDraft BoqDraft(ProjectsBoqItemRequest request, CompanyMoney money) => new(
         request.Code,
         request.DescriptionAr,
         new ProjectQuantity(request.ContractQuantity.Magnitude, request.ContractQuantity.Unit),
-        Money.Of(request.UnitRate, _currency));
+        Money.Of(request.UnitRate, money.Currency));
 
-    private CertificateDraft CertificateDraftOf(ProjectsCertificateRequest request) => new(
+    private static CertificateDraft CertificateDraftOf(ProjectsCertificateRequest request, CompanyMoney money) => new(
         request.Number,
         request.OwnerId,
         request.SequenceNo,
@@ -967,6 +1049,6 @@ public sealed class ProjectsSurface
                 line.LineKind,
                 line.DescriptionAr,
                 new ProjectQuantity(line.CumulativeQuantity.Magnitude, line.CumulativeQuantity.Unit),
-                Money.Of(line.Amount, _currency))),
+                Money.Of(line.Amount, money.Currency))),
         ]);
 }

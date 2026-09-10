@@ -51,7 +51,8 @@ public sealed class SubmissionGuard(ComplianceSettings settings, TimeProvider cl
     public SubmissionDecision Decide(
         ComplianceRecord record,
         IReadOnlyList<SubmissionAttempt> attempts,
-        ProviderCapabilities capabilities)
+        ProviderCapabilities capabilities,
+        CompliancePolicy policy)
     {
         var now = clock.GetUtcNow();
 
@@ -90,11 +91,11 @@ public sealed class SubmissionGuard(ComplianceSettings settings, TimeProvider cl
 
         // ---- من هنا فصاعداً: مسار حسم، لا مسار إرسال -------------------------------
 
-        if (record.ResolutionAttemptCount >= settings.MaxResolutionAttempts)
+        if (record.ResolutionAttemptCount >= policy.MaxResolutionAttempts)
             return new SubmissionDecision(SubmissionAction.HumanReview,
-                $"استُنفدت محاولات الحسم ({record.ResolutionAttemptCount}/{settings.MaxResolutionAttempts}) " +
+                $"استُنفدت محاولات الحسم ({record.ResolutionAttemptCount}/{policy.MaxResolutionAttempts}) " +
                 "دون جواب قاطع من الجهة",
-                $"resolution attempts exhausted ({record.ResolutionAttemptCount}/{settings.MaxResolutionAttempts})");
+                $"resolution attempts exhausted ({record.ResolutionAttemptCount}/{policy.MaxResolutionAttempts})");
 
         if (capabilities.StatusQuery != StatusProbeSupport.NotSupported)
             return new SubmissionDecision(SubmissionAction.ResolveByProbe,

@@ -26,7 +26,7 @@ public class EntitlementGraphTests
     [Fact]
     public void كل_خطة_تحمل_اسمين_وأسعارها_عشرية()
     {
-        foreach (var p in PlanCatalog.All)
+        foreach (var p in PlanCatalog.Structural)
         {
             Assert.False(string.IsNullOrWhiteSpace(p.NameAr));
             Assert.False(string.IsNullOrWhiteSpace(p.NameEn));

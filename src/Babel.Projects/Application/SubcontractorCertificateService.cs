@@ -1,6 +1,7 @@
 using Babel.Core.Application;
 using Babel.Core.Entitlement;
 using Babel.Projects.Persistence;
+using Babel.Core.CompanySetup;
 using Babel.SharedKernel;
 using Microsoft.EntityFrameworkCore;
 
@@ -24,7 +25,7 @@ public sealed class SubcontractorCertificateService : IApplicationService
 
     private readonly IEntitlementEnforcer _enforcer;
     private readonly ProjectsDbContext _database;
-    private readonly CurrencyCode _currency;
+    private readonly ICompanyMoneyResolver _company;
 
     /// <summary>ينشئ الخدمة.</summary>
     /// <param name="enforcer">منفِّذ الاستحقاق.</param>
@@ -35,7 +36,7 @@ public sealed class SubcontractorCertificateService : IApplicationService
         ArgumentNullException.ThrowIfNull(runtime);
         _enforcer = enforcer;
         _database = runtime.Database;
-        _currency = CurrencyCode.FromString(runtime.Options.CompanyCurrency);
+        _company = runtime.Company;
     }
 
     /// <summary>يُنشئ مستخلص باطن <b>مسوّدة</b> بسطوره، ومنها الغرامات مستقلّةً.</summary>
@@ -59,6 +60,12 @@ public sealed class SubcontractorCertificateService : IApplicationService
         if (gate.IsFailure)
         {
             return Result<CertificateView>.Failure(gate.Errors);
+        }
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<CertificateView>.Failure(money.Errors);
         }
 
         if (draft.Lines.Count == 0)
@@ -145,7 +152,7 @@ public sealed class SubcontractorCertificateService : IApplicationService
             .PendingAsync(_database, tenant.Value, subcontract.Id, cancellationToken)
             .ConfigureAwait(false);
 
-        return Result<CertificateView>.Success(View(certificate, lines.Value, items, pending));
+        return Result<CertificateView>.Success(View(certificate, lines.Value, items, pending, money.Value));
     }
 
     /// <summary>يقرأ مستخلص باطن بحالته وسطوره.</summary>
@@ -167,6 +174,12 @@ public sealed class SubcontractorCertificateService : IApplicationService
         if (gate.IsFailure)
         {
             return Result<CertificateView>.Failure(gate.Errors);
+        }
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<CertificateView>.Failure(money.Errors);
         }
 
         SubcontractorCertificateRow? certificate = await _database.SubcontractorCertificates
@@ -192,7 +205,7 @@ public sealed class SubcontractorCertificateService : IApplicationService
             .PendingAsync(_database, tenant.Value, certificate.SubcontractId, cancellationToken)
             .ConfigureAwait(false);
 
-        return Result<CertificateView>.Success(View(certificate, lines, items, pending));
+        return Result<CertificateView>.Success(View(certificate, lines, items, pending, money.Value));
     }
 
     /// <summary>
@@ -266,11 +279,12 @@ public sealed class SubcontractorCertificateService : IApplicationService
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-    private CertificateView View(
+    private static CertificateView View(
         SubcontractorCertificateRow certificate,
         IReadOnlyList<CertificateLineRow> lines,
         IReadOnlyDictionary<Guid, MeasuredItem> items,
-        IReadOnlyList<PendingPolicyItem> pending) => new(
+        IReadOnlyList<PendingPolicyItem> pending,
+        CompanyMoney money) => new(
         certificate.Id,
         certificate.Number,
         certificate.SubcontractId,
@@ -279,7 +293,7 @@ public sealed class SubcontractorCertificateService : IApplicationService
         certificate.PeriodTo,
         certificate.State,
         certificate.FrozenRetentionRate,
-        [.. lines.Select(line => ClientCertificateService.Line(line, items, _currency))],
+        [.. lines.Select(line => ClientCertificateService.Line(line, items, money.Currency))],
         pending,
         certificate.PostedEntryId,
         AlreadyPosted: false);

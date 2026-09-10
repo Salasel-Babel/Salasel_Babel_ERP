@@ -176,13 +176,11 @@ internal static class HrTestEnvironment
         OwnerConnectionString = $"Host=127.0.0.1;Port=5432;Database={LedgerDatabase};Username=postgres;Include Error Detail=true",
         AppConnectionString = $"Host=127.0.0.1;Port=5432;Database={LedgerDatabase};Username={AppRole};Include Error Detail=true;Maximum Pool Size=40",
         AppRole = AppRole,
-        CompanyCurrency = "SAR",
     };
 
     public static HrOptions Hr { get; } = new()
     {
         ConnectionString = $"Host=127.0.0.1;Port=5432;Database={HrDatabase};Username=postgres;Include Error Detail=true",
-        CompanyCurrency = "SAR",
     };
 
     public static string RepositoryRoot { get; } = FindRoot();

@@ -1,6 +1,7 @@
 using Babel.Core.Application;
 using Babel.Core.Entitlement;
 using Babel.Projects.Persistence;
+using Babel.Core.CompanySetup;
 using Babel.SharedKernel;
 using Microsoft.EntityFrameworkCore;
 
@@ -22,7 +23,7 @@ public sealed class ProjectRegistryService : IApplicationService
 
     private readonly IEntitlementEnforcer _enforcer;
     private readonly ProjectsDbContext _database;
-    private readonly CurrencyCode _currency;
+    private readonly ICompanyMoneyResolver _company;
 
     /// <summary>ينشئ الخدمة.</summary>
     /// <param name="enforcer">منفِّذ الاستحقاق.</param>
@@ -33,7 +34,7 @@ public sealed class ProjectRegistryService : IApplicationService
         ArgumentNullException.ThrowIfNull(runtime);
         _enforcer = enforcer;
         _database = runtime.Database;
-        _currency = CurrencyCode.FromString(runtime.Options.CompanyCurrency);
+        _company = runtime.Company;
     }
 
     /// <summary>
@@ -207,6 +208,12 @@ public sealed class ProjectRegistryService : IApplicationService
             return Result<ContractView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<ContractView>.Failure(money.Errors);
+        }
+
         if (draft.RetentionRate < 0m)
         {
             return Result<ContractView>.Failure(ProjectsErrors.NegativeAmount(nameof(draft.RetentionRate)));
@@ -236,7 +243,7 @@ public sealed class ProjectRegistryService : IApplicationService
             ProjectId = draft.ProjectId,
             Number = draft.Number,
             CustomerPartyId = draft.CustomerPartyId,
-            CurrencyCode = _currency.Value,
+            CurrencyCode = money.Value.Currency.Value,
             SignedOn = draft.SignedOn,
             RetentionRate = draft.RetentionRate,
             GuaranteeMonths = draft.GuaranteeMonths,
@@ -330,6 +337,12 @@ public sealed class ProjectRegistryService : IApplicationService
             return Result<IReadOnlyList<BoqItemView>>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<IReadOnlyList<BoqItemView>>.Failure(money.Errors);
+        }
+
         if (!await _database.Contracts
                 .AnyAsync(row => row.TenantId == tenant.Value && row.Id == contractId, cancellationToken)
                 .ConfigureAwait(false))
@@ -344,7 +357,7 @@ public sealed class ProjectRegistryService : IApplicationService
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        return Result<IReadOnlyList<BoqItemView>>.Success([.. rows.Select(BoqItem)]);
+        return Result<IReadOnlyList<BoqItemView>>.Success([.. rows.Select(item => BoqItem(item, money.Value))]);
     }
 
     /// <summary>
@@ -371,6 +384,12 @@ public sealed class ProjectRegistryService : IApplicationService
         if (gate.IsFailure)
         {
             return Result<ChangeOrderView>.Failure(gate.Errors);
+        }
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<ChangeOrderView>.Failure(money.Errors);
         }
 
         if (!await _database.Contracts
@@ -432,7 +451,7 @@ public sealed class ProjectRegistryService : IApplicationService
 
         return Result<ChangeOrderView>.Success(new ChangeOrderView(
             order.Id, order.Number, order.ContractId, order.IssuedOn, order.ReasonAr, order.ApprovedBy,
-            [.. added.Select(BoqItem)]));
+            [.. added.Select(item => BoqItem(item, money.Value))]));
     }
 
     /// <summary>يقرأ أمراً تغييرياً ببنوده الجديدة.</summary>
@@ -456,6 +475,12 @@ public sealed class ProjectRegistryService : IApplicationService
             return Result<ChangeOrderView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<ChangeOrderView>.Failure(money.Errors);
+        }
+
         ChangeOrderRow? order = await _database.ChangeOrders
             .AsNoTracking()
             .FirstOrDefaultAsync(row => row.TenantId == tenant.Value && row.Id == changeOrderId, cancellationToken)
@@ -475,7 +500,7 @@ public sealed class ProjectRegistryService : IApplicationService
 
         return Result<ChangeOrderView>.Success(new ChangeOrderView(
             order.Id, order.Number, order.ContractId, order.IssuedOn, order.ReasonAr, order.ApprovedBy,
-            [.. added.Select(BoqItem)]));
+            [.. added.Select(item => BoqItem(item, money.Value))]));
     }
 
     /// <summary>يقرأ أوامر عقدٍ التغييرية.</summary>
@@ -497,6 +522,12 @@ public sealed class ProjectRegistryService : IApplicationService
         if (gate.IsFailure)
         {
             return Result<IReadOnlyList<ChangeOrderView>>.Failure(gate.Errors);
+        }
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<IReadOnlyList<ChangeOrderView>>.Failure(money.Errors);
         }
 
         if (!await _database.Contracts
@@ -524,7 +555,7 @@ public sealed class ProjectRegistryService : IApplicationService
         [
             .. orders.Select(order => new ChangeOrderView(
                 order.Id, order.Number, order.ContractId, order.IssuedOn, order.ReasonAr, order.ApprovedBy,
-                [.. items.Where(item => item.ChangeOrderId == order.Id).Select(BoqItem)])),
+                [.. items.Where(item => item.ChangeOrderId == order.Id).Select(item => BoqItem(item, money.Value))])),
         ]);
     }
 
@@ -552,6 +583,12 @@ public sealed class ProjectRegistryService : IApplicationService
         if (gate.IsFailure)
         {
             return Result<GuaranteeView>.Failure(gate.Errors);
+        }
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<GuaranteeView>.Failure(money.Errors);
         }
 
         if (draft.Amount.Amount < 0m)
@@ -589,7 +626,7 @@ public sealed class ProjectRegistryService : IApplicationService
             Kind = draft.Kind,
             Number = draft.Number,
             IssuerNameAr = draft.IssuerNameAr,
-            CurrencyCode = _currency.Value,
+            CurrencyCode = money.Value.Currency.Value,
             Amount = draft.Amount.Amount,
             EffectiveFrom = draft.EffectiveFrom,
             ExpiresOn = draft.ExpiresOn,
@@ -599,7 +636,7 @@ public sealed class ProjectRegistryService : IApplicationService
         _database.Guarantees.Add(row);
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        return Result<GuaranteeView>.Success(Guarantee(row));
+        return Result<GuaranteeView>.Success(Guarantee(row, money.Value));
     }
 
     /// <summary>يقرأ خطاب ضمان.</summary>
@@ -623,6 +660,12 @@ public sealed class ProjectRegistryService : IApplicationService
             return Result<GuaranteeView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<GuaranteeView>.Failure(money.Errors);
+        }
+
         GuaranteeRow? row = await _database.Guarantees
             .AsNoTracking()
             .FirstOrDefaultAsync(entity => entity.TenantId == tenant.Value && entity.Id == guaranteeId, cancellationToken)
@@ -630,7 +673,7 @@ public sealed class ProjectRegistryService : IApplicationService
 
         return row is null
             ? Result<GuaranteeView>.Failure(ProjectsErrors.NotFound("guarantee", guaranteeId))
-            : Result<GuaranteeView>.Success(Guarantee(row));
+            : Result<GuaranteeView>.Success(Guarantee(row, money.Value));
     }
 
     /// <summary>
@@ -655,6 +698,12 @@ public sealed class ProjectRegistryService : IApplicationService
         if (gate.IsFailure)
         {
             return Result<ContractPosition>.Failure(gate.Errors);
+        }
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<ContractPosition>.Failure(money.Errors);
         }
 
         ProjectContractRow? contract = await _database.Contracts
@@ -696,8 +745,8 @@ public sealed class ProjectRegistryService : IApplicationService
             contract.Id,
             contract.Number,
             posted,
-            Money.Of(retention, _currency),
-            Money.Of(advance, _currency),
+            Money.Of(retention, money.Value.Currency),
+            Money.Of(advance, money.Value.Currency),
             pending));
     }
 
@@ -762,23 +811,23 @@ public sealed class ProjectRegistryService : IApplicationService
         row.GuaranteeMonths,
         pending);
 
-    private BoqItemView BoqItem(BoqItemRow row) => new(
+    private static BoqItemView BoqItem(BoqItemRow row, CompanyMoney money) => new(
         row.Id,
         row.Code,
         row.LineNo,
         row.DescriptionAr,
         new ProjectQuantity(row.ContractQuantity, row.Unit),
-        Money.Of(row.UnitRate, _currency),
+        Money.Of(row.UnitRate, money.Currency),
         row.ChangeOrderId);
 
-    private GuaranteeView Guarantee(GuaranteeRow row) => new(
+    private static GuaranteeView Guarantee(GuaranteeRow row, CompanyMoney money) => new(
         row.Id,
         row.Number,
         row.Kind,
         row.ContractId,
         row.SubcontractId,
         row.IssuerNameAr,
-        Money.Of(row.Amount, _currency),
+        Money.Of(row.Amount, money.Currency),
         row.EffectiveFrom,
         row.ExpiresOn,
         row.AttachmentId);

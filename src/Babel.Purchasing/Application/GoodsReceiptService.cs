@@ -5,6 +5,7 @@ using Babel.Core.Application;
 using Babel.Core.CapabilityProfile;
 using Babel.Core.Entitlement;
 using Babel.Purchasing.Persistence;
+using Babel.Core.CompanySetup;
 using Babel.SharedKernel;
 using Microsoft.EntityFrameworkCore;
 
@@ -56,7 +57,7 @@ public sealed class GoodsReceiptService : IApplicationService
     private readonly SubledgerPostingGateway _gateway;
     private readonly PurchasingAdmission _admission;
     private readonly IInventoryValuation _valuation;
-    private readonly CurrencyCode _currency;
+    private readonly ICompanyMoneyResolver _company;
 
     /// <summary>ينشئ الخدمة.</summary>
     /// <param name="enforcer">منفِّذ الاستحقاق.</param>
@@ -89,7 +90,7 @@ public sealed class GoodsReceiptService : IApplicationService
         _valuation = valuation;
         _enforcer = enforcer;
         _database = runtime.Database;
-        _currency = CurrencyCode.FromString(runtime.Options.CompanyCurrency);
+        _company = runtime.Company;
         _gateway = new SubledgerPostingGateway(_database, posting, runtime.CostCenters);
         _admission = new PurchasingAdmission(profiles);
     }
@@ -118,6 +119,12 @@ public sealed class GoodsReceiptService : IApplicationService
         if (gate.IsFailure)
         {
             return Result<PurchasingDocumentView>.Failure(gate.Errors);
+        }
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<PurchasingDocumentView>.Failure(money.Errors);
         }
 
         if (draft.Lines.Count == 0)
@@ -171,7 +178,7 @@ public sealed class GoodsReceiptService : IApplicationService
                     PurchasingErrors.ReceiptExceedsOrder(orderLine.ItemId, line.Quantity, outstanding));
             }
 
-            decimal lineCost = LineMath.Round(line.Quantity * orderLine.UnitPrice);
+            decimal lineCost = LineMath.Round(line.Quantity * orderLine.UnitPrice, money.Value);
             cost += lineCost;
             pending.Add((orderLine, line.Quantity, lineCost));
         }
@@ -213,7 +220,7 @@ public sealed class GoodsReceiptService : IApplicationService
             OrderId = order.Id,
             ReceivedOn = draft.ReceivedOn,
             State = PurchasingDocumentState.Draft,
-            CurrencyCode = _currency.Value,
+            CurrencyCode = money.Value.Currency.Value,
             WarehouseId = order.WarehouseId,
             ReceiptCost = cost,
         };
@@ -226,7 +233,7 @@ public sealed class GoodsReceiptService : IApplicationService
                 receipt.Id,
                 receipt.Number,
                 receipt.State,
-                new DocumentTotals(Money.Of(cost, _currency), Money.Of(0m, _currency), Money.Of(cost, _currency)),
+                new DocumentTotals(Money.Of(cost, money.Value.Currency), Money.Of(0m, money.Value.Currency), Money.Of(cost, money.Value.Currency)),
                 null));
     }
 
@@ -278,6 +285,12 @@ public sealed class GoodsReceiptService : IApplicationService
         Guid receiptId,
         CancellationToken cancellationToken)
     {
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<PurchasingDocumentView>.Failure(money.Errors);
+        }
         Result covers = PurchasingAdmission.EnsureCovers(admitted, PurchasingAdmission.ReceiptField);
         if (covers.IsFailure)
         {
@@ -296,7 +309,7 @@ public sealed class GoodsReceiptService : IApplicationService
         if (receipt.State == PurchasingDocumentState.Posted)
         {
             // وصولٌ ثانٍ بعد أن اكتمل الأول: الاستلام لا يُمسّ، والحقيقة تُقال صراحةً.
-            return Result<PurchasingDocumentView>.Success(ViewOf(receipt) with { AlreadyPosted = true });
+            return Result<PurchasingDocumentView>.Success(ViewOf(receipt, money.Value) with { AlreadyPosted = true });
         }
 
         SupplierRow supplier = await _database.Suppliers
@@ -346,7 +359,7 @@ public sealed class GoodsReceiptService : IApplicationService
                     // تكلفة الوارد هي صافي السطر بالضبط — وهو المبلغ نفسه الذي
                     // يُدين حساب مراقبة المخزون في القيد أدناه. رقمان مختلفان
                     // هنا يعنيان دفترين لا يلتقيان أبداً.
-                    Cost = Money.Of(line.LineNet, _currency),
+                    Cost = Money.Of(line.LineNet, money.Value.Currency),
                     OccurredOn = receipt.ReceivedOn,
                 },
                 cancellationToken).ConfigureAwait(false);
@@ -367,7 +380,7 @@ public sealed class GoodsReceiptService : IApplicationService
                 DocumentDate = receipt.ReceivedOn,
                 Narration = new LocalizedName(
                     "استلام بضاعة " + receipt.Number, "Goods receipt " + receipt.Number),
-                Amounts = [new PostingAmount("receipt_cost", Money.Of(line.LineNet, _currency))],
+                Amounts = [new PostingAmount("receipt_cost", Money.Of(line.LineNet, money.Value.Currency))],
                 Facts =
                 [
                     new PostingFact("subledger.supplier", supplier.Code),
@@ -377,7 +390,7 @@ public sealed class GoodsReceiptService : IApplicationService
                 Dimensions = [new PostingDimension("warehouse", receipt.WarehouseId)],
                 PartyId = supplier.Code,
                 ControlEffect = line.LineNet,
-                Currency = _currency,
+                Currency = money.Value.Currency,
                 Actor = actor,
                 Generation = receipt.PostingGeneration,
             };
@@ -400,7 +413,7 @@ public sealed class GoodsReceiptService : IApplicationService
         // أصلاً، فلا حكم لها عليه. (والمسار لا يبلغه اليوم — `RecordAsync` ترفض
         // مسوّدة بلا سطور — والشرط مكتوب كي لا يصير الحياد الابتدائي حكماً.)
         return Result<PurchasingDocumentView>.Success(
-            ViewOf(receipt) with { AlreadyPosted = lines.Count > 0 && everyLineWasAlreadyPosted });
+            ViewOf(receipt, money.Value) with { AlreadyPosted = lines.Count > 0 && everyLineWasAlreadyPosted });
     }
 
     /// <summary>
@@ -431,6 +444,12 @@ public sealed class GoodsReceiptService : IApplicationService
             return Result<PurchasingDocumentView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<PurchasingDocumentView>.Failure(money.Errors);
+        }
+
         GoodsReceiptRow? receipt = await _database.Receipts
             .AsNoTracking()
             .FirstOrDefaultAsync(row => row.TenantId == tenant.Value && row.Id == receiptId, cancellationToken)
@@ -438,7 +457,7 @@ public sealed class GoodsReceiptService : IApplicationService
 
         return receipt is null
             ? Result<PurchasingDocumentView>.Failure(PurchasingErrors.DocumentNotFound(ReceiptDocument, receiptId))
-            : Result<PurchasingDocumentView>.Success(ViewOf(receipt));
+            : Result<PurchasingDocumentView>.Success(ViewOf(receipt, money.Value));
     }
 
     /// <summary>
@@ -469,6 +488,12 @@ public sealed class GoodsReceiptService : IApplicationService
             return Result<PurchasingDocumentView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<PurchasingDocumentView>.Failure(money.Errors);
+        }
+
         GoodsReceiptRow? receipt = await _database.Receipts
             .AsNoTracking()
             .FirstOrDefaultAsync(row => row.TenantId == tenant.Value && row.Id == receiptId, cancellationToken)
@@ -476,7 +501,7 @@ public sealed class GoodsReceiptService : IApplicationService
 
         return receipt is null
             ? Result<PurchasingDocumentView>.Failure(PurchasingErrors.DocumentNotFound("GoodsReceipt", receiptId))
-            : Result<PurchasingDocumentView>.Success(ViewOf(receipt));
+            : Result<PurchasingDocumentView>.Success(ViewOf(receipt, money.Value));
     }
 
     /// <summary>يقرأ سطور استلام — معرّفاتها مدخل الضلع الثالث من المطابقة.</summary>
@@ -500,6 +525,12 @@ public sealed class GoodsReceiptService : IApplicationService
             return Result<IReadOnlyList<PurchaseLineView>>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<IReadOnlyList<PurchaseLineView>>.Failure(money.Errors);
+        }
+
         List<PurchaseLineRow> lines = await _database.Lines
             .AsNoTracking()
             .Where(row => row.TenantId == tenant.Value && row.OwnerType == LineOwner.Receipt && row.OwnerId == receiptId)
@@ -509,16 +540,16 @@ public sealed class GoodsReceiptService : IApplicationService
 
         return Result<IReadOnlyList<PurchaseLineView>>.Success(
             [.. lines.Select(line => new PurchaseLineView(
-                line.Id, line.LineNo, line.ItemId, line.Quantity, line.Unit, Money.Of(line.UnitPrice, _currency)))]);
+                line.Id, line.LineNo, line.ItemId, line.Quantity, line.Unit, Money.Of(line.UnitPrice, money.Value.Currency)))]);
     }
 
-    private PurchasingDocumentView ViewOf(GoodsReceiptRow receipt) => new(
+    private static PurchasingDocumentView ViewOf(GoodsReceiptRow receipt, CompanyMoney money) => new(
         receipt.Id,
         receipt.Number,
         receipt.State,
         new DocumentTotals(
-            Money.Of(receipt.ReceiptCost, _currency),
-            Money.Of(0m, _currency),
-            Money.Of(receipt.ReceiptCost, _currency)),
+            Money.Of(receipt.ReceiptCost, money.Currency),
+            Money.Of(0m, money.Currency),
+            Money.Of(receipt.ReceiptCost, money.Currency)),
         receipt.PostedEntryId);
 }

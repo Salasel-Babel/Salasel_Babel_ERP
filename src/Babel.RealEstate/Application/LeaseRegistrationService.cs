@@ -1,6 +1,7 @@
 using Babel.Core.Application;
 using Babel.Core.Entitlement;
 using Babel.RealEstate.Persistence;
+using Babel.Core.CompanySetup;
 using Babel.SharedKernel;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -33,7 +34,7 @@ public sealed class LeaseRegistrationService : IApplicationService
 {
     private readonly IEntitlementEnforcer _enforcer;
     private readonly RealEstateDbContext _database;
-    private readonly CurrencyCode _currency;
+    private readonly ICompanyMoneyResolver _company;
 
     /// <summary>ينشئ الخدمة.</summary>
     /// <param name="enforcer">منفِّذ الاستحقاق.</param>
@@ -44,7 +45,7 @@ public sealed class LeaseRegistrationService : IApplicationService
         ArgumentNullException.ThrowIfNull(runtime);
         _enforcer = enforcer;
         _database = runtime.Database;
-        _currency = CurrencyCode.FromString(runtime.Options.CompanyCurrency);
+        _company = runtime.Company;
     }
 
     /// <summary>
@@ -73,6 +74,12 @@ public sealed class LeaseRegistrationService : IApplicationService
         if (gate.IsFailure)
         {
             return Result<LeaseView>.Failure(gate.Errors);
+        }
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<LeaseView>.Failure(money.Errors);
         }
 
         if (draft.Instalments.Count == 0)
@@ -161,7 +168,7 @@ public sealed class LeaseRegistrationService : IApplicationService
 
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        return Result<LeaseView>.Success(View(row));
+        return Result<LeaseView>.Success(View(row, money.Value));
     }
 
     /// <summary>يقرأ قيد التسجيل بحالته.</summary>
@@ -187,6 +194,12 @@ public sealed class LeaseRegistrationService : IApplicationService
             return Result<LeaseView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<LeaseView>.Failure(money.Errors);
+        }
+
         LeaseContractRow? row = await _database.Leases
             .FirstOrDefaultAsync(
                 entity => entity.TenantId == tenant.Value && entity.CompanyId == companyId && entity.Id == leaseId,
@@ -195,7 +208,7 @@ public sealed class LeaseRegistrationService : IApplicationService
 
         return row is null
             ? Result<LeaseView>.Failure(RealEstateErrors.LeaseNotFound(leaseId))
-            : Result<LeaseView>.Success(View(row));
+            : Result<LeaseView>.Success(View(row, money.Value));
     }
 
     /// <summary>
@@ -224,6 +237,12 @@ public sealed class LeaseRegistrationService : IApplicationService
             return Result<IReadOnlyList<ScheduleLineView>>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<IReadOnlyList<ScheduleLineView>>.Failure(money.Errors);
+        }
+
         if (!await _database.Leases
                 .AnyAsync(
                     row => row.TenantId == tenant.Value && row.CompanyId == companyId && row.Id == leaseId,
@@ -244,7 +263,7 @@ public sealed class LeaseRegistrationService : IApplicationService
         [
             .. rows.Select(row => new ScheduleLineView(
                 row.Id, row.Seq, row.PeriodFrom, row.PeriodTo, row.DueOn,
-                Money.Of(row.Amount, _currency), row.IsInvoiced)),
+                Money.Of(row.Amount, money.Value.Currency), row.IsInvoiced)),
         ];
 
         return Result<IReadOnlyList<ScheduleLineView>>.Success(lines);
@@ -281,6 +300,12 @@ public sealed class LeaseRegistrationService : IApplicationService
             return Result<LeaseView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<LeaseView>.Failure(money.Errors);
+        }
+
         LeaseContractRow? row = await _database.Leases
             .FirstOrDefaultAsync(
                 entity => entity.TenantId == tenant.Value && entity.CompanyId == companyId && entity.Id == leaseId,
@@ -299,7 +324,7 @@ public sealed class LeaseRegistrationService : IApplicationService
         // الأول ويعيده. (‏ق-٣: المسوّدة ثمّ الاعتماد خطوتان، وإعادةُ الاعتماد آمنة.)
         if (string.Equals(row.State, LeaseState.Billable, StringComparison.Ordinal))
         {
-            return Result<LeaseView>.Success(View(row));
+            return Result<LeaseView>.Success(View(row, money.Value));
         }
 
         List<PaymentScheduleLineRow> schedule = await _database.ScheduleLines
@@ -340,7 +365,7 @@ public sealed class LeaseRegistrationService : IApplicationService
             return Result<LeaseView>.Failure(RealEstateErrors.LeaseTermOverlaps(row.EjarContractNumber));
         }
 
-        return Result<LeaseView>.Success(View(row));
+        return Result<LeaseView>.Success(View(row, money.Value));
     }
 
     /// <summary>هل الرفض انتهاكٌ لقيد الاستبعاد الزمني؟ ‏<c>23P01</c> ولا شيء غيره.</summary>
@@ -348,7 +373,7 @@ public sealed class LeaseRegistrationService : IApplicationService
         => failure.InnerException is PostgresException postgres
            && string.Equals(postgres.SqlState, PostgresErrorCodes.ExclusionViolation, StringComparison.Ordinal);
 
-    private LeaseView View(LeaseContractRow row) => new(
+    private static LeaseView View(LeaseContractRow row, CompanyMoney money) => new(
         row.Id,
         row.EjarContractNumber,
         row.PropertyId,
@@ -356,6 +381,6 @@ public sealed class LeaseRegistrationService : IApplicationService
         row.LesseeId,
         row.StartsOn,
         row.EndsOn,
-        Money.Of(row.TotalRent, _currency),
+        Money.Of(row.TotalRent, money.Currency),
         row.State);
 }

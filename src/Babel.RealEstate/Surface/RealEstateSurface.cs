@@ -1,5 +1,6 @@
 using Babel.RealEstate.Application;
 using Babel.RealEstate.Subledger;
+using Babel.Core.CompanySetup;
 using Babel.SharedKernel;
 
 namespace Babel.RealEstate.Surface;
@@ -30,7 +31,7 @@ public sealed class RealEstateSurface
     private readonly RentInvoiceService _invoices;
     private readonly TenantReceiptService _receipts;
     private readonly TenantArrearsService _arrears;
-    private readonly CurrencyCode _currency;
+    private readonly CompanySetupService _setups;
 
     /// <summary>ينشئ السطح فوق خدمات الوحدة.</summary>
     /// <param name="properties">خدمة العقارات والوحدات.</param>
@@ -39,7 +40,7 @@ public sealed class RealEstateSurface
     /// <param name="invoices">خدمة فواتير الإيجار.</param>
     /// <param name="receipts">خدمة التحصيل.</param>
     /// <param name="arrears">خدمة المتأخرات ومطابقتها.</param>
-    /// <param name="options">إعدادات الوحدة — ومنها عملة المنشأة.</param>
+    /// <param name="setups">خدمة التأسيس — خدمةُ تطبيقٍ مُستحَقّة تُقرأ منها عملةُ المنشأة (ADR-0089).</param>
     public RealEstateSurface(
         PropertyService properties,
         PartyService parties,
@@ -47,7 +48,7 @@ public sealed class RealEstateSurface
         RentInvoiceService invoices,
         TenantReceiptService receipts,
         TenantArrearsService arrears,
-        RealEstateOptions options)
+        CompanySetupService setups)
     {
         ArgumentNullException.ThrowIfNull(properties);
         ArgumentNullException.ThrowIfNull(parties);
@@ -55,7 +56,7 @@ public sealed class RealEstateSurface
         ArgumentNullException.ThrowIfNull(invoices);
         ArgumentNullException.ThrowIfNull(receipts);
         ArgumentNullException.ThrowIfNull(arrears);
-        ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(setups);
 
         _properties = properties;
         _parties = parties;
@@ -63,7 +64,7 @@ public sealed class RealEstateSurface
         _invoices = invoices;
         _receipts = receipts;
         _arrears = arrears;
-        _currency = CurrencyCode.FromString(options.CompanyCurrency);
+        _setups = setups;
     }
 
     /// <summary>يسجّل عقاراً <b>ويسجّل بُعده في الدفتر في العملية نفسها</b>.</summary>
@@ -252,13 +253,22 @@ public sealed class RealEstateSurface
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        // ‏عملةُ المنشأة من التأسيس عبر خدمةِ تطبيقٍ مُستحَقّة — لا متعاونَ يفتح الوحدة بلا استحقاق.
+        Result<FoundedCompany> setup = await _setups.GetAsync(tenant, actor, cancellationToken).ConfigureAwait(false);
+        if (setup.IsFailure)
+        {
+            return Result<RealEstateLease>.Failure(setup.Errors);
+        }
+
+        CompanyMoney money = setup.Value.Money;
+
         IReadOnlyList<InstalmentDraft> instalments =
         [
             .. request.Instalments.Select(instalment => new InstalmentDraft(
                 instalment.PeriodFrom,
                 instalment.PeriodTo,
                 instalment.DueOn,
-                Money.Of(instalment.Amount, _currency))),
+                Money.Of(instalment.Amount, money.Currency))),
         ];
 
         Result<LeaseView> result = await _leases
@@ -270,7 +280,7 @@ public sealed class RealEstateSurface
                     request.LesseeId,
                     request.StartsOn,
                     request.EndsOn,
-                    Money.Of(request.TotalRent, _currency),
+                    Money.Of(request.TotalRent, money.Currency),
                     instalments),
                 cancellationToken)
             .ConfigureAwait(false);
@@ -407,6 +417,15 @@ public sealed class RealEstateSurface
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        // ‏عملةُ المنشأة من التأسيس عبر خدمةِ تطبيقٍ مُستحَقّة — لا متعاونَ يفتح الوحدة بلا استحقاق.
+        Result<FoundedCompany> setup = await _setups.GetAsync(tenant, actor, cancellationToken).ConfigureAwait(false);
+        if (setup.IsFailure)
+        {
+            return Result<RealEstateReceipt>.Failure(setup.Errors);
+        }
+
+        CompanyMoney money = setup.Value.Money;
+
         Result<TenantReceiptView> result = await _receipts
             .DraftAsync(
                 tenant, actor, companyId,
@@ -416,7 +435,7 @@ public sealed class RealEstateSurface
                     request.ReceivedOn,
                     request.SettlementMethod,
                     request.TreasuryPartyId,
-                    Money.Of(request.Received, _currency)),
+                    Money.Of(request.Received, money.Currency)),
                 cancellationToken)
             .ConfigureAwait(false);
 

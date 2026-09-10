@@ -1,5 +1,6 @@
 using Babel.Contracts.Inventory;
 using Babel.Purchasing.Application;
+using Babel.Core.CompanySetup;
 using Babel.SharedKernel;
 
 namespace Babel.Purchasing.Surface;
@@ -31,7 +32,7 @@ public sealed class PurchasingSurface
     private readonly PurchaseOrderService _orders;
     private readonly GoodsReceiptService _receipts;
     private readonly PayablesService _payables;
-    private readonly CurrencyCode _currency;
+    private readonly CompanySetupService _setups;
 
     /// <summary>ينشئ السطح فوق خدمات الوحدة.</summary>
     /// <param name="suppliers">خدمة الموردين.</param>
@@ -40,7 +41,7 @@ public sealed class PurchasingSurface
     /// <param name="orders">خدمة أوامر الشراء.</param>
     /// <param name="receipts">خدمة استلام البضاعة.</param>
     /// <param name="payables">خدمة الذمم الدائنة.</param>
-    /// <param name="options">إعدادات الوحدة — ومنها عملة المنشأة.</param>
+    /// <param name="setups">خدمة التأسيس — خدمةُ تطبيقٍ مُستحَقّة تُقرأ منها عملةُ المنشأة (ADR-0089).</param>
     public PurchasingSurface(
         SupplierService suppliers,
         SupplierBillService bills,
@@ -48,7 +49,7 @@ public sealed class PurchasingSurface
         PurchaseOrderService orders,
         GoodsReceiptService receipts,
         PayablesService payables,
-        PurchasingOptions options)
+        CompanySetupService setups)
     {
         ArgumentNullException.ThrowIfNull(suppliers);
         ArgumentNullException.ThrowIfNull(bills);
@@ -56,7 +57,7 @@ public sealed class PurchasingSurface
         ArgumentNullException.ThrowIfNull(orders);
         ArgumentNullException.ThrowIfNull(receipts);
         ArgumentNullException.ThrowIfNull(payables);
-        ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(setups);
 
         _suppliers = suppliers;
         _bills = bills;
@@ -64,7 +65,7 @@ public sealed class PurchasingSurface
         _orders = orders;
         _receipts = receipts;
         _payables = payables;
-        _currency = CurrencyCode.FromString(options.CompanyCurrency);
+        _setups = setups;
     }
 
     /// <summary>يسجّل مورداً جديداً. بيانات أساسية، لا مستند ولا ترحيل.</summary>
@@ -80,6 +81,15 @@ public sealed class PurchasingSurface
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        // ‏عملةُ المنشأة من التأسيس عبر خدمةِ تطبيقٍ مُستحَقّة — لا متعاونَ يفتح الوحدة بلا استحقاق.
+        Result<FoundedCompany> setup = await _setups.GetAsync(tenant, actor, cancellationToken).ConfigureAwait(false);
+        if (setup.IsFailure)
+        {
+            return Result<PurchasingParty>.Failure(setup.Errors);
+        }
+
+        CompanyMoney money = setup.Value.Money;
+
         Result<SupplierView> result = await _suppliers
             .CreateAsync(
                 tenant,
@@ -87,7 +97,7 @@ public sealed class PurchasingSurface
                 new SupplierDraft(
                     request.Code,
                     request.Name,
-                    Money.Of(request.CreditLimit, _currency),
+                    Money.Of(request.CreditLimit, money.Currency),
                     request.PaymentTermsDays,
                     request.VatNumber),
                 cancellationToken)
@@ -132,6 +142,15 @@ public sealed class PurchasingSurface
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        // ‏عملةُ المنشأة من التأسيس عبر خدمةِ تطبيقٍ مُستحَقّة — لا متعاونَ يفتح الوحدة بلا استحقاق.
+        Result<FoundedCompany> setup = await _setups.GetAsync(tenant, actor, cancellationToken).ConfigureAwait(false);
+        if (setup.IsFailure)
+        {
+            return Result<PurchasingDocument>.Failure(setup.Errors);
+        }
+
+        CompanyMoney money = setup.Value.Money;
+
         Result<PurchasingDocumentView> result = await _bills
             .CreateExpenseBillAsync(
                 tenant,
@@ -142,7 +161,7 @@ public sealed class PurchasingSurface
                     request.IssuedOn,
                     request.ExpenseCategory,
                     request.CostCenterId,
-                    Lines(request.Lines)),
+                    Lines(request.Lines, money)),
                 cancellationToken)
             .ConfigureAwait(false);
 
@@ -201,6 +220,15 @@ public sealed class PurchasingSurface
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        // ‏عملةُ المنشأة من التأسيس عبر خدمةِ تطبيقٍ مُستحَقّة — لا متعاونَ يفتح الوحدة بلا استحقاق.
+        Result<FoundedCompany> setup = await _setups.GetAsync(tenant, actor, cancellationToken).ConfigureAwait(false);
+        if (setup.IsFailure)
+        {
+            return Result<PurchasingDocument>.Failure(setup.Errors);
+        }
+
+        CompanyMoney money = setup.Value.Money;
+
         Result<PurchasingDocumentView> result = await _payments
             .RecordPaymentAsync(
                 tenant,
@@ -211,9 +239,9 @@ public sealed class PurchasingSurface
                     request.PaidOn,
                     request.SettlementMethod,
                     request.TreasuryPartyId,
-                    Money.Of(request.Paid, _currency),
-                    Money.Of(request.BankFee, _currency),
-                    Allocations(request.Allocations)),
+                    Money.Of(request.Paid, money.Currency),
+                    Money.Of(request.BankFee, money.Currency),
+                    Allocations(request.Allocations, money)),
                 cancellationToken)
             .ConfigureAwait(false);
 
@@ -276,6 +304,15 @@ public sealed class PurchasingSurface
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        // ‏عملةُ المنشأة من التأسيس عبر خدمةِ تطبيقٍ مُستحَقّة — لا متعاونَ يفتح الوحدة بلا استحقاق.
+        Result<FoundedCompany> setup = await _setups.GetAsync(tenant, actor, cancellationToken).ConfigureAwait(false);
+        if (setup.IsFailure)
+        {
+            return Result<PurchasingOrder>.Failure(setup.Errors);
+        }
+
+        CompanyMoney money = setup.Value.Money;
+
         Result<PurchasingDocumentView> created = await _orders
             .CreateOrderAsync(
                 tenant,
@@ -286,7 +323,7 @@ public sealed class PurchasingSurface
                     request.OrderedOn,
                     request.WarehouseId,
                     request.CostCenterId,
-                    Lines(request.Lines)),
+                    Lines(request.Lines, money)),
 
                 // ‏**ولا طلب شراء داخلي على هذا السطح**: طلب الشراء مستندٌ داخلي لا
                 // يُرحَّل ولم يُنشر بعد، وربطُ الأمر بطلبٍ لا يستطيع العميل إنشاؤه كان
@@ -444,6 +481,15 @@ public sealed class PurchasingSurface
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        // ‏عملةُ المنشأة من التأسيس عبر خدمةِ تطبيقٍ مُستحَقّة — لا متعاونَ يفتح الوحدة بلا استحقاق.
+        Result<FoundedCompany> setup = await _setups.GetAsync(tenant, actor, cancellationToken).ConfigureAwait(false);
+        if (setup.IsFailure)
+        {
+            return Result<PurchasingDocument>.Failure(setup.Errors);
+        }
+
+        CompanyMoney money = setup.Value.Money;
+
         Result<PurchasingDocumentView> result = await _bills
             .CreateStockBillAsync(
                 tenant,
@@ -456,7 +502,7 @@ public sealed class PurchasingSurface
                         .. request.Lines.Select(line => new SupplierBillLineDraft(
                             line.ReceiptLineId,
                             line.Quantity,
-                            Money.Of(line.UnitPrice, _currency),
+                            Money.Of(line.UnitPrice, money.Currency),
                             line.TaxClassification,
                             line.TaxRate)),
                     ]),
@@ -484,6 +530,15 @@ public sealed class PurchasingSurface
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        // ‏عملةُ المنشأة من التأسيس عبر خدمةِ تطبيقٍ مُستحَقّة — لا متعاونَ يفتح الوحدة بلا استحقاق.
+        Result<FoundedCompany> setup = await _setups.GetAsync(tenant, actor, cancellationToken).ConfigureAwait(false);
+        if (setup.IsFailure)
+        {
+            return Result<PurchasingDocument>.Failure(setup.Errors);
+        }
+
+        CompanyMoney money = setup.Value.Money;
+
         Result<PurchasingDocumentView> result = await _bills
             .CreateDebitNoteAsync(
                 tenant,
@@ -494,7 +549,7 @@ public sealed class PurchasingSurface
                     request.IssuedOn,
                     request.ReceiptLineId,
                     request.Quantity,
-                    Money.Of(request.Tax, _currency)),
+                    Money.Of(request.Tax, money.Currency)),
                 cancellationToken)
             .ConfigureAwait(false);
 
@@ -620,14 +675,15 @@ public sealed class PurchasingSurface
         buckets.Over90.Amount,
         buckets.Total.Amount);
 
-    private List<PayableAllocationDraft> Allocations(
-        IReadOnlyList<PurchasingPaymentAllocationRequest> allocations) =>
+    private static List<PayableAllocationDraft> Allocations(
+        IReadOnlyList<PurchasingPaymentAllocationRequest> allocations,
+        CompanyMoney money) =>
     [
         .. allocations.Select(allocation =>
-            new PayableAllocationDraft(allocation.BillId, Money.Of(allocation.Amount, _currency))),
+            new PayableAllocationDraft(allocation.BillId, Money.Of(allocation.Amount, money.Currency))),
     ];
 
-    private List<PurchaseLineDraft> Lines(IReadOnlyList<PurchasingLineRequest> lines) =>
+    private static List<PurchaseLineDraft> Lines(IReadOnlyList<PurchasingLineRequest> lines, CompanyMoney money) =>
     [
         .. lines.Select(line => new PurchaseLineDraft(
             line.ItemId,
@@ -642,7 +698,7 @@ public sealed class PurchasingSurface
             // يُدرى بأي مقياس؛ ووحدةٌ لا يقبلها كتالوج الصنف تُرفض باسمها
             // (`inventory.unit_not_convertible`) ولا تُقرَّب.
             InventoryUnits.Each,
-            Money.Of(line.UnitPrice, _currency),
+            Money.Of(line.UnitPrice, money.Currency),
             line.TaxClassification,
             line.TaxRate,
             line.TaxRecoverable)),

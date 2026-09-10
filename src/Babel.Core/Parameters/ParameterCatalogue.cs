@@ -43,9 +43,37 @@ public static class ParameterCatalogue
     /// </summary>
     public const string ValueAddedTaxStandardRate = "standard_rate";
 
+    /// <summary>
+    /// مجموعةُ الإبلاغ الضريبي الإلكتروني — ما يحكم <b>متى</b> يجب أن يبلغ المستندُ
+    /// الجهةَ ومتى يُنذَر المديرُ المالي ومتى يتوقّف الحسمُ الآلي.
+    /// <para>
+    /// وكانت الثلاثةُ خصائصَ في <c>ComplianceSettings</c> مسجَّلةً <b>مفردةً للعملية كلّها</b>
+    /// وموصوفةً «لكل مستأجر». والنافذةُ النظامية منها كانت موسومةً <c>[Provisional]</c>
+    /// بمصدرٍ داخلي لا رسمي — فصارت صفّاً بحالة اعتمادٍ ومصدرٍ مكتوب، ولكلّ منشأةٍ
+    /// تجاوزُها (ADR-0090).
+    /// </para>
+    /// </summary>
+    public const string ComplianceReporting = "compliance.reporting";
+
+    /// <summary>نافذةُ الإبلاغ النظامية بالساعات — من الإصدار إلى آخر لحظةٍ يُقبل فيها الإبلاغ.</summary>
+    public const string ComplianceReportingWindowHours = "reporting_window_hours";
+
+    /// <summary>عتبةُ الإنذار بالساعات — مستندٌ في الطابور أطول منها يُرفع بنداً للمدير المالي.</summary>
+    public const string ComplianceQueueAgeAlarmHours = "queue_age_alarm_hours";
+
+    /// <summary>سقفُ محاولات الحسم الآلي للغموض قبل الطابور البشري.</summary>
+    public const string ComplianceMaxResolutionAttempts = "max_resolution_attempts";
+
     /// <summary>كل المجموعات المعرَّفة، بترتيبٍ رتيب.</summary>
     public static IReadOnlyList<ParameterSetDefinition> All { get; } =
     [
+        new ParameterSetDefinition(
+            ComplianceReporting,
+            [
+                new ParameterKeyDefinition(ComplianceMaxResolutionAttempts, ParameterValueKind.Count),
+                new ParameterKeyDefinition(ComplianceQueueAgeAlarmHours, ParameterValueKind.Count),
+                new ParameterKeyDefinition(ComplianceReportingWindowHours, ParameterValueKind.Count),
+            ]),
         new ParameterSetDefinition(
             ValueAddedTax,
             [new ParameterKeyDefinition(ValueAddedTaxStandardRate, ParameterValueKind.Rate)]),

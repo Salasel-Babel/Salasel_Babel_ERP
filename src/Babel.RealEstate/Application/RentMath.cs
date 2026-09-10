@@ -1,3 +1,5 @@
+using Babel.Core.CompanySetup;
+
 namespace Babel.RealEstate.Application;
 
 /// <summary>
@@ -19,15 +21,13 @@ namespace Babel.RealEstate.Application;
 /// </summary>
 internal static class RentMath
 {
-    /// <summary>خانتان عشريتان: الهللة أصغر وحدة نقدية، والتقريب سياسة لا صدفة.</summary>
-    private const int Halalas = 2;
-
     /// <summary>المعاملة الضريبية التي تُنتج توريداً خاضعاً.</summary>
     public const string Standard = "standard";
 
     /// <summary>يقرّب إلى الهللة، والنصف يبتعد عن الصفر.</summary>
     /// <param name="value">القيمة.</param>
-    public static decimal Round(decimal value) => decimal.Round(value, Halalas, MidpointRounding.AwayFromZero);
+    /// <param name="money">عملة المنشأة ووحدتها الصغرى (ADR-0089).</param>
+    public static decimal Round(decimal value, CompanyMoney money) => money.Round(value);
 
     /// <summary>
     /// ضريبة سطرٍ صافيه معلوم، أو صفرٌ حين لا يكون التوريد خاضعاً.
@@ -42,6 +42,7 @@ internal static class RentMath
     /// <param name="net">صافي السطر.</param>
     /// <param name="taxRate">النسبة كسراً عشرياً كما وصلت مع الطلب.</param>
     /// <param name="taxable">هل التوريد خاضع؟ مُحسوماً من معاملة الوحدة ومن نموذج الملكية معاً.</param>
-    public static decimal Tax(decimal net, decimal taxRate, bool taxable)
-        => taxable ? Round(net * taxRate) : 0m;
+    /// <param name="money">عملة المنشأة ووحدتها الصغرى (ADR-0089).</param>
+    public static decimal Tax(decimal net, decimal taxRate, bool taxable, CompanyMoney money)
+        => taxable ? Round(net * taxRate, money) : 0m;
 }

@@ -193,12 +193,12 @@ internal sealed class Settings
                 AppConnectionString = coreApp,
                 AppRole = Env("BABEL_CORE_APP_ROLE") ?? ledger.AppRole,
             },
-            new SalesOptions { ConnectionString = salesOwner, CompanyCurrency = ledger.CompanyCurrency },
-            new PurchasingOptions { ConnectionString = purchasingOwner, CompanyCurrency = ledger.CompanyCurrency },
-            new InventoryOptions { ConnectionString = inventoryOwner, CompanyCurrency = ledger.CompanyCurrency },
-            new RealEstateOptions { ConnectionString = realEstateOwner, CompanyCurrency = ledger.CompanyCurrency },
-            new ProjectsOptions { ConnectionString = projectsOwner, CompanyCurrency = ledger.CompanyCurrency },
-            new HrOptions { ConnectionString = hrOwner, CompanyCurrency = ledger.CompanyCurrency },
+            new SalesOptions { ConnectionString = salesOwner },
+            new PurchasingOptions { ConnectionString = purchasingOwner },
+            new InventoryOptions { ConnectionString = inventoryOwner },
+            new RealEstateOptions { ConnectionString = realEstateOwner },
+            new ProjectsOptions { ConnectionString = projectsOwner },
+            new HrOptions { ConnectionString = hrOwner },
             new StorageOptions { OwnerConnectionString = storageOwner, AppRole = ledger.AppRole },
             Guid.TryParseExact(Env("BABEL_DEMO_COMPANY_ID"), "D", out Guid company)
                 ? company

@@ -108,7 +108,7 @@ public static class ProofA_Provisioning
 
         // ---- الاستحقاق طُبِّق من الخطة --------------------------------------
         var set = await entitlements.GetSetAsync(t.TenantId);
-        var plan = PlanCatalog.Require("GROWTH");
+        var plan = PlanCatalog.Structural.Single(p => p.Code == "GROWTH");
         var ok = plan.Modules.All(m => set[m] == EntitlementState.Entitled);
         rec.Check("A7", "استحقاقات الخطة مطبَّقة ومغلقة على اعتمادياتها", ok,
             string.Join("، ", set.OrderBy(k => k.Key)

@@ -160,6 +160,7 @@ public static class CoreModuleRegistration
         // حلّ مركز التكلفة: يقرأ المخزن ولا يحمل حالة، فهو مفردة واحدة تكفي الجميع.
         // وهو ما تسأله كل بوّابة ترحيل قبل أن تبني طلباً (ADR-0026).
         services.AddSingleton<ICostCenterResolver, CostCenterResolver>();
+        services.AddSingleton<ICompanyMoneyResolver, CompanyMoneyResolver>();
 
         return services;
     }

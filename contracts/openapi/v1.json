@@ -12096,7 +12096,7 @@
       "get": {
         "operationId": "readCompanySetup",
         "summary": "تأسيس المنشأة / The company setup",
-        "description": "يقرأ تأسيس المنشأة: اسمها، و**عدد الخانات العشرية المعروضة**، و**مراكز تكلفتها كلّها** — العاملة والموقوفة معاً. والموقوف يبقى في القائمة عمداً: تقاريرُ الفترات السابقة تُبوَّب عليه، والدفتر إضافي لا يُحذف منه شيء.\n\nReads the company setup: its name, the **number of displayed decimal places**, and **all of its cost centres** — active and suspended alike. A suspended centre stays in the list on purpose: earlier periods are still grouped by it, and the ledger is append-only.",
+        "description": "يقرأ تأسيس المنشأة: اسمها، و**عدد الخانات العشرية المعروضة**، و**عملتها ووحدتها الصغرى**، و**مراكز تكلفتها كلّها** — العاملة والموقوفة معاً. والموقوف يبقى في القائمة عمداً: تقاريرُ الفترات السابقة تُبوَّب عليه، والدفتر إضافي لا يُحذف منه شيء.\n\nReads the company setup: its name, the **number of displayed decimal places**, **its currency and minor unit**, and **all of its cost centres** — active and suspended alike. A suspended centre stays in the list on purpose: earlier periods are still grouped by it, and the ledger is append-only.",
         "responses": {
           "200": {
             "description": "استجابة ناجحة. / Successful response.",
@@ -12143,7 +12143,7 @@
       "put": {
         "operationId": "initialiseCompanySetup",
         "summary": "تأسيس المنشأة مرّة واحدة / Set the company up, once",
-        "description": "يؤسّس المنشأة. **يُقبل مرّة واحدة فقط**: الوصول الثاني يُرفض بـ409 و‏company_setup.already_initialised مهما تغيّرت حمولته — وبالأخصّ decimalPlaces، فعدد الخانات يُسنَد عند أول تأسيس ولا يُعدَّل بعده، وتوحيده داخل دفاتر المنشأة الواحدة أهمّ من أي قيمة بعينها.\n\nوسؤال مراكز التكلفة يُطرح هنا وحده: costCenters = One يجعل **اسم المنشأة نفسه** هو المركز الافتراضي فلا يرى صاحبُ هذا الجواب المفهوم أبداً؛ وcostCenters = Multiple يجعل firstCostCenterNameAr **إلزامياً** — من أعلن أن لديه أكثر من واحد لا يُخترَع له اسم نيابةً عنه. وفي الحالتين تخرج المنشأة من هنا وبها مركز تكلفة واحد على الأقل.\n\nوdecimalPlaces يحكم **العرض والإدخال البشري وحدهما**: التخزين يبقى بأربع خانات، والمبالغ المحسوبة (ضريبة 15٪ على صافٍ فردي مثلاً) لا يقيّدها هذا العدد ولا تُقرَّب عنده — وإلا لصارت الفاتورة العادية مستحيلة.\n\nSets the company up. **Accepted exactly once**: a second arrival is refused with 409 and company_setup.already_initialised whatever its payload — decimalPlaces above all, since the number of places is assigned at first setup and is never editable afterwards; its consistency inside one entity's books matters more than any particular value.\n\nThe cost-centre question is asked here and only here: costCenters = One makes **the company's own name** the default centre, so whoever answers that never sees the concept again; costCenters = Multiple makes firstCostCenterNameAr **mandatory** — no name is invented on behalf of someone who declared they have more than one. Either way the company leaves this call with at least one cost centre.\n\ndecimalPlaces governs **display and human input only**: storage stays at four places, and computed amounts (15% VAT on an odd net, say) are neither constrained nor rounded by it — otherwise an ordinary invoice would be impossible.",
+        "description": "يؤسّس المنشأة. **يُقبل مرّة واحدة فقط**: الوصول الثاني يُرفض بـ409 و‏company_setup.already_initialised مهما تغيّرت حمولته — وبالأخصّ decimalPlaces، فعدد الخانات يُسنَد عند أول تأسيس ولا يُعدَّل بعده، وتوحيده داخل دفاتر المنشأة الواحدة أهمّ من أي قيمة بعينها.\n\nوسؤال مراكز التكلفة يُطرح هنا وحده: costCenters = One يجعل **اسم المنشأة نفسه** هو المركز الافتراضي فلا يرى صاحبُ هذا الجواب المفهوم أبداً؛ وcostCenters = Multiple يجعل firstCostCenterNameAr **إلزامياً** — من أعلن أن لديه أكثر من واحد لا يُخترَع له اسم نيابةً عنه. وفي الحالتين تخرج المنشأة من هنا وبها مركز تكلفة واحد على الأقل.\n\nوdecimalPlaces يحكم **العرض والإدخال البشري وحدهما**: التخزين يبقى بأربع خانات، والمبالغ المحسوبة (ضريبة 15٪ على صافٍ فردي مثلاً) لا يقيّدها هذا العدد ولا تُقرَّب عنده — وإلا لصارت الفاتورة العادية مستحيلة.\n\nوcurrencyCode **عملة المنشأة**، تُسنَد هنا ولا تُعدَّل بعدها بالحصانة نفسها: تغييرُ العملة الوظيفية حدثٌ محاسبي يُطبَّق مستقبلاً على دفاترَ تُفتح من جديد لا تعديلُ إعداد. ووحدتُها الصغرى تُشتقّ من ISO 4217 ولا تُرسَل — وهي ما يُقرَّب عنده كلُّ سطر مستند، لا decimalPlaces (ADR-0089).\n\nSets the company up. **Accepted exactly once**: a second arrival is refused with 409 and company_setup.already_initialised whatever its payload — decimalPlaces above all, since the number of places is assigned at first setup and is never editable afterwards; its consistency inside one entity's books matters more than any particular value.\n\nThe cost-centre question is asked here and only here: costCenters = One makes **the company's own name** the default centre, so whoever answers that never sees the concept again; costCenters = Multiple makes firstCostCenterNameAr **mandatory** — no name is invented on behalf of someone who declared they have more than one. Either way the company leaves this call with at least one cost centre.\n\ndecimalPlaces governs **display and human input only**: storage stays at four places, and computed amounts (15% VAT on an odd net, say) are neither constrained nor rounded by it — otherwise an ordinary invoice would be impossible.\n\ncurrencyCode is **the company's currency**, assigned here and never editable afterwards under the same immutability: changing the functional currency is an accounting event applied prospectively to books opened anew, not a settings edit. Its minor unit is derived from ISO 4217 and is not sent — and it, not decimalPlaces, is what every document line is rounded to (ADR-0089).",
         "requestBody": {
           "required": true,
           "content": {
@@ -12207,6 +12207,67 @@
           },
           "422": {
             "description": "الطلب مفهوم ومرفوض محاسبياً: قيد غير متوازن، أو دور لا يُحلّ إلى حساب. / Understood and refused on accounting grounds: an unbalanced entry, or a role that resolves to no account.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/companies/{companyId}/setup/currencies": {
+      "parameters": [
+        {
+          "name": "companyId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "readSetupCurrencies",
+        "summary": "العملات التي يقبلها التأسيس / The currencies setup accepts",
+        "description": "يُرجع الجدول المرجعي للعملات كما شُحن من ISO 4217: رمز كلّ عملة و**عدد خانات وحدتها الصغرى** — الهللة خانتان، والفلس الكويتي ثلاث، ولا خانة للين. يُقرأ **قبل** التأسيس كي تختار الشاشة من قائمةٍ لا تكتبها، وعملةٌ ليست فيه تُرفض عند التأسيس بـcompany_setup.currency_not_in_reference_table ولا يُخمَّن لها عددُ خانات (ADR-0089).\n\nReturns the currency reference table as shipped from ISO 4217: each currency's code and **its minor unit's number of places** — the halala is two, the Kuwaiti fils three, the yen none. Read **before** setup so the screen picks from a list it does not write; a currency outside it is refused at setup with company_setup.currency_not_in_reference_table and no number of places is guessed (ADR-0089).",
+        "responses": {
+          "200": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrencyList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -17917,6 +17978,245 @@
         }
       }
     },
+    "/api/v1/plans": {
+      "get": {
+        "operationId": "readPlans",
+        "summary": "الخطط المنشورة / The published plans",
+        "description": "يُرجع الخطط **المنشورة** — ما يجوز أن يُباع — برمزها واسمها وسعرها نصّاً وحزمة وحداتها. وشاشةُ الاشتراك تختار منها ولا تكتب رمزاً بيدها: الكتالوج بياناتُ المنصّة في `control.plan` لا قائمةٌ في شيفرة، وغيرُ المنشور لا يظهر هنا (ADR-0092). **يبلغه كلُّ مصادَق.**\n\nReturns the **published** plans — what may be sold — with code, names, prices as text and module bundle. The subscription screen picks from it rather than typing a code: the catalogue is platform data in `control.plan`, not a list in code, and unpublished plans do not appear here (ADR-0092). **Any authenticated credential reaches it.**",
+        "responses": {
+          "200": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "مستوى التحكّم غير مُهيَّأ لهذا الخادم. الرمز الثابت: fleet.unavailable. / The control plane is not configured for this server. Stable code: fleet.unavailable.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/platform/plans": {
+      "get": {
+        "operationId": "readPlatformPlans",
+        "summary": "كتالوج الخطط كلّه — لمشغّل المنصّة / The whole plan catalogue — platform operator",
+        "description": "الكتالوج كلّه، المنشورُ وغيرُ المنشور. **لمشغّل المنصّة وحده**: اعتمادٌ مُعلَنٌ مشغّلاً في الإعداد (`Babel:Api:Tokens:N:Platform=true`)، واعتمادُ منشأةٍ يُرفض بـplatform.operator_required مهما اتّسع.\n\nThe whole catalogue, published or not. **Platform operator only**: a credential declared as operator in configuration (`Babel:Api:Tokens:N:Platform=true`); a company credential is refused with platform.operator_required however wide it is.",
+        "responses": {
+          "200": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد ليس اعتمادَ مشغّل المنصّة. الرمز الثابت: platform.operator_required. / The credential is not the platform operator's. Stable code: platform.operator_required.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "مستوى التحكّم غير مُهيَّأ لهذا الخادم. الرمز الثابت: fleet.unavailable. / The control plane is not configured for this server. Stable code: fleet.unavailable.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/platform/plans/{planCode}": {
+      "parameters": [
+        {
+          "name": "planCode",
+          "in": "path",
+          "required": true,
+          "description": "رمز الخطّة: حروفٌ لاتينية كبيرة وأرقام وشرطة سفلية، حتى 32 محرفاً. ورمزٌ على غير هذا الشكل يُردّ بـwire.path.malformed قبل أن يُقرأ الجسم. / The plan code: upper-case ASCII letters, digits and underscore, up to 32 characters. A code of any other shape is refused with wire.path.malformed before the body is read.",
+          "schema": {
+            "type": "string",
+            "format": "plan-code"
+          }
+        }
+      ],
+      "put": {
+        "operationId": "putPlatformPlan",
+        "summary": "إنشاء خطّة أو تعديلها ونشرها / Create, change or publish a plan",
+        "description": "ينشئ الخطّة إن لم توجد أو يعدّلها: الأسماء، والسعر الشهري، وسعر المستخدم الزائد، والمستخدمون المُضمَّنون، وحزمة الوحدات، **والنشر** — فالخطّة لا تُباع ولا يُفتح عليها اشتراك حتى تُنشر بسعرها. والسند والسبب إلزامان، وكلُّ تغييرٍ يُلحَق بسجلّ `control.plan_change` بفاعله وما قبله وما بعده. ووحدةٌ ليست في كتالوج الوحدات تُرفض باسمها قبل أن يُكتب شيء. **ولا بابَ حذف**: الخطّة التي تخرج من البيع تُلغى نشرُها وتبقى صفّاً لأن اشتراكاتٍ ماضية تشير إليها.\n\nCreates the plan if absent or changes it: names, monthly price, extra-user price, included users, module bundle, **and publication** — a plan is not sold and no subscription opens on it until it is published with its price. Authority and reason are mandatory, and every change is appended to `control.plan_change` with actor, before and after. A module outside the module catalogue is refused by name before anything is written. **No delete**: a plan withdrawn from sale is unpublished and stays a row, because past subscriptions point at it.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutPlanRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Plan"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "رمز الخطّة في المسار ليس من الشكل A-Z0-9_، أو الجسم مشوَّه، أو سعرٌ ليس نصّاً بأربع خانات. / The plan code in the path is not A-Z0-9_, the body is malformed, or a price is not four-place text.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد ليس اعتمادَ مشغّل المنصّة. الرمز الثابت: platform.operator_required. / The credential is not the platform operator's. Stable code: platform.operator_required.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "السند أو السبب غائب (platform.plan_authority_missing)، أو الخطّة مرفوضة باسم علّتها (platform.plan_refused): وحدةٌ مجهولة، أو بلا وحدات، أو سعرٌ سالب. / Authority or reason missing (platform.plan_authority_missing), or the plan refused by name (platform.plan_refused): unknown module, no modules, or a negative price.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "مستوى التحكّم غير مُهيَّأ لهذا الخادم. الرمز الثابت: fleet.unavailable. / The control plane is not configured for this server. Stable code: fleet.unavailable.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/session": {
       "get": {
         "operationId": "readSession",
@@ -20388,6 +20688,11 @@
             },
             "description": "مراكز التكلفة كلّها — العاملة والموقوفة — مرتَّبة برمزها. / All cost centres — active and suspended — ordered by code."
           },
+          "currencyCode": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$",
+            "description": "عملة المنشأة — رمز ISO 4217. مُسنَدة عند التأسيس ولا تتغيّر بعده. / The company's currency — an ISO 4217 code. Assigned at setup and never changes afterwards."
+          },
           "decimalPlaces": {
             "type": "integer",
             "minimum": 0,
@@ -20398,6 +20703,12 @@
             "type": "string",
             "maxLength": 32,
             "description": "رمز المركز الافتراضي. / The default centre's code."
+          },
+          "minorUnits": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4,
+            "description": "عدد خانات الوحدة الصغرى للعملة كما في ISO 4217 — وهو ما يُقرَّب عنده كلُّ سطر مستند. مخزَّنٌ بجوار العملة عند التأسيس. / The currency's minor-unit places as in ISO 4217 — what every document line is rounded to. Stored beside the currency at setup."
           },
           "nameAr": {
             "type": "string",
@@ -20414,8 +20725,10 @@
         },
         "required": [
           "costCenters",
+          "currencyCode",
           "decimalPlaces",
           "defaultCostCenter",
+          "minorUnits",
           "nameAr",
           "nameTranslations"
         ],
@@ -20629,6 +20942,45 @@
           "issuedOn",
           "lines",
           "number"
+        ],
+        "additionalProperties": false
+      },
+      "CurrencyList": {
+        "type": "object",
+        "description": "العملات التي يقبلها التأسيس، مرتَّبةً برمزها. القائمة هي الجدول المرجعي نفسه لا قائمةٌ تُكتب في واجهة. / The currencies setup accepts, ordered by code. The list is the reference table itself, not one written in a front end.",
+        "properties": {
+          "currencies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CurrencyOption"
+            },
+            "description": "العملات. / The currencies."
+          }
+        },
+        "required": [
+          "currencies"
+        ],
+        "additionalProperties": false
+      },
+      "CurrencyOption": {
+        "type": "object",
+        "description": "عملةٌ يقبلها التأسيس: رمزها ووحدتها الصغرى كما في الجدول المرجعي المشحون من ISO 4217. / A currency setup accepts: its code and minor unit as in the shipped ISO 4217 reference table.",
+        "properties": {
+          "code": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$",
+            "description": "رمز ISO 4217. / The ISO 4217 code."
+          },
+          "minorUnits": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4,
+            "description": "عدد خانات الوحدة الصغرى — الهللة خانتان، والفلس الكويتي ثلاث، ولا خانة للين. / The minor unit's number of places — the halala is two, the Kuwaiti fils three, the yen none."
+          }
+        },
+        "required": [
+          "code",
+          "minorUnits"
         ],
         "additionalProperties": false
       },
@@ -23041,6 +23393,11 @@
             "maximum": 4,
             "description": "عدد الخانات العشرية المعروضة. يُسنَد هنا ولا يُعدَّل بعدها. ويحكم العرض والإدخال البشري وحدهما — لا التخزين ولا الحساب. / The number of displayed decimal places. Assigned here and never editable afterwards. It governs display and human input only — never storage and never arithmetic."
           },
+          "currencyCode": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$",
+            "description": "عملة المنشأة — رمز ISO 4217 من القائمة التي يُرجعها readSetupCurrencies. تُسنَد هنا ولا تُعدَّل بعدها، **ولا تُخترَع**: غيابها يُرفض بـcompany_setup.currency_missing. / The company's currency — an ISO 4217 code from the list readSetupCurrencies returns. Assigned here and never editable afterwards, **and never invented**: its absence is refused with company_setup.currency_missing."
+          },
           "firstCostCenterNameAr": {
             "type": [
               "string",
@@ -23060,6 +23417,7 @@
         "required": [
           "companyNameAr",
           "costCenters",
+          "currencyCode",
           "decimalPlaces"
         ],
         "additionalProperties": false
@@ -24446,6 +24804,86 @@
         ],
         "additionalProperties": false
       },
+      "Plan": {
+        "type": "object",
+        "description": "خطّةٌ من كتالوج المنصّة: رمزها واسمها العربيّ وترجماتُه وسعراها نصّاً وحزمة وحداتها وهل نُشرت. / A plan from the platform catalogue: code, Arabic name and its translations, prices as text, module bundle, and whether it is published.",
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 32,
+            "description": "رمز الخطّة — حروفٌ لاتينية كبيرة وأرقام وشرطة سفلية. / The plan code — upper-case ASCII letters, digits and underscore."
+          },
+          "currency": {
+            "type": "string",
+            "maxLength": 3,
+            "description": "عملة الأسعار — رمز ISO 4217. / The prices' currency — an ISO 4217 code."
+          },
+          "includedUsers": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100000,
+            "description": "عدد المستخدمين المُضمَّنين في السعر الشهري. / The number of users included in the monthly price."
+          },
+          "modules": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 16
+            },
+            "description": "حزمة الوحدات برموزها، مرتَّبةً. / The module bundle by code, ordered."
+          },
+          "monthlyPrice": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "nameAr": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "الاسم بالعربية — وهو السجلّ. / The Arabic name — the record."
+          },
+          "nameTranslations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NameValue"
+            },
+            "description": "ترجماتُ الاسم مرتَّبةً بالوسم (ADR-0021)؛ ولا حقلَ إنجليزيٍّ ثابت. / The name's translations ordered by tag (ADR-0021); there is no fixed English field."
+          },
+          "perUserPrice": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "published": {
+            "type": "boolean",
+            "description": "هل نُشرت الخطّة بسعرها؟ غيرُ المنشورة لا تُباع ولا يُفتح عليها اشتراك. / Is the plan published with its price? An unpublished plan is not sold and no subscription opens on it."
+          }
+        },
+        "required": [
+          "code",
+          "currency",
+          "includedUsers",
+          "modules",
+          "monthlyPrice",
+          "nameAr",
+          "nameTranslations",
+          "perUserPrice",
+          "published"
+        ],
+        "additionalProperties": false
+      },
+      "PlanList": {
+        "type": "object",
+        "properties": {
+          "plans": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Plan"
+            },
+            "description": "الخطط مرتَّبةً برمزها. / The plans ordered by code."
+          }
+        },
+        "required": [
+          "plans"
+        ],
+        "additionalProperties": false
+      },
       "PostJournalEntryRequest": {
         "type": "object",
         "description": "طلب ترحيل. ولاحظ ما ليس فيه: لا حقل مستأجر ولا حقل شركة — النطاق من الاعتماد ومن المسار. وأي حقل غير معروف يُرفض الطلب كلّه بسببه. / A posting request. Note what is absent: no tenant field and no company field — scope comes from the credential and the path. Any unknown field fails the whole request.",
@@ -25594,12 +26032,77 @@
               "string",
               "null"
             ],
+            "minLength": 8,
             "maxLength": 512,
-            "description": "سبب سحب قدرة. إلزامي متى أطفأ الطلب قدرةً كانت مُشغَّلة، ومهمَل فيما عدا ذلك؛ وثمانية محارف على الأقل — «لا سبب» ليس سبباً. / The reason for withdrawing a capability. Required whenever the request disables a previously enabled capability, ignored otherwise; at least eight characters — 'no reason' is not a reason."
+            "description": "سبب سحب قدرة. إلزامي متى أطفأ الطلب قدرةً كانت مُشغَّلة، ومهمَل فيما عدا ذلك؛ وبحدٍّ أدنى يُعلنه minLength هنا — «لا سبب» ليس سبباً. / The reason for withdrawing a capability. Required whenever the request disables a previously enabled capability, ignored otherwise; with the minimum declared by minLength here — 'no reason' is not a reason."
           }
         },
         "required": [
           "documents"
+        ],
+        "additionalProperties": false
+      },
+      "PutPlanRequest": {
+        "type": "object",
+        "description": "طلبُ إنشاء خطّة أو تعديلها ونشرها — بسندٍ وسبب، كسائر ما يحكم الاستحقاق. / A request to create, change or publish a plan — with authority and reason, like everything that governs entitlement.",
+        "properties": {
+          "authority": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "السند: رقم عقد، أو حدث سداد، أو تذكرة دعم، أو قرار مُوثَّق. **ولا تغيير استحقاق بلا سند**: الاستحقاق يحكم أي بيانات مالية يجوز إنشاؤها، فتغييره حدث تدقيقي. / The authority: a contract number, a payment event, a support ticket, or a documented decision. **No entitlement change without authority**: entitlement governs which financial data may be created, so changing it is an audit event."
+          },
+          "includedUsers": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100000,
+            "description": "عدد المستخدمين المُضمَّنين في السعر الشهري. / The number of users included in the monthly price."
+          },
+          "modules": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 16
+            },
+            "description": "حزمة الوحدات برموزها من كتالوج الوحدات؛ ورمزٌ مجهول يُرفض باسمه. / The module bundle by code from the module catalogue; an unknown code is refused by name."
+          },
+          "monthlyPrice": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "nameAr": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "الاسم بالعربية — وهو السجلّ. / The Arabic name — the record."
+          },
+          "nameTranslations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NameValue"
+            },
+            "description": "ترجماتُ الاسم بالوسم (ADR-0021)؛ وقد تغيب فيبقى العربيّ وحده. / The name's translations by tag (ADR-0021); may be absent, leaving the Arabic alone."
+          },
+          "perUserPrice": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "published": {
+            "type": "boolean",
+            "description": "نشرُ الخطّة يجعلها قابلةً للبيع؛ وإلغاءُ النشر يُخرجها من البيع ويُبقيها صفّاً. / Publishing makes the plan sellable; unpublishing withdraws it from sale and keeps its row."
+          },
+          "reasonAr": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "سبب التغيير بالعربية — يُكتب في سجلّ تغييرات الخطط. / The change's reason in Arabic — written to the plan change log."
+          }
+        },
+        "required": [
+          "authority",
+          "includedUsers",
+          "modules",
+          "monthlyPrice",
+          "nameAr",
+          "perUserPrice",
+          "published",
+          "reasonAr"
         ],
         "additionalProperties": false
       },
@@ -26338,6 +26841,14 @@
             "maxLength": 36,
             "description": "معرّف الشركة كما يُكتب في المسار. / The company identifier as written in the path."
           },
+          "currencyCode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 3,
+            "description": "عملة المنشأة — رمز ISO 4217. / The company's currency — an ISO 4217 code."
+          },
           "defaultCostCenter": {
             "type": [
               "string",
@@ -26354,6 +26865,15 @@
             "minimum": 0,
             "maximum": 4,
             "description": "عدد الخانات العشرية المعروضة لهذه المنشأة. / This company's displayed decimal places."
+          },
+          "minorUnits": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 4,
+            "description": "عدد خانات الوحدة الصغرى لعملة المنشأة. / The minor-unit places of the company's currency."
           },
           "nameAr": {
             "type": [
@@ -26381,8 +26901,10 @@
         },
         "required": [
           "companyId",
+          "currencyCode",
           "decimalPlaces",
           "defaultCostCenter",
+          "minorUnits",
           "nameAr",
           "nameTranslations",
           "state"
@@ -27756,8 +28278,9 @@
         "properties": {
           "reason": {
             "type": "string",
+            "minLength": 8,
             "maxLength": 512,
-            "description": "السبب المكتوب للإيقاف — ثمانية محارف على الأقل. «لا سبب» ليس سبباً، والإيقاف حالة عملٍ يضبطها إنسان ويُسجَّل بمن فعلها. / The written reason for the suspension — at least eight characters. 'No reason' is not a reason; suspension is a business state a person sets and it is recorded with its actor."
+            "description": "السبب المكتوب للإيقاف — بحدٍّ أدنى يُعلنه minLength هنا لا يُكتب في الواجهة. «لا سبب» ليس سبباً، والإيقاف حالة عملٍ يضبطها إنسان ويُسجَّل بمن فعلها. / The written reason for the suspension — with the minimum declared by minLength here, never retyped in a front end. 'No reason' is not a reason; suspension is a business state a person sets and it is recorded with its actor."
           }
         },
         "required": [

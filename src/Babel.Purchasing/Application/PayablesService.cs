@@ -4,6 +4,7 @@ using Babel.Core.Application;
 using Babel.Core.Entitlement;
 using Babel.Purchasing.Persistence;
 using Babel.Purchasing.Subledger;
+using Babel.Core.CompanySetup;
 using Babel.SharedKernel;
 using Microsoft.EntityFrameworkCore;
 
@@ -27,7 +28,7 @@ public sealed class PayablesService : IApplicationService
     private readonly IEntitlementEnforcer _enforcer;
     private readonly PurchasingDbContext _database;
     private readonly IControlPointReader _controlPoint;
-    private readonly CurrencyCode _currency;
+    private readonly ICompanyMoneyResolver _company;
 
     /// <summary>ينشئ الخدمة.</summary>
     /// <param name="enforcer">منفِّذ الاستحقاق.</param>
@@ -41,7 +42,7 @@ public sealed class PayablesService : IApplicationService
         _enforcer = enforcer;
         _database = runtime.Database;
         _controlPoint = controlPoint;
-        _currency = CurrencyCode.FromString(runtime.Options.CompanyCurrency);
+        _company = runtime.Company;
     }
 
     /// <summary>أعمار الذمم الدائنة حتى تاريخ.</summary>
@@ -56,13 +57,19 @@ public sealed class PayablesService : IApplicationService
         DateOnly asOf,
         CancellationToken cancellationToken = default)
     {
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<AgingReport>.Failure(money.Errors);
+        }
         Result gate = await _enforcer
             .EnsureAsync(tenant, actor, BabelModule.Purchasing, EntitlementAccess.Read, "Purchasing.Payables.Aging", cancellationToken)
             .ConfigureAwait(false);
 
         return gate.IsFailure
             ? Result<AgingReport>.Failure(gate.Errors)
-            : Result<AgingReport>.Success(await BuildAgingAsync(tenant, asOf, cancellationToken).ConfigureAwait(false));
+            : Result<AgingReport>.Success(await BuildAgingAsync(tenant, asOf, money.Value, cancellationToken).ConfigureAwait(false));
     }
 
     /// <summary>كشف حساب مورد بين تاريخين.</summary>
@@ -90,6 +97,12 @@ public sealed class PayablesService : IApplicationService
             return Result<PartyStatement>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<PartyStatement>.Failure(money.Errors);
+        }
+
         if (!await _database.Suppliers
                 .AnyAsync(row => row.TenantId == tenant.Value && row.Id == supplierId, cancellationToken)
                 .ConfigureAwait(false))
@@ -115,13 +128,13 @@ public sealed class PayablesService : IApplicationService
                 item.DocumentType,
                 item.Number,
                 item.Description,
-                Money.Of(item.Effect < 0m ? -item.Effect : 0m, _currency),
-                Money.Of(item.Effect > 0m ? item.Effect : 0m, _currency),
-                Money.Of(running, _currency)));
+                Money.Of(item.Effect < 0m ? -item.Effect : 0m, money.Value.Currency),
+                Money.Of(item.Effect > 0m ? item.Effect : 0m, money.Value.Currency),
+                Money.Of(running, money.Value.Currency)));
         }
 
         return Result<PartyStatement>.Success(new PartyStatement(
-            supplierId, from, to, Money.Of(opening, _currency), lines, Money.Of(running, _currency)));
+            supplierId, from, to, Money.Of(opening, money.Value.Currency), lines, Money.Of(running, money.Value.Currency)));
     }
 
     /// <summary>
@@ -148,6 +161,12 @@ public sealed class PayablesService : IApplicationService
             return Result<ControlReconciliationReport>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<ControlReconciliationReport>.Failure(money.Errors);
+        }
+
         Result<ControlPointSnapshot> snapshot = await _controlPoint
             .ReadAsync(tenant, SubledgerKindCode, asOf, writtenBy: null, cancellationToken)
             .ConfigureAwait(false);
@@ -157,7 +176,7 @@ public sealed class PayablesService : IApplicationService
             return Result<ControlReconciliationReport>.Failure(PurchasingErrors.ControlPointUnavailable(snapshot.Errors));
         }
 
-        AgingReport aging = await BuildAgingAsync(tenant, asOf, cancellationToken).ConfigureAwait(false);
+        AgingReport aging = await BuildAgingAsync(tenant, asOf, money.Value, cancellationToken).ConfigureAwait(false);
         decimal subledgerTotal = aging.Totals.Total.Amount;
 
         // نقطة الضبط تُقرأ «مدين ناقص دائن»؛ والذمم الدائنة تُقرأ موجبةً بالعكس.
@@ -200,7 +219,7 @@ public sealed class PayablesService : IApplicationService
                 // محاولة معلّقة تُسمّى بذاتها لا مجمّعة: الغرض تسمية ما لم يُحسم.
                 foreach (DocumentPostingRow pending in unresolved)
                 {
-                    divergences.Add(Divergence(pending, 0m, DivergenceReason.PostingUnresolved));
+                    divergences.Add(Divergence(pending, 0m, DivergenceReason.PostingUnresolved, money.Value));
                 }
 
                 continue;
@@ -223,13 +242,13 @@ public sealed class PayablesService : IApplicationService
 
             if (!known && effect != 0m)
             {
-                divergences.Add(Divergence(witness, effect, 0m, DivergenceReason.MissingInControl));
+                divergences.Add(Divergence(witness, effect, 0m, DivergenceReason.MissingInControl, money.Value));
                 continue;
             }
 
             if (effect != ledgerNet)
             {
-                divergences.Add(Divergence(witness, effect, ledgerNet, DivergenceReason.AmountMismatch));
+                divergences.Add(Divergence(witness, effect, ledgerNet, DivergenceReason.AmountMismatch, money.Value));
             }
         }
 
@@ -245,9 +264,9 @@ public sealed class PayablesService : IApplicationService
                 movement.DocumentType,
                 movement.DocumentId,
                 movement.PartyId,
-                Money.Of(0m, _currency),
-                Money.Of(-movement.Net, _currency),
-                Money.Of(movement.Net, _currency),
+                Money.Of(0m, money.Value.Currency),
+                Money.Of(-movement.Net, money.Value.Currency),
+                Money.Of(movement.Net, money.Value.Currency),
                 DivergenceReason.MissingInSubledger));
         }
 
@@ -255,26 +274,27 @@ public sealed class PayablesService : IApplicationService
 
         return Result<ControlReconciliationReport>.Success(new ControlReconciliationReport(
             asOf,
-            Money.Of(subledgerTotal, _currency),
-            Money.Of(controlTotal, _currency),
-            Money.Of(divergence, _currency),
+            Money.Of(subledgerTotal, money.Value.Currency),
+            Money.Of(controlTotal, money.Value.Currency),
+            Money.Of(divergence, money.Value.Currency),
             divergence == 0m && divergences.Count == 0,
             [.. divergences.OrderBy(static d => d.DocumentType, StringComparer.Ordinal)
                            .ThenBy(static d => d.DocumentId, StringComparer.Ordinal)]));
     }
 
-    private ReconciliationDivergence Divergence(DocumentPostingRow posting, decimal ledgerNet, string reason)
-        => Divergence(posting, posting.ControlEffect, ledgerNet, reason);
+    private static ReconciliationDivergence Divergence(DocumentPostingRow posting, decimal ledgerNet, string reason, CompanyMoney money)
+        => Divergence(posting, posting.ControlEffect, ledgerNet, reason, money);
 
     /// <summary>انحراف بأثر مجمّع للمستند، والصفّ الشاهد يُسمّي النوع والمعرّف والطرف.</summary>
-    private ReconciliationDivergence Divergence(
-        DocumentPostingRow witness, decimal effect, decimal ledgerNet, string reason) => new(
+    private static ReconciliationDivergence Divergence(
+        DocumentPostingRow witness, decimal effect, decimal ledgerNet, string reason,
+        CompanyMoney money) => new(
         witness.DocumentType,
         witness.DocumentId,
         witness.PartyId,
-        Money.Of(effect, _currency),
-        Money.Of(ledgerNet, _currency),
-        Money.Of(effect - ledgerNet, _currency),
+        Money.Of(effect, money.Currency),
+        Money.Of(ledgerNet, money.Currency),
+        Money.Of(effect - ledgerNet, money.Currency),
         reason);
 
     /// <summary>
@@ -286,7 +306,7 @@ public sealed class PayablesService : IApplicationService
         => documentType.Length.ToString(CultureInfo.InvariantCulture) + ":" + documentType
            + documentId.Length.ToString(CultureInfo.InvariantCulture) + ":" + documentId;
 
-    private async Task<AgingReport> BuildAgingAsync(TenantId tenant, DateOnly asOf, CancellationToken cancellationToken)
+    private async Task<AgingReport> BuildAgingAsync(TenantId tenant, DateOnly asOf, CompanyMoney money, CancellationToken cancellationToken)
     {
         List<OpenItem> items = await OpenItemsAsync(tenant, asOf, cancellationToken).ConfigureAwait(false);
 
@@ -327,20 +347,20 @@ public sealed class PayablesService : IApplicationService
                     supplier.Id,
                     supplier.Code,
                     new LocalizedName(supplier.NameAr, supplier.NameEn),
-                    Buckets(buckets)));
+                    Buckets(buckets, money)));
             }
         }
 
-        return new AgingReport(asOf, parties, Buckets(totals));
+        return new AgingReport(asOf, parties, Buckets(totals, money));
     }
 
-    private AgingBuckets Buckets(decimal[] values) => new(
-        Money.Of(values[0], _currency),
-        Money.Of(values[1], _currency),
-        Money.Of(values[2], _currency),
-        Money.Of(values[3], _currency),
-        Money.Of(values[4], _currency),
-        Money.Of(values.Sum(), _currency));
+    private static AgingBuckets Buckets(decimal[] values, CompanyMoney money) => new(
+        Money.Of(values[0], money.Currency),
+        Money.Of(values[1], money.Currency),
+        Money.Of(values[2], money.Currency),
+        Money.Of(values[3], money.Currency),
+        Money.Of(values[4], money.Currency),
+        Money.Of(values.Sum(), money.Currency));
 
     private async Task<List<OpenItem>> OpenItemsAsync(TenantId tenant, DateOnly asOf, CancellationToken cancellationToken)
     {

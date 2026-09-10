@@ -319,7 +319,7 @@ public sealed class PostingIdentityIncludesEventCodeTests : IAsyncLifetime
 
         try
         {
-            SalesOptions options = new() { ConnectionString = probeConnection, CompanyCurrency = "SAR" };
+            SalesOptions options = new() { ConnectionString = probeConnection };
 
             // (أ) الشكل الحالي، ثم **إرجاعه إلى شكل ما قبل الإصلاح بالضبط**:
             //     مفتاح خماسي بلا رمز حدث، ولا قيد تحقّق على الرمز.

@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     737b917c13090a000fc6b02c0fbe830a49b0e4dc254eb04a9d55ec4f64b1ba6d
+     d9ed690c2c2d6377fabb6bb515d9d2bc26577030635593c2d1d10e892c805782
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -608,10 +608,14 @@ export interface CommercialDocument {
 export interface CompanySetup {
   /** مراكز التكلفة كلّها — العاملة والموقوفة — مرتَّبة برمزها. / All cost centres — active and suspended — ordered by code. */
   costCenters: CostCenter[];
+  /** عملة المنشأة — رمز ISO 4217. مُسنَدة عند التأسيس ولا تتغيّر بعده. / The company's currency — an ISO 4217 code. Assigned at setup and never changes afterwards. */
+  currencyCode: string;
   /** عدد الخانات العشرية المعروضة. عرضٌ وإدخالٌ بشري فقط: المبالغ على السلك تبقى بمقياس Money، والتخزين بأربع خانات. / The number of displayed decimal places. Display and human input only: amounts on the wire keep the Money scale, and storage stays at four places. */
   decimalPlaces: number;
   /** رمز المركز الافتراضي. / The default centre's code. */
   defaultCostCenter: string;
+  /** عدد خانات الوحدة الصغرى للعملة كما في ISO 4217 — وهو ما يُقرَّب عنده كلُّ سطر مستند. مخزَّنٌ بجوار العملة عند التأسيس. / The currency's minor-unit places as in ISO 4217 — what every document line is rounded to. Stored beside the currency at setup. */
+  minorUnits: number;
   /** اسم المنشأة بالعربية. / The company's Arabic name. */
   nameAr: string;
   /** ترجمات اسم المنشأة. / The company name's translations. */
@@ -684,6 +688,20 @@ export interface CreditNoteRequest {
   lines: SalesLine[];
   /** رقم الإشعار — فريد داخل المستأجر. / The note number — unique within the tenant. */
   number: string;
+}
+
+/** العملات التي يقبلها التأسيس، مرتَّبةً برمزها. القائمة هي الجدول المرجعي نفسه لا قائمةٌ تُكتب في واجهة. / The currencies setup accepts, ordered by code. The list is the reference table itself, not one written in a front end. */
+export interface CurrencyList {
+  /** العملات. / The currencies. */
+  currencies: CurrencyOption[];
+}
+
+/** عملةٌ يقبلها التأسيس: رمزها ووحدتها الصغرى كما في الجدول المرجعي المشحون من ISO 4217. / A currency setup accepts: its code and minor unit as in the shipped ISO 4217 reference table. */
+export interface CurrencyOption {
+  /** رمز ISO 4217. / The ISO 4217 code. */
+  code: string;
+  /** عدد خانات الوحدة الصغرى — الهللة خانتان، والفلس الكويتي ثلاث، ولا خانة للين. / The minor unit's number of places — the halala is two, the Kuwaiti fils three, the yen none. */
+  minorUnits: number;
 }
 
 /** طلب تسجيل سند قبض مسوّدة. ولا مجاميع فيه: المجموع هو received + settlementDiscount وتحسبه الوحدة. **ولا حساب ولا رمز حساب**: settlementMethod مؤهّل دور تحلّه المصفوفة إلى حساب خزينة أو بنك، وtreasuryPartyId طرفٌ في دفتره المساعد لا رقم حساب. / A request to draft a customer receipt. It carries no totals: the total is received + settlementDiscount and the module computes it. **No account and no account code**: settlementMethod is a role qualifier the matrix resolves into a cash or bank account, and treasuryPartyId is a party in its subledger, not an account number. */
@@ -1464,6 +1482,8 @@ export interface InitialiseCompanySetupRequest {
   companyNameTranslations?: NameValue[];
   /** الجواب عن سؤال مراكز التكلفة: One = مركز واحد يحمل اسم المنشأة · Multiple = عدّة، واسم الأول إلزامي. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The answer to the cost-centre question: One = a single centre carrying the company name; Multiple = several, and the first one's name is mandatory. Matched literally and case-sensitively; a number is never accepted in place of a name. */
   costCenters: "One" | "Multiple";
+  /** عملة المنشأة — رمز ISO 4217 من القائمة التي يُرجعها readSetupCurrencies. تُسنَد هنا ولا تُعدَّل بعدها، **ولا تُخترَع**: غيابها يُرفض بـcompany_setup.currency_missing. / The company's currency — an ISO 4217 code from the list readSetupCurrencies returns. Assigned here and never editable afterwards, **and never invented**: its absence is refused with company_setup.currency_missing. */
+  currencyCode: string;
   /** عدد الخانات العشرية المعروضة. يُسنَد هنا ولا يُعدَّل بعدها. ويحكم العرض والإدخال البشري وحدهما — لا التخزين ولا الحساب. / The number of displayed decimal places. Assigned here and never editable afterwards. It governs display and human input only — never storage and never arithmetic. */
   decimalPlaces: number;
   /** اسم أول مركز تكلفة بالعربية. إلزامي مع Multiple، ومرفوض مع One لأن اسمه هناك اسم المنشأة بعينه. / The first cost centre's Arabic name. Required with Multiple, refused with One because its name there is the company's own. */
@@ -1940,6 +1960,31 @@ export interface PlacementBalanceList {
   balances: PlacementBalance[];
 }
 
+/** خطّةٌ من كتالوج المنصّة: رمزها واسمها العربيّ وترجماتُه وسعراها نصّاً وحزمة وحداتها وهل نُشرت. / A plan from the platform catalogue: code, Arabic name and its translations, prices as text, module bundle, and whether it is published. */
+export interface Plan {
+  /** رمز الخطّة — حروفٌ لاتينية كبيرة وأرقام وشرطة سفلية. / The plan code — upper-case ASCII letters, digits and underscore. */
+  code: string;
+  /** عملة الأسعار — رمز ISO 4217. / The prices' currency — an ISO 4217 code. */
+  currency: string;
+  /** عدد المستخدمين المُضمَّنين في السعر الشهري. / The number of users included in the monthly price. */
+  includedUsers: number;
+  /** حزمة الوحدات برموزها، مرتَّبةً. / The module bundle by code, ordered. */
+  modules: string[];
+  monthlyPrice: Money;
+  /** الاسم بالعربية — وهو السجلّ. / The Arabic name — the record. */
+  nameAr: string;
+  /** ترجماتُ الاسم مرتَّبةً بالوسم (ADR-0021)؛ ولا حقلَ إنجليزيٍّ ثابت. / The name's translations ordered by tag (ADR-0021); there is no fixed English field. */
+  nameTranslations: NameValue[];
+  perUserPrice: Money;
+  /** هل نُشرت الخطّة بسعرها؟ غيرُ المنشورة لا تُباع ولا يُفتح عليها اشتراك. / Is the plan published with its price? An unpublished plan is not sold and no subscription opens on it. */
+  published: boolean;
+}
+
+export interface PlanList {
+  /** الخطط مرتَّبةً برمزها. / The plans ordered by code. */
+  plans: Plan[];
+}
+
 /** طلب ترحيل. ولاحظ ما ليس فيه: لا حقل مستأجر ولا حقل شركة — النطاق من الاعتماد ومن المسار. وأي حقل غير معروف يُرفض الطلب كلّه بسببه. / A posting request. Note what is absent: no tenant field and no company field — scope comes from the credential and the path. Any unknown field fails the whole request. */
 export interface PostJournalEntryRequest {
   /** مفردات المبالغ التي يقرؤها قالب الحدث. / The amount vocabulary the event template reads. */
@@ -2302,8 +2347,28 @@ export interface PurchaseReturnRequest {
 export interface PutCapabilityProfileRequest {
   /** أنواع المستندات. / The document types. */
   documents: DocumentProfile[];
-  /** سبب سحب قدرة. إلزامي متى أطفأ الطلب قدرةً كانت مُشغَّلة، ومهمَل فيما عدا ذلك؛ وثمانية محارف على الأقل — «لا سبب» ليس سبباً. / The reason for withdrawing a capability. Required whenever the request disables a previously enabled capability, ignored otherwise; at least eight characters — 'no reason' is not a reason. */
+  /** سبب سحب قدرة. إلزامي متى أطفأ الطلب قدرةً كانت مُشغَّلة، ومهمَل فيما عدا ذلك؛ وبحدٍّ أدنى يُعلنه minLength هنا — «لا سبب» ليس سبباً. / The reason for withdrawing a capability. Required whenever the request disables a previously enabled capability, ignored otherwise; with the minimum declared by minLength here — 'no reason' is not a reason. */
   withdrawalReason?: string | null;
+}
+
+/** طلبُ إنشاء خطّة أو تعديلها ونشرها — بسندٍ وسبب، كسائر ما يحكم الاستحقاق. / A request to create, change or publish a plan — with authority and reason, like everything that governs entitlement. */
+export interface PutPlanRequest {
+  /** السند: رقم عقد، أو حدث سداد، أو تذكرة دعم، أو قرار مُوثَّق. **ولا تغيير استحقاق بلا سند**: الاستحقاق يحكم أي بيانات مالية يجوز إنشاؤها، فتغييره حدث تدقيقي. / The authority: a contract number, a payment event, a support ticket, or a documented decision. **No entitlement change without authority**: entitlement governs which financial data may be created, so changing it is an audit event. */
+  authority: string;
+  /** عدد المستخدمين المُضمَّنين في السعر الشهري. / The number of users included in the monthly price. */
+  includedUsers: number;
+  /** حزمة الوحدات برموزها من كتالوج الوحدات؛ ورمزٌ مجهول يُرفض باسمه. / The module bundle by code from the module catalogue; an unknown code is refused by name. */
+  modules: string[];
+  monthlyPrice: Money;
+  /** الاسم بالعربية — وهو السجلّ. / The Arabic name — the record. */
+  nameAr: string;
+  /** ترجماتُ الاسم بالوسم (ADR-0021)؛ وقد تغيب فيبقى العربيّ وحده. / The name's translations by tag (ADR-0021); may be absent, leaving the Arabic alone. */
+  nameTranslations?: NameValue[];
+  perUserPrice: Money;
+  /** نشرُ الخطّة يجعلها قابلةً للبيع؛ وإلغاءُ النشر يُخرجها من البيع ويُبقيها صفّاً. / Publishing makes the plan sellable; unpublishing withdraws it from sale and keeps its row. */
+  published: boolean;
+  /** سبب التغيير بالعربية — يُكتب في سجلّ تغييرات الخطط. / The change's reason in Arabic — written to the plan change log. */
+  reasonAr: string;
 }
 
 /** كمّية نصّاً بمقياس لا يتجاوز أربعاً، بالنحو الذي تخضع له المبالغ. وهي ليست مبلغاً — ولذلك لها مخطّطها — لكنها تُضرب في مبلغ، فأي فقدان دقّة فيها يصل إلى المال. / A quantity as a string with at most four decimal places, under the grammar that governs amounts. It is not an amount — hence its own schema — but it is multiplied by one, so any precision lost in it reaches the money. */
@@ -2549,10 +2614,14 @@ export interface Session {
 export interface SessionCompany {
   /** معرّف الشركة كما يُكتب في المسار. / The company identifier as written in the path. */
   companyId: string;
+  /** عملة المنشأة — رمز ISO 4217. / The company's currency — an ISO 4217 code. */
+  currencyCode: string | null;
   /** عدد الخانات العشرية المعروضة لهذه المنشأة. / This company's displayed decimal places. */
   decimalPlaces: number | null;
   /** رمز مركز التكلفة الافتراضي. / The default cost centre code. */
   defaultCostCenter: string | null;
+  /** عدد خانات الوحدة الصغرى لعملة المنشأة. / The minor-unit places of the company's currency. */
+  minorUnits: number | null;
   /** الاسم العربي — السجلّ، لا ترجمةً أولى. / The Arabic name — the record, not a first translation. */
   nameAr: string | null;
   /** ترجمات الاسم بوسم اللغة BCP-47، مرتَّبة ترتيباً حرفياً ثابتاً. / The name's translations by BCP-47 language tag, in a stable ordinal order. */
@@ -3008,7 +3077,7 @@ export interface SupplierRequest {
 }
 
 export interface SuspendCostCenterRequest {
-  /** السبب المكتوب للإيقاف — ثمانية محارف على الأقل. «لا سبب» ليس سبباً، والإيقاف حالة عملٍ يضبطها إنسان ويُسجَّل بمن فعلها. / The written reason for the suspension — at least eight characters. 'No reason' is not a reason; suspension is a business state a person sets and it is recorded with its actor. */
+  /** السبب المكتوب للإيقاف — بحدٍّ أدنى يُعلنه minLength هنا لا يُكتب في الواجهة. «لا سبب» ليس سبباً، والإيقاف حالة عملٍ يضبطها إنسان ويُسجَّل بمن فعلها. / The written reason for the suspension — with the minimum declared by minLength here, never retyped in a front end. 'No reason' is not a reason; suspension is a business state a person sets and it is recorded with its actor. */
   reason: string;
 }
 

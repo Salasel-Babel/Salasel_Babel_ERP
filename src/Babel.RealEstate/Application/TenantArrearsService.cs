@@ -3,6 +3,7 @@ using Babel.Core.Application;
 using Babel.Core.Entitlement;
 using Babel.RealEstate.Persistence;
 using Babel.RealEstate.Subledger;
+using Babel.Core.CompanySetup;
 using Babel.SharedKernel;
 using Microsoft.EntityFrameworkCore;
 
@@ -29,7 +30,7 @@ public sealed class TenantArrearsService : IApplicationService
     private readonly IEntitlementEnforcer _enforcer;
     private readonly RealEstateDbContext _database;
     private readonly IControlPointReader _controlPoint;
-    private readonly CurrencyCode _currency;
+    private readonly ICompanyMoneyResolver _company;
 
     /// <summary>ينشئ الخدمة.</summary>
     /// <param name="enforcer">منفِّذ الاستحقاق.</param>
@@ -43,7 +44,7 @@ public sealed class TenantArrearsService : IApplicationService
         _enforcer = enforcer;
         _database = runtime.Database;
         _controlPoint = controlPoint;
-        _currency = CurrencyCode.FromString(runtime.Options.CompanyCurrency);
+        _company = runtime.Company;
     }
 
     /// <summary>أعمار المتأخرات ومطابقتها حتى تاريخ.</summary>
@@ -69,7 +70,13 @@ public sealed class TenantArrearsService : IApplicationService
             return Result<(ArrearsReport, ControlReconciliationReport)>.Failure(gate.Errors);
         }
 
-        ArrearsReport aging = await BuildAgingAsync(tenant, companyId, asOf, cancellationToken).ConfigureAwait(false);
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<(ArrearsReport, ControlReconciliationReport)>.Failure(money.Errors);
+        }
+
+        ArrearsReport aging = await BuildAgingAsync(tenant, companyId, asOf, money.Value, cancellationToken).ConfigureAwait(false);
 
         Result<ControlPointSnapshot> snapshot = await _controlPoint
             .ReadAsync(tenant, SubledgerKindCode, asOf, cancellationToken: cancellationToken).ConfigureAwait(false);
@@ -101,27 +108,27 @@ public sealed class TenantArrearsService : IApplicationService
                 row.DocumentType,
                 row.DocumentId,
                 row.PartyId,
-                Money.Of(row.ControlEffect, _currency),
-                Money.Zero(_currency),
-                Money.Of(row.ControlEffect, _currency),
+                Money.Of(row.ControlEffect, money.Value.Currency),
+                Money.Zero(money.Value.Currency),
+                Money.Of(row.ControlEffect, money.Value.Currency),
                 DivergenceReason.PostingUnresolved));
         }
 
         ControlReconciliationReport reconciliation = new(
             asOf,
-            Money.Of(subledger, _currency),
-            Money.Of(control, _currency),
-            Money.Of(subledger - control, _currency),
+            Money.Of(subledger, money.Value.Currency),
+            Money.Of(control, money.Value.Currency),
+            Money.Of(subledger - control, money.Value.Currency),
             subledger == control,
             divergences);
 
         return Result<(ArrearsReport, ControlReconciliationReport)>.Success((aging, reconciliation));
     }
 
-    private async Task<ArrearsReport> BuildAgingAsync(
-        TenantId tenant,
+    private async Task<ArrearsReport> BuildAgingAsync(TenantId tenant,
         Guid companyId,
         DateOnly asOf,
+        CompanyMoney money,
         CancellationToken cancellationToken)
     {
         List<RentInvoiceRow> invoices = await _database.RentInvoices
@@ -219,10 +226,10 @@ public sealed class TenantArrearsService : IApplicationService
                 lessee.Id,
                 lessee.Code,
                 new TranslatedName(lessee.NameAr),
-                Buckets(buckets)));
+                Buckets(buckets, money)));
         }
 
-        return new ArrearsReport(asOf, parties, Buckets(totals));
+        return new ArrearsReport(asOf, parties, Buckets(totals, money));
     }
 
     /// <summary>الشريحة التي يقع فيها تاريخ استحقاق بالنسبة إلى تاريخ التقرير.</summary>
@@ -239,11 +246,11 @@ public sealed class TenantArrearsService : IApplicationService
         };
     }
 
-    private ArrearsBuckets Buckets(decimal[] values) => new(
-        Money.Of(values[0], _currency),
-        Money.Of(values[1], _currency),
-        Money.Of(values[2], _currency),
-        Money.Of(values[3], _currency),
-        Money.Of(values[4], _currency),
-        Money.Of(values.Sum(), _currency));
+    private static ArrearsBuckets Buckets(decimal[] values, CompanyMoney money) => new(
+        Money.Of(values[0], money.Currency),
+        Money.Of(values[1], money.Currency),
+        Money.Of(values[2], money.Currency),
+        Money.Of(values[3], money.Currency),
+        Money.Of(values[4], money.Currency),
+        Money.Of(values.Sum(), money.Currency));
 }

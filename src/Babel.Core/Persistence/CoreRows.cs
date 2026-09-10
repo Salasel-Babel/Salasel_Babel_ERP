@@ -25,6 +25,12 @@ internal sealed class CompanySetupRow
     /// <summary>رمز المركز الافتراضي.</summary>
     public string DefaultCostCenter { get; set; } = string.Empty;
 
+    /// <summary>عملة المنشأة — رمز ISO 4217. مُسنَدة عند التأسيس، ويمنع المشغّل تغييرها بعده (ADR-0089).</summary>
+    public string CurrencyCode { get; set; } = string.Empty;
+
+    /// <summary>عدد خانات الوحدة الصغرى — مخزَّنٌ بجوار العملة كي يصف الصفّ نفسه، ولا يُعدَّل بعد التأسيس.</summary>
+    public int MinorUnits { get; set; }
+
     /// <summary>لحظة التأسيس.</summary>
     public DateTimeOffset FoundedAt { get; set; }
 }

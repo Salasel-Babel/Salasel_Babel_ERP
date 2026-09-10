@@ -1,3 +1,5 @@
+using Babel.Core.CompanySetup;
+
 namespace Babel.Purchasing.Application;
 
 /// <summary>
@@ -11,11 +13,13 @@ namespace Babel.Purchasing.Application;
 /// </summary>
 internal static class LineMath
 {
-    /// <summary>خانتان عشريتان: الهللة أصغر وحدة نقدية، والتقريب سياسة لا صدفة.</summary>
-    private const int Halalas = 2;
-
-    /// <summary>يقرّب إلى الهللة، والنصف يبتعد عن الصفر.</summary>
-    public static decimal Round(decimal value) => decimal.Round(value, Halalas, MidpointRounding.AwayFromZero);
+    /// <summary>
+    /// يقرّب إلى الوحدة الصغرى لعملة المنشأة — الهللة خانتان، والفلسُ الكويتي ثلاث — والنصف
+    /// يبتعد عن الصفر. ولا رقمَ هنا: عددُ الخانات من صفّ التأسيس (ADR-0089).
+    /// </summary>
+    /// <param name="value">القيمة.</param>
+    /// <param name="money">عملة المنشأة.</param>
+    public static decimal Round(decimal value, CompanyMoney money) => money.Round(value);
 
     /// <summary>صافي السطر وضريبته، كلاهما مقرَّب على السطر.</summary>
     public static (decimal Net, decimal Tax) Line(
@@ -23,12 +27,13 @@ internal static class LineMath
         decimal unitPrice,
         decimal discount,
         decimal taxRate,
-        string taxClassification)
+        string taxClassification,
+        CompanyMoney money)
     {
-        decimal extended = Round(quantity * unitPrice);
-        decimal net = Round(extended - discount);
+        decimal extended = Round(quantity * unitPrice, money);
+        decimal net = Round(extended - discount, money);
         decimal effectiveRate = string.Equals(taxClassification, "standard", StringComparison.Ordinal) ? taxRate : 0m;
-        decimal tax = Round(net * effectiveRate);
+        decimal tax = Round(net * effectiveRate, money);
         return (net, tax);
     }
 }

@@ -4,6 +4,7 @@ using Babel.Contracts.RealEstate;
 using Babel.Core.Application;
 using Babel.Core.Entitlement;
 using Babel.RealEstate.Persistence;
+using Babel.Core.CompanySetup;
 using Babel.SharedKernel;
 using Microsoft.EntityFrameworkCore;
 
@@ -37,7 +38,7 @@ public sealed class RentInvoiceService : IApplicationService
     private readonly IEntitlementEnforcer _enforcer;
     private readonly RealEstateDbContext _database;
     private readonly RealEstatePostingGateway _gateway;
-    private readonly CurrencyCode _currency;
+    private readonly ICompanyMoneyResolver _company;
 
     /// <summary>ينشئ الخدمة.</summary>
     /// <param name="enforcer">منفِّذ الاستحقاق.</param>
@@ -51,7 +52,7 @@ public sealed class RentInvoiceService : IApplicationService
         _enforcer = enforcer;
         _database = runtime.Database;
         _gateway = new RealEstatePostingGateway(runtime.Database, posting, runtime.CostCenters);
-        _currency = CurrencyCode.FromString(runtime.Options.CompanyCurrency);
+        _company = runtime.Company;
     }
 
     /// <summary>ينشئ فاتورة إيجار <b>مسوّدة</b>. لا قيد ولا أثر في الدفتر.</summary>
@@ -77,6 +78,12 @@ public sealed class RentInvoiceService : IApplicationService
         if (gate.IsFailure)
         {
             return Result<RentInvoiceView>.Failure(gate.Errors);
+        }
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<RentInvoiceView>.Failure(money.Errors);
         }
 
         if (draft.ScheduleLineIds.Count == 0)
@@ -203,7 +210,7 @@ public sealed class RentInvoiceService : IApplicationService
         foreach (PaymentScheduleLineRow line in chosen.OrderBy(row => row.Seq))
         {
             decimal lineNet = line.Amount;
-            decimal lineTax = RentMath.Tax(lineNet, draft.TaxRate, taxable);
+            decimal lineTax = RentMath.Tax(lineNet, draft.TaxRate, taxable, money.Value);
 
             _database.RentInvoiceLines.Add(new RentInvoiceLineRow
             {
@@ -229,7 +236,7 @@ public sealed class RentInvoiceService : IApplicationService
         _database.RentInvoices.Add(invoice);
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        return Result<RentInvoiceView>.Success(View(invoice, alreadyPosted: false));
+        return Result<RentInvoiceView>.Success(View(invoice, alreadyPosted: false, money.Value));
     }
 
     /// <summary>يقرأ فاتورة بحالتها ومجاميعها ومعرّف قيدها إن رُحّلت.</summary>
@@ -255,6 +262,12 @@ public sealed class RentInvoiceService : IApplicationService
             return Result<RentInvoiceView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<RentInvoiceView>.Failure(money.Errors);
+        }
+
         RentInvoiceRow? row = await _database.RentInvoices
             .FirstOrDefaultAsync(
                 entity => entity.TenantId == tenant.Value && entity.CompanyId == companyId && entity.Id == invoiceId,
@@ -263,7 +276,7 @@ public sealed class RentInvoiceService : IApplicationService
 
         return row is null
             ? Result<RentInvoiceView>.Failure(RealEstateErrors.DocumentNotFound(DocumentType, invoiceId))
-            : Result<RentInvoiceView>.Success(View(row, alreadyPosted: false));
+            : Result<RentInvoiceView>.Success(View(row, alreadyPosted: false, money.Value));
     }
 
     /// <summary>
@@ -290,6 +303,12 @@ public sealed class RentInvoiceService : IApplicationService
         if (gate.IsFailure)
         {
             return Result<RentInvoiceView>.Failure(gate.Errors);
+        }
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<RentInvoiceView>.Failure(money.Errors);
         }
 
         RentInvoiceRow? invoice = await _database.RentInvoices
@@ -386,8 +405,8 @@ public sealed class RentInvoiceService : IApplicationService
                 "Rent invoice " + invoice.Number),
             Amounts =
             [
-                new PostingAmount("net", Money.Of(invoice.NetTotal, _currency)),
-                new PostingAmount("tax", Money.Of(invoice.TaxTotal, _currency)),
+                new PostingAmount("net", Money.Of(invoice.NetTotal, money.Value.Currency)),
+                new PostingAmount("tax", Money.Of(invoice.TaxTotal, money.Value.Currency)),
             ],
             Facts = facts,
             Dimensions =
@@ -397,7 +416,7 @@ public sealed class RentInvoiceService : IApplicationService
             ],
             PartyId = lessee.Code,
             ControlEffect = invoice.GrossTotal,
-            Currency = _currency,
+            Currency = money.Value.Currency,
             Actor = actor,
         };
 
@@ -412,7 +431,7 @@ public sealed class RentInvoiceService : IApplicationService
         invoice.EntryId = receipt.Value.JournalEntryId;
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        return Result<RentInvoiceView>.Success(View(invoice, receipt.Value.WasAlreadyPosted));
+        return Result<RentInvoiceView>.Success(View(invoice, receipt.Value.WasAlreadyPosted, money.Value));
     }
 
     /// <summary>
@@ -444,13 +463,13 @@ public sealed class RentInvoiceService : IApplicationService
         };
     }
 
-    private RentInvoiceView View(RentInvoiceRow row, bool alreadyPosted) => new(
+    private static RentInvoiceView View(RentInvoiceRow row, bool alreadyPosted, CompanyMoney money) => new(
         row.Id,
         row.Number,
         row.State,
-        Money.Of(row.NetTotal, _currency),
-        Money.Of(row.TaxTotal, _currency),
-        Money.Of(row.GrossTotal, _currency),
+        Money.Of(row.NetTotal, money.Currency),
+        Money.Of(row.TaxTotal, money.Currency),
+        Money.Of(row.GrossTotal, money.Currency),
         row.EventCode,
         row.VatTreatment,
         row.ExemptionReasonCode,

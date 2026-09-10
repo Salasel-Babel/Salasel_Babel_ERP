@@ -257,7 +257,10 @@ public sealed class EntitlementService(ControlPlaneOptions options, TenantRegist
     public async Task<IReadOnlyDictionary<string, EntitlementState>> DowngradeToPlanAsync(
         Guid tenantId, string planCode, ChangeAuthority authority, CancellationToken ct = default)
     {
-        var plan = PlanCatalog.Require(planCode);
+        PlanDefinition plan;
+        await using (var c = await Db.OpenAsync(Options.ControlConnectionString, ct))
+            plan = await PlanDirectory.RequireAsync(c, planCode, ct);
+
         var covered = new HashSet<string>(plan.Modules, StringComparer.Ordinal);
         foreach (var m in plan.Modules)
             foreach (var d in ModuleCatalog.TransitiveDependencies(m)) covered.Add(d);

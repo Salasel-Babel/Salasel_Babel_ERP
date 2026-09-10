@@ -4,6 +4,7 @@ using Babel.Core.Application;
 using Babel.Core.CapabilityProfile;
 using Babel.Core.Entitlement;
 using Babel.Projects.Persistence;
+using Babel.Core.CompanySetup;
 using Babel.SharedKernel;
 using Microsoft.EntityFrameworkCore;
 
@@ -42,7 +43,7 @@ public sealed class RetentionService : IApplicationService
     private readonly ProjectsDbContext _database;
     private readonly ProjectsPostingGateway _gateway;
     private readonly ProjectsAdmission _admission;
-    private readonly CurrencyCode _currency;
+    private readonly ICompanyMoneyResolver _company;
 
     /// <summary>ينشئ الخدمة.</summary>
     /// <param name="enforcer">منفِّذ الاستحقاق.</param>
@@ -66,7 +67,7 @@ public sealed class RetentionService : IApplicationService
         _database = runtime.Database;
         _gateway = new ProjectsPostingGateway(runtime.Database, posting, runtime.CostCenters);
         _admission = new ProjectsAdmission(profiles);
-        _currency = CurrencyCode.FromString(runtime.Options.CompanyCurrency);
+        _company = runtime.Company;
     }
 
     /// <summary>يُنشئ إفراجاً عن محتجزٍ دائن <b>مسوّدة</b>، باعتمادٍ صريح.</summary>
@@ -90,6 +91,12 @@ public sealed class RetentionService : IApplicationService
         if (gate.IsFailure)
         {
             return Result<ProjectsDocumentView>.Failure(gate.Errors);
+        }
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<ProjectsDocumentView>.Failure(money.Errors);
         }
 
         if (draft.Amount.Amount <= 0m)
@@ -134,7 +141,7 @@ public sealed class RetentionService : IApplicationService
             Number = draft.Number,
             ReleasedOn = draft.ReleasedOn,
             State = ProjectsDocumentState.Draft,
-            CurrencyCode = _currency.Value,
+            CurrencyCode = money.Value.Currency.Value,
             Amount = draft.Amount.Amount,
             ApprovedBy = draft.ApprovedBy,
         };
@@ -143,7 +150,7 @@ public sealed class RetentionService : IApplicationService
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         return Result<ProjectsDocumentView>.Success(
-            new ProjectsDocumentView(row.Id, row.Number, row.State, Money.Of(row.Amount, _currency), null, false));
+            new ProjectsDocumentView(row.Id, row.Number, row.State, Money.Of(row.Amount, money.Value.Currency), null, false));
     }
 
     /// <summary>يقرأ مستند إفراج.</summary>
@@ -167,6 +174,12 @@ public sealed class RetentionService : IApplicationService
             return Result<ProjectsDocumentView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<ProjectsDocumentView>.Failure(money.Errors);
+        }
+
         RetentionReleaseRow? row = await _database.RetentionReleases
             .AsNoTracking()
             .FirstOrDefaultAsync(entity => entity.TenantId == tenant.Value && entity.Id == releaseId, cancellationToken)
@@ -175,7 +188,7 @@ public sealed class RetentionService : IApplicationService
         return row is null
             ? Result<ProjectsDocumentView>.Failure(ProjectsErrors.NotFound(ReleaseDocument, releaseId))
             : Result<ProjectsDocumentView>.Success(new ProjectsDocumentView(
-                row.Id, row.Number, row.State, Money.Of(row.Amount, _currency), row.PostedEntryId, false));
+                row.Id, row.Number, row.State, Money.Of(row.Amount, money.Value.Currency), row.PostedEntryId, false));
     }
 
     /// <summary>
@@ -204,6 +217,12 @@ public sealed class RetentionService : IApplicationService
         if (gate.IsFailure)
         {
             return Result<ProjectsDocumentView>.Failure(gate.Errors);
+        }
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<ProjectsDocumentView>.Failure(money.Errors);
         }
 
         RetentionReleaseRow? release = await _database.RetentionReleases
@@ -235,13 +254,13 @@ public sealed class RetentionService : IApplicationService
             Narration = new LocalizedName(
                 "إفراج عن محتجز " + release.Number,
                 "Retention release " + release.Number),
-            Amounts = [new PostingAmount("amount", Money.Of(release.Amount, _currency))],
+            Amounts = [new PostingAmount("amount", Money.Of(release.Amount, money.Value.Currency))],
             Facts = [new PostingFact(SubcontractorFact, movement.PartyId)],
             Dimensions = [new PostingDimension(ProjectsPostingGateway.ProjectDimension, movement.ProjectCode)],
             PartyId = movement.PartyId,
             SubledgerKind = SubcontractorAdvanceService.SubcontractorSubledger,
             ControlEffect = 0m,
-            Currency = _currency,
+            Currency = money.Value.Currency,
             Actor = actor,
             Generation = release.PostingGeneration,
         };
@@ -265,7 +284,7 @@ public sealed class RetentionService : IApplicationService
             release.Id,
             release.Number,
             release.State,
-            Money.Of(release.Amount, _currency),
+            Money.Of(release.Amount, money.Value.Currency),
             receipt.Value.JournalEntryId,
             receipt.Value.WasAlreadyPosted));
     }
@@ -291,6 +310,12 @@ public sealed class RetentionService : IApplicationService
         if (gate.IsFailure)
         {
             return Result<ProjectsDocumentView>.Failure(gate.Errors);
+        }
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<ProjectsDocumentView>.Failure(money.Errors);
         }
 
         if (draft.Amount.Amount <= 0m)
@@ -322,7 +347,7 @@ public sealed class RetentionService : IApplicationService
             Number = draft.Number,
             CollectedOn = draft.CollectedOn,
             State = ProjectsDocumentState.Draft,
-            CurrencyCode = _currency.Value,
+            CurrencyCode = money.Value.Currency.Value,
             Amount = draft.Amount.Amount,
             SettlementMethod = draft.SettlementMethod,
             TreasuryPartyId = draft.TreasuryPartyId,
@@ -332,7 +357,7 @@ public sealed class RetentionService : IApplicationService
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         return Result<ProjectsDocumentView>.Success(
-            new ProjectsDocumentView(row.Id, row.Number, row.State, Money.Of(row.Amount, _currency), null, false));
+            new ProjectsDocumentView(row.Id, row.Number, row.State, Money.Of(row.Amount, money.Value.Currency), null, false));
     }
 
     /// <summary>يقرأ مستند تحصيل محتجز.</summary>
@@ -356,6 +381,12 @@ public sealed class RetentionService : IApplicationService
             return Result<ProjectsDocumentView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<ProjectsDocumentView>.Failure(money.Errors);
+        }
+
         RetentionCollectionRow? row = await _database.RetentionCollections
             .AsNoTracking()
             .FirstOrDefaultAsync(entity => entity.TenantId == tenant.Value && entity.Id == collectionId, cancellationToken)
@@ -364,7 +395,7 @@ public sealed class RetentionService : IApplicationService
         return row is null
             ? Result<ProjectsDocumentView>.Failure(ProjectsErrors.NotFound(CollectionDocument, collectionId))
             : Result<ProjectsDocumentView>.Success(new ProjectsDocumentView(
-                row.Id, row.Number, row.State, Money.Of(row.Amount, _currency), row.PostedEntryId, false));
+                row.Id, row.Number, row.State, Money.Of(row.Amount, money.Value.Currency), row.PostedEntryId, false));
     }
 
     /// <summary>
@@ -398,6 +429,12 @@ public sealed class RetentionService : IApplicationService
         if (gate.IsFailure)
         {
             return Result<ProjectsDocumentView>.Failure(gate.Errors);
+        }
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<ProjectsDocumentView>.Failure(money.Errors);
         }
 
         Result<AdmittedDocument> admitted = await _admission
@@ -456,7 +493,7 @@ public sealed class RetentionService : IApplicationService
             Narration = new LocalizedName(
                 "تحصيل محتجز من العميل " + collection.Number,
                 "Client retention collection " + collection.Number),
-            Amounts = [new PostingAmount("amount", Money.Of(collection.Amount, _currency))],
+            Amounts = [new PostingAmount("amount", Money.Of(collection.Amount, money.Value.Currency))],
             Facts =
             [
                 new PostingFact(CustomerFact, movement.PartyId),
@@ -467,7 +504,7 @@ public sealed class RetentionService : IApplicationService
             PartyId = movement.PartyId,
             SubledgerKind = CustomerSubledger,
             ControlEffect = -collection.Amount,
-            Currency = _currency,
+            Currency = money.Value.Currency,
             Actor = actor,
             Generation = collection.PostingGeneration,
         };
@@ -493,7 +530,7 @@ public sealed class RetentionService : IApplicationService
             collection.Id,
             collection.Number,
             collection.State,
-            Money.Of(collection.Amount, _currency),
+            Money.Of(collection.Amount, money.Value.Currency),
             receipt.Value.JournalEntryId,
             receipt.Value.WasAlreadyPosted));
     }
@@ -520,6 +557,12 @@ public sealed class RetentionService : IApplicationService
         if (gate.IsFailure)
         {
             return Result<RetentionRegister>.Failure(gate.Errors);
+        }
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<RetentionRegister>.Failure(money.Errors);
         }
 
         List<RetentionMovementRow> movements = await _database.RetentionMovements
@@ -553,8 +596,8 @@ public sealed class RetentionService : IApplicationService
                 movement.ProjectCode,
                 movement.DocumentType,
                 movement.DocumentId,
-                Money.Of(movement.Amount, _currency),
-                Money.Of(outstanding < 0m ? 0m : outstanding, _currency),
+                Money.Of(movement.Amount, money.Value.Currency),
+                Money.Of(outstanding < 0m ? 0m : outstanding, money.Value.Currency),
                 movement.MovedOn,
                 movement.DueOn));
         }
@@ -568,7 +611,7 @@ public sealed class RetentionService : IApplicationService
             .Sum(static row => row.Outstanding.Amount);
 
         return Result<RetentionRegister>.Success(new RetentionRegister(
-            asOf, rows, Money.Of(receivable, _currency), Money.Of(payable, _currency)));
+            asOf, rows, Money.Of(receivable, money.Value.Currency), Money.Of(payable, money.Value.Currency)));
     }
 
     // ── مشترك ────────────────────────────────────────────────────────────────

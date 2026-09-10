@@ -36,7 +36,7 @@ public static class Harness
 
         await using var c = await Db.OpenAsync(o.ControlConnectionString);
         await ModuleCatalog.SeedAsync(c);
-        await PlanCatalog.SeedAsync(c);
+        await PlanCatalog.SeedAsync(c, publish: true);
     }
 
     public static async Task DropAllTestDatabasesAsync(ControlPlaneOptions o)

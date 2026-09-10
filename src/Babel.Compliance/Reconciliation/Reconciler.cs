@@ -22,13 +22,19 @@ namespace Babel.Compliance.Reconciliation;
 public sealed class Reconciler(
     IComplianceStore store,
     ILedgerTaxableDocumentSource ledger,
-    ComplianceSettings settings,
+    ICompliancePolicySource policies,
     TimeProvider clock)
 {
     public async Task<ReconciliationReport> RunAsync(
         TenantId tenant, DateTimeOffset from, DateTimeOffset to, CancellationToken ct)
     {
         var now = ComplianceCanonical.PgInstant(clock.GetUtcNow());
+
+        // ‏عتبةُ الإنذار من سياسة المنشأة (ADR-0090) — تُحلّ مرّةً للتشغيلة كلّها.
+        var policy = await policies.ResolveAsync(tenant, ct);
+        if (policy.IsFailure)
+            throw CompliancePolicyRefusal.Of(policy.Errors);
+
         var posted = await ledger.ListAsync(tenant, from, to, ct);
 
         var compliance = await store.InTransactionAsync(
@@ -40,7 +46,7 @@ public sealed class Reconciler(
         findings.AddRange(FindPostedButNeverBuilt(tenant, posted, compliance, now));
         findings.AddRange(FindAcknowledgedButNotPosted(tenant, posted, compliance, now));
         findings.AddRange(FindAmountMismatches(tenant, posted, compliance, now));
-        findings.AddRange(FindStuckDocuments(tenant, compliance, now));
+        findings.AddRange(FindStuckDocuments(tenant, compliance, now, policy.Value));
         findings.AddRange(FindDuplicateAcceptances(tenant, compliance, now));
         findings.AddRange(await FindChainProblemsAsync(tenant, compliance, now, ct));
         findings.AddRange(FindMissingStampedCopies(tenant, compliance, now));
@@ -149,8 +155,8 @@ public sealed class Reconciler(
         }
     }
 
-    private IEnumerable<ReconciliationFinding> FindStuckDocuments(
-        TenantId tenant, IReadOnlyList<ComplianceRecord> compliance, DateTimeOffset now)
+    private static IEnumerable<ReconciliationFinding> FindStuckDocuments(
+        TenantId tenant, IReadOnlyList<ComplianceRecord> compliance, DateTimeOffset now, CompliancePolicy policy)
     {
         foreach (var r in compliance)
         {
@@ -181,7 +187,7 @@ public sealed class Reconciler(
                     break;
 
                 case ComplianceStatus.Queued or ComplianceStatus.Submitting
-                    when r.QueuedAt is { } q && now - q > settings.QueueAgeAlarm:
+                    when r.QueuedAt is { } q && now - q > policy.QueueAgeAlarm:
                     yield return Stuck(tenant, r, now, FindingKind.QueuedTooLong, FindingSeverity.Warning,
                         string.Create(CultureInfo.InvariantCulture,
                             $"في الطابور منذ {(now - q).TotalHours:0.0} ساعة — يتجاوز عتبة التنبيه المضبوطة للمستأجر."),

@@ -5,6 +5,7 @@ using Babel.Contracts.Posting;
 using Babel.Core.Application;
 using Babel.Core.Entitlement;
 using Babel.Ledger.PostingMatrix;
+using Babel.Core.CompanySetup;
 using Babel.SharedKernel;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -43,11 +44,12 @@ internal sealed class PostingService : IPostingService, IApplicationService
 {
     private readonly IEntitlementEnforcer _enforcer;
     private readonly LedgerRuntime _runtime;
+    private readonly ICompanyMoneyResolver _company;
     private readonly ILogger _logger;
 
     /// <summary>ينشئ محرك الترحيل بلا سجلّ — والتشخيص عندئذ يُهمَل عمداً لا سهواً.</summary>
-    public PostingService(IEntitlementEnforcer enforcer, LedgerRuntime runtime)
-        : this(enforcer, runtime, NullLogger<PostingService>.Instance)
+    public PostingService(IEntitlementEnforcer enforcer, LedgerRuntime runtime, ICompanyMoneyResolver company)
+        : this(enforcer, runtime, company, NullLogger<PostingService>.Instance)
     {
     }
 
@@ -61,14 +63,17 @@ internal sealed class PostingService : IPostingService, IApplicationService
     /// </summary>
     /// <param name="enforcer">منفِّذ الاستحقاق.</param>
     /// <param name="runtime">موارد الدفتر.</param>
+    /// <param name="company">عملة المنشأة — التي يُفحص بها التوازن عند COMMIT (ADR-0089).</param>
     /// <param name="logger">سجلّ الخادم — إليه يذهب نصّ رفض قاعدة البيانات كاملاً.</param>
-    public PostingService(IEntitlementEnforcer enforcer, LedgerRuntime runtime, ILogger<PostingService> logger)
+    public PostingService(IEntitlementEnforcer enforcer, LedgerRuntime runtime, ICompanyMoneyResolver company, ILogger<PostingService> logger)
     {
         ArgumentNullException.ThrowIfNull(enforcer);
         ArgumentNullException.ThrowIfNull(runtime);
+        ArgumentNullException.ThrowIfNull(company);
         ArgumentNullException.ThrowIfNull(logger);
         _enforcer = enforcer;
         _runtime = runtime;
+        _company = company;
         _logger = logger;
     }
 
@@ -96,13 +101,21 @@ internal sealed class PostingService : IPostingService, IApplicationService
         CompanyReference reference = await _reference
             .GetAsync(request.Tenant.Value, cancellationToken).ConfigureAwait(false);
 
+        // ‏عملةُ التوازن من صفّ التأسيس لا من الإعداد: منشأةٌ لم تُؤسَّس لا عملةَ لها، فلا ترحيل.
+        Result<CompanyMoney> money = await _company.ResolveAsync(request.Tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            await RecordRefusalAsync(request, money.Errors, cancellationToken).ConfigureAwait(false);
+            return Result<PostingReceipt>.Failure(money.Errors);
+        }
+
         // اللحظة تُلتقط **مرّة واحدة** ومقصوصة إلى الميكروثانية قبل التجزئة وقبل
         // التخزين: .NET يحمل 100 نانوثانية و timestamptz يحمل ميكروثانية، والقصّ
         // بعد التجزئة يجعل كل بصمة تفشل عند إعادة التحقق (فخ-16 · SPEC §6.2).
         DateTime postedAt = Instants.CaptureNow();
 
         Result<PostingPlan> plan = PostingPlanner.Plan(
-            request, reference, MatrixCatalog.Default, _options.CompanyCurrency, postedAt);
+            request, reference, MatrixCatalog.Default, money.Value.Currency.Value, postedAt);
 
         if (plan.IsFailure)
         {

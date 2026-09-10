@@ -36,7 +36,7 @@ public sealed class LapsedSubscriptionKeepsReadingTests
             HttpMethod.Put,
             string.Create(CultureInfo.InvariantCulture, $"/api/v1/companies/{companyId:D}/setup"),
             owner,
-            """{"companyNameAr":"منشأة الاشتراك المنقطع","costCenters":"One","decimalPlaces":2}""")))
+            """{"companyNameAr":"منشأة الاشتراك المنقطع","costCenters":"One","decimalPlaces":2,"currencyCode":"SAR"}""")))
         {
             (string founding, _) = await Http.BodyAsync(founded);
             Console.WriteLine(founding);

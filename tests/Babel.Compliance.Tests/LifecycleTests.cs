@@ -93,7 +93,7 @@ public class LifecycleTests
         Assert.Empty(h.Authority.Accepted);
         Assert.Equal(ComplianceStatus.Queued, h.Record(doc.DocumentId).Status);
         Assert.Equal(1, receipt.Counter);
-        Assert.Equal(h.Clock.GetUtcNow() + h.Settings.ReportingWindow, receipt.ReportingDeadline);
+        Assert.Equal(h.Clock.GetUtcNow() + h.Policy.ReportingWindow, receipt.ReportingDeadline);
 
         // ثم يعمل العامل الخلفي.
         var drained = await h.Service.DrainReportingQueueAsync(10, TestContext.Current.CancellationToken);

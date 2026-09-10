@@ -276,6 +276,76 @@ public sealed class CompanySetupSurvivesTheProcessTests
                 $"select count(*) from core.company_setup where company_id = '{company:D}' and decimal_places = 2"));
     }
 
+    [Fact]
+    public async Task عملةُ_المنشأة_ووحدتُها_الصغرى_لا_تتغيّران_ولو_كان_الفاعل_هو_المالك()
+    {
+        await CoreTestEnvironment.EnsureAsync(TestContext.Current.CancellationToken);
+        Guid company = CoreTestEnvironment.NewCompany();
+
+        Assert.True(await NewStore().TryFoundAsync(
+            Found(company, "منشأة بالريال", 2), TestContext.Current.CancellationToken));
+
+        PostgresException currency = await Assert.ThrowsAsync<PostgresException>(
+            async () => await CoreTestEnvironment.OwnerAsync(
+                $"update core.company_setup set currency_code = 'KWD', minor_units = 3 where company_id = '{company:D}'"));
+        Assert.Contains("COMPANY_CURRENCY_IMMUTABLE", currency.MessageText, StringComparison.Ordinal);
+        CoreTestEnvironment.Note("رفض المشغّل: " + currency.MessageText);
+
+        // والوحدةُ الصغرى وحدها كذلك — الصفُّ يصف نفسه ولا يُعاد وصفه.
+        PostgresException units = await Assert.ThrowsAsync<PostgresException>(
+            async () => await CoreTestEnvironment.OwnerAsync(
+                $"update core.company_setup set minor_units = 3 where company_id = '{company:D}'"));
+        Assert.Contains("COMPANY_CURRENCY_IMMUTABLE", units.MessageText, StringComparison.Ordinal);
+
+        // ولا صفَّ بلا عملة: القيدُ في المخطّط لا في الانضباط.
+        PostgresException shape = await Assert.ThrowsAsync<PostgresException>(
+            async () => await CoreTestEnvironment.OwnerAsync(
+                $"insert into core.company_setup (company_id, name_ar, decimal_places, default_cost_center, currency_code, minor_units, founded_at) "
+                + $"values ('{Guid.NewGuid():D}', 'بلا عملة', 2, 'cc.001', '', 2, now())"));
+        Assert.Equal(PostgresErrorCodes.CheckViolation, shape.SqlState);
+
+        Assert.Equal(
+            1,
+            await CoreTestEnvironment.CountAsync(
+                $"select count(*) from core.company_setup where company_id = '{company:D}' and currency_code = 'SAR' and minor_units = 2"));
+    }
+
+    [Fact]
+    public async Task سببُ_إيقافٍ_بأقصى_طولٍ_يقبله_المجال_يُحفظ_في_القاعدة_لا_يسقط_فيها()
+    {
+        await CoreTestEnvironment.EnsureAsync(TestContext.Current.CancellationToken);
+        Guid company = CoreTestEnvironment.NewCompany();
+        PostgresCompanySetupStore store = NewStore();
+
+        // منشأةٌ بمركزين كي يكون للإيقاف مركزٌ غير الافتراضي.
+        Result<FoundedCompany> founded = FoundedCompany.Found(
+            new TenantId(company),
+            new CompanySetupDraft("منشأة السبب الطويل", null, CostCenterPlan.Multiple, "الإدارة", null, 2, "SAR"));
+        Assert.True(founded.IsSuccess, string.Join(" | ", founded.Errors.Select(static e => e.ToString())));
+        Assert.True(await store.TryFoundAsync(founded.Value, TestContext.Current.CancellationToken));
+
+        Result<CostCenterRegister> added = founded.Value.CostCenters.Add("فرعٌ يُوقَف", null);
+        Assert.True(added.IsSuccess);
+        CostCenterCode branch = added.Value.All.Single(c => c.NameAr == "فرعٌ يُوقَف").Code;
+
+        // السببُ بطول الحدّ الأقصى بالضبط — 512 — كان يسقط في عمودٍ من 400.
+        string reason = new('س', CompanySetupLimits.MaximumReasonLength);
+        Result<CostCenterRegister> suspended = added.Value.Suspend(branch, reason);
+        Assert.True(suspended.IsSuccess, string.Join(" | ", suspended.Errors.Select(static e => e.ToString())));
+        Assert.True(await store.TryReplaceCostCentersAsync(new TenantId(company), suspended.Value, TestContext.Current.CancellationToken));
+
+        FoundedCompany? read = await NewStore().FindAsync(new TenantId(company), TestContext.Current.CancellationToken);
+        Assert.NotNull(read);
+        Assert.Equal(reason, read.CostCenters.All.Single(c => c.Code == branch).SuspensionReason);
+
+        // والعمودُ في القاعدة بطول الحدّ نفسه — مقروءاً من الفهرس لا من ملفّ الهجرة.
+        Assert.Equal(
+            CompanySetupLimits.MaximumReasonLength,
+            await CoreTestEnvironment.CountAsync(
+                "select character_maximum_length from information_schema.columns "
+                + "where table_schema = 'core' and table_name = 'cost_center' and column_name = 'suspension_reason'"));
+    }
+
     // ═══════════════════════════════════════════════════════════════════════
     // ٤ · ملفّ القدرات كذلك: يُحفظ ويُقرأ، ويُطابَق بالمصفوفة عند كل قراءة
     // ═══════════════════════════════════════════════════════════════════════
@@ -343,7 +413,7 @@ public sealed class CompanySetupSurvivesTheProcessTests
     {
         Result<FoundedCompany> founded = FoundedCompany.Found(
             new TenantId(company),
-            new CompanySetupDraft(nameAr, null, CostCenterPlan.One, null, null, places));
+            new CompanySetupDraft(nameAr, null, CostCenterPlan.One, null, null, places, "SAR"));
 
         Assert.True(founded.IsSuccess, string.Join(" | ", founded.Errors.Select(static e => e.ToString())));
         return founded.Value;

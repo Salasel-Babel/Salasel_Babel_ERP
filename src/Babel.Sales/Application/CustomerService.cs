@@ -1,6 +1,7 @@
 using Babel.Core.Application;
 using Babel.Core.Entitlement;
 using Babel.Sales.Persistence;
+using Babel.Core.CompanySetup;
 using Babel.SharedKernel;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,6 +14,7 @@ namespace Babel.Sales.Application;
 public sealed class CustomerService : IApplicationService
 {
     private readonly IEntitlementEnforcer _enforcer;
+    private readonly ICompanyMoneyResolver _company;
     private readonly SalesDbContext _database;
 
     /// <summary>ينشئ الخدمة.</summary>
@@ -24,6 +26,7 @@ public sealed class CustomerService : IApplicationService
         ArgumentNullException.ThrowIfNull(runtime);
         _enforcer = enforcer;
         _database = runtime.Database;
+        _company = runtime.Company;
     }
 
     /// <summary>يسجّل عميلاً جديداً.</summary>
@@ -96,6 +99,12 @@ public sealed class CustomerService : IApplicationService
             return Result<CustomerView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<CustomerView>.Failure(money.Errors);
+        }
+
         CustomerRow? row = await _database.Customers
             .FirstOrDefaultAsync(entity => entity.TenantId == tenant.Value && entity.Id == customerId, cancellationToken)
             .ConfigureAwait(false);
@@ -106,7 +115,7 @@ public sealed class CustomerService : IApplicationService
                 row.Id,
                 row.Code,
                 new LocalizedName(row.NameAr, row.NameEn),
-                Money.Of(row.CreditLimit, CurrencyCode.Sar),
+                Money.Of(row.CreditLimit, money.Value.Currency),
                 row.PaymentTermsDays));
     }
 }

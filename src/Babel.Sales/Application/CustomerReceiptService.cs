@@ -3,6 +3,7 @@ using Babel.Core.Application;
 using Babel.Core.CapabilityProfile;
 using Babel.Core.Entitlement;
 using Babel.Sales.Persistence;
+using Babel.Core.CompanySetup;
 using Babel.SharedKernel;
 using Microsoft.EntityFrameworkCore;
 
@@ -31,7 +32,7 @@ public sealed class CustomerReceiptService : IApplicationService
     private readonly SalesDbContext _database;
     private readonly SubledgerPostingGateway _gateway;
     private readonly SalesAdmission _admission;
-    private readonly CurrencyCode _currency;
+    private readonly ICompanyMoneyResolver _company;
 
     /// <summary>ينشئ الخدمة.</summary>
     /// <param name="enforcer">منفِّذ الاستحقاق.</param>
@@ -50,7 +51,7 @@ public sealed class CustomerReceiptService : IApplicationService
         ArgumentNullException.ThrowIfNull(profiles);
         _enforcer = enforcer;
         _database = runtime.Database;
-        _currency = CurrencyCode.FromString(runtime.Options.CompanyCurrency);
+        _company = runtime.Company;
         _gateway = new SubledgerPostingGateway(_database, posting, runtime.CostCenters);
         _admission = new SalesAdmission(profiles);
     }
@@ -78,6 +79,12 @@ public sealed class CustomerReceiptService : IApplicationService
             return Result<SalesDocumentView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<SalesDocumentView>.Failure(money.Errors);
+        }
+
         if (draft.Received.Amount < 0m || draft.SettlementDiscount.Amount < 0m)
         {
             return Result<SalesDocumentView>.Failure(SalesErrors.NegativeAmount);
@@ -85,9 +92,9 @@ public sealed class CustomerReceiptService : IApplicationService
 
         // ── العملة تُقرأ، لا تُهمل ────────────────────────────────────────────
         // كل مبلغ داخلٍ هنا <see cref="Money"/> — أي **يحمل عملته** — وكان المسار
-        // يقرأ `.Amount` ويكتب `CurrencyCode = _currency.Value`، فمسوّدةٌ بالدولار
+        // يقرأ `.Amount` ويكتب `CurrencyCode = money.Value.Currency.Value`، فمسوّدةٌ بالدولار
         // تُسجَّل بالريال بالرقم نفسه بلا خطأ ولا سطر سجلّ. والرفض هنا يُسمّي العملتين.
-        Result uniform = EnsureCompanyCurrency(draft);
+        Result uniform = EnsureCompanyCurrency(draft, money.Value);
         if (uniform.IsFailure)
         {
             return Result<SalesDocumentView>.Failure(uniform.Errors);
@@ -170,7 +177,7 @@ public sealed class CustomerReceiptService : IApplicationService
             CustomerId = draft.CustomerId,
             ReceivedOn = draft.ReceivedOn,
             State = SalesDocumentState.Draft,
-            CurrencyCode = _currency.Value,
+            CurrencyCode = money.Value.Currency.Value,
             SettlementMethod = draft.SettlementMethod,
             TreasuryPartyId = draft.TreasuryPartyId,
             ReceivedAmount = draft.Received.Amount,
@@ -181,7 +188,7 @@ public sealed class CustomerReceiptService : IApplicationService
         _database.Receipts.Add(receipt);
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        return Result<SalesDocumentView>.Success(ViewOfReceipt(receipt));
+        return Result<SalesDocumentView>.Success(ViewOfReceipt(receipt, money.Value));
     }
 
     /// <summary>يرحّل سند القبض ويُنزل تخصيصاته على الفواتير.</summary>
@@ -205,6 +212,12 @@ public sealed class CustomerReceiptService : IApplicationService
             return Result<SalesDocumentView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<SalesDocumentView>.Failure(money.Errors);
+        }
+
         CustomerReceiptRow? receipt = await _database.Receipts
             .FirstOrDefaultAsync(row => row.TenantId == tenant.Value && row.Id == receiptId, cancellationToken)
             .ConfigureAwait(false);
@@ -218,7 +231,7 @@ public sealed class CustomerReceiptService : IApplicationService
         {
             // وصولٌ ثانٍ بعد أن اكتمل الأول: السند لا يُمسّ، والحقيقة تُقال صراحةً —
             // ولا تُشتقّ من الحالة عند المستدعي، فالحالة نفسها في الحالتين.
-            return Result<SalesDocumentView>.Success(ViewOfReceipt(receipt) with { AlreadyPosted = true });
+            return Result<SalesDocumentView>.Success(ViewOfReceipt(receipt, money.Value) with { AlreadyPosted = true });
         }
 
         CustomerRow customer = await _database.Customers
@@ -238,8 +251,8 @@ public sealed class CustomerReceiptService : IApplicationService
             Narration = new LocalizedName("سند قبض " + receipt.Number, "Customer receipt " + receipt.Number),
             Amounts =
             [
-                new PostingAmount("received", Money.Of(receipt.ReceivedAmount, _currency)),
-                new PostingAmount("discount", Money.Of(receipt.DiscountAmount, _currency)),
+                new PostingAmount("received", Money.Of(receipt.ReceivedAmount, money.Value.Currency)),
+                new PostingAmount("discount", Money.Of(receipt.DiscountAmount, money.Value.Currency)),
             ],
             Facts =
             [
@@ -254,7 +267,7 @@ public sealed class CustomerReceiptService : IApplicationService
             ],
             PartyId = customer.Code,
             ControlEffect = -settled,
-            Currency = _currency,
+            Currency = money.Value.Currency,
             Actor = actor,
             Generation = receipt.PostingGeneration,
         };
@@ -298,7 +311,7 @@ public sealed class CustomerReceiptService : IApplicationService
         // حرفاً بحرف: حسابُ الحقل من الحالة المقروءة قبل النداء كان سيُعلن للنداءين
         // المتزامنين معاً أنهما رحّلا.
         return Result<SalesDocumentView>.Success(
-            ViewOfReceipt(receipt) with { AlreadyPosted = posted.Value.WasAlreadyPosted });
+            ViewOfReceipt(receipt, money.Value) with { AlreadyPosted = posted.Value.WasAlreadyPosted });
     }
 
     /// <summary>يسجّل دفعة مقدمة من عميل.</summary>
@@ -322,6 +335,12 @@ public sealed class CustomerReceiptService : IApplicationService
         if (gate.IsFailure)
         {
             return Result<SalesDocumentView>.Failure(gate.Errors);
+        }
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<SalesDocumentView>.Failure(money.Errors);
         }
 
         // القدرة وحدة واحدة: القبض والاستنفاد حدثان تفتحهما القدرة نفسها. ومسوّدةُ
@@ -352,7 +371,7 @@ public sealed class CustomerReceiptService : IApplicationService
             CustomerId = draft.CustomerId,
             ReceivedOn = draft.ReceivedOn,
             State = SalesDocumentState.Draft,
-            CurrencyCode = _currency.Value,
+            CurrencyCode = money.Value.Currency.Value,
             SettlementMethod = draft.SettlementMethod,
             TreasuryPartyId = draft.TreasuryPartyId,
             TaxDueOnAdvance = draft.TaxDueOnCollection,
@@ -363,7 +382,7 @@ public sealed class CustomerReceiptService : IApplicationService
         _database.Advances.Add(row);
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        return Result<SalesDocumentView>.Success(ViewOfAdvance(row));
+        return Result<SalesDocumentView>.Success(ViewOfAdvance(row, money.Value));
     }
 
     /// <summary>يرحّل دفعة مقدمة عبر <c>sales.advance.received</c>.</summary>
@@ -389,6 +408,12 @@ public sealed class CustomerReceiptService : IApplicationService
             return Result<SalesDocumentView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<SalesDocumentView>.Failure(money.Errors);
+        }
+
         if (admittedAdvance.IsFailure)
         {
             return Result<SalesDocumentView>.Failure(admittedAdvance.Errors);
@@ -411,7 +436,7 @@ public sealed class CustomerReceiptService : IApplicationService
 
         if (advance.State == SalesDocumentState.Posted)
         {
-            return Result<SalesDocumentView>.Success(ViewOfAdvance(advance) with { AlreadyPosted = true });
+            return Result<SalesDocumentView>.Success(ViewOfAdvance(advance, money.Value) with { AlreadyPosted = true });
         }
 
         CustomerRow customer = await _database.Customers
@@ -429,8 +454,8 @@ public sealed class CustomerReceiptService : IApplicationService
             Narration = new LocalizedName("دفعة مقدمة " + advance.Number, "Customer advance " + advance.Number),
             Amounts =
             [
-                new PostingAmount("net", Money.Of(advance.NetAmount, _currency)),
-                new PostingAmount("tax", Money.Of(advance.TaxAmount, _currency)),
+                new PostingAmount("net", Money.Of(advance.NetAmount, money.Value.Currency)),
+                new PostingAmount("tax", Money.Of(advance.TaxAmount, money.Value.Currency)),
             ],
             Facts =
             [
@@ -444,7 +469,7 @@ public sealed class CustomerReceiptService : IApplicationService
 
             // الدفعة المقدمة التزام على العميل: أثرها على نقطة ضبطه دائن بالصافي.
             ControlEffect = -advance.NetAmount,
-            Currency = _currency,
+            Currency = money.Value.Currency,
             Actor = actor,
             Generation = advance.PostingGeneration,
         };
@@ -460,7 +485,7 @@ public sealed class CustomerReceiptService : IApplicationService
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         return Result<SalesDocumentView>.Success(
-            ViewOfAdvance(advance) with { AlreadyPosted = posted.Value.WasAlreadyPosted });
+            ViewOfAdvance(advance, money.Value) with { AlreadyPosted = posted.Value.WasAlreadyPosted });
     }
 
     /// <summary>يستنفد جزءاً من دفعة مقدمة مقابل فاتورة، ويرحّل الاستنفاد.</summary>
@@ -518,6 +543,12 @@ public sealed class CustomerReceiptService : IApplicationService
         Money amount,
         CancellationToken cancellationToken)
     {
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<PostingReceipt>.Failure(money.Errors);
+        }
         // وتذكرة مستند آخر ليست تذكرة هذا المستند.
         Result covers = SalesAdmission.EnsureCovers(admitted, SalesAdmission.AdvanceAppliedField);
         if (covers.IsFailure)
@@ -585,7 +616,7 @@ public sealed class CustomerReceiptService : IApplicationService
             // الاستنفاد ينقل بين حسابين ضابطين لنفس الطرف: صافي أثره على الدفتر
             // المساعد صفر، وهذا بالضبط ما يجب أن تراه المطابقة.
             ControlEffect = 0m,
-            Currency = _currency,
+            Currency = money.Value.Currency,
             Actor = actor,
         };
 
@@ -657,6 +688,12 @@ public sealed class CustomerReceiptService : IApplicationService
             return Result<SalesDocumentView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<SalesDocumentView>.Failure(money.Errors);
+        }
+
         CustomerReceiptRow? receipt = await _database.Receipts
             .AsNoTracking()
             .FirstOrDefaultAsync(row => row.TenantId == tenant.Value && row.Id == receiptId, cancellationToken)
@@ -664,7 +701,7 @@ public sealed class CustomerReceiptService : IApplicationService
 
         return receipt is null
             ? Result<SalesDocumentView>.Failure(SalesErrors.DocumentNotFound(ReceiptDocument, receiptId))
-            : Result<SalesDocumentView>.Success(ViewOfReceipt(receipt));
+            : Result<SalesDocumentView>.Success(ViewOfReceipt(receipt, money.Value));
     }
 
     /// <summary>
@@ -675,15 +712,16 @@ public sealed class CustomerReceiptService : IApplicationService
     /// </para>
     /// </summary>
     /// <param name="draft">المسوّدة.</param>
-    private Result EnsureCompanyCurrency(CustomerReceiptDraft draft)
+    /// <param name="money">عملة المنشأة ووحدتها الصغرى (ADR-0089).</param>
+    private static Result EnsureCompanyCurrency(CustomerReceiptDraft draft, CompanyMoney money)
     {
-        Result received = Same(draft.Received, "received");
+        Result received = Same(draft.Received, "received", money);
         if (received.IsFailure)
         {
             return received;
         }
 
-        Result discount = Same(draft.SettlementDiscount, "settlementDiscount");
+        Result discount = Same(draft.SettlementDiscount, "settlementDiscount", money);
         if (discount.IsFailure)
         {
             return discount;
@@ -691,7 +729,7 @@ public sealed class CustomerReceiptService : IApplicationService
 
         foreach (AllocationDraft allocation in draft.Allocations)
         {
-            Result line = Same(allocation.Amount, "allocations.amount");
+            Result line = Same(allocation.Amount, "allocations.amount", money);
             if (line.IsFailure)
             {
                 return line;
@@ -701,28 +739,28 @@ public sealed class CustomerReceiptService : IApplicationService
         return Result.Success();
     }
 
-    private Result Same(Money amount, string field) =>
-        amount.Currency.Equals(_currency)
+    private static Result Same(Money amount, string field, CompanyMoney money) =>
+        amount.Currency.Equals(money.Currency)
             ? Result.Success()
-            : Result.Failure(SalesErrors.CurrencyMismatch(_currency, amount.Currency, field));
+            : Result.Failure(SalesErrors.CurrencyMismatch(money.Currency, amount.Currency, field));
 
-    private SalesDocumentView ViewOfReceipt(CustomerReceiptRow receipt) => new(
+    private static SalesDocumentView ViewOfReceipt(CustomerReceiptRow receipt, CompanyMoney money) => new(
         receipt.Id,
         receipt.Number,
         receipt.State,
         new DocumentTotals(
-            Money.Of(receipt.ReceivedAmount, _currency),
-            Money.Of(receipt.DiscountAmount, _currency),
-            Money.Of(receipt.ReceivedAmount + receipt.DiscountAmount, _currency)),
+            Money.Of(receipt.ReceivedAmount, money.Currency),
+            Money.Of(receipt.DiscountAmount, money.Currency),
+            Money.Of(receipt.ReceivedAmount + receipt.DiscountAmount, money.Currency)),
         receipt.PostedEntryId);
 
-    private SalesDocumentView ViewOfAdvance(CustomerAdvanceRow advance) => new(
+    private static SalesDocumentView ViewOfAdvance(CustomerAdvanceRow advance, CompanyMoney money) => new(
         advance.Id,
         advance.Number,
         advance.State,
         new DocumentTotals(
-            Money.Of(advance.NetAmount, _currency),
-            Money.Of(advance.TaxAmount, _currency),
-            Money.Of(advance.NetAmount + advance.TaxAmount, _currency)),
+            Money.Of(advance.NetAmount, money.Currency),
+            Money.Of(advance.TaxAmount, money.Currency),
+            Money.Of(advance.NetAmount + advance.TaxAmount, money.Currency)),
         advance.PostedEntryId);
 }

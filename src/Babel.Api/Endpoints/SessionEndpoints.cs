@@ -80,7 +80,7 @@ internal static class SessionEndpoints
                 if (setup.Errors.Any(static error => error.Code == "company_setup.not_found"))
                 {
                     companies.Add(new SessionCompanyDto(
-                        companyId.ToString("D", CultureInfo.InvariantCulture), "NotSetUp", null, [], null, null));
+                        companyId.ToString("D", CultureInfo.InvariantCulture), "NotSetUp", null, [], null, null, null, null));
                     continue;
                 }
 
@@ -95,7 +95,9 @@ internal static class SessionEndpoints
                 founded.NameAr,
                 [.. founded.Translations.Select(static entry => new NameValueDto(entry.Key, entry.Value))],
                 founded.DisplayScale.Places,
-                founded.CostCenters.Default.Value));
+                founded.CostCenters.Default.Value,
+                founded.Money.Currency.Value,
+                founded.Money.MinorUnits));
         }
 
         return Results.Json(

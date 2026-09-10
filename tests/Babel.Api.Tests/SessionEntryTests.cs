@@ -106,7 +106,7 @@ public sealed class SessionEntryTests
             (HttpMethod.Post, "/api/v1/companies/" + companyOfB + "/journal-entries",
                 Payloads.BalancedEntry(Payloads.Key("stolen-id"))),
             (HttpMethod.Put, "/api/v1/companies/" + companyOfB + "/setup",
-                """{"companyNameAr":"سرقة","costCenters":"One","decimalPlaces":2}"""),
+                """{"companyNameAr":"سرقة","costCenters":"One","decimalPlaces":2,"currencyCode":"SAR"}"""),
         ];
 
         foreach ((HttpMethod method, string path, string? body) in attempts)

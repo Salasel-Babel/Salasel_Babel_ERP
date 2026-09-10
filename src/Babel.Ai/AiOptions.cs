@@ -6,8 +6,8 @@ namespace Babel.Ai;
 /// </summary>
 public sealed class AiOptions
 {
-    /// <summary>عملة الشركة حين لا تُطبع العملة على المستند.</summary>
-    public string CompanyCurrency { get; set; } = "SAR";
+    // ‏**ولا عملةَ هنا.** «عملةُ الشركة حين لا تُطبع العملة على المستند» هي عملةُ المنشأة
+    // من صفّ التأسيس، تُحلّ بـ`ICompanyMoneyResolver` عند الالتقاط (ADR-0089).
 
     // ‏**والنسبة النظامية لم تعد هنا.** كانت `StatutoryTaxRate = 0.15m` قيمةً ابتدائية
     // في هذا النوع: رقمٌ من جهةٍ خارجية يعيش في شيفرة، بلا تاريخ سريان، وبلا مصدرٍ

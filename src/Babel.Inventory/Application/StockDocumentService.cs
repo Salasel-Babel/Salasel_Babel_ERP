@@ -4,6 +4,7 @@ using Babel.Contracts.Posting;
 using Babel.Core.Application;
 using Babel.Core.Entitlement;
 using Babel.Inventory.Persistence;
+using Babel.Core.CompanySetup;
 using Babel.SharedKernel;
 using Microsoft.EntityFrameworkCore;
 
@@ -55,7 +56,7 @@ public sealed class StockDocumentService : IApplicationService
     private readonly InventoryDbContext _database;
     private readonly StockMovementService _stock;
     private readonly InventoryPostingGateway _gateway;
-    private readonly CurrencyCode _currency;
+    private readonly ICompanyMoneyResolver _company;
 
     /// <summary>ينشئ الخدمة.</summary>
     /// <param name="enforcer">منفِّذ الاستحقاق.</param>
@@ -79,7 +80,7 @@ public sealed class StockDocumentService : IApplicationService
         _enforcer = enforcer;
         _database = runtime.Database;
         _stock = stock;
-        _currency = CurrencyCode.FromString(runtime.Options.CompanyCurrency);
+        _company = runtime.Company;
         _gateway = new InventoryPostingGateway(_database, posting, runtime.CostCenters);
     }
 
@@ -104,6 +105,12 @@ public sealed class StockDocumentService : IApplicationService
         if (gate.IsFailure)
         {
             return Result<StockDocumentView>.Failure(gate.Errors);
+        }
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<StockDocumentView>.Failure(money.Errors);
         }
 
         Result quantity = UnitConversion.Validate(draft.Quantity);
@@ -164,7 +171,7 @@ public sealed class StockDocumentService : IApplicationService
         _database.Documents.Add(row);
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        return Result<StockDocumentView>.Success(ViewOf(row));
+        return Result<StockDocumentView>.Success(ViewOf(row, money.Value));
     }
 
     /// <summary>يقرأ مستند حركة واحداً. نقطة قراءة: تعمل عند «للقراءة فقط» أيضاً.</summary>
@@ -188,6 +195,12 @@ public sealed class StockDocumentService : IApplicationService
             return Result<StockDocumentView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<StockDocumentView>.Failure(money.Errors);
+        }
+
         StockDocumentRow? row = await _database.Documents
             .AsNoTracking()
             .FirstOrDefaultAsync(entity => entity.TenantId == tenant.Value && entity.Id == documentId, cancellationToken)
@@ -195,7 +208,7 @@ public sealed class StockDocumentService : IApplicationService
 
         return row is null
             ? Result<StockDocumentView>.Failure(InventoryErrors.DocumentNotFound(StockDocument, documentId))
-            : Result<StockDocumentView>.Success(ViewOf(row));
+            : Result<StockDocumentView>.Success(ViewOf(row, money.Value));
     }
 
     /// <summary>
@@ -219,6 +232,12 @@ public sealed class StockDocumentService : IApplicationService
             return Result<IReadOnlyList<StockDocumentView>>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<IReadOnlyList<StockDocumentView>>.Failure(money.Errors);
+        }
+
         List<StockDocumentRow> rows = await _database.Documents
             .AsNoTracking()
             .Where(row => row.TenantId == tenant.Value)
@@ -230,7 +249,7 @@ public sealed class StockDocumentService : IApplicationService
             .. rows
                 .OrderBy(static row => row.OccurredOn)
                 .ThenBy(static row => row.Number, StringComparer.Ordinal)
-                .Select(ViewOf),
+                .Select(row => ViewOf(row, money.Value)),
         ];
 
         return Result<IReadOnlyList<StockDocumentView>>.Success(views);
@@ -263,6 +282,12 @@ public sealed class StockDocumentService : IApplicationService
         if (gate.IsFailure)
         {
             return Result<StockDocumentView>.Failure(gate.Errors);
+        }
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<StockDocumentView>.Failure(money.Errors);
         }
 
         StockDocumentRow? row = await _database.Documents
@@ -309,7 +334,7 @@ public sealed class StockDocumentService : IApplicationService
                     Source = source,
                     Location = location,
                     Quantity = quantity,
-                    Cost = Money.Of(row.CostAmount, _currency),
+                    Cost = Money.Of(row.CostAmount, money.Value.Currency),
                     OccurredOn = row.OccurredOn,
                 },
                 cancellationToken).ConfigureAwait(false)
@@ -350,7 +375,7 @@ public sealed class StockDocumentService : IApplicationService
             ],
             Dimensions = [new PostingDimension("warehouse", row.WarehouseId)],
             PartyId = row.ItemCode,
-            Currency = _currency,
+            Currency = money.Value.Currency,
             Actor = actor,
             Generation = row.PostingGeneration,
         };
@@ -366,7 +391,7 @@ public sealed class StockDocumentService : IApplicationService
         row.CostAmount = moved.Value.Cost.Amount;
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        return Result<StockDocumentView>.Success(ViewOf(row) with { AlreadyPosted = posted.Value.WasAlreadyPosted });
+        return Result<StockDocumentView>.Success(ViewOf(row, money.Value) with { AlreadyPosted = posted.Value.WasAlreadyPosted });
     }
 
     /// <summary>
@@ -422,7 +447,7 @@ public sealed class StockDocumentService : IApplicationService
             : Result.Failure(InventoryErrors.PlaceInactive(PlacementLevel.Location, locationCode));
     }
 
-    private StockDocumentView ViewOf(StockDocumentRow row) => new(
+    private static StockDocumentView ViewOf(StockDocumentRow row, CompanyMoney money) => new(
         row.Id,
         row.Number,
         row.State,
@@ -432,7 +457,7 @@ public sealed class StockDocumentService : IApplicationService
         row.LocationId,
         row.ItemGroup,
         new InventoryQuantity(row.Magnitude, row.UnitCode),
-        Money.Of(row.CostAmount, _currency),
+        Money.Of(row.CostAmount, money.Currency),
         row.OccurredOn,
         row.PostedEntryId);
 }

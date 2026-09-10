@@ -191,7 +191,14 @@ public sealed class PublishedContractTests
         // إيداعُ إصدارٍ جديد · **قائمةُ مراجعة المحاسب القانوني**. و**لا بابَ تعديلٍ
         // ولا بابَ حذفٍ فيها**: الإصدار يُضاف ولا يُعدَّل، والتغييرُ إصدارٌ جديد بتاريخ
         // سريانه — والثابتة مفروضةٌ **بغياب العملية** لا بفحصٍ عند مستدعٍ.
-        Assert.Equal(202, paths.EnumerateObject().SelectMany(static p => p.Value.EnumerateObject())
+        // ثم من 202 إلى **203** ببابٍ واحد للتأسيس: **قائمةُ العملات التي يقبلها** —
+        // الجدولُ المرجعي من ISO 4217 برمز كلّ عملة ووحدتها الصغرى، يُقرأ قبل التأسيس كي
+        // تختار الشاشةُ من قائمةٍ لا تكتبها (ADR-0089). قراءةٌ محضة، ولا بابَ تعديلٍ
+        // للعملة بعد التأسيس ولا يجوز أن يكون: تغييرُ العملة الوظيفية حدثٌ محاسبيّ لا إعداد.
+        // ثم من 203 إلى **206** بثلاثة أبوابٍ لكتالوج الخطط (ADR-0092): الخططُ المنشورة لكلّ مصادَق ·
+        // الكتالوجُ كلّه لمشغّل المنصّة · إنشاءُ خطّة أو تعديلها ونشرها بسندٍ وسبب. **ولا بابَ حذف**:
+        // الخطّة التي تخرج من البيع يُلغى نشرُها وتبقى صفّاً لأن اشتراكاتٍ ماضية تشير إليها.
+        Assert.Equal(206, paths.EnumerateObject().SelectMany(static p => p.Value.EnumerateObject())
             .Count(static o => o.Name is "get" or "post" or "put" or "patch" or "delete"));
 
         // ولا فعل حذف على السطح كلّه — لا على قيد، ولا على مركز تكلفة، ولا على منشأة.
@@ -235,14 +242,26 @@ public sealed class PublishedContractTests
         // الرفض بين «لا وجود له» و«ليس مستأجرك».
         //
         // **ولا يخرج منه بيانُ مستأجرٍ آخر**: ما تحته اشتراك صاحبه وحده.
+        // ‏**ونطاقٌ ثالث: المنصّة** (ADR-0092). كتالوجُ الخطط بياناتُ المنصّة لا بيانُ منشأةٍ
+        // ولا مستأجر: المنشورُ منه يقرؤه كلُّ مصادَق كما يقرأ قائمةَ عملات، والكتالوجُ كلّه
+        // وكتابتُه لاعتمادٍ مُعلَنٍ مشغّلاً في الإعداد — واعتمادُ منشأةٍ يُرفض بـ
+        // platform.operator_required. **ولا يخرج منه بيانُ منشأةٍ واحد**: أسعارٌ ووحدات.
+        string[] platform =
+        [
+            "/api/v1/plans",
+            "/api/v1/platform/plans",
+            "/api/v1/platform/plans/{planCode}",
+        ];
+
         foreach (JsonProperty path in paths.EnumerateObject())
         {
             Assert.True(
                 scopeless.Contains(path.Name, StringComparer.Ordinal)
+                || platform.Contains(path.Name, StringComparer.Ordinal)
                 || path.Name.StartsWith("/api/v1/companies/{companyId}", StringComparison.Ordinal)
                 || path.Name == "/api/v1/tenants"
                 || path.Name.StartsWith("/api/v1/tenants/{tenantId}", StringComparison.Ordinal),
-                $"مسار خارج نطاق الشركة ونطاق المستأجر: {path.Name}");
+                $"مسار خارج نطاق الشركة ونطاق المستأجر ونطاق المنصّة: {path.Name}");
         }
 
         // وكل مسار بلا نطاق **مصادَق عليه** إلا ثلاثةً مسمّاةً هنا حرفياً: مسارٌ بلا نطاق

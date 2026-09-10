@@ -346,7 +346,7 @@ public sealed class SupplierVatNumberTests : IAsyncLifetime
 
         try
         {
-            PurchasingOptions options = new() { ConnectionString = probeConnection, CompanyCurrency = "SAR" };
+            PurchasingOptions options = new() { ConnectionString = probeConnection };
 
             // (أ) الشكل الحالي، ثم **إرجاعه إلى شكل ما قبل التغيير بالضبط**:
             //     لا عمود، ولا فهرس، ولا قيد.

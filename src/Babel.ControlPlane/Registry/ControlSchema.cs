@@ -150,11 +150,32 @@ public static class ControlSchema
         constraint ck_plan_prices check (monthly_price >= 0 and per_user_price >= 0)
     );
 
+    -- ‏**الكتالوج بياناتُ المنصّة لا شيفرتُها** (ADR-0092): الخطّةُ لا تُباع حتى
+    -- تُنشر بيد مشغّل المنصّة بسعرها، وكلُّ تغييرٍ عليها يُلحَق بسجلٍّ لا يُعدَّل.
+    alter table control.plan add column if not exists published    boolean     not null default false;
+    alter table control.plan add column if not exists published_at timestamptz;
+    alter table control.plan add column if not exists published_by text        not null default '';
+
     create table if not exists control.plan_module (
         plan_code   text not null references control.plan (plan_code),
         module_code text not null references control.module (module_code),
         primary key (plan_code, module_code)
     );
+
+    -- سجلُّ تغييرات الخطط: يُضاف ولا يُعدَّل ولا يُحذف — الصلاحيات تُسحب في GrantSurfaceAsync.
+    create table if not exists control.plan_change (
+        change_id   uuid        primary key,
+        plan_code   text        not null references control.plan (plan_code),
+        changed_at  timestamptz not null,
+        actor       text        not null,
+        authority   text        not null,
+        reason_ar   text        not null,
+        before      jsonb,
+        after       jsonb       not null,
+        constraint ck_plan_change_reason check (length(btrim(reason_ar)) > 0),
+        constraint ck_plan_change_authority check (length(btrim(authority)) > 0)
+    );
+    create index if not exists ix_plan_change_plan on control.plan_change (plan_code, changed_at);
 
     create table if not exists control.subscription (
         subscription_id uuid        primary key,
@@ -385,12 +406,16 @@ public static class ControlSchema
         await Db.ExecAsync(c, $"grant select on all tables in schema control to {surface}", null, ct);
         await Db.ExecAsync(c,
             $"grant insert, update on control.tenant, control.subscription, "
-            + $"control.tenant_module_entitlement to {surface}", null, ct);
+            + $"control.tenant_module_entitlement, control.plan, control.plan_module to {surface}", null, ct);
         await Db.ExecAsync(c,
-            $"grant insert on control.entitlement_audit, control.operation_log to {surface}", null, ct);
+            $"grant insert on control.entitlement_audit, control.operation_log, control.plan_change to {surface}", null, ct);
         await Db.ExecAsync(c,
             $"grant usage, select on all sequences in schema control to {surface}", null, ct);
         await Db.ExecAsync(c,
             $"revoke delete, truncate on all tables in schema control from {surface}", null, ct);
+
+        // ‏**استثناءٌ واحد بعد السحب الشامل**: حزمةُ وحدات الخطّة تُستبدل كلّها عند كلّ
+        // نشرٍ (ADR-0092)، وصفوفُها ليست سجلاً بل تركيبةً؛ والسجلُّ هو control.plan_change.
+        await Db.ExecAsync(c, $"grant delete on control.plan_module to {surface}", null, ct);
     }
 }

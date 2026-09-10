@@ -3,6 +3,7 @@ using Babel.Contracts.Posting;
 using Babel.Core.Application;
 using Babel.Core.Entitlement;
 using Babel.Projects.Persistence;
+using Babel.Core.CompanySetup;
 using Babel.SharedKernel;
 using Microsoft.EntityFrameworkCore;
 
@@ -48,7 +49,7 @@ public sealed class SubcontractorAdvanceService : IApplicationService
     private readonly IEntitlementEnforcer _enforcer;
     private readonly ProjectsDbContext _database;
     private readonly ProjectsPostingGateway _gateway;
-    private readonly CurrencyCode _currency;
+    private readonly ICompanyMoneyResolver _company;
 
     /// <summary>ينشئ الخدمة.</summary>
     /// <param name="enforcer">منفِّذ الاستحقاق.</param>
@@ -65,7 +66,7 @@ public sealed class SubcontractorAdvanceService : IApplicationService
         _enforcer = enforcer;
         _database = runtime.Database;
         _gateway = new ProjectsPostingGateway(runtime.Database, posting, runtime.CostCenters);
-        _currency = CurrencyCode.FromString(runtime.Options.CompanyCurrency);
+        _company = runtime.Company;
     }
 
     /// <summary>يُنشئ صرف دفعة مقدمة <b>مسوّدة</b>: لا قيد ولا أثر في الدفتر.</summary>
@@ -89,6 +90,12 @@ public sealed class SubcontractorAdvanceService : IApplicationService
         if (gate.IsFailure)
         {
             return Result<ProjectsDocumentView>.Failure(gate.Errors);
+        }
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<ProjectsDocumentView>.Failure(money.Errors);
         }
 
         if (draft.Amount.Amount <= 0m)
@@ -144,7 +151,7 @@ public sealed class SubcontractorAdvanceService : IApplicationService
         _database.SubcontractorAdvances.Add(row);
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        return Result<ProjectsDocumentView>.Success(View(row, alreadyPosted: false));
+        return Result<ProjectsDocumentView>.Success(View(row, alreadyPosted: false, money.Value));
     }
 
     /// <summary>
@@ -170,6 +177,12 @@ public sealed class SubcontractorAdvanceService : IApplicationService
             return Result<ProjectsDocumentView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<ProjectsDocumentView>.Failure(money.Errors);
+        }
+
         SubcontractorAdvanceRow? row = await _database.SubcontractorAdvances
             .AsNoTracking()
             .FirstOrDefaultAsync(entity => entity.TenantId == tenant.Value && entity.Id == advanceId, cancellationToken)
@@ -177,7 +190,7 @@ public sealed class SubcontractorAdvanceService : IApplicationService
 
         return row is null
             ? Result<ProjectsDocumentView>.Failure(ProjectsErrors.NotFound(AdvanceDocument, advanceId))
-            : Result<ProjectsDocumentView>.Success(View(row, alreadyPosted: false));
+            : Result<ProjectsDocumentView>.Success(View(row, alreadyPosted: false, money.Value));
     }
 
     /// <summary>
@@ -206,6 +219,12 @@ public sealed class SubcontractorAdvanceService : IApplicationService
         if (gate.IsFailure)
         {
             return Result<ProjectsDocumentView>.Failure(gate.Errors);
+        }
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<ProjectsDocumentView>.Failure(money.Errors);
         }
 
         SubcontractorAdvanceRow? advance = await _database.SubcontractorAdvances
@@ -243,7 +262,7 @@ public sealed class SubcontractorAdvanceService : IApplicationService
         }
 
         string subcontractorId = subcontract.SubcontractorId.ToString("D", CultureInfo.InvariantCulture);
-        Money amount = Money.Of(advance.Amount, _currency);
+        Money amount = Money.Of(advance.Amount, money.Value.Currency);
 
         PostingIntent intent = new()
         {
@@ -279,7 +298,7 @@ public sealed class SubcontractorAdvanceService : IApplicationService
 
             // مدينٌ على دفتر المقاول: «مدين ناقص دائن» موجبٌ بمبلغ الدفعة.
             ControlEffect = advance.Amount,
-            Currency = _currency,
+            Currency = money.Value.Currency,
             Actor = actor,
             Generation = advance.PostingGeneration,
         };
@@ -314,14 +333,14 @@ public sealed class SubcontractorAdvanceService : IApplicationService
         }
 
         return Result<ProjectsDocumentView>.Success(
-            View(advance, receipt.Value.WasAlreadyPosted, receipt.Value.JournalEntryId));
+            View(advance, receipt.Value.WasAlreadyPosted, money.Value, receipt.Value.JournalEntryId));
     }
 
-    private ProjectsDocumentView View(SubcontractorAdvanceRow row, bool alreadyPosted, Guid? entryId = null) => new(
+    private static ProjectsDocumentView View(SubcontractorAdvanceRow row, bool alreadyPosted, CompanyMoney money, Guid? entryId = null) => new(
         row.Id,
         row.Number,
         row.State,
-        Money.Of(row.Amount, _currency),
+        Money.Of(row.Amount, money.Currency),
         entryId ?? row.PostedEntryId,
         alreadyPosted);
 }

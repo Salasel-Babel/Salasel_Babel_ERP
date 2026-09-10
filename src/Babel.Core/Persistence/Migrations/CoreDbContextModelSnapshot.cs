@@ -330,6 +330,11 @@ namespace Babel.Core.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("company_id");
 
+                    b.Property<string>("CurrencyCode")
+                        .IsRequired()
+                        .HasColumnType("character(3)")
+                        .HasColumnName("currency_code");
+
                     b.Property<int>("DecimalPlaces")
                         .HasColumnType("integer")
                         .HasColumnName("decimal_places");
@@ -344,6 +349,10 @@ namespace Babel.Core.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("founded_at");
 
+                    b.Property<int>("MinorUnits")
+                        .HasColumnType("integer")
+                        .HasColumnName("minor_units");
+
                     b.Property<string>("NameAr")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -355,7 +364,11 @@ namespace Babel.Core.Persistence.Migrations
 
                     b.ToTable("company_setup", "core", t =>
                         {
+                            t.HasCheckConstraint("ck_company_setup_currency_shape", "currency_code ~ '^[A-Z]{3}$'");
+
                             t.HasCheckConstraint("ck_company_setup_default_shape", "default_cost_center ~ '^[a-z0-9._]{1,32}$'");
+
+                            t.HasCheckConstraint("ck_company_setup_minor_units_range", "minor_units between 0 and 4");
 
                             t.HasCheckConstraint("ck_company_setup_name_not_blank", "length(btrim(name_ar)) > 0");
 
@@ -433,8 +446,8 @@ namespace Babel.Core.Persistence.Migrations
                     b.Property<string>("SuspensionReason")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
-                        .HasMaxLength(400)
-                        .HasColumnType("character varying(400)")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)")
                         .HasDefaultValue("")
                         .HasColumnName("suspension_reason");
 

@@ -21,16 +21,19 @@ public sealed class HrRuntime : IDisposable
     /// <summary>ينشئ الموارد من الإعدادات.</summary>
     /// <param name="options">إعدادات الوحدة — ويُرفض غياب نصّ الاتصال هنا برمزه.</param>
     /// <param name="costCenters">
+    /// <param name="company">عملة المنشأة ووحدتها الصغرى — من صفّ التأسيس (ADR-0089).</param>
     /// حالُّ مركز التكلفة من النواة (‏ADR-0026). <b>بوّابة الترحيل تسأله قبل أن تبني
     /// طلباً</b>: الوحدة لا تعرف شجرة المراكز ولا المركز الافتراضي.
     /// </param>
-    public HrRuntime(HrOptions options, ICostCenterResolver costCenters)
+    public HrRuntime(HrOptions options, ICostCenterResolver costCenters, ICompanyMoneyResolver company)
     {
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(costCenters);
+        ArgumentNullException.ThrowIfNull(company);
         options.EnsureConfigured();
         Options = options;
         CostCenters = costCenters;
+        Company = company;
         _database = Build(options);
     }
 
@@ -38,6 +41,9 @@ public sealed class HrRuntime : IDisposable
 
     /// <summary>حالُّ مركز التكلفة — يُمرَّر إلى بوّابة الترحيل ولا يُقرأ في مكان آخر.</summary>
     internal ICostCenterResolver CostCenters { get; }
+
+    /// <summary>عملة المنشأة ووحدتها الصغرى — من صفّ التأسيس، لكلّ نداء (ADR-0089).</summary>
+    internal ICompanyMoneyResolver Company { get; }
 
     internal HrDbContext Database => _database;
 

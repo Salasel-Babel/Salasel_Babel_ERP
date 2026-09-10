@@ -35,7 +35,7 @@ internal sealed class Harness : IDisposable
         Runtime = runtime;
         LedgerRuntime = ledger;
         AlwaysEntitled enforcer = new();
-        Posting = new PostingService(enforcer, ledger);
+        Posting = new PostingService(enforcer, ledger, FoundedTenants.MoneyFor(RealEstateTestEnvironment.AllTenants));
         Registrar = new Babel.Ledger.RealEstate.PropertyDimensionRegistrar(enforcer, ledger);
         Properties = new PropertyService(enforcer, runtime, Registrar);
         Parties = new PartyService(enforcer, runtime);
@@ -83,7 +83,8 @@ internal sealed class Harness : IDisposable
         return new Harness(
             new RealEstateRuntime(
                 RealEstateTestEnvironment.RealEstate,
-                FoundedTenants.ResolverFor(RealEstateTestEnvironment.AllTenants)),
+                FoundedTenants.ResolverFor(RealEstateTestEnvironment.AllTenants),
+                FoundedTenants.MoneyFor(RealEstateTestEnvironment.AllTenants)),
             _ledger);
     }
 

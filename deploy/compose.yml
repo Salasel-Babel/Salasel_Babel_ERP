@@ -133,6 +133,14 @@ services:
       - "Babel__Api__Tokens__0__Tenant=${BABEL_DEMO_COMPANY_ID:-d3305e1e-0000-4000-8000-000000000001}"
       - "Babel__Api__Tokens__0__User=${BABEL_DEMO_USER_ID:-d3305e1e-0000-4000-8000-0000000000a1}"
       - "Babel__Api__Tokens__0__Companies__0=${BABEL_DEMO_COMPANY_ID:-d3305e1e-0000-4000-8000-000000000001}"
+      # ‏**مشغّل المنصّة** — اعتمادٌ ثانٍ يُعلَن مشغّلاً (ADR-0092): يبلغ كتالوج الخطط
+      # وحده — إنشاءً وتسعيراً ونشراً — ولا يبلغ دفاتر منشأة، فلا شركة تحته. وبصمتُه
+      # سرٌّ إلزاميّ كأخيه ولا يُشتقّ من رمز العرض: رمزُ العرض يُسلَّم لصاحب المصلحة
+      # ليجرّب، ومشغّلُ المنصّة يسعّر — وهما يدان لا يد.
+      - "Babel__Api__Tokens__1__Sha256=${BABEL_PLATFORM_TOKEN_SHA256:?بصمة SHA-256 لاعتماد مشغّل المنصّة}"
+      - "Babel__Api__Tokens__1__Tenant=${BABEL_DEMO_COMPANY_ID:-d3305e1e-0000-4000-8000-000000000001}"
+      - "Babel__Api__Tokens__1__User=${BABEL_PLATFORM_USER_ID:-d3305e1e-0000-4000-8000-0000000000b1}"
+      - "Babel__Api__Tokens__1__Platform=true"
       # ── الموارد البشرية ──────────────────────────────────────────────────
       # ‏**هذا السطر شرطُ إقلاع لا إعداداً اختيارياً.** `Program.cs` يستدعي
       # `HrOptions.EnsureConfigured()` عند التركيب، وهي **ترفض الغياب** لأن هذه
@@ -169,6 +177,15 @@ services:
       - "BABEL_ACCESS_REFRESH_HOURS=${BABEL_ACCESS_REFRESH_HOURS:-}"
       - "BABEL_ACCESS_ENROLMENT_HOURS=${BABEL_ACCESS_ENROLMENT_HOURS:-}"
       - "Babel__RateLimit__PerMinute=${BABEL_RATE_LIMIT_PER_MINUTE:-}"
+      # ‏**سياساتُ تشغيلٍ مُعلَنة** (ADR-0090): مُهَلُ وحدة الالتزام التقنية وميزانيّاتُ
+      # الوكيل. الفراغُ يُبقي المُعلَن، والمعتلّ يوقف الإقلاع باسم مفتاحه. وأمّا ما يختلف
+      # بين منشأةٍ وأخرى — نافذةُ الإبلاغ، عتبةُ الإنذار، سقفُ الحسم — فمعامِلاتٌ من
+      # لوحة التحكّم لا متغيّراتُ بيئة.
+      - "Babel__Compliance__ClearanceTimeoutSeconds=${BABEL_COMPLIANCE_CLEARANCE_TIMEOUT_SECONDS:-}"
+      - "Babel__Compliance__AttemptLeaseMinutes=${BABEL_COMPLIANCE_ATTEMPT_LEASE_MINUTES:-}"
+      - "Babel__Agent__ModelId=${BABEL_AGENT_MODEL:-}"
+      - "Babel__Agent__LookupBudgetPerTurn=${BABEL_AGENT_LOOKUPS_PER_TURN:-}"
+      - "Babel__Agent__TokensPerTenantPerDay=${BABEL_AGENT_TOKENS_PER_TENANT_PER_DAY:-}"
       - "Logging__LogLevel__Default=${BABEL_LOG_LEVEL:-Information}"
     volumes:
       # البايتات على حجم دائم لا في طبقة الحاوية: حاويةٌ تُستبدَل تأخذ معها كل

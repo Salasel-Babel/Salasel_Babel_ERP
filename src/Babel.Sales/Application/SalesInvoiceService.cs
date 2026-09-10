@@ -5,6 +5,7 @@ using Babel.Core.Application;
 using Babel.Core.CapabilityProfile;
 using Babel.Core.Entitlement;
 using Babel.Sales.Persistence;
+using Babel.Core.CompanySetup;
 using Babel.SharedKernel;
 using Microsoft.EntityFrameworkCore;
 
@@ -131,7 +132,7 @@ public sealed class SalesInvoiceService : IApplicationService
     private readonly SubledgerPostingGateway _gateway;
     private readonly SalesAdmission _admission;
     private readonly IInventoryValuation _valuation;
-    private readonly CurrencyCode _currency;
+    private readonly ICompanyMoneyResolver _company;
 
     /// <summary>ينشئ الخدمة.</summary>
     /// <param name="enforcer">منفِّذ الاستحقاق.</param>
@@ -165,7 +166,7 @@ public sealed class SalesInvoiceService : IApplicationService
         _enforcer = enforcer;
         _database = runtime.Database;
         _posting = posting;
-        _currency = CurrencyCode.FromString(runtime.Options.CompanyCurrency);
+        _company = runtime.Company;
         _gateway = new SubledgerPostingGateway(_database, posting, runtime.CostCenters);
         _admission = new SalesAdmission(profiles);
     }
@@ -195,13 +196,19 @@ public sealed class SalesInvoiceService : IApplicationService
             return Result<SalesDocumentView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<SalesDocumentView>.Failure(money.Errors);
+        }
+
         Result<CustomerRow> customer = await CustomerAsync(tenant, draft.CustomerId, cancellationToken).ConfigureAwait(false);
         if (customer.IsFailure)
         {
             return Result<SalesDocumentView>.Failure(customer.Errors);
         }
 
-        Result<Totals> totals = Validate(draft);
+        Result<Totals> totals = Validate(draft, money.Value);
         if (totals.IsFailure)
         {
             return Result<SalesDocumentView>.Failure(totals.Errors);
@@ -223,17 +230,17 @@ public sealed class SalesInvoiceService : IApplicationService
             IssuedOn = draft.IssuedOn,
             ValidUntil = validUntil,
             State = SalesDocumentState.Draft,
-            CurrencyCode = _currency.Value,
+            CurrencyCode = money.Value.Currency.Value,
             NetTotal = totals.Value.Net,
             TaxTotal = totals.Value.Tax,
             GrossTotal = totals.Value.Gross,
         };
 
         _database.Quotations.Add(row);
-        AddLines(_database, tenant, LineOwner.Quotation, row.Id, draft.Lines);
+        AddLines(_database, tenant, LineOwner.Quotation, row.Id, draft.Lines, money.Value);
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        return Result<SalesDocumentView>.Success(View(row.Id, row.Number, row.State, totals.Value, null));
+        return Result<SalesDocumentView>.Success(View(row.Id, row.Number, row.State, totals.Value, null, money.Value));
     }
 
     /// <summary>يُنشئ أمر بيع، اختيارياً من عرض سعر.</summary>
@@ -261,13 +268,19 @@ public sealed class SalesInvoiceService : IApplicationService
             return Result<SalesDocumentView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<SalesDocumentView>.Failure(money.Errors);
+        }
+
         Result<CustomerRow> customer = await CustomerAsync(tenant, draft.CustomerId, cancellationToken).ConfigureAwait(false);
         if (customer.IsFailure)
         {
             return Result<SalesDocumentView>.Failure(customer.Errors);
         }
 
-        Result<Totals> totals = Validate(draft);
+        Result<Totals> totals = Validate(draft, money.Value);
         if (totals.IsFailure)
         {
             return Result<SalesDocumentView>.Failure(totals.Errors);
@@ -289,7 +302,7 @@ public sealed class SalesInvoiceService : IApplicationService
             QuotationId = quotationId,
             OrderedOn = draft.IssuedOn,
             State = SalesDocumentState.Approved,
-            CurrencyCode = _currency.Value,
+            CurrencyCode = money.Value.Currency.Value,
             BranchId = draft.BranchId,
             NetTotal = totals.Value.Net,
             TaxTotal = totals.Value.Tax,
@@ -297,10 +310,10 @@ public sealed class SalesInvoiceService : IApplicationService
         };
 
         _database.Orders.Add(row);
-        AddLines(_database, tenant, LineOwner.Order, row.Id, draft.Lines);
+        AddLines(_database, tenant, LineOwner.Order, row.Id, draft.Lines, money.Value);
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        return Result<SalesDocumentView>.Success(View(row.Id, row.Number, row.State, totals.Value, null));
+        return Result<SalesDocumentView>.Success(View(row.Id, row.Number, row.State, totals.Value, null, money.Value));
     }
 
     /// <summary>يُصدر فاتورة مبيعات مسوّدة. الترحيل خطوة مستقلة.</summary>
@@ -328,13 +341,19 @@ public sealed class SalesInvoiceService : IApplicationService
             return Result<SalesDocumentView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<SalesDocumentView>.Failure(money.Errors);
+        }
+
         Result<CustomerRow> customer = await CustomerAsync(tenant, draft.CustomerId, cancellationToken).ConfigureAwait(false);
         if (customer.IsFailure)
         {
             return Result<SalesDocumentView>.Failure(customer.Errors);
         }
 
-        Result<Totals> totals = Validate(draft);
+        Result<Totals> totals = Validate(draft, money.Value);
         if (totals.IsFailure)
         {
             return Result<SalesDocumentView>.Failure(totals.Errors);
@@ -357,7 +376,7 @@ public sealed class SalesInvoiceService : IApplicationService
             IssuedOn = draft.IssuedOn,
             DueOn = draft.IssuedOn.AddDays(customer.Value.PaymentTermsDays),
             State = SalesDocumentState.Draft,
-            CurrencyCode = _currency.Value,
+            CurrencyCode = money.Value.Currency.Value,
             BranchId = draft.BranchId,
             ItemGroup = draft.Lines[0].ItemGroup,
             HasTaxableLine = totals.Value.HasTaxableLine,
@@ -367,10 +386,10 @@ public sealed class SalesInvoiceService : IApplicationService
         };
 
         _database.Invoices.Add(row);
-        AddLines(_database, tenant, LineOwner.Invoice, row.Id, draft.Lines);
+        AddLines(_database, tenant, LineOwner.Invoice, row.Id, draft.Lines, money.Value);
         await _database.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        return Result<SalesDocumentView>.Success(View(row.Id, row.Number, row.State, totals.Value, null));
+        return Result<SalesDocumentView>.Success(View(row.Id, row.Number, row.State, totals.Value, null, money.Value));
     }
 
     /// <summary>
@@ -400,6 +419,12 @@ public sealed class SalesInvoiceService : IApplicationService
             return Result<SalesDocumentView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<SalesDocumentView>.Failure(money.Errors);
+        }
+
         SalesInvoiceRow? invoice = await _database.Invoices
             .FirstOrDefaultAsync(row => row.TenantId == tenant.Value && row.Id == invoiceId, cancellationToken)
             .ConfigureAwait(false);
@@ -413,7 +438,7 @@ public sealed class SalesInvoiceService : IApplicationService
         {
             // وصولٌ ثانٍ بعد أن اكتمل الأول: المستند لا يُمسّ، والحقيقة تُقال صراحةً.
             // ولا تُشتقّ من الحالة عند المستدعي — الحالة نفسها في الحالتين.
-            return Result<SalesDocumentView>.Success(ViewOf(invoice) with { AlreadyPosted = true });
+            return Result<SalesDocumentView>.Success(ViewOf(invoice, money.Value) with { AlreadyPosted = true });
         }
 
         if (invoice.State != SalesDocumentState.Draft)
@@ -442,8 +467,8 @@ public sealed class SalesInvoiceService : IApplicationService
             Narration = new LocalizedName("فاتورة مبيعات " + invoice.Number, "Sales invoice " + invoice.Number),
             Amounts =
             [
-                new PostingAmount("net", Money.Of(invoice.NetTotal, _currency)),
-                new PostingAmount("tax", Money.Of(invoice.TaxTotal, _currency)),
+                new PostingAmount("net", Money.Of(invoice.NetTotal, money.Value.Currency)),
+                new PostingAmount("tax", Money.Of(invoice.TaxTotal, money.Value.Currency)),
             ],
             Facts =
             [
@@ -455,7 +480,7 @@ public sealed class SalesInvoiceService : IApplicationService
             Dimensions = [new PostingDimension("branch", invoice.BranchId)],
             PartyId = customer.Code,
             ControlEffect = invoice.GrossTotal,
-            Currency = _currency,
+            Currency = money.Value.Currency,
             Actor = actor,
             Generation = invoice.PostingGeneration,
         };
@@ -475,7 +500,7 @@ public sealed class SalesInvoiceService : IApplicationService
         // بـWasAlreadyPosted. وحسابُ هذا الحقل من الحالة المقروءة قبل النداء كان سيُعلن
         // للاثنين أنهما رحّلا.
         return Result<SalesDocumentView>.Success(
-            ViewOf(invoice) with { AlreadyPosted = posted.Value.WasAlreadyPosted });
+            ViewOf(invoice, money.Value) with { AlreadyPosted = posted.Value.WasAlreadyPosted });
     }
 
     /// <summary>يرحّل قيد تكلفة المبيعات المصاحب عبر <c>sales.invoice.cost_of_sales</c>.</summary>
@@ -537,6 +562,12 @@ public sealed class SalesInvoiceService : IApplicationService
         CostOfSalesDraft draft,
         CancellationToken cancellationToken)
     {
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<PostingReceipt>.Failure(money.Errors);
+        }
         Result covers = SalesAdmission.EnsureCovers(admitted, SalesAdmission.WarehouseField);
         if (covers.IsFailure)
         {
@@ -625,7 +656,7 @@ public sealed class SalesInvoiceService : IApplicationService
             // قيد التكلفة لا يمسّ نقطة ضبط العملاء إطلاقاً — أثره صفر عليها.
             PartyId = draft.ItemId,
             ControlEffect = 0m,
-            Currency = _currency,
+            Currency = money.Value.Currency,
             Actor = actor,
 
             // الجيل نفسه الذي يحمله قيد الإيراد. كان ثابتاً عند 1، فكانت فاتورةٌ
@@ -759,6 +790,12 @@ public sealed class SalesInvoiceService : IApplicationService
             return Result<IReadOnlyList<SalesLineView>>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<IReadOnlyList<SalesLineView>>.Failure(money.Errors);
+        }
+
         List<SalesLineRow> lines = await _database.Lines
             .AsNoTracking()
             .Where(row => row.TenantId == tenant.Value
@@ -774,7 +811,7 @@ public sealed class SalesInvoiceService : IApplicationService
                 line.LineNo,
                 line.ItemGroup,
                 line.Quantity,
-                Money.Of(line.UnitPrice, _currency),
+                Money.Of(line.UnitPrice, money.Value.Currency),
                 line.OriginalInvoiceLineId))]);
     }
 
@@ -799,6 +836,12 @@ public sealed class SalesInvoiceService : IApplicationService
             return Result<SalesDocumentView>.Failure(gate.Errors);
         }
 
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<SalesDocumentView>.Failure(money.Errors);
+        }
+
         SalesInvoiceRow? invoice = await _database.Invoices
             .AsNoTracking()
             .FirstOrDefaultAsync(row => row.TenantId == tenant.Value && row.Id == invoiceId, cancellationToken)
@@ -806,7 +849,7 @@ public sealed class SalesInvoiceService : IApplicationService
 
         return invoice is null
             ? Result<SalesDocumentView>.Failure(SalesErrors.DocumentNotFound(InvoiceDocument, invoiceId))
-            : Result<SalesDocumentView>.Success(ViewOf(invoice));
+            : Result<SalesDocumentView>.Success(ViewOf(invoice, money.Value));
     }
 
     internal static string Boolean(bool value) => value ? "true" : "false";
@@ -1005,7 +1048,7 @@ public sealed class SalesInvoiceService : IApplicationService
         return row is null ? Result<CustomerRow>.Failure(SalesErrors.CustomerNotFound(customerId)) : Result<CustomerRow>.Success(row);
     }
 
-    internal static Result<Totals> Validate(SalesDocumentDraft draft)
+    internal static Result<Totals> Validate(SalesDocumentDraft draft, CompanyMoney money)
     {
         if (draft.Lines.Count == 0)
         {
@@ -1024,7 +1067,7 @@ public sealed class SalesInvoiceService : IApplicationService
             }
 
             (decimal lineNet, decimal lineTax) = LineMath.Line(
-                line.Quantity, line.UnitPrice.Amount, line.Discount.Amount, line.TaxRate, line.TaxClassification);
+                line.Quantity, line.UnitPrice.Amount, line.Discount.Amount, line.TaxRate, line.TaxClassification, money);
 
             // المجموع = مجموع سطور **مقرَّبة**، ولا يُعاد تقريبه بعد الجمع.
             net += lineNet;
@@ -1045,14 +1088,16 @@ public sealed class SalesInvoiceService : IApplicationService
     /// <param name="ownerType">نوع المستند المالك.</param>
     /// <param name="ownerId">معرّفه.</param>
     /// <param name="lines">السطور.</param>
+    /// <param name="money">عملة المنشأة ووحدتها الصغرى (ADR-0089).</param>
     internal static void AddLines(
-        SalesDbContext database, TenantId tenant, string ownerType, Guid ownerId, IReadOnlyList<SalesLineDraft> lines)
+        SalesDbContext database, TenantId tenant, string ownerType, Guid ownerId, IReadOnlyList<SalesLineDraft> lines,
+        CompanyMoney money)
     {
         for (int index = 0; index < lines.Count; index++)
         {
             SalesLineDraft line = lines[index];
             (decimal lineNet, decimal lineTax) = LineMath.Line(
-                line.Quantity, line.UnitPrice.Amount, line.Discount.Amount, line.TaxRate, line.TaxClassification);
+                line.Quantity, line.UnitPrice.Amount, line.Discount.Amount, line.TaxRate, line.TaxClassification, money);
 
             database.Lines.Add(new SalesLineRow
             {
@@ -1076,23 +1121,23 @@ public sealed class SalesInvoiceService : IApplicationService
         }
     }
 
-    private SalesDocumentView ViewOf(SalesInvoiceRow invoice) => new(
+    private static SalesDocumentView ViewOf(SalesInvoiceRow invoice, CompanyMoney money) => new(
         invoice.Id,
         invoice.Number,
         invoice.State,
         new DocumentTotals(
-            Money.Of(invoice.NetTotal, _currency),
-            Money.Of(invoice.TaxTotal, _currency),
-            Money.Of(invoice.GrossTotal, _currency)),
+            Money.Of(invoice.NetTotal, money.Currency),
+            Money.Of(invoice.TaxTotal, money.Currency),
+            Money.Of(invoice.GrossTotal, money.Currency)),
         invoice.PostedEntryId);
 
-    private SalesDocumentView View(Guid id, string number, string state, Totals totals, Guid? entryId) => new(
+    private static SalesDocumentView View(Guid id, string number, string state, Totals totals, Guid? entryId, CompanyMoney money) => new(
         id,
         number,
         state,
         new DocumentTotals(
-            Money.Of(totals.Net, _currency),
-            Money.Of(totals.Tax, _currency),
-            Money.Of(totals.Gross, _currency)),
+            Money.Of(totals.Net, money.Currency),
+            Money.Of(totals.Tax, money.Currency),
+            Money.Of(totals.Gross, money.Currency)),
         entryId);
 }

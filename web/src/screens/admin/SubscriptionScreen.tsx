@@ -28,17 +28,20 @@
        تُخفي أزرارها لذلك: الإخفاء ليس منعاً، والمنع في الخادم — فتُظهر
        الرفض باسمه وتضيف فوقه الخطوة التالية.
 
-   ── وما لا تعرفه هذه الشاشة، وتقوله ───────────────────────────────────
-   **لا بابَ منشوراً يسرد الخطط ووحداتها.** فرمز الخطّة الجديدة يُكتب،
-   ورمزٌ غير معروف يردّه الخادم بـ`subscription.plan_unknown` **ورسالةٍ
-   تُسمّي المعروف** — وهي المصدر الوحيد الصادق لقائمة الخطط، وتُعرض كما وردت.
-   والفرقُ بين قبل وبعد يُعرض من الجوابين نفسيهما لا من كتالوجٍ مكتوبٍ هنا.
+   ── والخطّةُ تُختار من المنشور، لا تُكتب ──────────────────────────────
+   `readPlans` يسرد الخطط **المنشورة** بوحداتها (ADR-0092) — الكتالوجُ
+   بياناتُ المنصّة في `control.plan` لا قائمةٌ في شيفرة — فالرمز يُختار من
+   قائمةِ الخادم، ووحداتُ الخطّة المختارة تُعرض قبل التنفيذ من الجواب نفسه.
+   ورمزٌ غير منشور يردّه الخادم بـ`subscription.plan_unknown` **ورسالةٍ
+   تُسمّي المنشور**، وتُعرض كما وردت. والفرقُ بين قبل وبعد يُعرض من الجوابين
+   نفسيهما لا من كتالوجٍ مكتوبٍ هنا.
    ═══════════════════════════════════════════════════════════════════════════ */
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   changeSubscriptionPlan,
   lapseSubscription,
+  readPlans,
   readSession,
   readSubscription,
   resumeSubscription,
@@ -124,6 +127,14 @@ export function SubscriptionScreen(): ReactNode {
     queryFn: ({ signal }) => readSubscription(transport, { tenantId }, signal),
   });
 
+  /* الخططُ المنشورة — من الخادم لا من قائمةٍ هنا (ADR-0092). */
+  const plans = useQuery({
+    queryKey: ["admin", "subscription", "plans", config.baseUrl, config.token],
+    enabled: config.token !== "",
+    retry: false,
+    queryFn: ({ signal }) => readPlans(transport, signal),
+  });
+
   /* ── لوح الخطّة ────────────────────────────────────────────────────── */
   const [planCode, setPlanCode] = useState("");
   const [planAuthority, setPlanAuthority] = useState("");
@@ -199,6 +210,7 @@ export function SubscriptionScreen(): ReactNode {
 
   const planOk =
     planCode.trim() !== "" && planAuthority.trim() !== "" && planReason.trim() !== "";
+  const chosenPlan = plans.data?.plans.find((p) => p.code === planCode) ?? null;
   const moveOk = moveAuthority.trim() !== "" && moveReason.trim() !== "";
 
   return (
@@ -352,18 +364,29 @@ export function SubscriptionScreen(): ReactNode {
             id="adm-sb-plan"
             label={t("screen.subscription.newPlan")}
             hint={t("screen.subscription.newPlanHint")}
-            source="typed"
+            {...(plans.error ? { error: t("screen.subscription.plansUnavailable") } : {})}
+            source="read"
             required
           >
-            <input
+            <select
               id="adm-sb-plan"
               className="ctl mono"
               dir="ltr"
-              autoComplete="off"
               data-testid="admin-subscription-plan-input"
               value={planCode}
               onChange={(e) => setPlanCode(e.target.value)}
-            />
+            >
+              <option value="">{t("screen.subscription.newPlanPick")}</option>
+              {(plans.data?.plans ?? []).map((plan) => (
+                <option
+                  key={plan.code}
+                  value={plan.code}
+                  data-testid="admin-subscription-plan-option"
+                >
+                  {plan.code} — {plan.nameAr}
+                </option>
+              ))}
+            </select>
           </AdminField>
           <AdminField
             id="adm-sb-plan-authority"
@@ -424,7 +447,18 @@ export function SubscriptionScreen(): ReactNode {
             <li>
               {t("screen.subscription.planEffectPosting")} <Num value={posting.length} />
             </li>
-            <li>{t("screen.subscription.planEffectUnknown")}</li>
+            {chosenPlan ? (
+              <li>
+                {t("screen.subscription.planEffectModules")}{" "}
+                <span className="mono" dir="ltr" data-testid="admin-subscription-plan-modules">
+                  {chosenPlan.modules.join(" · ")}
+                </span>
+              </li>
+            ) : (
+              <li data-testid="admin-subscription-plan-unchosen">
+                {t("screen.subscription.planEffectUnknown")}
+              </li>
+            )}
           </ul>
         </Irreversible>
 

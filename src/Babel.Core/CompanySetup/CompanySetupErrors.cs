@@ -7,7 +7,7 @@ namespace Babel.Core.CompanySetup;
 public static class CompanySetupLimits
 {
     /// <summary>أقصى طول لاسم منشأة أو مركز تكلفة.</summary>
-    public const int MaximumNameLength = 200;
+    public const int MaximumNameLength = InputLimits.MaximumNameLength;
 
     /// <summary>أقصى طول لوسم لغة BCP-47.</summary>
     public const int MaximumLanguageTagLength = 16;
@@ -19,10 +19,10 @@ public static class CompanySetupLimits
     public const int MaximumCostCenters = 1000;
 
     /// <summary>أدنى طول لسبب الإيقاف — «لا سبب» ليس سبباً.</summary>
-    public const int MinimumReasonLength = 8;
+    public const int MinimumReasonLength = InputLimits.MinimumReasonLength;
 
     /// <summary>أقصى طول لسبب الإيقاف.</summary>
-    public const int MaximumReasonLength = 512;
+    public const int MaximumReasonLength = InputLimits.MaximumReasonLength;
 }
 
 /// <summary>
@@ -41,16 +41,40 @@ public static class CompanySetupErrors
     /// <summary>لم تُؤسَّس المنشأة بعد.</summary>
     public static Error NotFound { get; } = new(
         "company_setup.not_found",
-        "لم تُؤسَّس هذه المنشأة بعد. لا يوجد لها مقياس عرض ولا مركز تكلفة.",
-        "This company has not been set up yet. It has no display scale and no cost centre.");
+        "لم تُؤسَّس هذه المنشأة بعد. لا يوجد لها مقياس عرض ولا عملة ولا مركز تكلفة.",
+        "This company has not been set up yet. It has no display scale, no currency and no cost centre.");
+
+    /// <summary>عملةُ المنشأة إلزامية عند التأسيس — ولا تُخترَع.</summary>
+    public static Error CurrencyMissing { get; } = new(
+        "company_setup.currency_missing",
+        "عملة المنشأة إلزامية عند التأسيس: رمز ISO 4217 بثلاثة محارف. ولا يُخترَع لها ريالٌ نيابةً عنك — "
+        + "العملة تُسنَد مرّة ولا تُعدَّل بعدها، فتُكتب باليد.",
+        "The company's currency is mandatory at setup: a three-letter ISO 4217 code. No riyal is invented on your behalf — "
+        + "the currency is assigned once and never editable afterwards, so it is written by hand.");
+
+    /// <summary>رمزُ عملةٍ لا يوافق شكل ISO 4217.</summary>
+    /// <param name="code">الرمز كما كُتب.</param>
+    public static Error CurrencyMalformed(string code) => new(
+        "company_setup.currency_malformed",
+        $"رمز العملة «{code}» ليس رمز ISO 4217 سليم الشكل: ثلاثة محارف لاتينية كبيرة بالضبط.",
+        $"The currency code '{code}' is not a well-formed ISO 4217 code: exactly three upper-case ASCII letters.");
+
+    /// <summary>عملةٌ سليمةُ الشكل لكنها ليست في الجدول المرجعي — فلا وحدةَ صغرى لها ولا تُخمَّن.</summary>
+    /// <param name="code">الرمز كما كُتب.</param>
+    public static Error CurrencyNotInReferenceTable(string code) => new(
+        "company_setup.currency_not_in_reference_table",
+        $"العملة «{code}» ليست في الجدول المرجعي المشحون من ISO 4217، فلا يُعرف عددُ خانات وحدتها الصغرى ولا يُخمَّن. "
+        + "العلاج: إضافة صفّها في Babel.SharedKernel.Iso4217 بمرجعه من القائمة الأولى للمعيار.",
+        $"The currency '{code}' is not in the shipped ISO 4217 reference table, so its minor unit is unknown and is not guessed. "
+        + "The remedy: add its row to Babel.SharedKernel.Iso4217 with its reference from the standard's list one.");
 
     /// <summary>محاولة تأسيس ثانية.</summary>
     public static Error AlreadyInitialised { get; } = new(
         "company_setup.already_initialised",
-        "هذه المنشأة مؤسَّسة من قبل. عدد الخانات العشرية يُسنَد عند أول تأسيس ولا يُعدَّل بعده — "
-        + "وتوحيده داخل دفاتر المنشأة الواحدة أهمّ من أي قيمة بعينها.",
-        "This company is already set up. The number of decimal places is assigned at first setup and is never "
-        + "editable afterwards — its consistency inside one entity's books matters more than any particular value.");
+        "هذه المنشأة مؤسَّسة من قبل. عدد الخانات العشرية والعملة يُسنَدان عند أول تأسيس ولا يُعدَّلان بعده — "
+        + "وتوحيدهما داخل دفاتر المنشأة الواحدة أهمّ من أي قيمة بعينها.",
+        "This company is already set up. The number of decimal places and the currency are assigned at first setup and are never "
+        + "editable afterwards — their consistency inside one entity's books matters more than any particular value.");
 
     /// <summary>اسم أول مركز تكلفة مطلوب حين تكون الإجابة «متعدّد».</summary>
     public static Error FirstCostCenterNameRequired { get; } = new(

@@ -292,6 +292,9 @@ export function AppShell(): ReactNode {
         <Link to="/admin/subscription" className="navitem" data-testid="nav-admin-subscription">
           {t("app.nav.subscription")}
         </Link>
+        <Link to="/admin/plans" className="navitem" data-testid="nav-admin-plans">
+          {t("app.nav.plans")}
+        </Link>
 
         {/* ── التأسيس والثوابت — **عنوانٌ ثالثٌ لا قسمٌ سادس** ───────────────
             خلف هذه الخمس من يجهّز المنشأة قبل أوّل مستند: من يؤسّسها مرّةً،

@@ -23,6 +23,20 @@
       "values": {
         "standard_rate": "0.15"
       }
+    },
+    {
+      "versionId": "0f6a1d00-0000-4000-8000-000000000002",
+      "setCode": "compliance.reporting",
+      "effectiveFrom": "0001-01-01",
+      "effectiveFromNote": [
+        "تاريخُ سريانٍ مفتوحٌ من أوّل السجلّ كسابقه — ولا يدّعي تاريخاً نظامياً."
+      ],
+      "sourceRef": "افتراضُ منصّة غير مُعتمَد. القيم الثلاث منقولةٌ حرفياً من ComplianceSettings كما كانت في هذا المستودع قبل نقلها إلى هذه الخدمة: نافذةُ الإبلاغ 24 ساعة مذكورةٌ في docs/analysis/04-zatca-integration.md §3 وهي وثيقةُ تخطيطٍ داخلية لا مصدرٌ رسمي؛ وعتبةُ الإنذار 4 ساعات وسقفُ الحسم 3 محاولات سياستا تشغيلٍ لا نصَّ نظامياً لهما. تُثبَّت النافذةُ من اللائحة السارية ومواصفة الإبلاغ المنشورة (البند م-31 في docs/evidence/verification-debt.md).",
+      "values": {
+        "max_resolution_attempts": "3",
+        "queue_age_alarm_hours": "4",
+        "reporting_window_hours": "24"
+      }
     }
   ]
 }

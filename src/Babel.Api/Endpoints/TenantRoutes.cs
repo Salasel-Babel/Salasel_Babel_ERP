@@ -59,4 +59,19 @@ internal static class TenantRoutes
 
     /// <summary>استئناف الاشتراك بعد انقطاعه — مورد فرعي مستقلّ بالشكل نفسه.</summary>
     public const string SubscriptionResumption = Subscription + "/resumption";
+
+    /// <summary>
+    /// الخططُ المنشورة — ما يجوز أن يُباع — لكلّ مصادَق: شاشةُ الاشتراك تختار منها ولا
+    /// تكتب رمزاً بيدها. ولا تُظهر غيرَ المنشور (ADR-0092).
+    /// </summary>
+    public const string Plans = ApiRoutes.Base + "/plans";
+
+    /// <summary>
+    /// سطحُ مشغّل المنصّة: كتالوجُ الخطط كلّه — المنشورُ وغيرُه — قراءةً وكتابةً بسندٍ وسبب.
+    /// ولا يبلغه إلا اعتمادٌ مُعلَنٌ مشغّلاً في الإعداد (`Babel:Api:Tokens:N:Platform=true`).
+    /// </summary>
+    public const string PlatformPlans = ApiRoutes.Base + "/platform/plans";
+
+    /// <summary>خطّةٌ واحدة على سطح المنصّة — إنشاءً أو تعديلاً.</summary>
+    public const string PlatformPlan = PlatformPlans + "/{planCode}";
 }

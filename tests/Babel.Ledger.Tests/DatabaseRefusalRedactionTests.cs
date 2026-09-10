@@ -45,7 +45,7 @@ public sealed class DatabaseRefusalRedactionTests : IAsyncLifetime
         CancellationToken token = TestContext.Current.CancellationToken;
 
         CapturingLogger log = new();
-        PostingService posting = new(new AlwaysEntitled(), _harness.Runtime, log);
+        PostingService posting = new(new AlwaysEntitled(), _harness.Runtime, new RiyalForEveryTenant(), log);
 
         string documentId = "JV-REDACT-" + Guid.CreateVersion7().ToString("N", CultureInfo.InvariantCulture)[..8];
         Result<PostingReceipt> result = await posting.PostAsync(RefusedVoucher(documentId), token);

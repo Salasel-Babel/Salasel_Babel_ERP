@@ -463,6 +463,7 @@ public sealed class CapturePromotionTests : IAsyncLifetime
             // الذاكرة يقرأ **ملفّ افتراضات المنصّة نفسه** الذي يُشحن. فالنسبة التي
             // يقرأها هذا الاختبار هي المشحونة، ولا رقم مكتوب هنا.
             new ParameterDirectory(new InMemoryParameterStore(new FixedClock(IssuedAt))),
+            new RiyalForEveryTenant(),
             new AiOptions(),
             new FixedClock(IssuedAt));
 

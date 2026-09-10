@@ -22,6 +22,7 @@ public sealed class ReportingWorker(
     IComplianceProvider provider,
     IIssuingUnitRegistry registry,
     ComplianceSettings settings,
+    ICompliancePolicySource policies,
     TimeProvider clock)
 {
     private readonly SubmissionGuard _guard = new(settings, clock);
@@ -56,7 +57,12 @@ public sealed class ReportingWorker(
         if (await ReapStaleAttemptsAsync(record, attempts, ct))
             (record, attempts) = await LoadAsync(item.DocumentId, ct);
 
-        var decision = _guard.Decide(record, attempts, provider.Capabilities);
+        // ‏سياسةُ المنشأة من خدمة المعامِلات لا من إعدادٍ مفرد (ADR-0090) — وغيابُها رفضٌ لا افتراض.
+        var policy = await policies.ResolveAsync(record.Tenant, ct);
+        if (policy.IsFailure)
+            throw CompliancePolicyRefusal.Of(policy.Errors);
+
+        var decision = _guard.Decide(record, attempts, provider.Capabilities, policy.Value);
 
         switch (decision.Action)
         {

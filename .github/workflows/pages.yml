@@ -37,7 +37,9 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  نشر:
+  # ‏معرّفُ الوظيفة لاتينيّ بحكم Actions نفسها — لا يقبل غيره؛ والاسمُ المعروض عربيّ.
+  pages:
+    name: نشر النماذج
     runs-on: ubuntu-latest
     environment:
       name: github-pages

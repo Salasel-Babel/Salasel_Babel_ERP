@@ -1,0 +1,69 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# نشرُ النماذج الأوّلية إلى GitHub Pages.
+#
+# **وهذا ليس نشرَ المنتج.** نشرُ المنتج إلى خادم العرض في `deploy.yml`، وله
+# أسرارُه وخادمُه وشروطُه. وما يُنشر هنا صفحاتٌ ساكنة من `docs/prototypes/`:
+# شاشاتُ النظام كما تُرى، بلا خادم ولا قاعدة ولا اعتماد — يفتحها صاحبُ
+# القرار من متصفّحه ليقرّر في الشكل قبل أن يُبنى ما وراءه.
+#
+# ولماذا على الدفعة إلى main وعلى الطلب معاً: الدفعةُ تُبقي المنشور مطابقاً
+# لما في الفرع الرئيسي بلا أن يتذكّر أحد، والطلبُ اليدوي يعيد النشر حين
+# يُغيَّر إعدادُ الصفحات نفسه أو حين يُراد نشرٌ بلا تغييرٍ في الشيفرة.
+#
+# **وشرطُ تشغيله مرّةً واحدة على صاحب المستودع:** Settings ← Pages ←
+# Source: GitHub Actions. وبلا ذلك يسقط `deploy-pages` برسالةٍ صريحة تقول
+# إن الصفحات غير مفعّلة — وهو سقوطٌ مقروء لا صامت.
+# ═══════════════════════════════════════════════════════════════════════════
+
+name: نشر النماذج
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/prototypes/**'
+      - '.github/workflows/pages.yml'
+
+# القراءةُ للشيفرة، والكتابةُ للصفحات وللهويّة التي تطلبها بيئةُ النشر.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# نشرةٌ واحدة في كل لحظة، ولا تُلغى الجارية: نصفُ موقعٍ منشور أسوأ من قديمٍ كامل.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  نشر:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # ‏**فحصٌ قبل النشر**: مجلّدٌ فارغ يُنشر موقعاً فارغاً بلا شكوى. فيُعدّ
+      # الملفّات ويُوقف السير إن لم يجد ما يَعِد به.
+      - name: النماذج موجودة
+        run: |
+          set -euo pipefail
+          count=$(find docs/prototypes -name '*.html' | wc -l)
+          echo "صفحاتٌ ستُنشر: $count"
+          if [ "$count" -lt 1 ]; then
+            echo "::error::لا صفحةَ في docs/prototypes — لا يُنشر موقعٌ فارغ."
+            exit 1
+          fi
+          test -f docs/prototypes/screens/index.html \
+            || { echo "::error::شاشاتُ النظام غائبة: docs/prototypes/screens/index.html"; exit 1; }
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/prototypes
+
+      - id: deployment
+        uses: actions/deploy-pages@v4

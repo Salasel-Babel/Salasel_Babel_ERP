@@ -174,6 +174,33 @@ jobs:
               "$USER_NAME@$HOST:$DEPLOY_PATH/"
           ssh -i ~/.ssh/id_deploy -p "$PORT" "$USER_NAME@$HOST" "chmod +x '$DEPLOY_PATH/remote.sh'"
 
+          # ══ النماذج الأوّلية — صفحاتٌ ساكنة تخدمها الحافةُ على /prototypes ══
+          #
+          # **ولا تدخل صورةً ولا سجلّاً بقصد**: هي صفحاتُ عرضٍ لا منتَج، وحملُها
+          # في `babel-web` يوجب بناءَ صورةٍ ودفعَها كلّما صُحِّح سطرٌ في نموذج.
+          #
+          # **و`tar` عبر الأنبوب لا `scp -r`، وليس ذلك ذوقاً:** `scp -r` إلى
+          # مجلّدٍ فيه `prototypes` سلفاً ينسخ **داخله** فيصنع
+          # `prototypes/prototypes` — عطلٌ يردّ 404 بلا سطر خطأ واحد في أيّ
+          # سجلّ. والأنبوب يحمل الشجرة كما هي في رحلةٍ واحدة مضغوطة.
+          #
+          # **والمبادلة عبر `.new`:** الحذفُ قبل الحلّ يفتح نافذةَ ثوانٍ يُخدَم
+          # فيها مجلّدٌ فارغ. و`mv` داخل نظام الملفّات نفسه بلا نافذة، والقديمُ
+          # يُحذف بعدها فلا ينمو القرصُ بنسخةٍ لكلّ نشرة.
+          tar -C docs/prototypes -czf - . \
+            | ssh -i ~/.ssh/id_deploy -p "$PORT" "$USER_NAME@$HOST" "
+                set -eu
+                cd '$DEPLOY_PATH'
+                rm -rf prototypes.new prototypes.old
+                mkdir -p prototypes.new
+                tar -C prototypes.new -xzf -
+                [ -d prototypes ] && mv prototypes prototypes.old || true
+                mv prototypes.new prototypes
+                rm -rf prototypes.old
+                find prototypes -name '*.html' | wc -l \
+                  | xargs printf 'صفحاتٌ على الخادم: %s\n'
+              "
+
       # ملف البيئة يُكتب عبر **المدخل القياسي**، فلا تظهر قيمة واحدة في سطر أمر
       # ولا في `ps` على الخادم ولا في سجلّ سير العمل. وصلاحيته 600 قبل أن يُكتب
       # فيه أول حرف.

@@ -206,6 +206,9 @@ jobs:
             echo "BABEL_STORAGE_TICKET_KEY=$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')"
             echo "BABEL_DEMO_COMPANY_ID=d3305e1e-0000-4000-8000-000000000001"
             echo "BABEL_DEMO_USER_ID=d3305e1e-0000-4000-8000-0000000000a1"
+            # النماذج — مصدرُها في المستودع `docs/prototypes`، وعلى الخادم يجاور
+            # المجلّدُ ملفَّ الحزمة. والمسار نسبيٌّ إلى compose.yml أي إلى `deploy/`.
+            echo "BABEL_PROTOTYPES_DIR=../docs/prototypes"
           } > deploy/.env
 
       # السكربت نفسه الذي يعمل على الخادم — لا نسخة ثانية منه في YAML.
@@ -225,6 +228,25 @@ jobs:
           curl --fail --silent --show-error http://127.0.0.1/ | grep -qi '<div id="root"'
           # وارتداد المسارات إلى index.html — بدونه ينكسر أي رابط عميق أمام العارض.
           curl --fail --silent --show-error -o /dev/null http://127.0.0.1/trial-balance
+
+      # ‏**والنماذج تُخدَم من الحافة نفسها لا من صورة الواجهة.** وهذا الفحص يثبت
+      # الثلاثة التي تنكسر بصمت: أن المجلّد مُركَّب فعلاً، وأن `handle_path` يقشر
+      # البادئة فتُقرأ المسارات الداخلية، وأن كتلة النماذج تسبق التوجيه إلى
+      # الواجهة — فلو ابتلعها التوجيه لعادت `index.html` التطبيقِ بحالة 200،
+      # وهو نجاحٌ كاذب لا يكشفه إلّا فحصُ المحتوى.
+      - name: النماذج تُقدَّم من خلف الحافة
+        run: |
+          set -euo pipefail
+          # المسار العاري يُحوَّل إلى ذي الشرطة، و`-L` يتبع التحويل.
+          curl --fail --silent --show-error -L http://127.0.0.1/prototypes \
+            | grep -q 'شاشاتُ النظام كما تُرى'
+          # وشاشةٌ داخلية: تثبت القشر، وأن الأصول النسبية تُحلّ تحت البادئة.
+          curl --fail --silent --show-error http://127.0.0.1/prototypes/screens/ \
+            | grep -q 'class="screen"'
+          # وما ليس فيها ليس فيها: مسارٌ موهوم تحت البادئة يردّ 404 لا صفحةَ تطبيق.
+          code=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+                   http://127.0.0.1/prototypes/لا-وجود-لها.html)
+          [ "$code" = "404" ] || { echo "✘ مسارٌ موهوم ردّ $code لا 404 — البادئة تسرّب إلى الواجهة" >&2; exit 1; }
 
       # الإثبات الحقيقي: ما يراه العارض على الشاشة هو ما يخرج من هنا.
       - name: ميزان المراجعة المبذور متوازن عبر HTTP

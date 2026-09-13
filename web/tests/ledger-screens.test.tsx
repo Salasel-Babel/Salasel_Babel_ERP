@@ -303,7 +303,10 @@ describe("عقد الملاحة للشاشات الأربع", () => {
       expect(SCREENS.find((s) => s.path === p)?.group).toBeUndefined();
     }
     expect(SCREENS.filter((s) => s.group === "sales").length).toBe(3);
-    expect(SCREENS.filter((s) => s.group === "purchasing").length).toBe(4);
+    /* خمسةٌ لا أربع منذ بُنيت شاشةُ أعمار الذمم الدائنة — والسلسلة تنتهي بها
+       كما تنتهي سلسلةُ المبيعات بالمدينة. والمحروسُ هنا أن الأربعَ الدفترية
+       **خارج** المجموعتين، لا كم فيهما. */
+    expect(SCREENS.filter((s) => s.group === "purchasing").length).toBe(5);
   });
 
   it("ولكلٍّ منها رابطٌ في قائمة الملاحة اليدوية — لا تُفتح بلوحة الأوامر وحدها", async () => {

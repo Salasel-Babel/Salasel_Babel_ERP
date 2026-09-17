@@ -47,6 +47,7 @@ try
         case "seed":
             await Seed.RunAsync(settings, cancellation.Token).ConfigureAwait(false);
             await RealEstateSeed.RunAsync(settings, cancellation.Token).ConfigureAwait(false);
+            await InventorySeed.RunAsync(settings, cancellation.Token).ConfigureAwait(false);
             break;
 
         case "verify":
@@ -59,6 +60,7 @@ try
             await Schema.RunAsync(settings, cancellation.Token).ConfigureAwait(false);
             await Seed.RunAsync(settings, cancellation.Token).ConfigureAwait(false);
             await RealEstateSeed.RunAsync(settings, cancellation.Token).ConfigureAwait(false);
+            await InventorySeed.RunAsync(settings, cancellation.Token).ConfigureAwait(false);
             await Verify.RunAsync(settings, cancellation.Token).ConfigureAwait(false);
             break;
 

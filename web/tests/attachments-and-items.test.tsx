@@ -210,12 +210,20 @@ describe("عقد الملاحة للشاشات الثلاث", () => {
     expect(SCREENS.find((s) => s.path === "/inventory/item-lifecycle")?.section).toBe("inventory");
   });
 
-  it("ولكلٍّ منها رابطٌ في قائمة الملاحة اليدوية — لا تُفتح بلوحة الأوامر وحدها", async () => {
-    await mount({ path: "/", transport: stub({ routes: { "GET /health": HEALTH } }) });
-    const nav = document.querySelector(".app-side");
-    expect(nav).not.toBeNull();
-    const hrefs = [...(nav?.querySelectorAll("a[href]") ?? [])].map((a) => a.getAttribute("href"));
-    for (const p of ADDED) expect(hrefs, "لا رابط في الملاحة إلى " + p).toContain(p);
+  /* ‏**وكلُّ شاشةٍ تُفحَص من ملاحة قسمها**: القائمة تُرشَّح بالقسم المفتوح
+     (`shell/ScreenNav.tsx`)، والثلاثُ هنا في قسمين مختلفين — فالفحصُ من
+     مسارٍ واحد كان سيُسقط إحداهما بحقّ. */
+  it("ولكلٍّ منها رابطٌ في ملاحة قسمها — لا تُفتح بلوحة الأوامر وحدها", async () => {
+    for (const target of ADDED) {
+      const section = SCREENS.find((s) => s.path === target)?.section;
+      const home = SCREENS.find((s) => s.section === section)?.path ?? "/";
+      await mount({ path: home, transport: stub({ routes: { "GET /health": HEALTH } }) });
+      const nav = document.querySelector(".app-side");
+      expect(nav).not.toBeNull();
+      const hrefs = [...(nav?.querySelectorAll("a[href]") ?? [])].map((a) => a.getAttribute("href"));
+      expect(hrefs, "لا رابط في ملاحة القسم إلى " + target).toContain(target);
+      cleanup();
+    }
   });
 
   it("ولكلٍّ منها مسارٌ في الموجّه يفتح شاشتها لا صفحةً فارغة", async () => {

@@ -182,6 +182,9 @@ export function AppShell(): ReactNode {
         <Link to="/purchasing/payment" className="navitem" data-testid="nav-purchasing-payment">
           {t("accounting.nav.supplierPayment")}
         </Link>
+        <Link to="/purchasing/payables" className="navitem" data-testid="nav-purchasing-payables">
+          {t("accounting.nav.payables")}
+        </Link>
 
         {/* ── التسكين ووحداته — كتلةٌ واحدة متّصلة كي يندمج جانباها آلياً. */}
         <Link to="/inventory/warehouses" className="navitem" data-testid="nav-inventory-warehouses">

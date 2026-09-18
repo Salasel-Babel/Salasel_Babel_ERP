@@ -39,6 +39,7 @@ import { InventoryPlacementBalancesScreen } from "../screens/inventory/Placement
    وهي الدورة التي وصفها صاحب المصلحة — فاتورة، سند قبض — ولم تكن لها شاشة. */
 import { SalesInvoiceScreen } from "../screens/accounting/SalesInvoiceScreen";
 import { CustomerReceiptScreen } from "../screens/accounting/CustomerReceiptScreen";
+import { PayablesAgingScreen } from "../screens/accounting/PayablesAgingScreen";
 import { ReceivablesAgingScreen } from "../screens/accounting/ReceivablesAgingScreen";
 import { PurchaseOrderScreen } from "../screens/accounting/PurchaseOrderScreen";
 import { GoodsReceiptScreen } from "../screens/accounting/GoodsReceiptScreen";
@@ -358,6 +359,14 @@ const purchasingPaymentRoute = createRoute({
   component: SupplierPaymentScreen,
 });
 
+/* وآخرُ السلسلة: ما بقي على المنشأة للمورّدين — شقيقةُ `/sales/receivables`
+   بالشكل نفسه وبمصدرٍ آخر، فتُقارَن الذمّةُ بالذمّة بلا عملٍ يدوي. */
+const purchasingPayablesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/purchasing/payables",
+  component: PayablesAgingScreen,
+});
+
 /* ── المرفقات وحالُ الصنف — كتلةٌ واحدة متّصلة. */
 const attachmentsRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -507,6 +516,7 @@ const routeTree = rootRoute.addChildren([
   purchasingGoodsReceiptRoute,
   purchasingBillRoute,
   purchasingPaymentRoute,
+  purchasingPayablesRoute,
   attachmentsRoute,
   attachmentCustodyRoute,
   inventoryItemLifecycleRoute,

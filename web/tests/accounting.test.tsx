@@ -279,6 +279,7 @@ describe("لا رمز حساب في القسم", () => {
     "/purchasing/goods-receipt",
     "/purchasing/bill",
     "/purchasing/payment",
+    "/purchasing/payables",
   ];
 
   it("لا حقل يطلب رقم حساب، ولا نصّ يسمّي واحداً", async () => {
@@ -393,11 +394,17 @@ describe("الملاحة", () => {
     }
   });
 
-  it("الشاشات السبع في مجموعتَي المحاسبة، ولا قسمَ سادس", () => {
+  /* ‏**والعددان ثلاثةٌ وخمسة لا سبعةٌ جملةً:** المجموعتان سلسلتان مرتَّبتان،
+     وكلٌّ منهما تنتهي بأعمار ذممها — المبيعات: فاتورة ← قبض ← ذمم مدينة،
+     والمشتريات: أمر ← استلام ← فاتورة ← صرف ← ذمم دائنة. وكانت الدائنة
+     **باباً منشوراً بلا شاشة** يُعلنه لوحُ نقصٍ في شاشة المدينة، فبُنيت
+     الشاشة وأُزيل اللوح — فصار العدد خمسة. والذي يحرسه هذا الاختبار ليس
+     الرقم بل **أن لا مجموعةَ ثالثة ولا قسمَ سادس**. */
+  it("الشاشات الثماني في مجموعتَي المحاسبة، ولا قسمَ سادس", () => {
     const sales = SCREENS.filter((s) => s.group === "sales");
     const purchasing = SCREENS.filter((s) => s.group === "purchasing");
     expect(sales.length).toBe(3);
-    expect(purchasing.length).toBe(4);
+    expect(purchasing.length).toBe(5);
     /* والمجموعتان **داخل** القسم المحاسبي — لا تصيران قسمين في الملاحة. */
     for (const entry of [...sales, ...purchasing]) {
       expect(entry.section).toBe("accounting");

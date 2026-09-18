@@ -177,6 +177,7 @@ export const SCREENS: readonly ScreenEntry[] = [
   { path: "/purchasing/goods-receipt", labelKey: "accounting.nav.goodsReceipt", section: "accounting", group: "purchasing" },
   { path: "/purchasing/bill", labelKey: "accounting.nav.supplierBill", section: "accounting", group: "purchasing" },
   { path: "/purchasing/payment", labelKey: "accounting.nav.supplierPayment", section: "accounting", group: "purchasing" },
+  { path: "/purchasing/payables", labelKey: "accounting.nav.payables", section: "accounting", group: "purchasing" },
   /* ── سجلُّ المرفقات وعهدةُ سنده، وحالُ الصنف — **كتلةٌ واحدة متّصلة** كي
      يندمج جانباها آلياً حين يلمس أسطولٌ آخر هذا الملفّ.
 

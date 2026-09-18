@@ -1,34 +1,33 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   /sales/receivables — أعمار الذمم المدينة  ·  Receivables aging
+   /purchasing/payables — أعمار الذمم الدائنة  ·  Payables aging
    ───────────────────────────────────────────────────────────────────────────
-   تقريرٌ يقرأ ولا يكتب، وثلاثة أشياء تحكم عرضه:
+   **هذه الشاشة هي شقيقةُ `ReceivablesAgingScreen` بمصدرٍ آخر، لا شاشةٌ ثانية
+   بتصميمٍ ثانٍ** — وذلك نصُّ العقد لا اجتهادُ من بناها: «شكلان مختلفان كانا
+   سيجعلان مقارنة الذمم بالذمم عملاً يدوياً عند كل عميل». فالشرائحُ الخمس
+   بترتيبها، والأعمدةُ بترتيبها، والمِصفاةُ بسلوكها — كلُّها واحدة. والفرقُ
+   ثلاثةٌ لا رابع لها:
 
-   ١ · **المجموع يأتي محسوباً ولا يُجمع هنا.** العقد ينصّ أن `total` «مجموع
-       الشرائح بالضبط — يُرسَل محسوباً ولا يُترك لكل عميل أن يجمعه فيختلف
-       تقريران عن الرقم نفسه». فلا جمعَ في المتصفّح، ولا حتّى لصفٍّ واحد.
+     ١ · البابُ `readPayablesAging` لا `readReceivablesAging`.
+     ٢ · **لونُ المجموع دائنٌ لا مدين.** رصيدُ المورّد دائنٌ بطبيعته، ورمزُ
+         اللون هو ما يقوله للعين قبل أن تقرأ العنوان — فلو ورثت الشاشةُ لونَ
+         شقيقتها لقالت للناظر إن ما يراه أصلٌ وهو التزام.
+     ٣ · المجموعةُ `purchasing` في شريط القسم، فالمشترياتُ تنتهي بالذمم
+         الدائنة كما تنتهي المبيعاتُ بالمدينة.
 
-   ٢ · **الأرقام تصطفّ في أعمدة**، فخاناتها متساوية العرض
-       (`font-variant-numeric: tabular-nums`) واتجاهها معزول — وإلّا انزلق
-       الرقم في السطر العربي وصار عمودٌ غير عمود.
-
-   ٣ · **الشكل واحدٌ للمدينة والدائنة** كما ينصّ العقد: «شكلان مختلفان كانا
-       سيجعلان مقارنة الذمم بالذمم عملاً يدوياً عند كل عميل». والدائنةُ لها
-       شاشتُها على `/purchasing/payables` — `PayablesAgingScreen` — وهي هذا
-       الملفّ بمصدرٍ آخر ولونِ مجموعٍ دائن. **وكان هنا إعلانُ نقصٍ يقول إن
-       بابها منشورٌ بلا شاشة، فأُزيل لأن الشاشة بُنيت**: إعلانُ نقصٍ بقي بعد
-       سدّه يكذب على قارئه كما يكذب النقصُ المسكوت عنه.
+   **والمجموع يأتي محسوباً ولا يُجمع هنا** — كما في شقيقتها: العقد ينصّ أن
+   `total` «مجموع الشرائح بالضبط — يُرسَل محسوباً ولا يُترك لكل عميل أن يجمعه
+   فيختلف تقريران عن الرقم نفسه». فلا جمعَ في المتصفّح ولا لصفٍّ واحد.
    ═══════════════════════════════════════════════════════════════════════════ */
 import { useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { readReceivablesAging } from "../../api/generated/client";
-import { PARAM_readReceivablesAging_asOf_RE } from "../../api/generated/formats";
+import { readPayablesAging } from "../../api/generated/client";
+import { PARAM_readPayablesAging_asOf_RE } from "../../api/generated/formats";
 import type { AgingBands } from "../../api/generated/types";
 import { useApi } from "../../app/api-context";
 import { ProblemPanel } from "../../app/shell/ProblemPanel";
 import { resolveTranslatedName } from "../../app/translated-name";
 import { Amount, useLocale, useT } from "../../i18n/react";
 import { EmptyState, StatCard, useMoment } from "../../ui";
-import { peekVoiceDraft } from "../../voice";
 import {
   AccField,
   AccRow,
@@ -49,41 +48,29 @@ const BANDS = [
 ] as const;
 
 /** الشاشة كاملةً. */
-export function ReceivablesAgingScreen(): ReactNode {
+export function PayablesAgingScreen(): ReactNode {
   const { t, tp } = useT();
   const { transport, config } = useApi();
   const { locale } = useLocale();
   const [arriveCls] = useMoment("arrive");
 
-  const spokenAsOf = useMemo(() => {
-    const draft = peekVoiceDraft();
-    if (
-      draft?.intentId !== "accounting.receivables_aging.query" &&
-      draft?.intentId !== "accounting.customer_balance.query"
-    ) {
-      return "";
-    }
-    return draft.fields.find((field) => field.name === "asOf")?.text ?? "";
-  }, []);
-
-  const [asOf, setAsOf] = useState(() => spokenAsOf || todayIso());
+  const [asOf, setAsOf] = useState(() => todayIso());
   const [filter, setFilter] = useState("");
-  const asOfValid = PARAM_readReceivablesAging_asOf_RE.test(asOf);
+  const asOfValid = PARAM_readPayablesAging_asOf_RE.test(asOf);
 
   const report = useQuery({
-    queryKey: ["accounting", "receivables-aging", config.baseUrl, config.token, config.companyId, asOf],
+    queryKey: ["accounting", "payables-aging", config.baseUrl, config.token, config.companyId, asOf],
     enabled: config.companyId !== "" && asOfValid,
     retry: false,
     queryFn: ({ signal }) =>
-      readReceivablesAging(transport, { companyId: config.companyId, asOf }, signal),
+      readPayablesAging(transport, { companyId: config.companyId, asOf }, signal),
   });
 
   const data = report.data ?? null;
 
   /* ── مِصفاةٌ على ما وصل، لا استعلامٌ ثانٍ ─────────────────────────────
      تُضيّق **الصفوف المعروضة** ولا تمسّ المجاميع: المجاميع مجاميعُ التقرير
-     كما أرسلها الخادم، و«مجموعٌ لِما رشّحته العين» رقمٌ ثالث لا مصدر له.
-     ولذلك تبقى بطاقات الشرائح كما هي، ويقول اللوح أن الصفوف مُصفّاة. */
+     كما أرسلها الخادم، و«مجموعٌ لِما رشّحته العين» رقمٌ ثالث لا مصدر له. */
   const shown = useMemo(() => {
     const needle = filter.trim().toLocaleLowerCase();
     const parties = data?.parties ?? [];
@@ -96,56 +83,56 @@ export function ReceivablesAgingScreen(): ReactNode {
     );
   }, [data, filter]);
 
-  if (config.companyId === "") return <ChooseCompanyFirst testId="acc-receivables-needs-company" />;
+  if (config.companyId === "") return <ChooseCompanyFirst testId="acc-payables-needs-company" />;
 
   return (
-    <section className="stack" data-testid="acc-receivables-screen">
+    <section className="stack" data-testid="acc-payables-screen">
       <header className="pagehead">
         <div>
-          <h1>{t("accounting.page.receivablesTitle")}</h1>
-          <p className="sub">{t("accounting.page.receivablesLede")}</p>
+          <h1>{t("accounting.page.payablesTitle")}</h1>
+          <p className="sub">{t("accounting.page.payablesLede")}</p>
         </div>
       </header>
 
-      <AccSectionNav group="sales" current="/sales/receivables" />
+      <AccSectionNav group="purchasing" current="/purchasing/payables" />
 
       {/* ═════════════════════════════════════ ١ · تاريخ التقرير ══════ */}
       <StatePanel
         title={t("accounting.aging.asOfTitle")}
         note={t("accounting.aging.asOfNote")}
-        testId="acc-receivables-asof"
+        testId="acc-payables-asof"
       >
-        <AccRow cols={2} testId="acc-receivables-asof-row">
+        <AccRow cols={2} testId="acc-payables-asof-row">
           <AccField
-            id="acc-ar-asof"
+            id="acc-ap-asof"
             label={t("accounting.field.asOf")}
             hint={t("accounting.field.asOfHint")}
             error={asOfValid ? undefined : t("accounting.field.asOfBad")}
-            source={spokenAsOf ? "spoken" : "typed"}
+            source="typed"
             required
           >
             <input
-              id="acc-ar-asof"
+              id="acc-ap-asof"
               className={"ctl mono" + (asOfValid ? "" : " is-invalid")}
               type="date"
               dir="ltr"
               aria-invalid={!asOfValid}
-              data-testid="acc-receivables-asof-input"
+              data-testid="acc-payables-asof-input"
               value={asOf}
               onChange={(e) => setAsOf(e.target.value)}
             />
           </AccField>
           <AccField
-            id="acc-ar-filter"
+            id="acc-ap-filter"
             label={t("accounting.field.partyFilter")}
             hint={t("accounting.field.partyFilterHint")}
             source="typed"
           >
             <input
-              id="acc-ar-filter"
+              id="acc-ap-filter"
               className="ctl"
               autoComplete="off"
-              data-testid="acc-receivables-filter"
+              data-testid="acc-payables-filter"
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
             />
@@ -159,13 +146,13 @@ export function ReceivablesAgingScreen(): ReactNode {
         note={t("accounting.aging.totalsNote")}
         aside={data ? <span className="muted">{tp("accounting.count.parties", data.parties.length)}</span> : null}
         loading={report.isPending && report.fetchStatus === "fetching"}
-        testId="acc-receivables-totals"
+        testId="acc-payables-totals"
       >
         {report.isError ? (
           <ProblemPanel error={report.error} onRetry={() => void report.refetch()} />
         ) : data ? (
           <div className="stack">
-            <div className={"acc-stats " + arriveCls} data-testid="acc-receivables-bands">
+            <div className={"acc-stats " + arriveCls} data-testid="acc-payables-bands">
               {BANDS.map((band) => (
                 <StatCard
                   key={band.key}
@@ -173,7 +160,7 @@ export function ReceivablesAgingScreen(): ReactNode {
                   amount={data.totals[band.key]}
                   hint={t("accounting.band.hint")}
                   tone={band.key === "over90" ? "bad" : "neutral"}
-                  testId={"acc-receivables-band-" + band.key}
+                  testId={"acc-payables-band-" + band.key}
                 />
               ))}
             </div>
@@ -182,8 +169,8 @@ export function ReceivablesAgingScreen(): ReactNode {
                 label={t("accounting.aging.total")}
                 amount={data.totals.total}
                 hint={t("accounting.aging.totalHint")}
-                tone="debit"
-                testId="acc-receivables-total"
+                tone="credit"
+                testId="acc-payables-total"
               />
             </div>
           </div>
@@ -196,16 +183,16 @@ export function ReceivablesAgingScreen(): ReactNode {
         note={filter.trim() === "" ? t("accounting.aging.partiesNote") : t("accounting.aging.filteredNote")}
         aside={data ? <span className="muted">{tp("accounting.count.parties", shown.length)}</span> : null}
         loading={report.isPending && report.fetchStatus === "fetching"}
-        testId="acc-receivables-parties"
+        testId="acc-payables-parties"
       >
         {data === null ? null : shown.length === 0 ? (
           <EmptyState
             title={filter.trim() === "" ? t("accounting.aging.emptyTitle") : t("accounting.aging.noMatchTitle")}
             body={filter.trim() === "" ? t("accounting.aging.emptyBody") : t("accounting.aging.noMatchBody")}
-            testId="acc-receivables-empty"
+            testId="acc-payables-empty"
           />
         ) : (
-          <div className="acc-table" data-testid="acc-receivables-table">
+          <div className="acc-table" data-testid="acc-payables-table">
             <table>
               <caption className="visually-hidden">{t("accounting.aging.partiesTitle")}</caption>
               <thead>
@@ -220,7 +207,7 @@ export function ReceivablesAgingScreen(): ReactNode {
               </thead>
               <tbody>
                 {shown.map((party) => (
-                  <tr key={party.partyId} data-testid={"acc-receivables-party-" + party.code}>
+                  <tr key={party.partyId} data-testid={"acc-payables-party-" + party.code}>
                     <td><span className="mono acc-id">{party.code}</span></td>
                     <td>
                       <span lang="ar" dir="rtl">{party.name.ar}</span>

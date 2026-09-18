@@ -434,7 +434,9 @@ export const PAIRS = [
   { id: "text/currentSection", fg: "var(--color-text)",
     bg: [GROUND, "color-mix(in srgb, var(--color-surface) 88%, transparent)",
          SECTION_TINTS.map((t) => `color-mix(in srgb, ${t} 14%, transparent)`)], kind: TEXT,
-    where: "shell.css .section[aria-current=page]" },
+    where:
+      "shell.css .section[aria-current=page] · .sysbadge · " +
+      ".navitem--branch[data-holds-current]" },
 
   /* ── ٣ · الحبر فوق الأسطح الملوّنة — رموز `--on-*` ────────────────────
      وهذه هي أكثر ستّة أرقامٍ تُقرأ في المنتج: رأسا «مدين» و«دائن». */
@@ -639,6 +641,14 @@ export const COVERAGE_EXEMPT = [
   {
     selector: '.section[aria-current="page"]',
     why: "`--section-tint` تكتبه `sections.ts` **على العنصر وقت التشغيل** فلا يوجد في أي ملفّ سمة. وهو مقيسٌ صراحةً في `text/currentSection` على الألوان الخمسة كلّها، وتُؤخذ أسوؤها.",
+  },
+  {
+    selector: ".sysbadge",
+    why: "شارةُ النظام المفتوح في رأس الشجرة الجانبية — الغسلةُ نفسها (14%) والحبرُ نفسه (`--color-text`) فوق أرضية الشريط نفسها، فهي **الزوج المقيس عينه** في `text/currentSection` لا زوجٌ ثانٍ. ونسبةٌ ثالثة تُخرجها من القياس.",
+  },
+  {
+    selector: '.navitem--branch[data-holds-current="true"]',
+    why: "عقدةُ الشجرة التي تحوي الشاشة القائمة — الغسلةُ والحبرُ والأرضيةُ نفسها، فهي الزوج المقيس عينه في `text/currentSection`.",
   },
 ];
 

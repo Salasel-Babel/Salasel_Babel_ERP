@@ -1,6 +1,8 @@
 /* المسارات — مُعرَّفة بالشيفرة، ونوعها مُستنتَج لا مكتوب. */
 import { createRootRoute, createRoute, createRouter, createMemoryHistory } from "@tanstack/react-router";
 import { AppShell } from "./App";
+/* صفحةُ البداية — مدخلُ الأنظمة الخمسة، ولا نظامَ يملكها. */
+import { HomeScreen } from "../screens/home/HomeScreen";
 import { TrialBalanceScreen } from "../screens/trial-balance/TrialBalanceScreen";
 import { ContractScreen } from "../screens/contract/ContractScreen";
 import { SignInScreen } from "../screens/session/SignInScreen";
@@ -93,6 +95,12 @@ import { ChartOfAccountsScreen } from "../screens/setup/ChartOfAccountsScreen";
 import { ParametersScreen } from "../screens/setup/ParametersScreen";
 
 const rootRoute = createRootRoute({ component: AppShell });
+
+const homeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/home",
+  component: HomeScreen,
+});
 
 const trialBalanceRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -474,6 +482,7 @@ const setupParametersRoute = createRoute({
 });
 
 const routeTree = rootRoute.addChildren([
+  homeRoute,
   trialBalanceRoute,
   signInRoute,
   voucherRoute,

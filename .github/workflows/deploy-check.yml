@@ -217,15 +217,42 @@ jobs:
           BABEL_SKIP_PULL: '1'
         run: deploy/remote.sh deploy ci
 
+      # ‏**ولا أنبوبَ إلى `grep -q` في أي فحصٍ هنا — والسببُ مقيسٌ مرّتين.**
+      # ‏`grep -q` يخرج عند **أوّل** مطابقة فيُغلق طرفَ القراءة، فيقع الكاتبُ
+      # قبله على EPIPE ويخرج بالفشل، و`set -o pipefail` يُسقط الخطوة **وقد نجح
+      # الفحص**. وأثرُه يتبدّل بحجم الصفحة وموضع العبارة فيها، فيُقرأ «تقطّعاً»
+      # وليس كذلك:
+      #
+      #   · `docs/prototypes/index.html` ‏8,823 بايتاً والعبارة عند 3,357 —
+      #     يسع الأنبوبَ كلَّه فيمرّ.
+      #   · `docs/prototypes/screens/index.html` ‏**1,379,819 بايتاً** والعبارة
+      #     عند **219,318** — يخرج `grep` وقد بقي 1.16 ميغابايت غير مكتوب،
+      #     فيسقط الكاتب. وهو الذي أسقط «حزمة النشر #329» بـ
+      #     «curl: (23) Failure writing output to destination».
+      #
+      # **ونقلُ الالتقاط إلى متغيّر لا يكفي**: `printf … | grep -q` يقع في الفخّ
+      # نفسه — الكاتبُ تبدّل والأنبوبُ باقٍ (قِيس: الإصلاحُ الأول سقط بالرمز 1).
+      # فالعلاجُ **ألّا يكون هناك أنبوب**: مطابقةٌ في الصَّدَفة على المتغيّر —
+      # وهي `need()` نفسها المكتوبة أعلى هذا الملفّ لفحص إعداد الحافة.
       - name: الخادم يُجيب من خلف الحافة
         run: |
           set -euo pipefail
-          curl --fail --silent --show-error http://127.0.0.1/health | tee /dev/stderr | grep -q '"status":"ok"'
+          health=$(curl --fail --silent --show-error http://127.0.0.1/health)
+          printf '%s\n' "$health"
+          case "$health" in
+            *'"status":"ok"'*) ;;
+            *) echo '::error::‏/health لا يردّ status=ok من خلف الحافة.'; exit 1 ;;
+          esac
 
       - name: الواجهة تُقدَّم من خلف الحافة
         run: |
           set -euo pipefail
-          curl --fail --silent --show-error http://127.0.0.1/ | grep -qi '<div id="root"'
+          shopt -s nocasematch
+          shell=$(curl --fail --silent --show-error http://127.0.0.1/)
+          case "$shell" in
+            *'<div id="root"'*) ;;
+            *) echo '::error::جذرُ الموقع لا يُقدّم قشرةَ التطبيق.'; exit 1 ;;
+          esac
           # وارتداد المسارات إلى index.html — بدونه ينكسر أي رابط عميق أمام العارض.
           curl --fail --silent --show-error -o /dev/null http://127.0.0.1/trial-balance
 
@@ -238,11 +265,17 @@ jobs:
         run: |
           set -euo pipefail
           # المسار العاري يُحوَّل إلى ذي الشرطة، و`-L` يتبع التحويل.
-          curl --fail --silent --show-error -L http://127.0.0.1/prototypes \
-            | grep -q 'شاشاتُ النظام كما تُرى'
+          index=$(curl --fail --silent --show-error -L http://127.0.0.1/prototypes)
+          case "$index" in
+            *'شاشاتُ النظام كما تُرى'*) ;;
+            *) echo '::error::صفحةُ النماذج لا تحمل عنوانها — الحافّة لا تُقدّم /prototypes.'; exit 1 ;;
+          esac
           # وشاشةٌ داخلية: تثبت القشر، وأن الأصول النسبية تُحلّ تحت البادئة.
-          curl --fail --silent --show-error http://127.0.0.1/prototypes/screens/ \
-            | grep -q 'class="screen"'
+          inner=$(curl --fail --silent --show-error http://127.0.0.1/prototypes/screens/)
+          case "$inner" in
+            *'class="screen"'*) ;;
+            *) echo '::error::الشاشةُ الداخلية لا تُقرأ — handle_path لا يقشر البادئة.'; exit 1 ;;
+          esac
           # وما ليس فيها ليس فيها: مسارٌ موهوم تحت البادئة يردّ 404 لا صفحةَ تطبيق.
           code=$(curl --silent --output /dev/null --write-out '%{http_code}' \
                    http://127.0.0.1/prototypes/لا-وجود-لها.html)
@@ -256,16 +289,20 @@ jobs:
           body=$(curl --fail --silent --show-error \
                    -H "Authorization: Bearer ${DEMO_TOKEN}" \
                    "http://127.0.0.1/api/v1/companies/${company}/trial-balance?book=MAIN")
-          echo "$body" | head -c 400; echo
-          echo "$body" | grep -q '"balanced":true' \
-            || { echo '::error::ميزان المراجعة المبذور غير متوازن.'; exit 1; }
+          printf '%.400s\n' "$body"
+          case "$body" in
+            *'"balanced":true'*) ;;
+            *) echo '::error::ميزان المراجعة المبذور غير متوازن.'; exit 1 ;;
+          esac
 
           chain=$(curl --fail --silent --show-error \
                     -H "Authorization: Bearer ${DEMO_TOKEN}" \
                     "http://127.0.0.1/api/v1/companies/${company}/ledger-chain/verification?book=MAIN&fiscalYear=2026")
-          echo "$chain"
-          echo "$chain" | grep -q '"verdict":"CHAIN-OK"' \
-            || { echo '::error::سلسلة البصمات المبذورة منحرفة.'; exit 1; }
+          printf '%s\n' "$chain"
+          case "$chain" in
+            *'"verdict":"CHAIN-OK"'*) ;;
+            *) echo '::error::سلسلة البصمات المبذورة منحرفة.'; exit 1 ;;
+          esac
 
       # ── العقارات: أبوابها كانت **غير قابلة للبلوغ** لأن قاعدتها لا تُزوَّد ──────
       # وحدةٌ كاملة البناء والاختبار، ومخطّطها وهجرتها وناشرها كلّها في المستودع،
@@ -307,24 +344,37 @@ jobs:
           body=$(curl --fail --silent --show-error \
                    -H "Authorization: Bearer ${DEMO_TOKEN}" \
                    "http://127.0.0.1/api/v1/companies/${company}/tenant-arrears-aging?asOf=2026-08-31")
-          echo "$body" | head -c 600; echo
-          echo "$body" | grep -q '"isReconciled":true' \
-            || { echo '::error::دفتر المستأجرين المساعد لا يطابق نقطة ضبطه.'; exit 1; }
-          echo "$body" | grep -q '"parties":\[{' \
-            || { echo '::error::تقرير المتأخرات فارغ — البذر العقاري لم يصل القاعدة.'; exit 1; }
+          printf '%.600s\n' "$body"
+          case "$body" in
+            *'"isReconciled":true'*) ;;
+            *) echo '::error::دفتر المستأجرين المساعد لا يطابق نقطة ضبطه.'; exit 1 ;;
+          esac
+          case "$body" in
+            *'"parties":[{'*) ;;
+            *) echo '::error::تقرير المتأخرات فارغ — البذر العقاري لم يصل القاعدة.'; exit 1 ;;
+          esac
 
       # وقيدُ الاستبعاد الزمني نفسه — يُقرأ من **القاعدة المنشورة** لا من ملفّ نصّ
       # في المستودع (‏فخ-129). وبدونه تُؤجَّر الوحدة الواحدة مرّتين.
       - name: امتداد btree_gist وقيد الاستبعاد قائمان في القاعدة المنشورة
         run: |
           set -euo pipefail
-          docker compose --env-file deploy/.env -f deploy/compose.yml exec -T db \
+          ext=$(docker compose --env-file deploy/.env -f deploy/compose.yml exec -T db \
             psql -U postgres -d babel_realestate -Atc \
-            "select extname || ' ' || extversion from pg_extension where extname = 'btree_gist'" | tee /dev/stderr | grep -q btree_gist
-          docker compose --env-file deploy/.env -f deploy/compose.yml exec -T db \
+            "select extname || ' ' || extversion from pg_extension where extname = 'btree_gist'")
+          printf '%s\n' "$ext"
+          case "$ext" in
+            *btree_gist*) ;;
+            *) echo '::error::امتداد btree_gist غير مركَّب في القاعدة المنشورة.'; exit 1 ;;
+          esac
+          con=$(docker compose --env-file deploy/.env -f deploy/compose.yml exec -T db \
             psql -U postgres -d babel_realestate -Atc \
-            "select pg_get_constraintdef(oid) from pg_constraint where conname = 'ex_realestate_lease_term_does_not_overlap'" \
-            | tee /dev/stderr | grep -q 'EXCLUDE USING gist'
+            "select pg_get_constraintdef(oid) from pg_constraint where conname = 'ex_realestate_lease_term_does_not_overlap'")
+          printf '%s\n' "$con"
+          case "$con" in
+            *'EXCLUDE USING gist'*) ;;
+            *) echo '::error::قيد الاستبعاد الزمني غائب — تُؤجَّر الوحدة الواحدة مرّتين.'; exit 1 ;;
+          esac
 
       - name: طلبٌ بلا اعتماد يُرفض
         run: |

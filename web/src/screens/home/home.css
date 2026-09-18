@@ -1,0 +1,75 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   صفحةُ البداية — مربّعاتُ الأنظمة  ·  The start page's system tiles
+   ───────────────────────────────────────────────────────────────────────────
+   **المربّعُ يحمل لون نظامه** — وهو نفسه لون شارته في المُشغّل، ولون موجة
+   الانتقال حين تدخله، ولون شارته في رأس القائمة الجانبية. أربعةُ مواضع
+   بلونٍ واحد، فيتعلّمه الناظر مرّةً ويعرف بعدها أين هو بلا قراءة.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.systiles{
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(14rem, 1fr));
+  gap:var(--space-12);
+}
+
+.systile{
+  display:flex; flex-direction:column; align-items:flex-start; gap:var(--space-6);
+  padding:var(--space-16);
+  min-inline-size:0;
+  border-radius:var(--radius-lg);
+  border:var(--border-width) solid var(--edge-line);
+  background:var(--color-surface);
+  color:var(--color-text-muted);
+  text-decoration:none;
+  transition:border-color var(--motion-swift) var(--ease-enter),
+             background var(--motion-swift) var(--ease-enter),
+             transform var(--motion-swift) var(--ease-enter);
+}
+.systile:hover{
+  background:var(--color-surface-raised);
+  border-color:color-mix(in srgb, var(--section-tint) 52%, transparent);
+  transform:translateY(-2px);
+}
+.systile:focus-visible{ outline:2px solid var(--color-focus); outline-offset:3px }
+@media (prefers-reduced-motion: reduce){ .systile:hover{ transform:none } }
+
+.systile__mark{
+  inline-size:44px; block-size:44px; flex:none;
+  display:grid; place-items:center;
+  border-radius:var(--radius-md);
+  color:var(--section-tint);
+  background:color-mix(in srgb, var(--section-tint) 12%, transparent);
+  box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--section-tint) 26%, transparent);
+}
+.systile__name{
+  color:var(--color-text);
+  font-size:var(--font-size-lg); font-weight:var(--font-weight-bold);
+}
+.systile__note{ font-size:var(--font-size-sm); line-height:var(--line-base) }
+
+/* نظامٌ لم تُبنَ شاشاته: **مُعلَنٌ معطَّل** لا غائب — والغياب يجعل ما بيع
+   يبدو أصغر مما هو. وهو حكم `SectionNav` نفسه، مكرَّرٌ في الهيئة لا في المنطق. */
+.systile[data-built="false"]{ cursor:not-allowed; opacity:.72; border-style:dashed }
+.systile[data-built="false"]:hover{ background:var(--color-surface); transform:none }
+.systile__soon{
+  font-size:var(--font-size-3xs); font-weight:var(--font-weight-semibold);
+  color:var(--color-text-subtle);
+  padding:var(--space-2) var(--space-6);
+  border-radius:var(--radius-pill);
+  border:var(--border-width) solid var(--edge-line);
+}
+
+/* ── مدخلان يوميّان، بهيئة عقد الشجرة نفسها ─────────────────────────────── */
+.homequick{
+  display:flex; flex-direction:column; gap:var(--space-2);
+  padding:var(--space-12);
+  border-radius:var(--radius-lg);
+  border:var(--border-width) solid var(--edge-line);
+  background:var(--color-surface);
+  max-inline-size:32rem;
+}
+.homequick__label{
+  margin:0 0 var(--space-4); padding-inline:var(--space-4);
+  font-size:var(--font-size-2xs); font-weight:var(--font-weight-semibold);
+  color:var(--color-text-subtle);
+}

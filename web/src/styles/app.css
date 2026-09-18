@@ -87,10 +87,14 @@ body {
     padding: var(--space-8) var(--page-pad-x-sm);
   }
 }
+/* العلامةُ رابطٌ إلى البداية — فتُنزع عنه زخرفةُ الرابط ويرث لونَ النصّ،
+   وإلّا قُرئ اسمُ المنتج رابطاً أزرقَ مسطوراً في رأس القائمة. */
 .app-side .brand {
   display: flex;
   align-items: center;
   gap: var(--space-8);
+  color: inherit;
+  text-decoration: none;
   margin-bottom: var(--space-12);
   font-family: var(--font-display);
   font-weight: var(--font-weight-bold);
@@ -109,6 +113,11 @@ body {
   border-radius: var(--radius-sm);
   background: linear-gradient(140deg, var(--color-primary), var(--brand-mark-accent));
   flex: none;
+}
+.app-side .brand:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 3px;
+  border-radius: var(--radius-sm);
 }
 
 .app-page {

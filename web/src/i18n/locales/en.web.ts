@@ -152,6 +152,38 @@ export const messages: MessageTree = {
       underConstruction: "Under construction: this section has no screens yet, and it is declared rather than hidden or left as a dead link.",
       soon: "Building",
     },
+    group: {
+      postings: "After posting",
+      evidence: "Attachments and custody",
+      tools: "Tools and references",
+      invCatalogue: "Items and units",
+      invMovement: "Movements and transfers",
+      invPlaces: "Warehouses and placement",
+      hrPayroll: "Pay and payroll",
+      hrObligations: "Obligations and closing",
+      ctrScope: "Contract scope and guarantees",
+      ctrBilling: "Certificates and retention",
+      ctrSub: "Subcontracting and advances",
+      reRegistry: "Register and parties",
+      reLease: "Leases and collection",
+    },
+    launcher: {
+      open: "Systems",
+      title: "Salasel Babel systems",
+      note: "Each system opens its own screens in the side tree; a system not yet built is declared, not hidden.",
+    },
+    home: {
+      title: "Home",
+      lede: "Five systems on one platform — open a system to begin, or go back to what you open every day.",
+      quick: "Opened every day",
+      desc: {
+        accounting: "The ledger and both document cycles, what is set up once, and what is corrected after posting.",
+        inventory: "Items and their units, balances, movements and transfers, warehouses, placement and valuation.",
+        hr: "The employee register and pay components, the payroll run and its payslip, insurance and end of service.",
+        contracting: "Projects, contracts and change orders, certificates, retention, subcontracting and its guarantees.",
+        realestate: "The property register with its owners and tenants, lease contracts, their invoicing and arrears.",
+      },
+    },
     command: {
       title: "Command palette",
       open: "Command palette",
@@ -186,6 +218,7 @@ export const messages: MessageTree = {
       hijriWarning: "The server runs on the Umm al-Qura calendar — any implicit date formatting there writes Hijri.",
     },
     nav: {
+      home: "Home",
       /* ــ التأسيس والثوابت: أربعُ شاشاتٍ وعنوانُ مجموعتها ــ */
       companySetup: "Company setup",
       costCenters: "Cost centres",

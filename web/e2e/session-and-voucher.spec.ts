@@ -68,6 +68,21 @@ function voucherUrl(locale = "ar"): string {
   );
 }
 
+/**
+ * يلصق اعتماداً في طريق اللصق — **وهو مطويٌّ منذ البوّابة الأمامية**.
+ * <p>
+ * إدخالُ البريد والكلمة صار طريقَ المحاسب، ولصقُ الاعتماد طويَ في
+ * <code>&lt;details&gt;</code> لمن يجرّب بالعرض أو ينتسب بدعوة. وحقلٌ داخل مطويٍّ
+ * مغلق غيرُ ظاهر، فلا يُملأ — فالفتحُ خطوةٌ في الرحلة لا التفافٌ عليها.
+ * </p>
+ * @param page الصفحة.
+ * @param credential الاعتماد الملصوق.
+ */
+async function pasteCredential(page: Page, credential: string): Promise<void> {
+  await page.getByTestId("sign-in-credential-way").locator("summary").click();
+  await page.getByTestId("sign-in-token").fill(credential);
+}
+
 /** يقيس انزلاق جسم الصفحة أفقياً. */
 async function horizontalOverflow(page: Page): Promise<number> {
   return page.evaluate(() => {
@@ -96,10 +111,15 @@ test.describe("الدخول واختيار المنشأة", () => {
     await page.goto(signInUrl());
     await page.waitForSelector('[data-testid="sign-in-screen"]');
 
-    /* لا شركة بعد: الشارة تدعو إلى الاختيار ولا تعرض معرّفاً. */
-    await expect(page.getByTestId("company-badge-empty")).toBeVisible();
+    /* ‏**ولا شارةَ منشأةٍ هنا أصلاً، ولا قائمةَ جانبية:** البوّابة الأمامية
+       (ADR-0094) لا تُخفي المحتوى خلف شارة — لا تَرسمه. وبلا جلسةٍ ليس في
+       الصفحة إلّا البابُ نفسه، وهذا هو الفرق بين «نظامٌ محميّ» و«نظامٌ مفتوح
+       يقول لك اختر منشأةً أوّلاً». */
+    await expect(page.getByTestId("session-gate")).toBeVisible();
+    await expect(page.locator(".app-side")).toHaveCount(0);
+    await expect(page.getByTestId("company-badge-empty")).toHaveCount(0);
 
-    await page.getByTestId("sign-in-token").fill(TOKEN);
+    await pasteCredential(page, TOKEN);
     await page.getByTestId("sign-in-submit").click();
 
     await page.waitForSelector('[data-testid="company-picker"]');
@@ -130,7 +150,7 @@ test.describe("الدخول واختيار المنشأة", () => {
 
   test("الاعتماد المنقضي يُقرأ برمزه، وتُعرض الخطوة التالية", async ({ page }) => {
     await page.goto(signInUrl());
-    await page.getByTestId("sign-in-token").fill(EXPIRED);
+    await pasteCredential(page, EXPIRED);
     await page.getByTestId("sign-in-submit").click();
 
     await expect(page.getByTestId("problem-panel")).toHaveAttribute("data-code", "auth.credential_expired");
@@ -140,7 +160,7 @@ test.describe("الدخول واختيار المنشأة", () => {
 
   test("الاعتماد الذي لا يبلغ شركة يُرفض برمزه لا بقائمة فارغة", async ({ page }) => {
     await page.goto(signInUrl());
-    await page.getByTestId("sign-in-token").fill(NO_COMPANY);
+    await pasteCredential(page, NO_COMPANY);
     await page.getByTestId("sign-in-submit").click();
 
     await expect(page.getByTestId("problem-panel")).toHaveAttribute(
@@ -154,7 +174,7 @@ test.describe("الدخول واختيار المنشأة", () => {
 
   test("الاعتماد المرفوض يُرفض برمز مختلف عن المنقضي", async ({ page }) => {
     await page.goto(signInUrl());
-    await page.getByTestId("sign-in-token").fill("not-a-real-credential");
+    await pasteCredential(page, "not-a-real-credential");
     await page.getByTestId("sign-in-submit").click();
     await expect(page.getByTestId("problem-panel")).toHaveAttribute("data-code", "auth.credential_rejected");
   });
@@ -310,7 +330,13 @@ test.describe("القيد اليدوي — أول شاشة تكتب", () => {
   });
 
   test("شاشة الكتابة بلا منشأة تدلّ على الاختيار ولا تطلب معرّفاً", async ({ page }) => {
-    await page.goto("/voucher?" + new URLSearchParams({ lang: "ar", baseUrl: MOCK }).toString());
+    /* ‏**باعتمادٍ وبلا منشأة** — وهما حالتان لا حالة: من لا اعتماد له تردّه
+       البوّابةُ الأمامية قبل الشاشة، ومن له اعتمادٌ ولم يختر منشأةً بعد هو من
+       تخاطبه هذه الشاشة. ورابطٌ بلا اعتماد كان يقيس البوّابة ويظنّ أنه يقيس
+       دلالةَ الاختيار. */
+    await page.goto(
+      "/voucher?" + new URLSearchParams({ lang: "ar", baseUrl: MOCK, token: TOKEN }).toString()
+    );
     await expect(page.getByTestId("voucher-needs-company")).toBeVisible();
     await expect(page.getByTestId("voucher-go-sign-in")).toBeVisible();
     await expect(page.locator('[data-testid="voucher-screen"]')).toHaveCount(0);
@@ -358,7 +384,7 @@ test.describe("مصفوفة اللغات والمظاهر والعروض — ا�
           await page.setViewportSize({ width, height: 900 });
           await withTheme(page, theme);
           await page.goto(signInUrl(locale.code));
-          await page.getByTestId("sign-in-token").fill(TOKEN);
+          await pasteCredential(page, TOKEN);
           await page.getByTestId("sign-in-submit").click();
           await page.waitForSelector('[data-testid="company-picker"]');
 

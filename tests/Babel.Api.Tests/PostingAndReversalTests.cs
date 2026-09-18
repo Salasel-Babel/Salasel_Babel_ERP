@@ -150,10 +150,14 @@ public sealed class PostingAndReversalTests
         }
 
         // والقائمة **محصورة في موارد الإعداد**: ملفّ القدرات، وتأسيس المنشأة، واسم مركز
-        // التكلفة — وخطّةٌ في كتالوج المنصّة تُستبدل برمزها (ADR-0092). ولا واحد منها
-        // مورد دفتر.
+        // التكلفة — وخطّةٌ في كتالوج المنصّة تُستبدل برمزها (ADR-0092)، **ومعرّفُ دخولِ
+        // صاحب الجلسة وكلمتُه** (ADR-0094). ولا واحد منها مورد دفتر.
+        //
+        // و`put` على معرّف الدخول ليست تعديلاً جزئياً بل **استبدالٌ كامل idempotent**:
+        // ضبطٌ ثانٍ بالقيم نفسها يُنتج الحالة نفسها. وهو المعنى الذي تُطلَب `put` لأجله.
         Assert.Equal(
             [
+                "put /api/v1/access/password",
                 "put /api/v1/companies/{companyId}/capability-profile",
                 "put /api/v1/companies/{companyId}/cost-centers/{costCenterCode}",
                 "put /api/v1/companies/{companyId}/setup",

@@ -5,6 +5,12 @@ import { test, expect, type Page } from "@playwright/test";
 
 const MOCK = "http://127.0.0.1:5099";
 const COMPANY = "11111111-1111-4111-8111-111111111111";
+
+/* ── والاعتماد في الرابط ليس زينة ─────────────────────────────────────────
+   منذ البوّابة الأمامية (ADR-0094) لا تُرسَم شاشةٌ بلا جلسة: رابطٌ بلا اعتماد
+   يُنزل بوّابةَ الدخول مكان الشاشة، فتقيس المصفوفةُ البوّابةَ على كل مسارٍ
+   وتظنّ أنها تقيس النظام. وهو اعتمادُ الخادم الوهمي وحده، لا سرّ. */
+const TOKEN = "mock-token";
 const PROBLEM_COMPANY = "00000000-0000-4000-8000-0000000000ff";
 
 async function open(page: Page, options: { company?: string; lang?: string; rows?: number } = {}) {
@@ -15,6 +21,7 @@ async function open(page: Page, options: { company?: string; lang?: string; rows
     await route.continue({ url: target.toString() });
   });
   const q = new URLSearchParams({
+    token: TOKEN,
     lang: options.lang ?? "ar",
     baseUrl: MOCK,
     companyId: options.company ?? COMPANY,

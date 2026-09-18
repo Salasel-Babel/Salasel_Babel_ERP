@@ -230,6 +230,104 @@ internal sealed class PostgresAccessDirectory : IAccessDirectory
     }
 
     /// <inheritdoc />
+    public async Task<SignInRecord?> FindSignInAsync(string handle, CancellationToken cancellationToken = default)
+    {
+        await using NpgsqlConnection connection = await OpenAsync(cancellationToken).ConfigureAwait(false);
+        await using NpgsqlCommand command = new(
+            """
+            select tenant_id, user_id, handle, proof, set_at
+            from core.access_sign_in
+            where handle = $1
+            """,
+            connection);
+
+        command.Parameters.Add(Text(handle));
+
+        await using NpgsqlDataReader reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+        if (!await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+        {
+            return null;
+        }
+
+        return new SignInRecord(
+            new TenantId(reader.GetGuid(0)),
+            new UserId(reader.GetGuid(1)),
+            reader.GetString(2),
+            reader.GetString(3),
+            reader.GetFieldValue<DateTimeOffset>(4));
+    }
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// <b>والفعلُ كلُّه في معاملةٍ واحدة</b>: نزعُ المعرّف القديم ثم كتابةُ الجديد
+    /// فعلان، وبينهما لحظةٌ لا معرّفَ فيها للمستخدم أصلاً. ولو انقطع الاتصال بينهما
+    /// خرج المستخدمُ من بابه ولم يدخل الباب الجديد.
+    /// </remarks>
+    public async Task<bool> PutSignInAsync(
+        TenantId tenant,
+        UserId user,
+        string handle,
+        string proof,
+        DateTimeOffset now,
+        CancellationToken cancellationToken = default)
+    {
+        await using NpgsqlConnection connection = await OpenAsync(cancellationToken).ConfigureAwait(false);
+        await using NpgsqlTransaction transaction = await connection
+            .BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+
+        await using (NpgsqlCommand taken = new(
+            """
+            select user_id from core.access_sign_in where handle = $1 for update
+            """,
+            connection,
+            transaction))
+        {
+            taken.Parameters.Add(Text(handle));
+            object? owner = await taken.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
+            if (owner is Guid existing && existing != user.Value)
+            {
+                return false;
+            }
+        }
+
+        await using (NpgsqlCommand clear = new(
+            """
+            delete from core.access_sign_in where user_id = $1 and handle <> $2
+            """,
+            connection,
+            transaction))
+        {
+            clear.Parameters.Add(Uuid(user.Value));
+            clear.Parameters.Add(Text(handle));
+            await clear.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        await using (NpgsqlCommand write = new(
+            """
+            insert into core.access_sign_in (handle, tenant_id, user_id, proof, set_at)
+            values ($1, $2, $3, $4, $5)
+            on conflict (handle) do update
+              set tenant_id = excluded.tenant_id,
+                  user_id   = excluded.user_id,
+                  proof     = excluded.proof,
+                  set_at    = excluded.set_at
+            """,
+            connection,
+            transaction))
+        {
+            write.Parameters.Add(Text(handle));
+            write.Parameters.Add(Uuid(tenant.Value));
+            write.Parameters.Add(Uuid(user.Value));
+            write.Parameters.Add(Text(proof));
+            write.Parameters.Add(Instant(now));
+            await write.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+        return true;
+    }
+
+    /// <inheritdoc />
     public async Task<Membership?> FindMembershipAsync(Guid company, UserId user, CancellationToken cancellationToken = default)
     {
         await using NpgsqlConnection connection = await OpenAsync(cancellationToken).ConfigureAwait(false);

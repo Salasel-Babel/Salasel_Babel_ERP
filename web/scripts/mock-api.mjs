@@ -242,6 +242,10 @@ const SESSION = {
       ],
       decimalPlaces: 2,
       defaultCostCenter: "cc.main",
+      /* العملة ووحدتها الصغرى تتبعان المنشأة منذ ADR-0089، والعقد يُلزم بهما
+         حاضرتين — والفاكّ المولَّد يرفض الجسم الناقص قبل أن تراه الشاشة. */
+      currencyCode: "SAR",
+      minorUnits: 2,
     },
     {
       companyId: MOCK_COMPANY_NOT_SET_UP,
@@ -250,6 +254,9 @@ const SESSION = {
       nameTranslations: [],
       decimalPlaces: null,
       defaultCostCenter: null,
+      /* والمنشأة التي لم تُؤسَّس: حاضرةٌ بقيمة null لا غائبة. */
+      currencyCode: null,
+      minorUnits: null,
     },
   ],
 };
@@ -263,6 +270,8 @@ const SETUP = {
   ],
   decimalPlaces: 2,
   defaultCostCenter: "cc.main",
+  currencyCode: "SAR",
+  minorUnits: 2,
   costCenters: [
     { code: "cc.main", nameAr: "المركز الرئيسي", nameTranslations: [{ name: "en", value: "Head office" }], state: "Active", isDefault: true, suspensionReason: "" },
     { code: "cc.branch", nameAr: "فرع جدة", nameTranslations: [{ name: "en", value: "Jeddah branch" }], state: "Active", isDefault: false, suspensionReason: "" },

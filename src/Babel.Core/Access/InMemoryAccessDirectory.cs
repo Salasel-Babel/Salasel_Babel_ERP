@@ -21,6 +21,7 @@ public sealed class InMemoryAccessDirectory : IAccessDirectory
     private readonly Dictionary<string, CredentialEntry> _credentials = new(StringComparer.Ordinal);
     private readonly Dictionary<Guid, SessionEntry> _sessions = [];
     private readonly List<MembershipEntry> _memberships = [];
+    private readonly Dictionary<string, SignInEntry> _signIns = new(StringComparer.Ordinal);
 
     /// <inheritdoc />
     public Task<bool> TryGrantAsync(
@@ -160,6 +161,49 @@ public sealed class InMemoryAccessDirectory : IAccessDirectory
                     .Where(entry => entry.Tenant == tenant && entry.Membership.User == user)
                     .Select(static entry => entry.Membership)
                     .OrderBy(static membership => membership.Company.ToString(), StringComparer.Ordinal)]);
+        }
+    }
+
+    /// <inheritdoc />
+    public Task<SignInRecord?> FindSignInAsync(string handle, CancellationToken cancellationToken = default)
+    {
+        lock (_gate)
+        {
+            return Task.FromResult(
+                _signIns.TryGetValue(handle, out SignInEntry entry)
+                    ? new SignInRecord(entry.Tenant, entry.User, handle, entry.Proof, entry.SetAt)
+                    : null);
+        }
+    }
+
+    /// <inheritdoc />
+    public Task<bool> PutSignInAsync(
+        TenantId tenant,
+        UserId user,
+        string handle,
+        string proof,
+        DateTimeOffset now,
+        CancellationToken cancellationToken = default)
+    {
+        lock (_gate)
+        {
+            if (_signIns.TryGetValue(handle, out SignInEntry taken) && taken.User != user)
+            {
+                return Task.FromResult(false);
+            }
+
+            /* المعرّفُ القديم لهذا المستخدم يُنزَع: للمستخدم معرّفٌ واحد لا اثنان.
+               وبلا هذا السطر يبقى البابُ الأول مفتوحاً بعد أن ظنّ صاحبُه أنه نقله. */
+            foreach (string previous in _signIns
+                         .Where(pair => pair.Value.User == user)
+                         .Select(pair => pair.Key)
+                         .ToList())
+            {
+                _signIns.Remove(previous);
+            }
+
+            _signIns[handle] = new SignInEntry(tenant, user, proof, now);
+            return Task.FromResult(true);
         }
     }
 
@@ -340,6 +384,8 @@ public sealed class InMemoryAccessDirectory : IAccessDirectory
     }
 
     private sealed record MembershipEntry(TenantId Tenant, Membership Membership, UserId GrantedBy);
+
+    private readonly record struct SignInEntry(TenantId Tenant, UserId User, string Proof, DateTimeOffset SetAt);
 
     private readonly record struct EnrolmentEntry(TenantId Tenant, UserId User, DateTimeOffset ExpiresAt, bool Consumed);
 

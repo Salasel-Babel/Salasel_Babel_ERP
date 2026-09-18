@@ -446,7 +446,12 @@ describe("القسم في هيكل التطبيق", () => {
   });
 
   it("شاشة السجلّ تطلب اختيار منشأة قبل أن تقرأ شيئاً", async () => {
-    globalThis.localStorage?.clear();
+    /* والاعتمادُ باقٍ والمنشأةُ وحدها فارغة: المقيسُ «اخترتُ اعتماداً ولم أختر
+       منشأة»، ومحوُ الاعتماد معها يُنزل البوّابةَ فيصير الشاهدُ يقيس الحجب. */
+    globalThis.localStorage?.setItem(
+      "sb-api-config",
+      JSON.stringify({ baseUrl: "", token: "t", companyId: "", book: "MAIN", period: "" })
+    );
     await mountApp("/contracting", { "/health": HEALTH });
     expect(screen.getByTestId("contracting-needs-company")).toBeTruthy();
   });

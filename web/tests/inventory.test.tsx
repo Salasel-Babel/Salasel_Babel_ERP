@@ -94,12 +94,14 @@ function Wrap(props: { children: ReactNode; locale?: string; transport: Transpor
   );
 }
 
-/* الإعداد يُقرأ من نصّ الاستعلام (`app/config.ts`)، فالشركة تُثبَّت به. */
+/* الإعداد يُقرأ من نصّ الاستعلام (`app/config.ts`)، فالشركة تُثبَّت به.
+   **والاعتمادُ يُثبَّت معها في الحالتين**: المقيسُ هنا المنشأةُ لا المصادقة، وبلا
+   اعتمادٍ تنزل البوّابةُ الأمامية (`SessionGate`) فلا تُرسَم شاشةٌ تُقاس. */
 function withCompany(): void {
-  globalThis.history.replaceState(null, "", "/?companyId=" + COMPANY);
+  globalThis.history.replaceState(null, "", "/?token=t&companyId=" + COMPANY);
 }
 function withoutCompany(): void {
-  globalThis.history.replaceState(null, "", "/?companyId=");
+  globalThis.history.replaceState(null, "", "/?token=t&companyId=");
 }
 
 /* ═══════════════════════════════════════════════════ عيّنات على شكل العقد */

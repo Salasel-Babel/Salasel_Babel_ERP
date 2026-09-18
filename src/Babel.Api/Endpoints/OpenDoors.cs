@@ -33,8 +33,10 @@ internal static class OpenDoors
     ///   <item><c>/docs</c> — صفحةٌ ساكنة تقرأ ذلك الملفّ. <b>والمتصفّح لا يستطيع أن يضع
     ///         ترويسة <c>Authorization</c> على تنقّلٍ عُلوي</b>، فصفحةُ توثيق محميّة
     ///         بـ<c>Bearer</c> غير قابلة للفتح أصلاً.</item>
-    ///   <item><c>/api/v1/access/sessions</c> و<c>…/renewal</c> — من يطلب اعتماداً لا يملك
-    ///         اعتماداً. والاعتماد ليس غائباً عنهما بل <b>منقولاً من الترويسة إلى الجسم</b>.</item>
+    ///   <item><c>/api/v1/access/sessions</c> و<c>…/password</c> و<c>…/renewal</c> — من يطلب
+    ///         اعتماداً لا يملك اعتماداً. والاعتماد ليس غائباً عنها بل <b>منقولاً من الترويسة
+    ///         إلى الجسم</b>. و<c>…/password</c> أشدُّها تعرّضاً لأنه يُطرَق بقوائم كلماتٍ
+    ///         شائعة، ولذلك هو في <see cref="RateLimited"/> كإخوته.</item>
     ///   <item><c>/api/v1/tenants</c> — <b>التسجيل الأول</b>. ومن ليس عنده حساب هو بالضبط
     ///         من يستعمله، فاشتراط اعتماد عليه يجعل المنتَج غير قابل للشراء. وما لا يُفتح
     ///         بفتحه: لا يقرأ بيانات مستأجرٍ قائم ولا يكشف وجوده، والخطّة <b>لا تُختار
@@ -49,6 +51,7 @@ internal static class OpenDoors
             ApiRoutes.OpenApiDocument,
             ApiRoutes.Docs,
             AccessRoutes.Sessions,
+            AccessRoutes.SessionsByPassword,
             AccessRoutes.SessionRenewal,
             TenantRoutes.Tenants,
         }.OrderBy(static path => path, StringComparer.Ordinal),
@@ -64,7 +67,13 @@ internal static class OpenDoors
     /// </summary>
     public static IReadOnlyList<string> RateLimited { get; } =
     [
-        .. new[] { AccessRoutes.Sessions, AccessRoutes.SessionRenewal, TenantRoutes.Tenants }
+        .. new[]
+        {
+            AccessRoutes.Sessions,
+            AccessRoutes.SessionsByPassword,
+            AccessRoutes.SessionRenewal,
+            TenantRoutes.Tenants,
+        }
             .OrderBy(static path => path, StringComparer.Ordinal),
     ];
 

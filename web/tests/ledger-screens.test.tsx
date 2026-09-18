@@ -355,9 +355,13 @@ describe("عقد الملاحة للشاشات الأربع", () => {
   });
 
   it("وكلُّ واحدةٍ تُعرض بلا منشأة مختارة بطريقٍ إلى اختيارها لا برسالة خطأ", async () => {
+      /* ‏**والاعتمادُ باقٍ والمنشأةُ وحدها فارغة** — وهذا ما يقيسه هذا الشاهد:
+         «اخترتُ اعتماداً ولم أختر منشأة». وإفراغُ الاعتماد معها يُنزل البوّابة
+         الأمامية (‏`SessionGate`) فلا تُرسَم شاشةٌ أصلاً، فيصير الشاهدُ يقيس
+         الحجبَ لا الطريقَ إلى الاختيار. */
     globalThis.localStorage.setItem(
       "sb-api-config",
-      JSON.stringify({ baseUrl: "", token: "", companyId: "", book: "MAIN", period: "" })
+      JSON.stringify({ baseUrl: "", token: "t", companyId: "", book: "MAIN", period: "" })
     );
     for (const at of LEDGER_PATHS) {
       await mount({ path: at, transport: stub({ routes: {} }) });

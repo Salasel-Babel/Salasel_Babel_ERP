@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     d9ed690c2c2d6377fabb6bb515d9d2bc26577030635593c2d1d10e892c805782
+     b8ca0fd699ea1f5d061bda3328419adca534050a63666a733bc407e334cc869c
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -1797,6 +1797,14 @@ export interface OpenSessionRequest {
   enrolmentCredential: string;
 }
 
+/** طلب فتح جلسة ببريد وكلمة مرور. ولا حقل مستأجر فيه ولا حقل منشأة: البريد يقود إلى مستخدمه والمستخدم إلى مستأجره. / A request to open a session with an email and a password. It carries no tenant field and no company field: the email leads to its user and the user to their tenant. */
+export interface OpenSessionWithPasswordRequest {
+  /** البريد كما كتبه المستخدم. يُسوّى في الخادم — تُشذَّب أطرافُه وتُصغَّر حروفه. / The email as typed. The server normalises it — trimmed and lower-cased. */
+  handle: string;
+  /** كلمة المرور كما كُتبت، بلا تشذيب: الفراغ محرفٌ معتبَر فيها. / The password exactly as typed, untrimmed: whitespace is a significant character in it. */
+  password: string;
+}
+
 /** قيمةُ معامِل **نصّاً وغيرَ سالبة**، بمقياس ثمانٍ يسع النسبة والمبلغ والعدد معاً. و**النسبة كسرٌ عشري لا مئوية**: خمسة عشر بالمئة تُكتب 0.15 لا 15 — وقيمةٌ تُكتب 15 في مفتاحٍ صنفُه نسبة تُرفض باسمها ولا تُصحَّح صامتةً. والصنف يقوله الحقل `kind` لا شكلُ الرقم. / A parameter value as a **non-negative string** at scale eight, wide enough for a rate, an amount and a count alike. A **rate is a decimal fraction, not a percentage**: fifteen percent is 0.15, never 15 — a value written 15 under a key whose kind is a rate is refused by name and never silently corrected. The kind is stated by the `kind` field, not by the shape of the number. */
 /* ParameterAmount مُعرَّف في ../money كنوع محتجز وقت التشغيل. */
 
@@ -2638,6 +2646,22 @@ export interface SessionRevocation {
   revokedAt: string;
   /** الجلسة المُبطَلة. / The revoked session. */
   sessionId: string;
+}
+
+/** طلب ضبط معرّف الدخول وكلمة المرور لصاحب الجلسة. ولا معرّف مستخدم فيه: الهوية من الاعتماد وحده. / A request to set the session holder's sign-in handle and password. It carries no user identifier: identity comes from the credential alone. */
+export interface SetPasswordRequest {
+  /** البريد المطلوب. / The requested email. */
+  handle: string;
+  /** كلمة المرور المطلوبة — اثنا عشر محرفاً فأكثر، ولا قواعد تركيب. / The requested password — twelve characters or more, with no composition rules. */
+  password: string;
+}
+
+/** ما يُردّ بعد الضبط: المعرّف بعد التسوية ولحظته — **ولا شيء عن كلمة المرور**. / What the set returns: the normalised handle and its instant — **and nothing about the password**. */
+export interface SignInSet {
+  /** المعرّف كما أُودع بعد التسوية، فيراه المستخدم كما سيكتبه. / The handle as stored after normalisation, so the user sees it as they will type it. */
+  handle: string;
+  /** لحظة الضبط. بصيغة ISO 8601 الدوّارة بتوقيت UTC وبأرقام لاتينية — الصيغة نفسها التي يقرأ بها الخادم صلاحية اعتماده من إعداده، فلا وقتٌ يُكتب بشكل ويُقرأ بآخر. / The instant of the set. In round-trip ISO 8601, UTC, Latin digits — the same spelling the server reads a credential expiry with from its own configuration, so no instant is written one way and read another. */
+  setAt: string;
 }
 
 export interface SourceDocument {

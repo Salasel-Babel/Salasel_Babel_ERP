@@ -33,7 +33,7 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 import { useCallback, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { readSession, renewSession, revokeSession } from "../../api/generated/client";
+import { readSession, renewSession, revokeSession, setPassword } from "../../api/generated/client";
 import type { AccessSession, SessionRevocation } from "../../api/generated/types";
 import { ProblemError } from "../../api/transport";
 import { useApi } from "../../app/api-context";
@@ -59,6 +59,9 @@ import {
 /** أقصر اعتمادٍ يقبله العقد. ولا نحوَ ثانياً مكتوباً هنا. */
 const CREDENTIAL_MIN = 16;
 
+/** أقصر كلمة مرورٍ يقبلها الخادم — والطولُ وحده ما يُقاس. */
+const PASSWORD_MIN = 12;
+
 /** الرمز الذي يردّ به الخادم اعتمادَ تزويدٍ لا عائلة له. */
 const NOT_ISSUED_HERE = "access.session_not_issued_here";
 
@@ -78,6 +81,12 @@ export function SessionScreen(): ReactNode {
   });
 
   const [pasted, setPasted] = useState("");
+
+  const [newHandle, setNewHandle] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [signInBusy, setSignInBusy] = useState(false);
+  const [signInFailure, setSignInFailure] = useState<unknown>(null);
+  const [signInDone, setSignInDone] = useState("");
   const [renewed, setRenewed] = useState<AccessSession | null>(null);
   const [renewBusy, setRenewBusy] = useState(false);
   const [renewFailure, setRenewFailure] = useState<unknown>(null);
@@ -120,6 +129,25 @@ export function SessionScreen(): ReactNode {
     [anonymous, config, fireArrive, setConfig]
   );
 
+  /* والبريدُ يُضبط لصاحب هذه الجلسة وحده: الخادم يقرأ الهوية من الاعتماد،
+     فلا حقلَ «مستخدم» هنا يُكتب فيه غيرُ صاحبه. والكلمةُ تُمحى من الحقل فور
+     نجاحها — لا تبقى مكتوبةً في شاشةٍ مفتوحة. */
+  const saveSignIn = useCallback(async () => {
+    setSignInBusy(true);
+    setSignInFailure(null);
+    try {
+      const done = await setPassword(transport, {
+        body: { handle: newHandle.trim(), password: newPassword },
+      });
+      setSignInDone(done.handle);
+      setNewPassword("");
+    } catch (problem) {
+      setSignInFailure(problem);
+    } finally {
+      setSignInBusy(false);
+    }
+  }, [newHandle, newPassword, transport]);
+
   const doRevoke = useCallback(async () => {
     setRevokeBusy(true);
     setRevokeFailure(null);
@@ -152,6 +180,87 @@ export function SessionScreen(): ReactNode {
       </header>
 
       <AdminSectionNav current="/admin/session" />
+
+      {/* ═══════════════════════════ ٠ · بريدُ الدخول ═════════════════ */}
+      <StatePanel
+        title={t("screen.session.signInTitle")}
+        note={t("screen.session.signInNote")}
+        testId="admin-session-signin"
+      >
+        {config.token === "" ? (
+          <EmptyState
+            title={t("screen.session.noCredentialTitle")}
+            body={t("screen.session.noCredentialBody")}
+            small
+            testId="admin-session-signin-no-credential"
+          />
+        ) : (
+          <div className="stack" data-testid="admin-session-signin-form">
+            <div className="grid fields-half">
+              <AdminField
+                id="adm-se-handle"
+                label={t("screen.signIn.emailLabel")}
+                hint={t("screen.session.handleHint")}
+                source="typed"
+                required
+              >
+                <input
+                  id="adm-se-handle"
+                  className="ctl"
+                  type="email"
+                  dir="ltr"
+                  autoComplete="username"
+                  spellCheck={false}
+                  placeholder={t("screen.signIn.emailPh")}
+                  data-testid="admin-session-handle"
+                  value={newHandle}
+                  onChange={(e) => setNewHandle(e.target.value)}
+                />
+              </AdminField>
+              <AdminField
+                id="adm-se-password"
+                label={t("screen.signIn.passwordLabel")}
+                hint={t("screen.signIn.passwordHint")}
+                source="typed"
+                required
+              >
+                <input
+                  id="adm-se-password"
+                  className="ctl"
+                  type="password"
+                  dir="ltr"
+                  autoComplete="new-password"
+                  data-testid="admin-session-password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                />
+              </AdminField>
+            </div>
+            <div className="inline-group">
+              <Button
+                label={t("screen.session.signInSave")}
+                kind="primary"
+                loading={signInBusy}
+                disabled={
+                  signInBusy || !newHandle.includes("@") || newPassword.length < PASSWORD_MIN
+                }
+                onClick={() => void saveSignIn()}
+                testId="admin-session-signin-save"
+              />
+            </div>
+            {signInFailure !== null ? <ProblemPanel error={signInFailure} /> : null}
+            {signInDone !== "" ? (
+              <div className="alert alert--success" data-testid="admin-session-signin-done">
+                <div className="body">
+                  <p>
+                    {t("screen.session.signInDone")} <Instant value={signInDone} />
+                  </p>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        )}
+      </StatePanel>
 
       {/* ═══════════════════════════ ١ · من أنا الآن ═══════════════════ */}
       <StatePanel

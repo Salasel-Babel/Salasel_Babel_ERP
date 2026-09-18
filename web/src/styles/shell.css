@@ -312,3 +312,49 @@
    قبل الرمز علامتان لشيءٍ واحد — تُقرأان ضجيجاً لا ترتيباً. وحالةُ «هنا
    أنت» تقولها خلفيةُ الورقة كما تقولها في الطبقة الأولى. */
 .subnav .subitem::before{ display:none }
+
+/* ═══════════════════════════════════════════════ ٨ · البوّابة الأمامية
+   صفحةٌ تحجب النظام كلَّه: علامةٌ وشاشةُ دخول، **ولا قشرة خلفها** — لا قائمةً
+   جانبية ولا مبدّلَ أنظمة. وصفحةُ دخولٍ لها قائمةُ تنقّل تقول للعميل إنه داخلٌ
+   أصلاً، وهو بالضبط الانطباع الذي جاءت هذه الصفحة تمنعه. */
+.gate{
+  min-block-size:100dvh;
+  display:flex; align-items:flex-start; justify-content:center;
+  padding:var(--space-48) var(--space-16);
+  background:var(--backdrop-cinematic);
+  background-attachment:fixed;
+}
+.gate__card{
+  inline-size:min(720px, 100%);
+  display:flex; flex-direction:column; gap:var(--space-16);
+  padding:var(--space-24);
+  background:var(--color-surface);
+  border:var(--border-width) solid var(--edge-strong);
+  border-radius:var(--radius-overlay);
+  box-shadow:var(--elevation-overlay);
+}
+@media (max-width:620px){
+  .gate{ padding:var(--space-16) var(--space-12) }
+  .gate__card{ padding:var(--space-16) }
+}
+.gate__head{
+  display:flex; align-items:center; justify-content:space-between;
+  gap:var(--space-16); flex-wrap:wrap;
+}
+.gate__switchers{ display:flex; align-items:center; gap:var(--space-8) }
+.gate__brand{
+  display:flex; align-items:center; gap:var(--space-10);
+  font-family:var(--font-display); font-weight:var(--font-weight-bold);
+  font-size:var(--font-size-3xl); line-height:var(--line-display);
+  color:var(--color-text);
+}
+.gate__brand .mark{
+  inline-size:34px; block-size:34px; flex:none;
+  border-radius:var(--radius-sm);
+  background:linear-gradient(140deg, var(--color-primary), var(--brand-mark-accent));
+}
+.gate__return{
+  margin:0; padding-block-start:var(--space-12);
+  border-block-start:var(--border-width) solid var(--edge-line);
+  font-size:var(--font-size-sm); color:var(--color-text-subtle);
+}

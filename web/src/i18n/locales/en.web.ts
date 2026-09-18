@@ -167,6 +167,9 @@ export const messages: MessageTree = {
       reRegistry: "Register and parties",
       reLease: "Leases and collection",
     },
+    gate: {
+      returnTo: "After you sign in you return to:",
+    },
     launcher: {
       open: "Systems",
       title: "Salasel Babel systems",
@@ -778,6 +781,14 @@ export const messages: MessageTree = {
       },
     },
     signIn: {
+      emailLabel: "Sign-in email",
+      emailPh: "name@company.sa",
+      emailHint: "This is your handle on the platform. Upper and lower case are the same.",
+      passwordLabel: "Password",
+      passwordHint: "Twelve characters or more. No upper case, digit or symbol is demanded — length alone is what is measured.",
+      noAccount: "A new company, or an invitation you received",
+      credentialWay: "Sign in with a credential — for demos and enrolment",
+      credentialWayNote: "Paste a credential you already hold: the demo token, or an active credential. This is the path for trying the system, not for daily work.",
       title: "Sign in and choose a company",
       lede: "Identity comes from the credential alone. Paste yours and the companies it reaches appear by name — the company identifier is chosen, never typed.",
       action: "Sign in",
@@ -1048,6 +1059,11 @@ export const messages: MessageTree = {
       },
     },
     session: {
+      signInTitle: "My sign-in email and password",
+      signInNote: "With these you sign in every morning without pasting a credential. They are set for this session's holder alone — identity comes from the credential, not from a typed field.",
+      signInSave: "Save sign-in email and password",
+      signInDone: "Saved. From now on you sign in with this email:",
+      handleHint: "An email address. Upper and lower case are the same, and whitespace is trimmed.",
       title: "My session — its credential and what happens to it",
       lede: "Who I am now, which companies my credential reaches, and two acts with no third: renew and revoke.",
       whoTitle: "Who I am now",

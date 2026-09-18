@@ -540,6 +540,160 @@ public sealed class AccessService : IApplicationService
         return Result<IReadOnlyList<Guid>>.Success(companies);
     }
 
+    /// <summary>
+    /// يفتح جلسة <b>ببريدٍ وكلمة مرور</b> — وهو عاملُ الإثبات الأوّل للإنسان.
+    /// <para>
+    /// <b>وما يُنتَج جلسةٌ كاملة كجلسة الانتساب سواءً بسواء:</b> اعتمادٌ فاعل قصيرُ
+    /// العمر، واعتمادُ تجديدٍ يدور، ومعرّفُ عائلةٍ هو ما يُبطَل. فكلمةُ المرور تُنتج
+    /// جلسةً ثم تنصرف — ولا تصير هي الاعتماد، ولا يتغيّر شيءٌ في الإبطال الفوريّ ولا
+    /// في كشف إعادة الاستعمال (‏ADR-0045 قائمٌ كما هو).
+    /// </para>
+    /// <para>
+    /// <b>وثلاثةُ أبوابِ رفضٍ تُردّ برمزٍ واحد: <c>access.credential_rejected</c>.</b>
+    /// معرّفٌ مشوّه، ومعرّفٌ لا صفَّ له، وكلمةٌ خاطئة — ثلاثتها جوابٌ واحد. ورمزٌ
+    /// يقول «هذا البريد غير مسجَّل» يجعل بابَ الدخول <b>كشّافَ عملاء</b> بالتجريب.
+    /// </para>
+    /// <para>
+    /// <b>والزمنُ يتساوى كما يتساوى النصّ:</b> معرّفٌ لا صفَّ له يُنفق اشتقاقاً كاملاً
+    /// قبل أن يُردّ (<see cref="AccessPasswords.WasteEqualTime"/>). وبابٌ يردّ في
+    /// ميلي‌ثانيةٍ على غير المسجَّل وفي ستّمئةِ ألفِ تكرارٍ على المسجَّل يُعلن القائمةَ
+    /// لمن يقيس الساعة، ولو كان نصُّ الرفض واحداً.
+    /// </para>
+    /// </summary>
+    /// <param name="handle">البريد كما كتبه المستخدم — يُسوّى هنا.</param>
+    /// <param name="password">كلمة المرور كما كُتبت، بلا تشذيب.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    [RequiresEntitlement(BabelModule.Core, EntitlementAccess.Read)]
+    public async ValueTask<Result<OpenedSession>> OpenSessionWithPasswordAsync(
+        string handle,
+        string password,
+        CancellationToken cancellationToken = default)
+    {
+        string normalised = AccessPasswords.Normalise(handle);
+        string offered = password ?? string.Empty;
+
+        if (!AccessPasswords.HasHandleShape(normalised) || !AccessPasswords.HasPasswordLength(offered))
+        {
+            AccessPasswords.WasteEqualTime(offered);
+            return Result<OpenedSession>.Failure(AccessErrors.CredentialRejected);
+        }
+
+        SignInRecord? record = await _directory
+            .FindSignInAsync(normalised, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (record is null)
+        {
+            AccessPasswords.WasteEqualTime(offered);
+            return Result<OpenedSession>.Failure(AccessErrors.CredentialRejected);
+        }
+
+        if (!AccessPasswords.Verify(offered, record.Proof))
+        {
+            return Result<OpenedSession>.Failure(AccessErrors.CredentialRejected);
+        }
+
+        // الاستحقاق **بعد** المصادقة وبنيّة قراءة: من انقطع اشتراكه يدخل ويقرأ (ADR-0034).
+        Result gate = await _enforcer
+            .EnsureAsync(record.Tenant, record.User, BabelModule.Core, EntitlementAccess.Read, "Core.Access.OpenSessionWithPassword", cancellationToken)
+            .ConfigureAwait(false);
+
+        if (gate.IsFailure)
+        {
+            return Result<OpenedSession>.Failure(gate.Errors);
+        }
+
+        DateTimeOffset now = _clock.GetUtcNow();
+        Guid sessionId = Guid.CreateVersion7();
+        Minted access = Mint(now, _policy.AccessLifetime);
+        Minted refresh = Mint(now, _policy.RefreshLifetime);
+
+        await _directory
+            .OpenSessionAsync(
+                sessionId, record.Tenant, record.User,
+                access.Digest, access.ExpiresAt,
+                refresh.Digest, refresh.ExpiresAt,
+                now, cancellationToken)
+            .ConfigureAwait(false);
+
+        /* الفعلُ يُسمّى باسمه في السجلّ: «فُتحت بكلمة مرور» تفترق عن «فُتحت بانتساب».
+           ومن يقرأ السجلَّ بعد حادثةٍ يحتاج أن يعرف أيُّ بابٍ استُعمل. */
+        await RecordAsync(
+                record.Tenant, record.User, "access.session_opened_with_password", sessionId,
+                "الدورة 1", cancellationToken)
+            .ConfigureAwait(false);
+
+        return await DescribeAsync(sessionId, record.Tenant, record.User, generation: 1, access, refresh, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// يضبط معرّفَ دخولِ صاحبِ الجلسة وكلمةَ مروره — <b>لنفسه لا لغيره</b>.
+    /// <para>
+    /// والمستأجرُ والمستخدمُ يأتيان من <b>الاعتماد المُقدَّم</b> لا من جسم الطلب، فلا
+    /// حقلَ يكتبه العميل يقرّر لمن تُضبط كلمةُ المرور. وهو الحكم نفسه المكتوب في
+    /// العقد المنشور: «الهوية تُشتقّ من الاعتماد وحده».
+    /// </para>
+    /// <para>
+    /// <b>ولا كلمةٌ قديمة تُطلب هنا</b>، والسببُ أن الجلسة القائمة <b>هي</b> الإثبات:
+    /// من يحمل اعتماداً فاعلاً أثبت نفسه قبل خمس عشرة دقيقة على الأكثر. وطلبُ
+    /// القديمة يحمي من جلسةٍ مسروقة مفتوحة — وذاك ما يحميه الإبطال، لا حقلٌ ثانٍ.
+    /// </para>
+    /// </summary>
+    /// <param name="tenant">المستأجر — من الاعتماد.</param>
+    /// <param name="user">المستخدم — من الاعتماد.</param>
+    /// <param name="handle">البريد المطلوب.</param>
+    /// <param name="password">كلمة المرور المطلوبة.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    [RequiresEntitlement(BabelModule.Core, EntitlementAccess.Write)]
+    public async ValueTask<Result<SignInSet>> SetPasswordAsync(
+        TenantId tenant,
+        UserId user,
+        string handle,
+        string password,
+        CancellationToken cancellationToken = default)
+    {
+        string normalised = AccessPasswords.Normalise(handle);
+
+        /* وهنا يُقال أيُّ الشرطين انكسر — خلافاً لباب الدخول وعمداً: من يضبط معرّفه
+           يستحقّ أن يعرف ما يُصلحه، ومن يخمّن لا يبلغ هذا الباب بلا جلسة أصلاً. */
+        if (!AccessPasswords.HasHandleShape(normalised))
+        {
+            return Result<SignInSet>.Failure(AccessErrors.HandleShapeRejected);
+        }
+
+        if (!AccessPasswords.HasPasswordLength(password))
+        {
+            return Result<SignInSet>.Failure(AccessErrors.PasswordLengthRejected);
+        }
+
+        Result gate = await _enforcer
+            .EnsureAsync(tenant, user, BabelModule.Core, EntitlementAccess.Write, "Core.Access.SetPassword", cancellationToken)
+            .ConfigureAwait(false);
+
+        if (gate.IsFailure)
+        {
+            return Result<SignInSet>.Failure(gate.Errors);
+        }
+
+        DateTimeOffset now = _clock.GetUtcNow();
+        bool written = await _directory
+            .PutSignInAsync(tenant, user, normalised, AccessPasswords.Derive(password), now, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (!written)
+        {
+            return Result<SignInSet>.Failure(AccessErrors.HandleTaken);
+        }
+
+        /* ولا يُكتب المعرّفُ في تفصيل السجلّ: هو بريدُ إنسان، وسجلُّ التدقيق يُقرأ
+           أوسعَ ممّا يُقرأ جدولُ الوصول. ويكفي «ضُبطت» ومتى ولمن. */
+        await RecordAsync(tenant, user, "access.password_set", user.Value, "ضُبطت كلمةُ المرور", cancellationToken)
+            .ConfigureAwait(false);
+
+        return Result<SignInSet>.Success(new SignInSet(normalised, now));
+    }
+
     private static bool Refused(string presented, out Error? error)
     {
         error = string.IsNullOrEmpty(presented) || presented.Length <= AccessLimits.MaximumPresentedLength

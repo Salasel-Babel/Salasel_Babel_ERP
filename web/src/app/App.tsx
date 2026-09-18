@@ -11,7 +11,7 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
+import { Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { health } from "../api/generated/client";
 import { useApi } from "./api-context";
 import { useT } from "../i18n/react";
@@ -19,6 +19,7 @@ import { HealthBadge, LocaleSwitcher, ThemeSwitcher } from "./shell/Switchers";
 import { CompanyBadge } from "./shell/CompanyBadge";
 import { KeyboardHelp } from "./shell/KeyboardHelp";
 import { CommandPalette } from "./shell/CommandPalette";
+import { ScreenNav } from "./shell/ScreenNav";
 import { SectionNav } from "./shell/SectionNav";
 import { VoiceDock } from "./shell/VoiceDock";
 import { AgentWorkspace } from "../agent";
@@ -91,238 +92,13 @@ export function AppShell(): ReactNode {
 
         <SectionNav path={path} />
 
-        {/*
-          ⚠ هذه القائمة **نسخةٌ ثانية من `SCREENS`** في `shell/sections.ts`، ولا
-          شيء يقارن الاثنتين. ولوحة الأوامر تُبنى من `SCREENS`، فالانحراف بينهما
-          لا يظهر عطلاً بل **شاشةً تُفتح بـCtrl+K ولا يراها من يقرأ الملاحة** —
-          وهو أسوأ من رابطٍ مكسور لأنه لا يُشتكى منه. ومن يبني قسماً يضيف صفّه
-          في المكانين حتى تُقاد هذه القائمة من `SCREENS` (انظر التوصية في تقرير
-          القسم المخزني).
-        */}
-        <p className="sections__label">{t("app.nav.screens")}</p>
-        <Link to="/" className="navitem" data-testid="nav-trial-balance">
-          {t("app.nav.trialBalance")}
-        </Link>
-        <Link to="/voucher" className="navitem" data-testid="nav-voucher">
-          {t("app.nav.voucher")}
-        </Link>
-        <Link to="/sign-in" className="navitem" data-testid="nav-sign-in">
-          {t("app.nav.signIn")}
-        </Link>
-        <Link to="/contract" className="navitem" data-testid="nav-contract">
-          {t("app.nav.contract")}
-        </Link>
-        <Link to="/voice" className="navitem" data-testid="nav-voice">
-          {t("app.nav.voice")}
-        </Link>
-        <Link to="/design" className="navitem" data-testid="nav-design">
-          {t("app.nav.design")}
-        </Link>
-        <Link to="/inventory/stock" className="navitem" data-testid="nav-inventory-stock">
-          {t("inventory.nav.stock")}
-        </Link>
-        <Link to="/inventory/items" className="navitem" data-testid="nav-inventory-items">
-          {t("inventory.nav.items")}
-        </Link>
-        <Link to="/inventory/movements" className="navitem" data-testid="nav-inventory-movements">
-          {t("inventory.nav.movements")}
-        </Link>
-        <Link to="/inventory/valuation" className="navitem" data-testid="nav-inventory-valuation">
-          {t("inventory.nav.valuation")}
-        </Link>
-        {/* ── الموارد البشرية: ثمانٍ بترتيب العمل. وهي **كتلةٌ واحدة متّصلة**
-            كي يندمج جانباها آلياً حين يلمس أسطولٌ آخر هذه القائمة. */}
-        <Link to="/hr/pay-components" className="navitem" data-testid="nav-hr-pay-components">
-          {t("hr.nav.payComponents")}
-        </Link>
-        <Link to="/hr" className="navitem" data-testid="nav-hr-register">
-          {t("hr.nav.register")}
-        </Link>
-        <Link to="/hr/advances-deductions" className="navitem" data-testid="nav-hr-advances">
-          {t("hr.nav.advances")}
-        </Link>
-        <Link to="/hr/payroll" className="navitem" data-testid="nav-hr-payroll">
-          {t("hr.nav.payroll")}
-        </Link>
-        <Link to="/hr/payslip" className="navitem" data-testid="nav-hr-payslip">
-          {t("hr.nav.payslip")}
-        </Link>
-        <Link to="/hr/social-insurance" className="navitem" data-testid="nav-hr-social-insurance">
-          {t("hr.nav.socialInsurance")}
-        </Link>
-        <Link to="/hr/end-of-service" className="navitem" data-testid="nav-hr-end-of-service">
-          {t("hr.nav.endOfService")}
-        </Link>
-        <Link to="/hr/subledger-reconciliation" className="navitem" data-testid="nav-hr-reconciliation">
-          {t("hr.nav.reconciliation")}
-        </Link>
-
-        {/* ── دورةُ المستندات المحاسبية: المبيعات ثمّ المشتريات، **بترتيب
-            الدورة لا بترتيب الحروف** — أمرٌ ← استلامٌ ← فاتورةٌ ← صرف؛ فمن
-            يبدأ من حيث لا يجوز يكتب مستنداً لا يُطابَق. وكانت السبع كلُّها
-            غائبةً عن هذه القائمة: تُفتح بـCtrl+K ولا يراها من يقرأ الملاحة. */}
-        <Link to="/sales/invoice" className="navitem" data-testid="nav-sales-invoice">
-          {t("accounting.nav.salesInvoice")}
-        </Link>
-        <Link to="/sales/receipt" className="navitem" data-testid="nav-sales-receipt">
-          {t("accounting.nav.customerReceipt")}
-        </Link>
-        <Link to="/sales/receivables" className="navitem" data-testid="nav-sales-receivables">
-          {t("accounting.nav.receivables")}
-        </Link>
-        <Link to="/purchasing/order" className="navitem" data-testid="nav-purchasing-order">
-          {t("accounting.nav.purchaseOrder")}
-        </Link>
-        <Link to="/purchasing/goods-receipt" className="navitem" data-testid="nav-purchasing-goods-receipt">
-          {t("accounting.nav.goodsReceipt")}
-        </Link>
-        <Link to="/purchasing/bill" className="navitem" data-testid="nav-purchasing-bill">
-          {t("accounting.nav.supplierBill")}
-        </Link>
-        <Link to="/purchasing/payment" className="navitem" data-testid="nav-purchasing-payment">
-          {t("accounting.nav.supplierPayment")}
-        </Link>
-        <Link to="/purchasing/payables" className="navitem" data-testid="nav-purchasing-payables">
-          {t("accounting.nav.payables")}
-        </Link>
-
-        {/* ── التسكين ووحداته — كتلةٌ واحدة متّصلة كي يندمج جانباها آلياً. */}
-        <Link to="/inventory/warehouses" className="navitem" data-testid="nav-inventory-warehouses">
-          {t("inventory.nav.warehouses")}
-        </Link>
-        <Link to="/inventory/placement" className="navitem" data-testid="nav-inventory-placement">
-          {t("inventory.nav.placement")}
-        </Link>
-        <Link
-          to="/inventory/placement-balances"
-          className="navitem"
-          data-testid="nav-inventory-placement-balances"
-        >
-          {t("inventory.nav.placementBalances")}
-        </Link>
-        <Link to="/inventory/transfers" className="navitem" data-testid="nav-inventory-transfers">
-          {t("inventory.nav.transfers")}
-        </Link>
-        <Link to="/inventory/units" className="navitem" data-testid="nav-inventory-units">
-          {t("inventory.nav.units")}
-        </Link>
-        {/* ── المقاولات والعقارات: إحدى عشرة شاشةً بترتيب العمل. وهي **كتلةٌ
-            واحدة متّصلة** كي يندمج جانباها آلياً حين يلمس أسطولٌ آخر هذه
-            القائمة. وكانت السبعُ القائمة منها غائبةً عن هذه القائمة كلَّها —
-            تُفتح بـCtrl+K ولا يراها من يقرأ الملاحة (ADR-0080). */}
-        <Link to="/contracting" className="navitem" data-testid="nav-contracting-register">
-          {t("contracting.nav.register")}
-        </Link>
-        <Link to="/contracting/change-orders" className="navitem" data-testid="nav-contracting-change-orders">
-          {t("contracting.nav.changeOrders")}
-        </Link>
-        <Link to="/contracting/guarantees" className="navitem" data-testid="nav-contracting-guarantees">
-          {t("contracting.nav.guarantees")}
-        </Link>
-        <Link to="/contracting/certificate" className="navitem" data-testid="nav-contracting-certificate">
-          {t("contracting.nav.certificate")}
-        </Link>
-        <Link to="/contracting/subcontracting" className="navitem" data-testid="nav-contracting-subcontracting">
-          {t("contracting.nav.subcontracting")}
-        </Link>
-        <Link to="/contracting/advances" className="navitem" data-testid="nav-contracting-advances">
-          {t("contracting.nav.advances")}
-        </Link>
-        <Link to="/contracting/retention" className="navitem" data-testid="nav-contracting-retention">
-          {t("contracting.nav.retention")}
-        </Link>
-        <Link to="/realestate" className="navitem" data-testid="nav-realestate-register">
-          {t("realestate.nav.register")}
-        </Link>
-        <Link to="/realestate/parties" className="navitem" data-testid="nav-realestate-parties">
-          {t("realestate.nav.parties")}
-        </Link>
-        <Link to="/realestate/lease" className="navitem" data-testid="nav-realestate-lease">
-          {t("realestate.nav.lease")}
-        </Link>
-        <Link to="/realestate/arrears" className="navitem" data-testid="nav-realestate-arrears">
-          {t("realestate.nav.arrears")}
-        </Link>
-
-        {/* ── سجلّ المرفقات وعهدةُ سنده، وحالُ الصنف — **كتلةٌ واحدة متّصلة**
-            كي يندمج جانباها آلياً حين يلمس أسطولٌ آخر هذه القائمة. والعشرُ
-            عملياتٍ تحتها كانت بلا مستهلكٍ في الواجهة كلّها قبل هذا الإنزال. */}
-        <Link to="/attachments" className="navitem" data-testid="nav-attachments">
-          {t("accounting.nav.attachments")}
-        </Link>
-        <Link to="/attachments/custody" className="navitem" data-testid="nav-attachment-custody">
-          {t("accounting.nav.attachmentCustody")}
-        </Link>
-        <Link to="/inventory/item-lifecycle" className="navitem" data-testid="nav-inventory-item-lifecycle">
-          {t("inventory.nav.itemLifecycle")}
-        </Link>
-
-        {/* ── ما بعد الترحيل: القيدُ وعكسه، والمستندان المصحِّحان، وحكمُ
-            السلسلة — **كتلةٌ واحدة متّصلة** كي يندمج جانباها آلياً حين يلمس
-            أسطولٌ آخر هذه القائمة. والستُّ عملياتٍ تحتها كانت بلا مستهلكٍ في
-            الواجهة كلّها قبل هذا الإنزال. */}
-        <Link to="/ledger/entry" className="navitem" data-testid="nav-ledger-entry">
-          {t("accounting.ledger.nav.entry")}
-        </Link>
-        <Link to="/ledger/purchase-return" className="navitem" data-testid="nav-ledger-purchase-return">
-          {t("accounting.ledger.nav.purchaseReturn")}
-        </Link>
-        <Link to="/ledger/credit-note" className="navitem" data-testid="nav-ledger-credit-note">
-          {t("accounting.ledger.nav.creditNote")}
-        </Link>
-        <Link to="/ledger/chain" className="navitem" data-testid="nav-ledger-chain">
-          {t("accounting.ledger.nav.chain")}
-        </Link>
-
-        {/* ── الإدارة والاشتراك — **عنوانٌ ثانٍ لا صفٌّ سادس** ───────────────
-            خلف هذه الأربع مالكُ اشتراكٍ أو مسؤول، لا محاسبٌ يكتب مستنداً: من
-            يدخل النظام وبأي دور، وماذا اشتُرك، وماذا يتوقّف. وخلطُها بشاشات
-            العمل اليومي يجعل «سحب عضوية» و«انقطاع اشتراك» جيرانَ «سند قبض»
-            في القائمة نفسها — وهي أفعالٌ لا يفتحها من يفتح تلك. فُصلت
-            بعنوانها ولم تُخرَج من `SCREENS`، لأن عقد الملاحة خماسيّ مقفل
-            (ADR-0069) والفصلُ هنا فصلُ قراءةٍ لا قسمٌ سادس.
-            وهي **كتلةٌ واحدة متّصلة** كي يندمج جانباها آلياً. */}
-        <p className="sections__label">{t("app.nav.administration")}</p>
-        <Link to="/admin/enrolment" className="navitem" data-testid="nav-admin-enrolment">
-          {t("app.nav.enrolment")}
-        </Link>
-        <Link to="/admin/session" className="navitem" data-testid="nav-admin-session">
-          {t("app.nav.mySession")}
-        </Link>
-        <Link to="/admin/members" className="navitem" data-testid="nav-admin-members">
-          {t("app.nav.members")}
-        </Link>
-        <Link to="/admin/subscription" className="navitem" data-testid="nav-admin-subscription">
-          {t("app.nav.subscription")}
-        </Link>
-        <Link to="/admin/plans" className="navitem" data-testid="nav-admin-plans">
-          {t("app.nav.plans")}
-        </Link>
-
-        {/* ── التأسيس والثوابت — **عنوانٌ ثالثٌ لا قسمٌ سادس** ───────────────
-            خلف هذه الخمس من يجهّز المنشأة قبل أوّل مستند: من يؤسّسها مرّةً،
-            ومن يعرّف بُعد التبويب الذي يحمله كلُّ سطرٍ بعدها، ومن يقرّر أيّ
-            قدرةٍ تُرخّص أيّ حقل، ومن يقرأ ما يقبله كلُّ حساب. وهي محاسبيّةٌ
-            بموضوعها لا بلونها وحده — ومع ذلك لا يفتحها من يكتب سند قبضٍ في
-            يومه، فلها عنوانها كما للإدارة عنوانها (ADR-0069: عقدُ الملاحة
-            خماسيٌّ مقفل، والفصلُ هنا فصلُ قراءةٍ لا قسمٌ سادس).
-            وهي **كتلةٌ واحدة متّصلة** كي يندمج جانباها آلياً. */}
-        <p className="sections__label">{t("app.nav.setupGroup")}</p>
-        <Link to="/setup" className="navitem" data-testid="nav-setup-company">
-          {t("app.nav.companySetup")}
-        </Link>
-        <Link to="/setup/cost-centers" className="navitem" data-testid="nav-setup-cost-centers">
-          {t("app.nav.costCenters")}
-        </Link>
-        <Link to="/setup/document-shapes" className="navitem" data-testid="nav-setup-document-shapes">
-          {t("app.nav.documentShapes")}
-        </Link>
-        <Link to="/setup/chart-of-accounts" className="navitem" data-testid="nav-setup-chart">
-          {t("app.nav.chartOfAccounts")}
-        </Link>
-        <Link to="/setup/parameters" className="navitem" data-testid="nav-setup-parameters">
-          {t("app.nav.parameters")}
-        </Link>
+        {/* ── شاشاتُ القسم المفتوح وحدها ──────────────────────────────────
+            وكانت هنا **نسخةٌ ثانية من `SCREENS` مكتوبةٌ بيد** تسرد الشاشات
+            التسع والخمسين كلَّها بلا ترشيح، فيرى من يفتح «الموارد البشرية»
+            ميزانَ المراجعة وشجرةَ التسكين تحته. وقد كان تعليقٌ هنا يوصي بأن
+            تُقاد القائمة من `SCREENS` — وهذا ما صار: الترشيحُ والعناوين في
+            `shell/ScreenNav.tsx`، ولا موضعَ ثانٍ ينحرف عن الأوّل. */}
+        <ScreenNav section={section.id} />
       </nav>
 
       <div className="app-main">

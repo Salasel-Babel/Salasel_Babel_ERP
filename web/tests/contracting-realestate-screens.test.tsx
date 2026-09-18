@@ -194,8 +194,12 @@ afterEach(() => {
    ═══════════════════════════════════════════════════════════════════════ */
 describe("الملاحة اليدوية ونسختها في العقد", () => {
   for (const section of ["contracting", "realestate"] as const) {
-    it("كل شاشة في «" + section + "» لها رابطٌ في قائمة الملاحة اليدوية — والحارس كان يفحص الموارد البشرية وحدها", async () => {
-      await mount({ path: "/", transport: stub({ routes: { "GET /health": HEALTH } }) });
+    /* ‏**والفحصُ من مسار القسم لا من الجذر**: القائمة صارت تُرشَّح بالقسم
+       المفتوح (`shell/ScreenNav.tsx`)، فالجذرُ يعرض شاشاتِ المحاسبي وحدها.
+       والقياسُ من `/` كان يمرّ حين كانت القائمة جرداً لكلّ شيء. */
+    it("كل شاشة في «" + section + "» لها رابطٌ في قائمة ملاحة قسمها", async () => {
+      const home = SCREENS.find((s) => s.section === section)?.path ?? "/";
+      await mount({ path: home, transport: stub({ routes: { "GET /health": HEALTH } }) });
       const nav = document.querySelector(".app-side");
       expect(nav).not.toBeNull();
       const hrefs = [...(nav?.querySelectorAll("a[href]") ?? [])].map((a) => a.getAttribute("href"));

@@ -30,12 +30,9 @@ import { createAppRouter } from "../src/app/router";
 import { SCREENS } from "../src/app/shell/sections";
 import type { RawResponse, Transport } from "../src/api/transport";
 
-/** ناقلٌ صامت: هذا الحارس يقيس الملاحة لا البيانات. */
-const silent: Transport = {
-  async send(): Promise<RawResponse> {
-    return { status: 503, headers: new Headers(), json: null, text: "" };
-  },
-};
+/** ناقلٌ صامت: هذا الحارس يقيس الملاحة لا البيانات، فيردّ 503 على كل باب. */
+const silent: Transport = ({ url }) =>
+  Promise.resolve<RawResponse>({ ok: false, status: 503, json: null, url });
 
 async function navHrefs(): Promise<string[]> {
   const router = createAppRouter({ memory: true, initialPath: "/" });

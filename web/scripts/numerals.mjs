@@ -120,6 +120,29 @@ export const NUMERAL_STYLE_KEYS = Object.freeze([
 export const FROZEN_PROTOTYPES = Object.freeze([
   "demo/vertical-slice/wwwroot/index.html",
   "docs/prototypes/journal-entry/index.html",
+
+  /* ── نماذجُ الشاشات الأربع والستين ────────────────────────────────────────
+     صفحاتُ عرضٍ ساكنة تُخدَم من الحافة على `/prototypes`، **لا تُحمّل
+     `tokens.css`** بل تحمل نسخةً مسطّحة من أوراق التطبيق داخلها. فهي لا تستطيع
+     أن تُحلّ `var(--font-numeric)` أصلاً — وتصريحُها الحرفيّ هو ما يجعل أرقامها
+     جدولية، لا مخالفةً للرمز بل غيابُ الطبقة التي تحمله.
+
+     **وتجميدُها يعني أنها لا تُحدَّث مع التطبيق:** من غيّر رسمَ الأرقام في
+     `tokens.css` لا يتغيّر شيءٌ هنا، وهذا مقصود — هي لقطةُ شكلٍ في لحظتها لا
+     سطحٌ حيّ. ومن أراد شاشةً تتبع الرمز فموضعُها `web/src/screens` لا هنا.
+
+     ولا تُفتح هذه القائمة لغيرها: كلُّ ملفٍّ جديد خارج النطاق يحمل تصريحاً
+     يُفشِل الفحص حتى يُصنَّف بسببه المكتوب، كما أفشلها حين أُضيفت. */
+  "docs/prototypes/index.html",
+  "docs/prototypes/screens/index.html",
+  "docs/prototypes/screens/sections/f1-access-setup.html",
+  "docs/prototypes/screens/sections/f2-ledger.html",
+  "docs/prototypes/screens/sections/f3-sales-purchasing.html",
+  "docs/prototypes/screens/sections/f4-inventory.html",
+  "docs/prototypes/screens/sections/f5-hr.html",
+  "docs/prototypes/screens/sections/f6-contracting.html",
+  "docs/prototypes/screens/sections/f7-realestate.html",
+  "docs/prototypes/screens/sections/f8-agent-admin.html",
 ]);
 
 /** جذور النطاق — التطبيق المشحون والمعرض الذي نُقل عنه. */

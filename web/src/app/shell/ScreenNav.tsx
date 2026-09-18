@@ -50,7 +50,7 @@ function isSetup(entry: ScreenEntry): boolean {
 
 function Item(props: { entry: ScreenEntry }): ReactNode {
   const { t } = useT();
-  /* ‏`to` مُضيَّق إلى نوع المسار: الموجّه يعرف المسارات المسجَّلة، وهذه منها
+  /* `to` مُضيَّق إلى نوع المسار: الموجّه يعرف المسارات المسجَّلة، وهذه منها
      بحكم الحارس الذي يقارن `SCREENS` بالموجّه. */
   const to = props.entry.path as "/";
   return (

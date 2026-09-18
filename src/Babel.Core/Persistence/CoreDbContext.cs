@@ -41,6 +41,9 @@ internal sealed class CoreDbContext(DbContextOptions<CoreDbContext> options) : D
     /// <summary>اعتمادات الانتساب، مبصومةً لا مكتوبة.</summary>
     public DbSet<AccessEnrolmentRow> Enrolments => Set<AccessEnrolmentRow>();
 
+    /// <summary>معرّفات الدخول بكلمة مرور.</summary>
+    public DbSet<AccessSignInRow> SignIns => Set<AccessSignInRow>();
+
     /// <summary>عائلات الجلسات، وعليها مفتاح الإبطال.</summary>
     public DbSet<AccessSessionRow> Sessions => Set<AccessSessionRow>();
 
@@ -188,6 +191,33 @@ internal sealed class CoreDbContext(DbContextOptions<CoreDbContext> options) : D
             // الفهرس على (المستأجر، المستخدم): هو استعلامُ **كل طلب** — «ما الذي يبلغه هذا
             // الاعتماد؟» — وبلا فهرسٍ عليه يصير مسحاً كاملاً على أكثر جدولٍ قراءةً في السطح.
             entity.HasIndex(row => new { row.TenantId, row.UserId }).HasDatabaseName("ix_access_membership_tenant_user");
+        });
+
+        modelBuilder.Entity<AccessSignInRow>(entity =>
+        {
+            entity.ToTable("access_sign_in", t =>
+            {
+                // ‏**الشكلُ مفروضٌ في القاعدة لا في الشيفرة وحدها**: صفٌّ يصل بطريقٍ
+                // آخر — هجرةٌ يدوية أو أداةُ دعم — يجب أن يُرفض هنا أيضاً. ومعرّفٌ
+                // بحروفٍ كبيرة يجعل البحثَ المُسوّى لا يجده، فيصير بابٌ لا يُفتح.
+                t.HasCheckConstraint("ck_access_sign_in_handle_normalised", "handle = lower(btrim(handle))");
+                t.HasCheckConstraint("ck_access_sign_in_handle_shape", "handle ~ '^[^[:space:]@]+@[^[:space:]@]+$'");
+
+                // والإثباتُ موصوفٌ بنفسه: خوارزميةٌ ثم تكرارات ثم ملحٌ ثم بصمة.
+                t.HasCheckConstraint(
+                    "ck_access_sign_in_proof_shape",
+                    "proof ~ '" + Access.AccessPasswords.ProofPattern + "'");
+            });
+
+            entity.HasKey(row => row.Handle).HasName("pk_access_sign_in");
+            entity.Property(row => row.Handle).HasColumnName("handle").HasMaxLength(254).IsRequired();
+            entity.Property(row => row.TenantId).HasColumnName("tenant_id");
+            entity.Property(row => row.UserId).HasColumnName("user_id");
+            entity.Property(row => row.Proof).HasColumnName("proof").HasMaxLength(512).IsRequired();
+            entity.Property(row => row.SetAt).HasColumnName("set_at");
+
+            // معرّفٌ واحد لكل مستخدم — ومعرّفان بابان لحسابٍ واحد.
+            entity.HasIndex(row => row.UserId).IsUnique().HasDatabaseName("ux_access_sign_in_user");
         });
 
         modelBuilder.Entity<AccessEnrolmentRow>(entity =>

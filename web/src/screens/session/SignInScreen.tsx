@@ -21,13 +21,15 @@
 import { useCallback, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { readSession } from "../../api/generated/client";
+import { openSessionWithPassword, readSession } from "../../api/generated/client";
 import type { Session, SessionCompany } from "../../api/generated/types";
 import { fetchTransport, ProblemError } from "../../api/transport";
 import { useApi } from "../../app/api-context";
 import { RECORD_TAG, resolveTranslatedName } from "../../app/translated-name";
 import { ProblemPanel } from "../../app/shell/ProblemPanel";
 import { useLocale, useT, Num } from "../../i18n/react";
+import { applySession } from "../../app/session";
+import { Link } from "@tanstack/react-router";
 
 /** الخطوة التالية التي تعرفها الشاشة لكل رمز رفض — مفتاح ترجمة، لا نصّ. */
 const NEXT_STEP: Readonly<Record<string, string>> = {
@@ -51,12 +53,43 @@ export function SignInScreen(): ReactNode {
   const [token, setToken] = useState(config.token);
   const tokenRef = useRef<HTMLInputElement | null>(null);
 
+
   /* ما قُدِّم فعلاً — لا ما يُكتب الآن. والفصل بينهما هو ما يمنع نداءً لكل ضغطة
      مفتاح على حقل الاعتماد. ويبدأ من الاعتماد المحفوظ إن وُجد، فمن عاد إلى
      الصفحة باعتماد محفوظ لا يُطلب منه لصقه مرّة ثانية. */
   const [presented, setPresented] = useState<{ token: string; baseUrl: string } | null>(() =>
     config.token ? { token: config.token, baseUrl: config.baseUrl } : null
   );
+
+  /* ── العاملُ الأوّل للإنسان: بريدٌ وكلمة مرور ──────────────────────────────
+     وهو **أوّلُ ما يُرى** على هذه الشاشة، ولصقُ الاعتماد تحته مطويّاً: الأوّل
+     يفعله محاسبٌ كلَّ صباح، والثاني يفعله من يجرّب النظام أو من وصلته دعوة. */
+  const [handle, setHandle] = useState("");
+  const [password, setPassword] = useState("");
+  const [passwordBusy, setPasswordBusy] = useState(false);
+  const [passwordError, setPasswordError] = useState<unknown>(null);
+  const handleRef = useRef<HTMLInputElement | null>(null);
+
+  const signInWithPassword = useCallback(async () => {
+    setPasswordBusy(true);
+    setPasswordError(null);
+    try {
+      const opened = await openSessionWithPassword(
+        fetchTransport({ baseUrl }),
+        { body: { handle, password } }
+      );
+      /* الاعتمادُ يُحفظ أوّلاً، ثم تُقرأ المنشآت به — وهو الطريق نفسه الذي يسلكه
+         اللصقُ أسفل، فلا مساران لشيءٍ واحد. */
+      setConfig(applySession({ ...config, baseUrl }, opened));
+      setToken(opened.accessCredential);
+      setPresented({ token: opened.accessCredential, baseUrl });
+      setPassword("");
+    } catch (fault) {
+      setPasswordError(fault);
+    } finally {
+      setPasswordBusy(false);
+    }
+  }, [baseUrl, config, handle, password, setConfig]);
 
   const query = useQuery({
     queryKey: ["sign-in", presented?.baseUrl ?? "", presented?.token ?? ""],
@@ -111,8 +144,8 @@ export function SignInScreen(): ReactNode {
   const signOut = useCallback(() => {
     setToken("");
     setPresented(null);
-    setConfig({ ...config, token: "", companyId: "" });
-    tokenRef.current?.focus();
+    setConfig({ ...config, token: "", refreshToken: "", tokenExpiresAt: "", companyId: "" });
+    handleRef.current?.focus();
   }, [config, setConfig]);
 
   const problemCode = error instanceof ProblemError ? error.code : null;
@@ -137,6 +170,73 @@ export function SignInScreen(): ReactNode {
 
       <form
         className="card card-pad"
+        data-testid="sign-in-password-form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void signInWithPassword();
+        }}
+      >
+        <div className="grid fields-half">
+          <div className="field">
+            <label htmlFor="si-handle">{t("screen.signIn.emailLabel")}</label>
+            <input
+              id="si-handle"
+              ref={handleRef}
+              className="ctl"
+              type="email"
+              dir="ltr"
+              autoComplete="username"
+              spellCheck={false}
+              data-testid="sign-in-handle"
+              value={handle}
+              onChange={(e) => setHandle(e.target.value)}
+              placeholder={t("screen.signIn.emailPh")}
+            />
+            <span className="hint">{t("screen.signIn.emailHint")}</span>
+          </div>
+          <div className="field">
+            <label htmlFor="si-password">{t("screen.signIn.passwordLabel")}</label>
+            <input
+              id="si-password"
+              className="ctl"
+              type="password"
+              dir="ltr"
+              autoComplete="current-password"
+              data-testid="sign-in-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            <span className="hint">{t("screen.signIn.passwordHint")}</span>
+          </div>
+        </div>
+
+        <div className="inline-group" style={{ marginTop: "var(--space-12)" }}>
+          <button
+            type="submit"
+            className="btn btn-primary"
+            data-testid="sign-in-password-submit"
+            disabled={passwordBusy}
+          >
+            {passwordBusy ? t("common.state.loading") : t("screen.signIn.action")}
+          </button>
+          <Link to="/admin/enrolment" className="btn" data-testid="sign-in-to-enrolment">
+            {t("screen.signIn.noAccount")}
+          </Link>
+        </div>
+      </form>
+
+      {passwordError ? <ProblemPanel error={passwordError} /> : null}
+
+      {/* ── لصقُ الاعتماد: مطويٌّ لا محذوف ──────────────────────────────────
+          يفعله من يجرّب النظام برمز العرض، ومن وصلته دعوةُ انتسابٍ ففتح بها
+          جلسةً في شاشة الانتساب. وطيُّه يُخرجه من طريق المحاسب ولا يمنعه. */}
+      <details className="card card-pad" data-testid="sign-in-credential-way">
+        <summary>{t("screen.signIn.credentialWay")}</summary>
+        <p className="muted" style={{ marginBlock: "var(--space-8)" }}>
+          {t("screen.signIn.credentialWayNote")}
+        </p>
+
+      <form
         data-testid="sign-in-form"
         onSubmit={(e) => {
           e.preventDefault();
@@ -186,6 +286,7 @@ export function SignInScreen(): ReactNode {
           ) : null}
         </div>
       </form>
+      </details>
 
       {error ? (
         <>

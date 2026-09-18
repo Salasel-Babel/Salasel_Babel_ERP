@@ -178,6 +178,72 @@ internal static class OpenApiEmitter
                         + "access.credential_rejected, access.enrolment_expired, and access.enrolment_consumed."),
                 ]),
 
+            new(AccessRoutes.SessionsByPassword, "post", "openSessionWithPassword",
+                "فتح جلسة ببريد وكلمة مرور", "Open a session with an email and a password",
+                "يبدّل **بريداً وكلمة مرور** بجلسة كاملة — هي الجلسة نفسها التي يُنتجها اعتماد الانتساب: اعتماد فاعل قصير "
+                + "العمر، واعتماد تجديد يدور، ومعرّف عائلة هو ما يُبطَل لاحقاً.\n\n"
+                + "**وكلمة المرور عاملُ إثباتٍ أوّل لا اعتماد:** تُنتج جلسةً ثم تنصرف، فلا تُحمل في ترويسة ولا تعبر وسيطاً ولا "
+                + "تُقدَّم على بابٍ ثانٍ. والإبطال الفوريّ وتدوير التجديد وكشف إعادة الاستعمال تبقى كلّها على الجلسة كما هي "
+                + "(ADR-0045 قائم كما هو، وADR-0094 يشرح الإضافة).\n\n"
+                + "**والرفض رمزٌ واحد لثلاث حالات: access.credential_rejected.** بريدٌ مشوّه، وبريدٌ غير مسجَّل، وكلمةٌ خاطئة — "
+                + "جوابها واحد. ورمزٌ يقول «هذا البريد غير مسجَّل» يجعل باب الدخول كشّافَ عملاء بالتجريب. "
+                + "**والزمن يتساوى كما يتساوى النصّ**: بريدٌ لا صفَّ له يُنفق اشتقاقاً كاملاً قبل أن يُردّ، فلا يُقاس الفرق بساعة.\n\n"
+                + "**ولا كلمة مرور تُخزَّن:** المُودَع وصفُ اشتقاقٍ من طرفٍ واحد (PBKDF2-HMAC-SHA256، ستّمئة ألف تكرار، بملحٍ لكل صفّ)، "
+                + "والصفُّ يحمل وصفَه كاملاً فيُرفَع التشديد غداً على الصفوف الجديدة بلا هجرة بيانات.\n\n"
+                + "**وعلى هذا الباب حدُّ معدّل** كإخوته، وهو أشدُّها تعرّضاً لأنه يُطرَق بقوائم كلماتٍ شائعة.",
+                "Exchanges an **email and a password** for a whole session — the same session an enrolment credential produces: "
+                + "a short-lived access credential, a rotating refresh credential, and a family identifier which is what gets revoked later.\n\n"
+                + "**The password is a first factor, not a credential:** it produces a session and then leaves. It is never carried in a "
+                + "header, never crosses a proxy, and is never presented at a second door. Immediate revocation, refresh rotation and "
+                + "reuse detection all remain on the session exactly as they were (ADR-0045 stands; ADR-0094 explains the addition).\n\n"
+                + "**One refusal code covers three cases: access.credential_rejected.** A malformed email, an unregistered email and a "
+                + "wrong password answer identically. A code saying 'this email is not registered' turns the sign-in door into a customer "
+                + "scanner. **And the timing matches the text**: an unregistered email spends a full derivation before being refused, so the "
+                + "difference cannot be measured with a clock.\n\n"
+                + "**No password is stored:** what is persisted is a one-way derivation (PBKDF2-HMAC-SHA256, 600,000 iterations, per-row salt), "
+                + "and each row carries its full description so the work factor can be raised tomorrow for new rows without migrating data.\n\n"
+                + "**This door is rate limited** like its siblings, and it is the most exposed of them because it is hammered with common-password lists.",
+                Body: "OpenSessionWithPasswordRequest", Response: "AccessSession", Success: 201, Query: [],
+                Refusals:
+                [
+                    new Refusal(400, "الجسم لا يطابق العقد: حقل غير معروف، أو حقل مفقود.", "The body does not match the contract: an unknown field, or a missing one."),
+                    new Refusal(401,
+                        "البريد أو كلمة المرور غير مقبولة: access.credential_rejected. ولا يُقال أيّهما.",
+                        "The email or the password was rejected: access.credential_rejected. Which of them is never said."),
+                ]),
+
+            new(AccessRoutes.Password, "put", "setPassword",
+                "ضبط معرّف الدخول وكلمة المرور", "Set the sign-in handle and password",
+                "يضبط بريدَ الدخول وكلمةَ المرور **لصاحب الجلسة نفسه**. والمستأجر والمستخدم يأتيان من الاعتماد المُقدَّم لا من "
+                + "الجسم ولا من المسار، فلا حقلَ يكتبه العميل يقرّر لمن تُضبط كلمةُ المرور.\n\n"
+                + "**ولا كلمة مرورٍ قديمة تُطلب، والسبب أن الجلسة القائمة هي الإثبات:** من يحمل اعتماداً فاعلاً أثبت نفسه قبل خمس عشرة "
+                + "دقيقة على الأكثر. وطلبُ القديمة يحمي من جلسةٍ مسروقة مفتوحة — وذاك ما يحميه الإبطال الفوري، لا حقلٌ ثانٍ في نموذج.\n\n"
+                + "**والمعرّف واحدٌ لكل مستخدم:** تغييرُه نقلٌ لا إضافة، والقديم يُنزَع في المعاملة نفسها. ومعرّفان لمستخدمٍ واحد بابان "
+                + "لحسابٍ واحد، فسحبُ أحدهما يُقرأ «سُحب الوصول» وهو باقٍ على الآخر.\n\n"
+                + "**والفعل idempotent بطبعه**: ضبطٌ ثانٍ بالقيم نفسها يُنتج الحالة نفسها ويردّ 200. ولذلك PUT لا POST.\n\n"
+                + "**وهنا يُقال أيُّ الشرطين انكسر** — خلافاً لباب الدخول وعمداً: من يضبط معرّفه يستحقّ أن يعرف ما يُصلحه، ومن يخمّن "
+                + "لا يبلغ هذا الباب بلا جلسة أصلاً.",
+                "Sets the sign-in email and password **for the session's own holder**. Tenant and user come from the presented credential, "
+                + "not from the body and not from the path, so no client-written field decides whose password is being set.\n\n"
+                + "**No current password is demanded, because the live session is the proof:** whoever holds a valid access credential "
+                + "authenticated at most fifteen minutes ago. Demanding the old one guards against an already-stolen open session — and that "
+                + "is what immediate revocation guards, not a second field in a form.\n\n"
+                + "**One handle per user:** changing it is a move, not an addition, and the old one is removed in the same transaction. Two "
+                + "handles for one user are two doors into one account, so withdrawing one reads as 'access withdrawn' while the other stays open.\n\n"
+                + "**The act is idempotent by nature**: setting the same values again produces the same state and answers 200. Hence PUT, not POST.\n\n"
+                + "**And here it is said which condition failed** — unlike the sign-in door, deliberately: whoever is setting their own handle "
+                + "deserves to know what to fix, and whoever is guessing never reaches this door without a session.",
+                Body: "SetPasswordRequest", Response: "SignInSet", Success: 200, Query: [],
+                Refusals:
+                [
+                    new Refusal(400, "الجسم لا يطابق العقد: حقل غير معروف، أو حقل مفقود.", "The body does not match the contract: an unknown field, or a missing one."),
+                    new Refusal(422,
+                        "الطلب مفهوم ومرفوض: البريد ليس على شكل بريد (access.handle_shape_rejected)، أو الطول خارج الحدّين "
+                        + "(access.password_length_rejected)، أو البريد مسجَّل لمستخدم آخر (access.handle_taken).",
+                        "Understood and refused: the handle is not shaped like an email (access.handle_shape_rejected), the password length "
+                        + "is outside the bounds (access.password_length_rejected), or the handle belongs to another user (access.handle_taken)."),
+                ]),
+
             new(AccessRoutes.SessionRenewal, "post", "renewSession",
                 "تجديد جلسة بتدوير اعتمادها", "Renew a session by rotating its credential",
                 "يستهلك اعتماد التجديد الجاري ويُصدر **زوجاً جديداً كاملاً** في الدورة التالية من العائلة نفسها. ومعرّف العائلة "
@@ -5090,6 +5156,65 @@ internal static class OpenApiEmitter
                 "The enrolment credential exactly as handed over once at invitation.");
             w.WriteEndObject();
             WriteRequired(w, "enrolmentCredential");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("OpenSessionWithPasswordRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب فتح جلسة ببريد وكلمة مرور. ولا حقل مستأجر فيه ولا حقل منشأة: البريد يقود إلى مستخدمه والمستخدم إلى مستأجره. / "
+                + "A request to open a session with an email and a password. It carries no tenant field and no company field: "
+                + "the email leads to its user and the user to their tenant.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "handle",
+                "البريد كما كتبه المستخدم. يُسوّى في الخادم — تُشذَّب أطرافُه وتُصغَّر حروفه.",
+                "The email as typed. The server normalises it — trimmed and lower-cased.",
+                AccessPasswords.MaximumHandleLength);
+            WriteStringProperty(w, "password",
+                "كلمة المرور كما كُتبت، بلا تشذيب: الفراغ محرفٌ معتبَر فيها.",
+                "The password exactly as typed, untrimmed: whitespace is a significant character in it.",
+                AccessPasswords.MaximumPasswordLength);
+            w.WriteEndObject();
+            WriteRequired(w, "handle", "password");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("SetPasswordRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "طلب ضبط معرّف الدخول وكلمة المرور لصاحب الجلسة. ولا معرّف مستخدم فيه: الهوية من الاعتماد وحده. / "
+                + "A request to set the session holder's sign-in handle and password. It carries no user identifier: "
+                + "identity comes from the credential alone.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "handle",
+                "البريد المطلوب.",
+                "The requested email.",
+                AccessPasswords.MaximumHandleLength);
+            WriteStringProperty(w, "password",
+                "كلمة المرور المطلوبة — اثنا عشر محرفاً فأكثر، ولا قواعد تركيب.",
+                "The requested password — twelve characters or more, with no composition rules.",
+                AccessPasswords.MaximumPasswordLength);
+            w.WriteEndObject();
+            WriteRequired(w, "handle", "password");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("SignInSet", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "ما يُردّ بعد الضبط: المعرّف بعد التسوية ولحظته — **ولا شيء عن كلمة المرور**. / "
+                + "What the set returns: the normalised handle and its instant — **and nothing about the password**.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "handle",
+                "المعرّف كما أُودع بعد التسوية، فيراه المستخدم كما سيكتبه.",
+                "The handle as stored after normalisation, so the user sees it as they will type it.",
+                AccessPasswords.MaximumHandleLength);
+            WriteInstantProperty(w, "setAt", "لحظة الضبط.", "The instant of the set.");
+            w.WriteEndObject();
+            WriteRequired(w, "handle", "setAt");
             w.WriteBoolean("additionalProperties", false);
         });
 

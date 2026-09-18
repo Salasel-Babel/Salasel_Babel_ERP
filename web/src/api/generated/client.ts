@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     d9ed690c2c2d6377fabb6bb515d9d2bc26577030635593c2d1d10e892c805782
+     b8ca0fd699ea1f5d061bda3328419adca534050a63666a733bc407e334cc869c
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -2619,6 +2619,43 @@ export async function openSession(transport: Transport, args: OpenSessionArgs, s
   const path = "/api/v1/access/sessions";
   const url = path;
   const body = encodeSchema(SCHEMAS, "OpenSessionRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "AccessSession", response.json) as T.AccessSession;
+}
+
+export interface OpenSessionWithPasswordArgs {
+  /** جسم الطلب. / The request body. */
+  body: T.OpenSessionWithPasswordRequest;
+}
+
+/**
+ * فتح جلسة ببريد وكلمة مرور / Open a session with an email and a password
+ * 
+ * يبدّل **بريداً وكلمة مرور** بجلسة كاملة — هي الجلسة نفسها التي يُنتجها اعتماد الانتساب: اعتماد فاعل قصير العمر، واعتماد تجديد يدور، ومعرّف عائلة هو ما يُبطَل لاحقاً.
+ * 
+ * **وكلمة المرور عاملُ إثباتٍ أوّل لا اعتماد:** تُنتج جلسةً ثم تنصرف، فلا تُحمل في ترويسة ولا تعبر وسيطاً ولا تُقدَّم على بابٍ ثانٍ. والإبطال الفوريّ وتدوير التجديد وكشف إعادة الاستعمال تبقى كلّها على الجلسة كما هي (ADR-0045 قائم كما هو، وADR-0094 يشرح الإضافة).
+ * 
+ * **والرفض رمزٌ واحد لثلاث حالات: access.credential_rejected.** بريدٌ مشوّه، وبريدٌ غير مسجَّل، وكلمةٌ خاطئة — جوابها واحد. ورمزٌ يقول «هذا البريد غير مسجَّل» يجعل باب الدخول كشّافَ عملاء بالتجريب. **والزمن يتساوى كما يتساوى النصّ**: بريدٌ لا صفَّ له يُنفق اشتقاقاً كاملاً قبل أن يُردّ، فلا يُقاس الفرق بساعة.
+ * 
+ * **ولا كلمة مرور تُخزَّن:** المُودَع وصفُ اشتقاقٍ من طرفٍ واحد (PBKDF2-HMAC-SHA256، ستّمئة ألف تكرار، بملحٍ لكل صفّ)، والصفُّ يحمل وصفَه كاملاً فيُرفَع التشديد غداً على الصفوف الجديدة بلا هجرة بيانات.
+ * 
+ * **وعلى هذا الباب حدُّ معدّل** كإخوته، وهو أشدُّها تعرّضاً لأنه يُطرَق بقوائم كلماتٍ شائعة.
+ * 
+ * Exchanges an **email and a password** for a whole session — the same session an enrolment credential produces: a short-lived access credential, a rotating refresh credential, and a family identifier which is what gets revoked later.
+ * 
+ * **The password is a first factor, not a credential:** it produces a session and then leaves. It is never carried in a header, never crosses a proxy, and is never presented at a second door. Immediate revocation, refresh rotation and reuse detection all remain on the session exactly as they were (ADR-0045 stands; ADR-0094 explains the addition).
+ * 
+ * **One refusal code covers three cases: access.credential_rejected.** A malformed email, an unregistered email and a wrong password answer identically. A code saying 'this email is not registered' turns the sign-in door into a customer scanner. **And the timing matches the text**: an unregistered email spends a full derivation before being refused, so the difference cannot be measured with a clock.
+ * 
+ * **No password is stored:** what is persisted is a one-way derivation (PBKDF2-HMAC-SHA256, 600,000 iterations, per-row salt), and each row carries its full description so the work factor can be raised tomorrow for new rows without migrating data.
+ * 
+ * **This door is rate limited** like its siblings, and it is the most exposed of them because it is hammered with common-password lists.
+ */
+export async function openSessionWithPassword(transport: Transport, args: OpenSessionWithPasswordArgs, signal?: AbortSignal): Promise<T.AccessSession> {
+  const path = "/api/v1/access/sessions/password";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "OpenSessionWithPasswordRequest", args.body as unknown);
   const response = await transport({ method: "POST", url, body, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "AccessSession", response.json) as T.AccessSession;
@@ -5572,6 +5609,43 @@ export async function sendAgentMessage(transport: Transport, args: SendAgentMess
   const response = await transport({ method: "POST", url, body, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "AgentTurn", response.json) as T.AgentTurn;
+}
+
+export interface SetPasswordArgs {
+  /** جسم الطلب. / The request body. */
+  body: T.SetPasswordRequest;
+}
+
+/**
+ * ضبط معرّف الدخول وكلمة المرور / Set the sign-in handle and password
+ * 
+ * يضبط بريدَ الدخول وكلمةَ المرور **لصاحب الجلسة نفسه**. والمستأجر والمستخدم يأتيان من الاعتماد المُقدَّم لا من الجسم ولا من المسار، فلا حقلَ يكتبه العميل يقرّر لمن تُضبط كلمةُ المرور.
+ * 
+ * **ولا كلمة مرورٍ قديمة تُطلب، والسبب أن الجلسة القائمة هي الإثبات:** من يحمل اعتماداً فاعلاً أثبت نفسه قبل خمس عشرة دقيقة على الأكثر. وطلبُ القديمة يحمي من جلسةٍ مسروقة مفتوحة — وذاك ما يحميه الإبطال الفوري، لا حقلٌ ثانٍ في نموذج.
+ * 
+ * **والمعرّف واحدٌ لكل مستخدم:** تغييرُه نقلٌ لا إضافة، والقديم يُنزَع في المعاملة نفسها. ومعرّفان لمستخدمٍ واحد بابان لحسابٍ واحد، فسحبُ أحدهما يُقرأ «سُحب الوصول» وهو باقٍ على الآخر.
+ * 
+ * **والفعل idempotent بطبعه**: ضبطٌ ثانٍ بالقيم نفسها يُنتج الحالة نفسها ويردّ 200. ولذلك PUT لا POST.
+ * 
+ * **وهنا يُقال أيُّ الشرطين انكسر** — خلافاً لباب الدخول وعمداً: من يضبط معرّفه يستحقّ أن يعرف ما يُصلحه، ومن يخمّن لا يبلغ هذا الباب بلا جلسة أصلاً.
+ * 
+ * Sets the sign-in email and password **for the session's own holder**. Tenant and user come from the presented credential, not from the body and not from the path, so no client-written field decides whose password is being set.
+ * 
+ * **No current password is demanded, because the live session is the proof:** whoever holds a valid access credential authenticated at most fifteen minutes ago. Demanding the old one guards against an already-stolen open session — and that is what immediate revocation guards, not a second field in a form.
+ * 
+ * **One handle per user:** changing it is a move, not an addition, and the old one is removed in the same transaction. Two handles for one user are two doors into one account, so withdrawing one reads as 'access withdrawn' while the other stays open.
+ * 
+ * **The act is idempotent by nature**: setting the same values again produces the same state and answers 200. Hence PUT, not POST.
+ * 
+ * **And here it is said which condition failed** — unlike the sign-in door, deliberately: whoever is setting their own handle deserves to know what to fix, and whoever is guessing never reaches this door without a session.
+ */
+export async function setPassword(transport: Transport, args: SetPasswordArgs, signal?: AbortSignal): Promise<T.SignInSet> {
+  const path = "/api/v1/access/password";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "SetPasswordRequest", args.body as unknown);
+  const response = await transport({ method: "PUT", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "SignInSet", response.json) as T.SignInSet;
 }
 
 export interface SuspendCostCenterArgs {

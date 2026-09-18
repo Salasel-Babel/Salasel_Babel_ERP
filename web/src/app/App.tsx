@@ -9,10 +9,10 @@
    **والانتقال يقول أين ذهبتَ لا أنه حدث فقط**: لون الشريط هو لون القسم، وهو
    نفسه لون شارته في الملاحة. مؤثّرٌ يحمل معلومة، لا وميضٌ يُبطئ.
    ═══════════════════════════════════════════════════════════════════════════ */
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { health } from "../api/generated/client";
+import { health, renewSession, revokeSession } from "../api/generated/client";
 import { useApi } from "./api-context";
 import { useT } from "../i18n/react";
 import { HealthBadge, LocaleSwitcher, ThemeSwitcher } from "./shell/Switchers";
@@ -25,13 +25,16 @@ import { VoiceDock } from "./shell/VoiceDock";
 import { AgentWorkspace } from "../agent";
 import { VoiceDraftBanner } from "./VoiceDraftBanner";
 import { sectionOf } from "./shell/sections";
+import { SessionGate, isOpenScreen } from "./shell/SessionGate";
+import { applySession, clearSession, hasSession, needsRenewal } from "./session";
+import { fetchTransport } from "../api/transport";
 import { MOTION } from "../ui";
 import accessiblePaletteHref from "../styles/theme/theme-accessible.css?url";
 
 /** الهيكل حول كل شاشة. */
 export function AppShell(): ReactNode {
   const { t } = useT();
-  const { transport, config } = useApi();
+  const { transport, config, setConfig } = useApi();
   const [helpOpen, setHelpOpen] = useState(false);
   const [cmdOpen, setCmdOpen] = useState(false);
   const [agentOpen, setAgentOpen] = useState(false);
@@ -74,6 +77,54 @@ export function AppShell(): ReactNode {
   useEffect(() => {
     document.title = t("app.web.docTitle");
   }, [t, path]);
+
+  /* ── التجديدُ الصامت ────────────────────────────────────────────────────
+     الاعتمادُ الفاعل يعيش خمس عشرة دقيقة، ومحاسبٌ يكتب قيداً لا يجوز أن يُطرَد
+     في منتصفه. فيُجدَّد **وهو حيّ** قبل انقضائه بدقيقتين، ولا يرى المستخدم شيئاً.
+     وبلا هذا يصير عمرُ الجلسة القصير — وهو ميزةٌ أمنية — عطلاً يوميّاً.
+
+     **والفشلُ يُنهي الجلسة ولا يُعاد المحاولة:** اعتمادُ تجديدٍ مرفوض إمّا انقضى
+     وإمّا أُبطل وإمّا قُدِّم مرّتين (وحينها أُسقطت العائلة كلّها عمداً). وإعادةُ
+     المحاولة في الثلاثة تطرق باباً مغلقاً كلَّ دقيقة. */
+  useEffect(() => {
+    if (config.refreshToken === "") return;
+
+    let live = true;
+    const tick = async (): Promise<void> => {
+      if (!live || !needsRenewal(config, Date.now())) return;
+      try {
+        const renewed = await renewSession(
+          fetchTransport({ baseUrl: config.baseUrl }),
+          { body: { refreshCredential: config.refreshToken } }
+        );
+        if (live) setConfig(applySession(config, renewed));
+      } catch {
+        if (live) setConfig(clearSession(config));
+      }
+    };
+
+    void tick();
+    const timer = setInterval(() => void tick(), 30_000);
+    return () => {
+      live = false;
+      clearInterval(timer);
+    };
+  }, [config, setConfig]);
+
+  const signOut = useCallback(() => {
+    /* الإبطالُ على الخادم **يُطلب ولا يُنتظَر جوابه**: الخروج في المتصفّح يجب أن
+       يقع ولو كانت الشبكة مقطوعة. والاعتمادُ المُهيَّأ من الإعداد لا عائلةَ له
+       فيردّ الخادمُ رفضاً معلوماً — وهو رفضٌ لا يمنع المحوَ هنا. */
+    void revokeSession(transport).catch(() => undefined);
+    setConfig(clearSession(config));
+    void navigate({ to: "/sign-in" });
+  }, [config, navigate, setConfig, transport]);
+
+  /* **ولا يُرسَم شيءٌ من النظام بلا جلسة.** والشرطُ بعد كل الخطّافات لا قبلها:
+     خطّافٌ يُتخطّى في رسمةٍ ويُنفَّذ في التالية يكسر قواعد React. */
+  if (!hasSession(config)) {
+    return <SessionGate path={path} open={isOpenScreen(path)} />;
+  }
 
   return (
     <div className="app-shell" data-section={section.id} style={tint}>
@@ -137,6 +188,16 @@ export function AppShell(): ReactNode {
             onClick={() => setHelpOpen(true)}
           >
             {t("common.action.keyboardHelp")}
+          </button>
+          {/* الخروجُ في الرأس لا في شاشةٍ تُبحَث عنها: هو الفعلُ الذي يُطلب حين
+              يقوم أحدٌ عن جهازه، فيجب أن يكون حيث تقع العين. */}
+          <button
+            type="button"
+            className="btn btn-sm"
+            data-testid="sign-out-shell"
+            onClick={signOut}
+          >
+            {t("screen.signIn.signOut")}
           </button>
           {/* **آخرُ عنصرٍ في الرأس هو أقصى يساره في العربية** — وهو موضع
               مُشغّل الأنظمة الذي طلبه المالك، وموضعُ مُشغّلات التطبيقات

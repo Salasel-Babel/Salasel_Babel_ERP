@@ -31,6 +31,8 @@ internal static class AccessEndpoints
         ArgumentNullException.ThrowIfNull(app);
 
         app.MapPost(AccessRoutes.Sessions, OpenSessionAsync);
+        app.MapPost(AccessRoutes.SessionsByPassword, OpenSessionWithPasswordAsync);
+        app.MapPut(AccessRoutes.Password, SetPasswordAsync);
         app.MapPost(AccessRoutes.SessionRenewal, RenewSessionAsync);
         app.MapPost(AccessRoutes.SessionRevocation, RevokeSessionAsync);
         app.MapGet(AccessRoutes.Memberships, ListMembersAsync);
@@ -57,6 +59,57 @@ internal static class AccessEndpoints
             .ConfigureAwait(false);
 
         return Translate(context, result);
+    }
+
+    private static async Task<IResult> OpenSessionWithPasswordAsync(
+        HttpContext context,
+        AccessService access,
+        CancellationToken cancellationToken)
+    {
+        (OpenSessionWithPasswordRequestDto? dto, IResult? refused) =
+            await Bodies.ReadAsync<OpenSessionWithPasswordRequestDto>(context, cancellationToken).ConfigureAwait(false);
+
+        if (dto is null)
+        {
+            return refused!;
+        }
+
+        Result<OpenedSession> result = await access
+            .OpenSessionWithPasswordAsync(dto.Handle ?? string.Empty, dto.Password ?? string.Empty, cancellationToken)
+            .ConfigureAwait(false);
+
+        return Translate(context, result);
+    }
+
+    private static async Task<IResult> SetPasswordAsync(
+        HttpContext context,
+        AccessService access,
+        CancellationToken cancellationToken)
+    {
+        ApiPrincipal principal = RequestPrincipal.Of(context);
+
+        (SetPasswordRequestDto? dto, IResult? refused) =
+            await Bodies.ReadAsync<SetPasswordRequestDto>(context, cancellationToken).ConfigureAwait(false);
+
+        if (dto is null)
+        {
+            return refused!;
+        }
+
+        Result<SignInSet> result = await access
+            .SetPasswordAsync(
+                principal.Tenant, principal.User,
+                dto.Handle ?? string.Empty, dto.Password ?? string.Empty,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        return result.IsFailure
+            ? HttpProblemResults.Domain(context, result.Errors)
+            : Results.Json(
+                new SignInSetDto(
+                    result.Value.Handle,
+                    result.Value.SetAt.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture)),
+                statusCode: StatusCodes.Status200OK);
     }
 
     private static async Task<IResult> RenewSessionAsync(

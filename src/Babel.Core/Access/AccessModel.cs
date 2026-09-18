@@ -117,6 +117,38 @@ public sealed record ResolvedAccess(
     IReadOnlySet<Guid> ReadOnlyCompanies,
     DateTimeOffset ExpiresAt);
 
+/// <summary>
+/// معرّفُ دخولٍ بكلمة مرور، كما هو مُودَع — <b>ولا نصَّ كلمةٍ فيه</b>.
+/// <para>
+/// وهو صفٌّ في جدولٍ مستقلّ لا عمودٌ على العضوية، لسببٍ واحد: العضويةُ علاقةُ مستخدمٍ
+/// <b>بمنشأة</b>، وقد يكون للمستخدم عضوياتٌ عدّة في مستأجره. ومعرّفُ الدخول واحدٌ له
+/// في المستأجر كلّه، فعمودٌ على العضوية كان سينسخه بعدد منشآته ثم ينحرف.
+/// </para>
+/// </summary>
+/// <param name="Tenant">المستأجر.</param>
+/// <param name="User">المستخدم.</param>
+/// <param name="Handle">المعرّف بعد التسوية — بريدٌ مُصغَّر مُشذَّب.</param>
+/// <param name="Proof">وصفُ الاشتقاق كاملاً: الخوارزمية والتكرارات والملح والبصمة.</param>
+/// <param name="SetAt">لحظةُ آخر ضبطٍ لكلمة المرور.</param>
+public sealed record SignInRecord(
+    TenantId Tenant,
+    UserId User,
+    string Handle,
+    string Proof,
+    DateTimeOffset SetAt);
+
+/// <summary>
+/// ما يُردّ بعد ضبط معرّف دخول — <b>ولا إثباتَ فيه</b>.
+/// <para>
+/// ونوعٌ مستقلٌّ لا <see cref="SignInRecord"/> منقوصاً: لو ردّت الخدمةُ السجلَّ نفسه
+/// لكان على كل حدٍّ فوقها أن <b>يتذكّر</b> ألّا يُسلسل عمود الإثبات. والنسيانُ مرّةً
+/// واحدة يُسرّب بصمةً إلى سلكٍ. فما لا يجوز أن يخرج <b>لا يوجد في النوع الخارج</b>.
+/// </para>
+/// </summary>
+/// <param name="Handle">المعرّف بعد التسوية.</param>
+/// <param name="SetAt">لحظةُ الضبط.</param>
+public sealed record SignInSet(string Handle, DateTimeOffset SetAt);
+
 /// <summary>سبب إبطال الجلسة — <b>مجموعة مغلقة</b> يقرؤها العميل رمزاً لا نصّاً.</summary>
 public static class RevocationReasons
 {

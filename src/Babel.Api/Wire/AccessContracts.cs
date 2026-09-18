@@ -10,6 +10,32 @@ namespace Babel.Api.Wire;
 /// <param name="EnrolmentCredential">النصّ المُسلَّم مرّة واحدة عند الدعوة.</param>
 internal sealed record OpenSessionRequestDto(string EnrolmentCredential);
 
+/// <summary>
+/// طلب فتح جلسة ببريدٍ وكلمة مرور.
+/// <para>
+/// <b>ولا حقل مستأجر فيه ولا حقل منشأة:</b> البريدُ يقود إلى مستخدمه، والمستخدمُ إلى
+/// مستأجره. وحقلٌ يقول «أنا في المستأجر الفلاني» يجعل الطرفَ الآخر يختار مستأجراً
+/// ثم يجرّب — وهو ما تمنعه هذه البنية من أصلها.
+/// </para>
+/// </summary>
+/// <param name="Handle">البريد كما كتبه المستخدم. يُسوّى في الخادم — تُشذَّب أطرافُه وتُصغَّر حروفه.</param>
+/// <param name="Password">كلمة المرور كما كُتبت، <b>بلا تشذيب</b>: الفراغُ محرفٌ معتبَر فيها.</param>
+internal sealed record OpenSessionWithPasswordRequestDto(string Handle, string Password);
+
+/// <summary>
+/// طلب ضبط معرّف الدخول وكلمة المرور لصاحب الجلسة.
+/// </summary>
+/// <param name="Handle">البريد المطلوب.</param>
+/// <param name="Password">كلمة المرور المطلوبة.</param>
+internal sealed record SetPasswordRequestDto(string Handle, string Password);
+
+/// <summary>
+/// ما يُردّ بعد الضبط — <b>المعرّفُ ولحظتُه، ولا شيء عن كلمة المرور</b>.
+/// </summary>
+/// <param name="Handle">المعرّف كما أُودع بعد التسوية — فيراه المستخدم كما سيكتبه.</param>
+/// <param name="SetAt">لحظة الضبط بصيغة ISO 8601 بتوقيت UTC.</param>
+internal sealed record SignInSetDto(string Handle, string SetAt);
+
 /// <summary>طلب تجديد جلسة: اعتماد التجديد وحده.</summary>
 /// <param name="RefreshCredential">اعتماد التجديد الجاري. يُستهلك بهذا النداء ولا يُقبل ثانيةً.</param>
 internal sealed record RenewSessionRequestDto(string RefreshCredential);

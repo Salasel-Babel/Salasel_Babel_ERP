@@ -48,6 +48,12 @@ const OUT_DIR = path.resolve(WEB_ROOT, "..", "artifacts", "align");
 const MOCK = "http://127.0.0.1:5099";
 const COMPANY = "11111111-1111-4111-8111-111111111111";
 
+/* ── والاعتماد في الرابط ليس زينة ─────────────────────────────────────────
+   منذ البوّابة الأمامية (ADR-0094) لا تُرسَم شاشةٌ بلا جلسة: رابطٌ بلا اعتماد
+   يُنزل بوّابةَ الدخول مكان الشاشة، فتقيس المصفوفةُ البوّابةَ على كل مسارٍ
+   وتظنّ أنها تقيس النظام. وهو اعتمادُ الخادم الوهمي وحده، لا سرّ. */
+const TOKEN = "mock-token";
+
 /* ── السماحيات ──────────────────────────────────────────────────────────── */
 const CONTROL_TOLERANCE_PX = 0.5;
 const TEXT_TOLERANCE_PX = 1;
@@ -108,6 +114,7 @@ const PASSES = FULL ? [...BASE, ...EXTRA] : BASE;
 
 function urlOf(p: string, locale: string): string {
   const q = new URLSearchParams({
+    token: TOKEN,
     lang: locale,
     baseUrl: MOCK,
     companyId: COMPANY,

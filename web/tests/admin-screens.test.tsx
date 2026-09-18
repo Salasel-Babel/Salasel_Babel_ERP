@@ -541,6 +541,84 @@ describe("دورُ قراءةٍ فقط", () => {
 });
 
 /* ═══════════════════════════════════════════════════════════════════════
+   ٣ب · بريدُ الدخول وكلمتُه — البابُ الذي بلا شاشةٍ يبقى مقفلاً
+   ───────────────────────────────────────────────────────────────────────
+   العقد يفتح `PUT /api/v1/access/password` منذ ADR-0094، وبلا لوحٍ يناديه
+   لا يستطيع أحدٌ أن يضبط كلمةً — فتصير البوّابةُ الأمامية باباً بلا مفتاح:
+   حقلُ بريدٍ لا يقبل بريداً لأن أحداً لم يُسجَّل قطّ.
+   ═══════════════════════════════════════════════════════════════════════ */
+describe("ضبط بريد الدخول وكلمته", () => {
+  const SET = { handle: "owner@example.sa", setAt: "2026-02-02T02:00:00.0000000Z" };
+
+  it("الزرّ مُقفَلٌ حتى يصحّ البريد ويبلغ الطولُ حدَّه، ولا طلبَ يغادر", async () => {
+    const sent: Recorded[] = [];
+    await mount({
+      path: "/admin/session",
+      transport: stub({ routes: { "GET /api/v1/session": SESSION }, sent }),
+    });
+    const save = await screen.findByTestId("admin-session-signin-save");
+    expect(button("admin-session-signin-save").disabled).toBe(true);
+
+    /* بريدٌ بلا @ وكلمةٌ قصيرة: الحدّان معاً يُقاسان، لا أحدهما. */
+    await type(input("admin-session-handle"), "owner");
+    await type(input("admin-session-password"), "short");
+    expect(button("admin-session-signin-save").disabled).toBe(true);
+
+    await type(input("admin-session-handle"), "owner@example.sa");
+    expect(button("admin-session-signin-save").disabled).toBe(true);
+
+    await click(save);
+    expect(sent.some((r) => r.url.includes("/access/password"))).toBe(false);
+  });
+
+  it("ويُرسل البريدَ والكلمة، ثم يُقرّ بما حُفظ ويمحو الكلمة من الحقل", async () => {
+    const sent: Recorded[] = [];
+    await mount({
+      path: "/admin/session",
+      transport: stub({
+        routes: { "GET /api/v1/session": SESSION, "PUT /api/v1/access/password": SET },
+        sent,
+      }),
+    });
+    await screen.findByTestId("admin-session-signin-form");
+    await type(input("admin-session-handle"), "owner@example.sa");
+    await type(input("admin-session-password"), "a-long-enough-password");
+    await click(screen.getByTestId("admin-session-signin-save"));
+
+    const put = sent.find((r) => r.method === "PUT" && r.url.includes("/access/password"));
+    expect(put).toBeTruthy();
+    expect((put?.body as { handle: string }).handle).toBe("owner@example.sa");
+
+    const done = await screen.findByTestId("admin-session-signin-done");
+    expect(done.textContent ?? "").toContain("owner@example.sa");
+    /* **والكلمةُ تُمحى، والبريدُ يبقى:** حقلٌ يُبقي كلمةَ مرورٍ مكتوبةً في شاشةٍ
+       مفتوحة على مكتبٍ مشترك هو تسريبٌ صامت، والبريدُ ليس سرّاً. */
+    expect(input("admin-session-password").value).toBe("");
+    expect(input("admin-session-handle").value).toBe("owner@example.sa");
+  });
+
+  it("والرفضُ يُقال برمزه — البابُ هذا يسمّي ما فشل، بخلاف باب الدخول", async () => {
+    await mount({
+      path: "/admin/session",
+      transport: stub({
+        routes: { "GET /api/v1/session": SESSION },
+        refuse: {
+          "PUT /api/v1/access/password": { status: 422, code: "access.handle_taken" },
+        },
+      }),
+    });
+    await screen.findByTestId("admin-session-signin-form");
+    await type(input("admin-session-handle"), "owner@example.sa");
+    await type(input("admin-session-password"), "a-long-enough-password");
+    await click(screen.getByTestId("admin-session-signin-save"));
+    await waitFor(() =>
+      expect(screen.getByTestId("problem-code").textContent).toBe("access.handle_taken")
+    );
+    expect(screen.queryByTestId("admin-session-signin-done")).toBeNull();
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════
    ٤ و٥ · إبطال الجلسة: أثرُه قبل الضغط، وأثرُه بعده
    ═══════════════════════════════════════════════════════════════════════ */
 describe("إبطال الجلسة", () => {
@@ -600,12 +678,22 @@ describe("إبطال الجلسة", () => {
     });
     await click(await screen.findByTestId("admin-session-revoke-confirm-ack"));
     await click(await screen.findByTestId("admin-session-revoke-confirm-go"));
-    await waitFor(() => expect(screen.getByTestId("admin-session-revoked")).toBeTruthy());
-    expect(screen.getByTestId("admin-session-revoked-reason").textContent).toBe("signed_out");
+
+    /* ‏**وما يُرى بعد الإبطال صار البوّابةَ الأمامية لا لوحَ «أُبطلت».** وهذا
+       تغيُّرُ سلوكٍ مقصود جاء مع البوّابة (ADR-0094): إبطالُ جلستك خروجٌ، والخروجُ
+       يُغلق النظام خلفك في اللحظة نفسها. ولوحٌ يبقى مرسوماً بعد محو الاعتماد
+       كان يعني أن الشاشةَ باقيةٌ وقد زالت جلستُها — وهو المشهد الذي جاءت
+       البوّابة تمنعه. والسببُ `signed_out` معلومٌ لفاعله ولا يحتاج إعلاناً؛
+       والإبطالُ الذي **لم** يطلبه صاحبه يُقرأ في مسارٍ آخر: فشلُ التجديد
+       الصامت في `App.tsx`، وهو يُنزل البوّابة كذلك. */
+    await waitFor(() => expect(screen.getByTestId("session-gate")).toBeTruthy());
+
     const config = JSON.parse(globalThis.localStorage.getItem("sb-api-config") ?? "{}") as {
       token?: string;
+      refreshToken?: string;
     };
     expect(config.token).toBe("");
+    expect(config.refreshToken ?? "").toBe("");
   });
 
   it("واعتمادُ التزويد الذي لا عائلة له يُقال برمزه لا بجواب «تمّ»", async () => {

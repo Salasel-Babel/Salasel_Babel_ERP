@@ -28,6 +28,12 @@ public sealed class AccessSurfaceTests
     /// <summary>مسار إبطال الجلسة.</summary>
     private const string Revocation = "/api/v1/access/sessions/revocation";
 
+    /// <summary>مسار فتح الجلسة ببريدٍ وكلمة مرور — بلا مصادقة.</summary>
+    private const string ByPassword = "/api/v1/access/sessions/password";
+
+    /// <summary>مسار ضبط معرّف الدخول وكلمته — مصادَقٌ عليه، ولصاحب الجلسة وحده.</summary>
+    private const string Password = "/api/v1/access/password";
+
     private static string Memberships(Guid company) =>
         string.Create(CultureInfo.InvariantCulture, $"/api/v1/companies/{company:D}/memberships");
 
@@ -311,6 +317,176 @@ public sealed class AccessSurfaceTests
         // يصلح للاستعمال. المُودَع بصمةٌ، والنصّ خرج مرّة واحدة في استجابة الدعوة.
         Assert.DoesNotContain(enrolment, text, StringComparison.Ordinal);
         Assert.DoesNotContain("Credential", text, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// <b>البوّابة الأمامية كاملةً من الشبكة: أضبط كلمتي، ثم أدخل بها، ثم أعمل.</b>
+    /// <para>
+    /// وهذا هو الطريق الذي يسلكه محاسبٌ كلَّ صباح، ولم يكن موجوداً قبل ADR-0094:
+    /// كان الدخول لصقَ اعتمادٍ مبهم — لغةُ من يجرّب بـcurl لا لغةُ من يعمل.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task أضبط_كلمتي_بجلستي_ثم_أدخل_بها_ثم_أبلغ_مسارات_منشأتي()
+    {
+        ApiProcess api = await ApiFixture.DefaultAsync();
+
+        // ١ · جلسةٌ من الطريق القائم — الانتساب — هي إثباتُ من يضبط كلمته.
+        JsonElement session = await SessionAsync(api, ApiTestDatabase.CompanyA, ApiFixture.TokenA, "سارة العتيبي");
+        TestCredential mine = Bearer(session, "accessCredential");
+        string handle = "sara." + Guid.NewGuid().ToString("N")[..8] + "@example.sa";
+
+        // ٢ · الضبط. والمعرّف يُردّ **مُسوّى**، فيراه صاحبه كما سيكتبه.
+        using (HttpResponseMessage set = await api.Call(Http.Request(
+            HttpMethod.Put, Password, mine,
+            $$"""{"handle":"  {{handle.ToUpperInvariant()}}  ","password":"a-long-enough-password"}""")))
+        {
+            (string text, JsonElement body) = await Http.BodyAsync(set);
+            Assert.Equal(HttpStatusCode.OK, set.StatusCode);
+            Assert.Equal(handle, body.GetProperty("handle").GetString());
+
+            // ‏**سالباً: لا شيء عن كلمة المرور يعود** — لا نصّها ولا بصمتها ولا ملحها.
+            Assert.DoesNotContain("a-long-enough-password", text, StringComparison.Ordinal);
+            Assert.DoesNotContain("pbkdf2", text, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("proof", text, StringComparison.OrdinalIgnoreCase);
+        }
+
+        // ٣ · الدخول بها — **جلسةٌ كاملة كجلسة الانتساب سواءً بسواء**.
+        JsonElement opened;
+        using (HttpResponseMessage door = await api.Call(Http.Request(
+            HttpMethod.Post, ByPassword, credential: null,
+            $$"""{"handle":"{{handle}}","password":"a-long-enough-password"}""")))
+        {
+            (_, opened) = await Http.BodyAsync(door);
+            Assert.Equal(HttpStatusCode.Created, door.StatusCode);
+            Assert.Equal(session.GetProperty("userId").GetString(), opened.GetProperty("userId").GetString());
+            Assert.Equal(1, opened.GetProperty("generation").GetInt32());
+            Assert.False(string.IsNullOrWhiteSpace(opened.GetProperty("refreshCredential").GetString()));
+        }
+
+        // ٤ · والاعتمادُ المُصدَر يعمل على مسارات المنشأة — لا بابَ خاصّ به.
+        using HttpResponseMessage read = await api.Call(Http.Request(
+            HttpMethod.Get,
+            Http.TrialBalance(ApiTestDatabase.CompanyA, ApiTestDatabase.Book),
+            Bearer(opened, "accessCredential")));
+
+        Assert.Equal(HttpStatusCode.OK, read.StatusCode);
+    }
+
+    /// <summary>
+    /// <b>ثلاثةُ رفضٍ برمزٍ واحد — وهو ما يمنع بابَ الدخول أن يصير كشّافَ عملاء.</b>
+    /// <para>
+    /// بريدٌ غير مسجَّل، وكلمةٌ خاطئة، وبريدٌ مشوّه: <c>access.credential_rejected</c>
+    /// في ثلاثتها. ورمزٌ يقول «هذا البريد غير مسجَّل» يجعل التجريبَ يُخرج قائمةَ
+    /// العملاء صفّاً صفّاً.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task الرفضُ_رمزٌ_واحد_لثلاثِ_حالاتٍ_فلا_يُعرَف_المسجَّل_من_غيره()
+    {
+        ApiProcess api = await ApiFixture.DefaultAsync();
+
+        JsonElement session = await SessionAsync(api, ApiTestDatabase.CompanyA, ApiFixture.TokenA, "خالد الدوسري");
+        string handle = "khalid." + Guid.NewGuid().ToString("N")[..8] + "@example.sa";
+
+        using (HttpResponseMessage set = await api.Call(Http.Request(
+            HttpMethod.Put, Password, Bearer(session, "accessCredential"),
+            $$"""{"handle":"{{handle}}","password":"a-long-enough-password"}""")))
+        {
+            Assert.Equal(HttpStatusCode.OK, set.StatusCode);
+        }
+
+        foreach (string body in new[]
+                 {
+                     $$"""{"handle":"{{handle}}","password":"wrong-but-long-enough"}""",
+                     """{"handle":"nobody-at-all@example.sa","password":"a-long-enough-password"}""",
+                     """{"handle":"ليس بريداً","password":"a-long-enough-password"}""",
+                 })
+        {
+            using HttpResponseMessage refused = await api.Call(
+                Http.Request(HttpMethod.Post, ByPassword, credential: null, body));
+
+            (_, JsonElement problem) = await Http.BodyAsync(refused);
+            Assert.Equal(HttpStatusCode.Unauthorized, refused.StatusCode);
+            Assert.Equal("access.credential_rejected", problem.GetProperty("code").GetString());
+        }
+    }
+
+    /// <summary>
+    /// ومعرّفٌ مأخوذ يُقال لمن يضبط — <b>خلافاً لباب الدخول وعمداً</b>: من يضبط
+    /// معرّفه يستحقّ أن يعرف ما يُصلحه، ومن يخمّن لا يبلغ هذا الباب بلا جلسة.
+    /// </summary>
+    [Fact]
+    public async Task ومعرّفٌ_مأخوذٌ_يُقال_لمن_يضبط_وكلمةٌ_قصيرة_تُردّ_بطولها()
+    {
+        ApiProcess api = await ApiFixture.DefaultAsync();
+        string handle = "shared." + Guid.NewGuid().ToString("N")[..8] + "@example.sa";
+
+        JsonElement first = await SessionAsync(api, ApiTestDatabase.CompanyA, ApiFixture.TokenA, "أوّلُ من سجّل");
+        using (HttpResponseMessage set = await api.Call(Http.Request(
+            HttpMethod.Put, Password, Bearer(first, "accessCredential"),
+            $$"""{"handle":"{{handle}}","password":"a-long-enough-password"}""")))
+        {
+            Assert.Equal(HttpStatusCode.OK, set.StatusCode);
+        }
+
+        JsonElement second = await SessionAsync(api, ApiTestDatabase.CompanyA, ApiFixture.TokenA, "ثاني من حاول");
+        using (HttpResponseMessage taken = await api.Call(Http.Request(
+            HttpMethod.Put, Password, Bearer(second, "accessCredential"),
+            $$"""{"handle":"{{handle}}","password":"another-long-password"}""")))
+        {
+            (_, JsonElement problem) = await Http.BodyAsync(taken);
+            Assert.Equal(HttpStatusCode.UnprocessableEntity, taken.StatusCode);
+            Assert.Equal("access.handle_taken", problem.GetProperty("code").GetString());
+        }
+
+        using (HttpResponseMessage tooShort = await api.Call(Http.Request(
+            HttpMethod.Put, Password, Bearer(second, "accessCredential"),
+            $$"""{"handle":"short.{{Guid.NewGuid():N}}@example.sa","password":"قصيرة"}""")))
+        {
+            (_, JsonElement problem) = await Http.BodyAsync(tooShort);
+            Assert.Equal(HttpStatusCode.UnprocessableEntity, tooShort.StatusCode);
+            Assert.Equal("access.password_length_rejected", problem.GetProperty("code").GetString());
+        }
+    }
+
+    /// <summary>
+    /// <b>وضبطٌ ثانٍ ينقل المعرّف ولا يُضيفه</b>: البابُ القديم يُغلق في المعاملة نفسها.
+    /// <para>
+    /// ومعرّفان لمستخدمٍ واحد بابان لحسابٍ واحد، فسحبُ أحدهما يُقرأ «سُحب الوصول»
+    /// وهو باقٍ على الآخر.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task وضبطٌ_ثانٍ_ينقل_المعرّف_ولا_يترك_البابَ_الأول_مفتوحاً()
+    {
+        ApiProcess api = await ApiFixture.DefaultAsync();
+        JsonElement session = await SessionAsync(api, ApiTestDatabase.CompanyA, ApiFixture.TokenA, "من نقل بريده");
+        TestCredential mine = Bearer(session, "accessCredential");
+
+        string first = "old." + Guid.NewGuid().ToString("N")[..8] + "@example.sa";
+        string second = "new." + Guid.NewGuid().ToString("N")[..8] + "@example.sa";
+
+        foreach (string handle in new[] { first, second })
+        {
+            using HttpResponseMessage set = await api.Call(Http.Request(
+                HttpMethod.Put, Password, mine,
+                $$"""{"handle":"{{handle}}","password":"a-long-enough-password"}"""));
+            Assert.Equal(HttpStatusCode.OK, set.StatusCode);
+        }
+
+        using (HttpResponseMessage closed = await api.Call(Http.Request(
+            HttpMethod.Post, ByPassword, credential: null,
+            $$"""{"handle":"{{first}}","password":"a-long-enough-password"}""")))
+        {
+            Assert.Equal(HttpStatusCode.Unauthorized, closed.StatusCode);
+        }
+
+        using HttpResponseMessage opens = await api.Call(Http.Request(
+            HttpMethod.Post, ByPassword, credential: null,
+            $$"""{"handle":"{{second}}","password":"a-long-enough-password"}"""));
+
+        Assert.Equal(HttpStatusCode.Created, opens.StatusCode);
     }
 
     /// <summary>يدعو عضواً ويُعيد استجابة الدعوة.</summary>

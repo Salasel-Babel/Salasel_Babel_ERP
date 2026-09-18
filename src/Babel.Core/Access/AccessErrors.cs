@@ -125,6 +125,45 @@ public static class AccessErrors
         "Revoking a membership and changing a role are an owner's acts in the company. Whoever can change roles can "
         + "raise their own, so the limit sits at the act, not after it.");
 
+    /// <summary>
+    /// كلمةُ المرور أقصرُ من الحدّ أو أطول.
+    /// <para>
+    /// <b>ولا يُقال أيّهما</b> حين يُرفض <b>دخول</b>: الفرقُ بين «قصيرة» و«طويلة» يفيد
+    /// من يضبطها، ولا يفيد من يخمّنها. وهذا الرمز يُردّ على <b>الضبط</b> وحده.
+    /// </para>
+    /// </summary>
+    public static Error PasswordLengthRejected { get; } = new(
+        "access.password_length_rejected",
+        string.Create(
+            CultureInfo.InvariantCulture,
+            $"كلمةُ المرور بين {AccessPasswords.MinimumPasswordLength} و{AccessPasswords.MaximumPasswordLength} محرفاً. ولا يُطلب حرفٌ كبير ولا رقمٌ ولا رمز: قواعدُ التركيب تدفع الناس إلى أنماطٍ متوقَّعة، والطولُ وحده ما يُقاس."),
+        string.Create(
+            CultureInfo.InvariantCulture,
+            $"A password is between {AccessPasswords.MinimumPasswordLength} and {AccessPasswords.MaximumPasswordLength} characters. No upper case, digit or symbol is demanded: composition rules push people into predictable patterns, and length is what is measured."));
+
+    /// <summary>معرّفُ الدخول ليس على شكل بريد.</summary>
+    public static Error HandleShapeRejected { get; } = new(
+        "access.handle_shape_rejected",
+        string.Create(
+            CultureInfo.InvariantCulture,
+            $"معرّفُ الدخول بريدٌ إلكتروني: نصٌّ فيه «@» واحدة بلا فراغ، وطولُه لا يتجاوز {AccessPasswords.MaximumHandleLength} محرفاً."),
+        string.Create(
+            CultureInfo.InvariantCulture,
+            $"A sign-in handle is an email address: text with a single '@' and no whitespace, at most {AccessPasswords.MaximumHandleLength} characters."));
+
+    /// <summary>
+    /// المعرّفُ مأخوذٌ لمستخدمٍ آخر.
+    /// <para>
+    /// <b>وهذا الرمز يُردّ على الضبط لا على الدخول</b>: من يضبط معرّفه يستحقّ أن يعرف
+    /// أنه مأخوذ ليختار غيره. ومن يحاول الدخول لا يُقال له أبداً إن كان مسجَّلاً —
+    /// وإلّا صار بابُ الدخول كشّافَ حساباتٍ بالتجريب.
+    /// </para>
+    /// </summary>
+    public static Error HandleTaken { get; } = new(
+        "access.handle_taken",
+        "هذا المعرّف مسجَّلٌ لمستخدمٍ آخر. اختر غيره.",
+        "This handle is registered to another user. Choose a different one.");
+
     /// <summary>الداعي ليس مالكاً.</summary>
     public static Error InviterIsNotAnOwner { get; } = new(
         "membership.inviter_is_not_an_owner",

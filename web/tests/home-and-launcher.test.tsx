@@ -13,7 +13,7 @@
      ٣ · أن مربّعات البداية تقود إلى مسارات `SECTIONS` نفسها — فمربّعٌ
          يقود إلى غير نظامه عطلٌ لا يشتكي منه أحد قبل البيع.
    ═══════════════════════════════════════════════════════════════════════════ */
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { act, cleanup, render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider } from "@tanstack/react-router";
@@ -33,6 +33,20 @@ const silent: Transport = ({ url }) =>
 function settled(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0));
 }
+
+/* ‏**واعتمادٌ محفوظٌ قبل كل رسمة** — وإلّا حجبت البوّابةُ الأمامية القشرةَ كلَّها
+   فلا قائمةَ جانبية تُقاس. والمقيسُ هنا الملاحةُ لا المصادقة، فالجلسةُ شرطُ
+   وصولٍ إليه لا موضوعُه. */
+beforeEach(() => {
+  globalThis.localStorage.setItem(
+    "sb-api-config",
+    JSON.stringify({ baseUrl: "", token: "t", companyId: "", book: "MAIN", period: "" })
+  );
+});
+
+afterEach(() => {
+  globalThis.localStorage.clear();
+});
 
 async function mount(initialPath: string): Promise<void> {
   const router = createAppRouter({ memory: true, initialPath });

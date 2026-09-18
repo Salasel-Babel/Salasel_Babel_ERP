@@ -38,6 +38,37 @@ internal sealed class AccessMembershipRow
 }
 
 /// <summary>
+/// معرّفُ دخولٍ بكلمة مرور — <b>ولا عمودَ يحمل كلمةً</b>.
+/// <para>
+/// العمودُ <c>proof</c> يحمل وصفَ الاشتقاق كاملاً ولا يُعكَس: من يقرأ نسخةً احتياطية
+/// أو سجلَّ استعلاماتٍ أو لقطةَ دعمٍ لا ينتحل به أحداً، ولا يستطيع أن يجرّب إلا
+/// بستّمئةِ ألفِ تكرارٍ لكل تخمينة.
+/// </para>
+/// <para>
+/// <b>والمفتاحُ هو المعرّفُ المُسوّى</b> لا معرّفُ المستخدم: البحثَ الذي يقع في كل
+/// محاولةِ دخول هو «من صاحبُ هذا البريد؟»، فيقع على المفتاح لا على فهرسٍ ثانوي.
+/// وأحاديّةُ المعرّف للمستخدم يحرسها فهرسٌ فريد على <c>user_id</c>.
+/// </para>
+/// </summary>
+internal sealed class AccessSignInRow
+{
+    /// <summary>المعرّف بعد التسوية — <b>وهو المفتاح</b>.</summary>
+    public string Handle { get; set; } = string.Empty;
+
+    /// <summary>المستأجر.</summary>
+    public Guid TenantId { get; set; }
+
+    /// <summary>المستخدم.</summary>
+    public Guid UserId { get; set; }
+
+    /// <summary>وصفُ الاشتقاق: الخوارزمية والتكرارات والملح والبصمة.</summary>
+    public string Proof { get; set; } = string.Empty;
+
+    /// <summary>لحظةُ آخر ضبط.</summary>
+    public DateTimeOffset SetAt { get; set; }
+}
+
+/// <summary>
 /// اعتماد انتساب: دعوةٌ تُقبل <b>مرّة واحدة</b>.
 /// <para>
 /// <b>والصفّ يبقى بعد الاستهلاك ولا يُحذف</b>: صفٌّ محذوف لا يُفرَّق عن دعوةٍ لم توجد

@@ -183,6 +183,40 @@ public interface IAccessDirectory
     /// <param name="cancellationToken">رمز الإلغاء.</param>
     Task<IReadOnlyList<Membership>> MembershipsOfAsync(TenantId tenant, UserId user, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// يجد معرّفَ دخولٍ بكلمة مرور، أو <c>null</c>.
+    /// <para>
+    /// <b>ولا يُفرَّق في الردّ بين «لا صفَّ» و«كلمةٌ خاطئة»</b> — وذلك حكمُ من يستدعي
+    /// لا حكمُ هذه الدالّة: هي تردّ ما وجدت، والخدمةُ فوقها تردّ الرمزَ نفسه في
+    /// الحالتين وتُنفق الزمنَ نفسه.
+    /// </para>
+    /// </summary>
+    /// <param name="handle">المعرّف <b>بعد التسوية</b>.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    Task<SignInRecord?> FindSignInAsync(string handle, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// يضبط معرّفَ دخولٍ وإثباتَه لمستخدم. <c>false</c> إن كان المعرّف لمستخدمٍ آخر.
+    /// <para>
+    /// <b>والضبطُ يستبدل ولا يُراكم</b>: للمستخدم معرّفٌ واحد، فتغييرُه نقلٌ لا إضافة.
+    /// ومعرّفان لمستخدمٍ واحد بابان لحسابٍ واحد، وسحبُ أحدهما يُقرأ «سُحب الوصول»
+    /// وهو باقٍ على الآخر.
+    /// </para>
+    /// </summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="user">المستخدم.</param>
+    /// <param name="handle">المعرّف بعد التسوية.</param>
+    /// <param name="proof">وصفُ الاشتقاق كاملاً.</param>
+    /// <param name="now">اللحظة الجارية.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    Task<bool> PutSignInAsync(
+        TenantId tenant,
+        UserId user,
+        string handle,
+        string proof,
+        DateTimeOffset now,
+        CancellationToken cancellationToken = default);
+
     /// <summary>يستهلك اعتماد انتساب ذرّياً: يقبله مرّة واحدة ولا مرّتين.</summary>
     /// <param name="enrolmentDigest">البصمة المُقدَّمة.</param>
     /// <param name="now">اللحظة الجارية.</param>

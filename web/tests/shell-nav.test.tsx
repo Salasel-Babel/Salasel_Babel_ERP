@@ -14,6 +14,12 @@
    الرسم** بما تعلنه `SCREENS` — لا نصَّ الملفّ بنصّه، فقارئُ النصّ يمرّ على
    رابطٍ معلَّقٍ خلف شرط.
 
+   **ومنذ صارت القائمة شجرةً: المطويُّ محسوبٌ حاضراً.** عقدةٌ مطويّة تُبقي
+   روابطَها في المستند وتُخفيها بـ`hidden`، فيراها `querySelectorAll` —
+   وذلك مقصود: المطويُّ **مُعلَنٌ خلف نقرة**، والغائبُ غير موجود. والفرق
+   بينهما هو بالضبط العطلُ الذي يُقاس هنا. ويحرس الطيَّ نفسَه اختبارٌ آخر
+   أسفل: العقدةُ تنفتح بالنقر، وما تحتها يظهر.
+
    **ولماذا الطرفان معاً لا طرفٌ واحد:** غيابُ شاشةٍ من القائمة يُخفيها،
    ورابطٌ في القائمة بلا صفٍّ في `SCREENS` يصنع شاشةً لا تعرف قسمَها ولا لونَه
    ولا يجدها بحثُ لوحة الأوامر. فكلاهما عطل، وكلاهما يُقاس هنا.
@@ -27,12 +33,17 @@ import { LocaleProvider } from "../src/i18n/react";
 import { createI18n } from "../src/i18n/setup";
 import { ApiProvider } from "../src/app/api-context";
 import { createAppRouter } from "../src/app/router";
-import { SCREENS, SECTIONS } from "../src/app/shell/sections";
+import { SCREENS, SCREEN_GROUPS, SECTIONS } from "../src/app/shell/sections";
 import type { RawResponse, Transport } from "../src/api/transport";
 
 /** ناقلٌ صامت: هذا الحارس يقيس الملاحة لا البيانات، فيردّ 503 على كل باب. */
 const silent: Transport = ({ url }) =>
   Promise.resolve<RawResponse>({ ok: false, status: 503, json: null, url });
+
+/** يُمهل الدورةَ التالية: نقرةٌ تُبدّل حالةً أو تُبحر لا تكتمل في اللحظة نفسها. */
+function settled(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
 
 async function navHrefs(initialPath = "/"): Promise<string[]> {
   const router = createAppRouter({ memory: true, initialPath });
@@ -111,11 +122,100 @@ describe("القائمة الجانبية و SCREENS لا تنحرف إحداه�
          المبدّل دائماً، ومساره شاشةٌ من شاشاته — فهو ظاهرٌ بحقّ لا تسرّب.
          والمقيسُ هنا قائمةُ الشاشات وحدها. */
       const switcher = new Set(SECTIONS.flatMap((s) => (s.path ? [s.path] : [])));
+      /* **وصفحةُ البداية كذلك**: هي `universal` في `SCREENS` — مدخلٌ إلى
+         الأنظمة لا شاشةُ عملٍ في أحدها، فتُعرَض في شجرة كلٍّ منها بحقّ.
+         والاستثناء **مقروءٌ من الراية لا مكتوبٌ بمسارٍ هنا**، فلو زالت
+         الرايةُ يوماً عاد الحارسُ يمسك المسار. */
+      for (const universal of SCREENS.filter((entry) => entry.universal === true)) {
+        switcher.add(universal.path);
+      }
       const alien = hrefs.filter(
         (h) => !switcher.has(h) && byPath.has(h) && byPath.get(h) !== section.id
       );
       expect(alien, "قسم «" + section.id + "» يعرض: " + alien.join(" · ")).toEqual([]);
       cleanup();
     }
+  });
+
+  /* **ولا رمزَ اختبارٍ مكرَّر في الشجرة.** وقع مقيساً: صفحةُ البداية على
+     `/home`، وقاعدةُ اشتقاق الرمز كانت تعطي الجذرَ `/` الرمزَ `nav-home`
+     نفسه — فيمسك `getByTestId` أوّلَهما ويظنّ من يقرأ الاختبار أنه يقيس
+     الثانية. وهو عطلٌ **يُخضِّر** اختباراً كاذباً بدل أن يُحمّر. */
+  it("ولا رمزَ اختبارٍ مكرَّر في الشجرة — فلا يقيس اختبارٌ غيرَ ما يظنّ", async () => {
+    for (const section of SECTIONS) {
+      if (!section.built || !section.path) continue;
+      await navHrefs(section.path);
+      const ids = [...document.querySelectorAll(".app-side [data-testid]")].map((el) =>
+        el.getAttribute("data-testid")
+      );
+      const twice = ids.filter((id, i) => ids.indexOf(id) !== i);
+      expect(twice, "رموزٌ مكرَّرة في «" + section.id + "»: " + twice.join(" · ")).toEqual([]);
+      cleanup();
+    }
+  });
+
+  /* **ولا مجموعةَ من شاشةٍ واحدة.** عقدةٌ تنفتح على ورقةٍ يتيمة تُكلّف نقرةً
+     ولا تُعطي تصنيفاً — وهي أشيعُ ما يقع حين تُنقل شاشةٌ من مجموعةٍ إلى
+     أخرى فتُترك جارتُها وحدها. والحدُّ اثنتان لأن المجموعة **تجميع**. */
+  it("كلُّ مجموعةٍ تحمل شاشتين فأكثر، وكلُّ شاشةٍ في مجموعةٍ معلَنة", () => {
+    const declared = new Set(SCREEN_GROUPS.map((g) => g.id));
+    const thin = SCREEN_GROUPS.filter(
+      (group) => SCREENS.filter((s) => s.group === group.id).length < 2
+    ).map((g) => g.id);
+    expect(thin, "مجموعاتٌ من شاشةٍ واحدة: " + thin.join(" · ")).toEqual([]);
+
+    /* ومجموعةٌ تكتبها شاشةٌ ولا صفَّ لها تُسقِط الشاشةَ من الشجرة صامتةً. */
+    const stray = SCREENS.filter(
+      (screen) => screen.group !== undefined && !declared.has(screen.group)
+    ).map((s) => s.path);
+    expect(stray, "شاشاتٌ في مجموعةٍ بلا صفّ: " + stray.join(" · ")).toEqual([]);
+
+    /* ومجموعةٌ وشاشتُها في قسمين مختلفين تجعل الشجرةَ تعرض غريباً. */
+    const crossed = SCREENS.filter((screen) => {
+      const group = SCREEN_GROUPS.find((g) => g.id === screen.group);
+      return group !== undefined && group.section !== screen.section;
+    }).map((s) => s.path);
+    expect(crossed, "شاشاتٌ في مجموعةِ قسمٍ آخر: " + crossed.join(" · ")).toEqual([]);
+  });
+
+  /* **والطيُّ يُطوى ويُفتح فعلاً.** بلا هذا يمرّ عطلٌ يُبقي كلَّ عقدةٍ
+     مطويّةً أبداً — وحينها تكون كلُّ الحراسات أعلاه خضراء والقائمةُ في
+     الشاشة فارغةٌ إلا من العناوين. */
+  it("عقدةُ الشجرة تنفتح بالنقر وتُظهر شاشاتِها", async () => {
+    const router = createAppRouter({ memory: true, initialPath: "/inventory/stock" });
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
+    await act(async () => {
+      render(
+        <LocaleProvider i18n={createI18n()} initial="ar">
+          <QueryClientProvider client={client}>
+            <ApiProvider transport={silent}>
+              <RouterProvider router={router} />
+            </ApiProvider>
+          </QueryClientProvider>
+        </LocaleProvider>
+      );
+      await router.load();
+    });
+    const branches = [...document.querySelectorAll(".app-side .navitem--branch")];
+    expect(branches.length, "لا عقدَ في شجرة المخزني").toBeGreaterThan(1);
+
+    /* المخزنيُّ مفتوحٌ على «الأرصدة» وهي ورقةٌ في الطبقة الأولى، فكلُّ عقده
+       مطويّةٌ — وهو الشاهد الإيجابي لهذا الاختبار. */
+    const first = branches[0] as HTMLButtonElement;
+    expect(first.getAttribute("aria-expanded")).toBe("false");
+    const listId = first.getAttribute("aria-controls") ?? "";
+    const list = document.getElementById(listId);
+    expect(list, "عقدةٌ لا تشير إلى قائمتها").not.toBeNull();
+    expect(list?.hasAttribute("hidden")).toBe(true);
+
+    await act(async () => {
+      first.click();
+      await settled();
+    });
+    expect(first.getAttribute("aria-expanded")).toBe("true");
+    expect(document.getElementById(listId)?.hasAttribute("hidden")).toBe(false);
+    expect(
+      document.getElementById(listId)?.querySelectorAll("a[href]").length
+    ).toBeGreaterThan(1);
   });
 });

@@ -23,7 +23,7 @@ import { LocaleProvider } from "../src/i18n/react";
 import { createI18n } from "../src/i18n/setup";
 import { ApiProvider } from "../src/app/api-context";
 import { createAppRouter } from "../src/app/router";
-import { SCREENS, SCREEN_GROUPS } from "../src/app/shell/sections";
+import { SCREENS, SCREEN_GROUPS, SECTIONS } from "../src/app/shell/sections";
 import { registeredPaths } from "../src/app/voice-destinations";
 import type { RawResponse, Transport } from "../src/api/transport";
 import { resetAccountingFocus } from "../src/screens/accounting/focus";
@@ -326,7 +326,7 @@ describe("استقامة الصفّ", () => {
         rowsSeen += 1;
         for (const field of [...row.children].filter((c) => c.classList.contains("field"))) {
           fieldsSeen += 1;
-          /* الوصف يسكن **المسار الثالث** للصفّ، وهو `‎.field__desc` الذي يلفّ
+          /* الوصف يسكن **المسار الثالث** للصفّ، وهو `.field__desc` الذي يلفّ
              التلميح ورسالة الرفض معاً (‏ADR-0067 §2): بلا هذا اللفّ يصير
              للحقل أربعة أبناء عند الرفض وحده فينزاح المسار. فيُعدّ ما في
              المسار الثالث، **ويُعدّ معه الشكل المسطَّح** — فحقلٌ يكتب وصفه
@@ -409,9 +409,34 @@ describe("الملاحة", () => {
     for (const entry of [...sales, ...purchasing]) {
       expect(entry.section).toBe("accounting");
     }
-    expect(SCREEN_GROUPS.map((g) => g.id)).toEqual(["sales", "purchasing"]);
+    /* **والمحروسُ «لا قسمَ سادس» — وهو `SECTIONS` لا `SCREEN_GROUPS`.**
+       كان هذا السطر يقول `toEqual(["sales","purchasing"])`، وهو يحرس العدد
+       اثنين لا المبدأ: المجموعةُ **فصلُ قراءةٍ داخل قسم** لا قسمٌ في العقد،
+       فزيادتُها لا تمسّ عقد الملاحة الخماسي بشيء. وقد زادت حين طلب المالك
+       شجرةً من طبقتين في كل نظام. فصار المحروس ثلاثة أشياء تُقاس:
+         ١ · الأقسامُ خمسةٌ بأعيانها — وهذا هو ADR-0069.
+         ٢ · المجموعتان المحاسبيتان قائمتان بمسارَيهما.
+         ٣ · كلُّ مجموعةٍ تحت قسمٍ من الخمسة — لا سادسَ يتسلّل مجموعةً. */
+    expect(SECTIONS.map((s) => s.id)).toEqual([
+      "accounting",
+      "inventory",
+      "hr",
+      "contracting",
+      "realestate",
+    ]);
+    expect(SCREEN_GROUPS.map((g) => g.id)).toContain("sales");
+    expect(SCREEN_GROUPS.map((g) => g.id)).toContain("purchasing");
+    const sectionIds = new Set(SECTIONS.map((s) => s.id));
     for (const group of SCREEN_GROUPS) {
-      expect(WANTED).toContain(group.path);
+      expect(sectionIds.has(group.section), group.id).toBe(true);
+      /* ومسارُ المجموعة شاشةٌ من شاشاتها — لا مسارٌ مكتوبٌ بيدٍ ينحرف. */
+      const first = SCREENS.find((s) => s.path === group.path);
+      expect(first?.group, group.id).toBe(group.id);
+    }
+    for (const group of SCREEN_GROUPS.filter((g) => g.section === "accounting")) {
+      if (group.id === "sales" || group.id === "purchasing") {
+        expect(WANTED).toContain(group.path);
+      }
     }
   });
 

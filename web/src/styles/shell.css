@@ -24,16 +24,13 @@
   backdrop-filter:blur(10px);
 }
 
-/* ═══════════════════════════════════════════ ٢ · ملاحة الأقسام الخمسة */
-.sections{ display:flex; flex-direction:column; gap:var(--space-2); min-inline-size:0 }
-@media (max-width:860px){
-  .sections{ flex-direction:row; flex-wrap:wrap; gap:var(--space-6) }
+/* ═══════════════════════════════════════════ ٢ · ملاحة الأنظمة الخمسة
+   **مربّعاتٌ في لوح المُشغّل** لا عمودٌ في القائمة الجانبية (ADR-0093):
+   خمسةٌ تُقرأ في نظرةٍ واحدة، لا مسحاً رأسياً فوق شاشاتِ أحدها. */
+.sections{
+  display:grid; grid-template-columns:repeat(auto-fill, minmax(11rem, 1fr));
+  gap:var(--space-6); min-inline-size:0;
 }
-.sections__label{
-  font-size:var(--font-size-2xs); font-weight:var(--font-weight-semibold);
-  color:var(--color-text-subtle); padding:var(--space-8) var(--space-10) var(--space-4);
-}
-@media (max-width:860px){ .sections__label{ display:none } }
 
 .section{
   /* الالتفاف إلزامي لا تجميل: «قيد البناء» بالإنجليزية والهندية أطولُ منه
@@ -53,10 +50,16 @@
 .section:hover{ background:var(--color-surface-sunken); color:var(--color-text) }
 .section:focus-visible{ outline:2px solid var(--color-focus); outline-offset:2px }
 /* شارةُ القسم: مربّعٌ يحمل لون القسم — وهو نفس اللون الذي تحمله موجة الانتقال. */
+/* **وصارت الشارةُ رمزاً لا نقطة.** كانت مربّعاً بلون النظام وحده، وهو يقول
+   «هذا نظامٌ آخر» ولا يقول **أيُّ** نظام — فيُقرأ الاسمُ في كل مرّة. والرمزُ
+   يحمل اللون نفسه ويضيف ما تُمسكه العين قبل القراءة. واللونُ باقٍ كما هو:
+   هو نفسه لون موجة الانتقال، وهو عقدٌ في `cinematic.css §8`. */
 .section__mark{
-  inline-size:9px; block-size:9px; border-radius:var(--radius-mark); flex:none;
-  background:var(--section-tint, var(--color-text-subtle));
-  box-shadow:0 0 12px color-mix(in srgb, var(--section-tint, transparent) 60%, transparent);
+  inline-size:32px; block-size:32px; border-radius:var(--radius-control); flex:none;
+  display:grid; place-items:center;
+  color:var(--section-tint, var(--color-text-subtle));
+  background:color-mix(in srgb, var(--section-tint, transparent) 12%, transparent);
+  box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--section-tint, transparent) 26%, transparent);
 }
 .section__name{ flex:1 0 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-inline-size:0 }
 .section[aria-current="page"]{
@@ -212,3 +215,100 @@
 .voice-landed__field dt{ color:var(--color-text-muted); font-size:var(--font-size-xs) }
 .voice-landed__field dd{ margin:0; font-variant-numeric:var(--font-numeric) }
 @media print{ .voice-landed{ display:none } }
+
+
+/* ═══════════════════════════════ ٦ · مُشغّل الأنظمة ولوحُه
+   **زرُّ مصفوفة النقاط في أقصى يسار الرأس** — وهو الموضع الذي تعلّمه الناس
+   من مُشغّلات التطبيقات. واللوحُ ينفتح تحته محاذياً لحافّته، لا في وسط
+   الشاشة: لوحٌ يقفز إلى المنتصف يقطع ما كان الناظر يقرأه. */
+.applauncher{ position:relative; flex:none }
+.applauncher__btn[aria-expanded="true"]{
+  background:var(--color-primary-soft); color:var(--color-primary);
+}
+.launchpanel{
+  position:absolute; inset-block-start:calc(100% + var(--space-8));
+  /* محاذاةٌ إلى حافّة الزرّ اليسرى: `inline-end` في العربية هو اليسار. */
+  inset-inline-end:0;
+  z-index:var(--z-menu);
+  inline-size:min(420px, calc(100vw - var(--space-32)));
+  padding:var(--space-12);
+  background:var(--color-surface);
+  border:var(--border-width) solid var(--edge-strong);
+  border-radius:var(--radius-overlay);
+  box-shadow:var(--elevation-overlay);
+  animation:launch-in var(--motion-quick) var(--ease-enter) both;
+}
+@keyframes launch-in{ from{ opacity:0; transform:translateY(-6px) } to{ opacity:1; transform:none } }
+@media (prefers-reduced-motion: reduce){ .launchpanel{ animation:none !important } }
+.launchpanel__label{
+  margin:0 0 var(--space-8); padding-inline:var(--space-4);
+  font-size:var(--font-size-2xs); font-weight:var(--font-weight-semibold);
+  color:var(--color-text-subtle);
+}
+.launchpanel__note{
+  margin:var(--space-10) 0 0; padding-inline:var(--space-4);
+  font-size:var(--font-size-3xs); color:var(--color-text-subtle);
+}
+
+.sections .section{
+  flex-direction:column; align-items:flex-start; gap:var(--space-6);
+  padding:var(--space-12);
+  border-color:var(--edge-line);
+  background:var(--color-surface-raised);
+}
+.sections .section__soon{ margin-inline-start:0 }
+/* **والنظامُ الذي أنت فيه موسومٌ داخل اللوح أيضاً.** وبلا هذا السطر تفوز
+   قاعدةُ المربّعات على قاعدة «هنا أنت» بترتيب المصدر — تساويان في الأولوية —
+   فينفتح اللوحُ ولا يقول أين أنت، وهو أوّلُ ما يُسأل عنه عند فتحه.
+   (وقع مقيساً على الشاشة: خمسةُ مربّعاتٍ متشابهة على `/sales/invoice`.) */
+.sections .section[aria-current="page"]{
+  background:color-mix(in srgb, var(--section-tint) 14%, transparent);
+  border-color:color-mix(in srgb, var(--section-tint) 46%, transparent);
+  color:var(--color-text);
+}
+@media (max-width:620px){
+  .sections{ grid-template-columns:minmax(0, 1fr) }
+  .sections .section{ flex-direction:row; align-items:center }
+}
+
+/* ═══════════════════════════════ ٧ · شجرةُ النظام المفتوح
+   القائمةُ الجانبية صارت لشاشات النظام المفتوح وحدها: شارةٌ تقول أين أنت،
+   ثم أوراقٌ في الطبقة الأولى، ثم عقدٌ تنفتح على شاشاتها. */
+.screentree{ display:flex; flex-direction:column; min-inline-size:0; flex:1 1 auto }
+
+/* **شارةُ النظام** — «أين أنا الآن» بعد أن خرجت الأنظمةُ إلى المُشغّل.
+   وبلا هذه الشارة يصير الناظرُ في شجرةٍ لا يعرف شجرةَ أيّ نظامٍ هي. */
+/* والغسلةُ 14% **ليست ذوقاً**: هي الغسلةُ نفسها التي يقيسها
+   `scripts/contrast.mjs` في الزوج `text/currentSection` على ألوان الأنظمة
+   الخمسة كلّها. ونسبةٌ ثالثة كانت ستصنع زوجاً غير مقيس. */
+.sysbadge{
+  display:flex; align-items:center; gap:var(--space-8);
+  margin:0 0 var(--space-10); padding:var(--space-8) var(--space-10);
+  border-radius:var(--radius-control);
+  border:var(--border-width) solid color-mix(in srgb, var(--section-tint) 40%, transparent);
+  background:color-mix(in srgb, var(--section-tint) 14%, transparent);
+  color:var(--color-text);
+  font-size:var(--font-size-control); font-weight:var(--font-weight-bold);
+}
+.sysbadge .icon{ color:var(--section-tint); flex:none }
+
+/* اسمُ العقدة يأخذ ما بقي، ويُبتَر بنقاطٍ لا يدفع القارطَ خارج العمود. */
+.navitem__name{
+  flex:1 1 auto; min-inline-size:0;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+/* عقدةٌ تنفتح: زرٌّ لا رابط — فلا يُقرأ وعداً بصفحةٍ تُفتح. */
+.navitem--branch{ font-weight:var(--font-weight-semibold) }
+.navitem--branch .caret{ display:inline-grid; place-items:center; opacity:.7 }
+/* **والعقدةُ التي تحوي الشاشة القائمة موسومةٌ ولو كانت مطويّة.** */
+.navitem--branch[data-holds-current="true"]{
+  color:var(--color-text);
+  background:color-mix(in srgb, var(--section-tint) 14%, transparent);
+}
+.navitem:focus-visible,
+.subitem:focus-visible{ outline:2px solid var(--color-focus); outline-offset:2px }
+
+/* ونقطةُ `.subitem::before` تُطفأ داخل الشجرة: لكل ورقةٍ رمزُها، ونقطةٌ
+   قبل الرمز علامتان لشيءٍ واحد — تُقرأان ضجيجاً لا ترتيباً. وحالةُ «هنا
+   أنت» تقولها خلفيةُ الورقة كما تقولها في الطبقة الأولى. */
+.subnav .subitem::before{ display:none }

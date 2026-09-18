@@ -11,7 +11,7 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
+import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { health } from "../api/generated/client";
 import { useApi } from "./api-context";
 import { useT } from "../i18n/react";
@@ -20,7 +20,7 @@ import { CompanyBadge } from "./shell/CompanyBadge";
 import { KeyboardHelp } from "./shell/KeyboardHelp";
 import { CommandPalette } from "./shell/CommandPalette";
 import { ScreenNav } from "./shell/ScreenNav";
-import { SectionNav } from "./shell/SectionNav";
+import { AppLauncher } from "./shell/AppLauncher";
 import { VoiceDock } from "./shell/VoiceDock";
 import { AgentWorkspace } from "../agent";
 import { VoiceDraftBanner } from "./VoiceDraftBanner";
@@ -85,20 +85,19 @@ export function AppShell(): ReactNode {
       </a>
 
       <nav className="app-side" aria-label={t("app.a11y.mainNav")}>
-        <div className="brand">
+        {/* العلامةُ بابٌ إلى البداية لا زينة: هي الموضع الذي تعلّمه الناس
+            للعودة إلى أوّل الطريق، وتركُها صمّاء يُهدر ما تعلّموه. */}
+        <Link to="/home" className="brand" data-testid="brand-home">
           <span className="mark" aria-hidden="true" />
           <span>{t("app.name")}</span>
-        </div>
+        </Link>
 
-        <SectionNav path={path} />
-
-        {/* ── شاشاتُ القسم المفتوح وحدها ──────────────────────────────────
-            وكانت هنا **نسخةٌ ثانية من `SCREENS` مكتوبةٌ بيد** تسرد الشاشات
-            التسع والخمسين كلَّها بلا ترشيح، فيرى من يفتح «الموارد البشرية»
-            ميزانَ المراجعة وشجرةَ التسكين تحته. وقد كان تعليقٌ هنا يوصي بأن
-            تُقاد القائمة من `SCREENS` — وهذا ما صار: الترشيحُ والعناوين في
-            `shell/ScreenNav.tsx`، ولا موضعَ ثانٍ ينحرف عن الأوّل. */}
-        <ScreenNav section={section.id} />
+        {/* ── شجرةُ النظام المفتوح وحده ───────────────────────────────────
+            وكانت هنا **ملاحةُ الأنظمة الخمسة فوق قائمةٍ مسطّحة بشاشاتها** —
+            فيُقرأ النظامُ والشاشةُ مستوىً واحداً، ويقرأ الناظر ستّين رابطاً
+            بلا تصنيف. فخرجت الأنظمة إلى مُشغّلها في الرأس (`AppLauncher`)،
+            وصارت القائمة شجرةً من طبقتين لشاشات النظام المفتوح وحده. */}
+        <ScreenNav section={section.id} path={path} />
       </nav>
 
       <div className="app-main">
@@ -139,6 +138,10 @@ export function AppShell(): ReactNode {
           >
             {t("common.action.keyboardHelp")}
           </button>
+          {/* **آخرُ عنصرٍ في الرأس هو أقصى يساره في العربية** — وهو موضع
+              مُشغّل الأنظمة الذي طلبه المالك، وموضعُ مُشغّلات التطبيقات
+              الذي تعلّمه الناس. ولو وُضع أوّلاً لظهر في أقصى اليمين. */}
+          <AppLauncher path={path} />
         </header>
 
         <main className="app-page" id="main">

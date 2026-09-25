@@ -7,6 +7,7 @@ using BabelDemoCompany;
 //   bootstrap  قواعد البيانات ودور التطبيق ......... باتصال الصيانة (دور خارق)
 //   migrate    المخطّطات والصلاحيات والبيانات المرجعية  بدور المالك
 //   seed       ثمانية أشهر من النشاط ودورةُ إيجارٍ كاملة  بدور التطبيق، عبر محرّك الترحيل
+//              ثمّ بابُ الدخول: عضويةٌ وبريدٌ وكلمة مرور   بدور التطبيق، عبر خدمة المصادقة
 //   verify     ميزان + سلسلة + أعمار ................ بدور التطبيق، قراءةً محضة
 //
 //   all        الأربع بالترتيب — وهو ما تستدعيه حاوية الترحيل عند كل نشر.
@@ -50,6 +51,7 @@ try
             await InventorySeed.RunAsync(settings, cancellation.Token).ConfigureAwait(false);
             await HrSeed.RunAsync(settings, cancellation.Token).ConfigureAwait(false);
             await ProjectsSeed.RunAsync(settings, cancellation.Token).ConfigureAwait(false);
+            await AccessSeed.RunAsync(settings, cancellation.Token).ConfigureAwait(false);
             break;
 
         case "verify":
@@ -65,6 +67,11 @@ try
             await InventorySeed.RunAsync(settings, cancellation.Token).ConfigureAwait(false);
             await HrSeed.RunAsync(settings, cancellation.Token).ConfigureAwait(false);
             await ProjectsSeed.RunAsync(settings, cancellation.Token).ConfigureAwait(false);
+
+            /* وبابُ الدخول **بعد** البيانات لا قبلها: اعتمادٌ يعمل ويفتح على نظامٍ
+               نصفِ مبذور أسوأ من اعتمادٍ لم يُبذَر بعد — الأول يُرى عطلاً في المنتَج
+               أمام صاحب القرار، والثاني يُقرأ نشرةً لم تكتمل بعد. */
+            await AccessSeed.RunAsync(settings, cancellation.Token).ConfigureAwait(false);
             await Verify.RunAsync(settings, cancellation.Token).ConfigureAwait(false);
             break;
 

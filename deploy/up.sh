@@ -37,6 +37,9 @@ api_port="${BABEL_API_PORT:-5080}"
 web_port="${BABEL_WEB_PORT:-5173}"
 company="${BABEL_DEMO_COMPANY_ID:-d3305e1e-0000-4000-8000-000000000001}"
 user_id="${BABEL_DEMO_USER_ID:-d3305e1e-0000-4000-8000-0000000000a1}"
+# بريدُ بابِ الدخول التجريبي. ليس سرّاً — وهو الافتراض نفسه المكتوب في compose،
+# ونطاقُ `example` مُفتعَل بوضوح فلا يُخلط ببريدٍ لمنشأةٍ قائمة.
+signin_handle="${BABEL_DEMO_SIGNIN_HANDLE:-demo@demo}"
 
 have_docker() { docker info >/dev/null 2>&1; }
 
@@ -65,6 +68,10 @@ if [ -z "${BABEL_DEMO_TOKEN:-}" ]; then
   # صالحةً قبل إعادة التشغيل ومرفوضةً بعدها — والفشل يُقرأ «انتهت الصلاحية»
   # لا «لا مفتاح» (ADR-0046). وثباتُه هنا عبر التشغيلات هو ما يجعله صالحاً.
   BABEL_STORAGE_TICKET_KEY="$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+  # كلمةُ مرور بابِ الدخول التجريبي — تُولَّد كما يُولَّد الرمز، ولا تُكتب في
+  # المستودع أبداً. والبذرُ يضبطها على المستخدم التجريبي عند أول تشغيلة، فيصير
+  # الدخولُ محلياً ببريدٍ وكلمة مرور لا بلصق اعتماد.
+  BABEL_DEMO_SIGNIN_PASSWORD="$(head -c 18 /dev/urandom | od -An -tx1 | tr -d ' \n')"
   umask 077
   cat > "$env_file" <<EOF
 # مُولَّد محلياً بـdeploy/up.sh — لا يُودَع في git (.gitignore: .env.*)
@@ -77,6 +84,8 @@ POSTGRES_PASSWORD=$POSTGRES_PASSWORD
 BABEL_STORAGE_TICKET_KEY=$BABEL_STORAGE_TICKET_KEY
 BABEL_DEMO_COMPANY_ID=$company
 BABEL_DEMO_USER_ID=$user_id
+BABEL_DEMO_SIGNIN_HANDLE=$signin_handle
+BABEL_DEMO_SIGNIN_PASSWORD=$BABEL_DEMO_SIGNIN_PASSWORD
 EOF
   echo "── وُلِّد رمز عرض محلي جديد في $env_file"
 fi
@@ -100,14 +109,27 @@ if [ -z "${BABEL_PLATFORM_TOKEN:-}" ]; then
   echo "── أُلحق اعتماد مشغّل المنصّة بملفّ قديم: $env_file"
 fi
 
+# ‏**ورفدٌ ثالث**: بابُ الدخول بالبريد وكلمة المرور جاء بعدهما (ADR-0094)، فملفٌّ
+# وُلِّد قبله لا يحمله. وأثرُه لا يُقرأ عطلاً: البذرُ يُخطّي بابَ الدخول بهدوء،
+# فيبقى المطوّر يلصق اعتماداً ولا يعرف لماذا لا يعمل ما كُتب له أن يعمل.
+if [ -z "${BABEL_DEMO_SIGNIN_PASSWORD:-}" ]; then
+  BABEL_DEMO_SIGNIN_PASSWORD="$(head -c 18 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+  ( umask 077; printf 'BABEL_DEMO_SIGNIN_HANDLE=%s\nBABEL_DEMO_SIGNIN_PASSWORD=%s\n' "$signin_handle" "$BABEL_DEMO_SIGNIN_PASSWORD" >> "$env_file" )
+  echo "── أُلحق بابُ الدخول (بريدٌ وكلمة مرور) بملفّ قديم: $env_file"
+fi
+
+BABEL_DEMO_SIGNIN_HANDLE="${BABEL_DEMO_SIGNIN_HANDLE:-$signin_handle}"
+
 export BABEL_DEMO_TOKEN BABEL_DEMO_TOKEN_SHA256 BABEL_LEDGER_APP_PASSWORD POSTGRES_PASSWORD
 export BABEL_STORAGE_TICKET_KEY BABEL_PLATFORM_TOKEN BABEL_PLATFORM_TOKEN_SHA256
+export BABEL_DEMO_SIGNIN_HANDLE BABEL_DEMO_SIGNIN_PASSWORD
 
 banner() {
   echo
   echo "════════════════════════════════════════════════════════════════"
   echo "  الواجهة : http://127.0.0.1:$1/?token=$BABEL_DEMO_TOKEN&companyId=$company&book=MAIN"
   echo "  الخادم  : http://127.0.0.1:$2/health"
+  echo "  الدخول  : $BABEL_DEMO_SIGNIN_HANDLE  ·  $BABEL_DEMO_SIGNIN_PASSWORD"
   echo "  الرمز   : $BABEL_DEMO_TOKEN"
   echo "  المشغّل : $BABEL_PLATFORM_TOKEN   (كتالوج الخطط وحده: /admin/plans)"
   echo "════════════════════════════════════════════════════════════════"
@@ -140,6 +162,8 @@ BABEL_PLATFORM_TOKEN_SHA256=$BABEL_PLATFORM_TOKEN_SHA256
 BABEL_STORAGE_TICKET_KEY=$BABEL_STORAGE_TICKET_KEY
 BABEL_DEMO_COMPANY_ID=$company
 BABEL_DEMO_USER_ID=$user_id
+BABEL_DEMO_SIGNIN_HANDLE=$BABEL_DEMO_SIGNIN_HANDLE
+BABEL_DEMO_SIGNIN_PASSWORD=$BABEL_DEMO_SIGNIN_PASSWORD
 EOF
 
   if [ "$mode" = "down" ]; then
@@ -160,7 +184,9 @@ EOF
 
   echo
   echo "════════════════════════════════════════════════════════════════"
-  echo "  الواجهة : http://127.0.0.1/?token=$BABEL_DEMO_TOKEN&companyId=$company&book=MAIN"
+  echo "  الواجهة : http://127.0.0.1/"
+  echo "  الدخول  : $BABEL_DEMO_SIGNIN_HANDLE  ·  $BABEL_DEMO_SIGNIN_PASSWORD"
+  echo "  الرمز   : $BABEL_DEMO_TOKEN   (طريق اللصق — مطويّ في شاشة الدخول)"
   echo "════════════════════════════════════════════════════════════════"
   exit 0
 fi

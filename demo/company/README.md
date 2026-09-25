@@ -46,7 +46,7 @@ dotnet run --project demo/company/BabelDemoCompany.csproj -- all
 | `BABEL_LEDGER_APP_PASSWORD` | تُسنَد لدور التطبيق إن وُجدت | غائبة — والافتراض المحلي `pg_hba: trust` |
 | `BABEL_DEMO_COMPANY_ID` | معرّف الشركة | `d3305e1e-0000-4000-8000-000000000001` |
 | `BABEL_DEMO_FISCAL_YEAR` | السنة المالية | `2026` |
-| `BABEL_DEMO_SIGNIN_HANDLE` | بريدُ الدخول التجريبي — ليس سرّاً | `demo@salasel-babel.example` |
+| `BABEL_DEMO_SIGNIN_HANDLE` | بريدُ الدخول التجريبي — ليس سرّاً | `demo@demo` |
 | `BABEL_DEMO_SIGNIN_PASSWORD` | كلمةُ مروره. **غيابُها يُخطّي بذرَ باب الدخول** | **لا افتراض — ولا يُخترع** |
 
 ## ما يُبذَر

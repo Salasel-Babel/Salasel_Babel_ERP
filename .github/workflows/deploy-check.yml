@@ -209,7 +209,7 @@ jobs:
             # بابُ الدخول: كلمةٌ مُولَّدة لهذه التشغيلة ولا تعيش بعدها — والقصدُ أن
             # يمرّ الحارسُ **ببذر الباب فعلاً** لا أن يتخطّاه. فخطوةٌ لا يشغّلها أحد
             # في التكامل المستمر تنكسر صامتةً وتُكتشف على خادمٍ أمام صاحب القرار.
-            echo "BABEL_DEMO_SIGNIN_HANDLE=demo@salasel-babel.example"
+            echo "BABEL_DEMO_SIGNIN_HANDLE=demo@demo"
             echo "BABEL_DEMO_SIGNIN_PASSWORD=$(head -c 18 /dev/urandom | od -An -tx1 | tr -d ' \n')"
             # النماذج — مصدرُها في المستودع `docs/prototypes`، وعلى الخادم يجاور
             # المجلّدُ ملفَّ الحزمة. والمسار نسبيٌّ إلى compose.yml أي إلى `deploy/`.

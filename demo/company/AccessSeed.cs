@@ -41,8 +41,17 @@ internal sealed class AccessSeed : IDisposable
     /// <summary>متغيّرُ كلمة المرور. <b>لا افتراض له</b>، وغيابه يُخطّي الخطوة.</summary>
     public const string PasswordVariable = "BABEL_DEMO_SIGNIN_PASSWORD";
 
-    /// <summary>البريد حين لا يُذكر — نطاقٌ مُفتعَل بوضوح لا يخصّ منشأةً قائمة.</summary>
-    public const string DefaultHandle = "demo@salasel-babel.example";
+    /// <summary>
+    /// البريد حين لا يُذكر — <b>اختارَه المالك بنصّه</b>.
+    /// <para>
+    /// ونطاقٌ بلا نقطة مقبولٌ هنا بحكمٍ مكتوب لا بتساهل: <c>HasHandleShape</c> يمنع
+    /// الفراغَ والمسافةَ وغيابَ <c>@</c> ولا يفرض نحوَ RFC 5322، والقيدُ في القاعدة
+    /// (<c>ck_access_sign_in_handle_shape</c>) يقول الشيءَ نفسه، وحقلُ
+    /// <c>type="email"</c> في المتصفّح يقبله كذلك. فالثلاثةُ متّفقة، والبريدُ
+    /// مُفتعَلٌ بوضوح فلا يُخلط بعنوانٍ لمنشأةٍ قائمة.
+    /// </para>
+    /// </summary>
+    public const string DefaultHandle = "demo@demo";
 
     /// <summary>الاسم العربي المعروض لصاحب العضوية — وهو السجلّ (ADR-0021).</summary>
     private const string OwnerNameArabic = "مالك المنشأة التجريبية";

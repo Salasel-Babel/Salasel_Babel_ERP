@@ -235,7 +235,7 @@ jobs:
           # وليست في حلقة الفحص القَبْلي: غيابُها لا يوقف نشرة — يُخطّي بذرَ الباب
           # وحده، ويُقال ذلك في سجلّ الترحيل بنصّه. وجعلُها إلزامية كان سيوقف كل
           # نشرةٍ على كل مستودعٍ لم يضبط السرّ بعدُ، وهو عقابٌ على ميزةٍ اختيارية.
-          BABEL_DEMO_SIGNIN_HANDLE: ${{ vars.BABEL_DEMO_SIGNIN_HANDLE || 'demo@salasel-babel.example' }}
+          BABEL_DEMO_SIGNIN_HANDLE: ${{ vars.BABEL_DEMO_SIGNIN_HANDLE || 'demo@demo' }}
           BABEL_DEMO_SIGNIN_PASSWORD: ${{ secrets.BABEL_DEMO_SIGNIN_PASSWORD }}
         run: |
           set -euo pipefail

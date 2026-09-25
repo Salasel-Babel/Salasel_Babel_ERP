@@ -39,7 +39,7 @@ company="${BABEL_DEMO_COMPANY_ID:-d3305e1e-0000-4000-8000-000000000001}"
 user_id="${BABEL_DEMO_USER_ID:-d3305e1e-0000-4000-8000-0000000000a1}"
 # بريدُ بابِ الدخول التجريبي. ليس سرّاً — وهو الافتراض نفسه المكتوب في compose،
 # ونطاقُ `example` مُفتعَل بوضوح فلا يُخلط ببريدٍ لمنشأةٍ قائمة.
-signin_handle="${BABEL_DEMO_SIGNIN_HANDLE:-demo@salasel-babel.example}"
+signin_handle="${BABEL_DEMO_SIGNIN_HANDLE:-demo@demo}"
 
 have_docker() { docker info >/dev/null 2>&1; }
 

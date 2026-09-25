@@ -231,6 +231,12 @@ jobs:
           BABEL_TLS_EMAIL: ${{ secrets.BABEL_TLS_EMAIL }}
           BABEL_DEMO_COMPANY_ID: ${{ vars.BABEL_DEMO_COMPANY_ID || 'd3305e1e-0000-4000-8000-000000000001' }}
           BABEL_DEMO_USER_ID: ${{ vars.BABEL_DEMO_USER_ID || 'd3305e1e-0000-4000-8000-0000000000a1' }}
+          # بابُ الدخول للعرض: البريد متغيّرٌ معلَن (ليس سرّاً)، والكلمةُ سرّ.
+          # وليست في حلقة الفحص القَبْلي: غيابُها لا يوقف نشرة — يُخطّي بذرَ الباب
+          # وحده، ويُقال ذلك في سجلّ الترحيل بنصّه. وجعلُها إلزامية كان سيوقف كل
+          # نشرةٍ على كل مستودعٍ لم يضبط السرّ بعدُ، وهو عقابٌ على ميزةٍ اختيارية.
+          BABEL_DEMO_SIGNIN_HANDLE: ${{ vars.BABEL_DEMO_SIGNIN_HANDLE || 'demo@salasel-babel.example' }}
+          BABEL_DEMO_SIGNIN_PASSWORD: ${{ secrets.BABEL_DEMO_SIGNIN_PASSWORD }}
         run: |
           set -euo pipefail
 
@@ -308,6 +314,8 @@ jobs:
             echo "BABEL_TLS_IP=$BABEL_TLS_IP"
             echo "BABEL_DEMO_COMPANY_ID=$BABEL_DEMO_COMPANY_ID"
             echo "BABEL_DEMO_USER_ID=$BABEL_DEMO_USER_ID"
+            echo "BABEL_DEMO_SIGNIN_HANDLE=$BABEL_DEMO_SIGNIN_HANDLE"
+            echo "BABEL_DEMO_SIGNIN_PASSWORD=$BABEL_DEMO_SIGNIN_PASSWORD"
           } | ssh -i ~/.ssh/id_deploy -p "$PORT" "$USER_NAME@$HOST" \
                 "umask 077 && cat > '$DEPLOY_PATH/.env.new' && mv '$DEPLOY_PATH/.env.new' '$DEPLOY_PATH/.env'"
 

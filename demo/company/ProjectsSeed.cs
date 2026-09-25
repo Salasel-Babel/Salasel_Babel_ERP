@@ -40,6 +40,7 @@ internal sealed class ProjectsSeed : IDisposable
     private readonly IServiceScope _scope;
 
     private readonly ProjectRegistryService _registry;
+    private readonly SubcontractorRegistryService _subcontractors;
     private readonly ClientCertificateService _certificates;
     private readonly IEntitlementService _entitlements;
     private readonly ICapabilityProfileStore _profiles;
@@ -80,6 +81,7 @@ internal sealed class ProjectsSeed : IDisposable
 
         IServiceProvider scoped = _scope.ServiceProvider;
         _registry = scoped.GetRequiredService<ProjectRegistryService>();
+        _subcontractors = scoped.GetRequiredService<SubcontractorRegistryService>();
         _certificates = scoped.GetRequiredService<ClientCertificateService>();
         _entitlements = scoped.GetRequiredService<IEntitlementService>();
         _profiles = scoped.GetRequiredService<ICapabilityProfileStore>();
@@ -287,6 +289,113 @@ internal sealed class ProjectsSeed : IDisposable
 
         Say.Detail("مستخلصات: " + Say.Count(_draftedCertificates) + " مسوّدةً تراكمياً — والثاني يشمل الأول.");
         Say.Detail("ولا تُرحَّل: أربعةُ بنودِ سياسةٍ على العقد تنتظر اعتمادَ محاسب — وذلك ما يُرى على الشاشة.");
+
+        // ── ٤ · أمرٌ تغييريّ — وهو ما يجعل شاشةَ الأوامر التغييرية وقائعَ لا جدولاً ─
+        //
+        // **ولماذا يُبذَر وهو ليس في الدورة الأصلية:** كانت الشاشة تُفتح على صفرٍ
+        // أمام من يُفترض أن يقتنع، وصفرٌ على شاشةٍ لا يُقرأ «لم يقع بعد» بل يُقرأ
+        // «لا يعمل». والأمرُ التغييري **واقعةُ تسجيلٍ لا قيدٌ**: بندٌ يُضاف إلى
+        // المقايسة بسببٍ ومعتمِد، ولا يُرحَّل شيءٌ ولا يُقرَّر به شيءٌ محاسبيّ.
+        // فبذرُه لا يختار عن المالك قراراً — بخلاف ترحيل المستخلص أعلاه.
+        //
+        // وتاريخُه **بعد** المستخلصين: أمرٌ تغييري يسبق مستخلصاً يجعل كمّيتَه
+        // التعاقدية موجودةً قبل أن تُصدر، وهو ترتيبٌ لا يقع في مشروعٍ حقيقي.
+        await ChangeOrderAsync(
+            "CO-2026-001",
+            contract,
+            6,
+            12,
+            "توسعة الدور الأرضي بطلب المالك — بندُ عزلٍ مائيّ لم يكن في العقد.",
+            "م. سعد العتيبي · مدير المشروع",
+            [
+                new BoqItemDraft(
+                    "BOQ-060", "عزل مائي لأسطح الدور الأرضي", new ProjectQuantity(1_450m, "M2"), Money.Of(72m, Currency)),
+            ],
+            cancellationToken).ConfigureAwait(false);
+
+        Say.Detail("أمرٌ تغييريّ واحد: بندُ مقايسةٍ سادس أُضيف بسببه ومعتمِده.");
+
+        // ── ٥ · الباطن: مقاولان وعقدُ باطنٍ ببنوده ──────────────────────────────
+        //
+        // وشاشةُ «الباطن» كانت **فارغةً تماماً**: لا مقاولَ واحداً في الدفتر
+        // المساعد، فلا شيءَ يُختار ولا شيءَ يُعرَض. وهي مجموعةُ تنقّلٍ كاملة في
+        // القائمة (‏`ctrSub`)، ومجموعةٌ تُفتح على فراغٍ تُقرأ وحدةً لم تُبنَ.
+        //
+        // **والمقاولان اثنان لا واحد**: واحدٌ عليه عقد، وآخرُ مسجَّلٌ بلا عقدٍ بعد —
+        // وهو الشكل نفسه الذي يأخذه المشروعان أعلاه، وللسبب نفسه: قائمةٌ بصفٍّ
+        // واحد لا تُظهر أن ثمّة قائمة.
+        //
+        // **ولا مستخلصَ باطنٍ يُرحَّل هنا**: ترحيلُه يمرّ ببنود السياسة نفسها
+        // المعلَّقة، وبذرُه مسوّدةً يفتح سؤالَ استرداد الدفعة المقدمة الذي لم
+        // يُحسَم — فيبقى ما بعد التسجيل على حاله حتى يقرّر المالك.
+        Guid rebar = await SubcontractorAsync(
+            "SUB-001", "مؤسسة الإتقان لأعمال الحديد", "Al-Itqan Steelworks Est.", "310247865400003",
+            cancellationToken).ConfigureAwait(false);
+
+        _ = await SubcontractorAsync(
+            "SUB-002", "شركة الواحة للتشطيبات", "Al-Waha Finishing Co.", "311560743200003",
+            cancellationToken).ConfigureAwait(false);
+
+        await SubcontractAsync(
+            "SC-2026-001",
+            tower,
+            rebar,
+            0.05m,
+            12,
+            [
+                new SubcontractLineDraft(
+                    "SCL-010", "تشكيل وتركيب حديد التسليح", new ProjectQuantity(180_000m, "KG"), Money.Of(1.35m, Currency)),
+                new SubcontractLineDraft(
+                    "SCL-020", "توريد أسياخ ربط وفواصل", new ProjectQuantity(4_200m, "KG"), Money.Of(2.10m, Currency)),
+            ],
+            cancellationToken).ConfigureAwait(false);
+
+        Say.Detail("الباطن: مقاولان — أحدهما عليه عقدُ باطنٍ ببندين، والآخر تسجيلٌ بلا عقدٍ بعد.");
+    }
+
+    private async Task ChangeOrderAsync(
+        string number, Guid contract, int month, int day, string reason, string approvedBy,
+        IReadOnlyList<BoqItemDraft> added, CancellationToken cancellationToken)
+    {
+        Result<ChangeOrderView> created = await _registry
+            .CreateChangeOrderAsync(
+                Tenant,
+                Seed.Actor,
+                new ChangeOrderDraft(
+                    number, contract, new DateOnly(_settings.FiscalYear, month, day), reason, approvedBy, added),
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        Ok(created, "إصدار الأمر التغييري " + number);
+    }
+
+    private async Task<Guid> SubcontractorAsync(
+        string code, string arabic, string english, string vatNumber, CancellationToken cancellationToken)
+    {
+        Result<SubcontractorView> created = await _subcontractors
+            .CreateSubcontractorAsync(
+                Tenant, Seed.Actor, new SubcontractorDraft(code, Named(arabic, english), vatNumber), cancellationToken)
+            .ConfigureAwait(false);
+
+        Ok(created, "تسجيل مقاول الباطن " + code);
+        return created.Value.Id;
+    }
+
+    private async Task SubcontractAsync(
+        string number, Guid project, Guid subcontractor, decimal retention, int guaranteeMonths,
+        IReadOnlyList<SubcontractLineDraft> lines, CancellationToken cancellationToken)
+    {
+        Result<SubcontractView> created = await _subcontractors
+            .CreateSubcontractAsync(
+                Tenant,
+                Seed.Actor,
+                new SubcontractDraft(
+                    number, project, subcontractor, new DateOnly(_settings.FiscalYear, 3, 5),
+                    retention, guaranteeMonths, lines),
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        Ok(created, "إنشاء عقد الباطن " + number);
     }
 
     private async Task<Guid> ProjectAsync(

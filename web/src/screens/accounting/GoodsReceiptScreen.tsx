@@ -19,7 +19,7 @@
    ٤ · **المسوّدة ثم الترحيل**: «لا مخزون ولا قيد قبل الترحيل — المسوّدة
        تحجز الكمية على سطر الأمر ولا تُدخل بضاعةً». والفرق مُظهَرٌ بالحالة.
    ═══════════════════════════════════════════════════════════════════════════ */
-import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   draftGoodsReceipt,
@@ -35,7 +35,6 @@ import { useApi } from "../../app/api-context";
 import { ProblemPanel } from "../../app/shell/ProblemPanel";
 import { Amount, Num, useT } from "../../i18n/react";
 import { Button, EmptyState, RefusalPanel, useMoment } from "../../ui";
-import { peekVoiceDraft } from "../../voice";
 import { useAccountingFocus } from "./focus";
 import {
   AccAction,
@@ -70,24 +69,18 @@ export function GoodsReceiptScreen(): ReactNode {
   const [refuseCls, fireRefuse] = useMoment("refuse");
   const [arriveCls, fireArrive] = useMoment("arrive");
 
-  const spoken = useMemo(() => {
-    const draft = peekVoiceDraft();
-    if (draft?.intentId !== "accounting.goods_receipt.draft") return null;
-    const of = (name: string) => draft.fields.find((field) => field.name === name)?.text ?? "";
-    return { orderNumber: of("orderNumber"), quantity: of("quantity"), receivedOn: of("receivedOn") };
-  }, []);
 
   /* ── الأمر المستلَم عليه ──────────────────────────────────────────── */
   const [orderId, setOrderId] = useState(focus.orderId);
 
   /* ── رأس الاستلام ─────────────────────────────────────────────────── */
   const [number, setNumber] = useState("");
-  const [receivedOn, setReceivedOn] = useState(() => spoken?.receivedOn || todayIso());
+  const [receivedOn, setReceivedOn] = useState(todayIso);
 
   /* ── السطور ───────────────────────────────────────────────────────── */
   const [line, setLine] = useState<DraftReceiptLine>({
     orderLineId: "",
-    quantity: spoken?.quantity ?? "",
+    quantity: "",
   });
   const [lines, setLines] = useState<readonly DraftReceiptLine[]>([]);
 
@@ -226,7 +219,7 @@ export function GoodsReceiptScreen(): ReactNode {
             id="acc-gr-number"
             label={t("accounting.field.number")}
             hint={t("accounting.field.numberHint")}
-            source={spoken?.orderNumber ? "spoken" : "typed"}
+            source="typed"
             required
           >
             <input
@@ -244,7 +237,7 @@ export function GoodsReceiptScreen(): ReactNode {
             id="acc-gr-on"
             label={t("accounting.field.receivedOnGoods")}
             hint={t("accounting.field.receivedOnGoodsHint")}
-            source={spoken?.receivedOn ? "spoken" : "typed"}
+            source="typed"
             required
           >
             <input
@@ -342,7 +335,7 @@ export function GoodsReceiptScreen(): ReactNode {
                 ? t("accounting.field.quantityBad")
                 : undefined
             }
-            source={spoken?.quantity ? "spoken" : "typed"}
+            source="typed"
             required
           >
             <input

@@ -16,7 +16,7 @@
    ٣ · **المسودّة ثم الترحيل**، والترحيل الثاني يُعيد الإيصال نفسه
        و`alreadyPosted = true` — فيُقال، ولا يُعدّ خطأً.
    ═══════════════════════════════════════════════════════════════════════════ */
-import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { draftExpenseBill, postSupplierBill, readSupplierBill } from "../../api/generated/client";
 import type { CommercialDocument } from "../../api/generated/types";
@@ -24,7 +24,6 @@ import { useApi } from "../../app/api-context";
 import { ProblemPanel } from "../../app/shell/ProblemPanel";
 import { useT } from "../../i18n/react";
 import { Button, EmptyState, useMoment } from "../../ui";
-import { peekVoiceDraft } from "../../voice";
 import { useAccountingFocus } from "./focus";
 import {
   emptyPurchaseLine,
@@ -61,19 +60,13 @@ export function SupplierBillScreen(): ReactNode {
   const [, fireRefuse] = useMoment("refuse");
   const [arriveCls, fireArrive] = useMoment("arrive");
 
-  const spoken = useMemo(() => {
-    const draft = peekVoiceDraft();
-    if (draft?.intentId !== "accounting.supplier_bill.capture") return null;
-    const of = (name: string) => draft.fields.find((field) => field.name === name)?.text ?? "";
-    return { supplier: of("supplier"), billNumber: of("billNumber"), issuedOn: of("issuedOn") };
-  }, []);
 
   /* ── رأس الفاتورة ─────────────────────────────────────────────────── */
-  const [number, setNumber] = useState(spoken?.billNumber ?? "");
-  const [supplierId, setSupplierId] = useState(spoken?.supplier ?? "");
+  const [number, setNumber] = useState("");
+  const [supplierId, setSupplierId] = useState("");
   const [costCenterId, setCostCenterId] = useState("");
   const [expenseCategory, setExpenseCategory] = useState("");
-  const [issuedOn, setIssuedOn] = useState(() => spoken?.issuedOn || todayIso());
+  const [issuedOn, setIssuedOn] = useState(todayIso);
 
   /* ── السطور ───────────────────────────────────────────────────────── */
   const [line, setLine] = useState<DraftPurchaseLine>(emptyPurchaseLine);
@@ -194,7 +187,7 @@ export function SupplierBillScreen(): ReactNode {
             id="acc-sb-number"
             label={t("accounting.field.number")}
             hint={t("accounting.field.numberHint")}
-            source={spoken?.billNumber ? "spoken" : "typed"}
+            source="typed"
             required
           >
             <input
@@ -212,7 +205,7 @@ export function SupplierBillScreen(): ReactNode {
             id="acc-sb-supplier"
             label={t("accounting.field.supplierId")}
             hint={t("accounting.field.supplierIdHint")}
-            source={spoken?.supplier ? "spoken" : "typed"}
+            source="typed"
             required
           >
             <input
@@ -230,7 +223,7 @@ export function SupplierBillScreen(): ReactNode {
             id="acc-sb-issued"
             label={t("accounting.field.issuedOn")}
             hint={t("accounting.field.issuedOnHint")}
-            source={spoken?.issuedOn ? "spoken" : "typed"}
+            source="typed"
             required
           >
             <input

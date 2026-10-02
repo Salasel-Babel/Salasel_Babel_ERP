@@ -225,6 +225,8 @@ export const messages: MessageTree = {
     },
     nav: {
       home: "मुख्य पृष्ठ",
+      showAdvanced: "सभी स्क्रीन (उन्नत)",
+      showSimple: "केवल आवश्यक स्क्रीन",
       /* ــ التأسيس والثوابت: أربعُ شاشاتٍ وعنوانُ مجموعتها ــ */
       companySetup: "कंपनी की स्थापना",
       costCenters: "लागत केंद्र",

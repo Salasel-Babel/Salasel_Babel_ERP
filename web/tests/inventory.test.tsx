@@ -779,6 +779,8 @@ describe("عقد الملاحة", () => {
    */
   it("كل شاشةٍ مخزنية يبلغها من يقرأ الملاحة، لا من يعرف اختصار لوحة الأوامر وحده", async () => {
     withCompany();
+    /* القائمة كاملةً: الواجهة المبسّطة تُخفي المتقدّم افتراضياً (shell-nav.test.tsx). */
+    globalThis.localStorage.setItem("sb-show-advanced", "1");
     const router = createAppRouter({ memory: true, initialPath: "/inventory/stock" });
     const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
     render(

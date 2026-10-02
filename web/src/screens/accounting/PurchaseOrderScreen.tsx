@@ -15,7 +15,7 @@
    يوصل إليه بابٌ آخر. ولذلك تُعرَض معرّفات السطور، ويُحمَل معرّف الأمر إلى
    شاشة الاستلام بلا أن يُكتب بيدٍ مرّتين.
    ═══════════════════════════════════════════════════════════════════════════ */
-import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { createPurchaseOrder, readPurchaseOrder } from "../../api/generated/client";
@@ -23,7 +23,6 @@ import { useApi } from "../../app/api-context";
 import { ProblemPanel } from "../../app/shell/ProblemPanel";
 import { Amount, Num, useT } from "../../i18n/react";
 import { Button, EmptyState, StatCard, useMoment } from "../../ui";
-import { peekVoiceDraft } from "../../voice";
 import { useAccountingFocus } from "./focus";
 import {
   emptyPurchaseLine,
@@ -55,19 +54,13 @@ export function PurchaseOrderScreen(): ReactNode {
   const [arriveCls, fireArrive] = useMoment("arrive");
   const [, fireRefuse] = useMoment("refuse");
 
-  const spoken = useMemo(() => {
-    const draft = peekVoiceDraft();
-    if (draft?.intentId !== "accounting.purchase_order.draft") return null;
-    const of = (name: string) => draft.fields.find((field) => field.name === name)?.text ?? "";
-    return { supplier: of("supplier"), warehouse: of("warehouse"), orderedOn: of("orderedOn") };
-  }, []);
 
   /* ── رأس الأمر ────────────────────────────────────────────────────── */
   const [number, setNumber] = useState("");
-  const [supplierId, setSupplierId] = useState(spoken?.supplier ?? "");
-  const [warehouseId, setWarehouseId] = useState(spoken?.warehouse ?? "");
+  const [supplierId, setSupplierId] = useState("");
+  const [warehouseId, setWarehouseId] = useState("");
   const [costCenterId, setCostCenterId] = useState("");
-  const [orderedOn, setOrderedOn] = useState(() => spoken?.orderedOn || todayIso());
+  const [orderedOn, setOrderedOn] = useState(todayIso);
 
   /* ── السطور ───────────────────────────────────────────────────────── */
   const [line, setLine] = useState<DraftPurchaseLine>(emptyPurchaseLine);
@@ -197,7 +190,7 @@ export function PurchaseOrderScreen(): ReactNode {
             id="acc-po-supplier"
             label={t("accounting.field.supplierId")}
             hint={t("accounting.field.supplierIdHint")}
-            source={spoken?.supplier ? "spoken" : "typed"}
+            source="typed"
             required
           >
             <input
@@ -215,7 +208,7 @@ export function PurchaseOrderScreen(): ReactNode {
             id="acc-po-ordered"
             label={t("accounting.field.orderedOn")}
             hint={t("accounting.field.orderedOnHint")}
-            source={spoken?.orderedOn ? "spoken" : "typed"}
+            source="typed"
             required
           >
             <input
@@ -234,7 +227,7 @@ export function PurchaseOrderScreen(): ReactNode {
             id="acc-po-warehouse"
             label={t("accounting.field.warehouseId")}
             hint={t("accounting.field.warehouseIdHint")}
-            source={spoken?.warehouse ? "spoken" : "typed"}
+            source="typed"
             required
           >
             <input

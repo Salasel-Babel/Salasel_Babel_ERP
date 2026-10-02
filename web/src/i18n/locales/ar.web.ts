@@ -223,6 +223,8 @@ export const messages: MessageTree = {
     },
     nav: {
       home: "البداية",
+      showAdvanced: "كل الشاشات (متقدّم)",
+      showSimple: "الشاشات الأساسية فقط",
       /* ــ التأسيس والثوابت: أربعُ شاشاتٍ وعنوانُ مجموعتها ــ */
       companySetup: "تأسيس المنشأة",
       costCenters: "مراكز التكلفة",

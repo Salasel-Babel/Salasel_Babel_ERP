@@ -53,6 +53,8 @@ beforeEach(() => {
     "sb-api-config",
     JSON.stringify({ baseUrl: "", token: "t", companyId: "", book: "MAIN", period: "" })
   );
+  /* حرّاسُ الاكتمال أدناه تقيس القائمة كاملةً؛ والمبسّطةُ لها وصفُها في آخر الملفّ. */
+  globalThis.localStorage.setItem("sb-show-advanced", "1");
 });
 
 afterEach(() => {
@@ -231,5 +233,44 @@ describe("القائمة الجانبية و SCREENS لا تنحرف إحداه�
     expect(
       document.getElementById(listId)?.querySelectorAll("a[href]").length
     ).toBeGreaterThan(1);
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════
+   الواجهة المبسّطة — المتقدّمُ يُخفى من القوائم ولا يُحذف
+   ═══════════════════════════════════════════════════════════════════════ */
+describe("الواجهة المبسّطة", () => {
+  beforeEach(() => {
+    /* قشرةُ الاختبار السابق ما زالت مرسومة، و`navHrefs` يقرأ أوّل قائمةٍ يجدها. */
+    cleanup();
+    globalThis.localStorage.removeItem("sb-show-advanced");
+  });
+
+  it("تُخفي الشاشات المتقدّمة افتراضياً وتُبقي الأساسية", async () => {
+    const hrefs = await navHrefs("/inventory/stock");
+    const advanced = SCREENS.filter((s) => s.section === "inventory" && s.advanced === true).map((s) => s.path);
+    const essential = SCREENS.filter((s) => s.section === "inventory" && s.advanced !== true).map((s) => s.path);
+    expect(advanced.length, "شاهدٌ إيجابي: في المخزني شاشاتٌ متقدّمة").toBeGreaterThan(0);
+    for (const path of advanced) expect(hrefs, path + " ظاهرةٌ في المبسّطة").not.toContain(path);
+    for (const path of essential) expect(hrefs, path + " مخفيّةٌ وهي أساسية").toContain(path);
+  });
+
+  it("والشاشةُ القائمة تُعرض ولو كانت متقدّمة — فلا يضيع من فتحها برابط", async () => {
+    const hrefs = await navHrefs("/inventory/valuation");
+    expect(hrefs).toContain("/inventory/valuation");
+  });
+
+  it("وزرُّ «كل الشاشات» يُظهرها، ويُحفظ اختياره", async () => {
+    await navHrefs("/inventory/stock");
+    const toggle = document.querySelector<HTMLButtonElement>('[data-testid="nav-advanced-toggle"]');
+    expect(toggle, "لا زرّ للشاشات المتقدّمة").not.toBeNull();
+    expect(toggle?.getAttribute("aria-pressed")).toBe("false");
+    await act(async () => {
+      toggle?.click();
+      await settled();
+    });
+    expect(globalThis.localStorage.getItem("sb-show-advanced")).toBe("1");
+    const shown = [...document.querySelectorAll(".app-side a[href]")].map((a) => a.getAttribute("href"));
+    expect(shown).toContain("/inventory/units");
   });
 });

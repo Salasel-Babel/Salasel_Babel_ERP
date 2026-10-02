@@ -3,7 +3,7 @@
    ───────────────────────────────────────────────────────────────────────────
    ملاحةٌ بين **الأقسام الخمسة** (والقسم غير المبنيّ مُعلَنٌ لا مخفيّ)، ورأسٌ
    فيه المنشأة واللغة والمظهر وحالة الخدمة، و**لوحةُ أوامر** بـCtrl/⌘+K تفتح
-   على كل شاشةٍ وفعل، و**زرّ صوتٍ حاضرٌ دائماً**، وانتقالٌ بين المسارات يُقرأ
+   على كل شاشةٍ وفعل، وانتقالٌ بين المسارات يُقرأ
    كـ«مسار عرض»: شريطٌ بلون القسم الذي دخلتَه، وصفحةٌ تدخل بمنحنى `enter`.
 
    **والانتقال يقول أين ذهبتَ لا أنه حدث فقط**: لون الشريط هو لون القسم، وهو
@@ -21,9 +21,6 @@ import { KeyboardHelp } from "./shell/KeyboardHelp";
 import { CommandPalette } from "./shell/CommandPalette";
 import { ScreenNav } from "./shell/ScreenNav";
 import { AppLauncher } from "./shell/AppLauncher";
-import { VoiceDock } from "./shell/VoiceDock";
-import { AgentWorkspace } from "../agent";
-import { VoiceDraftBanner } from "./VoiceDraftBanner";
 import { sectionOf } from "./shell/sections";
 import { SessionGate, isOpenScreen } from "./shell/SessionGate";
 import { applySession, clearSession, hasSession, needsRenewal } from "./session";
@@ -37,7 +34,6 @@ export function AppShell(): ReactNode {
   const { transport, config, setConfig } = useApi();
   const [helpOpen, setHelpOpen] = useState(false);
   const [cmdOpen, setCmdOpen] = useState(false);
-  const [agentOpen, setAgentOpen] = useState(false);
   const navigate = useNavigate();
   const path = useRouterState({ select: (s) => s.location.pathname });
   const section = sectionOf(path);
@@ -165,16 +161,6 @@ export function AppShell(): ReactNode {
           <button
             type="button"
             className="btn btn-sm"
-            data-testid="open-agent"
-            aria-expanded={agentOpen}
-            title={t("agent.workspace.openTitle")}
-            onClick={() => setAgentOpen((v) => !v)}
-          >
-            {t("agent.workspace.open")}
-          </button>
-          <button
-            type="button"
-            className="btn btn-sm"
             data-testid="open-command"
             aria-keyshortcuts="Control+K Meta+K"
             onClick={() => setCmdOpen(true)}
@@ -206,35 +192,12 @@ export function AppShell(): ReactNode {
         </header>
 
         <main className="app-page" id="main">
-          {/* المسوّدة المنطوقة تظهر **فوق الشاشة التي هبطت عليها**، لا في اللوحة
-              التي غادرها المستخدم. وهي في الهيكل لأن الهبوط عابرٌ للشاشات. */}
-          <VoiceDraftBanner />
           <div className={MOTION.transit} key={path}>
             <Outlet />
           </div>
         </main>
       </div>
 
-      {/* مساحةُ عمل الوكيل: **لوحٌ واحد ينفتح فوق أي شاشة** — لا ميزةٌ مبعثرة
-          على كل شاشة. وموضعُه في الهيكل لا في شاشةٍ بعينها للسبب نفسه الذي
-          وضع لوحةَ المسوّدة المنطوقة هنا: ما يعبر الشاشات لا يُنسَخ فيها. */}
-      {/* **اللوح يُرسَم كلّما فُتح، ولو بلا شركة.** كان مشروطاً بـ
-          `config.companyId !== ""`، فيضغط من يفتح الموقع أوّل مرّة زرَّ «الوكيل»
-          ولا يقع شيء — بلا رسالة ولا تعطيل. والسبب الآن يُقال داخل اللوح ومعه
-          طريقُ الخروج، لا يُبتلع. */}
-      {agentOpen ? (
-        <AgentWorkspace
-          transport={transport}
-          companyId={config.companyId}
-          onClose={() => setAgentOpen(false)}
-          onOpenScreen={(route) => {
-            setAgentOpen(false);
-            void navigate({ to: route });
-          }}
-        />
-      ) : null}
-
-      <VoiceDock />
       {cmdOpen ? <CommandPalette onClose={() => setCmdOpen(false)} /> : null}
       <KeyboardHelp open={helpOpen} onClose={() => setHelpOpen(false)} />
     </div>

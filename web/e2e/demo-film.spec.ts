@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   سكربت تصوير العرض — سبعة مشاهد، مقادةً من خارج الصفحة.
+   سكربت تصوير العرض — خمسة مشاهد، مقادةً من خارج الصفحة.
    ───────────────────────────────────────────────────────────────────────────
    لماذا سكربت لا تسجيل شاشة بيد إنسان: **إعادة الإنتاج**. كل تشغيلة تُعطي
    الترتيب نفسه والتوقيت نفسه، فالفيلم يُعاد تصويره بعد أي تعديل بأمر واحد بدل
@@ -159,7 +159,7 @@ test.use({
   deviceScaleFactor: 1,
 });
 
-test("فيلم العرض — سبعة مشاهد", async ({ page }) => {
+test("فيلم العرض — خمسة مشاهد", async ({ page }) => {
   test.setTimeout(30 * 60_000);
 
   /* قراءات الرمز تُنفَّذ **قبل** فتح الصفحة: `dotnet run` يبني في أول نداء،
@@ -195,7 +195,7 @@ test("فيلم العرض — سبعة مشاهد", async ({ page }) => {
     scene: "title",
     truth: "real",
     caption: "دفترٌ لا يُعاد كتابته",
-    captionSub: "سبعة مشاهد من نظامٍ عربيِّ الأصل — وكلّ رقم فيها من قاعدة بيانات حقيقية",
+    captionSub: "خمسة مشاهد من نظامٍ عربيِّ الأصل — وكلّ رقم فيها من قاعدة بيانات حقيقية",
   });
   await beat(page, 9000);
 
@@ -410,78 +410,12 @@ test("فيلم العرض — سبعة مشاهد", async ({ page }) => {
   });
   await beat(page, 9500);
 
-  /* ═══ 6 · الإدخال المنطوق ═════════════════════════════════════════ */
-  const spoken = JSON.parse(
-    readFileSync(path.join(ROOT, "tests/Babel.Ai.Tests/golden/arabic-spoken-numbers.v1.json"), "utf8")
-  ) as { accepted: { phrase: string; value: string }[]; rejected: { phrase: string; code: string }[] };
-
-  const dictionary = ["ألف وخمسمئة", "مئة فاصلة صفر خمسة", "مئة وربع", "١٥٠٠", "۱۵۰۰", "१५००"].map((phrase) => ({
-    spoken: phrase,
-    value: spoken.accepted.find((a) => a.phrase === phrase)!.value,
-  }));
-
-  await set(page, {
-    scene: "voice",
-    truth: "mixed",
-    caption: "المشهد السادس · الإدخال المنطوق",
-    captionSub: "التفريغ محقون لا مسموع — والمكوّن يرسم وسم المحاكاة بنفسه، ولم يُخفَ.",
-    bag: {
-      transcript: "فاتورة مصروف من مؤسسة البيان للدعاية والإعلان رقم 9345 بمبلغ ألف وخمسمئة ريال وضريبة خمسة عشر بالمئة اليوم",
-      dictionary: [],
-      refusal: null,
-    },
-  });
-  await beat(page, 5000);
-
-  await page.locator('[data-testid="voice-hold"]').dispatchEvent("pointerdown");
-  await beat(page, 5500);
-  await page.locator('[data-testid="voice-hold"]').dispatchEvent("pointerup");
-  await set(page, { captionSub: "ستّة حقول امتلأت، وكلٌّ منها يحمل لون مصدره — ولا واحد منها صار قيداً." });
-  await beat(page, 5500);
-
-  for (let i = 1; i <= dictionary.length; i += 1) {
-    await set(page, { bag: { dictionary: dictionary.slice(0, i) } });
-    await beat(page, 900);
-  }
-  await set(page, { captionSub: "الأرقام قاموس مغلق لا نموذج: أربعة أنظمة أرقام تُوحَّد، والكسور تُقرأ." });
-  await beat(page, 4500);
-
-  await set(page, {
-    caption: "وحين لا يفهم — يرفض بدل أن يخمّن",
-    captionSub: "«تلاتميه» عامّية غير مُعرَّفة. النظام يسمّيها ويرفضها بدل أن يكتب ٣٠٠ ويمضي.",
-    bag: {
-      transcript: "فاتورة مصروف من مؤسسة الرياض للتوريدات بمبلغ تلاتميه ريال اليوم",
-      refusal: spoken.rejected.find((r) => r.phrase === "تلاتميه")!.phrase,
-    },
-  });
-  await beat(page, 2500);
-  await page.locator('[data-testid="voice-hold"]').dispatchEvent("pointerdown");
-  await beat(page, 3000);
-  await page.locator('[data-testid="voice-hold"]').dispatchEvent("pointerup");
-  await beat(page, 7500);
-
-  /* ═══ 7 · الرأي الثاني ════════════════════════════════════════════ */
-  await set(page, {
-    scene: "opinion",
-    truth: "sim",
-    caption: "المشهد السابع · رأيٌ ثانٍ — بعد الترحيل، وبلا حجب",
-    captionSub: "هذا المشهد محاكاة كاملة: نصّ الاقتراح مكتوب في شيفرة العرض، ولا مُقترِح في المنتج اليوم.",
-    bag: { suggestions: 0, decision: null },
-  });
-  await beat(page, 5000);
-  await set(page, { bag: { suggestions: 1 } });
-  await beat(page, 7000);
-  await set(page, { bag: { suggestions: 2 } });
-  await beat(page, 5000);
-  await set(page, { bag: { decision: "قُبل الاقتراح — وفُتح قيدُ تصحيحٍ جديد" } });
-  await beat(page, 7000);
-
   /* ═══ 8 · الختام ══════════════════════════════════════════════════ */
   await set(page, {
     scene: "closing",
     truth: "mixed",
     caption: "سلاسل بابل",
-    captionSub: "خمسة مشاهد حقيقية بالكامل، ومشهدان موسومان — ولا شيء بينهما بلا وسم.",
+    captionSub: "خمسة مشاهد حقيقية بالكامل — وكلُّ رقمٍ فيها مقروءٌ من الدفتر.",
     bag: {},
   });
   await beat(page, 13000);

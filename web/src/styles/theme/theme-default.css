@@ -109,6 +109,19 @@
   --shadow-brand:0 6px 16px -8px color-mix(in srgb,var(--brand) 80%,transparent);
   --shadow-lift:0 6px 20px rgba(15,23,42,.10);
 
+  /* — القائمة الجانبية · side navigation —
+     **زرقاءُ في الفاتح بطلب المالك**: عمودٌ داكن يفصل الملاحة عن مساحة العمل
+     البيضاء من النظرة الأولى. والحبرُ أبيض والشاشةُ القائمة بطاقةٌ بيضاء بحبرٍ
+     أزرق — كلّها فوق 7:1، وتقيسها `scripts/contrast.mjs` (side/*). */
+  --side-bg:#1e3a8a;
+  --side-ink:#ffffff;
+  --side-ink-muted:#dbeafe;
+  --side-hover-bg:#1e40af;
+  --side-current-bg:#ffffff;
+  --side-current-ink:#1e3a8a;
+  --side-border:#1e3a8a;
+  --side-focus:#ffffff;
+
   /* — حلقة التركيز · focus ring — */
   --ring:0 0 0 3px color-mix(in srgb,var(--brand) 18%,transparent);
   --ring-inset:inset 0 0 0 2px var(--brand);
@@ -118,6 +131,15 @@
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
     --bg:#0a1120;
+    /* القائمة الجانبية في الداكن: سطحُ التطبيق نفسه كما كانت — الأزرقُ للفاتح وحده. */
+    --side-bg:var(--surface);
+    --side-ink:var(--text);
+    --side-ink-muted:var(--text-2);
+    --side-hover-bg:var(--surface-3);
+    --side-current-bg:var(--brand);
+    --side-current-ink:var(--on-brand);
+    --side-border:var(--border);
+    --side-focus:var(--brand);
     --surface:#111c2f;
     --surface-2:#0e1728;
     --surface-3:#16233a;
@@ -168,6 +190,15 @@
 /* ────────────────────────────────────────────── 1 · CORE (dark, explicit) */
 :root[data-theme="dark"]{
   --bg:#0a1120;
+  /* القائمة الجانبية في الداكن: سطحُ التطبيق نفسه كما كانت — الأزرقُ للفاتح وحده. */
+  --side-bg:var(--surface);
+  --side-ink:var(--text);
+  --side-ink-muted:var(--text-2);
+  --side-hover-bg:var(--surface-3);
+  --side-current-bg:var(--brand);
+  --side-current-ink:var(--on-brand);
+  --side-border:var(--border);
+  --side-focus:var(--brand);
   --surface:#111c2f;
   --surface-2:#0e1728;
   --surface-3:#16233a;

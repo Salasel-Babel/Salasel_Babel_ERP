@@ -24,6 +24,7 @@
    من الخادم **مرّة واحدة**؛ فما وصل يُمرَّر إلى بابه أو يُنسخ إلى الحافظة،
    ولا يُرسَم في DOM ولا يُكتب في رابط ولا يُسجَّل.
    ═══════════════════════════════════════════════════════════════════════════ */
+import { shownInMenus, useShowAdvanced } from "../../app/shell/simple-mode";
 import { useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { useT } from "../../i18n/react";
@@ -50,9 +51,10 @@ export const ADMIN_SCREENS = [
  */
 export function AdminSectionNav(props: { readonly current: string }): ReactNode {
   const { t } = useT();
+  const showAdvanced = useShowAdvanced();
   return (
     <nav className="adm-tabs" aria-label={t("screen.admin.navLabel")} data-testid="admin-tabs">
-      {ADMIN_SCREENS.map((screen) => (
+      {ADMIN_SCREENS.filter((screen) => shownInMenus(screen.to, showAdvanced, props.current)).map((screen) => (
         <Link
           key={screen.to}
           to={screen.to}

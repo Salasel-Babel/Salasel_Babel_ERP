@@ -29,6 +29,7 @@ import { useId, useState, type CSSProperties, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { useT } from "../../i18n/react";
 import { Icon } from "./icons";
+import { setShowAdvanced, shownInMenus, useShowAdvanced } from "./simple-mode";
 import {
   SCREENS,
   SCREEN_GROUPS,
@@ -141,10 +142,16 @@ function SystemBadge(props: { section: Section["id"] }): ReactNode {
  * @param props معرّفُ النظام المفتوح، والمسارُ القائم لتوسيم عقدته.
  */
 export function ScreenNav(props: { section: Section["id"]; path: string }): ReactNode {
+  const { t } = useT();
   /* `{}` تعني «لم يلمس المستخدم شيئاً بعد»، فيقرّر المسارُ وحده ما ينفتح. */
   const [touched, setTouched] = useState<Partial<Record<GroupId, boolean>>>({});
 
-  const mine = SCREENS.filter((screen) => screen.section === props.section && !screen.universal);
+  const showAdvanced = useShowAdvanced();
+  const all = SCREENS.filter((screen) => screen.section === props.section && !screen.universal);
+  /* الواجهة المبسّطة: المتقدّمُ يُخفى من الشجرة ما لم يُطلب — والشاشةُ القائمة
+     تُعرض دائماً (`simple-mode.ts`). */
+  const mine = all.filter((screen) => shownInMenus(screen.path, showAdvanced, props.path));
+  const hasAdvanced = all.some((screen) => screen.advanced === true);
   const universal = SCREENS.filter((screen) => screen.universal === true);
   const groups = SCREEN_GROUPS.filter((group) => group.section === props.section);
   const leaves = mine.filter((screen) => screen.group === undefined);
@@ -162,7 +169,9 @@ export function ScreenNav(props: { section: Section["id"]; path: string }): Reac
         <Leaf key={entry.path} entry={entry} depth={1} />
       ))}
 
-      {groups.map((group) => (
+      {groups
+        .filter((group) => mine.some((screen) => screen.group === group.id))
+        .map((group) => (
         <Branch
           key={group.id}
           labelKey={group.labelKey}
@@ -178,6 +187,19 @@ export function ScreenNav(props: { section: Section["id"]; path: string }): Reac
           }
         />
       ))}
+
+      {hasAdvanced ? (
+        <button
+          type="button"
+          className="navitem navtoggle"
+          data-testid="nav-advanced-toggle"
+          aria-pressed={showAdvanced}
+          onClick={() => setShowAdvanced(!showAdvanced)}
+        >
+          <Icon name={showAdvanced ? "chevron" : "grid"} />
+          <span className="navitem__name">{t(showAdvanced ? "app.nav.showSimple" : "app.nav.showAdvanced")}</span>
+        </button>
+      ) : null}
     </div>
   );
 }

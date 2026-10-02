@@ -127,6 +127,14 @@ export interface ScreenEntry {
    * </p>
    */
   readonly universal?: true;
+  /**
+   * شاشةٌ متقدّمة — <b>تُخفى من القوائم في الواجهة المبسّطة، ولا تُحذف</b>.
+   * <p>
+   * مسارُها قائم ولوحةُ الأوامر تجدها، وزرُّ «كل الشاشات» في القائمة الجانبية
+   * يُظهرها. والتصنيفُ اختيارُ عرضٍ لا صلاحية (`simple-mode.ts`).
+   * </p>
+   */
+  readonly advanced?: true;
 }
 
 /**
@@ -337,6 +345,7 @@ export const SCREENS: readonly ScreenEntry[] = [
     section: "accounting",
     icon: "key",
     group: "tools",
+    advanced: true,
   },
   {
     path: "/contract",
@@ -344,6 +353,7 @@ export const SCREENS: readonly ScreenEntry[] = [
     section: "accounting",
     icon: "file",
     group: "tools",
+    advanced: true,
   },
   {
     path: "/design",
@@ -351,6 +361,7 @@ export const SCREENS: readonly ScreenEntry[] = [
     section: "accounting",
     icon: "palette",
     group: "tools",
+    advanced: true,
   },
   /* ── العقارات — أربعٌ **بترتيب العمل لا بترتيب الحروف**: العقارُ ووحداته
      يُعرَّفان مرّةً ← ثم طرفا العقد (المالك الذي نُحصّل له والمستأجر الذي
@@ -460,6 +471,7 @@ export const SCREENS: readonly ScreenEntry[] = [
     labelKey: "inventory.nav.valuation",
     section: "inventory",
     icon: "chart",
+    advanced: true,
   },
   /* ── الموارد البشرية — ثمانٍ **بترتيب العمل لا بترتيب الحروف**: ما يُعرَّف
      مرّةً (مكوّنات الأجر) ← من يُسجَّل ← ما يُقيَّد عليه قبل الشهر (السلف
@@ -472,6 +484,7 @@ export const SCREENS: readonly ScreenEntry[] = [
     section: "hr",
     icon: "sliders",
     group: "hrPayroll",
+    advanced: true,
   },
   /* ── التسكين ووحداته — الشاشات الخمس التي جاءت بعد نزول أبوابها ─────────
      إضافةٌ في موضعٍ واحد متّصل، فتندمج مع من يعمل على هذا الملفّ بلا تعارض. */
@@ -488,6 +501,7 @@ export const SCREENS: readonly ScreenEntry[] = [
     section: "inventory",
     icon: "map",
     group: "invPlaces",
+    advanced: true,
   },
   {
     path: "/inventory/placement-balances",
@@ -495,6 +509,7 @@ export const SCREENS: readonly ScreenEntry[] = [
     section: "inventory",
     icon: "target",
     group: "invPlaces",
+    advanced: true,
   },
   {
     path: "/inventory/transfers",
@@ -502,6 +517,7 @@ export const SCREENS: readonly ScreenEntry[] = [
     section: "inventory",
     icon: "swap",
     group: "invMovement",
+    advanced: true,
   },
   {
     path: "/inventory/units",
@@ -509,6 +525,7 @@ export const SCREENS: readonly ScreenEntry[] = [
     section: "inventory",
     icon: "ruler",
     group: "invCatalogue",
+    advanced: true,
   },
   {
     path: "/hr",
@@ -543,6 +560,7 @@ export const SCREENS: readonly ScreenEntry[] = [
     section: "hr",
     icon: "shield",
     group: "hrObligations",
+    advanced: true,
   },
   {
     path: "/hr/end-of-service",
@@ -550,6 +568,7 @@ export const SCREENS: readonly ScreenEntry[] = [
     section: "hr",
     icon: "exit",
     group: "hrObligations",
+    advanced: true,
   },
   {
     path: "/hr/subledger-reconciliation",
@@ -557,18 +576,7 @@ export const SCREENS: readonly ScreenEntry[] = [
     section: "hr",
     icon: "check",
     group: "hrObligations",
-  },
-  /* الأمر المنطوق يعبر الأقسام الخمسة كلّها، ولا قسمَ واحداً يملكه. وهو مُدرَجٌ
-     هنا تحت المحاسبة **لأجل لونه وحده** — وهو اللون المرجعي حين لا يُعرَف القسم.
-     (وكُتب هذا الصفّ حين كانت الأقسام الأربعة الأخرى `built: false`؛ وقد صارت
-     كلّها مبنيّةً عند إنزال شاشاتها، فالنيّةُ المؤكَّدة تجد اليوم شاشةً تقودها
-     إليها.) */
-  {
-    path: "/voice",
-    labelKey: "app.nav.voice",
-    section: "accounting",
-    icon: "mic",
-    group: "tools",
+    advanced: true,
   },
   /* ── دورة المستندات المحاسبية: المبيعات ─────────────────────────────────
      الدورة التي وصفها صاحب المصلحة — فاتورة، ثم سند قبض — ثم ما تُقرأ به
@@ -602,6 +610,7 @@ export const SCREENS: readonly ScreenEntry[] = [
     section: "accounting",
     icon: "clipboard",
     group: "purchasing",
+    advanced: true,
   },
   {
     path: "/purchasing/goods-receipt",
@@ -609,6 +618,7 @@ export const SCREENS: readonly ScreenEntry[] = [
     section: "accounting",
     icon: "truck",
     group: "purchasing",
+    advanced: true,
   },
   {
     path: "/purchasing/bill",
@@ -651,6 +661,7 @@ export const SCREENS: readonly ScreenEntry[] = [
     section: "accounting",
     icon: "paperclip",
     group: "evidence",
+    advanced: true,
   },
   {
     path: "/attachments/custody",
@@ -658,6 +669,7 @@ export const SCREENS: readonly ScreenEntry[] = [
     section: "accounting",
     icon: "shield",
     group: "evidence",
+    advanced: true,
   },
   {
     path: "/inventory/item-lifecycle",
@@ -665,6 +677,7 @@ export const SCREENS: readonly ScreenEntry[] = [
     section: "inventory",
     icon: "refresh",
     group: "invCatalogue",
+    advanced: true,
   },
   /* ── ما بعد الترحيل — أربعٌ **بترتيب العمل لا بترتيب الحروف**، و**كتلةٌ
      واحدة متّصلة** كي يندمج جانباها آلياً حين يلمس أسطولٌ آخر هذا الملفّ.
@@ -687,6 +700,7 @@ export const SCREENS: readonly ScreenEntry[] = [
     section: "accounting",
     icon: "pen",
     group: "postings",
+    advanced: true,
   },
   {
     path: "/ledger/purchase-return",
@@ -694,6 +708,7 @@ export const SCREENS: readonly ScreenEntry[] = [
     section: "accounting",
     icon: "undo",
     group: "postings",
+    advanced: true,
   },
   {
     path: "/ledger/credit-note",
@@ -701,6 +716,7 @@ export const SCREENS: readonly ScreenEntry[] = [
     section: "accounting",
     icon: "receipt",
     group: "postings",
+    advanced: true,
   },
   {
     path: "/ledger/chain",
@@ -708,6 +724,7 @@ export const SCREENS: readonly ScreenEntry[] = [
     section: "accounting",
     icon: "link",
     group: "postings",
+    advanced: true,
   },
   /* ── الإدارة والاشتراك — أربعٌ **بترتيب العمل لا بترتيب الحروف**: كيف
      أدخل أوّل مرّة ← ما الذي بيدي الآن ← من يدخل معي ← ماذا اشتريتُ وما
@@ -727,6 +744,7 @@ export const SCREENS: readonly ScreenEntry[] = [
     section: "accounting",
     icon: "plus",
     group: "admin",
+    advanced: true,
   },
   {
     path: "/admin/session",
@@ -748,6 +766,7 @@ export const SCREENS: readonly ScreenEntry[] = [
     section: "accounting",
     icon: "card",
     group: "admin",
+    advanced: true,
   },
   {
     path: "/admin/plans",
@@ -755,6 +774,7 @@ export const SCREENS: readonly ScreenEntry[] = [
     section: "accounting",
     icon: "layers",
     group: "admin",
+    advanced: true,
   },
   /* ── التأسيس والثوابت — أربعٌ **بترتيب العمل لا بترتيب الحروف**: ما يقع
      مرّةً فيؤسّس المنشأة ← ما يُبوَّب عليه كلُّ سطرٍ بعده ← ما يُرخَّص من حقول
@@ -784,6 +804,7 @@ export const SCREENS: readonly ScreenEntry[] = [
     section: "accounting",
     icon: "target",
     group: "setup",
+    advanced: true,
   },
   {
     path: "/setup/document-shapes",
@@ -791,6 +812,7 @@ export const SCREENS: readonly ScreenEntry[] = [
     section: "accounting",
     icon: "file",
     group: "setup",
+    advanced: true,
   },
   {
     path: "/setup/chart-of-accounts",
@@ -805,6 +827,7 @@ export const SCREENS: readonly ScreenEntry[] = [
     section: "accounting",
     icon: "sliders",
     group: "setup",
+    advanced: true,
   },
 ];
 

@@ -18,7 +18,7 @@
        حساب خزينة أو بنك، و`treasuryPartyId` **طرفٌ في دفتره المساعد لا رقم
        حساب**. والشاشة تقول ذلك بالكلمات كي لا يُكتب رقمٌ في حقلٍ ليس له.
    ═══════════════════════════════════════════════════════════════════════════ */
-import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   draftCustomerReceipt,
@@ -32,7 +32,6 @@ import { useApi } from "../../app/api-context";
 import { ProblemPanel } from "../../app/shell/ProblemPanel";
 import { useT } from "../../i18n/react";
 import { Button, EmptyState, RefusalPanel, useMoment } from "../../ui";
-import { peekVoiceDraft } from "../../voice";
 import {
   AccAction,
   AccField,
@@ -68,21 +67,15 @@ export function CustomerReceiptScreen(): ReactNode {
   const [refuseCls, fireRefuse] = useMoment("refuse");
   const [arriveCls, fireArrive] = useMoment("arrive");
 
-  const spoken = useMemo(() => {
-    const draft = peekVoiceDraft();
-    if (draft?.intentId !== "accounting.customer_receipt.record") return null;
-    const of = (name: string) => draft.fields.find((field) => field.name === name)?.text ?? "";
-    return { customer: of("customer"), amount: of("amount"), method: of("method"), receivedOn: of("receivedOn") };
-  }, []);
 
   /* ── رأس السند ────────────────────────────────────────────────────── */
   const [number, setNumber] = useState("");
-  const [customerId, setCustomerId] = useState(spoken?.customer ?? "");
-  const [receivedOn, setReceivedOn] = useState(() => spoken?.receivedOn || todayIso());
-  const [received, setReceived] = useState(spoken?.amount ?? "");
+  const [customerId, setCustomerId] = useState("");
+  const [receivedOn, setReceivedOn] = useState(todayIso);
+  const [received, setReceived] = useState("");
   const [settlementDiscount, setSettlementDiscount] = useState("0");
   const [settlementMethod, setSettlementMethod] = useState(
-    () => spoken?.method || SETTLEMENT_METHODS[0] || ""
+    () => SETTLEMENT_METHODS[0] || ""
   );
   const [treasuryPartyId, setTreasuryPartyId] = useState("");
 
@@ -244,7 +237,7 @@ export function CustomerReceiptScreen(): ReactNode {
             id="acc-rc-customer"
             label={t("accounting.field.customerId")}
             hint={t("accounting.field.customerIdHint")}
-            source={spoken?.customer ? "spoken" : "typed"}
+            source="typed"
             required
           >
             <input
@@ -262,7 +255,7 @@ export function CustomerReceiptScreen(): ReactNode {
             id="acc-rc-on"
             label={t("accounting.field.receivedOn")}
             hint={t("accounting.field.receivedOnHint")}
-            source={spoken?.receivedOn ? "spoken" : "typed"}
+            source="typed"
             required
           >
             <input
@@ -282,7 +275,7 @@ export function CustomerReceiptScreen(): ReactNode {
             label={t("accounting.field.received")}
             hint={t("accounting.field.receivedHint")}
             error={received !== "" && !isMoneyText(received) ? t("accounting.field.moneyBad") : undefined}
-            source={spoken?.amount ? "spoken" : "typed"}
+            source="typed"
             required
           >
             <input
@@ -325,7 +318,7 @@ export function CustomerReceiptScreen(): ReactNode {
             id="acc-rc-method"
             label={t("accounting.field.settlementMethod")}
             hint={t("accounting.field.settlementMethodHint")}
-            source={spoken?.method ? "spoken" : "typed"}
+            source="typed"
             required
           >
             <input

@@ -222,6 +222,8 @@ export const messages: MessageTree = {
     },
     nav: {
       home: "Home",
+      showAdvanced: "All screens (advanced)",
+      showSimple: "Essential screens only",
       /* ــ التأسيس والثوابت: أربعُ شاشاتٍ وعنوانُ مجموعتها ــ */
       companySetup: "Company setup",
       costCenters: "Cost centres",

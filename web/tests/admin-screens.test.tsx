@@ -313,6 +313,10 @@ const SCREEN_FILES = [
 ];
 
 beforeEach(() => {
+  /* حرّاسُ اكتمال الملاحة تقيس القوائم **كاملةً**: الواجهة المبسّطة تُخفي
+     المتقدّمَ افتراضياً، وما يقيسه هذا الملفّ أن كل شاشةٍ تُبلَغ حين يُطلب
+     المتقدّم. والمبسّطةُ نفسها مقيسةٌ في tests/shell-nav.test.tsx. */
+  globalThis.localStorage.setItem("sb-show-advanced", "1");
   releaseRefreshCredential();
   globalThis.localStorage.setItem(
     "sb-api-config",

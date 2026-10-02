@@ -18,6 +18,7 @@
        و`periodOf` أدناه **ليس حساباً**: هو اقتطاعُ `yyyy-MM` من نصّ تاريخٍ
        ميلاديٍّ نحوُه منشور، وحكمُ الفترة النهائي يعود على إيصال الترحيل.
    ═══════════════════════════════════════════════════════════════════════════ */
+import { shownInMenus, useShowAdvanced } from "../../app/shell/simple-mode";
 import { useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import type { PostingReceipt as Receipt } from "../../api/generated/types";
@@ -44,13 +45,14 @@ export const LEDGER_SCREENS = [
  */
 export function LedgerSectionNav(props: { readonly current: string }): ReactNode {
   const { t } = useT();
+  const showAdvanced = useShowAdvanced();
   return (
     <nav
       className="acc-tabs"
       aria-label={t("accounting.ledger.nav.group")}
       data-testid="ledger-nav"
     >
-      {LEDGER_SCREENS.map((screen) => (
+      {LEDGER_SCREENS.filter((screen) => shownInMenus(screen.to, showAdvanced, props.current)).map((screen) => (
         <Link
           key={screen.to}
           to={screen.to}

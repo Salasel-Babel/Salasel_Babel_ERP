@@ -12,7 +12,7 @@
 
    و`settlementMethod` مؤهّل دور، و`treasuryPartyId` **طرفٌ لا رقم حساب**.
    ═══════════════════════════════════════════════════════════════════════════ */
-import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   draftSupplierPayment,
@@ -26,7 +26,6 @@ import { useApi } from "../../app/api-context";
 import { ProblemPanel } from "../../app/shell/ProblemPanel";
 import { useT } from "../../i18n/react";
 import { Button, EmptyState, RefusalPanel, useMoment } from "../../ui";
-import { peekVoiceDraft } from "../../voice";
 import { useAccountingFocus } from "./focus";
 import {
   AccAction,
@@ -64,21 +63,15 @@ export function SupplierPaymentScreen(): ReactNode {
   const [refuseCls, fireRefuse] = useMoment("refuse");
   const [arriveCls, fireArrive] = useMoment("arrive");
 
-  const spoken = useMemo(() => {
-    const draft = peekVoiceDraft();
-    if (draft?.intentId !== "accounting.supplier_payment.record") return null;
-    const of = (name: string) => draft.fields.find((field) => field.name === name)?.text ?? "";
-    return { supplier: of("supplier"), amount: of("amount"), method: of("method"), paidOn: of("paidOn") };
-  }, []);
 
   /* ── رأس السند ────────────────────────────────────────────────────── */
   const [number, setNumber] = useState("");
-  const [supplierId, setSupplierId] = useState(spoken?.supplier ?? "");
-  const [paidOn, setPaidOn] = useState(() => spoken?.paidOn || todayIso());
-  const [paid, setPaid] = useState(spoken?.amount ?? "");
+  const [supplierId, setSupplierId] = useState("");
+  const [paidOn, setPaidOn] = useState(todayIso);
+  const [paid, setPaid] = useState("");
   const [bankFee, setBankFee] = useState("0");
   const [settlementMethod, setSettlementMethod] = useState(
-    () => spoken?.method || SETTLEMENT_METHODS[0] || ""
+    () => SETTLEMENT_METHODS[0] || ""
   );
   const [treasuryPartyId, setTreasuryPartyId] = useState("");
 
@@ -241,7 +234,7 @@ export function SupplierPaymentScreen(): ReactNode {
             id="acc-sp-supplier"
             label={t("accounting.field.supplierId")}
             hint={t("accounting.field.supplierIdHint")}
-            source={spoken?.supplier ? "spoken" : "typed"}
+            source="typed"
             required
           >
             <input
@@ -259,7 +252,7 @@ export function SupplierPaymentScreen(): ReactNode {
             id="acc-sp-on"
             label={t("accounting.field.paidOn")}
             hint={t("accounting.field.paidOnHint")}
-            source={spoken?.paidOn ? "spoken" : "typed"}
+            source="typed"
             required
           >
             <input
@@ -279,7 +272,7 @@ export function SupplierPaymentScreen(): ReactNode {
             label={t("accounting.field.paid")}
             hint={t("accounting.field.paidHint")}
             error={paid !== "" && !isMoneyText(paid) ? t("accounting.field.moneyBad") : undefined}
-            source={spoken?.amount ? "spoken" : "typed"}
+            source="typed"
             required
           >
             <input
@@ -318,7 +311,7 @@ export function SupplierPaymentScreen(): ReactNode {
             id="acc-sp-method"
             label={t("accounting.field.settlementMethod")}
             hint={t("accounting.field.settlementMethodHint")}
-            source={spoken?.method ? "spoken" : "typed"}
+            source="typed"
             required
           >
             <input

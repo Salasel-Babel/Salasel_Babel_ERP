@@ -23,6 +23,7 @@
        الحسابات ورموزُ مراكز التكلفة تأتي من الخادم وتُعرض كما وصلت — ومصفوفة
        الترحيل في `data/posting-matrix/` هي التي تقرّر، لا الواجهة.
    ═══════════════════════════════════════════════════════════════════════════ */
+import { shownInMenus, useShowAdvanced } from "../../app/shell/simple-mode";
 import { useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import type { NameValue } from "../../api/generated/types";
@@ -57,9 +58,10 @@ export const SETUP_SCREENS = [
  */
 export function SetupSectionNav(props: { readonly current: string }): ReactNode {
   const { t } = useT();
+  const showAdvanced = useShowAdvanced();
   return (
     <nav className="stp-tabs" aria-label={t("screen.setup.navLabel")} data-testid="setup-tabs">
-      {SETUP_SCREENS.map((screen) => (
+      {SETUP_SCREENS.filter((screen) => shownInMenus(screen.to, showAdvanced, props.current)).map((screen) => (
         <Link
           key={screen.to}
           to={screen.to}

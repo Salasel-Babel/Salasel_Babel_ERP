@@ -382,6 +382,10 @@ function sourceOf(file: string): string {
 }
 
 beforeEach(() => {
+  /* حرّاسُ اكتمال الملاحة تقيس القوائم **كاملةً**: الواجهة المبسّطة تُخفي
+     المتقدّمَ افتراضياً، وما يقيسه هذا الملفّ أن كل شاشةٍ تُبلَغ حين يُطلب
+     المتقدّم. والمبسّطةُ نفسها مقيسةٌ في tests/shell-nav.test.tsx. */
+  globalThis.localStorage.setItem("sb-show-advanced", "1");
   globalThis.localStorage.setItem(
     "sb-api-config",
     JSON.stringify({ baseUrl: "", token: "t", companyId: COMPANY, book: "MAIN", period: "" })

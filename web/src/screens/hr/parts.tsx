@@ -17,6 +17,7 @@
    ولذلك تحمل اللوحة **جملةً تقول ذلك للمستخدم**: الفراغُ بلا شرحٍ يُقرأ
    «البيانات ناقصة»، والقناعُ مشروحاً يُقرأ «النظام لا يُظهرها عمداً».
    ═══════════════════════════════════════════════════════════════════════════ */
+import { shownInMenus, useShowAdvanced } from "../../app/shell/simple-mode";
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import type { HrMaskedIdentity, HrPayrollAmounts, NameValue } from "../../api/generated/types";
@@ -74,9 +75,10 @@ const HR_SCREENS = [
  */
 export function HrSectionNav(props: { readonly current: string }): ReactNode {
   const { t } = useT();
+  const showAdvanced = useShowAdvanced();
   return (
     <nav className="hr-tabs" aria-label={t("hr.nav.label")} data-testid="hr-tabs">
-      {HR_SCREENS.map((screen) => (
+      {HR_SCREENS.filter((screen) => shownInMenus(screen.to, showAdvanced, props.current)).map((screen) => (
         <Link
           key={screen.to}
           to={screen.to}

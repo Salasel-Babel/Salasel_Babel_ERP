@@ -398,6 +398,17 @@ const LARGE = "large";
 const NONTEXT = "nontext";
 
 export const PAIRS = [
+  /* ── ٠ · القائمة الجانبية — زرقاء في الفاتح، سطحٌ في الداكن ──────────── */
+  { id: "side/ink", fg: "var(--side-ink)", bg: ["var(--side-bg)"], kind: TEXT,
+    where: "shell.css .app-side" },
+  { id: "side/muted", fg: "var(--side-ink-muted)", bg: ["var(--side-bg)"], kind: TEXT,
+    where: "shell.css .app-side .navitem · .subitem" },
+  { id: "side/hover", fg: "var(--side-ink)", bg: ["var(--side-hover-bg)"], kind: TEXT,
+    where: "shell.css .app-side .navitem:hover · .sysbadge · .navitem--branch[data-holds-current]" },
+  { id: "side/current", fg: "var(--side-current-ink)", bg: ["var(--side-current-bg)"], kind: TEXT,
+    where: "shell.css .app-side .navitem[aria-current] · .subitem[aria-current]" },
+  { id: "side/focus", fg: "var(--side-focus)", bg: ["var(--side-bg)"], kind: NONTEXT,
+    where: "shell.css .app-side :focus-visible" },
   /* ── ١ · النصّ على الأسطح المصمتة ───────────────────────────────────── */
   { id: "text/ground", fg: "var(--color-text)", bg: [GROUND], kind: TEXT,
     where: "app.css body · shell.css .app-shell" },

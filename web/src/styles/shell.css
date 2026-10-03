@@ -454,6 +454,9 @@
 .entry-dialog:focus:not(:focus-visible){outline:none}
 .entry-dialog:focus-visible{outline:2px solid var(--color-focus);outline-offset:2px}
 /* زرُّ الإغلاق في زاوية النافذة البادئة، والعنوانُ يُفسح له. */
+/* تبويبُ المجموعة يُطوى داخل النافذة بطلب المالك: الشجرةُ خلفها هي الانتقال
+   بين سندٍ وسند، ومفتاحُ «كل الحقول» يبقى. */
+.entry-dialog :is(.acc-tabs,.hr-tabs,.re-tabs,.con-nav){display:none}
 .entry-dialog__close{position:absolute;inset-block-start:var(--space-12);inset-inline-end:var(--space-12);z-index:2}
 .entry-dialog > .cine-transit > .stack > .pagehead:first-child,
 .entry-dialog > .cine-transit > .pagehead:first-child{padding-inline-end:var(--space-48)}

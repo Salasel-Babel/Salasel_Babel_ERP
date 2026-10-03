@@ -135,6 +135,15 @@ export interface ScreenEntry {
    * </p>
    */
   readonly advanced?: true;
+  /**
+   * شاشةُ إدخالٍ تُعرَض <b>نافذةً منبثقة</b> فوق قسمها لا صفحةً (ADR-0097).
+   * <p>
+   * مسارُها قائم كما هو — الرابط العميق واللوحة والشجرة تفتحه — وإنما يُغلَّف
+   * في `EntryDialog` حين يُرسَم، ويُغلق إلى صفحة قسمه الأولى. والرايةُ لشاشات
+   * المستندات والسندات التي تُكتب وتُرحَّل؛ أما السجلّات والتقارير فصفحات.
+   * </p>
+   */
+  readonly entry?: true;
 }
 
 /**
@@ -335,6 +344,7 @@ export const SCREENS: readonly ScreenEntry[] = [
   },
   {
     path: "/voucher",
+    entry: true,
     labelKey: "app.nav.voucher",
     section: "accounting",
     icon: "pen",
@@ -383,6 +393,7 @@ export const SCREENS: readonly ScreenEntry[] = [
   },
   {
     path: "/realestate/lease",
+    entry: true,
     labelKey: "realestate.nav.lease",
     section: "realestate",
     icon: "key",
@@ -406,6 +417,7 @@ export const SCREENS: readonly ScreenEntry[] = [
   },
   {
     path: "/contracting/change-orders",
+    entry: true,
     labelKey: "contracting.nav.changeOrders",
     section: "contracting",
     icon: "swap",
@@ -413,6 +425,7 @@ export const SCREENS: readonly ScreenEntry[] = [
   },
   {
     path: "/contracting/guarantees",
+    entry: true,
     labelKey: "contracting.nav.guarantees",
     section: "contracting",
     icon: "shield",
@@ -420,6 +433,7 @@ export const SCREENS: readonly ScreenEntry[] = [
   },
   {
     path: "/contracting/certificate",
+    entry: true,
     labelKey: "contracting.nav.certificate",
     section: "contracting",
     icon: "receipt",
@@ -427,6 +441,7 @@ export const SCREENS: readonly ScreenEntry[] = [
   },
   {
     path: "/contracting/subcontracting",
+    entry: true,
     labelKey: "contracting.nav.subcontracting",
     section: "contracting",
     icon: "network",
@@ -434,6 +449,7 @@ export const SCREENS: readonly ScreenEntry[] = [
   },
   {
     path: "/contracting/advances",
+    entry: true,
     labelKey: "contracting.nav.advances",
     section: "contracting",
     icon: "cash",
@@ -441,6 +457,7 @@ export const SCREENS: readonly ScreenEntry[] = [
   },
   {
     path: "/contracting/retention",
+    entry: true,
     labelKey: "contracting.nav.retention",
     section: "contracting",
     icon: "lock",
@@ -461,6 +478,7 @@ export const SCREENS: readonly ScreenEntry[] = [
   },
   {
     path: "/inventory/movements",
+    entry: true,
     labelKey: "inventory.nav.movements",
     section: "inventory",
     icon: "arrows",
@@ -497,6 +515,7 @@ export const SCREENS: readonly ScreenEntry[] = [
   },
   {
     path: "/inventory/placement",
+    entry: true,
     labelKey: "inventory.nav.placement",
     section: "inventory",
     icon: "map",
@@ -513,6 +532,7 @@ export const SCREENS: readonly ScreenEntry[] = [
   },
   {
     path: "/inventory/transfers",
+    entry: true,
     labelKey: "inventory.nav.transfers",
     section: "inventory",
     icon: "swap",
@@ -535,6 +555,7 @@ export const SCREENS: readonly ScreenEntry[] = [
   },
   {
     path: "/hr/advances-deductions",
+    entry: true,
     labelKey: "hr.nav.advances",
     section: "hr",
     icon: "cash",
@@ -542,6 +563,7 @@ export const SCREENS: readonly ScreenEntry[] = [
   },
   {
     path: "/hr/payroll",
+    entry: true,
     labelKey: "hr.nav.payroll",
     section: "hr",
     icon: "wallet",
@@ -556,6 +578,7 @@ export const SCREENS: readonly ScreenEntry[] = [
   },
   {
     path: "/hr/social-insurance",
+    entry: true,
     labelKey: "hr.nav.socialInsurance",
     section: "hr",
     icon: "shield",
@@ -564,6 +587,7 @@ export const SCREENS: readonly ScreenEntry[] = [
   },
   {
     path: "/hr/end-of-service",
+    entry: true,
     labelKey: "hr.nav.endOfService",
     section: "hr",
     icon: "exit",
@@ -583,6 +607,7 @@ export const SCREENS: readonly ScreenEntry[] = [
      ذمّة العميل. وهي في القسم المحاسبي كما ينصّ العقد، ومجموعتُها مُسمّاة. */
   {
     path: "/sales/invoice",
+    entry: true,
     labelKey: "accounting.nav.salesInvoice",
     section: "accounting",
     icon: "receipt",
@@ -590,6 +615,7 @@ export const SCREENS: readonly ScreenEntry[] = [
   },
   {
     path: "/sales/receipt",
+    entry: true,
     labelKey: "accounting.nav.customerReceipt",
     section: "accounting",
     icon: "cash",
@@ -606,6 +632,7 @@ export const SCREENS: readonly ScreenEntry[] = [
      فاتورة ← صرف. وترتيبٌ أبجدي هنا كان سيُخفي أن الأربع سلسلةٌ مرتَّبة. */
   {
     path: "/purchasing/order",
+    entry: true,
     labelKey: "accounting.nav.purchaseOrder",
     section: "accounting",
     icon: "clipboard",
@@ -614,6 +641,7 @@ export const SCREENS: readonly ScreenEntry[] = [
   },
   {
     path: "/purchasing/goods-receipt",
+    entry: true,
     labelKey: "accounting.nav.goodsReceipt",
     section: "accounting",
     icon: "truck",
@@ -622,6 +650,7 @@ export const SCREENS: readonly ScreenEntry[] = [
   },
   {
     path: "/purchasing/bill",
+    entry: true,
     labelKey: "accounting.nav.supplierBill",
     section: "accounting",
     icon: "receipt",
@@ -629,6 +658,7 @@ export const SCREENS: readonly ScreenEntry[] = [
   },
   {
     path: "/purchasing/payment",
+    entry: true,
     labelKey: "accounting.nav.supplierPayment",
     section: "accounting",
     icon: "cash",
@@ -696,6 +726,7 @@ export const SCREENS: readonly ScreenEntry[] = [
      `ADR-after-posting-is-a-group-and-a-reversal-is-not-a-delete`. */
   {
     path: "/ledger/entry",
+    entry: true,
     labelKey: "accounting.ledger.nav.entry",
     section: "accounting",
     icon: "pen",
@@ -704,6 +735,7 @@ export const SCREENS: readonly ScreenEntry[] = [
   },
   {
     path: "/ledger/purchase-return",
+    entry: true,
     labelKey: "accounting.ledger.nav.purchaseReturn",
     section: "accounting",
     icon: "undo",
@@ -712,6 +744,7 @@ export const SCREENS: readonly ScreenEntry[] = [
   },
   {
     path: "/ledger/credit-note",
+    entry: true,
     labelKey: "accounting.ledger.nav.creditNote",
     section: "accounting",
     icon: "receipt",
@@ -846,4 +879,11 @@ export function sectionOf(path: string): Section {
   const screen = SCREENS.find((s) => s.path === path);
   const id = screen?.section ?? "accounting";
   return SECTIONS.find((s) => s.id === id) ?? ACCOUNTING;
+}
+
+const ENTRY = new Set(SCREENS.filter((screen) => screen.entry === true).map((screen) => screen.path));
+
+/** هل تُعرَض شاشةُ هذا المسار نافذةً منبثقة؟ (ADR-0097) */
+export function isEntryScreen(path: string): boolean {
+  return ENTRY.has(path);
 }

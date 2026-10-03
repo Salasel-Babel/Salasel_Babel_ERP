@@ -23,7 +23,8 @@ import { KeyboardHelp } from "./shell/KeyboardHelp";
 import { CommandPalette } from "./shell/CommandPalette";
 import { ScreenNav } from "./shell/ScreenNav";
 import { AppLauncher } from "./shell/AppLauncher";
-import { sectionOf } from "./shell/sections";
+import { isEntryScreen, sectionOf } from "./shell/sections";
+import { EntryDialog } from "./shell/EntryDialog";
 import { SessionGate, isOpenScreen } from "./shell/SessionGate";
 import { applySession, clearSession, hasSession, needsRenewal } from "./session";
 import { fetchTransport } from "../api/transport";
@@ -39,6 +40,7 @@ export function AppShell(): ReactNode {
   const navigate = useNavigate();
   const path = useRouterState({ select: (s) => s.location.pathname });
   const section = sectionOf(path);
+  const entry = isEntryScreen(path);
   const tint = { "--section-tint": section.tint } as CSSProperties;
 
   const healthQuery = useQuery({
@@ -216,10 +218,20 @@ export function AppShell(): ReactNode {
           <AppLauncher path={path} />
         </header>
 
-        <main className="app-page" id="main">
-          <div className={MOTION.transit} key={path}>
-            <Outlet />
-          </div>
+        <main className="app-page" id="main" data-entry={entry ? "true" : undefined}>
+          {/* شاشاتُ الإدخال نوافذٌ منبثقة فوق ساحة الصفحة (ADR-0097): المسارُ
+              واحد، وإنما يتغيّر الغلاف. */}
+          {entry ? (
+            <EntryDialog path={path}>
+              <div className={MOTION.transit} key={path}>
+                <Outlet />
+              </div>
+            </EntryDialog>
+          ) : (
+            <div className={MOTION.transit} key={path}>
+              <Outlet />
+            </div>
+          )}
         </main>
       </div>
 

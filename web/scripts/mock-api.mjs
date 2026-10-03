@@ -350,25 +350,25 @@ const POSTING_CHART = {
   postableCount: 2,
   accounts: [
     {
-      accountCode: "AR", accountType: "asset", active: true, contra: false,
+      accountCode: "1000", accountType: "asset", active: true, contra: false,
       currencyCode: null, currencyMode: "any", level: 1,
-      nameAr: "الذمم المدينة", nameTranslations: [{ name: "en", value: "Receivables" }],
+      nameAr: "الأصول المتداولة", nameTranslations: [{ name: "en", value: "Current assets" }],
       naturalSide: "debit", parentCode: null, postable: false,
       requiredDimensions: [], subledgerType: "none",
     },
     {
-      accountCode: "AR-TRADE", accountType: "asset", active: true, contra: false,
-      currencyCode: "SAR", currencyMode: "fixed", level: 4,
-      nameAr: "ذمم العملاء التجارية", nameTranslations: [{ name: "en", value: "Trade receivables" }],
-      naturalSide: "debit", parentCode: "AR", postable: true,
-      requiredDimensions: ["cost_center"], subledgerType: "customer",
+      accountCode: "1201", accountType: "asset", active: true, contra: false,
+      currencyCode: null, currencyMode: "any", level: 2,
+      nameAr: "البنك — الحساب الجاري", nameTranslations: [{ name: "en", value: "Bank — current account" }],
+      naturalSide: "debit", parentCode: "1000", postable: true,
+      requiredDimensions: [], subledgerType: "bank_account",
     },
     {
-      accountCode: "AR-DOUBT", accountType: "asset", active: false, contra: true,
-      currencyCode: null, currencyMode: "company_only", level: 4,
-      nameAr: "مخصص الديون المشكوك فيها", nameTranslations: [],
-      naturalSide: "credit", parentCode: "AR", postable: true,
-      requiredDimensions: ["branch", "cost_center"], subledgerType: "customer",
+      accountCode: "4101", accountType: "revenue", active: true, contra: false,
+      currencyCode: null, currencyMode: "any", level: 2,
+      nameAr: "إيراد المبيعات", nameTranslations: [{ name: "en", value: "Sales revenue" }],
+      naturalSide: "credit", parentCode: null, postable: true,
+      requiredDimensions: ["branch"], subledgerType: "none",
     },
   ],
 };
@@ -513,6 +513,15 @@ function respondToPosting(res, path, raw, body) {
      ويحاكيهما الوهمي بالرمزين نفسيهما كي تُختبَر الشاشة على المسار الذي يقع
      فعلاً، لا على مسارٍ سهل لا وجود له. */
   for (const line of body.lines ?? []) {
+    /* سطرُ الحساب (ADR-0096): 1201 ضابطٌ لدفتر البنك ⇒ طرف، و4101 ببُعد الفرع ⇒ فرع. */
+    if (line.accountCode === "1201" && !line.subledger) {
+      send(res, 422, problem(422, "ledger.posting.missing_subledger", path), "application/problem+json");
+      return;
+    }
+    if (line.accountCode === "4101" && !line.scope?.branchId) {
+      send(res, 422, problem(422, "ledger.posting.guard.GR-COA-002", path), "application/problem+json");
+      return;
+    }
     if (line.role === "Settlement" && !line.subledger) {
       send(res, 422, problem(422, "ledger.posting.missing_subledger", path), "application/problem+json");
       return;

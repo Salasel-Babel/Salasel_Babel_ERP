@@ -1,6 +1,7 @@
 using System.Globalization;
 using Babel.Contracts.Posting;
 using Babel.Ledger.Audit;
+using Babel.Ledger.Vouchers;
 using Babel.SharedKernel;
 
 namespace Babel.Api.Wire;
@@ -130,6 +131,9 @@ internal static class WireMapping
 
         CurrencyCode currency = ReadCurrency(dto.Currency, "currency");
 
+        // سطورُ الحساب لا تدخل العقد المشترك: الترويسة تحملها فارغةً وتُسلَّم على سطح الدفتر (ADR-0096).
+        bool accountLines = LinesNameAccounts(dto);
+
         return new PostingRequest
         {
             Tenant = new TenantId(companyId),
@@ -141,8 +145,10 @@ internal static class WireMapping
             Trigger = ReadEnum<PostingTrigger>(dto.Trigger, "trigger"),
             DocumentDate = ReadDate(dto.DocumentDate, "documentDate"),
             Narration = ReadLocalized(dto.Narration, "narration"),
-            Lines = [.. dto.Lines.Select((line, i) => ToPostingLine(
-                line, currency, i, Resolved(costCenter, RequestedCostCenter(dto, line))))],
+            Lines = accountLines
+                ? []
+                : [.. dto.Lines.Select((line, i) => ToPostingLine(
+                    line, currency, i, Resolved(costCenter, RequestedCostCenter(dto, line))))],
             Event = string.IsNullOrEmpty(dto.Event)
                 ? PostingEventCode.None
                 : new PostingEventCode(ReadRequiredText(dto.Event, "event", 128)),
@@ -165,6 +171,94 @@ internal static class WireMapping
             Actor = actor,
             ClosedPeriodAuthorisation = ToAuthorisation(dto.ClosedPeriodAuthorisation),
         };
+    }
+
+    /// <summary>
+    /// هل تسمّي سطورُ الطلب حسابات؟ <b>نقلٌ لا قرار</b>: كل سطر يحمل إمّا <c>role</c> وإمّا
+    /// <c>accountCode</c> — واحداً بالضبط — والطلبُ كلّه من نوعٍ واحد. وما يُقبل من أحداثٍ
+    /// لسطور الحساب يقرّره الدفتر من المصفوفة، لا هذا السطح (ADR-0096).
+    /// </summary>
+    /// <param name="dto">الطلب كما وصل.</param>
+    /// <exception cref="WireFormatException">سطرٌ بلا أيٍّ منهما أو بكليهما، أو خلطُ النوعين.</exception>
+    public static bool LinesNameAccounts(PostJournalEntryRequestDto dto)
+    {
+        ArgumentNullException.ThrowIfNull(dto);
+
+        bool? accounts = null;
+
+        for (int i = 0; i < dto.Lines.Count; i++)
+        {
+            PostingLineDto line = dto.Lines[i];
+            bool hasRole = !string.IsNullOrEmpty(line.Role);
+            bool hasAccount = !string.IsNullOrEmpty(line.AccountCode);
+
+            if (hasRole == hasAccount)
+            {
+                throw WireNumbers.Reject(
+                    "wire.line.role_or_account",
+                    FormattableString.Invariant($"lines[{i}]"),
+                    "السطر يحمل إمّا دوراً (role) وإمّا رمز حساب (accountCode) — واحداً منهما بالضبط، لا كليهما ولا أيّهما.",
+                    "A line carries either a role or an accountCode — exactly one of them, neither both nor none.");
+            }
+
+            if (accounts is not null && accounts.Value != hasAccount)
+            {
+                throw WireNumbers.Reject(
+                    "wire.lines.mixed_kinds",
+                    FormattableString.Invariant($"lines[{i}]"),
+                    "سطور الطلب من نوعٍ واحد: كلّها بالدور أو كلّها برمز الحساب، ولا خلط في طلب واحد.",
+                    "The lines of one request are of one kind: all by role or all by accountCode, never mixed in one request.");
+            }
+
+            accounts = hasAccount;
+        }
+
+        return accounts == true;
+    }
+
+    /// <summary>
+    /// يحوّل سطور الحساب إلى سطح القيد اليدوي في الدفتر — بالقراءات نفسها التي يقرأ بها
+    /// سطرُ الدور، ورمزُ الحساب يُنقل نصّاً ويتحقّق منه الدفتر وحده (ADR-0096).
+    /// </summary>
+    /// <param name="dto">الطلب كما وصل — بعد أن قال <see cref="LinesNameAccounts"/> إنه بسطور حساب.</param>
+    /// <param name="costCenter">الرمز المذكور ⇒ الرمز المُحلّ، كما في <see cref="ToPostingRequest"/>.</param>
+    public static IReadOnlyList<ManualVoucherLine> ToManualVoucherLines(
+        PostJournalEntryRequestDto dto,
+        IReadOnlyDictionary<string, string> costCenter)
+    {
+        ArgumentNullException.ThrowIfNull(dto);
+        ArgumentNullException.ThrowIfNull(costCenter);
+
+        CurrencyCode currency = ReadCurrency(dto.Currency, "currency");
+
+        return [.. dto.Lines.Select((line, i) =>
+        {
+            string prefix = FormattableString.Invariant($"lines[{i}]");
+
+            return new ManualVoucherLine
+            {
+                AccountCode = ReadRequiredText(line.AccountCode, prefix + ".accountCode", 32),
+                Side = ReadEnum<PostingSide>(line.Side, prefix + ".side"),
+                Amount = Money.Of(
+                    WireNumbers.ParseStrict(line.Amount.Raw, WireNumbers.MoneyScale, prefix + ".amount"),
+                    currency),
+                Scope = new PostingScope(
+                    Resolved(costCenter, RequestedCostCenter(dto, line)),
+                    ReadOptional(line.Scope?.BranchId, prefix + ".scope.branchId", 64),
+                    ReadOptional(line.Scope?.ProjectId, prefix + ".scope.projectId", 64)),
+                Subledger = line.Subledger is null
+                    ? SubledgerReference.None
+                    : new SubledgerReference(
+                        ReadEnum<SubledgerKind>(line.Subledger.Kind, prefix + ".subledger.kind"),
+                        ReadRequiredText(line.Subledger.PartyId, prefix + ".subledger.partyId", 128)),
+                Narration = line.Narration is null ? null : ReadLocalized(line.Narration, prefix + ".narration"),
+                Dimensions = line.Dimensions is null
+                    ? []
+                    : [.. line.Dimensions.Select((d, j) => new PostingDimension(
+                        ReadRequiredText(d.Name, FormattableString.Invariant($"{prefix}.dimensions[{j}].name"), 64),
+                        ReadText(d.Value, FormattableString.Invariant($"{prefix}.dimensions[{j}].value"), 128)))],
+            };
+        })];
     }
 
     /// <summary>يحوّل طلب العكس الوارد إلى عقد العكس.</summary>

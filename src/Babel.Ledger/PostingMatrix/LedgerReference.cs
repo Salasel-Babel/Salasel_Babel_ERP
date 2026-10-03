@@ -55,7 +55,21 @@ internal sealed class CompanyReference
         RoleMap = roleMap;
         PropertyOwnership = propertyOwnership;
         Periods = periods;
+
+        // الخريطة معكوسة: حساب ⇒ الأدوار التي تُحلّ إليه بأي مؤهّل — للحرّاس المقيَّدين بالدور
+        // حين يسمّي السطرُ الحسابَ مباشرة (ADR-0096).
+        _rolesByAccount = roleMap
+            .GroupBy(static pair => pair.Value, StringComparer.Ordinal)
+            .ToFrozenDictionary(
+                static group => group.Key,
+                static group => (IReadOnlyList<string>)[.. group
+                    .Select(static pair => pair.Key[..pair.Key.IndexOf('|', StringComparison.Ordinal)])
+                    .Distinct(StringComparer.Ordinal)
+                    .Order(StringComparer.Ordinal)],
+                StringComparer.Ordinal);
     }
+
+    private readonly FrozenDictionary<string, IReadOnlyList<string>> _rolesByAccount;
 
     public Guid CompanyId { get; }
 
@@ -100,6 +114,13 @@ internal sealed class CompanyReference
 
         return RoleMap.TryGetValue(roleCode + "|*", out string? fallback) ? fallback : null;
     }
+
+    /// <summary>
+    /// الأدوار التي تُحلّ إلى هذا الحساب بأي مؤهّل. <b>لسطر الحساب</b>: كل قاعدة حجب مقيَّدة
+    /// بدور من هذه تُقيَّم عليه، فلا يُلتفّ على GR-RE-001 وأخواتها باختيار الحساب مباشرة.
+    /// </summary>
+    public IReadOnlyList<string> RolesMappedTo(string accountCode)
+        => _rolesByAccount.TryGetValue(accountCode, out IReadOnlyList<string>? roles) ? roles : [];
 
     public static async Task<CompanyReference> LoadAsync(
         NpgsqlDataSource dataSource,

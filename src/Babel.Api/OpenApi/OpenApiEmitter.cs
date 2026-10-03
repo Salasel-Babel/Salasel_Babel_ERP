@@ -5977,21 +5977,40 @@ internal static class OpenApiEmitter
         {
             w.WriteString("type", "object");
             w.WriteString("description",
-                "سطر ترحيل. ولاحظ ما ليس فيه: لا حساب ولا رقم حساب. السطر يحمل دوراً، والدور يُحلّ إلى حساب "
-                + "داخل الدفتر عبر خريطة هذه الشركة — فتعديل دليل الحسابات صفٌّ في جدول، لا نشرُ إصدار. / "
-                + "A posting line. Note what is absent: no account, no account code. A line carries a role; the ledger "
-                + "resolves the role to an account through this company's map, so changing the chart of accounts is a table row, not a release.");
+                "سطر ترحيل يسمّي إمّا دوراً وإمّا حساباً — واحداً منهما بالضبط، والطلب كلّه من نوعٍ واحد. "
+                + "المستندات التلقائية تحمل دوراً يُحلّ إلى حساب داخل الدفتر عبر خريطة هذه الشركة — فتعديل دليل الحسابات "
+                + "صفٌّ في جدول، لا نشرُ إصدار. والقيد اليدوي وحده يسمّي حساباً من الدليل، لأن المصفوفة تُعلن سطورَه يدويةً (ADR-0096). / "
+                + "A posting line names either a role or an account — exactly one of them, and a whole request is of one kind. "
+                + "Automatic documents carry a role; the ledger resolves it to an account through this company's map, so changing "
+                + "the chart of accounts is a table row, not a release. The manual voucher alone names an account from the chart, "
+                + "because the matrix declares its lines manual (ADR-0096).");
             w.WriteStartObject("properties");
+
+            // رمز الحساب — للقيد اليدوي وحده، والدفتر يفحصه بالدليل (ADR-0096).
+            w.WriteStartObject("accountCode");
+            w.WriteString("type", "string");
+            w.WriteNumber("maxLength", 32);
+            w.WriteString("pattern", "^[0-9]{1,32}$");
+            w.WriteString("description",
+                "رمز الحساب من دليل هذه الشركة — للأحداث التي تُعلن المصفوفة سطورَها يدويةً فقط (اليوم ledger.manual_voucher.posted)، "
+                + "ويُرفض على أي حدث آخر. يحمل السطر إمّا role وإمّا accountCode، واحداً بالضبط. وتسري على الحساب شروط الدليل كلّها: "
+                + "قابل للترحيل (GR-COA-001)، وعامل، وأبعاده الإلزامية حاضرة (GR-COA-002)، وطرفُ دفتره المساعد حاضر. / "
+                + "The account code from this company's chart — only for events whose matrix lines are declared manual "
+                + "(today ledger.manual_voucher.posted); refused on any other event. A line carries either role or accountCode, exactly one. "
+                + "Every chart condition applies to the account: postable (GR-COA-001), active, mandatory dimensions present (GR-COA-002), "
+                + "subledger party present.");
+            w.WriteEndObject();
+
             WriteRefProperty(w, "amount", "Money");
             WriteArrayRefProperty(w, "dimensions", "NameValue", "أبعاد هذا السطر فوق أبعاد الطلب.", "Dimensions for this line on top of the request dimensions.");
             WriteRefProperty(w, "narration", "LocalizedText");
             WriteStringProperty(w, "qualifier", "مؤهّل الدور حين يُحلّ الدور الواحد إلى حسابات متعددة.", "The role qualifier when one role resolves to several accounts.", 64);
-            WriteEnumProperty(w, "role", "دور السطر في الحدث التجاري — لا حساباً.", "The line's role in the business event — never an account.", Enum.GetNames<PostingRole>());
+            WriteEnumProperty(w, "role", "دور السطر في الحدث التجاري — للمستندات التلقائية، ويغيب حين يُسمّى accountCode.", "The line's role in the business event — for automatic documents; absent when accountCode is named.", Enum.GetNames<PostingRole>());
             WriteRefProperty(w, "scope", "Scope");
             WriteEnumProperty(w, "side", "الجانب.", "The side.", Enum.GetNames<PostingSide>());
             WriteRefProperty(w, "subledger", "Subledger");
             w.WriteEndObject();
-            WriteRequired(w, "amount", "role", "side");
+            WriteRequired(w, "amount", "side");
             w.WriteBoolean("additionalProperties", false);
         });
 

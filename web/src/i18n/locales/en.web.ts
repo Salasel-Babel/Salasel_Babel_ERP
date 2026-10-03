@@ -913,6 +913,8 @@ export const messages: MessageTree = {
       narrationAr: "Narration in Arabic",
       narrationEn: "Narration in English",
       narrationHint: "Both are mandatory: Arabic is the record, not a translation.",
+      account: "Account",
+      accountHint: "From the chart of accounts: postable and active only. Party and branch appear when the account requires them.",
       role: "Role",
       roleHint: "A line carries a role, never an account. The ledger resolves it through this company's map.",
       side: "Side",

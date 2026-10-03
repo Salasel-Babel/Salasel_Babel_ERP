@@ -1,5 +1,5 @@
 {
-  "contractSha256": "9b945e1a65adac8abd8bca875c0002c1a6f86c57360593a61105aa32f49081a1",
+  "contractSha256": "b7b386b463b9b45febe6627baebcb202c5d3985a96aa0da45159ef7f9c2ccccc",
   "generatedFrom": "contracts/openapi/v1.json",
   "generator": "tools/agent/build-tool-catalogue.mjs",
   "registerKeys": [

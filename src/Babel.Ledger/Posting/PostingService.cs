@@ -66,6 +66,12 @@ internal sealed class PostingService : IPostingService, IApplicationService
     /// <param name="company">عملة المنشأة — التي يُفحص بها التوازن عند COMMIT (ADR-0089).</param>
     /// <param name="logger">سجلّ الخادم — إليه يذهب نصّ رفض قاعدة البيانات كاملاً.</param>
     public PostingService(IEntitlementEnforcer enforcer, LedgerRuntime runtime, ICompanyMoneyResolver company, ILogger<PostingService> logger)
+        : this(enforcer, runtime, company, (ILogger)logger)
+    {
+    }
+
+    /// <summary>المُنشئ المشترك — يستعمله سطحُ القيد اليدوي بسجلّه هو (ADR-0096).</summary>
+    internal PostingService(IEntitlementEnforcer enforcer, LedgerRuntime runtime, ICompanyMoneyResolver company, ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(enforcer);
         ArgumentNullException.ThrowIfNull(runtime);
@@ -85,12 +91,33 @@ internal sealed class PostingService : IPostingService, IApplicationService
 
     /// <inheritdoc />
     [RequiresEntitlement(BabelModule.Ledger, EntitlementAccess.Write)]
-    public async ValueTask<Result<PostingReceipt>> PostAsync(
+    public ValueTask<Result<PostingReceipt>> PostAsync(
         PostingRequest request,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
+        return PostCoreAsync(request, manualLines: null, cancellationToken);
+    }
 
+    /// <summary>
+    /// ترحيلُ قيدٍ يدوي سطورُه تسمّي حساباتها (ADR-0096) — المسار نفسه بلا استثناء:
+    /// البوّابتان، وتسجيل الرفض، والمخطّط، والنداء الواحد. والفرق الوحيد مصدرُ السطور.
+    /// </summary>
+    internal ValueTask<Result<PostingReceipt>> PostManualAsync(
+        PostingRequest header,
+        IReadOnlyList<Vouchers.ManualVoucherLine> lines,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(header);
+        ArgumentNullException.ThrowIfNull(lines);
+        return PostCoreAsync(header, lines, cancellationToken);
+    }
+
+    private async ValueTask<Result<PostingReceipt>> PostCoreAsync(
+        PostingRequest request,
+        IReadOnlyList<Vouchers.ManualVoucherLine>? manualLines,
+        CancellationToken cancellationToken)
+    {
         Result gate = await GateAsync(request.Tenant, request.Actor, request.Source.Module, cancellationToken)
             .ConfigureAwait(false);
         if (gate.IsFailure)
@@ -115,7 +142,7 @@ internal sealed class PostingService : IPostingService, IApplicationService
         DateTime postedAt = Instants.CaptureNow();
 
         Result<PostingPlan> plan = PostingPlanner.Plan(
-            request, reference, MatrixCatalog.Default, money.Value.Currency.Value, postedAt);
+            request, reference, MatrixCatalog.Default, money.Value.Currency.Value, postedAt, manualLines);
 
         if (plan.IsFailure)
         {

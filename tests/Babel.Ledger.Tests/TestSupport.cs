@@ -3,6 +3,7 @@ using Babel.Contracts.Posting;
 using Babel.Core.Entitlement;
 using Babel.Ledger.Audit;
 using Babel.Ledger.Posting;
+using Babel.Ledger.Vouchers;
 using Babel.Core.CompanySetup;
 using Babel.SharedKernel;
 using Npgsql;
@@ -159,11 +160,18 @@ internal sealed class LedgerHarness
         Runtime = runtime;
         Posting = new PostingService(new AlwaysEntitled(), runtime, new RiyalForEveryTenant());
         Auditing = new LedgerAuditService(new AlwaysEntitled(), runtime);
+
+        // سطحُ القيد اليدوي فوق المحرّك نفسه (ADR-0096).
+        Vouchers = new ManualVoucherService(
+            new AlwaysEntitled(), runtime, new RiyalForEveryTenant(),
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<ManualVoucherService>.Instance);
     }
 
     public LedgerRuntime Runtime { get; }
 
     public PostingService Posting { get; }
+
+    public ManualVoucherService Vouchers { get; }
 
     public LedgerAuditService Auditing { get; }
 

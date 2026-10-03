@@ -35,13 +35,14 @@ internal sealed record NameValueDto(string Name, string Value);
 internal sealed record NamedAmountDto(string Name, WireDecimal Value);
 
 /// <summary>
-/// سطر ترحيل على السلك.
+/// سطر ترحيل على السلك — يسمّي <b>إمّا دوراً وإمّا حساباً</b>، واحداً منهما بالضبط.
 /// <para>
-/// <b>ولاحظ ما ليس هنا:</b> لا حساب ولا رقم حساب — القاعدة 2 مطبَّقة على السلك أيضاً.
-/// السطر يحمل <b>دوراً</b>، والدور يُحلّ إلى حساب داخل الدفتر وحده.
+/// المستندات التلقائية تحمل <b>دوراً</b> يُحلّ إلى حساب داخل الدفتر وحده (القاعدة 2 على
+/// السلك). والقيد اليدوي وحده يحمل <b>رمز حساب</b> من الدليل، لأن المصفوفة تُعلن سطورَه
+/// يدويةً (ADR-0096) — والدفتر، لا هذا السطح، هو من يقرّر أي حدث يقبل ذلك.
 /// </para>
 /// </summary>
-/// <param name="Role">اسم الدور، بالضبط كما في <c>PostingRole</c> وبحساسية حالة الأحرف.</param>
+/// <param name="Role">اسم الدور، بالضبط كما في <c>PostingRole</c> وبحساسية حالة الأحرف. يغيب حين يُسمّى الحساب.</param>
 /// <param name="Side">الجانب: <c>Debit</c> أو <c>Credit</c>.</param>
 /// <param name="Amount">المبلغ نصّاً بمقياس لا يتجاوز أربعاً.</param>
 /// <param name="Scope">النطاق التحليلي.</param>
@@ -49,15 +50,17 @@ internal sealed record NamedAmountDto(string Name, WireDecimal Value);
 /// <param name="Narration">بيان السطر.</param>
 /// <param name="Qualifier">مؤهّل الدور.</param>
 /// <param name="Dimensions">أبعاد السطر.</param>
+/// <param name="AccountCode">رمز الحساب — للقيد اليدوي وحده، ويغيب حين يُسمّى الدور.</param>
 internal sealed record PostingLineDto(
-    string Role,
     string Side,
     WireDecimal Amount,
+    string? Role = null,
     ScopeDto? Scope = null,
     SubledgerDto? Subledger = null,
     LocalizedTextDto? Narration = null,
     string? Qualifier = null,
-    IReadOnlyList<NameValueDto>? Dimensions = null);
+    IReadOnlyList<NameValueDto>? Dimensions = null,
+    string? AccountCode = null);
 
 /// <summary>إذن استثنائي بالترحيل في فترة مقفلة.</summary>
 /// <param name="PermissionCode">رمز الصلاحية الاستثنائية.</param>

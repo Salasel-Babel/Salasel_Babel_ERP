@@ -347,10 +347,19 @@ public sealed class PublishedContractTests
             .GetProperty("Money").GetProperty("pattern").GetString()!;
         Assert.Equal(@"^-?(0|[1-9][0-9]*)(\.[0-9]{1,4})?$", moneyPattern);
 
-        // ولا حقل حساب في أي مخطّط طلب: القاعدة 2 مُعلنة على السلك أيضاً.
-        string requestSchemas = root.GetProperty("components").GetProperty("schemas")
-            .GetProperty("PostingLine").GetRawText();
-        Assert.DoesNotContain("accountCode", requestSchemas, StringComparison.OrdinalIgnoreCase);
+        // ‏accountCode على سطر الترحيل: موجود، **اختياري**، ومقيَّد بالقيد اليدوي في وصفه
+        // (‏ADR-0096). كان التأكيد هنا «لا حقل حساب في أي مخطّط طلب»، وسببُ تعديله مكتوب في
+        // القرار: القاعدة 2 باقية على `Babel.Contracts`، والسلك يحمل الرمز للقيد اليدوي وحده.
+        JsonElement postingLine = root.GetProperty("components").GetProperty("schemas").GetProperty("PostingLine");
+        JsonElement accountCode = postingLine.GetProperty("properties").GetProperty("accountCode");
+        Assert.Equal("string", accountCode.GetProperty("type").GetString());
+        Assert.DoesNotContain(
+            postingLine.GetProperty("required").EnumerateArray().Select(static r => r.GetString()),
+            static name => name is "accountCode" or "role");
+        string accountCodeDescription = accountCode.GetProperty("description").GetString()!;
+        Assert.Contains("ledger.manual_voucher.posted", accountCodeDescription, StringComparison.Ordinal);
+        Assert.Contains("يدوية", accountCodeDescription, StringComparison.Ordinal);
+        Assert.Contains("manual", accountCodeDescription, StringComparison.Ordinal);
     }
 
     private static async Task GenerateAsync(string target, string culture, bool invariantGlobalization)

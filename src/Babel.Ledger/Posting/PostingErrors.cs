@@ -94,6 +94,21 @@ internal static class PostingErrors
         $"الحدث «{code}» مُعلَن بـ posts_entry = false: هذا بيان سياسة محاسبية لا إغفال، ولا يُولَّد منه قيد.",
         $"Event '{code}' declares posts_entry = false: that is a deliberate accounting policy statement, not an omission; no entry is generated.");
 
+    /// <summary>
+    /// سطورُ حسابٍ وصلت إلى حدثٍ لا تُعلن المصفوفة سطورَه يدويةً (ADR-0096).
+    /// <para>
+    /// البوّابة بيانيةٌ لا قائمةٌ مكتوبة: الحدث الذي يقبل أن يسمّي المحاسبُ حسابه هو ما
+    /// حمل <c>line_kind = manual</c> في المصفوفة — واليوم حدثٌ واحد — ومصدرُه الدفتر نفسه.
+    /// وكلُّ حدثٍ آخر يصف واقعةً تختار المصفوفة حسابها، فسطرُ الحساب عليه التفافٌ على القاعدة 2.
+    /// </para>
+    /// </summary>
+    public static Error EventTakesNoManualLines(string code) => Invalid(
+        "event_takes_no_manual_lines",
+        $"الحدث «{code}» لا يقبل سطوراً تسمّي حساباً: سطرُ الحساب مقبول فقط على حدثٍ من الدفتر تُعلن "
+        + "المصفوفة سطورَه يدويةً (line_kind = manual). وكل حدثٍ آخر يحمل أدواراً، والمصفوفة تختار حسابه.",
+        $"Event '{code}' takes no account-named lines: an account line is accepted only on a ledger event whose "
+        + "matrix lines are declared manual (line_kind = manual). Every other event carries roles, and the matrix picks the account.");
+
     public static Error UnsupportedLineKind(string code, int lineNo, string kind) => Invalid(
         "unsupported_line_kind",
         $"السطر {lineNo} في الحدث «{code}» من النوع «{kind}»، وهو يحتاج تعداد حسابات أو ملفاً مستورداً "

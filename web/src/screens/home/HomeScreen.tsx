@@ -21,6 +21,7 @@ import { useT } from "../../i18n/react";
 import { Icon } from "../../app/shell/icons";
 import { SCREENS, SECTIONS } from "../../app/shell/sections";
 import { useSimple } from "../../app/presets";
+import logo from "../../assets/brand/logo.png";
 import { useMoment } from "../../ui";
 import "./home.css";
 
@@ -50,6 +51,7 @@ export function HomeScreen(): ReactNode {
     <section className="stack" data-testid="home-screen">
       <header className="pagehead">
         <div>
+          <img className="home__logo" src={logo} alt="" />
           <h1>{t("app.home.title")}</h1>
           <p className="sub">{t("app.home.lede")}</p>
         </div>

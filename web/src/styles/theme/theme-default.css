@@ -55,13 +55,14 @@
   --text-3:#5b6e8a;
 
   /* — العلامة · brand — */
-  --brand:#2563eb;
-  --brand-ink:#1d4ed8;
-  --brand-soft:#eff6ff;
+  /* هويةُ سلاسل بابل: كحليُّ الاسم في الشعار أساساً، وسماويُّ العلامة لمسةً. */
+  --brand:#0f3f80;
+  --brand-ink:#0b2f63;
+  --brand-soft:#e8f0fa;
   /* لون التدرّج في شعار النظام. القيمة حرفية في النموذج المعتمد في السمتين،
      ولا تتبع --ai: الشعار لا يحمل نصّاً (عنصرٌ فارغ aria-hidden)، فلا عتبة
      تباينٍ عليه — وتغميقه مع --ai كان سيغيّر الشعار بلا سببٍ وصولي. */
-  --brand-mark-accent:#7c3aed;
+  --brand-mark-accent:#00a9d6;
 
   /* — المحاسبة · accounting —
      الطرفان **يفترقان بالصبغة لا بالشدّة**: المدين فيروزي (175°) والدائن
@@ -113,14 +114,14 @@
      **زرقاءُ في الفاتح بطلب المالك**: عمودٌ داكن يفصل الملاحة عن مساحة العمل
      البيضاء من النظرة الأولى. والحبرُ أبيض والشاشةُ القائمة بطاقةٌ بيضاء بحبرٍ
      أزرق — كلّها فوق 7:1، وتقيسها `scripts/contrast.mjs` (side/*). */
-  --side-bg:#1e3a8a;
+  --side-bg:#0f3f80;
   --side-ink:#ffffff;
   --side-ink-muted:#dbeafe;
-  --side-hover-bg:#1e40af;
+  --side-hover-bg:#164b94;
   --side-current-bg:#ffffff;
-  --side-current-ink:#1e3a8a;
-  --side-border:#1e3a8a;
-  --side-focus:#ffffff;
+  --side-current-ink:#0f3f80;
+  --side-border:#0f3f80;
+  --side-focus:#4fd1f5;
 
   /* — حلقة التركيز · focus ring — */
   --ring:0 0 0 3px color-mix(in srgb,var(--brand) 18%,transparent);
@@ -155,7 +156,7 @@
     --brand:#60a5fa;
     --brand-ink:#93c5fd;
     --brand-soft:#16294d;
-    --brand-mark-accent:#7c3aed;
+    --brand-mark-accent:#00b0d0;
 
     /* الدائن كان #60a5fa = --brand **حرفياً**، فلا يُميَّز مبلغ دائن عن رابط.
        صار سماويّاً: ΔE 31 عن العلامة و41 عن المدين، وصبغته 199° مقابل 172°. */
@@ -214,7 +215,7 @@
   --brand:#60a5fa;
   --brand-ink:#93c5fd;
   --brand-soft:#16294d;
-  --brand-mark-accent:#7c3aed;
+  --brand-mark-accent:#00b0d0;
 
   --debit:#2dd4bf;   --debit-soft:#0b2f2c;
   --credit:#7dd3fc;  --credit-soft:#0c2b3d;

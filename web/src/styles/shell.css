@@ -351,6 +351,7 @@
   font-size:var(--font-size-3xl); line-height:var(--line-display);
   color:var(--color-text);
 }
+.gate__logo{ block-size:64px; inline-size:auto; max-inline-size:100% }
 .gate__brand .mark{
   inline-size:34px; block-size:34px; flex:none;
   border-radius:var(--radius-sm);

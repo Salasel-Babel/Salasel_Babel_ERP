@@ -18,6 +18,7 @@ import { useT } from "../i18n/react";
 import { HealthBadge, LocaleSwitcher, ThemeSwitcher } from "./shell/Switchers";
 import { CompanyBadge } from "./shell/CompanyBadge";
 import { useSimple } from "./presets";
+import mark from "../assets/brand/mark-160.png";
 import { KeyboardHelp } from "./shell/KeyboardHelp";
 import { CommandPalette } from "./shell/CommandPalette";
 import { ScreenNav } from "./shell/ScreenNav";
@@ -142,7 +143,7 @@ export function AppShell(): ReactNode {
         {/* العلامةُ بابٌ إلى البداية لا زينة: هي الموضع الذي تعلّمه الناس
             للعودة إلى أوّل الطريق، وتركُها صمّاء يُهدر ما تعلّموه. */}
         <Link to="/home" className="brand" data-testid="brand-home">
-          <span className="mark" aria-hidden="true" />
+          <img className="mark" src={mark} alt="" width={34} height={34} />
           <span>{t("app.name")}</span>
         </Link>
 

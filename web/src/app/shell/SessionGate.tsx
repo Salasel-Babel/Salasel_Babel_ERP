@@ -24,6 +24,7 @@ import { useT } from "../../i18n/react";
 import { SignInScreen } from "../../screens/session/SignInScreen";
 import { LocaleSwitcher, ThemeSwitcher } from "./Switchers";
 import accessiblePaletteHref from "../../styles/theme/theme-accessible.css?url";
+import logo from "../../assets/brand/logo.png";
 
 /**
  * المساراتُ التي تُخدَم بلا جلسة — <b>وهي صورةُ `security: []` في العقد</b>.
@@ -55,8 +56,7 @@ export function SessionGate(props: { path: string; open: boolean }): ReactNode {
       <main className="gate__card" id="main">
         <div className="gate__head">
           <div className="gate__brand">
-            <span className="mark" aria-hidden="true" />
-            <span>{t("app.name")}</span>
+            <img className="gate__logo" src={logo} alt={t("app.name")} />
           </div>
           {/* ── واللغةُ والمظهر يُبدَّلان **قبل** الدخول لا بعده ──────────────
               وهما في القشرة، والقشرةُ لا تُرسَم هنا. فكان المُبدِّلان يغيبان مع

@@ -29,6 +29,8 @@ import type { CommercialDocument, ReceiptAllocation } from "../../api/generated/
 import { Money } from "../../api/money";
 import { ProblemError } from "../../api/transport";
 import { useApi } from "../../app/api-context";
+import { PartyPicker } from "../../app/pickers";
+import { PRESET, useDocumentNumber, usePresetFill, useSimple } from "../../app/presets";
 import { ProblemPanel } from "../../app/shell/ProblemPanel";
 import { useT } from "../../i18n/react";
 import { Button, EmptyState, RefusalPanel, useMoment } from "../../ui";
@@ -79,6 +81,16 @@ export function CustomerReceiptScreen(): ReactNode {
   );
   const [treasuryPartyId, setTreasuryPartyId] = useState("");
 
+  /* ── الواجهة المبسّطة: الرقم من الخادم، والتسوية وخزينتها من الثوابت، والتاريخ اليوم (ADR-0095) ── */
+  const simple = useSimple();
+  const documentNumber = useDocumentNumber("customer_receipt");
+  const hideMethod = usePresetFill(PRESET.settlementMethod, settlementMethod, setSettlementMethod);
+  const hideTreasury = usePresetFill(
+    settlementMethod === "cash" ? PRESET.treasuryCash : PRESET.treasuryBank,
+    treasuryPartyId,
+    setTreasuryPartyId
+  );
+
   /* ── التخصيصات ────────────────────────────────────────────────────── */
   const [allocation, setAllocation] = useState<DraftAllocation>({ invoiceId: "", amount: "" });
   const [allocations, setAllocations] = useState<readonly DraftAllocation[]>([]);
@@ -117,12 +129,15 @@ export function CustomerReceiptScreen(): ReactNode {
         amount: Money.wire(one.amount),
         invoiceId: one.invoiceId,
       }));
+      /* الرقم: ما كُتب، وإلا يُخصَّص من سلسلة سندات القبض على تاريخ القبض. */
+      const resolvedNumber = await documentNumber.resolve(number, receivedOn);
+      setNumber(resolvedNumber);
       const created = await draftCustomerReceipt(transport, {
         companyId: config.companyId,
         body: {
           allocations: wire,
           customerId,
-          number,
+          number: resolvedNumber,
           received: Money.wire(received),
           receivedOn,
           settlementDiscount: Money.wire(settlementDiscount),
@@ -143,6 +158,7 @@ export function CustomerReceiptScreen(): ReactNode {
     allocations,
     config.companyId,
     customerId,
+    documentNumber,
     fireArrive,
     fireRefuse,
     number,
@@ -180,7 +196,7 @@ export function CustomerReceiptScreen(): ReactNode {
   const overAllocated = draftCode === SALES_OVER_ALLOCATION || postCode === SALES_OVER_ALLOCATION;
 
   const draftReady =
-    number !== "" &&
+    (number !== "" || documentNumber.hidden) &&
     customerId !== "" &&
     receivedOn !== "" &&
     isMoneyText(received) &&
@@ -214,7 +230,8 @@ export function CustomerReceiptScreen(): ReactNode {
             <option key={value} value={value} />
           ))}
         </datalist>
-        <AccRow cols={3} testId="acc-receipt-head-row-1">
+        <AccRow cols={simple ? 2 : 3} testId="acc-receipt-head-row-1">
+          {documentNumber.hidden ? null : (
           <AccField
             id="acc-rc-number"
             label={t("accounting.field.number")}
@@ -233,6 +250,7 @@ export function CustomerReceiptScreen(): ReactNode {
               onChange={(e) => setNumber(e.target.value)}
             />
           </AccField>
+          )}
           <AccField
             id="acc-rc-customer"
             label={t("accounting.field.customerId")}
@@ -240,17 +258,9 @@ export function CustomerReceiptScreen(): ReactNode {
             source="typed"
             required
           >
-            <input
-              id="acc-rc-customer"
-              className="ctl mono"
-              dir="ltr"
-              autoComplete="off"
-              spellCheck={false}
-              data-testid="acc-receipt-customer"
-              value={customerId}
-              onChange={(e) => setCustomerId(e.target.value)}
-            />
+            <PartyPicker kind="customer" id="acc-rc-customer" value={customerId} onChange={setCustomerId} testId="acc-receipt-customer" />
           </AccField>
+          {simple ? null : (
           <AccField
             id="acc-rc-on"
             label={t("accounting.field.receivedOn")}
@@ -268,8 +278,9 @@ export function CustomerReceiptScreen(): ReactNode {
               onChange={(e) => setReceivedOn(e.target.value)}
             />
           </AccField>
+          )}
         </AccRow>
-        <AccRow cols={4} testId="acc-receipt-head-row-2">
+        <AccRow cols={simple ? 2 : 4} testId="acc-receipt-head-row-2">
           <AccField
             id="acc-rc-received"
             label={t("accounting.field.received")}
@@ -290,6 +301,7 @@ export function CustomerReceiptScreen(): ReactNode {
               onChange={(e) => setReceived(e.target.value)}
             />
           </AccField>
+          {simple ? null : (
           <AccField
             id="acc-rc-discount"
             label={t("accounting.field.settlementDiscount")}
@@ -314,6 +326,8 @@ export function CustomerReceiptScreen(): ReactNode {
               onChange={(e) => setSettlementDiscount(e.target.value)}
             />
           </AccField>
+          )}
+          {hideMethod ? null : (
           <AccField
             id="acc-rc-method"
             label={t("accounting.field.settlementMethod")}
@@ -333,6 +347,8 @@ export function CustomerReceiptScreen(): ReactNode {
               onChange={(e) => setSettlementMethod(e.target.value)}
             />
           </AccField>
+          )}
+          {hideTreasury ? null : (
           <AccField
             id="acc-rc-treasury"
             label={t("accounting.field.treasuryParty")}
@@ -351,6 +367,7 @@ export function CustomerReceiptScreen(): ReactNode {
               onChange={(e) => setTreasuryPartyId(e.target.value)}
             />
           </AccField>
+          )}
         </AccRow>
       </StatePanel>
 

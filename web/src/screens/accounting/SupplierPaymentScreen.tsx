@@ -23,6 +23,8 @@ import type { CommercialDocument, PaymentAllocation } from "../../api/generated/
 import { Money } from "../../api/money";
 import { ProblemError } from "../../api/transport";
 import { useApi } from "../../app/api-context";
+import { PartyPicker } from "../../app/pickers";
+import { PRESET, useDocumentNumber, usePresetFill, useSimple } from "../../app/presets";
 import { ProblemPanel } from "../../app/shell/ProblemPanel";
 import { useT } from "../../i18n/react";
 import { Button, EmptyState, RefusalPanel, useMoment } from "../../ui";
@@ -75,6 +77,16 @@ export function SupplierPaymentScreen(): ReactNode {
   );
   const [treasuryPartyId, setTreasuryPartyId] = useState("");
 
+  /* ── الواجهة المبسّطة: الرقم من الخادم، والتسوية وخزينتها من الثوابت، والتاريخ اليوم (ADR-0095) ── */
+  const simple = useSimple();
+  const documentNumber = useDocumentNumber("supplier_payment");
+  const hideMethod = usePresetFill(PRESET.settlementMethod, settlementMethod, setSettlementMethod);
+  const hideTreasury = usePresetFill(
+    settlementMethod === "cash" ? PRESET.treasuryCash : PRESET.treasuryBank,
+    treasuryPartyId,
+    setTreasuryPartyId
+  );
+
   /* ── التخصيصات ────────────────────────────────────────────────────── */
   const [allocation, setAllocation] = useState<DraftPaymentAllocation>({
     billId: focus.billId,
@@ -116,12 +128,15 @@ export function SupplierPaymentScreen(): ReactNode {
         amount: Money.wire(one.amount),
         billId: one.billId,
       }));
+      /* الرقم: ما كُتب، وإلا يُخصَّص من سلسلة سندات الصرف على تاريخ الدفع. */
+      const resolvedNumber = await documentNumber.resolve(number, paidOn);
+      setNumber(resolvedNumber);
       const created = await draftSupplierPayment(transport, {
         companyId: config.companyId,
         body: {
           allocations: wire,
           bankFee: Money.wire(bankFee),
-          number,
+          number: resolvedNumber,
           paid: Money.wire(paid),
           paidOn,
           settlementMethod,
@@ -142,6 +157,7 @@ export function SupplierPaymentScreen(): ReactNode {
     allocations,
     bankFee,
     config.companyId,
+    documentNumber,
     fireArrive,
     fireRefuse,
     number,
@@ -177,7 +193,7 @@ export function SupplierPaymentScreen(): ReactNode {
     draftCode === PURCHASING_OVER_ALLOCATION || postCode === PURCHASING_OVER_ALLOCATION;
 
   const draftReady =
-    number !== "" &&
+    (number !== "" || documentNumber.hidden) &&
     supplierId !== "" &&
     paidOn !== "" &&
     isMoneyText(paid) &&
@@ -211,7 +227,8 @@ export function SupplierPaymentScreen(): ReactNode {
             <option key={value} value={value} />
           ))}
         </datalist>
-        <AccRow cols={3} testId="acc-payment-head-row-1">
+        <AccRow cols={simple ? 2 : 3} testId="acc-payment-head-row-1">
+          {documentNumber.hidden ? null : (
           <AccField
             id="acc-sp-number"
             label={t("accounting.field.number")}
@@ -230,6 +247,7 @@ export function SupplierPaymentScreen(): ReactNode {
               onChange={(e) => setNumber(e.target.value)}
             />
           </AccField>
+          )}
           <AccField
             id="acc-sp-supplier"
             label={t("accounting.field.supplierId")}
@@ -237,17 +255,9 @@ export function SupplierPaymentScreen(): ReactNode {
             source="typed"
             required
           >
-            <input
-              id="acc-sp-supplier"
-              className="ctl mono"
-              dir="ltr"
-              autoComplete="off"
-              spellCheck={false}
-              data-testid="acc-payment-supplier"
-              value={supplierId}
-              onChange={(e) => setSupplierId(e.target.value)}
-            />
+            <PartyPicker kind="supplier" id="acc-sp-supplier" value={supplierId} onChange={setSupplierId} testId="acc-payment-supplier" />
           </AccField>
+          {simple ? null : (
           <AccField
             id="acc-sp-on"
             label={t("accounting.field.paidOn")}
@@ -265,8 +275,9 @@ export function SupplierPaymentScreen(): ReactNode {
               onChange={(e) => setPaidOn(e.target.value)}
             />
           </AccField>
+          )}
         </AccRow>
-        <AccRow cols={4} testId="acc-payment-head-row-2">
+        <AccRow cols={simple ? 2 : 4} testId="acc-payment-head-row-2">
           <AccField
             id="acc-sp-paid"
             label={t("accounting.field.paid")}
@@ -287,6 +298,7 @@ export function SupplierPaymentScreen(): ReactNode {
               onChange={(e) => setPaid(e.target.value)}
             />
           </AccField>
+          {simple ? null : (
           <AccField
             id="acc-sp-fee"
             label={t("accounting.field.bankFee")}
@@ -307,6 +319,8 @@ export function SupplierPaymentScreen(): ReactNode {
               onChange={(e) => setBankFee(e.target.value)}
             />
           </AccField>
+          )}
+          {hideMethod ? null : (
           <AccField
             id="acc-sp-method"
             label={t("accounting.field.settlementMethod")}
@@ -326,6 +340,8 @@ export function SupplierPaymentScreen(): ReactNode {
               onChange={(e) => setSettlementMethod(e.target.value)}
             />
           </AccField>
+          )}
+          {hideTreasury ? null : (
           <AccField
             id="acc-sp-treasury"
             label={t("accounting.field.treasuryParty")}
@@ -344,6 +360,7 @@ export function SupplierPaymentScreen(): ReactNode {
               onChange={(e) => setTreasuryPartyId(e.target.value)}
             />
           </AccField>
+          )}
         </AccRow>
         <p className="hint" data-testid="acc-payment-fee-rule">{t("accounting.payment.feeRule")}</p>
       </StatePanel>

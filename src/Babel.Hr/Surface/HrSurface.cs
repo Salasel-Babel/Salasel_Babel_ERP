@@ -149,6 +149,18 @@ public sealed class HrSurface
             await _employees.GetAsync(tenant, actor, employeeId, cancellationToken).ConfigureAwait(false),
             Employee);
 
+    /// <summary>يقرأ موظفي المنشأة مرتَّبين بالرمز، هوياتهم <b>مقنَّعة</b> — لقائمة اختيار.</summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    public async ValueTask<Result<IReadOnlyList<HrEmployee>>> ListEmployeesAsync(
+        TenantId tenant,
+        UserId actor,
+        CancellationToken cancellationToken = default)
+        => MapMany(
+            await _employees.ListAsync(tenant, actor, cancellationToken).ConfigureAwait(false),
+            Employee);
+
     /// <summary>يُنهي خدمة موظف — مورداً فرعياً لا حقلَ حالة يُعدَّل.</summary>
     /// <param name="tenant">المستأجر.</param>
     /// <param name="actor">الفاعل.</param>

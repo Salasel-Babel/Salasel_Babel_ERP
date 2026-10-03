@@ -508,6 +508,14 @@ internal static class PayrollMapping
             ]);
     }
 
+    /// <summary>يحوّل قائمة موظفين إلى غلافها.</summary>
+    /// <param name="employees">الموظفون.</param>
+    public static HrEmployeeListDto ToDto(IReadOnlyList<HrEmployee> employees)
+    {
+        ArgumentNullException.ThrowIfNull(employees);
+        return new HrEmployeeListDto(employees.Count, [.. employees.Select(ToDto)]);
+    }
+
     /// <summary>يحوّل قائمة مكوّنات أجر إلى غلافها.</summary>
     /// <param name="components">المكوّنات.</param>
     public static HrPayComponentListDto ToDto(IReadOnlyList<HrPayComponent> components)

@@ -6,6 +6,7 @@ using Babel.Core.CapabilityProfile;
 using Babel.Core.Access;
 using Babel.Core;
 using Babel.Core.CompanySetup;
+using Babel.Core.Presets;
 using Babel.SharedKernel;
 
 namespace Babel.Api.OpenApi;
@@ -518,6 +519,38 @@ internal static class OpenApiEmitter
                 + "index were lost the documents would still be readable.",
                 Body: null, Response: "ParameterReviewList", Success: 200, Query: []),
 
+            new(ApiRoutes.CompanyPresets, "get", "readCompanyPresets",
+                "ثوابت الشركة", "The company presets",
+                "يقرأ ثوابت الشركة: ما يُحسم مرّةً في الإعداد — الفرع الافتراضي، والتصنيف الضريبي ونسبته، وطريقة التسوية وخزينتها، "
+                + "والمستودع والموقع، وبادئات الترقيم — ثم يختفي من شاشات الإدخال فتبقى فيها المتغيّرات القليلة. "
+                + "ويعود معه **الكتالوج المغلق** وسلاسل الترقيم، فترسم شاشة الإعداد حقولها من العقد لا من قائمة مكتوبة بيد. "
+                + "ومنشأةٌ لم تضبط شيئاً تُقرأ بقيمٍ فارغة لا بـ404.",
+                "Reads the company presets: what is decided once at setup — the default branch, the tax classification and rate, the settlement "
+                + "method and its treasury, the warehouse and location, and the numbering prefixes — and then disappears from the entry screens, "
+                + "leaving the few variables. The **closed catalogue** and the numbering series come with it, so the setup screen draws its fields "
+                + "from the contract rather than from a hand-written list. A company that has set nothing reads as empty values, not as 404.",
+                Body: null, Response: "CompanyPresets", Success: 200, Query: []),
+
+            new(ApiRoutes.CompanyPresets, "put", "replaceCompanyPresets",
+                "استبدال ثوابت الشركة", "Replace the company presets",
+                "يستبدل الثوابت كلّها دفعةً واحدة: مفتاحٌ غائب أو قيمةٌ فارغة تزيل الثابت. المفاتيح من الكتالوج المغلق وحده، "
+                + "وكل قيمة تُصدَّق بنوعها (نسبة، أو true/false، أو بادئة، أو اختيار من قائمة)، وتُعاد الأخطاء كلّها دفعةً ولا يُكتب شيء معها.",
+                "Replaces all presets at once: an absent key or an empty value removes the preset. Keys come from the closed catalogue only, "
+                + "every value is validated by its kind (a rate, true/false, a prefix, or a choice from a list), and all errors come back together "
+                + "with nothing written.",
+                Body: "ReplaceCompanyPresetsRequest", Response: "CompanyPresets", Success: 200, Query: []),
+
+            new(ApiRoutes.CompanyPresetNumbers, "post", "allocateDocumentNumber",
+                "تخصيص رقم مستند", "Allocate a document number",
+                "يخصّص الرقم التالي في سلسلة ترقيم داخل سنة التاريخ المعطى: البادئة (المضبوطة أو الافتراضية)، فالسنة، فتسلسلٌ من عدّادٍ "
+                + "يُقفل صفُّه عند القراءة (ADR-0008). **والرقم تخصيصٌ لا فرض**: يعود إلى المتصفّح ليرسله في المستند كما كان دائماً "
+                + "(ADR-0054 §7)، وفرادته تُفرض عند المستند. ورقمٌ خُصّص ولم يُستعمل يترك فجوةً مُعلَنة.",
+                "Allocates the next number in a numbering series within the year of the given date: the prefix (set or default), the year, "
+                + "then a sequence from a counter whose row is locked on read (ADR-0008). **The number is an allocation, not an imposition**: it "
+                + "goes back to the browser, which sends it in the document as it always has (ADR-0054 §7), and uniqueness is enforced at the "
+                + "document. An allocated number left unused leaves a declared gap.",
+                Body: "AllocateNumberRequest", Response: "AllocatedNumber", Success: 201, Query: []),
+
             new(ApiRoutes.CompanySetup, "get", "readCompanySetup",
                 "تأسيس المنشأة", "The company setup",
                 "يقرأ تأسيس المنشأة: اسمها، و**عدد الخانات العشرية المعروضة**، و**عملتها ووحدتها الصغرى**، و**مراكز تكلفتها كلّها** — العاملة والموقوفة معاً. "
@@ -626,6 +659,18 @@ internal static class OpenApiEmitter
                 + "by no posting path — and a door labelled 'suspend' that stops not one invoice is worse than no door: it looks like a "
                 + "control and is not one.",
                 Body: null, Response: "Party", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.Customers, "get", "listCustomers",
+                "قائمة العملاء", "List the customers",
+                "يقرأ عملاء المنشأة كلّهم **مرتَّبين بالرمز**، بالشكل نفسه الذي يُقرأ به العميل الواحد — لقائمة "
+                + "اختيارٍ تحلّ محلّ معرّفٍ يُكتب باليد.\n\n"
+                + "**ولا صفحة ولا سقف ولا فلتر**: غلافٌ بعدّاد لا مصفوفة عارية، فأول حاجة إلى صفحةٍ تجد موضعها "
+                + "ولا تكسر العقد.",
+                "Reads all of the company's customers **ordered by code**, each in the same shape readCustomer returns — "
+                + "for a picker that replaces a hand-typed identifier.\n\n"
+                + "**No page, no cap, no filter**: an envelope with a count rather than a bare array, so the first need for a page "
+                + "finds its place without breaking the contract.",
+                Body: null, Response: "PartyList", Success: 200, Query: []),
 
             new(ApiRoutes.SalesInvoices, "post", "draftSalesInvoice",
                 "إنشاء فاتورة مبيعات مسوّدة", "Draft a sales invoice",
@@ -800,6 +845,14 @@ internal static class OpenApiEmitter
                 "Reads a single supplier. What is absent from the customer resource is absent here for the same reasons: no delete, "
                 + "structurally, and no suspension yet.",
                 Body: null, Response: "Party", Success: 200, Query: [], ProblemStatuses: [404]),
+
+            new(ApiRoutes.Suppliers, "get", "listSuppliers",
+                "قائمة الموردين", "List the suppliers",
+                "يقرأ موردي المنشأة كلّهم **مرتَّبين بالرمز**، بالشكل نفسه الذي يُقرأ به المورد الواحد — لقائمة اختيار. "
+                + "ولا صفحة ولا سقف ولا فلتر، للسبب نفسه الذي على قائمة العملاء.",
+                "Reads all of the company's suppliers **ordered by code**, each in the same shape readSupplier returns — for a "
+                + "picker. No page, no cap, no filter, for the same reason as on the customer list.",
+                Body: null, Response: "PartyList", Success: 200, Query: []),
 
             new(ApiRoutes.SupplierBills, "post", "draftExpenseBill",
                 "إنشاء فاتورة مصروف مسوّدة", "Draft an expense bill",
@@ -2663,6 +2716,16 @@ internal static class OpenApiEmitter
                 + "not a status field that is edited.",
                 Body: null, Response: "HrEmployee", Success: 200, Query: [], ProblemStatuses: [404]),
 
+            new(ApiRoutes.Employees, "get", "listEmployees",
+                "قائمة الموظفين", "List the employees",
+                "يقرأ موظفي المنشأة كلّهم **مرتَّبين بالرمز**، كلٌّ بعلاقته الجارية وهويته **مقنَّعة** — القناع نفسه "
+                + "الذي على قراءة الموظف الواحد، فلا تُسرَّب القائمة ما يحجبه المورد.\n\n"
+                + "**ولا صفحة ولا سقف ولا فلتر**: غلافٌ بعدّاد لا مصفوفة عارية.",
+                "Reads all of the company's employees **ordered by code**, each with the current employment and a **masked** "
+                + "identity — the same mask readEmployee applies, so the list leaks nothing the single resource hides.\n\n"
+                + "**No page, no cap, no filter**: an envelope with a count rather than a bare array.",
+                Body: null, Response: "HrEmployeeList", Success: 200, Query: []),
+
             new(ApiRoutes.EmployeeTermination, "post", "terminateEmployee",
                 "إنهاء خدمة موظف", "Terminate an employee",
                 "يُنهي علاقة العمل السارية بتاريخها وبمفتاح سببها. **مورد فرعي مستقلّ لا PUT بحقل حالة**، بنفس سابقة "
@@ -3962,6 +4025,11 @@ internal static class OpenApiEmitter
                     WriteCostCenterCodeParameter(w);
                 }
 
+                if (byPath.Key.Contains("{series}", StringComparison.Ordinal))
+                {
+                    WriteSeriesParameter(w);
+                }
+
                 w.WriteEndArray();
             }
 
@@ -4191,6 +4259,24 @@ internal static class OpenApiEmitter
 
     /// <summary>أعضاء تعداد حالة مركز التكلفة، مقروءةً من التعداد نفسه.</summary>
     private static IReadOnlyList<string> CostCenterStates { get; } = Enum.GetNames<CostCenterState>();
+
+    /// <summary>أعضاء تعداد نوع الثابت، مقروءةً من التعداد نفسه.</summary>
+    private static IReadOnlyList<string> PresetKinds { get; } = Enum.GetNames<PresetKind>();
+
+    private static void WriteSeriesParameter(Utf8JsonWriter w)
+    {
+        w.WriteStartObject();
+        w.WriteString("name", "series");
+        w.WriteString("in", "path");
+        w.WriteBoolean("required", true);
+        w.WriteString("description",
+            "رمز سلسلة الترقيم من قائمة series في ثوابت الشركة. / The numbering series code, from the series list in the company presets.");
+        w.WriteStartObject("schema");
+        w.WriteString("type", "string");
+        w.WriteString("pattern", "^[a-z0-9_]{1,64}$");
+        w.WriteEndObject();
+        w.WriteEndObject();
+    }
 
     private static void WriteCostCenterCodeParameter(Utf8JsonWriter w)
     {
@@ -5625,6 +5711,82 @@ internal static class OpenApiEmitter
             WriteStringProperty(w, "suspensionReason", "سبب الإيقاف مكتوباً، أو نصّ فارغ.", "The written suspension reason, or an empty string.", CompanySetupLimits.MaximumReasonLength);
             w.WriteEndObject();
             WriteRequired(w, "code", "isDefault", "nameAr", "nameTranslations", "state", "suspensionReason");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("PresetKey", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description", "ثابت في الكتالوج المغلق. / A preset in the closed catalogue.");
+            w.WriteStartObject("properties");
+            WriteStringArrayProperty(w, "choices", "الأعضاء المسموحة حين يكون النوع Choice، وإلا فارغة.", "The allowed members when the kind is Choice, otherwise empty.", CompanyPresetLimits.MaximumValueLength);
+            WriteStringProperty(w, "key", "المفتاح.", "The key.", CompanyPresetLimits.MaximumKeyLength);
+            WriteEnumProperty(w, "kind", "نوع القيمة.", "The value's kind.", PresetKinds);
+            w.WriteEndObject();
+            WriteRequired(w, "choices", "key", "kind");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("DocumentSeries", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description", "سلسلة ترقيم ببادئتها الافتراضية. / A numbering series with its default prefix.");
+            w.WriteStartObject("properties");
+            WriteStringProperty(w, "code", "رمز السلسلة.", "The series code.", 64);
+            WriteStringProperty(w, "defaultPrefix", "البادئة إن لم تُضبط في الثوابت.", "The prefix when none is set in the presets.", CompanyPresetLimits.MaximumPrefixLength);
+            w.WriteEndObject();
+            WriteRequired(w, "code", "defaultPrefix");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("CompanyPresets", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "ثوابت الشركة كما تُقرأ: المضبوط منها، ومعه الكتالوج والسلاسل. / "
+                + "The company presets as read: what is set, with the catalogue and the series.");
+            w.WriteStartObject("properties");
+            WriteArrayRefProperty(w, "catalogue", "PresetKey", "الكتالوج المغلق.", "The closed catalogue.");
+            WriteArrayRefProperty(w, "series", "DocumentSeries", "سلاسل الترقيم ببادئاتها الافتراضية.", "The numbering series with their default prefixes.");
+            WriteArrayRefProperty(w, "values", "NameValue", "الثوابت المضبوطة مرتَّبة بالمفتاح.", "The presets that are set, ordered by key.");
+            w.WriteEndObject();
+            WriteRequired(w, "catalogue", "series", "values");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("ReplaceCompanyPresetsRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description", "طلب استبدال الثوابت كلّها. / A request to replace all presets.");
+            w.WriteStartObject("properties");
+            WriteArrayRefProperty(w, "values", "NameValue", "المفاتيح وقيمها. قيمةٌ فارغة تزيل الثابت.", "The keys and their values. An empty value removes the preset.");
+            w.WriteEndObject();
+            WriteRequired(w, "values");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("AllocateNumberRequest", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description", "طلب تخصيص رقم. / A request to allocate a number.");
+            w.WriteStartObject("properties");
+            WriteDateProperty(w, "on", "تاريخ المستند — سنتُه هي سنة العدّاد.", "The document date — its year is the counter's year.");
+            w.WriteEndObject();
+            WriteRequired(w, "on");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("AllocatedNumber", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description", "رقم مخصَّص من عدّاد السلسلة. / A number allocated from the series counter.");
+            w.WriteStartObject("properties");
+            WriteIntegerProperty(w, "fiscalYear", 1, 9999, "السنة.", "The year.");
+            WriteStringProperty(w, "number", "الرقم المركّب الذي يُرسل في المستند.", "The composed number sent in the document.", 32);
+            WriteIntegerProperty(w, "sequence", 1, int.MaxValue, "التسلسل داخل السنة.", "The sequence within the year.");
+            WriteStringProperty(w, "series", "السلسلة.", "The series.", 64);
+            w.WriteEndObject();
+            WriteRequired(w, "fiscalYear", "number", "sequence", "series");
             w.WriteBoolean("additionalProperties", false);
         });
 
@@ -7682,6 +7844,22 @@ internal static class OpenApiEmitter
             w.WriteBoolean("additionalProperties", false);
         });
 
+        yield return ("PartyList", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "أطراف المنشأة — عملاؤها أو موردوها — مرتَّبة بالرمز. **وغلافٌ لا مصفوفة عارية**: مصفوفةٌ في جذر "
+                + "الاستجابة لا موضع فيها لعدّاد ولا لصفحة. / "
+                + "The company's parties — its customers or its suppliers — ordered by code. **An envelope, not a bare array**: an "
+                + "array at the response root has no place for a count or a page.");
+            w.WriteStartObject("properties");
+            WriteArrayRefProperty(w, "parties", "Party", "الأطراف.", "The parties.");
+            WriteIntegerProperty(w, "partyCount", 0, int.MaxValue, "عدد الأطراف.", "The number of parties.");
+            w.WriteEndObject();
+            WriteRequired(w, "partyCount", "parties");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
         yield return ("SalesLine", static w =>
         {
             w.WriteString("type", "object");
@@ -9016,6 +9194,21 @@ internal static class OpenApiEmitter
             WriteStringProperty(w, "state", "حالة علاقة العمل: ACTIVE أو TERMINATED.", "The employment state: ACTIVE or TERMINATED.", 16);
             w.WriteEndObject();
             WriteRequired(w, "classCode", "code", "costCenterId", "employmentId", "endedOn", "id", "identity", "nameAr", "nameTranslations", "startedOn", "state");
+            w.WriteBoolean("additionalProperties", false);
+        });
+
+        yield return ("HrEmployeeList", static w =>
+        {
+            w.WriteString("type", "object");
+            w.WriteString("description",
+                "موظفو المنشأة مرتَّبين بالرمز، هوياتهم **مقنَّعة** كما على الموظف الواحد. **وغلافٌ لا مصفوفة عارية**. / "
+                + "The company's employees ordered by code, identities **masked** as on the single employee. **An envelope, not a "
+                + "bare array**.");
+            w.WriteStartObject("properties");
+            WriteIntegerProperty(w, "itemCount", 0, int.MaxValue, "عدد الموظفين.", "The number of employees.");
+            WriteArrayRefProperty(w, "items", "HrEmployee", "الموظفون.", "The employees.");
+            w.WriteEndObject();
+            WriteRequired(w, "itemCount", "items");
             w.WriteBoolean("additionalProperties", false);
         });
 

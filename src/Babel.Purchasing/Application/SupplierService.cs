@@ -121,6 +121,41 @@ public sealed class SupplierService : IApplicationService
             : Result<SupplierView>.Success(ViewOf(row, money.Value));
     }
 
+    /// <summary>يقرأ موردي المنشأة مرتَّبين بالرمز — قائمةُ اختيارٍ لا صفحة.</summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    [RequiresEntitlement(BabelModule.Purchasing, EntitlementAccess.Read)]
+    public async ValueTask<Result<IReadOnlyList<SupplierView>>> ListAsync(
+        TenantId tenant,
+        UserId actor,
+        CancellationToken cancellationToken = default)
+    {
+        Result gate = await _enforcer
+            .EnsureAsync(tenant, actor, BabelModule.Purchasing, EntitlementAccess.Read, "Purchasing.Supplier.List", cancellationToken)
+            .ConfigureAwait(false);
+
+        if (gate.IsFailure)
+        {
+            return Result<IReadOnlyList<SupplierView>>.Failure(gate.Errors);
+        }
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<IReadOnlyList<SupplierView>>.Failure(money.Errors);
+        }
+
+        List<SupplierRow> rows = await _database.Suppliers
+            .AsNoTracking()
+            .Where(entity => entity.TenantId == tenant.Value)
+            .OrderBy(entity => entity.Code)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        return Result<IReadOnlyList<SupplierView>>.Success([.. rows.Select(row => ViewOf(row, money.Value))]);
+    }
+
     /// <summary>
     /// <b>يبحث عن مورد برقم تسجيله الضريبي، أو يرفض ويُسمّي السبب — ولا يختار أبداً.</b>
     /// <para>

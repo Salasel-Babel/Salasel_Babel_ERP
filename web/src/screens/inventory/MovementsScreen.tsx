@@ -45,6 +45,7 @@ import { SCHEMA_Magnitude_RE, SCHEMA_Money_RE } from "../../api/generated/format
 import { asMagnitude } from "../../api/generated/brands";
 import { Money } from "../../api/money";
 import { useApi } from "../../app/api-context";
+import { PRESET, useDocumentNumber, usePresetFill, useSimple } from "../../app/presets";
 import { Amount, useT } from "../../i18n/react";
 import { ProblemPanel } from "../../app/shell/ProblemPanel";
 import {
@@ -170,6 +171,12 @@ export function InventoryMovementsScreen(): ReactNode {
   const [unit, setUnit] = useState("");
   const [cost, setCost] = useState("");
 
+  /* ── الواجهة المبسّطة: الرقم من الخادم، والتاريخ اليوم، والمستودع والموقع من الثوابت (ADR-0095) ── */
+  const simple = useSimple();
+  const documentNumber = useDocumentNumber("stock_movement");
+  const hideWarehouse = usePresetFill(PRESET.warehouse, warehouse, setWarehouse);
+  const hideLocation = usePresetFill(PRESET.location, location, setLocation);
+
   const [draft, setDraft] = useState<StockMovement | null>(null);
   const [posted, setPosted] = useState<StockMovement | null>(null);
   const [error, setError] = useState<unknown>(null);
@@ -208,10 +215,11 @@ export function InventoryMovementsScreen(): ReactNode {
   const magnitudeBad = magnitude !== "" && !SCHEMA_Magnitude_RE.test(magnitude);
   const costBad = direction === INBOUND && cost !== "" && !SCHEMA_Money_RE.test(cost);
 
-  const locationId = binned ? location : UNBINNED;
+  /* الموقع المخفيّ يحمل ثابته ولا يسأل عن النمط. */
+  const locationId = hideLocation ? location : binned ? location : UNBINNED;
 
   const ready =
-    number !== "" &&
+    (number !== "" || documentNumber.hidden) &&
     occurredOn !== "" &&
     itemCode !== "" &&
     warehouse !== "" &&
@@ -227,8 +235,11 @@ export function InventoryMovementsScreen(): ReactNode {
     setError(null);
     setPosted(null);
     try {
+      /* الرقم: ما كُتب، وإلا يُخصَّص من سلسلة الحركات على تاريخها. */
+      const resolvedNumber = await documentNumber.resolve(number, occurredOn);
+      setNumber(resolvedNumber);
       const body: StockMovementRequest = {
-        number,
+        number: resolvedNumber,
         occurredOn,
         direction: direction as "IN" | "OUT",
         itemId: chosen.code,
@@ -251,8 +262,8 @@ export function InventoryMovementsScreen(): ReactNode {
       setBusy(false);
     }
   }, [
-    chosen, config.companyId, cost, direction, fireArrive, locationId, magnitude, movements,
-    number, occurredOn, transport, unit, warehouse,
+    chosen, config.companyId, cost, direction, documentNumber, fireArrive, locationId, magnitude,
+    movements, number, occurredOn, transport, unit, warehouse,
   ]);
 
   const post = useCallback(
@@ -426,6 +437,7 @@ export function InventoryMovementsScreen(): ReactNode {
         ) : null}
 
         <div className="grid fields-3">
+          {documentNumber.hidden ? null : (
           <div className="field">
             <label htmlFor="mv-number">{t("inventory.movements.number")}</label>
             <input
@@ -439,6 +451,8 @@ export function InventoryMovementsScreen(): ReactNode {
             />
             <span className="hint">{t("inventory.movements.numberHint")}</span>
           </div>
+          )}
+          {simple ? null : (
           <div className="field">
             <label htmlFor="mv-date">{t("inventory.movements.date")}</label>
             <input
@@ -452,6 +466,7 @@ export function InventoryMovementsScreen(): ReactNode {
             />
             <span className="hint">{t("inventory.movements.dateHint")}</span>
           </div>
+          )}
           <div className="field">
             <label htmlFor="mv-direction">{t("inventory.movements.direction")}</label>
             <select
@@ -510,6 +525,7 @@ export function InventoryMovementsScreen(): ReactNode {
               {t("inventory.movements.groupFrom")}
             </span>
           </div>
+          {hideWarehouse ? null : (
           <div className="field">
             <label htmlFor="mv-warehouse">{t("inventory.movements.warehouse")}</label>
             <input
@@ -523,8 +539,10 @@ export function InventoryMovementsScreen(): ReactNode {
             />
             <span className="hint">{t("inventory.movements.warehouseHint")}</span>
           </div>
+          )}
         </div>
 
+        {hideLocation ? null : (
         <fieldset className="card card-pad" style={{ marginTop: "var(--space-12)" }}>
           <legend className="k">{t("inventory.movements.locationMode")}</legend>
           <div className="inline-group" role="radiogroup" aria-label={t("inventory.movements.locationMode")}>
@@ -569,6 +587,7 @@ export function InventoryMovementsScreen(): ReactNode {
             </p>
           )}
         </fieldset>
+        )}
 
         <div className="grid fields-3" style={{ "--grid-lead": "var(--space-12)" } as CSSProperties}>
           <div className="field">

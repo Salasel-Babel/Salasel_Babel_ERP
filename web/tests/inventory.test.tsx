@@ -14,7 +14,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import type { ReactNode } from "react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider } from "@tanstack/react-router";
@@ -39,6 +39,11 @@ import { createAppRouter } from "../src/app/router";
    لا يُسجَّل: لا `afterEach` عامّ يلتقطه. وبدونه تتراكم الشجرة بين الاختبارات
    فيجد الاستعلام عنصرين حيث ينتظر واحداً — وهو عطلٌ يبدو خطأً في الشاشة. */
 afterEach(cleanup);
+
+beforeEach(() => {
+  /* النماذج هنا تُملأ كاملةً: الواجهة المبسّطة تُخفي الرقم والتاريخ وما له ثابت (ADR-0095). */
+  globalThis.localStorage.setItem("sb-show-advanced", "1");
+});
 
 const SRC = path.resolve(process.cwd(), "src");
 const read = (rel: string) => readFileSync(path.resolve(SRC, rel), "utf8");
@@ -130,6 +135,15 @@ const BASE_ONLY_ITEM = {
 const ITEM_LIST = { itemCount: 2, items: [CARTON_ITEM, BASE_ONLY_ITEM] };
 const EMPTY_ITEM_LIST = { itemCount: 0, items: [] };
 
+/* وحدات القياس المسجَّلة — منها تُختار وحدة الأساس (ADR-0095). */
+const UNITS = {
+  unitCount: 2,
+  units: [
+    { id: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeee1", code: "PCS", name: { ar: "حبة", en: "Piece" }, quantityClass: "COUNT", isActive: true },
+    { id: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeee2", code: "KG", name: { ar: "كيلوغرام", en: "Kilogram" }, quantityClass: "WEIGHT", isActive: true },
+  ],
+};
+
 const BALANCES = {
   balanceCount: 3,
   balances: [
@@ -202,6 +216,7 @@ const VALUATION_OFF = {
 };
 
 const ITEMS_URL = "GET /api/v1/companies/" + COMPANY + "/items";
+const UNITS_URL = "GET /api/v1/companies/" + COMPANY + "/units-of-measure";
 const BALANCES_URL = "GET /api/v1/companies/" + COMPANY + "/stock-balances";
 const MOVEMENTS_URL = "GET /api/v1/companies/" + COMPANY + "/stock-movements";
 const VALUATION_URL = "GET /api/v1/companies/" + COMPANY + "/inventory-valuation";
@@ -582,6 +597,35 @@ describe("سلّم الوحدات — نسبةٌ لا عدد عشري، ورفض
 
 /* ═══════════════════════════════════════ ٦ · المطابقة بثلاث طرق */
 
+describe("وحدة الأساس — تُختار من وحدات المنشأة لا تُكتب (ADR-0095)", () => {
+  it("حين تصل وحدات القياس يصير الحقل قائمةً برموزها وأسمائها", async () => {
+    withCompany();
+    render(
+      <Wrap transport={stubTransport({ [ITEMS_URL]: ITEM_LIST, [UNITS_URL]: UNITS })}>
+        <InventoryItemsScreen />
+      </Wrap>
+    );
+    await waitFor(() => expect(screen.getByTestId("item-base").tagName).toBe("SELECT"));
+    const base = screen.getByTestId<HTMLSelectElement>("item-base");
+    const labels = Array.from(base.options).map((option) => option.textContent);
+    expect(labels).toContain("PCS — حبة");
+    expect(labels).toContain("KG — كيلوغرام");
+    fireEvent.change(base, { target: { value: "KG" } });
+    expect(base.value).toBe("KG");
+  });
+
+  it("وبلا وحداتٍ مسجَّلة يبقى حقل النصّ — لا يُغلق بابٌ كان مفتوحاً", async () => {
+    withCompany();
+    render(
+      <Wrap transport={stubTransport({ [ITEMS_URL]: ITEM_LIST })}>
+        <InventoryItemsScreen />
+      </Wrap>
+    );
+    await screen.findByTestId("items-table");
+    expect(screen.getByTestId("item-base").tagName).toBe("INPUT");
+  });
+});
+
 describe("التقييم والمطابقة", () => {
   it("يعرض الطرق الثلاثة والفارق، ويسمّي كل مستندٍ منحرف بسببه", async () => {
     withCompany();
@@ -779,8 +823,7 @@ describe("عقد الملاحة", () => {
    */
   it("كل شاشةٍ مخزنية يبلغها من يقرأ الملاحة، لا من يعرف اختصار لوحة الأوامر وحده", async () => {
     withCompany();
-    /* القائمة كاملةً: الواجهة المبسّطة تُخفي المتقدّم افتراضياً (shell-nav.test.tsx). */
-    globalThis.localStorage.setItem("sb-show-advanced", "1");
+    /* القائمة كاملةً: `sb-show-advanced` مضبوطٌ في `beforeEach` أعلى الملفّ (shell-nav.test.tsx). */
     const router = createAppRouter({ memory: true, initialPath: "/inventory/stock" });
     const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
     render(

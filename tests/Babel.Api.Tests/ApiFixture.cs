@@ -47,6 +47,23 @@ internal static class ApiFixture
         SetupCompanies[0], new Guid("55555555-5555-4555-8555-555555555555"), [.. SetupCompanies]);
 
     /// <summary>
+    /// منشآت قوائم الاختيار — العملاء والموردون والموظفون — <b>واحدة لكل إثبات</b>.
+    /// <para>
+    /// القائمة مسحٌ يشمل كل ما في المنشأة، فطرفٌ يسجّله إثباتٌ آخر <b>يدخل قائمة جاره</b>
+    /// ويغيّر عدّادها (فخ-132 بالقاعدة نفسها). ولذلك لكل إثباتٍ منشأتُه، يؤسّسها هو.
+    /// </para>
+    /// </summary>
+    public static IReadOnlyList<Guid> ListCompanies { get; } =
+    [
+        .. Enumerable.Range(1, 3).Select(static index =>
+            new Guid(string.Create(CultureInfo.InvariantCulture, $"11570000-0000-4000-8000-{index:D12}"))),
+    ];
+
+    /// <summary>اعتماد اختبارات قوائم الاختيار — يبلغ منشآته وحدها.</summary>
+    public static TestCredential TokenL { get; } = TestCredential.Create(
+        ListCompanies[0], new Guid("66666666-6666-4666-8666-666666666666"), [.. ListCompanies]);
+
+    /// <summary>
     /// اعتماد صحيح <b>لا يبلغ شركةً واحدة</b> — حالة «اشتُرك ولم يُربط بمنشأة».
     /// <para>
     /// وهي ليست حالة نظرية: هي أول حالة يقع فيها كل عميل جديد بين لحظة إنشاء اعتماده
@@ -362,7 +379,7 @@ internal static class ApiFixture
         };
 
         int index = 0;
-        foreach (TestCredential credential in new[] { TokenA, TokenB, TokenC, TokenS, TokenNoCompany, TokenExpired, TokenPlatform })
+        foreach (TestCredential credential in new[] { TokenA, TokenB, TokenC, TokenS, TokenL, TokenNoCompany, TokenExpired, TokenPlatform })
         {
             string prefix = string.Create(CultureInfo.InvariantCulture, $"Babel__Api__Tokens__{index}__");
             environment[prefix + "Sha256"] = credential.Digest;
@@ -423,6 +440,11 @@ internal static class ApiFixture
         environment[Entitlement(ApiTestDatabase.CompanyC, "Sales")] = "ReadOnly";
         environment[Entitlement(ApiTestDatabase.CompanyC, "Purchasing")] = "ReadOnly";
         environment[Entitlement(ApiTestDatabase.CompanyC, "Compliance")] = "ReadOnly";
+
+        // ── والموارد البشرية على منشأة قائمة الموظفين وحدها ─────────────────────
+        // ‏`Hr` وحدة اختيارية فالافتراضي `NotEntitled`؛ ومنشأتا العملاء والموردين لا
+        // تحتاجانها، فالمبيعات والمشتريات إلزاميتان.
+        environment[Entitlement(ListCompanies[2], "Hr")] = "Entitled";
 
         return environment;
     }

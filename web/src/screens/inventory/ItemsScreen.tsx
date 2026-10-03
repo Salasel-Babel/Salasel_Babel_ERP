@@ -28,7 +28,7 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 import { useCallback, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { addItem, listItems } from "../../api/generated/client";
+import { addItem, listItems, listUnitsOfMeasure } from "../../api/generated/client";
 import type { Item, ItemRequest, UnitFactor } from "../../api/generated/types";
 import { useApi } from "../../app/api-context";
 import { useT } from "../../i18n/react";
@@ -193,6 +193,21 @@ export function InventoryItemsScreen(): ReactNode {
   });
 
   const items: readonly Item[] = useMemo(() => result.data?.items ?? [], [result.data]);
+
+  /* وحدات القياس المسجَّلة: إن وصلت تُختار وحدة الأساس منها، وإن لم تصل يبقى حقل النصّ
+     كما كان — كقوائم pickers.tsx: لا يُغلق بابٌ كان مفتوحاً (ADR-0095). */
+  const unitsOfMeasure = useQuery({
+    queryKey: ["inventory-units", config.baseUrl, config.token, config.companyId],
+    enabled: config.companyId !== "",
+    retry: false,
+    staleTime: 60_000,
+    queryFn: ({ signal }) => listUnitsOfMeasure(transport, { companyId: config.companyId }, signal),
+  });
+  const unitOptions = useMemo(
+    () => (unitsOfMeasure.data?.units ?? []).filter((one) => one.isActive),
+    [unitsOfMeasure.data]
+  );
+  const baseUnitKnown = unitOptions.some((one) => one.code === baseUnit);
 
   /* بحثٌ نصّي على الرمز والاسمين — بلا ترتيبٍ ثقافي: الترتيب حرفيٌّ ثابت
      يأتي من الخادم، والمرشّح هنا لا يعيد ترتيباً. */
@@ -453,14 +468,32 @@ export function InventoryItemsScreen(): ReactNode {
           </div>
           <div className="field">
             <label htmlFor="inv-base">{t("inventory.items.baseUnit")}</label>
-            <input
-              id="inv-base"
-              className="ctl mono"
-              autoComplete="off"
-              data-testid="item-base"
-              value={baseUnit}
-              onChange={(e) => setBaseUnit(e.target.value)}
-            />
+            {unitOptions.length === 0 ? (
+              <input
+                id="inv-base"
+                className="ctl mono"
+                autoComplete="off"
+                data-testid="item-base"
+                value={baseUnit}
+                onChange={(e) => setBaseUnit(e.target.value)}
+              />
+            ) : (
+              <select
+                id="inv-base"
+                className="ctl mono"
+                data-testid="item-base"
+                value={baseUnit}
+                onChange={(e) => setBaseUnit(e.target.value)}
+              >
+                <option value="">{t("app.picker.choose")}</option>
+                {!baseUnitKnown && baseUnit !== "" ? <option value={baseUnit}>{baseUnit}</option> : null}
+                {unitOptions.map((one) => (
+                  <option key={one.code} value={one.code}>
+                    {one.code + " — " + one.name.ar}
+                  </option>
+                ))}
+              </select>
+            )}
             <span className="hint">{t("inventory.items.baseUnitHint")}</span>
           </div>
         </div>

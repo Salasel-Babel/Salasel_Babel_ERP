@@ -102,6 +102,37 @@ internal static class Scope
     private static bool IsSafe(string method) =>
         HttpMethods.IsGet(method) || HttpMethods.IsHead(method) || HttpMethods.IsOptions(method);
 
+    /// <summary>يقرأ رمز سلسلة الترقيم من المسار: أحرف لاتينية صغيرة وأرقام وشرطة سفلية.</summary>
+    /// <param name="context">سياق الطلب.</param>
+    /// <param name="series">الرمز كما كُتب.</param>
+    /// <param name="malformed">رفض 400 إن خالف الشكل.</param>
+    public static bool TrySeries(HttpContext context, out string series, out IResult? malformed)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+
+        malformed = null;
+        series = context.Request.RouteValues.TryGetValue("series", out object? value)
+            ? value?.ToString() ?? string.Empty
+            : string.Empty;
+
+        bool acceptable = series.Length is > 0 and <= MaximumDocumentTypeLength
+            && series.All(static c => char.IsAsciiLetterLower(c) || char.IsAsciiDigit(c) || c is '_');
+
+        if (!acceptable)
+        {
+            malformed = HttpProblemResults.Code(
+                context,
+                "wire.path.malformed",
+                "رمز سلسلة الترقيم في المسار يُكتب بأحرف لاتينية صغيرة وأرقام وشرطة سفلية، وطوله بين محرف و64 محرفاً.",
+                "The numbering series in the path is written with lower-case Latin letters, digits and underscores, between one and 64 characters long.",
+                "series",
+                StatusCodes.Status400BadRequest);
+            return false;
+        }
+
+        return true;
+    }
+
     /// <summary>
     /// يقرأ رمز نوع المستند من المسار بفحص شكلي وحده.
     /// <para>

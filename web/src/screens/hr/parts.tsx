@@ -351,3 +351,53 @@ export function StatePanel(props: {
     </Panel>
   );
 }
+
+/* ═══════════════════════════ ١١ · افتراضات الواجهة المبسّطة (ADR-0095) */
+
+/**
+ * فترةٌ شهرية بإزاحةٍ عن الشهر الحالي: رمزها `yyyy-MM` وأوّلها وآخرها.
+ * بالتاريخ لا بالنصّ: آخر الشهر هو «اليوم صفر» من الشهر الذي يليه.
+ * @param offset ٠ الشهر الحالي، ١ القادم، −١ السابق.
+ */
+export function monthPeriod(offset: number): { readonly code: string; readonly start: string; readonly end: string } {
+  const now = new Date();
+  const first = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+  const last = new Date(now.getFullYear(), now.getMonth() + offset + 1, 0);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const code = String(first.getFullYear()) + "-" + pad(first.getMonth() + 1);
+  return {
+    code,
+    start: code + "-01",
+    end: code + "-" + pad(last.getDate()),
+  };
+}
+
+/** مقياس التخزين: أربع منازل. */
+const SCALE = 4n;
+const UNIT = 10n ** SCALE;
+/** الهللة: مئةُ وحدةٍ من المقياس. */
+const CENT = 100n;
+
+/**
+ * يقسم مبلغاً نصّياً أقساطاً متساوية بالهللة، والباقي على القسط الأول —
+ * **ولا عائمَ في خطوة**: النصّ يصير عدداً صحيحاً بمقياس أربع منازل (BigInt).
+ * مجموع الأقساط يساوي المبلغ بالضبط، وإلا تعود قائمةٌ فارغة.
+ * @param amount نصّ المبلغ بنحو المال المنشور.
+ * @param count عدد الأقساط (١ فأكثر).
+ * @returns الأقساط نصوصاً بأربع منازل.
+ */
+export function splitEqualMoney(amount: string, count: number): readonly string[] {
+  if (!isMoneyText(amount) || amount.startsWith("-") || !Number.isInteger(count) || count < 1) return [];
+  const [whole, frac = ""] = amount.split(".");
+  const total = BigInt(whole ?? "0") * UNIT + BigInt(frac.padEnd(4, "0"));
+  const n = BigInt(count);
+  /* الحصّة: القسمة الصحيحة ثم النزول إلى هللةٍ كاملة؛ والأوّل يحمل ما بقي. */
+  const share = ((total / n) / CENT) * CENT;
+  const first = total - share * (n - 1n);
+  if (first < 0n) return [];
+  const text = (minor: bigint): string => {
+    const digits = minor.toString().padStart(5, "0");
+    return digits.slice(0, -4) + "." + digits.slice(-4);
+  };
+  return Array.from({ length: count }, (_, i) => text(i === 0 ? first : share));
+}

@@ -156,3 +156,32 @@ internal sealed class CapabilityProfileDefaultRow
     /// <summary>القيمة الافتراضية.</summary>
     public string Value { get; set; } = string.Empty;
 }
+
+/// <summary>صفّ ثابت من ثوابت الشركة: مفتاحٌ من الكتالوج المغلق وقيمته.</summary>
+internal sealed class CompanyPresetRow
+{
+    /// <summary>المنشأة.</summary>
+    public Guid CompanyId { get; set; }
+
+    /// <summary>المفتاح.</summary>
+    public string Key { get; set; } = string.Empty;
+
+    /// <summary>القيمة.</summary>
+    public string Value { get; set; } = string.Empty;
+}
+
+/// <summary>عدّاد ترقيم: صفٌّ لكل (منشأة × سلسلة × سنة)، يُقفل عند التخصيص (ADR-0008).</summary>
+internal sealed class DocumentCounterRow
+{
+    /// <summary>المنشأة.</summary>
+    public Guid CompanyId { get; set; }
+
+    /// <summary>رمز السلسلة.</summary>
+    public string Series { get; set; } = string.Empty;
+
+    /// <summary>السنة التي يعدّ العدّاد داخلها.</summary>
+    public int FiscalYear { get; set; }
+
+    /// <summary>التسلسل التالي الذي سيُخصَّص.</summary>
+    public int NextNo { get; set; }
+}

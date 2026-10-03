@@ -37,6 +37,7 @@ internal static class PayrollEndpoints
         ArgumentNullException.ThrowIfNull(app);
 
         app.MapPost(ApiRoutes.Employees, RegisterEmployeeAsync);
+        app.MapGet(ApiRoutes.Employees, ListEmployeesAsync);
         app.MapGet(ApiRoutes.Employee, ReadEmployeeAsync);
         app.MapPost(ApiRoutes.EmployeeTermination, TerminateEmployeeAsync);
 
@@ -137,6 +138,23 @@ internal static class PayrollEndpoints
 
         Result<HrEmployee> result = await hr
             .ReadEmployeeAsync(new TenantId(companyId), Actor(context), employeeId, cancellationToken)
+            .ConfigureAwait(false);
+
+        return result.IsFailure
+            ? HttpProblemResults.Domain(context, result.Errors)
+            : Results.Json(PayrollMapping.ToDto(result.Value), ApiJson.Options);
+    }
+
+    private static async Task<IResult> ListEmployeesAsync(
+        HttpContext context, HrSurface hr, CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        Result<IReadOnlyList<HrEmployee>> result = await hr
+            .ListEmployeesAsync(new TenantId(companyId), Actor(context), cancellationToken)
             .ConfigureAwait(false);
 
         return result.IsFailure

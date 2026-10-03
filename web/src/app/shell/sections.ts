@@ -799,6 +799,13 @@ export const SCREENS: readonly ScreenEntry[] = [
     group: "setup",
   },
   {
+    path: "/setup/presets",
+    labelKey: "app.nav.presets",
+    section: "accounting",
+    icon: "sliders",
+    group: "setup",
+  },
+  {
     path: "/setup/cost-centers",
     labelKey: "app.nav.costCenters",
     section: "accounting",

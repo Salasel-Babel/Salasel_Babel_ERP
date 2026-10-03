@@ -3383,6 +3383,53 @@
           }
         }
       ],
+      "get": {
+        "operationId": "listCustomers",
+        "summary": "قائمة العملاء / List the customers",
+        "description": "يقرأ عملاء المنشأة كلّهم **مرتَّبين بالرمز**، بالشكل نفسه الذي يُقرأ به العميل الواحد — لقائمة اختيارٍ تحلّ محلّ معرّفٍ يُكتب باليد.\n\n**ولا صفحة ولا سقف ولا فلتر**: غلافٌ بعدّاد لا مصفوفة عارية، فأول حاجة إلى صفحةٍ تجد موضعها ولا تكسر العقد.\n\nReads all of the company's customers **ordered by code**, each in the same shape readCustomer returns — for a picker that replaces a hand-typed identifier.\n\n**No page, no cap, no filter**: an envelope with a count rather than a bare array, so the first need for a page finds its place without breaking the contract.",
+        "responses": {
+          "200": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartyList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
       "post": {
         "operationId": "addCustomer",
         "summary": "تسجيل عميل / Register a customer",
@@ -4212,6 +4259,53 @@
           }
         }
       ],
+      "get": {
+        "operationId": "listEmployees",
+        "summary": "قائمة الموظفين / List the employees",
+        "description": "يقرأ موظفي المنشأة كلّهم **مرتَّبين بالرمز**، كلٌّ بعلاقته الجارية وهويته **مقنَّعة** — القناع نفسه الذي على قراءة الموظف الواحد، فلا تُسرَّب القائمة ما يحجبه المورد.\n\n**ولا صفحة ولا سقف ولا فلتر**: غلافٌ بعدّاد لا مصفوفة عارية.\n\nReads all of the company's employees **ordered by code**, each with the current employment and a **masked** identity — the same mask readEmployee applies, so the list leaks nothing the single resource hides.\n\n**No page, no cap, no filter**: an envelope with a count rather than a bare array.",
+        "responses": {
+          "200": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HrEmployeeList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
       "post": {
         "operationId": "registerEmployee",
         "summary": "تسجيل موظف / Register an employee",
@@ -9135,6 +9229,265 @@
           },
           "403": {
             "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/companies/{companyId}/presets": {
+      "parameters": [
+        {
+          "name": "companyId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "readCompanyPresets",
+        "summary": "ثوابت الشركة / The company presets",
+        "description": "يقرأ ثوابت الشركة: ما يُحسم مرّةً في الإعداد — الفرع الافتراضي، والتصنيف الضريبي ونسبته، وطريقة التسوية وخزينتها، والمستودع والموقع، وبادئات الترقيم — ثم يختفي من شاشات الإدخال فتبقى فيها المتغيّرات القليلة. ويعود معه **الكتالوج المغلق** وسلاسل الترقيم، فترسم شاشة الإعداد حقولها من العقد لا من قائمة مكتوبة بيد. ومنشأةٌ لم تضبط شيئاً تُقرأ بقيمٍ فارغة لا بـ404.\n\nReads the company presets: what is decided once at setup — the default branch, the tax classification and rate, the settlement method and its treasury, the warehouse and location, and the numbering prefixes — and then disappears from the entry screens, leaving the few variables. The **closed catalogue** and the numbering series come with it, so the setup screen draws its fields from the contract rather than from a hand-written list. A company that has set nothing reads as empty values, not as 404.",
+        "responses": {
+          "200": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyPresets"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "replaceCompanyPresets",
+        "summary": "استبدال ثوابت الشركة / Replace the company presets",
+        "description": "يستبدل الثوابت كلّها دفعةً واحدة: مفتاحٌ غائب أو قيمةٌ فارغة تزيل الثابت. المفاتيح من الكتالوج المغلق وحده، وكل قيمة تُصدَّق بنوعها (نسبة، أو true/false، أو بادئة، أو اختيار من قائمة)، وتُعاد الأخطاء كلّها دفعةً ولا يُكتب شيء معها.\n\nReplaces all presets at once: an absent key or an empty value removes the preset. Keys come from the closed catalogue only, every value is validated by its kind (a rate, true/false, a prefix, or a choice from a list), and all errors come back together with nothing written.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplaceCompanyPresetsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyPresets"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "الجسم لا يطابق العقد: حقل غير معروف، أو مبلغ وصل رمزاً رقمياً، أو صيغة مرفوضة. / The body does not match the contract: an unknown field, an amount that arrived as a number token, or a refused spelling.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "تعارض مع حالة قائمة: فترة مقفلة، أو قيد معكوس من قبل. / Conflict with existing state: a closed period, or an already-reversed entry.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "الطلب مفهوم ومرفوض محاسبياً: قيد غير متوازن، أو دور لا يُحلّ إلى حساب. / Understood and refused on accounting grounds: an unbalanced entry, or a role that resolves to no account.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/companies/{companyId}/presets/numbers/{series}": {
+      "parameters": [
+        {
+          "name": "companyId",
+          "in": "path",
+          "required": true,
+          "description": "معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body.",
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "series",
+          "in": "path",
+          "required": true,
+          "description": "رمز سلسلة الترقيم من قائمة series في ثوابت الشركة. / The numbering series code, from the series list in the company presets.",
+          "schema": {
+            "type": "string",
+            "pattern": "^[a-z0-9_]{1,64}$"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "allocateDocumentNumber",
+        "summary": "تخصيص رقم مستند / Allocate a document number",
+        "description": "يخصّص الرقم التالي في سلسلة ترقيم داخل سنة التاريخ المعطى: البادئة (المضبوطة أو الافتراضية)، فالسنة، فتسلسلٌ من عدّادٍ يُقفل صفُّه عند القراءة (ADR-0008). **والرقم تخصيصٌ لا فرض**: يعود إلى المتصفّح ليرسله في المستند كما كان دائماً (ADR-0054 §7)، وفرادته تُفرض عند المستند. ورقمٌ خُصّص ولم يُستعمل يترك فجوةً مُعلَنة.\n\nAllocates the next number in a numbering series within the year of the given date: the prefix (set or default), the year, then a sequence from a counter whose row is locked on read (ADR-0008). **The number is an allocation, not an imposition**: it goes back to the browser, which sends it in the document as it always has (ADR-0054 §7), and uniqueness is enforced at the document. An allocated number left unused leaves a declared gap.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AllocateNumberRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AllocatedNumber"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "الجسم لا يطابق العقد: حقل غير معروف، أو مبلغ وصل رمزاً رقمياً، أو صيغة مرفوضة. / The body does not match the contract: an unknown field, an amount that arrived as a number token, or a refused spelling.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "تعارض مع حالة قائمة: فترة مقفلة، أو قيد معكوس من قبل. / Conflict with existing state: a closed period, or an already-reversed entry.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "الطلب مفهوم ومرفوض محاسبياً: قيد غير متوازن، أو دور لا يُحلّ إلى حساب. / Understood and refused on accounting grounds: an unbalanced entry, or a role that resolves to no account.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -15225,6 +15578,53 @@
           }
         }
       ],
+      "get": {
+        "operationId": "listSuppliers",
+        "summary": "قائمة الموردين / List the suppliers",
+        "description": "يقرأ موردي المنشأة كلّهم **مرتَّبين بالرمز**، بالشكل نفسه الذي يُقرأ به المورد الواحد — لقائمة اختيار. ولا صفحة ولا سقف ولا فلتر، للسبب نفسه الذي على قائمة العملاء.\n\nReads all of the company's suppliers **ordered by code**, each in the same shape readSupplier returns — for a picker. No page, no cap, no filter, for the same reason as on the customer list.",
+        "responses": {
+          "200": {
+            "description": "استجابة ناجحة. / Successful response.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PartyList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "اعتماد مفقود أو غير مقبول. / Missing or unacceptable credential.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "الاعتماد لا يبلغ هذه الشركة، أو الاستحقاق يمنع هذا الوصول. / The credential does not reach this company, or entitlement forbids this access.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "عطل في الخادم. لا تفصيل داخلي يعبر — معرّف التتبّع فقط. / Server failure. No internal detail crosses — only the trace id.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
       "post": {
         "operationId": "addSupplier",
         "summary": "تسجيل مورد / Register a supplier",
@@ -19758,6 +20158,56 @@
         ],
         "additionalProperties": false
       },
+      "AllocateNumberRequest": {
+        "type": "object",
+        "description": "طلب تخصيص رقم. / A request to allocate a number.",
+        "properties": {
+          "on": {
+            "type": "string",
+            "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+            "description": "تاريخ المستند — سنتُه هي سنة العدّاد. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The document date — its year is the counter's year. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period."
+          }
+        },
+        "required": [
+          "on"
+        ],
+        "additionalProperties": false
+      },
+      "AllocatedNumber": {
+        "type": "object",
+        "description": "رقم مخصَّص من عدّاد السلسلة. / A number allocated from the series counter.",
+        "properties": {
+          "fiscalYear": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9999,
+            "description": "السنة. / The year."
+          },
+          "number": {
+            "type": "string",
+            "maxLength": 32,
+            "description": "الرقم المركّب الذي يُرسل في المستند. / The composed number sent in the document."
+          },
+          "sequence": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647,
+            "description": "التسلسل داخل السنة. / The sequence within the year."
+          },
+          "series": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "السلسلة. / The series."
+          }
+        },
+        "required": [
+          "fiscalYear",
+          "number",
+          "sequence",
+          "series"
+        ],
+        "additionalProperties": false
+      },
       "AllocationRequest": {
         "type": "object",
         "description": "طلب تخصيص سند ورد بلا مرجع على مستأجر تبيّن أنه صاحبه. / A request to allocate a receipt that arrived without a reference to the tenant it turns out to belong to.",
@@ -20816,6 +21266,39 @@
         ],
         "additionalProperties": false
       },
+      "CompanyPresets": {
+        "type": "object",
+        "description": "ثوابت الشركة كما تُقرأ: المضبوط منها، ومعه الكتالوج والسلاسل. / The company presets as read: what is set, with the catalogue and the series.",
+        "properties": {
+          "catalogue": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PresetKey"
+            },
+            "description": "الكتالوج المغلق. / The closed catalogue."
+          },
+          "series": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocumentSeries"
+            },
+            "description": "سلاسل الترقيم ببادئاتها الافتراضية. / The numbering series with their default prefixes."
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NameValue"
+            },
+            "description": "الثوابت المضبوطة مرتَّبة بالمفتاح. / The presets that are set, ordered by key."
+          }
+        },
+        "required": [
+          "catalogue",
+          "series",
+          "values"
+        ],
+        "additionalProperties": false
+      },
       "CompanySetup": {
         "type": "object",
         "description": "تأسيس المنشأة كما يُقرأ. **defaultCostCenter غير فارغ أبداً** وcostCenters لا تكون فارغة أبداً — الثابتة مفروضة في النواة بغياب عملية حذف، لا بفحص عند مستدعٍ. / The company setup as read. **defaultCostCenter is never empty** and costCenters is never empty — the invariant is enforced in the core by the absence of any delete operation, not by a caller-side check.",
@@ -21271,6 +21754,27 @@
         "required": [
           "capabilities",
           "documentType"
+        ],
+        "additionalProperties": false
+      },
+      "DocumentSeries": {
+        "type": "object",
+        "description": "سلسلة ترقيم ببادئتها الافتراضية. / A numbering series with its default prefix.",
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "رمز السلسلة. / The series code."
+          },
+          "defaultPrefix": {
+            "type": "string",
+            "maxLength": 12,
+            "description": "البادئة إن لم تُضبط في الثوابت. / The prefix when none is set in the presets."
+          }
+        },
+        "required": [
+          "code",
+          "defaultPrefix"
         ],
         "additionalProperties": false
       },
@@ -22019,6 +22523,30 @@
           "nameTranslations",
           "startedOn",
           "state"
+        ],
+        "additionalProperties": false
+      },
+      "HrEmployeeList": {
+        "type": "object",
+        "description": "موظفو المنشأة مرتَّبين بالرمز، هوياتهم **مقنَّعة** كما على الموظف الواحد. **وغلافٌ لا مصفوفة عارية**. / The company's employees ordered by code, identities **masked** as on the single employee. **An envelope, not a bare array**.",
+        "properties": {
+          "itemCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2147483647,
+            "description": "عدد الموظفين. / The number of employees."
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HrEmployee"
+            },
+            "description": "الموظفون. / The employees."
+          }
+        },
+        "required": [
+          "itemCount",
+          "items"
         ],
         "additionalProperties": false
       },
@@ -24813,6 +25341,30 @@
         ],
         "additionalProperties": false
       },
+      "PartyList": {
+        "type": "object",
+        "description": "أطراف المنشأة — عملاؤها أو موردوها — مرتَّبة بالرمز. **وغلافٌ لا مصفوفة عارية**: مصفوفةٌ في جذر الاستجابة لا موضع فيها لعدّاد ولا لصفحة. / The company's parties — its customers or its suppliers — ordered by code. **An envelope, not a bare array**: an array at the response root has no place for a count or a page.",
+        "properties": {
+          "parties": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Party"
+            },
+            "description": "الأطراف. / The parties."
+          },
+          "partyCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2147483647,
+            "description": "عدد الأطراف. / The number of parties."
+          }
+        },
+        "required": [
+          "parties",
+          "partyCount"
+        ],
+        "additionalProperties": false
+      },
       "PaymentAllocation": {
         "type": "object",
         "description": "تخصيص مبلغ من سند صرف على فاتورة مورد **مُرحَّلة**. / An allocation of part of a payment against a **posted** supplier bill.",
@@ -25401,6 +25953,42 @@
           "generation",
           "lineCount",
           "periodCode"
+        ],
+        "additionalProperties": false
+      },
+      "PresetKey": {
+        "type": "object",
+        "description": "ثابت في الكتالوج المغلق. / A preset in the closed catalogue.",
+        "properties": {
+          "choices": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 128
+            },
+            "description": "الأعضاء المسموحة حين يكون النوع Choice، وإلا فارغة. / The allowed members when the kind is Choice, otherwise empty."
+          },
+          "key": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "المفتاح. / The key."
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "Text",
+              "Choice",
+              "Rate",
+              "Boolean",
+              "Prefix"
+            ],
+            "description": "نوع القيمة. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The value's kind. Matched literally and case-sensitively; a number is never accepted in place of a name."
+          }
+        },
+        "required": [
+          "choices",
+          "key",
+          "kind"
         ],
         "additionalProperties": false
       },
@@ -26630,6 +27218,23 @@
           "number",
           "scheduleLineIds",
           "taxRate"
+        ],
+        "additionalProperties": false
+      },
+      "ReplaceCompanyPresetsRequest": {
+        "type": "object",
+        "description": "طلب استبدال الثوابت كلّها. / A request to replace all presets.",
+        "properties": {
+          "values": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NameValue"
+            },
+            "description": "المفاتيح وقيمها. قيمةٌ فارغة تزيل الثابت. / The keys and their values. An empty value removes the preset."
+          }
+        },
+        "required": [
+          "values"
         ],
         "additionalProperties": false
       },

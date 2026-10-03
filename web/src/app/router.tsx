@@ -92,6 +92,7 @@ import { CostCentersScreen } from "../screens/setup/CostCentersScreen";
 import { DocumentShapesScreen } from "../screens/setup/DocumentShapesScreen";
 import { ChartOfAccountsScreen } from "../screens/setup/ChartOfAccountsScreen";
 import { ParametersScreen } from "../screens/setup/ParametersScreen";
+import { PresetsScreen } from "../screens/setup/PresetsScreen";
 
 const rootRoute = createRootRoute({ component: AppShell });
 
@@ -468,6 +469,12 @@ const setupChartRoute = createRoute({
   component: ChartOfAccountsScreen,
 });
 
+const setupPresetsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/setup/presets",
+  component: PresetsScreen,
+});
+
 const setupParametersRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/setup/parameters",
@@ -534,6 +541,8 @@ const routeTree = rootRoute.addChildren([
   setupCostCentersRoute,
   setupDocumentShapesRoute,
   setupChartRoute,
+  setupPresetsRoute,
+
   setupParametersRoute,
 ]);
 

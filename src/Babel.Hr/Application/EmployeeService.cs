@@ -145,6 +145,41 @@ public sealed class EmployeeService : IApplicationService
         return Result<EmployeeView>.Success(await ReadAsync(tenant, employee, cancellationToken).ConfigureAwait(false));
     }
 
+    /// <summary>يقرأ موظفي المنشأة مرتَّبين بالرمز، كلٌّ بعلاقته الجارية وهويته <b>مقنَّعة</b>.</summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    [RequiresEntitlement(BabelModule.Hr, EntitlementAccess.Read)]
+    public async ValueTask<Result<IReadOnlyList<EmployeeView>>> ListAsync(
+        TenantId tenant,
+        UserId actor,
+        CancellationToken cancellationToken = default)
+    {
+        Result gate = await _enforcer
+            .EnsureAsync(tenant, actor, BabelModule.Hr, EntitlementAccess.Read, "Hr.Employee.List", cancellationToken)
+            .ConfigureAwait(false);
+
+        if (gate.IsFailure)
+        {
+            return Result<IReadOnlyList<EmployeeView>>.Failure(gate.Errors);
+        }
+
+        List<EmployeeRow> employees = await _database.Employees
+            .Where(row => row.TenantId == tenant.Value)
+            .OrderBy(row => row.Code)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        // ‏القراءة نفسها التي تقرأ الموظف الواحد — فالقناع واحد والعلاقة الجارية واحدة.
+        List<EmployeeView> views = new(employees.Count);
+        foreach (EmployeeRow employee in employees)
+        {
+            views.Add(await ReadAsync(tenant, employee, cancellationToken).ConfigureAwait(false));
+        }
+
+        return Result<IReadOnlyList<EmployeeView>>.Success(views);
+    }
+
     /// <summary>
     /// يُنهي خدمة موظف — <b>مورداً فرعياً لا حقلَ حالة يُعدَّل</b>، بسابقة إيقاف مركز
     /// التكلفة وعكس القيد. وهو ما يفتح المخالصة.

@@ -20,13 +20,31 @@ import { Link } from "@tanstack/react-router";
 import { useT } from "../../i18n/react";
 import { Icon } from "../../app/shell/icons";
 import { SCREENS, SECTIONS } from "../../app/shell/sections";
+import { useSimple } from "../../app/presets";
 import { useMoment } from "../../ui";
 import "./home.css";
+
+/** المدخلان اليوميّان: ما يُكتب وما يُقرأ. */
+const QUICK_DEFAULT: readonly string[] = ["/", "/voucher"];
+
+/** في الواجهة المبسّطة: أكثر عمليات المنشأة تكراراً، بترتيب دورة العمل. */
+const QUICK_SIMPLE: readonly string[] = [
+  "/sales/invoice",
+  "/sales/receipt",
+  "/purchasing/bill",
+  "/purchasing/payment",
+  "/inventory/movements",
+  "/hr/payroll",
+  "/",
+];
 
 /** صفحةُ البداية كاملةً. */
 export function HomeScreen(): ReactNode {
   const { t } = useT();
   const [arriveCls] = useMoment("arrive");
+  /* الواجهة المبسّطة: أكثر العمليات تكراراً أزرارٌ على البداية (ADR-0095 · التوصية الخامسة). */
+  const simple = useSimple();
+  const quick = simple ? QUICK_SIMPLE : QUICK_DEFAULT;
 
   return (
     <section className="stack" data-testid="home-screen">
@@ -90,13 +108,13 @@ export function HomeScreen(): ReactNode {
           مُعلَنتان في `SCREENS` كغيرهما، فلا مسارَ مكتوبٌ بيدٍ هنا. */}
       <div className="homequick" data-testid="home-quick">
         <p className="homequick__label">{t("app.home.quick")}</p>
-        {SCREENS.filter((screen) => screen.path === "/" || screen.path === "/voucher").map(
+        {quick.flatMap((path) => SCREENS.filter((screen) => screen.path === path)).map(
           (screen) => (
             <Link
               key={screen.path}
               to={screen.path as "/"}
               className="navitem"
-              data-testid={"home-quick-" + (screen.path === "/" ? "trial-balance" : "voucher")}
+              data-testid={"home-quick-" + (screen.path === "/" ? "trial-balance" : screen.path === "/voucher" ? "voucher" : screen.path.slice(1).replace(/\//g, "-"))}
             >
               <Icon name={screen.icon} />
               <span className="navitem__name">{t(screen.labelKey)}</span>

@@ -32,6 +32,7 @@ import { asQuantity } from "../../api/generated/brands";
 import type { CommercialDocument, GoodsReceiptLine } from "../../api/generated/types";
 import { ProblemError } from "../../api/transport";
 import { useApi } from "../../app/api-context";
+import { useDocumentNumber, useSimple } from "../../app/presets";
 import { ProblemPanel } from "../../app/shell/ProblemPanel";
 import { Amount, Num, useT } from "../../i18n/react";
 import { Button, EmptyState, RefusalPanel, useMoment } from "../../ui";
@@ -76,6 +77,10 @@ export function GoodsReceiptScreen(): ReactNode {
   /* ── رأس الاستلام ─────────────────────────────────────────────────── */
   const [number, setNumber] = useState("");
   const [receivedOn, setReceivedOn] = useState(todayIso);
+
+  /* ── الواجهة المبسّطة: الرقم من الخادم، والتاريخ اليوم (ADR-0095) ── */
+  const simple = useSimple();
+  const documentNumber = useDocumentNumber("goods_receipt");
 
   /* ── السطور ───────────────────────────────────────────────────────── */
   const [line, setLine] = useState<DraftReceiptLine>({
@@ -132,9 +137,12 @@ export function GoodsReceiptScreen(): ReactNode {
         orderLineId: one.orderLineId,
         quantity: asQuantity(one.quantity),
       }));
+      /* الرقم: ما كُتب، وإلا يُخصَّص من سلسلة الاستلام على تاريخ الاستلام. */
+      const resolvedNumber = await documentNumber.resolve(number, receivedOn);
+      setNumber(resolvedNumber);
       const created = await draftGoodsReceipt(transport, {
         companyId: config.companyId,
-        body: { lines: wire, number, orderId, receivedOn },
+        body: { lines: wire, number: resolvedNumber, orderId, receivedOn },
       });
       setReceiptId(created.id);
       setFocus({ goodsReceiptId: created.id });
@@ -146,7 +154,7 @@ export function GoodsReceiptScreen(): ReactNode {
     } finally {
       setDraftBusy(false);
     }
-  }, [config.companyId, fireArrive, fireRefuse, lines, number, orderId, receivedOn, setFocus, transport]);
+  }, [config.companyId, documentNumber, fireArrive, fireRefuse, lines, number, orderId, receivedOn, setFocus, transport]);
 
   const submitPosting = useCallback(async () => {
     setPostBusy(true);
@@ -170,7 +178,8 @@ export function GoodsReceiptScreen(): ReactNode {
   const draftCode = draftError instanceof ProblemError ? draftError.code : null;
   const exceeds = draftCode === RECEIPT_EXCEEDS_ORDER;
   const lineReady = line.orderLineId !== "" && isQuantityText(line.quantity);
-  const draftReady = number !== "" && orderId !== "" && receivedOn !== "" && lines.length > 0;
+  const draftReady =
+    (number !== "" || documentNumber.hidden) && orderId !== "" && receivedOn !== "" && lines.length > 0;
   const postReady = receiptId !== "" && current !== null && current.state !== POSTED;
 
   if (config.companyId === "") return <ChooseCompanyFirst testId="acc-gr-needs-company" />;
@@ -193,7 +202,7 @@ export function GoodsReceiptScreen(): ReactNode {
         loading={order.isPending && order.fetchStatus === "fetching"}
         testId="acc-gr-order"
       >
-        <AccRow cols={3} testId="acc-gr-order-row">
+        <AccRow cols={simple ? 2 : 3} testId="acc-gr-order-row">
           <AccField
             id="acc-gr-order-id"
             label={t("accounting.field.orderId")}
@@ -215,6 +224,7 @@ export function GoodsReceiptScreen(): ReactNode {
               }}
             />
           </AccField>
+          {documentNumber.hidden ? null : (
           <AccField
             id="acc-gr-number"
             label={t("accounting.field.number")}
@@ -233,6 +243,8 @@ export function GoodsReceiptScreen(): ReactNode {
               onChange={(e) => setNumber(e.target.value)}
             />
           </AccField>
+          )}
+          {simple ? null : (
           <AccField
             id="acc-gr-on"
             label={t("accounting.field.receivedOnGoods")}
@@ -250,6 +262,7 @@ export function GoodsReceiptScreen(): ReactNode {
               onChange={(e) => setReceivedOn(e.target.value)}
             />
           </AccField>
+          )}
         </AccRow>
 
         {order.isError ? (

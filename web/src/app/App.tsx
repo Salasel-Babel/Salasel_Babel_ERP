@@ -17,6 +17,7 @@ import { useApi } from "./api-context";
 import { useT } from "../i18n/react";
 import { HealthBadge, LocaleSwitcher, ThemeSwitcher } from "./shell/Switchers";
 import { CompanyBadge } from "./shell/CompanyBadge";
+import { useSimple } from "./presets";
 import { KeyboardHelp } from "./shell/KeyboardHelp";
 import { CommandPalette } from "./shell/CommandPalette";
 import { ScreenNav } from "./shell/ScreenNav";
@@ -107,6 +108,12 @@ export function AppShell(): ReactNode {
     };
   }, [config, setConfig]);
 
+  /* ── الواجهة المبسّطة: الرأس يطوي اللغة والمظهر والمساعدة خلف زرّ واحد ──
+     (ADR-0095 · التوصية الثالثة). والـ`data-simple` على القشرة يُخفي الشروح
+     بالـCSS: التلميحات تحت الحقول وأسطر العناوين وملاحظات الألواح. */
+  const simple = useSimple();
+  const [prefsOpen, setPrefsOpen] = useState(false);
+
   const signOut = useCallback(() => {
     /* الإبطالُ على الخادم **يُطلب ولا يُنتظَر جوابه**: الخروج في المتصفّح يجب أن
        يقع ولو كانت الشبكة مقطوعة. والاعتمادُ المُهيَّأ من الإعداد لا عائلةَ له
@@ -123,7 +130,7 @@ export function AppShell(): ReactNode {
   }
 
   return (
-    <div className="app-shell" data-section={section.id} style={tint}>
+    <div className="app-shell" data-section={section.id} data-simple={simple ? "true" : undefined} style={tint}>
       {/* شريط الانتقال: يُعاد بناؤه بتغيّر المسار فتُعاد حركته. */}
       <span className="transit" key={path} aria-hidden="true" />
 
@@ -150,8 +157,23 @@ export function AppShell(): ReactNode {
       <div className="app-main">
         <header className="app-topbar">
           <CompanyBadge />
-          <LocaleSwitcher />
-          <ThemeSwitcher accessiblePaletteHref={accessiblePaletteHref} />
+          {simple ? (
+            <button
+              type="button"
+              className="btn btn-sm"
+              data-testid="open-prefs"
+              aria-expanded={prefsOpen}
+              onClick={() => setPrefsOpen((open) => !open)}
+            >
+              {t("app.topbar.prefs")}
+            </button>
+          ) : null}
+          {/* المبدّلان يبقيان مركَّبين ولو طُويا: أثرُ المظهر على `<html>` يعيش فيهما،
+              فإزالتهما من الشجرة تُسقط السمة لا الزرّ وحده. الطيُّ بـ`hidden`. */}
+          <div className="topbar-prefs" hidden={simple && !prefsOpen}>
+            <LocaleSwitcher />
+            <ThemeSwitcher accessiblePaletteHref={accessiblePaletteHref} />
+          </div>
           <span className="spacer" />
           <HealthBadge
             health={healthQuery.data ?? null}
@@ -167,14 +189,16 @@ export function AppShell(): ReactNode {
           >
             {t("app.command.open")}
           </button>
-          <button
-            type="button"
-            className="btn btn-sm"
-            data-testid="open-help"
-            onClick={() => setHelpOpen(true)}
-          >
-            {t("common.action.keyboardHelp")}
-          </button>
+          {!simple || prefsOpen ? (
+            <button
+              type="button"
+              className="btn btn-sm"
+              data-testid="open-help"
+              onClick={() => setHelpOpen(true)}
+            >
+              {t("common.action.keyboardHelp")}
+            </button>
+          ) : null}
           {/* الخروجُ في الرأس لا في شاشةٍ تُبحَث عنها: هو الفعلُ الذي يُطلب حين
               يقوم أحدٌ عن جهازه، فيجب أن يكون حيث تقع العين. */}
           <button

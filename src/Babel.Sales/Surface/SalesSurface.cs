@@ -117,6 +117,23 @@ public sealed class SalesSurface
         return result.IsFailure ? Result<SalesParty>.Failure(result.Errors) : Result<SalesParty>.Success(Party(result.Value));
     }
 
+    /// <summary>يقرأ عملاء المنشأة مرتَّبين بالرمز — لقائمة اختيار، لا صفحة.</summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    public async ValueTask<Result<IReadOnlyList<SalesParty>>> ListCustomersAsync(
+        TenantId tenant,
+        UserId actor,
+        CancellationToken cancellationToken = default)
+    {
+        Result<IReadOnlyList<CustomerView>> result = await _customers
+            .ListAsync(tenant, actor, cancellationToken).ConfigureAwait(false);
+
+        return result.IsFailure
+            ? Result<IReadOnlyList<SalesParty>>.Failure(result.Errors)
+            : Result<IReadOnlyList<SalesParty>>.Success([.. result.Value.Select(Party)]);
+    }
+
     /// <summary>
     /// يُنشئ فاتورة مبيعات <b>مسوّدة</b>. لا قيد ولا أثر في الدفتر: الترحيل خطوة مستقلّة.
     /// </summary>

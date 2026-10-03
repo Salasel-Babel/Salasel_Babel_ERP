@@ -214,6 +214,41 @@ export function buildTrialBalance(rowCount, book, period) {
 /** الاعتماد الوحيد المقبول في الوهمي. لا سرّ فيه: قيمة اختبار مُعلَنة. */
 export const MOCK_TOKEN = "mock-token";
 
+/** ثوابت الشركة كما يعيدها الخادم: لا شيء مضبوط، والكتالوج والسلاسل معه. */
+const PRESETS = {
+  values: [],
+  catalogue: [
+    { key: "branch.default", kind: "Text", choices: [] },
+    { key: "tax.classification", kind: "Choice", choices: ["standard", "zero", "exempt"] },
+    { key: "tax.rate", kind: "Rate", choices: [] },
+    { key: "tax.recoverable", kind: "Boolean", choices: [] },
+    { key: "expense.category", kind: "Text", choices: [] },
+    { key: "settlement.method", kind: "Choice", choices: ["cash", "bank", "card_clearing"] },
+    { key: "treasury.cash", kind: "Text", choices: [] },
+    { key: "treasury.bank", kind: "Text", choices: [] },
+    { key: "warehouse.default", kind: "Text", choices: [] },
+    { key: "location.default", kind: "Text", choices: [] },
+    { key: "hr.class", kind: "Text", choices: [] },
+    { key: "hr.settlement.method", kind: "Text", choices: [] },
+    { key: "hr.treasury", kind: "Text", choices: [] },
+    { key: "number.sales_invoice", kind: "Prefix", choices: [] },
+  ],
+  series: [
+    { code: "sales_invoice", defaultPrefix: "INV" },
+    { code: "customer_receipt", defaultPrefix: "RCT" },
+    { code: "supplier_bill", defaultPrefix: "BILL" },
+    { code: "supplier_payment", defaultPrefix: "PAY" },
+    { code: "purchase_order", defaultPrefix: "PO" },
+    { code: "goods_receipt", defaultPrefix: "GRN" },
+    { code: "stock_movement", defaultPrefix: "MOV" },
+    { code: "stock_transfer", defaultPrefix: "TRF" },
+    { code: "payroll_run", defaultPrefix: "RUN" },
+    { code: "employee_advance", defaultPrefix: "ADV" },
+  ],
+};
+/** عدّادات الترقيم في عمر العملية. */
+const allocated = new Map();
+
 /** اعتماد منقضٍ — ليُرى في الشاشة رمزه الخاصّ لا رمز «مرفوض». */
 export const MOCK_EXPIRED_TOKEN = "mock-expired";
 
@@ -470,7 +505,7 @@ function respondToPosting(res, path, raw, body) {
   }
 
   /* ٤ · ما لا يعرفه العقد ويعرفه الدفتر — **منقولٌ من قياس على الخادم الحقيقي**.
-     ‏ADR: القاعدة 2 تمنع السطح من رؤية الحساب، فالسطر يحمل دوراً والدفتر يحلّه.
+     ADR: القاعدة 2 تمنع السطح من رؤية الحساب، فالسطر يحمل دوراً والدفتر يحلّه.
      وثمرةُ ذلك أن حقلَي subledger و scope اختياريان في العقد **بلا ما يقول متى
      يلزمان**. والمقيس على مؤسسة العرض:
        role=Settlement → الحساب 1201 ضابطٌ لدفتر bank_account ⇒ يحتاج طرفاً
@@ -640,6 +675,34 @@ export function createMockServer() {
     }
 
     /* ── التأسيس: مراكز التكلفة تُقرأ منه، ولا تُكتب في الشاشة ──────────── */
+    /* ── ثوابت الشركة والترقيم وقوائم الاختيار (ADR-0095) ─────────────────
+       لا ثابتَ مضبوطاً في الخادم الوهمي: كلُّ حقلٍ يُسأل عنه كما كان، والمصفوفة
+       تقيس النموذج كاملاً. والرقم يُخصَّص تصاعدياً في عمر العملية. */
+    const presetsMatch = /^\/api\/v1\/companies\/([^/]+)\/presets$/.exec(url.pathname);
+    if (presetsMatch && (req.method === "GET" || req.method === "PUT")) {
+      send(res, 200, PRESETS, "application/json");
+      return;
+    }
+    const numberMatch = /^\/api\/v1\/companies\/([^/]+)\/presets\/numbers\/([a-z0-9_]+)$/.exec(url.pathname);
+    if (numberMatch && req.method === "POST") {
+      const series = numberMatch[2];
+      const sequence = (allocated.get(series) ?? 0) + 1;
+      allocated.set(series, sequence);
+      const prefix = PRESETS.series.find((s) => s.code === series)?.defaultPrefix ?? "DOC";
+      send(res, 201, { series, fiscalYear: 2026, sequence, number: prefix + "-2026-" + String(sequence).padStart(4, "0") }, "application/json");
+      return;
+    }
+    const partiesMatch = /^\/api\/v1\/companies\/([^/]+)\/(customers|suppliers)$/.exec(url.pathname);
+    if (partiesMatch && req.method === "GET") {
+      send(res, 200, { partyCount: 0, parties: [] }, "application/json");
+      return;
+    }
+    const employeesMatch = /^\/api\/v1\/companies\/([^/]+)\/employees$/.exec(url.pathname);
+    if (employeesMatch && req.method === "GET") {
+      send(res, 200, { itemCount: 0, items: [] }, "application/json");
+      return;
+    }
+
     const setupMatch = /^\/api\/v1\/companies\/([^/]+)\/setup$/.exec(url.pathname);
     if (setupMatch && req.method === "GET") {
       const refused = refuseCredential(req, url.pathname);

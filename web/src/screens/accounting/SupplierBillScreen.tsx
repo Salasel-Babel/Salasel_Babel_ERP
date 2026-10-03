@@ -21,6 +21,8 @@ import { useQuery } from "@tanstack/react-query";
 import { draftExpenseBill, postSupplierBill, readSupplierBill } from "../../api/generated/client";
 import type { CommercialDocument } from "../../api/generated/types";
 import { useApi } from "../../app/api-context";
+import { PartyPicker } from "../../app/pickers";
+import { PRESET, useDefaultCostCenter, useDocumentNumber, useFillFrom, usePresetFill, useSimple } from "../../app/presets";
 import { ProblemPanel } from "../../app/shell/ProblemPanel";
 import { useT } from "../../i18n/react";
 import { Button, EmptyState, useMoment } from "../../ui";
@@ -68,6 +70,12 @@ export function SupplierBillScreen(): ReactNode {
   const [expenseCategory, setExpenseCategory] = useState("");
   const [issuedOn, setIssuedOn] = useState(todayIso);
 
+  /* ── الواجهة المبسّطة: الرقم من الخادم، والتصنيف من الثوابت، ومركز التكلفة من التأسيس، والتاريخ اليوم (ADR-0095) ── */
+  const simple = useSimple();
+  const documentNumber = useDocumentNumber("supplier_bill");
+  const hideCategory = usePresetFill(PRESET.expenseCategory, expenseCategory, setExpenseCategory);
+  const hideCostCenter = useFillFrom(useDefaultCostCenter(), costCenterId, setCostCenterId);
+
   /* ── السطور ───────────────────────────────────────────────────────── */
   const [line, setLine] = useState<DraftPurchaseLine>(emptyPurchaseLine);
   const [lines, setLines] = useState<readonly DraftPurchaseLine[]>([]);
@@ -101,6 +109,9 @@ export function SupplierBillScreen(): ReactNode {
     setDraftError(null);
     setPosted(null);
     try {
+      /* الرقم: ما كُتب، وإلا يُخصَّص من سلسلة فواتير المورّدين على تاريخ الإصدار. */
+      const resolvedNumber = await documentNumber.resolve(number, issuedOn);
+      setNumber(resolvedNumber);
       const created = await draftExpenseBill(transport, {
         companyId: config.companyId,
         body: {
@@ -108,7 +119,7 @@ export function SupplierBillScreen(): ReactNode {
           expenseCategory,
           issuedOn,
           lines: lines.map(toPurchaseLine),
-          number,
+          number: resolvedNumber,
           supplierId,
         },
       });
@@ -125,6 +136,7 @@ export function SupplierBillScreen(): ReactNode {
   }, [
     config.companyId,
     costCenterId,
+    documentNumber,
     expenseCategory,
     fireArrive,
     fireRefuse,
@@ -155,7 +167,7 @@ export function SupplierBillScreen(): ReactNode {
 
   const current: CommercialDocument | null = bill.data ?? null;
   const draftReady =
-    number !== "" &&
+    (number !== "" || documentNumber.hidden) &&
     supplierId !== "" &&
     costCenterId !== "" &&
     expenseCategory !== "" &&
@@ -182,7 +194,8 @@ export function SupplierBillScreen(): ReactNode {
         note={t("accounting.bill.headNote")}
         testId="acc-bill-head"
       >
-        <AccRow cols={3} testId="acc-bill-head-row-1">
+        <AccRow cols={simple ? 2 : 3} testId="acc-bill-head-row-1">
+          {documentNumber.hidden ? null : (
           <AccField
             id="acc-sb-number"
             label={t("accounting.field.number")}
@@ -201,6 +214,7 @@ export function SupplierBillScreen(): ReactNode {
               onChange={(e) => setNumber(e.target.value)}
             />
           </AccField>
+          )}
           <AccField
             id="acc-sb-supplier"
             label={t("accounting.field.supplierId")}
@@ -208,17 +222,9 @@ export function SupplierBillScreen(): ReactNode {
             source="typed"
             required
           >
-            <input
-              id="acc-sb-supplier"
-              className="ctl mono"
-              dir="ltr"
-              autoComplete="off"
-              spellCheck={false}
-              data-testid="acc-bill-supplier"
-              value={supplierId}
-              onChange={(e) => setSupplierId(e.target.value)}
-            />
+            <PartyPicker kind="supplier" id="acc-sb-supplier" value={supplierId} onChange={setSupplierId} testId="acc-bill-supplier" />
           </AccField>
+          {simple ? null : (
           <AccField
             id="acc-sb-issued"
             label={t("accounting.field.issuedOn")}
@@ -236,8 +242,11 @@ export function SupplierBillScreen(): ReactNode {
               onChange={(e) => setIssuedOn(e.target.value)}
             />
           </AccField>
+          )}
         </AccRow>
+        {hideCostCenter && hideCategory ? null : (
         <AccRow cols={2} testId="acc-bill-head-row-2">
+          {hideCostCenter ? null : (
           <AccField
             id="acc-sb-cost-center"
             label={t("accounting.field.costCenterId")}
@@ -256,6 +265,8 @@ export function SupplierBillScreen(): ReactNode {
               onChange={(e) => setCostCenterId(e.target.value)}
             />
           </AccField>
+          )}
+          {hideCategory ? null : (
           <AccField
             id="acc-sb-category"
             label={t("accounting.field.expenseCategory")}
@@ -274,7 +285,9 @@ export function SupplierBillScreen(): ReactNode {
               onChange={(e) => setExpenseCategory(e.target.value)}
             />
           </AccField>
+          )}
         </AccRow>
+        )}
       </StatePanel>
 
       {/* ═══════════════════════════════════════ ٢ · السطور ═══════════ */}

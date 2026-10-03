@@ -392,3 +392,25 @@
   border-radius:0; padding-block-start:var(--space-12);
   font-size:var(--font-size-sm);
 }
+
+/* ── ١٠ · الواجهة المبسّطة: الشروح تُطوى ─────────────────────────────────
+   التلميحات تحت الحقول، وسطرُ العنوان الشارح، وملاحظةُ اللوح — تُخفى حين تكون
+   الواجهة مبسّطة (ADR-0095). الأخطاء تبقى: `.field-error` ليس تلميحاً. */
+.app-shell[data-simple="true"] .pagehead .sub,
+.app-shell[data-simple="true"] .card-pad > p.muted:first-child,
+.app-shell[data-simple="true"] .field .field__desc:not(:has(.field-error)) .hint{display:none}
+/* وخانةُ الوصف تبقى في الصفّ بلا ارتفاعٍ ولا هامش، فلا ذيلَ ميت تحت التحكّم. */
+.app-shell[data-simple="true"] :is(.grid,.filterbar,.toolbar,.hr-line,.con-line) > .field:not(.field--inline)
+  > .field__desc:not(:has(.field-error)){margin-block-start:0}
+.app-shell[data-simple="true"] .field:not(.field--inline) > .field__desc:not(:has(.field-error)):not(:has(.field-ok,.dateline)){display:none}
+/* صفّ المحاسبة يفرّق مساراته بفجوةٍ لا بهامش، والفجوة تبقى ولو خلا المسار الثالث:
+   فتُصفَّر في الواجهة المبسّطة ويُنقل الإيقاع إلى هامش التسمية ووصف الرفض وحده. */
+.app-shell[data-simple="true"] .acc-row{row-gap:0;margin-block-start:calc(-1 * var(--space-14))}
+.app-shell[data-simple="true"] .acc-row > *{margin-block-start:var(--space-14)}
+.app-shell[data-simple="true"] .acc-row > .field{row-gap:0}
+.app-shell[data-simple="true"] .acc-row > .field > label{margin-block-end:var(--space-6)}
+.app-shell[data-simple="true"] .acc-row > .field > .field__desc:has(.field-error){margin-block-start:var(--space-6)}
+
+/* طيّةُ الرأس: شفّافةٌ للتخطيط حين تُفتح، وغائبةٌ حين تُطوى. */
+.topbar-prefs{display:contents}
+.topbar-prefs[hidden]{display:none}

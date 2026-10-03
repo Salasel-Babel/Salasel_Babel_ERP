@@ -114,6 +114,8 @@ async function click(testId: string): Promise<void> {
 
 beforeEach(() => {
   resetAccountingFocus();
+  /* النماذج تُقاس **كاملةً**: الواجهة المبسّطة تُخفي الرقم والتاريخ (ADR-0095). */
+  globalThis.localStorage.setItem("sb-show-advanced", "1");
   globalThis.localStorage.setItem(
     "sb-api-config",
     JSON.stringify({ baseUrl: "", token: "t", companyId: COMPANY, book: "MAIN", period: "" })

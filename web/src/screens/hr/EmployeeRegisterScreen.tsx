@@ -34,6 +34,8 @@ import {
 import type { HrEmployee, HrPayElement, NameValue } from "../../api/generated/types";
 import { Money } from "../../api/money";
 import { useApi } from "../../app/api-context";
+import { EmployeePicker } from "../../app/pickers";
+import { PRESET, useDefaultCostCenter, useFillFrom, usePresetFill, useSimple } from "../../app/presets";
 import { ProblemPanel } from "../../app/shell/ProblemPanel";
 import { useLocale, useT, Amount } from "../../i18n/react";
 import { SOURCE } from "../../i18n/engine";
@@ -95,6 +97,16 @@ export function EmployeeRegisterScreen(): ReactNode {
   const [registered, setRegistered] = useState<HrEmployee | null>(null);
   const [registerError, setRegisterError] = useState<unknown>(null);
   const [registerBusy, setRegisterBusy] = useState(false);
+
+  /* ── الواجهة المبسّطة: التصنيف من الثوابت، ومركز التكلفة من التأسيس، والتواريخ اليوم (ADR-0095) ── */
+  const simple = useSimple();
+  const hideClass = usePresetFill(PRESET.hrClass, draft.classCode, (next) =>
+    setDraft((current) => ({ ...current, classCode: next }))
+  );
+  /* مركز التكلفة من تأسيس المنشأة: يُملأ على الفراغ ويُخفى في المبسّطة، ويُرسل كما لو كُتب. */
+  const hideCostCenter = useFillFrom(useDefaultCostCenter(), draft.costCenterId, (next) =>
+    setDraft((current) => ({ ...current, costCenterId: next }))
+  );
 
   const [elementCode, setElementCode] = useState("");
   const [elementFrom, setElementFrom] = useState(todayIso);
@@ -274,20 +286,7 @@ export function EmployeeRegisterScreen(): ReactNode {
       <Panel title={t("hr.employee.lookup")} note={t("hr.employee.lookupNote")} testId="hr-lookup">
         <div className="grid fields-2">
           <Field id="hr-employee-id" label={t("hr.field.employeeId")} hint={t("hr.field.employeeIdHint")} source="typed">
-            <input
-              id="hr-employee-id"
-              className="ctl mono"
-              dir="ltr"
-              autoComplete="off"
-              spellCheck={false}
-              data-testid="hr-employee-id"
-              value={typedId}
-              onChange={(e) => setTypedId(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && typedId !== "") open(typedId);
-              }}
-              placeholder="00000000-0000-0000-0000-000000000000"
-            />
+            <EmployeePicker id="hr-employee-id" value={typedId} onChange={setTypedId} testId="hr-employee-id" />
           </Field>
           <div className="rowctl hr-act">
             <Button
@@ -452,6 +451,7 @@ export function EmployeeRegisterScreen(): ReactNode {
                   ))}
                 </select>
               </Field>
+              {simple ? null : (
               <Field id="hr-el-from" label={t("hr.field.effectiveFrom")} source="typed" required>
                 <input
                   id="hr-el-from"
@@ -463,6 +463,7 @@ export function EmployeeRegisterScreen(): ReactNode {
                   onChange={(e) => setElementFrom(e.target.value)}
                 />
               </Field>
+              )}
               <Field
                 id="hr-el-amount"
                 label={t("hr.field.amount")}
@@ -573,6 +574,7 @@ export function EmployeeRegisterScreen(): ReactNode {
               onChange={(e) => setDraft({ ...draft, nameAr: e.target.value })}
             />
           </Field>
+          {hideClass ? null : (
           <Field id="hr-class" label={t("hr.field.classCode")} hint={t("hr.field.classCodeHint")} source="typed" required>
             <input
               id="hr-class"
@@ -585,6 +587,8 @@ export function EmployeeRegisterScreen(): ReactNode {
               onChange={(e) => setDraft({ ...draft, classCode: e.target.value })}
             />
           </Field>
+          )}
+          {hideCostCenter ? null : (
           <Field id="hr-cc" label={t("hr.field.costCenter")} hint={t("hr.field.costCenterHint")} source="typed">
             <input
               id="hr-cc"
@@ -597,8 +601,11 @@ export function EmployeeRegisterScreen(): ReactNode {
               onChange={(e) => setDraft({ ...draft, costCenterId: e.target.value })}
             />
           </Field>
+          )}
         </div>
 
+        {simple ? null : (
+        <>
         <h3 className="hr-split">{t("hr.employee.namesOther")}</h3>
         <p className="muted">{t("hr.employee.namesOtherNote")}</p>
         <div className="grid fields-3">
@@ -622,6 +629,8 @@ export function EmployeeRegisterScreen(): ReactNode {
             </Field>
           ))}
         </div>
+        </>
+        )}
 
         <h3 className="hr-split">{t("hr.identity.title")}</h3>
         <p className="alert alert--ai" role="note" data-testid="hr-identity-warning">
@@ -663,6 +672,7 @@ export function EmployeeRegisterScreen(): ReactNode {
               onChange={(e) => setDraft({ ...draft, birthDate: e.target.value })}
             />
           </Field>
+          {simple ? null : (
           <Field id="hr-hired" label={t("hr.field.hiredOn")} source="typed" required>
             <input
               id="hr-hired"
@@ -674,6 +684,7 @@ export function EmployeeRegisterScreen(): ReactNode {
               onChange={(e) => setDraft({ ...draft, hiredOn: e.target.value })}
             />
           </Field>
+          )}
         </div>
 
         <div className="inline-group">

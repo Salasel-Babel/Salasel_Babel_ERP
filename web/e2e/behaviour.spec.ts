@@ -144,6 +144,9 @@ test("تبديل اللغة يقلب الاتجاه والنصوص حيّاً ب
   await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
   const before = await page.locator("h1").innerText();
 
+  /* الواجهة المبسّطة تطوي اللغة والمظهر خلف زرّ «الإعدادات» — يُفتح مرّةً إن وُجد. */
+  const prefs = page.locator('[data-testid="open-prefs"]');
+  if ((await prefs.count()) > 0 && (await prefs.getAttribute("aria-expanded")) !== "true") await prefs.click();
   await page.locator('[data-testid="locale-switcher"]').selectOption("hi");
   await expect(page.locator("html")).toHaveAttribute("dir", "ltr");
   await expect(page.locator("html")).toHaveAttribute("lang", "hi");

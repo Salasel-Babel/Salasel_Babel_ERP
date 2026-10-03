@@ -39,6 +39,14 @@ internal sealed record PartyDto(
     string? VatNumber);
 
 /// <summary>
+/// أطراف المنشأة — عملاؤها أو موردوها — <b>غلافٌ لا مصفوفة عارية</b>: مصفوفةٌ في جذر
+/// الاستجابة لا موضع فيها لعدّاد ولا لصفحة، فأول حاجة إليهما تكسر العقد.
+/// </summary>
+/// <param name="PartyCount">عدد الأطراف.</param>
+/// <param name="Parties">الأطراف، مرتَّبة بالرمز.</param>
+internal sealed record PartyListDto(int PartyCount, IReadOnlyList<PartyDto> Parties);
+
+/// <summary>
 /// سطر مستند مبيعات على السلك.
 /// <para>
 /// <b>ولاحظ ما ليس هنا: لا حساب ولا رمز حساب</b> — القاعدة 2 مطبَّقة على السلك أيضاً.

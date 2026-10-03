@@ -46,6 +46,7 @@ import "./setup.css";
  */
 export const SETUP_SCREENS = [
   { to: "/setup", key: "app.nav.companySetup" },
+  { to: "/setup/presets", key: "app.nav.presets" },
   { to: "/setup/cost-centers", key: "app.nav.costCenters" },
   { to: "/setup/document-shapes", key: "app.nav.documentShapes" },
   { to: "/setup/chart-of-accounts", key: "app.nav.chartOfAccounts" },

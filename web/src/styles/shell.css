@@ -420,6 +420,8 @@
 .quickacts{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-8);flex:1 1 auto}
 .quickacts__label{font-size:var(--font-size-2xs);font-weight:var(--font-weight-semibold);color:var(--color-text-subtle)}
 .sec-extras .quickact{
+  display:inline-flex;width:auto;flex:0 0 auto;
   border:var(--border-width) solid var(--edge-line);border-radius:var(--radius-md);
-  background:var(--color-surface);padding-block:var(--space-8)
+  background:var(--color-surface);padding:var(--space-8) var(--space-14)
 }
+.sec-extras .quickact .navitem__name{flex:0 0 auto}

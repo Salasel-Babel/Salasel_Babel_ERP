@@ -224,6 +224,11 @@ export const messages: MessageTree = {
     topbar: {
       prefs: "الإعدادات",
     },
+    quick: {
+      title: "الأكثر تكراراً",
+      moreFields: "إظهار كل الحقول (متقدّم)",
+      fewerFields: "الحقول الأساسية فقط",
+    },
     picker: {
       choose: "— اختر —",
     },

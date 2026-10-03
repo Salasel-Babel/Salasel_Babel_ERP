@@ -27,6 +27,7 @@ import { SOURCE } from "../../i18n/engine";
 import { useLocale, useT } from "../../i18n/react";
 import { Panel, StatCard, StatusBadge, type DocState } from "../../ui";
 import { ACTIVE, DRAFT, KNOWN_STATES, POSTED, TERMINATED } from "./contract";
+import { SectionExtras } from "../../app/shell/SectionExtras";
 
 /* ═════════════════════════════════════════════════ ١ · حين لا منشأة مختارة */
 
@@ -77,6 +78,7 @@ export function HrSectionNav(props: { readonly current: string }): ReactNode {
   const { t } = useT();
   const showAdvanced = useShowAdvanced();
   return (
+    <>
     <nav className="hr-tabs" aria-label={t("hr.nav.label")} data-testid="hr-tabs">
       {HR_SCREENS.filter((screen) => shownInMenus(screen.to, showAdvanced, props.current)).map((screen) => (
         <Link
@@ -90,6 +92,8 @@ export function HrSectionNav(props: { readonly current: string }): ReactNode {
         </Link>
       ))}
     </nav>
+      <SectionExtras section="hr" current={props.current} />
+    </>
   );
 }
 

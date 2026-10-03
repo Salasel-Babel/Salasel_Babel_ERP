@@ -226,6 +226,11 @@ export const messages: MessageTree = {
     topbar: {
       prefs: "ترجیحات",
     },
+    quick: {
+      title: "سب سے زیادہ استعمال",
+      moreFields: "تمام خانے دکھائیں (اعلیٰ)",
+      fewerFields: "صرف بنیادی خانے",
+    },
     picker: {
       choose: "— منتخب کریں —",
     },

@@ -226,6 +226,11 @@ export const messages: MessageTree = {
     topbar: {
       prefs: "प्राथमिकताएँ",
     },
+    quick: {
+      title: "सबसे अधिक उपयोग",
+      moreFields: "सभी फ़ील्ड दिखाएँ (उन्नत)",
+      fewerFields: "केवल मूल फ़ील्ड",
+    },
     picker: {
       choose: "— चुनें —",
     },

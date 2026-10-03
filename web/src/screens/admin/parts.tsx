@@ -30,6 +30,7 @@ import { Link } from "@tanstack/react-router";
 import { useT } from "../../i18n/react";
 import { Button, Field, Panel, StatusBadge, type DocState, type Provenance } from "../../ui";
 import "./admin.css";
+import { SectionExtras } from "../../app/shell/SectionExtras";
 
 /* ═══════════════════════════════ ١ · الملاحة داخل مجموعة الإدارة ══════════
    خمسُ شاشاتٍ بترتيب العمل لا بترتيب الحروف: كيف أدخل أوّل مرّة ← ما الذي
@@ -53,6 +54,7 @@ export function AdminSectionNav(props: { readonly current: string }): ReactNode 
   const { t } = useT();
   const showAdvanced = useShowAdvanced();
   return (
+    <>
     <nav className="adm-tabs" aria-label={t("screen.admin.navLabel")} data-testid="admin-tabs">
       {ADMIN_SCREENS.filter((screen) => shownInMenus(screen.to, showAdvanced, props.current)).map((screen) => (
         <Link
@@ -66,6 +68,8 @@ export function AdminSectionNav(props: { readonly current: string }): ReactNode 
         </Link>
       ))}
     </nav>
+      <SectionExtras section="accounting" current={props.current} />
+    </>
   );
 }
 

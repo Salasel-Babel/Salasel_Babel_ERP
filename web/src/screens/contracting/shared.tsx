@@ -34,6 +34,7 @@ import { Num, useLocale, useT } from "../../i18n/react";
 import { Button, EmptyState, Field, MOTION, Panel, RefusalPanel, StatusBadge, useMoment } from "../../ui";
 import { selectContracting, type ContractingSelection } from "./selection";
 import "./contracting.css";
+import { SectionExtras } from "../../app/shell/SectionExtras";
 
 /* ═══════════════════════════════════════════════ ١ · حدود قبل كل شيء */
 
@@ -119,6 +120,7 @@ export function ContractingNav(): ReactNode {
   const { t } = useT();
   const path = useRouterState({ select: (state) => state.location.pathname });
   return (
+    <>
     <nav className="con-nav" aria-label={t("contracting.nav.label")} data-testid="contracting-nav">
       {CONTRACTING_SCREENS.map((screen) => (
         <Link
@@ -132,6 +134,8 @@ export function ContractingNav(): ReactNode {
         </Link>
       ))}
     </nav>
+      <SectionExtras section="contracting" current={path} />
+    </>
   );
 }
 

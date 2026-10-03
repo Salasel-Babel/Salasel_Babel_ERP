@@ -25,6 +25,7 @@ import type { PostingReceipt as Receipt } from "../../api/generated/types";
 import { Num, useT } from "../../i18n/react";
 import { Button } from "../../ui";
 import "../accounting/accounting.css";
+import { SectionExtras } from "../../app/shell/SectionExtras";
 
 /* ═════════════════════════════════════════ ١ · الشريط داخل المجموعة
    **ترتيب العمل لا ترتيب الحروف**: ما يُصحَّح بقيدٍ مضادّ على الدفتر نفسه ←
@@ -47,6 +48,7 @@ export function LedgerSectionNav(props: { readonly current: string }): ReactNode
   const { t } = useT();
   const showAdvanced = useShowAdvanced();
   return (
+    <>
     <nav
       className="acc-tabs"
       aria-label={t("accounting.ledger.nav.group")}
@@ -64,6 +66,8 @@ export function LedgerSectionNav(props: { readonly current: string }): ReactNode
         </Link>
       ))}
     </nav>
+      <SectionExtras section="accounting" current={props.current} />
+    </>
   );
 }
 

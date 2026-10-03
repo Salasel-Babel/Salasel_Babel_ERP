@@ -414,3 +414,12 @@
 /* طيّةُ الرأس: شفّافةٌ للتخطيط حين تُفتح، وغائبةٌ حين تُطوى. */
 .topbar-prefs{display:contents}
 .topbar-prefs[hidden]{display:none}
+
+/* ── ١١ · ملحقات القسم: أزرار البداية ومفتاح الحقول (ADR-0095) ──────────── */
+.sec-extras{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-8)}
+.quickacts{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-8);flex:1 1 auto}
+.quickacts__label{font-size:var(--font-size-2xs);font-weight:var(--font-weight-semibold);color:var(--color-text-subtle)}
+.sec-extras .quickact{
+  border:var(--border-width) solid var(--edge-line);border-radius:var(--radius-md);
+  background:var(--color-surface);padding-block:var(--space-8)
+}

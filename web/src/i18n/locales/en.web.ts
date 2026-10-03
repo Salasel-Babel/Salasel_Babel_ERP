@@ -223,6 +223,11 @@ export const messages: MessageTree = {
     topbar: {
       prefs: "Preferences",
     },
+    quick: {
+      title: "Most frequent",
+      moreFields: "Show all fields (advanced)",
+      fewerFields: "Essential fields only",
+    },
     picker: {
       choose: "— choose —",
     },

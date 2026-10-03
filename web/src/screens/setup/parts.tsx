@@ -31,6 +31,7 @@ import { resolveTranslatedName, RECORD_TAG } from "../../app/translated-name";
 import { useT } from "../../i18n/react";
 import { Button, Field, Panel, StatusBadge, type DocState, type Provenance } from "../../ui";
 import "./setup.css";
+import { SectionExtras } from "../../app/shell/SectionExtras";
 
 /* ═══════════════════════════ ١ · الملاحة داخل مجموعة التأسيس ══════════════
    أربعُ شاشاتٍ بترتيب العمل لا بترتيب الحروف: ما يقع مرّةً فيؤسّس المنشأة ←
@@ -61,6 +62,7 @@ export function SetupSectionNav(props: { readonly current: string }): ReactNode 
   const { t } = useT();
   const showAdvanced = useShowAdvanced();
   return (
+    <>
     <nav className="stp-tabs" aria-label={t("screen.setup.navLabel")} data-testid="setup-tabs">
       {SETUP_SCREENS.filter((screen) => shownInMenus(screen.to, showAdvanced, props.current)).map((screen) => (
         <Link
@@ -74,6 +76,8 @@ export function SetupSectionNav(props: { readonly current: string }): ReactNode 
         </Link>
       ))}
     </nav>
+      <SectionExtras section="accounting" current={props.current} />
+    </>
   );
 }
 

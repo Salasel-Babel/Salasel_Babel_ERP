@@ -34,6 +34,7 @@ import { useT } from "../../i18n/react";
 import { Button, Panel, StatCard, StatusBadge, type DocState, type Provenance } from "../../ui";
 import { Field } from "../../ui";
 import { APPROVED, CANCELLED, DRAFT, KNOWN_STATES, POSTED, REVERSED } from "./contract";
+import { SectionExtras } from "../../app/shell/SectionExtras";
 
 /* ═════════════════════════════════════════════════ ١ · حين لا منشأة مختارة */
 
@@ -86,6 +87,7 @@ export function AccSectionNav(props: {
   const showAdvanced = useShowAdvanced();
   const screens = props.group === "sales" ? SALES_SCREENS : PURCHASING_SCREENS;
   return (
+    <>
     <nav
       className="acc-tabs"
       aria-label={t("accounting.nav." + props.group)}
@@ -103,6 +105,8 @@ export function AccSectionNav(props: {
         </Link>
       ))}
     </nav>
+      <SectionExtras section="accounting" current={props.current} />
+    </>
   );
 }
 

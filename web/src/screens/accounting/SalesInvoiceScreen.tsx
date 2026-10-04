@@ -21,16 +21,17 @@
    السطر يحمل `itemGroup` — مؤهّل دور — والمصفوفة في `data/posting-matrix/`
    وحدها تحوّله إلى حساب. وما يُعرَض من القيد هو **معرّفه في الإيصال العائد**.
    ═══════════════════════════════════════════════════════════════════════════ */
-import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { draftSalesInvoice, postSalesInvoice, readSalesInvoice } from "../../api/generated/client";
 import type { CommercialDocument } from "../../api/generated/types";
 import { ProblemError } from "../../api/transport";
 import { useApi } from "../../app/api-context";
+import { PartyPicker } from "../../app/pickers";
+import { PRESET, useDocumentNumber, usePresetFill, useSimple } from "../../app/presets";
 import { ProblemPanel } from "../../app/shell/ProblemPanel";
 import { useT } from "../../i18n/react";
 import { Button, EmptyState, RefusalPanel, useMoment } from "../../ui";
-import { peekVoiceDraft } from "../../voice";
 import { useAccountingFocus } from "./focus";
 import {
   emptySalesLine,
@@ -66,25 +67,17 @@ export function SalesInvoiceScreen(): ReactNode {
   const [refuseCls, fireRefuse] = useMoment("refuse");
   const [arriveCls, fireArrive] = useMoment("arrive");
 
-  /* ── المسوّدة المنطوقة تصل إلى الحقل، لا إلى لوحةٍ بجانبه ──────────────
-     المستخدم قال «اكتب فاتورة للعميل …»، فهبط هنا. والقيمة تُملأ في حقلها،
-     ويبقى الباقي عليه. ⚠ **ولا يُنشأ شيء ولا يُرحَّل**: الزرّان يُضغطان بيد. */
-  const spoken = useMemo(() => {
-    const draft = peekVoiceDraft();
-    if (draft?.intentId !== "accounting.sales_invoice.draft") return null;
-    const of = (name: string) => draft.fields.find((field) => field.name === name)?.text ?? "";
-    return {
-      customer: of("customer"),
-      invoiceNumber: of("invoiceNumber"),
-      issuedOn: of("issuedOn"),
-    };
-  }, []);
 
   /* ── رأس الفاتورة ─────────────────────────────────────────────────── */
-  const [number, setNumber] = useState(spoken?.invoiceNumber ?? "");
-  const [customerId, setCustomerId] = useState(spoken?.customer ?? "");
+  const [number, setNumber] = useState("");
+  const [customerId, setCustomerId] = useState("");
   const [branchId, setBranchId] = useState("");
-  const [issuedOn, setIssuedOn] = useState(() => spoken?.issuedOn || todayIso());
+  const [issuedOn, setIssuedOn] = useState(todayIso);
+
+  /* ── الواجهة المبسّطة: الرقم من الخادم، والفرع من الثوابت، والتاريخ اليوم (ADR-0095) ── */
+  const simple = useSimple();
+  const documentNumber = useDocumentNumber("sales_invoice");
+  const hideBranch = usePresetFill(PRESET.branch, branchId, setBranchId);
 
   /* ── السطور ───────────────────────────────────────────────────────── */
   const [line, setLine] = useState<DraftSalesLine>(emptySalesLine);
@@ -122,6 +115,9 @@ export function SalesInvoiceScreen(): ReactNode {
     setDraftError(null);
     setReceipt(null);
     try {
+      /* الرقم: ما كُتب، وإلا يُخصَّص من سلسلة الفواتير على تاريخ الإصدار. */
+      const resolvedNumber = await documentNumber.resolve(number, issuedOn);
+      setNumber(resolvedNumber);
       const created = await draftSalesInvoice(transport, {
         companyId: config.companyId,
         body: {
@@ -131,7 +127,7 @@ export function SalesInvoiceScreen(): ReactNode {
           /* التحويل عند الحدّ: `Money.wire` و`asQuantity` تتحقّقان من النحو
              المنشور، فلا يغادر ما يرفضه الخادم. */
           lines: lines.map(toSalesLine),
-          number,
+          number: resolvedNumber,
         },
       });
       setInvoiceId(created.id);
@@ -144,7 +140,7 @@ export function SalesInvoiceScreen(): ReactNode {
     } finally {
       setDraftBusy(false);
     }
-  }, [branchId, config.companyId, customerId, fireArrive, fireRefuse, issuedOn, lines, number, setFocus, transport]);
+  }, [branchId, config.companyId, customerId, documentNumber, fireArrive, fireRefuse, issuedOn, lines, number, setFocus, transport]);
 
   const submitPosting = useCallback(async () => {
     setPostBusy(true);
@@ -170,7 +166,7 @@ export function SalesInvoiceScreen(): ReactNode {
 
   const current: CommercialDocument | null = invoice.data ?? null;
   const draftReady =
-    number !== "" && customerId !== "" && branchId !== "" && issuedOn !== "" && lines.length > 0;
+    (number !== "" || documentNumber.hidden) && customerId !== "" && branchId !== "" && issuedOn !== "" && lines.length > 0;
   const postReady = invoiceId !== "" && current !== null && current.state !== POSTED;
 
   if (config.companyId === "") return <ChooseCompanyFirst testId="acc-invoice-needs-company" />;
@@ -192,12 +188,13 @@ export function SalesInvoiceScreen(): ReactNode {
         note={t("accounting.invoice.headNote")}
         testId="acc-invoice-head"
       >
-        <AccRow cols={4} testId="acc-invoice-head-row">
+        <AccRow cols={simple ? 2 : 4} testId="acc-invoice-head-row">
+          {documentNumber.hidden ? null : (
           <AccField
             id="acc-inv-number"
             label={t("accounting.field.number")}
             hint={t("accounting.field.numberHint")}
-            source={spoken?.invoiceNumber ? "spoken" : "typed"}
+            source="typed"
             required
           >
             <input
@@ -211,24 +208,17 @@ export function SalesInvoiceScreen(): ReactNode {
               onChange={(e) => setNumber(e.target.value)}
             />
           </AccField>
+          )}
           <AccField
             id="acc-inv-customer"
             label={t("accounting.field.customerId")}
             hint={t("accounting.field.customerIdHint")}
-            source={spoken?.customer ? "spoken" : "typed"}
+            source="typed"
             required
           >
-            <input
-              id="acc-inv-customer"
-              className="ctl mono"
-              dir="ltr"
-              autoComplete="off"
-              spellCheck={false}
-              data-testid="acc-invoice-customer"
-              value={customerId}
-              onChange={(e) => setCustomerId(e.target.value)}
-            />
+            <PartyPicker kind="customer" id="acc-inv-customer" value={customerId} onChange={setCustomerId} testId="acc-invoice-customer" />
           </AccField>
+          {hideBranch ? null : (
           <AccField
             id="acc-inv-branch"
             label={t("accounting.field.branchId")}
@@ -247,11 +237,13 @@ export function SalesInvoiceScreen(): ReactNode {
               onChange={(e) => setBranchId(e.target.value)}
             />
           </AccField>
+          )}
+          {simple ? null : (
           <AccField
             id="acc-inv-issued"
             label={t("accounting.field.issuedOn")}
             hint={t("accounting.field.issuedOnHint")}
-            source={spoken?.issuedOn ? "spoken" : "typed"}
+            source="typed"
             required
           >
             <input
@@ -264,6 +256,7 @@ export function SalesInvoiceScreen(): ReactNode {
               onChange={(e) => setIssuedOn(e.target.value)}
             />
           </AccField>
+          )}
         </AccRow>
       </StatePanel>
 

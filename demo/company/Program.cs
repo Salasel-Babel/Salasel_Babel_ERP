@@ -51,6 +51,7 @@ try
             await InventorySeed.RunAsync(settings, cancellation.Token).ConfigureAwait(false);
             await HrSeed.RunAsync(settings, cancellation.Token).ConfigureAwait(false);
             await ProjectsSeed.RunAsync(settings, cancellation.Token).ConfigureAwait(false);
+            await PresetsSeed.RunAsync(settings, cancellation.Token).ConfigureAwait(false);
             await AccessSeed.RunAsync(settings, cancellation.Token).ConfigureAwait(false);
             break;
 
@@ -71,6 +72,7 @@ try
             /* وبابُ الدخول **بعد** البيانات لا قبلها: اعتمادٌ يعمل ويفتح على نظامٍ
                نصفِ مبذور أسوأ من اعتمادٍ لم يُبذَر بعد — الأول يُرى عطلاً في المنتَج
                أمام صاحب القرار، والثاني يُقرأ نشرةً لم تكتمل بعد. */
+            await PresetsSeed.RunAsync(settings, cancellation.Token).ConfigureAwait(false);
             await AccessSeed.RunAsync(settings, cancellation.Token).ConfigureAwait(false);
             await Verify.RunAsync(settings, cancellation.Token).ConfigureAwait(false);
             break;

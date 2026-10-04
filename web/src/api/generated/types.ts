@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     b8ca0fd699ea1f5d061bda3328419adca534050a63666a733bc407e334cc869c
+     b7b386b463b9b45febe6627baebcb202c5d3985a96aa0da45159ef7f9c2ccccc
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -267,6 +267,24 @@ export interface AgingReport {
   /** الأطراف. / The parties. */
   parties: AgingParty[];
   totals: AgingBands;
+}
+
+/** طلب تخصيص رقم. / A request to allocate a number. */
+export interface AllocateNumberRequest {
+  /** تاريخ المستند — سنتُه هي سنة العدّاد. ميلادي بصيغة yyyy-MM-dd حصراً وبأرقام لاتينية؛ أي تقويم آخر يُقرأ فترة مالية مختلفة. / The document date — its year is the counter's year. Gregorian, yyyy-MM-dd only, Latin digits; any other calendar reads as a different fiscal period. */
+  on: string;
+}
+
+/** رقم مخصَّص من عدّاد السلسلة. / A number allocated from the series counter. */
+export interface AllocatedNumber {
+  /** السنة. / The year. */
+  fiscalYear: number;
+  /** الرقم المركّب الذي يُرسل في المستند. / The composed number sent in the document. */
+  number: string;
+  /** التسلسل داخل السنة. / The sequence within the year. */
+  sequence: number;
+  /** السلسلة. / The series. */
+  series: string;
 }
 
 /** طلب تخصيص سند ورد بلا مرجع على مستأجر تبيّن أنه صاحبه. / A request to allocate a receipt that arrived without a reference to the tenant it turns out to belong to. */
@@ -604,6 +622,16 @@ export interface CommercialDocument {
   tax: Money;
 }
 
+/** ثوابت الشركة كما تُقرأ: المضبوط منها، ومعه الكتالوج والسلاسل. / The company presets as read: what is set, with the catalogue and the series. */
+export interface CompanyPresets {
+  /** الكتالوج المغلق. / The closed catalogue. */
+  catalogue: PresetKey[];
+  /** سلاسل الترقيم ببادئاتها الافتراضية. / The numbering series with their default prefixes. */
+  series: DocumentSeries[];
+  /** الثوابت المضبوطة مرتَّبة بالمفتاح. / The presets that are set, ordered by key. */
+  values: NameValue[];
+}
+
 /** تأسيس المنشأة كما يُقرأ. **defaultCostCenter غير فارغ أبداً** وcostCenters لا تكون فارغة أبداً — الثابتة مفروضة في النواة بغياب عملية حذف، لا بفحص عند مستدعٍ. / The company setup as read. **defaultCostCenter is never empty** and costCenters is never empty — the invariant is enforced in the core by the absence of any delete operation, not by a caller-side check. */
 export interface CompanySetup {
   /** مراكز التكلفة كلّها — العاملة والموقوفة — مرتَّبة برمزها. / All cost centres — active and suspended — ordered by code. */
@@ -749,6 +777,14 @@ export interface DocumentProfile {
   defaults?: NameValue[];
   /** رمز نوع المستند. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The document type code. Matched literally and case-sensitively; a number is never accepted in place of a name. */
   documentType: "projects.client_certificate" | "purchasing.supplier_bill" | "sales.invoice";
+}
+
+/** سلسلة ترقيم ببادئتها الافتراضية. / A numbering series with its default prefix. */
+export interface DocumentSeries {
+  /** رمز السلسلة. / The series code. */
+  code: string;
+  /** البادئة إن لم تُضبط في الثوابت. / The prefix when none is set in the presets. */
+  defaultPrefix: string;
 }
 
 /** شكل مستند **مُشتقّاً** من (هذه الوثيقة × الملفّ). ولاحظ ما ليس فيه: لا تخطيط، ولا ترتيب بصري، ولا شرط، ولا تعبير — تلك أبواب «المنصّة داخل المنصّة» التي رُفضت. / A document's shape **derived** from (this document x the profile). Note what is absent: no layout, no visual order, no condition, no expression — those are the inner-platform doors that were rejected. */
@@ -983,6 +1019,14 @@ export interface HrEmployee {
   startedOn: string;
   /** حالة علاقة العمل: ACTIVE أو TERMINATED. / The employment state: ACTIVE or TERMINATED. */
   state: string;
+}
+
+/** موظفو المنشأة مرتَّبين بالرمز، هوياتهم **مقنَّعة** كما على الموظف الواحد. **وغلافٌ لا مصفوفة عارية**. / The company's employees ordered by code, identities **masked** as on the single employee. **An envelope, not a bare array**. */
+export interface HrEmployeeList {
+  /** عدد الموظفين. / The number of employees. */
+  itemCount: number;
+  /** الموظفون. / The employees. */
+  items: HrEmployee[];
 }
 
 /** طلب تسجيل موظف. **ولا رمز فيه**: الخادم يولّد رمزاً معتماً ولا يقبل واحداً من العميل، لأن الرمز هو ما يُكتب في دفتر أستاذ لا يُمحى منه شيء. والاسم العربي **سجلّ** وترجماته صفوف. / An employee registration request. **It carries no code**: the server mints an opaque one and accepts none from the client, because the code is what gets written into a ledger nothing is erased from. The Arabic name is the **record**, and its translations are rows. */
@@ -1915,6 +1959,14 @@ export interface Party {
   vatNumber: string | null;
 }
 
+/** أطراف المنشأة — عملاؤها أو موردوها — مرتَّبة بالرمز. **وغلافٌ لا مصفوفة عارية**: مصفوفةٌ في جذر الاستجابة لا موضع فيها لعدّاد ولا لصفحة. / The company's parties — its customers or its suppliers — ordered by code. **An envelope, not a bare array**: an array at the response root has no place for a count or a page. */
+export interface PartyList {
+  /** الأطراف. / The parties. */
+  parties: Party[];
+  /** عدد الأطراف. / The number of parties. */
+  partyCount: number;
+}
+
 /** تخصيص مبلغ من سند صرف على فاتورة مورد **مُرحَّلة**. / An allocation of part of a payment against a **posted** supplier bill. */
 export interface PaymentAllocation {
   amount: Money;
@@ -2065,16 +2117,18 @@ export interface PostingChartEntry {
   subledgerType: string;
 }
 
-/** سطر ترحيل. ولاحظ ما ليس فيه: لا حساب ولا رقم حساب. السطر يحمل دوراً، والدور يُحلّ إلى حساب داخل الدفتر عبر خريطة هذه الشركة — فتعديل دليل الحسابات صفٌّ في جدول، لا نشرُ إصدار. / A posting line. Note what is absent: no account, no account code. A line carries a role; the ledger resolves the role to an account through this company's map, so changing the chart of accounts is a table row, not a release. */
+/** سطر ترحيل يسمّي إمّا دوراً وإمّا حساباً — واحداً منهما بالضبط، والطلب كلّه من نوعٍ واحد. المستندات التلقائية تحمل دوراً يُحلّ إلى حساب داخل الدفتر عبر خريطة هذه الشركة — فتعديل دليل الحسابات صفٌّ في جدول، لا نشرُ إصدار. والقيد اليدوي وحده يسمّي حساباً من الدليل، لأن المصفوفة تُعلن سطورَه يدويةً (ADR-0096). / A posting line names either a role or an account — exactly one of them, and a whole request is of one kind. Automatic documents carry a role; the ledger resolves it to an account through this company's map, so changing the chart of accounts is a table row, not a release. The manual voucher alone names an account from the chart, because the matrix declares its lines manual (ADR-0096). */
 export interface PostingLine {
+  /** رمز الحساب من دليل هذه الشركة — للأحداث التي تُعلن المصفوفة سطورَها يدويةً فقط (اليوم ledger.manual_voucher.posted)، ويُرفض على أي حدث آخر. يحمل السطر إمّا role وإمّا accountCode، واحداً بالضبط. وتسري على الحساب شروط الدليل كلّها: قابل للترحيل (GR-COA-001)، وعامل، وأبعاده الإلزامية حاضرة (GR-COA-002)، وطرفُ دفتره المساعد حاضر. / The account code from this company's chart — only for events whose matrix lines are declared manual (today ledger.manual_voucher.posted); refused on any other event. A line carries either role or accountCode, exactly one. Every chart condition applies to the account: postable (GR-COA-001), active, mandatory dimensions present (GR-COA-002), subledger party present. */
+  accountCode?: string;
   amount: Money;
   /** أبعاد هذا السطر فوق أبعاد الطلب. / Dimensions for this line on top of the request dimensions. */
   dimensions?: NameValue[];
   narration?: LocalizedText;
   /** مؤهّل الدور حين يُحلّ الدور الواحد إلى حسابات متعددة. / The role qualifier when one role resolves to several accounts. */
   qualifier?: string;
-  /** دور السطر في الحدث التجاري — لا حساباً. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The line's role in the business event — never an account. Matched literally and case-sensitively; a number is never accepted in place of a name. */
-  role: "NetAmount" | "OutputTax" | "InputTax" | "GrossAmount" | "Discount" | "Retention" | "AdvanceSettlement" | "CostOfGoodsSold" | "InventoryMovement" | "Settlement" | "RoundingDifference" | "ExchangeDifference" | "Accrual" | "Depreciation";
+  /** دور السطر في الحدث التجاري — للمستندات التلقائية، ويغيب حين يُسمّى accountCode. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The line's role in the business event — for automatic documents; absent when accountCode is named. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  role?: "NetAmount" | "OutputTax" | "InputTax" | "GrossAmount" | "Discount" | "Retention" | "AdvanceSettlement" | "CostOfGoodsSold" | "InventoryMovement" | "Settlement" | "RoundingDifference" | "ExchangeDifference" | "Accrual" | "Depreciation";
   scope?: Scope;
   /** الجانب. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The side. Matched literally and case-sensitively; a number is never accepted in place of a name. */
   side: "Debit" | "Credit";
@@ -2096,6 +2150,16 @@ export interface PostingReceipt {
   lineCount: number;
   /** رمز الفترة المالية yyyy-MM ميلادياً دائماً — لا يتغيّر بثقافة الخادم ولا بثقافة العميل. / The fiscal period code yyyy-MM, always Gregorian — unaffected by server or client culture. */
   periodCode: string;
+}
+
+/** ثابت في الكتالوج المغلق. / A preset in the closed catalogue. */
+export interface PresetKey {
+  /** الأعضاء المسموحة حين يكون النوع Choice، وإلا فارغة. / The allowed members when the kind is Choice, otherwise empty. */
+  choices: string[];
+  /** المفتاح. / The key. */
+  key: string;
+  /** نوع القيمة. يُطابَق حرفياً وبحساسية حالة الأحرف؛ ولا يُقبل رقم مكان الاسم. / The value's kind. Matched literally and case-sensitively; a number is never accepted in place of a name. */
+  kind: "Text" | "Choice" | "Rate" | "Boolean" | "Prefix";
 }
 
 /** تفاصيل المشكلة بصيغة RFC 9457 بامتدادين: رمز ثابت، ورسالة عربية إلى جانب الإنجليزية. ولا يعبر منها أبداً: نصّ خطأ قاعدة بيانات، أو أثر مكدّس، أو شذرة SQL. / RFC 9457 problem details with two extensions: a stable code and an Arabic message alongside the English one. Never crossing: database error text, a stack trace, or a SQL fragment. */
@@ -2496,6 +2560,12 @@ export interface RentInvoiceRequest {
   /** معرّفات الأقساط المفوترة كما نشرها مورد جدول الدفعات. / The identifiers of the instalments being billed, as published by the schedule resource. */
   scheduleLineIds: string[];
   taxRate: Money;
+}
+
+/** طلب استبدال الثوابت كلّها. / A request to replace all presets. */
+export interface ReplaceCompanyPresetsRequest {
+  /** المفاتيح وقيمها. قيمةٌ فارغة تزيل الثابت. / The keys and their values. An empty value removes the preset. */
+  values: NameValue[];
 }
 
 /** طلب تحصيل محتجزٍ مدين من العميل. / A request to collect debit retention from the client. */

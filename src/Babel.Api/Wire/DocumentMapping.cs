@@ -232,6 +232,22 @@ internal static class DocumentMapping
             party.VatNumber);
     }
 
+    /// <summary>يحوّل قائمة عملاء إلى غلافها.</summary>
+    /// <param name="parties">العملاء، مرتَّبين بالرمز.</param>
+    public static PartyListDto ToDto(IReadOnlyList<SalesParty> parties)
+    {
+        ArgumentNullException.ThrowIfNull(parties);
+        return new PartyListDto(parties.Count, [.. parties.Select(ToDto)]);
+    }
+
+    /// <summary>يحوّل قائمة موردين إلى غلافها.</summary>
+    /// <param name="parties">الموردون، مرتَّبين بالرمز.</param>
+    public static PartyListDto ToDto(IReadOnlyList<PurchasingParty> parties)
+    {
+        ArgumentNullException.ThrowIfNull(parties);
+        return new PartyListDto(parties.Count, [.. parties.Select(ToDto)]);
+    }
+
     /// <summary>ينقل مستند مبيعات إلى السلك.</summary>
     /// <param name="document">المستند.</param>
     public static CommercialDocumentDto ToDto(SalesDocument document)

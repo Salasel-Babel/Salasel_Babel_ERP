@@ -3,6 +3,7 @@ using Babel.Core.Application;
 using Babel.Core.Audit;
 using Babel.Core.CapabilityProfile;
 using Babel.Core.CompanySetup;
+using Babel.Core.Presets;
 using Babel.Core.Entitlement;
 using Babel.Core.Metering;
 using Babel.Core.Parameters;
@@ -34,6 +35,7 @@ public static class CoreModuleRegistration
 
         services.AddSingleton<ICapabilityProfileStore, InMemoryCapabilityProfileStore>();
         services.AddSingleton<ICompanySetupStore, InMemoryCompanySetupStore>();
+        services.AddSingleton<ICompanyPresetStore, InMemoryCompanyPresetStore>();
         services.AddSingleton<IAccessDirectory, InMemoryAccessDirectory>();
 
         // الأثر والقياس في الذاكرة **هنا وحدها** — في التحميل الزائد الذي لا قاعدة له.
@@ -79,6 +81,8 @@ public static class CoreModuleRegistration
         services.AddSingleton<ICompanySetupStore>(provider => new PostgresCompanySetupStore(
             provider.GetRequiredService<CoreOptions>(),
             provider.GetRequiredService<TimeProvider>()));
+        services.AddSingleton<ICompanyPresetStore>(provider => new PostgresCompanyPresetStore(
+            provider.GetRequiredService<CoreOptions>()));
 
         // دليل المصادقة فوق PostgreSQL: جلسةٌ في ذاكرة العملية تعني أن كل مستخدم يخرج
         // عند كل نشر، وأن «أُبطلت جلسته» جملةٌ صحيحة على خادمٍ واحد من ثلاثة.
@@ -139,6 +143,9 @@ public static class CoreModuleRegistration
 
         // تأسيس المنشأة: المخزن حالة المستأجر، والخدمة نطاق طلب — كملفّ القدرات تماماً.
         services.AddScoped<CompanySetupService>();
+
+        // ثوابت الشركة وترقيمها: ما يُحسم مرّةً ثم يختفي من شاشات الإدخال.
+        services.AddScoped<CompanyPresetService>();
 
         // المصادقة: الخدمة نطاق طلب كسائر خدمات التطبيق، والحالّ مفردة لأنه يقرأ ولا يحمل
         // حالة — وهو يُنادى **قبل** المصادقة في كل طلب، فلا يجوز أن يعتمد على نطاقها.

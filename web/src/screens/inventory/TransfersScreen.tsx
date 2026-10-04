@@ -43,6 +43,7 @@ import { asMagnitude } from "../../api/generated/brands";
 import { SCHEMA_Magnitude_RE } from "../../api/generated/formats";
 import type { Item, StockTransfer, StoragePlace } from "../../api/generated/types";
 import { useApi } from "../../app/api-context";
+import { PRESET, useDocumentNumber, usePresets, useSimple } from "../../app/presets";
 import { Amount, useT } from "../../i18n/react";
 import { ProblemPanel } from "../../app/shell/ProblemPanel";
 import {
@@ -96,12 +97,21 @@ export function InventoryTransfersScreen(): ReactNode {
   const [number, setNumber] = useState("");
   const [occurredOn, setOccurredOn] = useState(todayIso);
   const [itemId, setItemId] = useState("");
-  const [fromWarehouse, setFromWarehouse] = useState("");
+  /* «من»: `null` ما لم يُلمَس، فيحمل ثابت المستودع اشتقاقاً أدناه. */
+  const [fromWarehouseTyped, setFromWarehouse] = useState<string | null>(null);
   const [fromLocation, setFromLocation] = useState("");
   const [toWarehouse, setToWarehouse] = useState("");
   const [toLocation, setToLocation] = useState("");
   const [magnitude, setMagnitude] = useState("");
   const [unit, setUnit] = useState("");
+
+  /* ── الواجهة المبسّطة: الرقم من الخادم، والتاريخ اليوم، والمصدر يُملأ من ثابت المستودع ويبقى ظاهراً (ADR-0095) ── */
+  const simple = useSimple();
+  const documentNumber = useDocumentNumber("stock_transfer");
+  const presetWarehouse = usePresets().value(PRESET.warehouse);
+  /* «من» متغيّرٌ يُختار والثابت افتراضه لا قيده: اشتقاقٌ لا أثر، فلا يُعاد ضبط ما كتبه المستخدم
+     ولا يُخفى الحقل — بخلاف `usePresetFill` الذي يُثبّت الحقل المخفيّ على ثابته. */
+  const fromWarehouse = fromWarehouseTyped ?? presetWarehouse;
 
   const [created, setCreated] = useState<StockTransfer | null>(null);
   const [movedDoc, setMovedDoc] = useState<StockTransfer | null>(null);
@@ -196,7 +206,7 @@ export function InventoryTransfersScreen(): ReactNode {
     fromLocation === toLocation;
 
   const ready =
-    number !== "" &&
+    (number !== "" || documentNumber.hidden) &&
     occurredOn !== "" &&
     chosenItem !== null &&
     fromWarehouse !== "" &&
@@ -224,10 +234,13 @@ export function InventoryTransfersScreen(): ReactNode {
     setBusy(true);
     setError(null);
     try {
+      /* الرقم: ما كُتب، وإلا يُخصَّص من سلسلة النقل على تاريخه. */
+      const resolvedNumber = await documentNumber.resolve(number, occurredOn);
+      setNumber(resolvedNumber);
       const transfer = await draftStockTransfer(transport, {
         companyId: config.companyId,
         body: {
-          number,
+          number: resolvedNumber,
           occurredOn,
           itemId: chosenItem.code,
           itemGroup: chosenItem.itemGroup,
@@ -248,8 +261,8 @@ export function InventoryTransfersScreen(): ReactNode {
       setBusy(false);
     }
   }, [
-    chosenItem, config.companyId, fireArrive, fromLocation, fromWarehouse, magnitude, number,
-    occurredOn, toLocation, toWarehouse, transfers, transport, unit,
+    chosenItem, config.companyId, documentNumber, fireArrive, fromLocation, fromWarehouse, magnitude,
+    number, occurredOn, toLocation, toWarehouse, transfers, transport, unit,
   ]);
 
   const move = useCallback(
@@ -453,6 +466,7 @@ export function InventoryTransfersScreen(): ReactNode {
         testId="transfer-form"
       >
         <div className="grid fields-3">
+          {documentNumber.hidden ? null : (
           <Field
             id="tr-number"
             label={t("inventory.movements.number")}
@@ -469,6 +483,8 @@ export function InventoryTransfersScreen(): ReactNode {
               onChange={(e) => setNumber(e.target.value)}
             />
           </Field>
+          )}
+          {simple ? null : (
           <Field
             id="tr-date"
             label={t("inventory.movements.date")}
@@ -485,6 +501,7 @@ export function InventoryTransfersScreen(): ReactNode {
               onChange={(e) => setOccurredOn(e.target.value)}
             />
           </Field>
+          )}
           <Field
             id="tr-item"
             label={t("inventory.movements.item")}

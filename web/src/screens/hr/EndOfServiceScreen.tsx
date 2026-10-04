@@ -35,6 +35,14 @@ import type {
 import { Money } from "../../api/money";
 import { ProblemError } from "../../api/transport";
 import { useApi } from "../../app/api-context";
+import {
+  PRESET,
+  useCurrentMemberName,
+  useDocumentNumber,
+  useFillFrom,
+  usePresetFill,
+  useSimple,
+} from "../../app/presets";
 import { ProblemPanel } from "../../app/shell/ProblemPanel";
 import { PARAM_readTrialBalance_period_RE } from "../../api/generated/formats";
 import { Amount, Num, useT } from "../../i18n/react";
@@ -92,6 +100,10 @@ export function EndOfServiceScreen(): ReactNode {
   const [provision, setProvision] = useState<HrProvision | null>(null);
   const [provBusy, setProvBusy] = useState(false);
   const [provError, setProvError] = useState<unknown>(null);
+  /* المبسّطة (ADR-0095): الرقم من الخادم، والاستحقاق اليوم، والمعتمِد صاحبُ الجلسة باسمه. */
+  const simple = useSimple();
+  const provisionNumber = useDocumentNumber("eos_provision");
+  const hideProvBy = useFillFrom(useCurrentMemberName(), provBy, setProvBy);
 
   /* ── المخالصة ─────────────────────────────────────────────────────── */
   type Method = HrSettlementRequest["settlementMethod"];
@@ -105,6 +117,10 @@ export function EndOfServiceScreen(): ReactNode {
   const [settlement, setSettlement] = useState<HrSettlement | null>(null);
   const [setBusy, setSetBusy] = useState(false);
   const [setError, setSetError] = useState<unknown>(null);
+  /* المخالصة في المبسّطة: الرقم من الخادم، والصرف اليوم، والطريقة والخزينة من الثوابت. */
+  const settlementDocNumber = useDocumentNumber("eos_settlement");
+  const hideMethod = usePresetFill(PRESET.hrSettlementMethod, method, (next) => setMethod(next as Method));
+  const hideTreasury = usePresetFill(PRESET.hrTreasury, treasury, setTreasury);
 
   const provPeriodValid = provPeriod === "" || PARAM_readTrialBalance_period_RE.test(provPeriod);
 
@@ -115,10 +131,11 @@ export function EndOfServiceScreen(): ReactNode {
     setProvBusy(true);
     setProvError(null);
     try {
+      const resolvedNumber = await provisionNumber.resolve(provNumber, provAccruedOn);
       const drafted = await draftEndOfServiceProvision(transport, {
         companyId: config.companyId,
         body: {
-          number: provNumber,
+          number: resolvedNumber,
           periodCode: provPeriod,
           accruedOn: provAccruedOn,
           measurementRef: provRef,
@@ -146,6 +163,7 @@ export function EndOfServiceScreen(): ReactNode {
     provNumber,
     provPeriod,
     provRef,
+    provisionNumber,
     shares,
     transport,
   ]);
@@ -174,10 +192,11 @@ export function EndOfServiceScreen(): ReactNode {
     setSetBusy(true);
     setSetError(null);
     try {
+      const resolvedNumber = await settlementDocNumber.resolve(settlementNumber, settledOn);
       const drafted = await draftEndOfServiceSettlement(transport, {
         companyId: config.companyId,
         body: {
-          number: settlementNumber,
+          number: resolvedNumber,
           employmentId,
           settledOn,
           settlementDue: Money.wire(settlementDue),
@@ -205,6 +224,7 @@ export function EndOfServiceScreen(): ReactNode {
     measurementRef,
     method,
     setFocus,
+    settlementDocNumber,
     settlementNumber,
     settledOn,
     settlementDue,
@@ -239,11 +259,11 @@ export function EndOfServiceScreen(): ReactNode {
     shares.length > 0 &&
     shares.every((share) => share.employmentId !== "" && isMoneyText(share.periodShare));
   const provReady =
-    provNumber !== "" && provPeriod !== "" && provPeriodValid && provAccruedOn !== "" &&
+    (provNumber !== "" || provisionNumber.hidden) && provPeriod !== "" && provPeriodValid && provAccruedOn !== "" &&
     provRef !== "" && provBy !== "" && sharesReady;
   const dueBad = settlementDue !== "" && !isMoneyText(settlementDue);
   const setReady =
-    settlementNumber !== "" && employmentId !== "" && settledOn !== "" &&
+    (settlementNumber !== "" || settlementDocNumber.hidden) && employmentId !== "" && settledOn !== "" &&
     settlementDue !== "" && !dueBad && measurementRef !== "" && treasury !== "";
 
   if (config.companyId === "") return <ChooseCompanyFirst testId="hr-eos-needs-company" />;
@@ -269,6 +289,7 @@ export function EndOfServiceScreen(): ReactNode {
       {/* ═════════════════════════════════════ ١ · مخصص الفترة ═════════ */}
       <Panel title={t("hr.provision.title")} note={t("hr.provision.note")} testId="hr-provision">
         <div className="grid fields-4">
+          {provisionNumber.hidden ? null : (
           <Field
             id="hr-prov-number"
             label={t("hr.field.number")}
@@ -280,6 +301,7 @@ export function EndOfServiceScreen(): ReactNode {
               data-testid="hr-provision-number" value={provNumber} onChange={(e) => setProvNumber(e.target.value)}
               placeholder="EOS-P-2026-06" />
           </Field>
+          )}
           <Field
             id="hr-prov-period"
             label={t("hr.field.periodCode")}
@@ -293,6 +315,7 @@ export function EndOfServiceScreen(): ReactNode {
               data-testid="hr-provision-period" value={provPeriod} onChange={(e) => setProvPeriod(e.target.value)}
               placeholder="2026-06" />
           </Field>
+          {simple ? null : (
           <Field
             id="hr-prov-on"
             label={t("hr.field.accruedOn")}
@@ -303,6 +326,8 @@ export function EndOfServiceScreen(): ReactNode {
             <input id="hr-prov-on" className="ctl mono" type="date" dir="ltr"
               data-testid="hr-provision-date" value={provAccruedOn} onChange={(e) => setProvAccruedOn(e.target.value)} />
           </Field>
+          )}
+          {hideProvBy ? null : (
           <Field
             id="hr-prov-by"
             label={t("hr.field.approvedBy")}
@@ -313,6 +338,7 @@ export function EndOfServiceScreen(): ReactNode {
             <input id="hr-prov-by" className="ctl" autoComplete="off"
               data-testid="hr-provision-by" value={provBy} onChange={(e) => setProvBy(e.target.value)} />
           </Field>
+          )}
         </div>
 
         <Field
@@ -513,6 +539,7 @@ export function EndOfServiceScreen(): ReactNode {
           {/* أربعةُ حقولٍ في صفٍّ واحد، **وكلٌّ منها بوصف**: خليّةٌ بلا وصف
               تُنهي حبرها فوق جيرانها بارتفاع كتلة الوصف كاملةً. والأوصاف
               الأربعة مكتوبة على قدرٍ واحد فتلتفّ سطرين معاً. */}
+          {settlementDocNumber.hidden ? null : (
           <Field
             id="hr-set-number"
             label={t("hr.field.number")}
@@ -524,6 +551,7 @@ export function EndOfServiceScreen(): ReactNode {
               data-testid="hr-settlement-number" value={settlementNumber} onChange={(e) => setSettlementNumber(e.target.value)}
               placeholder="EOS-S-2026-0001" />
           </Field>
+          )}
           <Field
             id="hr-set-employment"
             label={t("hr.field.employmentId")}
@@ -535,6 +563,7 @@ export function EndOfServiceScreen(): ReactNode {
               data-testid="hr-settlement-employment" value={employmentId}
               onChange={(e) => setEmploymentId(e.target.value)} />
           </Field>
+          {simple ? null : (
           <Field
             id="hr-set-on"
             label={t("hr.field.settledOn")}
@@ -545,6 +574,7 @@ export function EndOfServiceScreen(): ReactNode {
             <input id="hr-set-on" className="ctl mono" type="date" dir="ltr"
               data-testid="hr-settlement-date" value={settledOn} onChange={(e) => setSettledOn(e.target.value)} />
           </Field>
+          )}
           <Field
             id="hr-set-due"
             label={t("hr.field.settlementDue")}
@@ -571,6 +601,7 @@ export function EndOfServiceScreen(): ReactNode {
               data-testid="hr-settlement-ref" value={measurementRef}
               onChange={(e) => setMeasurementRef(e.target.value)} />
           </Field>
+          {hideMethod ? null : (
           <Field
             id="hr-set-method"
             label={t("hr.field.settlementMethod")}
@@ -585,6 +616,8 @@ export function EndOfServiceScreen(): ReactNode {
               ))}
             </select>
           </Field>
+          )}
+          {hideTreasury ? null : (
           <Field
             id="hr-set-treasury"
             label={t("hr.field.treasuryParty")}
@@ -596,6 +629,7 @@ export function EndOfServiceScreen(): ReactNode {
               data-testid="hr-settlement-treasury" value={treasury} onChange={(e) => setTreasury(e.target.value)}
               placeholder="BANK-0001" />
           </Field>
+          )}
         </div>
 
         <div className="inline-group">

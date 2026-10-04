@@ -21,6 +21,7 @@
    ولا رقمَ حسابٍ في هذا الملفّ: ما يُعرض من الحساب يأتي من إيصال الترحيل
    العائد، ولا تسمّيه الشاشة.
    ═══════════════════════════════════════════════════════════════════════════ */
+import { shownInMenus, useShowAdvanced } from "../../app/shell/simple-mode";
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import {
@@ -33,6 +34,7 @@ import { useT } from "../../i18n/react";
 import { Button, Panel, StatCard, StatusBadge, type DocState, type Provenance } from "../../ui";
 import { Field } from "../../ui";
 import { APPROVED, CANCELLED, DRAFT, KNOWN_STATES, POSTED, REVERSED } from "./contract";
+import { SectionExtras } from "../../app/shell/SectionExtras";
 
 /* ═════════════════════════════════════════════════ ١ · حين لا منشأة مختارة */
 
@@ -82,14 +84,16 @@ export function AccSectionNav(props: {
   readonly current: string;
 }): ReactNode {
   const { t } = useT();
+  const showAdvanced = useShowAdvanced();
   const screens = props.group === "sales" ? SALES_SCREENS : PURCHASING_SCREENS;
   return (
+    <>
     <nav
       className="acc-tabs"
       aria-label={t("accounting.nav." + props.group)}
       data-testid={"acc-tabs-" + props.group}
     >
-      {screens.map((screen) => (
+      {screens.filter((screen) => shownInMenus(screen.to, showAdvanced, props.current)).map((screen) => (
         <Link
           key={screen.to}
           to={screen.to}
@@ -101,6 +105,8 @@ export function AccSectionNav(props: {
         </Link>
       ))}
     </nav>
+      <SectionExtras section="accounting" current={props.current} />
+    </>
   );
 }
 

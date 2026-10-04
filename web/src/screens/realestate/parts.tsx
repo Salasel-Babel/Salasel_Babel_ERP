@@ -39,6 +39,7 @@ import { resolveTranslatedName } from "../../app/translated-name";
 import { ProblemPanel } from "../../app/shell/ProblemPanel";
 import { EmptyState, MOTION, useMoment } from "../../ui";
 import "./realestate.css";
+import { SectionExtras } from "../../app/shell/SectionExtras";
 
 /* ═══════════════════════════════════ ١ · المجموعات المغلقة من العقد ═══ */
 
@@ -223,6 +224,7 @@ export function SectionHead(props: {
           </Link>
         ))}
       </nav>
+      <SectionExtras section="realestate" current={REALESTATE_SCREENS.find((screen) => screen.here === props.here)?.path ?? ""} />
     </header>
   );
 }

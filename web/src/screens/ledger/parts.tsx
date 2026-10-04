@@ -18,12 +18,14 @@
        و`periodOf` أدناه **ليس حساباً**: هو اقتطاعُ `yyyy-MM` من نصّ تاريخٍ
        ميلاديٍّ نحوُه منشور، وحكمُ الفترة النهائي يعود على إيصال الترحيل.
    ═══════════════════════════════════════════════════════════════════════════ */
+import { shownInMenus, useShowAdvanced } from "../../app/shell/simple-mode";
 import { useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import type { PostingReceipt as Receipt } from "../../api/generated/types";
 import { Num, useT } from "../../i18n/react";
 import { Button } from "../../ui";
 import "../accounting/accounting.css";
+import { SectionExtras } from "../../app/shell/SectionExtras";
 
 /* ═════════════════════════════════════════ ١ · الشريط داخل المجموعة
    **ترتيب العمل لا ترتيب الحروف**: ما يُصحَّح بقيدٍ مضادّ على الدفتر نفسه ←
@@ -44,13 +46,15 @@ export const LEDGER_SCREENS = [
  */
 export function LedgerSectionNav(props: { readonly current: string }): ReactNode {
   const { t } = useT();
+  const showAdvanced = useShowAdvanced();
   return (
+    <>
     <nav
       className="acc-tabs"
       aria-label={t("accounting.ledger.nav.group")}
       data-testid="ledger-nav"
     >
-      {LEDGER_SCREENS.map((screen) => (
+      {LEDGER_SCREENS.filter((screen) => shownInMenus(screen.to, showAdvanced, props.current)).map((screen) => (
         <Link
           key={screen.to}
           to={screen.to}
@@ -62,6 +66,8 @@ export function LedgerSectionNav(props: { readonly current: string }): ReactNode
         </Link>
       ))}
     </nav>
+      <SectionExtras section="accounting" current={props.current} />
+    </>
   );
 }
 

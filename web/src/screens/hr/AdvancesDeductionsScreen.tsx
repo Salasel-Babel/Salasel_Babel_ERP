@@ -24,7 +24,7 @@
        مصفوفة الترحيل — والمحرك يرفض رمزاً لا يعرفه ولا يخترع قالباً. وثمنُ
        ذلك عطلٌ محاسبي حقيقي يُقال هنا صراحةً: السلفة **تُقسَّط ولا تُصرَف**.
    ═══════════════════════════════════════════════════════════════════════════ */
-import { useCallback, useState, type ReactNode } from "react";
+import { useCallback, useMemo, useState, type ReactNode } from "react";
 import {
   draftEmployeeAdvance,
   readEmployeeAdvance,
@@ -36,6 +36,15 @@ import { Money } from "../../api/money";
 import { ProblemError } from "../../api/transport";
 import { PARAM_readTrialBalance_period_RE } from "../../api/generated/formats";
 import { useApi } from "../../app/api-context";
+import { EmployeePicker } from "../../app/pickers";
+import {
+  PRESET,
+  useCurrentMemberName,
+  useDocumentNumber,
+  useFillFrom,
+  usePresetFill,
+  useSimple,
+} from "../../app/presets";
 import { ProblemPanel } from "../../app/shell/ProblemPanel";
 import { Amount, Num, useT } from "../../i18n/react";
 import { Button, EmptyState, Field, Panel, RefusalPanel, StatCard, useMoment } from "../../ui";
@@ -47,6 +56,8 @@ import {
   HrState,
   OpaqueCode,
   isMoneyText,
+  monthPeriod,
+  splitEqualMoney,
   todayIso,
 } from "./parts";
 import { ADVANCE_METHODS, DUPLICATE_NUMBER } from "./contract";
@@ -55,12 +66,19 @@ import "./hr.css";
 /** طريقة صرف السلفة كما يقبلها العقد. */
 type Method = HrAdvanceRequest["settlementMethod"];
 
-/** قسطٌ كما يُكتب قبل أن يعبر — **المبلغ نصّ**. */
-interface InstalmentDraft {
-  key: string;
-  periodCode: string;
-  amount: string;
+/** قسطٌ كما يعبر: فترته ومبلغه — **والمبلغ نصّ**. */
+interface InstalmentLine {
+  readonly periodCode: string;
+  readonly amount: string;
 }
+
+/** قسطٌ كما يُكتب في «كل الشاشات»، بمفتاح صفّه. */
+interface InstalmentDraft extends InstalmentLine {
+  key: string;
+}
+
+/** أقصى عددٍ من الأقساط المتساوية في المبسّطة: سنة. */
+const MAX_INSTALMENTS = 12;
 
 let sequence = 0;
 function newInstalment(): InstalmentDraft {
@@ -90,6 +108,21 @@ export function AdvancesDeductionsScreen(): ReactNode {
   const [advError, setAdvError] = useState<unknown>(null);
   const [advLookup, setAdvLookup] = useState("");
 
+  /* ── الواجهة المبسّطة (ADR-0095): الرقم من الخادم، والصرف اليوم، والخزينة وطريقتها
+     من الثوابت، والأقساط عددٌ يُختار فتُقسم بالهللة من الشهر القادم — بلا عائم. ── */
+  const simple = useSimple();
+  const advanceNumber = useDocumentNumber("employee_advance");
+  const hideAdvMethod = usePresetFill(PRESET.hrSettlementMethod, advMethod, (next) => setAdvMethod(next as Method));
+  const hideAdvTreasury = usePresetFill(PRESET.hrTreasury, advTreasury, setAdvTreasury);
+  const [instalmentCount, setInstalmentCount] = useState(1);
+  /* فترات الأشهر القادمة تُحسب مرّةً عند الفتح — من التاريخ لا من نصّ. */
+  const [nextPeriods] = useState(() => Array.from({ length: MAX_INSTALMENTS }, (_, i) => monthPeriod(i + 1).code));
+  const autoInstalments = useMemo<readonly InstalmentLine[]>(
+    () => splitEqualMoney(advAmount, instalmentCount).map((amount, i) => ({ periodCode: nextPeriods[i] ?? "", amount })),
+    [advAmount, instalmentCount, nextPeriods]
+  );
+  const scheduled: readonly InstalmentLine[] = simple ? autoInstalments : instalments;
+
   /* ── الاستقطاع ────────────────────────────────────────────────────── */
   const [dedEmployee, setDedEmployee] = useState(focus.employeeId);
   const [dedAmount, setDedAmount] = useState("");
@@ -101,17 +134,19 @@ export function AdvancesDeductionsScreen(): ReactNode {
   const [dedBusy, setDedBusy] = useState(false);
   const [dedError, setDedError] = useState<unknown>(null);
   const [dedLookup, setDedLookup] = useState("");
+  /* المعتمِد: صاحبُ الجلسة باسمه، والاعتماد اليوم (ADR-0095). */
+  const hideDedBy = useFillFrom(useCurrentMemberName(), dedBy, setDedBy);
 
   const dedPeriodValid = dedPeriod === "" || PARAM_readTrialBalance_period_RE.test(dedPeriod);
 
   const advanceReady =
-    advNumber.trim() !== "" &&
+    (advNumber.trim() !== "" || advanceNumber.hidden) &&
     advEmployee.trim() !== "" &&
     isMoneyText(advAmount) &&
     advIssuedOn !== "" &&
     advTreasury.trim() !== "" &&
-    instalments.length > 0 &&
-    instalments.every(
+    scheduled.length > 0 &&
+    scheduled.every(
       (line) => PARAM_readTrialBalance_period_RE.test(line.periodCode) && isMoneyText(line.amount)
     );
 
@@ -127,10 +162,11 @@ export function AdvancesDeductionsScreen(): ReactNode {
     setAdvBusy(true);
     setAdvError(null);
     try {
+      const resolvedNumber = await advanceNumber.resolve(advNumber.trim(), advIssuedOn);
       const created = await draftEmployeeAdvance(transport, {
         companyId: config.companyId,
         body: {
-          number: advNumber.trim(),
+          number: resolvedNumber,
           employeeId: advEmployee.trim(),
           /* **المبلغ يعبر نصّاً محتجَزاً بنحو العقد** — ولا يمرّ برقمٍ عائم
              في أي خطوة، ولا يُجمع مجموعُ الأقساط هنا: تساوي المجموع بالمبلغ
@@ -140,7 +176,7 @@ export function AdvancesDeductionsScreen(): ReactNode {
           issuedOn: advIssuedOn,
           settlementMethod: advMethod,
           treasuryPartyId: advTreasury.trim(),
-          instalments: instalments.map((line) => ({
+          instalments: scheduled.map((line) => ({
             periodCode: line.periodCode,
             amount: Money.wire(line.amount),
           })),
@@ -162,10 +198,11 @@ export function AdvancesDeductionsScreen(): ReactNode {
     advMethod,
     advNumber,
     advTreasury,
+    advanceNumber,
     config.companyId,
     fireArrive,
     fireRefuse,
-    instalments,
+    scheduled,
     setFocus,
     transport,
   ]);
@@ -262,6 +299,7 @@ export function AdvancesDeductionsScreen(): ReactNode {
       {/* ═══════════════════════════════════════════════ ١ · السلفة ═════ */}
       <Panel title={t("hr.advance.title")} note={t("hr.advance.note")} testId="hr-advance-new">
         <div className="grid fields-4">
+          {advanceNumber.hidden ? null : (
           <Field id="hr-a-number" label={t("hr.field.number")} hint={t("hr.field.numberHint")} source="typed" required>
             <input
               id="hr-a-number"
@@ -275,6 +313,7 @@ export function AdvancesDeductionsScreen(): ReactNode {
               placeholder="ADV-2026-0001"
             />
           </Field>
+          )}
           <Field
             id="hr-a-employee"
             label={t("hr.field.employeeId")}
@@ -282,16 +321,7 @@ export function AdvancesDeductionsScreen(): ReactNode {
             source="typed"
             required
           >
-            <input
-              id="hr-a-employee"
-              className="ctl mono"
-              dir="ltr"
-              autoComplete="off"
-              spellCheck={false}
-              data-testid="hr-advance-employee"
-              value={advEmployee}
-              onChange={(e) => setAdvEmployee(e.target.value)}
-            />
+            <EmployeePicker id="hr-a-employee" value={advEmployee} onChange={setAdvEmployee} testId="hr-advance-employee" />
           </Field>
           <Field
             id="hr-a-amount"
@@ -314,6 +344,7 @@ export function AdvancesDeductionsScreen(): ReactNode {
               placeholder="0.0000"
             />
           </Field>
+          {simple ? null : (
           <Field
             id="hr-a-issued"
             label={t("hr.field.issuedOn")}
@@ -331,9 +362,12 @@ export function AdvancesDeductionsScreen(): ReactNode {
               onChange={(e) => setAdvIssuedOn(e.target.value)}
             />
           </Field>
+          )}
         </div>
 
+        {hideAdvTreasury && hideAdvMethod ? null : (
         <div className="grid fields-2">
+          {hideAdvTreasury ? null : (
           <Field
             id="hr-a-treasury"
             label={t("hr.field.treasuryParty")}
@@ -352,6 +386,8 @@ export function AdvancesDeductionsScreen(): ReactNode {
               onChange={(e) => setAdvTreasury(e.target.value)}
             />
           </Field>
+          )}
+          {hideAdvMethod ? null : (
           <Field
             id="hr-a-method"
             label={t("hr.field.settlementMethod")}
@@ -373,10 +409,68 @@ export function AdvancesDeductionsScreen(): ReactNode {
               ))}
             </select>
           </Field>
+          )}
         </div>
+        )}
 
         <h3 className="hr-split">{t("hr.advance.instalments")}</h3>
         <p className="muted">{t("hr.advance.instalmentsNote")}</p>
+        {simple ? (
+        <>
+        <div className="grid fields-2">
+          <Field
+            id="hr-a-count"
+            label={t("hr.field.instalmentCount")}
+            hint={t("hr.field.instalmentCountHint")}
+            source="typed"
+            required
+          >
+            <select
+              id="hr-a-count"
+              className="ctl"
+              data-testid="hr-advance-instalment-count"
+              value={String(instalmentCount)}
+              onChange={(e) => {
+                /* القيمة من قائمتنا نحن، فالمطابقة بالنصّ لا بتحويلٍ رقمي. */
+                const picked = Array.from({ length: MAX_INSTALMENTS }, (_, i) => i + 1).find(
+                  (n) => String(n) === e.target.value
+                );
+                setInstalmentCount(picked ?? 1);
+              }}
+            >
+              {Array.from({ length: MAX_INSTALMENTS }, (_, i) => i + 1).map((n) => (
+                <option key={n} value={String(n)}>
+                  {tp("hr.count.instalments", n)}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </div>
+        {autoInstalments.length > 0 ? (
+        <div className="hr-table" data-testid="hr-advance-instalments">
+          <table>
+            <caption className="visually-hidden">{t("hr.advance.instalments")}</caption>
+            <thead>
+              <tr>
+                <th scope="col" className="n">{t("hr.payslip.lineNo")}</th>
+                <th scope="col">{t("hr.field.periodCode")}</th>
+                <th scope="col" className="n">{t("hr.field.amount")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {autoInstalments.map((line, i) => (
+                <tr key={line.periodCode}>
+                  <td className="n"><Num value={i + 1} /></td>
+                  <td><span className="mono" dir="ltr" data-testid="hr-instalment-period">{line.periodCode}</span></td>
+                  <td className="n" data-testid="hr-instalment-amount"><Amount value={Money.wire(line.amount)} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        ) : null}
+        </>
+        ) : (
         <div className="hr-lines" data-testid="hr-advance-instalments">
           {instalments.map((line) => (
             <div key={line.key} className="hr-line">
@@ -450,12 +544,15 @@ export function AdvancesDeductionsScreen(): ReactNode {
             </div>
           ))}
         </div>
+        )}
         <div className="inline-group">
+          {simple ? null : (
           <Button
             label={t("hr.act.addInstalment")}
             onClick={() => setInstalments((current) => [...current, newInstalment()])}
             testId="hr-instalment-add"
           />
+          )}
           <Button
             label={t("hr.act.draftAdvance")}
             kind="primary"
@@ -607,16 +704,7 @@ export function AdvancesDeductionsScreen(): ReactNode {
             source="typed"
             required
           >
-            <input
-              id="hr-d-employee"
-              className="ctl mono"
-              dir="ltr"
-              autoComplete="off"
-              spellCheck={false}
-              data-testid="hr-deduction-employee"
-              value={dedEmployee}
-              onChange={(e) => setDedEmployee(e.target.value)}
-            />
+            <EmployeePicker id="hr-d-employee" value={dedEmployee} onChange={setDedEmployee} testId="hr-deduction-employee" />
           </Field>
           <Field
             id="hr-d-amount"
@@ -681,6 +769,7 @@ export function AdvancesDeductionsScreen(): ReactNode {
               onChange={(e) => setDedCategory(e.target.value)}
             />
           </Field>
+          {hideDedBy ? null : (
           <Field
             id="hr-d-by"
             label={t("hr.field.approvedBy")}
@@ -697,6 +786,8 @@ export function AdvancesDeductionsScreen(): ReactNode {
               onChange={(e) => setDedBy(e.target.value)}
             />
           </Field>
+          )}
+          {simple ? null : (
           <Field
             id="hr-d-on"
             label={t("hr.field.approvedOn")}
@@ -714,6 +805,7 @@ export function AdvancesDeductionsScreen(): ReactNode {
               onChange={(e) => setDedOn(e.target.value)}
             />
           </Field>
+          )}
         </div>
 
         <div className="inline-group">

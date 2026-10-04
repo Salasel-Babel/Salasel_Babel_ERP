@@ -34,7 +34,7 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 import { useCallback, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { postJournalEntry, readCompanySetup } from "../../api/generated/client";
+import { postJournalEntry, readChartOfAccounts, readCompanySetup } from "../../api/generated/client";
 import { useQuery } from "@tanstack/react-query";
 import { SCHEMAS } from "../../api/generated/runtime-schema";
 import { SCHEMA_Money_RE } from "../../api/generated/formats";
@@ -42,6 +42,7 @@ import { Money } from "../../api/money";
 import type { CostCenter, PostingLine, PostingReceipt } from "../../api/generated/types";
 import { ProblemError } from "../../api/transport";
 import { useApi } from "../../app/api-context";
+import { useSimple } from "../../app/presets";
 import { ProblemPanel } from "../../app/shell/ProblemPanel";
 import { useT, Num } from "../../i18n/react";
 
@@ -60,7 +61,6 @@ function members(schema: string, field: string): readonly string[] {
   return found;
 }
 
-const ROLES = members("PostingLine", "role");
 const SIDES = members("PostingLine", "side");
 const SUBLEDGER_KINDS = members("Subledger", "kind");
 
@@ -83,15 +83,17 @@ for (const side of SIDES) {
 const DEBIT = "Debit";
 const CREDIT = "Credit";
 
-/** الدور الافتراضي لكل جانب في مسوّدة جديدة — دورٌ يعرفه العقد، لا نصّ. */
-const DEBIT_ROLE = "Settlement";
-const CREDIT_ROLE = "NetAmount";
-
-for (const role of [DEBIT_ROLE, CREDIT_ROLE]) {
-  if (!ROLES.includes(role)) {
-    throw new TypeError("دور افتراضي غير منشور في العقد · unpublished default role: " + role);
-  }
-}
+/**
+ * نوعُ الدفتر المساعد في الدليل (١٤ قيمة) ⇐ نوعُ الطرف على السلك (٦ قيم): ما يُطابَق
+ * يُختار سلفاً، وما لا يُطابَق يبقى للمستخدم (ADR-0096 — دينٌ مُعلَن).
+ */
+const SUBLEDGER_TYPE_TO_KIND: Readonly<Record<string, string>> = {
+  customer: "Customer",
+  supplier: "Supplier",
+  bank_account: "Treasury",
+  cash_box: "Treasury",
+  employee: "Employee",
+};
 
 /**
  * حدث القيد اليدوي في مصفوفة الترحيل.
@@ -117,12 +119,12 @@ const ACTIVE = "Active";
 /** سطر كما يُحرَّر في الشاشة — المبلغ **نصّ** حتى لحظة الإرسال. */
 interface DraftLine {
   key: string;
-  role: string;
+  /** رمزُ الحساب من الدليل — السطر اليدوي يسمّي حساباً لا دوراً (ADR-0096). */
+  accountCode: string;
   side: string;
   amount: string;
   costCenter: string;
   branchId: string;
-  qualifier: string;
   subledgerKind: string;
   subledgerParty: string;
   narrationAr: string;
@@ -130,16 +132,15 @@ interface DraftLine {
 }
 
 let sequence = 0;
-function newLine(side: string, role: string): DraftLine {
+function newLine(side: string): DraftLine {
   sequence += 1;
   return {
     key: "l" + String(sequence),
-    role,
+    accountCode: "",
     side,
     amount: "",
     costCenter: DEFAULT_CENTER,
     branchId: "",
-    qualifier: "",
     subledgerKind: NO_SUBLEDGER,
     subledgerParty: "",
     narrationAr: "",
@@ -171,8 +172,8 @@ export function JournalVoucherScreen(): ReactNode {
   const [narrationEn, setNarrationEn] = useState("");
   const [idempotencyKey, setIdempotencyKey] = useState(newIdempotencyKey);
   const [lines, setLines] = useState<DraftLine[]>(() => [
-    newLine(DEBIT, DEBIT_ROLE),
-    newLine(CREDIT, CREDIT_ROLE),
+    newLine(DEBIT),
+    newLine(CREDIT),
   ]);
   const [receipt, setReceipt] = useState<PostingReceipt | null>(null);
   const [error, setError] = useState<unknown>(null);
@@ -184,6 +185,18 @@ export function JournalVoucherScreen(): ReactNode {
     retry: false,
     queryFn: ({ signal }) => readCompanySetup(transport, { companyId: config.companyId }, signal),
   });
+
+  /* ── الدليل: الحساب يُختار من المنشور لا يُكتب، والقابلُ للترحيل العامل وحده (ADR-0096) ── */
+  const chart = useQuery({
+    queryKey: ["chart", config.baseUrl, config.token, config.companyId],
+    enabled: config.companyId !== "",
+    retry: false,
+    staleTime: 5 * 60_000,
+    queryFn: ({ signal }) => readChartOfAccounts(transport, { companyId: config.companyId }, signal),
+  });
+  const accounts = (chart.data?.accounts ?? []).filter((account) => account.postable && account.active);
+  const accountOf = (code: string) => accounts.find((account) => account.accountCode === code);
+  const simple = useSimple();
 
   const centres: readonly CostCenter[] = useMemo(
     () => (setup.data?.costCenters ?? []).filter((c) => c.state === ACTIVE),
@@ -203,6 +216,7 @@ export function JournalVoucherScreen(): ReactNode {
     narrationAr !== "" &&
     narrationEn !== "" &&
     lines.length > 0 &&
+    lines.every((line) => line.accountCode !== "") &&
     badAmounts.length === 0 &&
     emptyAmounts.length === 0;
 
@@ -228,11 +242,10 @@ export function JournalVoucherScreen(): ReactNode {
            نفسه** وقت التشغيل، فهي أعضاء المجموعة المغلقة بحكم مصدرها — لكن
            TypeScript لا يعرف ذلك عن نصٍّ قرأه من runtime-schema. */
         return {
-          role: line.role,
+          accountCode: line.accountCode,
           side: line.side,
           amount: Money.wire(line.amount),
           ...(Object.keys(scope).length > 0 ? { scope } : {}),
-          ...(line.qualifier === "" ? {} : { qualifier: line.qualifier }),
           ...(line.subledgerKind === NO_SUBLEDGER || line.subledgerParty === ""
             ? {}
             : { subledger: { kind: line.subledgerKind, partyId: line.subledgerParty } }),
@@ -267,7 +280,7 @@ export function JournalVoucherScreen(): ReactNode {
     setReceipt(null);
     setError(null);
     setIdempotencyKey(newIdempotencyKey());
-    setLines([newLine(DEBIT, DEBIT_ROLE), newLine(CREDIT, CREDIT_ROLE)]);
+    setLines([newLine(DEBIT), newLine(CREDIT)]);
     setNarrationAr("");
     setNarrationEn("");
   }, []);
@@ -388,21 +401,30 @@ export function JournalVoucherScreen(): ReactNode {
             </legend>
             <div className="grid fields-4">
               <div className="field">
-                <label htmlFor={"jv-role-" + line.key}>{t("screen.voucher.role")}</label>
+                <label htmlFor={"jv-account-" + line.key}>{t("screen.voucher.account")}</label>
                 <select
-                  id={"jv-role-" + line.key}
-                  className="ctl mono"
-                  data-testid="voucher-role"
-                  value={line.role}
-                  onChange={(e) => update(line.key, { role: e.target.value })}
+                  id={"jv-account-" + line.key}
+                  className="ctl"
+                  data-testid="voucher-account"
+                  value={line.accountCode}
+                  onChange={(e) => {
+                    const chosen = accountOf(e.target.value);
+                    const kind = chosen ? SUBLEDGER_TYPE_TO_KIND[chosen.subledgerType] : undefined;
+                    update(line.key, {
+                      accountCode: e.target.value,
+                      /* الطرف يتبع الحساب: حسابٌ ضابط يفتح طرفه بنوعه، وحسابٌ بلا دفتر مساعد يُغلقه. */
+                      subledgerKind: chosen && chosen.subledgerType !== "none" ? (kind && SUBLEDGER_KINDS.includes(kind) ? kind : line.subledgerKind === NO_SUBLEDGER ? (SUBLEDGER_KINDS.find((k) => k !== NO_SUBLEDGER) ?? NO_SUBLEDGER) : line.subledgerKind) : NO_SUBLEDGER,
+                    });
+                  }}
                 >
-                  {ROLES.map((role) => (
-                    <option key={role} value={role}>
-                      {role}
+                  <option value="">{t("app.picker.choose")}</option>
+                  {accounts.map((account) => (
+                    <option key={account.accountCode} value={account.accountCode}>
+                      {account.accountCode + " — " + account.nameAr}
                     </option>
                   ))}
                 </select>
-                <span className="hint">{t("screen.voucher.roleHint")}</span>
+                <span className="hint">{t("screen.voucher.accountHint")}</span>
               </div>
 
               <div className="field">
@@ -448,6 +470,7 @@ export function JournalVoucherScreen(): ReactNode {
                 </span>
               </div>
 
+              {simple ? null : (
               <div className="field">
                 <label htmlFor={"jv-cc-" + line.key}>{t("field.costCentre.label")}</label>
                 <select
@@ -466,9 +489,16 @@ export function JournalVoucherScreen(): ReactNode {
                 </select>
                 <span className="hint">{t("screen.voucher.costCentreHint")}</span>
               </div>
+              )}
             </div>
 
+            {(() => {
+              const chosen = accountOf(line.accountCode);
+              const wantsBranch = !simple || (chosen?.requiredDimensions ?? []).includes("branch");
+              const wantsParty = !simple || (chosen !== undefined && chosen.subledgerType !== "none");
+              return !wantsBranch && !wantsParty ? null : (
             <div className="grid fields-4" style={{ "--grid-lead": "var(--space-10)" } as CSSProperties}>
+              {wantsBranch ? (
               <div className="field">
                 <label htmlFor={"jv-branch-" + line.key}>{t("field.branch.label")}</label>
                 <input
@@ -483,21 +513,9 @@ export function JournalVoucherScreen(): ReactNode {
                 />
                 <span className="hint">{t("screen.voucher.branchHint")}</span>
               </div>
+              ) : null}
 
-              <div className="field">
-                <label htmlFor={"jv-qual-" + line.key}>{t("screen.voucher.qualifier")}</label>
-                <input
-                  id={"jv-qual-" + line.key}
-                  className="ctl mono"
-                  dir="ltr"
-                  autoComplete="off"
-                  data-testid="voucher-qualifier"
-                  value={line.qualifier}
-                  onChange={(e) => update(line.key, { qualifier: e.target.value })}
-                />
-                <span className="hint">{t("screen.voucher.qualifierHint")}</span>
-              </div>
-
+              {wantsParty ? (
               <div className="field">
                 <label htmlFor={"jv-sub-" + line.key}>{t("screen.voucher.subledger")}</label>
                 <select
@@ -515,7 +533,9 @@ export function JournalVoucherScreen(): ReactNode {
                 </select>
                 <span className="hint">{t("screen.voucher.subledgerHint")}</span>
               </div>
+              ) : null}
 
+              {wantsParty ? (
               <div className="field">
                 <label htmlFor={"jv-party-" + line.key}>{t("screen.voucher.party")}</label>
                 <input
@@ -531,7 +551,10 @@ export function JournalVoucherScreen(): ReactNode {
                 />
                 <span className="hint">{t("screen.voucher.partyHint")}</span>
               </div>
+              ) : null}
             </div>
+              );
+            })()}
 
             <div className="inline-group" style={{ marginTop: "var(--space-10)" }}>
               <button
@@ -551,7 +574,7 @@ export function JournalVoucherScreen(): ReactNode {
           type="button"
           className="addline"
           data-testid="voucher-add-line"
-          onClick={() => setLines((current) => [...current, newLine(DEBIT, DEBIT_ROLE)])}
+          onClick={() => setLines((current) => [...current, newLine(DEBIT)])}
         >
           {t("common.action.addLine")}
         </button>

@@ -70,6 +70,14 @@ begin
                                      core.capability_profile_capability,
                                      core.capability_profile_default from %I', v_role);
 
+    -- ── ثوابت الشركة: مورد واحد يُستبدل كلّه، فالحذف جزء من الاستبدال ──────
+    execute format('grant select, insert, update, delete on core.company_preset to %I', v_role);
+    execute format('revoke truncate on core.company_preset from %I', v_role);
+
+    -- ── عدّادات الترقيم: تُقرأ وتُدرَج وتتقدّم، ولا تُحذف أبداً (ADR-0008) ─────
+    execute format('grant select, insert, update on core.document_counter to %I', v_role);
+    execute format('revoke delete, truncate on core.document_counter from %I', v_role);
+
     -- ── العضويات: تُقرأ وتُضاف، ويُسحب صفّها، ويُغيَّر **عمود الدور وحده** ──
     -- والصلاحية تتبع ما هو مبنيّ لا ما يُنوى. وقد كان السطر السابق يمنع UPDATE
     -- وDELETE بحجّة أنه «لا مسار سحبِ عضوية على هذا السطح بعد»، ويَعِد بأن يُضاف

@@ -46,11 +46,25 @@ const COMPANY = "11111111-1111-4111-8111-111111111111";
 /** المسارات الأربع بترتيب العمل — والترتيب نفسه في الملاحة وفي SCREENS. */
 const SETUP_PATHS = [
   "/setup",
+  "/setup/presets",
   "/setup/cost-centers",
   "/setup/document-shapes",
   "/setup/chart-of-accounts",
   "/setup/parameters",
 ];
+
+/** ثوابت الشركة كما يعيدها الخادم: لا شيء مضبوط بعد، والكتالوج والسلاسل معه. */
+const PRESETS = {
+  values: [],
+  catalogue: [
+    { key: "branch.default", kind: "Text", choices: [] },
+    { key: "tax.classification", kind: "Choice", choices: ["standard", "zero", "exempt"] },
+    { key: "tax.rate", kind: "Rate", choices: [] },
+    { key: "tax.recoverable", kind: "Boolean", choices: [] },
+    { key: "number.sales_invoice", kind: "Prefix", choices: [] },
+  ],
+  series: [{ code: "sales_invoice", defaultPrefix: "INV" }],
+};
 
 const SETUP = {
   costCenters: [
@@ -285,6 +299,7 @@ function fullRoutes(): Record<string, unknown> {
   return {
     ["GET " + AT + "/setup"]: SETUP,
     ["GET " + AT + "/setup/currencies"]: CURRENCIES,
+    ["GET " + AT + "/presets"]: PRESETS,
     ["GET " + AT + "/capability-profile"]: PROFILE,
     ["GET " + AT + "/chart-of-accounts"]: CHART,
     ["GET " + AT + "/document-shapes/purchasing.supplier_bill"]: BILL_SHAPE,
@@ -371,6 +386,7 @@ function select(testId: string): HTMLSelectElement {
 
 const SCREEN_FILES = [
   "CompanySetupScreen.tsx",
+  "PresetsScreen.tsx",
   "CostCentersScreen.tsx",
   "DocumentShapesScreen.tsx",
   "ChartOfAccountsScreen.tsx",
@@ -382,6 +398,10 @@ function sourceOf(file: string): string {
 }
 
 beforeEach(() => {
+  /* حرّاسُ اكتمال الملاحة تقيس القوائم **كاملةً**: الواجهة المبسّطة تُخفي
+     المتقدّمَ افتراضياً، وما يقيسه هذا الملفّ أن كل شاشةٍ تُبلَغ حين يُطلب
+     المتقدّم. والمبسّطةُ نفسها مقيسةٌ في tests/shell-nav.test.tsx. */
+  globalThis.localStorage.setItem("sb-show-advanced", "1");
   globalThis.localStorage.setItem(
     "sb-api-config",
     JSON.stringify({ baseUrl: "", token: "t", companyId: COMPANY, book: "MAIN", period: "" })
@@ -396,6 +416,43 @@ afterEach(() => {
 /* ═══════════════════════════════════════════════════════════════════════
    ١ · القوائم الثلاث تتّفق
    ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── ثوابت الشركة (ADR-0095): الحقول من الكتالوج، والإيداع يستبدل كلّه ───── */
+describe("ثوابت الشركة", () => {
+  it("الحقول تُرسم من كتالوج الخادم لا من قائمة مكتوبة بيد", async () => {
+    await mount({ path: "/setup/presets", transport: stub({ routes: fullRoutes() }) });
+    await waitFor(() => expect(screen.getByTestId("preset-taxRate")).toBeTruthy());
+    expect(screen.getByTestId("preset-branchDefault")).toBeTruthy();
+    expect(select("preset-taxClassification").options.length).toBe(4);
+    expect(screen.getByTestId("preset-numberSalesInvoice")).toBeTruthy();
+    expect(screen.getByTestId("setup-presets-count").textContent).toContain("0");
+  });
+
+  it("الحفظ يُرسل القائمة كلّها إلى بابها، والفارغ يُرسل فارغاً ليُزال", async () => {
+    const sent: Recorded[] = [];
+    await mount({
+      path: "/setup/presets",
+      transport: stub({ routes: { ...fullRoutes(), ["PUT " + AT + "/presets"]: PRESETS }, sent }),
+    });
+    await waitFor(() => expect(screen.getByTestId("preset-taxRate")).toBeTruthy());
+    await type(input("preset-taxRate"), "0.15");
+    await pick(select("preset-taxClassification"), "standard");
+
+    const before = sent.length;
+    await click(button("setup-presets-save"));
+    await waitFor(() => expect(screen.getByTestId("setup-presets-saved")).toBeTruthy());
+
+    const writes = sent.slice(before).filter((r) => r.method !== "GET");
+    expect(writes).toHaveLength(1);
+    const only = writes[0] as Recorded;
+    expect(only.method).toBe("PUT");
+    expect(only.url).toContain("/presets");
+    const values = (only.body as { values: { name: string; value: string }[] }).values;
+    expect(values).toContainEqual({ name: "tax.rate", value: "0.15" });
+    expect(values).toContainEqual({ name: "tax.classification", value: "standard" });
+  });
+});
+
 describe("الملاحة اليدوية ونسختها في العقد", () => {
   it("كل شاشة تأسيسٍ في SCREENS لها رابطٌ في قائمة الملاحة اليدوية", async () => {
     await mount({ path: "/setup", transport: stub({ routes: fullRoutes() }) });
@@ -417,6 +474,7 @@ describe("الملاحة اليدوية ونسختها في العقد", () => {
   it("وكل مسارٍ من الخمسة يفتح شاشته في الموجّه", async () => {
     const expected = [
       "setup-company-screen",
+      "setup-presets-screen",
       "setup-cost-centers-screen",
       "setup-document-shapes-screen",
       "setup-chart-screen",

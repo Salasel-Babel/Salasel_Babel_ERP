@@ -113,6 +113,12 @@ internal static class ApiRoutes
     /// </summary>
     public const string SetupCurrencies = CompanySetup + "/currencies";
 
+    /// <summary>ثوابت الشركة: مورد واحد يُقرأ ويُستبدل.</summary>
+    public const string CompanyPresets = Company + "/presets";
+
+    /// <summary>تخصيص الرقم التالي في سلسلة ترقيم.</summary>
+    public const string CompanyPresetNumbers = CompanyPresets + "/numbers/{series}";
+
     /// <summary>
     /// مراكز التكلفة: القائمة والإضافة.
     /// <para>
@@ -138,7 +144,7 @@ internal static class ApiRoutes
     // يُعدَّل على المستند — ولو كان `PUT` على المستند لصار «تعديل مستند» أول ما يتبادر،
     // وهو بالضبط ما لا يوجد في هذا النظام.
 
-    /// <summary>العملاء: الإضافة. بيانات أساسية، لا مستند.</summary>
+    /// <summary>العملاء: الإضافة والقائمة مرتَّبةً بالرمز. بيانات أساسية، لا مستند.</summary>
     public const string Customers = Company + "/customers";
 
     /// <summary>
@@ -195,7 +201,7 @@ internal static class ApiRoutes
 
     // ── المشتريات ────────────────────────────────────────────────────────────
 
-    /// <summary>الموردون: الإضافة.</summary>
+    /// <summary>الموردون: الإضافة والقائمة مرتَّبةً بالرمز.</summary>
     public const string Suppliers = Company + "/suppliers";
 
     /// <summary>مورد واحد: القراءة. وما غاب عن العميل غائب هنا وللسبب نفسه.</summary>
@@ -613,7 +619,7 @@ internal static class ApiRoutes
     // مورد فرعي (`…/termination`) لا حقل حالة يُعدَّل.
 
     /// <summary>
-    /// الموظفون: التسجيل.
+    /// الموظفون: التسجيل، والقائمة مرتَّبةً بالرمز وهوياتها مقنَّعة.
     /// <para>
     /// <b>ولا رمز في الحمولة</b>: الخادم يولّد رمزاً <b>معتماً</b> هو وحده ما يعبر إلى
     /// دفتر الأستاذ. ولا هوية وطنية ولا آيبان ولا اسم يعبر إلى <c>ledger.*</c> بحال:

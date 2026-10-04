@@ -4,7 +4,7 @@
 
    المصدر · source:  contracts/openapi/v1.json
    بصمة المصدر · source sha256:
-     b8ca0fd699ea1f5d061bda3328419adca534050a63666a733bc407e334cc869c
+     b7b386b463b9b45febe6627baebcb202c5d3985a96aa0da45159ef7f9c2ccccc
    المولّد · generator: web/scripts/generate-client.mjs
 
    لإعادة التوليد:  npm run gen
@@ -554,6 +554,31 @@ export async function admitDocument(transport: Transport, args: AdmitDocumentArg
   const response = await transport({ method: "POST", url, body, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "DocumentAdmission", response.json) as T.DocumentAdmission;
+}
+
+export interface AllocateDocumentNumberArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** رمز سلسلة الترقيم من قائمة series في ثوابت الشركة. / The numbering series code, from the series list in the company presets. */
+  series: string;
+  /** جسم الطلب. / The request body. */
+  body: T.AllocateNumberRequest;
+}
+
+/**
+ * تخصيص رقم مستند / Allocate a document number
+ * 
+ * يخصّص الرقم التالي في سلسلة ترقيم داخل سنة التاريخ المعطى: البادئة (المضبوطة أو الافتراضية)، فالسنة، فتسلسلٌ من عدّادٍ يُقفل صفُّه عند القراءة (ADR-0008). **والرقم تخصيصٌ لا فرض**: يعود إلى المتصفّح ليرسله في المستند كما كان دائماً (ADR-0054 §7)، وفرادته تُفرض عند المستند. ورقمٌ خُصّص ولم يُستعمل يترك فجوةً مُعلَنة.
+ * 
+ * Allocates the next number in a numbering series within the year of the given date: the prefix (set or default), the year, then a sequence from a counter whose row is locked on read (ADR-0008). **The number is an allocation, not an imposition**: it goes back to the browser, which sends it in the document as it always has (ADR-0054 §7), and uniqueness is enforced at the document. An allocated number left unused leaves a declared gap.
+ */
+export async function allocateDocumentNumber(transport: Transport, args: AllocateDocumentNumberArgs, signal?: AbortSignal): Promise<T.AllocatedNumber> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/presets/numbers/" + encodeURIComponent(args.series) + "";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "AllocateNumberRequest", args.body as unknown);
+  const response = await transport({ method: "POST", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "AllocatedNumber", response.json) as T.AllocatedNumber;
 }
 
 export interface AllocateTenantReceiptArgs {
@@ -2211,6 +2236,54 @@ export async function listAttachments(transport: Transport, args: ListAttachment
   return decodeSchema(SCHEMAS, "AttachmentPage", response.json) as T.AttachmentPage;
 }
 
+export interface ListCustomersArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+}
+
+/**
+ * قائمة العملاء / List the customers
+ * 
+ * يقرأ عملاء المنشأة كلّهم **مرتَّبين بالرمز**، بالشكل نفسه الذي يُقرأ به العميل الواحد — لقائمة اختيارٍ تحلّ محلّ معرّفٍ يُكتب باليد.
+ * 
+ * **ولا صفحة ولا سقف ولا فلتر**: غلافٌ بعدّاد لا مصفوفة عارية، فأول حاجة إلى صفحةٍ تجد موضعها ولا تكسر العقد.
+ * 
+ * Reads all of the company's customers **ordered by code**, each in the same shape readCustomer returns — for a picker that replaces a hand-typed identifier.
+ * 
+ * **No page, no cap, no filter**: an envelope with a count rather than a bare array, so the first need for a page finds its place without breaking the contract.
+ */
+export async function listCustomers(transport: Transport, args: ListCustomersArgs, signal?: AbortSignal): Promise<T.PartyList> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/customers";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "PartyList", response.json) as T.PartyList;
+}
+
+export interface ListEmployeesArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+}
+
+/**
+ * قائمة الموظفين / List the employees
+ * 
+ * يقرأ موظفي المنشأة كلّهم **مرتَّبين بالرمز**، كلٌّ بعلاقته الجارية وهويته **مقنَّعة** — القناع نفسه الذي على قراءة الموظف الواحد، فلا تُسرَّب القائمة ما يحجبه المورد.
+ * 
+ * **ولا صفحة ولا سقف ولا فلتر**: غلافٌ بعدّاد لا مصفوفة عارية.
+ * 
+ * Reads all of the company's employees **ordered by code**, each with the current employment and a **masked** identity — the same mask readEmployee applies, so the list leaks nothing the single resource hides.
+ * 
+ * **No page, no cap, no filter**: an envelope with a count rather than a bare array.
+ */
+export async function listEmployees(transport: Transport, args: ListEmployeesArgs, signal?: AbortSignal): Promise<T.HrEmployeeList> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/employees";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "HrEmployeeList", response.json) as T.HrEmployeeList;
+}
+
 export interface ListItemsArgs {
   /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
   companyId: string;
@@ -2451,6 +2524,26 @@ export async function listStorageLocations(transport: Transport, args: ListStora
   const response = await transport({ method: "GET", url, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "StoragePlaceList", response.json) as T.StoragePlaceList;
+}
+
+export interface ListSuppliersArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+}
+
+/**
+ * قائمة الموردين / List the suppliers
+ * 
+ * يقرأ موردي المنشأة كلّهم **مرتَّبين بالرمز**، بالشكل نفسه الذي يُقرأ به المورد الواحد — لقائمة اختيار. ولا صفحة ولا سقف ولا فلتر، للسبب نفسه الذي على قائمة العملاء.
+ * 
+ * Reads all of the company's suppliers **ordered by code**, each in the same shape readSupplier returns — for a picker. No page, no cap, no filter, for the same reason as on the customer list.
+ */
+export async function listSuppliers(transport: Transport, args: ListSuppliersArgs, signal?: AbortSignal): Promise<T.PartyList> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/suppliers";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "PartyList", response.json) as T.PartyList;
 }
 
 export interface ListUnitConversionsArgs {
@@ -3527,6 +3620,26 @@ export async function readClientCertificate(transport: Transport, args: ReadClie
   const response = await transport({ method: "GET", url, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "Certificate", response.json) as T.Certificate;
+}
+
+export interface ReadCompanyPresetsArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+}
+
+/**
+ * ثوابت الشركة / The company presets
+ * 
+ * يقرأ ثوابت الشركة: ما يُحسم مرّةً في الإعداد — الفرع الافتراضي، والتصنيف الضريبي ونسبته، وطريقة التسوية وخزينتها، والمستودع والموقع، وبادئات الترقيم — ثم يختفي من شاشات الإدخال فتبقى فيها المتغيّرات القليلة. ويعود معه **الكتالوج المغلق** وسلاسل الترقيم، فترسم شاشة الإعداد حقولها من العقد لا من قائمة مكتوبة بيد. ومنشأةٌ لم تضبط شيئاً تُقرأ بقيمٍ فارغة لا بـ404.
+ * 
+ * Reads the company presets: what is decided once at setup — the default branch, the tax classification and rate, the settlement method and its treasury, the warehouse and location, and the numbering prefixes — and then disappears from the entry screens, leaving the few variables. The **closed catalogue** and the numbering series come with it, so the setup screen draws its fields from the contract rather than from a hand-written list. A company that has set nothing reads as empty values, not as 404.
+ */
+export async function readCompanyPresets(transport: Transport, args: ReadCompanyPresetsArgs, signal?: AbortSignal): Promise<T.CompanyPresets> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/presets";
+  const url = path;
+  const response = await transport({ method: "GET", url, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "CompanyPresets", response.json) as T.CompanyPresets;
 }
 
 export interface ReadCompanySetupArgs {
@@ -5418,6 +5531,29 @@ export async function renewSession(transport: Transport, args: RenewSessionArgs,
   const response = await transport({ method: "POST", url, body, signal });
   if (!response.ok) throw ProblemError.from(response);
   return decodeSchema(SCHEMAS, "AccessSession", response.json) as T.AccessSession;
+}
+
+export interface ReplaceCompanyPresetsArgs {
+  /** معرّف الشركة. النطاق يُشتق من المسار ويُطابَق بالاعتماد؛ ولا يوجد حقل شركة في الجسم. / The company identifier. Scope comes from the path and is matched against the credential; there is no company field in any body. */
+  companyId: string;
+  /** جسم الطلب. / The request body. */
+  body: T.ReplaceCompanyPresetsRequest;
+}
+
+/**
+ * استبدال ثوابت الشركة / Replace the company presets
+ * 
+ * يستبدل الثوابت كلّها دفعةً واحدة: مفتاحٌ غائب أو قيمةٌ فارغة تزيل الثابت. المفاتيح من الكتالوج المغلق وحده، وكل قيمة تُصدَّق بنوعها (نسبة، أو true/false، أو بادئة، أو اختيار من قائمة)، وتُعاد الأخطاء كلّها دفعةً ولا يُكتب شيء معها.
+ * 
+ * Replaces all presets at once: an absent key or an empty value removes the preset. Keys come from the closed catalogue only, every value is validated by its kind (a rate, true/false, a prefix, or a choice from a list), and all errors come back together with nothing written.
+ */
+export async function replaceCompanyPresets(transport: Transport, args: ReplaceCompanyPresetsArgs, signal?: AbortSignal): Promise<T.CompanyPresets> {
+  const path = "/api/v1/companies/" + encodeURIComponent(args.companyId) + "/presets";
+  const url = path;
+  const body = encodeSchema(SCHEMAS, "ReplaceCompanyPresetsRequest", args.body as unknown);
+  const response = await transport({ method: "PUT", url, body, signal });
+  if (!response.ok) throw ProblemError.from(response);
+  return decodeSchema(SCHEMAS, "CompanyPresets", response.json) as T.CompanyPresets;
 }
 
 export interface ResumeSubscriptionArgs {

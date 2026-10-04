@@ -202,7 +202,10 @@ public sealed class PublishedContractTests
         // وكلمة مرور — وهو بابٌ مفتوحٌ محروسٌ بحدّ معدّل كإخوته — وضبطُ معرّف الدخول
         // وكلمته لصاحب الجلسة. **ولا بابَ ثالثاً**: لا قراءةَ لمعرّفٍ ولا حذفَ له؛
         // القراءةُ تُخرج ما لا يُخرَج، والحذفُ يترك مستخدماً بلا بابٍ يدخل منه.
-        Assert.Equal(208, paths.EnumerateObject().SelectMany(static p => p.Value.EnumerateObject())
+        // ثم من 208 إلى **214** بستّة أبواب (ADR-0095): ثوابتُ الشركة تُقرأ وتُستبدل، ورقمُ المستند
+        // يُخصَّص من عدّادٍ لا يُكتب بيد؛ وقوائمُ العملاء والموردين والموظفين لتُختار من قائمةٍ لا تُكتب
+        // معرّفاتُها. **ولا بابَ حذف** هنا أيضاً: الثابت يُزال بقيمةٍ فارغة، والعدّاد لا يرجع.
+        Assert.Equal(214, paths.EnumerateObject().SelectMany(static p => p.Value.EnumerateObject())
             .Count(static o => o.Name is "get" or "post" or "put" or "patch" or "delete"));
 
         // ولا فعل حذف على السطح كلّه — لا على قيد، ولا على مركز تكلفة، ولا على منشأة.
@@ -344,10 +347,19 @@ public sealed class PublishedContractTests
             .GetProperty("Money").GetProperty("pattern").GetString()!;
         Assert.Equal(@"^-?(0|[1-9][0-9]*)(\.[0-9]{1,4})?$", moneyPattern);
 
-        // ولا حقل حساب في أي مخطّط طلب: القاعدة 2 مُعلنة على السلك أيضاً.
-        string requestSchemas = root.GetProperty("components").GetProperty("schemas")
-            .GetProperty("PostingLine").GetRawText();
-        Assert.DoesNotContain("accountCode", requestSchemas, StringComparison.OrdinalIgnoreCase);
+        // ‏accountCode على سطر الترحيل: موجود، **اختياري**، ومقيَّد بالقيد اليدوي في وصفه
+        // (‏ADR-0096). كان التأكيد هنا «لا حقل حساب في أي مخطّط طلب»، وسببُ تعديله مكتوب في
+        // القرار: القاعدة 2 باقية على `Babel.Contracts`، والسلك يحمل الرمز للقيد اليدوي وحده.
+        JsonElement postingLine = root.GetProperty("components").GetProperty("schemas").GetProperty("PostingLine");
+        JsonElement accountCode = postingLine.GetProperty("properties").GetProperty("accountCode");
+        Assert.Equal("string", accountCode.GetProperty("type").GetString());
+        Assert.DoesNotContain(
+            postingLine.GetProperty("required").EnumerateArray().Select(static r => r.GetString()),
+            static name => name is "accountCode" or "role");
+        string accountCodeDescription = accountCode.GetProperty("description").GetString()!;
+        Assert.Contains("ledger.manual_voucher.posted", accountCodeDescription, StringComparison.Ordinal);
+        Assert.Contains("يدوية", accountCodeDescription, StringComparison.Ordinal);
+        Assert.Contains("manual", accountCodeDescription, StringComparison.Ordinal);
     }
 
     private static async Task GenerateAsync(string target, string culture, bool invariantGlobalization)

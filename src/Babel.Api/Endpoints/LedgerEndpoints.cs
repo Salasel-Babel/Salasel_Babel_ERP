@@ -7,6 +7,7 @@ using Babel.Api.Wire;
 using Babel.Contracts.Posting;
 using Babel.Core.CompanySetup;
 using Babel.Ledger.Audit;
+using Babel.Ledger.Vouchers;
 using Babel.SharedKernel;
 
 namespace Babel.Api.Endpoints;
@@ -63,6 +64,7 @@ internal static class LedgerEndpoints
     private static async Task<IResult> PostJournalEntryAsync(
         HttpContext context,
         IPostingService posting,
+        ManualVoucherService vouchers,
         ICostCenterResolver costCenters,
         CancellationToken cancellationToken)
     {
@@ -122,9 +124,17 @@ internal static class LedgerEndpoints
             resolvedCostCenters[candidate ?? string.Empty] = resolution.Value;
         }
 
+        // ── سطورُ الدور أم سطورُ الحساب؟ شكلٌ يُقرأ هنا، ومعناه يُقرَّر في الدفتر ───
+        // ‏ADR-0096: السطر يحمل واحداً منهما بالضبط، والطلب من نوعٍ واحد. وسطورُ الحساب لا
+        // تدخل العقد المشترك (القاعدة 2)، بل تُسلَّم إلى سطح القيد اليدوي في الدفتر، وهو
+        // الذي يقرّر — من المصفوفة — أي حدثٍ يقبلها.
         PostingRequest request;
+        IReadOnlyList<ManualVoucherLine>? accountLines;
         try
         {
+            accountLines = WireMapping.LinesNameAccounts(dto)
+                ? WireMapping.ToManualVoucherLines(dto, resolvedCostCenters)
+                : null;
             request = WireMapping.ToPostingRequest(dto, companyId, principal.User, resolvedCostCenters);
         }
         catch (WireFormatException wire)
@@ -143,7 +153,9 @@ internal static class LedgerEndpoints
                 "A domain value type refused the input after it passed boundary validation: " + exception.Message);
         }
 
-        Result<PostingReceipt> result = await posting.PostAsync(request, cancellationToken).ConfigureAwait(false);
+        Result<PostingReceipt> result = accountLines is null
+            ? await posting.PostAsync(request, cancellationToken).ConfigureAwait(false)
+            : await vouchers.PostAsync(request, accountLines, cancellationToken).ConfigureAwait(false);
 
         if (result.IsFailure)
         {

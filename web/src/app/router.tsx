@@ -8,7 +8,6 @@ import { ContractScreen } from "../screens/contract/ContractScreen";
 import { SignInScreen } from "../screens/session/SignInScreen";
 import { JournalVoucherScreen } from "../screens/voucher/JournalVoucherScreen";
 /* الأمر المنطوق — الأقسام الخمسة في شاشة واحدة، لا تدفّقٌ واحد في شاشة. */
-import { VoiceScreen } from "../screens/voice/VoiceScreen";
 /* مسار العرض — طبقة عرض تُرمى بعد التسجيل (ADR-0028). ثلاثة أسطر لا أكثر. */
 import { DemoStage } from "../demo/DemoStage";
 /* صفحة العرض الحيّة لنظام التصميم — هي عقد الطبقة البصرية مع من يبني الأقسام. */
@@ -93,6 +92,7 @@ import { CostCentersScreen } from "../screens/setup/CostCentersScreen";
 import { DocumentShapesScreen } from "../screens/setup/DocumentShapesScreen";
 import { ChartOfAccountsScreen } from "../screens/setup/ChartOfAccountsScreen";
 import { ParametersScreen } from "../screens/setup/ParametersScreen";
+import { PresetsScreen } from "../screens/setup/PresetsScreen";
 
 const rootRoute = createRootRoute({ component: AppShell });
 
@@ -126,12 +126,6 @@ const voucherRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/voucher",
   component: JournalVoucherScreen,
-});
-
-const voiceRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/voice",
-  component: VoiceScreen,
 });
 
 const designRoute = createRoute({
@@ -475,6 +469,12 @@ const setupChartRoute = createRoute({
   component: ChartOfAccountsScreen,
 });
 
+const setupPresetsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/setup/presets",
+  component: PresetsScreen,
+});
+
 const setupParametersRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/setup/parameters",
@@ -487,7 +487,6 @@ const routeTree = rootRoute.addChildren([
   signInRoute,
   voucherRoute,
   contractRoute,
-  voiceRoute,
   designRoute,
   demoRoute,
   realEstateRegisterRoute,
@@ -542,6 +541,8 @@ const routeTree = rootRoute.addChildren([
   setupCostCentersRoute,
   setupDocumentShapesRoute,
   setupChartRoute,
+  setupPresetsRoute,
+
   setupParametersRoute,
 ]);
 

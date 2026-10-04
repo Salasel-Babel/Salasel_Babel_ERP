@@ -160,6 +160,8 @@ public sealed class PostingAndReversalTests
                 "put /api/v1/access/password",
                 "put /api/v1/companies/{companyId}/capability-profile",
                 "put /api/v1/companies/{companyId}/cost-centers/{costCenterCode}",
+                // ثوابت الشركة: مورد واحد يُستبدل كلّه (ADR-0095).
+                "put /api/v1/companies/{companyId}/presets",
                 "put /api/v1/companies/{companyId}/setup",
                 "put /api/v1/platform/plans/{planCode}",
             ],

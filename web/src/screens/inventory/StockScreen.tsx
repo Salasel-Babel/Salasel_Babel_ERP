@@ -40,6 +40,7 @@ import {
   magnitudeIsNegative,
 } from "../../ui";
 import { ChooseCompanyFirst, ReadingSkeleton, SurfaceGap } from "./shared";
+import { SectionExtras } from "../../app/shell/SectionExtras";
 
 /** القيمة التي يعرفها العقد لمستودعٍ لم يُسكَّن بعد. */
 const UNBINNED = "DEFAULT";
@@ -268,6 +269,7 @@ export function InventoryStockScreen(): ReactNode {
           <p className="sub">{t("inventory.stock.lede")}</p>
         </div>
       </header>
+      <SectionExtras section="inventory" current="/inventory/stock" />
 
       {balancesQuery.data ? (
         <div className="stats-row" data-testid="stock-stats">

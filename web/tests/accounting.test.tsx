@@ -24,9 +24,13 @@ import { createI18n } from "../src/i18n/setup";
 import { ApiProvider } from "../src/app/api-context";
 import { createAppRouter } from "../src/app/router";
 import { SCREENS, SCREEN_GROUPS, SECTIONS } from "../src/app/shell/sections";
-import { registeredPaths } from "../src/app/voice-destinations";
 import type { RawResponse, Transport } from "../src/api/transport";
 import { resetAccountingFocus } from "../src/screens/accounting/focus";
+
+/** مساراتُ الموجّه المسجَّلة — ما يبدأ بـ`/` من معرّفات المسارات. */
+function registeredPaths(router: { routesById?: Record<string, unknown> }): readonly string[] {
+  return Object.keys(router.routesById ?? {}).filter((id) => id.startsWith("/"));
+}
 
 const COMPANY = "11111111-1111-1111-1111-111111111111";
 const base = "/api/v1/companies/" + COMPANY;
@@ -110,6 +114,8 @@ async function click(testId: string): Promise<void> {
 
 beforeEach(() => {
   resetAccountingFocus();
+  /* النماذج تُقاس **كاملةً**: الواجهة المبسّطة تُخفي الرقم والتاريخ (ADR-0095). */
+  globalThis.localStorage.setItem("sb-show-advanced", "1");
   globalThis.localStorage.setItem(
     "sb-api-config",
     JSON.stringify({ baseUrl: "", token: "t", companyId: COMPANY, book: "MAIN", period: "" })

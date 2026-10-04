@@ -137,9 +137,9 @@ h1,h2,.gal-hero h1,.page-title h1,.drawer-hd h2,.empty h3{
 }
 .brand{display:flex;align-items:center;gap:var(--space-10);font-weight:var(--font-weight-bold);white-space:nowrap}
 .brand .mark{
-  width:30px;height:30px;border-radius:var(--radius-md);display:grid;place-items:center;
-  background:linear-gradient(140deg,var(--color-primary),var(--brand-mark-accent));
-  color:var(--on-accent-fixed);flex:none;
+  inline-size:34px;block-size:34px;flex:none;
+  border-radius:var(--radius-sm);background:#fff;padding:2px;
+  object-fit:contain;
 }
 .brand-text{overflow:hidden;text-overflow:ellipsis}
 /* عند الشاشات الضيّقة يُسمح لنصّ الزر بالالتفاف بدل أن يخرج من الإطار */

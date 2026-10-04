@@ -127,6 +127,23 @@ public sealed class PurchasingSurface
             : Result<PurchasingParty>.Success(Party(result.Value));
     }
 
+    /// <summary>يقرأ موردي المنشأة مرتَّبين بالرمز — لقائمة اختيار، لا صفحة.</summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    public async ValueTask<Result<IReadOnlyList<PurchasingParty>>> ListSuppliersAsync(
+        TenantId tenant,
+        UserId actor,
+        CancellationToken cancellationToken = default)
+    {
+        Result<IReadOnlyList<SupplierView>> result = await _suppliers
+            .ListAsync(tenant, actor, cancellationToken).ConfigureAwait(false);
+
+        return result.IsFailure
+            ? Result<IReadOnlyList<PurchasingParty>>.Failure(result.Errors)
+            : Result<IReadOnlyList<PurchasingParty>>.Success([.. result.Value.Select(Party)]);
+    }
+
     /// <summary>
     /// يُنشئ فاتورة مصروف <b>مسوّدة</b>. لا قيد ولا أثر في الدفتر: الترحيل خطوة مستقلّة.
     /// </summary>

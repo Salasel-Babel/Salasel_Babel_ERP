@@ -207,6 +207,8 @@ internal static class ApiProblems
             // وبقيّةُ رفوض المعامِلات طلبٌ مفهوم ومرفوض: يُصلحه من أرسله بتعديل حمولته.
             _ when code.StartsWith("core.parameter", StringComparison.Ordinal) => 422,
 
+            "company_presets.unknown_series" => 404,
+            _ when code.StartsWith("company_presets.", StringComparison.Ordinal) => 422,
             _ when code.StartsWith("company_setup.", StringComparison.Ordinal) => 422,
             _ when code.StartsWith("cost_center.", StringComparison.Ordinal) => 422,
 

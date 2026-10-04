@@ -110,31 +110,6 @@ test("لقطات المشاهد", async ({ page }) => {
   await set(page, { scene: "qr", truth: "real", caption: "٥ · رمز الفاتورة الإلكترونية", captionSub: "متّجه ذهبي مُودَع، قرأه القارئ المشحون.", bag: { qrPayload: golden, qrLabel: "متّجه ذهبي · qr.phase1.tlv", qrResult: parsed } });
   await shot("5-qr");
 
-  await set(page, {
-    scene: "voice", truth: "mixed", caption: "٦ · الإدخال المنطوق", captionSub: "التفريغ محقون لا مسموع.",
-    bag: {
-      transcript: "فاتورة مصروف من مؤسسة البيان للدعاية والإعلان رقم 9345 بمبلغ ألف وخمسمئة ريال وضريبة خمسة عشر بالمئة اليوم",
-      dictionary: [{ spoken: "ألف وخمسمئة", value: "1500" }, { spoken: "مئة فاصلة صفر خمسة", value: "100.05" }],
-      refusal: null,
-    },
-  });
-  await page.locator('[data-testid="voice-hold"]').dispatchEvent("pointerdown");
-  await page.waitForTimeout(1200);
-  await page.locator('[data-testid="voice-hold"]').dispatchEvent("pointerup");
-  await shot("6-voice");
-
-  await set(page, {
-    scene: "voice", truth: "mixed", caption: "٦ب · يرفض بدل أن يخمّن", captionSub: "«تلاتميه» عامّية غير مُعرَّفة.",
-    bag: { transcript: "فاتورة مصروف من مؤسسة الرياض للتوريدات بمبلغ تلاتميه ريال اليوم", refusal: "تلاتميه" },
-  });
-  await page.locator('[data-testid="voice-hold"]').dispatchEvent("pointerdown");
-  await page.waitForTimeout(1200);
-  await page.locator('[data-testid="voice-hold"]').dispatchEvent("pointerup");
-  await shot("6-voice-refuse");
-
-  await set(page, { scene: "opinion", truth: "sim", caption: "٧ · رأيٌ ثانٍ", captionSub: "محاكاة كاملة وموسومة.", bag: { suggestions: 2, decision: "قُبل الاقتراح — وفُتح قيدُ تصحيحٍ جديد" } });
-  await shot("7-opinion");
-
-  await set(page, { scene: "closing", truth: "mixed", caption: "سلاسل بابل", captionSub: "خمسة مشاهد حقيقية، ومشهدان موسومان.", bag: {} });
+  await set(page, { scene: "closing", truth: "mixed", caption: "سلاسل بابل", captionSub: "خمسة مشاهد حقيقية.", bag: {} });
   await shot("8-closing");
 });

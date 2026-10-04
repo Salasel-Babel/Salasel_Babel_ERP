@@ -37,6 +37,7 @@ import { Money } from "../../api/money";
 import { ProblemError } from "../../api/transport";
 import { PARAM_readTrialBalance_period_RE } from "../../api/generated/formats";
 import { useApi } from "../../app/api-context";
+import { PRESET, useDocumentNumber, usePresetFill, useSimple } from "../../app/presets";
 import { ProblemPanel } from "../../app/shell/ProblemPanel";
 import { useT } from "../../i18n/react";
 import { Button, EmptyState, Field, Panel, RefusalPanel, StatCard, useMoment } from "../../ui";
@@ -46,6 +47,7 @@ import {
   HrSectionNav,
   HrState,
   isMoneyText,
+  monthPeriod,
   todayIso,
 } from "./parts";
 import { DUPLICATE_NUMBER, POSTED, SOCIAL_INSURANCE_METHODS, TREASURY_MISSING } from "./contract";
@@ -63,12 +65,18 @@ export function SocialInsuranceScreen(): ReactNode {
   const [refuseCls, fireRefuse] = useMoment("refuse");
   const [postCls, firePost] = useMoment("post");
 
+  /* ── الواجهة المبسّطة (ADR-0095): الرقم من الخادم، والسداد اليوم، والطريقة والخزينة
+     من الثوابت. والفترةُ الشهرُ السابق افتراضاً — ظاهرةً، لأن السداد قد يتأخّر شهرين. ── */
+  const simple = useSimple();
+  const documentNumber = useDocumentNumber("social_insurance");
   const [number, setNumber] = useState("");
-  const [periodCode, setPeriodCode] = useState("");
+  const [periodCode, setPeriodCode] = useState(() => (simple ? monthPeriod(-1).code : ""));
   const [amount, setAmount] = useState("");
   const [paidOn, setPaidOn] = useState(todayIso);
   const [method, setMethod] = useState<Method>((SOCIAL_INSURANCE_METHODS[0] ?? "") as Method);
   const [treasury, setTreasury] = useState("");
+  const hideMethod = usePresetFill(PRESET.hrSettlementMethod, method, (next) => setMethod(next as Method));
+  const hideTreasury = usePresetFill(PRESET.hrTreasury, treasury, setTreasury);
   const [lookup, setLookup] = useState("");
 
   const [payment, setPayment] = useState<HrSocialInsurancePayment | null>(null);
@@ -80,7 +88,7 @@ export function SocialInsuranceScreen(): ReactNode {
   const periodValid = periodCode === "" || PARAM_readTrialBalance_period_RE.test(periodCode);
 
   const ready =
-    number.trim() !== "" &&
+    (number.trim() !== "" || documentNumber.hidden) &&
     PARAM_readTrialBalance_period_RE.test(periodCode) &&
     isMoneyText(amount) &&
     paidOn !== "" &&
@@ -91,10 +99,11 @@ export function SocialInsuranceScreen(): ReactNode {
     setFailure(null);
     setPostFailure(null);
     try {
+      const resolvedNumber = await documentNumber.resolve(number.trim(), paidOn);
       const created = await draftSocialInsurancePayment(transport, {
         companyId: config.companyId,
         body: {
-          number: number.trim(),
+          number: resolvedNumber,
           periodCode,
           /* المبلغ نصٌّ محتجَز بنحو العقد، ولا يمرّ برقمٍ عائم في أي خطوة. */
           amount: Money.wire(amount),
@@ -111,7 +120,7 @@ export function SocialInsuranceScreen(): ReactNode {
     } finally {
       setBusy(false);
     }
-  }, [amount, config.companyId, fireArrive, fireRefuse, method, number, paidOn, periodCode, transport, treasury]);
+  }, [amount, config.companyId, documentNumber, fireArrive, fireRefuse, method, number, paidOn, periodCode, transport, treasury]);
 
   const open = useCallback(async () => {
     setBusy(true);
@@ -170,6 +179,7 @@ export function SocialInsuranceScreen(): ReactNode {
 
       <Panel title={t("hr.si.title")} note={t("hr.si.note")} testId="hr-si-new">
         <div className="grid fields-4">
+          {documentNumber.hidden ? null : (
           <Field id="hr-si-number" label={t("hr.field.number")} hint={t("hr.field.numberHint")} source="typed" required>
             <input
               id="hr-si-number"
@@ -183,6 +193,7 @@ export function SocialInsuranceScreen(): ReactNode {
               placeholder="GOSI-2026-06"
             />
           </Field>
+          )}
           <Field
             id="hr-si-period"
             label={t("hr.field.periodCode")}
@@ -225,6 +236,7 @@ export function SocialInsuranceScreen(): ReactNode {
               placeholder="0.0000"
             />
           </Field>
+          {simple ? null : (
           <Field id="hr-si-paid" label={t("hr.field.paidOn")} hint={t("hr.si.paidOnHint")} source="typed" required>
             <input
               id="hr-si-paid"
@@ -236,9 +248,12 @@ export function SocialInsuranceScreen(): ReactNode {
               onChange={(e) => setPaidOn(e.target.value)}
             />
           </Field>
+          )}
         </div>
 
+        {hideTreasury && hideMethod ? null : (
         <div className="grid fields-2">
+          {hideTreasury ? null : (
           <Field
             id="hr-si-treasury"
             label={t("hr.field.treasuryParty")}
@@ -257,6 +272,8 @@ export function SocialInsuranceScreen(): ReactNode {
               onChange={(e) => setTreasury(e.target.value)}
             />
           </Field>
+          )}
+          {hideMethod ? null : (
           <Field
             id="hr-si-method"
             label={t("hr.field.settlementMethod")}
@@ -278,7 +295,9 @@ export function SocialInsuranceScreen(): ReactNode {
               ))}
             </select>
           </Field>
+          )}
         </div>
+        )}
 
         <div className="inline-group">
           <Button

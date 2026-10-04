@@ -645,6 +645,11 @@ internal sealed record HrReconciliationDivergenceDto(
 internal sealed record HrReconciliationDto(
     string AsOf, int MatchedDocuments, bool IsReconciled, IReadOnlyList<HrReconciliationDivergenceDto> Divergences);
 
+/// <summary>موظفو المنشأة بهوياتهم مقنَّعة — غلافٌ لا مصفوفة عارية.</summary>
+/// <param name="ItemCount">عدد الموظفين.</param>
+/// <param name="Items">الموظفون، مرتَّبون بالرمز.</param>
+internal sealed record HrEmployeeListDto(int ItemCount, IReadOnlyList<HrEmployeeDto> Items);
+
 /// <summary>
 /// تصنيفات مكوّنات الأجر — <b>غلافٌ لا مصفوفة عارية</b>: مصفوفةٌ في جذر الاستجابة لا
 /// موضع فيها لعدّاد ولا لصفحة، فأول حاجة إليهما تكسر العقد.

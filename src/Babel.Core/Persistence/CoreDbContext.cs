@@ -35,6 +35,12 @@ internal sealed class CoreDbContext(DbContextOptions<CoreDbContext> options) : D
     /// <summary>القيم الافتراضية.</summary>
     public DbSet<CapabilityProfileDefaultRow> ProfileDefaults => Set<CapabilityProfileDefaultRow>();
 
+    /// <summary>ثوابت الشركة — ما يُحسم مرّةً في الإعداد ويختفي من شاشات الإدخال.</summary>
+    public DbSet<CompanyPresetRow> CompanyPresets => Set<CompanyPresetRow>();
+
+    /// <summary>عدّادات الترقيم، صفٌّ لكل سلسلة وسنة.</summary>
+    public DbSet<DocumentCounterRow> DocumentCounters => Set<DocumentCounterRow>();
+
     /// <summary>عضويات المستخدمين في المنشآت — مصدر ما يبلغه كل اعتماد.</summary>
     public DbSet<AccessMembershipRow> Memberships => Set<AccessMembershipRow>();
 
@@ -498,6 +504,29 @@ internal sealed class CoreDbContext(DbContextOptions<CoreDbContext> options) : D
             entity.Property(row => row.DocumentType).HasColumnName("document_type").HasMaxLength(64).IsRequired();
             entity.Property(row => row.Field).HasColumnName("field").HasMaxLength(64).IsRequired();
             entity.Property(row => row.Value).HasColumnName("value").HasMaxLength(400).IsRequired();
+        });
+
+        modelBuilder.Entity<CompanyPresetRow>(entity =>
+        {
+            entity.ToTable("company_preset", t =>
+            {
+                t.HasCheckConstraint("ck_company_preset_key_shape", "key ~ '^[a-z][a-z0-9_.]{0,63}$'");
+                t.HasCheckConstraint("ck_company_preset_value_present", "length(value) > 0");
+            });
+            entity.HasKey(row => new { row.CompanyId, row.Key }).HasName("pk_company_preset");
+            entity.Property(row => row.CompanyId).HasColumnName("company_id");
+            entity.Property(row => row.Key).HasColumnName("key").HasMaxLength(Presets.CompanyPresetLimits.MaximumKeyLength).IsRequired();
+            entity.Property(row => row.Value).HasColumnName("value").HasMaxLength(Presets.CompanyPresetLimits.MaximumValueLength).IsRequired();
+        });
+
+        modelBuilder.Entity<DocumentCounterRow>(entity =>
+        {
+            entity.ToTable("document_counter", t => t.HasCheckConstraint("ck_document_counter_positive", "next_no >= 1"));
+            entity.HasKey(row => new { row.CompanyId, row.Series, row.FiscalYear }).HasName("pk_document_counter");
+            entity.Property(row => row.CompanyId).HasColumnName("company_id");
+            entity.Property(row => row.Series).HasColumnName("series").HasMaxLength(64).IsRequired();
+            entity.Property(row => row.FiscalYear).HasColumnName("fiscal_year");
+            entity.Property(row => row.NextNo).HasColumnName("next_no");
         });
     }
 }

@@ -15,8 +15,6 @@ import { TamperScene } from "./scenes/TamperScene";
 import { TimeTravelScene } from "./scenes/TimeTravelScene";
 import { ExplainScene } from "./scenes/ExplainScene";
 import { LanguageScene } from "./scenes/LanguageScene";
-import { VoiceScene } from "./scenes/VoiceScene";
-import { SecondOpinionScene } from "./scenes/SecondOpinionScene";
 import { QrScene } from "./scenes/QrScene";
 import { ClosingScene } from "./scenes/ClosingScene";
 
@@ -73,8 +71,6 @@ export function DemoStage(): ReactNode {
         {state.scene === "explain" ? <ExplainScene /> : null}
         {state.scene === "language" ? <LanguageScene /> : null}
         {state.scene === "qr" ? <QrScene /> : null}
-        {state.scene === "voice" ? <VoiceScene /> : null}
-        {state.scene === "opinion" ? <SecondOpinionScene /> : null}
         {state.scene === "closing" ? <ClosingScene /> : null}
       </main>
 

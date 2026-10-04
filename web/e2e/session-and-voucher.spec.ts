@@ -98,10 +98,20 @@ async function horizontalOverflow(page: Page): Promise<number> {
  * @param page الصفحة.
  */
 async function fillWhatTheLedgerDemands(page: Page): Promise<void> {
-  await page.getByTestId("voucher-qualifier").nth(0).fill("bank");
+  await chooseAccounts(page);
   await page.getByTestId("voucher-subledger-kind").nth(0).selectOption("Treasury");
   await page.getByTestId("voucher-party").nth(0).fill("BANK-0001");
   await page.getByTestId("voucher-branch").nth(1).fill("BR-01");
+}
+
+/**
+ * يختار حسابَي السطرين من الدليل المنشور (ADR-0096): 1201 ضابطٌ لدفتر البنك،
+ * و4101 إيرادٌ ببُعد الفرع — فيُظهر كلٌّ منهما ما يطلبه.
+ * @param page الصفحة.
+ */
+async function chooseAccounts(page: Page): Promise<void> {
+  await page.getByTestId("voucher-account").nth(0).selectOption("1201");
+  await page.getByTestId("voucher-account").nth(1).selectOption("4101");
 }
 
 /* ═══════════════════════════ ١ · الدخول ═══════════════════════════════ */
@@ -183,6 +193,18 @@ test.describe("الدخول واختيار المنشأة", () => {
 /* ═══════════════════════ ٢ · أول كتابة ═══════════════════════════════ */
 
 test.describe("القيد اليدوي — أول شاشة تكتب", () => {
+  /* الحرّاس هنا يقيسون النموذج كاملاً — مركزَ التكلفة والطرفَ والفرعَ على كل سطر —
+     والواجهةُ المبسّطة تُظهرها حين يطلبها الحساب وحده (ADR-0095 · ADR-0096). */
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      try {
+        localStorage.setItem("sb-show-advanced", "1");
+      } catch {
+        /* ignore */
+      }
+    });
+  });
+
   test("المبلغ الذي يُتلفه Number يغادر المتصفّح بايتاً ببايت", async ({ page }) => {
     /* الالتقاط على **جسم الطلب الخارج** — لا على ما يقوله الخادم. */
     const bodies: string[] = [];
@@ -297,6 +319,7 @@ test.describe("القيد اليدوي — أول شاشة تكتب", () => {
 
   test("ما لا يقوله العقد يصل رمزاً قابلاً للتصرّف: طرفٌ ناقص وبُعدٌ ناقص", async ({ page }) => {
     await page.goto(voucherUrl());
+    await chooseAccounts(page);
     await page.getByTestId("voucher-date").fill("2026-08-18");
     await page.getByTestId("voucher-memo-ar").fill("بلا طرف ولا فرع");
     await page.getByTestId("voucher-memo-en").fill("No party, no branch");
@@ -352,18 +375,17 @@ test.describe("القيد اليدوي — أول شاشة تكتب", () => {
     expect(values).toEqual(["", "cc.main", "cc.branch"]);
   });
 
-  test("الأدوار والجوانب مقروءة من العقد لا مكتوبة في الشاشة", async ({ page }) => {
+  test("الحسابات مقروءة من الدليل المنشور والجوانب من العقد، لا مكتوبة في الشاشة", async ({ page }) => {
     await page.goto(voucherUrl());
-    const roles = await page
-      .getByTestId("voucher-role")
+    await page.waitForSelector('[data-testid="voucher-account"] option[value="1201"]', { state: "attached" });
+    const accounts = await page
+      .getByTestId("voucher-account")
       .first()
       .locator("option")
       .evaluateAll((els) => els.map((e) => (e as HTMLOptionElement).value));
 
-    /* أربعة عشر دوراً كما ينشرها العقد — والعدد يتغيّر بتغيّره لا بتحرير شاشة. */
-    expect(roles.length).toBe(14);
-    expect(roles).toContain("Settlement");
-    expect(roles).toContain("NetAmount");
+    /* القابلُ للترحيل العامل وحده (ADR-0096): الأبُ التجميعي 1000 لا يُعرض. */
+    expect(accounts).toEqual(["", "1201", "4101"]);
 
     const sides = await page
       .getByTestId("voucher-side")

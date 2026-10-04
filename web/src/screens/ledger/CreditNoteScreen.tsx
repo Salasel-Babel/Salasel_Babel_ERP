@@ -28,6 +28,7 @@ import { useCallback, useState, type ReactNode } from "react";
 import { draftCreditNote, postCreditNote } from "../../api/generated/client";
 import type { CommercialDocument, SalesLine } from "../../api/generated/types";
 import { useApi } from "../../app/api-context";
+import { useDocumentNumber, useSimple } from "../../app/presets";
 import { ProblemPanel } from "../../app/shell/ProblemPanel";
 import { useT } from "../../i18n/react";
 import { Button, EmptyState, useMoment } from "../../ui";
@@ -80,6 +81,10 @@ export function CreditNoteScreen(): ReactNode {
   const [invoiceId, setInvoiceId] = useState("");
   const [issuedOn, setIssuedOn] = useState(todayIso);
 
+  /* ── الواجهة المبسّطة: الرقم من الخادم، والتاريخ اليوم (ADR-0095) ── */
+  const simple = useSimple();
+  const documentNumber = useDocumentNumber("credit_note");
+
   /* ── السطور ───────────────────────────────────────────────────────── */
   const [sales, setSales] = useState<DraftSalesLine>(emptySalesLine);
   const [kind, setKind] = useState(GOODS_RETURN);
@@ -111,7 +116,8 @@ export function CreditNoteScreen(): ReactNode {
     setLines((current) => current.filter((_, i) => i !== index));
   }, []);
 
-  const draftReady = number !== "" && invoiceId !== "" && issuedOn !== "" && lines.length > 0;
+  const draftReady =
+    (number !== "" || documentNumber.hidden) && invoiceId !== "" && issuedOn !== "" && lines.length > 0;
 
   const submitDraft = useCallback(async () => {
     setDraftBusy(true);
@@ -125,9 +131,12 @@ export function CreditNoteScreen(): ReactNode {
             ? line.originalInvoiceLineId
             : null,
       }));
+      /* الرقم: ما كُتب، وإلا يُخصَّص من سلسلة الإشعارات الدائنة على تاريخ الإصدار. */
+      const resolvedNumber = await documentNumber.resolve(number, issuedOn);
+      setNumber(resolvedNumber);
       const created = await draftCreditNote(transport, {
         companyId: config.companyId,
-        body: { invoiceId, issuedOn, lines: wire, number },
+        body: { invoiceId, issuedOn, lines: wire, number: resolvedNumber },
       });
       setDrafted(created);
       setNoteId(created.id);
@@ -139,7 +148,7 @@ export function CreditNoteScreen(): ReactNode {
     } finally {
       setDraftBusy(false);
     }
-  }, [config.companyId, fireArrive, fireRefuse, invoiceId, issuedOn, lines, number, transport]);
+  }, [config.companyId, documentNumber, fireArrive, fireRefuse, invoiceId, issuedOn, lines, number, transport]);
 
   const submitPosting = useCallback(async () => {
     setPostBusy(true);
@@ -183,7 +192,8 @@ export function CreditNoteScreen(): ReactNode {
         note={t("accounting.ledger.note.headNote")}
         testId="ledger-note-head"
       >
-        <AccRow cols={3} testId="ledger-note-head-row">
+        <AccRow cols={simple ? 2 : 3} testId="ledger-note-head-row">
+          {documentNumber.hidden ? null : (
           <AccField
             id="ledger-note-number"
             label={t("accounting.ledger.field.noteNumber")}
@@ -202,6 +212,7 @@ export function CreditNoteScreen(): ReactNode {
               onChange={(e) => setNumber(e.target.value)}
             />
           </AccField>
+          )}
           <AccField
             id="ledger-note-invoice"
             label={t("accounting.ledger.field.invoiceId")}
@@ -220,6 +231,7 @@ export function CreditNoteScreen(): ReactNode {
               onChange={(e) => setInvoiceId(e.target.value)}
             />
           </AccField>
+          {simple ? null : (
           <AccField
             id="ledger-note-issued"
             label={t("accounting.ledger.field.issuedOn")}
@@ -237,6 +249,7 @@ export function CreditNoteScreen(): ReactNode {
               onChange={(e) => setIssuedOn(e.target.value)}
             />
           </AccField>
+          )}
         </AccRow>
         <p className="hint" data-testid="ledger-note-no-customer">
           {t("accounting.ledger.note.noCustomer")}

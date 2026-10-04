@@ -3,6 +3,7 @@ using Babel.Canonicalization;
 using Babel.Contracts.Posting;
 using Babel.Ledger.Accounts;
 using Babel.Ledger.PostingMatrix;
+using Babel.Ledger.Vouchers;
 using Babel.SharedKernel;
 
 namespace Babel.Ledger.Posting;
@@ -31,7 +32,8 @@ internal static class PostingPlanner
         CompanyReference reference,
         MatrixCatalog matrix,
         string companyCurrency,
-        DateTime postedAt)
+        DateTime postedAt,
+        IReadOnlyList<ManualVoucherLine>? manualLines = null)
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(reference);
@@ -82,9 +84,12 @@ internal static class PostingPlanner
         // ‏Event مضمون الآن غير فارغ بالفحص أعلاه، فالمسار الصريح لا يُختار إلا
         // إذا حمل الطلب رمز حدث **وسطوراً صريحة** معاً: الرمز يعطي الهوية،
         // والسطور تعطي المحتوى. وطلبٌ بسطور بلا رمز حدث مرفوض قبل هذا السطر.
-        Result<List<DraftLine>> draft = request.Lines.Count > 0
-            ? FromExplicitLines(request, matrix, dimensions)
-            : FromEvent(request, matrix, facts, amounts, dimensions);
+        // وسطورُ الحساب (ADR-0096) مسارٌ ثالث يختاره المُستدعي صراحةً لا الطلب.
+        Result<List<DraftLine>> draft = manualLines is not null
+            ? FromManualLines(request, manualLines, matrix, dimensions)
+            : request.Lines.Count > 0
+                ? FromExplicitLines(request, matrix, dimensions)
+                : FromEvent(request, matrix, facts, amounts, dimensions);
 
         if (draft.IsFailure)
         {
@@ -113,7 +118,8 @@ internal static class PostingPlanner
 
         foreach (DraftLine line in draft.Value)
         {
-            string? accountCode = reference.ResolveRole(line.RoleCode, line.Qualifier);
+            // سطرُ الحساب يسمّي حسابه، وسطرُ الدور يُحلّ عبر الخريطة — وكل فحص بعد هذا السطر واحد.
+            string? accountCode = line.AccountCode ?? reference.ResolveRole(line.RoleCode, line.Qualifier);
             if (accountCode is null)
             {
                 errors.Add(PostingErrors.UnresolvedRole(line.RoleCode, line.Qualifier));
@@ -178,7 +184,13 @@ internal static class PostingPlanner
             }
 
             // ── قواعد الحجب، بوقائع السطر نفسه ────────────────────────────
-            Error? blocked = EvaluateGuards(matrix, reference, line, facts, amounts);
+            // ولسطر الحساب تُقيَّم لكل دورٍ تحوّله الخريطة إلى هذا الحساب: فاختيارُ الحساب
+            // مباشرةً لا يلتفّ على GR-RE-001 وأخواتها (ADR-0096).
+            Error? blocked = line.AccountCode is null
+                ? EvaluateGuards(matrix, reference, line, facts, amounts)
+                : reference.RolesMappedTo(typed.Value)
+                    .Select(role => EvaluateGuards(matrix, reference, line with { RoleCode = role }, facts, amounts))
+                    .FirstOrDefault(static error => error is not null);
             if (blocked is not null)
             {
                 errors.Add(blocked);
@@ -191,7 +203,7 @@ internal static class PostingPlanner
             // والدور، لا خطأ 23514 خامّاً يسمّي قيداً.
             if (string.IsNullOrWhiteSpace(line.CostCenterId))
             {
-                errors.Add(PostingErrors.MissingCostCenter(lines.Count + 1, line.RoleCode));
+                errors.Add(PostingErrors.MissingCostCenter(lines.Count + 1, line.AccountCode ?? line.RoleCode));
                 continue;
             }
 
@@ -289,6 +301,9 @@ internal static class PostingPlanner
     internal sealed record DraftLine
     {
         public required string RoleCode { get; init; }
+
+        /// <summary>رمزُ الحساب حين يسمّيه السطر نفسه (القيد اليدوي) — وإلا يُحلّ من الدور.</summary>
+        public string? AccountCode { get; init; }
 
         public required string Qualifier { get; init; }
 
@@ -520,6 +535,82 @@ internal static class PostingPlanner
                 // ‏**مُحلٌّ قبل الوصول**: النوع لا يمثّل نطاقاً بلا مركز، فلا ارتداد إلى
                 // بُعدٍ هنا. وترتيب الأولوية القديم (نطاق ⇒ بُعد سطر ⇒ بُعد طلب) لم يسقط
                 // — انتقل إلى الحدّ الذي يحلّ، وهو الموضع الذي يملك سجلّ المنشأة.
+                CostCenterId = line.Scope.CostCenterId,
+                ProjectId = line.Scope.ProjectId ?? Value(merged, "project"),
+                PropertyId = Value(merged, "property"),
+                UnitId = Value(merged, "unit"),
+                WarehouseId = Value(merged, "warehouse"),
+                BoqItemId = Value(merged, "boq_item"),
+                SubledgerKind = line.Subledger.Kind == SubledgerKind.None
+                    ? "none"
+                    : line.Subledger.Kind.ToString().ToLowerInvariant(),
+                SubledgerPartyId = line.Subledger.Kind == SubledgerKind.None ? null : line.Subledger.PartyId,
+                Description = line.Narration?.English ?? string.Empty,
+                DescriptionAr = line.Narration?.Arabic ?? string.Empty,
+            });
+        }
+
+        return Result<List<DraftLine>>.Success(lines);
+    }
+
+    /// <summary>
+    /// مسارُ سطور الحساب — القيدُ اليدوي يسمّي حساباته (ADR-0096).
+    /// <para>
+    /// الفحصان الأولان هما فحصا المسار الصريح نفسهما: الرمز في المصفوفة، والحدث يُولّد قيداً.
+    /// والثالث <b>بيانيٌّ لا قائمةٌ مكتوبة</b>: سطرُ الحساب مقبول فقط على حدثٍ من الدفتر
+    /// تُعلن المصفوفةُ سطورَه <c>manual</c>، وكل حدثٍ آخر يحمل أدواراً تختار المصفوفة حسابها.
+    /// والدورُ على السطر فارغ والمؤهّل <c>*</c>، فلا تخترع الخطّة دوراً لم يُسمَّ.
+    /// </para>
+    /// </summary>
+    private static Result<List<DraftLine>> FromManualLines(
+        PostingRequest request,
+        IReadOnlyList<ManualVoucherLine> manualLines,
+        MatrixCatalog matrix,
+        Dictionary<string, string> dimensions)
+    {
+        if (manualLines.Count == 0)
+        {
+            return Result<List<DraftLine>>.Failure(PostingErrors.NoLines);
+        }
+
+        string code = request.Event.Value;
+        MatrixEvent? definition = matrix.Find(code);
+        if (definition is null)
+        {
+            return Result<List<DraftLine>>.Failure(PostingErrors.EventCodeNotInMatrix(code));
+        }
+
+        if (!definition.PostsEntry)
+        {
+            return Result<List<DraftLine>>.Failure(PostingErrors.EventPostsNoEntry(code));
+        }
+
+        // البوّابة البيانية: حدثٌ من الدفتر سطورُه يدوية — وإلا فالحدث يملك أدواره.
+        if (request.Source.Module != BabelModule.Ledger
+            || request.Lines.Count > 0
+            || !definition.Lines.Any(static line => string.Equals(line.LineKind, "manual", StringComparison.Ordinal)))
+        {
+            return Result<List<DraftLine>>.Failure(PostingErrors.EventTakesNoManualLines(code));
+        }
+
+        List<DraftLine> lines = [];
+
+        foreach (ManualVoucherLine line in manualLines)
+        {
+            Dictionary<string, string> merged = new(dimensions, StringComparer.Ordinal);
+            foreach (PostingDimension dimension in line.Dimensions)
+            {
+                merged[dimension.Name] = dimension.Value;
+            }
+
+            lines.Add(new DraftLine
+            {
+                RoleCode = string.Empty,
+                AccountCode = line.AccountCode,
+                Qualifier = DefaultQualifier,
+                Side = line.Side,
+                Amount = Amounts.Normalize(line.Amount.Amount),
+                BranchId = line.Scope.BranchId ?? Value(merged, "branch"),
                 CostCenterId = line.Scope.CostCenterId,
                 ProjectId = line.Scope.ProjectId ?? Value(merged, "project"),
                 PropertyId = Value(merged, "property"),

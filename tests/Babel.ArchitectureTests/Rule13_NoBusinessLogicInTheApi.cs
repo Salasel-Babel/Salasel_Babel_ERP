@@ -276,6 +276,13 @@ public sealed class Rule13_NoBusinessLogicInTheApi
         "Babel.Ledger.Audit.ChartAccount",
         "Babel.Ledger.Audit.ChartOfAccountsReport",
 
+        // ‏ManualVoucherService و ManualVoucherLine — سطحُ القيد اليدوي في الدفتر (ADR-0096):
+        // السطرُ يسمّي حساباً **لأن المصفوفة تُعلن سطورَ هذا الحدث يدويةً**، والسطح ينقل الرمز
+        // نصّاً ولا يفحصه؛ والدفتر وحده يقرّر أي حدثٍ يقبله وأي حسابٍ يصلح. وفضاءُ `Vouchers`
+        // ليس من فضاءات الداخل أدناه، و`Babel.Contracts` ما زال لا يكشف عضواً يسمّي حساباً.
+        "Babel.Ledger.Vouchers.ManualVoucherLine",
+        "Babel.Ledger.Vouchers.ManualVoucherService",
+
         // نقاط تركيب الوحدات الأفقية — دالة واحدة لكل وحدة، ولا شيء غيرها.
         "Babel.Sales.SalesModuleRegistration",
         "Babel.Purchasing.PurchasingModuleRegistration",

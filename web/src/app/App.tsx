@@ -3,7 +3,7 @@
    ───────────────────────────────────────────────────────────────────────────
    ملاحةٌ بين **الأقسام الخمسة** (والقسم غير المبنيّ مُعلَنٌ لا مخفيّ)، ورأسٌ
    فيه المنشأة واللغة والمظهر وحالة الخدمة، و**لوحةُ أوامر** بـCtrl/⌘+K تفتح
-   على كل شاشةٍ وفعل، و**زرّ صوتٍ حاضرٌ دائماً**، وانتقالٌ بين المسارات يُقرأ
+   على كل شاشةٍ وفعل، وانتقالٌ بين المسارات يُقرأ
    كـ«مسار عرض»: شريطٌ بلون القسم الذي دخلتَه، وصفحةٌ تدخل بمنحنى `enter`.
 
    **والانتقال يقول أين ذهبتَ لا أنه حدث فقط**: لون الشريط هو لون القسم، وهو
@@ -17,14 +17,14 @@ import { useApi } from "./api-context";
 import { useT } from "../i18n/react";
 import { HealthBadge, LocaleSwitcher, ThemeSwitcher } from "./shell/Switchers";
 import { CompanyBadge } from "./shell/CompanyBadge";
+import { useSimple } from "./presets";
+import mark from "../assets/brand/mark-160.png";
 import { KeyboardHelp } from "./shell/KeyboardHelp";
 import { CommandPalette } from "./shell/CommandPalette";
 import { ScreenNav } from "./shell/ScreenNav";
 import { AppLauncher } from "./shell/AppLauncher";
-import { VoiceDock } from "./shell/VoiceDock";
-import { AgentWorkspace } from "../agent";
-import { VoiceDraftBanner } from "./VoiceDraftBanner";
-import { sectionOf } from "./shell/sections";
+import { isEntryScreen, sectionOf } from "./shell/sections";
+import { EntryDialog } from "./shell/EntryDialog";
 import { SessionGate, isOpenScreen } from "./shell/SessionGate";
 import { applySession, clearSession, hasSession, needsRenewal } from "./session";
 import { fetchTransport } from "../api/transport";
@@ -37,10 +37,10 @@ export function AppShell(): ReactNode {
   const { transport, config, setConfig } = useApi();
   const [helpOpen, setHelpOpen] = useState(false);
   const [cmdOpen, setCmdOpen] = useState(false);
-  const [agentOpen, setAgentOpen] = useState(false);
   const navigate = useNavigate();
   const path = useRouterState({ select: (s) => s.location.pathname });
   const section = sectionOf(path);
+  const entry = isEntryScreen(path);
   const tint = { "--section-tint": section.tint } as CSSProperties;
 
   const healthQuery = useQuery({
@@ -111,6 +111,12 @@ export function AppShell(): ReactNode {
     };
   }, [config, setConfig]);
 
+  /* ── الواجهة المبسّطة: الرأس يطوي اللغة والمظهر والمساعدة خلف زرّ واحد ──
+     (ADR-0095 · التوصية الثالثة). والـ`data-simple` على القشرة يُخفي الشروح
+     بالـCSS: التلميحات تحت الحقول وأسطر العناوين وملاحظات الألواح. */
+  const simple = useSimple();
+  const [prefsOpen, setPrefsOpen] = useState(false);
+
   const signOut = useCallback(() => {
     /* الإبطالُ على الخادم **يُطلب ولا يُنتظَر جوابه**: الخروج في المتصفّح يجب أن
        يقع ولو كانت الشبكة مقطوعة. والاعتمادُ المُهيَّأ من الإعداد لا عائلةَ له
@@ -127,7 +133,7 @@ export function AppShell(): ReactNode {
   }
 
   return (
-    <div className="app-shell" data-section={section.id} style={tint}>
+    <div className="app-shell" data-section={section.id} data-simple={simple ? "true" : undefined} style={tint}>
       {/* شريط الانتقال: يُعاد بناؤه بتغيّر المسار فتُعاد حركته. */}
       <span className="transit" key={path} aria-hidden="true" />
 
@@ -139,7 +145,7 @@ export function AppShell(): ReactNode {
         {/* العلامةُ بابٌ إلى البداية لا زينة: هي الموضع الذي تعلّمه الناس
             للعودة إلى أوّل الطريق، وتركُها صمّاء يُهدر ما تعلّموه. */}
         <Link to="/home" className="brand" data-testid="brand-home">
-          <span className="mark" aria-hidden="true" />
+          <img className="mark" src={mark} alt="" width={34} height={34} />
           <span>{t("app.name")}</span>
         </Link>
 
@@ -154,8 +160,23 @@ export function AppShell(): ReactNode {
       <div className="app-main">
         <header className="app-topbar">
           <CompanyBadge />
-          <LocaleSwitcher />
-          <ThemeSwitcher accessiblePaletteHref={accessiblePaletteHref} />
+          {simple ? (
+            <button
+              type="button"
+              className="btn btn-sm"
+              data-testid="open-prefs"
+              aria-expanded={prefsOpen}
+              onClick={() => setPrefsOpen((open) => !open)}
+            >
+              {t("app.topbar.prefs")}
+            </button>
+          ) : null}
+          {/* المبدّلان يبقيان مركَّبين ولو طُويا: أثرُ المظهر على `<html>` يعيش فيهما،
+              فإزالتهما من الشجرة تُسقط السمة لا الزرّ وحده. الطيُّ بـ`hidden`. */}
+          <div className="topbar-prefs" hidden={simple && !prefsOpen}>
+            <LocaleSwitcher />
+            <ThemeSwitcher accessiblePaletteHref={accessiblePaletteHref} />
+          </div>
           <span className="spacer" />
           <HealthBadge
             health={healthQuery.data ?? null}
@@ -165,30 +186,22 @@ export function AppShell(): ReactNode {
           <button
             type="button"
             className="btn btn-sm"
-            data-testid="open-agent"
-            aria-expanded={agentOpen}
-            title={t("agent.workspace.openTitle")}
-            onClick={() => setAgentOpen((v) => !v)}
-          >
-            {t("agent.workspace.open")}
-          </button>
-          <button
-            type="button"
-            className="btn btn-sm"
             data-testid="open-command"
             aria-keyshortcuts="Control+K Meta+K"
             onClick={() => setCmdOpen(true)}
           >
             {t("app.command.open")}
           </button>
-          <button
-            type="button"
-            className="btn btn-sm"
-            data-testid="open-help"
-            onClick={() => setHelpOpen(true)}
-          >
-            {t("common.action.keyboardHelp")}
-          </button>
+          {!simple || prefsOpen ? (
+            <button
+              type="button"
+              className="btn btn-sm"
+              data-testid="open-help"
+              onClick={() => setHelpOpen(true)}
+            >
+              {t("common.action.keyboardHelp")}
+            </button>
+          ) : null}
           {/* الخروجُ في الرأس لا في شاشةٍ تُبحَث عنها: هو الفعلُ الذي يُطلب حين
               يقوم أحدٌ عن جهازه، فيجب أن يكون حيث تقع العين. */}
           <button
@@ -205,36 +218,23 @@ export function AppShell(): ReactNode {
           <AppLauncher path={path} />
         </header>
 
-        <main className="app-page" id="main">
-          {/* المسوّدة المنطوقة تظهر **فوق الشاشة التي هبطت عليها**، لا في اللوحة
-              التي غادرها المستخدم. وهي في الهيكل لأن الهبوط عابرٌ للشاشات. */}
-          <VoiceDraftBanner />
-          <div className={MOTION.transit} key={path}>
-            <Outlet />
-          </div>
+        <main className="app-page" id="main" data-entry={entry ? "true" : undefined}>
+          {/* شاشاتُ الإدخال نوافذٌ منبثقة فوق ساحة الصفحة (ADR-0097): المسارُ
+              واحد، وإنما يتغيّر الغلاف. */}
+          {entry ? (
+            <EntryDialog path={path}>
+              <div className={MOTION.transit} key={path}>
+                <Outlet />
+              </div>
+            </EntryDialog>
+          ) : (
+            <div className={MOTION.transit} key={path}>
+              <Outlet />
+            </div>
+          )}
         </main>
       </div>
 
-      {/* مساحةُ عمل الوكيل: **لوحٌ واحد ينفتح فوق أي شاشة** — لا ميزةٌ مبعثرة
-          على كل شاشة. وموضعُه في الهيكل لا في شاشةٍ بعينها للسبب نفسه الذي
-          وضع لوحةَ المسوّدة المنطوقة هنا: ما يعبر الشاشات لا يُنسَخ فيها. */}
-      {/* **اللوح يُرسَم كلّما فُتح، ولو بلا شركة.** كان مشروطاً بـ
-          `config.companyId !== ""`، فيضغط من يفتح الموقع أوّل مرّة زرَّ «الوكيل»
-          ولا يقع شيء — بلا رسالة ولا تعطيل. والسبب الآن يُقال داخل اللوح ومعه
-          طريقُ الخروج، لا يُبتلع. */}
-      {agentOpen ? (
-        <AgentWorkspace
-          transport={transport}
-          companyId={config.companyId}
-          onClose={() => setAgentOpen(false)}
-          onOpenScreen={(route) => {
-            setAgentOpen(false);
-            void navigate({ to: route });
-          }}
-        />
-      ) : null}
-
-      <VoiceDock />
       {cmdOpen ? <CommandPalette onClose={() => setCmdOpen(false)} /> : null}
       <KeyboardHelp open={helpOpen} onClose={() => setHelpOpen(false)} />
     </div>

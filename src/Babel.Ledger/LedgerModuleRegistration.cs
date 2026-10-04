@@ -35,6 +35,9 @@ public static class LedgerModuleRegistration
         services.AddScoped<IPostingService, PostingService>();
         services.AddScoped<Audit.LedgerAuditService>();
 
+        // سطحُ القيد اليدوي — سطورٌ تسمّي حساباتها فوق المحرّك نفسه (ADR-0096).
+        services.AddScoped<Vouchers.ManualVoucherService>();
+
         // ── منفذ نقطة الضبط: تنفيذٌ في الخادم، لا في تجهيزات الاختبار وحدها ──────
         // كان `IControlPointReader` معلَناً في العقود بلا تنفيذ واحد في `src/`، فكانت
         // ‏`ReceivablesService` و`PayablesService` و`InventoryValuationService` —

@@ -19,6 +19,9 @@ import type { ReactNode } from "react";
 import { asQuantity, asTaxRate } from "../../api/generated/brands";
 import type { PurchaseLine, SalesLine } from "../../api/generated/types";
 import { Money } from "../../api/money";
+import { PRESET, usePresetFill, useSimple } from "../../app/presets";
+import { ItemPicker } from "../../app/pickers";
+import type { Item } from "../../api/generated/types";
 import { useT } from "../../i18n/react";
 import { AccField, AccRow, DropLineButton, isMoneyText, isQuantityText, isTaxRateText } from "./parts";
 import { TAX_CLASSIFICATIONS } from "./contract";
@@ -27,6 +30,8 @@ import { TAX_CLASSIFICATIONS } from "./contract";
 
 /** سطر مبيعات كما يُكتب قبل أن يعبر — كلّه نصوص. */
 export interface DraftSalesLine {
+  /** رمز الصنف المختار في الواجهة المبسّطة — يشتقّ الوصف والمجموعة ولا يعبر إلى السلك. */
+  itemCode?: string;
   descriptionAr: string;
   descriptionEn: string;
   itemGroup: string;
@@ -170,10 +175,28 @@ export function SalesLineEditor(props: {
   const { t } = useT();
   const { line, onChange, idPrefix } = props;
   const set = (patch: Partial<DraftSalesLine>) => onChange({ ...line, ...patch });
+
+  /* ── الواجهة المبسّطة: الصنف من القائمة يشتقّ الوصف والمجموعة، والضريبة من الثوابت ──
+     فيبقى في السطر: الصنف والوصف والكمية والسعر (ADR-0095). */
+  const simple = useSimple();
+  const hideTaxClass = usePresetFill(PRESET.taxClassification, line.taxClassification, (v) => set({ taxClassification: v }));
+  const hideTaxRate = usePresetFill(PRESET.taxRate, line.taxRate, (v) => set({ taxRate: v }));
+  const pick = (item: Item | null, code: string) =>
+    item
+      ? set({ itemCode: code, descriptionAr: item.name.ar, descriptionEn: item.name.en, itemGroup: item.itemGroup })
+      : set({ itemCode: code });
+  const describe = (value: string) =>
+    simple && !line.itemCode ? set({ descriptionAr: value, descriptionEn: value }) : set({ descriptionAr: value });
+
   return (
     <>
       <TaxClassificationOptions />
       <AccRow cols={4} testId="acc-sales-line-row-1">
+        {simple ? (
+          <AccField id={idPrefix + "-item"} label={t("accounting.field.itemId")} hint={t("accounting.field.itemPickHint")} source="read" required>
+            <ItemPicker id={idPrefix + "-item"} value={line.itemCode ?? ""} onChange={pick} testId="acc-line-item" />
+          </AccField>
+        ) : null}
         <AccField
           id={idPrefix + "-desc-ar"}
           label={t("accounting.field.descriptionAr")}
@@ -189,45 +212,49 @@ export function SalesLineEditor(props: {
             autoComplete="off"
             data-testid="acc-line-desc-ar"
             value={line.descriptionAr}
-            onChange={(e) => set({ descriptionAr: e.target.value })}
+            onChange={(e) => describe(e.target.value)}
           />
         </AccField>
-        <AccField
-          id={idPrefix + "-desc-en"}
-          label={t("accounting.field.descriptionEn")}
-          hint={t("accounting.field.descriptionEnHint")}
-          source="typed"
-          required
-        >
-          <input
+        {simple ? null : (
+          <AccField
             id={idPrefix + "-desc-en"}
-            className="ctl"
-            lang="en"
-            dir="ltr"
-            autoComplete="off"
-            data-testid="acc-line-desc-en"
-            value={line.descriptionEn}
-            onChange={(e) => set({ descriptionEn: e.target.value })}
-          />
-        </AccField>
-        <AccField
-          id={idPrefix + "-group"}
-          label={t("accounting.field.itemGroup")}
-          hint={t("accounting.field.itemGroupHint")}
-          source="typed"
-          required
-        >
-          <input
+            label={t("accounting.field.descriptionEn")}
+            hint={t("accounting.field.descriptionEnHint")}
+            source="typed"
+            required
+          >
+            <input
+              id={idPrefix + "-desc-en"}
+              className="ctl"
+              lang="en"
+              dir="ltr"
+              autoComplete="off"
+              data-testid="acc-line-desc-en"
+              value={line.descriptionEn}
+              onChange={(e) => set({ descriptionEn: e.target.value })}
+            />
+          </AccField>
+        )}
+        {simple && line.itemCode ? null : (
+          <AccField
             id={idPrefix + "-group"}
-            className="ctl mono"
-            dir="ltr"
-            autoComplete="off"
-            spellCheck={false}
-            data-testid="acc-line-group"
-            value={line.itemGroup}
-            onChange={(e) => set({ itemGroup: e.target.value })}
-          />
-        </AccField>
+            label={t("accounting.field.itemGroup")}
+            hint={t("accounting.field.itemGroupHint")}
+            source="typed"
+            required
+          >
+            <input
+              id={idPrefix + "-group"}
+              className="ctl mono"
+              dir="ltr"
+              autoComplete="off"
+              spellCheck={false}
+              data-testid="acc-line-group"
+              value={line.itemGroup}
+              onChange={(e) => set({ itemGroup: e.target.value })}
+            />
+          </AccField>
+        )}
         <AccField
           id={idPrefix + "-qty"}
           label={t("accounting.field.quantity")}
@@ -252,100 +279,132 @@ export function SalesLineEditor(props: {
             onChange={(e) => set({ quantity: e.target.value })}
           />
         </AccField>
-      </AccRow>
-      <AccRow cols={4} testId="acc-sales-line-row-2">
-        <AccField
-          id={idPrefix + "-price"}
-          label={t("accounting.field.unitPrice")}
-          hint={t("accounting.field.unitPriceHint")}
-          error={
-            line.unitPrice !== "" && !isMoneyText(line.unitPrice)
-              ? t("accounting.field.moneyBad")
-              : undefined
-          }
-          source="typed"
-          required
-        >
-          <input
+        {simple ? (
+          <AccField
             id={idPrefix + "-price"}
-            className="ctl amt-input"
-            inputMode="decimal"
-            dir="ltr"
-            autoComplete="off"
-            aria-invalid={line.unitPrice !== "" && !isMoneyText(line.unitPrice)}
-            data-testid="acc-line-price"
-            value={line.unitPrice}
-            onChange={(e) => set({ unitPrice: e.target.value })}
-          />
-        </AccField>
-        <AccField
-          id={idPrefix + "-discount"}
-          label={t("accounting.field.discount")}
-          hint={t("accounting.field.discountHint")}
-          error={
-            line.discount !== "" && !isMoneyText(line.discount)
-              ? t("accounting.field.moneyBad")
-              : undefined
-          }
-          source="typed"
-          required
-        >
-          <input
-            id={idPrefix + "-discount"}
-            className="ctl amt-input"
-            inputMode="decimal"
-            dir="ltr"
-            autoComplete="off"
-            aria-invalid={line.discount !== "" && !isMoneyText(line.discount)}
-            data-testid="acc-line-discount"
-            value={line.discount}
-            onChange={(e) => set({ discount: e.target.value })}
-          />
-        </AccField>
-        <AccField
-          id={idPrefix + "-taxclass"}
-          label={t("accounting.field.taxClassification")}
-          hint={t("accounting.field.taxClassificationHint")}
-          source="typed"
-          required
-        >
-          <input
-            id={idPrefix + "-taxclass"}
-            className="ctl mono"
-            dir="ltr"
-            list={TAX_CLASS_LIST}
-            autoComplete="off"
-            spellCheck={false}
-            data-testid="acc-line-taxclass"
-            value={line.taxClassification}
-            onChange={(e) => set({ taxClassification: e.target.value })}
-          />
-        </AccField>
-        <AccField
-          id={idPrefix + "-taxrate"}
-          label={t("accounting.field.taxRate")}
-          hint={t("accounting.field.taxRateHint")}
-          error={
-            line.taxRate !== "" && !isTaxRateText(line.taxRate)
-              ? t("accounting.field.rateBad")
-              : undefined
-          }
-          source="typed"
-          required
-        >
-          <input
-            id={idPrefix + "-taxrate"}
-            className="ctl amt-input"
-            inputMode="decimal"
-            dir="ltr"
-            autoComplete="off"
-            aria-invalid={line.taxRate !== "" && !isTaxRateText(line.taxRate)}
-            data-testid="acc-line-taxrate"
-            value={line.taxRate}
-            onChange={(e) => set({ taxRate: e.target.value })}
-          />
-        </AccField>
+            label={t("accounting.field.unitPrice")}
+            hint={t("accounting.field.unitPriceHint")}
+            error={line.unitPrice !== "" && !isMoneyText(line.unitPrice) ? t("accounting.field.moneyBad") : undefined}
+            source="typed"
+            required
+          >
+            <input
+              id={idPrefix + "-price"}
+              className="ctl amt-input"
+              inputMode="decimal"
+              dir="ltr"
+              autoComplete="off"
+              aria-invalid={line.unitPrice !== "" && !isMoneyText(line.unitPrice)}
+              data-testid="acc-line-price"
+              value={line.unitPrice}
+              onChange={(e) => set({ unitPrice: e.target.value })}
+            />
+          </AccField>
+        ) : null}
       </AccRow>
+      {simple && hideTaxClass && hideTaxRate ? null : (
+        <AccRow cols={4} testId="acc-sales-line-row-2">
+          {simple ? null : (
+            <AccField
+              id={idPrefix + "-price"}
+              label={t("accounting.field.unitPrice")}
+              hint={t("accounting.field.unitPriceHint")}
+              error={
+                line.unitPrice !== "" && !isMoneyText(line.unitPrice)
+                  ? t("accounting.field.moneyBad")
+                  : undefined
+              }
+              source="typed"
+              required
+            >
+              <input
+                id={idPrefix + "-price"}
+                className="ctl amt-input"
+                inputMode="decimal"
+                dir="ltr"
+                autoComplete="off"
+                aria-invalid={line.unitPrice !== "" && !isMoneyText(line.unitPrice)}
+                data-testid="acc-line-price"
+                value={line.unitPrice}
+                onChange={(e) => set({ unitPrice: e.target.value })}
+              />
+            </AccField>
+          )}
+          {simple ? null : (
+            <AccField
+              id={idPrefix + "-discount"}
+              label={t("accounting.field.discount")}
+              hint={t("accounting.field.discountHint")}
+              error={
+                line.discount !== "" && !isMoneyText(line.discount)
+                  ? t("accounting.field.moneyBad")
+                  : undefined
+              }
+              source="typed"
+              required
+            >
+              <input
+                id={idPrefix + "-discount"}
+                className="ctl amt-input"
+                inputMode="decimal"
+                dir="ltr"
+                autoComplete="off"
+                aria-invalid={line.discount !== "" && !isMoneyText(line.discount)}
+                data-testid="acc-line-discount"
+                value={line.discount}
+                onChange={(e) => set({ discount: e.target.value })}
+              />
+            </AccField>
+          )}
+          {hideTaxClass ? null : (
+            <AccField
+              id={idPrefix + "-taxclass"}
+              label={t("accounting.field.taxClassification")}
+              hint={t("accounting.field.taxClassificationHint")}
+              source="typed"
+              required
+            >
+              <input
+                id={idPrefix + "-taxclass"}
+                className="ctl mono"
+                dir="ltr"
+                list={TAX_CLASS_LIST}
+                autoComplete="off"
+                spellCheck={false}
+                data-testid="acc-line-taxclass"
+                value={line.taxClassification}
+                onChange={(e) => set({ taxClassification: e.target.value })}
+              />
+            </AccField>
+          )}
+          {hideTaxRate ? null : (
+            <AccField
+              id={idPrefix + "-taxrate"}
+              label={t("accounting.field.taxRate")}
+              hint={t("accounting.field.taxRateHint")}
+              error={
+                line.taxRate !== "" && !isTaxRateText(line.taxRate)
+                  ? t("accounting.field.rateBad")
+                  : undefined
+              }
+              source="typed"
+              required
+            >
+              <input
+                id={idPrefix + "-taxrate"}
+                className="ctl amt-input"
+                inputMode="decimal"
+                dir="ltr"
+                autoComplete="off"
+                aria-invalid={line.taxRate !== "" && !isTaxRateText(line.taxRate)}
+                data-testid="acc-line-taxrate"
+                value={line.taxRate}
+                onChange={(e) => set({ taxRate: e.target.value })}
+              />
+            </AccField>
+          )}
+        </AccRow>
+      )}
     </>
   );
 }
@@ -413,10 +472,45 @@ export function PurchaseLineEditor(props: {
   const { t } = useT();
   const { line, onChange, idPrefix } = props;
   const set = (patch: Partial<DraftPurchaseLine>) => onChange({ ...line, ...patch });
+
+  /* ── الواجهة المبسّطة: الصنف من القائمة، والضريبة واستردادها من الثوابت (ADR-0095) ── */
+  const simple = useSimple();
+  const hideTaxClass = usePresetFill(PRESET.taxClassification, line.taxClassification, (v) => set({ taxClassification: v }));
+  const hideTaxRate = usePresetFill(PRESET.taxRate, line.taxRate, (v) => set({ taxRate: v }));
+  const hideRecoverable = usePresetFill(PRESET.taxRecoverable, line.taxRecoverable, (v) => set({ taxRecoverable: v }));
+  const pick = (item: Item | null, code: string) =>
+    item
+      ? set({ itemId: code, descriptionAr: item.name.ar, descriptionEn: item.name.en, itemGroup: item.itemGroup })
+      : set({ itemId: code });
+  const describe = (value: string) =>
+    simple ? set({ descriptionAr: value, descriptionEn: line.descriptionEn === line.descriptionAr || line.descriptionEn === "" ? value : line.descriptionEn }) : set({ descriptionAr: value });
+
   return (
     <>
       <TaxClassificationOptions />
-      <AccRow cols={3} testId="acc-purchase-line-row-1">
+      <AccRow cols={simple ? 4 : 3} testId="acc-purchase-line-row-1">
+        <AccField
+          id={idPrefix + "-item"}
+          label={t("accounting.field.itemId")}
+          hint={simple ? t("accounting.field.itemPickHint") : t("accounting.field.itemIdHint")}
+          source={simple ? "read" : "typed"}
+          required
+        >
+          {simple ? (
+            <ItemPicker id={idPrefix + "-item"} value={line.itemId} onChange={pick} testId="acc-pline-item" />
+          ) : (
+            <input
+              id={idPrefix + "-item"}
+              className="ctl mono"
+              dir="ltr"
+              autoComplete="off"
+              spellCheck={false}
+              data-testid="acc-pline-item"
+              value={line.itemId}
+              onChange={(e) => set({ itemId: e.target.value })}
+            />
+          )}
+        </AccField>
         <AccField
           id={idPrefix + "-desc-ar"}
           label={t("accounting.field.descriptionAr")}
@@ -432,177 +526,215 @@ export function PurchaseLineEditor(props: {
             autoComplete="off"
             data-testid="acc-pline-desc-ar"
             value={line.descriptionAr}
-            onChange={(e) => set({ descriptionAr: e.target.value })}
+            onChange={(e) => describe(e.target.value)}
           />
         </AccField>
-        <AccField
-          id={idPrefix + "-desc-en"}
-          label={t("accounting.field.descriptionEn")}
-          hint={t("accounting.field.descriptionEnHint")}
-          source="typed"
-          required
-        >
-          <input
+        {simple ? null : (
+          <AccField
             id={idPrefix + "-desc-en"}
-            className="ctl"
-            lang="en"
-            dir="ltr"
-            autoComplete="off"
-            data-testid="acc-pline-desc-en"
-            value={line.descriptionEn}
-            onChange={(e) => set({ descriptionEn: e.target.value })}
-          />
-        </AccField>
-        <AccField
-          id={idPrefix + "-item"}
-          label={t("accounting.field.itemId")}
-          hint={t("accounting.field.itemIdHint")}
-          source="typed"
-          required
-        >
-          <input
-            id={idPrefix + "-item"}
-            className="ctl mono"
-            dir="ltr"
-            autoComplete="off"
-            spellCheck={false}
-            data-testid="acc-pline-item"
-            value={line.itemId}
-            onChange={(e) => set({ itemId: e.target.value })}
-          />
-        </AccField>
-      </AccRow>
-      <AccRow cols={3} testId="acc-purchase-line-row-2">
-        <AccField
-          id={idPrefix + "-group"}
-          label={t("accounting.field.itemGroup")}
-          hint={t("accounting.field.itemGroupHint")}
-          source="typed"
-          required
-        >
-          <input
-            id={idPrefix + "-group"}
-            className="ctl mono"
-            dir="ltr"
-            autoComplete="off"
-            spellCheck={false}
-            data-testid="acc-pline-group"
-            value={line.itemGroup}
-            onChange={(e) => set({ itemGroup: e.target.value })}
-          />
-        </AccField>
-        <AccField
-          id={idPrefix + "-qty"}
-          label={t("accounting.field.quantity")}
-          hint={t("accounting.field.quantityHint")}
-          error={
-            line.quantity !== "" && !isQuantityText(line.quantity)
-              ? t("accounting.field.quantityBad")
-              : undefined
-          }
-          source="typed"
-          required
-        >
-          <input
-            id={idPrefix + "-qty"}
-            className="ctl amt-input"
-            inputMode="decimal"
-            dir="ltr"
-            autoComplete="off"
-            aria-invalid={line.quantity !== "" && !isQuantityText(line.quantity)}
-            data-testid="acc-pline-qty"
-            value={line.quantity}
-            onChange={(e) => set({ quantity: e.target.value })}
-          />
-        </AccField>
-        <AccField
-          id={idPrefix + "-price"}
-          label={t("accounting.field.unitPrice")}
-          hint={t("accounting.field.unitPriceHint")}
-          error={
-            line.unitPrice !== "" && !isMoneyText(line.unitPrice)
-              ? t("accounting.field.moneyBad")
-              : undefined
-          }
-          source="typed"
-          required
-        >
-          <input
-            id={idPrefix + "-price"}
-            className="ctl amt-input"
-            inputMode="decimal"
-            dir="ltr"
-            autoComplete="off"
-            aria-invalid={line.unitPrice !== "" && !isMoneyText(line.unitPrice)}
-            data-testid="acc-pline-price"
-            value={line.unitPrice}
-            onChange={(e) => set({ unitPrice: e.target.value })}
-          />
-        </AccField>
-      </AccRow>
-      <AccRow cols={3} testId="acc-purchase-line-row-3">
-        <AccField
-          id={idPrefix + "-taxclass"}
-          label={t("accounting.field.taxClassification")}
-          hint={t("accounting.field.taxClassificationHint")}
-          source="typed"
-          required
-        >
-          <input
-            id={idPrefix + "-taxclass"}
-            className="ctl mono"
-            dir="ltr"
-            list={TAX_CLASS_LIST}
-            autoComplete="off"
-            spellCheck={false}
-            data-testid="acc-pline-taxclass"
-            value={line.taxClassification}
-            onChange={(e) => set({ taxClassification: e.target.value })}
-          />
-        </AccField>
-        <AccField
-          id={idPrefix + "-taxrate"}
-          label={t("accounting.field.taxRate")}
-          hint={t("accounting.field.taxRateHint")}
-          error={
-            line.taxRate !== "" && !isTaxRateText(line.taxRate)
-              ? t("accounting.field.rateBad")
-              : undefined
-          }
-          source="typed"
-          required
-        >
-          <input
-            id={idPrefix + "-taxrate"}
-            className="ctl amt-input"
-            inputMode="decimal"
-            dir="ltr"
-            autoComplete="off"
-            aria-invalid={line.taxRate !== "" && !isTaxRateText(line.taxRate)}
-            data-testid="acc-pline-taxrate"
-            value={line.taxRate}
-            onChange={(e) => set({ taxRate: e.target.value })}
-          />
-        </AccField>
-        <AccField
-          id={idPrefix + "-recoverable"}
-          label={t("accounting.field.taxRecoverable")}
-          hint={t("accounting.field.taxRecoverableHint")}
-          source="typed"
-          required
-        >
-          <select
-            id={idPrefix + "-recoverable"}
-            className="ctl"
-            data-testid="acc-pline-recoverable"
-            value={line.taxRecoverable}
-            onChange={(e) => set({ taxRecoverable: e.target.value })}
+            label={t("accounting.field.descriptionEn")}
+            hint={t("accounting.field.descriptionEnHint")}
+            source="typed"
+            required
           >
-            <option value="true">{t("accounting.value.yes")}</option>
-            <option value="false">{t("accounting.value.no")}</option>
-          </select>
-        </AccField>
+            <input
+              id={idPrefix + "-desc-en"}
+              className="ctl"
+              lang="en"
+              dir="ltr"
+              autoComplete="off"
+              data-testid="acc-pline-desc-en"
+              value={line.descriptionEn}
+              onChange={(e) => set({ descriptionEn: e.target.value })}
+            />
+          </AccField>
+        )}
+        {simple ? (
+          <>
+            <AccField
+              id={idPrefix + "-qty"}
+              label={t("accounting.field.quantity")}
+              hint={t("accounting.field.quantityHint")}
+              error={line.quantity !== "" && !isQuantityText(line.quantity) ? t("accounting.field.quantityBad") : undefined}
+              source="typed"
+              required
+            >
+              <input
+                id={idPrefix + "-qty"}
+                className="ctl amt-input"
+                inputMode="decimal"
+                dir="ltr"
+                autoComplete="off"
+                aria-invalid={line.quantity !== "" && !isQuantityText(line.quantity)}
+                data-testid="acc-pline-qty"
+                value={line.quantity}
+                onChange={(e) => set({ quantity: e.target.value })}
+              />
+            </AccField>
+            <AccField
+              id={idPrefix + "-price"}
+              label={t("accounting.field.unitPrice")}
+              hint={t("accounting.field.unitPriceHint")}
+              error={line.unitPrice !== "" && !isMoneyText(line.unitPrice) ? t("accounting.field.moneyBad") : undefined}
+              source="typed"
+              required
+            >
+              <input
+                id={idPrefix + "-price"}
+                className="ctl amt-input"
+                inputMode="decimal"
+                dir="ltr"
+                autoComplete="off"
+                aria-invalid={line.unitPrice !== "" && !isMoneyText(line.unitPrice)}
+                data-testid="acc-pline-price"
+                value={line.unitPrice}
+                onChange={(e) => set({ unitPrice: e.target.value })}
+              />
+            </AccField>
+          </>
+        ) : null}
       </AccRow>
+      {simple ? null : (
+        <AccRow cols={3} testId="acc-purchase-line-row-2">
+          <AccField
+            id={idPrefix + "-group"}
+            label={t("accounting.field.itemGroup")}
+            hint={t("accounting.field.itemGroupHint")}
+            source="typed"
+            required
+          >
+            <input
+              id={idPrefix + "-group"}
+              className="ctl mono"
+              dir="ltr"
+              autoComplete="off"
+              spellCheck={false}
+              data-testid="acc-pline-group"
+              value={line.itemGroup}
+              onChange={(e) => set({ itemGroup: e.target.value })}
+            />
+          </AccField>
+          <AccField
+            id={idPrefix + "-qty"}
+            label={t("accounting.field.quantity")}
+            hint={t("accounting.field.quantityHint")}
+            error={
+              line.quantity !== "" && !isQuantityText(line.quantity)
+                ? t("accounting.field.quantityBad")
+                : undefined
+            }
+            source="typed"
+            required
+          >
+            <input
+              id={idPrefix + "-qty"}
+              className="ctl amt-input"
+              inputMode="decimal"
+              dir="ltr"
+              autoComplete="off"
+              aria-invalid={line.quantity !== "" && !isQuantityText(line.quantity)}
+              data-testid="acc-pline-qty"
+              value={line.quantity}
+              onChange={(e) => set({ quantity: e.target.value })}
+            />
+          </AccField>
+          <AccField
+            id={idPrefix + "-price"}
+            label={t("accounting.field.unitPrice")}
+            hint={t("accounting.field.unitPriceHint")}
+            error={
+              line.unitPrice !== "" && !isMoneyText(line.unitPrice)
+                ? t("accounting.field.moneyBad")
+                : undefined
+            }
+            source="typed"
+            required
+          >
+            <input
+              id={idPrefix + "-price"}
+              className="ctl amt-input"
+              inputMode="decimal"
+              dir="ltr"
+              autoComplete="off"
+              aria-invalid={line.unitPrice !== "" && !isMoneyText(line.unitPrice)}
+              data-testid="acc-pline-price"
+              value={line.unitPrice}
+              onChange={(e) => set({ unitPrice: e.target.value })}
+            />
+          </AccField>
+        </AccRow>
+      )}
+      {simple && hideTaxClass && hideTaxRate && hideRecoverable ? null : (
+        <AccRow cols={3} testId="acc-purchase-line-row-3">
+          {hideTaxClass ? null : (
+            <AccField
+              id={idPrefix + "-taxclass"}
+              label={t("accounting.field.taxClassification")}
+              hint={t("accounting.field.taxClassificationHint")}
+              source="typed"
+              required
+            >
+              <input
+                id={idPrefix + "-taxclass"}
+                className="ctl mono"
+                dir="ltr"
+                list={TAX_CLASS_LIST}
+                autoComplete="off"
+                spellCheck={false}
+                data-testid="acc-pline-taxclass"
+                value={line.taxClassification}
+                onChange={(e) => set({ taxClassification: e.target.value })}
+              />
+            </AccField>
+          )}
+          {hideTaxRate ? null : (
+            <AccField
+              id={idPrefix + "-taxrate"}
+              label={t("accounting.field.taxRate")}
+              hint={t("accounting.field.taxRateHint")}
+              error={
+                line.taxRate !== "" && !isTaxRateText(line.taxRate)
+                  ? t("accounting.field.rateBad")
+                  : undefined
+              }
+              source="typed"
+              required
+            >
+              <input
+                id={idPrefix + "-taxrate"}
+                className="ctl amt-input"
+                inputMode="decimal"
+                dir="ltr"
+                autoComplete="off"
+                aria-invalid={line.taxRate !== "" && !isTaxRateText(line.taxRate)}
+                data-testid="acc-pline-taxrate"
+                value={line.taxRate}
+                onChange={(e) => set({ taxRate: e.target.value })}
+              />
+            </AccField>
+          )}
+          {hideRecoverable ? null : (
+            <AccField
+              id={idPrefix + "-recoverable"}
+              label={t("accounting.field.taxRecoverable")}
+              hint={t("accounting.field.taxRecoverableHint")}
+              source="typed"
+              required
+            >
+              <select
+                id={idPrefix + "-recoverable"}
+                className="ctl"
+                data-testid="acc-pline-recoverable"
+                value={line.taxRecoverable}
+                onChange={(e) => set({ taxRecoverable: e.target.value })}
+              >
+                <option value="true">{t("accounting.value.yes")}</option>
+                <option value="false">{t("accounting.value.no")}</option>
+              </select>
+            </AccField>
+          )}
+        </AccRow>
+      )}
     </>
   );
 }

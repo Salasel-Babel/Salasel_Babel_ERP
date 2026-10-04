@@ -27,6 +27,7 @@ import { asQuantity } from "../../api/generated/brands";
 import type { CommercialDocument } from "../../api/generated/types";
 import { Money } from "../../api/money";
 import { useApi } from "../../app/api-context";
+import { useDocumentNumber, useSimple } from "../../app/presets";
 import { ProblemPanel } from "../../app/shell/ProblemPanel";
 import { useT } from "../../i18n/react";
 import { Button, EmptyState, useMoment } from "../../ui";
@@ -66,6 +67,10 @@ export function PurchaseReturnScreen(): ReactNode {
   const [quantity, setQuantity] = useState("");
   const [tax, setTax] = useState("0");
 
+  /* ── الواجهة المبسّطة: الرقم من الخادم، والتاريخ اليوم، والضريبة صفرٌ ما لم تُطلب (ADR-0095) ── */
+  const simple = useSimple();
+  const documentNumber = useDocumentNumber("purchase_return");
+
   const [draftBusy, setDraftBusy] = useState(false);
   const [draftError, setDraftError] = useState<unknown>(null);
 
@@ -86,7 +91,7 @@ export function PurchaseReturnScreen(): ReactNode {
   const quantityBad = quantity !== "" && !isQuantityText(quantity);
   const taxBad = tax !== "" && !isMoneyText(tax);
   const draftReady =
-    number !== "" &&
+    (number !== "" || documentNumber.hidden) &&
     billId !== "" &&
     issuedOn !== "" &&
     receiptLineId !== "" &&
@@ -98,12 +103,15 @@ export function PurchaseReturnScreen(): ReactNode {
     setDraftError(null);
     setPosted(null);
     try {
+      /* الرقم: ما كُتب، وإلا يُخصَّص من سلسلة مرتجعات المشتريات على تاريخ الإصدار. */
+      const resolvedNumber = await documentNumber.resolve(number, issuedOn);
+      setNumber(resolvedNumber);
       const created = await draftPurchaseReturn(transport, {
         companyId: config.companyId,
         body: {
           billId,
           issuedOn,
-          number,
+          number: resolvedNumber,
           quantity: asQuantity(quantity),
           receiptLineId,
           tax: Money.wire(tax),
@@ -120,6 +128,7 @@ export function PurchaseReturnScreen(): ReactNode {
   }, [
     billId,
     config.companyId,
+    documentNumber,
     fireArrive,
     fireRefuse,
     issuedOn,
@@ -169,7 +178,8 @@ export function PurchaseReturnScreen(): ReactNode {
         note={t("accounting.ledger.ret.draftNote")}
         testId="ledger-return-draft"
       >
-        <AccRow cols={3} testId="ledger-return-row-1">
+        <AccRow cols={simple ? 2 : 3} testId="ledger-return-row-1">
+          {documentNumber.hidden ? null : (
           <AccField
             id="ledger-ret-number"
             label={t("accounting.ledger.field.returnNumber")}
@@ -188,6 +198,7 @@ export function PurchaseReturnScreen(): ReactNode {
               onChange={(e) => setNumber(e.target.value)}
             />
           </AccField>
+          )}
           <AccField
             id="ledger-ret-bill"
             label={t("accounting.ledger.field.billId")}
@@ -206,6 +217,7 @@ export function PurchaseReturnScreen(): ReactNode {
               onChange={(e) => setBillId(e.target.value)}
             />
           </AccField>
+          {simple ? null : (
           <AccField
             id="ledger-ret-issued"
             label={t("accounting.ledger.field.issuedOn")}
@@ -223,8 +235,9 @@ export function PurchaseReturnScreen(): ReactNode {
               onChange={(e) => setIssuedOn(e.target.value)}
             />
           </AccField>
+          )}
         </AccRow>
-        <AccRow cols={3} testId="ledger-return-row-2">
+        <AccRow cols={simple ? 2 : 3} testId="ledger-return-row-2">
           <AccField
             id="ledger-ret-line"
             label={t("accounting.ledger.field.receiptLineId")}
@@ -263,6 +276,7 @@ export function PurchaseReturnScreen(): ReactNode {
               onChange={(e) => setQuantity(e.target.value)}
             />
           </AccField>
+          {simple ? null : (
           <AccField
             id="ledger-ret-tax"
             label={t("accounting.ledger.field.returnTax")}
@@ -283,6 +297,7 @@ export function PurchaseReturnScreen(): ReactNode {
               onChange={(e) => setTax(e.target.value)}
             />
           </AccField>
+          )}
         </AccRow>
 
         <p className="hint" data-testid="ledger-return-no-net">

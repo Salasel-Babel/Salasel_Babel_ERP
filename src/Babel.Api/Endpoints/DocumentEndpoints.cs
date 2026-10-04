@@ -44,6 +44,7 @@ internal static class DocumentEndpoints
         ArgumentNullException.ThrowIfNull(app);
 
         app.MapPost(ApiRoutes.Customers, AddCustomerAsync);
+        app.MapGet(ApiRoutes.Customers, ListCustomersAsync);
         app.MapGet(ApiRoutes.Customer, ReadCustomerAsync);
         app.MapPost(ApiRoutes.SalesInvoices, DraftInvoiceAsync);
         app.MapGet(ApiRoutes.SalesInvoice, ReadInvoiceAsync);
@@ -56,6 +57,7 @@ internal static class DocumentEndpoints
         app.MapGet(ApiRoutes.ReceivablesAging, ReceivablesAgingAsync);
 
         app.MapPost(ApiRoutes.Suppliers, AddSupplierAsync);
+        app.MapGet(ApiRoutes.Suppliers, ListSuppliersAsync);
         app.MapGet(ApiRoutes.Supplier, ReadSupplierAsync);
         app.MapPost(ApiRoutes.SupplierBills, DraftExpenseBillAsync);
         app.MapGet(ApiRoutes.SupplierBill, ReadBillAsync);
@@ -194,6 +196,25 @@ internal static class DocumentEndpoints
 
         Result<SalesParty> result = await sales
             .ReadCustomerAsync(new TenantId(companyId), Actor(context), customerId, cancellationToken)
+            .ConfigureAwait(false);
+
+        return result.IsFailure
+            ? HttpProblemResults.Domain(context, result.Errors)
+            : Results.Json(DocumentMapping.ToDto(result.Value), ApiJson.Options);
+    }
+
+    private static async Task<IResult> ListCustomersAsync(
+        HttpContext context,
+        SalesSurface sales,
+        CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        Result<IReadOnlyList<SalesParty>> result = await sales
+            .ListCustomersAsync(new TenantId(companyId), Actor(context), cancellationToken)
             .ConfigureAwait(false);
 
         return result.IsFailure
@@ -517,6 +538,25 @@ internal static class DocumentEndpoints
 
         Result<PurchasingParty> result = await purchasing
             .ReadSupplierAsync(new TenantId(companyId), Actor(context), supplierId, cancellationToken)
+            .ConfigureAwait(false);
+
+        return result.IsFailure
+            ? HttpProblemResults.Domain(context, result.Errors)
+            : Results.Json(DocumentMapping.ToDto(result.Value), ApiJson.Options);
+    }
+
+    private static async Task<IResult> ListSuppliersAsync(
+        HttpContext context,
+        PurchasingSurface purchasing,
+        CancellationToken cancellationToken)
+    {
+        if (!Scope.TryCompany(context, out Guid companyId, out IResult? denied))
+        {
+            return denied!;
+        }
+
+        Result<IReadOnlyList<PurchasingParty>> result = await purchasing
+            .ListSuppliersAsync(new TenantId(companyId), Actor(context), cancellationToken)
             .ConfigureAwait(false);
 
         return result.IsFailure

@@ -127,6 +127,23 @@ export interface ScreenEntry {
    * </p>
    */
   readonly universal?: true;
+  /**
+   * شاشةٌ متقدّمة — <b>تُخفى من القوائم في الواجهة المبسّطة، ولا تُحذف</b>.
+   * <p>
+   * مسارُها قائم ولوحةُ الأوامر تجدها، وزرُّ «كل الشاشات» في القائمة الجانبية
+   * يُظهرها. والتصنيفُ اختيارُ عرضٍ لا صلاحية (`simple-mode.ts`).
+   * </p>
+   */
+  readonly advanced?: true;
+  /**
+   * شاشةُ إدخالٍ تُعرَض <b>نافذةً منبثقة</b> فوق قسمها لا صفحةً (ADR-0097).
+   * <p>
+   * مسارُها قائم كما هو — الرابط العميق واللوحة والشجرة تفتحه — وإنما يُغلَّف
+   * في `EntryDialog` حين يُرسَم، ويُغلق إلى صفحة قسمه الأولى. والرايةُ لشاشات
+   * المستندات والسندات التي تُكتب وتُرحَّل؛ أما السجلّات والتقارير فصفحات.
+   * </p>
+   */
+  readonly entry?: true;
 }
 
 /**
@@ -327,6 +344,7 @@ export const SCREENS: readonly ScreenEntry[] = [
   },
   {
     path: "/voucher",
+    entry: true,
     labelKey: "app.nav.voucher",
     section: "accounting",
     icon: "pen",
@@ -337,6 +355,7 @@ export const SCREENS: readonly ScreenEntry[] = [
     section: "accounting",
     icon: "key",
     group: "tools",
+    advanced: true,
   },
   {
     path: "/contract",
@@ -344,6 +363,7 @@ export const SCREENS: readonly ScreenEntry[] = [
     section: "accounting",
     icon: "file",
     group: "tools",
+    advanced: true,
   },
   {
     path: "/design",
@@ -351,6 +371,7 @@ export const SCREENS: readonly ScreenEntry[] = [
     section: "accounting",
     icon: "palette",
     group: "tools",
+    advanced: true,
   },
   /* ── العقارات — أربعٌ **بترتيب العمل لا بترتيب الحروف**: العقارُ ووحداته
      يُعرَّفان مرّةً ← ثم طرفا العقد (المالك الذي نُحصّل له والمستأجر الذي
@@ -372,6 +393,7 @@ export const SCREENS: readonly ScreenEntry[] = [
   },
   {
     path: "/realestate/lease",
+    entry: true,
     labelKey: "realestate.nav.lease",
     section: "realestate",
     icon: "key",
@@ -395,6 +417,7 @@ export const SCREENS: readonly ScreenEntry[] = [
   },
   {
     path: "/contracting/change-orders",
+    entry: true,
     labelKey: "contracting.nav.changeOrders",
     section: "contracting",
     icon: "swap",
@@ -402,6 +425,7 @@ export const SCREENS: readonly ScreenEntry[] = [
   },
   {
     path: "/contracting/guarantees",
+    entry: true,
     labelKey: "contracting.nav.guarantees",
     section: "contracting",
     icon: "shield",
@@ -409,6 +433,7 @@ export const SCREENS: readonly ScreenEntry[] = [
   },
   {
     path: "/contracting/certificate",
+    entry: true,
     labelKey: "contracting.nav.certificate",
     section: "contracting",
     icon: "receipt",
@@ -416,6 +441,7 @@ export const SCREENS: readonly ScreenEntry[] = [
   },
   {
     path: "/contracting/subcontracting",
+    entry: true,
     labelKey: "contracting.nav.subcontracting",
     section: "contracting",
     icon: "network",
@@ -423,6 +449,7 @@ export const SCREENS: readonly ScreenEntry[] = [
   },
   {
     path: "/contracting/advances",
+    entry: true,
     labelKey: "contracting.nav.advances",
     section: "contracting",
     icon: "cash",
@@ -430,6 +457,7 @@ export const SCREENS: readonly ScreenEntry[] = [
   },
   {
     path: "/contracting/retention",
+    entry: true,
     labelKey: "contracting.nav.retention",
     section: "contracting",
     icon: "lock",
@@ -450,6 +478,7 @@ export const SCREENS: readonly ScreenEntry[] = [
   },
   {
     path: "/inventory/movements",
+    entry: true,
     labelKey: "inventory.nav.movements",
     section: "inventory",
     icon: "arrows",
@@ -460,6 +489,7 @@ export const SCREENS: readonly ScreenEntry[] = [
     labelKey: "inventory.nav.valuation",
     section: "inventory",
     icon: "chart",
+    advanced: true,
   },
   /* ── الموارد البشرية — ثمانٍ **بترتيب العمل لا بترتيب الحروف**: ما يُعرَّف
      مرّةً (مكوّنات الأجر) ← من يُسجَّل ← ما يُقيَّد عليه قبل الشهر (السلف
@@ -472,6 +502,7 @@ export const SCREENS: readonly ScreenEntry[] = [
     section: "hr",
     icon: "sliders",
     group: "hrPayroll",
+    advanced: true,
   },
   /* ── التسكين ووحداته — الشاشات الخمس التي جاءت بعد نزول أبوابها ─────────
      إضافةٌ في موضعٍ واحد متّصل، فتندمج مع من يعمل على هذا الملفّ بلا تعارض. */
@@ -484,10 +515,12 @@ export const SCREENS: readonly ScreenEntry[] = [
   },
   {
     path: "/inventory/placement",
+    entry: true,
     labelKey: "inventory.nav.placement",
     section: "inventory",
     icon: "map",
     group: "invPlaces",
+    advanced: true,
   },
   {
     path: "/inventory/placement-balances",
@@ -495,13 +528,16 @@ export const SCREENS: readonly ScreenEntry[] = [
     section: "inventory",
     icon: "target",
     group: "invPlaces",
+    advanced: true,
   },
   {
     path: "/inventory/transfers",
+    entry: true,
     labelKey: "inventory.nav.transfers",
     section: "inventory",
     icon: "swap",
     group: "invMovement",
+    advanced: true,
   },
   {
     path: "/inventory/units",
@@ -509,6 +545,7 @@ export const SCREENS: readonly ScreenEntry[] = [
     section: "inventory",
     icon: "ruler",
     group: "invCatalogue",
+    advanced: true,
   },
   {
     path: "/hr",
@@ -518,6 +555,7 @@ export const SCREENS: readonly ScreenEntry[] = [
   },
   {
     path: "/hr/advances-deductions",
+    entry: true,
     labelKey: "hr.nav.advances",
     section: "hr",
     icon: "cash",
@@ -525,6 +563,7 @@ export const SCREENS: readonly ScreenEntry[] = [
   },
   {
     path: "/hr/payroll",
+    entry: true,
     labelKey: "hr.nav.payroll",
     section: "hr",
     icon: "wallet",
@@ -539,17 +578,21 @@ export const SCREENS: readonly ScreenEntry[] = [
   },
   {
     path: "/hr/social-insurance",
+    entry: true,
     labelKey: "hr.nav.socialInsurance",
     section: "hr",
     icon: "shield",
     group: "hrObligations",
+    advanced: true,
   },
   {
     path: "/hr/end-of-service",
+    entry: true,
     labelKey: "hr.nav.endOfService",
     section: "hr",
     icon: "exit",
     group: "hrObligations",
+    advanced: true,
   },
   {
     path: "/hr/subledger-reconciliation",
@@ -557,24 +600,14 @@ export const SCREENS: readonly ScreenEntry[] = [
     section: "hr",
     icon: "check",
     group: "hrObligations",
-  },
-  /* الأمر المنطوق يعبر الأقسام الخمسة كلّها، ولا قسمَ واحداً يملكه. وهو مُدرَجٌ
-     هنا تحت المحاسبة **لأجل لونه وحده** — وهو اللون المرجعي حين لا يُعرَف القسم.
-     (وكُتب هذا الصفّ حين كانت الأقسام الأربعة الأخرى `built: false`؛ وقد صارت
-     كلّها مبنيّةً عند إنزال شاشاتها، فالنيّةُ المؤكَّدة تجد اليوم شاشةً تقودها
-     إليها.) */
-  {
-    path: "/voice",
-    labelKey: "app.nav.voice",
-    section: "accounting",
-    icon: "mic",
-    group: "tools",
+    advanced: true,
   },
   /* ── دورة المستندات المحاسبية: المبيعات ─────────────────────────────────
      الدورة التي وصفها صاحب المصلحة — فاتورة، ثم سند قبض — ثم ما تُقرأ به
      ذمّة العميل. وهي في القسم المحاسبي كما ينصّ العقد، ومجموعتُها مُسمّاة. */
   {
     path: "/sales/invoice",
+    entry: true,
     labelKey: "accounting.nav.salesInvoice",
     section: "accounting",
     icon: "receipt",
@@ -582,6 +615,7 @@ export const SCREENS: readonly ScreenEntry[] = [
   },
   {
     path: "/sales/receipt",
+    entry: true,
     labelKey: "accounting.nav.customerReceipt",
     section: "accounting",
     icon: "cash",
@@ -598,20 +632,25 @@ export const SCREENS: readonly ScreenEntry[] = [
      فاتورة ← صرف. وترتيبٌ أبجدي هنا كان سيُخفي أن الأربع سلسلةٌ مرتَّبة. */
   {
     path: "/purchasing/order",
+    entry: true,
     labelKey: "accounting.nav.purchaseOrder",
     section: "accounting",
     icon: "clipboard",
     group: "purchasing",
+    advanced: true,
   },
   {
     path: "/purchasing/goods-receipt",
+    entry: true,
     labelKey: "accounting.nav.goodsReceipt",
     section: "accounting",
     icon: "truck",
     group: "purchasing",
+    advanced: true,
   },
   {
     path: "/purchasing/bill",
+    entry: true,
     labelKey: "accounting.nav.supplierBill",
     section: "accounting",
     icon: "receipt",
@@ -619,6 +658,7 @@ export const SCREENS: readonly ScreenEntry[] = [
   },
   {
     path: "/purchasing/payment",
+    entry: true,
     labelKey: "accounting.nav.supplierPayment",
     section: "accounting",
     icon: "cash",
@@ -651,6 +691,7 @@ export const SCREENS: readonly ScreenEntry[] = [
     section: "accounting",
     icon: "paperclip",
     group: "evidence",
+    advanced: true,
   },
   {
     path: "/attachments/custody",
@@ -658,6 +699,7 @@ export const SCREENS: readonly ScreenEntry[] = [
     section: "accounting",
     icon: "shield",
     group: "evidence",
+    advanced: true,
   },
   {
     path: "/inventory/item-lifecycle",
@@ -665,6 +707,7 @@ export const SCREENS: readonly ScreenEntry[] = [
     section: "inventory",
     icon: "refresh",
     group: "invCatalogue",
+    advanced: true,
   },
   /* ── ما بعد الترحيل — أربعٌ **بترتيب العمل لا بترتيب الحروف**، و**كتلةٌ
      واحدة متّصلة** كي يندمج جانباها آلياً حين يلمس أسطولٌ آخر هذا الملفّ.
@@ -683,24 +726,30 @@ export const SCREENS: readonly ScreenEntry[] = [
      `ADR-after-posting-is-a-group-and-a-reversal-is-not-a-delete`. */
   {
     path: "/ledger/entry",
+    entry: true,
     labelKey: "accounting.ledger.nav.entry",
     section: "accounting",
     icon: "pen",
     group: "postings",
+    advanced: true,
   },
   {
     path: "/ledger/purchase-return",
+    entry: true,
     labelKey: "accounting.ledger.nav.purchaseReturn",
     section: "accounting",
     icon: "undo",
     group: "postings",
+    advanced: true,
   },
   {
     path: "/ledger/credit-note",
+    entry: true,
     labelKey: "accounting.ledger.nav.creditNote",
     section: "accounting",
     icon: "receipt",
     group: "postings",
+    advanced: true,
   },
   {
     path: "/ledger/chain",
@@ -708,6 +757,7 @@ export const SCREENS: readonly ScreenEntry[] = [
     section: "accounting",
     icon: "link",
     group: "postings",
+    advanced: true,
   },
   /* ── الإدارة والاشتراك — أربعٌ **بترتيب العمل لا بترتيب الحروف**: كيف
      أدخل أوّل مرّة ← ما الذي بيدي الآن ← من يدخل معي ← ماذا اشتريتُ وما
@@ -727,6 +777,7 @@ export const SCREENS: readonly ScreenEntry[] = [
     section: "accounting",
     icon: "plus",
     group: "admin",
+    advanced: true,
   },
   {
     path: "/admin/session",
@@ -748,6 +799,7 @@ export const SCREENS: readonly ScreenEntry[] = [
     section: "accounting",
     icon: "card",
     group: "admin",
+    advanced: true,
   },
   {
     path: "/admin/plans",
@@ -755,6 +807,7 @@ export const SCREENS: readonly ScreenEntry[] = [
     section: "accounting",
     icon: "layers",
     group: "admin",
+    advanced: true,
   },
   /* ── التأسيس والثوابت — أربعٌ **بترتيب العمل لا بترتيب الحروف**: ما يقع
      مرّةً فيؤسّس المنشأة ← ما يُبوَّب عليه كلُّ سطرٍ بعده ← ما يُرخَّص من حقول
@@ -779,11 +832,19 @@ export const SCREENS: readonly ScreenEntry[] = [
     group: "setup",
   },
   {
+    path: "/setup/presets",
+    labelKey: "app.nav.presets",
+    section: "accounting",
+    icon: "sliders",
+    group: "setup",
+  },
+  {
     path: "/setup/cost-centers",
     labelKey: "app.nav.costCenters",
     section: "accounting",
     icon: "target",
     group: "setup",
+    advanced: true,
   },
   {
     path: "/setup/document-shapes",
@@ -791,6 +852,7 @@ export const SCREENS: readonly ScreenEntry[] = [
     section: "accounting",
     icon: "file",
     group: "setup",
+    advanced: true,
   },
   {
     path: "/setup/chart-of-accounts",
@@ -805,6 +867,7 @@ export const SCREENS: readonly ScreenEntry[] = [
     section: "accounting",
     icon: "sliders",
     group: "setup",
+    advanced: true,
   },
 ];
 
@@ -816,4 +879,11 @@ export function sectionOf(path: string): Section {
   const screen = SCREENS.find((s) => s.path === path);
   const id = screen?.section ?? "accounting";
   return SECTIONS.find((s) => s.id === id) ?? ACCOUNTING;
+}
+
+const ENTRY = new Set(SCREENS.filter((screen) => screen.entry === true).map((screen) => screen.path));
+
+/** هل تُعرَض شاشةُ هذا المسار نافذةً منبثقة؟ (ADR-0097) */
+export function isEntryScreen(path: string): boolean {
+  return ENTRY.has(path);
 }

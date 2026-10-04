@@ -23,6 +23,7 @@
        الحسابات ورموزُ مراكز التكلفة تأتي من الخادم وتُعرض كما وصلت — ومصفوفة
        الترحيل في `data/posting-matrix/` هي التي تقرّر، لا الواجهة.
    ═══════════════════════════════════════════════════════════════════════════ */
+import { shownInMenus, useShowAdvanced } from "../../app/shell/simple-mode";
 import { useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import type { NameValue } from "../../api/generated/types";
@@ -30,6 +31,7 @@ import { resolveTranslatedName, RECORD_TAG } from "../../app/translated-name";
 import { useT } from "../../i18n/react";
 import { Button, Field, Panel, StatusBadge, type DocState, type Provenance } from "../../ui";
 import "./setup.css";
+import { SectionExtras } from "../../app/shell/SectionExtras";
 
 /* ═══════════════════════════ ١ · الملاحة داخل مجموعة التأسيس ══════════════
    أربعُ شاشاتٍ بترتيب العمل لا بترتيب الحروف: ما يقع مرّةً فيؤسّس المنشأة ←
@@ -45,6 +47,7 @@ import "./setup.css";
  */
 export const SETUP_SCREENS = [
   { to: "/setup", key: "app.nav.companySetup" },
+  { to: "/setup/presets", key: "app.nav.presets" },
   { to: "/setup/cost-centers", key: "app.nav.costCenters" },
   { to: "/setup/document-shapes", key: "app.nav.documentShapes" },
   { to: "/setup/chart-of-accounts", key: "app.nav.chartOfAccounts" },
@@ -57,9 +60,11 @@ export const SETUP_SCREENS = [
  */
 export function SetupSectionNav(props: { readonly current: string }): ReactNode {
   const { t } = useT();
+  const showAdvanced = useShowAdvanced();
   return (
+    <>
     <nav className="stp-tabs" aria-label={t("screen.setup.navLabel")} data-testid="setup-tabs">
-      {SETUP_SCREENS.map((screen) => (
+      {SETUP_SCREENS.filter((screen) => shownInMenus(screen.to, showAdvanced, props.current)).map((screen) => (
         <Link
           key={screen.to}
           to={screen.to}
@@ -71,6 +76,8 @@ export function SetupSectionNav(props: { readonly current: string }): ReactNode 
         </Link>
       ))}
     </nav>
+      <SectionExtras section="accounting" current={props.current} />
+    </>
   );
 }
 

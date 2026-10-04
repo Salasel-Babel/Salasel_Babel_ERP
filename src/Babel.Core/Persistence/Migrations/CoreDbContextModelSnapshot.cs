@@ -365,6 +365,34 @@ namespace Babel.Core.Persistence.Migrations
                     b.ToTable("capability_profile_document", "core");
                 });
 
+            modelBuilder.Entity("Babel.Core.Persistence.CompanyPresetRow", b =>
+                {
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("company_id");
+
+                    b.Property<string>("Key")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("key");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("value");
+
+                    b.HasKey("CompanyId", "Key")
+                        .HasName("pk_company_preset");
+
+                    b.ToTable("company_preset", "core", t =>
+                        {
+                            t.HasCheckConstraint("ck_company_preset_key_shape", "key ~ '^[a-z][a-z0-9_.]{0,63}$'");
+
+                            t.HasCheckConstraint("ck_company_preset_value_present", "length(value) > 0");
+                        });
+                });
+
             modelBuilder.Entity("Babel.Core.Persistence.CompanySetupRow", b =>
                 {
                     b.Property<Guid>("CompanyId")
@@ -505,6 +533,34 @@ namespace Babel.Core.Persistence.Migrations
                             t.HasCheckConstraint("ck_cost_center_reason_matches_state", "(state = 'suspended') = (length(btrim(suspension_reason)) > 0)");
 
                             t.HasCheckConstraint("ck_cost_center_state", "state in ('active','suspended')");
+                        });
+                });
+
+            modelBuilder.Entity("Babel.Core.Persistence.DocumentCounterRow", b =>
+                {
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("company_id");
+
+                    b.Property<string>("Series")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("series");
+
+                    b.Property<int>("FiscalYear")
+                        .HasColumnType("integer")
+                        .HasColumnName("fiscal_year");
+
+                    b.Property<int>("NextNo")
+                        .HasColumnType("integer")
+                        .HasColumnName("next_no");
+
+                    b.HasKey("CompanyId", "Series", "FiscalYear")
+                        .HasName("pk_document_counter");
+
+                    b.ToTable("document_counter", "core", t =>
+                        {
+                            t.HasCheckConstraint("ck_document_counter_positive", "next_no >= 1");
                         });
                 });
 

@@ -15,9 +15,12 @@
   background:var(--backdrop-cinematic);
   background-attachment:fixed;
 }
+/* **القائمة الجانبية زرقاء في الفاتح** بطلب المالك، وتعود سطحاً في الداكن —
+   والرموز `--side-*` في `theme-default.css` هي التي تختار، لا هذا الملفّ. */
 .app-side{
-  background:color-mix(in srgb, var(--color-surface) 88%, transparent);
-  backdrop-filter:blur(8px);
+  background:var(--side-bg);
+  color:var(--side-ink);
+  border-inline-end-color:var(--side-border);
 }
 .app-topbar{
   background:color-mix(in srgb, var(--color-surface) 84%, transparent);
@@ -348,6 +351,7 @@
   font-size:var(--font-size-3xl); line-height:var(--line-display);
   color:var(--color-text);
 }
+.gate__logo{ block-size:64px; inline-size:auto; max-inline-size:100% }
 .gate__brand .mark{
   inline-size:34px; block-size:34px; flex:none;
   border-radius:var(--radius-sm);
@@ -357,4 +361,114 @@
   margin:0; padding-block-start:var(--space-12);
   border-block-start:var(--border-width) solid var(--edge-line);
   font-size:var(--font-size-sm); color:var(--color-text-subtle);
+}
+
+/* ═══════════════════════════════════════════ ٩ · عناصر القائمة الجانبية الزرقاء
+   أصنافُ الشجرة عامّةٌ في `components.css` على سطحٍ أبيض؛ وهنا تُعاد لونيّتها
+   داخل العمود وحده، فلا يتغيّر شيءٌ خارجه. وكلُّ زوجٍ هنا مقيسٌ في
+   `scripts/contrast.mjs` تحت المعرّفات side/*. */
+.app-side .navitem,
+.app-side .subitem{ color:var(--side-ink-muted) }
+.app-side .navitem:hover,
+.app-side .subitem:hover{ background:var(--side-hover-bg); color:var(--side-ink) }
+.app-side .navitem[aria-current="page"],
+.app-side .navitem[aria-current="true"],
+.app-side .subitem[aria-current="page"],
+.app-side .subitem[aria-current="true"]{ background:var(--side-current-bg); color:var(--side-current-ink) }
+.app-side .sysbadge{
+  background:var(--side-hover-bg); color:var(--side-ink);
+  border-color:color-mix(in srgb, var(--side-ink) 30%, transparent);
+}
+.app-side .sysbadge .icon{ color:var(--side-ink) }
+.app-side .navitem--branch[data-holds-current="true"]{ background:var(--side-hover-bg); color:var(--side-ink) }
+.app-side .navitem:focus-visible,
+.app-side .subitem:focus-visible,
+.app-side .brand:focus-visible{ outline-color:var(--side-focus) }
+
+/* زرُّ «كل الشاشات / الأساسية فقط» في ذيل الشجرة — منفصلٌ عنها بخطٍّ رفيع
+   فلا يُقرأ شاشةً بين الشاشات. */
+.navtoggle{
+  margin-block-start:var(--space-12);
+  border-block-start:var(--border-width) solid color-mix(in srgb, currentColor 22%, transparent);
+  border-radius:0; padding-block-start:var(--space-12);
+  font-size:var(--font-size-sm);
+}
+
+/* ── ١٠ · الواجهة المبسّطة: الشروح تُطوى ─────────────────────────────────
+   التلميحات تحت الحقول، وسطرُ العنوان الشارح، وملاحظةُ اللوح — تُخفى حين تكون
+   الواجهة مبسّطة (ADR-0095). الأخطاء تبقى: `.field-error` ليس تلميحاً. */
+.app-shell[data-simple="true"] .pagehead .sub,
+.app-shell[data-simple="true"] .card-pad > p.muted:first-child,
+.app-shell[data-simple="true"] .field .field__desc:not(:has(.field-error)) .hint{display:none}
+/* وخانةُ الوصف تبقى في الصفّ بلا ارتفاعٍ ولا هامش، فلا ذيلَ ميت تحت التحكّم. */
+.app-shell[data-simple="true"] :is(.grid,.filterbar,.toolbar,.hr-line,.con-line) > .field:not(.field--inline)
+  > .field__desc:not(:has(.field-error)){margin-block-start:0}
+.app-shell[data-simple="true"] .field:not(.field--inline) > .field__desc:not(:has(.field-error)):not(:has(.field-ok,.dateline)){display:none}
+/* صفّ المحاسبة يفرّق مساراته بفجوةٍ لا بهامش، والفجوة تبقى ولو خلا المسار الثالث:
+   فتُصفَّر في الواجهة المبسّطة ويُنقل الإيقاع إلى هامش التسمية ووصف الرفض وحده. */
+.app-shell[data-simple="true"] .acc-row{row-gap:0;margin-block-start:calc(-1 * var(--space-14))}
+.app-shell[data-simple="true"] .acc-row > *{margin-block-start:var(--space-14)}
+.app-shell[data-simple="true"] .acc-row > .field{row-gap:0}
+.app-shell[data-simple="true"] .acc-row > .field > label{margin-block-end:var(--space-6)}
+.app-shell[data-simple="true"] .acc-row > .field > .field__desc:has(.field-error){margin-block-start:var(--space-6)}
+
+/* طيّةُ الرأس: شفّافةٌ للتخطيط حين تُفتح، وغائبةٌ حين تُطوى. */
+.topbar-prefs{display:contents}
+.topbar-prefs[hidden]{display:none}
+
+/* ── ١١ · ملحقات القسم: أزرار البداية ومفتاح الحقول (ADR-0095) ──────────── */
+.sec-extras{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-8)}
+.quickacts{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-8);flex:1 1 auto}
+.quickacts__label{font-size:var(--font-size-2xs);font-weight:var(--font-weight-semibold);color:var(--color-text-subtle)}
+.sec-extras .quickact{
+  display:inline-flex;width:auto;flex:0 0 auto;
+  border:var(--border-width) solid var(--edge-line);border-radius:var(--radius-md);
+  background:var(--color-surface);padding:var(--space-8) var(--space-14)
+}
+.sec-extras .quickact .navitem__name{flex:0 0 auto}
+
+/* ── ١٢ · نافذةُ الإدخال المنبثقة (ADR-0097) ─────────────────────────────
+   شاشاتُ المستندات والسندات تُرسَم نافذةً فوق ساحة الصفحة وحدها: القائمةُ
+   الجانبية والرأسُ خلفها حيّان، والظلُّ يملأ الساحة إلى أسفل الشاشة، والنافذة
+   تمتدّ مع محتواها فتنزل الصفحةُ لا صندوقٌ داخلها — سطرُ الفاتورة الأربعون
+   يُقرأ بتمرير الصفحة كما يُقرأ على أي ورقة. وعلى الهاتف تملأ الساحة. */
+.app-page{position:relative}
+.app-page[data-entry="true"]{min-block-size:calc(100dvh - var(--topbar-h));padding-block:var(--space-24)}
+.entry-scrim{
+  position:absolute;inset:0;z-index:1;
+  display:flex;align-items:flex-start;justify-content:center;
+  padding:var(--space-24) var(--page-pad-x) var(--space-48);
+  background:color-mix(in srgb, var(--brand-ink, var(--color-text)) 28%, transparent);
+  backdrop-filter:blur(2px);
+}
+.entry-dialog{
+  position:relative;inline-size:min(1180px,100%);min-inline-size:0;
+  display:flex;flex-direction:column;gap:var(--space-14);
+  padding:var(--space-20) var(--space-24) var(--space-24);
+  background:var(--color-surface);color:var(--color-text);
+  border:var(--border-width) solid var(--color-border);
+  border-block-start:4px solid var(--brand);
+  border-radius:var(--radius-xl);box-shadow:var(--shadow-2);
+  animation:entry-dialog-in var(--motion-swift) var(--ease-enter) both;
+}
+.entry-dialog:focus:not(:focus-visible){outline:none}
+.entry-dialog:focus-visible{outline:2px solid var(--color-focus);outline-offset:2px}
+/* زرُّ الإغلاق في زاوية النافذة البادئة، والعنوانُ يُفسح له. */
+/* تبويبُ المجموعة يُطوى داخل النافذة بطلب المالك: الشجرةُ خلفها هي الانتقال
+   بين سندٍ وسند، ومفتاحُ «كل الحقول» يبقى. */
+.entry-dialog :is(.acc-tabs,.hr-tabs,.re-tabs,.con-nav){display:none}
+.entry-dialog__close{position:absolute;inset-block-start:var(--space-12);inset-inline-end:var(--space-12);z-index:2}
+.entry-dialog > .cine-transit > .stack > .pagehead:first-child,
+.entry-dialog > .cine-transit > .pagehead:first-child{padding-inline-end:var(--space-48)}
+@keyframes entry-dialog-in{
+  from{opacity:0;transform:translateY(8px) scale(.985)}
+  to{opacity:1;transform:none}
+}
+@media (max-width: 620px){
+  .app-page[data-entry="true"]{padding:0}
+  .entry-scrim{padding:0;align-items:stretch}
+  .entry-dialog{border-radius:0;border-inline:0;padding:var(--space-16) var(--page-pad-x-sm) var(--space-32)}
+}
+@media (prefers-reduced-motion: reduce){
+  .entry-dialog{animation:none}
 }

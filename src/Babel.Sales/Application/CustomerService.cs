@@ -118,4 +118,47 @@ public sealed class CustomerService : IApplicationService
                 Money.Of(row.CreditLimit, money.Value.Currency),
                 row.PaymentTermsDays));
     }
+
+    /// <summary>يقرأ عملاء المنشأة مرتَّبين بالرمز — قائمةُ اختيارٍ لا صفحة. نقطة قراءة كذلك.</summary>
+    /// <param name="tenant">المستأجر.</param>
+    /// <param name="actor">الفاعل.</param>
+    /// <param name="cancellationToken">رمز الإلغاء.</param>
+    [RequiresEntitlement(BabelModule.Sales, EntitlementAccess.Read)]
+    public async ValueTask<Result<IReadOnlyList<CustomerView>>> ListAsync(
+        TenantId tenant,
+        UserId actor,
+        CancellationToken cancellationToken = default)
+    {
+        Result gate = await _enforcer
+            .EnsureAsync(tenant, actor, BabelModule.Sales, EntitlementAccess.Read, "Sales.Customer.List", cancellationToken)
+            .ConfigureAwait(false);
+
+        if (gate.IsFailure)
+        {
+            return Result<IReadOnlyList<CustomerView>>.Failure(gate.Errors);
+        }
+
+        Result<CompanyMoney> money = await _company.ResolveAsync(tenant, cancellationToken).ConfigureAwait(false);
+        if (money.IsFailure)
+        {
+            return Result<IReadOnlyList<CustomerView>>.Failure(money.Errors);
+        }
+
+        List<CustomerRow> rows = await _database.Customers
+            .AsNoTracking()
+            .Where(entity => entity.TenantId == tenant.Value)
+            .OrderBy(entity => entity.Code)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        return Result<IReadOnlyList<CustomerView>>.Success(
+        [
+            .. rows.Select(row => new CustomerView(
+                row.Id,
+                row.Code,
+                new LocalizedName(row.NameAr, row.NameEn),
+                Money.Of(row.CreditLimit, money.Value.Currency),
+                row.PaymentTermsDays)),
+        ]);
+    }
 }

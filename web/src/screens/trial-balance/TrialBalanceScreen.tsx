@@ -7,6 +7,7 @@ import { useApi } from "../../app/api-context";
 import { useT } from "../../i18n/react";
 import { ProblemPanel } from "../../app/shell/ProblemPanel";
 import { TrialBalanceTable, type ViewFilter } from "./TrialBalanceTable";
+import { SectionExtras } from "../../app/shell/SectionExtras";
 
 /** الشاشة كاملةً. */
 export function TrialBalanceScreen(): ReactNode {
@@ -72,6 +73,7 @@ export function TrialBalanceScreen(): ReactNode {
           </span>
         ) : null}
       </header>
+      <SectionExtras section="accounting" current="/" />
 
       <div className="filterbar" role="search">
         <div className="field">

@@ -50,12 +50,12 @@ import { asTaxRate } from "../../api/generated/brands";
 import { PARAM_readTrialBalance_period_RE } from "../../api/generated/formats";
 import { Money } from "../../api/money";
 import { useApi } from "../../app/api-context";
+import { PRESET, useDocumentNumber, usePresetFill, useSimple } from "../../app/presets";
 import { ProblemError } from "../../api/transport";
 import { ProblemPanel } from "../../app/shell/ProblemPanel";
 import { Amount, Num, useT } from "../../i18n/react";
 import { Button, EmptyState, Field, Panel, RefusalPanel, StatCard, useMoment } from "../../ui";
 import { useHrFocus } from "./focus";
-import { peekVoiceDraft } from "../../voice";
 import {
   AmountsRow,
   ChooseCompanyFirst,
@@ -67,6 +67,7 @@ import {
   StatePanel,
   isMoneyText,
   isRateText,
+  monthPeriod,
   todayIso,
 } from "./parts";
 import {
@@ -124,27 +125,21 @@ export function PayrollRunScreen(): ReactNode {
   const [ratesError, setRatesError] = useState<unknown>(null);
   const [ratesOpen, setRatesOpen] = useState(false);
 
-  /* ── المسوّدة المنطوقة تصل إلى الحقل، لا إلى لوحةٍ بجانبه ──────────────
-     المستخدم قال «جهّز مسيّر الرواتب لفترة 2026-08»، فهبط هنا. ورمزُ الفترة
-     **يُملأ في حقله** ويبقى الباقي عليه — واللوحة فوق الشاشة تعرض القيمة
-     موسومةً «منطوق»، فلا يظنّها أحدٌ شيئاً أدخله بنفسه.
-
-     ⚠ **ولا يُنشأ شيء ولا يُرحَّل**: الزرّان أدناه كما هما، ويُضغطان بيد. */
-  const spokenPeriod = useMemo(() => {
-    const spoken = peekVoiceDraft();
-    if (spoken?.intentId !== "hr.payroll_run.draft") return "";
-    return spoken.fields.find((field) => field.name === "periodCode")?.text ?? "";
-  }, []);
 
   /* ── المسيّر ───────────────────────────────────────────────────────── */
   const [number, setNumber] = useState("");
-  const [periodCode, setPeriodCode] = useState(spokenPeriod);
+  const [periodCode, setPeriodCode] = useState("");
   const [periodStart, setPeriodStart] = useState("");
   const [periodEnd, setPeriodEnd] = useState("");
   const [draftBusy, setDraftBusy] = useState(false);
   const [runError, setRunError] = useState<unknown>(null);
   const [runId, setRunId] = useState(focus.runId);
 
+  /* ── الواجهة المبسّطة (ADR-0095): فترةُ الشهر الحالي مشتقّة من التاريخ لا من نصّ،
+     والرقم يُخصَّص من سلسلته على أوّل الفترة. وفي «كل الشاشات» الحقول الأربعة كما كانت. ── */
+  const simple = useSimple();
+  const runNumber = useDocumentNumber("payroll_run");
+  const [autoPeriod] = useState(() => monthPeriod(0));
 
   /* ── الترحيل ───────────────────────────────────────────────────────── */
   const [posted, setPosted] = useState<readonly HrPayslip[] | null>(null);
@@ -159,6 +154,10 @@ export function PayrollRunScreen(): ReactNode {
   type Method = HrPayrollPaymentRequest["settlementMethod"];
   const [method, setMethod] = useState<Method>((SETTLEMENT_METHODS[0] ?? "") as Method);
   const [treasury, setTreasury] = useState("");
+  /* سند الصرف في المبسّطة: الرقم من الخادم، والتاريخ اليوم، والطريقة والخزينة من الثوابت (ADR-0095). */
+  const paymentNumber = useDocumentNumber("payroll_payment");
+  const hideMethod = usePresetFill(PRESET.hrSettlementMethod, method, (next) => setMethod(next as Method));
+  const hideTreasury = usePresetFill(PRESET.hrTreasury, treasury, setTreasury);
   const [payment, setPayment] = useState<HrPayrollPayment | null>(null);
   const [payBusy, setPayBusy] = useState(false);
   const [payError, setPayError] = useState<unknown>(null);
@@ -223,9 +222,12 @@ export function PayrollRunScreen(): ReactNode {
     setPosted(null);
     setPayment(null);
     try {
+      /* المبسّطة: الفترة المشتقّة؛ وإلا ما كُتب. والرقم: ما كُتب، وإلا من السلسلة على أوّل الفترة. */
+      const period = simple ? autoPeriod : { code: periodCode, start: periodStart, end: periodEnd };
+      const resolvedNumber = await runNumber.resolve(number, period.start);
       const created = await draftPayrollRun(transport, {
         companyId: config.companyId,
-        body: { number, periodCode, periodStart, periodEnd },
+        body: { number: resolvedNumber, periodCode: period.code, periodStart: period.start, periodEnd: period.end },
       });
       setRunId(created.id);
       setFocus({ runId: created.id });
@@ -236,7 +238,7 @@ export function PayrollRunScreen(): ReactNode {
     } finally {
       setDraftBusy(false);
     }
-  }, [config.companyId, fireArrive, fireRefuse, number, periodCode, periodEnd, periodStart, setFocus, transport]);
+  }, [autoPeriod, config.companyId, fireArrive, fireRefuse, number, periodCode, periodEnd, periodStart, runNumber, setFocus, simple, transport]);
 
   const submitPosting = useCallback(async () => {
     setPostBusy(true);
@@ -266,9 +268,10 @@ export function PayrollRunScreen(): ReactNode {
     setPayBusy(true);
     setPayError(null);
     try {
+      const resolvedNumber = await paymentNumber.resolve(payNumber, paidOn);
       const drafted = await draftPayrollPayment(transport, {
         companyId: config.companyId,
-        body: { number: payNumber, runId, paidOn, settlementMethod: method, treasuryPartyId: treasury },
+        body: { number: resolvedNumber, runId, paidOn, settlementMethod: method, treasuryPartyId: treasury },
       });
       setPayment(drafted);
       fireArrive();
@@ -278,7 +281,7 @@ export function PayrollRunScreen(): ReactNode {
     } finally {
       setPayBusy(false);
     }
-  }, [config.companyId, fireArrive, fireRefuse, method, paidOn, payNumber, runId, transport, treasury]);
+  }, [config.companyId, fireArrive, fireRefuse, method, paidOn, payNumber, paymentNumber, runId, transport, treasury]);
 
   const postPayment = useCallback(async () => {
     if (!payment) return;
@@ -334,8 +337,9 @@ export function PayrollRunScreen(): ReactNode {
     rates.approvedOn !== "" &&
     rates.sourceRef !== "";
 
+  /* المبسّطة لا تطلب شيئاً مكتوباً: الفترة مشتقّة والرقم من الخادم. */
   const draftReady =
-    number !== "" && periodCode !== "" && periodValid && periodStart !== "" && periodEnd !== "";
+    simple || (number !== "" && periodCode !== "" && periodValid && periodStart !== "" && periodEnd !== "");
 
   if (config.companyId === "") return <ChooseCompanyFirst testId="hr-payroll-needs-company" />;
 
@@ -503,6 +507,15 @@ export function PayrollRunScreen(): ReactNode {
 
       {/* ═════════════════════════════════════ ٢ · إنشاء المسيّر مسوّدة ═══ */}
       <Panel title={t("hr.run.draftTitle")} note={t("hr.run.draftNote")} testId="hr-run-draft">
+        {simple ? (
+        <div className="grid fields-2">
+          <Field id="hr-run-period-auto" label={t("hr.field.periodCode")} hint={t("hr.field.periodAutoHint")} source="defaulted">
+            <input id="hr-run-period-auto" className="ctl mono" dir="ltr" readOnly
+              data-testid="hr-run-period-auto"
+              value={autoPeriod.code + " · " + autoPeriod.start + " — " + autoPeriod.end} />
+          </Field>
+        </div>
+        ) : (
         <div className="grid fields-4">
           <Field id="hr-run-number" label={t("hr.field.number")} hint={t("hr.field.numberHint")} source="typed" required>
             <input id="hr-run-number" className="ctl mono" dir="ltr" autoComplete="off" spellCheck={false}
@@ -531,6 +544,7 @@ export function PayrollRunScreen(): ReactNode {
               data-testid="hr-run-end" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)} />
           </Field>
         </div>
+        )}
         <div className="grid fields-2">
           <Field id="hr-run-id" label={t("hr.field.runId")} hint={t("hr.field.runIdHint")}>
             <input id="hr-run-id" className="ctl mono" dir="ltr" autoComplete="off" spellCheck={false}
@@ -777,15 +791,20 @@ export function PayrollRunScreen(): ReactNode {
       {current && current.state === POSTED ? (
         <Panel title={t("hr.payment.title")} note={t("hr.payment.note")} testId="hr-payment">
           <div className="grid fields-4">
+            {paymentNumber.hidden ? null : (
             <Field id="hr-pay-number" label={t("hr.field.number")} source="typed" required>
               <input id="hr-pay-number" className="ctl mono" dir="ltr" autoComplete="off" spellCheck={false}
                 data-testid="hr-payment-number" value={payNumber} onChange={(e) => setPayNumber(e.target.value)}
                 placeholder="PAY-2026-06" />
             </Field>
+            )}
+            {simple ? null : (
             <Field id="hr-pay-on" label={t("hr.field.paidOn")} source="typed" required>
               <input id="hr-pay-on" className="ctl mono" type="date" dir="ltr"
                 data-testid="hr-payment-date" value={paidOn} onChange={(e) => setPaidOn(e.target.value)} />
             </Field>
+            )}
+            {hideMethod ? null : (
             <Field id="hr-pay-method" label={t("hr.field.settlementMethod")} hint={t("hr.field.settlementMethodHint")} source="typed" required>
               <select id="hr-pay-method" className="ctl" data-testid="hr-payment-method"
                 value={method} onChange={(e) => setMethod(e.target.value as Method)}>
@@ -794,17 +813,20 @@ export function PayrollRunScreen(): ReactNode {
                 ))}
               </select>
             </Field>
+            )}
+            {hideTreasury ? null : (
             <Field id="hr-pay-treasury" label={t("hr.field.treasuryParty")} hint={t("hr.field.treasuryPartyHint")} source="typed" required>
               <input id="hr-pay-treasury" className="ctl mono" dir="ltr" autoComplete="off" spellCheck={false}
                 data-testid="hr-payment-treasury" value={treasury} onChange={(e) => setTreasury(e.target.value)}
                 placeholder="BANK-0001" />
             </Field>
+            )}
           </div>
           <div className="inline-group">
             <Button
               label={t("hr.act.draftPayment")}
               loading={payBusy}
-              disabled={payBusy || payNumber === "" || paidOn === "" || treasury === "" || payment !== null}
+              disabled={payBusy || (payNumber === "" && !paymentNumber.hidden) || paidOn === "" || treasury === "" || payment !== null}
               onClick={() => void draftPayment()}
               testId="hr-payment-draft"
             />

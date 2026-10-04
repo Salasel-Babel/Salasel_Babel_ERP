@@ -183,6 +183,29 @@ public sealed partial class NoVoiceIntentReachesAPostingOperation
         Assert.True(posting.Length >= 20, "أسماء الترحيل المقروءة: " + Count(posting.Length));
 
         string folder = Path.Combine(RepositoryLayout.Root, "web", "src", "voice");
+
+        // ‏**أُزيل الصوت من الواجهة بطلب المالك**: فما دام المجلّد غائباً، يُحرس الغياب
+        // نفسه — لا ملفّ في الواجهة يستورد مكوّناً صوتياً. وإن عاد المجلّد عاد المسح كاملاً.
+        if (!Directory.Exists(folder))
+        {
+            string web = Path.Combine(RepositoryLayout.Root, "web", "src");
+            string[] sources = [.. Directory.EnumerateFiles(web, "*.*", SearchOption.AllDirectories)
+                .Where(static file => file.EndsWith(".ts", StringComparison.Ordinal)
+                                   || file.EndsWith(".tsx", StringComparison.Ordinal))];
+
+            Assert.True(sources.Length >= 50, "ملفّات الواجهة المقروءة: " + Count(sources.Length));
+
+            foreach (string file in sources)
+            {
+                string text = File.ReadAllText(file);
+                Assert.False(
+                    text.Contains("/voice/", StringComparison.Ordinal),
+                    Path.GetFileName(file) + " يستورد مكوّناً صوتياً — والصوت أُزيل من الواجهة.");
+            }
+
+            return;
+        }
+
         string[] files = [.. Directory.EnumerateFiles(folder, "*.*", SearchOption.AllDirectories)
             .Where(static file => file.EndsWith(".ts", StringComparison.Ordinal)
                                || file.EndsWith(".tsx", StringComparison.Ordinal))];

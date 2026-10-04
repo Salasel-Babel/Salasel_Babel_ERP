@@ -28,7 +28,6 @@ import { ProblemPanel } from "../../app/shell/ProblemPanel";
 import { resolveTranslatedName } from "../../app/translated-name";
 import { Amount, useLocale, useT } from "../../i18n/react";
 import { EmptyState, StatCard, useMoment } from "../../ui";
-import { peekVoiceDraft } from "../../voice";
 import {
   AccField,
   AccRow,
@@ -55,18 +54,8 @@ export function ReceivablesAgingScreen(): ReactNode {
   const { locale } = useLocale();
   const [arriveCls] = useMoment("arrive");
 
-  const spokenAsOf = useMemo(() => {
-    const draft = peekVoiceDraft();
-    if (
-      draft?.intentId !== "accounting.receivables_aging.query" &&
-      draft?.intentId !== "accounting.customer_balance.query"
-    ) {
-      return "";
-    }
-    return draft.fields.find((field) => field.name === "asOf")?.text ?? "";
-  }, []);
 
-  const [asOf, setAsOf] = useState(() => spokenAsOf || todayIso());
+  const [asOf, setAsOf] = useState(todayIso);
   const [filter, setFilter] = useState("");
   const asOfValid = PARAM_readReceivablesAging_asOf_RE.test(asOf);
 
@@ -121,7 +110,7 @@ export function ReceivablesAgingScreen(): ReactNode {
             label={t("accounting.field.asOf")}
             hint={t("accounting.field.asOfHint")}
             error={asOfValid ? undefined : t("accounting.field.asOfBad")}
-            source={spokenAsOf ? "spoken" : "typed"}
+            source="typed"
             required
           >
             <input

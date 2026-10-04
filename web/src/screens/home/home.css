@@ -73,3 +73,6 @@
   font-size:var(--font-size-2xs); font-weight:var(--font-weight-semibold);
   color:var(--color-text-subtle);
 }
+
+/* شعارُ الهوية فوق عنوان البداية. */
+.home__logo{ display:block; block-size:56px; inline-size:auto; margin-block-end:var(--space-8) }

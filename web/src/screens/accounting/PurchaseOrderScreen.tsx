@@ -15,15 +15,16 @@
    يوصل إليه بابٌ آخر. ولذلك تُعرَض معرّفات السطور، ويُحمَل معرّف الأمر إلى
    شاشة الاستلام بلا أن يُكتب بيدٍ مرّتين.
    ═══════════════════════════════════════════════════════════════════════════ */
-import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { createPurchaseOrder, readPurchaseOrder } from "../../api/generated/client";
 import { useApi } from "../../app/api-context";
+import { PartyPicker } from "../../app/pickers";
+import { PRESET, useDefaultCostCenter, useDocumentNumber, useFillFrom, usePresetFill, useSimple } from "../../app/presets";
 import { ProblemPanel } from "../../app/shell/ProblemPanel";
 import { Amount, Num, useT } from "../../i18n/react";
 import { Button, EmptyState, StatCard, useMoment } from "../../ui";
-import { peekVoiceDraft } from "../../voice";
 import { useAccountingFocus } from "./focus";
 import {
   emptyPurchaseLine,
@@ -55,19 +56,19 @@ export function PurchaseOrderScreen(): ReactNode {
   const [arriveCls, fireArrive] = useMoment("arrive");
   const [, fireRefuse] = useMoment("refuse");
 
-  const spoken = useMemo(() => {
-    const draft = peekVoiceDraft();
-    if (draft?.intentId !== "accounting.purchase_order.draft") return null;
-    const of = (name: string) => draft.fields.find((field) => field.name === name)?.text ?? "";
-    return { supplier: of("supplier"), warehouse: of("warehouse"), orderedOn: of("orderedOn") };
-  }, []);
 
   /* ── رأس الأمر ────────────────────────────────────────────────────── */
   const [number, setNumber] = useState("");
-  const [supplierId, setSupplierId] = useState(spoken?.supplier ?? "");
-  const [warehouseId, setWarehouseId] = useState(spoken?.warehouse ?? "");
+  const [supplierId, setSupplierId] = useState("");
+  const [warehouseId, setWarehouseId] = useState("");
   const [costCenterId, setCostCenterId] = useState("");
-  const [orderedOn, setOrderedOn] = useState(() => spoken?.orderedOn || todayIso());
+  const [orderedOn, setOrderedOn] = useState(todayIso);
+
+  /* ── الواجهة المبسّطة: الرقم من الخادم، والمستودع من الثوابت، ومركز التكلفة من التأسيس، والتاريخ اليوم (ADR-0095) ── */
+  const simple = useSimple();
+  const documentNumber = useDocumentNumber("purchase_order");
+  const hideWarehouse = usePresetFill(PRESET.warehouse, warehouseId, setWarehouseId);
+  const hideCostCenter = useFillFrom(useDefaultCostCenter(), costCenterId, setCostCenterId);
 
   /* ── السطور ───────────────────────────────────────────────────────── */
   const [line, setLine] = useState<DraftPurchaseLine>(emptyPurchaseLine);
@@ -98,12 +99,15 @@ export function PurchaseOrderScreen(): ReactNode {
     setBusy(true);
     setError(null);
     try {
+      /* الرقم: ما كُتب، وإلا يُخصَّص من سلسلة أوامر الشراء على تاريخ الطلب. */
+      const resolvedNumber = await documentNumber.resolve(number, orderedOn);
+      setNumber(resolvedNumber);
       const created = await createPurchaseOrder(transport, {
         companyId: config.companyId,
         body: {
           costCenterId,
           lines: lines.map(toPurchaseLine),
-          number,
+          number: resolvedNumber,
           orderedOn,
           supplierId,
           warehouseId,
@@ -122,6 +126,7 @@ export function PurchaseOrderScreen(): ReactNode {
   }, [
     config.companyId,
     costCenterId,
+    documentNumber,
     fireArrive,
     fireRefuse,
     lines,
@@ -140,7 +145,7 @@ export function PurchaseOrderScreen(): ReactNode {
 
   const current = order.data ?? null;
   const ready =
-    number !== "" &&
+    (number !== "" || documentNumber.hidden) &&
     supplierId !== "" &&
     warehouseId !== "" &&
     costCenterId !== "" &&
@@ -174,7 +179,8 @@ export function PurchaseOrderScreen(): ReactNode {
         note={t("accounting.order.headNote")}
         testId="acc-order-head"
       >
-        <AccRow cols={3} testId="acc-order-head-row-1">
+        <AccRow cols={simple ? 2 : 3} testId="acc-order-head-row-1">
+          {documentNumber.hidden ? null : (
           <AccField
             id="acc-po-number"
             label={t("accounting.field.number")}
@@ -193,29 +199,22 @@ export function PurchaseOrderScreen(): ReactNode {
               onChange={(e) => setNumber(e.target.value)}
             />
           </AccField>
+          )}
           <AccField
             id="acc-po-supplier"
             label={t("accounting.field.supplierId")}
             hint={t("accounting.field.supplierIdHint")}
-            source={spoken?.supplier ? "spoken" : "typed"}
+            source="typed"
             required
           >
-            <input
-              id="acc-po-supplier"
-              className="ctl mono"
-              dir="ltr"
-              autoComplete="off"
-              spellCheck={false}
-              data-testid="acc-order-supplier"
-              value={supplierId}
-              onChange={(e) => setSupplierId(e.target.value)}
-            />
+            <PartyPicker kind="supplier" id="acc-po-supplier" value={supplierId} onChange={setSupplierId} testId="acc-order-supplier" />
           </AccField>
+          {simple ? null : (
           <AccField
             id="acc-po-ordered"
             label={t("accounting.field.orderedOn")}
             hint={t("accounting.field.orderedOnHint")}
-            source={spoken?.orderedOn ? "spoken" : "typed"}
+            source="typed"
             required
           >
             <input
@@ -228,13 +227,16 @@ export function PurchaseOrderScreen(): ReactNode {
               onChange={(e) => setOrderedOn(e.target.value)}
             />
           </AccField>
+          )}
         </AccRow>
+        {hideWarehouse && hideCostCenter ? null : (
         <AccRow cols={2} testId="acc-order-head-row-2">
+          {hideWarehouse ? null : (
           <AccField
             id="acc-po-warehouse"
             label={t("accounting.field.warehouseId")}
             hint={t("accounting.field.warehouseIdHint")}
-            source={spoken?.warehouse ? "spoken" : "typed"}
+            source="typed"
             required
           >
             <input
@@ -248,6 +250,8 @@ export function PurchaseOrderScreen(): ReactNode {
               onChange={(e) => setWarehouseId(e.target.value)}
             />
           </AccField>
+          )}
+          {hideCostCenter ? null : (
           <AccField
             id="acc-po-cost-center"
             label={t("accounting.field.costCenterId")}
@@ -266,7 +270,9 @@ export function PurchaseOrderScreen(): ReactNode {
               onChange={(e) => setCostCenterId(e.target.value)}
             />
           </AccField>
+          )}
         </AccRow>
+        )}
       </StatePanel>
 
       {/* ═══════════════════════════════════════ ٣ · السطور ═══════════ */}
